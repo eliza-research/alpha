@@ -1,0 +1,17 @@
+# Alpha core launcher and shared Files defaults
+
+This source packet belongs to Alpha's OS image, not per-device customization. It requires the exact frameworks/base revision in SOURCE-INPUTS.json.
+
+- Core-launcher classification hides Alpha from the routine foreground-app manager only while the enabled preinstalled Alpha owns Home. Other apps, a sideloaded impostor, another selected launcher, and unknown identity keep normal controls. Voice Stop/Mute, App Info, ANR handling and renderer recovery are unchanged.
+- Native Quick Settings defaults omit unavailable Wallet, Cast, mobile-data and device-control shortcuts. Both normal and split layouts are defined in OS resources. The repository migrates only exact prior stock layouts once, including Alpha's original stock layout. The version is stored after the selected layout; later owner edits are retained even if they recreate the old stock order. Other saved layouts remain intact; the standard editor stays available.
+- Provisioning and the post-update boot check grant the declared shared-storage app-op only to installed enabled system Alpha for the primary user, outside device-owner management and only while the app-op is unconfigured. An existing allow or deny remains untouched. App-private storage permissions are not granted.
+
+The normal `scripts/stage-alpha-os-branding.py` always includes this packet in fresh-image and OS-update source staging. It verifies the exact baseline and patch outputs in scratch space, then uses the existing all-file admission and backup transaction. There is no phone-side customization step.
+
+Run `python3 prepare.py --fetch` to fetch missing public hash-pinned baseline inputs and reproduce the packet. An existing mismatched baseline fails without replacement. For separate read-only admission use the existing tool:
+
+`python3 ../system-entry/apply.py /path/to/frameworks/base --manifest manifest.json`
+
+The tool is read-only unless explicitly given `--apply`. Source policy tests do not prove a compiled SystemUI, booted image, update migration or Pixel behavior. Build and qualify the signed OS together with the keyboard change before deployment; do not replace the launcher's app data.
+
+The November 9 unified update decision retains the installed `ai.alphacompute.alphaphone` package for all phones; Alpha Compute branding stays separate. Migration version 2 also replaces an exact known stock layout carrying the intermediate renamed tile; owner-customized layouts remain untouched. See the app updater handoff for signed retention and wireless acceptance gates.

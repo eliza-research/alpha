@@ -1,9 +1,6 @@
 #!/usr/bin/env node
-import {HOST_DESCRIPTOR, readHostDescriptor} from './android-host.ts';
-import type {HostReference} from './android-host.ts';
-import {buildEnv, gradleFlagArgs} from './build-android.ts';
-import type {AndroidRuntimeProfile} from './build-android.ts';
-import {preparePatchedNative} from './prepare-patched-native.ts';
+import {buildEnv, gradleFlagArgs, type AndroidRuntimeProfile} from './build-android.ts';
+import {HOST_DESCRIPTOR, readHostDescriptor, type HostReference} from './android-host.ts';
 /**
  * Gradle dependency verification metadata (android/gradle/verification-metadata.xml).
  *
@@ -13,8 +10,8 @@ import {preparePatchedNative} from './prepare-patched-native.ts';
  *
  * While the file exists Gradle refuses any plugin or dependency artifact whose SHA-256 is not
  * listed in it, in every build of the generated android/ host: nothing has to opt in and no
- * build step is added. `--check` verifies committed inputs and their authenticated patched
- * descriptors offline. `--write` is the one command that uses the
+ * build step is added. `--check` verifies committed inputs and pinned descriptors offline.
+ * `--write` is the one command that uses the
  * network: it runs the real build tasks with `--write-verification-metadata sha256` (Gradle adds
  * what they resolve and never removes an entry), then records the Linux and Windows builds of
  * aapt2, which a macOS build never resolves, from Google's Maven repository. Review the diff
@@ -57,7 +54,7 @@ export const HOST_TEMPLATES = 'vendor/eliza/packages/app/scripts/mobile/android/
 // The generator script writes the host's gradle.properties and wrapper settings itself.
 const MIRROR_FREE = [HOST_DESCRIPTOR, 'android/app/product.gradle', `${HOST_TEMPLATES}/settings.gradle`, `${HOST_TEMPLATES}/build.gradle`,
   `${HOST_TEMPLATES}/app.gradle`, `${HOST_TEMPLATES}/toolchain.json`, `${HOST_TEMPLATES}.mjs`, 'scripts/android-host.ts',
-  'scripts/build-android.ts', 'scripts/build-notification-fixture.ts', 'scripts/generate-licenses.ts', 'scripts/toolchain.ts'];
+  'vendor/eliza/packages/auth/android/build.gradle', 'scripts/build-android.ts', 'scripts/build-notification-fixture.ts', 'scripts/generate-licenses.ts', 'scripts/toolchain.ts'];
 /**
  * Publisher groups reviewed for this build, with the date and what was looked at. A component in
  * another group fails --check until someone looks at where it comes from and adds the group.
@@ -170,9 +167,7 @@ export function referencePath({root, path: relative}: HostReference) {
  * templates the generated root, settings and app scripts come from, Alpha's product script and
  * the build.gradle of each module android/consumer-host.json includes (the fixtures, the speech
  * and listener modules, Capacitor from node_modules and the plugins from the pinned upstream checkout).
- * This is the canonical input list. The one patchable Gradle descriptor, shared auth's
- * build.gradle, is materialized and checked separately so its repositories cannot hide behind
- * the unchanged pinned copy.
+ * Staged modules are exact copies of these pinned upstream inputs.
  */
 export function buildScripts(root: string) {
   const {profile} = readHostDescriptor(root);
@@ -182,19 +177,8 @@ export function buildScripts(root: string) {
     ...(profile.appScripts ?? []).map(referencePath), ...modules.sort()];
 }
 
-/** Only shared auth's build.gradle may be patched; authenticate it before checking its declarations. */
-function patchedBuildScripts(root: string) {
-  const file = path.join(root, 'patches/eliza/native-manifest.json');
-  if (!fs.existsSync(file)) return []; // Canonical-only fixture/checkouts have no native patch manifest.
-  const manifest: {patches?: {targets?: {path: string}[]}[]} = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const target = 'packages/auth/android/build.gradle';
-  if (!manifest.patches?.some(patch => patch.targets?.some(candidate => candidate.path === target))) return [];
-  const staged = preparePatchedNative({root});
-  return [path.relative(root, path.join(staged.root, target)).split(path.sep).join('/')];
-}
-
 export function checkVerification(root: string) {
-  const problems: string[] = [];
+  const problems = [];
   const file = path.join(root, METADATA);
   if (!fs.existsSync(file)) return {problems: [`${METADATA} is missing: Gradle dependency verification is off. Run: npm run android:deps:write-verification`], metadata: null};
   const metadata = parseVerificationMetadata(fs.readFileSync(file, 'utf8'));
@@ -229,8 +213,7 @@ export function checkVerification(root: string) {
     for (const host of AAPT2_HOSTS)
       if (!component.artifacts.some(artifact => artifact.name === `aapt2-${component.version}-${host}.jar`)) problems.push(`aapt2 ${component.version} has no ${host} archive recorded`);
   if (!metadata.components.some(item => item.group === 'com.android.tools.build' && item.name === 'aapt2')) problems.push('aapt2 is not recorded: the metadata was not generated from a real build');
-  const patchedScripts = patchedBuildScripts(root);
-  for (const script of [...buildScripts(root), ...patchedScripts]) {
+  for (const script of buildScripts(root)) {
     const file = path.join(root, script);
     // An included project that cannot be read was not reviewed; the checkout or npm ci is incomplete.
     if (!fs.existsSync(file)) { problems.push(`${script} is missing: the repositories it declares cannot be checked (git submodule update --init vendor/eliza; npm ci)`); continue; }
@@ -239,7 +222,7 @@ export function checkVerification(root: string) {
       if (problem) problems.push(`${script} declares repository ${repository}, which ${problem}; reviewed: ${ALLOWED_REPOSITORIES.join(', ')} and maven { } naming ${ALLOWED_REPOSITORY_URLS.join(' or ')}`);
     }
   }
-  for (const file of [...MIRROR_FREE, ...patchedScripts])
+  for (const file of MIRROR_FREE)
     if (fs.existsSync(path.join(root, file)) && fs.readFileSync(path.join(root, file), 'utf8').includes(MIRROR_PROPERTY))
       problems.push(`${file} mentions ${MIRROR_PROPERTY}: a Maven Central mirror is not a reviewed source`);
   return {problems, metadata};

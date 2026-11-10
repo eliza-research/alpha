@@ -1,6 +1,7 @@
 // Real Inbox adapter lifecycle with an account-bound provider fixture, no real mail.
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
+import type {SavedMailbox} from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/mailbox-list.ts';
 import {ServiceReadCache} from '../apps/app/src/runtime/service-read-cache.ts';
 import {saveGmailAccountChoice} from '../apps/app/src/runtime/gmail-account-selection.ts';
 import {formatTime} from '../apps/app/src/prototype/locale-time.ts';
@@ -78,7 +79,7 @@ const sandbox = await loadInboxFixture(inboxAdapterBindings({
  connectionController: controller,
  DailyApps: {addListener: async (_name: string, _fn: Action) => ({remove:async()=>{}})},
  window: windowFixture,
- document: {addEventListener(){},removeEventListener(){},documentElement:{dataset:{connectionMode:'live'}}},
+ document: {querySelector(){return null;},addEventListener(){},removeEventListener(){},documentElement:{dataset:{connectionMode:'live'}}},
 }));
 const inboxAttentionNow = () => sandbox.inboxAttention();
 const swipes = new Map<object, (offset: number, velocity: number) => void>();
@@ -160,12 +161,12 @@ assert.equal(views.inbox.badge(),false,'account change clears the badge');assert
 delay=false;session='account-a';for(const fn of listeners)fn();render().closeSearch();await tick();assert.equal(shell.st.q,null);
 render();await tick();assert.equal(render().rows.length,2,'re-bound account loads again');
 
-// Classified failures each offer an explicit Retry; nothing retries on its own.
+// Classified failures keep the explicit header Refresh action; nothing retries on its own.
 for(const [error,kind,text] of [[new TypeError('Failed to fetch'),'offline',/offline/],[new CloudProtocolError('http',409),'revoked',/revoked or needs authorization/],[new CloudProtocolError('http',503),'unavailable',/unavailable/]] as const){
  failNext=error;const before=searches.filter(s=>!s.pageToken).length;chip('Refresh').pick();await tick();
- assert.equal(searches.filter(s=>!s.pageToken).length,before+1,'one demand attempt only');assert.match(render().emptyText,text,kind);const home=homeValues(shell);if(kind==='revoked'){assert.equal(home.homeInboxHasRows,false,'revoked access retires cached Home subjects');assert.equal(home.homeInboxStatus,'','Home keeps the approved quiet uncached failure state');assert.equal(home.homeInboxState,'pending','an unverified failed read is not an empty success');assert.doesNotMatch(home.homeInboxCount,/0 unread|Nothing unread/,'failure never claims a verified empty Inbox');}else{assert.equal(home.homeInboxHasRows,true,'same-account cached mail survives a failed refresh');assert.match(home.homeInboxStatus,/retry/,'cached Home mail keeps its failed-refresh state');}chip('Retry');if(kind==='revoked')assert.equal(homeValues(shell).homeInboxHasRows,false,'revoked access drops cached subjects');
+ assert.equal(searches.filter(s=>!s.pageToken).length,before+1,'one demand attempt only');assert.match(render().emptyText,text,kind);const home=homeValues(shell);if(kind==='revoked'){assert.equal(home.homeInboxHasRows,false,'revoked access retires cached Home subjects');assert.equal(home.homeInboxStatus,'','Home keeps the approved quiet uncached failure state');assert.equal(home.homeInboxState,'pending','an unverified failed read is not an empty success');assert.doesNotMatch(home.homeInboxCount,/0 unread|Nothing unread/,'failure never claims a verified empty Inbox');}else{assert.equal(home.homeInboxHasRows,true,'same-account cached mail survives a failed refresh');assert.match(home.homeInboxStatus,/retry/,'cached Home mail keeps its failed-refresh state');}assert.equal(render().refreshDisabled,false);if(kind==='revoked')assert.equal(homeValues(shell).homeInboxHasRows,false,'revoked access drops cached subjects');
  if(kind==='revoked')chip('Reconnect Gmail');
- chip('Retry').pick();await tick();assert.equal(searches.filter(s=>!s.pageToken).length,before+2,'Retry is the explicit second demand attempt');assert.equal(render().rows.length,2);
+ render().refresh();await tick();assert.equal(searches.filter(s=>!s.pageToken).length,before+2,'Refresh is the explicit second demand attempt');assert.equal(render().rows.length,2);
 }
 // P-37: the read grant is withdrawn on the same connection. The re-read drops the shown mail, the
 // Home preview and the badge at once; nothing read under the old grant is shown again.
@@ -217,10 +218,21 @@ delete revisions['in:inbox'];pages['in:inbox']=savedInbox;
 // Only a complete successful empty page can claim no unread mail.
 pages['in:inbox']=[[]];chip('Refresh').pick();await tick();assert.equal(homeValues(shell).homeInboxTitle,'No unread email');assert.equal(homeValues(shell).homeInboxHasRows,false);
 views.inbox.onLeave();const leftSearches=searches.length;assert.equal(homeValues(shell).homeInboxTitle,'No unread email','Home retains metadata after full messages are retired');assert.equal(searches.length,leftSearches,'returning Home never fetches mail');render();await tick();
-// Accounts changed elsewhere while Inbox is closed: stale, with the count and time of the last real read.
-views.inbox.onLeave();const lastRead=local(sandbox.inboxAttention());assert.equal(lastRead.state,'stale');assert.equal(lastRead.unread,0);assert.ok(lastRead.updatedAt,'the last read time is kept');
-inboxActive=false;const accountsChanged=events.get('alpha:gmail-accounts-changed');assert.ok(accountsChanged);accountsChanged(new CustomEvent('alpha:gmail-accounts-changed',{detail:{source:'settings'}}));
-assert.deepEqual(local(sandbox.inboxAttention()),{...lastRead,state:'stale'},'stale keeps the last real read, never a new zero');
+// Account changes withdraw the prior summary until the current grant is verified.
+pages['in:inbox']=[[fixtureMail('scope-proof',{unread:true})]];chip('Refresh').pick();await tick();
+views.inbox.onLeave();const lastRead=local(sandbox.inboxAttention());assert.equal(lastRead.unread,1);assert.ok(lastRead.updatedAt);
+inboxActive=false;delayAccounts=true;
+const changed=events.get('alpha:gmail-accounts-changed');assert.ok(changed);
+const firstCheck=changed(new CustomEvent('alpha:gmail-accounts-changed',{detail:{source:'settings'}})),firstAccounts=pending.accounts;
+assert.ok(firstAccounts);
+assert.equal(sandbox.inboxAttention().state,'loading');assert.equal(sandbox.inboxAttention().unread,undefined);assert.equal(sandbox.inboxAttention().source,null);
+assert.deepEqual(local(homeValues(shell).homeInboxRows),[],'the previous account summary disappears before account lookup returns');
+const secondCheck=changed(new CustomEvent('alpha:gmail-accounts-changed',{detail:{source:'settings'}})),secondAccounts=pending.accounts;
+assert.ok(secondAccounts);assert.notEqual(firstAccounts,secondAccounts);
+firstAccounts();await firstCheck;
+assert.equal(sandbox.inboxAttention().state,'loading','a superseded account reply cannot republish the old summary');
+assert.deepEqual(local(homeValues(shell).homeInboxRows),[]);
+delayAccounts=false;secondAccounts();await secondCheck;await tick();
 inboxActive=true;render();await tick();
 
 // Account management lives in Settings; a connected inbox never prompts to connect again.
@@ -230,7 +242,7 @@ assert.equal(render().emptyAdd,false,'connected empty mailbox is not a connect p
 pages['in:inbox']=[[fixtureMail('mail-1')]];chip('Refresh').pick();await tick();render().rows[0].open();await tick();assert.equal(reader().body,'Fixture body');views.inbox.back(shell.st,api);providerBody='Fresh provider body';const beforeBodyRefresh=reads.length;chip('Refresh').pick();await tick();render().rows[0].open();await tick();assert.equal(reader().body,'Fresh provider body');assert.ok(reads.length>beforeBodyRefresh,'Refresh never keeps an obsolete cached body');views.inbox.back(shell.st,api);
 assert.deepEqual(disconnects,[],'Inbox has no disconnect mutation');
 shell.componentWillUnmount();
-console.log('PASS: Inbox auto-load, Refresh, provider paging, Sent folder, unread badge, account/query fences, classified errors with explicit Retry, shared compose prefill, compact toolbar and immediate pagination feedback. Provider fixture only.');
+console.log('PASS: Inbox auto-load, Refresh, provider paging, Sent folder, unread badge, account/query fences, classified errors with explicit header Refresh, shared compose prefill, compact toolbar and immediate pagination feedback. Provider fixture only.');
 
 // A new adapter instance represents a reload: restore only the current owner's retained inbox.
 // Deliberately cross local midnight: the retained timestamp is unchanged while its label includes the prior date.
@@ -238,7 +250,10 @@ console.log('PASS: Inbox auto-load, Refresh, provider paging, Sent folder, unrea
 const restoreDay=new Date();if(Date.now()<new Date(restoreDay).setHours(0,0,15,0))restoreDay.setDate(restoreDay.getDate()-1);
 const restoreNow=restoreDay.setHours(0,0,15,0),cachedAt=restoreNow-30000,cachedReadLabel=whenLabel(cachedAt,restoreNow);
 assert.notEqual(cachedReadLabel,formatTime(new Date(cachedAt)),'prior-day label includes its date');
-const retainedMailbox={accounts:[{connectionId:'grant-a',label:'Fixture account',connected:true,grantedCapabilities:['google.gmail.triage']}],selected:'grant-a',spamTrashSearch:false,lists:[{key:'old-session-key',at:cachedAt,firstPageRevision:null,messages:[fixtureMail('retained-unread',{unread:true})],query:'in:inbox',cursor:null,revision:'old-revision',cursors:[],newerMail:false,status:'Retained inbox'}],bodies:[]};
+type FixtureMailbox = Omit<SavedMailbox<{message: Mail; bodyText: string}>, 'accounts'> & {
+ accounts: {connectionId: string; label: string; connected: boolean; grantedCapabilities: string[]}[];
+};
+const retainedMailbox: FixtureMailbox={accounts:[{connectionId:'grant-a',label:'Fixture account',connected:true,grantedCapabilities:['google.gmail.triage']}],selected:'grant-a',spamTrashSearch:false,lists:[{key:'old-session-key',at:cachedAt,firstPageRevision:null,messages:[fixtureMail('retained-unread',{unread:true})],query:'in:inbox',cursor:null,revision:'old-revision',cursors:[],newerMail:false,status:'Retained inbox'}],bodies:[]};
 sandbox.serviceReadCache=async()=>({get:async key=>key==='gmail:mailbox'?{value:structuredClone(retainedMailbox)}:null,put:async()=>{},clear:async()=>{}});
 // Without a nameable owner (no organization) the saved native selection and cursor are never withdrawn.
 assert.equal(backgroundSelections.filter(selection=>selection===null).length,1,'only the unselected start withdraws; a selected account whose owner has no organization never does');const selectionsBeforeReload=backgroundSelections.length;
@@ -283,12 +298,85 @@ console.log('PASS: Reloaded Inbox cache also restores Home subjects/count/time w
 }
 console.log('PASS: Home warmup outlives a late saved summary and a same-account rebind; a revoked warmup purges saved mail.');
 
+// Home-only use saves its accepted page without replacing the richer mailbox.
+await test('Home warmup persists headers for immediate reload while refresh is pending or fails',async()=>{
+ const owner='home-saved-read',original=structuredClone(retainedMailbox);
+ original.lists.push({...original.lists[0],query:'in:sent',messages:[fixtureMail('sent-retained')]});
+ original.bodies.push({at:Date.now(),body:{message:fixtureMail('retained-unread'),bodyText:'Previously opened body'}});
+ let raw: unknown={version:1,owner,entries:[{key:'gmail:mailbox',at:Date.now(),value:original}]};
+ const cache=new ServiceReadCache(owner,{read:async()=>structuredClone(raw),compareExchange:async(before,next)=>{assert.deepEqual(before,raw);raw=structuredClone(next);return 'saved';}});
+ const previousCache=sandbox.serviceReadCache,previousClient=controller.getCloudClient;
+ sandbox.serviceReadCache=async()=>cache;controller.getCloudClient=()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null;
+ const installed: InboxFixtureShell[]=[];
+ const mount=()=>{const {shell:h,views:v,api:a}=inboxFixture();h.componentDidMount();installed.push(h);return {h,v,a};};
+ try{
+  inboxActive=false;connected=true;readGrant=true;delayAccounts=false;delay=false;failNext=null;
+  pages['in:inbox']=[[fixtureMail('home-saved',{unread:true})]];
+  const beforeBodies=reads.length,beforeSearch=searches.length,first=mount();await tick();
+  assert.equal(searches.length,beforeSearch+1,'Home uses its one existing header read');
+  assert.equal(reads.length,beforeBodies,'Home does not read bodies');
+  assert.deepEqual((await cache.get<FixtureMailbox>('gmail:mailbox'))?.value,original,'warmup preserves bodies and other folders');
+  const saved=(await cache.get<FixtureMailbox>('gmail:home'))?.value;assert.ok(saved);
+  assert.deepEqual(local(saved.lists[0].messages),pages['in:inbox'][0],'cache contains the actual accepted header rows');
+  assert.deepEqual(local(saved.bodies),[]);assert.equal(saved.lists.length,1);assert.equal(saved.accounts.length,1);
+  first.h.componentWillUnmount();installed.pop();
+  delayAccounts=true;failNext=new CloudProtocolError('http',503);
+  const second=mount();await tick();
+  assert.deepEqual(local(homeValues(second.h).homeInboxRows),[{subject:'Fixture home-saved',from:'Sender'}],'saved Home rows appear before the network answers');
+  assert.equal(homeValues(second.h).homeInboxCount,'1 unread');
+  assert.equal(sandbox.inboxAttention().updatedAt,new Date(saved.lists[0].at).toISOString(),'reload keeps the accepted read time');
+  inboxActive=true;second.v.inbox.render(second.h.st,second.a);await tick();
+  assert.equal(second.v.inbox.render(second.h.st,second.a).rows[0].subj,'Fixture home-saved','Inbox also restores the newer header page while refresh is pending');
+  delayAccounts=false;release('accounts');await tick();
+  assert.equal(second.v.inbox.render(second.h.st,second.a).rows[0].subj,'Fixture home-saved','a failed refresh keeps the restored list');
+  const restored=(await cache.get<FixtureMailbox>('gmail:mailbox'))?.value;assert.ok(restored);
+  assert.ok(restored.lists.some(row=>row.query==='in:sent'&&row.messages[0].id==='sent-retained'),'restoring the Home page keeps other folders');
+  assert.ok(restored.bodies.some(row=>row.body.bodyText==='Previously opened body'),'restoring the Home page keeps cached bodies');
+  assert.deepEqual((await cache.get<FixtureMailbox>('gmail:home'))?.value,saved,'failed refresh keeps the accepted Home snapshot');
+ }finally{for(const h of installed)h.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;delayAccounts=false;failNext=null;}
+});
+
+await test('a late disk restore cannot replace the newer live Home page when Inbox opens',async()=>{
+ const previousCache=sandbox.serviceReadCache,previousClient=controller.getCloudClient;
+ let gets=0;const disk=Promise.withResolvers<void>();
+ sandbox.serviceReadCache=async()=>({get:async key=>{if(++gets>2)await disk.promise;return key==='gmail:mailbox'?{value:structuredClone(retainedMailbox)}:null;},put:async()=>{},clear:async()=>{}});
+ controller.getCloudClient=()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null;
+ const {shell:h,render:inbox}=inboxFixture();
+ try{
+  inboxActive=false;delayAccounts=false;delay=true;failNext=null;pages['in:inbox']=[[fixtureMail('live-after-disk-start',{unread:true})]];
+  const beforeSearch=searches.length;h.componentDidMount();await tick();
+  assert.deepEqual(local(homeValues(h).homeInboxRows),[{subject:'Fixture retained-unread',from:'Sender'}]);
+  assert.equal(searches.length,beforeSearch+1,'the existing Home refresh waits for its response');
+  inboxActive=true;inbox();await tick();assert.equal(gets,4,'Inbox restoration is waiting for both disk snapshots');
+  delay=false;release('search');await tick();
+  assert.deepEqual(local(homeValues(h).homeInboxRows),[{subject:'Fixture live-after-disk-start',from:'Sender'}],'the live result is accepted before disk completes');
+  failNext=new CloudProtocolError('http',503);disk.resolve();await tick();
+  assert.deepEqual(local(inbox().rows.map(row=>row.subj)),['Fixture live-after-disk-start'],'late disk cannot replace the live page in Inbox');
+  assert.deepEqual(local(homeValues(h).homeInboxRows),[{subject:'Fixture live-after-disk-start',from:'Sender'}]);
+  assert.equal(searches.length,beforeSearch+1,'opening reuses the accepted live result without another page read');
+ }finally{disk.resolve();h.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;delay=false;delayAccounts=false;failNext=null;}
+});
+
+for(const candidate of ['newer-mailbox','invalid-home','different-account','home-only'])await test(`Home selects the latest valid saved page: ${candidate}`,async()=>{
+ const full=structuredClone(retainedMailbox),home=structuredClone(retainedMailbox);
+ full.lists[0].at=Date.now()-1000;full.lists[0].messages=[fixtureMail('new-full',{unread:true})];
+ home.lists[0].at=full.lists[0].at-1000;home.lists[0].messages=[fixtureMail('old-home',{unread:true})];
+ if(candidate==='invalid-home'){home.lists[0].at=Date.now()+60000;}
+ if(candidate==='different-account'){home.selected='grant-b';home.accounts[0].connectionId='grant-b';home.lists[0].at=Date.now();}
+ const previousCache=sandbox.serviceReadCache,previousClient=controller.getCloudClient;
+ sandbox.serviceReadCache=async()=>({get:async key=>candidate==='home-only'&&key==='gmail:mailbox'?null:({value:key==='gmail:home'?home:full}),put:async()=>{},clear:async()=>{}});
+ controller.getCloudClient=()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null;
+ const {shell:h}=inboxFixture();
+ try{inboxActive=false;delayAccounts=true;h.componentDidMount();await tick();assert.deepEqual(local(homeValues(h).homeInboxRows),[{subject:candidate==='home-only'?'Fixture old-home':'Fixture new-full',from:'Sender'}]);}
+ finally{h.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;delayAccounts=false;release('accounts');await tick();}
+});
+
 // A fresh Home adapter never opens Inbox: `selected` must not mask the revoked restore gate.
 for(const purgeFailure of ['reject','exhausted-cas'])await test(`a fresh Home shell cannot restore revoked subjects after ${purgeFailure} purge`,async()=>{
  const {shell: fresh} = inboxFixture();
  let localGets=0,casAttempts=0,purgeSettled;
  const owner='fresh-revoked-cache-'+purgeFailure;
- const raw={version:1,owner,entries:[{key:'gmail:mailbox',at:Date.now(),value:structuredClone(retainedMailbox)}]};
+ const raw={version:1,owner,entries:['gmail:mailbox','gmail:home'].map(key=>({key,at:Date.now(),value:structuredClone(retainedMailbox)}))};
  const cache=new ServiceReadCache(owner,{read:async()=>structuredClone(raw),compareExchange:async()=>{casAttempts++;if(purgeFailure==='reject')throw Error('Closed fixture failed purge');return 'conflict';}});
  const get=cache.get.bind(cache),clear=cache.clear.bind(cache);
  cache.get=async function<T>(key: string){localGets++;return get<T>(key);};
@@ -299,7 +387,7 @@ for(const purgeFailure of ['reject','exhausted-cas'])await test(`a fresh Home sh
  const beforeSearch=searches.length,beforeBodies=reads.length,priorAccountGate=pending.accounts;
  try{
   fresh.componentDidMount();await tick();
-  assert.equal(localGets,1,'fresh Home reads the real retained cache once before network decision');
+  assert.equal(localGets,2,'fresh Home reads each saved snapshot once before network decision');
   assert.deepEqual(local(homeValues(fresh).homeInboxRows),[{subject:'Fixture retained-unread',from:'Sender'}],'saved subject was genuinely visible before revocation');
   assert.equal(typeof pending.accounts,'function','warmup discovery is pending, without an Inbox render/open');
   assert.notEqual(pending.accounts,priorAccountGate,'this fresh shell reached its own gated account discovery');

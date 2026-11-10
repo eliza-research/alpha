@@ -122,6 +122,7 @@ export default defineConfig({
       "@elizaos/contracts/browser-request-grounding": fileURLToPath(new URL("./.eliza/client-features/packages/contracts/src/browser-request-grounding.ts", import.meta.url)),
       "@elizaos/contracts/phone-dial": fileURLToPath(new URL("./.eliza/client-features/packages/contracts/src/phone-dial.ts", import.meta.url)),
       "@elizaos/contracts/device-action-execution": fileURLToPath(new URL("./.eliza/client-features/packages/contracts/src/device-action-execution.ts", import.meta.url)),
+      "@elizaos/contracts/client-turn-observation": fileURLToPath(new URL("./.eliza/client-features/packages/contracts/src/client-turn-observation.ts", import.meta.url)),
       "@elizaos/ui/view-primitives": fileURLToPath(new URL("./.eliza/client-features/packages/ui/src/view-primitives.ts",import.meta.url)),
       "@elizaos/capacitor-system/shade": fileURLToPath(new URL("./.eliza/client-features/plugins/plugin-native-system/src/client/shade.ts",import.meta.url)),
       "@elizaos/capacitor-system/launcher": fileURLToPath(new URL("./.eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",import.meta.url)),
@@ -145,6 +146,7 @@ export default defineConfig({
       "@elizaos/contracts/native-notes-query": fileURLToPath(new URL("./.eliza/client-features/packages/contracts/src/native-notes-query.ts",import.meta.url)),
       "@elizaos/contracts": fileURLToPath(new URL("./.eliza/client-features/client-contracts.ts",import.meta.url)),
       "@elizaos/plugin-assistant/device-calendar-contract": fileURLToPath(new URL("./.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/calendar-contract.ts",import.meta.url)),
+      "@elizaos/plugin-assistant/device-clock-review": fileURLToPath(new URL("./.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/clock-handoff.ts",import.meta.url)),
       "@elizaos/plugin-assistant/device-foreground-review": fileURLToPath(new URL("./.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/foreground-review-contract.ts",import.meta.url)),
       "@eliza-system": fileURLToPath(
         new URL(
@@ -160,8 +162,6 @@ export default defineConfig({
     // Vite emits worklet URLs using real paths when this prepared tree is shared by a worktree.
     realpathSync(fileURLToPath(new URL('./.eliza/client-features', import.meta.url))),
     fileURLToPath(new URL('./node_modules', import.meta.url)),
-    fileURLToPath(new URL('./config/owner-routes.json', import.meta.url)),
-    fileURLToPath(new URL('./config/alpha-product.json', import.meta.url)),
     fileURLToPath(new URL('./vendor/eliza/plugins/plugin-native-system', import.meta.url)),
     fileURLToPath(new URL('./vendor/eliza/plugins/plugin-assistant/src/services/device-actions', import.meta.url)),
   ] } },

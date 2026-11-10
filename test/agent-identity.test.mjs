@@ -1,5 +1,6 @@
-// The locally launched host presents as the product: config/alpha-product.json identity is the one
+// The locally launched host presents as the product: apps/app/src/product/alpha-product-registration.ts identity is the one
 // source for the shell label and for the agent character the launchers hand upstream.
+import {ALPHA_PRODUCT_REGISTRATION as record} from '../apps/app/src/product/alpha-product-registration.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -10,7 +11,6 @@ import {git} from './fixtures/git-fixture.mjs';
 import {AGENT_CHARACTER,AGENT_CHARACTER_ENVIRONMENT} from '../scripts/agent-identity.ts';
 import {LOCAL_EMBEDDING_ROUTE} from '../scripts/agent-embeddings.ts';
 
-const record=JSON.parse(fs.readFileSync('config/alpha-product.json','utf8'));
 const LAUNCHERS=['scripts/start-local-remote.ts','scripts/start-combined-agent.ts','scripts/start-local-voice-agent.ts','scripts/start-reviewed-workflow-agent.ts'];
 
 test('the agent character carries the product identity and inherits the bundled persona',()=>{
@@ -37,7 +37,7 @@ test('the pinned upstream applies the override in memory and renders the name in
  assert.match(build,/const configuredName = configuredUiName \|\| configuredAgentName;/);
  assert.match(build,/\(agentEntry\?\.system \? undefined : getDefaultStylePreset\(language\)\)/);
  const presets=fs.readFileSync('vendor/eliza/packages/host/src/character-presets.characters.ts','utf8');
- assert.match(presets,/id: "eliza",[\s\S]*?system:\s*"You are \{\{name\}\}, made by Eliza Research/);
+ assert.match(presets,/id: "eliza",[\s\S]*?system:\s*"You are \{\{name\}\}, made by Alpha Compute/);
  assert.match(fs.readFileSync('vendor/eliza/packages/core/src/runtime/system-prompt.ts','utf8'),/replaceNameTokens\(\s*typeof character\?\.system === "string"/);
 });
 

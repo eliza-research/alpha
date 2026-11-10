@@ -1,5 +1,5 @@
+import {ALPHA_PRODUCT_REGISTRATION as record} from '../../apps/app/src/product/alpha-product-registration.ts';
 import {test,expect} from '@playwright/test';
-import {readFileSync} from 'node:fs';
 import {returnToApps} from './app-navigation';
 for(const theme of ['light','dark'])test(`canonical launcher, dock and Files assets: ${theme}`,async({page},info)=>{
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
@@ -15,13 +15,12 @@ for(const theme of ['light','dark'])test(`canonical launcher, dock and Files ass
  }
  // Every shared Home tile names the published glyph it draws (data-mobile-shell-tile-icon); its
  // accessible name stays the label. The count covers every product tile and Apps.
- const record=JSON.parse(readFileSync(new URL('../../config/alpha-product.json',import.meta.url),'utf8'));
  const homeTiles=await page.getByRole('region',{name:'Home',exact:true}).locator('[data-mobile-shell-tile]').evaluateAll(tiles=>tiles.map(tile=>({name:tile.getAttribute('aria-label'),icon:tile.getAttribute('data-mobile-shell-tile-icon'),mask:getComputedStyle(tile.querySelector('[data-mobile-shell-tile-face] > span[aria-hidden="true"]')||tile).maskImage,image:!!tile.querySelector('img')})));
  expect(homeTiles.length,'shared Home tiles').toBeGreaterThan(1);
  const glyphs=new Set([...Object.values(record.icons.views),record.icons.allApps]);
  for(const tile of homeTiles){
   if(tile.image){expect(tile.icon,tile.name+' platform icon carries no glyph id').toBeNull();continue;}
-  expect(glyphs.has(tile.icon),tile.name+' names a published glyph: '+tile.icon).toBe(true);
+  expect(glyphs.has(tile.icon ?? ''),tile.name+' names a published glyph: '+tile.icon).toBe(true);
   expect(tile.mask,tile.name+' draws the glyph it names').toMatch(new RegExp('/icons/lucide/'+tile.icon+'\\.svg"?\\)$'));
  }
  expect(homeTiles.find(tile=>tile.name==='Apps')?.icon).toBe(record.icons.allApps);
@@ -34,7 +33,7 @@ for(const theme of ['light','dark'])test(`canonical launcher, dock and Files ass
  await page.screenshot({animations:'disabled',path:info.outputPath('dock-folders-'+theme+'.png')});
  const storage=page.getByRole('button',{name:'Internal storage',exact:true}).locator('[data-alpha-icon]');await expect(storage).toHaveAttribute('data-alpha-icon','/icons/lucide/hard-drive.svg');
  await page.getByRole('button',{name:'Internal storage',exact:true}).click();
- await page.getByRole('button',{name:'Sort and more',exact:true}).click();await page.getByText('New folder',{exact:true}).click();await page.getByRole('textbox',{name:'Name'}).fill('Synthetic folder');await page.getByRole('button',{name:'Create',exact:true}).click();
+ await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'New folder',exact:true}).click();await page.getByRole('textbox',{name:'Name'}).fill('Synthetic folder');await page.getByRole('button',{name:'Create',exact:true}).click();
  const row=page.getByRole('button',{name:'Open Synthetic folder',exact:true});await expect(row.locator('[data-alpha-icon="/icons/lucide/folder.svg"]')).toHaveAttribute('data-alpha-icon','/icons/lucide/folder.svg');
  await page.screenshot({animations:'disabled',path:info.outputPath('folders-'+theme+'.png')});
  const icon=row.locator('[data-alpha-icon="/icons/lucide/folder.svg"]');expect(await icon.evaluate(el=>({tag:el.tagName,mask:getComputedStyle(el).maskImage,color:getComputedStyle(el).backgroundColor,width:el.getBoundingClientRect().width,hidden:el.getAttribute('aria-hidden'),viewbox:el.hasAttribute('viewBox')}))).toMatchObject({tag:'SPAN',hidden:'true',viewbox:false});expect(await icon.evaluate(el=>getComputedStyle(el).maskImage)).toContain('folder.svg');

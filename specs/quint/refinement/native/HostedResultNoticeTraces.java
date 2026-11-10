@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import java.io.IOException;
 import java.util.ArrayList;

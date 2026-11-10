@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Write the one-tap update manifest (docs/android-and-aosp.md, Publish an update) from a verified release.
+ * Write the one-tap update manifest from a verified release.
  *
  *   node scripts/publish-update-manifest.ts --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]
  *
@@ -12,18 +12,18 @@
  * (apps/app/src/prototype/settings-adapter.ts) and AlphaDevicePlugin.installUpdate check. It uploads
  * nothing: the owner runs gh release upload with the two files it names.
  */
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { RELEASE_SIGNER_FILE, readReleaseSigner } from "./build-android.ts";
-import type {ReleaseSigner} from "./build-android.ts";
-import type {ApkVariant} from "./apk.ts";
+import { RELEASE_SIGNER_FILE, readReleaseSigner, type ReleaseSigner } from "./build-android.ts";
 import { admitUnitApk, readUnitApkManifest } from "./provision-unit.ts";
+import { inspectUpdateApk } from "./update-apk-admission.ts";
+import { updateArtifactDigest } from "./update-artifact.ts";
+import type { ApkVariant } from "./apk.ts";
 
 export const MANIFEST_NAME = "alpha-update-stable.json";
 // parseUpdateManifest's UPDATE_MAX_BYTES: phones silently drop a manifest naming a larger APK.
-const UPDATE_MAX_BYTES = 1024 * 1024 * 1024;
+const UPDATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 const USAGE = "Usage: node scripts/publish-update-manifest.ts --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]";
 
 function parseArgs(argv: readonly string[]) {
@@ -59,15 +59,14 @@ export function updateRow(manifestFile: string, variant: ApkVariant, descriptor:
     : { row, admitted, problems };
 }
 
-export function main(argv: readonly string[], { root = process.cwd(), log = console.log, error = console.error } = {}) {
+export function main(argv: readonly string[], { root = process.cwd(), log = console.log, error = console.error, inspectApk = inspectUpdateApk } = {}) {
   const options = parseArgs(argv);
   if (!options) { error(USAGE); return 2; }
   if (options.notes !== null && options.notes.length > 500) { error("--notes must be at most 500 characters; phones do not show longer notes."); return 2; }
   const descriptor = readReleaseSigner(root);
   const manifestFile = path.resolve(root, options.apkManifest);
   const { row, admitted, problems } = updateRow(manifestFile, options.variant, descriptor);
-  if (!row || !admitted || problems.length) { error(`Refusing to publish ${options.variant} as an update:\n  - ${problems.join("\n  - ")}`); return 1; }
-
+  if (problems.length || !row || !admitted) { error(`Refusing to publish ${options.variant} as an update:\n  - ${problems.join("\n  - ")}`); return 1; }
   const { updateManifestUrl } = JSON.parse(fs.readFileSync(path.join(root, "app.config.json"), "utf8"));
   const apkName = `alpha-phone-${row.versionCode}.apk`;
   const outDir = path.resolve(root, options.outDir);
@@ -75,20 +74,30 @@ export function main(argv: readonly string[], { root = process.cwd(), log = cons
   fs.mkdirSync(outDir, { recursive: true });
   fs.rmSync(path.join(outDir, MANIFEST_NAME), { force: true });
   fs.copyFileSync(admitted.file, apk);
-  const bytes = fs.readFileSync(apk);
-  const sha256 = createHash("sha256").update(bytes).digest("hex");
+  const {size,sha256} = updateArtifactDigest(apk);
   if (sha256 !== row.sha256) { fs.rmSync(apk, { force: true }); error(`${apk} does not match its verified manifest row`); return 1; }
-  if (bytes.length > UPDATE_MAX_BYTES) { fs.rmSync(apk, { force: true }); error(`${apk} is over 1 GiB; phones do not offer it.`); return 1; }
+  if (size > UPDATE_MAX_BYTES) { fs.rmSync(apk, { force: true }); error(`${apk} is over 2 GiB; phones do not offer it.`); return 1; }
+  // A release row is not an authority for its own assertions. Inspect the copy
+  // whose digest we just verified, not a separate source path that can move
+  // between admission and staging.
+  let signerRootSha256;
+  try {
+    const versionCode = admitted.versionCode;
+    if (versionCode === null) throw Error('Verified APK versionCode is missing');
+    ({ signerRootSha256 } = inspectApk({file: apk, sha256: admitted.sha256, build: 'release', variant: options.variant, versionCode}, { descriptor }));
+    if (!/^[0-9a-f]{64}$/.test(signerRootSha256 || '')) throw Error('Verified signing-family root is missing');
+  }
+  catch (failed) { fs.rmSync(apk,{force:true}); error(`Refusing to publish ${options.variant}: ${failed instanceof Error ? failed.message : String(failed)}`); return 1; }
 
   const update = {
     schema: "alpha-update/v1",
     versionCode: row.versionCode,
     versionName: row.versionName,
     variant: options.variant,
-    signerSha256: descriptor.signerSha256,
+    signerSha256: signerRootSha256,
     apkUrl: new URL(apkName, updateManifestUrl).href,
     sha256,
-    sizeBytes: bytes.length,
+    sizeBytes: size,
     ...(options.notes !== null ? { notes: options.notes } : {}),
   };
   fs.writeFileSync(path.join(outDir, MANIFEST_NAME), `${JSON.stringify(update, null, 2)}\n`);

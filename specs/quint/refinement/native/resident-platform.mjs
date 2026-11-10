@@ -13,7 +13,7 @@ import android.content.res.AssetManager;
 public class Context {
   public static final int MODE_PRIVATE = 0;
   public int checkSelfPermission(String permission) { return -1; }
-  public String getPackageName() { return "ai.elizaresearch.alphaphone"; }
+  public String getPackageName() { return "ai.alphacompute.alphaphone"; }
   public android.content.pm.PackageManager getPackageManager() { return new android.content.pm.PackageManager(); }
   public Context getApplicationContext() {
     return this;
@@ -23,11 +23,11 @@ public class Context {
   }
   public ApplicationInfo getApplicationInfo() {
     ApplicationInfo info = new ApplicationInfo();
-    info.nativeLibraryDir = ai.elizaresearch.alphaphone.ResidentTestPorts.nativeDirectory;
+    info.nativeLibraryDir = ai.alphacompute.alphaphone.ResidentTestPorts.nativeDirectory;
     return info;
   }
   public File getFilesDir() {
-    return new File(ai.elizaresearch.alphaphone.ResidentTestPorts.nativeDirectory);
+    return new File(ai.alphacompute.alphaphone.ResidentTestPorts.nativeDirectory);
   }
   public SharedPreferences getSharedPreferences(String name, int mode) {
     return new SharedPreferences();
@@ -62,7 +62,7 @@ public class ApplicationInfo {
 import java.io.*;
 public class AssetManager {
   public InputStream open(String name) throws IOException {
-    if (name.equals("agent/agent-bundle.js") && ai.elizaresearch.alphaphone.ResidentTestPorts.packaged)
+    if (name.equals("agent/agent-bundle.js") && ai.alphacompute.alphaphone.ResidentTestPorts.packaged)
       return new ByteArrayInputStream(new byte[0]);
     throw new FileNotFoundException(name);
   }
@@ -195,20 +195,20 @@ public @interface CapacitorPlugin {
 public class JsonCredentialSlots {
   public static final Object LOCK = new Object();
 }`,
-    'ai/elizaresearch/alphaphone/BuildConfig.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/BuildConfig.java': `package ai.alphacompute.alphaphone;
 public class BuildConfig {
   public static final boolean DEBUG = true, ELIZA_DEV_ALLOW_TEST_MOCKS = false;
   public static final int VERSION_CODE = 1;
   public static final String ELIZA_RUNTIME_PROFILE = "native";
 }`,
-    'ai/elizaresearch/alphaphone/AlphaAssistActivity.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaAssistActivity.java': `package ai.alphacompute.alphaphone;
 public class AlphaAssistActivity extends android.app.Activity {
   public static final String EXTRA_ASSISTANT = "assistant";
   public String takeInvocation() {
     throw new AssertionError("Unused activity capability");
   }
 }`,
-    'ai/elizaresearch/alphaphone/AlphaCredentialStore.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaCredentialStore.java': `package ai.alphacompute.alphaphone;
 public class AlphaCredentialStore {
   private final Runnable owner;
   public AlphaCredentialStore(android.content.Context context) {
@@ -248,7 +248,7 @@ public class AlphaCredentialStore {
     throw new AssertionError("Unused provider snapshot");
   }
 }`,
-    'ai/elizaresearch/alphaphone/ElizaAgentService.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/ElizaAgentService.java': `package ai.alphacompute.alphaphone;
 import android.content.Context;
 import org.json.JSONObject;
 public class ElizaAgentService {
@@ -305,7 +305,7 @@ public class ElizaAgentService {
     throw new AssertionError("Unused review");
   }
 }`,
-    'ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaConnectionPlugin.java': `package ai.alphacompute.alphaphone;
 public class AlphaConnectionPlugin {
   public static org.json.JSONObject readCloudIdentity(String token) {
     throw new AssertionError("Unused identity");
@@ -314,7 +314,7 @@ public class AlphaConnectionPlugin {
     throw new AssertionError("Unused identity");
   }
 }`,
-    'ai/elizaresearch/alphaphone/WorkflowWorkerAssets.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/WorkflowWorkerAssets.java': `package ai.alphacompute.alphaphone;
 public class WorkflowWorkerAssets {
   public interface Asset {
     java.io.InputStream open(String name) throws java.io.IOException;
@@ -343,21 +343,21 @@ public class Lifecycle {
  public enum State { RESUMED; public boolean isAtLeast(State expected) { return true; } }
  public State getCurrentState() { return State.RESUMED; }
 }`,
-    'ai/elizaresearch/alphaphone/MainActivity.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/MainActivity.java': `package ai.alphacompute.alphaphone;
 public class MainActivity extends android.app.Activity {
  public boolean isAssistantSurface() { return false; }
  public boolean isSettingsCurrent() { return true; }
 }`,
-    'ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java': `package ai.alphacompute.alphaphone;
 public class AlphaVoiceCloudPlugin { public static void retireProviderAuthority() {} }`,
-    'ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaCanonicalNotifications.java': `package ai.alphacompute.alphaphone;
 public class AlphaCanonicalNotifications {
  public static void suspendForRestart() {}
  public static void forget(android.content.Context context) {}
  public static void ensure(android.content.Context context) {}
  public static boolean ownsSession() { return false; }
 }`,
-    'ai/elizaresearch/alphaphone/NativeNotificationProjector.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/NativeNotificationProjector.java': `package ai.alphacompute.alphaphone;
 public class NativeNotificationProjector {
  public static void retireOwner(android.content.Context context,String owner) { throw new AssertionError("Unused notification projection"); }
 }`,
@@ -376,7 +376,7 @@ public class SecretSurfaces {
 }`,
     'ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java': `package ai.eliza.plugins.agent.updater;
 public class RuntimeUpdatePause { public static void beforeStart() {} }`,
-    'ai/elizaresearch/alphaphone/OwnerRoutes.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/OwnerRoutes.java': `package ai.alphacompute.alphaphone;
 public class OwnerRoutes {
  public interface Assets { java.io.InputStream open(String path)throws java.io.IOException; }
  public static OwnerRoutes shipped(Assets assets) { throw new IllegalStateException("Owner route asset unavailable in resident fixture"); }
@@ -391,7 +391,7 @@ public class LiveSegmentPipe {
     org.json.JSONObject post(org.json.JSONObject body) throws Exception;
   }
 }`,
-    'ai/elizaresearch/alphaphone/ResidentResultSession.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/ResidentResultSession.java': `package ai.alphacompute.alphaphone;
 public class ResidentResultSession {
   public static final String PLACEHOLDER_AGENT = "00000000-0000-0000-0000-000000000000";
   public static org.json.JSONObject snapshot(String owner, String token, long expiresAt, String root) {

@@ -1,4 +1,4 @@
-// Release APK signing outside Gradle (docs/human-actions.md H-10): the ceremony's key files or a
+// Release APK signing outside Gradle: the ceremony's key files or a
 // PKCS#11 token sign the unsigned releases, and nothing replaces an unsigned release unless the
 // result verifies against android/release-signer.json. A stub apksigner records argument vectors;
 // where the Android SDK is installed, one case signs a real APK with a throwaway key.
@@ -183,7 +183,7 @@ test("refusals: no enrolled signer, already signed releases, mixed modes, dry ru
   const { tool, calls } = stubSigner(t);
   const unset = await sign(product(t, "unset"), ["--keys-dir", keys(t), "--apksigner", tool]);
   assert.equal(unset.code, 1);
-  assert.match(unset.err, /H-09/);
+  assert.match(unset.err, /enroll the release certificate first/);
   const root = product(t);
   fs.writeFileSync(path.join(root, "artifacts/launcher-release.apk"), "signed by Gradle");
   const twice = await sign(root, ["--keys-dir", keys(t), "--apksigner", tool]);

@@ -12,6 +12,7 @@ import type { CloudMapsRoute } from '../maps/cloud-provider.ts';
 import {mapsTilePath} from './managed-service-routes.ts';
 import { authenticated as signInAuthenticated, googleOutcome, type CloudSignInGoogleOutcome, CloudSignInError, emailStarted, verified as signInVerified, type CloudSignInAuthenticated, type CloudSignInEmailStarted, type CloudSignInMfaRequired, type CloudSignInPort } from './cloud-sign-in.ts';
 import type { EntitlementSource, FallbackPlan, OrganizationCreditBalance, RedeemResult } from './subscription-entitlement.ts';
+import { parseManagedGoogleCalendars, parseManagedGoogleCalendarFeed } from "../../../../.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-calendar-read.ts";
 import { CloudAccountBillingClient, CloudBillingError, type CloudBillingRequest, type CloudBillingResponse } from '../../../../.eliza/client-features/packages/cloud/sdk/src/cloud-account-billing.ts';
 /** Narrow Alpha adapter for Eliza Cloud managed services: sign-in, identity, subscription plan and
  * the connected Google services. Sign-in is in-app (cloud-sign-in.ts) once the native host reports
@@ -29,7 +30,7 @@ import { CloudAccountBillingClient, CloudBillingError, type CloudBillingRequest,
 export type CloudEnvironment = "production" | "staging";
 export type CloudAuthority = { readonly name: string; readonly api: string; readonly web: string; readonly agents: string; readonly entitlementAudience: string };
 // Staging is admitted in test mocks or the explicitly selected real browser Cloud QA host. QA builds reach
-// api-staging.eliza.app, its issuer and its web origins (docs/cloud-subscription-qa.md).
+// api-staging.eliza.app, its issuer and its web origins.
 // Vite replaces import.meta.env at build time, so flag-off bundles fold the staging
 // authority away. Node contract tests import this source without Vite and keep both.
 const stagingAvailable: boolean = import.meta.env === undefined || import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS === '1' || (browserCloudResidentEnabled && browserCloudResidentEnvironment === 'staging');
@@ -551,33 +552,15 @@ export class CloudProtocol {
   async googleCalendars(grantId:string,signal:AbortSignal):Promise<GoogleCalendarSummary[]> {
     const params=new URLSearchParams({side:'owner',grantId:uuid(grantId)});
     const data=await this.accountRequest(`/api/v1/eliza/google/calendar/calendars?${params}`,signal);
-    if(!Array.isArray(data))throw new CloudProtocolError('invalid-response');
-    const seen=new Set<string>();
-    return data.map(value=>{
-      const row=object(value),calendarId=string(row.calendarId);
-      if(seen.has(calendarId)||typeof row.primary!=='boolean'||typeof row.selected!=='boolean')throw new CloudProtocolError('invalid-response');
-      seen.add(calendarId);
-      return {calendarId,summary:string(row.summary),description:optionalString(row.description),primary:row.primary,accessRole:string(row.accessRole),backgroundColor:optionalString(row.backgroundColor),foregroundColor:optionalString(row.foregroundColor),timeZone:optionalString(row.timeZone),selected:row.selected};
-    });
+    return parseManagedGoogleCalendars(data, () => new CloudProtocolError('invalid-response'));
   }
   async googleCalendarFeed(grantId:string,calendarId:string,range:GoogleCalendarRange,signal:AbortSignal):Promise<GoogleCalendarFeed> {
     uuid(grantId);string(calendarId);
     if(timestamp(range.timeMax)<=timestamp(range.timeMin))throw new TypeError('Calendar range must end after it starts');
     try{new Intl.DateTimeFormat('en-US',{timeZone:range.timeZone}).format();}catch{throw new TypeError('Invalid Calendar time zone');}
     const params=new URLSearchParams({side:'owner',grantId,calendarId,timeMin:range.timeMin,timeMax:range.timeMax,timeZone:range.timeZone});
-    const data=object(await this.accountRequest(`/api/v1/eliza/google/calendar/feed?${params}`,signal));
-    if(data.calendarId!==calendarId||!Array.isArray(data.events)||data.nextPageToken!=null||data.truncated===true)throw new CloudProtocolError('invalid-response');
-    timestamp(data.syncedAt);
-    const plain=(value:unknown)=>{if(typeof value!=='string')throw new CloudProtocolError('invalid-response');return value;};
-    const flag=(value:unknown)=>{if(typeof value!=='boolean')throw new CloudProtocolError('invalid-response');return value;};
-    const seen=new Set<string>();
-    const events=data.events.map(value=>{
-      const row=object(value),externalId=string(row.externalId);
-      if(row.calendarId!==calendarId||seen.has(externalId)||!Array.isArray(row.attendees)||timestamp(row.endAt)<timestamp(row.startAt))throw new CloudProtocolError('invalid-response');
-      seen.add(externalId);
-      return {externalId,calendarId,title:plain(row.title),description:plain(row.description),location:plain(row.location),status:string(row.status),startAt:string(row.startAt),endAt:string(row.endAt),isAllDay:flag(row.isAllDay),timezone:optionalString(row.timezone),htmlLink:optionalString(row.htmlLink),conferenceLink:optionalString(row.conferenceLink),organizer:row.organizer==null?null:object(row.organizer),metadata:object(row.metadata),attendees:row.attendees.map(value=>{const a=object(value);return {email:optionalString(a.email),displayName:optionalString(a.displayName),responseStatus:optionalString(a.responseStatus),self:flag(a.self),organizer:flag(a.organizer),optional:flag(a.optional)};})};
-    });
-    return {calendarId,events,syncedAt:string(data.syncedAt)};
+    const data=await this.accountRequest(`/api/v1/eliza/google/calendar/feed?${params}`,signal);
+    return parseManagedGoogleCalendarFeed(data, calendarId, () => new CloudProtocolError('invalid-response'));
   }
   /** Starts Google consent. `read` asks for read access only; `modify` is the one incremental step
    * for approved mailbox changes (gmail-grants.ts). The single-capability values remain for callers

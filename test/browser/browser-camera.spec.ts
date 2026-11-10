@@ -1,3 +1,4 @@
+import {openPhotoShare,choosePhotoAction} from './helpers/owned-photo';
 import { returnToApps } from './app-navigation';
 import {test,expect} from '@playwright/test';
 
@@ -29,19 +30,19 @@ test('browser camera persists a real encoded frame, releases capture and restore
  await page.reload();await page.getByRole('button',{name:'Photos',exact:true}).click();
  const saved=page.getByRole('button',{name:/^Photo, /});await expect(saved).toHaveCount(1);await saved.click();
  await expect(page.locator('[data-alpha-subview="photos-viewer"]').getByRole('heading',{name:'Today',exact:true})).toBeVisible();
- const download=page.waitForEvent('download');await page.getByRole('button',{name:'Share photo',exact:true}).click();await page.getByRole('dialog',{name:'Share',exact:true}).getByRole('button',{name:'Save locally',exact:true}).click();
+ const download=page.waitForEvent('download');await openPhotoShare(page);await page.getByRole('dialog',{name:'Share',exact:true}).getByRole('button',{name:'Save file',exact:true}).click();
  expect((await download).suggestedFilename()).toMatch(/^Alpha-photo-\d+\.jpg$/);
  await page.getByRole('button',{name:'Favorite',exact:true}).click();
  await expect(page.getByRole('button',{name:'Remove from favorites',exact:true})).toBeVisible();
  await page.screenshot({path:info.outputPath('saved-photo.png'),animations:'disabled'});
- await page.getByRole('button',{name:'Delete photo',exact:true}).click();
+ await choosePhotoAction(page,'Delete photo');
  await expect(page.getByText('Moved to Recently deleted',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Albums',exact:true}).click();
  await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
  await page.getByRole('button',{name:/^Photo, /}).click();
- await expect(page.getByRole('button',{name:'Recover deleted item',exact:true})).toBeVisible();
+ await page.getByLabel('Photo actions',{exact:true}).click();await expect(page.getByRole('button',{name:'Recover',exact:true})).toBeVisible();
  expect(await page.evaluate(async()=>{const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');return (await library.list({trashed:true})).items.length;})).toBe(1);
- await page.getByRole('button',{name:'Recover deleted item',exact:true}).click();
+ await choosePhotoAction(page,'Recover');
  await expect(page.getByText('Restored',{exact:true})).toBeVisible();
  const result=await page.evaluate(async()=>{
   const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');

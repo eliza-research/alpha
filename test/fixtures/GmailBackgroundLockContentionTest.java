@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import ai.eliza.plugins.notifications.MailBackgroundDelivery;
 import ai.eliza.plugins.notifications.MailNoticePoster;

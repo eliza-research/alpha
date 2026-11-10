@@ -19,12 +19,12 @@
  * The shared job reads only public certificates and AVB public key metadata, refuses any
  * UNSET or mismatching reviewed digest, and writes the version/hash compatibility record
  * (release-record.json). A signed output is not an image boot, an applied update, a rollback
- * or recovery drill, or release qualification. See docs/pixel10a-staging.md.
+ * or recovery drill, or release qualification.
  */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { signingMain, signRelease as signShared } from "../vendor/eliza/packages/os/scripts/android/aosp-release-signing.mjs";
-import { PIXEL10A_RELEASE } from "./aosp-pixel10a.ts";
+import { PIXEL10A_RELEASE, readPixel10aComposition } from "./aosp-pixel10a.ts";
 
 export { AVB_SIGNABLE_PARTITIONS, PKCS11_JAVA_ARGS, X509_KEYS, gitWorkTreeProblem, isWithin, parseSigningArgs, signingCommands } from "../vendor/eliza/packages/os/scripts/android/aosp-release-signing.mjs";
 export { channelDistributionProblems, channelSigningProblems } from "../vendor/eliza/packages/os/scripts/android/pixel10a-release.mjs";
@@ -32,27 +32,10 @@ export { channelDistributionProblems, channelSigningProblems } from "../vendor/e
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 /** Sign Alpha's release; `root` defaults to this repository (tests pass a fixture copy). */
-type SigningOptions = {
-  root?: string;
-  targetFiles?: string;
-  targetFilesSha256?: string;
-  keysDir?: string;
-  releasetools?: string;
-  apksigner?: string;
-  out?: string;
-  apkManifest?: string;
-  incrementalFrom?: string;
-  dryRun?: boolean;
-  keyMap?: Record<string, string>;
-  pkcs11Config?: string;
-  avbSigningHelper?: string;
-  payloadSigner?: string;
-  payloadSignerArgs?: string[];
-  payloadSignerSignatureSize?: string;
-};
-export function signRelease(options: SigningOptions) {
-  return signShared({ root: ROOT, ...options, ...PIXEL10A_RELEASE });
+export function signRelease(options: Record<string, unknown> & {root?: string}) {
+  const root = options?.root ?? ROOT;
+  return signShared({ root, ...options, ...PIXEL10A_RELEASE, composition: readPixel10aComposition(root) });
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url))
-  await signingMain(process.argv.slice(2), { root: ROOT, ...PIXEL10A_RELEASE });
+  await signingMain(process.argv.slice(2), { root: ROOT, ...PIXEL10A_RELEASE, composition: readPixel10aComposition(ROOT) });

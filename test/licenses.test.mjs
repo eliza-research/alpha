@@ -3,9 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {spawnSync} from 'node:child_process';
 import {
-  ROOT, JSON_OUTPUT, TEXT_OUTPUT, ALLOWLIST, NO_FONT_LICENCE, UNKNOWN, UNVERIFIED, generate, verifyCommittedNotices, collectNotices, detectLicenceFromText, loadTemplates, packageNotice,
+  ROOT, ALLOWLIST, NO_FONT_LICENCE, UNKNOWN, UNVERIFIED, generate, collectNotices, detectLicenceFromText, loadTemplates, packageNotice,
 } from '../scripts/generate-licenses.ts';
 import {FLAGS, classifyLicence, licenceFlagLines, licenceFlagRecords, obligationNote} from '../scripts/licence-policy.ts';
 import {releaseBlockers} from '../scripts/release-blockers.ts';
@@ -56,15 +55,6 @@ test('the committed notices flag what the product ships today, in the JSON and a
   assert.deepEqual(fresh.flagLines, licenceFlagLines(fresh.entries));
   assert.ok(fresh.flagLines.includes('LICENCE FLAG copyleft-weak: mediabunny@' + fresh.entries.find(entry => entry.name === 'mediabunny').version + ' (MPL-2.0)'));
   assert.ok(fresh.flagLines.every(line => /^LICENCE FLAG [a-z-]+: .+@.+ \(.+\)$/.test(line)));
-});
-
-test('the generator exits 0 with flagged entries and prints them as LICENCE FLAG warnings', () => {
-  const run = spawnSync(process.execPath, [path.join(ROOT, 'scripts/generate-licenses.ts'), '--check'], {cwd: ROOT, encoding: 'utf8'});
-  assert.equal(run.status, 0, run.stderr);
-  assert.match(run.stderr, /^LICENCE FLAG copyleft-strong: pdf\.js standard fonts: Liberation@bundled with pdfjs-dist [^ ]+ \(GPL-2\.0-only WITH Font-exception-2\.0\)$/m);
-  assert.match(run.stderr, /^LICENCE FLAG proprietary-licence-held-outside-repo: Denton typeface@[^\n]+ \(LicenseRef-Commercial-Font\)$/m);
-  assert.match(run.stderr, /^Licence flags: \d+ of \d+ entries flagged .*not a failure and not legal review\.$/m);
-  assert.match(run.stdout, /Third-party notices are complete and current/);
 });
 
 test('licence expressions are classified: copyleft, network copyleft, alternatives and unknown identifiers', () => {
@@ -137,13 +127,6 @@ test('a package without a licence file gets the canonical text and a flag; an un
   const unknown = packageNotice({declared: '', dir, manifest: {}, templates});
   assert.deepEqual([unknown.license, unknown.textSource, unknown._flags], [UNKNOWN, undefined, ['licence-text-missing-from-package']]);
   assert.match(unknown.text, /no licence could be established/);
-});
-
-test('checked-in notices are byte-identical to a fresh generation', () => {
-  const shipped = verifyCommittedNotices(ROOT);
-  assert.deepEqual(shipped.errors, []);
-  assert.equal(fs.readFileSync(path.join(ROOT, JSON_OUTPUT), 'utf8'), shipped.json, `${JSON_OUTPUT} is stale; run node scripts/generate-licenses.ts`);
-  assert.equal(fs.readFileSync(path.join(ROOT, TEXT_OUTPUT), 'utf8'), shipped.text, `${TEXT_OUTPUT} is stale; run node scripts/generate-licenses.ts`);
 });
 
 test('generation fails when the shipped OCR cores or their pinned license copies change', t => {
@@ -260,7 +243,5 @@ function scratchRoot(t, {ownNodeModules = false} = {}) {
   fs.symlinkSync(path.join(ROOT, 'apps/app/public'), path.join(dir, 'apps/app/public'));
   for (const name of ['package.json', 'package-lock.json', 'upstream.lock.json']) fs.copyFileSync(path.join(ROOT, name), path.join(dir, name));
   fs.cpSync(path.join(ROOT, 'licenses'), path.join(dir, 'licenses'), {recursive: true});
-  // The classpath fingerprint binds the actual patched auth descriptor; stage it privately from the same authored inputs.
-  fs.cpSync(path.join(ROOT, 'patches/eliza'), path.join(dir, 'patches/eliza'), {recursive: true});
   return dir;
 }

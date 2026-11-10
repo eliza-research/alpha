@@ -113,7 +113,11 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
     expect(sent.metadata.clientDevice.context).toEqual(sent.metadata.alphaPhone.context);
     expect(await page.evaluate(()=>(window as any).recoveryFixture.receipts)).toBe(0);
     expect(await page.evaluate(()=>(window as any).mapsRetained)).toBeUndefined();
-    await expect(page.getByText(/This shares location information/)).toBeVisible();
+    // The pinned coordinator names the exact location-bearing view and the agent
+    // receiving it; this disclosure must appear before any approval or claim.
+    await expect(page.getByText('Share this place or route, with its mode and distance, with the agent.',{exact:true})).toBeVisible();
+    expect(await page.evaluate(()=>(window as any).recoveryFixture.decisions)).toBe(0);
+    expect(await page.evaluate(()=>(window as any).recoveryFixture.claims)).toBe(0);
     if(mode==='stale-before-approval') {
       await page.evaluate(async()=>{const {clearMapsSelection}=await import('/src/maps/agent-context.ts');clearMapsSelection();});
     }
@@ -121,10 +125,10 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
     if(mode==='stale-after-read'){
       await expect.poll(()=>page.evaluate(()=>typeof (window as any).releaseMapsFinish)).toBe('function');
       await page.evaluate(async()=>{const {clearMapsSelection}=await import('/src/maps/agent-context.ts');clearMapsSelection();(window as any).releaseMapsFinish();});
-      await expect(page.getByText(/Server receipt is pending/).last()).toBeVisible();
+      await expect(page.getByText(/Not synced yet; open action history to retry\./).last()).toBeVisible();
       expect(await page.evaluate(()=>(window as any).mapsRetained.result.mapsResult.fields.label)).toBe('Private fixture destination');
     } else if(mode.endsWith('replay')) {
-      await expect(page.getByText(/Server receipt is pending/).last()).toBeVisible();
+      await expect(page.getByText(/Not synced yet; open action history to retry\./).last()).toBeVisible();
       const retained=await page.evaluate(()=>(window as any).mapsRetained.result.mapsResult);
       await page.evaluate(async stale=>{
         if(stale){const {clearMapsSelection}=await import('/src/maps/agent-context.ts');clearMapsSelection();}
@@ -137,7 +141,7 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
     } else if(mode==='stale-before-approval') {
       await expect(page.getByText(/Review|context|confirmed result/i).last()).toBeVisible();
     } else {
-      await expect(page.getByText(/Shared the selected Maps view\./).last()).toBeVisible();
+      await expect(page.getByText('Shared the exact selected Maps snapshot with approval. Navigation was not started.',{exact:true}).last()).toBeVisible();
       const result=await page.evaluate(()=>(window as any).mapsUploaded);
       expect(result.target).toEqual(sent.metadata.alphaPhone.context.selectedObject);
       expect(result.fields.kind).toBe(mode==='route'?'map-route':'map-place');

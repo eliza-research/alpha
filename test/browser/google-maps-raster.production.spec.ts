@@ -2,7 +2,8 @@
 import {test,expect} from '@playwright/test';
 import {flagOffAndroid,residentHome,button} from './flag-off-android';
 import {residentStub} from './resident-stub';
-const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6cy8AAAAASUVORK5CYII=';
+// Valid opaque-white 1×1 gray/alpha PNG; IDAT CRC and zlib checksum are verified.
+const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP4/x8AAwAB/2+Bq7YAAAAASUVORK5CYII=';
 test.beforeEach(({},info)=>test.skip(info.project.name!=='production','Flag-off renderer'));
 for(const broken of [false,true])test(`Google raster transport and attribution ${broken?'refuse malformed tiles':'replace the public basemap'}`,async({page},info)=>{
  await flagOffAndroid(page);await residentStub(page);

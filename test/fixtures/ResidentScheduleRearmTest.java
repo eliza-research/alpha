@@ -1,6 +1,6 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
-import ai.elizaresearch.alphaphone.ResidentScheduleRearm.Decision;
+import ai.alphacompute.alphaphone.ResidentScheduleRearm.Decision;
 
 /** Plain-JVM checks of the resident schedule re-arming policy. Not an Android, emulator or device test. */
 public final class ResidentScheduleRearmTest {

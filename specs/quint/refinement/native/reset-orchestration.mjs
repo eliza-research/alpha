@@ -27,7 +27,7 @@ function existingPorts() {
     }
   }
   assert.equal(ports.size, 18);
-  ports.set('ai/elizaresearch/alphaphone/ResetStartupTest.java', 'package ai.elizaresearch.alphaphone;public class ResetStartupTest {public static void started(){NativeSourceHost.started++;}}');
+  ports.set('ai/alphacompute/alphaphone/ResetStartupTest.java', 'package ai.alphacompute.alphaphone;public class ResetStartupTest {public static void started(){NativeSourceHost.started++;}}');
   return ports;
 }
 
@@ -39,17 +39,17 @@ function portsWithObservers() {
     ports.set(path, value.replace(before, after));
   };
   change('ai/eliza/plugins/system/SenseListenerClient.java', 'calls++;return resetSaved;',
-    'calls++;ai.elizaresearch.alphaphone.ResetTraceHooks.listenerResult(resetSaved);return resetSaved;');
-  change('android/content/Context.java', 'recoveries++;', 'recoveries++;ai.elizaresearch.alphaphone.ResetTraceHooks.visibleRecovery();');
-  change('android/os/Process.java', 'throw new Exit();', 'ai.elizaresearch.alphaphone.ResetTraceHooks.event("process-exit","");throw new Exit();');
+    'calls++;ai.alphacompute.alphaphone.ResetTraceHooks.listenerResult(resetSaved);return resetSaved;');
+  change('android/content/Context.java', 'recoveries++;', 'recoveries++;ai.alphacompute.alphaphone.ResetTraceHooks.visibleRecovery();');
+  change('android/os/Process.java', 'throw new Exit();', 'ai.alphacompute.alphaphone.ResetTraceHooks.event("process-exit","");throw new Exit();');
   change('android/app/ActivityManager.java', 'public boolean clearApplicationUserData(){calls++;if(mode==2)throw new SecurityException("fixture refusal");return mode==0;}',
-    'public boolean clearApplicationUserData(){calls++;ai.elizaresearch.alphaphone.ResetTraceHooks.event("android-call","");if(mode==2)throw new SecurityException("fixture refusal");boolean accepted=mode==0;ai.elizaresearch.alphaphone.ResetTraceHooks.androidResult(accepted);return accepted;}');
+    'public boolean clearApplicationUserData(){calls++;ai.alphacompute.alphaphone.ResetTraceHooks.event("android-call","");if(mode==2)throw new SecurityException("fixture refusal");boolean accepted=mode==0;ai.alphacompute.alphaphone.ResetTraceHooks.androidResult(accepted);return accepted;}');
   change('android/system/Os.java', 'public static java.io.FileDescriptor open(String path,int flags,int mode){return new java.io.FileDescriptor();}',
-    'public static java.io.FileDescriptor open(String path,int flags,int mode)throws java.io.IOException{if(ai.elizaresearch.alphaphone.ResetTraceHooks.lastCommittedName!=null&&ai.elizaresearch.alphaphone.ResetTraceHooks.lastCommittedName.equals(ai.elizaresearch.alphaphone.ResetTraceHooks.failDirectoryAfter)){ai.elizaresearch.alphaphone.ResetTraceHooks.failDirectoryAfter=null;ai.elizaresearch.alphaphone.ResetTraceHooks.event("directory-sync-failure",path);throw new java.io.IOException("directory sync failure after commit");}return new java.io.FileDescriptor();}');
+    'public static java.io.FileDescriptor open(String path,int flags,int mode)throws java.io.IOException{if(ai.alphacompute.alphaphone.ResetTraceHooks.lastCommittedName!=null&&ai.alphacompute.alphaphone.ResetTraceHooks.lastCommittedName.equals(ai.alphacompute.alphaphone.ResetTraceHooks.failDirectoryAfter)){ai.alphacompute.alphaphone.ResetTraceHooks.failDirectoryAfter=null;ai.alphacompute.alphaphone.ResetTraceHooks.event("directory-sync-failure",path);throw new java.io.IOException("directory sync failure after commit");}return new java.io.FileDescriptor();}');
   // Atomicity belongs to the external storage port. This port commits by atomic rename,
   // can refuse before writing, and emits an observation after the durable commit.
   ports.set('android/util/AtomicFile.java', `package android.util;
-import java.io.*;import java.nio.file.*;import ai.elizaresearch.alphaphone.ResetTraceHooks;
+import java.io.*;import java.nio.file.*;import ai.alphacompute.alphaphone.ResetTraceHooks;
 public class AtomicFile {
  private final File file;private final File next;
  public AtomicFile(File file){this.file=file;this.next=new File(file.getPath()+".new");}
@@ -78,7 +78,7 @@ export async function generateResetOrchestrationTraces(extraSources = []) {
   const temporary = mkdtempSync(join(tmpdir(), 'alpha-reset-refinement-'));
   const prepared = preparePatchedNative({root});
   const shared = ['DataReset.java','DataResetCopy.java','ResetAuthorization.java'].map(name => join(prepared.root,'plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset',name));
-  const inputs = [...productSources, ...shared, 'patches/eliza/reset-admission.patch', 'patches/eliza/native-manifest.json', fixturePath, fileURLToPath(import.meta.url),
+  const inputs = [...productSources, ...shared, 'android/upstream-native-sources.json', fixturePath, fileURLToPath(import.meta.url),
     join(directory, 'ResetOrchestrationTraces.java'), join(directory, 'ResetTraceHooks.java'),
     join(directory, 'ResetAdmissionRegression.java'),
     join(directory, 'Trace.java'), join(directory, 'java.mjs'), ...extraSources];

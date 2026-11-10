@@ -8,10 +8,10 @@ import {build} from 'esbuild';
 import {pathToFileURL} from 'node:url';
 
 const root=path.resolve(import.meta.dirname,'..');
-// The Cloud service name comes only from config/cloud-deployment.json (the generated files);
+// The Cloud service name comes only from the generated Cloud deployment policy;
 // Alpha's runtime and native sources must not hard-code another product's name in user copy.
-const sources=[['apps/app/src/runtime',/\.(ts|tsx)$/],['android/app/src/main/java/ai/elizaresearch/alphaphone',/\.java$/]];
-const generated=new Set(['apps/app/src/runtime/cloud-deployment.generated.ts','android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java']);
+const sources=[['apps/app/src/runtime',/\.(ts|tsx)$/],['android/app/src/main/java/ai/alphacompute/alphaphone',/\.java$/]];
+const generated=new Set(['apps/app/src/runtime/cloud-deployment.generated.ts','android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java']);
 const stripComments=text=>text.replace(/\/\*[\s\S]*?\*\//g,'').replace(/(^|[\s;{}(),])\/\/.*$/gm,'$1');
 
 test('runtime and native sources carry no hard-coded Eliza product name outside the Cloud configuration',()=>{

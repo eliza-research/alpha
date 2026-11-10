@@ -7,7 +7,7 @@ import fs from 'node:fs';
 // on Android by BrowserWebFeaturesInstrumentedTest; these keep the privacy
 // invariants from regressing between device runs.
 const read = file => fs.readFileSync(file, 'utf8');
-const dir = 'android/app/src/main/java/ai/elizaresearch/alphaphone/';
+const dir = 'android/app/src/main/java/ai/alphacompute/alphaphone/';
 // Downloads, blob capture and their list come from the reviewed pin (plugin-native-browser-surface),
 // staged into the app by scripts/stage-local-agent-sources.ts.
 const shared = 'vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/';
@@ -40,15 +40,17 @@ test('private-tab downloads never reach the persisted download list', () => {
 
 test('download cookies come only from the requesting tab, for its exact origin', () => {
   // The cookie rule itself (BrowserDownloadPolicy.cookieAllowed) runs in the upstream BrowserWebPolicyTest.
-  assert.match(downloads, /boolean signedIn = BrowserDownloadPolicy\.cookieAllowed\(raw, source\.pageOrigin, true\);/);
-  assert.match(downloads, /if \(signedIn\) \{\s*String cookie = source\.cookies == null \? null : source\.cookies\.get\(\);/, 'the cookie is read at confirmation');
+  assert.match(downloads, /boolean sameOrigin = BrowserDownloadPolicy\.cookieAllowed\(raw, source\.pageOrigin, true\);/);
+  assert.match(downloads, /boolean signedIn = sameOrigin && BrowserDownloadPolicy\.cookieHeaderAcceptable\(cookie\(source\)\);/,'sign-in requires both exact origin and an acceptable tab cookie');
+  assert.match(downloads, /private static String cookie\(Source source\) \{\s*return source\.cookies == null \? null : source\.cookies\.get\(\);/,'cookie reads use only the requesting tab supplier');
+  assert.match(downloads, /boolean hostFetch = signedIn \|\| \(sameOrigin && source\.priv\);/,'private same-origin transfers remain cancellable even without a sign-in cookie');
+  assert.match(downloads, /if \(hostFetch\) \{\s*String cookie = cookie\(source\);\s*fetchSignedIn\(raw, name, mime, origin, source,\s*BrowserDownloadPolicy\.cookieHeaderAcceptable\(cookie\) \? cookie : null\);/, 'confirmation rereads and validates the still-open tab cookie');
   assert.match(plugin, /if\(t\.dead\|\|tabs\.get\(t\.id\)!=t\)return null;\n\s*try\{return WebViewCompat\.getProfile\(t\.web\)\.getCookieManager\(\)\.getCookie\(url\);/, 'a closed tab supplies no cookie; the tab profile is used');
   assert.doesNotMatch(downloads, /CookieManager\.getInstance\(\)/, 'never the host/default profile cookie jar');
   // DownloadManager would replay a Cookie header to redirect targets and keep it in Android's download database.
   assert.doesNotMatch(downloads, /addRequestHeader\("Cookie"/, 'DownloadManager never receives the sign-in cookie');
-  assert.match(downloads, /fetchSignedIn\(raw, name, mime, origin, source, cookie\)/, 'signed-in downloads are fetched by the app');
   assert.match(downloads, /connection\.setInstanceFollowRedirects\(false\)/, 'redirects are followed manually');
-  assert.match(downloads, /if \(BrowserDownloadPolicy\.cookieAllowed\(url\.toString\(\), pageOrigin, true\)\)\s*connection\.setRequestProperty\("Cookie", cookie\);/, 'each hop gets the cookie only for the exact page origin');
+  assert.match(downloads, /if \(cookie != null && BrowserDownloadPolicy\.cookieAllowed\(url\.toString\(\), pageOrigin, true\)\)\s*connection\.setRequestProperty\("Cookie", cookie\);/, 'each hop gets a present cookie only for the exact page origin');
   assert.match(downloads, /if \(!allowed\(Uri\.parse\(next\.toString\(\)\)\)\)\s*throw new Refused/, 'a redirect to a non-HTTPS address is refused');
   // Closing a private tab, Clear browsing data and Clear data for this site stop an unfinished
   // signed-in fetch, so its copied cookie is never sent on a later redirect hop.

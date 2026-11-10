@@ -10,7 +10,8 @@ const model = 'NotesRecorderMediaAdmission';
 const inputs = ['test/fixtures/notes-recorder-media.mjs', 'apps/app/src/prototype/voice-adapter.ts',
   'apps/app/src/prototype/note-recorder.ts', 'apps/app/src/prototype/notes-recorder-control.ts',
   'apps/app/src/prototype/canonical-notes-ui.ts', 'apps/app/src/prototype/template.html',
-  'apps/app/src/browser/voice.ts', 'apps/app/src/browser/audio-capture.ts', 'apps/app/src/browser/note-audio-store.ts'];
+  'apps/app/src/browser/voice.ts', 'apps/app/src/browser/audio-capture.ts', 'apps/app/src/browser/note-audio-store.ts',
+  'apps/app/src/browser/note-recording-journal.ts'];
 
 function project(state) {
   assert.equal(state.forbidden, 0, 'The physical media port must stay closed');

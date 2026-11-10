@@ -1,3 +1,4 @@
+import {openBrowserCalendar} from './helpers/browser-calendar';
 import { test, expect, type Page } from '@playwright/test';
 // Calendar form controls (model.js calendar form): the day chips follow the chosen day so any later
 // day is reachable, Start later never moves the start earlier, a five-row month draws five rows,
@@ -19,7 +20,7 @@ test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' })));
   await page.clock.setFixedTime(new Date('2027-06-10T16:00:00Z'));
   await page.goto('/');
-  await page.getByRole('button', { name: 'Calendar', exact: true }).click();
+  await openBrowserCalendar(page);
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'calendar');
 });
 

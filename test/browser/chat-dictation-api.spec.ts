@@ -3,6 +3,7 @@ import {test,expect,type Page} from '@playwright/test';
 import {button} from './flag-off-android';
 import {setupNativeSpeech} from './native-speech-fixture';
 import {setupLiveAssistant} from './voice-assistant-fixture';
+import {attachVoiceFailureMetadata} from './voice-fixture-failure-metadata';
 // Source-served synthetic API checks, NOT production-bundle UI or phone acceptance.
 // Preserved from native-speech.production: append reviewed text, cancel late ASR,
 // unavailable capture, background retirement (four cases). Preserved from
@@ -12,6 +13,7 @@ import {setupLiveAssistant} from './voice-assistant-fixture';
 // Override only the source build-flags module to exercise local/native branches; no shipped hooks.
 // The stub must export every build flag: updateChannelCheckEnabled joined the module in f4ebce3b3 (#713).
 test.beforeEach(async({page})=>{await page.route('**/src/build-flags.ts*',route=>route.fulfill({contentType:'application/javascript',body:'export const testMocksEnabled=false;export const devSurfacesEnabled=false;export const cloudRuntimeEnabled=false;export const privateLocalPreviewEnabled=false;export const updateChannelCheckEnabled=false;'}));});
+test.afterEach(async({page},info)=>{await attachVoiceFailureMetadata(page,info);});
 async function captureApi(page:Page){
  await page.evaluate(async()=>{const {Component}=await import('/src/prototype/model.js'),{connectionController:c}=await import('/src/runtime/connection-ui.tsx');const render=Component.prototype.renderVals;Component.prototype.renderVals=function(){(window as any).dictationApiFixture=this;return render.call(this);};c.close();});
  await expect.poll(()=>page.evaluate(()=>!!(window as any).dictationApiFixture)).toBe(true);
@@ -78,8 +80,8 @@ test('API dictation and assistant stay distinct: draft editing never sends, voic
  await button(page,'Talk').click();
  await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  expect(await live(page,f=>f.captures.map((c:any)=>c.echoCancel))).toEqual([false,true]);
- // 5f669f286 (#745) shortened the assistant status to 'Listening…'; interruption stays behavioural (mic open while speaking).
- await expect(voice(page)).toContainText('Listening…');
+ // Status copy stays secondary to the capture state and interruption assertions.
+ await expect(voice(page)).toContainText('Listening');
  await say(page,'What is on my calendar today');
  await expect.poll(()=>posts(page)).toEqual(['What is on my calendar today']);
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
@@ -99,7 +101,7 @@ test('API interruptSpeech preserves listening; Mute controls capture with presse
  await mute.click();
  await expect(voice(page).getByRole('button',{name:'Unmute microphone',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect.poll(()=>live(page,f=>f.stops.length)).toBe(1);
- await expect(voice(page)).toContainText('Microphone off');
+ await expect(voice(page)).toContainText('Muted');
  await voice(page).getByRole('button',{name:'Unmute microphone',exact:true}).click();
  await expect.poll(()=>live(page,f=>f.captures.length)).toBe(2);
  await say(page,'How is the weather');

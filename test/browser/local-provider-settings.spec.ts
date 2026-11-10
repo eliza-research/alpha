@@ -6,6 +6,8 @@ import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 async function stubAgent(page: import('@playwright/test').Page, cloud = false) {
   await installResidentAgentPlugin(page);
   await page.addInitScript((cloud: boolean) => {
+    // Account navigation models an existing installation whose access review is complete.
+    localStorage.setItem('alpha:startup-permission-walkthrough:v1',JSON.stringify({version:1,status:'completed',step:4}));
     const w = window as any; w.androidBridge = {};
     const f = w.providerFixture = { statusReads: 0, saved: null as null | { model: string }, configures: [] as any[], leases: [] as string[], cancelled: [] as string[], clears: 0, stops: 0, reject: '' };
     const methods = (names: string[]) => names.map(name => ({ name, rtype: name==='addListener'?'callback':'promise' }));
@@ -58,6 +60,21 @@ async function stubAgent(page: import('@playwright/test').Page, cloud = false) {
   }, cloud);
 }
 
+/** Only the Account presentation is signed in. Native provider status/configuration remain real
+ * responses from the isolated Agent fixture, and this identity cannot call a Cloud provider. */
+async function openAccountProvider(page:import('@playwright/test').Page){
+  await page.evaluate(async()=>{
+    const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
+    const read=c.getSnapshot.bind(c),snapshots=new WeakMap();
+    const account={environment:'production',userId:'provider-account',organizationId:'provider-organization',sessionId:'provider-account-session',credentialId:'provider-account-credential',email:'provider@example.invalid'};
+    c.getSnapshot=()=>{const original=read();let snapshot=snapshots.get(original);if(!snapshot){snapshot={...original,cloudAccount:account};snapshots.set(original,snapshot);}return snapshot;};
+  });
+  await page.getByRole('button',{name:'Account',exact:true}).click();
+  const account=page.getByRole('dialog',{name:'Account',exact:true});await expect(account).toBeVisible();
+  await account.getByRole('button',{name:/^AI connection(?: Cloud| Own API keys)?$/}).click();
+  return page.getByRole('dialog',{name:'AI connection',exact:true});
+}
+
 test('provider status, pinned model, verified save and confirmed key removal', async ({ page }) => {
   await stubAgent(page);
   await page.goto('/');
@@ -104,11 +121,17 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   // Removal stops the agent that holds the key, deletes the key, then starts the agent again without it.
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   expect(await page.evaluate(() => { const f = (window as any).providerFixture; return { clears: f.clears, stops: f.stops }; })).toEqual({ clears: 1, stops: 1 });
-  await expect(page.getByRole('button', { name: 'AI provider', exact: true })).toContainText('Cloud');
+  await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
+  const aiConnection = await openAccountProvider(page);
+  await expect(aiConnection.getByRole('button', { name: 'Own API keys', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(aiConnection.getByRole('button', { name: 'Cloud', exact: true })).toBeVisible();
+  await aiConnection.getByRole('button', { name: 'Close Account', exact: true }).click();
+  await page.getByRole('button', { name: 'About', exact: true }).click();
   await agentConnection.click();
   await expect(chooser.getByText('Connected · On this device', { exact: true })).toBeVisible();
   await chooser.getByText('Model provider', { exact: true }).click();
   await expect(chooser.getByText('Not configured', { exact: true })).toBeVisible();
+  await expect(chooser.getByLabel('Cerebras API key')).toHaveValue('');
   await expect(chooser.getByRole('button', { name: 'Remove key…', exact: true })).toHaveCount(0);
   // Nothing in the page carries the key.
   expect(await page.content()).not.toContain('synthetic-accepted-key');
@@ -123,15 +146,17 @@ test('the chooser names the Eliza Cloud model as Settings does', async ({ page }
   await expect(chooser.getByText('Configured · Cloud · qwen-3.8-27b (Cerebras)', { exact: true })).toBeVisible();
 });
 
-for(const cloud of [false,true])test(`native AI provider shows actual provider admission: ${cloud?'configured':'unconfigured'}`,async({page})=>{
+for(const cloud of [false,true])test(`native AI connection keeps the selected Cloud route distinct from provider admission: ${cloud?'configured':'unconfigured'}`,async({page})=>{
  const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
  await stubAgent(page,cloud);await page.goto('/');
  await page.locator('.alpha-connection').getByRole('button',{name:'Start local agent',exact:true}).click();
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Account',exact:true}).click();await page.getByRole('button',{name:'AI connection',exact:true}).click();
- const provider=page.getByRole('dialog',{name:'AI connection',exact:true});await expect(provider).toBeVisible();
- await expect(provider.getByRole('button',{name:'Cloud',exact:true})).toHaveAttribute('aria-pressed',String(cloud));
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ const provider=await openAccountProvider(page);await expect(provider).toBeVisible();
+ // Account selects the Cloud route independently of whether the resident admitted inference.
+ await expect(provider.getByRole('button',{name:'Cloud',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(provider.getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','false');
+ expect(await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().providerStatus?.configured)).toBe(cloud);
  expect(await page.evaluate(()=>(window as any).providerFixture.statusReads)).toBeGreaterThan(0);
  expect(await page.evaluate(()=>(window as any).providerFixture.configures)).toEqual([]);
  expect(await page.evaluate(()=>(window as any).residentAgent.state.unexpected)).toEqual([]);expect(errors).toEqual([]);

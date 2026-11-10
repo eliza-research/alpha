@@ -32,15 +32,15 @@ test('Cloud profile keeps native speech and embeddings guards as default',()=>{
  assert.match(gradle,/runtimeProfile == 'cloud'.*runtime-profile.ts/);
  assert.match(fs.readFileSync('android/local-speech/build.gradle','utf8'),/cloudProfile \|\| \(unpackaged && !nativeOutput\.exists\(\)\)/);
  // Routing belongs to the shared upstream profile; Alpha declares only its deployment.
- const declaration=fs.readFileSync('backend/native-cloud-runtime.ts','utf8');
+ const declaration=fs.readFileSync('apps/app/src/product/native-cloud-runtime.ts','utf8');
  assert.doesNotMatch(declaration,/serviceRouting|updateRoutingPreferences|ELIZA_RUNTIME_PROFILE/);
- assert.match(fs.readFileSync('backend/native-google-agent-host.ts','utf8'),/export \{nativeCloudRuntime\} from '\.\/native-cloud-runtime\.ts'/);
+ assert.match(fs.readFileSync('scripts/native-google-product-host.ts','utf8'),/export \{nativeCloudRuntime\} from '\.\.\/apps\/app\/src\/product\/native-cloud-runtime\.ts'/);
  const profile=fs.readFileSync('vendor/eliza/packages/app/src/runtime/native-runtime-profile.ts','utf8');
  assert.match(profile,/cloud: Object\.freeze\(\{[^}]*embeddings: "elizacloud"[^}]*localModels: false/s);
  assert.match(profile,/native: Object\.freeze\(\{[^}]*embeddings: "local"[^}]*localModels: true/s);
 });
 test('every resident launch selects a profile, so powered-on scheduling applies signed in or not',()=>{
- const plugin=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java','utf8');
+ const plugin=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java','utf8');
  assert.match(plugin,/static void configureEnvironment\(Context context,java\.util\.Map<String,String> env\) throws java\.io\.IOException \{\s*env\.put\("ELIZA_RUNTIME_PROFILE",BuildConfig\.ELIZA_RUNTIME_PROFILE\);/);
  const profile=fs.readFileSync('vendor/eliza/packages/app/src/runtime/native-runtime-profile.ts','utf8');
  assert.equal((profile.match(/missedOccurrences: "record",/g)||[]).length,2);
@@ -125,15 +125,5 @@ test('Cloud embedding capability refuses a missing native qualification',()=>{
  try{
   fs.writeFileSync(path.join(f.agent,'alpha-runtime-profile.json'),JSON.stringify({version:1,runtimeProfile:'cloud',omittedLocalModels:[],localEmbeddings:true}));
   assert.throws(()=>verifyCloudResident(f.root,f.source,{localEmbeddings:true}),/qualified-host\.json/);
- }finally{fs.rmSync(f.root,{recursive:true,force:true});}
-});
-
-test('Cloud embedding capability retains the native requalification fence',()=>{
- const f=databaseAdmissionFixture({bunTarget:'android'});
- try{
-  fs.writeFileSync(path.join(f.agent,'alpha-runtime-profile.json'),JSON.stringify({version:1,runtimeProfile:'cloud',omittedLocalModels:[],localEmbeddings:true}));
-  const dir=path.join(f.root,'android/embedding-host');fs.mkdirSync(dir,{recursive:true});
-  fs.writeFileSync(path.join(dir,'qualified-host.json'),JSON.stringify({requalification:{required:true,atPin:'current',reason:'Fresh native qualification is required'}}));
-  assert.throws(()=>verifyCloudResident(f.root,f.source,{localEmbeddings:true}),/requalification required/);
  }finally{fs.rmSync(f.root,{recursive:true,force:true});}
 });

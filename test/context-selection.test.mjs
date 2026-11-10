@@ -90,7 +90,7 @@ test('only an unredacted own notification is reviewable, and only while that exa
  // Android withholds content with fixed wording instead of an empty row. That wording is not content.
  // The shared host plugin (vendor/eliza) builds the hidden title from Alpha's appLabel().
  const host=readFileSync('vendor/eliza/plugins/plugin-native-notifications/android/src/capacitor/java/ai/eliza/plugins/notifications/NotificationsHostPlugin.java','utf8');
- const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java','utf8');
+ const java=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java','utf8');
  const label=/protected String appLabel\(\)\{return "([^"]+)";\}/.exec(java)?.[1];
  assert.equal(`${label} notification`,m.HIDDEN_NOTICE_TITLE,'Android hidden title');
  assert.ok(host.includes('item.put("title",hidden?label+" notification":'),'Android hidden title');
@@ -127,7 +127,7 @@ test('a saved capture identity is its id and a local counter, never the library 
  // time nor the size is an identity, and the wire contract refuses '|', which would fail every
  // message sent while that item is open.
  // AlphaPhotos registers the shared PhotosPlugin with Alpha's media names; the shared bridge builds the library.
- const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java','utf8');
+ const java=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotosPlugin.java','utf8');
  assert.match(java,/public class AlphaPhotosPlugin extends PhotosPlugin \{/);
  assert.match(java,/@Override protected OwnedMediaConfig mediaConfig\(\)\{return MEDIA_CONFIG;\}/);
  const bridge=readFileSync(new URL('../vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotosPlugin.java',import.meta.url),'utf8');
@@ -220,7 +220,7 @@ test('hosted-result, digest and workflow notices are never reviewable; reminder 
  // The native list returns a kind for every own row, from the posting channel.
  const host=readFileSync('vendor/eliza/plugins/plugin-native-notifications/android/src/capacitor/java/ai/eliza/plugins/notifications/NotificationsHostPlugin.java','utf8');
  assert.match(host,/item\.put\("source","own"\);item\.put\("kind",noticeKind\(n\.getChannelId\(\)\)\);/);
- const plugin=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java','utf8');
+ const plugin=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java','utf8');
  assert.match(plugin,/@Override protected String noticeKind\(String channel\)\{return kind\(channel\);\}/);
  const kinds=plugin.slice(plugin.indexOf('static String kind('),plugin.lastIndexOf('\n}'));
  assert.match(kinds,/AlphaHostedResultsPlugin\.CHANNEL\.equals\(channel\)\)return "hosted-result";/);
@@ -245,7 +245,7 @@ test('a mail context switched, deleted or changed during its review cannot send 
  // The adapter reads the open message at send time; a deleted message is no source at all.
  const adapter=readFileSync('apps/app/src/prototype/inbox-cloud-adapter.ts','utf8');
  assert.match(adapter,/function mailContext\(\):MailContextSource \{if\(!body\|\|!selected\|\|!body\.historyId\)throw new Error\('Refresh this message before sharing'\);/);
- assert.match(adapter,/const text=await validateMailContext\(review,mailContext\(\),destination\);/);
+ assert.match(adapter,/return validateMailContext\(review,mailContext\(\),current\);/);
  assert.match(adapter,/if \(body\?\.message\.id === id\) \{ body = null;/,'an archived or trashed open message is cleared');
 });
 
@@ -253,7 +253,7 @@ test('a mail context switched, deleted or changed during its review cannot send 
 test('calendar source discovery coalesces per owner, retries failures and fences old sources',async()=>{
  const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');const vm=await import('node:vm');
  const core=readFileSync(new URL('../vendor/eliza/packages/core/src/runtime/single-flight-memo.ts',import.meta.url),'utf8').replace(/^export /gm,'');
- const SingleFlightMemo=vm.runInNewContext(stripTypeScriptTypes(core,{mode:'strip'})+';SingleFlightMemo');
+ const SingleFlightMemo=vm.runInNewContext(stripTypeScriptTypes(core,{mode:'strip'})+';SingleFlightMemo',{performance});
  const ui=readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
  const source=ui.slice(ui.indexOf('type CalendarAgendaSourceObservation='),ui.indexOf('async function deviceCapabilities'));
  const deferred=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};

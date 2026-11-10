@@ -13,6 +13,7 @@ export interface ResidentConfig extends Record<string, unknown> {
     embeddings?: unknown;
   };
   plugins?: {entries?: Record<string, {enabled?: boolean}>};
+  linkedAccounts?: Record<string, unknown>;
 }
 
 export interface ResidentLaunchOptions {

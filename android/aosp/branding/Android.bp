@@ -1,0 +1,48 @@
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+runtime_resource_overlay {
+    name: "AlphaFrameworkOverlay",
+    manifest: "manifests/AlphaFrameworkOverlay.xml",
+    resource_dirs: ["overlay/frameworks/base/core/res/res"],
+    product_specific: true,
+    certificate: "platform",
+    sdk_version: "current",
+}
+
+runtime_resource_overlay {
+    name: "AlphaSystemUIOverlay",
+    manifest: "manifests/AlphaSystemUIOverlay.xml",
+    resource_dirs: ["overlay/frameworks/base/packages/SystemUI/res"],
+    product_specific: true,
+    certificate: "platform",
+    sdk_version: "current",
+}
+
+runtime_resource_overlay {
+    name: "AlphaSettingsOverlay",
+    manifest: "manifests/AlphaSettingsOverlay.xml",
+    resource_dirs: ["overlay/packages/apps/Settings/res"],
+    product_specific: true,
+    certificate: "platform",
+    sdk_version: "current",
+}
+
+runtime_resource_overlay {
+    name: "AlphaSettingsProviderOverlay",
+    manifest: "manifests/AlphaSettingsProviderOverlay.xml",
+    resource_dirs: ["overlay/frameworks/base/packages/SettingsProvider/res"],
+    product_specific: true,
+    certificate: "platform",
+    sdk_version: "current",
+}
+
+runtime_resource_overlay {
+    name: "AlphaNavigationOverlay",
+    manifest: "manifests/AlphaNavigationOverlay.xml",
+    resource_dirs: ["overlay/packages/apps/Launcher3/res"],
+    product_specific: true,
+    certificate: "platform",
+    sdk_version: "current",
+}

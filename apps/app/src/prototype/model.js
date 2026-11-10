@@ -1,4 +1,5 @@
 import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
+import { nextDefaultNoteTitle } from '../runtime/note-default-title';
 import { accessibilityTimeoutScale } from '../runtime/accessibility-timeout';
 import iconCatalog from '../icon-catalog.json';
 /* Seeds, scripted replies and fixture images. Production builds resolve this
@@ -1407,10 +1408,10 @@ registerView("calendar", {
         var inM = gd.getMonth() === mBase.getMonth();
         var has = on(off).length > 0;
         var cs = off === 0 ? "background:var(--acc);color:var(--alpha-white)" : (off === sel ? "box-shadow:inset 0 0 0 1.5px var(--fg)" : "");
-        mdays.push({ n: gd.getDate(), cs: cs + (inM || off === 0 ? "" : ";color:var(--mut)"), dot: has ? (off === 0 ? "var(--acct)" : "var(--fg)") : "transparent", pick: function () { set({ day: off, month: null }); }, label: DAYS[gd.getDay()] + " " + MONS[gd.getMonth()] + " " + gd.getDate() });
+        mdays.push({ inMonth: inM, n: gd.getDate(), cs: cs + (inM || off === 0 ? "" : ";color:var(--mut)"), dot: has ? (off === 0 ? "var(--acct)" : "var(--fg)") : "transparent", pick: function () { set({ day: off, month: null }); }, label: DAYS[gd.getDay()] + " " + MONS[gd.getMonth()] + " " + gd.getDate() });
       })(gd);
     }
-    var lastRow = mdays.slice(35).every(function (d) { return d.cs.indexOf("opacity") >= 0; });
+    var lastRow = mdays.slice(35).every(function (d) { return !d.inMonth; });
     if (lastRow) mdays = mdays.slice(0, 35);
     var calRows = cals.map(function (c) {
       var patch = function (p) { var pr = Object.assign({}, st.calPrefs || {}); pr[c.id] = Object.assign({}, pr[c.id] || {}, p); set({ calPrefs: pr }); };
@@ -1462,11 +1463,13 @@ registerView("calendar", {
     if (f) {
       var fp = function (p) { set({ form: Object.assign({}, f, p) }); };
       var dayChips = [];
-      var first = Math.min(0, f.off);
-      for (var k = first; k < first + 21; k++) (function (k) {
+      var first = f.off === 0 ? 1 : (f.off > 0 ? Math.max(1, f.off - 3) : f.off - 3);
+      var offsets = [0];
+      for (var k = first; k < first + 21; k++) if (k !== 0) offsets.push(k);
+      offsets.forEach(function (k) {
         var dt = calDate(api, k); var act = k === f.off;
-        dayChips.push({ top: k === 0 ? "Today" : weekdayName(dt, "short"), n: dt.getDate(), css: act ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pick: function () { fp({ off: k }); }, label: calDayName(api, k) });
-      })(k);
+        dayChips.push({ on: act, top: k === 0 ? "Today" : weekdayName(dt, "short"), n: dt.getDate(), css: act ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pick: function () { fp({ off: k }); }, label: calDayName(api, k) });
+      });
       var chosen = f.who.map(function (id) { var p = calPerson(api, id); return { ini: p.ini, first: p.name.split(" ")[0], label: "Remove " + p.name, remove: function () { fp({ who: f.who.filter(function (x) { return x !== id; }) }); } }; });
       var q = (f.pq || "").toLowerCase().trim();
       var sugg = f.pq == null ? [] : calPeople(api).filter(function (p) { return f.who.indexOf(p.id) < 0 && (!q || p.name.toLowerCase().indexOf(q) >= 0 || (p.email || "").toLowerCase().indexOf(q) >= 0); }).slice(0, 4).map(function (p) {
@@ -1480,7 +1483,7 @@ registerView("calendar", {
         onNotes: function (e) { fp({ notes: e.target.value }); },
         days: dayChips,
         start: calAmpm(f.t), end: calAmpm(f.t + f.d), dur: calDur(f.d),
-        sMinus: function () { fp({ t: Math.max(0, f.t - 0.25) }); }, sPlus: function () { fp({ t: Math.min(23.5 - f.d, f.t + 0.25) }); },
+        sMinus: function () { fp({ t: Math.max(0, f.t - 0.25) }); }, sPlus: function () { fp({ t: Math.max(f.t, Math.min(24 - f.d, f.t + 0.25)) }); },
         eMinus: function () { fp({ d: Math.max(0.25, f.d - 0.25) }); }, ePlus: function () { fp({ d: Math.min(24 - f.t, f.d + 0.25) }); },
         video: f.video, vTrack: api.track(f.video), vKx: api.kx(f.video), toggleVideo: function () { fp({ video: !f.video }); },
         chosen: chosen, hasChosen: chosen.length > 0,
@@ -2874,13 +2877,14 @@ function notesUpd(api, id, patch) {
     return next;
   });
   var change = { list: list };
-  if (s.blankCreationId === id && !notesEmpty(notesFind(list, id))) change.blankCreationId = null;
+  if (s.blankCreationId === id && !notesEmpty(notesFind(list, id), s.blankCreationTitle)) { change.blankCreationId = null; change.blankCreationTitle = null; }
   return api.set(change);
 }
-function notesEmpty(n) {
+function notesEmpty(n, defaultTitle) {
   if (!n) return false;
-  if (n.kind === "text") return !String(n.title || "").trim() && !String(n.body || "").trim();
-  if (n.kind === "list") return !String(n.title || "").trim() && !(n.items || []).some(function (i) { return String(i.t).trim(); });
+  var emptyTitle = !String(n.title || "").trim() || n.title === defaultTitle;
+  if (n.kind === "text") return emptyTitle && !String(n.body || "").trim();
+  if (n.kind === "list") return emptyTitle && !(n.items || []).some(function (i) { return String(i.t).trim(); });
   return false;
 }
 function notesStopTimers() { clearInterval(NT.playI); NT.playI = null; }
@@ -2893,8 +2897,8 @@ function notesLeave(api, next) {
   if (api.canonicalNotes) { void api.canonicalNotes.leave(next); return {}; }
   var s = api.get("notes"); notesStopTimers();
   var n = s.open !== next && s.open === s.blankCreationId ? notesFind(s.list, s.open) : null;
-  var patch = { open: next, sheet: null, playing: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
-  if (n && notesEmpty(n)) patch.list = s.list.filter(function (x) { return x.id !== n.id; });
+  var patch = { open: next, sheet: null, playing: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null, blankCreationTitle: next === s.open ? s.blankCreationTitle : null };
+  if (n && notesEmpty(n, s.blankCreationTitle)) patch.list = s.list.filter(function (x) { return x.id !== n.id; });
   return patch;
 }
 function notesUndoable(api, note, idx, label) {
@@ -2976,10 +2980,11 @@ function notesNew(api, kind) {
   var inFolder = notesFolderOf({ folderId: st0.folder }, st0.folders);
   if (api.canonicalNotes) { void api.canonicalNotes.create(kind, inFolder); api.set({ compose: false, q: null }); return; }
   var now = Date.now();
-  var n = kind === "list" ? { id: id, kind: "list", title: "", items: [], pinned: false, when: "Now", createdAt: now, modifiedAt: now } : { id: id, kind: "text", title: "", body: "", pinned: false, when: "Now", createdAt: now, modifiedAt: now };
+  var title = nextDefaultNoteTitle([...(st0.list || []), ...(st0.trash || []).map(function (entry) { return entry.note || entry; })], 'New note');
+  var n = kind === "list" ? { id: id, kind: "list", title: title, items: [], pinned: false, when: "Now", createdAt: now, modifiedAt: now } : { id: id, kind: "text", title: title, body: "", pinned: false, when: "Now", createdAt: now, modifiedAt: now };
   if (inFolder) n.folderId = inFolder;
   var leave = notesLeave(api, id);
-  api.set(Object.assign(leave, { list: [n].concat(leave.list || api.get("notes").list), blankCreationId: id, compose: false, q: null }));
+  api.set(Object.assign(leave, { list: [n].concat(leave.list || api.get("notes").list), blankCreationId: id, blankCreationTitle: title, compose: false, q: null }));
 }
 function notesLast(list) { for (var i = 0; i < list.length; i++) if (list[i].kind === "voice") return list[i]; return null; }
 function notesShare(api, n, via) {
@@ -4528,9 +4533,20 @@ function stPageAccess(root) {
   var depth = pages.length - 1, key = depth + ":" + current.getAttribute("data-settings-page");
   var previous = stPageFocus.get(root);
   var saved = previous ? previous.saved : new Map();
+  if (!previous) root.addEventListener("focusin", function (event) {
+    var page = event.target.closest("[data-settings-page]");
+    var visible = Array.from(root.children).filter(function (el) { return el.hasAttribute("data-settings-page"); });
+    var owner = stPageFocus.get(root);
+    if (!owner || page !== visible[visible.length - 1]) return;
+    // Categories replace a page at the same DOM depth. Capture its focused row
+    // before React removes it, and key it by page identity rather than depth alone.
+    owner.saved.set((visible.length - 1) + ":" + page.getAttribute("data-settings-page"), {
+      element: event.target, id: event.target.id, tag: event.target.tagName, label: event.target.getAttribute("aria-label")
+    });
+  });
   var active = document.activeElement;
   if (previous && previous.key !== key && previous.page.contains(active)) {
-    saved.set(previous.depth, { element: active, id: active.id, tag: active.tagName, label: active.getAttribute("aria-label") });
+    saved.set(previous.key, { element: active, id: active.id, tag: active.tagName, label: active.getAttribute("aria-label") });
   }
   // Release the destination before restoring focus. Hide the former page only
   // after focus moves so browsers do not reject aria-hidden on its active child.
@@ -4539,8 +4555,8 @@ function stPageAccess(root) {
     current.inert = false;
     current.removeAttribute("aria-hidden");
   }
-  if (previous && previous.key !== key) {
-    var record = depth < previous.depth ? saved.get(depth) : null;
+  if (previous && previous.key !== key && !root.querySelector("[data-alpha-popup]")) {
+    var record = saved.get(key);
     var target = record ? record.element : null;
     // Settings can refresh the covered page while a child is open. Restore its
     // uniquely named control even when that refresh replaced the original node.
@@ -4552,7 +4568,7 @@ function stPageAccess(root) {
     }
     if (!target || !target.isConnected || !current.contains(target)) target = current.querySelector("button, input, select, textarea, [tabindex='0']");
     if (target) target.focus({ preventScroll: true });
-    Array.from(saved.keys()).forEach(function (i) { if (i > depth) saved.delete(i); });
+    Array.from(saved.keys()).forEach(function (pageKey) { if (Number(pageKey.split(":")[0]) > depth) saved.delete(pageKey); });
   }
   pages.forEach(function (page) {
     if (page !== current) { page.inert = true; page.setAttribute("aria-hidden", "true"); }
@@ -5048,6 +5064,10 @@ class Component extends DCLogic {
     this.clock = setInterval(function () { self.setState({ now: Date.now() }); }, 15000);
     this.chatWindowScroll = function (event) { self.growChatWindow(event.target); };
     document.addEventListener("scroll", this.chatWindowScroll, true);
+    this.chatReadingInput = function (event) {
+      if (event.target instanceof Element && event.target.closest("[data-alpha-transcript]")) self.cancelVoiceScrollFollow();
+    };
+    for (var kind of ["wheel", "pointerdown", "touchstart", "keydown"]) document.addEventListener(kind, this.chatReadingInput, true);
     this.chatWindowCommitted = this.chatWindowRows;
     this.preset(this.props.initial || "boot");
   }
@@ -5066,6 +5086,20 @@ class Component extends DCLogic {
     this.chatWindowSize = rows + CHAT_PAGE_ROWS;
     this.setState({});
   }
+  beginVoiceScrollFollow() {
+    this.voiceScrollOpened = !["sheet", "full"].includes(this.S().chat);
+    this.voiceScrollPending = null;
+    this.voiceScrollLastUserId = this.S().msgs.filter(m => m.from === "user").at(-1)?.id;
+  }
+  followVoiceTurn(conversationId, text) {
+    var list = document.querySelector("[data-alpha-transcript]");
+    var following = this.voiceScrollOpened || list && list.scrollHeight - list.scrollTop - list.clientHeight < 80;
+    this.voiceScrollOpened = false;
+    if (following && window.getSelection()?.isCollapsed !== false) {
+      this.voiceScrollPending = { conversationId, text: text.trim(), previousUserId: this.voiceScrollLastUserId };
+    }
+  }
+  cancelVoiceScrollFollow() { this.voiceScrollOpened = false; this.voiceScrollPending = null; }
   getSnapshotBeforeUpdate(_props, previous) {
     var list = document.querySelector("[data-alpha-transcript]");
     if (!list) { this.chatScrollSnapshot = null; return null; }
@@ -5082,7 +5116,14 @@ class Component extends DCLogic {
     var anchor = rows.find(function (row) { return row.getBoundingClientRect().bottom >= bounds.top; });
     var oldUser = (previous.msgs || []).filter(function (m) { return m.from === "user"; }).at(-1);
     var newUser = state.msgs.filter(function (m) { return m.from === "user"; }).at(-1);
-    var newTurn = state.typing && newUser && newUser.id !== oldUser?.id;
+    var pendingVoice = this.voiceScrollPending;
+    var voiceTurn = isOpen && pendingVoice && newUser && newUser.id !== pendingVoice.previousUserId
+      && newUser.messageBinding?.conversationId === pendingVoice.conversationId
+      && String(newUser.text || "").trim() === pendingVoice.text && window.getSelection()?.isCollapsed !== false;
+    if (pendingVoice && (!isOpen || newUser && newUser.id !== pendingVoice.previousUserId)) {
+      this.voiceScrollPending = null; this.voiceScrollLastUserId = newUser?.id;
+    }
+    var newTurn = voiceTurn || state.typing && newUser && newUser.id !== oldUser?.id;
     var atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 80 && window.getSelection()?.isCollapsed !== false;
     var reading = { anchor: anchor?.getAttribute("data-alpha-message-id"), offset: anchor ? (anchor.getBoundingClientRect().top - bounds.top) / scale : 0 };
     // Closing the chat (Back, HOME) remembers where the owner was reading older history; reopening
@@ -5124,6 +5165,7 @@ class Component extends DCLogic {
   componentWillUnmount() {
     this.chatScrollObserver?.disconnect();
     document.removeEventListener("scroll", this.chatWindowScroll, true);
+    for (var kind of ["wheel", "pointerdown", "touchstart", "keydown"]) document.removeEventListener(kind, this.chatReadingInput, true);
     clearInterval(this.clock); clearInterval(this.vI);
     var G = this.G || {}; Object.keys(G).forEach(function (k) { G[k].forEach(clearTimeout); });
     var I = this.I || {}; Object.keys(I).forEach(function (k) { I[k].forEach(clearInterval); });
@@ -5141,11 +5183,31 @@ class Component extends DCLogic {
   every(fn, ms, grp) { this.I = this.I || {}; var id = setInterval(fn, ms); (this.I[grp] = this.I[grp] || []).push(id); return id; }
   stopEvery(grp) { this.I = this.I || {}; (this.I[grp] || []).forEach(clearInterval); this.I[grp] = []; }
   toast(msg, opts) {
-    opts = opts || {}; var self = this;
+    opts = opts || {};
+    var active = typeof document !== "undefined" ? document.activeElement : null;
+    var inside = !!active?.closest?.("[data-alpha-toast]");
+    if (!inside) this.toastOrigin = active;
+    this.toastHeld = inside; this.toastActive = true;
+    this.toastSequence = (this.toastSequence || 0) + 1;
+    this.toastDuration = Math.max(opts.undo ? 5000 : 1900, Math.min(12000, String(msg).length * 50 + 500)) * accessibilityTimeoutScale();
     this.undoFn = opts.undo || null;
-    this.setState({ toast: msg, toastUndo: !!opts.undo }); this.clear("t");
-    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); },
-      (opts.undo ? 5000 : 1900) * accessibilityTimeoutScale(), "t");
+    this.setState({ toast: msg, toastUndo: !!opts.undo }); this.scheduleToast();
+  }
+  scheduleToast() {
+    this.clear("t"); if (!this.toastActive || this.toastHeld) return;
+    var self = this, sequence = this.toastSequence;
+    this.later(function () { if (self.toastSequence === sequence && !self.toastHeld) self.closeToast(); }, this.toastDuration, "t");
+  }
+  holdToast() { if (this.toastActive) { this.toastHeld = true; this.clear("t"); } }
+  resumeToast() { this.toastHeld = false; if (this.toastActive) this.scheduleToast(); }
+  closeToast() {
+    var doc = typeof document !== "undefined" ? document : null, origin = this.toastOrigin;
+    var heldFocus = !!doc?.activeElement?.closest?.("[data-alpha-toast]");
+    this.toastActive = false; this.toastHeld = false; this.toastSequence = (this.toastSequence || 0) + 1;
+    this.undoFn = null; this.clear("t");
+    this.setState({ toast: "", toastUndo: false }, function () {
+      if (heldFocus && doc?.activeElement === doc.body && origin?.isConnected && !origin.closest("[inert],[hidden]")) origin.focus({ preventScroll: true });
+    });
   }
 
   /* ---- per-app state ---- */
@@ -5253,6 +5315,7 @@ class Component extends DCLogic {
     this.hintDone = true;
   }
   goHome(chat) {
+    if (this.props && this.props.assistantSurface) return this.closeAssistant();
     this.clear("hint"); this.leave();
     if (this.S().secure) return this.setState(Object.assign(this.shellNavigate({ type: "home" }), { secure: false, screen: "lock", shade: false, hint: false, heads: false }));
     this.setState(Object.assign(this.shellNavigate({ type: "home", assistant: chat === "sheet" || chat === "full" ? chat : "input" }), { shade: false, hint: false, heads: false }));
@@ -5308,7 +5371,7 @@ class Component extends DCLogic {
     }
   }
 
-  /* ---- Android's notification shade (#416, #417; docs/gesture-zones.md) ---- */
+  /* ---- Android's notification shade (#416, #417) ---- */
   /** Only the browser development build draws a stand-in for Android's shade. */
   simulatedShade() { return this.props.systemShade === "simulated"; }
   /** Opens the development stand-in for Android's shade. Product builds have no Alpha shade. */
@@ -5348,10 +5411,10 @@ class Component extends DCLogic {
 
   /* ---- gestures ---- */
   scale(el) { var sc = el && el.closest ? el.closest("[data-screen]") : null; var r = (sc || el).getBoundingClientRect(); return { r: r, s: r.width / 412 || 1 }; }
-  gDown(e) { if (e.target.closest?.("[data-alpha-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, pull: pullStart(e.target) }; }
+  gDown(e) { if (e.target.closest?.("[data-alpha-transcript],[data-alpha-note-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, pull: pullStart(e.target) }; }
   gUp(e) { var g = this.g; this.g = null; if (!g || window.getSelection()?.isCollapsed === false) return; this.swipe(g, (e.clientX - g.cx) / g.s, (e.clientY - g.cy) / g.s); }
   swipe(g, dx, dy) {
-    // Gesture zones (docs/gesture-zones.md) are the shared shell's (resolveMobileShellSwipe). The top
+    // Gesture zones are the shared shell's (resolveMobileShellSwipe). The top
     // edge belongs to Android; on launcher Home a pull down that starts
     // on empty Home asks Android for its shade (#417, @elizaos/capacitor-system/shade).
     var self = this, S = this.S();
@@ -5493,7 +5556,7 @@ class Component extends DCLogic {
     var S = this.S(); var P = this.props || {}; var self = this;
     var fs = S.fs == null ? !!P.phoneOnly : S.fs;
     var theme = S.theme || P.theme || "light"; if (theme !== "dark") theme = "light";
-    // The product record (config/alpha-product.json) supplies every color and font.
+    // The product record (apps/app/src/product/alpha-product-registration.ts) supplies every color and font.
     var VM = alphaThemeVariables(theme);
     var vars = Object.keys(VM).map(function (k) { return k + ":" + VM[k]; }).join(";");
     var rootRef = function (el) {
@@ -5627,7 +5690,13 @@ class Component extends DCLogic {
       backToApps: function (event) { var fromChat = event && event.currentTarget && event.currentTarget.hasAttribute("data-alpha-chat-home"); if (fromChat && event.detail > 0 && self.swallowed()) return; self.goHome(); },
       showStatus: !P.nativeSystemChrome && S.screen !== "boot" && S.screen !== "off" && !imm.noStatus, micLive: S.voice === "listening",
       showIndicator: !P.nativeSystemChrome && (isOn || S.screen === "lock") && !(isOn && !S.view && !S.drawer && !S.shade && S.chat !== "sheet" && S.chat !== "full"),
-      toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18, doUndo: function () { var f = self.undoFn; self.undoFn = null; self.clear("t"); self.setState({ toast: "", toastUndo: false }); if (f) f(); },
+      toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18,
+      toastFocus: function () { self.holdToast(); },
+      toastBlur: function (event) { if (!event.currentTarget.contains(event.relatedTarget)) self.resumeToast(); },
+      toastRole: S.toastUndo ? undefined : "button", toastTabIndex: S.toastUndo ? undefined : 0,
+      toastTap: S.toastUndo ? undefined : function () { self.closeToast(); },
+      toastKey: S.toastUndo ? undefined : function (event) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); self.closeToast(); } },
+      doUndo: function () { var f = self.undoFn; self.closeToast(); if (f) f(); },
       hasOngoing: !!ongoing && isOn, ongoing: ongoing || {}, sbWifi: S.q.wifi, sbPlane: S.q.plane,
       goCalendar: function () { self.openView("calendar", copy("shell").homeCalendar || null); },
       goTriage: function () { self.send("What needs me?"); },

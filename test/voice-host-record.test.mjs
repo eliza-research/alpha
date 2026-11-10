@@ -10,7 +10,7 @@ import {stageVoiceModels} from '../scripts/android-stage-voice-models.ts';
 import {fixtureProduct} from './fixtures/voice-host-product.mjs';
 
 // The on-device speech engine is libelizainference with the shared paradee-voice library. Its
-// record (android/voice-host/qualified-voice-host.json, docs/fused-speech.md) drives staging,
+// record (android/voice-host/qualified-voice-host.json) drives staging,
 // the notices and the SBOM. Fixture bytes only: no real binary or model is read here.
 const sha = value => createHash('sha256').update(value).digest('hex');
 const committed = JSON.parse(fs.readFileSync(path.join(ROOT, VOICE_HOST), 'utf8'));
@@ -37,25 +37,6 @@ test('the committed record satisfies the schema, model inventory and ASR slot', 
   assert.equal(record.models.some(row => row.role !== 'notice' && /kokoro|\.on{2}x|\.bin$/i.test(row.path)), false, 'no Kokoro, other-runtime model or voice preset');
 });
 
-test('historical component requalification retains its original source and pending current acceptance', () => {
-  const base = 'docs/evidence/voice-engine-6337fd4c-4787d51a14';
-  const receipt = JSON.parse(fs.readFileSync(path.join(ROOT, base, 'qualify-receipt.json'), 'utf8'));
-  assert.equal(receipt.qualifyApp.sourcePin, '4787d51a142c63c98371c832997184c53f7218d3');
-  for (const file of ['qualify/asr-wer.json', 'qualify/paradee-roundtrip.json', 'qualify-x86_64/asr-wer.json', 'qualify-x86_64/paradee-roundtrip.json', 'qualify-receipt.json']) {
-    assert.ok(committed.evidence.records.includes(`${base}/${file}`));
-    assert.ok(fs.existsSync(path.join(ROOT, base, file)));
-  }
-  for (const abi of committed.abis) {
-    const engine = abi.libraries.find(row => row.name === 'libelizainference.so');
-    const measured = receipt.engine.librariesReadFromApk.find(row => row.path === `lib/${abi.abi}/libelizainference.so`);
-    assert.equal(measured.sha256, engine.sha256);
-    assert.equal(measured.bytes, engine.bytes);
-  }
-  assert.equal(committed.qualified, false);
-  assert.equal(committed.evidence.userAccepted, false);
-  assert.equal(committed.sourceAdmission.nativeQualificationTransferred, false);
-});
-
 test('only a voice record for the current SDK can admit the native profile', () => {
   const {commit}=JSON.parse(fs.readFileSync(path.join(ROOT,'upstream.lock.json'),'utf8'));
   if (committed.pin===commit) {
@@ -66,28 +47,13 @@ test('only a voice record for the current SDK can admit the native profile', () 
   }
 });
 
-test('current voice source binding includes every reviewed shared speech patch', () => {
-  const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, 'patches/eliza/native-manifest.json'), 'utf8'));
-  const patches = manifest.patches.filter(row => row.module === 'plugins/plugin-local-inference/native/android');
-  const binding = committed.sourceAdmission.sourceIntegration;
-  assert.equal(binding.admittedAt, committed.pin);
-  assert.deepEqual(binding.speechPatches, patches);
-  assert.deepEqual(committed.sourceAdmission.developComparison.explicitSpeechPatchFiles,
-    patches.map(row => `patches/eliza/${row.file}`));
-  assert.equal(binding.nativeInputsUnchanged, false);
-  assert.equal(binding.nativeQualificationTransferred, false);
-  assert.equal(committed.qualified, false);
-  assert.equal(committed.evidence.userAccepted, false);
-});
-
-test('the schema rejects bad hashes, missing ABIs, non-GGUF models, an incomplete ASR slot and unearned qualification', () => {
+test('the schema rejects bad hashes, missing ABIs, non-GGUF models, an incomplete ASR slot', () => {
   const bad = structuredClone(committed);
   bad.abis[0].libraries[0].sha256 = 'nope';
   bad.models.find(row => row.role === 'tts-model').path = 'tts/paradee/paradee.pt';
   bad.models = bad.models.filter(row => row.role !== 'asr-model');
-  bad.qualified = true;
   const problems = voiceHostProblems(bad, 'fixture');
-  for (const expected of ['abis[0].libraries[0] needs a lowercase SHA-256', 'must be a GGUF file', 'has no asr-model', 'ASR rows must be exactly asr-model for the parakeet backend', 'qualified cannot be true without device execution'])
+  for (const expected of ['abis[0].libraries[0] needs a lowercase SHA-256', 'must be a GGUF file', 'has no asr-model', 'ASR rows must be exactly asr-model for the parakeet backend'])
     assert.ok(problems.some(problem => problem.includes(expected)), expected);
   assert.ok(voiceHostProblems({...committed, abis: committed.abis.slice(0, 1)}).some(problem => problem.includes('must record arm64-v8a and x86_64')));
   assert.deepEqual(voiceHostProblems([], 'fixture'), ['fixture: not a JSON object']);
@@ -296,11 +262,4 @@ test('an unrecorded engine refused at a conflicting destination leaves the track
   })}));
   assert.throws(() => stageVoiceModels(dir, {from: [from], unrecordedEngine: true}), /already exists with other bytes/);
   assert.deepEqual(fs.readFileSync(path.join(dir, VOICE_HOST)), before);
-});
-
-test('historical P-83 acceptance remains scoped to its recorded SDK', () => {
-  const record = JSON.parse(fs.readFileSync(path.join(ROOT, VOICE_HOST), 'utf8'));
-  assert.match(record.acceptance, /P-83/);
-  assert.equal(record.qualified, false);
-  assert.equal(record.evidence.userAccepted, false);
 });

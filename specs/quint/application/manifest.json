@@ -23,6 +23,46 @@
     ]
   },
   {
+    "path": "specs/quint/application/CommittedViewObservation.qnt",
+    "module": "CommittedViewObservation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "exactSuccessCachesOneReceiptTest",
+      "staleClaimSettlesNegativeTest",
+      "lostClaimWaitsForGenuineTimeoutTest",
+      "lostPositiveNeverSendsOppositeReceiptTest",
+      "supersededClaimReleasesNextObservationTest",
+      "failedCacheRequiresExplicitRetryTest"
+    ],
+    "invariants": [
+      "RepliesFollowClaim",
+      "HistoryFollowsHostCommit",
+      "AcceptedObservationHasHostCommit"
+    ],
+    "sources": [
+      "apps/app/src/runtime/view-navigation.ts",
+      "vendor/eliza/packages/core/src/events.ts",
+      "vendor/eliza/packages/core/src/views/view-interact-protocol.ts",
+      "vendor/eliza/packages/core/src/views/view-action-handoff.ts",
+      "vendor/eliza/packages/core/src/views/completed-action-navigation.ts",
+      "vendor/eliza/packages/agent/src/api/view-installations.ts",
+      "vendor/eliza/packages/agent/src/api/pending-request-map.ts",
+      "vendor/eliza/packages/agent/src/api/view-interaction-host.ts",
+      "vendor/eliza/packages/agent/src/api/views-routes.ts"
+    ],
+    "stateMapping": {
+      "view/hidden/session/disposed": "Controlled renderer context and actual client retirement",
+      "cacheView/accepted/returned": "Actual manual observation cache and settled call return",
+      "host/lastReply/prepares/claims/replies/history": "Real waiter, recorded closed request calls and history-commit callback"
+    },
+    "abstractions": [
+      "Two manual views, two attempts, controlled timers and request replies. A model observation is one actual settled renderer call.",
+      "Transport, host role lookup, real history persistence and arbitrary view schedules remain separate."
+    ]
+  },
+  {
     "path": "specs/quint/application/ShellNavigation.qnt",
     "module": "ShellNavigation",
     "init": "init",
@@ -158,7 +198,8 @@
       "apps/app/src/runtime/notes-folders.ts",
       "apps/app/src/runtime/notes-folders-model.ts",
       "apps/app/src/prototype/agent-adapter.ts",
-      "apps/app/src/prototype/legacy-notes-access.ts"
+      "apps/app/src/prototype/legacy-notes-access.ts",
+      "apps/app/src/runtime/note-default-title.ts"
     ],
     "abstractions": [
       "Legacy mode preserves the existing one-note local Trash/CAS compatibility contract. Canonical mode represents one existing record, one editor draft, one initial folder and one newly allocated folder identity.",
@@ -194,7 +235,7 @@
     "sources": [
       "apps/app/src/browser/browser-surface.ts",
       "apps/app/src/prototype/browser-adapter.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -228,7 +269,7 @@
       "apps/app/src/passwords/password-manager.ts",
       "apps/app/src/passwords/dev-vault.ts",
       "apps/app/src/browser/password-provider.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/PasswordProviderSupport.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/PasswordProviderSupport.java"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -254,8 +295,7 @@
       "apps/app/src/build-flags.ts",
       "apps/app/src/runtime/mock-admission.ts",
       "apps/app/src/browser/dev-profile.ts",
-      "apps/app/src/browser/device-controls.tsx",
-      "apps/app/src/runtime/development-transport.ts"
+      "apps/app/src/browser/device-controls.tsx"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -279,7 +319,7 @@
       "apps/app/src/runtime/media-copy-intent.ts",
       "apps/app/src/runtime/inbox-attachment.ts",
       "apps/app/src/prototype/share-panel-adapter.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailAttachmentsPlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMailAttachmentsPlugin.java"
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
@@ -318,6 +358,48 @@
     ]
   },
   {
+    "path": "specs/quint/application/ScheduledTaskControls.qnt",
+    "module": "ScheduledTaskControls",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "editReviewBindsExactRequestTest",
+      "mismatchedFireRemainsLockedTest",
+      "racedFireDoesNotClaimSuccessTest",
+      "terminalManualReopenTest",
+      "partialAbsenceRetiresDetailTest",
+      "failedListCannotDispatchReviewedActionTest",
+      "retiredReplyDoesNotReleaseTest"
+    ],
+    "invariants": [
+      "SentWithExactIntent",
+      "PendingRemainsJournaled",
+      "UnconfirmedStaysLocked",
+      "TerminalHasReopenOnly",
+      "FailedSourceDisablesControls"
+    ],
+    "sources": [
+      "apps/app/src/prototype/automations-adapter.ts",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/runtime/automations-protocol.ts",
+      "apps/app/src/runtime/automations-route-policy.ts",
+      "apps/app/src/runtime/workflow-intents.ts",
+      "vendor/eliza/packages/contracts/src/workflow-intents.ts",
+      "apps/app/src/runtime/workflow-local-time.ts"
+    ],
+    "stateMapping": {
+      "owner/visible/source/detail/shownStatus/editing/draft/time": "Controlled shell and connection inputs, actual schedule-list issue and renderer projection",
+      "kind/storedStatus/storedText/storedCron/catalog": "One synthetic LifeOps task record and independent list failure inputs",
+      "review/pending/message/sends/intents": "Actual review label, held transport receipt, presentation, dispatched request and exact owner-keyed intent"
+    },
+    "abstractions": [
+      "One weekly task, finite status and cron classes, one pending request and up to three attempted sends across two owners.",
+      "The reviewed verb is directly observed. The reviewed body is observed once the intent and request are emitted.",
+      "The closed adapter replays actual renderer callbacks and installed slot CAS. Mounted DOM scheduling, the browser document backend, installed platform delivery and server-side scheduled execution require separate refinement."
+    ]
+  },
+  {
     "path": "specs/quint/application/AppearancePreferenceAdmission.qnt",
     "module": "AppearancePreferenceAdmission",
     "init": "init",
@@ -331,7 +413,13 @@
       "failedWritePreservesStoredChoiceTest",
       "retiredListenersIgnoreEventsTest"
     ],
-    "invariants": ["ListenerAdmission", "PreviewBoot", "ReadMarkerIdentity", "Presentation", "BoundedWrites"],
+    "invariants": [
+      "ListenerAdmission",
+      "PreviewBoot",
+      "ReadMarkerIdentity",
+      "Presentation",
+      "BoundedWrites"
+    ],
     "sources": [
       "apps/app/src/main.tsx",
       "apps/app/src/prototype/settings-adapter.ts",
@@ -449,7 +537,7 @@
       "apps/app/src/runtime/permanent-voice-deletion.ts",
       "apps/app/src/runtime/note-audio-deletions.ts",
       "apps/app/src/runtime/note-audio-lock.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/NotesDeletionLease.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/NotesDeletionLease.java"
     ],
     "abstractions": [
       "Finite representative operation and payload identities. See application README for source contract and evidence."
@@ -464,10 +552,8 @@
     "sources": [
       "scripts/browser-cloud-dev-bridge.ts",
       "scripts/cloud-resident-host.ts",
-      "scripts/dev-agent.ts",
       "scripts/dev-cloud.ts",
       "scripts/dev-local.ts",
-      "scripts/start-local-agent.ts",
       "scripts/start-local-voice-agent.ts",
       "scripts/start-local-remote.ts",
       "scripts/cloud-email-code.ts"
@@ -501,7 +587,7 @@
       "selectionRefreshTest"
     ],
     "sources": [
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java",
       "apps/app/src/prototype/selection-adapter.ts"
     ],
     "stateMapping": {
@@ -512,7 +598,7 @@
     },
     "abstractions": [
       "Three files, three folders and three names model the current volume browser, categories, Trash and reviewed agent transfers. The previous SAF-tree listing model is superseded.",
-      "The transition structure follows design/view-refresh-2026-11/tla/files-browser with category, name-conflict and reviewed-identity fixes enabled. Grant withdrawal is additionally modeled.",
+      "The transition structure follows the retained FilesBrowser design model with category, name-conflict and reviewed-identity fixes enabled. Grant withdrawal is additionally modeled.",
       "Multi-volume traversal, recursive byte copying, per-item batch failures, MIME parsing and the 30-day Trash timer remain covered by their implementation tests. This model does not represent document-picker or persistent SAF-tree access.",
       "Opaque identity revisions represent the native size/modified pair. Matching that pair is the current implementation guard, not a cryptographic assertion about file contents."
     ],
@@ -579,7 +665,11 @@
       "changedSourceConflictsWithClearReceiptTest",
       "destinationReplacementAfterDispatchRemainsIndependentTest"
     ],
-    "invariants": ["ClearDispatchWasAuthorized", "ClearUsesExactSourceReceipt", "ConfirmedClearIsRevisioned"],
+    "invariants": [
+      "ClearDispatchWasAuthorized",
+      "ClearUsesExactSourceReceipt",
+      "ConfirmedClearIsRevisioned"
+    ],
     "sources": [
       "apps/app/src/prototype/agent-adapter.ts",
       "apps/app/src/runtime/assistant-draft-store.ts",
@@ -609,7 +699,8 @@
       "unavailableStorageRefusesHoldTest",
       "restartHeldSendRequiresReviewTest",
       "reopeningDoesNotOfferHeldTextTest",
-      "failedClearKeepsRecoveryTest"
+      "failedClearKeepsRecoveryTest",
+      "deferredComposerPaintBeforeDispatchTest"
     ],
     "sources": [
       "apps/app/src/prototype/assistant-draft-controller.ts",
@@ -620,6 +711,67 @@
     "abstractions": [
       "Hold requires a durable matching saved draft. Per-binding sending markers survive process restart and require review, while confirmed non-dispatch unmarks the original binding.",
       "Atomic hold abstracts the serialized marking write and its current-binding check. Storage failure, ownership changes and unsettled recovery retain source regression coverage."
+    ]
+  },
+  {
+    "path": "specs/quint/application/WorkflowRequestRecoveryAdmission.qnt",
+    "module": "WorkflowRequestRecoveryAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "exactReviewCanCaptureAndResetTest",
+      "leaveDuringModuleLoadKeepsOldReviewClosedTest",
+      "replacementRevokesOldCallbacksTest",
+      "departureWhileSavingKeepsCompletionSilentTest",
+      "reportOnlyCurrentFailureTest"
+    ],
+    "invariants": [
+      "ClosedReviewWasOffered",
+      "ActiveReviewIsNotClosed",
+      "AllCallbacksBelongToAnOfferedReview",
+      "RetiredOffersAreClosed"
+    ],
+    "sources": [
+      "apps/app/src/runtime/workflow-request-recovery.ts",
+      "apps/app/src/runtime/workflow-intents.ts",
+      "apps/app/src/prototype/automations-adapter.ts",
+      "apps/app/src/browser/domain-recovery.ts",
+      "apps/app/src/prototype/template.html"
+    ],
+    "stateMapping": {
+      "allowed/seen/owner": "Visible and exact caller admission, counted document requests and the current recovery AbortController",
+      "reading/loading/offered/closed": "Held document and dialog preparation, actual dialog invocation and observed abort signal",
+      "captured/saving/published/reported": "Calls to controlled document ports and to the current Workflows UI"
+    },
+    "abstractions": [
+      "Three recovery requests, one selected account document per request and closed persistence ports.",
+      "The mounted browser suite exercises visible recovery controls separately. Kernel durability and arbitrary cross-tab writes are outside this model."
+    ]
+  },
+  {
+    "path": "specs/quint/application/EmailSuggestionReview.qnt",
+    "module": "EmailSuggestionReview",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "replacementRetiresControlsTest",
+      "refreshedReviewRequiresNewControlTest",
+      "lateConfirmAfterChatClosesTest",
+      "retiredOpenerCannotAdoptReplyTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/use-in-email-review.ts",
+      "vendor/eliza/plugins/plugin-inbox/src/mailbox/use-in-email.ts"
+    ],
+    "stateMapping": {
+      "env": "Synthetic session, reply, front surface and Inbox destination readback.",
+      "review/controls/serial": "Current review snapshot and retained rendered actions. Identities are abstract and checked through the action they admit.",
+      "inserts/used/toasts": "Local insertion port, unique review retirement and conversation refusal."
+    },
+    "abstractions": [
+      "Representative reply, account and target revisions. Mounted focus, concrete draft persistence and provider execution require separate evidence."
     ]
   },
   {
@@ -634,8 +786,15 @@
       "hiddenRequestAndCancellationCannotDispatchTest",
       "exactDestinationFailureNeverFallsBackTest"
     ],
-    "invariants": ["ActivePanelIsUnsettled", "EffectFollowsExactClose", "EachPanelDispatchesOnce", "NoticeBelongsToStaleSelection"],
-    "sources": ["apps/app/src/runtime/share-panel.ts"],
+    "invariants": [
+      "ActivePanelIsUnsettled",
+      "EffectFollowsExactClose",
+      "EachPanelDispatchesOnce",
+      "NoticeBelongsToStaleSelection"
+    ],
+    "sources": [
+      "apps/app/src/runtime/share-panel.ts"
+    ],
     "stateMapping": {
       "seen/active/hidden/invalid/emails": "Caller inputs and the actual mounted chooser and enabled destinations",
       "settled/effects/notice/alerts": "Actual promises, destination callback invocations, stale status and visible failure alert"
@@ -658,7 +817,12 @@
       "foregroundAndLockRetireReadTest",
       "currentReadKeepsUnavailableReportTest"
     ],
-    "invariants": ["DialogHasExactLease", "CurrentOwnerIsActive", "RetiredReadHasNoEffect", "ComposedNoticeWasReviewed"],
+    "invariants": [
+      "DialogHasExactLease",
+      "CurrentOwnerIsActive",
+      "RetiredReadHasNoEffect",
+      "ComposedNoticeWasReviewed"
+    ],
     "sources": [
       "apps/app/src/prototype/notifications-adapter.ts",
       "apps/app/src/prototype/context-selection.ts",
@@ -673,6 +837,46 @@
     "abstractions": [
       "Simulated development shade, two own notices, up to three review leases and controlled final list outcomes.",
       "Actual dialog approval and cancellation run in JSDOM. Physical browser focus and top-layer behavior, Android delivery and provider calls are outside this projection."
+    ]
+  },
+  {
+    "path": "specs/quint/application/WorkflowClockAdmission.qnt",
+    "module": "WorkflowClockAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "exactWorkflowsVisitTest",
+      "contextReturnsOnCloseTest",
+      "departureRetiresOpeningTest",
+      "requestedMockModeRetiresOpeningTest",
+      "hiddenVisitRetiresOpeningTest",
+      "dispatchedReceiptSettlesAfterDepartureTest",
+      "browserOpensShowWithoutDraftTest"
+    ],
+    "invariants": [
+      "WorkflowsOwnsClockDraft",
+      "ReviewNeedsVisibleIdleDraft",
+      "DispatchHasOpeningReceipt",
+      "RetiredOpeningCannotDispatch",
+      "BrowserShowCannotWriteAlarmReceipt"
+    ],
+    "sources": [
+      "apps/app/src/prototype/clock-adapter.ts",
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/main.tsx",
+      "apps/app/src/runtime/clock-handoff-history.ts"
+    ],
+    "stateMapping": {
+      "view/shown/review/selection": "Committed Workflows or Home, actual Clock render model and agent context input",
+      "hidden/mock/opener/retired": "Synthetic visibility and mode, retained entry callback and opening request custody",
+      "phase/record/handoffs/shows": "Exact controlled opening write, persisted shared envelope and synthetic Clock calls"
+    },
+    "abstractions": [
+      "Two bounded handoffs or browser show calls. The opening receipt and Clock result are separately controlled.",
+      "Template action bindings and shell leave execute in a closed fixture. Physical focus, full renderer transitions, real Android intents and browser alarm behavior are separate."
     ]
   },
   {
@@ -700,9 +904,9 @@
       "apps/app/src/browser/notification-store.ts",
       "apps/app/src/browser/notifications.ts",
       "apps/app/src/prototype/notifications-adapter.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/NotificationAccess.java",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationListener.java",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/NotificationAccess.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationListener.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java",
       "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirror.java",
       "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NotificationMirrorPolicy.java"
     ],
@@ -869,8 +1073,7 @@
       "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/files-agent-contract.ts",
-      "patches/eliza/files-list-identity-client-manifest.json",
-      "patches/eliza/files-list-identity-client.patch",
+      "upstream.lock.json",
       "scripts/prepare-client-features.ts"
     ],
     "abstractions": [
@@ -1023,7 +1226,8 @@
       "apps/app/src/prototype/canonical-notes-editor.ts",
       ".eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts",
       ".eliza/client-features/plugins/plugin-notes/src/client/notes-controller.ts",
-      ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts"
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts",
+      "apps/app/src/prototype/agent-adapter.ts"
     ],
     "abstractions": [
       "Two record identities, five editor tokens and four edit versions/revisions. One remove/restore continuation, rejected concurrent probes and independent save queue use settled promise macrosteps.",
@@ -1072,8 +1276,8 @@
       ".eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts",
-      "patches/eliza/files-list-identity-client.patch",
-      "patches/eliza/files-list-identity-client-manifest.json"
+      "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Installed folder reader, current access/volume readback and registered agent share admission over deferred storage ports. Two folders, three entries, two volumes and six state-read identities.",
@@ -1117,11 +1321,13 @@
     ],
     "sources": [
       "apps/app/src/prototype/camera-adapter.ts",
-      ".eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts"
+      ".eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts",
+      "apps/app/src/browser/files.ts"
     ],
     "abstractions": [
       "Native Photos Trash read lifecycle with coalesced requests, current epochs, hidden loaded-marker invalidation and resume. Three media identities and four request identities.",
-      "Deletion/restore effects, selection, native retention and browser Trash are separate obligations."
+      "Deletion/restore effects, selection, native retention and browser Trash are separate obligations.",
+      "Files Photos collections reference the existing media rows; this model covers their media identity and lifecycle guards. Cross-store batch atomicity and native chooser outcomes remain outside the bounded projection."
     ]
   },
   {
@@ -1141,10 +1347,12 @@
       ".eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts",
-      "patches/eliza/files-list-identity-client.patch",
-      "patches/eliza/files-list-identity-client-manifest.json"
+      "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
+      "Installed agent filters from a mounted Browse view, with separate reload and query generations, pending and displayed filter ownership, cancellation, filtered result ordering and no storage writes.",
+      "Three operation identities, two text classes and four unique row identities. The model covers reloads during an explicit filter. Other reload sequences, category and Trash transactions, and provider queries remain separate obligations.",
       "Installed agent filter operations from a mounted Browse view, with separate access and query generations, current filter ownership, cancellation and filtered result ordering.",
       "Three operation identities, two text classes and four unique row identities. Reload after mount, category/Trash list transactions, file mutations and provider query implementation remain separate obligations."
     ]
@@ -1313,8 +1521,8 @@
       ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
       ".eliza/client-features/packages/ui/src/mobile-shell/mobile-launcher.ts",
       "apps/app/src/prototype/home-shell.ts",
-      "patches/eliza/launcher-observer-client.patch",
-      "patches/eliza/launcher-observer-client-manifest.json"
+      "vendor/eliza/plugins/plugin-native-system/src/client/launcher.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Actual launcher package listener registration, document notifications, 120ms debounce and idempotent retirement with late or failed native removal.",
@@ -1421,9 +1629,9 @@
       ".eliza/client-features/packages/ui/src/mobile-shell/view-id-migration.ts",
       ".eliza/client-features/packages/ui/src/mobile-shell/view-registry.ts",
       "apps/app/src/product/alpha-product.ts",
-      "config/alpha-product.json",
-      "patches/eliza/launcher-legacy-view-key-client.patch",
-      "patches/eliza/launcher-legacy-view-key-client-manifest.json"
+      "apps/app/src/product/alpha-product-registration.ts",
+      "vendor/eliza/packages/ui/src/mobile-shell/view-registry.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Actual ordered favorites storage, legacy view-ID and default-policy migration, unavailable storage, held-load external writes, profile identity and visible-only reorder.",
@@ -1440,7 +1648,8 @@
       "staleBootCannotReplaceResumeTest",
       "resetInvalidatesPendingNativeReadTest",
       "failedReadKeepsLastGoodScaleTest",
-      "refreshAffectsOnlyNewToastsTest"
+      "refreshAffectsOnlyNewToastsTest",
+      "longMessageAndFocusHoldKeepCapturedDurationTest"
     ],
     "invariants": [
       "requestOwnership",
@@ -1450,7 +1659,7 @@
       "apps/app/src/runtime/accessibility-timeout.ts",
       "apps/app/src/prototype/model.js",
       "apps/app/src/main.tsx",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java"
     ],
     "stateMapping": {
       "scale/latest": "Last known timeout percentage and exact current native read token",
@@ -1490,12 +1699,12 @@
     ],
     "stateMapping": {
       "installed/generation": "Exact installed observer cleanup and observed installation count",
-      "dialogs": "Fixture modal opening order, observed through the owner receiving visible feedback",
+      "dialogs": "Native or active ARIA modal opening order, observed through the owner receiving visible feedback",
       "sourceMessage/sourceUndo": "Actual page message and Undo availability",
       "regions/target/visible/undo/clicks": "Rendered live regions, visible feedback and forwarded click count"
     },
     "abstractions": [
-      "Two modal identities and two distinct toast messages. Observations follow observer/frame settlement.",
+      "Two native or ARIA modal identities and two distinct toast messages. Observations follow observer/frame settlement.",
       "Browser focus fallback for preexisting modal stacks and assistive technology behavior are separate."
     ],
     "bounds": {
@@ -1557,8 +1766,7 @@
       "apps/app/src/runtime/view-focus.ts",
       "apps/app/src/main.tsx",
       "vendor/eliza/packages/ui/src/accessibility/screen-focus.ts",
-      "patches/eliza/screen-focus-priority-client.patch",
-      "patches/eliza/screen-focus-priority-client-manifest.json"
+      "upstream.lock.json"
     ],
     "stateMapping": {
       "installed/generation": "Exact Alpha installer handle and replacement count",
@@ -1575,6 +1783,49 @@
       "maxSamples": 1000,
       "maxSteps": 80,
       "maxVerifyDepth": 4
+    }
+  },
+  {
+    "path": "specs/quint/application/AppInfoHandoffComposition.qnt",
+    "module": "AppInfoHandoffComposition",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "personalDetailsDeliverWithoutRefreshTest",
+      "removedWorkPackageRefreshesPublishedInventoryTest",
+      "retiredDrawerReplyLeavesNewMenuTest",
+      "acceptedDispatchRemainsTheSameReplyTest"
+    ],
+    "invariants": [
+      "ExactBridgeTarget",
+      "SameProfileForQueryAndSettings",
+      "RefusedLookupHasNoDispatch",
+      "FailedReplyKeepsNoticeOwner"
+    ],
+    "sources": [
+      "apps/app/src/prototype/home-shell.ts",
+      "apps/app/src/native.ts",
+      "apps/app/src/platform-plugins.ts",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSystemPlugin.java",
+      "vendor/eliza/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
+      "vendor/eliza/plugins/plugin-native-system/src/client/launcher.ts",
+      "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SystemLauncherApps.java"
+    ],
+    "stateMapping": {
+      "open/menu/inventory/listReads": "Real mounted drawer selection, launcher snapshot and inventory reads",
+      "staged/platform": "Controlled Android package, profile, dispatch and launcher inventory changes",
+      "selected/phase/request": "Exact active selection and raw captured Capacitor request across queued, answered and settled checkpoints",
+      "reply/notice": "Exact JVM observed query, Settings intent and response plus actual owner-specific Home toast"
+    },
+    "abstractions": [
+      "Two synthetic installed app identities, one distinct work profile, and one outstanding App info call.",
+      "Chromium and JVM bridge source run with controlled transport, Android platform and inventory ports. Physical Android behavior remains separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 8
     }
   },
   {
@@ -1601,8 +1852,8 @@
       ".eliza/client-features/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
       ".eliza/client-features/packages/ui/src/mobile-shell/navigation.ts",
       ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
-      "patches/eliza/launcher-drawer-ownership-client.patch",
-      "patches/eliza/launcher-drawer-ownership-client-manifest.json"
+      "vendor/eliza/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Mounted installed drawer long press, search, current menu, keyboard focus, home pin, and exact synthetic App Info handoff with late replies.",
@@ -1658,7 +1909,8 @@
       "staleReadAndPreparationCannotRetireSuccessorTest",
       "onlyExactCancelCanReconnectTest",
       "pauseCoalescesContinueTest",
-      "refusalExplainedOnlyAtExactFailureTest"
+      "refusalExplainedOnlyAtExactFailureTest",
+      "automaticRefusalStaysQuietTest"
     ],
     "invariants": [
       "owner",
@@ -1668,7 +1920,7 @@
     "sources": [
       "apps/app/src/main.tsx",
       "vendor/eliza/packages/ui/src/state/app-update-gate.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java"
     ],
     "stateMapping": {
       "active/bridge/phase/acknowledged": "Actual private renderer activation and bridge ownership",
@@ -1706,7 +1958,7 @@
     "sources": [
       "apps/app/src/main.tsx",
       "vendor/eliza/packages/ui/src/state/app-update-gate.ts",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java"
     ],
     "stateMapping": {
       "pending/bridge/acknowledged/ready": "Actual startup owner, retained readiness and native acknowledgements",
@@ -1734,6 +1986,7 @@
       "oldReadCannotFillNextAccountTest",
       "queuedEditStaysWithCapturedOwnerTest",
       "lateClearKeepsOriginalAccountDraftTest",
+      "retiredClearRequiresSameOwnerReviewTest",
       "foreignStoredFrameCannotBeOfferedTest",
       "earlierLifetimeCannotDiscardNewDraftTest"
     ],
@@ -1741,7 +1994,8 @@
       "OwnsEditor",
       "CurrentLease",
       "ForeignUnavailable",
-      "OwnsWrites"
+      "OwnsWrites",
+      "ReviewBlocksConsume"
     ],
     "sources": [
       "apps/app/src/prototype/canonical-calendar-drafts.ts",
@@ -1767,6 +2021,7 @@
       "orphanCannotBeRestagedTest",
       "orphanCannotBeUndoneTest",
       "ordinaryChangesKeepOrphanUntilExplicitReplacementTest",
+      "completedOneOffCannotSnoozeTest",
       "aGenuinePairBlocksReplacementTest",
       "explicitClockCancelLeavesOrphanWithoutReceiptTest",
       "aPendingAlarmCannotAcquireSoundOnLockGrantTest"
@@ -1845,7 +2100,10 @@
       "expiredTapKeepsTheCacheTest",
       "differentOccurrenceOnlyOpensCalendarTest"
     ],
-    "invariants": ["DeliveryOwnsCurrentVisit", "VisitAndReadAreIndependent"],
+    "invariants": [
+      "DeliveryOwnsCurrentVisit",
+      "VisitAndReadAreIndependent"
+    ],
     "sources": [
       "apps/app/src/prototype/reminder-adapter.ts",
       "apps/app/src/prototype/automations-adapter.ts",
@@ -1875,7 +2133,11 @@
       "changedVisitRefusesSameDetailTest",
       "nativeReplacementKeepsNewTokenTest"
     ],
-    "invariants": ["ProtectedCommitKeepsCustody", "CommitOwnsPublishedVisit", "ConsumesExactToken"],
+    "invariants": [
+      "ProtectedCommitKeepsCustody",
+      "CommitOwnsPublishedVisit",
+      "ConsumesExactToken"
+    ],
     "sources": [
       "apps/app/src/prototype/reminder-adapter.ts",
       "apps/app/src/runtime/reminder-creations.ts",
@@ -1916,8 +2178,8 @@
       "apps/app/src/prototype/notifications-adapter.ts",
       "apps/app/src/main.tsx",
       "apps/app/src/runtime/connection-ui.tsx",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java",
-      "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java"
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCanonicalNotifications.java",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java"
     ],
     "stateMapping": {
       "generation/live/phase/drain": "Actual mount closure and renderer read, restore and commit activity",
@@ -2007,7 +2269,9 @@
       "actualNativeModalRetiresDelayedReleaseTest",
       "sameTaskModalDoesNotRestoreOldPressTest",
       "nonmodalAndUninterruptedCompatibilityTest",
-      "oldDeadlineCannotSettleANewPressTest"
+      "oldDeadlineCannotSettleANewPressTest",
+      "imagePreviewCoversComposerAndKeepsDraftTest",
+      "dialogContentsDoNotDismissReviewTest"
     ],
     "invariants": [
       "ExactPress",
@@ -2024,7 +2288,8 @@
     ],
     "abstractions": [
       "Raised input scrim with two press generations, bounded pointer identities, one inline or native modal and representative held, moved and released paths. A nonmodal dialog does not take modal ownership.",
-      "Actual source adapters and browser pointer capture execute over a controlled shell. Half-sheet gestures, full product mounting for other modal families, and installed Android pointer delivery are separate."
+      "Actual source adapters and browser pointer capture execute over a controlled shell. Half-sheet gestures, full product mounting for other modal families, and installed Android pointer delivery are separate.",
+      "Full-screen image previews include the assistant in inert background ownership; visual zoom and pan are covered by browser pointer tests."
     ]
   },
   {
@@ -2082,12 +2347,7 @@
       "vendor/eliza/plugins/plugin-maps/src/client/maps-screen.ts",
       "vendor/eliza/plugins/plugin-maps/src/client/device-navigation.ts",
       "vendor/eliza/plugins/plugin-maps/src/client/agent-navigation.ts",
-      "patches/eliza/maps-reroute-state-client.patch",
-      "patches/eliza/maps-reroute-state-client-manifest.json",
-      "patches/eliza/maps-reroute-maps-screen-client.patch",
-      "patches/eliza/maps-reroute-maps-screen-client-manifest.json",
-      "patches/eliza/maps-reroute-device-navigation-client.patch",
-      "patches/eliza/maps-reroute-device-navigation-client-manifest.json"
+      "upstream.lock.json"
     ],
     "stateMapping": {
       "session/guidanceSession/guidanceRoute/rerouting/fixReady": "Mounted MapsScreenController navigation lifecycle and active guidance",
@@ -2678,7 +2938,8 @@
       "apps/app/src/prototype/template.html",
       "apps/app/src/browser/voice.ts",
       "apps/app/src/browser/audio-capture.ts",
-      "apps/app/src/browser/note-audio-store.ts"
+      "apps/app/src/browser/note-audio-store.ts",
+      "apps/app/src/browser/note-recording-journal.ts"
     ],
     "stateMapping": {
       "view/owner/recorder": "Committed shell view, controlled canonical Notes identity and mounted recorder state",
@@ -2717,9 +2978,7 @@
       "apps/app/src/browser/files.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-volume.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
-      "vendor/eliza/plugins/plugin-files/src/browser/files.ts",
-      "patches/eliza/files-storage-query-client.patch",
-      "patches/eliza/files-storage-placement-client.patch"
+      "vendor/eliza/plugins/plugin-files/src/browser/files.ts"
     ],
     "stateMapping": {
       "mode/active/queued/prepared": "Actual Node exclusive lock and same-realm fallback with source requests held at library ports",
@@ -2747,7 +3006,16 @@
       "refusedSendRestoresDraftTest",
       "ownerIsolationTest",
       "conversationIsolationTest",
-      "imagePreviewDoesNotNavigateTest"
+      "imagePreviewDoesNotNavigateTest",
+      "refusedWriteKeepsDraftTest",
+      "retiredWriteKeepsOriginalSlotTest",
+      "revivedConversationDoesNotReviveWriteTest",
+      "orphanedBytesDoNotCreateHistoryTest"
+    ],
+    "invariants": [
+      "NoDoublePlacement",
+      "CurrentVisible",
+      "PreviewInPlace"
     ],
     "sources": [
       "apps/app/src/prototype/agent-adapter.ts",
@@ -2758,9 +3026,583 @@
       "apps/app/src/runtime/development-cloud-agents.ts",
       "apps/app/src/prototype/camera-adapter.ts"
     ],
+    "stateMapping": {
+      "owner/conversation/generation": "Two exact renderer bindings and the controlled sequence of their session and history lifetimes",
+      "draft/preparing/pending/heldOwner/heldConversation/heldGeneration": "Actual transcript chip, held storage call, typing state and scoped draft-controller hold port",
+      "sent/saved/recorded/visible": "Actual optimistic and restored shell rows, exact local document keys and closed transport receipts",
+      "preview/view": "In-place preview contract. The replay observes the Notes view and does not execute preview."
+    },
     "abstractions": [
-      "Finite representative identities and successful storage writes only. Models are contract checks, not complete implementation refinement or cross-device persistence proof.",
+      "Actual composer send, transcript draft projection and session/history subscription with closed document, shell, draft-controller and transport ports.",
+      "One attachment with bounded binding generations and representative owners and conversations. Physical storage, queued React commits, arbitrary overlap and image preview remain separate.",
       "Source review recorded in specs/quint/ui-return-review-20261109.md."
+    ]
+  },
+  {
+    "path": "specs/quint/application/PreviousNotesAvailability.qnt",
+    "module": "PreviousNotesAvailability",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "ownerABADoesNotReviveOldProbeTest",
+      "viewRetirementDoesNotReadNativeDraftTest",
+      "nativeDraftPresenceRequiresCurrentCollectionTest",
+      "ownerSwitchClearsVisibleLegacyBeforeNewProbeTest",
+      "hideAndSuspendRetireVisibleProbeTest",
+      "blockedStoreRemainsUnavailableTest"
+    ],
+    "invariants": [
+      "ActiveProbeHasExactOwner",
+      "DraftReadsFollowDeviceCollection",
+      "LegacyRetirementClearsBeforeCanonical"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/prototype/legacy-notes-access.ts"
+    ],
+    "stateMapping": {
+      "device/visible/hidden/suspended/owner": "Platform and controlled owner and view observations supplied to the real presence code",
+      "mode/epoch/legacyOwner/probeOwner/probeEpoch/active/started": "Exact renderer Notes source and current read ownership",
+      "pending/draftReads/availability/paints/cleared/canonical": "Observed read ports, published availability, record retirement and canonical refresh"
+    },
+    "abstractions": [
+      "Two owners and three pending read identities. Browser and native presence use closed storage ports.",
+      "The selected legacy view is an input. Record opening, React commits, legacy key parsing, and device persistence require separate evidence."
+    ]
+  },
+  {
+    "path": "specs/quint/application/PreviousNotesSourceOpening.qnt",
+    "module": "PreviousNotesSourceOpening",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "retiredOpenCannotReportLaterSuccessTest",
+      "heldRetentionKeepsCurrentSourceTest",
+      "supersededRetentionRefusesOldSelectionTest",
+      "nativeDraftReadBeforeEditableTest",
+      "unreadableDraftKeepsSavedRowsReadOnlyTest",
+      "draftOnlyStorageRequiresReviewTest",
+      "ownerChangeDropsHeldFingerprintTest",
+      "unretainedEditRefusesCanonicalReturnTest"
+    ],
+    "invariants": [
+      "NoRetiredSuccess",
+      "LegacySelectionHasExactOwner",
+      "EditableRowsHaveCurrentStore",
+      "CanonicalReturnClearsLegacyView"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/prototype/legacy-notes-access.ts"
+    ],
+    "stateMapping": {
+      "device/owner/mode/epoch/legacyOwner/canonical/refreshes": "Actual renderer source ownership and refresh call to the controlled canonical coordinator",
+      "last/task/retention/pending/finished/retired": "Selection calls and results, held retention/read ports, and observed aborts",
+      "status/failed/editedSaved/document/storeEpoch/rows/source/kept": "Actual visible saved rows and read admission, source identity and preserved draft projection"
+    },
+    "abstractions": [
+      "Actual renderer selection and read-only admission against closed store projections. Two owners, three selections and two retained-draft task identities.",
+      "The source binding, closed collection and draft results and source-scoped boolean are observed. Device storage, queued React commits, recording, presence probing, Trash, retention writes and canonical store behavior remain separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 8
+    }
+  },
+  {
+    "path": "specs/quint/application/NotesTrashReadPublication.qnt",
+    "module": "NotesTrashReadPublication",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "canonicalDoesNotReadTest",
+      "newerResultCannotBeReplacedTest",
+      "pendingSuccessorAlreadyOwnsReadTest",
+      "canonicalSwitchDropsHeldSuccessTest",
+      "sourceReturnDoesNotReviveHeldErrorTest",
+      "currentFailureAndEmptyReadTest",
+      "unmountDropsHeldReadAndListenerTest"
+    ],
+    "invariants": [
+      "ExactPublication",
+      "ConsistentReadCount",
+      "ReadErrorHidesRows"
+    ],
+    "sources": [
+      "apps/app/src/prototype/notes-trash-adapter.ts",
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/main.tsx"
+    ],
+    "stateMapping": {
+      "live/mode/epoch": "Shell lifetime and selected Notes source generation supplied by controlled host transitions",
+      "started/pending": "Actual Trash read port calls, bound to their admitted source epochs",
+      "rows/error/writes/lastWrite": "Exact Trash row and error patches observed at the shell call after each read settles"
+    },
+    "abstractions": [
+      "One mounted legacy/canonical shell, three read identities, bounded source changes and one unmount. Execute the real adapter and Trash change listener with controlled read and shell ports.",
+      "The source mode and generation transitions use the agent-adapter contract. React commit timing, durable storage, maintenance, restore, erase and canonical Notes remain separate."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 8
+    }
+  },
+  {
+    "path": "specs/quint/application/BrowserExternalHandoff.qnt",
+    "module": "BrowserExternalHandoff",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "publicExactDispatchTest",
+      "privateDuplicateIsSuppressedTest",
+      "privateCancellationRestoresPresentationTest",
+      "sameAddressRecommitDuringFinalPresentationTest",
+      "viewDepartureDuringFinalPresentationTest",
+      "selectedTabChangeBeforeDispatchTest",
+      "hiddenDocumentCannotDispatchTest",
+      "reopenedBrowserCannotReviveOldVisitTest",
+      "lockedScreenCannotDispatchTest",
+      "retiredPrivateHandoffCannotOpenReviewTest",
+      "missingHttpsNeverPreparesTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/browser-external-handoff.ts",
+      "apps/app/src/prototype/browser-adapter.ts",
+      "vendor/eliza/plugins/plugin-native-browser-surface/src/tab-host.ts"
+    ],
+    "abstractions": [
+      "One selected tab and bounded presentation epochs, including a retained handoff across view departure and same-address recommit. The external bridge and presentation surface are closed fixtures."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ClientObservationSupport.qnt",
+    "module": "ClientObservationSupport",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "ExactPeerIsCheckedAgainTest",
+      "NewProcessCannotBeLearnedInSameSessionTest",
+      "CancelledSharedHandshakeRestartsUnderTurnSignalTest",
+      "CancelledTurnDoesNotCancelSharedHandshakeTest",
+      "RetirementFencesLateComparisonTest",
+      "RetiredLearnRemainsSettledTest",
+      "ReplacedLearnDropsFailedPromiseTest",
+      "LegacyPeerPreservesOrdinaryContextTest",
+      "ConnectionReplacementFencesLateComparisonTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/client-observation-support.ts",
+      "apps/app/src/runtime/connection-ui.tsx"
+    ],
+    "abstractions": [
+      "One serialized turn, one shared background learn, five status reads, independent connection epoch replacement and explicit retirement. The status callback is a closed fixture."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ObservationTurnDispatch.qnt",
+    "module": "ObservationTurnDispatch",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "ExactSupportAddsOneMetadataFieldTest",
+      "ReplacementProcessKeepsOrdinaryPlainTurnTest",
+      "LegacyProductBypassesObservationSessionTest",
+      "LegacyMockEnvelopeNeverContainsOptionalDayTest",
+      "ReplacementAfterAdmissionStillFencesPostTest",
+      "CallerStopDuringComparisonRefusesBeforeDispatchTest",
+      "ActivationAndTurnShareOneStatusBeforeFreshComparisonTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/client-observation-support.ts",
+      "apps/app/src/runtime/phone-context.ts",
+      "apps/app/src/runtime/local-agent.ts"
+    ],
+    "abstractions": [
+      "One serialized turn and representative supported, legacy, malformed and replacement process replies. The actual JSON and streaming requests run through closed bridge ports."
+    ]
+  },
+  {
+    "path": "specs/quint/application/PhotosOwnedAlbumDialog.qnt",
+    "module": "PhotosOwnedAlbumDialog",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "replacementRetiresControlsTest",
+      "deleteNeedsFreshControlsTest",
+      "lateCompletionDoesNotCloseSuccessorTest",
+      "hiddenAndDepartedRejectControlTest",
+      "chooserStageRetiresMembershipControlsTest"
+    ],
+    "invariants": [
+      "ExactAlbumRevision",
+      "PendingOwnsARequest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/camera-adapter.ts",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "One Photos view, two synthetic albums, representative media revision bindings and one outstanding mutation. The album library and native bridge are closed ports."
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserAlbumStorage.qnt",
+    "module": "BrowserAlbumStorage",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "AlbumCommitOrdersBeforeQueuedTrashTest",
+      "PriorMediaWriteRefusesStaleAddTest",
+      "BatchContinuesAfterStaleMediaTest",
+      "RenamedAlbumRejectsOldRevisionTest"
+    ],
+    "invariants": [
+      "HeldMediaIsCurrent",
+      "AlbumOwnsMembers"
+    ],
+    "sources": [
+      "apps/app/src/prototype/browser-camera.ts",
+      "apps/app/src/prototype/camera-adapter.ts",
+      "apps/app/src/browser/documents.ts",
+      "apps/app/src/browser/domain-document.ts",
+      "apps/app/src/browser/preference-documents.ts",
+      "vendor/eliza/packages/ui/src/platform/browser-document-store.ts"
+    ],
+    "abstractions": [
+      "Closed Chromium tabs exercise actual IndexedDB and a representative three-item rendered batch. Mixed-version writers and process interruption remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ShadeRowCustody.qnt",
+    "module": "ShadeRowCustody",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "shadeReentryCannotPublishOldPollTest",
+      "retainedControlsCannotAcquireReplacementTest",
+      "exactClearReportsPartialAndRefreshesTest",
+      "retiredOperationCannotReportOrRefreshTest",
+      "refreshClearsReplacedSelectionTest"
+    ],
+    "invariants": [
+      "SelectionBelongsToCurrentOwnRow",
+      "NonemptyDispatchKeys",
+      "PendingReadHasVisit"
+    ],
+    "sources": [
+      "apps/app/src/prototype/notifications-adapter.ts",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "Closed bridge and two representative notification revisions, shade visits and lock transitions. Android delivery and pointer ownership remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/AutomaticAppUpdateSchedule.qnt",
+    "module": "AutomaticAppUpdateSchedule",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staysForegroundAndFindsLaterReleaseTest",
+      "offlineRetriesAreBoundedAndRecoverTest",
+      "backgroundInvalidatesBeforeLaterEffectTest",
+      "disposedInFlightCannotAcquireAnotherAttemptTest",
+      "coldSnapshotRetriesBeforeAnyNativeRequestTest",
+      "coldInstallReplyRetriesWithoutOverlappingTest",
+      "pendingPrecedesColdCapabilityAndDoesNotDispatchTest",
+      "lateColdFactsAfterResumeLoseAuthorityTest",
+      "disposedColdReplyNeverRearmsTest",
+      "readyCannotBackgroundTest",
+      "readyCannotDisposeTest",
+      "readyDispatchCompletesTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/settings-adapter.ts",
+      "vendor/eliza/packages/ui/src/state/app-update-gate.ts"
+    ],
+    "stateMapping": {
+      "active/disposed/busy/failures/wakeAt": "Actual shared foreground scheduler snapshot",
+      "valid": "Authority of the actual in-flight scheduler callback",
+      "now": "Controlled clock supplied to the scheduler",
+      "poll.phase": "Actual product poll awaiting manifest, native facts or native install promise; completion is observed from the shared scheduler",
+      "poll.capability/pending/candidate": "Controlled native fact classes, actual pending-session result and actual source parser result",
+      "poll.requests/lastCapability/lastPending/lastCandidate/lastCurrent/lastIdle": "Actual install bridge call count and capability, pending, candidate, owner and idle observations at dispatch"
+    },
+    "abstractions": [
+      "One shared scheduler with interval4/retry1 controlled clock units; the default fifteen-minute/one-minute configuration is also tested by the owning renderer tests.",
+      "Four native capability classes; native SDK, consent and monotonic uptime/reboot ownership remain native admission obligations. The renderer does not own a second boot clock.",
+      "At most three native bridge requests in the finite model, at most two in source scenarios. A bridge request is not PackageInstaller session creation, installation or physical-device proof.",
+      "The original generic scheduler schedules remain. Product scenarios execute the actual poll and authenticated scheduler through controlled promise cutpoints, including pending precedence, exact signer admission, cold deferral and lifecycle invalidation.",
+      "Progress requires foreground timer delivery, eligible idle Home, suitable native capability and settling calls. OS acceptance, network availability and background delivery remain external.",
+      "The ready microstep is unobservable: actual facts admission, pure parsing and native dispatch share one synchronous JavaScript continuation. Lifecycle transitions are disabled only during that microstep; they remain enabled at real awaited ports."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 6
+    },
+    "invariants": [
+      "NativeRequestWasAdmitted",
+      "PollHasOneOwner"
+    ]
+  },
+  {
+    "path": "specs/quint/application/KeyboardFocus.qnt",
+    "module": "KeyboardFocus",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "floatingKeyboardBackAndRetapTest",
+      "initialHiddenDoesNotStealFocusTest",
+      "otherFieldRetainsFocusTest",
+      "browserFallbackTest",
+      "nativeOwnsResizeOrderingTest",
+      "voiceHandoffPreservesEditorTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/chat-overlay-motion-adapter.ts",
+      "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java"
+    ],
+    "stateMapping": {
+      "native": "MainActivity IME visibility or explicit auxiliary-IME handoff; -1 is browser fallback",
+      "covered": "viewport keyboard coverage, independent of native IME visibility",
+      "focus/draft/selection": "composer active element and retained editing state"
+    },
+    "abstractions": [
+      "OS scheduling and text rendering require installed-device evidence. This model covers focus transitions, not dictation or navigation.",
+      "Production renderer transitions execute in test/final-ui-lifecycle.test.mjs, including Home and full conversation with constant viewport."
+    ]
+  },
+  {
+    "path": "specs/quint/application/SettingsPageFocus.qnt",
+    "module": "SettingsPageFocus",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "sameDepthBackTest",
+      "licensesBackTest",
+      "replacedControlTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/model.js"
+    ],
+    "abstractions": [
+      "Finite page/control identities. Concrete DOM replacement and focus records are checked by settings-page-focus.mjs.",
+      "No-popup source component; React layout, platform delivery and liveness remain separate obligations."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CalendarFormControls.qnt",
+    "module": "CalendarFormControls",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "monthAheadAndTodayTest",
+      "nearMidnightTest",
+      "monthRowsTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "Quarter-hour draft times and real month facts; no provider mutation or canonical Calendar authority.",
+      "Concrete day/time/month source blocks are checked in calendar-form-controls.mjs; installed behavior remains separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/OSDefaults.qnt",
+    "module": "OSDefaults",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "layoutFailureCannotCommitVersionTest",
+      "versionFailureRetriesStoredLayoutTest",
+      "completedMigrationPreservesLaterStockChoiceTest",
+      "customLayoutRemainsCustomTest",
+      "existingPermissionDenialRemainsTest",
+      "ineligiblePermissionDoesNotGrantTest",
+      "coreLauncherScopeTest"
+    ],
+    "sources": [
+      "android/aosp/branding/core-launcher/AlphaCoreLauncherPolicy.java",
+      "android/aosp/branding/core-launcher/AlphaQsDefaultsPolicy.java",
+      "android/aosp/branding/core-launcher/AlphaSharedStoragePolicy.java"
+    ],
+    "abstractions": [
+      "Two layout classes plus Alpha defaults; settings collector writes are serialized. Real multi-user services, arbitrary tile arrays and process-death injection require Android qualification. Pure Java policy matrices separately cover package/Home/system and permission predicates."
+    ]
+  },
+  {
+    "path": "specs/quint/application/OSProvisioning.qnt",
+    "module": "OSProvisioning",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "expiredCallbackCannotCompleteTest",
+      "previousAttemptCannotCompleteTest",
+      "existingKeyboardPreservedTest",
+      "missingKeyboardCannotCompleteTest",
+      "authorityLossCannotCompleteTest",
+      "appearanceNeedsUserActionTest"
+    ],
+    "sources": [
+      "android/aosp/branding/provision/AlphaFreshSetupPolicy.java",
+      "android/aosp/branding/provision/AlphaFreshPresets.java",
+      "android/aosp/branding/provision/AlphaWelcome.java",
+      "android/aosp/branding/provision/AlphaAppearance.java"
+    ],
+    "abstractions": [
+      "Three attempt generations, one activity and binary authority/success facts. Android role callbacks, secure-settings compare/write and actual wallpaper partial failures remain platform qualification; the model does not establish hardware or provider acceptance."
+    ]
+  },
+  {
+    "path": "specs/quint/application/OSSourceStaging.qnt",
+    "module": "OSSourceStaging",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "driftCannotWriteTest",
+      "mismatchedAssetsCannotWriteTest",
+      "partialFailureRetainsBackupTest",
+      "completeNeedsReadbackTest"
+    ],
+    "sources": [
+      "scripts/stage-alpha-os-branding.py",
+      "scripts/generate-alpha-os-branding.ts",
+      "scripts/fetch-alpha-os-preset-inputs.py"
+    ],
+    "abstractions": [
+      "Two representative staged files; exact paths, hashes, asset generation, all-file admission and per-file backup/write are exercised by the existing Python staging cases. Partial I/O failure leaves preserved inputs and must not claim a completed image.",
+      "Progress requires a stable admitted source and fair successful backup/write/readback operations. Permanent I/O failure does not promise completion. No image, signing, device operation or automatic rollback is proved."
+    ]
+  },
+  {
+    "path": "specs/quint/application/AccountSheet.qnt",
+    "module": "AccountSheet",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "settingsAndStartupShareAccount",
+      "switchedOwnerCannotConfirm",
+      "dismissPreservesData",
+      "modeAndSignOutPreserveKeys"
+    ],
+    "sources": [
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/cloud-membership-ui.tsx",
+      "apps/app/src/prototype/settings-adapter.ts"
+    ],
+    "abstractions": [
+      "Two account identities and two connection modes. Data and key revisions abstract preserved stores. Billing, authentication and provider behavior retain their existing contracts.",
+      "Safety scenarios do not establish live-provider, device or UI conformance. No liveness claim."
+    ]
+  },
+  {
+    "path": "specs/quint/application/SavedServiceRead.qnt",
+    "module": "SavedServiceRead",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "savedThenFreshTest",
+      "lateSavedCannotReplaceLiveTest",
+      "refusedOldWindowStaysHiddenTest",
+      "changedOwnerStaysHiddenTest",
+      "changedCredentialStaysHiddenTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/prototype/inbox-cloud-adapter.ts"
+    ],
+    "abstractions": [
+      "Two owners, credentials and windows, three ordered clock values and eight read generations. Saved rows never authorize writes and never replace a settled fresh read.",
+      "Cache size/age policy is implemented by existing ServiceReadCache. Model scenarios and isolated implementation regressions do not prove live-provider or device behavior."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CloudPlanRecheck.qnt",
+    "module": "CloudPlanRecheck",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "serverOutageKeepsRetryClockTest",
+      "realNetworkReturnAllowsOneImmediateCheckTest",
+      "backgroundNetworkReturnWaitsForVisibilityTest",
+      "changedScopeCannotSpendOldNetworkPermitTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/connection-ui.tsx"
+    ],
+    "abstractions": [
+      "One minute is a clock step, two account/provider scope classes and four reads. Server success and failure share settlement because neither changes the retry clock. An explicit owner action may cancel and lift the limit.",
+      "Android connectivity/visibility events and real provider access remain external inputs. Existing controller and browser regressions cover actual request counts; no network performance or device acceptance is inferred."
+    ]
+  },
+  {
+    "path": "specs/quint/application/VoiceTranscriptFollow.qnt",
+    "module": "VoiceTranscriptFollow",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "invariants": [
+      "oneShot",
+      "followsOwnedTurn",
+      "preservesReading",
+      "noFocusChange"
+    ],
+    "tests": [
+      "acceptanceBeforeDeliveryTest",
+      "deliveryBeforeAcceptanceTest",
+      "oneShotTest",
+      "manualReadingBeforeAcceptanceTest",
+      "manualReadingAfterAcceptanceTest",
+      "oldHistoryStaysPutTest",
+      "conversationMismatchTest",
+      "textMismatchTest",
+      "accountChangeTest",
+      "closedChatTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/voice-adapter.ts",
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/runtime/development-cartesia-conversation.ts"
+    ],
+    "stateMapping": {
+      "started/opened/baseline": "beginVoiceScrollFollow captures collapsed/open state and the pre-delivery last user ID",
+      "accepted/pending": "validated first stt_final invokes onAcceptedTurn -> followVoiceTurn once per trace",
+      "row/sameConversation/sameText": "current last user row, its conversation binding, and trimmed transcript identity",
+      "cancelled/current/open": "transcript user-input cancellation, voice cleanup/session retirement, and chat visibility",
+      "follow/follows": "getSnapshotBeforeUpdate consumes a matching intent and requests a tail-follow commit",
+      "focus": "unchanged active-element class; this intent only scrolls"
+    },
+    "abstractions": [
+      "One voice turn, one old and one delivered user-row ID, and matching/mismatched conversation and text classes. Both accepted-final/delivery orderings are explicit. No model/provider/native calls.",
+      "Render is a snapshot/commit macrostep. Progress scenarios assume the accepted callback and matching delivery occur and React performs a subsequent commit; no scheduler fairness or unbounded liveness proof is claimed.",
+      "Focus is an unchanged abstract field. Real focus, scroll geometry, resize transitions, multi-turn sessions, streaming layout and message-delivery ordering remain separate browser/runtime conformance obligations. The independent browser regression supplies that evidence."
     ]
   }
 ]

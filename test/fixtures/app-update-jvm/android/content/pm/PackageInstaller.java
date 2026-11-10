@@ -38,14 +38,16 @@ public class PackageInstaller {
  public void phase(String name){if(name.equals(failAt)){failAt="";throw new RuntimeException("DeadSystemException");}}
  private int next=40;
  /** Android's side of a session. progress: 0.8 once staging is reported done or the session is validated, 0.9 once native libraries are being prepared. validated: its commit is marked. intended: its commit intent was set. onDisk: that mark as Android last wrote it. referrer: written with the rest of the session, so a seal on disk always carries it. */
- public static final class Internal {public int active;public boolean sealed,validated,onDisk,accepted,stageDirInUse,intended;public float progress;public android.net.Uri referrer;}
+ public static final class Internal {public int active,requireUserAction;public boolean sealed,validated,onDisk,accepted,stageDirInUse,intended;public float progress;public android.net.Uri referrer;}
  public static class SessionParams {
-  public static final int MODE_FULL_INSTALL=1;
+  public static final int MODE_FULL_INSTALL=1,USER_ACTION_NOT_REQUIRED=2;
+  int requireUserAction;
   android.net.Uri referrer;
   public SessionParams(int mode){}
   public void setAppPackageName(String name){}
   public void setSize(long size){}
   public void setReferrerUri(android.net.Uri uri){referrer=uri;}
+  public void setRequireUserAction(int value){if(android.os.Build.VERSION.SDK_INT<31)throw new AssertionError("setRequireUserAction before API 31");requireUserAction=value;}
  }
  /** What one read returned, not a view of the session. */
  public static class SessionInfo {
@@ -98,7 +100,7 @@ public class PackageInstaller {
  /** setSessionFailed or a rejected confirmation: the stage directory goes, and Android forgets the session. */
  public void destroy(int id){sessions.remove((Integer)id);destroyed.add(id);}
  public void abandonSession(int id){if(abandonDown||!sessions.remove((Integer)id))throw new SecurityException("No such session");abandoned.add(id);}
- public int createSession(SessionParams params){sessions.add(++next);Internal session=new Internal();if(params!=null)session.referrer=params.referrer;internals.put(next,session);write();return next;}
+ public int createSession(SessionParams params){sessions.add(++next);Internal session=new Internal();if(params!=null){session.referrer=params.referrer;session.requireUserAction=params.requireUserAction;}internals.put(next,session);write();return next;}
  public Session openSession(int id){phase("open");if(!sessions.contains(id))throw new SecurityException("No such session");internals.get(id).active++;return new Session(id);}
  /** generateInfoInternal: validation holds the session's lock up to its mark, and a read waits for that lock. From sdk 33 it takes progress ahead of the lock, so one that waited pairs the mark with the progress from before it; through sdk 32 it takes both under the lock. */
  private SessionInfo read(int id,Runnable waiting){

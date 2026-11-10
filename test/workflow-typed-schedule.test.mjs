@@ -92,13 +92,13 @@ const A=await import(${JSON.stringify(resolve(root,'apps/app/src/runtime/phone-w
 const now=Date.UTC(2027,0,15,12);const note=(localTime,timeZone,days=[0,1,2,3,4,5,6])=>A.phoneTriggerClockChangeNote({kind:'time',localTime,timeZone,days},now);
 console.log(JSON.stringify({gap:note('02:30','America/New_York'),edge:note('02:00','America/New_York'),after:note('03:00','America/New_York'),before:note('01:45','America/New_York'),
  otherDays:note('02:30','America/New_York',[1,2,3,4,5]),autumnOnly:note('01:30','America/New_York'),utc:note('02:30','UTC'),london:note('01:15','Europe/London'),bad:note('02:30','Not/AZone')}));`);
- assert.equal(out.gap,'On 2027-03-14 the clock in America/New_York moves forward from 02:00 to 03:00, so 02:30 does not occur and this workflow does not run that day.');
+ assert.equal(out.gap,'On 2027-03-14 the clock moves forward from 02:00 to 03:00, so 02:30 does not occur and this workflow does not run that day.');
  assert.match(out.edge,/^On 2027-03-14 .* so 02:00 does not occur/);
  assert.equal(out.after,'');
  assert.equal(out.before,'');
  assert.equal(out.otherDays,'',"the spring change is on a Sunday, which this weekday schedule never runs");
  assert.equal(out.autumnOnly,'',"a repeated autumn hour still occurs and fires once");
  assert.equal(out.utc,'');
- assert.equal(out.london,'On 2027-03-28 the clock in Europe/London moves forward from 01:00 to 02:00, so 01:15 does not occur and this workflow does not run that day.');
+ assert.equal(out.london,'On 2027-03-28 the clock moves forward from 01:00 to 02:00, so 01:15 does not occur and this workflow does not run that day.');
  assert.equal(out.bad,'');
 });

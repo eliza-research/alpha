@@ -10,7 +10,7 @@ serial=os.environ['ANDROID_SERIAL'];assert re.fullmatch(r'emulator-[0-9]+',seria
 archive=Path('test-results/resident-ci-archive');out=Path('test-results/resident-ci-native');out.mkdir(exist_ok=False)
 def interrupted(*unused):raise KeyboardInterrupt('Owned CI interrupted')
 signal.signal(signal.SIGTERM,interrupted);signal.signal(signal.SIGINT,interrupted)
-APP='ai.elizaresearch.alphaphone';TEST=APP+'.test';HELPER=APP+'.peerfixture';h=lambda b:hashlib.sha256(b).hexdigest()
+APP='ai.alphacompute.alphaphone';TEST=APP+'.test';HELPER=APP+'.peerfixture';h=lambda b:hashlib.sha256(b).hexdigest()
 def run(*args,input=None,timeout=60):
  return subprocess.run(['adb','-s',serial,*args],input=input,text=True,capture_output=True,timeout=timeout,check=True).stdout
 assert run('shell','getprop','ro.kernel.qemu').strip()=='1';assert run('shell','getprop','ro.product.cpu.abi').strip()=='x86_64'
@@ -29,7 +29,7 @@ for relative,digest in helper['sources'].items():
  assert '..' not in Path(relative).parts and Path(relative).is_file() and h(Path(relative).read_bytes())==digest
 signer=Path(os.environ['ANDROID_HOME'])/'build-tools/36.0.0/apksigner'
 badging=subprocess.check_output([str(signer.parent/'aapt'),'dump','badging',str(archive/'private-peer-debug.apk')],text=True)
-assert re.search(r"^package: name='ai.elizaresearch.alphaphone.peerfixture' ",badging,re.M)
+assert re.search(r"^package: name='ai.alphacompute.alphaphone.peerfixture' ",badging,re.M)
 assert 'application-debuggable' in badging and 'launchable-activity:' not in badging and 'android.permission.INTERNET' not in badging
 for name in ['private-peer-debug.apk']+[v+'-'+k+'.apk' for v in ['standalone','launcher'] for k in ['debug','androidTest']]:
  certs=re.findall(r'^Signer #\d+ certificate SHA-256 digest: ([a-f0-9]{64})$',subprocess.check_output([str(signer),'verify','--print-certs',str(archive/name)],text=True),re.M)
@@ -48,7 +48,7 @@ for relative,digest in frozen.items():
 
 def guard():
  assert run('shell','am','get-current-user').strip()=='0';assert_no_resident(run)
- sockets=run('shell','cat','/proc/net/unix');assert not re.search(r'/data/(?:user|user_de)/\d+/ai\.elizaresearch\.alphaphone/.*/(?:ipc|ipc-recovery-[^/]+)/',sockets)
+ sockets=run('shell','cat','/proc/net/unix');assert not re.search(r'/data/(?:user|user_de)/\d+/ai\.(?:alphacompute|alphacompute)\.alphaphone/.*/(?:ipc|ipc-recovery-[^/]+)/',sockets)
 def installed(package,user,digest):
  paths=run('shell','pm','path','--user',user,package).strip().splitlines();assert len(paths)==1 and paths[0].startswith('package:')
  assert run('shell','sha256sum',paths[0][8:]).split()[0]==digest

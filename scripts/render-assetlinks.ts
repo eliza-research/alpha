@@ -13,17 +13,17 @@
  * --debug-fingerprint given. Writes artifacts/assetlinks.json by default. The file holds no secret.
  *
  * Alpha's return host is the Eliza Cloud web host (ELIZAOS_APP_LINK_HOST must equal
- * config/cloud-deployment.json production.web), whose assetlinks.json Cloud builds only from the
+ * scripts/cloud-deployment-policy.ts production.web), whose assetlinks.json Cloud builds only from the
  * operator variable ELIZA_ANDROID_ASSET_LINKS_JSON: one {package_name, sha256_cert_fingerprints,
  * relations?} entry per app, and any malformed entry or duplicate package publishes [] for every
  * app. --cloud-config prints that variable's value with Alpha's entry carrying the release
  * fingerprint (plus each --keep-fingerprint), keeping every other app's entry from the --published
- * document unchanged; the operator sets it (docs/human-actions.md H-13). --check reads a rendered
+ * document unchanged; the operator sets it. --check reads a rendered
  * file or the published URL (HTTPS, HTTP 200 without a redirect, application/json, as Android's
  * verifier requires) and exits 0 only when it grants handle_all_urls to Alpha's package for the
  * recorded release signer.
  *
- * Publishing is the operator's step (docs/human-actions.md H-13). The https
+ * Publishing is the operator's step. The https
  * autoVerify filter itself defaults to the configured production web host
  * (android/app/product.gradle); appLinkFilters() reads it back from an APK manifest dump.
  */
@@ -291,8 +291,8 @@ export function statementsToCloudEntries(statements: readonly LinkStatement[]): 
  * fingerprints Alpha's previous entry had that the new one drops, `keptDebug` kept values that are
  * recorded debug signers (legitimate on staging, never a release identity).
  */
-export function cloudAssetLinksConfig({entries = [], packageName, signerSha256, keep = [], debugFingerprints = []}: SignerOptions & {entries?: readonly LinkEntry[]; keep?: readonly string[]}) {
-  if (signerSha256 === "unset") throw new Error(`${SIGNER_FILE} signerSha256 is "unset"; record the release certificate first (docs/human-actions.md H-09)`);
+export function cloudAssetLinksConfig({ entries = [], packageName, signerSha256, keep = [], debugFingerprints = [] }: SignerOptions & {entries?: readonly LinkEntry[]; keep?: readonly string[]}) {
+  if (signerSha256 === "unset") throw new Error(`${SIGNER_FILE} signerSha256 is "unset"; record the release certificate first`);
   if (!HEX64.test(signerSha256 ?? "")) throw new Error(`${SIGNER_FILE} signerSha256 must be 64 lower-case hex characters`);
   const release = fingerprint(signerSha256);
   const debug = debugCertificateSet(debugFingerprints);
@@ -335,8 +335,8 @@ export function publishedAssetLinksCheck(text: string, {packageName, signerSha25
   const parsed = assetLinksGrants(text, packageName);
   const problems = [...parsed.problems];
   const granted = new Set(parsed.granted);
-  let release: string | null = null;
-  if (signerSha256 === "unset") problems.push(`${SIGNER_FILE} signerSha256 is "unset"; the release certificate is not recorded yet (docs/human-actions.md H-09)`);
+  let release = null;
+  if (signerSha256 === "unset") problems.push(`${SIGNER_FILE} signerSha256 is "unset"; the release certificate is not recorded yet`);
   else if (!HEX64.test(signerSha256 ?? "")) problems.push(`${SIGNER_FILE} signerSha256 is not a SHA-256`);
   else {
     release = fingerprint(signerSha256);
@@ -420,7 +420,7 @@ async function main(argv: string[]) {
       const result = cloudAssetLinksConfig({ entries, packageName, signerSha256, keep: options.keep, debugFingerprints });
       for (const value of result.removed) console.error(`note: ${packageName} no longer lists ${value}; pass --keep-fingerprint ${value} to keep it`);
       for (const value of result.keptDebug) console.error(`warning: ${value} is a recorded debug signing certificate; keep it only where debug builds must verify (staging), never as a release identity`);
-      console.error(`Set ${CLOUD_ASSET_LINKS.variable} on the Cloud environment to the value below (docs/human-actions.md H-13), deploy, then run: node scripts/render-assetlinks.ts --check https://<web host>/.well-known/assetlinks.json`);
+      console.error(`Set ${CLOUD_ASSET_LINKS.variable} on the Cloud environment to the value below, deploy, then run: node scripts/render-assetlinks.ts --check https://<web host>/.well-known/assetlinks.json`);
       console.log(result.text);
       return 0;
     }

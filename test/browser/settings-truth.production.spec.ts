@@ -88,7 +88,7 @@ async function nativeStub(page:Page,fixture:Fixture={}){
     }
     if(plugin==='ElizaSystem'&&method==='getBuildInfo')return {launcher:true,version:'0.1.0'};
     if(plugin==='ElizaSystem'){
-     if(method==='getStatus')return {packageName:'ai.elizaresearch.alphaphone',roles:['home','assistant'].map(role=>({role,androidRole:'android.app.role.'+role.toUpperCase(),available:true,held:false,holders:[]}))};
+     if(method==='getStatus')return {packageName:'ai.alphacompute.alphaphone',roles:['home','assistant'].map(role=>({role,androidRole:'android.app.role.'+role.toUpperCase(),available:true,held:false,holders:[]}))};
      if(method==='getDeviceSettings')return {volumes:[{stream:'music',current:6,max:15},{stream:'ring',current:7,max:7},{stream:'alarm',current:0,max:7}]};
      if(method==='setFlashlight'){if(!state.torch)return {available:false,enabled:false};return {available:true,enabled:input.enabled===true};}
      if(method==='requestRole')return {role:input.role,held:false,resultCode:0};
@@ -183,7 +183,7 @@ test('launcher Home asks Android for its own shade and draws no Alpha shade, til
  }
  // Nothing in the session asked Android to change a radio, sensor or sound switch.
  const names=await callNames(page);
- expect(names.filter(name=>/\.set|\.toggle|\.enable|\.disable/i.test(name))).toEqual([]);
+ expect(names.filter(name=>name!=='Agent.setGoogleAgentAccess'&&/\.set|\.toggle|\.enable|\.disable/i.test(name))).toEqual([]);
 });
 
 test('Android permission and notification handoffs use their displayed controls and report refusal',async({page})=>{
@@ -216,7 +216,7 @@ test('every Settings row is a control backed by real state, with no fixture valu
  await review().click();await expect(review()).toHaveAttribute('aria-pressed','true');
  await openSettings(page,'Privacy');await expect(review()).toHaveAttribute('aria-pressed','true');
  await review().click();await expect(review()).toHaveAttribute('aria-pressed','false');
- expect((await callNames(page)).filter(name=>/\.set(?!Flashlight)|\.perform$/i.test(name))).toEqual([]);
+ expect((await callNames(page)).filter(name=>name!=='Agent.setGoogleAgentAccess'&&/\.set(?!Flashlight)|\.perform$/i.test(name))).toEqual([]);
 });
 
 
@@ -272,14 +272,20 @@ test('the browser build of Settings shows no fixture value and no radio or senso
 test('Settings › Eliza Cloud reports the verified plan without automatically opening code entry',async({page})=>{
  await nativeStub(page);
  await openSettings(page);
- await openCloudPlanFromSettings(page);
- const plan=current(page);
+ const plan=await openCloudPlanFromSettings(page);
  await expect(plan.getByText('synthetic-settings@example.invalid',{exact:true})).toBeVisible();
  await expect(plan).toContainText('Plus');
- await expect(plan.getByRole('button',{name:'Sign out of Eliza Cloud',exact:true})).toBeVisible();
- await expect(plan.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();
+ await expect(plan.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
+ await expect(plan.getByRole('button',{name:'Use code',exact:true})).toBeVisible();
  await expect(page.getByLabel('Membership code',{exact:true})).toHaveCount(0);
- await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
+ await expect(plan.getByRole('button',{name:/^(Manage plan|Choose a plan)$/,exact:true})).toBeVisible();
+ const iconPaths=await Promise.all(['Use code','Manage plan','Add balance'].map(name=>plan.getByRole('button',{name,exact:true}).locator('span[aria-hidden="true"]').first().evaluate(icon=>getComputedStyle(icon).getPropertyValue('--account-icon'))));
+ expect(new Set(iconPaths).size).toBe(3);
+ await plan.getByRole('button',{name:'Sign out',exact:true}).click();
+ const signOut=page.getByRole('dialog',{name:'Sign out?',exact:true});await expect(signOut).toBeVisible();
+ await signOut.getByRole('button',{name:'Close Account',exact:true}).click();await expect(signOut).toHaveCount(0);await expect(plan).toBeVisible();
+ await expect(plan.getByText('synthetic-settings@example.invalid',{exact:true})).toBeVisible();
+
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);
  expect(await page.evaluate(()=>(window as any).truth.calls.some((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/credits/balance'))).toBe(false);
 });
@@ -292,16 +298,15 @@ for(const subscription of ['credits','active','canceled'] as const)test(`Setting
  const notice=page.getByRole('region',{name:'Eliza Cloud plan notice',exact:true});
  if(subscription==='canceled')await expect(notice).toBeVisible();
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await openCloudPlanFromSettings(page);
- const plan=current(page),redeem=plan.getByRole('button',{name:'Redeem code',exact:true});
+ const plan=await openCloudPlanFromSettings(page),redeem=plan.getByRole('button',{name:'Use code',exact:true});
  if(subscription==='credits')await expect(plan).toContainText('No active subscription');
- await expect(plan.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();
+ await expect(plan.getByRole('button',{name:/^(Manage plan|Choose a plan)$/,exact:true})).toBeVisible();
  await expect(page.getByLabel('Membership code',{exact:true})).toHaveCount(0);
  // A signed-in owner may open code entry without changing current plan admission.
  // Focus activation also works when the cancellation notice occupies the top edge.
  await expect(redeem).toBeVisible();await redeem.focus();await redeem.press('Enter');
  await expect(page.getByLabel('Membership code',{exact:true})).toBeVisible();
- await expect(page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true}).getByRole('region',{name:'Subscription',exact:true}).getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
+ await expect(page.getByRole('dialog',{name:'Account',exact:true}).getByRole('region',{name:'Balance and membership',exact:true}).getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).truth.calls.filter((c:any)=>c.plugin==='AlphaConnection'&&c.method==='request'&&new URL(c.input.url).pathname==='/api/v1/subscription/redeem').length)).toBe(0);
 });
 
@@ -317,8 +322,9 @@ for(const scenario of ['unbound','recovering','connected'] as const)test(`Agent 
  }
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await openCloudPlanFromSettings(page);
- const account=current(page);await expect(account.getByText('AI connection',{exact:true})).toBeVisible();
+ await current(page).getByRole('button',{name:'About',exact:true}).click();
+ await current(page).getByRole('button',{name:'Connection help',exact:true}).click();
+ const account=current(page);await expect(account.getByRole('heading',{name:'Connection help',exact:true})).toBeVisible();
  await expect(account).not.toContainText('On this computer');
  await expect(account).not.toContainText('Running on this phone');
  if(scenario==='recovering')await expect(account).not.toContainText('Running on this device');

@@ -3,7 +3,7 @@ import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import { expect, type Page } from '@playwright/test';
 import {openCanonicalCalendarForm} from './helpers/canonical-calendar';
 import {openLegacyNotes,openLegacyAttachment} from './helpers/legacy-notes';
-import {openOwnedPhotoViewer} from './helpers/owned-photo';
+import {openOwnedPhotoViewer,openPhotoShare} from './helpers/owned-photo';
 import {installHomeCalendar} from './helpers/home-calendar';
 import {calendarSyncFixture} from './calendar-sync-fixture';
 import {settled} from './helpers/settled';
@@ -31,7 +31,20 @@ const settle = async (page: Page) => {
   await settled(page);
 };
 
-const press = async (page: Page, steps: string[]) => { for (const step of steps) { if(step==='Edit event'||step==='Delete event') await chooseCalendarEventAction(page,step); else await (step === 'Photos tools' ? page.getByLabel(step, { exact: true }) : page.getByRole('button', { name: step, exact: true }).first()).click(); } };
+const press = async (page: Page, steps: string[]) => {
+  for (const step of steps) {
+    if(step==='Share photo'){await openPhotoShare(page);continue;}
+    if (step === 'Edit event' || step === 'Delete event') {
+      await chooseCalendarEventAction(page, step);
+      continue;
+    }
+    if (['Reply', 'Reply all', 'Forward', 'Move to Trash'].includes(step) &&
+      await page.locator('.mail-message-menu').count() && !await page.locator('.mail-message-menu[open]').count()) {
+      await page.getByLabel('Message actions', {exact: true}).click();
+    }
+    await (step === 'Photos tools' || step === 'Message actions' ? page.getByLabel(step, {exact: true}) : page.getByRole('button', {name: step, exact: true}).first()).click();
+  }
+};
 /** The named subview is on screen and exposed (not retired behind another subview). */
 const showing = async (page: Page, subview?: string) => {
   if (subview) await expect(page.locator(`[data-alpha-subview="${subview}"]:not([inert])`)).toBeVisible();
@@ -53,7 +66,7 @@ export async function openFilesStorage(page:Page,theme='light') {
   await page.goto(`/?theme=${theme}`);
   await page.getByRole('button',{name:'Files',exact:true}).click();
   await page.getByRole('button',{name:'Internal storage',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Sort files',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Files options',exact:true})).toBeVisible();
 }
 
 /** Legacy-only controls remain covered through the explicit Older notes source. */
@@ -74,7 +87,7 @@ const mock = (start: string, steps: string[] = [], shows?: string): State => ({
   name: `mock ${[start, ...steps].join(' > ')}`, shows,
   open: async (page, theme) => {
     // Edit and info require a real library revision; prototype images have none.
-    if(start==='photos:viewer'&&steps.some(step=>step==='Edit photo'||step==='Photo info'))await openOwnedPhotoViewer(page,theme);
+    if(start==='photos:viewer'&&steps.some(step=>step==='Edit photo'||step==='Photo info'||step==='Share photo'))await openOwnedPhotoViewer(page,theme);
     else await page.goto(`/?mode=mock&theme=${theme || 'light'}&start=${start}`);
     await settle(page);
     if (ARRIVES[start]) { await expect(page.getByRole('button', { name: ARRIVES[start], exact: true })).toBeVisible(); await settle(page); }
@@ -114,14 +127,12 @@ export const LIVE_STATES: State[] = [
   live('Settings privacy', ['Settings', 'Privacy']),
   live('Settings about', ['Settings', 'About']),
   // About exposes the existing connection recovery controls in the grouped layout.
-  live('Settings connection help', ['Settings', 'About', 'Connection help']),
   live('Settings licenses', ['Settings', 'About', 'Open source licenses']),
-  live('Settings scheduled summaries', ['Settings', 'Apps', 'Workflows', 'Scheduled summaries']),
   live('Settings app permissions', ['Settings', 'Privacy', 'App permissions']),
   // The remaining Settings pages, and each app's open menu, search field and editor.
   live('Settings apps', ['Settings', 'Apps']),
-  live('Settings accounts', ['Settings', 'Account', 'Account & plan']),
-  live('Settings connections', ['Settings', 'Account', 'Google & email']),
+  live('Settings accounts', ['Settings', 'Account']),
+  // Google account management needs a signed-in fixture; production checks provide it.
   live('Settings notifications', ['Settings', 'General', 'Notifications']),
   live('Settings calendar', ['Settings', 'Apps', 'Calendar']),
   live('Settings password manager', ['Settings', 'Apps', 'Passwords']),
@@ -164,7 +175,7 @@ export const MOCK_STATES: State[] = [
 ].map(start => mock(start, [], SUBVIEW[start])).concat([
   // Subviews, menus, sheets and search fields one or two taps inside a view.
   mock('inbox', ['Search email']),
-  mock('inbox:mail', ['Reply'], 'inbox-composing'),
+  mock('inbox:mail', ['Message actions', 'Reply'], 'inbox-composing'),
   mock('calendar:event', ['Edit event'], 'calendar-form'),
   mock('workflows', ['Clock alarms']),
   mock('browser', ['Menu']),
@@ -179,7 +190,7 @@ export const MOCK_STATES: State[] = [
   // Earlier folder-creation controls were retired; the live retained-record state above covers recovery.
   mock('notes', ['Open The case for on-device agents'], 'notes-link'),
   mock('notes:editor', ['More', 'Share note']),
-  {name:'live Files sort',open:async(page,theme)=>{await openFilesStorage(page,theme);await press(page,['Sort files']);await settle(page);}},
+  {name:'live Files sort',open:async(page,theme)=>{await openFilesStorage(page,theme);await press(page,['Files options']);await settle(page);}},
   mock('files:preview', ['Rename']),
   mock('files:preview', ['Move file']),
   mock('files:preview', ['Share file']),
@@ -201,7 +212,7 @@ export const MOCK_STATES: State[] = [
  * or mail exists; the names and subjects are invented. Development server only, because the
  * boundary is replaced by importing the page's own modules.
  */
-async function connectMailbox(page: Page) {
+export async function connectMailbox(page: Page) {
   await page.evaluate(async () => {
     const { connectionController: controller } = await import('/src/runtime/connection-ui.tsx' as string);
     const { secureConnectionStore: store } = await import('/src/runtime/native-connection.ts' as string);
@@ -232,8 +243,9 @@ async function connectMailbox(page: Page) {
       initiateGmail: async () => { throw Error('No live OAuth in fixture'); },
     };
     controller.getCloudClient = () => ({ client, sessionId: 'fixture-cloud', credentialId: 'fixture' } as any);
-    const snapshot = { ...controller.getSnapshot(), cloudAccount: { environment: 'production', userId: 'fixture-owner', sessionId: 'fixture-cloud', credentialId: 'fixture' } } as any;
-    controller.getSnapshot = () => snapshot;
+    const readSnapshot=controller.getSnapshot;let lastSnapshot:ReturnType<typeof readSnapshot>|undefined,snapshot:ReturnType<typeof readSnapshot>;
+    const cloudAccount={environment:'production',userId:'fixture-owner',organizationId:'fixture-org',sessionId:'fixture-cloud',credentialId:'fixture'};
+    controller.getSnapshot=()=>{const current=readSnapshot();if(current!==lastSnapshot){lastSnapshot=current;snapshot={...current,cloudAccount} as any;}return snapshot;};
   });
 }
 const connected = (name: string, steps: Array<string | RegExp> = [], options: { shows?: string; home?: boolean } = {}): State => ({

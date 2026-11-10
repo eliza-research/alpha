@@ -65,7 +65,11 @@ export async function calendarLinkedRefinement(extraSources = []) {
     await f.restart();trace.steps.push({label:'fresh linked store restores the exact durable checkpoint',action:action('restart'),expect:f.snapshot()});
     if(outcome==='quarantined'){
       assert.equal(await f.engine().reconcile(f.row()),'quarantined');trace.steps.push({label:'quarantine prevents another provider dispatch',action:action('blocked'),expect:f.snapshot()});
-      const recovered=await f.engine().recoverDispatch(f.row());trace.steps.push({label:'recovery uses actual provider evidence without a new mutation',action:[action('beginRecovery'),action('recoveryReply')],expect:{...f.snapshot(),'s.recovery':recovered}});
+      const recovered=await f.engine().recoverDispatch(f.row());
+      // These schedules provide no settled-release evidence. Only confirmed
+      // provider readback is true; an unresolved outcome remains quarantined.
+      assert.ok(recovered==='landed'||recovered==='unresolved','Unexpected recovery outcome without settled-release evidence: '+recovered);
+      trace.steps.push({label:'recovery uses actual provider evidence without a new mutation',action:[action('beginRecovery'),action('recoveryReply')],expect:{...f.snapshot(),'s.recovery':recovered==='landed'}});
     }
     traces.push(trace);
   }

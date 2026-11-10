@@ -1,5 +1,5 @@
 {
-  "description": "Recorded reasons for unverified items that exist only when a resident runtime is staged (PACKAGED). Read in addition to unverified-allowlist.json only then. This file gates nothing (docs/decisions.md P-09); a reason is a record, not legal sign-off.",
+  "description": "Recorded reasons for unverified items that exist only when a resident runtime is staged (PACKAGED). Read in addition to unverified-allowlist.json only then. This file gates nothing (owner decision P-09); a reason is a record, not legal sign-off.",
   "entries": [
     {
       "name": "Bun JavaScript runtime (libeliza_bun.so)",

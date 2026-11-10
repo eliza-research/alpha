@@ -1,8 +1,7 @@
 # Application state models
 
 These modules describe the current product shell and its storage and review
-boundaries. The exact entry-point paths are recorded in `manifest.json`. The
-repository-wide allocation and source hashes are recorded in `../coverage.json`.
+boundaries. The exact entry-point paths are recorded in `manifest.json`.
 
 | Module | Source symbols | Modeled state and abstraction |
 | --- | --- | --- |
@@ -85,9 +84,8 @@ conflicts. It also compares every one of the 240 finite voice-deletion evidence
 combinations from a Quint-generated table with the actual TypeScript planner.
 The delegation-return cases execute the real page script in an isolated DOM and
 compare its URL clearing and link exposure with Quint traces.
-`test/quint-coverage.test.mjs` rejects missing models, missing source
-allocation, changed hashes and inconsistent source links. These checks exercise
-selected contracts. General implementation refinement remains unproved.
+These checks exercise selected contracts. General implementation refinement
+remains unproved.
 
 ## Bounds and exclusions
 
@@ -104,3 +102,19 @@ these checks. The inventory records domain allocation, not a proof that every
 source variable or every possible implementation behavior refines its model.
 
 `AccessibleToastLifetime` checks native timeout refresh ownership and the shell's toast timer replacement and expiration.
+
+## Alpha OS defaults and first-run staging
+
+`OSDefaults` covers one-time layout persistence and existing permission choices.
+The Java policy matrix separately checks the exact installed package, Home role,
+system installation and requested permission predicates. `OSProvisioning` covers
+three request generations, late callbacks, authority loss, preserved keyboard
+selection and explicit appearance application. `OSSourceStaging` separates
+all-file admission, preserved preimages, partial failure and final readback.
+
+The source cache contains hash-verified AOSP baseline inputs, not authored
+application code. `.cache` is excluded from the source inventory; the staging
+and policy tests verify those inputs. Models use finite layout classes and
+serialized persistence steps. Eventual completion assumes stable eligible state
+and fair successful callbacks/writes; permanent platform or I/O failure stays
+open. These checks do not prove an image boot, update, rollback or device UX.

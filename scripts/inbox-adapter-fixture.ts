@@ -71,7 +71,7 @@ type Chip = {label: string; pick: Action; on?: boolean};
 type Reader = {
  body: string; failed: boolean; canLoadThread: boolean; loadThread: Action;
  hasThread: boolean; nextThread: Action; archive: Action; canArchive: boolean;
- canToggleRead: boolean; toggleRead: Action; forward: Action; hasLinks: boolean;
+ canToggleRead: boolean; toggleRead: Action; forward: Action; ask: Action; hasLinks: boolean;
  links: {href: string; mismatch: boolean; open: Action}[];
  atts: {size: string; open: Action}[];
 };
@@ -83,6 +83,7 @@ type Rendering = ReturnType<MailDraftsController['render']> & MailReviewView & {
  attachment: {external: boolean; text: string; save: Action; close: Action} | null;
  cachedListNotice: string;
  cachedListShown: boolean;
+ refreshDisabled: boolean;
  emptyText: string;
  emptyAdd: boolean;
  loadMoreLabel: string;
@@ -104,6 +105,7 @@ export type InboxFixtureApi = {
  isActive: () => boolean;
  set: (patch: Partial<State>) => void;
  toast: (message: string) => void;
+ attachReviewedMail?: (title: string, from: string, validate: () => Promise<string>) => void;
 };
 interface InboxView {
  state: object;
@@ -156,7 +158,7 @@ function scenario({caps={},accounts=null}: {caps?: Partial<GmailInboxCapabilitie
    if(query==='in:inbox is:unread')return {messages:inboxPage.filter(m=>m.unread),syncedAt:'2026-10-08T12:00:00Z',nextPageToken:null};
    if(query==='in:inbox')return {messages:inboxPage,syncedAt:'2026-10-08T12:01:00Z',nextPageToken:null};
    return {messages:query==='in:archive'?[mail('arch-1')]:query==='in:trash'?[mail('trash-1')]:[],syncedAt:'2026-10-08T12:02:00Z',nextPageToken:null};},
-  gmailRead:async(_grant,id)=>{calls.push(['read',id]);const m=inboxPage.find(x=>x.id===id)||mail(id);return {message:m,bodyText:bodies[id]?.bodyText||'Plain body',links:bodies[id]?.links||[]};},
+  gmailRead:async(_grant,id)=>{calls.push(['read',id]);const m=inboxPage.find(x=>x.id===id)||mail(id);return {message:m,bodyText:bodies[id]?.bodyText||'Plain body',links:bodies[id]?.links||[],historyId:'h-'+id,attachments:bodies[id]?.attachments||[]};},
   gmailThread:async(_grant,threadId)=>{calls.push(['thread',threadId]);const id=threadId.slice(7),m=inboxPage.find(x=>x.id===id)||mail(id);return {messages:[{message:m,bodyText:bodies[id]?.bodyText||'Plain body',links:bodies[id]?.links||[],historyId:'h-'+id,attachments:bodies[id]?.attachments||[]}],total:1,offset:0,historyId:'th',nextOffset:null};},
   gmailInboxCapabilities:async()=>capabilities,
   gmailDrafts:async()=>{calls.push('drafts');return {drafts:[{draftId:'d1',messageId:'dm1',subject:'Plan draft',to:['friend@example.invalid'],snippet:'Draft body',updatedAt:today.toISOString()},{draftId:'d2',messageId:'dm2',subject:'Re: thread',to:[],snippet:'',updatedAt:null}],nextPageToken:null};},
@@ -189,11 +191,11 @@ function scenario({caps={},accounts=null}: {caps?: Partial<GmailInboxCapabilitie
   withdrawn: (string | null)[];
   consumed: string[];
   listener: Action;
-  agent: {sessionId: string} | null;
+  agent: {sessionId: string; agentId?: string; ownerId?: string; origin?: string} | null;
   review: ReviewNotice | null;
   released: number;
  } = {tap:null,withdrawals:0,withdrawn:[],consumed:[],listener:()=>{throw Error('Mail notice listener not registered');},agent:null,review:null,released:0};
- const document: DocumentFixture = {hidden:false, addEventListener(){}, removeEventListener(){}, documentElement:{dataset:{connectionMode:'live'}}};
+ const document: DocumentFixture & {querySelector(): null} = {querySelector:()=>null,hidden:false, addEventListener(){}, removeEventListener(){}, documentElement:{dataset:{connectionMode:'live'}}};
  const serviceReadCache = async (): Promise<Cache | null> => null;
 
  const sandbox=inboxAdapterBindings({MailboxListCache:class extends mailboxList.MailboxListCache{get(key: string,now=clock){return super.get(key,now);}},MailBodyCache:class extends mailboxList.MailBodyCache<Read>{remember(key: string,body: Read,now=clock){return super.remember(key,body,now);}},serviceReadCache,alphaClient:{getState:()=>({context:{sensitive:false}})},reviewOwnNoticeQuestion:(options: ReviewNotice)=>{mailNotices.review=options;return ()=>{};},releaseGmailQuestion:async()=>{mailNotices.released++;mailNotices.tap=null;},configureGmailBackground:async()=>{},withdrawGmailBackground:async (grant?: string)=>{mailNotices.withdrawals++;mailNotices.withdrawn.push(grant??null);},pendingGmailNotice:async (): Promise<MailNoticeTap | null>=>mailNotices.tap,consumeGmailNotice:async (token: string)=>{mailNotices.consumed.push(token);mailNotices.tap=null;},onGmailNotice:async (fn: Action)=>{mailNotices.listener=fn;return {remove:async()=>{}};},readGmailAccountChoice:(owner: Parameters<typeof readGmailAccountChoice>[0])=>readGmailAccountChoice(owner,choices),saveGmailAccountChoice:(owner: Parameters<typeof saveGmailAccountChoice>[0], id: string | null)=>saveGmailAccountChoice(owner,id,choices),Date:FixedDate,inboxUnsaved,

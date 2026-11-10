@@ -80,7 +80,7 @@ for(const scenario of ['connected','empty','error','restored'] as const)test(`Sh
  await openLegacyNotes(page);await page.getByRole('button',{name:'New note',exact:true}).click();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Waiting shared note');await page.getByRole('textbox',{name:'Note',exact:true}).fill('Exact retained shared body');
  await page.getByRole('button',{name:'More',exact:true}).click();
-  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();await page.getByRole('button',{name:'Share to email',exact:true}).click();
+  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();await page.getByRole('button',{name:'Email',exact:true}).click();
  await expect.poll(async()=>{const f=await gm(page);return scenario==='restored'?f.restoreReads:f.accountReads;}).toBeGreaterThan(0);
  await expect(page.getByText('Checking Gmail connection…',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toHaveCount(0);
@@ -92,11 +92,11 @@ for(const scenario of ['connected','empty','error','restored'] as const)test(`Sh
   await expect(page.getByText('Shared content is ready for a new email. Connect Gmail to continue.',{exact:true})).toBeVisible();
   await page.evaluate(()=>{const f=(window as any).gm;f.accounts=f.originalAccounts;window.dispatchEvent(new Event('alpha:google-accounts-changed'));});
  }else if(scenario==='error'){
-  await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
   await expect(page.getByText('You appear to be offline. Gmail was not reached. Retry when you are connected.',{exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toHaveCount(0);
   await expect(page.getByText('Checking Gmail connection…',{exact:true})).toHaveCount(0);
-  await page.evaluate(()=>(window as any).gm.accountFailure=false);await page.getByRole('button',{name:'Retry',exact:true}).click();
+  await page.evaluate(()=>(window as any).gm.accountFailure=false);await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();
  }
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Waiting shared note');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Waiting shared note\n\nExact retained shared body');
@@ -127,10 +127,13 @@ test('opening an unread message marks it read once through a reviewed operation 
  await setup(page);
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await page.getByRole('button',{name:'Unread, Sender in-0-a, Subject in-0-a',exact:true}).click();
+ await page.getByLabel('Message actions',{exact:true}).click();
  await expect(page.getByRole('button',{name:'Mark unread',exact:true})).toBeVisible();
  expect((await gm(page)).dispatches).toEqual([{kind:'mark-read',messageId:'in-0-a',expectedHistoryId:'h-in-0-a'}]);
  await page.getByRole('button',{name:'Mark unread',exact:true}).click();
+ await page.getByLabel('Message actions',{exact:true}).click();
  await expect(page.getByRole('button',{name:'Mark read',exact:true})).toBeVisible();
+ await page.keyboard.press('Escape');
  expect((await gm(page)).dispatches.at(-1)).toEqual({kind:'mark-unread',messageId:'in-0-a',expectedHistoryId:'h2-in-0-a'});
  await page.getByRole('button',{name:'Back to inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:'Unread, Sender in-0-a, Subject in-0-a',exact:true})).toBeVisible();
@@ -169,7 +172,7 @@ test('a stale archive review is discarded and retried against the current messag
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await page.getByRole('button',{name:'Sender in-0-b, Subject in-0-b',exact:true}).click();
  await page.evaluate(()=>(window as any).gm.stale=true);
- await page.getByRole('button',{name:'Archive',exact:true}).click();
+ await page.getByLabel('Message actions',{exact:true}).click();await page.getByRole('button',{name:'Archive',exact:true}).click();
  const review=page.getByRole('dialog',{name:'Review mail operation',exact:true});
  await expect(review.getByRole('status')).toContainText('changed in Gmail since it was loaded');
  await review.getByRole('button',{name:'Retry with the current message',exact:true}).click();
@@ -185,7 +188,7 @@ for(const [kind,text] of [['offline',/offline/],[409,/revoked or needs authoriza
  await expect(page.getByText(text)).toBeVisible();
  if(kind===409)await expect(page.getByRole('button',{name:'Reconnect Gmail',exact:true})).toBeVisible();
  expect((await gm(page)).searches.length).toBe(1);
- await page.getByRole('button',{name:'Retry',exact:true}).click();
+ await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();
  await expect(page.getByText('Subject in-0-b',{exact:true})).toBeVisible();
  expect((await gm(page)).searches.length).toBe(2);
 });
@@ -193,18 +196,18 @@ for(const [kind,text] of [['offline',/offline/],[409,/revoked or needs authoriza
 test('Settings disconnect asks first and Inbox then shows the honest disconnected state',async({page})=>{
  await setup(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('region',{name:'Inbox',exact:true}).getByText('Subject in-0-a',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Account',exact:true}).filter({visible:true}).click();await page.getByRole('button',{name:'Google & email',exact:true}).click();
+ await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Google & email',exact:true}).click();
  const disconnect=page.getByRole('button',{name:'Disconnect Google account owner@example.test',exact:true});await expect(disconnect).toBeVisible();
  await disconnect.click();await page.getByRole('button',{name:'Keep connected',exact:true}).click();expect((await gm(page)).disconnects).toEqual([]);
- await disconnect.click();const review=page.getByRole('alert');await expect(review).toContainText('including Gmail and Calendar');await expect(review).toContainText('mail and calendar events are not deleted');await review.getByRole('button',{name:'Confirm disconnect Google account',exact:true}).click();
+ await disconnect.click();const review=page.getByRole('alert');await expect(review).toContainText('Gmail and Calendar access through Eliza Cloud end');await expect(review).toContainText("mail and events aren't deleted");await review.getByRole('button',{name:'Confirm disconnect Google account',exact:true}).click();
  await expect(disconnect).toHaveCount(0);expect((await gm(page)).disconnects).toEqual(['grant-0']);
- await page.getByRole('button',{name:'Close Google accounts',exact:true}).click();await returnToApps(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByText('Subject in-0-a',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Close Google accounts',exact:true}).click();await returnToApps(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByText('Subject in-0-a',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toBeVisible();
 });
 
 test('Settings Connections disconnects one confirmed account and reports the read-back',async({page})=>{
  await setup(page,{accounts:['first@example.test','second@example.test']});
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Account',exact:true}).filter({visible:true}).click();await page.getByRole('button',{name:'Google & email',exact:true}).click();
+ await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Google & email',exact:true}).click();
  await expect(page.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true}).click();
  await expect(page.getByRole('alert')).toContainText('Calendar');await page.getByRole('button',{name:'Confirm disconnect Google account',exact:true}).click();
@@ -222,7 +225,7 @@ test('Share by email from Notes opens a prefilled local draft without sending',a
  await page.getByRole('textbox',{name:'Note',exact:true}).fill('First line\nSecond line');
  await page.getByRole('button',{name:'More',exact:true}).click();
   await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();
- await page.getByRole('button',{name:'Share to email',exact:true}).click();
+ await page.getByRole('button',{name:'Email',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Shared plan');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Shared plan\n\nFirst line\nSecond line');
  await expect(page.getByRole('status').filter({hasText:'nothing has been sent'})).toBeVisible();
@@ -292,10 +295,10 @@ test('a failed Load more drops the stale cursor and Retry reloads from the first
  await expect(page.getByText('Subject in-0-b',{exact:true})).toBeVisible();
  await page.waitForFunction(()=>!!(window as any).gm.releasePage);await page.evaluate(()=>{(window as any).gm.failCursor=true;(window as any).gm.releasePage();});
  await page.getByRole('button',{name:'Load more',exact:true}).click();
- await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
  await expect(page.getByText('Subject in-0-b',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Load more',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Retry',exact:true}).click();
+ await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();
  await page.getByRole('button',{name:'Load more',exact:true}).click();
  await expect(page.getByText('Subject in-1-b',{exact:true})).toBeVisible();
  await expect(page.getByText('Subject in-0-b',{exact:true})).toHaveCount(1);
@@ -331,7 +334,7 @@ for(const saved of [false,true])test(`Share to email opens a new populated draft
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Shared selected note');
  await page.getByRole('textbox',{name:'Note',exact:true}).fill('First line\nSecond line');
  await page.getByRole('button',{name:'More',exact:true}).click();
-  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();await page.getByRole('button',{name:'Share to email',exact:true}).click();
+  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();await page.getByRole('button',{name:'Email',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Shared selected note');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Shared selected note\n\nFirst line\nSecond line');
  expect((await gm(page)).prepares).toEqual([]);expect((await gm(page)).dispatches).toEqual([]);
@@ -354,7 +357,7 @@ for(const destination of ['another account','Home'] as const)test(`Shared email 
   s.compareExchange=async(key,prior,next)=>{if(key.startsWith('inbox-drafts:v1:shelf:')){w.shareShelfHeld=true;await new Promise<void>(resolve=>w.releaseShareShelf=resolve);}return cas(key,prior,next);};
  });
  await page.getByRole('button',{name:'More',exact:true}).click();
-  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();await page.getByRole('button',{name:'Share to email',exact:true}).click();
+  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();await page.getByRole('button',{name:'Email',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).shareShelfHeld===true)).toBe(true);
  if(destination==='another account'){
   await page.getByRole('button',{name:'second@example.test',exact:true}).click();
@@ -379,7 +382,7 @@ test('Share to email preserves earlier edits when local preservation conflicts',
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Refused share');await page.getByRole('textbox',{name:'Note',exact:true}).fill('Never replaces earlier email');
  await page.evaluate(async()=>{const {inboxLocalStore:s}=await import('/src/runtime/inbox-local-store.ts');const cas=s.compareExchange.bind(s);s.compareExchange=async(key,prior,next)=>key.startsWith('inbox-drafts:v1:shelf:')?{status:'conflict'}:cas(key,prior,next);});
  await page.getByRole('button',{name:'More',exact:true}).click();
-  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();await page.getByRole('button',{name:'Share to email',exact:true}).click();
+  await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();await page.getByRole('button',{name:'Email',exact:true}).click();
  await expect(page.getByText('Drafts changed in another window. Reload before continuing.',{exact:true})).toBeVisible();await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Other mail folders',exact:true}).click();await page.getByRole('menuitemradio',{name:'Drafts',exact:true}).click();await page.getByRole('button',{name:'Local draft, Conflict protected email',exact:true}).click();await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Conflict protected email');await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Protected exact body');
  expect((await gm(page)).prepares).toEqual([]);expect((await gm(page)).dispatches).toEqual([]);

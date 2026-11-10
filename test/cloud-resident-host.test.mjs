@@ -145,7 +145,7 @@ test('explicit Cloud realtime host switches to Direct and back without leaking r
 });
 
 
-test('Gmail read broker follows the retained owner through Direct selection and account rotation',async()=>{
+test('Gmail and embeddings keep their Cloud owner while Direct owns text and media',async()=>{
  const profile=await fs.mkdtemp(join(tmpdir(),'alpha-gmail-read-launch-')),launches=[],events=[],bindings=[];let nextPort=47870;
  const host=await createCloudResidentHost({profile,port:47869,
   inherited:{ELIZA_MANAGED_GMAIL_READ_BROKER:'http://untrusted.invalid',ELIZA_MANAGED_GMAIL_SEND_BROKER:'http://untrusted.invalid',ELIZA_MANAGED_GMAIL_OPERATION_BROKER:'http://untrusted.invalid'},
@@ -159,13 +159,29 @@ test('Gmail read broker follows the retained owner through Direct selection and 
  };
  try{
   await host.bind({token:'synthetic-cloud-a',credentialId:'owner-a',reference:'ref-a'});assertRead(launches.at(-1),47871);
+  const cloudConfig=JSON.parse(await fs.readFile(join(profile,'provider-launch.json'),'utf8'));
+  assert.deepEqual(cloudConfig.serviceRouting.media,{backend:'elizacloud',transport:'cloud-proxy'});
+  assert.deepEqual(cloudConfig.serviceRouting.tts,{backend:'elizacloud',transport:'cloud-proxy'});
   await host.selectOwn({apiKey:'synthetic-direct-key'});assertRead(launches.at(-1),47872);
   assert.equal(launches.at(-1).env.CEREBRAS_API_KEY,'synthetic-direct-key');assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_API_KEY,undefined);assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_USE_INFERENCE,'false');
+  assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_EMBEDDING_API_KEY,'synthetic-cloud-a');
+  assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_EMBEDDING_URL,'https://api.eliza.app/api/v1');
+  assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_USE_EMBEDDINGS,'true');
+  for(const key of ['ELIZAOS_CLOUD_USE_MEDIA','ELIZAOS_CLOUD_USE_TTS','ELIZAOS_CLOUD_USE_STT'])assert.equal(launches.at(-1).env[key],'false');
+  const directConfig=JSON.parse(await fs.readFile(join(profile,'provider-launch.json'),'utf8'));
+  assert.deepEqual(directConfig.serviceRouting.media,{backend:'cerebras',transport:'direct'});
+  assert.deepEqual(directConfig.serviceRouting.embeddings,{backend:'elizacloud',transport:'cloud-proxy'});
+  assert.equal(directConfig.linkedAccounts.elizacloud.status,'linked');
+  assert.equal(directConfig.serviceRouting.tts,undefined);
   await host.bind({token:'synthetic-cloud-b',credentialId:'owner-b',reference:'ref-b'});assertRead(launches.at(-1),47873);
+  assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_EMBEDDING_API_KEY,'synthetic-cloud-b');
   assert.deepEqual(bindings,['owner-a','owner-a','owner-b']);assert.equal(host.status('owner-a').attachable,false);
   assert.ok(events.includes('close:47871'),'owner-a read broker closed');assert.ok(events.includes('close:47872'),'direct-provider read broker closed');
   assertBefore(events,'close:47871','broker:47872');assertBefore(events,'close:47872','broker:47873');
   await host.clear();assert.equal(launches.at(-1).env.ELIZA_MANAGED_GMAIL_READ_BROKER,'');assert.equal(launches.at(-1).env.ELIZA_MANAGED_CALENDAR_READ_BROKER,'');
+  assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_EMBEDDING_API_KEY,undefined);
+  assert.equal(launches.at(-1).env.ELIZAOS_CLOUD_USE_EMBEDDINGS,'false');
+  assert.equal(JSON.parse(await fs.readFile(join(profile,'provider-launch.json'),'utf8')).linkedAccounts.elizacloud.status,'unlinked');
   for(const key of ['ELIZA_MANAGED_GMAIL_SEND_BROKER','ELIZA_MANAGED_GMAIL_OPERATION_BROKER'])assert.equal(launches.at(-1).env[key],undefined,key);
  }finally{await host.close();await fs.rm(profile,{recursive:true,force:true});}
 });

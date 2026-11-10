@@ -18,7 +18,7 @@ async function openNote(page:Page){
  await expect.poll(()=>page.evaluate(async()=>{const raw=await(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw();return raw?JSON.parse(raw).records.some((n:any)=>n.title==='Groceries'&&n.body==='Milk and eggs.'):false;})).toBe(true);
 }
 /** Starts reading through the module entry point, so the resolved outcome is observable. The editor
- * has no Read aloud button (PLAN.md section 3): reading a note is asked of Alpha. */
+ * has no Read aloud button: reading a note is asked of Alpha. */
 async function readAloud(page:Page){
  await expect(page.getByRole('textbox',{name:'Note',exact:true})).toBeVisible();
  await page.evaluate(async()=>{

@@ -28,32 +28,16 @@ type CameraScope = {
 };
 
 function cameraFixture(browser=false){
- let calls = 0;
- let mode: CaptureMode = 'ok';
- const started = Promise.withResolvers<void>();
- const captureGate = Promise.withResolvers<void>();
- const camera = {
-  startPreview: async () => {},
-  stopPreview: async () => {},
-  async capturePhoto({saveToGallery}: {saveToGallery: boolean}) {
-   calls++;
-   started.resolve();
-   assert.equal(saveToGallery, true);
-   if (mode === 'hold') await captureGate.promise;
-   if (mode === 'fail') throw Error('write unavailable');
-   return {
-    path: mode === 'invalid' ? 'file:///tmp/45' : browser ? 'browser-photo:///1792274767123123456789012' : 'content://media/external/images/media/45',
-    format: 'jpeg', base64: 'jpeg-fixture', width: 1280, height: 720,
-   };
-  },
- };
- const api={S:{chat:'hidden'},isActive:()=>true,set(){},setView(){throw Error('An agent capture must not change views')}};
- const context=vm.createContext({camera,api,validateCameraCaptureResult,nativeId:(id:string)=>id.replace('native-camera-',''),browserMode:browser,disposed:false,captures:[],loaded:true,document:{hidden:false,querySelector:()=>({})},finder:'#camera',schedule(){},message(){},Date}) as CameraScope;
+ let calls=0,mode:CaptureMode='ok';
+ const captureGate=Promise.withResolvers<void>(),started=Promise.withResolvers<void>();
+ const camera={startPreview:async()=>{},stopPreview:async()=>{},async capturePhoto(options: {saveToGallery?: boolean}){calls++;started.resolve();assert.equal(options.saveToGallery,true);if(mode==='hold')await captureGate.promise;if(mode==='fail')throw Error('write unavailable');return {path:mode==='invalid'?'file:///tmp/45':browser?'browser-photo:///1792274767123123456789012':'content://media/external/images/media/45',format:'jpeg',base64:'jpeg-fixture',width:1280,height:720}}};
+ const api={S:{chat:'hidden'},shell(patch: {chat?: string}){Object.assign(this.S,patch);},isActive:()=>true,set(){},setView(){throw Error('An agent capture must not change views')}};
+ const context=vm.createContext({camera,api,validateCameraCaptureResult,nativeId:(id: string)=>id.replace('native-camera-',''),browserMode:browser,disposed:false,captures:[],loaded:true,document:{hidden:false,querySelector:()=>({})},finder:'#camera',schedule(){},message(){},Date}) as vm.Context & CameraScope;
  const visibility=source.slice(source.indexOf('  let requestedCaptureHolds=0;'),source.indexOf('  /** The one photo being written natively'));
  vm.runInContext(shared+stripTypeScriptTypes(receiptPath+'const CHAT_GRACE_MS=10000;let photoWrite;const shutterFlash=()=>{};\n'+lastTile+visibility+'\n'+queue+save+request+';globalThis.capture=takeRequestedPhoto;globalThis.captureHolds=()=>requestedCaptureHolds;',{mode:'transform'}),context);
  vm.runInContext('globalThis.session=createCameraSession({camera,active:()=>true,preview:()=>({}),recording:()=>({}),hooks:{changed:()=>settle()}});var session=globalThis.session;',context);
  // The request starts the preview itself through the session, as on an agent request from another view.
- context.start=async retry=>{await context.session.start(retry);};
+ context.start=async(retry?: boolean)=>{await context.session.start(retry);};
  return {capture:context.capture,context,started:started.promise,get calls(){return calls},setMode:(value:CaptureMode)=>{mode=value},release:()=>captureGate.resolve()};
 }
 
@@ -89,7 +73,7 @@ for(const mode of ['fail','invalid'] as const){const camera=cameraFixture();came
 const held=cameraFixture();held.setMode('hold');const first=held.capture('operation-one',signal(),()=>{});await held.started;assert.equal(held.context.session.capturing,true);assert.equal((await held.capture('operation-two',signal(),()=>{})).status,'failed');assert.equal(held.context.session.capturing,true,'a refused concurrent capture cannot clear the active capture lock');held.release();assert.equal((await first).status,'succeeded');assert.equal(held.calls,1);
 const browser=cameraFixture(true);assert.equal((await browser.capture('browser-operation',signal(),()=>{})).cameraResult?.mediaId,'1792274767123123456789012');assert.equal(browser.calls,1);
 const changed=cameraFixture();let checks=0;assert.equal((await changed.capture('changed',signal(),()=>{if(++checks===2)throw Error('owner changed')})).status,'failed');assert.equal(changed.calls,0);
-const overlay=cameraFixture();overlay.context.api.S.chat='full';assert.equal((await overlay.capture('overlay-operation',signal(),()=>{})).status,'succeeded');assert.equal(overlay.context.captureHolds(),0);assert.equal(overlay.calls,1);
+const overlay=cameraFixture();overlay.context.api.S.chat='full';assert.equal((await overlay.capture('overlay-operation',signal(),()=>{})).status,'succeeded');assert.equal(overlay.context.captureHolds(),0);assert.equal(overlay.calls,1);assert.equal(overlay.context.api.S.chat,'hidden','an agent capture closes the chat so the owner sees the viewfinder');
 const background=cameraFixture();background.context.document.hidden=true;assert.equal((await background.capture('background-operation',signal(),()=>{})).status,'failed');assert.equal(background.calls,0);
 const cancelled=cameraFixture();const abort=new AbortController();abort.abort();assert.equal((await cancelled.capture('cancelled',abort.signal,()=>{})).status,'failed');assert.equal(cancelled.calls,0);
 console.log('PASS: actual camera save/request code and DeviceActions journal/receipt flow; current-message binding, visible view, capability, cancellation, concurrency and lost-receipt non-replay. Synthetic camera boundary only.');

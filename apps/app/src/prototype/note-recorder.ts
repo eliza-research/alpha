@@ -1,6 +1,5 @@
 /**
- * Notes voice recorder (design/view-refresh-2026-11 PLAN.md section 3; spec
- * artifacts/review-2026-11/specs/notes-view, Design.cfg).
+ * Notes voice recorder.
  *
  * The recording has no length limit. The native recorder (AlphaNoteRecorder) writes it as
  * finished segments of under 30 s, so a crash keeps every finished segment

@@ -20,7 +20,7 @@ const client = new HostedDigestProtocol(async (path, body) => {
 function App() {
   const [owner, setOwner] = useState(active);
   controls.switchOwner = value => { active = value; setOwner(value); };
-  return <section className="alpha-connection">
+  return <section data-fixture-owner={owner} className="alpha-connection">
     <CloudDelegationPanel key={owner} client={client} scope={owner} signal={controller.signal}
       current={() => active === owner} onConnected={() => { controls.connected++; }} />
   </section>;

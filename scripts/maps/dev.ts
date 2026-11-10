@@ -12,19 +12,17 @@ const data=resolve(process.env.ALPHA_MAPS_DATA||join(homedir(),'.local/share/alp
 const args=process.argv.slice(2);let port=5173;
 if(args.length){if(args.length!==2||args[0]!=='--port'||!/^\d+$/.test(args[1]))throw Error('Usage: npm run dev:maps -- --port 5173');port=Number(args[1]);}
 if(port<1024||port>65535||[47850,47851,47852].includes(port))throw Error('Choose an app port from 1024–65535 outside the Maps service ports.');
-const prepareSteps=`\nPrepare the region in this order (docs/maps-regional-validation.md, Reproduction):\n 1. python3 scripts/maps/prepare-region.py\n 2. python3 scripts/maps/index-region.py (PyOsmium 4.1.1)\n 3. From ${data}: java -Xmx512m -jar graphhopper.jar server ${join(root,'scripts/maps/graphhopper.yml')}, then stop it once the graph is imported\n 4. Review the data, then python3 scripts/maps/dataset_manifest.py seal`;
-const children: ChildProcess[] = [];const abort=new AbortController();let stopping=false;
-async function stop(code: number) {
- if(stopping)return;
- stopping=true;
- abort.abort();
- process.exitCode=code;
+const prepareSteps=`\nPrepare the region in this order:\n 1. python3 scripts/maps/prepare-region.py\n 2. python3 scripts/maps/index-region.py (PyOsmium 4.1.1)\n 3. From ${data}: java -Xmx512m -jar graphhopper.jar server ${join(root,'scripts/maps/graphhopper.yml')}, then stop it once the graph is imported\n 4. Review the data, then python3 scripts/maps/dataset_manifest.py seal`;
+const children: ChildProcess[]=[];const abort=new AbortController();let stopping=false;
+async function stop(code: number){
+ if(stopping)return;stopping=true;abort.abort();
  await Promise.all(children.map(child=>new Promise<void>(resolve=>{
   if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return resolve();
   const timer = setTimeout(() => child.kill('SIGKILL'), 5000);
   child.once('close', () => {clearTimeout(timer); resolve();});
   child.kill('SIGTERM');
  })));
+ process.exitCode=code;
 }
 process.on('SIGINT',()=>void stop(130));process.on('SIGTERM',()=>void stop(143));
 const free=(port: number)=>new Promise<void>((resolve,reject)=>{const server=net.createServer();server.once('error',()=>reject(Error(`Port ${port} is occupied. Stop its owner or choose another app port; existing services are left running.`)));server.listen(port,'127.0.0.1',()=>server.close(error=>error?reject(error):resolve()));});

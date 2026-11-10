@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import ai.eliza.voice.LiveSegmentPipe;
 import java.lang.reflect.Field;
@@ -38,14 +38,14 @@ public final class AsrPipeTraces {
  }
  static JSONArray vad(int mask){JSONArray result=new JSONArray();if((mask&4)!=0)result.put(new JSONObject().put("timestampMs",0));if((mask&8)!=0)result.put(new JSONObject().put("timestampMs",2));return result;}
  static String future(CompletableFuture<Boolean> value){return !value.isDone()?"pending":value.getNow(false)?"true":"false";}
- @SuppressWarnings("unchecked") static ArrayDeque<JSONObject> queue()throws Exception{return (ArrayDeque<JSONObject>)Trace.read(pipe,"queued");}
+ @SuppressWarnings("unchecked") static ArrayDeque<String> queue()throws Exception{return (ArrayDeque<String>)Trace.read(pipe,"queued");}
  static boolean finished()throws Exception{return (boolean)Trace.read(pipe,"finished");}
  static String phase()throws Exception {
   if(finished())return "finished";if(!started)return "cold";if(!executed)return "queued";
   synchronized(lock){return pending==null?"idle":pending.phase;}
  }
  static JSONObject observe()throws Exception {
-  JSONArray queued=new JSONArray();synchronized(pipe){for(JSONObject body:queue())queued.put(mask(body));}
+  JSONArray queued=new JSONArray();synchronized(pipe){for(String encoded:queue())queued.put(mask(new JSONObject(encoded)));}
   double limit=(double)Trace.read(pipe,"cutoff");
   int projected=Double.isNaN(limit)?-1:Double.isInfinite(limit)?3:(int)limit;
   @SuppressWarnings("unchecked") CompletableFuture<Boolean> closed=(CompletableFuture<Boolean>)Trace.read(pipe,"closed");
@@ -96,6 +96,20 @@ public final class AsrPipeTraces {
   accepted=pipe.offer(frames,edges);trace.step("offer",observe(),projected,fits);
   if(mode.equals("immutable")){frames.getJSONObject(0).put("timestamp",2);trace.stutter("caller mutation cannot rewrite retained batch",observe());}
  }
+ static void boundedOffer(boolean byteBound,int index)throws Exception {
+  JSONArray frames=new JSONArray(),edges=new JSONArray();
+  // Seven sixteen-frame batches plus thirteen reach 125 exactly; the next single
+  // frame independently exceeds that limit without approaching the byte cap.
+  int count=byteBound?1:index<7?16:index==7?13:1;
+  for(int i=0;i<count;i++)frames.put(new JSONObject().put("timestamp",0));
+  if(byteBound){
+   JSONObject frame=frames.getJSONObject(0).put("pad","");
+   int current=new JSONObject().put("frames",frames).put("vad",edges).toString().length();
+   frame.put("pad","x".repeat(LiveSegmentPipe.MAX_BATCH_CHARS-current));
+   if(LiveSegmentPipe.MAX_QUEUED_CHARS/LiveSegmentPipe.MAX_BATCH_CHARS!=8)throw new AssertionError("Byte-bound projection must fit exactly eight batches");
+  }
+  accepted=pipe.offer(frames,edges);trace.step("offer",observe(),1,true);
+ }
  static void cutoff(int value)throws Exception{pipe.cutoff(limit(value));trace.step("cutoff",observe(),value);}
  static void close(boolean discard,int value,String wanted,JSONObject...following)throws Exception {
   pipe.close(discard,limit(value));if(wanted!=null)await(wanted);
@@ -131,7 +145,7 @@ public final class AsrPipeTraces {
    else if(mode.equals("owner-before-start")){ownership(false);start(true);begin("finished",Trace.action("beginClose"));}
    else{
     start(true);begin("warming");
-    if(mode.equals("queue-bound")){for(int i=0;i<8;i++)offer(1,true,null);offer(1,true,null);close(true,3,null);reply("warmReply","ok",true,"closing",Trace.action("take"),Trace.action("beginClose"));reply("closeReply","ok",true,"finished");}
+    if(mode.equals("queue-bound")||mode.equals("frame-bound")){for(int i=0;i<9;i++)boundedOffer(mode.equals("queue-bound"),i);close(true,3,null);reply("warmReply","ok",true,"closing",Trace.action("take"),Trace.action("beginClose"));reply("closeReply","ok",true,"finished");}
     else if(mode.equals("oversize")){offer(1,false,null);reply("warmReply","ok",true,"closing",Trace.action("take"),Trace.action("beginClose"));reply("closeReply","ok",false,"finished");}
     else if(mode.equals("cancel-warm")){close(true,1,null);reply("warmReply","ok",true,"closing",Trace.action("take"),Trace.action("beginClose"));reply("closeReply","invalid",true,"finished");}
     else if(mode.equals("owner-during-warm")){ownership(false);reply("warmReply","ok",true,"finished",Trace.action("beginClose"));}

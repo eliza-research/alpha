@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {PLUGIN_CONNECTOR_TARGET} from '../../scripts/core-state-patch.ts';
 
-export const productInput = 'backend/native-google-agent-host.ts';
+export const productInput = 'scripts/native-google-product-host.ts';
 export const fixtureSource = version => `export const fixtureSource = ${version};\n`;
 export const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 export const fixtureModule = bytes => `export const fixtureInputSha256 = "${digest(bytes)}";\n`;
@@ -75,7 +75,7 @@ async function main() {
       if (control.mode === 'unbound-graph') selected[path.join(root, 'unavailable-input.ts')] = {};
       if (control.mode === 'incomplete-graph') delete selected[fixtureDependency];
       if (control.mode === 'input-drift') fs.writeFileSync(input, fixtureSource(2));
-      if (control.mode === 'fixed-drift') fs.appendFileSync(path.join(root, 'scripts/client-speech-patch.ts'), '\n');
+      if (control.mode === 'fixed-drift') fs.appendFileSync(path.join(root, 'scripts/prepare-client-features.ts'), '\n');
       if (control.mode === 'worker-drift') fs.writeFileSync(path.join(root, 'artifacts/worker/google-host.mjs'), fixtureModule(fixtureSource(2)));
       if (control.mode === 'sdk-drift') fs.appendFileSync(sdkInput, '\n');
       return {success: true, outputs: [output], metafile: {inputs: selected}};

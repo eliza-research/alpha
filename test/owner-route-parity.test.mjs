@@ -1,4 +1,4 @@
-// Owner-bound renderer routes (config/owner-routes.json). The real Android request gate is compiled from
+// Owner-bound renderer routes from the Alpha product table. The real Android request gate is compiled from
 // AlphaLocalAgentPlugin.java with OwnerRoutes.java and run on the host JVM over a broad case table next to the
 // renderer interpreter (owner-route-policy.ts): both must claim and admit the same requests, and exactly what the
 // hand-mirrored gates admitted before the table. Host-JVM and Node evidence only, not Android.
@@ -10,6 +10,7 @@ import {join} from 'node:path';
 import {nativeSource,runJvm,jsonJarSkip,root,upstreamConnection} from './fixtures/jvm-tools.mjs';
 import {build} from 'esbuild';
 import {loadBrowserModule} from './fixtures/browser-source.mjs';
+import {serializeOwnerRouteTable} from '../apps/app/src/product/owner-route-table.ts';
 const [{ownerRouteGroup,ownerRouteAllowed}]=await loadBrowserModule(['apps/app/src/runtime/owner-route-policy.ts'],{testMocks:true});
 
 const C='/api/lifeops/calendar',E=C+'/events/',F=C+'/feed?',T='/api/lifeops/scheduled-tasks',A='/api/approvals?state=all&limit=500';
@@ -174,7 +175,7 @@ const cloudAdmittedBefore=new Map([
 ]);
 
 /** Runs the real request gate, compiled from AlphaLocalAgentPlugin.request() with OwnerRoutes.java, over the cases with
- * the owner-routes.json in config: per case its verdict and, when the table loads, the claiming group and the Cloud
+ * the supplied owner-routes.json fixture: per case its verdict and, when the table loads, the claiming group and the Cloud
  * transport's automations verdict; then whether unknown group names are refused. */
 function nativeGate(config,cases){
  const plugin=readFileSync(nativeSource('AlphaLocalAgentPlugin.java'),'utf8'),request=plugin.slice(plugin.indexOf('@PluginMethod public void request(PluginCall call) {'));
@@ -183,7 +184,7 @@ function nativeGate(config,cases){
  const gate=request.match(/\n  if\((.*)\)\{\n   logRequestFailure\(group==null\?\"other\":group,method,0,\"gate\"\);\n   call\.reject\("Unsupported local agent request\."\);return;/)[1];
  const directory=mkdtempSync(join(tmpdir(),'alpha-owner-routes-')),harness=join(directory,'OwnerRouteHarness.java');
  try{
-  writeFileSync(harness,`package ai.elizaresearch.alphaphone;
+  writeFileSync(harness,`package ai.alphacompute.alphaphone;
 public final class OwnerRouteHarness{
  static String config;
  static final OwnerRoutes.Assets CONFIG=name->new java.io.FileInputStream(config+name);
@@ -207,14 +208,24 @@ public final class OwnerRouteHarness{
  }
 }`);
   const field=value=>value===null?'-':Buffer.from(value,'utf8').toString('base64');
-  return runJvm([upstreamConnection('OwnerRoutePolicy.java'),nativeSource('OwnerRoutes.java'),harness],'ai.elizaresearch.alphaphone.OwnerRouteHarness',{json:true,args:[config+'/'],input:cases.map(c=>[c.method,c.path,c.body,c.owner].map(field).join(' ')).join('\n')+'\n'}).trim().split('\n').map(line=>line.split(' '));
+  return runJvm([upstreamConnection('OwnerRoutePolicy.java'),nativeSource('OwnerRoutes.java'),harness],'ai.alphacompute.alphaphone.OwnerRouteHarness',{json:true,args:[config+'/'],input:cases.map(c=>[c.method,c.path,c.body,c.owner].map(field).join(' ')).join('\n')+'\n'}).trim().split('\n').map(line=>line.split(' '));
  }finally{rmSync(directory,{recursive:true,force:true});}
+}
+
+function shippedNativeGate(cases) {
+ const directory=mkdtempSync(join(tmpdir(),'alpha-shipped-owner-routes-'));
+ try {
+  writeFileSync(join(directory,'owner-routes.json'),serializeOwnerRouteTable());
+  return nativeGate(directory,cases);
+ } finally {
+  rmSync(directory,{recursive:true,force:true});
+ }
 }
 
 test('the Android gate and the renderer interpret the owner route table identically and as the hand-mirrored gates did',{skip:jsonJarSkip},()=>{
  const connection=readFileSync(nativeSource('AlphaConnectionPlugin.java'),'utf8');
  assert.match(connection,/\(routes\.group\(url\.getPath\(\),"automations"\)!=null\|\|routes\.group\(route,"automations"\)!=null\)\?!routes\.allowed\("automations",route,method\):/,'the Cloud transport polices only the automations group');
- const native=nativeGate(join(root,'config'),cases);
+ const native=shippedNativeGate(cases);
  const label=c=>c.method+(c.label?' '+c.label:''),settled=new Set(settledDrift.map(([method,path])=>method+' '+path));
  cases.forEach((c,i)=>{
   const [gate,group,cloud]=native[i],claimant=ownerRouteGroup(c.path),cloudClaimant=ownerRouteGroup(c.path,'automations');
@@ -234,7 +245,7 @@ test('the Android gate and the renderer interpret the owner route table identica
 });
 
 // Tables that cannot load: missing, empty, malformed, an invalid pattern, an {id} route in a group without an id pattern.
-const shippedTable=readFileSync(join(root,'config/owner-routes.json'),'utf8'),edited=edit=>{const table=JSON.parse(shippedTable);edit(table);return JSON.stringify(table);};
+const shippedTable=serializeOwnerRouteTable(),edited=edit=>{const table=JSON.parse(shippedTable);edit(table);return JSON.stringify(table);};
 const brokenTables=[
  ['empty',''],['malformed','{"unsafe":'],['missing groups','{"unsafe":"#"}'],
  ['invalid unsafe pattern',edited(table=>{table.unsafe='[';})],['invalid id pattern',edited(table=>{table.groups.automations.id='(';})],
@@ -243,7 +254,7 @@ const brokenTables=[
 test('the Android gate refuses every request, without throwing, when the owner route table cannot load',{skip:jsonJarSkip},()=>{
  const probes=[['GET','/api/notes/state',null],['GET','/api/triggers/tr1',null],['PUT','/api/triggers/tr1','{}'],['GET','/api/approvals?state=all&limit=500',null],['GET','/api/status',null],['POST','/api/conversations','{}']]
   .map(([method,path,body])=>({method,path,body,owner:'owner-identity'}));
- assert.deepEqual(nativeGate(join(root,'config'),probes).slice(0,probes.length).map(([gate])=>gate),['A','A','A','A','A','A'],'the probes pass with the shipped table');
+ assert.deepEqual(shippedNativeGate(probes).slice(0,probes.length).map(([gate])=>gate),['A','A','A','A','A','A'],'the probes pass with the shipped table');
  const directory=mkdtempSync(join(tmpdir(),'alpha-broken-owner-routes-'));
  try{
   assert.deepEqual(nativeGate(directory,probes),probes.map(()=>['R']),'missing table');
@@ -255,7 +266,7 @@ test('the Android gate refuses every request, without throwing, when the owner r
 });
 test('the renderer interpreter fails to load every owner route table the Android gate cannot load',async()=>{
  const load=table=>build({entryPoints:[join(root,'apps/app/src/runtime/owner-route-policy.ts')],bundle:true,write:false,platform:'node',format:'esm',logLevel:'silent',
-  plugins:[{name:'owner-routes',setup(builder){builder.onLoad({filter:/config\/owner-routes\.json$/},()=>({contents:table,loader:'json'}));}}]})
+  plugins:[{name:'owner-routes',setup(builder){builder.onLoad({filter:/owner-route-table\.ts$/},()=>({contents:'export const OWNER_ROUTE_TABLE = '+table,loader:'ts'}));}}]})
   .then(({outputFiles})=>import('data:text/javascript;base64,'+Buffer.from(outputFiles[0].text).toString('base64')));
  assert.equal(typeof (await load(shippedTable)).ownerRouteAllowed,'function');
  for(const [name,table] of brokenTables)await assert.rejects(load(table),undefined,name);

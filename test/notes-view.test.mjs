@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-// Notes folders, Recently deleted folder rules and the list/filter helpers (PLAN.md section 3,
-// specs/notes-view Design.cfg). Pure modules only; the view wiring is covered by browser specs.
+// Notes folders, Recently deleted folder rules and the list/filter helpers.
+// Pure modules only; the view wiring is covered by browser specs.
 const folders=await import('../apps/app/src/runtime/notes-folders-model.ts');
 const view=await import('../apps/app/src/runtime/notes-view.ts');
 

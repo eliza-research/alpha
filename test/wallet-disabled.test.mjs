@@ -4,6 +4,7 @@ import {readFileSync,readdirSync,statSync,existsSync} from 'node:fs';
 import {join,resolve,dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
+import {nativeViewDeclarationsJson} from '../scripts/native-view-policy.ts';
 // AP-13 / #422: Wallet is outside the MVP in both distributions and on the Alpha AOSP image. Its
 // views, deep links, native/payment adapters and agent actions stay unavailable; no payment, card
 // or pass-wallet effect can be reached from a product build.
@@ -63,16 +64,15 @@ test('neither APK distribution declares a native Wallet, payment or NFC adapter'
   assert.doesNotMatch(text,/HostApduService|android\.nfc\.|PaymentsClient|com\.google\.android\.gms\.wallet|QuickAccessWallet|@CapacitorPlugin\(name="[^"]*(?:Wallet|Payment|Pay)"/,file);
  }
  // MainActivity registers no Wallet or payment bridge in any variant.
- const main=read('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java');
+ const main=read('android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java');
  for(const match of main.matchAll(/registerPlugin\(([^)]*)\)/g))assert.doesNotMatch(match[1],/wallet|payment|pay\b|nfc/i);
 });
 
 test('the resident agent profile used by Alpha loads no Wallet actions in either distribution',async()=>{
- // Product view launch policy and development proposals name no Wallet view.
- const views=JSON.parse(read('config/native-view-declarations.json'));
+ // Product view launch policy names no Wallet view.
+ const views=JSON.parse(nativeViewDeclarationsJson);
  assert.ok(Array.isArray(views)&&views.length>0);
  for(const view of views)assert.doesNotMatch(`${view.id} ${view.path} ${view.fallbackFor}`,/wallet|payment/i);
- assert.doesNotMatch(read('apps/app/src/runtime/development-view-contract.ts').split('export const DEVELOPMENT_PROPOSAL_VIEWS')[1],/'wallet'/);
  // The pinned upstream resident restricts every Android runtime (stock APK and the AOSP image
  // variant) to these lists, so @elizaos/plugin-wallet and its transfer/swap actions never load.
  const file=join(root,'vendor/eliza/packages/agent/src/runtime/core-plugins.ts');

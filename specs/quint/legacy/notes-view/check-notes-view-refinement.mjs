@@ -7,6 +7,7 @@ import {createServer} from 'vite';
 import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
 import {filesWithin, sha256, repositoryRoot as root} from '../../../../scripts/quint-lib.ts';
 import {canonicalNotesFixture, openCanonicalNotes} from '../../../../test/browser/helpers/canonical-notes.ts';
+import {selectLegacyNotesSource} from '../../../../test/browser/helpers/legacy-notes.ts';
 import {preloadPageModules} from '../../../../test/browser/helpers/page-modules.ts';
 import {installCloudVoiceFixture} from '../../../../test/browser/cloud-voice-fixture.ts';
 import {captureInputs, checkTraces, qmap, qset} from '../../refinement/check-traces.mjs';
@@ -175,8 +176,7 @@ async function canonical(page) {
   await button(page, 'Back to notes').click();
   await noSelection(page);
 
-  await button(page, 'Previous notes').click();
-  await expect(page.getByRole('heading', {name: 'Previous notes', exact: true})).toBeVisible();
+  await selectLegacyNotesSource(page);
   await button(page, 'Open Retained first').click();
   await expect(editor(page).getByRole('textbox', {name: 'Note', exact: true})).toHaveValue('Previous content.');
   const retained = await selection(page, 'note', 'notes-first');
@@ -229,8 +229,7 @@ async function canonical(page) {
 async function retained(page) {
   await seedRetained(page);
   await openCanonicalNotes(page);
-  await button(page, 'Previous notes').click();
-  await expect(page.getByRole('heading', {name: 'Previous notes', exact: true})).toBeVisible();
+  await selectLegacyNotesSource(page);
   await expect(button(page, 'Open Retained first')).toBeVisible();
   const renaming = await schedule(page, 'retained_folder_rename_keeps_the_same_note_membership', 'Rename');
   const renamed = await page.evaluate(id => window.quintLegacyNotes.api('notes').notesFolders.rename(id, 'c'), firstFolder);
@@ -362,14 +361,13 @@ async function mounted(extraSources) {
   ].map(path => resolve(root, 'apps/app/src/'+path))]);
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'config')), ...filesWithin(resolve(root, 'patches/eliza')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
     'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json', 'upstream.lock.json',
     'scripts/prepare-client-features.ts', 'scripts/quint-lib.ts', 'scripts/browser-full-reload.ts',
     modelPath, fileURLToPath(import.meta.url),
-    'test/browser/helpers/canonical-notes.ts', 'test/browser/helpers/page-modules.ts',
+    'test/browser/helpers/canonical-notes.ts', 'test/browser/helpers/legacy-notes.ts', 'test/browser/helpers/page-modules.ts',
     'test/browser/cloud-voice-fixture.ts', ...extraSources,
   ])];
   const driverHashes = captureInputs(sources);
@@ -414,6 +412,7 @@ async function mounted(extraSources) {
         const fixturePage = {
           on: page.on.bind(page), route: page.route.bind(page),
           addInitScript: page.addInitScript.bind(page), evaluate: page.evaluate.bind(page),
+          addScriptTag: page.addScriptTag.bind(page), waitForFunction: page.waitForFunction.bind(page),
           goto: path => page.goto(path, {waitUntil: 'domcontentloaded', timeout: 60000}),
         };
         const {foreign, errors} = await canonicalNotesFixture(fixturePage, {notes});

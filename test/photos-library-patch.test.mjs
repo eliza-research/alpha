@@ -296,6 +296,7 @@ test('retired folder grants keep their recovery identity until release is confir
  const tree=await source('DocumentFolderTree');
  const forget=method(tree,'public JSObject forget()')+'\n  }';
  const adopt=method(tree,'public JSObject adopt(')+'\n  }';
+ const keptMessage=method(tree,'private static String keptMessage(')+'\n  }';
  const work=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-folder-retirement-'));
  t.after(()=>fs.rmSync(work,{recursive:true,force:true}));
  // Execute the actual two methods with controlled preference and Android grant boundaries.
@@ -307,6 +308,7 @@ public final class FolderRetirementCheck {
  final SharedPreferences preferences=new SharedPreferences();
  final Resolver grants=new Resolver();
  final Session session=new Session();
+ final Retention retention=new Retention();
  Uri tree;
  static final class Uri {
   final String value; Uri(String value){this.value=value;}
@@ -323,8 +325,9 @@ public final class FolderRetirementCheck {
  static final class Intent {static final int FLAG_GRANT_READ_URI_PERMISSION=1,FLAG_GRANT_WRITE_URI_PERMISSION=2;}
  static final class DocumentsContract {static boolean isTreeUri(Uri value){return true;}}
  static final class Session {void clear(){}}
- static final class JSObject extends HashMap<String,String> {}
- static JSObject result(String status,String message){JSObject value=new JSObject();value.put("status",status);return value;}
+ static final class Retention {final Map<String,Integer> links=new HashMap<>();int linked(Uri uri){return links.getOrDefault(uri.value,0);}}
+ static final class JSObject extends HashMap<String,String> {String getString(String key){return get(key);}}
+ static JSObject result(String status,String message){JSObject value=new JSObject();value.put("status",status);value.put("message",message);return value;}
  static final class SharedPreferences {
   volatile String value="old"; boolean failCommit;
   String getString(String key,String fallback){return value==null?fallback:value;}
@@ -349,6 +352,7 @@ public final class FolderRetirementCheck {
  SharedPreferences store(){return preferences;} Resolver resolver(){return grants;}
  Object root(){return null;} JSObject list(Object value){return result("ready","");}
  void release(String value){grants.values.removeIf(item->item.uri.value.equals(value));}
+ ${keptMessage}
  ${adopt}
  ${forget}
  static void check(boolean value,String why){if(!value)throw new AssertionError(why);}
@@ -372,6 +376,13 @@ public final class FolderRetirementCheck {
   concurrent.grants.duringRelease=()->{next.start();try{check(started.await(5,TimeUnit.SECONDS),"adopt thread starts");}catch(InterruptedException e){throw new AssertionError(e);}};
   check("forgotten".equals(concurrent.forget().get("status")),"old selection retired");next.join(5000);
   check(!next.isAlive()&&errors.isEmpty()&&"new".equals(concurrent.preferences.value)&&has(concurrent,"new"),"new adoption is serialized after retirement");
+  FolderRetirementCheck linked=new FolderRetirementCheck();linked.retention.links.put("old",2);
+  check("forgotten".equals(linked.forget().get("status"))&&linked.preferences.value==null&&has(linked,"old")&&has(linked,"document"),"forgetting a browsed folder preserves grants still owned by linked notes");
+  FolderRetirementCheck replacingLinked=new FolderRetirementCheck();replacingLinked.retention.links.put("old",2);
+  JSObject kept=replacingLinked.adopt(Uri.parse("new"),3);
+  check("new".equals(replacingLinked.preferences.value)&&has(replacingLinked,"old")&&has(replacingLinked,"new")&&kept.getString("message").contains("2 linked notes"),"new adoption keeps and explains a linked previous grant");
+  FolderRetirementCheck replacingUnlinked=new FolderRetirementCheck();replacingUnlinked.adopt(Uri.parse("new"),3);
+  check(!has(replacingUnlinked,"old")&&has(replacingUnlinked,"new")&&has(replacingUnlinked,"document"),"unlinked previous access is released without disturbing document grants");
   System.out.println("ok");
  }
 }`;

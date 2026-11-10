@@ -4,6 +4,8 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
+import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -58,6 +60,8 @@ def admission(root, apk):
     pins = bun_lock.get('targets', {}).get('android', {}) if bun_target == 'android' else bun_lock.get('channels', {})
     if not isinstance(pins.get(channel), dict):
         raise ValueError('No pinned ' + bun_target + ' Bun for channel: ' + str(channel))
+    declarations = subprocess.check_output(
+        [os.environ.get('ALPHA_NODE', 'node'), root / 'scripts/native-view-policy.ts'], timeout=30)
     return {
         'schemaVersion': 1,
         'bunTarget': bun_target,
@@ -65,7 +69,7 @@ def admission(root, apk):
         'profileEntry': 'assets/agent/alpha-runtime-profile.json',
         'rendererFlagsEntry': 'assets/public/build-flags.json',
         'source': {'kind': 'exact-json', 'entry': 'assets/agent/alpha-source.json', 'commit': stamp['base'], 'commitField': 'base', 'expected': stamp},
-        'fileBindings': {'assets/agent/native-view-declarations.json': digest((root / 'config/native-view-declarations.json').read_bytes())},
+        'fileBindings': {'assets/agent/native-view-declarations.json': digest(declarations)},
         'worker': {'prefix': 'assets/agent/workflow-worker/', 'lockSha256': digest((root / 'vendor/eliza/bun.lock').read_bytes())},
     }
 

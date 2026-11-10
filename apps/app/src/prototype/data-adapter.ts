@@ -167,10 +167,9 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
       goCalendar: () => { if (calendarSource?.error) calendarSource.retry?.(); else if (stale) void this.refreshAgentCalendar?.();
         const authority = this.vget('calendar').calendarAuthority, patch = {...(authority ? {calendarAuthority: authority} : {}), ...(agenda ? {open:agenda.event.id, day:agenda.event.off, openDay:agenda.event.off} : {})};
         this.openView('calendar', Object.keys(patch).length ? patch : undefined); },
-      homeBriefHas: briefCard.has, homeBriefTitle: briefCard.title, homeBriefStatus: briefCard.status, homeBriefLabel: briefCard.label, homeBriefFailed: briefCard.failed,
-      // Opens the retained results list. Showing the card reads nothing; opening the list syncs
-      // retained results with the agent as it does from Settings. Neither runs a digest.
-      goBrief: () => window.dispatchEvent(new Event('alpha:hosted-digests')),
+      homeBriefHas: briefCard.has, homeBriefTitle: briefCard.title, homeBriefStatus: briefCard.status, homeBriefLabel: briefCard.label.replace(/^Open scheduled digests\./, 'Open Workflows.'), homeBriefFailed: briefCard.failed,
+      // Keep briefs with their workflows; opening this view never starts a schedule.
+      goBrief: () => this.openView('workflows'),
       goFlows: () => this.openView('workflows'),
       goTriage: () => attention.action === 'connections' ? this.openView('settings', {page:'connections'}) : this.openView('inbox',{acct:'all',open:null,q:null}),
       clearAll: () => this.setState({ shade: false }),

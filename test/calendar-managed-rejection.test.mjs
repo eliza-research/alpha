@@ -39,7 +39,7 @@ test('explicit Calendar rejection survives the private transport; uncertain repl
  try{
   const entry=join(temp,relative);mkdirSync(dirname(entry),{recursive:true});copyFileSync(original,entry);
   assert.match(before,/raw\.calendarFailure/,'the pinned upstream carries the explicit rejection receipt');assert.match(before,/Invalid Calendar rejection receipt/);
-  const buildPort=contents=>build({stdin:{contents:`export {createManagedCalendarMutationPort} from ${JSON.stringify(entry)};export {CalendarMutationNotAcceptedError} from ${JSON.stringify(join(dirname(original),'types.ts'))};`,resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false,metafile:true,plugins:[{name:'upstream-patch-source',setup(b){
+  const buildPort=contents=>build({stdin:{contents:`export {createManagedCalendarMutationPort} from ${JSON.stringify(entry)};export {CalendarMutationNotAcceptedError,CalendarMutationPreflightError} from ${JSON.stringify(join(dirname(original),'types.ts'))};`,resolveDir:process.cwd(),loader:'ts'},bundle:true,platform:'node',format:'esm',write:false,metafile:true,plugins:[{name:'upstream-patch-source',setup(b){
    b.onLoad({filter:/managed\.ts$/},args=>args.path===realpathSync(entry)?{contents,loader:'ts',resolveDir:dirname(original)}:undefined);
    b.onResolve({filter:/^@elizaos\/core$/},()=>({path:'core',namespace:'port'}));
    // Resolve the reader's real runtime contract from the same pinned upstream source.
@@ -52,9 +52,9 @@ test('explicit Calendar rejection survives the private transport; uncertain repl
   const zodInputs=Object.keys(bundle.metafile.inputs).filter(input=>input.split('/').includes('zod')).map(input=>realpathSync(resolve(input)));
   assert.ok(zodInputs.length>0,'the managed reader bundles zod');
   for(const input of zodInputs)assert.ok(input.startsWith(dirname(zodManifest)+sep),`bundled zod ${input} is the verified install`);
-  const {createManagedCalendarMutationPort,CalendarMutationNotAcceptedError}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
+  const {createManagedCalendarMutationPort,CalendarMutationNotAcceptedError,CalendarMutationPreflightError}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
   const source='alpha-google:'+'a'.repeat(64),caps={version:1,grantId:source,calendarId:'calendar',accountId:'account',read:true,write:true,idempotentCreate:true,conditionalWrites:true,providerExactlyOnce:false};
-  const approval={payload:{action:'schedule_event',side:'owner',grantId:source,calendarId:'calendar'}};
+  const approval={payload:{action:'schedule_event',side:'owner',grantId:source,calendarId:'calendar',title:'Synthetic Calendar review',startsAtMs:Date.parse('2026-11-10T15:00:00Z'),endsAtMs:Date.parse('2026-11-10T16:00:00Z'),timeZone:'UTC',attendees:[],notifyAttendees:false}};
   for(const kind of ['not_accepted','precondition_failed','wrong-account','unknown','generic-http','timeout']){
    let mutations=0;
    const request=async(url,init)=>{
@@ -66,11 +66,16 @@ test('explicit Calendar rejection survives the private transport; uncertain repl
    };
    const {port}=createManagedCalendarMutationPort({ELIZA_MANAGED_CALENDAR_READ_BROKER:'http://127.0.0.1:12345/__alpha-owner-gmail',ELIZA_API_TOKEN:'b'.repeat(64)},request,'agent');
    const preflight=await port.preflight(approval);
-   await assert.rejects(port.execute(approval,preflight),error=>['not_accepted','precondition_failed'].includes(kind)?error instanceof CalendarMutationNotAcceptedError:!(error instanceof CalendarMutationNotAcceptedError));
+   await assert.rejects(port.execute(approval,preflight),error=>{
+    if(kind==='not_accepted')return error instanceof CalendarMutationNotAcceptedError&&error.failure.retryable===true&&error.failure.code==='CALENDAR_SYNC_INVALID';
+    if(kind==='precondition_failed')return error instanceof CalendarMutationPreflightError&&error.failure.retryable===false&&error.failure.code==='CALENDAR_SYNC_INVALID';
+    return !(error instanceof CalendarMutationNotAcceptedError)&&!(error instanceof CalendarMutationPreflightError);
+   });
    assert.equal(mutations,1,'no automatic replay');
   }
   // Use the actual authenticated loopback broker for the regression that lost the refusal.
-  const host=resolve('scripts/calendar-agent-write-host.ts');
+  // Use the broker's projected module so the typed refusal has the same constructor.
+  const host=resolve('.eliza/client-features/plugins/plugin-calendar/src/service/managed-calendar-host.ts');
   const brokerBundle=await build({entryPoints:['scripts/gmail-agent-dev-broker.ts'],bundle:true,platform:'node',format:'esm',write:false,plugins:[{name:'synthetic-cloud-owner-port',setup(b){
    b.onResolve({filter:/^\.\/gmail-agent-read-host\.ts$/},()=>({path:'reader',namespace:'cloud-fixture'}));
    b.onLoad({filter:/.*/,namespace:'cloud-fixture'},()=>({loader:'js',resolveDir:process.cwd(),contents:`import {calendarAgentWrite} from ${JSON.stringify(host)};export const createGmailAgentReadHost=()=>({calendarWrite:(input,signal)=>calendarAgentWrite(globalThis.calendarRefusalFixture.client,'grant','a'.repeat(64),input,signal,'alpha-google')});`}));
@@ -78,7 +83,7 @@ test('explicit Calendar rejection survives the private transport; uncertain repl
   const {createGmailAgentDevBroker}=await import('data:text/javascript;base64,'+Buffer.from(brokerBundle.outputFiles[0].text).toString('base64'));
   const tokenFile=join(temp,'token');writeFileSync(tokenFile,'b'.repeat(64),{mode:0o600});let writes=0;
   globalThis.calendarRefusalFixture={client:{googleCalendarSync:async input=>{if(input.kind==='capabilities')return caps;writes++;throw Object.assign(new Error('Synthetic authenticated Cloud rejection'),{name:'CloudProtocolError',code:'http',status:400,data:{code:'CALENDAR_SYNC_INVALID',outcome:'not_accepted'}});}}};
-  const server=createServer(createGmailAgentDevBroker({profile:temp,tokenFile}));
+  const server=createServer(createGmailAgentDevBroker({profile:temp,tokenFile,access:()=>({gmailChanges:false,calendarEdits:true})}));
   try{
    await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const endpoint=`http://127.0.0.1:${server.address().port}/__alpha-owner-gmail`;
    const {port}=createManagedCalendarMutationPort({ELIZA_MANAGED_CALENDAR_READ_BROKER:endpoint,ELIZA_API_TOKEN:'b'.repeat(64)},fetch,'agent');

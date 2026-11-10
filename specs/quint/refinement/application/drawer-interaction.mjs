@@ -14,7 +14,7 @@ const replaceOnce = (input, old, next) => {
   return input.replace(old, next);
 };
 
-async function compile(extraSources) {
+export async function compileDrawerInteraction(extraSources) {
   const built = await build({absWorkingDir: root, entryPoints: [fixture], bundle: true, platform: 'browser',
     format: 'iife', write: false, metafile: true, define: {'process.env.NODE_ENV': '"development"', 'import.meta.env': '{}'},
     plugins: [{name: 'drawer-ownership-observer', setup(builder) {
@@ -70,7 +70,7 @@ const cases = [
 ];
 
 export async function checkDrawerInteraction(extraSources = []) {
-  const compiled = await compile(extraSources), traces = [], errors = [];
+  const compiled = await compileDrawerInteraction(extraSources), traces = [], errors = [];
   const browser = await chromium.launch({headless: true});
   try {
     const page = await browser.newPage({viewport: {width: 412, height: 915}});

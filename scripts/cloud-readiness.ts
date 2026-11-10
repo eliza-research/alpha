@@ -6,8 +6,8 @@
  *   node scripts/cloud-readiness.ts probe [--environment production|staging] [--signer SHA256] [--json]
  *
  * `registration` prints the values an Eliza Cloud operator enters for Alpha
- * (docs/human-actions.md H-11 to H-15), derived from committed product configuration:
- * app.config.json (package and App Auth client), config/cloud-deployment.json (hosts, tenant and
+ * derived from committed product configuration:
+ * app.config.json (package and App Auth client), scripts/cloud-deployment-policy.ts (hosts, tenant and
  * entitlement audience) and the sign-in callback path and Steward app client that Alpha's native
  * sign-in registers. It reads no secret and contacts nothing. Values only the operator knows (the
  * Cloud apps-row UUID, Google's Android OAuth client ID) are named, never invented.
@@ -38,11 +38,12 @@ import { createHash, randomBytes } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateCloudDeployment } from "./cloud-deployment.ts";
+import { nativeAuthCallbackRegistration, validateCloudDeployment } from "./cloud-deployment.ts";
+import { CLOUD_DEPLOYMENT, CLOUD_SIGN_IN_REGISTRATION } from "./cloud-deployment-policy.ts";
 import { assetLinksGrants, publishedAssetLinksCheck, readAssetLinksSource } from "./render-assetlinks.ts";
 
 /** The return path and Steward app client Alpha's native sign-in registers (AlphaCloudSignInPlugin). */
-export const CALLBACK_PATH = "/alphaphone/auth/callback";
+export const CALLBACK_PATH = CLOUD_SIGN_IN_REGISTRATION.callbackPath;
 export const STEWARD_APP_CLIENT = "alpha-phone";
 const TIMEOUT_MS = 15_000;
 const USAGE = "Usage: node scripts/cloud-readiness.ts registration [--environment production|staging] [--json]\n       node scripts/cloud-readiness.ts probe [--environment production|staging] [--signer SHA256] [--json]";
@@ -54,7 +55,7 @@ interface CommandOptions { command: "registration" | "probe"; environment: Envir
 
 /** Alpha's product registration for one Cloud environment, from committed configuration. */
 export function productRegistration(root = process.cwd(), environment: Environment = "production") {
-  const deployment = validateCloudDeployment(readJson<unknown>(root, "config/cloud-deployment.json"))[environment];
+  const deployment = validateCloudDeployment(CLOUD_DEPLOYMENT)[environment];
   if (!deployment) throw new Error(`Unknown Cloud environment ${environment}`);
   const identity = readJson<{appId: string; appName: string}>(root, "app.config.json");
   return {
@@ -67,16 +68,17 @@ export function productRegistration(root = process.cwd(), environment: Environme
     clientId: identity.appId,
     appName: identity.appName,
     callback: `${deployment.web}${CALLBACK_PATH}`,
+    browserSignIn: nativeAuthCallbackRegistration(CLOUD_DEPLOYMENT, identity, environment).browserSignIn,
     stewardAppClient: STEWARD_APP_CLIENT,
     signerSha256: readJson<{signerSha256: string}>(root, "android/release-signer.json").signerSha256,
   };
 }
 
-/** The operator entries for one environment (docs/human-actions.md H-11 to H-15). */
+/** The operator entries for one environment. */
 type Registration = ReturnType<typeof productRegistration>;
 
 export function registrationValues(registration: Registration) {
-  const { environment, api, web, tenant, clientId, callback, packageName, appName, stewardAppClient, entitlementAudience } = registration;
+  const { environment, api, web, tenant, clientId, callback, packageName, appName, browserSignIn, stewardAppClient, entitlementAudience } = registration;
   return [
     { step: "H-11", where: `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON (GitHub Environment secret "${environment}" of the Cloud release workflow), Alpha's entry`,
       value: { clientId, appId: "<UUID of Alpha's active, approved Cloud apps row>", redirectUri: callback, enabled: true },
@@ -91,10 +93,10 @@ export function registrationValues(registration: Registration) {
       value: `node scripts/render-assetlinks.ts --cloud-config --published ${web}/.well-known/assetlinks.json`,
       then: `Set the printed value, deploy, then node scripts/render-assetlinks.ts --check ${web}/.well-known/assetlinks.json.` },
     { step: "H-13", where: `ELIZA_NATIVE_AUTH_CALLBACKS_JSON (Pages environment of ${new URL(web).host}), Alpha's entry`,
-      value: { redirectUri: callback, androidPackage: packageName, appName },
-      then: "Keep every other app's entry." },
+      value: { redirectUri: callback, androidPackage: packageName, appName, browserSignIn },
+      then: "Merge this entry into the protected Pages environment registration and keep every other app's entry. This command does not deploy configuration." },
     { step: "H-15", where: "Entitlement issuer audience", value: entitlementAudience,
-      then: "Cloud's ELIZA_ENTITLEMENT_* signer must issue this audience (config/cloud-deployment.json entitlementAudience)." },
+      then: "Cloud's ELIZA_ENTITLEMENT_* signer must issue this audience (scripts/cloud-deployment-policy.ts entitlementAudience)." },
   ];
 }
 
@@ -208,7 +210,7 @@ export function formatProbe(registration: Registration, gates: readonly ProbeRow
   for (const row of gates) lines.push(`  [${mark(row.passed)}] ${row.gate} (${row.step}): ${row.detail}`);
   const failed = gates.filter(row => row.passed === false);
   const account = gates.filter(row => row.passed === null).length;
-  lines.push("", failed.length ? `${failed.length} gate(s) open. Each names its step in docs/human-actions.md. This is deployment configuration evidence only.`
+  lines.push("", failed.length ? `${failed.length} gate(s) open. This is deployment configuration evidence only.`
     : "Every checkable gate passes. This is deployment configuration evidence only, not a sign-in, plan admission or device result.");
   if (account) lines.push(`${account} row(s) need a signed-in account and were not requested.`);
   return lines.join("\n");

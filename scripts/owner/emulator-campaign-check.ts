@@ -65,7 +65,7 @@ export const ITEM_RUNNERS = Object.freeze({
   "Quick Settings tile placement and unlock": { runner: null, gap: "no instrumented class drives AlphaQuickSettingsTile (scripts/apk.ts only checks the manifest declaration); manual emulator check only" },
   "npm run agent:test-digest-restart": { runner: ".github/workflows/digest-restart.yml (job digest-restart) or locally `npm run agent:test-digest-restart`", gap: null, evidence: "host-runtime evidence (synthetic model, no emulator), not class E" },
   "resident restart, history and missed-run checks on an installed APK": { runner: "resident-android.yml job native (scripts/ci/resident-native.py) for restart; no script covers history or missed runs on an installed APK", gap: "history and missed-run checks have no runner; record them as a manual emulator procedure" },
-  "upgrade from earlier installs that saved mock state": { runner: null, gap: "manual procedure only (docs/pilot-acceptance-runbook.md, Upgrade from earlier mock state); scripts/test-installed-upgrade.ts covers Calendar and reminder upgrades, not saved mock state" },
+  "upgrade from earlier installs that saved mock state": { runner: null, gap: "manual procedure only; scripts/test-installed-upgrade.ts covers Calendar and reminder upgrades, not saved mock state" },
 });
 
 const read = (root: string, file: string) => fs.readFileSync(path.join(root, file), "utf8");
@@ -152,51 +152,25 @@ export function buildPairOf(spec: ClassSpec | null) {
   return "flag-off pair (also test-mocks where the class allows)";
 }
 
-/** Verification sections ("## Emulator results at …") that mention the class, newest first as the page orders them. */
-export function recordedSections(verification: string, name: string) {
-  const sections = verification.split(/^## /m).slice(1).filter(section => /^Emulator results at /.test(section));
-  return sections.filter(section => new RegExp(`\\b${name}(InstrumentedTest)?\\b`).test(section)).map(section => section.split("\n")[0].trim());
-}
-
-interface ClassRow {
-  group: string;
-  class: string;
-  note: string | null;
-  sources: { file: string; sourceSet: string }[];
-  registered: boolean;
-  defaultClass: boolean;
-  homeRole: ClassSpec["homeRole"] | null;
-  buildPair: string;
-  flavors: string[];
-  hosted: string[];
-  campaigns: string[];
-  notRunByARunner: string | null;
-  local: string | null;
-  recorded: string[];
-  gaps: string[];
-}
-
-interface ItemRow {
-  group: string;
-  item: string;
-  runner: string | null;
-  gap: string | null;
-  evidence?: string;
-  gaps: string[];
-}
-
 export function analyse(root: string, runner: Runner, suite: Suite) {
   const sources = instrumentedSources(root);
   const suites = hostedSuites(root, { ...suite, DEFAULT_CLASSES: runner.DEFAULT_CLASSES });
   const campaignText = Object.fromEntries(runner.CAMPAIGN_RUNNERS.filter(file => fs.existsSync(path.join(root, file))).map(file => [file, read(root, file)]));
-  const verification = read(root, "docs/verification.md");
+  type ClassRow = {
+    group: string; class: string; note: string | null;
+    sources: {file: string; sourceSet: string}[];
+    registered: boolean; defaultClass: boolean; homeRole: string | boolean | null;
+    buildPair: string; flavors: string[]; hosted: string[]; campaigns: string[];
+    notRunByARunner: string | null; local: string | null; gaps: string[];
+  };
+  type ItemRow = {group: string; item: string; runner?: string | null; gap?: string | null; gaps: string[]};
   const rows: (ClassRow | ItemRow)[] = [];
-  const unregistered: Readonly<Partial<Record<string, string>>> = runner.NOT_RUN_BY_A_RUNNER;
   for (const group of ISSUE_676) {
     for (const name of group.classes) {
       const spec = runner.CLASS_REGISTRY[name] ?? null;
       const hosted = Object.entries(suites).filter(([, set]) => set.has(name)).map(([suiteName]) => suiteName);
       const campaigns = Object.entries(campaignText).filter(([, body]) => new RegExp(`(?<![A-Za-z0-9_])${name}InstrumentedTest`).test(body)).map(([file]) => file);
+      const unregistered: Readonly<Record<string, string>> = runner.NOT_RUN_BY_A_RUNNER;
       const notRun = unregistered[name] ?? null;
       const gaps = [];
       if (!sources.has(name)) gaps.push("no test source");
@@ -207,7 +181,7 @@ export function analyse(root: string, runner: Runner, suite: Suite) {
         group: group.group, class: name, note: group.notes?.[name] ?? null,
         sources: sources.get(name) ?? [], registered: Boolean(spec), defaultClass: runner.DEFAULT_CLASSES.includes(name),
         homeRole: spec?.homeRole ?? null, buildPair: buildPairOf(spec), flavors: flavorsOf(spec),
-        hosted, campaigns, notRunByARunner: notRun, local: localCommand(name, spec), recorded: recordedSections(verification, name), gaps,
+        hosted, campaigns, notRunByARunner: notRun, local: localCommand(name, spec), gaps,
       });
     }
     for (const item of group.items ?? []) {
@@ -244,18 +218,18 @@ export function dispatchPlan(sha: string | undefined, { repo = "eliza-research/a
       `${gh} run view <RUN_ID> ${R} --json jobs --jq '.jobs[] | [.name, .conclusion] | @tsv'   # native and recovery-ui must not be "skipped"`,
       `${gh} run download <RUN_ID> ${R} -D test-results/h31/<RUN_ID>`,
     ],
-    refused: ["android-emulator.yml -f suite=fused-speech and -f suite=all stop in the build job until hosted voice staging exists (docs/fused-speech.md); do not dispatch them"],
+    refused: ["android-emulator.yml -f suite=fused-speech and -f suite=all stop in the build job until hosted voice staging exists; do not dispatch them"],
     cleanup: [`git push origin --delete ${ref}   # after the evidence is downloaded and committed`],
     evidenceClass: "Emulator HOME-role evidence (class E) on developer-override APKs for android-emulator.yml; PACKAGED developer APKs for resident-android.yml; host-runtime for digest-restart.yml. Not an image boot, real integration, device or user acceptance.",
   };
 }
 
 export function formatCheck(rows: ReturnType<typeof analyse>) {
-  const lines = ["| Group | Class / item | Test source | Runner registration | Build pair | Flavors | Hosted job | Latest Emulator-results section naming it | Gaps |", "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"];
+  const lines = ["| Group | Class / item | Test source | Runner registration | Build pair | Flavors | Hosted job | Gaps |", "| --- | --- | --- | --- | --- | --- | --- | --- |"];
   for (const row of rows) {
-    if ("item" in row) { lines.push(`| ${row.group} | ${row.item} | n/a | ${row.runner ?? "none"} | n/a | n/a | ${/yml/.test(row.runner ?? "") ? "see runner" : "none"} | n/a | ${row.gaps.join("; ") || "none"} |`); continue; }
+    if ("item" in row) { lines.push(`| ${row.group} | ${row.item} | n/a | ${row.runner ?? "none"} | n/a | n/a | ${/yml/.test(row.runner ?? "") ? "see runner" : "none"} | ${row.gaps.join("; ") || "none"} |`); continue; }
     const registration = row.notRunByARunner ? "NOT_RUN_BY_A_RUNNER" : row.registered ? [row.defaultClass && "default", row.homeRole && `homeRole=${row.homeRole}`, "registered"].filter(Boolean).join(", ") : row.campaigns.length ? "campaign script only" : "none";
-    lines.push(`| ${row.group} | ${row.class}${row.note ? ` (${row.note})` : ""} | ${row.sources.map(source => source.sourceSet).join(", ") || "MISSING"} | ${registration}${row.campaigns.length ? `; ${row.campaigns.join(", ")}` : ""} | ${row.buildPair} | ${row.flavors.join(", ")} | ${row.hosted.join("; ") || "none"} | ${row.recorded[0] ?? "none"} | ${row.gaps.join("; ").replace(/\|/g, "/") || "none"} |`);
+    lines.push(`| ${row.group} | ${row.class}${row.note ? ` (${row.note})` : ""} | ${row.sources.map(source => source.sourceSet).join(", ") || "MISSING"} | ${registration}${row.campaigns.length ? `; ${row.campaigns.join(", ")}` : ""} | ${row.buildPair} | ${row.flavors.join(", ")} | ${row.hosted.join("; ") || "none"} | ${row.gaps.join("; ").replace(/\|/g, "/") || "none"} |`);
   }
   return `${lines.join("\n")}\n`;
 }
@@ -283,7 +257,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     else {
       console.log(formatCheck(rows));
       console.log("Local commands (owned, disposable emulator; developer APKs, then the strict-chain debug APKs):\n");
-      const classes = rows.filter(row => "class" in row);
+      const classes = rows.filter((row): row is Extract<typeof row, {class: string}> => "class" in row);
       for (const row of classes) console.log(`- ${row.class} (${row.flavors.join(", ")}): ${row.local ?? (row.campaigns.length ? `see ${row.campaigns.join(", ")}` : "no command")}`);
       console.log("");
       const missing = classes.filter(row => !row.sources.length).map(row => row.class);

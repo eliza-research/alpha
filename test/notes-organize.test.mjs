@@ -1,8 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-// Agent tools for Notes organisation (PLAN.md section 3; specs/notes-view AgentMoveOnlyReviewed,
-// FolderRefsValid, RestoreReturnsToFolder). The contract and executor are pure, so a fake host
-// stands in for the shell.
+// Agent tools for Notes organisation: reviewed moves, valid folder references and restore.
+// The contract and executor are pure, so a fake host stands in for the shell.
 const contract=await import('../apps/app/src/runtime/notes-organize-contract.ts');
 const {executeNotesOrganize}=await import('../apps/app/src/prototype/notes-organize-executor.ts');
 const view=await import('../apps/app/src/runtime/notes-view.ts');

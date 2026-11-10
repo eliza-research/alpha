@@ -93,8 +93,10 @@ module BrowserReminderOrphan {
       receipts: if (reviewed) s.receipts.union(Set(3)) else s.receipts}
   }
 
+  // One-off Done retains the occurrence's snooze metadata, as the shared native
+  // engine does. The completed status prevents further occurrence decisions.
   pure def completed(row: Row): Row =
-    {...row, status: "completed", revision: row.revision + 1, snoozed: false, history: row.history + 1}
+    {...row, status: "completed", revision: row.revision + 1, history: row.history + 1}
   pure def snoozed(row: Row, at: int, on: bool): Row =
     {...row, status: alertStatus(on), at: at, revision: row.revision + 1, snoozed: true}
   def applyDecision(kind: str): Row = if (kind == "done") completed(s.row)
@@ -173,8 +175,13 @@ module BrowserReminderOrphan {
   run orphanCannotBeUndoneTest = initFor("reminder", "scheduled", true, false).then(undo.fail())
   run ordinaryChangesKeepOrphanUntilExplicitReplacementTest = initFor("reminder", "scheduled", true, false)
     .then(edit(1, 1, false)).then(decision("snooze", 1)).then(decision("done", 1))
-    .expect(safety and s.row.marker and s.row.history == 1)
-    .then(scheduleReplacement).expect(safety and not(s.row.marker) and s.row.occurrence == 2 and not(ReceiptHasEntry))
+    .expect(safety and s.row.status == "completed" and s.row.snoozed and s.row.marker and s.row.history == 1)
+    .then(scheduleReplacement).expect(safety and not(s.row.marker) and not(s.row.snoozed)
+      and s.row.status == "scheduled" and s.row.occurrence == 2 and not(ReceiptHasEntry))
+  run completedOneOffCannotSnoozeTest = initFor("reminder", "scheduled", true, false)
+    .then(decision("snooze", 1)).then(decision("done", 1))
+    .expect(safety and s.row.status == "completed" and s.row.snoozed and s.row.marker)
+    .then(decision("snooze", 1).fail())
   run aGenuinePairBlocksReplacementTest = initFor("reminder", "scheduled", false, false).then(stage).then(scheduleReplacement.fail())
   run explicitClockCancelLeavesOrphanWithoutReceiptTest = initFor("alarm", "posted", true, false)
     .then(alarmDecision("cancel", 1, false)).expect(safety and s.row.marker and not(ReceiptHasEntry) and not(InReminderList))

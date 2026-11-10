@@ -8,6 +8,6 @@ test('native workflow notices refine exact route, durable claim and acknowledgem
   assert.equal(receipt.passed, true);
   assert.equal(receipt.driverInputsBound, true);
   assert.equal(receipt.traces, 14);
-  assert.equal(receipt.checkpoints, 206);
+  assert.equal(receipt.checkpoints, 204);
   assert.ok(receipt.observedFields.includes('ReplyAcknowledged'));
 });

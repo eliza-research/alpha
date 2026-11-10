@@ -4,10 +4,12 @@ import {startLoopback, stopLoopback} from './fixtures/loopback.ts';
 import {entryFor, memoryJournal} from './fixtures/device-action-journal.ts';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { spawnSync } from 'node:child_process';
+import {exitFromChild, runChild} from './child-command.ts';
 import type { ContextEnvelope } from '../apps/app/src/runtime/alpha-client.ts';
 import type { ActionJournal, ForegroundReviewExecutor, JournalEntry } from '../apps/app/src/runtime/device-actions.ts';
-if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) process.exit(spawnSync(process.execPath, ['--import=tsx', process.argv[1]], { stdio: 'inherit' }).status ?? 1);
+if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
+  exitFromChild(await runChild(process.execPath, ['--import=tsx', process.argv[1]], {stdio: 'inherit'}));
+}
 const { DeviceActions, FOREGROUND_OPERATION_TYPES } = await import('../apps/app/src/runtime/device-actions.ts');
 const { DEVICE_REVIEW_TYPES: FOREGROUND_REVIEW_TYPES, calendarAvailability } = await import('../.eliza/client-features/packages/contracts/src/device-reviews.ts');
 const session = { ownerId: 'owner', agentId: 'agent', origin: 'https://agent.example', sessionId: 'session' };
@@ -74,7 +76,7 @@ async function reviewNoticesAndForeground(){
  assert.equal(notices.length,2,'two invalid pending proposals; completed or expired invalid history stays quiet');
  assert.equal(review[0].proposal?.reviewDestination,'notes');
  const staleReview=await reviewClient.approve('note-delete',home,signal());assert.equal(staleReview.status,'unknown');assert.equal(posted.length,0,'navigation-only card cannot dispatch approval');
- assert.ok(notices.every(notice=>/could not be shown on this phone/.test(notice ?? '')));
+ assert.ok(notices.every(notice=>notice==="This action isn't available on this phone."));
  assert.ok(!notices.join('\n').includes(target.noteId),'notices never expose record identities');
  assert.deepEqual((await client().pending(home,signal())).map(card=>card.id),['note-delete','open']);
  // pending() still fails when nothing is reviewable and a proposal was invalid.
@@ -123,7 +125,7 @@ async function reviewNoticesAndForeground(){
  // Not negotiated, or no foreground executor: shown as a notice, never as an approvable card.
  for(const actionsWithout of [client(['notes.local-record.v1']),client(capabilities,null)]){
   const items=await actionsWithout.pendingReview(home,signal());
-  assert.equal(items[0].proposal,null);assert.match(items[0].notice ?? '',/not negotiated/);
+  assert.equal(items[0].proposal,null);assert.equal(items[0].notice,"This action isn't available on this phone.");
  }
 }
 async function executionIdentityAndRetirement(){

@@ -9,13 +9,12 @@ import { promisify } from 'node:util';
 import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 const exec = promisify(execFile);
-const packageName = 'ai.elizaresearch.alphaphone';
+const packageName = 'ai.alphacompute.alphaphone';
 const marks = ['recording-end', 'transcript-ready', 'send', 'first-token', 'final-reply', 'first-audio'] as const;
 type Mark = typeof marks[number];
 const routes = ['on-device', 'browser', 'local-agent', 'eliza-cloud', 'paired-agent', 'development-agent', 'manual'] as const;
-const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object';
-const member = <T extends string>(value: unknown, choices: readonly T[]): value is T =>
-  choices.some(choice => choice === value);
+const record = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value));
+const member = <T extends string>(value: unknown, values: readonly T[]): value is T => values.some(item => item === value);
 const finiteMs = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value < 3_600_000;
 
 /** Keep a fixed numeric/enum schema even if the device's storage is malformed. */

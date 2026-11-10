@@ -29,7 +29,7 @@ test('development vault: unlock, search, add, generate, edit and delete without 
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await devVault(page);
   await expect(page.getByText('Locked', { exact: true })).toBeVisible();
-  await expect(page.getByText('Other providers', { exact: true })).toBeVisible();
+  await expect(page.getByText('Other password providers', { exact: true })).toBeVisible();
   // The agent observation is paused for the whole password surface.
   expect((await agentContext(page)).sensitive).toBe(true);
   await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();
@@ -87,15 +87,15 @@ test('development vault locks when leaving and reports autofill selection only a
   await devVault(page);
   await expect(page.getByText('None selected', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Set as autofill service', exact: true }).click();
-  // The instruction is on the row before the handoff; no toast follows it.
-  await expect(page.getByText('Confirm in Android, or search there for autofill', { exact: true })).toBeVisible();
+  // The development picker selects its synthetic provider; the action's status readback confirms it.
+  await expect(page.getByText('Alpha Phone passwords', { exact: true }).last()).toBeVisible();
   await expect(page.getByText('Confirm Alpha Phone passwords in Android, then return here.', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Refresh autofill status', exact: true }).click();
   await expect(page.getByText('Alpha Phone passwords', { exact: true }).last()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Set as autofill service', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open Example sign-in', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Back to Apps', exact: true }).click();
   await expect.poll(async () => (await agentContext(page)).sensitive).toBe(false);
   await page.getByRole('button', { name: 'Passwords', exact: true }).click();
   await expect(page.getByText('Locked', { exact: true })).toBeVisible();
@@ -106,8 +106,9 @@ test('browser build without the development profile offers no simulated vault', 
   await page.goto('/');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Apps', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Passwords', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Passwords', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Unlock passwords', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add password', exact: true })).toHaveCount(0);
 });
 
 async function nativeVault(page: Page, options: { leak?: boolean; selected?: string; damaged?: boolean; transfer?: boolean } = {}) {
@@ -167,7 +168,7 @@ test('native vault: Android unlock, app bindings, copy and autofill picker with 
   await expect(page.getByText('App · verified publisher', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Copy password', exact: true }).click();
   await expect(page.getByText('Copied. Alpha tries to clear it in 45 s.', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Back to Passwords', exact: true }).click();
+  await page.getByRole('button', { name: 'Back to Password manager', exact: true }).click();
   await page.getByRole('button', { name: 'Set as autofill service', exact: true }).click();
   // Opening Android's confirmation is not a selection; only the readback changes the status.
   await expect(page.getByText('None selected', { exact: true })).toBeVisible();
@@ -176,7 +177,7 @@ test('native vault: Android unlock, app bindings, copy and autofill picker with 
   const calls = await page.evaluate(() => (window as any).vaultFixture.calls.map((c: any) => c.method));
   expect(calls).toEqual(expect.arrayContaining(['status', 'unlock', 'list', 'copy', 'openAutofillSettings']));
   // Proton Pass remains an alternative provider on the same page.
-  await expect(page.getByText('Other providers', { exact: true })).toBeVisible();
+  await expect(page.getByText('Other password providers', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Get Proton Pass from Proton', exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Export passwords', exact: true }).click();
@@ -244,7 +245,7 @@ test('outbound capture: vault work sends no request containing typed or stored v
     return alphaClient.getState().context.sensitive;
   });
   expect(sensitive, 'context is marked sensitive').toBe(true);
-  await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Back to Apps', exact: true }).click();
   const leaked = await page.evaluate(markers => {
     const w = window as any; const text = (w.consoleText || '') + (w.capturedBeacons || []).join('\n');
     return markers.filter(marker => text.includes(marker));
@@ -263,7 +264,8 @@ test('leaving Settings for another view locks the development vault', async ({ p
   // Locked and forgotten as soon as Settings is left, not only when it is reopened.
   expect(await page.evaluate(async () => (await import('/src/passwords/password-manager.ts')).passwordManagerHoldsEntries())).toBe(false);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Apps', exact: true }).click();
+  // Returning retains the Apps category, but never the unlocked vault.
+  await expect(page.getByRole('heading', { name: 'Apps', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Passwords', exact: true }).click();
   await expect(page.getByText('Locked', { exact: true })).toBeVisible();
 });

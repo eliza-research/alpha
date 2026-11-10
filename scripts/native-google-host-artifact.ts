@@ -54,20 +54,26 @@ export function verifyNativeGoogleHostArtifact(root: string, directory: string):
  return {...host,version:1,module:moduleName,bunVersion:'1.4.2',inputs:Object.fromEntries(inputs),coreState:host.coreState};
 }
 
-function fixedInputHashes(root: string, sdk: string): InputHashes {
+function fixedInputHashes(root: string,sdk: string){
+ const host='packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts';
+ const raw='vendor/eliza/'+host,effective='.eliza/client-features/'+host,stamp='.eliza/client-features/.source.json';
+ const provenance: {sourceFiles?: InputHashes; files?: InputHashes}=JSON.parse(regularFile(path.join(root,stamp)).bytes.toString('utf8'));
+ const digest=hash(regularFile(path.join(root,raw)).bytes);
+ if(provenance.sourceFiles?.[host]!==digest||provenance.files?.[host]!==digest||
+  hash(regularFile(path.join(root,effective)).bytes)!==digest)
+  throw Error('Native Google host must consume exact pinned upstream bytes');
  const names=new Set([...CORE_STATE_INPUTS,'package.json','tsconfig.json','vendor/eliza/tsconfig.json',
   path.relative(root,path.join(sdk,'tsconfig.json')),'scripts/build-native-google-host.ts','scripts/local-agent-source.ts',
-  'upstream.lock.json','scripts/native-google-host-artifact.ts','scripts/prepare-client-features.ts','scripts/client-speech-patch.ts']);
- for(const name of ['patches/eliza/cloud-speech-client-manifest.json','patches/eliza/cloud-speech-client.patch'])
-  if(fs.existsSync(path.join(root,name)))names.add(name);
+  'upstream.lock.json','scripts/native-google-host-artifact.ts','scripts/prepare-client-features.ts',
+  'scripts/upstream-native-source.ts',raw,effective,stamp]);
  return Object.fromEntries([...names].sort().map(name=>{
   if(!safe(name))throw Error('Native Google build input escaped product source');
   return [name,hash(regularFile(path.join(root,name)).bytes)];
  }));
 }
 
-function candidateRecord(metadata: unknown, fixed: InputHashes) {
- if(!record(metadata)||!record(metadata.inputs)||!record(metadata.inputHashes)||!Object.hasOwn(metadata.inputs,'backend/native-google-agent-host.ts')
+function candidateInputs(metadata: Record<string, unknown>,fixed: InputHashes){
+ if(!record(metadata.inputs)||!record(metadata.inputHashes)||!Object.hasOwn(metadata.inputs,'scripts/native-google-product-host.ts')
   ||!isDeepStrictEqual(Object.keys(metadata.inputs).sort(),Object.keys(metadata.inputHashes).sort()))
   throw Error('Native Google compiler input graph lacks exact byte bindings');
  const inputs = new Map(Object.entries(fixed));
@@ -128,7 +134,7 @@ export function addNativeGoogleHostArtifact(root: string, directory: string) {
   execFileSync(bun,['--conditions=eliza-source','scripts/build-native-google-host.ts',root,sdk,file,meta],{cwd:root,stdio:'pipe'});
   verifySource(sdk,pin);
   if(!isDeepStrictEqual(fixedInputHashes(root,sdk),fixed))throw Error('Native Google fixed build input changed while compiling');
-  const {inputs, outputSha256, coreState} = candidateRecord(JSON.parse(regularFile(meta).bytes.toString('utf8')), fixed);
+  const {inputs, outputSha256, coreState} = candidateInputs(JSON.parse(regularFile(meta).bytes.toString('utf8')), fixed);
   const manifest: ArtifactManifest = JSON.parse(previous.manifest.bytes.toString('utf8'));
   if(previous.module)fs.chmodSync(file,previous.module.mode);
   const candidate=regularFile(file);

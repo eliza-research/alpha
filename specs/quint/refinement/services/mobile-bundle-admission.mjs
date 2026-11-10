@@ -3,15 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {isDeepStrictEqual} from 'node:util';
-import {createMobileUuidAdapter, mobileBuildInputs, mobileBuildReceipt, verifyMobileBuildReceipt,
+import {expectedMobileUuidTransforms, mobileBuildInputs, mobileBuildReceipt, verifyMobileBuildReceipt,
   MOBILE_BUILD_INPUTS, MOBILE_BUILD_RECEIPT, MOBILE_UUID_POLICY} from '../../../../scripts/mobile-uuid-adapter.ts';
-import {coreStateBuildPlugin, coreStateReceipt, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.ts';
+import {CORE_STATE_MANIFEST, coreStateBuildPlugin, coreStateReceipt, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.ts';
 import {actualPolicy, hash, mobileUuidFixture} from '../../../../test/fixtures/mobile-uuid-build.mjs';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.ts';
 
 const repository = path.resolve(import.meta.dirname, '../../../..');
 const adapter = MOBILE_BUILD_INPUTS[0], otherAdapter = MOBILE_BUILD_INPUTS.at(-1);
-const connectorPatch = 'patches/eliza/plugin-connector-custody.patch';
 const zeroHash = '0'.repeat(64);
 const action = (name, ...args) => ({name, args});
 const idle = {operation: 'none', result: 'none'};
@@ -26,13 +26,12 @@ function installedTransforms(f) {
       callback({path: file});
     }
   }});
-  const uuid = createMobileUuidAdapter(f.root, f.source);
-  invoke(uuid.plugin, [path.join(uuid.inputs.packageRoot, 'dist-node/index.js')]);
-  assert.equal(uuid.transforms.length, 1);
+  const uuid = expectedMobileUuidTransforms(mobileBuildInputs(f.root, f.source));
+  assert.equal(uuid.length, 1);
   const core = coreStateBuildPlugin(f.root, f.source);
   invoke(core.plugin, [...core.files.keys()].map(name => path.join(f.source, name)));
   assert.ok(core.transforms.some(item => item.path === PLUGIN_CONNECTOR_TARGET));
-  return {uuid: uuid.transforms, core: core.transforms};
+  return {uuid, core: core.transforms};
 }
 
 function refusal(error, files) {
@@ -51,7 +50,7 @@ function refusal(error, files) {
     [/unexpected modules/, 'inventory'],
     [/input must be regular/, 'regular'],
     [/transform exactly the reviewed barrel/, 'uuid-transform'],
-    [/core patch transformation|selected core transformation|Core patch digest mismatch/i, 'core-transform'],
+    [/core source observation|selected core source observation|Core source catalog/i, 'core-transform'],
     [/receipt differs from reviewed producer or bundle/, 'stale'],
   ];
   const kind = results.find(([pattern]) => pattern.test(error.message))?.[1];
@@ -72,7 +71,7 @@ function fixture(f, alternate) {
     policy: atRoot(MOBILE_UUID_POLICY), producer: sdk(actualPolicy.builder.path),
     adapter: atRoot(adapter), otherAdapter: atRoot(otherAdapter), stamp: sdk('.alpha-runtime-source.json'),
     lock: sdk('bun.lock'), package: sdk(actualPolicy.package.root+'/dist-node/v4.js'),
-    inventory: sdk(actualPolicy.package.root+'/dist-node/unreviewed.js'), connectorPatch: atRoot(connectorPatch),
+    inventory: sdk(actualPolicy.package.root+'/dist-node/unreviewed.js'), coreCatalog: atRoot(CORE_STATE_MANIFEST),
   };
   if (alternate) {
     fs.mkdirSync(target);
@@ -94,12 +93,13 @@ function fixture(f, alternate) {
     bundle: [null, fs.readFileSync(files.bundle), Buffer.from('fixture replacement bundle')],
   };
   const policyBytes = fs.readFileSync(files.policy);
-  const revisedPolicy = JSON.parse(policyBytes);
+  const policySource = value => 'export default '+JSON.stringify(value)+';\n';
+  const revisedPolicy = parseBuildPolicy(policyBytes);
   revisedPolicy.builder.sha256 = hash(versions.producer[1]);
-  const policyVersions = [policyBytes, Buffer.from(JSON.stringify(revisedPolicy))];
+  const policyVersions = [policyBytes, Buffer.from(policySource(revisedPolicy))];
   const labels = Object.fromEntries(Object.entries(versions).map(([name, entries]) =>
     [name, entries.map(fingerprint)]));
-  const readPolicy = () => JSON.parse(fs.readFileSync(files.policy, 'utf8'));
+  const readPolicy = () => parseBuildPolicy(fs.readFileSync(files.policy));
   const read = file => fs.existsSync(file) ? fs.readFileSync(file) : null;
   const writeReceipt = value => fs.writeFileSync(files.receipt, JSON.stringify(value));
   const versionOf = (name, digest) => {
@@ -168,7 +168,7 @@ function fixture(f, alternate) {
     };
   }
   const faults = {
-    policy: () => replace(files.policy, JSON.stringify({...readPolicy(), schema: 2})),
+    policy: () => replace(files.policy, policySource({...readPolicy(), schema: 2})),
     stamp: () => replace(files.stamp, JSON.stringify({...JSON.parse(fs.readFileSync(files.stamp)), base: 'f'.repeat(40)})),
     producer: () => replace(files.producer, versions.producer[1]),
     lock: () => replace(files.lock, 'fixture unreviewed lock'),
@@ -182,7 +182,7 @@ function fixture(f, alternate) {
       return () => {fs.unlinkSync(files.package); fs.writeFileSync(files.package, before);};
     },
     adapter: () => replace(files.otherAdapter, null),
-    'core-auth': () => replace(files.connectorPatch, 'fixture changed connector patch'),
+    'core-auth': () => replace(files.coreCatalog, policySource({schema: 1, baseCommit: actualPolicy.baseCommit, files: {}})),
   };
   return {
     observe,
@@ -384,7 +384,7 @@ export async function checkMobileBundleAdmission(extraSources = []) {
   ];
   return checkTraces({model: 'MobileBundleAdmission', sources, driverHashes, traces, scope: 'bounded-orchestration',
     assumptions: [
-      'Actual mobileBuildInputs, mobileBuildReceipt, verifyMobileBuildReceipt and UUID/core onLoad adapters execute in private scratch. The initial SDK lock, pinned producer, authored adapters, policy and all 23 UUID files are byte-exact.',
+      'Actual mobileBuildInputs, mobileBuildReceipt, verifyMobileBuildReceipt and UUID observation records and the core input observer execute in private scratch. The initial SDK lock, pinned producer, authored adapters, policy and all 23 UUID files are byte-exact.',
       'The source stamp and bundle are synthetic. Faults change only owned fixture bytes. A second producer digest represents a coherent synthetic policy revision.',
       'Fingerprints are equality classes of file digests. The observed candidate and stored receipt are distinct. Exact receipt admission verifies smoke claim fields. Mobile producer and smoke execution require separate evidence.',
       'One selected directory and one input fault at a time. The alternate directory is a direct verifier input; actual staged copying, interruption and installed runtime execution remain separate.',

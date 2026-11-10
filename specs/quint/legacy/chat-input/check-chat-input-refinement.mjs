@@ -113,11 +113,10 @@ async function mounted(extraSources, run) {
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')),
     ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'config')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
-    ...filesWithin(resolve(root, 'patches/eliza')),
+    'upstream.lock.json',
     'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json', 'upstream.lock.json',
     'scripts/prepare-client-features.ts', 'scripts/quint-lib.ts',
     'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts',

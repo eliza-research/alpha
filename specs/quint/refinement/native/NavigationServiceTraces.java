@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 
 import android.app.PendingIntent;
 import android.content.ComponentName;

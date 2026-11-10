@@ -44,10 +44,10 @@ export async function checkNativeReminderDelivery(extraSources = []) {
   const manifest='android/app/src/main/AndroidManifest.xml';
   const sources = [...sourcePaths, manifest, harness, traceWriter, library, jsonJar, fileURLToPath(import.meta.url),
     join(directory,'reminder-delivery-platform.mjs'),'scripts/upstream-native-source.ts','upstream.lock.json',
-    'patches/eliza/native-manifest.json','test/fixtures/jvm-tools.mjs',...extraSources];
+    'android/upstream-native-sources.json','test/fixtures/jvm-tools.mjs',...extraSources];
   const driverHashes = captureInputs(sources);
   assert.match(readFileSync(join(root,manifest),'utf8'), /<receiver\s+android:name="\.ReminderReceiver"\s+android:exported="false"/);
-  const catalog=JSON.parse(readFileSync(join(root,'patches/eliza/native-manifest.json'),'utf8'));
+  const catalog=JSON.parse(readFileSync(join(root,'android/upstream-native-sources.json'),'utf8'));
   const targets=new Set(catalog.patches.flatMap(patch=>patch.targets.map(target=>target.path)));
   for (const path of native) assert.ok(!targets.has(path),`Reminder fixture requires effective patched source for ${path}`);
   const upstream = upstreamNativeSource(root).read(shared);

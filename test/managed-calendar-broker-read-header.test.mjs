@@ -1,31 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from './support/strip-types.mjs';
+import {spawnSync} from 'node:child_process';
 import {Readable} from 'node:stream';
 import {EventEmitter} from 'node:events';
-// Actual broker + exact shared codec, with only external error-class identities
-// replaced. No real host/SDK graph, provider, native bridge, or socket is loaded.
-const strip=source=>stripTypeScriptTypes(source.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
-const brokerSource=readFileSync('backend/managed-google-agent-broker.ts','utf8');
-const contractImport=brokerSource.match(/^import \{calendarReadBrokerDiagnosticHeader\} from '([^']+)';$/m);
-assert.equal(contractImport?.[1],'../vendor/eliza/packages/contracts/src/calendar.ts','broker must consume the actual pinned shared source');
-const contract=readFileSync(new URL(contractImport[1],new URL('../backend/managed-google-agent-broker.ts',import.meta.url)),'utf8');
-const start=contract.indexOf('const calendarReadBrokerStages =');
-const object=contract.indexOf('export const calendarReadBrokerDiagnosticHeader =',start);
-const end=contract.indexOf('\n});',object);
-assert(start>=0&&object>start&&end>object,'exact shared codec source must be present');
-const codec=new Function(strip(contract.slice(start,end+5))+';return calendarReadBrokerDiagnosticHeader;')();
-const helper=new Function(strip(readFileSync('backend/managed-google-failure-stage.ts','utf8'))+';return {managedGoogleFailureStage,managedGoogleTransportCodes,recordManagedGoogleFailure};')();
-class CloudProtocolError extends Error{constructor(code,status,data){super('private synthetic error');this.code=code;this.status=status;this.data=data;}}
-class CalendarAgentWriteRefused extends Error{constructor(){super('private refusal');this.refusal={code:'SYNTHETIC_UNCHANGED_REFUSAL'};}}
-const brokerCode=strip(brokerSource);
-class GoogleAgentRefusal extends Error{}
-const makeBroker=new Function('calendarReadBrokerDiagnosticHeader','managedGoogleFailureStage','managedGoogleTransportCodes','CloudProtocolError','CalendarAgentWriteRefused','GoogleAgentRefusal','GOOGLE_AGENT_RESULT_MAX','GMAIL_QUERY_MAX',brokerCode+';return createManagedGoogleAgentBroker;')(codec,helper.managedGoogleFailureStage,helper.managedGoogleTransportCodes,CloudProtocolError,CalendarAgentWriteRefused,GoogleAgentRefusal,256*1024,2048);
+
+if(!process.versions.bun&&!process.execArgv.includes('tsx')){
+ const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});
+ if(child.error)throw child.error;
+ process.exit(child.status??1);
+}
+
+const feature='../.eliza/client-features/';
+const managed=feature+'packages/app/src/runtime/managed-google-agent/';
+const {calendarReadBrokerDiagnosticHeader:codec}=await import(feature+'packages/contracts/src/calendar.ts');
+const {CalendarAgentWriteRefused}=await import(feature+'plugins/plugin-calendar/src/service/managed-calendar-host.ts');
+const {CloudProtocolError}=await import(managed+'managed-google-client.ts');
+const {recordManagedGoogleFailure}=await import(managed+'managed-google-failure-stage.ts');
+const {createManagedGoogleAgentBroker:makeBroker}=await import(managed+'managed-google-agent-broker.ts');
 const secret='NEVER_EXPOSE_TOKEN_ACCOUNT_BODY_QUERY';
 const generic='Google request could not be verified. Check the current account, permissions, and any saved operation receipt before retrying.';
 async function call({input={calendar:{operation:'sources'}},error=new Error(secret),stage,authorized=true,method='POST',origin,success=false,logThrows=false}={}){
- if(stage)helper.recordManagedGoogleFailure(error,stage);
+ if(stage)recordManagedGoogleFailure(error,stage);
  const calls=[],logs=[],response=new EventEmitter();
  const host=new Proxy({}, {get(_target,name){return async()=>{calls.push(String(name));if(!success)throw error;return [];};}});
  const broker=makeBroker({host,authorized:async()=>authorized,diagnostic:value=>{logs.push(value);if(logThrows)throw Error(secret);}});
@@ -69,7 +64,7 @@ for(const input of [
  {send:{operation:'receipt',id:'synthetic-operation'}},
  {send:{operation:'dispatch',id:'synthetic-operation',reviewDigest:'a'.repeat(64),to:['synthetic@example.invalid'],subject:'Synthetic',bodyText:'Synthetic'}},
 ])test(`non-read refusal preserves status/body without diagnostic header: ${JSON.stringify(input)}`,async()=>{const r=await call({input});assert.equal(r.status,409);assert.deepEqual(r.body,{error:generic});noHeader(r);});
-test('typed Calendar write refusal remains its existing 200 result without header',async()=>{const r=await call({input:{calendar:{operation:'write-execute'}},error:new CalendarAgentWriteRefused()});assert.equal(r.status,200);assert.deepEqual(r.body,{calendarFailure:{code:'SYNTHETIC_UNCHANGED_REFUSAL'}});noHeader(r);});
+test('typed Calendar write refusal remains its existing 200 result without header',async()=>{const r=await call({input:{calendar:{operation:'write-execute'}},error:new CalendarAgentWriteRefused({code:'SYNTHETIC_UNCHANGED_REFUSAL'})});assert.equal(r.status,200);assert.deepEqual(r.body,{calendarFailure:{code:'SYNTHETIC_UNCHANGED_REFUSAL'}});noHeader(r);});
 test('shared decoder refuses noncanonical, extra-key, mismatched and oversized wire diagnostics',async()=>{
  const r=await call(),wire=header(r);assert(codec.decode(wire,'sources'));
  for(const value of [' '+wire,wire.replace('"version":1','"version":1,"extra":"'+secret+'"'),'x'.repeat(513),wire.replace('"operation":"sources"','"operation":"feed"')])assert.equal(codec.decode(value,'sources'),undefined);

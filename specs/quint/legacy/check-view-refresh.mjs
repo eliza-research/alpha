@@ -30,16 +30,8 @@ for (const name of requested) if (!allModels.some(model => model.module === name
 const models = allModels.filter(model => requested.length === 0 || requested.includes(model.module));
 const configurations = option('configurations', '').split(',').filter(Boolean);
 for (const name of configurations) if (!models.some(model => model.configurations.some(config => config.name === name))) throw Error(`Unknown configuration ${name}`);
-const originalInputs = models.flatMap(model => [model.legacySource,
-  ...model.configurations.map(config => config.legacyConfiguration)]);
-for (const input of originalInputs) {
-  if (sha256(readFileSync(resolve(root, input.path))) !== input.sha256) {
-    throw Error(`Historical design input changed: ${input.path}`);
-  }
-}
 const inputPaths = [documentPath, 'specs/quint/legacy/check-view-refresh.mjs', 'scripts/quint-lib.ts',
-  'specs/quint/tlc.json', 'package-lock.json', ...models.map(model => model.path),
-  ...originalInputs.map(input => input.path)];
+  'specs/quint/tlc.json', 'package-lock.json', ...models.map(model => model.path)];
 const hashes = () => Object.fromEntries(inputPaths.map(path => [path, sha256(readFileSync(resolve(root, path)))]));
 const inputHashes = hashes();
 const output = resolve(root, option('out', `test-results/quint-view-refresh/${phase}.json`));

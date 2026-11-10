@@ -10,7 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { createHash, createPublicKey, generateKeyPairSync } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { PIXEL10A_PRODUCT, PIXEL10A_RELEASE } from "../scripts/aosp-pixel10a.ts";
+import { PIXEL10A_COMPOSITION, PIXEL10A_PRODUCT, PIXEL10A_RELEASE } from "../scripts/aosp-pixel10a.ts";
 import { X509_KEYS, parseSigningArgs, signRelease } from "../scripts/sign-aosp-release.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -92,6 +92,7 @@ function completeRoot(t, { platform, releasekey, apex, avb, apexPayloadAvb }) {
   const product = read(PIXEL10A_PRODUCT);
   const others = Object.fromEntries(Object.keys(product.signer.releaseCertificates).map(name => [name, name === "apex" ? apex : releasekey]));
   write(PIXEL10A_PRODUCT, { ...product, sourceLock: { ...product.sourceLock, sha256: sha256(lock) }, signer: { ...product.signer, platformCertificateSha256: platform, releaseCertificates: others, apexPayloadAvbPublicKeySha256: apexPayloadAvb }, avb: { ...product.avb, publicKeySha256: avb } });
+  fs.copyFileSync(path.join(root, PIXEL10A_COMPOSITION), path.join(dir, PIXEL10A_COMPOSITION));
   write(CHANNEL, { ...read(CHANNEL), otaCertificateSha256: releasekey, avbPublicKeySha256: avb });
   write("android/release-signer.json", { ...read("android/release-signer.json"), signerSha256: "d".repeat(64) });
   return { dir, write, readBack: rel => JSON.parse(fs.readFileSync(path.join(dir, rel), "utf8")) };

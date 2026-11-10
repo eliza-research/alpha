@@ -8,7 +8,7 @@
  *
  * Defaults: --repo from the IOC file's alphaphone owner, branches main and develop.
  * READ-ONLY: only `gh api --method GET`. Installing a ruleset is the owner's action; the commands
- * are in docs/runbooks/658-forged-commit-incident.md. Exit: 0 every branch enforces all three with
+ * remain in Git history. Exit: 0 every branch enforces all three with
  * no bypass actors (bypass actors are accepted with --allow-bypass), 1 something is missing or can
  * be bypassed, 2 the state could not be read (including a ruleset whose bypass actors are hidden).
  */

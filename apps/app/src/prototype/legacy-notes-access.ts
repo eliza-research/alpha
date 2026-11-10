@@ -22,12 +22,12 @@ export async function previousNotesAvailability(read:(check:()=>void)=>Promise<b
  try{const present=await read(check);check();return present?'present':'absent';}
  catch(error){check();return 'unavailable';}
 }
-export function browserPreviousNotesAvailability(port:NotesDocumentPort,signal:AbortSignal,current:()=>boolean,storage:Pick<Storage,'getItem'>=localStorage){
- return previousNotesAvailability(async()=>!noLegacyKeys(storage)||await port.read(signal)!==null,signal,current);
+export function browserPreviousNotesAvailability(port:NotesDocumentPort,signal:AbortSignal,current:()=>boolean,storage?:Pick<Storage,'getItem'>){
+ return previousNotesAvailability(async()=>!noLegacyKeys(storage??localStorage)||await port.read(signal)!==null,signal,current);
 }
-export function devicePreviousNotesAvailability(vault:{readRaw(key:string):Promise<string|null>},signal:AbortSignal,current:()=>boolean,storage:Pick<Storage,'getItem'>=localStorage){
+export function devicePreviousNotesAvailability(vault:{readRaw(key:string):Promise<string|null>},signal:AbortSignal,current:()=>boolean,storage?:Pick<Storage,'getItem'>){
  return previousNotesAvailability(async check=>{
-  if(!noLegacyKeys(storage))return true;
+  if(!noLegacyKeys(storage??localStorage))return true;
   const saved=await vault.readRaw(SECURE_NOTES_SLOT);check();
   return saved!==null||await vault.readRaw(SECURE_NOTES_DRAFT_SLOT)!==null;
  },signal,current);

@@ -127,7 +127,7 @@ test('a confirmed send clears the open composer, the retained copy and the saved
   assert.equal(d.unsavedText.size, 0, 'retained copy removed');
   assert.equal(app.openComposer(), null, 'composer closed');
   assert.deepEqual(app.labels(), ['Mail review / receipt']);
-  assert.equal(app.receipt().draftNote, 'The local draft and unsaved copy of this sent email were removed from this device.');
+  assert.equal(app.receipt().draftNote, 'Sent.');
   assert.equal(d.remote.dispatches, 1);
 });
 
@@ -250,7 +250,7 @@ test('a different draft is never cleared, even with identical content', async ()
   assert.equal(app.receipt().status, 'Provider confirmed this operation.');
   assert.deepEqual(d.draftSlot(), other, 'the second draft is untouched');
   assert.ok(app.composer(), 'its composer stays open');
-  assert.equal(app.receipt().draftNote, 'The local draft and unsaved copy of this sent email were removed from this device.');
+  assert.equal(app.receipt().draftNote, 'Sent.');
   assert.equal(d.remote.dispatches, 1);
 });
 

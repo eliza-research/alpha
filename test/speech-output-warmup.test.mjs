@@ -8,10 +8,11 @@ import {upstreamNativeSource} from '../scripts/upstream-native-source.ts';
 import {runJvm,upstreamVoiceSource,fixture} from './fixtures/jvm-tools.mjs';
 
 const root=path.resolve(import.meta.dirname,'..');
-test('shared output warmup patch is admitted and closes on first audio, cancellation and lifecycle retirement',t=>{
- const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-warmup-patch-'));
+test('shared output warmup is admitted and closes on first audio, cancellation and lifecycle retirement',t=>{
+ const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-warmup-source-'));
  t.after(()=>fs.rmSync(temporary,{recursive:true,force:true}));
- materializeNativePatches({source:upstreamNativeSource(root),manifest:JSON.parse(fs.readFileSync(path.join(root,'patches/eliza/native-manifest.json'))),patchRoot:path.join(root,'patches/eliza'),temporary});
+ const source=upstreamNativeSource(root);
+ materializeNativePatches({source,manifest:{...JSON.parse(fs.readFileSync(path.join(root,'android/upstream-native-sources.json'))),baseCommit:source.pin},patchRoot:path.join(root,'patches/eliza'),temporary});
  const speech=path.join(temporary,'plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice');
  const bridge=fs.readFileSync(path.join(speech,'LocalSpeechBridgePlugin.java'),'utf8');
  assert.match(bridge,/@PluginMethod public void warmSpeechOutput\(PluginCall call\)/);
@@ -31,7 +32,7 @@ test('shared output warmup patch is admitted and closes on first audio, cancella
  const stub=path.join(temporary,'AudioTrackSpeechOutput.java');
  fs.writeFileSync(stub,'package ai.eliza.voice; final class AudioTrackSpeechOutput { static StreamingSpeechPlayback.Output open(int rate){throw new AssertionError("Android output is not used by this host test");} }');
  const sources=['VoiceLatencyTrials.java','SpeechPcmQueue.java','StreamingSpeechPlayback.java','SpeechAudioFocusPolicy.java'].map(upstreamVoiceSource);
- assert.match(runJvm([...sources,stub,path.join(speech,'SpeechOutputWarmup.java'),fixture('SpeechOutputWarmupTest.java')],'ai.eliza.voice.SpeechOutputWarmupTest'),/^PASS output warmup/);
- assert.match(runJvm([path.join(speech,'SpeechLeadTrim.java'),fixture('SpeechLeadTrimTest.java')],'ai.eliza.voice.SpeechLeadTrimTest'),/^PASS speech lead trim/);
- assert.match(runJvm([...sources,path.join(speech,'FirstWriteSpeechOutput.java'),fixture('FirstWriteSpeechOutputTest.java')],'ai.eliza.voice.FirstWriteSpeechOutputTest'),/^PASS first write/);
+ assert.match(runJvm([...sources,stub,upstreamVoiceSource('SpeechOutputWarmup.java'),fixture('SpeechOutputWarmupTest.java')],'ai.eliza.voice.SpeechOutputWarmupTest'),/^PASS output warmup/);
+ assert.match(runJvm([upstreamVoiceSource('SpeechLeadTrim.java'),fixture('SpeechLeadTrimTest.java')],'ai.eliza.voice.SpeechLeadTrimTest'),/^PASS speech lead trim/);
+ assert.match(runJvm([...sources,upstreamVoiceSource('FirstWriteSpeechOutput.java'),fixture('FirstWriteSpeechOutputTest.java')],'ai.eliza.voice.FirstWriteSpeechOutputTest'),/^PASS first write/);
 });

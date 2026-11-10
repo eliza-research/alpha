@@ -1,7 +1,6 @@
 import { DEFAULT_SURFACE_LAYOUT, keyboardFreeHeight, raisesSoftKeyboard, sameSurfaceLayout, surfaceLayout as sharedSurfaceLayout, type SurfaceLayout } from '../../../../.eliza/client-features/packages/ui/src/components/shell/responsive-layout.ts';
 /**
- * How the phone canvas is fitted to the window (issue #411, responsive-surface matrix in
- * docs/implementation-plan.md).
+ * How the phone canvas is fitted to the window (issue #411).
  *
  * Layout is decided from measured window geometry, not from the screen's orientation:
  *

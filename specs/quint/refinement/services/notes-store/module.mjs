@@ -9,9 +9,9 @@ import {captureInputs} from '../../check-traces.mjs';
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 
 /** Compile actual Notes owners and bind all selected bytes before evaluating them. */
-export async function loadNotesSource(extraSources=[], {patched=true}={}) {
+export async function loadNotesSource(extraSources=[]) {
   const root=process.cwd(),source=path.join(root,'vendor/eliza'),compiled=new Map(),transforms=[];
-  const prepared=patched?coreStatePatch(root,source):null;
+  const prepared=coreStatePatch(root,source);
   const built=await build({stdin:{contents:`
     export {AgentRuntime} from './vendor/eliza/packages/core/src/runtime.ts';
     export {NotesStore} from './vendor/eliza/plugins/plugin-notes/src/store.ts';
@@ -27,17 +27,17 @@ export async function loadNotesSource(extraSources=[], {patched=true}={}) {
       builder.onLoad({filter:/\.(?:ts|tsx|js|mjs|cjs|json)$/,namespace:'file'},args=>{
         const bytes=fs.readFileSync(args.path);compiled.set(args.path,hash(bytes));
         const relative=path.relative(source,args.path).split(path.sep).join('/');
-        const patch=prepared?.files.get(relative);
-        if(patch){assert.equal(hash(bytes),patch.beforeSha256);transforms.push({path:relative,sourceSha256:patch.beforeSha256,outputSha256:patch.afterSha256});}
+        const selected=prepared.files.get(relative);
+        if(selected){assert.equal(hash(bytes),selected.beforeSha256);transforms.push({path:relative,sourceSha256:selected.beforeSha256,outputSha256:selected.afterSha256});}
         const extension=args.path.split('.').at(-1);
-        return {contents:patch?.bytes??bytes,loader:['mjs','cjs'].includes(extension)?'js':extension,resolveDir:path.dirname(args.path)};
+        return {contents:bytes,loader:['mjs','cjs'].includes(extension)?'js':extension,resolveDir:path.dirname(args.path)};
       });
     }}]});
   assert.doesNotMatch(built.outputFiles[0].text,/['"]file-type['"]/, 'Optional media dependency must be absent from Notes executable');
   const sources=[...compiled.keys(),fileURLToPath(import.meta.url),'package-lock.json',...CORE_STATE_INPUTS,...extraSources];
   const driverHashes=captureInputs(sources);
-  if(prepared)for(const [file,digest] of Object.entries(prepared.receipt.inputHashes))assert.equal(driverHashes[path.resolve(file)],digest,'Notes patch inputs changed before capture');
+  for(const [file,digest] of Object.entries(prepared.receipt.inputHashes))assert.equal(driverHashes[path.resolve(file)],digest,'Notes source inputs changed before capture');
   for(const [file,digest] of compiled)assert.equal(driverHashes[path.resolve(file)],digest,'Notes source changed during compilation');
   const module=await import('data:text/javascript;base64,'+Buffer.from(built.outputFiles[0].text).toString('base64'));
-  return {...module,sources,driverHashes,coreState:prepared?coreStateBuildRecord(root,transforms,coreStateRequiredTargets([...compiled.keys()])):null};
+  return {...module,sources,driverHashes,coreState:coreStateBuildRecord(root,transforms,coreStateRequiredTargets([...compiled.keys()]))};
 }

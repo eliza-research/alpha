@@ -6,7 +6,7 @@ const m=await import('../apps/app/src/runtime/photo-library.ts');
 // The shared sources are read with whitespace collapsed so these checks name the code, not its layout.
 const compact=source=>source.replace(/\s+/g,' ').replace(/ (?=\W)|(?<=\W) /g,'');
 const media='vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/';
-const registration=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java','utf8');
+const registration=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotoLibraryPlugin.java','utf8');
 const java=compact(readFileSync(media+'DeviceLibraryPlugin.java','utf8'));
 const access=compact(readFileSync(media+'PhotoLibraryAccess.java','utf8'));
 const sharedPhotos=compact(readFileSync(media+'PhotosPlugin.java','utf8'));
@@ -24,11 +24,11 @@ test('manifest declares the media permissions Android needs per API level, legac
  // No write-all storage shortcut. All-files access belongs to Files (PLAN F1); the photo library never relies on it.
  assert.doesNotMatch(manifest,/ACCESS_MEDIA_LOCATION/);
  assert.equal(manifest.match(/MANAGE_EXTERNAL_STORAGE/g)?.length,1);
- assert.doesNotMatch(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java','utf8'),/MANAGE_EXTERNAL_STORAGE|isExternalStorageManager/);
+ assert.doesNotMatch(readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotoLibraryPlugin.java','utf8'),/MANAGE_EXTERNAL_STORAGE|isExternalStorageManager/);
  // Write access exists only as Files' Android 10 legacy storage (test/files-legacy-storage.test.mjs); Photos never asks for it.
  assert.match(manifest,/WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:replace="android:maxSdkVersion"/);
- assert.doesNotMatch(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java','utf8'),/WRITE_EXTERNAL_STORAGE/);
- assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java','utf8'),/registerPlugin\(AlphaPhotoLibraryPlugin\.class\);/);
+ assert.doesNotMatch(readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotoLibraryPlugin.java','utf8'),/WRITE_EXTERNAL_STORAGE/);
+ assert.match(readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java','utf8'),/registerPlugin\(AlphaPhotoLibraryPlugin\.class\);/);
 });
 
 test('native facade bounds the renderer contract: per-SDK permission request, page, validation and action limits',()=>{
@@ -255,7 +255,7 @@ test('library operations are registered in Alpha device actions: Photos-only, ne
  const out=JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
  assert.deepEqual(out.search,{type:'photo_library_search',limit:5});
  assert.equal(out.query,'refused');
- assert.equal(out.home,'Open Photos > Device library to review this action.');
+ assert.equal(out.home,'Open Photos to review this action.');
  assert.equal(out.locked,'Unlock the phone to review this action.');
  assert.equal(out.photos,null);
  const {DeviceActions}=await import('./fixtures/device-action-policy.mjs');
@@ -268,7 +268,7 @@ test('library operations are registered in Alpha device actions: Photos-only, ne
  }
  const executor=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
  assert.match(executor,/if\(isLibraryOperation\(operation\)\)\{[\s\S]*deviceLibraryAgent\(\)[\s\S]*expectedContext\.view!=='photos'/);
- const journal=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java','utf8');
+ const journal=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaActionJournal.java','utf8');
  assert.match(journal,/"photo_library_search","photo_library_inspect","photo_library_select","photo_library_review","photos_filter","photos_open","photos_album_create","photos_share"\)\.contains\(type\)\)\{/);
 });
 

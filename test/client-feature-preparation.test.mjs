@@ -5,11 +5,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {execFileSync, spawn, spawnSync} from 'node:child_process';
-import {clientSpeechPatch} from '../scripts/client-speech-patch.ts';
-import {upstreamNativeSource} from '../scripts/upstream-native-source.ts';
+import {pathToFileURL} from 'node:url';
+import {spawn, spawnSync} from 'node:child_process';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
-import {prepareClientFeatures, CLIENT_FEATURE_PATHS, satisfiesRange} from '../scripts/prepare-client-features.ts';
+import {prepareClientFeatures, CLIENT_FEATURE_PATHS} from '../scripts/prepare-client-features.ts';
+const fixtureLeaf=CLIENT_FEATURE_PATHS.find(prefix=>path.extname(prefix));
+assert.ok(fixtureLeaf,'the authentication fixtures need a selected leaf file');
 function fixture(run) {
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-client-source-'));
  const vendor=path.join(root,'vendor/eliza');fs.mkdirSync(vendor,{recursive:true});
@@ -21,6 +22,8 @@ function fixture(run) {
    const file=path.join(vendor,path.extname(prefix)?prefix:prefix+'/fixture.ts');
    fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'export const value = 1;\n');
   }
+  // A concrete upstream Google host leaf exercises direct source copying.
+  fs.writeFileSync(path.join(vendor,'packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts'),'export const value = 1;\n');
   // The development launcher imports the shared verifier through its product adapter.
   for(const name of ['immutable-workspace-source.mjs','committed-source.mjs']) {
    const relative=`packages/app/scripts/lib/${name}`,target=path.join(vendor,relative);
@@ -41,22 +44,145 @@ test('prepared client source repairs changed, missing and unexpected cached file
 }));
 test('concurrent preparers after a source change all succeed and leave one authenticated tree',()=>fixture(async({root,vendor,git})=>{
  prepareClientFeatures({root,projectVoice:false});
- fs.appendFileSync(path.join(vendor,CLIENT_FEATURE_PATHS[0]),'export const changed = 2;\n');
+ fs.appendFileSync(path.join(vendor,fixtureLeaf),'export const changed = 2;\n');
  git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Change']);
  const commit=git(['rev-parse','HEAD']);fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
  const script=`import {prepareClientFeatures} from ${JSON.stringify(path.resolve('scripts/prepare-client-features.ts'))};prepareClientFeatures({root:${JSON.stringify(root)},projectVoice:false});`;
  const run=()=>new Promise(resolve=>{const child=spawn(process.execPath,['--input-type=module','-e',script],{stdio:['ignore','ignore','pipe']});let stderr='';child.stderr.on('data',chunk=>{stderr+=chunk;});child.on('close',status=>resolve({status,stderr}));});
  for(const result of await Promise.all(Array.from({length:12},run))) assert.equal(result.status,0,result.stderr);
  const source=path.join(root,'.eliza/client-features'),stamp=JSON.parse(fs.readFileSync(path.join(source,'.source.json')));
- assert.equal(stamp.baseCommit,commit);assert.match(fs.readFileSync(path.join(source,CLIENT_FEATURE_PATHS[0]),'utf8'),/changed = 2/);
+ assert.equal(stamp.baseCommit,commit);assert.match(fs.readFileSync(path.join(source,fixtureLeaf),'utf8'),/changed = 2/);
  assert.equal(prepareClientFeatures({root,projectVoice:false,check:true}),source);
  assert.deepEqual(fs.readdirSync(path.join(root,'.eliza')),['client-features'],'no staging or set-aside tree is left behind');
+}));
+test('client feature publication retires once while a peer moves the winner',()=>fixture(async({root,vendor,git})=>{
+ const destination=prepareClientFeatures({root,projectVoice:false});
+ const prior=JSON.parse(fs.readFileSync(path.join(destination,'.source.json')));
+ fs.appendFileSync(path.join(vendor,fixtureLeaf),'export const changed = 2;\n');
+ git(['add','.']);git(['commit','-qm','Change']);
+ const commit=git(['rev-parse','HEAD']);fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
+ const changed=createHash('sha256').update(fs.readFileSync(path.join(vendor,fixtureLeaf))).digest('hex');
+ const expected={...prior,baseCommit:commit,sourceFiles:{...prior.sourceFiles,[fixtureLeaf]:changed},files:{...prior.files,[fixtureLeaf]:changed}};
+ const control=path.join(root,'control');fs.mkdirSync(control);
+ const actors=['reader','peer1','peer2'],events=[],locations={};
+ const worker=String.raw`
+  import fs from 'node:fs';import path from 'node:path';
+  const [actor,root,control,preparer]=process.argv.slice(1),destination=path.join(root,'.eliza/client-features');
+  const original={rename:fs.renameSync,lstat:fs.lstatSync,remove:fs.rmSync,mkdtemp:fs.mkdtempSync};
+  const wait=new Int32Array(new SharedArrayBuffer(4));let stage,aside,retire=0,publish=0,read=0,collided=false;
+  function gate(key,value,timeout=20000){fs.writeFileSync(path.join(control,actor+'-'+key+'.json'),JSON.stringify({actor,...value,stage,aside}));const until=Date.now()+timeout;while(!fs.existsSync(path.join(control,actor+'-'+key+'.allow'))){if(Date.now()>until)throw Error('Fixture gate timed out: '+actor+' '+key);Atomics.wait(wait,0,0,5);}}
+  fs.mkdtempSync=function(prefix,...args){const result=original.mkdtemp(prefix,...args);if(String(prefix).includes('client-features-stage-'))stage=result;return result;};
+  fs.renameSync=function(from,to){
+   const kind=from===destination?'retire':to===destination&&from===stage?'publish':undefined;
+   if(!kind)return original.rename(from,to);
+   const attempt=kind==='retire'?++retire:++publish;if(kind==='retire')aside=to;
+   if(kind==='retire'&&attempt===1)gate('prepared-ready',{operation:'prepared',phase:'ready'},60000);
+   gate(kind+'-'+attempt+'-ready',{operation:kind,phase:'ready',attempt});
+   let outcome='success',error;try{original.rename(from,to);}catch(cause){outcome=cause.code;error=cause;}
+   if(kind==='publish'&&['EEXIST','ENOTEMPTY'].includes(outcome))collided=true;
+   gate(kind+'-'+attempt+'-done',{operation:kind,phase:'done',attempt,outcome});
+   if(error)throw error;
+  };
+  fs.lstatSync=function(file,...args){
+   if(actor!=='reader'||!collided||file!==destination)return original.lstat(file,...args);
+   const attempt=++read;gate('read-'+attempt+'-ready',{operation:'read',phase:'ready',attempt});
+   let result,error,outcome='present';try{result=original.lstat(file,...args);collided=false;}catch(cause){outcome=cause.code;error=cause;}
+   gate('read-'+attempt+'-done',{operation:'read',phase:'done',attempt,outcome});if(error)throw error;return result;
+  };
+  fs.rmSync=function(file,...args){
+   const kind=file===aside?'aside':file===stage?'stage':undefined;if(!kind)return original.remove(file,...args);
+   gate('cleanup-'+kind+'-ready',{operation:'cleanup',slot:kind,phase:'ready'});
+   const result=original.remove(file,...args);gate('cleanup-'+kind+'-done',{operation:'cleanup',slot:kind,phase:'done',outcome:'success'});return result;
+  };
+  try{const {prepareClientFeatures}=await import(preparer);prepareClientFeatures({root,projectVoice:false});fs.writeFileSync(path.join(control,actor+'-complete.json'),JSON.stringify({status:0,retire,publish,read}));}
+  catch(error){fs.writeFileSync(path.join(control,actor+'-complete.json'),JSON.stringify({status:1,retire,publish,read,error:error.stack}));process.exitCode=1;}
+ `;
+ const children=actors.map(actor=>{
+  const child=spawn(process.execPath,['--input-type=module','-e',worker,actor,root,control,pathToFileURL(path.resolve('scripts/prepare-client-features.ts')).href],{stdio:['ignore','ignore','pipe']});
+  let stderr='';child.stderr.on('data',chunk=>{stderr+=chunk;});
+  const closed=new Promise(resolve=>child.on('close',status=>resolve({actor,status,stderr})));
+  return {actor,child,closed,diagnostic:()=>({status:child.exitCode,signal:child.signalCode,stderr})};
+ });
+ const marker=(actor,key)=>path.join(control,actor+'-'+key);
+ async function ready(actor,key,timeout=20000){
+  const until=Date.now()+timeout;
+  while(!fs.existsSync(marker(actor,key+'.json'))){
+   const running=children.find(row=>row.actor===actor),state=running.diagnostic(),complete=marker(actor,'complete.json');
+   if(fs.existsSync(complete))throw Error('Worker completed before fixture event: '+actor+' '+key+'; '+fs.readFileSync(complete,'utf8')+'; '+JSON.stringify(state));
+   if(state.status!==null||state.signal!==null)throw Error('Worker exited before fixture event: '+actor+' '+key+'; '+JSON.stringify(state));
+   if(Date.now()>until)throw Error('Missing fixture event: '+actor+' '+key+'; '+JSON.stringify(state));
+   await new Promise(resolve=>setTimeout(resolve,5));
+  }
+  const event=JSON.parse(fs.readFileSync(marker(actor,key+'.json')));locations[actor]={stage:event.stage,aside:event.aside};return event;
+ }
+ const allow=(actor,key)=>fs.writeFileSync(marker(actor,key+'.allow'),'');
+ function inventoryAt(directory){
+  if(!directory||!fs.existsSync(directory))return null;
+  const result={};function visit(current){for(const entry of fs.readdirSync(current,{withFileTypes:true})){const file=path.join(current,entry.name);assert.equal(entry.isSymbolicLink(),false);if(entry.isDirectory())visit(file);else{assert.equal(entry.isFile(),true);result[path.relative(directory,file)]=createHash('sha256').update(fs.readFileSync(file)).digest('hex');}}}visit(directory);return result;
+ }
+ function classify(directory){
+  const actual=inventoryAt(directory);if(!actual)return 'absent';
+  const stamp=JSON.parse(fs.readFileSync(path.join(directory,'.source.json')));delete actual['.source.json'];
+  const exact=expected.files;
+  return JSON.stringify(stamp)===JSON.stringify(expected)&&Object.keys(actual).length===Object.keys(exact).length&&Object.entries(exact).every(([key,value])=>actual[key]===value)?'current':stamp.baseCommit===prior.baseCommit?'stale':'other';
+ }
+ function record(event){events.push({...event,visible:classify(destination),actors:Object.fromEntries(actors.map(actor=>[actor,{stage:classify(locations[actor]?.stage),aside:classify(locations[actor]?.aside)}]))});}
+ async function operation(actor,kind,attempt=1){
+  const key=kind+'-'+attempt,event=await ready(actor,key+'-ready');allow(actor,key+'-ready');
+  const result=await ready(actor,key+'-done');record(result);allow(actor,key+'-done');return {...event,...result};
+ }
+ async function cleanup(actor){
+  for(const slot of ['aside','stage']){
+   const key='cleanup-'+slot;await ready(actor,key+'-ready');allow(actor,key+'-ready');const result=await ready(actor,key+'-done');record(result);allow(actor,key+'-done');
+  }
+  return ready(actor,'complete');
+ }
+ try{
+  // Source authentication/materialization is setup. Start the controlled race only
+  // when every real worker has a complete private candidate, even on a busy host.
+  await Promise.all(actors.map(actor=>ready(actor,'prepared-ready',60000)));
+  for(const actor of actors)allow(actor,'prepared-ready');
+  await Promise.all(actors.map(actor=>ready(actor,'retire-1-ready')));
+  record({actor:'all',operation:'prepared',phase:'done'});
+  await operation('reader','retire');
+  await ready('reader','publish-1-ready');
+  await operation('peer1','retire');await operation('peer1','publish');await cleanup('peer1');
+  const collision=await operation('reader','publish');assert.ok(['EEXIST','ENOTEMPTY'].includes(collision.outcome));
+  await ready('reader','read-1-ready');await operation('peer2','retire');
+  assert.equal((await operation('reader','read')).outcome,'ENOENT');
+  // The old implementation retires again here. Keep the fixture schedulable so its actual
+  // extra mutation is reported by the assertion, instead of replacing it with a fake error.
+  const until=Date.now()+20000;
+  while(!fs.existsSync(marker('reader','read-2-ready.json'))&&!fs.existsSync(marker('reader','cleanup-aside-ready.json'))&&!fs.existsSync(marker('reader','retire-2-ready.json'))){if(Date.now()>until)throw Error('Reader did not continue after peer readback');await new Promise(resolve=>setTimeout(resolve,5));}
+  if(fs.existsSync(marker('reader','cleanup-aside-ready.json'))){
+   // Old retry cleans its first aside before its second retirement.
+   for(const suffix of ['ready','done']){const key='cleanup-aside-'+suffix;const event=await ready('reader',key);if(suffix==='done')record(event);allow('reader',key);}
+   await ready('reader','retire-2-ready');
+  }
+  if(fs.existsSync(marker('reader','retire-2-ready.json'))){
+   await operation('reader','retire',2);await ready('reader','publish-2-ready');
+   await operation('peer2','publish');await cleanup('peer2');await operation('reader','publish',2);
+  }else{await operation('peer2','publish');await cleanup('peer2');}
+  await operation('reader','read',2);const result=await cleanup('reader');
+  const statuses=await Promise.all(children.map(child=>child.closed));
+  const source=prepareClientFeatures({root,projectVoice:false,check:true});
+  const noSidecars=JSON.stringify(fs.readdirSync(path.join(root,'.eliza')))===JSON.stringify(['client-features']);
+  const trace={schema:'alpha-client-feature-publication-trace/v1',events,final:{statuses,reader:result,authenticated:source===destination&&classify(destination)==='current',noSidecars}};
+  if(process.env.ALPHA_CLIENT_FEATURE_PUBLICATION_TRACE)fs.writeFileSync(process.env.ALPHA_CLIENT_FEATURE_PUBLICATION_TRACE,JSON.stringify(trace,null,2)+'\n');
+  for(const status of statuses)assert.equal(status.status,0,status.stderr);
+  assert.equal(result.retire,1,'a losing preparer must never retire the peer winner again');
+  assert.equal(result.publish,1,'a losing preparer publishes its private candidate at most once');
+  assert.equal(trace.final.authenticated,true);assert.equal(noSidecars,true);
+ }finally{
+  for(const {child}of children)if(child.exitCode===null&&child.signalCode===null)child.kill('SIGTERM');
+  await Promise.all(children.map(child=>child.closed));
+ }
 }));
 test('client source rejects changed pin and upstream content without replacing its cache',()=>fixture(({root,vendor,commit})=>{
  const source=prepareClientFeatures({root,projectVoice:false}),stamp=fs.readFileSync(path.join(source,'.source.json'));
  fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:'0'.repeat(40)}));assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Unexpected upstream source pin/);
  fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
- fs.appendFileSync(path.join(vendor,CLIENT_FEATURE_PATHS[0]),'corrupt');assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/dirty|drift/);assert.deepEqual(fs.readFileSync(path.join(source,'.source.json')),stamp);
+ fs.appendFileSync(path.join(vendor,fixtureLeaf),'corrupt');assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/dirty|drift/);assert.deepEqual(fs.readFileSync(path.join(source,'.source.json')),stamp);
 }));
 test('client source refuses unknown directories and cache symlinks',()=>fixture(({root})=>{
  const source=path.join(root,'.eliza/client-features');fs.mkdirSync(source,{recursive:true});fs.writeFileSync(path.join(source,'keep'),'owned elsewhere');assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/unrecognized/);assert.equal(fs.readFileSync(path.join(source,'keep'),'utf8'),'owned elsewhere');
@@ -66,38 +192,14 @@ test('client source cannot follow a linked staging parent',()=>fixture(({root})=
  const outside=path.join(root,'outside');fs.mkdirSync(outside);fs.writeFileSync(path.join(outside,'keep'),'retained');fs.symlinkSync(outside,path.join(root,'.eliza'));assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Nonregular/);assert.deepEqual(fs.readdirSync(outside),['keep']);
 }));
 test('client source rejects committed symlinks and missing source groups',()=>fixture(({root,vendor,git})=>{
- const file=path.join(vendor,CLIENT_FEATURE_PATHS[0]);fs.unlinkSync(file);fs.symlinkSync('../../outside',file);
+ const file=path.join(vendor,fixtureLeaf);fs.unlinkSync(file);fs.symlinkSync('../../outside',file);
  git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Symlink']);
  fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:git(['rev-parse','HEAD'])}));assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Nonregular upstream/);
  fs.unlinkSync(file);git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','-qm','Missing source']);
  fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:git(['rev-parse','HEAD'])}));assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Missing upstream source/);
 }));
-test('dependency ranges follow npm caret, tilde, exact, comparator and union rules',()=>{
- for(const [version,range] of [['6.16.4','^6.16.0'],['0.7.9','^0.7.1'],['1.2.9','~1.2.3'],['19.3.1','19.3.1'],['8.5.2','>=8.3.1 <9'],['5.0.0','^4.0.0 || ^5.0.0'],['3.1.0','*'],['2.4.0','2.x']])assert.equal(satisfiesRange(version,range),true,version+' satisfies '+range);
- for(const [version,range] of [['6.11.2','^6.16.0'],['0.8.0','^0.7.1'],['1.3.0','~1.2.3'],['19.3.0','19.3.1'],['8.5.2','8.4.0'],['9.0.0','>=8.3.1 <9']])assert.equal(satisfiesRange(version,range),false,version+' does not satisfy '+range);
- assert.throws(()=>satisfiesRange('1.0.0','workspace:*'),/Unsupported dependency range/);
-});
-test('copied client features fail on an unmet dependency range unless a reviewed exception names it',()=>fixture(({root,vendor,git})=>{
- fs.writeFileSync(path.join(vendor,'plugins/plugin-maps/package.json'),JSON.stringify({peerDependencies:{'maplibre-gl':'^6.16.0',react:'^19.0.0'},devDependencies:{typescript:'^9.0.0'}}));
- git(['add','.']);git(['commit','-qm','Ranges']);
- fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:git(['rev-parse','HEAD'])}));
- fs.writeFileSync(path.join(root,'package.json'),JSON.stringify({dependencies:{'maplibre-gl':'6.11.2',react:'19.3.0'},devDependencies:{typescript:'7.0.2'}}));
- for(const [name,version] of [['maplibre-gl','6.11.2'],['react','19.3.0']]){fs.mkdirSync(path.join(root,'node_modules',name),{recursive:true});fs.writeFileSync(path.join(root,'node_modules',name,'package.json'),JSON.stringify({version}));}
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),error=>/plugins\/plugin-maps: maplibre-gl \^6\.16\.0, installed 6\.11\.2/.test(error.message)&&!/react|typescript/.test(error.message));
- assert.equal(fs.existsSync(path.join(root,'.eliza/client-features')),false,'nothing is prepared over an unmet range');
- const exception={package:'plugins/plugin-maps',dependency:'maplibre-gl',range:'^6.16.0',installed:'6.11.2',reason:'Map bump needs its own UI check.'};
- fs.mkdirSync(path.join(root,'docs'));fs.writeFileSync(path.join(root,'docs/client-feature-dependency-exceptions.json'),JSON.stringify({exceptions:[exception]}));
- const printed=[];prepareClientFeatures({root,projectVoice:false,log:line=>printed.push(line)});
- assert.deepEqual(printed,['Client feature dependency exception: plugins/plugin-maps maplibre-gl ^6.16.0, installed 6.11.2: Map bump needs its own UI check.']);
- // Once the installed version satisfies the range the exception is stale and must be removed.
- fs.writeFileSync(path.join(root,'node_modules/maplibre-gl/package.json'),JSON.stringify({version:'6.16.0'}));
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Stale client feature dependency exceptions[^]*maplibre-gl/);
- fs.writeFileSync(path.join(root,'docs/client-feature-dependency-exceptions.json'),JSON.stringify({exceptions:[{...exception,reason:' '}]}));
- fs.writeFileSync(path.join(root,'node_modules/maplibre-gl/package.json'),JSON.stringify({version:'6.11.2'}));
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/exception has no reason: plugins\/plugin-maps maplibre-gl/);
-}));
 test('direct local development launcher prepares a clean client tree before starting services',()=>fixture(({root,commit})=>{
- for(const file of ['scripts/dev-local.ts','scripts/dev-speech-settings.ts','scripts/speech-env.ts','scripts/local-agent-source.ts','scripts/copy-file-clone.ts','scripts/prepare-client-features.ts','scripts/client-speech-patch.ts','scripts/upstream-native-source.ts']){const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);}
+ for(const file of ['scripts/dev-local.ts','scripts/dev-speech-settings.ts','scripts/speech-env.ts','scripts/local-agent-source.ts','scripts/copy-file-clone.ts','scripts/prepare-client-features.ts','scripts/upstream-native-source.ts']){const target=path.join(root,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(file,target);}
  // The generic copier fixture explicitly tests the non-voice projection path.
  const prep=path.join(root,'scripts/prepare-client-features.ts');fs.writeFileSync(prep,fs.readFileSync(prep,'utf8').replace('projectVoice = true','projectVoice = false'));
  // Source hashing and materialization can exceed 20 seconds on a loaded build host.
@@ -113,7 +215,27 @@ test('actual pinned client features retain shared voice source unchanged and exc
  const scan='plugins/plugin-native-camera/src/scan-document.ts';
  assert.equal(stamp.sourceFiles[scan],stamp.files[scan],'Scan state is copied from the pinned shared owner without a product patch');
  assert.deepEqual(fs.readFileSync(path.join(source,scan)),fs.readFileSync(path.join('vendor/eliza',scan)));
-assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit);assert.equal(stamp.projectionVersion,12);
+assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit);assert.equal(stamp.projectionVersion,14);
+ // The browser parser stays byte-exact except its one Node-compatible value import.
+ const browserCommand='plugins/plugin-browser/src/native-client-command.ts';
+ const browserOriginal=fs.readFileSync(path.join('vendor/eliza',browserCommand),'utf8');
+ const browserProjected=fs.readFileSync(path.join(source,browserCommand),'utf8');
+ assert.equal(browserProjected,browserOriginal.replace(
+  'import { readClientTurnObservation } from "@elizaos/contracts/client-turn-observation";',
+  'import { readClientTurnObservation } from "../../../packages/contracts/src/client-turn-observation.ts";'));
+ assert.notEqual(stamp.sourceFiles[browserCommand],stamp.files[browserCommand]);
+ // Run plain Node without tsx, aliases or a custom loader and exercise the imported
+ // observation parser, rather than only checking the spelling of its specifier.
+ const browserImport=spawnSync(process.execPath,['--input-type=module','-e',`
+  import assert from 'node:assert/strict';
+  import {observedNativeHistorySelection} from ${JSON.stringify(pathToFileURL(path.join(source,browserCommand)).href)};
+  const message={content:{metadata:{clientDevice:{context:{view:'browser',revision:3,selectedObject:{kind:'browser-tab',id:'tab:7',revision:'document:2'}}}}}};
+  assert.deepEqual(observedNativeHistorySelection(message,'back'),{id:'tab:7',revision:'document:2'});
+  assert.equal(observedNativeHistorySelection(message,'open'),undefined);
+  message.content.metadata.clientDevice.context.view='notes';
+  assert.equal(observedNativeHistorySelection(message,'back'),undefined);
+ `],{encoding:'utf8',timeout:30000});
+ assert.equal(browserImport.status,0,browserImport.stderr);
  // Node consumers (the Vite config bundle and backend hosts) load linked-sync through cloud-protocol.
  for(const file of ['google-sync-port.ts','sync-controller.ts','linked-store.ts']){
   const name='plugins/plugin-calendar/src/linked-sync/'+file,projected=fs.readFileSync(path.join(source,name),'utf8'),original=fs.readFileSync(path.join('vendor/eliza',name),'utf8');
@@ -151,26 +273,39 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
  assert.equal(stamp.sourceFiles[mapPath],stamp.files[mapPath]);
  assert.match(fs.readFileSync(path.join(source,mapPath),'utf8'),/export interface GlobalBasemap/);
  const calendarPath='packages/contracts/src/calendar-linked-sync.ts';
- assert.equal(stamp.calendarSemanticPatch.beforeSha256,stamp.sourceFiles[calendarPath]);
- assert.equal(stamp.calendarSemanticPatch.afterSha256,stamp.files[calendarPath]);
- for(const [key,file] of [
-  ['inboxConfirmationPatch','plugins/plugin-inbox/src/mailbox/review-controller.ts'],
-  ['inboxCleanupPatch','plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
-  ['crashErrorClassPatch','plugins/plugin-native-system/src/crash-log.ts'],
-  ['launcherObserverPatch','plugins/plugin-native-system/src/client/launcher.ts'],
-  ['launcherLegacyViewKeyPatch','packages/ui/src/mobile-shell/view-registry.ts'],
-  ['screenFocusPriorityPatch','packages/ui/src/accessibility/screen-focus.ts'],
-  ['appUpdateResumePatch','packages/ui/src/state/app-update-gate.ts'],
-  ['launcherDrawerOwnershipPatch','packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx'],
-  ['filesListIdentityPatch','plugins/plugin-files/src/browser/files-browser-adapter.ts'],
-  ['filesStorageQueryPatch','plugins/plugin-files/src/browser/storage-volume.ts'],
-  ['filesStoragePlacementPatch','plugins/plugin-files/src/browser/files.ts'],
-  ['photosWindowPatch','packages/ui/src/mobile-shell/photos-view.ts'],
-  ['photosLibraryPresentationPatch','plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts'],
+ assert.deepEqual(Object.keys(stamp).sort(), ['baseCommit','files','projectionVersion','sourceFiles']);
+ const googlePath='packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts';
+ assert.equal(stamp.managedGoogleBodyLimitPatch,undefined);
+ assert.equal(stamp.files[googlePath],'45f81315269621657a84d1a67a4769405c3ef5cee8cfda44ee911bb4fa36d2a2');
+ for(const name of Object.keys(stamp.sourceFiles).filter(name=>name.startsWith('packages/app/src/runtime/managed-google-agent/'))){
+  assert.equal(stamp.sourceFiles[name],stamp.files[name],name+' is copied directly from upstream');
+  assert.deepEqual(fs.readFileSync(path.join(source,name)),fs.readFileSync(path.join('vendor/eliza',name)),name+' has exact raw upstream bytes');
+ }
+ const updatePath='packages/ui/src/state/app-update-gate.ts';
+ assert.equal(stamp.appUpdateResumePatch,undefined);
+ assert.equal(stamp.sourceFiles[updatePath],stamp.files[updatePath],'final reviewed update source is copied directly');
+ assert.equal(stamp.files[updatePath],'89dc78042b8808e4bd264732ac06bb4fb43a3da35d397a5f126c73896f23eca5');
+ assert.deepEqual(fs.readFileSync(path.join(source,updatePath)),fs.readFileSync(path.join('vendor/eliza',updatePath)));
+ assert.match(fs.readFileSync(path.join(source,updatePath),'utf8'),/export function createAppUpdateScheduler/);
+ for(const file of [
+  calendarPath,
+  'plugins/plugin-inbox/src/mailbox/review-controller.ts',
+  'plugins/plugin-inbox/src/mailbox/drafts-controller.ts',
+  'plugins/plugin-native-system/src/crash-log.ts',
+  'plugins/plugin-native-system/src/client/launcher.ts',
+  'packages/ui/src/mobile-shell/view-registry.ts',
+  'packages/ui/src/accessibility/screen-focus.ts',
+  'packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx',
+  'plugins/plugin-files/src/browser/files-browser-adapter.ts',
+  'plugins/plugin-files/src/browser/storage-volume.ts',
+  'plugins/plugin-files/src/browser/files.ts',
+  'packages/ui/src/mobile-shell/photos-view.ts',
+  'plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts',
+  'packages/voice/src/native-cloud-speech.ts',
+  'packages/voice/src/cloud-speech-chunks.ts',
  ]){
-  assert.equal(stamp[key].beforeSha256,stamp.sourceFiles[file]);
-  assert.equal(stamp[key].afterSha256,stamp.files[file]);
-  assert.notEqual(stamp.sourceFiles[file],stamp.files[file],file+' carries its reviewed patch');
+  assert.equal(stamp.sourceFiles[file],stamp.files[file],file+' is staged directly');
+  assert.deepEqual(fs.readFileSync(path.join(source,file)),fs.readFileSync(path.join('vendor/eliza',file)),file+' is copied exactly');
  }
  const calendarBundle=buildSync({entryPoints:[path.join(source,calendarPath)],bundle:true,write:false,platform:'browser',format:'esm',metafile:true});
  assert.equal(Object.keys(calendarBundle.metafile.inputs).length,1,'shared Calendar reconciliation has no Node, SQL, or runtime dependency');
@@ -179,11 +314,9 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
   assert.equal(stamp.sourceFiles[file],stamp.files[file],file+' is not projected');
   assert.deepEqual(fs.readFileSync(path.join(source,file)),fs.readFileSync(path.join('vendor/eliza',file)),file+' is copied exactly');
  }
- // Authenticate the reviewed streaming patch before the random-id import projection.
- const patchedVoice=clientSpeechPatch(process.cwd(),upstreamNativeSource(process.cwd())).files;
  // Plain Node needs the copied .ts random-id import.
  for(const file of ['packages/voice/src/voice-assistant-session.ts','packages/voice/src/live-voice-session.ts']){
-  const upstream=patchedVoice.get(file)?.bytes.toString()??fs.readFileSync(path.join('vendor/eliza',file),'utf8'),projected=fs.readFileSync(path.join(source,file),'utf8');
+  const upstream=fs.readFileSync(path.join('vendor/eliza',file),'utf8'),projected=fs.readFileSync(path.join(source,file),'utf8');
   assert.notEqual(stamp.sourceFiles[file],stamp.files[file],file+' is projected');
   assert.equal(projected,upstream.replace('import { randomId } from "./random-id.js";','import { randomId } from "./random-id.ts";'));
  }
@@ -207,41 +340,31 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
 
 });
 
-
-for(const [receipt,prefix,file] of [
- ['inboxConfirmationPatch','inbox-confirmation-client','plugins/plugin-inbox/src/mailbox/review-controller.ts'],
- ['inboxCleanupPatch','inbox-cleanup-client','plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
- ['crashErrorClassPatch','crash-error-class-client','plugins/plugin-native-system/src/crash-log.ts'],
- ['launcherObserverPatch','launcher-observer-client','plugins/plugin-native-system/src/client/launcher.ts'],
- ['launcherLegacyViewKeyPatch','launcher-legacy-view-key-client','packages/ui/src/mobile-shell/view-registry.ts'],
- ['screenFocusPriorityPatch','screen-focus-priority-client','packages/ui/src/accessibility/screen-focus.ts'],
- ['appUpdateResumePatch','app-update-resume-client','packages/ui/src/state/app-update-gate.ts'],
- ['launcherDrawerOwnershipPatch','launcher-drawer-ownership-client','packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx'],
- ['filesListIdentityPatch','files-list-identity-client','plugins/plugin-files/src/browser/files-browser-adapter.ts'],
- ['filesStorageQueryPatch','files-storage-query-client','plugins/plugin-files/src/browser/storage-volume.ts'],
- ['photosWindowPatch','photos-window-client','packages/ui/src/mobile-shell/photos-view.ts'],
- ['photosLibraryPresentationPatch','photos-library-presentation-client','plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts'],
-])test(`${prefix} requires its exact source, patch and target`,()=>fixture(({root,vendor,git})=>{
- const before='export const value = 1;\n',after='export const value = 2;\n';
- const digest=value=>createHash('sha256').update(value).digest('hex');
- const sourceFile=path.join(vendor,file);fs.mkdirSync(path.dirname(sourceFile),{recursive:true});fs.writeFileSync(sourceFile,before);
- git(['add','.']);git(['-c','user.name=Source fixture','-c','user.email=fixture@example.invalid','commit','--allow-empty','-qm','Target']);
- const commit=git(['rev-parse','HEAD']);fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
- const patch=`--- a/${file}\n+++ b/${file}\n@@ -1 +1 @@\n-export const value = 1;\n+export const value = 2;\n`;
- const patchRoot=path.join(root,'patches/eliza');fs.mkdirSync(patchRoot,{recursive:true});
- const patchFile=path.join(patchRoot,prefix+'.patch'),manifestFile=path.join(patchRoot,prefix+'-manifest.json');
- const manifest={schema:1,baseCommit:commit,path:file,beforeSha256:digest(before),afterSha256:digest(after),patchSha256:digest(patch)};
- const write=value=>fs.writeFileSync(manifestFile,JSON.stringify(value));
- fs.writeFileSync(patchFile,patch);write(manifest);
+test('retired client patch files and receipt slots cannot replace an admitted raw-source cache',()=>fixture(({root,vendor,commit})=>{
+ const file='packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts';
+ const before='export const value = 1;\n';
  const projected=prepareClientFeatures({root,projectVoice:false});
- assert.equal(fs.readFileSync(path.join(projected,file),'utf8'),after);
- const stamp=fs.readFileSync(path.join(projected,'.source.json'));
- assert.equal(JSON.parse(stamp)[receipt].afterSha256,digest(after));
- write({...manifest,beforeSha256:'0'.repeat(64)});
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch source mismatch/);
- write({...manifest,path:'unreviewed.ts'});
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch source mismatch/);
- write(manifest);fs.appendFileSync(patchFile,'changed');
- assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/patch digest or target mismatch/);
- assert.deepEqual(fs.readFileSync(path.join(projected,'.source.json')),stamp,'refused patches preserve the prior authenticated cache');
+ const stampFile=path.join(projected,'.source.json'),stamp=fs.readFileSync(stampFile);
+ const unchanged=()=>{
+  assert.deepEqual(fs.readFileSync(stampFile),stamp,'retired slots preserve the admitted cache');
+  assert.equal(fs.readFileSync(path.join(projected,file),'utf8'),before);
+ };
+ assert.equal(fs.readFileSync(path.join(vendor,file),'utf8'),before);
+ const patchRoot=path.join(root,'patches/eliza');fs.mkdirSync(patchRoot,{recursive:true});
+ for(const prefix of ['managed-google-body-limit-client','app-update-resume-client']){
+  for(const suffix of ['.patch','-manifest.json']){
+   const retired=path.join(patchRoot,prefix+suffix);
+   fs.writeFileSync(retired,suffix==='.patch'?'unreviewed behavior':JSON.stringify({schema:1,baseCommit:commit,path:file}));
+   for(const check of [false,true]) assert.throws(()=>prepareClientFeatures({root,projectVoice:false,check}),/Retired client patch slot/);
+   unchanged();fs.unlinkSync(retired);
+  }
+ }
+ for(const key of ['managedGoogleBodyLimitPatch','appUpdateResumePatch','unknownPatch']){
+  const obsolete={...JSON.parse(stamp),[key]:{manifestSha256:'0'.repeat(64)}};
+  fs.writeFileSync(stampFile,JSON.stringify(obsolete));
+  assert.throws(()=>prepareClientFeatures({root,projectVoice:false,check:true}),/missing or stale/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(stampFile)),obsolete,'check mode never rewrites a stale receipt');
+  prepareClientFeatures({root,projectVoice:false});unchanged();
+ }
+ assert.equal(prepareClientFeatures({root,projectVoice:false,check:true}),projected);
 }));

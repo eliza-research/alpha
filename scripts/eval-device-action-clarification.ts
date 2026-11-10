@@ -12,7 +12,7 @@
 // The result records the script's expected model (scripts/agent-model.ts); it does not
 // prove which model the runtime used. Check the runtime's own configuration for that.
 //
-//   node scripts/eval-device-action-clarification.ts --origin http://127.0.0.1:2138 \
+//   node scripts/eval-device-action-clarification.ts --origin http://127.0.0.1:47849 \
 //     --token-file /path/to/paired-machine-token --output test-results/clarification.json
 //   node scripts/eval-device-action-clarification.ts --self-test
 //

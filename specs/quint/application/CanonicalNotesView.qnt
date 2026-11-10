@@ -36,8 +36,8 @@ module CanonicalNotesView {
         folder: if (draft.data.hasFolder) draft.data.folder else old.folder, handles: false}
       if (found) base.replaceAt(index, projected) else List(projected).concat(base)
     }
-  pure def validData(data: Data): bool = Kinds.contains(data.kind) and data.title.in(0.to(5))
-    and data.body.in(0.to(5)) and data.folder.in(0.to(2))
+  pure def validData(data: Data): bool = Kinds.contains(data.kind) and data.title.in(0.to(6))
+    and data.body.in(0.to(6)) and data.folder.in(0.to(2))
   pure def validDraft(draft: Draft): bool = draft.id.in(0.to(2)) and draft.token.in(0.to(5))
     and draft.base.in(0.to(4)) and validData(draft.data)
   val PublicRows = if (s.current) s.rows else List()

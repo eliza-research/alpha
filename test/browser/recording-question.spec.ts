@@ -30,6 +30,19 @@ async function sendAttached(page:Page){
  await expect(attachment(page)).toHaveCount(0);
 }
 
+test('the transcript selects and copies its full text without sending or changing the recording',async({page})=>{
+ await page.addInitScript(()=>{(window as any).copiedTranscripts=[];Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{(window as any).copiedTranscripts.push(text);}}});});
+ await setup(page);await captureSends(page);const before=await notes(page);
+ const text=page.locator('[data-alpha-note-transcript]'),ask=page.getByRole('button',{name:'Ask Alpha about this transcript',exact:true});
+ await expect(text).toHaveText(transcript);await expect(ask).toHaveText('Ask Alpha');await expect(ask.locator('.alpha-compute-mark')).toHaveCount(1);
+ expect(await text.evaluate(el=>getComputedStyle(el).userSelect)).toBe('text');
+ await text.dblclick();await expect.poll(()=>page.evaluate(()=>window.getSelection()?.toString()??'')).not.toBe('');
+ expect(await page.evaluate(()=>(window as any).copiedTranscripts)).toEqual([]);expect(await sentCount(page)).toBe(0);
+ await page.getByRole('button',{name:'Copy text',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).copiedTranscripts)).toEqual([transcript]);
+ expect(await sentCount(page)).toBe(0);expect(await notes(page)).toEqual(before);
+});
+
 test('a transcript attachment prefills an editable question without sending or changing the recording',async({page})=>{
  await setup(page);await captureSends(page);const before=await notes(page);
  await attach(page);await expect(draft(page)).toHaveValue('Summarize this for me');
@@ -80,7 +93,26 @@ test('switching away from the connection retires the draft attachment without ch
 
 test('an unsent refusal retains the transcript and question for an explicit retry',async({page})=>{
  await setup(page);await captureSends(page);const before=await notes(page);await attach(page);
- await page.evaluate(async()=>{const {alphaClient,AlphaClientError}=await import('/src/runtime/alpha-client.ts');alphaClient.send=async()=>{(window as any).recordingRequests.push({refused:true});throw new AlphaClientError('busy','Controlled send refusal');};});
- await page.getByRole('button',{name:'Send',exact:true}).click();await expect(draft(page)).toHaveValue('Summarize this for me');await expect(attachment(page)).toBeVisible();
+ await expect(draft(page)).toHaveValue('Summarize this for me');
+ await page.evaluate(async()=>{
+  const screen=document.querySelector('[data-screen]') as any,key=Object.keys(screen).find(name=>name.startsWith('__reactFiber$'))!;
+  let fiber=screen[key];while(fiber&&!(fiber.stateNode&&typeof fiber.stateNode.send==='function'))fiber=fiber.return;
+  const shell=fiber.stateNode,original=shell.setState.bind(shell);(window as any).composerPaintPending=false;
+  shell.setState=(update:any,done?:()=>void)=>{
+   const next=typeof update==='function'?update(shell.state):update;
+   if(next?.typing===true&&next.draft===''){
+    (window as any).composerPaintPending=true;
+    (window as any).paintComposer=()=>{shell.setState=original;original(update,done);};return;
+   }
+   return original(update,done);
+  };
+  const {alphaClient,AlphaClientError}=await import('/src/runtime/alpha-client.ts');alphaClient.send=async()=>{(window as any).recordingRequests.push({refused:true});throw new AlphaClientError('busy','Controlled send refusal');};
+ });
+ await page.getByRole('button',{name:'Send',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).composerPaintPending)).toBe(true);
+ expect(await sentCount(page)).toBe(0);
+ await page.evaluate(()=>(window as any).paintComposer());
+ await expect.poll(()=>sentCount(page)).toBe(1);
+ await expect(draft(page)).toHaveValue('Summarize this for me');await expect(attachment(page)).toBeVisible();
  await expect(page.locator('[aria-label="Sent transcript"]')).toHaveCount(0);expect(await sentCount(page)).toBe(1);expect(await notes(page)).toEqual(before);
 });

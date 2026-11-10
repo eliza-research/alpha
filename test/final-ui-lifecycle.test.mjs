@@ -46,19 +46,69 @@ test('keyboard hide and background retire composer focus without changing the dr
  let height=800,hidden=false,blurs=0;const listeners=new Map(),active={matches:()=>true,blur(){blurs++;}};
  const shell={chatInputFocused:true,chatScrimPress:{pointer:1},draft:'Keep this draft'};class Element{}Object.setPrototypeOf(active,Element.prototype);
  const window={innerWidth:400,get innerHeight(){return height;},visualViewport:{get height(){return height;},addEventListener:(type,fn)=>listeners.set('vv'+type,fn)},addEventListener(){}};
- const document={get hidden(){return hidden;},activeElement:active,documentElement:{clientWidth:400,get clientHeight(){return height;}},addEventListener:(type,fn)=>listeners.set(type,fn)};
+ const document={get hidden(){return hidden;},activeElement:active,documentElement:{dataset:{},clientWidth:400,get clientHeight(){return height;}},addEventListener:(type,fn)=>listeners.set(type,fn)};
  vm.runInNewContext('(function(){'+ts(clear+body)+'}).call(shell)',{shell,window,document,HTMLElement:Element,keyboardFreeHeight:()=>{let max=0;return(_w,h,editing)=>{if(!editing)max=h;return max||h;};},isEditing:()=>true});
  height=500;shell.dockKeyboardWatch();height=800;shell.dockKeyboardWatch();assert.equal(blurs,1);
  hidden=true;shell.dockHiddenWatch();assert.equal(shell.chatInputFocused,false);assert.equal(shell.chatScrimPress,undefined);assert.equal(shell.draft,'Keep this draft');
 });
 
-test('About exposes the existing Connection help controller and Back returns to About',()=>{
+for(const dock of [true,false])test(`native Back releases ${dock?'Home':'full chat'} composer even with an unchanged viewport`,()=>{
+ const dom=new JSDOM('<textarea data-alpha-composer>Keep this draft</textarea><input id="other">');
+ const {window}=dom,{document}=window,composer=document.querySelector('textarea');
+ const shell={chatInputFocused:dock,chatScrimPress:undefined};
+ const body=between(read('prototype/chat-overlay-motion-adapter.ts'),'\t\tconst free = keyboardFreeHeight();','\n\t};\n\tp.componentDidUpdate');
+ vm.runInNewContext('(function(){'+ts(body)+'}).call(shell)',{shell,window,document,HTMLElement:window.HTMLElement,keyboardFreeHeight:()=>()=>800,isEditing:()=>true});
+ const visibility=visible=>window.dispatchEvent(new window.CustomEvent('alpha-keyboard-visibility',{detail:{visible}}));
+ try{
+  composer.focus();composer.setSelectionRange(4,9);visibility(false);
+  assert.equal(document.activeElement,composer,'initial hidden state must not steal focus');
+  visibility(true);visibility(false);
+  assert.notEqual(document.activeElement,composer,'Back must release a still-focused composer');
+  assert.equal(shell.chatInputFocused,false);assert.equal(composer.value,'Keep this draft');
+  assert.equal(composer.selectionStart,4);assert.equal(composer.selectionEnd,9);
+  composer.focus();visibility(false);
+  assert.equal(document.activeElement,composer,'repeated hidden insets must allow the next tap');
+  visibility(true);document.querySelector('#other').focus();visibility(false);
+  assert.equal(document.activeElement.id,'other','another field owns its own focus');
+ }finally{dom.window.close();}
+});
+
+test('voice keyboard handoff preserves composer until the voice panel is actually dismissed',()=>{
+ const dom=new JSDOM('<textarea data-alpha-composer>Keep this draft</textarea>');
+ const {window}=dom,{document}=window,shell={chatInputFocused:true};
+ const body=between(read('prototype/chat-overlay-motion-adapter.ts'),'\t\tconst free = keyboardFreeHeight();','\n\t};\n\tp.componentDidUpdate');
+ try {
+  vm.runInNewContext('(function(){'+ts(body)+'}).call(shell)',{shell,window,document,HTMLElement:window.HTMLElement,keyboardFreeHeight:()=>()=>800,isEditing:()=>true});
+  const composer=document.querySelector('textarea');composer.focus();composer.setSelectionRange(4,9);
+  const visibility=(visible,handoff=false)=>window.dispatchEvent(new window.CustomEvent('alpha-keyboard-visibility',{detail:{visible,handoff}}));
+  visibility(true);visibility(false,true);
+  assert.equal(document.activeElement,composer,'transient hide while the auxiliary IME starts keeps the editor');
+  visibility(true);assert.equal(document.activeElement,composer);
+  visibility(false);
+  assert.notEqual(document.activeElement,composer,'Back closes typing after the voice IME restores the normal keyboard');
+  assert.equal(composer.value,'Keep this draft');assert.equal(composer.selectionStart,4);assert.equal(composer.selectionEnd,9);
+ }finally{dom.window.close();}
+});
+
+test('a composer mounted while the native keyboard is already up still releases on Back',()=>{
+ const dom=new JSDOM('<html data-alpha-keyboard-visible="true"><body><textarea data-alpha-composer>Retained</textarea></body></html>');
+ const {window}=dom,{document}=window,shell={chatInputFocused:true};document.querySelector('textarea').focus();
+ const body=between(read('prototype/chat-overlay-motion-adapter.ts'),'\t\tconst free = keyboardFreeHeight();','\n\t};\n\tp.componentDidUpdate');
+ try{
+  vm.runInNewContext('(function(){'+ts(body)+'}).call(shell)',{shell,window,document,HTMLElement:window.HTMLElement,keyboardFreeHeight:()=>()=>500,isEditing:()=>true});
+  window.dispatchEvent(new window.CustomEvent('alpha-keyboard-visibility',{detail:{visible:false}}));
+  assert.equal(document.activeElement,document.body);assert.equal(shell.chatInputFocused,false);
+  assert.equal(document.querySelector('textarea').value,'Retained');
+ }finally{dom.window.close();}
+});
+
+test('About exposes Connection help and preserves its Back target',()=>{
  const s=read('prototype/settings-adapter.ts'),body=between(s,'    const connectionHelpRow =','    const licensesRow =');
  const calls=[],api={set:patch=>calls.push(patch.page)},connectionController={open:()=>calls.push('connection')};
  const row=native=>vm.runInNewContext(ts(body)+';connectionHelpRow()',{connection:{name:'Alpha'},Capacitor:{isNativePlatform:()=>native},testMocksEnabled:false,api,connectionController});
  assert.equal(row(true).label,'Connection help');row(true).go();assert.deepEqual(calls,['agent-connection']);
  row(false).go();assert.deepEqual(calls,['agent-connection','connection']);
- assert.match(s,/group\(\[licensesRow\(\),connectionHelpRow\(\)\]\)/);
+ assert.match(s,/group\(\[connectionHelpRow\(\),licensesRow\(\)\]\)/);
  const back=between(s,'  const categoryNames:','  definition.render ='),definition={back:()=>false};
  vm.runInNewContext(ts(back),{definition,PASSWORD_PAGES:[],leavePasswordManager(){},leavePasswordEntry(){}});
  assert.equal(definition.back({page:'agent-connection'},{set:patch=>calls.push(patch.page)}),true);

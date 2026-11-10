@@ -1,5 +1,5 @@
 import {expect,test,type Page} from '@playwright/test';
-/** Seed only the isolated test's retained legacy document before explicitly opening Older notes.
+/** Seed only the isolated test's retained legacy document before selecting that source.
  * Production source selection never initializes or migrates a missing legacy document. */
 export async function openLegacyNotes(page:Page,records:Record<string,unknown>[]=[]){
  if(test.info().project.name==='production')await seedRetainedNotes(page,records);
@@ -14,31 +14,19 @@ export async function openLegacyNotes(page:Page,records:Record<string,unknown>[]
  await expect(page.getByText('Previous notes need a recovery review. Nothing was moved or changed.',{exact:true})).toHaveCount(0);
 }
 
-/** The product no longer exposes a second Notes button. Compatibility fixtures use
- * the existing guarded source selector; they do not assign source state or migrate data. */
-const retainedSource = (page:Page,activate=false) => page.evaluate(activate=>{
- const screen=document.querySelector('[data-screen]') as any;
- if(!screen)return false;
- const key=Object.keys(screen).find(name=>name.startsWith('__reactFiber$'));
- if(!key)return false;
- for(let fiber=screen[key];fiber;fiber=fiber.return){
-  const shell=fiber.stateNode;
-  if(typeof shell?.api!=='function'||typeof shell?.vget!=='function')continue;
-  const choice=shell.api('notes').notesSourceOptions?.find((item:any)=>item.id==='legacy');
-  if(!choice||!choice.selected&&choice.available!==true)return false;
-  if(activate&&!choice.selected)choice.choose();
-  return true;
- }
- return false;
-},activate);
-
 /** Navigate only; leave raw-store setup and recovery assertions to the caller. */
 export async function selectLegacyNotes(page:Page){
  await page.getByRole('button',{name:'Notes',exact:true}).click();
+ await selectLegacyNotesSource(page);
+}
+
+/** Select within an already open Notes view without hiding its current ownership state. */
+export async function selectLegacyNotesSource(page:Page){
  await expect(page.locator('html')).toHaveAttribute('data-active-view','notes');
- await expect(page.getByRole('button',{name:/^(Older|Previous) notes$/})).toHaveCount(0);
- await expect.poll(()=>retainedSource(page)).toBe(true);
- await retainedSource(page,true);
+ if(await page.getByRole('heading',{name:'Previous notes',exact:true}).isVisible())return;
+ const previous=page.getByRole('button',{name:'Previous notes',exact:true});
+ await expect(previous).toBeVisible();
+ await previous.click();
  await expect(page.getByRole('heading',{name:'Previous notes',exact:true})).toBeVisible();
 }
 

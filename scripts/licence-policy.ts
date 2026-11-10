@@ -38,7 +38,7 @@ export const UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION = false;
  * for how long>"}`. When it is present the Bun notice ships it; when it is absent the notice
  * names only the source addresses and the licence review reports SOURCE_OFFER_MISSING.
  */
-export const SOURCE_OFFER_FILE = 'config/source-offer.json';
+export const SOURCE_OFFER_FILE = 'licenses/source-offer.json';
 export const SOURCE_OFFER_MISSING = 'written source offer for Bun LGPL components not recorded';
 
 /** The recorded offer text, null when none is recorded; a malformed record throws. */

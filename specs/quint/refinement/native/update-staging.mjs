@@ -24,7 +24,8 @@ const fixtureSources = readdirSync(join(root, fixtureRoot), {recursive: true})
 const modes = ['permission-only', 'busy-peer-and-exact-staged-copy', 'owner-destroy-during-download',
   'owner-destroy-during-archive-read', 'same-size-corrupt-body', 'wrong-archive-version', 'wrong-archive-package',
   'wrong-archive-flavor', 'wrong-archive-signer', 'abandon-refused',
-  'stale-cache-sweep', 'cache-delete-refused'];
+  'stale-cache-sweep', 'cache-delete-refused', 'boot-inclusive-boundary-and-process', 'boot-precedence',
+  'boot-permission-and-later-admission', 'boot-manual-cold', 'boot-download-failure-and-warm-process'];
 const sha = value => createHash('sha256').update(value).digest('hex');
 const signer = sha(Buffer.of(7));
 const installed = {versionCode: 7, launcher: true, signerSha256: signer};
@@ -43,7 +44,7 @@ const nativeInputs = {
   exactLimit: [200, offerJson.padEnd(65536)],
   oversized: [200, offerJson.padEnd(65537)],
 };
-const hourMs = 60 * 60 * 1000;
+const minuteMs = 60 * 1000;
 const initialNative = {'s.owner':0, 's.target':0, 's.phase':'idle', 's.file':'absent', 's.bytes':0, 's.session':'none',
   's.stagedBytes':0, 's.connected':false, 's.fetches':0, 's.created':0, 's.abandoned':0, 's.outcome':'none'};
 
@@ -63,7 +64,7 @@ function renderer(program, name, responses) {
   let now = 0, stored = null, writable = true, count = 0, settle, pending, context;
   const setUp = () => {
     context = vm.createContext({
-      Date: {now: () => now * hourMs}, URL,
+      Date: {now: () => now * minuteMs}, URL,
       Capacitor: {isNativePlatform: () => true},
       localStorage: {
         getItem(key) {assert.equal(key, 'alpha.app-update.v1'); return stored;},
@@ -88,14 +89,14 @@ function renderer(program, name, responses) {
     assert.ok([8, 9].includes(receipt.versionCode));
     return receipt.versionCode - 7;
   };
-  const hour = checkedAt => Number.isFinite(checkedAt) ? checkedAt / hourMs : -1;
+  const minute = checkedAt => Number.isFinite(checkedAt) ? checkedAt / minuteMs : -1;
   function observe() {
     const {cache, checking} = context.inspect();
     const durable = JSON.parse(stored ?? 'null');
     const cached = manifestClass(cache.manifest);
-    return {'s.clock':now, 's.checkedAt':hour(cache.checkedAt), 's.cached':cached,
-      's.storedAt':hour(durable?.checkedAt), 's.stored':manifestClass(durable?.manifest),
-      's.checking':checking, validOffer:Math.max(0,cached), checkDue:context.due(cache.checkedAt,now * hourMs)};
+    return {'s.clock':now, 's.checkedAt':minute(cache.checkedAt), 's.cached':cached,
+      's.storedAt':minute(durable?.checkedAt), 's.stored':manifestClass(durable?.manifest),
+      's.checking':checking, validOffer:Math.max(0,cached), checkDue:context.due(cache.checkedAt,now * minuteMs)};
   }
   const trace = {name, init:{name:'init'}, expect:{...initialNative,...observe()}, steps:[]};
   function point(label, action, ...args) {
@@ -180,8 +181,8 @@ export async function checkNativeUpdateStaging(extraSources = []) {
 
     const cache = renderer(program,'cached-offer-cadence-withdrawal-and-replacement',responses);
     cache.request();cache.duplicate();await cache.answer('offer1');
-    cache.clockAt(23);cache.fresh();
-    cache.clockAt(24);cache.request();await cache.answer('transport',false);
+    cache.clockAt(14);cache.fresh();
+    cache.clockAt(15);cache.request();await cache.answer('transport',false);
     cache.request();await cache.answer('malformed',false);
     cache.request();await cache.answer('transport',false,'oversized');
     cache.request();await cache.answer('offer1',true,'exactLimit');
@@ -204,11 +205,12 @@ export async function checkNativeUpdateStaging(extraSources = []) {
       }
       const nativeTrace=result.trace;
       assert.equal(nativeTrace.name,modes[index]);
-      assert.deepEqual(nativeTrace.expect,initialNative);
+      assert.deepEqual(Object.fromEntries(Object.keys(initialNative).map(key => [key,nativeTrace.expect[key]])),initialNative);
       const review=renderer(program,nativeTrace.name,responses);
       review.request();await review.answer('offer1');
       assert.deepEqual(review.receipt(),receipt);
       const reviewState=review.observe();
+      review.trace.expect={...review.trace.expect,...nativeTrace.expect};
       review.trace.steps.push(...nativeTrace.steps.map(step => ({...step,expect:{...reviewState,...step.expect}})));
       traces.push(review.trace);
     }
@@ -220,6 +222,8 @@ export async function checkNativeUpdateStaging(extraSources = []) {
     'Actual native manifest transport and exact Settings review/cache functions execute through synthetic responses. The checked Settings tuple is passed to the JVM installer before the first activation event.',
     'Controlled HTTPS, fake archive metadata and an installer sink expose actual cache bytes, digest admission, file custody, precommit copy and cleanup. The fixture refuses each staged update before resident stop or commit.',
     'Direct copyVerified probes test the real deadline behavior: late body bytes are rejected and a late EOF can verify bytes already read. The full install traces use the production deadline.',
+    'Cold-boot traces execute the actual capability and installer functions with controlled SDK, consent and Android SystemClock. Uptime samples 0,26681,29999,30000,30001,35000 preserve the inclusive boundary. A shut-down executor proves refused calls resolve before worker admission; real cache/network/session/barrier/stop/commit effects remain absent.',
+    'Same-boot process replacement preserves controlled uptime; a new boot resets it. These are explicit fixture observations between attempts, not installed-device reboot validation. A failed actual digest and later warm-process admission retain the existing cleanup contract.',
     ...skipped.map(({mode,reason}) => `Host capability omitted ${mode}: ${reason}.`),
   ]});
   return {receipt,skipped,obligations:[

@@ -20,6 +20,7 @@ public class Service {public IBinder onBind(Intent i){return null;}public boolea
 import java.util.HashMap;
 public class Bundle extends HashMap<String,Object> {
  public <T>T getParcelable(String key){return (T)get(key);}public String getString(String key){return (String)get(key);}public String getString(String key,String value){return (String)getOrDefault(key,value);}public int getInt(String key,int value){return (Integer)getOrDefault(key,value);}
+ public boolean getBoolean(String key,boolean fallback){Object value=get(key);return value instanceof Boolean?(Boolean)value:fallback;}
  public void putString(String key,String value){put(key,value);}public void putParcelable(String key,Object value){put(key,value);}public void putInt(String key,int value){put(key,value);}public void putBoolean(String key,boolean value){put(key,value);}
 }`,
     'android/os/Message.java': `package android.os;
@@ -48,7 +49,7 @@ import android.os.ParcelFileDescriptor;import android.graphics.Bitmap;import and
 public class PdfRenderer implements AutoCloseable {public PdfRenderer(ParcelFileDescriptor fd){}public int getPageCount(){return 1;}public Page openPage(int n){return new Page();}public void close(){}
  public static class Page implements AutoCloseable {public static final int RENDER_MODE_FOR_DISPLAY=1;public int getWidth(){return 100;}public int getHeight(){return 100;}public void render(Bitmap b,Object rect,Matrix m,int mode){}public void close(){}}}`,
     'android/system/OsConstants.java': 'package android.system; public class OsConstants {public static final int PROT_READ=1;}',
-    'ai/elizaresearch/alphaphone/BuildConfig.java': 'package ai.elizaresearch.alphaphone; public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;}',
+    'ai/alphacompute/alphaphone/BuildConfig.java': 'package ai.alphacompute.alphaphone; public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;}',
   };
   const paths = [];
   for (const [name, source] of Object.entries(files)) { const path = join(root, name); mkdirSync(dirname(path), {recursive: true}); writeFileSync(path, source); paths.push(path); }

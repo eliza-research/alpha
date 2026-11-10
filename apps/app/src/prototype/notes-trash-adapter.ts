@@ -31,6 +31,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
  const notes=views.notes,render=notes.render,back=notes.back;
  const p=Component.prototype,originalApi=p.api,originalMount=p.componentDidMount,originalUnmount=p.componentWillUnmount;
  let busy=false,maintaining:Promise<unknown>|null=null;
+ const latestRead=new WeakMap<Shell,symbol>();
  /** The exact reviewed note a full Trash refused. Held in memory only; a restart simply asks again. */
  let refused:{note:Bag;snapshot:string;index:number}|null=null;
  const noteTitle=(note:Bag)=>note.title||kindLabel[note.kind]||'Note';
@@ -44,9 +45,12 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   return typeof hook==='function'?!!await hook(entry):false;
  }
  async function load(shell:Shell){
-  if(shell.notesSourceMode==='canonical')return;
-  try{const doc=await readNotesTrash();if(shell.live)shell.vset('notes',{trash:sortedNotesTrash(doc),trashError:''});}
-  catch{if(shell.live)shell.vset('notes',{trash:[],trashError:'Recently deleted could not be read.'});}
+  if(!shell.live||shell.notesSourceMode!=='legacy')return;
+  const request=Symbol(),epoch=shell.notesSourceEpoch;
+  latestRead.set(shell,request);
+  const current=()=>shell.live&&shell.notesSourceMode==='legacy'&&shell.notesSourceEpoch===epoch&&latestRead.get(shell)===request;
+  try{const doc=await readNotesTrash();if(current())shell.vset('notes',{trash:sortedNotesTrash(doc),trashError:''});}
+  catch{if(current())shell.vset('notes',{trash:[],trashError:'Recently deleted could not be read.'});}
  }
  /** Idempotent: a second run with the same clock finds nothing to do. */
  async function maintain(shell:Shell,background:boolean,now=Date.now()){
@@ -198,6 +202,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   return result;
  };
  p.componentWillUnmount=function(...args:unknown[]){
+  latestRead.delete(this);
   window.removeEventListener('alpha:notes-trash-changed',this.notesTrashChanged);
   this.notesTrashSchedule?.();this.notesTrashSchedule=undefined;
   return originalUnmount?.apply(this,args);

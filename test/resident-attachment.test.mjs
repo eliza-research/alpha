@@ -12,7 +12,7 @@ test('an admitted running resident is attached to; any change in runtime, enroll
  const temporary=mkdtempSync(join(tmpdir(),'resident-attachment-'));
  try{
   execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',temporary,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/ResidentAttachment.java'),join(root,'test/fixtures/ResidentAttachmentTest.java')],{timeout:120000});
-  const output=execFileSync(javaBinary('java'),['-cp',temporary+':'+jsonJar,'ai.elizaresearch.alphaphone.ResidentAttachmentTest'],{encoding:'utf8',timeout:120000});
+  const output=execFileSync(javaBinary('java'),['-cp',temporary+':'+jsonJar,'ai.alphacompute.alphaphone.ResidentAttachmentTest'],{encoding:'utf8',timeout:120000});
   // Two surfaces before enrollment (MVP-16): the pending pairing is not shared; accepted limit.
   assert.match(output,/^PASS pre-enrollment: a second surface before enrollment starts on its own/m);
   assert.match(output,/^PASS resident attachment/m);
@@ -22,7 +22,7 @@ test('renderer attaches without rebinding the provider and keeps one identity ac
  assert.match(execFileSync(process.execPath,['--import','tsx','scripts/test-resident-reuse.ts'],{cwd:root,timeout:120000,encoding:'utf8'}),/PASS resident reuse/);
 });
 test('the plugin start path attaches before it would retire shared work, and attach never pairs',()=>{
- const source=readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java'),'utf8');
+ const source=readFileSync(join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java'),'utf8');
  const start=source.slice(source.indexOf('@PluginMethod public void start('),source.indexOf('@PluginMethod public void cancelStart('));
  const attach=start.indexOf('if(attachLocked(nativeState,currentRoot,currentGeneration)==null)'),retire=start.indexOf('invalidateCalls();admitted=++lifecycleEpoch;');
  assert.ok(attach>0&&retire>attach,'attach admission precedes the full-start retirement');
@@ -66,7 +66,7 @@ test('the plugin start path attaches before it would retire shared work, and att
 test('attach diagnostics retain only a fixed stage, bounded status and allowlisted exception class',async()=>{
  const {runJvm,fixture}=await import('./fixtures/jvm-tools.mjs');
  const {writeFileSync}=await import('node:fs');
- const source=readFileSync(join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java'),'utf8');
+ const source=readFileSync(join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java'),'utf8');
  const diagnosticStart=source.indexOf('private static final class ResidentAttachDiagnostic {');
  const diagnosticEnd=source.indexOf(' private final ExecutorService workers=',diagnosticStart);
  assert.ok(diagnosticStart>=0&&diagnosticEnd>diagnosticStart);
@@ -75,8 +75,8 @@ test('attach diagnostics retain only a fixed stage, bounded status and allowlist
  const directory=mkdtempSync(join(tmpdir(),'alpha-attach-diagnostic-'));
  try{
   const java=join(directory,'ResidentAttachDiagnosticTest.java');
-  writeFileSync(java,'package ai.elizaresearch.alphaphone;\npublic final class ResidentAttachDiagnosticTest {\n'+source.slice(diagnosticStart,diagnosticEnd)+harness.slice(bodyStart,harness.lastIndexOf('}'))+'\n}');
-  assert.match(runJvm([java],'ai.elizaresearch.alphaphone.ResidentAttachDiagnosticTest',{json:true}),/PASS content-free resident attach diagnostic/);
+  writeFileSync(java,'package ai.alphacompute.alphaphone;\npublic final class ResidentAttachDiagnosticTest {\n'+source.slice(diagnosticStart,diagnosticEnd)+harness.slice(bodyStart,harness.lastIndexOf('}'))+'\n}');
+  assert.match(runJvm([java],'ai.alphacompute.alphaphone.ResidentAttachDiagnosticTest',{json:true}),/PASS content-free resident attach diagnostic/);
  }finally{rmSync(directory,{recursive:true,force:true});}
  const start=source.indexOf('   if(attached){'),end=source.indexOf('   PluginWorkers.submit(workers,()->{\n    long deadline=',start);
  const worker=source.slice(start,end);

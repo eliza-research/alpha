@@ -1,22 +1,22 @@
 // Alpha and Eliza are two brands of one shared mobile application: their functional feature
 // manifests (the shared mobileFeatureManifest emitter over each product registration) may differ
 // only by identity and theme. The differences still open, and the Alpha source that still owns
-// behaviour, are listed in config/feature-parity.json.
+// behaviour, are listed in test/support/feature-parity.mjs.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {featureParity} from '../scripts/feature-manifest.ts';
+import {featureParityAllowlist as allowlist} from './support/feature-parity.mjs';
 
-const allowlist = JSON.parse(fs.readFileSync('config/feature-parity.json', 'utf8'));
 const parity = await featureParity();
 const regenerate = 'Run node scripts/feature-manifest.ts --parity to see the current lists.';
 
 test('Alpha and Eliza differ functionally only where the allowlist says so', () => {
   const allowed = Object.keys(allowlist.differences);
   const unexplained = parity.differences.filter(key => !allowed.includes(key));
-  assert.deepEqual(unexplained, [], `New functional difference from Eliza. List it in config/feature-parity.json with its owning module, or move the behaviour upstream. ${regenerate}`);
+  assert.deepEqual(unexplained, [], `New functional difference from Eliza. List it in test/support/feature-parity.mjs with its owning module, or move the behaviour upstream. ${regenerate}`);
   const closed = allowed.filter(key => !parity.differences.includes(key));
-  assert.deepEqual(closed, [], `These differences are closed: remove them from config/feature-parity.json. ${regenerate}`);
+  assert.deepEqual(closed, [], `These differences are closed: remove them from test/support/feature-parity.mjs. ${regenerate}`);
   for (const [key, owner] of Object.entries(allowlist.differences))
     assert.ok(typeof owner === 'string' && owner.trim(), `${key} names the Alpha module or decision that owns it`);
 });
@@ -24,15 +24,15 @@ test('Alpha and Eliza differ functionally only where the allowlist says so', () 
 test('every Alpha-owned behavioural module is listed; moved modules leave the allowlist', () => {
   const listed = new Set(allowlist.modules);
   const added = parity.modules.filter(file => !listed.has(file));
-  assert.deepEqual(added, [], `Unlisted Alpha-owned behaviour. Add it to config/feature-parity.json. ${regenerate}`);
+  assert.deepEqual(added, [], `Unlisted Alpha-owned behaviour. Add it to test/support/feature-parity.mjs. ${regenerate}`);
   const gone = allowlist.modules.filter(file => !parity.modules.includes(file));
-  assert.deepEqual(gone, [], `These modules are gone: remove them from config/feature-parity.json. ${regenerate}`);
+  assert.deepEqual(gone, [], `These modules are gone: remove them from test/support/feature-parity.mjs. ${regenerate}`);
   assert.deepEqual(allowlist.modules, [...allowlist.modules].sort(), 'modules stay sorted');
 });
 
 test('branding never counts as a functional difference, and the launcher is shared by both brands', () => {
   assert.equal(allowlist.reference, 'ELIZA_MOBILE_PRODUCT');
-  assert.equal(parity.alpha.branding.appId, 'ai.elizaresearch.alphaphone');
+  assert.equal(parity.alpha.branding.appId, 'ai.alphacompute.alphaphone');
   assert.equal(parity.eliza.branding.appId, 'ai.elizaos.app');
   assert.equal(parity.alpha.branding.storage.launcherFavorites, 'alpha.launcher.favorites.v1');
   assert.equal(parity.eliza.branding.storage.launcherFavorites, 'eliza.launcher.favorites.v1');
@@ -58,7 +58,7 @@ test('every device capability Alpha negotiates is declared in its registration',
   const declared = new Set(parity.alpha.functional.capabilities);
   const undeclared = [...new Set([...literals, ...named])].filter(name => !declared.has(name));
   assert.ok(literals.length > 0, 'negotiated capability literals found');
-  assert.deepEqual(undeclared, [], 'declare these in config/alpha-product.json features.capabilities');
+  assert.deepEqual(undeclared, [], 'declare these in apps/app/src/product/alpha-product-registration.ts features.capabilities');
 });
 
 test('the Alpha manifest is deterministic and served views appear on both sides', async () => {

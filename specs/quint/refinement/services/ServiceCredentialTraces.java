@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import android.content.Context;
 import ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots;
 import org.json.JSONArray;

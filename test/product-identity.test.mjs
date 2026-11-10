@@ -1,5 +1,6 @@
 // Source-level product identity and storage namespace (AP-01). This reads committed source only;
 // built-APK identity is checked by scripts/apk.ts and is separate evidence.
+import {ALPHA_PRODUCT_REGISTRATION as record} from '../apps/app/src/product/alpha-product-registration.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -65,7 +66,7 @@ function literalStorageKeys(root) {
 }
 
 test('app.config.json carries the Alpha Phone identity', () => {
-  assert.equal(identity.appId, 'ai.elizaresearch.alphaphone');
+  assert.equal(identity.appId, 'ai.alphacompute.alphaphone');
   assert.equal(identity.appName, 'Alpha Phone');
 });
 
@@ -112,12 +113,11 @@ test('the key scan would catch an unprefixed or foreign key', t => {
   assert.deepEqual(literalStorageKeys(dir).map(row => row.key).sort(), ['alpha.dev.', 'eliza:x', 'milady.theme']);
 });
 
-// Alpha is one registered product of the shared mobile shell (config/alpha-product.json). The
+// Alpha is one registered product of the shared mobile shell (apps/app/src/product/alpha-product-registration.ts). The
 // record is the product's identity, theme and installed-data compatibility input; the checks below
 // keep it equal to what the build and the renderer actually use.
 test('the product record validates and carries the same identity as app.config.json', async () => {
   const {validateMobileProductRegistration} = await tsImport('../.eliza/client-features/packages/ui/src/mobile-shell/product-registration.ts', import.meta.url);
-  const record = JSON.parse(fs.readFileSync('config/alpha-product.json', 'utf8'));
   assert.deepEqual(validateMobileProductRegistration(record), []);
   assert.equal(record.identity.appId, identity.appId);
   assert.equal(record.identity.appName, identity.appName);
@@ -130,8 +130,7 @@ test('the product record validates and carries the same identity as app.config.j
 });
 
 test('every installed storage name in the product record is still read by the renderer', () => {
-  const record = JSON.parse(fs.readFileSync('config/alpha-product.json', 'utf8'));
-  const source = sources('apps/app/src').map(file => fs.readFileSync(file, 'utf8')).join('\n');
+  const source = sources('apps/app/src').filter(file => !file.endsWith('/alpha-product-registration.ts')).map(file => fs.readFileSync(file, 'utf8')).join('\n');
   for (const key of Object.values(record.storage.retained)) assert.ok(source.includes(`'${key}'`) || source.includes(`"${key}"`), `${key} is no longer named in apps/app/src; keep it while installs may hold it`);
   // The favorites record is read through the product registration by the shared launcher join;
   // Alpha supplies a store of its own only in tests.

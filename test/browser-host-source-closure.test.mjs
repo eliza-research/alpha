@@ -32,5 +32,9 @@ test('browser host compiles once in its native module; resident admission stays 
  for(const name of ['BrowserTabHostConfig','BrowserTabHostPlugin','BrowserProfilePolicy','BrowserReviewedReading']){
   const relative=prefix+name+'.java';assert.equal(sha(fs.readFileSync(path.join(prepared.root,relative))),prepared.files[relative]);
  }
+ for(const name of ['capture-mask.js','control-channel.js','read-page.js']){
+  const relative='plugins/plugin-native-browser-surface/resources/'+name;
+  assert.equal(sha(fs.readFileSync(path.join(prepared.root,relative))),prepared.files[relative]);
+ }
  for(const relative of ['BelowHostLayer.kt','BrowserSurfacePlugin.kt'])assert.ok(fs.existsSync(path.join(prepared.root,prefix+relative)),'compile existing underlay and gesture routing together');
 });

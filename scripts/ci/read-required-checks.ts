@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Read back the rules GitHub actually enforces on the default branch and diff them against the
- * intended required checks in scripts/ci/required-checks-ruleset.json (docs/ci-cost-policy.md).
+ * intended required checks in scripts/ci/required-checks-ruleset.json.
  *
  *   node scripts/ci/read-required-checks.ts [--repo owner/name] [--branch main] [--json]
  *
@@ -107,7 +107,7 @@ export function compareRequiredChecks({intended, branchRules, rulesets = [], pro
   for (const row of enforced)
     if (!wanted.has(row.context)) problems.push(`UNEXPECTED required check "${row.context}" (${row.source}): not in ${INTENDED_FILE}; a renamed or sharded job name here blocks every merge or hides a gap.`);
   if (strict && want.strict_required_status_checks_policy === false)
-    problems.push(`Up-to-date branches are required by ${strict}; the intended policy leaves this off (docs/ci-cost-policy.md).`);
+    problems.push(`Up-to-date branches are required by ${strict}; the intended policy leaves this off.`);
 
   const named = rulesets.find(set => set.name === intended.name);
   if (!named) problems.push(`Ruleset "${intended.name}" is not installed.`);

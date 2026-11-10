@@ -297,9 +297,11 @@ test('an existing read-only Calendar grant takes the normal consent, keeps Gmail
   await p.returnFromGoogle(); // Google returned without Calendar changes approved.
   await p.until(()=>/read only, so sync is off/.test(p.status()));
   assert.equal(f.reads,0);assert.deepEqual(f.attempts,[]);
-  // The same intent completes from a later readback that shows the write grant.
-  p.rows=[account(OWNER,[...WRITE,'google.gmail.send'])];await p.act(()=>p.button('Check Google connections').click());
-  await p.until(()=>p.status()==='Calendar syncs with owner@example.test in Google.');assert.deepEqual(operations(f),['select','resume']);
+  // A connection-change notification requests a fresh read; only its returned grant completes the same intent.
+  const reads=p.lists;
+  p.rows=[account(OWNER,[...WRITE,'google.gmail.send'])];await p.dispatch('alpha:test-google-accounts');
+  await p.until(()=>p.status()==='Calendar syncs with owner@example.test in Google.');
+  assert.equal(p.lists,reads+1);assert.deepEqual(p.consents,[['write','send']],'a grant readback does not repeat consent');assert.deepEqual(operations(f),['select','resume']);
  }finally{await p.close();f.calendar.retire();}
 });
 
@@ -409,7 +411,11 @@ test('Connect Google Calendar starts no consent until this load verified the acc
   assert.equal(p.status(),'Google connections could not be verified. Check sign-in and try again.');
   await p.act(()=>p.button('Connect Google Calendar').click());
   assert.deepEqual(p.consents,[],'an unknown Gmail tier never asks Google for less');assert.equal(p.opens,0);assert.match(p.status(),/could not be verified/);
-  p.listFails=false;await p.act(()=>p.button('Check Google connections').click());
+  // Reopening performs the canonical account read after the failed load. No retired Check button is required.
+  const reads=p.lists;
+  await p.act(()=>p.button('Close Google accounts').click());p.listFails=false;
+  await p.act(()=>p.controller.openCalendar(f.scope));
+  assert.equal(p.lists,reads+1);assert.deepEqual(p.consents,[]);assert.equal(f.reads,0);
   await p.act(()=>p.button('Connect Google Calendar').click());assert.deepEqual(p.consents,[['write','send']]);
  }finally{await p.close();f.calendar.retire();}
 });
@@ -464,7 +470,10 @@ test('closing cancels the intent: a later return never links, and plain Google c
   await p.act(()=>p.button('Close Google accounts').click());assert.equal(p.controller.calendar(),null);
   p.rows=[account(OWNER,WRITE)];await p.act(()=>p.controller.open());
   assert.ok(p.button('Add Google account'),'without the Calendar intent the generic connect remains');assert.equal(p.button('Sync Calendar with Google'),undefined);
-  await p.returnFromGoogle();await p.act(()=>p.button('Check Google connections').click());
+  const reads=p.lists;
+  await p.returnFromGoogle();assert.equal(p.lists,reads,'closing retired the armed consent return');
+  await p.dispatch('alpha:test-google-accounts');assert.equal(p.lists,reads+1,'the plain panel still revalidates changed accounts');
+  assert.equal(p.button('Check Google connections'),undefined);
   assert.equal(f.reads,0);assert.deepEqual(f.attempts,[]);assert.equal(p.status(),'Calendar includes the calendars you show in Google.');
  }finally{await p.close();f.calendar.retire();}
 });
@@ -532,9 +541,13 @@ test('a retired Calendar link cannot clear the replacement account read busy sta
     assert.equal(f.p.inspectAdmission().busy, true);
     await f.p.act(() => f.links[0].resolve({outcome: 'not-linked', message: 'Retired link result'}));
     assert.equal(f.p.inspectAdmission().busy, true);
-    assert.equal(f.p.button('Check Google connections').disabled, true);
+    assert.equal(f.p.button('Connect Google Calendar').disabled, true,'the actual primary action stays disabled during the replacement read');
+    assert.equal(f.p.button('Sync Calendar with Google'),undefined,'the retired grant cannot supply an action');
+    assert.equal(f.p.button('Disconnect Google account owner@example.test'),undefined,'the retired account is no longer shown');
     await f.p.act(() => currentList.resolve([account(OWNER, WRITE)]));
     assert.equal(f.p.inspectAdmission().busy, false);
+    assert.equal(f.p.button('Sync Calendar with Google').disabled,false,'only the replacement grant enables the primary action');
+    assert.equal(f.links.length,1,'the replacement read does not reuse the retired link intent');
   } finally {
     currentList.resolve([account(OWNER, WRITE)]);
     await f.close();

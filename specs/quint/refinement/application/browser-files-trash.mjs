@@ -343,8 +343,6 @@ export async function checkBrowserFilesTrash(extraSources = []) {
   const sources = [generated+source, generated+model, generated+librarySource, generated+'.source.json',
     'vendor/eliza/'+source, 'vendor/eliza/'+model, 'vendor/eliza/'+librarySource,
     'apps/app/src/browser/files.ts', 'upstream.lock.json', 'scripts/prepare-client-features.ts',
-    'patches/eliza/files-storage-query-client.patch', 'patches/eliza/files-storage-query-client-manifest.json',
-    'patches/eliza/files-storage-placement-client.patch', 'patches/eliza/files-storage-placement-client-manifest.json',
     fileURLToPath(import.meta.url), ...extraSources];
   const driverHashes = captureInputs(sources);
   const {BrowserStorageVolume} = await import(pathToFileURL(resolve(root, generated+source)).href);
@@ -377,7 +375,7 @@ export async function checkBrowserFilesTrash(extraSources = []) {
   }
   return checkTraces({model: 'BrowserFilesTrash', sources, driverHashes, traces, scope: 'bounded-orchestration',
     assumptions: [
-      'The prepared patched BrowserStorageVolume and its storage rules execute directly. Two actual volume instances share the same in-memory CAS library and exact journal bytes.',
+      'The prepared shared BrowserStorageVolume and its storage rules execute directly. Two actual volume instances share the same in-memory CAS library and exact journal bytes.',
       'Node Web Locks supplies the exclusive request path. The second branch removes Web Locks and executes the source fallback in one realm. Deferred library calls expose the held source custody. Browser tabs, IndexedDB behavior and process interruption remain separate.',
       'UUIDs are mapped to allocation order. The fixture checks exact raw marker identity, original name, parent, MIME, size and listing payload. Rows and marker IDs use two files and three marker slots. Empty selects one reviewed marker.',
       'Held placement uses the precommit library port. Its success or definite refusal and the subsequent journal update settle in one model action. The actual IndexedDB transaction is tested separately. Ambiguous or interrupted journal publication is outside this projection.',

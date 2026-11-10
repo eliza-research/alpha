@@ -67,7 +67,7 @@ test('the development bridge admits exactly the warm route',()=>{
 });
 
 test('the Android resident gate admits exactly the warm route',()=>{
- const java=readFileSync(new URL('../android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java',import.meta.url),'utf8');
+ const java=readFileSync(new URL('../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java',import.meta.url),'utf8');
  const literal=java.match(/!path\.matches\("(\^\/api\/\(auth\/me\|[^"]+)"\)/);
  assert.ok(literal,'native resident route pattern');
  const gate=new RegExp(literal[1].replace(/\\\\/g,'\\'));

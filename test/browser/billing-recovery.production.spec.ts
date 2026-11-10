@@ -14,14 +14,14 @@ import { residentStub, stub, setStub, type StubAccount } from './resident-stub';
 const id = '9f1dc45a-4011-4e44-947a-30d999d24fa5';
 // Synthetic, never a real grant code: 16 Crockford characters once normalized.
 const CODE = 'synt-hetc-0de0-0001', NORMALIZED = 'SYNTHETC0DE00001';
-const NEEDED = 'Choose a monthly plan or enter a membership code to ask Alpha.';
+const NEEDED = 'Choose a plan or enter a membership code to ask Alpha.';
 const REFUSED = 'Eliza Cloud declined this request for billing. Check your subscription or enter a membership code, then send again.';
 const SHEET_REFUSED = 'Your last request was declined for billing.';
 const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
 const conversation = (page: Page) => page.locator('[data-alpha-layer="conversation"]');
 const bubble = (page: Page, text: string) => page.getByRole('button', { name: 'Message actions: ' + text, exact: true });
-const sheet = (page: Page) => page.getByRole('dialog', { name: 'Subscription', exact: true });
-const controls = (page: Page) => sheet(page).getByRole('region', { name: 'Subscription', exact: true });
+const sheet = (page: Page) => page.getByRole('dialog', { name: 'Account', exact: true });
+const controls = (page: Page) => sheet(page).getByRole('region', { name: 'Balance and membership', exact: true });
 async function send(page: Page, text: string) { await composer(page).fill(text); await composer(page).press('Enter'); }
 /** Screenshots go to ALPHA_BILLING_SHOTS when set (the QA folder), otherwise beside the test result. */
 async function shot(page: Page, info: TestInfo, name: string) {
@@ -41,7 +41,7 @@ async function zeroAccount(page: Page) {
   await page.goto('/');
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   await expect(sheet(page)).toBeVisible({ timeout: 30_000 });
-  await expect(controls(page)).not.toContainText(/Available credits|Add credits|\$\d/);
+  await expect(controls(page)).toContainText('$0.00');
   return foreign;
 }
 const configured = (page: Page) => stub(page, s => s.order.filter((entry: string) => entry.startsWith('configureCloudProvider')).length);
@@ -50,16 +50,16 @@ test('an account without a subscription is told why nothing was sent and gets th
   test.setTimeout(120_000);
   const foreign = await zeroAccount(page);
   await expect(controls(page).getByText('No active subscription', { exact: true })).toBeVisible();
-  await expect(controls(page).getByRole('status').filter({ hasText: NEEDED })).toHaveCount(1);
-  await expect(controls(page).getByRole('button', { name: 'Choose a monthly plan', exact: true })).toBeVisible();
-  await expect(controls(page).getByRole('button', { name: 'Enter membership code', exact: true })).toBeVisible();
+  await expect(controls(page).getByRole('status').filter({ hasText: NEEDED })).toHaveCount(0);
+  await expect(controls(page).getByRole('button', { name: 'Choose a plan', exact: true })).toBeVisible();
+  await expect(controls(page).getByRole('button', { name: 'Use code', exact: true })).toBeVisible();
   await expect(page.getByText(/AI is off/)).toHaveCount(0);
   await shot(page, info, '01-zero-balance-sheet.png');
-  await sheet(page).getByRole('button', { name: 'Close subscription', exact: true }).click();
+  await sheet(page).getByRole('button', { name: 'Close Account', exact: true }).click();
   await expect(sheet(page)).toHaveCount(0);
   await send(page, 'Hello with no credits');
-  // The reason is said in the composer's notice, the draft is kept, and the same popup returns.
-  await expect(page.getByText('Not sent. ' + NEEDED, { exact: true }).first()).toBeVisible();
+  // The Account popup explains the refusal; keep the draft without adding a duplicate notice.
+  await expect(page.getByText('Not sent. ' + NEEDED, { exact: true })).toHaveCount(0);
   await expect(sheet(page)).toBeVisible();
   await expect(composer(page)).toHaveValue('Hello with no credits');
   await shot(page, info, '02-zero-balance-send-refused.png');
@@ -74,7 +74,7 @@ test('an invalid or expired membership code is refused in the popup and changes 
   const foreign = await zeroAccount(page);
   await setStub(page, { redeem: 'invalid' });
   const before = await configured(page);
-  await controls(page).getByRole('button', { name: 'Enter membership code', exact: true }).click();
+  await controls(page).getByRole('button', { name: 'Use code', exact: true }).click();
   const field = controls(page).getByRole('textbox', { name: 'Membership code' });
   await expect(field).toBeFocused();
   await field.fill(CODE);
@@ -82,7 +82,7 @@ test('an invalid or expired membership code is refused in the popup and changes 
   // Cloud gives unknown, expired, disabled and used-up codes one answer (400 invalid_subscription_code).
   await expect(controls(page).getByRole('alert')).toHaveText('This code could not be redeemed. Check the code and try again.');
   await expect(field).toHaveValue(CODE);
-  await expect(controls(page)).not.toContainText(/Available credits|Add credits|\$\d/);
+  await expect(controls(page)).toContainText('$0.00');
   await expect(controls(page).getByText('No active subscription', { exact: true })).toBeVisible();
   await shot(page, info, '03-code-invalid-or-expired.png');
   expect(await stub(page, s => s.redeemed.map((row: { code: string }) => row.code))).toEqual([NORMALIZED]);
@@ -94,11 +94,11 @@ test('a membership code works instead of credits: redeemed, AI rebinds and the n
   test.setTimeout(150_000);
   const foreign = await zeroAccount(page);
   await page.evaluate(() => { (window as any).sameDocument = true; });
-  await controls(page).getByRole('button', { name: 'Enter membership code', exact: true }).click();
+  await controls(page).getByRole('button', { name: 'Use code', exact: true }).click();
   await controls(page).getByRole('textbox', { name: 'Membership code' }).fill(CODE);
   await controls(page).getByRole('button', { name: 'Redeem', exact: true }).click();
   // The plan is now the membership; the account panel shows the outcome beside the running agent.
-  const plan = page.getByRole('dialog', { name: 'Eliza Cloud account & plan', exact: true });
+  const plan = page.getByRole('dialog', { name: 'Account', exact: true });
   await expect(plan).toBeVisible({ timeout: 30_000 });
   await expect(plan.getByText(/^Code redeemed for Plus\. It runs until /)).toBeVisible();
   await expect(plan.getByText(/AI is off/)).toHaveCount(0);
@@ -106,7 +106,7 @@ test('a membership code works instead of credits: redeemed, AI rebinds and the n
   const redeemed = await stub(page, s => s.redeemed);
   expect(redeemed.map((row: { code: string }) => row.code)).toEqual([NORMALIZED]);
   expect(redeemed[0].idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
-  await plan.getByRole('button', { name: 'Close connection settings', exact: true }).click();
+  await plan.getByRole('button', { name: 'Close Account', exact: true }).click();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await send(page, 'Hello after redeeming');
   await expect(bubble(page, 'Hello after redeeming')).toHaveCount(1);
@@ -124,10 +124,8 @@ test('a plan activated in Cloud billing closes the subscription popup on return 
   const foreign = await zeroAccount(page);
   await page.evaluate(() => { (window as any).sameDocument = true; });
   // Plan selection opens Cloud's billing page only after the account check; nothing is bought here.
-  await controls(page).getByRole('button', { name: 'Choose a monthly plan', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Check the billing account', exact: true })).toBeVisible();
-  await page.getByRole('checkbox', { name: 'I’ll check the account before paying.', exact: true }).check();
-  await page.getByRole('button', { name: 'Open billing', exact: true }).click();
+  await controls(page).getByRole('button', { name: 'Choose a plan', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Review billing account', exact: true })).toHaveCount(0);
   await expect.poll(() => stub(page, s => s.opened)).toEqual(['https://cloud.eliza.app/cloud/billing']);
   // The synthetic Cloud answer now reports an active plan, with the cash balance still zero.
   await stub(page, s => { s.accounts[0].plan = undefined; s.persist(); });
@@ -152,12 +150,13 @@ test('Cloud declining a turn mid-use gives one answer and the popup; after plan 
   await send(page, 'What is on my calendar this week?');
   await expect(sheet(page)).toBeVisible({ timeout: 30_000 });
   await expect(controls(page).getByRole('status').filter({ hasText: SHEET_REFUSED })).toHaveCount(1);
-  await expect(controls(page)).not.toContainText(/Available credits|Add credits|\$\d/);
-  await expect(controls(page).getByRole('button', { name: 'Choose a monthly plan', exact: true })).toBeVisible();
-  await expect(controls(page).getByRole('button', { name: 'Enter membership code', exact: true })).toBeVisible();
+  await expect(controls(page)).toContainText('$0.02');
+  expect(await stub(page, s => s.accounts[0].balance)).toBe(0.02);
+  await expect(controls(page).getByRole('button', { name: 'Choose a plan', exact: true })).toBeVisible();
+  await expect(controls(page).getByRole('button', { name: 'Use code', exact: true })).toBeVisible();
   await expect(page.getByText(/AI is off/)).toHaveCount(0);
   await shot(page, info, '07-midturn-refusal-popup.png');
-  await sheet(page).getByRole('button', { name: 'Close subscription', exact: true }).click();
+  await sheet(page).getByRole('button', { name: 'Close Account', exact: true }).click();
   await expect(sheet(page)).toHaveCount(0);
   // One answer in the chat: the agent's provider prose and a second billing message never appear.
   await button(page, 'Expand chat').click();
@@ -178,7 +177,7 @@ test('Cloud declining a turn mid-use gives one answer and the popup; after plan 
   expect(await stub(page, s => s.opened)).toEqual([]);
   // An active plan ends the refusal without changing the underlying legacy cash balance.
   await stub(page, s => { s.accounts[0].plan = undefined; s.stream = null; s.persist(); });
-  await controls(page).getByRole('button', { name: 'Refresh', exact: true }).click();
+  await controls(page).getByRole('button', { name: 'Refresh account', exact: true }).click();
   await expect(sheet(page)).toHaveCount(0, { timeout: 30_000 });
   await send(page, 'Try my calendar again');
   await expect(conversation(page).getByText(/^Resident reply \d+$/)).toHaveCount(1, { timeout: 30_000 });
@@ -199,7 +198,7 @@ test('a refusal at zero balance ends when the owner returns from Cloud billing w
   await send(page, 'What is on my calendar this week?');
   await expect(sheet(page)).toBeVisible({ timeout: 30_000 });
   await expect(controls(page).getByRole('status').filter({ hasText: SHEET_REFUSED })).toHaveCount(1);
-  await expect(controls(page)).not.toContainText(/Available credits|Add credits|\$\d/);
+  await expect(controls(page)).toContainText('$0.00');
   await shot(page, info, '10-refusal-at-zero-popup.png');
   // The synthetic plan becomes active and the owner returns: no Refresh tap or cash top-up.
   await stub(page, s => { s.accounts[0].plan = undefined; s.stream = null; s.persist(); });
@@ -222,7 +221,7 @@ test('an unchanged active subscription does not clear a Cloud billing refusal', 
   await expect(controls(page).getByText('Plus', { exact: true })).toBeVisible();
   const reads = () => stub(page, s => s.cloud.filter((r: { path: string }) => r.path === '/api/v1/billing/limits').length);
   const before = await reads();
-  await controls(page).getByRole('button', { name: 'Refresh', exact: true }).click();
+  await controls(page).getByRole('button', { name: 'Refresh account', exact: true }).click();
   await expect.poll(reads).toBeGreaterThan(before);
   await expect(controls(page).getByRole('status').filter({ hasText: SHEET_REFUSED })).toHaveCount(1);
   await expect(sheet(page)).toBeVisible();
@@ -231,7 +230,7 @@ test('an unchanged active subscription does not clear a Cloud billing refusal', 
   expect(foreign).toEqual([]);
 });
 
-test('a refused turn refreshes the plan once after its answer, and a second refusal within a minute does not', async ({ page }) => {
+test('refused turns retain their answers and defer plan checks until the owner returns', async ({ page }) => {
   test.setTimeout(150_000);
   const foreign = await boot(page, { plan: undefined, balance: 0 });
   await residentHome(page);
@@ -243,15 +242,23 @@ test('a refused turn refreshes the plan once after its answer, and a second refu
   await send(page, 'What is on my calendar this week?');
   await expect.poll(() => harness(page, f => f.streams)).toBe(1);
   await button(page, 'Expand chat').click();
-  // The refusal itself is delivered (not replaced by an unknown-outcome notice), then the plan is read again.
+  // Both terminal refusals stay visible. No plan read may interrupt or replace either reply.
   await expect(conversation(page).getByText(/AI needs an active Eliza Cloud plan/)).toHaveCount(1, { timeout: 30_000 });
-  await expect.poll(reads).toBe(before + 1);
-  // A second refusal inside the once-a-minute limit does not read the plan again.
+  expect(await reads()).toBe(before);
+  // A second refusal is also held until the owner returns.
   await send(page, 'Try my calendar again');
   await expect(conversation(page).getByText(/AI needs an active Eliza Cloud plan/)).toHaveCount(2, { timeout: 30_000 });
   await page.waitForTimeout(1000);
-  expect(await reads()).toBe(before + 1);
-  // Neither refresh stopped or rebound the running agent; nothing was retried or opened.
+  expect(await reads()).toBe(before);
+  // On return, account display and provider admission each read their own authority.
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+  await expect.poll(reads).toBe(before + 2);
+  // A second foreground event refreshes the account display, but the plan check is throttled.
+  await page.evaluate(() => window.dispatchEvent(new Event('pageshow')));
+  await expect.poll(reads).toBe(before + 3);
+  await page.waitForTimeout(1000);
+  expect(await reads()).toBe(before + 3);
+  // The return checks did not stop or rebind the running agent; nothing was retried or opened.
   expect(await stops()).toBe(stopped);
   expect(await configured(page)).toBe(bound);
   expect(await harness(page, f => f.streams)).toBe(2);

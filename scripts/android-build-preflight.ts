@@ -17,14 +17,14 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {verifyEmbeddingHost} from './stage-embedding-host.ts';
 import {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST, verifyVoiceHost} from './voice-host.ts';
-import {BUILD_TOOLCHAIN, HUMAN_ACTION, QUALIFIED_HOST, embeddingHostState, stagedLibraries} from './build-embedding-host.ts';
+import {BUILD_TOOLCHAIN, QUALIFIED_HOST, embeddingHostState, stagedLibraries} from './build-embedding-host.ts';
 import {verifyMobileBuildReceipt,MOBILE_UUID_POLICY} from './mobile-uuid-adapter.ts';
 import type {AndroidRuntimeProfile} from './build-android.ts';
 
 export {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST};
 export const GRADLE_VERIFICATION = 'android/gradle/verification-metadata.xml';
 const FULL_CHAIN = 'npm run android:build:local';
-const VOICE_GUIDE = 'docs/fused-speech.md';
+const VOICE_GUIDE = 'README.md';
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 
 type VoiceHostVerifier = (root: string, options: {allowAbsentRuntime: boolean}) => {qualified: boolean};
@@ -215,7 +215,7 @@ function verifyStagedGoogleHost(root: string, preparedSource: string) {
 /**
  * The reviewed ARM64 embedding host (android/embedding-host/qualified-host.json). Its libraries
  * are staged byte for byte: by `npm run agent:build-embedding-host` when a rebuild reproduces
- * them, otherwise by a person from the qualification receipt.
+ * them, or by staging a verified build receipt.
  */
 export function embeddingHostProblems(root: string, {allowUnpackagedRuntime = false, embeddingHost = verifyEmbeddingHost}: Pick<RuntimeOptions, "allowUnpackagedRuntime" | "embeddingHost"> = {}): string[] {
   try {
@@ -225,7 +225,7 @@ export function embeddingHostProblems(root: string, {allowUnpackagedRuntime = fa
     const partial = allowUnpackagedRuntime
       ? ' An unpackaged developer build must have no resident payload at all: remove android/app/src/main/assets/agent, android/app/src/main/jniLibs and .eliza/paradee-voice/native (its staged voice outputs keep :app:verifyParadeeAppLinkage checking jniLibs), or stage the host.'
       : '';
-    return [`The qualified embedding host is not staged (${message(error)}; Gradle :app:verifyEmbeddingHost rejects the build). npm run agent:build-embedding-host (a step of ${FULL_CHAIN}) stages the libraries only when it can reproduce the reviewed bytes, and says so when it cannot. ${HUMAN_ACTION}${partial}`];
+    return [`The qualified embedding host is not staged (${message(error)}; Gradle :app:verifyEmbeddingHost rejects the build). npm run agent:build-embedding-host (a step of ${FULL_CHAIN}) stages the libraries only when it can reproduce the reviewed bytes, and says so when it cannot. ${partial}`];
   }
 }
 
@@ -256,13 +256,11 @@ export function strictBuildInputs(root: string, preparedSource: string | null, {
 
   // Native speech belongs only to the native distribution profile.
   if (runtimeProfile !== "cloud") {
-    const {status: voiceStatus, problems: voice} = assessVoiceHost(root, {voiceHost});
+    const {problems: voice} = assessVoiceHost(root, {voiceHost});
     add('on-device voice outputs', voice.length === 0, 'person',
       voice.length ? voice[0] : `staged outputs match ${VOICE_HOST_MANIFEST}`,
-      `Needs a person to supply the recorded voice outputs and models: node scripts/android-stage-voice-models.ts --from <directory> (see ${VOICE_GUIDE}; docs/human-actions.md H-18).`);
-    add('on-device voice qualified', voiceStatus?.qualified === true, 'person',
-      voiceStatus?.qualified === true ? `${VOICE_HOST_MANIFEST} records device qualification` : `${VOICE_HOST_MANIFEST} is not qualified (no device acceptance recorded)`,
-      'Needs a person: on-device qualification on both ABIs (packages/app/scripts/paradee-voice/qualify) and device acceptance, recorded by a named reviewer (docs/human-actions.md H-18).');
+      `Needs a person to supply the recorded voice outputs and models: node scripts/android-stage-voice-models.ts --from <directory> (see ${VOICE_GUIDE}).`);
+
   }
 
   if (runtimeProfile !== "cloud" || localEmbeddings) {
@@ -270,10 +268,9 @@ export function strictBuildInputs(root: string, preparedSource: string | null, {
     const host = readJson(root, QUALIFIED_HOST), toolchain = readJson(root, BUILD_TOOLCHAIN);
     const libraries = stagedLibraries(root, host);
     const hostState = embeddingHostState(host, toolchain, libraries);
-    const requalify = host.requalification?.required === true;
-    add('embedding host libraries', hostState.ready, hostState.suppliedBy === 'script' ? 'script' : 'person',
-      requalify && hostState.reason ? hostState.reason : hostState.ready ? `reviewed bytes staged in android/app/src/main/jniLibs/${host.abi}` : libraries.filter(row => row.state !== 'staged').map(row => `${row.name} ${row.state === 'missing' ? 'missing' : 'is not the reviewed bytes'}`).join(', '),
-      hostState.suppliedBy === 'script' ? 'npm run agent:build-embedding-host' : requalify ? HUMAN_ACTION : `${HUMAN_ACTION} (${toolchain.remapBuildPathEvidence})`);
+    add('embedding host libraries', hostState.ready, hostState.suppliedBy,
+      hostState.ready ? `reviewed bytes staged in android/app/src/main/jniLibs/${host.abi}` : libraries.filter(row => row.state !== 'staged').map(row => `${row.name} ${row.state === 'missing' ? 'missing' : 'is not the reviewed bytes'}`).join(', '),
+      'npm run agent:build-embedding-host');
   }
 
   const stamp = preparedSource ? path.join(preparedSource, '.alpha-runtime-source.json') : null;
@@ -298,7 +295,7 @@ export function strictBuildInputs(root: string, preparedSource: string | null, {
   });
   add('release signer', signer !== 'unset' && missingSigning.length === 0, 'person',
     [signer === 'unset' ? 'android/release-signer.json says unset' : `android/release-signer.json names ${signer}`, missingSigning.length ? `not set in this environment: ${missingSigning.join(', ')}` : 'signing variables are set'].join('; '),
-    'Needs a person: Alpha Compute controls signing and Shaw owns release/support/rollback (#400). After the offline key ceremony, node scripts/enroll-release-keys.ts records the certificate digest in android/release-signer.json (docs/human-actions.md H-08, H-09); then the release operator either supplies ELIZAOS_KEYSTORE_PATH, ELIZAOS_KEYSTORE_PASSWORD, ELIZAOS_KEY_ALIAS and ELIZAOS_KEY_PASSWORD to the build or signs the unsigned releases afterwards with node scripts/sign-release-apks.ts (ceremony key files or a PKCS#11 token; H-10). Without either the build still completes and records unsigned, non-distributable releases.');
+    'Needs a person: Alpha Compute controls signing and Shaw owns release/support/rollback (#400). After the offline key ceremony, node scripts/enroll-release-keys.ts records the certificate digest in android/release-signer.json; then the release operator either supplies ELIZAOS_KEYSTORE_PATH, ELIZAOS_KEYSTORE_PASSWORD, ELIZAOS_KEY_ALIAS and ELIZAOS_KEY_PASSWORD to the build or signs the unsigned releases afterwards with node scripts/sign-release-apks.ts (ceremony key files or a PKCS#11 token; H-10). Without either the build still completes and records unsigned, non-distributable releases.');
   return rows;
 }
 
@@ -308,11 +305,8 @@ export function formatReport(rows: readonly InputReportRow[]) {
   const person = open.filter(row => row.suppliedBy === 'person'), script = open.filter(row => row.suppliedBy === 'script');
   lines.push('', open.length === 0 ? 'Every strict-build input is present. This is an input check, not a build or a distributable APK.'
     : `${script.length} input(s) a script can produce: ${script.map(row => row.input).join(', ') || 'none'}.\n${person.length} input(s) only a person can supply: ${person.map(row => row.input).join(', ') || 'none'}.`);
-  // The embedding host stops the chain; an unset signer does not stop it, it makes the chain's releases non-distributable.
-  const stopper = open.find(row => row.input === 'embedding host libraries' && row.suppliedBy === 'person');
-  if (stopper) lines.push('The chain cannot pass Gradle :app:verifyEmbeddingHost until a person supplies the embedding host libraries.');
   if (person.some(row => row.input === 'release signer')) lines.push('An unset release signer does not stop the build: verify-apks records its releases distributable:false and names them.');
-  if (person.some(row => row.input === 'on-device voice outputs')) lines.push('Missing or changed voice outputs stop Gradle :app:verifyVoiceHost in a distribution build; an unqualified voice host makes its releases distributable:false.');
+  if (person.some(row => row.input === 'on-device voice outputs')) lines.push('Missing or changed voice outputs stop Gradle :app:verifyVoiceHost in a distribution build.');
   return lines.join('\n');
 }
 

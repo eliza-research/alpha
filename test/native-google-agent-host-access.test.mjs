@@ -10,8 +10,8 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 if(!process.execArgv.includes('tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:120000});if(child.error)throw child.error;process.exit(child.status??1);}
 const {nativeSource,fixture,runJvm}=await import('./fixtures/jvm-tools.mjs');
-const {startNativeGoogleAgentHost,savedGoogleAgentAccess}=await import('../backend/native-google-agent-host.ts');
-const {createNativeGoogleCloudPort}=await import('../backend/native-google-cloud-port.ts');
+const {startNativeGoogleAgentHost,savedGoogleAgentAccess}=await import('./support/managed-google-agent.mjs');
+const {createNativeGoogleCloudPort}=await import('./support/managed-google-agent.mjs');
 const user='11111111-1111-4111-8111-111111111111',org='22222222-2222-4222-8222-222222222222',grant='33333333-3333-4333-8333-333333333333';
 const binding={credentialId:'44444444-4444-4444-8444-444444444444',userId:user,organizationId:org,accountRef:JSON.stringify(['cloud','production',user,org]),sessionGeneration:'native-generation-1',token:'synthetic-native-cloud-key'};
 const credential=await createNativeGoogleCloudPort(binding,()=>{}).agentCredential();
@@ -24,7 +24,7 @@ const writes={
  dispatchSend:()=>({send:{operation:'dispatch',id:`alpha-gmail-send:${scope}:${randomUUID()}`,reviewDigest:'a'.repeat(64),...content}}),
  calendarWrite:()=>({calendar:{operation:'write-capabilities',grantId:`alpha-google:${scope}`,calendarId:'primary'}}),
 };
-const javaWrite=(dir,gmail,calendar)=>runJvm([nativeSource('GoogleAgentAccessFile.java'),fixture('GoogleAgentAccessFileTest.java')],'ai.elizaresearch.alphaphone.GoogleAgentAccessFileTest',{args:[dir,String(gmail),String(calendar)]});
+const javaWrite=(dir,gmail,calendar)=>runJvm([nativeSource('GoogleAgentAccessFile.java'),fixture('GoogleAgentAccessFileTest.java')],'ai.alphacompute.alphaphone.GoogleAgentAccessFileTest',{args:[dir,String(gmail),String(calendar)]});
 async function hostWith(file){
  const calls=[];
  const request=async url=>{
@@ -35,7 +35,8 @@ async function hostWith(file){
  };
  if(file===undefined)delete process.env.ALPHA_GOOGLE_AGENT_ACCESS_FILE;else process.env.ALPHA_GOOGLE_AGENT_ACCESS_FILE=file;
  const host=await startNativeGoogleAgentHost({binding,apiToken,request});
- const call=async body=>{const response=await fetch('http://127.0.0.1:'+host.port+'/__alpha-owner-gmail',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiToken},body:JSON.stringify(body)});return {status:response.status,data:await response.json()};};
+ // JVM fixture writes block this Node event loop; give each consent check a fresh socket.
+ const call=async body=>{const response=await fetch('http://127.0.0.1:'+host.port+'/__alpha-owner-gmail',{method:'POST',headers:{'Content-Type':'application/json',Connection:'close',Authorization:'Bearer '+apiToken},body:JSON.stringify(body)});return {status:response.status,data:await response.json()};};
  return {calls,call,close:()=>host.close()};
 }
 async function assertRefused(host,label){
@@ -86,7 +87,7 @@ test('linked and nonregular access files are refused without a blocking read',()
   assert.deepEqual(savedGoogleAgentAccess(absent),off,'only the canonical record can admit access');
   const pipe=join(dir,'pipe');execFileSync('mkfifo',[pipe]);
   const read=spawnSync(process.execPath,['--import','tsx','--input-type=module','-e',
-   'import {savedGoogleAgentAccess} from "./backend/native-google-agent-host.ts"; console.log(JSON.stringify(savedGoogleAgentAccess()));'],
+   'import {savedGoogleAgentAccess} from "./test/support/managed-google-agent.mjs"; console.log(JSON.stringify(savedGoogleAgentAccess()));'],
    {env:{...process.env,ALPHA_GOOGLE_AGENT_ACCESS_FILE:pipe},encoding:'utf8',timeout:10000});
   assert.ifError(read.error);
   assert.equal(read.status,0,read.stderr);

@@ -1,8 +1,0 @@
-{
-  "upstream": "https://github.com/elizaOS/eliza",
-  "commit": "b2453df4d8e39f16086fadf9d5d99f598fb63e87",
-  "source": "packages/app",
-  "archivedInProductCommit": "01d351d827f625d7d7883b8d727a8023e1c0f44c",
-  "note": "Historical import provenance only. Retrieve original source from the upstream commit or product Git history; active shared code is pinned in upstream.lock.json.",
-  "historicalFileManifest": "https://github.com/eliza-research/alphaphone/blob/d3afc34dfdfabc0b4fedbe095af7f972609503a9/docs/eliza-app-baseline-provenance.json"
-}

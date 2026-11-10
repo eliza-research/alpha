@@ -7,17 +7,8 @@ import {stageSenseListener} from '../vendor/eliza/packages/os/scripts/android/se
 export {FORBIDDEN,INDICATOR_EXEMPT_ROLES,UNPRIVILEGED,VOICE_HOST_RECORD,LISTENER_BUNDLE_MANIFEST,apkPermissions,checkListenerDescriptor,checkListenerOverlay,checkListenerPermissions,checkListenerSpeechBundle,checkListenerSpeechNatives,listenerPackage,privappPermissions,verifyAospListener} from '../vendor/eliza/packages/os/scripts/android/sense-listener.mjs';
 
 // The outer staging pipeline admits this product, voice record and APK descriptor first.
-interface ListenerStage {
- root: string;
- output: string;
- apk: string;
- dump: string;
- signer: string;
- launcherSigner: string;
- appId: string;
-}
-export function stageListener({root,output,apk,dump,signer,launcherSigner,appId}: ListenerStage) {
- const product=JSON.parse(fs.readFileSync(path.join(root,'vendor/eliza/packages/os/android/products/pixel10a-alpha.json'),'utf8'));
+export function stageListener({root,output,apk,dump,signer,launcherSigner,appId}: {root: string; output: string; apk: string; dump: string; signer: string | null; launcherSigner: string | null; appId: string}) {
+ const product=JSON.parse(fs.readFileSync(path.join(root,'android/aosp/pixel10a-composition.json'),'utf8'));
  if(product.launcher.packageName!==appId)throw Error('Sense product differs from the admitted launcher');
  const voiceHost=JSON.parse(fs.readFileSync(path.join(root,'android/voice-host/qualified-voice-host.json'),'utf8'));
  const entries=readApkEntries(apk);

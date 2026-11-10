@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
+import {nextDefaultNoteTitle} from '../apps/app/src/runtime/note-default-title.ts';
 const source=readFileSync(new URL('../apps/app/src/prototype/canonical-notes-ui.ts',import.meta.url),'utf8');
 const helper=source.slice(source.indexOf('function voiceAudio('),source.indexOf('function domainOf('));
 const method=source.slice(source.indexOf(' async saveVoice('),source.indexOf(' async saveCard('));
@@ -10,7 +11,7 @@ assert.ok(helper.startsWith('function voiceAudio(')&&method.startsWith(' async s
 const formatSource=readFileSync(new URL('../.eliza/client-features/plugins/plugin-notes/src/note-format.ts',import.meta.url),'utf8');
 const typesSource=readFileSync(new URL('../.eliza/client-features/plugins/plugin-notes/src/types.ts',import.meta.url),'utf8');
 const reconstruct=typesSource.slice(typesSource.indexOf('export function reconstructNoteContent('),typesSource.indexOf('/** Lossless model parts:'));
-const box={structuredClone};vm.createContext(box);
+const box={structuredClone,nextDefaultNoteTitle};vm.createContext(box);
 vm.runInContext(stripTypeScriptTypes((formatSource+'\n'+reconstruct).replace(/^export /gm,''),{mode:'transform'}),box);
 const save=vm.runInContext(stripTypeScriptTypes(helper+'\n({'+method+'}).saveVoice',{mode:'transform'}),box);
 function fixture(dirty=false){
@@ -52,4 +53,15 @@ test('a transcribed recording survives a lost create response and a fresh contro
  assert.equal(refreshes,1);assert.equal(claims,1);assert.equal(f.notes.length,1);
  assert.equal(await save.call(recovered,'recording-1','Different text',2500,null,()=>true,{pending:true,claim:async()=>assert.fail('conflicting recording claimed')}),false);
  assert.equal(f.notes.length,1);assert.equal(f.notes[0].body,'\nHello');
+});
+
+test('new recordings number defaults across live notes and Trash, then keep their title on retry',async()=>{
+ const f=fixture();f.notes.push({id:'first',title:'Voice note',body:'Keep',format:{kind:'text',data:{}}});
+ f.ui.controller.snapshot.trash.push({note:{id:'trashed',title:'Voice note #2',body:'Keep',format:{kind:'text',data:{}}}});
+ const prior=structuredClone(f.notes[0]);
+ assert.equal(await save.call(f.ui,'recording-1','All words',2500,null,()=>true,f.intent()),true);
+ assert.equal(f.created[0].content,'Voice note 3\nAll words');assert.deepEqual(f.notes[0],prior);
+ f.notes[1].title='My recorded meeting';f.notes[1].content='My recorded meeting\nAll words';
+ assert.equal(await save.call(f.ui,'recording-1','All words',2500,null,()=>true,f.intent()),true);
+ assert.equal(f.created.length,1);assert.equal(f.notes[1].title,'My recorded meeting');
 });

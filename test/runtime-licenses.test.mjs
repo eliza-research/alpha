@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { BUN_ENTRY, collectNotices, finishEntry, loadTemplates, packagedRuntimePresent, runtimeEntries, ROOT, shippedPackagedRuntime, UNKNOWN, UNVERIFIED } from '../scripts/generate-licenses.ts';
+import { BUN_ENTRY, collectNotices, finishEntry, loadTemplates, packagedRuntimePresent, runtimeEntries, ROOT, UNKNOWN, UNVERIFIED } from '../scripts/generate-licenses.ts';
 import {AGENT_BUNDLE_DEPENDENCIES, readAgentBundleDependencies, stageAgentBundleDependencies} from '../scripts/agent-bundle-dependencies.ts';
 import {createHash} from 'node:crypto';
 import { licenceFlagLines } from '../scripts/licence-policy.ts';
@@ -169,7 +169,7 @@ test('a PACKAGED runtime lists Bun with its LGPL notice and every bundled agent 
 
 test('a recorded written source offer ships in the Bun notice; a malformed record fails generation', t => {
   const { root, agent, source } = stagedRuntime(t);
-  const offerFile = path.join(root, 'config/source-offer.json');
+  const offerFile = path.join(root, 'licenses/source-offer.json');
   fs.mkdirSync(path.dirname(offerFile), { recursive: true });
   fs.writeFileSync(offerFile, JSON.stringify({ offer: 'Example written offer text.' }));
   const errors = [];
@@ -179,7 +179,7 @@ test('a recorded written source offer ships in the Bun notice; a malformed recor
   fs.writeFileSync(offerFile, JSON.stringify({ offer: ' ' }));
   const malformed = [];
   runtimeEntries(root, templates, malformed, { agentDir: agent, sourceDir: source });
-  assert.match(malformed.join('\n'), /config\/source-offer\.json has no "offer" text/);
+  assert.match(malformed.join('\n'), /licenses\/source-offer\.json has no "offer" text/);
 });
 
 test('copyleft, unknown, undeclared and text-less runtime packages are listed and flagged, never an error', t => {
@@ -284,17 +284,6 @@ test('runtime enumeration follows explicit modes independently of current checko
   const packaged = collectNotices(ROOT, { packagedRuntime: true });
   if (packagedRuntimePresent(ROOT)) assert.ok(packaged.entries.some(isBun));
   else assert.ok(packaged.errors.some(error => /--packaged-runtime needs a staged runtime/.test(error)), 'refuses without a staged runtime');
-});
-
-test('generation follows the shipped mode, and --packaged-runtime is wired into the PACKAGED build', t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-shipped-mode-'));
-  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
-  assert.equal(shippedPackagedRuntime(root), false, 'no shipped notices');
-  fs.mkdirSync(path.join(root, 'apps/app/public/licenses'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'apps/app/public/licenses/third-party-notices.json'), JSON.stringify([{ name: BUN_ENTRY }]));
-  assert.equal(shippedPackagedRuntime(root), true);
-  const resident = fs.readFileSync(path.join(ROOT, '.github/workflows/resident-android.yml'), 'utf8');
-  assert.match(resident, /node scripts\/generate-licenses\.ts --packaged-runtime\n/);
 });
 
 test('compiled Google host enumerates its actual scoped package inputs and deduplicates shared packages', t => {

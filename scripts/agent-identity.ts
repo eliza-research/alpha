@@ -1,18 +1,17 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {writePrivateRuntimeJson,type ResidentConfig} from './private-runtime-launch.ts';
+import {ALPHA_PRODUCT_REGISTRATION} from '../apps/app/src/product/alpha-product-registration.ts';
+import {writePrivateRuntimeJson, type ResidentConfig} from './private-runtime-launch.ts';
 // The product record is the one identity source: the shell reads identity.characterName for its
 // header and composer, and the host receives the same name through upstream's local character
 // override (vendor/eliza/packages/agent/src/runtime/sandbox-character.ts). ELIZA_AGENT_CHARACTER_JSON
 // merges onto the selected default agent and ui.assistant.name in memory. Its display name must
 // never replace the persisted identityName used for agent and default conversation IDs. No system prompt
-// is supplied: the bundled default preset keeps its style and its "{{name}}, made by Eliza Research"
+// is supplied: the bundled default preset keeps its style and its "{{name}}, made by Alpha Compute"
 // origin line, which build-character-config renders with this name.
-const {identity}: {identity?: {characterName?: unknown; appName?: unknown}} = JSON.parse(fs.readFileSync(new URL('../config/alpha-product.json',import.meta.url),'utf8'));
-const {characterName, appName} = identity ?? {};
-if (typeof characterName !== 'string' || !characterName.trim()) throw Error('config/alpha-product.json identity.characterName required');
-if (typeof appName !== 'string' || !appName.trim()) throw Error('config/alpha-product.json identity.appName required');
-export const AGENT_CHARACTER=Object.freeze({name:characterName,bio:[`The assistant built into ${appName} for writing, research, decisions and practical follow-through.`]});
+const {identity}=ALPHA_PRODUCT_REGISTRATION;
+for(const key of ['characterName','appName'] as const)if(typeof identity?.[key]!=='string'||!identity[key].trim())throw Error(`apps/app/src/product/alpha-product-registration.ts identity.${key} required`);
+export const AGENT_CHARACTER=Object.freeze({name:identity.characterName,bio:[`The assistant built into ${identity.appName} for writing, research, decisions and practical follow-through.`]});
 export const AGENT_CHARACTER_ENVIRONMENT=Object.freeze({ELIZA_AGENT_CHARACTER_JSON:JSON.stringify(AGENT_CHARACTER)});
 
 const object=(value: unknown): value is Record<string,unknown> =>!!value&&typeof value==='object'&&!Array.isArray(value);

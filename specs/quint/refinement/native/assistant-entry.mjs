@@ -12,7 +12,7 @@ const model='NativeAssistantEntry';
 const harness='AssistantEntryTraces.java';
 const capacitor='node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/';
 const hostPath='android/consumer-host.json';
-const patchManifest='patches/eliza/native-manifest.json';
+const patchManifest='android/upstream-native-sources.json';
 const appSources=['AlphaAssistActivity','AlphaPowerVoiceActivity','AlphaQuickSettingsTile','MainActivity','RendererRecoveryBudget']
   .map(name=>app+name+'.java');
 const sharedSources=assistantShared.map(path=>'vendor/eliza/'+path);

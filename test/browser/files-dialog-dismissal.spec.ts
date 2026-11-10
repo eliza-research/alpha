@@ -6,7 +6,8 @@ for(const theme of ['light','dark'])test(`${theme} file rename and delete dialog
  await page.goto(`/?mode=dev&theme=${theme}`);
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaFiles').importFile(new File(['Retained contents'],'keep.txt',{type:'text/plain'}));});
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Retained unsent file question');
- await page.locator('[data-alpha-dock-guard]').click();
+ // The first outside tap lowers the raised composer; it preserves the draft.
+ await page.locator('[data-alpha-dock-scrim="true"]').click({position:{x:12,y:12}});
  await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toHaveValue('Retained unsent file question');
  await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();await page.getByRole('button',{name:'Open keep.txt',exact:true}).click();
  const remove=page.getByRole('button',{name:'Delete file',exact:true});await expect(remove).toBeVisible();const selection=await page.evaluate(async()=>(await import('/src/runtime/alpha-client.ts')).alphaClient.getState().context.selectedObject);

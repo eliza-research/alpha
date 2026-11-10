@@ -69,14 +69,15 @@ async function openInbox(page, connected) {
   await active(page, 'inbox');
   if (connected) {
     await expect(button(page, 'Refresh inbox')).toBeVisible();
+    await expect(page.getByText('Connect Gmail to read your inbox', {exact: true})).toHaveCount(0);
     await expect.poll(async () => (await fixture(page)).searches.length).toBeGreaterThan(0);
   } else {
     await expect(page.getByText('Connect Gmail to read your inbox', {exact: true})).toBeVisible();
-    await expect(button(page, 'Refresh inbox')).toHaveCount(0);
+    assert.deepEqual((await fixture(page)).searches, [], 'The unlinked inbox makes no mailbox request');
   }
   const result = await fixture(page);
   assert.ok(result.reads.length > 0);
-  return {'s.screen': 'Inbox', 's.inboxView': await button(page, 'Refresh inbox').isVisible() ? 'mail' : 'connect',
+  return {'s.screen': 'Inbox', 's.inboxView': await page.getByText('Connect Gmail to read your inbox', {exact: true}).isVisible() ? 'connect' : 'mail',
     's.scopes': mailbox(result.reads.at(-1))};
 }
 
@@ -148,7 +149,7 @@ async function revokedInbox(page) {
     window.dispatchEvent(new Event('alpha:google-accounts-changed'));
   });
   await expect(button(page, 'Connect Gmail')).toBeVisible();
-  await expect(button(page, 'Refresh inbox')).toHaveCount(0);
+  await expect(page.getByText('Connect Gmail to read your inbox', {exact: true})).toBeVisible();
   const retired = await fixture(page);
   t.record('Canonical empty grant readback retires the mailbox without a manual refresh', action('Revoke'),
     {'s.screen': 'Inbox', 's.inboxView': 'connect', 's.scopes': mailbox(retired.reads.at(-1))});
@@ -164,7 +165,6 @@ async function mounted(extraSources) {
     'apps/app/src/runtime/google-accounts.ts'].map(path => resolve(root, path)));
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'config')), ...filesWithin(resolve(root, 'patches/eliza')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts', 'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json',

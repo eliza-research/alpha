@@ -4,7 +4,7 @@ const source=readFileSync('apps/app/src/prototype/settings-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// settings-facts:begin'),source.indexOf('// settings-facts:end'));
 assert.ok(region.length>100,'settings-facts region is present');
 const m=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'strip'})).toString('base64'));
-const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8');
+const java=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java','utf8');
 
 test('the version row shows only what the build and Android report',()=>{
  assert.equal(m.versionLabel('0.1.0',7),'0.1.0 (7)');
@@ -57,19 +57,31 @@ test('Software update offers only a complete, newer manifest for this flavor and
  // SHA-256 as 64 lowercase hex characters, and a positive whole size within the bound the native download enforces.
  for(const sha256 of ['0A'.repeat(32),'0a'.repeat(31),'0a'.repeat(33),'g'.repeat(64),'',undefined])assert.equal(m.parseUpdateManifest({...manifest,sha256},installed),null,String(sha256));
  for(const sizeBytes of [0,-1,1.5,m.UPDATE_MAX_BYTES+1,'400000000',undefined])assert.equal(m.parseUpdateManifest({...manifest,sizeBytes},installed),null,String(sizeBytes));
- assert.equal(m.UPDATE_MAX_BYTES,2**30);assert.match(java,/static final long UPDATE_MAX_BYTES=1L<<30;/,'renderer and native bounds agree');
+ assert.equal(m.UPDATE_MAX_BYTES,2**31);assert.match(java,/static final long UPDATE_MAX_BYTES=2L<<30;/,'renderer and native bounds agree');
+ assert.equal(m.parseUpdateManifest({...manifest,sizeBytes:2**30+1},installed)?.sizeBytes,2**30+1,'native voice APKs above the former 1 GiB limit remain admissible');
  for(const change of [{schema:'alpha-update/v2'},{schema:undefined},{versionCode:'8'},{versionCode:8.5}])
   assert.equal(m.parseUpdateManifest({...manifest,...change},installed),null,JSON.stringify(change));
  for(const value of [null,undefined,[],'{}',7])assert.equal(m.parseUpdateManifest(value,installed),null);
 });
-test('the automatic update check is due a day after the last answered check',()=>{
+test('the automatic update check is due fifteen minutes after the last answer',()=>{
  const day=m.UPDATE_CHECK_INTERVAL_MS,at=1_760_000_000_000;
- assert.equal(day,86_400_000);
+ assert.equal(day,900_000);
  assert.equal(m.updateCheckDue(Number.NaN,at),true,'never answered');
  assert.equal(m.updateCheckDue(at,at),false);
  assert.equal(m.updateCheckDue(at,at+day-1),false);
  assert.equal(m.updateCheckDue(at,at+day),true);
  assert.equal(m.updateCheckDue(at+60_000,at),true,'a clock set back does not postpone checks');
+});
+test('unattended installation waits for idle Home and never interrupts foreground work',()=>{
+ const home={screen:'home',view:null,voice:'off',typing:false,chat:'input',drawer:false,shade:false};
+ assert.equal(m.automaticUpdateIdle(home,{},false,false),true);
+ for(const change of [{screen:'lock'},{view:'notes'},{view:'workflows'},{voice:'listening'},{typing:true},{chat:'sheet'},{chat:'full'},{drawer:true},{shade:true},{homeEdit:true},{homeAdd:true},{drawerMenu:{packageName:'example'}}])
+  assert.equal(m.automaticUpdateIdle({...home,...change},{},false,false),false,JSON.stringify(change));
+ for(const connection of [{busy:true},{open:true}])assert.equal(m.automaticUpdateIdle(home,connection,false,false),false);
+ assert.equal(m.automaticUpdateIdle(home,{},true,false),false);
+ assert.equal(m.automaticUpdateIdle({}, {},false,false),false);
+ assert.equal(m.automaticUpdateIdle({...home,chat:'hidden'}, {},false,true),false,'compact voice is active even when the legacy voice flag is off');
+ assert.equal(m.automaticUpdateIdle(home,{},false,undefined),false,'unknown voice ownership is not idle');
 });
 test('dead-end and negative Settings rows are gone from the adapter',()=>{
  for(const row of ["info('Other connectors'","info('Personality settings'","info('Runtime'","info('Display only'","info('Delivery timing'","'Last change'"])assert.ok(!source.includes(row),row);
@@ -80,12 +92,10 @@ test('the Google accounts sheet has no Gmail notification settings button: Andro
  assert.doesNotMatch(readFileSync('apps/app/src/runtime/google-connection-ui.tsx','utf8'),/Gmail notification settings|gmailNotificationSettings/);
  assert.doesNotMatch(readFileSync('apps/app/src/runtime/gmail-background.ts','utf8'),/gmailNotificationSettings/);
 });
-test('scheduled summaries opens from the Workflows app settings',()=>{
+test('Workflows settings keep alerts without the obsolete digest setup sheet',()=>{
  assert.match(source,/\['Workflows','workflows'\]/);
- const app=source.slice(source.indexOf("if(appSettingsPage==='workflows')"),source.indexOf('const permissions:Record',source.indexOf("if(appSettingsPage==='workflows')")));
- assert.equal((app.match(/label:'Scheduled summaries'/g)??[]).length,1);
- assert.match(app,/window\.dispatchEvent\(new Event\('alpha:hosted-digests'\)\)/);
- assert.doesNotMatch(source,/\bdigests\b *=|hosted\(\)\.available/);
+ assert.doesNotMatch(source,/label:'Scheduled summaries'|label:'Scheduled digests'|alpha:hosted-digests/);
+ assert.match(source,/label:'Show alerts'/);
 });
 test('prototype-only sheets (memory wipe, Wi-Fi password, forget network) never reach the renderer',()=>{
  const line=source.split('\n').find(row=>row.includes('const out = render({ ...state'));

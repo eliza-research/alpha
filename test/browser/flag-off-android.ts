@@ -60,7 +60,7 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
     const id = '9f1dc45a-4011-4e44-947a-30d999d24fa5', agentId = '6f1d3c3e-8c55-4c1b-9d1f-2b6f0b0d3a11';
     const kept = (key: string, initial: unknown) => { try { return JSON.parse(sessionStorage.getItem(key) || 'null') ?? initial; } catch { return initial; } };
     // Keystore-backed slots and the resident agent's own store survive a reload of the page.
-    const slots: Record<string, string> = kept('flag-off-slots', { 'cloud:production': JSON.stringify({ token: 'synthetic-cloud-key', credentialId: id, expiresAt: Date.now() + 86_400_000 }) });
+    const slots: Record<string, string> = kept('flag-off-slots', { 'cloud:production': JSON.stringify({ token: 'synthetic-cloud-key', credentialId: id, expiresAt: Date.now() + 30 * 86_400_000 }) });
     const agent: { conversations: { id: string; title: string }[]; history: Record<string, any[]> } = kept('flag-off-agent', { conversations: [], history: {} });
     // So do the results the agent produced and what the Android result inbox committed.
     const produced: { results: any[]; acked: number; acks: number[]; inbox: any[] } = kept('flag-off-digests', { results: [], acked: 0, acks: [], inbox: [] });
@@ -262,7 +262,7 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
         { name: 'Agent', methods: withListeners(['getStatus', 'start', 'stop', 'configureCloudProvider', 'clearProvider', 'request', 'providerStatus', 'requestStream', 'cancelStream', 'setGoogleAgentAccess']) },
         { name: 'AlphaConnection', methods: withListeners(['secureRead', 'secureWrite', 'secureRemove', 'secureCompareExchange', 'request', 'cancel', 'openExternal']) },
         { name: 'AlphaActionJournal', methods: promise(['list', 'get']) },
-        { name: 'AlphaNotifications', methods: promise(['status', 'crossAppStatus']) },
+        { name: 'AlphaNotifications', methods: withListeners(['status', 'crossAppStatus']) },
         { name: 'AlphaVoiceCloud', methods: promise(['checkPermissions']) },
         ...(options.digests ? [{ name: 'AlphaHostedResults', methods: withListeners(['beginBackground', 'cancelBackground', 'configureBackground', 'disableBackground', 'syncInbox', 'inboxHistory', 'status', 'pendingResult', 'consumeResult', 'pendingSourceRenewal', 'settleSourceRenewal',
           ...(options.schedules?.native ? ['nativeSourceIdentity', 'nativeSourceConsent', 'scheduleSourceRenewal', 'clearSourceRenewal'] : [])]) }] : []),

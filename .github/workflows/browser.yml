@@ -4,7 +4,7 @@ on:
     branches: [main, develop]
   pull_request:
   # Daily full chromium and production run of main, so a red baseline has a dated first
-  # failure. Main pushes still skip the browser lanes (docs/ci-cost-policy.md).
+  # failure. Main pushes still skip the browser lanes.
   schedule:
     - cron: '23 7 * * *'
   workflow_dispatch:
@@ -28,8 +28,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.verify == 'true'
     runs-on: ubuntu-24.04
-    # Includes clean SDK bootstrap and all model and source-contract checks.
-    timeout-minutes: 60
+    # The measured clean run takes about 95 minutes, including SDK bootstrap and
+    # all source refinements. Keep every check and allow the complete run to finish.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -42,7 +43,6 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: npm ci
-      - run: npm ci --prefix backend
       - name: Install browser for source-refinement checks
         run: npx playwright install --with-deps chromium
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -67,6 +67,9 @@ jobs:
         env:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
           ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
+          ALPHA_QUINT_BUN: ${{ env.ALPHA_BUN }}
+          # Give each aggregate the runner's resources; retain every test and deadline.
+          ALPHA_TEST_CONCURRENCY: '1'
       - name: Retain Quint model and implementation evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -191,8 +194,8 @@ jobs:
             test-results/browser/
             test-results/browser-report/
           retention-days: 3
-  # Stable aggregate for the dynamically named shard matrix. docs/ci-cost-policy.md
-  # proposes requiring it; no ruleset is installed (P-57). Pushes to main skip the
+  # Stable aggregate for the dynamically named shard matrix.
+  # No ruleset is installed (P-57). Pushes to main skip the
   # browser lanes (they already ran on the PR); the daily schedule runs them on main.
   result:
     name: Browser MVP result

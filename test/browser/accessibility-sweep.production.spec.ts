@@ -34,7 +34,8 @@ const PRODUCTION_APPS_STATE: State = {
     });
     await residentHome(page);
     const notice=page.getByRole('region',{name:'Eliza Cloud sign-in notice',exact:true});
-    await notice.getByRole('button',{name:'Dismiss sign-in notice',exact:true}).click();await expect(notice).toBeHidden();
+    // This fixture retains a 30-day sign-in; it must not show the 14-day expiry warning.
+    await expect(notice).toHaveCount(0);
     await page.getByRole('button', {name: 'Apps', exact: true}).click();
     const drawer = page.getByRole('dialog', {name: 'Apps', exact: true});
     await expect(drawer.getByRole('button', {name: 'Open Synthetic clock', exact: true})).toBeVisible();
@@ -43,7 +44,23 @@ const PRODUCTION_APPS_STATE: State = {
     expect(foreign).toEqual([]);
   },
 };
-const STATES = [...LIVE_STATES, PRODUCTION_APPS_STATE];
+const PRODUCTION_CONNECTIONS_STATE: State = {
+  name: 'signed-in Google accounts',
+  open: async page => {
+    const foreign = await fenceNetwork(page);
+    await flagOffAndroid(page);
+    await residentStub(page);
+    await residentHome(page);
+    await page.getByRole('button', {name: 'Settings', exact: true}).click();
+    await page.getByRole('button', {name: 'Account', exact: true}).click();
+    await page.getByRole('dialog', {name: 'Account', exact: true})
+      .getByRole('button', {name: 'Google & email', exact: true}).click();
+    await expect(page.getByRole('dialog', {name: 'Google accounts', exact: true})).toBeVisible();
+    await settled(page);
+    expect(foreign).toEqual([]);
+  },
+};
+const STATES = [...LIVE_STATES, PRODUCTION_APPS_STATE, PRODUCTION_CONNECTIONS_STATE];
 
 for (const state of STATES) {
   test(`production names, roles, focus, contrast and clipping: ${state.name}`, async ({ page }) => {

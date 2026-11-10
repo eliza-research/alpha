@@ -151,7 +151,7 @@ jobs:
             ${{ runner.temp }}/alpha-calendar-bridge-${{ github.run_id }}-${{ github.run_attempt }}/gradle.log
             ${{ runner.temp }}/alpha-calendar-bridge-${{ github.run_id }}-${{ github.run_attempt }}/supervisor.json
           retention-days: 3
-  # Stable required check. The ruleset in docs/ci-cost-policy.md requires this job:
+  # Stable required check. The required-check ruleset requires this job:
   # it passes when the change gate did not select Android and fails when the
   # selected build failed, was cancelled or did not run.
   result:

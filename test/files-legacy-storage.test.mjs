@@ -1,5 +1,5 @@
 // Files on Android 10 (API 29, minSdk): legacy storage instead of all-files access, which API 29
-// does not have. design/view-refresh-2026-11/PLAN.md section 4 (decision F1).
+// does not have.  section 4 (decision F1).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -8,7 +8,7 @@ import {startupFilesAccess} from '../apps/app/src/startup-permission-flow.ts';
 
 const manifest = readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8');
 const catalog = readFileSync('vendor/eliza/plugins/plugin-native-filesystem/android/src/main/java/ai/eliza/plugins/filesystem/browser/StorageCatalog.java', 'utf8');
-const plugin = readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java', 'utf8');
+const plugin = readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java', 'utf8');
 
 test('the manifest asks for legacy storage on API 29 only and keeps all-files access for API 30+', () => {
   assert.match(manifest, /<application [^>]*android:requestLegacyExternalStorage="true"/);
@@ -42,7 +42,7 @@ test('the walkthrough treats API 29 access like all-files access', () => {
 });
 
 const tree = permissions => `E: manifest
-  A: package="ai.elizaresearch.alphaphone"
+  A: package="ai.alphacompute.alphaphone"
 ${permissions.map(([name, max]) => `  E: uses-permission
     A: android:name(0x01010003)="${name}" (Raw: "${name}")
 ${max === undefined ? '' : `    A: android:maxSdkVersion(0x0101020c)=(type 0x10)0x${max.toString(16)}\n`}`).join('')}  E: application
@@ -57,7 +57,7 @@ test('the APK policy admits WRITE_EXTERNAL_STORAGE only up to API 29', () => {
   assert.deepEqual(legacyStorageProblems(tree([[W, 30]])), ['WRITE_EXTERNAL_STORAGE is requested above API 29']);
   assert.deepEqual(legacyStorageProblems(tree([[W]])), ['WRITE_EXTERNAL_STORAGE is requested above API 29']);
   assert.deepEqual(legacyStorageProblems(tree([[R]])), ['READ_EXTERNAL_STORAGE is requested above API 32']);
-  const assess = permissions => distributionProblems({xml: tree(permissions), badging: "package: name='ai.elizaresearch.alphaphone' versionCode='15' versionName='15'", names: ['assets/public/licenses/third-party-notices.json']}, {mode: 'release'}).problems;
+  const assess = permissions => distributionProblems({xml: tree(permissions), badging: "package: name='ai.alphacompute.alphaphone' versionCode='15' versionName='15'", names: ['assets/public/licenses/third-party-notices.json']}, {mode: 'release'}).problems;
   assert.deepEqual(assess([[W, 29]]), []);
   assert.ok(assess([[W]]).includes('WRITE_EXTERNAL_STORAGE is requested above API 29'));
 });

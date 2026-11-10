@@ -37,10 +37,13 @@ export function upstreamNativeSource(root: string) {
  const git=(args: string[])=>execFileSync('git',['-C',directory,...args],{maxBuffer:64*1024*1024});
  if(git(['rev-parse','HEAD']).toString().trim()!==pin)throw Error('Unexpected upstream source pin');
  if(git(['status','--porcelain','--untracked-files=normal']).toString().trim())throw Error('Upstream source checkout is dirty');
- function read(prefix: string): Map<string, UpstreamBlob> {
+ function read(prefix: string, {allowMissing = false} = {}): Map<string, UpstreamBlob> {
   if(!prefix||prefix.startsWith('/')||prefix.split('/').includes('..'))throw Error('Invalid upstream source path');
   const entries=git(['ls-tree','-r','-z',pin,'--',prefix]).toString().split('\0').filter(Boolean);
-  if(!entries.length)throw Error(`Missing upstream source: ${prefix}`);
+  if(!entries.length){
+   if(allowMissing)return new Map();
+   throw Error(`Missing upstream source: ${prefix}`);
+  }
   const inventory=entries.map(entry=>{
    const match=entry.match(/^(100644|100755) blob ([a-f0-9]{40})\t(.+)$/);
    if(!match)throw Error('Nonregular upstream source');

@@ -1,4 +1,4 @@
-// J03-8 (docs/core-loop-audit.md): hostile mail attachments. An HTML file with script, an SVG with
+// J03-8: hostile mail attachments. An HTML file with script, an SVG with
 // script, an oversized file and files whose bytes do not match their declared type are driven
 // through the rendered Inbox attachment controls. None may execute, navigate, load anything, or
 // reach the agent; what the review shows is inert text.
@@ -50,6 +50,7 @@ async function setup(page:Page,parts:Part[],options:{opaque?:boolean;agent?:bool
   const {CloudProtocol}=await import('/src/runtime/cloud-protocol.ts');
   s.read=async()=>null;s.compareExchange=async()=>({status:'saved'});
   const f=(window as any).hostileFixture={attachmentRequests:[] as string[],mutations:0,agentPosts:[] as unknown[]};
+  const {alphaClient}=await import('/src/runtime/alpha-client.ts');alphaClient.send=async(...args:any[])=>{f.agentPosts.push(args);throw Error('This fixture never authorizes an agent send');};
   const message={id:'selected',threadId:'thread',from:'Fixture sender',fromEmail:'sender@example.invalid',to:['reader@example.invalid'],cc:[],replyTo:null,subject:'Invoices attached',snippet:'See attached',receivedAt:'2026-10-04T12:00:00Z',unread:false};
   // The product's own response validation (CloudProtocol over the shared managed Gmail client), fed the
   // server's JSON for the requested part through a synthetic authenticated transport.
@@ -206,7 +207,7 @@ test('an account that cannot save unpreviewed types offers nothing for an HTML a
  await expectInert(page,seen);
 });
 
-test('sharing the email with the agent is reviewed first and never includes an attachment name or its bytes',async({page})=>{
+test('Ask Alpha stages only the selected email, excludes attachment names and bytes, and waits for Send',async({page})=>{
  const seen=await watch(page);
  await setup(page,[part('p1','invoice.html','text/html',false,html),part('p2','notes.txt','text/plain',true,html)],{agent:true});
  // Looking at an attachment does not put it in front of the agent.
@@ -214,15 +215,18 @@ test('sharing the email with the agent is reviewed first and never includes an a
  await expect(review(page).getByText(html,{exact:true})).toBeVisible();
  expect(JSON.stringify(await page.evaluate(async()=>(await import('/src/runtime/alpha-client.ts')).alphaClient.getState().context))).not.toMatch(/notes\.txt|invoice\.html|attacker\.invalid|onerror/);
  await review(page).getByRole('button',{name:'Back to message',exact:true}).click();
- await page.getByRole('button',{name:'Review email with agent',exact:true}).click();
- const sharing=page.getByRole('dialog',{name:'Review email sharing'});
- await expect(sharing).toContainText('The complete text below will be sent. Attachments are excluded.');
- await expect(sharing).toContainText('Please open the attached invoice.');
- await expect(sharing).not.toContainText('invoice.html');
- await expect(sharing).not.toContainText('notes.txt');
- await expect(sharing).not.toContainText(ATTACKER);
- await sharing.getByRole('button',{name:'Cancel',exact:true}).click();
- await expect(sharing).toHaveCount(0);
+ await page.getByLabel('Message actions',{exact:true}).click();await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
+ const draft=page.getByRole('textbox',{name:'Message Alpha',exact:true});await expect(draft).toHaveValue('Summarize this for me');
+ await expect(page.getByRole('button',{name:'Remove email',exact:true})).toBeVisible();
+ // Read the product's staged, revalidated context without invoking Send or any provider action.
+ const staged=await page.evaluate(async()=>{
+  const root=document.getElementById('root') as any,key=Object.keys(root).find(k=>k.startsWith('__reactContainer$'));if(!key)throw Error('Missing mounted shell');
+  const pending=[root[key]];while(pending.length){const fiber=pending.pop(),shell=fiber?.stateNode;if(shell?.mailAttachment)return await shell.mailAttachment.validate();if(fiber?.sibling)pending.push(fiber.sibling);if(fiber?.child)pending.push(fiber.child);}throw Error('No staged email');
+ });
+ expect(staged).toContain('Please open the attached invoice.');expect(staged).not.toContain('invoice.html');expect(staged).not.toContain('notes.txt');expect(staged).not.toContain(ATTACKER);
+ expect(JSON.stringify(await page.evaluate(async()=>(await import('/src/runtime/alpha-client.ts')).alphaClient.getState().context))).not.toMatch(/notes\.txt|invoice\.html|attacker\.invalid|onerror/);
+ await page.getByRole('button',{name:'Remove email',exact:true}).click();await expect(page.getByRole('button',{name:'Remove email',exact:true})).toHaveCount(0);
+ expect(await page.evaluate(()=>(window as any).hostileFixture.agentPosts)).toEqual([]);
  await expectInert(page,seen);
 });
 

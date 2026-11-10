@@ -1,3 +1,4 @@
+import {ALPHA_PRODUCT_REGISTRATION as product} from '../apps/app/src/product/alpha-product-registration.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -11,11 +12,10 @@ import {verifySource,preparedSourceEnv,workerArtifactDirectory,digest} from '../
 import {verifyWorkerArtifact} from '../scripts/workflow-worker-artifact.ts';
 import {preparePrivateRuntimeProfile,runtimeEnvironment} from '../vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';
 import {CLOUD_SDK_BASES} from '../scripts/cloud-sdk-authority.ts';
-const product=JSON.parse(fs.readFileSync('config/alpha-product.json','utf8'));
 const hash=b=>createHash('sha256').update(b).digest('hex');
 import {productCharacterHostFixture as fixture} from './fixtures/product-character-host.mjs';
 test('native declaration uses canonical product name and the existing bio without a renderer or credential input',()=>{
- const text=fs.readFileSync('backend/native-cloud-runtime.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,'');const js=stripTypeScriptTypes(text,{mode:'strip'});const value=vm.runInNewContext(js+';nativeCloudRuntime',{product,productionCloud:{api:'https://api.example'}});
+ const text=fs.readFileSync('apps/app/src/product/native-cloud-runtime.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,'');const js=stripTypeScriptTypes(text,{mode:'strip'});const value=vm.runInNewContext(js+';nativeCloudRuntime',{product,productionCloud:{api:'https://api.example'}});
  assert.equal(value.productCharacter.name,product.identity.characterName);assert.equal(JSON.stringify(value.productCharacter.bio),JSON.stringify([`The assistant built into ${product.identity.appName} for writing, research, decisions and practical follow-through.`]));assert.equal(Object.isFrozen(value),true);assert.equal(Object.isFrozen(value.productCharacter),true);assert.equal(Object.isFrozen(value.productCharacter.bio),true);assert.equal(value.apiBaseUrl,'https://api.example/api/v1');
  const identity=fs.readFileSync('scripts/agent-identity.ts','utf8');assert.ok(identity.includes('The assistant built into ${identity.appName} for writing, research, decisions and practical follow-through.'));
 });
@@ -30,7 +30,7 @@ for(const mode of ['module-missing','module-changed','input-changed','manifest-c
  const f=fixture(mode);try{await assert.rejects(f.make());assert.equal(f.launches.length,0);assert.equal(fs.existsSync(f.profile),false);}finally{f.close();}
 });
 test('native configuration keeps only the verified module path through unbound provider stripping',()=>{
- const java=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java','utf8');
+ const java=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java','utf8');
  // Shared cleanup strips the module with every provider credential; Alpha restores only the module it captured.
  const shared=fs.readFileSync('vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java','utf8');
  const stripped=shared.slice(shared.indexOf('PROVIDER_ENVIRONMENT = {'),shared.indexOf('};',shared.indexOf('PROVIDER_ENVIRONMENT = {')));

@@ -10,4 +10,4 @@ export const NOTES_AUDIO_BACKSTOP_MS=60*24*60*60*1000;
 export const alphaAudioDatabase='alpha.browser.audio.v1';
 const store=createNotesAudioStore({databaseName:alphaAudioDatabase,retentionMs:NOTES_AUDIO_BACKSTOP_MS});
 export const audioMetadata=notesAudioMetadata;
-export const {retainAudio,audioRecord,audioDeletionStatus,changeAudioDeleted,purgeAudio,migrateAudio}=store;
+export const {retainAudio,audioRecord,audioDeletionStatus,changeAudioDeleted,purgeAudio,migrateAudio,retainPendingAudio,pendingAudio,claimPendingAudio,commitPendingAudio,discardPendingAudio}=store;

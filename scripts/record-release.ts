@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Record a distributed release as android/release-signer.json lastRelease (docs/human-actions.md H-32).
+ * Record a distributed release as android/release-signer.json lastRelease.
  *
  *   node scripts/record-release.ts --apk-manifest DIR/apk-manifest.json [--date YYYY-MM-DD] [--write]
  *

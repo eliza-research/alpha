@@ -10,7 +10,7 @@ import {drawCameraFrame} from '../browser/camera-frame';
 import {BrowserVideoCapture} from '../browser/video-capture';
 import {albumDocument} from '../browser/preference-documents';
 
-type Row={id:string;kind:'image'|'video';path?:string;duration?:number;operationId?:string;image:string;width:number;height:number;date:number;revision:string;mutationRevision:string;favorite:boolean;trashed:boolean};
+type Row={id:string;kind:'image'|'video';path?:string;duration?:number;operationId?:string;image:string;width:number;height:number;date:number;revision:string;mutationRevision:string;favorite:boolean;trashed:boolean;trashedAt?:number};
 const finder='[data-alpha-camera="viewfinder"]';
 const revision=()=>crypto.randomUUID();
 let database:Promise<IDBDatabase>|undefined;
@@ -24,7 +24,15 @@ function db(){return database??=new Promise<IDBDatabase>((resolve,reject)=>{
  request.onerror=()=>{database=undefined;reject(request.error);};
  request.onblocked=()=>{database=undefined;reject(Error('Close other Alpha tabs to open photo storage.'));};
 });}
-async function transaction<T>(mode:IDBTransactionMode,action:(store:IDBObjectStore,set:(value:T)=>void,fail:(error:Error)=>void)=>void):Promise<T>{
+const photoMutationLock='alpha.browser.photos.mutation.v1';
+function withPhotoMutation<T>(action:()=>Promise<T>):Promise<T>{
+ return navigator.locks?.request?navigator.locks.request(photoMutationLock,action):action();
+}
+function transaction<T>(mode:IDBTransactionMode,action:(store:IDBObjectStore,set:(value:T)=>void,fail:(error:Error)=>void)=>void):Promise<T>{
+ const run=()=>runPhotoTransaction(mode,action);
+ return mode==='readwrite'?withPhotoMutation(run):run();
+}
+async function runPhotoTransaction<T>(mode:IDBTransactionMode,action:(store:IDBObjectStore,set:(value:T)=>void,fail:(error:Error)=>void)=>void):Promise<T>{
  const connection=await db();
  return new Promise((resolve,reject)=>{const tx=connection.transaction('photos',mode);let value:T,error:Error|undefined;
   tx.oncomplete=()=>resolve(value);tx.onerror=()=>reject(error??tx.error);tx.onabort=()=>reject(error??tx.error??Error('Photo storage interrupted.'));
@@ -54,7 +62,7 @@ async function read(id:string){return transaction<Row>('readonly',(store,set,fai
 async function change(input:{id:string;revision:string},patch:Partial<Pick<Row,'favorite'|'trashed'>>){
  return transaction<Row>('readwrite',(store,set,fail)=>{const r=store.get(input.id);r.onsuccess=()=>{const row=r.result as Row|undefined;
   if(!row||!['image','video'].includes(row.kind)||row.mutationRevision!==input.revision){fail(Error('Photo changed in another tab. Reopen it and try again.'));return;}
-  const updated={...row,...patch,mutationRevision:revision()};store.put(updated);set(updated);
+  const updated={...row,...patch,...(patch.trashed!==undefined?{trashedAt:patch.trashed?Date.now():undefined}:{}),mutationRevision:revision()};store.put(updated);set(updated);
  };});
 }
 type EditParameters={rotation:number;crop:boolean;filter:string};
@@ -194,6 +202,15 @@ async function saveVideoCopy(input:{id:string;revision:string;operationId:string
   return await transaction<EditResult>('readwrite',(store,set,fail)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord;if(record.status!=='saving'){set(outcome(record));return;}const original=store.get(input.id);original.onsuccess=()=>{const row=original.result as Row|undefined;if(signal.aborted||!row||row.trashed||row.mutationRevision!==input.revision){record.status='failed';store.put(record);set(outcome(record));return;}try{store.add({id:record.copyId,kind:'video',...rendered,date:Date.now(),revision:revision(),mutationRevision:revision(),favorite:false,trashed:false});record.status='saved';store.put(record);set(outcome(record));}catch(error){fail(error instanceof Error?error:Error('Video copy could not be saved.'));}};};});
  }catch(error){await transaction<void>('readwrite',(store,set)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord;if(record.status==='saving'){record.status='failed';store.put(record);}set(undefined);};});throw error;}
 }
+ // File categories reference the same saved media; no second copy is created.
+export async function browserPhotoFileEntries(trashed=false){return transaction<{path:string;name:string;directory:boolean;mimeType:string;size:number;modified:number;revision:string;deletedAt:number}[]>('readonly',(store,set)=>{
+  const entries:{path:string;name:string;directory:boolean;mimeType:string;size:number;modified:number;revision:string;deletedAt:number}[]=[];const request=store.openCursor();
+  request.onsuccess=()=>{const cursor=request.result;if(!cursor){set(entries);return;}const row=cursor.value as Row;
+   if(!!row.trashed===trashed&&(row.kind==='image'||row.kind==='video')){const source=row.path||row.image,mimeType=/^data:([^;,]+)/.exec(source)?.[1]|| (row.kind==='video'?'video/webm':'image/jpeg'),encoded=source.includes(';base64,')?source.slice(source.indexOf(',')+1):'',size=encoded?Math.floor(encoded.length*3/4)-(encoded.endsWith('==')?2:encoded.endsWith('=')?1:0):0,extension=mimeType==='image/png'?'png':mimeType==='video/mp4'?'mp4':row.kind==='video'?'webm':'jpg';entries.push({path:'Photos/'+(row.kind==='video'?'Videos/':'Images/')+encodeURIComponent(row.id),name:`${row.kind==='video'?'Video':'Photo'} ${new Date(row.date).toLocaleString('sv-SE',{hour12:false}).replace(/:/g,'.')} ${row.id.slice(-6)}.${extension}`,directory:false,mimeType,size,modified:row.date,revision:row.mutationRevision,deletedAt:row.trashedAt||0});}
+   cursor.continue();
+  };
+ });}
+
 export const browserPhotoLibrary={
  saveVideoCopy,
  beginEdit:beginPhotoEdit,previewEdit:previewPhotoEdit,saveEdit:savePhotoEdit,editResult:resultPhotoEdit,cancelEdit:cancelPhotoEdit,
@@ -206,7 +223,7 @@ export const browserPhotoLibrary={
   const items=selectedMedia(input.items,SHARE_LIMIT),files=await selectedMediaFiles(items);
   await selectedMediaRows(items);
   if(document.hidden||!current())throw new DOMException('Share view changed','AbortError');
-  if(!navigator.share||!navigator.canShare?.({files}))throw Error('Sharing is unavailable in this browser. Use Save locally.');
+  if(!navigator.share||!navigator.canShare?.({files}))throw Error('Sharing is unavailable in this browser. Use Save file.');
   await navigator.share({files});
   return {status:'opened',count:files.length};
  },
@@ -214,9 +231,10 @@ export const browserPhotoLibrary={
   if(!['create','rename','delete','add','remove'].includes(String(input.operation)))throw Error('Unknown album operation.');
   const name=typeof input.name==='string'?input.name.trim():'';
   if(['create','rename'].includes(String(input.operation))&&(!name||name.length>80||/[\u0000-\u001f\u007f]/.test(name)))throw Error('Choose an album name between 1 and 80 characters.');
-  return albumDocument.edit<Album[],{status:string;id:string;revision:string}>(()=>[],async albums=>{
+  const withMedia=input.operation==='add'||input.operation==='remove'||input.operation==='create'&&(input.mediaId!==undefined||input.mediaRevision!==undefined);
+  const commit=()=>albumDocument.edit<Album[],{status:string;id:string;revision:string}>(()=>[],async albums=>{
    let media:Row|undefined;
-   if(input.operation==='add'||input.operation==='remove'||input.operation==='create'&&(input.mediaId!==undefined||input.mediaRevision!==undefined)){
+   if(withMedia){
     if(typeof input.mediaId!=='string'||typeof input.mediaRevision!=='string')throw Error('Select the photo again.');
     media=await read(input.mediaId);if(media.mutationRevision!==input.mediaRevision||media.trashed)throw Error('Photo changed. Reopen it.');
    }
@@ -227,6 +245,11 @@ export const browserPhotoLibrary={
    else {album.memberIds=album.memberIds.filter(id=>id!==media!.id);if(input.operation==='add')album.memberIds.push(media!.id);}
    album.revision=revision();album.count=album.memberIds.length;return {status:'updated',id:album.id,revision:album.revision};
   });
+  if(!withMedia)return commit();
+  // Keep the selected media revision current through the separate album document CAS.
+  const locks=navigator.locks;
+  if(!locks?.request)throw Error('Photo album membership changes require Web Locks in this browser.');
+  return locks.request(photoMutationLock,commit);
  },
  async setFavorite(input:{id:string;revision:string;favorite:boolean}){return change(input,{favorite:input.favorite});},
  async setTrashed(input:{id:string;revision:string;trashed:boolean}){return {...await change(input,{trashed:input.trashed}),status:'updated'};},
@@ -239,7 +262,7 @@ export const browserPhotoLibrary={
     const row=request.result as Row|undefined;
     if(!row||!['image','video'].includes(row.kind)||row.mutationRevision!==item.revision||(input.operation==='favorite'||input.operation==='unfavorite')&&row.trashed){result.outcomes.push({id:item.id,status:'conflict'});return;}
     const unchanged=Object.entries(patch).every(([key,value])=>row[key as 'favorite'|'trashed']===value);
-    const updated=unchanged?row:{...row,...patch,mutationRevision:revision()};if(!unchanged)store.put(updated);
+    const updated=unchanged?row:{...row,...patch,...(patch.trashed!==undefined?{trashedAt:patch.trashed?Date.now():undefined}:{}),mutationRevision:revision()};if(!unchanged)store.put(updated);
     result.outcomes.push({id:item.id,status:unchanged?'unchanged':'updated',item:updated});
    };}
   });

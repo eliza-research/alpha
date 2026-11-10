@@ -13,7 +13,7 @@ test('PDF selection renders actual pages and releases previews',async({page})=>{
 });
 test('Files renderer confirms folder creation and closes its mutation dialog',async({page})=>{
  await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();
- await page.getByRole('button',{name:'New folder',exact:true}).click();
+ await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'New folder',exact:true}).click();
  await page.getByRole('textbox',{name:'Name'}).fill('UI folder');await page.getByRole('button',{name:'Create',exact:true}).click();await expect(page.getByRole('button',{name:'Open UI folder',exact:true})).toBeVisible();
 });
 test('mail attachment bridge preserves exact bytes and validates reviewed hashes',async({page})=>{
@@ -42,16 +42,20 @@ test('Ask Alpha says a file over 5 MiB is too large to link',async({page})=>{
  await expect(question.getByRole('status')).toHaveText('This file is too large to link as a source. Turn off the source link to ask without one.');
  await question.getByRole('checkbox').uncheck();await question.getByRole('button',{name:'Use in conversation'}).click();await expect(question).toHaveCount(0);
 });
-test('renaming a selected file updates its Recent row',async({page})=>{
- await importAndOpen(page,'report.txt','Quarterly');expect(await recentNames(page)).toEqual(['report.txt']);
- await page.getByRole('button',{name:'Rename',exact:true}).click();await page.getByRole('textbox',{name:'File name'}).fill('q3.txt');await page.getByRole('button',{name:'Save name',exact:true}).click();
- await expect.poll(()=>recentNames(page)).toEqual(['q3.txt']);
- expect(await page.evaluate(()=>{const open=localStorage.getItem('alpha.files.open.v1'),rows=JSON.parse(localStorage.getItem('alpha.files.recent.v1')||'[]');return rows[0].selectionId===open;})).toBe(true);
+test('renaming a browsed file preserves bytes and does not create an obsolete Recent grant',async({page})=>{
+ await importAndOpen(page,'report.txt','Quarterly');expect(await recentNames(page)).toEqual([]);
+ const selected=await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');return registerPlugin<any>('AlphaFiles').storageSelect({path:'report.txt'});});
+ await page.getByRole('button',{name:'Rename',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Rename',exact:true});await dialog.getByRole('textbox',{name:'Name',exact:true}).fill('q3.txt');await dialog.getByRole('button',{name:'Rename',exact:true}).click();
+ await expect(dialog).toHaveCount(0);await expect(page.getByRole('button',{name:'Open q3.txt',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Open report.txt',exact:true})).toHaveCount(0);
+ expect(await page.evaluate(async selected=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const files=registerPlugin<any>('AlphaFiles');let stale=false;try{await files.readSelected(selected);}catch{stale=true;}return {stale,text:(await files.readSelected(await files.storageSelect({path:'q3.txt'}))).text};},selected)).toEqual({stale:true,text:'Quarterly'});
+ expect(await recentNames(page)).toEqual([]);await page.reload();await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();await expect(page.getByRole('button',{name:'Open q3.txt',exact:true})).toBeVisible();
 });
-test('a rename that needs reselection removes the old Recent row',async({page})=>{
- await importAndOpen(page,'report.txt','Quarterly');expect(await recentNames(page)).toEqual(['report.txt']);
- await page.evaluate(async()=>{const {BrowserDaily}=await import('/src/browser/daily.ts');BrowserDaily.prototype.renameSelected=async function(input:{selectionId:string}){await this.forgetSelected(input);return {status:'renamed-reselect',action:'files',message:'Select the renamed file to continue.'};};});
- await page.getByRole('button',{name:'Rename',exact:true}).click();await page.getByRole('textbox',{name:'File name'}).fill('q3.txt');await page.getByRole('button',{name:'Save name',exact:true}).click();
- await expect(page.getByRole('button',{name:'Select renamed file',exact:true})).toBeVisible();
- expect(await recentNames(page)).toEqual([]);expect(await page.evaluate(()=>localStorage.getItem('alpha.files.open.v1'))).toBeNull();
+test('a failed browsed-file rename preserves the file and an explicit retry saves once',async({page})=>{
+ await importAndOpen(page,'report.txt','Quarterly');
+ await page.evaluate(async()=>{const {BrowserFiles}=await import('/src/browser/files.ts');const rename=BrowserFiles.prototype.storageRename;(window as any).restoreStorageRename=()=>{BrowserFiles.prototype.storageRename=rename;};BrowserFiles.prototype.storageRename=async()=>{throw Error('Storage unavailable');};});
+ await page.getByRole('button',{name:'Rename',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Rename',exact:true});await dialog.getByRole('textbox',{name:'Name',exact:true}).fill('q3.txt');await dialog.getByRole('button',{name:'Rename',exact:true}).click();
+ await expect(dialog.getByText('The operation could not be confirmed.',{exact:true})).toBeVisible();await expect(dialog).toBeVisible();
+ expect(await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const files=registerPlugin<any>('AlphaFiles');return {names:(await files.storageList({path:''})).entries.map((row:any)=>row.name),text:(await files.readSelected(await files.storageSelect({path:'report.txt'}))).text};})).toEqual({names:['report.txt'],text:'Quarterly'});
+ await page.evaluate(()=>(window as any).restoreStorageRename());await dialog.getByRole('button',{name:'Rename',exact:true}).click();await expect(dialog).toHaveCount(0);await expect(page.getByRole('button',{name:'Open q3.txt',exact:true})).toBeVisible();
+ expect(await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');return (await registerPlugin<any>('AlphaFiles').storageList({path:''})).entries.map((row:any)=>row.name);})).toEqual(['q3.txt']);
 });

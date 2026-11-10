@@ -10,7 +10,7 @@ import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.t
 
 const model='NativeActionRecovery';
 const harness='ActionRecoveryTraces.java';
-const nativeManifest='patches/eliza/native-manifest.json';
+const nativeManifest='android/upstream-native-sources.json';
 const hostPath='android/consumer-host.json';
 const compiled=[...recoveryProduct,...recoveryShared.map(path=>'vendor/eliza/'+path)];
 const cases=[

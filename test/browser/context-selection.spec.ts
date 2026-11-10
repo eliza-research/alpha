@@ -1,3 +1,5 @@
+import {choosePhotoAction} from './helpers/owned-photo';
+import {chooseMailAction} from './helpers/mail-actions';
 import {test,expect,type Page} from '@playwright/test';
 // Each test loads the app and drives Files, Inbox or the shade; under four workers on a loaded machine
 // one load has taken 10-30s, so the timeout is explicit. No step, wait or assertion changes.
@@ -137,25 +139,23 @@ test.describe('mail',()=>{
   await page.getByRole('button',{name:'Inbox',exact:true}).click();
   await page.getByText('Reviewed message',{exact:true}).first().click();
   await expect(page.getByRole('region',{name:'Email message'})).toContainText('REVIEWED_BODY');
-  // The thread loads on request (Show conversation); its other message is then a chip under the open one.
-  await page.getByRole('button',{name:'Show conversation',exact:true}).click();
-  await expect(page.getByText('Fixture sender: Neighbor message',{exact:true})).toBeVisible();
+  // The reader loads the thread beside the selected message without a separate expansion action.
+  await expect(page.getByRole('group',{name:'Conversation',exact:true}).getByRole('button',{name:/Neighbor message$/})).toBeVisible();
   await expect(page.getByRole('region',{name:'Email message'})).toContainText('REVIEWED_BODY');
   await beforeReview?.();
-  await page.getByRole('button',{name:'Review email with agent',exact:true}).click();
-  const sharing=page.getByRole('dialog',{name:'Review email sharing'});
-  await expect(sharing).toContainText('REVIEWED_BODY');
-  return sharing;
+  await chooseMailAction(page,'Ask Alpha');
+  await expect(page.getByLabel('Attached email',{exact:true})).toContainText('Reviewed message');
+  expect(await sent(page)).toEqual([]);
+  return page.getByRole('textbox',{name:'Message Alpha',exact:true});
  }
- test('an unchanged review hands exactly the reviewed message to the agent (control)',async({page})=>{
+ test('an attached email sends exactly the selected message only on explicit Send (control)',async({page})=>{
   const sharing=await setup(page);
-  await sharing.getByRole('button',{name:'Send reviewed email to agent',exact:true}).click();
+  await sharing.press('Enter');
   await expect.poll(()=>sent(page)).toHaveLength(1);
   const [text]=await sent(page);expect(text).toContain('REVIEWED_BODY');expect(text).not.toContain('NEIGHBOR_BODY_CANARY');
  });
- test('a reviewed email the agent receives leaves the chat draft being typed in the composer',async({page})=>{
-  // AP-05: the shared email is not the composer's text, so the person's own unsent words stay
-  // (they used to be cleared with the send and their saved copy with its dispatch).
+ test('attaching an email retains the typed question and its saved draft until explicit Send',async({page})=>{
+  // Adding an attachment must not send or replace the person's question.
   const typed='Unrelated words I am still writing';
   // Whichever composer is on screen: the dock's while the chat is closed, the sheet's once it opens.
   const chatComposer=()=>page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
@@ -165,45 +165,46 @@ test.describe('mail',()=>{
    await page.getByRole('group',{name:'Assistant controls'}).getByRole('button',{name:'Type',exact:true}).click();
    await chatComposer().fill(typed);
    // The raised bar takes the first touch outside it and lowers to the pill; the draft stays
-   // (docs/ui-refresh-2026-11), so the next touch reaches Review.
+   // intact, so the next touch reaches Review.
    await page.mouse.click(206,300);
    await expect(page.getByRole('group',{name:'Assistant controls'}).getByRole('button',{name:'Type',exact:true})).toBeVisible();
   });
-  await sharing.getByRole('button',{name:'Send reviewed email to agent',exact:true}).click();
-  await expect.poll(()=>sent(page)).toHaveLength(1);
-  await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Shared email summary$/})).toBeVisible();
   await expect(chatComposer()).toHaveValue(typed);
+  expect(await sent(page)).toEqual([]);
   await page.waitForTimeout(500);
   await expect(chatComposer()).toHaveValue(typed);
-  // The composer's saved copy still holds the typed words: the email's dispatch does not clear it.
+  // Before explicit Send, its durable saved copy must still hold the question.
   await expect.poll(()=>page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');const binding=await c.assistantDraftBinding(new AbortController().signal);return (await(await(await import('/src/runtime/assistant-draft-store.ts')).assistantDraftStore(binding)).read())?.text??null;})).toBe(typed);
-  expect(await sent(page)).toHaveLength(1);
+  await sharing.press('Enter');
+  await expect.poll(()=>sent(page)).toHaveLength(1);
+  expect((await sent(page))[0]).toContain('Question: '+typed);
+  await expect(page.locator('[data-alpha-message-text]').filter({hasText:/^Shared email summary$/})).toBeVisible();
  });
- test('a message switched under the open review is refused and the neighbor is never sent',async({page})=>{
+ test('a message changed after attachment is refused and the neighbor is never sent',async({page})=>{
   const sharing=await setup(page);
   // The thread's other message replaces the open one while the review is showing (the chip sits
   // under the modal, so the switch is delivered to its handler directly).
-  await page.getByText('Fixture sender: Neighbor message',{exact:true}).dispatchEvent('click');
+  await page.getByRole('group',{name:'Conversation',exact:true}).getByRole('button',{name:/Neighbor message$/}).dispatchEvent('click');
   // The message under the modal is now the neighbor (inert, so read from the DOM); the review still shows the reviewed text.
   await expect.poll(()=>page.evaluate(()=>document.body.textContent?.includes('NEIGHBOR_BODY_CANARY'))).toBe(true);
-  await expect(sharing).toContainText('REVIEWED_BODY');
-  await sharing.getByRole('button',{name:'Send reviewed email to agent',exact:true}).click();
+  await expect(page.getByLabel('Attached email',{exact:true})).toContainText('Reviewed message');
+  await sharing.press('Enter');
   await expect(page.getByText('Message or destination changed. Review again; nothing was sent.',{exact:true})).toBeVisible();
   expect(await sent(page)).toEqual([]);
   await expect(page.getByText(/Summarize the following user-selected email/)).toHaveCount(0);
  });
- test('an agent switched under the open review is refused',async({page})=>{
+ test('an agent changed after attachment is refused',async({page})=>{
   const sharing=await setup(page);
   await page.evaluate(()=>{(window as any).mailSnapshot.session={sessionId:'other-session',agentId:'agent-2',ownerId:'fixture-owner',origin:'https://agent.example.invalid'};});
-  await sharing.getByRole('button',{name:'Send reviewed email to agent',exact:true}).click();
+  await sharing.press('Enter');
   await expect(page.getByText('Message or destination changed. Review again; nothing was sent.',{exact:true})).toBeVisible();
   expect(await sent(page)).toEqual([]);
  });
- test('a review left open past two minutes is refused',async({page})=>{
+ test('an attached email left for two minutes is refused before Send',async({page})=>{
   await page.clock.install({time:Date.UTC(2026,9,11,12)});
   const sharing=await setup(page);
   await page.clock.fastForward(121_000);
-  await sharing.getByRole('button',{name:'Send reviewed email to agent',exact:true}).click();
+  await sharing.press('Enter');
   await expect(page.getByText('Message or destination changed. Review again; nothing was sent.',{exact:true})).toBeVisible();
   expect(await sent(page)).toEqual([]);
  });
@@ -222,10 +223,12 @@ test.describe('capture',()=>{
   await photo(page,'FIRST');await photo(page,'SECOND');
   await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Photo, /}).first().click();
   await expect.poll(async()=>(await selectedObject(page))?.kind).toBe('photo');const selected=await selectedObject(page);
-  await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
-  const dialog=review(page);await expect(dialog.getByRole('heading')).toHaveText('Ask Alpha');await expect(dialog.getByLabel('Selected source',{exact:true})).toHaveText('Selected photo');await expect(dialog.getByRole('img')).toBeVisible();
-  await dialog.getByRole('textbox',{name:'Content excerpt'}).fill('A reviewed description');await dialog.getByRole('button',{name:'Use in conversation',exact:true}).click();
-  await expect(composer(page)).toHaveValue('What does this mean?\n\nSource: Selected photo\n\nA reviewed description');
+  await choosePhotoAction(page,'Ask Alpha');
+  await expect(review(page)).toHaveCount(0);
+  await expect(page.getByAltText('Captured photo')).toBeVisible();
+  await expect(composer(page)).toHaveValue('');
+  const expectedImage=await page.evaluate(async id=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');return (await browserPhotoLibrary.read({id})).image;},selected!.id.replace(/^native-camera-/,''));
+  await expect(page.getByAltText('Captured photo')).toHaveAttribute('src',expectedImage);
   // The envelope still names the same item at the same revision; no content is in it, and the
   // revision is a session-local counter rather than the library's own revision.
   expect(await selectedObject(page)).toEqual(selected);expect(Object.keys(selected!).sort()).toEqual(['id','kind','revision']);
@@ -240,21 +243,20 @@ test.describe('capture',()=>{
   await expect.poll(async()=>(await selectedObject(page))?.revision).not.toBe(selected!.revision);
   const changed=await selectedObject(page);expect(changed).toMatchObject({kind:'photo',id:selected!.id});expect(changed!.revision).toMatch(/^capture-[0-9a-f]{12}-\d+$/);
  });
- test('a photo trashed during its review adds nothing, and the other photo is never sent',async({page})=>{
+ test('a photo trashed while its attachment loads adds nothing and never sends another photo',async({page})=>{
   await photo(page,'FIRST');await photo(page,'SECOND');
   await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Photo, /}).first().click();
   await expect.poll(async()=>(await selectedObject(page))?.kind).toBe('photo');const selected=await selectedObject(page);
-  await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
-  const dialog=review(page);await expect(dialog.getByRole('img')).toBeVisible();
-  await dialog.getByRole('textbox',{name:'Content excerpt'}).fill('A reviewed description');
-  // Another surface trashes the open item while the review is showing. The view has not refreshed.
-  await page.evaluate(async id=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');const row=await browserPhotoLibrary.read({id});await browserPhotoLibrary.setTrashed({id,revision:row.mutationRevision,trashed:true});},selected!.id.replace(/^native-camera-/,''));
-  await dialog.getByRole('button',{name:'Use in conversation',exact:true}).click();
-  await expect(page.getByText('This photo changed or is no longer available. Nothing was added to your conversation.',{exact:true})).toBeVisible();
-  await expect(dialog).toHaveCount(0);await expect(composer(page)).toHaveCount(0);
-  // The stale viewer closes. The remaining photo was not opened or sent in its place.
-  await expect.poll(()=>selectedObject(page)).toBeNull();
-  await expect(page.getByRole('button',{name:'Ask Alpha about this photo',exact:true})).toHaveCount(0);
-  await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(1);
+  await page.evaluate(id=>{
+   return import('/src/prototype/browser-camera.ts').then(({browserPhotoLibrary:library})=>{
+    const read=library.read.bind(library);(window as any).readOriginalPhoto=read;
+    library.read=async input=>{if(input.id!==id)return read(input);(window as any).photoReadHeld=true;await new Promise<void>(resolve=>(window as any).releasePhotoRead=resolve);return read(input);};
+   });
+  },selected!.id.replace(/^native-camera-/,''));
+  await choosePhotoAction(page,'Ask Alpha');
+  await expect.poll(()=>page.evaluate(()=>(window as any).photoReadHeld)).toBe(true);
+  await page.evaluate(async id=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');const row=await (window as any).readOriginalPhoto({id});await browserPhotoLibrary.setTrashed({id,revision:row.mutationRevision,trashed:true});(window as any).releasePhotoRead();},selected!.id.replace(/^native-camera-/,''));
+  await expect(page.getByText('This photo changed. Open it again.',{exact:true})).toBeVisible();
+  await expect(review(page)).toHaveCount(0);await expect(page.getByAltText('Captured photo')).toHaveCount(0);
  });
 });

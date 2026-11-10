@@ -154,22 +154,28 @@ try{
  globalThis.fetch=(url,options)=>{assert.equal(url,'/__alpha-local-agent');storageRequests++;const headers = new Headers(options?.headers);headers.set('Origin',origin);return savedFetch(origin,{...options,headers});};
  try{
   const module='apps/app/src/runtime/local-agent-storage.ts';
-  const privateEnv={DEV:true,VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:'1',VITE_LOCAL_AGENT:'1'};
-  const {developmentDeviceStore}=await loadBrowserModule(module,{env:privateEnv});
   const deviceSlot='device:'+'9'.repeat(64),device={installationId:'22222222-2222-4222-8222-222222222222',key:'8'.repeat(64)};
-  assert.equal(await developmentDeviceStore.read(deviceSlot),null);
-  await developmentDeviceStore.write(deviceSlot,device);
-  assert.deepEqual(await developmentDeviceStore.read(deviceSlot),device);
-  assert.equal(storageRequests,3);
+  for(const env of [
+   {DEV:true,VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:'1',VITE_LOCAL_AGENT:'1'},
+   {DEV:true,VITE_ALPHA_CLOUD_RESIDENT:'1',VITE_LOCAL_AGENT:'1',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:''},
+  ]){
+   const {developmentDeviceStore}=await loadBrowserModule(module,{env});
+   const slot='device:'+(env.VITE_ALPHA_CLOUD_RESIDENT?'a':'b').repeat(64);
+   assert.equal(await developmentDeviceStore.read(slot),null);
+   await developmentDeviceStore.write(slot,device);
+   assert.deepEqual(await developmentDeviceStore.read(slot),device);
+  }
+  assert.equal(storageRequests,6);
   for(const env of [
    {DEV:false,VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:'1',VITE_LOCAL_AGENT:'1'},
    {DEV:true,VITE_ALPHA_PRIVATE_LOCAL_PREVIEW:'1'},
    {DEV:true,VITE_LOCAL_AGENT:'1'},
+   {DEV:false,VITE_ALPHA_CLOUD_RESIDENT:'1',VITE_LOCAL_AGENT:'1'},
    {DEV:true},
   ]){
    const blocked=await loadBrowserModule(module,{env});
    await assert.rejects(blocked.developmentDeviceStore.read(deviceSlot),/Device storage is unavailable/);
-   assert.equal(storageRequests,3,'production and partial flags make no storage request');
+   assert.equal(storageRequests,6,'production and partial flags make no storage request');
   }
  }finally{globalThis.fetch=savedFetch;}
  console.log('Local runtime transport, origin isolation, token redaction, no replay, cancellation and durable journal contracts passed.');

@@ -581,7 +581,6 @@
   </div>
 
   <sc-if value="{{inbox.hasActionChips}}"><div class="scr" style="display:flex;gap:8px;padding:0 20px 8px;overflow-x:auto;flex-shrink:0"><sc-for list="{{inbox.actionChips}}" as="action"><button aria-label="{{action.label}}" onClick="{{action.pick}}" style="min-height:36px;padding:0 12px;border-radius:18px;background:var(--s2);color:var(--fg);font-size:13px;white-space:nowrap;flex-shrink:0">{{action.label}}</button></sc-for></div></sc-if>
-  <sc-if value="{{inbox.cachedListNotice}}"><p role="status" style="margin:0;padding:0 20px 8px;font-size:12px;color:var(--mut)">{{inbox.cachedListNotice}}</p></sc-if>
   <div class="scr" data-alpha-app-scroll="inbox" data-mail-cached="{{inbox.cachedListShown}}" style="flex-grow: 1; overflow-y: auto; padding-bottom: 120px; touch-action: pan-y">
     <sc-for list="{{inbox.rows}}" as="it">
       <div onPointerDown="{{it.down}}" onPointerUp="{{it.up}}" style="position: relative; overflow: hidden; touch-action: pan-y">
@@ -633,22 +632,26 @@
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px; gap: 2px; flex-shrink: 0">
         <button class="ib" aria-label="Back to inbox" onClick="{{back}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <span style="flex-grow: 1"></span>
-        <button class="ib" aria-label="Reply" disabled="{{inbox.d.loading}}" onClick="{{inbox.d.reply}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.reply}}"></path></svg></button>
-        <sc-if value="{{inbox.d.canReplyAll}}"><button aria-label="Reply all" disabled="{{inbox.d.loading}}" onClick="{{inbox.d.replyAll}}" style="padding:8px;font-size:12px">Reply all</button></sc-if>
-        <sc-if value="{{inbox.d.canToggleRead}}"><button onClick="{{inbox.d.toggleRead}}" style="padding:8px;font-size:12px">{{inbox.d.readLabel}}</button></sc-if>
-        <button class="ib" aria-label="Forward" disabled="{{inbox.d.loading}}" onClick="{{inbox.d.forward}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.inboxFwd}}"></path></svg></button>
-        <sc-if value="{{inbox.d.canArchive}}">
-          <button class="ib" aria-label="Archive" onClick="{{inbox.d.archive}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.archive}}"></path></svg></button>
-        </sc-if>
-        <sc-if value="{{inbox.d.canTrash}}"><button class="ib" aria-label="Move to Trash" onClick="{{inbox.d.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.trash}}"></path></svg></button></sc-if>
+        <details class="photo-import-menu mail-message-menu" onKeyDown="{{inbox.d.menuKey}}">
+          <summary aria-label="Message actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary>
+          <div onClick="{{inbox.d.closeMenu}}">
+            <button disabled="{{inbox.d.loading}}" onClick="{{inbox.d.reply}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/reply.svg')"></span>Reply</button>
+            <sc-if value="{{inbox.d.canReplyAll}}"><button disabled="{{inbox.d.loading}}" onClick="{{inbox.d.replyAll}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/reply.svg')"></span>Reply all</button></sc-if>
+            <button disabled="{{inbox.d.loading}}" onClick="{{inbox.d.forward}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/forward.svg')"></span>Forward</button>
+            <sc-if value="{{inbox.d.canAsk}}"><button onClick="{{inbox.d.ask}}"><span class="alpha-compute-mark" aria-hidden="true"></span>Ask Alpha</button></sc-if>
+            <sc-if value="{{inbox.d.canToggleRead}}"><button onClick="{{inbox.d.toggleRead}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/mail.svg')"></span>{{inbox.d.readLabel}}</button></sc-if>
+            <sc-if value="{{inbox.d.canArchive}}"><button onClick="{{inbox.d.archive}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/archive.svg')"></span>Archive</button></sc-if>
+            <sc-if value="{{inbox.d.canTrash}}"><button onClick="{{inbox.d.del}}"><span class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/trash-2.svg')"></span>Move to Trash</button></sc-if>
+          </div>
+        </details>
       </div>
       <div class="scr inbox-message-content" role="region" aria-label="Email message" tabindex="0" style="flex-grow: 1; overflow-y: auto; padding: 4px 24px 130px; touch-action: pan-y">
-        <sc-if value="{{inbox.d.canLoadThread}}"><button onClick="{{inbox.d.loadThread}}" style="min-height:44px;padding:8px 0;color:var(--acct)">Show conversation</button></sc-if><sc-if value="{{inbox.d.hasThread}}"><p style="font-size:12px;color:var(--mut)">{{inbox.d.threadStatus}}</p>
-        <div class="scr" style="display:flex;gap:8px;overflow-x:auto;padding-bottom:10px">
-          <sc-for list="{{inbox.d.threadRows}}" as="message"><button onClick="{{message.pick}}" style="padding:8px 12px;border-radius:18px;background:var(--s2);white-space:nowrap">{{message.label}}</button></sc-for>
-          <sc-if value="{{inbox.d.hasPreviousThread}}"><button onClick="{{inbox.d.previousThread}}" style="padding:8px 12px;white-space:nowrap">Previous thread page</button></sc-if>
-          <sc-if value="{{inbox.d.hasNextThread}}"><button onClick="{{inbox.d.nextThread}}" style="padding:8px 12px;white-space:nowrap">Next thread page</button></sc-if>
-        </div>
+        <sc-if value="{{inbox.d.hasThread}}">
+          <div class="mail-thread" role="group" aria-label="Conversation">
+            <sc-if value="{{inbox.d.hasPreviousThread}}"><button class="mail-thread-page" onClick="{{inbox.d.previousThread}}">Earlier messages</button></sc-if>
+            <sc-for list="{{inbox.d.threadRows}}" as="message"><button class="mail-thread-message" onClick="{{message.pick}}"><span><strong>{{message.name}}</strong><small>{{message.date}}</small></span><span>{{message.preview}}</span></button></sc-for>
+            <sc-if value="{{inbox.d.hasNextThread}}"><button class="mail-thread-page" onClick="{{inbox.d.nextThread}}">More messages</button></sc-if>
+          </div>
         </sc-if><h1 class="serif" style="margin: 0; font-size: 32px; line-height: 1.1; letter-spacing: -.01em">{{inbox.d.subj}}</h1>
         <div style="display: flex; align-items: flex-start; gap: 12px; margin-top: 20px">
           <sc-if value="{{inbox.d.hasPerson}}">
@@ -680,9 +683,7 @@
             </sc-for>
           </div>
         </sc-if>
-        <sc-if value="{{inbox.d.canAsk}}">
-          <button onClick="{{inbox.d.ask}}" style="margin-top: 26px; min-height: 36px; padding: 0 16px 0 14px; border-radius: 18px; background: var(--s2); display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600"><span style="color: var(--acct); font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 19px; line-height: 1"><span class="alpha-compute-mark" aria-hidden="true"></span></span>Review email with agent</button>
-        </sc-if>
+
       </div>
     </div>
   </sc-if>
@@ -764,7 +765,7 @@
     </div>
   </sc-if>
 
-  <sc-if value="{{inbox.contextReviewOpen}}"><div ref="{{inbox.contextModal}}" class="scr inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review email sharing" style="position:absolute;inset:0;z-index:10;background:var(--bg);padding:54px 20px 30px;overflow:auto;box-sizing:border-box"><button onClick="{{inbox.contextReview.close}}" style="padding:10px">Cancel</button><h2 class="serif">Share this email with your agent?</h2><p style="overflow-wrap:anywhere">Destination: {{inbox.contextReview.destination}}</p><p>The complete text below will be sent. Attachments are excluded.</p><div style="white-space:pre-wrap;overflow-wrap:anywhere">{{inbox.contextReview.source}}</div><button disabled="{{inbox.contextReview.busy}}" onClick="{{inbox.contextReview.send}}" style="padding:14px;border-radius:24px;background:var(--acc);color:white">Send reviewed email to agent</button></div></sc-if>
+
   <sc-if value="{{inbox.attachmentOpen}}">
     <div ref="{{inbox.attachmentModal}}" class="inbox-attachment-review inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review attachment">
       <div class="inbox-attachment-actions"><button onClick="{{inbox.attachment.close}}">Back to message</button><button onClick="{{inbox.attachment.save}}" disabled="{{inbox.attachment.saveDisabled}}">Save to Files</button><sc-if value="{{inbox.attachment.external}}"><button onClick="{{inbox.attachment.open}}">Open reviewed file</button></sc-if></div>
@@ -957,6 +958,7 @@
         <h1 class="serif" style="margin: 0; font-size: 38px; line-height: 1.05; letter-spacing: -.01em">{{calendar.ev.title}}</h1>
         <div style="font-size: 17px; margin-top: 14px">{{calendar.ev.when}}</div>
         <div style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--mut); margin-top: 4px"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{calendar.ev.dot}}"></span>{{calendar.ev.day}}</div>
+        <div style="font-size: 14px; color: var(--mut); margin-top: 8px">{{calendar.ev.sourceLabel}}</div>
         <sc-if value="{{calendar.ev.uncertain}}"><div role="status" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--s2); font-size: 13px"><span style="flex: 1 1 160px">Couldn’t confirm the last change. Refresh to check.</span><button class="tap" onClick="{{calendar.ev.checkUncertain}}" style="min-height: 44px; padding: 0 14px; border-radius: 18px; background: var(--bg)">Refresh</button></div></sc-if>
         <sc-if value="{{calendar.ev.hasOrigin}}"><div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 14px; color: var(--mut); margin-top: 8px"><span>{{calendar.ev.originLabel}}</span><button class="tap" aria-label="{{calendar.ev.originOpenLabel}}" onClick="{{calendar.ev.openOrigin}}" style="min-height: 44px; padding: 0 14px; border-radius: 18px; background: var(--s2); color: var(--fg); font-weight: 600">Open note</button></div></sc-if>
 
@@ -970,7 +972,7 @@
           </sc-if>
           <sc-for list="{{calendar.ev.reminderHistory}}" as="h"><div style="font-size: 13px; color: var(--mut); margin-top: 8px">{{h.text}}</div></sc-for>
         </sc-if>
-        <sc-if value="{{calendar.ev.reminderReopen}}"><button class="tap" aria-label="Reopen reminder" onClick="{{calendar.ev.reminderReopen}}" style="min-height: 52px; margin-top: 12px; padding: 12px 16px; border-radius: 16px; background: var(--s2)">Reopen</button></sc-if>
+        <sc-if value="{{calendar.ev.reminderReopenable}}"><button class="tap" aria-label="Reopen reminder" onClick="{{calendar.ev.reminderReopen}}" style="min-height: 52px; margin-top: 12px; padding: 12px 16px; border-radius: 16px; background: var(--s2)">Reopen</button></sc-if>
 
         <sc-if value="{{calendar.ev.isInvite}}">
           <div style="display: flex; align-items: center; gap: 8px; margin-top: 22px">
@@ -1049,7 +1051,7 @@
         <sc-if value="{{calendar.f.nativeReviewDate}}"><div aria-label="Selected event date" aria-live="polite" style="padding: 8px 24px 0; font-size: 14px; color: var(--mut)">{{calendar.f.nativeReviewDate}}</div></sc-if>
         <div class="scr" style="display: flex; gap: 8px; overflow-x: auto; padding: 14px 20px 4px; touch-action: pan-x">
           <sc-for list="{{calendar.f.days}}" as="d">
-            <button onClick="{{d.pick}}" aria-label="{{d.label}}" style="flex-shrink: 0; min-width: 56px; min-height: 64px; padding: 0 6px; box-sizing: border-box; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; {{d.css}}">
+            <button onClick="{{d.pick}}" aria-label="{{d.label}}" aria-pressed="{{d.on}}" style="flex-shrink: 0; min-width: 56px; min-height: 64px; padding: 0 6px; box-sizing: border-box; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; {{d.css}}">
               <span style="font-size: 11px; opacity: .75; font-weight: 500">{{d.top}}</span>
               <span style="font-size: 18px; font-weight: 600">{{d.n}}</span>
             </button>
@@ -1083,12 +1085,6 @@
               <span style="position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 13px; background: var(--alpha-white); box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .25s cubic-bezier(.19,1,.22,1); transform: translateX({{calendar.f.allDayKx}}px)"></span>
             </button>
           </div></sc-if>
-          <sc-if value="{{calendar.f.onZone}}"><label style="display: flex; align-items: center; gap: 14px; min-height: 56px; padding: 0 12px 0 16px; border-radius: 16px; background: var(--s2)">
-            <span style="flex-grow: 1; font-size: 16px">Time zone</span>
-            <select aria-label="Time zone" value="{{calendar.f.zone}}" onChange="{{calendar.f.onZone}}" style="max-width: 60%; min-height: 44px; font: inherit; color: var(--fg); background: var(--bg); border: 0; border-radius: 12px; padding: 0 10px">
-              <sc-for list="{{calendar.f.zones}}" as="z"><option value="{{z.value}}">{{z.label}}</option></sc-for>
-            </select>
-          </label></sc-if>
           <sc-if value="{{calendar.f.insertHandoff}}"><button class="tap" aria-label="Open in Android Calendar" onClick="{{calendar.f.insertHandoff}}" style="min-height: 52px; padding: 12px 16px; border-radius: 16px; background: var(--s2); text-align: left">Open in Android Calendar</button></sc-if>
           <div style="display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 12px 0 16px; border-radius: 16px; background: var(--s2)">
             <svg class="i" viewBox="0 0 24 24" style="color: var(--mut); flex-shrink: 0"><path d="{{ic.video}}"></path></svg>
@@ -1434,7 +1430,7 @@
       <sc-if value="{{browser.pageShareAvailable}}"><button class="tap" aria-label="Share" onClick="{{browser.openShare}}" style="min-height:50px; border-radius: 18px; display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 15px; text-align: left; line-height: 1.25"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0"><path d="{{ic.share}}"></path></svg>Share</button></sc-if>
       <sc-if value="{{browser.openFind}}"><button class="tap" aria-label="Find in page" onClick="{{browser.openFind}}" style="min-height:50px;border-radius:18px;display:flex;align-items:center;gap:14px;padding:0 14px;text-align:left;font-size:15px"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0"><path d="{{ic.search}}"></path></svg>Find in page</button></sc-if>
       <sc-if value="{{browser.pageContentAvailable}}"><button class="tap" aria-label="Ask about page" onClick="{{browser.askPage}}" style="min-height:50px;border-radius:18px;padding:0 14px;text-align:left;font-size:15px">Ask about page</button></sc-if>
-      <sc-if value="{{browser.readAloudAvailable && browser.pageContentAvailable}}"><button class="tap" aria-label="Read aloud" onClick="{{browser.readAloud}}" style="min-height:50px; border-radius: 18px; display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 15px; text-align: left; line-height: 1.25"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0"><path d="{{ic.wave}}"></path></svg>Read aloud</button></sc-if>
+      <sc-if value="{{browser.readAloudAvailable}}"><sc-if value="{{browser.pageContentAvailable}}"><button class="tap" aria-label="Read aloud" onClick="{{browser.readAloud}}" style="min-height:50px; border-radius: 18px; display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 15px; text-align: left; line-height: 1.25"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0"><path d="{{ic.wave}}"></path></svg>Read aloud</button></sc-if></sc-if>
       <sc-if value="{{browser.readAloudNote}}"><p role="note" aria-label="Page reading not included" style="margin: 0; padding: 6px 14px 12px; font-size: 13px; line-height: 1.4; color: var(--mut)">{{browser.readAloudNote}}</p></sc-if>
       <sc-if value="{{browser.readingUnavailable}}"><p role="note" aria-label="Page reading unavailable" data-alpha-reading-unavailable style="margin: 0; padding: 6px 14px 12px; font-size: 13px; line-height: 1.4; color: var(--mut)">{{browser.readingNote}}</p></sc-if>
     </div>
@@ -1810,23 +1806,23 @@
             <h2 style="margin: 0; font-size: 15px; font-weight: 600">{{photos.v.day}}</h2>
             <div style="font-size: 12.5px; opacity: .72; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{photos.v.sub}}</div>
           </div>
-          <sc-if value="{{photos.v.ask}}"><button class="ib" aria-label="{{photos.v.askLabel}}" onClick="{{photos.v.ask}}"><span style="width: 30px; height: 30px; border-radius: 15px; background: rgba(255,255,255,.16); display: flex; align-items: center; justify-content: center; font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 18px"><span class="alpha-compute-mark" aria-hidden="true"></span></span></button></sc-if>
+          <details class="photo-import-menu photo-viewer-menu"><summary aria-label="Photo actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div onClick="{{photos.closeActions}}">
+            <sc-if value="{{photos.v.ask}}"><button onClick="{{photos.v.ask}}"><span class="alpha-compute-mark" aria-hidden="true"></span>Ask Alpha</button></sc-if>
+            <sc-if value="{{photos.v.info2.canAlbum}}"><button onClick="{{photos.v.info2.addToAlbum}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.folder}}"></path></svg>Add to album</button></sc-if>
+            <sc-if value="{{photos.v.canEmail}}"><button onClick="{{photos.v.email}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.mail}}"></path></svg>Email</button></sc-if>
+            <sc-if value="{{photos.v.notSecure}}"><button onClick="{{photos.v.share}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.share}}"></path></svg>Share</button></sc-if>
+            <sc-if value="{{photos.v.notDeleted}}"><button aria-label="{{photos.v.deleteLabel}}" onClick="{{photos.v.del}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.trash}}"></path></svg>Delete</button></sc-if>
+            <sc-if value="{{photos.v.isDeleted}}"><button onClick="{{photos.v.recover}}">Recover</button><sc-if value="{{photos.v.canDeleteForever}}"><button aria-label="Delete this item forever" onClick="{{photos.v.deleteForever}}">Delete permanently</button></sc-if></sc-if>
+          </div></details>
         </div>
       </div>
-      <sc-if value="{{photos.v.hasPrev}}"><button class="ib" aria-label="Previous" onClick="{{photos.v.prev}}" style="position: absolute; left: 4px; top: 50%; margin-top: -22px; z-index: 3; color: var(--alpha-white); opacity: {{photos.v.chromeOp}}; pointer-events: {{photos.v.chromePE}}; transition: opacity .25s"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
-      <sc-if value="{{photos.v.hasNext}}"><button class="ib" aria-label="Next" onClick="{{photos.v.next}}" style="position: absolute; right: 4px; top: 50%; margin-top: -22px; z-index: 3; color: var(--alpha-white); transform: scaleX(-1); opacity: {{photos.v.chromeOp}}; pointer-events: {{photos.v.chromePE}}; transition: opacity .25s"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
       <div data-alpha-photo-actions style="position: absolute; left: 0; right: 0; bottom: var(--alpha-dock-reserve,108px); height: 100px; background: linear-gradient(to top, rgba(0,0,0,.8) 70px, rgba(0,0,0,0)); pointer-events: none; opacity: {{photos.v.chromeOp}}; transition: opacity .25s; z-index: 3; display: flex; align-items: flex-end">
         <div style="display: flex; justify-content: space-around; width: 100%; padding: 0 16px 34px; pointer-events: {{photos.v.chromePE}}">
-          <sc-if value="{{photos.v.hasPrevItem}}"><button class="ib" aria-label="Previous item" onClick="{{photos.v.prevItem}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
-          <sc-if value="{{photos.v.canEmail}}"><button class="ib" aria-label="Use photo in email" onClick="{{photos.v.email}}" style="font-size:12px">Email</button></sc-if>
-          <sc-if value="{{photos.v.notSecure}}"><button class="ib" aria-label="{{photos.v.shareLabel}}" onClick="{{photos.v.share}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button></sc-if>
-          <sc-if value="{{photos.v.isDeleted}}"><button class="tap" aria-label="Recover deleted item" onClick="{{photos.v.recover}}" style="min-height:48px;padding:0 18px;color:var(--alpha-white);font:inherit;font-weight:600">Recover</button><sc-if value="{{photos.v.canDeleteForever}}"><button class="tap" aria-label="Delete this item forever" onClick="{{photos.v.deleteForever}}" style="min-height:48px;padding:0 18px;color:var(--alpha-white);font:inherit">Delete</button></sc-if></sc-if><sc-if value="{{photos.v.notDeleted}}">
+          <sc-if value="{{photos.v.notDeleted}}">
           <button class="ib" aria-label="{{photos.v.favLabel}}" onClick="{{photos.v.fav}}"><svg class="i" viewBox="0 0 24 24" style="{{photos.v.favIcon}}"><path d="{{ic.heart}}"></path></svg></button>
           <button class="ib" aria-label="{{photos.v.editLabel}}" onClick="{{photos.v.edit}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.edit}}"></path></svg></button>
           <sc-if value="{{photos.v.notSecure}}"><button class="ib" aria-label="{{photos.v.infoLabel}}" onClick="{{photos.v.info}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.info}}"></path></svg></button></sc-if>
-          <button class="ib" aria-label="{{photos.v.deleteLabel}}" onClick="{{photos.v.del}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
           </sc-if>
-          <sc-if value="{{photos.v.hasNextItem}}"><button class="ib" aria-label="Next item" onClick="{{photos.v.nextItem}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></sc-if>
         </div>
       </div>
     </div>
@@ -1856,7 +1852,7 @@
   <sc-if value="{{photos.infoOpen}}">
     <div ref="{{photos.infoModal}}" data-alpha-popup style="display: contents">
     <button data-alpha-backdrop tabindex="-1" aria-label="Close info" onClick="{{photos.closeSheet}}" style="position: absolute; inset: 0; z-index: 12; background: rgba(0,0,0,.35)"></button>
-    <div class="enter" role="dialog" aria-label="{{photos.v.infoLabel}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 13; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
+    <div class="enter photo-info-sheet" role="dialog" aria-label="{{photos.v.infoLabel}}" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 13; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
       <div style="display: flex; justify-content: center; padding-bottom: 14px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></div>
       <div class="serif" style="font-size: 26px; line-height: 1.1">{{photos.v.info2.date}}</div>
       <div style="font-size: 14px; color: var(--mut); margin-top: 4px">{{photos.v.info2.time}}</div>
@@ -1866,7 +1862,6 @@
           <sc-for list="{{photos.v.info2.facts}}" as="f"><dt style="color: var(--mut)">{{f.label}}</dt><dd style="margin: 0; overflow-wrap: anywhere">{{f.value}}</dd></sc-for>
         </dl>
       </sc-if>
-      <sc-if value="{{photos.v.info2.canAlbum}}"><button class="tap" aria-label="Add to album" onClick="{{photos.v.info2.addToAlbum}}" style="width: 100%; min-height: 48px; margin-top: 18px; border-radius: 24px; background: var(--s2); color: var(--fg); font-size: 15px; font-weight: 600">Add to album</button></sc-if>
       <sc-if value="{{photos.v.info2.hasPlace}}">
         <button class="tap" aria-label="{{photos.v.info2.placeLabel}}" onClick="{{photos.v.info2.openPlace}}" style="display: flex; align-items: center; gap: 14px; width: 100%; height: 56px; margin-top: 14px; padding: 0 16px; border-radius: 18px; background: var(--s2); box-sizing: border-box">
           <svg class="i" viewBox="0 0 24 24"><path d="{{ic.pin}}"></path></svg>
@@ -2200,7 +2195,7 @@
       <button aria-label="End navigation" onClick="{{maps.dr.nav.end}}" style="width: 56px; height: 56px; border-radius: 28px; background: var(--alpha-gray-26); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button>
       <div style="flex-grow: 1; min-width: 0; text-align: center">
         <div class="serif" style="font-size: 30px; line-height: 1.05">{{maps.dr.nav.left}}</div>
-        <div style="font-size: 13px; color: var(--alpha-gray-8f); margin-top: 3px">{{maps.dr.nav.meta}}</div>
+        <sc-if value="{{maps.dr.nav.meta}}"><div style="font-size: 13px; color: var(--alpha-gray-8f); margin-top: 3px">{{maps.dr.nav.meta}}</div></sc-if>
         <sc-if value="{{maps.dr.nav.remaining}}"><div role="status" aria-label="Remaining distance and time" style="font-size: 13px; color: var(--alpha-gray-bd); margin-top: 2px">{{maps.dr.nav.remaining}}</div></sc-if>
         <sc-if value="{{maps.dr.nav.reroute}}"><button onClick="{{maps.dr.nav.reroute}}" style="min-height: 36px; margin-top: 4px; padding: 0 12px; border-radius: 18px; background: var(--alpha-gray-26); color: var(--alpha-white); font-size: 13px; font-weight: 600">Reroute from here</button></sc-if>
       </div>
@@ -2256,6 +2251,7 @@
           </button>
     </sc-for>
     <sc-if value="{{notes.canImportText}}"><button class="tap" aria-label="Import text note" disabled="{{notes.documentBusy}}" onClick="{{notes.importText}}" style="display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 16px; padding: 0 14px; border-radius: 22px; background: var(--s2); color: var(--fg); font-size: 14px"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.filesDown}}"></path></svg>Import text note</button></sc-if>
+    <sc-if value="{{notes.olderNotesAction}}"><button class="tap" onClick="{{notes.olderNotesAction}}" style="min-height:44px;margin-top:16px;padding:0 8px;color:var(--mut);font-size:14px">Previous notes</button></sc-if>
   </div>
 
   
@@ -2297,8 +2293,6 @@
       <sc-if value="{{notes.ed.menuShown}}"><div ref="{{notes.noteMenu}}" data-alpha-popup style="display: contents">
       <sc-if value="{{notes.ed.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.ed.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.ed.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
-        <sc-if value="{{notes.ed.toCal}}"><button onClick="{{notes.ed.toCal}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review reminder draft</button></sc-if>
-        <sc-if value="{{notes.ed.toEvent}}"><button onClick="{{notes.ed.toEvent}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review calendar event draft</button></sc-if>
         <button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.ed.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button>
         <button onClick="{{notes.ed.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.ed.pinLabel}}</button>
         <hr>
@@ -2340,7 +2334,10 @@
             <button aria-label="Cancel transcription" onClick="{{notes.vo.cancelTranscript}}">Cancel</button>
           </div>
         </sc-if>
-        <sc-if value="{{notes.vo.canReviewTranscript}}"><button class="note-transcript-action" onClick="{{notes.vo.reviewTranscript}}">Ask Alpha about this transcript</button></sc-if>
+        <sc-if value="{{notes.vo.canReviewTranscript}}"><div class="note-transcript-actions">
+          <button class="note-transcript-action" aria-label="Ask Alpha about this transcript" onClick="{{notes.vo.reviewTranscript}}"><span class="alpha-compute-mark" aria-hidden="true"></span>Ask Alpha</button>
+          <button class="note-transcript-action" onClick="{{notes.vo.copyTranscript}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.copy}}"></path></svg>Copy text</button>
+        </div></sc-if>
         <sc-if value="{{notes.vo.proc}}">
           <div style="display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 24px; background: var(--s2); margin-top: 22px">
             <span class="dot" style="display: block"><span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;color:var(--acct)"><span class="alpha-compute-mark" aria-hidden="true" style="width:100%;height:100%"></span></span></span>
@@ -2370,23 +2367,21 @@
         </sc-if>
 
         <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 26px">
-          <sc-if value="{{notes.vo.savedTranscript}}"><p style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5">{{notes.vo.savedTranscript}}</p></sc-if>
+          <sc-if value="{{notes.vo.savedTranscript}}"><p data-alpha-note-transcript class="note-transcript-text">{{notes.vo.savedTranscript}}</p></sc-if>
           <sc-for list="{{notes.vo.lines}}" as="l">
-            <button onClick="{{l.seek}}" aria-label="Play from {{l.at}}" class="tap" style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 8px; margin: 0 -8px; border-radius: 16px; text-align: left">
-              <span style="width: 30px; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10.5px; font-weight: 700; white-space: nowrap; {{l.chip}}">{{l.ini}}<sc-if value="{{l.statusIcon}}"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{l.statusIcon}}"></path></svg></sc-if></span>
+            <div class="note-transcript-line">
+              <button onClick="{{l.seek}}" aria-label="Play from {{l.at}}" class="tap note-transcript-seek"><span style="width: 30px; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10.5px; font-weight: 700; white-space: nowrap; {{l.chip}}">{{l.ini}}<sc-if value="{{l.statusIcon}}"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{l.statusIcon}}"></path></svg></sc-if></span></button>
               <div style="min-width: 0; flex-grow: 1">
                 <div style="font-size: 12px; color: var(--mut)">{{l.who}} · {{l.at}}</div>
-                <div style="font-size: 16px; line-height: 1.45; margin-top: 2px; {{l.css}}">{{l.t}}</div>
+                <p data-alpha-note-transcript class="note-transcript-text" style="font-size:16px;margin-top:2px;{{l.css}}">{{l.t}}</p>
               </div>
-            </button>
+            </div>
           </sc-for>
         </div>
       </div>
       <sc-if value="{{notes.vo.menuShown}}"><div ref="{{notes.noteMenu}}" data-alpha-popup style="display: contents">
       <sc-if value="{{notes.vo.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.vo.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.vo.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
-        <sc-if value="{{notes.vo.toCal}}"><button onClick="{{notes.vo.toCal}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review reminder draft</button></sc-if>
-        <sc-if value="{{notes.vo.toEvent}}"><button onClick="{{notes.vo.toEvent}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review calendar event draft</button></sc-if>
         <button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.vo.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button>
         <button onClick="{{notes.vo.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.vo.pinLabel}}</button>
         <hr>
@@ -2655,7 +2650,11 @@
   <div data-alpha-app-header="main" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px 0 20px; gap: 2px; flex-shrink: 0">
   <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
     <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">Files</h1>
-    <sc-if value="{{files.toolbar.ready}}"><sc-if value="{{files.toolbar.canCreate}}"><button class="ib" aria-label="New folder" onClick="{{files.toolbar.newFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button></sc-if><button class="ib" aria-label="Sort files" onClick="{{files.toolbar.sort}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.filesSort}}"></path></svg></button><button class="ib" aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}"><svg class="i" viewBox="0 0 24 24"><path d="{{files.toolbar.viewIcon}}"></path></svg></button></sc-if>
+    <sc-if value="{{files.toolbar.ready}}"><details class="photo-import-menu"><summary aria-label="Files tools"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div>
+      <sc-if value="{{files.toolbar.canCreate}}"><button aria-label="New folder" onClick="{{files.toolbar.newFolder}}">New folder</button></sc-if>
+      <button aria-label="Sort files" onClick="{{files.toolbar.sort}}">Sort and select</button>
+      <button aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}">{{files.toolbar.viewLabel}}</button>
+    </div></details></sc-if>
   </div>
   <sc-if value="{{files.chip}}">
     <div style="display: flex; padding: 0 16px 8px; flex-shrink: 0">
@@ -2675,7 +2674,7 @@
     </sc-if>
     <sc-if value="{{files.browse.denied}}">
       <div role="alert" style="display: flex; align-items: center; gap: 12px; margin: 8px; padding: 14px 16px; border-radius: 20px; background: var(--s2)">
-        <span style="flex-grow: 1; font-size: 15px">Allow all files access</span>
+        <span style="flex-grow: 1; font-size: 15px">{{files.browse.deniedLabel}}</span>
         <button onClick="{{files.browse.grant}}" style="min-height: 40px; padding: 0 16px; border-radius: 20px; background: var(--acc); color: var(--alpha-white); font-weight: 600">Allow</button>
       </div>
     </sc-if>
@@ -2714,7 +2713,7 @@
           <button class="ib" aria-label="Back" onClick="{{files.fd.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
           <h1 data-alpha-app-title class="serif" style="margin: 0 0 0 6px; font-size: 26px; flex-grow: 1; min-width: 0; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{files.fd.name}}</h1>
           <sc-if value="{{files.fd.canEmpty}}"><button onClick="{{files.fd.empty_}}" style="min-height: 44px; padding: 0 14px; color: var(--warn); font-size: 15px; font-weight: 600">Empty</button></sc-if>
-    <sc-if value="{{files.toolbar.ready}}"><sc-if value="{{files.toolbar.canCreate}}"><button class="ib" aria-label="New folder" onClick="{{files.toolbar.newFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button></sc-if><button class="ib" aria-label="Sort files" onClick="{{files.toolbar.sort}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.filesSort}}"></path></svg></button><button class="ib" aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}"><svg class="i" viewBox="0 0 24 24"><path d="{{files.toolbar.viewIcon}}"></path></svg></button></sc-if>
+          <sc-if value="{{files.toolbar.ready}}"><button class="ib" aria-label="Files options" onClick="{{files.toolbar.sort}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button></sc-if>
         </div>
       </sc-if>
       <sc-if value="{{files.isSel}}">
@@ -2764,8 +2763,9 @@
       <sc-if value="{{files.isSel}}">
         <div data-alpha-view-actions role="toolbar" aria-label="Selection actions" style="position: absolute; left: 12px; right: 12px; bottom: 96px; display: flex; justify-content: space-around; padding: 6px; border-radius: 26px; background: var(--bg); box-shadow: 0 0 0 1px var(--line), 0 12px 32px var(--shc); z-index: 5">
           <button disabled="{{files.selectionDisabled}}" onClick="{{files.selShare}}" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60px; min-height: 52px; justify-content: center; font-size: 12px; opacity: {{files.selOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{files.icons.share}}"></path></svg>Share</button>
-          <button disabled="{{files.selectionDisabled}}" onClick="{{files.selMove}}" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60px; min-height: 52px; justify-content: center; font-size: 12px; opacity: {{files.selOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{files.icons.move}}"></path></svg>Move</button>
-          <button disabled="{{files.selectionDisabled}}" onClick="{{files.selCopy}}" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60px; min-height: 52px; justify-content: center; font-size: 12px; opacity: {{files.selOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{files.icons.copy}}"></path></svg>Copy</button>
+          <sc-if value="{{files.filePlacement}}"><button disabled="{{files.selectionDisabled}}" onClick="{{files.selMove}}" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60px; min-height: 52px; justify-content: center; font-size: 12px; opacity: {{files.selOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{files.icons.move}}"></path></svg>Move</button>
+          <button disabled="{{files.selectionDisabled}}" onClick="{{files.selCopy}}" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60px; min-height: 52px; justify-content: center; font-size: 12px; opacity: {{files.selOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{files.icons.copy}}"></path></svg>Copy</button></sc-if>
+          <sc-if value="{{files.mediaCollection}}"><button aria-label="Add to folder" disabled="{{files.selectionDisabled}}" onClick="{{files.selCopy}}" style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:60px;min-height:52px;justify-content:center;font-size:12px"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg><span>Add to folder</span></button></sc-if>
           <sc-if value="{{files.canRename}}"><button disabled="{{files.selectionBusy}}" onClick="{{files.selRename}}" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60px; min-height: 52px; justify-content: center; font-size: 12px"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.edit}}"></path></svg>Rename</button></sc-if>
           <button disabled="{{files.selectionDisabled}}" onClick="{{files.selDel}}" style="display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 60px; min-height: 52px; justify-content: center; font-size: 12px; opacity: {{files.selOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{files.icons.trash}}"></path></svg>Delete</button>
         </div>
@@ -2775,10 +2775,14 @@
   <sc-if value="{{files.menuOpen}}">
     <div ref="{{files.menuModal}}" data-alpha-popup style="display: contents">
     <button data-alpha-backdrop tabindex="-1" aria-label="Close menu" onClick="{{files.closeMenu}}" style="position: absolute; inset: 0; z-index: 7"></button>
-    <div class="drop" role="dialog" aria-label="Sort and more" style="position: absolute; top: 96px; right: 12px; width: 220px; max-width: calc(100% - 24px); max-height: calc(100% - 108px); overflow-y: auto; box-sizing: border-box; z-index: 8; background: var(--bg); border-radius: 22px; padding: 6px; box-shadow: 0 0 0 1px var(--line), 0 16px 40px var(--shc)">
+    <div class="drop files-actions-menu" role="dialog" aria-label="Sort and more" style="position: absolute; top: 96px; right: 12px; width: 220px; max-width: calc(100% - 24px); max-height: calc(100% - 108px); overflow-y: auto; box-sizing: border-box; z-index: 8; background: var(--bg); border-radius: 22px; padding: 6px; box-shadow: 0 0 0 1px var(--line), 0 16px 40px var(--shc)">
+      <div onClick="{{files.closeMenu}}">
+      <sc-if value="{{files.toolbar.canCreate}}"><button class="tap" aria-label="New folder" onClick="{{files.toolbar.newFolder}}" style="display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:8px 14px;text-align:left"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg><span>New folder</span></button></sc-if>
+      <button class="tap" aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}" style="display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:8px 14px;text-align:left"><svg class="i" viewBox="0 0 24 24"><path d="{{files.toolbar.viewIcon}}"></path></svg><span>{{files.toolbar.viewLabel}}</span></button>
+      </div>
       <sc-for list="{{files.fd.menuRows}}" as="m" key="{{m.id}}">
         <button onClick="{{m.go}}" aria-label="{{m.label}}" aria-pressed="{{m.on}}" class="tap" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 12px; border-radius: 16px; font-size: 15px; text-align: left">
-          <svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{m.d}}"></path></svg><span style="flex-grow: 1; min-width: 0">{{m.label}}</span>
+          <sc-if value="{{m.iconStyle}}"><span class="file-sort-icon" aria-hidden="true" style="{{m.iconStyle}}"></span><span class="file-sort-direction" aria-hidden="true" style="{{m.directionStyle}}"></span></sc-if><sc-if value="{{m.d}}"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px"><path d="{{m.d}}"></path></svg></sc-if><span style="flex-grow:1;min-width:0">{{m.label}}</span>
           <sc-if value="{{m.on}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--acct)"><path d="{{ic.check}}"></path></svg></sc-if>
         </button>
       </sc-for>
@@ -3269,9 +3273,9 @@
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px"><button class="ib" aria-label="Close Clock" aria-disabled="{{workflows.clock.busy}}" onClick="{{workflows.clock.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><h2 class="serif" style="font-size:26px;margin:0">Alarms</h2></div>
       <p style="font-size:14px;line-height:1.5;color:var(--mut);margin:0 0 18px">Alarms are set in your Clock app. Check there to confirm.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px"><sc-for list="{{workflows.clock.actions}}" as="item"><button class="tap" onClick="{{item.pick}}" style="padding:14px;border-radius:18px;font-size:15px;font-weight:600;{{item.css}}">{{item.label}}</button></sc-for></div>
-      <sc-if value="{{workflows.clock.isSet}}"><label style="font-size:14px;display:flex;flex-direction:column;gap:8px;margin-bottom:18px">Alarm time<input aria-label="Alarm time" type="time" value="{{workflows.clock.time}}" onChange="{{workflows.clock.onTime}}" style="font:inherit;font-size:28px;color:var(--fg);background:var(--s2);border:0;border-radius:16px;padding:14px"></label><label style="font-size:14px;display:flex;flex-direction:column;gap:8px;margin-bottom:14px">Label<input aria-label="Alarm label" maxlength="200" value="{{workflows.clock.label}}" onChange="{{workflows.clock.onLabel}}" style="font:inherit;color:var(--fg);background:var(--s2);border:0;border-radius:16px;padding:14px"></label><p style="font-size:13px;color:var(--mut)">Phone time zone: {{workflows.clock.zone}}</p></sc-if>
+      <sc-if value="{{workflows.clock.isSet}}"><label style="font-size:14px;display:flex;flex-direction:column;gap:8px;margin-bottom:18px">Alarm time<input aria-label="Alarm time" type="time" value="{{workflows.clock.time}}" onChange="{{workflows.clock.onTime}}" style="font:inherit;font-size:28px;color:var(--fg);background:var(--s2);border:0;border-radius:16px;padding:14px"></label><label style="font-size:14px;display:flex;flex-direction:column;gap:8px;margin-bottom:14px">Label<input aria-label="Alarm label" maxlength="200" value="{{workflows.clock.label}}" onChange="{{workflows.clock.onLabel}}" style="font:inherit;color:var(--fg);background:var(--s2);border:0;border-radius:16px;padding:14px"></label></sc-if>
       <sc-if value="{{workflows.clock.isSnooze}}"><label style="font-size:14px;display:flex;flex-direction:column;gap:8px;margin-bottom:18px">Requested snooze minutes<input aria-label="Snooze minutes" type="number" min="1" max="60" value="{{workflows.clock.snooze}}" onChange="{{workflows.clock.onSnooze}}" style="font:inherit;color:var(--fg);background:var(--s2);border:0;border-radius:16px;padding:14px"></label></sc-if>
-      <sc-if value="{{workflows.clock.days}}"><fieldset style="border:0;margin:0 0 18px;padding:0"><legend style="font-size:14px;margin-bottom:8px">Repeat</legend><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{workflows.clock.days}}" as="day"><button class="tap" aria-label="{{day.label}}" aria-pressed="{{day.on}}" onClick="{{day.toggle}}" style="min-width:44px;min-height:44px;padding:0 10px;border-radius:22px;{{day.css}}">{{day.short}}</button></sc-for></div></fieldset></sc-if>
+      <sc-if value="{{workflows.clock.days}}"><fieldset style="border:0;margin:0 0 18px;padding:0"><legend style="font-size:14px;margin-bottom:8px">Repeat</legend><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{workflows.clock.days}}" as="day"><button class="tap" aria-label="{{day.aria}}" aria-pressed="{{day.on}}" onClick="{{day.toggle}}" style="min-width:44px;min-height:44px;padding:0 10px;border-radius:22px;{{day.css}}">{{day.short}}</button></sc-for></div></fieldset></sc-if>
       <button class="tap" aria-label="Review Clock request" aria-disabled="{{workflows.clock.busy}}" onClick="{{workflows.clock.prepare}}" style="padding:16px;border-radius:24px;background:var(--acc);color:var(--alpha-white);font-weight:600;margin-top:12px">Review request</button>
       <sc-if value="{{workflows.clock.review}}"><div style="margin-top:18px;padding:18px;border-radius:20px;background:var(--s2)"><p style="font-size:15px;line-height:1.5;margin:0 0 16px">{{workflows.clock.review.text}}</p><button class="tap" aria-label="Confirm Clock request" onClick="{{workflows.clock.review.confirm}}" style="padding:14px 18px;border-radius:20px;background:var(--fg);color:var(--bg);font-weight:600">{{workflows.clock.review.label}}</button><button class="tap" aria-label="Cancel Clock review" onClick="{{workflows.clock.review.cancel}}" style="padding:14px;color:var(--mut)">Cancel</button></div></sc-if>
       <p role="status" aria-live="polite" style="font-size:14px;line-height:1.5;margin-top:18px">{{workflows.clock.message}}</p>
@@ -3328,6 +3332,7 @@
     <section ref="{{workflows.detailFocus}}" data-alpha-subview="automations-detail" class="automation-detail" aria-label="{{workflows.automation.title}}">
       <div data-alpha-app-header="detail" class="automation-detail-header"><button class="ib" aria-label="Back to automations" disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><h2 data-alpha-app-title>{{workflows.automation.title}}</h2></div>
       <div data-alpha-app-scroll="automation-detail" class="automation-detail-body scr">
+        <sc-if value="{{workflows.automation.clockContext}}"><p role="note">{{workflows.automation.clockContext}}</p></sc-if>
         <sc-if value="{{workflows.automation.creating}}"><div class="automation-new">
           <button class="workflow-choice" disabled="{{workflows.automation.agentUnavailable}}" onClick="{{workflows.automation.createPrompt}}"><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.calRepeat}}"></path></svg><span><strong>Automation</strong><small>{{workflows.automation.promptDescription}}</small></span><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button>
           <button class="workflow-choice" disabled="{{workflows.automation.agentReminderUnavailable}}" onClick="{{workflows.automation.createReminder}}"><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.bell}}"></path></svg><span><strong>Reminder</strong><small>{{workflows.automation.agentReminderDescription}}</small></span><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button>
@@ -3345,7 +3350,7 @@
 
           <div class="automation-fields"><sc-for list="{{workflows.automation.fields}}" as="field"><label><span>{{field.label}}</span><sc-if value="{{field.singleLine}}"><input type="{{field.type}}" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}" /></sc-if><sc-if value="{{field.multiline}}"><textarea rows="5" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}"></textarea></sc-if></label></sc-for></div>
           <sc-if value="{{workflows.automation.prompt}}">
-            <section class="automation-when" aria-label="When"><h3>When</h3><div class="automation-schedule-options"><sc-for list="{{workflows.automation.scheduleOptions}}" as="option"><button aria-pressed="{{option.selected}}" disabled="{{workflows.automation.busy}}" onClick="{{option.pick}}">{{option.label}}</button></sc-for></div><div class="automation-fields"><sc-for list="{{workflows.automation.whenFields}}" as="field"><label><span>{{field.label}}</span><input type="{{field.type}}" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}" /></label></sc-for></div><p class="automation-status">{{workflows.automation.whenLabel}} · {{workflows.automation.scheduleZone}}</p></section>
+            <section class="automation-when" aria-label="When"><h3>When</h3><div class="automation-schedule-options"><sc-for list="{{workflows.automation.scheduleOptions}}" as="option"><button aria-pressed="{{option.selected}}" disabled="{{workflows.automation.busy}}" onClick="{{option.pick}}">{{option.label}}</button></sc-for></div><div class="automation-fields"><sc-for list="{{workflows.automation.whenFields}}" as="field"><label><span>{{field.label}}</span><input type="{{field.type}}" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}" /></label></sc-for></div><p class="automation-status">{{workflows.automation.whenLabel}}</p></section>
             <button class="automation-more" aria-expanded="{{workflows.automation.promptMore}}" disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.togglePromptMore}}">{{workflows.automation.promptMoreLabel}}</button>
             <sc-if value="{{workflows.automation.promptMore}}"><div class="automation-options">
               <div class="automation-filters" style="padding:0" aria-label="Custom schedule type"><sc-for list="{{workflows.automation.scheduleKinds}}" as="kind"><button aria-pressed="{{kind.selected}}" disabled="{{workflows.automation.busy}}" onClick="{{kind.pick}}">{{kind.label}}</button></sc-for></div>
@@ -3356,10 +3361,14 @@
           <div class="automation-actions"><button class="primary" disabled="{{workflows.automation.saveDisabled}}" onClick="{{workflows.automation.save}}">{{workflows.automation.saveLabel}}</button><button disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.close}}">Cancel</button></div>
         </sc-if>
         <sc-if value="{{workflows.automation.locked}}"><p role="alert">Couldn’t confirm the last change. Check it, then allow another.</p><div class="automation-actions"><button disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.allowAnother}}">Allow another</button></div></sc-if>
-        <sc-if value="{{workflows.automation.editingSchedule}}"><sc-if value="{{workflows.automation.scheduleClockEditable}}"><label class="schedule-instructions">Time ({{workflows.automation.editedScheduleZone}})<input aria-label="Schedule time" type="time" value="{{workflows.automation.editedScheduleTime}}" onChange="{{workflows.automation.changeScheduleTime}}"></label></sc-if><label class="schedule-instructions">Instructions<textarea aria-label="Instructions" value="{{workflows.automation.scheduleInstructions}}" onChange="{{workflows.automation.changeScheduleInstructions}}"></textarea></label><div class="automation-actions"><button onClick="{{workflows.automation.saveScheduleEdit}}">Save</button><button onClick="{{workflows.automation.cancelScheduleEdit}}">Cancel</button></div></sc-if>
-        <div class="schedule-controls"><sc-for list="{{workflows.automation.schedulePrimary}}" as="action"><button disabled="{{action.disabled}}" onClick="{{action.run}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.play}}"></path></svg>{{action.label}}</button></sc-for>
-          <sc-if value="{{workflows.automation.scheduleMore}}"><details><summary aria-label="More schedule actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div><sc-for list="{{workflows.automation.scheduleMore}}" as="action"><button disabled="{{action.disabled}}" onClick="{{action.run}}">{{action.label}}</button></sc-for></div></details></sc-if></div>
-        <div class="automation-actions"><sc-for list="{{workflows.automation.actions}}" as="action"><button disabled="{{action.disabled}}" onClick="{{action.run}}">{{action.label}}</button></sc-for></div>
+        <sc-if value="{{workflows.automation.editingSchedule}}"><sc-if value="{{workflows.automation.scheduleClockEditable}}">
+          <fieldset class="schedule-clock"><legend>Time</legend><div class="schedule-clock-row"><div class="schedule-clock-digits"><input aria-label="Hour" type="number" min="1" max="12" value="{{workflows.automation.scheduleHour}}" onChange="{{workflows.automation.changeScheduleHour}}"><span aria-hidden="true">:</span><input aria-label="Minute" type="number" min="0" max="59" value="{{workflows.automation.scheduleMinute}}" onChange="{{workflows.automation.changeScheduleMinute}}"></div><div class="schedule-period" role="group" aria-label="Time of day"><sc-for list="{{workflows.automation.schedulePeriods}}" as="period"><button aria-pressed="{{period.selected}}" onClick="{{period.pick}}">{{period.label}}</button></sc-for></div></div></fieldset>
+          <fieldset class="schedule-frequency"><legend>Repeat</legend><div class="schedule-repeat-options"><div class="schedule-repeat-presets" role="group" aria-label="Repeat pattern"><sc-for list="{{workflows.automation.schedulePresets}}" as="preset"><button aria-pressed="{{preset.selected}}" onClick="{{preset.pick}}">{{preset.label}}</button></sc-for></div><div class="schedule-days" role="group" aria-label="Days of the week"><sc-for list="{{workflows.automation.scheduleDays}}" as="day"><button aria-label="{{day.name}}" aria-pressed="{{day.selected}}" onClick="{{day.pick}}">{{day.label}}</button></sc-for></div></div></fieldset>
+        </sc-if><label class="schedule-instructions">Instructions<textarea aria-label="Instructions" value="{{workflows.automation.scheduleInstructions}}" onChange="{{workflows.automation.changeScheduleInstructions}}"></textarea></label><div class="automation-actions"><button class="schedule-save" disabled="{{workflows.automation.scheduleSaveDisabled}}" onClick="{{workflows.automation.saveScheduleEdit}}">Save</button></div></sc-if>
+        <div class="schedule-controls"><sc-for list="{{workflows.automation.schedulePrimary}}" as="scheduleAction"><button aria-label="{{scheduleAction.label}}" disabled="{{scheduleAction.disabled}}" onClick="{{scheduleAction.run}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.play}}"></path></svg><span>{{scheduleAction.label}}</span></button></sc-for>
+          <sc-if value="{{workflows.automation.scheduleMore}}"><details><summary aria-label="More schedule actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div><sc-for list="{{workflows.automation.scheduleMore}}" as="scheduleAction"><button aria-label="{{scheduleAction.label}}" disabled="{{scheduleAction.disabled}}" onClick="{{scheduleAction.run}}"><span>{{scheduleAction.label}}</span></button></sc-for></div></details></sc-if></div>
+
+        <div class="automation-actions"><sc-for list="{{workflows.automation.actions}}" as="scheduleAction"><button aria-label="{{scheduleAction.label}}" disabled="{{scheduleAction.disabled}}" onClick="{{scheduleAction.run}}"><span>{{scheduleAction.label}}</span></button></sc-for></div>
         <sc-if value="{{workflows.automation.review}}"><div class="automation-review" role="group" aria-label="Review automation action"><p>{{workflows.automation.reviewPrompt}}</p><sc-if value="{{workflows.automation.reviewDetails}}"><p style="white-space:pre-line">{{workflows.automation.reviewDetails}}</p></sc-if><div class="automation-actions"><button class="primary" onClick="{{workflows.automation.confirm}}">{{workflows.automation.reviewConfirmLabel}}</button><button onClick="{{workflows.automation.cancelReview}}">Keep unchanged</button></div></div></sc-if>
         <sc-if value="{{workflows.automation.message}}"><p role="status">{{workflows.automation.message}}</p></sc-if>
         <sc-for list="{{workflows.automation.history}}" as="entry"><p class="automation-status">{{entry}}</p></sc-for>
@@ -4016,6 +4025,7 @@
     <sc-for list="{{msgs}}" as="m">
       <div data-alpha-message-id="{{m.id}}" style="display: flex; flex-direction: column">
         <sc-if value="{{m.isUser}}">
+          <sc-if value="{{m.sentMail}}"><div class="sent-content-attachment" aria-label="Sent email"><small>Email</small><strong>{{m.sentMail}}</strong></div></sc-if>
           <sc-if value="{{m.sentTranscript}}"><div class="sent-content-attachment" aria-label="Sent transcript"><small>Transcript</small><strong>{{m.sentTranscript}}</strong></div></sc-if>
           <sc-if value="{{m.sentPhoto}}"><button class="sent-content-attachment" aria-label="Preview sent photo" onClick="{{m.openPhotoPreview}}"><img src="{{m.sentPhoto}}" alt="Sent photo" /></button></sc-if>
 
@@ -4157,6 +4167,7 @@
   <sc-if value="{{messageComposeContext}}"><div style="display:flex;align-items:center;gap:8px;padding:6px 16px;font-size:13px;background:var(--s2);border-radius:14px"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{messageComposeContext}}</span><button class="tap" aria-label="Cancel reply or edit" onClick="{{cancelMessageContext}}" style="min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{ic.x}}"></path></svg></button></div></sc-if>
 
     <sc-if value="{{attachedCameraPhoto}}"><div class="note-transcript-chip" aria-label="Attached photo"><button aria-label="Preview attached photo" onClick="{{openDraftPhoto}}"><img alt="Captured photo" width="48" height="48" src="{{attachedCameraPhoto}}" style="object-fit:cover;border-radius:8px"></button><span>Photo</span><button aria-label="Remove photo" onClick="{{removeCameraPhoto}}">×</button></div></sc-if>
+    <sc-if value="{{attachedMail}}"><div class="note-transcript-chip" aria-label="Attached email"><div><small>Email</small><strong>{{attachedMail}}</strong></div><button aria-label="Remove email" onClick="{{removeMail}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></div></sc-if>
     <sc-if value="{{attachedTranscript}}"><div class="note-transcript-chip" role="group" aria-label="Attached transcript"><span class="note-transcript-chip-label"><small>Transcript</small><strong>{{attachedTranscript}}</strong></span><button type="button" aria-label="Remove transcript" onClick="{{removeTranscript}}"><i aria-hidden="true" class="note-transcript-remove-icon"></i></button></div></sc-if>
     <div class="alpha-chat-composer">
       <textarea disabled="{{draftOpening}}" onPointerDown="{{composerPointer}}" data-alpha-composer="true" rows="1" aria-label="Message {{name}}" placeholder="Message {{name}}" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onKey}}" style="flex-grow: 1; min-width: 0; height: 44px; min-height:44px; max-height:min(168px,28dvh); resize:none; overflow-y:auto; font-family:inherit; line-height:22px; padding-top:11px; padding-bottom:11px; box-sizing:border-box; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 16px"></textarea>
@@ -4328,7 +4339,7 @@
 
 <div data-alpha-toast aria-live="polite" aria-atomic="true">
 <sc-if value="{{toastOn}}">
-  <div class="drop" style="pointer-events: auto; min-height: 48px; max-width: 100%; box-sizing: border-box; padding: 0 {{toastPadR}}px 0 18px; border-radius: 24px; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 600; display: flex; gap: 14px; align-items: center; box-shadow: 0 8px 24px var(--shc)">
+  <div class="drop" role="{{toastRole}}" tabindex="{{toastTabIndex}}" onFocus="{{toastFocus}}" onBlur="{{toastBlur}}" onClick="{{toastTap}}" onKeyDown="{{toastKey}}" style="pointer-events: auto; min-height: 48px; max-width: 100%; box-sizing: border-box; padding: 0 {{toastPadR}}px 0 18px; border-radius: 24px; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 600; display: flex; gap: 14px; align-items: center; box-shadow: 0 8px 24px var(--shc)">
     <span style="flex-grow: 1; min-width: 0; padding: 8px 0; overflow-wrap: anywhere">{{toast}}</span>
     <sc-if value="{{toastUndo}}"><button onClick="{{doUndo}}" style="flex-shrink: 0; min-height: 40px; padding: 0 14px; border-radius: 20px; color: var(--bg); background: rgba(127,127,127,.28); font-weight: 700; font-size: 14px">Undo</button></sc-if>
   </div>

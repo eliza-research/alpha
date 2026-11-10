@@ -1,4 +1,4 @@
-import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdirSync, readFileSync, renameSync, writeFileSync} from 'node:fs';
 import {dirname, join, resolve, basename} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {tsImport} from 'tsx/esm/api';
@@ -32,7 +32,7 @@ interface AdapterReport {
 }
 interface FamilyReport {
   family: string;
-  status: 'pending' | 'failed' | 'checked';
+  status: 'pending' | 'running' | 'failed' | 'checked';
   receipts?: TraceReceipt[];
   failures?: {campaign: string; error: string}[];
   error?: string;
@@ -68,23 +68,62 @@ const runners = {
 };
 type Family = keyof typeof runners;
 const families = Object.keys(runners) as Family[];
-const isFamily = (family: string): family is Family => Object.hasOwn(runners, family);
 const requestedNames = args.find(arg => arg.startsWith('--families='))?.slice(11).split(',') || families;
 const output = resolve(repositoryRoot, args.find(arg => arg.startsWith('--out='))?.slice(6) || 'test-results/quint-refinement/summary.json');
 for (const arg of args) if (!arg.startsWith('--families=') && !arg.startsWith('--out=') && arg !== '--require-complete') throw Error(`Unknown option ${arg}`);
 const requested = requestedNames.map(family => {
-  if (!isFamily(family)) throw Error(`Unknown family ${family}`);
-  return family;
+  if (!Object.hasOwn(runners, family)) throw Error(`Unknown family ${family}`);
+  return family as Family;
 });
-const models = loadModels();
+const familyModule = (family: Family) => `specs/quint/refinement/${family}/index.mjs`;
 const reportingInputs = ['scripts/check-quint-refinement.ts', 'specs/quint/refinement/model-state.mjs',
-  'specs/quint/refinement/legacy/index.mjs', 'specs/quint/refinement/check-traces.mjs', 'package-lock.json'];
-const startedAt = new Date().toISOString();
-const reportingInputHashes = Object.fromEntries(reportingInputs.map(path => [path, sha256(readFileSync(join(repositoryRoot, path)))]));
-const familyReports: FamilyReport[] = [];
-const modelReports: ModelReport[] = [];
-const obligations: Obligation[] = [];
+  'specs/quint/refinement/check-traces.mjs', 'specs/quint/refinement/campaigns.mjs', 'package-lock.json',
+  'scripts/quint-lib.ts',
+  ...['application', 'services', 'native', 'legacy'].map(family => `specs/quint/${family}/manifest.json`),
+  ...families.map(familyModule).filter(path => existsSync(join(repositoryRoot, path)))];
+const inputHashes = Object.fromEntries(reportingInputs.map(path =>
+  [path, sha256(readFileSync(join(repositoryRoot, path)))]));
+const models = loadModels();
+type Report = {
+  schemaVersion: number;
+  startedAt: string;
+  evidence: string;
+  reportingInputHashes: Record<string, string>;
+  modelCount: number;
+  families: FamilyReport[];
+  models: ModelReport[];
+  obligations: Obligation[];
+  checksPassed: boolean;
+  completeApplicationRefinement: boolean;
+  finishedAt?: string;
+  traceCheckedModels?: number;
+  campaignCoverageComplete?: boolean;
+  runtimeCampaignCoverageComplete?: boolean;
+  reportingInputsUnchanged?: boolean;
+  unobservedStateFieldCount?: number;
+  unexercisedModelTransitionCount?: number;
+};
+const report: Report = {schemaVersion: 1, startedAt: new Date().toISOString(), evidence: 'implementation trace refinement with explicit projections',
+  reportingInputHashes: inputHashes,
+  modelCount: models.length, families: [], models: [], obligations: [], checksPassed: false, completeApplicationRefinement: false};
 let failed = false;
+
+mkdirSync(dirname(output), {recursive: true});
+function publish(path: string, value: unknown) {
+  const temporary = `${path}.tmp-${process.pid}`;
+  writeFileSync(temporary, JSON.stringify(value, null, 2) + '\n', {flag: 'wx'});
+  renameSync(temporary, path);
+}
+function checkpoint(status: string, activeFamily?: FamilyReport) {
+  const currentFamilies = activeFamily ? [...report.families, activeFamily] : report.families;
+  publish(`${output}.progress.json`, {schemaVersion: 1, status, startedAt: report.startedAt,
+    finishedAt: report.finishedAt, reportingInputHashes: inputHashes,
+    modelCount: models.length, requestedFamilies: requested, checksPassed: report.checksPassed,
+    families: currentFamilies.map(({family, status, receipts, failures, error}) => ({family, status,
+      receiptPaths: receipts?.map(receipt => receipt.receiptPath).filter(Boolean) ?? [],
+      failureCount: (failures?.length ?? 0) + Number(Boolean(error))}))});
+}
+checkpoint('running');
 function diagnostic(error: unknown) {
   const lines: string[] = [];
   let cause = error;
@@ -96,35 +135,40 @@ function diagnostic(error: unknown) {
   return lines.join('\nCaused by: ').replace(/data:text\/javascript;base64,[\w+/=]+(?:#tsx-namespace=[\w-]+)?/g, '[bundled source]');
 }
 for (const family of requested) {
-  const modulePath = join(repositoryRoot, 'specs/quint/refinement', family, 'index.mjs');
+  const modulePath = join(repositoryRoot, familyModule(family));
   if (!existsSync(modulePath)) {
     failed = true;
-    familyReports.push({family, status: 'pending'});
-    obligations.push({family, obligation: 'source-adapter coverage', reason: 'Family adapters are still being implemented.'});
+    report.families.push({family, status: 'pending'});
+    report.obligations.push({family, obligation: 'source-adapter coverage', reason: 'Family adapters are still being implemented.'});
+    checkpoint('running');
     continue;
   }
+  const onProgress = ({receipts = [], failures = []}: {receipts: TraceReceipt[]; failures?: {campaign: string; error: string}[]} = {receipts: []}) =>
+    checkpoint('running', {family, status: 'running', receipts, failures});
+  onProgress();
   try {
     // Services and historical core adapters import parameter-property TypeScript.
     // Serialized browser fixtures supply any helpers from that transform locally.
-    const module: Record<string, unknown> = family === 'services' || family === 'legacy'
+    const module = family === 'services' || family === 'legacy'
       ? await tsImport(pathToFileURL(modulePath).href, import.meta.url)
       : await import(pathToFileURL(modulePath).href);
-    const run = module[runners[family]];
+    const run = module[runners[family]] as ((progress?: typeof onProgress) => Promise<AdapterReport>) | undefined;
     if (typeof run !== 'function') throw Error(`Missing runner for ${family}`);
-    const result: AdapterReport = await run();
+    const result = await (family === 'composition' ? run() : run(onProgress));
     if (!Array.isArray(result.receipts) || !Array.isArray(result.obligations)) throw Error(`Invalid adapter report for ${family}`);
     const failures = result.failures?.map(({campaign, error}) => ({campaign, error: diagnostic(error)})) ?? [];
     if (failures.length) failed = true;
-    familyReports.push({family, status: failures.length ? 'failed' : 'checked', receipts: result.receipts,
+    report.families.push({family, status: failures.length ? 'failed' : 'checked', receipts: result.receipts,
       ...(failures.length ? {failures} : {})});
-    obligations.push(...result.obligations);
+    report.obligations.push(...result.obligations);
   } catch (error) {
     failed = true;
-    familyReports.push({family, status: 'failed', error: diagnostic(error)});
+    report.families.push({family, status: 'failed', error: diagnostic(error)});
   }
+  checkpoint('running');
 }
 for (const model of models) {
-  const receipts = familyReports.flatMap(family => family.receipts || []).filter(receipt =>
+  const receipts = report.families.flatMap(family => family.receipts || []).filter(receipt =>
     receipt.coverageModel === model.module || receipt.model === model.module ||
     basename(receipt.receiptPath || '', '.json') === model.module);
   const currentHash = sha256(readFileSync(join(repositoryRoot, model.path)));
@@ -132,46 +176,42 @@ for (const model of models) {
     receipt.sourceHashesAfter?.[join(repositoryRoot, model.path)] === currentHash &&
     verifyRefinementReceiptInputs(receipt));
   const inventory = modelStateInventory(join(repositoryRoot, model.path), model.module);
-  const observedFields = [...new Set(current.flatMap(receipt => receipt.observedFields))].sort();
-  const coverage = traceActionCoverage(current);
-  const modelOperations = inventory.actions.filter((action: string) =>
-    !['init', 'step', 'check'].includes(action) && !coverage.modelInitializers.includes(action));
-  modelReports.push({model: model.module, family: model.family, modelSha256: currentHash,
+  const entry: ModelReport = {unobservedStateFields: [], unexercisedModelActions: [], unexercisedModelTransitions: [], model: model.module, family: model.family, modelSha256: currentHash,
     status: current.length ? 'trace-checked' : 'unverified',
     traceCount: current.reduce((sum, receipt) => sum + receipt.traces, 0),
     checkpoints: current.reduce((sum, receipt) => sum + receipt.checkpoints, 0),
     declaredStateVariables: inventory.variables,
     declaredStateFields: inventory.fields,
-    observedFields,
-    ...coverage,
+    observedFields: [...new Set(current.flatMap(receipt => receipt.observedFields))].sort(),
+    ...traceActionCoverage(current),
     scopes: [...new Set(current.map(receipt => receipt.scope))],
-    receipts: current.map(receipt => receipt.receiptPath),
-    unobservedStateFields: unobservedStateFields(inventory, observedFields),
-    unexercisedModelActions: modelOperations.filter((action: string) => !coverage.modelActions.includes(action)),
-    unexercisedModelTransitions: modelOperations.filter((action: string) => !coverage.modelTransitionActions.includes(action)),
-  });
+    receipts: current.map(receipt => receipt.receiptPath)};
+  entry.unobservedStateFields = unobservedStateFields(inventory, entry.observedFields);
+  const modelOperations = inventory.actions.filter((action: string) =>
+    !['init', 'step', 'check'].includes(action) && !entry.modelInitializers.includes(action));
+  entry.unexercisedModelActions = modelOperations.filter((action: string) => !entry.modelActions.includes(action));
+  entry.unexercisedModelTransitions = modelOperations.filter((action: string) => !entry.modelTransitionActions.includes(action));
+  report.models.push(entry);
   if (!current.length && (model.family !== 'legacy' || requested.includes('legacy')))
-    obligations.push({model: model.module, obligation: 'implementation transition relation', reason: 'No passing source-bound adapter receipt for this model revision in the selected campaigns.'});
+    report.obligations.push({model: model.module, obligation: 'implementation transition relation', reason: 'No passing source-bound adapter receipt for this model revision in the selected campaigns.'});
 }
-const traceCheckedModels = modelReports.filter(model => model.status === 'trace-checked').length;
+report.traceCheckedModels = report.models.filter(model => model.status === 'trace-checked').length;
+report.campaignCoverageComplete = report.traceCheckedModels === report.modelCount;
 const runtimeFamilies = families.filter(family => family !== 'legacy');
-const runtimeCampaignCoverageComplete = modelReports.every(model => model.family === 'legacy' || model.status === 'trace-checked');
-if (runtimeFamilies.every(family => requested.includes(family)) && !runtimeCampaignCoverageComplete) failed = true;
-const reportingInputsUnchanged = reportingInputs.every(path => reportingInputHashes[path] === sha256(readFileSync(join(repositoryRoot, path))));
-if (!reportingInputsUnchanged) failed = true;
-obligations.push({obligation: 'unbounded implementation refinement', reason: 'Concrete trace campaigns establish their recorded finite/bounded projections. A universal simulation-relation proof requires separately discharged source semantics and environment assumptions.'});
-const report = {
-  schemaVersion: 1, startedAt, evidence: 'implementation trace refinement with explicit projections', reportingInputHashes,
-  modelCount: models.length, families: familyReports, models: modelReports, obligations,
-  checksPassed: !failed, completeApplicationRefinement: false, traceCheckedModels,
-  campaignCoverageComplete: traceCheckedModels === models.length,
-  runtimeCampaignCoverageComplete, reportingInputsUnchanged,
-  unobservedStateFieldCount: modelReports.reduce((count, model) => count + model.unobservedStateFields.length, 0),
-  unexercisedModelTransitionCount: modelReports.reduce((count, model) => count + model.unexercisedModelTransitions.length, 0),
-  finishedAt: new Date().toISOString(),
-};
-mkdirSync(dirname(output), {recursive: true});
-writeFileSync(output, JSON.stringify(report, null, 2) + '\n');
+report.runtimeCampaignCoverageComplete = report.models.every(model => model.family === 'legacy' || model.status === 'trace-checked');
+if (runtimeFamilies.every(family => requested.includes(family)) && !report.runtimeCampaignCoverageComplete) failed = true;
+report.reportingInputsUnchanged = reportingInputs.every(path => {
+  try {return inputHashes[path] === sha256(readFileSync(join(repositoryRoot, path)));}
+  catch {return false;}
+});
+if (!report.reportingInputsUnchanged) failed = true;
+report.unobservedStateFieldCount = report.models.reduce((count, model) => count + model.unobservedStateFields.length, 0);
+report.unexercisedModelTransitionCount = report.models.reduce((count, model) => count + model.unexercisedModelTransitions.length, 0);
+report.checksPassed = !failed;
+report.finishedAt = new Date().toISOString();
+report.obligations.push({obligation: 'unbounded implementation refinement', reason: 'Concrete trace campaigns establish their recorded finite/bounded projections. A universal simulation-relation proof requires separately discharged source semantics and environment assumptions.'});
+publish(output, report);
+checkpoint('finished');
 console.log(`${report.traceCheckedModels}/${report.modelCount} registered models have current source-bound trace evidence from these campaigns.`);
-console.log(`${obligations.length} explicit refinement obligations remain. Report ${output}`);
+console.log(`${report.obligations.length} explicit refinement obligations remain. Report ${output}`);
 process.exitCode = failed ? 1 : args.includes('--require-complete') ? 2 : 0;

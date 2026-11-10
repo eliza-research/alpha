@@ -43,7 +43,7 @@ import { instrumentationClassResults, listedInstrumentationTests, writeInstrumen
 import type {ClassOutcome} from "./instrumentation-result.ts";
 import type {acquireDeviceLease} from "../vendor/eliza/packages/app/scripts/lib/device-lease.ts";
 
-export const PACKAGE = "ai.elizaresearch.alphaphone";
+export const PACKAGE = "ai.alphacompute.alphaphone";
 const RUNNER = "androidx.test.runner.AndroidJUnitRunner";
 
 interface ClassSpec {
@@ -176,7 +176,7 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   ImageCapabilities: { note: "ordinary APK denial only; no AOSP image or real telephony acceptance" },
   SettingsSystemFacts: { note: "read-only comparison with this image's settings; not device acceptance of the Settings handoffs" },
   Rotation: {},
-  // Core-loop classes (docs/core-loop-audit.md). Registered so their opt-in gates are passed; none
+  // Core-loop classes. Registered so their opt-in gates are passed; none
   // has a recorded run through this runner yet. An unmet device assumption reports "skipped".
   // Decision P-43 replaced LocalAgentOfflineApps (the retired "without AI" path); written, no recorded run.
   ResidentAlwaysPresent: { flagOffOnly: true, note: "signed out with the network off and a legacy local-apps selection: the resident starts, the required Eliza Cloud sign-in page opens over Home and cannot be dismissed; not a device or full-image run" },
@@ -223,7 +223,6 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   BrowserDialogLifecycle: { requiresTestMocksBuild: true },
   BrowserWebFeatures: { requiresTestMocksBuild: true },
   CloudVoice: { requiresTestMocksBuild: true },
-  DevelopmentAgent: { requiresTestMocksBuild: true },
   PairedAsr: { requiresTestMocksBuild: true },
   PairedVoice: { requiresTestMocksBuild: true },
   ScopedVoicePlayback: { requiresTestMocksBuild: true },
@@ -324,8 +323,8 @@ export const CAMPAIGN_RUNNERS = [
  */
 export const NOT_RUN_BY_A_RUNNER = {
   PosterCalendarJourney: "J01 drives the removed Camera Scan mode (decision C1); Choose image remains in the composed Camera tools, but this old mode-based journey needs a rewrite to the agent scan path before any runner takes it again",
-  LocalServerSocketRelease: "platform probe for an upstream resident defect (docs/on-device-speech-2026-11-05.md, defect 4): it measures Android, not Alpha, and is run by hand when that defect is revisited",
-  ResetExternalFixture: "requires an external host controller, disposable non-owner user, synthetic device credential and separate companion/media sentinels; reset kills instrumentation, so phases cannot run as a single generic campaign (see docs/evidence/reset-native-2026-10-12.json)",
+  LocalServerSocketRelease: "platform probe for an upstream resident defect (upstream defect 4): it measures Android, not Alpha, and is run by hand when that defect is revisited",
+  ResetExternalFixture: "requires an external host controller, disposable non-owner user, synthetic device credential and separate companion/media sentinels; reset kills instrumentation, so phases cannot run as a single generic campaign",
   AllViewAgentContext: "needs a real local agent with inference and a forwarding observer on the host (agentContext=true); its runner was removed with the smoke suites in 49b1bf4c",
   CombinedAgent: "needs the combined host runtime with a provider key at 10.0.2.2:47859 (scripts/start-combined-agent.ts); no Android runner starts or pairs it",
   CombinedAgentRestart: "same combined host runtime, in prepare/verify/cleanup phases around a host restart; compiled, never executed",

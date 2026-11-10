@@ -17,7 +17,8 @@ const fixtureRoot = 'test/fixtures/app-update-jvm';
 const fixtures = readdirSync(join(root, fixtureRoot), {recursive: true})
   .filter(file => file.endsWith('.java') && !file.endsWith('/AlphaLocalAgentPlugin.java'))
   .map(file => join(fixtureRoot, file)).sort();
-const modes = ['refused-before-pause', 'exact-canceled-release', 'ambiguous-terminal-sync'];
+const modes = ['refused-before-pause', 'exact-canceled-release', 'ambiguous-terminal-sync',
+  'cold-automatic-before-barrier', 'cold-manual-before-barrier', 'warm-process-before-barrier', 'unsupported-before-barrier'];
 const setFields = ['registered', 'seen', 'waiting', 'acknowledged', 'eligible', 'preparedEligible'].map(name => 'state.activation.' + name);
 
 export async function checkNativeUpdateComposition(extraSources = []) {
@@ -27,7 +28,7 @@ export async function checkNativeUpdateComposition(extraSources = []) {
   const sources = [fileURLToPath(import.meta.url), product, ...compiled, join(directory, harness),
     join(directory, 'Trace.java'), join(directory, 'java.mjs'), join(directory, 'update-barrier.mjs'),
     app + 'AlphaLocalAgentPlugin.java', 'scripts/upstream-native-source.ts', 'upstream.lock.json',
-    'test/fixtures/jvm-tools.mjs', ...(jsonJar ? [jsonJar] : []), ...extraSources];
+    'test/fixtures/jvm-tools.mjs', 'specs/quint/native/NativeUpdateStaging.qnt', ...(jsonJar ? [jsonJar] : []), ...extraSources];
   const driverHashes = captureInputs(sources);
   const upstream = upstreamNativeSource(root);
   for (const path of [journal, lease]) {
@@ -60,6 +61,9 @@ export async function checkNativeUpdateComposition(extraSources = []) {
     'The exact updater executes with the pinned journal and real CredentialShutdownLease policy. The JVM controls the resident stop observation and Android installer ports.',
     'The fixture observes the actual pre-stop durable write, confirmed stop, COMMITTING row, session handoff and exact cancellation. One activation and one session are retained across the selected cuts.',
     'After the journal rename and directory-sync refusal, the exact sealed reconnect receipt retains the logical pending session even though the physical row reads empty. Startup mount and resident lease admission are recorded separately.',
+    'The admission composition uses SDK classes below31 and at-least31, uptime samples 0,26681,29999,30000,30001,35000, at most two boots and two process identities. Its process replacement/reboot cuts occur only before an activation; the unchanged standalone journal model owns in-flight process-death and durable-session recovery.',
+    'Actual extracted Java calls at cold/unsupported cutpoints resolve directly and leave activation, journal, shutdown lease, resident stop and commit absent. The separate staging trace also shuts down the executor before refusal. After monotonic uptime reaches30001, the automatic path crosses the same exact barrier and durable handoff. Manual admission at uptime0 remains unchanged.',
+    'These bounded safety and selected source traces do not prove boot clock progress, network availability, Android silent installation or eventual completion. Those require environment assumptions and installed-device evidence.',
     ...skipped.map(({mode, reason}) => `Host capability omitted ${mode}: ${reason}.`),
   ]});
   return {receipt, skipped, obligations: [

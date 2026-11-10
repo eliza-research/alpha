@@ -19,7 +19,7 @@ test('the listener owner is read once per credential state and never survives a 
  assert.match(fast,/if\(!"cloud:production"\.equals\(name\)&&!"cloud:staging"\.equals\(name\)&&!LocalAgentProviderAdmission\.PROVIDER_SLOT\.equals\(name\)\)\{/);
  const temporary=mkdtempSync(join(tmpdir(),'invocation-owner-cache-'));
  try{
-  writeFileSync(join(temporary,'Harness.java'),`package ai.elizaresearch.alphaphone;
+  writeFileSync(join(temporary,'Harness.java'),`package ai.alphacompute.alphaphone;
 public final class Harness {
  static String value="owner-a";static int reads;static long clock=1000;static Object expiresAt=null;
  static void check(boolean ok,String message){if(!ok)throw new AssertionError(message);}
@@ -60,6 +60,6 @@ public final class Harness {
  }
 }`);
   execFileSync(javaBinary('javac'),['-d',temporary,nativeSource('InvocationOwnerCache.java'),join(temporary,'Harness.java')]);
-  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.elizaresearch.alphaphone.Harness'],{encoding:'utf8'}),/PASS invocation owner cache/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.alphacompute.alphaphone.Harness'],{encoding:'utf8'}),/PASS invocation owner cache/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

@@ -32,8 +32,10 @@ module NativePipedCapture {
     val ready = success and s.owned
     val proceeds = ready and s.current
     s' = {...s, ready: if (ready) "true" else "false", opening: proceeds,
-      current: if (ready) s.current else false,
-      failure: if (not(ready) and not(s.discard)) "TRANSPORT" else s.failure,
+      // Startup.hold keeps the failure private until the owned close completes;
+      // refuse then discards the reservation, without a transcript failure event.
+      current: if (not(ready) and not(s.owned)) false else s.current,
+      discard: s.discard or (not(ready) and not(s.owned)),
       pending: if (proceeds) "none" else if (s.owned) "close" else "none",
       closeReason: if (proceeds) "none" else "start", hasPipe: s.owned,
       closed: if (s.owned) s.closed else "false", attempt: if (s.owned) s.attempt else "cancelled"}
@@ -42,6 +44,7 @@ module NativePipedCapture {
     s.opening,
     val accepted = s.current and s.foreground and not(s.destroyed or s.inCall)
     s' = {...s, opening: false, published: accepted, physical: accepted,
+      current: s.current and accepted, discard: s.discard or not(accepted),
       attempt: if (accepted) "recording" else if (s.closed != "pending") "cancelled" else "pending",
       pending: if (accepted or s.closed != "pending") "none" else "close",
       hasPipe: s.hasPipe and (accepted or s.closed == "pending"), closeReason: if (accepted) "none" else "start"}
@@ -75,7 +78,9 @@ module NativePipedCapture {
   action closeReply(acknowledged: bool): bool = all {
     s.pending == "close",
     val closed = if (s.owned and acknowledged) "true" else "false"
+    val failedWarm = s.attempt == "pending" and s.ready == "false"
     s' = {...s, pending: "none", closed: closed, hasPipe: s.opening or s.closeReason == "pipe",
+      current: if (failedWarm) false else s.current, discard: s.discard or failedWarm,
       attempt: if (s.attempt == "pending" and not(s.opening)) "cancelled" else s.attempt,
       stop: if (s.stop == "pending") closed else s.stop}
   }
@@ -88,12 +93,18 @@ module NativePipedCapture {
   val WarmBeforeCapture = s.published implies s.ready == "true"
   val NoPcmToRenderer = s.rendererPcm == 0
   val CompletedStartHasNoPendingOpen = s.attempt == "cancelled" implies not(s.opening or s.physical)
+  val FailedWarmNeverOpens = s.ready == "false" implies not(s.opening or s.physical or s.published)
+  val UnstartedFailureEventsPrivate = s.attempt != "recording" implies s.failure == "none"
+  val SettledFailedWarmDiscards = s.ready == "false" and s.attempt == "cancelled" implies s.discard and not(s.current)
+  val RefusedStartHasNoAdmission = s.attempt == "cancelled" implies
+    s.discard and not(s.current or s.opening or s.physical or s.published) and s.frames == 0 and s.transcripts == 0
   val Bounded = s.epoch.in(0.to(2)) and s.frames.in(0.to(2)) and s.transcripts.in(0.to(2))
-  val safety = WarmBeforeCapture and NoPcmToRenderer and CompletedStartHasNoPendingOpen and Bounded
+  val safety = WarmBeforeCapture and NoPcmToRenderer and CompletedStartHasNoPendingOpen and FailedWarmNeverOpens and UnstartedFailureEventsPrivate and SettledFailedWarmDiscards and RefusedStartHasNoAdmission and Bounded
   run warmBeforeNativeOpenTest = init.then(start).then(warmReply(true)).expect(safety and s.opening and not(s.physical))
     .then(finishOpen).expect(safety and s.published)
   run callDuringOpenRefusesPublicationTest = init.then(start).then(warmReply(true)).then(call(true))
-    .then(finishOpen).then(closeReply(true)).expect(safety and s.attempt == "cancelled")
+    .then(finishOpen).expect(safety and s.discard and s.pending == "close" and not(s.current or s.physical or s.published) and s.frames == 0 and s.rendererPcm == 0 and s.transcripts == 0)
+    .then(closeReply(true)).expect(safety and s.attempt == "cancelled" and s.discard and not(s.current or s.hasPipe))
   run retiredWarmCannotOpenTest = init.then(start).then(retireOwner).then(warmReply(true))
     .expect(safety and s.attempt == "cancelled" and not(s.physical))
   run discardClosesWithoutRendererAudioTest = init.then(start).then(warmReply(true)).then(finishOpen)
@@ -101,4 +112,13 @@ module NativePipedCapture {
   run failedPipeRetainsControllerUntilStopTest = init.then(start).then(warmReply(true)).then(finishOpen)
     .then(frames).then(batchReply("error")).then(closeReply(false)).then(stopFinishedPipe)
     .expect(safety and not(s.hasPipe) and s.stop == "false")
+  run failedWarmHeldUntilOwnedCloseTest = init.then(start).then(warmReply(false))
+    .expect(safety and s.attempt == "pending" and s.current and not(s.discard) and s.failure == "none" and s.pending == "close")
+    .then(closeReply(true)).expect(safety and s.attempt == "cancelled" and s.discard and not(s.current or s.hasPipe) and s.failure == "none")
+  run retiredWarmFailsWithoutForeignErrorTest = init.then(start).then(retireOwner).then(warmReply(true))
+    .expect(safety and s.attempt == "cancelled" and s.discard and not(s.current or s.hasPipe) and s.closed == "false" and s.failure == "none")
+  run failedWarmCannotStartNativeCaptureTest = init.then(start).then(warmReply(false))
+    .expect(safety and not(s.opening or s.physical)).then(finishOpen.fail())
+  run unconfirmedFailedWarmStillDiscardsTest = init.then(start).then(warmReply(false)).then(closeReply(false))
+    .expect(safety and s.attempt == "cancelled" and s.discard and not(s.current or s.hasPipe) and s.closed == "false")
 }

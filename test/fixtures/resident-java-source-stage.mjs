@@ -32,6 +32,7 @@ const git = (directory, ...args) => execFileSync('git', ['-C', directory, '-c', 
   '-c', 'user.email=quint-fixture@localhost', ...args], {env: gitEnv, encoding: 'utf8'}).trim();
 
 export function residentJavaStageFixture(directory) {
+  directory = fs.realpathSync(directory);
   const vendor = join(directory, sdkPrefix);
   const runtime = join(directory, 'artifacts/prepared');
   const output = join(directory, generatedDirectory);

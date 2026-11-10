@@ -338,7 +338,7 @@ public final class Context {
  public final File noBackup;
  public Context(){try{noBackup=java.nio.file.Files.createTempDirectory("alpha-sms-jvm").toFile();}
   catch(java.io.IOException failure){throw new IllegalStateException(failure);}}
- public String getPackageName(){return "ai.elizaresearch.alphaphone";}
+ public String getPackageName(){return "ai.alphacompute.alphaphone";}
  public Context getApplicationContext(){return this;}
  public File getNoBackupFilesDir(){return noBackup;}
  public ContentResolver getContentResolver(){return provider;}
@@ -409,14 +409,14 @@ public final class ContactsCatalog {
  public ContactsCatalog(android.content.Context context){}
  public com.getcapacitor.JSObject list(String query,int limit,android.os.CancellationSignal cancel){throw new AssertionError("Contacts outside SMS fixture");}
 }`,
-  'ai/elizaresearch/alphaphone/SmsFixtureSupport.java': `package ai.elizaresearch.alphaphone;
+  'ai/alphacompute/alphaphone/SmsFixtureSupport.java': `package ai.alphacompute.alphaphone;
 import android.content.Context;
 final class AlphaImageCapability {
  static final String UNAVAILABLE="Synthetic image refused";
  static String featureName(String name){return name+".aosp_image";}
  static boolean verified(Context context){return context.admitted;}
 }
-final class BuildConfig {static final String APPLICATION_ID="ai.elizaresearch.alphaphone";}
+final class BuildConfig {static final String APPLICATION_ID="ai.alphacompute.alphaphone";}
 final class AlphaCredentialStore {
  private final Context context;
  AlphaCredentialStore(Context context){this.context=context;}

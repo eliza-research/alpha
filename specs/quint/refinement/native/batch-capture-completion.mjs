@@ -37,7 +37,7 @@ function terminalKind(event){
 }
 function extractImplementation(){
  const text=readFileSync(source,'utf8');
- const header=text.indexOf('const CALL_PAUSED = '),headerEnd=text.indexOf('const voice = registerPlugin',header);
+ const header=text.indexOf('const CALL_PAUSED = '),headerEnd=text.indexOf('const deviceVoice = registerPlugin',header);
  const start=text.indexOf('  async function captureConversationAudio(');
  const end=text.indexOf('  /** Holds a finished transcript',start);
  const seam='      const earlyStops=new Map<string,VoiceRecordingStopped>();';

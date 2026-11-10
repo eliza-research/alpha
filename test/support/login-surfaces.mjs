@@ -1,0 +1,216 @@
+// Issue #404 / P-20. Keep this inventory in sync with the credential-field
+// checks in login-surfaces.test.mjs. Provider status describes source evidence.
+export const loginSurfaceInventory = {
+  reviewed: "2026-10-14: in-app Eliza Cloud sign-in replaced the browser hand-off. Google consent runs in a Custom Tab (external-browser) returning through a verified App Link; the email and second-verification codes are typed into Alpha (one-time codes, not credentials). Website fields gained an engine-attested per-field origin (BrowserLoginFields, WebMessageListener sourceOrigin) on WebViews that support isolated-world scripts. Earlier: re-inventoried after #438/#430/#476 against renderer sources, every Android module, Cloud/Google connection handoffs and the browser HTTP-auth prompt. No new login surface; the HTTP-auth prompt gained an engine-origin binding gate (BrowserHttpAuthOrigin.bind) that refuses with a stated reason on the standard WebView.",
+  rules: {
+    websiteBinding: "Website fills bind to the origin the WebView engine reports for the frame that owns the field (WebMessageListener sourceOrigin, never page script or Alpha's script message), and only when it is committed HTTPS and equals the committed top-level origin of the selected, visible, finished tab (scheme, host and port) for the current navigation. The top-level document and same-origin frames qualify; cross-origin, opaque (sandboxed) and cleartext frames are never offered. Fill values go only to the reporting frame. Without engine support (WEB_MESSAGE_LISTENER and JS_INJECTION_IN_FRAME_AND_WORLD) the integrated vault refuses browser fill and Settings says why. Error, overlay, paused and private-host fields are never offered.",
+    appBinding: "Native app fills bind to the framework-reported package confirmed by PackageManager#hasSigningCertificate against the signer recorded at save time (rotation-aware).",
+    secrets: "No password, username value, vault record or provider structure crosses the agent bridge, the observation context, transcripts, notifications, the action journal or logs. The agent observation is sensitive (no view, no selection) while a password page or connection sheet is open.",
+    rendererWebView: "The privileged renderer WebView stays excluded from Android Autofill (IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS). An eligible Alpha-owned login form must be a native credential surface (kind alpha-owned-native) that reports an authoritative origin or app identity per field, with provider-owned unlock, save and fill.",
+    externalBrowsers: "No third-party browser is trusted by the integrated vault for website fills. Handing a page to another browser is a user choice; that browser's own manager is then responsible.",
+    httpAuthBinding: "HTTP-auth prompt fields are offered to Android Autofill only for the origin the browser engine itself reports for the challenge: exact request URL after redirects (scheme, host, port), realm equal to WebView's, top-level document, engine-validated TLS, the tab's current navigation, and a selected, shown, resumed, error-free tab with no other prompt; the observed main-frame target may only refuse (a later redirect), never establish. Navigation history, page script and the top-level URL are never an origin source. The binding is revoked on cancel, dismissal, repeated challenge, navigation, tab change or close, after which fields drop out of every request and late fill values are dropped. Without an engine report the prompt states why fill is off and stays manual.",
+    alphaOwnedAppIdentity: "Alpha's own package identity is never a credential binding for website passwords: the integrated vault refuses host UI, and Alpha-owned native credential fields report a website origin or are excluded. An Alpha account login, if one is ever added, must be a native surface with AUTOFILL_HINT_USERNAME/PASSWORD that providers bind to Alpha's package and release signing certificate (android/release-signer.json), qualified on a release-signed APK."
+  },
+  surfaces: [
+    {
+      id: "browser-website-login",
+      kind: "website",
+      eligible: true,
+      file: "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserLoginFields.java",
+      pattern: "child\\.set(?:AutofillHints|InputType)\\(",
+      count: 2,
+      owner: "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java (tabs; passes the integrated vault extras keys), shared plugin-native-browser-surface BrowserLoginFields (engine-attested field adapter and isolated-world reporter) and BrowserFieldOrigin (binding rule) at the reviewed pin",
+      binding: "websiteBinding",
+      providers: {
+        integrated: {
+          status: "source-attested",
+          detail: "BrowserLoginFields reports each login field as a virtual Autofill node whose PasswordAutofillPolicy.FIELD_ORIGIN is the WebView engine's sourceOrigin for the field's frame, bound by BrowserFieldOrigin.bind (committed HTTPS, same origin as the committed top level, current navigation, selected and shown tab). The shared PasswordFormPolicy then admits the exact origin. Requires WEB_MESSAGE_LISTENER and JS_INJECTION_IN_FRAME_AND_WORLD; otherwise the WebView's own structure (no field origins) is used and the integrated vault refuses, as before. JVM- and source-tested; not yet run on a device."
+        },
+        proton: {
+          status: "framework-source",
+          detail: "With engine support Proton receives the same engine-bound structure as the integrated vault; without it, the WebView's own structure under CredentialWebView eligibility. Proton warns because Alpha is not on its recognized-browser list; Alpha preserves that warning."
+        },
+        other: {
+          status: "framework-source",
+          detail: "Any user-selected Autofill service receives the same eligibility-gated structure."
+        }
+      },
+      save: "A trusted submit of a reported form sends its values from the isolated-world script to the bound fields' framework session; the following page-initiated main-frame navigation commits the session so the selected provider may offer Save. The provider asks the user; nothing is stored by Alpha. Script-driven sign-ins without a form submit are not captured.",
+      remainingGates: [
+        "engine-attested fill on a device: top-level form offered, same-origin iframe offered, cross-origin and sandboxed iframes refused (PasswordBrowserFillInstrumentedTest updated, not yet run)",
+        "interaction with Chromium's own Autofill calls for the excluded WebView (empty requests, its submit-time commit, keyboard inline suggestions)",
+        "fill result after the integrated vault's unlock screen (re-focus keeps the binding)",
+        "reduced coverage for other providers while attested fields are active: only username/password pairs are offered (no addresses, cards, one-time codes or sign-up forms)",
+        "that addJavaScriptOnEvent reaches subframes in the isolated world on the shipped WebView version",
+        "redirect and wrong-origin structures on a device",
+        "provider unlock pause/resume",
+        "provider cancel and lock during fill",
+        "Save after a real sign-in with the integrated vault and with Proton",
+        "release-signed APK with both providers",
+        "physical Pixel 10a"
+      ]
+    },
+    {
+      id: "third-party-app-login",
+      kind: "native-app",
+      eligible: true,
+      owner: "vendor/eliza/plugins/plugin-native-passwords (ElizaPasswordAutofillService, consumed from the pinned upstream)",
+      binding: "appBinding",
+      providers: {
+        integrated: {
+          status: "upstream-source",
+          detail: "Save and fill for other apps through Android Autofill; app bindings come only from a save capture."
+        },
+        proton: {
+          status: "provider-owned",
+          detail: "Proton's own Autofill service when the user selects it."
+        }
+      },
+      remainingGates: [
+        "release-signing identity with a real installed app",
+        "both providers on a physical device"
+      ]
+    },
+    {
+      id: "eliza-cloud-sign-in",
+      kind: "external-browser",
+      eligible: false,
+      owner: "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaConnectionPlugin.java (openExternal), apps/app/src/runtime/connection-ui.tsx (signInBrowser)",
+      reason: "The Cloud sign-in hand-off, kept as the sign-in path until the in-app readiness probe passes (and as a test-mocks diagnostic afterwards), opens the user's own browser (AlphaConnectionPlugin.openExternal: ACTION_VIEW with CATEGORY_BROWSABLE, eliza.app hosts only). Alpha declares no general https VIEW handler, so the page never loads in Alpha; credentials are entered and filled by that browser's own manager."
+    },
+    {
+      id: "eliza-cloud-sign-in-google",
+      kind: "external-browser",
+      eligible: false,
+      owner: "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java (startGoogle), apps/app/src/runtime/cloud-sign-in-ui.tsx",
+      reason: "Google sign-in opens the user's external browser (a Custom Tab when one is available, otherwise the default browser) so AOSP does not need Google Play services. Google credentials remain in that browser. Alpha's native bridge validates the returned state and exchanges the authorization code with its original PKCE verifier; no Google password or authorization code crosses the renderer bridge."
+    },
+    {
+      id: "eliza-cloud-sign-in-code",
+      kind: "alpha-owned",
+      eligible: false,
+      file: "apps/app/src/runtime/cloud-sign-in-ui.tsx",
+      pattern: "autoComplete=\"one-time-code\"",
+      reason: "The six-digit email or second-verification code of the in-app Eliza Cloud sign-in. A one-time code, not a reusable credential: it is sent once to the native sign-in host, cleared from the field on submit and never stored; Android may offer its own one-time-code suggestion."
+    },
+    {
+      id: "eliza-cloud-subscription-code",
+      kind: "alpha-owned",
+      eligible: false,
+      file: "apps/app/src/runtime/cloud-membership-ui.tsx",
+      pattern: "name=\"membership-code\"(?:(?!<input).)*?autoComplete=\"one-time-code\"",
+      reason: "A subscription grant redemption code, not a username or reusable password. It is held only in the controlled input's component state, remains after a refused attempt and is cleared after successful redemption; Alpha never persists it. This privileged renderer WebView is excluded from Android Autofill, and the field is not an integrated-vault or password-provider fill target."
+    },
+    {
+      id: "google-account-authorization",
+      kind: "external-browser",
+      eligible: false,
+      owner: "apps/app/src/runtime/google-connection-ui.tsx (openConnectionBrowser \u2192 AlphaConnectionPlugin.openExternal)",
+      reason: "Google account authorization for Gmail and Calendar opens accounts.google.com in the user's own browser through the same handoff. Alpha never shows a Google password field; that browser's manager fills it."
+    },
+    {
+      id: "browser-http-auth-prompt",
+      kind: "alpha-owned-native",
+      eligible: false,
+      file: "vendor/eliza/plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHttpAuthAutofill.java",
+      pattern: "TYPE_TEXT_VARIATION_PASSWORD|setAutofillHints|AUTOFILL_HINT_(?:PASSWORD|USERNAME)",
+      count: 5,
+      owner: "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java (httpAuth), shared plugin-native-browser-surface BrowserHttpAuthAutofill and BrowserHttpAuthOrigin at the reviewed pin",
+      binding: "httpAuthBinding",
+      fillRoute: "Engine-bound only (BrowserHttpAuthOrigin.bind). AlphaBrowserPlugin uses BrowserHttpAuthOrigin.STANDARD_WEBVIEW, which reports no challenge, so production refuses provider fill/save and the prompt states the reason; native fields are then IMPORTANT_FOR_AUTOFILL_NO with no hints. Manual entry remains available; every browser tab is excluded from Autofill while the prompt is open.",
+      providers: {
+        integrated: {
+          status: "blocked-engine-origin",
+          detail: "Field shape and exact-origin acceptance by the pinned PasswordFormPolicy are JVM-tested; fill/save stays off until a browser engine reports authenticated challenges."
+        },
+        proton: {
+          status: "blocked-engine-origin",
+          detail: "Same gate; Proton would additionally show its unrecognized-browser warning, which Alpha preserves."
+        }
+      },
+      remainingGates: [
+        "a reviewed browser engine (upstream) that reports the HTTP challenge request URL after redirects, realm, top-level flag, TLS validation and navigation id; Android WebView does not",
+        "integrated vault fill and save on a device against an HTTPS Basic-auth fixture",
+        "Proton warning and fill on a device",
+        "port, redirect, same-host frame, wrong-origin and stale-tab cases on a device",
+        "provider unlock pause/resume and cancel while the prompt is open, on a device",
+        "Save offered only after the site accepts the credentials, on a device",
+        "release-signed APK"
+      ],
+      reason: "Android WebView reports only host and realm for an HTTP-auth challenge: no request URL, port, frame or navigation. Without an engine report the binding rule refuses; observed navigation and resource history cannot bind provider fill/save."
+    },
+    {
+      id: "password-entry-editor",
+      kind: "alpha-owned",
+      eligible: false,
+      file: "apps/app/src/passwords/password-manager.ts",
+      pattern: "input\\(helpers\\.ic, 'Password',[^\\n]*'password'",
+      reason: "The integrated vault's own write-only editor. The host interface is never filled from the vault (PasswordFormPolicy: Host interface is never filled), and observation is sensitive on this page."
+    },
+    {
+      id: "cerebras-provider-key",
+      kind: "alpha-owned",
+      eligible: false,
+      file: "apps/app/src/runtime/connection-ui.tsx",
+      pattern: "<label>Cerebras API key<input ref=\\{providerKey\\} type=\"password\" autoComplete=\"off\"",
+      reason: "An API key, not an account login. The field is cleared after submit, stored only in Android Keystore, and the connection sheet makes the observation sensitive."
+    },
+    {
+      id: "pairing-code",
+      kind: "alpha-owned",
+      eligible: false,
+      file: "apps/app/src/runtime/connection-ui.tsx",
+      pattern: "<label>Pairing code<input ref=\\{(remoteCode|localCode)\\} autoComplete=\"off\"",
+      count: 2,
+      reason: "A one-time pairing code shown by the user's agent, not a reusable credential."
+    },
+    {
+      id: "wifi-network-key-prototype",
+      kind: "alpha-owned",
+      eligible: false,
+      file: "apps/app/src/prototype/template.html",
+      pattern: "<input aria-label=\"Password\" placeholder=\"Password\" type=\"password\" value=\"\\{\\{settings\\.sheet\\.pw\\}\\}\"",
+      reason: "Prototype Wi-Fi network key sheet. Production routes its input to Android Settings (native-adapter); a network key is not a website or app login."
+    },
+    {
+      id: "mail-account-sign-in-prototype",
+      kind: "alpha-owned",
+      eligible: false,
+      file: "apps/app/src/prototype/model.js",
+      pattern: "stRow\\(\"kInput\", \\{ d: IC\\.lock, label: \"Password\", ph: \"Password\", type: \"password\", value: st\\.addPw",
+      reason: "Simulated prototype email sign-in. Production Settings forces adding:false, so this form is unreachable; real email accounts connect through Eliza Cloud in the user's browser."
+    },
+    {
+      id: "own-cerebras-provider-key",
+      kind: "service-token",
+      eligible: false,
+      file: "apps/app/src/runtime/connection-ui.tsx",
+      pattern: "<label>Text API key<input ref=\\{ai\\} type=\"password\" autoComplete=\"off\"",
+      reason: "An explicitly supplied provider API token, not a login password or vault fill target. Input stays only in the transient form until a successful save or Cancel. Native storage is encrypted; the browser host retains session-only keys. Tokens are excluded from observations, transcripts and logs."
+    },
+    {
+      id: "own-cartesia-provider-key",
+      kind: "service-token",
+      eligible: false,
+      file: "apps/app/src/runtime/connection-ui.tsx",
+      pattern: "<label>Voice API key \\(optional\\)<input ref=\\{speech\\} type=\"password\" autoComplete=\"off\"",
+      reason: "An explicitly supplied provider API token, not a login password or vault fill target. Input stays only in the transient form until a successful save or Cancel. Native storage is encrypted; the browser host retains session-only keys. Tokens are excluded from observations, transcripts and logs."
+    },
+    {
+      id: "own-provider-key-manager-edit",
+      kind: "service-token",
+      eligible: false,
+      file: "apps/app/src/runtime/connection-ui.tsx",
+      pattern: "<label>\\{title\\} API key<input ref=\\{field\\} type=\"password\" autoComplete=\"off\"",
+      reason: "Independent Text or Voice API token edit. This privileged renderer field is excluded from password-provider fill, observations, transcripts and logs; only explicit guarded native storage or session-only browser storage receives it."
+    },
+    {
+      id: "own-provider-key-manager-explicit-reveal",
+      kind: "service-token",
+      eligible: false,
+      file: "apps/app/src/runtime/connection-ui.tsx",
+      pattern: "type=\"text\" value=\\{revealed\\.value\\} readOnly autoComplete=\"off\"",
+      reason: "Read-only browser-host key display after explicit View; it is never a password-provider fill target. Hidden page, revision, connection retirement and close clear it. Native key reveal uses its separate protected native surface and returns no key to JavaScript."
+    }
+  ]
+};

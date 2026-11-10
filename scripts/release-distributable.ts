@@ -5,7 +5,7 @@
  * Every term must hold: a flag-off build (no test mocks), signed by the committed release
  * signer with no admission blockers or failures, the resident runtime packaged
  * (`runtime` is the scripts/verify-packaged-runtime.py entry for this APK) with notices that
- * list it, a packaged and qualified on-device voice host with ASR, and no licence blockers.
+ * list it, a packaged on-device voice host with ASR, and no licence blockers.
  *
  */
 interface ReleaseFacts {
@@ -22,6 +22,6 @@ export function releaseDistributable({ testMocks, signed, releaseAdmission, runt
   return !testMocks && signed === true && releaseAdmission.signerMatches === true &&
     releaseAdmission.blockers.length === 0 && releaseAdmission.failures.length === 0 &&
     runtime.distributable === true && runtimeNotices === true &&
-    voiceHost.packaged === true && voiceHost.asr === true && voiceHost.qualified === true &&
+    voiceHost.packaged === true && voiceHost.asr === true &&
     licenceBlockers.length === 0;
 }

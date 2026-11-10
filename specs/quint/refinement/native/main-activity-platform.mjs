@@ -18,7 +18,7 @@ public class Bundle {}`,
     'android/os/SystemClock.java': `package android.os;
 public class SystemClock {
   public static long elapsedRealtime() {
-    return ai.elizaresearch.alphaphone.MainActivityPorts.time;
+    return ai.alphacompute.alphaphone.MainActivityPorts.time;
   }
 }`,
     'android/os/Build.java': `package android.os;
@@ -28,7 +28,35 @@ public class Build {
   }
 }`,
     'android/content/ComponentName.java': `package android.content;
-public class ComponentName {}`,
+public final class ComponentName {
+  private final String pkg, name;
+  public ComponentName(){this("", "");}
+  public ComponentName(String pkg,String name){this.pkg=pkg;this.name=name;}
+  public ComponentName(com.getcapacitor.BridgeActivity context,Class<?> type){this(context.getPackageName(),type.getName());}
+  public String getPackageName(){return pkg;}
+  public String getClassName(){return name;}
+  public static ComponentName unflattenFromString(String value){
+    int split=value.indexOf('/');
+    if(split<0||split+1>=value.length())return null;
+    String pkg=value.substring(0,split),name=value.substring(split+1);
+    return new ComponentName(pkg,name.startsWith(".")?pkg+name:name);
+  }
+  @Override public boolean equals(Object other){return other instanceof ComponentName value&&pkg.equals(value.pkg)&&name.equals(value.name);}
+  @Override public int hashCode(){return java.util.Objects.hash(pkg,name);}
+}`,
+    'android/content/ContentResolver.java': `package android.content;
+public final class ContentResolver {}`,
+    'android/provider/Settings.java': `package android.provider;
+public final class Settings {
+  public static final class Secure {
+    public static final String DEFAULT_INPUT_METHOD="default_input_method";
+    // These recovery campaigns do not select the auxiliary keyboard or claim IME acceptance.
+    public static String getString(android.content.ContentResolver resolver,String key){
+      if(!DEFAULT_INPUT_METHOD.equals(key))throw new AssertionError(key);
+      return null;
+    }
+  }
+}`,
     'android/content/Intent.java': `package android.content;
 public class Intent {
   public static final String ACTION_MAIN = "android.intent.action.MAIN",
@@ -112,7 +140,7 @@ public class PackageManager {
   public static final int MATCH_DEFAULT_ONLY=1;
   public ResolveInfo resolveActivity(android.content.Intent intent,int flags){return null;}
   public boolean resolves(String action) {
-    return ai.elizaresearch.alphaphone.MainActivityPorts.settings.contains(action);
+    return ai.alphacompute.alphaphone.MainActivityPorts.settings.contains(action);
   }
 }`,
     'android/content/res/Configuration.java': `package android.content.res;
@@ -186,7 +214,7 @@ public class View {
     return bottom;
   }
   public boolean postDelayed(Runnable task, long delay) {
-    ai.elizaresearch.alphaphone.MainActivityPorts.post(this, task, delay);
+    ai.alphacompute.alphaphone.MainActivityPorts.post(this, task, delay);
     return true;
   }
   public void setOnClickListener(OnClickListener value) {
@@ -314,11 +342,11 @@ public class ActivityManager {
       return info;
     }
     public void moveToFront() {
-      ai.elizaresearch.alphaphone.MainActivityPorts.moveTask(info.taskId);
+      ai.alphacompute.alphaphone.MainActivityPorts.moveTask(info.taskId);
     }
   }
   public java.util.List<AppTask> getAppTasks() {
-    return ai.elizaresearch.alphaphone.MainActivityPorts.tasks;
+    return ai.alphacompute.alphaphone.MainActivityPorts.tasks;
   }
 }`,
     'androidx/activity/OnBackPressedCallback.java': `package androidx.activity;
@@ -424,7 +452,7 @@ public class BridgeActivity {
     android.view.ViewGroup frame = new android.view.ViewGroup();
     frame.addView(inflated);
     content = frame;
-    if (ai.elizaresearch.alphaphone.MainActivityPorts.bridgeAvailable)
+    if (ai.alphacompute.alphaphone.MainActivityPorts.bridgeAvailable)
       load();
     else
       content = new android.widget.TextView(this);
@@ -472,6 +500,8 @@ public class BridgeActivity {
   public androidx.lifecycle.Lifecycle getLifecycle(){return new androidx.lifecycle.Lifecycle();}
   public void onStart() {}
   public void onResume() {}
+  public void onStop() {}
+  public android.content.ContentResolver getContentResolver(){return new android.content.ContentResolver();}
   public void onConfigurationChanged(android.content.res.Configuration value) {}
   public void onNewIntent(android.content.Intent value) {}
   public void onWindowFocusChanged(boolean value) {}
@@ -492,10 +522,10 @@ public class BridgeActivity {
     return new android.content.pm.PackageManager();
   }
   public String getPackageName() {
-    return "ai.elizaresearch.alphaphone";
+    return "ai.alphacompute.alphaphone";
   }
   public void startActivity(android.content.Intent value) {
-    ai.elizaresearch.alphaphone.MainActivityPorts.launch(value);
+    ai.alphacompute.alphaphone.MainActivityPorts.launch(value);
   }
   public <T> T getSystemService(Class<T> kind) {
     return kind.cast(new android.app.ActivityManager());
@@ -504,17 +534,17 @@ public class BridgeActivity {
     return back;
   }
 }`,
-    'ai/elizaresearch/alphaphone/BuildConfig.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/BuildConfig.java': `package ai.alphacompute.alphaphone;
 public class BuildConfig {
   public static boolean IS_LAUNCHER = true, DEBUG = false, ELIZA_DEV_ALLOW_TEST_MOCKS = false;
 }`,
-    'ai/elizaresearch/alphaphone/AlphaImageCapability.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaImageCapability.java': `package ai.alphacompute.alphaphone;
 public class AlphaImageCapability {
   public static boolean verified(Object context) {
     return false;
   }
 }`,
-    'ai/elizaresearch/alphaphone/AlphaDevicePlugin.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaDevicePlugin.java': `package ai.alphacompute.alphaphone;
 public class AlphaDevicePlugin extends com.getcapacitor.Plugin {
   public static int textScales;
   public static void applyTextScale(Object activity) {
@@ -522,13 +552,14 @@ public class AlphaDevicePlugin extends com.getcapacitor.Plugin {
   }
 }`,
   };
+  sources['ai/alphacompute/alphaphone/AlphaKeyboardDictationService.java'] = 'package ai.alphacompute.alphaphone; public final class AlphaKeyboardDictationService {}';
   const activity = readFileSync(join(root, app, 'MainActivity.java'), 'utf8');
-  sources['ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java'] = 'package ai.elizaresearch.alphaphone; public class AlphaVoiceCloudPlugin extends com.getcapacitor.Plugin {public static class Streaming extends com.getcapacitor.Plugin {}}';
-  sources['ai/elizaresearch/alphaphone/AlphaTelephonyRoles.java'] = 'package ai.elizaresearch.alphaphone; public class AlphaTelephonyRoles {public static void sync(Object host){}}';
-  sources['ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java'] = 'package ai.elizaresearch.alphaphone; public class AlphaCanonicalNotifications {public static void captureTap(Object host,android.content.Intent intent){}public static void ensure(Object host){}}';
+  sources['ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java'] = 'package ai.alphacompute.alphaphone; public class AlphaVoiceCloudPlugin extends com.getcapacitor.Plugin {public static class Streaming extends com.getcapacitor.Plugin {}}';
+  sources['ai/alphacompute/alphaphone/AlphaTelephonyRoles.java'] = 'package ai.alphacompute.alphaphone; public class AlphaTelephonyRoles {public static void sync(Object host){}}';
+  sources['ai/alphacompute/alphaphone/AlphaCanonicalNotifications.java'] = 'package ai.alphacompute.alphaphone; public class AlphaCanonicalNotifications {public static void captureTap(Object host,android.content.Intent intent){}public static void ensure(Object host){}}';
   for (const [, name] of activity.matchAll(/registerPlugin\(([\w.]+)\.class\)/g)) {
     if (name === 'AlphaVoiceCloudPlugin.Streaming') continue;
-    const qualified = name.includes('.') ? name : `ai.elizaresearch.alphaphone.${name}`;
+    const qualified = name.includes('.') ? name : `ai.alphacompute.alphaphone.${name}`;
     const path = qualified.replaceAll('.', '/') + '.java';
     if (sources[path]) continue;
     const lastDot = qualified.lastIndexOf('.');

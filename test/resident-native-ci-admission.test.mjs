@@ -57,7 +57,7 @@ bridge=runpy.run_path(str(root/'scripts/ci/calendar-bridge.py'))
 assert bridge['SDK']==json.loads((root/'upstream.lock.json').read_text())['commit'], 'Calendar CI source pin is stale'
 assert bridge['NODE']==(root/'.nvmrc').read_text().strip(), 'Calendar CI Node declaration is stale'
 h=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
-assert h(root/'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java')==bridge['HOST'], 'Calendar host source changed'
+assert h(root/'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCalendarPlugin.java')==bridge['HOST'], 'Calendar host source changed'
 for relative,expected in bridge['OWNING_SHA256'].items():
  assert h(root/'vendor/eliza'/relative)==expected, 'Calendar owning fixture changed: '+relative
 print('PASS: current Calendar CI pin and exact host/owning fixture bytes')
@@ -79,4 +79,19 @@ test('Calendar bridge hash budget includes the pinned Node 26 input and final dr
  assert.match(source,/count > 160L \* 1024 \* 1024 \|\| readBytes > maxHashBytes/);
  assert.match(source,/if \(current != before\[task\.path\]\)/);
  assert.match(source,/walk\(task\.destinationDirectory\.get\(\)\.asFile\) != row\.classes/);
+});
+
+test('disposable admission refuses either installed Alpha identity before fixture effects', async () => {
+ const {admitResidentEmulator}=await import('../scripts/resident-emulator-admission.ts');
+ const environment={ALPHA_RESIDENT_DISPOSABLE_EMULATOR:'1',ANDROID_SERIAL:'emulator-5594'};
+ const inventory=packages=>args=>{
+  if(args.join(' ')==='shell getprop ro.kernel.qemu')return '1';
+  if(args.join(' ')==='shell getprop ro.product.cpu.abi')return 'arm64-v8a';
+  if(args.join(' ')==='shell pm list packages -u')return packages;
+  throw Error('Unexpected device effect before admission');
+ };
+ for(const identity of ['ai.alphacompute.alphaphone','ai.alphacompute.alphaphone.test','ai.alphacompute.alphaphone','ai.alphacompute.alphaphone.test'])
+  assert.throws(()=>admitResidentEmulator(environment,inventory('package:com.android.settings\npackage:'+identity)),/fresh emulator/);
+ assert.doesNotThrow(()=>admitResidentEmulator(environment,inventory('package:com.android.settings')));
+ assert.throws(()=>admitResidentEmulator({...environment,ANDROID_SERIAL:'physical-device'},inventory('package:com.android.settings')),/Explicit disposable/);
 });

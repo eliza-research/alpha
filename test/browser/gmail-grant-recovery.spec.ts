@@ -19,10 +19,10 @@ for(const reason of ['disconnected','scope-revoked'] as const)test(`Gmail same-I
  await expect.poll(()=>page.evaluate(()=>(window as any).gmailGrantFixture.reads)).toBe(1);
  await page.evaluate(reason=>{const f=(window as any).gmailGrantFixture;if(reason==='disconnected')f.connected=false;else f.triage=false;},reason);
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha:google-accounts-changed')));
- await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
  await expect(page.getByText('Connect Gmail to read your inbox',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Fixture mailbox',exact:true})).toHaveCount(0);
- await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
  await expect(page.getByText('Connect Gmail to read your inbox',{exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).gmailGrantFixture)).toMatchObject({reads:1,oauth:0});
  await page.evaluate(()=>{const f=(window as any).gmailGrantFixture;f.connected=true;f.triage=true;});
@@ -93,11 +93,11 @@ test('Reconnect Gmail opens Google accounts; each authorization hands off once a
   expect(after.opened.slice(before.opened.length),label).toEqual([AUTH]);
   expect(after.reads,label+': no mailbox read until the owner checks again').toBe(before.reads);
  }
- // Check Google connections lists again; it never reads mail.
+ // A confirmed account update refreshes the connection and the visible Inbox once.
  const lists=(await f()).lists;
- await panel.getByRole('button',{name:'Check Google connections',exact:true}).click();
+ await page.evaluate(async()=>window.dispatchEvent(new Event((await import('/src/runtime/google-accounts.ts')).GOOGLE_ACCOUNTS_CHANGED)));
  await expect.poll(async()=>(await f()).lists).toBeGreaterThan(lists);
- expect((await f()).reads).toBe(1);
+ await expect.poll(async()=>(await f()).reads).toBe(2);
  // A handoff abandoned while the browser is open (Escape closes the panel) reports nothing as pending.
  await page.evaluate(()=>{const f=(window as any).handoffFixture;f.hold=new Promise<void>(resolve=>{f.release=resolve;});});
  await panel.getByRole('button',{name:'Add Google account',exact:true}).click();
@@ -108,5 +108,5 @@ test('Reconnect Gmail opens Google accounts; each authorization hands off once a
  await page.waitForTimeout(300);
  await expect(next).toHaveCount(0);
  state=await f();
- expect(state.initiates.length).toBe(3);expect(state.reads).toBe(1);
+ expect(state.initiates.length).toBe(3);expect(state.reads).toBe(2);
 });

@@ -5,7 +5,11 @@ const tabHostModule='/@fs'+fileURLToPath(new URL('../../.eliza/client-features/p
 // The adapter's handoff factory and the actual DOM review; only native dispatch/presentation are stand-ins.
 // browser-external-handoff.production.spec.ts drives the same handoff from the rendered Browser menu.
 async function fixture(page:any,priv=true){
- await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/');
+ // The factory fixture needs a document and the real Vite modules. The
+ // production-menu suite separately mounts the application shell.
+ const fixturePath='/__alpha_browser_handoff_fixture';
+ await page.route('**'+fixturePath,(route:any)=>route.fulfill({contentType:'text/html',body:'<!doctype html><html><body></body></html>'}));
+ await page.goto(fixturePath,{waitUntil:'domcontentloaded'});
  await page.addScriptTag({type:'module',content:`import {BrowserTabSession} from ${JSON.stringify(tabHostModule)};window.handoffTabHost=BrowserTabSession;`});
  await page.evaluate(async(priv)=>{
   const {BrowserReviews}=await import('/src/browser/review.ts');
@@ -17,10 +21,11 @@ async function fixture(page:any,priv=true){
   const state={cur:'owned',menu:true};
   const flags={sharing:false,confirming:false,lastGeometry:'',disposed:false};
   const env:any={flags,calls:[],errors:[],updates:0,tabs};
+  const shell={S:()=>({view:'browser',screen:'home'}),vset:(_view:string,patch:any)=>Object.assign(state,patch)};
   env.open=createExternalBrowserHandoff({tabs,reviews:new BrowserReviews(),state:()=>state,isPrivate:(id:string)=>tabs.isPrivate(id),
-   shell:()=>({S:()=>({view:'browser'}),vset:(_view:string,patch:any)=>Object.assign(state,patch)}),
+   shell:()=>shell,
    report:(error:any)=>env.errors.push(error.message),update:async()=>{env.updates++;screen.hidden=flags.confirming;},
-   Browser:{openExternalBrowser:async(input:any)=>{env.calls.push(input);if(env.unavailable)throw Error('No other installed browser can open this page.');}},flags});
+   Browser:{openExternalBrowser:async(input:any)=>{env.calls.push(input);if(env.unavailable)throw Error('No other installed browser can open this page.');}},flags}).open;
   (window as any).handoff=env;
  },priv);
  expect(await page.evaluate(()=>(window as any).handoff.tabs.pageBinding('owned',{https:true}))).toEqual({id:'owned',url:'https://accounts.example/signin',navigation:'7',revision:0,private:priv});

@@ -14,8 +14,8 @@ import {stripTypeScriptTypes} from './support/strip-types.mjs';
 const stubs={
  'scripts/prepare-client-features.ts':'export function prepareClientFeatures(){}\n',
  'scripts/local-agent-source.ts':"export function sourceDirectory(){throw Error('ALPHA_ELIZA_SOURCE is set by the test');}\n",
- // Self-exits so a failed run cannot leave it behind.
- 'scripts/start-local-remote.ts':"import fs from 'node:fs';fs.writeFileSync('agent.json',JSON.stringify(process.env));setTimeout(()=>process.exit(0),20000);\n",
+ // Publish only complete JSON before Vite observes readiness and can stop this child. Self-exits on a failed run.
+ 'scripts/start-local-remote.ts':"import fs from 'node:fs';fs.writeFileSync('agent.json.tmp',JSON.stringify(process.env));fs.renameSync('agent.json.tmp','agent.json');setTimeout(()=>process.exit(0),20000);\n",
  'node_modules/vite/package.json':'{"type":"module"}\n',
  'node_modules/vite/bin/vite.js':"import fs from 'node:fs';const until=Date.now()+15000;while(!fs.existsSync('agent.json')&&Date.now()<until)await new Promise(r=>setTimeout(r,20));fs.writeFileSync('vite.json',JSON.stringify({argv:process.argv.slice(2),env:process.env}));\n",
 };

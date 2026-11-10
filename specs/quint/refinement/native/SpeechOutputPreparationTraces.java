@@ -1,6 +1,6 @@
 package ai.eliza.voice;
 
-import ai.elizaresearch.alphaphone.Trace;
+import ai.alphacompute.alphaphone.Trace;
 import org.json.*;
 
 /** Actual lead trim, report-before-write wrapper, and controlled audio output port. */

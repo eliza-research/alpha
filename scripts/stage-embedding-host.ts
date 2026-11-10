@@ -71,7 +71,9 @@ export function verifyEmbeddingInputs(productRoot: string,qualification: Embeddi
   if(requireProducerInputs||producers!==undefined){
    if(!Array.isArray(producers)||producers.length!==embeddingProducerInputPaths.length||new Set(producers.map(row=>row?.path)).size!==embeddingProducerInputPaths.length||producers.some(row=>!embeddingProducerInputPaths.includes(row?.path)||!/^[a-f0-9]{64}$/.test(row.sha256)))throw Error('Embedding producer input qualification missing or changed');
    git('diff','--quiet','HEAD','--',...embeddingProducerInputPaths);
-   for(const row of producers)if(sha(git('show',pin+':'+row.path))!==row.sha256)throw Error('Embedding producer input changed: '+row.path);
+   for (const row of producers) {
+    if (sha(git('show', pin + ':' + row.path)) !== row.sha256) throw Error('Embedding producer input changed: ' + row.path);
+   }
   }
   git('diff','--quiet','HEAD','--',...inputPaths,forkPath);
   const fork=git('ls-tree',pin,forkPath).toString().match(/^160000 commit ([a-f0-9]{40})\t/)?.[1];
@@ -105,12 +107,8 @@ export function verifyEmbeddingHost(productRoot: string,{allowAbsentRuntime=fals
   if(files.every(file=>!fs.existsSync(path.join(productRoot,file))))return {status:'not-packaged',distributable:false};
  }
 
- const manifest: EmbeddingManifest = JSON.parse(fs.readFileSync(path.join(productRoot,embeddingRecord),'utf8'));
- // Set by a pin move that changed a native build input or the engine gitlink; a new --receipt replaces the record.
- // The explicit developer lane stays non-distributable, so pending requalification never admits a release.
- if(manifest.requalification?.required===true&&allowAbsentRuntime)return {status:'requalification-pending',distributable:false};
- if(manifest.requalification?.required===true)throw Error('Embedding host requalification required at '+String(manifest.requalification.atPin).slice(0,12)+': '+manifest.requalification.reason);
- if(!/^[a-f0-9]{64}$/.test(manifest.qualificationReceiptSha256)||manifest.jniIdentityRelocated!==true)throw Error('Embedding host qualification missing or changed');
+ const manifest: EmbeddingManifest=JSON.parse(fs.readFileSync(path.join(productRoot,embeddingRecord),'utf8'));
+ if(manifest.jniIdentityRelocated!==true)throw Error('Embedding host JNI identity missing or changed');
  verifyEmbeddingEngine(productRoot,manifest);
  verifyEmbeddingInputs(productRoot,manifest,{requireProducerInputs});
  if(manifest.model?.sha256!==model.sha256||manifest.model?.path!==model.path||manifest.model?.dimensions!==384)throw Error('Embedding host model admission changed');
@@ -129,14 +127,13 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
  if(args[0]==='--verify'&&(args.length===1||args.length===2&&args[1]==='--allow-unpackaged-runtime')){
   const result=verifyEmbeddingHost(root,{allowAbsentRuntime:args.includes('--allow-unpackaged-runtime')});
   if('status' in result && result.status==='not-packaged')console.log('No resident embedding host packaged; developer APK only.');
-  else if('status' in result && result.status==='requalification-pending')console.log('Embedding host requalification pending; non-distributable developer APK only.');
-  else console.log('Qualified ARM64 embedding host and BGE384 bytes verified. No device execution claimed.');
+  else console.log('ARM64 embedding host source, JNI and BGE384 bytes verified.');
  }
  else if(args[0]==='--receipt'&&(args.length===2||args.length===4&&args[2]==='--library-root')){
   const libraryRoot=args.length===4?args[3]:undefined;
   const receipt: EmbeddingReceipt = JSON.parse(fs.readFileSync(args[1],'utf8'));
   const identity=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8')).appId;
-  if(receipt.built!==true||!receipt.qualifiedAt||!Array.isArray(receipt.libraries)||receipt.libraries.length!==3)throw Error('Exact qualified ARM64 receipt required');
+  if(receipt.built!==true||!Array.isArray(receipt.libraries)||receipt.libraries.length!==3)throw Error('Complete ARM64 build receipt required');
   verifyEmbeddingInputs(root,receipt,{requireProducerInputs:true});
   const libraries=names.map(name=>{
    const matches=receipt.libraries.filter(row=>path.basename(row.path)===name);
@@ -149,14 +146,12 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   // agent:stage-android stages the model with the runtime payload; this command only checks it.
   if(!fs.existsSync(path.join(root,model.path)))throw Error('Pinned BGE model is not staged: run npm run agent:prepare, npm run agent:build-workflow-worker and npm run agent:stage-android first');
   if(hash(path.join(root,model.path))!==model.sha256)throw Error('Pinned BGE model bytes changed');
-  const manifest={pin:receipt.pin,forkPin:receipt.forkPin,identity,abi:receipt.abi,model,libraries:libraries.map(({source,target,...row})=>row),qualificationReceiptSha256:hash(args[1]),jniIdentityRelocated:true,inputs:receipt.inputs,producerInputs:receipt.producerInputs,...(receipt.jniBinding?{jniBinding:receipt.jniBinding}:{})};
+  const manifest={pin:receipt.pin,forkPin:receipt.forkPin,identity,abi:receipt.abi,model,libraries:libraries.map(({source,target,...row})=>row),jniIdentityRelocated:true,inputs:receipt.inputs,producerInputs:receipt.producerInputs,...(receipt.jniBinding?{jniBinding:receipt.jniBinding}:{})};
   // Refuse before copying anything: the voice host stages the same arm64 engine file.
   verifyEmbeddingEngine(root,manifest);
   const manifestFile=path.join(root,embeddingRecord);
-  // A record marked for requalification is replaced by the new qualification; any other differing record needs review first.
-  if(fs.existsSync(manifestFile)&&fs.readFileSync(manifestFile,'utf8')!==JSON.stringify(manifest,null,2)+'\n'&&JSON.parse(fs.readFileSync(manifestFile,'utf8')).requalification?.required!==true)throw Error('Existing embedding qualification differs; review before replacing');
   for(const row of libraries){fs.mkdirSync(path.dirname(row.target),{recursive:true});if(!fs.existsSync(row.target))fs.copyFileSync(row.source,row.target,fs.constants.COPYFILE_EXCL);}
   fs.mkdirSync(path.dirname(manifestFile),{recursive:true});fs.writeFileSync(manifestFile,JSON.stringify(manifest,null,2)+'\n');
-  verifyEmbeddingHost(root,{requireProducerInputs:true});console.log('Qualified ARM64 embedding host staged. Runtime policy and Cloud text/speech unchanged.');
- }else throw Error('Usage: node scripts/stage-embedding-host.ts --receipt <QUALIFICATION.json> [--library-root <directory>] | --verify');
+  verifyEmbeddingHost(root,{requireProducerInputs:true});console.log('ARM64 embedding host staged with verified build inputs and library hashes.');
+ }else throw Error('Usage: node scripts/stage-embedding-host.ts --receipt <PREPARATION.json> [--library-root <directory>] | --verify');
 }

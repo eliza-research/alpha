@@ -3,7 +3,7 @@
 // Usage: ALPHA_RESIDENT_DISPOSABLE_EMULATOR=1 ANDROID_SERIAL=<fresh arm64 emulator, >=4 GB RAM> node scripts/android-resident-instrumentation.ts <app.apk> <androidTest.apk>
 // RESIDENT_TEST selects the class (default: the egress redaction test). Removes the fixture user afterwards.
 // Emulator evidence only; not physical-device or image acceptance.
-import {execFileSync, type ExecFileSyncOptionsWithStringEncoding} from 'node:child_process';
+import {execFileSync} from 'node:child_process';
 import {createHash, randomUUID} from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -12,8 +12,8 @@ import { admitResidentEmulator, removeResidentFixtureUser } from './resident-emu
 const [apk, testApk] = process.argv.slice(2);
 const serial = process.env.ANDROID_SERIAL;
 if (!serial || !apk || !testApk) throw Error('ANDROID_SERIAL, app APK and test APK are required');
-const adb = (args: string[], opts: Omit<ExecFileSyncOptionsWithStringEncoding, 'encoding'> = {}) => execFileSync('adb', ['-s', serial, ...args], {encoding: 'utf8', maxBuffer: 64 << 20, ...opts}).trim();
-const pkg = 'ai.elizaresearch.alphaphone';
+const adb = (args: string[], opts: Omit<import('node:child_process').ExecFileSyncOptionsWithStringEncoding, 'encoding'> = {}) => execFileSync('adb', ['-s', serial, ...args], {encoding: 'utf8', maxBuffer: 64 << 20, ...opts}).trim();
+const pkg = 'ai.alphacompute.alphaphone';
 // Installation replaces package code across users. A secondary user alone does
 // not protect an existing installation, and must not admit a physical phone.
 admitResidentEmulator(process.env, adb);

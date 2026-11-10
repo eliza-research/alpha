@@ -1,4 +1,4 @@
-// Faithful translation of docs/ui-refresh-2026-11/tla/HomeLayout.tla.
+// Historical design translation; the executable Quint model is retained here.
 module HomeLayout {
   type State = { Design: str, cal: str, flows: str, mail: str, brief: bool,
     insets: str, dock: str, top0: int }

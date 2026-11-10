@@ -44,14 +44,16 @@ function fixture(name, code) {
     'state.latest': [...requests].find(([, owner]) => owner === latest())?.[0] ?? 0,
     'state.started': qset(requests.keys()),
     'state.pending': qset(pending.keys()),
-    'state.message': Number(shell.state.toast),
+    'state.message': shell.state.toast ? Number(shell.state.toast[0]) : 0,
     'state.undo': typeof shell.undoFn === 'function',
-    'state.duration': timers.values().next().value?.delay ?? 0,
+    'state.duration': shell.state.toast ? shell.toastDuration : 0,
+    'state.held': !!shell.toastHeld,
+    'state.timerDelay': timers.values().next().value?.delay ?? 0,
   });
   const result = trace(name, observe());
   const save = (label, ...action) => {
     assert.equal(shell.state.toastUndo, typeof shell.undoFn === 'function');
-    assert.equal(timers.size, Number(Boolean(shell.state.toast)));
+    assert.equal(timers.size, Number(Boolean(shell.state.toast) && !shell.toastHeld));
     checkpoint(result, label, call(...action), observe());
   };
   const port = {
@@ -97,7 +99,7 @@ function fixture(name, code) {
       save('non-native reset retires older reads', 'reset');
     },
     show(message, undo) {
-      shell.toast(String(message), undo ? {undo() { assert.fail('expiration must never invoke Undo'); }} : undefined);
+      shell.toast(message === 3 ? '3'.repeat(191) : String(message), undo ? {undo() { assert.fail('expiration must never invoke Undo'); }} : undefined);
       save('the actual shell schedules or replaces a toast', 'show', message, undo);
     },
     expire() {
@@ -106,12 +108,14 @@ function fixture(name, code) {
       timer.callback();
       save('the shell expiry clears message and undo', 'expire');
     },
+    hold() {shell.holdToast(); save('focus cancels the owned expiry', 'hold');},
+    resume() {shell.resumeToast(); save('leaving focus reuses the captured duration', 'resume');},
   };
 }
 
 export async function checkAccessibleToastLifetime() {
   const sources = [fileURLToPath(import.meta.url), timeoutPath, shellPath, 'apps/app/src/main.tsx',
-    'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java'];
+    'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java'];
   captureSources(sources);
   const code = new vm.Script(`${timeoutCode()}
 class ShellTimers {${shellCode()}}
@@ -149,10 +153,13 @@ globalThis.api = {refresh: refreshAccessibilityTimeout, start: startAccessibilit
     f.request(2); f.request(3); await f.reply(3, 'reject', 2); await f.reply(2, 30000, 2);
     f.show(1, true); f.expire();
   });
+  await run('long_message_focus_hold_keeps_captured_duration', async f => {
+    f.show(3, false); f.hold(); f.request(1); await f.reply(1, 30000, 6); f.resume(); f.expire();
+  });
 
   return checkTraces(boundInputs({model, modelPath: 'specs/quint/application/AccessibleToastLifetime.qnt',
     sources, traces, scope: 'bounded-component',
     assumptions: ['Bounded reply values and three unique read identities per trace.',
       'Actual Android AccessibilityManager and TalkBack behavior need installed observation.',
-      'Modal forwarding, Undo selection and browser scheduling latency have separate state.']}));
+      'Hold/resume execute actual shell callbacks. Replacement while DOM focus remains inside, focus-return delivery, Undo selection and browser scheduling latency are covered separately by rendered browser checks.']}));
 }

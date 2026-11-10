@@ -240,10 +240,19 @@ async function reviewAndViewer(page, rows) {
   assert.equal((await runView({type: 'photos_open', id: target.id})).opened, true);
   await expect(view(page, 'viewer')).toBeVisible();
   await t.point('Opening exact imported identity selects its viewer', action('AgentOpen', 3));
-  await button(page, 'Next').click();
+  const viewport = await view(page, 'viewer').locator('[data-alpha-photo-viewport]').boundingBox();
+  assert.ok(viewport, 'The current photo has a mounted swipe surface');
+  await page.mouse.move(viewport.x+viewport.width*.7, viewport.y+viewport.height*.5);
+  await page.mouse.down();
+  await page.mouse.move(viewport.x+viewport.width*.3, viewport.y+viewport.height*.5, {steps: 8});
+  await page.mouse.up();
   await expect.poll(async () => (await state(page)).viewer).toBe(rows[1].id);
-  await t.point('Viewer next control selects the adjacent canonical photo', action('Swipe', 2));
-  await button(page, 'Back from photo').click();
+  await t.point('Viewer horizontal swipe selects the adjacent canonical photo', action('Swipe', 2));
+  const back = button(page, 'Back from photo');
+  // The viewer tap reveals hidden chrome; use that public surface before its Back control.
+  if (await back.evaluate(element => getComputedStyle(element.parentElement).pointerEvents) === 'none')
+    await view(page, 'viewer').locator('[data-alpha-photo-viewport]').click();
+  await back.click();
   await expect(view(page, 'viewer')).toHaveCount(0);
   await t.point('Back closes the viewer', action('CloseViewer'));
 
@@ -338,7 +347,6 @@ async function mounted(extraSources) {
     .map(path => resolve(root, 'apps/app/src/prototype/'+path))]);
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'config')), ...filesWithin(resolve(root, 'patches/eliza')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',

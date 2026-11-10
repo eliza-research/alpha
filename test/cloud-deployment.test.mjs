@@ -1,21 +1,39 @@
+import {ALPHA_PRODUCT_REGISTRATION as product} from '../apps/app/src/product/alpha-product-registration.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {deploymentOutputs,validateCloudDeployment} from '../scripts/cloud-deployment.ts';
+import {deploymentOutputs,validateCloudDeployment,nativeAuthCallbackRegistration} from '../scripts/cloud-deployment.ts';
+import {CLOUD_DEPLOYMENT as defaults} from '../scripts/cloud-deployment-policy.ts';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 import {runJvm} from './fixtures/jvm-tools.mjs';
-const defaults=JSON.parse(fs.readFileSync(new URL('../config/cloud-deployment.json',import.meta.url)));
-test('committed renderer and native authorities match the deployment configuration',()=>{
+test('committed renderer, native and Gradle authorities match the deployment configuration',()=>{
  for(const [file,contents] of Object.entries(deploymentOutputs(defaults)))assert.equal(fs.readFileSync(file,'utf8'),contents);
+});
+test('protected Pages registrations preserve installed routes and select each configured authority',()=>{
+ const config=structuredClone(defaults);
+ config.production={...config.production,api:'https://api.example.org',web:'https://login.example.org',tenant:'example'};
+ const identity=JSON.parse(fs.readFileSync('app.config.json','utf8'));
+ const pages=Object.fromEntries(['production','staging'].map(environment=>[environment,[nativeAuthCallbackRegistration(config,identity,environment)]]));
+ assert.deepEqual(Object.keys(pages),['production','staging']);
+ for(const environment of ['production','staging']){
+  assert.equal(pages[environment].length,1);
+  assert.deepEqual(pages[environment][0],{
+   redirectUri:config[environment].web+'/alphaphone/auth/callback',androidPackage:identity.appId,appName:identity.appName,
+   browserSignIn:{startPath:'/alphaphone/auth/browser-start',returnPath:'/__alpha-browser-cloud/signin-return',storageKey:'alpha-browser-sign-in:v1',apiOrigin:config[environment].api,tenant:config[environment].tenant},
+  });
+ }
+ const bridge=fs.readFileSync('scripts/browser-cloud-dev-bridge.ts','utf8');
+ assert.ok(bridge.includes(JSON.stringify(pages.production[0].browserSignIn.startPath).replaceAll('"',"'")));
+ assert.ok(pages.production[0].browserSignIn.returnPath.startsWith('/__alpha-browser-cloud/'));
 });
 test('a different deployment changes actual native login, request admission and revocation together',()=>{
  const config=structuredClone(defaults);
  config.production={api:'https://api.example.org',web:'https://login.example.org',services:'https://services.example.org',tenant:'example'};
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-config-'));
  try{
-  const native='android/app/src/main/java/ai/elizaresearch/alphaphone/';
+  const native='android/app/src/main/java/ai/alphacompute/alphaphone/';
   fs.writeFileSync(path.join(temp,'CloudDeployment.java'),deploymentOutputs(config)[native+'CloudDeployment.java']);
   const files=['ConnectionRoutes.java'];
   for(const file of files)fs.copyFileSync(native+file,path.join(temp,file));
@@ -26,13 +44,13 @@ test('a different deployment changes actual native login, request admission and 
   const staged=preparePatchedNative({root:path.resolve(import.meta.dirname,'..')});
   const shared=path.join(staged.root,'packages/auth/android/src/main/java/ai/eliza/auth/cloud');
   const sharedFiles=['CloudSignInConfig.java','CloudSignInEnvironment.java','CloudSignInFlow.java','CloudSignInRoutes.java','CloudKeyRevocation.java','CloudEmailCode.java','CloudSmsCode.java'].map(file=>path.join(shared,file)).concat('vendor/eliza/packages/auth/android/test/org/json/JSONObject.java','vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/CloudConnectionPolicy.java');
-  fs.writeFileSync(path.join(temp,'AlphaRegistration.java'),`package ai.elizaresearch.alphaphone;
+  fs.writeFileSync(path.join(temp,'AlphaRegistration.java'),`package ai.alphacompute.alphaphone;
 import ai.eliza.auth.cloud.*;
 final class BuildConfig {static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;}
 final class AlphaRegistration {
 ${registration}
 }`);
-  fs.writeFileSync(path.join(temp,'DeploymentTest.java'),`package ai.elizaresearch.alphaphone;
+  fs.writeFileSync(path.join(temp,'DeploymentTest.java'),`package ai.alphacompute.alphaphone;
 import ai.eliza.auth.cloud.*;
 public class DeploymentTest {public static void main(String[] args){
  CloudSignInConfig product=AlphaRegistration.registration(false);
@@ -56,7 +74,7 @@ public class DeploymentTest {public static void main(String[] args){
  if(!CloudDeployment.storageSlot("notes-records:v1:device").equals("notes-records:v1:device"))throw new AssertionError("local notes changed");
  System.out.println("PASS");}}
 `);
-  assert.equal(runJvm([...['CloudDeployment.java',...files,'AlphaRegistration.java','DeploymentTest.java'].map(f=>path.join(temp,f)),...sharedFiles],'ai.elizaresearch.alphaphone.DeploymentTest').trim(),'PASS');
+  assert.equal(runJvm([...['CloudDeployment.java',...files,'AlphaRegistration.java','DeploymentTest.java'].map(f=>path.join(temp,f)),...sharedFiles],'ai.alphacompute.alphaphone.DeploymentTest').trim(),'PASS');
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 test('configuration refuses credentials, insecure URLs, paths, aliases and accidental environment overlap',()=>{
@@ -81,22 +99,20 @@ test('configuration the shared native sign-in client cannot register fails at bu
  for(const tenant of ['Org_Tenant-1','elizacloud','elizacloud-staging','t'.repeat(64)])assert.match(tenant,new RegExp(`^(?:${tenantRule})$`),tenant);
 });
 
-test('build admission rejects drift in either renderer or native generated authorities',async()=>{
+test('build admission rejects drift in renderer, native or Gradle generated authorities',async()=>{
  const {checkCloudDeployment}=await import('../scripts/cloud-deployment.ts');
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-build-'));
  try{
-  fs.mkdirSync(path.join(temp,'config'));fs.writeFileSync(path.join(temp,'config/cloud-deployment.json'),JSON.stringify(defaults));
   const outputs=deploymentOutputs(defaults);
   for(const [file,contents] of Object.entries(outputs)){fs.mkdirSync(path.dirname(path.join(temp,file)),{recursive:true});fs.writeFileSync(path.join(temp,file),contents);}
   checkCloudDeployment(temp);
   for(const [file,contents] of Object.entries(outputs)){
-   fs.writeFileSync(path.join(temp,file),contents.replace('api.eliza.app','unexpected.example.org'));
+   fs.writeFileSync(path.join(temp,file),contents.replace('eliza.app','unexpected.example.org'));
    assert.throws(()=>checkCloudDeployment(temp),/Stale Cloud deployment output/);
    fs.writeFileSync(path.join(temp,file),contents);
   }
   const changed=structuredClone(defaults);changed.production.tenant='another-tenant';
-  fs.writeFileSync(path.join(temp,'config/cloud-deployment.json'),JSON.stringify(changed));
-  assert.throws(()=>checkCloudDeployment(temp),/Stale Cloud deployment output/);
+  assert.throws(()=>checkCloudDeployment(temp,{config:changed}),/Stale Cloud deployment output/);
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 
@@ -106,11 +122,10 @@ test('build admission rejects a staging-only change that would move production c
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-namespace-'));
  try{
   const changed=structuredClone(defaults);changed.staging.services='https://different.example.org';
-  fs.mkdirSync(path.join(temp,'config'));fs.writeFileSync(path.join(temp,'config/cloud-deployment.json'),JSON.stringify(changed));
   // Regenerated outputs are not enough: the reviewed namespace list must move with them.
   for(const [file,contents] of Object.entries(deploymentOutputs(changed))){fs.mkdirSync(path.dirname(path.join(temp,file)),{recursive:true});fs.writeFileSync(path.join(temp,file),contents);}
-  assert.throws(()=>checkCloudDeployment(temp),/Cloud storage namespace would change: every installed phone loses its production credential/);
-  checkCloudDeployment(temp,undefined,[...STORAGE_NAMESPACES,storageFingerprint(changed)]);
+  assert.throws(()=>checkCloudDeployment(temp,{config:changed}),/Cloud storage namespace would change: every installed phone loses its production credential/);
+  checkCloudDeployment(temp,{config:changed,namespaces:[...STORAGE_NAMESPACES,storageFingerprint(changed)]});
  }finally{fs.rmSync(temp,{recursive:true,force:true});}
 });
 
@@ -119,7 +134,7 @@ test('build admission rejects a resident Cloud SDK base that disagrees with the 
  const {CLOUD_SDK_BASES,cloudSdkBases}=await import('../scripts/cloud-sdk-authority.ts');
  assert.deepEqual(CLOUD_SDK_BASES,{production:defaults.production.api+'/api/v1',staging:defaults.staging.api+'/api/v1'});
  checkCloudDeployment();
- assert.throws(()=>checkCloudDeployment(undefined,{...CLOUD_SDK_BASES,production:'https://api.example.org/api/v1'}),/Cloud SDK bases .* disagree/);
+ assert.throws(()=>checkCloudDeployment(undefined,{sdkBases:{...CLOUD_SDK_BASES,production:'https://api.example.org/api/v1'}}),/Cloud SDK bases .* disagree/);
  const config=structuredClone(defaults);config.production.api='https://api.example.org';
  assert.equal(cloudSdkBases(config).production,'https://api.example.org/api/v1');
  for(const api of ['http://api.example.org','https://api.example.org/','not a url'])assert.throws(()=>cloudSdkBases({...config,production:{...config.production,api}}),/Invalid Cloud API origin/,api);
@@ -140,7 +155,7 @@ test('every authority change gives renderer and native credentials a new namespa
   assert.notEqual(changed.cloudStorageSlot('cloud:production'),original.cloudStorageSlot('cloud:production'));
   assert.notEqual(changed.cloudStorageSlot('cloud-signin:v1:ack:production'),original.cloudStorageSlot('cloud-signin:v1:ack:production'));
   assert.equal(changed.cloudStorageSlot('notes-records:v1:device'),'notes-records:v1:device');
-  assert.ok(deploymentOutputs(config)['android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java'].includes(changed.cloudStorageNamespace));
+  assert.ok(deploymentOutputs(config)['android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java'].includes(changed.cloudStorageNamespace));
  }
 });
 
@@ -156,19 +171,18 @@ test('custom deployment reaches native inference configuration and Google transp
  try{
   write('package.json','{"type":"module"}');
   for(const [name,text] of Object.entries(deploymentOutputs(config)))write(name,text);
-  for(const name of ['config/alpha-product.json','backend/managed-google-failure-stage.ts','backend/managed-google-route-policy.ts','backend/native-google-cloud-port.ts','backend/native-cloud-runtime.ts','apps/app/src/runtime/managed-service-routes.ts'])write(name,fs.readFileSync(name,'utf8'));
+  for(const name of ['apps/app/src/product/alpha-product-registration.ts','apps/app/src/product/native-cloud-runtime.ts'])write(name,fs.readFileSync(name,'utf8'));
   const load=name=>tsImport(pathToFileURL(path.join(temp,name)).href,{parentURL:import.meta.url});
   // The product declares only its admitted Cloud API base; the shared upstream
   // runtime profile writes routing and refuses any other base URL.
-  const {nativeCloudRuntime}=await load('backend/native-cloud-runtime.ts');
+  const {nativeCloudRuntime}=await load('apps/app/src/product/native-cloud-runtime.ts');
   assert.equal(nativeCloudRuntime.apiBaseUrl,config.production.api+'/api/v1');
-  const product=JSON.parse(fs.readFileSync('config/alpha-product.json','utf8'));
   assert.equal(nativeCloudRuntime.productCharacter.name,product.identity.characterName);
   assert.ok(nativeCloudRuntime.productCharacter.bio[0].includes(product.identity.appName));
   assert.ok(Object.isFrozen(nativeCloudRuntime));
-  const {createNativeGoogleCloudPort}=await load('backend/native-google-cloud-port.ts');
+  const {createNativeGoogleCloudPort}=await import('../.eliza/client-features/packages/app/src/runtime/managed-google-agent/native-google-cloud-port.ts');
   const id='11111111-1111-4111-8111-111111111111',user='22222222-2222-4222-8222-222222222222',org='33333333-3333-4333-8333-333333333333',calls=[];
-  const port=createNativeGoogleCloudPort({credentialId:id,userId:user,organizationId:org,accountRef:JSON.stringify(['cloud','production',user,org]),sessionGeneration:'synthetic',token:'synthetic-token'},()=>{},async(url)=>{calls.push(String(url));return new Response('{}',{headers:{'content-type':'application/json'}});});
+  const port=createNativeGoogleCloudPort({credentialId:id,userId:user,organizationId:org,accountRef:JSON.stringify(['cloud','production',user,org]),sessionGeneration:'synthetic',token:'synthetic-token'},{apiOrigin:config.production.api,userAgent:'AlphaPhone-Native-Google/1',assertCurrent:()=>{},request:async(url)=>{calls.push(String(url));return new Response('{}',{headers:{'content-type':'application/json'}});}});
   const request={url:config.production.api+'/api/v1/eliza/google/accounts?side=owner',method:'GET',credentialReference:'native-google-reference:'+id,signal:new AbortController().signal};
   await port.agentRead(request);assert.deepEqual(calls,[request.url]);
   await assert.rejects(port.agentRead({...request,url:defaults.production.api+'/api/v1/eliza/google/accounts?side=owner'}),/refused/);

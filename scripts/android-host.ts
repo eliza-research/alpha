@@ -17,9 +17,11 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {generateAndroidConsumerHost} from '../vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs';
 import {preparePatchedNative} from './prepare-patched-native.ts';
+import {serializeOwnerRouteTable} from '../apps/app/src/product/owner-route-table.ts';
 
 export const HOST_DESCRIPTOR = 'android/consumer-host.json';
 export const PATCHED_NATIVE_ROOT = 'patchedNative';
+const OWNER_ROUTE_ASSET = '.eliza/generated-android/owner-routes.json';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 export interface HostReference {root: string; path: string}
 type ReferenceMapper = (reference: HostReference) => HostReference;
@@ -53,8 +55,7 @@ export function mapReferences(value: unknown, map: ReferenceMapper): unknown {
 
 /**
  * The upstream profile with patched-native modules resolved. With `canonical`, staged
- * modules name their pinned upstream directories. The Gradle verifier supplements these
- * canonical descriptors with the authenticated shared auth descriptor when it is patched.
+ * modules name the pinned upstream directories from which staging copies them.
  */
 export function hostProfile(root = ROOT, {patchedNativeRoot, canonical = false}: {patchedNativeRoot?: string; canonical?: boolean} = {}) {
  const {profile} = readHostDescriptor(root);
@@ -71,9 +72,25 @@ export function hostProfile(root = ROOT, {patchedNativeRoot, canonical = false}:
  return {...mapReferences(profile, map) as HostDescriptor['profile'], manifestPlaceholders: {appOrientation: app.orientation}};
 }
 
-/** Every option the upstream generator receives for this checkout. Stages patched native source. */
+/** Write the generated table outside the authored tree, ready for the host's asset staging task. */
+export function stageOwnerRouteAsset(root: string) {
+ const file = path.join(root, OWNER_ROUTE_ASSET);
+ fs.mkdirSync(path.dirname(file), {recursive: true});
+ const temporary = fs.mkdtempSync(path.join(path.dirname(file), '.owner-routes-'));
+ try {
+  const staged = path.join(temporary, 'owner-routes.json');
+  fs.writeFileSync(staged, serializeOwnerRouteTable());
+  fs.renameSync(staged, file);
+ } finally {
+  fs.rmSync(temporary, {recursive: true, force: true});
+ }
+ return file;
+}
+
+/** Every option the upstream generator receives for this checkout. Stages patched native source and generated assets. */
 export function hostOptions(root = ROOT) {
  const patched = preparePatchedNative({root});
+ stageOwnerRouteAsset(root);
  return {
   consumerRoot: root,
   upstreamRoot: path.join(root, 'vendor/eliza'),

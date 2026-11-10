@@ -20,7 +20,7 @@ for(const mode of ['', 'dev'])for(const tab of ['About','Calendar',...(mode==='d
  const query=[mode&&'mode=dev',tab==='Developer'&&'tools=1'].filter(Boolean).join('&');
  await page.goto(query?`/?${query}`:'/');await page.getByRole('button',{name:'Settings',exact:true}).click();if(tab==='Calendar'||tab==='Passwords')await page.getByRole('button',{name:'Apps',exact:true}).click();if(tab==='Developer')await page.getByRole('button',{name:'General',exact:true}).click();await page.getByRole('button',{name:tab,exact:true}).click();
  await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');
- await expect(page.getByText(tab,{exact:true}).last()).toBeVisible();
+ await expect(page.getByText(tab==='Passwords'?'Password manager':tab,{exact:true}).last()).toBeVisible();
  const text=await page.locator('body').innerText();for(const claim of forbidden)expect(text).not.toMatch(claim);
  expect(text).not.toContain('Privacy & Enclave');
 });

@@ -24,9 +24,9 @@ def androidBunTarget = project.findProperty('ELIZA_ANDROID_BUN_TARGET') ?: Syste
 if (!(androidBunTarget in ['android', 'linux-musl']) || androidBunTarget == 'android' && runtimeAbis != ['arm64-v8a'])
  throw new GradleException('Android Bun requires the explicit arm64-v8a target')
 def envValue = { String name -> def value = System.getenv(name); value == null || value.trim().isEmpty() ? null : value.trim() }
-def cloudDeployment = new groovy.json.JsonSlurper().parse(file('../../config/cloud-deployment.json'))
-def cloudWebHost = new URI(cloudDeployment.production.web).host
-def stagingCloudWebHost = new URI(cloudDeployment.staging.web).host
+apply from: file('cloud-deployment.generated.gradle')
+def cloudWebHost = alphaCloudWebHosts.production
+def stagingCloudWebHost = alphaCloudWebHosts.staging
 // Verified App Links return for Cloud delegation, the in-app Cloud sign-in and the Google
 // Workspace consent return (GoogleWorkspaceReturn) at the configured production web host.
 // AndroidManifest.xml declares the exact sign-in and Google callback paths. Publish the
@@ -36,7 +36,7 @@ def appLinkHost = appLinkHostRaw == null || appLinkHostRaw.toString().trim().isE
 if (appLinkHost && !(appLinkHost ==~ /(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]/))
  throw new GradleException('ELIZAOS_APP_LINK_HOST must be a lower-case DNS host name without scheme, port or path')
 if (appLinkHost && appLinkHost != cloudWebHost)
- throw new GradleException('ELIZAOS_APP_LINK_HOST must match config/cloud-deployment.json production.web')
+ throw new GradleException('ELIZAOS_APP_LINK_HOST must match the production web host in scripts/cloud-deployment-policy.ts')
 // One-tap app update (AlphaDevicePlugin checkForUpdate): the one HTTPS update manifest, app.config.json updateManifestUrl.
 def updateManifestUrl = new groovy.json.JsonSlurper().parse(file('../../app.config.json')).updateManifestUrl
 if (!(updateManifestUrl instanceof String) || new URI(updateManifestUrl).scheme != 'https' || !new URI(updateManifestUrl).host)

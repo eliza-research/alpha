@@ -1,9 +1,9 @@
 import {installHomeCalendar} from './helpers/home-calendar';
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {openLegacyAttachment,openLegacyNotes} from './helpers/legacy-notes';
-import { LAUNCHER_STATES, openFilesStorage, setTextScale } from './accessibility-states';
+import { LAUNCHER_STATES, connectMailbox, openFilesStorage, setTextScale } from './accessibility-states';
 import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-notes';
-import {openOwnedPhotoViewer} from './helpers/owned-photo';
+import {openOwnedPhotoViewer,openPhotoShare} from './helpers/owned-photo';
 import { auditPage, auditTabOrder, format } from './accessibility-audit';
 import { settled } from './helpers/settled';
 
@@ -165,9 +165,9 @@ test.describe('menus and sheets over a scrim own focus', () => {
     ['live', ['Browser', 'Menu'], 'Browser menu', 'Close menu', 'Menu'],
     ['browser', ['Menu', 'Share'], 'Share page', 'Close share', null],
     ['photos:viewer', ['Photo info'], 'Photo info', 'Close info', 'Photo info'],
-    ['photos:viewer', ['Share photo'], 'Share photo', 'Close share', 'Share photo'],
+    ['photos:viewer', ['Share'], 'Share', 'Close share', 'Photo actions'],
     ['notes:editor', ['More', 'Share note'], 'Share', 'Cancel', 'Share note'],
-    ['files-storage', ['Sort files'], 'Sort and more', 'Close menu', 'Sort files'],
+    ['files-storage', ['Files options'], 'Sort and more', 'Close menu', 'Files options'],
     ['files:preview', ['Move file'], 'Move to', 'Close move', 'Move file'],
     ['files:preview', ['Share file'], 'Share file', 'Close share', 'Share file'],
     ['workflows:new', ['Add Read step'], 'Step editor', 'Close', null],
@@ -178,9 +178,10 @@ test.describe('menus and sheets over a scrim own focus', () => {
   ] as const;
   for (const [start, steps, name, scrim, opener] of POPUPS) {
     test(`${start} > ${steps.join(' > ')}: focus enters, stays, and returns on Escape`, async ({ page }) => {
-      const ownedInfo=start==='photos:viewer'&&name==='Photo info';
-      const nativeShare=start==='notes:editor'&&name==='Share';
-      if(nativeShare){
+      const ownedInfo=start==='photos:viewer';
+      const noteShare=start==='notes:editor'&&name==='Share',photoShare=start==='photos:viewer'&&name==='Share';
+      const nativeShare=noteShare||photoShare;
+      if(noteShare){
         // Alpha's note editor opens the share panel for agent Notes and Older notes alike; Older notes needs no agent fixture.
         await page.addInitScript(offline);await page.goto('/');await openLegacyNotes(page);
         await page.getByRole('button',{name:'New note',exact:true}).click();
@@ -188,14 +189,15 @@ test.describe('menus and sheets over a scrim own focus', () => {
         await page.getByRole('textbox',{name:'Note',exact:true}).fill('Exact locally created content.');
       }else if(start==='files-storage')await openFilesStorage(page);
       else if(ownedInfo)await openOwnedPhotoViewer(page);
-      else if (start === 'live') { await page.addInitScript(offline); await page.goto('/'); }
+      else if (start === 'live') { await page.addInitScript(offline); await page.goto('/'); if(steps.some(step=>step==='Google & email'))await connectMailbox(page); }
       else await page.goto(`/?mode=mock&start=${start}`);
       for (const step of steps.slice(0, -1)) await page.getByRole('button', { name: step, exact: true }).first().click();
+      if(photoShare)await page.getByLabel('Photo actions',{exact:true}).click();
       const last = page.getByRole('button', { name: steps.at(-1)!, exact: true }).first();
       await expect(last).toBeVisible();
       // Everything the user could operate before the popup opened must be operable again after it.
       await page.evaluate(() => { for (const el of document.querySelectorAll('.os button, .os input, .os textarea, .os a[href]')) if (el.getClientRects().length && !el.closest('[inert],[aria-hidden="true"]')) (el as any).__alphaBefore = true; });
-      if(nativeShare){
+      if(noteShare){
         await expect(page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true})).toBeVisible();
         await last.focus();await page.keyboard.press('Enter');
       }else await last.click();
@@ -208,8 +210,8 @@ test.describe('menus and sheets over a scrim own focus', () => {
       if(nativeShare){
         // Native modal inertness is supplied by showModal, not copied inert attributes.
         expect(await dialog.evaluate(el=>el.matches('dialog:modal'))).toBe(true);
-        await expect(dialog.getByRole('button',{name:'Share to email',exact:true})).toBeVisible();
-        await expect(dialog.getByRole('button',{name:'Share externally',exact:true})).toBeVisible();
+        if(photoShare){await expect(dialog.getByRole('button',{name:'Email',exact:true})).toHaveCount(0);await expect(dialog.getByRole('button',{name:'Share',exact:true})).toHaveCount(0);await expect(dialog.getByRole('button',{name:'Save file',exact:true})).toBeVisible();}
+        else{await expect(dialog.getByRole('button',{name:'Email',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Share',exact:true})).toBeVisible();}
       }else{
         const exposed = await page.evaluate(() => Array.from(document.querySelectorAll('.os button, .os input, .os textarea, .os a[href]'))
           .filter(el => el.getClientRects().length && !el.closest('[inert],[aria-hidden="true"]') && !el.closest('[data-alpha-popup],[role="dialog"],[data-alpha-layer="pill"],[data-alpha-layer="composer"],[data-alpha-layer="conversation"]')).map(el => el.getAttribute('aria-label') || el.textContent));
@@ -218,17 +220,17 @@ test.describe('menus and sheets over a scrim own focus', () => {
         // can use a placeholder dock; they still must isolate the underlying app.
         if(start==='live'||start==='files-storage'||ownedInfo)await expect(page.getByRole('button',{name:'Open conversation',exact:true})).toBeVisible();
       }
-      await expect(page.getByRole('button', { name: scrim, exact: true })).toHaveCount(1);
+      await expect(page.getByRole('button', { name: nativeShare?'Close share':scrim, exact: true })).toHaveCount(1);
       const stops = await dialog.locator('button:not(:disabled), input, textarea, select').count();
       for (let step = 0; step < stops + 2; step++) { await page.keyboard.press('Tab'); expect(await inside()).toBe(true); }
       for (let step = 0; step < 2; step++) { await page.keyboard.press('Shift+Tab'); expect(await inside()).toBe(true); }
       await page.keyboard.press('Escape');
       await expect(dialog).toHaveCount(0);
-      if (opener) await expect(page.getByRole('button', { name: opener, exact: true }).first()).toBeFocused();
+      if (opener) await expect(opener==='Photo actions'?page.getByLabel(opener,{exact:true}):page.getByRole('button', { name: opener, exact: true }).first()).toBeFocused();
       const stranded = await page.evaluate(() => Array.from(document.querySelectorAll('.os button, .os input, .os textarea, .os a[href]'))
         .filter(el => (el as any).__alphaBefore && el.isConnected && !!el.closest('[inert],[aria-hidden="true"]')).map(el => el.getAttribute('aria-label') || el.textContent));
       expect(stranded).toEqual([]);
-      if(nativeShare){
+      if(noteShare){
         // Closing the nested native share panel returns to its still-open menu, then Escape closes that menu.
         await expect(page.getByRole('dialog',{name:'Note actions',exact:true})).toBeVisible();
         await page.keyboard.press('Escape');
@@ -239,17 +241,20 @@ test.describe('menus and sheets over a scrim own focus', () => {
   }
 
   test('a tap on the scrim still closes the popup, and Delete is not operable under the share sheet', async ({ page }) => {
-    await page.goto('/?mode=mock&start=photos:viewer');
-    await page.getByRole('button', { name: 'Share photo', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Share photo', exact: true });
+    await openOwnedPhotoViewer(page);
+    await openPhotoShare(page);
+    const dialog = page.getByRole('dialog', { name: 'Share', exact: true });
     await expect(dialog).toBeVisible();
     // Delete photo sits under the sheet: before, Tab reached it there and Enter deleted unseen.
-    expect(await page.locator('button[aria-label="Delete photo"]').evaluate(el => !!el.closest('[inert]'))).toBe(true);
-    await page.getByRole('button', { name: 'Close share', exact: true }).click({ position: { x: 8, y: 60 } });
+    await expect(page.getByRole('button',{name:'Delete photo',exact:true})).toBeHidden();
+    const shareBox=(await dialog.boundingBox())!;
+    await page.mouse.click(Math.max(1,shareBox.x-8),shareBox.y+shareBox.height/2);
     await expect(dialog).toHaveCount(0);
+    await page.getByLabel('Photo actions',{exact:true}).click();
     await expect(page.getByRole('button', { name: 'Delete photo', exact: true })).toBeVisible();
+    await page.getByLabel('Photo actions',{exact:true}).click();
     // The Android Back gesture reaches the renderer as alpha-back: it closes the sheet, not the viewer.
-    await page.getByRole('button', { name: 'Share photo', exact: true }).click();
+    await openPhotoShare(page);
     await expect(dialog).toBeVisible();
     expect(await page.evaluate(() => !window.dispatchEvent(new Event('alpha-back', { cancelable: true })))).toBe(true);
     await expect(dialog).toHaveCount(0);

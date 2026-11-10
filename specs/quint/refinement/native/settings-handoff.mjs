@@ -28,7 +28,7 @@ export async function checkNativeSettingsHandoff(extraSources=[]) {
     const generatedSources=[core,sourceReceipt,...ports];
     const sources=[provider,settingsDeviceSource,settingsCallSource,'vendor/eliza/'+settingsPagesPath,
       ...['Plugin.java','Bridge.java','BridgeActivity.java'].map(name=>join(dirname(settingsCallSource),name)),
-      'android/consumer-host.json','upstream.lock.json','patches/eliza/native-manifest.json',
+      'android/consumer-host.json','upstream.lock.json','android/upstream-native-sources.json',
       'test/fixtures/native-source.mjs','test/fixtures/jvm-tools.mjs',
       'scripts/prepare-patched-native.ts','scripts/upstream-native-source.ts',
       join(directory,harness),join(directory,'Trace.java'),join(directory,'java.mjs'),join(directory,'settings-handoff-platform.mjs'),

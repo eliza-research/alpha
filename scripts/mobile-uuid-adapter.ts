@@ -2,16 +2,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
+import type mobileBuildPolicy from './upstream-mobile-build.ts';
+import {parseBuildPolicy} from './build-policy-source.ts';
 
 import {coreStateBuildRecord,CORE_STATE_TARGET,NOTES_STATE_TARGETS,TURN_STATE_TARGET,ROOM_QUEUE_TARGET,EMBEDDING_STATE_TARGET,NAMED_EMBEDDING_TARGETS,PLUGIN_CONNECTOR_TARGET} from './core-state-patch.ts';
 
 export const MOBILE_BUILD_RECEIPT='alpha-mobile-build.json';
-export const MOBILE_UUID_POLICY='patches/eliza/mobile-uuid-build.json';
-export const MOBILE_BUILD_INPUTS=['scripts/build-mobile-agent.ts','scripts/mobile-uuid-adapter.ts','scripts/mobile-bundle-smoke.ts'];
+export const MOBILE_UUID_POLICY='scripts/upstream-mobile-build.ts';
+export const MOBILE_BUILD_INPUTS=['scripts/build-mobile-agent.ts','scripts/mobile-uuid-adapter.ts','scripts/mobile-bundle-smoke.ts','scripts/build-policy-source.ts'];
 const hash=(bytes: string | NodeJS.ArrayBufferView)=>createHash('sha256').update(bytes).digest('hex');
 const json=(file: string)=>JSON.parse(fs.readFileSync(file,'utf8'));
-const safe=(name: unknown): name is string =>typeof name==='string'&&!path.isAbsolute(name)&&name.split('/').every(part=>part&&part!=='.'&&part!=='..');
-function readRegular(root: string, name: string){
+const safe=(name: unknown): name is string=>typeof name==='string'&&!path.isAbsolute(name)&&name.split('/').every(part=>part&&part!=='.'&&part!=='..');
+function readRegular(root: string,name: string){
  if(!safe(name))throw Error('Unsafe mobile UUID build path');
  const file=path.join(root,name);
  for(let current=file;current!==root;current=path.dirname(current)){
@@ -33,13 +35,7 @@ export function uuidCommonJsBridge(contents: string, indexPath: string){
 
 export function mobileBuildInputs(root: string, source: string){
  root=path.resolve(root);source=path.resolve(source);
- const policyBytes=readRegular(root,MOBILE_UUID_POLICY);
- const policy: {
-  schema: number; baseCommit: string; lockSha256: string;
-  bun: {version: string; revision: string};
-  builder: {path: string; sha256: string};
-  package: {name: string; version: string; root: string; files: Record<string, string>};
- } = JSON.parse(policyBytes.toString('utf8'));
+ const policyBytes=readRegular(root,MOBILE_UUID_POLICY),policy=parseBuildPolicy(policyBytes) as typeof mobileBuildPolicy;
  const pin=json(path.join(root,'upstream.lock.json')).commit;
  if(policy.schema!==1||policy.baseCommit!==pin||policy.package?.name!=='uuid'||policy.package.version!=='14.0.2'||policy.package.root!=='node_modules/.bun/uuid@14.0.2/node_modules/uuid')throw Error('Unreviewed mobile UUID build policy');
  if(policy.bun?.version!=='1.4.2'||!policy.bun.revision||policy.builder?.path!=='packages/agent/scripts/build-mobile-bundle.ts')throw Error('Unreviewed mobile UUID producer');
@@ -61,27 +57,17 @@ export function mobileBuildInputs(root: string, source: string){
  return {policy,packageRoot,identity:{format:'alpha-mobile-build-v1',sourcePin:pin,sourceStampSha256:hash(readRegular(source,'.alpha-runtime-source.json')),lockSha256:hash(readRegular(source,'bun.lock')),policySha256:hash(policyBytes),adapterFiles,bun:policy.bun,builder:policy.builder,uuid:{version:policy.package.version,files:packageFiles}}};
 }
 
-export function createMobileUuidAdapter(root: string, source: string){
- const inputs=mobileBuildInputs(root,source),index=path.join(inputs.packageRoot,'dist-node/index.js');
- const transforms: {path: string; sourceSha256: string; bridgeSha256: string}[] = [];
- const plugin: RuntimeBuildPlugin = {name:'reviewed-mobile-uuid-cjs',setup(build){
-  // Older UUID packages already use CommonJS and remain the upstream producer's
-  // responsibility. Only this exact locked ESM package needs the adapter.
-  build.onLoad({filter:/[\\/]uuid@14\.0\.2[\\/]node_modules[\\/]uuid[\\/]dist(?:-node)?[\\/]index\.js$/},args=>{
-   if(path.resolve(args.path)!==index)throw Error('Unreviewed UUID barrel reached the Android producer');
-   const bytes=readRegular(inputs.packageRoot,'dist-node/index.js');
-   if(hash(bytes)!==inputs.policy.package.files['dist-node/index.js'])throw Error('UUID barrel changed during build');
-   const contents=uuidCommonJsBridge(bytes.toString('utf8'),index);
-   transforms.push({path:inputs.policy.package.root+'/dist-node/index.js',sourceSha256:hash(bytes),bridgeSha256:hash(contents)});
-   return {loader:'js',contents};
-  });
- }};
- return {inputs,transforms,plugin};
+export function expectedMobileUuidTransforms(inputs: ReturnType<typeof mobileBuildInputs>){
+ const index=path.join(inputs.packageRoot,'dist-node/index.js');
+ return [{
+  path:inputs.policy.package.root+'/dist-node/index.js',
+  sourceSha256:inputs.policy.package.files['dist-node/index.js'],
+  bridgeSha256:hash(uuidCommonJsBridge(readRegular(inputs.packageRoot,'dist-node/index.js').toString('utf8'),index)),
+ }];
 }
 
-export function mobileBuildReceipt(root: string, source: string, bundle: string, transforms: unknown, coreTransforms: unknown){
- const inputs=mobileBuildInputs(root,source),index=path.join(inputs.packageRoot,'dist-node/index.js');
- const expected=[{path:inputs.policy.package.root+'/dist-node/index.js',sourceSha256:inputs.policy.package.files['dist-node/index.js'],bridgeSha256:hash(uuidCommonJsBridge(readRegular(inputs.packageRoot,'dist-node/index.js').toString('utf8'),index))}];
+export function mobileBuildReceipt(root: string,source: string,bundle: string,transforms: unknown,coreTransforms: unknown){
+ const inputs=mobileBuildInputs(root,source),expected=expectedMobileUuidTransforms(inputs);
  if(!isDeepStrictEqual(transforms,expected))throw Error('Mobile UUID producer must transform exactly the reviewed barrel');
  return {...inputs.identity,transforms:expected,coreState:coreStateBuildRecord(root,coreTransforms,[CORE_STATE_TARGET,...NOTES_STATE_TARGETS,TURN_STATE_TARGET,ROOM_QUEUE_TARGET,EMBEDDING_STATE_TARGET,...NAMED_EMBEDDING_TARGETS,PLUGIN_CONNECTOR_TARGET]),bundleSha256:hash(fs.readFileSync(bundle)),smoke:{uuidSemantics:true,messageTurnBeforeProvider:true}};
 }

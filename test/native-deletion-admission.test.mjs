@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-const java=name=>readFileSync(`android/app/src/main/java/ai/elizaresearch/alphaphone/${name}.java`,'utf8');
+const java=name=>readFileSync(`android/app/src/main/java/ai/alphacompute/alphaphone/${name}.java`,'utf8');
 const shared=readFileSync('vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java','utf8');
 const body=(source,start,end)=>source.slice(source.indexOf(start),end?source.indexOf(end,source.indexOf(start)):undefined);
 
@@ -13,7 +13,9 @@ test('reconcile isolates every row, always schedules the next wake-up and retrie
  const reconcile=body(shared,' public boolean reconcile()',' public void start()');
  assert.equal((reconcile.match(/\} catch \(Exception rowFailed\) \{ failed = true; \}/g)||[]).length,2,'calendar and reminder rows each have their own catch');
  assert.match(reconcile,/finally \{ if \(next != Long\.MAX_VALUE\) scheduler\.schedule\(Math\.max\(1, next\)\); \}/,'the next expiry is scheduled even when a row throws');
- assert.equal((reconcile.match(/try \{ owned = admitted\(/g)||[]).length,2,'an owner check that throws counts as not admitted in both reminder branches');
+ assert.match(reconcile,/if \(agentKind\(owner\) && agent == null\) \{ failed = true; continue; \}\s*if \(stableOwner\(owner, agentKind\(owner\) \? agent : manualOwner\(\)\)\) reminders\.settleDeletion/,'unavailable ownership retries pending local effects without misclassifying a changed owner');
+ assert.match(reconcile,/if \(awaitingOwner\(owner, agent, row\.getLong\("expiresElapsed"\), elapsed\)\) \{ failed = true; continue; \}/,'queued reminder ownership uncertainty retries before any settlement');
+ assert.match(reconcile,/if \(agentKind\(owner\) && agent == null\) reminders\.pauseDeletion\([^;]+"owner-unavailable"\);\s*else if \(admitted\(owner, agent\)\) reminders\.settleDeletion\([^;]+;\s*else reminders\.pauseDeletion\([^;]+"owner-changed"\);/,'expired unavailable ownership and definite owner changes remain distinct, and only admitted owners settle');
  assert.match(java('DeletionWorker'),/reconcile\(\)\?Result\.retry\(\):Result\.success\(\);\}catch\(Exception unavailable\)\{return Result\.retry\(\);\}/);
  assert.doesNotMatch(java('DeletionWorker'),/Result\.failure/);
 });

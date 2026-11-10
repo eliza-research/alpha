@@ -1,6 +1,6 @@
 name: Android emulator evidence
 # Dispatch only. Every job after `build` boots an emulator on a hosted runner, so nothing
-# here runs on a push, a pull request or a schedule (docs/ci-cost-policy.md). The result is
+# here runs on a push, a pull request or a schedule. The result is
 # emulator-class evidence on developer-override APKs (unpackaged resident runtime; for
 # fused-speech, an unreviewed CI build of the x86_64 voice host) on an x86_64 SDK image:
 # never a distributable build, a device or acceptance.
@@ -59,7 +59,7 @@ jobs:
         run: |
           sdkmanager 'platforms;android-36' 'build-tools;36.0.0' 'ndk;28.2.13676358'
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> "$GITHUB_ENV"
-          # The fused engine wrappers (prepare-embedding-host) require the CMake release of the qualified build.
+          # The fused engine wrappers (prepare-embedding-host) require the pinned CMake release.
           python3 -m pip install cmake==4.0.3
           test "$(cmake --version | head -1)" = "cmake version 4.0.3"
       - run: npm ci
@@ -67,13 +67,12 @@ jobs:
       # misaki G2P, the ASR slot pair, Silero VAD). A developer APK that can speak needs the staged
       # voice outputs (scripts/android-stage-voice-models.ts) AND an embedding host built from the
       # same engine bytes (Gradle :app:verifyParadeeAppLinkage). The hosted job cannot produce that
-      # pair yet: the embedding host at this pin needs a reviewed receipt (requalification), and the
-      # Paradee GGUF/lexicon are not published for download. Refuse instead of building an APK that
+      # pair yet: the Paradee GGUF/lexicon and matching native outputs are not published for download. Refuse instead of building an APK that
       # would only prove local speech is unavailable.
       - name: Refuse the fused-speech suite until hosted voice staging exists
         if: inputs.suite == 'fused-speech' || inputs.suite == 'all'
         run: |
-          echo "::error::fused-speech needs staged Paradee voice outputs and a same-engine embedding host; see docs/fused-speech.md (hosted staging is an open item)"
+          echo "::error::fused-speech needs staged Paradee voice outputs and a same-engine embedding host (hosted staging is an open item)"
           exit 1
       - name: Prepare pinned native lifecycle sources
         run: node scripts/prepare-local-agent.ts --source-only
@@ -242,7 +241,7 @@ jobs:
           disk-size: 4096M
           # The provider is replaced on this fresh disposable AOSP image only: a writable system
           # partition, host Vulkan off across the framework restart, and the boot devices the
-          # provisioner reads back (docs/ci-webview-provider.md).
+          # provisioner reads back.
           emulator-options: -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -writable-system -append-userspace-opt 'androidboot.boot_devices=pci0000:00/0000:00:03.0 pci0000:00/0000:00:05.0 pci0000:00/0000:00:06.0'
           disable-animations: true
           script: node scripts/ci/emulator-suite.ts browser-reading

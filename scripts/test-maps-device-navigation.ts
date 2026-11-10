@@ -385,7 +385,7 @@ console.log('maps device navigation: select, start, reroute, stop, cancellation,
    delivered = true;
    return { protocol: 1, request: { id: crypto.randomUUID(), expiresAt: Date.now() + 30_000, operation: { kind: 'select', place: portRef } } };
   }
-  return new Promise((resolve, reject) => {
+  return new Promise((_resolve, reject) => {
    if (signal.aborted) { reject(signal.reason); return; }
    signal.addEventListener('abort', () => reject(signal.reason), { once: true });
   });
