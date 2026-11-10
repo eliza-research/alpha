@@ -128,3 +128,5 @@
 .schedule-days button{display:grid;place-items:center;padding:0;text-align:center;flex:1;min-width:0;min-height:44px;border-radius:10px;background:var(--bg);color:var(--fg);font:inherit;font-size:14px;font-weight:600}
 .schedule-days button[aria-pressed=true]{background:var(--fg);color:var(--bg)}
 .schedule-clock input:focus-visible,.schedule-period button:focus-visible,.schedule-repeat-presets button:focus-visible,.schedule-days button:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
+
+.snooze-options{padding:12px 16px;border-radius:20px;background:var(--s2);margin-top:24px}.snooze-heading{display:flex;align-items:center;justify-content:space-between}.snooze-heading h3{margin:0;font-size:18px}.snooze-options>button{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;min-height:52px;padding:12px 0;text-align:left;font:inherit;color:var(--fg)}.snooze-options>button+button{border-top:1px solid var(--line)}.snooze-options>button .i{width:18px;height:18px;color:var(--mut)}

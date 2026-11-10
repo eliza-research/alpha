@@ -117,7 +117,7 @@ test('the actual schedule menu renders visible text and accessible names for eve
   const node=vm.runInNewContext(source.slice(0,source.indexOf('  const templateElement'))+';node;',{React,document,iconStyle:()=>({})});
   const html=renderToStaticMarkup(node(template.content.querySelector('.schedule-controls'),{workflows:{automation:app.render().automation},ic:{}},'controls'));
   const buttons=[...new JSDOM(html).window.document.querySelectorAll('button')];
-  assert.deepEqual(buttons.map(button=>button.textContent),['Run now','Edit schedule','Snooze 1 hour','Acknowledge','Complete','Dismiss']);
+  assert.deepEqual(buttons.map(button=>button.textContent),['Run now','Edit schedule','Snooze','Acknowledge','Complete','Dismiss']);
   for(const button of buttons)assert.equal(button.getAttribute('aria-label'),button.textContent);
  }finally{app.close();await f.close();}
 });
@@ -255,4 +255,19 @@ test('Home hides only a fresh complete empty unified snapshot',async()=>{
 test('scheduled snooze displays the acknowledged local time and preserves its cron',async()=>{
  const until='2026-11-10T10:00:00.000Z';const snoozed={...schedule,trigger:{kind:'cron',expression:'0 8 * * *',tz:'owner_local'},state:{status:'scheduled',firedAt:until,lastDecisionLog:`snoozed until ${until} (ladder reset)`}};
  const f=await fixture(call=>call.path.startsWith('/api/lifeops/scheduled-tasks')?{tasks:[snoozed]}:read(call));try{const row=(await f.client.list(signal())).rows.find(row=>row.kind==='schedule');assert.equal(row.status,'snoozed');assert.equal(row.schedule,'Snoozed until '+protocol.automationWhen(until));assert.deepEqual(row.record.trigger,snoozed.trigger);assert.equal(f.calls.some(call=>call.method!=='GET'),false);}finally{await f.close();}
+});
+
+test('snooze uses an explicit future instant and requires its exact durable readback',async()=>{
+ const until=new Date(Date.now()+600000).toISOString();let wrong=false;
+ const f=await fixture(call=>({task:{taskId:'scheduled-task',state:{status:'scheduled',firedAt:wrong?'2000-01-01T00:00:00.000Z':call.body.untilIso}}}));
+ try{await f.client.snoozeSchedule('scheduled-task',until,signal());assert.deepEqual(f.calls[0].body,{untilIso:until});wrong=true;await assert.rejects(f.client.snoozeSchedule('scheduled-task',until,signal()),/not confirmed/);const n=f.calls.length;await assert.rejects(f.client.snoozeSchedule('scheduled-task','2000-01-01T00:00:00Z',signal()),/future/);assert.equal(f.calls.length,n);}finally{await f.close();}
+});
+
+test('snooze picker confirms one absolute time, then refreshes the same recurring task',async()=>{
+ let task={...schedule,trigger:{kind:'cron',expression:'0 8 * * *',tz:'owner_local'}};
+ const f=await fixture(call=>{
+  if(call.path.endsWith('/snooze')){task={...task,state:{status:'scheduled',firedAt:call.body.untilIso,lastDecisionLog:`snoozed until ${call.body.untilIso} (ladder reset)`}};return {task};}
+  return call.path.startsWith('/api/lifeops/scheduled-tasks')?{tasks:[task]}:read(call);
+ });const app=adapterFixture(f.request);
+ try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Weekly review').open();app.render().automation.scheduleMore.find(action=>action.label==='Snooze').run();assert.equal(app.render().automation.snoozing,true);app.render().automation.snoozeOptions.find(option=>option.label==='1 hour').pick();assert.equal(f.calls.some(call=>call.method==='POST'),false);assert.match(app.render().automation.reviewPrompt,/^Snooze until /);app.render().automation.confirm();await wait(()=>app.render().automation.schedule.startsWith('Snoozed until ')&&!app.render().automation.busy);const mutation=f.calls.find(call=>call.path.endsWith('/snooze'));assert.ok(Math.abs(Date.parse(mutation.body.untilIso)-Date.now()-3600000)<5000);assert.equal('minutes' in mutation.body,false);assert.deepEqual(task.trigger,{kind:'cron',expression:'0 8 * * *',tz:'owner_local'});}finally{app.close();await f.close();}
 });

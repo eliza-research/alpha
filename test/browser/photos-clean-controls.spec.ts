@@ -105,3 +105,29 @@ test('custom albums can be created, filled, renamed and removed without deleting
  await page.getByRole('button',{name:'Library',exact:true}).click();
  await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(1);
 });
+
+test('Files selects the existing Photos items, saves original bytes and restores Trash after reload',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto('/?mode=dev');
+ const source=await page.evaluate(async()=>{
+  const {importBrowserPhoto}=await import('/src/prototype/browser-camera.ts');
+  const c=document.createElement('canvas');c.width=30;c.height=20;c.getContext('2d')!.fillRect(0,0,30,20);
+  const image=c.toDataURL('image/png');const row=await importBrowserPhoto({original:new File(['fixture'],'selection.png'),image,width:30,height:20},new AbortController().signal);
+  return {id:row.id,image};
+ });
+ await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Images',exact:true}).click();
+ await page.getByRole('button',{name:'Open Images',exact:true}).click();
+ await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'Select',exact:true}).click();
+ await page.getByRole('button',{name:'Select all',exact:true}).click();const actions=page.getByRole('toolbar',{name:'Selection actions'});
+ await expect(actions.getByRole('button',{name:'Move',exact:true})).toHaveCount(0);
+ await actions.getByRole('button',{name:'Share',exact:true}).click();
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Save file',exact:true}).click();
+ const file=await download;const {readFile}=await import('node:fs/promises');expect(await readFile((await file.path())!)).toEqual(Buffer.from(source.image.split(',')[1],'base64'));
+ await actions.getByRole('button',{name:'Delete',exact:true}).click();
+ await expect.poll(()=>page.evaluate(async id=>(await (await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary.read({id})).trashed,source.id)).toBe(true);
+ await page.reload();await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Trash',exact:true}).click();
+ expect(await page.evaluate(async id=>{const {registerPlugin}=await import('/src/platform-plugins.ts');try{await registerPlugin<any>('AlphaFiles').storageEmptyTrash({ids:['photo:'+id],confirmed:false});return false;}catch{return true;}},source.id)).toBe(true);
+
+ const photo=page.getByRole('button',{name:/^Photo /}).first();await photo.click();await page.getByRole('button',{name:'Restore',exact:true}).click();
+ await expect.poll(()=>page.evaluate(async id=>{const row=await (await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary.read({id});return {trashed:row.trashed,image:row.image};},source.id)).toEqual({trashed:false,image:source.image});
+});
