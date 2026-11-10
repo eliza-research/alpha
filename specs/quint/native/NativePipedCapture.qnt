@@ -44,7 +44,7 @@ module NativePipedCapture {
     s.opening,
     val accepted = s.current and s.foreground and not(s.destroyed or s.inCall)
     s' = {...s, opening: false, published: accepted, physical: accepted,
-      current: accepted, discard: s.discard or not(accepted),
+      current: s.current and accepted, discard: s.discard or not(accepted),
       attempt: if (accepted) "recording" else if (s.closed != "pending") "cancelled" else "pending",
       pending: if (accepted or s.closed != "pending") "none" else "close",
       hasPipe: s.hasPipe and (accepted or s.closed == "pending"), closeReason: if (accepted) "none" else "start"}
@@ -96,13 +96,15 @@ module NativePipedCapture {
   val FailedWarmNeverOpens = s.ready == "false" implies not(s.opening or s.physical or s.published)
   val UnstartedFailureEventsPrivate = s.attempt != "recording" implies s.failure == "none"
   val SettledFailedWarmDiscards = s.ready == "false" and s.attempt == "cancelled" implies s.discard and not(s.current)
+  val RefusedStartHasNoAdmission = s.attempt == "cancelled" implies
+    s.discard and not(s.current or s.opening or s.physical or s.published) and s.frames == 0 and s.transcripts == 0
   val Bounded = s.epoch.in(0.to(2)) and s.frames.in(0.to(2)) and s.transcripts.in(0.to(2))
-  val safety = WarmBeforeCapture and NoPcmToRenderer and CompletedStartHasNoPendingOpen and FailedWarmNeverOpens and UnstartedFailureEventsPrivate and SettledFailedWarmDiscards and Bounded
+  val safety = WarmBeforeCapture and NoPcmToRenderer and CompletedStartHasNoPendingOpen and FailedWarmNeverOpens and UnstartedFailureEventsPrivate and SettledFailedWarmDiscards and RefusedStartHasNoAdmission and Bounded
   run warmBeforeNativeOpenTest = init.then(start).then(warmReply(true)).expect(safety and s.opening and not(s.physical))
     .then(finishOpen).expect(safety and s.published)
   run callDuringOpenRefusesPublicationTest = init.then(start).then(warmReply(true)).then(call(true))
-    .then(finishOpen).expect(safety and not(s.current or s.published or s.physical) and s.discard and s.pending == "close")
-    .then(closeReply(true)).expect(safety and s.attempt == "cancelled" and not(s.current) and s.discard)
+    .then(finishOpen).expect(safety and s.discard and s.pending == "close" and not(s.current or s.physical or s.published) and s.frames == 0 and s.rendererPcm == 0 and s.transcripts == 0)
+    .then(closeReply(true)).expect(safety and s.attempt == "cancelled" and s.discard and not(s.current or s.hasPipe))
   run retiredWarmCannotOpenTest = init.then(start).then(retireOwner).then(warmReply(true))
     .expect(safety and s.attempt == "cancelled" and not(s.physical))
   run discardClosesWithoutRendererAudioTest = init.then(start).then(warmReply(true)).then(finishOpen)

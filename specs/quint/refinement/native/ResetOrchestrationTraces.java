@@ -24,6 +24,7 @@ public final class ResetOrchestrationTraces {
   boolean listenerSeen;
   boolean androidSeen;
   long[] priorBudget;
+  int priorListenerCalls,priorAndroidCalls;
 
   Scenario(String name, Path root) throws Exception {
    android.content.Context.data = root.resolve(name).toFile();
@@ -80,16 +81,18 @@ public final class ResetOrchestrationTraces {
     trace.step("persistMarker", observation, true); preparing = false;
    } else if (attemptActive && !reservationSeen && kind.equals("durable-write") && detail.equals("reset-alpha.failures")) {
     long[] current = AlphaDataReset.RESET.failureState(application);
-    try {
-     String record = java.nio.file.Files.readString(new File(android.content.Context.data,"reset-alpha.failures").toPath());
-     if (record.split(":",-1).length == 2) {
-      if (current[0] != priorBudget[0] || current[1] != priorBudget[1]) throw new AssertionError("OPEN cleanup cannot consume or restore a reservation");
-      trace.stutter("incomplete OPEN annotation cleared without admission", observation);
-     } else {
-      boolean fresh = priorBudget[0] == 0 || priorBudget[1] < 0 || priorBudget[1] != current[1];
-      trace.step("reserveAttempt", observation, true, fresh); reservationSeen = true;
-     }
-    } catch (java.io.IOException failed) { throw new IllegalStateException(failed); }
+    String[] record;
+    try{record=Files.readString(new File(android.content.Context.data,"reset-alpha.failures").toPath()).split(":",-1);}
+    catch(java.io.IOException unreadable){throw new IllegalStateException(unreadable);}
+    if(record.length==3&&record[2].equals("OPEN")){
+     boolean fresh = priorBudget[0] == 0 || priorBudget[1] < 0 || priorBudget[1] != current[1];
+     trace.step("reserveAttempt", observation, true, fresh); reservationSeen = true;
+    }else{
+     if(record.length!=2||current[0]!=priorBudget[0]||current[1]!=priorBudget[1]||
+       SenseListenerClient.calls!=priorListenerCalls||android.app.ActivityManager.calls!=priorAndroidCalls)
+      throw new AssertionError("Open reservation settlement changed budget or dispatched an effect");
+     trace.stutter("settle open reservation without dispatch",observation);
+    }
    } else if (attemptActive && kind.equals("listener-result")) {
     trace.step("listenerResult", observation, Boolean.parseBoolean(detail)); listenerSeen = true;
    } else if (attemptActive && kind.equals("android-result")) {
@@ -135,6 +138,7 @@ public final class ResetOrchestrationTraces {
   void beginAttempt(boolean explicit) {
    attemptActive = true; reservationSeen = listenerSeen = androidSeen = false;
    priorBudget = AlphaDataReset.RESET.failureState(application);
+   priorListenerCalls=SenseListenerClient.calls;priorAndroidCalls=android.app.ActivityManager.calls;
    ResetTraceHooks.listenerAcknowledged = false;
    ResetTraceHooks.dispatched = false;
    trace.step("beginAttempt", observe(), explicit);
