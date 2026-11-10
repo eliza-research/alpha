@@ -39,5 +39,5 @@ export default {
       "dist-node/version.js": "5a43d6eb8496806fd5e152f92edda603dbb1f77108045edcf034f22c9e320ce8"
     }
   },
-  "lockSha256": "7e301d5135b063140f4016a7316953a821a5c4e9b280390a07ee4ff45dd71bec"
+  "lockSha256": "26aac0a51f31553ab4eef64894d88dfefd6bd1aab2c0cf9e6b46a083ed18b5b6"
 };
