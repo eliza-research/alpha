@@ -2143,7 +2143,7 @@
     }
   ],
   "currentUpstream": {
-    "revision": "3ac3c95119e2ca11f6d72714899faafd064b2c38",
+    "revision": "00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
     "classification": "current-upstream-formal-specifications",
     "models": [],
     "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The four DeletionOwnerAdmission Quint sidecars below catalogue the upstream partial owner-admission model and checker at this current revision; downstream model allocations, generated-trace equivalence, full coordinator refinement and Android/device qualification remain separate. Any future TLA/TLC source requires separate allocation. CloudSpeechSuccessor is retained as an upstream source-owned model; its separate semantic, scenario and transport tests do not constitute device or live-provider proof.",
