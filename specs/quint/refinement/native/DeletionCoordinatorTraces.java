@@ -319,12 +319,17 @@ public final class DeletionCoordinatorTraces {
       DeletionTestPorts.provider.put("sessionGeneration", "generation1");
       trace.step("ownerChanges", observe());
       DeletionTestPorts.reminderReply = new JSONObject(row.toString()).put("phase", "paused");
-      check(coordinator.reconcile(), "Refused reminder authority did not request retry");
-      check(DeletionTestPorts.reminderPauses == 0 && DeletionTestPorts.reminderSettles == 0
+      check(!coordinator.reconcile(), "Changed reminder owner failed instead of pausing");
+      check(DeletionTestPorts.reminderPauses == 1 && DeletionTestPorts.reminderSettles == 0
               && DeletionTestPorts.deletes == 0,
-          "Refused reminder authority caused an effect");
-      check(row().similar(row), "Refused reminder authority changed the retained deletion binding");
-      trace.stutter("refused owner authority retains the exact queued deletion for retry", observe());
+          "Changed reminder owner dispatched instead of pausing");
+      check(row().similar(new JSONObject(row.toString()).put("phase", "paused")),
+          "Changed reminder owner changed the deletion identity or lease");
+      trace.step("claim", observe());
+      check(!coordinator.reconcile() && DeletionTestPorts.reminderPauses == 1
+              && DeletionTestPorts.reminderSettles == 0 && DeletionTestPorts.deletes == 0,
+          "Repeated reconciliation replayed the retired reminder");
+      trace.stutter("changed owner remains paused without provider effects", observe());
       return;
     }
     if (scenario.equals("reminder-session-retired")) {

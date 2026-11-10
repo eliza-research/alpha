@@ -1,8 +1,12 @@
 # Dependency and artifact supply chain
 
-## Current source-lock review — November 9
+## Current source-lock review — November 10 UTC
 
-Current SDK `dae11e0b7e3f40e5434fea21fd7c127e416f7016` has a fresh npm bulk query with the same 3,694 registry versions and all 103 findings. The dependency lock, all 84 exception objects, deadlines and 12 pending fixes are unchanged. Fresh built-artifact inspection covers 457 registry versions and retains the known UUID moderate finding; it does not establish packaged APK reachability or grant native, device, security or release qualification. See the [current source and artifact review](security/resident-source-review-dae11e0b-2026-11-09.json).
+Current SDK `75b44015561368fc8ca982b70b8bafbdf1672a7b` has a fresh npm bulk query with the same 3,694 registry versions and all 103 findings. The dependency lock, all 84 exception objects, deadlines and 12 pending fixes are unchanged. Fresh built-artifact inspection covers 457 registry versions and retains the known UUID moderate finding; it does not establish packaged APK reachability or grant native, device, security or release qualification. See the [current source and artifact review](security/resident-source-review-75b44015-2026-11-10.json).
+
+## Prior built-static review at SDK dae11e0b — November 9
+
+The prior SDK `dae11e0b7e3f40e5434fea21fd7c127e416f7016` has a fresh npm bulk query with the same 3,694 registry versions and all 103 findings. The dependency lock, all 84 exception objects, deadlines and 12 pending fixes are unchanged. Fresh built-artifact inspection covers 457 registry versions and retains the known UUID moderate finding; it does not establish packaged APK reachability or grant native, device, security or release qualification. See the [current source and artifact review](security/resident-source-review-dae11e0b-2026-11-09.json).
 
 ## Prior built-static review at SDK 489efc0b — November 9
 

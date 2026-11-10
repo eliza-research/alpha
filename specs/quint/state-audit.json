@@ -11,8 +11,8 @@
   },
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
-  "sourcePin": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
-  "ledgerSha256": "7b1661139c2713fae0035260e5d8523b88eb6ef0c97c2c7159ec5e53b60330f0",
+  "sourcePin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+  "ledgerSha256": "7a8acc27565a16827bfe9b52b8a3efb786ad92146a7873fc990a776097e3ff97",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -169724,7 +169724,7 @@
     },
     {
       "path": "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java",
-      "sha256": "bb36c4486dda2d3a381c36d736ee55fc4793f96fb864a9159014f2b3af4557f3",
+      "sha256": "0c6ccc6936f262d2367e3ce6dde0a73cb958572dde971dfe65e6194593633d5b",
       "allocatedModels": [
         "DeletionJournal",
         "DurableStore",
@@ -225287,6 +225287,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "2abdd2c952e6a8a479dbad638ea08ad8d7fe0744da5d97202b46eb6b0599479b"
+    "sha256": "190f8fdb741b218e6d984dc1f47a3e1a61a614109e54b48aadd691d176c6e6b8"
   }
 }
