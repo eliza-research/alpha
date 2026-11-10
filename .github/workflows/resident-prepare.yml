@@ -31,7 +31,7 @@ jobs:
       - run: python3 scripts/ci/test-resident-phase.py
       - run: python3 scripts/ci/resident-phase.py --name prepare --seconds 3600 npm run agent:prepare
       - name: Verify actual Cloud recording signature classifier
-        run: python3 scripts/ci/resident-phase.py --name cloud-recording-signature --seconds 60 node scripts/check-cloud-recording-signature.mjs
+        run: python3 scripts/ci/resident-phase.py --name cloud-recording-signature --seconds 60 node scripts/check-cloud-recording-signature.ts
       # The rejection test bundles with the product's own esbuild and imports the projected client
       # features (npm test gets them from its pretest hook), so install the locked product dependencies
       # as resident-android does and project the client before running the test file directly.
@@ -51,7 +51,7 @@ jobs:
       - name: Build the portable worker dependency proof
         run: |
           python3 scripts/ci/resident-phase.py --name browser-proof-worker --seconds 600 npm run agent:build-workflow-worker
-          node scripts/ci/export-browser-proof.mjs worker
+          node scripts/ci/export-browser-proof.ts worker
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: browser-proof-worker-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}

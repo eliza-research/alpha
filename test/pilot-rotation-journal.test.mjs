@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import {
   beginPilotRotation, claimPilotInstall, completePilotRotation, inspectPilotRotation, observePilotRotation,
-} from "../scripts/owner/pilot-rotation-journal.mjs";
+} from "../scripts/owner/pilot-rotation-journal.ts";
 
 const device = { serialSha256: "a".repeat(64), sdk: 37, buildFingerprintSha256: "b".repeat(64) };
 const before = { userId: "10123", firstInstallTime: "fixture", versionCode: 44 };

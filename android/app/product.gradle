@@ -12,7 +12,7 @@ if (runtimeProfile == 'cloud' && unpackagedRuntime) throw new GradleException('C
 // sources to DEBUG variants when it is exactly "1"; the Cloud QA profile never accepts them.
 def testMocksRaw = project.findProperty('ELIZA_DEV_ALLOW_TEST_MOCKS') ?: System.getenv('ELIZA_DEV_ALLOW_TEST_MOCKS')
 if (runtimeProfile == 'cloud' && testMocksRaw?.toString() == '1') throw new GradleException('Cloud profile forbids test mocks')
-// Debug ABIs use the same explicit target as resident staging (scripts/stage-local-agent-runtime.mjs);
+// Debug ABIs use the same explicit target as resident staging (scripts/stage-local-agent-runtime.ts);
 // dependency ABI flags do not filter the app. android/consumer-host.json therefore declares no debug
 // abiFilters: the default stays arm64-v8a + x86_64, and the Android Bun producer admits ARM64 only.
 def runtimeAbisRaw = project.findProperty('ELIZA_ANDROID_TARGET_ABIS')
@@ -30,13 +30,13 @@ def stagingCloudWebHost = alphaCloudWebHosts.staging
 // Verified App Links return for Cloud delegation, the in-app Cloud sign-in and the Google
 // Workspace consent return (GoogleWorkspaceReturn) at the configured production web host.
 // AndroidManifest.xml declares the exact sign-in and Google callback paths. Publish the
-// assetlinks.json rendered by scripts/render-assetlinks.mjs on that configured host.
+// assetlinks.json rendered by scripts/render-assetlinks.ts on that configured host.
 def appLinkHostRaw = project.findProperty('ELIZAOS_APP_LINK_HOST') ?: envValue('ELIZAOS_APP_LINK_HOST')
 def appLinkHost = appLinkHostRaw == null || appLinkHostRaw.toString().trim().isEmpty() ? cloudWebHost : appLinkHostRaw.toString().trim()
 if (appLinkHost && !(appLinkHost ==~ /(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]/))
  throw new GradleException('ELIZAOS_APP_LINK_HOST must be a lower-case DNS host name without scheme, port or path')
 if (appLinkHost && appLinkHost != cloudWebHost)
- throw new GradleException('ELIZAOS_APP_LINK_HOST must match the production web host in scripts/cloud-deployment-policy.mjs')
+ throw new GradleException('ELIZAOS_APP_LINK_HOST must match the production web host in scripts/cloud-deployment-policy.ts')
 // One-tap app update (AlphaDevicePlugin checkForUpdate): the one HTTPS update manifest, app.config.json updateManifestUrl.
 def updateManifestUrl = new groovy.json.JsonSlurper().parse(file('../../app.config.json')).updateManifestUrl
 if (!(updateManifestUrl instanceof String) || new URI(updateManifestUrl).scheme != 'https' || !new URI(updateManifestUrl).host)
@@ -116,7 +116,7 @@ android {
 // The shared bionic host is packaged only from the reviewed consumer artifact and BGE pin.
 def verifyEmbeddingHost = tasks.register('verifyEmbeddingHost', Exec) {
  workingDir rootProject.projectDir.parentFile
- def args = runtimeProfile == 'cloud' ? ['node', 'scripts/runtime-profile.mjs', '--verify-cloud'] : ['node', 'scripts/stage-embedding-host.mjs', '--verify']
+ def args = runtimeProfile == 'cloud' ? ['node', 'scripts/runtime-profile.ts', '--verify-cloud'] : ['node', 'scripts/stage-embedding-host.ts', '--verify']
  if (runtimeProfile == 'cloud' && localEmbeddings == '1') args += '--local-embeddings'
  if (runtimeProfile == 'native' && unpackagedRuntime) args += '--allow-unpackaged-runtime'
  commandLine args
@@ -127,7 +127,7 @@ tasks.named('preBuild').configure { dependsOn verifyEmbeddingHost }
 def verifyNativeGoogleHost = tasks.register('verifyNativeGoogleHost', Exec) {
  onlyIf { runtimeProfile == 'native' && !unpackagedRuntime && testMocksRaw?.toString() != '1' }
  workingDir rootProject.projectDir.parentFile
- commandLine 'node', 'scripts/runtime-profile.mjs', '--verify-native'
+ commandLine 'node', 'scripts/runtime-profile.ts', '--verify-native'
 }
 tasks.named('preBuild').configure { dependsOn verifyNativeGoogleHost }
 
@@ -143,12 +143,12 @@ def verifyParadeeAppLinkage = tasks.register('verifyParadeeAppLinkage', Exec) {
  // Cloud has no local engine; verifyEmbeddingHost checks its packaged exclusions.
  onlyIf { runtimeProfile != 'cloud' }
  workingDir rootProject.projectDir.parentFile
- commandLine(['node', 'scripts/paradee-runtime.mjs', '--app-linkage'] + paradeeAbiArgs + ((unpackagedRuntime || runtimeProfile == 'cloud') ? ['--allow-absent'] : []))
+ commandLine(['node', 'scripts/paradee-runtime.ts', '--app-linkage'] + paradeeAbiArgs + ((unpackagedRuntime || runtimeProfile == 'cloud') ? ['--allow-absent'] : []))
 }
 def verifyVoiceHost = tasks.register('verifyVoiceHost', Exec) {
  onlyIf { runtimeProfile != 'cloud' }
  workingDir rootProject.projectDir.parentFile
- commandLine(['node', 'scripts/voice-host.mjs', '--verify'] + paradeeAbiArgs + ((unpackagedRuntime || runtimeProfile == 'cloud') ? ['--allow-absent'] : []))
+ commandLine(['node', 'scripts/voice-host.ts', '--verify'] + paradeeAbiArgs + ((unpackagedRuntime || runtimeProfile == 'cloud') ? ['--allow-absent'] : []))
 }
 tasks.named('preBuild').configure { dependsOn verifyParadeeAppLinkage, verifyVoiceHost }
 

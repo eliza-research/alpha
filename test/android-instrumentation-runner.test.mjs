@@ -6,9 +6,9 @@ import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { instrumentationClassResults, listedInstrumentationTests, writeInstrumentationRecord } from "../scripts/instrumentation-result.mjs";
-import { admitApks, admitHome, classIsolationCommands, CAMPAIGN_RUNNERS, CLASS_REGISTRY, DEFAULT_CLASSES, instrumentArgs, NOT_RUN_BY_A_RUNNER, parseInstrumentationArgs, PACKAGE, readHome, restoreHome, runLeased, selectAlphaHome } from "../scripts/android-instrumentation.mjs";
-import { cases as permissionCases } from "../scripts/test-native-permissions.mjs";
+import { instrumentationClassResults, listedInstrumentationTests, writeInstrumentationRecord } from "../scripts/instrumentation-result.ts";
+import { admitApks, admitHome, classIsolationCommands, CAMPAIGN_RUNNERS, CLASS_REGISTRY, DEFAULT_CLASSES, instrumentArgs, NOT_RUN_BY_A_RUNNER, parseInstrumentationArgs, PACKAGE, readHome, restoreHome, runLeased, selectAlphaHome } from "../scripts/android-instrumentation.ts";
+import { cases as permissionCases } from "../scripts/test-native-permissions.ts";
 
 const C = name => `${PACKAGE}.${name}InstrumentedTest`;
 const block = (cls, method, code, numtests = 1) =>
@@ -118,7 +118,7 @@ test("APK admission binds the app to the verify-apks manifest and the test APK t
 });
 
 test("restart runner keeps the bookmark phase wired", () => {
-  const source = fs.readFileSync("scripts/test-native-restart.mjs", "utf8");
+  const source = fs.readFileSync("scripts/test-native-restart.ts", "utf8");
   // P-04 sign-in persistence: the phase the test class documents must have a runner case with its gate.
   assert.match(source, /signin: \{\n\t\ttestClass: "BrowserSigninsInstrumentedTest",\n\t\tmethod: "signinProcessRestartPhase",\n\t\tgate: "signinPhase"/);
   const signins = fs.readFileSync("android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserSigninsInstrumentedTest.java", "utf8");
@@ -126,7 +126,7 @@ test("restart runner keeps the bookmark phase wired", () => {
   for (const phase of ["prepare", "verify", "cleanup"]) assert.ok(signins.includes(`"${phase}"`), `sign-in restart phase ${phase}`);
   assert.ok(signins.includes('getString("signinPhase")'));
   assert.match(source, /bookmark: \{\n\t\ttestClass: "BrowserContinuityInstrumentedTest",\n\t\tmethod: "bookmarkProcessRestartPhase",\n\t\tgate: "bookmarkPhase"/);
-  assert.equal(JSON.parse(fs.readFileSync("package.json", "utf8")).scripts["test:android:instrumentation"], "node scripts/android-instrumentation.mjs");
+  assert.equal(JSON.parse(fs.readFileSync("package.json", "utf8")).scripts["test:android:instrumentation"], "node scripts/android-instrumentation.ts");
 });
 
 const ROOTS = ["android/app/src/androidTest/java", "android/app/src/testMocks/androidTest/java"];
@@ -198,14 +198,14 @@ test("every @Test class is run by a runner or listed with a reason, and neither 
     if (!registered && !campaigns.length && !excused) unreachable.push(cls);
     if (excused && (registered || campaigns.length)) stale.push(`${cls} (${registered ? "registered" : campaigns.join(", ")})`);
   }
-  assert.deepEqual(unreachable, [], "these @Test classes have no runner entry, no campaign and no listed reason; register them in scripts/android-instrumentation.mjs or a campaign runner, or add them to NOT_RUN_BY_A_RUNNER with the reason");
+  assert.deepEqual(unreachable, [], "these @Test classes have no runner entry, no campaign and no listed reason; register them in scripts/android-instrumentation.ts or a campaign runner, or add them to NOT_RUN_BY_A_RUNNER with the reason");
   assert.deepEqual(stale, [], "these classes are run by a runner now; remove them from NOT_RUN_BY_A_RUNNER");
   for (const [name, reason] of Object.entries(NOT_RUN_BY_A_RUNNER)) {
     assert.ok(classes.has(name) || classes.has(`${name}InstrumentedTest`), `NOT_RUN_BY_A_RUNNER lists ${name}, which is not a @Test class`);
     assert.ok(typeof reason === "string" && reason.trim().length >= 40, `NOT_RUN_BY_A_RUNNER.${name} needs a specific reason`);
   }
   // Check source keys: Object.keys alone has already discarded duplicate object properties.
-  const registrySource = fs.readFileSync("scripts/android-instrumentation.mjs", "utf8").split("export const CLASS_REGISTRY = {")[1].split("\n};")[0];
+  const registrySource = fs.readFileSync("scripts/android-instrumentation.ts", "utf8").split(/export const CLASS_REGISTRY(?:\s*:[^=]+)?\s*=\s*\{/)[1].split("\n};")[0];
   const keys = [...registrySource.matchAll(/^  ([A-Za-z]\w*):/gm)].map(match => match[1]);
   assert.equal(new Set(keys).size, keys.length, "every instrumentation class has one policy entry");
   assert.deepEqual(keys, Object.keys(CLASS_REGISTRY));
@@ -213,7 +213,7 @@ test("every @Test class is run by a runner or listed with a reason, and neither 
   for (const name of ["BrowserPageQuestion", "ConnectionChooser", "LauncherHome", "SettingsRoles", "NotesSecureStorage", "StorageLegacyAccess", "PhotosCatalogOrder"]) assert.ok(Object.hasOwn(CLASS_REGISTRY, name), name);
   for (const name of ["FilesTree", "FilesTreeBatch", "FilesFolderQuestion"]) assert.ok(!Object.hasOwn(CLASS_REGISTRY, name), `${name} is a retired SAF-picker class`);
   for (const cls of ["VoicePermissionDeniedInstrumentedTest", "VoicePermissionRevokeInstrumentedTest", "HostedResultNoticeInstrumentedTest", "LocalVoiceRecordingLimitInstrumentedTest"])
-    assert.deepEqual(namedBy(cls), ["scripts/test-native-permissions.mjs"], cls);
+    assert.deepEqual(namedBy(cls), ["scripts/test-native-permissions.ts"], cls);
 });
 
 test("permission scenarios name real classes, methods and gates", () => {
@@ -415,8 +415,8 @@ test("each named class starts from cleared app data with Android's shade closed"
   assert.ok(commands.some(command => command.join(" ") === "shell cmd statusbar collapse"));
   // Only the app under test is cleared; the instrumentation package and other apps keep their data.
   assert.equal(commands.filter(command => command.includes("clear")).length, 1);
-  const runner = fs.readFileSync("scripts/android-instrumentation.mjs", "utf8");
-  const loop = runner.slice(runner.indexOf("const runClass = (cls, { user } = {}) =>"));
+  const runner = fs.readFileSync("scripts/android-instrumentation.ts", "utf8");
+  const loop = runner.slice(runner.indexOf("const runClass ="));
   assert.ok(loop.indexOf("classIsolationCommands(user)") > 0 && loop.indexOf("classIsolationCommands(user)") < loop.indexOf("spec.phases"), "isolation runs once per class, before its phases");
   // In the secondary-user phase the same isolation applies to that user only.
   assert.ok(classIsolationCommands("10").some(command => command.join(" ") === `shell pm clear --user 10 ${PACKAGE}`));
@@ -488,8 +488,8 @@ test("declared permissions are granted after isolation, and a failed listing is 
   // permission its fixture requires. RealClock needs AOSP Clock's own notification permission.
   assert.deepEqual(CLASS_REGISTRY.WorkflowApprovalNotice.grant, ["POST_NOTIFICATIONS"]);
   assert.deepEqual(CLASS_REGISTRY.RealClock.grantOther, { "com.android.deskclock": ["POST_NOTIFICATIONS"] });
-  const runner = fs.readFileSync("scripts/android-instrumentation.mjs", "utf8");
-  const body = runner.slice(runner.indexOf("const runClass = (cls, { user } = {}) =>"));
+  const runner = fs.readFileSync("scripts/android-instrumentation.ts", "utf8");
+  const body = runner.slice(runner.indexOf("const runClass ="));
   assert.ok(body.indexOf("classIsolationCommands(user)") < body.indexOf("spec.grant"), "grants follow the data clear, which revokes them");
   assert.ok(body.indexOf("spec.grant") < body.indexOf("spec.grantOther"));
   assert.match(body, /-listing\.txt/);
@@ -505,7 +505,7 @@ test("a class whose every method is skipped by its gate is recorded as skipped, 
     assert.deepEqual(result.classes.map(row => [row.class.split(".").at(-1), row.status]), [["ShellInstrumentedTest", "passed"], ["BrowserDownloadInstrumentedTest", "skipped"]]);
     assert.equal(result.passed, false, "a skipped class is not a pass");
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
-  const runner = fs.readFileSync("scripts/android-instrumentation.mjs", "utf8");
+  const runner = fs.readFileSync("scripts/android-instrumentation.ts", "utf8");
   assert.match(runner, /row\.status === "passed" \? "passed" : spec\.phases \? "failed" : row\.status/);
 });
 
@@ -524,7 +524,7 @@ test("BrowserFlow's live search page runs only with --live-network; the default 
   // Every liveArgs gate is one the class reads, as for `args`.
   for (const [name, spec] of Object.entries(CLASS_REGISTRY)) for (const [gate, value] of Object.entries(spec.liveArgs ?? {}))
     assert.ok(sourceOf(name).includes(`"${value}".equals(androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("${gate}"))`) || gateRead(sourceOf(name), gate, value), `${name} reads ${gate}=${value}`);
-  const runner = fs.readFileSync("scripts/android-instrumentation.mjs", "utf8");
+  const runner = fs.readFileSync("scripts/android-instrumentation.ts", "utf8");
   assert.equal((runner.match(/instrumentArgs\(cls, \{[^}]*\blive\b[^}]*\}\)/g) ?? []).length, 3, "listing, retry and run all carry the live choice");
 });
 
@@ -549,11 +549,11 @@ test("round-9 registrations: new classes, campaigns and removed reasons", () => 
   // --classes SelectedDocument runs its ungated methods; only the restart phase stays with its campaign.
   assert.equal(parseInstrumentationArgs(["--classes", "SelectedDocument"]).classes[0], C("SelectedDocument"));
   assert.equal(CLASS_REGISTRY.SelectedDocument.args, undefined);
-  assert.equal(CLASS_REGISTRY.WorkflowLegacyReminderUpgrade.campaign.split(" ").slice(0, 3).join(" "), "node scripts/test-installed-upgrade.mjs reminder");
+  assert.equal(CLASS_REGISTRY.WorkflowLegacyReminderUpgrade.campaign.split(" ").slice(0, 3).join(" "), "node scripts/test-installed-upgrade.ts reminder");
   assert.throws(() => parseInstrumentationArgs(["--classes", "WorkflowLegacyReminderUpgrade"]), /test-installed-upgrade/);
   // SettingsCrashLog has its two-process runner now.
   assert.ok(!Object.hasOwn(NOT_RUN_BY_A_RUNNER, "SettingsCrashLog"));
-  assert.throws(() => parseInstrumentationArgs(["--classes", "SettingsCrashLog"]), /test-native-restart\.mjs crash-log/);
+  assert.throws(() => parseInstrumentationArgs(["--classes", "SettingsCrashLog"]), /test-native-restart\.ts crash-log/);
   // The reviewed-workflow host classes were deleted, not left unreachable.
   for (const name of ["Workflow", "WorkflowApproval", "WorkflowCancellation", "WorkflowLifecycle", "WorkflowMetadata", "WorkflowSubmission"]) {
     assert.ok(!Object.hasOwn(NOT_RUN_BY_A_RUNNER, name), name);
@@ -599,7 +599,7 @@ test("PrototypeFlow and CalendarFlow are registered; the retired resident Activi
 });
 
 test("restart runner wires the migration, crash-log, theme and source-reference phases to real methods and gates", () => {
-  const source = fs.readFileSync("scripts/test-native-restart.mjs", "utf8");
+  const source = fs.readFileSync("scripts/test-native-restart.ts", "utf8");
   const classes = testClasses();
   for (const [scenario, cls, method, gate, phases] of [
     ["notes-secure-migration", "NotesSecureStorageInstrumentedTest", "secureMigrationProcessRestartPhase", "notesSecureMigrationPhase", ["prepare", "verify", "cleanup"]],

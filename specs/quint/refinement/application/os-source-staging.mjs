@@ -101,7 +101,7 @@ print(json.dumps(traces))
 export async function checkOSSourceStaging(extraSources=[]){
  const sources=[driver,stage,'specs/quint/refinement/application/os-host-support.mjs','android/aosp/branding/provision/source-inputs.json',
   'android/aosp/branding/core-launcher/manifest.json','apps/app/public/logo-mark.svg',...extraSources];
- sources.push('test/fixtures/jvm-tools.mjs','scripts/prepare-patched-native.mjs','scripts/upstream-native-source.mjs','specs/quint/refinement/application/index.mjs','test/quint-application-refinement.test.mjs');
+ sources.push('test/fixtures/jvm-tools.mjs','scripts/prepare-patched-native.ts','scripts/upstream-native-source.ts','specs/quint/refinement/application/index.mjs','test/quint-application-refinement.test.mjs');
  const before=captureInputs(sources),temporary=mkdtempSync(join(tmpdir(),'alpha-os-stage-'));
  try{
   const source=readFileSync(resolve(root,stage),'utf8'),anchor="    for row in rows:\n        if not row['changed']: continue";

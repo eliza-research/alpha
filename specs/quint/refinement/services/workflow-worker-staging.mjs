@@ -4,7 +4,7 @@ import {syncBuiltinESMExports} from 'node:module';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {stageWorkerArtifact, verifyWorkerArtifact, workerHash} from '../../../../scripts/workflow-worker-artifact.mjs';
+import {stageWorkerArtifact, verifyWorkerArtifact, workerHash} from '../../../../scripts/workflow-worker-artifact.ts';
 import {writeWorkerFixture} from '../../../../test/fixtures/workflow-worker-assets.mjs';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 
@@ -172,7 +172,7 @@ function fixture(root, prior) {
 }
 
 export async function checkWorkflowWorkerStaging(extraSources = []) {
-  const sources = ['scripts/workflow-worker-artifact.mjs', 'scripts/stage-workflow-worker.mjs',
+  const sources = ['scripts/workflow-worker-artifact.ts', 'scripts/stage-workflow-worker.ts',
     'test/fixtures/workflow-worker-assets.mjs', driver, ...extraSources];
   const driverHashes = captureInputs(sources);
   const stage = (fault = 'none') => ['stage', fault];

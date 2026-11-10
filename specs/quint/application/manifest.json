@@ -551,11 +551,11 @@
     "invariant": "safety",
     "sources": [
       "scripts/browser-cloud-dev-bridge.ts",
-      "scripts/cloud-resident-host.mjs",
-      "scripts/dev-cloud.mjs",
-      "scripts/dev-local.mjs",
-      "scripts/start-local-voice-agent.mjs",
-      "scripts/start-local-remote.mjs",
+      "scripts/cloud-resident-host.ts",
+      "scripts/dev-cloud.ts",
+      "scripts/dev-local.ts",
+      "scripts/start-local-voice-agent.ts",
+      "scripts/start-local-remote.ts",
       "scripts/cloud-email-code.ts"
     ],
     "tests": [
@@ -1074,7 +1074,7 @@
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/files-agent-contract.ts",
       "upstream.lock.json",
-      "scripts/prepare-client-features.mjs"
+      "scripts/prepare-client-features.ts"
     ],
     "abstractions": [
       "One outstanding storageSelect capability, three owner epochs, one representative selected identity. The caller keeps the document visible while awaiting selection.",
@@ -3488,7 +3488,7 @@
     ],
     "sources": [
       "scripts/stage-alpha-os-branding.py",
-      "scripts/generate-alpha-os-branding.mjs",
+      "scripts/generate-alpha-os-branding.ts",
       "scripts/fetch-alpha-os-preset-inputs.py"
     ],
     "abstractions": [

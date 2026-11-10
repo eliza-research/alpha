@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {retainKnownGoodArgs} from '../scripts/aosp-retain-known-good.mjs';
-import {ALPHA_OTA_DEFAULTS} from '../scripts/aosp-ota-update.mjs';
+import {retainKnownGoodArgs} from '../scripts/aosp-retain-known-good.ts';
+import {ALPHA_OTA_DEFAULTS} from '../scripts/aosp-ota-update.ts';
 import {parseArgs} from '../vendor/eliza/packages/os/scripts/android/aosp-ota-update.mjs';
 
 // Alpha binds the shared retain-known-good operator command to its Pixel 10a channel. Argument

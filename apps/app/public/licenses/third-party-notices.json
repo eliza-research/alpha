@@ -174,7 +174,7 @@
     "version": "21.1.1",
     "license": "UNKNOWN",
     "source": "https://mvnrepository.com/artifact/com.google.android.gms/play-services-auth/21.1.1",
-    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.mjs). The artifact's own POM and licence file are not read by this generator.",
+    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.ts). The artifact's own POM and licence file are not read by this generator.",
     "flags": [
       "unknown-licence",
       "licence-text-missing-from-package"
@@ -195,7 +195,7 @@
     "version": "18.0.2",
     "license": "UNKNOWN",
     "source": "https://mvnrepository.com/artifact/com.google.android.gms/play-services-auth-api-phone/18.0.2",
-    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.mjs). The artifact's own POM and licence file are not read by this generator.",
+    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.ts). The artifact's own POM and licence file are not read by this generator.",
     "flags": [
       "unknown-licence",
       "licence-text-missing-from-package"
@@ -216,7 +216,7 @@
     "version": "18.0.10",
     "license": "UNKNOWN",
     "source": "https://mvnrepository.com/artifact/com.google.android.gms/play-services-auth-base/18.0.10",
-    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.mjs). The artifact's own POM and licence file are not read by this generator.",
+    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.ts). The artifact's own POM and licence file are not read by this generator.",
     "flags": [
       "unknown-licence",
       "licence-text-missing-from-package"
@@ -237,7 +237,7 @@
     "version": "16.4.0",
     "license": "UNKNOWN",
     "source": "https://mvnrepository.com/artifact/com.google.android.gms/play-services-auth-blockstore/16.4.0",
-    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.mjs). The artifact's own POM and licence file are not read by this generator.",
+    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.ts). The artifact's own POM and licence file are not read by this generator.",
     "flags": [
       "unknown-licence",
       "licence-text-missing-from-package"
@@ -258,7 +258,7 @@
     "version": "18.5.0",
     "license": "UNKNOWN",
     "source": "https://mvnrepository.com/artifact/com.google.android.gms/play-services-base/18.5.0",
-    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.mjs). The artifact's own POM and licence file are not read by this generator.",
+    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.ts). The artifact's own POM and licence file are not read by this generator.",
     "flags": [
       "unknown-licence",
       "licence-text-missing-from-package"
@@ -279,7 +279,7 @@
     "version": "18.5.0",
     "license": "UNKNOWN",
     "source": "https://mvnrepository.com/artifact/com.google.android.gms/play-services-basement/18.5.0",
-    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.mjs). The artifact's own POM and licence file are not read by this generator.",
+    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.ts). The artifact's own POM and licence file are not read by this generator.",
     "flags": [
       "unknown-licence",
       "licence-text-missing-from-package"
@@ -300,7 +300,7 @@
     "version": "21.0.0",
     "license": "UNKNOWN",
     "source": "https://mvnrepository.com/artifact/com.google.android.gms/play-services-fido/21.0.0",
-    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.mjs). The artifact's own POM and licence file are not read by this generator.",
+    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.ts). The artifact's own POM and licence file are not read by this generator.",
     "flags": [
       "unknown-licence",
       "licence-text-missing-from-package"
@@ -321,7 +321,7 @@
     "version": "16.0.0-alpha08",
     "license": "UNKNOWN",
     "source": "https://mvnrepository.com/artifact/com.google.android.gms/play-services-identity-credentials/16.0.0-alpha08",
-    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.mjs). The artifact's own POM and licence file are not read by this generator.",
+    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.ts). The artifact's own POM and licence file are not read by this generator.",
     "flags": [
       "unknown-licence",
       "licence-text-missing-from-package"
@@ -342,7 +342,7 @@
     "version": "18.2.0",
     "license": "UNKNOWN",
     "source": "https://mvnrepository.com/artifact/com.google.android.gms/play-services-tasks/18.2.0",
-    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.mjs). The artifact's own POM and licence file are not read by this generator.",
+    "text": "No licence is recorded for the Maven group com.google.android.gms in MAVEN_FAMILIES (scripts/generate-licenses.ts). The artifact's own POM and licence file are not read by this generator.",
     "flags": [
       "unknown-licence",
       "licence-text-missing-from-package"
@@ -363,7 +363,7 @@
     "version": "1.1.1",
     "license": "UNKNOWN",
     "source": "https://mvnrepository.com/artifact/com.google.android.libraries.identity.googleid/googleid/1.1.1",
-    "text": "No licence is recorded for the Maven group com.google.android.libraries.identity.googleid in MAVEN_FAMILIES (scripts/generate-licenses.mjs). The artifact's own POM and licence file are not read by this generator.",
+    "text": "No licence is recorded for the Maven group com.google.android.libraries.identity.googleid in MAVEN_FAMILIES (scripts/generate-licenses.ts). The artifact's own POM and licence file are not read by this generator.",
     "flags": [
       "unknown-licence",
       "licence-text-missing-from-package"
@@ -494,9 +494,9 @@
   },
   {
     "name": "elizaOS",
-    "version": "2.0.4 (3504bfbe6d264d1bf05bbc2224708131d41f3a6b)",
+    "version": "2.0.4 (3ac3c95119e2ca11f6d72714899faafd064b2c38)",
     "license": "MIT",
-    "source": "https://github.com/elizaOS/eliza/tree/3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
+    "source": "https://github.com/elizaOS/eliza/tree/3ac3c95119e2ca11f6d72714899faafd064b2c38",
     "text": "MIT License\n\nCopyright (c) 2026 Shaw Walters and elizaOS Contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
     "flags": []
   },
@@ -878,7 +878,7 @@
     "name": "On-device elizaOS agent runtime payload",
     "version": "pinned upstream runtime when present in the APK payload",
     "license": "license unverified",
-    "source": "scripts/stage-local-agent-runtime.mjs",
+    "source": "scripts/stage-local-agent-runtime.ts",
     "text": "This build does not include the on-device agent runtime (Bun and the bundled elizaOS agent), so no agent notices are listed.",
     "flags": [
       "unverified"

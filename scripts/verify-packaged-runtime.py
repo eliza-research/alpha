@@ -61,7 +61,7 @@ def file_hash(path):
 
 def verify_local_embedding_source(root):
     # This is the existing source/receipt/model/library gate, not a second qualification schema.
-    script = (root / 'scripts/stage-embedding-host.mjs').resolve(strict=True)
+    script = (root / 'scripts/stage-embedding-host.ts').resolve(strict=True)
     result = subprocess.run(
         [os.environ.get('ALPHA_NODE', 'node'), '--input-type=module', '-e',
          'const {verifyEmbeddingHost}=await import(process.argv[1]); verifyEmbeddingHost(process.argv[2],{requireProducerInputs:true});',
@@ -89,7 +89,7 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
         pin = json.loads((ROOT / 'upstream.lock.json').read_text())['commit']
         if stamp.get('base') != pin or stamp.get('patches') != []:
             raise ValueError('Staged runtime does not match patchless pin')
-        for field, source in [('lockSha256', 'upstream.lock.json'), ('preparerSha256', 'scripts/prepare-local-agent.mjs'), ('guardSha256', 'scripts/local-agent-source.mjs')]:
+        for field, source in [('lockSha256', 'upstream.lock.json'), ('preparerSha256', 'scripts/prepare-local-agent.ts'), ('guardSha256', 'scripts/local-agent-source.ts')]:
             if stamp.get(field) != file_hash(ROOT / source):
                 raise ValueError('Staged source manifest mismatch')
         checks = {}
@@ -193,7 +193,7 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
         # Explicit build adapters are separate from the unmodified source stamp.
         # If this build declares one, bind its receipt and producer input hashes too.
         mobile_receipt_file = staged / 'alpha-mobile-build.json'
-        mobile_policy_file = ROOT / 'scripts/upstream-mobile-build.mjs'
+        mobile_policy_file = ROOT / 'scripts/upstream-mobile-build.ts'
         if mobile_policy_file.exists() or mobile_receipt_file.exists() or 'assets/agent/alpha-mobile-build.json' in names:
             check('assets/agent/alpha-mobile-build.json', mobile_receipt_file)
             mobile_receipt = json.loads(archive.read('assets/agent/alpha-mobile-build.json'))
@@ -216,11 +216,11 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                     transforms[0].get('sourceSha256') != mobile_policy['package']['files']['dist-node/index.js'] or
                     not re.fullmatch('[a-f0-9]{64}', str(transforms[0].get('bridgeSha256', '')))):
                 raise ValueError('Packaged mobile UUID transform differs')
-            expected_adapters = ['scripts/build-mobile-agent.mjs', 'scripts/mobile-uuid-adapter.mjs', 'scripts/mobile-bundle-smoke.mjs',
-                                 'scripts/build-policy-source.mjs']
+            expected_adapters = ['scripts/build-mobile-agent.ts', 'scripts/mobile-uuid-adapter.ts', 'scripts/mobile-bundle-smoke.ts',
+                                 'scripts/build-policy-source.ts']
             if mobile_receipt.get('adapterFiles') != {name: file_hash(ROOT / name) for name in expected_adapters}:
                 raise ValueError('Packaged mobile producer adapter changed')
-            core_catalog_name = 'scripts/upstream-core-sources.mjs'
+            core_catalog_name = 'scripts/upstream-core-sources.ts'
             core_catalog_file = ROOT / core_catalog_name
             core_catalog = read_build_policy_source(core_catalog_file)
             core_digests = core_catalog.get('files')
@@ -238,8 +238,8 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                 core_files[target] = {'beforeSha256': expected_hash, 'afterSha256': expected_hash}
                 core_transforms.append({'path': target, 'sourceSha256': expected_hash,
                                         'outputSha256': expected_hash})
-            core_inputs = ['scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs',
-                           'scripts/combined-agent-source.mjs', 'scripts/build-policy-source.mjs', core_catalog_name]
+            core_inputs = ['scripts/core-state-patch.ts', 'scripts/core-state-preload.ts',
+                           'scripts/combined-agent-source.ts', 'scripts/build-policy-source.ts', core_catalog_name]
             expected_core = {'version': 2, 'baseCommit': pin,
                              'manifestSha256': file_hash(core_catalog_file),
                              'inputHashes': {name: file_hash(ROOT / name) for name in core_inputs},
@@ -253,7 +253,7 @@ def verify(apk, release=False, runtime_profile="native", local_embeddings=False)
                 not isinstance(bundle_dependencies.get('packages'), list) or not bundle_dependencies['packages']):
             raise ValueError('Packaged agent dependency inventory does not match bundle')
         declarations = subprocess.check_output(
-            [os.environ.get('ALPHA_NODE', 'node'), ROOT / 'scripts/native-view-policy.mjs'], timeout=30)
+            [os.environ.get('ALPHA_NODE', 'node'), ROOT / 'scripts/native-view-policy.ts'], timeout=30)
         check('assets/agent/native-view-declarations.json', staged / 'native-view-declarations.json',
               hashlib.sha256(declarations).hexdigest())
         worker_manifest = json.loads((staged / 'workflow-worker/manifest.json').read_text())

@@ -26,6 +26,8 @@ npm run dev
 
 `npm run verify` runs deployment-output checks, source preparation, executable
 Quint models, TypeScript, host tests, the production web build and its bundle audit.
+Host scripts use native TypeScript; see [repository tooling](docs/scripts-tooling.md)
+for the script checks and the Python/shell consolidation review.
 Host contract tests need a JDK and the `sqlite3` command-line tool on `PATH`
 for native Calendar queries. Archive builds check SQLite before verification.
 Tests that load the real SDK require the pinned Bun and a prepared SDK; set
@@ -74,7 +76,7 @@ rename does not migrate its private data. Native qualification remains pending.
 
 The default native runtime uses libelizainference for local speech and embeddings.
 Stage on-device voice inputs with
-`node scripts/android-stage-voice-models.mjs --from <directory>`.
+`node scripts/android-stage-voice-models.ts --from <directory>`.
 The resident source and workflow worker are prepared from the locked upstream
 revision. Build inputs must agree with the staged runtime and native libraries.
 
@@ -98,7 +100,7 @@ npm run android:build -- --test-mocks
 ```
 
 Test-mocks APKs go to `artifacts/test-mocks/`. Production Android builds remove
-mock flags from child environments. `scripts/audit-production-bundle.mjs` checks
+mock flags from child environments. `scripts/audit-production-bundle.ts` checks
 the web output and APK assets for developer code, fixtures and source maps.
 
 Release signing uses `ELIZAOS_KEYSTORE_PATH`, `ELIZAOS_KEYSTORE_PASSWORD`,
@@ -125,7 +127,7 @@ vendor add-on under `artifacts/aosp/`. APK builds, emulator HOME-role behavior,
 full AOSP boot, real integrations, physical-device testing and user acceptance
 are independent results.
 
-`scripts/deliver-app-update.mjs` publishes an admitted signed launcher APK and
+`scripts/deliver-app-update.ts` publishes an admitted signed launcher APK and
 checks anonymous readback. Merging source does not publish an application update.
 Android may require confirmation for installation.
 
@@ -133,7 +135,7 @@ Android may require confirmation for installation.
 
 Build output belongs in ignored `web-dist/`, `artifacts/`, `test-results/` and
 `.eliza/` directories. Android host and Capacitor sync output are ignored too.
-Cloud deployment source is `scripts/cloud-deployment-policy.mjs`; regenerate its
-renderer and Android bindings with `node scripts/cloud-deployment.mjs`.
-`node scripts/cloud-deployment.mjs --pages-registration` prints the public Pages
+Cloud deployment source is `scripts/cloud-deployment-policy.ts`; regenerate its
+renderer and Android bindings with `node scripts/cloud-deployment.ts`.
+`node scripts/cloud-deployment.ts --pages-registration` prints the public Pages
 callback registration for an operator without creating a `config/` directory.

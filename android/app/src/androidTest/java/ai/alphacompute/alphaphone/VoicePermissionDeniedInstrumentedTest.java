@@ -17,7 +17,7 @@ import static org.junit.Assert.*;
  *
  * Revoking a runtime permission kills the target process, so the revoke step runs before
  * this instrumentation starts. The runner owns it, in a temporary emulator user it removes:
- *   node scripts/test-native-permissions.mjs voice APP.apk TEST.apk NEW_OUTPUT
+ *   node scripts/test-native-permissions.ts voice APP.apk TEST.apk NEW_OUTPUT
  * (pm revoke RECORD_AUDIO, then this method with -e voicePermissionDenied 1). Revoking while a
  * recording is running and granting again is VoicePermissionRevokeInstrumentedTest (voice-revoke).
  * The system permission prompt, if Android shows one, is dismissed with Back (a denial).

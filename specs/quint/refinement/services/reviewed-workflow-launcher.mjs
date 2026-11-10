@@ -5,11 +5,11 @@ import {tmpdir} from 'node:os';
 import {isAbsolute, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
-import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.ts';
 
 const root = resolve(import.meta.dirname, '../../../..');
 const probe = join(import.meta.dirname, 'reviewed-workflow-launcher-probe.mjs');
-const manifest = 'scripts/upstream-core-sources.mjs';
+const manifest = 'scripts/upstream-core-sources.ts';
 const cases = [
   'relative-default', 'missing-deps', 'invalid-port', 'input-mode', 'unreviewed-profile', 'missing-entry',
   'routing', 'embedding-path', 'default-source', 'existing-profile', 'spawn-error', 'signal-int', 'signal-term',
@@ -19,10 +19,10 @@ const cases = [
 function sourceInputs(extraSources) {
   const {files} = parseBuildPolicy(readFileSync(join(root, manifest)));
   return [
-    'scripts/launcher-child.mjs', 'scripts/start-reviewed-workflow-agent.mjs', 'scripts/agent-embeddings.mjs', 'scripts/agent-identity.mjs',
-    'scripts/agent-model.mjs', 'apps/app/src/product/alpha-product-registration.ts', 'scripts/local-agent-source.mjs',
-    'scripts/copy-file-clone.mjs', 'scripts/core-state-preload.mjs', 'scripts/core-state-patch.mjs', 'scripts/build-policy-source.mjs',
-    'scripts/combined-agent-source.mjs', manifest, 'upstream.lock.json',
+    'scripts/launcher-child.ts', 'scripts/start-reviewed-workflow-agent.ts', 'scripts/agent-embeddings.ts', 'scripts/agent-identity.ts',
+    'scripts/agent-model.ts', 'apps/app/src/product/alpha-product-registration.ts', 'scripts/local-agent-source.ts',
+    'scripts/copy-file-clone.ts', 'scripts/core-state-preload.ts', 'scripts/core-state-patch.ts', 'scripts/build-policy-source.ts',
+    'scripts/combined-agent-source.ts', manifest, 'upstream.lock.json',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs',
     'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',

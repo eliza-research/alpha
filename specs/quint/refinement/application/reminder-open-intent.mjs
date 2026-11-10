@@ -10,7 +10,7 @@ const observations = ({reads, ...state}) => ({'s.reads': qmap(reads),
 
 export async function checkReminderOpenIntent(extraSources = []) {
   const sources = [...new Set([driver, ...reminderOpenIntentSources, ...extraSources,
-    fileURLToPath(new URL('./support.mjs', import.meta.url)), 'upstream.lock.json', 'scripts/prepare-client-features.mjs'])];
+    fileURLToPath(new URL('./support.mjs', import.meta.url)), 'upstream.lock.json', 'scripts/prepare-client-features.ts'])];
   const driverHashes = captureInputs(sources);
   const traces = [];
   async function scenario(name, run, origin = 'home') {

@@ -8,7 +8,7 @@ import path from 'node:path';
 const store = new Map();
 globalThis.localStorage = {getItem: k => store.has(k) ? store.get(k) : null, setItem: (k, v) => store.set(k, String(v)), removeItem: k => store.delete(k)};
 const timing = await import('../apps/app/src/runtime/voice-timing.ts');
-const {aggregate, percentile} = await import('../scripts/aggregate-voice-latency.mjs');
+const {aggregate, percentile} = await import('../scripts/aggregate-voice-latency.ts');
 let now = 0;
 timing.setVoiceTimingClock(() => now);
 
@@ -77,14 +77,14 @@ test('legacy renderer samples remain diagnostic and cannot qualify native audio 
   try {
     const file = path.join(dir, 'export.json');
     fs.writeFileSync(file, JSON.stringify({...exported, records: exported.records.slice(0, 10)}));
-    assert.throws(() => execFileSync(process.execPath, ['scripts/aggregate-voice-latency.mjs', file], {stdio: 'pipe'}), error => error.status === 2);
+    assert.throws(() => execFileSync(process.execPath, ['scripts/aggregate-voice-latency.ts', file], {stdio: 'pipe'}), error => error.status === 2);
     fs.writeFileSync(file, JSON.stringify(exported));
-    assert.throws(() => execFileSync(process.execPath, ['scripts/aggregate-voice-latency.mjs', file], {stdio: 'pipe'}), error => error.status === 2 && JSON.parse(error.stdout).legacyDiagnosticsSufficient === true);
+    assert.throws(() => execFileSync(process.execPath, ['scripts/aggregate-voice-latency.ts', file], {stdio: 'pipe'}), error => error.status === 2 && JSON.parse(error.stdout).legacyDiagnosticsSufficient === true);
     // The required counts can be raised but never lowered below 20 warm and 5 cold.
-    assert.throws(() => execFileSync(process.execPath, ['scripts/aggregate-voice-latency.mjs', file, '--warm', '1'], {stdio: 'pipe'}), error => error.status === 1);
-    assert.throws(() => execFileSync(process.execPath, ['scripts/aggregate-voice-latency.mjs', file, '--cold', '30'], {stdio: 'pipe'}), error => error.status === 2);
+    assert.throws(() => execFileSync(process.execPath, ['scripts/aggregate-voice-latency.ts', file, '--warm', '1'], {stdio: 'pipe'}), error => error.status === 1);
+    assert.throws(() => execFileSync(process.execPath, ['scripts/aggregate-voice-latency.ts', file, '--cold', '30'], {stdio: 'pipe'}), error => error.status === 2);
     assert.equal(aggregate([exported], {warm: 1, cold: 1}).cohorts.warm.required, 20);
     fs.writeFileSync(file, '{"format":"other"}');
-    assert.throws(() => execFileSync(process.execPath, ['scripts/aggregate-voice-latency.mjs', file], {stdio: 'pipe'}), error => error.status === 1);
+    assert.throws(() => execFileSync(process.execPath, ['scripts/aggregate-voice-latency.ts', file], {stdio: 'pipe'}), error => error.status === 1);
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });

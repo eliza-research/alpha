@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {agentAsrEnvironment} from '../scripts/agent-asr.mjs';
-import {agentTtsEnvironment} from '../scripts/agent-tts.mjs';
+import {agentAsrEnvironment} from '../scripts/agent-asr.ts';
+import {agentTtsEnvironment} from '../scripts/agent-tts.ts';
 
 const profiles = {
   ASR: {

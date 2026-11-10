@@ -8,9 +8,9 @@ import android.content.Context;
  *
  * Phone, Contacts and SMS exist only there. The decision is the shared
  * {@link ImageCapability#admitted(Context)}: a release launcher build without the test-mocks switch
- * (scripts/stage-aosp.mjs refuses one), installed from a system partition (FLAG_SYSTEM; a sideloaded
+ * (scripts/stage-aosp.ts refuses one), installed from a system partition (FLAG_SYSTEM; a sideloaded
  * or Play-style install never has it), with the Alpha product overlay's provisioning resource and the
- * image system feature {@code <package>.aosp_image} that scripts/stage-aosp.mjs writes into the image
+ * image system feature {@code <package>.aosp_image} that scripts/stage-aosp.ts writes into the image
  * product. MainActivity registers {@link AlphaTelephonyPlugin} only when this holds, and every
  * telephony method checks it again. Nothing the renderer, a URL, saved state or an agent sends can
  * turn it on.

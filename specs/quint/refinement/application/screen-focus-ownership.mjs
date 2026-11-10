@@ -150,7 +150,7 @@ function fixture(name, code) {
 
 export async function checkScreenFocusOwnership() {
   const sources = [fileURLToPath(import.meta.url), host, 'vendor/eliza/' + shared, effective, projection,
-    'apps/app/src/main.tsx', 'upstream.lock.json', 'scripts/prepare-client-features.mjs'];
+    'apps/app/src/main.tsx', 'upstream.lock.json', 'scripts/prepare-client-features.ts'];
   captureSources([...sources, modelPath]);
   const stamp = JSON.parse(read(projection));
   const prepared = read(effective);

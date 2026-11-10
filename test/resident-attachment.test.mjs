@@ -19,7 +19,7 @@ test('an admitted running resident is attached to; any change in runtime, enroll
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });
 test('renderer attaches without rebinding the provider and keeps one identity across assistant invocations',()=>{
- assert.match(execFileSync(process.execPath,['--import','tsx','scripts/test-resident-reuse.mjs'],{cwd:root,timeout:120000,encoding:'utf8'}),/PASS resident reuse/);
+ assert.match(execFileSync(process.execPath,['--import','tsx','scripts/test-resident-reuse.ts'],{cwd:root,timeout:120000,encoding:'utf8'}),/PASS resident reuse/);
 });
 test('the plugin start path attaches before it would retire shared work, and attach never pairs',()=>{
  const source=readFileSync(join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java'),'utf8');

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
-import {coreStateBuildPlugin} from '../scripts/core-state-patch.mjs';
+import {coreStateBuildPlugin} from '../scripts/core-state-patch.ts';
 
 async function loadTaskService() {
   const core = coreStateBuildPlugin(process.cwd(), process.cwd()+'/vendor/eliza');

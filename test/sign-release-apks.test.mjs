@@ -9,7 +9,7 @@ import { createHash, X509Certificate } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { approvedSigningRotation, KEYSTORE_PASSWORD_ENV, PIN_ENV, PKCS11_JVM_OPTION, keyFileProblems, main, signArguments, toolMessage } from "../scripts/sign-release-apks.mjs";
+import { approvedSigningRotation, KEYSTORE_PASSWORD_ENV, PIN_ENV, PKCS11_JVM_OPTION, keyFileProblems, main, signArguments, toolMessage } from "../scripts/sign-release-apks.ts";
 
 const RELEASE = "e5".repeat(32);
 
@@ -71,8 +71,8 @@ test("key files sign both releases, replace the unsigned files only after the si
   const real = fs.realpathSync(dir);
   assert.deepEqual(calls()[0].argv, ["sign", "--key", path.join(real, "alphaphone_app.pk8"), "--cert", path.join(real, "alphaphone_app.x509.pem"),
     "--v4-signing-enabled", "false", "--out", path.join(root, "artifacts/standalone-release.apk.partial"), path.join(root, "artifacts/standalone-release-unsigned.apk")]);
-  assert.deepEqual(result.ran.map(args => args[0]), ["scripts/verify-apks.mjs", "scripts/generate-sbom.mjs"]);
-  assert.deepEqual(result.ran[0], ["scripts/verify-apks.mjs"]);
+  assert.deepEqual(result.ran.map(args => args[0]), ["scripts/verify-apks.ts", "scripts/generate-sbom.ts"]);
+  assert.deepEqual(result.ran[0], ["scripts/verify-apks.ts"]);
   assert.ok(result.ran[1].includes("--apks"));
 });
 
@@ -82,7 +82,7 @@ test("re-verification keeps the recorded runtime profile, and a test-mocks build
   fs.writeFileSync(path.join(cloud, "artifacts/build-config.json"), JSON.stringify({ testMocks: false, runtimeProfile: "cloud" }));
   const signed = await sign(cloud, ["--keys-dir", keys(t), "--apksigner", tool]);
   assert.equal(signed.code, 0, signed.err);
-  assert.deepEqual(signed.ran[0], ["scripts/verify-apks.mjs", "--runtime-profile=cloud"]);
+  assert.deepEqual(signed.ran[0], ["scripts/verify-apks.ts", "--runtime-profile=cloud"]);
   const mocks = product(t);
   fs.writeFileSync(path.join(mocks, "artifacts/build-config.json"), JSON.stringify({ testMocks: true, runtimeProfile: "native" }));
   const refused = await sign(mocks, ["--keys-dir", keys(t), "--apksigner", tool]);
@@ -211,7 +211,7 @@ test("refusals: no enrolled signer, already signed releases, mixed modes, dry ru
 
 test("a real apksigner signs an APK with ceremony-layout key files, and the result verifies against the recorded certificate", async t => {
   let toolchain;
-  try { toolchain = await import("../scripts/toolchain.mjs"); toolchain.androidEnv(); } catch { t.skip("Android SDK and JDK 21 are not installed here"); return; }
+  try { toolchain = await import("../scripts/toolchain.ts"); toolchain.androidEnv(); } catch { t.skip("Android SDK and JDK 21 are not installed here"); return; }
   const apksigner = toolchain.tool("apksigner"), aapt2 = path.join(path.dirname(apksigner), "aapt2");
   const androidJar = path.join(toolchain.androidEnv().ANDROID_HOME, "platforms/android-36/android.jar");
   if (![apksigner, aapt2, androidJar].every(file => fs.existsSync(file))) { t.skip("build-tools 36.0.0 or platform android-36 is missing"); return; }
@@ -230,7 +230,7 @@ test("a real apksigner signs an APK with ceremony-layout key files, and the resu
   const code = await main(["--keys-dir", dir, "--apksigner", apksigner, "--apk", unsigned, "--out", path.join(work, "app-release.apk")],
     { root, env: process.env, log: line => out.push(line), error: line => err.push(line) });
   assert.equal(code, 0, err.join("\n"));
-  const { signerDigest } = await import("../scripts/apk.mjs");
+  const { signerDigest } = await import("../scripts/apk.ts");
   assert.equal(signerDigest(path.join(work, "app-release.apk")), certificate);
   assert.equal(fs.existsSync(path.join(work, "app-release.apk.idsig")), false, "no v4 side file is written");
   // The same key against a different recorded signer is refused and leaves nothing behind.
@@ -241,7 +241,7 @@ test("a real apksigner signs an APK with ceremony-layout key files, and the resu
 
 test("the real apksigner launcher accepts the PKCS#11 JVM option, and with a PKCS#11 module present SunPKCS11 loads", async t => {
   let toolchain;
-  try { toolchain = await import("../scripts/toolchain.mjs"); toolchain.androidEnv(); } catch { t.skip("Android SDK and JDK 21 are not installed here"); return; }
+  try { toolchain = await import("../scripts/toolchain.ts"); toolchain.androidEnv(); } catch { t.skip("Android SDK and JDK 21 are not installed here"); return; }
   const apksigner = toolchain.tool("apksigner"), aapt2 = path.join(path.dirname(apksigner), "aapt2");
   const androidJar = path.join(toolchain.androidEnv().ANDROID_HOME, "platforms/android-36/android.jar");
   if (![apksigner, aapt2, androidJar].every(file => fs.existsSync(file))) { t.skip("build-tools 36.0.0 or platform android-36 is missing"); return; }

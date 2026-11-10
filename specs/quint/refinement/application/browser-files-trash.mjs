@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
-import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
 import {captureInputs, checkTraces, qmap, qset} from '../check-traces.mjs';
 
 const root = resolve(import.meta.dirname, '../../../..');
@@ -342,7 +342,7 @@ export async function checkBrowserFilesTrash(extraSources = []) {
   checkClientFeatures();
   const sources = [generated+source, generated+model, generated+librarySource, generated+'.source.json',
     'vendor/eliza/'+source, 'vendor/eliza/'+model, 'vendor/eliza/'+librarySource,
-    'apps/app/src/browser/files.ts', 'upstream.lock.json', 'scripts/prepare-client-features.mjs',
+    'apps/app/src/browser/files.ts', 'upstream.lock.json', 'scripts/prepare-client-features.ts',
     fileURLToPath(import.meta.url), ...extraSources];
   const driverHashes = captureInputs(sources);
   const {BrowserStorageVolume} = await import(pathToFileURL(resolve(root, generated+source)).href);

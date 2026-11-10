@@ -1,5 +1,5 @@
 // Source-level product identity and storage namespace (AP-01). This reads committed source only;
-// built-APK identity is checked by scripts/apk.mjs and is separate evidence.
+// built-APK identity is checked by scripts/apk.ts and is separate evidence.
 import {ALPHA_PRODUCT_REGISTRATION as record} from '../apps/app/src/product/alpha-product-registration.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +9,7 @@ import path from 'node:path';
 import {tsImport} from 'tsx/esm/api';
 import ts from 'typescript-ast';
 
-import {hostIdentity, readHostDescriptor} from '../scripts/android-host.mjs';
+import {hostIdentity, readHostDescriptor} from '../scripts/android-host.ts';
 
 const identity = JSON.parse(fs.readFileSync('app.config.json', 'utf8'));
 // The generated host's app script comes from the pinned upstream template.
@@ -71,7 +71,7 @@ test('app.config.json carries the Alpha Phone identity', () => {
 });
 
 test('the Android build derives namespace, applicationId and app_name from app.config.json', () => {
-  // scripts/android-host.mjs hands app.config.json to the generator; the descriptor carries no identity.
+  // scripts/android-host.ts hands app.config.json to the generator; the descriptor carries no identity.
   assert.deepEqual(hostIdentity('.'), {appId: identity.appId, appName: identity.appName, version: identity.version, versionCode: identity.versionCode});
   const {profile} = readHostDescriptor('.');
   assert.doesNotMatch(JSON.stringify(profile), /applicationId|appName|"identity"/);

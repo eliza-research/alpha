@@ -6,8 +6,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { main, releaseToRecord } from "../scripts/record-release.mjs";
-import { releaseAdmission } from "../scripts/build-android.mjs";
+import { main, releaseToRecord } from "../scripts/record-release.ts";
+import { releaseAdmission } from "../scripts/build-android.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const SIGNER = "a".repeat(64);

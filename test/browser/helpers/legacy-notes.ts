@@ -4,7 +4,7 @@ import {expect,test,type Page} from '@playwright/test';
 export async function openLegacyNotes(page:Page,records:Record<string,unknown>[]=[]){
  if(test.info().project.name==='production')await seedRetainedNotes(page,records);
  else await page.evaluate(async records=>{
-  const m=await import('/src/runtime/browser-notes-document.ts');
+  const m=await import('/src/runtime/browser-notes-document.ts' as string);
   const store=await m.openBrowserNotes();
   if(records.length)await store.replace(records);
  },records);
@@ -34,7 +34,7 @@ export async function selectLegacyNotesSource(page:Page){
 export async function openLegacyAttachment(page:Page){
  if(test.info().project.name==='production')await seedRetainedNotes(page,[{id:'retained-attachment',kind:'text',title:'Retained attachment',body:'Synthetic summary.',documentSource:{version:1,name:'fixture.txt',mimeType:'text/plain',sha256:'a'.repeat(64),size:1}}]);
  else await page.evaluate(async()=>{
-  const store=await(await import('/src/runtime/browser-notes-document.ts')).openBrowserNotes();
+  const store=await(await import('/src/runtime/browser-notes-document.ts' as string)).openBrowserNotes();
   await store.replace([{id:'retained-attachment',kind:'text',title:'Retained attachment',body:'Synthetic summary.',documentSource:{version:1,name:'fixture.txt',mimeType:'text/plain',sha256:'a'.repeat(64),size:1}}]);
  });
  await openLegacyNotes(page);

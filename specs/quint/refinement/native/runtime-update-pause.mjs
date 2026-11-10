@@ -6,7 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {app, javaTraceCampaign, root} from './java.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model = 'RuntimeUpdatePause';
 const driver = fileURLToPath(import.meta.url);
@@ -53,7 +53,7 @@ export async function checkRuntimeUpdatePause(extraSources = []) {
   const fixtureFiles = readdirSync(join(root, stubs), {recursive: true}).filter(path => path.endsWith('.java'))
     .map(path => join(stubs, path)).sort();
   const sources = [driver, join(here, 'RuntimeUpdatePauseTraces.java'), join(here, 'Trace.java'), join(here, 'java.mjs'),
-    'test/fixtures/jvm-tools.mjs', 'scripts/upstream-native-source.mjs', 'upstream.lock.json', plugin, updater, ...shared, ...fixtureFiles,
+    'test/fixtures/jvm-tools.mjs', 'scripts/upstream-native-source.ts', 'upstream.lock.json', plugin, updater, ...shared, ...fixtureFiles,
     ...(jsonJar ? [jsonJar] : []), ...extraSources];
   const driverHashes = captureInputs(sources);
   const relativeUpdater = updater.slice('vendor/eliza/'.length);

@@ -6,9 +6,9 @@ import {createHash,randomUUID} from 'node:crypto';
 import os from 'node:os';
 import {git as fixtureGit} from './fixtures/git-fixture.mjs';
 import {gzipSync} from 'node:zlib';
-import {verifyCloudResident} from '../scripts/runtime-profile.mjs';
-import {parseBuildArgs,buildEnv,gradleFlagArgs} from '../scripts/build-android.mjs';
-import {preparedRuntimeProblems,checkoutProblems} from '../scripts/android-build-preflight.mjs';
+import {verifyCloudResident} from '../scripts/runtime-profile.ts';
+import {parseBuildArgs,buildEnv,gradleFlagArgs} from '../scripts/build-android.ts';
+import {preparedRuntimeProblems,checkoutProblems} from '../scripts/android-build-preflight.ts';
 test('Cloud profile explicitly selects renderer and Gradle without mock switches',()=>{
  const options=parseBuildArgs(['--runtime-profile=cloud']);
  assert.equal(options.runtimeProfile,'cloud');

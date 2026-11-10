@@ -14,7 +14,7 @@ spec = importlib.util.spec_from_file_location('packaged_runtime', Path(__file__)
 verifier = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verifier)
 sha = lambda data: hashlib.sha256(data).hexdigest()
-NATIVE_VIEW_POLICY = verifier.ROOT / 'scripts/native-view-policy.mjs'
+NATIVE_VIEW_POLICY = verifier.ROOT / 'scripts/native-view-policy.ts'
 NATIVE_VIEW_DECLARATIONS = subprocess.check_output(
     [os.environ.get('ALPHA_NODE', 'node'), NATIVE_VIEW_POLICY], timeout=30)
 
@@ -29,8 +29,8 @@ class PackagedRuntimeTest(unittest.TestCase):
         self.addCleanup(setattr, verifier, 'ROOT', self.previous)
         self.pin = 'a' * 40
         sources = {'upstream.lock.json': json.dumps({'commit': self.pin}).encode(),
-                   'scripts/prepare-local-agent.mjs': b'prepare',
-                   'scripts/local-agent-source.mjs': b'guard'}
+                   'scripts/prepare-local-agent.ts': b'prepare',
+                   'scripts/local-agent-source.ts': b'guard'}
         for name, data in sources.items():
             self.write(name, data)
         stamp = {'base': self.pin, 'patches': []}
@@ -40,7 +40,7 @@ class PackagedRuntimeTest(unittest.TestCase):
         worker = b'worker payload'
         manifest = json.dumps({'version': 1, 'sourceStampSha256': sha(stamp_bytes), 'files': {'worker.js': sha(worker)}}).encode()
         index = f'{sha(worker)}\tworker.js\n{sha(manifest)}\tmanifest.json\n'.encode()
-        self.write('scripts/native-view-policy.mjs', NATIVE_VIEW_POLICY.read_bytes())
+        self.write('scripts/native-view-policy.ts', NATIVE_VIEW_POLICY.read_bytes())
         self.entries = {'assets/agent/native-view-declarations.json': NATIVE_VIEW_DECLARATIONS,
                         'assets/agent/alpha-source.json': stamp_bytes,
                         'assets/agent/agent-bundle.js': b'agent payload',
@@ -193,7 +193,7 @@ class PackagedRuntimeTest(unittest.TestCase):
                 verifier.verify(self.package(changed))
 
     def test_changed_source_guard_rejects_otherwise_identical_apk(self):
-        self.write('scripts/local-agent-source.mjs', b'new guard')
+        self.write('scripts/local-agent-source.ts', b'new guard')
         with self.assertRaisesRegex(ValueError, 'manifest mismatch'):
             verifier.verify(self.package())
 

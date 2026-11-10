@@ -5,7 +5,7 @@ def paradeeAbiArgs = selectedParadeeAbis.collectMany { ['--abi', it] }
 // Shared native speech API and build policy come from the exact reviewed pin.
 def preparedSpeech = new groovy.json.JsonSlurper().parseText(providers.exec {
  workingDir rootProject.projectDir.parentFile
- commandLine 'node', 'scripts/prepare-patched-native.mjs'
+ commandLine 'node', 'scripts/prepare-patched-native.ts'
 }.standardOutput.asText.get())
 def paradee = new File(preparedSpeech.root.toString(), 'plugins/plugin-local-inference/native/android')
 if (!paradee.isDirectory()) paradee = file('../../vendor/eliza/plugins/plugin-local-inference/native/android')
@@ -47,7 +47,7 @@ if (!paradee.isDirectory()) {
  def verifySpeechInputs = tasks.register('verifySpeechInputs', Exec) {
   onlyIf { !cloudProfile }
   workingDir rootProject.projectDir.parentFile
-  commandLine(['node', 'scripts/paradee-runtime.mjs'] + paradeeAbiArgs + ((unpackaged || cloudProfile) ? ['--allow-absent'] : []))
+  commandLine(['node', 'scripts/paradee-runtime.ts'] + paradeeAbiArgs + ((unpackaged || cloudProfile) ? ['--allow-absent'] : []))
  }
  tasks.named('preBuild').configure { dependsOn verifySpeechInputs }
 }

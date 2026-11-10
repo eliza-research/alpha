@@ -3,7 +3,7 @@ import type {VoiceStartupStage,VoiceStartupTiming} from './diagnostics-export';
  * Per-turn voice latency records, kept only on this device. A record holds a random turn
  * id, the speech route, whether the turn was cold, and millisecond offsets from the end of
  * recording. It never holds transcript or reply text, account, agent or conversation
- * identifiers. Export produces the JSON that `scripts/aggregate-voice-latency.mjs` reads.
+ * identifiers. Export produces the JSON that `scripts/aggregate-voice-latency.ts` reads.
  *
  * Marks: recording-end (offset 0), transcript-ready, send, first-token, final-reply,
  * first-audio. Each mark is recorded once (first wins) and must not precede the mark before

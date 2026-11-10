@@ -12,9 +12,9 @@ on:
     branches: [main]
     paths:
       - upstream.lock.json
-      - scripts/test-local-digest-restart.mjs
-      - scripts/prepare-local-agent.mjs
-      - scripts/local-agent-source.mjs
+      - scripts/test-local-digest-restart.ts
+      - scripts/prepare-local-agent.ts
+      - scripts/local-agent-source.ts
       - .github/workflows/digest-restart.yml
 permissions:
   contents: read

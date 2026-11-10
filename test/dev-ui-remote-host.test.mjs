@@ -21,7 +21,7 @@ registerHooks({resolve(name,context,next){
 }});`;
 const root=fileURLToPath(new URL('../',import.meta.url));
 function launch(extra={}){
- const result=spawnSync(process.execPath,['--import','data:text/javascript,'+encodeURIComponent(preload),'scripts/dev-ui-remote-host.mjs','--port=5494','--remote=http://127.0.0.1:5518','--environment=staging'],{
+ const result=spawnSync(process.execPath,['--import','data:text/javascript,'+encodeURIComponent(preload),'scripts/dev-ui-remote-host.ts','--port=5494','--remote=http://127.0.0.1:5518','--environment=staging'],{
   cwd:root,encoding:'utf8',timeout:10000,
   env:{...process.env,ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_ELIZA_RUNTIME_PROFILE:'native',ALPHA_CLOUD_REALTIME_VOICE:'',VITE_ALPHA_DEV_CLOUD_REALTIME_VOICE:'1',...extra},
  });

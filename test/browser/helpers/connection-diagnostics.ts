@@ -7,11 +7,11 @@ export async function openConnectionDiagnostics(page:Page){
  // The mounted connection component owns startup. Observe its settled snapshot instead of
  // returning that long-lived startup promise across the browser protocol while it is replaced.
  await expect.poll(()=>page.evaluate(async()=>{
-  const {connectionController}=await import('/src/runtime/connection-ui.tsx');
+  const {connectionController}=await import('/src/runtime/connection-ui.tsx' as string);
   return connectionController.getSnapshot().startupResolved;
  }),{timeout:15_000}).toBe(true);
  await page.evaluate(async()=>{
-  const {connectionController}=await import('/src/runtime/connection-ui.tsx');
+  const {connectionController}=await import('/src/runtime/connection-ui.tsx' as string);
   connectionController.open();
  });
 }

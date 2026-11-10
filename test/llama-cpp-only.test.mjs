@@ -8,8 +8,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {auditWebBundle, engineFindings} from '../scripts/audit-production-bundle.mjs';
-import {REMOVED_SPEECH_CLASSES, REMOVED_SPEECH_ENTRY} from '../scripts/apk.mjs';
+import {auditWebBundle, engineFindings} from '../scripts/audit-production-bundle.ts';
+import {REMOVED_SPEECH_CLASSES, REMOVED_SPEECH_ENTRY} from '../scripts/apk.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WORD = 'on' + 'nx';
@@ -33,7 +33,7 @@ test('package-lock.json resolves no banned runtime package, directly or transiti
 
 // The web build's sources, build configuration and tooling: none may name the engine.
 const WEB_OWNED = [/^apps\/app\/src\//, /^config\//, /^vite\.config\.ts$/, /^playwright\.config\.ts$/, /^package\.json$/, /^\.github\/workflows\/browser\.yml$/,
-  /^scripts\/(prepare-client-features|generate-licenses|generate-sbom|local-agent-dev-bridge\.ts|agent-asr|agent-tts|start-combined-agent|combined-agent-proxy|fingerprint-voice-assets|dev-speech-settings)/,
+  /^scripts\/(prepare-client-features|generate-licenses|generate-sbom|local-agent-dev-bridge\.ts|agent-asr|agent-tts|start-combined-agent|fingerprint-voice-assets|dev-speech-settings)/,
   /^licenses\//, /^apps\/app\/public\/licenses\//];
 test('the web sources, build configuration, licence inputs and shipped notices never name the banned engine', () => {
   const offenders = tracked.filter(file => WEB_OWNED.some(pattern => pattern.test(file)) && fs.existsSync(path.join(root, file)))

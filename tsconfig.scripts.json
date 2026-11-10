@@ -1,0 +1,27 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2024",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node",
+      "vite/client",
+      "bun"
+    ],
+    "allowJs": true,
+    "checkJs": false,
+    "erasableSyntaxOnly": false
+  },
+  "include": [
+    "scripts/**/*.ts",
+    "scripts/**/*.tsx"
+  ],
+  "exclude": [
+    "scripts/fixtures",
+    "node_modules",
+    "vendor"
+  ]
+}

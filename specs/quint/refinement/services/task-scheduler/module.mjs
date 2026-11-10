@@ -5,7 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
 import {captureInputs} from '../../check-traces.mjs';
-import {CORE_STATE_INPUTS, coreStateBuildRecord, coreStatePatch, coreStateRequiredTargets} from '../../../../../scripts/core-state-patch.mjs';
+import {CORE_STATE_INPUTS, coreStateBuildRecord, coreStatePatch, coreStateRequiredTargets} from '../../../../../scripts/core-state-patch.ts';
 
 const scheduler = 'packages/core/src/services/task-scheduler.ts';
 const task = 'packages/core/src/services/task.ts';

@@ -1,6 +1,6 @@
 import {mkdirSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
-import {workerHash} from '../../scripts/workflow-worker-artifact.mjs';
+import {workerHash} from '../../scripts/workflow-worker-artifact.ts';
 
 export function writeWorkerFixture(directory, label = 'synthetic') {
   const files = {};

@@ -1,4 +1,4 @@
-// One invocation of scripts/start-reviewed-workflow-agent.mjs.
+// One invocation of scripts/start-reviewed-workflow-agent.ts.
 module ReviewedWorkflowLauncher {
   type Launcher = {
     source: str, deps: bool, profile: bool, token: bool, entryChecked: bool, entry: bool,

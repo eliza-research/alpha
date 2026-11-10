@@ -15,7 +15,7 @@ fs.mkdirSync(path.join(state,'local-inference'));
 fs.writeFileSync(path.join(state,'local-inference/routing.json'),JSON.stringify({version:1,preferences:{policy:{TEXT_SMALL:'local-only',TEXT_LARGE:'prefer-local'},preferredProvider:{TEXT_SMALL:'capacitor-llama',TEXT_EMBEDDING:'local-embedding-fixture'}}}));
 let host:{close():Promise<void>}|undefined,providerRequests=0;
 const originalFetch=globalThis.fetch;
-globalThis.fetch=(async()=>{providerRequests++;throw Error('Provider traffic forbidden in startup fixture');}) as typeof fetch;
+globalThis.fetch=(async(..._args:Parameters<typeof fetch>):Promise<Response>=>{providerRequests++;throw Error('Provider traffic forbidden in startup fixture');}) as unknown as typeof fetch;
 try{
  const {startNativeManagedGoogleHost}=await import(pathToFileURL(path.join(sdk,'packages/app/src/runtime/native-managed-google-host.ts')).href);
  host=await startNativeManagedGoogleHost();assert.ok(host);

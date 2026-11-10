@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {buildPreparedWorkflowWorker} from '../scripts/prepared-workflow-worker.mjs';
-import {workerHash,stageWorkerArtifact} from '../scripts/workflow-worker-artifact.mjs';
+import {buildPreparedWorkflowWorker} from '../scripts/prepared-workflow-worker.ts';
+import {workerHash,stageWorkerArtifact} from '../scripts/workflow-worker-artifact.ts';
 
 test('product delegates admitted identity and verifies generic producer output without compiler fallback',async()=>{
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-producer-'))),source=path.join(root,'artifacts/source'),output=path.join(root,'artifacts/worker');

@@ -66,14 +66,14 @@ const client = new CloudProtocol(
 			stored = {
 				eventId: "saved",
 				etag: '"1"',
-				event: input.body.event,
+				event: (input.body as {event:unknown}).event,
 				visibility: "private",
 				remindersDisabled: true,
 			};
 		}
 		if (input.method === "PATCH") {
-			assert.equal(input.body.expectedEtag, '"1"');
-			stored = { ...stored, etag: '"2"', event: input.body.event };
+			assert.equal((input.body as {expectedEtag:string}).expectedEtag, '"1"');
+			stored = { ...stored, etag: '"2"', event: (input.body as {event:unknown}).event };
 		}
 		if (input.method === "DELETE") {
 			assert.equal(url.searchParams.get("expectedEtag"), '"2"');
@@ -102,7 +102,7 @@ const client = new CloudProtocol(
 	{
 		read: async () => credential,
 		write: async () => {},
-		remove: async () => {},
+		clear: async () => {},
 	},
 	async () => {},
 );

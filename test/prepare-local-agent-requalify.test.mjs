@@ -19,7 +19,7 @@ test('canonical producer requalifies verified committed source and preserves pri
  assert.deepEqual(fs.readFileSync(f.backup),f.old);
  const current=JSON.parse(fs.readFileSync(f.stamp));assert.equal(current.base,f.after);
  assert.equal(current.lockSha256,sha(fs.readFileSync(path.join(f.product,'upstream.lock.json'))));
- assert.equal(current.preparerSha256,sha(fs.readFileSync(path.join(f.product,'scripts/prepare-local-agent.mjs'))));
+ assert.equal(current.preparerSha256,sha(fs.readFileSync(path.join(f.product,'scripts/prepare-local-agent.ts'))));
  assert.deepEqual(current.patches,[]);assert.equal(fs.existsSync(f.stamp+'.requalify-lock'),false);
 });
 

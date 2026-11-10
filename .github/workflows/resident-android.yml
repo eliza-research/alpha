@@ -267,7 +267,7 @@ jobs:
       # On-device speech is libelizainference with the shared paradee-voice library only; this archive
       # stages no voice outputs (local speech reports unavailable). The record is still checked.
       - name: Verify the on-device voice host record
-        run: node scripts/voice-host.mjs --verify --allow-absent
+        run: node scripts/voice-host.ts --verify --allow-absent
       - name: Prepare and qualify fresh resident source with normal hooks
         env:
           NODE_OPTIONS: --max-old-space-size=4096
@@ -295,7 +295,7 @@ jobs:
           sha256sum --check test-results/resident-ci/sdk-lock.sha256
           (cd "$source" && "$bun_executable" --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-after.txt
           cmp test-results/resident-ci/sdk-graph-before.txt test-results/resident-ci/sdk-graph-after.txt
-          node scripts/prepare-local-agent.mjs --source-only
+          node scripts/prepare-local-agent.ts --source-only
       - name: Qualify the prepared resident source
         env:
           NODE_OPTIONS: --max-old-space-size=4096
@@ -303,7 +303,7 @@ jobs:
         run: |
           python3 scripts/ci/resident-phase.py --name device-timing-flow --seconds 600 npm run agent:test-device-timing
           python3 scripts/ci/resident-phase.py --name worker-build --seconds 900 npm run agent:build-workflow-worker
-          python3 scripts/ci/resident-phase.py --name native-cloud-routing --seconds 300 node scripts/test-native-cloud-runtime-config.mjs
+          python3 scripts/ci/resident-phase.py --name native-cloud-routing --seconds 300 node scripts/test-native-cloud-runtime-config.ts
           python3 scripts/ci/resident-phase.py --name compiler-flow --seconds 600 npm run agent:test-workflow-compiler
           python3 scripts/ci/resident-phase.py --name worker-flow --seconds 600 npm run agent:test-workflow-worker
       - name: Acquire hash-pinned Android Bun with step-only authentication
@@ -328,37 +328,37 @@ jobs:
               if [ "$ALPHA_LOCAL_EMBEDDINGS" = 1 ]; then embedding_args+=(--local-embeddings); fi
               python3 scripts/ci/resident-phase.py --name runtime-stage --seconds 1800 npm run agent:stage-android -- --runtime-profile=cloud "${embedding_args[@]}"
               if [ "$ALPHA_LOCAL_EMBEDDINGS" = 1 ]; then
-                python3 scripts/ci/resident-phase.py --name embedding-stage --seconds 180 node scripts/stage-embedding-host.mjs --receipt test-results/resident-ci/embedding-inputs/qualification/QUALIFICATION.json --library-root "$GITHUB_WORKSPACE/test-results/resident-ci/embedding-inputs/component"
+                python3 scripts/ci/resident-phase.py --name embedding-stage --seconds 180 node scripts/stage-embedding-host.ts --receipt test-results/resident-ci/embedding-inputs/qualification/QUALIFICATION.json --library-root "$GITHUB_WORKSPACE/test-results/resident-ci/embedding-inputs/component"
               fi
               ;;
             *) echo "Unsupported runtime profile" >&2; exit 2 ;;
           esac
           python3 scripts/ci/resident-phase.py --name mobile-bundle --seconds 300 npm run agent:test-mobile-workflow-bundle
           # Fresh native artifacts and the runtime pin are inputs to shipped notices.
-          python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 node scripts/generate-licenses.mjs --packaged-runtime
+          python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 node scripts/generate-licenses.ts --packaged-runtime
           if [ "$ALPHA_RUNTIME_PROFILE" = cloud ]; then
             # Clean R8 release builds need the same reviewed heap as Android foundation.
             export GRADLE_OPTS="-Dorg.gradle.jvmargs=-Xmx4096m"
-            node scripts/prepare-local-agent.mjs --source-only
+            node scripts/prepare-local-agent.ts --source-only
             export ALPHA_CLOUD_COLLECTOR_SOURCE="$ALPHA_LOCAL_AGENT_SOURCE_DIR"
             export ALPHA_BUN="$(command -v bun)"
             test "$("$ALPHA_BUN" --version)" = "1.4.2"
             # Genuine Cloud resident, all four APKs, test mocks off. No provider calls.
-            python3 scripts/ci/resident-phase.py --name cloud-archive --seconds 3000 node scripts/build-archive.mjs --runtime-profile=cloud "${embedding_args[@]}" test-results/resident-ci-cloud
+            python3 scripts/ci/resident-phase.py --name cloud-archive --seconds 3000 node scripts/build-archive.ts --runtime-profile=cloud "${embedding_args[@]}" test-results/resident-ci-cloud
           else
             # Flag-off distribution: release verification requires the PACKAGED runtime.
-            python3 scripts/ci/resident-phase.py --name distribution-archive --seconds 3000 node scripts/build-archive.mjs test-results/resident-ci-distribution
+            python3 scripts/ci/resident-phase.py --name distribution-archive --seconds 3000 node scripts/build-archive.ts test-results/resident-ci-distribution
             # The native suites need the private peer fixture, a debug-only test hook
             # that exists only in the separate, never-distributable test-mocks build.
-            python3 scripts/ci/resident-phase.py --name archive --seconds 3000 node scripts/build-archive.mjs --test-mocks test-results/resident-ci-archive
+            python3 scripts/ci/resident-phase.py --name archive --seconds 3000 node scripts/build-archive.ts --test-mocks test-results/resident-ci-archive
           fi
       - name: Retain bounded Cloud producer evidence for local QA signing
         if: env.ALPHA_RUNTIME_PROFILE == 'cloud'
         run: |
           embedding_args=()
           if [ "$ALPHA_LOCAL_EMBEDDINGS" = 1 ]; then embedding_args+=(--local-embeddings); fi
-          node scripts/runtime-profile.mjs --verify-cloud "${embedding_args[@]}"
-          node scripts/prepare-local-agent.mjs --source-only
+          node scripts/runtime-profile.ts --verify-cloud "${embedding_args[@]}"
+          node scripts/prepare-local-agent.ts --source-only
           sha256sum --check test-results/resident-ci/sdk-lock.sha256
           (cd "$ALPHA_LOCAL_AGENT_SOURCE_DIR" && bun --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-final.txt
           cmp test-results/resident-ci/sdk-graph-before.txt test-results/resident-ci/sdk-graph-final.txt
@@ -510,7 +510,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.mjs
+            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.ts
             ANDROID_SERIAL=emulator-5554 ALPHA_RESIDENT_DISPOSABLE_CI=1 python3 scripts/ci/resident-phase.py --name native --seconds 5400 python3 scripts/ci/resident-native.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -597,7 +597,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.mjs
+            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.ts
             ANDROID_SERIAL=emulator-5554 ALPHA_RESIDENT_DISPOSABLE_CI=1 python3 scripts/ci/resident-phase.py --name pending-recovery-ui --seconds 2400 python3 scripts/ci/pending-recovery-ui.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

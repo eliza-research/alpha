@@ -48,4 +48,4 @@ jobs:
         with:
           node-version-file: .nvmrc
       - id: diff
-        run: node scripts/ci/affected.mjs
+        run: node scripts/ci/affected.ts

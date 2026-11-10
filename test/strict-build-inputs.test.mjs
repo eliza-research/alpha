@@ -6,8 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
-import {BUILD_TOOLCHAIN, QUALIFIED_HOST, Stop, compareWithQualified, describeDifference, run, stageReproduced, stagedLibraries} from '../scripts/build-embedding-host.mjs';
-import {formatReport, strictBuildInputs} from '../scripts/android-build-preflight.mjs';
+import {BUILD_TOOLCHAIN, QUALIFIED_HOST, Stop, compareWithQualified, describeDifference, run, stageReproduced, stagedLibraries} from '../scripts/build-embedding-host.ts';
+import {formatReport, strictBuildInputs} from '../scripts/android-build-preflight.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const sha = text => createHash('sha256').update(text).digest('hex');
@@ -105,17 +105,17 @@ test('once the reviewed bytes are reproducible the step rebuilds with the remap 
 });
 
 test('path remapping is opt-in, recorded in the receipt and leaves the default build unchanged', () => {
-  const source = fs.readFileSync(path.join(ROOT, 'scripts/prepare-embedding-host.mjs'), 'utf8');
+  const source = fs.readFileSync(path.join(ROOT, 'scripts/prepare-embedding-host.ts'), 'utf8');
   assert.match(source, /const remapEnv=remap\?embeddingBuildRemap\(root,/);
   assert.match(source, /:\{\};\nconst receipt=\{[^\n]*\.\.\.remapEnv\},buildPathRemapped:remap,/);
-  assert.match(source, /import \{embeddingBuildRemap\} from '\.\/embedding-build-remap\.mjs'/);
+  assert.match(source, /import \{embeddingBuildRemap\} from '\.\/embedding-build-remap\.ts'/);
   // An unknown option is still refused before anything is written.
   const output = path.join(os.tmpdir(), `alpha-embed-unknown-${process.pid}`);
-  const result = spawnSync(process.execPath, ['scripts/prepare-embedding-host.mjs', '--fork', ROOT, '--output', output, '--remap'], {cwd: ROOT, encoding: 'utf8'});
+  const result = spawnSync(process.execPath, ['scripts/prepare-embedding-host.ts', '--fork', ROOT, '--output', output, '--remap'], {cwd: ROOT, encoding: 'utf8'});
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Unknown option/);
   assert.equal(fs.existsSync(output), false);
-  const step = fs.readFileSync(path.join(ROOT, 'scripts/build-embedding-host.mjs'), 'utf8');
+  const step = fs.readFileSync(path.join(ROOT, 'scripts/build-embedding-host.ts'), 'utf8');
   assert.doesNotMatch(step, /qualifiedAt\s*[:=]/, 'the step never writes a qualification');
   assert.doesNotMatch(step, /writeFileSync\([^)]*QUALIFIED_HOST/, 'the step never rewrites the reviewed manifest');
 });
@@ -132,7 +132,7 @@ test('the input report separates what a script produces from what needs a person
   assert.ok(rows.every(item => item.state === 'missing' && item.action), 'an empty checkout has nothing ready and an action for every input');
   assert.match(row('pinned upstream checkout').action, /git submodule update --init vendor\/eliza/);
   assert.match(row('on-device voice outputs').detail, /are not admitted by .*Voice bundle file missing or changed: asr\.gguf/);
-  assert.match(row('on-device voice outputs').action, /^Needs a person to supply the recorded voice outputs and models: node scripts\/android-stage-voice-models\.mjs --from /);
+  assert.match(row('on-device voice outputs').action, /^Needs a person to supply the recorded voice outputs and models: node scripts\/android-stage-voice-models\.ts --from /);
   assert.equal(row('embedding host libraries').action, 'npm run agent:build-embedding-host');
   assert.match(row('release signer').action, /^Needs a person: Alpha Compute controls signing and Shaw owns release/);
   assert.match(row('release signer').detail, /says unset; not set in this environment: ELIZAOS_KEYSTORE_PATH, ELIZAOS_KEYSTORE_PASSWORD, ELIZAOS_KEY_ALIAS, ELIZAOS_KEY_PASSWORD/);
@@ -170,7 +170,7 @@ test('the input report separates what a script produces from what needs a person
 test('the real checkout reports its inputs without failing and without building', () => {
   // Signing values, if this machine has any, are not this test's input.
   const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^ELIZAOS_(KEYSTORE_PATH|KEYSTORE_PASSWORD|KEY_ALIAS|KEY_PASSWORD)$/.test(name)));
-  const result = spawnSync(process.execPath, ['scripts/android-build-preflight.mjs', '--report', '--json'], {cwd: ROOT, encoding: 'utf8', env});
+  const result = spawnSync(process.execPath, ['scripts/android-build-preflight.ts', '--report', '--json'], {cwd: ROOT, encoding: 'utf8', env});
   assert.equal(result.status, 0, result.stderr);
   const rows = JSON.parse(result.stdout);
   const row = name => rows.find(item => item.input === name);

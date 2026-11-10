@@ -5,7 +5,7 @@ import fs from 'node:fs';
 const read = file => fs.readFileSync(file, 'utf8');
 
 test('aggregate result fails a selected lane that did not succeed and passes skipped unselected lanes', async () => {
-  const { requiredResult } = await import('../scripts/ci/required-result.mjs');
+  const { requiredResult } = await import('../scripts/ci/required-result.ts');
   assert.equal(requiredResult(['changes=success', 'build=skipped:false']).ok, true);
   assert.equal(requiredResult(['changes=success', 'build=success:true']).ok, true);
   for (const result of ['failure', 'cancelled', 'skipped', ''])
@@ -18,10 +18,10 @@ test('aggregate result fails a selected lane that did not succeed and passes ski
 });
 
 test('production lane selects production-surface and every *.production.spec.ts in both places', async () => {
-  const { productionSpec, browserPlan } = await import('../scripts/ci/affected.mjs');
+  const { productionSpec, browserPlan } = await import('../scripts/ci/affected.ts');
   const config = read('playwright.config.ts');
   const literal = /const productionSpec=(\/.*\/);/.exec(config)?.[1];
-  assert.equal(literal, String(productionSpec), 'playwright.config.ts and scripts/ci/affected.mjs must agree');
+  assert.equal(literal, String(productionSpec), 'playwright.config.ts and scripts/ci/affected.ts must agree');
   for (const file of ['test/browser/production-surface.spec.ts', 'test/browser/notes.production.spec.ts', 'test/browser/a/b-c.production.spec.ts'])
     assert.ok(productionSpec.test(file), file);
   for (const file of ['test/browser/notes.spec.ts', 'test/browser/production.spec.ts', 'test/browser/notes.production.spec.ts.bak'])
@@ -36,7 +36,7 @@ test('production lane selects production-surface and every *.production.spec.ts 
 });
 
 test('the local-agent profile step runs every profile spec whole and the change gate selects each of them', async () => {
-  const { browserPlan } = await import('../scripts/ci/affected.mjs');
+  const { browserPlan } = await import('../scripts/ci/affected.ts');
   const files = ['test/browser/browser-agent-tts.spec.ts', 'test/browser/browser-host-disclosure.spec.ts', 'test/browser/host-reminder-recovery.spec.ts'];
   const step = /name: Exercise synthetic local-agent speech profile[^\n]*\n(?:.*\n)*?.*VITE_LOCAL_AGENT=1 .*npm run test:browser -- (.*)\n/.exec(read('.github/workflows/browser.yml'))?.[1];
   assert.ok(step, 'profile step');
@@ -65,12 +65,12 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   assert.match(manualVerify, /if: github\.event_name == 'workflow_dispatch'/);
   assert.match(manualVerify, /ALPHA_REQUIRE_PREPARED_SDK: '1'/);
   assert.match(manualVerify, /run: npm run verify/);
-  assert.match(android, /name: Prepare pinned SDK for manual verification[\s\S]*node scripts\/prepare-local-agent\.mjs/);
+  assert.match(android, /name: Prepare pinned SDK for manual verification[\s\S]*node scripts\/prepare-local-agent\.ts/);
   assert.match(android, /name: Prepare pinned native lifecycle sources\n\s+if: github\.event_name != 'workflow_dispatch'/);
 
   assert.match(browser, /name: Browser MVP result\n    needs: \[changes, verify, browser, production\]\n    if: always\(\)/);
   assert.match(browser, /name: Repository verification\n/);
-  assert.match(browser, /node scripts\/verify-upstream\.mjs/);
+  assert.match(browser, /node scripts\/verify-upstream\.ts/);
   const residentFull = read('.github/workflows/resident-android.yml');
   const carrierGroupSuffix = "${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}";
   assert.ok(residentFull.includes(carrierGroupSuffix));

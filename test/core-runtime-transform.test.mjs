@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import {loadAgentRuntime, loadCoreRuntime, loadTurnControllers} from '../specs/quint/refinement/services/core-runtime/module.mjs';
-import {TURN_STATE_TARGET} from '../scripts/core-state-patch.mjs';
+import {TURN_STATE_TARGET} from '../scripts/core-state-patch.ts';
 
 test('actual core loaders apply and bind the isolated TurnControllerRegistry', async () => {
   const inputs = [fileURLToPath(import.meta.url)];

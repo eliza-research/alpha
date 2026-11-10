@@ -76,7 +76,7 @@ public final class NotesSecureStorageInstrumentedTest {
 
  /**
   * The same legacy-layout migration across a real process restart (an upgrade reaches the new
-  * build in a new process). scripts/test-native-restart.mjs notes-secure-migration passes
+  * build in a new process). scripts/test-native-restart.ts notes-secure-migration passes
   * notesSecureMigrationPhase=prepare (fresh install: install the legacy localStorage layout and
   * empty the encrypted slot), force-stops the app, then verify (a new process migrates and the
   * exact bytes are read back from the encrypted slot), then cleanup (the baseline is restored).
@@ -84,7 +84,7 @@ public final class NotesSecureStorageInstrumentedTest {
   */
  @Test public void secureMigrationProcessRestartPhase()throws Exception{
   String phase=InstrumentationRegistry.getArguments().getString("notesSecureMigrationPhase");
-  org.junit.Assume.assumeTrue("Run by node scripts/test-native-restart.mjs notes-secure-migration","prepare".equals(phase)||"verify".equals(phase)||"cleanup".equals(phase));
+  org.junit.Assume.assumeTrue("Run by node scripts/test-native-restart.ts notes-secure-migration","prepare".equals(phase)||"verify".equals(phase)||"cleanup".equals(phase));
   File state=new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getFilesDir(),"notes-secure-migration-fixture.json");
   if("prepare".equals(phase)){
    assertFalse("A previous migration fixture was not cleaned up",state.exists());

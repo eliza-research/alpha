@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { dirtyPaths, parseQualifyArgs, readCiArchive, recordCandidate } from "../scripts/qualify-head.mjs";
+import { dirtyPaths, parseQualifyArgs, readCiArchive, recordCandidate } from "../scripts/qualify-head.ts";
 
 const git = (cwd, ...args) => {
   const out = spawnSync("git", args, { cwd, encoding: "utf8" });

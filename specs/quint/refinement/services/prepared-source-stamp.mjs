@@ -18,9 +18,9 @@ function fixture(temp) {
   const normalReadme = fs.readFileSync(readme);
   const currentStamp = Buffer.from(JSON.stringify({
     lockSha256: hashFile(f.lock),
-    preparerSha256: hashFile(join(f.product, 'scripts/prepare-local-agent.mjs')),
-    guardSha256: hashFile(join(f.product, 'scripts/local-agent-source.mjs')),
-    copySha256: hashFile(join(f.product, 'scripts/copy-file-clone.mjs')),
+    preparerSha256: hashFile(join(f.product, 'scripts/prepare-local-agent.ts')),
+    guardSha256: hashFile(join(f.product, 'scripts/local-agent-source.ts')),
+    copySha256: hashFile(join(f.product, 'scripts/copy-file-clone.ts')),
     base: f.after, patches: [],
   }, null, 2)+'\n');
   let result = 'none';

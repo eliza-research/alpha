@@ -5,9 +5,9 @@ import {execFileSync} from 'node:child_process';
 import {registerHooks} from 'node:module';
 import {pathToFileURL} from 'node:url';
 import {policySource, writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
-import {workerHash, verifyWorkerArtifact} from '../../../../scripts/workflow-worker-artifact.mjs';
-import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
-import {CORE_STATE_MANIFEST, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.mjs';
+import {workerHash, verifyWorkerArtifact} from '../../../../scripts/workflow-worker-artifact.ts';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.ts';
+import {CORE_STATE_MANIFEST, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.ts';
 import {controlName, digest, eventsName, fixtureModule, fixtureSource, productInput}
   from '../../../../test/fixtures/native-google-host-builder-port.mjs';
 
@@ -15,7 +15,7 @@ const repository = path.resolve(import.meta.dirname, '../../../..');
 const scratch = path.resolve(process.argv[2]);
 assert.equal(process.cwd(), scratch);
 assert.equal(process.env.TMPDIR, scratch);
-const artifactSource = pathToFileURL(path.join(repository, 'scripts/native-google-host-artifact.mjs')).href;
+const artifactSource = pathToFileURL(path.join(repository, 'scripts/native-google-host-artifact.ts')).href;
 let projection;
 globalThis.nativeGoogleFixtureProjection = options => projection(options);
 const hooks = registerHooks({resolve(specifier, context, next) {
@@ -34,10 +34,10 @@ const idle = {operation: 'none', result: 'none'};
 const noAttempt = {projection: false, version: false, compile: false, moduleWritten: false, metadata: false, tempClean: true,
   previousHost: 0, previousReceipt: {bundle: 0, source: 0, connector: false}};
 const productFiles = [
-  'scripts/build-native-google-host.ts', 'scripts/local-agent-source.mjs', 'scripts/native-google-host-artifact.mjs',
-  'scripts/prepare-client-features.mjs', 'package.json', 'tsconfig.json',
+  'scripts/build-native-google-host.ts', 'scripts/local-agent-source.ts', 'scripts/native-google-host-artifact.ts',
+  'scripts/prepare-client-features.ts', 'package.json', 'tsconfig.json',
   'vendor/eliza/tsconfig.json',
-  'scripts/upstream-native-source.mjs', 'vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts',
+  'scripts/upstream-native-source.ts', 'vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts',
 ];
 const workerFiles = ['node_modules/smthrs/package.json', 'node_modules/zod/package.json',
   'node_modules/effect/package.json', 'node_modules/@smthrs/engine/package.json', 'dependencies.json', 'lib/worker.js'];
@@ -79,7 +79,7 @@ function setup(number, simpleCore = false) {
   write(source, fixtureSource(1));
   write(path.join(root, 'linked-target.ts'), 'export const synthetic = true;');
   const transient = ['linked-input.ts', 'unavailable-input.ts'].map(name => path.join(root, name));
-  const fixedInput = path.join(root, 'scripts/prepare-client-features.mjs');
+  const fixedInput = path.join(root, 'scripts/prepare-client-features.ts');
   const fixedInputBytes = fs.readFileSync(fixedInput);
   const readPair = () => ({
     host: fs.existsSync(modulePath) ? {bytes: fs.readFileSync(modulePath), mode: fs.statSync(modulePath).mode} : null,

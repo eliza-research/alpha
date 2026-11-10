@@ -6,7 +6,7 @@ import {captureInputs,checkTraces} from '../check-traces.mjs';
 import {directory,javaTraceCampaign,root} from './java.mjs';
 import {actionRecoveryPlatform,recoveryBridge,recoveryProduct,recoveryShared,reminderStore} from './action-recovery-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model='NativeActionRecovery';
 const harness='ActionRecoveryTraces.java';
@@ -51,7 +51,7 @@ export async function checkNativeActionRecovery(extraSources=[]) {
   const fixture=actionRecoveryPlatform();
   try {
     const sources=[recoveryBridge,...compiled,'vendor/eliza/'+reminderStore,hostPath,nativeManifest,'upstream.lock.json',
-      'scripts/upstream-native-source.mjs','test/fixtures/jvm-tools.mjs',...(jsonJar?[jsonJar]:[]),
+      'scripts/upstream-native-source.ts','test/fixtures/jvm-tools.mjs',...(jsonJar?[jsonJar]:[]),
       ...[harness,'Trace.java','java.mjs','action-recovery-platform.mjs'].map(name=>join(directory,name)),
       fileURLToPath(import.meta.url),...fixture.paths,...extraSources];
     const driverHashes=captureInputs(sources);
