@@ -1,6 +1,7 @@
 /** Rendered UI/storage flow with a disclosed synthetic document boundary. */
 import assert from 'node:assert/strict';import {createRequire} from 'node:module';import path from 'node:path';
 import {preloadPageModules} from '../test/browser/helpers/page-modules.ts';
+import {selectLegacyNotes} from '../test/browser/helpers/legacy-notes.ts';
 const require=createRequire(path.join(process.env.ALPHA_BROWSER_MODULES,'__notes.cjs')),{chromium}=require('playwright'),{expect}=require('@playwright/test');
 const url=process.env.ALPHA_NOTES_TEST_URL||'http://127.0.0.1:5298';if(new URL(url).hostname!=='127.0.0.1')throw Error('Local Vite only');
 const browser=await chromium.launch({headless:true});try{
@@ -14,9 +15,8 @@ const browser=await chromium.launch({headless:true});try{
  const openOlder=async()=>{
   await preloadPageModules(page,['/src/runtime/browser-notes-document.ts']);
   await page.evaluate(async()=>{const m=await import('/src/runtime/browser-notes-document.ts');if(!await m.browserNotesPort.read())await m.openBrowserNotes();});
-  // Unconnected agent Notes offers the retained source as a direct "Previous notes" control
-  // below Alpha's Notes list (canonical-notes-ui.ts).
-  await page.getByRole('button',{name:'Notes',exact:true}).click();await page.getByRole('region',{name:'Notes',exact:true}).getByRole('button',{name:'Previous notes',exact:true}).click();await page.getByRole('heading',{name:'Previous notes',exact:true}).waitFor();
+  // Compatibility fixtures select only the retained, available source through its guarded selector.
+  await selectLegacyNotes(page);
  };
  await page.goto(url);await openOlder();
  const count=()=>page.evaluate(async ()=>(JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records).length);const initial=await count();

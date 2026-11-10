@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 const place={name:'Ferry Building',latitude:37.7955,longitude:-122.3937,provider:'eliza-cloud',providerPlaceId:'osm:n1',formattedAddress:'1 Ferry Building, San Francisco',categories:[]};
 const attribution='© OpenStreetMap contributors';
 // The exact wire shapes plugin-maps emits (`card.ts` and core `interaction-serialize.ts`).
@@ -8,8 +9,14 @@ const share='Share the location of Ferry Building?\n\n[CHOICE:maps-share id=maps
 async function setup(page:Page,theme:string){
  await page.route('https://**/*',r=>r.abort());
  await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));(window as any).mapsChat={sent:[]};if(navigator.mediaDevices)navigator.mediaDevices.getUserMedia=async()=>{throw Error('No microphone');};});
- await page.goto('/?connections=advanced&theme='+theme);await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();
+ await page.goto('/?mode=dev&theme='+theme);
+ await openConnectionDiagnostics(page);
+ await page.getByRole('button',{name:'Connect development profile',exact:true}).click();
+ await expect(page.getByRole('dialog',{name:'Development connections',exact:true})).toHaveCount(0);
+ await expect.poll(()=>page.evaluate(async()=>!!(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().session)).toBe(true);
+ await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();
  await page.evaluate(async()=>{const {Component}=await import('/src/prototype/model.js');const render=Component.prototype.renderVals;Component.prototype.renderVals=function(){(window as any).mapsChat.shell=this;return render.call(this);};});
+ await page.getByRole('button',{name:'Open conversation',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>!!(window as any).mapsChat.shell)).toBe(true);
  await page.evaluate(([route,share])=>new Promise<void>(resolve=>{const f=(window as any).mapsChat;f.shell.send=async(text:string)=>{f.sent.push(text);};f.shell.setState({chat:'full',msgs:[{id:'u1',from:'user',text:'Walk me to the Ferry Building'},{id:'a1',from:'agent',text:route},{id:'u2',from:'user',text:'Share it'},{id:'a2',from:'agent',text:share}]},resolve);}),[route,share]);
 }
