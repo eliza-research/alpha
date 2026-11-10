@@ -114,16 +114,7 @@ const device = registerPlugin<{
   checkForUpdate(): Promise<{ manifest?: string }>;
   updateState(): Promise<{pending?: boolean}>;
   installUpdate(input: Pick<AppUpdate, 'apkUrl' | 'sha256' | 'sizeBytes' | 'versionCode'> & {automatic?: true}): Promise<{status?: string}>;
-  setSystemBarAppearance(input:{dark:boolean}):Promise<void>;
 }>('AlphaDevice');
-/** Android draws its status and navigation icons from the system night mode; Alpha's own theme
- * can differ, so the drawn theme is sent on every change (dark icons on light, light on dark). */
-let systemBarTheme: string | undefined;
-function syncSystemBars(theme: unknown) {
-  if ((theme !== 'light' && theme !== 'dark') || theme === systemBarTheme || !Capacitor.isNativePlatform()) return;
-  systemBarTheme = theme;
-  void device.setSystemBarAppearance({ dark: theme === 'dark' }).catch(() => { if (systemBarTheme === theme) systemBarTheme = undefined; });
-}
 const notifications = registerPlugin<{status():Promise<Bag>;setAlertPreferences(input:{appEnabled?:boolean;channelId?:string;enabled?:boolean}):Promise<Bag>;openAppSettings():Promise<Bag>;openChannelSettings(input:{id:string}):Promise<{status:string}>;crossAppStatus():Promise<Bag>;notificationApps():Promise<{apps:Bag[]}>;setNotificationPolicy(input:Bag):Promise<Bag>;resumeCrossApp(input:{expectedRevision:string}):Promise<Bag>;openNotificationAccess():Promise<Bag>;notificationHistory():Promise<{items:Bag[]}>;clearNotificationHistory():Promise<void>}>('AlphaNotifications');
 const system = registerPlugin<{ getDeviceSettings(): Promise<Bag>; getStatus(): Promise<{ roles?: Bag[] }>; requestRole(input: { role: string }): Promise<{ role: string; held: boolean; resultCode: number }>; getBuildInfo(): Promise<{ launcher?: boolean; version?: string }> }>('ElizaSystem');
 type RoleRow = { role: string; held: boolean; available: boolean; holders: string[] };
@@ -505,7 +496,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     refreshPasswordManager();
   }
   p.componentDidMount = function () {
-    mount.call(this); owner = this; syncSystemBars(this.state?.theme||this.props?.theme);
+    mount.call(this); owner = this;
     this.mailImagePreferenceChanged=changed;
     this.settingsNavigation=(event:Event)=>{const page=(event as CustomEvent).detail?.page;if(typeof page!=='string'||!new Set(['display','sound','notifications','privacy','settings-account','settings-apps','settings-general','calendar','app-settings-workflows']).has(page))return;event.preventDefault();activeSettingsCategory=page==='privacy'?'settings-privacy':page==='settings-account'?'settings-account':['settings-apps','calendar','app-settings-workflows'].includes(page)?'settings-apps':'settings-general';this.openView('settings');this.vset('settings',{page});};
     window.addEventListener('alpha:settings-page',this.settingsNavigation);
@@ -547,8 +538,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     // Switching away from Settings (Home, another view) locks and forgets the password manager.
     if (typeof this.S === 'function' && this.S().view !== 'settings') { leavePasswordManager(); reviews.cancelAll(); }
     const theme = this.state?.theme;
-    // The shell draws its saved state theme, or the theme prop it started with.
-    syncSystemBars(theme||this.props?.theme);
     // The marker travels with React state, so queued external reads cannot echo an older theme.
     const external=this.state?.appearanceStorageRead;
     const fromStorage=external!==previousState?.appearanceStorageRead&&external?.theme===theme;

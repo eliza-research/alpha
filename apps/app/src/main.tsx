@@ -62,6 +62,7 @@ import { DailyApps } from './daily';
 import { installPrototypeVoiceAdapter } from './prototype/voice-adapter';
 import { installPrototypeBrowserAdapter } from './prototype/browser-adapter';
 import { installCalendarAdapter } from './prototype/calendar-adapter';
+import { installSystemBarAppearance, type SystemBars } from './prototype/system-bar-appearance';
 import { automaticUpdateIdle, hasAppearancePreview, installSettingsAdapter, readAppearanceChoice, resolveAppearance } from './prototype/settings-adapter';
 import { ConnectionChooser, connectionController, connectionChooserVisible, residentAlwaysPresent } from './runtime/connection-ui';
 import { protectedPowerLaunchState } from './runtime/power-launch-state';
@@ -173,6 +174,7 @@ installCalendarMonthFocus(Component, VIEWS);
 installChatOverlayMotion(Component);
 installReplyAnnouncer(Component);
 installSystemShade(Component,{native:isAndroid});
+installSystemBarAppearance(Component,isAndroid,registerPlugin<SystemBars>('AlphaDevice'));
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
 installHomeCardVisibility(Component, () => googleConnectionController.open());
 installHomeOverviewCards(Component);

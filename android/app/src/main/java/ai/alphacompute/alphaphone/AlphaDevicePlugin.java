@@ -57,18 +57,6 @@ public final class AlphaDevicePlugin extends Plugin {
    applyTextScale((MainActivity)getActivity());JSObject out=new JSObject();out.put("textScalePercent",textScalePercent(getContext()));out.put("effectiveTextZoom",getBridge().getWebView().getSettings().getTextZoom());call.resolve(out);
   });
  }
- /** Alpha's drawn theme, kept for activity recreation; null follows the system night mode in styles.xml. */
- static volatile Boolean systemBarsDark;
- static void applySystemBarAppearance(android.app.Activity activity){
-  Boolean dark=systemBarsDark;if(activity==null||dark==null)return;
-  androidx.core.view.WindowInsetsControllerCompat bars=androidx.core.view.WindowCompat.getInsetsController(activity.getWindow(),activity.getWindow().getDecorView());
-  bars.setAppearanceLightStatusBars(!dark);bars.setAppearanceLightNavigationBars(!dark);
- }
- @PluginMethod public void setSystemBarAppearance(PluginCall call){
-  Boolean dark=call.getBoolean("dark");if(dark==null){call.reject("Choose light or dark.");return;}
-  android.app.Activity activity=getActivity();if(activity==null){call.reject("Alpha view is unavailable");return;}
-  activity.runOnUiThread(()->{if(activity.isFinishing()||activity.isDestroyed()){call.reject("Alpha view is unavailable");return;}systemBarsDark=dark;applySystemBarAppearance(activity);call.resolve();});
- }
  /** Android's "Time to take action" setting applied to a renderer notice timeout; the base when unset or before API 29. */
  @PluginMethod public void recommendedTimeout(PluginCall call){
   Integer base=call.getInt("baseMs");if(base==null||base<1||base>600000){call.reject("Base timeout must be 1 to 600000 ms.");return;}
@@ -812,4 +800,14 @@ public final class AlphaDevicePlugin extends Plugin {
  }
  /** Stops an update download too: disconnect only closes the raw socket, which Android allows on this main thread. A session outlives its owner, for a later tap on any bridge. */
  @Override protected void handleOnDestroy(){retireUpdateBridge();UpdateActivation pending=activation;if(pending!=null&&pending.owner==this)pending.ready.complete(false);diagnosticsWorker.shutdown();updateWorker.shutdownNow();javax.net.ssl.HttpsURLConnection active=updateActive;if(active!=null)active.disconnect();getContext().unregisterReceiver(updateStatus);if(updateOwner==this){updateOwner=null;updateDue=false;updateOpen=false;}super.handleOnDestroy();}
+ /** Status and navigation icon colors follow Alpha's drawn theme, not only Android's night mode. */
+ @PluginMethod public void setSystemBarAppearance(PluginCall call){
+  Boolean dark=call.getBoolean("dark");if(dark==null){call.reject("Choose light or dark.");return;}
+  android.app.Activity activity=getActivity();if(activity==null){call.reject("Alpha view is unavailable");return;}
+  activity.runOnUiThread(()->{
+   if(activity.isFinishing()||activity.isDestroyed()){call.reject("Alpha view is unavailable");return;}
+   androidx.core.view.WindowInsetsControllerCompat bars=androidx.core.view.WindowCompat.getInsetsController(activity.getWindow(),activity.getWindow().getDecorView());
+   bars.setAppearanceLightStatusBars(!dark);bars.setAppearanceLightNavigationBars(!dark);call.resolve();
+  });
+ }
 }
