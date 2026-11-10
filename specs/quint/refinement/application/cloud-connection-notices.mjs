@@ -47,10 +47,12 @@ async function observe(page) {
 }
 
 async function proveHitTargets(page, {short = false} = {}) {
-  const overflow = await stack(page).evaluate(node => ({needed: node.scrollHeight > node.clientHeight + 1, enabled: node.dataset.scrollable === 'true'}));
-  assert.equal(overflow.enabled, overflow.needed, 'Only an overflowing notice stack owns body gestures');
-  const {notices} = await observeCloudNotices(page);
   // Back changes display before ResizeObserver measures the newly exposed stack.
+  await expect.poll(async () => {
+    const overflow = await stack(page).evaluate(node => ({needed: node.scrollHeight > node.clientHeight + 1, enabled: node.dataset.scrollable === 'true'}));
+    return overflow.enabled === overflow.needed;
+  }, {timeout:2000, message:'Only an overflowing notice stack owns body gestures'}).toBe(true);
+  const {notices} = await observeCloudNotices(page);
   await expect.poll(async()=>{
     const home=await page.locator('[data-alpha-layer="home"]').boundingBox(),noticeBox=await stack(page).boundingBox();
     return !!home&&!!noticeBox&&home.y>=noticeBox.y+noticeBox.height;
