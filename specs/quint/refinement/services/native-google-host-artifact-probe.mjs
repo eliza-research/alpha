@@ -19,7 +19,7 @@ const artifactSource = pathToFileURL(path.join(repository, 'scripts/native-googl
 let projection;
 globalThis.nativeGoogleFixtureProjection = options => projection(options);
 const hooks = registerHooks({resolve(specifier, context, next) {
-  if (context.parentURL === artifactSource && specifier === './prepare-client-features.mjs') return {
+  if (context.parentURL === artifactSource && specifier === './prepare-client-features.ts') return {
     url: 'data:text/javascript,export const prepareClientFeatures = globalThis.nativeGoogleFixtureProjection;',
     shortCircuit: true,
   };
