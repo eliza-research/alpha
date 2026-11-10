@@ -49,7 +49,7 @@ export function CloudMembershipControls({balance,busy,error,connectionError,noti
  return <section className="alpha-membership" aria-label="Balance and membership">
    <p className="alpha-membership-account">{email||`Signed in to ${serviceName}`}</p>
    <dl className="alpha-membership-facts">
-    <div className="alpha-membership-balance-fact"><dt>Balance</dt><dd><strong className="alpha-membership-amount">{credits?`$${Number(credits.usd).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:6})}`:balance==='checking'?'Checking…':'Not available'}</strong><button type="button" className="alpha-membership-refresh" aria-label="Refresh account" disabled={disabled||checking} onClick={onRefresh}><span aria-hidden="true" className="alpha-account-refresh-icon"/></button></dd></div>
+    <div className="alpha-membership-balance-fact"><dt>Balance</dt><dd><strong className="alpha-membership-amount">{credits?`$${Number(credits.usd).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`:balance==='checking'?'Checking…':'Not available'}</strong><button type="button" className="alpha-membership-refresh" aria-label="Refresh account" disabled={disabled||checking} onClick={onRefresh}><span aria-hidden="true" className="alpha-account-refresh-icon"/></button></dd></div>
     <div className="alpha-membership-plan-fact"><dt>Membership</dt><dd>
      <div className="alpha-membership-plan-heading"><strong className="alpha-membership-plan-name">{planName}</strong></div>
      {active&&<small className="alpha-membership-plan-status">{plan.status==='past_due'?'Payment due':plan.status==='trialing'?'Trial':'Active'}</small>}

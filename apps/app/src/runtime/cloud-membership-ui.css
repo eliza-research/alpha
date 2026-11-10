@@ -66,3 +66,5 @@
 [data-alpha-google-overlay] .alpha-connection-actions .alpha-btn--primary{background:var(--connection-fg,#111);color:var(--connection-bg,#fff)}
 
 .alpha-account-expiry{padding-top:12px;font-size:13px;color:var(--connection-mut,#666)}.alpha-account-expiry button{background:var(--connection-s2,#f1f1f1);color:var(--connection-fg,#111);border:0;border-radius:12px;padding:12px 16px}.alpha-account-sheet .alpha-btn--primary{background:var(--connection-fg,#111);color:var(--connection-bg,#fff)}
+
+.alpha-connection.alpha-account-sheet .alpha-account-signout,.alpha-connection.alpha-account-sheet .alpha-account-done,.alpha-connection.alpha-account-sheet .alpha-account-cancel{color:var(--connection-fg,#111)}

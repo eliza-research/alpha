@@ -11,7 +11,7 @@ const render=(extra={})=>renderToStaticMarkup(React.createElement(CloudMembershi
 test('subscription entry offers a monthly plan and keeps code redemption secondary without acting on render',()=>{const s=render();assert.match(s,/aria-label="Balance and membership"/);assert.match(s,/Choose a monthly plan/);assert.match(s,/Enter membership code/);assert.doesNotMatch(s,/<details|Have a membership code|<input/);assert.deepEqual(calls,[]);});
 test('the account sheet shows a returned balance once without inferring it from a plan',()=>{
  const html=render({credits:{usd:'9.911418',observedAt:0}});
- assert.match(html,/\$9\.911418/);assert.equal((html.match(/<dt>Balance<\/dt>/g)||[]).length,1);
+ assert.match(html,/\$9\.91/);assert.equal((html.match(/<dt>Balance<\/dt>/g)||[]).length,1);
  assert.match(html,/Add balance/);
  assert.match(render({credits:null,balance:'unavailable'}),/Not available/);
  assert.doesNotMatch(render({credits:null,balance:'unavailable'}),/\$0\.00/);
