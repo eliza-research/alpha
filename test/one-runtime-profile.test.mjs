@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {spawnSync} from 'node:child_process';
 import {parseBuildArgs,gradleFlagArgs,consumerBuildOptions,buildEnv} from '../scripts/build-android.ts';
 import {stagingArguments} from '../scripts/stage-local-agent-runtime.ts';
@@ -55,12 +56,12 @@ test('Gradle has one profile: local speech, the voice host and the embedding hos
  assert.match(gradle,/buildConfigField 'String', 'ELIZA_RUNTIME_PROFILE', '"native"'/);
  assert.match(gradle,/if \(project\.hasProperty\('ELIZA_RUNTIME_PROFILE'\) \|\| project\.hasProperty\('ELIZA_LOCAL_EMBEDDINGS'\)\)\s+throw new GradleException\('There is one runtime profile now/);
  assert.doesNotMatch(gradle+speech,/runtimeProfile\s*[!=]=\s*'|def runtimeProfile|cloudProfile|def localEmbeddings|--verify-cloud|--local-embeddings/);
- assert.match(gradle,/def args = \['node', 'scripts\/stage-embedding-host\.mjs', '--verify'\]\s+if \(unpackagedRuntime\) args \+= '--allow-unpackaged-runtime'/);
+ assert.match(gradle,/def args = \['node', 'scripts\/stage-embedding-host\.ts', '--verify'\]\s+if \(unpackagedRuntime\) args \+= '--allow-unpackaged-runtime'/);
  for(const task of ['verifyParadeeAppLinkage','verifyVoiceHost']){
   const block=gradle.slice(gradle.indexOf(`def ${task} = tasks.register`),gradle.indexOf('}',gradle.indexOf(`def ${task} = tasks.register`)));
   assert.doesNotMatch(block,/onlyIf/,task+' always runs');assert.match(block,/unpackagedRuntime \? \['--allow-absent'\] : \[\]/);
  }
- assert.match(gradle,/onlyIf \{ !unpackagedRuntime && testMocksRaw\?\.toString\(\) != '1' \}\s+workingDir rootProject\.projectDir\.parentFile\s+commandLine 'node', 'scripts\/runtime-profile\.mjs', '--verify-native'/);
+ assert.match(gradle,/onlyIf \{ !unpackagedRuntime && testMocksRaw\?\.toString\(\) != '1' \}\s+workingDir rootProject\.projectDir\.parentFile\s+commandLine 'node', 'scripts\/runtime-profile\.ts', '--verify-native'/);
  // Only the unpackaged developer lane with no staged outputs keeps the Java API without the engine.
  assert.match(speech,/if \(unpackaged && !nativeOutput\.exists\(\)\) \{/);
  assert.match(speech,/tasks\.register\('verifySpeechInputs', Exec\) \{\s+workingDir/);
@@ -87,9 +88,9 @@ test('staging always writes the native marker and keeps the local embedding mode
  const stage=read('scripts/stage-local-agent-runtime.ts');
  assert.match(stage,/alpha-runtime-profile\.json'\),JSON\.stringify\(\{version:1,runtimeProfile:'native'\},null,2\)\+'\\n'\)/);
  assert.doesNotMatch(stage,/omittedLocalModels|unlinkSync\(file\)|Cloud projection/);
- const profile=read('scripts/runtime-profile.ts');
+ const profile=stripTypeScriptTypes(read('scripts/runtime-profile.ts'));
  assert.doesNotMatch(profile,/verifyCloudResident|cannot package local|omittedLocalModels/);
- assert.match(profile,/export function verifyNativeGoogleHost\(root\)/);
+ assert.match(profile,/export function verifyNativeGoogleHost\(root\s*\)/);
  // A payload staged for the removed Cloud profile is refused by the preflight, with the command to restage.
  const missing=path.join(process.cwd(),'artifacts','missing-prepared-source-one-profile');
  assert.match(preparedRuntimeProblems(process.cwd(),missing,{embeddingHost:()=>{},googleHost:()=>{}})[0],/Prepared runtime source .* is missing/);

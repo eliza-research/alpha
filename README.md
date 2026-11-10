@@ -26,6 +26,8 @@ npm run dev
 
 `npm run verify` runs deployment-output checks, source preparation, executable
 Quint models, LemmaScript function proofs, TypeScript, host tests, the production web build and its bundle audit.
+Host scripts use native TypeScript; see [repository tooling](docs/scripts-tooling.md)
+for script checks and the Python/shell consolidation review.
 Host contract tests need a JDK and the `sqlite3` command-line tool on `PATH`
 for native Calendar queries. Archive builds check SQLite before verification.
 Tests that load the real SDK require the pinned Bun and a prepared SDK; set

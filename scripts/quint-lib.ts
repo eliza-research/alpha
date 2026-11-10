@@ -31,7 +31,7 @@ export const runtimeScriptPaths = ['scripts/stage-alpha-os-branding.py', 'script
   'scripts/android-host.ts', 'scripts/android-gzip-assets.ts', 'scripts/stage-aosp.ts',
   'scripts/audit-production-bundle.ts', 'scripts/generate-licenses.ts',
   'scripts/cloud-deployment.ts', 'scripts/cloud-deployment-policy.ts', 'scripts/native-view-policy.ts',
-  'scripts/with-test-mocks.ts', 'scripts/child-command.ts', 'scripts/regular-files.ts', 'capacitor.config.ts', 'vite.config.ts',
+  'scripts/with-test-mocks.ts', 'scripts/removed-profile-flags.ts', 'scripts/child-command.ts', 'scripts/regular-files.ts', 'capacitor.config.ts', 'vite.config.ts',
   'scripts/apk.ts', 'scripts/source-snapshot.ts', 'scripts/verify-apks.ts', 'scripts/verify-packaged-runtime.py',
   'scripts/provision-unit.ts', 'scripts/publish-update-manifest.ts', 'scripts/deliver-app-update.ts',
   'scripts/update-apk-admission.ts', 'scripts/update-artifact.ts', 'scripts/owner/InspectUpdateApk.java',
@@ -201,7 +201,8 @@ export function validateQuintModelMetadata(model: ModelDefinition, text: string)
   const declarations = parsed.modules.find(module => module.name === model.module)?.declarations ?? [];
   for (const name of model.invariants ?? []) {
     const [qualifier, member] = name.split('::');
-    const instance = member ? declarations.find(declaration => declaration.kind === 'instance' && declaration.qualifiedName === qualifier) : undefined;
+    const candidate = member ? declarations.find(declaration => declaration.kind === 'instance' && declaration.qualifiedName === qualifier) : undefined;
+    const instance = candidate?.kind === 'instance' ? candidate : undefined;
     const instanceModule = instance && parsed.modules.find(module => module.name === instance.protoName);
     const declared = member
       ? instanceModule?.declarations.some(declaration => declaration.kind === 'export' && declaration.defName === member

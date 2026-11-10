@@ -6,15 +6,26 @@ import {repositoryRoot, sha256} from './quint-lib.ts';
 const root = repositoryRoot;
 const receiptPath = join(root, 'test-results/lemma/check.json');
 mkdirSync(dirname(receiptPath), {recursive: true});
-let files = [], inputs = [];
-const proofsWithin = directory => readdirSync(directory, {withFileTypes: true}).flatMap(entry =>
+interface LemmaResult {
+  command: string; args: string[]; exitCode: number | null; signal: NodeJS.Signals | null;
+  error?: string; output: string;
+}
+interface LemmaReceipt {
+  schemaVersion: number; startedAt: string; status: string; passed: boolean;
+  requiredDafnyVersion: string; inputs: Record<string, string>; results: LemmaResult[];
+  lemmascriptVersion?: string; dafnyVersion?: string | null; reason?: string;
+  verifiedConditions?: number; error?: string; finalInputs?: Record<string, string>;
+  changedInputs?: string[]; finalInputError?: string; finishedAt?: string;
+}
+let files: string[] = [], inputs: string[] = [];
+const proofsWithin = (directory: string): string[] => readdirSync(directory, {withFileTypes: true}).flatMap(entry =>
   entry.isDirectory() ? proofsWithin(join(directory, entry.name)) : entry.name.endsWith('.dfy') || entry.name.endsWith('.dfy.gen') ? [join(directory, entry.name)] : []);
 const hashes = () => Object.fromEntries(inputs.map(file => [file, sha256(readFileSync(join(root, file)))]));
-const receipt = {schemaVersion: 1, startedAt: new Date().toISOString(), status: 'running', passed: false,
+const receipt: LemmaReceipt = {schemaVersion: 1, startedAt: new Date().toISOString(), status: 'running', passed: false,
   requiredDafnyVersion: '4.11.0', inputs: {}, results: []};
 writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
 let exitCode = 1;
-function run(command, args) {
+function run(command: string, args: string[]) {
   const result = spawnSync(command, args, {cwd: root, encoding: 'utf8', timeout: 120000});
   const output = `${result.stdout || ''}${result.stderr || ''}`;
   process.stdout.write(output);
@@ -48,7 +59,7 @@ try {
     exitCode = process.env.LEMMA_REQUIRE_BACKEND === '1' ? 2 : 0;
   } else {
     if (!run(process.execPath, [cli, 'check', '--backend=dafny'])) throw Error('Dafny verification failed');
-    const proofs = [...receipt.results.at(-1).output.matchAll(/Dafny program verifier finished with ([1-9][0-9]*) verified, 0 errors/g)];
+    const proofs = [...receipt.results.at(-1)!.output.matchAll(/Dafny program verifier finished with ([1-9][0-9]*) verified, 0 errors/g)];
     if (proofs.length !== files.length) throw Error('Dafny did not report a nonempty successful proof for every source');
     receipt.verifiedConditions = proofs.reduce((count, match) => count + Number(match[1]), 0);
     receipt.status = 'passed'; receipt.passed = true; exitCode = 0;
@@ -58,8 +69,9 @@ try {
   console.error(receipt.error);
 } finally {
   try {
-    receipt.finalInputs = hashes();
-    const changed = inputs.filter(file => receipt.finalInputs[file] !== receipt.inputs[file]);
+    const finalInputs = hashes();
+    receipt.finalInputs = finalInputs;
+    const changed = inputs.filter(file => finalInputs[file] !== receipt.inputs[file]);
     if (changed.length) {receipt.status = 'failed'; receipt.passed = false; receipt.changedInputs = changed; exitCode = 1;}
   } catch (error) {receipt.status = 'failed'; receipt.passed = false; receipt.finalInputError = String(error); exitCode = 1;}
   receipt.finishedAt = new Date().toISOString();

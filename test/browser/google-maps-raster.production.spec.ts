@@ -122,7 +122,7 @@ for(const tiles of ['valid','malformed','copyright-unavailable','unavailable'] a
   }).toPass();
   await page.getByRole('button',{name:/^Synthetic harbour/}).last().click();
   await page.getByRole('button',{name:'Directions',exact:true}).click();
-  const origin=page.getByRole('textbox',{name:'Route origin coordinates'});
+  const origin=page.getByRole('textbox',{name:'Starting point'});
   await origin.fill('43.7384, 7.4246');await origin.press('Enter');
   await expect(page.getByText(/no live traffic/).first()).toBeVisible();
   await expect(page.getByRole('button',{name:'Share route',exact:true})).toHaveCount(0);

@@ -45,6 +45,15 @@ test('the committed metadata verifies every artifact by SHA-256 and trusts nothi
     assert.doesNotMatch(read(file), /org\.gradle\.dependency\.verification|--dependency-verification/, `${file} must not relax verification`);
 });
 
+
+test('AAPT2 provenance retains the historical producer and accepts the migrated producer', t => {
+  const previous = 'Fetched from dl.google.com/dl/android/maven2 by scripts/gradle-verification.mjs';
+  const current = 'Fetched from dl.google.com/dl/android/maven2 by scripts/gradle-verification.ts';
+  assert.ok(text.includes(previous), 'existing checksum provenance is preserved');
+  assert.deepEqual(mutated(t, {[METADATA]: text.replaceAll(previous, current)}), []);
+  assert.match(mutated(t, {[METADATA]: text.replaceAll(previous, 'unreviewed producer')}).join('\n'), /unexpected checksum origin unreviewed producer/);
+});
+
 test('every coordinate that ships in the APKs is pinned, and the build tools are pinned for each CI host', () => {
   const classpath = JSON.parse(read(CLASSPATH));
   // No exact count: a dependency update changes it, and the per-coordinate pin and hash checks below

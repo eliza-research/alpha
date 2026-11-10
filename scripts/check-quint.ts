@@ -9,11 +9,13 @@ const commands = ['check', 'typecheck', 'test', 'simulate', 'verify', 'temporal'
 const inputCommand = args.shift() || 'check';
 const command = commands.find(command => command === inputCommand);
 if (!command) throw Error(`Unknown Quint command ${inputCommand}`);
-const value = (name: string, fallback: string) => args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
+function value(name: string): string | undefined;
+function value(name: string, fallback: string): string;
+function value(name: string, fallback?: string) {return args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;}
 const allowedOptions = ['models', 'samples', 'steps', 'seed', 'out', 'backend', 'server-endpoint', 'timeout'];
 for (const arg of args) if (!allowedOptions.some(name => arg.startsWith(`--${name}=`))) throw Error(`Unknown option ${arg}`);
 const checking = ['verify', 'temporal', 'compare'].includes(command);
-const positiveInteger = (name: string, fallback: number) => {
+const positiveInteger = (name: string, fallback: number = 1) => {
   const result = Number(value(name, String(fallback)));
   if (!Number.isSafeInteger(result) || result < 1) throw Error(`Invalid --${name}`);
   return result;

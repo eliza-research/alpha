@@ -11,19 +11,33 @@ import {fileURLToPath} from 'node:url';
 import {publicObject} from './deliver-app-update.ts';
 import {updateArtifactDigest} from './update-artifact.ts';
 
+type CandidateOptions = {root?: string; env?: NodeJS.ProcessEnv; api?: InventoryApi; read?: typeof publicObject};
+type InventoryApi = (args: string[], options?: {missing?: boolean}) => unknown;
+interface ProductConfig {appId: string; versionCode: number; updateManifestUrl: string}
+interface CandidateRun {id: number; workflow_id: number; path: string; event: string; head_branch: string; head_sha: string; head_repository?: {full_name: string}; run_number: number; run_attempt: number}
+interface StableRelease {id: number; draft: boolean}
+interface StableAsset {name: string}
+interface UpdateOffer {schema: string; variant: string; signerSha256: string; sha256: string; sizeBytes: number; apkUrl: string; versionCode: number}
+interface ArchiveRecord {testMocks: boolean; runtimeProfile: string; updateChannel: {kind: string; manifestUrlSha256: string}}
+interface VerifiedApk extends ArchiveRecord {mode: string; variant: string; file: string; packageName: string; versionCode: number; signed: boolean; signerSha256: string | null; distributable: boolean; debuggable: boolean; runtime: string; home: boolean; launcher: boolean; sha256: string; releaseAdmission: {failures: unknown[]; blockers: string[]}}
+interface ArchiveVerification extends ArchiveRecord {upstream: {commit: string}; allowUnpackagedRuntime: boolean; results: VerifiedApk[]}
+interface InputFreeze {files: Record<string, string>; digest: string}
+type VersionAdmission = Awaited<ReturnType<typeof candidateVersion>>;
+type ApkDigest = {file: string; bytes: number; sha256: string};
+
 const REPOSITORY = 'eliza-research/alphaphone';
 const WORKFLOW = '.github/workflows/resident-android.yml';
 // This existing workflow owns the run-number epoch. Recreating or replacing it
 // requires a reviewed version migration, even if its path is unchanged.
 const WORKFLOW_ID = 373209004;
 const MAX_CODE = 2100000000;
-const hash = bytes => createHash('sha256').update(bytes).digest('hex');
-const readJson = file => JSON.parse(fs.readFileSync(file, 'utf8'));
-function code(value) {
+const hash = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
+const readJson = <T>(file: string): T => JSON.parse(fs.readFileSync(file, 'utf8')) as T;
+function code(value: number) {
   assert.ok(Number.isSafeInteger(value) && value > 0 && value <= MAX_CODE, 'Invalid Android versionCode');
   return value;
 }
-function identity(root, env) {
+function identity(root: string, env: NodeJS.ProcessEnv) {
   assert.equal(env.GITHUB_REPOSITORY, REPOSITORY, 'Candidates require the product repository');
   assert.equal(env.GITHUB_EVENT_NAME, 'push', 'Candidates require a main push');
   assert.equal(env.GITHUB_REF, 'refs/heads/main', 'Candidates require main');
@@ -33,19 +47,19 @@ function identity(root, env) {
     assert.match(env[name] || '', /^[1-9][0-9]{0,15}$/, `Exact ${name} required`);
     assert.ok(Number.isSafeInteger(Number(env[name])), `Invalid ${name}`);
   }
-  const git = args => execFileSync('git', args, {cwd: root, encoding: 'utf8'}).trim();
+  const git = (args: string[]) => execFileSync('git', args, {cwd: root, encoding: 'utf8'}).trim();
   assert.equal(git(['rev-parse', 'HEAD']), env.GITHUB_SHA, 'Candidate source changed');
-  const sdkCommit = readJson(path.join(root, 'upstream.lock.json')).commit;
+  const sdkCommit = readJson<{commit: string}>(path.join(root, 'upstream.lock.json')).commit;
   assert.match(sdkCommit || '', /^[0-9a-f]{40}$/);
   assert.equal(git(['-C', 'vendor/eliza', 'rev-parse', 'HEAD']), sdkCommit, 'Candidate SDK changed');
   return {sourceCommit: env.GITHUB_SHA, sdkCommit, workflow: env.GITHUB_WORKFLOW_REF, workflowId: WORKFLOW_ID,
     runId: env.GITHUB_RUN_ID, runNumber: env.GITHUB_RUN_NUMBER, runAttempt: env.GITHUB_RUN_ATTEMPT,
     versionCode: code(Number(env.GITHUB_RUN_NUMBER))};
 }
-function gh(args, {missing = false} = {}) {
+function gh(args: string[], {missing = false}: {missing?: boolean} = {}): unknown {
   try {return JSON.parse(execFileSync('gh', ['api', ...args], {encoding: 'utf8', timeout: 600000, maxBuffer: 16 * 1024**2, stdio: ['ignore', 'pipe', 'pipe']}));}
   catch (error) {
-    if (missing && /HTTP 404/.test(String(error.stderr))) return null;
+    if (missing && /HTTP 404/.test(String((error as {stderr?: unknown}).stderr))) return null;
     throw Error('Candidate inventory read failed; do not guess a version floor');
   }
 }
@@ -53,27 +67,27 @@ function gh(args, {missing = false} = {}) {
 /** Reuse delivery's stable APK names and anonymous manifest transport. Read all
  * asset pages, including retained APKs left by an interrupted pointer upload.
  */
-export async function candidateVersion({root = process.cwd(), env = process.env, api = gh, read = publicObject} = {}) {
+export async function candidateVersion({root = process.cwd(), env = process.env, api = gh, read = publicObject}: CandidateOptions = {}) {
   const context = identity(root, env);
-  const run = api([`repos/${REPOSITORY}/actions/runs/${context.runId}`]);
+  const run = api([`repos/${REPOSITORY}/actions/runs/${context.runId}`]) as CandidateRun;
   assert.ok(run.id === Number(context.runId) && run.workflow_id === WORKFLOW_ID &&
     run.path === WORKFLOW && run.event === 'push' && run.head_branch === 'main' &&
     run.head_sha === context.sourceCommit && run.head_repository?.full_name === REPOSITORY &&
     run.run_number === context.versionCode && run.run_attempt === Number(context.runAttempt),
   'Candidate run identity or workflow version epoch changed');
-  const config = readJson(path.join(root, 'app.config.json'));
+  const config = readJson<ProductConfig>(path.join(root, 'app.config.json'));
   assert.equal(config.updateManifestUrl, `https://github.com/${REPOSITORY}/releases/download/app-stable/alpha-update-stable.json`, 'Candidate channel changed');
-  const descriptor = readJson(path.join(root, 'android/release-signer.json'));
+  const descriptor = readJson<{lastRelease?: {versionCode: number | null}}>(path.join(root, 'android/release-signer.json'));
   const floors = [code(config.versionCode)];
-  if (descriptor.lastRelease?.versionCode !== null) floors.push(code(descriptor.lastRelease?.versionCode));
-  const repository = api([`repos/${REPOSITORY}`]);
+  if (descriptor.lastRelease?.versionCode !== null) floors.push(code(descriptor.lastRelease?.versionCode as number));
+  const repository = api([`repos/${REPOSITORY}`]) as {private: boolean};
   assert.equal(repository.private, false, 'Candidate inventory must be publicly readable');
-  const release = api([`repos/${REPOSITORY}/releases/tags/app-stable`], {missing: true});
-  let assets = [];
+  const release = api([`repos/${REPOSITORY}/releases/tags/app-stable`], {missing: true}) as StableRelease | null;
+  let assets: StableAsset[] = [];
   if (release !== null) {
     assert.equal(release.draft, false, 'Stable release is a draft');
     assert.ok(Number.isSafeInteger(release.id) && release.id > 0, 'Stable release identity missing');
-    const pages = api(['--paginate', '--slurp', `repos/${REPOSITORY}/releases/${release.id}/assets?per_page=100`]);
+    const pages = api(['--paginate', '--slurp', `repos/${REPOSITORY}/releases/${release.id}/assets?per_page=100`]) as StableAsset[][];
     assert.ok(Array.isArray(pages) && pages.length >= 1 && pages.every(Array.isArray), 'Incomplete stable asset inventory');
     assets = pages.flat();
     for (const asset of assets) {
@@ -85,7 +99,8 @@ export async function candidateVersion({root = process.cwd(), env = process.env,
   const pointer = await read(config.updateManifestUrl, {maxBytes: 32768, missing: true});
   if (pointer !== null) {
     assert.notEqual(release, null, 'Public pointer has no authoritative stable release');
-    const offer = JSON.parse(pointer.bytes.toString('utf8'));
+    assert.ok(pointer.bytes, 'Public pointer bytes missing');
+    const offer = JSON.parse(pointer.bytes.toString('utf8')) as UpdateOffer;
     assert.ok(offer.schema === 'alpha-update/v1' && offer.variant === 'launcher' &&
       /^[0-9a-f]{64}$/.test(offer.signerSha256 || '') && /^[0-9a-f]{64}$/.test(offer.sha256 || '') &&
       Number.isSafeInteger(offer.sizeBytes) && offer.sizeBytes > 0 && offer.sizeBytes <= 2**31 &&
@@ -102,19 +117,19 @@ export async function candidateVersion({root = process.cwd(), env = process.env,
 /** Bind the existing build-archive source freeze and actual unsigned bytes.
  * These checks do not replace verify-apks or grant distribution admission.
  */
-export function candidateReceipt({root = process.cwd(), env = process.env, admission, archive}) {
+export function candidateReceipt({root = process.cwd(), env = process.env, admission, archive}: {root?: string; env?: NodeJS.ProcessEnv; admission: VersionAdmission; archive: string}) {
   const context = identity(root, env);
-  for (const [name, value] of Object.entries(context)) assert.equal(admission[name], value, `Candidate ${name} changed`);
+  for (const name of Object.keys(context) as (keyof typeof context)[]) assert.equal(admission[name], context[name], `Candidate ${name} changed`);
   assert.equal(admission.schema, 'alpha-app-candidate-version/v1');
   assert.equal(admission.runtimeProfile, 'native');
   assert.ok(context.versionCode > code(admission.observedFloor));
-  const config = readJson(path.join(root, 'app.config.json'));
+  const config = readJson<ProductConfig>(path.join(root, 'app.config.json'));
   const channel = {kind: 'public', manifestUrlSha256: hash(config.updateManifestUrl)};
   assert.deepEqual(admission.updateChannel, channel, 'Candidate update channel changed');
   archive = path.resolve(root, archive);
   assert.ok(archive.startsWith(path.join(root, 'test-results') + path.sep), 'Candidate archive must be an owned test-results leaf');
-  const configuration = readJson(path.join(archive, 'configuration.json'));
-  const verified = readJson(path.join(archive, 'apk-verification.json'));
+  const configuration = readJson<ArchiveRecord>(path.join(archive, 'configuration.json'));
+  const verified = readJson<ArchiveVerification>(path.join(archive, 'apk-verification.json'));
   for (const record of [configuration, verified]) {
     assert.equal(record.testMocks, false, 'Test-mocks are not update candidates');
     assert.equal(record.runtimeProfile, 'native', 'Automatic candidates retain the native profile');
@@ -122,15 +137,15 @@ export function candidateReceipt({root = process.cwd(), env = process.env, admis
   }
   assert.equal(verified.upstream.commit, context.sdkCommit, 'Archive SDK differs');
   assert.equal(verified.allowUnpackagedRuntime, false, 'Candidate requires the packaged resident');
-  const before = readJson(path.join(archive, 'inputs-before.json'));
-  const after = readJson(path.join(archive, 'inputs-after.json'));
+  const before = readJson<InputFreeze>(path.join(archive, 'inputs-before.json'));
+  const after = readJson<InputFreeze>(path.join(archive, 'inputs-after.json'));
   assert.deepEqual(after, before, 'Archive inputs changed');
   assert.equal(hash(JSON.stringify(before.files)), before.digest, 'Archive input fingerprint differs');
   assert.equal(before.files['upstream.lock.json'], hash(fs.readFileSync(path.join(root, 'upstream.lock.json'))), 'Archive source lock differs');
-  const manifest = readJson(path.join(archive, 'apk-manifest.json'));
+  const manifest = readJson<Record<string, string>>(path.join(archive, 'apk-manifest.json'));
   const releases = verified.results.filter(row => row.mode === 'release');
   assert.equal(releases.length, 2, 'Exactly two release variants required');
-  const apks = {};
+  const apks: Record<string, ApkDigest> = {};
   for (const variant of ['standalone', 'launcher']) {
     const name = `${variant}-release-unsigned.apk`, file = path.join(archive, name);
     const row = releases.find(entry => entry.variant === variant);
@@ -155,20 +170,19 @@ export function candidateReceipt({root = process.cwd(), env = process.env, admis
     signed: false, distributionQualified: false, qualificationScope: 'unsigned-build-and-source-freeze-only'};
 }
 
-export async function main(argv, {root = process.cwd(), env = process.env, api, read} = {}) {
+export async function main(argv: string[], {root = process.cwd(), env = process.env, api, read}: CandidateOptions = {}) {
   const [mode, destination, archive] = argv;
-  assert.ok((mode === 'version' && argv.length === 2) || (mode === 'receipt' && argv.length === 3), 'Use: app-update-candidate.mjs version FILE | receipt VERSION_FILE ARCHIVE');
+  assert.ok((mode === 'version' && argv.length === 2) || (mode === 'receipt' && argv.length === 3), 'Use: app-update-candidate.ts version FILE | receipt VERSION_FILE ARCHIVE');
   const file = path.resolve(root, mode === 'version' ? destination : path.join(archive, 'app-update-candidate.json'));
   assert.ok(file.startsWith(path.join(root, 'test-results') + path.sep), 'Candidate output must be under test-results');
   let result;
   if (mode === 'version') result = await candidateVersion({root, env, api, read});
   else {
-    const admission = readJson(path.resolve(root, destination));
+    const admission = readJson<VersionAdmission>(path.resolve(root, destination));
     // The published floor may advance while this unsigned build is running.
     const finalAdmission = await candidateVersion({root, env, api, read});
-    result = candidateReceipt({root, env, admission, archive});
-    result.finalObservedFloor = finalAdmission.observedFloor;
-    result.finalManifestSha256 = finalAdmission.manifestSha256;
+    result = {...candidateReceipt({root, env, admission, archive}),
+      finalObservedFloor: finalAdmission.observedFloor, finalManifestSha256: finalAdmission.manifestSha256};
   }
   fs.mkdirSync(path.dirname(file), {recursive: true});
   fs.writeFileSync(file, JSON.stringify(result, null, 2) + '\n', {flag: 'wx'});
@@ -176,5 +190,5 @@ export async function main(argv, {root = process.cwd(), env = process.env, api, 
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {await main(process.argv.slice(2));}
-  catch (error) {console.error(error.message); process.exitCode = 1;}
+  catch (error) {console.error(error instanceof Error ? error.message : String(error)); process.exitCode = 1;}
 }

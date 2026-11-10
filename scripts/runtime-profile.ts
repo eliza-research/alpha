@@ -15,6 +15,6 @@ export function verifyNativeGoogleHost(root: string){
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const root=path.resolve(import.meta.dirname,'..');
- if(process.argv[2]!=='--verify-native'||process.argv.length!==3)throw Error('Usage: runtime-profile.mjs --verify-native. There is one runtime profile now; --verify-cloud is gone.');
+ if(process.argv[2]!=='--verify-native'||process.argv.length!==3)throw Error('Usage: runtime-profile.ts --verify-native. There is one runtime profile now; --verify-cloud is gone.');
  console.log(JSON.stringify(verifyNativeGoogleHost(root)));
 }
