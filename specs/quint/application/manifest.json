@@ -3466,5 +3466,32 @@
       "Render is a snapshot/commit macrostep. Progress scenarios assume the accepted callback and matching delivery occur and React performs a subsequent commit; no scheduler fairness or unbounded liveness proof is claimed.",
       "Focus is an unchanged abstract field. Real focus, scroll geometry, resize transitions, multi-turn sessions, streaming layout and message-delivery ordering remain separate browser/runtime conformance obligations. The independent browser regression supplies that evidence."
     ]
+  },
+  {
+    "path": "specs/quint/application/CalendarActionReview.qnt",
+    "module": "CalendarActionReview",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "cancelDoesNotWriteTest",
+      "confirmOnceTest",
+      "ownerChangeCancelsTest",
+      "staleReadCannotRestoreDeletedTest",
+      "restoredRevisionIsVisibleTest"
+    ],
+    "invariants": [
+      "safety"
+    ],
+    "sources": [
+      "apps/app/src/runtime/calendar-action-confirmation.ts",
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "One event, two owners and provider revisions; confirmed/cancelled UI actions and receipt-backed stale-row suppression.",
+      "Provider I/O and real account permissions remain in AgentCalendarMutation conformance and live QA. Progress requires confirmation and provider response; cancellation has no progress assumption."
+    ]
   }
 ]

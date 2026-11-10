@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
+import {eventEditorMutability,cancellationModeForEditorEvent} from '../.eliza/client-features/plugins/plugin-calendar/src/components/event-editor-policy.ts';
 // Entire real controller, with only its external client/editor imports replaced.
 // Reads and accepted writes use injected synthetic ports; zero provider/native I/O.
 const text=readFileSync('apps/app/src/runtime/agent-calendar.ts','utf8');
 const code=stripTypeScriptTypes(text.replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 const unexpected=()=>{throw Error('Unexpected editor/default client dependency');};
-const {AgentCalendar}=new Function('agentCalendarClient','eventEditorMutability','cancellationModeForEditorEvent',code+';return {AgentCalendar};')(unexpected,unexpected,unexpected);
+const {AgentCalendar,calendarEventKey}=new Function('agentCalendarClient','eventEditorMutability','cancellationModeForEditorEvent',code+';return {AgentCalendar,calendarEventKey};')(unexpected,eventEditorMutability,cancellationModeForEditorEvent);
 const view=readFileSync('apps/app/src/runtime/agent-calendar-view.ts','utf8');
 const homeCode=stripTypeScriptTypes(view.slice(view.indexOf('export function canonicalHomeCalendar(')).replace(/^export /,''),{mode:'strip'});
 const home=new Function(homeCode+';return canonicalHomeCalendar;')();
@@ -320,4 +321,17 @@ test('adapter keeps refused rows hidden after failed cache writes and resident l
   m.setCredential({...m.credential,credentialId:'new-key-generation'});m.setSnapshot({cloudAccount:{...m.credential,environment:'production'}});await settleLocal();
   assert.equal(m.shell.renderVals().homeCalendarTitle,m.f.event.title,'the new credential has its own supplied cache and is not fenced by the old credential');
  }finally{m.close();}
+});
+
+test('verified deletion stays absent across a lagging feed, but a newly restored revision is visible',async()=>{
+ const f=await fixture();f.event.metadata.etag='version-1';
+ f.api.getLifeOpsCalendarFeed=async()=>({state:'complete',events:[f.event]});
+ f.api.deleteLifeOpsCalendarEvent=async()=>({outcome:'deleted',cancellationMode:'organizer_cancel',event:null});
+ await f.calendar.refresh({});
+ await f.calendar.delete(calendarEventKey(f.event),'version-1','one-delete');
+ assert.equal(f.calendar.state.feed.events.length,0);assert.equal(f.calendar.state.next,null);
+ await f.calendar.refresh({});assert.equal(f.calendar.state.feed.events.length,0);assert.equal(f.calendar.state.next,null);
+ f.event.metadata.etag='restored-version-2';
+ await f.calendar.refresh({});assert.equal(f.calendar.state.feed.events.length,1);
+ assert.equal(f.calendar.state.next.event.metadata.etag,'restored-version-2');f.retire();
 });

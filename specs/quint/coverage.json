@@ -16978,7 +16978,8 @@
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
         "CanonicalCalendarDraftHandoff",
-        "SavedServiceRead"
+        "SavedServiceRead",
+        "CalendarActionReview"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -34820,7 +34821,8 @@
         "WorkflowClockAdmission",
         "PhotosOwnedAlbumDialog",
         "ShadeRowCustody",
-        "CalendarFormControls"
+        "CalendarFormControls",
+        "CalendarActionReview"
       ],
       "scope": "application",
       "treatment": "stateless-presentation-contract",
@@ -36372,7 +36374,8 @@
         "AgentCalendarSyncControl",
         "GoogleCalendarLinkFlow",
         "CalendarPreservationConfirmation",
-        "SavedServiceRead"
+        "SavedServiceRead",
+        "CalendarActionReview"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
@@ -618451,6 +618454,22 @@
       "reviewStatus": "state-audit-required",
       "sha256": "f646ded3903339759197c4d36bfacd7ed7d5017b5d50e8e70a4cf4a999798735",
       "stateAnchors": []
+    },
+    {
+      "path": "apps/app/src/runtime/calendar-action-confirmation.ts",
+      "models": [
+        "CalendarActionReview"
+      ],
+      "scope": "application",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "c820b44387f76c89db972ffa518b6dd77830ab76b2ea9dc736daf6485e88d5a1",
+      "stateAnchors": [
+        {
+          "line": 3,
+          "text": "let dismiss:(()=>void)|undefined;"
+        }
+      ]
     }
   ],
   "configurationInputs": [

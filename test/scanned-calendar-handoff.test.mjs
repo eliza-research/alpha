@@ -5,17 +5,20 @@ import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 import vm from 'node:vm';
 import {cancellationModeForEditorEvent} from '../.eliza/client-features/plugins/plugin-calendar/src/components/event-editor-policy.ts';
+
 import * as reminderJournal from '../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-journal.ts';
 
+const modeSource=readFileSync('apps/app/src/runtime/agent-calendar.ts','utf8');
+const calendarEditorDeleteMode=new Function('cancellationModeForEditorEvent',stripTypeScriptTypes(modeSource.slice(modeSource.indexOf('export function calendarEditorDeleteMode'),modeSource.indexOf('const empty=')).replace('export ',''),{mode:'strip'})+';return calendarEditorDeleteMode;')(cancellationModeForEditorEvent);
 // Execute the complete adapter with only its platform/service dependencies
 // replaced. No Calendar write API is supplied: handoff must only open a form.
 const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/agent-calendar-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
 function fixture({status='ready',sources=1,authority='canonical',platform='web',form=null,provider='eliza',recordPort=null,pendingText=()=> 'Synthetic pending',testMocks=false,calendars=null,empty=false,events=[],error=null,row=e=>({id:e.id,title:e.title}),created=null,remembered=null,createFailures=[]}={}){
  const state={status,savedAt:null,ownerKey:'owner-A',error,feed:{events},calendars:calendars??Array.from({length:sources},(_,i)=>({summary:`Source ${i}`,provider,side:'owner',grantId:provider==='eliza'?'eliza-calendar':'google-grant',calendarId:provider==='eliza'&&i===0?'primary':String(i),includeInFeed:true,accessRole:'owner'}))};
  const refreshes=[],creates=[],updates=[],listeners={};let published;
- class Calendar{state=state;subscribe(fn){published=fn;return()=>{};}refresh(window){refreshes.push(window);}create(sourceKey,input){creates.push({sourceKey,input});if(createFailures.length)throw createFailures.shift();return {outcome:'created',event:created};}update(eventKey,providerVersion,input){updates.push({eventKey,providerVersion,input});return {outcome:'updated',event:null};}invalidateNext(){state.nextFresh=false;if(state.next?.event&&Date.parse(state.next.event.endAt)<=Date.now())state.next=null;}retire(){}selection(){}sourceHandle(key){return 'handle:'+key;}sourceKeyForHandle(handle){return handle.slice('handle:'.length);}}
+ class Calendar{state=state;subscribe(fn){published=fn;return()=>{};}refresh(window){refreshes.push(window);return Promise.resolve();}create(sourceKey,input){creates.push({sourceKey,input});if(createFailures.length)throw createFailures.shift();return {outcome:'created',event:created};}update(eventKey,providerVersion,input){updates.push({eventKey,providerVersion,input});return {outcome:'updated',event:null};}invalidateNext(){state.nextFresh=false;if(state.next?.event&&Date.parse(state.next.event.endAt)<=Date.now())state.next=null;}retire(){}selection(){}sourceHandle(key){return 'handle:'+key;}sourceKeyForHandle(handle){return handle.slice('handle:'.length);}}
  const connection={getSnapshot:()=>({startupResolved:true,cloudAccount:null,residentSavedCredential:false}),subscribe:()=>()=>{},getAppRecordClient:()=>recordPort};
- const install=new Function('AgentCalendar','Capacitor','connectionController','calendarSourceKey','presentCalendarIntervals','calendarFormCreate','getZonedDateParts','addDaysToLocalDate','calendarOwnerKey','agentPendingText','testMocksEnabled','canonicalCalendarRow','calendarRange','calendarEventKey','eventEditorMutability','cancellationModeForEditorEvent','calendarFormPatch','rememberNoteOrigin','calendarFormMinutes','browserCloudResidentEnabled',code+';return installAgentCalendarAdapter;')(Calendar,{getPlatform:()=>platform},connection,c=>c.calendarId,()=>{},draft=>draft,()=>({}),()=>({}),target=>target.fixtureOwnerKey??state.ownerKey,pendingText,testMocks,row,records=>({events:records}),event=>event.id,()=>({kind:'editable',providerVersion:'version-1'}),cancellationModeForEditorEvent,draft=>draft,async(...args)=>{remembered?.push(args);return true;},hours=>Math.round(Number(hours)*60),false);
+ const install=new Function('AgentCalendar','Capacitor','connectionController','calendarSourceKey','presentCalendarIntervals','calendarFormCreate','getZonedDateParts','addDaysToLocalDate','calendarOwnerKey','agentPendingText','testMocksEnabled','canonicalCalendarRow','calendarRange','calendarEventKey','eventEditorMutability','cancellationModeForEditorEvent','calendarEditorDeleteMode','confirmCalendarAction','calendarFormPatch','rememberNoteOrigin','calendarFormMinutes','browserCloudResidentEnabled',code+';return installAgentCalendarAdapter;')(Calendar,{getPlatform:()=>platform},connection,c=>c.calendarId,()=>{},draft=>draft,()=>({}),()=>({}),target=>target.fixtureOwnerKey??state.ownerKey,pendingText,testMocks,row,records=>({events:records}),event=>event.id,()=>({kind:'editable',providerVersion:'version-1'}),cancellationModeForEditorEvent,calendarEditorDeleteMode,async()=>true,draft=>draft,async(...args)=>{remembered?.push(args);return true;},hours=>Math.round(Number(hours)*60),false);
 
  const opened=[];const calendar={calendarAuthority:authority,form};
  class Shell{live=true;componentDidMount(){}componentWillUnmount(){}vget(){return calendar;}vset(_view,patch){Object.assign(calendar,patch);}openView(...args){opened.push(args);}setState(){}}
@@ -85,9 +88,9 @@ test('only supported sources offer Repeat and unsupported event-alert controls s
 });
 test('unsupported retained recurrence refuses without saving or altering the draft; an existing Google event keeps the rule',async()=>{
  for(const provider of ['eliza','google']){
-  const existing={id:'google-event',provider:'google',side:'owner',grantId:'google-grant',calendarId:'0',recurrence:['RRULE:FREQ=WEEKLY'],startAt:'2026-10-31T12:00:00Z',endAt:'2026-10-31T13:00:00Z'},f=fixture({provider,events:provider==='google'?[existing]:[]}),toasts=[];
+  const existing={id:'google-event',provider:'google',attendees:[],organizer:{self:true},side:'owner',grantId:'google-grant',calendarId:'0',recurrence:['RRULE:FREQ=WEEKLY'],startAt:'2026-10-31T12:00:00Z',endAt:'2026-10-31T13:00:00Z'},f=fixture({provider,events:provider==='google'?[existing]:[]}),toasts=[];
   const form={id:provider==='google'?'google-event':null,cal:provider==='eliza'?'handle:primary':'handle:0',canonicalOwnerKey:'owner-A',canonicalEventKey:'google-event',expectedProviderVersion:'version-1',recurrenceScope:'series',creationId:'op',title:'Standup',off:0,t:9,d:1,repeat:'weekly',alert:null,who:[]},before=structuredClone(form);
-  const out=f.views.calendar.render({form},{set(){},get:()=>({form}),toast:message=>toasts.push(message)});await out.f.save();assert.deepEqual(form,before);
+  const out=f.views.calendar.render({form},{isActive:()=>true,set(){},get:()=>({form}),toast:message=>toasts.push(message)});await out.f.save();assert.deepEqual(form,before);
   if(provider==='eliza'){assert.deepEqual(f.creates,[]);assert.deepEqual(toasts,["Agent Calendar can't repeat events. Remove the repeat to save."]);assert.equal(out.f.repeats[0].label,'Remove requested repeat');}
   else{assert.deepEqual(toasts,[]);assert.equal(f.creates.length,0);assert.deepEqual(f.updates.map(change=>change.input.recurrence),[['RRULE:FREQ=WEEKLY']]);assert.equal(f.updates[0].eventKey,'google-event');}
  }
@@ -137,7 +140,7 @@ test('canonical feed ignores obsolete hidden preferences while preserving the sa
 const localSource={summary:'Calendar',provider:'eliza',side:'owner',grantId:'eliza-calendar',calendarId:'primary',includeInFeed:true,accessRole:'owner'};
 const googleSource={summary:'Google',provider:'google',side:'owner',grantId:'google-grant',calendarId:'google',includeInFeed:true,accessRole:'owner'};
 const availablePort={current:()=>true,identity:{origin:'http://localhost',ownerId:'owner',agentId:'agent'}};
-const calendarApi=(f,toasts=[])=>({get:()=>f.calendar,set:patch=>Object.assign(f.calendar,patch),toast:text=>toasts.push(text)});
+const calendarApi=(f,toasts=[])=>({isActive:()=>true,get:()=>f.calendar,set:patch=>Object.assign(f.calendar,patch),toast:text=>toasts.push(text)});
 test('New Event selects Eliza even when Google is first and hides the redundant source picker',async()=>{
  const f=fixture({recordPort:availablePort,calendars:[googleSource,localSource]}),api=calendarApi(f);
  f.views.calendar.render(f.calendar,api).newEvent();assert.equal(f.calendar.form.cal,'handle:primary');assert.equal(f.creates.length,0);
@@ -181,7 +184,7 @@ const reminderPresentationCode=stripTypeScriptTypes(reminderPresentationFile.sli
 function actualDomainFixture({withReminder=true,platform='android',calendars=[googleSource,localSource]}={}){
  const calendar={calendarAuthority:'canonical',form:null},calls={creates:[],nativeSchedules:0,destinationChanges:[]},state={ownerKey:'domain-owner',status:'ready',savedAt:null,feed:{events:[]},calendars};
  const cap={getPlatform:()=>platform,isNativePlatform:()=>platform==='android',isPluginAvailable:()=>true};
- class Canonical{state=state;subscribe(){return()=>{};}refresh(){}retire(){}invalidateNext(){}sourceHandle(key){return state.calendars.some(source=>source.calendarId===key)?'handle:'+key:undefined;}sourceKeyForHandle(handle){return handle?.slice('handle:'.length);}create(sourceKey,input){calls.creates.push({sourceKey,input});return {outcome:'created',event:null};}}
+ class Canonical{state=state;subscribe(){return()=>{};}async refresh(){}retire(){}invalidateNext(){}sourceHandle(key){return state.calendars.some(source=>source.calendarId===key)?'handle:'+key:undefined;}sourceKeyForHandle(handle){return handle?.slice('handle:'.length);}create(sourceKey,input){calls.creates.push({sourceKey,input});return {outcome:'created',event:null};}}
  class Shell{live=true;componentDidMount(){}componentWillUnmount(){this.live=false;}vget(){return calendar;}vset(_,patch){Object.assign(calendar,patch);}setState(){}openView(){}goHome(){}back(){}toast(){}calendarFormDestinationChanged(original,next){calls.destinationChanges.push({original,next});return next;}}
  const views={calendar:{state:{},render:st=>({f:st.form?{cals:(st.canonicalCalendars??[]).map(c=>({...c,pick:()=>{}})),repeats:[],alerts:[]}:null})}};
  const connection={getSnapshot:()=>({open:true}),subscribe:()=>()=>{},getAppRecordClient:()=>({current:()=>true,identity:{origin:'http://localhost',ownerId:'owner',agentId:'agent'}})};
@@ -303,19 +306,19 @@ const managedGrant='alpha-google:'+'b'.repeat(64);
 const managedSource={summary:'Work',provider:'google',side:'owner',grantId:managedGrant,calendarId:'work',includeInFeed:true,accessRole:'owner'};
 const managedEvent={id:'standup',provider:'google',side:'owner',grantId:managedGrant,calendarId:'work',title:'Standup',description:'',attendees:[],recurringEventId:'series-1',startAt:'2026-11-06T15:00:00Z',endAt:'2026-11-06T15:30:00Z'};
 const detailRow=e=>({id:'canonical-calendar:'+e.id,canonicalEvent:e,canonicalEventKey:e.id,off:0,t:15,d:.5,title:e.title});
-test('a managed Google event keeps Delete unavailable in the event menu',()=>{
+test('a managed Google invitation offers private-copy Delete in the event menu',()=>{
  const template=readFileSync('apps/app/src/prototype/template.html','utf8');
  assert.match(template,/<sc-if value="\{\{calendar\.ev\.del\}\}"><button aria-label="Delete event"/);
  assert.doesNotMatch(template,/\{\{calendar\.ev\.providerNotice\}\}/);
- for(const event of [managedEvent,{...managedEvent,recurringEventId:undefined}]){
+ for(const event of [{...managedEvent,attendees:[{self:true,organizer:false}]},{...managedEvent,attendees:[{self:true,organizer:false}],recurringEventId:undefined}]){
   const f=fixture({calendars:[localSource,managedSource],events:[event],row:detailRow}),out=f.views.calendar.render({open:'canonical-calendar:standup'},calendarApi(f));
-  assert.equal(out.ev.del,null);assert.equal(out.ev.providerNotice,'Decline this invitation in Google Calendar.');assert.deepEqual(out.ev.recurrenceScopes,[]);
+  assert.equal(typeof out.ev.del,'function');assert.equal(out.ev.providerNotice,undefined);assert.deepEqual(out.ev.recurrenceScopes,[]);
  }
  // Other Google grants keep Delete and every series scope.
- const other={...managedEvent,grantId:'google-grant'},f=fixture({calendars:[localSource,{...managedSource,grantId:'google-grant'}],events:[other],row:detailRow}),out=f.views.calendar.render({open:'canonical-calendar:standup'},calendarApi(f));
+ const other={...managedEvent,attendees:[{self:true,organizer:false}],grantId:'google-grant'},f=fixture({calendars:[localSource,{...managedSource,grantId:'google-grant'}],events:[other],row:detailRow}),out=f.views.calendar.render({open:'canonical-calendar:standup'},calendarApi(f));
  assert.equal(typeof out.ev.del,'function');assert.equal(out.ev.providerNotice,undefined);assert.deepEqual(out.ev.recurrenceScopes.map(scope=>scope.label),['This occurrence','This and following','Entire series']);
 });
-test('an owned managed Google event offers Delete, while invitations retain their separate decline path',()=>{
+test('an owned managed Google event offers Delete, while invitations use private-copy removal',()=>{
  const event={...managedEvent,organizer:{self:true}};
  const f=fixture({calendars:[localSource,managedSource],events:[event],row:detailRow});
  const out=f.views.calendar.render({open:'canonical-calendar:standup'},calendarApi(f));assert.equal(typeof out.ev.del,'function');assert.equal(out.ev.providerNotice,undefined);
@@ -354,4 +357,15 @@ test('a definitively expired pre-execution binding gets one fresh key; ambiguous
   const g=fixture({recordPort:availablePort,createFailures:[failure]});g.shell.reviewScannedCalendarDraft(noteDraft);g.calendar.form=g.opened[0][1].form;const form=g.calendar.form,toasts=[];
   await g.views.calendar.render(g.calendar,calendarApi(g,toasts)).f.save();assert.equal(g.creates.length,1);assert.equal(g.calendar.form,form);assert.equal(toasts.length,1);
  }
+});
+
+test('cached event keeps its menu and refreshes before opening the editor',async()=>{
+ const event={...managedEvent,organizer:{self:true},recurringEventId:undefined};
+ const f=fixture({calendars:[localSource,managedSource],events:[event],row:detailRow});
+ f.state.savedAt=Date.now();Object.assign(f.calendar,{open:'canonical-calendar:standup'});
+ let refreshes=0;f.shell.agentCalendar.refresh=async()=>{refreshes++;f.state.savedAt=null;};
+ const out=f.views.calendar.render(f.calendar,calendarApi(f));
+ assert.equal(out.ev.hasActions,true);assert.equal(out.ev.readOnly,false);
+ out.ev.edit();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(refreshes,1);assert.equal(f.calendar.form.canonicalEventKey,'standup');
 });

@@ -1,8 +1,14 @@
+import {readFileSync} from 'node:fs';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
+import {cancellationModeForEditorEvent} from '../.eliza/client-features/plugins/plugin-calendar/src/components/event-editor-policy.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
 import {calendarAgentWrite as canonicalCalendarAgentWrite,CalendarAgentWriteRefused} from '../scripts/calendar-agent-write-host.ts';
 // Match Alpha's explicit source namespace at its managed provider boundary.
 const calendarAgentWrite=(...args)=>canonicalCalendarAgentWrite(...args,'alpha-google');
+const modeSource=readFileSync('apps/app/src/runtime/agent-calendar.ts','utf8');
+const calendarEditorDeleteMode=new Function('cancellationModeForEditorEvent',stripTypeScriptTypes(modeSource.slice(modeSource.indexOf('export function calendarEditorDeleteMode'),modeSource.indexOf('const empty=')).replace('export ',''),{mode:'strip'})+';return calendarEditorDeleteMode;')(cancellationModeForEditorEvent);
 const scope='a'.repeat(64),source=`alpha-google:${scope}`;
 const event={title:'Private test',description:'',location:'',startAt:'2026-10-14T18:00:00.000Z',endAt:'2026-10-14T18:02:00.000Z',timeZone:'UTC',isAllDay:false,attendees:[],recurrence:[]};
 const snapshot={eventId:'event-1',etag:'"version-1"',event};
@@ -44,4 +50,14 @@ test('timeouts, generic HTTP failures and malformed rejection claims stay unknow
 test('a rejection of post-write readback cannot turn acceptance into a safe retry',async()=>{
  const f=fixture();f.client.googleCalendarFeed=async()=>{throw refused();};
  await assert.rejects(calendarAgentWrite(f.client,'grant',scope,{...base,payload,preflight:{idempotencyKey:'stable'}},signal()),error=>!(error instanceof CalendarAgentWriteRefused));assert.equal(f.calls.filter(x=>x.kind==='create').length,1);
+});
+
+test('managed invitation removal uses the private-copy operation and retains the provider version',async()=>{
+ const f=fixture(),invitation={provider:'google',grantId:source,organizer:{self:false},attendees:[{self:true,organizer:false}],metadata:{etag:snapshot.etag}};
+ const mode=calendarEditorDeleteMode(invitation);assert.equal(mode,'remove_private_copy');
+ await calendarAgentWrite(f.client,'grant',scope,{...base,payload:{...payload,action:'cancel_event',eventId:`${source}:event-1`,expectedProviderVersion:snapshot.etag,cancellationMode:mode},preflight:{providerEventId:'event-1',providerVersion:snapshot.etag}},signal());
+ assert.equal(f.calls.find(x=>x.kind==='delete').expectedEtag,snapshot.etag);assert.equal(f.calls.at(-1).kind,'get');
+ assert.equal(calendarEditorDeleteMode({...invitation,organizer:{self:true}}),'organizer_cancel');
+ assert.equal(calendarEditorDeleteMode({...invitation,attendees:[]}),null);
+ assert.equal(calendarEditorDeleteMode({...invitation,grantId:'other-provider'}),'decline_invitation');
 });
