@@ -28,6 +28,8 @@ import org.json.JSONObject;
 public final class OtaActivity extends Activity {
  private static final String ALIAS="alpha-ota-platform-fixture";
  private static final byte[] VALUE="synthetic retained value".getBytes(StandardCharsets.UTF_8);
+ private final android.os.Handler finishHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+ private final Runnable finishReadback=this::finish;
  static void save(Context context,String name,JSONObject result)throws Exception{
   try(FileOutputStream out=context.openFileOutput(name,Context.MODE_PRIVATE)){out.write(result.toString().getBytes(StandardCharsets.UTF_8));out.getFD().sync();}
  }
@@ -77,13 +79,20 @@ public final class OtaActivity extends Activity {
  }
  @Override public void onCreate(Bundle saved){
   super.onCreate(saved);
+  handlePhase();
+ }
+ @Override protected void onNewIntent(Intent intent){
+  super.onNewIntent(intent);setIntent(intent);handlePhase();
+ }
+ private void handlePhase(){
+  finishHandler.removeCallbacks(finishReadback);
   boolean readback=false;
   try{
    String phase=getIntent().getStringExtra("phase");
    if("prepare".equals(phase))prepare();else if("install".equals(phase))install();else{save(this,"readback.json",snapshot());readback=true;}
   }catch(Exception failed){try{save(this,"error.json",new JSONObject().put("errorClass",failed.getClass().getSimpleName()));}catch(Exception ignored){}}
   // Give Android's deferred terminal broadcast a foreground successor, as resuming a real app does.
-  if(readback)new android.os.Handler(getMainLooper()).postDelayed(this::finish,1500);else finish();
+  if(readback)finishHandler.postDelayed(finishReadback,1500);else finish();
  }
  public static final class ResultReceiver extends BroadcastReceiver {
   @Override public void onReceive(Context context,Intent intent){
