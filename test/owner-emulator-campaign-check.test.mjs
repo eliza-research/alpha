@@ -1,11 +1,11 @@
-// scripts/owner/emulator-campaign-check.mjs (issue #676, H-31): every listed class has a test
+// scripts/owner/emulator-campaign-check.ts (issue #676, H-31): every listed class has a test
 // source, the hosted-suite mapping is read from the suite's own plan, the local batches parse with
 // the runner's own argument parser, and the dispatch plan only prints commands for an exact SHA.
 import test from "node:test";
 import assert from "node:assert/strict";
-import * as runner from "../scripts/android-instrumentation.mjs";
-import * as suite from "../scripts/ci/emulator-suite.mjs";
-import { CAMPAIGN_BATCHES, ISSUE_676, ROOT, analyse, dispatchPlan, instrumentedSources, localCommand } from "../scripts/owner/emulator-campaign-check.mjs";
+import * as runner from "../scripts/android-instrumentation.ts";
+import * as suite from "../scripts/ci/emulator-suite.ts";
+import { CAMPAIGN_BATCHES, ISSUE_676, ROOT, analyse, dispatchPlan, instrumentedSources, localCommand } from "../scripts/owner/emulator-campaign-check.ts";
 
 const rows = analyse(ROOT, runner, suite);
 const classes = rows.filter(row => row.class);

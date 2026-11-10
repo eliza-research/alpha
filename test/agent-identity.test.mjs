@@ -8,10 +8,10 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {git} from './fixtures/git-fixture.mjs';
-import {AGENT_CHARACTER,AGENT_CHARACTER_ENVIRONMENT} from '../scripts/agent-identity.mjs';
-import {LOCAL_EMBEDDING_ROUTE} from '../scripts/agent-embeddings.mjs';
+import {AGENT_CHARACTER,AGENT_CHARACTER_ENVIRONMENT} from '../scripts/agent-identity.ts';
+import {LOCAL_EMBEDDING_ROUTE} from '../scripts/agent-embeddings.ts';
 
-const LAUNCHERS=['scripts/start-local-remote.mjs','scripts/start-combined-agent.mjs','scripts/start-local-voice-agent.mjs','scripts/start-reviewed-workflow-agent.mjs'];
+const LAUNCHERS=['scripts/start-local-remote.ts','scripts/start-combined-agent.ts','scripts/start-local-voice-agent.ts','scripts/start-reviewed-workflow-agent.ts'];
 
 test('the agent character carries the product identity and inherits the bundled persona',()=>{
  assert.equal(AGENT_CHARACTER.name,record.identity.characterName);
@@ -51,7 +51,7 @@ function launch({route}={}){
  const env={...process.env,ELIZA_ASR_ENABLED:'0',ELIZA_PARADEE_ENABLED:'0',ALPHA_ELIZA_SOURCE:source,ALPHA_REMOTE_PROFILE:profile,ALPHA_REMOTE_PORT:'47998',ALPHA_BUN:bun,CEREBRAS_API_KEY:'synthetic-fixture-key'};
  for(const key of ['ELIZA_SECRET_SWAP_ENABLED','ELIZA_PII_SWAP_ENABLED','CEREBRAS_MODEL','ELIZA_INFERENCE_LIBRARY','ELIZA_INFERENCE_LIB_DIR'])delete env[key];
  try{
-  const result=spawnSync(process.execPath,[path.resolve('scripts/start-local-remote.mjs')],{env,encoding:'utf8',timeout:15000});
+  const result=spawnSync(process.execPath,[path.resolve('scripts/start-local-remote.ts')],{env,encoding:'utf8',timeout:15000});
   return {status:result.status,error:result.stderr,child:JSON.parse(fs.readFileSync(receipt,'utf8')),before,after:fs.readFileSync(config,'utf8')};
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 }
@@ -84,7 +84,7 @@ test('the reviewed-workflow launcher makes loopback callers present the owner to
   git(source,'init','-q');git(source,'commit','--allow-empty','-qm','fixture');
   fs.writeFileSync(bun,`#!/usr/bin/env node\nrequire('node:fs').writeFileSync(${JSON.stringify(receipt)},JSON.stringify({requireLocalAuth:process.env.ELIZA_REQUIRE_LOCAL_AUTH??null,token:process.env.ELIZA_API_TOKEN??null}));`,{mode:0o700});
   const env={...process.env,HOME:home};delete env.ELIZA_REQUIRE_LOCAL_AUTH;
-  const result=spawnSync(process.execPath,[path.resolve('scripts/start-reviewed-workflow-agent.mjs'),'--source',source,'--profile',profile,'--port','47997','--bun',bun],{env,encoding:'utf8',timeout:15000});
+  const result=spawnSync(process.execPath,[path.resolve('scripts/start-reviewed-workflow-agent.ts'),'--source',source,'--profile',profile,'--port','47997','--bun',bun],{env,encoding:'utf8',timeout:15000});
   assert.equal(result.status,0,result.stderr);
   const child=JSON.parse(fs.readFileSync(receipt,'utf8'));
   assert.equal(child.requireLocalAuth,'1');
@@ -100,7 +100,7 @@ test('the combined launcher refuses the pinned vendor tree whatever directory it
   for(const source of ['vendor/eliza','vendor/eliza/packages','base/eliza-app']){
    const env={...process.env,ALPHA_NODE_BIN:node,ALPHA_BUN:bun,ALPHA_COMBINED_SOURCE:path.resolve(source),ALPHA_COMBINED_SOURCE_MANIFEST:path.join(dir,'manifest.json')};
    if(!fs.existsSync(source))continue;
-   const result=spawnSync(process.execPath,[path.resolve('scripts/start-combined-agent.mjs'),'--validate-only'],{cwd:dir,env,encoding:'utf8',timeout:15000});
+   const result=spawnSync(process.execPath,[path.resolve('scripts/start-combined-agent.ts'),'--validate-only'],{cwd:dir,env,encoding:'utf8',timeout:15000});
    assert.notEqual(result.status,0,source);
    assert.match(result.stderr,/Never launch mutable pinned vendor or pristine baseline/,source);
   }

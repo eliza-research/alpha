@@ -1,4 +1,4 @@
-// `npm run dev` (scripts/dev-local.mjs) runs here with recording stand-ins for the local agent and
+// `npm run dev` (scripts/dev-local.ts) runs here with recording stand-ins for the local agent and
 // Vite, so the exact environment each child receives is observed without starting either. The
 // renderer flags are then read through the real build-flags.ts with that environment.
 import test from 'node:test';
@@ -12,10 +12,10 @@ import {spawn} from 'node:child_process';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 const stubs={
- 'scripts/prepare-client-features.mjs':'export function prepareClientFeatures(){}\n',
- 'scripts/local-agent-source.mjs':"export function sourceDirectory(){throw Error('ALPHA_ELIZA_SOURCE is set by the test');}\n",
+ 'scripts/prepare-client-features.ts':'export function prepareClientFeatures(){}\n',
+ 'scripts/local-agent-source.ts':"export function sourceDirectory(){throw Error('ALPHA_ELIZA_SOURCE is set by the test');}\n",
  // Publish only complete JSON before Vite observes readiness and can stop this child. Self-exits on a failed run.
- 'scripts/start-local-remote.mjs':"import fs from 'node:fs';fs.writeFileSync('agent.json.tmp',JSON.stringify(process.env));fs.renameSync('agent.json.tmp','agent.json');setTimeout(()=>process.exit(0),20000);\n",
+ 'scripts/start-local-remote.ts':"import fs from 'node:fs';fs.writeFileSync('agent.json.tmp',JSON.stringify(process.env));fs.renameSync('agent.json.tmp','agent.json');setTimeout(()=>process.exit(0),20000);\n",
  'node_modules/vite/package.json':'{"type":"module"}\n',
  'node_modules/vite/bin/vite.js':"import fs from 'node:fs';const until=Date.now()+15000;while(!fs.existsSync('agent.json')&&Date.now()<until)await new Promise(r=>setTimeout(r,20));fs.writeFileSync('vite.json',JSON.stringify({argv:process.argv.slice(2),env:process.env}));\n",
 };
@@ -23,12 +23,12 @@ const freePort=()=>new Promise((resolve,reject)=>{const server=createServer();se
 async function launch(overrides={}){
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'alpha-dev-local-')));
  try{
-  for(const file of ['scripts/dev-local.mjs','scripts/dev-speech-settings.mjs','scripts/speech-env.mjs']){fs.mkdirSync(path.join(root,path.dirname(file)),{recursive:true});fs.copyFileSync(file,path.join(root,file));}
+  for(const file of ['scripts/dev-local.ts','scripts/dev-speech-settings.ts','scripts/speech-env.ts']){fs.mkdirSync(path.join(root,path.dirname(file)),{recursive:true});fs.copyFileSync(file,path.join(root,file));}
   for(const [file,text] of Object.entries(stubs)){fs.mkdirSync(path.join(root,path.dirname(file)),{recursive:true});fs.writeFileSync(path.join(root,file),text);}
   fs.mkdirSync(path.join(root,'source/node_modules'),{recursive:true});
   const env={...process.env,ALPHA_ELIZA_SOURCE:path.join(root,'source'),ALPHA_REMOTE_PROFILE:path.join(root,'profile'),ALPHA_REMOTE_PORT:String(await freePort()),...overrides};
   for(const key of ['NODE_TEST_CONTEXT',...['ALPHA_DEV_CONNECTION_TOOLS','VITE_ALPHA_PRIVATE_LOCAL_PREVIEW'].filter(key=>!Object.hasOwn(overrides,key))])delete env[key];
-  const child=spawn(process.execPath,['scripts/dev-local.mjs'],{cwd:root,env,stdio:['ignore','pipe','pipe']});
+  const child=spawn(process.execPath,['scripts/dev-local.ts'],{cwd:root,env,stdio:['ignore','pipe','pipe']});
   let stdout='',stderr='';child.stdout.on('data',chunk=>stdout+=chunk);child.stderr.on('data',chunk=>stderr+=chunk);
   const timer=setTimeout(()=>child.kill('SIGTERM'),20000);
   const status=await new Promise(resolve=>child.on('close',resolve));clearTimeout(timer);

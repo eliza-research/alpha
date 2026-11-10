@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {createAppUpdateScheduler} from '../../../../.eliza/client-features/packages/ui/src/state/app-update-gate.ts';
-import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
 import {checkTraces} from '../check-traces.mjs';
 import {boundInputs,captureSources,checkpoint,deferred,read,tick,trace,call} from './support.mjs';
 
@@ -13,8 +13,8 @@ export async function checkAutomaticAppUpdateSchedule() {
   const shared='packages/ui/src/state/app-update-gate.ts';
   const sources=[fileURLToPath(import.meta.url),'apps/app/src/prototype/settings-adapter.ts',
     'apps/app/src/main.tsx','vendor/eliza/'+shared,'.eliza/client-features/'+shared,
-    '.eliza/client-features/.source.json','scripts/prepare-client-features.mjs',
-    'scripts/pinned-upstream-source.mjs','test/support/strip-types.mjs','upstream.lock.json'];
+    '.eliza/client-features/.source.json','scripts/prepare-client-features.ts',
+    'scripts/pinned-upstream-source.ts','test/support/strip-types.mjs','upstream.lock.json'];
   captureSources([...sources,modelPath]);
   checkClientFeatures();
   const stamp=JSON.parse(read('.eliza/client-features/.source.json'));

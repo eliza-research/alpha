@@ -37,7 +37,7 @@ async function captureImplementation(additionalSources=[]){
  const discover=await build(options);
  const inputs=Object.keys(discover.metafile.inputs).filter(path=>existsSync(resolve(path)));
  const sources=[...inputs,modelPath,adapter,'upstream.lock.json',preparedManifest,'package-lock.json',
-  'scripts/prepare-client-features.mjs',pinnedMapsScreen,
+  'scripts/prepare-client-features.ts',pinnedMapsScreen,
   fileURLToPath(import.meta.url),...additionalSources];
  const driverHashes=captureInputs(sources);
  const manifest=JSON.parse(readFileSync(preparedManifest,'utf8'));

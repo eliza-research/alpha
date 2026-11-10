@@ -43,7 +43,7 @@
     public <init>(android.content.Context, androidx.work.WorkerParameters);
 }
 
-# Pinned local-agent runtime staged by scripts/stage-local-agent-sources.mjs.
+# Pinned local-agent runtime staged by scripts/stage-local-agent-sources.ts.
 # JNI symbol names (libelizavoicejni) depend on the exact class and method names,
 # and the service resolves hidden platform APIs by reflection.
 -keep class ai.elizaresearch.alphaphone.ElizaVoiceNative { *; }

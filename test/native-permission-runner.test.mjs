@@ -93,7 +93,7 @@ test('voice-revoke grants, revokes while the recording phase runs, verifies in a
 });
 
 test('voice-revoke refuses a process that survives revocation, a stale marker and a phase that ended early',async()=>{
- const {revokeWhileRecording,cases}=await import('../scripts/test-native-permissions.mjs');
+ const {revokeWhileRecording,cases}=await import('../scripts/test-native-permissions.ts');
  const fs=await import('node:fs'),os=await import('node:os'),path=await import('node:path');
  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-voice-revoke-'));
  const interrupted='INSTRUMENTATION_STATUS: class=ai.elizaresearch.alphaphone.VoicePermissionRevokeInstrumentedTest\nINSTRUMENTATION_STATUS: numtests=1\nINSTRUMENTATION_STATUS: test=microphoneRevokedWhileRecordingPhase\nINSTRUMENTATION_STATUS_CODE: 1\nINSTRUMENTATION_RESULT: shortMsg=Process crashed.\nINSTRUMENTATION_CODE: 0\n';

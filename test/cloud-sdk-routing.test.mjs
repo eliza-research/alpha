@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
-import {CLOUD_SDK_BASES} from '../scripts/cloud-sdk-authority.mjs';
-import {CLOUD_DEPLOYMENT as deployment} from '../scripts/cloud-deployment-policy.mjs';
+import {CLOUD_SDK_BASES} from '../scripts/cloud-sdk-authority.ts';
+import {CLOUD_DEPLOYMENT as deployment} from '../scripts/cloud-deployment-policy.ts';
 // Uses the pinned resident's actual installed provider SDK. Fetch is intercepted;
 // this verifies routing only and never performs inference or uses a credential.
 test('resident SDK appends chat completions to the versioned Cloud base',{skip:process.env.ALPHA_ELIZA_SOURCE?false:'Set ALPHA_ELIZA_SOURCE to a prepared SDK tree (npm run agent:prepare); browser.yml verify sets it'},async()=>{

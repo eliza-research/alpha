@@ -9,7 +9,7 @@ const sourceFields = state => Object.fromEntries(Object.entries(state).map(([fie
 
 export async function checkRetainedReminderTapAdmission(extraSources = []) {
   const sources = [...new Set([driver, ...retainedReminderTapSources, ...extraSources,
-    fileURLToPath(new URL('./support.mjs', import.meta.url)), 'upstream.lock.json', 'scripts/prepare-client-features.mjs'])];
+    fileURLToPath(new URL('./support.mjs', import.meta.url)), 'upstream.lock.json', 'scripts/prepare-client-features.ts'])];
   const driverHashes = captureInputs(sources);
   const traces = [];
   async function scenario(name, run) {

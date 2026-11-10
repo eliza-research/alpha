@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import {execFileSync} from 'node:child_process';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 import {loginSurfaceInventory as inventory} from './support/login-surfaces.mjs';
 
 // Issue #404 (P-20): every eligible login surface in Alpha supports password-manager fill,
@@ -228,7 +228,7 @@ test('External authorization uses the browser and Google sign-in uses the native
   // Alpha registers no general web handler, so a sign-in page cannot resolve back into Alpha. The
   // exceptions are the verified returns: the in-app sign-in and the Workspace consent, each one exact path.
   const callback = /^<intent-filter android:autoVerify="true"><action android:name="android\.intent\.action\.VIEW"\/><category android:name="android\.intent\.category\.DEFAULT"\/><category android:name="android\.intent\.category\.BROWSABLE"\/><data android:scheme="https" android:host="(\$\{appLinkHost\}|\$\{stagingCloudWebHost\})" android:path="\/alphaphone\/(auth|gmail)\/callback"\/><\/intent-filter>$/;
-  // scripts/verify-apks.mjs pins the exact set of web VIEW filters in the merged manifest.
+  // scripts/verify-apks.ts pins the exact set of web VIEW filters in the merged manifest.
   const returns = [];
   for (const manifest of walk('android', file => file.endsWith('AndroidManifest.xml') && !/[\\/](test|androidTest|build)[\\/]/.test(file))) {
     const live = read(manifest).replace(/<!--[\s\S]*?-->/g, '');

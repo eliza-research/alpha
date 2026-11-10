@@ -5,8 +5,8 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {execFileSync} from 'node:child_process';
 import {root,nativeSource,upstreamAgentRuntime,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
-import {upstreamNativeSource} from '../scripts/upstream-native-source.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
+import {upstreamNativeSource} from '../scripts/upstream-native-source.ts';
 test('explicit native legacy recovery uses real encrypted slots and current token validation',{skip:jsonJarSkip},()=>{
  const dir=mkdtempSync(join(tmpdir(),'alpha-legacy-recovery-'));
  try{

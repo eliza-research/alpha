@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {stageWorkerArtifact,verifyWorkerArtifact} from '../scripts/workflow-worker-artifact.mjs';
+import {stageWorkerArtifact,verifyWorkerArtifact} from '../scripts/workflow-worker-artifact.ts';
 import {writeWorkerFixture as fixture} from './fixtures/workflow-worker-assets.mjs';
 import {javaBinary} from './fixtures/jvm-tools.mjs';
 const root=path.resolve(import.meta.dirname,'..');

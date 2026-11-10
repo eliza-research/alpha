@@ -2,8 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {ROOT, VOICE_HOST} from '../../scripts/generate-licenses.mjs';
-import {VOICE_ASR_SLOT} from '../../scripts/voice-host.mjs';
+import {ROOT, VOICE_HOST} from '../../scripts/generate-licenses.ts';
+import {VOICE_ASR_SLOT} from '../../scripts/voice-host.ts';
 
 const sha = value => createHash('sha256').update(value).digest('hex');
 

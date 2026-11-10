@@ -3,8 +3,8 @@ import fs from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {ensurePreparedWorkflowWorker} from '../../../../scripts/prepared-workflow-worker.mjs';
-import {verifyWorkerArtifact, workerHash} from '../../../../scripts/workflow-worker-artifact.mjs';
+import {ensurePreparedWorkflowWorker} from '../../../../scripts/prepared-workflow-worker.ts';
+import {verifyWorkerArtifact, workerHash} from '../../../../scripts/workflow-worker-artifact.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const model = 'PreparedWorkflowWorker';
@@ -44,9 +44,9 @@ const deferred = () => {
 
 export async function checkPreparedWorkflowWorker(extraSources = []) {
   const sources = [modelPath, fileURLToPath(import.meta.url), producerPath,
-    'scripts/prepared-workflow-worker.mjs', 'scripts/local-agent-source.mjs',
-    'scripts/workflow-worker-artifact.mjs', 'scripts/build-workflow-worker.ts',
-    'scripts/copy-file-clone.mjs', 'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
+    'scripts/prepared-workflow-worker.ts', 'scripts/local-agent-source.ts',
+    'scripts/workflow-worker-artifact.ts', 'scripts/build-workflow-worker.ts',
+    'scripts/copy-file-clone.ts', 'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs',
     ...extraSources];
   const directory = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), 'alpha-quint-prepared-worker-')));

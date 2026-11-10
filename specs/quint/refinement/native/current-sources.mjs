@@ -1,6 +1,6 @@
 import {readFileSync, existsSync} from 'node:fs';
 import {join} from 'node:path';
-import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.ts';
 import {app, root} from './java.mjs';
 
 const staged = preparePatchedNative();
@@ -27,6 +27,6 @@ export function currentNativeSource(name) {
   throw Error(`Current native source is ambiguous or absent: ${name} (${matches.join(',')})`);
 }
 
-export const nativePatchInputs = ['android/upstream-native-sources.json', 'scripts/prepare-patched-native.mjs',
+export const nativePatchInputs = ['android/upstream-native-sources.json', 'scripts/prepare-patched-native.ts',
   join(staged.root, '.source.json'),
   ...JSON.parse(readFileSync(join(root, 'android/upstream-native-sources.json'), 'utf8')).patches.map(row => 'patches/eliza/' + row.file)];

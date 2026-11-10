@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 test('pinned recovery and lifecycle sources match the reviewed upstream repair',()=>{
  for(const [name,expected] of [

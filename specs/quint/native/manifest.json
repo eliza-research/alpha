@@ -77,7 +77,7 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java",
         "vendor/eliza/packages/voice/src/voice-assistant-session.ts",
         "upstream.lock.json",
-        "scripts/prepare-client-features.mjs"
+        "scripts/prepare-client-features.ts"
       ],
       "tests": [
         "longGapAndPlaybackTest",

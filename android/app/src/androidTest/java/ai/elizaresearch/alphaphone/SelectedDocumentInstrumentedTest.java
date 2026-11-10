@@ -236,7 +236,7 @@ public class SelectedDocumentInstrumentedTest {
    }
   }finally{if(selectionId!=null)SelectedDocumentAccess.forget(selectionId);if(file!=null)resolver.delete(file,null,null);if(bad!=null)resolver.delete(bad,null,null);}
  }
- /** Invoked by test-native-restart.mjs document in separate instrumentation processes. */
+ /** Invoked by test-native-restart.ts document in separate instrumentation processes. */
  @Test public void documentProcessRestartPhase()throws Exception{
   String phase=InstrumentationRegistry.getArguments().getString("documentPhase");org.junit.Assume.assumeTrue("Explicit process-restart runner only",phase!=null);
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();ContentResolver resolver=context.getContentResolver();android.content.SharedPreferences fixture=context.getSharedPreferences("document-restart-fixture",0);
@@ -320,7 +320,7 @@ public class SelectedDocumentInstrumentedTest {
    assertNull("A deleted source fails closed",openReference(scenario,second,sha,bytes.length,"text/plain"));
   }finally{if(selectionId!=null)SelectedDocumentAccess.forget(selectionId);if(!deleted)resolver.delete(file,null,null);}
  }
- /** node scripts/test-native-restart.mjs source-reference: prepare retains a reference in one
+ /** node scripts/test-native-restart.ts source-reference: prepare retains a reference in one
   * process; verify (a new process) reopens exactly the same bytes through it; cleanup releases. */
  @Test public void sourceReferenceProcessRestartPhase()throws Exception{
   String phase=InstrumentationRegistry.getArguments().getString("sourceReferencePhase");

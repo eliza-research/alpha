@@ -22,8 +22,8 @@ test('the single lane stages once and archives the distribution and test-mocks b
  for(const inherited of [{},{ALPHA_RUNTIME_PROFILE:'cloud',ALPHA_LOCAL_EMBEDDINGS:'1'}]){
   const rows=calls(inherited),stage=rows.filter(row=>row.includes('runtime-stage'));
   assert.equal(stage.length,1);assert.deepEqual(stage[0].slice(stage[0].indexOf('npm')),['npm','run','agent:stage-android','GRADLE_OPTS=']);
-  const archives=rows.filter(row=>row.includes('scripts/build-archive.mjs'));
-  assert.deepEqual(archives.map(row=>row.slice(row.indexOf('scripts/build-archive.mjs')+1,-1)),[['test-results/resident-ci-distribution'],['--test-mocks','test-results/resident-ci-archive']]);
+  const archives=rows.filter(row=>row.includes('scripts/build-archive.ts'));
+  assert.deepEqual(archives.map(row=>row.slice(row.indexOf('scripts/build-archive.ts')+1,-1)),[['test-results/resident-ci-distribution'],['--test-mocks','test-results/resident-ci-archive']]);
   assert.ok(!rows.some(row=>row.some(cell=>/--runtime-profile|--local-embeddings|embedding-stage|cloud-archive|resident-ci-cloud/.test(cell))));
  }
 });

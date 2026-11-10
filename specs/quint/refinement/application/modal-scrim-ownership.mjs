@@ -1,6 +1,6 @@
 import {fileURLToPath} from 'node:url';
 import {observeModalScrim} from '../../../../test/fixtures/modal-scrim-chromium.mjs';
-import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {call, checkpoint, trace} from './support.mjs';
 
@@ -70,7 +70,7 @@ export async function checkModalScrimOwnership(extraSources = []) {
   checkClientFeatures();
   let sources, driverHashes;
   const rows = await observeModalScrim({onInputs(inputs) {
-    sources = [...inputs, 'apps/app/src/prototype/template.html', 'scripts/prepare-client-features.mjs',
+    sources = [...inputs, 'apps/app/src/prototype/template.html', 'scripts/prepare-client-features.ts',
       '.eliza/client-features/.source.json', 'upstream.lock.json', 'package-lock.json', modelPath, driver, ...extraSources];
     driverHashes = captureInputs(sources);
   }});

@@ -4,11 +4,11 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {isDeepStrictEqual} from 'node:util';
 import {expectedMobileUuidTransforms, mobileBuildInputs, mobileBuildReceipt, verifyMobileBuildReceipt,
-  MOBILE_BUILD_INPUTS, MOBILE_BUILD_RECEIPT, MOBILE_UUID_POLICY} from '../../../../scripts/mobile-uuid-adapter.mjs';
-import {CORE_STATE_MANIFEST, coreStateBuildPlugin, coreStateReceipt, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.mjs';
+  MOBILE_BUILD_INPUTS, MOBILE_BUILD_RECEIPT, MOBILE_UUID_POLICY} from '../../../../scripts/mobile-uuid-adapter.ts';
+import {CORE_STATE_MANIFEST, coreStateBuildPlugin, coreStateReceipt, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.ts';
 import {actualPolicy, hash, mobileUuidFixture} from '../../../../test/fixtures/mobile-uuid-build.mjs';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
-import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.ts';
 
 const repository = path.resolve(import.meta.dirname, '../../../..');
 const adapter = MOBILE_BUILD_INPUTS[0], otherAdapter = MOBILE_BUILD_INPUTS.at(-1);
@@ -118,7 +118,7 @@ function fixture(f, alternate) {
     const producer = versionOf('producer', value.builder.sha256);
     assert.equal(value.policySha256, hash(policyVersions[producer]), 'Candidate binds the exact reviewed policy bytes');
     const tamper = Object.hasOwn(value, 'fixtureExtra') ? 'extra'
-      : value.coreState.inputHashes['scripts/core-state-patch.mjs'] === zeroHash ? 'core-input'
+      : value.coreState.inputHashes['scripts/core-state-patch.ts'] === zeroHash ? 'core-input'
         : value.smoke.uuidSemantics === false ? 'smoke' : 'none';
     return {shape: 'object', fingerprint: {
       producer,
@@ -225,7 +225,7 @@ function fixture(f, alternate) {
       if (kind === 'uuid') receipt.transforms = uuidShapes[value];
       else if (kind === 'core') receipt.coreState.transforms = coreShapes[value];
       else if (value === 'smoke') receipt.smoke.uuidSemantics = false;
-      else if (value === 'core-input') receipt.coreState.inputHashes['scripts/core-state-patch.mjs'] = zeroHash;
+      else if (value === 'core-input') receipt.coreState.inputHashes['scripts/core-state-patch.ts'] = zeroHash;
       else if (value === 'extra') receipt.fixtureExtra = true;
       else assert.fail('Unscripted receipt mutation');
       writeReceipt(receipt);
@@ -300,7 +300,7 @@ export async function checkMobileBundleAdmission(extraSources = []) {
     'vendor/eliza/bun.lock', 'vendor/eliza/'+actualPolicy.builder.path,
     ...Object.keys(actualPolicy.package.files).map(name => 'node_modules/uuid/'+name),
     ...Object.keys(core.inputHashes), ...Object.keys(core.files).map(name => 'vendor/eliza/'+name),
-    'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs',
+    'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',
     'vendor/eliza/packages/app/scripts/lib/committed-source.mjs', ...extraSources,
   ];

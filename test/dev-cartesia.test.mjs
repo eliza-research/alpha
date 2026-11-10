@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {developmentCartesiaEnvironment} from '../scripts/dev-cartesia.mjs';
+import {developmentCartesiaEnvironment} from '../scripts/dev-cartesia.ts';
 
 test('Cartesia is opt-in and rejects invalid activation or credential references', () => {
   assert.deepEqual(developmentCartesiaEnvironment({}), {});

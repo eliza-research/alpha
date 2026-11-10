@@ -7,7 +7,7 @@ import {captureInputs, checkTraces, qmap, qset} from '../check-traces.mjs';
 import {app, directory, javaTraceCampaign, root} from './java.mjs';
 import {clockJournalBridge, clockPlatform} from './clock-review-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model = 'NativeClockReview';
 const plugin=app+'AlphaActionJournalPlugin.java';
@@ -35,7 +35,7 @@ export function clockReviewSourceTraces(scenarios) {
 
 export async function checkNativeClockReview(extraSources = []) {
   const sources=[plugin,...compiled,fileURLToPath(import.meta.url),join(directory,harness),join(directory,'Trace.java'),
-    join(directory,'java.mjs'),join(directory,'clock-review-platform.mjs'),'scripts/upstream-native-source.mjs',
+    join(directory,'java.mjs'),join(directory,'clock-review-platform.mjs'),'scripts/upstream-native-source.ts',
     'upstream.lock.json','android/upstream-native-sources.json','test/fixtures/jvm-tools.mjs',...(jsonJar?[jsonJar]:[]),...extraSources];
   const driverHashes=captureInputs(sources);
   const catalog=JSON.parse(readFileSync(join(root,'android/upstream-native-sources.json'),'utf8'));

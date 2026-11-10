@@ -5,9 +5,9 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {verifiedFile,speechAssets} from '../scripts/host-speech-admission.mjs';
-import {sourceManifest} from '../scripts/combined-agent-source.mjs';
-import {verifyEmbeddingHost,verifyEmbeddingInputs} from '../scripts/stage-embedding-host.mjs';
+import {verifiedFile,speechAssets} from '../scripts/host-speech-admission.ts';
+import {sourceManifest} from '../scripts/combined-agent-source.ts';
+import {verifyEmbeddingHost,verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
 import {mkdirSync} from 'node:fs';
 test('admission verifies exact bytes and reviewed digest, rejecting links and oversized assets',t=>{
  const root=mkdtempSync(join(tmpdir(),'alpha-speech-admission-'));t.after(()=>rmSync(root,{recursive:true,force:true}));
@@ -30,7 +30,7 @@ test('host asset manifest matches the current shared worker pins: Paradee, optio
  assert.doesNotMatch(readFileSync(new URL('../package.json',import.meta.url),'utf8'),/kokoro|whisper/i);
 });
 test('reviewed engine source keeps current embedding and voice qualification separate',()=>{
- const source=readFileSync(new URL('../scripts/combined-agent-source.mjs',import.meta.url),'utf8');
+ const source=readFileSync(new URL('../scripts/combined-agent-source.ts',import.meta.url),'utf8');
  const reviewed='6337fd4c4bd071c17235986344d552d4036e177b';
  assert.ok(source.includes("'plugins/plugin-local-inference/native/llama.cpp':'"+reviewed+"'"));
  const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];

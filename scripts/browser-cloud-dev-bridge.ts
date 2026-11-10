@@ -1,6 +1,6 @@
 import {mapsTilePath} from '../apps/app/src/runtime/managed-service-routes.ts';
 import {productionCloud, stagingCloud, cloudStorageNamespace} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
-import {createCloudResidentHost,type ProviderSelection,type ProviderKeyEdit,type ProviderKeyRequest} from './cloud-resident-host.mjs';
+import {createCloudResidentHost,type ProviderSelection,type ProviderKeyEdit,type ProviderKeyRequest} from './cloud-resident-host.ts';
 import {startManagedGoogleAgentHost,managedGoogleRequest,boundedServiceJson as readServiceJson,object as requireObject} from '../.eliza/client-features/packages/app/src/runtime/managed-google-agent/index.ts';
 import {CLOUD_EMAIL_CODE,emailCodeExpiresAt,emailCodeResendAt,emailCodeSendBody,emailCodeVerifyBody} from './cloud-email-code.ts';
 import {parseCloudServiceInfo} from '../apps/app/src/runtime/cloud-service-info.ts';

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {main} from '../../../../scripts/app-update-candidate.mjs';
+import {main} from '../../../../scripts/app-update-candidate.ts';
 import {candidateFixture, hash, json, read} from '../../../../test/fixtures/app-update-candidate.mjs';
 import {captureInputs, checkTraces, qmap} from '../check-traces.mjs';
 
@@ -14,8 +14,8 @@ const floorClass = value => value < 705 ? 1 : value === 705 ? 2 : 3;
  * GitHub/public metadata and the archive admission records are controlled inputs.
  */
 export async function checkAppUpdateCandidate(extraSources = []) {
-  const sources = [fileURLToPath(import.meta.url), 'scripts/app-update-candidate.mjs',
-    'scripts/deliver-app-update.mjs', 'scripts/update-artifact.mjs',
+  const sources = [fileURLToPath(import.meta.url), 'scripts/app-update-candidate.ts',
+    'scripts/deliver-app-update.ts', 'scripts/update-artifact.ts',
     'test/fixtures/app-update-candidate.mjs', '.github/workflows/resident-android.yml', ...extraSources];
   const driverHashes = captureInputs(sources), traces = [], cleanups = [];
   try {

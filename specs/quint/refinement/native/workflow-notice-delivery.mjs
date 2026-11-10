@@ -7,8 +7,8 @@ import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {app, javaTraces, root} from './java.mjs';
 import {workflowNoticePlatform} from './workflow-notice-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
-import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
+import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.ts';
 
 const model = 'WorkflowNoticeDelivery';
 const driver = fileURLToPath(import.meta.url);
@@ -29,10 +29,10 @@ export async function checkWorkflowNoticeDelivery(extraSources = []) {
   assert.deepEqual(catalog.patches,[],'shared native behavior comes directly from the reviewed upstream pin');
   const staged=[host,...shared].filter(path=>Object.hasOwn(prepared.files,path));
   const paths = [driver, join(here, 'WorkflowNoticeTraces.java'), join(here, 'Trace.java'), join(here, 'java.mjs'),
-    join(here, 'workflow-notice-platform.mjs'), 'test/fixtures/jvm-tools.mjs', 'scripts/upstream-native-source.mjs',
+    join(here, 'workflow-notice-platform.mjs'), 'test/fixtures/jvm-tools.mjs', 'scripts/upstream-native-source.ts',
     'upstream.lock.json', nativeManifest, bridge, ...product,
     ...[host, ...shared].map(path => 'vendor/eliza/'+path),
-    'scripts/prepare-patched-native.mjs',join(prepared.root,'.source.json'),
+    'scripts/prepare-patched-native.ts',join(prepared.root,'.source.json'),
     ...staged.map(path=>join(prepared.root,path)),jsonJar, ...extraSources];
   const driverHashes = captureInputs(paths);
   const source = upstreamNativeSource(root);

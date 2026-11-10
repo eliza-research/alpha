@@ -8,8 +8,8 @@ import {app, directory, javaTraceCampaign, root} from './java.mjs';
 import {mmsPlatform} from './mms-dispatch-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 import {prepareNativeFixture} from '../../../../test/fixtures/native-source.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
-import {verifyNativePatchReceipt} from '../../../../scripts/prepare-patched-native.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
+import {verifyNativePatchReceipt} from '../../../../scripts/prepare-patched-native.ts';
 import {materializeHistoricalSources} from '../../legacy/core/formal-source-inventory.mjs';
 
 const model='NativeMmsDispatch';
@@ -44,7 +44,7 @@ async function campaign(scenarios, extraSources, check, {historicalProbe=false} 
     const generatedSources=[...paths.map(path=>join(staged.root,path)),receiptPath,...files,...(history?paths.map(path=>resolveSource(path)):[])];
     const sources=[...product,...paths.map(path=>'vendor/eliza/'+path),launcherManifest,'android/consumer-host.json',
       'android/upstream-native-sources.json','upstream.lock.json',
-      'scripts/prepare-patched-native.mjs','scripts/upstream-native-source.mjs','test/fixtures/native-source.mjs','test/fixtures/jvm-tools.mjs',
+      'scripts/prepare-patched-native.ts','scripts/upstream-native-source.ts','test/fixtures/native-source.mjs','test/fixtures/jvm-tools.mjs',
       app+'AlphaImageCapability.java',join(directory,harness),join(directory,'Trace.java'),join(directory,'java.mjs'),
       join(directory,'sms-dispatch-platform.mjs'),join(directory,'mms-dispatch-platform.mjs'),fileURLToPath(import.meta.url),
       historicalInventory,'specs/quint/legacy/core/formal-source-inventory.mjs',

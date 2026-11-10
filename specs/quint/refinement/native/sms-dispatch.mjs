@@ -8,8 +8,8 @@ import {app, directory, javaTraceCampaign, root} from './java.mjs';
 import {smsMembers, smsPlatform} from './sms-dispatch-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 import {prepareNativeFixture} from '../../../../test/fixtures/native-source.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
-import {verifyNativePatchReceipt} from '../../../../scripts/prepare-patched-native.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
+import {verifyNativePatchReceipt} from '../../../../scripts/prepare-patched-native.ts';
 import {materializeHistoricalSources} from '../../legacy/core/formal-source-inventory.mjs';
 
 const model='NativeSmsDispatch';
@@ -61,8 +61,8 @@ export async function checkNativeSmsDispatch(extraSources = []) {
     const sources=[...product,...paths.map(path=>'vendor/eliza/'+path),launcherManifest,'android/consumer-host.json',
       patchManifest,app+'AlphaImageCapability.java',join(directory,harness),join(directory,'Trace.java'),
       join(directory,'java.mjs'),join(directory,'sms-dispatch-platform.mjs'),fileURLToPath(import.meta.url),
-      'test/fixtures/jvm-tools.mjs','test/fixtures/native-source.mjs','upstream.lock.json','scripts/upstream-native-source.mjs',
-      'scripts/prepare-patched-native.mjs',historicalInventory,'specs/quint/legacy/core/formal-source-inventory.mjs',
+      'test/fixtures/jvm-tools.mjs','test/fixtures/native-source.mjs','upstream.lock.json','scripts/upstream-native-source.ts',
+      'scripts/prepare-patched-native.ts',historicalInventory,'specs/quint/legacy/core/formal-source-inventory.mjs',
       ...(jsonJar?[jsonJar]:[]),...generatedSources,...extraSources];
     const driverHashes=captureInputs(sources);
     assert.match(readFileSync(join(root,launcherManifest),'utf8'),/<receiver\s+android:name="\.AlphaSmsSendReceiver"\s+android:exported="false"/);

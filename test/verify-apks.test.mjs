@@ -7,9 +7,9 @@ import { serializeOwnerRouteTable } from "../apps/app/src/product/owner-route-ta
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { archiveWebPayload, parseXmlTree, readBuildFlags, validateApk, verifyOwnerRouteTable } from "../scripts/apk.mjs";
-import { webViewFilterProblems, webViewFilters } from "../scripts/render-assetlinks.mjs";
-import { voiceBundleAdmission, VOICE_BUNDLE_FORMAT } from "../scripts/voice-host.mjs";
+import { archiveWebPayload, parseXmlTree, readBuildFlags, validateApk, verifyOwnerRouteTable } from "../scripts/apk.ts";
+import { webViewFilterProblems, webViewFilters } from "../scripts/render-assetlinks.ts";
+import { voiceBundleAdmission, VOICE_BUNDLE_FORMAT } from "../scripts/voice-host.ts";
 const root = path.resolve(import.meta.dirname, "..");
 test("Cloud voice evidence is one readable file for a genuine build, and the removed profile options are refused, before any APK work", () => {
   for (const [args, message] of [
@@ -22,7 +22,7 @@ test("Cloud voice evidence is one readable file for a genuine build, and the rem
     [["--runtime-profile=native"], /There is one runtime profile now/],
     [["--local-embeddings"], /There is one runtime profile now/],
   ]) {
-    const result=spawnSync(process.execPath,["scripts/verify-apks.mjs",...args],{cwd:root,encoding:"utf8"});
+    const result=spawnSync(process.execPath,["scripts/verify-apks.ts",...args],{cwd:root,encoding:"utf8"});
     assert.notEqual(result.status,0,args.join(" "));
     assert.match(result.stderr,message,args.join(" "));
   }
@@ -75,7 +75,7 @@ test("AOSP staging refuses test-mocks and non-distributable inputs before any st
     fs.copyFileSync(path.join(root, "app.config.json"), path.join(dir, "app.config.json"));
     completeAospLock(dir);
     fs.mkdirSync(path.join(dir, "artifacts/test-mocks"), { recursive: true });
-    const stage = args => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.mjs"), ...args], { cwd: dir, encoding: "utf8" });
+    const stage = args => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), ...args], { cwd: dir, encoding: "utf8" });
     const flagOn = path.join(dir, "artifacts/test-mocks/launcher-debug.apk");
     zip(flagOn, { "assets/public/build-flags.json": JSON.stringify({ testMocks: true }) });
     let out = stage(["--apk", flagOn, "--development"]);
@@ -144,7 +144,7 @@ test("AOSP staging refuses --production without a descriptor, with --development
   try {
     fs.copyFileSync(path.join(root, "app.config.json"), path.join(dir, "app.config.json"));
     completeAospLock(dir);
-    const stage = args => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.mjs"), ...args], { cwd: dir, encoding: "utf8" });
+    const stage = args => spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), ...args], { cwd: dir, encoding: "utf8" });
     // The missing-APK message says which staging was asked for.
     assert.match(stage(["--development"]).stderr, /Development staging: supply --apk PATH to a flag-off debug launcher APK\./);
     assert.match(stage(["--descriptor", "reviewed.json", "--production"]).stderr, /Production staging: supply --apk PATH to the signed launcher release APK that verify-apks recorded as distributable\./);
@@ -217,11 +217,11 @@ for (const mode of ['native', 'test-mocks', 'inherited', 'wrong-profile', 'priva
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
   for (const name of ['scripts', 'bin']) fs.mkdirSync(path.join(dir, name));
   fs.writeFileSync(path.join(dir,'app.config.json'),JSON.stringify({updateManifestUrl:'https://example.test/public-update.json'}));
-  fs.symlinkSync(path.join(root, 'scripts/audit-production-bundle.mjs'), path.join(dir, 'scripts/audit-production-bundle.mjs'));
-  fs.writeFileSync(path.join(dir, 'scripts/stage-local-agent-sources.mjs'), '');
+  fs.symlinkSync(path.join(root, 'scripts/audit-production-bundle.ts'), path.join(dir, 'scripts/audit-production-bundle.ts'));
+  fs.writeFileSync(path.join(dir, 'scripts/stage-local-agent-sources.ts'), '');
   // The generated Gradle host is written before the source snapshot; the stub stands in for it.
-  fs.writeFileSync(path.join(dir, 'scripts/android-host.mjs'), '');
-  fs.writeFileSync(path.join(dir, 'scripts/source-snapshot.mjs'), 'console.log(JSON.stringify({digest:"synthetic-stable-source"}));');
+  fs.writeFileSync(path.join(dir, 'scripts/android-host.ts'), '');
+  fs.writeFileSync(path.join(dir, 'scripts/source-snapshot.ts'), 'console.log(JSON.stringify({digest:"synthetic-stable-source"}));');
   fs.writeFileSync(path.join(dir, 'bin/npm'), `#!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
@@ -264,7 +264,7 @@ if(args[1]==='android:build'){
     const file=dir+'-private-url';fs.writeFileSync(file,url,{mode:0o600});t.after(()=>fs.unlinkSync(file));
     Object.assign(env,{ALPHA_UPDATE_CHANNEL:'private-qa',ALPHA_PRIVATE_UPDATE_MANIFEST_FILE:file,ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256:createHash('sha256').update(url).digest('hex')});
   }
-  const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.mjs'), ...args, 'test-results/archive'], {cwd:dir, env, encoding:'utf8'});
+  const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), ...args, 'test-results/archive'], {cwd:dir, env, encoding:'utf8'});
   const archive = path.join(dir, 'test-results/archive');
   if (mode === 'wrong-profile'||mode==='wrong-channel') {
     assert.notEqual(run.status, 0);
@@ -297,7 +297,7 @@ test('archive rejects the removed profile switches and unsupported options befor
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-invalid-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
   for (const args of [['--runtime-profile=cloud', '--test-mocks'], ['--runtime-profile=other'], ['--allow-unpackaged-runtime']]) {
-    const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.mjs'), ...args, 'test-results/archive'], {cwd:dir, encoding:'utf8'});
+    const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), ...args, 'test-results/archive'], {cwd:dir, encoding:'utf8'});
     assert.notEqual(run.status, 0);
     assert.ok(!fs.existsSync(path.join(dir, 'test-results')));
   }
@@ -399,11 +399,11 @@ test("APK verification rejects and names an extra web VIEW filter", () => {
     '          A: http://schemas.android.com/apk/res/android:host(0x01010028)="eliza.app" (Raw: "eliza.app")',
     '          A: http://schemas.android.com/apk/res/android:pathPrefix(0x0101002b)="/" (Raw: "/")'].join("\n");
   assert.deepEqual(webViewFilterProblems(parseXmlTree(webFilterTree(broad)), allowedWebFilters),
-    ["Unexpected web VIEW intent filter ai.elizaresearch.alphaphone.MainActivity https://eliza.app/*; add it to the allowed set in scripts/verify-apks.mjs only if it is deliberate"]);
+    ["Unexpected web VIEW intent filter ai.elizaresearch.alphaphone.MainActivity https://eliza.app/*; add it to the allowed set in scripts/verify-apks.ts only if it is deliberate"]);
   // A library activity's handler with no host and no path is reported too.
   const library = ["    E: activity (line=20)",
     '      A: http://schemas.android.com/apk/res/android:name(0x01010003)="com.example.Viewer" (Raw: "com.example.Viewer")',
     broad.replace(/\n.*android:host.*/, "").replace(/\n.*android:pathPrefix.*/, "")].join("\n");
   assert.deepEqual(webViewFilterProblems(parseXmlTree(webFilterTree(library)), allowedWebFilters),
-    ["Unexpected web VIEW intent filter com.example.Viewer https://(any host) (any path); add it to the allowed set in scripts/verify-apks.mjs only if it is deliberate"]);
+    ["Unexpected web VIEW intent filter com.example.Viewer https://(any host) (any path); add it to the allowed set in scripts/verify-apks.ts only if it is deliberate"]);
 });

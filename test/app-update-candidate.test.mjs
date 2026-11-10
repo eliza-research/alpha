@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import YAML from 'yaml';
-import {candidateVersion, candidateReceipt, main} from '../scripts/app-update-candidate.mjs';
+import {candidateVersion, candidateReceipt, main} from '../scripts/app-update-candidate.ts';
 import {candidateFixture as fixture, hash, json, read} from './fixtures/app-update-candidate.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -106,7 +106,7 @@ test('a floor advancing during the build refuses the final receipt without alter
   await assert.rejects(main(['receipt', versionFile, archive.relative], f), /version floor/);
   assert.equal(fs.existsSync(path.join(archive.output, 'app-update-candidate.json')), false);
   assert.deepEqual(fs.readFileSync(path.join(f.root, versionFile)), before);
-  const child = spawnSync(process.execPath, [path.join(root, 'scripts/app-update-candidate.mjs'), 'version', 'test-results/refused.json'],
+  const child = spawnSync(process.execPath, [path.join(root, 'scripts/app-update-candidate.ts'), 'version', 'test-results/refused.json'],
     {cwd: f.root, env: {...f.env, GITHUB_EVENT_NAME: 'workflow_dispatch'}, encoding: 'utf8'});
   assert.equal(child.status, 1); assert.match(child.stderr, /main push/);
   assert.equal(fs.existsSync(path.join(f.root, 'test-results/refused.json')), false);

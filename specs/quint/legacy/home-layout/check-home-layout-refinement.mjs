@@ -4,8 +4,8 @@ import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
 import {createServer} from 'vite';
-import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
-import {filesWithin, sha256, repositoryRoot as root} from '../../../../scripts/quint-lib.mjs';
+import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
+import {filesWithin, sha256, repositoryRoot as root} from '../../../../scripts/quint-lib.ts';
 import {flagOffAndroid, fenceNetwork, residentHome} from '../../../../test/browser/flag-off-android.ts';
 import {residentStub} from '../../../../test/browser/resident-stub.ts';
 import {installHomeCalendar, refreshHomeCalendar} from '../../../../test/browser/helpers/home-calendar.ts';
@@ -363,7 +363,7 @@ async function mounted(extraSources) {
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
     'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json', 'upstream.lock.json',
-    'scripts/prepare-client-features.mjs', 'scripts/quint-lib.mjs',
+    'scripts/prepare-client-features.ts', 'scripts/quint-lib.ts',
     'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts', comparison,
     'test/browser/helpers/native-navigation-protocol.ts', 'test/browser/helpers/home-calendar.ts',
     'test/browser/helpers/page-modules.ts', fileURLToPath(import.meta.url), ...extraSources,

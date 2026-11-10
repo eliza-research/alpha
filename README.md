@@ -80,7 +80,7 @@ registrations, native-library qualification and in-place data-retention tests re
 
 There is one runtime profile. Every build packages libelizainference with the
 on-device speech models and local embeddings. Stage on-device voice inputs with
-`node scripts/android-stage-voice-models.mjs --from <directory>`.
+`node scripts/android-stage-voice-models.ts --from <directory>`.
 The resident source and workflow worker are prepared from the locked upstream
 revision. Build inputs must agree with the staged runtime and native libraries.
 
@@ -100,7 +100,7 @@ npm run android:build -- --test-mocks
 ```
 
 Test-mocks APKs go to `artifacts/test-mocks/`. Production Android builds remove
-mock flags from child environments. `scripts/audit-production-bundle.mjs` checks
+mock flags from child environments. `scripts/audit-production-bundle.ts` checks
 the web output and APK assets for developer code, fixtures and source maps.
 
 Release signing uses `ELIZAOS_KEYSTORE_PATH`, `ELIZAOS_KEYSTORE_PASSWORD`,
@@ -127,7 +127,7 @@ vendor add-on under `artifacts/aosp/`. APK builds, emulator HOME-role behavior,
 full AOSP boot, real integrations, physical-device testing and user acceptance
 are independent results.
 
-`scripts/deliver-app-update.mjs` publishes an admitted signed launcher APK and
+`scripts/deliver-app-update.ts` publishes an admitted signed launcher APK and
 checks anonymous readback. Merging source does not publish an application update.
 Android may require confirmation for installation.
 
@@ -187,7 +187,7 @@ verified commit and qualify that exact product pin before OS enrollment.
 
 Build output belongs in ignored `web-dist/`, `artifacts/`, `test-results/` and
 `.eliza/` directories. Android host and Capacitor sync output are ignored too.
-Cloud deployment source is `scripts/cloud-deployment-policy.mjs`; regenerate its
-renderer and Android bindings with `node scripts/cloud-deployment.mjs`.
-`node scripts/cloud-deployment.mjs --pages-registration` prints the public Pages
+Cloud deployment source is `scripts/cloud-deployment-policy.ts`; regenerate its
+renderer and Android bindings with `node scripts/cloud-deployment.ts`.
+`node scripts/cloud-deployment.ts --pages-registration` prints the public Pages
 callback registration for an operator without creating a `config/` directory.

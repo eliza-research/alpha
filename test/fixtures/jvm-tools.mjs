@@ -4,7 +4,7 @@ import {existsSync,readdirSync,mkdtempSync,rmSync} from 'node:fs';
 import {homedir,tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync,spawnSync} from 'node:child_process';
-import {preparePatchedNative} from '../../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../../scripts/prepare-patched-native.ts';
 
 export const root=resolve(import.meta.dirname,'../..');
 export const nativeSource=name=>join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone',name);

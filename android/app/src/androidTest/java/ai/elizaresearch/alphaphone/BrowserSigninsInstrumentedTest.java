@@ -214,7 +214,7 @@ public final class BrowserSigninsInstrumentedTest {
   return names;
  }
  /** Cold start (decision P-04). An external runner kills the process between
-  * phases (scripts/test-native-restart.mjs, gate signinPhase): prepare signs in
+  * phases (scripts/test-native-restart.ts, gate signinPhase): prepare signs in
   * a normal tab and a private tab, verify runs in a new PID and requires the
   * normal sign-in cookie and storage to survive while the private tab's do not
   * and its profile is gone; cleanup clears only this fixture's data. */

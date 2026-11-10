@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {prepareClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
+import {prepareClientFeatures} from '../../../../scripts/prepare-client-features.ts';
 
 const staged = '.eliza/client-features/';
 const digest = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -24,6 +24,6 @@ export function serviceInputs(entries) {
       found.add(original);
     }
   }
-  for (const entry of ['specs/quint/refinement/services/source-inputs.mjs', 'package-lock.json', 'upstream.lock.json', staged + '.source.json', 'scripts/prepare-client-features.mjs', 'scripts/upstream-native-source.mjs']) found.add(entry);
+  for (const entry of ['specs/quint/refinement/services/source-inputs.mjs', 'package-lock.json', 'upstream.lock.json', staged + '.source.json', 'scripts/prepare-client-features.ts', 'scripts/upstream-native-source.ts']) found.add(entry);
   return [...found].sort();
 }

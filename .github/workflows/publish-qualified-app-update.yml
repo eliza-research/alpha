@@ -118,7 +118,7 @@ jobs:
         run: npm run upstream:prepare-client
       - name: Reverify all signed bytes and exact reviewed Cloud voice evidence
         working-directory: qualified-product
-        run: node scripts/verify-apks.mjs --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
+        run: node scripts/verify-apks.ts --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
       - name: Require both qualified release rows before publication
         run: |
           python3 - <<'PY'
@@ -138,7 +138,7 @@ jobs:
       - name: Publish launcher APK first and anonymously verify the stable pointer
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/deliver-app-update.mjs --variant launcher --apk-manifest qualified-product/artifacts/apk-manifest.json
+        run: node scripts/deliver-app-update.ts --variant launcher --apk-manifest qualified-product/artifacts/apk-manifest.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

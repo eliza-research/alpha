@@ -18,7 +18,7 @@ export function candidateFixture(t) {
   fs.mkdirSync(sdk, {recursive: true}); git(sdk, ['init', '-q']); commit(sdk);
   const sdkCommit = git(sdk, ['rev-parse', 'HEAD']);
   fs.mkdirSync(path.join(directory, 'android'));
-  const config = {appId: 'ai.alphacompute.alphaphone', versionCode: 1,
+  const config = {appId: 'ai.elizaresearch.alphaphone', versionCode: 1,
     updateManifestUrl: 'https://github.com/eliza-research/alphaphone/releases/download/app-stable/alpha-update-stable.json'};
   json(path.join(directory, 'app.config.json'), config);
   json(path.join(directory, 'upstream.lock.json'), {commit: sdkCommit});

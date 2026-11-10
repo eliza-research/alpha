@@ -3,7 +3,7 @@ import {mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'nod
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.ts';
 import {chainMethods, injectMethods} from '../../../../test/fixtures/google-browser-auth/chain-methods.mjs';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {directory, javaTraces, root} from './java.mjs';
@@ -52,8 +52,8 @@ export async function checkGoogleBrowserReturnClaim(extraSources = []) {
   const sources = [
     ...pure, plugin, registration, template, manifest,
     ...JSON.parse(readFileSync(join(root, manifest), 'utf8')).patches.map(row => 'patches/eliza/' + row.file),
-    join(native.root, '.source.json'), 'upstream.lock.json', 'scripts/prepare-patched-native.mjs',
-    'scripts/upstream-native-source.mjs', join(overlay, 'chain-methods.mjs'),
+    join(native.root, '.source.json'), 'upstream.lock.json', 'scripts/prepare-patched-native.ts',
+    'scripts/upstream-native-source.ts', join(overlay, 'chain-methods.mjs'),
     join(directory, harness), join(directory, 'Trace.java'), join(directory, 'java.mjs'),
     fileURLToPath(import.meta.url), ...extraSources,
   ];

@@ -22,6 +22,6 @@ The Quint replay uses an in-memory CAS library and journal, real Node Web Locks,
 Run the focused checks with Node 26 after preparing the client projection and installing Playwright Chromium.
 
 ```sh
-node scripts/prepare-client-features.mjs
+node scripts/prepare-client-features.ts
 node --test test/quint-browser-files-trash-refinement.test.mjs test/files-browser-atomic-placement.test.mjs
 ```

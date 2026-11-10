@@ -1,7 +1,7 @@
 // Source-level checks of the ELIZA_DEV_ALLOW_TEST_MOCKS gates for developer and
 // simulation surfaces. Modules are loaded through Vite's SSR transform so that
 // import.meta.env carries the flag exactly as the renderer build does; production
-// bundle contents are audited separately by scripts/audit-production-bundle.mjs.
+// bundle contents are audited separately by scripts/audit-production-bundle.ts.
 import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

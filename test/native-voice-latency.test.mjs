@@ -4,8 +4,8 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { aggregateNativeVoice, nativeTimingFormat, legacyNativeTimingFormat, rejection } from '../scripts/native-voice-latency.mjs';
-import { aggregate, nativeTable } from '../scripts/aggregate-voice-latency.mjs';
+import { aggregateNativeVoice, nativeTimingFormat, legacyNativeTimingFormat, rejection } from '../scripts/native-voice-latency.ts';
+import { aggregate, nativeTable } from '../scripts/aggregate-voice-latency.ts';
 
 const identity = { sourceCommit: 'a'.repeat(40), sourceDirty: false, engineSha256: 'b'.repeat(64), modelSha256: 'c'.repeat(64), device: 'Google Pixel 10a', environment: 'device', abi: 'arm64-v8a', build: 'standalone-release' };
 function trial(index, duration = 5900) {
@@ -122,7 +122,7 @@ test('CLI distinguishes insufficient samples, failed budgets and measured timing
     const file = path.join(dir, 'export.json');
     const run = rows => {
       fs.writeFileSync(file, JSON.stringify(document(rows)));
-      return spawnSync(process.execPath, ['scripts/aggregate-voice-latency.mjs', file], { encoding: 'utf8' });
+      return spawnSync(process.execPath, ['scripts/aggregate-voice-latency.ts', file], { encoding: 'utf8' });
     };
     const passed = run(samples());
     assert.equal(passed.status, 0);

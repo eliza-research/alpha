@@ -7,7 +7,7 @@ import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync,spawnSync} from 'node:child_process';
 
-const exporter=fileURLToPath(new URL('../scripts/ci/export-browser-proof.mjs',import.meta.url));
+const exporter=fileURLToPath(new URL('../scripts/ci/export-browser-proof.ts',import.meta.url));
 function fixture(t){
  const root=realpathSync(mkdtempSync(join(tmpdir(),'alpha-export-test-')));
  t.after(()=>rmSync(root,{recursive:true,force:true}));

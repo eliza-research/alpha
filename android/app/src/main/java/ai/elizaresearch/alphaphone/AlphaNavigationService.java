@@ -27,7 +27,7 @@ import java.util.function.BooleanSupplier;
  * the notification, or when the task is removed.</p>
  */
 public final class AlphaNavigationService extends Service {
- static final String ACTION_SHOW_MAPS="ai.alphacompute.alphaphone.action.SHOW_NAVIGATION";
+ static final String ACTION_SHOW_MAPS="ai.elizaresearch.alphaphone.action.SHOW_NAVIGATION";
  static final String CHANNEL = "alpha.maps.navigation";
  static final int NOTIFICATION_ID = 0x4d415053; // "MAPS"
  static final String ACTION_START = "ai.elizaresearch.alphaphone.navigation.START";

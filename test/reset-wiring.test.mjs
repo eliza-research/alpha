@@ -5,7 +5,7 @@ import {tmpdir,homedir} from 'node:os';
 import {join,dirname,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {javaBinary} from './fixtures/jvm-tools.mjs';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 // Alpha registers the shared reset (plugin-native-system reset.*) under its installed names; the
 // authorization, disclosure, recording, dispatch and recovery behavior are tested upstream.
 const root=resolve(import.meta.dirname,'..');

@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {verifySource} from '../../scripts/local-agent-source.mjs';
+import {verifySource} from '../../scripts/local-agent-source.ts';
 const {config,variants} = JSON.parse(readFileSync(0, 'utf8'));
 // The normal prepared runtime owns installed SDK dependencies. Authenticate it
 // at this app's exact pin rather than treating generated metadata as a raw vendor checkout.

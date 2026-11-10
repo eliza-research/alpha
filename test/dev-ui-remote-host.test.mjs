@@ -22,7 +22,7 @@ registerHooks({resolve(name,context,next){
 }});`;
 const root=fileURLToPath(new URL('../',import.meta.url));
 function launch(extra={}){
- const result=spawnSync(process.execPath,['--import','data:text/javascript,'+encodeURIComponent(preload),'scripts/dev-ui-remote-host.mjs','--port=5494','--remote=http://127.0.0.1:5518','--environment=staging'],{
+ const result=spawnSync(process.execPath,['--import','data:text/javascript,'+encodeURIComponent(preload),'scripts/dev-ui-remote-host.ts','--port=5494','--remote=http://127.0.0.1:5518','--environment=staging'],{
   cwd:root,encoding:'utf8',timeout:10000,
   env:{...process.env,ELIZA_DEV_ALLOW_TEST_MOCKS:'1',VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1',ALPHA_CLOUD_REALTIME_VOICE:'',VITE_ALPHA_DEV_CLOUD_REALTIME_VOICE:'1',...extra},
  });
@@ -35,7 +35,7 @@ function launch(extra={}){
 test('remote renderer selects Cloud routing with mocks off before loading Vite',()=>{
  const {env}=launch();
  // The renderer has no build-time speech profile: the route follows the signed-in account at run time.
- assert.doesNotMatch(readFileSync(new URL('../scripts/dev-ui-remote-host.mjs',import.meta.url),'utf8')+readFileSync(new URL('../scripts/dev-cloud.mjs',import.meta.url),'utf8'),/RUNTIME_PROFILE/);
+ assert.doesNotMatch(readFileSync(new URL('../scripts/dev-ui-remote-host.ts',import.meta.url),'utf8')+readFileSync(new URL('../scripts/dev-cloud.ts',import.meta.url),'utf8'),/RUNTIME_PROFILE/);
  assert.equal(env.VITE_ALPHA_CLOUD_RESIDENT,'1');
  assert.equal(env.VITE_ALPHA_CLOUD_ENVIRONMENT,'staging');
  assert.equal(env.VITE_LOCAL_AGENT,'1');

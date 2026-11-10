@@ -15,7 +15,7 @@ test('PairedSpeechContract declares both speech routes', () => {
 });
 
 test('every live campaign that intercepts speech uses the contract routes', () => {
-  const campaigns = fs.readdirSync('scripts').filter(name => /^android-.*-live\.mjs$/.test(name));
+  const campaigns = fs.readdirSync('scripts').filter(name => /^android-.*-live\.ts$/.test(name));
   assert.ok(campaigns.length > 0);
   let checked = 0;
   for (const name of campaigns) {

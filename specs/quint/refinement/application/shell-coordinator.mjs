@@ -4,7 +4,7 @@ import {dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createServer} from 'vite';
 import {chromium} from '@playwright/test';
-import {sourcePaths, filesWithin, relativePath} from '../../../../scripts/quint-lib.mjs';
+import {sourcePaths, filesWithin, relativePath} from '../../../../scripts/quint-lib.ts';
 import {flagOffAndroid, fenceNetwork} from '../../../../test/browser/flag-off-android.ts';
 import {residentStub, setStub} from '../../../../test/browser/resident-stub.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
@@ -18,10 +18,10 @@ const mountTimeout = 120_000;
 /** Mount the real application and observe its installed shell/agent coordinator. */
 export async function generateShellCoordinatorTraces(extraSources = []) {
   const sources = [...sourcePaths(), 'vite.config.ts', 'package.json', 'package-lock.json',
-    'scripts/quint-lib.mjs', 'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts',
+    'scripts/quint-lib.ts', 'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts',
     'test/browser/helpers/native-navigation-protocol.ts', 'upstream.lock.json',
     ...filesWithin(resolve(root, '.eliza/client-features'), path => /\.(?:ts|tsx|js|json|css|html)$/.test(path)).map(relativePath),
-    'upstream.lock.json', 'scripts/prepare-client-features.mjs',
+    'upstream.lock.json', 'scripts/prepare-client-features.ts',
     self, ...extraSources];
   const driverHashes = captureInputs(sources);
   const transformed = new Set();

@@ -1,4 +1,4 @@
-import {checkCloudDeployment} from './scripts/cloud-deployment.mjs';
+import {checkCloudDeployment} from './scripts/cloud-deployment.ts';
 import {browserCloudDevBridge} from './scripts/browser-cloud-dev-bridge.ts';
 import {localOcrAssets} from './scripts/local-ocr-assets.ts';
 import { browserPdfAssets } from './scripts/browser-pdf-assets.ts';

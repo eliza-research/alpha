@@ -4,14 +4,14 @@ import {spawnSync} from 'node:child_process';
 import {copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
-import {repositoryRoot} from '../scripts/quint-lib.mjs';
+import {repositoryRoot} from '../scripts/quint-lib.ts';
 
 test('function checker distinguishes proofs, skips, failed verification and regenerated source drift', () => {
   const root = mkdtempSync(join(tmpdir(), 'alpha-lemma-checker-'));
   const write = (path, text, mode) => {mkdirSync(dirname(join(root, path)), {recursive: true}); writeFileSync(join(root, path), text, {mode});};
   try {
     mkdirSync(join(root, 'scripts'), {recursive: true});
-    for (const script of ['check-lemma.mjs', 'quint-lib.mjs']) copyFileSync(join(repositoryRoot, 'scripts', script), join(root, 'scripts', script));
+    for (const script of ['check-lemma.ts', 'quint-lib.ts']) copyFileSync(join(repositoryRoot, 'scripts', script), join(root, 'scripts', script));
     write('package-lock.json', '{}'); write('lemmascript.json', '{"proof-dir":"specs/lemma"}');
     write('LemmaScript-files.txt', 'apps/app/src/policy.ts 30\n');
     write('apps/app/src/policy.ts', '//@ verify\nexport function policy() { return true; }\n');
@@ -25,7 +25,7 @@ if(process.argv.includes('check')){
 }`);
     write('bin/dafny', '#!/bin/sh\nprintf "%s\\n" "${LEMMA_FIXTURE_VERSION:-4.11.0}"\n', 0o755);
     const run = env => {
-      const result = spawnSync(process.execPath, ['scripts/check-lemma.mjs'], {cwd: root,
+      const result = spawnSync(process.execPath, ['scripts/check-lemma.ts'], {cwd: root,
         env: {...process.env, PATH: join(root, 'bin'), LEMMA_REQUIRE_BACKEND: '0', ...env}, encoding: 'utf8'});
       return {result, receipt: JSON.parse(readFileSync(join(root, 'test-results/lemma/check.json'), 'utf8'))};
     };

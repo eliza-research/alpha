@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {ALPHA_IMAGE_PROVISIONING, assertAlphaProvisioningDefault, writeAospCapabilityOverlay} from '../scripts/aosp-capability-overlay.mjs';
+import {ALPHA_IMAGE_PROVISIONING, assertAlphaProvisioningDefault, writeAospCapabilityOverlay} from '../scripts/aosp-capability-overlay.ts';
 import {javaBinary} from './fixtures/jvm-tools.mjs';
 
 test('compiled image admission uses the shared decision, requires every trusted fact and keeps adapter roles unavailable',t=>{
@@ -50,7 +50,7 @@ test('production RRO targets the prebuilt app overlayable and cannot be a develo
  assert.match(fs.readFileSync(path.join(dir,'product.mk'),'utf8'),/PRODUCT_PACKAGES \+= AlphaImageCapabilityOverlay\n/);
  const defaults=fs.readFileSync('android/app/src/main/res/values/aosp-capabilities.xml','utf8');assert.equal(assertAlphaProvisioningDefault(defaults),true);
  assert.throws(()=>assertAlphaProvisioningDefault(defaults.replace('>false<','>true<')),/default to false/);
- const stage=fs.readFileSync('scripts/stage-aosp.mjs','utf8');assert.ok(stage.indexOf('if (!physical) writeAospCapabilityOverlay(output')>stage.indexOf('if (production) {'));
+ const stage=fs.readFileSync('scripts/stage-aosp.ts','utf8');assert.ok(stage.indexOf('if (!physical) writeAospCapabilityOverlay(output')>stage.indexOf('if (production) {'));
  // The shared Pixel 10a composition writes the same overlay from Alpha's product, with Alpha's installed identifiers.
  const product=JSON.parse(fs.readFileSync('android/aosp/pixel10a-composition.json','utf8'));
  assert.deepEqual(product.launcher.imageProvisioning,{...ALPHA_IMAGE_PROVISIONING});

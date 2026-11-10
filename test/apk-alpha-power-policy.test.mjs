@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { distributionProblems } from '../scripts/apk.mjs';
+import { distributionProblems } from '../scripts/apk.ts';
 
 function assess({name='.AlphaPowerVoiceActivity', permission='android.permission.STATUS_BAR_SERVICE', tag='activity', extra=''}={}) {
   return distributionProblems({xml:`E: manifest

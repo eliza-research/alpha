@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import {execFileSync} from 'node:child_process';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 const root=path.resolve(import.meta.dirname,'..');
 const ready=fs.existsSync(path.join(root,'vendor/eliza/plugins/plugin-native-media'));
 let media;

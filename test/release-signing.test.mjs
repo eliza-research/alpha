@@ -5,10 +5,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { auditWebBundle } from "../scripts/audit-production-bundle.mjs";
-import { appLinkFilters, assetLinksProblems, fingerprint, PLACEHOLDER, renderAssetLinks, TEMPLATE } from "../scripts/render-assetlinks.mjs";
-import { buildEnv, partialSigningProblem, readReleaseSigner, releaseAdmission, SIGNING_ENV, signingRequested, validateReleaseSigner } from "../scripts/build-android.mjs";
-import { releaseDistributable } from "../scripts/release-distributable.mjs";
+import { auditWebBundle } from "../scripts/audit-production-bundle.ts";
+import { appLinkFilters, assetLinksProblems, fingerprint, PLACEHOLDER, renderAssetLinks, TEMPLATE } from "../scripts/render-assetlinks.ts";
+import { buildEnv, partialSigningProblem, readReleaseSigner, releaseAdmission, SIGNING_ENV, signingRequested, validateReleaseSigner } from "../scripts/build-android.ts";
+import { releaseDistributable } from "../scripts/release-distributable.ts";
 
 const ALL = { ELIZAOS_KEYSTORE_PATH: "/k", ELIZAOS_KEYSTORE_PASSWORD: "p", ELIZAOS_KEY_ALIAS: "a", ELIZAOS_KEY_PASSWORD: "q" };
 const SIGNER = "a".repeat(64);
@@ -109,7 +109,7 @@ test("a release is distributable only when every term holds", () => {
 });
 
 test("verify-apks gates every release on public distribution and releaseDistributable; there is one runtime profile", () => {
-  const source = fs.readFileSync("scripts/verify-apks.mjs", "utf8");
+  const source = fs.readFileSync("scripts/verify-apks.ts", "utf8");
   // One assignment, so a later overwrite of the row is caught here.
   assert.deepEqual(source.match(/\.distributable\s*=[^=]/g), [".distributable = "]);
   assert.match(source, /const releaseReady = releaseDistributable\(\{testMocks, signed: row\.signed, releaseAdmission: row\.releaseAdmission,\s+runtime, runtimeNotices: row\.runtimeNotices, voiceHost: row\.voiceHost, licenceBlockers: row\.licenceBlockers\}\)\s+&& \(!cloudEvidence \|\| cloudVoiceBlockers\(row,'cartesia'\)\.length===0\);/);
@@ -147,12 +147,12 @@ test("assetlinks.json is rendered only from the recorded release signer, never u
   // The CLI exits non-zero on an isolated unset descriptor and writes nothing.
   const out = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "alpha-assetlinks-")), "assetlinks.json");
   const fixtureRoot = path.dirname(out);
-  for (const file of ["scripts/render-assetlinks.mjs", TEMPLATE, "app.config.json"]) {
+  for (const file of ["scripts/render-assetlinks.ts", TEMPLATE, "app.config.json"]) {
     fs.mkdirSync(path.dirname(path.join(fixtureRoot, file)), {recursive:true});
     fs.copyFileSync(file, path.join(fixtureRoot, file));
   }
   fs.writeFileSync(path.join(fixtureRoot, "android/release-signer.json"), JSON.stringify(descriptor("unset")));
-  const run = spawnSync(process.execPath, ["scripts/render-assetlinks.mjs", "--out", out], { cwd:fixtureRoot, encoding: "utf8" });
+  const run = spawnSync(process.execPath, ["scripts/render-assetlinks.ts", "--out", out], { cwd:fixtureRoot, encoding: "utf8" });
   assert.equal(run.status, 1);
   assert.match(run.stderr, /signerSha256 is "unset"/);
   assert.equal(fs.existsSync(out), false);
@@ -205,5 +205,5 @@ test("the https autoVerify filters are the two returns on the configured host an
   assert.deepEqual(appLinkFilters([...custom, ...filter("https"), "    E: activity (line=50)"].join("\n")), { present: true, hosts: ["links.example.com"] });
   assert.deepEqual(appLinkFilters(custom.join("\n")), { present: false, hosts: [] }, "a custom scheme alone is no App Link");
   assert.deepEqual(appLinkFilters(filter("http").join("\n")), { present: false, hosts: [] });
-  assert.match(fs.readFileSync("scripts/verify-apks.mjs", "utf8"), /appLinks: appLinkFilters\(xml\),/);
+  assert.match(fs.readFileSync("scripts/verify-apks.ts", "utf8"), /appLinks: appLinkFilters\(xml\),/);
 });

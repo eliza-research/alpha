@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {execFileSync, spawnSync} from 'node:child_process';
-import {ALLOW_OLDER_PIN, checkoutProblems, mainPinProblem, mainPinStatus, strictBuildInputs} from '../scripts/android-build-preflight.mjs';
+import {ALLOW_OLDER_PIN, checkoutProblems, mainPinProblem, mainPinStatus, strictBuildInputs} from '../scripts/android-build-preflight.ts';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const IDENTITY = ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgsign=false'];
@@ -114,14 +114,14 @@ test('the inputs report marks the pinned checkout missing for an older pin', t =
 
 test('the preflight entry point exits 2 for an older pin and passes with the override', t => {
   const f = fixture(t, {pin: 'B', mainPin: 'C'});
-  for (const file of ['android-build-preflight.mjs', 'voice-host.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'mobile-uuid-adapter.mjs', 'android-abis.mjs', 'embedding-native-contract.mjs', 'paradee-runtime.mjs', 'toolchain.mjs', 'copy-file-clone.mjs', 'core-state-patch.mjs', 'build-policy-source.mjs', 'removed-profile-flags.mjs']) {
+  for (const file of ['android-build-preflight.ts', 'voice-host.ts', 'stage-embedding-host.ts', 'build-embedding-host.ts', 'mobile-uuid-adapter.ts', 'android-abis.ts', 'embedding-native-contract.ts', 'paradee-runtime.ts', 'toolchain.ts', 'copy-file-clone.ts', 'core-state-patch.ts', 'build-policy-source.ts', 'removed-profile-flags.ts']) {
     fs.mkdirSync(path.join(f.root, 'scripts'), {recursive: true});
     fs.copyFileSync(path.join(ROOT, 'scripts', file), path.join(f.root, 'scripts', file));
   }
   // The unpackaged developer lane may omit the on-device voice outputs, so only the pin is in question here.
   fs.mkdirSync(path.join(f.root, 'android/voice-host'), {recursive: true});
   fs.copyFileSync(path.join(ROOT, 'android/voice-host/qualified-voice-host.json'), path.join(f.root, 'android/voice-host/qualified-voice-host.json'));
-  const run = (...args) => spawnSync(process.execPath, ['scripts/android-build-preflight.mjs', '--before-prepare', '--allow-unpackaged-runtime', ...args], {cwd: f.root, encoding: 'utf8'});
+  const run = (...args) => spawnSync(process.execPath, ['scripts/android-build-preflight.ts', '--before-prepare', '--allow-unpackaged-runtime', ...args], {cwd: f.root, encoding: 'utf8'});
   let result = run();
   assert.equal(result.status, 2, result.stderr);
   assert.match(result.stderr, /Android build prerequisites are missing:\n  - upstream\.lock\.json pins .* older than or diverged/);

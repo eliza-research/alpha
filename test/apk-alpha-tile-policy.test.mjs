@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { distributionProblems } from '../scripts/apk.mjs';
+import { distributionProblems } from '../scripts/apk.ts';
 // aapt prints android:enabled="false" as (type 0x12)0x0. The manifest disables the tile with its target (P-78).
 const disabled='A: android:enabled=(type 0x12)0x0';
 function assess({name='.AlphaQuickSettingsTile', permission='android.permission.BIND_QUICK_SETTINGS_TILE', action='android.service.quicksettings.action.QS_TILE', tag='service', tileEnabled=false, assist='disabled'}={}) {

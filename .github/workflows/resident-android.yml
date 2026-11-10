@@ -233,7 +233,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          node scripts/app-update-candidate.mjs version test-results/resident-ci-candidate/version.json
+          node scripts/app-update-candidate.ts version test-results/resident-ci-candidate/version.json
           echo "ELIZAOS_VERSION_CODE=$(node -p 'require("./test-results/resident-ci-candidate/version.json").versionCode')" >> "$GITHUB_ENV"
       - name: Verify source metadata and voice contracts before resident preparation
         timeout-minutes: 5
@@ -254,7 +254,7 @@ jobs:
       # On-device speech is libelizainference with the shared paradee-voice library only; this archive
       # stages no voice outputs (local speech reports unavailable). The record is still checked.
       - name: Verify the on-device voice host record
-        run: node scripts/voice-host.mjs --verify --allow-absent
+        run: node scripts/voice-host.ts --verify --allow-absent
       - name: Prepare and qualify fresh resident source with normal hooks
         env:
           NODE_OPTIONS: --max-old-space-size=4096
@@ -282,7 +282,7 @@ jobs:
           sha256sum --check test-results/resident-ci/sdk-lock.sha256
           (cd "$source" && "$bun_executable" --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-after.txt
           cmp test-results/resident-ci/sdk-graph-before.txt test-results/resident-ci/sdk-graph-after.txt
-          node scripts/prepare-local-agent.mjs --source-only
+          node scripts/prepare-local-agent.ts --source-only
       - name: Qualify the prepared resident source
         env:
           NODE_OPTIONS: --max-old-space-size=4096
@@ -290,7 +290,7 @@ jobs:
         run: |
           python3 scripts/ci/resident-phase.py --name device-timing-flow --seconds 600 npm run agent:test-device-timing
           python3 scripts/ci/resident-phase.py --name worker-build --seconds 900 npm run agent:build-workflow-worker
-          python3 scripts/ci/resident-phase.py --name native-cloud-routing --seconds 300 node scripts/test-native-cloud-runtime-config.mjs
+          python3 scripts/ci/resident-phase.py --name native-cloud-routing --seconds 300 node scripts/test-native-cloud-runtime-config.ts
           python3 scripts/ci/resident-phase.py --name compiler-flow --seconds 600 npm run agent:test-workflow-compiler
           python3 scripts/ci/resident-phase.py --name worker-flow --seconds 600 npm run agent:test-workflow-worker
       - name: Acquire hash-pinned Android Bun with step-only authentication
@@ -309,17 +309,17 @@ jobs:
           python3 scripts/ci/resident-phase.py --name runtime-stage --seconds 1800 npm run agent:stage-android
           python3 scripts/ci/resident-phase.py --name mobile-bundle --seconds 300 npm run agent:test-mobile-workflow-bundle
           # Fresh native artifacts and the runtime pin are inputs to shipped notices.
-          python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 node scripts/generate-licenses.mjs --packaged-runtime
+          python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 node scripts/generate-licenses.ts --packaged-runtime
           # Flag-off distribution: release verification requires the PACKAGED runtime.
-          python3 scripts/ci/resident-phase.py --name distribution-archive --seconds 3000 node scripts/build-archive.mjs test-results/resident-ci-distribution
+          python3 scripts/ci/resident-phase.py --name distribution-archive --seconds 3000 node scripts/build-archive.ts test-results/resident-ci-distribution
           # The native suites need the private peer fixture, a debug-only test hook
           # that exists only in the separate, never-distributable test-mocks build.
-          python3 scripts/ci/resident-phase.py --name archive --seconds 3000 node scripts/build-archive.mjs --test-mocks test-results/resident-ci-archive
+          python3 scripts/ci/resident-phase.py --name archive --seconds 3000 node scripts/build-archive.ts --test-mocks test-results/resident-ci-archive
       - name: Retain bounded distribution producer evidence for local QA signing
         if: github.event_name == 'workflow_dispatch'
         run: |
-          node scripts/runtime-profile.mjs --verify-native
-          node scripts/prepare-local-agent.mjs --source-only
+          node scripts/runtime-profile.ts --verify-native
+          node scripts/prepare-local-agent.ts --source-only
           sha256sum --check test-results/resident-ci/sdk-lock.sha256
           (cd "$ALPHA_LOCAL_AGENT_SOURCE_DIR" && bun --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-final.txt
           cmp test-results/resident-ci/sdk-graph-before.txt test-results/resident-ci/sdk-graph-final.txt
@@ -371,7 +371,7 @@ jobs:
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/app-update-candidate.mjs receipt test-results/resident-ci-candidate/version.json test-results/resident-ci-distribution
+        run: node scripts/app-update-candidate.ts receipt test-results/resident-ci-candidate/version.json test-results/resident-ci-distribution
       - name: Retain the unsigned native update candidate separately from test mocks
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -387,7 +387,7 @@ jobs:
       - name: Anchor exact archive manifest
         id: freeze
         run: echo "sha256=$(sha256sum test-results/resident-ci-archive/apk-manifest.json | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-      # build-archive.mjs retains each release R8 mapping (<variant>-release-mapping.txt,
+      # build-archive.ts retains each release R8 mapping (<variant>-release-mapping.txt,
       # hashed in release-mappings.json) beside the APKs, so both archives carry them.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         id: apks
@@ -486,7 +486,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.mjs
+            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.ts
             ANDROID_SERIAL=emulator-5554 ALPHA_RESIDENT_DISPOSABLE_CI=1 python3 scripts/ci/resident-phase.py --name native --seconds 5400 python3 scripts/ci/resident-native.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -573,7 +573,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.mjs
+            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.ts
             ANDROID_SERIAL=emulator-5554 ALPHA_RESIDENT_DISPOSABLE_CI=1 python3 scripts/ci/resident-phase.py --name pending-recovery-ui --seconds 2400 python3 scripts/ci/pending-recovery-ui.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

@@ -58,7 +58,7 @@ function controlledStatus() {
 
 export async function checkClientObservationSupport(extraSources = []) {
   const sources = [modelPath, source, 'apps/app/src/runtime/connection-ui.tsx',
-    'scripts/prepare-client-features.mjs', 'upstream.lock.json', 'package-lock.json',
+    'scripts/prepare-client-features.ts', 'upstream.lock.json', 'package-lock.json',
     ...contracts.map(path => projection + path), projection + '.source.json',
     'test/fixtures/browser-source.mjs', 'specs/quint/refinement/application/support.mjs',
     fileURLToPath(import.meta.url), ...extraSources];
