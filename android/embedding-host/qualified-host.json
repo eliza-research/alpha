@@ -1,7 +1,7 @@
 {
   "pin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
   "forkPin": "6337fd4c4bd071c17235986344d552d4036e177b",
-  "identity": "ai.elizaresearch.alphaphone",
+  "identity": "ai.alphacompute.alphaphone",
   "abi": "arm64-v8a",
   "model": {
     "path": "android/app/src/main/assets/agent/models/bge-small-en-v1.5-f16.gguf",
@@ -122,7 +122,7 @@
   ],
   "jniBinding": {
     "mode": "registered",
-    "className": "ai/elizaresearch/alphaphone/ElizaVoiceNative",
+    "className": "ai/alphacompute/alphaphone/ElizaVoiceNative",
     "subset": "full"
   },
   "requalification": {

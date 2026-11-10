@@ -17,7 +17,7 @@ export const testReadReference = path =>
 
 // Android files that browser specs read; test/ci-affected.test.mjs scans test/browser to keep this complete.
 export const browserReadAndroid = new Set([
-  'android/app/src/androidTest/java/ai/elizaresearch/alphaphone/StartupDocumentProbe.java',
+  'android/app/src/androidTest/java/ai/alphacompute/alphaphone/StartupDocumentProbe.java',
   'android/video-fixture/src/main/assets/qa-source.mp4',
 ]);
 

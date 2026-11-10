@@ -159,7 +159,7 @@ test("AOSP staging refuses --production without a descriptor, with --development
       fs.writeFileSync(path.join(dir, "foreign.json"), JSON.stringify({ schemaVersion: 1, apkSha256: sha256, certificateSha256: "d".repeat(64), ...foreign }));
       out = stage(["--apk", release, "--descriptor", "foreign.json", "--production"]);
       assert.notEqual(out.status, 0, name);
-      assert.match(out.stderr, /Descriptor does not belong to this product: packageName .* must be ai\.elizaresearch\.alphaphone and AlphaPhone \(app\.config\.json\)/, name);
+      assert.match(out.stderr, /Descriptor does not belong to this product: packageName .* must be ai\.alphacompute\.alphaphone and AlphaPhone \(app\.config\.json\)/, name);
     }
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -345,14 +345,14 @@ test("APK voice admission requires the complete recorded bundle and every record
 
 test('merged-manifest check keeps launcher-only permissions and components out of standalone', () => {
   // Stand-ins for aapt's merged xmltree: the launcher carries every launcher-only entry, standalone none.
-  const identity = {appId: 'ai.elizaresearch.alphaphone'};
+  const identity = {appId: 'ai.alphacompute.alphaphone'};
   const launcherOnly = ['READ_CONTACTS', 'READ_SMS', 'SEND_SMS', 'CALL_PHONE', 'READ_PHONE_STATE', 'EXPAND_STATUS_BAR', 'RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH', 'READ_CALL_LOG']
     .map(name => `android.permission.${name}`)
-    .concat(['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'].map(name => `ai.elizaresearch.alphaphone.${name}`));
+    .concat(['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'].map(name => `ai.alphacompute.alphaphone.${name}`));
   const apk = (home, entries) => () => ({packageName: identity.appId, home, launcher: true, webPayload: true, badging: '', xml: ['android.permission.CAMERA', ...entries].map(name => `A: android:name="${name}"`).join('\n')});
   assert.doesNotThrow(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly)));
   assert.doesNotThrow(() => validateApk('standalone.apk', identity, false, apk(false, [])));
-  for (const entry of ['android.permission.READ_PHONE_STATE', 'android.permission.EXPAND_STATUS_BAR', 'ai.elizaresearch.alphaphone.AlphaSmsSendReceiver']) {
+  for (const entry of ['android.permission.READ_PHONE_STATE', 'android.permission.EXPAND_STATUS_BAR', 'ai.alphacompute.alphaphone.AlphaSmsSendReceiver']) {
     const name = entry.split('.').at(-1);
     assert.throws(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly.filter(other => other !== entry))), new RegExp(`Invalid.*${name}.*launcher\\.apk`));
     assert.throws(() => validateApk('standalone.apk', identity, false, apk(false, [entry])), new RegExp(`Invalid.*${name}.*standalone\\.apk`));
@@ -366,8 +366,8 @@ function webFilterTree(extra = "") {
     "        E: action (line=5)", attr("name", "android.intent.action.VIEW", 10),
     "        E: category (line=6)", attr("name", "android.intent.category.BROWSABLE", 10),
     "        E: data (line=7)", ...Object.entries(data).map(([name, value]) => attr(name, value, 10))].join("\n");
-  return ["E: manifest (line=1)", '  A: package="ai.elizaresearch.alphaphone" (Raw: "ai.elizaresearch.alphaphone")', "  E: application (line=2)",
-    "    E: activity (line=3)", attr("name", "ai.elizaresearch.alphaphone.MainActivity", 6),
+  return ["E: manifest (line=1)", '  A: package="ai.alphacompute.alphaphone" (Raw: "ai.alphacompute.alphaphone")', "  E: application (line=2)",
+    "    E: activity (line=3)", attr("name", "ai.alphacompute.alphaphone.MainActivity", 6),
     filter({scheme: "https", host: "eliza.app", path: "/alphaphone/auth/callback"}),
     filter({scheme: "https", host: "eliza.app", path: "/alphaphone/gmail/callback"}),
     // A custom-scheme return is not a web handler.
@@ -375,14 +375,14 @@ function webFilterTree(extra = "") {
     extra].join("\n");
 }
 const allowedWebFilters = ["/alphaphone/auth/callback", "/alphaphone/gmail/callback"]
-  .map(shape => `ai.elizaresearch.alphaphone.MainActivity https://eliza.app${shape}`);
+  .map(shape => `ai.alphacompute.alphaphone.MainActivity https://eliza.app${shape}`);
 
 test("APK verification accepts exactly the allowed web VIEW filters", () => {
   const tree = parseXmlTree(webFilterTree());
   assert.deepEqual(webViewFilters(tree), [...allowedWebFilters].sort());
   assert.deepEqual(webViewFilterProblems(tree, allowedWebFilters), []);
-  assert.deepEqual(webViewFilterProblems(tree, [...allowedWebFilters, "ai.elizaresearch.alphaphone.MainActivity https://staging.eliza.app/alphaphone/auth/callback"]),
-    ["Missing web VIEW intent filter ai.elizaresearch.alphaphone.MainActivity https://staging.eliza.app/alphaphone/auth/callback"]);
+  assert.deepEqual(webViewFilterProblems(tree, [...allowedWebFilters, "ai.alphacompute.alphaphone.MainActivity https://staging.eliza.app/alphaphone/auth/callback"]),
+    ["Missing web VIEW intent filter ai.alphacompute.alphaphone.MainActivity https://staging.eliza.app/alphaphone/auth/callback"]);
 });
 
 test("APK verification rejects and names an extra web VIEW filter", () => {
@@ -393,7 +393,7 @@ test("APK verification rejects and names an extra web VIEW filter", () => {
     '          A: http://schemas.android.com/apk/res/android:host(0x01010028)="eliza.app" (Raw: "eliza.app")',
     '          A: http://schemas.android.com/apk/res/android:pathPrefix(0x0101002b)="/" (Raw: "/")'].join("\n");
   assert.deepEqual(webViewFilterProblems(parseXmlTree(webFilterTree(broad)), allowedWebFilters),
-    ["Unexpected web VIEW intent filter ai.elizaresearch.alphaphone.MainActivity https://eliza.app/*; add it to the allowed set in scripts/verify-apks.mjs only if it is deliberate"]);
+    ["Unexpected web VIEW intent filter ai.alphacompute.alphaphone.MainActivity https://eliza.app/*; add it to the allowed set in scripts/verify-apks.mjs only if it is deliberate"]);
   // A library activity's handler with no host and no path is reported too.
   const library = ["    E: activity (line=20)",
     '      A: http://schemas.android.com/apk/res/android:name(0x01010003)="com.example.Viewer" (Raw: "com.example.Viewer")',

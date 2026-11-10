@@ -6,7 +6,7 @@
   "patchSha256": "f8ed0f482f7a81157c091c5e44bf358936c68ea206218688d38d2954b3e65529",
   "requiresAppliedSystemUIPatchSha256": "dba353a6d69110dbe2d010d73c965fb391e2a2561fae7c52bc9bb2ec42912391",
   "requiresProtectedAppComponent": {
-    "component": "ai.elizaresearch.alphaphone/ai.elizaresearch.alphaphone.AlphaPowerVoiceActivity",
+    "component": "ai.alphacompute.alphaphone/ai.alphacompute.alphaphone.AlphaPowerVoiceActivity",
     "exported": true,
     "permission": "android.permission.STATUS_BAR_SERVICE",
     "intentFilter": false

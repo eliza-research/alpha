@@ -9,7 +9,7 @@ import { decide, main, parseGetAppLinks } from "../scripts/owner/app-links-evide
 
 const RELEASE = "c3".repeat(32);
 const colon = value => value.toUpperCase().match(/../g).join(":");
-const sample = (state, signature = RELEASE) => `  ai.elizaresearch.alphaphone:
+const sample = (state, signature = RELEASE) => `  ai.alphacompute.alphaphone:
     ID: 01234567-89ab-cdef-0123-456789abcdef
     Signatures: [${colon(signature)}]
     Domain verification state:

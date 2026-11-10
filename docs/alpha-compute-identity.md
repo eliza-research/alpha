@@ -1,9 +1,13 @@
 # Alpha Compute identity
 
-The November 9 company rename sets the Android application ID to
-`ai.elizaresearch.alphaphone`. Standalone and launcher APKs share this ID. Java
+The November 10 owner decision sets the Android application and App Auth client ID to
+`ai.alphacompute.alphaphone`. Standalone and launcher APKs share this ID. Java
 packages, the Sense listener, image provisioning, component names, IPC names,
 provider authorities, permissions and test fixtures use the same namespace.
+The current SDK pin is `3504bfbe6d264d1bf05bbc2224708131d41f3a6b`, from
+[Alpha PR 862](https://github.com/eliza-research/alphaphone/pull/862).
+The source reviews below retain their original revisions. They do not qualify
+the current SDK, package, built APKs or installed-device behavior.
 The reviewed upstream merge `86ab55fd81f68a2c5dd4fd32e1c1431723648c58`
 ([elizaOS/eliza#39153](https://github.com/elizaOS/eliza/pull/39153)) supplies the
 matching company text, Pixel configuration and autofill origin extras. It retains
@@ -39,7 +43,7 @@ bytes and shared speech inputs are unchanged from `489efc0b`; historical built
 reviews retain their original pins. Current native, device and user qualification
 remain pending.
 
-The current pin `75b44015561368fc8ca982b70b8bafbdf1672a7b`
+The earlier pin `75b44015561368fc8ca982b70b8bafbdf1672a7b`
 ([elizaOS/eliza#39189](https://github.com/elizaOS/eliza/pull/39189)) adds the
 reviewed generic deferred-deletion owner check before the write fence. Retired
 ownership cannot fence the current owner. The consumer configuration remains
@@ -68,10 +72,14 @@ roles, grants, Keystore entries or update sessions. This change supplies no data
 migration. Update manifests and release evidence must describe APKs built for the
 new identity; earlier APK hashes and device results do not qualify it.
 
-Before real sign-in or image provisioning, register the new Cloud/App Auth client,
-OAuth callbacks and signed-package asset links, and refresh package-specific role,
-listener and image policies. The return URL path and Cloud service origins retain
-their configured values. The browser and password service must use the matching
+Before real sign-in or image provisioning, migrate the Cloud/App Auth client and
+signed-package asset links, and refresh package-specific role, listener and image
+policies. Keep `https://eliza.app/alphaphone/auth/callback` and
+`https://staging.eliza.app/alphaphone/auth/callback`. The deployed client already
+owns these URLs, so a second registration with the same callback is rejected.
+Follow the [registration handoff](runbooks/pages-browser-sign-in.md) before changing
+the protected registry. Do not invent an app UUID or rewrite existing grants.
+The browser and password service must use the matching
 autofill origin-extra namespace; earlier browser binaries do not provide it.
 
 The native embedding JNI class also changes. The previous native-library receipt

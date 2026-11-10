@@ -2,7 +2,7 @@
   "production": [
     {
       "redirectUri": "https://eliza.app/alphaphone/auth/callback",
-      "androidPackage": "ai.elizaresearch.alphaphone",
+      "androidPackage": "ai.alphacompute.alphaphone",
       "appName": "Alpha Phone",
       "browserSignIn": {
         "startPath": "/alphaphone/auth/browser-start",
@@ -16,7 +16,7 @@
   "staging": [
     {
       "redirectUri": "https://staging.eliza.app/alphaphone/auth/callback",
-      "androidPackage": "ai.elizaresearch.alphaphone",
+      "androidPackage": "ai.alphacompute.alphaphone",
       "appName": "Alpha Phone",
       "browserSignIn": {
         "startPath": "/alphaphone/auth/browser-start",

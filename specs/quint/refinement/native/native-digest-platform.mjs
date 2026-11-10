@@ -27,7 +27,7 @@ public final class Context {
       'android/content/pm/PackageManager.java':'package android.content.pm; public final class PackageManager {public static final int PERMISSION_GRANTED=0;}',
       'androidx/core/content/ContextCompat.java':`package androidx.core.content;
 import android.content.Context;
-import ai.elizaresearch.alphaphone.NativeDigestTraces;
+import ai.alphacompute.alphaphone.NativeDigestTraces;
 public final class ContextCompat {
  public static int checkSelfPermission(Context context,String permission){
   if(!android.Manifest.permission.READ_CALENDAR.equals(permission))throw new AssertionError("Unexpected permission");
@@ -37,7 +37,7 @@ public final class ContextCompat {
       'ai/eliza/plugins/calendar/read/SelectedCalendarReader.java':`package ai.eliza.plugins.calendar.read;
 import android.content.ContentResolver;
 import org.json.JSONArray;
-import ai.elizaresearch.alphaphone.NativeDigestTraces;
+import ai.alphacompute.alphaphone.NativeDigestTraces;
 public final class SelectedCalendarReader {
  public static void assertSourceIdentities(ContentResolver resolver,JSONArray ids)throws Exception {
   NativeDigestTraces.calendarIdentities(ids);
@@ -47,7 +47,7 @@ public final class SelectedCalendarReader {
   return NativeDigestTraces.calendarRows(ids,start,end,maximum,startDate,endDate);
  }
 }`,
-      'ai/elizaresearch/alphaphone/DigestPorts.java':`package ai.elizaresearch.alphaphone;
+      'ai/alphacompute/alphaphone/DigestPorts.java':`package ai.alphacompute.alphaphone;
 import android.content.Context;
 import org.json.*;
 final class AlphaCredentialStore {

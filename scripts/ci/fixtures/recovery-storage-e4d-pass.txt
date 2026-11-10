@@ -1,12 +1,12 @@
-INSTRUMENTATION_STATUS: class=ai.elizaresearch.alphaphone.ReminderDeletionStorageInstrumentedTest
+INSTRUMENTATION_STATUS: class=ai.alphacompute.alphaphone.ReminderDeletionStorageInstrumentedTest
 INSTRUMENTATION_STATUS: current=1
 INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
 INSTRUMENTATION_STATUS: numtests=1
 INSTRUMENTATION_STATUS: stream=
-ai.elizaresearch.alphaphone.ReminderDeletionStorageInstrumentedTest:
+ai.alphacompute.alphaphone.ReminderDeletionStorageInstrumentedTest:
 INSTRUMENTATION_STATUS: test=reminderDeletionSlotUsesEncryptedCompareExchange
 INSTRUMENTATION_STATUS_CODE: 1
-INSTRUMENTATION_STATUS: class=ai.elizaresearch.alphaphone.ReminderDeletionStorageInstrumentedTest
+INSTRUMENTATION_STATUS: class=ai.alphacompute.alphaphone.ReminderDeletionStorageInstrumentedTest
 INSTRUMENTATION_STATUS: current=1
 INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
 INSTRUMENTATION_STATUS: numtests=1

@@ -1,6 +1,6 @@
 """Read-only fail-closed global socket-fixture admission; never stops an agent."""
 import base64,hashlib,re
-SOCKET='ai.elizaresearch.alphaphone.agent.v1'
+SOCKET='ai.alphacompute.alphaphone.agent.v1'
 # No known-runtime marker is embedded in this helper's own argv. Read each full
 # NUL-delimited cmdline directly; never depend on ps width/ARGS truncation.
 PROC_SCAN="command -v base64 >/dev/null || exit 40; for p in /proc/[0-9]*; do [ -d \"$p\" ] || continue; if value=$(base64 <\"$p/cmdline\" 2>/dev/null); then printf '%s|' \"${p##*/}\"; printf '%s' \"$value\" | tr -d '\\r\\n'; printf '\\n'; else [ ! -d \"$p\" ] || exit 41; fi; done"

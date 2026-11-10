@@ -13,7 +13,7 @@ export function listenerStorePlatform(){
    public static final int MODE_PRIVATE=0;public Context createDeviceProtectedStorageContext(){return this;}
    public SharedPreferences getSharedPreferences(String name,int mode){return ai.eliza.sense.StorePorts.preferences;}
    public boolean stopService(Intent intent){if(intent.component==null||!intent.component.packageName().equals(getPackageName())||!intent.component.className().equals(getPackageName()+".ListeningService"))throw new AssertionError("Wrong listener stop component");ai.eliza.sense.StorePorts.stops++;return true;}
-   public Object getContentResolver(){return this;}public String getPackageName(){return "ai.elizaresearch.alphaphone.sense";}
+   public Object getContentResolver(){return this;}public String getPackageName(){return "ai.alphacompute.alphaphone.sense";}
    public android.content.pm.PackageManager getPackageManager(){return new android.content.pm.PackageManager();}
   }`,
   'android/content/Intent.java':'package android.content;public class Intent {public ComponentName component;public Intent(){}public Intent setComponent(ComponentName component){this.component=component;return this;}}',

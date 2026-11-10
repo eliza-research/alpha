@@ -2,7 +2,7 @@
   "schema": 1,
   "project": "frameworks/base",
   "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
-  "targetAppId": "ai.elizaresearch.alphaphone",
+  "targetAppId": "ai.alphacompute.alphaphone",
   "patch": "alpha-core-launcher.patch",
   "patchSha256": "4f8048b304293576c5e5d32c32b37fba69d0c00fc38a78c310dd0e53dc524abf",
   "files": [

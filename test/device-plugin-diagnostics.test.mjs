@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 
-const source = fs.readFileSync("android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java", "utf8");
+const source = fs.readFileSync("android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java", "utf8");
 
 test("problem-log work is never handed to the worker outside the helper that survives a stopped worker", () => {
   // The helper delegates to the shared PluginWorkers guard (see test/plugin-worker-guard.test.mjs).

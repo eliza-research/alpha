@@ -752,7 +752,7 @@
       "unassignedWrites": 4
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AccessibilityBounds.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/AccessibilityBounds.java",
       "sha256": "2e49be96212465e011423aaf408fe54b5293f1ea0824683632364227d96b862f",
       "allocatedModels": [
         "Application"
@@ -772,7 +772,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AccessibilityHomeRoleInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/AccessibilityHomeRoleInstrumentedTest.java",
       "sha256": "55ee92659145ac91ed9bf66efcc5f9d7efbb61d7ab90c3d6f1f92374b67a6856",
       "allocatedModels": [
         "ShellNavigation"
@@ -810,7 +810,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AccessibilityInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/AccessibilityInstrumentedTest.java",
       "sha256": "0759562a2ab5935a9f234d46bafae52483c09ce13ded19f870f08bda88c4416a",
       "allocatedModels": [
         "Application"
@@ -872,7 +872,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AccessibilityLifecycleInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/AccessibilityLifecycleInstrumentedTest.java",
       "sha256": "fbaac81b9b0846b4d38bb34aa8acdf9ad56fdc98cc95f0677019b26dbc7c412f",
       "allocatedModels": [
         "ShellNavigation"
@@ -964,7 +964,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AccessibilityViewsInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/AccessibilityViewsInstrumentedTest.java",
       "sha256": "561b004aa4ccc8dda5d95288d6e7a90087c56ab2451eb868af210910f69a0724",
       "allocatedModels": [
         "ShellNavigation"
@@ -1026,7 +1026,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ActionJournalInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ActionJournalInstrumentedTest.java",
       "sha256": "8be18cace57eb9a49e6b348ef6face335b9a47caf243ac3dd608fa801aa8b0af",
       "allocatedModels": [
         "WorkflowExecution"
@@ -1064,7 +1064,7 @@
       "unassignedWrites": 47
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ActivityInstanceSelectionInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ActivityInstanceSelectionInstrumentedTest.java",
       "sha256": "c8f1015de5d11b758b843895120759aa0e1260f26b1158e2e504e5ba95ca5329",
       "allocatedModels": [
         "ShellNavigation"
@@ -1114,7 +1114,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AllViewAgentContextInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/AllViewAgentContextInstrumentedTest.java",
       "sha256": "0a797ee09db65814e5ebf293281cbbc7515ee9b25a20d0d3e9b7244cb7e760ab",
       "allocatedModels": [
         "ShellNavigation"
@@ -1176,7 +1176,7 @@
       "unassignedWrites": 6
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AndroidShade.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/AndroidShade.java",
       "sha256": "20011a74d465e6fb6a9e50720bedff99be351942722ad0bb3f2cf80e51e34995",
       "allocatedModels": [
         "Application"
@@ -1280,7 +1280,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AppInfoInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/AppInfoInstrumentedTest.java",
       "sha256": "d962be59e7b721299638ac0552cfefdea25b0d345b234b55117a6b79e1672155",
       "allocatedModels": [
         "ShellNavigation"
@@ -1318,7 +1318,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AppNavigation.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/AppNavigation.java",
       "sha256": "4134e8584c5ef1b3e1a988ae34135f2ef8eac54dbb87a5fae6f38b80bee44949",
       "allocatedModels": [
         "Application"
@@ -1368,7 +1368,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AssistantInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/AssistantInstrumentedTest.java",
       "sha256": "8e2c0d4766d27c8fc6af9d82b57e2911dd93b3860c17a77db0e470e0c2ac3148",
       "allocatedModels": [
         "AssistantConversation"
@@ -1472,7 +1472,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AssistantResidentReuseInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/AssistantResidentReuseInstrumentedTest.java",
       "sha256": "c6002f5eba50dc37ca5e63d54e411bd5b0aa491829af32b3807876445be3030b",
       "allocatedModels": [
         "ResidentRuntime"
@@ -1528,7 +1528,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BoundedActivityScenario.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BoundedActivityScenario.java",
       "sha256": "a2aac51a3a87c89c8d731cc002d36aa75313958ea66fe3d921ac85a69d2136d6",
       "allocatedModels": [
         "Application"
@@ -1632,7 +1632,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserContinuityInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserContinuityInstrumentedTest.java",
       "sha256": "35f03d562653bdfda50e361a299c4e0d6913d053d34d67ff5d63ab8b0c6cb720",
       "allocatedModels": [
         "BrowserSession"
@@ -1808,7 +1808,7 @@
       "unassignedWrites": 8
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserCookiePolicyInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserCookiePolicyInstrumentedTest.java",
       "sha256": "7411a172161ec7bbef9ce6415a1f4e2164d7ef0941e2a76a49882044fc0fe804",
       "allocatedModels": [
         "BrowserSession"
@@ -1888,7 +1888,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserDialogLifecycleInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserDialogLifecycleInstrumentedTest.java",
       "sha256": "6ed455c5d57b13b43ad8c0281346c2441e672195ae37cf74a0ebc5e48201b93a",
       "allocatedModels": [
         "BrowserSession"
@@ -1974,7 +1974,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserDownloadInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserDownloadInstrumentedTest.java",
       "sha256": "b463e16ddfc09d9f737b885f50c62c48ffb6c54ef3bffb5a7605218f9ce7b622",
       "allocatedModels": [
         "BrowserSession"
@@ -2096,7 +2096,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserExternalHandoffInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserExternalHandoffInstrumentedTest.java",
       "sha256": "6171b9acc3802bdaba5d16cd5c9a000c96fe44999f1f6d69ca27ecba858e20d8",
       "allocatedModels": [
         "BrowserSession"
@@ -2236,7 +2236,7 @@
       "unassignedWrites": 7
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserFlowInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserFlowInstrumentedTest.java",
       "sha256": "8c539e96310ae127ab4e84c2fe8520a809547a1cf53b3082723e720f9e0d74dd",
       "allocatedModels": [
         "BrowserSession"
@@ -2640,7 +2640,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserInstalledResolverInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserInstalledResolverInstrumentedTest.java",
       "sha256": "db4070c427f4f805adeddc0a6d4fe3c6012c56e1373baea19912fc5254788a30",
       "allocatedModels": [
         "BrowserSession"
@@ -2660,7 +2660,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserIsolatedReadingInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserIsolatedReadingInstrumentedTest.java",
       "sha256": "8e2d1c8ea06723bed0e7e9966b886166ab9eefdf1753f7297499dfe92f347b53",
       "allocatedModels": [
         "BrowserSession"
@@ -2686,7 +2686,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserPageQuestionInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserPageQuestionInstrumentedTest.java",
       "sha256": "9ce43e8f45666c4106ee28eb3bcdb5866d979e4e2e94ec72702b3cb5ffbf28d9",
       "allocatedModels": [
         "BrowserSession"
@@ -2916,7 +2916,7 @@
       "unassignedWrites": 16
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserReadingFixture.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserReadingFixture.java",
       "sha256": "4fcba6cb21f8f8e0fd6c9870f48bfc388290a6e09a443d051efc9ef6b014dcbd",
       "allocatedModels": [
         "BrowserReadingState",
@@ -3057,7 +3057,7 @@
       "unassignedWrites": 12
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserReadingInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserReadingInstrumentedTest.java",
       "sha256": "b3864240d01c9399b56f54dcbb5f11a5d5180a4cc5372c4e8634f550090d9b0c",
       "allocatedModels": [
         "BrowserSession"
@@ -3131,7 +3131,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserReadingLiveInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserReadingLiveInstrumentedTest.java",
       "sha256": "a3400ea8f922cbd5ba7e8f09cca099be78062829645a99469777bd49176f8669",
       "allocatedModels": [
         "BrowserSession"
@@ -3223,7 +3223,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserReadingNavigationInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserReadingNavigationInstrumentedTest.java",
       "sha256": "f21d87afc0ba70199f3cd9c4404cf357c37314134d501d694b5a2b7840eebdbf",
       "allocatedModels": [
         "BrowserSession"
@@ -3369,7 +3369,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserSensitiveReadingInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserSensitiveReadingInstrumentedTest.java",
       "sha256": "cba3247b44bba668f1d0a02fc22cfe8627d280b21f8969e5688095ed255aa418",
       "allocatedModels": [
         "BrowserSession"
@@ -3485,7 +3485,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserShareInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserShareInstrumentedTest.java",
       "sha256": "3119769a035f9476271e7add05a5e965648f74b918fc47cd447eb9b8b319d541",
       "allocatedModels": [
         "BrowserSession"
@@ -3559,7 +3559,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserSigninsInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserSigninsInstrumentedTest.java",
       "sha256": "42ae4f2db43354c8b5f6f156a6015902c3b4eadf154201d818d7cabea284eb77",
       "allocatedModels": [
         "IdentitySession"
@@ -3747,7 +3747,7 @@
       "unassignedWrites": 6
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserStorageFormatInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserStorageFormatInstrumentedTest.java",
       "sha256": "ad9f278ad733b62cd3994ddeeb807cc911da14b95c836d0df29bfa8d24d4b05d",
       "allocatedModels": [
         "BrowserSession"
@@ -3785,7 +3785,7 @@
       "unassignedWrites": 17
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserUnsupportedReadingInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserUnsupportedReadingInstrumentedTest.java",
       "sha256": "f1364e79f1d3bc2d9be14129a572e0392879dae7bee697122767e65c23452694",
       "allocatedModels": [
         "BrowserSession"
@@ -3811,7 +3811,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/BrowserWebFeaturesInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/BrowserWebFeaturesInstrumentedTest.java",
       "sha256": "e40f1b22180dfb641e5b1f752633bbbcec574d433d36c6293596bb5e811fc5c6",
       "allocatedModels": [
         "BrowserSession"
@@ -4095,7 +4095,7 @@
       "unassignedWrites": 6
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarAgentCrudInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarAgentCrudInstrumentedTest.java",
       "sha256": "9b4cc6d9b23373e031dd54d8767fd74889e45192d0935330576d8629c6f63486",
       "allocatedModels": [
         "CalendarSync"
@@ -4223,7 +4223,7 @@
       "unassignedWrites": 53
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarAvailabilityInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarAvailabilityInstrumentedTest.java",
       "sha256": "536a9984514de3c4acaf7a88f197cae9334c18546eed2da73abe330a79f306b8",
       "allocatedModels": [
         "CalendarSync"
@@ -4315,7 +4315,7 @@
       "unassignedWrites": 11
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarCreationRecoveryInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarCreationRecoveryInstrumentedTest.java",
       "sha256": "420ae7a2d3c9fe9c45a333c131dab75854fc6f355637fca96fe3d063352d017d",
       "allocatedModels": [
         "CalendarSync"
@@ -4341,7 +4341,7 @@
       "unassignedWrites": 10
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarCrudInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarCrudInstrumentedTest.java",
       "sha256": "78b8ff3e690c09a1b6bcc7268db204b2802ec95bfb9ae61509363195bb914878",
       "allocatedModels": [
         "CalendarSync"
@@ -4415,7 +4415,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarDeletionRestartInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarDeletionRestartInstrumentedTest.java",
       "sha256": "a003beedb9fe0dc36719a7a5c79dd39fe3210371beebde80cd738c97430b4987",
       "allocatedModels": [
         "CalendarSync"
@@ -4447,7 +4447,7 @@
       "unassignedWrites": 9
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarDeletionReviewInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarDeletionReviewInstrumentedTest.java",
       "sha256": "efd531818cea79b7b5ed42cf7096eba94f92dde19cdbd5b63761669680dd493e",
       "allocatedModels": [
         "CalendarSync"
@@ -4515,7 +4515,7 @@
       "unassignedWrites": 11
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarExternalEditorInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarExternalEditorInstrumentedTest.java",
       "sha256": "fdc4d7cbc533de834623ff7cde49fce40e9d7b5deaaaa14356ceb88c643d2b00",
       "allocatedModels": [
         "CalendarSync"
@@ -4649,7 +4649,7 @@
       "unassignedWrites": 9
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarFlowInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarFlowInstrumentedTest.java",
       "sha256": "ca0463ff5cce6a7b9f43f171780ba64cd32775e16a56e70d0cfb4e3642b19f77",
       "allocatedModels": [
         "CalendarSync"
@@ -4777,7 +4777,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarRangeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarRangeInstrumentedTest.java",
       "sha256": "4cfec0afb14514aee1f810e15d454b797955afa41972c1ac9c077ce112594626",
       "allocatedModels": [
         "CalendarSync"
@@ -4821,7 +4821,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarSyncProviderInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarSyncProviderInstrumentedTest.java",
       "sha256": "e5bce954e1ed363ac71233dac257e34cf1890775c2bf3262b2b1f70525f0ac04",
       "allocatedModels": [
         "CalendarSync"
@@ -4889,7 +4889,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarTruncationInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarTruncationInstrumentedTest.java",
       "sha256": "e8ff0755d21d662c5e6d9bc0d31508ff986f3aa01be92bda6d4fc553936892ea",
       "allocatedModels": [
         "CalendarSync"
@@ -4927,7 +4927,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarUiTestDriver.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarUiTestDriver.java",
       "sha256": "1a02dfaa8c5804a72f9271ba42dc29d22cac164315b08bc78a21c83360982b31",
       "allocatedModels": [
         "CalendarPresentation",
@@ -4972,7 +4972,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CalendarUpgradeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CalendarUpgradeInstrumentedTest.java",
       "sha256": "4c0928ea69dac12acb55d8af42558f72b6d6dd5c74a96f18db6f81ee53f88b9b",
       "allocatedModels": [
         "CalendarSync"
@@ -5082,7 +5082,7 @@
       "unassignedWrites": 15
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CameraFlowInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CameraFlowInstrumentedTest.java",
       "sha256": "28a5f95b94db93251879daf736fa2a5ece4d16e678d06f7e12c0b0632e791a83",
       "allocatedModels": [
         "MediaLifecycle"
@@ -5198,7 +5198,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CameraLatencyInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CameraLatencyInstrumentedTest.java",
       "sha256": "573851249f14efa88aacb0d0e095f41bcedf1d07d4dd31fbf5a3e937dd72d8ec",
       "allocatedModels": [
         "MediaLifecycle"
@@ -5296,7 +5296,7 @@
       "unassignedWrites": 7
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CameraScanInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CameraScanInstrumentedTest.java",
       "sha256": "2c234cf8f267a812d639e33b9901117b7c2e21a181a7b6e883bcc4219e046136",
       "allocatedModels": [
         "MediaLifecycle"
@@ -5388,7 +5388,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ChatContinuityInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ChatContinuityInstrumentedTest.java",
       "sha256": "dab6accd02b40f583bba39b8d2b6c91483c130c248214facae93fe4bab1d829c",
       "allocatedModels": [
         "Application"
@@ -5480,7 +5480,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ClockAgentReviewInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ClockAgentReviewInstrumentedTest.java",
       "sha256": "30e9d61c4189cb4746a9934d3a084a43985c289189cb9d596a2102da98734617",
       "allocatedModels": [
         "DeviceActions"
@@ -5572,7 +5572,7 @@
       "unassignedWrites": 34
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ClockHandoffInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ClockHandoffInstrumentedTest.java",
       "sha256": "0af97e3a759dea5325db022503a66e4134a3a9a37866e946b845e6e23aeb7304",
       "allocatedModels": [
         "DeviceActions"
@@ -5622,7 +5622,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ClockHistoryFixture.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ClockHistoryFixture.java",
       "sha256": "d9a45f751dcb82518267ff75c0e2fd7eaddbad0bc4c08e97a9c35637c152a249",
       "allocatedModels": [
         "DeviceActions"
@@ -5666,7 +5666,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ClockRepeatDaysInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ClockRepeatDaysInstrumentedTest.java",
       "sha256": "2349750a140a24e859c05f7bf4e3f044f6fc028d87b704ce12260fed3ef2ba93",
       "allocatedModels": [
         "DeviceActions"
@@ -5704,7 +5704,7 @@
       "unassignedWrites": 12
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CloudDelegationCallbackInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CloudDelegationCallbackInstrumentedTest.java",
       "sha256": "c6a89eeddce59fb2ef3d804b08a8ef4f288caba5f39478c89d8b4b7f645562fd",
       "allocatedModels": [
         "Application"
@@ -5790,7 +5790,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CloudDeploymentStorageInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CloudDeploymentStorageInstrumentedTest.java",
       "sha256": "1000bae5623bc17baf7f0db95b0dd707dc75fb7e3fea9f7c4179bf5384643cb5",
       "allocatedModels": [
         "ServiceAuthorization"
@@ -5822,7 +5822,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CloudSignInAuthorizationInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CloudSignInAuthorizationInstrumentedTest.java",
       "sha256": "0da77469dc99d1e5a86d7e3a0c7b35b7767b3c2e2b874508b31585a3f4aeef3e",
       "allocatedModels": [
         "IdentitySession"
@@ -5866,7 +5866,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CloudSignInCallbackInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CloudSignInCallbackInstrumentedTest.java",
       "sha256": "74d1d932ad448d6ecd145fcdee03fb148aba251647706f4bf40828136e7cbc49",
       "allocatedModels": [
         "IdentitySession"
@@ -5934,7 +5934,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CloudVoiceInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CloudVoiceInstrumentedTest.java",
       "sha256": "387b9cf614e89b7e674e1177247fe3cc2ac06ee6636f3aed6f277b637f78637b",
       "allocatedModels": [
         "VoiceSession"
@@ -5984,7 +5984,7 @@
       "unassignedWrites": 11
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CombinedAgentInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CombinedAgentInstrumentedTest.java",
       "sha256": "28be6214b90fd1e7b3839803aeed5b8d2344e3e2b079fb22f6599f0232bb83d5",
       "allocatedModels": [
         "Application"
@@ -6124,7 +6124,7 @@
       "unassignedWrites": 5
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CombinedAgentRestartInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CombinedAgentRestartInstrumentedTest.java",
       "sha256": "c9c61e36a9389b41493ee4d3be47ac90e6e0a0b083b4878740bc7095a33abbe7",
       "allocatedModels": [
         "Application"
@@ -6282,7 +6282,7 @@
       "unassignedWrites": 13
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ConnectionChooserInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ConnectionChooserInstrumentedTest.java",
       "sha256": "f6b57f3a24b9ea2a587eafcb881a3977d1a5f060e26bc5329f3c45c7f95ae39d",
       "allocatedModels": [
         "Application"
@@ -6314,7 +6314,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ConnectionInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ConnectionInstrumentedTest.java",
       "sha256": "32251e9c3ff69e9294958a6c63a00f97fb3b92580375498266b1835a1ad1b1fb",
       "allocatedModels": [
         "Application"
@@ -6406,7 +6406,7 @@
       "unassignedWrites": 103
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ConnectionRoutesInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ConnectionRoutesInstrumentedTest.java",
       "sha256": "5ef735e0f5decc69045dac8daf9ef6f72420de7fa4ce884e50adf181ab681082",
       "allocatedModels": [
         "ServiceAuthorization"
@@ -6456,7 +6456,7 @@
       "unassignedWrites": 14
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ContactsCatalogInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ContactsCatalogInstrumentedTest.java",
       "sha256": "e65a823b597b24c99e444af4c47de19c20110cf40a422540c5a03b7832094863",
       "allocatedModels": [
         "DeviceActions"
@@ -6482,7 +6482,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ContactsFlowInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ContactsFlowInstrumentedTest.java",
       "sha256": "6bbe21e471fc43279d758d955f04baa8b640eb8e352867bbd9763fcfa197564e",
       "allocatedModels": [
         "DeviceActions"
@@ -6538,7 +6538,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CrossAppNotificationsInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CrossAppNotificationsInstrumentedTest.java",
       "sha256": "95d7ebd0c79a4db58585cf3eb1c00035d03ca58d0123d071b69f1067acabf02d",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -6582,7 +6582,7 @@
       "unassignedWrites": 19
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/CrossAppNotificationsRestartInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/CrossAppNotificationsRestartInstrumentedTest.java",
       "sha256": "da1e2b1b6d94c0a0918c2ab8f03cf596c88a7e8aefffa116281f8e90fd6dc843",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -6656,7 +6656,7 @@
       "unassignedWrites": 25
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/DailyAppsInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/DailyAppsInstrumentedTest.java",
       "sha256": "a697434c5bdf971ee8baaac774e9c5c5e265ad6b607c7c48226803c388d3520f",
       "allocatedModels": [
         "Application"
@@ -6766,7 +6766,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/DeviceActionInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/DeviceActionInstrumentedTest.java",
       "sha256": "67cd60e58e1411860cca619c715739c4905addd62230f9be2d506116ccd728ec",
       "allocatedModels": [
         "DeviceActions"
@@ -6822,7 +6822,7 @@
       "unassignedWrites": 4
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/DispatchClaim.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/DispatchClaim.java",
       "sha256": "8118b312f5a15727df63673f0aaf63ff9bf47bdf7de0dec5370b6632c4e9fbf6",
       "allocatedModels": [
         "Application"
@@ -6854,7 +6854,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/FlowInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/FlowInstrumentedTest.java",
       "sha256": "99baad7a9c994518a6f2ded4596d26d2407f9e639c71d90a65dc43bc54990334",
       "allocatedModels": [
         "Application"
@@ -6922,7 +6922,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/HomeCalendarCardInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/HomeCalendarCardInstrumentedTest.java",
       "sha256": "617ff1f004920a7093d06de05da4af3a7607de103b296e354f39767ddf5ac877",
       "allocatedModels": [
         "CalendarSync"
@@ -6960,7 +6960,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/HostedBackgroundWorkerInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/HostedBackgroundWorkerInstrumentedTest.java",
       "sha256": "f250dae10c31f3c88b92ae68bbe04f8be3a5d995144253af2c1306e78080e751",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -7004,7 +7004,7 @@
       "unassignedWrites": 63
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/HostedProcessRestartInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/HostedProcessRestartInstrumentedTest.java",
       "sha256": "399e1928f8d0579acc8f0a746ffc5a9df6eab283d2a7f62cc0634caf9fd6e549",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -7078,7 +7078,7 @@
       "unassignedWrites": 74
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/HostedResultNoticeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/HostedResultNoticeInstrumentedTest.java",
       "sha256": "f52a0375bab0642e3bfb1afe665bac3a91f81ba1e13c3c67d4e0a4b4db30e36f",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -7146,7 +7146,7 @@
       "unassignedWrites": 17
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/HostedResultsLifecycleInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/HostedResultsLifecycleInstrumentedTest.java",
       "sha256": "c7a7fda86a496f99d3676c40f107d8e85bfa1fb1041b2e39f215bc5cf9b72687",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -7184,7 +7184,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ImageCapabilitiesInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ImageCapabilitiesInstrumentedTest.java",
       "sha256": "1c4afeaf6e43cced53b457bff038bbcf4eaad02f793b11dcfba1aa16d0d5ba9f",
       "allocatedModels": [
         "DeviceActions"
@@ -7222,7 +7222,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/InboxDraftInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/InboxDraftInstrumentedTest.java",
       "sha256": "6681c1287cba509eb3fee9354d1b0b0b923f53bbb13a94d56e1b6486b3b1bceb",
       "allocatedModels": [
         "InboxDelivery"
@@ -7344,7 +7344,7 @@
       "unassignedWrites": 7
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/InboxFixtureActivity.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/InboxFixtureActivity.java",
       "sha256": "6ea676527fdccc8bf79b8fc5c2c1d2f51221fb11e22389626d8dc369605ff181",
       "allocatedModels": [
         "InboxDelivery"
@@ -7364,7 +7364,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/InboxFixtureConnection.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/InboxFixtureConnection.java",
       "sha256": "8f5fc07f5690b4e7380435c25de8d225d90089a80172649fa09c1bd63209001b",
       "allocatedModels": [
         "InboxDelivery"
@@ -7426,7 +7426,7 @@
       "unassignedWrites": 33
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/InboxFixtureScope.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/InboxFixtureScope.java",
       "sha256": "3052fb7a0104279d990ea33727885b0411fe7c6eeffddf6b07601bffb676fde8",
       "allocatedModels": [
         "InboxDelivery"
@@ -7446,7 +7446,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/InboxFixtureSignIn.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/InboxFixtureSignIn.java",
       "sha256": "f17269fb6d96406b3d8dbfe07ab44d635491ba1559853e33590f6b9e6368e0d0",
       "allocatedModels": [
         "IdentitySession"
@@ -7496,7 +7496,7 @@
       "unassignedWrites": 15
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/InboxOperationJournalInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/InboxOperationJournalInstrumentedTest.java",
       "sha256": "59ddc2b661b482bea1c3d2fe160468614b8ccc4c799bff7fbbe76ae5efd8e481",
       "allocatedModels": [
         "InboxDelivery"
@@ -7540,7 +7540,7 @@
       "unassignedWrites": 14
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/IsolatedPdfInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/IsolatedPdfInstrumentedTest.java",
       "sha256": "6848ce14c2aefa6d93baa00b1b4080b5d2c1d4e505b2702253841033ebc3d444",
       "allocatedModels": [
         "MediaLifecycle"
@@ -7614,7 +7614,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/JourneyJ05InstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/JourneyJ05InstrumentedTest.java",
       "sha256": "9272b3df61f4b5075addbe5c033a65238bff650aa5f14f4241eb990d8a6cbb5f",
       "allocatedModels": [
         "Application"
@@ -7634,7 +7634,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/KeptCaptureLegacyPathInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/KeptCaptureLegacyPathInstrumentedTest.java",
       "sha256": "b61b7b8d4a59fdcfc2b9abf1e9601033fb849515ca5b199b02d4f44acbff2c58",
       "allocatedModels": [
         "MediaLifecycle"
@@ -7696,7 +7696,7 @@
       "unassignedWrites": 4
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/LargeInboxAttachmentInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/LargeInboxAttachmentInstrumentedTest.java",
       "sha256": "3562533b938146ebcdd9a0c736f6e5cd94a8fdf468b3d8bccf1bfc1c24a23463",
       "allocatedModels": [
         "InboxDelivery"
@@ -7746,7 +7746,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/LauncherAppsInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/LauncherAppsInstrumentedTest.java",
       "sha256": "b7000331638d25cec293953ff47fab1d99e4c3a5de2d1259284b770179a38466",
       "allocatedModels": [
         "PreferencesAndPresentation"
@@ -7790,7 +7790,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/LauncherHomeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/LauncherHomeInstrumentedTest.java",
       "sha256": "9fcb59dc7a6d33e89eede8b8334c6bf3c999124d9646eaf200a30c5f4f264ba9",
       "allocatedModels": [
         "PreferencesAndPresentation"
@@ -7912,7 +7912,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/LiveAgentInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/LiveAgentInstrumentedTest.java",
       "sha256": "2ee1f0fd9cc4a234ad56e2a614d270f44608b9601c4dea3997ffca390374de6a",
       "allocatedModels": [
         "Application"
@@ -7980,7 +7980,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/LiveVoiceVadInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/LiveVoiceVadInstrumentedTest.java",
       "sha256": "15bc8800a3059e391fc6ea5d9c0a0166b7166c40fe7c61d226d9bdb44ad6a3c6",
       "allocatedModels": [
         "SpeechResources"
@@ -8006,7 +8006,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/LocalAgentProviderInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/LocalAgentProviderInstrumentedTest.java",
       "sha256": "f8bef944cca046029ef54a959e35e78cfa527c399b6a733f65f055df33c47b67",
       "allocatedModels": [
         "ResidentRuntime"
@@ -8086,7 +8086,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/LocalServerSocketReleaseInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/LocalServerSocketReleaseInstrumentedTest.java",
       "sha256": "3d739cd3930af48d3aae7ba5807f8ccfb115c953989f3c19ed7d0cb35e7300db",
       "allocatedModels": [
         "Application"
@@ -8124,7 +8124,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/LocalSpeechBridgeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/LocalSpeechBridgeInstrumentedTest.java",
       "sha256": "14a955ad7eecc60647dffc334a4b4d233fbf6a07d036ee860356db5e075252c3",
       "allocatedModels": [
         "SpeechResources"
@@ -8198,7 +8198,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/LocalSpeechInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/LocalSpeechInstrumentedTest.java",
       "sha256": "ef1f55e5f8939106a3a2fb29ca7e577345e85d83338e98b58d49cd09b013f6b8",
       "allocatedModels": [
         "SpeechResources"
@@ -8248,7 +8248,7 @@
       "unassignedWrites": 13
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/LocalVoiceRecordingLimitInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/LocalVoiceRecordingLimitInstrumentedTest.java",
       "sha256": "f4bb9e824a34b926418feebdea01378cdfc39f5f3aee675d5c8ed6496455ac29",
       "allocatedModels": [
         "VoiceSession"
@@ -8268,7 +8268,7 @@
       "unassignedWrites": 5
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/MailAttachmentInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/MailAttachmentInstrumentedTest.java",
       "sha256": "e6c37767b2f99b103c29d778f6d6ec3bb575e7e477de97829a2602eeb0bbc6b8",
       "allocatedModels": [
         "FilesAndSharing"
@@ -8288,7 +8288,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/MapsBackgroundNavigationInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/MapsBackgroundNavigationInstrumentedTest.java",
       "sha256": "3e4d845bcb6b20c03fa07c23586e84d156904f0f1304290ad00ed27c8df96535",
       "allocatedModels": [
         "MapsNavigation"
@@ -8374,7 +8374,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/MapsInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/MapsInstrumentedTest.java",
       "sha256": "f65fb1a38c9cbcbe913421c98fa94291340e47ee5a3a0551b457bbf80d9236ff",
       "allocatedModels": [
         "MapsNavigation"
@@ -8454,7 +8454,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/MapsRegionalInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/MapsRegionalInstrumentedTest.java",
       "sha256": "38058bf75a6576c8fe1a7b65bde24799085ca1be39d5379d4f92a88261975c70",
       "allocatedModels": [
         "MapsNavigation"
@@ -8558,7 +8558,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NativeVoiceLatencyInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NativeVoiceLatencyInstrumentedTest.java",
       "sha256": "52eb59dc064772472138f967d1beebc3c88427b37b7c2b5db3a21f01c1c46b56",
       "allocatedModels": [
         "VoiceSession"
@@ -8728,7 +8728,7 @@
       "unassignedWrites": 17
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoMockProductInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NoMockProductInstrumentedTest.java",
       "sha256": "ac7a732bffd8c4b8f664409b94bf89304706554a3208fc61617af7340ba17888",
       "allocatedModels": [
         "DevelopmentSurfaces"
@@ -8766,7 +8766,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoteAudioInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NoteAudioInstrumentedTest.java",
       "sha256": "78a08bda5eb650b733b93ce1fbb31e9df2f1c757cd08466e593c8ed52457101d",
       "allocatedModels": [
         "NotesLifecycle"
@@ -8918,7 +8918,7 @@
       "unassignedWrites": 38
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoteAudioMetadataEncryptedInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NoteAudioMetadataEncryptedInstrumentedTest.java",
       "sha256": "5117ce0880ca0f36beeceaeac17949c8d912c45673cd4360cc70ae35e4f8386d",
       "allocatedModels": [
         "NotesLifecycle"
@@ -8950,7 +8950,7 @@
       "unassignedWrites": 7
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoteOriginInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NoteOriginInstrumentedTest.java",
       "sha256": "a9096f69e3916e0236c6ee12da509f3ff4ba209d2d896cdf5f715c63b8b1759c",
       "allocatedModels": [
         "NotesLifecycle"
@@ -9000,7 +9000,7 @@
       "unassignedWrites": 8
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoteRecorderInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NoteRecorderInstrumentedTest.java",
       "sha256": "ca02621f09d7d2f3d6f176b199c7142b0888e3073746e5e975346e860964a969",
       "allocatedModels": [
         "NotesLifecycle"
@@ -9062,7 +9062,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NoteRecordingSaveInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NoteRecordingSaveInstrumentedTest.java",
       "sha256": "e6b2e1fd4ea704abe02bdcc44df119fc9f016dd5fd2ddbff51c4abbf8e007668",
       "allocatedModels": [
         "NotesLifecycle"
@@ -9106,7 +9106,7 @@
       "unassignedWrites": 11
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NotesCapacityFixture.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NotesCapacityFixture.java",
       "sha256": "e0aa65750bf824b67199bb735534aa80e3e6b151169cf54913a15a987ea782d4",
       "allocatedModels": [
         "NotesLifecycle"
@@ -9174,7 +9174,7 @@
       "unassignedWrites": 6
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NotesDocumentInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NotesDocumentInstrumentedTest.java",
       "sha256": "190bf3cb44a9ed6021699c0216235671c2e4bf73101c12ea645373209a645830",
       "allocatedModels": [
         "NotesLifecycle"
@@ -9302,7 +9302,7 @@
       "unassignedWrites": 6
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NotesSecureFixture.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NotesSecureFixture.java",
       "sha256": "a8092e7ca7e9b42d9050805715fc9aa82acfb96ac4e134059caae2cff643b67d",
       "allocatedModels": [
         "NotesLifecycle"
@@ -9352,7 +9352,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NotesSecureStorageInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NotesSecureStorageInstrumentedTest.java",
       "sha256": "f3951b6387888395f565d309f27b2162740801582f5b45101b510925c47bfda7",
       "allocatedModels": [
         "NotesLifecycle"
@@ -9426,7 +9426,7 @@
       "unassignedWrites": 55
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NotesStorageDurabilityInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NotesStorageDurabilityInstrumentedTest.java",
       "sha256": "e445c15d5da3117b46468d522acf97ef0b29a4126b21ae72d1e484c12792765c",
       "allocatedModels": [
         "NotesLifecycle"
@@ -9518,7 +9518,7 @@
       "unassignedWrites": 4
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NotesTrashBackstopInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NotesTrashBackstopInstrumentedTest.java",
       "sha256": "b9c57860482ab833a2c7074d6c3a38a385ce13b64f8d9bd5eed8f174a2a79b76",
       "allocatedModels": [
         "NotesLifecycle"
@@ -9676,7 +9676,7 @@
       "unassignedWrites": 78
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NotificationAccessTestDriver.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NotificationAccessTestDriver.java",
       "sha256": "bcfd97ba6ea48f5a13e069207e4aabf2fe18be99d26729069e8b4f3bef56b1ae",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -9756,7 +9756,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NotificationChannelsInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NotificationChannelsInstrumentedTest.java",
       "sha256": "16f185f2ec4888ae136aae4c6d476b69c589879157cac4a4f3016bc19960cef1",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -9836,7 +9836,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/NotificationsInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NotificationsInstrumentedTest.java",
       "sha256": "7254048f400303f0d2d5f551bc48381a7a64672752d13dfdfa1aff3e5610f6f0",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -9898,7 +9898,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PairedAsrInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PairedAsrInstrumentedTest.java",
       "sha256": "8fa9a13bec50543501d4762a47a88f48ef5f2903656b4d65896a51d6fbfbe0e8",
       "allocatedModels": [
         "Application"
@@ -9942,7 +9942,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PairedAsrLiveInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PairedAsrLiveInstrumentedTest.java",
       "sha256": "350d50453586cb98d0ead62b29350d98e87c395dc4e53591b81282195053197b",
       "allocatedModels": [
         "Application"
@@ -10004,7 +10004,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PairedMapsInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PairedMapsInstrumentedTest.java",
       "sha256": "dc07b1c85254225b69c7034a3de6ab2bdaae541205b4e6813d8f25817a2c8ba3",
       "allocatedModels": [
         "MapsNavigation"
@@ -10126,7 +10126,7 @@
       "unassignedWrites": 26
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PairedReminderInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PairedReminderInstrumentedTest.java",
       "sha256": "b2abb94da7fe9299c4fcddacf7fceb6b699e87f1fbbd22c5d84e76841d143a3d",
       "allocatedModels": [
         "DeviceActions"
@@ -10212,7 +10212,7 @@
       "unassignedWrites": 18
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PairedVoiceInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PairedVoiceInstrumentedTest.java",
       "sha256": "3b4301474cabe896703fa4cdbea1f75adb815fe98b8c1f2a799246328b7573b1",
       "allocatedModels": [
         "VoiceSession"
@@ -10256,7 +10256,7 @@
       "unassignedWrites": 11
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PairedVoiceLiveInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PairedVoiceLiveInstrumentedTest.java",
       "sha256": "ec3f1786a3faa6acbed0bd1374f2320fe3c0531422edcc8962860ac4f870aeb7",
       "allocatedModels": [
         "VoiceSession"
@@ -10318,7 +10318,7 @@
       "unassignedWrites": 11
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PasswordBrowserFillInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PasswordBrowserFillInstrumentedTest.java",
       "sha256": "fde086f996432b63ef89a9a620d245a01adea92a844fdd35072d9b8f4313850e",
       "allocatedModels": [
         "CredentialVault"
@@ -10530,7 +10530,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PasswordFillFixtureActivity.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PasswordFillFixtureActivity.java",
       "sha256": "c5c77db01cd2929289eaf3b527f6555045d0f52fa95f5ece1ad7d73e8a12dad9",
       "allocatedModels": [
         "CredentialVault"
@@ -10586,7 +10586,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PasswordVaultFillInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PasswordVaultFillInstrumentedTest.java",
       "sha256": "c02de32fdbf0056f2fd836f0894416664b09350035edba34e5722d8612386391",
       "allocatedModels": [
         "CredentialVault"
@@ -10630,7 +10630,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PasswordVaultFixture.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PasswordVaultFixture.java",
       "sha256": "6e4f0c6419a3d52d0eb7d8b6c09bf51c4c3b3acc3556043a023ce0bd6fd4408f",
       "allocatedModels": [
         "CredentialVault"
@@ -10692,7 +10692,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PasswordVaultSettingsInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PasswordVaultSettingsInstrumentedTest.java",
       "sha256": "c861c90690be9cc65d541934c302344edfd1cbb8c0d1e9be5548cf066e316c81",
       "allocatedModels": [
         "CredentialVault"
@@ -10778,7 +10778,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PdfViewerInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PdfViewerInstrumentedTest.java",
       "sha256": "3295ba11fad30ab332fdd80542ee737b6a9d8ecd37a43cbc284314030d5ad436",
       "allocatedModels": [
         "Application"
@@ -10828,7 +10828,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotoEditInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotoEditInstrumentedTest.java",
       "sha256": "fb90e2b50771cfc513e637179e7240715ea846843d69c804e38dd381f17dd977",
       "allocatedModels": [
         "MediaLifecycle"
@@ -10890,7 +10890,7 @@
       "unassignedWrites": 11
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotoFilterInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotoFilterInstrumentedTest.java",
       "sha256": "88f7772a5d05c1b738e272c8b6241fb7f86a04aef331225da979ea0288c63697",
       "allocatedModels": [
         "MediaLifecycle"
@@ -10928,7 +10928,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotoLibraryInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotoLibraryInstrumentedTest.java",
       "sha256": "1073974fdc5331bdc354abe3123b142f3324a738a4ba2561506da3a7268a9fa2",
       "allocatedModels": [
         "MediaLifecycle"
@@ -10990,7 +10990,7 @@
       "unassignedWrites": 18
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotoReplaceInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotoReplaceInstrumentedTest.java",
       "sha256": "91418e4a69c984e3dbfd7c7826174e1efe22d8c5d20ce518619a7d56b0ea352f",
       "allocatedModels": [
         "MediaLifecycle"
@@ -11154,7 +11154,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotosBatchInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotosBatchInstrumentedTest.java",
       "sha256": "0120c0b208f956141df1163f335fe71d86dd404c3c8a6a8200937def17a6b21a",
       "allocatedModels": [
         "MediaLifecycle"
@@ -11228,7 +11228,7 @@
       "unassignedWrites": 14
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotosCatalogOrderInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotosCatalogOrderInstrumentedTest.java",
       "sha256": "bd94570b1f8f7b7b800e19484c13ee0a45b77fc55ff479455a84e83da777824d",
       "allocatedModels": [
         "MediaLifecycle"
@@ -11260,7 +11260,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotosFixtureRecoveryInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotosFixtureRecoveryInstrumentedTest.java",
       "sha256": "81e088f36ac9caac3c05903a447d85d95e4120710e2582e357920683b93345ce",
       "allocatedModels": [
         "MediaLifecycle"
@@ -11280,7 +11280,7 @@
       "unassignedWrites": 5
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotosForeignLibraryInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotosForeignLibraryInstrumentedTest.java",
       "sha256": "5fe3da550aa540397f5a0bc2e056ac9c59b58dff466b7316375ce27f39df3915",
       "allocatedModels": [
         "MediaLifecycle"
@@ -11318,7 +11318,7 @@
       "unassignedWrites": 12
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotosLibraryInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotosLibraryInstrumentedTest.java",
       "sha256": "542e9c705a2476be836b532662eea9521c46e6f232bdc0d064c0c8e271cf80a7",
       "allocatedModels": [
         "MediaLifecycle"
@@ -11344,7 +11344,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotosMultiShareInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotosMultiShareInstrumentedTest.java",
       "sha256": "0de1c2595251f12f303c0955d40ad9215029e7bcac32a3bcdebd33df3eb99b97",
       "allocatedModels": [
         "MediaLifecycle"
@@ -11418,7 +11418,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotosTestFixture.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotosTestFixture.java",
       "sha256": "602498820de90f5505ae818ed4b2b24171f18743b1ad40c836a8624439ffae61",
       "allocatedModels": [
         "MediaLifecycle"
@@ -11468,7 +11468,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PhotosTrashInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PhotosTrashInstrumentedTest.java",
       "sha256": "c447e1f69e25ab5fba0154245be3496f303bc0dc59724400b8578db64d261c19",
       "allocatedModels": [
         "MediaLifecycle"
@@ -11644,7 +11644,7 @@
       "unassignedWrites": 29
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PosterCalendarJourneyInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PosterCalendarJourneyInstrumentedTest.java",
       "sha256": "d94ba0a6eb3cb4ea5d781501a75177f8cf0c228fca506d7a6f39b0e58e1d06a8",
       "allocatedModels": [
         "CalendarSync"
@@ -11754,7 +11754,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PrivateResidentSocketInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PrivateResidentSocketInstrumentedTest.java",
       "sha256": "89e769b211e5019ca7e6a643fbe0e64ce4eaaa14751f26cc9d682e11a73b02b7",
       "allocatedModels": [
         "ResidentRuntime"
@@ -11804,7 +11804,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PrototypeFlowInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PrototypeFlowInstrumentedTest.java",
       "sha256": "0038327911b947c467088de025462521549bbd67070574ee41cae1d3f36c57b0",
       "allocatedModels": [
         "Application"
@@ -11914,7 +11914,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/PublicCloudTransportProbeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/PublicCloudTransportProbeInstrumentedTest.java",
       "sha256": "0abd1285268299e322d70515200090bcfcf09b1fa5437c26bb293bca19d5e7b3",
       "allocatedModels": [
         "Application"
@@ -11940,7 +11940,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReadinessEpoch.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReadinessEpoch.java",
       "sha256": "32b5ba9c6d89963c1d5660080c1c804329b604f6f665a80bb08e894a940a7fb4",
       "allocatedModels": [
         "Application"
@@ -11972,7 +11972,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/RealClockInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/RealClockInstrumentedTest.java",
       "sha256": "4d9757e0f0536c849a6445af969877e4c8282fbdeafeef5293483653c390861b",
       "allocatedModels": [
         "DeviceActions"
@@ -12172,7 +12172,7 @@
       "unassignedWrites": 5
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderAgentInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderAgentInstrumentedTest.java",
       "sha256": "8296f45388bcbc3fd787251798bdb29aa5a969a83cf58735d5df24a2d139eb9a",
       "allocatedModels": [
         "DeviceActions"
@@ -12210,7 +12210,7 @@
       "unassignedWrites": 57
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderCapacityInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderCapacityInstrumentedTest.java",
       "sha256": "7f349ee90baf2ee96c230ea79d9b984338faa5560f58f754208091b3626b3345",
       "allocatedModels": [
         "DeviceActions"
@@ -12236,7 +12236,7 @@
       "unassignedWrites": 12
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderDeletionJournalInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderDeletionJournalInstrumentedTest.java",
       "sha256": "69836ed86e778d27ca13ec7165f7b56e8cc879234a6aaefb0bfdddbb53435b1a",
       "allocatedModels": [
         "DeletionJournal"
@@ -12249,7 +12249,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderDeletionStorageInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderDeletionStorageInstrumentedTest.java",
       "sha256": "cde03a3618af176a9a9752f48b16bde9c3ab42de57ac71525e6e4ff83ba64e79",
       "allocatedModels": [
         "DeletionJournal"
@@ -12305,7 +12305,7 @@
       "unassignedWrites": 20
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderHeadsUpInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderHeadsUpInstrumentedTest.java",
       "sha256": "2b54e1bd59444c7a05a21572c5103fe8bec2b2db972d7fde8be1b638b159f088",
       "allocatedModels": [
         "DeviceActions"
@@ -12337,7 +12337,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderLifecycleInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderLifecycleInstrumentedTest.java",
       "sha256": "18fc73d1ef4e913a4498bfc5a036e3d2c2bee20ae8e8520e7c14024065212017",
       "allocatedModels": [
         "DeviceActions"
@@ -12399,7 +12399,7 @@
       "unassignedWrites": 15
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderNoticeQuestionInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderNoticeQuestionInstrumentedTest.java",
       "sha256": "9b4257c36b82cf36ea8dadb39e9b6e04842fb1ef0bf6e0acce3cd42bfc7d92ec",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -12473,7 +12473,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderNotificationActions.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderNotificationActions.java",
       "sha256": "22c307c73615a7b588a6603c5ab4d3a87d39755d33e665ce4b15a9a85dac51a1",
       "allocatedModels": [
         "DeviceActions",
@@ -12500,7 +12500,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderOneOffInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderOneOffInstrumentedTest.java",
       "sha256": "6b64ec6fd87950cf3a50ab8fdefb9b3aa461346a813e4c2194103780a81fa9e0",
       "allocatedModels": [
         "DeviceActions"
@@ -12544,7 +12544,7 @@
       "unassignedWrites": 10
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderRecoveryInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderRecoveryInstrumentedTest.java",
       "sha256": "59568e9cec58ffb6af97b1ec17962d20725946fe2e34dcbfccc419e40f32cfcb",
       "allocatedModels": [
         "DeviceActions"
@@ -12588,7 +12588,7 @@
       "unassignedWrites": 10
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderRecurrenceInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderRecurrenceInstrumentedTest.java",
       "sha256": "b07a465db2d62963b745bf38dc1362fa370d06f606010be7bb6a5594b4b4689b",
       "allocatedModels": [
         "DeviceActions"
@@ -12644,7 +12644,7 @@
       "unassignedWrites": 15
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderRecurrenceRecoveryInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderRecurrenceRecoveryInstrumentedTest.java",
       "sha256": "a9e9e391313d74920b424e28c6d2ca0e2a32ce5577dac40ab1ae46f74f2067ca",
       "allocatedModels": [
         "DeviceActions"
@@ -12688,7 +12688,7 @@
       "unassignedWrites": 16
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderStaleInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderStaleInstrumentedTest.java",
       "sha256": "de5857ac48230565bbd1ebe0bcf07fe3bb3e9986eb74ea6be3883f4224a83e2d",
       "allocatedModels": [
         "DeviceActions"
@@ -12726,7 +12726,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderTapLifecycleInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderTapLifecycleInstrumentedTest.java",
       "sha256": "fe68a5d129b18fd5098f9a52822770154e432061f927ea04d7f5d0734808c2ae",
       "allocatedModels": [
         "DeviceActions"
@@ -12752,7 +12752,7 @@
       "unassignedWrites": 7
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderTapProcessDeathInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderTapProcessDeathInstrumentedTest.java",
       "sha256": "80f1debd04be56b9ff2e53ed18a633a88fc98661340f9b6b4340f599c786e4de",
       "allocatedModels": [
         "DeviceActions"
@@ -12790,7 +12790,7 @@
       "unassignedWrites": 10
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderTimingInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderTimingInstrumentedTest.java",
       "sha256": "2a684ce7d0a764ebcd32dfdcbe4b4de35248e60ed709dfdfcc7cba3d57549de1",
       "allocatedModels": [
         "DeviceActions"
@@ -12900,7 +12900,7 @@
       "unassignedWrites": 90
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderUiTestDriver.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderUiTestDriver.java",
       "sha256": "517936481b39253dc9d1906eaaec82d02d4ff72ef22317a54415185e4bfa415f",
       "allocatedModels": [
         "DeviceActions"
@@ -12932,7 +12932,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ReminderUpgradeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ReminderUpgradeInstrumentedTest.java",
       "sha256": "79b802b4a5dbc6e9f8fe450599c23475e9aaebf558af60edcb24f4078a2abf43",
       "allocatedModels": [
         "DeviceActions"
@@ -12964,7 +12964,7 @@
       "unassignedWrites": 30
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/RemoteAgentInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/RemoteAgentInstrumentedTest.java",
       "sha256": "1f763c64b5def26415121f2d2940e444263d549c2b814e83e9e82654c1249ab2",
       "allocatedModels": [
         "Application"
@@ -13002,7 +13002,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/RendererRecoveryInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/RendererRecoveryInstrumentedTest.java",
       "sha256": "94cb8447afa5ecdb82a78a5cdae435aa20ca73792d917424b5dbf64ce749cb54",
       "allocatedModels": [
         "Application"
@@ -13070,7 +13070,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ResetExternalFixtureInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ResetExternalFixtureInstrumentedTest.java",
       "sha256": "507ec09dca88f026996b9053362cc4c3fbbbc41f086f5988b34086d6c9373474",
       "allocatedModels": [
         "ResetRecovery"
@@ -13216,7 +13216,7 @@
       "unassignedWrites": 32
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ResetPolicyInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ResetPolicyInstrumentedTest.java",
       "sha256": "cfd5f71b9205d0189d9239f5c48d611bf211575f5f57869b6f351b9ed26fb07c",
       "allocatedModels": [
         "ResetRecovery"
@@ -13242,7 +13242,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ResidentAlwaysPresentInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ResidentAlwaysPresentInstrumentedTest.java",
       "sha256": "a0d05fb9f46c645eebda328bb60db0d8d2bf6ce16fd91ebc425006d68c6c1b18",
       "allocatedModels": [
         "ResidentRuntime"
@@ -13280,7 +13280,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ResidentEgressRedactionInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ResidentEgressRedactionInstrumentedTest.java",
       "sha256": "0ac668a6a65a8b6279ee38ab72f9f3a58c11c9631fd9cecc3d9a390d77e40207",
       "allocatedModels": [
         "ResidentRuntime"
@@ -13324,7 +13324,7 @@
       "unassignedWrites": 27
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ResidentModelResponseContract.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ResidentModelResponseContract.java",
       "sha256": "6a877f063040b74412d2bd18994fe6ab9fe47d3c71ead2cc77c08377c2214d0c",
       "allocatedModels": [
         "ResidentRuntime"
@@ -13344,7 +13344,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ResidentModelResponseContractTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ResidentModelResponseContractTest.java",
       "sha256": "eff8b7180d758eff687ad73c23a3a27d422e45b81ad8ea51da20ef3e201ca7fb",
       "allocatedModels": [
         "ResidentRuntime"
@@ -13364,7 +13364,7 @@
       "unassignedWrites": 21
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ResidentServiceInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ResidentServiceInstrumentedTest.java",
       "sha256": "84bab6c237da5ad74715feb0563bfbfd46cb8fd38881b4b356ab050e459b5a00",
       "allocatedModels": [
         "ResidentRuntime"
@@ -13426,7 +13426,7 @@
       "unassignedWrites": 38
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ResidentStreamTransportInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ResidentStreamTransportInstrumentedTest.java",
       "sha256": "991614171c3566558ce622936715f964823d14b3ab78d844fd2d60f016074275",
       "allocatedModels": [
         "ResidentRuntime"
@@ -13542,7 +13542,7 @@
       "unassignedWrites": 8
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ResidentTestFixture.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ResidentTestFixture.java",
       "sha256": "beaf7ee31235efd9ab949c32ae794b6354a01756879d0034b19c5699cba1122a",
       "allocatedModels": [
         "ResidentRuntime",
@@ -13617,7 +13617,7 @@
       "unassignedWrites": 9
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ResidentWorkflowCrashInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ResidentWorkflowCrashInstrumentedTest.java",
       "sha256": "115f3ab2689818e2b56bf8d9ad652a9b89cc3010568da86439ba594fd375e72c",
       "allocatedModels": [
         "WorkflowExecution"
@@ -13805,7 +13805,7 @@
       "unassignedWrites": 114
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/RotationInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/RotationInstrumentedTest.java",
       "sha256": "9dfa669877fa6d81ec97031f21cffd9f276736f15e63dc93ae6ff306d58f2128",
       "allocatedModels": [
         "Application"
@@ -13873,7 +13873,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ScopedCalendarDeletionInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ScopedCalendarDeletionInstrumentedTest.java",
       "sha256": "2b41646a75638a71ba64b9cfb80aa35306365286afb7d64b481d91b7286277f1",
       "allocatedModels": [
         "CalendarSync"
@@ -13935,7 +13935,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ScopedVoicePlaybackInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ScopedVoicePlaybackInstrumentedTest.java",
       "sha256": "098dda03ffb71193652713514e825a956e709c11b8970137fdd7f02c100053a2",
       "allocatedModels": [
         "VoiceSession"
@@ -13985,7 +13985,7 @@
       "unassignedWrites": 13
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/SelectedDocumentInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/SelectedDocumentInstrumentedTest.java",
       "sha256": "f7108d0c384bb3503d343d88e4b80d098e6a3f8d3210adea4ad3824fd8d2d817",
       "allocatedModels": [
         "FilesAndSharing"
@@ -14209,7 +14209,7 @@
       "unassignedWrites": 29
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/SettingsCrashLogInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/SettingsCrashLogInstrumentedTest.java",
       "sha256": "1db082b0404365f2505b103849648cc8bb59bb8cad4fb96393dfce7ec7b671f4",
       "allocatedModels": [
         "PreferencesAndPresentation"
@@ -14265,7 +14265,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/SettingsFlowInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/SettingsFlowInstrumentedTest.java",
       "sha256": "926150762ce9f4c6ce94df7042f16dffb656185fc48a764baf893f27076c794b",
       "allocatedModels": [
         "PreferencesAndPresentation"
@@ -14351,7 +14351,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/SettingsNativeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/SettingsNativeInstrumentedTest.java",
       "sha256": "d3df3c6fe220f50bb09b12a025f5605b906b057c54963c42b6b9d4a841ae6b60",
       "allocatedModels": [
         "PreferencesAndPresentation"
@@ -14401,7 +14401,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/SettingsRolesInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/SettingsRolesInstrumentedTest.java",
       "sha256": "ee7ccd6aa7a3a975c8cd9a18f751b35aca3d1f185ca0cadbe54191c5b783a1a4",
       "allocatedModels": [
         "PreferencesAndPresentation"
@@ -14529,7 +14529,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/SettingsSystemFactsInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/SettingsSystemFactsInstrumentedTest.java",
       "sha256": "eeb81f732a8a04dd32bc32c6d9a746c98ef38c6d3d4c9a4425039c259f603b7d",
       "allocatedModels": [
         "PreferencesAndPresentation"
@@ -14562,7 +14562,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ShareFlowAssertions.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ShareFlowAssertions.java",
       "sha256": "92681447abca4fe167726c57d8ece57659993f28f65d44d07d7953f7a489cf7d",
       "allocatedModels": [
         "FilesAndSharing"
@@ -14618,7 +14618,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ShareReceiverActivity.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ShareReceiverActivity.java",
       "sha256": "898c662ebe9146156352e75530b273aeac27c3767c7ed7daeee4fd3c5df53d27",
       "allocatedModels": [
         "FilesAndSharing"
@@ -14638,7 +14638,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/ShellInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/ShellInstrumentedTest.java",
       "sha256": "5d8143f0a3c7115c29494a59a7b3ea6379a23455d56bc735792999c269a278e0",
       "allocatedModels": [
         "Application"
@@ -14688,7 +14688,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/SpeechNoNetworkInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/SpeechNoNetworkInstrumentedTest.java",
       "sha256": "b3dc79a7ce5c201eb6dc5d443edd694da140a3f982d798a53e2ba9d62228bfbe",
       "allocatedModels": [
         "SpeechResources"
@@ -14780,7 +14780,7 @@
       "unassignedWrites": 11
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/SpeechPipelineTraceInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/SpeechPipelineTraceInstrumentedTest.java",
       "sha256": "83a711f20a0c311704dabb01149caeda2c1c2e78ca28e0925ecd659605e316ae",
       "allocatedModels": [
         "SpeechResources"
@@ -14836,7 +14836,7 @@
       "unassignedWrites": 19
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/SpeechSentenceCancellationInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/SpeechSentenceCancellationInstrumentedTest.java",
       "sha256": "93512b081de8db1b67a571753b2660ea3bd765f44cce2115d99dcbfc31b82864",
       "allocatedModels": [
         "SpeechResources"
@@ -14868,7 +14868,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/StartupDocumentProbe.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/StartupDocumentProbe.java",
       "sha256": "5e167c1481a28e07993e019d2097f73dbe562efef527d0e6a64d96a91b01a298",
       "allocatedModels": [
         "StartupPermissions"
@@ -14936,7 +14936,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/StartupReadinessInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/StartupReadinessInstrumentedTest.java",
       "sha256": "19bbe0f5b6f33202d3407ed15142949c3b4c977354471d369d004e70fa2b4fd0",
       "allocatedModels": [
         "StartupPermissions"
@@ -14962,7 +14962,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/StorageCategoriesInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/StorageCategoriesInstrumentedTest.java",
       "sha256": "1a07dd627d1c2f195f50a6b03d8e15fdad4e7bfafb5d94bbba222af4b73868fb",
       "allocatedModels": [
         "FilesTree"
@@ -15000,7 +15000,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/StorageLegacyAccessInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/StorageLegacyAccessInstrumentedTest.java",
       "sha256": "14df6a9c18f06f1688e69f219c53e67ffd573dd7ffd77a5e19f9c41ea7d4f56c",
       "allocatedModels": [
         "FilesTree"
@@ -15032,7 +15032,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/SystemShadeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/SystemShadeInstrumentedTest.java",
       "sha256": "cdc08e796641104b44c322ed24eb54bd335daf05ef1b2d175cf7ff2b61d444ab",
       "allocatedModels": [
         "PreferencesAndPresentation"
@@ -15094,7 +15094,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/TalkBackOrder.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/TalkBackOrder.java",
       "sha256": "db35180e738f9b6c9f048d0ca216b429ec12f0011652803f0641ee0639df6d79",
       "allocatedModels": [
         "ShellNavigation"
@@ -15198,7 +15198,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/TestUiDispatch.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/TestUiDispatch.java",
       "sha256": "607d93da5d037b1af4cc28003998ee28acddd45c4779dd94d503b99f73b8dae7",
       "allocatedModels": [
         "Application"
@@ -15254,7 +15254,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/TextScaleInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/TextScaleInstrumentedTest.java",
       "sha256": "86bd4ad4bc1b21985ae19768e1098bc262a9cfe282927e59e65793fbb1cddca0",
       "allocatedModels": [
         "PreferencesAndPresentation"
@@ -15322,7 +15322,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/TrustedPackagedWorker.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/TrustedPackagedWorker.java",
       "sha256": "e45c438b1cabfe6f06e63462618cb26289464fdf68e19023001114b7e73ebe7b",
       "allocatedModels": [
         "Application"
@@ -15384,7 +15384,7 @@
       "unassignedWrites": 13
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/UiDispatchInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/UiDispatchInstrumentedTest.java",
       "sha256": "aee30e8f0a7e9fc36b12456d912459c547ce71cd8ee95440f4edc81164931f28",
       "allocatedModels": [
         "Application"
@@ -15416,7 +15416,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/VideoCopyClosedFailureReviewInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/VideoCopyClosedFailureReviewInstrumentedTest.java",
       "sha256": "c3a862437c53a26c0819678ec3f10b46d2ad891a130a0444b0033396cddc7b7e",
       "allocatedModels": [
         "MediaLifecycle"
@@ -15460,7 +15460,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/VideoInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/VideoInstrumentedTest.java",
       "sha256": "1a2bc727ca4b611071a2ee81822006b0916cbdd3d8293b0aae2454d12b9df5e1",
       "allocatedModels": [
         "MediaLifecycle"
@@ -15552,7 +15552,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/VoiceFloatPathDiagnosticInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/VoiceFloatPathDiagnosticInstrumentedTest.java",
       "sha256": "48c97054f5f354f78c11b3394cd7ad040f4082a5a5dc5cd36ca2f383bda6888e",
       "allocatedModels": [
         "VoiceSession"
@@ -15602,7 +15602,7 @@
       "unassignedWrites": 13
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/VoiceNoteReadAloudInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/VoiceNoteReadAloudInstrumentedTest.java",
       "sha256": "fb21e6e939b1d9a641adb189f137472bad62aa5c60f8946c6db38c56d0147aae",
       "allocatedModels": [
         "NotesLifecycle"
@@ -15634,7 +15634,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/VoicePermissionDeniedInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/VoicePermissionDeniedInstrumentedTest.java",
       "sha256": "b0abeb9e9a9729fb7d60d920bb94613dd1bc99ba5dca580cd17433dd0c6b24ea",
       "allocatedModels": [
         "StartupPermissions"
@@ -15720,7 +15720,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/VoicePermissionRevokeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/VoicePermissionRevokeInstrumentedTest.java",
       "sha256": "5b4206c8538334691a3abeaa2d9353f704dbd86382af9effac5623749ad9fc6c",
       "allocatedModels": [
         "StartupPermissions"
@@ -15794,7 +15794,7 @@
       "unassignedWrites": 4
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/VoiceWorkerSettlementInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/VoiceWorkerSettlementInstrumentedTest.java",
       "sha256": "fb5a091cb3dcb762631739de523d245e0996b6805f08dafe88096825330d8650",
       "allocatedModels": [
         "VoiceSession"
@@ -15916,7 +15916,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/WebViewTestDriver.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/WebViewTestDriver.java",
       "sha256": "2a5b645c58de623214bc499bd90a5aeedee06124902b42e4d8f1b721d671145e",
       "allocatedModels": [
         "Application"
@@ -16008,7 +16008,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/WorkerCrashDiagnostic.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/WorkerCrashDiagnostic.java",
       "sha256": "9f02948971209f16b4b0a939154f6e86f60dc82a079642ce0166482e4d42633f",
       "allocatedModels": [
         "Application"
@@ -16082,7 +16082,7 @@
       "unassignedWrites": 10
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/WorkflowApprovalNoticeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/WorkflowApprovalNoticeInstrumentedTest.java",
       "sha256": "58036a7086ff17a31f975b288fded7c136e56dca8c540903c22333bb8fc5d265",
       "allocatedModels": [
         "WorkflowExecution"
@@ -16174,7 +16174,7 @@
       "unassignedWrites": 29
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/WorkflowApprovalNoticeProcessDeathInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/WorkflowApprovalNoticeProcessDeathInstrumentedTest.java",
       "sha256": "6e5c4df4536af42a83de6b47ce9d2ba0965d0f5e25137db6ad7902017d53432a",
       "allocatedModels": [
         "WorkflowExecution"
@@ -16230,7 +16230,7 @@
       "unassignedWrites": 15
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/WorkflowDraftNativeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/WorkflowDraftNativeInstrumentedTest.java",
       "sha256": "ad4224d279f17d8b27e5509b7f14755633bee1d4ee8e49f4bc82d68529802f34",
       "allocatedModels": [
         "WorkflowExecution"
@@ -16274,7 +16274,7 @@
       "unassignedWrites": 8
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/WorkflowLegacyReminderUpgradeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/WorkflowLegacyReminderUpgradeInstrumentedTest.java",
       "sha256": "86490a2984945ae83514975632428340cb9ac912bce22882fc723b8c8990ff2f",
       "allocatedModels": [
         "WorkflowExecution"
@@ -16312,7 +16312,7 @@
       "unassignedWrites": 10
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/WorkflowNoticeOwnerFixture.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/WorkflowNoticeOwnerFixture.java",
       "sha256": "9e690b0727d0c96da798a1d3aad081eb050e64449d0849a20ae8cb6b0e895323",
       "allocatedModels": [
         "WorkflowExecution"
@@ -16386,7 +16386,7 @@
       "unassignedWrites": 42
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/WorkflowNoticeProcessDeathInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/WorkflowNoticeProcessDeathInstrumentedTest.java",
       "sha256": "a3c2464517eee1c364bc34885a01eaa39aaf738800303652306bf9bfba408d9e",
       "allocatedModels": [
         "WorkflowExecution"
@@ -16484,7 +16484,7 @@
       "unassignedWrites": 23
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/WorkflowNoticeProcessRunner.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/WorkflowNoticeProcessRunner.java",
       "sha256": "999ed0a8644c19bc291207e04abe6d6a1a3f3967891c535a09aeaf0e14cc2436",
       "allocatedModels": [
         "WorkflowExecution"
@@ -16497,7 +16497,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/WorkflowNoticeTapInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/WorkflowNoticeTapInstrumentedTest.java",
       "sha256": "61538cdbb7f54f0d3335be1ab3510aec6571118e6f017880a656652fefcf75d9",
       "allocatedModels": [
         "WorkflowExecution"
@@ -16625,7 +16625,7 @@
       "unassignedWrites": 19
     },
     {
-      "path": "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/WorkflowPhoneNativeInstrumentedTest.java",
+      "path": "android/app/src/androidTest/java/ai/alphacompute/alphaphone/WorkflowPhoneNativeInstrumentedTest.java",
       "sha256": "134ccd4a63a98ec83875a3995cd30961bdbbcf09f43f54365be36a8c8251052a",
       "allocatedModels": [
         "WorkflowExecution"
@@ -16717,7 +16717,7 @@
       "unassignedWrites": 62
     },
     {
-      "path": "android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaCallActivity.java",
+      "path": "android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaCallActivity.java",
       "sha256": "e03c7466141d2232ebd2a01caf7f7e237df4eaddd72ac454899abdaecb446727",
       "allocatedModels": [
         "DeviceActions"
@@ -16730,7 +16730,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaDialPadActivity.java",
+      "path": "android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaDialPadActivity.java",
       "sha256": "9768af884706f9305726849243d4871cda146175d968159b9074e5cb2373a9fc",
       "allocatedModels": [
         "DeviceActions"
@@ -16743,7 +16743,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaInCallService.java",
+      "path": "android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaInCallService.java",
       "sha256": "5569073a1d3863f5de5fcd312517c9e2171e058afc25cf5e8e9e4194d03b8d56",
       "allocatedModels": [
         "DeviceActions"
@@ -16763,7 +16763,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaMmsResultReceiver.java",
+      "path": "android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaMmsResultReceiver.java",
       "sha256": "b7c43e748cebf2c8563ade0139d72f176b286a12764371371b9aa6d7eff78fdb",
       "allocatedModels": [
         "DeviceActions"
@@ -16776,7 +16776,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaMmsWapPushReceiver.java",
+      "path": "android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaMmsWapPushReceiver.java",
       "sha256": "58a66fbc918ee6816c9d70dd6c164c372725125e8f9db21c2a814360a1f59e6d",
       "allocatedModels": [
         "DeviceActions"
@@ -16789,7 +16789,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaRespondViaMessageService.java",
+      "path": "android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaRespondViaMessageService.java",
       "sha256": "513d6f968f119fc52f815849f744d372dcd3a75365e2764e1dbcd1994f626ef4",
       "allocatedModels": [
         "DeviceActions"
@@ -16802,7 +16802,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaSmsComposeActivity.java",
+      "path": "android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaSmsComposeActivity.java",
       "sha256": "6b38cd35477d58730a1db3cc3077cca3ed9414c0a358eb8d97c6ab12eb90063f",
       "allocatedModels": [
         "DeviceActions"
@@ -16815,7 +16815,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaSmsDeliverReceiver.java",
+      "path": "android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaSmsDeliverReceiver.java",
       "sha256": "a1377b6663e9ee215a370614d9c701ed864811f9a6ca5f0032bf2427f48c4710",
       "allocatedModels": [
         "DeviceActions"
@@ -16828,7 +16828,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaSmsRole.java",
+      "path": "android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaSmsRole.java",
       "sha256": "c69655de5c784e1ce0d1c9eda5ee2bca8d3f4e02718b856c7af80753cf198fa8",
       "allocatedModels": [
         "DeviceActions"
@@ -16848,7 +16848,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/launcher/java/ai/elizaresearch/alphaphone/AlphaTelephonyRoles.java",
+      "path": "android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaTelephonyRoles.java",
       "sha256": "0702b62328a01635a96bee7ff1eeb4164a52c695c9aa925b852b1b4a3373b04a",
       "allocatedModels": [
         "DeviceActions"
@@ -16874,7 +16874,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournal.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaActionJournal.java",
       "sha256": "f7cdc4ec367f8ecabf53562b6deedf5eda4b86fec1145a2f289acb335d2777b3",
       "allocatedModels": [
         "NativeActionRecovery",
@@ -16933,7 +16933,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaActionJournalPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaActionJournalPlugin.java",
       "sha256": "e1ccef19c3f1fcf2bd673b68ce0eb2a48c4db01ec479c7b710d2ba6de7e081f8",
       "allocatedModels": [
         "NativeActionRecovery",
@@ -17148,7 +17148,7 @@
       "unassignedWrites": 16
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaApplication.java",
       "sha256": "a5471aa841627f82d80c8e9c4c833b5131a43496235f29d5b10454ee29c0b018",
       "allocatedModels": [
         "Application",
@@ -17176,7 +17176,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaAssistActivity.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaAssistActivity.java",
       "sha256": "2a51297b72cea768d6eac25af42610e3c3406bdd911f8638297383f74a2c08e2",
       "allocatedModels": [
         "Application",
@@ -17222,7 +17222,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java",
       "sha256": "732fe6cc3ed6c3a333e3371eda481e56e1bebdb3335f3ae2530ba85d60a7acac",
       "allocatedModels": [
         "BrowserDownloads",
@@ -17262,7 +17262,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaBrowserStores.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserStores.java",
       "sha256": "1cf6de47a0195ed18caee154be16a809b668090981fd655e4080e846e5a032e6",
       "allocatedModels": [
         "BrowserSession"
@@ -17312,7 +17312,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCalendarPlugin.java",
       "sha256": "4ba9ec0cbbb773855838b3ba45a59b97476a15f1d07983a3b5a039fcb00c7845",
       "allocatedModels": [
         "CalendarSync",
@@ -17454,7 +17454,7 @@
       "unassignedWrites": 10
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCanonicalNotifications.java",
       "sha256": "18b7984141ddc26a37ef699580a7f4ad980c3f0574cad161b95a060617ba3e81",
       "allocatedModels": [
         "CanonicalNotificationTap",
@@ -17609,7 +17609,7 @@
       "unassignedWrites": 6
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCloudSignInPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java",
       "sha256": "6f4185c9195f7e975623b027767d605b2c0b7c893f82773c384bf422241b95db",
       "allocatedModels": [
         "IdentitySession"
@@ -17743,7 +17743,7 @@
       "unassignedWrites": 4
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaConnectionPlugin.java",
       "sha256": "ae30280d76f209655db63906b950b32ea8670795f79a30c9955c3d5d0f2d81f3",
       "allocatedModels": [
         "Application",
@@ -18084,7 +18084,7 @@
       "unassignedWrites": 13
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaContactsPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaContactsPlugin.java",
       "sha256": "d9ff705bc2ddb07f8d7de486389340b559b0eba70d850f317e4c0a36af1e13a6",
       "allocatedModels": [
         "DeviceActions"
@@ -18097,7 +18097,7 @@
       "unassignedWrites": 4
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
       "sha256": "cd9da4c865178edc3c1733eed909d75d36eff969891c03c9ff068517b59f29e8",
       "allocatedModels": [
         "IdentitySession",
@@ -18366,7 +18366,7 @@
       "unassignedWrites": 8
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDataReset.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDataReset.java",
       "sha256": "a5bbfad12c6578b96cbd7c09ce86b502bab69926ab21f48728f945d1ba81b885",
       "allocatedModels": [
         "ApplicationComposition",
@@ -18380,7 +18380,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDeletionsPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDeletionsPlugin.java",
       "sha256": "f7a533d5dadd992a5553db830dd9fb7efae65af8479c85c6abd6fe015c022f75",
       "allocatedModels": [
         "DeletionJournal"
@@ -18490,7 +18490,7 @@
       "unassignedWrites": 15
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDeviceAppsPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDeviceAppsPlugin.java",
       "sha256": "c49266daa516985412e2bf4ad1ea1416c782888706611c3f132153836d9b1580",
       "allocatedModels": [
         "Application"
@@ -18528,7 +18528,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
       "sha256": "6afd81a5d01b62659f631da1577fee89c87bdf91796c820618d393ea097df142",
       "allocatedModels": [
         "AccessibleToastLifetime",
@@ -19063,7 +19063,7 @@
       "unassignedWrites": 23
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaFilesPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java",
       "sha256": "ac69a81a6dc5998b068b5a3884385f6f8d66dc595ba08458c9dba010c423637c",
       "allocatedModels": [
         "FilesAndSharing",
@@ -19432,7 +19432,7 @@
       "unassignedWrites": 4
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaGmailPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaGmailPlugin.java",
       "sha256": "00fb2dd0b1921dfd2bbaf0223aa23ed551cbb8a74b744e94dcd169b582587239",
       "allocatedModels": [
         "InboxDelivery",
@@ -19556,7 +19556,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaHostedResultsPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaHostedResultsPlugin.java",
       "sha256": "677cf7872a1b343e35ac603a4ff83c197e74d1d85ba20baa053053e2aa4f9d6b",
       "allocatedModels": [
         "NativeHostedResultNotices",
@@ -19927,7 +19927,7 @@
       "unassignedWrites": 9
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapabilities.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaImageCapabilities.java",
       "sha256": "a482a1b8760a48984dc6684c3de60f42e5cfd3a4b736fc9dda79efbb0597d150",
       "allocatedModels": [
         "DeviceActions"
@@ -19965,7 +19965,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapability.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaImageCapability.java",
       "sha256": "19f7e496c590d1cefc0da7846fa8e9cb28786dbf820ade1d0af879060d463fc9",
       "allocatedModels": [
         "DeviceActions",
@@ -19993,7 +19993,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaKeyboardDictationService.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaKeyboardDictationService.java",
       "sha256": "9e16f0fab0d003b221ceaaa70c43fc37236ee501188de47a1d6acdd0b41cfb68",
       "allocatedModels": [
         "KeyboardDictation"
@@ -20127,7 +20127,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaListenerPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaListenerPlugin.java",
       "sha256": "f1df1c4f3c6f6e594cf86c389e37686f985dcc234dbe69d77ba026c54b934d83",
       "allocatedModels": [
         "AlwaysOnListener"
@@ -20140,7 +20140,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
       "sha256": "47ea0b9080b5cdb79796e01c7cd699b72bb611cf23449c40588431c50eb52d91",
       "allocatedModels": [
         "NativeAssistantEntry",
@@ -21145,7 +21145,7 @@
       "unassignedWrites": 103
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailAttachmentsPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMailAttachmentsPlugin.java",
       "sha256": "40f8bc3393fd6215057b0b59901297588242df7a4731850eafdc30808f0d22ff",
       "allocatedModels": [
         "FilesAndSharing",
@@ -21407,7 +21407,7 @@
       "unassignedWrites": 4
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailFileProvider.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMailFileProvider.java",
       "sha256": "a6374fa3fea4635fc2f6670187441de4d14d1abfe67039b1aa4f316f334aa942",
       "allocatedModels": [
         "FilesAndSharing",
@@ -21429,7 +21429,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMailPdfActivity.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMailPdfActivity.java",
       "sha256": "34acf0bc89acd7aa31ddb1d66f2841ed6ecdb58d454c1d4147e15ee3cf82964e",
       "allocatedModels": [
         "Application"
@@ -21449,7 +21449,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMapsTransportPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMapsTransportPlugin.java",
       "sha256": "8426c209b1d6544c111cf0783a9f6f472712027654d6d75ab0325ec632907d89",
       "allocatedModels": [
         "MapsNavigation",
@@ -21568,7 +21568,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMediaConfig.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMediaConfig.java",
       "sha256": "874fe588531441ae7081f2d43aafaab1687e061843c4f009b2db13edd7f168b6",
       "allocatedModels": [
         "MediaLifecycle"
@@ -21581,7 +21581,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNavigationService.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNavigationService.java",
       "sha256": "50f2a2288dea5382891d6477745ca8d263b0ff7f576a5f6a87551c9b9f2fc3c2",
       "allocatedModels": [
         "MapsNavigation",
@@ -21724,7 +21724,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteAudioPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteAudioPlugin.java",
       "sha256": "7f6024c0cbeeb6e5dfed53e6795d218512b71d17ba78a014f9ef2361b504ab07",
       "allocatedModels": [
         "NotesLifecycle"
@@ -21967,7 +21967,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteDocumentsPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteDocumentsPlugin.java",
       "sha256": "2afdac51ec1a6624a0652834963a4dc527d80b1191dd17dffa4d49f9fd1ccf98",
       "allocatedModels": [
         "NotesLifecycle"
@@ -22077,7 +22077,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecorder.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecorder.java",
       "sha256": "7f2eef5038904ddbf05da500a97236e127593d5cfcd4bb934be64afe6da2d2f2",
       "allocatedModels": [
         "MediaLifecycle",
@@ -22353,7 +22353,7 @@
       "unassignedWrites": 8
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNoteRecordingService.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecordingService.java",
       "sha256": "914eaf789a3e6e9a86adc9ac29ff3db208c24d011405767c6ab05fd36ca9d8dd",
       "allocatedModels": [
         "MediaLifecycle",
@@ -22424,7 +22424,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationListener.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationListener.java",
       "sha256": "1f5a6729718ca70efeb1d00cc8c42cec205e80440aee666e814442e870c97077",
       "allocatedModels": [
         "AlwaysOnListener",
@@ -22438,7 +22438,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaNotificationsPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java",
       "sha256": "6cbcdc56fae1ba27b830120339be6fb2a6301e38f6381eff3c698a1afcf35bea",
       "allocatedModels": [
         "CanonicalNotificationTap",
@@ -22516,7 +22516,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotoLibraryPlugin.java",
       "sha256": "2d0090804a55a1552e20aec4ab39dc9e7b62f8ce8fa94992563c6a083dc1fa8e",
       "allocatedModels": [
         "MediaLifecycle"
@@ -22529,7 +22529,7 @@
       "unassignedWrites": 10
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotosPlugin.java",
       "sha256": "e7aa50b555ea7a75f878030590757f9163b8ac88b84d53cd943d436af1494643",
       "allocatedModels": [
         "MediaLifecycle"
@@ -22561,7 +22561,7 @@
       "unassignedWrites": 10
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPowerVoiceActivity.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPowerVoiceActivity.java",
       "sha256": "235b2c35463c883e0e75bdd4ded87b01e30d735bfb39ac6a603e8ebb2d598f37",
       "allocatedModels": [
         "NativeAssistantEntry",
@@ -22588,7 +22588,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaQuickSettingsTile.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaQuickSettingsTile.java",
       "sha256": "15f59d8b0cf1083b755886010a93549e1fcb499e09ab01a639af6b0316928b1d",
       "allocatedModels": [
         "NativeAssistantEntry",
@@ -22609,7 +22609,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaReminders.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaReminders.java",
       "sha256": "c13c2911b9e5930b131d0f677b8bab2128803c359acac603df035f9418385909",
       "allocatedModels": [
         "DeviceActions",
@@ -22654,7 +22654,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaResetPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaResetPlugin.java",
       "sha256": "7e00060318ff271ce92f2b67932262454062516093a452867f2cd7e8ea1044b8",
       "allocatedModels": [
         "ResetRecovery"
@@ -22667,7 +22667,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSmsSendReceiver.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSmsSendReceiver.java",
       "sha256": "f3e08393001c257c46a448ea8a4c1e65d39ef6df672b42545a5928bace38f670",
       "allocatedModels": [
         "DeviceActions",
@@ -22689,7 +22689,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaSystemPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSystemPlugin.java",
       "sha256": "9bec25631f4070e35568afd7b98603807ebc0cdf92df6a323580232a23c3e180",
       "allocatedModels": [
         "AppInfoHandoffComposition",
@@ -22747,7 +22747,7 @@
       "unassignedWrites": 4
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephony.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java",
       "sha256": "88f13e8e1fa657183566c5589b71508073889a3a853219ab8ae454760ab3fbb4",
       "allocatedModels": [
         "DeviceActions",
@@ -22781,7 +22781,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaTelephonyPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephonyPlugin.java",
       "sha256": "6b6b2f2d5137cda6987d8bd0e07f70f9f219abbfa74df0ebe9fbf55db505f424",
       "allocatedModels": [
         "DeviceActions",
@@ -22809,7 +22809,7 @@
       "unassignedWrites": 12
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java",
       "sha256": "bf4750fc9b8ff83720581f2d0cc88e701ce54e17628f02f7d9db9dbf1b5afbd8",
       "allocatedModels": [
         "NativeNotePermission",
@@ -23305,7 +23305,7 @@
       "unassignedWrites": 13
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarAvailabilityJournalResult.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarAvailabilityJournalResult.java",
       "sha256": "f2b601e5b1920dbed5dc3097a6491a5cc305dafd15f3ee62b089d965c783d9df",
       "allocatedModels": [
         "CalendarSync"
@@ -23337,7 +23337,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarCreationStore.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarCreationStore.java",
       "sha256": "afacc8857407ff7e7b92403a58978f428ff1d02282675ef42ba905289e1573c9",
       "allocatedModels": [
         "CalendarSync"
@@ -23375,7 +23375,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarDeletionIdentity.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarDeletionIdentity.java",
       "sha256": "8e4179e018cbbd1c2bc0366055190afa00f50941e576a332baa09d91c9dc58e3",
       "allocatedModels": [
         "CalendarSync",
@@ -23426,7 +23426,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarScopedDeletionReview.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarScopedDeletionReview.java",
       "sha256": "85ed1ad2851b6c480271eec1e2271cda48fb9c69c3d2a20f9841bfab57a56b85",
       "allocatedModels": [
         "CalendarSync",
@@ -23562,7 +23562,7 @@
       "unassignedWrites": 19
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncBridge.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncBridge.java",
       "sha256": "6a69b3ce6ae442347425b4603e12299d1ba008e7ca839c1b1719db1f657536e5",
       "allocatedModels": [
         "CalendarSync",
@@ -23788,7 +23788,7 @@
       "unassignedWrites": 84
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncConsent.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncConsent.java",
       "sha256": "9041ce3d58d4ba2ce60c50832dfb200f61aa030e2e7adb4c57e74bf2da1f207a",
       "allocatedModels": [
         "CalendarSync",
@@ -23827,7 +23827,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncFreshness.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncFreshness.java",
       "sha256": "f11808e9bc6bda43fe5265cab28942611240dad5c112ce4c55fd1273e7455c4c",
       "allocatedModels": [
         "CalendarSync"
@@ -23853,7 +23853,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncMutation.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncMutation.java",
       "sha256": "a956e9bc8b208d9e0126e9634f6b25b17fdceb42a4d3a3bac7150f4b4dceed28",
       "allocatedModels": [
         "CalendarSync",
@@ -23910,7 +23910,7 @@
       "unassignedWrites": 10
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncReceiptRecovery.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncReceiptRecovery.java",
       "sha256": "873f6e9d7fdbce4c3f065769e001a54f3a9004a5526086865c94922d962605c1",
       "allocatedModels": [
         "CalendarSync",
@@ -23949,7 +23949,7 @@
       "unassignedWrites": 7
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncSnapshot.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncSnapshot.java",
       "sha256": "363360cc4a536c21e3beca24aa970429a2651318a439a561ff52c59ab9d9b57e",
       "allocatedModels": [
         "CalendarSync",
@@ -24060,7 +24060,7 @@
       "unassignedWrites": 11
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarZones.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarZones.java",
       "sha256": "89f39f0e916a12ad6742ac5eba316b319193d46c47a6b378ace9b08a68836c3f",
       "allocatedModels": [
         "CalendarSync"
@@ -24080,7 +24080,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ClockAgentReview.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ClockAgentReview.java",
       "sha256": "6e63b565c9e238e26a47d19e14bdb7bd0297b7b58493916e1e768dbf4e4029c4",
       "allocatedModels": [
         "DeviceActions",
@@ -24222,7 +24222,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java",
       "sha256": "5127a68e20cd53b3ddfcce2cf907767be4535fdec2a3b32dc4deef2d2a4048f3",
       "allocatedModels": [
         "NativeGmailBackground",
@@ -24243,7 +24243,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSpeechPolicy.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CloudSpeechPolicy.java",
       "sha256": "336a3c1b1ad2d5571ed933c63af08bc367d3c5a597f7793296f5cde80b172535",
       "allocatedModels": [
         "SpeechResources"
@@ -24269,7 +24269,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudVoiceLimit.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/CloudVoiceLimit.java",
       "sha256": "b6d7a545250a08ddd61fdb6d87fbf1b95a41fe1fbb649aedf5cd0e2b5ca53aa5",
       "allocatedModels": [
         "ServiceAuthorization"
@@ -24332,7 +24332,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ConnectionRoutes.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ConnectionRoutes.java",
       "sha256": "6ea01a27d1204ae8008d81fe851ce041d819d4e399b6b8e1c17812de5324b6ca",
       "allocatedModels": [
         "ServiceAuthorization"
@@ -24419,7 +24419,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/DailyAppsPlugin.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/DailyAppsPlugin.java",
       "sha256": "1057598713e6fb1b3838047d03e3db3bd9a102b1b434e2b1e3feffc4d54d8506",
       "allocatedModels": [
         "Application"
@@ -24625,7 +24625,7 @@
       "unassignedWrites": 12
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/DeletionWorker.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/DeletionWorker.java",
       "sha256": "d54e35dadae56b154423610b80b189261910a0ae46f2afb7634aa3710b8f643a",
       "allocatedModels": [
         "DeletionJournal"
@@ -24651,7 +24651,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailBackground.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/GmailBackground.java",
       "sha256": "9364b0153e0f3b70eaaf5d10d618233e23112b3bfcf0e7f55bf8101c2e48bdeb",
       "allocatedModels": [
         "NativeGmailBackground",
@@ -24702,7 +24702,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailDeliveryWorker.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/GmailDeliveryWorker.java",
       "sha256": "82921c44d47eba2c06b367dcc9c42ba94c438cada353cc778fb0d877f299377e",
       "allocatedModels": [
         "InboxDelivery",
@@ -24741,7 +24741,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/GoogleAgentAccessFile.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/GoogleAgentAccessFile.java",
       "sha256": "8fe78af57be52d482a480a27df92070497014869dd0000db5d3ae8e26203c69b",
       "allocatedModels": [
         "DurableStore",
@@ -24771,7 +24771,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/GoogleWorkspaceReturn.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/GoogleWorkspaceReturn.java",
       "sha256": "d1539e4bf4e05c9d07b3303bd8c15e065d0563d4f725574bce8d28c509f2f074",
       "allocatedModels": [
         "GoogleAccounts",
@@ -24870,7 +24870,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/GoogleWorkspaceReturnFlow.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/GoogleWorkspaceReturnFlow.java",
       "sha256": "ca23fe0f4a074a81fd6f9af4e34ed607148e5c3c896c0792fab9a3301185f5db",
       "allocatedModels": [
         "GoogleAccounts",
@@ -24964,7 +24964,7 @@
       "unassignedWrites": 12
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedDelivery.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/HostedDelivery.java",
       "sha256": "0beb42ca42f2bd53ea0b2e92b7d3e1282b41c13814e4e633a476939e5dbb6d8d",
       "allocatedModels": [
         "NativeDigestConsent",
@@ -25160,7 +25160,7 @@
       "unassignedWrites": 35
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedDeliveryCancelled.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/HostedDeliveryCancelled.java",
       "sha256": "a357e44d32ead5f3036f1d1f0ea1f7930ee84013099a796c102a534d1767e758",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -25173,7 +25173,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedDeliveryWorker.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/HostedDeliveryWorker.java",
       "sha256": "5ea56b9397d13ac7e9be3312d637585a9b196f522ad077f627a8616e586bead5",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -25235,7 +25235,7 @@
       "unassignedWrites": 3
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedInbox.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/HostedInbox.java",
       "sha256": "ac13291bb0b7e34ab3a620d9bf010dea257638e6f5364da562106d7366d506c4",
       "allocatedModels": [
         "InboxDelivery",
@@ -25354,7 +25354,7 @@
       "unassignedWrites": 7
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedNoticePoster.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/HostedNoticePoster.java",
       "sha256": "2897eb37beaf49ab0b7a1ebf4e52bb6c0dda268fcaab56f8b62c759e070670f6",
       "allocatedModels": [
         "NativeHostedResultNotices",
@@ -25461,7 +25461,7 @@
       "unassignedWrites": 2
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedResultNotices.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/HostedResultNotices.java",
       "sha256": "c70bac8df5dfe56652b1f5a5e11a29ff74db6cf464502556a5e60010405e7fc5",
       "allocatedModels": [
         "NativeDigestConsent",
@@ -25641,7 +25641,7 @@
       "unassignedWrites": 10
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedStorageFault.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/HostedStorageFault.java",
       "sha256": "1b6b1416820b38272c13ab3e252d267905a3ace0d5d9680099940daadbd2d009",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -25661,7 +25661,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/HostedTransport.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/HostedTransport.java",
       "sha256": "1d8c7d0921d31418c76af2c1eec83ad7be8dd4a68044fcab6f79a60ba114f57c",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -25753,7 +25753,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/InvocationOwnerCache.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/InvocationOwnerCache.java",
       "sha256": "6c7a32b05b784cbefc76b5082654b791e7eb70f030d0880dd346b474942ad4d0",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -25797,7 +25797,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/IsolatedPdfService.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/IsolatedPdfService.java",
       "sha256": "bfc67c9605153938d7e823b39e30838ea4e2fce910cad0d5805661a37cf3b055",
       "allocatedModels": [
         "MediaLifecycle",
@@ -25818,7 +25818,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationCloud.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/KeyboardDictationCloud.java",
       "sha256": "ae71095180173ebfd53b2ea6542ab45b231c006c3ff66acbf11816d0cf04eecf",
       "allocatedModels": [
         "KeyboardDictation"
@@ -25874,7 +25874,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationPolicy.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/KeyboardDictationPolicy.java",
       "sha256": "fcb73710c422a050ca78cb003418cbd11beaa589f9e1de71de8452642d1a69c6",
       "allocatedModels": [
         "KeyboardDictation"
@@ -25942,7 +25942,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/LateLaunch.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/LateLaunch.java",
       "sha256": "8361e6948671980e82d0eb8d1037ed2f8bde36f887b14dcc87a6124ffcc06a11",
       "allocatedModels": [
         "ShellNavigation"
@@ -25962,7 +25962,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/LegacyCloudRecovery.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/LegacyCloudRecovery.java",
       "sha256": "ac3c3d26c75d385bcc3834a31789f5b54cd530a10d01457e40df9e29114f93f8",
       "allocatedModels": [
         "IdentitySession"
@@ -26030,7 +26030,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/LocalAgentProviderAdmission.java",
       "sha256": "f45bbbc634b77eb216c1a8639eded7dd42e0a3ea86918433fd7cb010e6b2030b",
       "allocatedModels": [
         "ApplicationComposition",
@@ -26047,7 +26047,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
       "sha256": "041f777687bd997d3c736d274e3da99c91ef22066453c8ffa13876c16b6a245b",
       "allocatedModels": [
         "Application",
@@ -26234,7 +26234,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeletionCoordinator.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/NativeDeletionCoordinator.java",
       "sha256": "9ef18e9c57dbf9470adb2371a392d532ef32204af45f02ec9adf36f7a61065ea",
       "allocatedModels": [
         "DeletionJournal",
@@ -26339,7 +26339,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDeviceEnrollmentKey.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/NativeDeviceEnrollmentKey.java",
       "sha256": "c0fda524a68721de63e61aaeb1382e740f3467dccea890aa5c987785907a1eb4",
       "allocatedModels": [
         "IdentitySession",
@@ -26372,7 +26372,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestHost.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/NativeDigestHost.java",
       "sha256": "c06bbf6bb3525c5a569e4b89e6045f24cd4d01551682368a33011a44a64bc0be",
       "allocatedModels": [
         "NativeDigestConsent",
@@ -26442,7 +26442,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeDigestSources.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/NativeDigestSources.java",
       "sha256": "21400c0d2a397cc466027623cfd800c569b22b22a49d61b5280132dfa77e16be",
       "allocatedModels": [
         "NativeDigestConsent",
@@ -26565,7 +26565,7 @@
       "unassignedWrites": 41
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeNotificationDiagnostics.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/NativeNotificationDiagnostics.java",
       "sha256": "9a88154878dc9faa3a8a511f2316fe0284195c848237dd5b24f1218cfaf46985",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -26609,7 +26609,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeNotificationSession.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/NativeNotificationSession.java",
       "sha256": "ffbf24570059969145048d1b0f357796ff962ef70630cce06009e378370cfe57",
       "allocatedModels": [
         "NoticesAndCaches"
@@ -26653,7 +26653,7 @@
       "unassignedWrites": 12
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeOwnerReminderHost.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/NativeOwnerReminderHost.java",
       "sha256": "79cf2456f286f44ba9d3992fd6243b6cc49e0b571480eb9a62bd59f4b1a7dea0",
       "allocatedModels": [
         "DeletionJournal",
@@ -26752,7 +26752,7 @@
       "unassignedWrites": 13
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeReadEpoch.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/NativeReadEpoch.java",
       "sha256": "7506c78dba16cc9933be89333c5eab57b3c4c91572a619b0cf3baf9d37f5a2c2",
       "allocatedModels": [
         "Application",
@@ -26779,7 +26779,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceBinding.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/NativeVoiceBinding.java",
       "sha256": "4806500372837fc926fa91809d9db6ab890cb0c6cd45fcdb147be4b39f5057e0",
       "allocatedModels": [
         "VoiceIpcAssembly",
@@ -26812,7 +26812,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NoteSourceReferences.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/NoteSourceReferences.java",
       "sha256": "a3f36d36295f0b6fe82aaab4dc599e9380199656a9e369284f69fb2c0c8f5a4e",
       "allocatedModels": [
         "NotesLifecycle"
@@ -26838,7 +26838,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NotesDeletionLease.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/NotesDeletionLease.java",
       "sha256": "fb0a4444a2969ef2c908996a17e9e4098d9523cebd7bf3b6d06dbd625a110710",
       "allocatedModels": [
         "DeletionJournal",
@@ -26859,7 +26859,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/NotificationAccess.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/NotificationAccess.java",
       "sha256": "df8a8f527d2af811457a66c80196d7308823fed4656626319d4bb8c27681adef",
       "allocatedModels": [
         "NoticesAndCaches",
@@ -26952,7 +26952,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/OwnerRoutes.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/OwnerRoutes.java",
       "sha256": "f8266638fa048f83c49347daa84a5f1ef5539e0bd11a0a801e7b8e84756f0478",
       "allocatedModels": [
         "Application",
@@ -26998,7 +26998,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/PairedAgentCredential.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/PairedAgentCredential.java",
       "sha256": "79e9f783148625217de0f9b9ee495527bf2ca132fce7048d6f1e103687a15b23",
       "allocatedModels": [
         "IdentitySession"
@@ -27030,7 +27030,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/PairedSpeechContract.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/PairedSpeechContract.java",
       "sha256": "bedc81179296fda81bdb2605f799f22fbc99fdde7ad111f789e20d843d5b2ac9",
       "allocatedModels": [
         "SpeechResources"
@@ -27080,7 +27080,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/PasswordProviderSupport.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/PasswordProviderSupport.java",
       "sha256": "8d7c6f32527999bd06e94509741971d6d5cfafb9c36d1364086849d12d8fb313",
       "allocatedModels": [
         "CredentialVault",
@@ -27113,7 +27113,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/PluginWorkers.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",
       "sha256": "1348add936da232412999b23cfb48fbbc08a5243f2b4a8075626e7a855ac3007",
       "allocatedModels": [
         "Application",
@@ -27138,7 +27138,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/PreparedViewNavigation.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/PreparedViewNavigation.java",
       "sha256": "47116cf071690d4ee0c658bc39b204bc67c45ea2d11ffefa0ec36e914595febe",
       "allocatedModels": [
         "ShellNavigation"
@@ -27176,7 +27176,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ReminderReceiver.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ReminderReceiver.java",
       "sha256": "62d66ed26c5f47acadbedd5ac0c9213c384e4b25399702365d141215b884138b",
       "allocatedModels": [
         "DeviceActions",
@@ -27197,7 +27197,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/RendererCredentialSlots.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererCredentialSlots.java",
       "sha256": "deaaefc0ffa40c06a098d341ea1e0f31352b646218433171d12302fb35b6b5a4",
       "allocatedModels": [
         "IdentitySession"
@@ -27235,7 +27235,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/RendererRecoveryBudget.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
       "sha256": "cf55b60c8a7f907eb998065199b3e31f60044d6d59796b80ca98e85a287d658d",
       "allocatedModels": [
         "Application",
@@ -27298,7 +27298,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetBeforeDispatch.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResetBeforeDispatch.java",
       "sha256": "090208945658f90168f64d4adfbb42ff4c811aa69a6fd8c3f51aeeeb07b8132a",
       "allocatedModels": [
         "ApplicationComposition",
@@ -27356,7 +27356,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResetRecoveryActivity.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResetRecoveryActivity.java",
       "sha256": "45a9cd636617028656b968efe7b06ecdb1da6297305b6f9accb1d0cfd7317c65",
       "allocatedModels": [
         "ResetRecovery"
@@ -27369,7 +27369,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentCredentialShutdownRetry.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentCredentialShutdownRetry.java",
       "sha256": "1f66cf2744b8169f5d4df5da1cfd42c8c915f1192bae245af62527a8cbf53f31",
       "allocatedModels": [
         "IdentitySession",
@@ -27397,7 +27397,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentRecoveryReview.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentRecoveryReview.java",
       "sha256": "3d0b25c1c9f43cd2c2edcd0f5634922fabc05a8386be7d5741ac33b13894ab2b",
       "allocatedModels": [
         "ResidentRuntime"
@@ -27429,7 +27429,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentResultSession.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentResultSession.java",
       "sha256": "5504657e2b34a86289e4fe16d3628ebded26489c45e718dfabd9580645973951",
       "allocatedModels": [
         "NativeHostedInbox",
@@ -27510,7 +27510,7 @@
       "unassignedWrites": 21
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentResultTransport.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentResultTransport.java",
       "sha256": "2ce7d97cb08d244b7d246e111ef8e94973c5b2757a592d44888363c90d609543",
       "allocatedModels": [
         "NativeHostedInbox",
@@ -27567,7 +27567,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleRearm.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java",
       "sha256": "3ddde43e825cdb5a81c99b9a3a0d9b32c8458771e8e2c9c98d5616f148a8fdf5",
       "allocatedModels": [
         "DeviceActions",
@@ -27607,7 +27607,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentScheduleReceiver.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleReceiver.java",
       "sha256": "a1e69c6f787406036d16b5f5fa2afa9fd0d8829ea41b5a04ec9e64aed244d99f",
       "allocatedModels": [
         "ResidentRuntime",
@@ -27628,7 +27628,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/ReviewedCopies.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ReviewedCopies.java",
       "sha256": "2df2b226824e06633ed79011167a51fbbf6561ba919afa9a1b71bdecda4cfeb0",
       "allocatedModels": [
         "DeviceActions",
@@ -27693,7 +27693,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SelectedDocumentAccess.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/SelectedDocumentAccess.java",
       "sha256": "ca5bf4a26215d8ed469bb8c80740a4e8c314f1c094cd87f9e87b53f5557c0de8",
       "allocatedModels": [
         "FilesAndSharing",
@@ -27781,7 +27781,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SerialStorageTasks.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/SerialStorageTasks.java",
       "sha256": "5255042fdc8bd788e32cf949c2a8bb7af7c5a8543710e805b3ee8fcae4f52550",
       "allocatedModels": [
         "Application",
@@ -27826,7 +27826,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SmsActionJournalResult.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/SmsActionJournalResult.java",
       "sha256": "9514d6bb9dade27828f845979895609ae6d59f316f8fe5b4713eaa27391bfea7",
       "allocatedModels": [
         "WorkflowExecution"
@@ -27846,7 +27846,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SourceRenewalHost.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/SourceRenewalHost.java",
       "sha256": "db32cf7463fa285e70a90246088bfeef2d044b62d30bbf798c1afaca38cbb3d2",
       "allocatedModels": [
         "NativeSourceRenewal",
@@ -27898,7 +27898,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/SourceRenewalNotices.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/SourceRenewalNotices.java",
       "sha256": "1afc6562e60713bfae93fe41603b7265b0da20c434f66ec6c486e3a5bd28fcfa",
       "allocatedModels": [
         "NativeSourceRenewal",
@@ -28033,7 +28033,7 @@
       "unassignedWrites": 15
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/VoiceEventAdmission.java",
       "sha256": "5b501815a37bac29467cae514c6a8d6437bbd1162a11cdd8a0373e9fb923386b",
       "allocatedModels": [
         "VoiceIpcAssembly",
@@ -28054,7 +28054,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeDelivery.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticeDelivery.java",
       "sha256": "90ff62412ce277eb232784dc977bef58d1505c71bb0ca3af716de81d6d2f7429",
       "allocatedModels": [
         "NativeActionRecovery",
@@ -28155,7 +28155,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticePoster.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticePoster.java",
       "sha256": "0dc19225e430e6c33b30c8ec835afdebe8e89fd11709b2ef7a6b05d2338f692a",
       "allocatedModels": [
         "WorkflowExecution",
@@ -28188,7 +28188,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeTaps.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticeTaps.java",
       "sha256": "3fef38e84d71703b7272d9cf4c0987c332ecf712ecbf0284cafb68efb3d941dc",
       "allocatedModels": [
         "WorkflowExecution",
@@ -28215,7 +28215,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowNoticeTapsFactory.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticeTapsFactory.java",
       "sha256": "eb6eea48f7b8b96d1ea1e59dc9aac8b27152a33add16774e4c4c2aada0c57fa5",
       "allocatedModels": [
         "WorkflowExecution",
@@ -28260,7 +28260,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowWorkerAssets.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowWorkerAssets.java",
       "sha256": "bb54744eb058b62a274c1ea0743bedba5a3c85501f9be683deba21d759a50b7a",
       "allocatedModels": [
         "WorkflowExecution"
@@ -28346,7 +28346,7 @@
       "unassignedWrites": 1
     },
     {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/release/DataIntegrityProvider.java",
+      "path": "android/app/src/main/java/ai/alphacompute/alphaphone/release/DataIntegrityProvider.java",
       "sha256": "5361e8882eb58d43d6ebe039dbd1a8f31f616835a25c17c4238a70fce7203ebd",
       "allocatedModels": [
         "Application"
@@ -28432,7 +28432,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/standalone/java/ai/elizaresearch/alphaphone/AlphaTelephonyRoles.java",
+      "path": "android/app/src/standalone/java/ai/alphacompute/alphaphone/AlphaTelephonyRoles.java",
       "sha256": "84456920a35d17c562d61a54ed5bc6afc155271fc7622da66a99cbf7f63fe448",
       "allocatedModels": [
         "DeviceActions"
@@ -28452,7 +28452,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/app/src/testMocks/androidTest/java/ai/elizaresearch/alphaphone/BrowserAutofillInstrumentedTest.java",
+      "path": "android/app/src/testMocks/androidTest/java/ai/alphacompute/alphaphone/BrowserAutofillInstrumentedTest.java",
       "sha256": "1f0eca8d5768e3bbc21cfda7b47836a9e1fe649bcff2b973b9fa98fd6431b390",
       "allocatedModels": [
         "DevelopmentSurfaces"
@@ -28592,7 +28592,7 @@
       "unassignedWrites": 6
     },
     {
-      "path": "android/app/src/testMocks/java/ai/elizaresearch/alphaphone/SyntheticAutofillService.java",
+      "path": "android/app/src/testMocks/java/ai/alphacompute/alphaphone/SyntheticAutofillService.java",
       "sha256": "76e5c3cc9e5ce70f714a8bcdb564e5b0913c1487200bc5347545afb69cfb013d",
       "allocatedModels": [
         "DevelopmentSurfaces"
@@ -28760,7 +28760,7 @@
       "unassignedWrites": 17
     },
     {
-      "path": "android/private-peer-fixture/src/main/java/ai/elizaresearch/alphaphone/peerfixture/PrivateSocketProbeService.java",
+      "path": "android/private-peer-fixture/src/main/java/ai/alphacompute/alphaphone/peerfixture/PrivateSocketProbeService.java",
       "sha256": "3b8a8a8bee1904539f2ef3b03e9dcd4b81485f1b9abdb369bc942727ca415b60",
       "allocatedModels": [
         "Application"
@@ -28792,7 +28792,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ConsentActivity.java",
+      "path": "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/ConsentActivity.java",
       "sha256": "45cbc7592b9aded45303406ab2ee801c4e23910aaa78732c5ce86d996a1a168f",
       "allocatedModels": [
         "AlwaysOnListener"
@@ -28805,7 +28805,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/IndicatorLeaseProvider.java",
+      "path": "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/IndicatorLeaseProvider.java",
       "sha256": "66afeb448328035614a2a871d26d91a7ebe783696f11a72ac915ba488ecf5347",
       "allocatedModels": [
         "AlwaysOnListener"
@@ -28818,7 +28818,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerActionReceiver.java",
+      "path": "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/ListenerActionReceiver.java",
       "sha256": "f635c829b95767576f6f957e7cfd9a0bbec7d1ad61f03ba82eabd044f64e9593",
       "allocatedModels": [
         "AlwaysOnListener"
@@ -28831,7 +28831,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java",
+      "path": "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/ListenerControlProvider.java",
       "sha256": "3eb77d841550b84ce247c4897f2dd7236d20ceb00bee555e3dc6149111074dbf",
       "allocatedModels": [
         "AlwaysOnListener",
@@ -28845,7 +28845,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerTileService.java",
+      "path": "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/ListenerTileService.java",
       "sha256": "af0f3aa47a5b93905f744496b0f74748abbe64aca8791e7853777a10e5181f6f",
       "allocatedModels": [
         "AlwaysOnListener"
@@ -28858,7 +28858,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListeningService.java",
+      "path": "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/ListeningService.java",
       "sha256": "7eec3b4e12869a1fe83552bcb7b57d6edca161ec52c5b7d20aaa6cb49a552b23",
       "allocatedModels": [
         "AlwaysOnListener",
@@ -28872,7 +28872,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/SenseApplication.java",
+      "path": "android/sense/src/main/java/ai/alphacompute/alphaphone/sense/SenseApplication.java",
       "sha256": "795f83bbe200fae6278bd7b254cc9259a4107761c0a2d6e0d8705c555adc8279",
       "allocatedModels": [
         "AlwaysOnListener",
@@ -28886,7 +28886,7 @@
       "unassignedWrites": 0
     },
     {
-      "path": "android/video-fixture/src/androidTest/java/ai/elizaresearch/alphaphone/VideoCopyInstrumentedTest.java",
+      "path": "android/video-fixture/src/androidTest/java/ai/alphacompute/alphaphone/VideoCopyInstrumentedTest.java",
       "sha256": "f7eebe2375fe17255d1c0f776bdee24c63a7752c8e9548049c6c3fe8999b7c2e",
       "allocatedModels": [
         "MediaLifecycle"
@@ -29074,7 +29074,7 @@
       "unassignedWrites": 36
     },
     {
-      "path": "android/video-fixture/src/androidTest/java/ai/elizaresearch/alphaphone/VideoCopyPreservationInstrumentedTest.java",
+      "path": "android/video-fixture/src/androidTest/java/ai/alphacompute/alphaphone/VideoCopyPreservationInstrumentedTest.java",
       "sha256": "a1e15de44a71214fb10983acf2c77d68e3e4aa65efc8c02fa0fc61a1b0821dbc",
       "allocatedModels": [
         "MediaLifecycle"
@@ -29262,7 +29262,7 @@
       "unassignedWrites": 11
     },
     {
-      "path": "android/video-fixture/src/main/java/ai/elizaresearch/alphaphone/VideoFixtureActivity.java",
+      "path": "android/video-fixture/src/main/java/ai/alphacompute/alphaphone/VideoFixtureActivity.java",
       "sha256": "4fe2863a788998c7eac8e3489b66962960f4def8005f363e83ea9b60041fc5dc",
       "allocatedModels": [
         "MediaLifecycle"

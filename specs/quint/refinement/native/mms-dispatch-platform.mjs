@@ -15,7 +15,7 @@ function replace(source, first, replacement) {
 export function mmsPlatform(plugin, store, provider) {
   const files={...smsPlatform,...smsMembers(plugin,store,provider)};
   const pkg='ai/eliza/plugins/messages/';
-  const product='ai/elizaresearch/alphaphone/';
+  const product='ai/alphacompute/alphaphone/';
   function edit(path, from, to) {files[path]=replace(files[path],from,to);}
   const telephony=pkg+'TelephonyPlugin.java';
   edit(telephony,'import android.content.Intent;','import android.content.Intent;\nimport org.json.JSONObject;');

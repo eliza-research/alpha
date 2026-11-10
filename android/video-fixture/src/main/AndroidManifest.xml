@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
  <!-- No camera, microphone, broad media or network permission. All input is generated. -->
  <application android:label="Alpha Video QA" android:allowBackup="false" android:theme="@android:style/Theme.Material.Light.NoActionBar">
-  <activity android:name="ai.elizaresearch.alphaphone.VideoFixtureActivity" android:exported="false"/>
+  <activity android:name="ai.alphacompute.alphaphone.VideoFixtureActivity" android:exported="false"/>
  </application>
 </manifest>

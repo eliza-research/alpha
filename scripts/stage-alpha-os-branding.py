@@ -90,7 +90,7 @@ def build_plan(root, assets, report_hash, source_inputs, prior=None, product_mk_
     for name,key in [('bootanimation.zip','bootAnimationSha256'),('default_wallpaper.png','wallpaperSha256')]:
         assert digest((assets/name).read_bytes()) == report[key], 'Asset payload drift: ' + name
     target = json.loads((BRAND/'core-launcher/manifest.json').read_text()).get('targetAppId')
-    if target != 'ai.elizaresearch.alphaphone': raise ValueError('Current OS policy must bind the reviewed Alpha Compute package')
+    if target != 'ai.alphacompute.alphaphone': raise ValueError('Current OS policy must bind the reviewed Alpha Compute package')
     plan = {}; allowed = {}
     def put(path, value, preimages=()):
         plan[path] = value

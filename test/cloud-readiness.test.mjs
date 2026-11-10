@@ -11,7 +11,7 @@ import { fingerprint } from "../scripts/render-assetlinks.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const RELEASE = "c3".repeat(32);
-const javaDir = path.join(root, "android/app/src/main/java/ai/elizaresearch/alphaphone");
+const javaDir = path.join(root, "android/app/src/main/java/ai/alphacompute/alphaphone");
 /** A copy of the configuration the probe reads, with the release signer recorded as `signer`. */
 function fixtureRoot(t, signer) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-cloud-readiness-"));

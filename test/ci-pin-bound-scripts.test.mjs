@@ -17,7 +17,7 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 print(json.dumps({'sdk': module.SDK, 'host': module.HOST}))`);
   assert.equal(constants.sdk, json('upstream.lock.json').commit);
-  const host = fs.readFileSync(path.join(root, 'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java'));
+  const host = fs.readFileSync(path.join(root, 'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCalendarPlugin.java'));
   assert.equal(constants.host, createHash('sha256').update(host).digest('hex'),
     'AlphaCalendarPlugin.java changed: review it and update HOST in scripts/ci/calendar-bridge.py');
 });

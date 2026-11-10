@@ -7,7 +7,7 @@ const config = fs.readFileSync(root + 'overlay/frameworks/base/core/res/res/valu
 const value = name => new RegExp(`<[^>]+name="${name}"[^>]*>([^<]*)</`).exec(config)?.[1];
 
 test('Cloud-first image includes hardware assistant defaults without the optional listener', () => {
-  assert.equal(value('config_defaultAssistant'), 'ai.elizaresearch.alphaphone');
+  assert.equal(value('config_defaultAssistant'), 'ai.alphacompute.alphaphone');
   assert.equal(value('config_longPressOnPowerBehavior'), '5');
   assert.equal(value('config_longPressOnPowerForAssistantSettingAvailable'), 'true');
   const modules = fs.readFileSync(root + 'Android.bp', 'utf8');

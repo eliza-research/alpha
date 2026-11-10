@@ -40,7 +40,7 @@ test('native worker extractor verifies bytes and preserves the previous installa
  const temporary=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'worker-extract-')));
  try{
   const source=path.join(temporary,'source'),assets=path.join(temporary,'assets'),state=path.join(temporary,'agent');fixture(source);stageWorkerArtifact(source,assets);fs.mkdirSync(state);
-  const identity='ai.elizaresearch.alphaphone';
+  const identity='ai.alphacompute.alphaphone';
   const harness=`package ${identity};
 import java.io.*; import java.nio.file.*; import java.nio.charset.StandardCharsets;
 public class WorkerAssetTest {
@@ -90,7 +90,7 @@ public class WorkerAssetTest {
  }
 }`;
   const harnessPath=path.join(temporary,'WorkerAssetTest.java');fs.writeFileSync(harnessPath,harness);
-  execFileSync(javaBinary('javac'),['--release','8','-d',temporary,path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/WorkflowWorkerAssets.java'),harnessPath],{timeout:20000});
+  execFileSync(javaBinary('javac'),['--release','8','-d',temporary,path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowWorkerAssets.java'),harnessPath],{timeout:20000});
   assert.match(execFileSync(javaBinary('java'),['-cp',temporary,identity+'.WorkerAssetTest',assets,state],{encoding:'utf8',timeout:20000}),/^PASS extract/);
   if(process.env.ALPHA_WORKFLOW_WORKER_OUTPUT){
    const realAssets=path.join(temporary,'real-assets'),realState=path.join(temporary,'real-agent');

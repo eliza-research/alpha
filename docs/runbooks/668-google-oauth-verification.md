@@ -78,7 +78,7 @@ device, and Google's own verification result each prove only themselves.
    `ELIZA_NATIVE_GOOGLE_GMAIL_SEND_ENABLED` is read by the native managed-Google host in the pinned
    upstream (`packages/app/src/runtime/native-managed-google-host.ts`, `NATIVE_GMAIL_SEND_FLAG`).
    Alpha removes it on purpose from the resident agent environment
-   (`android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java`, the two
+   (`android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java`, the two
    `env.remove` lists) so the path stays refused until Seeker acceptance and the production service
    exist (`docs/verification.md`). OAuth verification does not change this. Stopping the strip is a
    separate reviewed Alpha change, made only after Seeker acceptance and a deployed production send

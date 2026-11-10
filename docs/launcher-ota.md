@@ -6,25 +6,20 @@ icons, native bridge and packaged resident runtime. Changes to any of those ship
 together in a signed APK with a higher `versionCode`. A Git commit or web build
 alone does not reach a phone.
 
-No customer batch has been distributed. The existing lab Pixel has Alpha v44
-installed under `ai.elizaresearch.alphaphone`; its data must survive the update.
-Newly provisioned phones use the same package and the admitted production signer.
-The pending lab-to-production signing rotation still requires review of the exact
-candidate and lineage before installation.
+No customer batch has been distributed. Both batch baselines use
+`ai.alphacompute.alphaphone` and the admitted production signer. Record the actual
+installed package and certificate on a lab phone before changing it. An earlier
+package is a separate installation; this change supplies no private-data migration.
 
-## One package for every phone (November 9, 2026)
+## One package for every phone (November 10, 2026)
 
-The owner requested one unified product for the existing Pixel, Shaw and new users.
-Keep `ai.elizaresearch.alphaphone` as the stable Android package and sign-in client
-identity everywhere. Alpha Compute remains the company/branding; a company rename
-does not require a new Android package.
-
-The intermediate `ai.alphacompute.alphaphone` rename would install a separate app,
-with a separate Android data directory and account/App Link registration. It would
-not update v44 in place. Restoring the installed package avoids that split and the
-need to copy private data between apps. Use one package and update channel, not a
-legacy-only build alongside a different package for new phones. Preserve existing
-storage names, callbacks, credentials and the reviewed signing lineage.
+The owner explicitly selected `ai.alphacompute.alphaphone` in every product file.
+Standalone and launcher builds, image provisioning and App Auth use that identity.
+Keep the current callback URLs. Their existing Cloud registration must be migrated
+before genuine sign-in; changing the Android sources does not change a deployed
+registration. See [browser sign-in registration](runbooks/pages-browser-sign-in.md).
+Use a fresh baseline of this package for both batch deployment modes. Retain the
+reviewed signing lineage and application storage-key names within this package.
 
 This decision does not prove data retention or wireless delivery. Before release,
 verify the exact signed update on disposable Android: retained notes, files,
@@ -64,10 +59,10 @@ and upstream `b1817660a0`, while the source comparison names `099e2d27ad`.
 Neither describes the integrated package identity. The earlier
 Alpha Compute integration pinned merged upstream `dae11e0b7e3f40e5434fea21fd7c127e416f7016`
 and consumed the reviewed scheduler directly. The superseded client update patch
-has been removed. The current reviewed pin
-`75b44015561368fc8ca982b70b8bafbdf1672a7b` retains that scheduler and adds the
-deferred-deletion owner-admission repair. Earlier build evidence does
-not transfer native, APK or device qualification to this integration.
+has been removed. The current pin is
+`3504bfbe6d264d1bf05bbc2224708131d41f3a6b`, selected by merged PR 862.
+The earlier `75b44015` source retains its recorded evidence. Earlier build evidence
+does not transfer native, APK or device qualification to this integration.
 
 Automatic installation requires Android 12/API 31 or newer and Android's existing
 **Install unknown apps → Alpha Phone** permission. Provision that permission once
@@ -232,7 +227,7 @@ APKs remain unsigned. Complete verification, production signing, exact-APK voice
 live feed delivery and both physical-phone drills before batch distribution.
 
 The [historical DAE software qualification](evidence/launcher-ota-dae-qualification-20261110.json)
-records four freshly packaged Cloud APKs for `ai.elizaresearch.alphaphone` at
+records four freshly packaged Cloud APKs for `ai.alphacompute.alphaphone` at
 `f452aa42` and the passing full repository run at `019b289325`. The production
 input trees at those two DAE commits match exactly; they do not qualify the
 current SDK `75b44015`. The full run reports 5,065 passed tests, zero failures,
@@ -320,7 +315,7 @@ Use two separate baseline setups:
   in [Android and AOSP](android-and-aosp.md) and [Pixel 10a staging](pixel10a-staging.md).
   Do not ADB-install the baseline over the image: that would start the drill from a
   `/data` replacement instead of the preinstalled APK. Verify the system-install
-  flag, provisioning overlay, HOME and `ai.elizaresearch.alphaphone.aosp_image`
+  flag, provisioning overlay, HOME and `ai.alphacompute.alphaphone.aosp_image`
   feature before the candidate update. The later APK replacement should resolve
   under `/data` while the admitted image capability remains available.
 

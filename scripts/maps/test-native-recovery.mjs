@@ -6,7 +6,7 @@ import {execFileSync,spawn} from 'node:child_process';
 import {androidEnv} from '../toolchain.mjs';
 const [mode,appApk,testApk,output='test-results/maps-native-recovery']=process.argv.slice(2),serial=process.env.ANDROID_SERIAL;
 if(!['permission','outage'].includes(mode)||!appApk||!testApk||!/^emulator-\d+$/.test(serial||''))throw Error('Usage: explicit ANDROID_SERIAL=emulator-N node scripts/maps/test-native-recovery.mjs permission|outage APP.apk TEST.apk OUTPUT');
-const env=androidEnv(),adb=path.join(env.ANDROID_HOME,'platform-tools/adb'),app='ai.elizaresearch.alphaphone';
+const env=androidEnv(),adb=path.join(env.ANDROID_HOME,'platform-tools/adb'),app='ai.alphacompute.alphaphone';
 const run=(...args)=>execFileSync(adb,['-s',serial,...args],{env,encoding:'utf8',timeout:20000,stdio:['ignore','pipe','pipe']});
 const local=(file,args)=>execFileSync(file,args,{encoding:'utf8',timeout:5000});
 const digest=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');

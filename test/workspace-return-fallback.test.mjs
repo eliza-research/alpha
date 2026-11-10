@@ -11,7 +11,7 @@ test('a transient identity failure falls back to the manual return; a refusal or
  const root=mkdtempSync(join(tmpdir(),'alpha-workspace-fallback-'));
  try{
   const file=join(root,'WorkspaceFallbackTest.java');
-  writeFileSync(file,`package ai.elizaresearch.alphaphone;
+  writeFileSync(file,`package ai.alphacompute.alphaphone;
 import ai.eliza.plugins.agent.runtime.NativeProviderAdmission.CloudReadFailure;
 public class WorkspaceFallbackTest {
  static int checks;
@@ -29,7 +29,7 @@ public class WorkspaceFallbackTest {
   System.out.println("PASS Workspace fallback "+checks);
  }
 }`);
-  const out=runJvm([nativeSource('GoogleWorkspaceReturn.java'),nativeSource('GoogleWorkspaceReturnFlow.java'),upstreamAgentRuntime('NativeProviderAdmission.java'),file],'ai.elizaresearch.alphaphone.WorkspaceFallbackTest',{json:true});
+  const out=runJvm([nativeSource('GoogleWorkspaceReturn.java'),nativeSource('GoogleWorkspaceReturnFlow.java'),upstreamAgentRuntime('NativeProviderAdmission.java'),file],'ai.alphacompute.alphaphone.WorkspaceFallbackTest',{json:true});
   assert.match(out,/^PASS Workspace fallback 15/);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
