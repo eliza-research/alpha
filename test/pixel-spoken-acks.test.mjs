@@ -1656,3 +1656,23 @@ test('busy hold on-device: an idle Mute whose close rejects ends the conversatio
   assert.equal(f.sends,0);assert.deepEqual(f.s.spoken(),[]);assert.equal(closes,1);assert.equal(cancels,1,'the failed capture is retired once');assert.equal(listens,1,'no replacement capture');
  }finally{await closeLive(f);}
 });
+
+// --- Open microphone on the on-device route (the phone's echo-cancelled capture).
+test('on-device open microphone: the turn is sent at the pause with the capture open; resumed speech takes it back and sends the joined text',async()=>{
+ const f=onDeviceLiveFixture();f.openMic=true;
+ const spoken=[];f.replySpeaker={speak:async(text,signal,onStarted)=>{spoken.push(text);onStarted();},hold(){f.held=(f.held||0)+1;},release(){f.released=(f.released||0)+1;}};
+ try{
+  await f.shell.startVoice();await f.clock.flush();const h=f.s.handlers;assert.ok(h,'the live capture is open');assert.equal(f.held,1);
+  h.onSpeechStart(0);h.onSpeechEnd(20);h.onSegment('Add lunch with Sam');await f.clock.advance(0);
+  assert.equal(f.sends,1,'sent at the pause, with no gap');assert.equal(f.s.closes,0,'the capture stays open');
+  assert.equal(f.s.captures.filter(capture=>capture.active).length,1);
+  const first=f.sendInputs[0];
+  h.onSpeechStart(Date.now());await f.clock.advance(400);
+  assert.equal(first.signal.aborted,true,'held speech takes the unheard turn back');
+  // The fixture's held request settles as the real transport does once it is cancelled.
+  f.releaseReply();await f.clock.flush();
+  h.onSpeechEnd(Date.now());h.onSegment('tomorrow at noon.');await f.clock.advance(0);await f.clock.flush();
+  assert.equal(f.sends,2);assert.equal(f.sendInputs[1].text,'Add lunch with Sam tomorrow at noon.');assert.equal(f.sendInputs[1].supersedes,first.turnId);
+  assert.deepEqual(spoken,[],'nothing from the turn that was taken back is spoken');
+ }finally{await closeLive(f);}
+});

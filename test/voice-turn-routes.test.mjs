@@ -257,7 +257,7 @@ test('the end-of-turn chain keeps Clef off: the local scorer decides, and its pa
 
 test('sources: the adapter wires the endpoint and heard routes through the resident binding; Android allows exactly these routes', () => {
   const adapter = fs.readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts', import.meta.url), 'utf8');
-  assert.match(adapter, /\.\.\.\(streamingCloud\?\{\}:\{endpoint:\(text:string,signal:AbortSignal\)=>\{current\(\);return semanticEndpoint!\(text,signal\);\}\}\)/);
+  assert.match(adapter, /\.\.\.\(streamingCloud\|\|openMic\?\{\}:\{endpoint:\(text:string,signal:AbortSignal\)=>\{current\(\);return semanticEndpoint!\(text,signal\);\}\}\)/);
   // The chain: the resident's fused scorer, then Clef only through the #663 switch.
   assert.match(adapter, /const semanticEndpoint=streamingCloud\?undefined:createEndpointChain\(\{local:residentEndpoint\(residentRequest\),clef:clefEndpointStage\(\)\}\)!;/);
   assert.match(adapter, /connectionController\.voiceConversationCurrent\(binding,false\)/);

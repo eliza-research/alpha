@@ -33,6 +33,7 @@ import { speakCloudSpeechChunks } from '../../../../.eliza/client-features/packa
 import { clefEndpointStage, selectVoiceRoute, speechRoute, noteNetworkSpeechFailure, clearNetworkSpeechHold, voicePreferenceKeys, voiceSendPolicy, type VoicePreference } from '../runtime/voice-selection';
 import { beginVoiceTurn, markVoiceTiming, abandonVoiceTurn, finishVoiceTurn, sendVoiceEntry, recordLiveVoiceTiming, recordEndpointVoiceTiming, recordHeardVoiceTiming, activeVoiceTurn, observeVoiceStartup, runVoiceStartupPreparation } from '../runtime/voice-timing';
 import { residentEndpoint, createHeardReporter, createEndpointChain } from '../runtime/voice-turn-routes';
+import { createLocalReplySpeaker, openMicrophoneAvailable } from '../runtime/local-reply-speech';
 import { createNativeLiveDictation, nativeAssistantListener, nativeLiveVoiceReady, openNativeLiveStream, type NativeLiveDictation } from '../runtime/native-live-voice';
 import { installNativeVoiceTurnMarks } from '../runtime/native-voice-turn';
 import { VoiceAssistantSession, type AssistantState, type AssistantTextFrame } from '../runtime/voice-assistant';
@@ -52,6 +53,14 @@ const noteReadUnavailable = () => speechRoute()==='device' ? 'On-device speech i
 type Bag = Record<string, any>;
 type Clip = { recordingId: string; durationMs: number };
 const CALL_PAUSED = 'Voice paused for a phone call.';
+/**
+ * Open-microphone turn taking on the on-device route. The VAD closes a segment after 256 ms of
+ * silence and the turn is sent at once (no further gap). Resumed speech must be held 400 ms, longer
+ * than a blip plus the hangover, to take a pending turn back or to interrupt a playing reply; a
+ * transcript that passes the echo gate does either sooner. Engineering values, not yet measured.
+ */
+const OPEN_MIC_HANGOVER_MS = 256;
+const OPEN_MIC_TIMING = { shortGapMs: 0, longGapMs: 0, bargeInConfirmMs: 400, playbackBargeInMs: 400 };
 const completeClip = (value: VoiceRecordingStopped): value is Clip =>
   !value.interrupted && Number.isFinite(value.durationMs);
 const deviceVoice = registerPlugin<{
@@ -660,7 +669,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       // what it heard, and the held start with it.
       type CueTurn={signal:AbortSignal;settled?:boolean};
       let cueSpeech:{captureRetired:(()=>boolean)|null;speak(text:string,signal:AbortSignal,turn:CueTurn):Promise<void>}|undefined;
-      const sendTurn=async(input:{turnId:string;text:string;voiceTurnSignal:any;signal:AbortSignal;onText?:(text:string,frame?:AssistantTextFrame)=>void})=>{
+      const sendTurn=async(input:{turnId:string;text:string;voiceTurnSignal:any;signal:AbortSignal;onText?:(text:string,frame?:AssistantTextFrame)=>void;supersedes?:string})=>{
         const cueTurn:CueTurn={signal:input.signal};try{
         input.signal.throwIfAborted();current();
         // VOICE_SEND_POLICY: 'auto-send' sends this transcript now; 'review' waits for Send or Discard.
@@ -755,7 +764,13 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
           try{await (streamingCloud?streamingCloud.speak(text,signal,started):local!.speak(text,signal,started,true,{conversation:true}));}
           finally{if(audible)heard.settledAt=Date.now();}
         }};
-        const listen=streamingCloud?streamingCloud.listen:nativeAssistantListener({onLatency:recordLiveVoiceTiming,onInterim:text=>{if(token!==generation||chatDestination!==chat)return;conversationInterim=text;refresh();}});
+        // On-device route on the phone: the microphone stays open through the reply. A turn is sent at
+        // the first pause (a short VAD hangover, no gap); speech that resumes before any reply audio
+        // takes the turn back and sends the joined text, and speech held over the reply interrupts it.
+        // The session keeps the busy hold when the capture reports no echo cancellation.
+        const openMic=!streamingCloud&&openMicrophoneAvailable();
+        const replySpeech=openMic?createLocalReplySpeaker():undefined;
+        const listen=streamingCloud?streamingCloud.listen:nativeAssistantListener({...(openMic?{endHangoverMs:OPEN_MIC_HANGOVER_MS}:{}),onLatency:recordLiveVoiceTiming,onInterim:text=>{if(token!==generation||chatDestination!==chat)return;conversationInterim=text;refresh();}});
         const assistant:VoiceAssistantSession=new VoiceAssistantSession({
           conversationId:prepared.binding.conversationId,
           assertCurrent:current,
@@ -793,7 +808,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
             own.fullDuplex=opened.fullDuplex===true;return opened;
           },
           // After the short gap: the chain. Unavailable, slow or failing: the long gap decides.
-          ...(streamingCloud?{}:{endpoint:(text:string,signal:AbortSignal)=>{current();return semanticEndpoint!(text,signal);}}),
+          ...(streamingCloud||openMic?{}:{endpoint:(text:string,signal:AbortSignal)=>{current();return semanticEndpoint!(text,signal);}}),
           shouldRespond:(text,context)=>shouldRespondToVoiceTurn(text,context)&&(!cueHeard||shouldRespondToVoiceTurn(text,{recentAgentReply:cueHeard.text,replyAgeMs:cueAge(cueHeard),agentSpeaking:cueHeard.settledAt===undefined})),
           // The session asks for the signal only after the endpointer or the long gap committed the
           // turn, so a low text end-of-turn score must not hold it back: the server vetoes a turn on
@@ -803,7 +818,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
           send:sendTurn,
           // On-device speech refuses a likely secret over the whole reply, before any sentence plays.
           speakable:text=>{const spoken=toSpeakableText(workflowReplyText(text).text);if(!streamingCloud)screenConversationSpeech(spoken);return spoken;},
-          speak:async input=>{input.signal.throwIfAborted();current();const started=()=>{current();input.onStarted();};const pending=streamingCloud?streamingCloud.speak(input.text,input.signal,started):local!.speak(input.text,input.signal,started,true,{conversation:true});conversationSpeech=pending;try{await pending;input.signal.throwIfAborted();current();}catch(failure){if((failure as {code?:string})?.code==='speech-cleanup-unconfirmed'){mediaUnconfirmed=failure;stopping=Promise.reject(failure);void stopping.catch(()=>{});}throw failure;}finally{if(conversationSpeech===pending)conversationSpeech=undefined;}},
+          speak:async input=>{input.signal.throwIfAborted();current();const started=()=>{current();input.onStarted();};const pending=streamingCloud?streamingCloud.speak(input.text,input.signal,started):replySpeech?replySpeech.speak(input.text,input.signal,started):local!.speak(input.text,input.signal,started,true,{conversation:true});conversationSpeech=pending;try{await pending;input.signal.throwIfAborted();current();}catch(failure){if((failure as {code?:string})?.code==='speech-cleanup-unconfirmed'){mediaUnconfirmed=failure;stopping=Promise.reject(failure);void stopping.catch(()=>{});}throw failure;}finally{if(conversationSpeech===pending)conversationSpeech=undefined;}},
           // After an interruption only what was played stays in this conversation's reply; the rest is
           // marked unheard, and the agent is asked to keep only the played prefix (nothing when it was
           // fully heard).
@@ -824,6 +839,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
           onTurn:(event,turnId,detail)=>{if(token!==generation)return;if(event==='submitted'){recordingEnded(`live:${turnId}`,'conversation');markVoiceTiming('transcript-ready');if(detail)recordEndpointVoiceTiming(detail.endpoint);const timing=activeVoiceTurn();if(timing){timingTurns.set(turnId,timing);if(timingTurns.size>32)timingTurns.delete(timingTurns.keys().next().value!);}}else if(event==='first-audio')markVoiceTiming('first-audio');else if(event==='finished')finishVoiceTurn();else abandonVoiceTurn();},
           onLevel:peak=>{if(token!==generation)return;conversationLevels=[...conversationLevels.slice(-43),peak];},
           onState:value=>{
+            if(value.phase==='idle'||value.phase==='error')replySpeech?.release();
             if(token!==generation||chatDestination!==chat||conversationVoice!==assistant)return;
             if(value.phase==='error'&&quietVoiceRetry((value as BatchVoiceState).error,chat,token))return;
             if(value.phase==='speaking')quietRetries=0;
@@ -836,7 +852,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         // Keep capture open briefly after a provider final so a buffered next
         // onset can continue the same utterance before the reply hold mutes it.
         // This adds at most 400 ms after the final, only on Cloud streaming.
-        },streamingCloud?{timing:{shortGapMs:0,longGapMs:400}}:undefined);
+        },streamingCloud?{timing:{shortGapMs:0,longGapMs:400}}:openMic?{openMic:true,pipelineSpeech:true,timing:OPEN_MIC_TIMING}:undefined);
+        replySpeech?.hold();
         conversationLive=assistant;conversationVoice=assistant;conversationInterim='';conversationLevels=[];started=Date.now();
         try{await assistant.start();current();return;}
         catch(failure){
