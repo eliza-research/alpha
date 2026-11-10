@@ -52,8 +52,9 @@ test('native Photos keeps the deep window after a catalog event and reloads evic
  const skip=page.getByRole('button',{name:'Not now',exact:true});if(await skip.isVisible())await skip.click();
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  const grid=page.locator('[data-alpha-app-scroll="photos"]'),count=page.locator('.photo-day-header span');
- await expect(count).toHaveText('48');
- for(let expected=72;expected<=384;expected+=24){await grid.evaluate(el=>el.scrollTo(0,el.scrollHeight));await expect(count).toHaveText(String(expected));}
+ // The current grid opens one native page; each deeper page is requested by scrolling.
+ await expect(count).toHaveText('24');
+ for(let expected=48;expected<=384;expected+=24){await grid.evaluate(el=>el.scrollTo(0,el.scrollHeight));await expect(count).toHaveText(String(expected));}
  await page.waitForTimeout(180);
  await page.evaluate(()=>(window as any).mediaFixture.emit());
  await expect(count).toHaveText('384');

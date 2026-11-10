@@ -33,8 +33,9 @@
   display:flex;flex-direction:column;gap:8px;overflow:auto;margin:0 auto;pointer-events:none;
 }
 .alpha-plan-notice{flex:none;pointer-events:none;box-sizing:border-box;padding:12px 14px;border-radius:18px;background:var(--s2,#f3f3f3);color:var(--fg,#000);box-shadow:0 4px 20px rgba(0,0,0,.14);font:14px/1.4 'Public Sans',system-ui,sans-serif}
-/* Settings already exposes plan actions and must remain reachable under the notice. */
-body:has([data-alpha-layer="app"]:not([inert]) [data-settings-page]) .alpha-plan-notices{display:none}
+/* Passive notices return on Home; they never cover controls in an app or conversation. */
+html:not([data-active-view="home"]) .alpha-plan-notices,
+body:has([data-alpha-layer="conversation"][aria-hidden="false"]) .alpha-plan-notices{display:none}
 /* Only an overflowing stack owns body gestures; ordinary notices leave the app tappable. */
 .alpha-plan-notices[data-scrollable="true"] .alpha-plan-notice{pointer-events:auto}
 .alpha-plan-notice p{margin:0 0 8px;overflow-wrap:anywhere}

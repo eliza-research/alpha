@@ -100,9 +100,11 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       // Agent connection no longer says the agent is ready.
       await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
       await button(page, 'Settings').click();
-      await page.getByRole('button', { name: 'Agent', exact: true }).click();
-      await expect(page.getByRole('heading',{name:'Agent',exact:true})).toBeVisible();
-      await expect(page.getByRole('region',{name:'Settings',exact:true})).not.toContainText('Connected');
+      await button(page, 'Account').click();
+      await page.getByRole('button', {name:/^AI connection/}).click();
+      const connection = page.getByRole('dialog',{name:'AI connection',exact:true});
+      await expect(connection).toBeVisible();
+      await expect(connection).not.toContainText('Connected');
     }
     // Exactly one stream request and no automatic resend of any kind.
     await page.waitForTimeout(1500);
@@ -176,9 +178,11 @@ test('without a network the composer stays silent, sends nothing, keeps the draf
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   // Readiness is retracted while offline.
   await button(page, 'Settings').click();
-  await page.getByRole('button', { name: 'Agent', exact: true }).click();
-  await expect(page.getByRole('region',{name:'Settings',exact:true})).not.toContainText('Connected');
-  await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
+  await button(page, 'Account').click();
+  await page.getByRole('button', {name:/^AI connection/}).click();
+  const connection = page.getByRole('dialog',{name:'AI connection',exact:true});
+  await expect(connection).not.toContainText('Connected');
+  await connection.getByRole('button', {name:'Close Account',exact:true}).click();
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await context.setOffline(false);
   await page.waitForFunction(() => navigator.onLine);

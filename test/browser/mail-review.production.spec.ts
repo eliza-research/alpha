@@ -115,6 +115,7 @@ async function androidWithMailbox(page: Page, unread = false) {
           if (method === 'secureRemove') { store.delete(input.slot); return {}; }
           if (method === 'request') {
             const path = new URL(input.url).pathname;
+            if (path === '/api/v1/maps/capabilities') return { status: 503, data: { code: 'maps_not_configured', error: 'Synthetic Maps unavailable' } };
             if (path === '/api/v1/user') return { status: 200, data: { success: true, data: { id: account } } };
             if (path === '/api/v1/subscription/entitlement') return { status: 404, data: {} }; // Deployed Cloud has no subscription entitlement route yet.
             if (path === '/api/v1/billing/limits') return { status: 200, data: { success: true, data: { v2: { subscription: { status: 'available', value: { planKey: 'plus_monthly', state: 'active', currentPeriodEnd: '2099-01-01T00:00:00.000Z' } } } } } };

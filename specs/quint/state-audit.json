@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "07d680fa64b20999f5f25fe24d7cccb55b4bbc4d",
-  "ledgerSha256": "9ace6917109287d684766d36acd0ccb144f1caadc8df9eaf662653cffc90fe9a",
+  "ledgerSha256": "0a6e2a7f274ec80af07dc89b761b2115dec0487e77b1189a30b4efb4d6e2d0f6",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -42456,7 +42456,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.css",
-      "sha256": "2006bc2449bb8861eb00e94f4183e47d7810d9cebed30060e95b51c0495d5abc",
+      "sha256": "2de4f961c21809819072eea23a0291a03860ad7effb814ee2ab017dab8ec1d4d",
       "allocatedModels": [
         "Application",
         "CloudConnectionNotices",
@@ -226058,6 +226058,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "f2c43339bc28056bf512768fbc4ee818dd2c5334aa5a30892f64888245a6d39f"
+    "sha256": "ca5a2b579da34fe43c4b222a689afcf8704806d0e17ae7609d776e2643ad466f"
   }
 }

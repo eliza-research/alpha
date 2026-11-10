@@ -38420,9 +38420,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "2006bc2449bb8861eb00e94f4183e47d7810d9cebed30060e95b51c0495d5abc",
+      "sha256": "2de4f961c21809819072eea23a0291a03860ad7effb814ee2ab017dab8ec1d4d",
       "stateAnchors": [],
-      "integrationReview": "2026-11-10: ResizeObserver derives overflow from this exact notice stack, updates only data-scrollable and disconnects on ref cleanup. Only overflowing notice card bodies accept scroll gestures; ordinary notices and outer gaps retain pointer transparency. Existing mounted notice campaign verifies overflow flag, wheel scrolling, hit targets, dismissal and Settings suppression; normal-height Calendar and Notes action checks remain required after the broader run caught unconditional pointer interception. No account or provider authority change."
+      "integrationReview": "2026-11-10: Passive Cloud notices are suspended, not dismissed, while an app or conversation owns the foreground. They return on idle Home. Overflow-only body gestures remain; exact account/plan admission and hard sign-in gates are unchanged. The mounted two-trace campaign observes Settings, Inbox and conversation round-trips, dismissal, scroll and action ownership. Physical WebView and final native acceptance remain open."
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
