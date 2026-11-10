@@ -3,7 +3,7 @@ import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {checkTraces, qmap} from '../check-traces.mjs';
-import {boundInputs, call, captureSources, checkpoint, deferred, read, tick, trace} from './support.mjs';
+import {boundInputs, call, captureSources, checkpoint, deferred, read, sourceModule, tick, trace} from './support.mjs';
 
 const driver = fileURLToPath(import.meta.url);
 const adapterPath = 'apps/app/src/prototype/maps-adapter.ts';
@@ -26,7 +26,7 @@ function compile() {
   return new vm.Script(code + '\nglobalThis.install = installPrototypeMapsAdapter;');
 }
 
-function fixture(compiled) {
+function fixture(compiled, providerHelpers) {
   const window = new EventTarget(), document = Object.assign(new EventTarget(), {hidden: false});
   const shell = {pageSuspended: false};
   const mapsModule = {render: () => ({cats: []})};
@@ -60,6 +60,7 @@ function fixture(compiled) {
     dispose() {}
   }
   const context = vm.createContext({window, document, AbortController, queueMicrotask,
+    ...providerHelpers, googleMapsLogo: 'fixture-google-attribution.svg',
     registerPlugin: name => name === 'AlphaCalendar' ? {list: input => request('native', input)} : {},
     NavigationVoice: class {}, BackgroundNavigation: class {}, MapsScreenController: ScreenPort,
     mapsConnection: () => undefined, onMapsConnectionChange: () => () => {}, NativeMapsLocation: class {},
@@ -208,9 +209,10 @@ const cases = [
 export async function checkMapsEventReturn(extraSources = []) {
   const sources = [adapterPath, helperPath, driver, ...extraSources];
   captureSources(sources);
+  const providerHelpers = await sourceModule('apps/app/src/maps/cloud-provider.ts');
   const compiled = compile(), traces = [];
   for (const [name, steps] of cases) {
-    const f = fixture(compiled), t = trace(name, f.observe());
+    const f = fixture(compiled, providerHelpers), t = trace(name, f.observe());
     try {
       for (const [operation, ...args] of steps) {
         await f[operation](...args);
