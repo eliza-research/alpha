@@ -2912,6 +2912,30 @@
         "Six bounded generation advances; every emitted Quint transition is compared with the actual Java gate in test/keyboard-dictation.test.mjs. The recording-id fence and sensitive field admission have separate host Java scenarios.",
         "Network transport, Android media capture and framework voice IME selection are not established by this gate model."
       ]
+    },
+    {
+      "path": "specs/quint/native/KeyboardDictationCloud.qnt",
+      "module": "KeyboardDictationCloud",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "cloudSuccessTest",
+        "providerSwitchRefusesResultTest",
+        "cancelledConnectionCleansUpTest",
+        "changedAccountCannotStartTest",
+        "directDoesNotBorrowCloudAccountTest",
+        "malformedReplyStillWipesAudioTest"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/alphacompute/alphaphone/KeyboardDictationCloud.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/KeyboardDictationPolicy.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CloudSpeechPolicy.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java"
+      ],
+      "abstractions": [
+        "Closed credential, PCM, provider and HTTPS ports exercise one transport call per trace. Direct guard and PCM decoding have declared synthetic boundaries. Installed authority and provider acceptance remain separate."
+      ]
     }
   ]
 }

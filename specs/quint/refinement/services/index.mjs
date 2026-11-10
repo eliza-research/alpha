@@ -52,6 +52,7 @@ import {checkResidentJavaSourceStage} from './resident-java-source-stage.mjs';
 import {checkAndroidBrowserModuleStage} from './android-browser-module-stage.mjs';
 import {checkAndroidBuildInputReadiness} from './android-build-input-readiness.mjs';
 import {checkLifeOpsScheduledTaskRoute} from './lifeops-scheduled-task-route.mjs';
+import {checkPreparedWorkflowWorker} from './prepared-workflow-worker.mjs';
 import {checkPersonalAssistantScheduledTaskCustody} from './personal-assistant-scheduled-task-custody.mjs';
 
 export async function runServicesRefinement(onProgress) {
@@ -69,7 +70,7 @@ export async function runServicesRefinement(onProgress) {
       checkPreparedSourceStamp, checkClientFeaturePublication, checkAppUpdateCandidate, checkCloudQaLauncher, checkBrowserCloudRequestCustody, checkGmailAgentMailboxRecovery,
       checkDevelopmentDigestPending, checkAndroidGzipAssetStage, checkResidentJavaSourceStage,
       checkAndroidBrowserModuleStage, checkAndroidBuildInputReadiness, checkLifeOpsScheduledTaskRoute,
-      checkPersonalAssistantScheduledTaskCustody].map(withDriver),
+      checkPersonalAssistantScheduledTaskCustody, checkPreparedWorkflowWorker].map(withDriver),
     ...[runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement,
       runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement, runCanonicalNotesRefinement,
       runTaskServiceRefinement, runTaskSchedulerRuntimeRefinement, runPilotApkUpdateRefinement,
