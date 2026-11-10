@@ -2143,7 +2143,7 @@
     }
   ],
   "currentUpstream": {
-    "revision": "c3dedb6efbb8161f535294371afdbe96ec77027b",
+    "revision": "a68b3525970fe9a30efd76979eb6ed4d8327b277",
     "classification": "current-upstream-formal-specifications",
     "models": [],
     "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The selected source-owned Quint sidecars below retain DeletionOwnerAdmission, CloudSpeechSuccessor, MapsTileCache and ViewportCopyright at the current pin. Their independent model and transport checks do not establish complete downstream refinement, native release, provider, image or device qualification. Any future TLA/TLC source requires separate allocation.",
