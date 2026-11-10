@@ -38,6 +38,21 @@ export async function mountGoogleAccountPanel(rows,{calendarEdits=true,gmailChan
   // Like 3800a178e's google-agent-access: a fresh capture with a revision receipt, and a guarded save that rechecks it.
   './google-agent-access':{googleAgentAccess:()=>({...access}),publishGoogleAgentAccess:async()=>{},captureGoogleCalendarAccess:async()=>{await p.onCapture?.();return p.unreadable?undefined:{calendarEdits:access.calendarEdits,receipt:{revision:p.revision}};},setGoogleAgentAccess:async(change,guard)=>{if(saveFails)throw Error('Settings could not be saved');if(guard&&(!guard.current()||access.calendarEdits!==guard.expectedCalendarEdits||guard.receipt.revision!==p.revision))throw Error('Calendar choice changed. Review it again.');p.accessChanges.push({...change});Object.assign(access,change);p.revision++;p.unreadable=false;dom.window.dispatchEvent(new dom.window.Event('alpha:device-settings'));}},
  };
+ // Use the current publication implementation: the old no-op stub hid host failures.
+ let publicationQueue=Promise.resolve();
+ const preferences=()=>({agentGmailChanges:access.gmailChanges,agentCalendarEdits:access.calendarEdits});
+ const publicationModules={...modules,
+  '@capacitor/core':{Capacitor:{isNativePlatform:()=>false}},
+  './local-agent':{browserLocalAgentEnabled:browser},
+  '../browser/device-preferences':{
+   cachedDevicePreferences:()=>p.unreadable?undefined:preferences(),initializeDevicePreferences:()=>{},readDevicePreferences:async()=>preferences(),
+   captureDevicePreferences:async()=>{await p.onCapture?.();if(p.unreadable)throw Error('Settings unavailable');return{state:preferences(),receipt:{revision:p.revision}};},
+   editDevicePreferences:async(edit,_unused,receipt)=>{if(saveFails)throw Error('Settings could not be saved');if(receipt&&receipt.revision!==p.revision)throw Error('Calendar choice changed. Review it again.');const next=preferences();edit(next);const change={};if(next.agentGmailChanges!==access.gmailChanges)change.gmailChanges=next.agentGmailChanges;if(next.agentCalendarEdits!==access.calendarEdits)change.calendarEdits=next.agentCalendarEdits;if(Object.keys(change).length)p.accessChanges.push(change);Object.assign(access,{gmailChanges:next.agentGmailChanges,calendarEdits:next.agentCalendarEdits});p.revision++;p.unreadable=false;dom.window.dispatchEvent(new dom.window.Event('alpha:device-settings'));},
+  },
+ };
+ const publication={exports:{}};
+ vm.runInContext(transformSync(readFileSync(new URL('../../apps/app/src/runtime/google-agent-access.ts',import.meta.url),'utf8'),{loader:'ts',format:'cjs',target:'es2022'}).code,vm.createContext({module:publication,exports:publication.exports,require:name=>publicationModules[name]??(()=>{throw Error('Unexpected publication import '+name);})(),navigator:{locks:{request:(_name,_options,operation)=>{const result=publicationQueue.then(operation);publicationQueue=result.catch(()=>{});return result;}}},fetch:async()=>({ok:true})}));
+ modules['./google-agent-access']=publication.exports;
  let input=readFileSync(new URL('../../apps/app/src/runtime/google-connection-ui.tsx',import.meta.url),'utf8');
  if(observeAdmission){
   const marker=' async function load(){';
