@@ -20,9 +20,10 @@ import type {CanonicalCalendarSyncSettings} from './calendar-sync-settings';
 type GoogleCalendarIntent=CanonicalCalendarSyncSettings&{authorizing:boolean;review?:AgentCalendarSyncReview;retained:Map<string,GoogleDisconnectContext>};
 type GoogleAccountRead={binding:GoogleConnectionReturnBinding;rows:GmailAccount[]};
 type GoogleCalendarAccessChoice={calendar:GoogleCalendarIntent;rows:GmailAccount[]|null;read:GoogleAccountRead};
+let returnToAccount=false;
 let opened=false,calendarIntent:GoogleCalendarIntent|null=null;const listeners=new Set<()=>void>();
 /** openCalendar opens this same panel to link the same Eliza Calendar with Google; closing cancels it. */
-export const googleConnectionController={open(){opened=true;for(const listener of listeners)listener();},openCalendar(scope:CanonicalCalendarSyncSettings){calendarIntent={...scope,authorizing:false,retained:new Map()};googleConnectionController.open();},close(){opened=false;calendarIntent=null;for(const listener of listeners)listener();},calendar:()=>calendarIntent,subscribe(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};},getSnapshot:()=>opened};
+export const googleConnectionController={openFromAccount(){returnToAccount=true;googleConnectionController.open();},open(){opened=true;for(const listener of listeners)listener();},openCalendar(scope:CanonicalCalendarSyncSettings){calendarIntent={...scope,authorizing:false,retained:new Map()};googleConnectionController.open();},close(){opened=false;calendarIntent=null;for(const listener of listeners)listener();if(returnToAccount){returnToAccount=false;connectionController.openPlan();}},calendar:()=>calendarIntent,subscribe(listener:()=>void){listeners.add(listener);return()=>{listeners.delete(listener);};},getSnapshot:()=>opened};
 export function googleCalendarAccountKey(){const account=connectionController.getSnapshot().cloudAccount;return account?.organizationId?{environment:account.environment,userId:account.userId,organizationId:account.organizationId}:null;}
 function currentGoogleConnectionReturnBinding():GoogleConnectionReturnBinding|null {
  const cloud=connectionController.getCloudClient(),key=googleCalendarAccountKey();

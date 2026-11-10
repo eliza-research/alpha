@@ -1,4 +1,3 @@
-import {BrowserReviews} from '../browser/review';
 import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
 import {residentRecoveryCopy} from '../runtime/resident-recovery';
 import {cloudServiceName} from '../runtime/cloud-protocol';
@@ -251,14 +250,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     return back?.(st, api) ?? false;
   };
   let owner: any, facts: Bag = {}, controls: Bag = {}, delivery: Bag = {}, generation = 0,scaleGeneration=0, cross:Bag={}, choices:Bag[]|null=null, history:Bag[]|null=null, notificationBusy=false;
-  const accountReviews=new BrowserReviews();
-  async function reviewSignOut(){
-    const instance=owner,account=connectionController.getCloudClient();
-    if(!instance?.live||!account||instance.S().view!=='settings'||instance.vget('settings').page!=='cloud-plan')return;
-    const accepted=await accountReviews.confirm('settings-sign-out','Sign out?','Your notes, chats and files will stay on this device.','Sign out');
-    const current=connectionController.getCloudClient();
-    if(accepted&&owner===instance&&instance.live&&instance.S().view==='settings'&&instance.vget('settings').page==='cloud-plan'&&current?.sessionId===account.sessionId&&current.credentialId===account.credentialId)await connectionController.cloudSignOut();
-  }
   let passwordOpening=false,photoAccessBusy=false;
   let photoAccess:PhotoAccess|null=null;
   let recovery: RecoveryDomain[] = [];
@@ -492,7 +483,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   };
   p.componentDidUpdate = function (previousProps: Bag, previousState: Bag) {
     update?.call(this, previousProps, previousState);
-    if(this.S().view!=='settings'||this.vget('settings').page!=='cloud-plan')accountReviews.cancel('settings-sign-out');
     // Switching away from Settings (Home, another view) locks and forgets the password manager.
     if (typeof this.S === 'function' && this.S().view !== 'settings') leavePasswordManager();
     const theme = this.state?.theme;
@@ -505,7 +495,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     }
   };
   p.componentWillUnmount = function () {
-    accountReviews.cancel('settings-sign-out');
     if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; facts = {}; controls = {}; delivery = {}; cross={}; choices=null; history=null; roles=null; crashLog=null; }
     window.removeEventListener('alpha:settings-page',this.settingsNavigation);
     window.removeEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
@@ -544,7 +533,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const account = connection.cloudAccount;
     out.settingsVersion=buildVersion==='Unavailable'?'Development preview':'Version '+buildVersion;
     out.accountEmail=account?(account.email||'Signed in'):'Not signed in';
-    out.openAccount=()=>{activeSettingsCategory='settings-account';api.set({page:'settings-account'});};
+    out.openAccount=()=>connectionController.openPlan();
     const serviceName = cloudServiceName(connectionController.getCloudClient()?.client.environment ?? account?.environment ?? connection.signIn?.environment ?? 'production');
     // The always-present resident is starting or recovering, never "not connected" (P-43).
     const pending = agentPendingText(connection, 'Not connected');
@@ -709,26 +698,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         const plan=connectionController.residentPlanSettings();
         if(plan){
           const day=(at:number)=>new Date(at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
-          if(state.page==='cloud-plan'){
-            // Runtime location and Cloud inference are separate facts.
-            const rows:Bag[]=[info('Account',plan.account??(plan.offline?`${serviceName} unreachable`:'Not signed in')),...(plan.signedIn?[info('Plan',plan.plan)]:[]),info('AI connection',plan.inference)];
-            if(plan.endsAt)rows.push(info(plan.status==='active'||plan.status==='trialing'||plan.status==='past_due'?'Plan runs until':'Plan ended',day(plan.endsAt)));
-            // Plan state, not a balance: the allowance Cloud reports and the latest limit with its retry time.
-            if(plan.allowance)rows.push(info('Plan allowance',plan.allowance));
-            if(plan.limit)rows.push(info('AI requests',plan.limit));
-            if(plan.keyExpiresAt)rows.push(info(plan.keyExpiring?'Sign-in expires soon':'Sign-in expires',day(plan.keyExpiresAt)));
-            if(connection.busy)rows.push(info('Status',connection.message||'Please wait…'));
-            const actions:Bag[]=connection.busy?[action('Cancel',()=>connectionController.cancel())]:plan.signedIn?[
-              ...(plan.keyExpiring?[{kNav:true,label:'Approve this phone again',lbl:'Approve this phone again',chev:true,noAB:true,go:()=>void connectionController.residentCloudLogin()}]:[]),
-              // A membership code grants subscription access without purchasing a recurring plan.
-              {kNav:true,label:'Redeem code',lbl:'Redeem code',chev:true,noAB:true,go:()=>connectionController.openPlan({codeEntry:true})},
-              {kNav:true,label:'Manage plan',lbl:'Manage plan',chev:true,noAB:true,go:()=>void connectionController.residentManagePlan()},
-              {kNav:true,label:'Sign out',lbl:`Sign out of ${serviceName}`,chev:true,noAB:true,go:()=>void reviewSignOut()},
-            ]:plan.offline?[{kNav:true,label:'Check plan again',lbl:'Check plan again',chev:true,noAB:true,go:()=>connectionController.recheckPlanOnReturn()}]
-            :[{kNav:true,label:`Sign in with ${serviceName}`,lbl:`Sign in with ${serviceName}`,chev:true,noAB:true,go:()=>void connectionController.residentCloudLogin()}];
-            out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Account & plan',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups:[group(rows),group(actions)]});
-          }
+          if(state.page==='cloud-plan')out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Account',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups:[group([{kNav:true,label:'Open account',lbl:'Open account',chev:true,noAB:true,go:()=>connectionController.openPlan()}])]});
         }
+
         page.groups.push(group([{...connectionHelpRow(),label:'Agent connection',lbl:'Agent connection'},{kNav:true,label:'AI provider',lbl:'AI provider',val:connection.providerStatus?.selected&&connection.providerStatus.provider==='cerebras'?'Own API keys':connection.providerStatusError?'Status unavailable':'Cloud',hasVal:true,chev:true,noAB:true,go:()=>connectionController.openProviderSettings()}]));
         // Raw recovery reason, stage and record count are developer data: the product keeps the plain status.
         if(native&&developerTools&&state.page==='agent-recovery-details'){
@@ -947,7 +919,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         for (const row of section.rows) if (!rows.has(row.label)) rows.set(row.label, row);
       }
       const labels: Record<string, string> = {
-        'Accounts': 'Account & plan',
+        'Accounts': 'Account',
         'Connections': 'Google & email',
         'AI provider': 'AI connection',
         'Agent connection': 'Connection help',
@@ -970,7 +942,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           rows.delete(name);
           const label = labels[name] || name;
           return [{...row, label, lbl: label, ...(row.aria ? {aria: label} : {}),
-            ...(name === 'Accounts' ? {go:()=>connectionController.residentPlanSettings()?api.set({page:'cloud-plan'}):connectionController.openCloudAccount()} : {}),
+            ...(name === 'Accounts' ? {go:()=>connectionController.openPlan()} : {}),
             ...(name === 'Set up Alpha access' ? {go:()=>{activeSettingsCategory='settings-privacy';api.set({page:'settings-permissions'});}} : {}),
             ...(name === 'Connections' ? {go:()=>googleConnectionController.open(),...(!account?{sub:'Sign in to connect Google'}:{})} : {}),
             ...(name === 'About' ? {hasVal:false, hasSub:false, sub:'', val:''} : {})}];

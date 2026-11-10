@@ -20,8 +20,8 @@ const SHEET_REFUSED = 'Your last request was declined for billing.';
 const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
 const conversation = (page: Page) => page.locator('[data-alpha-layer="conversation"]');
 const bubble = (page: Page, text: string) => page.getByRole('button', { name: 'Message actions: ' + text, exact: true });
-const sheet = (page: Page) => page.getByRole('dialog', { name: 'Subscription', exact: true });
-const controls = (page: Page) => sheet(page).getByRole('region', { name: 'Subscription', exact: true });
+const sheet = (page: Page) => page.getByRole('dialog', { name: 'Account', exact: true });
+const controls = (page: Page) => sheet(page).getByRole('region', { name: 'Balance and membership', exact: true });
 async function send(page: Page, text: string) { await composer(page).fill(text); await composer(page).press('Enter'); }
 /** Screenshots go to ALPHA_BILLING_SHOTS when set (the QA folder), otherwise beside the test result. */
 async function shot(page: Page, info: TestInfo, name: string) {
@@ -41,7 +41,7 @@ async function zeroAccount(page: Page) {
   await page.goto('/');
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   await expect(sheet(page)).toBeVisible({ timeout: 30_000 });
-  await expect(controls(page)).not.toContainText(/Available credits|Add credits|\$\d/);
+  await expect(controls(page)).toContainText('$0.00');
   return foreign;
 }
 const configured = (page: Page) => stub(page, s => s.order.filter((entry: string) => entry.startsWith('configureCloudProvider')).length);
@@ -50,12 +50,12 @@ test('an account without a subscription is told why nothing was sent and gets th
   test.setTimeout(120_000);
   const foreign = await zeroAccount(page);
   await expect(controls(page).getByText('No active subscription', { exact: true })).toBeVisible();
-  await expect(controls(page).getByRole('status').filter({ hasText: NEEDED })).toHaveCount(1);
+  await expect(controls(page).getByRole('status').filter({ hasText: NEEDED })).toHaveCount(0);
   await expect(controls(page).getByRole('button', { name: 'Choose a monthly plan', exact: true })).toBeVisible();
   await expect(controls(page).getByRole('button', { name: 'Enter membership code', exact: true })).toBeVisible();
   await expect(page.getByText(/AI is off/)).toHaveCount(0);
   await shot(page, info, '01-zero-balance-sheet.png');
-  await sheet(page).getByRole('button', { name: 'Close subscription', exact: true }).click();
+  await sheet(page).getByRole('button', { name: 'Close Account', exact: true }).click();
   await expect(sheet(page)).toHaveCount(0);
   await send(page, 'Hello with no credits');
   // The reason is said in the composer's notice, the draft is kept, and the same popup returns.
@@ -82,7 +82,7 @@ test('an invalid or expired membership code is refused in the popup and changes 
   // Cloud gives unknown, expired, disabled and used-up codes one answer (400 invalid_subscription_code).
   await expect(controls(page).getByRole('alert')).toHaveText('This code could not be redeemed. Check the code and try again.');
   await expect(field).toHaveValue(CODE);
-  await expect(controls(page)).not.toContainText(/Available credits|Add credits|\$\d/);
+  await expect(controls(page)).toContainText('$0.00');
   await expect(controls(page).getByText('No active subscription', { exact: true })).toBeVisible();
   await shot(page, info, '03-code-invalid-or-expired.png');
   expect(await stub(page, s => s.redeemed.map((row: { code: string }) => row.code))).toEqual([NORMALIZED]);
@@ -98,7 +98,7 @@ test('a membership code works instead of credits: redeemed, AI rebinds and the n
   await controls(page).getByRole('textbox', { name: 'Membership code' }).fill(CODE);
   await controls(page).getByRole('button', { name: 'Redeem', exact: true }).click();
   // The plan is now the membership; the account panel shows the outcome beside the running agent.
-  const plan = page.getByRole('dialog', { name: 'Eliza Cloud account & plan', exact: true });
+  const plan = page.getByRole('dialog', { name: 'Account', exact: true });
   await expect(plan).toBeVisible({ timeout: 30_000 });
   await expect(plan.getByText(/^Code redeemed for Plus\. It runs until /)).toBeVisible();
   await expect(plan.getByText(/AI is off/)).toHaveCount(0);
@@ -106,7 +106,7 @@ test('a membership code works instead of credits: redeemed, AI rebinds and the n
   const redeemed = await stub(page, s => s.redeemed);
   expect(redeemed.map((row: { code: string }) => row.code)).toEqual([NORMALIZED]);
   expect(redeemed[0].idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
-  await plan.getByRole('button', { name: 'Close connection settings', exact: true }).click();
+  await plan.getByRole('button', { name: 'Close Account', exact: true }).click();
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await send(page, 'Hello after redeeming');
   await expect(bubble(page, 'Hello after redeeming')).toHaveCount(1);
@@ -125,9 +125,7 @@ test('a plan activated in Cloud billing closes the subscription popup on return 
   await page.evaluate(() => { (window as any).sameDocument = true; });
   // Plan selection opens Cloud's billing page only after the account check; nothing is bought here.
   await controls(page).getByRole('button', { name: 'Choose a monthly plan', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Billing', exact: true })).toBeVisible();
-  await expect(page.getByRole('checkbox')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Open billing', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Review billing account', exact: true })).toHaveCount(0);
   await expect.poll(() => stub(page, s => s.opened)).toEqual(['https://cloud.eliza.app/cloud/billing']);
   // The synthetic Cloud answer now reports an active plan, with the cash balance still zero.
   await stub(page, s => { s.accounts[0].plan = undefined; s.persist(); });
@@ -152,12 +150,12 @@ test('Cloud declining a turn mid-use gives one answer and the popup; after plan 
   await send(page, 'What is on my calendar this week?');
   await expect(sheet(page)).toBeVisible({ timeout: 30_000 });
   await expect(controls(page).getByRole('status').filter({ hasText: SHEET_REFUSED })).toHaveCount(1);
-  await expect(controls(page)).not.toContainText(/Available credits|Add credits|\$\d/);
+  await expect(controls(page)).toContainText('$0.00');
   await expect(controls(page).getByRole('button', { name: 'Choose a monthly plan', exact: true })).toBeVisible();
   await expect(controls(page).getByRole('button', { name: 'Enter membership code', exact: true })).toBeVisible();
   await expect(page.getByText(/AI is off/)).toHaveCount(0);
   await shot(page, info, '07-midturn-refusal-popup.png');
-  await sheet(page).getByRole('button', { name: 'Close subscription', exact: true }).click();
+  await sheet(page).getByRole('button', { name: 'Close Account', exact: true }).click();
   await expect(sheet(page)).toHaveCount(0);
   // One answer in the chat: the agent's provider prose and a second billing message never appear.
   await button(page, 'Expand chat').click();
@@ -199,7 +197,7 @@ test('a refusal at zero balance ends when the owner returns from Cloud billing w
   await send(page, 'What is on my calendar this week?');
   await expect(sheet(page)).toBeVisible({ timeout: 30_000 });
   await expect(controls(page).getByRole('status').filter({ hasText: SHEET_REFUSED })).toHaveCount(1);
-  await expect(controls(page)).not.toContainText(/Available credits|Add credits|\$\d/);
+  await expect(controls(page)).toContainText('$0.00');
   await shot(page, info, '10-refusal-at-zero-popup.png');
   // The synthetic plan becomes active and the owner returns: no Refresh tap or cash top-up.
   await stub(page, s => { s.accounts[0].plan = undefined; s.stream = null; s.persist(); });

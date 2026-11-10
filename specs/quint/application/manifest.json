@@ -3370,5 +3370,27 @@
       "Quarter-hour draft times and real month facts; no provider mutation or canonical Calendar authority.",
       "Concrete day/time/month source blocks are checked in calendar-form-controls.mjs; installed behavior remains separate."
     ]
+  },
+  {
+    "path": "specs/quint/application/AccountSheet.qnt",
+    "module": "AccountSheet",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "settingsAndStartupShareAccount",
+      "switchedOwnerCannotConfirm",
+      "dismissPreservesData",
+      "modeAndSignOutPreserveKeys"
+    ],
+    "sources": [
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/runtime/cloud-membership-ui.tsx",
+      "apps/app/src/prototype/settings-adapter.ts"
+    ],
+    "abstractions": [
+      "Two account identities and two connection modes. Data and key revisions abstract preserved stores. Billing, authentication and provider behavior retain their existing contracts.",
+      "Safety scenarios do not establish live-provider, device or UI conformance. No liveness claim."
+    ]
   }
 ]

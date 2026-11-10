@@ -670,7 +670,7 @@ test('closing unknown balance preserves required sign-in for signed-out and expi
 });
 
 const verifyServiceCode = stripTypeScriptTypes(
-  section('async function verifyService(', 'let pendingBillingReview:'),
+  section('async function verifyService(', 'let membershipRead:'),
   {mode: 'strip'},
 );
 function serviceVerificationFixture({replaceCredential, identityPatch} = {}) {
@@ -755,7 +755,7 @@ for (const identityPatch of [{userId: 'other-owner'}, {organizationId: 'other-or
 // Actual saved-credential admission + production projection, with synthetic identity failures only.
 const savedAdmissionCode=stripTypeScriptTypes([
  section('function signInRefused(', '/** Notice shown when Cloud inference'),
- section('async function verifyService(', 'let pendingBillingReview:'),
+ section('async function verifyService(', 'let membershipRead:'),
  section('function signInClient(', '/**\n * A new key was stored'),
  section('async function admitCloudResident(', '/**\n * Cloud reported, on a background refresh'),
  section('async function applyResidentBinding(', '/** The packaged-runtime refusal.'),

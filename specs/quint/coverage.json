@@ -34032,12 +34032,13 @@
         "SettingsNav",
         "NativeUpdateStaging",
         "CalendarPreservationConfirmation",
-        "AppearancePreferenceAdmission"
+        "AppearancePreferenceAdmission",
+        "AccountSheet"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "c589734b04068eae85713a74247b963f8e937511bb2965682609b975705baa1a",
+      "sha256": "69efc856ca0abb841d4cb3c318ec752c000a99958e8e9e0c5565a1449983e715",
       "stateAnchors": [
         {
           "line": 204,
@@ -38288,17 +38289,18 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "d2155680ba49292e285beb39e0d8e3765870f3e588a8b858a0e7bc18cfc99c2b",
+      "sha256": "f4c282351caaae662e3af79fec0bc75538dbf279017c0e66b3ab1bc16a07f53e",
       "stateAnchors": []
     },
     {
       "path": "apps/app/src/runtime/cloud-membership-ui.tsx",
       "models": [
-        "ServiceAuthorization"
+        "ServiceAuthorization",
+        "AccountSheet"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "ccea3c289765ae04f658aa6dbd03ef5fd5138d7d309bb571bc8a1b450160d910",
+      "sha256": "58b077969b47170963bc88306eef755f14aadc6241a842cdbb9e25ba0e80aedc",
       "stateAnchors": [
         {
           "line": 5,
@@ -39051,12 +39053,13 @@
         "ChatAttachments",
         "RetainedReminderTapAdmission",
         "ClientObservationSupport",
-        "ObservationTurnDispatch"
+        "ObservationTurnDispatch",
+        "AccountSheet"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "e039135b8cbfb7b7c58aa8f92a815359bbbcd6ce5500f10bf677876cfc3b0ca9",
+      "sha256": "1f74d17aef5a543799748d1578c6e3a7fce3239b352ae20db791e566d40ca8f4",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open."
     },
@@ -41072,7 +41075,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "9e9bf2d5586a8f06145680033648db4279eb2fcd6f821a23ecfe17d9ee96f361",
+      "sha256": "618fa22732b2307e1501bd897d3185cffa5593817557204d89bde7933a8acf2d",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
     },
@@ -41897,7 +41900,7 @@
     },
     {
       "path": "apps/app/src/runtime/image-preview.ts",
-      "sha256": "7ff5c26313203405044e023cbfc342e0a87d849d7f2c939d09c00c03b4a36781",
+      "sha256": "6f2b5275ce2e0e1e4f96328ff95a7b88264caf0a6aa909b787b65420b96b9e0c",
       "models": [
         "ModalScrimOwnership",
         "ChatAttachments"

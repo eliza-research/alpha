@@ -93,11 +93,11 @@ test('Reconnect Gmail opens Google accounts; each authorization hands off once a
   expect(after.opened.slice(before.opened.length),label).toEqual([AUTH]);
   expect(after.reads,label+': no mailbox read until the owner checks again').toBe(before.reads);
  }
- // A returned account update lists again automatically; it never reads mail.
+ // A confirmed account update refreshes the connection and the visible Inbox once.
  const lists=(await f()).lists;
  await page.evaluate(async()=>window.dispatchEvent(new Event((await import('/src/runtime/google-accounts.ts')).GOOGLE_ACCOUNTS_CHANGED)));
  await expect.poll(async()=>(await f()).lists).toBeGreaterThan(lists);
- expect((await f()).reads).toBe(1);
+ await expect.poll(async()=>(await f()).reads).toBe(2);
  // A handoff abandoned while the browser is open (Escape closes the panel) reports nothing as pending.
  await page.evaluate(()=>{const f=(window as any).handoffFixture;f.hold=new Promise<void>(resolve=>{f.release=resolve;});});
  await panel.getByRole('button',{name:'Add Google account',exact:true}).click();
@@ -108,5 +108,5 @@ test('Reconnect Gmail opens Google accounts; each authorization hands off once a
  await page.waitForTimeout(300);
  await expect(next).toHaveCount(0);
  state=await f();
- expect(state.initiates.length).toBe(3);expect(state.reads).toBe(1);
+ expect(state.initiates.length).toBe(3);expect(state.reads).toBe(2);
 });

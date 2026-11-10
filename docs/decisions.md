@@ -435,3 +435,14 @@ Decided by the product owner on 2026-11-05. Same rules as above: policy, not evi
 - **P-83** (2026-11-08) The owner accepted the requalified on-device speech at eliza pin `4787d51a14`: engine `6337fd4c4b` with the changed speech bridge (`ParadeeVoice`, `LocalSpeechBridgePlugin` warm-up, `SpeechLeadTrim`, `SpeechOutputWarmup`, `FirstWriteSpeechOutput`), qualified with the upstream qualify app rebuilt at that pin on the Pixel 10a arm64 (ASR WER 1.94%, round trip 4.77%) and the x86_64 API 35 emulator (2.13%, 4.90%), all transcripts identical to the `b25d8aef29` runs ([evidence](evidence/voice-engine-6337fd4c-4787d51a14)). The voice record is `userAccepted` and `qualified`. Not part of this acceptance: a measured spoken turn on a build from this pin, a same-day spoken A/B with Cloud speech, and the embedding host's requalification.
 
 The P-83 acceptance is bound to SDK `4787d51a14`. The current SDK `99b49439` and its explicit speech bridge patches retain their pending qualification and acceptance state.
+
+## November 9: one Account sheet
+
+The owner approved the recommended Account consolidation after comparing the
+current screens, the October 30 balance sheet, and two interactive alternatives.
+One shared Account sheet shows balance and membership together, keeps code entry
+on request, and uses black-and-white actions. Settings, setup and billing refusals
+reuse it. Google and provider controls keep their existing data and authorization
+contracts. Billing navigation no longer adds a separate checkbox or review prompt.
+Sign out remains one explicit, account-bound confirmation. This supersedes the
+November 1 presentation-only instruction to hide balance, not charging or admission.
