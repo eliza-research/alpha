@@ -705,6 +705,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         this.composerDraft.retire(false);
         this.startupDraft=null;
         cancelMessageContext(this);
+        this.cancelVoiceScrollFollow();
         this.closeSummaryReview?.();this.chatImagePreview=null;this.cameraAttachment=null;this.reviewedSourceDraft=null;this.transcriptAttachment=null;this.mailAttachment=null;
         clearMapsSelection();
         this.connectionSession = session;

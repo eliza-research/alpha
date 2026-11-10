@@ -3536,5 +3536,49 @@
       "One minute is a clock step, two account/provider scope classes and four reads. Server success and failure share settlement because neither changes the retry clock. An explicit owner action may cancel and lift the limit.",
       "Android connectivity/visibility events and real provider access remain external inputs. Existing controller and browser regressions cover actual request counts; no network performance or device acceptance is inferred."
     ]
+  },
+  {
+    "path": "specs/quint/application/VoiceTranscriptFollow.qnt",
+    "module": "VoiceTranscriptFollow",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "invariants": [
+      "oneShot",
+      "followsOwnedTurn",
+      "preservesReading",
+      "noFocusChange"
+    ],
+    "tests": [
+      "acceptanceBeforeDeliveryTest",
+      "deliveryBeforeAcceptanceTest",
+      "oneShotTest",
+      "manualReadingBeforeAcceptanceTest",
+      "manualReadingAfterAcceptanceTest",
+      "oldHistoryStaysPutTest",
+      "conversationMismatchTest",
+      "textMismatchTest",
+      "accountChangeTest",
+      "closedChatTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/voice-adapter.ts",
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/runtime/development-cartesia-conversation.ts"
+    ],
+    "stateMapping": {
+      "started/opened/baseline": "beginVoiceScrollFollow captures collapsed/open state and the pre-delivery last user ID",
+      "accepted/pending": "validated first stt_final invokes onAcceptedTurn -> followVoiceTurn once per trace",
+      "row/sameConversation/sameText": "current last user row, its conversation binding, and trimmed transcript identity",
+      "cancelled/current/open": "transcript user-input cancellation, voice cleanup/session retirement, and chat visibility",
+      "follow/follows": "getSnapshotBeforeUpdate consumes a matching intent and requests a tail-follow commit",
+      "focus": "unchanged active-element class; this intent only scrolls"
+    },
+    "abstractions": [
+      "One voice turn, one old and one delivered user-row ID, and matching/mismatched conversation and text classes. Both accepted-final/delivery orderings are explicit. No model/provider/native calls.",
+      "Render is a snapshot/commit macrostep. Progress scenarios assume the accepted callback and matching delivery occur and React performs a subsequent commit; no scheduler fairness or unbounded liveness proof is claimed.",
+      "Focus is an unchanged abstract field. Real focus, scroll geometry, resize transitions, multi-turn sessions, streaming layout and message-delivery ordering remain separate browser/runtime conformance obligations. The independent browser regression supplies that evidence."
+    ]
   }
 ]
