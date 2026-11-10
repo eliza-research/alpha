@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {BUILD_TOOLCHAIN, QUALIFIED_HOST, Stop, compareWithQualified, describeDifference, run, stageReproduced, stagedLibraries} from '../scripts/build-embedding-host.ts';
 import {formatReport, strictBuildInputs} from '../scripts/android-build-preflight.ts';
 
@@ -105,9 +106,9 @@ test('once the reviewed bytes are reproducible the step rebuilds with the remap 
 });
 
 test('path remapping is opt-in, recorded in the receipt and leaves the default build unchanged', () => {
-  const source = fs.readFileSync(path.join(ROOT, 'scripts/prepare-embedding-host.ts'), 'utf8');
+  const source = stripTypeScriptTypes(fs.readFileSync(path.join(ROOT, 'scripts/prepare-embedding-host.ts'), 'utf8'));
   assert.match(source, /const remapEnv=remap\?embeddingBuildRemap\(root,/);
-  assert.match(source, /:\{\};\nconst receipt=\{[^\n]*\.\.\.remapEnv\},buildPathRemapped:remap,/);
+  assert.match(source, /:\{\};\nconst receipt\s*=\{[^\n]*\.\.\.remapEnv\},buildPathRemapped:remap,/);
   assert.match(source, /import \{embeddingBuildRemap\} from '\.\/embedding-build-remap\.ts'/);
   // An unknown option is still refused before anything is written.
   const output = path.join(os.tmpdir(), `alpha-embed-unknown-${process.pid}`);
