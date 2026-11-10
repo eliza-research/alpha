@@ -23,6 +23,7 @@ export async function selectLegacyNotes(page:Page){
 /** Select within an already open Notes view without hiding its current ownership state. */
 export async function selectLegacyNotesSource(page:Page){
  await expect(page.locator('html')).toHaveAttribute('data-active-view','notes');
+ if(await page.getByRole('heading',{name:'Previous notes',exact:true}).isVisible())return;
  const previous=page.getByRole('button',{name:'Previous notes',exact:true});
  await expect(previous).toBeVisible();
  await previous.click();
