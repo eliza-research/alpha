@@ -52,8 +52,8 @@ public class SenseListenerClient {
  public void recordInvocation(String from){ordinary++;caller=from;origin="assist";}
  public boolean recordProtectedPower(){powerAttempts++;if(!ownsActivity)return false;if(!bound){origin=null;return false;}origin="power";powerAccepted++;return true;}
 }`);
-  put('ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java','package ai.elizaresearch.alphaphone;class AlphaLocalAgentPlugin {static class PowerLaunchPin {}static PowerLaunchPin pin;static PowerLaunchPin capturePowerLaunchPin(Object context){return pin;}}');
-  put('ai/elizaresearch/alphaphone/MainActivity.java',`package ai.elizaresearch.alphaphone;
+  put('ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java','package ai.alphacompute.alphaphone;class AlphaLocalAgentPlugin {static class PowerLaunchPin {}static PowerLaunchPin pin;static PowerLaunchPin capturePowerLaunchPin(Object context){return pin;}}');
+  put('ai/alphacompute/alphaphone/MainActivity.java',`package ai.alphacompute.alphaphone;
 import android.os.Bundle;import android.content.Intent;import android.app.ComponentCaller;
 public class MainActivity {
  public static class Bridge {public int events;public void triggerWindowJSEvent(String name){events++;}}
@@ -64,8 +64,8 @@ public class MainActivity {
  protected void load(){onNewIntent(getIntent());}
  public void setIntent(Intent i){intent=i;}public Intent getIntent(){return intent;}public String getLaunchedFromPackage(){return caller;}
 }`);
-  for(const name of ['AlphaAssistActivity.java','AlphaPowerVoiceActivity.java'])put('ai/elizaresearch/alphaphone/'+name,readFileSync(nativeSource(name),'utf8'));
-  put('ai/elizaresearch/alphaphone/PowerEntryTest.java',`package ai.elizaresearch.alphaphone;
+  for(const name of ['AlphaAssistActivity.java','AlphaPowerVoiceActivity.java'])put('ai/alphacompute/alphaphone/'+name,readFileSync(nativeSource(name),'utf8'));
+  put('ai/alphacompute/alphaphone/PowerEntryTest.java',`package ai.alphacompute.alphaphone;
 import ai.eliza.plugins.system.SenseListenerClient;import android.content.Intent;import android.app.ComponentCaller;import android.os.Bundle;
 public final class PowerEntryTest {
  static void check(boolean b){if(!b)throw new AssertionError();}
@@ -94,7 +94,7 @@ public final class PowerEntryTest {
 }`);
   const compiled=javac(['-d',dir,...sources()]);
   assert.equal(compiled.status,0,compiled.stderr);
-  assert.match(execFileSync(javaBinary('java'),['-cp',dir,'ai.elizaresearch.alphaphone.PowerEntryTest'],{encoding:'utf8',timeout:jvmTimeout}),/PASS actual Power shell/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',dir,'ai.alphacompute.alphaphone.PowerEntryTest'],{encoding:'utf8',timeout:jvmTimeout}),/PASS actual Power shell/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -105,8 +105,8 @@ test('the Power and Assist activities compile against Android 36',{skip:jvmSkip(
  try{
   put('androidx/annotation/RequiresApi.java','package androidx.annotation;public @interface RequiresApi {int value();}');
   put('ai/eliza/plugins/system/SenseListenerClient.java','package ai.eliza.plugins.system;public class SenseListenerClient {public SenseListenerClient(android.content.Context c){}public void recordInvocation(String c){}public boolean recordProtectedPower(){return false;}public boolean beginProtectedPowerLaunch(Object pin){return false;}public void protectedPowerWindowFocusChanged(boolean f){}public void cancelProtectedPowerLaunch(){}}');
-  put('ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java','package ai.elizaresearch.alphaphone;class AlphaLocalAgentPlugin {static class PowerLaunchPin {}static PowerLaunchPin capturePowerLaunchPin(Object context){return null;}}');
-  put('ai/elizaresearch/alphaphone/MainActivity.java','package ai.elizaresearch.alphaphone;public class MainActivity extends android.app.Activity {protected boolean isAssistantSurface(){return false;}protected void load(){}public static class Bridge {public void triggerWindowJSEvent(String n){}}public Bridge getBridge(){return null;}@Override public void onCreate(android.os.Bundle b){super.onCreate(b);}@Override public void onNewIntent(android.content.Intent i){super.onNewIntent(i);}}');
+  put('ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java','package ai.alphacompute.alphaphone;class AlphaLocalAgentPlugin {static class PowerLaunchPin {}static PowerLaunchPin capturePowerLaunchPin(Object context){return null;}}');
+  put('ai/alphacompute/alphaphone/MainActivity.java','package ai.alphacompute.alphaphone;public class MainActivity extends android.app.Activity {protected boolean isAssistantSurface(){return false;}protected void load(){}public static class Bridge {public void triggerWindowJSEvent(String n){}}public Bridge getBridge(){return null;}@Override public void onCreate(android.os.Bundle b){super.onCreate(b);}@Override public void onNewIntent(android.content.Intent i){super.onNewIntent(i);}}');
   const compiled=javac(['-cp',androidJar,'-d',join(dir,'out'),...sources(),...['AlphaAssistActivity.java','AlphaPowerVoiceActivity.java'].map(nativeSource)]);
   assert.equal(compiled.status,0,compiled.stderr);
  }finally{rmSync(dir,{recursive:true,force:true});}

@@ -1,5 +1,5 @@
 import {openLegacyNotes} from './helpers/legacy-notes';
-// B-10 (docs/core-loop-audit.md): a full Notes Trash refuses a deletion without losing data.
+// B-10: a full Notes Trash refuses a deletion without losing data.
 // Browser build only; source/test evidence. The native slot cap ("storage-full" from
 // AlphaConnectionPlugin) and NotesStorageDurabilityInstrumentedTest are separate gates.
 //

@@ -3,7 +3,7 @@ import {completeAccessSetup,expectNoDevelopmentSurface,fenceNetwork} from './fla
 import { test, expect, type Page } from '@playwright/test';
 import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 
-// Reviewed send on the FLAG-OFF bundle with the Android bridge stubbed (docs/core-loop-audit.md
+// Reviewed send on the FLAG-OFF bundle with the Android bridge stubbed (
 // F-5, F-10). The mailbox is a synthetic managed Gmail answered at the native HTTP boundary
 // (AlphaConnection.request) in the Cloud server's own response shapes, so the shipped renderer,
 // the real CloudProtocol validation and the Keystore-slot operation journal (the stubbed secure

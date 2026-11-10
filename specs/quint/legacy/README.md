@@ -108,16 +108,15 @@ transitions. Their bounded results are in
 `test-results/quint-legacy/supplemental-bounded.json`. These checks establish
 only the declared finite abstractions and their configured bounds.
 
-The original historical evidence is retained in the
-[flow design results](../../../docs/flow-redesign-2026-11/tla/results.md) and
-[UI design results](../../../docs/ui-refresh-2026-11/tla/results.md).
+The original TLA+ source and dated design reports were retired; the executable
+Quint translations and their configured comparisons remain here.
 
 ## Additional view-refresh designs
 
 
 The four view-refresh designs from commit `7883110c0a` are translated to
 `CameraSession.qnt`, `PhotosLibrary.qnt`, `NotesView.qnt` and `FilesBrowser.qnt`.
-Their 22 original configurations, property lists and input hashes are retained
+Their 22 translated configurations and property lists are retained
 in [view-refresh-configurations.json](view-refresh-configurations.json). Each
 configuration has an independent `checker<Name>Init` entry point. `checkerInit`
 selects `Design`. `Rename` retains its separate name domain and bounds.
@@ -152,9 +151,8 @@ The translation uses the following representations.
 | FilesBrowser | 3 files, 3 directories, names 1–3 with initial names 1–2, 1 external event |
 
 The local runner checks these historical design comparisons independently of the
-application coverage ledger. Original TLA specifications and configurations remain
-in `design/view-refresh-2026-11/tla/`; their source hashes match the translation
-manifest. Historical implementation links are metadata, while the application,
+application coverage ledger. The runner binds the retained Quint modules,
+configuration inventory and tooling. Historical implementation links are metadata, while the application,
 service and native families bind current source owners. It records input hashes before and after execution and rejects an
 unexpected checker error as a counterexample. Separate simultaneous invocations
 need distinct server endpoints. A persistent, independently started Apalache
@@ -186,9 +184,7 @@ All four modules passed typechecking, 38 scenario tests and 1,000 seeded traces
 of 80 transitions at seed 20261108. The originating unchanged-input receipt is
 `test-results/quint-view-refresh/check-stable.json` in the translation worktree.
 The integration records its own fresh checks under `test-results/quint-view-refresh/`. Fresh finite-state and symbolic
-results are written under `test-results/quint-view-refresh/`. The
-[November 6 results](../../../design/view-refresh-2026-11/tla/results.md) remain
-historical. A fresh original Camera `Design` run and its translation both have
+results are written under `test-results/quint-view-refresh/`. A historical original Camera `Design` run and its translation both had
 2,742 reachable states. The historical table's 1,344 states predate later edits
 to that specification. Interrupted or failed tool runs remain separate evidence
 and do not establish a completed finite-state check. Current implementation

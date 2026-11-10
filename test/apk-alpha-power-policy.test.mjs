@@ -4,7 +4,7 @@ import { distributionProblems } from '../scripts/apk.mjs';
 
 function assess({name='.AlphaPowerVoiceActivity', permission='android.permission.STATUS_BAR_SERVICE', tag='activity', extra=''}={}) {
   return distributionProblems({xml:`E: manifest
-  A: package="ai.elizaresearch.alphaphone"
+  A: package="ai.alphacompute.alphaphone"
   E: application
     A: android:allowBackup=(type 0x12)0x0
     A: android:usesCleartextTraffic=(type 0x12)0x0
@@ -13,7 +13,7 @@ function assess({name='.AlphaPowerVoiceActivity', permission='android.permission
       A: android:name="${name}"
       A: android:exported=(type 0x12)0xffffffff
       ${permission ? `A: android:permission="${permission}"` : ''}
-${extra}`, badging:"package: name='ai.elizaresearch.alphaphone' versionCode='15' versionName='15'", names:['assets/public/licenses/third-party-notices.json']}, {mode:'release'}).problems;
+${extra}`, badging:"package: name='ai.alphacompute.alphaphone' versionCode='15' versionName='15'", names:['assets/public/licenses/third-party-notices.json']}, {mode:'release'}).problems;
 }
 
 test('release admits the exact platform-protected Power activity', () => {

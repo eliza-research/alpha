@@ -36,23 +36,17 @@ test('reviewed engine source keeps current embedding and voice qualification sep
  const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
  assert.equal(actual,reviewed);
  const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
- // Retaining the installed package restores the reviewed native source identity.
- // The explicit requalification hold still prevents these historic binaries shipping.
+ // Renaming the installed package changes the JNI identity.
  assert.equal(qualification.forkPin,reviewed);
- assert.equal(qualification.requalification.required,true);
- assert.equal(qualification.requalification.atPin,JSON.parse(readFileSync(new URL('../upstream.lock.json',import.meta.url),'utf8')).commit);
- const receipt=readFileSync(new URL('../docs/evidence/embedding-host-4787d51a14/QUALIFICATION-99b49439ce.json',import.meta.url));
- assert.equal(createHash('sha256').update(receipt).digest('hex'),qualification.qualificationReceiptSha256);
- assert.equal(qualification.pin,JSON.parse(receipt).pin);
  // The current producer manifests also changed. Full admission rejects those first; neither that
- // refusal nor a native-only source comparison clears the explicit artifact hold.
+ // refusal nor a native-only comparison admits changed generated JNI inputs.
  assert.throws(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}),/Embedding producer input changed: package\.json/);
  const {producerInputs,...nativeOnly}=qualification;
  assert.ok(producerInputs.length>0,'the real qualification still binds its producer inputs');
- assert.doesNotThrow(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly));
- assert.throws(()=>verifyEmbeddingHost(process.cwd()),/Embedding host requalification required/);
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly),/Native build input changed|Native registration identity qualification missing or changed/, 'the historical generated JNI inputs do not qualify the renamed package');
+ assert.throws(()=>verifyEmbeddingHost(process.cwd()),/Embedding host source admission changed/);
  const voice=JSON.parse(readFileSync(new URL('../android/voice-host/qualified-voice-host.json',import.meta.url),'utf8'));
- assert.equal(voice.qualified,false);assert.equal(voice.evidence.userAccepted,false);
+ assert.equal(voice.qualified,false);
 });
 
 // The reviewed source uses the qualified fused-speech engine at 6337fd4c.

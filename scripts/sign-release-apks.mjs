@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Sign Alpha's unsigned release APKs with the application key held outside Gradle
- * (docs/human-actions.md H-10).
+ * through a reviewed signing ceremony.
  *
  *   node scripts/sign-release-apks.mjs --keys-dir DIR [--key-name alphaphone_app] [OPTIONS]
  *   node scripts/sign-release-apks.mjs --pkcs11-config FILE --key-label LABEL [OPTIONS]
@@ -18,7 +18,7 @@
  * <variant>-release.apk, removes the unsigned files (verify-apks admits exactly one release name per
  * variant), and re-runs scripts/verify-apks.mjs (with the runtime profile artifacts/build-config.json
  * records) and the SBOM so apk-manifest.json records the signed bytes. `--apk`/`--out` signs one other APK the same way, for example the preprocessed Sense
- * listener APK that must carry the launcher's certificate (docs/adr/0001-privileged-listener.md).
+ * listener APK that must carry the launcher's certificate.
  *
  * Every signed APK must verify against android/release-signer.json signerSha256, so enrollment
  * (H-09) comes first; a mismatch leaves no signed file behind. Key files are passed to apksigner by
@@ -195,7 +195,7 @@ async function reviewedRotationTool(apksigner, rotation, toolEnv) {
 async function verifySignedRotation(file, lineage, rotation, signer, jar, toolEnv) {
   const result = JSON.parse(execFileSync(path.join(toolEnv.JAVA_HOME, "bin", "java"), [
     "-cp", jar, verifier, "--signed-output", file, lineage, await fileDigest(file),
-    rotation.lineageSha256, rotation.previousSignerSha256, signer, "ai.elizaresearch.alphaphone", "29", "37",
+    rotation.lineageSha256, rotation.previousSignerSha256, signer, "ai.alphacompute.alphaphone", "29", "37",
   ], { env: { PATH: toolEnv.PATH, JAVA_HOME: toolEnv.JAVA_HOME }, encoding: "utf8", timeout: 120_000 }));
   if (result.verified !== true || result.minApi !== 29 || result.maxApi !== 37 || result.versionCode !== rotation.versionCode)
     throw new Error("Signed rotation output differs from the reviewed version or API scope");
@@ -212,7 +212,7 @@ export async function main(argv, { root = process.cwd(), env = process.env, log 
   const descriptorBytes = fs.readFileSync(path.join(root, descriptorPath));
   const signerRecord = JSON.parse(descriptorBytes);
   const signer = signerRecord.signerSha256;
-  if (!/^[0-9a-f]{64}$/.test(signer ?? "")) { error(`android/release-signer.json signerSha256 is ${JSON.stringify(signer)}; enroll the release certificate first (docs/human-actions.md H-09)`); return 1; }
+  if (!/^[0-9a-f]{64}$/.test(signer ?? "")) { error(`android/release-signer.json signerSha256 is ${JSON.stringify(signer)}; enroll the release certificate first`); return 1; }
   const problems = options.mode === "key-files" ? keyFileProblems(options.keysDir, options.keyName) : [];
   if (options.mode === "pkcs11") {
     if (!path.isAbsolute(options.pkcs11Config) || !fs.existsSync(options.pkcs11Config) || !fs.statSync(options.pkcs11Config).isFile()) problems.push(`--pkcs11-config ${options.pkcs11Config} must be an absolute path to the SunPKCS11 configuration file`);

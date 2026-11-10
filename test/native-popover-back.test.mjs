@@ -47,7 +47,7 @@ test('legacy folder Back closes only its visible menu before shell navigation',(
 
 // MainActivity forwards Back to the renderer only when alphaCanGoBack is true; when Alpha is not HOME it
 // returns false to Android's task handling (the branch evaluated here).
-const activity=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java','utf8');
+const activity=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java','utf8');
 const script=(()=>{const m=activity.match(/String script = "([^"]+)"\s*\+ \((?:BuildConfig\.IS_LAUNCHER[^?]+|home )\? "[^"]+" : "([^"]+)"\) \+ "([^"]+)";/);assert.ok(m,'MainActivity Back script');return m[1]+m[2]+m[3];})();
 function phone({drawer=false,digest=false}={}){
  const calls={navigate:0,cancel:0,back:0};

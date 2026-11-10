@@ -99,58 +99,10 @@
         "sourceProperty": "ReachesHome"
       }
     ],
-    "legacySource": {
-      "path": "docs/flow-redesign-2026-11/tla/SignIn.tla",
-      "sha256": "8d6c2e4ae1bb538c9d235d322c07687063892949b7740cfc91bcacbfecba352a",
-      "definitions": [
-        "vars",
-        "Scopes",
-        "Screens",
-        "GoogleReady",
-        "NativeGoogle",
-        "LocalMethods",
-        "TypeOK",
-        "Init",
-        "Tap",
-        "Detour",
-        "Boot",
-        "Probe",
-        "AutoResume",
-        "GoogleReturn",
-        "KeyRejected",
-        "NetDrop",
-        "NetRecover",
-        "TapCloudSignIn",
-        "TapRetry",
-        "ChooseGoogle",
-        "NativeConsent",
-        "TabConsent",
-        "CloseBrowser",
-        "EnterAddress",
-        "EnterCode",
-        "WrongCode",
-        "Back",
-        "System",
-        "User",
-        "Mistake",
-        "Env",
-        "Done",
-        "Next",
-        "Spec",
-        "NoCloudWebPage",
-        "CodesStayInApp",
-        "NoManualRetry",
-        "SavedSignInNeverAsked",
-        "NoTabLeftBehind",
-        "TwoTaps",
-        "GoogleWhenPossible",
-        "ReachesHome"
-      ]
-    },
     "historicalSourceLinks": {
       "revision": "875f5a8550935c5ca1797cea4ea38e7c7759ca54",
       "paths": [
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/CloudSignInFlow.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CloudSignInFlow.java"
       ]
     }
   },
@@ -267,47 +219,6 @@
         "sourceProperty": "ReturnsToApp"
       }
     ],
-    "legacySource": {
-      "path": "docs/flow-redesign-2026-11/tla/GoogleConnect.tla",
-      "sha256": "37aa77c3f8a2809df78437265f6641ab715761bf7bf5788a6289386c353e4de6",
-      "definitions": [
-        "GmailRead",
-        "CalRead",
-        "AllScopes",
-        "vars",
-        "TypeOK",
-        "InboxFor",
-        "CalFor",
-        "Init",
-        "Tap",
-        "InApp",
-        "Request",
-        "Boxes",
-        "Grantable",
-        "TapConnect",
-        "PanelConnect",
-        "PanelPickCalendar",
-        "ManualRefresh",
-        "ClosePanel",
-        "Consent",
-        "Decline",
-        "SwitchBackToAlpha",
-        "CloseBrowserTab",
-        "SwitchApp",
-        "Return",
-        "Revoke",
-        "User",
-        "Next",
-        "Spec",
-        "NoCloudWebPage",
-        "NoTabLeftBehind",
-        "InboxFresh",
-        "OneGrantForBoth",
-        "ScopesNeverShrink",
-        "TwoTapsToMail",
-        "ReturnsToApp"
-      ]
-    },
     "actionProperties": [
       {
         "property": "ScopesNeverShrink",
@@ -429,52 +340,6 @@
         "sourceProperty": "OutboxDrains"
       }
     ],
-    "legacySource": {
-      "path": "docs/flow-redesign-2026-11/tla/Calendar.tla",
-      "sha256": "c3ed3c83841e921c6ea46e019e19dc691fdd66c557ac66fade2faa8fb9d3539a",
-      "definitions": [
-        "Ids",
-        "Fresh",
-        "TopViews",
-        "Views",
-        "vars",
-        "TypeOK",
-        "Init",
-        "GoogleShown",
-        "FeedFails",
-        "Displayed",
-        "Writable",
-        "Switch",
-        "OpenSearch",
-        "OpenEvent",
-        "Back",
-        "NewEvent",
-        "Edit",
-        "Save",
-        "Delete",
-        "UndoDelete",
-        "UndoExpires",
-        "Rsvp",
-        "Resolve",
-        "PickInSettings",
-        "Sync",
-        "RemoteChange",
-        "NetDrop",
-        "NetRecover",
-        "Nav",
-        "Act",
-        "World",
-        "Next",
-        "Spec",
-        "AlwaysBack",
-        "GoogleVisibleWhenConnected",
-        "BadEventIsolated",
-        "EditableWhenWritable",
-        "SavedChangeVisible",
-        "UndoBeforeSend",
-        "OutboxDrains"
-      ]
-    },
     "actionProperties": [
       {
         "property": "UndoBeforeSend",
@@ -628,49 +493,6 @@
         "sourceProperty": "AgentServed"
       }
     ],
-    "legacySource": {
-      "path": "docs/flow-redesign-2026-11/tla/Maps.tla",
-      "sha256": "1c7ff06f5e67169f4bbdf5d3db180a35cff4be9fd41ca25647b6c72a24b6eb5e",
-      "definitions": [
-        "Screens",
-        "Causes",
-        "vars",
-        "TypeOK",
-        "ServiceUp",
-        "Cause",
-        "Shown",
-        "Init",
-        "Connect",
-        "Connected",
-        "OpenMaps",
-        "Search",
-        "PickPlace",
-        "Directions",
-        "Start",
-        "Arrive",
-        "Back",
-        "LeaveMaps",
-        "OffRoute",
-        "OpenAssistant",
-        "CloseAssistant",
-        "AgentAsks",
-        "AgentResult",
-        "Fault",
-        "Heal",
-        "Subscribe",
-        "Owner",
-        "Next",
-        "Spec",
-        "NoProviderTalk",
-        "HonestErrors",
-        "AlwaysBack",
-        "SelfHealing",
-        "AgentLands",
-        "AgentServed",
-        "NavSurvivesAssistant",
-        "RouteKeptOnFailure"
-      ]
-    },
     "actionProperties": [
       {
         "property": "HonestErrors",
@@ -767,45 +589,7 @@
         "step": "step"
       }
     ],
-    "currentTemporalChecks": [],
-    "legacySource": {
-      "path": "docs/ui-refresh-2026-11/tla/ChatInput.tla",
-      "sha256": "787b9d23980741f0dfc0b7852fe9ba8f5992c93b59d1c04e031cafc2d9f4ce32",
-      "definitions": [
-        "Views",
-        "Modes",
-        "Origins",
-        "Rest",
-        "vars",
-        "Raised",
-        "Guarded",
-        "TypeOK",
-        "Init",
-        "Ghosts",
-        "TapAlpha",
-        "TapType",
-        "FocusComposer",
-        "TypeText",
-        "Send",
-        "ImeHide",
-        "Activate",
-        "TapOutside",
-        "SwipeUp",
-        "GrabUp",
-        "GrabDown",
-        "LeaveView",
-        "Back",
-        "OpenView",
-        "Next",
-        "Spec",
-        "NoLeak",
-        "NoStrayOpen",
-        "BackInOrder",
-        "DraftKept",
-        "FocusNeedsComposer",
-        "OneTouchDown"
-      ]
-    }
+    "currentTemporalChecks": []
   },
   {
     "path": "specs/quint/legacy/HomeLayout.qnt",
@@ -873,45 +657,7 @@
         "step": "step"
       }
     ],
-    "currentTemporalChecks": [],
-    "legacySource": {
-      "path": "docs/ui-refresh-2026-11/tla/HomeLayout.tla",
-      "sha256": "605ce2eb6654b8ba734feb47e21d60ec964679310e956a5d637097990824da34",
-      "definitions": [
-        "H",
-        "G",
-        "PadTop",
-        "Short",
-        "Tall",
-        "Fixed",
-        "CalStates",
-        "FlowStates",
-        "MailStates",
-        "Docks",
-        "vars",
-        "Google",
-        "Shown",
-        "DateLine",
-        "SetupLink",
-        "HasContent",
-        "Loading",
-        "Max",
-        "Clear",
-        "MeasuredRest",
-        "RowH",
-        "GridTop",
-        "TypeOK",
-        "Init",
-        "Source",
-        "Next",
-        "Spec",
-        "GridStable",
-        "CardsHaveContent",
-        "NoLoadingCards",
-        "TopNeverBlank",
-        "SetupOnlyWhenNeeded"
-      ]
-    }
+    "currentTemporalChecks": []
   },
   {
     "path": "specs/quint/legacy/SettingsNav.qnt",
@@ -992,42 +738,7 @@
         "step": "step"
       }
     ],
-    "currentTemporalChecks": [],
-    "legacySource": {
-      "path": "docs/ui-refresh-2026-11/tla/SettingsNav.tla",
-      "sha256": "26748554948e2698750a2e903c54f4dcc7acff2614fffaefb21edb7547d20218",
-      "definitions": [
-        "R",
-        "Label",
-        "Kind",
-        "Target",
-        "CurTop",
-        "CurPage",
-        "PropTop",
-        "PropPage",
-        "Page",
-        "Pages",
-        "AllRows",
-        "vars",
-        "Here",
-        "TypeOK",
-        "Init",
-        "Open",
-        "Back",
-        "Destroy",
-        "Answer",
-        "Next",
-        "Spec",
-        "Controls",
-        "NoInfoRows",
-        "AtMostOneStatus",
-        "NoMirrorPages",
-        "NoEmptyPages",
-        "SingleEntry",
-        "ConfirmBeforeDestroy",
-        "Shallow"
-      ]
-    }
+    "currentTemporalChecks": []
   },
   {
     "path": "specs/quint/legacy/CameraSession.qnt",
@@ -1048,13 +759,6 @@
       "asBuiltLeaveQueueTest"
     ],
     "sources": [
-      "design/view-refresh-2026-11/tla/camera-session/Spec.tla",
-      "design/view-refresh-2026-11/tla/camera-session/AsBuilt_AgentQueue.cfg",
-      "design/view-refresh-2026-11/tla/camera-session/AsBuilt_ChatGrace.cfg",
-      "design/view-refresh-2026-11/tla/camera-session/AsBuilt_Focus.cfg",
-      "design/view-refresh-2026-11/tla/camera-session/AsBuilt_Leave.cfg",
-      "design/view-refresh-2026-11/tla/camera-session/AsBuilt_Lens.cfg",
-      "design/view-refresh-2026-11/tla/camera-session/Design.cfg",
       "specs/quint/legacy/view-refresh-configurations.json",
       "specs/quint/legacy/check-view-refresh.mjs"
     ],
@@ -1064,7 +768,7 @@
       "All original finite domains, nondeterministic initial choices, action guards, frame conditions and fairness are retained.",
       "All22 source configurations and their exact property lists are retained in view-refresh-configurations.json.",
       "The implementation entry points are historical links. Current-source conformance remains in the application, service and native families; this translation does not establish that every design action is implemented by the shipping UI.",
-      "The sources array binds retained design inputs and the configuration runner, not current product implementation."
+      "The sources array binds the retained Quint configurations and their runner, not current product implementation."
     ],
     "constants": {
       "FixFocus": true,
@@ -1153,52 +857,6 @@
         "configuration": "AsBuilt_Leave"
       }
     ],
-    "legacySource": {
-      "path": "design/view-refresh-2026-11/tla/camera-session/Spec.tla",
-      "sha256": "2148834fd33729502e83782163483a093f3e43a381812f4e6cb9163fd765f183",
-      "definitions": [
-        "vars",
-        "TypeOK",
-        "Init",
-        "Room",
-        "Ready",
-        "Open",
-        "PermissionResult",
-        "FirstFrame",
-        "StartFail",
-        "Leave",
-        "Shutter",
-        "CaptureDone",
-        "RecStart",
-        "RecStop",
-        "Focus",
-        "FocusDone",
-        "Flip",
-        "SetFlash",
-        "SetZoom",
-        "AgentCapture",
-        "Release",
-        "ChatOpen",
-        "ChatGraceEnds",
-        "ChatClose",
-        "AgentRun",
-        "System",
-        "User",
-        "Next",
-        "Spec",
-        "NoLostShutter",
-        "NoStuckCapture",
-        "NoOrphanRecording",
-        "LensSettingsValid",
-        "FlipNeverRejected",
-        "SavedIsShown",
-        "AgentFailsOnlyForCause",
-        "ChatKeepsPreview",
-        "ChatGraceReleases",
-        "OpenReachesPreviewOrError",
-        "AgentCaptureSettles"
-      ]
-    },
     "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
     "historicalSourceLinks": {
       "revision": "7883110c0a28539f6d31fb3bdbe7d0aacce93773",
@@ -1226,12 +884,6 @@
       "asBuiltCapTest"
     ],
     "sources": [
-      "design/view-refresh-2026-11/tla/photos-library/Spec.tla",
-      "design/view-refresh-2026-11/tla/photos-library/AsBuilt_Cap.cfg",
-      "design/view-refresh-2026-11/tla/photos-library/AsBuilt_FavToggle.cfg",
-      "design/view-refresh-2026-11/tla/photos-library/AsBuilt_Patch.cfg",
-      "design/view-refresh-2026-11/tla/photos-library/AsBuilt_Window.cfg",
-      "design/view-refresh-2026-11/tla/photos-library/Design.cfg",
       "specs/quint/legacy/view-refresh-configurations.json",
       "specs/quint/legacy/check-view-refresh.mjs"
     ],
@@ -1241,7 +893,7 @@
       "All original finite domains, nondeterministic initial choices, action guards, frame conditions and fairness are retained.",
       "All22 source configurations and their exact property lists are retained in view-refresh-configurations.json.",
       "The implementation entry points are historical links. Current-source conformance remains in the application, service and native families; this translation does not establish that every design action is implemented by the shipping UI.",
-      "The sources array binds retained design inputs and the configuration runner, not current product implementation."
+      "The sources array binds the retained Quint configurations and their runner, not current product implementation."
     ],
     "constants": {
       "Ids": [
@@ -1307,61 +959,6 @@
       }
     ],
     "currentTemporalChecks": [],
-    "legacySource": {
-      "path": "design/view-refresh-2026-11/tla/photos-library/Spec.tla",
-      "sha256": "62c77138ce80da19027d6b2d62c586a8aba9b0adb025d06f7e981ffa8e6da0ab",
-      "definitions": [
-        "vars",
-        "MaxRev",
-        "NoReview",
-        "Live",
-        "InTrash",
-        "Matches",
-        "Pool",
-        "Take",
-        "Window",
-        "TypeOK",
-        "Init",
-        "Bump",
-        "Ghosts",
-        "SwitchTab",
-        "EnterSelect",
-        "Toggle",
-        "SelectAll",
-        "CancelSelect",
-        "BatchFavorite",
-        "BatchTrash",
-        "BatchRestore",
-        "DeleteForever",
-        "OpenViewer",
-        "Swipe",
-        "ViewerTrash",
-        "CloseViewer",
-        "Undo",
-        "StoreEvent",
-        "AgentFilter",
-        "AgentReview",
-        "ReviewCurrent",
-        "AgentShareReview",
-        "AgentApply",
-        "AgentOpen",
-        "EditReplace",
-        "AgentReject",
-        "Next",
-        "Spec",
-        "NewestNeverDropped",
-        "SelectionSubsetOfVisible",
-        "ViewerShowsExistingItem",
-        "NoSpuriousClear",
-        "FavoriteReversible",
-        "NoSelectionCap",
-        "DeleteForeverOnlyFromTrash",
-        "NoActionOnStaleRev",
-        "FilterIsReadOnly",
-        "ShareChangesNothing",
-        "ReviewSettles"
-      ]
-    },
     "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
     "historicalSourceLinks": {
       "revision": "7883110c0a28539f6d31fb3bdbe7d0aacce93773",
@@ -1392,14 +989,6 @@
       "ablateRestoreFolderTest"
     ],
     "sources": [
-      "design/view-refresh-2026-11/tla/notes-view/Spec.tla",
-      "design/view-refresh-2026-11/tla/notes-view/Ablate_RestoreFolder.cfg",
-      "design/view-refresh-2026-11/tla/notes-view/AsBuilt_Cap.cfg",
-      "design/view-refresh-2026-11/tla/notes-view/AsBuilt_Hidden.cfg",
-      "design/view-refresh-2026-11/tla/notes-view/AsBuilt_Segments.cfg",
-      "design/view-refresh-2026-11/tla/notes-view/AsBuilt_StreamAsr.cfg",
-      "design/view-refresh-2026-11/tla/notes-view/Design.cfg",
-      "design/view-refresh-2026-11/tla/notes-view/Rename.cfg",
       "specs/quint/legacy/view-refresh-configurations.json",
       "specs/quint/legacy/check-view-refresh.mjs"
     ],
@@ -1409,7 +998,7 @@
       "All original finite domains, nondeterministic initial choices, action guards, frame conditions and fairness are retained.",
       "All22 source configurations and their exact property lists are retained in view-refresh-configurations.json.",
       "The implementation entry points are historical links. Current-source conformance remains in the application, service and native families; this translation does not establish that every design action is implemented by the shipping UI.",
-      "The sources array binds retained design inputs and the configuration runner, not current product implementation."
+      "The sources array binds the retained Quint configurations and their runner, not current product implementation."
     ],
     "constants": {
       "Notes": [
@@ -1497,53 +1086,6 @@
         "configuration": "AsBuilt_StreamAsr"
       }
     ],
-    "legacySource": {
-      "path": "design/view-refresh-2026-11/tla/notes-view/Spec.tla",
-      "sha256": "e716d3cc9899d8665de6e7f50e1069a8d9fdc9c7c6893d4d666d602355d7c459",
-      "definitions": [
-        "vars",
-        "MaxRev",
-        "NoReview",
-        "TypeOK",
-        "Init",
-        "NoteVars",
-        "RecVars",
-        "Bump",
-        "Record",
-        "Segment",
-        "Pause",
-        "Resume",
-        "Stop",
-        "StorageFull",
-        "ProcessDeath",
-        "AsrSegment",
-        "Hide",
-        "Show",
-        "MoveToFolder",
-        "DeleteFolder",
-        "RenameFolder",
-        "TrashNote",
-        "Restore",
-        "Expire",
-        "AgentProposeMove",
-        "ReviewCurrent",
-        "AgentApply",
-        "AgentReject",
-        "Next",
-        "Spec",
-        "NoLengthLimit",
-        "CrashKeepsAudio",
-        "TranscriptPrefixOfAudio",
-        "TranscriptKeepsUp",
-        "TranscriptKeepsUpHidden",
-        "FolderNamesUnique",
-        "RenameKeepsMembership",
-        "FolderRefsValid",
-        "AgentMoveOnlyReviewed",
-        "AsrSettles",
-        "ReviewSettles"
-      ]
-    },
     "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
     "historicalSourceLinks": {
       "revision": "7883110c0a28539f6d31fb3bdbe7d0aacce93773",
@@ -1572,11 +1114,6 @@
       "ablateSelectedTargetTest"
     ],
     "sources": [
-      "design/view-refresh-2026-11/tla/files-browser/Spec.tla",
-      "design/view-refresh-2026-11/tla/files-browser/Ablate_Conflict.cfg",
-      "design/view-refresh-2026-11/tla/files-browser/AsBuilt_Categories.cfg",
-      "design/view-refresh-2026-11/tla/files-browser/AsBuilt_Identity.cfg",
-      "design/view-refresh-2026-11/tla/files-browser/Design.cfg",
       "specs/quint/legacy/view-refresh-configurations.json",
       "specs/quint/legacy/check-view-refresh.mjs"
     ],
@@ -1587,7 +1124,7 @@
       "All22 source configurations and their exact property lists are retained in view-refresh-configurations.json.",
       "FreeName chooses the lowest free numeric name as a deterministic realization of the source CHOOSE; the source specifies no different tie-breaking rule.",
       "The implementation entry points are historical links. Current-source conformance remains in the application, service and native families; this translation does not establish that every design action is implemented by the shipping UI.",
-      "The sources array binds retained design inputs and the configuration runner, not current product implementation."
+      "The sources array binds the retained Quint configurations and their runner, not current product implementation."
     ],
     "constants": {
       "Budget": 1,
@@ -1646,54 +1183,6 @@
         "configuration": "AsBuilt_Identity"
       }
     ],
-    "legacySource": {
-      "path": "design/view-refresh-2026-11/tla/files-browser/Spec.tla",
-      "sha256": "bdb5535f587a1f9fb918d69bc7d8c57f745d3e4b2f2ec3b1acf44d1b5431467a",
-      "definitions": [
-        "FilesSet",
-        "Dirs",
-        "Gone",
-        "Trash",
-        "Kind",
-        "Home0",
-        "Names",
-        "vars",
-        "NoReview",
-        "Present",
-        "NamesUniquePerDir",
-        "Category",
-        "Categories",
-        "Listing",
-        "TypeOK",
-        "Init",
-        "Navigate",
-        "Toggle",
-        "Clash",
-        "FreeName",
-        "MoveOne",
-        "MoveSel",
-        "TrashSel",
-        "Restore",
-        "EmptyTrash",
-        "External",
-        "Refresh",
-        "AgentPropose",
-        "Reviewed",
-        "AgentApply",
-        "AgentRefused",
-        "AgentReject",
-        "Next",
-        "Spec",
-        "CategoryIsQuery",
-        "NoOverwriteWithoutConfirm",
-        "SelectionExists",
-        "SelectionActsOnlyOnPresent",
-        "TrashReversible",
-        "AgentMoveOnlyReviewed",
-        "ListingsConverge",
-        "ReviewSettles"
-      ]
-    },
     "legacyConfigurations": "specs/quint/legacy/view-refresh-configurations.json",
     "historicalSourceLinks": {
       "revision": "7883110c0a28539f6d31fb3bdbe7d0aacce93773",
@@ -1782,7 +1271,8 @@
         "sha256": "b96af81bac91ac1c23f2e67be01a012962fb2c3587ebf1b82ade02c004ff3570"
       }
     ],
-    "classification": "upstream-design-conversion"
+    "classification": "upstream-design-conversion",
+    "abstractions": []
   },
   {
     "path": "specs/quint/legacy/CoreSemaphore.qnt",
@@ -1866,7 +1356,8 @@
         "sha256": "06f2eec3864f634079b94954ec8916d83427b13d680d3a757c43506ab85e028c"
       }
     ],
-    "classification": "upstream-design-conversion"
+    "classification": "upstream-design-conversion",
+    "abstractions": []
   },
   {
     "path": "specs/quint/legacy/CoreSerialise.qnt",
@@ -1916,7 +1407,8 @@
         "sha256": "701209da1f1f1d7e8ac81395b99f053c9545e7bbe8dcee0bd85a9a9455b09ac6"
       }
     ],
-    "classification": "upstream-design-conversion"
+    "classification": "upstream-design-conversion",
+    "abstractions": []
   },
   {
     "path": "specs/quint/legacy/CoreProviderExecution.qnt",
@@ -2007,7 +1499,8 @@
         "sha256": "d0637ff320d0d508252dd72e1cf388b2c0a3bde771b881420d84ed30dbd733a6"
       }
     ],
-    "classification": "upstream-design-conversion"
+    "classification": "upstream-design-conversion",
+    "abstractions": []
   },
   {
     "path": "specs/quint/legacy/CoreActionSettlement.qnt",
@@ -2420,7 +1913,8 @@
         "sha256": "c9862e75a86481390ad23d07d98237db2ee609c40fe99d524dce1874683e0b58"
       }
     ],
-    "classification": "upstream-design-conversion"
+    "classification": "upstream-design-conversion",
+    "abstractions": []
   },
   {
     "path": "specs/quint/legacy/CoreRoomHandlerQueue.qnt",
@@ -2523,7 +2017,8 @@
         "sha256": "6d4ad75fe5f0eff561a65286d6df7ddde14294e8ef3c3d170eb216eb529c21c3"
       }
     ],
-    "classification": "upstream-design-conversion"
+    "classification": "upstream-design-conversion",
+    "abstractions": []
   },
   {
     "path": "specs/quint/legacy/CoreSingleFlightMemo.qnt",
@@ -2597,7 +2092,8 @@
         "sha256": "4777364ca796bf8dbe0549d775600e5aaac205d85a0d0ec64dd6cf1a30f69dfb"
       }
     ],
-    "classification": "upstream-design-conversion"
+    "classification": "upstream-design-conversion",
+    "abstractions": []
   },
   {
     "path": "specs/quint/legacy/CorePluginLifecycle.qnt",

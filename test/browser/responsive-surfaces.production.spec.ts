@@ -2,7 +2,7 @@ import {openCanonicalCalendar} from './helpers/canonical-calendar';
 import { openLegacyNotes } from './helpers/legacy-notes';
 import { test, expect, type Page, type Locator } from '@playwright/test';
 
-// Issue #411, responsive-surface matrix (docs/implementation-plan.md). Production renderer in a
+// Issue #411, responsive-surface matrix. Production renderer in a
 // touch viewport: synthetic storage/provider inputs, no shipped developer surfaces. Viewport changes stand in for rotation,
 // window resizing and the software keyboard; they do not qualify Android rotation, process
 // recreation, TalkBack or a device keyboard.

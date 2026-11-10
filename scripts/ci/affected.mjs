@@ -4,20 +4,13 @@ import { pathToFileURL } from 'node:url';
 
 export const referenceOnly = path => /^(docs\/|design\/)/.test(path) || /^(README\.md|AGENTS\.md|LICENSE|LICENSE\.md)$/.test(path);
 
-// Reference data that node tests read, so a change to it must run repository verification
-// (never a browser, Android or prepare lane). Derived from `grep -o 'docs/[^ ]*' test/*.test.mjs`:
-// every docs/*.json (requirements, dependency-audit dispositions and snapshot, the
-// mvp-remaining-work inventory), and every Markdown file test/docs-links.test.mjs scans,
-// which is README.md and docs/**/*.md outside docs/market-research/. That set includes
-// ci-cost-policy.md (embedded ruleset), core-loop-audit.md, decisions.md and the inventories.
-export const testReadReference = path =>
-  /^docs\/.*\.json$/.test(path) ||
-  (/^docs\/.*\.md$/.test(path) && !/^docs\/market-research\//.test(path)) ||
-  path === 'README.md';
+// The retained product documentation is checked by test/docs-links.test.mjs.
+// Policy inputs under scripts/ remain executable build inputs and select normal lanes.
+export const testReadReference = path => path === 'README.md' || path === 'docs/prd.md';
 
 // Android files that browser specs read; test/ci-affected.test.mjs scans test/browser to keep this complete.
 export const browserReadAndroid = new Set([
-  'android/app/src/androidTest/java/ai/elizaresearch/alphaphone/StartupDocumentProbe.java',
+  'android/app/src/androidTest/java/ai/alphacompute/alphaphone/StartupDocumentProbe.java',
   'android/video-fixture/src/main/assets/qa-source.mp4',
 ]);
 
@@ -42,10 +35,9 @@ export function affected(paths) {
       result.android = true;
     } else if (path === '.github/workflows/resident-prepare.yml') {
       result.prepare = true;
-    } else if (/^\.github\/workflows\/(resident-android|bun-spawn-seccomp|android-emulator|digest-restart|dependency-audit)\.yml$/.test(path)) {
+    } else if (/^\.github\/workflows\/(resident-android|bun-spawn-seccomp|android-emulator|digest-restart)\.yml$/.test(path)) {
       // Explicit qualification/diagnostics; resident push/nightly runs are opt-in by repository variable,
       // and the emulator evidence and digest process-recovery workflows have no trigger but a dispatch.
-      // The advisory audit is scheduled and dispatched only; its script and test run in verify.
     } else if (browserReadAndroid.has(path)) {
       result.browser = result.android = true;
     } else if (/^android\//.test(path)) {

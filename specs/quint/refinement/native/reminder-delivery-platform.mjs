@@ -77,7 +77,7 @@ public final class Context {
  public Context getApplicationContext(){return this;}
  public boolean isDeviceProtectedStorage(){return false;}
  public File getDataDir(){return new File("/synthetic-alpha-reminder");}
- public String getPackageName(){return "ai.elizaresearch.alphaphone";}
+ public String getPackageName(){return "ai.alphacompute.alphaphone";}
  public Context getContentResolver(){return this;}
  public int checkSelfPermission(String name){return permission?0:-1;}
  public <T> T getSystemService(Class<T> type){return type.cast(type==AlarmManager.class?alarms:notices);}
@@ -262,9 +262,9 @@ public final class NotificationManager {
  }
  public void cancel(String tag,int id){live.remove(tag);}
 }`,
-  'ai/elizaresearch/alphaphone/MainActivity.java': `package ai.elizaresearch.alphaphone;
+  'ai/alphacompute/alphaphone/MainActivity.java': `package ai.alphacompute.alphaphone;
 public final class MainActivity extends android.app.Activity {}`,
-  'ai/elizaresearch/alphaphone/AlphaCredentialStore.java': `package ai.elizaresearch.alphaphone;
+  'ai/alphacompute/alphaphone/AlphaCredentialStore.java': `package ai.alphacompute.alphaphone;
 public final class AlphaCredentialStore {
  private final android.content.Context context;
  AlphaCredentialStore(android.content.Context context){this.context=context;}

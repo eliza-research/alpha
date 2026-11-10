@@ -6,7 +6,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
-/** Host-JVM check of StorageBrowser over a temporary folder (spec files-browser, Design.cfg). */
+/** Host-JVM check of StorageBrowser over a temporary folder. */
 public final class StorageBrowserTest {
  private static final String TRASH=".Trash-alpha";
  static void check(boolean ok,String what){if(!ok)throw new AssertionError(what);}

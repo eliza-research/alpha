@@ -1,5 +1,5 @@
 import {test,expect} from '@playwright/test';
-// Files agent filter (design/view-refresh-2026-11 PLAN.md section 4; spec files-browser FilterIsReadOnly).
+// Files agent filter.
 test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/');});
 test('an agent filter started from another view while Files reloads leaves its results usable',async({page})=>{
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaFiles').importFile(new File(['%PDF-1.4'],'bank statement.pdf',{type:'application/pdf'}));});

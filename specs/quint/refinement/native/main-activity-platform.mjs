@@ -18,7 +18,7 @@ public class Bundle {}`,
     'android/os/SystemClock.java': `package android.os;
 public class SystemClock {
   public static long elapsedRealtime() {
-    return ai.elizaresearch.alphaphone.MainActivityPorts.time;
+    return ai.alphacompute.alphaphone.MainActivityPorts.time;
   }
 }`,
     'android/os/Build.java': `package android.os;
@@ -140,7 +140,7 @@ public class PackageManager {
   public static final int MATCH_DEFAULT_ONLY=1;
   public ResolveInfo resolveActivity(android.content.Intent intent,int flags){return null;}
   public boolean resolves(String action) {
-    return ai.elizaresearch.alphaphone.MainActivityPorts.settings.contains(action);
+    return ai.alphacompute.alphaphone.MainActivityPorts.settings.contains(action);
   }
 }`,
     'android/content/res/Configuration.java': `package android.content.res;
@@ -214,7 +214,7 @@ public class View {
     return bottom;
   }
   public boolean postDelayed(Runnable task, long delay) {
-    ai.elizaresearch.alphaphone.MainActivityPorts.post(this, task, delay);
+    ai.alphacompute.alphaphone.MainActivityPorts.post(this, task, delay);
     return true;
   }
   public void setOnClickListener(OnClickListener value) {
@@ -342,11 +342,11 @@ public class ActivityManager {
       return info;
     }
     public void moveToFront() {
-      ai.elizaresearch.alphaphone.MainActivityPorts.moveTask(info.taskId);
+      ai.alphacompute.alphaphone.MainActivityPorts.moveTask(info.taskId);
     }
   }
   public java.util.List<AppTask> getAppTasks() {
-    return ai.elizaresearch.alphaphone.MainActivityPorts.tasks;
+    return ai.alphacompute.alphaphone.MainActivityPorts.tasks;
   }
 }`,
     'androidx/activity/OnBackPressedCallback.java': `package androidx.activity;
@@ -452,7 +452,7 @@ public class BridgeActivity {
     android.view.ViewGroup frame = new android.view.ViewGroup();
     frame.addView(inflated);
     content = frame;
-    if (ai.elizaresearch.alphaphone.MainActivityPorts.bridgeAvailable)
+    if (ai.alphacompute.alphaphone.MainActivityPorts.bridgeAvailable)
       load();
     else
       content = new android.widget.TextView(this);
@@ -522,10 +522,10 @@ public class BridgeActivity {
     return new android.content.pm.PackageManager();
   }
   public String getPackageName() {
-    return "ai.elizaresearch.alphaphone";
+    return "ai.alphacompute.alphaphone";
   }
   public void startActivity(android.content.Intent value) {
-    ai.elizaresearch.alphaphone.MainActivityPorts.launch(value);
+    ai.alphacompute.alphaphone.MainActivityPorts.launch(value);
   }
   public <T> T getSystemService(Class<T> kind) {
     return kind.cast(new android.app.ActivityManager());
@@ -534,17 +534,17 @@ public class BridgeActivity {
     return back;
   }
 }`,
-    'ai/elizaresearch/alphaphone/BuildConfig.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/BuildConfig.java': `package ai.alphacompute.alphaphone;
 public class BuildConfig {
   public static boolean IS_LAUNCHER = true, DEBUG = false, ELIZA_DEV_ALLOW_TEST_MOCKS = false;
 }`,
-    'ai/elizaresearch/alphaphone/AlphaImageCapability.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaImageCapability.java': `package ai.alphacompute.alphaphone;
 public class AlphaImageCapability {
   public static boolean verified(Object context) {
     return false;
   }
 }`,
-    'ai/elizaresearch/alphaphone/AlphaDevicePlugin.java': `package ai.elizaresearch.alphaphone;
+    'ai/alphacompute/alphaphone/AlphaDevicePlugin.java': `package ai.alphacompute.alphaphone;
 public class AlphaDevicePlugin extends com.getcapacitor.Plugin {
   public static int textScales;
   public static void applyTextScale(Object activity) {
@@ -552,14 +552,14 @@ public class AlphaDevicePlugin extends com.getcapacitor.Plugin {
   }
 }`,
   };
-  sources['ai/elizaresearch/alphaphone/AlphaKeyboardDictationService.java'] = 'package ai.elizaresearch.alphaphone; public final class AlphaKeyboardDictationService {}';
+  sources['ai/alphacompute/alphaphone/AlphaKeyboardDictationService.java'] = 'package ai.alphacompute.alphaphone; public final class AlphaKeyboardDictationService {}';
   const activity = readFileSync(join(root, app, 'MainActivity.java'), 'utf8');
-  sources['ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java'] = 'package ai.elizaresearch.alphaphone; public class AlphaVoiceCloudPlugin extends com.getcapacitor.Plugin {public static class Streaming extends com.getcapacitor.Plugin {}}';
-  sources['ai/elizaresearch/alphaphone/AlphaTelephonyRoles.java'] = 'package ai.elizaresearch.alphaphone; public class AlphaTelephonyRoles {public static void sync(Object host){}}';
-  sources['ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java'] = 'package ai.elizaresearch.alphaphone; public class AlphaCanonicalNotifications {public static void captureTap(Object host,android.content.Intent intent){}public static void ensure(Object host){}}';
+  sources['ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java'] = 'package ai.alphacompute.alphaphone; public class AlphaVoiceCloudPlugin extends com.getcapacitor.Plugin {public static class Streaming extends com.getcapacitor.Plugin {}}';
+  sources['ai/alphacompute/alphaphone/AlphaTelephonyRoles.java'] = 'package ai.alphacompute.alphaphone; public class AlphaTelephonyRoles {public static void sync(Object host){}}';
+  sources['ai/alphacompute/alphaphone/AlphaCanonicalNotifications.java'] = 'package ai.alphacompute.alphaphone; public class AlphaCanonicalNotifications {public static void captureTap(Object host,android.content.Intent intent){}public static void ensure(Object host){}}';
   for (const [, name] of activity.matchAll(/registerPlugin\(([\w.]+)\.class\)/g)) {
     if (name === 'AlphaVoiceCloudPlugin.Streaming') continue;
-    const qualified = name.includes('.') ? name : `ai.elizaresearch.alphaphone.${name}`;
+    const qualified = name.includes('.') ? name : `ai.alphacompute.alphaphone.${name}`;
     const path = qualified.replaceAll('.', '/') + '.java';
     if (sources[path]) continue;
     const lastDot = qualified.lastIndexOf('.');

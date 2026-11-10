@@ -1,4 +1,4 @@
-// Recording a distributed release as lastRelease (docs/human-actions.md H-32) on synthetic
+// Recording a distributed release as lastRelease  on synthetic
 // manifests and copies of android/release-signer.json. Not a build, signature or distribution.
 import test from "node:test";
 import assert from "node:assert/strict";

@@ -60,13 +60,13 @@ test('in-chat-only startup requests the canonical native listener stop and repor
 });
 
 test('no enabled component opens the dormant assistant entries',()=>{
- const sources={},java='android/app/src/main/java/ai/elizaresearch/alphaphone/';
+ const sources={},java='android/app/src/main/java/ai/alphacompute/alphaphone/';
  for(const entry of readdirSync(new URL('../'+java,import.meta.url)))if(entry.endsWith('.java'))sources[entry.slice(0,-5)]=read(java+entry);
  const dormant=['AlphaAssistActivity','AlphaPowerVoiceActivity'];
  for(const flavor of ['launcher','standalone']){
   const merged={};
   for(const manifest of ['main',flavor])for(const [,attrs] of read(`android/app/src/${manifest}/AndroidManifest.xml`).matchAll(/<(?:activity|activity-alias|service|receiver|provider)\s([^>]*)>/g)){
-   const name=attrs.match(/android:name="\.?([^"]+)"/)[1].replace(/^ai\.elizaresearch\.alphaphone\./,'');
+   const name=attrs.match(/android:name="\.?([^"]+)"/)[1].replace(/^ai\.alphacompute\.alphaphone\./,'');
    merged[name]={...merged[name],...Object.fromEntries([...attrs.matchAll(/([\w:]+)="([^"]*)"/g)].map(([,key,value])=>[key,value]))};
   }
   const openers=Object.keys(merged).filter(name=>!dormant.includes(name)&&dormant.some(target=>sources[name]?.includes(target)));

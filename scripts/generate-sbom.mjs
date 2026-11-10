@@ -46,6 +46,7 @@ import {fileURLToPath} from 'node:url';
 import {AGENT_ASSETS, ANDROID_CLASSPATH, BUN_ENTRY, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, KNOWN_LICENSES, NO_FONT_LICENCE, ROOT, TESSERACT_CORE_SOURCES, UNKNOWN, UNVERIFIED, VOICE_HOST, collectNotices, exists, fontLicense, fontNames, listFonts, mavenFamily, packagedRuntimePresent, pinnedVoiceModels, productionLockPackages, readJson, sha256, voiceHostProblems} from './generate-licenses.mjs';
 import {METADATA as GRADLE_METADATA, coordinateChecksum, parseVerificationMetadata} from './gradle-verification.mjs';
 import {classifyLicence, flagSummary} from './licence-policy.mjs';
+import {verifyEmbeddingInputs} from './stage-embedding-host.mjs';
 
 export const LICENCE_NOT_RECORDED = 'not recorded in this inventory';
 
@@ -135,7 +136,7 @@ function embeddingHostComponents(root) {
   if (!exists(root, EMBEDDING_HOST)) return [];
   const host = readJson(root, EMBEDDING_HOST);
   const hostScope = exists(root, 'vendor/eliza/plugins/plugin-local-inference/native/android/consumer.gradle') ? 'legacy qualification record; incompatible with current Paradee engine; not current packaged bytes' : WITH_RESIDENT_RUNTIME;
-  const source = `${EMBEDDING_HOST} (elizaOS ${host.pin}, engine ${host.forkPin}, qualification receipt sha256 ${host.qualificationReceiptSha256})`;
+  const source = `${EMBEDDING_HOST} (elizaOS ${host.pin}, engine ${host.forkPin})`;
   return [
     ...host.libraries.map(library => ({
       type: 'library', 'bom-ref': `embedding-host:${host.abi}/${library.name}`, name: `${library.name} (${host.abi})`, version: library.name === 'libc++_shared.so' ? 'Android NDK C++ runtime' : `engine ${host.forkPin}`,
@@ -165,8 +166,13 @@ function residentRuntimeComponents(root) {
   if (!packagedRuntimePresent(root)) throw new Error('--packaged-runtime: no resident runtime is staged. Run: npm run agent:build-workflow-worker && npm run agent:stage-android');
   const out = [];
   const record = exists(root, EMBEDDING_HOST) ? readJson(root, EMBEDDING_HOST) : null;
-  // While requalification is pending the record names superseded bytes; the staged files are listed as they are.
-  const embedding = record?.requalification?.required === true ? null : record;
+  // Only current source inputs make the recorded hashes authoritative. A superseded record
+  // stays in the source inventory while staged candidates are enumerated by their actual bytes.
+  let embedding = null;
+  if (record) {
+    try { verifyEmbeddingInputs(root, record, {requireProducerInputs: true}); embedding = record; }
+    catch { /* Source inventory only; the staged file inventory below remains exact. */ }
+  }
   for (const [base, kind] of [[AGENT_ASSETS, 'asset'], [JNI_LIBS, 'native library']])
     for (const rel of exists(root, base) ? walkFiles(path.join(root, base)) : []) {
       const file = `${base}/${rel}`;

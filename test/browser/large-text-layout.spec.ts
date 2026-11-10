@@ -4,7 +4,7 @@ for(const theme of ['light','dark'])test(`compact large text preserves Files car
  await page.setViewportSize({width:360,height:640});await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/?mode=dev&workflows=agent&theme='+theme);
  await page.evaluate(async()=>{const {BrowserDevice}=await import('/src/browser/device.ts');await BrowserDevice.prototype.setTextScale({percent:150});});
- // Home draws a card only when it has something to show (docs/ui-refresh-2026-11): the development
+ // Home draws a card only when it has something to show: the development
  // inbox has unread mail, so its card stands for the row here (no workflow is enabled in this profile).
  const workflow=page.getByRole('button',{name:/^Open Inbox: \d+ unread emails?$/});await workflow.scrollIntoViewIfNeeded();
  expect(await workflow.evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1);expect(await workflow.locator('[data-overview-part="count"]').evaluate(el=>{const range=document.createRange();range.selectNodeContents(el);return range.getClientRects().length;})).toBe(1);await page.screenshot({path:info.outputPath('home-workflow-large-text.png')});

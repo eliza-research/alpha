@@ -7,7 +7,6 @@ import {CLOUD_SDK_BASES,cloudSdkBases} from './cloud-sdk-authority.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const productIdentity=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8'));
-export const PAGES_NATIVE_AUTH_CALLBACKS='config/pages-native-auth-callbacks.generated.json';
 /** Reviewed credential namespaces, oldest first. The last is the one installed phones hold now. */
 export const STORAGE_NAMESPACES=['897efc6f09b9d4db345c61226d8301a9f1257ad98f0491e8591f63d4f4515874'];
 /** Deployment-owned public authorities, never credentials or values supplied by a login response. */
@@ -50,7 +49,7 @@ export function deploymentOutputs(config){
  validateCloudDeployment(config);
  const fingerprint=storageFingerprint(config);
  const generated='Generated from scripts/cloud-deployment-policy.mjs. Run node scripts/cloud-deployment.mjs.';
- const java=['package ai.elizaresearch.alphaphone;','','/** '+generated+' */','final class CloudDeployment {',' private CloudDeployment() {}'];
+ const java=['package ai.alphacompute.alphaphone;','','/** '+generated+' */','final class CloudDeployment {',' private CloudDeployment() {}'];
  const ts=['// '+generated];
  const gradle=['// '+generated,'ext.alphaCloudWebHosts = ['];
  for(const env of ['production','staging']){
@@ -69,9 +68,8 @@ export function deploymentOutputs(config){
  gradle.push(']');
  return {
   'apps/app/src/runtime/cloud-deployment.generated.ts':ts.join('\n')+'\n',
-  'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java':java.join('\n')+'\n',
+  'android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java':java.join('\n')+'\n',
   'android/app/cloud-deployment.generated.gradle':gradle.join('\n')+'\n',
-  [PAGES_NATIVE_AUTH_CALLBACKS]:JSON.stringify(Object.fromEntries(['production','staging'].map(environment=>[environment,[nativeAuthCallbackRegistration(config,productIdentity,environment)]])),null,2)+'\n',
  };
 }
 export function checkCloudDeployment(directory=root,{config=CLOUD_DEPLOYMENT,sdkBases=CLOUD_SDK_BASES,namespaces=STORAGE_NAMESPACES}={}){
@@ -85,6 +83,7 @@ export function checkCloudDeployment(directory=root,{config=CLOUD_DEPLOYMENT,sdk
  if(JSON.stringify(sdkBases)!==JSON.stringify(cloudSdkBases(config)))throw Error('Cloud SDK bases (scripts/cloud-sdk-authority.mjs) disagree with the Cloud deployment policy');
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- if(process.argv.includes('--check'))checkCloudDeployment();
+ if(process.argv.includes('--pages-registration'))console.log(JSON.stringify(Object.fromEntries(['production','staging'].map(environment=>[environment,[nativeAuthCallbackRegistration(CLOUD_DEPLOYMENT,productIdentity,environment)]])),null,2));
+ else if(process.argv.includes('--check'))checkCloudDeployment();
  else for(const [name,contents] of Object.entries(deploymentOutputs(CLOUD_DEPLOYMENT))){fs.mkdirSync(path.dirname(path.join(root,name)),{recursive:true});fs.writeFileSync(path.join(root,name),contents);}
 }

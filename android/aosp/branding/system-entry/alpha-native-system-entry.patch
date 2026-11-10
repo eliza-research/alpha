@@ -244,7 +244,7 @@
 +
 +/** Product entry admission only; it never asserts account, inference or microphone state. */
 +public final class AlphaSystemEntryPolicy {
-+    public static final String PACKAGE = "ai.elizaresearch.alphaphone";
++    public static final String PACKAGE = "ai.alphacompute.alphaphone";
 +    public static final String ACTIVITY = PACKAGE + ".AlphaAssistActivity";
 +    private AlphaSystemEntryPolicy() {}
 +    public static boolean available(boolean enabled, int user, boolean switching,

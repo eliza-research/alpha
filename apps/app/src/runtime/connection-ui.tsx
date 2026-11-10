@@ -248,7 +248,7 @@ function noSessionError(fallback: string): Error {
 const CLOUD_SERVICE = 'alpha.connection.cloud-service.v1';
 /**
  * Subscription gate QA (test-mocks builds only): runs the production sign-in and plan gate
- * against the chosen Cloud environment, including staging (docs/cloud-subscription-qa.md).
+ * against the chosen Cloud environment, including staging.
  */
 const RESIDENT_QA = 'alpha.connection.resident-qa.v1';
 function residentQa(): CloudEnvironment | null {

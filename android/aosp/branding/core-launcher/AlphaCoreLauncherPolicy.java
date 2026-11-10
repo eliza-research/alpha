@@ -3,7 +3,7 @@ package com.android.systemui.qs;
 
 /** Only the enabled, preinstalled Alpha currently holding Home is a core launcher. */
 public final class AlphaCoreLauncherPolicy {
-    public static final String PACKAGE = "ai.elizaresearch.alphaphone";
+    public static final String PACKAGE = "ai.alphacompute.alphaphone";
     private AlphaCoreLauncherPolicy() {}
     public static boolean protects(String name, boolean enabled, boolean preinstalled,
             boolean currentHome) {

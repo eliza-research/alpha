@@ -1,4 +1,0 @@
-moderate uuid@8.3.2,9.0.1 GHSA-w5hq-g745-h8pq uuid: Missing buffer bounds check in v3/v5/v6 when buf is provided
-high     zod@4.6.5 GHSA-mrhx-c7xc-m3w5 Zod can exhaust memory while validating oversized constrained collections
-Resident findings: 1 moderate, 1 high across 573 package versions (packaged-runtime notices, upstream c95a37be8d56)
-FAIL Unrecorded resident advisory: high GHSA-mrhx-c7xc-m3w5 via zod@4.6.5. Fix it upstream or record a reviewed exception in docs/dependency-audit.dispositions.json (resident).

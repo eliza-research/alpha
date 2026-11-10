@@ -10,7 +10,7 @@
 //   Playwright with a test-owned results page; no real request is sent.
 // - The device speech engine is replaced by a recording fixture (same prototype hook that
 //   reading-sensitive.spec.ts uses), so no audio is played; the reviewed text handed to speech
-//   is what is asserted.
+//  is what is asserted.
 // - Password values are only the development vault's built-in synthetic records and the
 //   development provider's disposable sample sign-in. Nothing is typed into a credential field.
 //
@@ -131,7 +131,7 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     await expect(review).toHaveCount(0);
   });
 
-  // Journey hardening (docs/core-loop-audit.md, work order 14): navigation during approval.
+  // Journey hardening: navigation during approval.
   await test.step('a page that navigates while its excerpt is under review retires that review; nothing of the old page is read', async () => {
     await enter(page, `${origin}/departures`);
     await expect(heading(page, 'Departures')).toBeVisible();

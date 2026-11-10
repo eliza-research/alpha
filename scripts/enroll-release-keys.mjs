@@ -5,8 +5,7 @@
  *   node scripts/enroll-release-keys.mjs --fingerprints CEREMONY_DIR/fingerprints.json
  *     [--certificates CEREMONY_DIR] [--debug-fingerprint HEX ...] [--replace] [--write]
  *
- * The ceremony is the pinned upstream offline generator run with Alpha's key list
- * (docs/human-actions.md H-08):
+ * The ceremony is the pinned upstream offline generator run with Alpha's key list:
  *   node vendor/eliza/packages/os/scripts/android/generate-release-keys.ts \
  *     --manifest android/signing/alpha-key-manifest.json --output /media/USB1/<new dir> ...
  * Its fingerprints.json holds public digests only. This maps them onto Alpha's records (H-09):
@@ -226,7 +225,7 @@ export function main(argv, { root = process.cwd(), log = console.log, error = co
   const identities = options.certificates ? applicationIdentities(options.certificates) : null;
   if (identities) {
     log(`\nApplication certificate (${APPLICATION_KEY}):`);
-    log(`  SHA-1 for the Google Android OAuth client of package ai.elizaresearch.alphaphone (H-12): ${identities.sha1}`);
+    log(`  SHA-1 for the Google Android OAuth client of package ai.alphacompute.alphaphone (H-12): ${identities.sha1}`);
     log(`  SHA-256 for ELIZA_ANDROID_ASSET_LINKS_JSON (H-13): ${identities.sha256}`);
   }
   const changed = rows.some(row => row.state === "set" || (row.state === "conflict" && options.replace));
@@ -235,7 +234,7 @@ export function main(argv, { root = process.cwd(), log = console.log, error = co
     return 0;
   }
   for (const [file, record] of records) fs.writeFileSync(path.join(root, file), formatRecord(record));
-  log(`\nWrote ${[...records.keys()].join(", ")}. Review the diff, commit it in one change, then run node scripts/human-actions.mjs.`);
+  log(`\nWrote ${[...records.keys()].join(", ")}. Review the diff and commit the updated signer records together.`);
   return 0;
 }
 

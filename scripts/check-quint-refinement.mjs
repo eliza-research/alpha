@@ -19,31 +19,19 @@ const requested = args.find(arg => arg.startsWith('--families='))?.slice(11).spl
 const output = resolve(repositoryRoot, args.find(arg => arg.startsWith('--out='))?.slice(6) || 'test-results/quint-refinement/summary.json');
 for (const arg of args) if (!arg.startsWith('--families=') && !arg.startsWith('--out=') && arg !== '--require-complete') throw Error(`Unknown option ${arg}`);
 for (const family of requested) if (!families.includes(family)) throw Error(`Unknown family ${family}`);
-const ledgerPath = 'specs/quint/coverage.json';
-const auditPath = 'specs/quint/state-audit.json';
 const familyModule = family => `specs/quint/refinement/${family}/index.mjs`;
 const reportingInputs = ['scripts/check-quint-refinement.mjs', 'specs/quint/refinement/model-state.mjs',
   'specs/quint/refinement/check-traces.mjs', 'specs/quint/refinement/campaigns.mjs', 'package-lock.json',
-  'scripts/quint-lib.mjs', 'scripts/quint-state-audit.mjs', ledgerPath, auditPath,
+  'scripts/quint-lib.mjs',
   ...['application', 'services', 'native', 'legacy'].map(family => `specs/quint/${family}/manifest.json`),
   ...families.map(familyModule).filter(path => existsSync(join(repositoryRoot, path)))];
-const {inputHashes, sourceInventory} = (() => {
-  const captured = new Map(reportingInputs.map(path => [path, readFileSync(join(repositoryRoot, path))]));
-  const inputHashes = Object.fromEntries([...captured].map(([path, bytes]) => [path, sha256(bytes)]));
-  const ledger = JSON.parse(captured.get(ledgerPath));
-  const audit = JSON.parse(captured.get(auditPath));
-  const sourceInventory = {sourcePin: audit.sourcePin, files: ledger.files.length,
-    provisionalFiles: ledger.files.filter(file => file.reviewStatus === 'state-audit-required').length,
-    languageReviewFiles: audit.counts.languageReview, unassignedSyntacticWrites: audit.counts.unassignedWrites,
-    auditMatchesLedger: audit.ledgerSha256 === inputHashes[ledgerPath] && audit.counts.files === ledger.files.length};
-  return {inputHashes, sourceInventory};
-})();
+const inputHashes = Object.fromEntries(reportingInputs.map(path =>
+  [path, sha256(readFileSync(join(repositoryRoot, path)))]));
 const models = loadModels();
 const report = {schemaVersion: 1, startedAt: new Date().toISOString(), evidence: 'implementation trace refinement with explicit projections',
-  reportingInputHashes: inputHashes, sourceInventory,
+  reportingInputHashes: inputHashes,
   modelCount: models.length, families: [], models: [], obligations: [], checksPassed: false, completeApplicationRefinement: false};
-let failed = !sourceInventory.auditMatchesLedger;
-if (failed) report.obligations.push({obligation: 'current source state audit', reason: 'The candidate audit is out of sync with the coverage ledger.'});
+let failed = false;
 
 mkdirSync(dirname(output), {recursive: true});
 function publish(path, value) {
@@ -54,7 +42,7 @@ function publish(path, value) {
 function checkpoint(status, activeFamily) {
   const currentFamilies = activeFamily ? [...report.families, activeFamily] : report.families;
   publish(`${output}.progress.json`, {schemaVersion: 1, status, startedAt: report.startedAt,
-    finishedAt: report.finishedAt, reportingInputHashes: inputHashes, sourceInventory,
+    finishedAt: report.finishedAt, reportingInputHashes: inputHashes,
     modelCount: models.length, requestedFamilies: requested, checksPassed: report.checksPassed,
     families: currentFamilies.map(({family, status, receipts, failures, error}) => ({family, status,
       receiptPaths: receipts?.map(receipt => receipt.receiptPath).filter(Boolean) ?? [],

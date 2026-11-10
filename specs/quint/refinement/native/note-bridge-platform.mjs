@@ -6,9 +6,9 @@ import {noteRecordingPlatform} from './note-recording-platform.mjs';
 export function noteBridgePlatform() {
  const base=noteRecordingPlatform();
  const files={...base.sources};
- files['android/content/Context.java']=files['android/content/Context.java'].replace('public class Context {','public class Context {\n  public static final String AUDIO_SERVICE="audio";\n  public Object getSystemService(String name){return ai.elizaresearch.alphaphone.NoteBridgePorts.audio;}');
- files['android/os/Handler.java']=files['android/os/Handler.java'].replace('public boolean post(Runnable task){ai.elizaresearch.alphaphone.NoteRecordingPorts.post(task);return true;}','public boolean post(Runnable task){ai.elizaresearch.alphaphone.NoteBridgePorts.post(task);return true;}');
- files['android/media/MediaRecorder.java']=files['android/media/MediaRecorder.java'].replace('    bytes();','    bytes();ai.elizaresearch.alphaphone.NoteBridgePorts.starts++;');
+ files['android/content/Context.java']=files['android/content/Context.java'].replace('public class Context {','public class Context {\n  public static final String AUDIO_SERVICE="audio";\n  public Object getSystemService(String name){return ai.alphacompute.alphaphone.NoteBridgePorts.audio;}');
+ files['android/os/Handler.java']=files['android/os/Handler.java'].replace('public boolean post(Runnable task){ai.alphacompute.alphaphone.NoteRecordingPorts.post(task);return true;}','public boolean post(Runnable task){ai.alphacompute.alphaphone.NoteBridgePorts.post(task);return true;}');
+ files['android/media/MediaRecorder.java']=files['android/media/MediaRecorder.java'].replace('    bytes();','    bytes();ai.alphacompute.alphaphone.NoteBridgePorts.starts++;');
  Object.assign(files,{
   'ai/eliza/plugins/passwords/PasswordSurfaces.java':`package ai.eliza.plugins.passwords;
 public final class PasswordSurfaces {public interface Listener {void onSecretSurfaceChanged(boolean visible);}public static void addListener(Listener value){}public static void removeListener(Listener value){}public static boolean visible(){return false;}}`,
@@ -58,10 +58,10 @@ public class Plugin {
  protected void handleOnPause(){}
  protected void handleOnResume(){}
  protected void handleOnDestroy(){}
- public android.content.Context getContext(){return ai.elizaresearch.alphaphone.NoteBridgePorts.context;}
- public PermissionState getPermissionState(String alias){return ai.elizaresearch.alphaphone.NoteBridgePorts.permission;}
- public void requestPermissionForAlias(String alias,PluginCall call,String callback){ai.elizaresearch.alphaphone.NoteBridgePorts.permissionCall=call;ai.elizaresearch.alphaphone.NoteBridgePorts.permissionCallback=callback;}
- public void notifyListeners(String event,JSObject value){ai.elizaresearch.alphaphone.NoteBridgePorts.events.put(new org.json.JSONObject().put("event",event).put("value",value));}
+ public android.content.Context getContext(){return ai.alphacompute.alphaphone.NoteBridgePorts.context;}
+ public PermissionState getPermissionState(String alias){return ai.alphacompute.alphaphone.NoteBridgePorts.permission;}
+ public void requestPermissionForAlias(String alias,PluginCall call,String callback){ai.alphacompute.alphaphone.NoteBridgePorts.permissionCall=call;ai.alphacompute.alphaphone.NoteBridgePorts.permissionCallback=callback;}
+ public void notifyListeners(String event,JSObject value){ai.alphacompute.alphaphone.NoteBridgePorts.events.put(new org.json.JSONObject().put("event",event).put("value",value));}
  public android.app.Activity getActivity(){return new android.app.Activity();}
  public Bridge getBridge(){return new Bridge();}
  public static class Bridge {public Handle getPlugin(String name){throw new AssertionError("Unexercised plugin lookup: "+name);}}
@@ -122,25 +122,25 @@ public abstract class SpeechStreamBridgePlugin extends com.getcapacitor.Plugin {
  protected abstract Credential readCredential(String environment,String id,long epoch)throws Exception;
  protected abstract boolean launch(com.getcapacitor.PluginCall call,Runnable action);
 }`,
-  'ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java':`package ai.elizaresearch.alphaphone;
+  'ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java':`package ai.alphacompute.alphaphone;
 public class AlphaLocalAgentPlugin {
  public static Object openNativeVoiceTransport(String owner){throw new AssertionError("Unexercised resident route");}
  public static long credentialAuthorityEpoch(){throw new AssertionError("Unexercised credentials");}
  public static <T>T withCredentialAuthority(long epoch,java.util.concurrent.Callable<T> task)throws Exception {throw new AssertionError("Unexercised credentials");}
 }`,
-  'ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java':'package ai.elizaresearch.alphaphone;public class AlphaConnectionPlugin {public String readCredentialSlot(String slot){throw new AssertionError("Unexercised credentials");}}',
-  'ai/elizaresearch/alphaphone/AlphaCredentialStore.java':'package ai.elizaresearch.alphaphone;public class AlphaCredentialStore {public AlphaCredentialStore(android.content.Context context){}public String readCredentialSlot(String slot){throw new AssertionError("Unexercised credentials");}}',
-  'ai/elizaresearch/alphaphone/AlphaNoteAudioPlugin.java':`package ai.elizaresearch.alphaphone;
+  'ai/alphacompute/alphaphone/AlphaConnectionPlugin.java':'package ai.alphacompute.alphaphone;public class AlphaConnectionPlugin {public String readCredentialSlot(String slot){throw new AssertionError("Unexercised credentials");}}',
+  'ai/alphacompute/alphaphone/AlphaCredentialStore.java':'package ai.alphacompute.alphaphone;public class AlphaCredentialStore {public AlphaCredentialStore(android.content.Context context){}public String readCredentialSlot(String slot){throw new AssertionError("Unexercised credentials");}}',
+  'ai/alphacompute/alphaphone/AlphaNoteAudioPlugin.java':`package ai.alphacompute.alphaphone;
 public class AlphaNoteAudioPlugin {
  public static Object recordings(android.content.Context context){throw new AssertionError("Unexercised retained audio");}
  public com.getcapacitor.JSObject retain(java.io.File file,String id,String note,long duration,String text){throw new AssertionError("Unexercised retention");}
  public void saveNoteRecording(com.getcapacitor.PluginCall call,AlphaNoteRecorder recorder,String id){throw new AssertionError("Unexercised retention");}
 }`,
-  'ai/elizaresearch/alphaphone/AlphaBrowserPlugin.java':'package ai.elizaresearch.alphaphone;public class AlphaBrowserPlugin {public String consumeReading(com.getcapacitor.PluginCall call){throw new AssertionError("Unexercised browser");}}',
-  'ai/elizaresearch/alphaphone/CloudSpeechPolicy.java':'package ai.elizaresearch.alphaphone;public class CloudSpeechPolicy {public static String host(String profile,boolean mocks,String environment){throw new AssertionError("Unexercised cloud");}public static void requireProvider(String profile,String provider){throw new AssertionError("Unexercised cloud");}}',
-  'ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java':'package ai.elizaresearch.alphaphone;public class LocalAgentProviderAdmission {public static void requireCloudVoiceSelection(String provider,String id){throw new AssertionError("Unexercised provider");}public static boolean validProviderToken(String token,int max){throw new AssertionError("Unexercised provider");}}',
-  'ai/elizaresearch/alphaphone/PairedAgentCredential.java':'package ai.elizaresearch.alphaphone;public class PairedAgentCredential {public boolean cloud;public String token;public static PairedAgentCredential resolve(com.getcapacitor.PluginCall call,AlphaConnectionPlugin store){throw new AssertionError("Unexercised pairing");}}',
-  'ai/elizaresearch/alphaphone/PairedSpeechContract.java':`package ai.elizaresearch.alphaphone;
+  'ai/alphacompute/alphaphone/AlphaBrowserPlugin.java':'package ai.alphacompute.alphaphone;public class AlphaBrowserPlugin {public String consumeReading(com.getcapacitor.PluginCall call){throw new AssertionError("Unexercised browser");}}',
+  'ai/alphacompute/alphaphone/CloudSpeechPolicy.java':'package ai.alphacompute.alphaphone;public class CloudSpeechPolicy {public static String host(String profile,boolean mocks,String environment){throw new AssertionError("Unexercised cloud");}public static void requireProvider(String profile,String provider){throw new AssertionError("Unexercised cloud");}}',
+  'ai/alphacompute/alphaphone/LocalAgentProviderAdmission.java':'package ai.alphacompute.alphaphone;public class LocalAgentProviderAdmission {public static void requireCloudVoiceSelection(String provider,String id){throw new AssertionError("Unexercised provider");}public static boolean validProviderToken(String token,int max){throw new AssertionError("Unexercised provider");}}',
+  'ai/alphacompute/alphaphone/PairedAgentCredential.java':'package ai.alphacompute.alphaphone;public class PairedAgentCredential {public boolean cloud;public String token;public static PairedAgentCredential resolve(com.getcapacitor.PluginCall call,AlphaConnectionPlugin store){throw new AssertionError("Unexercised pairing");}}',
+  'ai/alphacompute/alphaphone/PairedSpeechContract.java':`package ai.alphacompute.alphaphone;
 public class PairedSpeechContract {
  public static final String ASR_PATH="asr",TTS_PATH="tts",ASR_PROVIDER="asr";
  public static String requestId(String value){throw new AssertionError("Unexercised speech");}
@@ -150,8 +150,8 @@ public class PairedSpeechContract {
  public static org.json.JSONObject ttsBody(String value){throw new AssertionError("Unexercised speech");}
  public static void ttsHeaders(String a,String b,String c,String d){throw new AssertionError("Unexercised speech");}
 }`,
-  'ai/elizaresearch/alphaphone/BuildConfig.java':'package ai.elizaresearch.alphaphone;public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;public static final String ELIZA_RUNTIME_PROFILE="production";}',
-  'ai/elizaresearch/alphaphone/LateLaunch.java':'package ai.elizaresearch.alphaphone;public class LateLaunch {public static boolean ask(com.getcapacitor.PluginCall call,Runnable action){action.run();return true;}}',
+  'ai/alphacompute/alphaphone/BuildConfig.java':'package ai.alphacompute.alphaphone;public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;public static final String ELIZA_RUNTIME_PROFILE="production";}',
+  'ai/alphacompute/alphaphone/LateLaunch.java':'package ai.alphacompute.alphaphone;public class LateLaunch {public static boolean ask(com.getcapacitor.PluginCall call,Runnable action){action.run();return true;}}',
  });
  for(const [name,body] of Object.entries(files)){const file=join(base.directory,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,body);}
  return {directory:base.directory,sources:files,paths:Object.keys(files).map(name=>join(base.directory,name)),close:base.close};

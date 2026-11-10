@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package ai.alphacompute.alphaphone;
 import org.json.*;
 import java.util.*;
 import java.util.concurrent.*;

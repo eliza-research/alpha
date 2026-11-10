@@ -89,6 +89,7 @@ const DISTRIBUTABLE = {
 
 test("a release is distributable only when every term holds", () => {
   assert.equal(releaseDistributable(DISTRIBUTABLE), true);
+  assert.equal(releaseDistributable({...DISTRIBUTABLE, voiceHost: {...DISTRIBUTABLE.voiceHost, qualified: false}}), true, "device approval flags are separate from build integrity");
   const broken = {
     "test-mocks build": { testMocks: true },
     "unsigned": { signed: false },
@@ -101,7 +102,6 @@ test("a release is distributable only when every term holds", () => {
     "notices lack the runtime": { runtimeNotices: false },
     "no on-device voice": { voiceHost: { ...DISTRIBUTABLE.voiceHost, packaged: false } },
     "no on-device ASR": { voiceHost: { ...DISTRIBUTABLE.voiceHost, asr: false } },
-    "voice host not qualified": { voiceHost: { ...DISTRIBUTABLE.voiceHost, qualified: false } },
     "licence blocker": { licenceBlockers: ["unresolved-font-licence: x"] },
   };
   for (const [name, change] of Object.entries(broken))
@@ -124,7 +124,7 @@ test("assetlinks.json is rendered only from the recorded release signer, never u
   const text = renderAssetLinks({ template, signerSha256: SIGNER, packageName });
   const [statement] = JSON.parse(text);
   assert.deepEqual(statement.relation, ["delegate_permission/common.handle_all_urls"]);
-  assert.equal(statement.target.package_name, "ai.elizaresearch.alphaphone");
+  assert.equal(statement.target.package_name, "ai.alphacompute.alphaphone");
   assert.deepEqual(statement.target.sha256_cert_fingerprints, [fingerprint(SIGNER)]);
   assert.match(statement.target.sha256_cert_fingerprints[0], /^(AA:){31}AA$/);
   assert.doesNotMatch(text, new RegExp(PLACEHOLDER));

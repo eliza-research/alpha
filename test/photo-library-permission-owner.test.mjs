@@ -11,8 +11,8 @@ function method(source,signature){const start=source.indexOf(signature);assert.n
 test('photo permission facade receives its own callback after full, selected and denied grants',()=>{
  // AlphaPhotos and AlphaPhotoLibrary are registrations of plugin-native-media's PhotosPlugin and
  // DeviceLibraryPlugin: the request and callback methods exercised here are the shared ones.
- const alphaFacade=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java','utf8');
- const alphaPhotos=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java','utf8');
+ const alphaFacade=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotoLibraryPlugin.java','utf8');
+ const alphaPhotos=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotosPlugin.java','utf8');
  const media='vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/';
  const facade=readFileSync(media+'DeviceLibraryPlugin.java','utf8');
  const access=readFileSync(media+'PhotoLibraryAccess.java','utf8');

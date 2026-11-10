@@ -53,7 +53,7 @@ class CorePolicyTest(unittest.TestCase):
                 probe.write_text('''
 import java.util.concurrent.Executor
 enum class UIControl { NORMAL, HIDE_BUTTON, HIDE_ENTRY }
-object AlphaCoreLauncherPolicy { const val PACKAGE = "ai.elizaresearch.alphaphone" }
+object AlphaCoreLauncherPolicy { const val PACKAGE = "ai.alphacompute.alphaphone" }
 data class UserPackage(val userId: Int, val packageName: String) {
     var uiControl = UIControl.NORMAL
     fun updateUiControl() {}

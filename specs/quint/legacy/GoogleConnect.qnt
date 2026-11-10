@@ -1,4 +1,4 @@
-// Faithful translation of docs/flow-redesign-2026-11/tla/GoogleConnect.tla.
+// Historical design translation; the executable Quint model is retained here.
 module GoogleConnect {
   type State = { Design: str, gms: bool, scopes: Set[str], screen: str, browser: str,
     requested: Set[str], inboxView: str, calView: str, calPicked: bool, taps: int, detours: int }

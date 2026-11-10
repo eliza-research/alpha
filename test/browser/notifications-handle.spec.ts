@@ -1,8 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { auditPage, format } from './accessibility-audit';
 
-// Android's shade is the one notification and quick-settings surface (issues #416 and #417,
-// docs/gesture-zones.md). Alpha draws no shade in a product build, and Home has no
+// Android's shade is the one notification and quick-settings surface (issues #416 and #417).
+// Alpha draws no shade in a product build, and Home has no
 // notifications control. On launcher Home a pull down that starts on empty Home asks Android to
 // open its shade; the standalone app is an ordinary app and has no pull. The top edge stays Android's.
 //
@@ -200,7 +200,7 @@ async function touchDrag(page: Page, x: number, y: number, dy: number) {
   await cdp.detach();
 }
 
-// The launcher is portrait only (docs/decisions.md P-27). A short portrait window, as on a short
+// The launcher is portrait only. A short portrait window, as on a short
 // phone with large text, is the geometry in which its Home overflows.
 test.describe('launcher Home taller than a short portrait screen', () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 412, height: 560 } });

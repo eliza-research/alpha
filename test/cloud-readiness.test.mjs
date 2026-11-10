@@ -1,5 +1,5 @@
-// Eliza Cloud operator values and the credential-free readiness probe (docs/human-actions.md H-11 to
-// H-16). A stubbed fetch stands in for Cloud; nothing here contacts a network, signs in or sends a code.
+// Eliza Cloud operator values and the credential-free readiness probe. A stubbed fetch stands
+// in for Cloud; nothing here contacts a network, signs in or sends a code.
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -11,7 +11,7 @@ import { fingerprint } from "../scripts/render-assetlinks.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const RELEASE = "c3".repeat(32);
-const javaDir = path.join(root, "android/app/src/main/java/ai/elizaresearch/alphaphone");
+const javaDir = path.join(root, "android/app/src/main/java/ai/alphacompute/alphaphone");
 /** A copy of the configuration the probe reads, with the release signer recorded as `signer`. */
 function fixtureRoot(t, signer) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-cloud-readiness-"));
@@ -142,7 +142,7 @@ test("each observed deployment gap fails its own gate and names its step", async
   assert.match(byGate["email sign-in"].detail, /not offered \(or behind a captcha\)/);
   assert.match(byGate["native Google"].detail, /STEWARD_GOOGLE_NATIVE_CLIENT_IDS/);
   assert.match(byGate["browser return"].detail, /redirect_uri is not allowed for this tenant/);
-  assert.match(byGate["App Links"].detail, /H-09/);
+  assert.match(byGate["App Links"].detail, /release certificate is not recorded yet/);
   assert.match(byGate["service documents"].detail, /CLOUD_PUBLIC_SERVICE_JSON/);
   assert.match(byGate["entitlement keys"].detail, /ELIZA_ENTITLEMENT_/);
   assert.match(byGate["Maps route"].detail, /^needs an account: .*401 before routing/);

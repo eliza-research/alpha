@@ -130,7 +130,7 @@ function fixture(name, code) {
 
 export async function checkStartupUpdateAdmission() {
   const sources = [fileURLToPath(import.meta.url), 'apps/app/src/main.tsx', 'vendor/eliza/' + shared, effective, projection,
-    'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java',
+    'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java',
     'upstream.lock.json', 'scripts/prepare-client-features.mjs', 'scripts/pinned-upstream-source.mjs'];
   captureSources([...sources, modelPath]);
   checkClientFeatures();
