@@ -10,7 +10,7 @@ function regularPath(filename, directory = false) {
   try {
     const stat = fs.lstatSync(filename);
     if (stat.isSymbolicLink() || !(directory ? stat.isDirectory() : stat.isFile())) throw Error('Nonregular client feature path: ' + filename);
-    return true;
+    return stat;
   } catch (error) { if (error.code === 'ENOENT') return false; throw error; }
 }
 function inventory(directory) {
@@ -399,23 +399,26 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   const parent = path.join(root, '.eliza'), destination = path.join(parent, 'client-features');
   regularPath(parent, true);
   const stamp = path.join(destination, '.source.json');
-  // Whether the prepared tree is current. A concurrent preparer can move the tree aside while it
-  // is read, so a tree that vanishes mid-read is read again; one without a stamp is not ours.
+  // A peer can replace the directory during readback. Only a stable directory without a stamp
+  // is unrecognized; a vanished or replaced directory needs another authenticated read.
   const current = () => {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        if (!regularPath(destination, true)) return false;
-        if (!regularPath(stamp)) {
-          if (attempt < 4) continue;
-          throw Error('Refusing to replace an unrecognized client feature directory.');
-        }
-        const previous = JSON.parse(fs.readFileSync(stamp));
-        const actual = inventory(destination); delete actual['.source.json'];
-        return previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion &&
-          JSON.stringify(Object.keys(previous).sort()) === JSON.stringify(Object.keys(provenance).sort()) &&
-          matches(previous.sourceFiles || {}, sourceFiles) && matches(previous.files || {}, files) && matches(actual, files);
-      } catch (error) { if (error.code !== 'ENOENT' || attempt >= 4) throw error; }
-    }
+    try {
+      const observed = regularPath(destination, true);
+      if (!observed) return false;
+      const sameDirectory = () => {
+        const latest = regularPath(destination, true);
+        return latest && latest.dev === observed.dev && latest.ino === observed.ino;
+      };
+      if (!regularPath(stamp)) {
+        if (!sameDirectory()) return false;
+        throw Error('Refusing to replace an unrecognized client feature directory.');
+      }
+      const previous = JSON.parse(fs.readFileSync(stamp));
+      const actual = inventory(destination); delete actual['.source.json'];
+      return sameDirectory() && previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion &&
+        JSON.stringify(Object.keys(previous).sort()) === JSON.stringify(Object.keys(provenance).sort()) &&
+        matches(previous.sourceFiles || {}, sourceFiles) && matches(previous.files || {}, files) && matches(actual, files);
+    } catch (error) { if (error.code === 'ENOENT') return false; throw error; }
   };
   if (current()) return destination;
   if (check) throw Error('Client feature source is missing or stale: run npm run upstream:prepare-client');
@@ -429,20 +432,21 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     }
     if (!matches(inventory(temporary), files)) throw Error('Client feature source copy failed authentication.');
     fs.writeFileSync(path.join(temporary, '.source.json'), JSON.stringify(provenance, null, 2));
-    // Move the old tree aside rather than deleting it in place, so no preparer deletes part of a
-    // tree another one just installed. A concurrent preparer may install first; accept it if current.
-    for (let attempt = 0; ; attempt++) {
-      const aside = path.join(parent, '.client-features-old-' + randomUUID());
-      try {
-        try { fs.renameSync(destination, aside); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-        fs.renameSync(temporary, destination);
-        return destination;
-      } catch (error) {
-        if (!['EEXIST', 'ENOTEMPTY'].includes(error.code)) throw error;
-        if (current()) return destination;
-        if (attempt >= 4) throw Error('A concurrent client feature preparation installed a different tree.');
-      } finally { fs.rmSync(aside, { force: true, recursive: true }); }
-    }
+    // Retire at most one tree. A loser must only observe the peer's winner: retiring again can
+    // repeatedly remove authenticated winners and exhaust every contender's readback.
+    const aside = path.join(parent, '.client-features-old-' + randomUUID());
+    try {
+      try { fs.renameSync(destination, aside); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      try { fs.renameSync(temporary, destination); return destination; }
+      catch (error) { if (!['EEXIST', 'ENOTEMPTY'].includes(error.code)) throw error; }
+      const deadline = performance.now() + 30_000;
+      const wait = new Int32Array(new SharedArrayBuffer(4));
+      while (!current()) {
+        if (performance.now() >= deadline) throw Error('Timed out waiting for an authenticated concurrent client feature preparation.');
+        Atomics.wait(wait, 0, 0, 25);
+      }
+      return destination;
+    } finally { fs.rmSync(aside, { force: true, recursive: true }); }
   } finally { fs.rmSync(temporary, { force: true, recursive: true }); }
 }
 /** Check-only: the prepared copy's path when current; never writes the shared tree. */
