@@ -26,9 +26,10 @@ npm run dev
 
 `npm run verify` runs deployment-output checks, source preparation, executable
 Quint models, TypeScript, host tests, the production web build and its bundle audit.
-Host contract tests need a JDK. Tests that load the real SDK require the pinned Bun
-and a prepared SDK; set `ALPHA_REQUIRE_PREPARED_SDK=1` to fail instead of skipping
-when that preparation is missing.
+Host contract tests need a JDK and the `sqlite3` command-line tool on `PATH`
+for native Calendar queries. Archive builds check SQLite before verification.
+Tests that load the real SDK require the pinned Bun and a prepared SDK; set
+`ALPHA_REQUIRE_PREPARED_SDK=1` to fail instead of skipping when preparation is missing.
 
 ## Development
 

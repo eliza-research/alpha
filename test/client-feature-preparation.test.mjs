@@ -55,6 +55,118 @@ test('concurrent preparers after a source change all succeed and leave one authe
  assert.equal(prepareClientFeatures({root,projectVoice:false,check:true}),source);
  assert.deepEqual(fs.readdirSync(path.join(root,'.eliza')),['client-features'],'no staging or set-aside tree is left behind');
 }));
+test('client feature publication retires once while a peer moves the winner',()=>fixture(async({root,vendor,git})=>{
+ const destination=prepareClientFeatures({root,projectVoice:false});
+ const prior=JSON.parse(fs.readFileSync(path.join(destination,'.source.json')));
+ fs.appendFileSync(path.join(vendor,fixtureLeaf),'export const changed = 2;\n');
+ git(['add','.']);git(['commit','-qm','Change']);
+ const commit=git(['rev-parse','HEAD']);fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit}));
+ const changed=createHash('sha256').update(fs.readFileSync(path.join(vendor,fixtureLeaf))).digest('hex');
+ const expected={...prior,baseCommit:commit,sourceFiles:{...prior.sourceFiles,[fixtureLeaf]:changed},files:{...prior.files,[fixtureLeaf]:changed}};
+ const control=path.join(root,'control');fs.mkdirSync(control);
+ const actors=['reader','peer1','peer2'],events=[],locations={};
+ const worker=String.raw`
+  import fs from 'node:fs';import path from 'node:path';
+  const [actor,root,control,preparer]=process.argv.slice(1),destination=path.join(root,'.eliza/client-features');
+  const original={rename:fs.renameSync,lstat:fs.lstatSync,remove:fs.rmSync,mkdtemp:fs.mkdtempSync};
+  const wait=new Int32Array(new SharedArrayBuffer(4));let stage,aside,retire=0,publish=0,read=0,collided=false;
+  function gate(key,value){fs.writeFileSync(path.join(control,actor+'-'+key+'.json'),JSON.stringify({actor,...value,stage,aside}));const until=Date.now()+20000;while(!fs.existsSync(path.join(control,actor+'-'+key+'.allow'))){if(Date.now()>until)throw Error('Fixture gate timed out: '+actor+' '+key);Atomics.wait(wait,0,0,5);}}
+  fs.mkdtempSync=function(prefix,...args){const result=original.mkdtemp(prefix,...args);if(String(prefix).includes('client-features-stage-'))stage=result;return result;};
+  fs.renameSync=function(from,to){
+   const kind=from===destination?'retire':to===destination&&from===stage?'publish':undefined;
+   if(!kind)return original.rename(from,to);
+   const attempt=kind==='retire'?++retire:++publish;if(kind==='retire')aside=to;
+   gate(kind+'-'+attempt+'-ready',{operation:kind,phase:'ready',attempt});
+   let outcome='success',error;try{original.rename(from,to);}catch(cause){outcome=cause.code;error=cause;}
+   if(kind==='publish'&&['EEXIST','ENOTEMPTY'].includes(outcome))collided=true;
+   gate(kind+'-'+attempt+'-done',{operation:kind,phase:'done',attempt,outcome});
+   if(error)throw error;
+  };
+  fs.lstatSync=function(file,...args){
+   if(actor!=='reader'||!collided||file!==destination)return original.lstat(file,...args);
+   const attempt=++read;gate('read-'+attempt+'-ready',{operation:'read',phase:'ready',attempt});
+   let result,error,outcome='present';try{result=original.lstat(file,...args);collided=false;}catch(cause){outcome=cause.code;error=cause;}
+   gate('read-'+attempt+'-done',{operation:'read',phase:'done',attempt,outcome});if(error)throw error;return result;
+  };
+  fs.rmSync=function(file,...args){
+   const kind=file===aside?'aside':file===stage?'stage':undefined;if(!kind)return original.remove(file,...args);
+   gate('cleanup-'+kind+'-ready',{operation:'cleanup',slot:kind,phase:'ready'});
+   const result=original.remove(file,...args);gate('cleanup-'+kind+'-done',{operation:'cleanup',slot:kind,phase:'done',outcome:'success'});return result;
+  };
+  try{const {prepareClientFeatures}=await import(preparer);prepareClientFeatures({root,projectVoice:false});fs.writeFileSync(path.join(control,actor+'-complete.json'),JSON.stringify({status:0,retire,publish,read}));}
+  catch(error){fs.writeFileSync(path.join(control,actor+'-complete.json'),JSON.stringify({status:1,retire,publish,read,error:error.stack}));process.exitCode=1;}
+ `;
+ const children=actors.map(actor=>{
+  const child=spawn(process.execPath,['--input-type=module','-e',worker,actor,root,control,pathToFileURL(path.resolve('scripts/prepare-client-features.mjs')).href],{stdio:['ignore','ignore','pipe']});
+  let stderr='';child.stderr.on('data',chunk=>{stderr+=chunk;});
+  const closed=new Promise(resolve=>child.on('close',status=>resolve({actor,status,stderr})));
+  return {actor,child,closed};
+ });
+ const marker=(actor,key)=>path.join(control,actor+'-'+key);
+ async function ready(actor,key){
+  const until=Date.now()+20000;
+  while(!fs.existsSync(marker(actor,key+'.json'))){if(Date.now()>until)throw Error('Missing fixture event: '+actor+' '+key);await new Promise(resolve=>setTimeout(resolve,5));}
+  const event=JSON.parse(fs.readFileSync(marker(actor,key+'.json')));locations[actor]={stage:event.stage,aside:event.aside};return event;
+ }
+ const allow=(actor,key)=>fs.writeFileSync(marker(actor,key+'.allow'),'');
+ function inventoryAt(directory){
+  if(!directory||!fs.existsSync(directory))return null;
+  const result={};function visit(current){for(const entry of fs.readdirSync(current,{withFileTypes:true})){const file=path.join(current,entry.name);assert.equal(entry.isSymbolicLink(),false);if(entry.isDirectory())visit(file);else{assert.equal(entry.isFile(),true);result[path.relative(directory,file)]=createHash('sha256').update(fs.readFileSync(file)).digest('hex');}}}visit(directory);return result;
+ }
+ function classify(directory){
+  const actual=inventoryAt(directory);if(!actual)return 'absent';
+  const stamp=JSON.parse(fs.readFileSync(path.join(directory,'.source.json')));delete actual['.source.json'];
+  const exact=expected.files;
+  return JSON.stringify(stamp)===JSON.stringify(expected)&&Object.keys(actual).length===Object.keys(exact).length&&Object.entries(exact).every(([key,value])=>actual[key]===value)?'current':stamp.baseCommit===prior.baseCommit?'stale':'other';
+ }
+ function record(event){events.push({...event,visible:classify(destination),actors:Object.fromEntries(actors.map(actor=>[actor,{stage:classify(locations[actor]?.stage),aside:classify(locations[actor]?.aside)}]))});}
+ async function operation(actor,kind,attempt=1){
+  const key=kind+'-'+attempt,event=await ready(actor,key+'-ready');allow(actor,key+'-ready');
+  const result=await ready(actor,key+'-done');record(result);allow(actor,key+'-done');return {...event,...result};
+ }
+ async function cleanup(actor){
+  for(const slot of ['aside','stage']){
+   const key='cleanup-'+slot;await ready(actor,key+'-ready');allow(actor,key+'-ready');const result=await ready(actor,key+'-done');record(result);allow(actor,key+'-done');
+  }
+  return ready(actor,'complete');
+ }
+ try{
+  await Promise.all(actors.map(actor=>ready(actor,'retire-1-ready')));
+  record({actor:'all',operation:'prepared',phase:'done'});
+  await operation('reader','retire');
+  await ready('reader','publish-1-ready');
+  await operation('peer1','retire');await operation('peer1','publish');await cleanup('peer1');
+  const collision=await operation('reader','publish');assert.ok(['EEXIST','ENOTEMPTY'].includes(collision.outcome));
+  await ready('reader','read-1-ready');await operation('peer2','retire');
+  assert.equal((await operation('reader','read')).outcome,'ENOENT');
+  // The old implementation retires again here. Keep the fixture schedulable so its actual
+  // extra mutation is reported by the assertion, instead of replacing it with a fake error.
+  const until=Date.now()+20000;
+  while(!fs.existsSync(marker('reader','read-2-ready.json'))&&!fs.existsSync(marker('reader','cleanup-aside-ready.json'))&&!fs.existsSync(marker('reader','retire-2-ready.json'))){if(Date.now()>until)throw Error('Reader did not continue after peer readback');await new Promise(resolve=>setTimeout(resolve,5));}
+  if(fs.existsSync(marker('reader','cleanup-aside-ready.json'))){
+   // Old retry cleans its first aside before its second retirement.
+   for(const suffix of ['ready','done']){const key='cleanup-aside-'+suffix;const event=await ready('reader',key);if(suffix==='done')record(event);allow('reader',key);}
+   await ready('reader','retire-2-ready');
+  }
+  if(fs.existsSync(marker('reader','retire-2-ready.json'))){
+   await operation('reader','retire',2);await ready('reader','publish-2-ready');
+   await operation('peer2','publish');await cleanup('peer2');await operation('reader','publish',2);
+  }else{await operation('peer2','publish');await cleanup('peer2');}
+  await operation('reader','read',2);const result=await cleanup('reader');
+  const statuses=await Promise.all(children.map(child=>child.closed));
+  const source=prepareClientFeatures({root,projectVoice:false,check:true});
+  const noSidecars=JSON.stringify(fs.readdirSync(path.join(root,'.eliza')))===JSON.stringify(['client-features']);
+  const trace={schema:'alpha-client-feature-publication-trace/v1',events,final:{statuses,reader:result,authenticated:source===destination&&classify(destination)==='current',noSidecars}};
+  if(process.env.ALPHA_CLIENT_FEATURE_PUBLICATION_TRACE)fs.writeFileSync(process.env.ALPHA_CLIENT_FEATURE_PUBLICATION_TRACE,JSON.stringify(trace,null,2)+'\n');
+  for(const status of statuses)assert.equal(status.status,0,status.stderr);
+  assert.equal(result.retire,1,'a losing preparer must never retire the peer winner again');
+  assert.equal(result.publish,1,'a losing preparer publishes its private candidate at most once');
+  assert.equal(trace.final.authenticated,true);assert.equal(noSidecars,true);
+ }finally{
+  for(const {child}of children)if(child.exitCode===null&&child.signalCode===null)child.kill('SIGTERM');
+  await Promise.all(children.map(child=>child.closed));
+ }
+}));
 test('client source rejects changed pin and upstream content without replacing its cache',()=>fixture(({root,vendor,commit})=>{
  const source=prepareClientFeatures({root,projectVoice:false}),stamp=fs.readFileSync(path.join(source,'.source.json'));
  fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:'0'.repeat(40)}));assert.throws(()=>prepareClientFeatures({root,projectVoice:false}),/Unexpected upstream source pin/);
