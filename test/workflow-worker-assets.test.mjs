@@ -52,6 +52,10 @@ public class WorkerAssetTest {
   java.util.Map<String,String> env=new java.util.HashMap<>();env.put("ELIZA_MOBILE_WORKFLOWS","stale");
   WorkflowWorkerAssets.configureEnvironment(installed,env);
   if(!installed.getCanonicalPath().equals(env.get("ELIZA_SMTHRS_RUNTIME_DIR")))throw new AssertionError("wrong resource path");
+  try(java.util.stream.Stream<Path> walk=Files.walk(installed.toPath())){java.util.Set<String> indexed=new java.util.HashSet<>();for(String line:new String(index,StandardCharsets.UTF_8).split("\\n"))if(!line.isEmpty())indexed.add(line.split("\\t")[1]);indexed.add("files.sha256");for(Path file:(Iterable<Path>)walk.filter(Files::isRegularFile)::iterator){String name=installed.toPath().relativize(file).toString().replace(File.separatorChar,'/');if(!indexed.contains(name))throw new AssertionError("installed tree holds unindexed "+name);}}
+  Path legacy=new File(installed,".installed-package").toPath();Files.write(legacy,"1/100".getBytes(StandardCharsets.UTF_8));
+  WorkflowWorkerAssets.install(root,new ByteArrayInputStream(index),source,"1/100");
+  if(Files.exists(legacy))throw new AssertionError("kept a legacy in-tree package stamp");
   Path alias=new File(root,"worker-alias").toPath();Files.createSymbolicLink(alias,installed.toPath());
   try{WorkflowWorkerAssets.configureEnvironment(alias.toFile(),env);if(!installed.getCanonicalPath().equals(env.get("ELIZA_SMTHRS_RUNTIME_DIR"))||!Files.isSameFile(alias,installed.toPath()))throw new AssertionError("worker alias did not preserve canonical resource identity");}finally{Files.delete(alias);}
   boolean compiler=new File(installed,"compiler/node_modules/typescript/lib/typescript.js").isFile()&&new File(installed,"compiler/node_modules/smthrs/package.json").isFile();
