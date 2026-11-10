@@ -232,8 +232,10 @@ async function collect(page) {
   await tile(page, 'Settings').click();
   const settings = page.locator('[data-settings-page]:not([inert])').last();
   await settings.getByRole('button', {name: 'Account', exact: true}).click();
-  await expect(settings.getByRole('button', {name: 'Google & email', exact: true})).toBeVisible();
-  await back(page);
+  const account = page.getByRole('dialog', {name: 'Account', exact: true});
+  await expect(account.getByRole('button', {name: 'Google & email', exact: true})).toBeVisible();
+  await account.getByRole('button', {name: 'Close Account', exact: true}).click();
+  await expect(account).toHaveCount(0);
   await expect(settings).toHaveAttribute('data-settings-page', 'Settings');
   await back(page);
   await roleSchedule(page, true);

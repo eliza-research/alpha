@@ -38420,9 +38420,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "72c9304acded1ab2cf4865c39c0a1b18ce3321d5862a4ef72e9134d2f0df7753",
+      "sha256": "08ea9a6606309d6fc40b42838bb59e9327ee6ae7d20fb838fdbcf0879db3f2f3",
       "stateAnchors": [],
-      "integrationReview": "Reviewed integration source. Domain allocation is retained; source-hash refresh does not establish semantic refinement. See targeted validation and remaining obligations. 2026-11-10: Own-selected signed-out Account keeps provider navigation available; active explicit sign-in remains independently visible. AccountSheet includes direct-provider reachability. Informational notice hit-testing yields to underlying controls while notice buttons remain interactive; actual Inbox reconnect browser proof covers geometry outside the abstract notice model. No account, key, financial or device-acceptance authority change."
+      "integrationReview": "2026-11-10: Visible notice cards accept pointer and wheel input so the bounded short-screen stack can scroll; empty outer stack space remains pointer-transparent. Real mounted Cloud-notice source traces verify scrolling, action hit targets, independent dismissal and Settings suppression; no account or provider effect is dispatched. This does not establish physical WebView or device acceptance."
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
