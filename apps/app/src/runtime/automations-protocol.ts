@@ -129,6 +129,12 @@ export class AutomationsProtocol {
   const task=object(response.task);
   if(task.taskId!==id||task.promptInstructions!==promptInstructions||(trigger&&(task.trigger?.kind!==trigger.kind||task.trigger.expression!==trigger.expression||task.trigger.tz!==trigger.tz)))throw Error('Schedule edit was not confirmed.');
  }
+ async snoozeSchedule(id:string,untilIso:string,signal:AbortSignal){
+  const until=Date.parse(untilIso);if(!Number.isFinite(until)||until<=Date.now())throw Error('Choose a future snooze time.');
+  const result=object(await this.request('/api/lifeops/scheduled-tasks/'+automationId(id)+'/snooze','POST',{untilIso},signal)),task=object(result.task),state=object(task.state);
+  if(task.taskId!==id||state.status!=='scheduled'||state.firedAt!==untilIso)throw Error('Snooze time was not confirmed.');
+  return result;
+ }
  async scheduledVerb(id:string,verb:ScheduledVerb,signal:AbortSignal):Promise<unknown>{
   const result=object(await this.request('/api/lifeops/scheduled-tasks/'+automationId(id)+'/'+verb,'POST',verb==='snooze'?{minutes:60}:{},signal));
   if(verb==='fire'){

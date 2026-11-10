@@ -1,4 +1,4 @@
-export type SharePanelOptions={title:string;current:()=>boolean;external:()=>unknown|Promise<unknown>;email?:()=>unknown|Promise<unknown>;/** Shown under a disabled email row; null leaves the row out. */emailUnavailable?:string|null;copy?:()=>unknown|Promise<unknown>;copyLabel?:string;save?:()=>unknown|Promise<unknown>};
+export type SharePanelOptions={title:string;current:()=>boolean;external?:()=>unknown|Promise<unknown>;email?:()=>unknown|Promise<unknown>;/** Shown under a disabled email row; null leaves the row out. */emailUnavailable?:string|null;copy?:()=>unknown|Promise<unknown>;copyLabel?:string;save?:()=>unknown|Promise<unknown>};
 function destinationFailure(error:unknown){
  if(error instanceof DOMException&&error.name==='AbortError')return;
  const notice=document.createElement('p');notice.setAttribute('role','alert');notice.textContent='Sharing is unavailable. No completed handoff is confirmed.';Object.assign(notice.style,{position:'fixed',bottom:'24px',left:'16px',right:'16px',zIndex:'2147483647',padding:'16px',borderRadius:'16px',background:'#222',color:'#fff'});document.body.append(notice);setTimeout(()=>notice.remove(),6000);
@@ -33,7 +33,7 @@ export function openSharePanel(options:SharePanelOptions):Promise<void>{
    if(!run){button.disabled=true;button.style.opacity='.5';if(reason){const hint=document.createElement('p');hint.textContent=reason;hint.style.fontSize='13px';dialog.append(button,hint);return;}}
    button.onclick=()=>{if(closed)return;if(document.hidden||!options.current()){status.textContent='The selection changed. Close and choose it again.';return;}finish();try{void Promise.resolve(run?.()).catch(destinationFailure);}catch(error){destinationFailure(error);}};dialog.append(button);
   };
-  close.onclick=finish;dialog.append(header);if(options.email)action('Email',options.email);action('Share',options.external);
+  close.onclick=finish;dialog.append(header);if(options.email)action('Email',options.email);if(options.external)action('Share',options.external);
   if(options.copy)action(options.copyLabel||'Copy text',options.copy);
   if(options.save)action('Save file',options.save);
   dialog.append(status);dialog.addEventListener('click',event=>{if(event.target===dialog){const rect=dialog.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)finish();}});dialog.addEventListener('cancel',event=>{event.preventDefault();finish();});dialog.addEventListener('close',finish);

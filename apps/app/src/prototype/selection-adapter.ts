@@ -199,11 +199,11 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
   });
   const renderFiles=views.files.render;
   views.files.render=(state:Bag,api:Bag)=>{
-    const out=renderFiles(state,api),items=out.fd?.items;
+    const out=renderFiles(state,api),items=out.fd?.items;out.filePlacement=true;out.shareAvailable=Capacitor.isNativePlatform()||(typeof navigator.share==='function'&&typeof navigator.canShare==='function');
     if(!Capacitor.isNativePlatform()&&Array.isArray(items)&&items.length&&items.every((row:Bag)=>{try{return /^Photos\/(Images|Videos)\//.test(JSON.parse(row.id)[1]);}catch{return false;}})){
       out.toolbar.canCreate=false;
-      out.fd.menuRows=out.fd.menuRows.filter((row:Bag)=>row.id!=='select');
-      for(const row of items){row.down=row.up=row.cancel=row.context=()=>{};row.selOn=row.selOff=false;}
+      out.mediaCollection=true;out.filePlacement=false;out.canRename=false;
+      out.selSaveLocally=()=>registerPlugin<{storageSaveMedia(input:{paths:string[]}):Promise<unknown>}>('AlphaFiles').storageSaveMedia({paths:items.filter((row:Bag)=>row.selOn).map((row:Bag)=>JSON.parse(row.id)[1])});
     }
     return out;
   };
