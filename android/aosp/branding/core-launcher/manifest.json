@@ -2,20 +2,20 @@
   "schema": 1,
   "project": "frameworks/base",
   "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
-  "targetAppId": "ai.alphacompute.alphaphone",
+  "targetAppId": "ai.elizaresearch.alphaphone",
   "patch": "alpha-core-launcher.patch",
-  "patchSha256": "5e4373a5751d37d8b5b2b32449a5422a6ed1b31ca5fd212fe3b07f1a6846f761",
+  "patchSha256": "4f8048b304293576c5e5d32c32b37fba69d0c00fc38a78c310dd0e53dc524abf",
   "files": [
     {
       "path": "packages/SystemUI/res/values/config.xml",
       "beforeSha256": "f9556cc853a04591a54f8470904f023bb41d7c9980217fd7306117dcafcae513",
-      "afterSha256": "0a15919109351f3578f3ede7ae4b4eaa3530eca71f11a8d1b1b1c0ef2fc7a46e",
+      "afterSha256": "c09bbcdf4434410f6d42e12525e25e2ae56b43a5e2d3dbc17a4a7874f1239f76",
       "new": false
     },
     {
       "path": "packages/SystemUI/src/com/android/systemui/qs/AlphaCoreLauncherPolicy.java",
       "beforeSha256": null,
-      "afterSha256": "c7c3ac19f09068424fec8922644bc7bfc86bf0ed052d2fa906a779af62986256",
+      "afterSha256": "c2076451cfdfaf8e71dcf5f7367ec0b6f2065d8b9592043ad6cbeb6162f98fa7",
       "new": true
     },
     {
@@ -27,7 +27,7 @@
     {
       "path": "packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/AlphaQsDefaultsPolicy.java",
       "beforeSha256": null,
-      "afterSha256": "fb73f0b41054a7180015470771d5e0589d0e20d1a5e8e3480e84576288f28fed",
+      "afterSha256": "81bc50974831d9437413f4c94a94b3e224ec11d5171d55633ac765e7409ec311",
       "new": true
     },
     {
@@ -39,7 +39,7 @@
     {
       "path": "services/core/java/com/android/server/pm/permission/AlphaSharedStoragePolicy.java",
       "beforeSha256": null,
-      "afterSha256": "1618ccb567c91f0a6cf96f2e959d2bf1523c04482752f37c8babe9570c14e25e",
+      "afterSha256": "71fcbf26572a4383d02e8af2ca110467a7915c1bdfaa36e7df711e2234d4a1d1",
       "new": true
     },
     {

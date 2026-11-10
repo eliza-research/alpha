@@ -65,7 +65,7 @@ final class AlphaWelcome {
     }
 
     private static final class Completion {
-        private static final String HOME = "ai.alphacompute.alphaphone";
+        private static final String HOME = "ai.elizaresearch.alphaphone";
         private final Activity activity;
         private final Runnable completed;
         private final Button next, settings;
