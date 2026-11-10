@@ -373,7 +373,8 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
      if(data.operation!=='residentBind'||!UUID.test(data.credentialId))throw Error('Invalid resident operation');
      const c=(await load())[env];if(!c||c.credentialId!==data.credentialId)throw refusal(409,'account-changed');
      await admitted(env,c.credentialReference,data.credentialId);controller.signal.throwIfAborted();
-     resetCalendarAccess();
+     // A same-account attach can reuse the resident and its Google host.
+     // Actual replacement/retirement resets access in startGoogleHost/close.
      const result=await options.resident!.bind({token:await keyFor(c),credentialId:c.credentialId,reference:c.credentialReference,expiresAt:c.expiresAt});
      try{await current(env,c,controller.signal);}catch(error){await options.resident!.clear();throw error;}
      return result;

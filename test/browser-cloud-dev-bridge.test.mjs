@@ -736,6 +736,8 @@ test('full browser resident Calendar writes require exact owner intent and prese
   }
   assert.deepEqual((await intent(true)).data,{calendarEdits:true});
   const permitted=await privateCall(google,write);assert.equal(permitted.status,200);assert.equal(permitted.data.write,true);
+  assert.equal((await f.rpc({operation:'residentBind',environment:'production',credentialId})).status,200);
+  assert.equal((await privateCall(google,write)).status,200,'Reattaching the same resident retains its live Google host and saved permission');
   count=f.calls.length;
   assert.notEqual((await privateCall(google,{send:{operation:'prepare',to:['self@example.invalid'],subject:'Not sent',bodyText:'Synthetic only',requestId:randomUUID()}})).status,200);assert.equal(f.calls.length,count,'Calendar intent never enables Gmail writes');
   assert.equal((await intent(false)).status,200);count=f.calls.length;
