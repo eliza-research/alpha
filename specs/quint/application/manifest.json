@@ -3350,5 +3350,25 @@
       "Finite page/control identities. Concrete DOM replacement and focus records are checked by settings-page-focus.mjs.",
       "No-popup source component; React layout, platform delivery and liveness remain separate obligations."
     ]
+  },
+  {
+    "path": "specs/quint/application/CalendarFormControls.qnt",
+    "module": "CalendarFormControls",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "monthAheadAndTodayTest",
+      "nearMidnightTest",
+      "monthRowsTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "Quarter-hour draft times and real month facts; no provider mutation or canonical Calendar authority.",
+      "Concrete day/time/month source blocks are checked in calendar-form-controls.mjs; installed behavior remains separate."
+    ]
   }
 ]

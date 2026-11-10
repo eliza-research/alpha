@@ -1050,7 +1050,7 @@
         <sc-if value="{{calendar.f.nativeReviewDate}}"><div aria-label="Selected event date" aria-live="polite" style="padding: 8px 24px 0; font-size: 14px; color: var(--mut)">{{calendar.f.nativeReviewDate}}</div></sc-if>
         <div class="scr" style="display: flex; gap: 8px; overflow-x: auto; padding: 14px 20px 4px; touch-action: pan-x">
           <sc-for list="{{calendar.f.days}}" as="d">
-            <button onClick="{{d.pick}}" aria-label="{{d.label}}" style="flex-shrink: 0; min-width: 56px; min-height: 64px; padding: 0 6px; box-sizing: border-box; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; {{d.css}}">
+            <button onClick="{{d.pick}}" aria-label="{{d.label}}" aria-pressed="{{d.on}}" style="flex-shrink: 0; min-width: 56px; min-height: 64px; padding: 0 6px; box-sizing: border-box; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; {{d.css}}">
               <span style="font-size: 11px; opacity: .75; font-weight: 500">{{d.top}}</span>
               <span style="font-size: 18px; font-weight: 600">{{d.n}}</span>
             </button>

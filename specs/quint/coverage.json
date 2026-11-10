@@ -25021,12 +25021,13 @@
         "ReminderOpenIntent",
         "AppearancePreferenceAdmission",
         "WorkflowClockAdmission",
-        "SettingsPageFocus"
+        "SettingsPageFocus",
+        "CalendarFormControls"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "498e88f4d4cd5e4e9497b48608608bbb05a2c35bd0bd9768cbfa64b00d8689e0",
+      "sha256": "3a130dbdf4397cb8d4276e3238d768407af32b048107c60b4ab4aaf5c00b44c7",
       "stateAnchors": [
         {
           "line": 26,
@@ -30573,7 +30574,7 @@
           "text": "var ICON_ASSETS = Object.fromEntries(Object.entries(iconCatalog.ic).map(function (entry) { return [IC[entry[0]], '/icons/lucide/' + entry[1] + '.svg']; }));"
         }
       ],
-      "integrationReview": "Settings same-depth replacement and Back focus are projected by SettingsPageFocus and concrete DOM source traces; existing domain allocations and unresolved state-audit obligations remain."
+      "integrationReview": "Retained Calendar form window, monotonic Start later and month-row construction reviewed and source-refined under CalendarFormControls; all existing domain allocations and open platform obligations remain."
     },
     {
       "path": "apps/app/src/prototype/mvp-features.ts",
@@ -34778,19 +34779,20 @@
         "ScheduledTaskControls",
         "WorkflowClockAdmission",
         "PhotosOwnedAlbumDialog",
-        "ShadeRowCustody"
+        "ShadeRowCustody",
+        "CalendarFormControls"
       ],
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "a5db4baac9fa027b5adc0899375ef0489db5317dba08eff59483492958d4e0c9",
+      "sha256": "8be1a7fb323a3e80faa372287af05aef8a5426726f38147481a058626a314750",
       "stateAnchors": [
         {
           "line": 3358,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
       ],
-      "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately."
+      "integrationReview": "Retained Calendar form window, monotonic Start later and month-row construction reviewed and source-refined under CalendarFormControls; all existing domain allocations and open platform obligations remain."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",

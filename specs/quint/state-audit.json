@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "f58b94144d7e93cf62bc675969b0f7ae198210f3e6e5af9b20508b52c6bb7e1e",
+  "ledgerSha256": "dc007b9d4f9576cce2f965e6143dc9b9d86a47ea134e2c97a02710a93ed6994e",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,9 +28,9 @@
     "parsedFiles": 5666,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67622,
-    "writeSites": 67168,
-    "writeAssociations": 60222,
+    "candidates": 67623,
+    "writeSites": 67169,
+    "writeAssociations": 60223,
     "asynchronous": 8377,
     "unassignedWrites": 10352
   },
@@ -35594,7 +35594,7 @@
     },
     {
       "path": "apps/app/src/prototype/model.js",
-      "sha256": "498e88f4d4cd5e4e9497b48608608bbb05a2c35bd0bd9768cbfa64b00d8689e0",
+      "sha256": "3a130dbdf4397cb8d4276e3238d768407af32b048107c60b4ab4aaf5c00b44c7",
       "allocatedModels": [
         "Application",
         "CalendarPresentation",
@@ -35610,7 +35610,8 @@
         "ReminderOpenIntent",
         "AppearancePreferenceAdmission",
         "WorkflowClockAdmission",
-        "SettingsPageFocus"
+        "SettingsPageFocus",
+        "CalendarFormControls"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -35757,8 +35758,8 @@
         {
           "owner": "render",
           "line": 302,
-          "bindings": 448,
-          "writes": 289
+          "bindings": 449,
+          "writes": 290
         },
         {
           "owner": "render.FunctionExpression@308",
@@ -36427,2126 +36428,2126 @@
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@1466",
-          "line": 1467,
+          "owner": "render.FunctionExpression@1468",
+          "line": 1469,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@1470",
-          "line": 1470,
+          "owner": "render.FunctionExpression@1472",
+          "line": 1472,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.save",
-          "line": 1497,
+          "line": 1499,
           "bindings": 12,
           "writes": 3
         },
         {
           "owner": "render.newEvent",
-          "line": 1525,
+          "line": 1527,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "brPage",
-          "line": 1553,
+          "line": 1555,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "brNorm",
-          "line": 1561,
+          "line": 1563,
           "bindings": 4,
           "writes": 1
         },
         {
           "owner": "brResults",
-          "line": 1570,
+          "line": 1572,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "brResults.FunctionExpression@1572",
-          "line": 1572,
+          "owner": "brResults.FunctionExpression@1574",
+          "line": 1574,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "brGo",
-          "line": 1578,
+          "line": 1580,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "brGo.FunctionExpression@1582",
-          "line": 1582,
+          "owner": "brGo.FunctionExpression@1584",
+          "line": 1584,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "brNoScroll",
-          "line": 1584,
+          "line": 1586,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "brCurUrl",
-          "line": 1585,
+          "line": 1587,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "brPos",
-          "line": 1588,
+          "line": 1590,
           "bindings": 9,
           "writes": 2
         },
         {
           "owner": "brAg",
-          "line": 1596,
+          "line": 1598,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "brSaveNote",
-          "line": 1599,
+          "line": 1601,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "brParseBook",
-          "line": 1605,
+          "line": 1607,
           "bindings": 5,
           "writes": 0
         },
         {
           "owner": "brStartBook",
-          "line": 1613,
+          "line": 1615,
           "bindings": 6,
           "writes": 1
         },
         {
           "owner": "brStartBook.type",
-          "line": 1620,
+          "line": 1622,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "brStartBook.type.FunctionExpression@1620.FunctionExpression@1620",
-          "line": 1620,
+          "owner": "brStartBook.type.FunctionExpression@1622.FunctionExpression@1622",
+          "line": 1622,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "brStartBook.move.FunctionExpression@1621",
-          "line": 1621,
+          "owner": "brStartBook.move.FunctionExpression@1623",
+          "line": 1623,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "brStartBook.FunctionExpression@1623",
-          "line": 1623,
+          "owner": "brStartBook.FunctionExpression@1625",
+          "line": 1625,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "brStartBook.FunctionExpression@1631",
-          "line": 1631,
+          "owner": "brStartBook.FunctionExpression@1633",
+          "line": 1633,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "brFinishBook",
-          "line": 1634,
+          "line": 1636,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "brStartPoints",
-          "line": 1642,
+          "line": 1644,
           "bindings": 4,
           "writes": 1
         },
         {
-          "owner": "brStartPoints.FunctionExpression@1646.FunctionExpression@1646",
-          "line": 1646,
+          "owner": "brStartPoints.FunctionExpression@1648.FunctionExpression@1648",
+          "line": 1648,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@1734",
-          "line": 1735,
+          "owner": "render.FunctionExpression@1736",
+          "line": 1737,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "render.stepTab.FunctionExpression@1743",
-          "line": 1743,
+          "owner": "render.stepTab.FunctionExpression@1745",
+          "line": 1745,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.newTab",
-          "line": 1746,
+          "line": 1748,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@1751",
-          "line": 1751,
+          "owner": "render.FunctionExpression@1753",
+          "line": 1753,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "render.bkSet",
-          "line": 1761,
+          "line": 1763,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@1764",
-          "line": 1764,
+          "owner": "render.FunctionExpression@1766",
+          "line": 1766,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@1767",
-          "line": 1767,
+          "owner": "render.FunctionExpression@1769",
+          "line": 1769,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@1770",
-          "line": 1771,
+          "owner": "render.FunctionExpression@1772",
+          "line": 1773,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@1770.close",
-          "line": 1775,
+          "owner": "render.FunctionExpression@1772.close",
+          "line": 1777,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@1782",
-          "line": 1783,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "render.FunctionExpression@1782.remove",
+          "owner": "render.FunctionExpression@1784",
           "line": 1785,
           "bindings": 1,
           "writes": 0
         },
         {
+          "owner": "render.FunctionExpression@1784.remove",
+          "line": 1787,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
           "owner": "render.onAddrKey",
-          "line": 1808,
+          "line": 1810,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.toggleMark",
-          "line": 1813,
+          "line": 1815,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "camSave",
-          "line": 1861,
+          "line": 1863,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "camStopRec",
-          "line": 1868,
+          "line": 1870,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "camRecLabel",
-          "line": 1873,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "camDescribe",
           "line": 1875,
           "bindings": 1,
           "writes": 0
         },
         {
+          "owner": "camDescribe",
+          "line": 1877,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
           "owner": "render.setMode",
-          "line": 1916,
+          "line": 1918,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@1932",
-          "line": 1933,
+          "owner": "render.FunctionExpression@1934",
+          "line": 1935,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@1937",
-          "line": 1938,
+          "owner": "render.FunctionExpression@1939",
+          "line": 1940,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.shutter",
-          "line": 1944,
+          "line": 1946,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.shutter.FunctionExpression@1945",
-          "line": 1945,
+          "owner": "render.shutter.FunctionExpression@1947",
+          "line": 1947,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.flip",
-          "line": 1954,
+          "line": 1956,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "phRg",
-          "line": 1971,
+          "line": 1973,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "phCity",
-          "line": 1982,
+          "line": 1984,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "phQR",
-          "line": 1988,
+          "line": 1990,
           "bindings": 1,
           "writes": 5
         },
         {
           "owner": "portrait",
-          "line": 2012,
+          "line": 2014,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "phScene",
-          "line": 2022,
+          "line": 2024,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "phLook",
-          "line": 2035,
+          "line": 2037,
           "bindings": 3,
           "writes": 2
         },
         {
           "owner": "phTagsFor",
-          "line": 2044,
+          "line": 2046,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "phDayKey",
-          "line": 2050,
+          "line": 2052,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "phAgo",
-          "line": 2051,
-          "bindings": 2,
-          "writes": 0
-        },
-        {
-          "owner": "phDayLabel",
           "line": 2053,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "phFirst",
-          "line": 2059,
-          "bindings": 1,
+          "owner": "phDayLabel",
+          "line": 2055,
+          "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "phPersonWord",
-          "line": 2060,
-          "bindings": 2,
-          "writes": 1
-        },
-        {
-          "owner": "phLatest",
+          "owner": "phFirst",
           "line": 2061,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "phSecs",
+          "owner": "phPersonWord",
           "line": 2062,
+          "bindings": 2,
+          "writes": 1
+        },
+        {
+          "owner": "phLatest",
+          "line": 2063,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "phSecs",
+          "line": 2064,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "phParse",
-          "line": 2067,
+          "line": 2069,
           "bindings": 9,
           "writes": 42
         },
         {
-          "owner": "phParse.FunctionExpression@2071",
-          "line": 2072,
+          "owner": "phParse.FunctionExpression@2073",
+          "line": 2074,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "phParse.daysAgo",
-          "line": 2076,
+          "line": 2078,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "phParse.FunctionExpression@2077",
-          "line": 2079,
+          "owner": "phParse.FunctionExpression@2079",
+          "line": 2081,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "phParse.FunctionExpression@2090",
-          "line": 2092,
+          "owner": "phParse.FunctionExpression@2092",
+          "line": 2094,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "phParse.FunctionExpression@2096",
-          "line": 2096,
+          "owner": "phParse.FunctionExpression@2098",
+          "line": 2098,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "phMatch",
-          "line": 2102,
+          "line": 2104,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "phDescribe",
-          "line": 2111,
+          "line": 2113,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "phDelete",
-          "line": 2128,
+          "line": 2130,
           "bindings": 5,
           "writes": 0
         },
         {
           "owner": "phRestore",
-          "line": 2135,
+          "line": 2137,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "phRestore.FunctionExpression@2136",
-          "line": 2136,
+          "owner": "phRestore.FunctionExpression@2138",
+          "line": 2138,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "phLiveMatch",
-          "line": 2143,
+          "line": 2145,
           "bindings": 3,
           "writes": 9
         },
         {
-          "owner": "phLiveMatch.FunctionExpression@2144",
-          "line": 2144,
+          "owner": "phLiveMatch.FunctionExpression@2146",
+          "line": 2146,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "phLiveMatch.FunctionExpression@2150",
-          "line": 2150,
+          "owner": "phLiveMatch.FunctionExpression@2152",
+          "line": 2152,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.thumb",
-          "line": 2230,
+          "line": 2232,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "render.thumb.tap",
-          "line": 2240,
+          "line": 2242,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "render.thumb.pd",
-          "line": 2246,
+          "line": 2248,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.thumb.pd.FunctionExpression@2248",
-          "line": 2248,
+          "owner": "render.thumb.pd.FunctionExpression@2250",
+          "line": 2250,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "render.FunctionExpression@2267",
-          "line": 2268,
+          "owner": "render.FunctionExpression@2269",
+          "line": 2270,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "render.albumItems",
-          "line": 2279,
+          "line": 2281,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "render.albumName",
-          "line": 2286,
+          "line": 2288,
           "bindings": 6,
           "writes": 0
         },
         {
           "owner": "render.tile",
-          "line": 2295,
+          "line": 2297,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@2304",
-          "line": 2305,
+          "owner": "render.FunctionExpression@2306",
+          "line": 2307,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "render.phExitViewer",
-          "line": 2325,
+          "line": 2327,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.go",
-          "line": 2331,
+          "line": 2333,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@2342",
-          "line": 2342,
+          "owner": "render.FunctionExpression@2344",
+          "line": 2344,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.fav",
-          "line": 2362,
+          "line": 2364,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "render.del",
-          "line": 2365,
+          "line": 2367,
           "bindings": 4,
           "writes": 0
         },
         {
-          "owner": "render.play.FunctionExpression@2368",
-          "line": 2368,
+          "owner": "render.play.FunctionExpression@2370",
+          "line": 2370,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.rotate",
-          "line": 2383,
+          "line": 2385,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.crop",
-          "line": 2384,
+          "line": 2386,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@2385",
-          "line": 2386,
+          "owner": "render.FunctionExpression@2387",
+          "line": 2388,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@2385.pick",
-          "line": 2388,
+          "owner": "render.FunctionExpression@2387.pick",
+          "line": 2390,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@2400",
-          "line": 2401,
+          "owner": "render.FunctionExpression@2402",
+          "line": 2403,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@2416",
-          "line": 2416,
+          "owner": "render.FunctionExpression@2418",
+          "line": 2418,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.selShare",
-          "line": 2433,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "render.selFav",
-          "line": 2434,
-          "bindings": 3,
-          "writes": 0
-        },
-        {
-          "owner": "render.selDel",
           "line": 2435,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "FunctionExpression@2473",
-          "line": 2474,
+          "owner": "render.selFav",
+          "line": 2436,
+          "bindings": 3,
+          "writes": 0
+        },
+        {
+          "owner": "render.selDel",
+          "line": 2437,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "FunctionExpression@2475",
+          "line": 2476,
           "bindings": 3,
           "writes": 12
         },
         {
           "owner": "mapsPlace",
-          "line": 2493,
+          "line": 2495,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "mapsAddr",
-          "line": 2498,
+          "line": 2500,
           "bindings": 17,
           "writes": 12
         },
         {
           "owner": "mapsModeI",
-          "line": 2514,
+          "line": 2516,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "mapsFmtMin",
-          "line": 2515,
+          "line": 2517,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "mapsHours",
-          "line": 2522,
+          "line": 2524,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "mapsLen",
-          "line": 2528,
+          "line": 2530,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "mapsAt",
-          "line": 2530,
+          "line": 2532,
           "bindings": 4,
           "writes": 1
         },
         {
           "owner": "mapsSteps",
-          "line": 2536,
+          "line": 2538,
           "bindings": 9,
           "writes": 3
         },
         {
           "owner": "mapsMatch",
-          "line": 2548,
+          "line": 2550,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "mapsSearch",
-          "line": 2558,
+          "line": 2560,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "mapsSearch.FunctionExpression@2560",
-          "line": 2561,
+          "owner": "mapsSearch.FunctionExpression@2562",
+          "line": 2563,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "mapsNavTick",
-          "line": 2566,
+          "line": 2568,
           "bindings": 7,
           "writes": 0
         },
         {
           "owner": "mapsStepIdx",
-          "line": 2575,
+          "line": 2577,
           "bindings": 4,
           "writes": 1
         },
         {
           "owner": "mapsEndNav",
-          "line": 2577,
+          "line": 2579,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@2661",
-          "line": 2661,
+          "owner": "render.FunctionExpression@2663",
+          "line": 2663,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.fit",
-          "line": 2676,
+          "line": 2678,
           "bindings": 6,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@2713",
-          "line": 2714,
+          "owner": "render.FunctionExpression@2715",
+          "line": 2716,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@2720",
-          "line": 2720,
+          "owner": "render.FunctionExpression@2722",
+          "line": 2722,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.mapDown",
-          "line": 2724,
+          "line": 2726,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "render.mapUp",
-          "line": 2728,
+          "line": 2730,
           "bindings": 4,
           "writes": 2
         },
         {
-          "owner": "render.FunctionExpression@2736",
-          "line": 2737,
+          "owner": "render.FunctionExpression@2738",
+          "line": 2739,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.row",
-          "line": 2745,
+          "line": 2747,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@2748",
-          "line": 2748,
+          "owner": "render.FunctionExpression@2750",
+          "line": 2750,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "render.FunctionExpression@2750",
-          "line": 2751,
+          "owner": "render.FunctionExpression@2752",
+          "line": 2753,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "render.save.undo",
-          "line": 2774,
+          "line": 2776,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@2790",
-          "line": 2791,
+          "owner": "render.FunctionExpression@2792",
+          "line": 2793,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.shareEta",
-          "line": 2797,
+          "line": 2799,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.voice",
-          "line": 2816,
+          "line": 2818,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.qKey",
-          "line": 2835,
+          "line": 2837,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "render.sheetTap",
-          "line": 2840,
+          "line": 2842,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "FunctionExpression@2859",
-          "line": 2859,
+          "owner": "FunctionExpression@2861",
+          "line": 2861,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "notesFind",
-          "line": 2864,
+          "line": 2866,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "notesUpd",
-          "line": 2868,
+          "line": 2870,
           "bindings": 3,
           "writes": 1
         },
         {
-          "owner": "notesUpd.FunctionExpression@2869",
-          "line": 2871,
+          "owner": "notesUpd.FunctionExpression@2871",
+          "line": 2873,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "notesLeave",
-          "line": 2894,
+          "line": 2896,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "notesUndoable.undo",
-          "line": 2901,
+          "line": 2903,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "notesDelete",
-          "line": 2905,
+          "line": 2907,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "notesMove",
-          "line": 2924,
+          "line": 2926,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "notesMove.FunctionExpression@2925",
-          "line": 2925,
+          "owner": "notesMove.FunctionExpression@2927",
+          "line": 2927,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "notesCreateFolder",
-          "line": 2931,
+          "line": 2933,
           "bindings": 6,
           "writes": 1
         },
         {
           "owner": "notesRenameFolder",
-          "line": 2945,
+          "line": 2947,
           "bindings": 5,
           "writes": 0
         },
         {
           "owner": "notesDeleteFolder",
-          "line": 2968,
+          "line": 2970,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "notesDeleteFolder.FunctionExpression@2969",
-          "line": 2969,
+          "owner": "notesDeleteFolder.FunctionExpression@2971",
+          "line": 2971,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "notesNew",
-          "line": 2975,
+          "line": 2977,
           "bindings": 6,
           "writes": 1
         },
         {
           "owner": "notesLast",
-          "line": 2984,
+          "line": 2986,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "notesShare",
-          "line": 2986,
+          "line": 2988,
           "bindings": 4,
           "writes": 1
         },
         {
           "owner": "save",
-          "line": 3035,
+          "line": 3037,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@3100",
-          "line": 3100,
+          "owner": "render.FunctionExpression@3102",
+          "line": 3102,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@3110",
-          "line": 3111,
+          "owner": "render.FunctionExpression@3112",
+          "line": 3113,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@3121",
-          "line": 3122,
+          "owner": "render.FunctionExpression@3123",
+          "line": 3124,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@3150",
-          "line": 3151,
+          "owner": "render.FunctionExpression@3152",
+          "line": 3153,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@3168.onText",
-          "line": 3174,
+          "owner": "render.FunctionExpression@3170.onText",
+          "line": 3176,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.addItem",
-          "line": 3180,
+          "line": 3182,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.newKey",
-          "line": 3181,
+          "line": 3183,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.play",
-          "line": 3194,
+          "line": 3196,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.play.FunctionExpression@3197",
-          "line": 3198,
+          "owner": "render.play.FunctionExpression@3199",
+          "line": 3200,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "render.toCal",
-          "line": 3215,
+          "line": 3217,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@3218",
-          "line": 3219,
+          "owner": "render.FunctionExpression@3220",
+          "line": 3221,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.onFolderName",
-          "line": 3252,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "render.folderNameKey",
-          "line": 3253,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "render.createFolder",
           "line": 3254,
           "bindings": 1,
           "writes": 0
         },
         {
+          "owner": "render.folderNameKey",
+          "line": 3255,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "render.createFolder",
+          "line": 3256,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
           "owner": "ctIni",
-          "line": 3274,
+          "line": 3276,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "ctMake",
-          "line": 3275,
+          "line": 3277,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "ctGet",
-          "line": 3279,
+          "line": 3281,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "ctFind",
-          "line": 3281,
+          "line": 3283,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "ctFind.FunctionExpression@3282.FunctionExpression@3283",
-          "line": 3285,
+          "owner": "ctFind.FunctionExpression@3284.FunctionExpression@3285",
+          "line": 3287,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "ctForm",
-          "line": 3293,
+          "line": 3295,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "ctBday",
-          "line": 3301,
+          "line": 3303,
           "bindings": 6,
           "writes": 1
         },
         {
           "owner": "ctLastCall",
-          "line": 3311,
+          "line": 3313,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "ctContext",
-          "line": 3315,
+          "line": 3317,
           "bindings": 5,
           "writes": 4
         },
         {
           "owner": "ctSave",
-          "line": 3327,
+          "line": 3329,
           "bindings": 5,
           "writes": 2
         },
         {
           "owner": "ctDeleted",
-          "line": 3341,
+          "line": 3343,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "ctDeleted.restore",
-          "line": 3342,
+          "line": 3344,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "reply.then.FunctionExpression@3402",
-          "line": 3402,
+          "owner": "reply.then.FunctionExpression@3404",
+          "line": 3404,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "render.FunctionExpression@3434",
-          "line": 3435,
+          "owner": "render.FunctionExpression@3436",
+          "line": 3437,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.input.change",
-          "line": 3476,
+          "line": 3478,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "render.addNew",
-          "line": 3489,
+          "line": 3491,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "render.cancelEdit",
-          "line": 3496,
+          "line": 3498,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "filesFind",
-          "line": 3529,
+          "line": 3531,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "filesSplit",
-          "line": 3530,
+          "line": 3532,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "filesUndoable.undo",
-          "line": 3533,
+          "line": 3535,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "filesRemove",
-          "line": 3540,
+          "line": 3542,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "filesShare",
-          "line": 3547,
+          "line": 3549,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "render.row.tap",
-          "line": 3595,
+          "line": 3597,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.folderRow",
-          "line": 3601,
+          "line": 3603,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@3611",
-          "line": 3612,
+          "owner": "render.FunctionExpression@3613",
+          "line": 3614,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.toggleSort",
-          "line": 3633,
+          "line": 3635,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.play.FunctionExpression@3670",
-          "line": 3670,
+          "owner": "render.play.FunctionExpression@3672",
+          "line": 3672,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "render.transcribe",
-          "line": 3674,
+          "line": 3676,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "render.saveRn",
-          "line": 3687,
+          "line": 3689,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.rnKey",
-          "line": 3692,
+          "line": 3694,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.ask.FunctionExpression@3702",
-          "line": 3702,
+          "owner": "render.ask.FunctionExpression@3704",
+          "line": 3704,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "render.FunctionExpression@3710",
-          "line": 3711,
+          "owner": "render.FunctionExpression@3712",
+          "line": 3713,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@3710.go",
-          "line": 3715,
+          "owner": "render.FunctionExpression@3712.go",
+          "line": 3717,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.askSearch",
-          "line": 3745,
+          "line": 3747,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "walDay",
-          "line": 3768,
+          "line": 3770,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "walCard",
-          "line": 3772,
+          "line": 3774,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "walDefault",
-          "line": 3773,
+          "line": 3775,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "walFind",
-          "line": 3779,
+          "line": 3781,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "walQR",
-          "line": 3783,
+          "line": 3785,
           "bindings": 10,
           "writes": 6
         },
         {
           "owner": "walQR.finder",
-          "line": 3786,
+          "line": 3788,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "walQR.finder.ins",
-          "line": 3786,
+          "line": 3788,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "walPass",
-          "line": 3795,
+          "line": 3797,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "walWeek",
-          "line": 3798,
+          "line": 3800,
           "bindings": 4,
           "writes": 3
         },
         {
           "owner": "walAddTx",
-          "line": 3804,
+          "line": 3806,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "walFmtNum",
-          "line": 3807,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "walLuhn",
-          "line": 3808,
-          "bindings": 3,
-          "writes": 4
-        },
-        {
-          "owner": "walFmtExp",
           "line": 3809,
           "bindings": 1,
           "writes": 0
         },
         {
+          "owner": "walLuhn",
+          "line": 3810,
+          "bindings": 3,
+          "writes": 4
+        },
+        {
+          "owner": "walFmtExp",
+          "line": 3811,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
           "owner": "render.addCal",
-          "line": 3932,
+          "line": 3934,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "render.dirs",
-          "line": 3935,
+          "line": 3937,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.reload",
-          "line": 3939,
+          "line": 3941,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "render.cycle",
-          "line": 3960,
+          "line": 3962,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@3967",
-          "line": 3967,
+          "owner": "render.FunctionExpression@3969",
+          "line": 3969,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.auth",
-          "line": 3972,
+          "line": 3974,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.auth.FunctionExpression@3974",
-          "line": 3975,
+          "owner": "render.auth.FunctionExpression@3976",
+          "line": 3977,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.auth.FunctionExpression@3980",
-          "line": 3980,
+          "owner": "render.auth.FunctionExpression@3982",
+          "line": 3982,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.next.FunctionExpression@4021",
-          "line": 4021,
+          "owner": "render.next.FunctionExpression@4023",
+          "line": 4023,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.verify",
-          "line": 4028,
+          "line": 4030,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "wfTrigText",
-          "line": 4087,
+          "line": 4089,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "wfApps",
-          "line": 4101,
+          "line": 4103,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "wfLc",
-          "line": 4107,
+          "line": 4109,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "wfClause",
-          "line": 4112,
+          "line": 4114,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "wfSummary",
-          "line": 4122,
+          "line": 4124,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "wfShort",
-          "line": 4129,
+          "line": 4131,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "wfAppAllowed",
-          "line": 4137,
+          "line": 4139,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "wfFind",
-          "line": 4155,
+          "line": 4157,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "wfMatch",
-          "line": 4157,
+          "line": 4159,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "wfMatch.FunctionExpression@4158",
-          "line": 4158,
+          "owner": "wfMatch.FunctionExpression@4160",
+          "line": 4160,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "wfFromText",
-          "line": 4163,
+          "line": 4165,
           "bindings": 13,
           "writes": 23
         },
         {
           "owner": "wfRunLog",
-          "line": 4202,
+          "line": 4204,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "wfRunLog.FunctionExpression@4203",
-          "line": 4204,
+          "owner": "wfRunLog.FunctionExpression@4205",
+          "line": 4206,
           "bindings": 2,
           "writes": 7
         },
         {
           "owner": "wfNowLabel",
-          "line": 4215,
+          "line": 4217,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "enable",
-          "line": 4249,
+          "line": 4251,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4308",
-          "line": 4309,
+          "owner": "render.FunctionExpression@4310",
+          "line": 4311,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "render.diagram",
-          "line": 4317,
+          "line": 4319,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "render.diagram.FunctionExpression@4319",
-          "line": 4320,
+          "owner": "render.diagram.FunctionExpression@4321",
+          "line": 4322,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "render.run",
-          "line": 4361,
+          "line": 4363,
           "bindings": 2,
           "writes": 1
         },
         {
-          "owner": "render.run.FunctionExpression@4364",
-          "line": 4366,
+          "owner": "render.run.FunctionExpression@4366",
+          "line": 4368,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4405.add",
-          "line": 4407,
+          "owner": "render.FunctionExpression@4407.add",
+          "line": 4409,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4429",
-          "line": 4429,
+          "owner": "render.FunctionExpression@4431",
+          "line": 4431,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4436",
-          "line": 4436,
+          "owner": "render.FunctionExpression@4438",
+          "line": 4438,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.sp",
-          "line": 4442,
+          "line": 4444,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "render.mv.FunctionExpression@4443",
-          "line": 4443,
+          "owner": "render.mv.FunctionExpression@4445",
+          "line": 4445,
           "bindings": 3,
           "writes": 2
         },
         {
-          "owner": "render.FunctionExpression@4446",
-          "line": 4446,
+          "owner": "render.FunctionExpression@4448",
+          "line": 4448,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "stRow",
-          "line": 4500,
-          "bindings": 1,
-          "writes": 5
-        },
-        {
-          "owner": "stNav",
-          "line": 4501,
-          "bindings": 1,
-          "writes": 6
-        },
-        {
-          "owner": "stTog",
           "line": 4502,
           "bindings": 1,
           "writes": 5
         },
         {
-          "owner": "stSeg",
+          "owner": "stNav",
+          "line": 4503,
+          "bindings": 1,
+          "writes": 6
+        },
+        {
+          "owner": "stTog",
           "line": 4504,
+          "bindings": 1,
+          "writes": 5
+        },
+        {
+          "owner": "stSeg",
+          "line": 4506,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "stSeg.FunctionExpression@4505",
-          "line": 4505,
+          "owner": "stSeg.FunctionExpression@4507",
+          "line": 4507,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "stRemoveAcct",
-          "line": 4509,
+          "line": 4511,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "stRemoveAcct.undo",
-          "line": 4511,
+          "line": 4513,
           "bindings": 2,
           "writes": 1
         },
         {
           "owner": "stPlane",
-          "line": 4514,
+          "line": 4516,
           "bindings": 2,
           "writes": 4
         },
         {
           "owner": "stUnscroll",
-          "line": 4519,
+          "line": 4521,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "stPageAccess",
-          "line": 4525,
+          "line": 4527,
           "bindings": 10,
           "writes": 5
         },
         {
-          "owner": "stPageAccess.FunctionExpression@4531",
-          "line": 4532,
+          "owner": "stPageAccess.FunctionExpression@4533",
+          "line": 4534,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "stNoScroll",
-          "line": 4574,
+          "line": 4576,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "reply.q",
-          "line": 4623,
+          "line": 4625,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "reply.FunctionExpression@4636",
-          "line": 4636,
+          "owner": "reply.FunctionExpression@4638",
+          "line": 4638,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.lvlText",
-          "line": 4724,
+          "line": 4726,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4763",
-          "line": 4764,
+          "owner": "render.FunctionExpression@4765",
+          "line": 4766,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4768.set",
-          "line": 4769,
+          "owner": "render.FunctionExpression@4770.set",
+          "line": 4771,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "render.FunctionExpression@4771.FunctionExpression@4772",
-          "line": 4772,
+          "owner": "render.FunctionExpression@4773.FunctionExpression@4774",
+          "line": 4774,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "render.FunctionExpression@4777",
-          "line": 4778,
+          "owner": "render.FunctionExpression@4779",
+          "line": 4780,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4783",
-          "line": 4784,
+          "owner": "render.FunctionExpression@4785",
+          "line": 4786,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4796",
-          "line": 4796,
+          "owner": "render.FunctionExpression@4798",
+          "line": 4798,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4809",
-          "line": 4810,
+          "owner": "render.FunctionExpression@4811",
+          "line": 4812,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4809.go.FunctionExpression@4815",
-          "line": 4815,
+          "owner": "render.FunctionExpression@4811.go.FunctionExpression@4817",
+          "line": 4817,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4825",
-          "line": 4826,
+          "owner": "render.FunctionExpression@4827",
+          "line": 4828,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.sv.FunctionExpression@4855",
-          "line": 4855,
+          "owner": "render.sv.FunctionExpression@4857",
+          "line": 4857,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "render.FunctionExpression@4866",
-          "line": 4866,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "render.FunctionExpression@4867",
+          "owner": "render.FunctionExpression@4868",
           "line": 4868,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4867.FunctionExpression@4869",
-          "line": 4869,
+          "owner": "render.FunctionExpression@4869",
+          "line": 4870,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "render.FunctionExpression@4869.FunctionExpression@4871",
+          "line": 4871,
           "bindings": 2,
           "writes": 1
         },
         {
-          "owner": "render.FunctionExpression@4883",
-          "line": 4884,
+          "owner": "render.FunctionExpression@4885",
+          "line": 4886,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4883.go",
-          "line": 4888,
+          "owner": "render.FunctionExpression@4885.go",
+          "line": 4890,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.finish",
-          "line": 4917,
+          "line": 4919,
           "bindings": 5,
           "writes": 0
         },
         {
-          "owner": "render.finish.FunctionExpression@4922",
-          "line": 4922,
+          "owner": "render.finish.FunctionExpression@4924",
+          "line": 4924,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4946.FunctionExpression@4946",
-          "line": 4946,
+          "owner": "render.FunctionExpression@4948.FunctionExpression@4948",
+          "line": 4948,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "render.FunctionExpression@4956.FunctionExpression@4956",
-          "line": 4957,
+          "owner": "render.FunctionExpression@4958.FunctionExpression@4958",
+          "line": 4959,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "render.FunctionExpression@4956.FunctionExpression@4956.FunctionExpression@4957",
-          "line": 4957,
+          "owner": "render.FunctionExpression@4958.FunctionExpression@4958.FunctionExpression@4959",
+          "line": 4959,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "render.FunctionExpression@4965",
-          "line": 4966,
+          "owner": "render.FunctionExpression@4967",
+          "line": 4968,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "render.FunctionExpression@4965.FunctionExpression@4967",
-          "line": 4967,
+          "owner": "render.FunctionExpression@4967.FunctionExpression@4969",
+          "line": 4969,
           "bindings": 2,
           "writes": 2
         },
         {
-          "owner": "render.ok.FunctionExpression@4991",
-          "line": 4991,
+          "owner": "render.ok.FunctionExpression@4993",
+          "line": 4993,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "render.ok",
-          "line": 4996,
+          "line": 4998,
           "bindings": 2,
           "writes": 1
         },
         {
-          "owner": "render.ok.FunctionExpression@5004",
-          "line": 5004,
+          "owner": "render.ok.FunctionExpression@5006",
+          "line": 5006,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "Component.componentDidMount",
-          "line": 5058,
+          "line": 5060,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.transcriptWindow",
-          "line": 5066,
+          "line": 5068,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.growChatWindow",
-          "line": 5074,
+          "line": 5076,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.getSnapshotBeforeUpdate",
-          "line": 5081,
+          "line": 5083,
           "bindings": 14,
           "writes": 0
         },
         {
           "owner": "Component.componentDidUpdate",
-          "line": 5111,
+          "line": 5113,
           "bindings": 5,
           "writes": 5
         },
         {
-          "owner": "Component.componentDidUpdate.ArrowFunction@5117",
-          "line": 5118,
+          "owner": "Component.componentDidUpdate.ArrowFunction@5119",
+          "line": 5120,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.componentWillUnmount",
-          "line": 5139,
+          "line": 5141,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.S",
-          "line": 5143,
+          "line": 5145,
           "bindings": 1,
           "writes": 5
         },
         {
           "owner": "Component.later",
-          "line": 5150,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "Component.every",
           "line": 5152,
           "bindings": 1,
           "writes": 0
         },
         {
+          "owner": "Component.every",
+          "line": 5154,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
           "owner": "Component.toast",
-          "line": 5155,
+          "line": 5157,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "Component.vget",
-          "line": 5163,
+          "line": 5165,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.vset.FunctionExpression@5165",
-          "line": 5166,
+          "owner": "Component.vset.FunctionExpression@5167",
+          "line": 5168,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "Component.vreset.FunctionExpression@5172",
-          "line": 5173,
+          "owner": "Component.vreset.FunctionExpression@5174",
+          "line": 5175,
           "bindings": 4,
           "writes": 2
         },
         {
           "owner": "Component.api",
-          "line": 5181,
+          "line": 5183,
           "bindings": 3,
           "writes": 3
         },
         {
           "owner": "Component.api.person",
-          "line": 5184,
+          "line": 5186,
           "bindings": 3,
           "writes": 1
         },
         {
           "owner": "Component.rest",
-          "line": 5214,
+          "line": 5216,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.leave",
-          "line": 5216,
+          "line": 5218,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.preset",
-          "line": 5222,
+          "line": 5224,
           "bindings": 6,
           "writes": 0
         },
         {
           "owner": "Component.runBoot",
-          "line": 5243,
+          "line": 5245,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.unlock",
-          "line": 5251,
+          "line": 5253,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.power",
-          "line": 5256,
+          "line": 5258,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.openView",
-          "line": 5280,
+          "line": 5282,
           "bindings": 6,
           "writes": 0
         },
         {
           "owner": "Component.shellNav",
-          "line": 5296,
+          "line": 5298,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.shellNavigate",
-          "line": 5300,
+          "line": 5302,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.back",
-          "line": 5304,
+          "line": 5306,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.openShade",
-          "line": 5327,
+          "line": 5329,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.openSystemShade",
-          "line": 5339,
+          "line": 5341,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.syncShadeFocus",
-          "line": 5349,
+          "line": 5351,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "Component.scale",
-          "line": 5361,
+          "line": 5363,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.gDown",
-          "line": 5362,
+          "line": 5364,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.gUp",
-          "line": 5363,
+          "line": 5365,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.swipe",
-          "line": 5368,
+          "line": 5370,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.pullContext",
-          "line": 5380,
+          "line": 5382,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.sw",
-          "line": 5384,
+          "line": 5386,
           "bindings": 1,
           "writes": 6
         },
         {
           "owner": "Component.sw.down",
-          "line": 5387,
+          "line": 5389,
           "bindings": 3,
           "writes": 0
         },
         {
           "owner": "Component.sw.up",
-          "line": 5396,
+          "line": 5398,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "Component.reply",
-          "line": 5412,
+          "line": 5414,
           "bindings": 9,
           "writes": 3
         },
         {
-          "owner": "Component.reply.FunctionExpression@5415",
-          "line": 5415,
+          "owner": "Component.reply.FunctionExpression@5417",
+          "line": 5417,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.send",
-          "line": 5432,
+          "line": 5434,
           "bindings": 6,
           "writes": 0
         },
         {
-          "owner": "Component.send.FunctionExpression@5444",
-          "line": 5445,
+          "owner": "Component.send.FunctionExpression@5446",
+          "line": 5447,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "Component.send.FunctionExpression@5444.FunctionExpression@5447",
-          "line": 5447,
+          "owner": "Component.send.FunctionExpression@5446.FunctionExpression@5449",
+          "line": 5449,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.agentSay",
-          "line": 5452,
+          "line": 5454,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.cardAct",
-          "line": 5456,
+          "line": 5458,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "Component.startVoice",
-          "line": 5467,
+          "line": 5469,
           "bindings": 6,
           "writes": 1
         },
         {
-          "owner": "Component.startVoice.FunctionExpression@5479.FunctionExpression@5484",
-          "line": 5485,
+          "owner": "Component.startVoice.FunctionExpression@5481.FunctionExpression@5486",
+          "line": 5487,
           "bindings": 5,
           "writes": 1
         },
         {
-          "owner": "Component.startVoice.FunctionExpression@5479.FunctionExpression@5484.FunctionExpression@5491",
-          "line": 5491,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "Component.startVoice.FunctionExpression@5479.FunctionExpression@5493",
+          "owner": "Component.startVoice.FunctionExpression@5481.FunctionExpression@5486.FunctionExpression@5493",
           "line": 5493,
           "bindings": 1,
           "writes": 0
         },
         {
+          "owner": "Component.startVoice.FunctionExpression@5481.FunctionExpression@5495",
+          "line": 5495,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
           "owner": "Component.renderVals",
-          "line": 5504,
+          "line": 5506,
           "bindings": 45,
           "writes": 27
         },
         {
           "owner": "Component.renderVals.rootRef",
-          "line": 5515,
+          "line": 5517,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5546",
-          "line": 5547,
+          "owner": "Component.renderVals.FunctionExpression@5548",
+          "line": 5549,
           "bindings": 2,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5546.FunctionExpression@5547.FunctionExpression@5547",
-          "line": 5547,
+          "owner": "Component.renderVals.FunctionExpression@5548.FunctionExpression@5549.FunctionExpression@5549",
+          "line": 5549,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5554",
-          "line": 5557,
+          "owner": "Component.renderVals.FunctionExpression@5556",
+          "line": 5559,
           "bindings": 3,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5554.toggle",
-          "line": 5561,
+          "owner": "Component.renderVals.FunctionExpression@5556.toggle",
+          "line": 5563,
           "bindings": 1,
           "writes": 5
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5567",
-          "line": 5568,
+          "owner": "Component.renderVals.FunctionExpression@5569",
+          "line": 5570,
           "bindings": 4,
           "writes": 1
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5599",
-          "line": 5600,
+          "owner": "Component.renderVals.FunctionExpression@5601",
+          "line": 5602,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5603",
-          "line": 5604,
+          "owner": "Component.renderVals.FunctionExpression@5605",
+          "line": 5606,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5603.go",
-          "line": 5605,
+          "owner": "Component.renderVals.FunctionExpression@5605.go",
+          "line": 5607,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5620",
-          "line": 5622,
+          "owner": "Component.renderVals.FunctionExpression@5622",
+          "line": 5624,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.backToApps",
-          "line": 5638,
+          "line": 5640,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.doUndo",
-          "line": 5641,
+          "line": 5643,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5677",
-          "line": 5677,
+          "owner": "Component.renderVals.FunctionExpression@5679",
+          "line": 5679,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.voiceToType",
-          "line": 5684,
+          "line": 5686,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.fireHeads",
-          "line": 5690,
+          "line": 5692,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.pUp",
-          "line": 5695,
+          "line": 5697,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.homeBar",
-          "line": 5705,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "Component.renderVals.toggleFs",
           "line": 5707,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5710",
-          "line": 5710,
+          "owner": "Component.renderVals.toggleFs",
+          "line": 5709,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "Component.renderVals.FunctionExpression@5712",
+          "line": 5712,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component",
-          "line": 5054,
+          "line": 5056,
           "bindings": 20,
           "writes": 40
         }
@@ -40008,7 +40009,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "a5db4baac9fa027b5adc0899375ef0489db5317dba08eff59483492958d4e0c9",
+      "sha256": "8be1a7fb323a3e80faa372287af05aef8a5426726f38147481a058626a314750",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40026,7 +40027,8 @@
         "ScheduledTaskControls",
         "WorkflowClockAdmission",
         "PhotosOwnedAlbumDialog",
-        "ShadeRowCustody"
+        "ShadeRowCustody",
+        "CalendarFormControls"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -221158,6 +221160,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "000fa66e4660119adec7cf81d133562ff19c24bf5a27ccba5444192f78cc6272"
+    "sha256": "b1a5cec6b27a81e8d42e8bf0e2fea59b608b82bb4c5fcbe5a7e397cd3b759635"
   }
 }

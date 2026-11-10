@@ -1407,10 +1407,10 @@ registerView("calendar", {
         var inM = gd.getMonth() === mBase.getMonth();
         var has = on(off).length > 0;
         var cs = off === 0 ? "background:var(--acc);color:var(--alpha-white)" : (off === sel ? "box-shadow:inset 0 0 0 1.5px var(--fg)" : "");
-        mdays.push({ n: gd.getDate(), cs: cs + (inM || off === 0 ? "" : ";color:var(--mut)"), dot: has ? (off === 0 ? "var(--acct)" : "var(--fg)") : "transparent", pick: function () { set({ day: off, month: null }); }, label: DAYS[gd.getDay()] + " " + MONS[gd.getMonth()] + " " + gd.getDate() });
+        mdays.push({ inMonth: inM, n: gd.getDate(), cs: cs + (inM || off === 0 ? "" : ";color:var(--mut)"), dot: has ? (off === 0 ? "var(--acct)" : "var(--fg)") : "transparent", pick: function () { set({ day: off, month: null }); }, label: DAYS[gd.getDay()] + " " + MONS[gd.getMonth()] + " " + gd.getDate() });
       })(gd);
     }
-    var lastRow = mdays.slice(35).every(function (d) { return d.cs.indexOf("opacity") >= 0; });
+    var lastRow = mdays.slice(35).every(function (d) { return !d.inMonth; });
     if (lastRow) mdays = mdays.slice(0, 35);
     var calRows = cals.map(function (c) {
       var patch = function (p) { var pr = Object.assign({}, st.calPrefs || {}); pr[c.id] = Object.assign({}, pr[c.id] || {}, p); set({ calPrefs: pr }); };
@@ -1462,11 +1462,13 @@ registerView("calendar", {
     if (f) {
       var fp = function (p) { set({ form: Object.assign({}, f, p) }); };
       var dayChips = [];
-      var first = Math.min(0, f.off);
-      for (var k = first; k < first + 21; k++) (function (k) {
+      var first = f.off === 0 ? 1 : (f.off > 0 ? Math.max(1, f.off - 3) : f.off - 3);
+      var offsets = [0];
+      for (var k = first; k < first + 21; k++) if (k !== 0) offsets.push(k);
+      offsets.forEach(function (k) {
         var dt = calDate(api, k); var act = k === f.off;
-        dayChips.push({ top: k === 0 ? "Today" : weekdayName(dt, "short"), n: dt.getDate(), css: act ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pick: function () { fp({ off: k }); }, label: calDayName(api, k) });
-      })(k);
+        dayChips.push({ on: act, top: k === 0 ? "Today" : weekdayName(dt, "short"), n: dt.getDate(), css: act ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pick: function () { fp({ off: k }); }, label: calDayName(api, k) });
+      });
       var chosen = f.who.map(function (id) { var p = calPerson(api, id); return { ini: p.ini, first: p.name.split(" ")[0], label: "Remove " + p.name, remove: function () { fp({ who: f.who.filter(function (x) { return x !== id; }) }); } }; });
       var q = (f.pq || "").toLowerCase().trim();
       var sugg = f.pq == null ? [] : calPeople(api).filter(function (p) { return f.who.indexOf(p.id) < 0 && (!q || p.name.toLowerCase().indexOf(q) >= 0 || (p.email || "").toLowerCase().indexOf(q) >= 0); }).slice(0, 4).map(function (p) {
@@ -1480,7 +1482,7 @@ registerView("calendar", {
         onNotes: function (e) { fp({ notes: e.target.value }); },
         days: dayChips,
         start: calAmpm(f.t), end: calAmpm(f.t + f.d), dur: calDur(f.d),
-        sMinus: function () { fp({ t: Math.max(0, f.t - 0.25) }); }, sPlus: function () { fp({ t: Math.min(23.5 - f.d, f.t + 0.25) }); },
+        sMinus: function () { fp({ t: Math.max(0, f.t - 0.25) }); }, sPlus: function () { fp({ t: Math.max(f.t, Math.min(24 - f.d, f.t + 0.25)) }); },
         eMinus: function () { fp({ d: Math.max(0.25, f.d - 0.25) }); }, ePlus: function () { fp({ d: Math.min(24 - f.t, f.d + 0.25) }); },
         video: f.video, vTrack: api.track(f.video), vKx: api.kx(f.video), toggleVideo: function () { fp({ video: !f.video }); },
         chosen: chosen, hasChosen: chosen.length > 0,
