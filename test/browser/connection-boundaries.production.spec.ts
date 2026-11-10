@@ -241,7 +241,7 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     if (mode === 'cancelled') {
       // Cancel while Cloud AI is still being unbound: sign-out still removes the local key.
       await page.waitForFunction(() => typeof (window as any).releaseStop === 'function');
-      await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await page.keyboard.press('Escape'); // The Account sheet cancels through Back/Escape while busy.
       await page.evaluate(() => { (window as any).holdStop = false; (window as any).releaseStop(); });
     }
     // This bridge has no sign-in readiness service. Its automatic refusal must not erase
