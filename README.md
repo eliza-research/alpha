@@ -179,9 +179,12 @@ engine and physical recovery gates pass. Resolve
 and [applied-candidate recovery #891](https://github.com/eliza-research/alphaphone/issues/891)
 before enrollment. [#400](https://github.com/eliza-research/alphaphone/issues/400)
 tracks the overall release gate. A successful host test or model does not close
-these release and device gates. The rejected-download retry repair is upstream
-in [eliza#39235](https://github.com/elizaOS/eliza/pull/39235); consume a reviewed,
-verified commit and qualify that exact product pin before OS enrollment.
+these release and device gates. Alpha consumes the reviewed rejected-download
+retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) at
+`4ce6c083f80893ce1601f15e9ff7fbb30028ec30`. Its dependency-upgrade ancestry changes
+the SDK lock; core/mobile builder and installed UUID inputs were compared
+separately. Earlier APK, voice and device evidence does not qualify this pin;
+rebuild and qualify the exact product inputs before OS enrollment.
 
 ## Generated files
 
