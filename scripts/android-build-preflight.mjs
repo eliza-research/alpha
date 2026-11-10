@@ -19,6 +19,7 @@ import {verifyEmbeddingHost} from './stage-embedding-host.mjs';
 import {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST, verifyVoiceHost} from './voice-host.mjs';
 import {BUILD_TOOLCHAIN, QUALIFIED_HOST, embeddingHostState, stagedLibraries} from './build-embedding-host.mjs';
 import {verifyMobileBuildReceipt,MOBILE_UUID_POLICY} from './mobile-uuid-adapter.mjs';
+import {refuseRemovedProfileFlags} from './removed-profile-flags.mjs';
 
 export {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST};
 export const GRADLE_VERIFICATION = 'android/gradle/verification-metadata.xml';
@@ -97,7 +98,7 @@ export function mainPinProblem(root, pin, {allowOlderUpstreamPin = false, notes 
 }
 
 /** Inputs no preparation step produces: the pinned checkout and the on-device voice outputs. */
-export function checkoutProblems(root, {voiceHost = verifyVoiceHost, allowUnpackagedRuntime = false, runtimeProfile = "native", allowOlderUpstreamPin = false, notes = []} = {}) {
+export function checkoutProblems(root, {voiceHost = verifyVoiceHost, allowUnpackagedRuntime = false, allowOlderUpstreamPin = false, notes = []} = {}) {
   const problems = [];
   const pin = JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit;
   const head = readHead(path.join(root, 'vendor/eliza'));
@@ -107,7 +108,7 @@ export function checkoutProblems(root, {voiceHost = verifyVoiceHost, allowUnpack
     const older = mainPinProblem(root, pin, {allowOlderUpstreamPin, notes});
     if (older) problems.push(older);
   }
-  if(runtimeProfile !== "cloud") problems.push(...voiceHostProblems(root, {voiceHost, allowUnpackagedRuntime}));
+  problems.push(...voiceHostProblems(root, {voiceHost, allowUnpackagedRuntime}));
   return problems;
 }
 
@@ -131,11 +132,7 @@ export function voiceHostProblems(root, {allowUnpackagedRuntime = false, voiceHo
  * Prepared runtime inputs. `preparedSource` is the resolved prepared runtime
  * directory (sourceDirectory()). Distribution builds also need the staged runtime.
  */
-export function preparedRuntimeProblems(root, preparedSource, {allowUnpackagedRuntime = false, testMocks = false, embeddingHost = verifyEmbeddingHost, googleHost = verifyStagedGoogleHost, runtimeProfile = "native", localEmbeddings = false} = {}) {
-  if(runtimeProfile === "cloud") {
-    if(allowUnpackagedRuntime || testMocks) return ["Cloud profile requires a genuine packaged resident and test mocks off"];
-    try { execFileSync(process.execPath,[path.join(root,'scripts/runtime-profile.mjs'),'--verify-cloud',...(localEmbeddings?['--local-embeddings']:[])],{cwd:root,env:{...process.env,ALPHA_LOCAL_AGENT_SOURCE_DIR:preparedSource},stdio:['ignore','pipe','pipe']}); return []; } catch(error) { return [error.message]; }
-  }
+export function preparedRuntimeProblems(root, preparedSource, {allowUnpackagedRuntime = false, testMocks = false, embeddingHost = verifyEmbeddingHost, googleHost = verifyStagedGoogleHost} = {}) {
   const stamp = path.join(preparedSource, '.alpha-runtime-source.json');
   if (!fs.existsSync(stamp))
     return [`Prepared runtime source ${path.relative(root, preparedSource)} is missing (Gradle :app:stageLocalAgentSources reads it). Run: ${FULL_CHAIN} for distributable APKs, or npm run agent:prepare before npm run android:build -- --allow-unpackaged-runtime for developer APKs.`];
@@ -149,12 +146,13 @@ export function preparedRuntimeProblems(root, preparedSource, {allowUnpackagedRu
     return [`The resident runtime is not staged, so release APKs would not be distributable. Run: npm run agent:build-workflow-worker && npm run agent:stage-android (or ${FULL_CHAIN}), or pass -- --allow-unpackaged-runtime for non-distributable developer APKs.`, ...embedding];
   if (fs.readFileSync(staged, 'utf8') !== fs.readFileSync(stamp, 'utf8'))
     return [`The staged resident runtime was built from a different prepared source than ${path.relative(root, preparedSource)}. Run: npm run agent:build-workflow-worker && npm run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
-  // agent:stage-android writes the profile marker; a Cloud projection omits the native model.
+  // agent:stage-android writes the profile marker; a payload staged for the removed Cloud
+  // profile omitted the local embedding model and is refused.
   const marker = path.join(path.dirname(staged), 'alpha-runtime-profile.json');
   let profile = null;
   try { profile = JSON.parse(fs.readFileSync(marker, 'utf8')); } catch {}
   if (JSON.stringify(profile) !== JSON.stringify({version: 1, runtimeProfile: 'native'}))
-    return [`The staged resident runtime is not the native profile (${path.relative(root, marker)} ${profile ? `names ${JSON.stringify(profile.runtimeProfile)}` : 'is missing or unreadable'}). Run: npm run agent:stage-android without --runtime-profile=cloud (or ${FULL_CHAIN}).`, ...embedding];
+    return [`The staged resident runtime is not the native profile (${path.relative(root, marker)} ${profile ? `names ${JSON.stringify(profile.runtimeProfile)}` : 'is missing or unreadable'}). Run: npm run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
   if(fs.existsSync(path.join(root,MOBILE_UUID_POLICY))){
     try{verifyMobileBuildReceipt(root,preparedSource,path.dirname(staged));}
     catch(error){return [`The staged resident build producer is not admitted (${error.message}). Run: npm run agent:stage-android.`,...embedding];}
@@ -204,7 +202,7 @@ const readJson = (root, rel) => JSON.parse(fs.readFileSync(path.join(root, rel),
  * input from pinned source and 'person' when no script may. `preparedSource` is null while the
  * pinned checkout is absent (its location cannot be resolved then).
  */
-export function strictBuildInputs(root, preparedSource, {env = process.env, voiceHost = verifyVoiceHost, runtimeProfile = "native", localEmbeddings = false, workerDirectory} = {}) {
+export function strictBuildInputs(root, preparedSource, {env = process.env, voiceHost = verifyVoiceHost, workerDirectory} = {}) {
   const rows = [];
   const add = (input, ok, suppliedBy, detail, action) => rows.push({input, state: ok ? 'ready' : 'missing', suppliedBy, detail, action: ok ? null : action});
   const pin = readJson(root, 'upstream.lock.json').commit;
@@ -216,8 +214,8 @@ export function strictBuildInputs(root, preparedSource, {env = process.env, voic
     [`vendor/eliza ${head ? `at ${head}` : 'not checked out'}; pin ${pin}`, ...(older ? [older] : notes)].join('; '),
     older ? 'Rebase on origin/main (or fetch vendor/eliza), then git submodule update --init vendor/eliza' : 'git submodule update --init vendor/eliza');
 
-  // Native speech belongs only to the native distribution profile.
-  if (runtimeProfile !== "cloud") {
+  // Every distribution build packages on-device speech and the embedding host.
+  {
     let voiceStatus = null;
     const voice = voiceHostProblems(root, {voiceHost: (...args) => { voiceStatus = voiceHost(...args); return voiceStatus; }});
     add('on-device voice outputs', voice.length === 0, 'person',
@@ -226,8 +224,7 @@ export function strictBuildInputs(root, preparedSource, {env = process.env, voic
 
   }
 
-  if (runtimeProfile !== "cloud" || localEmbeddings) {
-
+  {
     const host = readJson(root, QUALIFIED_HOST), toolchain = readJson(root, BUILD_TOOLCHAIN);
     const libraries = stagedLibraries(root, host);
     const hostState = embeddingHostState(host, toolchain, libraries);
@@ -244,8 +241,8 @@ export function strictBuildInputs(root, preparedSource, {env = process.env, voic
   const staged = path.join(root, 'android/app/src/main/assets/agent/alpha-source.json');
   const stagedWorker = path.join(root, 'android/app/src/main/assets/agent/workflow-worker/manifest.json');
   const current = prepared && fs.existsSync(staged) && fs.existsSync(stagedWorker) && fs.readFileSync(staged, 'utf8') === fs.readFileSync(stamp, 'utf8');
-  add('staged resident runtime payload', current, 'script', !fs.existsSync(staged) ? 'android/app/src/main/assets/agent is not staged' : current ? 'staged from the prepared source' : 'staged from a different prepared source', `npm run agent:stage-android${runtimeProfile === 'cloud' ? ' -- --runtime-profile=cloud' : ''}`);
-  if (runtimeProfile !== "cloud" || localEmbeddings) {
+  add('staged resident runtime payload', current, 'script', !fs.existsSync(staged) ? 'android/app/src/main/assets/agent is not staged' : current ? 'staged from the prepared source' : 'staged from a different prepared source', 'npm run agent:stage-android');
+  {
     const host = readJson(root, QUALIFIED_HOST), model = path.join(root, host.model.path);
     add('embedding model', fs.existsSync(model), 'script', host.model.path, 'npm run agent:stage-android (it stages the pinned model with the payload)');
   }
@@ -272,28 +269,27 @@ export function formatReport(rows) {
 
 async function main() {
   const args = process.argv.slice(2);
+  refuseRemovedProfileFlags(args);
   for (const arg of args)
-    if (!['--before-prepare', '--allow-unpackaged-runtime', '--test-mocks', '--report', '--json', '--runtime-profile=cloud','--local-embeddings', ALLOW_OLDER_PIN].includes(arg)) throw new Error(`Unknown option ${arg}`);
+    if (!['--before-prepare', '--allow-unpackaged-runtime', '--test-mocks', '--report', '--json', ALLOW_OLDER_PIN].includes(arg)) throw new Error(`Unknown option ${arg}`);
   const root = path.resolve(import.meta.dirname, '..');
-  const runtimeProfile=args.includes('--runtime-profile=cloud')?'cloud':'native';
-  if(args.includes('--local-embeddings')&&runtimeProfile!=='cloud')throw Error('--local-embeddings requires the Cloud profile');
   if (args.includes('--report')) {
     // The source guard imports the pinned checkout; without it the prepared path is unknown.
     let prepared = null, workerDirectory;
     try { const source = await import('./local-agent-source.mjs'); prepared = source.sourceDirectory(root); workerDirectory = source.workerArtifactDirectory(root); } catch { /* reported as the missing checkout */ }
-    const rows = strictBuildInputs(root, prepared, {runtimeProfile, localEmbeddings: args.includes('--local-embeddings'), workerDirectory});
+    const rows = strictBuildInputs(root, prepared, {workerDirectory});
     console.log(args.includes('--json') ? JSON.stringify(rows, null, 2) : formatReport(rows));
     return;
   }
   const notes = [];
-  let problems = checkoutProblems(root,{allowUnpackagedRuntime:args.includes('--allow-unpackaged-runtime'),runtimeProfile,allowOlderUpstreamPin:args.includes(ALLOW_OLDER_PIN),notes});
+  let problems = checkoutProblems(root,{allowUnpackagedRuntime:args.includes('--allow-unpackaged-runtime'),allowOlderUpstreamPin:args.includes(ALLOW_OLDER_PIN),notes});
   for (const note of notes) console.error(`Note: ${note}`);
   if (!problems.length && !args.includes('--before-prepare')) {
     // The source guard imports the pinned checkout, so load it only once that is verified.
     const {sourceDirectory} = await import('./local-agent-source.mjs');
     problems = [...preparedRuntimeProblems(root, sourceDirectory(root), {
       allowUnpackagedRuntime: args.includes('--allow-unpackaged-runtime'),
-      testMocks: args.includes('--test-mocks'),runtimeProfile,localEmbeddings:args.includes('--local-embeddings'),
+      testMocks: args.includes('--test-mocks'),
     })];
   }
   if (problems.length) {

@@ -90,7 +90,7 @@ function exportBytes(path,bytes){
 let worker;
 if(mode==='renderer'){
  const flags=JSON.parse(read(join(source,'build-flags.json')));
- if(flags.testMocks!==false||flags.runtimeProfile!=='cloud')throw Error('Expected flag-off Cloud renderer');
+ if(flags.testMocks!==false||flags.runtimeProfile!==undefined)throw Error('Expected flag-off renderer');
 }else{
  const {verifyWorkerArtifact}=await import('../workflow-worker-artifact.mjs');
  const prepared=checked(resolve(`artifacts/local-agent-resident-${sdk}`));

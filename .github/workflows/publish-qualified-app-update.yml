@@ -118,7 +118,7 @@ jobs:
         run: npm run upstream:prepare-client
       - name: Reverify all signed bytes and exact reviewed Cloud voice evidence
         working-directory: qualified-product
-        run: node scripts/verify-apks.mjs --runtime-profile=cloud --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
+        run: node scripts/verify-apks.mjs --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
       - name: Require both qualified release rows before publication
         run: |
           python3 - <<'PY'
@@ -126,7 +126,7 @@ jobs:
           from pathlib import Path
           summary = json.loads((Path(os.environ['RUNNER_TEMP']) / 'qualified-stage/qualification-summary.json').read_text())
           manifest = json.loads(Path('qualified-product/artifacts/apk-manifest.json').read_text())
-          assert manifest['testMocks'] is False and manifest['runtimeProfile'] == 'cloud'
+          assert manifest['testMocks'] is False and manifest['runtimeProfile'] == 'native' and 'localEmbeddings' not in manifest
           assert manifest['updateChannel']['kind'] == 'public'
           rows = [row for row in manifest['results'] if row['mode'] == 'release']
           assert len(rows) == 2 and {row['variant'] for row in rows} == {'launcher', 'standalone'}

@@ -91,11 +91,18 @@ test('a test-mocks build keeps its instrumentation beside its APKs, skips lint a
  assert.equal(regional.seen[0].record.mapsProvider, 'regional-gateway');
 });
 
-test('Cloud, unpackaged and skipped-instrumentation builds carry their selection to Gradle, the record and the verifier', t => {
- const cloud = build(t, ['--runtime-profile=cloud'], {environment: {VITE_MAPS_BASE_URL: 'https://maps.example.test', ELIZAOS_VERSION_CODE: '41', ELIZAOS_VERSION_NAME: '1.4.1'}});
- assert.deepEqual(gradleCalls(cloud.calls)[0].args.slice(0, 4), ['--no-daemon', '-PELIZA_RUNTIME_PROFILE=cloud', '-PELIZA_DEV_ALLOW_TEST_MOCKS=0', '-PELIZA_ALLOW_UNPACKAGED_RUNTIME=0']);
- assert.deepEqual(cloud.calls.filter(call => call.command === 'node').map(call => call.args), [['scripts/verify-apks.mjs', '--runtime-profile=cloud']]);
- assert.equal(cloud.seen[0].record.runtimeProfile, 'cloud');
+test('the one-profile distribution, unpackaged and skipped-instrumentation builds carry their selection to Gradle, the record and the verifier', t => {
+ // One runtime profile: no profile property reaches Gradle or the verifier, and the removed options are refused.
+ for (const removed of [['--runtime-profile=cloud'], ['--runtime-profile=native'], ['--local-embeddings'], ['--runtime-profile=cloud', '--local-embeddings']])
+  assert.throws(() => parseBuildArgs(removed), /There is one runtime profile now: remove --runtime-profile and --local-embeddings/);
+ const cloud = build(t, [], {environment: {VITE_MAPS_BASE_URL: 'https://maps.example.test', ELIZAOS_VERSION_CODE: '41', ELIZAOS_VERSION_NAME: '1.4.1', VITE_ELIZA_RUNTIME_PROFILE: 'cloud', ORG_GRADLE_PROJECT_ELIZA_RUNTIME_PROFILE: 'cloud', ORG_GRADLE_PROJECT_ELIZA_LOCAL_EMBEDDINGS: '1'}});
+ assert.deepEqual(gradleCalls(cloud.calls)[0].args.slice(0, 3), ['--no-daemon', '-PELIZA_DEV_ALLOW_TEST_MOCKS=0', '-PELIZA_ALLOW_UNPACKAGED_RUNTIME=0']);
+ assert.equal(gradleCalls(cloud.calls)[0].args.some(arg => /RUNTIME_PROFILE|LOCAL_EMBEDDINGS/.test(arg)), false);
+ assert.deepEqual(cloud.calls.filter(call => call.command === 'node').map(call => call.args), [['scripts/verify-apks.mjs']]);
+ assert.equal(cloud.seen[0].record.runtimeProfile, 'native');assert.equal('localEmbeddings' in cloud.seen[0].record, false);
+ // An inherited profile switch never reaches the renderer build or Gradle.
+ const cleaned = buildEnv({VITE_ELIZA_RUNTIME_PROFILE: 'cloud', ORG_GRADLE_PROJECT_ELIZA_RUNTIME_PROFILE: 'cloud', ELIZA_LOCAL_EMBEDDINGS: '1', ORG_GRADLE_PROJECT_ELIZA_LOCAL_EMBEDDINGS: '1', KEEP: 'yes'}, {testMocks: false});
+ assert.deepEqual(cleaned, {KEEP: 'yes'});
  // The regional gateway variable is read only by test-mocks renderers.
  assert.equal(cloud.seen[0].record.mapsProvider, 'cloud');
  assert.deepEqual(cloud.seen[0].record.versionOverride, {code: '41', name: '1.4.1'});

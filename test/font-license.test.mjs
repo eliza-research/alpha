@@ -179,15 +179,19 @@ test('verify-apks records licence flags and keeps font blockers and private QA o
   assert.match(source, /licenceFlags = licenceFlagRecords\(entries\);/);
   assert.match(source, /for \(const line of flagLines\) console\.warn\(line\);/);
   const distributable = /const releaseReady = [\s\S]*?row\.distributable = [^;]+;/.exec(source)[0];
-  const admits = new Function('runtimeProfile', 'testMocks', 'row', 'runtime', 'speechQualified', 'updateChannel', 'releaseDistributable',
+  const admits = new Function('cloudEvidence', 'testMocks', 'row', 'runtime', 'cloudVoiceBlockers', 'updateChannel', 'releaseDistributable',
     `${distributable}\nreturn row.distributable;`);
   const row = {signed: true, releaseAdmission: {signerMatches: true, blockers: [], failures: []},
     runtimeNotices: true, voiceHost: {packaged: true, asr: true, qualified: true}, licenceBlockers: []};
-  for (const profile of ['native', 'cloud']) {
-    const check = (facts, kind) => admits(profile, false, {...facts}, {distributable: true}, true, {kind}, releaseDistributable);
-    assert.equal(check(row, 'public'), true);
+  // One runtime profile. Optional Cloud voice evidence, when supplied, must also pass.
+  for (const [evidence, blockers, admitted] of [[undefined, ['unused'], true], [{supplied: true}, [], true], [{supplied: true}, ['Cloud voice qualification did not pass'], false]]) {
+    const check = (facts, kind) => admits(evidence, false, {...facts}, {distributable: true}, () => blockers, {kind}, releaseDistributable);
+    assert.equal(check(row, 'public'), admitted);
     assert.equal(check(row, 'private-qa'), false, 'private QA is never distributable');
     assert.equal(check({...row, licenceBlockers: ['unresolved-font-licence']}, 'public'), false);
+    // Every distributable release packages on-device voice with ASR, with or without Cloud evidence.
+    assert.equal(check({...row, voiceHost: {packaged: false, asr: false}}, 'public'), false);
+    assert.equal(check({...row, voiceHost: {packaged: true, asr: false}}, 'public'), false);
   }
   assert.doesNotMatch(distributable, /licenceFlags|fontLicenceCheck/);
   assert.doesNotMatch(source, /problems\.push\([^)]*licence/i);

@@ -177,11 +177,13 @@ test('staged Java-only native patches retain their authenticated dependency desc
 });
 
 
-test('dependency verification selects Cloud explicitly and refuses unpackaged Cloud', () => {
-  assert.deepEqual(parseVerificationArgs(['--write', '--runtime-profile=cloud']), {mode:'--write',runtimeProfile:'cloud',allowUnpackagedRuntime:false});
-  assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check',runtimeProfile:'native',allowUnpackagedRuntime:false});
-  assert.throws(() => parseVerificationArgs(['--write','--runtime-profile=cloud','--allow-unpackaged-runtime']), /genuine packaged resident/);
-  assert.throws(() => parseVerificationArgs(['--write','--runtime-profile=other']), /Usage/);
+test('dependency verification has one runtime profile and refuses the removed options', () => {
+  assert.deepEqual(parseVerificationArgs(['--write']), {mode:'--write',allowUnpackagedRuntime:false});
+  assert.deepEqual(parseVerificationArgs(['--write','--allow-unpackaged-runtime']), {mode:'--write',allowUnpackagedRuntime:true});
+  assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check',allowUnpackagedRuntime:false});
+  for (const removed of [['--write','--runtime-profile=cloud'], ['--write','--runtime-profile=other'], ['--write','--local-embeddings'], ['--check','--runtime-profile=native']])
+    assert.throws(() => parseVerificationArgs(removed), /There is one runtime profile now: remove --runtime-profile and --local-embeddings/);
+  assert.throws(() => parseVerificationArgs(['--write','--other']), /Usage/);
 });
 
 test('pinned auth descriptor is scanned for unreviewed repositories', t => {
