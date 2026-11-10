@@ -9,7 +9,7 @@ import {join} from 'node:path';
 import {root,nativeSource,fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
 
 test('the native passes leave a leased row untouched and finish one whose lease expired',{skip:jsonJarSkip},()=>{
- assert.match(runJvm([nativeSource('NotesDeletionLease.java'),fixture('NotesDeletionLeaseTest.java')],'ai.alphacompute.alphaphone.NotesDeletionLeaseTest',{json:true}),/^PASS notes deletion lease/);
+ assert.match(runJvm([nativeSource('NotesDeletionLease.java'),fixture('NotesDeletionLeaseTest.java')],'ai.elizaresearch.alphaphone.NotesDeletionLeaseTest',{json:true}),/^PASS notes deletion lease/);
 });
 
 test('finishPermanentDeletions consults the lease before any recording or Notes readback is acted on',()=>{

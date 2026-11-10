@@ -1,0 +1,50 @@
+package ai.elizaresearch.alphaphone;
+import org.json.*;
+import java.util.*;
+/** Owner-bound consent metadata only; no Calendar events or reminder content. */
+final class SourceRenewalNotices {
+ static final String SLOT="hosted-notices:renewals:v1";
+ /** The grant was revoked, replaced or expired: the only failure that removes a row. */
+ static final class RenewalStale extends SecurityException {RenewalStale(String message){super(message);}}
+ /** The grant could not be read now (resident down, delivery paused, transport): keep the row and retry. */
+ static final class RenewalUnverifiable extends java.io.IOException {RenewalUnverifiable(Throwable cause){super("Renewal source unverifiable",cause);}}
+ interface Store {String read()throws Exception;void write(String value)throws Exception;}
+ interface Guard {JSONObject describe(JSONObject selection)throws Exception;}
+ interface Poster {void post(String key,long expiry,long now);void cancel(String key);}
+ private final Store store;private final Guard guard;private final Poster poster;
+ SourceRenewalNotices(Store store,Guard guard,Poster poster){this.store=store;this.guard=guard;this.poster=poster;}
+ private JSONObject rows()throws Exception{String raw=store.read();return raw==null?new JSONObject():new JSONObject(raw);}
+ private void save(JSONObject rows)throws Exception{store.write(rows.toString());}
+ static JSONObject selection(JSONObject input)throws Exception{
+  String[] fields={"provider","ownerId","agentId","installationId","enrollmentId","sourceId","revision"};if(input.length()!=fields.length||!"native".equals(input.getString("provider")))throw new SecurityException("Invalid renewal selection");JSONObject copy=new JSONObject();for(String field:fields){String value=input.getString(field);if(value.isBlank()||value.length()>256)throw new SecurityException("Invalid renewal identity");copy.put(field,value);}return copy;
+ }
+ private void valid(JSONObject row,long now)throws Exception{
+  if(row.getLong("expiresAt")<=now)throw new RenewalStale("Renewal source expired");
+  JSONObject grant;try{grant=guard.describe(row.getJSONObject("selection"));}catch(RenewalStale stale){throw stale;}catch(Exception unavailable){throw new RenewalUnverifiable(unavailable);}
+  if(grant.optBoolean("revoked")||!grant.getString("revision").equals(row.getJSONObject("selection").getString("revision"))||java.time.Instant.parse(grant.getString("expiresAt")).toEpochMilli()!=row.getLong("expiresAt"))throw new RenewalStale("Renewal source changed");
+ }
+ synchronized String arm(JSONObject input,long expiresAt,long now)throws Exception{JSONObject chosen=selection(input),row=new JSONObject().put("selection",chosen).put("expiresAt",expiresAt);valid(row,now);String key=HostedResultNotices.hash(new JSONArray().put(chosen.getString("ownerId")).put(chosen.getString("agentId")).put(chosen.getString("installationId")).put(chosen.getString("enrollmentId")).put(chosen.getString("sourceId")).put(chosen.getString("revision")).put(expiresAt).toString());JSONObject rows=rows();List<String> keys=new ArrayList<>();rows.keys().forEachRemaining(keys::add);for(String old:keys){JSONObject previous=rows.getJSONObject(old);if(old.equals(key))continue;boolean stale=false;try{valid(previous,now);}catch(RenewalStale changed){stale=true;}catch(RenewalUnverifiable unknown){/* Keep it until it can be checked. */}if(stale||chosen.getString("sourceId").equals(previous.getJSONObject("selection").getString("sourceId"))){rows.remove(old);poster.cancel(old);}}if(!rows.has(key)){if(rows.length()>=200)throw new IllegalStateException("Too many renewal notices");rows.put(key,row.put("phase","armed"));}else if("dispatching".equals(rows.getJSONObject(key).optString("phase")))rows.getJSONObject(key).put("phase","armed");save(rows);return key;}
+ // A row left in dispatching was interrupted mid-post; posting by tag is idempotent, so it posts again.
+ synchronized void post(String key,long now)throws Exception {
+  JSONObject rows=rows(),row=rows.optJSONObject(key);if(row==null)return;
+  try{valid(row,now);}catch(RenewalStale stale){rows.remove(key);save(rows);poster.cancel(key);return;}
+  String phase=row.optString("phase");if(!"armed".equals(phase)&&!"dispatching".equals(phase))return;
+  row.put("phase","dispatching");save(rows);
+  try {
+   valid(row,now);
+   poster.post(key,row.getLong("expiresAt"),now);
+  }catch(RenewalStale stale){
+   rows.remove(key);save(rows);poster.cancel(key);return;
+  }catch(Exception failed){
+   row.put("phase","armed");save(rows);throw failed;
+  }
+  row.put("phase","posted");save(rows);
+ }
+ synchronized void capture(String key,boolean question,long now)throws Exception{JSONObject rows=rows(),row=rows.optJSONObject(key);if(row==null||!"posted".equals(row.optString("phase")))return;try{valid(row,now);}catch(RenewalStale stale){rows.remove(key);save(rows);poster.cancel(key);return;}List<String> keys=new ArrayList<>();rows.keys().forEachRemaining(keys::add);for(String other:keys)rows.getJSONObject(other).remove("pending");row.put("pending",new JSONObject().put("token",UUID.randomUUID().toString()).put("question",question));save(rows);}
+ synchronized JSONObject pending(long now)throws Exception{JSONObject rows=rows();List<String> keys=new ArrayList<>();rows.keys().forEachRemaining(keys::add);for(String key:keys){JSONObject row=rows.getJSONObject(key);if(!row.has("pending"))continue;try{valid(row,now);}catch(RenewalStale stale){rows.remove(key);save(rows);poster.cancel(key);continue;}return new JSONObject(row.getJSONObject("pending").toString()).put("selection",row.getJSONObject("selection")).put("expiresAt",row.getLong("expiresAt"));}return new JSONObject();}
+ synchronized void settle(String token,boolean discard,long now)throws Exception{JSONObject rows=rows();for(Iterator<String> it=rows.keys();it.hasNext();){String key=it.next();JSONObject row=rows.getJSONObject(key),pending=row.optJSONObject("pending");if(pending==null||!token.equals(pending.optString("token")))continue;try{valid(row,now);}catch(RenewalStale stale){rows.remove(key);save(rows);poster.cancel(key);throw stale;}if(discard&&!pending.optBoolean("question"))throw new SecurityException("Renewal purpose changed");row.remove("pending");save(rows);return;}throw new SecurityException("Renewal tap changed");}
+ synchronized void withdrawOtherOwners(JSONObject owner)throws Exception{JSONObject rows=rows();List<String> keys=new ArrayList<>();rows.keys().forEachRemaining(keys::add);for(String key:keys){JSONObject selection=rows.getJSONObject(key).getJSONObject("selection");if(owner==null||!"https://device.alpha.invalid".equals(owner.optString("origin"))||!owner.optString("ownerId").equals(selection.getString("ownerId"))||!owner.optString("agentId").equals(selection.getString("agentId"))){rows.remove(key);poster.cancel(key);}}save(rows);}
+ // Android's bundled org.json has no JSONObject.similar(); compare the fixed identity fields.
+ private static boolean sameSelection(JSONObject a,JSONObject b){for(String field:new String[]{"provider","ownerId","agentId","installationId","enrollmentId","sourceId","revision"})if(!a.optString(field,"\u0000").equals(b.optString(field,"\u0001")))return false;return a.length()==b.length();}
+ synchronized void clear(JSONObject input)throws Exception{JSONObject chosen=selection(input),rows=rows();List<String> keys=new ArrayList<>();rows.keys().forEachRemaining(keys::add);for(String key:keys)if(sameSelection(chosen,rows.getJSONObject(key).getJSONObject("selection"))){rows.remove(key);poster.cancel(key);}save(rows);}
+}

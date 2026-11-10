@@ -53,11 +53,13 @@ reviewer. Hash binding prevents substitution; it does not authenticate a
 microphone recording or prove that someone performed the checks. Protected
 environment review remains the qualification authority for this route.
 
-The environment's existing `ALPHA_PRIVATE_APK_STORAGE_TOKEN` must have narrowly
-scoped read access to the plan's exact unsigned input and signed output. Do not
-provide a broad account token or put any credential into the record. Preserve
-the exact generations until publication finishes; the signing delivery artifact
-currently expires after one day.
+The protected job requests a short-lived storage token through the reviewed
+[private artifact identity](private-artifact-identity.md). No storage token is
+copied into an environment secret or qualification record. The identity can read
+the private unsigned and signed object prefixes; only the signing job creates a
+new signed output. Exact generation and digest checks still select the reviewed
+objects. Preserve those generations until publication finishes; the signing
+delivery artifact currently expires after one day.
 
 ## Dispatch and review
 

@@ -183,6 +183,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
       searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
+      cloudCredit:cloudCredit(directionsOpen),
       notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
       mapRef:(element:HTMLElement)=>{
         if(!element||!basemap)return;

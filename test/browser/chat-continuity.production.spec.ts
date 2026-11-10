@@ -76,6 +76,8 @@ test('the device draft survives HOME, Back, a keyboard resize and rotation with 
   // keyboard still up swaps the sides: the same field keeps its text, focus and selection and stays
   // fully on screen; turning back and closing the keyboard changes nothing.
   const field = composer(page), original = await field.elementHandle();
+  // Native IME visibility, rather than rotation geometry, owns keyboard dismissal.
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('alpha-keyboard-visibility', {detail: {visible: true}})));
   await field.evaluate((element: HTMLTextAreaElement) => { element.focus(); element.setSelectionRange(6, 11); });
   for (const viewport of [{ width: 412, height: 520 }, { width: 915, height: 300 }, { width: 412, height: 520 }, { width: 412, height: 915 }]) {
     await page.setViewportSize(viewport);
@@ -85,6 +87,12 @@ test('the device draft survives HOME, Back, a keyboard resize and rotation with 
     expect(await field.evaluate((element, previous) => element === previous, original)).toBe(true);
     expect(await field.evaluate((element: HTMLTextAreaElement) => [element.selectionStart, element.selectionEnd])).toEqual([6, 11]);
   }
+  // Android Back hides the IME: release focus so one subsequent tap can reopen it.
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('alpha-keyboard-visibility', {detail: {visible: false}})));
+  await expect(field).not.toBeFocused();
+  await field.click();
+  await expect(field).toBeFocused();
+  await expect(field).toHaveValue(text);
   // Back steps full to sheet to rest and keeps the words.
   await back(page);
   await expect(button(page, 'Expand chat')).toBeVisible();

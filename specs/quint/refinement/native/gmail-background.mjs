@@ -60,6 +60,7 @@ export async function checkNativeGmailBackground(extraSources=[]) {
       }
     }
     const traces=javaTraceCampaign(harness,[...compiled,...fixture.paths],scenarios.map(name=>[name]));
+    // Keep every trace; bounded batches prevent one large generated checker from timing out.
     const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,batchSize:8,
       scope:'bounded-orchestration',assumptions:[
         'The app-owned AlphaGmailPlugin, GmailBackground, GmailDeliveryWorker and CloudDeployment run with authenticated staged MailBackgroundDelivery and MailHistoryReconciliation. The exact native verified Cloud identity helper runs over synthetic responses.',

@@ -78,7 +78,7 @@ test('a locked row shows the recovery line and Allow another asks before releasi
  await expect(detail.getByRole('button',{name:'Run now',exact:true})).toBeEnabled();
 });
 
-test('schedule time and instructions change only after confirmation',async({page})=>{
+test('schedule time, days and instructions change only after confirmation',async({page})=>{
  const calls=await setup(page,true);
  await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Weekly review',{exact:true}).click();
  await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeVisible();
@@ -86,13 +86,44 @@ test('schedule time and instructions change only after confirmation',async({page
  await page.getByLabel('More schedule actions').click();
  await page.getByRole('button',{name:'Edit schedule',exact:true}).click();
  await page.getByLabel('Instructions',{exact:true}).fill('Review my week.');
- await page.getByLabel('Schedule time',{exact:true}).fill('09:30');
+ await page.getByLabel('Hour',{exact:true}).fill('9');
+ await page.getByLabel('Minute',{exact:true}).fill('30');
+ await page.getByRole('group',{name:'Time of day',exact:true}).getByRole('button',{name:'AM',exact:true}).click();
+ await page.getByRole('group',{name:'Repeat pattern',exact:true}).getByRole('button',{name:'Weekdays',exact:true}).click();
+ const friday=page.getByRole('group',{name:'Days of the week',exact:true}).getByRole('button',{name:'Friday',exact:true});
+ await friday.click();await expect(friday).toHaveAttribute('aria-pressed','false');
+ await friday.click();await expect(friday).toHaveAttribute('aria-pressed','true');
  await page.getByRole('button',{name:'Save',exact:true}).click();
  const writes=()=>calls.filter(c=>c.method==='POST'&&c.path.endsWith('/weekly/edit'));
  expect(writes()).toHaveLength(0);
  await page.getByRole('button',{name:'Confirm Save schedule',exact:true}).click();
  await expect.poll(()=>writes().length).toBe(1);
- expect(writes()[0].body).toEqual({promptInstructions:'Review my week.',trigger:{kind:'cron',expression:'30 9 * * *',tz:'UTC'}});
+ expect(writes()[0].body).toEqual({promptInstructions:'Review my week.',trigger:{kind:'cron',expression:'30 9 * * 1-5',tz:'UTC'}});
+});
+
+test.describe('a schedule created on another clock',()=>{
+ test.use({timezoneId:'America/Los_Angeles'});
+ test('the editor explains its saved UTC clock and preserves it across both edits',async({page})=>{
+  await page.clock.setFixedTime(new Date('2026-11-10T20:00:00Z'));
+  const calls=await setup(page,true),writes=()=>calls.filter(c=>c.method==='POST'&&c.path.endsWith('/weekly/edit'));
+  await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Weekly review',{exact:true}).click();
+  const edit=async()=>{await page.getByLabel('More schedule actions').click();await page.getByRole('button',{name:'Edit schedule',exact:true}).click();};
+  await edit();
+  await expect(page.getByRole('note').filter({hasText:'Time and repeat days use Coordinated Universal Time.'})).toBeVisible();
+  await expect(page.getByLabel('Hour',{exact:true})).toHaveValue('8');
+  await page.getByLabel('Instructions',{exact:true}).fill('Same clock, new words.');
+  await page.getByRole('button',{name:'Save',exact:true}).click();expect(writes()).toHaveLength(0);
+  await page.getByRole('button',{name:'Confirm Save schedule',exact:true}).click();
+  await expect.poll(()=>writes().length).toBe(1);
+  expect(writes()[0].body).toEqual({promptInstructions:'Same clock, new words.'});
+  await edit();
+  await page.getByLabel('Hour',{exact:true}).fill('9');await page.getByLabel('Minute',{exact:true}).fill('30');
+  await page.getByRole('group',{name:'Repeat pattern',exact:true}).getByRole('button',{name:'Weekdays',exact:true}).click();
+  await page.getByRole('button',{name:'Save',exact:true}).click();expect(writes()).toHaveLength(1);
+  await page.getByRole('button',{name:'Confirm Save schedule',exact:true}).click();
+  await expect.poll(()=>writes().length).toBe(2);
+  expect(writes()[1].body).toEqual({promptInstructions:'Same clock, new words.',trigger:{kind:'cron',expression:'30 9 * * 1-5',tz:'UTC'}});
+ });
 });
 
 test('workflow choices collapse and a confirmed schedule run fires once',async({page})=>{

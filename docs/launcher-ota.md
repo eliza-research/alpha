@@ -6,10 +6,32 @@ icons, native bridge and packaged resident runtime. Changes to any of those ship
 together in a signed APK with a higher `versionCode`. A Git commit or web build
 alone does not reach a phone.
 
-No phones have been distributed or installed yet (owner clarification, November 9,
-2026). Start the batch on one admitted production-signed launcher baseline. The
-pending lab-to-production signing rotation is not permission to sign a rotating
-release; newly provisioned phones can start directly with the production family.
+No customer batch has been distributed. The existing lab Pixel has Alpha v44
+installed under `ai.elizaresearch.alphaphone`; its data must survive the update.
+Newly provisioned phones use the same package and the admitted production signer.
+The pending lab-to-production signing rotation still requires review of the exact
+candidate and lineage before installation.
+
+## One package for every phone (November 9, 2026)
+
+The owner requested one unified product for the existing Pixel, Shaw and new users.
+Keep `ai.elizaresearch.alphaphone` as the stable Android package and sign-in client
+identity everywhere. Alpha Compute remains the company/branding; a company rename
+does not require a new Android package.
+
+The intermediate `ai.alphacompute.alphaphone` rename would install a separate app,
+with a separate Android data directory and account/App Link registration. It would
+not update v44 in place. Restoring the installed package avoids that split and the
+need to copy private data between apps. Use one package and update channel, not a
+legacy-only build alongside a different package for new phones. Preserve existing
+storage names, callbacks, credentials and the reviewed signing lineage.
+
+This decision does not prove data retention or wireless delivery. Before release,
+verify the exact signed update on disposable Android: retained notes, files,
+conversation drafts and account state; interrupted/cancelled install; reboot and
+HOME recovery. Then qualify the same path on the Pixel. OS OTA separately requires
+its admitted signing keys, payload, wireless download, reboot and recovery proof.
+Do not delete the installed app, clear its storage or publish a placeholder feed.
 
 ```mermaid
 flowchart LR
@@ -191,7 +213,7 @@ delivery path until a native producer bridge is separately qualified.
 ## Acceptance on the phone host
 
 The [historical DAE software qualification](evidence/launcher-ota-dae-qualification-20261110.json)
-records four freshly packaged Cloud APKs for `ai.alphacompute.alphaphone` at
+records four freshly packaged Cloud APKs for `ai.elizaresearch.alphaphone` at
 `f452aa42` and the passing full repository run at `019b289325`. The production
 input trees at those two DAE commits match exactly; they do not qualify the
 current SDK `75b44015`. The full run reports 5,065 passed tests, zero failures,
@@ -278,7 +300,7 @@ Use two separate baseline setups:
   in [Android and AOSP](android-and-aosp.md) and [Pixel 10a staging](pixel10a-staging.md).
   Do not ADB-install the baseline over the image: that would start the drill from a
   `/data` replacement instead of the preinstalled APK. Verify the system-install
-  flag, provisioning overlay, HOME and `ai.alphacompute.alphaphone.aosp_image`
+  flag, provisioning overlay, HOME and `ai.elizaresearch.alphaphone.aosp_image`
   feature before the candidate update. The later APK replacement should resolve
   under `/data` while the admitted image capability remains available.
 

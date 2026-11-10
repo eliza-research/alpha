@@ -1,23 +1,27 @@
 # Settings
 
 Settings belongs to Alpha's renderer in `apps/app/src/prototype/settings-adapter.ts`. The top
-screen has General, Privacy, Apps and About. The Account control in its header opens the account
-category. Category pages have Back to Settings. App settings return to Apps.
+screen has General, Privacy, Apps and About. The Account control in its header opens the shared Account
+sheet. Category pages have Back to Settings. App settings return to Apps.
 
 ## Categories
 
 | Entry | Current controls |
 | --- | --- |
-| Account header | Account & plan, Google & email, AI connection |
+| Account header | Balance, membership, code entry, Google & email, AI connection |
 | General | Display, Notifications and the available device or recovery controls |
 | Privacy | App permissions and Ask before taking actions |
 | Apps | Browser, Calendar, Camera, Files, Inbox, Maps, Notes, Passwords, Photos and Workflows |
 | About | Version information and Open source licenses |
 
-Account & plan presents the account and the plan information that the current Cloud session
-verified. Redeem code opens code entry only when selected. Google & email opens the existing
-Google account dialog. AI connection opens the provider dialog. Each action retains its own
-account and session checks.
+The Account sheet is reused by Settings, setup and a billing refusal. It shows the
+verified account balance, membership, included usage and access window. A missing
+balance stays unavailable; it is not shown as zero. Code entry appears on request.
+AI connection uses the existing provider controls in the same sheet. Google & email
+uses its existing account manager and returns to Account when closed. Billing opens
+the existing account billing page; no purchase is performed in the app. Sign out
+requires confirmation tied to the current account and preserves local data and keys.
+The old Account & plan page and separate billing-review prompt are retired.
 
 Display owns the app's theme and text-size controls. Notifications reads back the platform's
 notification state. Android notification settings are explicit handoffs. A browser offers its
@@ -30,7 +34,7 @@ owner reviews recovery.
 
 App settings remain with their existing owners. Calendar uses the canonical Calendar flow,
 Passwords uses the selected provider or development vault, Inbox links to Google & email, and
-Workflows opens Scheduled summaries. The other app pages expose the permissions or options that
+Workflows exposes its alert preference. The other app pages expose the permissions or options that
 are currently available. They do not create alternate stores or provider connections.
 
 The product About page has no Problem log or Export diagnostics entry. The diagnostic data

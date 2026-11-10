@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import {openConnectionDiagnostics} from '../test/browser/helpers/connection-diagnostics.ts';
 const url = process.env.ALPHA_CONTEXT_TEST_URL || 'http://127.0.0.1:5188';
 if (new URL(url).hostname !== '127.0.0.1') throw Error('Use local Vite only.');
 const require = createRequire(process.env.ALPHA_BROWSER_MODULES ? path.join(process.env.ALPHA_BROWSER_MODULES, '__context__.cjs') : import.meta.url);
@@ -38,12 +39,10 @@ try {
  await page.goto(url, { waitUntil: 'load', timeout: 180000 });
  await page.getByRole('button', { name: 'Photos', exact: true }).click();
  await page.getByRole('button', { name: /^Video, / }).click();
- await page.getByRole('button', { name: 'Ask Alpha about this video', exact: true }).click();
- // Ask opens the local content review first; only reviewed, synthetic text reaches the composer.
- const review = page.getByRole('dialog', { name: 'Ask about selected content' });
- await review.getByRole('textbox', { name: 'Content excerpt' }).fill('Synthetic description of the selected video frame');
- await review.getByRole('button', { name: 'Use in conversation', exact: true }).click();
- await review.waitFor({ state: 'detached' });
+ // Video interpretation is deferred. Ordinary chat may still carry the opaque selected-item
+ // identity; this campaign checks that metadata boundary, never video content or interpretation.
+ assert.equal(await page.getByRole('button', { name: 'Ask Alpha about this video', exact: true }).count(),0);
+ await page.getByRole('button', { name: 'Open conversation', exact: true }).click();
  await page.evaluate(async () => {
   const { alphaClient } = await import('/src/runtime/alpha-client.ts');
   const { phoneContextMessage } = await import('/src/runtime/phone-context.ts');
@@ -170,7 +169,7 @@ try {
   }, mode);
   await limited.goto(url, { waitUntil: 'load', timeout: 180000 });
   await limited.getByRole('button', { name: 'Settings', exact: true }).click();
-  await limited.getByRole('button', { name: 'Agent', exact: true }).click();
+  await openConnectionDiagnostics(limited);
   await limited.getByText('Local development agent', { exact: true }).click();
   const local = limited.locator('.alpha-connection details').filter({ has: limited.getByText('Local development agent', { exact: true }) });
   await local.getByLabel('Local agent address').fill('http://127.0.0.1:47842');

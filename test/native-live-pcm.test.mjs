@@ -13,5 +13,5 @@ test('shared IPC exchange has its own cancellable deadline and bounded response'
 });
 
 test('Alpha voice enrollment binding rejects re-enrollment, epoch, owner, runtime and expiry changes',()=>{
- assert.match(runJvm(['NativeVoiceBinding.java','VoiceEventAdmission.java'].map(nativeSource).concat(fixture('NativeVoiceBindingTest.java')),'ai.alphacompute.alphaphone.NativeVoiceBindingTest'),/^PASS native voice binding/);
+ assert.match(runJvm(['NativeVoiceBinding.java','VoiceEventAdmission.java'].map(nativeSource).concat(fixture('NativeVoiceBindingTest.java')),'ai.elizaresearch.alphaphone.NativeVoiceBindingTest'),/^PASS native voice binding/);
 });

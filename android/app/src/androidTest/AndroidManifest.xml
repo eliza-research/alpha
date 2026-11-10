@@ -1,11 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <instrumentation android:name="androidx.test.runner.AndroidJUnitRunner"
-    android:targetPackage="ai.alphacompute.alphaphone" />
-  <instrumentation android:name="ai.alphacompute.alphaphone.WorkflowNoticeProcessRunner"
-    android:targetPackage="ai.alphacompute.alphaphone"
-    android:targetProcesses="ai.alphacompute.alphaphone:workflowNoticeTest" />
+    android:targetPackage="ai.elizaresearch.alphaphone" />
+  <instrumentation android:name="ai.elizaresearch.alphaphone.WorkflowNoticeProcessRunner"
+    android:targetPackage="ai.elizaresearch.alphaphone"
+    android:targetProcesses="ai.elizaresearch.alphaphone:workflowNoticeTest" />
   <application>
-    <activity android:name="ai.alphacompute.alphaphone.ShareReceiverActivity"
+    <activity android:name="ai.elizaresearch.alphaphone.ShareReceiverActivity"
       android:exported="true" android:label="Alpha share verification">
       <intent-filter>
         <action android:name="android.intent.action.SEND" />
@@ -17,7 +17,7 @@
     </activity>
     <!-- Autofill campaign only (PasswordVaultFillInstrumentedTest): a native sign-in form in the
          test package, which has its own package name and the instrumentation signer. -->
-    <activity android:name="ai.alphacompute.alphaphone.PasswordFillFixtureActivity"
+    <activity android:name="ai.elizaresearch.alphaphone.PasswordFillFixtureActivity"
       android:exported="true" android:label="Alpha autofill fixture" />
   </application>
 </manifest>

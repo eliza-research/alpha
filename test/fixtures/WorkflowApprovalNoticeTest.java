@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 import ai.eliza.plugins.notifications.NoticeOwner;
 import org.json.*;
 import java.util.*;

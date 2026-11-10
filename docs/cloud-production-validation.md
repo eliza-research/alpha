@@ -56,7 +56,7 @@ Earlier direct TLS and SSH query failures did not prove an absent account. Follo
 
 An unauthenticated request to canonical `/api/v1/user` with JSON headers returned `401 authentication_required`. Earlier default-client probes returned 403; neither diagnoses the user's reported authentication error without its exact endpoint and response.
 
-AlphaPhone signs in on its own screens (since 2026-10-14). Native code verifies an email code or a Google Custom Tab return with Steward (`/steward/auth/email/code/verify` or `/steward/auth/oauth/exchange`), then mints a 30-day `eliza_mobile_` key through `/api/v1/app-auth/connect`, `/mobile/token` and `/mobile/ack` (client `ai.alphacompute.alphaphone`). It then reads `/api/v1/user` identity with that key (docs/architecture.md, "Eliza Cloud sign-in ownership"). Before that change Alpha used `/api/auth/cli-session` browser approval, which mints a 90-day organization API key retrieved once by polling. That flow remains only as a test-mocks diagnostic fallback for one release. Pending browser approval must be completed normally, not bypassed with administrative credentials. The legacy `/api/eliza-app/user/me` route instead accepts an Eliza App JWT with issuer `eliza-app`, audience `eliza-app-users`, and seven-day duration. These credential types are not interchangeable.
+AlphaPhone signs in on its own screens (since 2026-10-14). Native code verifies an email code or a Google Custom Tab return with Steward (`/steward/auth/email/code/verify` or `/steward/auth/oauth/exchange`), then mints a 30-day `eliza_mobile_` key through `/api/v1/app-auth/connect`, `/mobile/token` and `/mobile/ack` (client `ai.elizaresearch.alphaphone`). It then reads `/api/v1/user` identity with that key (docs/architecture.md, "Eliza Cloud sign-in ownership"). Before that change Alpha used `/api/auth/cli-session` browser approval, which mints a 90-day organization API key retrieved once by polling. That flow remains only as a test-mocks diagnostic fallback for one release. Pending browser approval must be completed normally, not bypassed with administrative credentials. The legacy `/api/eliza-app/user/me` route instead accepts an Eliza App JWT with issuer `eliza-app`, audience `eliza-app-users`, and seven-day duration. These credential types are not interchangeable.
 
 ## Funding and agent reuse
 
@@ -142,7 +142,7 @@ Read-only production probes while preparing `codex/finish-integrations`:
 | --- | --- | --- |
 | `GET /api/v1/subscriptions/plans` | HTTP 200 | The public catalog is reachable; no authenticated entitlement or quota acceptance |
 | `GET /api/v1/maps/capabilities` without credentials | HTTP 401 | Authentication is required; coverage and route availability remain unverified |
-| `GET /api/v1/app-auth/mobile/config` with `clientId=ai.alphacompute.alphaphone`, `environment=production`, and the exact HTTPS callback | HTTP 200, matching registration and S256 | Alpha mobile registration is deployed |
+| `GET /api/v1/app-auth/mobile/config` with `clientId=ai.elizaresearch.alphaphone`, `environment=production`, and the exact HTTPS callback | HTTP 200, matching registration and S256 | Alpha mobile registration is deployed |
 | `GET /steward/auth/providers?tenantId=elizacloud` | HTTP 200; email and Google offered | Provider discovery is available; no sign-in attempted |
 | `GET https://eliza.app/.well-known/assetlinks.json` | HTTP 404 | The verified App Link readiness gate is not satisfied |
 

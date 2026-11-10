@@ -4,7 +4,7 @@ const source=readFileSync('apps/app/src/prototype/settings-adapter.ts','utf8');
 const region=source.slice(source.indexOf('// settings-facts:begin'),source.indexOf('// settings-facts:end'));
 assert.ok(region.length>100,'settings-facts region is present');
 const m=await import('data:text/javascript;base64,'+Buffer.from(stripTypeScriptTypes(region,{mode:'strip'})).toString('base64'));
-const java=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java','utf8');
+const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8');
 
 test('the version row shows only what the build and Android report',()=>{
  assert.equal(m.versionLabel('0.1.0',7),'0.1.0 (7)');
@@ -92,12 +92,10 @@ test('the Google accounts sheet has no Gmail notification settings button: Andro
  assert.doesNotMatch(readFileSync('apps/app/src/runtime/google-connection-ui.tsx','utf8'),/Gmail notification settings|gmailNotificationSettings/);
  assert.doesNotMatch(readFileSync('apps/app/src/runtime/gmail-background.ts','utf8'),/gmailNotificationSettings/);
 });
-test('scheduled summaries opens from the Workflows app settings',()=>{
+test('Workflows settings keep alerts without the obsolete digest setup sheet',()=>{
  assert.match(source,/\['Workflows','workflows'\]/);
- const app=source.slice(source.indexOf("if(appSettingsPage==='workflows')"),source.indexOf('const permissions:Record',source.indexOf("if(appSettingsPage==='workflows')")));
- assert.equal((app.match(/label:'Scheduled summaries'/g)??[]).length,1);
- assert.match(app,/window\.dispatchEvent\(new Event\('alpha:hosted-digests'\)\)/);
- assert.doesNotMatch(source,/\bdigests\b *=|hosted\(\)\.available/);
+ assert.doesNotMatch(source,/label:'Scheduled summaries'|label:'Scheduled digests'|alpha:hosted-digests/);
+ assert.match(source,/label:'Show alerts'/);
 });
 test('prototype-only sheets (memory wipe, Wi-Fi password, forget network) never reach the renderer',()=>{
  const line=source.split('\n').find(row=>row.includes('const out = render({ ...state'));

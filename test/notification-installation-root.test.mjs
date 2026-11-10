@@ -9,7 +9,7 @@ test('actual installation reader accepts app-root aliases but rejects escaped st
  const dir=mkdtempSync(join(tmpdir(),'alpha-installation-root-')),files=[];const put=(name,text)=>{const p=join(dir,name);mkdirSync(join(p,'..'),{recursive:true});writeFileSync(p,text);files.push(p);};
  try{
  put('android/content/Context.java','package android.content;public class Context {private final java.io.File files;public Context(java.io.File p){files=p;}public java.io.File getFilesDir(){return files;}}');
- put('InstallationTest.java',`package ai.alphacompute.alphaphone;import android.content.Context;import java.nio.file.*;
+ put('InstallationTest.java',`package ai.elizaresearch.alphaphone;import android.content.Context;import java.nio.file.*;
 class HostedInbox {static String id(String value){if(value==null||!value.matches("[A-Za-z0-9][A-Za-z0-9_-]{0,127}"))throw new IllegalArgumentException();return value;}}
 class AlphaLocalAgentPlugin {${source.slice(start,end)}}
 public class InstallationTest {
@@ -29,6 +29,6 @@ public class InstallationTest {
   System.out.println("PASS app alias identity retained; escaped state, linked ID, directory ID and missing root refused");
  }
 }`);
- assert.match(runJvm(files,'ai.alphacompute.alphaphone.InstallationTest'),/^PASS app alias identity retained/);
+ assert.match(runJvm(files,'ai.elizaresearch.alphaphone.InstallationTest'),/^PASS app alias identity retained/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });

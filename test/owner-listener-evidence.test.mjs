@@ -16,7 +16,7 @@ import { LISTENER_RECORD, listenerRecordProblems } from "../scripts/listener-qua
 const root = path.resolve(import.meta.dirname, "..");
 const fixtures = path.join(root, "test/fixtures/owner-listener-evidence");
 const load = name => JSON.parse(fs.readFileSync(path.join(fixtures, name), "utf8"));
-const appId = "ai.alphacompute.alphaphone", pkg = `${appId}.sense`;
+const appId = "ai.elizaresearch.alphaphone", pkg = `${appId}.sense`;
 const record = JSON.parse(fs.readFileSync(path.join(root, LISTENER_RECORD), "utf8"));
 const okVerifier = () => ({ packageName: pkg, privileged: true, persistent: true, captureHotwordGranted: true });
 const script = path.join(root, "scripts/owner/listener-evidence.mjs");

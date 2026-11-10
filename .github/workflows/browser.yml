@@ -28,8 +28,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.verify == 'true'
     runs-on: ubuntu-24.04
-    # Includes clean SDK bootstrap and all model and source-contract checks.
-    # The full source-refinement suite exceeds one hour on the hosted runner.
+    # The measured clean run takes about 95 minutes, including SDK bootstrap and
+    # all source refinements. Keep every check and allow the complete run to finish.
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

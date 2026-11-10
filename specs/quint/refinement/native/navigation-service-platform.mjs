@@ -53,11 +53,11 @@ export function navigationServicePlatform(){
     public String getStringExtra(String key){return extras.get(key);}
    }`,
   'android/content/Context.java':`package android.content;
-   import ai.alphacompute.alphaphone.NavigationServicePorts;
+   import ai.elizaresearch.alphaphone.NavigationServicePorts;
    import android.content.pm.PackageManager;
    public class Context {
     public Context getApplicationContext(){return this;}
-    public String getPackageName(){return "ai.alphacompute.alphaphone";}
+    public String getPackageName(){return "ai.elizaresearch.alphaphone";}
     public PackageManager getPackageManager(){return new PackageManager();}
     public int checkSelfPermission(String permission){return NavigationServicePorts.permission?0:-1;}
     public ComponentName startForegroundService(Intent intent){NavigationServicePorts.start(intent);return null;}
@@ -66,7 +66,7 @@ export function navigationServicePlatform(){
     public <T>T getSystemService(Class<T> type){return type.cast(NavigationServicePorts.notifications);}
    }`,
   'android/content/pm/PackageManager.java':`package android.content.pm;
-   import ai.alphacompute.alphaphone.NavigationServicePorts;
+   import ai.elizaresearch.alphaphone.NavigationServicePorts;
    public class PackageManager {
     public static final int PERMISSION_GRANTED=0;
     public static class NameNotFoundException extends Exception {}
@@ -143,7 +143,7 @@ export function navigationServicePlatform(){
   }`,
   'android/app/Service.java':`package android.app;
    import android.content.*;
-   import ai.alphacompute.alphaphone.NavigationServicePorts;
+   import ai.elizaresearch.alphaphone.NavigationServicePorts;
    public class Service extends Context {
     public static final int START_NOT_STICKY=2,STOP_FOREGROUND_REMOVE=1;
     public boolean foreground,stopped;
@@ -167,15 +167,15 @@ export function navigationServicePlatform(){
   'com/getcapacitor/Plugin.java':`package com.getcapacitor;
    public class Plugin {
     public int fixtureOwner;
-    public android.app.Activity fixtureActivity=new ai.alphacompute.alphaphone.MainActivity();
+    public android.app.Activity fixtureActivity=new ai.elizaresearch.alphaphone.MainActivity();
     public android.app.Activity getActivity(){return fixtureActivity;}
     public final org.json.JSONArray events=new org.json.JSONArray();
-    public android.content.Context getContext(){return ai.alphacompute.alphaphone.NavigationServicePorts.context;}
+    public android.content.Context getContext(){return ai.elizaresearch.alphaphone.NavigationServicePorts.context;}
     public void load(){}
     protected void handleOnDestroy(){}
     public void notifyListeners(String name,JSObject value){
      events.put(new org.json.JSONObject().put("name",name).put("value",value));
-     ai.alphacompute.alphaphone.NavigationServicePorts.event(fixtureOwner,name,value);
+     ai.elizaresearch.alphaphone.NavigationServicePorts.event(fixtureOwner,name,value);
     }
    }`,
   'com/getcapacitor/PluginCall.java':`package com.getcapacitor;
@@ -192,10 +192,10 @@ export function navigationServicePlatform(){
     public void reject(String message){error=message;settles++;}
     public void reject(String message,String reason){code=reason;reject(message);}
    }`,
-  'ai/alphacompute/alphaphone/BuildConfig.java':'package ai.alphacompute.alphaphone;public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;}',
-  'ai/alphacompute/alphaphone/MainActivity.java':'package ai.alphacompute.alphaphone;public class MainActivity extends android.app.Activity {}',
-  'ai/alphacompute/alphaphone/AlphaAssistActivity.java':'package ai.alphacompute.alphaphone;public class AlphaAssistActivity extends MainActivity {}',
-  'ai/alphacompute/alphaphone/AlphaPowerVoiceActivity.java':'package ai.alphacompute.alphaphone;public class AlphaPowerVoiceActivity extends AlphaAssistActivity {}'
+  'ai/elizaresearch/alphaphone/BuildConfig.java':'package ai.elizaresearch.alphaphone;public class BuildConfig {public static final boolean ELIZA_DEV_ALLOW_TEST_MOCKS=false;}',
+  'ai/elizaresearch/alphaphone/MainActivity.java':'package ai.elizaresearch.alphaphone;public class MainActivity extends android.app.Activity {}',
+  'ai/elizaresearch/alphaphone/AlphaAssistActivity.java':'package ai.elizaresearch.alphaphone;public class AlphaAssistActivity extends MainActivity {}',
+  'ai/elizaresearch/alphaphone/AlphaPowerVoiceActivity.java':'package ai.elizaresearch.alphaphone;public class AlphaPowerVoiceActivity extends AlphaAssistActivity {}'
  };
  for(const [name,body] of Object.entries(files)){
   const file=join(directory,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,body);

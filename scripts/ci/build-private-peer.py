@@ -21,13 +21,13 @@ def certificate(apk):
  certs=re.findall(r'^Signer #\d+ certificate SHA-256 digest: ([a-f0-9]{64})$',text,re.M)
  assert len(certs)==1;return certs[0]
 badging=subprocess.check_output([str(sdk/'build-tools/36.0.0/aapt'),'dump','badging',str(target)],text=True)
-assert re.search(r"^package: name='ai.alphacompute.alphaphone.peerfixture' ",badging,re.M)
+assert re.search(r"^package: name='ai.elizaresearch.alphaphone.peerfixture' ",badging,re.M)
 assert 'application-debuggable' in badging and 'launchable-activity:' not in badging
 assert 'android.permission.INTERNET' not in badging
 cert=certificate(target)
 for variant in ['standalone','launcher']:
  for kind in ['debug','androidTest']:assert certificate(archive/(variant+'-'+kind+'.apk'))==cert
-meta={'schemaVersion':1,'package':'ai.alphacompute.alphaphone.peerfixture','apkSha256':h(target),'signerSha256':cert,'sources':before}
+meta={'schemaVersion':1,'package':'ai.elizaresearch.alphaphone.peerfixture','apkSha256':h(target),'signerSha256':cert,'sources':before}
 metadata=archive/'private-peer-manifest.json';assert not metadata.exists();metadata.write_text(json.dumps(meta,indent=2)+'\n')
 p=archive/'apk-manifest.json';manifest=json.loads(p.read_text());assert len(manifest)==6
 manifest.update({target.name:h(target),metadata.name:h(metadata)});p.write_text(json.dumps(manifest,indent=2)+'\n')

@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {runJvm} from './fixtures/jvm-tools.mjs';
-const source=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/CalendarSyncBridge.java','utf8');
+const source=fs.readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarSyncBridge.java','utf8');
 test('Calendar Cloud reads classify retryable refusal without authorizing a mutation',()=>{
  const method=/private static String cloudFailure\([^\n]+/.exec(source)?.[0];assert.ok(method);
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-calendar-cloud-'));

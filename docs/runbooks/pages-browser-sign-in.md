@@ -29,7 +29,7 @@ The registration preserves:
 | Input | Production | Staging |
 | --- | --- | --- |
 | Callback | `https://eliza.app/alphaphone/auth/callback` | `https://staging.eliza.app/alphaphone/auth/callback` |
-| Android package | `ai.alphacompute.alphaphone` | `ai.alphacompute.alphaphone` |
+| Android package | `ai.elizaresearch.alphaphone` | `ai.elizaresearch.alphaphone` |
 | Browser start path | `/alphaphone/auth/browser-start` | `/alphaphone/auth/browser-start` |
 | Loopback return path | `/__alpha-browser-cloud/signin-return` | `/__alpha-browser-cloud/signin-return` |
 | Session storage key | `alpha-browser-sign-in:v1` | `alpha-browser-sign-in:v1` |

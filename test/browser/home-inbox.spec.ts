@@ -19,8 +19,8 @@ async function fixture(page:Page,theme='light'){
   const client={gmailAccounts:async()=>{f.accountReads++;return f.accounts??[{connectionId:'grant-'+f.owner,label:'Synthetic mailbox '+f.owner,connected:true,grantedCapabilities:['google.gmail.triage']}];},
    gmailSearch:(account:string,query:string,signal:AbortSignal,limit:number)=>{f.reads++;const rows=structuredClone(f.rows),fail=f.fail,more=f.more,owner=f.owner;(f.requests??=[]).push({account,query,limit});signal.addEventListener('abort',()=>{(f.aborted??=[]).push(owner);},{once:true});const response=(async()=>{if(f.hold)await new Promise<void>(resolve=>{f.release=resolve;(f.releases??={})[owner]=resolve;});if(fail)throw Error('Synthetic provider unavailable');return {messages:rows,syncedAt:'fixture',nextPageToken:more?'next-fixture-page':null};})();(f.responses??={})[owner]=response.then(()=>{},()=>{});return response;},
    gmailRead:async()=>{f.bodyReads=(f.bodyReads??0)+1;throw Error('No body read in Home fixture');},gmailInboxCapabilities:async()=>({send:false,providerDrafts:false,mailboxMutations:false})};
-  c.getCloudClient=()=>({client,sessionId:'fixture-'+f.owner,credentialId:f.credential??'fixture-only'} as any);
-  const original=c.getSnapshot(),snapshots=new Map();c.getSnapshot=()=>{const key=JSON.stringify([f.owner,f.omitOrg,f.credential]);if(!snapshots.has(key))snapshots.set(key,{...original,cloudAccount:{environment:'production',userId:'fixture-'+f.owner,...(f.omitOrg?{}:{organizationId:'fixture-org'}),sessionId:'fixture-'+f.owner,credentialId:f.credential??'fixture-only'}});return snapshots.get(key);};
+  c.getCloudClient=()=>f.restoringCloud?null:({client,sessionId:'fixture-'+f.owner,credentialId:f.credential??'fixture-only'} as any);
+  const original=c.getSnapshot(),snapshots=new Map();c.getSnapshot=()=>{const key=JSON.stringify([f.owner,f.omitOrg,f.credential,f.restoringCloud]);if(!snapshots.has(key))snapshots.set(key,{...original,cloudServiceRestoring:f.restoringCloud===true,cloudAccount:{environment:'production',userId:'fixture-'+f.owner,...(f.omitOrg?{}:{organizationId:'fixture-org'}),sessionId:'fixture-'+f.owner,credentialId:f.credential??'fixture-only'}});return snapshots.get(key);};
  });
 }
 async function load(page:Page){await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();await returnToApps(page);}
@@ -47,7 +47,7 @@ test('Home keeps an unconnected Inbox widget and Google setup in Settings',async
 });
 
 test('Home Inbox retains failure and retires cached subjects on owner change',async({page})=>{
- await fixture(page);await load(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();await page.evaluate(()=>(window as any).homeInboxFixture.fail=true);await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toContainText('Open to retry');await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('No unread');
+ await fixture(page);await load(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();await page.evaluate(()=>(window as any).homeInboxFixture.fail=true);await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeEnabled();await expect(page.getByRole('button',{name:'Retry',exact:true})).toHaveCount(0);await expect(page.getByText('Saved mail · Could not update',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();await returnToApps(page);await expect(tile(page)).toContainText('Open to retry');await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('No unread');
  await page.evaluate(async()=>{(window as any).homeInboxFixture.owner='b';(await import('/src/runtime/connection-ui.tsx')).connectionController.close();});await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('Synthetic quarterly planning subject');await expect(page.getByRole('region',{name:'Home',exact:true})).not.toContainText('2 unread');
 });
 
@@ -109,6 +109,16 @@ test.beforeEach(async({page})=>seedCompletedAccessSetup(page));
 // inspector holds an awaited evaluate's promise weakly, so CI collected it (helpers/page-modules.ts).
 const notifyHomeOwner=(page:Page)=>page.evaluate(()=>{(window as any).__alphaModules['/src/runtime/connection-ui.tsx'].connectionController.close();});
 
+test('pending optional Cloud restoration does not offer a second sign-in',async({page})=>{
+ await fixture(page);await page.evaluate(()=>(window as any).homeInboxFixture.restoringCloud=true);await notifyHomeOwner(page);
+ await expect(tile(page)).not.toContainText('Connect email');
+ await page.getByRole('button',{name:'Inbox',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Connect Eliza Cloud',exact:true})).toHaveCount(0);
+ await expect(page.getByText('Connect Eliza Cloud to use Gmail',{exact:true})).toHaveCount(0);
+ await page.evaluate(()=>(window as any).homeInboxFixture.restoringCloud=false);await notifyHomeOwner(page);
+ await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();
+});
+
 test('Home loads one current Inbox header summary before Inbox is opened, without bodies or rerender reads',async({page})=>{
  await fixture(page);await notifyHomeOwner(page);
  await expect(tile(page)).toContainText('Synthetic quarterly planning subject');
@@ -126,6 +136,26 @@ test('opening Inbox consumes the same in-flight Home discovery and header page',
  await page.evaluate(()=>(window as any).homeInboxFixture.release());
  await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();
  expect(await page.evaluate(()=>{const f=(window as any).homeInboxFixture;return [f.reads,f.accountReads];})).toEqual([1,1]);
+});
+
+test('opening Inbox shows saved mail while the same-owner Home refresh is pending',async({page})=>{
+ await fixture(page);await load(page);
+ await expect.poll(()=>page.evaluate(async()=>{
+  const {serviceReadCache}=await import('/src/runtime/service-read-cache-store.ts');
+  const cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'});
+  return !!(await cache.get('gmail:mailbox'));
+ })).toBe(true);
+ await fixture(page);
+ await page.evaluate(()=>{const f=(window as any).homeInboxFixture;f.hold=true;f.rows=f.rows.map((m:any)=>({...m,subject:'Refreshed subject'}));});
+ await notifyHomeOwner(page);
+ await expect(tile(page)).toContainText('Synthetic quarterly planning subject');
+ await expect.poll(()=>page.evaluate(()=>typeof(window as any).homeInboxFixture.release)).toBe('function');
+ await page.getByRole('button',{name:'Inbox',exact:true}).click();
+ await expect(page.getByRole('button',{name:/Unread, Synthetic sender A.*Synthetic quarterly planning subject/})).toBeVisible();
+ expect(await page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBe(1);
+ await page.evaluate(()=>(window as any).homeInboxFixture.release());
+ await expect(page.getByRole('button',{name:/Unread, Synthetic sender A.*Refreshed subject/})).toBeVisible();
+ expect(await page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBe(1);
 });
 
 for(const failOld of [false,true])test(`Home retires another owner's delayed ${failOld?'failure':'success'} without publishing it`,async({page})=>{

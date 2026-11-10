@@ -290,3 +290,10 @@ test("a failed reread never verifies a retained empty or populated feed on Home"
   const selected=select(state,'UTC',new Set(),now);assert.equal(selected.verified,false);assert.equal(selected.event,null);assert.notEqual(selected.emptyLabel,'Nothing planned');assert.equal(state.feed,feed);assert.deepEqual(state.feed.events,rows);
  }
 });
+
+test('saved upcoming rows remain visible during refresh but never prove freshness or empty',()=>{
+ const s=model([event('saved','2026-10-30')]);s.status='loading';s.savedAt=Date.now();
+ assert.equal(select(s,'UTC',new Set(),now).event.id,'saved');assert.equal(select(s,'UTC',new Set(),now).verified,false);
+ s.error='Offline';assert.equal(select(s,'UTC',new Set(),now).event.id,'saved');
+ s.feed.events=[];assert.equal(select(s,'UTC',new Set(),now).emptyLabel,'Calendar');assert.equal(select(s,'UTC',new Set(),now).verified,false);
+});

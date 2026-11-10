@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 import java.nio.charset.StandardCharsets;
 import org.json.*;
 public final class NotesCapacityFixtureTest {

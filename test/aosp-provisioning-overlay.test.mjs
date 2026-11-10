@@ -6,7 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { provisioningComponents, renderProvisioningOverlay, requestsAllFilesAccess, writeProvisioningOverlay } from "../scripts/aosp-provisioning-overlay.mjs";
 
-const PKG = "ai.alphacompute.alphaphone";
+const PKG = "ai.elizaresearch.alphaphone";
 const str = value => `"${value}" (Raw: "${value}")`;
 const element = (indent, tag, attrs = {}) => [`${" ".repeat(indent)}E: ${tag} (line=1)`,
   ...Object.entries(attrs).map(([key, value]) => `${" ".repeat(indent + 2)}A: android:${key}(0x01010003)=${value.startsWith("(") ? value : str(value)}`)];
@@ -47,8 +47,8 @@ test("Files all-files access: the launcher must request MANAGE_EXTERNAL_STORAGE 
 test("the overlay sets default HOME, assistant and Autofill offer additively", t => {
   const files = renderProvisioningOverlay(PKG, provisioningComponents(tree(), PKG));
   assert.match(files["provisioning/overlay/frameworks/base/core/res/res/values/config.xml"], new RegExp(`config_defaultAssistant" translatable="false">${PKG}<`));
-  assert.match(files["provisioning/overlay/frameworks/base/core/res/res/values/config.xml"], /config_defaultAutofillService" translatable="false">ai\.alphacompute\.alphaphone\/ai\.eliza\.plugins\.passwords\.ElizaPasswordAutofillService</);
-  assert.match(files["provisioning/preferred-apps/launcher-home.xml"], /<item name="ai\.alphacompute\.alphaphone\/ai\.alphacompute\.alphaphone\.MainActivity"/);
+  assert.match(files["provisioning/overlay/frameworks/base/core/res/res/values/config.xml"], /config_defaultAutofillService" translatable="false">ai\.elizaresearch\.alphaphone\/ai\.eliza\.plugins\.passwords\.ElizaPasswordAutofillService</);
+  assert.match(files["provisioning/preferred-apps/launcher-home.xml"], /<item name="ai\.elizaresearch\.alphaphone\/ai\.elizaresearch\.alphaphone\.MainActivity"/);
   assert.match(files["provisioning/preferred-apps/launcher-home.xml"], /android\.intent\.category\.HOME/);
   assert.doesNotMatch(files.productMakefile, /LOCAL_OVERRIDES_PACKAGES|Launcher3/, "the stock launcher stays as a recovery path");
   assert.doesNotMatch(files.productMakefile, /\bALPHA_/);

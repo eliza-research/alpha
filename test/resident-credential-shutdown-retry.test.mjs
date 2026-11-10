@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {resolve,join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 const root=resolve(import.meta.dirname,'..');
-const directory=join(root,'android/app/src/main/java/ai/alphacompute/alphaphone');
+const directory=join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone');
 const source=readFileSync(join(directory,'AlphaLocalAgentPlugin.java'),'utf8');
 import {javaBinary,upstreamAgentRuntime} from './fixtures/jvm-tools.mjs';
 // The agent-runtime intent fence delegates to the shared secure-store fence since elizaOS/eliza#38281.
@@ -22,7 +22,7 @@ test('strict shutdown retry requires exact current acknowledgment plus absence a
   const actualAdmission=source.slice(admissionStart,admissionEnd);
   const retryRequiredStart=source.indexOf(' static boolean shutdownRetryRequired(');
   const retryRequired=source.slice(retryRequiredStart,source.indexOf('\n }\n',retryRequiredStart)+3).replace('static boolean','boolean');
-  writeFileSync(join(temporary,'RetryGuardHarness.java'),`package ai.alphacompute.alphaphone;
+  writeFileSync(join(temporary,'RetryGuardHarness.java'),`package ai.elizaresearch.alphaphone;
 import java.util.*;
 import ai.eliza.plugins.agent.runtime.CredentialIntentFence;
 public class RetryGuardHarness {
@@ -56,8 +56,8 @@ public class RetryGuardHarness {
  }
 }`);
   execFileSync(javaBinary('javac'),['-d',temporary,...intentFence,join(directory,'ResidentCredentialShutdownRetry.java'),join(root,'test/fixtures/ResidentCredentialShutdownRetryTest.java'),join(temporary,'RetryGuardHarness.java')]);
-  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.alphacompute.alphaphone.ResidentCredentialShutdownRetryTest'],{encoding:'utf8'}),/PASS strict retry/);
-  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.alphacompute.alphaphone.RetryGuardHarness'],{encoding:'utf8'}),/PASS actual plugin retry owner guard/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.elizaresearch.alphaphone.ResidentCredentialShutdownRetryTest'],{encoding:'utf8'}),/PASS strict retry/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.elizaresearch.alphaphone.RetryGuardHarness'],{encoding:'utf8'}),/PASS actual plugin retry owner guard/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });
 test('actual asynchronous retry transition dispatches only after strict proof and current continuation',()=>{
@@ -69,7 +69,7 @@ test('actual asynchronous retry transition dispatches only after strict proof an
   const guardEnd=source.indexOf('     if(requestId!=null&&cancelledStarts.remove',guardStart);
   const continuationGuards=source.slice(guardStart,guardEnd);
   writeFileSync(join(temporary,'SystemClock.java'),`package android.os;public class SystemClock {static long time;public static long elapsedRealtime(){return time+=2000;}}`);
-  writeFileSync(join(temporary,'RetryTransitionHarness.java'),`package ai.alphacompute.alphaphone;
+  writeFileSync(join(temporary,'RetryTransitionHarness.java'),`package ai.elizaresearch.alphaphone;
 import java.util.*;
 import ai.eliza.plugins.agent.runtime.CredentialIntentFence;
 public class RetryTransitionHarness {
@@ -120,7 +120,7 @@ public class RetryTransitionHarness {
  }
 }`);
   execFileSync(javaBinary('javac'),['-d',temporary,...intentFence,join(directory,'ResidentCredentialShutdownRetry.java'),join(temporary,'SystemClock.java'),join(temporary,'RetryTransitionHarness.java')]);
-  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.alphacompute.alphaphone.RetryTransitionHarness'],{encoding:'utf8',timeout:30000}),/PASS actual retry transition/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.elizaresearch.alphaphone.RetryTransitionHarness'],{encoding:'utf8',timeout:30000}),/PASS actual retry transition/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });
 test('actual stop reissues a retained unconfirmed credential stop and reports stopped only on its ACK',()=>{
@@ -128,7 +128,7 @@ test('actual stop reissues a retained unconfirmed credential stop and reports st
  const method=start=>{const begin=source.indexOf(start);assert.ok(begin>=0,start);let depth=0;for(let i=source.indexOf('{',begin);i<source.length;i++){if(source[i]==='{')depth++;if(source[i]==='}'&&--depth===0)return source.slice(begin,i+1);}throw Error('Unclosed method');};
  try{
   const reissue=method(' private long reissueCredentialShutdownLocked('),stop=method(' @PluginMethod public void stop('),status=method(' @PluginMethod public void getStatus(');
-  writeFileSync(join(temporary,'StopReissueHarness.java'),`package ai.alphacompute.alphaphone;
+  writeFileSync(join(temporary,'StopReissueHarness.java'),`package ai.elizaresearch.alphaphone;
 import ai.eliza.plugins.agent.runtime.CredentialShutdownLease;
 public class StopReissueHarness {
  @interface PluginMethod {}
@@ -184,6 +184,6 @@ public class StopReissueHarness {
  }
 }`);
   execFileSync(javaBinary('javac'),['-d',temporary,upstreamAgentRuntime('CredentialShutdownLease.java'),join(temporary,'StopReissueHarness.java')]);
-  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.alphacompute.alphaphone.StopReissueHarness'],{encoding:'utf8',timeout:30000}),/PASS actual stop reissues/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',temporary,'ai.elizaresearch.alphaphone.StopReissueHarness'],{encoding:'utf8',timeout:30000}),/PASS actual stop reissues/);
  }finally{rmSync(temporary,{recursive:true,force:true});}
 });

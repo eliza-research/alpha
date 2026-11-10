@@ -22,3 +22,11 @@ export async function openPhotoTools(page:Page){
  if(await menu.getAttribute('open')===null)await menu.getByLabel('Photos tools',{exact:true}).click();
  return menu;
 }
+
+/** Open the current single-photo action menu, then its Share action. */
+export async function openPhotoShare(page:Page){
+ const menu=page.locator('details').filter({has:page.getByLabel('Photo actions',{exact:true})}).filter({visible:true});
+ await expect(menu).toBeVisible();
+ if(await menu.getAttribute('open')===null)await menu.getByLabel('Photo actions',{exact:true}).click();
+ await menu.getByRole('button',{name:'Share',exact:true}).click();
+}

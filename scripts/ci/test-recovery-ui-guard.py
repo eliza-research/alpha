@@ -37,7 +37,7 @@ for policy in [POLICY.replace('secure=false','secure=true'),POLICY.replace('mCur
 f=Fixture(user='0');refused(lambda:admit_display(f.run,USER,NAME,sleep=lambda _:None));assert not f.effects
 f=Fixture(name='other-user');refused(lambda:owned(f.run,USER,NAME));assert not f.effects
 f=Fixture(policy=POLICY.replace('showing=false','showing=true'));refused(lambda:admit_display(f.run,USER,NAME,sleep=lambda _:None));assert len(f.effects)==2
-cls='ai.alphacompute.alphaphone.Fixture';method='exactMethod'
+cls='ai.elizaresearch.alphaphone.Fixture';method='exactMethod'
 block=lambda code:'INSTRUMENTATION_STATUS: class='+cls+'\nINSTRUMENTATION_STATUS: test='+method+'\nINSTRUMENTATION_STATUS: numtests=1\nINSTRUMENTATION_STATUS_CODE: '+str(code)+'\n'
 text=block(1)+block(0)+'OK (1 test)\nINSTRUMENTATION_CODE: -1\n';terminal(text,cls,method)
 for bad in [text.replace('STATUS_CODE: 0','STATUS_CODE: -3'),text+block(0),text.replace(method,'other'),text.replace('numtests=1','numtests=2'),text.replace('OK (1 test)','OK (0 tests)'),text.replace('INSTRUMENTATION_CODE: -1','INSTRUMENTATION_CODE: 0'),text+'INSTRUMENTATION_FAILED: crash\n']:
@@ -109,7 +109,7 @@ print('PASS: independent API35 main-user/profile transition waits read-only; tim
 
 # Unmodified hosted e4d transcript: stream has an unprefixed class-name line.
 captured=(Path(__file__).parent/'fixtures/recovery-storage-e4d-pass.txt').read_text()
-captured_class='ai.alphacompute.alphaphone.ReminderDeletionStorageInstrumentedTest'
+captured_class='ai.elizaresearch.alphaphone.ReminderDeletionStorageInstrumentedTest'
 captured_method='reminderDeletionSlotUsesEncryptedCompareExchange'
 terminal(captured,captured_class,captured_method)
 terminal(captured.replace('\n','\r\n'),captured_class,captured_method)

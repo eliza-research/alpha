@@ -30,7 +30,7 @@ export function exactUpdateMembers(source) {
   const handOff = /^ private static Intent handOff\(Intent intent\)\{[^\n]*$/m.exec(source)?.[0];
   const foreground = / static boolean shareForeground\(android\.app\.Activity activity\)\{[\s\S]*?\n \}/.exec(source)?.[0];
   assert.ok(start > 0 && end > start && handOff && foreground, 'Exact updater method slice exists');
-  return `package ai.alphacompute.alphaphone;
+  return `package ai.elizaresearch.alphaphone;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInstaller;

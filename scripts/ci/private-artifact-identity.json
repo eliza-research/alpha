@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "projectId": "alpha-aosp-lab-20261024",
+  "projectNumber": "484320254111",
+  "poolId": "alpha-github-release",
+  "providerId": "github",
+  "issuerUri": "https://token.actions.githubusercontent.com",
+  "attributeMapping": {
+    "google.subject": "assertion.sub",
+    "attribute.repository_id": "assertion.repository_id",
+    "attribute.repository_owner_id": "assertion.repository_owner_id",
+    "attribute.ref": "assertion.ref",
+    "attribute.event_name": "assertion.event_name",
+    "attribute.workflow_ref": "assertion.workflow_ref",
+    "attribute.environment": "assertion.environment"
+  },
+  "attributeCondition": "assertion.repository_id == '1396333361' && assertion.repository_owner_id == '314117943' && assertion.ref == 'refs/heads/main' && assertion.environment == 'release' && assertion.event_name == 'workflow_dispatch' && assertion.workflow_ref in [\"eliza-research/alphaphone/.github/workflows/release-cloud-app-signing.yml@refs/heads/main\", \"eliza-research/alphaphone/.github/workflows/publish-qualified-app-update.yml@refs/heads/main\"]",
+  "providerResource": "projects/484320254111/locations/global/workloadIdentityPools/alpha-github-release/providers/github",
+  "serviceAccountId": "alpha-release-artifacts",
+  "serviceAccountEmail": "alpha-release-artifacts@alpha-aosp-lab-20261024.iam.gserviceaccount.com",
+  "principalSet": "principalSet://iam.googleapis.com/projects/484320254111/locations/global/workloadIdentityPools/alpha-github-release/attribute.repository_id/1396333361",
+  "bucket": "alpha-aosp-lab-20261024-private-apks",
+  "roles": [
+    {
+      "id": "alphaPrivateArtifactRead",
+      "title": "Read reviewed Alpha private artifacts",
+      "includedPermissions": [
+        "storage.objects.get"
+      ],
+      "condition": {
+        "title": "AlphaPrivateArtifactReads",
+        "expression": "resource.type == 'storage.googleapis.com/Object' && (resource.name.startsWith('projects/_/buckets/alpha-aosp-lab-20261024-private-apks/objects/unsigned/') || resource.name.startsWith('projects/_/buckets/alpha-aosp-lab-20261024-private-apks/objects/signed/'))"
+      }
+    },
+    {
+      "id": "alphaPrivateArtifactCreate",
+      "title": "Create signed Alpha private artifacts",
+      "includedPermissions": [
+        "storage.objects.create"
+      ],
+      "condition": {
+        "title": "AlphaSignedArtifactCreates",
+        "expression": "resource.type == 'storage.googleapis.com/Object' && resource.name.startsWith('projects/_/buckets/alpha-aosp-lab-20261024-private-apks/objects/signed/')"
+      }
+    }
+  ]
+}

@@ -45,18 +45,18 @@ public class SystemPlugin {
  protected boolean isAssistantLaunch(Intent intent){throw new AssertionError("assistant launch outside fixture");}
  protected boolean canExpandNotificationShade(){throw new AssertionError("shade outside fixture");}
 }`,
-    'ai/alphacompute/alphaphone/LateLaunch.java':`package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/LateLaunch.java':`package ai.elizaresearch.alphaphone;
 public class LateLaunch {
  static void ask(com.getcapacitor.PluginCall call,Runnable body){throw new AssertionError("late launch outside fixture");}
 }`,
-    'ai/alphacompute/alphaphone/AlphaImageCapabilities.java':`package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/AlphaImageCapabilities.java':`package ai.elizaresearch.alphaphone;
 public class AlphaImageCapabilities {
  static boolean roleEnabled(String role){throw new AssertionError("role outside fixture");}
  static boolean defaultAppEnabled(android.content.Context context,String role){throw new AssertionError("role outside fixture");}
 }`,
-    'ai/alphacompute/alphaphone/BuildConfig.java':`package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/BuildConfig.java':`package ai.elizaresearch.alphaphone;
 public class BuildConfig {static final boolean IS_LAUNCHER=false;static final String VERSION_NAME="fixture";}`,
-    'ai/alphacompute/alphaphone/AlphaAssistActivity.java':`package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/AlphaAssistActivity.java':`package ai.elizaresearch.alphaphone;
 public class AlphaAssistActivity {static final String EXTRA_ASSISTANT="fixture.assist";}`,
     'android/Manifest.java':`package android;
 public final class Manifest {public static final class permission {public static final String CAMERA="android.permission.CAMERA";}}`,

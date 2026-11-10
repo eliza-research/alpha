@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { assertNoAlphaLockScreenSurface, secureCameraActions as names } from "../scripts/aosp-secure-camera-contract.mjs";
 const secureCameraActions = names.map(name => `android.media.action.${name}`);
-const PKG = "ai.alphacompute.alphaphone";
+const PKG = "ai.elizaresearch.alphaphone";
 const TRUE = "(type 0x12)0xffffffff";
 const str = value => `"${value}" (Raw: "${value}")`;
 const element = (indent, tag, attrs = {}) => [`${" ".repeat(indent)}E: ${tag} (line=1)`,
@@ -47,7 +47,7 @@ test("the shipped Alpha manifest and native code never put Alpha over Keyguard",
   const manifest = fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
   assert.doesNotMatch(manifest, /android:(showWhenLocked|showOnLockScreen|turnScreenOn)="true"/);
   for (const action of secureCameraActions) assert.ok(!manifest.includes(action), `no ${action} filter or query`);
-  const dir = "android/app/src/main/java/ai/alphacompute/alphaphone";
+  const dir = "android/app/src/main/java/ai/elizaresearch/alphaphone";
   for (const name of fs.readdirSync(dir).filter(file => file.endsWith(".java"))) {
     const java = fs.readFileSync(path.join(dir, name), "utf8");
     assert.doesNotMatch(java, /setShowWhenLocked\(\s*true|setTurnScreenOn\(\s*true|FLAG_SHOW_WHEN_LOCKED|FLAG_DISMISS_KEYGUARD|requestDismissKeyguard|STILL_IMAGE_CAMERA_SECURE|IMAGE_CAPTURE_SECURE/, name);

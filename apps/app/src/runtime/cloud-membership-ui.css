@@ -31,5 +31,46 @@
 [data-alpha-membership-panel] header h1{font-size:32px;line-height:1.12;letter-spacing:-.02em}[data-alpha-membership-panel]{align-self:center;width:min(420px,100%);max-height:calc(100dvh - 24px)}
 .alpha-connection-scrim[data-alpha-billing-overlay]{inset:auto;left:var(--phone-left,0px);top:var(--phone-top,0px);width:var(--phone-width,100vw);height:var(--phone-height,100dvh);transform:scale(var(--phone-scale,1));transform-origin:top left;padding:max(12px,var(--native-top-inset,0px),env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(12px,var(--native-bottom-inset,0px),env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}.alpha-connection-scrim[data-alpha-billing-overlay] [data-alpha-membership-panel]{max-width:100%;max-height:100%;box-sizing:border-box}.alpha-connection-scrim[data-alpha-billing-overlay] button{min-height:max(48px,calc(48px / var(--phone-scale,1)))}
 .alpha-connection-scrim[data-alpha-membership-sheet]{align-items:flex-end;justify-content:center;padding-bottom:0;padding-inline:0}.alpha-connection-scrim[data-alpha-membership-sheet] [data-alpha-membership-panel]{align-self:flex-end;width:min(420px,100%);max-height:100%;overflow-y:auto;overscroll-behavior:contain;border-radius:28px 28px 0 0;padding:12px 26px max(28px,calc(20px + var(--native-bottom-inset,0px)),env(safe-area-inset-bottom,0px));box-shadow:0 -4px 24px #00000012}
-.alpha-billing-review p{overflow-wrap:anywhere}.alpha-billing-review form label{display:flex;align-items:flex-start;gap:12px;margin:24px 0}.alpha-billing-review input[type=checkbox]{appearance:auto;width:20px;height:20px;min-height:20px;flex:0 0 20px;margin:0;padding:0}.alpha-billing-review button{min-height:44px;padding:12px 20px;border-radius:24px}.alpha-billing-review button[type=submit]{background:var(--connection-acc,#0000ff);color:var(--connection-bg,#fff)}
+.alpha-billing-review p{overflow-wrap:anywhere;margin:12px 0 24px}.alpha-billing-review .alpha-membership-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.alpha-billing-review button{min-height:48px;padding:12px 16px;border-radius:16px}.alpha-billing-review button:first-child{background:var(--connection-fg,#000);color:var(--connection-bg,#fff)}
+.alpha-connection-scrim[data-alpha-billing-overlay] [data-alpha-membership-panel]:has(.alpha-billing-review){border-radius:28px;max-height:100%;padding:24px;overflow:auto;align-self:center}
+.alpha-billing-review h1{margin:0!important;font-size:28px!important;line-height:1.15!important;font-weight:600!important}
+
 .alpha-membership-limit-fact{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:20px 0 0}.alpha-membership-limit-fact dt{font-size:14px;font-weight:500}.alpha-membership-limit-fact dd{font-size:13px;text-align:end}
+/* One Account sheet is shared by Settings, setup and a billing refusal. */
+.alpha-account-sheet header{display:flex;align-items:center;gap:8px}
+.alpha-account-sheet header h1{flex:1;font-family:inherit!important;font-weight:600!important;font-size:27px!important}
+.alpha-account-sheet .alpha-membership-facts{margin-bottom:16px}
+.alpha-membership-balance-fact{padding:12px 0 20px;margin-bottom:20px;border-bottom:1px solid var(--connection-line,#e7e7e7)}
+.alpha-membership-balance-fact dt{font-size:13px;color:var(--connection-mut,#666);margin-bottom:8px}
+.alpha-membership-balance-fact dd{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.alpha-membership-amount{font-size:30px;line-height:1.2;font-weight:600;letter-spacing:-.025em}
+.alpha-account-refresh-icon{display:block;width:20px;height:20px;background:currentColor;mask:url('/icons/lucide/rotate-cw.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/rotate-cw.svg') center/contain no-repeat}
+.alpha-account-sheet .alpha-membership-refresh{color:var(--connection-fg,#111);padding:12px;border-radius:12px}
+.alpha-account-sheet .alpha-membership-plan-name{font-size:21px;line-height:1.3}
+.alpha-membership-secondary-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.alpha-account-sheet .alpha-membership-primary,.alpha-account-confirm{background:var(--connection-fg,#111)!important;color:var(--connection-bg,#fff)!important}
+.alpha-account-links{margin-top:22px;border-radius:18px;background:var(--connection-s2,#f1f1f1);overflow:hidden}
+.alpha-account-links button{display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;text-align:left;padding:17px 15px;font-size:15px;line-height:1.35;color:var(--connection-fg,#111)}
+.alpha-account-links button+button{border-top:1px solid var(--connection-line,#e7e7e7)}
+.alpha-account-links button>span:nth-child(2){flex:1;min-width:0}
+.alpha-account-links small{font-size:12px;color:var(--connection-mut,#666)}
+.alpha-account-links button>[data-alpha-icon]{width:20px!important;height:20px!important;flex:none}
+.alpha-account-signout,.alpha-account-done,.alpha-account-cancel,.alpha-account-confirm{font:inherit;min-height:48px;border:0;border-radius:14px;padding:12px 16px}
+.alpha-account-signout{display:block;background:transparent;color:var(--connection-fg,#111);width:100%;font-size:14px;margin:12px 0 0}
+.alpha-account-done{width:100%;background:var(--connection-s2,#f1f1f1);color:var(--connection-fg,#111);margin-top:8px;font-weight:550}
+.alpha-account-cancel{background:var(--connection-s2,#f1f1f1);color:var(--connection-fg,#111)}
+.alpha-account-sheet .alpha-provider{padding-top:12px}
+.alpha-account-sheet .alpha-provider button{border-radius:13px}
+.alpha-account-sheet .alpha-segmented button[aria-pressed=true]{background:var(--connection-fg,#111);color:var(--connection-bg,#fff)}
+[data-alpha-google-overlay] .alpha-connection-actions .alpha-btn--primary{background:var(--connection-fg,#111);color:var(--connection-bg,#fff)}
+
+.alpha-account-expiry{padding-top:12px;font-size:13px;color:var(--connection-mut,#666)}.alpha-account-expiry button{background:var(--connection-s2,#f1f1f1);color:var(--connection-fg,#111);border:0;border-radius:12px;padding:12px 16px}.alpha-account-sheet .alpha-btn--primary{background:var(--connection-fg,#111);color:var(--connection-bg,#fff)}
+
+.alpha-connection.alpha-account-sheet .alpha-account-signout,.alpha-connection.alpha-account-sheet .alpha-account-done,.alpha-connection.alpha-account-sheet .alpha-account-cancel{color:var(--connection-fg,#111)}
+
+.alpha-connection.alpha-account-sheet .alpha-membership-main-actions button{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;line-height:1.25;font-size:15px;font-weight:550;border-radius:14px;padding:14px 12px;min-height:50px}
+.alpha-account-button-icon{width:18px;height:18px;display:inline-block;flex:none;background:currentColor;mask:var(--account-icon) center/contain no-repeat;-webkit-mask:var(--account-icon) center/contain no-repeat}
+.alpha-account-plan-icon{--account-icon:url('/icons/lucide/credit-card.svg')}.alpha-account-balance-icon{--account-icon:url('/icons/lucide/wallet.svg')}.alpha-account-code-icon{--account-icon:url('/icons/lucide/gift.svg')}
+.alpha-account-sheet .alpha-membership-secondary-actions:has(>button:only-child){grid-template-columns:1fr}
+.alpha-connection.alpha-account-sheet .alpha-account-done{border-radius:14px;font-weight:550;text-align:center}
+.alpha-connection.alpha-account-sheet .alpha-membership-code-entry form{gap:10px;margin-bottom:0}.alpha-connection.alpha-account-sheet .alpha-membership-code-entry form>button{min-height:48px;border-radius:12px;text-align:center}

@@ -1,3 +1,4 @@
+import {checkKeyboardDictation} from './keyboard-dictation.mjs';
 import {collectRefinementCampaigns} from '../campaigns.mjs';
 import {fileURLToPath} from 'node:url';
 import {readdirSync} from 'node:fs';
@@ -172,7 +173,7 @@ export async function runNativeRefinement(onProgress) {
       if (failed.length) throw new Error(`Reset coordinator refinement failed: ${failed.map(result => `${result.name} (${result.status})`).join(', ')}`);
     }],
     ...[checkDeletionCoordinator, checkResidentCoordinator, checkCredentialCoordinator, checkNativeNoteRecording,
-      checkNoteRecordingService, checkVoiceDraft, checkNotePermission, checkCredentialLeasePolicies,
+      checkKeyboardDictation, checkNoteRecordingService, checkVoiceDraft, checkNotePermission, checkCredentialLeasePolicies,
       checkRendererCoordinator, checkSharedRecording, checkLiveCapture].map(withInputs(earlyInputs)),
     ...[checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore,
       checkListenerService, checkSpeechWarmup, checkRecognizerAvailability, checkOnDeviceRecognizer, checkListenerInput,

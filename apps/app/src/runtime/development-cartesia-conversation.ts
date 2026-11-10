@@ -11,7 +11,7 @@ import type {CurrentDeviceActionRequest} from './device-actions';
 import type {VoiceConversationBinding} from './alpha-client';
 export type RealtimeVoiceNavigation = Pick<ViewActionHandoff, "viewId" | "viewPath" | "subview" | "navigationPrepared" | "navigationBinding" | "completedActionHandoffId"> & {traceId:string};
 /** Canonical self-hosted voice owns the runtime turn; this adapter never sends its transcript twice. */
-export async function developmentCartesiaConversation(input:{binding:VoiceConversationBinding;assertCurrent:()=>void;onState:(phase:string,progressText?:string)=>void;onTranscript:(text:string)=>void;onError:(error:Error)=>void;onPlaybackUnlockChange?:()=>void;onActionResult?:(summary:string)=>void;getUiContext?:()=>import('@elizaos/host/voice/ui-context').VoiceUiContext;onNavigate?:(event:RealtimeVoiceNavigation)=>Promise<void>}){
+export async function developmentCartesiaConversation(input:{binding:VoiceConversationBinding;assertCurrent:()=>void;onState:(phase:string,progressText?:string)=>void;onTranscript:(text:string)=>void;onAcceptedTurn?:(text:string)=>void;onError:(error:Error)=>void;onPlaybackUnlockChange?:()=>void;onActionResult?:(summary:string)=>void;getUiContext?:()=>import('@elizaos/host/voice/ui-context').VoiceUiContext;onNavigate?:(event:RealtimeVoiceNavigation)=>Promise<void>}){
  const own=connectionController.getSnapshot().residentInference==='direct'&&connectionController.getSnapshot().providerStatus?.voiceConfigured===true;
  // This caller is bound below to the selected resident transport, for either inference route.
  const requireTurnTerminal=true;
@@ -103,7 +103,9 @@ export async function developmentCartesiaConversation(input:{binding:VoiceConver
    if(event.t==='interrupted'&&currentTurn===event.traceId)clearTurn();
    if(event.t==='stt_final'&&!retiredBusyTraces.has(event.traceId)&&acceptedState?.traceId===event.traceId&&acceptedState.cancelledTraceId!==event.traceId&&['thinking','speaking'].includes(acceptedState.phase)&&acceptedState.finalTranscript.trim()){
     acceptedFinal=Object.freeze({traceId:acceptedState.traceId,text:acceptedState.finalTranscript});currentTurn=acceptedFinal.traceId;if(callerBusyTrace!==currentTurn&&callerBusyTrace!==playbackTrace)retireBusyTrace(callerBusyTrace);callerBusyTrace=currentTurn;
+    const firstAcceptance=!submitted.has(currentTurn);
     if(submitted.size>=64)submitted.delete(submitted.values().next().value!);submitted.add(currentTurn);timing?.acceptedFinal(currentTurn);
+    if(firstAcceptance)input.onAcceptedTurn?.(acceptedFinal.text);
    }
    if(event.t==='speaking_start'&&acceptedState?.traceId===event.traceId&&acceptedState.phase==='speaking'&&
      !retiredBusyTraces.has(event.traceId)&&(!callerBusyTrace||callerBusyTrace===event.traceId)){

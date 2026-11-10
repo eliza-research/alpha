@@ -6,7 +6,7 @@
   "reviewed_pr_head": "44c9d57ce38b3b29f5b104a2f6efc103fdd914c3",
   "integrated_main": "06ca5d62e09e8898fc9242db5e6a70f5be374510",
   "reviewed_upstream_pin": "0d40aa6e6e1b5192311ca916515003c8a4473c0c",
-  "upstream_pin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+  "upstream_pin": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
   "ledger_refresh": {
     "date": "2026-10-10",
     "branch": "claude/r6-ledger",
@@ -392,7 +392,7 @@
         "docs/calendar-availability.md",
         "apps/app/src/runtime/calendar-availability.ts",
         "docs/owner-approved-mvp-plan-2026-10-12.md",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarZones.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/CalendarZones.java"
       ],
       "approved_issues": [
         418
@@ -510,8 +510,8 @@
       "sources": [
         "apps/app/src/runtime/connection-ui.tsx",
         "apps/app/src/runtime/local-agent.ts",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentAttachment.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/ResidentAttachment.java",
         "test/resident-attachment.test.mjs"
       ]
     },
@@ -568,7 +568,7 @@
       "depends_on": [],
       "sources": [
         "scripts/test-installed-upgrade.mjs",
-        "android/app/src/androidTest/java/ai/alphacompute/alphaphone",
+        "android/app/src/androidTest/java/ai/elizaresearch/alphaphone",
         "scripts/android-workflow-native.mjs",
         "docs/verification.md",
         "docs/owner-approved-mvp-plan-2026-10-12.md"
@@ -706,7 +706,7 @@
       "sources": [
         "android/voice-host/qualified-voice-host.json",
         "docs/fused-speech.md",
-        "android/app/src/androidTest/java/ai/alphacompute/alphaphone/FusedSpeechInstrumentedTest.java",
+        "android/app/src/androidTest/java/ai/elizaresearch/alphaphone/FusedSpeechInstrumentedTest.java",
         "docs/owner-approved-mvp-plan-2026-10-12.md"
       ],
       "approved_issues": [
@@ -869,7 +869,7 @@
         "MVP-20"
       ],
       "sources": [
-        "android/app/src/main/java/ai/alphacompute/alphaphone/BrowserDownloads.java",
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/BrowserDownloads.java",
         "docs/browser-download-integration.md"
       ]
     },
@@ -1664,7 +1664,7 @@
         "docs/implementation-plan.md",
         "docs/flow-audit-and-prd.md",
         "apps/app/src/prototype/home-launcher.ts",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/DeviceAppsPlugin.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/DeviceAppsPlugin.java"
       ]
     }
   ],
@@ -1688,5 +1688,6 @@
   "source_binding_c42c779a78": "Current source pin c42c779a789667629b2ce9adb8dbf153c63108b7 includes the reviewed final speech generation-field policy and bounded acknowledgment grammar correction. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-c42c779a78-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. ",
   "source_binding_77ef61e737": "Current source pin 77ef61e737d4d848b64e901145ed6e7f38c42705 includes the reviewed Android Direct-provider embedding policy; local BGE capability still requires qualified packaged assets. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-77ef61e737-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. ",
   "source_binding_d38e4ec7fa": "Current source pin d38e4ec7fad5952fdf4f40d4c809240d639792ac includes the reviewed Calendar coverage and acknowledgment repair plus bounded Ninja producer parallelism; native qualification must use the changed producer. Dependency lock and native engine/JNI inputs are unchanged; the Android stage producer changed and requires fresh qualification; see docs/evidence/sdk-d38e4ec7fa-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. ",
-  "source_binding_c3442ded79": "Current source pin c3442ded79de62b883cf0a84d2614734596ac9ad includes the reviewed paired-session protection for POST /api/cloud/warm; compiled native tuples remain unchanged. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-c3442ded79-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. "
+  "source_binding_c3442ded79": "Current source pin c3442ded79de62b883cf0a84d2614734596ac9ad includes the reviewed paired-session protection for POST /api/cloud/warm; compiled native tuples remain unchanged. Exact source delta leaves dependency/native/build inputs unchanged; see docs/evidence/sdk-c3442ded79-dev-input-reuse-20261102.json. Live prompt and Android acceptance remain separate and pending. ",
+  "ledger_refresh_2026_11_10_cloud_successor": "Source3504 includes the reviewed Cloud successor and isolated app-host type-resolution repair. Actual app-host semantic checking and the mobile bundle input observation passed. Final runtime staging, artifact/signing, provider and device acceptance remain separate; no task scope or prior acceptance is changed."
 }

@@ -7,6 +7,15 @@ and [pilot runbook](pilot-acceptance-runbook.md) for remaining product acceptanc
 
 ## Source and packaging
 
+Read-only source identity can be recorded with `node scripts/fingerprint-combined-agent.mjs
+ABSOLUTE_SOURCE ABSOLUTE_OUTPUT`. Use a new output path outside the source tree. This records
+source bytes; it does not build, sign or install an app.
+
+For photo-filter reference evidence, run `ALPHA_BROWSER_MODULES="$PWD/node_modules"
+node scripts/test-photo-filter-png-reference.mjs`. The script compares Chromium CSS output
+with independent pixel calculations and writes to `test-results/photo-filter-png-reference/`.
+It does not prove native Android rendering or change the photo library.
+
 Run `npm ci` and `npm run verify` with the toolchain documented in the README.
 The verification command explicitly prepares retained historical design and
 regression inputs before running Quint. On a fresh checkout,

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {parseXmlTree} from '../vendor/eliza/packages/app/scripts/lib/android-manifest-facts.mjs';
 import {appLinkFilters, requiredAppLinkProblems} from '../scripts/render-assetlinks.mjs';
 
-const expected={host:'login.example.org',path:'/alphaphone/auth/callback',activity:'ai.alphacompute.alphaphone.MainActivity'};
+const expected={host:'login.example.org',path:'/alphaphone/auth/callback',activity:'ai.elizaresearch.alphaphone.MainActivity'};
 const attribute=(name,value,indent=8)=>`${' '.repeat(indent)}A: http://schemas.android.com/apk/res/android:${name}(0x01010000)=${value}`;
 const quoted=(name,value,indent)=>attribute(name,JSON.stringify(value),indent);
 function filter({host=expected.host,path=expected.path,autoVerify=true,scheme='https',pathKey='path',action='android.intent.action.VIEW',categories=['android.intent.category.DEFAULT','android.intent.category.BROWSABLE']}={}) {
@@ -15,7 +15,7 @@ function filter({host=expected.host,path=expected.path,autoVerify=true,scheme='h
  ].join('\n');
 }
 function manifest(filters,{activity='.MainActivity',exported=true}={}) {
- return ['E: manifest (line=1)','  A: package="ai.alphacompute.alphaphone"','  E: application (line=2)',
+ return ['E: manifest (line=1)','  A: package="ai.elizaresearch.alphaphone"','  E: application (line=2)',
   '    E: activity (line=3)',quoted('name',activity,6),attribute('exported',`(type 0x12)${exported?'0xffffffff':'0x0'}`,6),filters].join('\n');
 }
 const problems=(xml)=>requiredAppLinkProblems(parseXmlTree(xml),expected);

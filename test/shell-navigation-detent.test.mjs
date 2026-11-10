@@ -8,29 +8,35 @@ import vm from 'node:vm';
 import {tsImport} from 'tsx/esm/api';
 const {navigateMobileShell}=await tsImport('../.eliza/client-features/packages/ui/src/mobile-shell/navigation.ts',import.meta.url);
 
-const model=readFileSync('apps/app/src/prototype/model.js','utf8');
+const model=readFileSync(process.env.ALPHA_SHELL_MODEL_SOURCE||'apps/app/src/prototype/model.js','utf8');
 const start=model.indexOf('  goHome(chat) {'),end=model.indexOf('\n  }\n',model.indexOf('  back() {'))+4;
 const methods=model.slice(start,end);
 assert.ok(methods.includes('shellNavigate(action)')&&methods.trim().endsWith('}'));
 
-function shell(initial){
+function shell(initial,props={}){
   // Browser rests with its composer open; Notes and Files rest as a pill.
   const context={VIEWS:{notes:{},files:{},browser:{chat:'input'}},isMvpView:()=>true,navigateMobileShell};
   vm.createContext(context);
   vm.runInContext(`class Shell {
-    constructor(){this.state=Object.assign({view:null,stack:[],chat:'input',voice:'off',drawer:false,drawerQ:'',secure:false,shade:false},${JSON.stringify(initial)});this.left=[];}
+    constructor(){this.state=Object.assign({view:null,stack:[],chat:'input',voice:'off',drawer:false,drawerQ:'',secure:false,shade:false},${JSON.stringify(initial)});this.props=${JSON.stringify(props)};this.left=[];this.closed=0;}
     S(){return this.state;} clear(){} leave(){this.left.push(this.state.view);} vget(){return {};} vreset(){} vset(){} homeHint(){} toast(){}
     mod(k){return VIEWS[k]||{};}
     defaultChat(k){return this.mod(k).chat==='input'?'input':'hidden';}
     rest(){var v=this.S().view;return v?this.defaultChat(v):'input';}
     setState(patch){Object.assign(this.state,patch);}
-    stopVoice(){this.state.voice='off';} closeAssistant(){}
+    stopVoice(){this.state.voice='off';} closeAssistant(){this.closed++;}
     ${methods}
   }
   globalThis.shell=new Shell();`,context);
   return context.shell;
 }
 const at=s=>({view:s.state.view,chat:s.state.chat,stack:[...s.state.stack]});
+
+test('Home from the assistant entry closes its window without replacing the draft or navigating hidden Home',()=>{
+  const s=shell({chat:'full',draft:'Keep these unsent words'},{assistantSurface:true});
+  s.goHome();assert.equal(s.closed,1);assert.equal(s.state.chat,'full');assert.equal(s.state.draft,'Keep these unsent words');
+  const app=shell({chat:'full'});app.goHome();assert.equal(app.closed,0);assert.equal(app.state.chat,'input');
+});
 
 test('Back lowers an open conversation one detent before it leaves the view', () => {
   const s=shell({});
@@ -73,4 +79,14 @@ test('Back closes the Home drawer before stopping voice and lowering the convers
   s.back();assert.deepEqual([s.state.voice,s.state.chat],['off','full']);
   s.back();assert.equal(s.state.chat,'sheet');
   s.back();assert.equal(s.state.chat,'input');
+});
+
+for(const chat of ['sheet','full'])test(`Alpha Home closes the ${chat} overlay and keeps the unsent draft`,()=>{
+  const s=shell({view:'notes',chat,stack:['files'],draft:'Keep this unsent draft'});
+  s.swallowed=()=>false;
+  const source=model.match(/backToApps: (function \(event\) \{[^\n]+\}),\n/)[1];
+  const backToApps=vm.runInNewContext('('+source+')',{self:s});
+  backToApps({detail:1,currentTarget:{hasAttribute:name=>name==='data-alpha-chat-home'}});
+  assert.deepEqual(at(s),{view:null,chat:'input',stack:[]});
+  assert.equal(s.state.draft,'Keep this unsent draft');
 });

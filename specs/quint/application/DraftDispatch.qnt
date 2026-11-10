@@ -2,18 +2,21 @@
 module DraftDispatch {
   type State = { active: int, ready: bool, failed: bool, draft: str, savedOne: str,
     savedTwo: str, holding: bool, heldBinding: int, queuedBinding: int,
-    queuedText: str, markedOne: bool, markedTwo: bool, unsettled: bool, dispatched: bool, error: bool, automaticRestore: bool }
+    queuedText: str, markedOne: bool, markedTwo: bool, unsettled: bool, dispatched: bool, error: bool, automaticRestore: bool, paintPending: bool, transportCalled: bool }
   var s: State
   action init = s' = { active: 1, ready: true, failed: false, draft: "A", savedOne: "A",
     savedTwo: "", holding: false, heldBinding: 0, queuedBinding: 0, queuedText: "",
-    markedOne: false, markedTwo: false, unsettled: false, dispatched: false, error: false, automaticRestore: false }
+    markedOne: false, markedTwo: false, unsettled: false, dispatched: false, error: false, automaticRestore: false, paintPending: false, transportCalled: false }
   action storageFailed = s' = { ...s, failed: true, error: true }
   action hold = all { not(s.holding or s.unsettled), s.ready, not(s.failed), s.draft == "A", s.queuedBinding == 0,
     s' = { ...s, holding: true, heldBinding: s.active, markedOne: s.active == 1 or s.markedOne, markedTwo: s.active == 2 or s.markedTwo,
-      dispatched: false, automaticRestore: false } }
+      dispatched: false, automaticRestore: false, transportCalled: false } }
   action clearComposer = all { s.holding, s' = { ...s, draft: "", automaticRestore: false } }
+  action queueComposerPaint = all { s.holding, not(s.transportCalled), s' = { ...s, paintPending: true } }
+  action commitComposerPaint = all { s.paintPending, s' = { ...s, paintPending: false, draft: "" } }
+  action tryDispatch = s' = if (s.holding and not(s.paintPending)) { ...s, transportCalled: true } else s
   action typeNew = s' = { ...s, draft: "B", automaticRestore: false }
-  action release = all { s.holding,
+  action release = all { s.holding, not(s.paintPending),
     s' = if (s.active != s.heldBinding)
       { ...s, holding: false, queuedBinding: s.heldBinding, queuedText: "A" }
     else { ...s, holding: false, draft: if (s.draft == "B") "A+B" else "A",
@@ -42,13 +45,16 @@ module DraftDispatch {
         else if (s.active == 1) s.savedOne else s.savedTwo,
       automaticRestore: true, ready: true, failed: false } }
   action rejectedHold = all { s.failed or s.unsettled, s' = s }
-  action step = any { storageFailed, hold, rejectedHold, clearComposer, typeNew, release, commit,
+  action step = any { queueComposerPaint, commitComposerPaint, tryDispatch, storageFailed, hold, rejectedHold, clearComposer, typeNew, release, commit,
     flush, saveFailed, saveConflict, switchConversation, reopenHeldConversation, restart, s' = s }
   val BoundQueue = s.queuedBinding.in(Set(0, 1, 2)) and s.active.in(Set(1, 2))
   val OneHeldSend = s.holding implies not(s.dispatched)
   val HeldTextNotAutomaticallyOffered = (s.holding and s.heldBinding == s.active and s.automaticRestore) implies s.draft != "A"
   val UnsettledNeverAutomaticallyOffered = s.unsettled implies not(s.holding) and s.draft != "A"
-  val safety = BoundQueue and OneHeldSend and HeldTextNotAutomaticallyOffered and UnsettledNeverAutomaticallyOffered
+  val safety = (s.transportCalled implies not(s.paintPending)) and BoundQueue and OneHeldSend and HeldTextNotAutomaticallyOffered and UnsettledNeverAutomaticallyOffered
+  run deferredComposerPaintBeforeDispatchTest = init.then(hold).then(queueComposerPaint).then(tryDispatch)
+    .expect(not(s.transportCalled)).then(commitComposerPaint).then(tryDispatch).then(release).then(flush)
+    .expect(s.draft == "A" and s.savedOne == "A" and safety)
   run retainedUntilDispatchTest = init.then(hold).then(clearComposer)
     .expect(s.savedOne == "A").then(commit).then(flush).expect(s.savedOne == "" and s.dispatched and safety)
   run newTypingSurvivesCommitTest = init.then(hold).then(clearComposer).then(typeNew)

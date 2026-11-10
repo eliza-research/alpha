@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import android.media.AudioManager;
 import com.getcapacitor.JSObject;

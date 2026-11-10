@@ -30,7 +30,7 @@ test('noncritical slot commits keep lifecycle before vault, exact owner/CAS, and
  try{
   const sources=[file('JsonCredentialSlots.java',`package ai.eliza.plugins.securestore.nativeonly;
 public class JsonCredentialSlots{public static final Object LOCK=new Object();public final java.util.Map<String,String> data=new java.util.HashMap<>();public String read(String n){return data.get(n);}public void write(String n,String v){data.put(n,v);}public void remove(String n){data.remove(n);}}`),
-   file('SlotLockHarness.java',`package ai.alphacompute.alphaphone;
+   file('SlotLockHarness.java',`package ai.elizaresearch.alphaphone;
 import ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots;
 import java.util.concurrent.atomic.*;
 final class AlphaLocalAgentPlugin{
@@ -92,6 +92,6 @@ public class SlotLockHarness{
   System.out.println("PASS actual noncritical slot branch: L-before-vault, ack/pending/draft/cache, owner/CAS/namespace, no authority invalidation");
  }
 }`)];
-  assert.match(runJvm(sources,'ai.alphacompute.alphaphone.SlotLockHarness'),/^PASS actual noncritical slot branch/);
+  assert.match(runJvm(sources,'ai.elizaresearch.alphaphone.SlotLockHarness'),/^PASS actual noncritical slot branch/);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });

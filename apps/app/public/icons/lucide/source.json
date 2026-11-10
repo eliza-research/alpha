@@ -137,7 +137,8 @@
     "sliders-horizontal.mjs": "773396efe4014671ef0d33372c397297488de8a76230130b531d202617cd35f6",
     "external-link.mjs": "a881db3513589183fa252f207659095468306b64ed75377c9957d7ccef7ab7c9",
     "send.mjs": "e77b6c685e6e8879dddb8e79c811baf0699f7e15c85b46f72f13b4efd8a953cc",
-    "shield-alert.mjs": "96d4dc44df6634e59b3024147cb02cd3d382931048e3630066333e53546b471c"
+    "shield-alert.mjs": "96d4dc44df6634e59b3024147cb02cd3d382931048e3630066333e53546b471c",
+    "log-out.mjs": "88f60f664e31b62b831c182bdf6eeeba2c4051f4ddc6441d77b15dc97ceae6b7"
   },
   "assets": {
     "inbox.svg": {
@@ -714,6 +715,10 @@
     "shield-alert.svg": {
       "source": "shield-alert.mjs",
       "sha256": "abcb17da79dc7d9135b358a199e37059fda5c222ac82256e744924445b709e98"
+    },
+    "log-out.svg": {
+      "source": "log-out.mjs",
+      "sha256": "e8764c4d0ba553fabe782f5f1f29727ad833446854a41c3f722cc40f0feca21e"
     }
   },
   "license": "ISC and upstream Feather MIT where listed",

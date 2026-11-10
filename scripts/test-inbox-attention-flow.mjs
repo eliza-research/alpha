@@ -317,3 +317,17 @@ console.log('PASS prepared Gmail reads cancel on hide and invalidate content on 
  t.shell.componentWillUnmount();
 }
 console.log('PASS saved Gmail account choice, first-account default, and account disconnects that keep or withdraw only the affected notices.');
+
+// Explicit Ask Alpha prepares one complete email attachment; it never sends on its own.
+{
+ const t=await boot();t.mount();t.setActive(true);t.render();await t.tick();
+ t.mailNotices.agent={sessionId:'mail-agent-session',agentId:'mail-agent',ownerId:'mail-owner',origin:'https://agent.example.invalid'};
+ const attached=[];t.api.attachReviewedMail=(title,from,validate)=>attached.push({title,from,validate});
+ t.render().rows[0].open();await t.tick();t.render().d.ask();await t.tick();
+ assert.equal(attached.length,1);assert.equal(attached[0].title,inboxPage[0].subject);
+ const text=await attached[0].validate();assert.match(text,/untrusted data/);assert.ok(text.includes('docs.example.org/plan'));
+ assert.equal(t.dispatched.length,0,'attaching an email does not send or mutate mail');
+ t.mailNotices.agent={...t.mailNotices.agent,sessionId:'other-agent'};
+ await assert.rejects(attached[0].validate(),/Message or destination changed/);
+ t.shell.componentWillUnmount();
+}

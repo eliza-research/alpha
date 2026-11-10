@@ -1,4 +1,4 @@
-import {createInlineModal} from '../runtime/inline-modal';
+import {createImagePreview} from '../runtime/image-preview';
 import type {VerifiedSession} from '../runtime/alpha-client';
 import {browserDocuments} from '../browser/documents';
 import {projectNoteForModel,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
@@ -80,7 +80,7 @@ const elizaSystem = registerPlugin<{ setFlashlight(input: { enabled: boolean }):
 // intentionally kept intact; authenticated effects are installed at this seam.
 type Shell = any;
 /** One composer send. A message is dispatched once the transport accepted it for delivery. */
-type SendAttempt={transportCalled:boolean;preDispatch:boolean;streamed:boolean;settled?:Promise<unknown>};
+type SendAttempt={transportCalled:boolean;preDispatch:boolean;streamed:boolean;residentSessionRetired?:boolean;settled?:Promise<unknown>};
 /** Refused before any request carrying the message could leave this phone. */
 class NotDispatched extends Error {}
 // connectionController.send refuses these before creating a conversation or posting the message.
@@ -189,9 +189,11 @@ async function restoreAttachments(messages:Shell[],session:VerifiedSession,conve
     const attachment=JSON.parse(saved.raw);
     const transcript=attachment?.transcriptAttachment;
     const photo=attachment?.cameraAttachment;
+    const mail=attachment?.mailAttachment;
     return {...message,
       ...(typeof attachment.displayText==='string'&&attachment.requestText===message.text?{text:attachment.displayText}:{}),
       ...(typeof transcript?.title==='string'?{transcriptAttachment:transcript}:{}),
+      ...(typeof mail?.title==='string'?{mailAttachment:mail}:{}),
       ...(typeof photo?.image==='string'&&/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photo.image)?{cameraAttachment:photo}:{}),
     };
   }));
@@ -203,7 +205,7 @@ function dispatched(attempt:SendAttempt,error:unknown){return !(error instanceof
 /** Mark the in-flight composer send as handed to the transport, and classify early refusals. */
 async function trackDispatch<T>(shell:Shell,run:()=>Promise<T>):Promise<T>{
   const attempt:SendAttempt|null=shell.sendAttempt??null;if(attempt)attempt.transportCalled=true;
-  const task=run().catch(error=>{if(attempt&&isPreDispatchError(error))attempt.preDispatch=true;throw error;});
+  const task=run().catch(error=>{if(attempt){if(isPreDispatchError(error))attempt.preDispatch=true;if(error&&typeof error==='object'&&error.residentSessionRetired===true)attempt.residentSessionRetired=true;}throw error;});
   // A cancellation can reject the client first; the classification waits for the transport's own result.
   if(attempt)attempt.settled=task.then(()=>undefined,()=>undefined);
   return task;
@@ -703,7 +705,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         this.composerDraft.retire(false);
         this.startupDraft=null;
         cancelMessageContext(this);
-        this.closeSummaryReview?.();this.chatImagePreview=null;this.cameraAttachment=null;this.reviewedSourceDraft=null;this.transcriptAttachment=null;
+        this.cancelVoiceScrollFollow();
+        this.closeSummaryReview?.();this.chatImagePreview=null;this.cameraAttachment=null;this.reviewedSourceDraft=null;this.transcriptAttachment=null;this.mailAttachment=null;
         clearMapsSelection();
         this.connectionSession = session;
         alphaClient.disconnect();
@@ -714,14 +717,14 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       const history = connectionController.getSnapshot().history;
       if (history && history.sessionId === session && this.restoredHistory !== history) {
-        if(!history.automatic){this.draftRecoveryAbort?.abort();this.draftBindingAbort?.abort();this.composerDraft.retire(false);draftBindingAfterPaint=true;cancelMessageContext(this);this.reviewedSourceDraft=null;this.transcriptAttachment=null;this.cameraAttachment=null;}
+        if(!history.automatic){this.draftRecoveryAbort?.abort();this.draftBindingAbort?.abort();this.composerDraft.retire(false);draftBindingAfterPaint=true;cancelMessageContext(this);this.reviewedSourceDraft=null;this.transcriptAttachment=null;this.cameraAttachment=null;this.mailAttachment=null;}
         this.restoredHistory = history;
         const attachmentSession=connectionController.getSnapshot().session;
         if(attachmentSession)void restoreAttachments(history.messages,attachmentSession,history.conversationId).then(messages=>{
           if(!this.live||connectionController.getSnapshot().history!==history)return;
           this.setState((previous:Shell)=>({msgs:previous.msgs.map((message:Shell)=>{
             const saved=messages.find(item=>item.id===message.id);
-            return saved?{...message,...(message.text===history.messages.find(item=>item.id===message.id)?.text?{text:saved.text}:{}),transcriptAttachment:saved.transcriptAttachment,cameraAttachment:saved.cameraAttachment}:message;
+            return saved?{...message,...(message.text===history.messages.find(item=>item.id===message.id)?.text?{text:saved.text}:{}),transcriptAttachment:saved.transcriptAttachment,cameraAttachment:saved.cameraAttachment,mailAttachment:saved.mailAttachment}:message;
           })}));
         }).catch(()=>this.toast('Saved attachments could not load. Try reopening this conversation.'));
 
@@ -1294,13 +1297,12 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     api.say = () => this.toast('Not available yet. Nothing was sent.');
     // Open the real conversation without sending a prompt or uploading content.
     // Keep the current view/selection so a subsequent user message is scoped.
-    api.sendReviewedMail = async (text:string, expected:{sessionId:string;agentId:string;ownerId:string;origin:string}) => {
-      const current=connectionController.getSnapshot().session;
-      if(!current||JSON.stringify(current)!==JSON.stringify(expected)||document.hidden||connectionController.getSnapshot().open||document.documentElement.dataset.connectionMode==='mock')throw new Error('Agent changed. Review this message again.');
-      if(this.S().typing)throw new Error('Wait for the current agent reply before sharing this email.');
-      // send() would return without sending while the composer holds or edits a message.
-      if(this.messageEditTarget||this.draftSendPending||this.composerDraft?.holding){this.toast('Finish or cancel the message you are editing first.');return false;}
-      context(this);await this.send(text,expected);return true;
+    api.attachReviewedMail = (title:string,from:string,validate:()=>Promise<string>) => {
+      if(this.messageEditTarget||this.draftSendPending||this.composerDraft?.holding){this.toast('Finish or cancel the message you are editing first.');return;}
+      if(this.transcriptAttachment||this.cameraAttachment){this.toast('Remove the other attachment before attaching this email.');return;}
+      this.mailAttachment={id:crypto.randomUUID(),title,from,validate};
+      context(this);
+      this.setState((previous:Shell)=>({chat:'sheet',shade:false,draft:previous.draft?.trim()?previous.draft:'Summarize this for me'}));
     };
     api.openReviewedWebSource=(url:string,signal:AbortSignal)=>this.browserNavigateApproved(url,signal);
     api.attachCameraPhoto=(id:string,image:string)=>{
@@ -1377,7 +1379,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   p.renderVals = function () {
     const out = originalVals.call(this);
     const composeTarget=this.messageEditTarget||this.messageReplyTarget;
-    this.chatImageModal??=createInlineModal(()=>{this.chatImagePreview=null;this.setState({});});
+    this.chatImageModal??=createImagePreview(()=>{this.chatImagePreview=null;this.setState({});});
     out.chatImagePreview=out.isOn&&!this.S().secure?this.chatImagePreview||'':'';
     out.chatImagePreviewRef=this.chatImageModal.ref;
     out.closeChatImagePreview=()=>{this.chatImagePreview=null;this.setState({});};
@@ -1392,6 +1394,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       this.setState({});
     };
+    out.attachedMail=this.S().msgs.some((m:Shell)=>this.mailAttachment&&m.mailAttachment?.id===this.mailAttachment.id)?'':this.mailAttachment?.title||'';
+    out.removeMail=()=>{this.mailAttachment=null;this.setState({});};
     out.attachedTranscript=this.S().msgs.some((m:Shell)=>m.transcriptAttachment&&m.transcriptAttachment===this.transcriptAttachment)?'':this.transcriptAttachment?.title||'';
     out.removeTranscript=()=>{this.transcriptAttachment=null;this.setState({});};
     out.messageComposeContext=composeTarget?(this.messageEditTarget?'Editing message':'Replying to '+(composeTarget.from==='user'?'your message':out.name))+': '+composeTarget.text.replace(/\s+/g,' ').slice(0,160):'';
@@ -1404,7 +1408,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     // attempted send still explains why it cannot dispatch before readiness.
     const residentPending=residentAlwaysPresent&&!connection.session&&connection.kind==='recovering'?agentPendingText(connection):'';
     out.draftRetry=!!draft?.error;out.draftStatus=[draft?.message,residentPending].filter(Boolean).join(' ');out.draftConflict=!!draft?.conflict;out.draftSavedText=draft?.savedText||'(Empty saved draft)';out.draftOpening=!!draft?.consuming;
-    out.restoreSavedDraft=()=>{this.composerDraft?.restoreSaved();if(this.firstSendReview)this.refreshDraftBinding();};out.keepCurrentDraft=()=>{this.composerDraft?.keepCurrent();if(this.firstSendReview)this.refreshDraftBinding();};out.retryDraft=()=>{this.composerDraft?.retire();this.refreshDraftBinding();};
+    out.restoreSavedDraft=async()=>{await this.composerDraft?.restoreSaved();if(this.live&&this.firstSendReview)this.refreshDraftBinding();};out.keepCurrentDraft=()=>{this.composerDraft?.keepCurrent();if(this.firstSendReview)this.refreshDraftBinding();};out.retryDraft=()=>{this.composerDraft?.retire();this.refreshDraftBinding();};
     const onDraft=out.onDraft;
     out.onDraft=(event:Event&{target:HTMLTextAreaElement})=>{
       const connection=connectionController.getSnapshot(),current=String(this.S().draft||'');
@@ -1426,7 +1430,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(shownNotices!==live){const kept=new Set(shownNotices.map(item=>item.id)),hidden=new Set(live.filter(item=>item.systemNotice&&!kept.has(item.id)).map(item=>item.id));out.msgs=(out.msgs||[]).filter((m:Shell)=>!hidden.has(m.id));}
     out.msgs=(out.msgs||[]).map((m:Shell)=>{
       const sent=live.find(item=>item.id===m.id);
-      m={...m,sentTranscript:sent?.transcriptAttachment?.title||'',sentPhoto:sent?.cameraAttachment?.image||'',openPhotoPreview:()=>{if(sent?.cameraAttachment?.image){this.chatImagePreview=sent.cameraAttachment.image;this.setState({});}}};
+      m={...m,sentMail:sent?.mailAttachment?.title||'',sentTranscript:sent?.transcriptAttachment?.title||'',sentPhoto:sent?.cameraAttachment?.image||'',openPhotoPreview:()=>{if(sent?.cameraAttachment?.image){this.chatImagePreview=sent.cameraAttachment.image;this.setState({});}}};
       const c=m.c||{};
       // A system notice card already carries its text; do not print it a second time above the card.
       if(c.systemNotice&&m.cGeneric&&m.displayText===c.sub)return {...m,hasCalendarText:false};
@@ -1635,12 +1639,26 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       } catch(error){if(error&&typeof error==='object'&&'historyChanged' in error)this.messageEditTarget=undefined;this.toast(error instanceof Error?error.message:'Message replacement failed.');return;}
       finally{this.draftSendPending=false;}
     }
-    const sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;
+    let sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;
     context(this);
     const transcript=fromComposer?this.transcriptAttachment:null;
-    const requestText=transcript?'Use the transcript of the selected voice note to answer this question.\n\n'+text:text;
+    const mail=fromComposer?(this.mailAttachment??null):null;
+    let mailText='';
+    try{if(mail)mailText=await mail.validate();}catch(error){this.toast(error instanceof Error?error.message:'Reopen the email before sending.');return;}
+    if(mail&&(this.mailAttachment??null)!==mail)return;
+    const requestText=mail?mailText+'\n\nQuestion: '+text:transcript?'Use the transcript of the selected voice note to answer this question.\n\n'+text:text;
     const transcriptCurrent=()=>!transcript||(this.S().view==='notes'&&JSON.stringify(this.notesSelection)===transcript.selection&&this.transcriptAttachment===transcript);
     if(!transcriptCurrent()){this.toast('The recording changed. Remove the transcript or attach it again.');return;}
+    if(transcript){
+      const note=this.vget('notes').list.find((item:Shell)=>item.id===this.notesSelection?.id),snapshot=JSON.stringify(note);
+      try{
+        if(!note?.audio)throw Error('Recording unavailable');
+        const revision=await recordingRevision(note);
+        if(!transcriptCurrent()||JSON.stringify(this.vget('notes').list.find((item:Shell)=>item.id===note.id))!==snapshot)throw Error('Recording changed');
+        const recording={kind:'recording',version:1,noteId:note.id,revision};
+        sourceDraft=sourceOf({...recording,name:transcript.title})??sourceOf({...recording,name:'Selected voice note'});
+      }catch{this.toast('The recording changed. Remove the transcript or attach it again.');return;}
+    }
     const revision=alphaClient.getState().context.revision,connection=connectionController.getSnapshot(),sessionId=connection.session?.sessionId,conversationId=connection.history?.conversationId;
     const current=()=>{const selected=connectionController.getSnapshot();return this.live&&!document.hidden&&(!selected.busy||selected.backgroundWork===true)&&!selected.open&&!document.querySelector('[data-alpha-chat-recorder],[data-alpha-pill-voice]')&&selected.session?.sessionId===sessionId&&selected.history?.conversationId===conversationId&&alphaClient.getState().context.revision===revision;};
     const heldText=String(s.draft||'');let heldKey:string|undefined;
@@ -1653,12 +1671,12 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     // Everything this send later shows belongs to the agent connection it was sent on.
     const sameChat=()=>connectionController.getSnapshot().session?.sessionId===sessionId;
     const userId=crypto.randomUUID(),streamedId=crypto.randomUUID();let streamed=false;
-    const sentAttachment=fromComposer?{transcriptAttachment:transcript,cameraAttachment:this.cameraAttachment,displayText:text,requestText}:null;
-    if(sentAttachment&&(transcript||this.cameraAttachment)&&connection.session&&conversationId){
+    const sentAttachment=fromComposer?{mailAttachment:mail?{id:mail.id,title:mail.title,from:mail.from}:null,transcriptAttachment:transcript,cameraAttachment:this.cameraAttachment,displayText:text,requestText}:null;
+    if(sentAttachment&&(mail||transcript||this.cameraAttachment)&&connection.session&&conversationId){
       try{await saveAttachment(connection.session,conversationId,userId,sentAttachment);}
       catch{if(fromComposer)releaseComposerSend(this,heldKey,heldText);this.toast('Attachment could not be saved. Try again.');return;}
       // The local write may settle after the composer, attachment or conversation has been replaced.
-      if(!current()||this.composerDraft.binding!==heldKey||!transcriptCurrent()||this.cameraAttachment!==sentAttachment.cameraAttachment){
+      if(!current()||this.composerDraft.binding!==heldKey||!transcriptCurrent()||(this.mailAttachment??null)!==mail||this.cameraAttachment!==sentAttachment.cameraAttachment){
         if(this.live)releaseComposerSend(this,heldKey,heldText);else this.composerDraft?.release();
         return;
       }
@@ -1669,10 +1687,13 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     let streamFrame=0,latestStream:string|undefined;
     const flushStream=()=>{if(streamFrame){cancelAnimationFrame(streamFrame);streamFrame=0;}if(latestStream!==undefined){const value=latestStream;latestStream=undefined;if(this.live)replaceStream(value);}};
     // Functional: a reply or delivery that landed while the draft was being held is kept.
-    this.setState((previous:Shell)=>({ msgs: [...previous.msgs, { id: userId, from: 'user', text, ...(fromComposer?{transcriptAttachment:transcript,cameraAttachment:this.cameraAttachment}:{} ) }], ...(fromComposer?{draft:''}:{}), typing: true, chat: previous.chat === 'full' ? 'full' : 'sheet', shade: false }),focusAfterCommit);
+
     let navigation:ReturnType<typeof connectionController.captureViewNavigation>|undefined,readyNavigation:readonly unknown[]|undefined;
     const deliverNavigation=(results:readonly unknown[]|undefined)=>deliverChatNavigation(this,navigation,results);
     try {
+      // A refused send can settle immediately. Commit the cleared composer before
+      // dispatch so its late paint cannot overwrite the restored, unsent draft.
+      await new Promise<void>(resolve=>this.setState((previous:Shell)=>({ msgs: [...previous.msgs, { id: userId, from: 'user', text, ...(fromComposer?{mailAttachment:sentAttachment?.mailAttachment,transcriptAttachment:transcript,cameraAttachment:this.cameraAttachment}:{} ) }], ...(fromComposer?{draft:''}:{}), typing: true, chat: previous.chat === 'full' ? 'full' : 'sheet', shade: false }),()=>{focusAfterCommit?.();resolve();}));
       try{
         await this.connectAgent(); context(this);
         if (alphaClient.getState().context.revision !== revision) throw new NotDispatched(fromComposer?'The active screen changed. Your message is back in the composer.':'The active screen changed. Nothing was sent.');
@@ -1683,6 +1704,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       // The request becomes pending after the render above; render again so Stop is offered before any streamed text.
       queueMicrotask(()=>{if(this.live&&alphaClient.getState().pending)this.setState({});});
       if(!transcriptCurrent())throw new NotDispatched('The recording changed. Attach the transcript again.');
+      if(mail){await mail.validate();if((this.mailAttachment??null)!==mail)throw new NotDispatched('The attached email changed. Nothing was sent.');}
       // The planning label shows only until the first reply text; it is never kept as a message.
       const showStatus=(event:Event)=>{if(this.live&&!streamed&&this.sendAttempt===attempt)this.setState({turnStatus:(event as CustomEvent<string>).detail});};
       localTurnStatus.addEventListener('label',showStatus);
@@ -1704,7 +1726,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(fromComposer)await this.composerDraft?.commit();
       if (!this.live||!sameChat()) return;
       const identity=reply.messageBinding;
-      if(sentAttachment&&identity&&reply.userMessageId&&(transcript||sentAttachment.cameraAttachment)){
+      if(sentAttachment&&identity&&reply.userMessageId&&(mail||transcript||sentAttachment.cameraAttachment)){
         await saveAttachment(identity.session,identity.conversationId,reply.userMessageId,sentAttachment);
       }
 
@@ -1713,6 +1735,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(!settlementCurrent())return;
       // The agent chose not to reply: no empty bubble, the sent message keeps its saved identity.
       if(fromComposer&&this.cameraAttachment){this.cameraAttachment=null;this.setState({});}
+      if(mail&&this.mailAttachment===mail){this.mailAttachment=null;this.setState({});}
       if(transcript && this.transcriptAttachment===transcript){this.transcriptAttachment=null;this.setState({});}
       if(reply.ignored&&!reply.proposals?.length&&!reply.completedActions?.length&&!reply.completedReads?.length){
         await new Promise<void>(resolve=>this.setState((previous:Shell)=>settlementCurrent()?(()=>{const saved=!!reply.userMessageId&&previous.msgs.some((m:Shell)=>m.id===reply.userMessageId);return {msgs:previous.msgs.filter((m:Shell)=>m.id!==streamedId&&!(m.id===userId&&saved)).map((m:Shell)=>m.id===userId&&reply.userMessageId&&identity?{...m,id:reply.userMessageId,messageBinding:identity}:m)};})():null,resolve));
@@ -1761,7 +1784,17 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         if(this.live){const previewHeld=fromComposer&&privateLocalPreviewEnabled&&this.composerDraft?.holding===true;this.setState((previous:Shell)=>({msgs:previous.msgs.filter((item:Shell)=>item.id!==userId)}));if(fromComposer)releaseComposerSend(this,heldKey,heldText);if(reviewedSource&&!this.reviewedSourceDraft)this.reviewedSourceDraft=reviewedSource;if(!previewHeld){if(e instanceof NotDispatched)this.toast(message);else if(e instanceof AlphaClientError&&(['unconfigured','sensitive','busy'].includes(e.code)||(e as {refusedBeforeTurn?:unknown}).refusedBeforeTurn===true))this.toast('Not sent. '+message);else if(!fromComposer)this.toast('Not sent.');}}
         else if(fromComposer)this.composerDraft?.release();
       }else{
-        if(pageLeaving){if(fromComposer)this.composerDraft?.abandon();return;}
+        const sessionRetired=attempt.residentSessionRetired===true;
+        if(pageLeaving||sessionRetired){
+          if(fromComposer){
+            this.composerDraft?.abandon();
+            // The refused resident session cannot show an outcome. Keep its exact
+            // sending mark for review, and reopen only the same owner/agent draft.
+            const key=this.composerDraft?.binding;
+            if(!pageLeaving&&this.live&&heldKey&&key&&(key===heldKey||createdFromSlot(heldKey,key))){this.composerDraft.retire(false);this.refreshDraftBinding();}
+          }
+          return;
+        }
         if(fromComposer)await this.composerDraft?.commit();
         // The agent recorded the user turn before the reply failed: the sent bubble adopts its
         // message identity, as on success, so a later conversation re-read merges onto it.
@@ -1867,12 +1900,16 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       this.closeSummaryReview=reviewSummaryNote({text:review.text,source:review.source,current,save:async(fields)=>{
         const update=(title:string,sub:string)=>{if(this.live)this.setState({msgs:this.S().msgs.map((m:Shell)=>m.id===message.id?{...m,card:{...m.card,done:true,title,sub}}:m)});};
         // The agent's Notes: saved as a new note. Its record does not carry the source link.
-        const canonical=this.notesSourceMode!=='legacy'&&!recording?this.canonicalNotesUi:null;
+        const canonical=this.notesSourceMode!=='legacy'?this.canonicalNotesUi:null;
         if(canonical?.current){
           if(!current())return false;
           update('Saving summary note','Inspect Notes before retrying if this is interrupted.');
-          const saved=await canonical.saveCard(fields.title?fields.title+(fields.body?'\n'+fields.body:''):fields.body,this.api('notes'));
-          update(saved?'Summary note saved':'Check Notes before retrying',saved?'Saved in Notes':'Save is unconfirmed.');return saved;
+          const saved=recording
+            ?await canonical.update(recording.noteId,{summary:[fields.body],actions:fields.actions||[],onCal:false})
+            :await canonical.saveCard(fields.title?fields.title+(fields.body?'\n'+fields.body:''):fields.body,this.api('notes'));
+          const savedNote=recording&&saved?canonical.list.find((note:Shell)=>note.id===recording.noteId):null;
+          const confirmed=saved&&(!recording||(canonical===this.canonicalNotesUi&&canonical.current&&savedNote?.body===recordingNote.body&&savedNote?.title===recordingNote.title&&savedNote?.audio?.audioId===recordingNote.audio.audioId&&JSON.stringify(savedNote.summary)===JSON.stringify([fields.body])&&JSON.stringify(savedNote.actions)===JSON.stringify(fields.actions||[])));
+          update(confirmed?(recording?'Recording summary saved':'Summary note saved'):'Check Notes before retrying',confirmed?'Saved in Notes':'Save is unconfirmed.');return confirmed;
         }
         if(!current()||this.notesStorageFailed||this.notesPending)return false;
         update('Saving summary note','Inspect Notes before retrying if this is interrupted.');

@@ -53,7 +53,7 @@ seconds. A successful role command is not a disk-persistence barrier.
 The operator re-granted HOME, verified Alpha resolution, waited 25.8 seconds and
 then rebooted. This check passed: boot completed, SELinux remained enforcing,
 Alpha retained the HOME role, and MAIN/HOME resolved to
-`ai.alphacompute.alphaphone/.MainActivity` with `isDefault=true`.
+`ai.elizaresearch.alphaphone/.MainActivity` with `isDefault=true`.
 
 For this development provisioning workflow, use the Android default-app chooser
 or the documented `cmd package set-home-activity` operation, verify both the role

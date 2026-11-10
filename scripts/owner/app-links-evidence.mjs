@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
  * Owner prep for #670 (docs/human-actions.md H-13): read a saved
- * `adb shell pm get-app-links ai.alphacompute.alphaphone` output and decide the device step.
+ * `adb shell pm get-app-links ai.elizaresearch.alphaphone` output and decide the device step.
  * Reads a local text file only; runs no adb command and contacts nothing.
  *
- *   adb shell pm get-app-links ai.alphacompute.alphaphone > pm-get-app-links.txt
+ *   adb shell pm get-app-links ai.elizaresearch.alphaphone > pm-get-app-links.txt
  *   node scripts/owner/app-links-evidence.mjs pm-get-app-links.txt [--host eliza.app] [--json]
  *
  * Passes only when the package block lists the host with state `verified` (Android's own
@@ -18,7 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-export const PACKAGE = "ai.alphacompute.alphaphone";
+export const PACKAGE = "ai.elizaresearch.alphaphone";
 const USAGE = "Usage: node scripts/owner/app-links-evidence.mjs PM_OUTPUT_FILE [--host eliza.app] [--json]";
 const hex = value => String(value ?? "").replace(/:/g, "").toLowerCase();
 

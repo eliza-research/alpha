@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 import android.content.*;import org.json.*;import java.util.*;
 public final class CalendarSyncMutationTest {
  static void check(boolean value){if(!value)throw new AssertionError();}

@@ -37,7 +37,7 @@ public class LegacyCapturesCheck{static void check(boolean ok,String what){if(!o
  }}`);
   execFileSync('javac',['-d',work,path.join(media,'OwnedMediaConfig.java'),path.join(work,'LegacyCapturesCheck.java')],{timeout:60000});
   assert.equal(execFileSync('java',['-cp',work,'LegacyCapturesCheck'],{encoding:'utf8',timeout:60000}).trim(),'ok');
-  const host=fs.readFileSync(path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMediaConfig.java'),'utf8');
+  const host=fs.readFileSync(path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaMediaConfig.java'),'utf8');
   assert.match(host,/\.captures\("DCIM\/Camera\/","SCAN_"\)\.legacyCaptures\("Pictures\/"\)/);
  });
 });

@@ -5,7 +5,8 @@ type Frame={t:number;home:boolean;prompt:boolean};
 /** Records each change in what the page paints, sampled every frame from the first: Home, a startup prompt, both or neither. */
 export async function recordStartupFrames(page:Page){await page.addInitScript(()=>{
  const frames:Frame[]=(window as any).startupFrames=[],start=performance.now();
- const sample=()=>{const home=!!document.querySelector('[data-alpha-layer="home"]'),prompt=!!document.querySelector('.alpha-connection,dialog.alpha-startup-permissions[open]'),last=frames.at(-1);if(!last||last.home!==home||last.prompt!==prompt)frames.push({t:Math.round(performance.now()-start),home,prompt});requestAnimationFrame(sample);};
+ const painted=(element:Element|null)=>!!element&&!element.closest('[inert],[hidden],[aria-hidden="true"]')&&element.getClientRects().length>0&&getComputedStyle(element).visibility!=='hidden';
+ const sample=()=>{const home=painted(document.querySelector('[data-alpha-layer="home"]')),prompt=painted(document.querySelector('.alpha-connection,dialog.alpha-startup-permissions[open]')),last=frames.at(-1);if(!last||last.home!==home||last.prompt!==prompt)frames.push({t:Math.round(performance.now()-start),home,prompt});requestAnimationFrame(sample);};
  requestAnimationFrame(sample);
 });}
 /** A startup prompt was painted, and no frame before it showed Home. */

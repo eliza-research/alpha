@@ -67,7 +67,7 @@ test('spawn and exit failures do not include captured private fixture data',asyn
     await assert.rejects(run,error=>{assert.doesNotMatch(String(error),/private fixture bytes/);return /execution bound/.test(error.message);});
   }
 });
-const app='ai.alphacompute.alphaphone',cls='CombinedAgentRestartInstrumentedTest',method='verifyAfterBothProcessesRestart';
+const app='ai.elizaresearch.alphaphone',cls='CombinedAgentRestartInstrumentedTest',method='verifyAfterBothProcessesRestart';
 const status=code=>`INSTRUMENTATION_STATUS: class=${app}.${cls}\nINSTRUMENTATION_STATUS: test=${method}\nINSTRUMENTATION_STATUS: numtests=1\nINSTRUMENTATION_STATUS_CODE: ${code}\n`;
 const progress='INSTRUMENTATION_STATUS: combinedStage=paired\nINSTRUMENTATION_STATUS_CODE: 0\n';
 const success=status(1)+progress+status(0)+'OK (1 test)\nINSTRUMENTATION_CODE: -1\n';

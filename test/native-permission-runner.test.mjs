@@ -6,7 +6,7 @@ const run=mode=>exercise(mode,'camera');
 const routed=new Set(['camera','voice-revoke']);
 test('camera campaign owns its APKs and user and scopes permission changes to that user',()=>{
  const r=run('pass');assert.equal(r.code,0,r.stderr);assert.equal(r.record.passed,true);assert.equal(r.record.userLifecycle.removed,true);assert.equal(r.state.created,false);assert.equal(r.state.user,'0');
- assert.deepEqual(r.record.result.variants[0].instrumentation.cases,['ai.alphacompute.alphaphone.CameraFlowInstrumentedTest#denyingCameraAllowsExplicitRetryWithoutFakePreview']);
+ assert.deepEqual(r.record.result.variants[0].instrumentation.cases,['ai.elizaresearch.alphaphone.CameraFlowInstrumentedTest#denyingCameraAllowsExplicitRetryWithoutFakePreview']);
  assert.equal(r.commands.filter(a=>a[0]==='uninstall').length,2);
  const permissions=r.commands.filter(a=>a.includes('revoke')||a.includes('clear-permission-flags'));assert.equal(permissions.length,2);assert.ok(permissions.every(a=>a[a.indexOf('--user')+1]==='10'));
 });
@@ -84,11 +84,11 @@ test('voice-revoke grants, revokes while the recording phase runs, verifies in a
  assert.deepEqual(steps,['grant','instrument:baseline','instrument:record','revoke','instrument:verify','grant','instrument:regrant']);
  const runIds=new Set(r.commands.filter(a=>a.includes('instrument')).map(a=>a[a.indexOf('voiceRevokeRunId')+1]));assert.equal(runIds.size,1);assert.match([...runIds][0],/^[a-f0-9]{32}$/);
  const changes=r.commands.filter(a=>a[1]==='pm'&&['grant','revoke','clear-permission-flags'].includes(a[2]));assert.equal(changes.length,5);
- assert.ok(changes.every(a=>a[a.indexOf('--user')+1]==='10'&&a.includes('ai.alphacompute.alphaphone')&&a.includes('android.permission.RECORD_AUDIO')),'only the temporary user\'s microphone permission changes');
+ assert.ok(changes.every(a=>a[a.indexOf('--user')+1]==='10'&&a.includes('ai.elizaresearch.alphaphone')&&a.includes('android.permission.RECORD_AUDIO')),'only the temporary user\'s microphone permission changes');
  // The recording process is ended by the revoke itself; the runner never force-stops it to imitate that.
  const revoke=r.commands.findIndex(a=>a[2]==='revoke'),verify=r.commands.findIndex(a=>a.includes('instrument')&&a.includes('verify'));
  assert.ok(!r.commands.slice(revoke,verify).some(a=>a.includes('force-stop')));
- assert.deepEqual(r.record.revocation,{mechanism:'pm-revoke',permission:'android.permission.RECORD_AUDIO',recordingPid:4242,bytesBeforeRevoke:4096,instrumentation:{interrupted:true,started:1,completed:0,case:'ai.alphacompute.alphaphone.VoicePermissionRevokeInstrumentedTest#microphoneRevokedWhileRecordingPhase'}});
+ assert.deepEqual(r.record.revocation,{mechanism:'pm-revoke',permission:'android.permission.RECORD_AUDIO',recordingPid:4242,bytesBeforeRevoke:4096,instrumentation:{interrupted:true,started:1,completed:0,case:'ai.elizaresearch.alphaphone.VoicePermissionRevokeInstrumentedTest#microphoneRevokedWhileRecordingPhase'}});
  assert.deepEqual(r.record.result.variants[0].phases.map(p=>[p.name,p.passed]),[['verify',true],['regrant',true]]);
 });
 
@@ -96,7 +96,7 @@ test('voice-revoke refuses a process that survives revocation, a stale marker an
  const {revokeWhileRecording,cases}=await import('../scripts/test-native-permissions.mjs');
  const fs=await import('node:fs'),os=await import('node:os'),path=await import('node:path');
  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-voice-revoke-'));
- const interrupted='INSTRUMENTATION_STATUS: class=ai.alphacompute.alphaphone.VoicePermissionRevokeInstrumentedTest\nINSTRUMENTATION_STATUS: numtests=1\nINSTRUMENTATION_STATUS: test=microphoneRevokedWhileRecordingPhase\nINSTRUMENTATION_STATUS_CODE: 1\nINSTRUMENTATION_RESULT: shortMsg=Process crashed.\nINSTRUMENTATION_CODE: 0\n';
+ const interrupted='INSTRUMENTATION_STATUS: class=ai.elizaresearch.alphaphone.VoicePermissionRevokeInstrumentedTest\nINSTRUMENTATION_STATUS: numtests=1\nINSTRUMENTATION_STATUS: test=microphoneRevokedWhileRecordingPhase\nINSTRUMENTATION_STATUS_CODE: 1\nINSTRUMENTATION_RESULT: shortMsg=Process crashed.\nINSTRUMENTATION_CODE: 0\n';
  const attempt=async({survives=false,markerRunId='a'.repeat(32),early=false,completed=false}={})=>{
   let alive=true,release;const ended=new Promise(resolve=>release=resolve),commands=[],phases=[];
   const run=async(...args)=>{commands.push(args);
@@ -105,7 +105,7 @@ test('voice-revoke refuses a process that survives revocation, a stale marker an
    if(args.includes('pidof')){if(alive)return '77\n';throw Object.assign(Error('exit 1'),{code:1,stdout:''});}
    if(args[2]==='revoke'){if(!survives)alive=false;release();return '';}
    return '';};
-  const context={run,androidUser:10,packageName:'ai.alphacompute.alphaphone',directory,variant:'standalone',instrumentPhase:async name=>{phases.push(name);}};
+  const context={run,androidUser:10,packageName:'ai.elizaresearch.alphaphone',directory,variant:'standalone',instrumentPhase:async name=>{phases.push(name);}};
   const details={};let error;
   try{await revokeWhileRecording(context,cases['voice-revoke'],{runId:'a'.repeat(32),details,timeoutMs:300,pollMs:10});}catch(failure){error=failure;}
   return {error,commands,phases,details};

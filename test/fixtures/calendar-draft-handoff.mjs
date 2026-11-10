@@ -38,8 +38,12 @@ export async function openNote(f) {
   await editor.waitFor();
 }
 export async function reviewNote(f, kind = 'event') {
-  await f.button('More').click();
-  const action = kind === 'event' ? 'Review calendar event draft' : 'Review reminder draft';
-  await f.page.getByRole('dialog', {name: 'Note actions', exact: true}).getByRole('button', {name: action, exact: true}).click();
+  // Contract coverage: the owner removed these controls from the Notes menu.
+  await f.page.evaluate(kind => {
+    const notes = window.quintMountedCalendar.renderVals().notes;
+    const action = (notes.vo || notes.ed)?.[kind === 'event' ? 'toEvent' : 'toCal'];
+    if (typeof action !== 'function') throw Error('The note scheduling contract is unavailable');
+    action();
+  }, kind);
 }
 export {openCameraReview, scanRefusal, scanTitle, submitCameraReview} from './camera-calendar-review.mjs';

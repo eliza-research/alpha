@@ -9,7 +9,7 @@ import {createHash} from 'node:crypto';
 function exercise(kind,mode='pass',bridge=false){
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-upgrade-'));
  try{
-  const pkg='ai.alphacompute.alphaphone',host=kind==='calendar'?'com.android.launcher3':'com.google.android.apps.nexuslauncher';
+  const pkg='ai.elizaresearch.alphaphone',host=kind==='calendar'?'com.android.launcher3':'com.google.android.apps.nexuslauncher';
   fs.writeFileSync(path.join(root,'app.config.json'),JSON.stringify({appId:pkg}));
   for(const variant of ['standalone','launcher'])for(const [file,bytes] of [
    [`baseline/${variant}-debug.apk`,'baseline'],[`baseline/${variant}-test.apk`,'baseline-test'],[`artifacts/${variant}-debug.apk`,'candidate'],[`artifacts/instrumentation/${variant}-androidTest.apk`,'candidate-test'],
@@ -74,7 +74,7 @@ else {console.error('Unexpected command '+JSON.stringify(a));process.exit(1);}
   return {status:run.status,stderr:run.stderr,commands:fs.readFileSync(log,'utf8').trim().split('\n').filter(Boolean).map(JSON.parse),state:JSON.parse(fs.readFileSync(state,'utf8')),reports};
  }finally{fs.rmSync(root,{recursive:true,force:true});}
 }
-const legacyClass='ai.alphacompute.alphaphone.WorkflowLegacyReminderUpgradeInstrumentedTest',legacySelector=legacyClass+'#upgradedLegacyOneOffReminderIsIncludedInNativeDigest';
+const legacyClass='ai.elizaresearch.alphaphone.WorkflowLegacyReminderUpgradeInstrumentedTest',legacySelector=legacyClass+'#upgradedLegacyOneOffReminderIsIncludedInNativeDigest';
 const instruments=r=>r.commands.filter(a=>a.includes('instrument'));
 const installs=r=>r.commands.filter(a=>a[0]==='install').map(a=>a.at(-1));
 // The plain reminder pass is identical for two tests below; run it once.

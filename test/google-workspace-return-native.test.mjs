@@ -10,7 +10,7 @@ test('actual native Workspace return contract validates exact callback, binding 
  const root=mkdtempSync(join(tmpdir(),'alpha-workspace-return-'));
  try {
   const source=join(root,'WorkspaceReturnTest.java');
-  writeFileSync(source,`package ai.alphacompute.alphaphone;
+  writeFileSync(source,`package ai.elizaresearch.alphaphone;
 public class WorkspaceReturnTest {
  static int checks;
  static final String HOST="eliza.app",CALLBACK="https://eliza.app/alphaphone/gmail/callback",NONCE="A".repeat(43),USER="11111111-1111-4111-8111-111111111111",ORG="22222222-2222-4222-8222-222222222222",HASH="a".repeat(64);
@@ -74,7 +74,7 @@ public class WorkspaceReturnTest {
  }
 }`);
   execFileSync(javaBinary('javac'),['--release','11','-d',root,nativeSource('GoogleWorkspaceReturn.java'),source],{timeout:30000,stdio:'pipe'});
-  assert.match(execFileSync(javaBinary('java'),['-cp',root,'ai.alphacompute.alphaphone.WorkspaceReturnTest'],{timeout:30000,encoding:'utf8'}),/^PASS Workspace return pure contract 85/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',root,'ai.elizaresearch.alphaphone.WorkspaceReturnTest'],{timeout:30000,encoding:'utf8'}),/^PASS Workspace return pure contract 85/);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
 

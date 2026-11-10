@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 import ai.eliza.auth.cloud.CloudSignInFlow;
 import ai.eliza.auth.cloud.CloudSignInEnvironment;
 import ai.eliza.auth.cloud.CloudSignInConfig;
@@ -14,7 +14,7 @@ public final class ServicePolicies {
   JSONArray traces = new JSONArray();
   CloudSignInEnvironment environment = new CloudSignInEnvironment("production", CloudDeployment.PRODUCTION_API_HOST,
     CloudDeployment.PRODUCTION_WEB_HOST, CloudDeployment.PRODUCTION_TENANT, CloudDeployment.PRODUCTION_NAME, "/alphaphone/auth/callback");
-  CloudSignInConfig config = CloudSignInConfig.builder().clientId("ai.alphacompute.alphaphone")
+  CloudSignInConfig config = CloudSignInConfig.builder().clientId("ai.elizaresearch.alphaphone")
     .deviceName("Alpha Phone").productName("Alpha Phone").googleClientId("alpha-phone").environment(environment).build();
   for (int variant = 0; variant < 3; variant++) {
    long now = 1000;

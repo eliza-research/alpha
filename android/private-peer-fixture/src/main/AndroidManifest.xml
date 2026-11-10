@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
- <queries><package android:name="ai.alphacompute.alphaphone" /></queries>
- <permission android:name="ai.alphacompute.alphaphone.peerfixture.permission.CONTROL" android:protectionLevel="signature" />
+ <queries><package android:name="ai.elizaresearch.alphaphone" /></queries>
+ <permission android:name="ai.elizaresearch.alphaphone.peerfixture.permission.CONTROL" android:protectionLevel="signature" />
  <application android:label="Alpha private socket test fixture" android:allowBackup="false" android:debuggable="true">
-  <service android:name=".PrivateSocketProbeService" android:exported="true" android:permission="ai.alphacompute.alphaphone.peerfixture.permission.CONTROL" />
+  <service android:name=".PrivateSocketProbeService" android:exported="true" android:permission="ai.elizaresearch.alphaphone.peerfixture.permission.CONTROL" />
  </application>
 </manifest>

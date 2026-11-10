@@ -1,3 +1,4 @@
+import {chooseMailAction} from './helpers/mail-actions.ts';
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import {cloudNotesVoiceFixture,noPhysicalOrLocalVoice} from './cloud-notes-voice-fixture';
 
@@ -34,7 +35,7 @@ test('an Inbox message reads in a bounded column and a reply draft survives ever
   expect(Math.abs((text.x - pane.x) - (pane.x + pane.width - text.x - text.width))).toBeLessThan(4);
   await resize(page, { width: 412, height: 915 });
 
-  await page.getByRole('button', { name: 'Reply', exact: true }).click();
+  await chooseMailAction(page, 'Reply');
   const fields = page.getByRole('region', { name: 'Email draft fields', exact: true });
   const draft = fields.getByRole('textbox').last();
   const words = 'Thanks Jordan, I will read the board language tonight and reply before Friday.';
@@ -151,7 +152,7 @@ test('Inbox shows the open message beside its list on a wide canvas and keeps th
   await expect(jordan).not.toHaveAttribute('aria-label', /^Unread, /);
   await expect(jordan).toHaveAttribute('aria-current', 'false');
   // A reply covers both panes, and its draft survives collapsing and widening again.
-  await page.getByRole('button', { name: 'Reply', exact: true }).click();
+  await chooseMailAction(page, 'Reply');
   await expect.poll(() => inert(list)).toBe(true);
   const reply = page.getByRole('region', { name: 'Email draft fields', exact: true }).getByRole('textbox').last();
   await reply.fill('Do not lose this reply while the layout changes.');

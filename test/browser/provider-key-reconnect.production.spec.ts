@@ -36,7 +36,7 @@ for(const action of ['edit','remove'] as const)test(`Own Voice ${action} survive
  await fixture(page);await residentHome(page);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Account',exact:true}).click();
- await page.getByRole('button',{name:'AI connection',exact:true}).click();
+ await page.getByRole('button',{name:/^AI connection/}).click();
  const panel=page.getByRole('dialog',{name:'AI connection',exact:true});await expect(panel).toBeVisible();
  await panel.getByRole('button',{name:'View keys',exact:true}).click();
  const voice=panel.getByRole('region',{name:'Voice key',exact:true});
@@ -54,10 +54,13 @@ for(const action of ['edit','remove'] as const)test(`Own Voice ${action} survive
  await expect(voice.locator('input')).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).keyReconnect.cancels)).toBe(0);
  await page.evaluate(()=>{const f=(window as any).keyReconnect;f.hold=false;f.release();});
- // A successful connection closes the dialog through the ordinary connect path.
+ // Account settings remain open after the key change; the owner closes the sheet.
+ await expect(voice.locator('input')).toHaveCount(0);
+ await panel.getByRole('button',{name:'Close Account',exact:true}).click();
  await expect(panel).not.toBeVisible();
  await expect(page.getByRole('button',{name:'Talk',exact:true})).toBeEnabled();
- await page.getByRole('button',{name:'AI connection',exact:true}).click();
+ await page.getByRole('button',{name:'Account',exact:true}).click();
+ await page.getByRole('button',{name:/^AI connection/}).click();
  await panel.getByRole('button',{name:'View keys',exact:true}).click();
  await expect(panel.getByRole('button',{name:'Close keys',exact:true})).toBeEnabled();
  await expect(voice).toContainText(action==='remove'?'Not added':'Added');
