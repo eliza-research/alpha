@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import YAML from 'yaml';
 
 const read = file => fs.readFileSync(file, 'utf8');
 
@@ -79,8 +80,12 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   const resident = residentFull.replace(carrierGroupSuffix, '');
   assert.match(resident, /vars\.ELIZA_RESIDENT_QUALIFICATION == 'push'/);
   assert.match(resident, /vars\.ELIZA_RESIDENT_QUALIFICATION == 'nightly'/);
-  // Push and nightly runs never share a group with, or cancel, a dispatched qualification.
-  assert.match(resident, /group: resident-\$\{\{ github\.event_name == 'workflow_dispatch' && github\.ref \|\| format\('\{0\}-\{1\}', github\.event_name, github\.sha\) \}\}\n  cancel-in-progress: \$\{\{ github\.event_name == 'workflow_dispatch' \}\}/);
+  // Only later main candidates supersede automatic candidate work. Develop pushes and
+  // nightly qualification retain distinct groups; manual qualification stays isolated by
+  // ref and upload-only carriers retain their extra suffix.
+  const concurrency = YAML.parse(residentFull).concurrency;
+  assert.equal(concurrency.group, "resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'app-candidate-main' || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}" + carrierGroupSuffix);
+  assert.equal(concurrency['cancel-in-progress'], "${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}");
 });
 
 test('committed ruleset requires exactly the stable check names', () => {
