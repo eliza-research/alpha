@@ -82,6 +82,8 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
  const port=()=>typeof (connectionController as any).getAppRecordClient==='function'?(connectionController as unknown as {getAppRecordClient():AppRecordPort|null}).getAppRecordClient():null;
  const readCacheOwner=()=>{const account=connectionController.getSnapshot().cloudAccount;return account?.organizationId?{environment:account.environment,userId:account.userId,organizationId:account.organizationId,credentialId:account.credentialId}:null;};
  let bootstrapOwner:ReadCacheOwner|null=null,bootstrapEpoch=0;
+ // Explicit DEV browser-host diagnostics contain stage names only, never identities or events.
+ const diagnose=(stage:string)=>{if(browserCloudResidentEnabled)console.debug('[Calendar saved startup]',stage);};
  const bootstrapAllowed=()=>{const snapshot=connectionController.getSnapshot();return snapshot.residentSavedCredential!==false&&snapshot.errorKind!=='sign-in-rejected'&&!snapshot.signOutNotice;};
  const bootstrapCurrent=()=>!!bootstrapOwner&&bootstrapAllowed()&&(!readCacheOwner()||JSON.stringify(readCacheOwner())===JSON.stringify(bootstrapOwner));
  // This reads only the existing local credential metadata (a private-host reference
@@ -94,21 +96,22 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   return value as ReadCacheOwner;
  };
  const restoreBeforeAgent=async(window:ReturnType<typeof range>)=>{
-  const shell=owner,calendar=controller;if(!shell||!calendar||!bootstrapAllowed())return;
+  const shell=owner,calendar=controller;diagnose('requested');if(!shell||!calendar||!bootstrapAllowed()){diagnose('not-allowed');return;}
   const account=readCacheOwner(),environment=account?.environment??(browserCloudResidentEnabled?browserCloudResidentEnvironment:Capacitor.isNativePlatform()&&!testMocksEnabled?'production':null);
-  if(environment!=='production'&&environment!=='staging')return;
+  if(environment!=='production'&&environment!=='staging'){diagnose('environment-unavailable');return;}
   const token=++bootstrapEpoch;let attemptOwner=bootstrapOwner;
   const discard=()=>{if(token===bootstrapEpoch&&owner===shell&&shell.live&&controller===calendar&&!port()?.current()&&bootstrapOwner===attemptOwner){++bootstrapEpoch;bootstrapOwner=null;calendar.retire();}};
   try{
-   const saved=await storedOwner(environment);
-   if(token!==bootstrapEpoch||owner!==shell||!shell.live||controller!==calendar||port()?.current())return;
-   if(!saved||!bootstrapAllowed()){discard();return;}
+   diagnose('credential-read-start');const saved=await storedOwner(environment);diagnose('credential-read-finished');
+   if(token!==bootstrapEpoch||owner!==shell||!shell.live||controller!==calendar||port()?.current()){diagnose('superseded');return;}
+   if(!saved||!bootstrapAllowed()){diagnose('credential-unavailable');discard();return;}
    if(bootstrapOwner&&JSON.stringify(bootstrapOwner)!==JSON.stringify(saved))calendar.retire();
    bootstrapOwner=attemptOwner=saved;
    const current=()=>token===bootstrapEpoch&&owner===shell&&shell.live&&controller===calendar&&bootstrapCurrent();
-   const cache=await serviceReadCache(saved);if(!current())return;
+   diagnose('cache-open-start');const cache=await serviceReadCache(saved);diagnose('cache-open-finished');if(!current()){diagnose('cache-open-retired');return;}
    await calendar.restoreSaved(window,cache,current,async()=>{const same=JSON.stringify(await storedOwner(environment))===JSON.stringify(saved);if(!same)discard();return same;},JSON.stringify(saved));
-  }catch{discard();}
+   diagnose('restore-finished');
+  }catch{diagnose('bootstrap-failed');discard();}
  };
  const zone=()=>Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
  const range=(state:Bag)=>{const today=new Date(),day=new Date(today.getFullYear(),today.getMonth(),today.getDate()+Number(state.day||0));day.setMonth(day.getMonth()+Number(state.month||0));return{side:'owner' as const,timeMin:new Date(day.getFullYear(),day.getMonth()-1,1).toISOString(),timeMax:new Date(day.getFullYear(),day.getMonth()+2,1).toISOString(),timeZone:zone()};};
@@ -127,7 +130,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
    const bound=()=>{const active=port();return target.current()&&active?.current()&&mapBinding(active)===binding&&connectionController.getCloudClient()?.sessionId===session&&JSON.stringify(readCacheOwner())===identity;};
    const cache=await serviceReadCache(readOwner);if(!bound())return null;
    return {get:async<T>(key:string)=>{if(!bound())return null;const value=await cache.get<T>(key);return bound()?value:null;},put:async(key:string,value:unknown)=>{if(bound())await cache.put(key,value);}};
-  },()=>{const account=readCacheOwner()??bootstrapOwner;return account?JSON.stringify(account):null;});this.agentCalendar=controller;this.canonicalCalendarDispose=controller.subscribe(()=>{if(owner!==this)return;retireRetention();watchNextEnd();if(this.live)this.setState({});});this.canonicalCalendarConnection=connectionController.subscribe(()=>{if(owner!==this)return;retireRetention();const target=port(),key=JSON.stringify([target?.identity,target?.scope,readCacheOwner()]);if(key!==boundKey){boundKey=key;const keepSaved=controller?.state.savedAt!=null&&bootstrapCurrent()&&(!target?.current()||controller.state.ownerKey===calendarOwnerKey(target));if(!keepSaved){++bootstrapEpoch;bootstrapOwner=null;controller?.retire();}requestKey='';refresh();}});this.canonicalCalendarInvalidated=(event:Event)=>{const sessionId=(event as CustomEvent<{sessionId?:unknown}>).detail?.sessionId;if(typeof sessionId==='string')invalidate(sessionId);};window.addEventListener('alpha:canonical-calendar-invalidated',this.canonicalCalendarInvalidated);document.addEventListener('visibilitychange',resumed);window.addEventListener('pagehide',cancelRetention);refresh();};
+  },()=>{const account=readCacheOwner()??bootstrapOwner;return account?JSON.stringify(account):null;},diagnose);this.agentCalendar=controller;this.canonicalCalendarDispose=controller.subscribe(()=>{if(owner!==this)return;retireRetention();watchNextEnd();if(this.live)this.setState({});});this.canonicalCalendarConnection=connectionController.subscribe(()=>{if(owner!==this)return;retireRetention();const target=port(),key=JSON.stringify([target?.identity,target?.scope,readCacheOwner()]);if(key!==boundKey){boundKey=key;const keepSaved=controller?.state.savedAt!=null&&bootstrapCurrent()&&(!target?.current()||controller.state.ownerKey===calendarOwnerKey(target));if(!keepSaved){++bootstrapEpoch;bootstrapOwner=null;controller?.retire();}requestKey='';refresh();}});this.canonicalCalendarInvalidated=(event:Event)=>{const sessionId=(event as CustomEvent<{sessionId?:unknown}>).detail?.sessionId;if(typeof sessionId==='string')invalidate(sessionId);};window.addEventListener('alpha:canonical-calendar-invalidated',this.canonicalCalendarInvalidated);document.addEventListener('visibilitychange',resumed);window.addEventListener('pagehide',cancelRetention);refresh();};
  p.componentDidUpdate=function(...args:any[]){update?.apply(this,args);if(owner===this){retireRetention();refresh();}};
  p.componentWillUnmount=function(){this.canonicalCalendarConnection?.();window.removeEventListener('alpha:canonical-calendar-invalidated',this.canonicalCalendarInvalidated);this.canonicalCalendarDispose?.();if(owner===this){++bootstrapEpoch;bootstrapOwner=null;cancelRetention();clearTimeout(nextEnded);document.removeEventListener('visibilitychange',resumed);window.removeEventListener('pagehide',cancelRetention);controller?.retire();controller=undefined;owner=undefined;}unmount.call(this);};
  // A Calendar connection belongs to the exact app-record session that opened it.

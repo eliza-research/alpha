@@ -50,7 +50,7 @@ function savedCalendarOwner(value:unknown):{ownerKey:string;scope:string;agentId
 /** UI snapshot only. CalendarService remains the sole app-record authority. */
 export class AgentCalendar {
  private value=empty();private epoch=0;private abort:AbortController|undefined;private reading:AbortController|undefined;private listeners=new Set<()=>void>();private binding='';private nextQuery='';private deferredRefresh:GetLifeOpsCalendarFeedRequest|undefined;private sourceRevisions=new Map<string,string>();
- constructor(private port:()=>AppRecordPort|null,private preservation:CalendarPreservation,private client:ClientFactory=agentCalendarClient,private cache:(port:AppRecordPort)=>Promise<CalendarReadCache|null>=async()=>null,private cacheIdentity:()=>string|null=()=>null){}
+ constructor(private port:()=>AppRecordPort|null,private preservation:CalendarPreservation,private client:ClientFactory=agentCalendarClient,private cache:(port:AppRecordPort)=>Promise<CalendarReadCache|null>=async()=>null,private cacheIdentity:()=>string|null=()=>null,private bootstrapDiagnostic:(stage:string)=>void=()=>{}){}
  get state():Readonly<AgentCalendarState>{return this.value;}
  /** A retained ready feed can still have an outstanding read. */
  get refreshing(){return this.reading!==undefined;}
@@ -61,23 +61,23 @@ export class AgentCalendar {
  /** Bootstrap presentation before the resident connects. The caller supplies the
   * current local Cloud credential binding, never an invented AppRecordPort. */
  async restoreSaved(window:GetLifeOpsCalendarFeedRequest,cache:CalendarReadCache,current:()=>boolean,verify:()=>Promise<boolean>,cacheIdentity=this.cacheIdentity()??''){
-  if(this.port()?.current()||this.reading)return;
+  if(this.port()?.current()||this.reading){this.bootstrapDiagnostic('resident-already-ready');return;}
   this.abort?.abort();const controller=this.abort=new AbortController(),signal=controller.signal,epoch=++this.epoch,query=JSON.stringify(window);
   const check=()=>{if(!current()||this.port()?.current()||epoch!==this.epoch||signal.aborted)throw new DOMException('Saved Calendar owner changed','AbortError');};
   try{
-   const owner=savedCalendarOwner((await cache.get<unknown>('calendar:owner:v1'))?.value);check();if(!owner||refusedCalendarCacheOwners.has(JSON.stringify([cacheIdentity,owner.ownerKey,owner.scope]))){this.publish(empty());return;}
-   const legacy=await this.preservation.capture(signal);check();
-   if(!legacy.readable||legacy.pending){this.publish(empty());return;}
-   if(legacy.present&&!await this.preservation.retainedReadOnly(owner.ownerKey,legacy.fingerprint,signal)){check();this.publish(empty());return;}
+   this.bootstrapDiagnostic('owner-read-start');const owner=savedCalendarOwner((await cache.get<unknown>('calendar:owner:v1'))?.value);this.bootstrapDiagnostic('owner-read-finished');check();if(!owner||refusedCalendarCacheOwners.has(JSON.stringify([cacheIdentity,owner.ownerKey,owner.scope]))){this.bootstrapDiagnostic(owner?'owner-refused':'owner-invalid');this.publish(empty());return;}
+   this.bootstrapDiagnostic('preservation-start');const legacy=await this.preservation.capture(signal);this.bootstrapDiagnostic(legacy.present?'preservation-present':'preservation-empty');check();
+   if(!legacy.readable||legacy.pending){this.bootstrapDiagnostic('preservation-unavailable');this.publish(empty());return;}
+   if(legacy.present&&!await this.preservation.retainedReadOnly(owner.ownerKey,legacy.fingerprint,signal)){check();this.bootstrapDiagnostic('retention-required');this.publish(empty());return;}
    check();
    const key=JSON.stringify(['calendar:feed:v1',owner.ownerKey,owner.scope,query]),refusalKey=JSON.stringify(['calendar:access-refused:v1',owner.ownerKey,owner.scope]);
-   const [entry,refusal]=await Promise.all([cache.get<unknown>(key),cache.get<number>(refusalKey)]);check();
-   if(!entry||typeof refusal?.value==='number'&&entry.at<=refusal.value){this.publish(empty());return;}
-   const snapshot=savedCalendar(entry.value,owner.ownerKey,query,owner.agentId,window);if(!snapshot){this.publish(empty());return;}
-   const revisions=await calendarSourceRevisions(snapshot.calendars);if(!await verify()){if(epoch===this.epoch&&!this.port()?.current())this.publish(empty());return;}check();
+   this.bootstrapDiagnostic('snapshot-read-start');const [entry,refusal]=await Promise.all([cache.get<unknown>(key),cache.get<number>(refusalKey)]);this.bootstrapDiagnostic('snapshot-read-finished');check();
+   if(!entry||typeof refusal?.value==='number'&&entry.at<=refusal.value){this.bootstrapDiagnostic(entry?'snapshot-refused':'snapshot-missing');this.publish(empty());return;}
+   const snapshot=savedCalendar(entry.value,owner.ownerKey,query,owner.agentId,window);if(!snapshot){this.bootstrapDiagnostic('snapshot-invalid');this.publish(empty());return;}
+   this.bootstrapDiagnostic('snapshot-valid-'+snapshot.feed.state);this.bootstrapDiagnostic('verify-start');const revisions=await calendarSourceRevisions(snapshot.calendars);if(!await verify()){this.bootstrapDiagnostic('verify-refused');if(epoch===this.epoch&&!this.port()?.current())this.publish(empty());return;}check();
    this.binding='';this.nextQuery=query;this.sourceRevisions=new Map(revisions);
-   this.publish({ownerKey:owner.ownerKey,status:'loading',feed:snapshot.feed,calendars:snapshot.calendars,legacy,savedAt:entry.at,next:null,nextFresh:false,error:null,mutating:false});
-  }catch{/* Local cache failure is not a provider or agent failure. */}
+   this.publish({ownerKey:owner.ownerKey,status:'loading',feed:snapshot.feed,calendars:snapshot.calendars,legacy,savedAt:entry.at,next:null,nextFresh:false,error:null,mutating:false});this.bootstrapDiagnostic('published');
+  }catch{this.bootstrapDiagnostic(signal.aborted||epoch!==this.epoch?'retired':'local-read-failed');}
  }
  /** Invalidate presentation freshness without changing the authoritative event/feed. */
  invalidateNext(){

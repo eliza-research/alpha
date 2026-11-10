@@ -297,3 +297,12 @@ test('saved upcoming rows remain visible during refresh but never prove freshnes
  s.error='Offline';assert.equal(select(s,'UTC',new Set(),now).event.id,'saved');
  s.feed.events=[];assert.equal(select(s,'UTC',new Set(),now).emptyLabel,'Calendar');assert.equal(select(s,'UTC',new Set(),now).verified,false);
 });
+
+
+test('saved partial and unavailable feeds may show a known upcoming row, never verified availability',()=>{
+ for(const state of ['partial','unavailable']){
+  const s=model([event('saved-partial','2026-10-30')]);s.status='loading';s.savedAt=Date.now();s.feed.state=state;
+  assert.equal(select(s,'UTC',new Set(),now).event.id,'saved-partial');assert.equal(select(s,'UTC',new Set(),now).verified,false);
+  s.feed.events=[];assert.equal(select(s,'UTC',new Set(),now).event,null);assert.equal(select(s,'UTC',new Set(),now).emptyLabel,'Calendar');
+ }
+});
