@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "3406b628f30a90c5b47128b6dc30bae177b7870e",
-  "ledgerSha256": "4ef4f05e9ef2832475f7f63a4e9b29c1377d846cf77b87b31551d6a0b4d89592",
+  "ledgerSha256": "1ed4f3e1cebb053e4c46c6e42271308516d6f5c12c0a138f85ba8da3fa5ff67d",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5723,
     "languageReview": 95,
     "parseErrors": 0,
-    "candidates": 70006,
-    "writeSites": 68818,
-    "writeAssociations": 61689,
-    "asynchronous": 8628,
-    "unassignedWrites": 10542
+    "candidates": 70012,
+    "writeSites": 68844,
+    "writeAssociations": 61714,
+    "asynchronous": 8631,
+    "unassignedWrites": 10543
   },
   "files": [
     {
@@ -31137,19 +31137,22 @@
     },
     {
       "path": "apps/app/src/browser/files.ts",
-      "sha256": "79890f6d2d3adb963aca66b53e486e07c27a0fc7430d5be4f8d3311057dbbfe8",
+      "sha256": "7193095e8ca5ec9fbb400797fe0be6ea2973c9e05f348c47a3b1024f503579d1",
       "allocatedModels": [
         "BrowserFilesTrash",
-        "BrowserSession"
+        "BrowserSession",
+        "PhotosTrash",
+        "MediaLifecycle"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
         {
           "owner": "BrowserFiles",
-          "line": 17,
-          "bindings": 1,
-          "writes": 2
+          "line": 18,
+          "bindings": 2,
+          "writes": 4
         }
       ],
       "parseErrors": [],
@@ -34010,7 +34013,7 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "131cc46ef28bc3e96534bec92ad3d45ae51d71676d2c78c799b0f4548f647854",
+      "sha256": "adc39fafa5e87778e2679629c1625a2be7c134935914bfa0734ebfed7c664b1a",
       "allocatedModels": [
         "ReminderOpenIntent",
         "ScheduledTaskControls",
@@ -34030,44 +34033,44 @@
         {
           "owner": "installAutomationsAdapter",
           "line": 42,
-          "bindings": 33,
-          "writes": 152
+          "bindings": 34,
+          "writes": 157
         },
         {
-          "owner": "installAutomationsAdapter.settled.ArrowFunction@83",
-          "line": 84,
+          "owner": "installAutomationsAdapter.settled.ArrowFunction@84",
+          "line": 85,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAutomationsAdapter.refresh",
-          "line": 100,
+          "line": 101,
           "bindings": 2,
           "writes": 6
         },
         {
           "owner": "installAutomationsAdapter.work",
-          "line": 127,
+          "line": 128,
           "bindings": 4,
           "writes": 3
         },
         {
           "owner": "installAutomationsAdapter.allowAnother",
-          "line": 139,
+          "line": 140,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAutomationsAdapter.save",
-          "line": 158,
+          "line": 159,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAutomationsAdapter.ArrowFunction@172",
-          "line": 178,
+          "owner": "installAutomationsAdapter.ArrowFunction@173",
+          "line": 179,
           "bindings": 5,
-          "writes": 15
+          "writes": 16
         }
       ],
       "parseErrors": [],
@@ -34076,7 +34079,7 @@
     },
     {
       "path": "apps/app/src/prototype/automations.css",
-      "sha256": "2d5f5cf5b67bf9612acecc993b54bd258a77440e1038cea2eabebebc5d612646",
+      "sha256": "18988b3a43eafb90459ad236cc25abbe49399c2d3a9a5b9867764173342f8d36",
       "allocatedModels": [
         "WorkflowExecution"
       ],
@@ -34149,7 +34152,7 @@
     },
     {
       "path": "apps/app/src/prototype/browser-camera.ts",
-      "sha256": "1b8559b0afacfeac49f8e8cf5f12e8438ee1a5a3d5f94e91844a4cf373a15541",
+      "sha256": "e7e929d3a85713035c8af5e38a8df8fa8c270774e7a220c521444c6bd3e2105d",
       "allocatedModels": [
         "BrowserAlbumStorage",
         "CameraPreviewRetirement",
@@ -34310,62 +34313,68 @@
           "writes": 1
         },
         {
+          "owner": "browserPhotoFileEntries.ArrowFunction@206",
+          "line": 207,
+          "bindings": 2,
+          "writes": 2
+        },
+        {
           "owner": "albums",
-          "line": 211,
+          "line": 220,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "changeAlbum.commit.ArrowFunction@226",
-          "line": 227,
+          "owner": "changeAlbum.commit.ArrowFunction@235",
+          "line": 236,
           "bindings": 3,
           "writes": 11
         },
         {
-          "owner": "changeMany.ArrowFunction@250",
-          "line": 251,
+          "owner": "changeMany.ArrowFunction@259",
+          "line": 260,
           "bindings": 2,
           "writes": 3
         },
         {
-          "owner": "deletePreparedTrash.ArrowFunction@265",
-          "line": 265,
+          "owner": "deletePreparedTrash.ArrowFunction@274",
+          "line": 274,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "setScreenLight",
-          "line": 283,
+          "line": 292,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "startPreview",
-          "line": 290,
+          "line": 299,
           "bindings": 3,
           "writes": 7
         },
         {
-          "owner": "stopRecording.ArrowFunction@344.ArrowFunction@346",
-          "line": 346,
+          "owner": "stopRecording.ArrowFunction@353.ArrowFunction@355",
+          "line": 355,
           "bindings": 1,
           "writes": 2
         },
         {
           "owner": "prepare",
-          "line": 360,
+          "line": 369,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "openCameraImageImport",
-          "line": 368,
+          "line": 377,
           "bindings": 17,
           "writes": 47
         },
         {
           "owner": "openCameraImageImport.button",
-          "line": 376,
+          "line": 385,
           "bindings": 1,
           "writes": 2
         }
@@ -34693,7 +34702,7 @@
     },
     {
       "path": "apps/app/src/prototype/camera-adapter.ts",
-      "sha256": "4930d99c2bc8c0f38c9a5a39166069f9d9af083401751f8d8f8070fff9ce9f30",
+      "sha256": "33df1b6b253aee7dd928b171c821e9f076291abc8da05938aa2dd04245a4b235",
       "allocatedModels": [
         "BrowserAlbumStorage",
         "CameraPreviewRetirement",
@@ -34862,11 +34871,11 @@
           "owner": "installPrototypeCameraAdapter.ArrowFunction@1384",
           "line": 1392,
           "bindings": 7,
-          "writes": 117
+          "writes": 120
         },
         {
-          "owner": "installPrototypeCameraAdapter.ArrowFunction@1632",
-          "line": 1634,
+          "owner": "installPrototypeCameraAdapter.ArrowFunction@1635",
+          "line": 1637,
           "bindings": 1,
           "writes": 1
         }
@@ -39806,7 +39815,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "7ea841da6289d86cb85593de89096c0c5711a9d32039b306c6f1b26089ca396d",
+      "sha256": "d18811a6e554ca2551148c2f57d1256c4c8ea1e9cd5a6c28b21aac4f1567b6b4",
       "allocatedModels": [
         "ChatInput",
         "DockClearanceOwnership",
@@ -40290,13 +40299,14 @@
     },
     {
       "path": "apps/app/src/prototype/selection-adapter.ts",
-      "sha256": "7561e51f3094cc126a499cb0709eeb9e2a35c397de6ad972b5a9c36fd9d8b08d",
+      "sha256": "ee8b3d15fa400cd3043a2db85aeb7f83de9d0a2e79cd6199ec1d4d43066a4356",
       "allocatedModels": [
         "FilesBrowserController",
         "FilesFilter",
         "FilesTree",
         "ShellNavigation"
       ],
+      "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
       "owners": [
@@ -40311,11 +40321,17 @@
           "line": 112,
           "bindings": 3,
           "writes": 8
+        },
+        {
+          "owner": "installSelectedDocumentAdapter.ArrowFunction@201",
+          "line": 202,
+          "bindings": 1,
+          "writes": 7
         }
       ],
       "parseErrors": [],
       "asynchronous": 4,
-      "unassignedWrites": 9
+      "unassignedWrites": 10
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
@@ -40394,7 +40410,7 @@
     },
     {
       "path": "apps/app/src/prototype/share-panel-adapter.ts",
-      "sha256": "23a3eb45e4307571601edac8f5cb444843d6740a750b62d35220b79336557d89",
+      "sha256": "78cd92628c18316667fec89715a9207f3c171468ebf4fdbb9ba83ea6b2aa4f74",
       "allocatedModels": [
         "FilesAndSharing"
       ],
@@ -40636,7 +40652,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "f353e6df276a3e39412fb045a91e6c5ff892476f1a00fd5a5e4c40e90ce3132d",
+      "sha256": "ec98e1f044873d87741ccad4610726d1b732075d87093561e7a6f48a0b127de0",
       "allocatedModels": [
         "CalendarPreservationConfirmation",
         "CameraPreviewRetirement",
@@ -41611,7 +41627,7 @@
     },
     {
       "path": "apps/app/src/runtime/automations-protocol.ts",
-      "sha256": "387fe43c3f50d4178544829022ea57c98c067def418594212bcfb043cd562029",
+      "sha256": "f91451b0e8c040e8a393f5dfe0ecd5d3d46e2c00af41a49d1dfecb3e9af92091",
       "allocatedModels": [
         "ScheduledTaskControls",
         "WorkflowExecution"
@@ -41628,37 +41644,37 @@
         },
         {
           "owner": "mergeAutomationRows",
-          "line": 86,
+          "line": 88,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "AutomationsProtocol",
-          "line": 90,
+          "line": 92,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "AutomationsProtocol.list",
-          "line": 94,
+          "line": 96,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "AutomationsProtocol.savePrompt",
-          "line": 102,
+          "line": 104,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "AutomationsProtocol.setPromptEnabled",
-          "line": 111,
+          "line": 113,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "AutomationsProtocol.editReminder",
-          "line": 148,
+          "line": 156,
           "bindings": 1,
           "writes": 1
         }
@@ -45518,7 +45534,7 @@
     },
     {
       "path": "apps/app/src/runtime/share-panel.ts",
-      "sha256": "fb2264d0d1adc4a95f7b6e334af28d47fcb44017a93ebfd9a6f5d159e335e093",
+      "sha256": "06973ee563e28941efc6f3a616ae43f08353cd14d68a1d2f77e7b250d1f9788c",
       "allocatedModels": [
         "FilesAndSharing",
         "SharePanelAdmission"
@@ -45542,18 +45558,18 @@
         {
           "owner": "openSharePanel.ArrowFunction@15",
           "line": 16,
-          "bindings": 6,
-          "writes": 9
+          "bindings": 7,
+          "writes": 12
         },
         {
           "owner": "openSharePanel.ArrowFunction@15.action",
-          "line": 30,
+          "line": 32,
           "bindings": 2,
-          "writes": 7
+          "writes": 9
         }
       ],
       "parseErrors": [],
-      "asynchronous": 15,
+      "asynchronous": 18,
       "unassignedWrites": 2
     },
     {
@@ -226098,6 +226114,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "cc195351139fdea6f0e291c375eb09a83f970c203e61c472d40e385818c3908c"
+    "sha256": "710fab0453b2fda4e4b1df54b2aca2a021aae806629fb8c453a74ca317399b7e"
   }
 }

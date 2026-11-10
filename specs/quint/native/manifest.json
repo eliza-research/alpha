@@ -334,7 +334,8 @@
         "apps/app/src/prototype/video-edit-review.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeReadEpoch.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/SelectedDocumentAccess.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java",
+        "apps/app/src/browser/files.ts"
       ],
       "tests": [
         "reviewedPublicationTest",
@@ -355,7 +356,8 @@
       "abstractions": [
         "One selected media item, two source revisions and four native read generations.",
         "Full/selected summarize permitted access; mixed/partial policies are represented by current per-item permission.",
-        "Exact content/hash equality is represented by matching revision identities; codecs and pixel transforms are omitted."
+        "Exact content/hash equality is represented by matching revision identities; codecs and pixel transforms are omitted.",
+        "Files Photos collections reference the existing media rows; this model covers their media identity and lifecycle guards. Cross-store batch atomicity and native chooser outcomes remain outside the bounded projection."
       ],
       "sharedSources": [
         "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java",

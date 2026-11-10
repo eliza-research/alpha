@@ -1321,11 +1321,13 @@
     ],
     "sources": [
       "apps/app/src/prototype/camera-adapter.ts",
-      ".eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts"
+      ".eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts",
+      "apps/app/src/browser/files.ts"
     ],
     "abstractions": [
       "Native Photos Trash read lifecycle with coalesced requests, current epochs, hidden loaded-marker invalidation and resume. Three media identities and four request identities.",
-      "Deletion/restore effects, selection, native retention and browser Trash are separate obligations."
+      "Deletion/restore effects, selection, native retention and browser Trash are separate obligations.",
+      "Files Photos collections reference the existing media rows; this model covers their media identity and lifecycle guards. Cross-store batch atomicity and native chooser outcomes remain outside the bounded projection."
     ]
   },
   {

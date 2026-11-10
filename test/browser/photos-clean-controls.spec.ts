@@ -56,10 +56,13 @@ test('Camera cover, menu selection, info swipe and photo chat share use the save
  await expect(page.getByRole('dialog',{name:'Image preview',exact:true})).toHaveCount(0);
  await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('Keep this draft');
  await page.getByRole('button',{name:'Preview attached photo',exact:true}).click();
- const touch=await page.context().newCDPSession(page),pinchBox=(await image.boundingBox())!,cx=pinchBox.x+pinchBox.width/2,cy=pinchBox.y+pinchBox.height/2;
+ await expect.poll(()=>image.evaluate(el=>el.complete&&el.naturalWidth>0)).toBe(true);
+ const touch=await page.context().newCDPSession(page),pinchBox=(await image.boundingBox())!,viewport=page.viewportSize()!;
+ const left=Math.max(0,pinchBox.x),right=Math.min(viewport.width,pinchBox.x+pinchBox.width),top=Math.max(0,pinchBox.y),bottom=Math.min(viewport.height,pinchBox.y+pinchBox.height),cx=(left+right)/2,cy=(top+bottom)/2,spread=Math.min(30,(right-left)/6);
+ expect(spread).toBeGreaterThan(5);
  await touch.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:2});
- await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cx-35,y:cy,id:1},{x:cx+35,y:cy,id:2}]});
- await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:cx-70,y:cy,id:1},{x:cx+70,y:cy,id:2}]});
+ await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:cx-spread,y:cy,id:1},{x:cx+spread,y:cy,id:2}]});
+ await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:cx-spread*2,y:cy,id:1},{x:cx+spread*2,y:cy,id:2}]});
  await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  await expect.poll(()=>image.evaluate(el=>new DOMMatrixReadOnly(getComputedStyle(el).transform).a)).toBeGreaterThan(1);
  await touch.detach();

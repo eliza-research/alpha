@@ -89,7 +89,7 @@ for (const [label, text] of [['unicode CRLF', 'Local 🧪 file\r\nExact bytes\n'
   await page.getByRole('button',{name:'More',exact:true}).click();
   await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();
   const download = page.waitForEvent('download');
-  await page.getByRole('button',{name:'Save locally',exact:true}).click();
+  await page.getByRole('button',{name:'Save file',exact:true}).click();
   const result=await download;
   expect(result.suggestedFilename()).toBe('Owned browser note.txt');
   expect(await readFile((await result.path())!)).toEqual(Buffer.from(['Owned browser note',text].filter(Boolean).join('\n\n'), 'utf8'));
@@ -211,11 +211,11 @@ test('MVP Notes sharing keeps email and export without a deferred SMS dead end',
   await page.getByRole('textbox',{name:'Note',exact:true}).fill('Local test note');
   await page.getByRole('button',{name:'More',exact:true}).click();
   await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Share to email',exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Save locally',exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Share externally',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Email',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Save file',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Share',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Share in Messages',exact:true})).toHaveCount(0);
-  await page.getByRole('button',{name:'Cancel',exact:true}).click();
+  await page.getByRole('button',{name:'Close share',exact:true}).click();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog',{name:'Note actions',exact:true})).toHaveCount(0);
   await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue('Local test note');

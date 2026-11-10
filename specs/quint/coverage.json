@@ -12247,43 +12247,50 @@
     },
     {
       "path": "apps/app/src/browser/files.ts",
-      "sha256": "79890f6d2d3adb963aca66b53e486e07c27a0fc7430d5be4f8d3311057dbbfe8",
+      "sha256": "7193095e8ca5ec9fbb400797fe0be6ea2973c9e05f348c47a3b1024f503579d1",
       "models": [
         "BrowserFilesTrash",
-        "BrowserSession"
+        "BrowserSession",
+        "PhotosTrash",
+        "MediaLifecycle"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "stateAnchors": [
         {
-          "line": 7,
+          "line": 8,
           "text": "const SharedFiles = createBrowserFiles({"
         },
         {
-          "line": 17,
+          "line": 18,
+          "text": "private readonly reviewedPhotoTrash=new Map<string,string>();"
+        },
+        {
+          "line": 26,
           "text": "private readonly sourceSelections=new Map<string,string>();"
         },
         {
-          "line": 18,
+          "line": 27,
           "text": "async select(input:{id:string}){const selected=await super.select(input);this.sourceSelections.set(selected.selectionId,input.id);return selected;}"
         },
         {
-          "line": 20,
-          "text": "async sourceReference(input:{selectionId:string}){await this.attachment(input);const id=this.sourceSelections.get(input.selectionId);if(!id||!/^[a-f0-9-]{36}$/.test(id))throw Error('Select the library"
+          "line": 29,
+          "text": "async sourceReference(input:{selectionId:string}){await this.attachment(input);const id=this.sourceSelections.get(input.selectionId);if(!id||!/^[a-f0-9-]{36}$/.test(id))throw Error"
         },
         {
-          "line": 23,
+          "line": 32,
           "text": "private readonly volume=new BrowserStorageVolume(this as any,{"
         },
         {
-          "line": 29,
+          "line": 38,
           "text": "async importFile(...args:Parameters<InstanceType<typeof SharedFiles>['importFile']>){const value=await super.importFile(...args);this.storageChanged();return value;}"
         },
         {
-          "line": 30,
-          "text": "async saveWorkflowAttachment(...args:Parameters<InstanceType<typeof SharedFiles>['saveWorkflowAttachment']>){const value=await super.saveWorkflowAttachment(...args);this.storageChanged();return value;"
+          "line": 39,
+          "text": "async saveWorkflowAttachment(...args:Parameters<InstanceType<typeof SharedFiles>['saveWorkflowAttachment']>){const value=await super.saveWorkflowAttachment(...args);this.storageCha"
         }
-      ]
+      ],
+      "reviewStatus": "state-audit-required"
     },
     {
       "path": "apps/app/src/browser/focus-state.ts",
@@ -16195,7 +16202,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "131cc46ef28bc3e96534bec92ad3d45ae51d71676d2c78c799b0f4548f647854",
+      "sha256": "adc39fafa5e87778e2679629c1625a2be7c134935914bfa0734ebfed7c664b1a",
       "stateAnchors": [
         {
           "line": 32,
@@ -16223,11 +16230,11 @@
         },
         {
           "line": 48,
-          "text": "let detail:AutomationRow|null=null,editor:Editor|null=null,creating=false,review:{label:string;key:string;run:(client:AutomationsProtocol,signal:AbortSignal)=>Promise<unknown>}|null=null;"
+          "text": "let detail:AutomationRow|null=null,editor:Editor|null=null,creating=false,review:{label:string;key:string;run:(client:AutomationsProtocol,signal:AbortSignal)=>Promise<unknown>}|nul"
         },
         {
           "line": 49,
-          "text": "let state:'idle'|'loading'|'ready'|'failed'='idle',message='',controller:AbortController|null=null,epoch=0,session:string|null=null,loadedSession:string|null=null,history:string[]=[];"
+          "text": "let state:'idle'|'loading'|'ready'|'failed'='idle',message='',controller:AbortController|null=null,epoch=0,session:string|null=null,loadedSession:string|null=null,history:string[]="
         },
         {
           "line": 50,
@@ -16235,59 +16242,63 @@
         },
         {
           "line": 51,
-          "text": "let scheduleTime='';"
+          "text": "let snoozeOpen=false;"
         },
         {
           "line": 52,
+          "text": "let scheduleTime='';"
+        },
+        {
+          "line": 53,
           "text": "let scheduleHour='8',scheduleMinute='00',schedulePeriod='AM',scheduleDays=[0,1,2,3,4,5,6];"
         },
         {
-          "line": 56,
+          "line": 57,
           "text": "let completionDirty=false;"
         },
         {
-          "line": 57,
+          "line": 58,
           "text": "const uncertain=new Set<string>();"
         },
         {
-          "line": 58,
+          "line": 59,
           "text": "let intentStore:WorkflowIntentStore|null=null,suspended=document.hidden;"
         },
         {
-          "line": 60,
+          "line": 61,
           "text": "let homeCache:{sessionId:string;rows:Array<{name:string;status:string}>;total:number;complete:boolean;partial:boolean;stale:boolean;error:boolean;loadedAt:number}|null=null;"
         },
         {
-          "line": 84,
+          "line": 85,
           "text": "let intent:Bag;try{intent=JSON.parse(raw);}catch{return false;}"
         },
         {
-          "line": 100,
+          "line": 101,
           "text": "const next:AutomationRow[]=[],failures:AutomationIssue[]=[];"
         },
         {
-          "line": 127,
-          "text": "const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();let dispatched=false,retained:string|undefined,sent='';message='';publish();"
+          "line": 128,
+          "text": "const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();let dispatched=false,retained:string|undefined,sent='';message='';publish("
         },
         {
-          "line": 139,
+          "line": 140,
           "text": "const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();message='';publish();"
         },
         {
-          "line": 158,
+          "line": 159,
           "text": "if(!editor||controller)return;const selected=editor,id=selected.row?key(selected.row):requestKey('new:'+selected.kind);"
         },
         {
-          "line": 178,
+          "line": 179,
           "text": "const managementCards=[...(workflow.managementCards||[])];"
         },
         {
-          "line": 186,
+          "line": 187,
           "text": "const actions:Array<{label:string;run:()=>void;disabled:boolean}>=[];"
         },
         {
-          "line": 204,
-          "text": "const fields:Bag[]=[],moreFields:Bag[]=[],whenFields:Bag[]=[];if(editor?.kind==='prompt'){fields.push(field('instructions','What should Alpha do?',editor.draft.instructions));moreFields.push(field('title','Name (optional)',editor.draft.title));if(editor.draft.triggerType==='once')whenFields.push(field('scheduledAt','Date and time',editor.draft.scheduledAt,'datetime-local'));if(editor.draft.triggerType==='cron'){const clock=recurringClock(editor.draft.cron);if(clock)whenFields.push(field('recurringTime','Time',clock.time,'time'));moreFields.push(field('cron','Custom schedule (cron)',editor.draft.cron));}if(editor.draft.triggerType==='event')moreFields.push(field('eventKind','Event name',editor.draft.eventKind));}else if(editor){fields.push(field('message','Reminder',editor.draft.message));if(!editor.row||editor.row.record.definition.cadence?.kind==='once')fields.push(field('due','Due',editor.draft.due,'datetime-local'));}"
+          "line": 206,
+          "text": "const fields:Bag[]=[],moreFields:Bag[]=[],whenFields:Bag[]=[];if(editor?.kind==='prompt'){fields.push(field('instructions','What should Alpha do?',editor.draft.instructions));moreF"
         }
       ],
       "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
@@ -16300,7 +16311,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "2d5f5cf5b67bf9612acecc993b54bd258a77440e1038cea2eabebebc5d612646",
+      "sha256": "18988b3a43eafb90459ad236cc25abbe49399c2d3a9a5b9867764173342f8d36",
       "stateAnchors": [],
       "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates."
     },
@@ -16733,7 +16744,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "1b8559b0afacfeac49f8e8cf5f12e8438ee1a5a3d5f94e91844a4cf373a15541",
+      "sha256": "e7e929d3a85713035c8af5e38a8df8fa8c270774e7a220c521444c6bd3e2105d",
       "stateAnchors": [
         {
           "line": 14,
@@ -16781,23 +16792,27 @@
         },
         {
           "line": 54,
-          "text": "return transaction<Row[]>('readonly',(store,set)=>{const result:Row[]=[];const request=store.index('chronological').openCursor(boundary?IDBKeyRange.upperBound(boundary,true):undefined,'prev');"
+          "text": "return transaction<Row[]>('readonly',(store,set)=>{const result:Row[]=[];const request=store.index('chronological').openCursor(boundary?IDBKeyRange.upperBound(boundary,true):undefi"
         },
         {
           "line": 55,
-          "text": "request.onsuccess=()=>{const cursor=request.result;if(!cursor){set(result);return;}const row=cursor.value as Row;if(row.kind!=='image'&&row.kind!=='video'){cursor.continue();return;}"
+          "text": "request.onsuccess=()=>{const cursor=request.result;if(!cursor){set(result);return;}const row=cursor.value as Row;if(row.kind!=='image'&&row.kind!=='video'){cursor.continue();return"
+        },
+        {
+          "line": 61,
+          "text": "async function read(id:string){return transaction<Row>('readonly',(store,set,fail)=>{const r=store.get(id);r.onsuccess=()=>['image','video'].includes(r.result?.kind)?set(r.result):"
         },
         {
           "line": 63,
           "text": "return transaction<Row>('readwrite',(store,set,fail)=>{const r=store.get(input.id);r.onsuccess=()=>{const row=r.result as Row|undefined;"
         },
         {
-          "line": 65,
-          "text": "const updated={...row,...patch,mutationRevision:revision()};store.put(updated);set(updated);"
-        },
-        {
           "line": 72,
           "text": "const edits=new Map<string,EditSession>();"
+        },
+        {
+          "line": 73,
+          "text": "const filters:Record<string,string>={none:'none',vivid:'saturate(1.55) contrast(1.08)',warm:'sepia(.3) saturate(1.35) hue-rotate(-8deg)',cool:'saturate(1.1) hue-rotate(14deg) brigh"
         },
         {
           "line": 74,
@@ -16829,7 +16844,7 @@
         },
         {
           "line": 88,
-          "text": "const nativeFilter='filter' in context;if(nativeFilter)context.filter=filters[input.filter];context.translate(canvas.width/2,canvas.height/2);context.rotate(input.rotation*Math.PI/180);"
+          "text": "const nativeFilter='filter' in context;if(nativeFilter)context.filter=filters[input.filter];context.translate(canvas.width/2,canvas.height/2);context.rotate(input.rotation*Math.PI/"
         },
         {
           "line": 91,
@@ -16862,6 +16877,10 @@
         {
           "line": 111,
           "text": "const record=request.result as EditRecord|undefined;"
+        },
+        {
+          "line": 117,
+          "text": "async function cancelPhotoEdit(input:{sessionId:string}){const value=edits.get(input.sessionId);if(value)value.active=false;edits.delete(input.sessionId);await resultPhotoEdit({ope"
         },
         {
           "line": 119,
@@ -16900,6 +16919,10 @@
           "text": "const source=original.result as Row|undefined;"
         },
         {
+          "line": 148,
+          "text": "await transaction<void>('readwrite',(store,set)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord|undefined;if(record?.status==='savin"
+        },
+        {
           "line": 153,
           "text": "const mediaId=()=>Date.now().toString().padStart(13,'0')+Array.from(crypto.getRandomValues(new Uint8Array(12)),n=>String(n%10)).join('');"
         },
@@ -16914,6 +16937,10 @@
         {
           "line": 165,
           "text": "const value=input as {items?:unknown;all?:unknown}|null|undefined;"
+        },
+        {
+          "line": 171,
+          "text": "return transaction<Row[]>('readonly',(store,set,fail)=>{const result:Row[]=[];set(result);for(const item of items){const request=store.get(item.id);request.onsuccess=()=>{const row"
         },
         {
           "line": 174,
@@ -16952,208 +16979,260 @@
           "text": "const encoded=JSON.stringify([edit.start,edit.end,edit.rotation,edit.crop]);"
         },
         {
+          "line": 197,
+          "text": "const claimed=await transaction<EditRecord>('readwrite',(store,set,fail)=>{signal.throwIfAborted();const request=store.get(key);request.onsuccess=()=>{const old=request.result as E"
+        },
+        {
           "line": 201,
           "text": "const rendered=await renderVideoEdit({path:source.path,duration:source.duration},edit,signal);signal.throwIfAborted();"
         },
         {
-          "line": 205,
-          "text": "export const browserPhotoLibrary={"
+          "line": 202,
+          "text": "return await transaction<EditResult>('readwrite',(store,set,fail)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord;if(record.status!="
+        },
+        {
+          "line": 203,
+          "text": "}catch(error){await transaction<void>('readwrite',(store,set)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord;if(record.status==='sa"
+        },
+        {
+          "line": 207,
+          "text": "const entries:{path:string;name:string;directory:boolean;mimeType:string;size:number;modified:number;revision:string;deletedAt:number}[]=[];const request=store.openCursor();"
         },
         {
           "line": 214,
-          "text": "const items=selectedMedia(input.items,SHARE_LIMIT),files=await selectedMediaFiles(items);"
+          "text": "export const browserPhotoLibrary={"
         },
         {
-          "line": 223,
+          "line": 220,
+          "text": "async albums(){const live=new Set((await rows({},true)).filter(row=>!row.trashed).map(row=>row.id));return {items:(await albumDocument.read<Album[]>(()=>[])).map(album=>({...album,"
+        },
+        {
+          "line": 232,
           "text": "const name=typeof input.name==='string'?input.name.trim():'';"
         },
         {
-          "line": 227,
+          "line": 236,
           "text": "let media:Row|undefined;"
         },
         {
-          "line": 233,
+          "line": 241,
+          "text": "if(input.operation==='create'){const memberIds=media?[media.id]:[],album:Album={id:crypto.randomUUID(),name,revision:revision(),count:memberIds.length,memberIds};albums.push(album)"
+        },
+        {
+          "line": 242,
           "text": "const album=albums.find(a=>a.id===input.id);if(!album||album.revision!==input.revision)throw Error('Album changed. Reopen it.');"
         },
         {
-          "line": 249,
-          "text": "const items=selectedMedia(input.items),patch=input.operation==='favorite'||input.operation==='unfavorite'?{favorite:input.operation==='favorite'}:{trashed:input.operation==='trash'};"
+          "line": 258,
+          "text": "const items=selectedMedia(input.items),patch=input.operation==='favorite'||input.operation==='unfavorite'?{favorite:input.operation==='favorite'}:{trashed:input.operation==='trash'"
         },
         {
-          "line": 251,
+          "line": 260,
           "text": "const result={status:'complete',outcomes:[] as {id:string;status:string;item?:Row}[]};set(result);"
         },
         {
-          "line": 252,
+          "line": 261,
           "text": "for(const item of items){const request=store.get(item.id);request.onsuccess=()=>{"
         },
         {
-          "line": 253,
+          "line": 262,
           "text": "const row=request.result as Row|undefined;"
         },
         {
-          "line": 255,
+          "line": 264,
           "text": "const unchanged=Object.entries(patch).every(([key,value])=>row[key as 'favorite'|'trashed']===value);"
         },
         {
-          "line": 256,
-          "text": "const updated=unchanged?row:{...row,...patch,mutationRevision:revision()};if(!unchanged)store.put(updated);"
-        },
-        {
-          "line": 264,
-          "text": "async deletePreparedTrash(input:{confirmation:string}){const selected=prepared.get(input.confirmation);if(!selected)throw Error('Review the trash again.');prepared.delete(input.confirmation);"
-        },
-        {
-          "line": 272,
-          "text": "const unavailable=async()=>{throw Error('This operation is not available for browser photos. The original is unchanged.');};"
-        },
-        {
           "line": 273,
-          "text": "export const browserLibrary=new Proxy(browserPhotoLibrary,{get(target,key){return Reflect.get(target,key)??unavailable;}});"
+          "text": "async deletePreparedTrash(input:{confirmation:string}){const selected=prepared.get(input.confirmation);if(!selected)throw Error('Review the trash again.');prepared.delete(input.con"
         },
         {
           "line": 274,
-          "text": "const videoCapture=new BrowserVideoCapture();"
-        },
-        {
-          "line": 275,
-          "text": "let videoSession=0;"
-        },
-        {
-          "line": 276,
-          "text": "let videoSave:Promise<{path:string;duration:number;width:number;height:number;fileSize:number}>|undefined;"
-        },
-        {
-          "line": 277,
-          "text": "let preview:HTMLVideoElement|null=null,stream:MediaStream|null=null,generation=0;"
-        },
-        {
-          "line": 278,
-          "text": "let starting:AbortController|undefined;"
-        },
-        {
-          "line": 279,
-          "text": "let zoom=1,mirror=false;"
-        },
-        {
-          "line": 280,
-          "text": "const cameraFocus=new BrowserCameraFocus();"
+          "text": "return transaction<{status:string;deletedIds:string[];skippedIds:string[];failedIds:string[]}>('readwrite',(store,set)=>{const result={status:'complete',deletedIds:[] as string[],s"
         },
         {
           "line": 281,
-          "text": "let screenLight:HTMLDivElement|undefined;"
+          "text": "const unavailable=async()=>{throw Error('This operation is not available for browser photos. The original is unchanged.');};"
+        },
+        {
+          "line": 282,
+          "text": "export const browserLibrary=new Proxy(browserPhotoLibrary,{get(target,key){return Reflect.get(target,key)??unavailable;}});"
+        },
+        {
+          "line": 283,
+          "text": "const videoCapture=new BrowserVideoCapture();"
+        },
+        {
+          "line": 284,
+          "text": "let videoSession=0;"
+        },
+        {
+          "line": 285,
+          "text": "let videoSave:Promise<{path:string;duration:number;width:number;height:number;fileSize:number}>|undefined;"
+        },
+        {
+          "line": 286,
+          "text": "let preview:HTMLVideoElement|null=null,stream:MediaStream|null=null,generation=0;"
         },
         {
           "line": 287,
-          "text": "export function mountBrowserCamera(){const frame=document.querySelector<HTMLElement>(finder);if(preview&&frame&&preview.parentElement!==frame)frame.prepend(preview);}"
+          "text": "let starting:AbortController|undefined;"
         },
         {
           "line": 288,
-          "text": "export const browserCamera={"
+          "text": "let zoom=1,mirror=false;"
+        },
+        {
+          "line": 289,
+          "text": "const cameraFocus=new BrowserCameraFocus();"
         },
         {
           "line": 290,
-          "text": "void browserCamera.stopPreview();const token=++generation,controller=new AbortController();starting=controller;"
+          "text": "let screenLight:HTMLDivElement|undefined;"
         },
         {
-          "line": 291,
-          "text": "let ownStream:MediaStream|null=null,ownVideo:HTMLVideoElement|null=null;"
+          "line": 292,
+          "text": "function setScreenLight(enabled:boolean){clearScreenLight();if(!enabled)return;const light=screenLight=document.createElement('div');light.dataset.alphaCameraLight='screen';light.s"
         },
         {
           "line": 296,
+          "text": "export function mountBrowserCamera(){const frame=document.querySelector<HTMLElement>(finder);if(preview&&frame&&preview.parentElement!==frame)frame.prepend(preview);}"
+        },
+        {
+          "line": 297,
+          "text": "export const browserCamera={"
+        },
+        {
+          "line": 299,
+          "text": "void browserCamera.stopPreview();const token=++generation,controller=new AbortController();starting=controller;"
+        },
+        {
+          "line": 300,
+          "text": "let ownStream:MediaStream|null=null,ownVideo:HTMLVideoElement|null=null;"
+        },
+        {
+          "line": 305,
           "text": "const frame=document.querySelector<HTMLElement>(finder);if(!frame)throw Error('Camera view is closed.');"
         },
         {
-          "line": 301,
+          "line": 310,
           "text": "const finish=(error?:unknown)=>{clearTimeout(timeout);controller.signal.removeEventListener('abort',abort);error?reject(error):resolve();};"
         },
         {
-          "line": 302,
+          "line": 311,
           "text": "const abort=()=>finish(new DOMException('Camera cancelled.','AbortError'));"
         },
         {
-          "line": 303,
+          "line": 312,
           "text": "const timeout=setTimeout(()=>finish(Error('Camera preview timed out.')),15000);"
         },
         {
-          "line": 314,
+          "line": 323,
           "text": "async capturePhoto(options?:{saveToGallery?:boolean}){const token=generation,video=preview;if(!video||!stream||video.readyState<2)throw Error('Camera is not ready.');"
         },
         {
-          "line": 315,
+          "line": 324,
           "text": "const width=video.videoWidth,height=video.videoHeight;if(width<=0||height<=0||width*height>32_000_000)throw Error('Unsupported photo dimensions.');"
         },
         {
-          "line": 316,
+          "line": 325,
           "text": "const canvas=drawCameraFrame(video,{zoom,mirror});"
         },
         {
-          "line": 317,
+          "line": 326,
           "text": "const image=canvas.toDataURL('image/jpeg',0.85);if(!image.startsWith('data:image/jpeg;base64,'))throw Error('Photo encoding failed.');"
         },
         {
-          "line": 318,
+          "line": 327,
           "text": "const photo={base64:image.slice('data:image/jpeg;base64,'.length),format:'jpeg',width,height};if(token!==generation)throw Error('Camera view changed.');"
         },
         {
-          "line": 322,
+          "line": 331,
           "text": "const id=photoId();"
         },
         {
-          "line": 333,
+          "line": 342,
           "text": "const track=stream?.getVideoTracks()[0],token=generation,enabled=input.settings.flash==='on';if(!track)throw Error('Start camera first.');"
         },
         {
-          "line": 343,
+          "line": 352,
           "text": "const token=generation,session=videoSession;"
         },
         {
-          "line": 345,
+          "line": 354,
           "text": "const clip=await videoCapture.stop(),id=mediaId();"
         },
         {
-          "line": 357,
+          "line": 355,
+          "text": "const path=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reade"
+        },
+        {
+          "line": 366,
           "text": "const bitmap=await createImageBitmap(file);"
         },
         {
-          "line": 362,
-          "text": "const image=canvas.toDataURL('image/jpeg',.9);signal.throwIfAborted();if(!image.startsWith('data:image/jpeg;base64,')||image.length>12_000_000)throw Error('This image could not be prepared.');"
-        },
-        {
-          "line": 368,
-          "text": "const controller=new AbortController(),previous=document.activeElement;let current:ImportedCameraImage|undefined,selection=0,closed=false,attempted=false;"
-        },
-        {
           "line": 369,
-          "text": "const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Choose camera image');dialog.className='scan-dialog';"
+          "text": "const scale=Math.min(1,2048/Math.max(bitmap.width,bitmap.height)),canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math"
         },
         {
           "line": 370,
-          "text": "const heading=document.createElement('h2');heading.textContent='Choose an image';"
+          "text": "const ctx=canvas.getContext('2d');if(!ctx)throw Error('Image processing is unavailable.');ctx.fillStyle='white';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,"
         },
         {
-          "line": 373,
-          "text": "const preview=document.createElement('img');preview.alt='Selected image preview';preview.hidden=true;preview.style.cssText='width:100%;max-height:220px;object-fit:contain';"
-        },
-        {
-          "line": 375,
-          "text": "const actions=document.createElement('div');actions.className='scan-dialog-actions';"
-        },
-        {
-          "line": 376,
-          "text": "const button=(text:string)=>{const b=document.createElement('button');b.textContent=text;b.type='button';actions.append(b);return b;};"
+          "line": 371,
+          "text": "const image=canvas.toDataURL('image/jpeg',.9);signal.throwIfAborted();if(!image.startsWith('data:image/jpeg;base64,')||image.length>12_000_000)throw Error('This image could not be "
         },
         {
           "line": 377,
-          "text": "const store=button('Save to Photos'),read=button('Scan text'),close=button('Cancel');store.disabled=read.disabled=true;store.className='primary';"
+          "text": "const controller=new AbortController(),previous=document.activeElement;let current:ImportedCameraImage|undefined,selection=0,closed=false,attempted=false;"
+        },
+        {
+          "line": 378,
+          "text": "const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Choose camera image');dialog.className='scan-dialog';"
         },
         {
           "line": 379,
-          "text": "const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();dispose();},visibility=()=>{if(document.hidden)dispose();};"
+          "text": "const heading=document.createElement('h2');heading.textContent='Choose an image';"
+        },
+        {
+          "line": 380,
+          "text": "const description=document.createElement('p');description.textContent='Choose a local JPEG, PNG or WebP. Scan runs locally. Save to Photos creates a JPEG copy up to 2,048 pixels; y"
+        },
+        {
+          "line": 381,
+          "text": "const label=document.createElement('label');label.textContent='Image file';const input=document.createElement('input');input.type='file';input.accept='image/jpeg,image/png,image/we"
+        },
+        {
+          "line": 382,
+          "text": "const preview=document.createElement('img');preview.alt='Selected image preview';preview.hidden=true;preview.style.cssText='width:100%;max-height:220px;object-fit:contain';"
+        },
+        {
+          "line": 383,
+          "text": "const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-label','Image import status');status.textContent='Nothing is saved or scanne"
         },
         {
           "line": 384,
+          "text": "const actions=document.createElement('div');actions.className='scan-dialog-actions';"
+        },
+        {
+          "line": 385,
+          "text": "const button=(text:string)=>{const b=document.createElement('button');b.textContent=text;b.type='button';actions.append(b);return b;};"
+        },
+        {
+          "line": 386,
+          "text": "const store=button('Save to Photos'),read=button('Scan text'),close=button('Cancel');store.disabled=read.disabled=true;store.className='primary';"
+        },
+        {
+          "line": 388,
+          "text": "const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();dispose();},visibility=()=>{if(document.hidden)dispose();};"
+        },
+        {
+          "line": 393,
           "text": "read.onclick=()=>{if(closed||attempted||!current)return;const image=current.original;dispose();scan(image);};"
+        },
+        {
+          "line": 394,
+          "text": "const content=document.createElement('div');content.className='scan-dialog-content';content.tabIndex=0;content.setAttribute('role','region');content.setAttribute('aria-label','Revi"
         }
       ]
     },
@@ -18335,7 +18414,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "4930d99c2bc8c0f38c9a5a39166069f9d9af083401751f8d8f8070fff9ce9f30",
+      "sha256": "33df1b6b253aee7dd928b171c821e9f076291abc8da05938aa2dd04245a4b235",
       "stateAnchors": [
         {
           "line": 31,
@@ -18354,8 +18433,28 @@
           "text": "let scanRequest:(()=>boolean)|undefined;"
         },
         {
+          "line": 132,
+          "text": "const ZOOM_STOPS: [number, string][] = [[0.5, '.5'], [1, '1×'], [2, '2'], [5, '5']];"
+        },
+        {
+          "line": 160,
+          "text": "const prototype = (Component as { prototype?: ShellPrototype } | undefined)?.prototype;"
+        },
+        {
           "line": 161,
           "text": "let installed = true;"
+        },
+        {
+          "line": 180,
+          "text": "const module = views.camera;"
+        },
+        {
+          "line": 184,
+          "text": "const prototype=(_Component as any)?.prototype, originalApi=prototype?.api;"
+        },
+        {
+          "line": 186,
+          "text": "const value=originalApi.call(this,key);"
         },
         {
           "line": 198,
@@ -18462,6 +18561,10 @@
           "text": "const ticket:EditCompletion={token:operationId,epoch:token,source:row.id};let pendingCopy:PendingNativeVideoCopy|undefined;"
         },
         {
+          "line": 276,
+          "text": "async function transformEdit(owner:Bag,rotate:boolean,chosenFilter?:string){const current=edit;if(!current||current.busy||current.uncertain)return;current.busy=true;const rotation="
+        },
+        {
           "line": 300,
           "text": "let recoveringEdit=false,automaticEditRecovery='';"
         },
@@ -18470,8 +18573,16 @@
           "text": "const epoch=editEpoch,source=owner.get('photos').open;let ticket:EditCompletion|undefined;"
         },
         {
+          "line": 312,
+          "text": "const current=edit;if(!current||current.busy||replace&&!current.canReplace)return;"
+        },
+        {
+          "line": 313,
+          "text": "const ticket:EditCompletion={token:current.operationId,epoch:editEpoch,source:current.source,replace};"
+        },
+        {
           "line": 330,
-          "text": "let counts: {favorites:number;videos:number;camera?:number;screenshots?:number;trash:number;canFavorite:boolean} | undefined, countsBusy = false, countsError = false, countsEpoch = 0;"
+          "text": "let counts: {favorites:number;videos:number;camera?:number;screenshots?:number;trash:number;canFavorite:boolean} | undefined, countsBusy = false, countsError = false, countsEpoch ="
         },
         {
           "line": 331,
@@ -18506,8 +18617,16 @@
           "text": "let trash: SavedPhoto[] = [], trashNext = '', trashLoaded = false, trashLoading = false, mutating = false, refreshAgain = false, trashRefreshAgain = false, trashEpoch = 0;"
         },
         {
+          "line": 390,
+          "text": "const owner=photosApi,open=owner?.get('photos')?.open;"
+        },
+        {
+          "line": 419,
+          "text": "const range=dragRange(drag.order,drag.anchor,id),ids=new Set(drag.base.map(row=>row.id));"
+        },
+        {
           "line": 424,
-          "text": "selecting:!!selection,on,pressed:selection?on:undefined,selCss:on?'background:var(--acc);box-shadow:0 0 0 2px #ffffff':'background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px #ffffff',tileCss:on?'transform:scale(.88);border-radius:6px':'',"
+          "text": "selecting:!!selection,on,pressed:selection?on:undefined,selCss:on?'background:var(--acc);box-shadow:0 0 0 2px #ffffff':'background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 2px #fffff"
         },
         {
           "line": 449,
@@ -18534,8 +18653,20 @@
           "text": "let result:{deletedIds:string[];skippedIds:string[];failedIds:string[]};"
         },
         {
+          "line": 597,
+          "text": "++libraryEpoch;++trashEpoch;const deleted=new Set(result.deletedIds.map(id=>'native-camera-'+id));trash=trash.filter(row=>!deleted.has(row.id));captures=captures.filter(row=>!delet"
+        },
+        {
+          "line": 660,
+          "text": "const marked = new Set<HTMLElement>();"
+        },
+        {
+          "line": 661,
+          "text": "const style = document.createElement('style');"
+        },
+        {
           "line": 664,
-          "text": "[data-alpha-camera-screen]{background:linear-gradient(to bottom,#000 0px,#000 var(--alpha-camera-top),transparent var(--alpha-camera-top),transparent var(--alpha-camera-bottom),#000 var(--alpha-camera-bottom))!important}"
+          "text": "[data-alpha-camera-screen]{background:linear-gradient(to bottom,#000 0px,#000 var(--alpha-camera-top),transparent var(--alpha-camera-top),transparent var(--alpha-camera-bottom),#00"
         },
         {
           "line": 672,
@@ -18586,6 +18717,10 @@
           "text": "let previewReleased = false;"
         },
         {
+          "line": 764,
+          "text": "const waiters = new Set<() => void>();"
+        },
+        {
           "line": 775,
           "text": "let limitStop = false;"
         },
@@ -18594,12 +18729,32 @@
           "text": "let nativeFocus:HTMLElement|undefined,focusTimer:number|undefined;"
         },
         {
+          "line": 777,
+          "text": "const cameraPointers=new Map<number,{x:number;y:number}>();"
+        },
+        {
           "line": 778,
           "text": "let pinchStart=0,pinchZoom=1,pinchUsed=false;"
         },
         {
           "line": 779,
           "text": "let pendingZoom:{ratio:number;token:number}|undefined;"
+        },
+        {
+          "line": 796,
+          "text": "const panel=document.createElement('div');panel.setAttribute('role','alert');panel.setAttribute('aria-label',label);panel.dataset.alphaCameraAccess=kind;"
+        },
+        {
+          "line": 798,
+          "text": "const title=document.createElement('strong');title.textContent=label;"
+        },
+        {
+          "line": 799,
+          "text": "const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;justify-content:center;flex-wrap:wrap';"
+        },
+        {
+          "line": 800,
+          "text": "const action=(text:string,go:()=>void)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.style.cssText='min-height:44px;padding:0 16px;border-radius:2"
         },
         {
           "line": 806,
@@ -18630,6 +18785,10 @@
           "text": "const ZOOM_OFF='background-color:rgba(0,0,0,.65);color:var(--alpha-white);width:34px;height:34px;padding:5px;box-sizing:content-box;background-clip:content-box;font-size:12px';"
         },
         {
+          "line": 1163,
+          "text": "const data = render(st, currentApi);"
+        },
+        {
           "line": 1221,
           "text": "let gridEl:HTMLElement|undefined,gridView={scrollTop:0,viewport:0,width:0,header:40,key:''};"
         },
@@ -18646,35 +18805,91 @@
           "text": "let coverIds=new Set<string>();"
         },
         {
+          "line": 1265,
+          "text": "const token=libraryEpoch,epoch=photoReadEpoch,owner=photosApi;"
+        },
+        {
+          "line": 1268,
+          "text": "const live=new Map(captures.map(row=>[row.id,row] as const));"
+        },
+        {
+          "line": 1270,
+          "text": "const plan=thumbnailPlan(visible,from,to,LIBRARY_LIMITS.thumbnailsKept),shown=new Set(visible.map(row=>row.id)),drop=new Set(plan.drop);"
+        },
+        {
+          "line": 1278,
+          "text": "const requested=new Set(batch),images=new Map(result.items.filter(item=>item.image&&requested.has('native-camera-'+item.id)).map(item=>['native-camera-'+item.id,item.image] as cons"
+        },
+        {
+          "line": 1292,
+          "text": "const token=libraryEpoch,epoch=photoReadEpoch,owner=photosApi;"
+        },
+        {
+          "line": 1300,
+          "text": "const requested=new Set(batch),images=new Map(result.items.filter(item=>item.image&&requested.has('native-camera-'+item.id)).map(item=>['native-camera-'+item.id,item.image] as cons"
+        },
+        {
           "line": 1309,
           "text": "const imageCss=(row:SavedPhoto)=>row.image?`url(\"${row.image}\") center / cover no-repeat`:'var(--s2)';"
+        },
+        {
+          "line": 1321,
+          "text": "const owner=photosApi;if(!owner?.isActive()||disposed)throw new LibraryAgentRefusal('Open Photos, then ask again.');"
+        },
+        {
+          "line": 1343,
+          "text": "const wanted=new Set(operation.ids),rows=captures.filter(row=>wanted.has(nativeId(row.id)));"
+        },
+        {
+          "line": 1392,
+          "text": "const data = photosRender(st, currentApi);data.normalSelecting=true;if(data.v)data.v.notDeleted=true;"
+        },
+        {
+          "line": 1411,
+          "text": "const covers:(SavedPhoto|undefined)[]=[];"
         },
         {
           "line": 1412,
           "text": "const cover=(rows:SavedPhoto[])=>{covers.push(rows[0]);return rows[0]?.image?`url(\"${rows[0].image}\") center / cover no-repeat`:'var(--s2)';};"
         },
         {
-          "line": 1517,
+          "line": 1423,
+          "text": "const shown=manager,{creating,confirmDelete,album,media,items}=shown;"
+        },
+        {
+          "line": 1499,
+          "text": "const offsets:number[]=[];grouped.reduce((at,group,index)=>{offsets[index]=at;return at+group.items.length;},0);"
+        },
+        {
+          "line": 1518,
           "text": "let gesture: { x: number; y: number } | undefined, swiped = false;"
         },
         {
-          "line": 1583,
+          "line": 1537,
+          "text": "const shown=st.album==='trash'?trash:st.album?albumRows:shownCaptures,at=shown.findIndex(row=>row.id===selected.id);"
+        },
+        {
+          "line": 1586,
           "text": "let polling = false;"
         },
         {
-          "line": 1591,
+          "line": 1594,
           "text": "let queued = false;"
         },
         {
-          "line": 1592,
+          "line": 1595,
           "text": "let libraryWatching=false;"
         },
         {
-          "line": 1605,
+          "line": 1608,
           "text": "let libraryChangeHandle:{remove():Promise<void>}|undefined;"
         },
         {
-          "line": 1646,
+          "line": 1637,
+          "text": "const copy=pendingNativeVideoCopy;"
+        },
+        {
+          "line": 1649,
           "text": "let resumeHandle:{remove():Promise<void>}|undefined;"
         }
       ],
@@ -31575,7 +31790,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "7ea841da6289d86cb85593de89096c0c5711a9d32039b306c6f1b26089ca396d",
+      "sha256": "d18811a6e554ca2551148c2f57d1256c4c8ea1e9cd5a6c28b21aac4f1567b6b4",
       "stateAnchors": [],
       "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
     },
@@ -32878,7 +33093,7 @@
     },
     {
       "path": "apps/app/src/prototype/selection-adapter.ts",
-      "sha256": "7561e51f3094cc126a499cb0709eeb9e2a35c397de6ad972b5a9c36fd9d8b08d",
+      "sha256": "ee8b3d15fa400cd3043a2db85aeb7f83de9d0a2e79cd6199ec1d4d43066a4356",
       "models": [
         "FilesBrowserController",
         "FilesFilter",
@@ -32890,7 +33105,7 @@
       "stateAnchors": [
         {
           "line": 5,
-          "text": "const sourceFiles=registerPlugin<{readSelected(input:{selectionId:string}):Promise<MailAttachment & {sha256:string;size:number;sourceReferenceVersion?:1}>;retainSourceReference(input:{selectionId:stri"
+          "text": "const sourceFiles=registerPlugin<{readSelected(input:{selectionId:string}):Promise<MailAttachment & {sha256:string;size:number;sourceReferenceVersion?:1}>;retainSourceReference(inp"
         },
         {
           "line": 22,
@@ -32950,7 +33165,7 @@
         },
         {
           "line": 47,
-          "text": "const publish = () => window.dispatchEvent(new CustomEvent('alpha-selected-context', { detail: current?.result.selectionId && current.result.status === 'selected' ? { kind: 'document', id: current.res"
+          "text": "const publish = () => window.dispatchEvent(new CustomEvent('alpha-selected-context', { detail: current?.result.selectionId && current.result.status === 'selected' ? { kind: 'docume"
         },
         {
           "line": 48,
@@ -32971,10 +33186,6 @@
         {
           "line": 55,
           "text": "const share = async (api: Bag) => {"
-        },
-        {
-          "line": 56,
-          "text": "const id = current?.result.selectionId;"
         },
         {
           "line": 60,
@@ -33017,12 +33228,8 @@
           "text": "const old=filesIndex.list().find(row=>row.selectionId===selected.result.selectionId);if(old)filesIndex.remove(old.key);filesIndex.setOpen(null);"
         },
         {
-          "line": 99,
-          "text": "const old=filesIndex.list().find(row=>row.selectionId===selected.result.selectionId);"
-        },
-        {
           "line": 100,
-          "text": "if(old&&response.selectionId){if(old.selectionId!==response.selectionId)filesIndex.remove(old.key);for(const evicted of filesIndex.record({kind:old.kind,...(old.treeId?{treeId:old.treeId}:{}),name:res"
+          "text": "if(old&&response.selectionId){if(old.selectionId!==response.selectionId)filesIndex.remove(old.key);for(const evicted of filesIndex.record({kind:old.kind,...(old.treeId?{treeId:old."
         },
         {
           "line": 107,
@@ -33046,11 +33253,7 @@
         },
         {
           "line": 115,
-          "text": "const openId = filesIndex.open(); if (openId) void DailyApps.describeSelected({ selectionId: openId }).then(result => {if(epoch === requestedEpoch && !current && result.status === 'selected')void acce"
-        },
-        {
-          "line": 118,
-          "text": "const selected = current;"
+          "text": "const openId = filesIndex.open(); if (openId) void DailyApps.describeSelected({ selectionId: openId }).then(result => {if(epoch === requestedEpoch && !current && result.status === "
         },
         {
           "line": 119,
@@ -33066,7 +33269,7 @@
         },
         {
           "line": 122,
-          "text": "const image = mime.startsWith('image/') && (uri?.startsWith('content://') || (!Capacitor.isNativePlatform() && uri?.startsWith('blob:'))) ? Capacitor.convertFileSrc(uri) : undefined;"
+          "text": "const image = mime.startsWith('image/') && (uri?.startsWith('content://') || (!Capacitor.isNativePlatform() && uri?.startsWith('blob:'))) ? Capacitor.convertFileSrc(uri) : undefine"
         },
         {
           "line": 123,
@@ -33082,7 +33285,7 @@
         },
         {
           "line": 127,
-          "text": "closeQuestion=reviewContentQuestion({name:selected.pdf?name+' · page '+(selected.pdf.page+1):name,text:selected.text??'',current:()=>current===selected&&api.get(module).open===marker&&!document.hidden"
+          "text": "closeQuestion=reviewContentQuestion({name:selected.pdf?name+' · page '+(selected.pdf.page+1):name,text:selected.text??'',current:()=>current===selected&&api.get(module).open===mark"
         },
         {
           "line": 129,
@@ -33090,7 +33293,7 @@
         },
         {
           "line": 132,
-          "text": "read:async()=>{const file=await sourceFiles.readSelected({selectionId:selected.result.selectionId!});if(file.name!==name||file.mimeType!==mime)throw Error('Selected file changed. Select it again.');re"
+          "text": "read:async()=>{const file=await sourceFiles.readSelected({selectionId:selected.result.selectionId!});if(file.name!==name||file.mimeType!==mime)throw Error('Selected file changed. S"
         },
         {
           "line": 139,
@@ -33106,29 +33309,34 @@
         },
         {
           "line": 148,
-          "text": "needsReselect:selected.result.status === 'renamed-reselect', reselect:async()=>{try{const result=await DailyApps.perform({action:'files'});if(current===selected&&result.status==='selected')await accep"
+          "text": "needsReselect:selected.result.status === 'renamed-reselect', reselect:async()=>{try{const result=await DailyApps.perform({action:'files'});if(current===selected&&result.status==='s"
         },
         {
           "line": 166,
           "text": "const back = definition.back;"
         },
         {
-          "line": 172,
-          "text": "if (recent) for (const evicted of filesIndex.record({ ...recent, name: result.name || 'Selected document', mimeType: result.mimeType || 'application/octet-stream', selectionId: result.selectionId })) "
+          "line": 173,
+          "text": "if (recent) for (const evicted of filesIndex.record({ ...recent, name: result.name || 'Selected document', mimeType: result.mimeType || 'application/octet-stream', selectionId: res"
         },
         {
-          "line": 174,
+          "line": 175,
           "text": "const requestEpoch = epoch;"
         },
         {
-          "line": 178,
+          "line": 179,
           "text": "const target = result.mimeType?.startsWith('image/') && (module === 'photos' || result.action === 'photos') ? 'photos' : 'files';"
         },
         {
-          "line": 183,
+          "line": 184,
           "text": "const response = await DailyApps.readSelected({ selectionId: result.selectionId });"
+        },
+        {
+          "line": 202,
+          "text": "const out=renderFiles(state,api),items=out.fd?.items;out.filePlacement=true;out.shareAvailable=Capacitor.isNativePlatform()||(typeof navigator.share==='function'&&typeof navigator."
         }
-      ]
+      ],
+      "reviewStatus": "state-audit-required"
     },
     {
       "path": "apps/app/src/prototype/settings-adapter.ts",
@@ -33223,7 +33431,7 @@
     },
     {
       "path": "apps/app/src/prototype/share-panel-adapter.ts",
-      "sha256": "23a3eb45e4307571601edac8f5cb444843d6740a750b62d35220b79336557d89",
+      "sha256": "78cd92628c18316667fec89715a9207f3c171468ebf4fdbb9ba83ea6b2aa4f74",
       "models": [
         "FilesAndSharing"
       ],
@@ -33239,8 +33447,12 @@
           "text": "let owner:Bag|undefined;"
         },
         {
+          "line": 11,
+          "text": "let calendarText='';"
+        },
+        {
           "line": 12,
-          "text": "prototype.componentDidMount=function(){mount.call(this);owner=this;if(views.inbox)setShareEmailComposer((title,text)=>{if(owner!==this||document.hidden)throw Error('Email view changed.');const snapsho"
+          "text": "prototype.componentDidMount=function(){mount.call(this);owner=this;if(views.inbox)setShareEmailComposer((title,text)=>{if(owner!==this||document.hidden)throw Error('Email view chan"
         },
         {
           "line": 15,
@@ -33256,27 +33468,27 @@
         },
         {
           "line": 21,
-          "text": "const api=shell.api(module),safe=(run:()=>unknown)=>async()=>{try{if(!current())throw Error('The selection changed. Choose it again.');await run();}catch(error){if(!(error instanceof DOMException&&err"
+          "text": "const api=shell.api(module),safe=(run:()=>unknown)=>async()=>{try{if(!current())throw Error('The selection changed. Choose it again.');await run();}catch(error){if(!(error instance"
         },
         {
           "line": 25,
-          "text": "if(values.browser){const view=values.browser;bind('browser',view,'openShare',{title:'Current page',email:typeof view.shareEmail==='function'?view.shareEmail:undefined,copy:typeof view.copyLink==='func"
+          "text": "if(values.browser){const view=values.browser;bind('browser',view,'openShare',{title:'Current page',email:typeof view.shareEmail==='function'?view.shareEmail:undefined,copy:typeof v"
         },
         {
           "line": 26,
-          "text": "if(values.photos){const view=values.photos;if(view.v)bind('photos',view.v,'share',{title:view.v.shareLabel||'Selected photo',email:view.v.canEmail?view.v.email:undefined,save:view.v.saveLocally});bind"
+          "text": "if(values.photos){const view=values.photos;if(view.v)bind('photos',view.v,'share',{title:view.v.shareLabel||'Selected photo',email:view.v.canEmail?view.v.email:undefined,save:view."
         },
         {
           "line": 28,
-          "text": "if(values.files){const view=values.files;if(view.pv)bind('files',view.pv,'share',{title:view.pv.name||'Selected file',email:view.pv.canEmail?view.pv.email:undefined,emailUnavailable:null});bind('files"
+          "text": "if(values.files){const view=values.files;if(view.pv)bind('files',view.pv,'share',{title:view.pv.name||'Selected file',email:view.pv.canEmail?view.pv.email:undefined,emailUnavailabl"
         },
         {
           "line": 29,
-          "text": "if(values.calendar?.ev){const event=values.calendar.ev;const text=[event.title,event.day,event.when,event.where,event.notes].filter(value=>typeof value==='string'&&value).join('\\n\\n');"
+          "text": "if(values.calendar?.ev){const event=values.calendar.ev;const text=[event.title,event.day,event.when,event.where,event.notes].filter(value=>typeof value==='string'&&value).join('\\n\\"
         },
         {
           "line": 31,
-          "text": "const snapshot=selectedText({title:String(event.title||'Calendar event'),text});void openSharePanel({title:snapshot.title,current,external:()=>shareSelectedText(snapshot).catch(()=>api.toast('Android "
+          "text": "const snapshot=selectedText({title:String(event.title||'Calendar event'),text});void openSharePanel({title:snapshot.title,current,external:()=>shareSelectedText(snapshot).catch(()="
         }
       ],
       "reviewStatus": "state-audit-required",
@@ -33888,7 +34100,7 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "f353e6df276a3e39412fb045a91e6c5ff892476f1a00fd5a5e4c40e90ce3132d",
+      "sha256": "ec98e1f044873d87741ccad4610726d1b732075d87093561e7a6f48a0b127de0",
       "stateAnchors": [],
       "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
     },
@@ -36310,39 +36522,39 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "387fe43c3f50d4178544829022ea57c98c067def418594212bcfb043cd562029",
+      "sha256": "f91451b0e8c040e8a393f5dfe0ecd5d3d46e2c00af41a49d1dfecb3e9af92091",
       "stateAnchors": [
         {
           "line": 10,
           "text": "export const AUTOMATION_RESOURCE_KINDS=['lifeops.definition','lifeops.occurrence','lifeops.scheduled_task','trigger.task','workflow.definition'] as const;"
         },
         {
-          "line": 86,
+          "line": 88,
           "text": "const records=new Map<string,AutomationRow>();for(const row of rows)if(!records.has(row.key))records.set(row.key,row);"
         },
         {
-          "line": 90,
+          "line": 92,
           "text": "constructor(private request:AutomationRequest,private deliveryConversationId?:string){}"
         },
         {
-          "line": 94,
+          "line": 96,
           "text": "signal.throwIfAborted();const rows:AutomationRow[]=[],issues:AutomationIssue[]=[];"
         },
         {
-          "line": 102,
-          "text": "const request:ObjectValue={kind:'prompt',displayName:title,instructions,triggerType:draft.triggerType,timezone:id?draft.timezone:workflowDeviceTimeZone(),...(this.deliveryConversationId?{deliveryConversationId:this.deliveryConversationId}:{})};"
+          "line": 104,
+          "text": "const request:ObjectValue={kind:'prompt',displayName:title,instructions,triggerType:draft.triggerType,timezone:id?draft.timezone:workflowDeviceTimeZone(),...(this.deliveryConversat"
         },
         {
-          "line": 111,
+          "line": 113,
           "text": "let response:unknown;"
         },
         {
-          "line": 115,
+          "line": 117,
           "text": "let current:ObjectValue;try{current=await this.prompt(id,signal);}catch{throw error;}"
         },
         {
-          "line": 148,
-          "text": "if(row.kind!=='reminder'||!message.trim())throw Error('Add a reminder message.');const definition=object(row.record.definition),payload:ObjectValue=definition.cadence?.kind==='once'&&definition.metadata?.ownerSurface==='OWNER_REMINDERS'&&text(definition.description).trim()?{description:message.trim()}:{title:message.trim()};"
+          "line": 156,
+          "text": "if(row.kind!=='reminder'||!message.trim())throw Error('Add a reminder message.');const definition=object(row.record.definition),payload:ObjectValue=definition.cadence?.kind==='once"
         }
       ],
       "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates."
@@ -44861,11 +45073,11 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "fb2264d0d1adc4a95f7b6e334af28d47fcb44017a93ebfd9a6f5d159e335e093",
+      "sha256": "06973ee563e28941efc6f3a616ae43f08353cd14d68a1d2f77e7b250d1f9788c",
       "stateAnchors": [
         {
           "line": 4,
-          "text": "const notice=document.createElement('p');notice.setAttribute('role','alert');notice.textContent='Sharing is unavailable. No completed handoff is confirmed.';Object.assign(notice.style,{position:'fixed"
+          "text": "const notice=document.createElement('p');notice.setAttribute('role','alert');notice.textContent='Sharing is unavailable. No completed handoff is confirmed.';Object.assign(notice.st"
         },
         {
           "line": 6,
@@ -44893,74 +45105,74 @@
         },
         {
           "line": 19,
-          "text": "const theme=document.querySelector('.os');if(theme){const style=getComputedStyle(theme);dialog.style.fontSize=style.fontSize;dialog.style.fontFamily=style.fontFamily;for(const name of ['--bg','--fg','"
+          "text": "const theme=document.querySelector('.os');if(theme){const style=getComputedStyle(theme);dialog.style.fontSize=style.fontSize;dialog.style.fontFamily=style.fontFamily;for(const name"
         },
         {
           "line": 20,
-          "text": "const heading=document.createElement('h2');heading.textContent='Share';heading.style.margin='0 0 8px';"
+          "text": "const heading=document.createElement('h2');heading.textContent='Share';"
         },
         {
           "line": 21,
-          "text": "const title=document.createElement('p');title.textContent=options.title;Object.assign(title.style,{overflowWrap:'anywhere',margin:'0 0 18px',color:'var(--mut,#666)'});"
+          "text": "const header=document.createElement('div');header.className='share-heading';"
         },
         {
           "line": 22,
-          "text": "const status=document.createElement('p');status.setAttribute('role','status');"
-        },
-        {
-          "line": 23,
-          "text": "const retirementEvents=['launcher-home','alpha:device-state','alpha:dev-incoming-call'];"
+          "text": "const close=document.createElement('button');close.type='button';close.className='share-close';close.setAttribute('aria-label','Close share');close.style.font='inherit';header.appe"
         },
         {
           "line": 24,
-          "text": "let selectionWatch:ReturnType<typeof setInterval>;"
+          "text": "const status=document.createElement('p');status.setAttribute('role','status');"
         },
         {
           "line": 25,
-          "text": "let closed=false;"
+          "text": "const retirementEvents=['launcher-home','alpha:device-state','alpha:dev-incoming-call'];"
         },
         {
           "line": 26,
-          "text": "const finish=()=>{if(closed)return;closed=true;document.removeEventListener('visibilitychange',hidden);window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',finish);"
+          "text": "let selectionWatch:ReturnType<typeof setInterval>;"
         },
         {
           "line": 27,
-          "text": "const hidden=()=>{if(document.hidden)finish();};"
+          "text": "let closed=false;"
         },
         {
           "line": 28,
-          "text": "const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();finish();};"
+          "text": "const finish=()=>{if(closed)return;closed=true;document.removeEventListener('visibilitychange',hidden);window.removeEventListener('alpha-back',back,true);window.removeEventListener"
         },
         {
           "line": 29,
-          "text": "const action=(label:string,run?:()=>unknown|Promise<unknown>,reason?:string)=>{"
+          "text": "const hidden=()=>{if(document.hidden)finish();};"
         },
         {
           "line": 30,
-          "text": "const button=document.createElement('button');button.type='button';button.textContent=label;Object.assign(button.style,{display:'block',width:'100%',minHeight:'48px',padding:'12px 16px',marginTop:'8px"
+          "text": "const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();finish();};"
         },
         {
           "line": 31,
-          "text": "if(!run){button.disabled=true;button.style.opacity='.5';if(reason){const hint=document.createElement('p');hint.textContent=reason;hint.style.fontSize='13px';dialog.append(button,hint);return;}}"
+          "text": "const action=(label:string,run?:()=>unknown|Promise<unknown>,reason?:string)=>{"
         },
         {
           "line": 32,
-          "text": "button.onclick=()=>{if(closed)return;if(document.hidden||!options.current()){status.textContent='The selection changed. Close and choose it again.';return;}finish();try{void Promise.res"
+          "text": "const button=document.createElement('button');button.type='button';button.className='share-row';button.style.font='inherit';button.textContent=label;button.style.setProperty('--sha"
         },
         {
-          "line": 37,
-          "text": "action('Cancel',()=>{});dialog.append(status);dialog.addEventListener('cancel',event=>{event.preventDefault();finish();});dialog.addEventListener('close',finish);"
+          "line": 33,
+          "text": "if(!run){button.disabled=true;button.style.opacity='.5';if(reason){const hint=document.createElement('p');hint.textContent=reason;hint.style.fontSize='13px';dialog.append(button,hi"
         },
         {
-          "line": 39,
-          "text": "dialog.addEventListener('keydown',event=>{if(event.key!=='Tab')return;const buttons=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')),first=buttons[0],last=buttons.at(-1)"
-        },
-        {
-          "line": 40,
-          "text": "document.addEventListener('visibilitychange',hidden);window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',finish);for(const event of retirementEvents)window.addEventListe"
+          "line": 34,
+          "text": "button.onclick=()=>{if(closed)return;if(document.hidden||!options.current()){status.textContent='The selection changed. Close and choose it again.';return;}finish();try{void Promis"
         },
         {
           "line": 41,
+          "text": "dialog.addEventListener('keydown',event=>{if(event.key!=='Tab')return;const buttons=Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')),first=buttons[0]"
+        },
+        {
+          "line": 42,
+          "text": "document.addEventListener('visibilitychange',hidden);window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',finish);for(const event of retirementEvents)"
+        },
+        {
+          "line": 44,
           "text": "try{dialog.showModal();dialog.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();}catch{finish();}"
         }
       ]
