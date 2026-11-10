@@ -450,7 +450,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   // The independent browser alarm list remains a durable local feature.
   await page.goto('/');
   await button(page, 'Workflows').click();
-  await button(page, 'Clock alarms').click();
+  await button(page, 'New automation').click(); await button(page, 'Clock alarms').click();
   let clock = page.getByRole('dialog', {name: 'Clock alarms', exact: true});
   await clock.getByRole('textbox', {name: 'Alarm label'}).fill('Flag-off web alarm');
   await clock.getByLabel('Alarm time', {exact: true}).fill('07:15');
@@ -458,7 +458,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   await expect(clock.getByText('Flag-off web alarm', {exact: true})).toHaveCount(1);
   await page.reload();
   await button(page, 'Workflows').click();
-  await button(page, 'Clock alarms').click();
+  await button(page, 'New automation').click(); await button(page, 'Clock alarms').click();
   clock = page.getByRole('dialog', {name: 'Clock alarms', exact: true});
   await expect(clock.getByText('Flag-off web alarm', {exact: true})).toHaveCount(1);
   expect(await storedEvents(page)).toEqual([]);
@@ -797,8 +797,9 @@ async function openAndroidCalendar(page:Page){
  await selectCalendarSource(page, 'Android calendars');
 }
 
-test('loop B / J02 on Android: recorded note UI and the retained scheduling contract save one reminder and device event only on Save', async ({ page }) => {
+test('loop B / J02 on Android: explicit recording and transcript summary survive restart without automatic sends', async ({ page }) => {
   test.setTimeout(240_000);
+  page.setDefaultTimeout(15_000);
   // Tomorrow crosses the week boundary; the saved day must be reachable after reload.
   await page.clock.setFixedTime(new Date('2026-11-01T12:00:00Z'));
   const foreign = await fenceNetwork(page);
@@ -806,32 +807,38 @@ test('loop B / J02 on Android: recorded note UI and the retained scheduling cont
   await residentHome(page);
   const writes = () => native(page, f => ({ reminders: f.writes.reminders.length, events: f.writes.events.length }));
 
-  // 1. Record with the native recorder, transcribed on the phone (on-device voice host); Done saves the note.
+  // 1. Recording saves audio only. Transcription is an explicit action on that saved note.
   await openAndroidCalendar(page);
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await openRetainedNativeNotes(page);
   await button(page, 'Record voice note').click();
-  // The recorder starts at once; its finished segment is transcribed on the phone while it records.
-  await expect.poll(() => native(page, f => f.voice.transcriptions.map((row: any) => row.recordingId))).toEqual(['00000000-0000-4000-8000-000000000001-s0']);
-  expect(await native(page, f => f.calls.filter((call: string) => call === 'AlphaVoiceCloud.transcribeRecording'))).toEqual([]);
+  expect(await native(page, f => f.voice.transcriptions)).toEqual([]);
   expect(await savedNotes(page)).toEqual([]);
-  await button(page, 'Done').click();
+  await button(page, 'Stop recording').click();
   await expect(button(page, 'Play recording')).toBeVisible();
   await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Venue meeting');
-  await expect.poll(async () => (await savedNotes(page)).filter(n => n.kind === 'voice' && n.title === 'Venue meeting' && n.body === TRANSCRIPT && !!n.audio?.audioId).length).toBe(1);
+  await expect.poll(async () => (await savedNotes(page)).filter(n => n.kind === 'voice' && n.title === 'Venue meeting' && !n.body && !!n.audio?.audioId).length).toBe(1);
+  expect(await native(page, f => f.voice.transcriptions)).toEqual([]);
+  await button(page, 'Generate transcript').click();
+  await expect.poll(() => native(page, f => f.voice.transcriptions.length)).toBe(1);
+  await expect.poll(async () => (await savedNotes(page)).filter(n => n.title === 'Venue meeting' && n.body === TRANSCRIPT).length).toBe(1);
   const recorded = (await savedNotes(page))[0];
 
-  // 2. Review the transcript with the resident agent; its answer is a summary and action items.
+  // 2. Attach the retained transcript to a question; selection itself sends nothing.
   await page.evaluate(reply => { (window as any).coreLoops.replies = [reply]; }, JSON.stringify({ summary: SUMMARY, actions: ACTIONS.split('\n') }));
-  await button(page, 'Review transcript with Alpha').click();
-  const question = page.getByRole('dialog', { name: 'Ask about selected content' });
-  await expect(question.getByRole('textbox', { name: 'Content excerpt' })).toHaveValue(TRANSCRIPT);
-  await question.getByRole('button', { name: 'Use in conversation', exact: true }).click();
+  await button(page, 'Ask Alpha about this transcript').click();
+  await expect(page.getByRole('group', {name:'Attached transcript',exact:true})).toBeVisible();
+  expect(await native(page, f => f.posts.length)).toBe(0);
   await button(page, 'Send').click();
   const card = page.getByRole('button', { name: /^Review summary note/ });
   await expect(card).toHaveCount(1, { timeout: 20_000 });
   expect(await native(page, f => f.posts.length)).toBe(1);
-  expect(await native(page, f => f.posts[0])).toContain(TRANSCRIPT);
+  // The request carries the exact authorized note reference; the resident reads
+  // its retained transcript through the selected-note protocol.
+  expect(await native(page, f => f.posts[0])).toContain('Summarize this for me');
+  const submitted=JSON.parse(await native(page, f => f.bodies[0]));
+  expect(submitted.metadata.clientDevice.context.selectedObject).toMatchObject({kind:'note',id:recorded.id});
+  expect(submitted.metadata.clientDevice.context.selectedObject.revision).toMatch(/^[a-f0-9]{64}$/);
   await card.click();
   const summary = page.getByRole('dialog', { name: 'Save reviewed summary note' });
   await expect(summary.getByRole('textbox', { name: 'Summary note text' })).toHaveValue(SUMMARY);
@@ -844,62 +851,18 @@ test('loop B / J02 on Android: recorded note UI and the retained scheduling cont
   // Saving the summary schedules nothing.
   expect(await writes()).toEqual({ reminders: 0, events: 0 });
 
-  // 3. Retained Notes-to-Calendar contract: reviewed in Calendar, written once on Save.
-  await button(page, 'Minimize chat').click();
-  await reviewNoteScheduleContract(page,'reminder');
-  await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue(ACTIONS);
-  expect(await writes()).toEqual({ reminders: 0, events: 0 });
-  await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Book the venue');
-  await button(page, 'Save event').click();
-  await expect.poll(writes).toEqual({ reminders: 1, events: 0 });
-  const reminder = (await native(page, f => f.writes.reminders))[0];
-  expect(reminder).toMatchObject({ title: 'Book the venue', body: ACTIONS });
-  await page.getByRole('button', { name: /^Book the venue,/ }).click();
-  await expect(page.getByText('From note: Venue meeting', { exact: true })).toBeVisible();
-
-  // 4. Retained event contract from the note: written once to the device calendar on Save.
-  await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  await button(page, 'Notes').click();
-  await button(page, 'Open Venue meeting').click();
-  await reviewNoteScheduleContract(page,'event');
-  await expect(page.getByRole('textbox', { name: 'Notes', exact: true })).toHaveValue(ACTIONS);
-  expect(await writes()).toEqual({ reminders: 1, events: 0 });
-  await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Venue walkthrough');
-  await button(page, 'Save event').click();
-  await expect(page.getByRole('heading', { name: 'Venue walkthrough', level: 1 })).toBeVisible();
-  await expect.poll(writes).toEqual({ reminders: 1, events: 1 });
-  const event = (await native(page, f => f.writes.events))[0];
-  // The note draft targets the phone's own local calendar (form calendar 'native:local').
-  expect(event).toMatchObject({ calendarId: 'local', title: 'Venue walkthrough', body: ACTIONS, begin: reminder.dueAt, end: reminder.dueAt + 3_600_000 });
-  // The event's review shows no note link before the reload below.
-  await expect(page.getByText(/From note/)).toHaveCount(0);
-
-  // 5. Reload once: both records are still there, exactly once, and nothing is written again.
-  await page.reload();
-  await expect.poll(() => native(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
-  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 30_000 });
-  // Reopen the retained Notes source before resolving its saved backlinks.
+  // The owner removed the scheduling menu controls. Their retained contract is
+  // exercised by note-calendar-handoff.spec.ts and journey-b-voice-note-actions.spec.ts
+  // on the development renderer, never by injecting a hook into production.
+  const retained=(await savedNotes(page))[0];
+  await residentHome(page);
   await openRetainedNativeNotes(page);
-  await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  // Device records are reviewed through the explicit Android source; Home uses Agent Calendar.
-  await openAndroidCalendar(page);
-  const savedDate=await page.evaluate(timestamp=>{const date=new Date(timestamp);return date.toLocaleDateString('en-US',{weekday:'long'})+' '+date.toLocaleDateString('en-US',{month:'long'})+' '+date.getDate();},reminder.dueAt);
-  await button(page,'Month view').click();
-  await page.getByRole('dialog',{name:'Choose calendar date',exact:true}).getByRole('button',{name:savedDate,exact:true}).click();
-  await expect(page.getByRole('button', { name: /^Book the venue,/ })).toHaveCount(1);
-  await expect(page.getByRole('button', { name: /^Venue walkthrough,/ })).toHaveCount(1);
-  await page.getByRole('button', { name: /^Book the venue,/ }).click();
-  await expect(page.getByText('From note: Venue meeting', { exact: true })).toBeVisible();
-  expect(await writes()).toEqual({ reminders: 0, events: 0 });
-  expect(await native(page, f => [f.device.reminders.length, f.device.events.length])).toEqual([1, 1]);
-  // Both saved records link back to the note: the reminder by its id, the device event by the creation
-  // id the upstream calendar plugin returns for events the host created (elizaOS/eliza#35912).
-  const links = Object.keys(await native(page, f => JSON.parse(f.slots['note-origins:v1:device']).links));
-  expect(links).toHaveLength(2);
-  expect(links).toContain('reminder:' + reminder.id);
-  expect(links.filter(key => /^event:[0-9a-f-]{36}$/.test(key))).toHaveLength(1);
-  await expectNoDevelopmentSurface(page);
-  expect(await native(page, f => f.unexpected)).toEqual([]);
+  await button(page, 'Open Venue meeting').click();
+  expect((await savedNotes(page))[0]).toEqual(retained);
+  await expect(button(page, 'Ask Alpha about this transcript')).toBeVisible();
+  expect(await native(page, f => f.voice.transcriptions)).toEqual([]);
+  expect(await native(page, f => f.posts)).toEqual([]);
+  expect(await writes()).toEqual({reminders:0,events:0});
   expect(foreign).toEqual([]);
 });
 

@@ -1639,7 +1639,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       } catch(error){if(error&&typeof error==='object'&&'historyChanged' in error)this.messageEditTarget=undefined;this.toast(error instanceof Error?error.message:'Message replacement failed.');return;}
       finally{this.draftSendPending=false;}
     }
-    const sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;
+    let sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;
     context(this);
     const transcript=fromComposer?this.transcriptAttachment:null;
     const mail=fromComposer?(this.mailAttachment??null):null;
@@ -1649,6 +1649,16 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const requestText=mail?mailText+'\n\nQuestion: '+text:transcript?'Use the transcript of the selected voice note to answer this question.\n\n'+text:text;
     const transcriptCurrent=()=>!transcript||(this.S().view==='notes'&&JSON.stringify(this.notesSelection)===transcript.selection&&this.transcriptAttachment===transcript);
     if(!transcriptCurrent()){this.toast('The recording changed. Remove the transcript or attach it again.');return;}
+    if(transcript){
+      const note=this.vget('notes').list.find((item:Shell)=>item.id===this.notesSelection?.id),snapshot=JSON.stringify(note);
+      try{
+        if(!note?.audio)throw Error('Recording unavailable');
+        const revision=await recordingRevision(note);
+        if(!transcriptCurrent()||JSON.stringify(this.vget('notes').list.find((item:Shell)=>item.id===note.id))!==snapshot)throw Error('Recording changed');
+        const recording={kind:'recording',version:1,noteId:note.id,revision};
+        sourceDraft=sourceOf({...recording,name:transcript.title})??sourceOf({...recording,name:'Selected voice note'});
+      }catch{this.toast('The recording changed. Remove the transcript or attach it again.');return;}
+    }
     const revision=alphaClient.getState().context.revision,connection=connectionController.getSnapshot(),sessionId=connection.session?.sessionId,conversationId=connection.history?.conversationId;
     const current=()=>{const selected=connectionController.getSnapshot();return this.live&&!document.hidden&&(!selected.busy||selected.backgroundWork===true)&&!selected.open&&!document.querySelector('[data-alpha-chat-recorder],[data-alpha-pill-voice]')&&selected.session?.sessionId===sessionId&&selected.history?.conversationId===conversationId&&alphaClient.getState().context.revision===revision;};
     const heldText=String(s.draft||'');let heldKey:string|undefined;
@@ -1880,12 +1890,16 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       this.closeSummaryReview=reviewSummaryNote({text:review.text,source:review.source,current,save:async(fields)=>{
         const update=(title:string,sub:string)=>{if(this.live)this.setState({msgs:this.S().msgs.map((m:Shell)=>m.id===message.id?{...m,card:{...m.card,done:true,title,sub}}:m)});};
         // The agent's Notes: saved as a new note. Its record does not carry the source link.
-        const canonical=this.notesSourceMode!=='legacy'&&!recording?this.canonicalNotesUi:null;
+        const canonical=this.notesSourceMode!=='legacy'?this.canonicalNotesUi:null;
         if(canonical?.current){
           if(!current())return false;
           update('Saving summary note','Inspect Notes before retrying if this is interrupted.');
-          const saved=await canonical.saveCard(fields.title?fields.title+(fields.body?'\n'+fields.body:''):fields.body,this.api('notes'));
-          update(saved?'Summary note saved':'Check Notes before retrying',saved?'Saved in Notes':'Save is unconfirmed.');return saved;
+          const saved=recording
+            ?await canonical.update(recording.noteId,{summary:[fields.body],actions:fields.actions||[],onCal:false})
+            :await canonical.saveCard(fields.title?fields.title+(fields.body?'\n'+fields.body:''):fields.body,this.api('notes'));
+          const savedNote=recording&&saved?canonical.list.find((note:Shell)=>note.id===recording.noteId):null;
+          const confirmed=saved&&(!recording||(canonical===this.canonicalNotesUi&&canonical.current&&savedNote?.body===recordingNote.body&&savedNote?.title===recordingNote.title&&savedNote?.audio?.audioId===recordingNote.audio.audioId&&JSON.stringify(savedNote.summary)===JSON.stringify([fields.body])&&JSON.stringify(savedNote.actions)===JSON.stringify(fields.actions||[])));
+          update(confirmed?(recording?'Recording summary saved':'Summary note saved'):'Check Notes before retrying',confirmed?'Saved in Notes':'Save is unconfirmed.');return confirmed;
         }
         if(!current()||this.notesStorageFailed||this.notesPending)return false;
         update('Saving summary note','Inspect Notes before retrying if this is interrupted.');
