@@ -507,6 +507,7 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/local-agent-storage.ts",
     "apps/app/src/runtime/local-agent-stream.ts",
     "apps/app/src/runtime/local-agent.ts",
+    "apps/app/src/runtime/local-reply-speech.ts",
     "apps/app/src/runtime/local-speech-text.ts",
     "apps/app/src/runtime/local-voice.ts",
     "apps/app/src/runtime/mail-html.ts",

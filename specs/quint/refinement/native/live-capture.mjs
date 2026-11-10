@@ -9,7 +9,7 @@ import {currentNativeSource,nativePatchInputs,sharedRecordingSources} from './sh
 
 export function liveCaptureSources(platform){
  const voice='vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/';
- return [...sharedRecordingSources(platform).map(path=>path.endsWith('/LiveCaptureAdmission.java')?currentNativeSource('LiveCaptureAdmission.java'):path),...['LiveCaptureController','LiveSegmentPipe','LiveVoiceCapture','LiveCaptureResource','LiveCaptureSource','LiveVadGate'].map(name=>['LiveCaptureController','LiveVoiceCapture','LiveSegmentPipe'].includes(name)?currentNativeSource(name+'.java'):voice+name+'.java'),directory+'/LiveCapturePorts.java'];
+ return [...sharedRecordingSources(platform).map(path=>path.endsWith('/LiveCaptureAdmission.java')?currentNativeSource('LiveCaptureAdmission.java'):path),...['LiveCaptureController','LiveSegmentPipe','LiveVoiceCapture','LiveCaptureResource','LiveCaptureSource'].map(name=>['LiveCaptureController','LiveVoiceCapture','LiveSegmentPipe'].includes(name)?currentNativeSource(name+'.java'):voice+name+'.java'),directory+'/LiveCapturePorts.java'];
 }
 export function probeLiveCapture(mode='permission'){
  const platform=liveCapturePlatform(),state=mkdtempSync(join(tmpdir(),'quint-live-capture-'));
