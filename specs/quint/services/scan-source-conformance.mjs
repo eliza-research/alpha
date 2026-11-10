@@ -21,6 +21,7 @@ const stubs = new Map([
   ['../browser/file-picker', 'export const inputFiles = async () => []; export const runFilePicker = async () => [];'],
   ['./scan-pdf', `
     export class ScanPdfExportError extends Error {}
+    export const scanExportTitle = () => 'Scan document';
     export const exportScanPdf = () => globalThis.scanPorts.export();
     export const duringSystemPicker = task => task();
     export const systemPickerActive = () => false;
@@ -31,13 +32,14 @@ const stubs = new Map([
 ]);
 const bundle = await build({
   entryPoints: [sourcePath], bundle: true, write: false, format: 'iife',
-  globalName: 'ScanSource', platform: 'browser',
+  globalName: 'ScanSource', platform: 'browser', loader:{'.css':'empty'},
   plugins: [{
     name: 'isolated-scan-ports',
     setup(builder) {
       builder.onResolve({ filter: /.*/ }, args => {
         if (args.kind === 'entry-point' || args.path.includes('.eliza/client-features/plugins/plugin-native-camera/src/scan-document.ts')
           || args.importer.includes('.eliza/client-features/plugins/plugin-native-camera/src/')) return;
+        if(args.path==='../browser/review'||args.importer.endsWith('/browser/review.ts')&&['./review.css','./screen-locked'].includes(args.path))return;
         if (!stubs.has(args.path)) throw new Error(`Unreviewed scan dependency ${args.path}`);
         return { path: args.path, namespace: 'scan-port' };
       });

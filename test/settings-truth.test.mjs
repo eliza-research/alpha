@@ -20,7 +20,7 @@ test('recorded install-time formatting stays truthful and About never claims the
  assert.match(readFileSync('apps/app/src/build-flags.ts','utf8'),/export const updateChannelCheckEnabled = false as boolean;/);
  assert.equal((source.match(/\.\.\.\(developerTools\?\[info\('Update channel \(development\)',updateChannelCheckEnabled\?'Read-only check on · never downloads or installs':'Off'\)\]:\[\]\)/g)??[]).length,0);
  assert.match(readFileSync('scripts/audit-production-bundle.mjs','utf8'),/'Update channel \(development\)'/);
- // Nothing claims the app is current or that an update failed; Software update has no notice text at all.
+ // An answered manual check may report its result, but never claims this installation is current.
  assert.doesNotMatch(source,/Up to date|Update available|Update failed/);
  assert.doesNotMatch(java,/Up to date|Update available/);
 });

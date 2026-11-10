@@ -9,6 +9,7 @@ export async function guardCalendarFixture(context:BrowserContext){await context
 export const calendarEditorReady=(dialog:Locator)=>expect(dialog.getByRole('button',{name:'Save event',exact:true})).toBeEnabled();
 /** Quiet autosave readiness is its durable receipt, not presentation copy. */
 export async function expectSavedCalendarDraft(page:Page,kind:'creation'|'edit'|'modal',extra:Record<string,unknown>={}){
+ const hidden=kind==='modal'?null:await page.evaluate(()=>{const screen=document.querySelector('[data-screen]') as any;let fiber=screen[Object.keys(screen).find(key=>key.startsWith('__reactFiber$'))!];while(fiber&&!(fiber.stateNode&&typeof fiber.stateNode.vget==='function'))fiber=fiber.return;return fiber.stateNode.vget('calendar').form;});
  const expected=kind==='modal'?{
   title:await page.getByLabel('Event title',{exact:true}).inputValue(),
   body:await page.getByLabel('Event description',{exact:true}).inputValue(),
@@ -17,8 +18,8 @@ export async function expectSavedCalendarDraft(page:Page,kind:'creation'|'edit'|
  }:{
   title:await page.getByRole('textbox',{name:'Title',exact:true}).inputValue(),
   notes:await page.getByRole('textbox',{name:'Notes',exact:true}).inputValue(),
-  where:await page.getByRole('textbox',{name:'Location',exact:true}).inputValue(),
-  video:(await page.getByRole('switch',{name:'Video link',exact:true}).getAttribute('aria-checked'))==='true',
+  where:await page.getByRole('textbox',{name:'Location',exact:true}).count()?await page.getByRole('textbox',{name:'Location',exact:true}).inputValue():hidden.where,
+  video:await page.getByRole('switch',{name:'Video link',exact:true}).count()?(await page.getByRole('switch',{name:'Video link',exact:true}).getAttribute('aria-checked'))==='true':hidden.video,
  };
  await expect.poll(()=>page.evaluate(async kind=>{
   const {assistantDraftStore}=await import('/src/runtime/assistant-draft-store.ts');let binding:string;

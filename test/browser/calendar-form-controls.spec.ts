@@ -43,13 +43,30 @@ test('Start later near midnight never moves the start earlier', async ({ page })
   const later = page.getByRole('button', { name: 'Start later', exact: true });
   await calendar(page, { t: 23.5, d: 1 });
   await later.click();
-  expect((await calendar(page)).form.t).toBe(23.5);
+  expect((await calendar(page)).form.t).toBe(23.75);
   await calendar(page, { t: 22, d: 1 });
   await later.click();
   expect((await calendar(page)).form.t).toBe(22.25);
   await calendar(page, { t: 22.75, d: 1.25 });
   await later.click();
-  expect((await calendar(page)).form.t).toBe(22.75);
+  expect((await calendar(page)).form.t).toBe(23);
+  await page.getByLabel('Start time',{exact:true}).fill('23:59');await later.click();expect((await calendar(page)).form.t).toBe(23+59/60);
+});
+test('reminder drafts show supported fields and keep the event draft fields when switching back',async({page})=>{
+ await page.getByRole('button',{name:'New event',exact:true}).click();
+ await page.getByRole('textbox',{name:'Title',exact:true}).fill('Draft only');
+ await page.getByRole('textbox',{name:'Location',exact:true}).fill('Retained cafe');
+ await page.getByRole('textbox',{name:'Notes',exact:true}).fill('Reminder notes');
+ await page.getByRole('button',{name:'Reminders',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Location',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'End later',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('switch',{name:'Video link',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Add people',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Start later',exact:true})).toBeVisible();
+ await expect(page.getByRole('textbox',{name:'Notes',exact:true})).toHaveValue('Reminder notes');
+ await page.getByRole('button',{name:'In this app',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Location',exact:true})).toHaveValue('Retained cafe');
+ await expect(page.getByRole('button',{name:'End later',exact:true})).toBeVisible();
 });
 
 test('a month that fits five rows draws 35 cells and a six-row month 42', async ({ page }) => {
@@ -62,3 +79,27 @@ test('a month that fits five rows draws 35 cells and a six-row month 42', async 
   await dialog.getByRole('button', { name: 'Previous month', exact: true }).click();
   await expect(cells).toHaveCount(42);
 });
+
+ test('direct dates and minute times reach distant days and an overnight end',async({page})=>{
+  await page.getByRole('button',{name:'New event',exact:true}).click();
+  await expect(page.getByLabel('Start time',{exact:true})).toHaveValue('13:00');
+  await page.getByLabel('Calendar date',{exact:true}).fill('2028-02-29');
+  await page.getByLabel('Start time',{exact:true}).fill('23:17');
+  await page.getByLabel('End date',{exact:true}).fill('2028-03-02');
+  await page.getByLabel('End time',{exact:true}).fill('04:23');
+  await expect(page.getByLabel('Calendar date',{exact:true})).toHaveValue('2028-02-29');
+  await expect(page.getByLabel('End date',{exact:true})).toHaveValue('2028-03-02');
+  expect(Math.round((await calendar(page)).form.d*60)).toBe(1746);
+ });
+ test('typed guest addresses are explicit drafts and deduplicate case-insensitively',async({page})=>{
+  await page.getByRole('button',{name:'New event',exact:true}).click();
+  await page.getByRole('button',{name:'Add people',exact:true}).click();
+  const search=page.getByPlaceholder('Name or email');
+  await search.fill('new.guest@example.org');
+  await page.getByRole('button',{name:'Add new.guest@example.org',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Remove new.guest@example.org',exact:true})).toBeVisible();
+  expect((await calendar(page)).form.who).toEqual(['new.guest@example.org']);
+  await page.getByRole('button',{name:'Add people',exact:true}).click();await search.fill('NEW.GUEST@example.org');
+  await expect(page.getByRole('button',{name:'Add NEW.GUEST@example.org',exact:true})).toHaveCount(0);
+  expect((await calendar(page)).form.who).toHaveLength(1);
+ });

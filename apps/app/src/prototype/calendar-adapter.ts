@@ -1,3 +1,5 @@
+import {confirmCalendarAction} from './calendar-confirmation';
+import {calendarDefaultEventStart} from './calendar-form-inputs';
 import {presentCalendarIntervals} from './calendar-interval-presentation';
 import {refreshDeletionViews} from '../runtime/deletions';
 import {openReminderRecovery,openReminderCreationRecovery,openReminderActionRecovery} from '../browser/reminder-recovery';
@@ -179,7 +181,7 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
     presentCalendarIntervals(render,{...state,events:(state.events||[]).map((e:Bag)=>e.alphaCalendarId||e.googleCalendarRecord?{...e,calendarInterval:true,calendarIntervalData:e.nativeEvent,allDayEndOff:e.nativeAllDayEndOff}:e)},api,out,rangeReady);
     const newEvent=async(separateCreation=false)=>{
       const activeOwner=owner,now=new Date(),day=Number(state.day||0),hour=now.getHours()+now.getMinutes()/60;
-      const draft={id:null,creationId:crypto.randomUUID(),separateCreation,title:'',off:day,t:day===0?Math.min(21,Math.ceil(hour+.01)):10,d:1,where:'',video:false,who:[],cal:'native:local',repeat:'none',alert:null,notes:''};
+      const draft={id:null,creationId:crypto.randomUUID(),separateCreation,title:'',...calendarDefaultEventStart(day,now),d:1,where:'',video:false,who:[],cal:'native:local',repeat:'none',alert:null,notes:''};
       ++creationDraftEpoch;api.set({month:null,form:draft});
       const token=++agentSelectionEpoch;agentSelection=undefined;agentSelectionKey='';
       const current=()=>owner===activeOwner&&!document.hidden&&api.isActive()&&api.get('calendar').form?.creationId===draft.creationId;
@@ -200,8 +202,9 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
         if(current()&&creationPending?.some(row=>row.status!=='saved'))api.toast('This event may already exist. Check Calendar.');
       }catch{if(current()){creationRecoveryFailed=true;api.toast('Can’t check earlier events right now.');api.set({});}}
     };
-    out.separateCreation=()=>{
-      if(!window.confirm('This event may already exist. Create another?'))return;
+    out.separateCreation=async()=>{
+      const shell=owner,form=api.get('calendar').form,epoch=creationDraftEpoch,current=()=>owner===shell&&!!shell?.live&&api.isActive()&&api.get('calendar').form===form&&creationDraftEpoch===epoch;
+      if(!shell||!await confirmCalendarAction(shell,api,'Create another event?','This event may already exist. Check Calendar before creating another.','Create another',current)||!current())return;
       return newEvent(true);
     };
     if(out.f&&state.form){
@@ -269,7 +272,7 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
         const current=api.get('calendar').form,currentOwner=owner;
         if(!current?.title?.trim()||!currentOwner)return;
         if(!Capacitor.isNativePlatform()&&current.allDay){api.toast('All-day events are saved in the Android app. Turn off All day and enter a start time to save here. Nothing was saved.');return;}
-        if(Capacitor.isNativePlatform()&&calendarNeedsHandoff(current)){if(window.confirm('Guests, video calls and alerts are added in Android Calendar. Open it with this event filled in?'))await out.f.insertHandoff();return;}
+        if(Capacitor.isNativePlatform()&&calendarNeedsHandoff(current)){const exact=()=>owner===currentOwner&&currentOwner.live&&api.isActive()&&api.get('calendar').form===current;if(await confirmCalendarAction(currentOwner,api,'Open in Android Calendar?','Guests, video calls and alerts are added in Android Calendar. Open it with this event filled in?','Open Calendar',exact)&&exact())await out.f.insertHandoff();return;}
         if(Capacitor.isNativePlatform()&&calendarUsesOptions(current,deviceZone)){
           if(current.alphaCalendarId){api.toast('Edit all-day, time-zone and repeating events in Android Calendar.');return;}
           await saveOptions(current,currentOwner);return;

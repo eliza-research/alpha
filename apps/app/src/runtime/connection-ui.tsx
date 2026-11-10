@@ -14,7 +14,8 @@ import {sanitizeNativeInferenceTiming,type NativeInferenceTiming,type NativeInfe
 import {activeVoiceTurn} from './voice-timing';
 import {residentRecoveryReason,residentRecoveryMessage,residentRecoveryCopy,residentBootMessage,residentLivenessCheck,RESIDENT_RECOVERY_PENDING,type ResidentRecoveryReason,type ResidentRecoveryView} from './resident-recovery';
 import {anyAbortSignal} from './abort-signal';
-import {CALENDAR_APPROVAL_READ_PATH,calendarApprovalFromList,calendarApprovalId} from './calendar-approval';
+import {type CalendarApproval,type CalendarApprovalDecision} from './calendar-approval';
+import {CalendarApprovalClient} from './calendar-approval-client';
 import {readDevicePreferences} from '../browser/device-preferences';
 import {resolveCloudEnvironment} from './cloud-environment-selection';
 import { withResidentMapsNavigation } from '../maps/resident-relay.ts';
@@ -800,11 +801,13 @@ function update(patch: Partial<ConnectionSnapshot>) {
 // P-43: where the resident is always present no "no agent" choice is ever stored.
 function save(selection: Selection) { localStorage.setItem(SELECTION, JSON.stringify(residentAlwaysPresent && (selection.kind === 'none' || selection.kind === 'offline') ? { kind: 'resident' } : selection)); }
 function retire(name?: string) {
+  const retiringResident=active?.kind==='resident'?active.remote:undefined;
   clearClientObservationSupport();
   retireConversationEvents();
   retireReadReplies();
-  const retirement=Promise.allSettled([state.session?pauseHostedBackground(state.session.sessionId):Promise.resolve(),retireClockReviews()]).then(results=>{const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;});
-  void retirement.catch(()=>update({error:'Couldn’t stop background delivery. Reconnect to reset it.'}));
+  const retirement=Promise.allSettled([state.session?pauseHostedBackground(state.session.sessionId):Promise.resolve(),retireClockReviews(),Promise.resolve().then(()=>retiringResident?.disconnect())]).then(results=>{const failed=results.find(result=>result.status==='rejected');if(failed?.status==='rejected')throw failed.reason;});
+  const retiringEpoch=epoch+1;
+  void retirement.catch(()=>{if(epoch===retiringEpoch&&!active)update({error:'Couldn’t stop background delivery. Reconnect to reset it.'});});
   if (testMocksEnabled && active?.kind === 'cloud') { active.cloud.setPhoneTarget(null); if (state.session) void secureConnectionStore.remove(`cloud-runtime:${state.session.sessionId}`).catch(()=>{}); }
   active?.viewNavigation?.dispose();
   actionReceipts.clear();
@@ -2158,6 +2161,12 @@ async function restoreOptionalBrowserCloudAccount():Promise<boolean>{
  return true;
 }
 
+const calendarApprovals=new CalendarApprovalClient(signal=>{
+ const selected=active,session=state.session,generation=epoch,history=state.history,account=service;
+ if(selected?.kind!=='resident'||!session||state.open||state.busy||document.hidden)throw Error('Calendar review is unavailable on this connection.');
+ const current=()=>{signal.throwIfAborted();if(generation!==epoch||active!==selected||state.session!==session||state.history!==history||service!==account||state.open||state.busy||document.hidden)throw Error('The agent or conversation changed.');};
+ return {ownerId:session.ownerId,current,request:selected.remote.request.bind(selected.remote)};
+});
 export const connectionController = {
   /** A canceled update may reopen only the resident this page prepared. */
   captureAppUpdateReconnect(){
@@ -2239,12 +2248,9 @@ export const connectionController = {
     return result;
   },
   async readCalendarApproval(id:string,signal:AbortSignal){
-    const selected=active,session=state.session,generation=epoch,history=state.history,account=service;
-    if(!calendarApprovalId(id)||selected?.kind!=='resident'||!session||state.open||state.busy||document.hidden)throw Error('Calendar review is unavailable on this connection.');
-    const current=()=>{signal.throwIfAborted();if(generation!==epoch||active!==selected||state.session!==session||state.history!==history||service!==account||state.open||state.busy||document.hidden)throw Error('The agent or conversation changed.');};
-    current();const result=await selected.remote.request(CALENDAR_APPROVAL_READ_PATH,undefined,signal);current();
-    return calendarApprovalFromList(result,id,session.ownerId);
+    return calendarApprovals.read(id,signal);
   },
+  async resolveCalendarApproval(row:CalendarApproval,decision:CalendarApprovalDecision,signal:AbortSignal){return calendarApprovals.resolve(row,decision,signal);},
   async pendingActions(context:ContextEnvelope,signal:AbortSignal):Promise<ActionProposal[]> {
     const selected=active,session=state.session,generation=epoch,history=state.history;
     if(!selected?.actions||!session||state.open||state.busy||document.hidden||context.sensitive)return [];

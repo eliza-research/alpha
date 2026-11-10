@@ -1,10 +1,11 @@
-// AOSP role and permission admission, durable SMS evidence, reminders and Clock handoff.
+// AOSP role and permission admission, durable SMS evidence, contacts and reminders.
+// Actual Clock review/journal/handoff evidence belongs to NativeClockReview.
 module DeviceActions {
   type State = {
     image: bool, foreground: bool, unlocked: bool, permission: bool, sim: int,
     phase: str, reviewSim: int, reviewText: int, text: int, journaled: bool,
     dispatches: int, parts: int, sentParts: Set[int], deliveryReport: bool,
-    providerComplete: bool, retiredId: bool, handoff: str,
+    providerComplete: bool, retiredId: bool,
     reminder: str, reminderRevision: int, deliveredRevision: int,
     reminderCreation: str, reminderAttempts: int, accessEpoch: int, contacts: str, contactsEpoch: int
   }
@@ -14,7 +15,7 @@ module DeviceActions {
     image: false, foreground: true, unlocked: true, permission: false, sim: 0,
     phase: "new", reviewSim: -1, reviewText: -1, text: 0, journaled: false,
     dispatches: 0, parts: 1, sentParts: Set(), deliveryReport: false,
-    providerComplete: false, retiredId: false, handoff: "none",
+    providerComplete: false, retiredId: false,
     reminder: "none", reminderRevision: 0, deliveredRevision: -1,
     reminderCreation: "none", reminderAttempts: 0, accessEpoch: 0, contacts: "none", contactsEpoch: -1
   }
@@ -81,7 +82,6 @@ module DeviceActions {
     s' = {retiredId: true, phase: "retired", ...s}
   }
   action repeatOperation = s' = s
-  action handoffClock = s' = s.with("handoff", "handed-off")
   // Collapsed successful local creation, plus granular durable-intent/recovery actions below.
   action scheduleReminder = all {
     s.reminder == "none", s.reminderCreation == "none", s.reminderAttempts == 0,
@@ -127,7 +127,7 @@ module DeviceActions {
     nondet status = Set("none", "pending", "todo", "scheduled", "permission-denied", "scheduling-failed").oneOf()
     any { admitImage, review(parts), editText, simChanges, permissionLost, pause, resumeDevice, beginContactsRead, contactsReply(revision),
       dispatch(flag), dispatchReturns(flag), sentCallback(part, flag), reportDelivery(flag),
-      reboot, retire, repeatOperation, handoffClock, scheduleReminder, stageReminder, reminderResult(status),
+      reboot, retire, repeatOperation, scheduleReminder, stageReminder, reminderResult(status),
       reconcileReminder(flag), completeReminder, reminderFires(revision), snooze, stopReminder, s' = s }
   }
   val SingleSmsDispatch = s.dispatches.in(Set(0, 1))
@@ -137,13 +137,12 @@ module DeviceActions {
   val DeliveryNeedsProviderEvidence = s.phase == "delivered" implies
     s.parts == 1 and s.deliveryReport and s.providerComplete
   val RetiredIdNeverForgotten = s.retiredId implies s.phase == "retired" and s.dispatches == 1
-  val HandoffIsHonest = s.handoff.in(Set("none", "handed-off"))
   val ReminderCurrent = s.reminder == "posted" implies s.deliveredRevision == s.reminderRevision
   val ContactReadCurrent = s.contacts == "loaded" implies
     s.contactsEpoch == s.accessEpoch and s.permission and s.image and s.foreground and s.unlocked
   val ReminderCreationDoesNotReplay = s.reminderAttempts.in(Set(0, 1))
   val safety = ContactReadCurrent and ReminderCreationDoesNotReplay and SingleSmsDispatch and SmsNeedsReviewAndJournal and SentRequiresAllCallbacks and
-    DeliveryNeedsProviderEvidence and RetiredIdNeverForgotten and HandoffIsHonest and ReminderCurrent
+    DeliveryNeedsProviderEvidence and RetiredIdNeverForgotten and ReminderCurrent
 
   run smsDeliveryEvidenceTest = init.then(admitImage).then(review(1)).then(dispatch(true))
     .then(dispatchReturns(true)).then(sentCallback(0, true)).then(reportDelivery(false))
@@ -169,6 +168,4 @@ module DeviceActions {
   run silentTodoCompletesWithoutAlertTest = init.then(stageReminder).then(reminderResult("todo"))
     .then(completeReminder).then(reminderFires(0))
     .then(check(safety and s.reminder == "completed" and s.deliveredRevision == -1))
-  run clockHandoffDoesNotClaimRingTest = init.then(handoffClock)
-    .then(check(safety and s.handoff == "handed-off" and s.reminder == "none"))
 }

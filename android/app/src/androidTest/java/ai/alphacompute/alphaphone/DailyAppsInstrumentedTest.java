@@ -254,9 +254,20 @@ public class DailyAppsInstrumentedTest {
    assertEquals("Refused cancellation leaves the reminder posted", "posted", ReminderTestAccess.read(context, id).getString("status"));
    // The reviewed deletion pauses the alert at once (its notice is withdrawn) and commits at expiry.
    focused();
-   begin(scenario, "(async()=>{const target=await Capacitor.Plugins.DailyApps.selectedReminder({id:"+JSONObject.quote(id)+"});return Capacitor.Plugins.AlphaDeletions.reviewReminder({target});})()");
-   confirmReminderDeletion("Device flow test " + id);
-   assertEquals("queued", result(scenario).getString("status"));
+   java.util.List<String> deletionMainThreadIo=new java.util.concurrent.CopyOnWriteArrayList<>();
+   java.util.concurrent.atomic.AtomicReference<android.os.StrictMode.ThreadPolicy> previousPolicy=new java.util.concurrent.atomic.AtomicReference<>();
+   WebViewTestDriver.withActivity(MainActivity.class,activity->{
+    previousPolicy.set(android.os.StrictMode.getThreadPolicy());
+    android.os.StrictMode.setThreadPolicy(new android.os.StrictMode.ThreadPolicy.Builder(previousPolicy.get()).detectDiskReads().detectDiskWrites().penaltyListener(Runnable::run,violation->{
+     for(StackTraceElement frame:violation.getStackTrace())if(frame.getClassName().equals(AlphaDeletionsPlugin.class.getName())){deletionMainThreadIo.add(violation.toString());break;}
+    }).build());
+   });
+   try{
+    begin(scenario, "(async()=>{const target=await Capacitor.Plugins.DailyApps.selectedReminder({id:"+JSONObject.quote(id)+"});return Capacitor.Plugins.AlphaDeletions.reviewReminder({target});})()");
+    confirmReminderDeletion("Device flow test " + id);
+    assertEquals("queued", result(scenario).getString("status"));
+   }finally{WebViewTestDriver.withActivity(MainActivity.class,activity->android.os.StrictMode.setThreadPolicy(previousPolicy.get()));}
+   assertTrue("Native reminder review must not read or write storage on the main thread: "+deletionMainThreadIo,deletionMainThreadIo.isEmpty());
    boolean withdrawn = false;
    for (int i = 0; i < 50 && !withdrawn; i++) {
     withdrawn = true;

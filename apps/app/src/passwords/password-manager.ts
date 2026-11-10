@@ -28,10 +28,10 @@ export const passwordSurfaceOpen = (settings: Bag | undefined | null) => PASSWOR
 let client: PasswordsClient | null | undefined;
 let resolving: Promise<PasswordsClient | null> | undefined;
 let status: PasswordsStatus | null = null, entries: PasswordEntrySummary[] | null = null;
-let query = '', busy = '', notice = '', draft: Draft | null = null, generation = 0, active = false;
+let query = '', busy = '', notice = '', draft: Draft | null = null, generation = 0, lifetime = 0, operation = 0, active = false;
 // The vault key was lost or invalidated (for example, the screen lock was removed): the records
 // can never be decrypted, and the only action is a confirmed, freshly unlocked reset.
-let damaged = false, confirmReset = false;
+let damaged = false, confirmReset: number | null = null;
 let expiry: ReturnType<typeof setTimeout> | undefined;
 // Whether Alpha's browser can attest which site owns a login field (WebView capability only).
 let browserFill: { available: boolean } | null = null;
@@ -59,6 +59,7 @@ function transferClient(): PasswordTransferClient | null {
 
 function clearSecrets() { if (draft) draft.password = ''; draft = null; }
 function lockState(message: string) {
+  ++generation; confirmReset = null;
   entries = null; if (status) status = { ...status, locked: true, unlockRemainingMs: 0 };
   if (expiry) clearTimeout(expiry); expiry = undefined; notice = message;
 }
@@ -71,33 +72,38 @@ function expired(message: string) {
 }
 
 /** Native browser capability; no tab, page or credential data crosses this call. */
-async function refreshBrowserFill() {
+async function refreshBrowserFill(current: () => boolean) {
   if (!Capacitor.isNativePlatform()) return;
   try {
     const result = await registerPlugin<{ loginFillStatus(): Promise<{ available?: unknown }> }>('AlphaBrowser').loginFillStatus();
-    browserFill = { available: result?.available === true };
-  } catch { browserFill = null; }
+    if (current()) browserFill = { available: result?.available === true };
+  } catch { if (current()) browserFill = null; }
 }
 
 async function refresh() {
-  void refreshBrowserFill().then(() => notify());
-  const token = ++generation, vault = await resolveClient();
-  if (!vault || token !== generation) { notify(); return; }
+  if (!active || document.hidden) return;
+  confirmReset = null;
+  const token = ++generation, visit = lifetime;
+  const current = () => active && !document.hidden && token === generation && visit === lifetime;
+  void refreshBrowserFill(current).then(() => { if (current()) notify(); });
+  const vault = await resolveClient();
+  if (!current()) return;
+  if (!vault) { notify(); return; }
   try {
     const next = await vault.status();
-    if (token !== generation) return;
+    if (!current()) return;
     status = next;
-    if (next.locked) expired(notice);
+    if (next.locked) { expired(notice); notify(); return; }
     else {
       const list = await vault.list();
-      if (token !== generation) return;
+      if (!current()) return;
       entries = list;
       if (expiry) clearTimeout(expiry);
       // Reflect the native unlock window; native code enforces it independently.
       expiry = setTimeout(() => { expired('Locked after the unlock time ended.'); notify(); }, Math.max(1000, next.unlockRemainingMs));
     }
   } catch (error) {
-    if (token !== generation) return;
+    if (!current()) return;
     const failure = passwordsError(error);
     if (failure.code === 'locked') expired('Locked.');
     else { if (failure.code === 'key-invalidated') { damaged = true; locked(); } notice = failure.message; }
@@ -105,12 +111,17 @@ async function refresh() {
   notify();
 }
 
-async function run(name: string, task: (vault: PasswordsClient) => Promise<void>, fail?: (message: string) => void) {
+async function run(name: string, task: (vault: PasswordsClient, current: () => boolean) => Promise<void>, fail?: (message: string) => void) {
+  const visit = lifetime, current = () => active && !document.hidden && visit === lifetime;
+  if (!current() || busy) return;
   const vault = await resolveClient();
-  if (!vault || busy) return;
+  if (!vault || !current() || busy) return;
+  const ticket = ++operation;
   busy = name; notice = ''; notify();
-  try { await task(vault); }
+  try { await task(vault, current); }
   catch (error) {
+    if (!current()) return;
+    confirmReset = null;
     const failure = passwordsError(error);
     if (failure.code === 'locked') expired('Locked.');
     else if (failure.code === 'key-invalidated') { damaged = true; locked(failure.message); }
@@ -121,7 +132,7 @@ async function run(name: string, task: (vault: PasswordsClient) => Promise<void>
     // this warning when the generic vault mapper replaces native error text.
     if (name === 'export') notice = 'Export did not complete. The selected file may contain passwords; delete it if you do not need it.';
     else if (name === 'import') notice = 'Import did not complete. Check saved passwords before trying again.';
-  } finally { busy = ''; notify(); }
+  } finally { if (ticket === operation) { busy = ''; if (active && !document.hidden) notify(); } }
 }
 
 /** Leaving New or Edit password for the list forgets the typed password; the list stays unlocked. */
@@ -130,7 +141,7 @@ export function leavePasswordEntry() { clearSecrets(); }
 /** Leaving the password pages, unmounting or backgrounding locks and forgets everything. */
 export function leavePasswordManager() {
   if (!active) return;
-  active = false; ++generation; query = ''; notice = ''; damaged = false; confirmReset = false; locked();
+  active = false; ++lifetime; ++operation; busy = ''; query = ''; notice = ''; damaged = false; locked();
   void resolveClient().then(vault => vault?.lock()).catch(() => {});
 }
 
@@ -157,6 +168,7 @@ const captioned = (helpers: Helpers, cap: string, rows: Bag[], plain = false): B
 const bindingText = (entry: PasswordEntrySummary) => entry.bindings.map(binding => binding.display).join(', ') || 'No website';
 
 function openEntry(helpers: Helpers, entry: PasswordEntrySummary | null) {
+  if (!active || document.hidden) return;
   clearSecrets();
   draft = { id: entry?.id, label: entry?.label || '', username: entry?.username || '', website: '', keep: entry ? [...entry.bindings] : [], password: '', generate: false, length: 20, confirmDelete: false, error: '' };
   helpers.set({ page: 'password-entry' });
@@ -175,10 +187,10 @@ function save(helpers: Helpers) {
   if (!current.id && !current.generate && !current.password) { current.error = 'Enter or generate a password.'; notify(); return; }
   const secret = current.generate ? undefined : current.password || undefined;
   // The typed password stays in the draft until the vault accepts it, so a retry sends it again.
-  void run('save', async vault => {
+  void run('save', async (vault, currentRun) => {
     const result = await vault.save({ ...(current.id ? { id: current.id } : {}), label: current.label.trim(), username: current.username, websites, keepBindings: current.keep.map(binding => binding.facet), ...(current.generate ? { generate: { length: current.length } } : secret ? { password: secret } : {}) });
     current.password = '';
-    if (draft !== current) return;
+    if (!currentRun() || draft !== current) return;
     draft = null;
     notice = result.generated ? `Saved with a new ${result.length}-character password.` : 'Password saved.';
     helpers.set({ page: 'password-provider' });
@@ -188,6 +200,7 @@ function save(helpers: Helpers) {
 
 /** Rows for Settings → Password manager, placed above the other-provider (Proton) section. */
 export function passwordManagerGroups(helpers: Helpers): Bag[] {
+  if (document.hidden) return [];
   if (!active) { active = true; notice = ''; void refresh(); }
   const vault = client;
   if (vault === undefined) return [captioned(helpers, 'Alpha Phone passwords', [helpers.info('Saved passwords', 'Checking…')])];
@@ -198,17 +211,24 @@ export function passwordManagerGroups(helpers: Helpers): Bag[] {
   else if (!status.available) head.push(helpers.info('Saved passwords', status.reason === 'no-screen-lock' ? 'Set a screen lock first' : 'Unavailable on this device'));
   else if (damaged) {
     head.push(helpers.info('Vault', 'Cannot be decrypted on this phone'));
-    head.push(nav(busy === 'reset' ? 'Deleting…' : confirmReset ? 'Tap again to delete all saved passwords' : 'Delete saved passwords and start over', () => {
-      if (!confirmReset) { confirmReset = true; notify(); return; }
-      void run('reset', async v => { await v.unlock(); await v.reset(); damaged = false; confirmReset = false; notice = 'Saved passwords were deleted. You can add new ones.'; await refresh(); });
+    head.push(nav(busy === 'reset' ? 'Deleting…' : confirmReset !== null ? 'Tap again to delete all saved passwords' : 'Delete saved passwords and start over', () => {
+      if (confirmReset === null) { confirmReset = generation; notify(); return; }
+      const reviewed = confirmReset;
+      void run('reset', async (v, current) => {
+        const reviewedNow = () => current() && damaged && confirmReset === reviewed && generation === reviewed;
+        if (!reviewedNow()) return;
+        await v.unlock(); if (!reviewedNow()) return;
+        await v.reset(); if (!current()) return;
+        damaged = false; confirmReset = null; notice = 'Saved passwords were deleted. You can add new ones.'; await refresh();
+      });
     }, { sub: 'Their key is gone, so they cannot be recovered' }));
   }
   else if (status.locked || !entries) {
     head.push(helpers.info('Vault', 'Locked'));
-    head.push(nav(busy === 'unlock' ? 'Unlocking…' : 'Unlock passwords', () => void run('unlock', async v => { await v.unlock(); await refresh(); }), { sub: status.biometric ? 'Fingerprint, face or screen lock' : 'Screen lock' }));
+    head.push(nav(busy === 'unlock' ? 'Unlocking…' : 'Unlock passwords', () => void run('unlock', async (v, current) => { await v.unlock(); if (current()) await refresh(); }), { sub: status.biometric ? 'Fingerprint, face or screen lock' : 'Screen lock' }));
   } else {
     head.push(helpers.info('Vault', `Unlocked · locks after ${status.unlockSeconds || 60} s or when you leave`));
-    head.push(nav('Lock passwords', () => void run('lock', async v => { await v.lock(); locked(); })));
+    head.push(nav('Lock passwords', () => void run('lock', async (v, current) => { await v.lock(); if (current()) locked(); })));
   }
   if (notice) head.push(helpers.info('Status', notice));
   groups.push(captioned(helpers, 'Alpha Phone passwords', head));
@@ -218,19 +238,21 @@ export function passwordManagerGroups(helpers: Helpers): Bag[] {
     groups.push(helpers.group(shown.length ? shown.map(entry => nav(entry.label, () => openEntry(helpers, entry), { sub: `${entry.username || 'No username'} · ${bindingText(entry)}`, aria: `Open ${entry.label}` })) : [helpers.info(entries.length ? 'No matching passwords' : 'No saved passwords', '')]));
     const move = transferClient();
     if (move) groups.push(captioned(helpers, 'Move passwords', [
-      nav(busy === 'import' ? 'Importing…' : 'Import passwords', () => void run('import', async () => {
+      nav(busy === 'import' ? 'Importing…' : 'Import passwords', () => void run('import', async (_vault, current) => {
         try {
           const result = await move.importVault();
+          if (!current()) return;
           notice = result.imported ? `Imported ${result.imported} ${result.imported === 1 ? 'password' : 'passwords'}${result.skipped ? `, ${result.skipped} not imported` : ''}.` : 'No passwords were imported.';
-        } finally { await refresh(); }
+        } finally { if (current()) await refresh(); }
       }), { sub: 'From a CSV file. You review each website first.' }),
-      nav(busy === 'export' ? 'Exporting…' : 'Export passwords', () => void run('export', async () => {
+      nav(busy === 'export' ? 'Exporting…' : 'Export passwords', () => void run('export', async (_vault, current) => {
         // Native export locks the vault before its fresh authentication, so the list is
         // refreshed after a cancelled or failed export too.
         try {
           const result = await move.exportVault();
+          if (!current()) return;
           notice = `Exported ${result.exported} ${result.exported === 1 ? 'password' : 'passwords'}. The file is not encrypted; delete it when you are done.`;
-        } finally { await refresh(); }
+        } finally { if (current()) await refresh(); }
       }), { sub: 'Unencrypted CSV file. Asks for your screen lock.' }),
     ]));
   }
@@ -265,9 +287,9 @@ export function passwordEntryPage(helpers: Helpers, back: () => void): Bag | nul
   const leave = () => { clearSecrets(); back(); };
   // Locked with a draft open: an edit draft holds vault metadata, so no field value is shown.
   if (!entries) return { isTop: false, notTop: true, cls: 'enter', z: 5, title, hasTitle: true, backLabel: 'Back to Password manager', back: leave, hero: {}, groups: [helpers.group([
-    nav(busy === 'unlock' ? 'Unlocking…' : 'Unlock passwords', () => void run('unlock', async v => { await v.unlock(); await refresh(); }), { sub: 'Locked. Unlock to continue.' }),
+    nav(busy === 'unlock' ? 'Unlocking…' : 'Unlock passwords', () => void run('unlock', async (v, current) => { await v.unlock(); if (current()) await refresh(); }), { sub: 'Locked. Unlock to continue.' }),
   ])] };
-  const set = (patch: Partial<Draft>) => { Object.assign(current, patch, { error: '' }, patch.password || patch.generate ? { passwordDropped: false } : {}); notify(); };
+  const set = (patch: Partial<Draft>) => { if (!active || document.hidden || draft !== current) return; Object.assign(current, patch, { error: '' }, patch.password || patch.generate ? { passwordDropped: false } : {}); notify(); };
   const groups: Bag[] = [
     captioned(helpers, '', [
       input(helpers.ic, 'Name', 'Name', 'text', current.label, value => set({ label: value }), 'user'),
@@ -290,7 +312,7 @@ export function passwordEntryPage(helpers: Helpers, back: () => void): Bag | nul
     const id = current.id;
     groups.push(helpers.group([
       nav('Show password', () => void run('reveal', async v => { await v.reveal(id); }, message => helpers.toast(message)), { sub: 'Shown by Android, hidden after 30 s' }),
-      nav('Copy password', () => void run('copy', async v => { const r = await v.copy(id); helpers.toast(`Copied. Alpha tries to clear it in ${Math.round(r.clearsAfterMs / 1000)} s.`); }, message => helpers.toast(message))),
+      nav('Copy password', () => void run('copy', async (v, current) => { const r = await v.copy(id); if (current()) helpers.toast(`Copied. Alpha tries to clear it in ${Math.round(r.clearsAfterMs / 1000)} s.`); }, message => helpers.toast(message))),
     ]));
   }
   const actions: Bag[] = [];
@@ -300,7 +322,7 @@ export function passwordEntryPage(helpers: Helpers, back: () => void): Bag | nul
     const id = current.id;
     actions.push(button(current.confirmDelete ? 'Tap again to delete' : 'Delete password', () => {
       if (!current.confirmDelete) { set({ confirmDelete: true }); return; }
-      void run('remove', async v => { await v.remove(id); if (draft === current) draft = null; notice = 'Password deleted.'; helpers.set({ page: 'password-provider' }); await refresh(); });
+      void run('remove', async (v, currentRun) => { await v.remove(id); if (!currentRun()) return; if (draft === current) draft = null; notice = 'Password deleted.'; helpers.set({ page: 'password-provider' }); await refresh(); });
     }));
   }
   groups.push(captioned(helpers, '', actions, true));

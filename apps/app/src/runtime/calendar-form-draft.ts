@@ -12,7 +12,7 @@ function validate(value:any,requireCreation=true){
  try{new Intl.DateTimeFormat('en',{timeZone:value.zone});}catch{fail();}
  const f=value.form;if(!f||Array.isArray(f)||Object.keys(f).some(key=>!(fields as readonly string[]).includes(key)))fail();
  for(const key of ['title','notes','where'])if(typeof f[key]!=='string'||f[key].length>(key==='notes'?32768:2048))fail();
- if(!Number.isFinite(f.t)||f.t<0||f.t>=24||!Number.isFinite(f.d)||f.d<=0||f.d>168||typeof f.video!=='boolean'||!Array.isArray(f.who)||f.who.length>100||f.who.some((id:any)=>typeof id!=='string'||id.length>256))fail();
+ if(!Number.isFinite(f.t)||f.t<0||f.t>=24||!Number.isFinite(f.d)||f.d<=0||!Number.isSafeInteger(Math.round(f.d*60))||typeof f.video!=='boolean'||!Array.isArray(f.who)||f.who.length>100||f.who.some((id:any)=>typeof id!=='string'||id.length>256))fail();
  if(typeof f.cal!=='string'||f.cal.length>256||!(f.cal==='alpha-reminders'||f.cal.startsWith('native:')||/^agent:[a-f0-9]{64}$/.test(f.cal))||!(['none','daily','weekdays','weekly'].includes(f.repeat)||/^agent:[a-f0-9]{64}$/.test(f.cal)&&f.repeat==='preserve')||f.alert!==null&&(!Number.isFinite(f.alert)||f.alert<0||f.alert>10080))fail();
  for(const key of ['creationId','reminderCreationId'])if(f[key]!==undefined&&(typeof f[key]!=='string'||!/^[-a-zA-Z0-9_]{1,100}$/.test(f[key])))fail();
  if(f.origin!==undefined&&JSON.stringify(noteLinkOf(f.origin))!==JSON.stringify(f.origin))fail();

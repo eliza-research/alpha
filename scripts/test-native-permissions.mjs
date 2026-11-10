@@ -31,6 +31,13 @@ export const cases = {
 		value: "1",
 		permissions: [["grant", "CAMERA"]],
 	},
+	"camera-document": {
+		testClass: "CameraScanInstrumentedTest",
+		method: "directDocumentCameraRetakeDraftAndPdf",
+		gate: "cameraDocument",
+		value: "1",
+		permissions: [["grant", "CAMERA"]],
+	},
 	settings: {
 		testClass: "SettingsNativeInstrumentedTest",
 		method: "appPermissionsHandoffAndGrantReadback",
@@ -300,6 +307,19 @@ async function main() {
 			? {
 					collectVariant: (context) =>
 						revokeWhileRecording(context, selected, { runId, details }),
+				}
+			: {}),
+		...(scenario === "camera-document"
+			? {
+					collectVariant: async ({ run, androidUser, packageName, directory }) => {
+						for (const stage of ["viewfinder", "review", "draft"]) {
+							const file = `camera-document-${stage}.png`;
+							const encoded = await run("shell", "run-as", packageName, "--user", String(androidUser), "base64", `files/${file}`);
+							const bytes = Buffer.from(encoded, "base64");
+							assert.ok(bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])), `Valid native screenshot: ${file}`);
+							fs.writeFileSync(path.join(directory, file), bytes);
+						}
+					},
 				}
 			: {}),
 	});

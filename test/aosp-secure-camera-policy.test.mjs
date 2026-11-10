@@ -54,11 +54,12 @@ test("the shipped Alpha manifest and native code never put Alpha over Keyguard",
   }
 });
 
-test("the renderer offers its prototype lock-screen camera only in the simulated phone frame", () => {
+test("the renderer lock frame requires Unlock before Camera or the library", () => {
   const model = fs.readFileSync("apps/app/src/prototype/model.js", "utf8");
-  assert.match(model, /lockCameraOffered: !P\.nativeSystemChrome, noLockCamera: !!P\.nativeSystemChrome,/);
-  assert.match(model, /lockCamera: function \(\) \{ if \(P\.nativeSystemChrome\) return; /);
   const template = fs.readFileSync("apps/app/src/prototype/template.html", "utf8");
-  assert.match(template, /<sc-if value="\{\{lockCameraOffered\}\}"><button aria-label="Camera" onClick="\{\{lockCamera\}\}"/);
-  assert.equal(template.match(/onClick="\{\{lockCamera\}\}"/g).length, 1);
+  assert.doesNotMatch(model, /lockCamera(?:Offered)?:/);
+  assert.doesNotMatch(template, /onClick="\{\{lockCamera\}\}"/);
+  assert.doesNotMatch(template, /Unlock with fingerprint/);
+  const fixtures = fs.readFileSync("apps/app/src/prototype/development-system-surfaces.html", "utf8");
+  assert.match(fixtures, /aria-label="Unlock with fingerprint" onClick="\{\{unlock\}\}"/);
 });
