@@ -2,15 +2,31 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "6a30d1df11508f033b2522338e7d9477eb4be500",
-  "head": "b1b2606d736c2fa74ee50cbce839899989f83598",
+  "baseCommit": "7498153eb2ca7ed42babb815fbd32783e80ffb31",
+  "head": "c3dedb6efbb8161f535294371afdbe96ec77027b",
   "recordedAt": "2026-11-10",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...b1b2606d736c2fa74ee50cbce839899989f83598",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...c3dedb6efbb8161f535294371afdbe96ec77027b",
   "status": "diverged",
-  "aheadBy": 9,
-  "behindBy": 34,
+  "aheadBy": 16,
+  "behindBy": 41,
   "mergeBase": "00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
   "pinOnlyCommits": [
+    {
+      "sha": "fe3648acb3ee7acc9a722655f3d4316dc284f625",
+      "subject": "Keep Google map tiles within current admission and viewport attribution"
+    },
+    {
+      "sha": "953e6895be42760e79a4fdf7ab5b1db01e4c4fcc",
+      "subject": "Refuse incomplete Google viewport copyright metadata"
+    },
+    {
+      "sha": "841f8c0a19c06fa19dcc5197c31e54286c6051cc",
+      "subject": "Type the viewport model response action"
+    },
+    {
+      "sha": "268733c01f239b352396abefb1b9a112a3cb65a6",
+      "subject": "Keep map resource failures visible during copyright refresh"
+    },
     {
       "sha": "ece09b3a9d25d76fc910494bbeb5d7a71e46605c",
       "subject": "Voice session: open microphone with speculative turns and barge-in"
@@ -46,9 +62,24 @@
     {
       "sha": "b1b2606d736c2fa74ee50cbce839899989f83598",
       "subject": "Native live voice: accept the VAD end hangover on the assistant listener"
+    },
+    {
+      "sha": "3085a4a6834577859954bdf806e8e2fcbbbea531",
+      "subject": "Merge reviewed Google Maps attribution safeguards into voice runtime"
+    },
+    {
+      "sha": "31a7fc4ca1cd1abc84efbbe0bfae0f7ef07bde20",
+      "subject": "Keep Maps navigation and reviewed routes across view changes"
+    },
+    {
+      "sha": "c3dedb6efbb8161f535294371afdbe96ec77027b",
+      "subject": "Pause unadmitted background guidance and retain its route"
     }
   ],
   "pullRequests": [
-    "https://github.com/elizaOS/eliza/pull/39196"
+    "https://github.com/elizaOS/eliza/pull/39244",
+    "https://github.com/elizaOS/eliza/pull/39231",
+    "https://github.com/elizaOS/eliza/pull/39233",
+    "https://github.com/elizaOS/eliza/pull/39234"
   ]
 }
