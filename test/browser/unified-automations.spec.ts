@@ -89,7 +89,6 @@ test('schedule time and instructions change only after confirmation',async({page
  await expect(page.getByText('Run only when requested.',{exact:true})).toHaveCount(0);
  await page.getByRole('spinbutton',{name:'Hour',exact:true}).fill('9');
  await page.getByRole('spinbutton',{name:'Minute',exact:true}).fill('30');
- await page.getByRole('combobox',{name:'Repeat',exact:true}).selectOption('custom');
  for(const day of ['Sunday','Tuesday','Thursday','Saturday'])await page.getByRole('button',{name:day,exact:true}).click();
  await expect(page.getByRole('button',{name:'Monday',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect(page.getByRole('button',{name:'Tuesday',exact:true})).toHaveAttribute('aria-pressed','false');

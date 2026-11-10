@@ -47,7 +47,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  let state:'idle'|'loading'|'ready'|'failed'='idle',message='',controller:AbortController|null=null,epoch=0,session:string|null=null,loadedSession:string|null=null,history:string[]=[];
  let scheduleDraft:string|null=null;
  let scheduleTime='';
- let scheduleHour='8',scheduleMinute='00',schedulePeriod='AM',scheduleDays=[0,1,2,3,4,5,6],scheduleRepeat='daily';
+ let scheduleHour='8',scheduleMinute='00',schedulePeriod='AM',scheduleDays=[0,1,2,3,4,5,6];
  const setClock=(time:string)=>{scheduleTime=time;const [hour,minute]=time.split(':');scheduleHour=/^([01]\d|2[0-3]):[0-5]\d$/.test(time)?String(Number(hour)%12||12):hour;scheduleMinute=minute||'00';schedulePeriod=Number(hour)>=12?'PM':'AM';};
  const readClock=()=>{const hour=Number(scheduleHour),minute=Number(scheduleMinute);return /^\d{1,2}$/.test(scheduleHour)&&/^\d{1,2}$/.test(scheduleMinute)&&hour>=1&&hour<=12&&minute<=59?String(hour%12+(schedulePeriod==='PM'?12:0)).padStart(2,'0')+':'+String(minute).padStart(2,'0'):'';};
  const repeatFor=(days:number[])=>days.length===7?'daily':days.join(',')==='1,2,3,4,5'?'weekdays':days.join(',')==='0,6'?'weekends':'custom';
@@ -177,7 +177,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
    if(ended)action('Reopen',(client,signal)=>client.scheduledVerb(scheduled.id,'reopen',signal));
    else {
     action('Run now',(client,signal)=>client.scheduledVerb(scheduled.id,'fire',signal));
-    actions.push({label:'Edit schedule',disabled:!!controller||selectedLocked||scheduleBlocked,run:()=>{if(controller||locked(scheduled)||scheduleBlock())return;scheduleDraft=scheduled.description;setClock(scheduleClock?.time??'');scheduleDays=scheduleClock?[...scheduleClock.days]:[0,1,2,3,4,5,6];scheduleRepeat=repeatFor(scheduleDays);publish();}});
+    actions.push({label:'Edit schedule',disabled:!!controller||selectedLocked||scheduleBlocked,run:()=>{if(controller||locked(scheduled)||scheduleBlock())return;scheduleDraft=scheduled.description;setClock(scheduleClock?.time??'');scheduleDays=scheduleClock?[...scheduleClock.days]:[0,1,2,3,4,5,6];publish();}});
     for(const [label,verb] of [['Snooze 1 hour','snooze'],['Acknowledge','acknowledge'],['Complete','complete'],['Dismiss','dismiss']] as const)
      action(label,(client,signal)=>client.scheduledVerb(scheduled.id,verb,signal));
    }
@@ -198,8 +198,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
    changeScheduleHour:(event:Event)=>{scheduleHour=(event.target as HTMLInputElement).value;scheduleTime=readClock();publish();},
    changeScheduleMinute:(event:Event)=>{scheduleMinute=(event.target as HTMLInputElement).value;scheduleTime=readClock();publish();},
    schedulePeriods:['AM','PM'].map(period=>({label:period,selected:period===schedulePeriod,pick:()=>{schedulePeriod=period;scheduleTime=readClock();publish();}})),
-   scheduleRepeat,scheduleCustomDays:scheduleRepeat==='custom',
-   changeScheduleRepeat:(event:Event)=>{scheduleRepeat=(event.target as HTMLSelectElement).value;if(scheduleRepeat!=='custom')scheduleDays=scheduleRepeat==='weekdays'?[1,2,3,4,5]:scheduleRepeat==='weekends'?[0,6]:[0,1,2,3,4,5,6];publish();},
+   schedulePresets:[{label:'Every day',value:'daily',days:[0,1,2,3,4,5,6]},{label:'Weekdays',value:'weekdays',days:[1,2,3,4,5]},{label:'Weekends',value:'weekends',days:[0,6]}].map(preset=>({label:preset.label,selected:repeatFor(scheduleDays)===preset.value,pick:()=>{scheduleDays=[...preset.days];publish();}})),
    scheduleDays:[1,2,3,4,5,6,0].map(day=>({name:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][day],label:['S','M','T','W','T','F','S'][day],selected:scheduleDays.includes(day),pick:()=>{scheduleDays=scheduleDays.includes(day)?scheduleDays.filter(value=>value!==day):[...scheduleDays,day].sort((a,b)=>a-b);publish();}})),
    editingSchedule:!!scheduled&&scheduleDraft!==null,scheduleInstructions:scheduleDraft??'',scheduleSaveDisabled:!!controller||selectedLocked||scheduleBlocked||!scheduleDraft?.trim()||!!scheduleClock&&(!readClock()||!scheduleDays.length),
    changeScheduleInstructions:(event:Event)=>{scheduleDraft=(event.target as HTMLTextAreaElement).value;publish();},

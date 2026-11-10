@@ -156,7 +156,6 @@ export async function scheduledTaskControlsFixture({kind = 'preset', status = 's
       }
     },
     chooseDays(days) {
-      detail().changeScheduleRepeat({target:{value:'custom'}});
       for(const day of [...detail().scheduleDays])if(day.selected !== (days==='*'||days.split(',').includes(String(['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].indexOf(day.name)))))day.pick();
     },
     save() {detail().saveScheduleEdit();},

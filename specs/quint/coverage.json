@@ -17239,7 +17239,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "156f9bb03ed905f2239d5e00f6a6c317132199a7e02e0a4c427ffc883cb50f43",
+      "sha256": "73dab5f7ae768fb4ae62a539661354cdaf32ca908f84e45e683fdc70d9dc6ad0",
       "stateAnchors": [
         {
           "line": 6,
@@ -17548,7 +17548,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "ebf3e2b227c7fa550d10f8eecde05bffca2b6ce7edaeeee4eefb455dcbea74a2",
+      "sha256": "2d5f5cf5b67bf9612acecc993b54bd258a77440e1038cea2eabebebc5d612646",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 inline schedule editor: daily/weekly day selection, no-write draft cancellation, exact reviewed cron payload. ScheduledTaskControls covers bounded day sets and retained owner intent. Month/interval cron remains unmodified. CSS has no scheduling authority."
     },
@@ -34789,7 +34789,7 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "4b6d07435d7708382f11b1b8cbcffdf84bbe4506bb4cd7b3132219c996df4bcd",
+      "sha256": "ef46f71db642e77e78bde0435dceae826afdf3a181cb874f2455b26a6a614884",
       "stateAnchors": [
         {
           "line": 3358,
