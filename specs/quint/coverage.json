@@ -63,7 +63,8 @@
     "scripts/apk.mjs",
     "scripts/source-snapshot.mjs",
     "scripts/verify-apks.mjs",
-    "scripts/verify-packaged-runtime.py"
+    "scripts/verify-packaged-runtime.py",
+    "scripts/dev-ui-remote-host.mjs"
   ],
   "excludedDirectories": [
     ".cxx",
@@ -6404,6 +6405,16 @@
       "stateAnchors": []
     },
     {
+      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaKeyboardDictationService.java",
+      "sha256": "9e16f0fab0d003b221ceaaa70c43fc37236ee501188de47a1d6acdd0b41cfb68",
+      "models": [
+        "KeyboardDictation"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
+    },
+    {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaListenerPlugin.java",
       "sha256": "f1df1c4f3c6f6e594cf86c389e37686f985dcc234dbe69d77ba026c54b934d83",
       "models": [
@@ -7850,6 +7861,26 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "stateAnchors": []
+    },
+    {
+      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationCloud.java",
+      "sha256": "ae71095180173ebfd53b2ea6542ab45b231c006c3ff66acbf11816d0cf04eecf",
+      "models": [
+        "KeyboardDictation"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
+    },
+    {
+      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationPolicy.java",
+      "sha256": "fcb73710c422a050ca78cb003418cbd11beaa589f9e1de71de8452642d1a69c6",
+      "models": [
+        "KeyboardDictation"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/LateLaunch.java",
@@ -43572,6 +43603,15 @@
       "stateAnchors": []
     },
     {
+      "path": "apps/app/src/runtime/note-default-title.ts",
+      "sha256": "9035685853a509f13c3d2228054d9820c269f286afd185f6c2e4b0cb4e42529d",
+      "models": [
+        "NotesLifecycle"
+      ],
+      "treatment": "domain-contract-or-support",
+      "scope": "Pure numbered default title selection from current owner notes and Trash; explicit titles and existing records are unchanged."
+    },
+    {
       "path": "apps/app/src/runtime/note-origin.ts",
       "sha256": "1cd9d3f6d7d014d1e8758fdd1bdda066b38626d0ec5207ed24d20a85f52d25b4",
       "models": [
@@ -46060,6 +46100,17 @@
       ]
     },
     {
+      "path": "apps/app/src/runtime/workflow-local-time.ts",
+      "sha256": "ab81f26c2fc0f1628f5d846cd3cb8f8b4285a22077f7ef78148dc5a37ed9585b",
+      "models": [
+        "WorkflowExecution",
+        "ScheduledTaskControls"
+      ],
+      "treatment": "domain-contract-or-support",
+      "scope": "Pure device-local formatting and datetime validation; source instants and existing foreign-clock recurrences are preserved.",
+      "integrationReview": "2026-11-09 inline schedule editor: daily/weekly day selection, no-write draft cancellation, exact reviewed cron payload. ScheduledTaskControls covers bounded day sets and retained owner intent. Month/interval cron remains unmodified. CSS has no scheduling authority."
+    },
+    {
       "path": "apps/app/src/runtime/workflow-presentation.ts",
       "sha256": "7ff05a8b396f03cb1aaff2a2eb2eabcfe7462c694f9b8298e254f563d28d462f",
       "models": [
@@ -47688,6 +47739,18 @@
           "text": "const portArgs=viteArgs.some(arg=>arg==='--port'||arg.startsWith('--port='))?[]:['--port','5317'];"
         }
       ]
+    },
+    {
+      "path": "scripts/dev-ui-remote-host.mjs",
+      "sha256": "d6015a7ac14423995ce4befaedbf0932fc6d382abf6302f7e4096e0874e0a2d1",
+      "models": [
+        "DevelopmentHost",
+        "DevelopmentSurfaces"
+      ],
+      "scope": "development-runtime",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "integrationReview": "2026-11-10: explicit Cloud renderer profile matches standard dev-cloud entry point. Existing loopback remote host and HMR-off boundaries retained. Live profile and startup require separate observation."
     },
     {
       "path": "scripts/generate-licenses.mjs",
@@ -618387,56 +618450,6 @@
       "reviewStatus": "state-audit-required",
       "sha256": "f646ded3903339759197c4d36bfacd7ed7d5017b5d50e8e70a4cf4a999798735",
       "stateAnchors": []
-    },
-    {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaKeyboardDictationService.java",
-      "sha256": "9e16f0fab0d003b221ceaaa70c43fc37236ee501188de47a1d6acdd0b41cfb68",
-      "models": [
-        "KeyboardDictation"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
-    },
-    {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationCloud.java",
-      "sha256": "ae71095180173ebfd53b2ea6542ab45b231c006c3ff66acbf11816d0cf04eecf",
-      "models": [
-        "KeyboardDictation"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
-    },
-    {
-      "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/KeyboardDictationPolicy.java",
-      "sha256": "fcb73710c422a050ca78cb003418cbd11beaa589f9e1de71de8452642d1a69c6",
-      "models": [
-        "KeyboardDictation"
-      ],
-      "scope": "application",
-      "treatment": "state-and-transition-projection",
-      "integrationReview": "specs/quint/pixel-native-review-20261109.md"
-    },
-    {
-      "path": "apps/app/src/runtime/note-default-title.ts",
-      "sha256": "9035685853a509f13c3d2228054d9820c269f286afd185f6c2e4b0cb4e42529d",
-      "models": [
-        "NotesLifecycle"
-      ],
-      "treatment": "domain-contract-or-support",
-      "scope": "Pure numbered default title selection from current owner notes and Trash; explicit titles and existing records are unchanged."
-    },
-    {
-      "path": "apps/app/src/runtime/workflow-local-time.ts",
-      "sha256": "ab81f26c2fc0f1628f5d846cd3cb8f8b4285a22077f7ef78148dc5a37ed9585b",
-      "models": [
-        "WorkflowExecution",
-        "ScheduledTaskControls"
-      ],
-      "treatment": "domain-contract-or-support",
-      "scope": "Pure device-local formatting and datetime validation; source instants and existing foreign-clock recurrences are preserved.",
-      "integrationReview": "2026-11-09 inline schedule editor: daily/weekly day selection, no-write draft cancellation, exact reviewed cron payload. ScheduledTaskControls covers bounded day sets and retained owner intent. Month/interval cron remains unmodified. CSS has no scheduling authority."
     }
   ],
   "configurationInputs": [
