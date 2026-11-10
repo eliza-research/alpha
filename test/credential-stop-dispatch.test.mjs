@@ -25,7 +25,7 @@ test('actual credential mutation retains a reserved stop across dispatch failure
   const sources=[upstreamAgentRuntime('CredentialShutdownLease.java'),
    file('JsonCredentialSlots.java','package ai.eliza.plugins.securestore.nativeonly;public class JsonCredentialSlots{public static final Object LOCK=new Object();}'),
    file('SystemClock.java','package android.os;public class SystemClock{public static long elapsedRealtime(){return 0;}}'),
-   file('MutationHarness.java',`package ai.alphacompute.alphaphone;
+   file('MutationHarness.java',`package ai.elizaresearch.alphaphone;
 import ai.eliza.plugins.agent.runtime.CredentialShutdownLease;
 public class MutationHarness {
  static class Context{} static class JSONObject{}
@@ -89,6 +89,6 @@ public class MutationHarness {
   System.out.println("PASS exact mutation dispatch ownership: success, throw-after-reserve, late ACK, cancellation, uncertain commit, Retry, successor");
  }
 }`)];
-  assert.match(runJvm(sources,'ai.alphacompute.alphaphone.MutationHarness'),/^PASS exact mutation dispatch ownership.*Retry/);
+  assert.match(runJvm(sources,'ai.elizaresearch.alphaphone.MutationHarness'),/^PASS exact mutation dispatch ownership.*Retry/);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });

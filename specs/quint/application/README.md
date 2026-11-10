@@ -104,3 +104,19 @@ these checks. The inventory records domain allocation, not a proof that every
 source variable or every possible implementation behavior refines its model.
 
 `AccessibleToastLifetime` checks native timeout refresh ownership and the shell's toast timer replacement and expiration.
+
+## Alpha OS defaults and first-run staging
+
+`OSDefaults` covers one-time layout persistence and existing permission choices.
+The Java policy matrix separately checks the exact installed package, Home role,
+system installation and requested permission predicates. `OSProvisioning` covers
+three request generations, late callbacks, authority loss, preserved keyboard
+selection and explicit appearance application. `OSSourceStaging` separates
+all-file admission, preserved preimages, partial failure and final readback.
+
+The source cache contains hash-verified AOSP baseline inputs, not authored
+application code. `.cache` is excluded from the source inventory; the staging
+and policy tests verify those inputs. Models use finite layout classes and
+serialized persistence steps. Eventual completion assumes stable eligible state
+and fair successful callbacks/writes; permanent platform or I/O failure stays
+open. These checks do not prove an image boot, update, rollback or device UX.

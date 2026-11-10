@@ -19,12 +19,12 @@ const java=process.env.JAVA_HOME??'/opt/homebrew/opt/openjdk@21/libexec/openjdk.
 const env={...process.env,JAVA_HOME:java,PATH:`${java}/bin:${process.env.PATH}`};
 const command=(file,args,options={})=>execFileSync(file,args,{encoding:'utf8',env,timeout:60000,stdio:['ignore','pipe','pipe'],...options});
 const adb=(...args)=>command(path.join(sdk,'platform-tools/adb'),['-s',serial,...args]);
-const pkg='ai.alphacompute.alphaphone.otafixture',activity=`${pkg}/${pkg}.OtaActivity`;
+const pkg='ai.elizaresearch.alphaphone.otafixture',activity=`${pkg}/${pkg}.OtaActivity`;
 const packagePath=()=>{try{return adb('shell','pm','path',pkg).trim();}catch(error){if(error.status===1&&!String(error.stdout??'').trim()&&!String(error.stderr??'').trim())return '';throw error;}};
 const sha=file=>createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 const work=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-ota-platform-'));let installed=false;
 const record={schema:'alpha-automatic-update-platform-v1',scope:'Android PackageInstaller self-update API only; not Alpha APK, renderer, HTTPS, AOSP image, physical-device or user acceptance',serial,sourceCommit:command('git',['rev-parse','HEAD'],{cwd:root}).trim(),outcome:'failed'};
-record.sources=Object.fromEntries(['scripts/test-automatic-update-platform.mjs','test/fixtures/automatic-update-android/OtaActivity.java','android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java'].map(file=>[file,sha(path.join(root,file))]));
+record.sources=Object.fromEntries(['scripts/test-automatic-update-platform.mjs','test/fixtures/automatic-update-android/OtaActivity.java','android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java'].map(file=>[file,sha(path.join(root,file))]));
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const read=name=>JSON.parse(adb('exec-out','run-as',pkg,'cat',`files/${name}`));
 async function waitRead(name,predicate=()=>true){for(let i=0;i<60;i++){try{const value=read(name);if(predicate(value))return value;}catch{}await pause(1000);}throw new Error(`Timed out waiting for ${name}`);}
@@ -35,7 +35,7 @@ try{
  assert.equal(adb('shell','getprop','sys.boot_completed').trim(),'1','The disposable emulator must finish booting.');
  record.fingerprint=adb('shell','getprop','ro.build.fingerprint').trim();
  assert.equal(packagePath(),'','Refuse an existing fixture package.');
- const source=fs.readFileSync(path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java'),'utf8');
+ const source=fs.readFileSync(path.join(root,'android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java'),'utf8');
  const capability=source.match(/ static String automaticUpdateStatus\(Context context\)\{[\s\S]*?\n \}/)?.[0];
  const configuration=source.match(/      if\(automatic&&Build\.VERSION\.SDK_INT>=31\)params\.setRequireUserAction\(PackageInstaller\.SessionParams\.USER_ACTION_NOT_REQUIRED\);/)?.[0];
  assert(capability&&configuration,'Production automatic admission and session policy must exist.');
@@ -50,7 +50,7 @@ try{
  for(const version of [1,2]){
   const apk=path.join(output,`fixture-${version}.apk`),manifestDirectory=path.join(work,`version-${version}`);fs.mkdirSync(manifestDirectory);
   const manifest=path.join(manifestDirectory,'AndroidManifest.xml');
-  fs.writeFileSync(manifest,`<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="${pkg}" android:versionCode="${version}" android:versionName="${version}"><uses-sdk android:minSdkVersion="31" android:targetSdkVersion="36"/><uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/><uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"/><application android:label="Disposable OTA API fixture" android:debuggable="true" android:allowBackup="false"><activity android:name="${pkg}.OtaActivity" android:exported="true"/><receiver android:name="${pkg}.OtaActivity$ResultReceiver" android:exported="false"/></application></manifest>`);
+  fs.writeFileSync(manifest,`<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="${pkg}" android:versionCode="${version}" android:versionName="${version}"><uses-sdk android:minSdkVersion="31" android:targetSdkVersion="36"/><uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/><uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"/><application android:label="Disposable OTA API fixture" android:debuggable="true" android:allowBackup="false"><activity android:name="${pkg}.OtaActivity" android:exported="true" android:launchMode="singleTop"/><receiver android:name="${pkg}.OtaActivity$ResultReceiver" android:exported="false"/></application></manifest>`);
   command(path.join(tools,'aapt'),['package','-f','-M',manifest,'-I',jar,'-F',apk]);command('zip',['-q','-j',apk,path.join(work,'dex/classes.dex')]);
   command(path.join(tools,'apksigner'),['sign','--ks',path.join(work,'fixture.p12'),'--ks-pass','pass:android','--key-pass','pass:android','--ks-key-alias','fixture',apk]);
   apks.push(apk);
@@ -70,7 +70,24 @@ try{
  // Synthetic consent on this disposable fixture only; production requires the owner's Android choice.
  adb('shell','cmd','appops','set',pkg,'REQUEST_INSTALL_PACKAGES','allow');
  adb('shell','am','start','-W','-n',activity,'--es','phase','install','--es','sha256',record.apks[1].sha256);
- record.attempt=await waitRead('attempt.json',value=>value.status==='committing');
+ record.earlyAutomatic=await waitRead('attempt.json',value=>value.status==='starting'||value.status==='committing');
+ if(record.earlyAutomatic.status==='starting'){
+  // A proven admission refusal has no session to retry. Observe the real native
+  // capability until it is ready; never replay a request that reached commit.
+  record.readinessObservations=[];let observedAt=record.earlyAutomatic.uptimeMillis,supported=false;
+  for(let i=0;i<60;i++){
+   adb('shell','am','start','-W','-n',activity,'--es','phase','readback');
+   const state=await waitRead('readback.json',value=>value.uptimeMillis>observedAt);observedAt=state.uptimeMillis;
+   assert.equal(state.versionCode,1);assert.equal(state.sessionCount,0,'A starting attempt must not create an installer session.');
+   for(const key of ['uid','firstInstallTime','preference','signerSha256','ciphertextSha256'])assert.equal(state[key],record.baseline[key],`${key} stays unchanged while starting`);
+   assert.equal(state.keystoreValueRetained,true);record.readinessObservations.push(state);
+   if(state.automaticCapability==='supported'){supported=true;break;}
+   assert.equal(state.automaticCapability,'starting');await pause(1000);
+  }
+  assert(supported,'Native automatic update capability must become supported within the bounded readiness poll.');
+  adb('shell','am','start','-W','-n',activity,'--es','phase','install','--es','sha256',record.apks[1].sha256);
+  record.attempt=await waitRead('attempt.json',value=>value.status==='committing');
+ }else record.attempt=record.earlyAutomatic;
  // Android may defer a background manifest broadcast until this package is active. Observe the
  // installed successor independently, then launch only readback (never Android's confirmation).
  let replaced=false;
@@ -94,6 +111,16 @@ try{
   try{record.fixtureError=read('error.json');}catch{}
   try{record.lastReadback=read('readback.json');}catch{}
   try{record.lastStatus=read('status.json');}catch{}
+  record.failureDiagnostics={};
+  for(const [name,args] of [['package-dump',['shell','dumpsys','package',pkg]],['appops',['shell','cmd','appops','get',pkg]],['uptime',['shell','cat','/proc/uptime']]]){
+   const file=`failure-${name}.txt`,destination=path.join(output,file);
+   try{fs.writeFileSync(destination,adb(...args));record.failureDiagnostics[name]={file,sha256:sha(destination)};}
+   catch(diagnostic){
+    record.failureDiagnostics[name]={file,error:diagnostic.message};
+    try{fs.writeFileSync(destination,String(diagnostic.stdout??'')+String(diagnostic.stderr??''));record.failureDiagnostics[name].sha256=sha(destination);}
+    catch(writeError){record.failureDiagnostics[name].writeError=writeError.message;}
+   }
+  }
  }
  throw error;
 }finally{

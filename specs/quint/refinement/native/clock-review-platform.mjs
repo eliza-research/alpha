@@ -5,7 +5,7 @@ export function clockJournalBridge(source) {
   const read=source.match(/^ private static JSONObject read\([^\n]+/m)?.[0];
   const start=source.indexOf(' private final android.os.Handler clockMain');
   assert.ok(read && start>=0 && source.slice(start).includes('ClockAgentReview.abandon(this)'));
-  return `package ai.alphacompute.alphaphone;
+  return `package ai.elizaresearch.alphaphone;
 import com.getcapacitor.*;
 import ai.eliza.plugins.actionjournal.ActionJournal;
 import ai.eliza.plugins.actionjournal.ActionJournalPlugin;
@@ -26,7 +26,7 @@ export const clockPlatform={
 public class Context {
  public static final String KEYGUARD_SERVICE="keyguard";
  public Context getApplicationContext(){return this;}
- public String getPackageName(){return "ai.alphacompute.alphaphone";}
+ public String getPackageName(){return "ai.elizaresearch.alphaphone";}
 }`,
   'android/content/ComponentName.java': `package android.content;
 public record ComponentName(String packageName,String className) {}`,
@@ -210,7 +210,7 @@ public final class PluginCall {
  public boolean done(){return answered.getCount()==0;}
  public void await()throws Exception{if(!answered.await(4,TimeUnit.SECONDS))throw new AssertionError("Clock call unanswered");}
 }`,
-  'ai/alphacompute/alphaphone/ClockReviewSupport.java': `package ai.alphacompute.alphaphone;
+  'ai/elizaresearch/alphaphone/ClockReviewSupport.java': `package ai.elizaresearch.alphaphone;
 import org.json.JSONObject;
 final class AlphaCredentialStore {
  AlphaCredentialStore(android.content.Context context){}

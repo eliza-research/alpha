@@ -34,7 +34,7 @@ def stageVideoSources=tasks.register('stageVideoSources',Copy){
  doLast {
   def digest={ f -> java.security.MessageDigest.getInstance('SHA-256').digest(f.bytes).encodeHex().toString() }
   def files=[:]
-  def relative='ai/alphacompute/alphaphone/AlphaMediaConfig.java'
+  def relative='ai/elizaresearch/alphaphone/AlphaMediaConfig.java'
   def source=file('../app/src/main/java/'+relative)
   def target=layout.buildDirectory.file('generated/video-source/'+relative).get().asFile
   if(digest(source)!=digest(target))throw new GradleException('Video witness source changed')

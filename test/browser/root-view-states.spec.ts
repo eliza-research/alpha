@@ -19,7 +19,7 @@ const EMPTY: Record<View, RegExp> = {
   Notes: /Notes is unavailable for this agent connection\. Check Settings › Agent connection\./,
   Files: /Internal storage|Storage is unavailable/,
   Workflows: /Connect your remote agent in Settings\. Reminders on this phone stay available/,
-  Settings: /\bSign in\b/,
+  Settings: /^General$/,
   Reminders: /Connect to view Agent Calendar\./,
   Notifications: /No notifications/,
 };
@@ -74,6 +74,7 @@ for (const theme of ['light', 'dark'] as const) for (const view of VIEWS) {
     // One fresh profile covers the same root's content, landmark and focus.
     if (view !== 'Camera') await themeIsApplied(surface, theme);
     await expect(surface.getByText(EMPTY[view]).filter({visible:true}).first()).toBeVisible();
+    if(view==='Settings')for(const name of ['Account','General','Privacy','Apps','About'])await expect(surface.getByRole('button',{name,exact:true})).toBeVisible();
     if(view==='Files'){await expect(surface.getByText(/No recent files/)).toHaveCount(0);await expect(surface.getByRole('button',{name:/^Open /})).toHaveCount(0);}
     if (view === 'Camera') {
       const recovery = surface.getByRole('alert', { name: 'Camera unavailable', exact: true });
@@ -84,10 +85,13 @@ for (const theme of ['light', 'dark'] as const) for (const view of VIEWS) {
     for (const fixture of FIXTURE) expect(text, `${view} renders fixture ${fixture}`).not.toMatch(fixture);
     const name = view === 'Reminders' ? /Reminders|Calendar/ : new RegExp(view);
     await expect(page.getByRole('main', { name }).or(page.getByRole('region', { name })).or(page.getByRole('dialog', { name })).first()).toBeVisible();
+    await expect.poll(()=>surface.evaluate(root=>root.contains(document.activeElement))).toBe(true);
     await page.keyboard.press('Tab');
     const focused = page.locator(':focus');
     await expect(focused).toHaveCount(1);
-    expect(await focused.evaluate((element, root) => root!.contains(element), await surface.elementHandle())).toBe(true);
+    // An empty view can have only its Back control. Tab then reaches the persistent assistant;
+    // it must stay named and usable rather than being trapped inside that empty view.
+    expect(await focused.evaluate((element, root) => root!.contains(element)||!!element.closest('[aria-label="Assistant controls"]'), await surface.elementHandle())).toBe(true);
     const label = await focused.evaluate(element => (element.getAttribute('aria-label') || (element as HTMLElement).innerText || element.getAttribute('title') || '').trim());
     expect(label.length, 'focused control has an accessible name').toBeGreaterThan(0);
   });

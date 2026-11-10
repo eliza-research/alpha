@@ -71,7 +71,7 @@ test('every subview of a retained view is opened by a state that asserts it is t
     assert.ok(asserted.has(id), `a state opens and asserts the ${id} subview`);
   }
   // Menus, search fields, sheets and the Undo toast are states of their own.
-  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['Sort files']", "['Move file']", "['Delete file']"])
+  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['Files options']", "['Move file']", "['Delete file']"])
     assert.ok(states.includes(step), `${step} is swept`);
   // Previous notes recovers retained records; the current layout keeps its menu and Recently deleted.
   for (const state of ["name:'live Notes retained records'", "legacyNotes('Notes note menu', ['New note', 'More'])", "'notes-trash'", "'notes-recorder'"])
@@ -83,13 +83,13 @@ test('every subview of a retained view is opened by a state that asserts it is t
   for (const steps of [
     ['Settings', 'General'], ['Settings', 'General', 'Display'],
     ['Settings', 'General', 'Notifications'], ['Settings', 'Privacy'],
-    ['Settings', 'Privacy', 'App permissions'], ['Settings', 'About'], ['Settings', 'About', 'Connection help'],
+    ['Settings', 'Privacy', 'App permissions'], ['Settings', 'About'],
     ['Settings', 'Apps'], ['Settings', 'Apps', 'Calendar'],
     ['Settings', 'Apps', 'Passwords'],
-    ['Settings', 'Apps', 'Workflows', 'Scheduled summaries'],
-    ['Settings', 'Account', 'Account & plan'],
+    ['Workflows', 'New automation', 'Clock alarms'],
+    ['Settings', 'Account'],
     ['Settings', 'Account', 'Google & email'],
-  ]) assert.ok(states.includes(`[${steps.map(step => `'${step}'`).join(', ')}]`), `${steps.join(' > ')} is swept`);
+  ]) assert.ok((states+production).includes(`[${steps.map(step => `'${step}'`).join(', ')}]`), `${steps.join(' > ')} is swept`);
 });
 
 test('the sweep applies every dimension and cannot be narrowed silently', () => {
@@ -147,7 +147,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   assert.doesNotMatch(sweep, /test\.skip|test\.fixme|\.only\(/);
   assert.doesNotMatch(production, /test\.skip|test\.fixme|\.only\(/);
   assert.doesNotMatch(states, /fixme|largeTextOpen/);
-  assert.match(production, /const STATES = \[\.\.\.LIVE_STATES, PRODUCTION_APPS_STATE\];/);
+  assert.match(production, /const STATES = \[\.\.\.LIVE_STATES, PRODUCTION_APPS_STATE, PRODUCTION_CONNECTIONS_STATE\];/);
   assert.match(production, /for \(const state of STATES\)/);
   assert.match(production, /auditPage\(page, \{ contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true \}\)/);
 });
@@ -160,7 +160,7 @@ test('TalkBack reading order is checked in every lane, as Android checks it, acr
   assert.equal([...production.matchAll(/auditReadingOrder\(page\)/g)].length, 2, 'both production lanes read the order');
   // The browser rule is the Android rule: the same geometry, the same assistant group, the same bars.
   const audit = read('test/browser/accessibility-audit.ts');
-  const order = read('android/app/src/androidTest/java/ai/alphacompute/alphaphone/TalkBackOrder.java');
+  const order = read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/TalkBackOrder.java');
   assert.match(audit, /r\.top < p\.top - tallest \/ 2 && r\.left < p\.right/);
   assert.match(order, /r\.top < p\.top - Math\.max\(p\.height\(\), r\.height\(\)\) \/ 2 && r\.left < p\.right/);
   assert.match(audit, /export const ASSISTANT_GROUP = 'Assistant controls';/);
@@ -170,12 +170,12 @@ test('TalkBack reading order is checked in every lane, as Android checks it, acr
   assert.ok(order.includes(groups.replaceAll('"', '\\"')), 'the Android rule reads the same bars');
   // Every retained view is visited on the emulator and in the lifecycle spec, by its Home tile name.
   const titles = enabledViews().map(view => view[0].toUpperCase() + view.slice(1)).sort();
-  const views = read('android/app/src/androidTest/java/ai/alphacompute/alphaphone/AccessibilityViewsInstrumentedTest.java').match(/static final String\[\] VIEWS = \{([^}]*)\};/)?.[1];
+  const views = read('android/app/src/androidTest/java/ai/elizaresearch/alphaphone/AccessibilityViewsInstrumentedTest.java').match(/static final String\[\] VIEWS = \{([^}]*)\};/)?.[1];
   assert.deepEqual([...views.matchAll(/"([A-Za-z]+)"/g)].map(match => match[1]).sort(), titles);
   const lifecycle = read('test/browser/accessibility-lifecycle.spec.ts').match(/const VIEWS = \[([^\]]*)\] as const;/)?.[1];
   assert.deepEqual([...lifecycle.matchAll(/'([A-Za-z]+)'/g)].map(match => match[1]).sort(), titles);
   for (const name of ['AccessibilityLifecycleInstrumentedTest', 'AccessibilityHomeRoleInstrumentedTest'])
-    assert.match(read(`android/app/src/androidTest/java/ai/alphacompute/alphaphone/${name}.java`), /AccessibilityViewsInstrumentedTest\.VIEWS/, `${name} visits every view`);
+    assert.match(read(`android/app/src/androidTest/java/ai/elizaresearch/alphaphone/${name}.java`), /AccessibilityViewsInstrumentedTest\.VIEWS/, `${name} visits every view`);
   // What the order check found stays fixed. Maps reads what is drawn over the top of the map
   // (search, Back to event, chips, status, the route card, the turn banner) before the map, its
   // credits and Recenter; the browser page leaves the order while address suggestions cover it.
@@ -252,7 +252,7 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(main, /installToastLayer\(\)/);
   const toast = read('apps/app/src/runtime/toast-layer.ts');
   assert.match(toast, /region\.setAttribute\('aria-live', 'polite'\)/);
-  assert.match(toast, /dialog\.prepend\(region\)/);
+  assert.match(toast, /container\.prepend\(region\)/);
   assert.doesNotMatch(toast, /showPopover|position:fixed/);
   assert.match(toast, /dialog\.matches\('dialog\[open\]:modal'\)/);
 });
@@ -304,7 +304,7 @@ test('the layout hooks the sweep depends on stay in the template', () => {
   // Toasts are announced: the live region is always present and its text arrives inside it,
   // and an inline modal does not retire it.
   assert.match(template, /<div data-alpha-toast aria-live="polite" aria-atomic="true"[^>]*>\n<sc-if value="\{\{toastOn\}\}">/);
-  assert.match(read('apps/app/src/runtime/inline-modal.ts'), /!sibling\.matches\('\[data-alpha-toast\],/);
+  assert.match(read('apps/app/src/runtime/inline-modal.ts'), /!sibling\.matches\('\[data-alpha-toast\]'\)/);
   // The find bar is bound to its open flag, not to the always-present binding object.
   assert.ok(template.includes('<sc-if value="{{browser.finding}}">'));
   assert.ok(!template.includes('<sc-if value="{{browser.find}}">'));

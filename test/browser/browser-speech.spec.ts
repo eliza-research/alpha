@@ -74,6 +74,8 @@ test('a recording saves its audio without needing recognized words',async({page}
 test('microphone denial keeps the recorder open with one line and no transcription or provider fallback',async({page})=>{
  await cloudNotesVoiceFixture(page);await page.evaluate(()=>(window as any).cloudNotesVoice.denied=true);await openNotesRecorder(page);const panel=notesRecorder(page);
  await expect(panel).toHaveAttribute('data-recorder-state','failed');await expect(panel.getByRole('alert')).toHaveText('Allow the microphone in Settings.');await expect(panel.getByRole('button',{name:'Stop recording',exact:true})).toBeDisabled();
+ // A denied capture opens the existing permission review; dismiss it before retrying.
+ const permission=page.getByRole('dialog',{name:'Microphone',exact:true});await expect(permission).toBeVisible();await page.keyboard.press('Escape');await expect(permission).toHaveCount(0);
  await page.evaluate(()=>(window as any).cloudNotesVoice.denied=false);await panel.getByRole('button',{name:'Record',exact:true}).click();await expect(panel).toHaveAttribute('data-recorder-state','recording');
  expect(await page.evaluate(()=>(window as any).cloudNotesVoice.uploads)).toBe(0);await noPhysicalOrLocalVoice(page);
 });

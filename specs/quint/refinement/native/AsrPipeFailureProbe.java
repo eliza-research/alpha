@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 import ai.eliza.voice.LiveSegmentPipe;
 import java.util.concurrent.*;
 import org.json.JSONObject;

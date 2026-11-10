@@ -124,7 +124,7 @@ test('release-candidate options list what was built and never upgrade it', t => 
   const apk = path.join(dir, 'standalone-release-unsigned.apk'), debug = path.join(dir, 'standalone-debug.apk');
   fs.writeFileSync(apk, 'release bytes'); fs.writeFileSync(debug, 'debug bytes');
   const digest = file => createHash('sha256').update(fs.readFileSync(file)).digest('hex');
-  const row = (file, mode, extra) => ({file, sha256: digest(file), packageName: 'ai.alphacompute.alphaphone', variant: 'standalone', mode, versionCode: 1, versionName: '0.1.0', signed: mode === 'debug', signerSha256: mode === 'debug' ? 'a'.repeat(64) : null, runtime: 'PACKAGED', ...extra});
+  const row = (file, mode, extra) => ({file, sha256: digest(file), packageName: 'ai.elizaresearch.alphaphone', variant: 'standalone', mode, versionCode: 1, versionName: '0.1.0', signed: mode === 'debug', signerSha256: mode === 'debug' ? 'a'.repeat(64) : null, runtime: 'PACKAGED', ...extra});
   // A debug row that claims to be distributable is still not: only verify-apks release rows carry a verdict.
   fs.writeFileSync(path.join(dir, 'apk-manifest.json'), JSON.stringify({testMocks: false, results: [row(debug, 'debug', {distributable: true}), row(apk, 'release', {distributable: false})]}));
   const withApks = buildSbom(ROOT, {apks: dir});

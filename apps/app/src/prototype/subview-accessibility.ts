@@ -27,7 +27,6 @@ export function installSubviewAccessibility(views:Bag){
  for(const name of ['inbox','workflows']){
   const render=views[name].render;
   let output:Bag={};
-  const contextModal=reviewFocus(()=>output.contextReview?.close());
   const attachmentModal=reviewFocus(()=>output.attachment?.close());
   const providerModal=reviewFocus(()=>output.provider?.close());
   const focus=focusHistory();
@@ -36,9 +35,9 @@ export function installSubviewAccessibility(views:Bag){
   views[name].render=(state:Bag,api:Bag)=>{
    const out=output=render(state,api);
    if(name==='inbox'){
-    contextModal.render(!!out.contextReviewOpen);attachmentModal.render(!!out.attachmentOpen);providerModal.render(!!out.providerReview);
-    const review=!!(out.contextReviewOpen||out.attachmentOpen||out.providerReview);
-    return {...out,captureSubviewFocus:focus.capture,contextModal:contextModal.ref,attachmentModal:attachmentModal.ref,providerModal:providerModal.ref,detailFocus,composeFocus,runFocus,builderFocus,listCovered:!!((out.detail&&!split())||out.composing||review),detailCovered:!!(out.composing||review),composeCovered:review};
+    attachmentModal.render(!!out.attachmentOpen);providerModal.render(!!out.providerReview);
+    const review=!!(out.attachmentOpen||out.providerReview);
+    return {...out,captureSubviewFocus:focus.capture,attachmentModal:attachmentModal.ref,providerModal:providerModal.ref,detailFocus,composeFocus,runFocus,builderFocus,listCovered:!!((out.detail&&!split())||out.composing||review),detailCovered:!!(out.composing||review),composeCovered:review};
    }
    return {...out,...popups(out),captureSubviewFocus:focus.capture,detailFocus,composeFocus,runFocus,builderFocus,listCovered:!!(out.detail||out.automation?.detail||out.runOpen||out.builder),detailCovered:!!(out.runOpen||out.builder),runCovered:!!out.builder};
   };

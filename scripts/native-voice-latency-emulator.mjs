@@ -24,7 +24,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { aggregate, nativeTable } from './aggregate-voice-latency.mjs';
 
-const PACKAGE = 'ai.alphacompute.alphaphone';
+const PACKAGE = 'ai.elizaresearch.alphaphone';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const CLASS = `${PACKAGE}.NativeVoiceLatencyInstrumentedTest`;
 

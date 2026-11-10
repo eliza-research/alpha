@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "classification": "observed-product-android-bundle-inputs",
-  "sourcePin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+  "sourcePin": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
   "producer": {
     "script": "scripts/build-mobile-agent.mjs",
     "observer": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
     "inputHashes": {
       "specs/quint/refinement/services/runtime-bundle-audit.mjs": "0527954e0c6a927698e6351b0150eb3bb660e573a7570330d38d80e6f8bd9f67",
       "specs/quint/refinement/services/runtime-bundle-graph.mjs": "0bd78236abb72ae29b2716ead130dcbb2a00455a326ecc2280fc6bf5988eadf5",
-      "upstream.lock.json": "4263ceaf84bc55f0313e7eceddbdebda162d4417bef7e03fa6b5dc4b70a93815",
-      "scripts/upstream-mobile-build.mjs": "4ec55a7f3fe533ee28daa2f05a32564e997deed073a6b783e1a24826caac5ee1",
+      "upstream.lock.json": "9411de1f3963748004a5d5e5eeed7d054182683aa0d9e1627281d43d1228e043",
+      "scripts/upstream-mobile-build.mjs": "4f6ad4d77bd9048463a34fc60762aaff7385727982e3df7ac3134a082872a116",
       "scripts/local-agent-source.mjs": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
       "scripts/build-mobile-agent.mjs": "d0201c2bc3cb74d9ad0ba725deac43d08d3be4f2ba45ce50ffd2d1732fd6c0ae",
       "scripts/mobile-uuid-adapter.mjs": "821d33c77787d3069b3e18c1eeac05ab2b2d00f2691824663577acee0366884d",
@@ -18,18 +18,18 @@
       "scripts/core-state-patch.mjs": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
       "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-      "scripts/upstream-core-sources.mjs": "17574dbc96d8a3c5189971f72c0e76de1be5d8b75012eed2ee5283bb31e8e521"
+      "scripts/upstream-core-sources.mjs": "2b35fba6a75949b27ea2a919412a221c630f80a33817f08cb87f0a916db2be2c"
     },
     "coreState": {
       "version": 2,
-      "baseCommit": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
-      "manifestSha256": "17574dbc96d8a3c5189971f72c0e76de1be5d8b75012eed2ee5283bb31e8e521",
+      "baseCommit": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
+      "manifestSha256": "2b35fba6a75949b27ea2a919412a221c630f80a33817f08cb87f0a916db2be2c",
       "inputHashes": {
         "scripts/core-state-patch.mjs": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
         "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
         "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
         "scripts/build-policy-source.mjs": "3512c1e3a1c4d0c2c1dec2d3b99d12752edf2f90af9b35aba10ffb1cdffb09bb",
-        "scripts/upstream-core-sources.mjs": "17574dbc96d8a3c5189971f72c0e76de1be5d8b75012eed2ee5283bb31e8e521"
+        "scripts/upstream-core-sources.mjs": "2b35fba6a75949b27ea2a919412a221c630f80a33817f08cb87f0a916db2be2c"
       },
       "patches": [],
       "files": {
@@ -70,8 +70,8 @@
           "afterSha256": "b6f51bbe29e67028e3695e8ee1173e8dcf510305dda7e94093d05a97663f68dc"
         },
         "packages/agent/src/api/conversation-routes.ts": {
-          "beforeSha256": "bb323001c862e7568447470bbdd9960a3d391dcfdd7a25ea5f72be5a79c3920b",
-          "afterSha256": "bb323001c862e7568447470bbdd9960a3d391dcfdd7a25ea5f72be5a79c3920b"
+          "beforeSha256": "8fb71d3b6efbdabc1d401fb12dacb69f3dcb6b4a4ace3291ce41e98098fc70ca",
+          "afterSha256": "8fb71d3b6efbdabc1d401fb12dacb69f3dcb6b4a4ace3291ce41e98098fc70ca"
         },
         "plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts": {
           "beforeSha256": "183053f31c514ab444823e2d3966619f920af3fed212e884d0f23802585e9f47",
@@ -85,8 +85,8 @@
       "transforms": [
         {
           "path": "packages/agent/src/api/conversation-routes.ts",
-          "sourceSha256": "bb323001c862e7568447470bbdd9960a3d391dcfdd7a25ea5f72be5a79c3920b",
-          "outputSha256": "bb323001c862e7568447470bbdd9960a3d391dcfdd7a25ea5f72be5a79c3920b"
+          "sourceSha256": "8fb71d3b6efbdabc1d401fb12dacb69f3dcb6b4a4ace3291ce41e98098fc70ca",
+          "outputSha256": "8fb71d3b6efbdabc1d401fb12dacb69f3dcb6b4a4ace3291ce41e98098fc70ca"
         },
         {
           "path": "packages/core/src/plugin-lifecycle.ts",
@@ -149,27 +149,27 @@
       "version": "1.4.2",
       "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
     },
-    "bundleSha256": "2deb6808dc2cebda29cb1bcb56327cd7bd91eafe0d5471b19706725e9a548405",
+    "bundleSha256": "8d44f99e9ee75163aa31a53f2aa2a4df8154068aeec6ed53dda348d6f57a78d3",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "c12e100db66cdf0dce1efa969dd05b6cbb5290bf11e2b3c98500e7aa4bb3e911",
-    "producerObservationSha256": "9c35f08841e5b20058502ba21161cc385398da76c35eb11337c0e5a1eac8ab09"
+    "rawMetafileSha256": "a0b53a46e0ca5d1b26870340035fb684bc46672fdf7d3bf0e7fbdcd6417dbcd2",
+    "producerObservationSha256": "8c6701198c2623d29476ef50775232b2bd70770a1820a4f9ac82f0377cadbc77"
   },
   "counts": {
-    "parsed": 9999,
-    "firstParty": 4349,
-    "emitted": 4240,
-    "tracked": 4100,
-    "generated": 249,
-    "trackedEmitted": 3992,
-    "generatedEmitted": 248,
-    "firstPartyEdges": 14413,
-    "boundaryEdges": 2800
+    "parsed": 9966,
+    "firstParty": 4316,
+    "emitted": 4208,
+    "tracked": 4142,
+    "generated": 174,
+    "trackedEmitted": 4034,
+    "generatedEmitted": 174,
+    "firstPartyEdges": 14326,
+    "boundaryEdges": 2759
   },
   "generatedMappingCounts": {
-    "generated": 249,
-    "declaredOutput": 245,
-    "sourceMapped": 75,
+    "generated": 174,
+    "declaredOutput": 174,
+    "sourceMapped": 0,
     "unmapped": 0
   },
   "limitations": [
@@ -257,7 +257,7 @@
       "gitObject": "c89e0455cb822e6922a80f3d963d34ddf3a660af",
       "imports": [
         {
-          "target": "packages/auth/dist/auth/index.js",
+          "target": "packages/auth/src/auth/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -698,12 +698,12 @@
           "scope": "external"
         },
         {
-          "target": "packages/auth/dist/auth/index.js",
+          "target": "packages/auth/src/auth/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
         {
-          "target": "packages/auth/dist/providers/index.js",
+          "target": "packages/auth/src/providers/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -756,7 +756,7 @@
           "scope": "external"
         },
         {
-          "target": "packages/auth/dist/auth/index.js",
+          "target": "packages/auth/src/auth/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -1892,12 +1892,12 @@
       ]
     },
     "packages/agent/src/api/conversation-routes.ts": {
-      "sha256": "bb323001c862e7568447470bbdd9960a3d391dcfdd7a25ea5f72be5a79c3920b",
-      "effectiveSourceSha256": "bb323001c862e7568447470bbdd9960a3d391dcfdd7a25ea5f72be5a79c3920b",
+      "sha256": "8fb71d3b6efbdabc1d401fb12dacb69f3dcb6b4a4ace3291ce41e98098fc70ca",
+      "effectiveSourceSha256": "8fb71d3b6efbdabc1d401fb12dacb69f3dcb6b4a4ace3291ce41e98098fc70ca",
       "transformation": "authenticated-core-state",
-      "bytesInOutput": 139778,
+      "bytesInOutput": 140121,
       "tracked": true,
-      "gitObject": "7ac6765ed41d88b42b4b4f1830ec7d4dfdf91bd0",
+      "gitObject": "0b1e8913b3240dfb44d4fb973948ecabdcb36b6f",
       "imports": [
         {
           "target": "crypto",
@@ -2391,12 +2391,12 @@
           "scope": "external"
         },
         {
-          "target": "packages/auth/dist/auth/index.js",
+          "target": "packages/auth/src/auth/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
         {
-          "target": "packages/auth/dist/providers/index.js",
+          "target": "packages/auth/src/providers/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -3676,7 +3676,7 @@
       "gitObject": "bde541c5e5a46e950111ea4ec04aff5fbdf869a1",
       "imports": [
         {
-          "target": "packages/auth/dist/auth/index.js",
+          "target": "packages/auth/src/auth/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -4896,10 +4896,10 @@
       ]
     },
     "packages/agent/src/api/server.ts": {
-      "sha256": "b6b742645932e8a07033e1d588303ad26bd9e7362e4997e218bff79a910c7e7a",
-      "bytesInOutput": 93368,
+      "sha256": "85de7c9dc04c9eceee49f2d1e4bb41950a43a170bb5d2d3a5ef57ede3854a2c3",
+      "bytesInOutput": 93624,
       "tracked": true,
-      "gitObject": "8251bcb72b3835a397d88348aacbaa4f9e53bfc4",
+      "gitObject": "7c7c6dbb9c6da95276923c7fafd00dec9c6f14ef",
       "imports": [
         {
           "target": "packages/agent/src/api/native-view-renderer.ts",
@@ -5447,7 +5447,7 @@
           "scope": "first-party"
         },
         {
-          "target": "packages/auth/dist/auth/index.js",
+          "target": "packages/auth/src/auth/index.ts",
           "kind": "dynamic-import",
           "scope": "first-party"
         },
@@ -5584,7 +5584,7 @@
           "scope": "external"
         },
         {
-          "target": "packages/auth/dist/auth/index.js",
+          "target": "packages/auth/src/auth/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -7094,7 +7094,7 @@
     },
     "packages/agent/src/hooks/eligibility.ts": {
       "sha256": "95ba896809da85dbec8e48e4784158bcd33a5ce86e2a0d39dae037f3f23ca5e9",
-      "bytesInOutput": 2439,
+      "bytesInOutput": 2437,
       "tracked": true,
       "gitObject": "bb8e96fecf04bd68c464615195456a21224541bd",
       "imports": [
@@ -8690,7 +8690,7 @@
       "gitObject": "cdedd0039fc81bf7cad1abbc7adb0684f29fe400",
       "imports": [
         {
-          "target": "packages/auth/dist/vault/index.js",
+          "target": "packages/auth/src/vault/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -9555,7 +9555,7 @@
           "scope": "external"
         },
         {
-          "target": "packages/auth/dist/vault/index.js",
+          "target": "packages/auth/src/vault/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -9995,12 +9995,12 @@
           "scope": "first-party"
         },
         {
-          "target": "packages/auth/dist/auth/index.js",
+          "target": "packages/auth/src/auth/index.ts",
           "kind": "dynamic-import",
           "scope": "first-party"
         },
         {
-          "target": "packages/auth/dist/auth/index.js",
+          "target": "packages/auth/src/auth/index.ts",
           "kind": "dynamic-import",
           "scope": "first-party"
         },
@@ -10676,7 +10676,7 @@
           "scope": "external"
         },
         {
-          "target": "packages/auth/dist/vault/index.js",
+          "target": "packages/auth/src/vault/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -11425,7 +11425,7 @@
           "scope": "external"
         },
         {
-          "target": "packages/auth/dist/vault/index.js",
+          "target": "packages/auth/src/vault/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -11471,7 +11471,7 @@
       "gitObject": "ff5f3fecd638ab95c3886c38c7bb6743def223a8",
       "imports": [
         {
-          "target": "packages/auth/dist/auth/index.js",
+          "target": "packages/auth/src/auth/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -11900,7 +11900,7 @@
       "gitObject": "3bd66ceed7f131974ee036b6e38d8bee30ef54da",
       "imports": [
         {
-          "target": "packages/auth/dist/vault/index.js",
+          "target": "packages/auth/src/vault/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -12740,12 +12740,12 @@
           "scope": "external"
         },
         {
-          "target": "packages/auth/dist/kms/index.js",
+          "target": "packages/auth/src/kms/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
         {
-          "target": "packages/auth/dist/vault/index.js",
+          "target": "packages/auth/src/vault/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -13142,7 +13142,7 @@
       "gitObject": "eb75a4f1f44a6ee6dbba83380a6cc4433052fc7d",
       "imports": [
         {
-          "target": "packages/auth/dist/vault/index.js",
+          "target": "packages/auth/src/vault/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -15381,10 +15381,10 @@
       "imports": []
     },
     "packages/agent/src/triggers/runtime.ts": {
-      "sha256": "41d7b12b8de109cc38cd403ac60a6f6b4ed9747e9cfbfa0e9233eab1d30feddd",
-      "bytesInOutput": 26911,
+      "sha256": "ab8d25ef1deab393d87d5550cf744c960041718b56afc5482ef78a216695b031",
+      "bytesInOutput": 27268,
       "tracked": true,
-      "gitObject": "8afd9ffd6957dce0e537d264c770135e5712bfe8",
+      "gitObject": "ece0f9dd31da3826a1981fe5e6aaba669c5bd3f9",
       "imports": [
         {
           "target": "crypto",
@@ -16186,7 +16186,7 @@
           "scope": "first-party"
         },
         {
-          "target": "packages/auth/dist/sdk/index.js",
+          "target": "packages/auth/src/sdk/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -16221,7 +16221,7 @@
           "scope": "first-party"
         },
         {
-          "target": "packages/auth/dist/sdk/index.js",
+          "target": "packages/auth/src/sdk/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         }
@@ -16275,12 +16275,12 @@
       "gitObject": "03045aa8367142c2bbbb11e3631c71288cfb51b8",
       "imports": [
         {
-          "target": "packages/auth/dist/accounts/index.js",
+          "target": "packages/auth/src/accounts/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
         {
-          "target": "packages/auth/dist/auth/index.js",
+          "target": "packages/auth/src/auth/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -16875,2767 +16875,9 @@
         }
       ]
     },
-    "packages/auth/dist/accounts/account-pool-broker.js": {
-      "sha256": "1e1d68d8fe18554cdae7284d07c59201e44af9d948ab71182cca19f93a24b3da",
-      "bytesInOutput": 240,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/accounts/account-pool-broker.ts",
-        "sourceSha256": "896b808e8417c5f4095bee0827bc82c1c5bacc2139437fecede4122bdf231816",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/accounts/account-pool-broker.js.map",
-        "sourceMapSha256": "a8fa3368427d54a747df2a6bff170e02d70819bd8b3ec634d5685fad1aa617eb",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/accounts/account-pool-broker.ts",
-            "sha256": "896b808e8417c5f4095bee0827bc82c1c5bacc2139437fecede4122bdf231816"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/accounts/account-selection.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/host/dist/protocol.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/account-storage.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/credentials.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/refresh-mutex.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/account-pool.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/claude-token-refresh.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/coding-account-bridge.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/accounts/account-pool-consumer-metering.js": {
-      "sha256": "bddb0859eed65c953c3f36c4b6a94c8557e22a085d7ea633217d41b8c63cbb24",
-      "bytesInOutput": 197,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/accounts/account-pool-consumer-metering.ts",
-        "sourceSha256": "1c0305a236b235a85fd869501747c1c65e5a1ff12125603efc562f454745226f",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/accounts/account-pool-consumer-metering.js.map",
-        "sourceMapSha256": "733b597ef29a2e7d71d0b064ff81b50d8e4c13dd3f7e8b5f46fc8a3c20fbc23d",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/accounts/account-pool-consumer-metering.ts",
-            "sha256": "1c0305a236b235a85fd869501747c1c65e5a1ff12125603efc562f454745226f"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/accounts/account-pool-status.js": {
-      "sha256": "972f376ada8514a739a01b93c08a7070090b93a5853d10cc9751c55e4dd492bd",
-      "bytesInOutput": 140,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/accounts/account-pool-status.ts",
-        "sourceSha256": "bc0980e6512a42f1557be8e3042aaccb7dc55280ffc571c07b8f128047089d44",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/accounts/account-pool-status.js.map",
-        "sourceMapSha256": "22b85fa26e2b3e29d445d2274dde795a7aaa797a9a8b2fd4c8412594d45263a6",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/accounts/account-pool-status.ts",
-            "sha256": "bc0980e6512a42f1557be8e3042aaccb7dc55280ffc571c07b8f128047089d44"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/accounts/account-selection.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/account-pool.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/account-pool-consumer-metering.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/accounts/account-pool.js": {
-      "sha256": "011789aa4c6f1c22446cadb975bc01ce2a1a2c77c93cfda91e804c1031cac71a",
-      "bytesInOutput": 330,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/accounts/account-pool.ts",
-        "sourceSha256": "5dab9a794a1f7708fa94479eaae2a99b3037ab9560e53389c963471e85f76942",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/accounts/account-pool.js.map",
-        "sourceMapSha256": "81311f12b0baea6c53bf3d53fac41233a8d3eeafa6cefb9dceab353d4f4acfef",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/accounts/account-pool.ts",
-            "sha256": "5dab9a794a1f7708fa94479eaae2a99b3037ab9560e53389c963471e85f76942"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/accounts/account-selection.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/core/src/protocol.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/host/dist/protocol.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/account-storage.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/credentials.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/oauth-flow.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/account-usage.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/coding-account-bridge.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/accounts/account-selection.js": {
-      "sha256": "f30358112b8790e9cd278df51c4c10b6c8b33fbb05dc4fbc3bc9a562960437e5",
-      "bytesInOutput": 35,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/accounts/account-selection.ts",
-        "sourceSha256": "66544563bfc1a72edafde2c8769bd13b642a71222991d95cb31e20d015fe05e6",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/accounts/account-selection.js.map",
-        "sourceMapSha256": "a1ddb3f784a93b14086854ac471688b1ca56fd151355afa8239977b6b857bdd9",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/accounts/account-selection.ts",
-            "sha256": "66544563bfc1a72edafde2c8769bd13b642a71222991d95cb31e20d015fe05e6"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/accounts/account-usage.js": {
-      "sha256": "197bda820f0b6654121ba5d9ba74632796113b8a7b56a0160ec4c642b65c2079",
-      "bytesInOutput": 84,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/accounts/account-usage.ts",
-        "sourceSha256": "b9822892cb6fe816bbe5633ed108bf4c3e7fb4fa54d75431d8e094f2f70ec193",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/accounts/account-usage.js.map",
-        "sourceMapSha256": "c173dee1569ab680ab656401ddea2a9f47d83cd2422b17424f9eb90eed8f7318",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/accounts/account-usage.ts",
-            "sha256": "b9822892cb6fe816bbe5633ed108bf4c3e7fb4fa54d75431d8e094f2f70ec193"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/core/src/protocol.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/providers/codex-usage.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/accounts/claude-token-refresh.js": {
-      "sha256": "042cb7bc3f6dcd75eff098bf6faf171df8fc83ecd439b42f3b27d00868166d06",
-      "bytesInOutput": 64,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/accounts/claude-token-refresh.ts",
-        "sourceSha256": "71da241b74625cb6d2128b84d2fafb8b7e5a943bc830f29a4c35ae93a4849f2e",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/accounts/claude-token-refresh.js.map",
-        "sourceMapSha256": "049a36228917c69800933f73a0ebf6e3ecdcd1ad491632dd2aa9418530e162fd",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/accounts/claude-token-refresh.ts",
-            "sha256": "71da241b74625cb6d2128b84d2fafb8b7e5a943bc830f29a4c35ae93a4849f2e"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/auth/token-expiry.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/accounts/coding-account-bridge.js": {
-      "sha256": "a872993edc25e07972b72cf4f30695cd82a4479be3ab417a8a4fb22718de629a",
-      "bytesInOutput": 444,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/accounts/coding-account-bridge.ts",
-        "sourceSha256": "dc286dcfc43641e91d38b5af82fbb0e2ddcc6a9663d8df45779f1d4644cb40cd",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/accounts/coding-account-bridge.js.map",
-        "sourceMapSha256": "e070411b6c4939b79fdfb60dc6f08faeb72e258292fe801a1946ffc19b5f7708",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/accounts/coding-account-bridge.ts",
-            "sha256": "dc286dcfc43641e91d38b5af82fbb0e2ddcc6a9663d8df45779f1d4644cb40cd"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "os",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/contracts/dist/index.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/core/src/protocol.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/account-storage.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/credentials.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/refresh-mutex.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/providers/direct-api-probe.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/account-selection.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/claude-token-refresh.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/accounts/index.js": {
-      "sha256": "f2354c7d2decab5b1730afc5bbfe5ccfc144988b84a35e521413de982c1da837",
-      "bytesInOutput": 255,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/accounts/index.ts",
-        "sourceSha256": "4ddd310ef7ae2bf8678edd30a5cfee4cf9ad636915ce47e9bc39719a063b060a",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/accounts/index.js.map",
-        "sourceMapSha256": "44fcfb4be9354107bd61e0ab8c8faa8d05bf92c24697d31bb9ce3394e749f5ef",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/accounts/index.ts",
-            "sha256": "4ddd310ef7ae2bf8678edd30a5cfee4cf9ad636915ce47e9bc39719a063b060a"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/accounts/account-pool.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/account-pool-broker.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/account-pool-consumer-metering.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/account-pool-status.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/account-selection.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/account-usage.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/claude-token-refresh.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/accounts/coding-account-bridge.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/account-storage.js": {
-      "sha256": "1b3a65688d8c4c307bbb514b7bb4d27b5927b1fd8baa540712a4eb4a935049ad",
-      "bytesInOutput": 42074,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/account-storage.ts",
-        "sourceSha256": "a2ce69228c88d441c0351b1a84876e9b554c738778c819f7dddcd9e8617ec7c7",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/account-storage.js.map",
-        "sourceMapSha256": "254bc7055055820471835f18bce92c928105284294acc39f73556a0b9eb637e5",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/account-storage.ts",
-            "sha256": "a2ce69228c88d441c0351b1a84876e9b554c738778c819f7dddcd9e8617ec7c7"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "os",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/core/src/protocol.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/crypto.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/master-key.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/anthropic.js": {
-      "sha256": "57b11c9771a1c83e34b6509087230a60669300c2b51a94396682e7cdfa5c3c2b",
-      "bytesInOutput": 525,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/anthropic.ts",
-        "sourceSha256": "36ad167951b09d64a982b0b15e5921f6a672027bd1126ca020b9cae21d91cbcc",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/anthropic.js.map",
-        "sourceMapSha256": "54ce5692d88ceb247111c05cc8aa09b93ef9fd8add135fbcb14c284b85c62521",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/anthropic.ts",
-            "sha256": "36ad167951b09d64a982b0b15e5921f6a672027bd1126ca020b9cae21d91cbcc"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/auth/vendor/pi-oauth/anthropic-login.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/codex-device.js": {
-      "sha256": "bd27315f2ca10ac1c4fdcae7f311ed3680ee8f9c493f8c1436869c216ea10088",
-      "bytesInOutput": 5126,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/codex-device.ts",
-        "sourceSha256": "b511c201fc78335c06e563f6afa734bd5dd4164dd244fb85c7a417e779c9ca9e",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/codex-device.js.map",
-        "sourceMapSha256": "03a6a5412003238205389714bb1a087681e89c3b56355baa12342259e97c27af",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/codex-device.ts",
-            "sha256": "b511c201fc78335c06e563f6afa734bd5dd4164dd244fb85c7a417e779c9ca9e"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "child_process",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "os",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/core/src/protocol.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/credentials.js": {
-      "sha256": "b039ebaea9dbe059c6b02ab76de58ac23d36145b76b61762db77448f8700d3b4",
-      "bytesInOutput": 15723,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/credentials.ts",
-        "sourceSha256": "27f217bb1a58be33e5190859a2b597a6f222e10796859c0a937d78f55ea8e1db",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/credentials.js.map",
-        "sourceMapSha256": "4acb935f8b28e1609c7ea0140603d1a2b3f489c09ef44931a9be14b8fbaa8d5b",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/credentials.ts",
-            "sha256": "27f217bb1a58be33e5190859a2b597a6f222e10796859c0a937d78f55ea8e1db"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "os",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/core/src/protocol.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/host/dist/protocol.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/account-storage.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/anthropic.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/openai-codex.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/refresh-http-error.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/refresh-mutex.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/subscription-auth/builtin-providers.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/subscription-auth/registry.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/index.js": {
-      "sha256": "53e59ea1d517dc14ad1419ff550cd482917670b3c0ab5e47326fa23ed68066a0",
-      "bytesInOutput": 4700,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/index.ts",
-        "sourceSha256": "b171e0a90e620b13b04fe8534c170bf3ef33195d71fa76a00180993d6f96f87a",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/index.js.map",
-        "sourceMapSha256": "2bb2e7e5638add4d4c00f82b168c55c725238e661a5830e1a0e7fd9e72d58374",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/index.ts",
-            "sha256": "b171e0a90e620b13b04fe8534c170bf3ef33195d71fa76a00180993d6f96f87a"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/providers/codex-usage.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/providers/direct-api-probe.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/account-storage.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/anthropic.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/codex-device.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/credentials.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/oauth-flow.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/openai-codex.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/refresh-mutex.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/subscription-auth/adopt-codex-cli-login.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/subscription-auth/index.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/token-expiry.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/oauth-flow.js": {
-      "sha256": "0a6d0c47d2636968f1fbb676f4dd90d57442fad9b0eabffd0a50745158c0e66d",
-      "bytesInOutput": 10568,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/oauth-flow.ts",
-        "sourceSha256": "ceeb8e91ed2de3bffbfd9a750b8792b79b70cab5e462c858439ae8ecb85013bd",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/oauth-flow.js.map",
-        "sourceMapSha256": "b6af2f35d06d3cf86cc728e1c6380097ec948323fd3507b6d29367b5d3208ec0",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/oauth-flow.ts",
-            "sha256": "ceeb8e91ed2de3bffbfd9a750b8792b79b70cab5e462c858439ae8ecb85013bd"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/core/src/protocol.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/account-storage.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/codex-device.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/openai-codex.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/vendor/pi-oauth/anthropic-login.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/openai-codex.js": {
-      "sha256": "cfa9930d3aea28f6dc2419863120cc1a1335434968f9321463a6598ad05d7386",
-      "bytesInOutput": 1215,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/openai-codex.ts",
-        "sourceSha256": "758bc96da1d1a90ee88f421b77283773fff19febd6e32a304b05be8dc0d500ef",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/openai-codex.js.map",
-        "sourceMapSha256": "6dae6455218826066939022020039afc462cf66b2794351fe1cf624ec71bd635",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/openai-codex.ts",
-            "sha256": "758bc96da1d1a90ee88f421b77283773fff19febd6e32a304b05be8dc0d500ef"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/vendor/pi-oauth/openai-codex-login.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/refresh-http-error.js": {
-      "sha256": "9866177232435d063f3f5f4e753cb8bf7467351508753054a58a7a35c12a2028",
-      "bytesInOutput": 866,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/refresh-http-error.ts",
-        "sourceSha256": "85ec5393a623c2cdffb166294fd41b7c8c1b2fa0e6d1bead4d59260f9ef87fb2",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/refresh-http-error.js.map",
-        "sourceMapSha256": "3e191c477223b8ea457d8666d2f2b28f3657e48fcb605ebec874fee87ce4d4de",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/refresh-http-error.ts",
-            "sha256": "85ec5393a623c2cdffb166294fd41b7c8c1b2fa0e6d1bead4d59260f9ef87fb2"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/core/src/protocol.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/refresh-mutex.js": {
-      "sha256": "8f58da61d5ce1ff509bb671684822b024b5b9cc75d8e85aac15e0f61fd337e08",
-      "bytesInOutput": 362,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/refresh-mutex.ts",
-        "sourceSha256": "c141ce39081a7dc1e7bb8c3a3b88aa5acc395b7aa3081e31203608dd9a61d362",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/refresh-mutex.js.map",
-        "sourceMapSha256": "12b5d19a8fa7f14b95ed19f5338584713c02fbdbc3c66bba0dec540575341f9d",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/refresh-mutex.ts",
-            "sha256": "c141ce39081a7dc1e7bb8c3a3b88aa5acc395b7aa3081e31203608dd9a61d362"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/auth/subscription-auth/adopt-codex-cli-login.js": {
-      "sha256": "0e7df826b673360a4f70c15d839a5db218a05ee0bce88244960ee3e80c6ac620",
-      "bytesInOutput": 7439,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/subscription-auth/adopt-codex-cli-login.ts",
-        "sourceSha256": "8ace5a19cc00c95fe73bde8288e728fc111666d539963e4153598611549e272f",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/subscription-auth/adopt-codex-cli-login.js.map",
-        "sourceMapSha256": "5a74940de5f2b7ddc173bace1209b8632cbbb6a98dca0d5f9cb675889a5afddf",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/subscription-auth/adopt-codex-cli-login.ts",
-            "sha256": "8ace5a19cc00c95fe73bde8288e728fc111666d539963e4153598611549e272f"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/core/src/protocol.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/account-storage.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/subscription-auth/builtin-providers.js": {
-      "sha256": "5205de7c3db629dc4995272031d49713ccca4d7c1fbb16874737278f4f716c4d",
-      "bytesInOutput": 2219,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/subscription-auth/builtin-providers.ts",
-        "sourceSha256": "0e8e25766b83b622fb401dcb9a9e644a906615e2ebe6e5fbf1f34857568c4409",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/subscription-auth/builtin-providers.js.map",
-        "sourceMapSha256": "4d43d8bb1c608e843b8196efa03f907abafcc96c1b8e23328e068a2154b5314c",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/subscription-auth/builtin-providers.ts",
-            "sha256": "0e8e25766b83b622fb401dcb9a9e644a906615e2ebe6e5fbf1f34857568c4409"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "child_process",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "os",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/auth/dist/auth/subscription-auth/registry.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/subscription-auth/index.js": {
-      "sha256": "18eafc24e47f1bc0c01ee73b197ab47d3dca76eea964f8b13147509d25b44ff6",
-      "bytesInOutput": 57,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/subscription-auth/index.ts",
-        "sourceSha256": "8bb11ffeb01c5c224679a6c2b35142766498562403a40e29d96aabdfe4157ae8",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/subscription-auth/index.js.map",
-        "sourceMapSha256": "796664d49f68771ee36a329bf4abe6227c308fb12a1f58638ad74ae08562df92",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/subscription-auth/index.ts",
-            "sha256": "8bb11ffeb01c5c224679a6c2b35142766498562403a40e29d96aabdfe4157ae8"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/auth/subscription-auth/registry.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/subscription-auth/registry.js": {
-      "sha256": "83844dc7f6c189b8d9d5524f299b78eee65434efbec564928cbc5286764509cf",
-      "bytesInOutput": 415,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/subscription-auth/registry.ts",
-        "sourceSha256": "fa5477aaed731b6b7695dd3c6f257e2cda17baa81ba72f44c25139e61212feaf",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/subscription-auth/registry.js.map",
-        "sourceMapSha256": "46e0d73613653c8dba0597861bf08fc068c2f1c3de852d121cac646a71257f1f",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/subscription-auth/registry.ts",
-            "sha256": "fa5477aaed731b6b7695dd3c6f257e2cda17baa81ba72f44c25139e61212feaf"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/auth/token-expiry.js": {
-      "sha256": "8abb93f0cad9ba175476d19e1a92dda5a54c9e9405152efba327a0eb92ffbdc9",
-      "bytesInOutput": 730,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/token-expiry.ts",
-        "sourceSha256": "b56cd22f077862a53c74c0a0d43746846c348d296f16bfe210b36ed9a22a5891",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/token-expiry.js.map",
-        "sourceMapSha256": "6e5402cf860d600cd5465a0b63877fdaa74dfac51f1e01733110549912596a49",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/token-expiry.ts",
-            "sha256": "b56cd22f077862a53c74c0a0d43746846c348d296f16bfe210b36ed9a22a5891"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/auth/types.js": {
-      "sha256": "fbd7d2bf7c951e4ec7a0c87ffc4fc8a63846caf3db50b6fbc785d6cf912cf9a0",
-      "bytesInOutput": 5857,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/types.ts",
-        "sourceSha256": "9b5a7c3a7d519669afc9f6af65f95bd2b7d78787bb011027d7c1880cf1a05589",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/types.js.map",
-        "sourceMapSha256": "94491cf7f4ff549ebee6a2f7f1ac84984bc770c987bf14dd73f6a9a4623a72ff",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/types.ts",
-            "sha256": "9b5a7c3a7d519669afc9f6af65f95bd2b7d78787bb011027d7c1880cf1a05589"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/contracts/dist/index.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/vendor/pi-oauth/anthropic-login.js": {
-      "sha256": "e3a626a6f1bda38b4397b6be9acff9e8b4466453dec2f876ab6b8f8bf8696045",
-      "bytesInOutput": 4978,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/vendor/pi-oauth/anthropic-login.ts",
-        "sourceSha256": "5e25e7554fd377929938c8fe3aa6dee6a353b476aa5324e07b91587a10fada8d",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/vendor/pi-oauth/anthropic-login.js.map",
-        "sourceMapSha256": "16a8541cd873d11ad8a5baf0858d28eecd85d6ab645e8816cf482916947dc75e",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/vendor/pi-oauth/anthropic-login.ts",
-            "sha256": "5e25e7554fd377929938c8fe3aa6dee6a353b476aa5324e07b91587a10fada8d"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/core/src/protocol.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/contracts/index.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/refresh-http-error.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/auth/vendor/pi-oauth/openai-codex-login.js": {
-      "sha256": "56052840385d2ef6c69941001c09147c84a978f5f729374fb341707cea983b6e",
-      "bytesInOutput": 9983,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/auth/vendor/pi-oauth/openai-codex-login.ts",
-        "sourceSha256": "23898d2bb1d1f5d1ad8bc72435eae326bbfe74264044110b83dd2f9a237ac631",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/auth/vendor/pi-oauth/openai-codex-login.js.map",
-        "sourceMapSha256": "52bfa5546272c402ea1d75771052f974e1616b2d4d03e829ceb1ad9a0fc432ac",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/auth/vendor/pi-oauth/openai-codex-login.ts",
-            "sha256": "23898d2bb1d1f5d1ad8bc72435eae326bbfe74264044110b83dd2f9a237ac631"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/core/src/protocol.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/auth/refresh-http-error.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/contracts/index.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "crypto",
-          "kind": "dynamic-import",
-          "scope": "external"
-        },
-        {
-          "target": "http",
-          "kind": "dynamic-import",
-          "scope": "external"
-        }
-      ]
-    },
-    "packages/auth/dist/contracts/chains.js": {
-      "sha256": "ea77c86f85515b5bf09f3f2d879dc75583712362aa0026a6ac084caf529dcfa5",
-      "bytesInOutput": 5442,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/contracts/chains.ts",
-        "sourceSha256": "225db2f51fdf8b2c583b1187276281b5f91476f8ac49afe90b0132312447dcdc",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/contracts/chains.js.map",
-        "sourceMapSha256": "ca5d5b0a7fd653b1dc656bebc5eb8b8d09e277c7c7d57df6cd42770b74535433",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/contracts/chains.ts",
-            "sha256": "225db2f51fdf8b2c583b1187276281b5f91476f8ac49afe90b0132312447dcdc"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/contracts/crypto.js": {
-      "sha256": "f7e4343b3e5500d2fc71cc7b03ed2912763a8185c785078c2b8a09cdcfa15a27",
-      "bytesInOutput": 947,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/contracts/crypto.ts",
-        "sourceSha256": "a3679d9ffea6dc31152f56030de415f8f12efea410c13d5e09a949b488152527",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/contracts/crypto.js.map",
-        "sourceMapSha256": "fe7225a71b2a97822fef5821dbc36ea4c856645029aa98d6b331b92a7b731d16",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/contracts/crypto.ts",
-            "sha256": "a3679d9ffea6dc31152f56030de415f8f12efea410c13d5e09a949b488152527"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/contracts/index.js": {
-      "sha256": "8120cbf54c1434fc14e7aac2e780f9ba2940967e39353a422ab2176170c46383",
-      "bytesInOutput": 72,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/contracts/index.ts",
-        "sourceSha256": "45f232d9e1156502bff341195449ccf325bdc998d454dd8f38a1a48ee3176761",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/contracts/index.js.map",
-        "sourceMapSha256": "1023658ba7e6125664fbe6c23fc47e490e3b9dee6717130413f07a5f5ab5caaf",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/contracts/index.ts",
-            "sha256": "45f232d9e1156502bff341195449ccf325bdc998d454dd8f38a1a48ee3176761"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/contracts/chains.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/contracts/crypto.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/contracts/mfa.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/contracts/signing.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/contracts/mfa.js": {
-      "sha256": "6277193f8ce08e2a3f061e048728197522b952b979d7659126b8a2984e59d085",
-      "bytesInOutput": 20,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/contracts/mfa.ts",
-        "sourceSha256": "1ea5d847c84b2b1cb8ca2b70c75f009e2daa28355b5859ce4a977dc3936b9919",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/contracts/mfa.js.map",
-        "sourceMapSha256": "75dd16d0aaca26d42fc8d90a09cbed5bc0a1c87d22df16b88d3b4f43a927d2c7",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/contracts/mfa.ts",
-            "sha256": "1ea5d847c84b2b1cb8ca2b70c75f009e2daa28355b5859ce4a977dc3936b9919"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/contracts/signing.js": {
-      "sha256": "d2dd77dc20bd53ca6bc3453ee722e620be09868fe95fb6ca0a9933ebddebc41b",
-      "bytesInOutput": 1837,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/contracts/signing.ts",
-        "sourceSha256": "3bd8610b7d9d234aa0289a2a6e7106216c220c17c43e9fa090a708dc19361e31",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/contracts/signing.js.map",
-        "sourceMapSha256": "4bddf55080285ecb1981381167fbee3128057bcc7326d86f54c4dfe413103826",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/contracts/signing.ts",
-            "sha256": "3bd8610b7d9d234aa0289a2a6e7106216c220c17c43e9fa090a708dc19361e31"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/kms/crypto/aead.js": {
-      "sha256": "69b8be9dbbba32eea790f78df9fa2c6ef735aab661057961de48a9c075d3a657",
-      "bytesInOutput": 1793,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/kms/crypto/aead.ts",
-        "sourceSha256": "99cbbc79c9ada159fa22b87896a77285c38270dd0e645bb98f2691892c94ebd7",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/kms/crypto/aead.js.map",
-        "sourceMapSha256": "4bc684b1395270705ff77e55bc44fb6987c8918bb90077780034d49a2a9c139b",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/kms/crypto/aead.ts",
-            "sha256": "99cbbc79c9ada159fa22b87896a77285c38270dd0e645bb98f2691892c94ebd7"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        }
-      ]
-    },
-    "packages/auth/dist/kms/crypto/hkdf.js": {
-      "sha256": "0062454205160f962a290be27652b19b74f76039e1fd308fb32958217f4ca91e",
-      "bytesInOutput": 337,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/kms/crypto/hkdf.ts",
-        "sourceSha256": "063e75afcb1de0de5b1b93116fd40fadb8a1a67afc8cf1e92fc9261bbb643445",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/kms/crypto/hkdf.js.map",
-        "sourceMapSha256": "8ace90e305661e6c5874183dd0abcd678d8779cf0ca87c07c31c31b7441980f8",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/kms/crypto/hkdf.ts",
-            "sha256": "063e75afcb1de0de5b1b93116fd40fadb8a1a67afc8cf1e92fc9261bbb643445"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        }
-      ]
-    },
-    "packages/auth/dist/kms/index.js": {
-      "sha256": "1878d3fdb68634a46f665288d96f3c0d5c55a88c498bb37e862ef648345b73ba",
-      "bytesInOutput": 2005,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/kms/index.ts",
-        "sourceSha256": "9804f1d8051429972ff8ab9e5b54aa8070d440708b39e84ef3f6b4d826688800",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/kms/index.js.map",
-        "sourceMapSha256": "8413e10a999c5ca40057b864713bee9eb60c51a4fd0e5dfbcfecbc165fd8487e",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/kms/index.ts",
-            "sha256": "9804f1d8051429972ff8ab9e5b54aa8070d440708b39e84ef3f6b4d826688800"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/kms/local-adapter.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/memory-adapter.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/steward-adapter.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/key-namespace.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/operation-key-bundle.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/kms/key-namespace.js": {
-      "sha256": "47b617a01b08f0da789cce041319e8c1b47d3ee1f3a3fd992007965a97b0f77c",
-      "bytesInOutput": 1367,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/kms/key-namespace.ts",
-        "sourceSha256": "ffa4e148617ab228bb0bf863abbb4ba0aade09776c0ed29d03e0d6a625b27153",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/kms/key-namespace.js.map",
-        "sourceMapSha256": "47cf81acb30772c36e359921e977d9cba868ab9537dfd92a714bd1295e74121d",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/kms/key-namespace.ts",
-            "sha256": "ffa4e148617ab228bb0bf863abbb4ba0aade09776c0ed29d03e0d6a625b27153"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/kms/types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/kms/local-adapter.js": {
-      "sha256": "073000e27093fe0b7eb3aed8f47f5834cb1a15560b9dc96f5a05efd9e77d9fc2",
-      "bytesInOutput": 3589,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/kms/local-adapter.ts",
-        "sourceSha256": "1f3cb6dc01f35d09e5de0ad5d27816efa2790897d1b339e7398f61d83240bde9",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/kms/local-adapter.js.map",
-        "sourceMapSha256": "8d78d8d7528becd7161f5ab0dc80fd337af127366f33bf23911c709f6a03ddb8",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/kms/local-adapter.ts",
-            "sha256": "1f3cb6dc01f35d09e5de0ad5d27816efa2790897d1b339e7398f61d83240bde9"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/auth/dist/kms/crypto/aead.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/crypto/hkdf.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/key-namespace.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/kms/memory-adapter.js": {
-      "sha256": "f93ed3d7269af9c4efbc9022243deb5af153ad1710dde6dfd7e6d9789754344e",
-      "bytesInOutput": 4395,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/kms/memory-adapter.ts",
-        "sourceSha256": "88b0f9018b3991fa23a7e823a2e0b4e1f65b0cc2304b95a0bd3eb91d87d13157",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/kms/memory-adapter.js.map",
-        "sourceMapSha256": "1fd6431fded1749f9d246d1f31837f5e304fa246ff56c3bba9125c63171b7113",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/kms/memory-adapter.ts",
-            "sha256": "88b0f9018b3991fa23a7e823a2e0b4e1f65b0cc2304b95a0bd3eb91d87d13157"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/auth/dist/kms/crypto/aead.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/key-namespace.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/kms/operation-key-bundle.js": {
-      "sha256": "58a33c33c2d3c4e2c225c605ec8f75656909ae99fcac918f4fb0c2e6e524799e",
-      "bytesInOutput": 365,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/kms/operation-key-bundle.ts",
-        "sourceSha256": "1797ec91f26f820d0c5bcdf337d63f8bab9096bd447f5090a3fd6710b76e1d1d",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/kms/operation-key-bundle.js.map",
-        "sourceMapSha256": "f9e996a86fb946a922e0e0b5844e47aaae939eb1b87eede7adf89cde9a43ca5e",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/kms/operation-key-bundle.ts",
-            "sha256": "1797ec91f26f820d0c5bcdf337d63f8bab9096bd447f5090a3fd6710b76e1d1d"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/key-namespace.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/kms/steward-adapter.js": {
-      "sha256": "1d02ee1867e08802ad646f0c775bf52af4b6b567e40df5ee1c2e2af1fb10859b",
-      "bytesInOutput": 5480,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/kms/steward-adapter.ts",
-        "sourceSha256": "d916988951157052eebfa4d348a5b6cb138c75112fb2f04d8a6a3e3bf366ef78",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/kms/steward-adapter.js.map",
-        "sourceMapSha256": "8aba7683e6cab29c13b0c15e5aeadc62126e89d70e97f9fd6a62816c6b9254ce",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/kms/steward-adapter.ts",
-            "sha256": "d916988951157052eebfa4d348a5b6cb138c75112fb2f04d8a6a3e3bf366ef78"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/core/src/index.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/kms/types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/kms/types.js": {
-      "sha256": "d3e7713333d2756afad965ff990506e6d471147cddd2916d2f146ed6935f33db",
-      "bytesInOutput": 448,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/kms/types.ts",
-        "sourceSha256": "ef69b5ed5deb9e448397699ae13136c707ee6ba8d0f9120426ca1401c9f73428",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/kms/types.js.map",
-        "sourceMapSha256": "9cf7a08538a42ae7632e51d1a995e43b9814a535026cce07aefd0d7a4a480798",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/kms/types.ts",
-            "sha256": "ef69b5ed5deb9e448397699ae13136c707ee6ba8d0f9120426ca1401c9f73428"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/providers/codex-usage.js": {
-      "sha256": "cbf09ffbc59433d432a5a4054a023aa860d981fe2f541efedba06278db8e6a22",
-      "bytesInOutput": 3162,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/providers/codex-usage.ts",
-        "sourceSha256": "cb0c3d7da70d564b774d55d5d287b3792d9cc75a7a2cb4e3abbd19f5c0ca635e",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/providers/codex-usage.js.map",
-        "sourceMapSha256": "0f15b527227d762318388a0ef55ecd6d5a7f89a3df3312d4a1cc71d14e60ba4e",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/providers/codex-usage.ts",
-            "sha256": "cb0c3d7da70d564b774d55d5d287b3792d9cc75a7a2cb4e3abbd19f5c0ca635e"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/core/src/protocol.ts",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/providers/direct-api-probe.js": {
-      "sha256": "7ee770603751f37c428cc58f1073f2bea15878bda8e96bce5f55c35dc5373ad9",
-      "bytesInOutput": 5671,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/providers/direct-api-probe.ts",
-        "sourceSha256": "1d6e65b72bcefff2ef97ff99406f9892b482672f901e5fabe67b5e80df77323f",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/providers/direct-api-probe.js.map",
-        "sourceMapSha256": "d012cfaae19ee8f747da75a43db26da3f62c8c0165eed6aece7b9a11d16744d4",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/providers/direct-api-probe.ts",
-            "sha256": "1d6e65b72bcefff2ef97ff99406f9892b482672f901e5fabe67b5e80df77323f"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/providers/index.js": {
-      "sha256": "03b91e7c1c3ea2f629d238f41c5041e2c9c7e1f3b3d81765cc91cd529be21b77",
-      "bytesInOutput": 76,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/providers/index.ts",
-        "sourceSha256": "7cff46006366f7180581f80319af32c6aea9f97f3157339fa1c68d608c3542c4",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/providers/index.js.map",
-        "sourceMapSha256": "4fe4683e1e13a59c8c8e8792f4a0001065e9f1c02873f2697316b6ed69618c9b",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/providers/index.ts",
-            "sha256": "7cff46006366f7180581f80319af32c6aea9f97f3157339fa1c68d608c3542c4"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/providers/codex-usage.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/providers/direct-api-probe.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/sdk/app-return.js": {
-      "sha256": "a663fd2c3088a7efe5a52b14ba8d2d3d4f14b1c401a70b0f78c00b33c48df498",
-      "bytesInOutput": 0,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/sdk/app-return.ts",
-        "sourceSha256": "42ffb4790947ce8e1ab01efbbedee78444f27ee4bb80d5a9bdbcb002defa942c",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/sdk/app-return.js.map",
-        "sourceMapSha256": "699d55ce9b58e82ba56535c69e9d6305fe48af1be135836dbe294df7f7db117f",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/sdk/app-return.ts",
-            "sha256": "42ffb4790947ce8e1ab01efbbedee78444f27ee4bb80d5a9bdbcb002defa942c"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/sdk/auth.js": {
-      "sha256": "fe180564bbc2354c821f945c561f69b012a896b8c2b05446be930dc60fdabee4",
-      "bytesInOutput": 42468,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/sdk/auth.ts",
-        "sourceSha256": "a1c4735a9daec37a674e8614cf7401aba2e185b6dcfc00aae3035e7aae39a18c",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/sdk/auth.js.map",
-        "sourceMapSha256": "acaeb53df8588615f6d95d4e8a94f623ebfb5732813389a3624d3f4c4e89db29",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/sdk/auth.ts",
-            "sha256": "a1c4735a9daec37a674e8614cf7401aba2e185b6dcfc00aae3035e7aae39a18c"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "node_modules/.bun/bs58@6.0.0/node_modules/bs58/src/esm/index.js",
-          "kind": "import-statement",
-          "scope": "bundled-dependency"
-        },
-        {
-          "target": "packages/auth/dist/contracts/index.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/sdk/base-url.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/sdk/transport.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "node_modules/.bun/@simplewebauthn+browser@14.0.0/node_modules/@simplewebauthn/browser/esm/index.js",
-          "kind": "dynamic-import",
-          "scope": "bundled-dependency"
-        },
-        {
-          "target": "node_modules/.bun/@simplewebauthn+browser@14.0.0/node_modules/@simplewebauthn/browser/esm/index.js",
-          "kind": "dynamic-import",
-          "scope": "bundled-dependency"
-        },
-        {
-          "target": "node_modules/.bun/@simplewebauthn+browser@14.0.0/node_modules/@simplewebauthn/browser/esm/index.js",
-          "kind": "dynamic-import",
-          "scope": "bundled-dependency"
-        }
-      ]
-    },
-    "packages/auth/dist/sdk/base-url.js": {
-      "sha256": "0fbfce19c0b22ac976642de31a7f9e0ce54e03933311c2c18dedeb3827c969f9",
-      "bytesInOutput": 1160,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/sdk/base-url.ts",
-        "sourceSha256": "8ec7b71735733341b4e1e12ec3b72805fb2a43da0a4a43d6bc2b7437d6e3fa61",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/sdk/base-url.js.map",
-        "sourceMapSha256": "3116159735e09d06f9672e3228c46c4b85cf74331f84e700813dd6189f10c2ef",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/sdk/base-url.ts",
-            "sha256": "8ec7b71735733341b4e1e12ec3b72805fb2a43da0a4a43d6bc2b7437d6e3fa61"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/sdk/client.js": {
-      "sha256": "2b844e44ac2bb9e3dcb799db8ddd3ed8834dedefb7afe4143e1a707f71324b75",
-      "bytesInOutput": 66815,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/sdk/client.ts",
-        "sourceSha256": "5617f943b6112789e8d928ed47a0a95bb36154bcd671af82b6a58c837490162c",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/sdk/client.js.map",
-        "sourceMapSha256": "168ff5add0b6dd42937194584f8b25a4131d6f259052322e642eaa8890766912",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/sdk/client.ts",
-            "sha256": "5617f943b6112789e8d928ed47a0a95bb36154bcd671af82b6a58c837490162c"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/contracts/index.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/sdk/transport.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/sdk/transport.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/sdk/base-url.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/sdk/index.js": {
-      "sha256": "990157b083f0cd2baa2deb60f6d48cd70cfa39c8b11a725a89b53d100796e82c",
-      "bytesInOutput": 91,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/sdk/index.ts",
-        "sourceSha256": "8a9422cf301699d9bd223ac762bf492b881cd6708fad69451bd8ca5f636233a4",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/sdk/index.js.map",
-        "sourceMapSha256": "d5aab7bd38a8661e0f909ab95bd22fe9bd5fc95b770d0e3af6f184e4bc5a9b67",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/sdk/index.ts",
-            "sha256": "8a9422cf301699d9bd223ac762bf492b881cd6708fad69451bd8ca5f636233a4"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/sdk/app-return.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/sdk/auth.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/sdk/client.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/sdk/session-constants.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/sdk/types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/sdk/webhook-verify.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/sdk/session-constants.js": {
-      "sha256": "98427c7b7272e15ba02dc0674cb987e73ba8af789e10e803f0ca8264db03492e",
-      "bytesInOutput": 152,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/sdk/session-constants.ts",
-        "sourceSha256": "9225251d30fefc0cf313a842d81c9d4081cb4cc566f2e63c227327142607369a",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/sdk/session-constants.js.map",
-        "sourceMapSha256": "26ad891db1f00c8446822526d9b3b0a45aadcc6079290a2191f98cb4284c526e",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/sdk/session-constants.ts",
-            "sha256": "9225251d30fefc0cf313a842d81c9d4081cb4cc566f2e63c227327142607369a"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/sdk/transport.js": {
-      "sha256": "2116d32663041abf828ea809ee35b4595b444c77cd54512f5884e87ec9d504e4",
-      "bytesInOutput": 4681,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/sdk/transport.ts",
-        "sourceSha256": "060ba4ea6c35e7056ee3738fe5f80345d9d8b9e6ad413dadfced9d4cd36693ba",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/sdk/transport.js.map",
-        "sourceMapSha256": "e2ae0f1c4a8e8df2ddcb2b302681535029dec2549d57d7bc0b96cc73e73b4a67",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/sdk/transport.ts",
-            "sha256": "060ba4ea6c35e7056ee3738fe5f80345d9d8b9e6ad413dadfced9d4cd36693ba"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/sdk/types.js": {
-      "sha256": "cc4e68511d407370a22721967bcb2481ed12a3867d8889d91794c7838b02f053",
-      "bytesInOutput": 47,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/sdk/types.ts",
-        "sourceSha256": "781111d2c34da005717a65bac45fed9fc86a90218723fc75f4410cd797869de6",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/sdk/types.js.map",
-        "sourceMapSha256": "c4021b6134034c85b747d63a4ea2e9ecbe6d1d56638a6fe0a712e014bf2f1a3b",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/sdk/types.ts",
-            "sha256": "781111d2c34da005717a65bac45fed9fc86a90218723fc75f4410cd797869de6"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/contracts/index.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/sdk/webhook-verify.js": {
-      "sha256": "9a846b12efb609391fc51ae222367b1e046126bcfe61de621891a7f348182e90",
-      "bytesInOutput": 54,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/sdk/webhook-verify.ts",
-        "sourceSha256": "75e8a47e72c781ec1464e54b637672fd1c76237fb19daf52f518e611c8d7814c",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/sdk/webhook-verify.js.map",
-        "sourceMapSha256": "b861c6f66347cacbfdf22633c909aeaca5f505f611c5fb25694b8904801dd335",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/sdk/webhook-verify.ts",
-            "sha256": "75e8a47e72c781ec1464e54b637672fd1c76237fb19daf52f518e611c8d7814c"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/contracts/index.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/audit.js": {
-      "sha256": "1f99cec753e36fa633104754a6015adc3c8924a19c6cc16f89a889cee533e76d",
-      "bytesInOutput": 490,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/audit.ts",
-        "sourceSha256": "d5124cbd8b20465906d01e6a592bfa0bd3baac2e8ce57f20d69abb9e9657144b",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/audit.js.map",
-        "sourceMapSha256": "a33b6ffe8ef267561159939204950d160b584e763f4432303a729967f1ace8c4",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/audit.ts",
-            "sha256": "d5124cbd8b20465906d01e6a592bfa0bd3baac2e8ce57f20d69abb9e9657144b"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/credentials.js": {
-      "sha256": "7e5772bda4787165ef6e4bde4bb3a58855744acf78fb419ac99eec7641fc26f6",
-      "bytesInOutput": 2530,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/credentials.ts",
-        "sourceSha256": "2281429a5e05ea78de8160559603404ff220c6fc455fa190e0aba17bbd29a21b",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/credentials.js.map",
-        "sourceMapSha256": "a9335c5ca9c1d12b7a6e643cd7d55c941be6879e79f9f6755a69e2604f261355",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/credentials.ts",
-            "sha256": "2281429a5e05ea78de8160559603404ff220c6fc455fa190e0aba17bbd29a21b"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/vault/crypto.js": {
-      "sha256": "fb5320fc99d700e077506a07709196e1756f72852ba9cc618026c3f45b829946",
-      "bytesInOutput": 2040,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/crypto.ts",
-        "sourceSha256": "1b59e61e61af4e5b1f637abf146f6c25d7f91229e49e81e0bf0d465241705a69",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/crypto.js.map",
-        "sourceMapSha256": "a5c62ebabbd6b96eba7418021e806d41957a6715ff55302aa994f1e3d836006c",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/crypto.ts",
-            "sha256": "1b59e61e61af4e5b1f637abf146f6c25d7f91229e49e81e0bf0d465241705a69"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/external-credentials.js": {
-      "sha256": "e78738311976ef3f49e1bc907bb0e1a3db08bcd999d7e418636c7150bf6f017f",
-      "bytesInOutput": 7280,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/external-credentials.ts",
-        "sourceSha256": "bd4142f65f620185e24de2cd21b735dd04a3412898ea67a4c5c6647692fcf2a7",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/external-credentials.js.map",
-        "sourceMapSha256": "d3a63db2c6ddd21b162ada32f3ee9f769f600e69dcca7e59d506f80bb4b79fb3",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/external-credentials.ts",
-            "sha256": "bd4142f65f620185e24de2cd21b735dd04a3412898ea67a4c5c6647692fcf2a7"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "child_process",
-          "kind": "dynamic-import",
-          "scope": "external"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/index.js": {
-      "sha256": "378de5ddf83c475a4ee28cf91b92e1419ead8eef6e650a56019af5a98d6c8644",
-      "bytesInOutput": 255,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/index.ts",
-        "sourceSha256": "05c6a66089100c10d9432b18c1de95c2caf5083ef7ab6948398ad1cf14da5d5b",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/index.js.map",
-        "sourceMapSha256": "17057c4a1ba62eb561d3f60f616d41bcf52eb56f01f27e6594032646690c7086",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/index.ts",
-            "sha256": "05c6a66089100c10d9432b18c1de95c2caf5083ef7ab6948398ad1cf14da5d5b"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/vault/credentials.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/crypto.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/external-credentials.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/install.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/inventory.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/manager.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/master-key.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/password-managers.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/pglite-vault.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/profiles.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/vault.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/verified-write.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/install.js": {
-      "sha256": "9e1e2ee3117ca2b0a1362b649b1fb0135db0e9185572ce6138480e75d0dd9f2f",
-      "bytesInOutput": 157,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/install.ts",
-        "sourceSha256": "2721d704b3b8618222c631d89b434885037b1ca0837b8d97da632fb7a63e8429",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/install.js.map",
-        "sourceMapSha256": "1485a3731457ad5847a7974ae16107abb7963622ffdd04d723966221bf6a8fce",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/install.ts",
-            "sha256": "2721d704b3b8618222c631d89b434885037b1ca0837b8d97da632fb7a63e8429"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "child_process",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "util",
-          "kind": "import-statement",
-          "scope": "external"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/internal-utils.js": {
-      "sha256": "7401bda915ce008e06babcd20cb6e0fe73cdb7dffdd97a0ff2ec8709ddf6fbf7",
-      "bytesInOutput": 920,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/internal-utils.ts",
-        "sourceSha256": "99a5c6e8b28f178df8645d8bca81ac4e3e5054297fcecc9862cee35e2b1b26a2",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/internal-utils.js.map",
-        "sourceMapSha256": "7887def171fded53d909842ca35fe56ba859e14babbd6d9004d9cc7876aae559",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/internal-utils.ts",
-            "sha256": "99a5c6e8b28f178df8645d8bca81ac4e3e5054297fcecc9862cee35e2b1b26a2"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/vault/inventory.js": {
-      "sha256": "b126d082a048afffc849d81c6bb71e5a4789186f89ce5e30c38508db960e5378",
-      "bytesInOutput": 5608,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/inventory.ts",
-        "sourceSha256": "c27ac2a9df8f50a0c927afe9b3d8dbfc6ad678d7151dfdf50d194560abbbd1c4",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/inventory.js.map",
-        "sourceMapSha256": "eb461bc050cebc2fa11adb4821be7f453c1ace728298129739323a3758ed1346",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/inventory.ts",
-            "sha256": "c27ac2a9df8f50a0c927afe9b3d8dbfc6ad678d7151dfdf50d194560abbbd1c4"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/vault/keychain-process.js": {
-      "sha256": "698207e94f5fee80bbc53f6abdbfbe034a84cf6d457e897c6f1153e00bbc9aa4",
-      "bytesInOutput": 3140,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/keychain-process.ts",
-        "sourceSha256": "fae7856ef0b1554b4135aaa132f3a7a3aa536dd52d989f5a0226f09f8fd915a8",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/keychain-process.js.map",
-        "sourceMapSha256": "87dd4b78b06affbc2567aea3b184f40922985de3fdb8c24c63140eab5fc15c0b",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/keychain-process.ts",
-            "sha256": "fae7856ef0b1554b4135aaa132f3a7a3aa536dd52d989f5a0226f09f8fd915a8"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "child_process",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "module",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/manager.js": {
-      "sha256": "d43d01bad13ef2f3ac3515d29df023406a69806cc866615e1deb60f10b6c8edb",
-      "bytesInOutput": 9585,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/manager.ts",
-        "sourceSha256": "59ffd33881b01cc0b63445c044afe561003191eaf3460690d8878ec5afd1ed21",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/manager.js.map",
-        "sourceMapSha256": "201e78d508052b29a071eb3fcc77f4531642a8c7ef394a74ae0867ae5e56beec",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/manager.ts",
-            "sha256": "59ffd33881b01cc0b63445c044afe561003191eaf3460690d8878ec5afd1ed21"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "child_process",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "util",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/auth/dist/vault/credentials.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/external-credentials.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/profiles.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/vault.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/master-key.js": {
-      "sha256": "dd9d0d4f8e81916a89254e1d03bd170ad596d6aa34501968177b50f603efb90c",
-      "bytesInOutput": 5137,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/master-key.ts",
-        "sourceSha256": "87a790fce68f249acdf462173ba7bd91aca38ad7f1e607cce8441d0bd07308e7",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/master-key.js.map",
-        "sourceMapSha256": "d38b5b92168cf87a83f4a8e008990cf257a20f3f459a0da82195c5a0f857cb70",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/master-key.ts",
-            "sha256": "87a790fce68f249acdf462173ba7bd91aca38ad7f1e607cce8441d0bd07308e7"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/auth/dist/vault/crypto.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/keychain-process.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/password-managers.js": {
-      "sha256": "09034be82760e143a471860d75c0fae221c29ea61c9f908c7ab1c3d90bf53cc7",
-      "bytesInOutput": 2267,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/password-managers.ts",
-        "sourceSha256": "79b7f4364cdfe4bc8e6ce08446be8492da29e6abbe26e8d803c437540df370f9",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/password-managers.js.map",
-        "sourceMapSha256": "250441c466b49137860aca35d797cba48ad8c075824471100f67281fddb2fe9a",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/password-managers.ts",
-            "sha256": "79b7f4364cdfe4bc8e6ce08446be8492da29e6abbe26e8d803c437540df370f9"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "child_process",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "util",
-          "kind": "import-statement",
-          "scope": "external"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/pglite-vault.js": {
-      "sha256": "3116604dc35be027dad5dde86c37867c7d005d6df9b2862986a0aa78b10299f0",
-      "bytesInOutput": 14827,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/pglite-vault.ts",
-        "sourceSha256": "56bb07c94d4b40e7391b026a51d7e121f6842697303416dab77da00ae80b418f",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/pglite-vault.js.map",
-        "sourceMapSha256": "49160bcc83c0c6055ae4c2efb6c0942dabed11069102d34c13df35ab9cb8a6c0",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/pglite-vault.ts",
-            "sha256": "56bb07c94d4b40e7391b026a51d7e121f6842697303416dab77da00ae80b418f"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "crypto",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "node_modules/.bun/@electric-sql+pglite@0.4.6/node_modules/@electric-sql/pglite/dist/index.js",
-          "kind": "import-statement",
-          "scope": "bundled-dependency"
-        },
-        {
-          "target": "packages/auth/dist/vault/audit.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/crypto.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/internal-utils.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/password-managers.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/store.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/vault-paths.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/vault-types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/profiles.js": {
-      "sha256": "9d0840ea7f9875c42aac3888b28ba5a422bac3554145c235edd8c7ea172eb2df",
-      "bytesInOutput": 3326,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/profiles.ts",
-        "sourceSha256": "15cf77eda6101048fe4c4ecc353e718858eaa64109dec71201f652584b9486d4",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/profiles.js.map",
-        "sourceMapSha256": "eb114a9250f151e6d200417a980f938ad6c74cb9dcfe5c4953ea1c7e986f8086",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/profiles.ts",
-            "sha256": "15cf77eda6101048fe4c4ecc353e718858eaa64109dec71201f652584b9486d4"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "packages/auth/dist/vault/inventory.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/store.js": {
-      "sha256": "bb8fb283eb7e61eb41dfd2fbc832b21465228d1e12c89f072dacc12e915d91a0",
-      "bytesInOutput": 2382,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/store.ts",
-        "sourceSha256": "f9f2e60a09d706c969091539543148c1a87516aaefcbffd013bef7cd61775c58",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/store.js.map",
-        "sourceMapSha256": "98693edd3cc561a6d811dcd763ca81c6ad4d79ec348b187f393d0b5913dfea72",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/store.ts",
-            "sha256": "f9f2e60a09d706c969091539543148c1a87516aaefcbffd013bef7cd61775c58"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "fs",
-          "kind": "import-statement",
-          "scope": "external"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/vault-paths.js": {
-      "sha256": "13e1d7a444356e4ec55c66a86fdb1296c14c2ffa32d846dab7df4427cb735adf",
-      "bytesInOutput": 437,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/vault-paths.ts",
-        "sourceSha256": "c3077dc21a34d6af9f1ef4e3b57ff6b695dbcddd372c114154a1e956852d9c1d",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/vault-paths.js.map",
-        "sourceMapSha256": "eb9475e41c1ecec819447a97c3b05b2b6b8e20ebef7b8c8073229196343c2d56",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/vault-paths.ts",
-            "sha256": "c3077dc21a34d6af9f1ef4e3b57ff6b695dbcddd372c114154a1e956852d9c1d"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "os",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/host/dist/protocol.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/vault-types.js": {
-      "sha256": "f9ceb977a4d0bfa90411d99b8d596ecb389fae3f0c24cc27da6bf029f67d6d96",
-      "bytesInOutput": 540,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/vault-types.ts",
-        "sourceSha256": "415d01c0a2b225b4a43c1ac72fc6c12a80b01fa7a45f4303c75e70b1eba8def2",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/vault-types.js.map",
-        "sourceMapSha256": "556b2eee91a33ddf93f58d06abcfb51432f6419232a298936a99484863c02f51",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/vault-types.ts",
-            "sha256": "415d01c0a2b225b4a43c1ac72fc6c12a80b01fa7a45f4303c75e70b1eba8def2"
-          }
-        ]
-      },
-      "imports": []
-    },
-    "packages/auth/dist/vault/vault.js": {
-      "sha256": "102cbc6fcce73032aecf556cff18dd0c07ef4513116ffb3abe3022c2fca3b271",
-      "bytesInOutput": 587,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/vault.ts",
-        "sourceSha256": "cc7714e2732923bcbd5ae279d1a31f1dbb689d915d32b1002afe59a9e5c92ad3",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/vault.js.map",
-        "sourceMapSha256": "a162908e2cb75395fb995817371640afc49e21a4b5ecef776fad7b247d72deae",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/vault.ts",
-            "sha256": "cc7714e2732923bcbd5ae279d1a31f1dbb689d915d32b1002afe59a9e5c92ad3"
-          }
-        ]
-      },
-      "imports": [
-        {
-          "target": "path",
-          "kind": "import-statement",
-          "scope": "external"
-        },
-        {
-          "target": "packages/auth/dist/vault/master-key.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/pglite-vault.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/vault-paths.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        },
-        {
-          "target": "packages/auth/dist/vault/vault-types.js",
-          "kind": "import-statement",
-          "scope": "first-party"
-        }
-      ]
-    },
-    "packages/auth/dist/vault/verified-write.js": {
-      "sha256": "12ab6fd984e9f2bef92840ee6e7e85d638559ee93ff41f42fcbdf764f704335e",
-      "bytesInOutput": 1371,
-      "tracked": false,
-      "generatedSource": {
-        "method": "declared-typescript-output-path",
-        "source": "packages/auth/src/vault/verified-write.ts",
-        "sourceSha256": "a65132fa5bad2ee172c65dd2454af127983417d7481af48dd95b001429abb898",
-        "config": "packages/auth/tsconfig.build.json",
-        "configSha256": "c5c2e46efb2c224ec5c41fc20660ebc540c3ee7351a886b084bbe117062ce926",
-        "sourceMap": "packages/auth/dist/vault/verified-write.js.map",
-        "sourceMapSha256": "36d64fb3a431bca0f792c1b8acf32fd16da2479fee3d221ff23c3490fcc76538",
-        "sourceMaps": [
-          {
-            "path": "packages/auth/src/vault/verified-write.ts",
-            "sha256": "a65132fa5bad2ee172c65dd2454af127983417d7481af48dd95b001429abb898"
-          }
-        ]
-      },
-      "imports": []
-    },
     "packages/auth/src/accounts/account-pool-broker.ts": {
       "sha256": "896b808e8417c5f4095bee0827bc82c1c5bacc2139437fecede4122bdf231816",
-      "bytesInOutput": 239,
+      "bytesInOutput": 236,
       "tracked": true,
       "gitObject": "47e3d1b4aa5a1b4f5f53bec7ed7bed716592c1b2",
       "imports": [
@@ -19764,7 +17006,7 @@
     },
     "packages/auth/src/accounts/account-pool.ts": {
       "sha256": "5dab9a794a1f7708fa94479eaae2a99b3037ab9560e53389c963471e85f76942",
-      "bytesInOutput": 24391,
+      "bytesInOutput": 24380,
       "tracked": true,
       "gitObject": "358237045e5e2b0f80daf02c281fc59c268b8245",
       "imports": [
@@ -19844,7 +17086,7 @@
     },
     "packages/auth/src/accounts/account-usage.ts": {
       "sha256": "b9822892cb6fe816bbe5633ed108bf4c3e7fb4fa54d75431d8e094f2f70ec193",
-      "bytesInOutput": 5561,
+      "bytesInOutput": 5559,
       "tracked": true,
       "gitObject": "50d31ed96cc3728761661863b818adf2fec348aa",
       "imports": [
@@ -19877,7 +17119,7 @@
     },
     "packages/auth/src/accounts/claude-token-refresh.ts": {
       "sha256": "71da241b74625cb6d2128b84d2fafb8b7e5a943bc830f29a4c35ae93a4849f2e",
-      "bytesInOutput": 555,
+      "bytesInOutput": 554,
       "tracked": true,
       "gitObject": "7d71d9904b3ef61089868624b4464fcbdce2363e",
       "imports": [
@@ -19890,7 +17132,7 @@
     },
     "packages/auth/src/accounts/coding-account-bridge.ts": {
       "sha256": "dc286dcfc43641e91d38b5af82fbb0e2ddcc6a9663d8df45779f1d4644cb40cd",
-      "bytesInOutput": 19836,
+      "bytesInOutput": 19813,
       "tracked": true,
       "gitObject": "ac37f7dfac96376272f8808cf419912e5543fffe",
       "imports": [
@@ -20016,7 +17258,7 @@
     },
     "packages/auth/src/auth/account-storage.ts": {
       "sha256": "a2ce69228c88d441c0351b1a84876e9b554c738778c819f7dddcd9e8617ec7c7",
-      "bytesInOutput": 33721,
+      "bytesInOutput": 42074,
       "tracked": true,
       "gitObject": "9482a7292e403e61bcf6f704f4b20c7ca2068ab0",
       "imports": [
@@ -20069,7 +17311,7 @@
     },
     "packages/auth/src/auth/anthropic.ts": {
       "sha256": "36ad167951b09d64a982b0b15e5921f6a672027bd1126ca020b9cae21d91cbcc",
-      "bytesInOutput": 153,
+      "bytesInOutput": 525,
       "tracked": true,
       "gitObject": "30bf517d60bbbb48c6692d18ec5e1975f68fd9e7",
       "imports": [
@@ -20082,7 +17324,7 @@
     },
     "packages/auth/src/auth/codex-device.ts": {
       "sha256": "b511c201fc78335c06e563f6afa734bd5dd4164dd244fb85c7a417e779c9ca9e",
-      "bytesInOutput": 64,
+      "bytesInOutput": 5126,
       "tracked": true,
       "gitObject": "80b869469fc223471c2168ca7e21b4b650c664a6",
       "imports": [
@@ -20120,7 +17362,7 @@
     },
     "packages/auth/src/auth/credentials.ts": {
       "sha256": "27f217bb1a58be33e5190859a2b597a6f222e10796859c0a937d78f55ea8e1db",
-      "bytesInOutput": 7606,
+      "bytesInOutput": 15723,
       "tracked": true,
       "gitObject": "b75c09b5bf11cba8df3eafd4601fe62920c70e71",
       "imports": [
@@ -20196,6 +17438,79 @@
         }
       ]
     },
+    "packages/auth/src/auth/index.ts": {
+      "sha256": "b171e0a90e620b13b04fe8534c170bf3ef33195d71fa76a00180993d6f96f87a",
+      "bytesInOutput": 4700,
+      "tracked": true,
+      "gitObject": "699073d294304f38b8927899d6838a470dafe96e",
+      "imports": [
+        {
+          "target": "packages/auth/src/providers/codex-usage.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/providers/direct-api-probe.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/account-storage.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/anthropic.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/codex-device.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/credentials.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/oauth-flow.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/openai-codex.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/refresh-mutex.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/subscription-auth/adopt-codex-cli-login.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/subscription-auth/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/token-expiry.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/types.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
     "packages/auth/src/auth/native-cloud-sign-in.ts": {
       "sha256": "c993e0343316953ba421155098317c1092c85fcc6fbce6267cd27599596920e8",
       "bytesInOutput": 37,
@@ -20205,7 +17520,7 @@
     },
     "packages/auth/src/auth/oauth-flow.ts": {
       "sha256": "ceeb8e91ed2de3bffbfd9a750b8792b79b70cab5e462c858439ae8ecb85013bd",
-      "bytesInOutput": 1648,
+      "bytesInOutput": 10568,
       "tracked": true,
       "gitObject": "d451f1b3a60837f8d9e2b936f447e10a5737f935",
       "imports": [
@@ -20248,7 +17563,7 @@
     },
     "packages/auth/src/auth/openai-codex.ts": {
       "sha256": "758bc96da1d1a90ee88f421b77283773fff19febd6e32a304b05be8dc0d500ef",
-      "bytesInOutput": 317,
+      "bytesInOutput": 1215,
       "tracked": true,
       "gitObject": "03dfa0f01c5a6604f61586f789fb249465946b40",
       "imports": [
@@ -20266,7 +17581,7 @@
     },
     "packages/auth/src/auth/refresh-http-error.ts": {
       "sha256": "85ec5393a623c2cdffb166294fd41b7c8c1b2fa0e6d1bead4d59260f9ef87fb2",
-      "bytesInOutput": 870,
+      "bytesInOutput": 866,
       "tracked": true,
       "gitObject": "61e4d9502fbda992e6da648141cc7844bc02ca62",
       "imports": [
@@ -20284,14 +17599,52 @@
     },
     "packages/auth/src/auth/refresh-mutex.ts": {
       "sha256": "c141ce39081a7dc1e7bb8c3a3b88aa5acc395b7aa3081e31203608dd9a61d362",
-      "bytesInOutput": 367,
+      "bytesInOutput": 362,
       "tracked": true,
       "gitObject": "f5ab123a25314f7df45bb8047a5c16a36dc6d952",
       "imports": []
     },
+    "packages/auth/src/auth/subscription-auth/adopt-codex-cli-login.ts": {
+      "sha256": "8ace5a19cc00c95fe73bde8288e728fc111666d539963e4153598611549e272f",
+      "bytesInOutput": 7439,
+      "tracked": true,
+      "gitObject": "56ef17f29f74b6b48797c5120633c26d970e5c5a",
+      "imports": [
+        {
+          "target": "crypto",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "fs",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "path",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "packages/core/src/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/core/src/protocol.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/auth/account-storage.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
     "packages/auth/src/auth/subscription-auth/builtin-providers.ts": {
       "sha256": "0e8e25766b83b622fb401dcb9a9e644a906615e2ebe6e5fbf1f34857568c4409",
-      "bytesInOutput": 58,
+      "bytesInOutput": 2219,
       "tracked": true,
       "gitObject": "86cfa2f47e75df695978b9383b0ab3f120714551",
       "imports": [
@@ -20322,23 +17675,36 @@
         }
       ]
     },
+    "packages/auth/src/auth/subscription-auth/index.ts": {
+      "sha256": "8bb11ffeb01c5c224679a6c2b35142766498562403a40e29d96aabdfe4157ae8",
+      "bytesInOutput": 57,
+      "tracked": true,
+      "gitObject": "63ed70ee52a20d12591a8de87f97102af300c840",
+      "imports": [
+        {
+          "target": "packages/auth/src/auth/subscription-auth/registry.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
     "packages/auth/src/auth/subscription-auth/registry.ts": {
       "sha256": "fa5477aaed731b6b7695dd3c6f257e2cda17baa81ba72f44c25139e61212feaf",
-      "bytesInOutput": 26,
+      "bytesInOutput": 415,
       "tracked": true,
       "gitObject": "735d4a84079b89c275be4f1b318059804a69e4a4",
       "imports": []
     },
     "packages/auth/src/auth/token-expiry.ts": {
       "sha256": "b56cd22f077862a53c74c0a0d43746846c348d296f16bfe210b36ed9a22a5891",
-      "bytesInOutput": 30,
+      "bytesInOutput": 730,
       "tracked": true,
       "gitObject": "cff6b29c2447cba13601329122250b628ca2c063",
       "imports": []
     },
     "packages/auth/src/auth/types.ts": {
       "sha256": "9b5a7c3a7d519669afc9f6af65f95bd2b7d78787bb011027d7c1880cf1a05589",
-      "bytesInOutput": 5235,
+      "bytesInOutput": 5857,
       "tracked": true,
       "gitObject": "11cc7d78729eb915cd46241993885eefa42e62e3",
       "imports": [
@@ -20351,7 +17717,7 @@
     },
     "packages/auth/src/auth/vendor/pi-oauth/anthropic-login.ts": {
       "sha256": "5e25e7554fd377929938c8fe3aa6dee6a353b476aa5324e07b91587a10fada8d",
-      "bytesInOutput": 2603,
+      "bytesInOutput": 4978,
       "tracked": true,
       "gitObject": "cb43314b4f694c8cd75d9441cf4e53796aa100fc",
       "imports": [
@@ -20374,7 +17740,7 @@
     },
     "packages/auth/src/auth/vendor/pi-oauth/openai-codex-login.ts": {
       "sha256": "23898d2bb1d1f5d1ad8bc72435eae326bbfe74264044110b83dd2f9a237ac631",
-      "bytesInOutput": 4248,
+      "bytesInOutput": 9983,
       "tracked": true,
       "gitObject": "384255620fa7dbd00141648d9033107970aa9ba9",
       "imports": [
@@ -20412,21 +17778,21 @@
     },
     "packages/auth/src/contracts/chains.ts": {
       "sha256": "225db2f51fdf8b2c583b1187276281b5f91476f8ac49afe90b0132312447dcdc",
-      "bytesInOutput": 5518,
+      "bytesInOutput": 5442,
       "tracked": true,
       "gitObject": "066386162f7d47d7d0830f93ce0b16333e2eaced",
       "imports": []
     },
     "packages/auth/src/contracts/crypto.ts": {
       "sha256": "a3679d9ffea6dc31152f56030de415f8f12efea410c13d5e09a949b488152527",
-      "bytesInOutput": 0,
+      "bytesInOutput": 947,
       "tracked": true,
       "gitObject": "6ab8d37198ceb8ea2a30d60ccaee7b2ae4b3c3bf",
       "imports": []
     },
     "packages/auth/src/contracts/index.ts": {
       "sha256": "45f232d9e1156502bff341195449ccf325bdc998d454dd8f38a1a48ee3176761",
-      "bytesInOutput": 64,
+      "bytesInOutput": 61,
       "tracked": true,
       "gitObject": "b98acfd3d61ce53f4f28b342bc21522e5975faa7",
       "imports": [
@@ -20461,14 +17827,205 @@
     },
     "packages/auth/src/contracts/signing.ts": {
       "sha256": "3bd8610b7d9d234aa0289a2a6e7106216c220c17c43e9fa090a708dc19361e31",
-      "bytesInOutput": 1846,
+      "bytesInOutput": 1837,
       "tracked": true,
       "gitObject": "8e788d675329545fa27cb1163dc864d9077b4729",
       "imports": []
     },
+    "packages/auth/src/kms/crypto/aead.ts": {
+      "sha256": "99cbbc79c9ada159fa22b87896a77285c38270dd0e645bb98f2691892c94ebd7",
+      "bytesInOutput": 1793,
+      "tracked": true,
+      "gitObject": "bcdeb61c6fb05c6fcdb696e5c9b5852651b4c017",
+      "imports": [
+        {
+          "target": "crypto",
+          "kind": "import-statement",
+          "scope": "external"
+        }
+      ]
+    },
+    "packages/auth/src/kms/crypto/hkdf.ts": {
+      "sha256": "063e75afcb1de0de5b1b93116fd40fadb8a1a67afc8cf1e92fc9261bbb643445",
+      "bytesInOutput": 337,
+      "tracked": true,
+      "gitObject": "2c5eb5b294ab5e79eb63486980012a748e5d32f5",
+      "imports": [
+        {
+          "target": "crypto",
+          "kind": "import-statement",
+          "scope": "external"
+        }
+      ]
+    },
+    "packages/auth/src/kms/index.ts": {
+      "sha256": "9804f1d8051429972ff8ab9e5b54aa8070d440708b39e84ef3f6b4d826688800",
+      "bytesInOutput": 2005,
+      "tracked": true,
+      "gitObject": "d6034ef45f91c607cf0e77bf6e5443ae1d8c6fe1",
+      "imports": [
+        {
+          "target": "packages/auth/src/kms/local-adapter.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/memory-adapter.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/steward-adapter.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/types.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/key-namespace.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/operation-key-bundle.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/types.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/kms/key-namespace.ts": {
+      "sha256": "ffa4e148617ab228bb0bf863abbb4ba0aade09776c0ed29d03e0d6a625b27153",
+      "bytesInOutput": 1367,
+      "tracked": true,
+      "gitObject": "b803f85f2af3028f4ef37461cdca571833afa9ed",
+      "imports": [
+        {
+          "target": "packages/auth/src/kms/types.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/kms/local-adapter.ts": {
+      "sha256": "1f3cb6dc01f35d09e5de0ad5d27816efa2790897d1b339e7398f61d83240bde9",
+      "bytesInOutput": 3589,
+      "tracked": true,
+      "gitObject": "7ff9c3266c12317c3aa5fdb529935d20f331b7d0",
+      "imports": [
+        {
+          "target": "crypto",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "packages/auth/src/kms/crypto/aead.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/crypto/hkdf.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/key-namespace.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/types.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/kms/memory-adapter.ts": {
+      "sha256": "88b0f9018b3991fa23a7e823a2e0b4e1f65b0cc2304b95a0bd3eb91d87d13157",
+      "bytesInOutput": 4395,
+      "tracked": true,
+      "gitObject": "430a9651d7c0ded57a07d37766bd40c4046655b1",
+      "imports": [
+        {
+          "target": "crypto",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "packages/auth/src/kms/crypto/aead.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/key-namespace.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/types.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/kms/operation-key-bundle.ts": {
+      "sha256": "1797ec91f26f820d0c5bcdf337d63f8bab9096bd447f5090a3fd6710b76e1d1d",
+      "bytesInOutput": 365,
+      "tracked": true,
+      "gitObject": "4e27550375c4592b34707e4b4c9190295422b857",
+      "imports": [
+        {
+          "target": "crypto",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "packages/core/src/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/key-namespace.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/kms/steward-adapter.ts": {
+      "sha256": "d916988951157052eebfa4d348a5b6cb138c75112fb2f04d8a6a3e3bf366ef78",
+      "bytesInOutput": 5480,
+      "tracked": true,
+      "gitObject": "29eb2e2e4f060d0f700ae7f2a414ddbf083d72c5",
+      "imports": [
+        {
+          "target": "packages/core/src/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/kms/types.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/kms/types.ts": {
+      "sha256": "ef69b5ed5deb9e448397699ae13136c707ee6ba8d0f9120426ca1401c9f73428",
+      "bytesInOutput": 448,
+      "tracked": true,
+      "gitObject": "fe9bb7b439026abaf01df5040e96251a510da614",
+      "imports": []
+    },
     "packages/auth/src/providers/codex-usage.ts": {
       "sha256": "cb0c3d7da70d564b774d55d5d287b3792d9cc75a7a2cb4e3abbd19f5c0ca635e",
-      "bytesInOutput": 3184,
+      "bytesInOutput": 3162,
       "tracked": true,
       "gitObject": "0ef88cce7a6ad94116939790ad20df89a7cdb46f",
       "imports": [
@@ -20481,14 +18038,220 @@
     },
     "packages/auth/src/providers/direct-api-probe.ts": {
       "sha256": "1d6e65b72bcefff2ef97ff99406f9892b482672f901e5fabe67b5e80df77323f",
-      "bytesInOutput": 5700,
+      "bytesInOutput": 5671,
       "tracked": true,
       "gitObject": "5fd237411a9dcd39fc1787aefa9802876f303104",
       "imports": []
     },
+    "packages/auth/src/providers/index.ts": {
+      "sha256": "7cff46006366f7180581f80319af32c6aea9f97f3157339fa1c68d608c3542c4",
+      "bytesInOutput": 76,
+      "tracked": true,
+      "gitObject": "4766a7bcd9eb48d106db4ec2095b117a94a8b5bf",
+      "imports": [
+        {
+          "target": "packages/auth/src/providers/codex-usage.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/providers/direct-api-probe.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/sdk/app-return.ts": {
+      "sha256": "42ffb4790947ce8e1ab01efbbedee78444f27ee4bb80d5a9bdbcb002defa942c",
+      "bytesInOutput": 0,
+      "tracked": true,
+      "gitObject": "b227497137a065bb60e6645d287e8472128260a9",
+      "imports": []
+    },
+    "packages/auth/src/sdk/auth.ts": {
+      "sha256": "a1c4735a9daec37a674e8614cf7401aba2e185b6dcfc00aae3035e7aae39a18c",
+      "bytesInOutput": 42468,
+      "tracked": true,
+      "gitObject": "a60fd0223011e179309f9d171772ed028034df31",
+      "imports": [
+        {
+          "target": "node_modules/.bun/bs58@6.0.0/node_modules/bs58/src/esm/index.js",
+          "kind": "import-statement",
+          "scope": "bundled-dependency"
+        },
+        {
+          "target": "packages/auth/src/contracts/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/sdk/base-url.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/sdk/transport.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "node_modules/.bun/@simplewebauthn+browser@14.0.0/node_modules/@simplewebauthn/browser/esm/index.js",
+          "kind": "dynamic-import",
+          "scope": "bundled-dependency"
+        },
+        {
+          "target": "node_modules/.bun/@simplewebauthn+browser@14.0.0/node_modules/@simplewebauthn/browser/esm/index.js",
+          "kind": "dynamic-import",
+          "scope": "bundled-dependency"
+        },
+        {
+          "target": "node_modules/.bun/@simplewebauthn+browser@14.0.0/node_modules/@simplewebauthn/browser/esm/index.js",
+          "kind": "dynamic-import",
+          "scope": "bundled-dependency"
+        }
+      ]
+    },
+    "packages/auth/src/sdk/base-url.ts": {
+      "sha256": "8ec7b71735733341b4e1e12ec3b72805fb2a43da0a4a43d6bc2b7437d6e3fa61",
+      "bytesInOutput": 1160,
+      "tracked": true,
+      "gitObject": "7be01d4526cfe64ba9846174ee5a87f07175f8cd",
+      "imports": []
+    },
+    "packages/auth/src/sdk/client.ts": {
+      "sha256": "5617f943b6112789e8d928ed47a0a95bb36154bcd671af82b6a58c837490162c",
+      "bytesInOutput": 66815,
+      "tracked": true,
+      "gitObject": "3941a0763b1a34aed709a3cfa0881830ecf67533",
+      "imports": [
+        {
+          "target": "packages/auth/src/contracts/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/sdk/transport.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/sdk/transport.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/sdk/base-url.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/sdk/index.ts": {
+      "sha256": "8a9422cf301699d9bd223ac762bf492b881cd6708fad69451bd8ca5f636233a4",
+      "bytesInOutput": 91,
+      "tracked": true,
+      "gitObject": "d63c1bb434cc6945230b0067d9f2fb02c925d268",
+      "imports": [
+        {
+          "target": "packages/auth/src/sdk/app-return.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/sdk/auth.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/sdk/client.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/sdk/session-constants.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/sdk/types.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/sdk/webhook-verify.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/sdk/session-constants.ts": {
+      "sha256": "9225251d30fefc0cf313a842d81c9d4081cb4cc566f2e63c227327142607369a",
+      "bytesInOutput": 152,
+      "tracked": true,
+      "gitObject": "25a1aa87966a69298dc1fd30ccae0b344012756f",
+      "imports": []
+    },
+    "packages/auth/src/sdk/transport.ts": {
+      "sha256": "060ba4ea6c35e7056ee3738fe5f80345d9d8b9e6ad413dadfced9d4cd36693ba",
+      "bytesInOutput": 4681,
+      "tracked": true,
+      "gitObject": "b769f419c7e82a9887e55c62f44612d075646654",
+      "imports": []
+    },
+    "packages/auth/src/sdk/types.ts": {
+      "sha256": "781111d2c34da005717a65bac45fed9fc86a90218723fc75f4410cd797869de6",
+      "bytesInOutput": 47,
+      "tracked": true,
+      "gitObject": "c4a3e2989dd7efb18513a5e987cdbc8c3f8ce210",
+      "imports": [
+        {
+          "target": "packages/auth/src/contracts/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/sdk/webhook-verify.ts": {
+      "sha256": "75e8a47e72c781ec1464e54b637672fd1c76237fb19daf52f518e611c8d7814c",
+      "bytesInOutput": 54,
+      "tracked": true,
+      "gitObject": "d84f8437ebe11c2eff793ddf00aa40a93d2cc6e2",
+      "imports": [
+        {
+          "target": "packages/auth/src/contracts/index.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/vault/audit.ts": {
+      "sha256": "d5124cbd8b20465906d01e6a592bfa0bd3baac2e8ce57f20d69abb9e9657144b",
+      "bytesInOutput": 490,
+      "tracked": true,
+      "gitObject": "565707ce7a1abd1c1fc2eba2f49b268bccdc06ba",
+      "imports": [
+        {
+          "target": "fs",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "path",
+          "kind": "import-statement",
+          "scope": "external"
+        }
+      ]
+    },
+    "packages/auth/src/vault/credentials.ts": {
+      "sha256": "2281429a5e05ea78de8160559603404ff220c6fc455fa190e0aba17bbd29a21b",
+      "bytesInOutput": 2530,
+      "tracked": true,
+      "gitObject": "2d698af622dd20b5d033016140b6c490158aad31",
+      "imports": []
+    },
     "packages/auth/src/vault/crypto.ts": {
       "sha256": "1b59e61e61af4e5b1f637abf146f6c25d7f91229e49e81e0bf0d465241705a69",
-      "bytesInOutput": 2072,
+      "bytesInOutput": 2040,
       "tracked": true,
       "gitObject": "8993eb9f2390c6d4f2524124fc8da713cc13c4a0",
       "imports": [
@@ -20499,9 +18262,122 @@
         }
       ]
     },
+    "packages/auth/src/vault/external-credentials.ts": {
+      "sha256": "bd4142f65f620185e24de2cd21b735dd04a3412898ea67a4c5c6647692fcf2a7",
+      "bytesInOutput": 7280,
+      "tracked": true,
+      "gitObject": "a0b866a27f53a945f625616644a5111b6a9a0e96",
+      "imports": [
+        {
+          "target": "child_process",
+          "kind": "dynamic-import",
+          "scope": "external"
+        }
+      ]
+    },
+    "packages/auth/src/vault/index.ts": {
+      "sha256": "05c6a66089100c10d9432b18c1de95c2caf5083ef7ab6948398ad1cf14da5d5b",
+      "bytesInOutput": 255,
+      "tracked": true,
+      "gitObject": "5015a2c1bc5f9b801fe89e1a9b46b10002069f0f",
+      "imports": [
+        {
+          "target": "packages/auth/src/vault/credentials.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/crypto.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/external-credentials.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/install.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/inventory.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/manager.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/master-key.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/password-managers.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/pglite-vault.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/profiles.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/vault.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/verified-write.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/vault/install.ts": {
+      "sha256": "2721d704b3b8618222c631d89b434885037b1ca0837b8d97da632fb7a63e8429",
+      "bytesInOutput": 157,
+      "tracked": true,
+      "gitObject": "95b46475b9d437d6d414afc646fe6e055b171a8e",
+      "imports": [
+        {
+          "target": "child_process",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "util",
+          "kind": "import-statement",
+          "scope": "external"
+        }
+      ]
+    },
+    "packages/auth/src/vault/internal-utils.ts": {
+      "sha256": "99a5c6e8b28f178df8645d8bca81ac4e3e5054297fcecc9862cee35e2b1b26a2",
+      "bytesInOutput": 920,
+      "tracked": true,
+      "gitObject": "443ec04be36189164f250c4b8cace0402e746c75",
+      "imports": []
+    },
+    "packages/auth/src/vault/inventory.ts": {
+      "sha256": "c27ac2a9df8f50a0c927afe9b3d8dbfc6ad678d7151dfdf50d194560abbbd1c4",
+      "bytesInOutput": 5608,
+      "tracked": true,
+      "gitObject": "8cf08f79b2d50194c8ec6c5bf296d2768a59e632",
+      "imports": []
+    },
     "packages/auth/src/vault/keychain-process.ts": {
       "sha256": "fae7856ef0b1554b4135aaa132f3a7a3aa536dd52d989f5a0226f09f8fd915a8",
-      "bytesInOutput": 3186,
+      "bytesInOutput": 3140,
       "tracked": true,
       "gitObject": "76f552aa0b86fec287c1405322e5ecef4688d5a7",
       "imports": [
@@ -20522,9 +18398,47 @@
         }
       ]
     },
+    "packages/auth/src/vault/manager.ts": {
+      "sha256": "59ffd33881b01cc0b63445c044afe561003191eaf3460690d8878ec5afd1ed21",
+      "bytesInOutput": 9585,
+      "tracked": true,
+      "gitObject": "6c632b4899c24b37b3e189858296933cc9e2cdf4",
+      "imports": [
+        {
+          "target": "child_process",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "util",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "packages/auth/src/vault/credentials.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/external-credentials.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/profiles.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/vault.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
     "packages/auth/src/vault/master-key.ts": {
       "sha256": "87a790fce68f249acdf462173ba7bd91aca38ad7f1e607cce8441d0bd07308e7",
-      "bytesInOutput": 2164,
+      "bytesInOutput": 5137,
       "tracked": true,
       "gitObject": "661f8db35a430be6303d6504e6e958807c4356a8",
       "imports": [
@@ -20554,6 +18468,183 @@
           "scope": "first-party"
         }
       ]
+    },
+    "packages/auth/src/vault/password-managers.ts": {
+      "sha256": "79b7f4364cdfe4bc8e6ce08446be8492da29e6abbe26e8d803c437540df370f9",
+      "bytesInOutput": 2267,
+      "tracked": true,
+      "gitObject": "d530c46f3ee43ed88aab6df63bd9cf2291d63d69",
+      "imports": [
+        {
+          "target": "child_process",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "util",
+          "kind": "import-statement",
+          "scope": "external"
+        }
+      ]
+    },
+    "packages/auth/src/vault/pglite-vault.ts": {
+      "sha256": "56bb07c94d4b40e7391b026a51d7e121f6842697303416dab77da00ae80b418f",
+      "bytesInOutput": 14827,
+      "tracked": true,
+      "gitObject": "a9cb6655544b5633f068d655c2222808c4a5bc69",
+      "imports": [
+        {
+          "target": "crypto",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "fs",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "path",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "node_modules/.bun/@electric-sql+pglite@0.4.6/node_modules/@electric-sql/pglite/dist/index.js",
+          "kind": "import-statement",
+          "scope": "bundled-dependency"
+        },
+        {
+          "target": "packages/auth/src/vault/audit.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/crypto.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/internal-utils.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/password-managers.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/store.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/vault-paths.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/vault-types.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/vault/profiles.ts": {
+      "sha256": "15cf77eda6101048fe4c4ecc353e718858eaa64109dec71201f652584b9486d4",
+      "bytesInOutput": 3326,
+      "tracked": true,
+      "gitObject": "5b56c8b42d3549eeb6962c45289fcd7fc2c91344",
+      "imports": [
+        {
+          "target": "packages/auth/src/vault/inventory.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/vault/store.ts": {
+      "sha256": "f9f2e60a09d706c969091539543148c1a87516aaefcbffd013bef7cd61775c58",
+      "bytesInOutput": 2382,
+      "tracked": true,
+      "gitObject": "061d187723fbb0c8863a02730b0d866ea1c39672",
+      "imports": [
+        {
+          "target": "fs",
+          "kind": "import-statement",
+          "scope": "external"
+        }
+      ]
+    },
+    "packages/auth/src/vault/vault-paths.ts": {
+      "sha256": "c3077dc21a34d6af9f1ef4e3b57ff6b695dbcddd372c114154a1e956852d9c1d",
+      "bytesInOutput": 437,
+      "tracked": true,
+      "gitObject": "2f7d3ad9b6e7183930d7cee57004f25c370195e1",
+      "imports": [
+        {
+          "target": "os",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "path",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "packages/host/dist/protocol.js",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/vault/vault-types.ts": {
+      "sha256": "415d01c0a2b225b4a43c1ac72fc6c12a80b01fa7a45f4303c75e70b1eba8def2",
+      "bytesInOutput": 540,
+      "tracked": true,
+      "gitObject": "6ca4ea187cda6b831b954c0c28a25474ce3acc7d",
+      "imports": []
+    },
+    "packages/auth/src/vault/vault.ts": {
+      "sha256": "cc7714e2732923bcbd5ae279d1a31f1dbb689d915d32b1002afe59a9e5c92ad3",
+      "bytesInOutput": 587,
+      "tracked": true,
+      "gitObject": "23300879e4cc63acf3c46d5788c25f9605d04002",
+      "imports": [
+        {
+          "target": "path",
+          "kind": "import-statement",
+          "scope": "external"
+        },
+        {
+          "target": "packages/auth/src/vault/master-key.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/pglite-vault.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/vault-paths.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "packages/auth/src/vault/vault-types.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
+    },
+    "packages/auth/src/vault/verified-write.ts": {
+      "sha256": "a65132fa5bad2ee172c65dd2454af127983417d7481af48dd95b001429abb898",
+      "bytesInOutput": 1371,
+      "tracked": true,
+      "gitObject": "c907cd034d9f623818d2963375c2bda2e8871eb1",
+      "imports": []
     },
     "packages/cloud/sdk/native-host/subscription-grant.mjs": {
       "sha256": "6b9bf34bfb8f0d6bdc9d0e0bf0cfbb6a4f7f75e3fc18ad3e824067fb2d11bc11",
@@ -33824,7 +31915,7 @@
       "gitObject": "b8f38577826ee9e9789fb6a99c5447656a6e21d2",
       "imports": [
         {
-          "target": "packages/auth/dist/sdk/index.js",
+          "target": "packages/auth/src/sdk/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -33842,7 +31933,7 @@
       "gitObject": "c6adc09a28549d9e7dcad744661755cb99a621aa",
       "imports": [
         {
-          "target": "packages/auth/dist/sdk/index.js",
+          "target": "packages/auth/src/sdk/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         }
@@ -34100,7 +32191,7 @@
       "gitObject": "78e3d0ba26cd12da5c58deb285bd1a5affe7650c",
       "imports": [
         {
-          "target": "packages/auth/dist/sdk/index.js",
+          "target": "packages/auth/src/sdk/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -34788,7 +32879,7 @@
           "scope": "first-party"
         },
         {
-          "target": "packages/auth/dist/sdk/index.js",
+          "target": "packages/auth/src/sdk/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -37013,7 +35104,7 @@
           "scope": "bundled-dependency"
         },
         {
-          "target": "packages/auth/dist/sdk/index.js",
+          "target": "packages/auth/src/sdk/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -38460,7 +36551,7 @@
           "scope": "bundled-dependency"
         },
         {
-          "target": "packages/auth/dist/sdk/index.js",
+          "target": "packages/auth/src/sdk/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -39355,7 +37446,7 @@
       "gitObject": "ad4fb68f66936a7532d22a1907504d3eda2a3e28",
       "imports": [
         {
-          "target": "packages/auth/dist/sdk/index.js",
+          "target": "packages/auth/src/sdk/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -46489,7 +44580,7 @@
       "gitObject": "c1a8118e379e0ef1543cf7eb25a56d4c1bdef4a9",
       "imports": [
         {
-          "target": "plugins/plugin-native-system/dist/esm/client/launcher.js",
+          "target": "plugins/plugin-native-system/src/client/launcher.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -47055,7 +45146,7 @@
           "scope": "first-party"
         },
         {
-          "target": "plugins/plugin-native-system/dist/esm/client/launcher.js",
+          "target": "plugins/plugin-native-system/src/client/launcher.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -61416,7 +59507,7 @@
       "gitObject": "45193549614be1873222ec494ef1ae504922e7e8",
       "imports": [
         {
-          "target": "packages/auth/dist/sdk/index.js",
+          "target": "packages/auth/src/sdk/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -61522,7 +59613,7 @@
       "gitObject": "d7d90009ad50328d6f087a20896c3a75b47ca317",
       "imports": [
         {
-          "target": "packages/auth/dist/sdk/index.js",
+          "target": "packages/auth/src/sdk/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -63113,7 +61204,7 @@
           "scope": "first-party"
         },
         {
-          "target": "node_modules/.bun/viem@2.56.9+c486653617c72b4e/node_modules/viem/_cjs/index.js",
+          "target": "node_modules/.bun/viem@2.56.9+4abcc4e29caa1bf7/node_modules/viem/_cjs/index.js",
           "kind": "dynamic-import",
           "scope": "virtual-or-unresolved"
         }
@@ -80433,10 +78524,10 @@
       ]
     },
     "plugins/plugin-calendar/src/actions/calendar-handler.ts": {
-      "sha256": "0065610f413cd63cfa12a56cf6e4bfc27d6aecb6795d35392c81ffabf53f2e5c",
-      "bytesInOutput": 179648,
+      "sha256": "3a18b44693c983347da4bb6eb2cc117f121aa653f5f84ea6050d9782ceabe68b",
+      "bytesInOutput": 180216,
       "tracked": true,
-      "gitObject": "3d891800210fb071f24e0e450bbd40c0c877b3ff",
+      "gitObject": "77b309c8255d190e2e08829036b9c14fac500920",
       "imports": [
         {
           "target": "packages/contracts/dist/client-turn-observation.js",
@@ -81014,7 +79105,7 @@
     },
     "plugins/plugin-calendar/src/calendar-read-parameters.ts": {
       "sha256": "6fed672a6f11dc2af0c07d52973b3036f059043f3a26ac11a301316c19091e39",
-      "bytesInOutput": 7910,
+      "bytesInOutput": 7938,
       "tracked": true,
       "gitObject": "cfcabd23d6c5e3201aae6cc74e6192760e5c48a8",
       "imports": [
@@ -81036,11 +79127,22 @@
       ]
     },
     "plugins/plugin-calendar/src/calendar-read-result.ts": {
-      "sha256": "a1f9e2bb088f229ba94a5e7d64f42592fceb392d3eb9b41a4d22689ba4698d37",
-      "bytesInOutput": 3850,
+      "sha256": "e483ec2117ad24aa58931f4499139a00ca005798d5ed0af4993f8f56030b58d5",
+      "bytesInOutput": 4436,
       "tracked": true,
-      "gitObject": "162d97d46604c236e6b398bd1c295aa38163322a",
-      "imports": []
+      "gitObject": "b7f80ba2cb51aad189b2d80fa203e90b3fdf36af",
+      "imports": [
+        {
+          "target": "plugins/plugin-calendar/src/internal/constants.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
+        {
+          "target": "plugins/plugin-calendar/src/internal/format.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
     },
     "plugins/plugin-calendar/src/components/calendar/CalendarPage.tsx": {
       "sha256": "1a696e418e49d1dc9998201ff934a7417e774bc8625991a237e61944825d6625",
@@ -81871,10 +79973,10 @@
       "imports": []
     },
     "plugins/plugin-calendar/src/internal/format.ts": {
-      "sha256": "eff9f2a69906319c6d323d83a13cfd29bd37cb9f9291c569b718174d18242d2d",
-      "bytesInOutput": 7112,
+      "sha256": "4b00800fef77809e3fa6ba09b908f9020f423c19a68850d37b5244a2d06e6819",
+      "bytesInOutput": 7132,
       "tracked": true,
-      "gitObject": "1fe256089c6b72848ac50d6743148526f53c7c65",
+      "gitObject": "45e8faac111688ad9bcb178473504641aab7c5c2",
       "imports": [
         {
           "target": "plugins/plugin-calendar/src/internal/time.ts",
@@ -85665,7 +83767,7 @@
           "scope": "first-party"
         },
         {
-          "target": "node_modules/.bun/viem@2.56.9+c486653617c72b4e/node_modules/viem/_cjs/accounts/index.js",
+          "target": "node_modules/.bun/viem@2.56.9+4abcc4e29caa1bf7/node_modules/viem/_cjs/accounts/index.js",
           "kind": "import-statement",
           "scope": "bundled-dependency"
         },
@@ -97203,7 +95305,7 @@
     },
     "plugins/plugin-local-inference/src/services/voice/wake-word.ts": {
       "sha256": "d29607d0602c1712a59e3060da29d39554987e8c35a30003c5ddd035c2a36a24",
-      "bytesInOutput": 6744,
+      "bytesInOutput": 6687,
       "tracked": true,
       "gitObject": "1a0c32165c499612ac599f2b1778b52bcff83ab8",
       "imports": [
@@ -97630,20 +95732,11 @@
         }
       ]
     },
-    "plugins/plugin-native-activity-tracker/dist/index.js": {
-      "sha256": "424292ff7a76b2d2881b10e3e1afc3bc6ce29a041d0ddbac8a84ea110a09fb81",
-      "bytesInOutput": 3536,
-      "tracked": false,
-      "generatedSource": {
-        "sourceMap": "plugins/plugin-native-activity-tracker/dist/index.js.map",
-        "sourceMapSha256": "525e2f94b766bf1178399c0460ba409ccae97f2f76a0d352d8d8588e7c2cbd44",
-        "sourceMaps": [
-          {
-            "path": "plugins/plugin-native-activity-tracker/src/index.ts",
-            "sha256": "c373400c3948806284d485b500c7831b5dcaed0f659096a2162529b6732ef125"
-          }
-        ]
-      },
+    "plugins/plugin-native-activity-tracker/src/index.ts": {
+      "sha256": "c373400c3948806284d485b500c7831b5dcaed0f659096a2162529b6732ef125",
+      "bytesInOutput": 3533,
+      "tracked": true,
+      "gitObject": "9574736ce3ee3b7f6f738b7644a351913deb53f7",
       "imports": [
         {
           "target": "child_process",
@@ -99372,42 +97465,24 @@
         }
       ]
     },
-    "plugins/plugin-native-reminders/dist/index.js": {
-      "sha256": "cf54e582fa18b2158dea4cbd4321efaf80e8c79d88d0a9fc32ad8b8f2871b136",
-      "bytesInOutput": 23,
-      "tracked": false,
-      "generatedSource": {
-        "sourceMap": "plugins/plugin-native-reminders/dist/index.js.map",
-        "sourceMapSha256": "e8a97cb736e3c44095fad2656fe67e38f59ea308d1264ed5e2c1135ead4687b4",
-        "sourceMaps": [
-          {
-            "path": "plugins/plugin-native-reminders/src/index.ts",
-            "sha256": "f15fc00c6f7fbd89c11393d29457ef8c2fa357a45731bc0d41e6ab12572a83e1"
-          }
-        ]
-      },
+    "plugins/plugin-native-reminders/src/index.ts": {
+      "sha256": "f15fc00c6f7fbd89c11393d29457ef8c2fa357a45731bc0d41e6ab12572a83e1",
+      "bytesInOutput": 22,
+      "tracked": true,
+      "gitObject": "d3ea24db32ec57462a76a5d5378bc44f9fb50fe2",
       "imports": [
         {
-          "target": "plugins/plugin-native-reminders/dist/macos-bridge-policy.js",
+          "target": "plugins/plugin-native-reminders/src/macos-bridge-policy.ts",
           "kind": "import-statement",
           "scope": "first-party"
         }
       ]
     },
-    "plugins/plugin-native-reminders/dist/macos-bridge-policy.js": {
-      "sha256": "873a2009cbba4f76d3370fe938008d056f90e1dca119b965d7e1217b5f0427ed",
+    "plugins/plugin-native-reminders/src/macos-bridge-policy.ts": {
+      "sha256": "334f522e9fda3a95f856aa47060201c96af0a0eacd2d3337d3d00520a6c15aa0",
       "bytesInOutput": 575,
-      "tracked": false,
-      "generatedSource": {
-        "sourceMap": "plugins/plugin-native-reminders/dist/macos-bridge-policy.js.map",
-        "sourceMapSha256": "246f33866205c32dcbbda64250728db1a029e3debe99405dd380dfaac443c77c",
-        "sourceMaps": [
-          {
-            "path": "plugins/plugin-native-reminders/src/macos-bridge-policy.ts",
-            "sha256": "334f522e9fda3a95f856aa47060201c96af0a0eacd2d3337d3d00520a6c15aa0"
-          }
-        ]
-      },
+      "tracked": true,
+      "gitObject": "a5b9d191ef0d4e17e36c031c5025fa8a017c2092",
       "imports": []
     },
     "plugins/plugin-native-secure-store/src/definitions.ts": {
@@ -99453,20 +97528,11 @@
         }
       ]
     },
-    "plugins/plugin-native-system/dist/esm/client/launcher.js": {
-      "sha256": "1624f6c38cd206739159c8de67a5c4878a2ff3e1e3c8fd6b0c5dffc1703129d5",
+    "plugins/plugin-native-system/src/client/launcher.ts": {
+      "sha256": "838b1b3401c9abd44888dae1ab45aa3735c542679ab313426a1ffc57b9032a07",
       "bytesInOutput": 12525,
-      "tracked": false,
-      "generatedSource": {
-        "sourceMap": "plugins/plugin-native-system/dist/esm/client/launcher.js.map",
-        "sourceMapSha256": "a76e6aa300a50949cfc3c1997f77cdecee23cb67eafc3d9a4de8362bab70029a",
-        "sourceMaps": [
-          {
-            "path": "plugins/plugin-native-system/src/client/launcher.ts",
-            "sha256": "838b1b3401c9abd44888dae1ab45aa3735c542679ab313426a1ffc57b9032a07"
-          }
-        ]
-      },
+      "tracked": true,
+      "gitObject": "e3a090208603e16f8ea31c895bfd5dc1b2052a5d",
       "imports": []
     },
     "plugins/plugin-native-system/src/definitions.ts": {
@@ -99686,7 +97752,7 @@
     },
     "plugins/plugin-notes/src/client/notes-api.ts": {
       "sha256": "af29f4975a828d222a3db50d271b969f980ac92a642d458fa1c115403a226013",
-      "bytesInOutput": 4605,
+      "bytesInOutput": 4596,
       "tracked": true,
       "gitObject": "bcb0803ddb9c6e42958153cdd42ac9d16e3ccc27",
       "imports": [
@@ -102686,7 +100752,7 @@
     },
     "plugins/plugin-personal-assistant/src/activity-profile/activity-tracker-service.ts": {
       "sha256": "00d3b663a4172ceffba33af45458eb06dea3c402f2bb95cc27ed12c6a9ad7b14",
-      "bytesInOutput": 4056,
+      "bytesInOutput": 4054,
       "tracked": true,
       "gitObject": "5d5c848429796f3686b226869a3ad55dcab18317",
       "imports": [
@@ -102711,7 +100777,7 @@
           "scope": "first-party"
         },
         {
-          "target": "plugins/plugin-native-activity-tracker/dist/index.js",
+          "target": "plugins/plugin-native-activity-tracker/src/index.ts",
           "kind": "dynamic-import",
           "scope": "first-party"
         }
@@ -102737,7 +100803,7 @@
     },
     "plugins/plugin-personal-assistant/src/activity-profile/presence-signal-bridge-service.ts": {
       "sha256": "ebc8354024327e8bbee095e7777d1aceca595d6f4fd965cb857e5cab7942d0a3",
-      "bytesInOutput": 16356,
+      "bytesInOutput": 16353,
       "tracked": true,
       "gitObject": "6ca4ab1d2220d10840f4aa281aa44f7aa33a34ae",
       "imports": [
@@ -103912,7 +101978,7 @@
     },
     "plugins/plugin-personal-assistant/src/lifeops/apple-reminders.ts": {
       "sha256": "da198fe075a3e382056f3b52d5f036a5910cfe2415940148dc31dd62effd0de1",
-      "bytesInOutput": 7986,
+      "bytesInOutput": 7985,
       "tracked": true,
       "gitObject": "6b140198b4d4c6dacb285d5319954d2296a63d1e",
       "imports": [
@@ -103937,7 +102003,7 @@
           "scope": "first-party"
         },
         {
-          "target": "plugins/plugin-native-reminders/dist/index.js",
+          "target": "plugins/plugin-native-reminders/src/index.ts",
           "kind": "import-statement",
           "scope": "first-party"
         },
@@ -108833,7 +106899,7 @@
     },
     "plugins/plugin-personal-assistant/src/lifeops/oracles/action.ts": {
       "sha256": "83c54b4103bc7438e6704bca2e37113fc17d21c098c4a8fd5b2720ffd01fd847",
-      "bytesInOutput": 20304,
+      "bytesInOutput": 20303,
       "tracked": true,
       "gitObject": "6397f394699b2bae3fbf26c4246018b5770dddcd",
       "imports": [
@@ -108902,7 +106968,7 @@
     },
     "plugins/plugin-personal-assistant/src/lifeops/oracles/defaults.ts": {
       "sha256": "1bc7c5c976cfca87f1dc899a02651ba155a329621ef3de67e6447b15b0da5dc4",
-      "bytesInOutput": 811,
+      "bytesInOutput": 810,
       "tracked": true,
       "gitObject": "4bbf643450fab700d93c6066a3f8efc39d2250ed",
       "imports": [
@@ -108966,7 +107032,7 @@
     },
     "plugins/plugin-personal-assistant/src/lifeops/oracles/index.ts": {
       "sha256": "b1a5494636dc3719d73e9c4e004da67d2d297fe11c13caff8e479b1c127e5e25",
-      "bytesInOutput": 166,
+      "bytesInOutput": 165,
       "tracked": true,
       "gitObject": "a484988b8ee848d111ed107d42bc12e444f15835",
       "imports": [
@@ -109037,7 +107103,7 @@
     },
     "plugins/plugin-personal-assistant/src/lifeops/oracles/registry.ts": {
       "sha256": "f8478aae99d113616da1b461b2efd0ce072f6273317f4c3cba9ba12e9b33a167",
-      "bytesInOutput": 2466,
+      "bytesInOutput": 2465,
       "tracked": true,
       "gitObject": "2336116cdb60cb728924f96273328347ec7c512a",
       "imports": [
@@ -111190,7 +109256,7 @@
     },
     "plugins/plugin-personal-assistant/src/lifeops/runtime-service-delegates.ts": {
       "sha256": "7102ce2385ad9db774f3a298f71cf3760ae74e6b5a74203111fc8e94fa2e7cd4",
-      "bytesInOutput": 16000,
+      "bytesInOutput": 15957,
       "tracked": true,
       "gitObject": "f0c047a50a354a3e1322a21b7e0856d51ed4382c",
       "imports": [
@@ -113915,7 +111981,7 @@
     },
     "plugins/plugin-personal-assistant/src/providers/cross-channel-context.ts": {
       "sha256": "eea1099c2012707f386b7960ec2e54942c51a449c2fd702feda96f0dffe72e37",
-      "bytesInOutput": 5201,
+      "bytesInOutput": 5197,
       "tracked": true,
       "gitObject": "9abc578e1cc05b360e372b13bc0a85d76d81376e",
       "imports": [
@@ -114917,7 +112983,7 @@
     },
     "plugins/plugin-personal-assistant/src/website-blocker/chat-integration/block-rule-reconciler.ts": {
       "sha256": "774c43b40ced1cd3c5184c897f27fa1b15695cfe0432c185c0dd18b11f4e0962",
-      "bytesInOutput": 4588,
+      "bytesInOutput": 4585,
       "tracked": true,
       "gitObject": "bff8031aec7f607b87e4fdbc4de6107834dc94c4",
       "imports": [
@@ -116158,11 +114224,17 @@
       ]
     },
     "plugins/plugin-scheduling/src/scheduled-task/default-pack.ts": {
-      "sha256": "4068aa54ba0837f94820417ca85b9fd10d63b879d80775fce2a7d16da5d406a9",
-      "bytesInOutput": 1331,
+      "sha256": "6bc676f10297d91f8675c3877da2fdea732dacef6612427147847977da4136ad",
+      "bytesInOutput": 1358,
       "tracked": true,
-      "gitObject": "405a8d246de69c0326dcea396047d03ce3dc04a3",
-      "imports": []
+      "gitObject": "8b864f23cd773981d5f9a744b28ccc46a454bb87",
+      "imports": [
+        {
+          "target": "plugins/plugin-scheduling/src/scheduled-task/trigger-tz.ts",
+          "kind": "import-statement",
+          "scope": "first-party"
+        }
+      ]
     },
     "plugins/plugin-scheduling/src/scheduled-task/dispatch-render.ts": {
       "sha256": "a741be8bf560be861891f2c28d2b3122061ec8b728dbacdc254d7f6f9a105d5f",
@@ -116349,11 +114421,16 @@
       ]
     },
     "plugins/plugin-scheduling/src/scheduled-task/runner-service.ts": {
-      "sha256": "36484778997a130445875e9cc163a99d4055742ea931e66052b9ff1bf73df5f3",
-      "bytesInOutput": 10230,
+      "sha256": "0fd5600619e13b5f54d487168d1313f2b6052f819ac3aab35fc5adf1537b175b",
+      "bytesInOutput": 10237,
       "tracked": true,
-      "gitObject": "cf60d64b6337820a77b4aa96892f257839e4471f",
+      "gitObject": "0873910a37e843ab4ae86e5bb7e90bd7875aadbb",
       "imports": [
+        {
+          "target": "packages/contracts/dist/index.js",
+          "kind": "import-statement",
+          "scope": "first-party"
+        },
         {
           "target": "packages/core/src/index.ts",
           "kind": "import-statement",
@@ -117603,10 +115680,10 @@
       "imports": []
     },
     "plugins/plugin-sql/src/pglite/initdb-snapshot.ts": {
-      "sha256": "cfaf1aa89b097967f329d0e2ecce8583e4819a6d5fcee88e79b84b98db95cbbf",
-      "bytesInOutput": 1474,
+      "sha256": "0bad1c34eadf4736c0ce4115ad39a5be901f056a687297e84672519b8a53161a",
+      "bytesInOutput": 1917,
       "tracked": true,
-      "gitObject": "5bdb9124d3b24fed5b4ce440d06a3bf8ee7a5a9f",
+      "gitObject": "1e65368bb76a0eeefe9949e072e178500870ff14",
       "imports": [
         {
           "target": "fs",
@@ -117638,10 +115715,10 @@
       "imports": []
     },
     "plugins/plugin-sql/src/pglite/manager.ts": {
-      "sha256": "5cd1110bbd5a4d4e57500b31aa806149f56d56c40c357c9bbdd1a901fcf68462",
-      "bytesInOutput": 15825,
+      "sha256": "9a18b4fb56f3a22a9a68ba6c4d9d1085bdd1508e9705f9fc91de59c2603d01af",
+      "bytesInOutput": 16009,
       "tracked": true,
-      "gitObject": "a672b1bed7393c2c5a68f00b0fda0d560f05e453",
+      "gitObject": "2b532713ef51ecc78d18cf919a6dcf2d0daab621",
       "imports": [
         {
           "target": "fs",
@@ -120112,7 +118189,7 @@
     },
     "plugins/plugin-vision/src/ocr-host-windows.ts": {
       "sha256": "983c815c979ef9621828d87dccc4c4edb42e8b062ea1ffec0a14be7b143231c2",
-      "bytesInOutput": 5751,
+      "bytesInOutput": 5748,
       "tracked": true,
       "gitObject": "748194f067add1a7900e521baf335f3dcd7ff396",
       "imports": [
@@ -120438,7 +118515,7 @@
     },
     "plugins/plugin-vision/src/screen-capture.ts": {
       "sha256": "173ea47709ff12c37a1ceaf0903e42bbce41b3e9f5897605f576937854c74760",
-      "bytesInOutput": 5243,
+      "bytesInOutput": 5239,
       "tracked": true,
       "gitObject": "7d2cc58d76574efea7e09fe5e45ae9113574e853",
       "imports": [
@@ -120731,7 +118808,7 @@
     },
     "plugins/plugin-vision/src/vision-worker-manager.ts": {
       "sha256": "227585cb5446d878cc936fb22ccae10c222f76637e389a30b57c5a2d1863b971",
-      "bytesInOutput": 8872,
+      "bytesInOutput": 8815,
       "tracked": true,
       "gitObject": "963484a67214e88aff052f9cd81f4d0d6fa806d1",
       "imports": [
@@ -121885,7 +119962,7 @@
     },
     "plugins/plugin-workflow/src/services/workflow-process-host.ts": {
       "sha256": "abc1fee1d0c2f0dffc271253dfb4f4a3044b131870eb34386e3929bed87f5604",
-      "bytesInOutput": 5246,
+      "bytesInOutput": 5244,
       "tracked": true,
       "gitObject": "0c0e6e0b2ac0ede788bc4b7f92c27f47885edd78",
       "imports": [
@@ -122141,10 +120218,10 @@
       "imports": []
     },
     "plugins/plugin-workflow/src/trigger-routes.ts": {
-      "sha256": "70eb7fec110790ed8117e11dfaf86965103a579889060b9574383e56b839597d",
-      "bytesInOutput": 16495,
+      "sha256": "0bfa37a4cc1b894accacc148502c7d8cf8e6f97c00cdb5dd9f0be056f8993bcd",
+      "bytesInOutput": 17663,
       "tracked": true,
-      "gitObject": "2abbe94133c2a0a7ce8a11e39693e6547a3b80c4",
+      "gitObject": "148c2fd34916af9959c6ca10840344edbe9bad5a",
       "imports": [
         {
           "target": "crypto",

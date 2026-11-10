@@ -10,7 +10,7 @@ const root = resolve(directory, '../../..');
 const work = mkdtempSync(join(tmpdir(), 'alpha-quint-native-'));
 const quint = join(root, 'node_modules/.bin/quint');
 const specification = join(directory, 'AlwaysOnListener.qnt');
-const nativeDirectory = join(root, 'android/app/src/main/java/ai/alphacompute/alphaphone');
+const nativeDirectory = join(root, 'android/app/src/main/java/ai/elizaresearch/alphaphone');
 const listenerDirectory = join(root, 'vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense');
 const speechDirectory = join(root, 'vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice');
 const resetDirectory = join(root, 'vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset');
@@ -71,7 +71,7 @@ try {
   const inputs = join(work, 'listener.csv');
   writeFileSync(inputs, rows.join('\n') + '\n');
   const harness = join(work, 'NativeQuintConformance.java');
-  writeFileSync(harness, `package ai.alphacompute.alphaphone;
+  writeFileSync(harness, `package ai.elizaresearch.alphaphone;
 import ai.eliza.sense.ListenerPolicy;
 import ai.eliza.sense.IndicatorLease;
 import ai.eliza.sense.CrashLoopBreaker;
@@ -174,7 +174,7 @@ public final class NativeQuintConformance {
     join(resetDirectory, 'ResetAuthorization.java'), join(speechDirectory, 'SpeechAudioFocusPolicy.java'),
     join(listenerDirectory, 'IndicatorLease.java'), join(listenerDirectory, 'CrashLoopBreaker.java'),
     join(nativeDirectory, 'ResidentScheduleRearm.java')]);
-  console.log(run('java', ['-cp', work, 'ai.alphacompute.alphaphone.NativeQuintConformance', inputs]));
+  console.log(run('java', ['-cp', work, 'ai.elizaresearch.alphaphone.NativeQuintConformance', inputs]));
   console.log(`Listener decisions covered ${[...decisions].sort().join(', ')}`);
   const {usableNavigationFix} = await import(pathToFileURL(join(root, '.eliza/client-features/plugins/plugin-maps/src/client/navigation-fix.ts')).href);
   const {atStep} = await import(pathToFileURL(join(root, '.eliza/client-features/plugins/plugin-maps/src/client/guidance.ts')).href);

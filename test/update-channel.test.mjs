@@ -53,3 +53,11 @@ test('compiled metadata has one channel and digest; substituted or secret-bearin
  assert.throws(()=>apkUpdateChannel(parseXmlTree(xml+meta(UPDATE_CHANNEL_META,'public'))));
  assert.throws(()=>validateUpdateChannel({kind:'private-qa',manifestUrlSha256:hash(privateUrl),url:privateUrl}));
 });
+
+test('current gcloud lowercase signing fields retain exact bytes and reject case aliases',t=>{
+ const gcloud=privateUrl.replaceAll('X-Goog-','x-goog-');
+ const {env}=input(t,gcloud);
+ assert.deepEqual(readUpdateChannel(env,publicUrl),{kind:'private-qa',manifestUrlSha256:hash(gcloud)});
+ const duplicate=input(t,gcloud+'&X-Goog-Expires=300');
+ assert.throws(()=>readUpdateChannel(duplicate.env,publicUrl),/input refused/);
+});

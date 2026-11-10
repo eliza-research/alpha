@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "project": "frameworks/base",
+  "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
+  "targetAppId": "ai.elizaresearch.alphaphone",
+  "patch": "alpha-core-launcher.patch",
+  "patchSha256": "4f8048b304293576c5e5d32c32b37fba69d0c00fc38a78c310dd0e53dc524abf",
+  "files": [
+    {
+      "path": "packages/SystemUI/res/values/config.xml",
+      "beforeSha256": "f9556cc853a04591a54f8470904f023bb41d7c9980217fd7306117dcafcae513",
+      "afterSha256": "c09bbcdf4434410f6d42e12525e25e2ae56b43a5e2d3dbc17a4a7874f1239f76",
+      "new": false
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/qs/AlphaCoreLauncherPolicy.java",
+      "beforeSha256": null,
+      "afterSha256": "c2076451cfdfaf8e71dcf5f7367ec0b6f2065d8b9592043ad6cbeb6162f98fa7",
+      "new": true
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/qs/FgsManagerController.kt",
+      "beforeSha256": "2a6d58fc5055b6c83dc17d109a319e9f0436b5993a69caac847f433cabc95fb7",
+      "afterSha256": "8e6663c16dca10e91b25acb146d0a1841e8ef3ead551921e7ee7ae302051f46f",
+      "new": false
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/AlphaQsDefaultsPolicy.java",
+      "beforeSha256": null,
+      "afterSha256": "81bc50974831d9437413f4c94a94b3e224ec11d5171d55633ac765e7409ec311",
+      "new": true
+    },
+    {
+      "path": "packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/UserTileSpecRepository.kt",
+      "beforeSha256": "4c83f0e2cd8fa562212ea5cded98106094dc7671d4f5fdc3e5dea39d83f9045b",
+      "afterSha256": "82792987355eb23c644cdd256844a97734e9723fd69dc88ae48db7c8a5a97f1e",
+      "new": false
+    },
+    {
+      "path": "services/core/java/com/android/server/pm/permission/AlphaSharedStoragePolicy.java",
+      "beforeSha256": null,
+      "afterSha256": "71fcbf26572a4383d02e8af2ca110467a7915c1bdfaa36e7df711e2234d4a1d1",
+      "new": true
+    },
+    {
+      "path": "services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java",
+      "beforeSha256": "5678cf02ef133d61585e5be1b59d5a6b74f6e4768d50f2480432fb78cc973ff8",
+      "afterSha256": "a48f8c0634a572e580c7feec07aa5d444ba11cc1aeaa884d4c95de57695917c4",
+      "new": false
+    }
+  ],
+  "compilation": "pending",
+  "imageBuilt": false,
+  "deviceQualified": false,
+  "ownerCustomLayoutsPreserved": true,
+  "ownerExplicitStorageModesPreserved": true,
+  "appPrivateStorageGranted": false,
+  "crashRecoveryAndVoiceControlsChanged": false
+}

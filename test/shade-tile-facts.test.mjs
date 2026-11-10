@@ -66,9 +66,9 @@ test('an unread switch is labelled as a handoff, never as off',()=>{
 test('every tile with a switch opens its own Android page, and the native allowlist has each one',()=>{
  assert.deepEqual(m.tileSettingsPages,{wifi:'wifi',bt:'bluetooth',dnd:'dnd',plane:'airplane',loc:'location',mic:'privacy'});
  // AlphaDevice.openSettings uses the shared allowlist at the pin (SystemSettingsPages).
- assert.match(readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java','utf8'),/SystemSettingsPages\.open\(page,getContext\(\)\.getPackageName\(\),/);
+ assert.match(readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8'),/SystemSettingsPages\.open\(page,getContext\(\)\.getPackageName\(\),/);
  // Settings' one "Android settings" row is Alpha's own page, outside the shared allowlist: only it opens the Settings home.
- const alpha=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java','utf8');
+ const alpha=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8');
  const own=alpha.slice(alpha.indexOf('@PluginMethod public void openSettings('),alpha.indexOf('if(SystemSettingsPages.actions(page)==null)'));
  assert.match(own,/if\("system"\.equals\(page\)\)\{[\s\S]*startActivity\(new Intent\(Settings\.ACTION_SETTINGS\)\)/);
  assert.equal((alpha.match(/Settings\.ACTION_SETTINGS/g)||[]).length,3,'the system page and the password-provider fallback only');
@@ -100,7 +100,7 @@ test('the Bluetooth fact is the radio state on Android 12 and later, not the sto
 test('closing Android\'s own shade reaches the tile watch through a native window-focus notice',()=>{
  // Measured on an API 36 emulator: while Android's shade holds window focus and after it returns,
  // the page gets no focus, blur, visibilitychange or appResumed, so only the activity can tell it.
- const activity=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java','utf8');
+ const activity=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/MainActivity.java','utf8');
  const hook=activity.slice(activity.indexOf('public void onWindowFocusChanged(boolean hasFocus)'));
  assert.ok(hook.length<activity.length&&hook.length>0,'MainActivity observes window focus');
  const body=hook.slice(0,hook.indexOf('\n }\n'));
@@ -129,7 +129,7 @@ test('handoff tiles are buttons named with their reported state; only the flashl
 
 
 test('the explicit Android settings row opens Settings home without weakening specific-page handoffs',()=>{
- const java=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java','utf8');
+ const java=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java','utf8');
  const begin=java.indexOf('@PluginMethod public void openSettings(PluginCall call)');
  const end=java.indexOf('private final java.util.concurrent.ExecutorService diagnosticsWorker',begin);
  const method=java.slice(begin,end);

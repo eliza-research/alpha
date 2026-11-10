@@ -94,6 +94,15 @@ export function installWorkflowAdapter(Component:any,views:Bag){
  };
  let noticeQuestion:(()=>void)|undefined;
  const clear=(keepList=false)=>{noticeQuestion?.();noticeQuestion=undefined;unadmitted=null;reviewResend=false;intentStore=null;authoring.close();phoneReview=null;phoneSteps=[];phoneConfirm=null;phoneStatus='';generation++;operation?.abort();operation=null;editor=null;removedList=false;lifecycleAvailable=false;lifecycleReview=false;unknownReview=false;reviewRerun=false;noSchedule=false;if(!keepList){flows=[];listPhase='idle';listSession=null;}homeVisit=null;detail=null;detailSession=null;runs=[];receipt=null;approvalReceipt=null;approvalReview=null;reviewRun=false;reviewActivation=false;reviewCancel=false;phase='idle';publish();};
+ // The unified list owns its reads, but retained workflow history still needs this capability.
+ // Share that list's cancellation/current authority without fetching the legacy workflow list again.
+ view.refreshManagement=async(signal:AbortSignal,current:()=>boolean)=>{
+  const shell=owner,session=connectionController.getSnapshot().session,binding=connectionController.getWorkflowClient();
+  const valid=()=>!signal.aborted&&current()&&owner===shell&&connectionController.getSnapshot().session===session&&binding?.sessionId===connectionController.getWorkflowClient()?.sessionId;
+  if(!valid())return;
+  try{const available=binding?await binding.client.lifecycleSupported(signal):false;if(valid()){lifecycleAvailable=available;publish();}}
+  catch(error){if(valid()){lifecycleAvailable=false;publish();}throw error;}
+ };
  async function work(task:(client:NonNullable<ReturnType<typeof connectionController.getWorkflowClient>>['client'],signal:AbortSignal,valid:()=>boolean,sessionId:string,intents:WorkflowIntentStore)=>Promise<void>){
   if(operation)return;const binding=connectionController.getWorkflowClient();if(!binding){showAgentStatus(owner);return;}
   const controller=new AbortController(),token=++generation;operation=controller;phase='busy';publish();const valid=()=>token===generation&&!controller.signal.aborted&&binding.sessionId===connectionController.getWorkflowClient()?.sessionId;

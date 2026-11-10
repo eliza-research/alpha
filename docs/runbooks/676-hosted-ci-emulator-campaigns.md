@@ -123,7 +123,7 @@ give each run its own `--output test-results/android-instrumentation/<batch>-<bu
 
 Campaign classes, run by their own scripts:
 
-- `ResidentEgressRedaction` (and `ResidentService` with `RESIDENT_TEST=ai.alphacompute.alphaphone.ResidentServiceInstrumentedTest`):
+- `ResidentEgressRedaction` (and `ResidentService` with `RESIDENT_TEST=ai.elizaresearch.alphaphone.ResidentServiceInstrumentedTest`):
   `ALPHA_RESIDENT_DISPOSABLE_EMULATOR=1 ANDROID_SERIAL=<fresh arm64 emulator, ≥4 GB RAM> node scripts/android-resident-instrumentation.mjs <app.apk> <androidTest.apk>`.
   It reads the development key file `~/.config/alphaphone/cerebras-key` (mode 0600, H-30, #671) and
   refuses a group- or world-readable file. The key never goes into a result.

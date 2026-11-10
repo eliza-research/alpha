@@ -64,16 +64,17 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
     await expect(bubble(page, `Failing ${kind}`)).toHaveCount(1);
     if (kind === 'insufficient_credits') {
       // One answer in the chat, and Subscription opens with plan selection and code entry.
-      // The backend's zero balance stays an admission fact; the UI never offers a cash top-up.
-      const account = page.getByRole('dialog', { name: 'Subscription', exact: true });
+      // The fixture confirms zero cash and no active plan; neither is inferred from the other.
+      const account = page.getByRole('dialog', { name: 'Account', exact: true });
       await expect(account).toBeVisible();
-      const membership = account.getByRole('region', { name: 'Subscription', exact: true });
-      await expect(membership).not.toContainText(/Available credits|Add credits|\$\d/);
+      const membership = account.getByRole('region', { name: 'Balance and membership', exact: true });
+      await expect(membership).toContainText('Balance$0.00');
+      await expect(membership).toContainText('No active subscription');
       await expect(membership.getByRole('status').filter({ hasText: 'Your last request was declined for billing.' })).toHaveCount(1);
-      await expect(membership.getByRole('button', { name: 'Choose a monthly plan', exact: true })).toBeVisible();
-      await expect(membership.getByRole('button', { name: 'Enter membership code', exact: true })).toBeVisible();
+      await expect(membership.getByRole('button', { name: 'Choose a plan', exact: true })).toBeVisible();
+      await expect(membership.getByRole('button', { name: 'Use code', exact: true })).toBeVisible();
       expect(await stub(page, s => s.opened)).toEqual([]);
-      await account.getByRole('button', { name: 'Close subscription', exact: true }).click();
+      await account.getByRole('button', { name: 'Close Account', exact: true }).click();
       await expect(account).toHaveCount(0);
       await button(page, 'Expand chat').click();
       // No second billing message; the answer carries the one offer, which reopens the same popup.
@@ -82,7 +83,7 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       await expect(offer).toHaveCount(1);
       await offer.click();
       await expect(account).toBeVisible();
-      await membership.getByRole('button', { name: 'Enter membership code', exact: true }).click();
+      await membership.getByRole('button', { name: 'Use code', exact: true }).click();
       await expect(membership.getByRole('textbox', { name: 'Membership code' })).toBeVisible();
       await page.screenshot({path:info.outputPath('membership-code-mobile.png'),animations:'disabled'});
       await page.setViewportSize({width:1024,height:768});
@@ -90,12 +91,8 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       await page.screenshot({path:info.outputPath('membership-code-wide.png'),animations:'disabled'});
       await page.setViewportSize({width:412,height:915});
       // Plan selection opens Cloud billing only after the account check; nothing is bought here.
-      await membership.getByRole('button', { name: 'Choose a monthly plan', exact: true }).click();
-      await expect(page.getByRole('heading',{name:'Check the billing account',exact:true})).toBeVisible();
-      await expect(page.getByRole('button',{name:'Open billing',exact:true})).toBeDisabled();
-      expect(await stub(page,s=>s.opened)).toEqual([]);
-      await page.getByRole('checkbox',{name:'I’ll check the account before paying.',exact:true}).check();
-      await page.getByRole('button',{name:'Open billing',exact:true}).click();
+      await membership.getByRole('button', { name: 'Choose a plan', exact: true }).click();
+      // This explicit action opens the existing billing site; it does not purchase a plan.
       await expect.poll(() => stub(page, s => s.opened)).toEqual(['https://cloud.eliza.app/cloud/billing']);
     } else {
       if (kind === 'no_provider') await expect(page.getByRole('button', { name: /^Check Eliza Cloud again/ })).toHaveCount(1);
@@ -103,9 +100,11 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       // Agent connection no longer says the agent is ready.
       await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
       await button(page, 'Settings').click();
-      await page.getByRole('button', { name: 'Agent', exact: true }).click();
-      await expect(page.getByRole('heading',{name:'Agent',exact:true})).toBeVisible();
-      await expect(page.getByRole('region',{name:'Settings',exact:true})).not.toContainText('Connected');
+      await button(page, 'Account').click();
+      await page.getByRole('button', {name:/^AI connection/}).click();
+      const connection = page.getByRole('dialog',{name:'AI connection',exact:true});
+      await expect(connection).toBeVisible();
+      await expect(connection).not.toContainText('Connected');
     }
     // Exactly one stream request and no automatic resend of any kind.
     await page.waitForTimeout(1500);
@@ -145,9 +144,9 @@ for (const frame of ['done', 'error'] as const) test(`a provider-less turn witho
   await plan.click();
   // On the phone's own agent the plan action opens the resident account & plan panel (plan headline,
   // Check plan again, Approve this phone again); it carries the Subscription controls.
-  const account = page.getByRole('dialog', { name: 'Eliza Cloud account & plan', exact: true });
+  const account = page.getByRole('dialog', { name: 'Account', exact: true });
   await expect(account).toBeVisible();
-  await expect(account.getByRole('region', { name: 'Subscription', exact: true })).toBeVisible();
+  await expect(account.getByRole('region', { name: 'Balance and membership', exact: true })).toBeVisible();
   // Nothing was purchased or opened, and the message was sent once.
   expect(await stub(page, s => s.opened)).toEqual([]);
   expect(await harness(page, f => f.streams)).toBe(1);
@@ -179,9 +178,11 @@ test('without a network the composer stays silent, sends nothing, keeps the draf
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   // Readiness is retracted while offline.
   await button(page, 'Settings').click();
-  await page.getByRole('button', { name: 'Agent', exact: true }).click();
-  await expect(page.getByRole('region',{name:'Settings',exact:true})).not.toContainText('Connected');
-  await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
+  await button(page, 'Account').click();
+  await page.getByRole('button', {name:/^AI connection/}).click();
+  const connection = page.getByRole('dialog',{name:'AI connection',exact:true});
+  await expect(connection).not.toContainText('Connected');
+  await connection.getByRole('button', {name:'Close Account',exact:true}).click();
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await context.setOffline(false);
   await page.waitForFunction(() => navigator.onLine);
@@ -256,17 +257,27 @@ test('a restart while the resident holds a reply posts nothing and shows the use
   expect(await stub(page, s => s.recoveries)).toEqual([]);
 });
 
-test('a resident send the runtime no longer accepts (401) asks for an Eliza Cloud sign-in, never pairing', async ({ page }) => {
+test('a resident session refusal reconnects without changing Cloud sign-in or resending', async ({ page }) => {
   test.setTimeout(120_000);
   await connected(page, true);
+  const key = await harness(page, f => f.slots['cloud:production']);
+  const starts = await harness(page, f => f.calls.filter((call:string) => call === 'Agent.start').length);
   await setStub(page, { stream: 'expired' });
   await send(page, 'Sent with an expired session');
-  const dialog = page.getByRole('main',{name:'Welcome to Alpha.',exact:true});
-  await expect(dialog.getByRole('alert')).toHaveText('Sign in to Eliza Cloud again to turn AI back on.', { timeout: 30_000 });
-  // This fixture reports Google unavailable: a quiet retry instead of a dead Google button.
-  await expect(dialog.getByRole('button', { name: 'Retry Google sign-in', exact: true })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled();
-  expect(await harness(page, f => ({ streams: f.streams, posts: f.posts.length }))).toEqual({ streams: 1, posts: 0 });
+  await expect.poll(() => harness(page, f => f.calls.filter((call:string) => call === 'Agent.start').length)).toBeGreaterThan(starts);
+  await expect(page.locator('.alpha-cloud-sign-in')).toHaveCount(0);
+  expect(await harness(page, f => f.slots['cloud:production'])).toBe(key);
+  const retained=()=>harness(page, f => Object.entries(f.slots).filter(([key]) => key.startsWith('assistant-draft:')).map(([,value]) => JSON.parse(String(value))).filter(row => row.text).map(row => ({text:row.text,sending:row.sending===true})));
+  await expect.poll(retained).toEqual([{text:'Sent with an expired session',sending:true}]);
+  await expect(page.getByRole('button',{name:'Restore saved draft',exact:true})).toBeVisible();
+  expect(await harness(page, f => ({streams:f.streams,posts:f.posts.length}))).toEqual({streams:1,posts:0});
+  await page.reload();
+  await expect(page.getByRole('button',{name:'Restore saved draft',exact:true})).toBeVisible();
+  expect(await retained()).toEqual([{text:'Sent with an expired session',sending:true}]);
+  await page.getByRole('button',{name:'Restore saved draft',exact:true}).click();
+  await expect(composer(page)).toHaveValue('Sent with an expired session');
+  await expect.poll(retained).toEqual([{text:'Sent with an expired session',sending:false}]);
+  expect(await harness(page, f => ({ streams: f.streams, posts: f.posts.length }))).toEqual({ streams: 0, posts: 0 });
   await expect(page.locator('body')).not.toContainText(/pair/i);
   expect(await stub(page, s => s.recoveries)).toEqual([]);
 });

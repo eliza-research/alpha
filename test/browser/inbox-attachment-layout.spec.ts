@@ -7,7 +7,8 @@ for(const theme of ['light','dark'])for(const size of [{width:360,height:640},{w
   s.read=async()=>null;s.compareExchange=async()=>({status:'saved'});
   const name='Attachment'+'x'.repeat(100)+'.txt',text=Array.from({length:80},(_,i)=>`Line ${i}: <img src=x onerror=alert(1)> `+'content'.repeat(30)).join('\n');
   const message={id:'selected',threadId:'thread',from:'Fixture sender',to:['reader@example.test'],subject:'Selected attachment',snippet:'Review a long attachment',receivedAt:'2026-10-04T12:00:00Z',unread:false};
-  const f=(window as any).attachmentFixture={reads:0,mutations:0,accounts:0};
+  const f=(window as any).attachmentFixture={reads:0,mutations:0,accounts:0,agentSends:0};
+  const {alphaClient}=await import('/src/runtime/alpha-client.ts');alphaClient.send=async()=>{f.agentSends++;throw Error('This fixture never authorizes an agent send');};
   const client={gmailAccounts:async()=>{f.accounts++;if((f as any).revoked)return [];return [{connectionId:'fixture-grant',label:'Fixture mailbox',connected:true,grantedCapabilities:['google.gmail.triage']}];},gmailInboxCapabilities:async()=>({send:false,providerDrafts:false,mailboxMutations:false}),gmailSearch:async()=>({messages:[message],syncedAt:'1'}),gmailRead:async()=>({message,bodyText:'Choose the attachment below.',historyId:'1',attachments:[{partId:'part',name,mimeType:'text/plain',size:text.length,supported:true}]}),gmailAttachment:async()=>{f.reads++;return{name,text,mimeType:'text/plain',size:text.length,sha256:'a'.repeat(64)};},gmailPrepareOperation:async()=>{f.mutations++;throw Error('No provider writes allowed');}};
   c.getCloudClient=()=>({client,sessionId:'fixture-session'} as any);const snapshot={...c.getSnapshot(),session:{ownerId:'fixture-owner',agentId:'fixture-agent',sessionId:'fixture-agent-session',origin:'https://agent.invalid'},cloudAccount:{environment:'production',userId:'fixture-owner',sessionId:'fixture-session',credentialId:'fixture'}} as any;c.getSnapshot=()=>snapshot;
  });
@@ -22,12 +23,14 @@ for(const theme of ['light','dark'])for(const size of [{width:360,height:640},{w
  expect(await dialog.evaluate(el=>el.scrollWidth<=el.clientWidth)).toBe(true);await content.focus();await page.keyboard.press('End');await expect.poll(()=>content.evaluate(el=>el.scrollTop)).toBeGreaterThan(0);await expect(back).toBeInViewport();await expect(content.locator('img')).toHaveCount(0);await expect(content).toContainText('<img src=x onerror=alert(1)>');
  const accountReads=await page.evaluate(()=>(window as any).attachmentFixture.accounts);await page.evaluate(()=>window.dispatchEvent(new Event('focus')));await expect.poll(()=>page.evaluate(()=>(window as any).attachmentFixture.accounts)).toBeGreaterThan(accountReads);
  await page.screenshot({path:info.outputPath('gmail-attachment-review.png')});await back.click();await expect(dialog).toHaveCount(0);await expect(page.getByRole('button',{name:/Attachmentx+\.txt/})).toBeFocused();await expect(page.getByText('Choose the attachment below.',{exact:true})).toBeVisible();expect(await page.evaluate(()=>(window as any).attachmentFixture)).toMatchObject({reads:1,mutations:0});
- const share=page.getByRole('button',{name:/Review email with agent/});await share.click();
- const review=page.getByRole('dialog',{name:'Review email sharing',exact:true});
- await expect(review.getByRole('button',{name:'Cancel',exact:true})).toBeFocused();
- await expect(page.getByRole('button',{name:'Back to inbox',exact:true})).toHaveCount(0);
- await page.keyboard.press('Shift+Tab');await expect(review.getByRole('button',{name:'Send reviewed email to agent',exact:true})).toBeFocused();
- await page.keyboard.press('Escape');await expect(review).toHaveCount(0);await expect(share).toBeFocused();
- expect(await page.evaluate(()=>(window as any).attachmentFixture.mutations)).toBe(0);
+ await page.getByLabel('Message actions',{exact:true}).click();const share=page.getByRole('button',{name:'Ask Alpha',exact:true});await share.click();
+ const draft=page.getByRole('textbox',{name:'Message Alpha',exact:true}),remove=page.getByRole('button',{name:'Remove email',exact:true});
+ await expect(draft).toHaveValue('Summarize this for me');await expect(remove).toBeVisible();
+ await expect(remove).toBeInViewport();expect(await remove.evaluate(el=>el.clientHeight)).toBeGreaterThanOrEqual(44);
+ // Ask only stages the selected email. Keyboard removal does not send or change the source.
+ await remove.focus();await page.keyboard.press('Enter');await expect(remove).toHaveCount(0);
+ await expect(draft).toHaveValue('Summarize this for me');await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
+ await expect(page.getByText('Choose the attachment below.',{exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>({mutations:(window as any).attachmentFixture.mutations,agentSends:(window as any).attachmentFixture.agentSends}))).toEqual({mutations:0,agentSends:0});
  if(theme==='light'&&size.height===640){await page.evaluate(()=>{(window as any).attachmentFixture.revoked=true;window.dispatchEvent(new Event('focus'));});await expect(page.getByText('Choose the attachment below.',{exact:true})).toHaveCount(0);await expect(page.getByText('Connect Gmail to read your inbox',{exact:true})).toBeVisible();}
 });

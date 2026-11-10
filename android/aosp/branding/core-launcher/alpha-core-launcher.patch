@@ -1,0 +1,279 @@
+--- a/packages/SystemUI/res/values/config.xml
++++ b/packages/SystemUI/res/values/config.xml
+@@ -80,12 +80,12 @@
+
+     <!-- The default tiles to display in QuickSettings-->
+     <string name="quick_settings_tiles_default" translatable="false">
+-        internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery
++        custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile),internet,bt,dnd,airplane,rotation,flashlight,battery,alarm,screenrecord
+     </string>
+
+     <!-- The default tiles to display in QuickSettings after the internet tile split-->
+     <string name="quick_settings_tiles_default_split" translatable="false">
+-        wifi,bt,cell,cast,dnd,wallet,airplane,rotation,flashlight,battery,alarm,controls,screenrecord
++        custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile),wifi,bt,dnd,airplane,rotation,flashlight,battery,alarm,screenrecord
+     </string>
+
+     <!-- The default large tiles in Quick Settings after the internet tile split -->
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/qs/AlphaCoreLauncherPolicy.java
+@@ -0,0 +1,12 @@
++// SPDX-License-Identifier: Apache-2.0
++package com.android.systemui.qs;
++
++/** Only the enabled, preinstalled Alpha currently holding Home is a core launcher. */
++public final class AlphaCoreLauncherPolicy {
++    public static final String PACKAGE = "ai.elizaresearch.alphaphone";
++    private AlphaCoreLauncherPolicy() {}
++    public static boolean protects(String name, boolean enabled, boolean preinstalled,
++            boolean currentHome) {
++        return PACKAGE.equals(name) && enabled && preinstalled && currentHome;
++    }
++}
+--- a/packages/SystemUI/src/com/android/systemui/qs/FgsManagerController.kt
++++ b/packages/SystemUI/src/com/android/systemui/qs/FgsManagerController.kt
+@@ -321,6 +321,24 @@
+                 flags = Context.RECEIVER_NOT_EXPORTED,
+             )
+
++            // Refresh cached classification when the owner changes the selected Home app.
++            broadcastDispatcher.registerReceiver(
++                object : BroadcastReceiver() {
++                    override fun onReceive(context: Context, intent: Intent) {
++                        synchronized(lock) {
++                            runningTaskIdentifiers.keys
++                                .filter { it.packageName == AlphaCoreLauncherPolicy.PACKAGE }
++                                .forEach { it.updateUiControl() }
++                            updateNumberOfVisibleRunningPackagesLocked()
++                            updateAppItemsLocked()
++                        }
++                    }
++                },
++                IntentFilter("android.intent.action.ACTION_PREFERRED_ACTIVITY_CHANGED"),
++                executor = backgroundExecutor,
++                flags = Context.RECEIVER_NOT_EXPORTED,
++            )
++
+             initialized = true
+         }
+     }
+@@ -474,6 +492,13 @@
+         if (refreshUiControls) {
+             packages.forEach { (pkg, _) -> pkg.updateUiControl() }
+         }
++
++        // A Home change can hide a row already cached by the open dialog. Remove it
++        // without marking it stopped so normal controls return when Home changes away.
++        packages.keys.filter {
++            it.packageName == AlphaCoreLauncherPolicy.PACKAGE &&
++                it.uiControl == UIControl.HIDE_ENTRY
++        }.forEach { runningApps.remove(it) }
+
+         val addedPackages =
+             packages.keys.filter {
+@@ -728,18 +753,38 @@
+         private var uiControlInitialized = false
+         var uiControl: UIControl = UIControl.NORMAL
+             get() {
+-                if (!uiControlInitialized) {
++                if (!uiControlInitialized || packageName == AlphaCoreLauncherPolicy.PACKAGE) {
+                     updateUiControl()
+                 }
+                 return field
+             }
+             private set
+
++        private fun isCoreLauncher(): Boolean {
++            if (packageName != AlphaCoreLauncherPolicy.PACKAGE) return false
++            return try {
++                val app = packageManager.getApplicationInfoAsUser(packageName, 0, userId)
++                val home = packageManager.resolveActivityAsUser(
++                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
++                    PackageManager.MATCH_DEFAULT_ONLY, userId,
++                )
++                AlphaCoreLauncherPolicy.protects(
++                    packageName, app.enabled && app.flags and android.content.pm.ApplicationInfo.FLAG_SUSPENDED == 0,
++                    app.flags and (android.content.pm.ApplicationInfo.FLAG_SYSTEM or
++                        android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0,
++                    home?.activityInfo?.packageName == packageName,
++                )
++            } catch (_: PackageManager.NameNotFoundException) { false }
++              catch (_: SecurityException) { false }
++        }
++
+         fun updateUiControl() {
++            val coreLauncher = isCoreLauncher()
+             backgroundRestrictionExemptionReason =
+                 activityManager.getBackgroundRestrictionExemptionReason(uid)
+             uiControl =
+-                when (backgroundRestrictionExemptionReason) {
++                if (coreLauncher) UIControl.HIDE_ENTRY
++                else when (backgroundRestrictionExemptionReason) {
+                     PowerExemptionManager.REASON_SYSTEM_UID,
+                     PowerExemptionManager.REASON_DEVICE_DEMO_MODE -> UIControl.HIDE_ENTRY
+
+@@ -765,7 +810,7 @@
+                 }
+             // If the app wants to be a good citizen by being stoppable, even if the category it
+             // belongs to is exempted for background restriction, let it be stoppable by user.
+-            if (isStoppableApp(packageName)) {
++            if (!coreLauncher && isStoppableApp(packageName)) {
+                 uiControl = UIControl.NORMAL
+             }
+
+--- /dev/null
++++ b/packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/AlphaQsDefaultsPolicy.java
+@@ -0,0 +1,32 @@
++// SPDX-License-Identifier: Apache-2.0
++package com.android.systemui.qs.pipeline.data.repository;
++
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.List;
++
++/** Update only known old stock layouts. Every other saved layout remains the owner's. */
++public final class AlphaQsDefaultsPolicy {
++    public static final String ALPHA = "custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile)";
++    public static final int VERSION = 2;
++    public static final String VERSION_SETTING = "alpha_qs_layout_migration_version";
++    private static final String LEGACY_ALPHA = "custom(ai.alphacompute.alphaphone/.AlphaQuickSettingsTile)";
++    private AlphaQsDefaultsPolicy() {}
++    public static boolean shouldMigrate(List<String> saved, List<String> defaults, int reviewedVersion) {
++        if (reviewedVersion >= VERSION || !defaults.contains(ALPHA)) return false;
++        for (String stock : Arrays.asList(
++                "internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery",
++                "wifi,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery",
++                "wifi,bt,cell,cast,dnd,wallet,airplane,rotation,flashlight,battery,alarm,controls,screenrecord")) {
++            List<String> old = Arrays.asList(stock.split(","));
++            if (saved.equals(old)) return true;
++            List<String> branded = new ArrayList<>();
++            branded.add(ALPHA);
++            branded.addAll(old);
++            if (saved.equals(branded)) return true;
++            branded.set(0, LEGACY_ALPHA);
++            if (saved.equals(branded)) return true;
++        }
++        return false;
++    }
++}
+--- a/packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/UserTileSpecRepository.kt
++++ b/packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/UserTileSpecRepository.kt
+@@ -66,6 +66,7 @@
+         MutableSharedFlow<ChangeAction>(extraBufferCapacity = CHANGES_BUFFER_SIZE)
+
+     private var isHeadlessSystemUser = false
++    private var alphaDefaultsMigrationPending = false
+
+     private lateinit var _tiles: StateFlow<List<TileSpec>>
+
+@@ -149,7 +150,13 @@
+                 .filter { it !is TileSpec.Invalid }
+                 .joinToString(DELIMITER, transform = TileSpec::spec)
+         withContext(backgroundDispatcher) {
+-            secureSettings.putStringForUser(SETTING, toStore, null, false, forUser, true)
++            val written = secureSettings.putStringForUser(SETTING, toStore, null, false, forUser, true)
++            // Commit the version only after the selected layout was stored. A later owner edit,
++            // even one recreating the old stock order, is never migrated a second time.
++            if (written && alphaDefaultsMigrationPending && secureSettings.putIntForUser(
++                    AlphaQsDefaultsPolicy.VERSION_SETTING, AlphaQsDefaultsPolicy.VERSION, forUser)) {
++                alphaDefaultsMigrationPending = false
++            }
+         }
+     }
+
+@@ -182,12 +189,20 @@
+
+     private suspend fun loadTilesFromSettingsAndParse(userId: Int): List<TileSpec> {
+         val loadedTiles = loadTilesFromSettings(userId)
++        val reviewedVersion = withContext(backgroundDispatcher) {
++            secureSettings.getIntForUser(AlphaQsDefaultsPolicy.VERSION_SETTING, 0, userId)
++        }
++        alphaDefaultsMigrationPending = defaultTiles.any { it.spec == AlphaQsDefaultsPolicy.ALPHA } &&
++            reviewedVersion < AlphaQsDefaultsPolicy.VERSION
++        val selected = if (AlphaQsDefaultsPolicy.shouldMigrate(
++                loadedTiles.map { it.spec }, defaultTiles.map { it.spec }, reviewedVersion)) defaultTiles else loadedTiles
++        val parsedTiles = parseTileSpecs(selected, userId)
+         if (loadedTiles.isNotEmpty()) {
+-            _tilesUpgradePath.send(TilesUpgradePath.ReadFromSettings(loadedTiles.toSet()))
++            _tilesUpgradePath.send(TilesUpgradePath.ReadFromSettings(parsedTiles.toSet()))
+         } else {
+             _tilesUpgradePath.send(TilesUpgradePath.DefaultSet)
+         }
+-        return parseTileSpecs(loadedTiles, userId)
++        return parsedTiles
+     }
+
+     private suspend fun loadTilesFromSettings(userId: Int): List<TileSpec> {
+--- /dev/null
++++ b/services/core/java/com/android/server/pm/permission/AlphaSharedStoragePolicy.java
+@@ -0,0 +1,13 @@
++// SPDX-License-Identifier: Apache-2.0
++package com.android.server.pm.permission;
++
++/** Factory default for Alpha's shared Files view; an owner's existing allow/deny is retained. */
++final class AlphaSharedStoragePolicy {
++    static final String PACKAGE = "ai.elizaresearch.alphaphone";
++    private AlphaSharedStoragePolicy() {}
++    static boolean shouldGrant(int userId, String name, boolean enabledAndInstalled,
++            boolean preinstalled, boolean requested, boolean unconfigured) {
++        return userId == 0 && PACKAGE.equals(name) && enabledAndInstalled && preinstalled
++                && requested && unconfigured;
++    }
++}
+--- a/services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java
++++ b/services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java
+@@ -359,6 +359,16 @@
+             }
+         };
+         mServiceInternal = LocalServices.getService(PackageManagerInternal.class);
++        // Covers OS updates that do not rerun runtime-permission upgrades.
++        // The bounded policy preserves existing owner and enterprise decisions.
++        mContext.registerReceiverAsUser(new android.content.BroadcastReceiver() {
++            @Override public void onReceive(Context context, Intent intent) {
++                if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
++                    grantAlphaSharedStorageDefault(NO_PM_CACHE, UserHandle.USER_SYSTEM);
++                }
++            }
++        }, UserHandle.SYSTEM, new android.content.IntentFilter(Intent.ACTION_BOOT_COMPLETED),
++                null, mHandler, Context.RECEIVER_NOT_EXPORTED);
+     }
+
+     public void setLocationPackagesProvider(PackagesProvider provider) {
+@@ -420,6 +430,37 @@
+
+         // Apply delayed state
+         pm.apply();
++        grantAlphaSharedStorageDefault(pm, userId);
++    }
++
++    /** Primary-user factory default only; explicit owner modes and managed devices are retained. */
++    private void grantAlphaSharedStorageDefault(PackageManagerWrapper pm, int userId) {
++        if (userId != UserHandle.USER_SYSTEM) return;
++        android.app.admin.DevicePolicyManager policy =
++                mContext.getSystemService(android.app.admin.DevicePolicyManager.class);
++        if (policy == null || policy.getDeviceOwnerComponentOnAnyUser() != null) return;
++        PackageInfo pkg = pm.getSystemPackageInfo(AlphaSharedStoragePolicy.PACKAGE);
++        if (pkg == null) return;
++        android.app.AppOpsManager ops = mContext.getSystemService(android.app.AppOpsManager.class);
++        if (ops == null) return;
++        int uid = UserHandle.getUid(userId, UserHandle.getAppId(pkg.applicationInfo.uid));
++        boolean installed = pkg.applicationInfo.enabled
++                && (pkg.applicationInfo.flags & android.content.pm.ApplicationInfo.FLAG_INSTALLED) != 0
++                && (pkg.applicationInfo.flags & android.content.pm.ApplicationInfo.FLAG_SUSPENDED) == 0;
++        try {
++            int mode = ops.unsafeCheckOpRawNoThrow(
++                    android.app.AppOpsManager.OPSTR_MANAGE_EXTERNAL_STORAGE, uid, pkg.packageName);
++            if (AlphaSharedStoragePolicy.shouldGrant(userId, pkg.packageName, installed,
++                    pkg.applicationInfo.isSystemApp(),
++                    com.android.internal.util.ArrayUtils.contains(pkg.requestedPermissions,
++                            Manifest.permission.MANAGE_EXTERNAL_STORAGE),
++                    mode == android.app.AppOpsManager.MODE_DEFAULT)) {
++                ops.setUidMode(android.app.AppOpsManager.OPSTR_MANAGE_EXTERNAL_STORAGE,
++                        uid, android.app.AppOpsManager.MODE_ALLOWED);
++            }
++        } catch (IllegalArgumentException | SecurityException error) {
++            Log.w(TAG, "Alpha shared storage default was not applied", error);
++        }
+     }
+
+     private void grantSignatureAppsNotificationPermissions(PackageManagerWrapper pm, int userId) {

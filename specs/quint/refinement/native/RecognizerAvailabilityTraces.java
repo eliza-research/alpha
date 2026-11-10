@@ -1,6 +1,6 @@
 package ai.eliza.voice;
 
-import ai.alphacompute.alphaphone.Trace;
+import ai.elizaresearch.alphaphone.Trace;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;

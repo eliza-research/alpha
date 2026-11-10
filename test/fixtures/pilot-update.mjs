@@ -18,7 +18,7 @@ const DATA = {
 };
 
 // The update window on a scripted adb: the order of device commands, not device evidence.
-const ALPHA = "ai.alphacompute.alphaphone";
+const ALPHA = "ai.elizaresearch.alphaphone";
 const STOCK = "com.android.launcher3/.uioverrides.QuickstepLauncher";
 const APK = { file: "/tmp/new.apk", sha256: "c".repeat(64), versionCode: 2 };
 const BEFORE = { versionCode: 1, userId: "10100", firstInstallTime: "2026-10-01 10:00:00" };

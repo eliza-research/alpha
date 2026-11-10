@@ -2,7 +2,7 @@
   "$comment": "Shared Alpha Phone in-app sign-in callback contract. The same file is committed in AlphaCompute/alphaphone (test/fixtures/alphaphone-auth-callback-contract.json) and elizaOS/eliza; each repo's contract test reads it. Change both copies together.",
   "contract": "alphaphone-auth-callback",
   "version": 1,
-  "package": "ai.alphacompute.alphaphone",
+  "package": "ai.elizaresearch.alphaphone",
   "callbackPath": "/alphaphone/auth/callback",
   "hosts": {
     "production": "eliza.app",
@@ -46,7 +46,7 @@
     {
       "name": "fallback page for a success URL forwards nothing",
       "pageUrl": "https://eliza.app/alphaphone/auth/callback#code=stwd-Code_0123456789.abcdef~XYZ&state=ZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXp7fH1-f4CBgoM",
-      "intentUrl": "intent://eliza.app/alphaphone/auth/callback#Intent;scheme=https;package=ai.alphacompute.alphaphone;end",
+      "intentUrl": "intent://eliza.app/alphaphone/auth/callback#Intent;scheme=https;package=ai.elizaresearch.alphaphone;end",
       "environment": "production",
       "deliveredUrl": "https://eliza.app/alphaphone/auth/callback",
       "expect": "return"
@@ -54,7 +54,7 @@
     {
       "name": "fallback page for a code-in-query URL forwards nothing",
       "pageUrl": "https://eliza.app/alphaphone/auth/callback?code=stwd-Code_0123456789.abcdef~XYZ&state=ZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXp7fH1-f4CBgoM",
-      "intentUrl": "intent://eliza.app/alphaphone/auth/callback#Intent;scheme=https;package=ai.alphacompute.alphaphone;end",
+      "intentUrl": "intent://eliza.app/alphaphone/auth/callback#Intent;scheme=https;package=ai.elizaresearch.alphaphone;end",
       "environment": "production",
       "deliveredUrl": "https://eliza.app/alphaphone/auth/callback",
       "expect": "return"
@@ -62,7 +62,7 @@
     {
       "name": "staging fallback page forwards nothing",
       "pageUrl": "https://staging.eliza.app/alphaphone/auth/callback#code=stwd-Code_0123456789.abcdef~XYZ&state=ZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXp7fH1-f4CBgoM",
-      "intentUrl": "intent://staging.eliza.app/alphaphone/auth/callback#Intent;scheme=https;package=ai.alphacompute.alphaphone;end",
+      "intentUrl": "intent://staging.eliza.app/alphaphone/auth/callback#Intent;scheme=https;package=ai.elizaresearch.alphaphone;end",
       "environment": "staging",
       "deliveredUrl": "https://staging.eliza.app/alphaphone/auth/callback",
       "expect": "return"
@@ -264,7 +264,7 @@
     {
       "name": "reject: intent URI",
       "environment": "production",
-      "url": "intent://eliza.app/alphaphone/auth/callback#Intent;scheme=https;package=ai.alphacompute.alphaphone;end",
+      "url": "intent://eliza.app/alphaphone/auth/callback#Intent;scheme=https;package=ai.elizaresearch.alphaphone;end",
       "expect": "reject"
     }
   ]

@@ -107,7 +107,7 @@ problem, and every gate stays `open`.
 Hardware: a physical Pixel 10a (`ro.product.device` `stallion`), unlocked bootloader, flashed
 with the Alpha image built in G1. Use wireless debugging for G6 so USB does not charge the phone.
 A second phone (for calls), a Bluetooth headset and another recorder app are needed for G5.
-Abbreviations: `S` is the serial, `PKG` is `ai.alphacompute.alphaphone.sense`.
+Abbreviations: `S` is the serial, `PKG` is `ai.elizaresearch.alphaphone.sense`.
 
 ### G1 Image build (image-build evidence)
 
@@ -137,7 +137,7 @@ Abbreviations: `S` is the serial, `PKG` is `ai.alphacompute.alphaphone.sense`.
      --listener-apk <sense-release.apk> --listener-descriptor <listener-descriptor.json> \
      --applied-systemui-patch chip --applied-systemui-patch ops --applied-systemui-patch assist --output /abs/new-stage
    ```
-   Expected: `Always-on listener staged: ai.alphacompute.alphaphone.sense (privileged, no network)`.
+   Expected: `Always-on listener staged: ai.elizaresearch.alphaphone.sense (privileged, no network)`.
    `listener/evidence.json` should have `speechIncluded: true` and a chip `requiredSourcePatches`
    entry.
 6. Build the image. Expected: the build succeeds and the SystemUI module compiles with the chip
@@ -212,10 +212,10 @@ checks:
 - `G4.longPressPowerIsAssistant`: `power_button_long_press` is `5`, or `null` (the overlay
   default).
 - `G4.powerVolumeUpIsPowerMenu`: `key_chord_power_volume_up` is `2` or `null`.
-- `G4.assistantRoleIsAlpha`: the `ASSISTANT` role holder is `ai.alphacompute.alphaphone`.
+- `G4.assistantRoleIsAlpha`: the `ASSISTANT` role holder is `ai.elizaresearch.alphaphone`.
 - `G4.emergencyGestureNotDisabled` and `G4.cameraDoubleTapNotDisabled`.
 - `G4.assistLaunchLogged`: logcat
-  `START u0 {act=android.intent.action.ASSIST … cmp=ai.alphacompute.alphaphone/.AlphaAssistActivity}`.
+  `START u0 {act=android.intent.action.ASSIST … cmp=ai.elizaresearch.alphaphone/.AlphaAssistActivity}`.
 
 `gates.G4.facts.activity.launchedFromSystemUi` shows `launchedFromPackage=com.android.systemui`.
 That is the activity record only, not proof that identity was shared.

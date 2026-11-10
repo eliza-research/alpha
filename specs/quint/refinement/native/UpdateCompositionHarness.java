@@ -1,10 +1,11 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import ai.eliza.plugins.agent.runtime.CredentialShutdownLease;
 import ai.eliza.plugins.agent.updater.RuntimeUpdatePause;
 import android.content.Context;
 import android.content.pm.PackageInstaller;
 import android.os.Build;
+import android.os.SystemClock;
 import android.provider.Settings;
 import androidx.lifecycle.Lifecycle;
 import com.getcapacitor.JSObject;
@@ -58,6 +59,8 @@ public final class UpdateCompositionHarness {
  private boolean zero = true;
  private boolean syncDenied;
  private PluginCall install;
+ private int generation=1, process=1;
+ private boolean automaticAttempt;
  private final Gate acquiring = new Gate(), confirming = new Gate(), sending = new Gate();
 
  private UpdateCompositionHarness(String name, File cache) throws Exception {
@@ -122,13 +125,14 @@ public final class UpdateCompositionHarness {
   synchronized (lock) {
    var row = AlphaDevicePlugin.UpdatePause.store().read();
    Object active = field("activation"), prepared = field("updateResume");
+   if(active!=null)require((Boolean)Trace.read(active,"automatic")==automaticAttempt,"actual activation retains admitted mode");
    Boolean ready = active == null ? null : (Boolean)((CompletableFuture<?>)Trace.read(active,"ready")).getNow(null);
    var info = installer.getSessionInfo(SESSION);
    String session = info == null ? "absent" : info.isSealed() ? "sealed" : "bound";
    if (info != null) {
     zero = info.getProgress() == 0f;
     String expected = "alpha-update://" + context.getPackageName() + "/8/" + target + "/" + signer +
-      "/" + Settings.Global.bootCount + "/intent";
+      "/" + Settings.Global.bootCount + "/intent" + (automaticAttempt ? "/automatic" : "");
     require(expected.equals(String.valueOf(info.getReferrerUri())), "exact Android session binding");
    }
    var evidence = new JSONObject().put("session",session).put("zero",zero).put("boot",Settings.Global.bootCount)
@@ -159,6 +163,11 @@ public final class UpdateCompositionHarness {
    return new JSONObject()
     .put("startupAdmitted",startup).put("residentStartAdmitted",startup && !lease)
     .put("resumeAudience",startup ? audience : 0)
+    .put("state.admission.platform",new JSONObject().put("sdk",Build.VERSION.SDK_INT<31?30:31)
+     .put("consent",context.packages.installsAllowed).put("uptime",SystemClock.uptimeMillis())
+     .put("boot",Settings.Global.bootCount).put("process",process).put("readySeen",SystemClock.uptimeMillis()>30000))
+    .put("state.admission.automatic",automaticAttempt)
+    .put("automaticCapability",AlphaDevicePlugin.automaticUpdateStatus(context))
     .put("state.activation.registered",bridgeSet(field("updateBridges")))
     .put("state.activation.seen",new JSONArray(bridges.keySet()))
     .put("state.activation.serial",activationId == null ? 0 : 1)
@@ -186,7 +195,7 @@ public final class UpdateCompositionHarness {
     .put("state.pause.shutdown",lease).put("state.pause.stops",AlphaLocalAgentPlugin.stops)
     .put("state.pause.releases",AlphaLocalAgentPlugin.releases).put("state.pause.evidence",evidence)
     .put("state.pause.outcome",journalOutcome).put("state.pause.syncDenied",syncDenied)
-    .put("state.pause.generation",1).put("state.pause.executingCode",BuildConfig.VERSION_CODE)
+    .put("state.pause.generation",generation).put("state.pause.executingCode",BuildConfig.VERSION_CODE)
     .put("state.pause.executingDigest",digest(AlphaDevicePlugin.UpdatePause.digest(AlphaDevicePlugin.UpdatePause.executingApk)));
   }
  }
@@ -206,14 +215,39 @@ public final class UpdateCompositionHarness {
   bridges.put(bridge,UpdateFlowTest.bridge(context,Lifecycle.State.RESUMED));
   trace.step("register",observe(),bridge);
  }
- private void begin() throws Exception {
+ private void begin() throws Exception {begin(false);}
+ private void begin(boolean automatic) throws Exception {
   install = UpdateFlowTest.offered();
+  if(automatic)install.getData().put("automatic",true);
   bridges.get(1).installUpdate(install);
   long deadline = System.nanoTime()+TimeUnit.SECONDS.toNanos(10);
   while (requests.size() < bridges.size() && System.nanoTime() < deadline) Thread.sleep(1);
   require(requests.size() == bridges.size(),"exact draft barrier reached all registered bridges");
   activationId = requests.get(bridges.get(1)).optString("activationId");
-  trace.step("begin",observe(),1);
+  automaticAttempt=automatic;
+  trace.step(automatic?"beginAutomatic":"begin",observe(),1);
+ }
+ private void replaceProcess(boolean boot,int sdk,boolean permitted)throws Exception{
+  require(bridges.isEmpty()&&activationId==null&&installer.internals.isEmpty(),"admission process cut precedes any attempt");
+  var forget=UpdateFlowTest.class.getDeclaredMethod("forgetProcess");forget.setAccessible(true);forget.invoke(null);
+  if(boot){Settings.Global.bootCount++;SystemClock.uptime=0;Build.VERSION.SDK_INT=sdk;context.packages.installsAllowed=permitted;process=1;}
+  else process++;
+  AlphaDevicePlugin.UpdatePause.journal=null;AlphaDevicePlugin.UpdatePause.configure(context);generation++;
+  if(boot)trace.step("reboot",observe(),sdk<31?30:31,permitted);
+  else trace.step("processRestart",observe());
+ }
+ private void clock(long uptime)throws Exception{
+  require(uptime>=SystemClock.uptimeMillis(),"boot clock is monotonic");SystemClock.uptime=uptime;
+  trace.step("bootClockAt",observe(),uptime);
+ }
+ private void deferred(String status)throws Exception{
+  var bridge=bridges.get(1);
+  var call=UpdateFlowTest.offered();call.getData().put("automatic",true);bridge.installUpdate(call);call.awaitAnswer();
+  require(call.resolved.get()==1&&call.rejected.get()==0&&status.equals(call.result.optString("status")),"early call resolves exact deferred status");
+  require(requests.isEmpty()&&installer.internals.isEmpty()&&installer.committed.isEmpty()
+   &&AlphaLocalAgentPlugin.stops==0&&AlphaLocalAgentPlugin.releases==0&&bridge.activity.started.isEmpty()
+   &&!Files.exists(journal.resolve("pause")),"automatic refusal has no barrier, session, settings, journal, pause, stop or commit effect");
+  trace.step("beginAutomatic",observe(),1);
  }
  private void ack(int bridge, boolean ready, boolean eligible) throws Exception {
   synchronized (lock) {
@@ -263,6 +297,25 @@ public final class UpdateCompositionHarness {
 
  private JSONObject run(String mode) throws Exception {
   switch (mode) {
+   case "cold-automatic-before-barrier":
+    replaceProcess(true,37,true);register(1);deferred("starting");clock(30000);deferred("starting");clock(30001);begin(true);
+    ack(1,true,true);acquiring.await();journalOutcome="acquired";trace.step("sealAcquire",observe());
+    acquiring.open();confirming.await();journalOutcome="stopped";trace.step("requestConfirmedStop",observe());
+    confirming.open();sending.await();journalOutcome="committing";trace.step("markCommitting",observe());
+    sending.open();install.awaitAnswer();require(install.resolved.get()==1,"warm automatic commit handed to Android");
+    trace.macro("ready boot crosses the same exact durable boundary",observe(),Trace.action("handOff"),Trace.action("observeSession","sealed",false));
+    break;
+   case "cold-manual-before-barrier":
+    replaceProcess(true,37,true);register(1);begin();ack(1,false,false);install.awaitAnswer();
+    require(install.rejected.get()==1,"manual cold path reached the actual readiness barrier");trace.step("refuse",observe());
+    break;
+   case "warm-process-before-barrier":
+    replaceProcess(false,37,true);register(1);begin(true);ack(1,false,false);install.awaitAnswer();
+    require(install.rejected.get()==1,"same-boot replacement preserves warm admission");trace.step("refuse",observe());
+    break;
+   case "unsupported-before-barrier":
+    replaceProcess(true,30,false);register(1);deferred("unsupported");
+    break;
    case "refused-before-pause":
     register(1);begin();ack(1,false,false);install.awaitAnswer();
     require(install.rejected.get()==1,"refused preparation never dispatched install");

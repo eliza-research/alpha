@@ -1,3 +1,4 @@
+import {openPhotoShare} from './helpers/owned-photo';
 import {installHomeCalendar} from './helpers/home-calendar';
 import { test, expect, type Page } from '@playwright/test';
 import { auditPage, format } from './accessibility-audit';
@@ -62,11 +63,10 @@ for (const scale of [1, 1.5, 2]) {
       // The measured scale is what the layout rules read.
       await expect.poll(() => page.evaluate(() => Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale')))).toBeCloseTo(scale, 1);
 
-      // Empty Home has nothing to show and holds the date line in the card row; the populated
-      // fixture draws its cards (docs/ui-refresh-2026-11).
+      // Empty Home omits the card row; the populated fixture draws real cards.
       const date = page.locator('[data-alpha-layer="home"] [data-alpha-home-date]');
       const cardCount = await page.locator('[data-alpha-layer="home"] :is([data-alpha-home-calendar],[data-alpha-home-workflows],[data-alpha-home-inbox],[data-alpha-home-brief])').count();
-      if (source.url === '/') { await expect(date).toBeVisible(); expect(cardCount).toBe(0); }
+      if (source.url === '/') { await expect(date).toHaveCount(0); expect(cardCount).toBe(0); }
       else { await expect(date).toHaveCount(0); expect(cardCount).toBeGreaterThanOrEqual(3); }
       await eachHomeCard(page, async name => {
         const found = blocking(format(await auditPage(page, { clipping: true, overlap: true })));
@@ -79,12 +79,9 @@ for (const scale of [1, 1.5, 2]) {
           expect(line.top, `"${card.text.slice(0, 40)}" above its card`).toBeGreaterThanOrEqual(card.own.top - 1);
           expect(line.bottom, `"${card.text.slice(0, 40)}" below its card`).toBeLessThanOrEqual(card.own.bottom + 1);
         }
-      // Cards in the row share one height and none is shorter than the design card; the date line's
-      // text lies inside the row it holds.
+      // Cards in the row share one height and none is shorter than the design card.
       const heights = await page.locator('[data-alpha-layer="home"] :is([data-alpha-home-calendar],[data-alpha-home-workflows],[data-alpha-home-inbox],[data-alpha-home-brief])').evaluateAll(list => list.map(element => Math.round(element.getBoundingClientRect().height)));
       if (cardCount) { expect(new Set(heights).size, `card heights ${heights}`).toBe(1); expect(heights[0]).toBeGreaterThanOrEqual(196); }
-      else for (const line of (await textBoxes(page, '[data-alpha-layer="home"] [data-alpha-home-date]')).flatMap(box => box.lines.map(line => ({ line, own: box.own }))))
-        expect(line.line.top >= line.own.top - 1 && line.line.bottom <= line.own.bottom + 1, 'date line inside the row').toBe(true);
 
       // App labels: each stays inside its own tile, no two labels touch, none is split mid-word.
       await page.locator('[data-alpha-home-apps]').evaluate(element => element.scrollIntoView({ block: 'center' }));
@@ -128,7 +125,7 @@ test('the Home calendar card shows its whole title at 200% and widens to the row
   const design = (await card.boundingBox())!;
   expect(Math.round(design.width)).toBe(280);
   // The card row has one fixed height (docs/ui-refresh-2026-11).
-  expect(Math.round(design.height)).toBe(212);
+  expect(Math.round(design.height)).toBe(196);
   await setTextScale(page, 2);
   const title = card.locator('.home-calendar-title');
   await expect.poll(async () => Math.round((await card.boundingBox())!.width)).toBeGreaterThan(280);
@@ -206,7 +203,7 @@ test('Files locations, share targets and avatar initials keep whole words at 200
   for (const start of ['calendar:event', 'photos:viewer']) {
     await page.goto(`/?mode=mock&start=${start}`);
     await expect(page.locator('.alpha-phone')).toBeVisible();
-    if (start === 'photos:viewer') await page.getByRole('button', { name: 'Share photo', exact: true }).click();
+    if (start === 'photos:viewer') await openPhotoShare(page);
     await setTextScale(page, 2);
     found = blocking(format(await auditPage(page, { clipping: true, overlap: true })));
     expect(found, `${start}\n${found.join('\n')}`).toEqual([]);

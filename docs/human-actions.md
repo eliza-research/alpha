@@ -94,9 +94,12 @@ These are the values approved policy deliberately leaves open. None reopens a de
   GitHub Actions secrets used by a CI signing job for the release APKs and the Pixel 10a image and
   OTA, amending P-16's managed or hardware-backed requirement; they stay distinct from developer
   keys. The owner is the ceremony custodian and witness (a distinct witness is still recommended),
-  and the certificates name the organization Alpha Compute. The CI signing job does not exist yet:
-  no workflow under `.github/workflows` runs either signing tool. Adding it, limited to a reviewed
-  trigger and environment, is an owner and security action tracked as open under AP-14.
+  and the certificates name the organization Alpha Compute. Protected app-signing workflows now
+  exist. `release-custody-proof.yml` checks the existing protected app and OS key pairs against
+  candidate public identities in `android/signing/os-custody-expected.json`, on an exact
+  reviewed main commit with release-environment approval. That comparison file is not production
+  enrollment; H-09 still requires verified public evidence.
+  The full image-signing job and installed update/recovery proof remain open under AP-14.
 - Seam: both signing tools accept key files or a token. APKs: `scripts/sign-release-apks.mjs` (`--keys-dir`
   or `--pkcs11-config` with `--key-label`) or Gradle's `ELIZAOS_KEYSTORE_*`. Image and OTA:
   `scripts/sign-aosp-release.mjs` (key files, or the four managed options `--pkcs11-config`,
@@ -196,7 +199,11 @@ These are the values approved policy deliberately leaves open. None reopens a de
   no key material, passphrase or PIN goes into this repository.
 - Seam: `android/signing/alpha-key-manifest.json`; upstream refuses an output inside any Git
   working tree.
-- Verify: every private file ends in `.enc`, and both people sign the printed `fingerprints.json`.
+- Existing protected secrets must be checked before considering replacement keys. The custody
+  proof exports only public certificate/key digests, including the APEX payload digest; it does
+  not produce a signed image or establish device acceptance.
+- Verify: every private file ends in `.enc`. The owner records the reviewed public fingerprints;
+  a separate witness remains recommended.
 - Unblocks: H-09.
 
 ### H-09 Enroll the public release identities
@@ -252,7 +259,7 @@ staging values.
 - Who: Cloud operator.
 - Do: keep Alpha's entry in `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON` and its approved `apps` row,
   and after any registry change run the "Mobile App Auth Registration Admin" workflow (repair,
-  then diagnose) for client `ai.alphacompute.alphaphone`. The registration that answered 503 on
+  then diagnose) for client `ai.elizaresearch.alphaphone`. The registration that answered 503 on
   October 24 ([diagnosis](evidence/cloud-native-auth-diagnosis-2026-10-24.md)) answered for both
   environments, with S256, on October 27.
 - Seam: `node scripts/cloud-readiness.mjs registration` prints the entry.
@@ -266,7 +273,7 @@ staging values.
 - Do: Google binds an Android OAuth client to one package and signing certificate SHA-1, and
   Steward advertises native Google (`googleNative`) only for an app client listed in
   `STEWARD_GOOGLE_NATIVE_CLIENT_IDS`. After H-09, create an Android OAuth client for package
-  `ai.alphacompute.alphaphone` with the release certificate SHA-1 and add its client ID under
+  `ai.elizaresearch.alphaphone` with the release certificate SHA-1 and add its client ID under
   `alpha-phone` (the clients that exist today were created before any release key existed).
   Staging advertises no native Google: add an Android client for the debug signer used for
   test-mocks builds to the staging Steward if staging Google sign-in is wanted. Keep the tenant
@@ -292,7 +299,7 @@ staging values.
   `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` entry: the hosted fallback page answers today.
 - Seam: `scripts/render-assetlinks.mjs`; builds declare the verified filters only with
   `ELIZAOS_APP_LINK_HOST=eliza.app` (H-10).
-- Verify: the `--check` command exits 0, then `adb shell pm get-app-links ai.alphacompute.alphaphone`
+- Verify: the `--check` command exits 0, then `adb shell pm get-app-links ai.elizaresearch.alphaphone`
   reports `eliza.app` verified on an installed release build.
 - Unblocks: verified returns for the browser sign-in fallback and the Cloud delegation filter.
 

@@ -33,7 +33,7 @@ The pinned shared source is unchanged; the reviewed patch and source hashes are 
 
 The Cloud and Steward deployments must independently satisfy all of these:
 
-- Mobile App Auth registers `ai.alphacompute.alphaphone`, environment
+- Mobile App Auth registers `ai.elizaresearch.alphaphone`, environment
   `production`, callback `https://eliza.app/alphaphone/auth/callback`, and S256.
   The registered app must be active and approved.
 - Steward tenant `elizacloud` includes that exact callback in
@@ -44,7 +44,7 @@ The Cloud and Steward deployments must independently satisfy all of these:
   copy alone is insufficient. Release signing remains governed by
   `android/release-signer.json`; never claim a development signer is a release.
 - Android verifies the host for the installed package. Read back with
-  `adb shell pm get-app-links ai.alphacompute.alphaphone`. Do not force a verified
+  `adb shell pm get-app-links ai.elizaresearch.alphaphone`. Do not force a verified
   state through ADB to bypass server association failures.
 
 Cloud's upstream operator configuration is documented in
@@ -79,7 +79,7 @@ observations with the requests the phone makes, once each, and names the owning 
 
 | Gate | Production | Staging |
 | --- | --- | --- |
-| Mobile App Auth registration for `ai.alphacompute.alphaphone`, S256 | Passed (the October 24 503 is resolved) | Passed |
+| Mobile App Auth registration for `ai.elizaresearch.alphaphone`, S256 | Passed (the October 24 503 is resolved) | Passed |
 | Email sign-in (offered without a captcha, code route present) | Passed | Passed |
 | Native Google (`googleNative` advertised) | Passed | Not advertised: no `STEWARD_GOOGLE_NATIVE_CLIENT_IDS` client for the staging app client |
 | Tenant allowlist admits the return URL | Passed (the October 24 400 is resolved) | Passed |

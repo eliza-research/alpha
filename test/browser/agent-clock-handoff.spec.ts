@@ -131,7 +131,7 @@ for (const mode of ['confirm','transcribed','zone','modal','unknown','receipt-lo
     if(mode==='zone')await page.evaluate(()=>{const original=Intl.DateTimeFormat.prototype.resolvedOptions;Intl.DateTimeFormat.prototype.resolvedOptions=function(){return {...original.call(this),timeZone:'Pacific/Honolulu'};};});
     if(mode==='modal'){
       await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
-      await page.getByRole('button',{name:'Workflows',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();
+      await page.getByRole('button',{name:'Workflows',exact:true}).click();await page.getByRole('button',{name:'New automation',exact:true}).click();await page.getByRole('button',{name:'Clock alarms',exact:true}).click();
       const context=await page.evaluate(async()=> (await import('/src/runtime/alpha-client.ts')).alphaClient.getState().context);
       expect(context.selectedObject.kind).toBe('clock-draft');
       await page.getByLabel('Alarm label',{exact:true}).fill('Edited draft');

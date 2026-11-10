@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from 'node:module';
+import {build} from 'esbuild';
+const dependencies=await build({stdin:{contents:"import * as workflowTime from './apps/app/src/runtime/workflow-local-time.ts'; export {workflowTime}; export {describePhoneTrigger,phoneTriggerClockChangeNote} from './apps/app/src/runtime/phone-workflow-authoring.ts'; export {WorkflowTypedRejected} from './apps/app/src/runtime/workflow-protocol.ts';",resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'esm',platform:'neutral',mainFields:['module','main'],logLevel:'silent'});
+const {workflowTime,describePhoneTrigger,phoneTriggerClockChangeNote,WorkflowTypedRejected}=await import('data:text/javascript;base64,'+Buffer.from(dependencies.outputFiles[0].text).toString('base64'));
 const {checkWorkflowScope}=await import('../.eliza/client-features/packages/contracts/src/workflow-scope.ts');
 const source=stripTypeScriptTypes(fs.readFileSync('apps/app/src/prototype/workflow-authoring.ts','utf8').replace(/^import .*;\n/gm,'').replaceAll('export function','function'),{mode:'strip'});
 const deferred=()=>{let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};};
@@ -10,7 +13,7 @@ async function harness(options={}){
  const records=new Map(),gate=deferred(),entered=deferred();let held=false,fail=false;
  let session={origin:'owned-origin',ownerId:'owner-a',agentId:'agent-a'},binding={sessionId:'session-a',client:{async phoneCatalog(){return {palette:[],triggers:[],...options.catalog};}}};
  const storage={async secureRead({slot}){return {value:records.get(slot)??null};},async secureCompareExchange(input){if(held){entered.resolve();await gate.promise;}if(fail)throw Error('Synthetic write unavailable');if((records.get(input.slot)??null)!==input.expectedValue)return {status:'conflict'};records.set(input.slot,input.value);return {status:'saved'};}};
- const ctx=vm.createContext({AbortController,TextEncoder,document:{hidden:false},browserLocalAgentEnabled:true,browserDevProfile:false,developmentWorkflowDraftStore:storage,registerPlugin:()=>({}),workflowSha:async values=>JSON.stringify(values),normalizePhoneSpec:spec=>JSON.parse(JSON.stringify(spec)),assertPhoneCapabilities:()=>{},connectionController:{getWorkflowClient:()=>binding,getWorkflowDeviceTarget:()=>null,getSnapshot:()=>({session,open:false})},WORKFLOW_OPERATION_LABELS:{supplied_text:'Read supplied text'},checkWorkflowScope});
+ const ctx=vm.createContext({...workflowTime,describePhoneTrigger,phoneTriggerClockChangeNote,WorkflowTypedRejected,AbortController,TextEncoder,document:{hidden:false},browserLocalAgentEnabled:true,browserDevProfile:false,developmentWorkflowDraftStore:storage,registerPlugin:()=>({}),workflowSha:async values=>JSON.stringify(values),normalizePhoneSpec:spec=>JSON.parse(JSON.stringify(spec)),assertPhoneCapabilities:()=>{},connectionController:{getWorkflowClient:()=>binding,getWorkflowDeviceTarget:()=>null,getSnapshot:()=>({session,open:false})},WORKFLOW_OPERATION_LABELS:{supplied_text:'Read supplied text'},checkWorkflowScope});
  vm.runInContext(source+';globalThis.create=createWorkflowAuthoring',ctx);
  const authoring=ctx.create(()=>({toast:options.toast??(()=>{})}),()=>{},async()=>{}),api={ic:{},get:()=>({})};
  await authoring.open();for(let i=0;i<5;i++)await Promise.resolve();

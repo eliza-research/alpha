@@ -37,18 +37,15 @@ test('agenda card keeps the installed selectors for an event, an overdue reminde
   assert.match(out.event,/class="home-calendar-time">Wed, Oct 7<\/span><span data-overview-part="origin" class="home-calendar-origin" data-alpha-home-calendar-origin="">Work<\/span>/);
   assert.match(out.event,/class="serif home-calendar-title">Design review</);
   assert.match(out.event,/class="home-calendar-footer">4:00 PM – 5:00 PM</);
-  assert.match(out.event,/<svg width="16" height="16" viewBox="0 0 24 24"><path d="M1 1"><\/path><\/svg>/);
+  assert.match(out.event,/background:#ffffff;mask:url\(&#x27;\/icons\/lucide\/video\.svg&#x27;\)/);
   assert.match(out.event,/style="flex-shrink:0;scroll-snap-align:start;border-radius:30px;background:var\(--acc\);color:#ffffff;padding:22px;box-sizing:border-box"/);
   assert.ok(out.overdue.includes('data-alpha-home-calendar-overdue="true"')&&out.overdue.includes('data-alpha-home-calendar-next="true"'));
   assert.match(out.overdue,/class="home-calendar-meta home-calendar-next" data-alpha-home-calendar-next-line=""><span data-overview-part="nextText" class="home-calendar-next-text">Next: Design review 4:00 PM<\/span>/);
   assert.match(out.overdue,/data-overview-part="nextSource" class="home-calendar-source" data-alpha-home-calendar-next-source="">Work<\/span>/, 'the next item identifies its calendar');
   assert.match(out.overdue,/aria-description="Overdue reminder saved on this device\. Next: Design review, 4:00 PM\. Work\. Read 3:04 PM from calendars on this device"/, 'the next item keeps its own source and read time');
   assert.doesNotMatch(out.overdue,/<svg/,'no video icon without a meeting link');
-  assert.ok(out.empty.includes('data-alpha-home-calendar-event="false"')&&out.empty.includes('data-alpha-home-calendar-meta="false"'));
-  assert.doesNotMatch(out.empty,/class="home-calendar-meta|class="home-calendar-footer|aria-description/);
-  assert.match(out.error,/aria-description="Calendar could not be read\. Open Calendar to retry\."/);
-  assert.match(out.error,/data-overview-part="source" class="home-calendar-source" data-alpha-home-calendar-source="">Open Calendar to retry<\/span>/, 'the recovery action is visible and described');
-  assert.doesNotMatch(out.error,/class="home-calendar-footer/);
+  assert.equal(out.empty,null);
+  assert.equal(out.error,null);
 });
 
 test('a calendar read from an earlier day is presented as stale on the agenda card', () => {
@@ -71,7 +68,8 @@ test('brief card appears only for a retained result and keeps its failure state'
   out.failed=html(c.homeBriefCard({homeBriefHas:true,homeBriefTitle:'Source expired',homeBriefStatus:'Alpha · Failed 7:00 AM',homeBriefFailed:true,homeBriefLabel:'Open scheduled digests.'}));
   assert.equal(out.none,null,'the removed empty brief does not return');
   assert.match(out.ran,/^<button type="button" data-overview-part="card" class="home-brief-card" data-overview-card="brief"/);
-  for(const attribute of ['data-alpha-home-brief=""','data-alpha-home-brief-failed="false"','aria-haspopup="dialog"','aria-label="Open scheduled digests. Latest brief from Alpha, ran 7:02 AM: Two meetings today."'])assert.ok(out.ran.includes(attribute),attribute);
+  for(const attribute of ['data-alpha-home-brief=""','data-alpha-home-brief-failed="false"','aria-label="Open scheduled digests. Latest brief from Alpha, ran 7:02 AM: Two meetings today."'])assert.ok(out.ran.includes(attribute),attribute);
+  assert.ok(!out.ran.includes('aria-haspopup'), 'the shared brief does not impose popup navigation');
   assert.match(out.ran,/class="home-brief-head"><span data-overview-part="heading">Latest brief<\/span>/);
   assert.match(out.ran,/class="home-brief-title">Two meetings today\.<\/span><span data-overview-part="status" class="home-brief-status">Alpha · Ran 7:02 AM</);
   assert.ok(out.failed.includes('data-alpha-home-brief-failed="true"'));
@@ -119,14 +117,7 @@ test('mail card keeps the installed selectors, styles and order of the Home Inbo
   assert.match(out.ready,/rowTitle"[^>]*>\(no subject\)</);
   assert.doesNotMatch(out.ready,/Third|Private body|data-overview-part="title"/,'two rows, no body, no headline beside rows');
   assert.match(out.ready,/<span data-overview-part="status" style="font-size:12px;line-height:1.4;min-height:17px;color:var\(--mut\);text-align:left">work@example.test · Updated 3:04 PM<\/span><\/button>$/);
-  assert.match(out.idle,/data-overview-state="idle"/);
-  assert.match(out.idle,/<span data-overview-part="title" class="serif" style="font-size:26px;line-height:1.1;min-width:0;max-width:260px;text-align:left;overflow-wrap:anywhere">Inbox<\/span>/);
-  assert.doesNotMatch(out.idle,/data-alpha-home-inbox-subjects/);
-  assert.ok(out.disconnected.includes('data-overview-state="not-connected"')&&out.disconnected.includes('>Connect email<')&&out.disconnected.includes('aria-label="Connect email"'));
-  assert.ok(out.failed.includes('data-overview-state="error"')&&out.failed.includes('>Reconnect email<')&&out.failed.includes('>Open to retry<'));
-  assert.ok(out.stale.includes('data-overview-state="stale"')&&out.stale.includes('>Not updated since Tue, Oct 6 8:15 AM<'));
-  assert.match(out.stale,/aria-label="Open Inbox: work@example.test has not updated since Tue, Oct 6 8:15 AM; 2 unread emails when last read"/);
-  assert.match(out.people,/<div aria-hidden="true" data-overview-part="people" style="display:flex;gap:2px;visibility:hidden"><span data-overview-part="person" style="width:28px;height:28px;border-radius:14px;background:var\(--s3\);font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var\(--s2\);white-space:nowrap">AL<\/span><\/div>/);
+  for(const state of ['idle','disconnected','failed','stale','people'])assert.equal(out[state],null,state+' without mail rows stays hidden');
 });
 
 test('the Home agenda values come from the shared card model for an event, an overdue reminder with its next item, and no item', () => {
@@ -151,7 +142,7 @@ test('the Home agenda values come from the shared card model for an event, an ov
   assert.deepEqual([none.homeCalendarTitle,none.homeCalendarTime,none.homeCalendarLabel,none.homeCalendarHasEvent,none.homeCalendarHasMeta],['Calendar has not been verified','Wed, Oct 7','Open Agent Calendar',false,false]);
 });
 
-test('Home keeps Calendar, Inbox and Workflows visible but shows Brief only with a result', () => {
+test('Home hides empty Calendar, Inbox and Workflows and shows Brief only with a result', () => {
   class Shell {
     renderVals() { return this.values; }
   }
@@ -160,15 +151,17 @@ test('Home keeps Calendar, Inbox and Workflows visible but shows Brief only with
   const empty = {homeCalendarConfirmedEmpty: true, homeInboxConfirmedEmpty: true, homeWorkflowConfirmedEmpty: true};
   shell.values = empty;
   let rendered = shell.renderVals();
-  assert.ok(rendered.homeAgendaCard);assert.ok(rendered.homeAttentionCard);assert.equal(rendered.homeBriefCard,null);assert.equal(rendered.homeShowWorkflow,true);assert.equal(rendered.homeHasOverviewCards,true);
+  assert.equal(rendered.homeAgendaCard,null);assert.equal(rendered.homeAttentionCard,null);assert.equal(rendered.homeBriefCard,null);assert.equal(rendered.homeShowWorkflow,false);assert.equal(rendered.homeHasOverviewCards,false);
   shell.values = {...empty, homeBriefHas: true, homeBriefTitle: 'Follow up on the failed run', homeBriefFailed: true};
   rendered = shell.renderVals();
   assert.equal(rendered.homeHasOverviewCards, true);
   assert.match(html(rendered.homeBriefCard), /Follow up on the failed run/);
   shell.values = {homeCalendarTitle: 'Calendar unavailable', homeInboxTitle: 'Reconnect email'};
   rendered = shell.renderVals();
-  assert.equal(rendered.homeHasOverviewCards, true);
-  assert.equal(rendered.homeShowWorkflow, true);
-  assert.match(html(rendered.homeAgendaCard), /Calendar unavailable/);
-  assert.match(html(rendered.homeAttentionCard), /Reconnect email/);
+  assert.equal(rendered.homeHasOverviewCards,false);
+  assert.equal(rendered.homeShowWorkflow,false);
+  assert.equal(rendered.homeAgendaCard,null);
+  assert.equal(rendered.homeAttentionCard,null);
+  shell.values={homeWorkflowHasRows:true,homeWorkflowRows:[{name:'Morning summary'}]};
+  assert.equal(shell.renderVals().homeShowWorkflow,true);
 });

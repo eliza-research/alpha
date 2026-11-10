@@ -1,7 +1,8 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import android.content.Context;
 import android.os.Build;
+import android.os.SystemClock;
 import androidx.lifecycle.Lifecycle;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -91,9 +92,11 @@ public final class UpdateStagingHarness {
  private final PluginCall[] calls = new PluginCall[4];
  private int owner;
  private String phase="idle", outcome="none";
+ private final boolean bootTrace;
+ private int boot=1, process=1;
 
  private UpdateStagingHarness(String mode, Path cache, JSONObject offer)throws Exception{
-  this.cache=cache;this.offer=offer;apk=cache.resolve("alpha-update.apk");
+  this.cache=cache;this.offer=offer;apk=cache.resolve("alpha-update.apk");bootTrace=mode.startsWith("boot-");
   context=UpdateFlowTest.installing(cache.toFile());
   AlphaDevicePlugin.UpdatePause.configure(context);
   context.packages.archiveRead=archive;
@@ -132,10 +135,44 @@ public final class UpdateStagingHarness {
     catch(Exception missing){throw new IllegalStateException(missing);}
    }),"only the exact owner holds the connection");
   }
-  return Trace.fields("owner",owner,"target",owner==0?0:1,"phase",phase,"file",file,"bytes",bytes,
+  JSONObject observed=Trace.fields("owner",owner,"target",owner==0?0:1,"phase",phase,"file",file,"bytes",bytes,
    "session",session,"stagedBytes",stagedBytes,"connected",connected,"fetches",connections.size(),
    "created",installer.internals.size(),"abandoned",installer.abandoned.size(),"outcome",outcome);
+  if(bootTrace)observed.put("s.platform",new JSONObject().put("sdk",Build.VERSION.SDK_INT<31?30:31)
+   .put("consent",context.packages.installsAllowed).put("uptime",SystemClock.uptimeMillis())
+   .put("boot",boot).put("process",process).put("readySeen",SystemClock.uptimeMillis()>30000))
+   .put("automaticCapability",AlphaDevicePlugin.automaticUpdateStatus(context));
+  return observed;
  }
+
+ private void reboot(int sdk,boolean permitted)throws Exception{
+  require(owner==0,"reboot cut is between attempts");
+  Build.VERSION.SDK_INT=sdk;context.packages.installsAllowed=permitted;SystemClock.uptime=0;boot++;process=1;
+  trace.step("reboot",observe(),sdk<31?30:31,permitted);
+ }
+ private void clock(long uptime)throws Exception{
+  require(uptime>=SystemClock.uptimeMillis(),"clock cannot go backwards within a boot");
+  SystemClock.uptime=uptime;trace.step("bootClockAt",observe(),uptime);
+ }
+ private void consent(boolean permitted)throws Exception{
+  context.packages.installsAllowed=permitted;trace.step("consent",observe(),permitted);
+ }
+ private void restart()throws Exception{
+  require(owner==0,"process cut is between attempts");
+  UpdateFlowTest.retireFixtureWorkers();
+  var forget=UpdateFlowTest.class.getDeclaredMethod("forgetProcess");forget.setAccessible(true);forget.invoke(null);
+  bridges.clear();register(1);process++;trace.step("processRestart",observe());
+ }
+ private void deferred(String status)throws Exception{
+  // A shut-down worker proves this refusal occurs before executor admission.
+  ((java.util.concurrent.ExecutorService)Trace.read(bridges.get(1),"updateWorker")).shutdownNow();
+  calls[1]=payload();calls[1].getData().put("automatic",true);bridges.get(1).installUpdate(calls[1]);answer(1,true);
+  require(status.equals(calls[1].result.optString("status")),"exact automatic refusal status");
+  require(bridges.get(1).activity.started.isEmpty()&&installerEmpty()&&bridges.get(1).events.isEmpty(),"refusal has no settings, session or barrier effect");
+  outcome=status;trace.step("automaticTap",observe(),1);
+  register(1);
+ }
+ private boolean installerEmpty(){return context.packages.installer.internals.isEmpty()&&context.packages.installer.committed.isEmpty();}
 
  private void register(int id)throws Exception{
   bridges.put(id,UpdateFlowTest.bridge(context,Lifecycle.State.RESUMED));
@@ -150,12 +187,14 @@ public final class UpdateStagingHarness {
   require(calls[id].resolved.get()==(success?1:0)&&calls[id].rejected.get()==(success?0:1),"tap settlement");
  }
  private void start()throws Exception{start(1);}
- private void start(int bridge)throws Exception{
+ private void start(int bridge)throws Exception{start(bridge,false);}
+ private void start(int bridge,boolean automatic)throws Exception{
   int previous=connections.size();
-  heldRead=new Gate();tap(bridge);heldRead.await();
+  heldRead=new Gate();calls[bridge]=payload();if(automatic)calls[bridge].getData().put("automatic",true);
+  bridges.get(bridge).installUpdate(calls[bridge]);heldRead.await();
   require(connections.size()==previous+1&&connections.get(previous).getURL().toString().equals(offer.getString("apkUrl")),"exact renderer URL used");
   owner=bridge;phase="copying";outcome="none";
-  trace.macro("first two bytes written by the owner; next body read held",observe(),Trace.action("tap",bridge,true),Trace.action("chunk",2));
+  trace.macro("first two bytes written by the owner; next body read held",observe(),automatic?Trace.action("automaticTap",bridge):Trace.action("tap",bridge,true),Trace.action("chunk",2));
  }
  private void verified()throws Exception{
   heldRead.open();archive.await();
@@ -178,6 +217,25 @@ public final class UpdateStagingHarness {
   register(1);
   require(AlphaDevicePlugin.appSigner(context).equals(offer.getString("signer")),"renderer fixture used actual synthetic signing lineage");
   switch(mode){
+   case "boot-inclusive-boundary-and-process":
+    reboot(31,true);deferred("starting");clock(26681);deferred("starting");clock(29999);restart();deferred("starting");
+    clock(30000);deferred("starting");clock(30001);start(1,true);verified();staged();stage.open();settled("barrier",true,true);
+    break;
+   case "boot-precedence":
+    reboot(30,false);deferred("unsupported");consent(true);clock(35000);deferred("unsupported");
+    break;
+   case "boot-permission-and-later-admission":
+    reboot(31,false);deferred("permission-required");consent(true);deferred("starting");clock(35000);
+    start(1,true);verified();staged();stage.open();settled("barrier",true,true);
+    break;
+   case "boot-manual-cold":
+    reboot(31,true);start();verified();staged();stage.open();settled("barrier",true,true);
+    break;
+   case "boot-download-failure-and-warm-process":
+    body=new byte[]{1,2,3,5};start(1,true);heldRead.open();answer(1,false);owner=0;phase="idle";outcome="download";
+    trace.macro("failed actual digest precedes same-boot process replacement",observe(),Trace.action("chunk",2),Trace.action("settle","download",true,true));
+    restart();body=APK;start(1,true);verified();staged();stage.open();settled("barrier",true,true);
+    break;
    case "permission-only":
     context.packages.installsAllowed=false;
     tap(1);answer(1,true);outcome="settings";

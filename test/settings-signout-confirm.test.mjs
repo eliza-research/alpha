@@ -2,12 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-const source=readFileSync(process.env.ALPHA_SETTINGS_SOURCE||'apps/app/src/prototype/settings-adapter.ts','utf8');
-const row=source.split('\n').find(line=>line.includes("kNav:true,label:'Sign out'"));assert.ok(row,'Account and plan Sign out row');
-for(const accepted of [false,true])test(`Settings sign-out ${accepted?'confirms once':'cancels without changing the account'}`,()=>{
- const prompts=[],calls=[];
- const box={serviceName:'Eliza Cloud',window:{confirm:text=>{prompts.push(text);return accepted;}},connectionController:{cloudSignOut:()=>{calls.push('sign-out');return Promise.resolve();}}};
- const action=vm.runInNewContext('('+row.trim().replace(/,$/,'')+')',box);
- assert.equal(calls.length,0,'rendering does not sign out');assert.equal(prompts.length,0);
- action.go();assert.deepEqual(prompts,['Sign out of Eliza Cloud? Your notes and chats will stay on this phone.']);assert.deepEqual(calls,accepted?['sign-out']:[]);
+const source=readFileSync(process.env.ALPHA_CONNECTION_SOURCE||'apps/app/src/runtime/connection-ui.tsx','utf8');
+// Run the callbacks from the current Account sheet. Cancellation stays inside
+// the sheet; confirmation compares the entire account binding before sign-out.
+const confirm=source.match(/onClick=\{(\(\)=>\{const expected=signOutAccount;[^\n]*?connectionController\.cloudSignOut\(\);\})\}>Sign out/)[1];
+const cancel=source.match(/onClick=\{(\(\)=>\{if\(signOutAccount\)setSignOutAccount\(null\);else dismiss\(\);\})\}/)[1];
+const identity=()=>({environment:'production',userId:'owner',organizationId:'org',sessionId:'owner-session',credentialId:'owner-credential'});
+for(const accepted of [false,true])test(`Settings sign-out ${accepted?'confirms once':'cancels without changing the account'}`,async()=>{
+ const calls=[],account=identity();let pending=account;
+ const box={get signOutAccount(){return pending;},setSignOutAccount:value=>{pending=value;},dismiss:()=>calls.push('dismiss'),connectionController:{getSnapshot:()=>({cloudAccount:account}),cloudSignOut:async()=>calls.push('sign-out')}};
+ await vm.runInNewContext('('+ (accepted?confirm:cancel) +')',box)();
+ assert.equal(pending,null);assert.deepEqual(calls,accepted?['sign-out']:[]);
+});
+test('a changed account during the sign-out confirmation is preserved',async()=>{
+ for(const field of ['environment','userId','organizationId','credentialId','sessionId']){
+  const calls=[],account=identity();const current={...account,[field]:'changed'};
+  const box={signOutAccount:account,setSignOutAccount:()=>{},connectionController:{getSnapshot:()=>({cloudAccount:current}),cloudSignOut:async()=>calls.push('sign-out')}};
+  await vm.runInNewContext('('+confirm+')',box)();assert.deepEqual(calls,[],field);
+ }
 });

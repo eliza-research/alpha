@@ -24,7 +24,7 @@ const isFile = file => { try { return fs.statSync(file).isFile(); } catch { retu
 const captureSource = file => { try { return JSON.parse(fs.readFileSync(file, "utf8")).captureSource ?? null; } catch { return null; } };
 
 /** Problems with a listener record; empty when it is well formed and its claims are earned. */
-export function listenerRecordProblems(record, appId = "ai.alphacompute.alphaphone", root = ROOT) {
+export function listenerRecordProblems(record, appId = "ai.elizaresearch.alphaphone", root = ROOT) {
   const problems = [];
   if (!record || typeof record !== "object") return ["The listener record is not an object"];
   if (record.schemaVersion !== 1) problems.push("schemaVersion must be 1");

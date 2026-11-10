@@ -34,7 +34,6 @@ export function assistantEntryPlatform() {
     for(const name of ['android/app/KeyguardManager.java','android/os/SystemClock.java','android/os/Bundle.java',
       'android/net/Uri.java','android/content/pm/ApplicationInfo.java','android/content/pm/ActivityInfo.java'])
       put(name,sense[name]);
-    put('android/content/ComponentName.java',sense['android/content/ComponentName.java'].replace('public ComponentName(String','public ComponentName(){this("","");}public ComponentName(String'));
     put('android/content/ContentResolver.java',`package android.content;
 public final class ContentResolver {
  public android.os.Bundle call(android.net.Uri uri,String name,String arg,android.os.Bundle extras){throw new AssertionError("Provider is outside assistant entry");}
@@ -72,7 +71,7 @@ public final class PackageManager {
   info.permission=protectedPower&&info.name.endsWith(".AlphaPowerVoiceActivity")?"android.permission.STATUS_BAR_SERVICE":null;
   return info;
  }
- public boolean resolves(String action){return ai.alphacompute.alphaphone.MainActivityPorts.settings.contains(action);}
+ public boolean resolves(String action){return ai.elizaresearch.alphaphone.MainActivityPorts.settings.contains(action);}
  public ResolveInfo resolveActivity(android.content.Intent intent,int flags){return null;}
 }`);
     put('android/app/Activity.java',`package android.app;
@@ -116,14 +115,14 @@ public record Icon(int id) {public static Icon createWithResource(android.conten
   public String getLaunchedFromPackage(){return launchedFrom;}
   public void onPause(){}
   public void onNewIntent(android.content.Intent intent,android.app.ComponentCaller caller){onNewIntent(intent);}`);
-    edit(activity,'    onNewIntent(getIntent());',`    ai.alphacompute.alphaphone.AssistantEntryTraces.beforeBridgeReentry(this);
+    edit(activity,'    onNewIntent(getIntent());',`    ai.elizaresearch.alphaphone.AssistantEntryTraces.beforeBridgeReentry(this);
     onNewIntent(copyLoadIntent ? new android.content.Intent(getIntent()) : getIntent());`);
     edit(activity,'  public void onNewIntent(android.content.Intent value) {}',`  public void onNewIntent(android.content.Intent value) {
     if(bridge!=null&&value!=null)bridge.intentDeliveries.add(value);
   }`);
     edit(activity,'  public void onWindowFocusChanged(boolean value) {}','  public void onWindowFocusChanged(boolean value) {focused=value;}');
     edit(activity,'    return new android.content.pm.PackageManager();','    return super.getPackageManager();');
-    edit(activity,'    return "ai.alphacompute.alphaphone";','    return super.getPackageName();');
+    edit(activity,'    return "ai.elizaresearch.alphaphone";','    return super.getPackageName();');
     edit(activity,'    return kind.cast(new android.app.ActivityManager());','    return kind==android.app.ActivityManager.class?kind.cast(new android.app.ActivityManager()):super.getSystemService(kind);');
     edit('com/getcapacitor/Bridge.java','public class Bridge {',`public class Bridge {
   public final java.util.List<android.content.Intent> intentDeliveries=new java.util.ArrayList<>();
@@ -148,7 +147,7 @@ public final class JSObject extends org.json.JSONObject {
  @Override public JSObject put(String key,Object value){super.put(key,value);return this;}
 }`);
     const agent=readFileSync(join(root,assistantAgent),'utf8');
-    put('ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java',`package ai.alphacompute.alphaphone;
+    put('ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java',`package ai.elizaresearch.alphaphone;
 import android.content.Context;
 import com.getcapacitor.*;
 import org.json.JSONObject;
@@ -170,8 +169,8 @@ final class AlphaCredentialStore {
 }`);
     put('ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java',`package ai.eliza.plugins.securestore.nativeonly;
 public final class JsonCredentialSlots {public static final Object LOCK=new Object();}`);
-    const res='ai/alphacompute/alphaphone/R.java';
-    put(res,`package ai.alphacompute.alphaphone;
+    const res='ai/elizaresearch/alphaphone/R.java';
+    put(res,`package ai.elizaresearch.alphaphone;
 public final class R {
  public static final class string {
   public static final int alpha_quick_settings_label=201,alpha_quick_settings_locked=202,

@@ -49,7 +49,7 @@ test('Calendar, Home and Google accounts show one merged calendar without a cale
  await expect(panel.getByRole('radio')).toHaveCount(0);
  await expect(panel.getByText('Calendar to display')).toHaveCount(0);
  await expect(panel.getByRole('button',{name:'Add Google account',exact:true})).toBeVisible();
- await expect(panel.getByRole('button',{name:'Check Google connections',exact:true})).toBeVisible();
+ await expect(panel.getByRole('button',{name:'Check Google connections',exact:true})).toHaveCount(0);
  // The kept slot is now only the device sync destination; it was read and did not narrow the merged view.
  expect(await page.evaluate(async()=>{const {readGoogleCalendarSelection}=await import('/src/runtime/google-calendar-selection.ts');return readGoogleCalendarSelection({environment:'production',userId:'8d0f6a3e-1c2b-4d5e-9f60-7a8b9c0d1e2f',organizationId:'1e2f3a4b-5c6d-4e7f-8a9b-0c1d2e3f4a5b'})?.name;})).toBe('Holidays in United States');
  const fixture=await requests(page);

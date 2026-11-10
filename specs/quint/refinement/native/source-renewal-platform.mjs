@@ -15,7 +15,7 @@ function exact(text, first, last) {
 export function sourceRenewalPlatform(temporary) {
   const bridge=readFileSync(join(root,renewalBridge),'utf8');
   const files={
-    'ai/alphacompute/alphaphone/AlphaHostedResultsPlugin.java':`package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/AlphaHostedResultsPlugin.java':`package ai.elizaresearch.alphaphone;
 import android.content.Intent;
 import com.getcapacitor.*;
 import java.util.concurrent.*;
@@ -26,7 +26,7 @@ ${exact(bridge,' @PluginMethod public void pendingSourceRenewal(', ' @Override p
 ${exact(bridge,' @Override protected void handleOnNewIntent(', ' /** The page reports')}
 ${exact(bridge,' @Override protected void handleOnDestroy()', '\n}')}
 }`,
-    'ai/alphacompute/alphaphone/FixtureRenewalPorts.java':`package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/FixtureRenewalPorts.java':`package ai.elizaresearch.alphaphone;
 import android.content.Context;
 import org.json.*;
 final class MainActivity {}
@@ -194,7 +194,7 @@ public final class NotificationManager {
  }
  public void notify(String tag,int id,Notification notice){
   if(id!=0)throw new AssertionError("Exact notice id");
-  ai.alphacompute.alphaphone.SourceRenewalTraces.beforeNotify(tag,notice);
+  ai.elizaresearch.alphaphone.SourceRenewalTraces.beforeNotify(tag,notice);
   if(refusePost)throw new IllegalStateException("Synthetic notify refusal");
   posts++;active.put(tag,notice);
  }

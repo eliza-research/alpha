@@ -122,7 +122,7 @@ export function readRoles(status: unknown): Record<string, RoleRow> {
 }
 /** Shared truthful wording: an empty holder lookup never claims that no app holds the role. */
 export function roleValue(row: RoleRow | undefined): string {
-  return androidRoleLabel(row, { packageName: 'ai.alphacompute.alphaphone', appName: 'Alpha Phone' });
+  return androidRoleLabel(row, { packageName: 'ai.elizaresearch.alphaphone', appName: 'Alpha Phone' });
 }
 
 // settings-facts:begin (dependency-free; exercised by test/settings-truth.test.mjs)
@@ -283,7 +283,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const [installed, build, pending] = await Promise.all([device.snapshot(), system.getBuildInfo(), device.updateState()]);
     if (!current()) return;
     if (updateBusy || !idle()) throw Error('Current activity must finish');
-    if (pending.pending || installed.appAutomaticUpdates !== 'supported') return;
+    if (pending.pending) return;
+    if (installed.appAutomaticUpdates === 'starting') throw Error('Android is still starting');
+    if (installed.appAutomaticUpdates !== 'supported') return;
     const update = parseUpdateManifest(savedUpdate().manifest, {versionCode: installed.appVersionCode,
       launcher: build.launcher, signerSha256: installed.appSigner});
     if (!update) return;
@@ -291,6 +293,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     // renderer's saved-draft receipt before stopping the resident or committing.
     const result = await device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,
       sizeBytes:update.sizeBytes,versionCode:update.versionCode,automatic:true});
+    if (result?.status === 'starting') throw Error('Android is still starting');
     if (result?.status === 'permission-required' || result?.status === 'unsupported') return;
   }
   let gmail = 'Not checked';
@@ -574,7 +577,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const account = connection.cloudAccount;
     out.settingsVersion=buildVersion==='Unavailable'?'Development preview':'Version '+buildVersion;
     out.accountEmail=account?(account.email||'Signed in'):'Not signed in';
-    out.openAccount=()=>{activeSettingsCategory='settings-account';api.set({page:'settings-account'});};
+    out.openAccount=()=>connectionController.openPlan();
     const serviceName = cloudServiceName(connectionController.getCloudClient()?.client.environment ?? account?.environment ?? connection.signIn?.environment ?? 'production');
     // The always-present resident is starting or recovering, never "not connected" (P-43).
     const pending = agentPendingText(connection, 'Not connected');
@@ -735,31 +738,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
             ...(update?[{...action(updateBusy==='install'?'Downloading update…':'Install update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,sizeBytes:update.sizeBytes,versionCode:update.versionCode}).catch(()=>{/* Quiet: the row stays and the next tap retries. */}))),val:update.versionName?versionLabel(update.versionName,update.versionCode):String(update.versionCode),hasVal:true,sub:update.notes,hasSub:!!update.notes,busy:!!updateBusy,id:'update-install'}]:[]),
             {...action(updateBusy==='check'?'Checking for updates…':'Check for updates',()=>void updateAction('check',()=>checkForUpdate(true)),'update-check'),busy:!!updateBusy}]));
         }
-        page.groups.push(group([{kNav:true,label:'Scheduled digests',lbl:'Scheduled digests',chev:true,noAB:true,go:()=>window.dispatchEvent(new Event('alpha:hosted-digests'))}]));
         // Every Alpha Phone signs in to Eliza Cloud and holds a plan: account, plan and sign-in expiry.
         const plan=connectionController.residentPlanSettings();
         if(plan){
           const day=(at:number)=>new Date(at).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'});
-          if(state.page==='cloud-plan'){
-            // Runtime location and Cloud inference are separate facts.
-            const rows:Bag[]=[info('Account',plan.account??(plan.offline?`${serviceName} unreachable`:'Not signed in')),...(plan.signedIn?[info('Plan',plan.plan)]:[]),info('AI connection',plan.inference)];
-            if(plan.endsAt)rows.push(info(plan.status==='active'||plan.status==='trialing'||plan.status==='past_due'?'Plan runs until':'Plan ended',day(plan.endsAt)));
-            // Plan state, not a balance: the allowance Cloud reports and the latest limit with its retry time.
-            if(plan.allowance)rows.push(info('Plan allowance',plan.allowance));
-            if(plan.limit)rows.push(info('AI requests',plan.limit));
-            if(plan.keyExpiresAt)rows.push(info(plan.keyExpiring?'Sign-in expires soon':'Sign-in expires',day(plan.keyExpiresAt)));
-            if(connection.busy)rows.push(info('Status',connection.message||'Please wait…'));
-            const actions:Bag[]=connection.busy?[action('Cancel',()=>connectionController.cancel())]:plan.signedIn?[
-              ...(plan.keyExpiring?[{kNav:true,label:'Approve this phone again',lbl:'Approve this phone again',chev:true,noAB:true,go:()=>void connectionController.residentCloudLogin()}]:[]),
-              // A membership code grants subscription access without purchasing a recurring plan.
-              {kNav:true,label:'Redeem code',lbl:'Redeem code',chev:true,noAB:true,go:()=>connectionController.openPlan({codeEntry:true})},
-              {kNav:true,label:'Manage plan',lbl:'Manage plan',chev:true,noAB:true,go:()=>void connectionController.residentManagePlan()},
-              {kNav:true,label:'Sign out',lbl:`Sign out of ${serviceName}`,chev:true,noAB:true,go:()=>{if(window.confirm(`Sign out of ${serviceName}? Your notes and chats will stay on this phone.`))void connectionController.cloudSignOut();}},
-            ]:plan.offline?[{kNav:true,label:'Check plan again',lbl:'Check plan again',chev:true,noAB:true,go:()=>connectionController.recheckPlanOnReturn()}]
-            :[{kNav:true,label:`Sign in with ${serviceName}`,lbl:`Sign in with ${serviceName}`,chev:true,noAB:true,go:()=>void connectionController.residentCloudLogin()}];
-            out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Account & plan',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups:[group(rows),group(actions)]});
-          }
+          if(state.page==='cloud-plan')out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Account',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups:[group([{kNav:true,label:'Open account',lbl:'Open account',chev:true,noAB:true,go:()=>connectionController.openPlan()}])]});
         }
+
         page.groups.push(group([{...connectionHelpRow(),label:'Agent connection',lbl:'Agent connection'},{kNav:true,label:'AI provider',lbl:'AI provider',val:connection.providerStatus?.selected&&connection.providerStatus.provider==='cerebras'?'Own API keys':connection.providerStatusError?'Status unavailable':'Cloud',hasVal:true,chev:true,noAB:true,go:()=>connectionController.openProviderSettings()}]));
         // Raw recovery reason, stage and record count are developer data: the product keeps the plain status.
         if(native&&developerTools&&state.page==='agent-recovery-details'){
@@ -869,7 +854,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       } else if (page.title === 'About') {
         const native=Capacitor.isNativePlatform();
         page.hero={kAlpha:true,version:native?versionLabel(facts.appVersion||buildVersion,facts.appVersionCode):buildVersion==='Unavailable'?'Development preview':'Version '+buildVersion};
-        page.groups=[...(native&&facts.androidRelease?[group([info('Android version',facts.androidRelease)])]:[]),group([licensesRow(),connectionHelpRow()])];
+        page.groups=[...(native&&facts.androidRelease?[group([info('Android version',facts.androidRelease)])]:[]),group([connectionHelpRow(),licensesRow()])];
       } else if (page.title === 'Wi-Fi') {
         page.hasHdrTog = false; page.hdrTog = null;
         page.hero = { ...page.hero, big: wifiValue, sub: 'Manage networks in Android' };
@@ -978,19 +963,18 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         for (const row of section.rows) if (!rows.has(row.label)) rows.set(row.label, row);
       }
       const labels: Record<string, string> = {
-        'Accounts': 'Account & plan',
+        'Accounts': 'Account',
         'Connections': 'Google & email',
         'AI provider': 'AI connection',
         'Agent connection': 'Connection help',
         'Set up Alpha access': 'App permissions',
-        'Scheduled digests': 'Scheduled summaries',
         'Review phone actions first': 'Ask before taking actions',
       };
       const sections = [
         ['Account', ['Accounts', 'Connections', 'AI provider']],
         ['Preferences', ['Display', 'Notifications']],
         ['Privacy', ['Set up Alpha access', 'Review phone actions first']],
-        ['Apps', ['Calendar', 'Scheduled digests', 'Password manager', 'Photos']],
+        ['Apps', ['Calendar', 'Password manager', 'Photos']],
         ['Help', ['About', 'Agent connection']],
       ] as const;
       rows.delete('Models');
@@ -1002,7 +986,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           rows.delete(name);
           const label = labels[name] || name;
           return [{...row, label, lbl: label, ...(row.aria ? {aria: label} : {}),
-            ...(name === 'Accounts' ? {go:()=>connectionController.residentPlanSettings()?api.set({page:'cloud-plan'}):connectionController.openCloudAccount()} : {}),
+            ...(name === 'Accounts' ? {go:()=>connectionController.openPlan()} : {}),
             ...(name === 'Set up Alpha access' ? {go:()=>{activeSettingsCategory='settings-privacy';api.set({page:'settings-permissions'});}} : {}),
             ...(name === 'Connections' ? {go:()=>googleConnectionController.open(),...(!account?{sub:'Sign in to connect Google'}:{})} : {}),
             ...(name === 'About' ? {hasVal:false, hasSub:false, sub:'', val:''} : {})}];
@@ -1019,9 +1003,10 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const detailGroups=settingsTop.groups;
       const categories=[['settings-account','Account',['Account']],['settings-general','General',['Preferences','Device']],['settings-privacy','Privacy',['Privacy']],['settings-apps','Apps',['Apps']],['settings-help','About',['Help']]] as const;
       settingsTop.groups=categories.filter(([key])=>key!=='settings-account').map(([key,title])=>group([{kNav:true,label:title,lbl:title,chev:true,noAB:true,go:()=>{activeSettingsCategory=key==='settings-help'?null:key;api.set({page:key==='settings-help'?'about':key});}}]));
+      if(wakeListeningStopUnconfirmed())settingsTop.groups.push(group([note('Microphone status','Could not confirm listening is off. Turn it off in Android settings.')],'wake-stop-unconfirmed'));
       const appSettingsRows=detailGroups.filter((section:Bag)=>section.cap==='Apps').flatMap((section:Bag)=>section.rows);
       const appCatalog=[['Browser','browser'],['Calendar','calendar'],['Camera','camera'],['Files','files'],['Inbox','inbox'],['Maps','maps'],['Notes','notes'],['Passwords','passwords'],['Photos','photos'],['Workflows','workflows']] as const;
-      const existingAppRow=(id:string)=>appSettingsRows.find((row:Bag)=>row.label===(id==='calendar'?'Calendar':id==='photos'?'Photos':id==='passwords'?'Password manager':id==='workflows'?'Scheduled summaries':''));
+      const existingAppRow=(id:string)=>appSettingsRows.find((row:Bag)=>row.label===(id==='calendar'?'Calendar':id==='photos'?'Photos':id==='passwords'?'Password manager':''));
       const selected=categories.find(([key])=>key===categoryPage);
       if(selected){
         const [key,title,captions]=selected;
@@ -1034,7 +1019,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const names:Record<string,string>={browser:'Browser',calendar:'Calendar',camera:'Camera',files:'Files',inbox:'Inbox',maps:'Maps',notes:'Notes',passwords:'Passwords',photos:'Photos',workflows:'Workflows'};
       const rows:Bag[]=[];
       if(appSettingsPage==='inbox')rows.push({kNav:true,label:'Google & email',lbl:'Google & email',chev:true,noAB:true,go:()=>googleConnectionController.open()});
-      if(appSettingsPage==='workflows'){rows.push({kNav:true,label:'Scheduled summaries',lbl:'Scheduled summaries',chev:true,noAB:true,go:()=>window.dispatchEvent(new Event('alpha:hosted-digests'))});const channel=(delivery.channels||[]).find((c:Bag)=>c.id==='reminders');if(channel&&!Capacitor.isNativePlatform())rows.push({kTog:true,label:'Show alerts',aria:'Show alerts',on:!channel.blocked,track:!channel.blocked?'background:var(--acc)':'background:var(--line)',kx:!channel.blocked?20:0,toggle:()=>void run(async()=>{await notifications.setAlertPreferences({channelId:channel.id,enabled:!!channel.blocked});})});}
+      if(appSettingsPage==='workflows'){const channel=(delivery.channels||[]).find((c:Bag)=>c.id==='reminders');if(channel&&!Capacitor.isNativePlatform())rows.push({kTog:true,label:'Show alerts',aria:'Show alerts',on:!channel.blocked,track:!channel.blocked?'background:var(--acc)':'background:var(--line)',kx:!channel.blocked?20:0,toggle:()=>void run(async()=>{await notifications.setAlertPreferences({channelId:channel.id,enabled:!!channel.blocked});})});}
       const permissions:Record<string,string[]>={camera:['Camera','Microphone'],maps:['Location'],notes:['Microphone']};
       for(const label of permissions[appSettingsPage]||[])rows.push(info(label,typeof facts.permissions?.[label]==='boolean'?(facts.permissions[label]?'Allowed for Alpha':'Not allowed'):'Managed by your system'));
       if(appSettingsPage==='photos')rows.push(info('Photo access','Photos you choose'));
@@ -1055,7 +1040,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if(activeSettingsCategory&&!categoryPage)for(const page of out.stack)if(!page.isTop&&page.backLabel==='Back to Settings')page.backLabel='Back to '+categoryNames[activeSettingsCategory];
     const nestedParents:Record<string,[string,string]>={'agent-connection':['about','About'],licenses:['about','About'],problems:['developer','Developer'],history:['agent-connection','Connection help'],'license-detail':['licenses','licenses']};
     if(nestedParents[state.page]){const [parent,label]=nestedParents[state.page];const page=out.stack[out.stack.length-1];if(page&&!page.isTop){page.backLabel='Back to '+label;page.back=()=>api.set({page:parent});}}
-    const settingsIcons:Record<string,string>={General:'settings',Privacy:'shield',Apps:'layout-grid',Help:'info',About:'info',Browser:'globe',Calendar:'calendar-days',Camera:'camera',Files:'folder',Inbox:'mail',Maps:'map-pin',Notes:'notebook-text',Passwords:'lock-keyhole',Photos:'images',Workflows:'workflow','Account & plan':'user-round','Google & email':'link','AI connection':'cpu',Display:'sun',Notifications:'bell','Privacy & data':'shield','App permissions':'fingerprint-pattern','Scheduled summaries':'clock'};
+    const settingsIcons:Record<string,string>={General:'settings',Privacy:'shield',Apps:'layout-grid',Help:'info',About:'info',Browser:'globe',Calendar:'calendar-days',Camera:'camera',Files:'folder',Inbox:'mail',Maps:'map-pin',Notes:'notebook-text',Passwords:'lock-keyhole',Photos:'images',Workflows:'workflow','Account & plan':'user-round','Google & email':'link','AI connection':'cpu',Display:'sun',Notifications:'bell','Privacy & data':'shield','App permissions':'fingerprint-pattern','Redeem code':'gift','Manage plan':'credit-card','Sign out':'log-out'};
     for(const page of out.stack)for(const section of page.groups||[])for(const row of section.rows||[])if(row.kNav){row.lucideIcon='/icons/lucide/'+(row.licenseComponent?'file-text':settingsIcons[row.label]||'sliders-horizontal')+'.svg';row.hasLucideIcon=!row.isTextSize;row.hasIcon=false;row.hasTile=false;}
     // Stable identities keep focused controls attached while async groups change.
     for(const page of out.stack){

@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 import org.json.*;
 import java.util.*;
 public final class HostedResultNoticesTest {

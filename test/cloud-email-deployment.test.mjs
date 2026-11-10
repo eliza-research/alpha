@@ -24,7 +24,7 @@ test('email send and verification use each configured tenant and preserve PKCE',
    assert.equal(send.tenantId,config[env].tenant);assert.equal(verify.tenantId,config[env].tenant);
    assert.equal(send.pkce.codeChallengeMethod,'S256');assert.equal(send.pkce.codeChallenge.length,43);
    assert.equal(verify.pkce.codeVerifier,'synthetic-verifier');assert.equal(verify.code,'123456');
-   assert.equal(send.client,'ai.alphacompute.alphaphone');assert.equal(verify.client,send.client);
+   assert.equal(send.client,'ai.elizaresearch.alphaphone');assert.equal(verify.client,send.client);
   }
  } finally {fs.rmSync(root,{recursive:true,force:true});}
 });

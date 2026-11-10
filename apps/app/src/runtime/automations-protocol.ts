@@ -1,5 +1,6 @@
 import {reminderDeliveryLabel,reminderDue} from "../../../../.eliza/client-features/packages/ui/src/utils/reminder-presentation";
-import {formatSchedule} from '../../../../.eliza/client-features/packages/ui/src/utils/cron-format.ts';
+import {workflowDeviceTimeZone,workflowLocalInstant,workflowCronLabel,automationLocalDateInput,localDate,workflowNextClockOccurrence,workflowSnoozeTime} from './workflow-local-time';
+export {workflowDeviceTimeZone,automationLocalDateInput,localDate,workflowNextClockOccurrence,workflowSnoozeTime} from './workflow-local-time';
 /** Alpha presentation over OG's canonical automation, ScheduledTask and LifeOps contracts.
  * No runner, mirroring, task storage or automatic execution lives in this client. */
 import type {AutomationsMethod} from './automations-route-policy.ts';
@@ -28,25 +29,14 @@ export class AutomationOutcomeError extends Error {readonly outcomeKnown=true;}
 // stays an unknown outcome (a proxy may answer 429 after the agent applied the write), so enable
 // re-reads the trigger: still paused means a known refusal, enabled means the write landed.
 export const AUTOMATION_LIMIT_MESSAGE='This automation was not enabled. The agent is at its limit of active automations or is busy; pause another automation or try again later.';
-/** Native datetime-local controls use the browser's zone; stored instants keep their zone. */
-export function automationLocalDateInput(stamp:string|number):string{const date=new Date(stamp);return Number.isFinite(date.getTime())?new Date(date.getTime()-date.getTimezoneOffset()*60000).toISOString().slice(0,16):'';}
-function localDate(value:string):Date{
- const fields=/^(\d{4,})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/.exec(value),date=new Date(value);
- if(!fields||!Number.isFinite(date.getTime()))throw Error('Choose a valid local date and time.');
- const expected=fields.slice(1,7).map(part=>Number(part||0)),actual=[date.getFullYear(),date.getMonth()+1,date.getDate(),date.getHours(),date.getMinutes(),date.getSeconds()];
- if(expected.some((part,index)=>part!==actual[index])||date.getMilliseconds()!==Number((fields[7]||'').padEnd(3,'0')))throw Error('This local time does not exist. Choose another time.');
- return date;
-}
-/** One instant label for every list row ("Oct 29, 2026, 6:00 PM"), in the record's zone when it names a valid one. */
-export function automationWhen(stamp:string|number,zone?:string,locale?:string):string{const date=new Date(stamp);if(!Number.isFinite(date.getTime()))return '';const options:Intl.DateTimeFormatOptions={year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'};try{return date.toLocaleString(locale,{...options,...(zone?{timeZone:zone}:{})});}catch{return date.toLocaleString(locale,options);}}
+/** One instant label for every list row ("Oct 29, 2026, 6:00 PM"), in the current device zone. */
+export function automationWhen(stamp:string|number,_zone?:string,locale?:string):string{return workflowLocalInstant(stamp,locale);}
 function schedule(value:unknown):string {
  const t=object(value);switch(t.triggerType??t.kind){
   case 'once':return automationWhen(Date.parse(text(t.scheduledAtIso??t.atIso??t.dueAt)),text(t.timezone??t.tz).trim()||undefined)||'Once';
   case 'cron': {
-   const expression=text(t.cronExpression??t.expression).trim(),description=expression?formatSchedule(expression):'';
-   let zone=text(t.timezone??t.tz).trim();
-   if(zone){try{new Intl.DateTimeFormat('en',{timeZone:zone});}catch{zone+=' (unrecognized time zone)';}}
-   return [description?(description===expression?'Cron: '+expression:description):'Schedule unavailable',zone||'Time zone not specified'].join(' · ');
+   const expression=text(t.cronExpression??t.expression).trim();
+   return expression?workflowCronLabel(expression,text(t.timezone??t.tz).trim()):'Schedule unavailable';
   }
   case 'interval':return t.everyMinutes?`Every ${t.everyMinutes} minutes`:t.intervalMs?`Every ${t.intervalMs/60000} minutes`:'Interval';
   case 'event':return `On ${text(t.eventKind)||'event'}`;
@@ -68,7 +58,18 @@ function scheduled(value:unknown):AutomationRow {
  const labels:Record<string,string>={gm:'Good morning',gn:'Good night',checkin:'Daily check-in','weekly-review':'Weekly review'};
  const title=labels[text(row.metadata?.recordKey)]||text(row.metadata?.slot)||text(row.kind)||'Scheduled task';
  const status=text(state.status),ended=scheduledTaskEnded(status);
- return {key:'scheduled:'+id,id,kind:'schedule',title,description:text(row.promptInstructions),status:trigger.kind==='manual'&&!ended?'paused':status,enabled:trigger.kind!=='manual'&&!ended,source:'Agent schedule',schedule:schedule(trigger),record:row};
+ const snoozed=status==='scheduled'&&typeof state.firedAt==='string'&&Number.isFinite(Date.parse(state.firedAt))&&state.lastDecisionLog===`snoozed until ${state.firedAt} (ladder reset)`;
+ const when=schedule(trigger)+(snoozed?' · Snoozed until '+workflowSnoozeTime(state.firedAt):'');
+ return {key:'scheduled:'+id,id,kind:'schedule',title,description:text(row.promptInstructions),status:snoozed?'snoozed':trigger.kind==='manual'&&!ended?'paused':status,enabled:trigger.kind!=='manual'&&!ended,source:'Agent schedule',schedule:when,record:row};
+}
+/** Ten minutes defers the scheduled occurrence. Keep a valid existing deferral; repair an old deferral that precedes today's scheduled time. */
+export function scheduledSnoozeAt(row:AutomationRow,now=Date.now()):string{
+ const trigger=row.record.trigger,state=row.record.state||{},zone=trigger?.tz==='owner_local'||!trigger?.tz?workflowDeviceTimeZone():String(trigger.tz);
+ const next=trigger?.kind==='cron'?workflowNextClockOccurrence(String(trigger.expression||''),zone,now):null;
+ let base=state.status==='scheduled'&&next!==null?next:now;
+ const saved=Date.parse(String(state.firedAt||''));
+ if(row.status==='snoozed'&&saved>now){const day=(at:number)=>new Date(at).toLocaleDateString('sv-SE',{timeZone:zone});if(next===null||saved>=next||day(saved)!==day(next))base=saved;}
+ return new Date(base+10*60000).toISOString();
 }
 function reminder(value:unknown):AutomationRow {
  const row=object(value),definition=object(row.definition),id=automationId(definition.id),occurrence=row.occurrence?object(row.occurrence):null;
@@ -97,7 +98,7 @@ export function mergeAutomationRows(rows:AutomationRow[]):AutomationRow[] {
  return [...records.values()].sort((a,b)=>Number(b.enabled)-Number(a.enabled)||a.title.localeCompare(b.title));
 }
 export class AutomationsProtocol {
- constructor(private request:AutomationRequest){}
+ constructor(private request:AutomationRequest,private deliveryConversationId?:string){}
  async list(signal:AbortSignal):Promise<AutomationSnapshot>{
   const sources=[['automations','/api/automations','automations',automation],['schedules','/api/lifeops/scheduled-tasks?ownerVisibleOnly=1','tasks',scheduled],['reminders','/api/lifeops/reminders','reminders',reminder],['definitions','/api/lifeops/definitions','definitions',definition]] as const;
   const results=await Promise.allSettled(sources.map(async([source,path,key,parse])=>{const data=object(await this.request(path,'GET',undefined,signal));return {rows:list(data[key]).flatMap(item=>{const row=parse(item);return row?[row]:[];}),issue:source==='automations'&&(text(data.workflowFetchError)||(Array.isArray(data.executionFetchErrors)&&data.executionFetchErrors.length))?{source:'automations' as const,unavailable:false,message:'Some workflow data or execution history could not refresh. Open the workflow to check it before running.'}:null};}));
@@ -109,13 +110,13 @@ export class AutomationsProtocol {
  async promptRuns(id:string,signal:AbortSignal):Promise<unknown[]>{return list(object(await this.request('/api/triggers/'+automationId(id)+'/runs','GET',undefined,signal)).runs);}
  async savePrompt(draft:PromptDraft,signal:AbortSignal,id?:string):Promise<void>{
   const title=draft.title.trim(),instructions=draft.instructions.trim();if(!title||!instructions)throw Error('Add a name and instructions.');
-  const request:ObjectValue={kind:'prompt',displayName:title,instructions,triggerType:draft.triggerType,timezone:draft.timezone};
+  const request:ObjectValue={kind:'prompt',displayName:title,instructions,triggerType:draft.triggerType,timezone:id?draft.timezone:workflowDeviceTimeZone(),...(this.deliveryConversationId?{deliveryConversationId:this.deliveryConversationId}:{})};
   if(draft.triggerType==='once'){const unchanged=!!id&&!!draft.originalScheduledAt&&draft.scheduledAt===automationLocalDateInput(draft.originalScheduledAt),date=unchanged?new Date(draft.originalScheduledAt!):localDate(draft.scheduledAt);if(!Number.isFinite(date.getTime())||(date.getTime()<=Date.now()&&!(unchanged&&draft.originalEnabled===false)))throw Error('Choose a future time.');request.scheduledAtIso=unchanged?draft.originalScheduledAt:date.toISOString();}
   else if(draft.triggerType==='cron'){if(!draft.cron.trim())throw Error('Add a schedule.');request.cronExpression=draft.cron.trim();}
   else {if(!draft.eventKind.trim())throw Error('Add an event name.');request.eventKind=draft.eventKind.trim();}
   if(!id)Object.assign(request,{wakeMode:'inject_now',enabled:false});
   const result=object(await this.request(id?'/api/triggers/'+automationId(id):'/api/triggers',id?'PUT':'POST',request,signal)),trigger=object(result.trigger);automationId(trigger.id);
-  if((id&&trigger.id!==id)||trigger.displayName!==title||trigger.instructions!==instructions||(!id&&trigger.enabled!==false))throw Error('Prompt save was not confirmed. Check this agent before saving again.');
+  if((this.deliveryConversationId&&result.deliveryConversationId!==this.deliveryConversationId)||(id&&trigger.id!==id)||trigger.displayName!==title||trigger.instructions!==instructions||(!id&&trigger.enabled!==false))throw Error('Prompt save was not confirmed. Check this agent before saving again.');
  }
  async setPromptEnabled(id:string,enabled:boolean,signal:AbortSignal){
   let response:unknown;
@@ -137,6 +138,12 @@ export class AutomationsProtocol {
   const task=object(response.task);
   if(task.taskId!==id||task.promptInstructions!==promptInstructions||(trigger&&(task.trigger?.kind!==trigger.kind||task.trigger.expression!==trigger.expression||task.trigger.tz!==trigger.tz)))throw Error('Schedule edit was not confirmed.');
  }
+ async snoozeSchedule(id:string,untilIso:string,signal:AbortSignal){
+  const until=Date.parse(untilIso);if(!Number.isFinite(until)||until<=Date.now())throw Error('Choose a future snooze time.');
+  const result=object(await this.request('/api/lifeops/scheduled-tasks/'+automationId(id)+'/snooze','POST',{untilIso},signal)),task=object(result.task),state=object(task.state);
+  if(task.taskId!==id||state.status!=='scheduled'||state.firedAt!==untilIso)throw Error('Snooze time was not confirmed.');
+  return result;
+ }
  async scheduledVerb(id:string,verb:ScheduledVerb,signal:AbortSignal):Promise<unknown>{
   const result=object(await this.request('/api/lifeops/scheduled-tasks/'+automationId(id)+'/'+verb,'POST',verb==='snooze'?{minutes:60}:{},signal));
   if(verb==='fire'){
@@ -151,7 +158,7 @@ export class AutomationsProtocol {
  }
  async createReminder(draft:ReminderDraft,signal:AbortSignal):Promise<void>{
   const title=draft.message.trim(),due=localDate(draft.due);if(!title||due.getTime()<=Date.now())throw Error('Add a reminder and a future time.');
-  const result=object(await this.request('/api/lifeops/definitions','POST',{idempotencyKey:draft.idempotencyKey,kind:'habit',title,timezone:draft.timezone,cadence:{kind:'once',dueAt:due.toISOString(),visibilityLeadMinutes:0},metadata:{ownerSurface:'OWNER_REMINDERS',nativeProjection:'in_app_only'},reminderPlan:{steps:[{channel:'in_app',offsetMinutes:0,label:'Notify'}]}},signal));
+  const result=object(await this.request('/api/lifeops/definitions','POST',{idempotencyKey:draft.idempotencyKey,kind:'habit',title,timezone:workflowDeviceTimeZone(),cadence:{kind:'once',dueAt:due.toISOString(),visibilityLeadMinutes:0},metadata:{ownerSurface:'OWNER_REMINDERS',nativeProjection:'in_app_only'},reminderPlan:{steps:[{channel:'in_app',offsetMinutes:0,label:'Notify'}]}},signal));
   if(!object(result.definition).id)throw Error('Reminder creation was not confirmed.');
  }
  async editReminder(row:AutomationRow,message:string,due:string,signal:AbortSignal){

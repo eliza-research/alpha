@@ -9,7 +9,7 @@ import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 function declaration(source,signature){const start=source.indexOf(signature);assert.notEqual(start,-1);let end=source.indexOf('{',start),depth=1;for(end++;depth;end++){if(source[end]==='{')depth++;if(source[end]==='}')depth--;}return source.slice(start,end);}
 test('Photos QA emits only fixed debug enum markers; exception payloads and release builds stay silent',()=>{
  // The marker enum and its failure categories are the shared PhotosPlugin's; Alpha logs them in debug builds only.
- const source=readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotosPlugin.java','utf8');
+ const source=readFileSync('android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotosPlugin.java','utf8');
  const media=join(preparePatchedNative().root,'plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media');
  const shared=readFileSync(join(media,'PhotosPlugin.java'),'utf8');
  const base=readFileSync(join(media,'PermittedPhotosPlugin.java'),'utf8');

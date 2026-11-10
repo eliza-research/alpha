@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 import android.app.Activity;
 import android.content.Context;
@@ -173,7 +173,7 @@ public final class UpdateFlowTest {
  /** Android's request for the owner's confirmation, heard by every bridge of the process. */
  static Intent confirmation(Context context,Integer session){
   Intent confirm=new Intent("android.content.pm.action.CONFIRM_INSTALL");
-  Intent status=new Intent("ai.alphacompute.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_PENDING_USER_ACTION).putExtra(Intent.EXTRA_INTENT,confirm);
+  Intent status=new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_PENDING_USER_ACTION).putExtra(Intent.EXTRA_INTENT,confirm);
   if(session!=null){status.putExtra(PackageInstaller.EXTRA_SESSION_ID,session);context.packages.installer.sendConfirmation(session);}
   context.broadcast(status);
   return confirm;
@@ -181,12 +181,12 @@ public final class UpdateFlowTest {
  /** Android's request to confirm a developer-verification result, sent with the accepted session still active (Android 17). */
  private static Intent verificationRequest(Context context,int session){
   Intent confirm=new Intent("android.content.pm.action.CONFIRM_DEVELOPER_VERIFICATION");
-  context.broadcast(new Intent("ai.alphacompute.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_PENDING_USER_ACTION).putExtra(PackageInstaller.EXTRA_SESSION_ID,session).putExtra(Intent.EXTRA_INTENT,confirm));
+  context.broadcast(new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_PENDING_USER_ACTION).putExtra(PackageInstaller.EXTRA_SESSION_ID,session).putExtra(Intent.EXTRA_INTENT,confirm));
   return confirm;
  }
  /** Android's last status for a session, which it then forgets, as every non-staged session. */
  private static void ended(Context context,int session,int status){
-  context.broadcast(new Intent("ai.alphacompute.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,status).putExtra(PackageInstaller.EXTRA_SESSION_ID,session));
+  context.broadcast(new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,status).putExtra(PackageInstaller.EXTRA_SESSION_ID,session));
   context.packages.installer.sessions.remove((Integer)session);
  }
  /** A killed process runs no destroy: its receivers and memory go, and Android's sessions stay. */
@@ -227,7 +227,7 @@ public final class UpdateFlowTest {
  private static void deadline(long nanos)throws Exception{plugin("UPDATE_DEADLINE_NANOS",nanos);}
  private static void resume(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.RESUMED;plugin.handleOnResume();}
  private static void stop(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.CREATED;}
- static Context installing(File cache)throws Exception{retireFixtureWorkers();forgetProcess();BuildConfig.VERSION_CODE=7;Build.VERSION.SDK_INT=37;Build.VERSION.CODENAME="REL";Context context=new Context(cache);context.packages.archive=archive(context.getPackageName(),8);return context;}
+ static Context installing(File cache)throws Exception{retireFixtureWorkers();forgetProcess();BuildConfig.VERSION_CODE=7;Build.VERSION.SDK_INT=37;Build.VERSION.CODENAME="REL";android.os.SystemClock.uptime=35_000L;Context context=new Context(cache);context.packages.archive=archive(context.getPackageName(),8);return context;}
  /** The confirmation goes with no status, as Home or Alpha's own singleTask relaunch can do it. Alpha returns, and time passes. */
  static void dismissed(AlphaDevicePlugin plugin)throws Exception{stop(plugin);resume(plugin);settled();}
 
@@ -566,7 +566,7 @@ public final class UpdateFlowTest {
   confirmation(context,mine+1);confirmation(context,null);
   stop(owner);confirmation(context,mine+1);resume(owner);
   check(owner.activity.started.isEmpty(),"a foreign session's confirmation is neither opened nor kept");
-  context.broadcast(new Intent("ai.alphacompute.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE).putExtra(PackageInstaller.EXTRA_SESSION_ID,mine).putExtra(Intent.EXTRA_INTENT,new Intent("ignored")));
+  context.broadcast(new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE).putExtra(PackageInstaller.EXTRA_SESSION_ID,mine).putExtra(Intent.EXTRA_INTENT,new Intent("ignored")));
   check(owner.activity.started.isEmpty(),"only a request for confirmation is acted on");
  }
  /** A confirmation left with no answer ends with no status: only a status or Android's list frees the fence. */
@@ -1358,7 +1358,7 @@ public final class UpdateFlowTest {
   Intent confirm=confirmation(context,pending);
   dismissed(owner);
   // Android posts the session's removal after its status.
-  context.broadcast(new Intent("ai.alphacompute.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE).putExtra(PackageInstaller.EXTRA_SESSION_ID,pending));
+  context.broadcast(new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE).putExtra(PackageInstaller.EXTRA_SESSION_ID,pending));
   tap(owner);
   check(owner.activity.started.equals(List.of(confirm))&&context.packages.installer.committed.equals(List.of(pending)),"a tap in that moment opens and commits nothing on an ended session");
   AlphaDevicePlugin next=restarted(context);
@@ -1600,7 +1600,7 @@ public final class UpdateFlowTest {
   int pending=committed(context);
   stop(owner);
   confirmation(context,pending);
-  context.broadcast(new Intent("ai.alphacompute.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE).putExtra(PackageInstaller.EXTRA_SESSION_ID,pending).putExtra(Intent.EXTRA_INTENT,new Intent("ignored")));
+  context.broadcast(new Intent("ai.elizaresearch.alphaphone.UPDATE_STATUS").putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE).putExtra(PackageInstaller.EXTRA_SESSION_ID,pending).putExtra(Intent.EXTRA_INTENT,new Intent("ignored")));
   resume(owner);
   check(owner.activity.started.isEmpty(),"a terminal status ends what was kept, listed or not");
  }
@@ -1844,15 +1844,20 @@ public final class UpdateFlowTest {
   PluginCall call=offered();call.getData().put("automatic",true);owner.installUpdate(call);call.awaitAnswer();return call;
  }
  private static void automaticUpdatesRequireSupportedAndroidAndExistingConsent(File cache)throws Exception{
-  for(int sdk:new int[]{29,30,31,37})for(boolean consent:new boolean[]{false,true}){
-   Context context=installing(cache);Build.VERSION.SDK_INT=sdk;context.packages.installsAllowed=consent;
-   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);connections.clear();
-   String expected=sdk<31?"unsupported":consent?"supported":"permission-required";
-   check(expected.equals(AlphaDevicePlugin.automaticUpdateStatus(context)),"capability reports Android support and existing install consent");
+  for(int sdk:new int[]{29,30,31,37})for(boolean consent:new boolean[]{false,true})for(long uptime:new long[]{0,26681,29999,30000,30001,35000}){
+   Context context=installing(cache);Build.VERSION.SDK_INT=sdk;context.packages.installsAllowed=consent;android.os.SystemClock.uptime=uptime;
+   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);connections.clear();AlphaLocalAgentPlugin.stops=0;AlphaLocalAgentPlugin.releases=0;
+   String expected=sdk<31?"unsupported":!consent?"permission-required":uptime<=30_000L?"starting":"supported";
+   check(expected.equals(AlphaDevicePlugin.automaticUpdateStatus(context)),"capability preserves API/consent precedence and cold-boot boundary: "+sdk+"/"+consent+"/"+uptime);
    if(!"supported".equals(expected)){
+    if("starting".equals(expected)){
+     var field=AlphaDevicePlugin.class.getDeclaredField("updateWorker");field.setAccessible(true);
+     var worker=(java.util.concurrent.ExecutorService)field.get(owner);worker.shutdown();
+     check(worker.awaitTermination(20,TimeUnit.SECONDS),"cold admission is independent of an available update worker");
+    }
     PluginCall result=automatic(owner);
-    check(result.resolved.get()==1&&result.result!=null&&expected.equals(result.result.optString("status")),"automatic refusal is explicit");
-    check(owner.activity.started.isEmpty()&&connections.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null,"automatic admission never opens settings, downloads, stages or pauses without support and consent");
+    check(result.resolved.get()==1&&result.rejected.get()==0&&result.result!=null&&expected.equals(result.result.optString("status")),"automatic refusal is explicit before worker submission");
+    check(owner.activity.started.isEmpty()&&connections.isEmpty()&&context.packages.installer.sessions.isEmpty()&&context.packages.installer.internals.isEmpty()&&context.packages.installer.committed.isEmpty()&&context.packages.installer.abandoned.isEmpty()&&owner.events.isEmpty()&&AlphaLocalAgentPlugin.stops==0&&AlphaLocalAgentPlugin.releases==0&&AlphaDevicePlugin.UpdatePause.store().read()==null,"automatic admission has zero network/session/barrier/pause/stop/commit effects: "+expected+"/"+uptime);
    }else{
     check(automatic(owner).resolved.get()==1,"supported automatic attempt stages once");
     int session=committed(context);
@@ -1862,6 +1867,13 @@ public final class UpdateFlowTest {
     context.packages.installer.destroy(session);
    }
   }
+ }
+ private static void manualUpdateDoesNotWaitForAutomaticColdBootReadiness(File cache)throws Exception{
+  Context context=installing(cache);android.os.SystemClock.uptime=0;
+  AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);connections.clear();
+  check("starting".equals(AlphaDevicePlugin.automaticUpdateStatus(context)),"cold capability is deferred");
+  check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"an explicit manual update remains available during early boot");
+  check(context.packages.installer.internals.get(committed(context)).requireUserAction!=PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED,"the manual path does not gain automatic installer authority");
  }
  private static void automaticPendingActionWaitsForAnExplicitContinue(File cache)throws Exception{
   for(boolean restart:new boolean[]{false,true}){
@@ -1979,6 +1991,7 @@ public final class UpdateFlowTest {
   int status=1;
   try{
    automaticUpdatesRequireSupportedAndroidAndExistingConsent(cache);
+   manualUpdateDoesNotWaitForAutomaticColdBootReadiness(cache);
    automaticPendingActionWaitsForAnExplicitContinue(cache);
    consentRevokedBetweenAdmissionReadsNeverOpensSettingsAutomatically(cache);
    automaticSuccessReconcilesTheExactInstalledSuccessor(cache);

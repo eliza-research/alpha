@@ -182,7 +182,7 @@ test('J03: an Inbox attachment is saved to Files, analysed, and kept as a review
  await returnToApps(page);
  await page.getByRole('button',{name:'Files',exact:true}).click();
  await page.getByRole('button',{name:'Internal storage',exact:true}).click();
- await page.getByRole('button',{name:'Sort and more',exact:true}).click();await page.getByRole('button',{name:'Select',exact:true}).click();
+ await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'Select',exact:true}).click();
  await page.getByRole('button',{name:'Select garden-report.txt',exact:true}).click();
  // Delete moves to Trash; only a confirmed Empty deletes.
  await page.getByRole('toolbar',{name:'Selection actions'}).getByRole('button',{name:'Delete',exact:true}).click();

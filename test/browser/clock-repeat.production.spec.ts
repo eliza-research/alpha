@@ -59,7 +59,11 @@ for (const version of [1, 2]) test(`clockRepeatDaysVersion ${version}: Mon to Fr
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
   await expect(clock).toContainText('Ask Clock to set a repeating alarm (weekdays) at 06:30 named “Weekday wake”, using the phone’s local time. Review the alarm in Clock.');
   expect(await handoffs(page)).toEqual([]);
-  await clock.getByRole('button', { name: 'Confirm Clock request', exact: true }).dblclick();
+  // Deliver duplicate activation to the same reviewed control before its asynchronous
+  // handoff settles. A physical dblclick can retarget the newly exposed Review button.
+  await clock.getByRole('button', { name: 'Confirm Clock request', exact: true }).evaluate(button => {
+    (button as HTMLButtonElement).click(); (button as HTMLButtonElement).click();
+  });
   await expect(clock).toContainText('Approved Clock handoff sent. Check Clock; Alpha cannot confirm an alarm was changed.');
   const sent = await handoffs(page);
   expect(sent).toHaveLength(1);

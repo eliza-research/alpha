@@ -1,3 +1,4 @@
+import {openRetainedDigests} from './helpers/retained-digests';
 import {openLegacyNotes} from './helpers/legacy-notes';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
@@ -61,54 +62,22 @@ test('Notes create, edit, reload and delete to Recently deleted', async ({ page 
   await page.getByRole('button', { name: 'Recently deleted', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Browser audit note, 30 days left', exact: true })).toBeVisible();
 });
-test('Notes folders: create, move via ⋯, filter by chip, persist, rename by long-press, and delete without losing notes', async ({ page }) => {
-  await page.goto('/');
-  await openLegacyNotes(page);
-  await page.getByRole('button', { name: 'New note', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Browser audit note');
-  await page.getByRole('textbox', { name: 'Note', exact: true }).fill('A real local draft.');
-  await page.getByRole('button', { name: 'Back to notes', exact: true }).click();
-  // A new folder; the note moves into it via ⋯ → Move to…, and the chip filters the list.
-  await page.getByRole('button', { name: 'New folder', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Folder name', exact: true }).fill('Work');
-  await page.getByRole('button', { name: 'Create', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Work, folder options', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'All', exact: true }).click();
-  await page.getByRole('button', { name: 'Open Browser audit note', exact: true }).click();
-  await page.getByRole('button', { name: 'More', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Note actions' }).getByRole('button', { name: 'Move to…', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Move to' }).getByRole('button', { name: /^Work/ }).click();
-  await expect(page.getByText('Moved to Work', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Back to notes', exact: true }).click();
-  await page.getByRole('button', { name: 'Work', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toBeVisible();
-  // Folders persist across a restart, outside the notes collection.
-  await page.reload();
-  await openLegacyNotes(page);
-  await page.getByRole('button', { name: 'Work', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toBeVisible();
-  // Long-press a folder chip: Rename keeps the folder's notes and persists in the folder slot.
-  await page.getByRole('button', { name: 'All', exact: true }).click();
-  const chip = page.getByRole('button', { name: 'Work', exact: true });
-  await chip.hover();await page.mouse.down();await page.waitForTimeout(700);await page.mouse.up();
-  await page.getByRole('dialog', { name: 'Work' }).getByRole('button', { name: 'Rename', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: 'Folder name', exact: true })).toHaveValue('Work');
-  await page.getByRole('textbox', { name: 'Folder name', exact: true }).fill('Office');
-  await page.getByRole('dialog', { name: 'Rename folder' }).getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await page.reload();
-  await openLegacyNotes(page);
-  await expect(page.getByRole('button', { name: /^Work/ })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Office', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toBeVisible();
-  // Deleting the folder keeps its note, now under no folder.
-  await page.getByRole('button', { name: 'Office, folder options', exact: true }).click();
-  await page.getByRole('dialog', { name: 'Office' }).getByRole('button', { name: 'Delete folder', exact: true }).click();
-  await expect(page.getByRole('button', { name: /^Office/ })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Open Browser audit note', exact: true })).toBeVisible();
-  expect(await page.evaluate(async () => JSON.parse(await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw()).records[0].folderId)).toBeUndefined();
+// Folder controls were removed at the owner's request. Canonical Notes CRUD and
+// retained-device-data isolation remain covered by canonical-notes.spec.ts.
+test('the single Notes list preserves retained folder records across reload',async({page})=>{
+ await page.goto('/');
+ const folderId=await page.evaluate(async()=>{
+  const m=await import('/src/runtime/notes-folders.ts');const id=m.newNotesFolderId();
+  await m.editNotesFolders(doc=>m.addNotesFolder(doc,{id,name:'Kept folder',createdAt:Date.now()}));return id;
+ });
+ await openLegacyNotes(page,[{id:'retained-folder-note',kind:'text',title:'Retained folder note',body:'Keep this content.',folderId}]);
+ const stored=()=>page.evaluate(async()=>({raw:await(await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw(),folders:await(await import('/src/runtime/notes-folders.ts')).readNotesFolders()}));
+ const before=await stored();expect(JSON.parse(before.raw!).records[0].folderId).toBe(folderId);
+ await expect(page.getByRole('button',{name:'New folder',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Open Retained folder note',exact:true})).toBeVisible();
+ await page.reload();await openLegacyNotes(page);
+ await expect(page.getByRole('button',{name:'Open Retained folder note',exact:true})).toBeVisible();
+ expect(await stored()).toEqual(before);
 });
 for (const [label, text] of [['unicode CRLF', 'Local 🧪 file\r\nExact bytes\n'], ['UTF-8 BOM', '\ufeffLocal 🧪 file\r\nExact bytes\n'], ['empty', '']]) test(`Local text import and complete selected-note download: ${label}`, async ({ page }) => {
   await page.goto('/');
@@ -120,7 +89,7 @@ for (const [label, text] of [['unicode CRLF', 'Local 🧪 file\r\nExact bytes\n'
   await page.getByRole('button',{name:'More',exact:true}).click();
   await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();
   const download = page.waitForEvent('download');
-  await page.getByRole('button',{name:'Save locally',exact:true}).click();
+  await page.getByRole('button',{name:'Save file',exact:true}).click();
   const result=await download;
   expect(result.suggestedFilename()).toBe('Owned browser note.txt');
   expect(await readFile((await result.path())!)).toEqual(Buffer.from(['Owned browser note',text].filter(Boolean).join('\n\n'), 'utf8'));
@@ -145,12 +114,10 @@ test('Notes rejects invalid text and cancels an empty file selection without cre
     expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records.length)).toBe(0);
   }
 });
-test('Scheduled digests traps focus, closes on native Back, and restores the triggering control',async({page})=>{
+test('Retained digest panel traps focus, closes on native Back, and restores prior focus',async({page})=>{
   await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();
-  await page.getByRole('button',{name:'Apps',exact:true}).click();
-  await page.getByRole('button',{name:'Workflows',exact:true}).click();
-  const trigger=page.getByRole('button',{name:'Scheduled summaries',exact:true});
-  await trigger.focus();await trigger.press('Enter');
+  const trigger=page.getByRole('button',{name:'General',exact:true});
+  await trigger.focus();await openRetainedDigests(page);
   const dialog=page.getByRole('dialog',{name:'Scheduled digests',exact:true});
   await expect(dialog).toBeVisible();await expect(dialog).toBeFocused();
   await expect(dialog.getByRole('button',{name:'Result notifications',exact:true})).toBeVisible();
@@ -244,11 +211,11 @@ test('MVP Notes sharing keeps email and export without a deferred SMS dead end',
   await page.getByRole('textbox',{name:'Note',exact:true}).fill('Local test note');
   await page.getByRole('button',{name:'More',exact:true}).click();
   await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Share to email',exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Save locally',exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Share externally',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Email',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Save file',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Share',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Share in Messages',exact:true})).toHaveCount(0);
-  await page.getByRole('button',{name:'Cancel',exact:true}).click();
+  await page.getByRole('button',{name:'Close share',exact:true}).click();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog',{name:'Note actions',exact:true})).toHaveCount(0);
   await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue('Local test note');

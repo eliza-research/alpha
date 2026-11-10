@@ -103,7 +103,7 @@ test('attendee initials come only from event names, capped with an overflow coun
   assert.doesNotMatch(template, /\{\{lockSum\}\}|\{\{showHeads\}\}/, 'no fixture lock summary or heads-up banner');
   // The agenda card is the shared upstream card; its video icon is passed only with a meeting link.
   const cards = readFileSync(new URL('../apps/app/src/prototype/home-overview-cards.ts', import.meta.url), 'utf8');
-  assert.match(cards, /videoIcon: out\.homeCalendarVideo \? createElement\('svg'[^\n]*out\.ic\?\.video[^\n]*: undefined,/, 'video icon only with a meeting link');
+  assert.match(cards, /videoIcon: out\.homeCalendarVideo \? maskIcon\('video', '#ffffff'\) : undefined,/, 'white video icon only with a meeting link');
 });
 test('brief card: shown only for a retained result, with agent, run time and failure state', () => {
   assert.deepEqual(H.presentHomeBriefCard(null, now), {has: false, title: '', status: '', failed: false, label: ''});
@@ -195,7 +195,7 @@ test('a phone reminder leading under Agent Calendar keeps a failed or out-of-dat
   assert.match(stale.source, /^Not updated since /);
   assert.equal(stale.stale, true);
   const adapter = readFileSync(new URL('../apps/app/src/prototype/agent-calendar-adapter.ts', import.meta.url), 'utf8');
-  assert.match(adapter, /presentHomeAgendaCard\(agentReminderLead\(local,feed\)\)/);
+  assert.match(adapter, /presentHomeAgendaCard\(agentReminderLead\(local,\{\.\.\.feed,read:''\}\)\)/, 'hide routine visible status text while retaining the feed description');
 });
 test('Agent Calendar freshness: an unverified next event is never fresh or an empty schedule', () => {
   // Exercise the current adapter's actual render closure with the real complete-feed
@@ -214,8 +214,8 @@ test('Agent Calendar freshness: an unverified next event is never fresh or an em
   assert.ok(start>=0&&end>start,'actual Home render closure must exist');
   const source={provider:'eliza',side:'owner',grantId:'fixture',connectorAccountId:null,calendarId:'primary',includeInFeed:true,accessRole:'owner'};
   const event={...source,id:'event',title:'Verified today',status:'confirmed',startAt:new Date(at(16)).toISOString(),endAt:new Date(at(17)).toISOString()};
-  let current=true,owner='owner',state={ownerKey:'owner',status:'ready',mutating:false,calendars:[source],next:{event},nextFresh:true,feed:undefined};
-  let reads=0;const opened=[],context={p:{},renderVals:()=>({}),deviceCalendarScope:()=>false,Date:class extends Date{static now(){return now;}},controller:{get state(){return state;},sourceHandle:()=> 'fixture'},calendarSourceKey:key,port:()=>({current:()=>current}),calendarOwnerKey:()=>owner,zone:()=> 'UTC',homeCalendarSelection:loaded.exports.homeCalendarSelection,homeCalendarValues:H.homeCalendarValues,homeReadIsStale:H.homeReadIsStale,presentHomeAgendaCard:H.presentHomeAgendaCard,presentHomeAgendaFeed:H.presentHomeAgendaFeed,agentReminderLead:H.agentReminderLead,overdueAgendaNext:H.overdueAgendaNext,refresh:force=>{assert.equal(force,true);reads++;},calendarEventKey:e=>e.id,canonicalCalendarRow:()=>({off:0})};
+  let current=true,owner='owner',state={ownerKey:'owner',status:'ready',savedAt:null,mutating:false,calendars:[source],next:{event},nextFresh:true,feed:undefined};
+  let reads=0;const opened=[],context={p:{},renderVals:()=>({}),deviceCalendarScope:()=>false,Date:class extends Date{static now(){return now;}},controller:{get state(){return state;},sourceHandle:()=> 'fixture'},calendarSourceKey:key,port:()=>({current:()=>current}),bootstrapCurrent:()=>false,calendarOwnerKey:()=>owner,zone:()=> 'UTC',homeCalendarSelection:loaded.exports.homeCalendarSelection,homeCalendarValues:H.homeCalendarValues,homeReadIsStale:H.homeReadIsStale,presentHomeAgendaCard:H.presentHomeAgendaCard,presentHomeAgendaFeed:H.presentHomeAgendaFeed,agentReminderLead:H.agentReminderLead,overdueAgendaNext:H.overdueAgendaNext,refresh:force=>{assert.equal(force,true);reads++;},calendarEventKey:e=>e.id,canonicalCalendarRow:()=>({off:0})};
   vm.runInNewContext(transformSync(adapter.slice(start,end+4),{loader:'ts'}).code,context);
   let savedPrefs={};const shell={vget:()=>({calPrefs:savedPrefs}),openView:(...args)=>opened.push(args)},render=()=>context.p.renderVals.call(shell);
   let home=render();assert.doesNotMatch(home.homeCalendarTitle,/Verified today|Nothing planned/,'next-only cache is unverified');
@@ -241,7 +241,8 @@ test('Agent Calendar freshness: an unverified next event is never fresh or an em
     const unverified=render();
     assert.equal(unverified.homeCalendarConfirmedEmpty,false);
     assert.equal(unverified.homeCalendarTitle,'Calendar has not been verified');
-    assert.equal(unverified.homeCalendarSource,'Open Calendar to retry');
+    assert.equal(unverified.homeCalendarSource,'','routine retry prose is not shown on Home');
+    assert.match(unverified.homeCalendarDescription,/Open Calendar to retry/,'the accessible description keeps recovery guidance');
     assert.equal(reads,0,'rendering an unverified empty read never retries automatically');
     unverified.goCalendar();assert.equal(reads,1,'owner navigation explicitly retries unverified empty reads');reads=0;
   }

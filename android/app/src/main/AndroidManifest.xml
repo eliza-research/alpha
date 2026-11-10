@@ -42,7 +42,7 @@
   <!-- Narrow visibility for password-provider setup; no vault or form access. -->
   <package android:name="proton.android.pass"/>
   <!-- The AOSP image's always-on listener (android/sense). Absent on ordinary phones; Alpha then reports it unavailable. -->
-  <package android:name="ai.alphacompute.alphaphone.sense"/>
+  <package android:name="ai.elizaresearch.alphaphone.sense"/>
   <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="content" android:mimeType="application/pdf"/></intent><intent><action android:name="android.intent.action.VIEW"/><data android:scheme="content" android:mimeType="image/*"/></intent><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
   <intent><action android:name="android.media.action.STILL_IMAGE_CAMERA"/></intent>
   <intent><action android:name="android.intent.action.OPEN_DOCUMENT"/><data android:mimeType="*/*"/></intent>
@@ -68,7 +68,7 @@
   <intent><action android:name="android.intent.action.DISMISS_ALARM"/></intent>
  </queries>
  <!-- Signature permission defined by the image's listener: read its status and pause or turn it off. Grants nothing elsewhere. -->
- <uses-permission android:name="ai.alphacompute.alphaphone.sense.permission.LISTENER_CONTROL" />
+ <uses-permission android:name="ai.elizaresearch.alphaphone.sense.permission.LISTENER_CONTROL" />
  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
  <!-- Turn-by-turn guidance keeps running with the screen off only while the user navigates. -->
@@ -79,8 +79,8 @@
  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
  <application android:name=".AlphaApplication" android:label="@string/app_name" android:icon="@drawable/app_icon" android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules" android:supportsRtl="true" android:usesCleartextTraffic="false" android:networkSecurityConfig="@xml/network_security_config" android:requestLegacyExternalStorage="true" android:theme="@style/AppTheme">
-  <meta-data android:name="ai.alphacompute.alphaphone.UPDATE_CHANNEL" android:value="${alphaUpdateChannel}" />
-  <meta-data android:name="ai.alphacompute.alphaphone.UPDATE_MANIFEST_SHA256" android:value="${alphaUpdateManifestSha256}" />
+  <meta-data android:name="ai.elizaresearch.alphaphone.UPDATE_CHANNEL" android:value="${alphaUpdateChannel}" />
+  <meta-data android:name="ai.elizaresearch.alphaphone.UPDATE_MANIFEST_SHA256" android:value="${alphaUpdateManifestSha256}" />
   <service android:name=".ElizaAgentService" android:exported="false" android:foregroundServiceType="specialUse">
    <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-started local personal agent runtime" />
   </service>

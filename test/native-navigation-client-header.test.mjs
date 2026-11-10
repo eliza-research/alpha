@@ -12,7 +12,7 @@ test('native JSON and chat-stream forwarding preserve the canonical renderer ID 
  const sections=[['raw',source.slice(source.indexOf(' private static JSONObject raw('),source.indexOf(' private static JSONObject json('))],['stream',source.slice(source.indexOf(' @PluginMethod public void requestStream('),source.indexOf(' /** A single ephemeral voice-only feed'))]];
  const bodies=sections.map(([name,text])=>{const start=text.indexOf('if(supplied!=null)for(');assert.ok(start>=0,name);const end=name==='raw'?text.indexOf('\n  }',start)+4:text.indexOf('\n   synchronized(lifecycleLock){requireCurrent',start);assert.ok(end>start,name);return text.slice(start,end);});
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-navigation-header-'));
- try{const file=path.join(dir,'NativeHeaderTest.java');fs.writeFileSync(file,`package ai.alphacompute.alphaphone;
+ try{const file=path.join(dir,'NativeHeaderTest.java');fs.writeFileSync(file,`package ai.elizaresearch.alphaphone;
 import org.json.*;
 public class NativeHeaderTest{
  ${bodies.map((body,i)=>`static JSONObject copy${i}(JSONObject supplied,String body)throws Exception{JSONObject headers=new JSONObject().put("Authorization","Bearer synthetic-owner");${body};return headers;}`).join('\n')}
@@ -39,5 +39,5 @@ public class NativeHeaderTest{
   }
   System.out.println("PASS canonical renderer ID in both paths; invalid IDs and caller authority refused");
  }
-}`);assert.match(runJvm([file],'ai.alphacompute.alphaphone.NativeHeaderTest',{json:true}),/^PASS canonical renderer/);}finally{fs.rmSync(dir,{recursive:true,force:true});}
+}`);assert.match(runJvm([file],'ai.elizaresearch.alphaphone.NativeHeaderTest',{json:true}),/^PASS canonical renderer/);}finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

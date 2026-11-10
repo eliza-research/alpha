@@ -1,4 +1,4 @@
-package ai.alphacompute.alphaphone;
+package ai.elizaresearch.alphaphone;
 
 public final class ResidentAttachDiagnosticTest {
   static final String SECRET = "Bearer-private-token owner-private body-private";

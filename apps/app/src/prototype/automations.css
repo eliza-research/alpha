@@ -23,6 +23,11 @@
 .automation-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
 .automation-actions button{min-height:44px;padding:10px 18px;border-radius:22px;background:var(--s2);font-size:15px}
 .automation-actions .primary{background:var(--acc);color:#fff}
+.schedule-instructions{display:flex;flex-direction:column;gap:8px;margin:0 0 20px;font-size:14px;color:var(--mut)}
+.schedule-instructions input,.schedule-instructions textarea{box-sizing:border-box;width:100%;min-width:0;min-height:48px;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--s2);color:var(--fg);font:inherit;font-size:16px;line-height:1.5;resize:none}
+.schedule-instructions textarea{min-height:144px}
+.schedule-instructions input:focus-visible,.schedule-instructions textarea:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.automation-actions .schedule-save{background:var(--fg);color:var(--bg);border-radius:14px;min-height:48px;padding:12px 24px;font-weight:600}
 .automation-actions button:disabled{opacity:.5}
 .automation-actions button:focus-visible,.automation-fields input:focus-visible,.automation-fields textarea:focus-visible,.automation-filters button:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
 .automation-new{display:flex;flex-direction:column;gap:2px}
@@ -102,3 +107,24 @@
 .automation-new .workflow-choice{display:grid;grid-template-columns:24px minmax(0,1fr) 16px;align-items:center;gap:14px;padding:14px 12px;background:var(--s2);border:0;border-radius:14px;margin-bottom:4px;color:var(--fg)}
 .workflow-choice>span{margin:0;color:inherit}.workflow-choice strong{font-size:16px;font-weight:600}.workflow-choice small{display:block;margin-top:2px;font-size:14px;color:var(--mut)}
 .workflow-choice>.i:last-child{width:16px;color:var(--mut)}.automation-new .automation-more{min-height:44px;border:0}
+
+/* Inline clock keeps editing in the page, without a platform-specific popup. */
+.schedule-clock{border:0;padding:0;margin:8px 0 24px;min-width:0}
+.schedule-clock legend{font-size:14px;color:var(--mut);padding:0;margin-bottom:8px}
+.schedule-clock-row{display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--s2);padding:10px 12px;border-radius:16px}
+.schedule-clock-digits{display:flex;align-items:center;gap:2px;min-width:0;font-size:26px;font-variant-numeric:tabular-nums}
+.schedule-clock-digits input{width:2.1em;min-width:0;min-height:48px;padding:4px 0;border:0;border-radius:8px;background:transparent;color:var(--fg);font:inherit;text-align:center;appearance:textfield;-moz-appearance:textfield}
+.schedule-clock-digits input::-webkit-inner-spin-button,.schedule-clock-digits input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.schedule-period{display:flex;gap:2px;padding:3px;background:var(--bg);border-radius:12px}
+.schedule-period button{min-height:44px;padding:8px 12px;border-radius:9px;color:var(--fg);font:inherit;font-size:14px;font-weight:600}
+.schedule-period button[aria-pressed=true]{background:var(--fg);color:var(--bg)}
+.schedule-frequency{border:0;min-width:0;padding:0;margin:0 0 24px}
+.schedule-frequency legend{font-size:14px;color:var(--mut);padding:0;margin-bottom:8px}
+.schedule-repeat-options{padding:12px;border-radius:16px;background:var(--s2)}
+.schedule-repeat-presets{display:flex;gap:4px;padding-bottom:12px}
+.schedule-repeat-presets button{flex:1;min-width:0;min-height:44px;padding:8px 4px;border-radius:10px;color:var(--mut);font:inherit;font-size:13px;text-align:center}
+.schedule-repeat-presets button[aria-pressed=true]{background:var(--bg);color:var(--fg);font-weight:600}
+.schedule-days{display:flex;justify-content:space-between;gap:4px}
+.schedule-days button{display:grid;place-items:center;padding:0;text-align:center;flex:1;min-width:0;min-height:44px;border-radius:10px;background:var(--bg);color:var(--fg);font:inherit;font-size:14px;font-weight:600}
+.schedule-days button[aria-pressed=true]{background:var(--fg);color:var(--bg)}
+.schedule-clock input:focus-visible,.schedule-period button:focus-visible,.schedule-repeat-presets button:focus-visible,.schedule-days button:focus-visible{outline:2px solid var(--fg);outline-offset:3px}

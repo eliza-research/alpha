@@ -118,7 +118,8 @@ export async function scheduledTaskControlsFixture({kind = 'preset', status = 's
   };
   window.confirm = () => dialogAccepted;
   const context = vm.createContext({exports: module.exports, module, document, window, localStorage: storage,
-    Event, AbortController, queueMicrotask, crypto: {randomUUID},
+    Intl:Object.assign(Object.create(Intl),{DateTimeFormat:function(locales,options){return new Intl.DateTimeFormat(locales,{...options,timeZone:options?.timeZone||'UTC'});}}),
+    Event, AbortController, TextEncoder, TextDecoder, queueMicrotask, crypto: {randomUUID},
     ports: {connection, daily: {listReminders: async () => ({reminders: []})}}});
   vm.runInContext(code, context);
   class Shell {
@@ -153,6 +154,9 @@ export async function scheduledTaskControlsFixture({kind = 'preset', status = 's
         assert.equal(view.scheduleClockEditable, true);
         view.changeScheduleTime({target: {value: time}});
       }
+    },
+    chooseDays(days) {
+      for(const day of [...detail().scheduleDays])if(day.selected !== (days==='*'||days.split(',').includes(String(['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].indexOf(day.name)))))day.pick();
     },
     save() {detail().saveScheduleEdit();},
     cancelEdit() {detail().cancelScheduleEdit();},
@@ -194,6 +198,7 @@ export async function scheduledTaskControlsFixture({kind = 'preset', status = 's
           : {kind: result === 'exact' ? 'fired' : result, task: structuredClone(task)}});
       } else {
         assert.match(current.path, /^\/api\/lifeops\/scheduled-tasks\/weekly\/(?:reopen|snooze|acknowledge|complete|dismiss)$/);
+        if(result==='exact'&&current.path.endsWith('/snooze'))task={...task,state:{...task.state,status:'scheduled',firedAt:current.body.untilIso}};
         if (result === 'exact' && current.path.endsWith('/reopen')) task = {...task, state: {status: 'scheduled'}};
         current.resolve({task: result === 'exact' ? structuredClone(task) : {...task, taskId: 'other'}});
       }
@@ -205,7 +210,8 @@ export async function scheduledTaskControlsFixture({kind = 'preset', status = 's
         : rendered.cards.some(card => card.name === 'Weekly review') ? 'available' : 'missing';
       return {owner: owner.ownerId, visible, kind, storedStatus: task.state.status, storedText: task.promptInstructions,
         storedTime: task.trigger.expression ?? '', catalog: missing ? 'missing-partial' : scheduleUnavailable ? 'failed' : 'available',
-        source, detail: view.detail, status: view.status, editing: view.editingSchedule, draft: view.scheduleInstructions,
+        source, detail: view.detail, status: view.status, days: view.scheduleDays.filter(day=>day.selected).map(day=>['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].indexOf(day.name)).sort((a,b)=>a-b).join(',').replace('0,1,2,3,4,5,6','*'),
+        editing: view.editingSchedule, draft: view.scheduleInstructions,
         time: view.editedScheduleTime, clockEditable: view.scheduleClockEditable, review: view.reviewLabel,
         busy: view.busy, locked: view.locked, message: view.message,
         actions: buttons().map(button => ({label: button.label, disabled: button.disabled})),

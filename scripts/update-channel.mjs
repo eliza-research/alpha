@@ -3,8 +3,8 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 
-export const UPDATE_CHANNEL_META='ai.alphacompute.alphaphone.UPDATE_CHANNEL';
-export const UPDATE_DIGEST_META='ai.alphacompute.alphaphone.UPDATE_MANIFEST_SHA256';
+export const UPDATE_CHANNEL_META='ai.elizaresearch.alphaphone.UPDATE_CHANNEL';
+export const UPDATE_DIGEST_META='ai.elizaresearch.alphaphone.UPDATE_MANIFEST_SHA256';
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const refused=()=>new Error('Update channel input refused');
 
@@ -32,9 +32,12 @@ export function readUpdateChannel(environment,publicUrl){
   if(bytes.some(byte=>byte<33||byte>126))throw refused();
   const url=new URL(text);
   if(url.href!==text||/["\\]/.test(text)||url.origin!=='https://storage.googleapis.com'||url.username||url.password||url.hash||!/^\/alpha-aosp-lab-20261024-private-apks\/update-qa\/[a-f0-9]{32}\/alpha-update\.json$/.test(url.pathname)||!url.search)throw refused();
-  const expires=url.searchParams.get('X-Goog-Expires');
-  if(new Set(url.searchParams.keys()).size!==[...url.searchParams].length)throw refused();
-  if(url.searchParams.get('X-Goog-Algorithm')!=='GOOG4-RSA-SHA256'||!/^\d+$/.test(expires||'')||Number(expires)<300||Number(expires)>86400)throw refused();
+  // gcloud emits lowercase signing fields; older admitted URLs use X-Goog-*.
+  // Keep the signed bytes intact and reject aliases of the same parameter.
+  const parameters=new Map();
+  for(const [name,value] of url.searchParams){const key=name.toLowerCase();if(parameters.has(key))throw refused();parameters.set(key,value);}
+  const expires=parameters.get('x-goog-expires');
+  if(parameters.get('x-goog-algorithm')!=='GOOG4-RSA-SHA256'||!/^\d+$/.test(expires||'')||Number(expires)<300||Number(expires)>86400)throw refused();
   return {kind,manifestUrlSha256:expected};
  }catch{throw refused();}finally{if(fd!==undefined)fs.closeSync(fd);}
 }

@@ -22,6 +22,12 @@ const {testMocks,runtimeProfile='native',localEmbeddings=false}=options;
 const positional=cli.filter(arg=>!buildArgs.includes(arg));
 assert.ok(positional.length===1&&!positional[0].startsWith('--'),'Use: node scripts/build-archive.mjs [--test-mocks | --runtime-profile=cloud] test-results/<new-archive>');
 const [destination]=positional;
+// Full verification compiles Calendar host tests which run real SQLite queries.
+// Check this before preparation or model verification starts.
+try{execFileSync('sqlite3',['--version'],{stdio:'ignore',timeout:10000});}
+catch(cause){throw new Error('Build verification needs the sqlite3 command-line tool on PATH. Install it before starting an archive.',{cause});}
+// The composition gate consumes this audit. Refuse stale metadata before preparation.
+execFileSync(process.execPath,['scripts/quint-state-audit.mjs','--check'],{stdio:'inherit',timeout:120000});
 const sourceDir=testMocks?'artifacts/test-mocks':'artifacts';
 // Distribution archives are always flag-off; build-android also strips these.
 const buildEnv=androidBuildEnv(process.env,options);
@@ -56,7 +62,9 @@ fs.writeFileSync(path.join(destination,'configuration.json'),JSON.stringify({tes
 for(const command of ['verify','android:build']){
  const log=fs.openSync(path.join(destination,command.replace(':','-')+'.log'),'wx');
  const extra=command==='android:build'&&buildArgs.length?['--',...buildArgs]:[];
- try{execFileSync('npm',['run',command,...extra],{stdio:['ignore',log,log],timeout:1200000,env:command==='verify'?verifyEnv:buildEnv});}
+ // Full verification includes the real staged JVM/runtime campaigns. Retain a
+ // finite two-hour verification budget and the existing twenty-minute APK budget.
+ try{execFileSync('npm',['run',command,...extra],{stdio:['ignore',log,log],timeout:command==='verify'?7200000:1200000,env:command==='verify'?verifyEnv:buildEnv});}
  finally{fs.closeSync(log);}
  console.log(command+': passed');
 }

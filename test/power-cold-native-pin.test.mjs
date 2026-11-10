@@ -17,7 +17,7 @@ const sdk=process.env.ANDROID_SDK_ROOT||process.env.ANDROID_HOME||(process.env.C
 const androidJar=sdk?join(sdk,'platforms/android-36/android.jar'):'';
 
 // Main's powerAuthorizationChanged also retires Cloud speech authority and closes open provider reveals.
-const voiceStub=put=>put('ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java','package ai.alphacompute.alphaphone;class AlphaVoiceCloudPlugin{static void retireProviderAuthority(){}}');
+const voiceStub=put=>put('ai/elizaresearch/alphaphone/AlphaVoiceCloudPlugin.java','package ai.elizaresearch.alphaphone;class AlphaVoiceCloudPlugin{static void retireProviderAuthority(){}}');
 const revealStub='static final java.util.Set<AlphaLocalAgentPlugin> instances=new java.util.HashSet<>();void closeProviderReveal(){}';
 function workspace(prefix){
  const dir=mkdtempSync(join(tmpdir(),prefix));
@@ -36,10 +36,10 @@ test('actual pin refuses ABA, account, provider, permission and pending changes'
   put('org/json/JSONObject.java','package org.json;public class JSONObject{private final java.util.Map<String,String> m=new java.util.HashMap<>();public JSONObject put(String k,String v){m.put(k,v);return this;}public String getString(String k){if(!m.containsKey(k))throw new IllegalStateException();return m.get(k);}public String optString(String k){return m.getOrDefault(k,"");}}');
   put('ai/eliza/plugins/system/SenseListenerClient.java','package ai.eliza.plugins.system;public class SenseListenerClient{public interface PowerLaunchValidator{boolean isCurrent();boolean authorize(String accountRef,java.util.function.BooleanSupplier consume);}}');
   put('ai/eliza/plugins/securestore/nativeonly/JsonCredentialSlots.java','package ai.eliza.plugins.securestore.nativeonly;public class JsonCredentialSlots{public static final Object LOCK=new Object();}');
-  put('ai/alphacompute/alphaphone/AlphaCredentialStore.java','package ai.alphacompute.alphaphone;import org.json.JSONObject;public class AlphaCredentialStore{static JSONObject admission;AlphaCredentialStore(android.content.Context c){}JSONObject providerAdmissionSnapshot(){synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){if(admission==null)throw new IllegalStateException();return admission;}}}');
-  const prefix='package ai.alphacompute.alphaphone;import android.content.Context;import org.json.JSONObject;public class AlphaLocalAgentPlugin{static final Object lifecycleLock=new Object();static boolean stopping;static long lifecycleEpoch,credentialMutationEpoch=-1,credentialShutdownRequest=-1;';
+  put('ai/elizaresearch/alphaphone/AlphaCredentialStore.java','package ai.elizaresearch.alphaphone;import org.json.JSONObject;public class AlphaCredentialStore{static JSONObject admission;AlphaCredentialStore(android.content.Context c){}JSONObject providerAdmissionSnapshot(){synchronized(ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots.LOCK){if(admission==null)throw new IllegalStateException();return admission;}}}');
+  const prefix='package ai.elizaresearch.alphaphone;import android.content.Context;import org.json.JSONObject;public class AlphaLocalAgentPlugin{static final Object lifecycleLock=new Object();static boolean stopping;static long lifecycleEpoch,credentialMutationEpoch=-1,credentialShutdownRequest=-1;';
   voiceStub(put);
-  put('ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java',prefix+revealStub+policy()+`
+  put('ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java',prefix+revealStub+policy()+`
     static JSONObject admitted(String account,String generation){return new JSONObject().put("provider","elizacloud").put("environment","production").put("accountRef",account).put("sessionGeneration",generation);}
     static void check(boolean value){if(!value)throw new AssertionError();}
     public static void main(String[] args){
@@ -64,7 +64,7 @@ test('actual pin refuses ABA, account, provider, permission and pending changes'
    }`);
   const compiled=javac(['-d',dir,...sources()]);
   assert.equal(compiled.status,0,compiled.stderr);
-  assert.match(execFileSync(javaBinary('java'),['-cp',dir,'ai.alphacompute.alphaphone.AlphaLocalAgentPlugin'],{encoding:'utf8',timeout:jvmTimeout}),/PASS native pin/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',dir,'ai.elizaresearch.alphaphone.AlphaLocalAgentPlugin'],{encoding:'utf8',timeout:jvmTimeout}),/PASS native pin/);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -86,15 +86,15 @@ import java.io.File;import android.util.AtomicFile;public class JsonCredentialSl
  public static String failWrite;public String read(String n){return values.get(n);}public void write(String n,String v){if(n.equals(failWrite)){failWrite=null;throw new IllegalStateException("synthetic write refusal");}values.put(n,v);}public void remove(String n){values.remove(n);}
  public String slotHash(String n){return n;}public AtomicFile slotFile(String hash){return new AtomicFile();}
 }`);
- put('ai/alphacompute/alphaphone/CloudDeployment.java','package ai.alphacompute.alphaphone;class CloudDeployment{static final String STORAGE_NAMESPACE="";static String storageSlot(String name){return name;}}');
- put('ai/alphacompute/alphaphone/GoogleWorkspaceReturn.java','package ai.alphacompute.alphaphone;class GoogleWorkspaceReturn{static final String SLOT="google-workspace-return:v1:pending";}');
- put('ai/alphacompute/alphaphone/AlphaConnectionPlugin.java','package ai.alphacompute.alphaphone;class AlphaConnectionPlugin{static org.json.JSONObject readCloudIdentity(String token){throw new IllegalStateException("no network");}}');
- put('ai/alphacompute/alphaphone/AlphaCanonicalNotifications.java','package ai.alphacompute.alphaphone;class AlphaCanonicalNotifications{static void forget(android.content.Context c){}}');
- put('ai/alphacompute/alphaphone/ElizaAgentService.java','package ai.alphacompute.alphaphone;class ElizaAgentService{static long reserveCredentialShutdown(){return 1;}static void retryCredentialShutdown(android.content.Context c,long request){}static void abandonCredentialShutdown(long request){}static void releaseCredentialShutdown(long request){}static org.json.JSONObject getLocalAgentBootState(android.content.Context c){return new org.json.JSONObject();}static boolean isCredentialShutdownConfirmed(long request){return true;}}');
- const fields='package ai.alphacompute.alphaphone;import android.content.Context;import org.json.JSONObject;class AlphaLocalAgentPlugin{static final Object lifecycleLock=new Object();static long lifecycleEpoch,credentialMutationEpoch=-1,credentialShutdownRequest=-1,uncertainCommitRequest=-1,startRequestEpoch,intent;static String startRequestId;static boolean startOwnsLaunch,accepting=true,stopping;static class Superseded extends Exception{}static final class Owner{void invalidate(){}}static final Owner INVOCATION_OWNER=new Owner();static void invalidateCalls(){}static void clearEnrollment(){}static boolean shutdownConfirmed(JSONObject state){return true;}static long currentCredentialIntent(){return intent;}static long reserveCredentialIntent(){return ++intent;}static void requireCredentialIntent(long value){if(value!=intent)throw new IllegalStateException();}static boolean providerAdmissionReadable(){return credentialMutationEpoch<0;}';
+ put('ai/elizaresearch/alphaphone/CloudDeployment.java','package ai.elizaresearch.alphaphone;class CloudDeployment{static final String STORAGE_NAMESPACE="";static String storageSlot(String name){return name;}}');
+ put('ai/elizaresearch/alphaphone/GoogleWorkspaceReturn.java','package ai.elizaresearch.alphaphone;class GoogleWorkspaceReturn{static final String SLOT="google-workspace-return:v1:pending";}');
+ put('ai/elizaresearch/alphaphone/AlphaConnectionPlugin.java','package ai.elizaresearch.alphaphone;class AlphaConnectionPlugin{static org.json.JSONObject readCloudIdentity(String token){throw new IllegalStateException("no network");}}');
+ put('ai/elizaresearch/alphaphone/AlphaCanonicalNotifications.java','package ai.elizaresearch.alphaphone;class AlphaCanonicalNotifications{static void forget(android.content.Context c){}}');
+ put('ai/elizaresearch/alphaphone/ElizaAgentService.java','package ai.elizaresearch.alphaphone;class ElizaAgentService{static long reserveCredentialShutdown(){return 1;}static void retryCredentialShutdown(android.content.Context c,long request){}static void abandonCredentialShutdown(long request){}static void releaseCredentialShutdown(long request){}static org.json.JSONObject getLocalAgentBootState(android.content.Context c){return new org.json.JSONObject();}static boolean isCredentialShutdownConfirmed(long request){return true;}}');
+ const fields='package ai.elizaresearch.alphaphone;import android.content.Context;import org.json.JSONObject;class AlphaLocalAgentPlugin{static final Object lifecycleLock=new Object();static long lifecycleEpoch,credentialMutationEpoch=-1,credentialShutdownRequest=-1,uncertainCommitRequest=-1,startRequestEpoch,intent;static String startRequestId;static boolean startOwnsLaunch,accepting=true,stopping;static class Superseded extends Exception{}static final class Owner{void invalidate(){}}static final Owner INVOCATION_OWNER=new Owner();static void invalidateCalls(){}static void clearEnrollment(){}static boolean shutdownConfirmed(JSONObject state){return true;}static long currentCredentialIntent(){return intent;}static long reserveCredentialIntent(){return ++intent;}static void requireCredentialIntent(long value){if(value!=intent)throw new IllegalStateException();}static boolean providerAdmissionReadable(){return credentialMutationEpoch<0;}';
  voiceStub(put);
- put('ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java',fields+revealStub+policy()+mutation()+'}');
- put('ai/alphacompute/alphaphone/CommitTest.java',`package ai.alphacompute.alphaphone;
+ put('ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java',fields+revealStub+policy()+mutation()+'}');
+ put('ai/elizaresearch/alphaphone/CommitTest.java',`package ai.elizaresearch.alphaphone;
 import org.json.JSONObject;public class CommitTest{
  static int checks;static void check(boolean b){checks++;if(!b)throw new AssertionError("check "+checks);}
  static long epoch(){try{java.lang.reflect.Field f=AlphaLocalAgentPlugin.class.getDeclaredField("powerAuthorizationMutationEpoch");f.setAccessible(true);return f.getLong(null);}catch(Exception error){throw new AssertionError(error);}}
@@ -157,7 +157,7 @@ test('actual store commits advance the authority epoch for every authority mutat
  try{
   const compiled=javac(['-cp',jsonJar,'-d',work.dir,...commitSources(work)]);
   assert.equal(compiled.status,0,compiled.stderr);
-  assert.match(execFileSync(javaBinary('java'),['-cp',work.dir+':'+jsonJar,'ai.alphacompute.alphaphone.CommitTest'],{encoding:'utf8',timeout:jvmTimeout}),/PASS actual credential-store commits/);
+  assert.match(execFileSync(javaBinary('java'),['-cp',work.dir+':'+jsonJar,'ai.elizaresearch.alphaphone.CommitTest'],{encoding:'utf8',timeout:jvmTimeout}),/PASS actual credential-store commits/);
  }finally{rmSync(work.dir,{recursive:true,force:true});}
 });
 

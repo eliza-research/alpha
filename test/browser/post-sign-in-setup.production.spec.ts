@@ -127,7 +127,10 @@ test('APK path: a signed-in start with access setup left to do opens it directly
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => !!(window as any).admission.admit), { timeout: 30_000 }).toBe(true);
   await page.waitForTimeout(500);
-  await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(0);
+  const hiddenShell=page.locator('[data-alpha-startup-shell]');
+  await expect(hiddenShell).toHaveAttribute('inert','');
+  await expect(hiddenShell).toHaveCSS('opacity','0');
+  await expect(page.getByRole('region',{name:'Home',exact:true})).toHaveCount(0);
   await expect(startupLoading(page)).toBeVisible();
   await page.evaluate(() => (window as any).admission.admit());
   await expect(page.locator('dialog.alpha-startup-permissions').getByRole('heading', { name: STEPS[0], exact: true })).toBeFocused({ timeout: 30_000 });

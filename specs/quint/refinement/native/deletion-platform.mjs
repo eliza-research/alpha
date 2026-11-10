@@ -21,7 +21,7 @@ public class ContentResolver {}`,
     'android/os/SystemClock.java': `package android.os;
 public class SystemClock {
   public static long elapsedRealtime() {
-    return ai.alphacompute.alphaphone.DeletionTestPorts.elapsed;
+    return ai.elizaresearch.alphaphone.DeletionTestPorts.elapsed;
   }
 }`,
     'android/provider/Settings.java': `package android.provider;
@@ -29,9 +29,9 @@ public class Settings {
   public static class Global {
     public static final String BOOT_COUNT = "boot";
     public static int getInt(android.content.ContentResolver resolver, String key) {
-      if (ai.alphacompute.alphaphone.DeletionTestPorts.unknownBoot)
+      if (ai.elizaresearch.alphaphone.DeletionTestPorts.unknownBoot)
         throw new IllegalStateException("Unavailable boot count");
-      return ai.alphacompute.alphaphone.DeletionTestPorts.boot;
+      return ai.elizaresearch.alphaphone.DeletionTestPorts.boot;
     }
   }
 }`,
@@ -60,12 +60,12 @@ public class WorkManager {
     return new WorkManager();
   }
   public void enqueueUniqueWork(String name, ExistingWorkPolicy policy, OneTimeWorkRequest request) {
-    ai.alphacompute.alphaphone.DeletionTestPorts.schedule(request.delay);
+    ai.elizaresearch.alphaphone.DeletionTestPorts.schedule(request.delay);
   }
 }`,
-    'ai/alphacompute/alphaphone/DeletionWorker.java': `package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/DeletionWorker.java': `package ai.elizaresearch.alphaphone;
 public class DeletionWorker {}`,
-    'ai/alphacompute/alphaphone/AlphaCredentialStore.java': `package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/AlphaCredentialStore.java': `package ai.elizaresearch.alphaphone;
 public class AlphaCredentialStore {
   public AlphaCredentialStore(android.content.Context context) {}
   public String readCredentialSlot(String key) {
@@ -78,7 +78,7 @@ public class AlphaCredentialStore {
     return new org.json.JSONObject(DeletionTestPorts.provider.toString());
   }
 }`,
-    'ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java': `package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java': `package ai.elizaresearch.alphaphone;
 public class AlphaLocalAgentPlugin {
   public static org.json.JSONObject captureReminderOwnerSession() {
     return new org.json.JSONObject(DeletionTestPorts.session.toString());
@@ -88,11 +88,11 @@ public class AlphaLocalAgentPlugin {
     return DeletionTestPorts.ownerRoute(session, path, headers);
   }
 }`,
-    'ai/alphacompute/alphaphone/AlphaCalendarPlugin.java': `package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/AlphaCalendarPlugin.java': `package ai.elizaresearch.alphaphone;
 public class AlphaCalendarPlugin {
   public static final Object CONFIGURATION = new Object();
 }`,
-    'ai/alphacompute/alphaphone/CalendarSyncBridge.java': `package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/CalendarSyncBridge.java': `package ai.elizaresearch.alphaphone;
 public class CalendarSyncBridge {
   public static String deletionRefusal(
       android.content.Context context, org.json.JSONObject owner, org.json.JSONObject target) {
@@ -103,7 +103,7 @@ public class CalendarSyncBridge {
     return DeletionTestPorts.delete(target);
   }
 }`,
-    'ai/alphacompute/alphaphone/CalendarScopedDeletionReview.java': `package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/CalendarScopedDeletionReview.java': `package ai.elizaresearch.alphaphone;
 public class CalendarScopedDeletionReview {
   public static org.json.JSONObject dispatch(android.content.Context context, org.json.JSONObject target)
       throws Exception {
@@ -114,17 +114,17 @@ public class CalendarScopedDeletionReview {
 public class CalendarPlugin {
   public static org.json.JSONObject deleteReviewedExact(
       android.content.Context context, Object configuration, org.json.JSONObject target) throws Exception {
-    return ai.alphacompute.alphaphone.DeletionTestPorts.delete(target);
+    return ai.elizaresearch.alphaphone.DeletionTestPorts.delete(target);
   }
 }`,
-    'ai/alphacompute/alphaphone/CalendarDeletionIdentity.java': `package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/CalendarDeletionIdentity.java': `package ai.elizaresearch.alphaphone;
 public class CalendarDeletionIdentity {
   public long eventId;
   public static CalendarDeletionIdentity parse(String value) {
     throw new AssertionError("Unexercised legacy calendar identity");
   }
 }`,
-    'ai/alphacompute/alphaphone/AlphaReminders.java': `package ai.alphacompute.alphaphone;
+    'ai/elizaresearch/alphaphone/AlphaReminders.java': `package ai.elizaresearch.alphaphone;
 import org.json.*;
 public class AlphaReminders {
   public static Engine engine(android.content.Context context) {

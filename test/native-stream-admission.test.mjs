@@ -15,7 +15,7 @@ test('chat stream admission rejects reserved feed IDs and retains the two-stream
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'stream-admission-'));
  try {
   const file=path.join(dir,'StreamAdmissionTest.java');
-  fs.writeFileSync(file,`package ai.alphacompute.alphaphone;
+  fs.writeFileSync(file,`package ai.elizaresearch.alphaphone;
 import java.util.*;import java.util.concurrent.*;import org.json.*;
 @interface PluginMethod {}
 class JSObject extends JSONObject {JSObject put(String k,String v){super.put(k,v);return this;}public JSObject put(String k,Object v){super.put(k,v);return this;}}
@@ -42,6 +42,6 @@ public class StreamAdmissionTest {
   System.out.println("PASS reserved feed IDs refused; normal UUIDs retain two chat slots and duplicate refusal");
  }
 }`);
-  assert.match(runJvm([file,nativeSource('PluginWorkers.java')],'ai.alphacompute.alphaphone.StreamAdmissionTest',{json:true}),/^PASS reserved feed IDs/);
+  assert.match(runJvm([file,nativeSource('PluginWorkers.java')],'ai.elizaresearch.alphaphone.StreamAdmissionTest',{json:true}),/^PASS reserved feed IDs/);
  } finally {fs.rmSync(dir,{recursive:true,force:true});}
 });

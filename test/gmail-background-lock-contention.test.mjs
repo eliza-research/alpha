@@ -57,7 +57,7 @@ public final class MailNoticePoster implements MailBackgroundDelivery.Notices {
  public void cancel(String key){throw new AssertionError("Unexpected notice");}
  public void cancelAll(){cancellations++;}
 }`),
-   file('ProductPorts.java',`package ai.alphacompute.alphaphone;
+   file('ProductPorts.java',`package ai.elizaresearch.alphaphone;
 import android.content.Context;
 import ai.eliza.plugins.securestore.nativeonly.JsonCredentialSlots;
 import java.io.File;
@@ -103,7 +103,7 @@ final class R {static final class drawable {static final int notification_icon=1
 final class MainActivity {}
 `),
   ];
-  assert.match(runJvm(sources,'ai.alphacompute.alphaphone.GmailBackgroundLockContentionTest',{json:true,args:[directory]}),
+  assert.match(runJvm(sources,'ai.elizaresearch.alphaphone.GmailBackgroundLockContentionTest',{json:true,args:[directory]}),
    /^PASS actual Gmail withdrawal and lifecycle-first vault write/);
  }finally{rmSync(directory,{recursive:true,force:true});}
 });

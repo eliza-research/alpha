@@ -11,7 +11,7 @@ test('actual native Workspace flow consumes once and preserves credential/accoun
  const root=mkdtempSync(join(tmpdir(),'alpha-workspace-flow-'));
  try{
   const file=join(root,'WorkspaceFlowTest.java');
-  writeFileSync(file,`package ai.alphacompute.alphaphone;
+  writeFileSync(file,`package ai.elizaresearch.alphaphone;
 import java.util.*;import java.util.concurrent.*;import java.util.concurrent.atomic.*;import org.json.*;
 public class WorkspaceFlowTest {
  static int checks;
@@ -70,7 +70,7 @@ public class WorkspaceFlowTest {
  }
 }`);
   execFileSync(javaBinary('javac'),['--release','11','-cp',jsonJar,'-d',root,nativeSource('GoogleWorkspaceReturn.java'),nativeSource('GoogleWorkspaceReturnFlow.java'),upstreamAgentRuntime('NativeProviderAdmission.java'),file],{timeout:30000,stdio:'pipe'});
-  assert.match(execFileSync(javaBinary('java'),['-cp',root+':'+jsonJar,'ai.alphacompute.alphaphone.WorkspaceFlowTest'],{timeout:30000,encoding:'utf8'}),/^PASS Workspace flow /);
+  assert.match(execFileSync(javaBinary('java'),['-cp',root+':'+jsonJar,'ai.elizaresearch.alphaphone.WorkspaceFlowTest'],{timeout:30000,encoding:'utf8'}),/^PASS Workspace flow /);
  }finally{rmSync(root,{recursive:true,force:true});}
 });
 

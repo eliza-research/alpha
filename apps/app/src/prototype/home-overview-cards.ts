@@ -8,7 +8,7 @@ const maskIcon = (name: string, color: string) => createElement('span', {style: 
 
 /** The Home agenda card: the shared upstream card with Alpha's classes and installed selectors. */
 export function homeAgendaCard(out: Bag): ReactElement | null {
-  if (out.homeShowCalendar === false) return null;
+  if (out.homeShowCalendar === false || out.homeCalendarHasEvent !== true) return null;
   const next = out.homeCalendarHasNext ? {text: String(out.homeCalendarNext || ''), source: String(out.homeCalendarNextSource || '')} : null;
   return createElement(OverviewAgendaCard, {
     heading: String(out.homeCalendarTime ?? ''), origin: String(out.homeCalendarOrigin ?? ''), title: String(out.homeCalendarTitle ?? ''),
@@ -19,7 +19,7 @@ export function homeAgendaCard(out: Bag): ReactElement | null {
     label: String(out.homeCalendarLabel ?? 'Open your calendar'), description: String(out.homeCalendarDescription ?? ''),
     onActivate: typeof out.goCalendar === 'function' ? out.goCalendar : undefined,
     icon: maskIcon('calendar', '#ffffff'),
-    videoIcon: out.homeCalendarVideo ? createElement('svg', {width: 16, height: 16, viewBox: '0 0 24 24'}, createElement('path', {d: out.ic?.video || ''})) : undefined,
+    videoIcon: out.homeCalendarVideo ? maskIcon('video', '#ffffff') : undefined,
     classNames: {card: 'home-calendar-card', head: 'home-calendar-head', heading: 'home-calendar-time', origin: 'home-calendar-origin', title: 'serif home-calendar-title',
       meta: 'home-calendar-meta', footer: 'home-calendar-footer', source: 'home-calendar-source', next: 'home-calendar-meta home-calendar-next',
       nextText: 'home-calendar-next-text', nextSource: 'home-calendar-source'},
@@ -40,7 +40,7 @@ const INBOX_STATES = new Set(['not-connected', 'idle', 'loading', 'ready', 'stal
  * selectors. It shows no message body and reads no mail.
  */
 export function homeAttentionCard(out: Bag): ReactElement | null {
-  if (out.homeShowInbox === false) return null;
+  if (out.homeShowInbox === false || out.homeGoogleConnected === false || out.homeInboxHasRows !== true || !Array.isArray(out.homeInboxRows) || out.homeInboxRows.length === 0) return null;
   const rows = Array.isArray(out.homeInboxRows) && out.homeInboxHasRows !== false
     ? out.homeInboxRows.map((row: Bag) => ({title: String(row?.subject ?? ''), detail: String(row?.from ?? '')})) : [];
   const people = Array.isArray(out.homeAttentionPeople) ? out.homeAttentionPeople.map((person: Bag) => String(person?.ini ?? '')) : [];
@@ -71,7 +71,7 @@ export function homeAttentionCard(out: Bag): ReactElement | null {
   });
 }
 
-/** Keep the brief widget available; show an honest empty state until a retained brief exists. */
+/** A brief widget appears only when a retained result exists. */
 export function homeBriefCard(out: Bag): ReactElement | null {
   if(out.homeBriefHas!==true)return null;
   const retained=out.homeBriefHas===true,failed=retained&&out.homeBriefFailed===true;
@@ -94,7 +94,7 @@ export function installHomeOverviewCards(Component: any) {
   p.renderVals = function () {
     const out = render.call(this);
     const agenda = homeAgendaCard(out), attention = homeAttentionCard(out), brief = homeBriefCard(out);
-    const showWorkflow = out.homeShowWorkflows !== false;
+    const showWorkflow = out.homeShowWorkflows !== false && out.homeWorkflowHasRows === true && Array.isArray(out.homeWorkflowRows) && out.homeWorkflowRows.length > 0;
     return {...out, homeAgendaCard: agenda, homeAttentionCard: attention, homeBriefCard: brief, homeShowWorkflow: showWorkflow,
       homeHasOverviewCards: !!(agenda || attention || brief || showWorkflow)};
   };

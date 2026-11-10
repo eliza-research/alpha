@@ -1,3 +1,4 @@
+import {choosePhotoAction} from './helpers/owned-photo';
 import {test,expect,type Page} from '@playwright/test';
 import {photosBridge} from './helpers/photos-bridge';
 const dialog=(page:Page)=>page.getByRole('dialog',{name:'Use selected file in email',exact:true});
@@ -27,7 +28,7 @@ async function setup(page:Page){
  await page.evaluate(()=>(window as any).fileEmail.shell.openView('photos',{}));
  await page.getByRole('button',{name:/^Photo, /}).click();
  expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((c:any)=>c.method==='readPhotoSelected').length)).toBe(0);
- await page.getByRole('button',{name:'Use photo in email',exact:true}).click();
+ await choosePhotoAction(page,'Email');
  await expect(dialog(page)).toContainText('source.png');
 }
 test('Photos source requires separate attachment review and preserves source bytes in local draft',async({page})=>{

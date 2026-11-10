@@ -1,0 +1,923 @@
+{
+  "schema": "alpha-launcher-ota-cold-boot-qualification/v1",
+  "draft": false,
+  "recordedAtUTC": "2026-11-10T15:29:24.729857+00:00",
+  "status": "SOFTWARE_COMPONENTS_VERIFIED_FULL_VERIFICATION_OPEN",
+  "source": {
+    "repository": "https://github.com/eliza-research/alphaphone",
+    "commit": "9aad32d71f86810b9e7bbc0770845e1fd58d90d1",
+    "sdkPin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+    "applicationId": "ai.alphacompute.alphaphone",
+    "proposedFinalRecord": "docs/evidence/launcher-ota-cold-boot-75-qualification-20261110.json"
+  },
+  "claim": "Source-bound cold-boot, model, OS-component and Cloud packaging evidence. Full repository verification, signed release, exact-APK voice, live feed, physical phone and AOSP acceptance remain open.",
+  "behavior": {
+    "native": "API below31 is unsupported; existing unknown-source consent is checked before boot readiness. With consent and API31+, uptime<=30000ms returns starting before automatic worker/download/session/activation effects. Manual entry is unchanged.",
+    "renderer": "Scheduler-owned facts starting and automatic install reply starting take the existing quiet error/backoff route. Pending sessions take precedence. Permission-required/unsupported answers retain the normal answered interval. Background/disposal invalidates ownership; no additional timer.",
+    "productionTiming": "Existing failed-upkeep delays1,2,4,8,15minutes; answered interval15minutes. A cold-boot deferral uses this existing backoff, not an exact30-second wakeup.",
+    "rendererPath": "apps/app/src/prototype/settings-adapter.ts",
+    "rendererSha256": "9c30af6e4ef46e98ffee2e0531b4643178478eadb08007f8701df564d602e9b4"
+  },
+  "models": {
+    "sourceCommit": "9aad32d71f86810b9e7bbc0770845e1fd58d90d1",
+    "sdkPin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+    "files": {
+      "AutomaticAppUpdateSchedule": {
+        "path": "specs/quint/application/AutomaticAppUpdateSchedule.qnt",
+        "sha256": "d8ec533aeba394533f0625f8f79863594afdba942f6ad873c345b9ca5bbfd1d6",
+        "snapshot": "model-sources/AutomaticAppUpdateSchedule.qnt"
+      },
+      "NativeUpdateStaging": {
+        "path": "specs/quint/native/NativeUpdateStaging.qnt",
+        "sha256": "2a4ee0439c31750af125c2617bb37a17f2ce1cce2555e762ec7a468cd4235eb8",
+        "snapshot": "model-sources/NativeUpdateStaging.qnt"
+      },
+      "NativeUpdateComposition": {
+        "path": "specs/quint/native/NativeUpdateComposition.qnt",
+        "sha256": "f4cfaca7c558e11c10fedc587b04415a2ff4f666d773e97d29272f1ba85a015b",
+        "snapshot": "model-sources/NativeUpdateComposition.qnt"
+      },
+      "NativeUpdateActivation": {
+        "path": "specs/quint/native/NativeUpdateActivation.qnt",
+        "sha256": "d5571937e29c624a44ce4fe354e1e9aa0cce65baecc8d5ac95b34319ac187cf8",
+        "snapshot": "model-sources/NativeUpdateActivation.qnt"
+      },
+      "RuntimeUpdatePause": {
+        "path": "specs/quint/native/RuntimeUpdatePause.qnt",
+        "sha256": "611811dbb73155d8451ecc6fdfd1d5862139406e7638d8a94c691d56bcc87c62",
+        "snapshot": "model-sources/RuntimeUpdatePause.qnt"
+      }
+    },
+    "coverageSha256": "95fec91a887238c3e14ad390e4c9c1defe28112e736dfe1d415a0925f938385c",
+    "astAuditSha256": "cb7ccc10d2a397747734fe2d9bad06150f3884da59d40f65cdc240ecef49ae8a",
+    "sourceConformance": {
+      "status": "PASS",
+      "nodeTests": {
+        "pass": 3,
+        "fail": 0,
+        "skip": 0
+      },
+      "traces": 42,
+      "checkpoints": 352,
+      "checks": [
+        {
+          "model": "AutomaticAppUpdateSchedule",
+          "passed": true,
+          "status": "passed",
+          "traces": 16,
+          "checkpoints": 126,
+          "observedFields": 17,
+          "inputsUnchanged": true,
+          "driverInputsBound": true,
+          "sourceInputsCurrentlyValid": true,
+          "receiptSha256": "80d99c27acc487e73bea54b3cf3fcf570167dece0794d7ba892bbfb4b1c129bc"
+        },
+        {
+          "model": "NativeUpdateStaging",
+          "passed": true,
+          "status": "passed",
+          "traces": 19,
+          "checkpoints": 164,
+          "observedFields": 22,
+          "inputsUnchanged": true,
+          "driverInputsBound": true,
+          "sourceInputsCurrentlyValid": true,
+          "receiptSha256": "796c8446b04870d60c4dee6bea36f056fffebe6c66fb1fc17c81e71ac882ca2f"
+        },
+        {
+          "model": "NativeUpdateComposition",
+          "passed": true,
+          "status": "passed",
+          "traces": 7,
+          "checkpoints": 62,
+          "observedFields": 41,
+          "inputsUnchanged": true,
+          "driverInputsBound": true,
+          "sourceInputsCurrentlyValid": true,
+          "receiptSha256": "721efa04d6a92cd24ed979c99402907bbd45ed046f7f599d3033b83f98fde69f"
+        }
+      ],
+      "scope": "Actual scheduler/poll and extracted Java port execution at registered checkpoints; no APK/network/OS/hardware claim. Input and driver binding checks passed for each model."
+    },
+    "boundedSafety": {
+      "status": "PASS",
+      "models": 3,
+      "transitionsPerModel": 6,
+      "backend": {
+        "quint": "0.33.1",
+        "apalache": "0.62.4",
+        "jarSha256": "e5223915507b65cc5f1638bd037ede60f8a4fc1644aff46355779f9b05df9262"
+      },
+      "inputsUnchanged": true,
+      "finiteDomains": {
+        "AutomaticAppUpdateSchedule": "Logical time0..20; failures0..20; at most3 bridge requests; four native capability classes, pending/candidate/idle/lifecycle booleans and finite phase strings. Short configured delay abstraction1/2/4ticks; this is not a separate proof of every production timer duration.",
+        "NativeUpdateStaging": "SDK capability classes30/31; consent boolean; uptime samples0,26681,29999,30000,30001,35000ms; boots1/2 and process identities1/2; offer classes1/2, bridges1/2/3, synthetic APK0..4bytes; counters explored only to6 transitions.",
+        "NativeUpdateComposition": "Same finite boot policy; one pre-attempt process boundary; bridges1/2/3 and one attempt per process, composed with the exact hashed activation and durable-pause models. Imported journal evidence uses finite API/version/digest/session classes declared in RuntimeUpdatePause; counters explored only to6 transitions."
+      },
+      "limit": "Depth6 symbolic safety only. No exhaustive safety, unconditional progress, full APK, network or operating-system proof."
+    },
+    "conditionalBootProgress": {
+      "status": "PASS_WITH_EXPECTED_UNFAIR_COUNTEREXAMPLES",
+      "scope": "Exhaustive finite reachable pre-I/O projection of actual NativeUpdateStaging actions, not its full step and not the full renderer/composition step.",
+      "finiteDomains": {
+        "sdkCapabilityClass": 31,
+        "consent": true,
+        "uptimeMillis": [
+          0,
+          26681,
+          29999,
+          30000,
+          30001,
+          35000
+        ],
+        "boots": [
+          1,
+          2
+        ],
+        "processIdentitiesPerBoot": [
+          1,
+          2
+        ],
+        "selectedBridge": 1,
+        "offerClasses": [
+          0,
+          1
+        ],
+        "afterAdmission": "terminal projection; download/barrier/stop/commit/install omitted"
+      },
+      "distinctStates": 86,
+      "statesGenerated": 450,
+      "graphDepth": 8,
+      "noDepthTruncation": true,
+      "positiveExitZero": [
+        "FairColdEventuallyReady",
+        "FairEligibleEventuallyAdmitted"
+      ],
+      "expectedTemporalCounterexamplesExit13": [
+        "ColdEventuallyReady",
+        "EligibleEventuallyAdmitted"
+      ],
+      "fairness": [
+        "Weak fairness of strict bootClockAt uptime advancement (equal-clock stutter excluded).",
+        "Weak fairness of actual selected-bridge automaticTap while stable validOffer!=0, supported and owner0."
+      ],
+      "assumptions": "One stable selected offer/bridge; at most one reboot in two-boot domain. No fairness for offer arrival, network, installation, commit or infinite reboot. In-flight process/session recovery remains the separate durable-pause contract.",
+      "sourceWitnessPassed": true,
+      "inputsUnchanged": true,
+      "historicalCoreProgress": "Earlier generic scheduler-core progress receipts do not prove the now-extended renderer/native full steps.",
+      "extendedPollProgressProven": false
+    }
+  },
+  "osFixture": {
+    "scope": "Real API36 emulator PackageInstaller self-update of two tiny same-signer fixture APKs. Consent is controlled by fixture app-op provisioning. Not the Alpha consumer APK, renderer, HTTPS feed, native voice, physical phone or AOSP image.",
+    "fingerprint": "google/sdk_gphone64_arm64/emu64a:16/BE2A.250530.026.F3/13894323:userdebug/dev-keys",
+    "guarded": {
+      "status": "PASS",
+      "executedSourceCommit": "1d8c1c371e37c09543820e3ed6dfbd9597502427",
+      "executedSdkPin": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+      "boundCurrentCommit": "9aad32d71f86810b9e7bbc0770845e1fd58d90d1",
+      "boundCurrentSdk": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+      "exactProbeInputsMatchCurrent": {
+        "scripts/test-automatic-update-platform.mjs": "69669ad6b4c7b733bba3af8a77e6da53eb381767bc201e6ab5a2a5cb9ef57200",
+        "test/fixtures/automatic-update-android/OtaActivity.java": "15b55bc7c51bb3557a69547a51fed35a7fcae3580ede11d6d1535e8e4fe816f3",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java": "9ecc1fd570c897af5b22ddc9b9787c67af4196c812c4904f6ce3630ad204777a"
+      },
+      "early": {
+        "status": "starting",
+        "uptimeMillis": 29801,
+        "noSessionOrRetainedDataChange": true
+      },
+      "supportedObservedUptimeMillis": 30963,
+      "singleSession": 436750108,
+      "commitUptimeMillis": 31111,
+      "successCallbackUptimeMillis": 32743,
+      "exactInstalledApkSha256": "39cc80bed5894f92e4845288d99a1d555e5ac297ec64a028706f53fd128de243",
+      "retainedAssertions": [
+        "same UID/signer/first-install time",
+        "preference retained",
+        "Keystore ciphertext/value retained",
+        "version2 and exact successor APK bytes",
+        "process replaced",
+        "matching success without confirmation"
+      ],
+      "bindingLimit": "Only the three named probe-input byte hashes transfer to9aad. No DAE SDK/runtime or current consumer APK qualification transfers."
+    },
+    "controls": {
+      "sameUnguardedSourceCommit": "449e0f21c944d8c5d58856c8b9bea1bc44171704",
+      "sameThreeSourceInputs": true,
+      "early": {
+        "result": "OBSERVED_FAILURE",
+        "probeExitCode": 1,
+        "commitUptimeMillis": 26681,
+        "pendingUserActionUptimeMillis": 27364,
+        "session": 1628536437,
+        "reason": "Automatic replacement must not need user action."
+      },
+      "late": {
+        "result": "PASS",
+        "manualUptimeGateSeconds": 35,
+        "commitUptimeMillis": 38504,
+        "successCallbackUptimeMillis": 39010,
+        "exactSuccessorAndRetainedDataAssertions": true
+      },
+      "interpretation": "The source-linked30s throttle explanation is consistent with these controls. It is not an exact framework binary/source provenance claim."
+    },
+    "cleanup": "All three campaign receipts record owned emulator stopped and temporary AVD directory removed; sources unchanged."
+  },
+  "ownedCacheClone": {
+    "status": "PASS_AT_CLONE_TIME",
+    "sdkPin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+    "sourceUnchanged": true,
+    "independentRegularInodes": true,
+    "bytesModesAndInternalRelativeLinksEqual": true,
+    "scope": "APFS independent COW clone/dependency reuse only. Path-bound producer receipts were preserved as historical; normal owned producer must rebuild them. Later legitimate owned builds may change cache outputs. This receipt is not product/build/voice qualification."
+  },
+  "strictNativeInputAdmission": {
+    "status": "REFUSED_MISSING_REQUIRED_NATIVE_VOICE_INPUTS",
+    "sourceCommit": "9aad32d71f86810b9e7bbc0770845e1fd58d90d1",
+    "sdkPin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+    "commands": [
+      {
+        "command": [
+          "npm",
+          "run",
+          "android:build:local"
+        ],
+        "exitCode": 2,
+        "elapsedSeconds": 0.328,
+        "log": "/tmp/alpha-ota-cold-75-native-inputs-local.log",
+        "sha256": "a8e7f09e9f232ee99c7f0a0dc55bc3097f91b9b3b3b5f905b6d1579b5c613570"
+      },
+      {
+        "command": [
+          "npm",
+          "run",
+          "android:build"
+        ],
+        "exitCode": 2,
+        "elapsedSeconds": 0.145,
+        "log": "/tmp/alpha-ota-cold-75-native-inputs-plain.log",
+        "sha256": "8c9191a23ce1cf4005c3b92f1bc216b6917d76341d5792645757bea32ab0372a"
+      }
+    ],
+    "scope": "Both native entry points exited2 at input admission. No bypass, full native build or native voice qualification."
+  },
+  "holds": [
+    "Current-source native voice/JNI/model input admission and qualified native build.",
+    "Production signing-family enrollment, monotonic baseline/candidate version codes, and exact signed APK verification plus content-free exact-APK voice qualification.",
+    "Current hosted backend/provider/server registration and real speech/assistant behavior on the installed release.",
+    "Public app-stable manifest/APK publication and anonymous HTTPS exact-byte readback; no production update published by this evidence task.",
+    "Physical-phone baseline-to-candidate end-to-end drill on both AOSP-preinstalled launcher and stock-Android sideloaded launcher, including cold boot, consent, drafts, HOME, resident restart, retention, interruption and recovery.",
+    "AOSP platform/release/AVB identities and image acceptance remain open. APK self-update evidence does not qualify OS image OTA or its recovery."
+  ],
+  "historyBoundary": "Historical17dacc/9add, DAE f452 APKs/019b full verification and diagnostic449e are separately bound evidence. None supplies current75 whole-product/native/APK/device qualification.",
+  "reproducibility": {
+    "rawEvidence": "Source-bound raw snapshots and complete/partial verification logs are archived with SHA256. Mac and hosted runs failed; Linux diagnosis was cancelled. No current full repository pass is claimed.",
+    "trackedFilesChangedByEvidenceProducer": false
+  },
+  "evidence": {
+    "modelSummary": {
+      "path": "/Users/nubs/alphaphone/test-results/quint-ota-cold-boot-75-9aad32d71f/summary.json",
+      "snapshot": "inputs/modelSummary.json",
+      "bytes": 3788,
+      "sha256": "195020916ad0ab8d46fb2f8dde52264e36c9cdd76623ac30d8e9bb6640547161"
+    },
+    "sourceConformance": {
+      "path": "/Users/nubs/alphaphone/test-results/quint-ota-cold-boot-75-9aad32d71f/source-conformance-summary.json",
+      "snapshot": "inputs/sourceConformance.json",
+      "bytes": 1273,
+      "sha256": "bd0e85ab9e39341e09b450b9fe4036109ca771d5f748f5656d539b9cf2a06848"
+    },
+    "boundedSafety": {
+      "path": "/Users/nubs/alphaphone/test-results/quint-ota-cold-boot-75-9aad32d71f/bounded-safety.json",
+      "snapshot": "inputs/boundedSafety.json",
+      "bytes": 5971,
+      "sha256": "0eb06118368fdd68bb764bb55a7e87867b371eb0fbfaefccd4870a39a39ee684"
+    },
+    "bootProgress": {
+      "path": "/Users/nubs/alphaphone/test-results/quint-ota-cold-boot-progress-75-9aad32d71f/receipt.json",
+      "snapshot": "inputs/bootProgress.json",
+      "bytes": 7270,
+      "sha256": "a4b55e17846b2e630372d1215d9a508d6b74ab143b3259bd64c1cfb7a7207d72"
+    },
+    "guardedInputBinding": {
+      "path": "/tmp/alpha-ota-guarded-probe-9aad-input-binding.json",
+      "snapshot": "inputs/guardedInputBinding.json",
+      "bytes": 1128,
+      "sha256": "f90418caa9424b4382a3cfe6da273dafb72264a38ceed54573827d92c4c49dc7"
+    },
+    "guardedCampaign": {
+      "path": "/Users/nubs/alphaphone/test-results/automatic-update-platform/current-guarded-20261110T081033Z/campaign.json",
+      "snapshot": "inputs/guardedCampaign.json",
+      "bytes": 10617,
+      "sha256": "0ce45e8c0e3fb52dda79ce2135828bf6ea70fb285120ad9b25d9a07cea76d005"
+    },
+    "guardedProbe": {
+      "path": "/Users/nubs/alphaphone/test-results/automatic-update-platform/current-guarded-20261110T081033Z/probe/results.json",
+      "snapshot": "inputs/guardedProbe.json",
+      "bytes": 4061,
+      "sha256": "0097f74bd3fbc327f206561f9022933e63f536535cb7989a951b244f90c375e2"
+    },
+    "earlyCampaign": {
+      "path": "/Users/nubs/alphaphone/test-results/automatic-update-platform/current-diagnostics-20261110T020958Z/campaign.json",
+      "snapshot": "inputs/earlyCampaign.json",
+      "bytes": 13480,
+      "sha256": "0cc35c7fd1d17807985edee50f2b0c95db5d8c3a41bc4f138cada0134e59d1e1"
+    },
+    "earlyProbe": {
+      "path": "/Users/nubs/alphaphone/test-results/automatic-update-platform/current-diagnostics-20261110T020958Z/probe/results.json",
+      "snapshot": "inputs/earlyProbe.json",
+      "bytes": 3747,
+      "sha256": "604498037e6c8cc90028d8c5854d73643fba16f5a7a0192c960bca83227fe674"
+    },
+    "lateCampaign": {
+      "path": "/Users/nubs/alphaphone/test-results/automatic-update-platform/current-late-boot-20261110T021442Z/campaign.json",
+      "snapshot": "inputs/lateCampaign.json",
+      "bytes": 19724,
+      "sha256": "7e28a7bf2ff2d47ccb8ef20a4c5428daeaf24adcc1606f9d0a261235b56ff033"
+    },
+    "lateProbe": {
+      "path": "/Users/nubs/alphaphone/test-results/automatic-update-platform/current-late-boot-20261110T021442Z/probe/results.json",
+      "snapshot": "inputs/lateProbe.json",
+      "bytes": 3321,
+      "sha256": "c7075b652f32289e7d46ef3d5b4f591cd754e729f05d328901a473d678edf8c0"
+    },
+    "ownedClone": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-owned-sdk75-clone-20261110/receipt.json",
+      "snapshot": "inputs/ownedClone.json",
+      "bytes": 7066,
+      "sha256": "be4a5dd25094bf6b42bd8ced250763faa96883bd017f1442db432db544fc0657"
+    },
+    "strictNativeInputs": {
+      "path": "/tmp/alpha-ota-cold-75-native-inputs-result.json",
+      "snapshot": "inputs/strictNativeInputs.json",
+      "bytes": 825,
+      "sha256": "2f87201816c096ff481da388fb80dc4887b94c7b46265d351061c974c8fc8c9d"
+    },
+    "startingDraft": {
+      "path": "/tmp/alpha-ota-cold-75-final-qualification.json",
+      "snapshot": "inputs/startingDraft.json",
+      "bytes": 24733,
+      "sha256": "3956715f5d788b0c1a6acaf2fec6f166c9ec89049d28aeb1c190a70c937c468a"
+    },
+    "formalRawBundle": {
+      "path": "/Users/nubs/alphaphone/test-results/quint-ota-cold-boot-75-9aad32d71f.tar.gz",
+      "snapshot": "bundles/formalRawBundle.tar.gz",
+      "bytes": 217177,
+      "sha256": "60b4670640be0cbca198f1386904ddda5c8342fdb190d8ca3daca395e5148911"
+    },
+    "freshCloudBuild": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-sdk75-cloud-build-20261110T082500Z/receipt.json",
+      "snapshot": "inputs/freshCloudBuild.json",
+      "bytes": 11313,
+      "sha256": "d6fe25fa834a77f427ed04469e342362c40b48241535c4562ac33ea279672e8d"
+    },
+    "freshCloudArtifacts": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-sdk75-cloud-build-20261110T082500Z/artifact-checks.json",
+      "snapshot": "inputs/freshCloudArtifacts.json",
+      "bytes": 8500,
+      "sha256": "7c9ecb0e6084ac68d2f693e1e6e4451b353cd48202e62ff3be5370b6d53cfde1"
+    },
+    "independentApkReadback": {
+      "path": "/tmp/alpha-ota-cold-75-independent-apks.json",
+      "snapshot": "inputs/independentApkReadback.json",
+      "bytes": 1571,
+      "sha256": "cd00ca18d1d07af5042d952f4e86947bcf64030199eaf3b9991f2f401dd92dc3"
+    },
+    "macFullResult": {
+      "path": "/tmp/alpha-ota-cold-75-full-verify-9aad32d71f-result.json",
+      "snapshot": "inputs/macFullResult.json",
+      "bytes": 989,
+      "sha256": "fa1748ce5804087ec4b7e4b68346fe074a740be567f8c563c542f3b21f70efa4"
+    },
+    "macFullLog": {
+      "path": "/tmp/alpha-ota-cold-75-full-verify-9aad32d71f.log",
+      "snapshot": "inputs/macFullLog.log",
+      "bytes": 744145,
+      "sha256": "287ab801b0411cfaf1eea1341124dee617665772904bf77ab16f83d856daa83e"
+    },
+    "macSerialMixedResult": {
+      "path": "/tmp/alpha-ota-cold-75-focused-failures-result.json",
+      "snapshot": "inputs/macSerialMixedResult.json",
+      "bytes": 1012,
+      "sha256": "f5e1d7b0b6c99880d0270beb37981f528cdf9aab6fc9e18de4df0a0591600500"
+    },
+    "macSerialMixedLog": {
+      "path": "/tmp/alpha-ota-cold-75-focused-failures.log",
+      "snapshot": "inputs/macSerialMixedLog.log",
+      "bytes": 36618,
+      "sha256": "e2d57b3613d1a2b11888c4fbdf1fedf6e5cd1ad2dbe4a076b2902178e2fba909"
+    },
+    "macVerboseHealthyResult": {
+      "path": "/tmp/alpha-ota-cold-75-notes-startup-diagnostic-result.json",
+      "snapshot": "inputs/macVerboseHealthyResult.json",
+      "bytes": 848,
+      "sha256": "eecc24c062b742d4675d271512bc0e60447dae56d7f4946b8a6936423fa8ba65"
+    },
+    "normalTimingObservedSequence": {
+      "path": "/tmp/alpha-ota-cold-75-observed-sequence.json",
+      "snapshot": "inputs/normalTimingObservedSequence.json",
+      "bytes": 1056,
+      "sha256": "3ea47f4db6be5e6468e4a5d0bd82d5fb06d64ceeb85436d596f13c4376fdb1d0"
+    },
+    "normalTimingObservedResult": {
+      "path": "/tmp/alpha-ota-cold-75-notes-observed-1-result.json",
+      "snapshot": "inputs/normalTimingObservedResult.json",
+      "bytes": 840,
+      "sha256": "da06af5a3252b5fd565a38fbc4bc4bbd7c67990a6fd91c1a3a7cd227fe016ee4"
+    },
+    "normalTimingObservedLog": {
+      "path": "/tmp/alpha-ota-cold-75-notes-observed-1.log",
+      "snapshot": "inputs/normalTimingObservedLog.log",
+      "bytes": 1157,
+      "sha256": "d0459cd8d7c14916721bb4bca457986c57c0d975cb0f5322473ec8ec6f258993"
+    },
+    "normalTimingBrowserTelemetry": {
+      "path": "/tmp/alpha-ota-notes-observed-1/playwright-49451.jsonl",
+      "snapshot": "inputs/normalTimingBrowserTelemetry.jsonl",
+      "bytes": 481747,
+      "sha256": "4df216dc7befde2223a7dfb30bc42257735811add8d5c4772ee74bf8e20bf73c"
+    },
+    "linuxFocusedResult": {
+      "path": "/tmp/alpha-ota-cold-75-remote-proxy-focused-result.json",
+      "snapshot": "inputs/linuxFocusedResult.json",
+      "bytes": 1078,
+      "sha256": "dfdd7459bf2ea8c3836fb9d542aa3942ce7297ffdbe4e3aaf8b3664a1413bb17"
+    },
+    "linuxFocusedLog": {
+      "path": "/tmp/alpha-ota-cold-75-remote-proxy-focused.log",
+      "snapshot": "inputs/linuxFocusedLog.log",
+      "bytes": 282,
+      "sha256": "acb28e3f0d14472bd023623532cfeaf4cec07ea0a4a16696327f0b8a5cefe864"
+    },
+    "linuxFullRunner": {
+      "path": "/tmp/alpha-ota-cold-75-full-linux-browser.py",
+      "snapshot": "inputs/linuxFullRunner.py",
+      "bytes": 4290,
+      "sha256": "025e832f93c8b2df3608626db75d5af6dbad795e27f2316bafb2be93f84b58a5"
+    },
+    "browserObserver": {
+      "path": "/Users/nubs/alphaphone/test-results/browser-startup-diagnostics-75/preload.mjs",
+      "snapshot": "inputs/browserObserver.mjs",
+      "bytes": 8754,
+      "sha256": "66d5808c7516b81a6274d62d5c7df642d1cf73759951a2c74f8c57348314de7e"
+    },
+    "remoteBrowserAdapter": {
+      "path": "/Users/nubs/alphaphone/test-results/browser-startup-diagnostics-75/remote-preload.mjs",
+      "snapshot": "inputs/remoteBrowserAdapter.mjs",
+      "bytes": 2054,
+      "sha256": "bac15e1a2a39e364376293c7bcce3c7d3948fe624458872d18e9568539fbcf3f"
+    },
+    "remoteBrowserServer": {
+      "path": "/Users/nubs/alphaphone/test-results/browser-startup-diagnostics-75/remote-server.mjs",
+      "snapshot": "inputs/remoteBrowserServer.mjs",
+      "bytes": 3113,
+      "sha256": "85af9eb477e8f2a6617ac6ef14544fb65f78781c8f9b4eb33fda12fbc63757ba"
+    },
+    "hostLoopbackProxy": {
+      "path": "/Users/nubs/alphaphone/test-results/browser-startup-diagnostics-75/host-loopback-proxy.mjs",
+      "snapshot": "inputs/hostLoopbackProxy.mjs",
+      "bytes": 2858,
+      "sha256": "089c6bba1b0810ccf15d575644cb0fec5a7b37fd2cfb01f1e8bd710c39c87973"
+    },
+    "linuxFullResult": {
+      "path": "/tmp/alpha-ota-cold-75-full-verify-linux-browser-9aad32d71f-result.json",
+      "snapshot": "inputs/alpha-ota-cold-75-full-verify-linux-browser-9aad32d71f-result.json",
+      "bytes": 1582,
+      "sha256": "369c3b41b3b6adbff6b29637e329c468e147b39f9a012c3e6a9d30213da15802"
+    },
+    "linuxFullLog": {
+      "path": "/tmp/alpha-ota-cold-75-full-verify-linux-browser-9aad32d71f.log",
+      "snapshot": "inputs/alpha-ota-cold-75-full-verify-linux-browser-9aad32d71f.log",
+      "bytes": 403288,
+      "sha256": "d8bcd043f559732789a3321554e70f646a35b8f1e4b8bfe558ff4ec3b9465534"
+    },
+    "linuxCancellation": {
+      "path": "/tmp/alpha-ota-cold-75-linux-browser-cancellation.json",
+      "snapshot": "inputs/alpha-ota-cold-75-linux-browser-cancellation.json",
+      "bytes": 9359,
+      "sha256": "a9a55758d94c87e09340cfdb6d4e2e9cc1113a6076447041860fcb4786db1052"
+    },
+    "hostedVerifyLog": {
+      "path": "/tmp/alpha-ota-cold-75-hosted-verify-9aad32d71f.log",
+      "snapshot": "inputs/alpha-ota-cold-75-hosted-verify-9aad32d71f.log",
+      "bytes": 2309725,
+      "sha256": "45410b925b72fcb5ff45ef0fe63315955b945aba682cb1f7edc1e141eb25e7a5"
+    },
+    "finalValidationTriage": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-final-validation-triage-9aad-20261110/receipt.json",
+      "snapshot": "inputs/receipt.json",
+      "bytes": 11500,
+      "sha256": "ff9b1570774fd43150221a7ec10784447c684a92e26ff74eef8827adc13429c6"
+    },
+    "hostedSevenSkips": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-final-validation-triage-9aad-20261110/hosted-seven-skips.json",
+      "snapshot": "inputs/hosted-seven-skips.json",
+      "bytes": 2014,
+      "sha256": "6297dd7aacc4d7ee159bbec6287b173084a0fad822436617f7b2db06af30a0b0"
+    },
+    "finalIndependentReadback": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-final-readback-20261110/final-readback.json",
+      "snapshot": "inputs/final-readback.json",
+      "bytes": 14982,
+      "sha256": "3b0a174836524fa4323ae10e5eb72c1f4ba6b680683eebf333f346ad533d7409"
+    },
+    "environment_qualification-record-candidate": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-cold-boot-75-final-archive-20261110/qualification-record-candidate.json",
+      "snapshot": "inputs/qualification-record-candidate.json",
+      "bytes": 54736,
+      "sha256": "6b550740e884e6032e63ad8f04449849f7980e73ca9b4326d20090a9159fb71b"
+    },
+    "environment_remote-final-health": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-cold-boot-75-final-archive-20261110/remote-final-health.json",
+      "snapshot": "inputs/remote-final-health.json",
+      "bytes": 274,
+      "sha256": "76afd2bf9964fe03edfbd4960df1b513880fb6d8bc29b78f8abc92ba9cf62655"
+    },
+    "environment_content-manifest": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-cold-boot-75-final-archive-20261110/content-manifest.json",
+      "snapshot": "inputs/content-manifest.json",
+      "bytes": 1425356,
+      "sha256": "a3d4c8015f32d4c79d86880bfb9e32e75b80aae88de061a5ec5abb42504ec177"
+    },
+    "environment_staging-summary": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-cold-boot-75-final-archive-20261110/staging-summary.json",
+      "snapshot": "inputs/staging-summary.json",
+      "bytes": 905,
+      "sha256": "e5e7dce9147aa269b0a868ecf6e1d17ba1d98c911ae9ba6b09330a25c89bf63b"
+    },
+    "environment_cleanup": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-cold-boot-75-final-archive-20261110/cleanup.json",
+      "snapshot": "inputs/cleanup.json",
+      "bytes": 148,
+      "sha256": "606d75ea651f187287263399d048b88f9afc83ebdc73c93bea8a9cdbc05951d7"
+    },
+    "environment_remote-package-lock": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-cold-boot-75-final-archive-20261110/remote-package-lock.json",
+      "snapshot": "inputs/remote-package-lock.json",
+      "bytes": 1601,
+      "sha256": "be6f4df49b2f7805a05f7506b8a2305049b284d09b620e9cba339697ae4a65b7"
+    },
+    "environment_remote-server-final": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-cold-boot-75-final-archive-20261110/remote-server-final.log",
+      "snapshot": "inputs/remote-server-final.log",
+      "bytes": 3934,
+      "sha256": "d432834f2ba9a17f3a09871f050737a9877a5980a76319817189ab73b5ecb416"
+    },
+    "environment_README": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-cold-boot-75-final-archive-20261110/README.txt",
+      "snapshot": "inputs/README.txt",
+      "bytes": 595,
+      "sha256": "10f7feea8a48a254c0a026ab4d7e659814f6f329f21e85cce6ac943b8ef32b41"
+    },
+    "environment_raw-evidence.tar": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-cold-boot-75-final-archive-20261110/raw-evidence.tar.gz",
+      "snapshot": "inputs/raw-evidence.tar.gz",
+      "bytes": 2729187,
+      "sha256": "bfc63e0bb41e45f96d85f1f100d94a82dcc958d9229f588418f8f7e84e689f82"
+    },
+    "environment_docker-container-inspect": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-cold-boot-75-final-archive-20261110/docker-container-inspect.json",
+      "snapshot": "inputs/docker-container-inspect.json",
+      "bytes": 20668,
+      "sha256": "35984b8ffb48f053af72a25a0a1a325206f35478e24468fdd95f88ebf463cdf1"
+    },
+    "environment_docker-image-inspect": {
+      "path": "/Users/nubs/alphaphone/test-results/launcher-ota-cold-boot-75-final-archive-20261110/docker-image-inspect.json",
+      "snapshot": "inputs/docker-image-inspect.json",
+      "bytes": 2186,
+      "sha256": "e85bcaf7c96a8a59485bec984bc45558cd1190748600080888da21dd0160a4d9"
+    }
+  },
+  "checks": {
+    "cloudApkBuild": {
+      "status": "passed",
+      "sourceCommit": "9aad32d71f86810b9e7bbc0770845e1fd58d90d1",
+      "sdkPin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+      "receipt": {
+        "path": "test-results/launcher-ota-sdk75-cloud-build-20261110T082500Z/receipt.json",
+        "sha256": "d6fe25fa834a77f427ed04469e342362c40b48241535c4562ac33ea279672e8d"
+      },
+      "artifactChecks": {
+        "path": "test-results/launcher-ota-sdk75-cloud-build-20261110T082500Z/artifact-checks.json",
+        "sha256": "7c9ecb0e6084ac68d2f693e1e6e4451b353cd48202e62ff3be5370b6d53cfde1"
+      },
+      "elapsedSeconds": 337.33,
+      "trackedInputs": {
+        "files": 4511,
+        "sha256": "2e888a180569f71157bd65cd5c8f0af3f458bf0fec652cce9bb415e03f071499",
+        "head": "9aad32d71f86810b9e7bbc0770845e1fd58d90d1",
+        "vendorHead": "75b44015561368fc8ca982b70b8bafbdf1672a7b"
+      },
+      "sourceUnchanged": true,
+      "noticesRestored": true,
+      "mockFree": true,
+      "runtimeProfile": "cloud",
+      "allowUnpackagedRuntime": false,
+      "runtimePackaging": "PACKAGED",
+      "runtimeExecuted": false,
+      "releaseDistributionQualified": false,
+      "voiceEvidence": "missing",
+      "apks": [
+        {
+          "file": "artifacts/standalone-debug.apk",
+          "bytes": 249322264,
+          "sha256": "3cb271149aab18d0c9407283841fda80955bf6e6672c2a768fa047a19cf67957",
+          "zipEntriesMatched": 6,
+          "mode": "debug",
+          "signed": true,
+          "distributable": null
+        },
+        {
+          "file": "artifacts/standalone-release-unsigned.apk",
+          "bytes": 167051609,
+          "sha256": "1a63a9be6933ad4e5f0abe995fdf317dba3dd1749997434585b664cd490b5277",
+          "zipEntriesMatched": 6,
+          "mode": "release",
+          "signed": false,
+          "distributable": false
+        },
+        {
+          "file": "artifacts/launcher-debug.apk",
+          "bytes": 249329048,
+          "sha256": "06bac0a5beaa83da3b74ef50af31ab1995840d5a728b8f119ca897f9624010c8",
+          "zipEntriesMatched": 6,
+          "mode": "debug",
+          "signed": true,
+          "distributable": null
+        },
+        {
+          "file": "artifacts/launcher-release-unsigned.apk",
+          "bytes": 167056217,
+          "sha256": "d6e75ca760a44f8ec993d4e2e93a9b8b5f8e75600a0016adf181a157680c5071",
+          "zipEntriesMatched": 6,
+          "mode": "release",
+          "signed": false,
+          "distributable": false
+        }
+      ],
+      "producerFiles": {
+        "artifacts/local-agent-resident-75b44015561368fc8ca982b70b8bafbdf1672a7b/.alpha-runtime-source.json": {
+          "bytes": 415,
+          "sha256": "ee4d27868458d8f3e9f09f5949f1e104659dcc4a79dd247ab08a23feeb0b86e7",
+          "mode": "0o600"
+        },
+        "artifacts/local-agent-resident-75b44015561368fc8ca982b70b8bafbdf1672a7b/packages/agent/dist-mobile/alpha-mobile-build.json": {
+          "bytes": 10685,
+          "sha256": "6afe5240b3daf7e8c67044dbbb617b39c1116109aa296b97fab7b5ef10721a9c",
+          "mode": "0o644"
+        },
+        "artifacts/local-agent-resident-75b44015561368fc8ca982b70b8bafbdf1672a7b/packages/agent/dist-mobile/agent-bundle.js": {
+          "bytes": 65468057,
+          "sha256": "8fbe45c92b841b07c78df5a5c18bffe8e1d8e3821c47da6d18c2134dc35fbcd0",
+          "mode": "0o644"
+        },
+        "artifacts/local-agent-resident-75b44015561368fc8ca982b70b8bafbdf1672a7b/packages/agent/dist-mobile/plugins-manifest.json": {
+          "bytes": 123120,
+          "sha256": "b6517b28264352489d86cc9314dcf5676d908395077b390c28e817f6d1dde56a",
+          "mode": "0o644"
+        },
+        "artifacts/mobile-workflow-worker-75b44015561368fc8ca982b70b8bafbdf1672a7b/manifest.json": {
+          "bytes": 151924,
+          "sha256": "ed636d7a0177cb404b22afa1779269c2c7f39cf491594fda90f46fb685ce28c1",
+          "mode": "0o644"
+        },
+        "artifacts/mobile-workflow-worker-75b44015561368fc8ca982b70b8bafbdf1672a7b/google-host.mjs": {
+          "bytes": 118699,
+          "sha256": "b9ce93ddbbf3c438f4db426cbe603720f6f6d70156583866c0604b5a6a452537",
+          "mode": "0o644"
+        },
+        "android/.eliza-consumer-host.json": {
+          "bytes": 460,
+          "sha256": "ef8a3b43a364b07687bdf765ed63e33e41ba4a6edc355c7408cfe31a1419f3c6",
+          "mode": "0o644"
+        },
+        "android/app/src/main/assets/agent/alpha-source.json": {
+          "bytes": 415,
+          "sha256": "ee4d27868458d8f3e9f09f5949f1e104659dcc4a79dd247ab08a23feeb0b86e7",
+          "mode": "0o600"
+        },
+        "android/app/src/main/assets/agent/alpha-mobile-build.json": {
+          "bytes": 10685,
+          "sha256": "6afe5240b3daf7e8c67044dbbb617b39c1116109aa296b97fab7b5ef10721a9c",
+          "mode": "0o644"
+        },
+        "android/app/src/main/assets/agent/alpha-runtime-profile.json": {
+          "bytes": 238,
+          "sha256": "db1cd37a86c7ca014e15cba58012fb0f1877314639c1aa206782e4d03389e522",
+          "mode": "0o644"
+        }
+      },
+      "priorOutputsArchive": {
+        "path": "/Users/nubs/alphaphone/test-results/launcher-ota-sdk75-cloud-build-20261110T082500Z/prior-f452-outputs",
+        "manifestSha256": "4febd9f4472f3672af701fac82c76bd4f54ddba2913d889cf659b4c3b213e25b"
+      },
+      "scope": "Fresh normal Cloud packaging and exact bytes. Component runtime packaging admission is not release admission. Both release APKs are unsigned/non-distributable; debug artifacts are not release candidates. No exact-signed-APK voice or installed Alpha/device acceptance."
+    },
+    "fullRepositoryVerifyMac": {
+      "codeCommit": "9aad32d71f86810b9e7bbc0770845e1fd58d90d1",
+      "tree": "2ab43e34ecb87b40679786462ecd917ee677287b",
+      "upstreamPin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+      "packageName": "ai.alphacompute.alphaphone",
+      "exitCode": 1,
+      "elapsedSeconds": 2025.563726902008,
+      "statusBefore": "",
+      "statusAfter": "",
+      "headAfter": "9aad32d71f86810b9e7bbc0770845e1fd58d90d1",
+      "sourceUnchanged": true,
+      "preparedSdkRequired": true,
+      "pinnedBunFollowupEnabled": true,
+      "productionSourceComparison": {
+        "baseline": "33ed2076cae8c74f7d248647f5de751c90e617ca",
+        "deltaAmongProductionRoots": [
+          ".github/workflows/browser.yml",
+          "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+          "apps/app/src/prototype/settings-adapter.ts",
+          "scripts/test-automatic-update-platform.mjs"
+        ]
+      },
+      "log": "/tmp/alpha-ota-cold-75-full-verify-9aad32d71f.log",
+      "logSha256": "287ab801b0411cfaf1eea1341124dee617665772904bf77ab16f83d856daa83e",
+      "status": "failed",
+      "node": {
+        "tests": 5073,
+        "passed": 5057,
+        "failed": 12,
+        "skipped": 4,
+        "cancelled": 0
+      },
+      "quintChecks": 741,
+      "typecheck": "passed",
+      "resultSha256": "fa1748ce5804087ec4b7e4b68346fe074a740be567f8c563c542f3b21f70efa4",
+      "failureScope": "Twelve mounted-browser startup/import failures before flow assertions or model comparison. Uninstrumented full run cannot assign every failure to a single trigger. Separate unchanged-source observation below reproduces the same initial Calendar timeout with concrete Chromium network-change module cancellations. Post-test verify build/audit were not reached.",
+      "explicitSkips": [
+        {
+          "test": "pinned SystemUI overlay",
+          "reason": "ALPHA_SYSTEMUI_TEST_SOURCE not configured"
+        },
+        {
+          "test": "formal-only SDK advance",
+          "reason": "explicitly skipped at current75 pin"
+        },
+        {
+          "test": "emulator microphone preflight",
+          "reason": "Python grpcio/grpcio-tools unavailable"
+        },
+        {
+          "test": "packaged STL normal strip",
+          "reason": "pinned Linux Android NDK unavailable on macOS"
+        }
+      ]
+    },
+    "browserEnvironmentDiagnosis": {
+      "sourceCommit": "9aad32d71f86810b9e7bbc0770845e1fd58d90d1",
+      "sdkPin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+      "macSerialMixed": {
+        "status": "FAIL_WITH_ONE_PASS",
+        "exitCode": 1,
+        "elapsedSeconds": 126.72043895721436,
+        "nodeReported": {
+          "tests": 2,
+          "passed": 1,
+          "failed": 1,
+          "skipped": 0
+        },
+        "calendarBody": "PASS44227.318084ms",
+        "notesBody": "FAIL80088.792875ms at initial Calendar startup wait",
+        "sourceUnchanged": true
+      },
+      "macVerboseObserverControl": {
+        "status": "PASS",
+        "exitCode": 0,
+        "scope": "One Notes test/five mounted pages with verbose Playwright/Vite timing logs; healthy observational control, no fix claim."
+      },
+      "macNormalTimingObserver": {
+        "status": "FIRST_FAILURE_REPRODUCED",
+        "exitCode": 1,
+        "elapsedSeconds": 67.14832401275635,
+        "runsExecuted": 1,
+        "stoppedAtFirstFailure": true,
+        "sourceUnchanged": true,
+        "verboseDebug": "disabled",
+        "observer": "ignored observation-only preload, no fixture/assertion/timeout changes",
+        "requests": 491,
+        "responses": 207,
+        "failedRequests": 284,
+        "failureCode": "net::ERR_NETWORK_CHANGED",
+        "burstStartedAtUTC": "2026-11-10T09:15:09.955Z",
+        "burstFinishedAtUTC": "2026-11-10T09:15:10.058Z",
+        "httpStatusErrors": 0,
+        "pageErrors": 0,
+        "preCloseDOM": {
+          "atUTC": "2026-11-10T09:16:09.977Z",
+          "readyState": "complete",
+          "rootChildren": 0,
+          "rootText": "",
+          "fixtureInspectorsInstalled": false,
+          "pendingRequests": 0
+        },
+        "mechanism": "Chromium cancelled localhost ES-module loads during startup; the unexecuted module graph left the mounted root empty and the initial Calendar selector later timed out.",
+        "unknown": "The trigger of the Chromium network-change event is not established. This does not prove that all twelve unobserved full-run failures had this cause."
+      },
+      "linuxFocused": {
+        "status": "PASS_WITH_SELECTION_COVERAGE_LIMIT",
+        "exitCode": 0,
+        "elapsedSeconds": 34.04675602912903,
+        "sourceUnchanged": true,
+        "nodeReported": {
+          "tests": 2,
+          "passed": 2,
+          "failed": 0,
+          "skipped": 0
+        },
+        "confirmedNamedTestBodies": [
+          "mounted Notes recorder admission refines the saved audio shutdown boundary"
+        ],
+        "notSelected": {
+          "file": "test/quint-canonical-calendar-editor-close.test.mjs",
+          "actualDeclaredName": "mounted Calendar Back, close and discard match the retained editor model",
+          "reason": "Name-pattern contained an obsolete Calendar name; output reports file-level success, so this focused run does not establish execution of the Calendar body."
+        },
+        "scope": "Frozen host Node26 test with fresh Linux Chromium1.62.1 per launch and authenticated loopback-only proxy; no source/assertion/timeout changes. Environment smoke only, not a replacement for the unfiltered full run."
+      }
+    },
+    "fullRepositoryVerify": {
+      "status": "CANCELLED_DIAGNOSTIC_NOT_A_FULL_PASS",
+      "result": {
+        "codeCommit": "9aad32d71f86810b9e7bbc0770845e1fd58d90d1",
+        "tree": "2ab43e34ecb87b40679786462ecd917ee677287b",
+        "upstreamPin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+        "packageName": "ai.alphacompute.alphaphone",
+        "exitCode": -15,
+        "elapsedSeconds": 9542.922540903091,
+        "statusBefore": "",
+        "statusAfter": "",
+        "headAfter": "9aad32d71f86810b9e7bbc0770845e1fd58d90d1",
+        "sourceUnchanged": true,
+        "preparedSdkRequired": true,
+        "pinnedBunFollowupEnabled": true,
+        "browserEnvironment": {
+          "hostNode": "26.13.0 darwinarm64",
+          "browser": "Chromium151.0.7922.34 Linuxarm64",
+          "playwright": "1.62.1",
+          "image": "mcr.microsoft.com/playwright:v1.62.1-noble",
+          "imageId": "sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e",
+          "freshBrowserPerLaunch": true,
+          "transport": "launchServer/connect + authenticated host loopback-only HTTP/CONNECT/WebSocket proxy",
+          "sourceAssertionsTimeoutsUnchanged": true,
+          "priorMacFailurePreserved": "/tmp/alpha-ota-cold-75-full-verify-9aad32d71f-result.json"
+        },
+        "productionSourceComparison": {
+          "baseline": "33ed2076cae8c74f7d248647f5de751c90e617ca",
+          "deltaAmongProductionRoots": [
+            ".github/workflows/browser.yml",
+            "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+            "apps/app/src/prototype/settings-adapter.ts",
+            "scripts/test-automatic-update-platform.mjs"
+          ]
+        },
+        "log": "/tmp/alpha-ota-cold-75-full-verify-linux-browser-9aad32d71f.log",
+        "logSha256": "d8bcd043f559732789a3321554e70f646a35b8f1e4b8bfe558ff4ec3b9465534"
+      },
+      "emittedPartialCounts": {
+        "passed": 2748,
+        "failed": 6,
+        "cancelled": 486,
+        "skipped": 2
+      },
+      "cause": "Stopped owned diagnostic after two mounted Calendar failure lines and prolonged native-runner stalls; one mounted UI flow failure and a separate blank module-502 failure are distinct. Exact cause unresolved. No full-pass claim."
+    },
+    "hostedRepositoryVerify": {
+      "status": "FAILED",
+      "run": "https://github.com/eliza-research/alphaphone/actions/runs/42781616355",
+      "sourceTreeEqualsCodeCommit": true,
+      "node": {
+        "tests": 5073,
+        "passed": 5064,
+        "failed": 1,
+        "cancelled": 1,
+        "skipped": 7
+      },
+      "failures": [
+        "Application refinement reached1800000ms test deadline",
+        "Services child process reached880000ms deadline"
+      ],
+      "scope": "Timed-out verification; not production qualification. Exact seven skip reasons retained."
+    }
+  },
+  "qualificationAudit": {
+    "outcome": "Preserve component successes and every full-verification hold. The focused Calendar body was not selected; later unfiltered run reached mounted Calendar flow and failed. No blanket environment-only cause is asserted."
+  },
+  "publicEvidence": {
+    "release": "https://github.com/eliza-research/alphaphone/releases/tag/pr863-evidence-9aad32d71f",
+    "archive": {
+      "url": "https://github.com/eliza-research/alphaphone/releases/download/pr863-evidence-9aad32d71f/alpha-pr863-9aad32d71f-software-evidence.tar.gz",
+      "anonymous": true,
+      "status": 200,
+      "bytes": 5509251,
+      "sha256": "64fe042ccf0266722f9dfd22ba928599c8e139919ea5cdde1ae7225d93979265",
+      "verifiedAtUTC": "2026-11-10T15:29:54.387120+00:00"
+    },
+    "scope": "Evidence-only prerelease at code9aad. Contains no Alpha APK or signing material; app-stable is unchanged."
+  }
+}

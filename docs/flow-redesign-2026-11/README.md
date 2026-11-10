@@ -255,7 +255,7 @@ cannot set any of them from this repository.
 
 ### Google Cloud Console: the project that owns Cloud's `GOOGLE_CLIENT_ID`
 
-1. Create an **Android OAuth client** for package `ai.alphacompute.alphaphone` with
+1. Create an **Android OAuth client** for package `ai.elizaresearch.alphaphone` with
    the **release** signing SHA-1 (`android/release-signer.json`); add the debug SHA-1
    for development builds. It must be in the same project as Cloud's web client so
    that native authorization returns a server auth code for that client.
@@ -287,7 +287,7 @@ On staging, the allowance settings must also reach the admission worker
   certificate. On 2026-10-24 it listed the development signer.
 - Build with `ELIZAOS_APP_LINK_HOST=eliza.app`. The manifest overlay gains
   `/alphaphone/google/return` (app change, below).
-- Read the result back with `adb shell pm get-app-links ai.alphacompute.alphaphone`.
+- Read the result back with `adb shell pm get-app-links ai.elizaresearch.alphaphone`.
 
 ## 4. Implementation plan (after approval)
 

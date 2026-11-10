@@ -15,7 +15,7 @@ test('rendered voice bars follow actual microphone amplitude; Home pauses a brow
  await expect.poll(()=>page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');return (await registerPlugin<any>('AlphaVoiceCloud').noteRecordingStatus()).state;})).toBe('paused');
  // Notes adopts the open recording; Discard asks once and then ends the microphone and its meter.
  await page.getByRole('button',{name:'Notes',exact:true}).click();await expect(recorder).toHaveAttribute('data-recorder-state','paused');
- await recorder.getByRole('button',{name:'Discard',exact:true}).click();await recorder.getByRole('group',{name:'Discard this recording?'}).getByRole('button',{name:'Discard',exact:true}).click();await expect(recorder).toHaveCount(0);
+ await recorder.getByRole('button',{name:'Discard recording',exact:true}).click();await recorder.getByRole('group',{name:'Discard this recording?'}).getByRole('button',{name:'Discard',exact:true}).click();await expect(recorder).toHaveCount(0);
  await expect.poll(()=>page.evaluate(()=>(window as any).meterContexts.filter((ctx:any)=>ctx.meter).every((ctx:AudioContext)=>ctx.state==='closed'))).toBe(true);expect(await page.evaluate(()=>(window as any).levelSource.stream.getTracks().every((track:MediaStreamTrack)=>track.readyState==='ended'))).toBe(true);await page.evaluate(async()=>{const s=(window as any).levelSource;s.osc.stop();await s.context.close();});
 });
 test('stopping a browser recording retires its meter and retains playable clip bytes',async({page})=>{

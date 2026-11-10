@@ -21,7 +21,7 @@ prepared accounts.
 
 | Gate | Production | Staging |
 | --- | --- | --- |
-| registration (H-11) | pass: `ai.alphacompute.alphaphone` registered for `https://eliza.app/alphaphone/auth/callback`, S256 | pass (`https://staging.eliza.app/...`) |
+| registration (H-11) | pass: `ai.elizaresearch.alphaphone` registered for `https://eliza.app/alphaphone/auth/callback`, S256 | pass (`https://staging.eliza.app/...`) |
 | email sign-in (H-12) | pass | pass |
 | native Google (H-12) | pass | **FAIL**: `googleNative` not advertised (#669) |
 | browser return (H-12) | pass | pass |
@@ -123,7 +123,7 @@ Points the operator must plan for:
    `NEXT` -> sign -> `PREVIOUS` (clear `PREVIOUS` after 30 minutes).
 2. **H-11 (operator):** keep Alpha's entry in `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON` and its `apps`
    row; after any registry change run "Mobile App Auth Registration Admin" (repair, then diagnose)
-   for `ai.alphacompute.alphaphone`. `node scripts/cloud-readiness.mjs registration` prints it.
+   for `ai.elizaresearch.alphaphone`. `node scripts/cloud-readiness.mjs registration` prints it.
 3. **H-14 (operator):** keep `CLOUD_PUBLIC_SERVICE_JSON` (passing today).
 4. **Operator:** fix the staging subscription catalog 503.
 5. **Benchmark (operator confirmation required):** prepare the accounts in the table; fill a copy of
