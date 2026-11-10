@@ -21,7 +21,7 @@ async function compilePhotosWindow(extraSources = []) {
     ["../browser/content-question", `export const reviewContentQuestion=${unused("question")};`],
     ["./video-edit-review", `export const openVideoEditReview=${unused("video edit")};`],
     ["./scan-review", `export class ScanKeepError extends Error{};export const openScanReview=${unused("scan")};`],
-    ["./scan-pdf", `export class ScanPdfExportError extends Error{};export const systemPickerActive=()=>false,exportScanPdf=${unused("scan PDF")},scanPdfRetryable=${unused("scan retry")},duringSystemPicker=${unused("scan picker")};`]
+    ["./scan-pdf", `export class ScanPdfExportError extends Error{};export const systemPickerActive=()=>false,scanExportTitle=${unused("scan title")},exportScanPdf=${unused("scan PDF")},scanPdfRetryable=${unused("scan retry")},duringSystemPicker=${unused("scan picker")};`]
   ]);
   const built = await build({
     absWorkingDir: root,
