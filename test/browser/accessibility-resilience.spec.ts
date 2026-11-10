@@ -1,7 +1,7 @@
 import {installHomeCalendar} from './helpers/home-calendar';
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import {openLegacyAttachment,openLegacyNotes} from './helpers/legacy-notes';
-import { LAUNCHER_STATES, openFilesStorage, setTextScale } from './accessibility-states';
+import { LAUNCHER_STATES, connectMailbox, openFilesStorage, setTextScale } from './accessibility-states';
 import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-notes';
 import {openOwnedPhotoViewer,openPhotoShare} from './helpers/owned-photo';
 import { auditPage, auditTabOrder, format } from './accessibility-audit';
@@ -189,7 +189,7 @@ test.describe('menus and sheets over a scrim own focus', () => {
         await page.getByRole('textbox',{name:'Note',exact:true}).fill('Exact locally created content.');
       }else if(start==='files-storage')await openFilesStorage(page);
       else if(ownedInfo)await openOwnedPhotoViewer(page);
-      else if (start === 'live') { await page.addInitScript(offline); await page.goto('/'); }
+      else if (start === 'live') { await page.addInitScript(offline); await page.goto('/'); if(steps.some(step=>step==='Google & email'))await connectMailbox(page); }
       else await page.goto(`/?mode=mock&start=${start}`);
       for (const step of steps.slice(0, -1)) await page.getByRole('button', { name: step, exact: true }).first().click();
       if(photoShare)await page.getByLabel('Photo actions',{exact:true}).click();

@@ -92,11 +92,11 @@ for(const scenario of ['connected','empty','error','restored'] as const)test(`Sh
   await expect(page.getByText('Shared content is ready for a new email. Connect Gmail to continue.',{exact:true})).toBeVisible();
   await page.evaluate(()=>{const f=(window as any).gm;f.accounts=f.originalAccounts;window.dispatchEvent(new Event('alpha:google-accounts-changed'));});
  }else if(scenario==='error'){
-  await expect(page.getByRole('button',{name:'Retry',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
   await expect(page.getByText('You appear to be offline. Gmail was not reached. Retry when you are connected.',{exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toHaveCount(0);
   await expect(page.getByText('Checking Gmail connection…',{exact:true})).toHaveCount(0);
-  await page.evaluate(()=>(window as any).gm.accountFailure=false);await page.getByRole('button',{name:'Retry',exact:true}).click();
+  await page.evaluate(()=>(window as any).gm.accountFailure=false);await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();
  }
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Waiting shared note');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Waiting shared note\n\nExact retained shared body');

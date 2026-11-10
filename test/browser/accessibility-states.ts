@@ -211,7 +211,7 @@ export const MOCK_STATES: State[] = [
  * or mail exists; the names and subjects are invented. Development server only, because the
  * boundary is replaced by importing the page's own modules.
  */
-async function connectMailbox(page: Page) {
+export async function connectMailbox(page: Page) {
   await page.evaluate(async () => {
     const { connectionController: controller } = await import('/src/runtime/connection-ui.tsx' as string);
     const { secureConnectionStore: store } = await import('/src/runtime/native-connection.ts' as string);
@@ -242,8 +242,9 @@ async function connectMailbox(page: Page) {
       initiateGmail: async () => { throw Error('No live OAuth in fixture'); },
     };
     controller.getCloudClient = () => ({ client, sessionId: 'fixture-cloud', credentialId: 'fixture' } as any);
-    const snapshot = { ...controller.getSnapshot(), cloudAccount: { environment: 'production', userId: 'fixture-owner', sessionId: 'fixture-cloud', credentialId: 'fixture' } } as any;
-    controller.getSnapshot = () => snapshot;
+    const readSnapshot=controller.getSnapshot;let lastSnapshot:ReturnType<typeof readSnapshot>|undefined,snapshot:ReturnType<typeof readSnapshot>;
+    const cloudAccount={environment:'production',userId:'fixture-owner',organizationId:'fixture-org',sessionId:'fixture-cloud',credentialId:'fixture'};
+    controller.getSnapshot=()=>{const current=readSnapshot();if(current!==lastSnapshot){lastSnapshot=current;snapshot={...current,cloudAccount} as any;}return snapshot;};
   });
 }
 const connected = (name: string, steps: Array<string | RegExp> = [], options: { shows?: string; home?: boolean } = {}): State => ({

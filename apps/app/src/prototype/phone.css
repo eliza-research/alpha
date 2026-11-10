@@ -349,6 +349,7 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
    scroll above the dock because the clearance belongs inside the list. */
 html:not(.alpha-landscape) .alpha-phone [data-alpha-layer="drawer"] { padding-bottom:0!important; }
 .alpha-app-drawer [data-installed-apps-scroll] { min-height:0; padding-bottom:var(--alpha-dock-reserve)!important; scroll-padding-bottom:var(--alpha-dock-reserve); }
+.alpha-app-drawer [data-alpha-dialog-toast] { max-height:min(15dvh,112px)!important; }
 .alpha-landscape .alpha-app-drawer [data-installed-apps-scroll] { padding-bottom:16px!important; scroll-padding-bottom:16px; }
 /* Under the resting half sheet Home keeps its layout and gains scroll range: what the sheet
  * covers beyond the reserve Home already leaves. */

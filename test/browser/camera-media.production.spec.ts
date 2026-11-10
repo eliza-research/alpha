@@ -41,7 +41,8 @@ test('a camera capture persists and Ask Alpha attaches it locally without the de
  await expect(page.getByRole('heading',{name:'Today',exact:true})).toBeVisible();
  await page.getByRole('button',{name:/^Photo, /}).click();
 
- await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
+ await page.getByLabel('Photo actions',{exact:true}).click();
+ await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
  // Saved photos are compact chat attachments. Selecting one does not dispatch a question.
  await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
  const savedPreview=page.getByRole('button',{name:'Preview attached photo',exact:true}).getByRole('img',{name:'Captured photo',exact:true});
@@ -65,6 +66,7 @@ test('Files browses real storage: categories, Internal storage and Trash, with n
  await documents.click();await expect(page.getByRole('heading',{name:'Documents',exact:true})).toBeVisible();expect(chooser).toBe(false);
  await page.getByRole('button',{name:'Back',exact:true}).click();
  await page.getByRole('button',{name:'Internal storage',exact:true}).click();
+ await page.getByRole('button',{name:'Files options',exact:true}).click();
  await page.getByRole('button',{name:'New folder',exact:true}).click();
  await page.getByRole('textbox',{name:'Name'}).fill('Taxes');await page.getByRole('button',{name:'Create',exact:true}).click();
  await expect(page.getByRole('button',{name:'Open Taxes',exact:true})).toBeVisible();

@@ -156,14 +156,14 @@ export function GoogleConnectionsPanel(){
  useEffect(()=>{if(!open)return;const accountsChanged=()=>setRevision(value=>value+1);window.addEventListener(GOOGLE_ACCOUNTS_CHANGED,accountsChanged);return()=>window.removeEventListener(GOOGLE_ACCOUNTS_CHANGED,accountsChanged);},[open]);
  useEffect(()=>{
   if(!open)return;
-  const element=panel.current,previous=document.activeElement,phone=document.querySelector<HTMLElement>('.os');
+  const element=panel.current,previous=document.activeElement,phone=document.querySelector<HTMLElement>('.os'),accountReturn=returnToAccount;
   const releaseInert=holdPhoneInert(phone);
   if(phone&&element){const theme=getComputedStyle(phone);for(const token of ['bg','fg','s2','line','mut','acc'])element.style.setProperty(`--connection-${token}`,theme.getPropertyValue(token==='acc'?'--acct':`--${token}`));}
   element?.focus();
   const back=(event:Event)=>{if(document.querySelector('dialog[open]'))return;event.preventDefault();event.stopImmediatePropagation();active.current?.abort();googleConnectionController.close();};
   const keydown=(event:KeyboardEvent)=>{if(event.key==='Escape'){back(event);return;}if(event.key==='Tab'&&element){const items=[...element.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),select:not(:disabled),a[href],summary')];if(event.shiftKey&&document.activeElement===items[0]){event.preventDefault();items.at(-1)?.focus();}else if(!event.shiftKey&&document.activeElement===items.at(-1)){event.preventDefault();items[0]?.focus();}}};
   window.addEventListener('alpha-back',back,true);document.addEventListener('keydown',keydown);
-  return()=>{window.removeEventListener('alpha-back',back,true);document.removeEventListener('keydown',keydown);releaseInert();if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
+  return()=>{window.removeEventListener('alpha-back',back,true);document.removeEventListener('keydown',keydown);releaseInert();if(accountReturn)queueMicrotask(()=>{if(!opened)document.querySelector<HTMLElement>('[data-alpha-account-google]')?.focus();});else if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
  },[open]);
  /** Connect asks once for everything Cloud grants (Gmail read and send, Calendar read and edit), so the agent works on first use.
   * Gmail drafts, archive, trash and read state (gmail.compose/gmail.modify) are not in Cloud's Google scope allowlist yet. */
