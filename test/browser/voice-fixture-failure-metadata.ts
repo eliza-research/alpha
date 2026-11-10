@@ -58,5 +58,8 @@ export async function attachVoiceFailureMetadata(page: Page, info: TestInfo) {
   let metadata: unknown;
   try { metadata = await page.evaluate(voiceFixtureFailureMetadata); }
   catch { metadata = {version: 1, diagnosticCaptureFailed: true}; }
-  if (metadata) await info.attach('voice-fixture-failure-metadata', {body: Buffer.from(JSON.stringify(metadata)), contentType: 'application/json'});
+  if (metadata) {
+    try { await info.attach('voice-fixture-failure-metadata', {body: Buffer.from(JSON.stringify(metadata)), contentType: 'application/json'}); }
+    catch { /* Diagnostics must not add a hook error to the original test failure. */ }
+  }
 }

@@ -101,4 +101,7 @@ test('only unexpected failing live fixtures attach metadata, and capture failure
   assert.equal(attached.length, 1, 'unrelated fixtures do not attach');
   await attachVoiceFailureMetadata({evaluate: () => {throw Error('PRIVATE_CAPTURE_ERROR');}}, {...info, status: 'timedOut'});
   assert.deepEqual(JSON.parse(attached[1][1].body), {version: 1, diagnosticCaptureFailed: true});
+  await assert.doesNotReject(() => attachVoiceFailureMetadata(page, {...info, status: 'failed', attach: async () => {throw Error('attachment unavailable');}}));
+  const circular = {}; circular.self = circular;
+  await assert.doesNotReject(() => attachVoiceFailureMetadata({evaluate: () => Promise.resolve(circular)}, {...info, status: 'failed'}));
 });
