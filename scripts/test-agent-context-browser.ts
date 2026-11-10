@@ -24,7 +24,8 @@ try {
   localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
   const media = { id: 'video-fixture-71', kind: 'video', revision: 'revision-2', width: 640, height: 480, duration: 2, date: 1700000000000, image: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>', path: 'content://PRIVATE_VIDEO_URI_CANARY', privateCaption: 'PRIVATE_VIDEO_CONTENT_CANARY' };
   const drafts = new Map<string, string>();
-  window.Capacitor = { PluginHeaders: [{name:'AlphaNotifications',methods:['status','addListener','removeListener'].map(name=>({name,rtype:'promise'}))},{name:'AlphaVoiceCloud',methods:[{name:'checkPermissions',rtype:'promise'}]},{ name: 'AlphaConnection', methods: ['secureRead','secureCompareExchange','addListener','removeListener'].map(name => ({ name, rtype: 'promise' })) }, { name: 'AlphaPhotos', methods: ['list','read','libraryAccess','addListener','removeListener'].map(name => ({ name, rtype: 'promise' })) }], nativeCallback:()=> 'fixture-listener', nativePromise: async (plugin, method, input) => {
+  window.Capacitor = { PluginHeaders: [{name:'Agent',methods:[{name:'setGoogleAgentAccess',rtype:'promise'}]},{name:'AlphaNotifications',methods:['status','addListener','removeListener'].map(name=>({name,rtype:'promise'}))},{name:'AlphaVoiceCloud',methods:[{name:'checkPermissions',rtype:'promise'}]},{ name: 'AlphaConnection', methods: ['secureRead','secureCompareExchange','addListener','removeListener'].map(name => ({ name, rtype: 'promise' })) }, { name: 'AlphaPhotos', methods: ['list','read','libraryAccess','addListener','removeListener'].map(name => ({ name, rtype: 'promise' })) }], nativeCallback:()=> 'fixture-listener', nativePromise: async (plugin, method, input) => {
+   if(plugin==='Agent'&&method==='setGoogleAgentAccess')return {};
    if(plugin==='AlphaNotifications'&&method==='status')return {permissionGranted:true,appEnabled:true};
    if(plugin==='AlphaNotifications'&&method==='addListener')return {callbackId:'fixture-listener'};
    if(plugin==='AlphaNotifications'&&method==='removeListener')return {};
@@ -39,7 +40,7 @@ try {
    if (plugin !== 'AlphaPhotos') throw Error('Unexpected native access');
    if(method==='addListener')return {callbackId:'fixture-photo-listener'};
    if(method==='removeListener')return {};
-   if(method==='libraryAccess')return {scope:'denied',images:'denied',videos:'denied'};
+   if(method==='libraryAccess')return {scope:'full',images:'full',videos:'full'};
    return method === 'list' ? { items: [media], next: '' } : media;
   }};
  });

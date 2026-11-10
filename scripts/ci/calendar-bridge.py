@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Proposed owning CI check. Source-only draft; not executed or installed."""
+"""Verify the pinned Calendar bridge in the owning Android CI build job."""
 import time
 SCRIPT_ENTRY = time.monotonic()
 CURRENT_DEADLINE = SCRIPT_ENTRY + 20
