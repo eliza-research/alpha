@@ -207,6 +207,13 @@ GraphHopper setup is superseded for production.
    rollout completion only after the operator's real integration checks and the
    owner's Pixel results are recorded.
 
+The Maps-screen safeguards cover its saved-place writes, shares and navigation
+speech. Approved selected-Maps reads into the general assistant remain available.
+That separate assistant path needs provider-aware speech and retention qualification
+under the operator's Google agreement before Google-derived spoken answers or
+persistent assistant memories are accepted for the pilot. The visual Maps checks
+above do not qualify that path.
+
 ## Controlled browser evidence
 
 The production browser regression uses intercepted native HTTP responses, a synthetic
