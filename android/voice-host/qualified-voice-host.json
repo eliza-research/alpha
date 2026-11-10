@@ -42,7 +42,7 @@
       "asrSupported": true,
       "alignment16KiB": true,
       "asrStreamExports": 6,
-      "componentBuild": "Upstream paradee-voice builder (scripts/build-pinned-voice.ts) at pin 3f869454f5 with engine 6337fd4c4b, NDK 28.2.13676358, 2026-11-06 on Linux x86_64 with hash-verified cached models (every model byte identical to the b3eb2bf63b build); not reproduced on a second host. Pins 86a0d19473, c35106fb14 and b25d8aef29 keep the same engine gitlink and change no plugin-local-inference or builder source, so these bytes are carried unchanged."
+      "componentBuild": "Upstream paradee-voice builder (scripts/build-pinned-voice.mjs) at pin 3f869454f5 with engine 6337fd4c4b, NDK 28.2.13676358, 2026-11-06 on Linux x86_64 with hash-verified cached models (every model byte identical to the b3eb2bf63b build); not reproduced on a second host. Pins 86a0d19473, c35106fb14 and b25d8aef29 keep the same engine gitlink and change no plugin-local-inference or builder source, so these bytes are carried unchanged."
     },
     {
       "abi": "x86_64",
@@ -64,7 +64,7 @@
       "asrSupported": true,
       "alignment16KiB": true,
       "asrStreamExports": 6,
-      "componentBuild": "Upstream paradee-voice builder (scripts/build-pinned-voice.ts) at pin 3f869454f5 with engine 6337fd4c4b, NDK 28.2.13676358, 2026-11-06 on Linux x86_64 with hash-verified cached models (every model byte identical to the b3eb2bf63b build); not reproduced on a second host. Pins 86a0d19473, c35106fb14 and b25d8aef29 keep the same engine gitlink and change no plugin-local-inference or builder source, so these bytes are carried unchanged."
+      "componentBuild": "Upstream paradee-voice builder (scripts/build-pinned-voice.mjs) at pin 3f869454f5 with engine 6337fd4c4b, NDK 28.2.13676358, 2026-11-06 on Linux x86_64 with hash-verified cached models (every model byte identical to the b3eb2bf63b build); not reproduced on a second host. Pins 86a0d19473, c35106fb14 and b25d8aef29 keep the same engine gitlink and change no plugin-local-inference or builder source, so these bytes are carried unchanged."
     }
   ],
   "components": [
