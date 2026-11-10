@@ -204,13 +204,19 @@ function screen(maps: MapsProvider, options: { present?: boolean; granted?: bool
  assert.deepEqual(await nav.reroute(), { state: 'navigating', placeName: 'Port Hercule', travelMode: 'drive' });
  assert.deepEqual(maps.calls.at(-1), ['route', PALACE, PORT, 'drive']);
  assert.notEqual(phone.guidance().routeId, before);
- // A failed replan ends guidance on the phone; the agent hears the typed reason.
+ // A failed replan keeps the current guidance and route; the agent still hears the typed reason.
  const failing = provider(), broken = screen(failing), brokenNav = new DeviceMapsNavigation(broken.surface, owner);
  await brokenNav.start({ destination: portRef, travelMode: 'drive' });
  broken.userStarts({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
+ const keptGuidance = broken.guidance(), keptRoute = broken.controller.snapshot().route.value;
  failing.route = async () => { throw new MapsFailure('offline', 'Eliza Cloud Maps is unreachable. Check the connection.'); };
  await failsWith(brokenNav.reroute(), 'MAPS_PROVIDER_NETWORK', /unreachable/);
- assert.equal(broken.surface.guidance(), null);
+ assert.deepEqual(broken.guidance(), keptGuidance, 'failed replanning preserves the active guidance session');
+ const refusedRoute = broken.controller.snapshot().route;
+ assert.equal(refusedRoute.phase, 'ready');
+ assert.deepEqual(refusedRoute.value, keptRoute, 'the previously reviewed route remains available');
+ assert.equal(refusedRoute.error?.code, 'offline');
+ assert.match(refusedRoute.error?.message ?? '', /unreachable/, 'the failure remains visible beside the retained route');
 }
 
 // While a new route is planned, the session is still active: no agent request takes it over, and arrival ends rerouting.
