@@ -1,0 +1,283 @@
+{
+  "schema": "alpha-launcher-ota-dae-qualification/v1",
+  "draft": false,
+  "recordedAtUTC": "2026-11-10T01:35:14.178986+00:00",
+  "status": "SOFTWARE_VERIFIED_DISTRIBUTION_AND_DEVICE_HOLDS_OPEN",
+  "identity": {
+    "appId": "ai.alphacompute.alphaphone",
+    "upstreamPin": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+    "versionCode": 1,
+    "runtimeProfile": "cloud"
+  },
+  "sourceBinding": {
+    "apkBuildCommit": "f452aa42efbce790caf3fb7d986ca2e6c1284650",
+    "validationCommit": "019b28932518646acd555718d25dac3d2278e6f6",
+    "sameProductionInputs": {
+      "apps": "364166f8675d49b3f83c8b9a5fd341e9423dcda6",
+      "android": "1e86830b8102434692252e00698a2686b1320f26",
+      "scripts": "52dab6aababde907f5d667c911ac323afffc76a5",
+      "vendor/eliza": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+      "upstream.lock.json": "6ee74409b452d4cda3627eb929bbcd6b8f648c2c",
+      "app.config.json": "3b7a842cc332f4d06eee0ef4ac3a7c140d8f63da",
+      "package.json": "a7345c6283c2d0e3707033dfedeceaa6dc2fb69d",
+      "package-lock.json": "36bfff881a075f12ea4dad734528af8683d52ec0",
+      "vite.config.ts": "ece966c8b946704b04de2745faaaef3f345c7868",
+      ".github/workflows": "dbe4ed2f1b10f75f7eb786b3148b439111630dc3"
+    },
+    "comparison": "Exact Git object equality for listed production roots/configuration. Follow-up changes are documentation, formal models/refinement fixtures and tests. These APKs were built at f452; they are not relabeled as rebuilt at 019b.",
+    "authoredRepairCommits": [
+      "a0c9cdecdd83e972c6b8031e9a2afa4d9f22fe41",
+      "bd9366be63e0aef3d15a4cf5b7522dcb2d30ba94"
+    ],
+    "trackedBuildInputCount": 4506,
+    "trackedBuildInputsSha256": "239b5c4b3ea8acb94a19abcc4ca264f958754ef07a373907123ccda1ef19b3b5",
+    "buildSourceUnchanged": true,
+    "mainMergeCommit": "0fefcdad3c22df406c03685a8aab53f52153459b",
+    "mainMergeTreeEqualsValidationTree": true
+  },
+  "freshCloudApks": {
+    "status": "passed",
+    "buildReceipt": {
+      "path": "test-results/launcher-ota-dae-cloud-retry-20261110T005407Z/receipt.json",
+      "sha256": "132e2d046f659be391147eab67e9b415b8421d479fb23f2edd556f6d86eb05f0"
+    },
+    "artifactChecks": {
+      "path": "test-results/launcher-ota-dae-cloud-retry-20261110T005407Z/artifact-checks.json",
+      "sha256": "6d560593bf290ac1d9d6593d772032f95c28c03ffecae00fa3e0eaddace9cd6e"
+    },
+    "apkManifestSha256": "48bb1558803dd5322dc6f591fbfbdb561c5cd4560feae39a9f8b6cc99ab40ed5",
+    "mockFree": true,
+    "allowUnpackagedRuntime": false,
+    "actualZipRuntimeAndNoticesMatch": true,
+    "runtimePackaging": "PACKAGED",
+    "runtimeExecuted": false,
+    "releaseApksSigned": false,
+    "releaseDistributionQualified": false,
+    "qualificationBoundary": "Component runtime packaging admission is not whole-release admission. All four final artifact checks are distributionQualified:false; unsigned releases and missing exact-APK voice remain blocking.",
+    "updateChannel": {
+      "kind": "public",
+      "manifestUrlSha256": "8e54b15a945c0fe1fd18bca9b4f4389249c5260bd72c912bccb6cd98e10308db"
+    },
+    "apks": [
+      {
+        "file": "standalone-debug.apk",
+        "variant": "standalone",
+        "mode": "debug",
+        "bytes": 233804576,
+        "sha256": "731c1b2751c88e581472078b9ec0d44da152c0bb93abb5105dfde1007a4a9568",
+        "signed": true,
+        "distributionQualified": false
+      },
+      {
+        "file": "standalone-release-unsigned.apk",
+        "variant": "standalone",
+        "mode": "release",
+        "bytes": 167050549,
+        "sha256": "8bb8b617534db3e9bf52c2988cf18197ae23fb0b4877e4b416404fe2bf9aa983",
+        "signed": false,
+        "distributionQualified": false
+      },
+      {
+        "file": "launcher-debug.apk",
+        "variant": "launcher",
+        "mode": "debug",
+        "bytes": 233811360,
+        "sha256": "a4077d108f8bb6671a06918e07982c602b9ea1c118386478c1acd1de3b5f70ea",
+        "signed": true,
+        "distributionQualified": false
+      },
+      {
+        "file": "launcher-release-unsigned.apk",
+        "variant": "launcher",
+        "mode": "release",
+        "bytes": 167055161,
+        "sha256": "25d2e47040250c631f03d8141cbede3ae757a9fa2af37211cee5fc20147c5554",
+        "signed": false,
+        "distributionQualified": false
+      }
+    ],
+    "producerSha256": {
+      "alpha-mobile-build.json": "8893b5600ea2528f8a3fca3e4010eebfdff8ae42d8900ec8070b084fd4eeefaa",
+      "agent-bundle.js": "ad70e0338161a569ab4c67d226f08d4160a2241146b1c2e80663f0e5925e4c7b",
+      "plugins-manifest.json": "23523db26820a654291285392eaf679ce76e8c60b8dd7bf9e44b51aa4ad697c6",
+      "manifest.json": "d5b83677ad5757cd200f29d58b5f03bb81442aeb56966a65c701c68a94b9cd2e",
+      "google-host.mjs": "b9ce93ddbbf3c438f4db426cbe603720f6f6d70156583866c0604b5a6a452537",
+      "alpha-runtime-profile.json": "db1cd37a86c7ca014e15cba58012fb0f1877314639c1aa206782e4d03389e522"
+    },
+    "generatedNoticesSha256": {
+      "THIRD_PARTY_NOTICES.txt": "4177ba0887869e1709c7bf9cbb89e4de41547ebb5d61a7174335d6910df9e77c",
+      "third-party-notices.json": "ea829086b6731aecf200565ebacc2251faeff393e34a47cfc5ac58fa3563baf3"
+    },
+    "noticesRestored": true,
+    "priorFailedAttemptRetained": true
+  },
+  "ownedSourceClone": {
+    "receipt": {
+      "path": "test-results/launcher-ota-dae-clone-20261110T004052Z/receipt.json",
+      "sha256": "8ea04ef4acb10e32be660cef264ce7bb309f9f5e312a9e8622bba5e88c265d38"
+    },
+    "status": "passed",
+    "sourceInventorySha256": "66fbe622d7a882ac4b683834a0dbd6788796a119fae977ca6713da9a67f5ab1e",
+    "workerInventorySha256": "aa2d3b6ecb9e7a61ec537d10ad6e95ca771aa6940afa95cdaca1d9efb375e9d0",
+    "foreignSourceUnchanged": true,
+    "sharedForeignRegularInodes": 0,
+    "boundary": "Byte-preserving private clone only. Location-bound mobile producer receipts were rebuilt before the fresh Cloud APK build; clone alone grants no build or device qualification."
+  },
+  "currentChecks": {
+    "targetedTests": [
+      {
+        "check": "Prior failure classes: docs/signing fixtures/workflow/resident admission",
+        "passed": 34,
+        "failed": 0,
+        "skipped": 0,
+        "path": "/tmp/alpha-ota-dae-merge-target-fast.log",
+        "sha256": "a2b87967096d0dbd9324eeb68ab8e794e9477e200d43c4e2efa6d2d97fc185b1"
+      },
+      {
+        "check": "Current service refinement suite",
+        "passed": 1,
+        "failed": 0,
+        "skipped": 0,
+        "path": "/tmp/alpha-ota-dae-merge-services.log",
+        "sha256": "1b8a5d6eccc98911d9ecc3b25c0000d0e9e586cf03ff6efff6a048ad15eb4283"
+      },
+      {
+        "check": "Piped/listener contracts",
+        "passed": 4,
+        "failed": 0,
+        "skipped": 0,
+        "path": "/tmp/alpha-ota-dae-merge-native-targets.log",
+        "sha256": "98cdf49d53fc77136b80df0af30d0e75bb84cb3d395c124b899ce5a84643ca29"
+      }
+    ],
+    "servicesModelsCovered": 50,
+    "deletionReset": {
+      "deletionScenarios": 23,
+      "resetCampaigns": 20,
+      "path": "/tmp/alpha-ota-dae-merge-deletion-reset.log",
+      "sha256": "50d6625e4c10caf6702483e5769b9c86658486dc9156627f35761df4e97b9405"
+    },
+    "nativePipedCapture": {
+      "checks": [
+        "typecheck",
+        "scenarios",
+        "simulation",
+        "TLC"
+      ],
+      "path": "/tmp/alpha-ota-dae-merge-piped-proof.log",
+      "sha256": "aa4981f994b2a1fa99d4aac9643f40ab9eff1e5b0e6be6db48e542976db7aab0",
+      "modelGitBlob": "bc169c647b92e0889fcfa5a8ba413f8f087862fc",
+      "manifestGitBlob": "d3992d626082340532cca49e697a0ffc948d3cb9",
+      "scope": "Model safety/scenario/simulation and exhaustive finite TLC at recorded bounds; no temporal fairness or device claim."
+    },
+    "calendar": {
+      "receipt": {
+        "path": "test-results/quint-ota-calendar-main-f452aa42/receipt.json",
+        "sha256": "809bdcdd87bdf929602d7a9f300d27fe5fd2ccd9289b336a3ad52f40dfa3ea97"
+      },
+      "modelSha256": "a3fc87d28e7ac7c00c777a2cbdd87fbfc4ea1c5be48cbd63659c13a121343212",
+      "invariant": "safety, including ReviewBlocksConsume",
+      "maxTransitions": 6,
+      "backend": "Apalache 0.62.4",
+      "sourceHashesStable": true,
+      "scope": "Bounded symbolic safety, not temporal liveness or device acceptance."
+    },
+    "fullVerification": {
+      "codeCommit": "019b28932518646acd555718d25dac3d2278e6f6",
+      "tree": "78e3bc7c53b3940cf3d3bf68235e9da174e27ed0",
+      "upstreamPin": "dae11e0b7e3f40e5434fea21fd7c127e416f7016",
+      "packageName": "ai.alphacompute.alphaphone",
+      "exitCode": 0,
+      "elapsedSeconds": 1414.018049955368,
+      "statusBefore": "",
+      "statusAfter": "",
+      "headAfter": "019b28932518646acd555718d25dac3d2278e6f6",
+      "sourceUnchanged": true,
+      "preparedSdkRequired": true,
+      "pinnedBunFollowupEnabled": true,
+      "log": "/tmp/alpha-ota-dae-full-verify-019b289325.log",
+      "logSha256": "99f766e8aafb95da0182d5f542f711284b93fa7445dffc34516bc0d1fa285b65",
+      "status": "passed",
+      "resultSha256": "3e2fcf85240c465bb94d2199f2f14e83cb56fe6f99a5e38a7d12f6ecb89077cf",
+      "quintChecksPassed": 741,
+      "counterexampleCanary": "passed",
+      "typecheck": "passed",
+      "node": {
+        "tests": 5069,
+        "passed": 5065,
+        "failed": 0,
+        "cancelled": 0,
+        "skipped": 4
+      },
+      "skips": [
+        "\ufe63 exact pinned source produces a verified overlay and rejects postimage mutation (0.064167ms) # Set ALPHA_SYSTEMUI_TEST_SOURCE to a pinned SystemUI checkout; no CI lane checks one out, so the local AOSP image build owns this test",
+        "\ufe63 the formal-only SDK advance admits only the exact reviewed and current manifest digests (0.052083ms) # SKIP",
+        "\ufe63 emulator microphone preflight never injects or reads audio unsafely (0.090333ms) # Python grpcio and grpcio-tools are not installed",
+        "\ufe63 the selected NDK normal strip produces both recorded packaged STL libraries (0.063084ms) # pinned Linux Android NDK not installed"
+      ],
+      "notesQuery": "passed, synthetic scenarios using real file CAS",
+      "productionBundleAudit": "passed; testMocks=false",
+      "skipExplanations": {
+        "formalOnlySdkAdvance": "The test applies only to the exact earlier 5500 SDK pin. Current DAE is outside its admitted source scope; the test is skipped by its explicit pin predicate.",
+        "systemUi": "Requires the exact pinned external SystemUI checkout and is owned by local AOSP image acceptance.",
+        "microphone": "Python grpcio and grpcio-tools are absent.",
+        "ndkStrip": "The pinned Linux Android NDK is absent on this macOS host."
+      }
+    },
+    "scope": "Full verification passed at 019b with unchanged source and actual prepared SDK/pinned Bun required. Model and synthetic/host checks do not establish signed production release or phone/image acceptance.",
+    "unchangedOtaModels": {
+      "alphaModels": 8,
+      "sdkFiles": 5,
+      "exactBytesUnchanged": true,
+      "comparisonSha256": "b3918e53a6fc73b7b3a06c4209d9dc9e10db8a19b7a92975f396bbb8a776cc0e",
+      "scope": "Previously checked model theorems remain facts about identical model bytes. Historical source labels and all application/device qualification boundaries remain unchanged."
+    }
+  },
+  "historicalEvidenceBoundary": {
+    "comparisonReceipt": {
+      "path": "/tmp/alpha-ota-current-main-source-comparison-f452aa42.json",
+      "sha256": "b3918e53a6fc73b7b3a06c4209d9dc9e10db8a19b7a92975f396bbb8a776cc0e"
+    },
+    "unchangedAlphaUpdaterModelFiles": 8,
+    "unchangedSharedUpdaterFeatureFiles": 5,
+    "sharedGateSha256": "89dc78042b8808e4bd264732ac06bb4fb43a3da35d397a5f126c73896f23eca5",
+    "historicalCodeCommit": "17dacc127beb7febf5520b078f4d647f3ed9a755",
+    "historicalPin": "9add52f6b83efa77241fb72ae769729121944cac",
+    "scope": "Prior model results describe identical abstract bytes only. Old full-verification, APK, video and API36 installer labels stay historical; no system, signing, voice, image or installed-device qualification transfers."
+  },
+  "holds": {
+    "nativeProfile": {
+      "freshInputResult": {
+        "path": "/tmp/alpha-ota-dae-native-input-results.json",
+        "sha256": "062c1ded4a49fcde913fcce4014e0eebaf7fa077552fc0b55052f33452d71473"
+      },
+      "buildLocalExit": 2,
+      "plainBuildExit": 2,
+      "reason": "Qualified source-matched on-device voice/JNI/model outputs missing; gate refuses admission."
+    },
+    "productionApkSigning": "Not performed; release APKs are unsigned. Choose/admit the production family and reviewed version floor.",
+    "exactSignedApkVoice": "Missing. Re-signing changes APK digests and requires genuine exact-signed-APK qualification.",
+    "cloudRegistration": "Current package/callback, signing-certificate app links, credentials and provider/entitlement behavior require live host/provider verification.",
+    "publication": "No production app-stable feed published by this work; qualified APK-first delivery and anonymous readback remain required.",
+    "phone": "No installation/self-replacement, retained credentials/drafts/HOME/runtime readback, interruption/reboot or physical acceptance on either fresh image-preinstalled or sideloaded launcher baseline.",
+    "image": "Platform/release/AVB/OTA identity inputs and image/boot acceptance remain open. APK self-update does not establish OS-partition OTA or independent launcher crash recovery."
+  },
+  "publicEvidence": {
+    "release": "https://github.com/eliza-research/alphaphone/releases/tag/pr859-evidence-019b28932518",
+    "scope": "Evidence-only prerelease. Never app-stable or a production update. No APKs are uploaded.",
+    "archive": {
+      "url": "https://github.com/eliza-research/alphaphone/releases/download/pr859-evidence-019b28932518/alpha-pr859-019b28932518-software-evidence.tar.gz",
+      "bytes": 793722,
+      "sha256": "1aa204598050d954aa9d6cc73234e3dcc926f996040565033c55aa28afc11b82",
+      "files": 29
+    },
+    "fullVerificationResult": {
+      "url": "https://github.com/eliza-research/alphaphone/releases/download/pr859-evidence-019b28932518/alpha-pr859-019b28932518-full-verify-result.json",
+      "sha256": "3e2fcf85240c465bb94d2199f2f14e83cb56fe6f99a5e38a7d12f6ecb89077cf"
+    },
+    "cloudArtifactChecks": {
+      "url": "https://github.com/eliza-research/alphaphone/releases/download/pr859-evidence-019b28932518/alpha-pr859-019b28932518-cloud-artifact-checks.json",
+      "sha256": "6d560593bf290ac1d9d6593d772032f95c28c03ffecae00fa3e0eaddace9cd6e"
+    }
+  }
+}

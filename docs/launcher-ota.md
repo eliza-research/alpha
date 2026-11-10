@@ -32,18 +32,13 @@ and then 15 minutes. One owner runs at a time. Backgrounding invalidates pending
 renderer reads; disposal cancels its timer. This is foreground launcher upkeep,
 not an OS background scheduler or an independent recovery supervisor.
 
-The shared scheduler and mounted update gate are implemented in
-[Eliza PR 39166](https://github.com/elizaOS/eliza/pull/39166). The original OTA branch pinned the
-reviewed, source-identical commit `099e2d27ad7268fac0832c4a7e84cc707d2cf03e`; the
-[source comparison receipt](evidence/launcher-ota-upstream-source-20261109.json)
-and [Cloud APK build receipt](evidence/launcher-ota-cloud-apk-build-e359d8d9-20261109.json)
-remain historical evidence: the APK receipt names product commit `e359d8d928`
-and upstream `b1817660a0`, while the source comparison names `099e2d27ad`.
-Neither describes the integrated package identity. The integrated
-Alpha Compute branch pins merged upstream `dae11e0b7e3f40e5434fea21fd7c127e416f7016`
-and consumes the reviewed scheduler directly. The superseded client update patch
-has been removed. Earlier build evidence does
-not transfer native, APK or device qualification to this integration.
+The shared scheduler and mounted update gate were reviewed in
+[Eliza PR 39166](https://github.com/elizaOS/eliza/pull/39166). The current
+Alpha Compute source pins merged upstream
+`dae11e0b7e3f40e5434fea21fd7c127e416f7016` and consumes that behavior directly.
+The earlier source-comparison and APK records retain their historical scope;
+they do not qualify the current package identity. Current software evidence is
+recorded separately below.
 
 Automatic installation requires Android 12/API 31 or newer and Android's existing
 **Install unknown apps → Alpha Phone** permission. Provision that permission once
@@ -187,6 +182,16 @@ application's 2 GiB update limit; native speech releases use the admitted local
 delivery path until a native producer bridge is separately qualified.
 
 ## Acceptance on the phone host
+
+The [current DAE software qualification](evidence/launcher-ota-dae-qualification-20261110.json)
+records four freshly packaged Cloud APKs for `ai.alphacompute.alphaphone` at
+`f452aa42` and the passing full repository run at `019b289325`. The production
+input trees match exactly. The full run reports 5,065 passed tests, zero failures,
+four explicit environment/applicability skips and all 741 model checks passed.
+Release APKs are unsigned; all four APKs are non-distributable. Signing,
+exact-APK voice, public feed delivery and phone/image acceptance remain open. Start both deployment
+surfaces with a fresh baseline of the new package; an old-namespace installation
+cannot be updated into it.
 
 The historical [November 9 software verification](evidence/launcher-ota-verification-20261109.json)
 records consumer `17dacc127beb7febf5520b078f4d647f3ed9a755` with SDK
