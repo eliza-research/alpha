@@ -250,3 +250,9 @@ test('Home hides only a fresh complete empty unified snapshot',async()=>{
   assert.ok(f.calls.every(call=>call.method==='GET'));
  }finally{app.close();await f.close();}
 });
+
+// The runner stores the one-off snooze in firedAt without rewriting the recurrence.
+test('scheduled snooze displays the acknowledged local time and preserves its cron',async()=>{
+ const until='2026-11-10T10:00:00.000Z';const snoozed={...schedule,trigger:{kind:'cron',expression:'0 8 * * *',tz:'owner_local'},state:{status:'scheduled',firedAt:until,lastDecisionLog:`snoozed until ${until} (ladder reset)`}};
+ const f=await fixture(call=>call.path.startsWith('/api/lifeops/scheduled-tasks')?{tasks:[snoozed]}:read(call));try{const row=(await f.client.list(signal())).rows.find(row=>row.kind==='schedule');assert.equal(row.status,'snoozed');assert.equal(row.schedule,'Snoozed until '+protocol.automationWhen(until));assert.deepEqual(row.record.trigger,snoozed.trigger);assert.equal(f.calls.some(call=>call.method!=='GET'),false);}finally{await f.close();}
+});

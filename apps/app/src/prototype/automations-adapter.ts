@@ -208,7 +208,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
     const trigger=scheduleClock&&(expression!==workflowClockExpression(scheduleClock.time,scheduleClock.days)||scheduled.record.trigger.tz!==timeZone())?{kind:'cron' as const,expression,tz:timeZone()}:undefined;
     ask('Save schedule',scheduled,(client,signal)=>client.editSchedule(scheduled.id,instructions,trigger,signal));scheduleDraft=null;publish();},
    locked:selectedLocked||formLocked,allowAnother:()=>void allowAnother(lockId),
-   review:!!review,reviewLabel:review?.label||'',reviewPrompt:`${review?.label||''} on the currently connected agent? The agent’s existing permissions and scheduling rules still apply.`,reviewDetails:detail?.kind==='reminder'?[detail.title,detail.description,detail.schedule].filter(Boolean).join('\n'):'',reviewConfirmLabel:`Confirm ${review?.label||''}`,confirm:()=>{const selected=review;if(selected){review=null;void work(selected.run,selected.key);}},cancelReview:()=>{review=null;publish();},
+   review:!!review,reviewLabel:review?.label||'',reviewPrompt:`${review?.label||''}?`,reviewDetails:detail?.kind==='reminder'?[detail.title,detail.description,detail.schedule].filter(Boolean).join('\n'):'',reviewConfirmLabel:`Confirm ${review?.label||''}`,confirm:()=>{const selected=review;if(selected){review=null;void work(selected.run,selected.key);}},cancelReview:()=>{review=null;publish();},
   }};
  };
  const mount=p.componentDidMount,unmount=p.componentWillUnmount;

@@ -1,3 +1,4 @@
+import {browserPhotoLibrary,browserPhotoFileEntries} from '../prototype/browser-camera';
 import { createBrowserFiles } from '../../../../.eliza/client-features/plugins/plugin-files/src/browser/files.ts';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { openSelectedDocumentViewer } from './selected-document-viewer';
@@ -30,8 +31,13 @@ export class BrowserFiles extends SharedFiles {
  async saveWorkflowAttachment(...args:Parameters<InstanceType<typeof SharedFiles>['saveWorkflowAttachment']>){const value=await super.saveWorkflowAttachment(...args);this.storageChanged();return value;}
  storageState(){return this.volume.run('storageState',{});}
  storageRequestAccess(){return this.volume.run('storageRequestAccess',{});}
- storageList(input:{path?:string}){return this.volume.run('storageList',input);}
- storageCategory(input:{category:string;countOnly?:boolean}){return this.volume.run('storageCategory',input);}
+ async storageList(input:{path?:string}){const result=await this.volume.run('storageList',input);if(input.path==='Photos/Images'||input.path==='Photos/Videos'){const media=(await browserPhotoFileEntries()).filter(row=>row.path.startsWith(input.path+'/'));return {...result,status:'ready',entries:[...(Array.isArray(result.entries)?result.entries:[]),...media]};}return result;}
+ async storageCategory(input:{category:string;countOnly?:boolean}){
+  const result=await this.volume.run('storageCategory',input);
+  if(result.status!=='ready'||!['images','videos'].includes(input.category))return result;
+  const media=(await browserPhotoFileEntries()).filter(row=>row.mimeType.startsWith(input.category==='images'?'image/':'video/'));
+  return input.countOnly?{...result,count:Number(result.count||0)+media.length}:{...result,entries:[...(Array.isArray(result.entries)?result.entries:[]),...media]};
+ }
  storageQuery(input:Record<string,unknown>){return this.volume.run('storageQuery',input);}
  storageReviewedIdentities(input:{paths:string[]}){return this.volume.run('storageReviewedIdentities',input);}
  storageTransfer(input:{paths:string[];dest:string;copy?:boolean;reviewed?:string[]}){return this.volume.run('storageTransfer',input);}
@@ -42,7 +48,10 @@ export class BrowserFiles extends SharedFiles {
  storageRestore(input:{ids:string[]}){return this.volume.run('storageRestore',input);}
  storageEmptyTrash(input:{ids?:string[];confirmed?:boolean}){return this.volume.run('storageEmptyTrash',input);}
  storageShare(input:{paths:string[]}){return this.volume.run('storageShare',input);}
- storageSelect(input:{path:string}){return this.volume.run('storageSelect',input);}
+ async storageSelect(input:{path:string}){
+  if(input.path.startsWith('Photos/')){const existing=await this.volume.run('storageSelect',input);if(existing.status==='selected')return existing;const id=decodeURIComponent(input.path.split('/').slice(2).join('/')),row=await browserPhotoLibrary.read({id});if(row.trashed)throw Error('Photo is in Recently deleted.');return {status:'selected',action:'photos',selectionId:'browser-photo:'+id};}
+  return this.volume.run('storageSelect',input);
+ }
  storageOpen(input:{path:string}){return this.volume.run('storageOpen',input);}
  storageWatch(){return this.volume.run('storageWatch',{});}
  storageUnwatch(){return this.volume.run('storageUnwatch',{});}

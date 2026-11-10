@@ -202,6 +202,15 @@ async function saveVideoCopy(input:{id:string;revision:string;operationId:string
   return await transaction<EditResult>('readwrite',(store,set,fail)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord;if(record.status!=='saving'){set(outcome(record));return;}const original=store.get(input.id);original.onsuccess=()=>{const row=original.result as Row|undefined;if(signal.aborted||!row||row.trashed||row.mutationRevision!==input.revision){record.status='failed';store.put(record);set(outcome(record));return;}try{store.add({id:record.copyId,kind:'video',...rendered,date:Date.now(),revision:revision(),mutationRevision:revision(),favorite:false,trashed:false});record.status='saved';store.put(record);set(outcome(record));}catch(error){fail(error instanceof Error?error:Error('Video copy could not be saved.'));}};};});
  }catch(error){await transaction<void>('readwrite',(store,set)=>{const request=store.get(key);request.onsuccess=()=>{const record=request.result as EditRecord;if(record.status==='saving'){record.status='failed';store.put(record);}set(undefined);};});throw error;}
 }
+ // File categories reference the same saved media; no second copy is created.
+export async function browserPhotoFileEntries(){return transaction<{path:string;name:string;directory:boolean;mimeType:string;size:number;modified:number}[]>('readonly',(store,set)=>{
+  const entries:{path:string;name:string;directory:boolean;mimeType:string;size:number;modified:number}[]=[];const request=store.openCursor();
+  request.onsuccess=()=>{const cursor=request.result;if(!cursor){set(entries);return;}const row=cursor.value as Row;
+   if(!row.trashed&&(row.kind==='image'||row.kind==='video')){const source=row.path||row.image,mimeType=/^data:([^;,]+)/.exec(source)?.[1]|| (row.kind==='video'?'video/webm':'image/jpeg'),encoded=source.includes(';base64,')?source.slice(source.indexOf(',')+1):'',size=encoded?Math.floor(encoded.length*3/4)-(encoded.endsWith('==')?2:encoded.endsWith('=')?1:0):0,extension=mimeType==='image/png'?'png':mimeType==='video/mp4'?'mp4':row.kind==='video'?'webm':'jpg';entries.push({path:'Photos/'+(row.kind==='video'?'Videos/':'Images/')+encodeURIComponent(row.id),name:`${row.kind==='video'?'Video':'Photo'} ${new Date(row.date).toLocaleString()}.${extension}`,directory:false,mimeType,size,modified:row.date});}
+   cursor.continue();
+  };
+ });}
+
 export const browserPhotoLibrary={
  saveVideoCopy,
  beginEdit:beginPhotoEdit,previewEdit:previewPhotoEdit,saveEdit:savePhotoEdit,editResult:resultPhotoEdit,cancelEdit:cancelPhotoEdit,

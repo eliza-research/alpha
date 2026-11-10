@@ -167,6 +167,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     definition.back = (st: Bag, api: Bag) => { if (st.open === marker) { clear(); api.set({ open: null }); return true; } return back?.(st, api); };
   }
   async function accept(module: string, result: NativeResult, api: Bag, recent: {kind:'selected'}|{kind:'tree';treeId:string}|false = {kind:'selected'}) {
+    if (!Capacitor.isNativePlatform()&&result.status==='selected'&&result.action==='photos'&&result.selectionId?.startsWith('browser-photo:')) { clear();api.open('photos',{open:'native-camera-'+result.selectionId.slice(14)});return; }
     if (result.status !== 'selected' || !result.selectionId) return;
     clear();
     if (recent) for (const evicted of filesIndex.record({ ...recent, name: result.name || 'Selected document', mimeType: result.mimeType || 'application/octet-stream', selectionId: result.selectionId })) if (evicted !== result.selectionId) release(evicted);
@@ -196,5 +197,15 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     menuFocus:()=>document.querySelector<HTMLElement>('[data-alpha-subview="files-folder"] button[aria-label="New folder"], [data-alpha-subview="files-folder"] button[aria-label="Sort files"]'),
     forgetSelected:selectionId=>DailyApps.forgetSelected({selectionId}),
   });
+  const renderFiles=views.files.render;
+  views.files.render=(state:Bag,api:Bag)=>{
+    const out=renderFiles(state,api),items=out.fd?.items;
+    if(!Capacitor.isNativePlatform()&&Array.isArray(items)&&items.length&&items.every((row:Bag)=>{try{return /^Photos\/(Images|Videos)\//.test(JSON.parse(row.id)[1]);}catch{return false;}})){
+      out.toolbar.canCreate=false;
+      out.fd.menuRows=out.fd.menuRows.filter((row:Bag)=>row.id!=='select');
+      for(const row of items){row.down=row.up=row.cancel=row.context=()=>{};row.selOn=row.selOff=false;}
+    }
+    return out;
+  };
   return accept;
 }

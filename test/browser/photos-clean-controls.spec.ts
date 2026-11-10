@@ -31,7 +31,8 @@ test('Camera cover, menu selection, info swipe and photo chat share use the save
  await page.mouse.move(box.x+box.width/2,box.y+15);await page.mouse.down();
  await page.mouse.move(box.x+box.width/2,box.y+135,{steps:8});await page.mouse.up();
  await expect(dialog).toHaveCount(0);
- await page.getByRole('button',{name:'Ask Alpha about this photo',exact:true}).click();
+ await page.getByLabel('Photo actions',{exact:true}).click();
+ await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
  await expect(page.getByAltText('Captured photo')).toBeVisible();
  await page.getByRole('textbox',{name:'Message Alpha',exact:true}).fill('Keep this draft');
