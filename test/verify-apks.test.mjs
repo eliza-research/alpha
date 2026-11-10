@@ -340,13 +340,13 @@ test("APK voice admission requires the complete recorded bundle and every record
 test('merged-manifest check keeps launcher-only permissions and components out of standalone', () => {
   // Stand-ins for aapt's merged xmltree: the launcher carries every launcher-only entry, standalone none.
   const identity = {appId: 'ai.alphacompute.alphaphone'};
-  const launcherOnly = ['READ_CONTACTS', 'READ_SMS', 'SEND_SMS', 'CALL_PHONE', 'READ_PHONE_STATE', 'EXPAND_STATUS_BAR', 'RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH', 'READ_CALL_LOG']
-    .map(name => `android.permission.${name}`)
-    .concat(['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'].map(name => `ai.alphacompute.alphaphone.${name}`));
+  const launcherOnly = ['READ_CONTACTS', 'READ_SMS', 'SEND_SMS', 'CALL_PHONE', 'READ_PHONE_STATE', 'EXPAND_STATUS_BAR', 'RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH', 'READ_CALL_LOG', 'WRITE_CONTACTS']
+    .map(name => `android.permission.${name}`).concat('com.android.voicemail.permission.ADD_VOICEMAIL')
+    .concat(['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity', 'AlphaVoicemailService', 'AlphaVoicemailReceiver'].map(name => `ai.alphacompute.alphaphone.${name}`));
   const apk = (home, entries) => () => ({packageName: identity.appId, home, launcher: true, webPayload: true, badging: '', xml: ['android.permission.CAMERA', ...entries].map(name => `A: android:name="${name}"`).join('\n')});
   assert.doesNotThrow(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly)));
   assert.doesNotThrow(() => validateApk('standalone.apk', identity, false, apk(false, [])));
-  for (const entry of ['android.permission.READ_PHONE_STATE', 'android.permission.EXPAND_STATUS_BAR', 'ai.alphacompute.alphaphone.AlphaSmsSendReceiver']) {
+  for (const entry of ['android.permission.READ_PHONE_STATE', 'android.permission.EXPAND_STATUS_BAR', 'ai.alphacompute.alphaphone.AlphaSmsSendReceiver', 'android.permission.WRITE_CONTACTS', 'com.android.voicemail.permission.ADD_VOICEMAIL', 'ai.alphacompute.alphaphone.AlphaVoicemailService']) {
     const name = entry.split('.').at(-1);
     assert.throws(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly.filter(other => other !== entry))), new RegExp(`Invalid.*${name}.*launcher\\.apk`));
     assert.throws(() => validateApk('standalone.apk', identity, false, apk(false, [entry])), new RegExp(`Invalid.*${name}.*standalone\\.apk`));

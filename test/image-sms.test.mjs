@@ -113,7 +113,8 @@ test('a reviewed MMS carries the picked pictures, keeps its operation ID when un
   pending[1].resolve({status:'submitted'});await tick();await tick();assert.match(model().nativeNotice,/submitted/);
   mmsUpdated('someone-else');await tick();assert.equal(reads.length,0,'another operation is not read');
   mmsUpdated(calls[0].operationId);await tick();await tick();assert.equal(reads.length,1);assert.equal(reads[0].review,calls[0].review,'the result is bound to the reviewed content');assert.match(model().nativeNotice,/carrier accepted the MMS; delivery is not confirmed/);
-  model().nativeAttachments[0].remove();assert.deepEqual(model().nativeAttachments.map(row=>row.label),['picture-2.png · 1 KB']);model().nativeSendMms();await tick();await tick();assert.notEqual(calls[2].operationId,calls[0].operationId,'a changed draft is a new review');
+  assert.equal(model().nativeAttachments.length,0,'a sent MMS clears the composer and its pictures');assert.equal(model().nativeBody,'');
+  model().nativeOnBody({target:{value:'one more'}});model().nativeAttach();inputs[2].files=[file('image/png',[4,5])];await inputs[2].onchange();assert.deepEqual(model().nativeAttachments.map(row=>row.label),['picture-1.png · 1 KB']);model().nativeSendMms();await tick();await tick();assert.notEqual(calls[2].operationId,calls[0].operationId,'a changed draft is a new review');
   pending[2].resolve({status:'cancelled'});await tick();await tick();assert.match(model().nativeNotice,/Cancelled — MMS not sent/);
   model().nativeClear();assert.equal(model().nativeAttachments.length,0);
   owner.view='home';owner.componentDidUpdate();owner.componentWillUnmount();
@@ -136,7 +137,8 @@ test('direct SMS and the handoff go through the shared SMS review',async()=>{
   model().nativeSend();await settle();
   assert.equal(sends.length,1,'a pasted formatted number sends');assert.deepEqual(sends[0].review,{recipients:['+14155550100'],body:'hello',subscriptionId:3},'normalized, deduped, and the only active SIM is used');
   smsUpdated(sends[0].operationId);await settle();assert.equal(reads.length,1);assert.equal(reads[0].review,sends[0].review,'the read-back is bound to the reviewed text');
-  model().nativeHandoff();await settle();assert.deepEqual(handoffs,[{recipients:['+14155550100'],body:'hello',subscriptionId:null}],'a handoff carries no SIM');
+  assert.equal(model().nativeBody,'','a sent text clears the composer');
+  model().nativeOnBody({target:{value:'hello'}});model().nativeHandoff();await settle();assert.deepEqual(handoffs,[{recipients:['+14155550100'],body:'hello',subscriptionId:null}],'a handoff carries no SIM');
   model().nativeOnRecipients({target:{value:'+1 415 555 0100, 911a'}});model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Check the phone numbers.');
   model().nativeHandoff();await settle();assert.equal(handoffs.length,1,'an invalid handoff is refused before the messaging app opens');
   model().nativeOnRecipients({target:{value:'4155550100'}});sims=[{id:3,slot:0,displayName:'SIM'},{id:4,slot:1,displayName:'Work'}];await model().nativeRefresh();await settle();

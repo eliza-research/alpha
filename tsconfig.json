@@ -109,6 +109,9 @@
       ],
       "@elizaos/contracts/phone-dial": [
         "./.eliza/client-features/packages/contracts/src/phone-dial.ts"
+      ],
+      "@elizaos/contracts/telephony-actions": [
+        "./.eliza/client-features/packages/contracts/src/telephony-actions.ts"
       ]
     }
   },

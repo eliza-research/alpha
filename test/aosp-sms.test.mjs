@@ -166,14 +166,16 @@ test("native boundary: image-only plugin methods, immutable explicit callbacks, 
   assert.match(alpha, /alias = "sms", strings = \{ Manifest\.permission\.READ_SMS \}/);
   assert.match(alpha, /alias = "sendSms", strings = \{ Manifest\.permission\.SEND_SMS \}/);
   assert.match(alpha, /public class AlphaTelephonyPlugin extends TelephonyPlugin/);
-  assert.match(plugin, /if \(!current\(access, cancel, alias\)\) throw new SecurityException\(\);/);
-  assert.match(plugin, /if \(fenceResult && !current\(access, cancel, alias\)\) call\.reject\(noun \+ " access changed/);
+  assert.match(plugin, /if \(!current\(access, cancel, granted\)\) throw new SecurityException\(\);/);
+  assert.match(plugin, /if \(fenceResult && !current\(access, cancel, granted\)\) call\.reject\(noun \+ " access changed/);
   assert.match(plugin, /fencedRead\(PluginCall call, String alias, String noun, Read read\) \{ fenced\(call, alias, noun, read, true\); \}/, "every read is re-fenced before its result is published");
-  assert.match(plugin, /return !cancel\.isCanceled\(\) && access == generation\.get\(\) && unlockedForeground\(\) && admitted\(\) && getPermissionState\(alias\) == PermissionState\.GRANTED;/);
+  assert.match(plugin, /return !cancel\.isCanceled\(\) && access == generation\.get\(\) && unlockedForeground\(\) && admitted\(\) && granted\.getAsBoolean\(\);/);
+  // A permission-gated read supplies its runtime permission as that check; only the dialer role's voicemail access supplies another.
+  assert.match(plugin, /fenced\(call, \(\) -> getPermissionState\(alias\) == PermissionState\.GRANTED, noun, read, fenceResult\);/);
   assert.match(alpha, /fencedRead\(call, "contacts", "Contacts", cancel ->/, "contact search uses the same fence");
   // Observation is coalesced, content-free and stops on pause, lock and screen-off.
   assert.match(plugin, /main\.postDelayed\(emitChange, 750\)/);
-  assert.match(plugin, /private void invalidateReads\(\) \{[^\n]*stopObserving\(\); cancelReview\(\); \}/);
+  assert.match(plugin, /private void invalidateReads\(\) \{[^\n]*stopObserving\(\); stopObservingVoicemail\(\); cancelReview\(\); \}/);
   assert.doesNotMatch(plugin.slice(plugin.indexOf("private final Runnable emitChange"), plugin.indexOf("private final android.database.ContentObserver")), /body|address/i);
   // Sends: native review, re-checked at the decision, journal before the first platform call.
   assert.match(plugin, /existing = journal\.existing\(operationId,/);

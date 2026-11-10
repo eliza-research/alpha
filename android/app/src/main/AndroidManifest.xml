@@ -23,11 +23,10 @@
  <uses-feature android:name="android.hardware.camera" android:required="false" />
  <uses-feature android:name="android.hardware.camera.any" android:required="false" />
  <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
- <!-- Contacts are read-only and exist only on the Alpha AOSP image (P-36): the launcher manifest declares
-      READ_CONTACTS, the standalone manifest removes it. AlphaTelephonyPlugin requests it only after
+ <!-- Contacts exist only on the Alpha AOSP image (P-36): the launcher manifest declares READ_CONTACTS
+      and WRITE_CONTACTS, the standalone manifest removes both. AlphaTelephonyPlugin requests it only after
       AlphaImageCapability verifies the image; AlphaContactsPlugin only under the image provisioning
-      admission (AlphaImageCapabilities.aospImage). No build writes contacts. -->
- <uses-permission android:name="android.permission.WRITE_CONTACTS" tools:node="remove" />
+      admission (AlphaImageCapabilities.aospImage). -->
  <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:node="remove" />
  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" tools:node="remove" />
  <!-- Files on Android 10 (API 29, minSdk) uses legacy storage (requestLegacyExternalStorage below), asked for in

@@ -19,6 +19,13 @@ import {smsSubscriptionRevision} from '../runtime/sms-subscription-revision';
 import {createAospTelephony,type AlphaTelephonyPlugin} from '../runtime/aosp-telephony';
 import {isSmsSend,validateSmsResult,smsAgentHash,smsDeviceStatus} from '../runtime/sms-agent-contract';
 import {isPhoneDial,dialDeviceStatus,phoneDialResultText,type PhoneDialResult} from '../runtime/phone-dial-contract';
+import {isTelephonyAction} from '../runtime/telephony-actions-contract';
+import {executeTelephonyAction,type TelephonyPorts} from '../runtime/telephony-executor';
+import {normalizePhoneNumber,reviewSms} from '../runtime/aosp-telephony';
+import {parseContactDetail,parseContactRemove,parseContactSave} from '../../../../.eliza/client-features/packages/contracts/src/native-address-book.ts';
+import {askTelephonyReview} from './telephony-review';
+import {openSmsThread} from './sms-adapter';
+import {deleteOpenVoicemail,openVoicemailRead} from './phone-adapter';
 import {receiptLabel} from '../runtime/image-sms';
 import {deletions,refreshDeletionViews,reminderDeletionRefusal} from '../runtime/deletions';
 import {BrowserReviews} from '../browser/review';
@@ -886,6 +893,33 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         const handoff=await client.dial(operation.target.number);
         const dialResult:PhoneDialResult={kind:'phone-dial',status:handoff.status,handler:handoff.status==='handed-off'?handoff.handler:null,contact:false};
         return {status:dialDeviceStatus(dialResult),summary:phoneDialResultText(dialResult),dialResult};
+      }
+      if(isTelephonyAction(operation)){
+        // Owner-approved telephony on the verified image only. A contact is resolved here, on the
+        // phone; the owner confirms the exact number or the before and after before anything
+        // calls, sends or writes, and the agent receives only the outcome.
+        if(!aospImage||expectedContext.sensitive||document.hidden)throw Error('Open Alpha on the Alpha image to continue');
+        const plugin=registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),client=createAospTelephony(plugin,true),book=registerPlugin<any>('AlphaContacts');
+        const ownerSession=connectionController.getSnapshot().session;
+        const current=()=>{signal.throwIfAborted();context(this);if(!ownerSession||connectionController.getSnapshot().session!==ownerSession||!this.live||document.hidden||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Phone context changed');};
+        const ports:TelephonyPorts={
+          current,ask:askTelephonyReview,normalize:normalizePhoneNumber,
+          searchContacts:(query,limit)=>client.searchContacts(query,limit),
+          placeCall:number=>client.placeCall(number),
+          getContact:async id=>parseContactDetail(await book.get({id}),id),
+          saveContact:async(draft,target)=>{const saved=parseContactSave(await book.save(target?{id:target.id,version:target.version,...draft}:draft),target?.id);return {status:saved.status};},
+          removeContact:async(id,version)=>parseContactRemove(await book.remove({id,version})),
+          // The same native review and journalled send as a text to a number; the review shows the resolved number and the text.
+          sendSms:async(number,body,id,sendSignal)=>{
+            const status=await client.status();current();const checked=reviewSms({recipients:[number],body},status,'direct');
+            if('problem' in checked)return 'unavailable';
+            const cancel=()=>{void plugin.cancelSmsReview({operationId:id}).catch(()=>{});};sendSignal.addEventListener('abort',cancel,{once:true});
+            try{const native=await client.sendSms(checked.review,id);return native.status==='denied'?'cancelled':native.status;}
+            finally{sendSignal.removeEventListener('abort',cancel);}
+          },
+          openThread:openSmsThread,openVoicemail:openVoicemailRead,deleteOpenVoicemail,
+        };
+        return executeTelephonyAction(operation,operationId,ports,signal);
       }
       if(isSmsSend(operation)){
         if(!aospImage||expectedContext.sensitive||document.hidden||expectedContext.view!=='messages'||expectedContext.selectedObject?.kind!=='sms-subscription'||expectedContext.selectedObject.id!==String(operation.subscriptionId))throw Error('Open Messages on the Alpha image and select the approved SIM');

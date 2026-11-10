@@ -2238,6 +2238,19 @@ export const connectionController = {
     result.catch(()=>{if(actionReceipts.get(proposal.id)?.result===result)actionReceipts.delete(proposal.id);});
     return result;
   },
+  /**
+   * A suggested reply for the SMS thread the owner has open, drafted by the resident agent
+   * (`POST /api/messages/reply-draft`). It is only ever a draft: the owner sends it, edited or not,
+   * through the native review. Null when the agent declines or no reply is called for.
+   */
+  async draftSmsReply(thread:{participant:string|null;messages:{direction:'in'|'out';date:number;body:string}[];truncated:boolean},signal:AbortSignal):Promise<string|null>{
+    const selected=active,session=state.session,generation=epoch;
+    if(selected?.kind!=='resident'||!session||state.open||document.hidden)return null;
+    const current=()=>{signal.throwIfAborted();if(generation!==epoch||active!==selected||state.session!==session||document.hidden)throw Error('The agent changed.');};
+    current();const result=await selected.remote.request('/api/messages/reply-draft',thread,signal);current();
+    const draft=(result as {draft?:unknown})?.draft;
+    return typeof draft==='string'&&draft.trim()&&draft.length<=320?draft.trim():null;
+  },
   async readCalendarApproval(id:string,signal:AbortSignal){
     const selected=active,session=state.session,generation=epoch,history=state.history,account=service;
     if(!calendarApprovalId(id)||selected?.kind!=='resident'||!session||state.open||state.busy||document.hidden)throw Error('Calendar review is unavailable on this connection.');

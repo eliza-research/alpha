@@ -2911,6 +2911,193 @@
         "Six bounded generation advances; every emitted Quint transition is compared with the actual Java gate in test/keyboard-dictation.test.mjs. The recording-id fence and sensitive field admission have separate host Java scenarios.",
         "Network transport, Android media capture and framework voice IME selection are not established by this gate model."
       ]
+    },
+    {
+      "path": "specs/quint/native/ContactsBook.qnt",
+      "module": "ContactsBook",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/runtime/telephony-executor.ts",
+        "apps/app/src/prototype/contacts-adapter.ts"
+      ],
+      "tests": [
+        "ownerEditSavesTest",
+        "editConflictKeepsEditorTest",
+        "staleReadAfterPauseTest",
+        "agentEditNeedsApprovalTest",
+        "agentEditGoesStaleTest",
+        "agentDeleteOfRemovedContactTest",
+        "declinedProposalWritesNothingTest",
+        "failedApprovalIsNotAppliedTest",
+        "ownerDeleteConfirmsTest",
+        "revokeClosesEditorTest"
+      ],
+      "invariants": [
+        "ListCurrent",
+        "AgentWritesNeedApproval",
+        "AppliedProposalWasCurrent",
+        "PendingProposalIsCurrent",
+        "DeleteConfirmNeedsContact",
+        "EditorNeedsPermission",
+        "CleanEditorHasNoDirt"
+      ],
+      "abstractions": [
+        "One contact with four revisions and one agent proposal at a time; search, paging and field contents are not modelled.",
+        "Provider write success, external edits and permission changes are nondeterministic inputs."
+      ]
+    },
+    {
+      "path": "specs/quint/native/MessageThreads.qnt",
+      "module": "MessageThreads",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/runtime/message-draft.ts",
+        "apps/app/src/prototype/sms-adapter.ts",
+        "apps/app/src/runtime/image-sms.ts"
+      ],
+      "tests": [
+        "suggestionSentAfterTapTest",
+        "newMessageRetiresSuggestionTest",
+        "lateSuggestionAfterNewMessageTest",
+        "ownerTypingWinsTest",
+        "ownerDraftSurvivesInboundTest",
+        "closedThreadCountsUnreadTest",
+        "failedSendKeepsDraftTest",
+        "unknownSendIsNotRetriedTest",
+        "lockDismissesReviewTest",
+        "inboundDuringAgentReviewClosesItTest",
+        "dismissedSuggestionIsNotOfferedAgainTest"
+      ],
+      "invariants": [
+        "SendNeedsOwnerTap",
+        "SuggestionCurrent",
+        "OwnerDraftKept",
+        "ReviewShowsDraft",
+        "UnreadBounded",
+        "OpenIsRead",
+        "SuggestOnlyWhenEmpty",
+        "DeclinedIsNotSuggested",
+        "UncertainKeepsDraft"
+      ],
+      "abstractions": [
+        "One thread, up to three inbound messages and two draft texts. The reviewed radio dispatch is NativeSmsDispatch; here a confirmed review yields sent, failed or unknown.",
+        "ready collapses image admission, SMS role, permission, unlock and foreground."
+      ]
+    },
+    {
+      "path": "specs/quint/native/PhoneCalls.qnt",
+      "module": "PhoneCalls",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/runtime/telephony-executor.ts",
+        "apps/app/src/prototype/phone-adapter.ts",
+        "apps/app/src/runtime/aosp-telephony.ts"
+      ],
+      "tests": [
+        "callByNumberTest",
+        "callByNameOneMatchTest",
+        "ambiguousNameNeedsChoiceTest",
+        "unknownNameDoesNotCallTest",
+        "emergencyIsHandedToSystemTest",
+        "changedNumberStalesProposalTest",
+        "lockExpiresProposalTest",
+        "missedCallCountsUntilSeenTest",
+        "declinedCallIsNotMissedTest",
+        "controlsResetAfterCallTest",
+        "answerOverLockTest",
+        "failedPlacementIsNotACallTest"
+      ],
+      "invariants": [
+        "AgentCallNeedsApproval",
+        "AmbiguousNeverPlaces",
+        "EmergencyNeverAgentPlaced",
+        "PendingProposalIsCurrent",
+        "ControlsOnlyInCall",
+        "DirectionMatchesCall",
+        "MissedSeenBounded",
+        "CallNeedsRole"
+      ],
+      "abstractions": [
+        "One call and one agent proposal at a time; conference, call waiting and audio routes beyond speaker are not modelled.",
+        "Contact lookup returns zero, one or two matches; Telecom acceptance and remote behaviour are nondeterministic inputs."
+      ]
+    },
+    {
+      "path": "specs/quint/native/Voicemail.qnt",
+      "module": "Voicemail",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/runtime/voicemail-state.ts",
+        "apps/app/src/prototype/phone-adapter.ts",
+        "apps/app/src/runtime/voicemail-transcription.ts"
+      ],
+      "tests": [
+        "transcribedLocallyTest",
+        "noSilentCloudFallbackTest",
+        "cloudSettingUploadsOnceTest",
+        "staleTranscriptAfterReplacementTest",
+        "staleAudioAfterDeleteTest",
+        "playMarksHeardTest",
+        "callPausesPlaybackTest",
+        "unsupportedCarrierIsEmptyTest",
+        "failedAudioCanRetryTest",
+        "deleteNeedsConfirmTest",
+        "lockStopsPlaybackTest"
+      ],
+      "invariants": [
+        "NothingWithoutCarrier",
+        "AbsentIsClean",
+        "PlaybackNeedsAudio",
+        "NoPlaybackDuringCall",
+        "PlayingIsHeard",
+        "TranscriptMatchesMessage",
+        "CloudOnlyWhenChosen",
+        "PlayingNeedsFront"
+      ],
+      "abstractions": [
+        "One voicemail with three generations; list paging is not modelled.",
+        "Carrier state, audio fetch, recognizer availability and transcription results are nondeterministic inputs. A cloud upload is counted, not transported."
+      ]
+    },
+    {
+      "path": "specs/quint/native/TelephonyAttention.qnt",
+      "module": "TelephonyAttention",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "apps/app/src/prototype/telephony-attention.ts",
+        "apps/app/src/prototype/telephony-presenters.ts",
+        "apps/app/src/prototype/home-overview-cards.ts"
+      ],
+      "tests": [
+        "oneUnreadOpensThreadTest",
+        "severalUnreadOpenListTest",
+        "missedLeadsToRecentsTest",
+        "failedSourceHidesCardsTest",
+        "readElsewhereClearsCardTest",
+        "standaloneHasNoCardsTest",
+        "arrivalWhileInViewKeepsCardForLaterTest"
+      ],
+      "invariants": [
+        "NoCardWithoutImage",
+        "NoCardWithoutSource",
+        "CardNeedsItems",
+        "CountsBounded",
+        "OpenedIsAView"
+      ],
+      "abstractions": [
+        "Up to three unread threads, missed calls and new voicemails; row content and ordering are presentation.",
+        "Source loading and items cleared elsewhere are nondeterministic inputs."
+      ]
     }
   ]
 }
