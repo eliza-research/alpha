@@ -92,7 +92,7 @@
   ],
   "upstream": {
     "url": "https://github.com/elizaOS/eliza.git",
-    "commit": "9ac50d32dd79f063e14fe4aa49785d74b176c354",
+    "commit": "ba76d1300cda0f4397f31235facd7af8253e1ea5",
     "appSource": "packages/app",
     "nativeSystemSource": "plugins/plugin-native-system",
     "osSource": "packages/os"
@@ -612515,7 +612515,7 @@
         "MobileBundleAdmission",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "9c454e018014f9c28a5f64f5ab620f6b92fdf574026eff97dfeb5a4a7e7eb9ee",
+      "sha256": "3d95f2aafa0435f515f176ea4cffee3b97707d218ebc90c79f46f2d89875a2dc",
       "integrationReview": "Shared9ac50 and reviewed producer inputs. Pixel opts into source staging only; updater activation, enrollment and device acceptance stay separate."
     },
     {
@@ -612524,7 +612524,7 @@
         "Application",
         "MobileBundleAdmission"
       ],
-      "sha256": "81b8f2b1598d25c46441c5775fb30f9c9ff9686ced2b0fb102327b282ec50f25",
+      "sha256": "6b21375cffa37983dc8270aae2d896267e100bd21d13bd001d43b58d88153c23",
       "integrationReview": "Shared9ac50 and reviewed producer inputs. Pixel opts into source staging only; updater activation, enrollment and device acceptance stay separate."
     },
     {
@@ -612589,7 +612589,7 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle"
       ],
-      "sha256": "6fc8ccf5bb6a1aabfc2b04e84fe4fdf575060283a01624ce2a8d1d545b8a92ff",
+      "sha256": "946e54a683e54abdfd118f4d130e0b3863114b2608d8306e965f530a460ae63c",
       "integrationReview": "Shared9ac50 and reviewed producer inputs. Pixel opts into source staging only; updater activation, enrollment and device acceptance stay separate."
     },
     {
@@ -612609,7 +612609,7 @@
         "ResidentJavaSourceStage",
         "TaskServiceLifecycle"
       ],
-      "sha256": "559102bf8a28f18a03824e2602a9cdbdd5e85602a2ee9462150a97651801d886",
+      "sha256": "95137ee8c257d0353bbfbede9a36123f848ec475181252f374a9b137dd60ba38",
       "integrationReview": "Shared9ac50 and reviewed producer inputs. Pixel opts into source staging only; updater activation, enrollment and device acceptance stay separate."
     },
     {

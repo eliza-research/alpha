@@ -11,8 +11,8 @@
   },
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
-  "sourcePin": "9ac50d32dd79f063e14fe4aa49785d74b176c354",
-  "ledgerSha256": "d15892cd14960ec38ba70e1f04e5ae96f3f11a2b11f4c3c489288d6a4eab3dfb",
+  "sourcePin": "ba76d1300cda0f4397f31235facd7af8253e1ea5",
+  "ledgerSha256": "1dc34d01d550d157dd2955ff3c2e50c4216f3fa69797dda7916e8b3f9702a622",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -226035,6 +226035,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "aa5db05e70ec99946a3b86b97ab18a95d9556ad969b955d4d96e7914407a01fa"
+    "sha256": "49258b90ae1c308f17d1c19da7261229722c0d3e190b845ae99a760965947165"
   }
 }
