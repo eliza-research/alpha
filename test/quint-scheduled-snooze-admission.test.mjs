@@ -6,6 +6,6 @@ import {checkScheduledSnoozeAdmission} from '../specs/quint/refinement/applicati
 test('explicit schedule snooze refines recurrence selection and exact receipt admission', async () => {
   const receipt = await checkScheduledSnoozeAdmission([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
-  assert.equal(receipt.traces, 25);
+  assert.equal(receipt.traces, 28);
   assert.equal(receipt.observedFields.length, 12);
 });

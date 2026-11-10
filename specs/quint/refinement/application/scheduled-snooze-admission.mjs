@@ -17,7 +17,7 @@ const action = (name, ...args) => ({name, args});
 
 export async function checkScheduledSnoozeAdmission(extraSources = []) {
   const buildOptions = {absWorkingDir: root, stdin: {contents:
-    `export {AutomationsProtocol,scheduledSnoozeAt} from './${source}'; export {workflowNextClockOccurrence} from './${clockSource}';`,
+    `export {AutomationsProtocol,scheduledSnoozeAt} from './${source}'; export {workflowNextClockOccurrence,workflowDeviceTimeZone} from './${clockSource}';`,
     resolveDir: root, loader: 'ts'}, bundle: true, write: false, format: 'cjs', platform: 'node', metafile: true};
   const graph = Object.keys(buildSync(buildOptions).metafile.inputs);
   const sources = [...new Set([modelPath, source, clockSource, 'upstream.lock.json',
@@ -39,6 +39,8 @@ export async function checkScheduledSnoozeAdmission(extraSources = []) {
     {name: 'an absent saved zone follows the device clock', now: new Date(2026, 10, 10, 1).toISOString(), zone: '', next: 420, until: 430},
     {name: 'an early from-now deferral is repaired to the scheduled clock', saved: 54, snoozed: true, next: 420, until: 430},
     {name: 'a valid same-day deferral continues after the recurrence passed', now: '2026-11-10T08:05:00Z', saved: 5, snoozed: true, next: 1435, until: 15},
+    {name: 'a valid owner-local deferral continues after the recurrence passed', now: new Date(2026, 10, 10, 8, 5).toISOString(), zone: 'owner_local', saved: 5, snoozed: true, next: 1435, until: 15},
+    {name: 'a valid deferral without a saved zone continues on the device clock', now: new Date(2026, 10, 10, 8, 5).toISOString(), zone: '', saved: 5, snoozed: true, next: 1435, until: 15},
     {name: 'a future later deferral remains the base', saved: 500, snoozed: true, next: 420, until: 510},
     {name: 'an expired deferral returns to the next recurrence', saved: -10, snoozed: true, next: 420, until: 430},
     {name: 'a fired task snoozes from now without rewriting its recurrence', scheduled: false, next: 420, until: 10},
@@ -49,6 +51,7 @@ export async function checkScheduledSnoozeAdmission(extraSources = []) {
     {name: 'spring DST gap skips the nonexistent local recurrence', now: '2027-03-14T06:00:00Z', cron: '30 2 * * *', zone: 'America/New_York', next: 1470, until: 1480},
     {name: 'autumn repeated hour selects the remaining second occurrence', now: '2026-11-01T05:45:00Z', cron: '30 1 * * *', zone: 'America/New_York', next: 45, until: 55},
     {name: 'autumn before the first repeated occurrence uses the first instant', now: '2026-11-01T05:00:00Z', cron: '30 1 * * *', zone: 'America/New_York', next: 30, until: 40},
+    {name: 'a future first-fold deferral clamps to the second-fold recurrence', now: '2026-11-01T05:35:00Z', cron: '30 1 * * *', zone: 'America/New_York', saved: 5, snoozed: true, next: 55, until: 65},
     {name: 'foreign clock remains in its saved zone', zone: 'Asia/Tokyo', next: 1320, until: 1330},
     {name: 'an occurrence exactly now is a valid ten-minute base', now: '2026-11-10T08:00:00Z', next: 0, until: 10},
   ];
@@ -59,7 +62,7 @@ export async function checkScheduledSnoozeAdmission(extraSources = []) {
     const module = {exports: {}};
     const context = vm.createContext({module, exports: module.exports, Date: Clock, Intl, console, URL, AbortController, AbortSignal, DOMException, TextEncoder, TextDecoder, crypto, structuredClone});
     vm.runInContext(built.outputFiles[0].text, context);
-    const {AutomationsProtocol, scheduledSnoozeAt, workflowNextClockOccurrence} = module.exports;
+    const {AutomationsProtocol, scheduledSnoozeAt, workflowNextClockOccurrence, workflowDeviceTimeZone} = module.exports;
     const cron = configuration.cron === undefined ? '0 8 * * *' : configuration.cron;
     const zone = configuration.zone ?? 'UTC';
     const scheduled = configuration.scheduled !== false;
@@ -73,8 +76,9 @@ export async function checkScheduledSnoozeAdmission(extraSources = []) {
     const nextStamp = cron ? workflowNextClockOccurrence(cron, zone, now) : null;
     const next = nextStamp === null ? -1 : (nextStamp - now) / minute;
     assert.equal(next, configuration.next, configuration.name + ' expected calendar instant');
+    const resolvedZone = !zone || zone === 'owner_local' ? workflowDeviceTimeZone() : zone;
     const differentDay = saved !== -1 && next !== -1 && nextStamp !== null
-      ? new Date(now + saved * minute).toLocaleDateString('sv-SE', {timeZone: zone}) !== new Date(nextStamp).toLocaleDateString('sv-SE', {timeZone: zone}) : false;
+      ? new Date(now + saved * minute).toLocaleDateString('sv-SE', {timeZone: resolvedZone}) !== new Date(nextStamp).toLocaleDateString('sv-SE', {timeZone: resolvedZone}) : false;
     const observed = {clock: 0, next: -1, saved: -1, differentDay: false, scheduled: false,
       snoozed: false, until: -1, phase: 'idle', requests: 0, sentUntil: -1, sentClock: -1, cancelled: false};
     const fields = () => Object.fromEntries(Object.entries(observed).map(([key, value]) => ['s.' + key, value]));
@@ -131,7 +135,8 @@ export async function checkScheduledSnoozeAdmission(extraSources = []) {
   await scenario({...ordinary, name: 'malformed identity refuses before request'}, 'exact', 0, false);
   return checkTraces({model, modelPath, sources, driverHashes, traces, scope: 'bounded-orchestration', assumptions: [
     'The actual Alpha snooze calculator, recurrence helper and AutomationsProtocol execute with an injected clock and one closed request port. Projected shared parser bytes are authenticated against the current source stamp.',
-    'Seventeen representative calendar configurations cover UTC, a saved foreign zone, unsupported cron, and the New York spring gap and repeated hour. Calendar answers are independently asserted as explicit instants. The model treats the resulting next occurrence as an environmental value.',
+    'Twenty representative calendar configurations cover UTC, a saved foreign zone, unsupported cron, and the New York spring gap and repeated hour. Calendar answers are independently asserted as explicit instants. The model treats the resulting next occurrence as an environmental value.',
+    'The repeated-hour deferral records the current recurrence clamp: a saved first-fold 01:40 is snoozed after the remaining second-fold 01:30 occurrence. Whether to retain the earlier future deferral is a separate product policy decision.',
     'One protocol invocation per trace, exact receipt fields, one cancellation and one expiry before dispatch. Recurrence execution, durable server task state, arbitrary calendars and actual provider delivery remain separate.',
   ]});
 }
