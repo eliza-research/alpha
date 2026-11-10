@@ -117,6 +117,13 @@ export function calendarDraftFixture(compiled) {
     releaseRead(owner) {return release(reads, owner);},
     releaseWrite(owner) {return release(writes, owner);},
     async edit(owner, title) {host.calendar.form = form(owner, title); this.update(); await settle();},
+    async begin(owner, title, eventKey) {
+      const candidate = form(owner, title);
+      if (eventKey) Object.assign(candidate, {id: eventKey, canonicalEventKey: eventKey});
+      await host.openCanonicalCalendarEditor(candidate, restored => host.vset('calendar', {form: restored}));
+      this.update(); await settle();
+    },
+    allSaved() {return [...slots.values()].map(raw => project(JSON.parse(raw)?.text)).filter(row => row.title);},
     async closeForm() {host.calendar.form = null; this.update(); await settle();},
     async resume() {render().resumeFormDraft?.(); this.update(); await settle();},
     async restoreSaved() {render().restoreFormDraft?.(); this.update(); await settle();},

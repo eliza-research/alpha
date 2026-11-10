@@ -6,6 +6,7 @@ import {openDomainRecovery} from '../browser/domain-recovery';
 import {browserCalendarScope} from './agent-calendar-adapter';
 type Bag=Record<string,any>;
 const reminderDraftOrigin=Symbol('canonical Calendar draft destination');
+const draftTarget=(form:Bag)=>String(form.canonicalEventKey||form.id||'new');
 const submittedForm=(form:Bag)=>{const fields=snapshotCalendarForm(form);delete fields.reminderCreationId;return JSON.stringify(fields);};
 /** Same existing transactional draft primitive, bound to canonical owner+agent+origin. */
 export function installCanonicalCalendarDrafts(Component:any,views:Bag){
@@ -19,6 +20,45 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
   const pending=this.canonicalDraft?.state;
   if(!pending||this.canonicalDraftOwner!==key||pending.opening||pending.consuming)return 'Opening your draft. Try again in a moment.';
   return this.canonicalDraftText?'Finish or discard your draft first.':'';
+ };
+ /** Keep each event's edits in the existing owner-bound draft store. Switching
+  * only reads/restores local forms; it never saves an event to its provider. */
+ p.openCanonicalCalendarEditor=function(form:Bag,show:(form:Bag)=>void,allowed:()=>boolean=()=>true){
+  const key=form.canonicalOwnerKey,epoch=this.canonicalDraftOwnerEpoch,request=(this.canonicalDraftOpenRequest||0)+1;
+  this.canonicalDraftOpenRequest=request;
+  const current=()=>owner===this&&this.live&&this.agentCalendar?.state.ownerKey===key&&this.canonicalDraftOwnerEpoch===epoch&&this.canonicalDraftOpenRequest===request;
+  const run=async()=>{
+   await this.canonicalDraftLegacyReady;
+   if(!current()||!allowed())return;
+   if(this.calendarSaving||this.agentCalendar?.state.mutating||this.canonicalDraft?.state.consuming)return;
+   const controller=this.canonicalDraft,target=draftTarget(form),legacyStorage=JSON.stringify(['canonical-calendar-editor',key]);
+   let storage=JSON.stringify(['canonical-calendar-editor',key,target]);
+   this.canonicalDraftSwitching=true;
+   try{
+    const previous=this.canonicalDraftBinding,text=this.canonicalDraftText;
+    if(!(controller.state.error&&!text))await controller.flush(()=>current()&&this.canonicalDraftBinding===previous&&this.canonicalDraftText===text);
+    if(!current()||!allowed())return;
+    const legacy=await (await assistantDraftStore(legacyStorage)).read();
+    let legacyTarget:string|undefined;
+    if(legacy?.text){try{const prior=decodeCanonicalCalendarDraft(legacy.text).form;if(prior.canonicalOwnerKey===key)legacyTarget=draftTarget(prior);}catch{/* Keep malformed legacy bytes untouched. */}}
+    if(legacyTarget===target)storage=legacyStorage;
+    else if(target==='new'&&!legacy?.text){const saved=await (await assistantDraftStore(storage)).read();if(!saved?.text)storage=legacyStorage;}
+    if(!current()||!allowed())return;
+    if(controller.binding!==storage){
+     this.canonicalDraftText='';this.canonicalDraftBinding=Object.freeze({});this.canonicalDraftSuppressed=undefined;
+     await controller.open(storage);
+    }
+    if(!current()||!allowed())return;
+    if(controller.state.error||controller.state.conflict||controller.state.unsettled)throw Error('These saved edits need review before this event can be opened.');
+    const restored=this.canonicalDraftText?decodeCanonicalCalendarDraft(this.canonicalDraftText).form:form;
+    if(restored.canonicalOwnerKey!==key||draftTarget(restored)!==target)throw Error('These saved edits belong to a different event.');
+    this.canonicalDraftAnchor=new Date();this.canonicalDraftIdentity=restored.creationId;
+    show(restored);
+   }catch(error){if(current())this.toast(error instanceof Error?error.message:'Could not open this event. Your edits are kept.');}
+   finally{if(this.canonicalDraftOwnerEpoch===epoch){this.canonicalDraftSwitching=false;if(this.live)this.setState({});}}
+  };
+  this.canonicalDraftOpenQueue=(this.canonicalDraftOpenQueue||Promise.resolve()).then(run,run);
+  return this.canonicalDraftOpenQueue;
  };
  p.flushCalendarForAppUpdate=async function(current:()=>boolean){
   const exact=()=>current()&&!this.calendarSaving&&!this.agentCalendar?.state.mutating&&
@@ -70,9 +110,10 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
    this.canonicalDraftRecovery?.abort();
    this.canonicalDraftRecovery=undefined;this.canonicalDraftOwner=key;this.canonicalDraftBinding=key?Object.freeze({}):undefined;
    this.canonicalDraftText='';this.canonicalDraftIdentity=undefined;this.canonicalDraftAnchor=undefined;
-   this.canonicalDraftSuppressed=undefined;this.canonicalDraftInvalid=false;
-   if(key)void this.canonicalDraft.open(JSON.stringify(['canonical-calendar-editor',key]));
+   this.canonicalDraftSuppressed=undefined;this.canonicalDraftInvalid=false;this.canonicalDraftSwitching=false;this.canonicalDraftOpenRequest=0;this.canonicalDraftOpenQueue=Promise.resolve();this.canonicalDraftOwnerEpoch=Object.freeze({});
+   this.canonicalDraftLegacyReady=key?this.canonicalDraft.open(JSON.stringify(['canonical-calendar-editor',key])):Promise.resolve();
   }
+  if(this.canonicalDraftSwitching)return;
   if(form?.canonicalOwnerKey&&form.canonicalOwnerKey!==key){this.vset('calendar',{form:null});return;}
   if(!key||form?.canonicalOwnerKey!==key){
    if(!form&&!this.canonicalDraftText)this.canonicalDraftInvalid=false;
@@ -124,14 +165,14 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
   if(!shell||!controller||!key||shell.canonicalDraftOwner!==key||state.form&&!state.form.canonicalOwnerKey||state.calendarAuthority==='android-native'||browserCalendarScope(shell))return out;
   const current=()=>ownsDraft(shell,key,binding);
   const active=!!state.form?.canonicalOwnerKey,draft=controller.state;
-  out.formDraftAvailable=!state.form&&!!shell.canonicalDraftText;out.canDiscardFormDraft=out.formDraftAvailable;out.formDraftBusy=draft.opening||draft.consuming;out.formDraftStatus=active?(shell.canonicalDraftInvalid?'Check this draft.':draft.message.replace('before sending','before saving')):'';out.formDraftConflict=active&&draft.conflict;out.formDraftError=active&&draft.error;out.formDraftListError=!state.form&&draft.error;
+  out.canonicalDraftEntries=true;out.formDraftAvailable=!state.form&&!!shell.canonicalDraftText;out.canDiscardFormDraft=out.formDraftAvailable;out.formDraftBusy=draft.opening||draft.consuming;out.formDraftStatus=active?(shell.canonicalDraftInvalid?'Check this draft.':draft.message.replace('before sending','before saving')):'';out.formDraftConflict=active&&draft.conflict;out.formDraftError=active&&draft.error;out.formDraftListError=!state.form&&draft.error;
   const restore=(saved=false)=>{if(!current())return;try{shell.canonicalDraftRestoring=true;if(saved)controller.restoreSaved();else{const restored=decodeCanonicalCalendarDraft(shell.canonicalDraftText);if(restored.form.canonicalOwnerKey!==key)throw Error('This draft belongs to another account');shell.canonicalDraftAnchor=new Date();api.set({form:restored.form,open:null});}}catch{api.toast('This draft belongs to another account. Open it to review.');}finally{shell.canonicalDraftRestoring=false;}};
   out.resumeFormDraft=()=>restore();out.restoreFormDraft=()=>restore(true);out.replaceFormDraft=()=>{if(current())controller.keepCurrent();};out.retryFormDraft=()=>{if(current())controller.retry();};out.formDraftSavedTitle=(()=>{try{return decodeCanonicalCalendarDraft(draft.savedText).form.title;}catch{return 'Saved draft';}})();
   out.discardFormDraft=()=>{if(!current()||state.form||!window.confirm('Discard this draft? Saved events won’t change.'))return;const text=shell.canonicalDraftText;void controller.consume(text,()=>current()&&!shell.vget('calendar').form&&shell.canonicalDraftText===text).catch(()=>{if(current())api.toast('This draft changed. Try again.');});};
   out.recoverFormDraft=()=>{if(!current())return;const recovery=controller.recovery();if(!recovery)return;shell.canonicalDraftRecovery?.abort();const abort=shell.canonicalDraftRecovery=new AbortController();openDomainRecovery(recovery,'calendar form','Calendar form recovery','Download this draft before resetting it. Saved events won’t change.',abort.signal);};
   const guardStart=(start:(...args:any[])=>unknown)=>(...args:any[])=>{
    if(!current())return;
-   const blocked=!shell.vget('calendar').form&&shell.canonicalCalendarDraftEntryBlocker(key);
+   const blocked=shell.calendarSaving||shell.agentCalendar?.state.mutating||controller.state.consuming?'Finishing the current change…':'';
    if(blocked){api.toast(blocked);return;}
    return start(...args);
   };

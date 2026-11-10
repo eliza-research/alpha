@@ -105,3 +105,29 @@ test('an earlier binding cannot discard a newer Calendar draft after the same ac
   await f.discard();
   assert.equal(f.saved('A').title, '');
 }));
+
+
+test('opening another event preserves every edit and restores the matching event without draft prompts', () => withDraft(async f => {
+  await f.bind('A'); await f.edit('A', 'Unfinished new event'); await f.closeForm();
+  await f.begin('A', 'Event one', 'event-one');
+  assert.equal(f.observe().form, 'Event one');
+  f.host.calendar.form.title = 'Edited event one'; f.update(); await f.settle(); await f.closeForm();
+  await f.begin('A', 'Event two', 'event-two');
+  f.host.calendar.form.title = 'Edited event two'; f.update(); await f.settle(); await f.closeForm();
+  await f.begin('A', 'Event one', 'event-one');
+  assert.equal(f.observe().form, 'Edited event one');
+  assert.equal(f.observe().resumeOffered, false);
+  await f.closeForm(); await f.begin('A', 'New event');
+  assert.equal(f.observe().form, 'Unfinished new event');
+  assert.deepEqual(f.allSaved().map(row => row.title).sort(), ['Edited event one','Edited event two','Unfinished new event']);
+  assert.equal(f.toasts.length, 0);
+}));
+
+test('a late event draft read cannot open after changing owners', () => withDraft(async f => {
+  await f.bind('A'); f.holdRead('A');
+  const opening = f.begin('A', 'Event A', 'event-a'); await f.settle();
+  await f.bind('B'); await f.releaseRead('A'); await opening;
+  assert.equal(f.observe().owner, 'B');
+  assert.equal(f.observe().form, '');
+  assert.equal(f.toasts.length, 0);
+}));

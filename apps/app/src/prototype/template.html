@@ -943,7 +943,7 @@
         <button class="ib" aria-label="Back to calendar" onClick="{{calendar.ev.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <span style="flex-grow: 1"></span>
         <sc-if value="{{calendar.ev.canModify}}">
-        <details class="photo-import-menu"><summary aria-label="Event actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div><button aria-label="Edit event" disabled="{{calendar.ev.busy}}" onClick="{{calendar.ev.edit}}">Edit</button><sc-if value="{{calendar.ev.del}}"><button aria-label="Delete event" disabled="{{calendar.ev.busy}}" onClick="{{calendar.ev.del}}">Delete</button></sc-if></div></details>
+        <details class="photo-import-menu"><summary aria-label="Event actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div><button aria-label="Edit event" disabled="{{calendar.ev.busy}}" onClick="{{calendar.ev.edit}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.edit}}"></path></svg>Edit</button><sc-if value="{{calendar.ev.del}}"><button aria-label="Delete event" disabled="{{calendar.ev.busy}}" onClick="{{calendar.ev.del}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.trash}}"></path></svg>Delete</button></sc-if></div></details>
         </sc-if>
       </div>
 
@@ -2689,7 +2689,7 @@
     <div ref="{{files.menuModal}}" data-alpha-popup style="display: contents">
     <button data-alpha-backdrop tabindex="-1" aria-label="Close menu" onClick="{{files.closeMenu}}" style="position: absolute; inset: 0; z-index: 7"></button>
     <div class="drop files-actions-menu" role="dialog" aria-label="Sort and more" style="position: absolute; top: 96px; right: 12px; width: 220px; max-width: calc(100% - 24px); max-height: calc(100% - 108px); overflow-y: auto; box-sizing: border-box; z-index: 8; background: var(--bg); border-radius: 22px; padding: 6px; box-shadow: 0 0 0 1px var(--line), 0 16px 40px var(--shc)">
-      <div onClick="{{files.closeMenu}}">
+      <div>
       <sc-if value="{{files.toolbar.canCreate}}"><button class="tap" aria-label="New folder" onClick="{{files.toolbar.newFolder}}" style="display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:8px 14px;text-align:left"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg><span>New folder</span></button></sc-if>
       <button class="tap" aria-label="{{files.toolbar.viewLabel}}" onClick="{{files.toolbar.toggleView}}" style="display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:8px 14px;text-align:left"><svg class="i" viewBox="0 0 24 24"><path d="{{files.toolbar.viewIcon}}"></path></svg><span>{{files.toolbar.viewLabel}}</span></button>
       </div>

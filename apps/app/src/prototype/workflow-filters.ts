@@ -1,8 +1,8 @@
 import {iconStyle} from '../icon-style';
 import {holdPhoneInert} from '../runtime/modal-inert';
-export type WorkflowTypeFilter='all'|'reminders'|'prompts'|'workflows'|'schedules';
+export type WorkflowTypeFilter='all'|'automations'|'reminders';
 export type WorkflowStatusFilter='all'|'active'|'inactive';
-export const WORKFLOW_TYPES=[['all','All types'],['reminders','Reminders'],['prompts','Prompts'],['workflows','Workflows'],['schedules','Schedules']] as const;
+export const WORKFLOW_TYPES=[['all','All types'],['automations','Automations'],['reminders','Reminders']] as const;
 export const WORKFLOW_STATUSES=[['all','All'],['active','Active'],['inactive','Inactive']] as const;
 export function workflowFilterLabel(type:WorkflowTypeFilter,status:WorkflowStatusFilter):string {
  const name=type==='all'?'All workflows':WORKFLOW_TYPES.find(([key])=>key===type)![1];

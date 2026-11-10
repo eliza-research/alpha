@@ -11,7 +11,7 @@ export function installCalendarFormPresentation(views:Bag){
  views.calendar.render=(state:Bag,api:Bag)=>{
   const out=render(state,api),form=state.form;
   const start=out.newEvent;
-  out.newEvent=()=>{if(!form&&out.editDraftAvailable&&out.resumeEditDraft){out.resumeEditDraft();return;}if(!form&&out.formDraftAvailable&&out.resumeFormDraft){out.resumeFormDraft();return;}start?.();};
+  out.newEvent=()=>{if(!form&&!out.canonicalDraftEntries&&out.editDraftAvailable&&out.resumeEditDraft){out.resumeEditDraft();return;}if(!form&&!out.canonicalDraftEntries&&out.formDraftAvailable&&out.resumeFormDraft){out.resumeFormDraft();return;}start?.();};
   if(!form||!out.f)return out;
   const f=out.f,zone=form.zone||Intl.DateTimeFormat().resolvedOptions().timeZone,today=getZonedDateParts(new Date(),zone),anchor=Date.UTC(today.year,today.month-1,today.day);
   const startDay=anchor+Number(form.off||0)*DAY,startMinutes=Math.round(Number(form.t||0)*60),duration=Math.max(1,Math.round(Number(form.d||1)*60)),endMinutes=startMinutes+duration;

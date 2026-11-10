@@ -3,7 +3,6 @@ import {CRON_PRESETS,formatSchedule} from '../../../../.eliza/client-features/pa
 import {canSnoozeReminder,reminderDue} from '../../../../.eliza/client-features/packages/ui/src/utils/reminder-presentation';
 import {AUTOMATIONS_COMMITTED_EVENT} from '../runtime/automation-completion';
 import {openWorkflowFilters,workflowFilterLabel,type WorkflowTypeFilter,type WorkflowStatusFilter} from './workflow-filters';
-import {FEED_FILTERS,passesFilter,type FeedFilter} from '../../../../.eliza/client-features/packages/ui/src/utils/automation-feed-filter';
 import {AutomationsProtocol,AutomationOutcomeError,automationIssue,automationLocalDateInput,automationWhen,workflowDeviceTimeZone,mergeAutomationRows,scheduledTaskEnded,scheduledSnoozeAt,type AutomationRow,type AutomationIssue,type PromptDraft,type ReminderDraft,type AutomationRequest} from '../runtime/automations-protocol';
 import {connectionController,agentPendingText,agentAvailabilityNotice} from '../runtime/connection-ui';
 import {showAgentStatus} from './workflow-authoring';
@@ -27,11 +26,11 @@ function presetAt(preset:typeof CRON_PRESETS[number],time:string){
  return match?[String(Number(match[2])),String(Number(match[1])),...preset.expression.split(/\s+/).slice(2)].join(' '):preset.expression;
 }
 
-const filters=[...FEED_FILTERS.slice(0,4),'schedules',...FEED_FILTERS.slice(4)] as const;
-type Filter=FeedFilter|'schedules';
-const filterNames:Record<Filter,string>={all:'All',reminders:'Reminders',prompts:'Prompts',workflows:'Workflows',schedules:'Schedules',active:'Active',inactive:'Inactive'};
+const filters=['all','automations','reminders','active','inactive'] as const;
+type Filter=WorkflowTypeFilter|WorkflowStatusFilter;
+const filterNames:Record<Filter,string>={all:'All',automations:'Automations',reminders:'Reminders',active:'Active',inactive:'Inactive'};
 const rowStatus=(row:AutomationRow)=>row.kind==='schedule'&&row.status==='snoozed'?'':(row.kind==='reminder'?({blocked:'Delivery blocked',duplicate:'Duplicate skipped',unknown:'Delivery status unavailable',unscheduled:'No scheduled occurrence'} as Record<string,string>)[row.status]:undefined)||(row.status?row.status.charAt(0).toUpperCase()+row.status.slice(1).replaceAll('-',' '):(row.enabled?'Active':'Inactive'));
-const rowPasses=(row:AutomationRow,filter:Filter)=>filter==='reminders'?row.kind==='reminder'||row.kind==='device-reminder':filter==='schedules'?row.kind==='schedule':passesFilter({kind:row.kind==='workflow'?'workflow':'task',active:row.enabled},filter)&&!(filter==='prompts'&&(row.kind==='reminder'||row.kind==='device-reminder'||row.kind==='schedule'||row.kind==='routine'));
+const rowPasses=(row:AutomationRow,filter:Filter)=>filter==='all'?true:filter==='active'?row.enabled:filter==='inactive'?!row.enabled:filter==='reminders'?row.kind==='reminder'||row.kind==='device-reminder':row.kind!=='reminder'&&row.kind!=='device-reminder';
 function deviceRow(row:Reminder):AutomationRow {
  return {key:'device-reminder:'+row.id,id:row.id,kind:'device-reminder',title:row.title,description:row.body||'',status:row.status,enabled:['pending','scheduled','posted'].includes(row.status),source:'On this phone',schedule:automationWhen(row.dueAt||row.at),record:row};
 }
