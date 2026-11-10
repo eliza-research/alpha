@@ -101,6 +101,13 @@ import {checkAutomaticAppUpdateSchedule} from './automatic-app-update-schedule.m
 import {checkStartupUpdateAdmission} from './startup-update-admission.mjs';
 import {checkCanonicalNotificationTapAdmission} from './canonical-notification-tap-admission.mjs';
 import {checkResidentLiveness} from './resident-liveness.mjs';
+import {checkAccountSheet} from './account-sheet.mjs';
+import {checkVoiceTranscriptFollow} from './voice-transcript-follow.mjs';
+import {checkSavedServiceRead} from './saved-service-read.mjs';
+import {checkCloudPlanRecheck} from './cloud-plan-recheck.mjs';
+import {checkOSDefaults} from './os-defaults.mjs';
+import {checkOSProvisioning} from './os-provisioning.mjs';
+import {checkOSSourceStaging} from './os-source-staging.mjs';
 
 const adapters = [checkCalendarFormControls, checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
@@ -130,6 +137,8 @@ const adapters = [checkCalendarFormControls, checkSettingsPageFocus, checkKeyboa
   checkCommittedViewObservation,
   checkPreviousNotesSourceOpening,
   checkScheduledTaskControls,
+  checkAccountSheet, checkVoiceTranscriptFollow, checkSavedServiceRead, checkCloudPlanRecheck,
+  checkOSDefaults, checkOSProvisioning, checkOSSourceStaging,
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
   checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkCloudConnectionNotices, checkModalScrimOwnership, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkAppInfoHandoffComposition, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkAutomaticAppUpdateSchedule, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
 

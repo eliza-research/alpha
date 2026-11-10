@@ -39,7 +39,8 @@ import static org.junit.Assert.*;
  * </ul>
  *
  * Results are sent as instrumentation status ({@code cameraLatency.*}) and logged under the tag
- * AlphaCameraLatency. Captures made by the test are deleted afterwards.
+ * AlphaCameraLatency. Captures made by the test are deleted afterwards. It needs a back camera and the
+ * views: on a flag-off build, a phone its owner signed in to Eliza Cloud, or the test-mocks pair.
  */
 @RunWith(AndroidJUnit4.class)
 public class CameraLatencyInstrumentedTest {
@@ -57,20 +58,32 @@ public class CameraLatencyInstrumentedTest {
   if(v instanceof ViewGroup){ViewGroup group=(ViewGroup)v;for(int i=0;i<group.getChildCount();i++){View found=previewView(group.getChildAt(i));if(found!=null)return found;}}
   return null;
  }
- /** PreviewView.getPreviewStreamState().getValue() is STREAMING once CameraX delivers frames. Read by
-  * reflection: camera-view is the camera module's implementation dependency, not the app's. */
- private static boolean streaming(View preview){
-  try{Object live=preview.getClass().getMethod("getPreviewStreamState").invoke(preview);Object state=live.getClass().getMethod("getValue").invoke(live);return state!=null&&"STREAMING".equals(state.toString());}
+ /** PreviewView.getPreviewStreamState().getValue() (IDLE or STREAMING; STREAMING once CameraX delivers
+  * frames), or null before one is set. Read by reflection: camera-view is the camera module's
+  * implementation dependency, not the app's. */
+ private static String streamState(View preview){
+  try{Object live=preview.getClass().getMethod("getPreviewStreamState").invoke(preview);Object state=live.getClass().getMethod("getValue").invoke(live);return state==null?null:state.toString();}
   catch(ReflectiveOperationException unavailable){throw new AssertionError("PreviewView stream state unavailable",unavailable);}
  }
  /** Sample the decor view on the main thread until a PreviewView streams; returns the uptime it was first seen. */
  private long awaitStreaming(long timeoutMs)throws Exception{
-  AtomicLong seen=new AtomicLong(-1);long end=SystemClock.uptimeMillis()+timeoutMs;
+  long start=SystemClock.uptimeMillis();
+  long seen=sampleStreaming(start+timeoutMs);
+  if(seen<0){
+   // Say what was on screen, and whether the preview streamed late or not at all.
+   String state=lastState;long late=sampleStreaming(start+DIAGNOSTIC_MS);
+   fail("CameraX preview streamed within "+timeoutMs+" ms; at the bound: "+state+"; "+(late<0?"not streaming after "+DIAGNOSTIC_MS+" ms ("+lastState+")":"streamed after "+(late-start)+" ms")+"; view="+eval("document.documentElement.dataset.activeView"));
+  }
+  return seen;
+ }
+ static final long DIAGNOSTIC_MS=30000;
+ private volatile String lastState="no PreviewView";
+ private long sampleStreaming(long end)throws Exception{
+  AtomicLong seen=new AtomicLong(-1);
   while(seen.get()<0&&SystemClock.uptimeMillis()<end){
-   WebViewTestDriver.withActivity(MainActivity.class,a->{View preview=previewView(a.getWindow().getDecorView());if(preview!=null&&streaming(preview))seen.set(SystemClock.uptimeMillis());});
+   WebViewTestDriver.withActivity(MainActivity.class,a->{View preview=previewView(a.getWindow().getDecorView());String state=preview==null?"no PreviewView":"PreviewView "+streamState(preview);lastState=state;if("PreviewView STREAMING".equals(state))seen.set(SystemClock.uptimeMillis());});
    if(seen.get()<0)SystemClock.sleep(4);
   }
-  assertTrue("CameraX preview streamed within "+timeoutMs+" ms",seen.get()>=0);
   return seen.get();
  }
  private void awaitReleased()throws Exception{
@@ -111,6 +124,10 @@ public class CameraLatencyInstrumentedTest {
  @Test public void firstFrameAndShutterToThumbnail()throws Exception{
   Bundle arguments=InstrumentationRegistry.getArguments();
   Assume.assumeTrue("Device latency run: -e cameraLatency 1","1".equals(InstrumentationRegistry.getArguments().getString("cameraLatency")));
+  // The run opens the back camera; FEATURE_CAMERA is the back-facing one.
+  Assume.assumeTrue("Camera latency needs a back camera",context().getPackageManager().hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA));
+  // A flag-off build signed out of Eliza Cloud shows P-43's sign-in page over every view, so Camera never opens.
+  AppNavigation.assumeNoRequiredSignIn("Camera latency");
   InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context().getPackageName(),Manifest.permission.CAMERA);
   Set<Long> before=ownedImages(),created=new HashSet<>();
   List<Long> warm=new ArrayList<>(),shots=new ArrayList<>();long cold;

@@ -337,6 +337,8 @@ jobs:
           # Fresh native artifacts and the runtime pin are inputs to shipped notices.
           python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 node scripts/generate-licenses.mjs --packaged-runtime
           if [ "$ALPHA_RUNTIME_PROFILE" = cloud ]; then
+            # Clean R8 release builds need the same reviewed heap as Android foundation.
+            export GRADLE_OPTS="-Dorg.gradle.jvmargs=-Xmx4096m"
             node scripts/prepare-local-agent.mjs --source-only
             export ALPHA_CLOUD_COLLECTOR_SOURCE="$ALPHA_LOCAL_AGENT_SOURCE_DIR"
             export ALPHA_BUN="$(command -v bun)"
