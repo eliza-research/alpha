@@ -1,4 +1,4 @@
-package ai.elizaresearch.alphaphone;
+package fixture.identity;
 
 import java.io.File;
 import java.util.*;

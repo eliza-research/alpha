@@ -4,6 +4,7 @@ import {mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fixture, jvmSkip, nativeSource, runJvm} from './fixtures/jvm-tools.mjs';
+const {appId} = JSON.parse(readFileSync(new URL('../app.config.json', import.meta.url), 'utf8'));
 
 test('Files native refusal cleanup runs before every refused answer, including a closed worker', {skip: jvmSkip('javac')}, () => {
   const plugin = readFileSync(nativeSource('AlphaFilesPlugin.java'), 'utf8');
@@ -16,9 +17,10 @@ test('Files native refusal cleanup runs before every refused answer, including a
   try {
     const source = join(temporary, 'FilesStorageRefusalTest.java');
     writeFileSync(source, readFileSync(fixture('FilesStorageRefusalTest.java'), 'utf8')
+      .replaceAll('fixture.identity', appId)
       .replace('// STORAGE_METHODS', plugin.slice(methodsStart, methodsEnd))
       .replace('// STATE_METHOD', plugin.slice(stateStart, stateEnd)));
-    assert.match(runJvm([source, nativeSource('PluginWorkers.java')], 'ai.elizaresearch.alphaphone.FilesStorageRefusalTest'), /^PASS files storage refusals/);
+    assert.match(runJvm([source, nativeSource('PluginWorkers.java')], `${appId}.FilesStorageRefusalTest`), /^PASS files storage refusals/);
   } finally {
     rmSync(temporary, {recursive: true, force: true});
   }
