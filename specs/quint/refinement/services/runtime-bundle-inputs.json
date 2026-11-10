@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "classification": "observed-product-android-bundle-inputs",
-  "sourcePin": "bf0f888222ce6f7f679cc35a306e2c14936dbdc6",
+  "sourcePin": "07d680fa64b20999f5f25fe24d7cccb55b4bbc4d",
   "producer": {
     "script": "scripts/build-mobile-agent.mjs",
     "observer": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
     "inputHashes": {
       "specs/quint/refinement/services/runtime-bundle-audit.mjs": "0527954e0c6a927698e6351b0150eb3bb660e573a7570330d38d80e6f8bd9f67",
       "specs/quint/refinement/services/runtime-bundle-graph.mjs": "0bd78236abb72ae29b2716ead130dcbb2a00455a326ecc2280fc6bf5988eadf5",
-      "upstream.lock.json": "4698960762ffbf5e401c19e566c06558cc47f0cfb06b743b13d1b6db70af7890",
-      "scripts/upstream-mobile-build.mjs": "ff02d54972e6ec1461591998a47362043bab8672f8ee9c2548cd7a43ea427fdb",
+      "upstream.lock.json": "332d3cc0da12bbd58314f829889e117d492e30c6289a2ba6a7a49b73d7443df0",
+      "scripts/upstream-mobile-build.mjs": "d9be76ef603d5ad6c2b79926214788a232d2c86112014831809f190721feca9a",
       "scripts/local-agent-source.mjs": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
       "scripts/build-mobile-agent.mjs": "d0201c2bc3cb74d9ad0ba725deac43d08d3be4f2ba45ce50ffd2d1732fd6c0ae",
       "scripts/mobile-uuid-adapter.mjs": "821d33c77787d3069b3e18c1eeac05ab2b2d00f2691824663577acee0366884d",
@@ -18,18 +18,18 @@
       "scripts/core-state-patch.mjs": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
       "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-      "scripts/upstream-core-sources.mjs": "7ab2be9e35c6afc8baa6a21bc810149ca6fceecfafe0f096460460c2d595b59f"
+      "scripts/upstream-core-sources.mjs": "a8a27e512eaf9a0dc85f922c7baf739c8123119b30032e5dd0c045460cad4be4"
     },
     "coreState": {
       "version": 2,
-      "baseCommit": "bf0f888222ce6f7f679cc35a306e2c14936dbdc6",
-      "manifestSha256": "7ab2be9e35c6afc8baa6a21bc810149ca6fceecfafe0f096460460c2d595b59f",
+      "baseCommit": "07d680fa64b20999f5f25fe24d7cccb55b4bbc4d",
+      "manifestSha256": "a8a27e512eaf9a0dc85f922c7baf739c8123119b30032e5dd0c045460cad4be4",
       "inputHashes": {
         "scripts/core-state-patch.mjs": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
         "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
         "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
         "scripts/build-policy-source.mjs": "3512c1e3a1c4d0c2c1dec2d3b99d12752edf2f90af9b35aba10ffb1cdffb09bb",
-        "scripts/upstream-core-sources.mjs": "7ab2be9e35c6afc8baa6a21bc810149ca6fceecfafe0f096460460c2d595b59f"
+        "scripts/upstream-core-sources.mjs": "a8a27e512eaf9a0dc85f922c7baf739c8123119b30032e5dd0c045460cad4be4"
       },
       "patches": [],
       "files": {
@@ -152,8 +152,8 @@
     "bundleSha256": "7e5efd3a604d8eccd017df2539d902ba94f3166e373ab27aa1d8f83ce406f234",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "5f2761e1f5b2eb085c3f16a64dbbd5edd74752d4de52fb06c8edfdc22a3cce09",
-    "producerObservationSha256": "5156cfdc5d1f4a34ea88912176a4e158a6e42550ab03fc8e898be4a0814af23a"
+    "rawMetafileSha256": "94a7138d61fbc71b450412323f8807b16b29bbf0285624c5cadc2910c81ef50f",
+    "producerObservationSha256": "609e2d34ce439f547fb6376aa07a4cf2b5e9a1d40fac936bd3871f023ead0b78"
   },
   "counts": {
     "parsed": 9966,
