@@ -2562,6 +2562,52 @@
       "abstractions": [
         "One sequential caller, two source-stamp and lock identities, at most three producer calls. The actual verifier classifies complete manifested output, and independent whole-tree fingerprints check existing and retained interrupted bytes. Generic SDK bundling, concurrent producers and Android installation require separate evidence."
       ]
+    },
+    {
+      "path": "specs/quint/services/AppUpdateCandidate.qnt",
+      "module": "AppUpdateCandidate",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "earlierCandidateRefusedAfterReleaseAdvancesTest",
+        "attemptChangeCannotReuseEarlierAdmissionTest",
+        "missingOrMalformedReadNeverWritesTest",
+        "finalArchiveOrIdentityRefusalPreservesVersionTest",
+        "rerunUsesSameCodeAndCannotOverwriteEvidenceTest",
+        "laterFloorCanStaleUnsignedReceiptTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "FirstReadAdmitsAdvancingCode",
+        "FinalReadAndAttemptOwnReceipt",
+        "UnsignedEvidenceOnly",
+        "RefusalPreservesEvidence"
+      ],
+      "sources": [
+        "scripts/app-update-candidate.mjs",
+        "scripts/deliver-app-update.mjs",
+        "scripts/update-artifact.mjs",
+        ".github/workflows/resident-android.yml"
+      ],
+      "stateMapping": {
+        "floor": "Current ordered retained-release inventory input; a subsequent publication can stale unsigned evidence",
+        "candidates.attempt/firstAttempt/finalAttempt": "Current trusted run attempt and exact first/final record identities for two fixed run numbers",
+        "candidates.firstFloor/finalFloor": "Actual admitted first and final read witnesses, ordered into three floor classes",
+        "candidates.versionWrites/receiptWrites/beforeVersionWrites/beforeReceiptWrites": "Real exclusive evidence-file existence before and after each helper call",
+        "candidates.signed/qualified/outcome": "Actual receipt flags and settled production helper success/refusal"
+      },
+      "abstractions": [
+        "Two GitHub run numbers, two attempts, three ordered version-floor classes and serial settled CLI calls. Trusted GitHub run-number uniqueness and the fixed workflow epoch are external assumptions.",
+        "Remote metadata and archive-admission classes are explicit inputs. The source refinement uses real scratch Git/files, exclusive creation and full byte hashing, with synthetic archive bytes and closed remote ports.",
+        "Receipts bind observed floors, not the live floor forever. An advancing release can stale a prior receipt; unsigned candidate evidence never authorizes signing, promotion or phone installation. No unconditional progress or temporal fairness claim is made for this finite admission helper.",
+        "Actual distribution APKs, native voice admission, protected signing/publication, HTTP behavior, independent filesystem mutation, crash durability and physical wireless updates remain separate qualification gates."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "maxVerifyDepth": 10
+      }
     }
   ]
 }

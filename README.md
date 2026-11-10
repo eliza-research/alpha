@@ -129,6 +129,63 @@ are independent results.
 checks anonymous readback. Merging source does not publish an application update.
 Android may require confirmation for installation.
 
+An automatic attempt that loses idle HOME after verifying its APK can retain
+that one file for a later attempt in the same process. Reuse checks the complete
+bytes and current package, version, variant and signer again. A process restart
+discards the cache hint; the durable installer journal still owns recovery.
+
+Main pushes automatically build unsigned native candidates in the existing
+Resident Android workflow. The separate `app-native-candidate-*` artifact holds
+the genuine distribution archive and `app-update-candidate.json`, which binds
+source, SDK, run/attempt, profile, channel and actual APK hashes. Test-mocks stay
+in the qualification archive. Primary main-push attempts share a canceling group;
+reruns use their own run ID group and do not cancel running work. GitHub does not
+guarantee commit order. Completion needs a quiet main, build capacity and admitted
+native inputs.
+The existing workflow run number is the candidate versionCode, checked against
+all retained stable APKs, the public pointer and committed version floors.
+Failed or canceled runs consume their number. A manual release or workflow
+migration that exceeds this number stops candidate creation and needs a reviewed
+version migration. Manual Cloud builds keep their explicit profile/version input.
+Candidates are unsigned build evidence. Native application signing/voice
+admission, protected release review, exact signed APK voice tests, publication
+and both sideload/image phone drills remain required before automatic delivery
+to users; the current protected application promotion bridge supports Cloud only.
+
+The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alphaphone/issues/888)
+and [wireless launcher acceptance #889](https://github.com/eliza-research/alphaphone/issues/889).
+Complete it in this order:
+
+1. Admit native voice inputs for the exact SDK, then build and sign both
+   distribution variants. Preserve advancing versions and the enrolled signer.
+2. Migrate the Cloud client and App Links to `ai.alphacompute.alphaphone`
+   ([#666](https://github.com/eliza-research/alphaphone/issues/666),
+   [#670](https://github.com/eliza-research/alphaphone/issues/670)). Keep
+   `/alphaphone/auth/callback` in production and staging. Preserve the selected
+   app identity, existing grants and other products' registrations.
+3. Qualify the exact signed APK bytes, publish the admitted launcher and
+   manifest, and verify anonymous full-byte readback. Then install the initial
+   baseline on each distribution form and run #889 on the machine with the phone.
+   The update itself must use the phone's channel; `pilot-update.mjs` uses
+   `adb install -r` and supplies separate in-place replacement evidence.
+4. Before distributing the batch, verify wireless replacement, retained data and
+   Keystore, HOME, voice and recovery after interruption and process death.
+   API 36 fixture results do not qualify the Android 17 image or a physical phone.
+
+OS OTA is a separate A/B image path. The shared updater is staged disabled;
+keep `os_update_enabled` false until signed image, channel, trust, SELinux,
+engine and physical recovery gates pass. Resolve
+[cache retention #890](https://github.com/eliza-research/alphaphone/issues/890)
+and [applied-candidate recovery #891](https://github.com/eliza-research/alphaphone/issues/891)
+before enrollment. [#400](https://github.com/eliza-research/alphaphone/issues/400)
+tracks the overall release gate. A successful host test or model does not close
+these release and device gates. Alpha consumes the reviewed rejected-download
+retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) at
+`4ce6c083f80893ce1601f15e9ff7fbb30028ec30`. Its dependency-upgrade ancestry changes
+the SDK lock; core/mobile builder and installed UUID inputs were compared
+separately. Earlier APK, voice and device evidence does not qualify this pin;
+rebuild and qualify the exact product inputs before OS enrollment.
+
 ## Generated files
 
 Build output belongs in ignored `web-dist/`, `artifacts/`, `test-results/` and
