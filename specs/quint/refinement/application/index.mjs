@@ -165,5 +165,10 @@ export async function collectApplicationCampaigns(campaigns, onProgress) {
     }
     onProgress?.({receipts, failures});
   }
+  const observed = new Set(receipts.map(receipt => receipt.coverageModel));
+  for (const model of entries.keys()) {
+    if (!observed.has(model)) obligations.push({model, obligation: 'Source-adapter refinement',
+      reason: 'This model has no successful source-adapter receipt in this campaign. Model checks do not establish implementation refinement.'});
+  }
   return {receipts, obligations, failures};
 }
