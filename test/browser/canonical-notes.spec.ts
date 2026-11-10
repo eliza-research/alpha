@@ -266,7 +266,7 @@ test('an agent append refreshes the open note and its row, and a stale owner edi
  expect(foreign).toEqual([]);expect(errors).toEqual([]);
 });
 
-test('Notes retains previous device data without a duplicate list or recovery shortcut',async({page})=>{
+test('Notes keeps previous device data behind an explicit recovery route without mixing collections',async({page})=>{
  const {errors}=await canonicalNotesFixture(page);
  const before=await page.evaluate(async()=>{
   const m=await import('/src/runtime/browser-notes-document.ts');
@@ -276,7 +276,7 @@ test('Notes retains previous device data without a duplicate list or recovery sh
  await openCanonicalNotes(page);
  await expect(page.getByRole('button',{name:'Open Previous local note',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Record voice note',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Previous notes',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Previous notes',exact:true})).toBeVisible();
  await expect(page.getByRole('group',{name:'Folders',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'New note',exact:true}).click();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Canonical only');

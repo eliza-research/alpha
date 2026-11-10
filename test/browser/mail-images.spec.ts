@@ -11,10 +11,10 @@ async function setup(page:Page,html:boolean|string=true,extraUrls:string[]=[]){
  },{html,extraUrls});
 }
 async function openMail(page:Page){await page.getByRole('button',{name:'Inbox',exact:true}).click();await page.getByText('Image fixture',{exact:true}).click();}
-async function imageSetting(page:Page){await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));await page.getByRole('button',{name:'Settings',exact:true}).click();return page.getByRole('button',{name:'Load images in email',exact:true});}
+async function imageSetting(page:Page){await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));await page.getByRole('button',{name:'Settings',exact:true}).click();const current=()=>page.locator('[data-settings-page]:not([inert])').last();await current().getByRole('button',{name:'Apps',exact:true}).click();await current().getByRole('button',{name:'Inbox',exact:true}).click();return current().getByRole('button',{name:'Load images in email',exact:true});}
 test('HTML email loads images by default, keeps inline links isolated, and saved opt-out survives reload',async({page})=>{
  let imageRequests=0;
- await page.route('https://images.invalid/**',route=>{imageRequests++;return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aH1sAAAAASUVORK5CYII=','base64')});});
+ await page.route('https://images.invalid/**',route=>{imageRequests++;return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP4/x8AAwAB/2+Bq7YAAAAASUVORK5CYII=','base64')});});
  await setup(page);await openMail(page);
  const frame=page.frameLocator('iframe[title="Formatted email"]');
  await expect(frame.getByRole('img',{name:'Product'})).toBeVisible();await expect.poll(()=>imageRequests).toBeGreaterThan(0);
@@ -32,6 +32,32 @@ test('HTML email loads images by default, keeps inline links isolated, and saved
 });
 test('plain-text email retains its reviewed link controls',async({page})=>{
  await setup(page,false);await openMail(page);await expect(page.getByRole('group',{name:'Links in this email'})).toBeVisible();await expect(page.getByRole('button',{name:'Read more (example.invalid)',exact:true})).toBeVisible();await expect(page.locator('iframe[title="Formatted email"]')).toHaveCount(0);
+});
+
+test('Show images applies only to the chosen message when paging a conversation',async({page})=>{
+ const requests:string[]=[];
+ await page.route('https://images.invalid/**',route=>{requests.push(route.request().url());return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP4/x8AAwAB/2+Bq7YAAAAASUVORK5CYII=','base64')});});
+ await setup(page);
+ await page.evaluate(async()=>{
+  const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
+  await (await import('/src/browser/device-preferences.ts')).editDevicePreferences(value=>{value.autoLoadMailImages=false;});
+  const client=c.getCloudClient()!.client as any,read=client.gmailRead;
+  client.gmailInboxCapabilities=async()=>({version:1,from:'owner@example.test',threads:true,send:false,providerDrafts:false,mailboxMutations:false,attachments:true,providerExactlyOnce:false,atomicDraftReplacement:false,readState:false});
+  client.gmailThread=async(_grant:string,_thread:string,_signal:AbortSignal,page?:{offset:number})=>{
+   const first=await read(),offset=page?.offset??0;
+   const body=offset?{...first,message:{...first.message,id:'second-image-mail',subject:'Next image fixture'},bodyHtml:'<p>Next message</p><img src="https://images.invalid/second.png" alt="Second product">'}:first;
+   return {messages:[body],total:2,offset,historyId:'image-thread-history',nextOffset:offset?null:1};
+  };
+ });
+ await openMail(page);
+ await page.getByRole('button',{name:'Show images',exact:true}).click();
+ await expect(page.frameLocator('iframe[title="Formatted email"]').getByRole('img',{name:'Product',exact:true})).toBeVisible();
+ await expect.poll(()=>requests.length).toBeGreaterThan(0);
+ await page.getByRole('button',{name:'More messages',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Next image fixture',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Show images',exact:true})).toBeVisible();
+ await expect(page.frameLocator('iframe[title="Formatted email"]').getByRole('img')).toHaveCount(0);
+ expect(requests.some(url=>url.endsWith('/second.png'))).toBe(false);
 });
 
 test('HTML with an unlinked URL retains its reviewed fallback',async({page})=>{

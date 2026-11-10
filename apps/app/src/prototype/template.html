@@ -2251,6 +2251,7 @@
           </button>
     </sc-for>
     <sc-if value="{{notes.canImportText}}"><button class="tap" aria-label="Import text note" disabled="{{notes.documentBusy}}" onClick="{{notes.importText}}" style="display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 16px; padding: 0 14px; border-radius: 22px; background: var(--s2); color: var(--fg); font-size: 14px"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.filesDown}}"></path></svg>Import text note</button></sc-if>
+    <sc-if value="{{notes.olderNotesAction}}"><button class="tap" onClick="{{notes.olderNotesAction}}" style="min-height:44px;margin-top:16px;padding:0 8px;color:var(--mut);font-size:14px">Previous notes</button></sc-if>
   </div>
 
   

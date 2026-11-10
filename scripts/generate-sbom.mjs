@@ -132,10 +132,19 @@ function gradleComponents(root) {
  * of them; each APK row says which it is (`resident-runtime`).
  */
 const WITH_RESIDENT_RUNTIME = 'apk (only one that packages the resident runtime)';
+const SUPERSEDED_EMBEDDING_MODEL = 'legacy source record; superseded inputs; not current packaged bytes';
+function embeddingInputsCurrent(root, record) {
+  if (!record) return false;
+  try { verifyEmbeddingInputs(root, record, {requireProducerInputs: true}); return true; }
+  catch { return false; }
+}
 function embeddingHostComponents(root) {
   if (!exists(root, EMBEDDING_HOST)) return [];
   const host = readJson(root, EMBEDDING_HOST);
   const hostScope = exists(root, 'vendor/eliza/plugins/plugin-local-inference/native/android/consumer.gradle') ? 'legacy qualification record; incompatible with current Paradee engine; not current packaged bytes' : WITH_RESIDENT_RUNTIME;
+  const modelScope = host.requalification?.required === true
+    ? 'legacy qualification record; requalification pending; not current packaged bytes'
+    : embeddingInputsCurrent(root, host) ? WITH_RESIDENT_RUNTIME : SUPERSEDED_EMBEDDING_MODEL;
   const source = `${EMBEDDING_HOST} (elizaOS ${host.pin}, engine ${host.forkPin})`;
   return [
     ...host.libraries.map(library => ({
@@ -145,7 +154,7 @@ function embeddingHostComponents(root) {
     })),
     {type: 'machine-learning-model', 'bom-ref': `embedding-model:${path.basename(host.model.path)}`, name: path.basename(host.model.path), version: `${host.model.dimensions} dimensions`,
       hashes: [{alg: 'SHA-256', content: host.model.sha256}],
-      properties: [property('ships-in', WITH_RESIDENT_RUNTIME), property('source', `${EMBEDDING_HOST} (staged to ${host.model.path})`)]},
+      properties: [property('ships-in', modelScope), property('source', `${EMBEDDING_HOST} (staged to ${host.model.path})`)]},
   ];
 }
 
@@ -168,11 +177,7 @@ function residentRuntimeComponents(root) {
   const record = exists(root, EMBEDDING_HOST) ? readJson(root, EMBEDDING_HOST) : null;
   // Only current source inputs make the recorded hashes authoritative. A superseded record
   // stays in the source inventory while staged candidates are enumerated by their actual bytes.
-  let embedding = null;
-  if (record) {
-    try { verifyEmbeddingInputs(root, record, {requireProducerInputs: true}); embedding = record; }
-    catch { /* Source inventory only; the staged file inventory below remains exact. */ }
-  }
+  const embedding = embeddingInputsCurrent(root, record) ? record : null;
   for (const [base, kind] of [[AGENT_ASSETS, 'asset'], [JNI_LIBS, 'native library']])
     for (const rel of exists(root, base) ? walkFiles(path.join(root, base)) : []) {
       const file = `${base}/${rel}`;
