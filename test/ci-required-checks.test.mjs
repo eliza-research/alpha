@@ -80,9 +80,9 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   const resident = residentFull.replace(carrierGroupSuffix, '');
   assert.match(resident, /vars\.ELIZA_RESIDENT_QUALIFICATION == 'push'/);
   assert.match(resident, /vars\.ELIZA_RESIDENT_QUALIFICATION == 'nightly'/);
-  // Primary main candidates supersede one another. Reruns have a group per run ID.
-  // Develop and nightly qualification retain distinct groups, manual qualification
-  // groups by ref, and upload-only carriers retain their extra suffix.
+  // Primary main attempts may supersede automatic candidate work; reruns are isolated. Develop pushes and
+  // nightly qualification retain distinct groups; manual qualification stays isolated by
+  // ref and upload-only carriers retain their extra suffix.
   const concurrency = YAML.parse(residentFull).concurrency;
   assert.equal(concurrency.group, "resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && (github.run_attempt == 1 && 'app-candidate-main' || format('app-candidate-run-{0}', github.run_id)) || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}" + carrierGroupSuffix);
   assert.equal(concurrency['cancel-in-progress'], "${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1) }}");
