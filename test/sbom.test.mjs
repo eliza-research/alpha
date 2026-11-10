@@ -13,6 +13,8 @@ import {packagedRuntimePresent} from '../scripts/generate-licenses.mjs';
 import {sbomArgs} from '../scripts/build-android.mjs';
 import {FLAGS} from '../scripts/licence-policy.mjs';
 import {stageAgentBundleDependencies} from '../scripts/agent-bundle-dependencies.mjs';
+import {execFileSync} from 'node:child_process';
+import {embeddingProducerInputPaths, nativeInputPaths, nativeBinding, nativeInputs, nativeGenerated} from '../scripts/embedding-native-contract.mjs';
 
 const sbom = buildSbom(ROOT);
 const read = rel => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
@@ -155,8 +157,8 @@ test('release-candidate options list what was built and never upgrade it', t => 
   assert.match(fs.readFileSync(path.join(ROOT, 'scripts/build-android.mjs'), 'utf8'), /else run\("node", \["scripts\/generate-sbom\.mjs", \.\.\.sbomArgs\(outDir, root\)\]\);/);
 });
 
-test('staged native candidates retain their actual hashes while embedding requalification is pending', t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-sbom-requalification-'));
+test('staged native candidates retain their actual hashes when the embedding source record is superseded', t => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-sbom-source-record-'));
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   const write = (file, bytes) => {
     const target = path.join(root, file);
@@ -172,7 +174,7 @@ test('staged native candidates retain their actual hashes while embedding requal
     fs.symlinkSync(path.join(ROOT, file), target);
   }
   const host = read('android/embedding-host/qualified-host.json');
-  host.requalification = {required: true};
+  host.producerInputs[0].sha256 = '0'.repeat(64);
   write('android/embedding-host/qualified-host.json', JSON.stringify(host));
   const agent = 'android/app/src/main/assets/agent';
   const source = path.join(root, 'artifacts/local-agent-resident-' + 'a'.repeat(40));
@@ -208,8 +210,17 @@ test('staged native candidates retain their actual hashes while embedding requal
     assert.ok(component, `${file} is enumerated independently of the superseded pin`);
     assert.deepEqual(component.hashes, [{alg: 'SHA-256', content: hash(fs.readFileSync(path.join(root, file)))}]);
   }
-  // Once qualified, the pin becomes authoritative and different staged bytes are rejected.
-  host.requalification.required = false;
+  // Current source inputs make the expected hashes authoritative without a manual approval.
+  const pin = read('upstream.lock.json').commit;
+  const upstream = path.join(ROOT, 'vendor/eliza');
+  const show = file => execFileSync('git', ['-C', upstream, 'show', `${pin}:${file}`]);
+  const identity = read('app.config.json').appId;
+  const binding = nativeBinding(show(nativeInputPaths.at(-1)).toString(), show(nativeInputPaths.at(-2)).toString(), identity);
+  host.pin = pin;
+  host.forkPin = execFileSync('git', ['-C', upstream, 'ls-tree', pin, 'plugins/plugin-local-inference/native/llama.cpp'], {encoding: 'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
+  host.jniBinding = binding;
+  host.inputs = nativeInputs(binding).map(file => ({path: file, sourceSha256: hash(show(file)), generatedSha256: hash(nativeGenerated(file, show(file).toString(), identity, binding))}));
+  host.producerInputs = embeddingProducerInputPaths.map(file => ({path: file, sha256: hash(show(file))}));
   write('android/embedding-host/qualified-host.json', JSON.stringify(host));
   assert.throws(() => buildSbom(root, {packagedRuntime: true}), /staged but is not the bytes pinned/);
 });

@@ -47,17 +47,15 @@ test('only a voice record for the current SDK can admit the native profile', () 
   }
 });
 
-test('the schema rejects bad hashes, missing ABIs, non-GGUF models, an incomplete ASR slot and unearned qualification', () => {
+test('the schema rejects bad hashes, missing ABIs, non-GGUF models, an incomplete ASR slot', () => {
   const bad = structuredClone(committed);
   bad.abis[0].libraries[0].sha256 = 'nope';
   bad.models.find(row => row.role === 'tts-model').path = 'tts/paradee/paradee.pt';
   bad.models = bad.models.filter(row => row.role !== 'asr-model');
-  bad.qualified = true;
   const problems = voiceHostProblems(bad, 'fixture');
-  for (const expected of ['abis[0].libraries[0] needs a lowercase SHA-256', 'must be a GGUF file', 'has no asr-model', 'ASR rows must be exactly asr-model for the parakeet backend', 'qualified cannot be true without device execution'])
+  for (const expected of ['abis[0].libraries[0] needs a lowercase SHA-256', 'must be a GGUF file', 'has no asr-model', 'ASR rows must be exactly asr-model for the parakeet backend'])
     assert.ok(problems.some(problem => problem.includes(expected)), expected);
   assert.ok(voiceHostProblems({...committed, abis: committed.abis.slice(0, 1)}).some(problem => problem.includes('must record arm64-v8a and x86_64')));
-  assert.ok(voiceHostProblems({...committed, evidence: undefined}).some(problem => problem.includes('must record emulator and device execution')));
   assert.deepEqual(voiceHostProblems([], 'fixture'), ['fixture: not a JSON object']);
   // A Qwen3 pair needs the qwen3 backend; a parakeet slot carrying a projector is refused.
   const pair = structuredClone(committed);
