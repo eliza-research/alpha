@@ -49,6 +49,7 @@ test('Conversation controls survive a keyboard-sized viewport and retain the dra
 });
 
 for(const theme of ['light','dark']) test(`Retained digest panel respects ${theme} appearance without a Settings shortcut`,async({page},info)=>{
+  await page.addInitScript(theme=>localStorage.setItem('alpha.appearance.v1',theme),theme);
   await page.goto(`/?theme=${theme}`);
   await page.getByRole('button',{name:'Settings',exact:true}).click();
   await page.getByRole('button',{name:'Apps',exact:true}).click();

@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
-  "ledgerSha256": "cb8ee8190068c231e6d55d10284b35c9721e7cbd6318e27ffc12a649a957079c",
+  "ledgerSha256": "829bc386b4a6bcd8ceb2550fa1647151937c437fed3230a46b7528fc884412a5",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -33704,7 +33704,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "48a65f7f33369c6bbae806833723ed6071af10ac3962ddae63ed391479080748",
+      "sha256": "99c28d08a58e6075a0a1f2188d2563091eb77930faef5982a93b32bd8ef32077",
       "allocatedModels": [
         "Application",
         "AssistantConversation",
@@ -43731,7 +43731,7 @@
     },
     {
       "path": "apps/app/src/runtime/hosted-digest-ui.tsx",
-      "sha256": "5984ac9b568a2f944a94a7844a54a8a92a63b6f734653de9be3bc289bf0c0bd4",
+      "sha256": "71f06d086c3b9c08fb21d1a1b6c63401934c20fb8d12864af4ecfc15e30406e2",
       "allocatedModels": [
         "DevelopmentDigestPending",
         "HostedDigestMutation",
@@ -43786,20 +43786,20 @@
           "writes": 2
         },
         {
-          "owner": "HostedDigestPanel.checkRenewal.ArrowFunction@392",
-          "line": 396,
+          "owner": "HostedDigestPanel.checkRenewal.ArrowFunction@396",
+          "line": 400,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "HostedDigestPanel.submit",
-          "line": 453,
+          "line": 457,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "HostedDigestPanel.prepareNativeSource",
-          "line": 528,
+          "line": 532,
           "bindings": 1,
           "writes": 1
         }
@@ -226126,6 +226126,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "b698596580aed030964d277495398231ec48aa72245e2f0e916b2e8244687077"
+    "sha256": "d9000d2a3e854f21f65955350e9b877a11adaedd8076f66c0661d94b586f7c90"
   }
 }

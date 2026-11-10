@@ -353,6 +353,10 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 		const previous = document.activeElement as HTMLElement | null;
 		const phone = document.querySelector<HTMLElement>('.os');
 		const releaseInert = holdPhoneInert(phone);
+		if (phone && panel.current) {
+			const theme = getComputedStyle(phone);
+			for (const token of ['bg', 'fg', 's2', 'line', 'mut', 'acc']) panel.current.style.setProperty(`--connection-${token}`, theme.getPropertyValue(token === 'acc' ? '--acct' : `--${token}`));
+		}
 
 		panel.current?.focus();
 		const back = (event: Event) => {

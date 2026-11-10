@@ -15570,7 +15570,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "48a65f7f33369c6bbae806833723ed6071af10ac3962ddae63ed391479080748",
+      "sha256": "99c28d08a58e6075a0a1f2188d2563091eb77930faef5982a93b32bd8ef32077",
       "models": [
         "Application",
         "AssistantConversation",
@@ -15865,7 +15865,7 @@
         }
       ],
       "reviewStatus": "state-audit-required",
-      "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates."
+      "integrationReview": "2026-11-10: Reviewed owner UI intake plus current retention correction; bound source hashes and candidate anchors. Existing timezone metadata is preserved on edits, while new workflows use the device zone. Source/browser checks are bounded; full semantic refinement and new SDK bundle qualification remain separate gates. 2026-11-10: Await explicit saved-draft restore before switching from first-send slot to conversation. Real renderer restart/restoration test verifies destination persistence, source clearing and no send. Retire guard prevents an ended shell moving bindings."
     },
     {
       "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
@@ -41412,7 +41412,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "5984ac9b568a2f944a94a7844a54a8a92a63b6f734653de9be3bc289bf0c0bd4",
+      "sha256": "71f06d086c3b9c08fb21d1a1b6c63401934c20fb8d12864af4ecfc15e30406e2",
       "stateAnchors": [
         {
           "line": 64,
@@ -41923,7 +41923,7 @@
           "text": "{features.dossier&&sources.find(s=>s.id===sourceId)?.live?.provider==='native'&&<button disabled={busy} onClick={()=>{const source=sources.find(s=>s.id===sourceId)!;setReview({path:'dossier',body:{sou"
         }
       ],
-      "integrationReview": "Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations."
+      "integrationReview": "Domain allocation retained after merged fixes. Source identity and lexical anchors do not renew source-model refinement evidence; changed transitions retain explicit review obligations. 2026-11-10: On opening retained digest dialog, copy the current phone theme tokens exactly as Account and Google do, including readable text accent. No schedule or provider operation changes."
     },
     {
       "path": "apps/app/src/runtime/hosted-digests.ts",

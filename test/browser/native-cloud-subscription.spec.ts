@@ -25,6 +25,8 @@ test.beforeAll(async()=>{
  const {StartupPermissions}=await import('/src/startup-permissions.tsx');
  const flags=await import('/src/build-flags.ts');window.planFlags={native:Capacitor.getPlatform(),mocks:flags.testMocksEnabled};
  window.planController=connectionController;
+ // The actual shell owns this attribute; the isolated composition supplies Home explicitly.
+ document.documentElement.dataset.activeView='home';
  document.body.insertAdjacentHTML('afterbegin','<div class="os" style="position:fixed;inset:0;background:var(--bg)" aria-hidden="true"></div>');
  function Composition(){const state=useSyncExternalStore(connectionController.subscribe,connectionController.getSnapshot);return React.createElement(React.Fragment,null,React.createElement(ConnectionChooser),!connectionChooserVisible(state)&&React.createElement(StartupPermissions));}
  createRoot(document.getElementById('root')).render(React.createElement(Composition));

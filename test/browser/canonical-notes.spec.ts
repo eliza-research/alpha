@@ -208,7 +208,7 @@ test('slow saves: typing during a new note\'s first save makes one record, and D
  await page.evaluate(()=>(window as any).canonicalNotesFixture.delay=250);
  const title=page.getByRole('textbox',{name:'Title',exact:true}),body=page.getByRole('textbox',{name:'Note',exact:true}),review=page.getByRole('button',{name:/^(Reload Notes|Discard draft and reload)$/});
  await page.getByRole('button',{name:'New note',exact:true}).click();
- await title.pressSequentially('Hello',{delay:40});await body.pressSequentially('World',{delay:40});
+ await title.fill('');await title.pressSequentially('Hello',{delay:40});await body.pressSequentially('World',{delay:40});
  await page.getByRole('button',{name:'Back to notes',exact:true}).click();
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.map((n:any)=>[n.title,n.body]))).toEqual([['Hello','\nWorld']]);
  const creates=(await page.evaluate(()=>(window as any).canonicalNotesFixture.requests)).filter((r:any)=>r.body?.capability==='create-note');
