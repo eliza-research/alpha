@@ -15,6 +15,7 @@ import {FLAGS} from '../scripts/licence-policy.mjs';
 import {stageAgentBundleDependencies} from '../scripts/agent-bundle-dependencies.mjs';
 import {execFileSync} from 'node:child_process';
 import {embeddingProducerInputPaths, nativeInputPaths, nativeBinding, nativeInputs, nativeGenerated} from '../scripts/embedding-native-contract.mjs';
+import {verifyEmbeddingInputs} from '../scripts/stage-embedding-host.mjs';
 
 const sbom = buildSbom(ROOT);
 const read = rel => JSON.parse(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
@@ -116,7 +117,12 @@ test('the embedding host is listed from its reviewed pins, without claiming it i
     assert.match(prop(component, 'ships-in'), /legacy qualification record; incompatible with current Paradee engine/);
   }
   assert.equal(byRef.get('embedding-model:bge-small-en-v1.5-f16.gguf').hashes[0].content, host.model.sha256);
-  assert.equal(prop(byRef.get('embedding-model:bge-small-en-v1.5-f16.gguf'), 'ships-in'), 'apk (only one that packages the resident runtime)');
+  let current = false;
+  try { verifyEmbeddingInputs(ROOT, host, {requireProducerInputs: true}); current = true; } catch {}
+  assert.equal(prop(byRef.get('embedding-model:bge-small-en-v1.5-f16.gguf'), 'ships-in'), host.requalification?.required === true
+    ? 'legacy qualification record; requalification pending; not current packaged bytes'
+    : current ? 'apk (only one that packages the resident runtime)'
+      : 'legacy source record; superseded inputs; not current packaged bytes');
   // No licence is recorded for the engine or the model in this repository: say so, flagged.
   assert.deepEqual([prop(byRef.get(`embedding-host:${host.abi}/libelizainference.so`), 'licence-expression'), prop(byRef.get(`embedding-host:${host.abi}/libelizainference.so`), 'licence-flags')], [LICENCE_NOT_RECORDED, 'unverified']);
 });
@@ -205,11 +211,22 @@ test('staged native candidates retain their actual hashes when the embedding sou
   write(library, 'rebuilt native candidate');
   write(host.model.path, 'rebuilt model candidate');
   const candidate = buildSbom(root, {packagedRuntime: true});
+  const historicalModel = candidate.components.find(row => row['bom-ref'] === `embedding-model:${path.basename(host.model.path)}`);
+  assert.equal(prop(historicalModel, 'ships-in'), 'legacy source record; superseded inputs; not current packaged bytes');
+  assert.deepEqual(historicalModel.hashes, [{alg: 'SHA-256', content: host.model.sha256}]);
+  assert.equal(prop(historicalModel, 'source'), `android/embedding-host/qualified-host.json (staged to ${host.model.path})`);
   for (const file of [library, host.model.path]) {
     const component = candidate.components.find(row => row['bom-ref'] === `resident-runtime:${file}`);
     assert.ok(component, `${file} is enumerated independently of the superseded pin`);
     assert.deepEqual(component.hashes, [{alg: 'SHA-256', content: hash(fs.readFileSync(path.join(root, file)))}]);
   }
+  // Historical pending metadata scopes the old model without changing its hash or provenance.
+  host.requalification = {required: true};
+  write('android/embedding-host/qualified-host.json', JSON.stringify(host));
+  const pendingModel = buildSbom(root).components.find(row => row['bom-ref'] === historicalModel['bom-ref']);
+  assert.equal(prop(pendingModel, 'ships-in'), 'legacy qualification record; requalification pending; not current packaged bytes');
+  assert.deepEqual(pendingModel.hashes, historicalModel.hashes);
+  assert.equal(prop(pendingModel, 'source'), prop(historicalModel, 'source'));
   // Current source inputs make the expected hashes authoritative without a manual approval.
   const pin = read('upstream.lock.json').commit;
   const upstream = path.join(ROOT, 'vendor/eliza');
@@ -221,7 +238,12 @@ test('staged native candidates retain their actual hashes when the embedding sou
   host.jniBinding = binding;
   host.inputs = nativeInputs(binding).map(file => ({path: file, sourceSha256: hash(show(file)), generatedSha256: hash(nativeGenerated(file, show(file).toString(), identity, binding))}));
   host.producerInputs = embeddingProducerInputPaths.map(file => ({path: file, sha256: hash(show(file))}));
+  host.requalification.required = false;
   write('android/embedding-host/qualified-host.json', JSON.stringify(host));
+  const currentModel = buildSbom(root).components.find(row => row['bom-ref'] === historicalModel['bom-ref']);
+  assert.equal(prop(currentModel, 'ships-in'), 'apk (only one that packages the resident runtime)');
+  assert.deepEqual(currentModel.hashes, historicalModel.hashes);
+  assert.equal(prop(currentModel, 'source'), prop(historicalModel, 'source'));
   assert.throws(() => buildSbom(root, {packagedRuntime: true}), /staged but is not the bytes pinned/);
 });
 

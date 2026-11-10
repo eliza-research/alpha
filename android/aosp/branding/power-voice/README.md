@@ -12,10 +12,11 @@ resource/source patch. Unknown preimages, partial applications and unrelated sou
 changes must be reviewed through the normal whole-source inventory verifier. Do not
 change the immutable baseline inventory to make modified files appear stock.
 
-Both Android services and SystemUI compiled successfully on the preserved stallion
-builder. Compiled SearchManager bytecode contains the caller-UID check and marker
-removal; the SystemUI dex contains the protected component. This is component evidence,
-not Binder, hardware, microphone, complete image or production-release acceptance.
+The earlier Android services and SystemUI sources compiled on the preserved stallion
+builder. That result retains its original package and patch hashes. The current
+Alpha Compute component and regenerated patch have source checks only; compile
+them again before image admission. Neither result establishes Binder, hardware,
+microphone, complete image or production-release acceptance.
 
 The app component must use the current shared Sense owner/session/generation authority.
 The older d4fbb prototype is not compatible with the newer shared Sense integration and
