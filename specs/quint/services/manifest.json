@@ -2486,6 +2486,54 @@
         "maxSteps": 80,
         "maxVerifyDepth": 7
       }
+    },
+    {
+      "path": "specs/quint/services/ClientFeaturePublication.qnt",
+      "module": "ClientFeaturePublication",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "loserOnlyReadsWhileLaterPeerRetiresWinnerTest",
+        "readbackCannotRetireAgainTest",
+        "changedDirectoryCannotAuthenticateTest",
+        "differentWinnerTimesOutWithoutReplacementTest",
+        "unrecognizedOrLinkedInitialTreeIsPreservedTest",
+        "readbackRefusalCannotDeleteForeignTreeTest",
+        "failedIoAndCleanupRetainOnlyOwnedScratchTest",
+        "unauthenticatedSourceCannotRetireTest"
+      ],
+      "invariants": [
+        "RetireAndPublishAtMostOnce",
+        "AcceptedOnlyExactTarget",
+        "PrivateCandidateBeforePublish",
+        "SuccessfulCleanupOwnsNoSidecars",
+        "TypeOK"
+      ],
+      "sources": [
+        "scripts/prepare-client-features.mjs",
+        "scripts/upstream-native-source.mjs",
+        "upstream.lock.json",
+        "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
+        "vendor/eliza/packages/app/scripts/lib/committed-source.mjs"
+      ],
+      "stateMapping": {
+        "visible/kind": "Actual published cache bytes/provenance and regular versus refused path class",
+        "workers.candidate/aside": "Private authenticated stage and per-process retired directory inventories",
+        "workers.retirements/publications/reads": "Actual rename attempts and lstat probes; probes do not establish acceptance",
+        "workers.phase/accepted/outcome": "One-shot mutation, read-only collision recovery, exact function result, timeout and cleanup outcomes"
+      },
+      "abstractions": [
+        "Three finite publishers; stale cache and two authenticated target equality classes. Every publisher retires and attempts publication at most once; a loser only reads.",
+        "A complete private candidate precedes the first rename. One selected outside writer can change the readback winner. Cleanup names only the caller own stage/aside; abrupt process loss and orphan recovery are outside this relation.",
+        "Read counts are0,1,2-or-more. Actual source uses25ms cooperative waits and a monotonic30-second deadline. Eventual success requires finite peers/IO and authenticated readback before that deadline; safety does not imply progress.",
+        "One source-linked three-process collision trace observes a real missing-path readback and exact final authentication. Initial refusal, different-target timeout and IO/cleanup failure scenarios are model-only selected branches."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 6
+      }
     }
   ]
 }
