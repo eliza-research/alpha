@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "baseCommit": "80fbb1d25937585b24fd85132d623d5391c8ca07",
+  "path": "packages/ui/src/overview/OverviewCards.tsx",
+  "beforeSha256": "12ffc2fc0b382383faf2232b51c0837bc46d597b98f12b39a56aa433ffa7ee73",
+  "afterSha256": "e7380351012391dc8dc63f3dd35a75dec1f843e07f950365a33a60240cb75df1",
+  "patchSha256": "808fe995afaffedb09479ff84be4454f490a902537127e37c810de8a532aee2a"
+}

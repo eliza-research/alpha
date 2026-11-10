@@ -68,7 +68,8 @@ test('brief card appears only for a retained result and keeps its failure state'
   out.failed=html(c.homeBriefCard({homeBriefHas:true,homeBriefTitle:'Source expired',homeBriefStatus:'Alpha · Failed 7:00 AM',homeBriefFailed:true,homeBriefLabel:'Open scheduled digests.'}));
   assert.equal(out.none,null,'the removed empty brief does not return');
   assert.match(out.ran,/^<button type="button" data-overview-part="card" class="home-brief-card" data-overview-card="brief"/);
-  for(const attribute of ['data-alpha-home-brief=""','data-alpha-home-brief-failed="false"','aria-haspopup="dialog"','aria-label="Open scheduled digests. Latest brief from Alpha, ran 7:02 AM: Two meetings today."'])assert.ok(out.ran.includes(attribute),attribute);
+  for(const attribute of ['data-alpha-home-brief=""','data-alpha-home-brief-failed="false"','aria-label="Open scheduled digests. Latest brief from Alpha, ran 7:02 AM: Two meetings today."'])assert.ok(out.ran.includes(attribute),attribute);
+  assert.ok(!out.ran.includes('aria-haspopup'), 'the shared brief does not impose popup navigation');
   assert.match(out.ran,/class="home-brief-head"><span data-overview-part="heading">Latest brief<\/span>/);
   assert.match(out.ran,/class="home-brief-title">Two meetings today\.<\/span><span data-overview-part="status" class="home-brief-status">Alpha · Ran 7:02 AM</);
   assert.ok(out.failed.includes('data-alpha-home-brief-failed="true"'));

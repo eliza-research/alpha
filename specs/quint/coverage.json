@@ -21475,7 +21475,7 @@
     },
     {
       "path": "apps/app/src/prototype/data-adapter.ts",
-      "sha256": "287dca27d6a362d151c16d347ee341031e21abb520695a0be7f9fc78cee40524",
+      "sha256": "d8311d0df67c5197cdfaf240ae11ac637a4608f8737c2d15bd5c2bc2912ff4c8",
       "models": [
         "Application"
       ],
@@ -21742,7 +21742,8 @@
           "line": 238,
           "text": "const attention = mockAttentionRows();"
         }
-      ]
+      ],
+      "integrationReview": "2026-11-10: retained brief opens existing Workflows view without schedule execution; shared brief does not impose dialog semantics. Home source guards and legacy navigation tests follow latest owner UI choices."
     },
     {
       "path": "apps/app/src/prototype/dc-lite.js",
@@ -47985,9 +47986,9 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "daf0f2a4748ab4d0e423be25fe84c5d9097f023f5ef94e8c64d5e39e2f0342c6",
+      "sha256": "8696bb25e057080cac3832e733abeb5a7cd76af794407ab9f51fc034cae11737",
       "stateAnchors": [],
-      "integrationReview": "2026-11-10: accepted voice transcript follow reviewed with both delivery orders and reading cancellation; Notes pending audio patch independently reviewed after MIME correction. Models are bounded and do not prove live provider or installed-device behavior."
+      "integrationReview": "2026-11-10: retained brief opens existing Workflows view without schedule execution; shared brief does not impose dialog semantics. Home source guards and legacy navigation tests follow latest owner UI choices."
     },
     {
       "path": "scripts/prepare-embedding-host.mjs",
@@ -619302,7 +619303,7 @@
         "InboxProviderDrafts",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "daf0f2a4748ab4d0e423be25fe84c5d9097f023f5ef94e8c64d5e39e2f0342c6",
+      "sha256": "8696bb25e057080cac3832e733abeb5a7cd76af794407ab9f51fc034cae11737",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
     },
     {
