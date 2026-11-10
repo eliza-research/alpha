@@ -2146,7 +2146,7 @@
     "revision": "a68b3525970fe9a30efd76979eb6ed4d8327b277",
     "classification": "current-upstream-formal-specifications",
     "models": [],
-    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The selected source-owned Quint sidecars below retain DeletionOwnerAdmission, CloudSpeechSuccessor, MapsTileCache and ViewportCopyright at the current pin. Their independent model and transport checks do not establish complete downstream refinement, native release, provider, image or device qualification. Any future TLA/TLC source requires separate allocation.",
+    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The selected source-owned Quint sidecars below retain DeletionOwnerAdmission, CloudSpeechSuccessor, MapsTileCache and ViewportCopyright at the current pin. Their independent model and transport checks do not establish complete downstream refinement, native release, provider, image or device qualification. Any future TLA/TLC source requires separate allocation. The retained Maps sidecars include their implementation checkers; live provider and device acceptance remain separate.",
     "quintSidecars": [
       {
         "path": "plugins/plugin-native-action-journal/quint/DeletionOwnerAdmission.cases.json",
@@ -2197,6 +2197,16 @@
         "path": "plugins/plugin-maps/quint/ViewportCopyright.cases.json",
         "gitObject": "21612aba27eb594c1b80e4ac641f928d82b01922",
         "sha256": "37877a76e2c51210976cdd97ab4fba91d4677ff5105db8e8118ebc0a7378c2c3"
+      },
+      {
+        "path": "packages/cloud/quint/check-maps-tile-cache.mjs",
+        "gitObject": "8b544b382acdbd675501d8f525b74c0ed3669418",
+        "sha256": "23c7e7d35b4eed2d866e933acce759e78c4f483414da046681455de95b6f3142"
+      },
+      {
+        "path": "plugins/plugin-maps/quint/check-viewport-copyright.mjs",
+        "gitObject": "5efb89bb176c70053d5aad9a43d5b7cdc5344053",
+        "sha256": "4a00f9d9f520084021748948acdff82a975e66893bb7f56d1f55c58768fb3549"
       }
     ]
   }

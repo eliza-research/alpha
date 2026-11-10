@@ -640,7 +640,7 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .alpha-map-credits[data-google-maps="true"] > .alpha-map-privacy > summary {
   border-radius:14px; background:var(--bg); color:var(--fg); box-shadow:0 2px 12px var(--shc);
 }
-.alpha-google-mark { flex:none; display:inline-flex; align-items:center; padding:10px 10px 5px; background:#fff; }
+.alpha-google-mark { flex:none; display:inline-flex; align-items:center; padding:10px 10px 5px; background:var(--alpha-white); }
 .alpha-google-mark img { display:block; width:auto; height:16px; }
 .alpha-google-copyright,.alpha-google-map-missing { min-width:0; padding:6px 8px; overflow-wrap:anywhere; }
 .alpha-google-sources { display:none; min-width:0; }
