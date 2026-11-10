@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "classification": "observed-product-android-bundle-inputs",
-  "sourcePin": "3406b628f30a90c5b47128b6dc30bae177b7870e",
+  "sourcePin": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
   "producer": {
     "script": "scripts/build-mobile-agent.mjs",
     "observer": "specs/quint/refinement/services/runtime-bundle-audit.mjs",
     "inputHashes": {
       "specs/quint/refinement/services/runtime-bundle-audit.mjs": "0527954e0c6a927698e6351b0150eb3bb660e573a7570330d38d80e6f8bd9f67",
       "specs/quint/refinement/services/runtime-bundle-graph.mjs": "0bd78236abb72ae29b2716ead130dcbb2a00455a326ecc2280fc6bf5988eadf5",
-      "upstream.lock.json": "267194a0cbce2a9879539807d697271c4dd219b60ef28623f4dc1ba7dd0ac546",
-      "scripts/upstream-mobile-build.mjs": "5b9d31009eaac4dc9a30d0eed5cdeb0448a06b99469dd9bbb215d0bbdc8fa9e8",
+      "upstream.lock.json": "9411de1f3963748004a5d5e5eeed7d054182683aa0d9e1627281d43d1228e043",
+      "scripts/upstream-mobile-build.mjs": "4f6ad4d77bd9048463a34fc60762aaff7385727982e3df7ac3134a082872a116",
       "scripts/local-agent-source.mjs": "bd5c0ae286c2802fed48f8e51150d4f2de75fb4c8563cfdcdd4d1347fb888c5f",
       "scripts/build-mobile-agent.mjs": "d0201c2bc3cb74d9ad0ba725deac43d08d3be4f2ba45ce50ffd2d1732fd6c0ae",
       "scripts/mobile-uuid-adapter.mjs": "821d33c77787d3069b3e18c1eeac05ab2b2d00f2691824663577acee0366884d",
@@ -18,18 +18,18 @@
       "scripts/core-state-patch.mjs": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
       "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
       "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
-      "scripts/upstream-core-sources.mjs": "53cbc16ee96604700359df83b0dc544a2149fbd488513fe042e5b78c1599d709"
+      "scripts/upstream-core-sources.mjs": "2b35fba6a75949b27ea2a919412a221c630f80a33817f08cb87f0a916db2be2c"
     },
     "coreState": {
       "version": 2,
-      "baseCommit": "3406b628f30a90c5b47128b6dc30bae177b7870e",
-      "manifestSha256": "53cbc16ee96604700359df83b0dc544a2149fbd488513fe042e5b78c1599d709",
+      "baseCommit": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
+      "manifestSha256": "2b35fba6a75949b27ea2a919412a221c630f80a33817f08cb87f0a916db2be2c",
       "inputHashes": {
         "scripts/core-state-patch.mjs": "9ff01918776f2f60336fb1e119092863095b9459e1df6ee23c1a708124626550",
         "scripts/core-state-preload.mjs": "c5368c9075aa8c7660bee01338185fbe673c9b8dd6889dd1ab01d195efa17c10",
         "scripts/combined-agent-source.mjs": "a2f4d279f3f98ff078f3aedd6b9dc2dc5c3396ecdc7fb7f09b0da7e0c085062e",
         "scripts/build-policy-source.mjs": "3512c1e3a1c4d0c2c1dec2d3b99d12752edf2f90af9b35aba10ffb1cdffb09bb",
-        "scripts/upstream-core-sources.mjs": "53cbc16ee96604700359df83b0dc544a2149fbd488513fe042e5b78c1599d709"
+        "scripts/upstream-core-sources.mjs": "2b35fba6a75949b27ea2a919412a221c630f80a33817f08cb87f0a916db2be2c"
       },
       "patches": [],
       "files": {
@@ -149,11 +149,11 @@
       "version": "1.4.2",
       "revision": "744846f844374847c902b5e7fd59b4342a51ef99"
     },
-    "bundleSha256": "0da216bd299c544c41f7f79167a816ba9dded62473d9ecd515061829cb7b2658",
+    "bundleSha256": "8d44f99e9ee75163aa31a53f2aa2a4df8154068aeec6ed53dda348d6f57a78d3",
     "sourceTreeVerifiedBeforeAndAfter": true,
     "inputHashesUnchanged": true,
-    "rawMetafileSha256": "882c8e9a3580172028e8246ba59a3fe4f6c2daa9b014c40822059caf0782ad40",
-    "producerObservationSha256": "24c43dc69982613d62b3a9ec740d5b21d16988aaa11a3764eeb7ab0dd655e589"
+    "rawMetafileSha256": "a0b53a46e0ca5d1b26870340035fb684bc46672fdf7d3bf0e7fbdcd6417dbcd2",
+    "producerObservationSha256": "8c6701198c2623d29476ef50775232b2bd70770a1820a4f9ac82f0377cadbc77"
   },
   "counts": {
     "parsed": 9966,
@@ -95305,7 +95305,7 @@
     },
     "plugins/plugin-local-inference/src/services/voice/wake-word.ts": {
       "sha256": "d29607d0602c1712a59e3060da29d39554987e8c35a30003c5ddd035c2a36a24",
-      "bytesInOutput": 6688,
+      "bytesInOutput": 6687,
       "tracked": true,
       "gitObject": "1a0c32165c499612ac599f2b1778b52bcff83ab8",
       "imports": [
@@ -118808,7 +118808,7 @@
     },
     "plugins/plugin-vision/src/vision-worker-manager.ts": {
       "sha256": "227585cb5446d878cc936fb22ccae10c222f76637e389a30b57c5a2d1863b971",
-      "bytesInOutput": 8816,
+      "bytesInOutput": 8815,
       "tracked": true,
       "gitObject": "963484a67214e88aff052f9cd81f4d0d6fa806d1",
       "imports": [

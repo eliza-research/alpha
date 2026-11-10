@@ -11,8 +11,8 @@
   },
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
-  "sourcePin": "3406b628f30a90c5b47128b6dc30bae177b7870e",
-  "ledgerSha256": "1ed4f3e1cebb053e4c46c6e42271308516d6f5c12c0a138f85ba8da3fa5ff67d",
+  "sourcePin": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
+  "ledgerSha256": "88b823cdea40067fa3ed485bbddce9be32aef4a74708b295c320e8f810742162",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -31,7 +31,7 @@
     "candidates": 70012,
     "writeSites": 68844,
     "writeAssociations": 61714,
-    "asynchronous": 8631,
+    "asynchronous": 8632,
     "unassignedWrites": 10543
   },
   "files": [
@@ -39815,7 +39815,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "d18811a6e554ca2551148c2f57d1256c4c8ea1e9cd5a6c28b21aac4f1567b6b4",
+      "sha256": "492874dbcb17395982e48b886999d6b697acde16adb93e95e55fa6979e9ef7db",
       "allocatedModels": [
         "ChatInput",
         "DockClearanceOwnership",
@@ -42501,7 +42501,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "ea7c28b911723a4bb9f2bdf00382d3adddd3d5c74532e3c1bafb25a013274cf9",
+      "sha256": "59c4c69ecbf12d579bebceb860c525b68b4d0619ea209cdcda5c370a97ab8118",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -43576,7 +43576,7 @@
     },
     {
       "path": "apps/app/src/runtime/google-connection-ui.tsx",
-      "sha256": "23010e1ef2110e6dd009d72c76b13554d823a42c58777bafe018b5b08187a86e",
+      "sha256": "efec7d92df5649b0f160b7d0701d399216602e677607219e2494badc64a3b450",
       "allocatedModels": [
         "BrowserGoogleReturn",
         "GoogleAccounts",
@@ -43639,7 +43639,7 @@
         }
       ],
       "parseErrors": [],
-      "asynchronous": 21,
+      "asynchronous": 22,
       "unassignedWrites": 4
     },
     {
@@ -226114,6 +226114,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "710fab0453b2fda4e4b1df54b2aca2a021aae806629fb8c453a74ca317399b7e"
+    "sha256": "3f5094ddf869c0517a64c73ca1ff01cbc715d57c193dcf9d69644c7f56858723"
   }
 }

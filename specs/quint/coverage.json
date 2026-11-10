@@ -92,7 +92,7 @@
   ],
   "upstream": {
     "url": "https://github.com/elizaOS/eliza.git",
-    "commit": "3406b628f30a90c5b47128b6dc30bae177b7870e",
+    "commit": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
     "appSource": "packages/app",
     "nativeSystemSource": "plugins/plugin-native-system",
     "osSource": "packages/os"
@@ -31790,9 +31790,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "d18811a6e554ca2551148c2f57d1256c4c8ea1e9cd5a6c28b21aac4f1567b6b4",
+      "sha256": "492874dbcb17395982e48b886999d6b697acde16adb93e95e55fa6979e9ef7db",
       "stateAnchors": [],
-      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification."
+      "integrationReview": "2026-11-10: Current boundary and presentation correction. Account revalidation hides old headers before awaiting the response; notice clearance changes the Home scrollport, and foreign schedule editing explicitly identifies its preserved clock. Relevant browser/source tests and finite models remain separate from final runtime/device qualification. 2026-11-10: Apps notice height is bounded and remains scrollable so 300% text does not remove the app list; four browser cases pass."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -38462,7 +38462,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "ea7c28b911723a4bb9f2bdf00382d3adddd3d5c74532e3c1bafb25a013274cf9",
+      "sha256": "59c4c69ecbf12d579bebceb860c525b68b4d0619ea209cdcda5c370a97ab8118",
       "stateAnchors": [
         {
           "line": 205,
@@ -41216,9 +41216,9 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "23010e1ef2110e6dd009d72c76b13554d823a42c58777bafe018b5b08187a86e",
+      "sha256": "efec7d92df5649b0f160b7d0701d399216602e677607219e2494badc64a3b450",
       "stateAnchors": [],
-      "integrationReview": "Reviewed Google access explanatory copy names the actual Ask before taking actions setting. Explicit Gmail/Calendar review and permission gates remain unchanged. Retained Pixel lane review: 2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      "integrationReview": "Reviewed Google access explanatory copy names the actual Ask before taking actions setting. Explicit Gmail/Calendar review and permission gates remain unchanged. Retained Pixel lane review: 2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate. 2026-11-10: Google sheet close restores the remounted Account button after the render microtask; the prior detached trigger is not focused. Six browser return/accessibility cases pass."
     },
     {
       "path": "apps/app/src/runtime/google-workspace-return.ts",
@@ -611930,7 +611930,7 @@
     },
     {
       "path": "android/embedding-host/qualified-host.json",
-      "sha256": "6ec2eafa2c130a001190f5700302fd5522474e4112c7b38a10160993e1828a5a",
+      "sha256": "2605eff4619c2f19a48bfe498509928c9fffb745703cccf16ef4a8b9e28669f2",
       "models": [
         "NamedEmbeddingProvenance",
         "EmbeddingStoreIdentity",
@@ -612291,7 +612291,7 @@
         "MobileBundleAdmission",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "53cbc16ee96604700359df83b0dc544a2149fbd488513fe042e5b78c1599d709",
+      "sha256": "2b35fba6a75949b27ea2a919412a221c630f80a33817f08cb87f0a916db2be2c",
       "integrationReview": "Shared9ac50 and reviewed producer inputs. Pixel opts into source staging only; updater activation, enrollment and device acceptance stay separate."
     },
     {
@@ -612300,7 +612300,7 @@
         "Application",
         "MobileBundleAdmission"
       ],
-      "sha256": "5b9d31009eaac4dc9a30d0eed5cdeb0448a06b99469dd9bbb215d0bbdc8fa9e8",
+      "sha256": "4f6ad4d77bd9048463a34fc60762aaff7385727982e3df7ac3134a082872a116",
       "integrationReview": "Shared9ac50 and reviewed producer inputs. Pixel opts into source staging only; updater activation, enrollment and device acceptance stay separate."
     },
     {
@@ -612327,7 +612327,7 @@
       "models": [
         "Application"
       ],
-      "sha256": "7e54cc8248aa78b0c4e7bd025365da961816e1e908795ad123bea6c8cdd655a0",
+      "sha256": "ab8985227576171e8673a720d346d9f56a194ff06cbcd9526fbfb9b8c8b48b8e",
       "integrationReview": "Current upstream TLA/TLC inventory is authenticated independently at the merged pin and remains empty. The 16 historical models, 31 configurations and 7 runtime artifacts remain bound to original 4787 source identity; no historical proof is transferred."
     },
     {
@@ -612365,7 +612365,7 @@
         "CoreRuntimeShutdown",
         "CoreServiceLifecycle"
       ],
-      "sha256": "deb7c12cdb97902e63e9ba3ed0cf14f09114d80ebab91141dee06f565723de08",
+      "sha256": "4c40ba6b6ee78d65594ee3fb8ff90dda7acd24b5b5f721fae2e48a4c33ab88f3",
       "integrationReview": "Shared9ac50 and reviewed producer inputs. Pixel opts into source staging only; updater activation, enrollment and device acceptance stay separate."
     },
     {
@@ -612385,7 +612385,7 @@
         "ResidentJavaSourceStage",
         "TaskServiceLifecycle"
       ],
-      "sha256": "267194a0cbce2a9879539807d697271c4dd219b60ef28623f4dc1ba7dd0ac546",
+      "sha256": "9411de1f3963748004a5d5e5eeed7d054182683aa0d9e1627281d43d1228e043",
       "integrationReview": "Shared9ac50 and reviewed producer inputs. Pixel opts into source staging only; updater activation, enrollment and device acceptance stay separate."
     },
     {
@@ -612443,9 +612443,9 @@
     "apps/app/index.html"
   ],
   "sharedSourceDiscovery": {
-    "sharedSourceCount": 4909,
+    "sharedSourceCount": 4908,
     "producer": "specs/quint/refinement/services/runtime-bundle-inputs.json",
-    "sourcePin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
+    "sourcePin": "3504bfbe6d264d1bf05bbc2224708131d41f3a6b",
     "meaning": "Authenticated source identities and domain allocations. Runtime activation and implementation refinement require separate evidence."
   }
 }
