@@ -153,7 +153,14 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   assert.equal(evaluate(build.if, develop), false);
   assert.equal(evaluate(build.if, develop, {}, {ELIZA_RESIDENT_QUALIFICATION: 'push'}), true);
   assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, develop), '0');
-  assert.equal(evaluate(build.if, {...main, event_name: 'schedule'}, {}, {ELIZA_RESIDENT_QUALIFICATION: 'nightly'}), true);
+  const nightly = {...main, event_name: 'schedule'};
+  assert.equal(evaluate(build.if, nightly, {}, {ELIZA_RESIDENT_QUALIFICATION: 'nightly'}), true);
+  assert.notEqual(evaluate(group, develop), evaluate(group, {...develop, sha: newer.sha}));
+  assert.notEqual(evaluate(group, develop), evaluate(group, nightly));
+  for (const context of [develop, nightly]) {
+    assert.notEqual(evaluate(group, context), evaluate(group, main));
+    assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], context), false);
+  }
   assert.deepEqual(workflow.permissions, {contents: 'read'});
   assert.deepEqual(build.permissions, {contents: 'read', actions: 'read'});
   const candidate = build.steps.find(step => step.name === 'Retain the unsigned native update candidate separately from test mocks');
