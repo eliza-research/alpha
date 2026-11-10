@@ -13,7 +13,8 @@ export class NavigationVoice extends SharedNavigationVoice {
   if(document.hidden)return;
   document.removeEventListener('visibilitychange',this.resume);
   const owed=this.owed,latest=this.latest;this.owed=undefined;
-  if(!latest||owed!==latest||!this.enabled||!latest.current()||!this.canSpeak())return;
+  if(!this.canSpeak()){this.pause();return;}
+  if(!latest||owed!==latest||!this.enabled||!latest.current())return;
   this.pause();this.update(latest.key,latest.text);
  };
  constructor(failed:(error?:unknown)=>void,private readonly canSpeak:()=>boolean=()=>true) {
@@ -29,7 +30,8 @@ export class NavigationVoice extends SharedNavigationVoice {
     if(cloudRuntimeEnabled){await speakAppText(text,signal);return;}
     const voice=createOnDeviceVoice();
     if(!voice||!await voice.playbackReady(signal))throw Error('On-device navigation speech is unavailable.');
-    if(!canSpeak()||signal.aborted)return;
+    if(signal.aborted)return;
+    if(!canSpeak()){if(self&&self.latest===instruction)self.pause();return;}
     await voice.speak(text,signal);
    }catch(error){
     // Visibility interruption is resumable, but account changes, explicit Stop and provider failures are not.

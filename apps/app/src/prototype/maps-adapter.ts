@@ -50,11 +50,16 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   let pendingHandoff: {query:string}|undefined, mapsController:MapsController|undefined;
   const active=()=>!disposed&&!document.hidden&&!!api?.isActive();
   const dropPlane=()=>{++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;mapCopyright='';plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;};
+  const googleProviders = new Set<string>();
+  const isGoogleProvider = (id?: string) => !!id && (googleProviders.has(id) || isGoogleMapsProvider(id, cloudMapsCoverage()));
   const googleContent = () => {
     if (regionalMapsConfigured) return false;
     const coverage = cloudMapsCoverage();
-    return isGoogleMapsCoverage(coverage) || isGoogleMapsProvider(mapsController?.snapshot().route.value?.providerId, coverage);
+    if (isGoogleMapsCoverage(coverage)) googleProviders.add(coverage!.providerId);
+    return isGoogleMapsCoverage(coverage) || isGoogleProvider(mapsController?.snapshot().route.value?.providerId);
   };
+  const localPlace = (view: MapsScreenView) => !!view.place &&
+    (view.place.origin === 'manual' || view.place.origin === 'location' || !isGoogleProvider(view.place.providerId));
   const navigationVoice = new NavigationVoice(
     error => screen.notify((error instanceof Error ? error.message + ' ' : '') + 'Voice guidance paused. Tap Enable voice guidance to retry.'),
     () => !googleContent(),
@@ -76,14 +81,19 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     },
     attribution: () => regionalMap()?.attribution || cloudMapsCoverage()?.attribution || '',
     createController: (config, provider) => (mapsController = new MapsController(
-      config, provider, new SavedPlaces(undefined, id => isGoogleMapsProvider(id, cloudMapsCoverage())),
+      config, provider, new SavedPlaces(undefined, isGoogleProvider),
     )),
     navigationLocation: new NativeMapsLocation(),
     agentLocation: new NativeMapsLocation(),
     locationGranted: locationPermissionGranted,
     voice: navigationVoice,
     background,
-    share: (data, signal) => googleContent() ? Promise.resolve('closed') : shareMap(data, signal),
+    share: (data, signal) => {
+      signal.throwIfAborted();
+      const view = screen.view();
+      if (googleContent() && (view.mode !== 'place' || !localPlace(view))) return Promise.resolve('closed');
+      return shareMap(data, signal);
+    },
     openWebsite: url => {
       if (Capacitor.isNativePlatform()) void DailyApps.perform({ action: 'browser', url: url.href }).then(result => { if (result.status !== 'opened') api?.toast(result.message || 'The browser could not open.'); }, () => api?.toast('The browser could not open.'));
       else window.open(url.href, '_blank', 'noopener,noreferrer');
@@ -211,6 +221,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
           if (planeElement) dropPlane();
           delete element.dataset.mapReady;
           delete element.dataset.mapError;
+          queueMicrotask(() => { if (active() && googleContent() && !cloudMapsBasemap()) screen.setMapState('error'); });
           return;
         }
         if(element!==planeElement||planeBasemap!==basemap){
@@ -218,8 +229,8 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
           const current=()=>generation===mapGeneration&&planeElement===element&&!disposed&&!!api?.isActive();
           try{
             plane=new MapPlane(element,basemap,()=>{if(!current())return;mapFailed=true;screen.setMapState('error');},data.C,id=>screen.pin(id),text=>{if(current()&&text!==mapCopyright){mapCopyright=text;screen.refresh();}});
-            mapObserver=new MutationObserver(()=>{if(current())screen.setMapState(element.dataset.mapReady==='true'?'ready':'loading');});
-            mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready']});
+            mapObserver=new MutationObserver(()=>{if(current())screen.setMapState(element.dataset.mapError ? 'error' : element.dataset.mapReady === 'true' ? 'ready' : 'loading');});
+            mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready','data-map-error']});
           }catch{mapFailed=true;element.replaceChildren();queueMicrotask(()=>{if(current())screen.setMapState('error');});}
         }
         plane?.update(view.map.selected,view.map.route,view.map.overlay);
@@ -232,7 +243,12 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       nativeLocationSettings:()=>{if(!active())return;void device.openSettings({page:'privacy'}).catch(()=>{if(!disposed&&currentApi.isActive())screen.notify('Location settings could not be opened. Check device or browser permissions, or enter coordinates.');});},
       nativeManualLocation:()=>{if(!active())return;screen.manualLocation();queueMicrotask(()=>{if(active())document.querySelector<HTMLInputElement>('input[aria-label="Search places"]')?.focus();});},
       nativeMapRetry:status.mapRetry,
-      retryNativeMap:()=>{if(!active())return;dropPlane();screen.retryMap();},
+      retryNativeMap:()=>{
+        if(!active())return;
+        dropPlane();
+        if (googleMaps && !raster) void initializeCloudMaps();
+        screen.retryMap();
+      },
       mode:view.mode==='navigation'?'nav':view.mode==='directions'?'dir':view.mode, isBase:view.mode==='base',isResults,isPlace,isDir:view.mode==='directions',isNav,
       showSearch:view.showSearch, showRec:!isNav, grid: '', major: '', fwy: '', water: '', parks: '', rwy: '', routeD: '', doneD: '', hasRoute: false, pins: [], labels: [], meCss: 'display:none;',
       mapDown: () => {}, mapUp: () => {}, q: view.query, hasQ: !!view.query, searchLabel: view.searchLead === 'back' ? 'Back' : 'Search',
@@ -252,6 +268,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     });
     const place = view.place;
     if (place) {
+      const restrictedPlace = googleMaps && !localPlace(view);
       // Provider detail for this exact place: opening hours, phone and website when the
       // source has them. Phone is shown as text; calling stays deferred with Phone.
       data.pc = {
@@ -260,14 +277,14 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         hasPhone: false, hasWeb: !!place.website, web: () => screen.openWebsite(),
         canDir: place.canDirections, min: 'Directions', saved: place.saved,
         saveLabel: place.saved ? 'Remove from saved' : 'Save', starCss: place.saved ? 'color:var(--acct)' : '', starFill: place.saved ? 'fill:currentColor' : '',
-        close: () => screen.closePlace(), save: !googleMaps || place.saved ? () => screen.toggleSaved() : undefined,
+        close: () => screen.closePlace(), save: !restrictedPlace || place.saved ? () => screen.toggleSaved() : undefined,
         dirs: () => screen.openDirections(),
-        share: googleMaps ? undefined : () => screen.sharePlace(),
+        share: restrictedPlace ? undefined : () => screen.sharePlace(),
         nativeName: place.name, nativeEditing: place.editingName,
-        nativeTitleRole: googleMaps ? undefined : 'button', nativeTitleTabIndex: googleMaps ? undefined : 0,
-        nativeTitleLabel: googleMaps ? undefined : 'Rename place',
-        nativeEdit: googleMaps ? undefined : () => screen.startRename(),
-        nativeEditKey: googleMaps ? undefined : (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); screen.startRename(); } },
+        nativeTitleRole: restrictedPlace ? undefined : 'button', nativeTitleTabIndex: restrictedPlace ? undefined : 0,
+        nativeTitleLabel: restrictedPlace ? undefined : 'Rename place',
+        nativeEdit: restrictedPlace ? undefined : () => screen.startRename(),
+        nativeEditKey: restrictedPlace ? undefined : (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); screen.startRename(); } },
         nativeRename: (event: Event) => screen.rename((event.target as HTMLInputElement).value),
         nativeApplyName: () => screen.applyName(),
       };
