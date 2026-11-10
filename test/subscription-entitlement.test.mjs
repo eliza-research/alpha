@@ -79,21 +79,21 @@ test('the subscription sheet leads with the plan and reports its allowance and l
   assert.match(active, /<dt>AI requests<\/dt><dd role="status">The AI request rate limit was reached\. Try again in about (59|60) seconds\./);
   assert.match(active, /aria-label="Balance and membership"/);
   assert.match(active, /<dt>Membership<\/dt>/);
-  assert.match(active, />Manage subscription</);
+  assert.match(active, />Manage plan</);
   assert.doesNotMatch(active, /Available credits|Add credits|\bUSD\b/);
-  assert.match(active, />Enter membership code</);
+  assert.match(active, />Use code</);
   const credits = render({balance: 'funded', plan: {kind: 'credits', source: 'billing-limits'}});
   assert.match(credits, /No active subscription/);
-  assert.match(credits, />Choose a monthly plan</);
+  assert.match(credits, />Choose a plan</);
   assert.doesNotMatch(credits, /Available credits|Add credits|\bUSD\b/);
   assert.doesNotMatch(credits, /plan allowance|AI requests/, 'no allowance or limit line without a reported allowance or a current limit');
   const none = render({balance: 'zero', plan: {kind: 'inactive', planName: null, status: 'none', source: 'billing-limits'}});
-  assert.doesNotMatch(none, /Choose a monthly plan or enter a membership code to ask Alpha\./);
+  assert.doesNotMatch(none, /Choose a plan or enter a membership code to ask Alpha\./);
   // After Cloud declined a turn for billing the sheet says so, above the same two actions.
   const refused = render({balance: 'funded', refused: true, plan: {kind: 'credits', source: 'billing-limits'}});
   assert.match(refused, /Your last request was declined for billing\./);
-  assert.match(refused, />Choose a monthly plan</);
-  assert.match(refused, />Enter membership code</);
+  assert.match(refused, />Choose a plan</);
+  assert.match(refused, />Use code</);
   // A lapsed limit is not shown.
   const lapsed = render({plan: {kind: 'credits', source: 'billing-limits'}, lastLimit: {kind: 'rate-limited', retryAfterMs: 1000, resetsAt: null, observedAt: Date.now() - 120000}});
   assert.doesNotMatch(lapsed, /AI requests/);

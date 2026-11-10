@@ -67,3 +67,10 @@
 .alpha-account-expiry{padding-top:12px;font-size:13px;color:var(--connection-mut,#666)}.alpha-account-expiry button{background:var(--connection-s2,#f1f1f1);color:var(--connection-fg,#111);border:0;border-radius:12px;padding:12px 16px}.alpha-account-sheet .alpha-btn--primary{background:var(--connection-fg,#111);color:var(--connection-bg,#fff)}
 
 .alpha-connection.alpha-account-sheet .alpha-account-signout,.alpha-connection.alpha-account-sheet .alpha-account-done,.alpha-connection.alpha-account-sheet .alpha-account-cancel{color:var(--connection-fg,#111)}
+
+.alpha-connection.alpha-account-sheet .alpha-membership-main-actions button{display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;line-height:1.25;font-size:15px;font-weight:550;border-radius:14px;padding:14px 12px;min-height:50px}
+.alpha-account-button-icon{width:18px;height:18px;display:inline-block;flex:none;background:currentColor;mask:var(--account-icon) center/contain no-repeat;-webkit-mask:var(--account-icon) center/contain no-repeat}
+.alpha-account-plan-icon{--account-icon:url('/icons/lucide/credit-card.svg')}.alpha-account-balance-icon{--account-icon:url('/icons/lucide/wallet.svg')}.alpha-account-code-icon{--account-icon:url('/icons/lucide/gift.svg')}
+.alpha-account-sheet .alpha-membership-secondary-actions:has(>button:only-child){grid-template-columns:1fr}
+.alpha-connection.alpha-account-sheet .alpha-account-done{border-radius:14px;font-weight:550;text-align:center}
+.alpha-connection.alpha-account-sheet .alpha-membership-code-entry form{gap:10px;margin-bottom:0}.alpha-connection.alpha-account-sheet .alpha-membership-code-entry form>button{min-height:48px;border-radius:12px;text-align:center}
