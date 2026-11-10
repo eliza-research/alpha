@@ -25028,7 +25028,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "ce47f78efc266c11166a33bd75a652951d47e311cb0ea9e2c0b4b4f642ecac69",
+      "sha256": "34580d2679b65c24558ee38c90d6ee9dc350819edc22c0a0a5dba6a3d9d48f65",
       "stateAnchors": [
         {
           "line": 26,
@@ -30575,7 +30575,7 @@
           "text": "var ICON_ASSETS = Object.fromEntries(Object.entries(iconCatalog.ic).map(function (entry) { return [IC[entry[0]], '/icons/lucide/' + entry[1] + '.svg']; }));"
         }
       ],
-      "integrationReview": "Toast duration includes bounded reading time and Android timeout scaling; focused Undo holds expiry, blur restarts its captured duration, and only the owned callback can close it. Existing6 scale traces plus a long-message/focus trace refine actual shell methods; rendered focus return, plain dismissal and Undo are separate browser checks. Source allocation remains explicitly bounded."
+      "integrationReview": "Toast duration includes bounded reading time and Android timeout scaling; focused Undo holds expiry, blur restarts its captured duration, and only the owned callback can close it. Existing6 scale traces plus a long-message/focus trace refine actual shell methods; rendered focus return, plain dismissal and Undo are separate browser checks. Source allocation remains explicitly bounded. 2026-11-10: Plain dismissible toast has button semantics, keyboard focus and Enter/Space dispatch to the existing owned close transition; Undo container remains non-interactive. Both keyboard return checks and toast live-region/lifetime checks pass; no new state or timer authority."
     },
     {
       "path": "apps/app/src/prototype/mvp-features.ts",
@@ -34786,14 +34786,14 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "369cbc55bbcffbafccf4fc83c149ba29d9073a237b975cafa75e2fec25ff4575",
+      "sha256": "32a9418f4e74f56485fe6ab8a39a4518d4611ea29035c341859f1d52a9f375e1",
       "stateAnchors": [
         {
           "line": 3358,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
       ],
-      "integrationReview": "Read-only Calendar details consume the existing truthful source/restriction label. Browser reading uses nested supported path bindings, retaining native Cloud-profile unavailability and committed-document admission. Toast focus/blur/click callbacks bind the owning shell lifecycle. Rendered tests cover these projections; no provider or calendar authority changed."
+      "integrationReview": "Read-only Calendar details consume the existing truthful source/restriction label. Browser reading uses nested supported path bindings, retaining native Cloud-profile unavailability and committed-document admission. Toast focus/blur/click callbacks bind the owning shell lifecycle. Rendered tests cover these projections; no provider or calendar authority changed. 2026-11-10: Plain dismissible toast has button semantics, keyboard focus and Enter/Space dispatch to the existing owned close transition; Undo container remains non-interactive. Both keyboard return checks and toast live-region/lifetime checks pass; no new state or timer authority."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",

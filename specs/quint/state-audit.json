@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "12db05b38f341da28e1af6f8c3251fc863a9a4ab7d1c871ac7d50ad59c158c57",
+  "ledgerSha256": "9db1d05cb9f6936477958ae72fa5f349e8651452e0b757f9084439af26c0f8c3",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -35594,7 +35594,7 @@
     },
     {
       "path": "apps/app/src/prototype/model.js",
-      "sha256": "ce47f78efc266c11166a33bd75a652951d47e311cb0ea9e2c0b4b4f642ecac69",
+      "sha256": "34580d2679b65c24558ee38c90d6ee9dc350819edc22c0a0a5dba6a3d9d48f65",
       "allocatedModels": [
         "Application",
         "CalendarPresentation",
@@ -38511,49 +38511,49 @@
         },
         {
           "owner": "Component.renderVals.doUndo",
-          "line": 5668,
+          "line": 5670,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5704",
-          "line": 5704,
+          "owner": "Component.renderVals.FunctionExpression@5706",
+          "line": 5706,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.voiceToType",
-          "line": 5711,
+          "line": 5713,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.fireHeads",
-          "line": 5717,
+          "line": 5719,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.pUp",
-          "line": 5722,
+          "line": 5724,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "Component.renderVals.homeBar",
-          "line": 5732,
-          "bindings": 1,
-          "writes": 0
-        },
-        {
-          "owner": "Component.renderVals.toggleFs",
           "line": 5734,
           "bindings": 1,
           "writes": 0
         },
         {
-          "owner": "Component.renderVals.FunctionExpression@5737",
-          "line": 5737,
+          "owner": "Component.renderVals.toggleFs",
+          "line": 5736,
+          "bindings": 1,
+          "writes": 0
+        },
+        {
+          "owner": "Component.renderVals.FunctionExpression@5739",
+          "line": 5739,
           "bindings": 1,
           "writes": 0
         },
@@ -40021,7 +40021,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "369cbc55bbcffbafccf4fc83c149ba29d9073a237b975cafa75e2fec25ff4575",
+      "sha256": "32a9418f4e74f56485fe6ab8a39a4518d4611ea29035c341859f1d52a9f375e1",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -221172,6 +221172,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "96133e4c3790830e97b97cdb8579a8a16e0be0fabdb5c145f6820a8a2f2c5e2d"
+    "sha256": "9863344b1ec37172eec0f10b59253a26a57330ce9a11f8ed9df3bffd24f3c6cb"
   }
 }
