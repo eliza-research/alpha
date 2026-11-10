@@ -3,7 +3,7 @@ import {openScanDocument} from './scan-document';
 import {createScanEventReview} from './scan-event-review';
 import type {ScanEventDraft} from './scan-event';
 import {createScanLinkReview} from './scan-link-review';
-import {exportScanPdf,scanPdfFailure,scanPdfRetryable,systemPickerActive} from './scan-pdf';
+import {scanExportTitle,exportScanPdf,scanPdfFailure,scanPdfRetryable,systemPickerActive} from './scan-pdf';
 import {Capacitor} from '@capacitor/core';
 import {recognizeLocalText} from './local-ocr';
 
@@ -50,12 +50,12 @@ export function openScanReview(image:Blob,save:(text:string,id:string)=>Promise<
   const links=createScanLinkReview(()=>field.value,()=>!closed&&!document.hidden);
   field.oninput=()=>{links.update();copy.disabled=!field.value.trim();commit.disabled=attempted||!field.value.trim();};
   copy.onclick=()=>{void navigator.clipboard.writeText(field.value).then(()=>{if(!closed)status.textContent='Text copied.';},()=>{if(!closed)status.textContent='Copy unavailable. Select and copy the text manually.';});};
-  pdf.onclick=()=>{if(pdfAttempted)return;pdfAttempted=true;pdf.disabled=true;pdfStatus.textContent='Preparing photo PDF…';void exportScanPdf(image,controller.signal,'Alpha scan '+new Date().toISOString().replace(/[:.]/g,'-')).then(result=>{if(closed)return;pdfStatus.textContent=result.message;if(scanPdfRetryable(result.status)){pdfAttempted=false;pdf.disabled=false;}},error=>{if(closed)return;const failure=scanPdfFailure(error);pdfStatus.textContent=failure.message;if(failure.retry){pdfAttempted=false;pdf.disabled=false;}});};
+  pdf.onclick=()=>{if(pdfAttempted)return;pdfAttempted=true;pdf.disabled=true;pdfStatus.textContent='Preparing photo PDF…';void exportScanPdf(image,controller.signal,scanExportTitle('scan')).then(result=>{if(closed)return;pdfStatus.textContent=result.message;if(scanPdfRetryable(result.status)){pdfAttempted=false;pdf.disabled=false;}},error=>{if(closed)return;const failure=scanPdfFailure(error);pdfStatus.textContent=failure.message;if(failure.retry){pdfAttempted=false;pdf.disabled=false;}});};
   commit.onclick=()=>{if(attempted||!field.value.trim())return;attempted=true;commit.disabled=true;field.readOnly=true;status.textContent='Saving to Notes…';void save(field.value.trim(),noteId).then(saved=>{if(!closed){status.textContent=saved?'Saved to Notes.':'Save unconfirmed. Keep or copy this text and inspect Notes before saving again.';commit.textContent=saved?'Saved':'Save unconfirmed';}},()=>{if(!closed)status.textContent='Save unconfirmed. Keep or copy this text and inspect Notes before saving again.';});};
   const content=document.createElement('div');content.className='scan-dialog-content';content.tabIndex=0;content.setAttribute('role','region');content.setAttribute('aria-label','Review details');content.append(disclosure,preview,pdfDisclosure,status,field,tools,links.element,pdfStatus);
   if(eventReview)content.append(eventReview);
   dialog.append(heading,content,actions);(document.querySelector('.os')||document.body).append(dialog);dialog.showModal();close.focus();
-  void recognizeLocalText(image,controller.signal,value=>{if(!closed)status.textContent=`Scanning locally · ${Math.round(value.progress*100)}% · ${value.status}`;}).then(result=>{
+  void recognizeLocalText(image,controller.signal,value=>{if(!closed)status.textContent=`Reading text… ${Math.round(value.progress*100)}%`;}).then(result=>{
     if(closed)return;field.disabled=false;if(eventReview)eventReview.hidden=false;field.value=result.text;links.update();copy.disabled=!result.text;commit.disabled=!result.text;close.textContent='Close scan';status.textContent=result.text?'Review and correct the recognized text.':'No text recognized. You can type a correction or close and try a clearer photo.';field.focus();
   },error=>{if(closed)return;close.textContent='Close scan';status.textContent=error instanceof Error?error.message:'Local scan failed. Try a clearer photo.';});
   return dispose;

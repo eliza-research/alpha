@@ -20,7 +20,7 @@ final class SelectedDocumentAccess {
  private static SelectedDocuments documents;
  private SelectedDocumentAccess(){}
  static synchronized SelectedDocuments documents(Context context){
-  if(documents==null){Context app=context.getApplicationContext();documents=new SelectedDocuments(app,PREFERENCES,PREVIEW_PREFIX,NoteSourceReferences.store(app)::retains);}
+  if(documents==null){Context app=context.getApplicationContext();documents=new SelectedDocuments(app,PREFERENCES,PREVIEW_PREFIX,NoteSourceReferences.store(app)::retains,IsolatedPdfService.class);}
   return documents;
  }
  private static synchronized SelectedDocuments loaded(){return documents;}

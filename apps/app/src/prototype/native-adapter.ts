@@ -160,10 +160,6 @@ export function installPrototypeNativeAdapters(
     } catch { notify(api, 'Enter a valid HTTP or HTTPS website without credentials.'); return; }
     return perform(module, api, 'browser', { url: url.href });
   }
-  const currentUrl = (st: Bag) => {
-    const tab = (st.tabs || []).find((t: Bag) => t.id === st.cur);
-    return st.addr || tab?.hist?.[tab.pos] || '';
-  };
   const smsPayload = (st: Bag) => ({
     // Only explicit user-entered recipients; seeded people never become real recipients.
     query: typeof st.thread === 'string' && st.thread.startsWith('n:') ? st.thread.slice(2) : '',
@@ -226,10 +222,9 @@ export function installPrototypeNativeAdapters(
     if (module === 'browser') {
       if (key === 'onAddrKey') return (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); void browser(module, api, (e.target as HTMLInputElement)?.value); } else original(e); };
       if (key === 'go' && !path.startsWith('people.')) return () => browser(module, api, row.url || row.host);
-      if (['openNews', 'openEnc', 'openBook'].includes(key)) return unavailable(api, 'This page is a visual prototype. Enter a real website in the address field.');
+      if (['openNews', 'openEnc', 'openBook'].includes(key)) return unavailable(api, 'This page is not available. Enter a website in the address field.');
       if (['bookNow', 'cfOk'].includes(key)) return unavailable(api, 'Booking is not connected. No reservation or payment has been made.');
       if (key === 'readAloud') return unavailable(api, 'Read-aloud is not connected.');
-      if (key === 'copyLink') return async () => { try { const value = currentUrl(st); if (!value || value === 'newtab') throw new Error(); await navigator.clipboard.writeText(value); notify(api, 'Link copied'); } catch { notify(api, 'Clipboard unavailable'); } };
     }
     if (module === 'camera') {
       if (key === 'vfUp') return () => {}; // The camera adapter supplies real tap-to-focus.

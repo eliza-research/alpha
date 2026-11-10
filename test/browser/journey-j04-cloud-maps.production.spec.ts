@@ -13,6 +13,7 @@
 // deployed Cloud Maps service, Nominatim or GraphHopper, GPS, the Android foreground service, an
 // APK, an emulator or a device.
 import { test, expect, type Page } from '@playwright/test';
+test.use({locale:'en-GB'});
 import {installCanonicalCalendarFixture} from './helpers/canonical-calendar';
 import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome } from './flag-off-android';
 import { residentStub, stub, type StubMaps } from './resident-stub';
@@ -87,7 +88,7 @@ test('an event location is searched once in Cloud Maps, routed from an explicit 
   await residentHome(page);
 
   const maps = page.getByRole('region', { name: 'Maps' });
-  const search = page.getByRole('textbox', { name: 'Search places', exact: true });
+  const search = page.getByRole('searchbox', { name: 'Search places', exact: true });
 
   await test.step('the event location is passed to Maps once and searched in Cloud Maps', async () => {
     await button(page,'Calendar').click();
@@ -112,7 +113,7 @@ test('an event location is searched once in Cloud Maps, routed from an explicit 
     await button(page, 'Directions').click();
     await expect(page.getByText('Choose a real origin to calculate a route.')).toBeVisible();
     expect((await mapsRequests(page)).filter(row => row.route === 'routes')).toEqual([]);
-    const origin = page.getByRole('textbox', { name: 'Route origin coordinates' });
+    const origin = page.getByRole('textbox', { name: 'Starting point' });
     await origin.fill(`${ORIGIN.latitude}, ${ORIGIN.longitude}`);
     await origin.press('Enter');
     await expect(maps).toContainText(/7 min\s*1\.2 km · no live traffic/);
@@ -167,7 +168,7 @@ test('a cancelled search shows nothing late, a place outside coverage is named, 
   await button(page, 'Maps').click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'maps');
   const maps = page.getByRole('region', { name: 'Maps' });
-  const search = page.getByRole('textbox', { name: 'Search places', exact: true });
+  const search = page.getByRole('searchbox', { name: 'Search places', exact: true });
   await expect.poll(async () => (await mapsRequests(page)).map(row => row.route)).toEqual(['capabilities']);
 
   await test.step('clearing a search in flight cancels that Cloud request; its late answer is not shown', async () => {
@@ -221,12 +222,12 @@ test('Cloud route alternatives are offered in order; choosing one requests nothi
   await residentHome(page);
   await button(page, 'Maps').click();
   const maps = page.getByRole('region', { name: 'Maps' });
-  const search = page.getByRole('textbox', { name: 'Search places', exact: true });
+  const search = page.getByRole('searchbox', { name: 'Search places', exact: true });
   await search.fill(LOCATION);
   await search.press('Enter');
   await page.getByRole('button', { name: /^Port Hercule fuel dock/ }).first().click();
   await button(page, 'Directions').click();
-  const origin = page.getByRole('textbox', { name: 'Route origin coordinates' });
+  const origin = page.getByRole('textbox', { name: 'Starting point' });
   await origin.fill(`${ORIGIN.latitude}, ${ORIGIN.longitude}`);
   await origin.press('Enter');
 

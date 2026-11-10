@@ -54,6 +54,8 @@ jobs:
         run: bash scripts/ci/prepare-host-test-json.sh
       - name: Prepare reviewed Kotlin compiler for native routing checks
         run: node test/fixtures/kotlin-tools.mjs --prepare
+      - name: Prepare hash-pinned Dafny function verifier
+        run: bash scripts/ci/prepare-dafny.sh
       - name: Prepare pinned SDK for canonical host contract tests
         shell: bash
         run: |
@@ -68,6 +70,7 @@ jobs:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
           ALPHA_ELIZA_SOURCE: ${{ env.ALPHA_CLOUD_COLLECTOR_SOURCE }}
           ALPHA_QUINT_BUN: ${{ env.ALPHA_BUN }}
+          LEMMA_REQUIRE_BACKEND: '1'
           # Give each aggregate the runner's resources; retain every test and deadline.
           ALPHA_TEST_CONCURRENCY: '1'
       - name: Retain Quint model and implementation evidence
@@ -78,6 +81,7 @@ jobs:
           path: |
             test-results/quint/
             test-results/quint-refinement/
+            test-results/lemma/
           retention-days: 7
       # Reuses the product dependencies and client projection prepared by npm run verify.
       - name: Build the connected browser proof renderer
@@ -101,6 +105,39 @@ jobs:
       # Recorded develop compare; warns (never networks) when develop cannot reach the pin.
       - name: Report upstream develop reachability
         run: node scripts/verify-upstream.mjs --reachability-only
+  formal:
+    name: Changed-model proofs
+    needs: changes
+    if: needs.changes.outputs.verify == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          submodules: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npm run upstream:prepare-client && npm run quint:prepare-history
+      - name: Check changed models, temporal properties and required counterexamples
+        env:
+          ALPHA_QUINT_BASE: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}
+        run: npm run quint:changed
+      - name: Retain proof receipts, including failures
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: changed-model-proofs
+          path: test-results/quint/changed-models/
+          retention-days: 7
+          if-no-files-found: error
   browser:
     needs: changes
     if: needs.changes.outputs.browser == 'true' && needs.changes.outputs.browser_development == 'true' && github.event_name != 'push'
@@ -199,7 +236,7 @@ jobs:
   # browser lanes (they already ran on the PR); the daily schedule runs them on main.
   result:
     name: Browser MVP result
-    needs: [changes, verify, browser, production]
+    needs: [changes, verify, formal, browser, production]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -211,11 +248,12 @@ jobs:
           CHANGES: ${{ needs.changes.result }}
           VERIFY: ${{ needs.verify.result }}
           VERIFY_SELECTED: ${{ needs.changes.outputs.verify }}
+          FORMAL: ${{ needs.formal.result }}
           BROWSER: ${{ needs.browser.result }}
           BROWSER_SELECTED: ${{ github.event_name != 'push' && needs.changes.outputs.browser == 'true' && needs.changes.outputs.browser_development }}
           PRODUCTION: ${{ needs.production.result }}
           PRODUCTION_SELECTED: ${{ github.event_name != 'push' && needs.changes.outputs.browser == 'true' && needs.changes.outputs.browser_production }}
-        run: node scripts/ci/required-result.mjs "changes=$CHANGES" "verify=$VERIFY:$VERIFY_SELECTED" "browser=$BROWSER:$BROWSER_SELECTED" "production=$PRODUCTION:$PRODUCTION_SELECTED"
+        run: node scripts/ci/required-result.mjs "changes=$CHANGES" "verify=$VERIFY:$VERIFY_SELECTED" "formal=$FORMAL:$VERIFY_SELECTED" "browser=$BROWSER:$BROWSER_SELECTED" "production=$PRODUCTION:$PRODUCTION_SELECTED"
   storage:
     if: github.event_name == 'workflow_dispatch' && inputs.cross_browser
     name: Browser storage (${{ matrix.browser }}, shard ${{ matrix.shard }}/2)

@@ -55,7 +55,7 @@ test('an event location opens unconfigured Maps, hands off to an installed map a
   await expect(page.getByRole('heading', { name: TITLE, exact: true })).toBeVisible();
   await button(page, LOCATION).click();
   await expect(page.locator('html')).toHaveAttribute('data-active-view', 'maps');
-  await expect(page.getByRole('textbox', { name: 'Search places', exact: true })).toHaveValue(LOCATION);
+  await expect(page.getByRole('searchbox', { name: 'Search places', exact: true })).toHaveValue(LOCATION);
 
   // Managed Maps is unavailable: offer recovery without asking the user to configure its provider.
   const maps = page.getByRole('region', { name: 'Maps' });

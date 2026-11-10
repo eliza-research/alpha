@@ -1,0 +1,60 @@
+<sc-if value="{{fs}}">
+<button class="rail" aria-label="Show controls" title="Show controls" onClick="{{toggleFs}}" style="position: absolute; top: 40px; left: 722px; width: 44px; height: 44px; border-radius: 22px; border: 1px solid var(--alpha-gray-26); color: var(--alpha-gray-bd); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.shrink}}"></path></svg></button>
+</sc-if>
+
+
+<sc-if value="{{notFs}}">
+<div class="rail" style="width: 364px; display: flex; flex-direction: column; gap: 26px; padding-top: 6px; color: var(--alpha-white)">
+  <div>
+    <img src="./logo.svg" alt="Alpha Compute" style="width: 180px; height: auto; display: block">
+    <div style="color: var(--alpha-gray-8c); margin-top: 12px; font-size: 13px">Powered by elizaOS · Pixel 11 Pro · 412 × 915 dp</div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 14px">
+      <button onClick="{{toggleFs}}" aria-label="Phone only" style="height: 36px; border-radius: 18px; border: 1px solid var(--alpha-gray-26); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px"><svg class="i" viewBox="0 0 24 24" style="width: 14px; height: 14px"><path d="{{ic.expand}}"></path></svg>Phone only</button>
+      <sc-for list="{{themes}}" as="tm">
+        <button onClick="{{tm.go}}" aria-pressed="{{tm.on}}" style="height: 36px; border-radius: 18px; border: 1px solid var(--alpha-gray-26); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; {{tm.css}}"><span style="width: 12px; height: 12px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--alpha-gray-77); background: {{tm.sw}}"></span>{{tm.label}}</button>
+      </sc-for>
+    </div>
+  </div>
+
+  <div>
+    <div class="mono" style="color: var(--alpha-gray-8c); margin-bottom: 10px">Jump to</div>
+    <div style="display: flex; flex-wrap: wrap; gap: 6px">
+      <sc-for list="{{jumps}}" as="j">
+        <button onClick="{{j.go}}" style="height: 30px; padding: 0 11px; border-radius: 15px; border: 1px solid var(--alpha-gray-26); font-size: 12px">{{j.label}}</button>
+      </sc-for>
+    </div>
+    <sc-if value="{{hasSubJumps}}">
+      <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--alpha-gray-1c)">
+        <sc-for list="{{subJumps}}" as="j">
+          <button onClick="{{j.go}}" style="height: 30px; padding: 0 11px; border-radius: 15px; background: var(--alpha-gray-14); font-size: 12px; color: var(--alpha-gray-bd); {{j.css}}">{{j.label}}</button>
+        </sc-for>
+      </div>
+    </sc-if>
+  </div>
+
+  <div>
+    <div class="mono" style="color: var(--alpha-gray-8c); margin-bottom: 10px">Chat</div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px">
+      <sc-for list="{{modes}}" as="md">
+        <button onClick="{{md.go}}" aria-pressed="{{md.on}}" style="height: 64px; border-radius: 16px; border: 1px solid var(--alpha-gray-26); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px; {{md.css}}">
+          <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{md.d}}"></path></svg>{{md.label}}
+        </button>
+      </sc-for>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 6px">
+    <sc-if value="{{externalVoiceInvocation}}"><button onPointerDown="{{chatControlPointer}}" onClick="{{startVoice}}" style="height: 40px; border-radius: 20px; background: var(--alpha-blue); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.mic}}"></path></svg>Talk</button></sc-if>
+      <button onClick="{{fireHeads}}" style="height: 40px; border-radius: 20px; border: 1px solid var(--alpha-gray-26); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px"><svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.bell}}"></path></svg>Incoming text</button>
+    </div>
+  </div>
+
+  <div>
+    <div class="mono" style="color: var(--alpha-gray-8c); margin-bottom: 8px">Gestures</div>
+    <sc-for list="{{legend}}" as="lg">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 5px 0">
+        <span style="width: 30px; height: 30px; border-radius: 10px; border: 1px solid var(--alpha-gray-26); display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg class="i" viewBox="0 0 24 24" style="width: 15px; height: 15px"><path d="{{lg.d}}"></path></svg></span>
+        <span style="font-size: 13px; color: var(--alpha-gray-bd); line-height: 1.35">{{lg.t}}</span>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>

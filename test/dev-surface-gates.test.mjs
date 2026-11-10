@@ -136,7 +136,9 @@ test('regional Maps is a test-mocks prototype; loopback HTTP and the emulator ga
 });
 
 test('production Wallet saved routes and direct open/pay requests cannot enter the prototype payment flow',async()=>{
- const {Component,ORDER}=await load(false,'prototype/model.js');
+ const {Component,ORDER,VIEWS}=await load(false,'prototype/model.js');
+ assert.equal(VIEWS.wallet,undefined,'the simulated payment implementation is not registered');
+ assert.ok((await load(true,'prototype/model.js')).VIEWS.wallet,'explicit mock builds retain the fixture');
  const {validateDeviceOperation}=await load(false,'runtime/device-actions.ts');
  const notices=[],changes=[];
  const savedWallet={cards:[{id:'owned-reference',label:'kept'}],pay:true,stage:'auth'};
@@ -155,4 +157,20 @@ test('production Wallet saved routes and direct open/pay requests cannot enter t
  assert.equal(notices.length,6,'every attempted entry refused');
  for(const proposal of [{type:'open_view',view:'wallet'},{type:'pay',amount:50},{type:'wallet_pay',card:'owned-reference'}])assert.throws(()=>validateDeviceOperation(proposal),/Unsupported device operation/);
  assert.equal(validateDeviceOperation({type:'open_view',view:'notes'}).view,'notes','unrelated navigation remains enabled');
+});
+
+test('flag-off base Settings pages contain no fixture pairing, account, update or download callbacks',async()=>{
+ const {VIEWS}=await load(false,'prototype/model.js');
+ for(const page of ['accounts','connections','wifi','bluetooth','models','developer','about']){
+  const state=structuredClone(VIEWS.settings.state);
+  Object.assign(state,{page,btScan:'done',sheet:{kind:'wipe'}});
+  const api={S:{q:{wifi:true,bt:true}},name:'Alpha',theme:'dark',get:()=>state,
+   set(){throw Error('Fixture mutation');},shell(){throw Error('Fixture shell mutation');},
+   later(){throw Error('Fixture timer');},toast(){throw Error('Fixture receipt');}};
+  const out=VIEWS.settings.render(state,api);
+  assert.equal(out.stack.length,2,page);
+  assert.deepEqual([...out.stack[1].groups],[],page+' leaves production content to the live adapter');
+  assert.equal(out.stack[1].hasHdrTog,false,page);
+  assert.equal(out.hasSheet,false,'a restored fixture-only sheet cannot become actionable');
+ }
 });

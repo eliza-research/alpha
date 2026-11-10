@@ -77,7 +77,7 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
     const first = view === 'camera' ? 'Open Photos' : view === 'photos' ? 'Open Camera'
       : view === 'files' || view === 'browser' || view === 'inbox' ? 'Open Notes'
       : view === 'phone' || view === 'messages' ? 'Open Contacts' : 'Open Calendar';
-    const suggestions = ['Create a note', 'Set a reminder', first];
+    const suggestions = view==='camera' ? ['Scan this', 'What am I looking at?', 'Take a photo'] : ['Create a note', 'Set a reminder', first];
     const now = Date.now();
     const calendarSource = views.calendar.displaySources?.();
     const calendarState = this.vget('calendar');

@@ -114,8 +114,9 @@ async function live(page, publicId) {
   const t = await begin(page, publicId === 1 ? 'live_same_public_route_id'
     : publicId === 2 ? 'live_new_public_route_id' : 'live_provider_refusal');
   if (publicId === 1) {
-    await button(page, 'Reroute from here').tap();
-    await t.point('A second real touch during the held reroute dispatches no extra request', call('duplicateTap'));
+    await expect(button(page, 'Reroute from here')).toHaveCount(0);
+    assert.equal((await page.evaluate(() => window.closedMaps.pendingRoutes.length)), 1);
+    await t.point('The held reroute offers no second dispatch control', call('pendingControlUnavailable'));
   }
   await reply(page, 2, publicId);
   await waitForAgent(page);
@@ -142,7 +143,7 @@ async function replaced(page, retiredPublicId, early) {
   const t = await begin(page, early ? 'retired_reply_before_replacement_start'
     : retiredPublicId ? 'retired_success_after_replacement_start' : 'retired_refusal_after_replacement_start');
   await end(page, t);
-  const input = page.getByRole('textbox', {name:'Route origin coordinates', exact:true});
+  const input = page.getByRole('textbox', {name:'Starting point', exact:true});
   await expect(input).toBeVisible();
   await input.fill(replacement.latitude+', '+replacement.longitude);
   await input.press('Enter');

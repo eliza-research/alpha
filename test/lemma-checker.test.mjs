@@ -1,0 +1,41 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+import {copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {dirname, join} from 'node:path';
+import {repositoryRoot} from '../scripts/quint-lib.mjs';
+
+test('function checker distinguishes proofs, skips, failed verification and regenerated source drift', () => {
+  const root = mkdtempSync(join(tmpdir(), 'alpha-lemma-checker-'));
+  const write = (path, text, mode) => {mkdirSync(dirname(join(root, path)), {recursive: true}); writeFileSync(join(root, path), text, {mode});};
+  try {
+    mkdirSync(join(root, 'scripts'), {recursive: true});
+    for (const script of ['check-lemma.mjs', 'quint-lib.mjs']) copyFileSync(join(repositoryRoot, 'scripts', script), join(root, 'scripts', script));
+    write('package-lock.json', '{}'); write('lemmascript.json', '{"proof-dir":"specs/lemma"}');
+    write('LemmaScript-files.txt', 'apps/app/src/policy.ts 30\n');
+    write('apps/app/src/policy.ts', '//@ verify\nexport function policy() { return true; }\n');
+    write('specs/lemma/apps/app/src/policy.dfy.gen', 'fixture generation\n'); write('specs/lemma/apps/app/src/policy.dfy', 'fixture proof\n');
+    write('node_modules/lemmascript/package.json', '{"version":"0.6.6","type":"module"}');
+    write('node_modules/lemmascript/tools/dist/lsc.js', `import fs from 'node:fs';
+if(process.env.LEMMA_FIXTURE_DRIFT==='1')fs.appendFileSync('specs/lemma/apps/app/src/policy.dfy.gen','changed');
+if(process.argv.includes('check')){
+ if(process.env.LEMMA_FIXTURE_FAIL==='1')process.exit(1);
+ console.log('Dafny program verifier finished with '+(process.env.LEMMA_FIXTURE_EMPTY==='1'?'0':'1')+' verified, 0 errors');
+}`);
+    write('bin/dafny', '#!/bin/sh\nprintf "%s\\n" "${LEMMA_FIXTURE_VERSION:-4.11.0}"\n', 0o755);
+    const run = env => {
+      const result = spawnSync(process.execPath, ['scripts/check-lemma.mjs'], {cwd: root,
+        env: {...process.env, PATH: join(root, 'bin'), LEMMA_REQUIRE_BACKEND: '0', ...env}, encoding: 'utf8'});
+      return {result, receipt: JSON.parse(readFileSync(join(root, 'test-results/lemma/check.json'), 'utf8'))};
+    };
+    let check = run({}); assert.equal(check.result.status, 0, check.result.stderr); assert.equal(check.receipt.passed, true); assert.equal(check.receipt.verifiedConditions, 1);
+    check = run({LEMMA_FIXTURE_VERSION: '4.10.0'}); assert.equal(check.result.status, 0); assert.equal(check.receipt.passed, false); assert.equal(check.receipt.status, 'skipped-no-qualified-backend');
+    check = run({LEMMA_FIXTURE_VERSION: '4.10.0', LEMMA_REQUIRE_BACKEND: '1'}); assert.equal(check.result.status, 2); assert.equal(check.receipt.passed, false);
+    check = run({LEMMA_FIXTURE_FAIL: '1'}); assert.equal(check.result.status, 1); assert.equal(check.receipt.status, 'failed');
+    check = run({LEMMA_FIXTURE_EMPTY: '1'}); assert.equal(check.result.status, 1); assert.equal(check.receipt.passed, false);
+    check = run({LEMMA_FIXTURE_DRIFT: '1'}); assert.equal(check.result.status, 1); assert.equal(check.receipt.passed, false); assert.deepEqual(check.receipt.changedInputs, ['specs/lemma/apps/app/src/policy.dfy.gen']);
+    rmSync(join(root, 'specs/lemma/apps/app/src/policy.dfy.gen'));
+    check = run({}); assert.equal(check.result.status, 1); assert.equal(check.receipt.passed, false); assert.equal(check.receipt.status, 'failed');
+  } finally {rmSync(root, {recursive: true, force: true});}
+});

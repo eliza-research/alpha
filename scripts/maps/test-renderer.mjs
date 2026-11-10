@@ -26,7 +26,7 @@ const status=text=>page.waitForFunction(value=>document.querySelector('[data-alp
 const evidence={};
 try{
  // Rendered vector roads in the default app profile.
- const tiles=await browser.newPage({viewport:{width:412,height:915}});
+ const tiles=await browser.newPage({locale:'en-GB',viewport:{width:412,height:915}});
  try{
   let tileRequests=0;tiles.on('request',r=>{if(r.url().startsWith(gateway+'/tiles/'))tileRequests++;});
   await tiles.goto(app,{waitUntil:'load'});await tiles.getByRole('button',{name:'Maps',exact:true}).click();
@@ -38,7 +38,7 @@ try{
  await page.goto(app+'/?mode=dev',{waitUntil:'load'});
  await page.getByRole('button',{name:'Maps',exact:true}).click();
  await page.waitForFunction(()=>document.querySelector('[data-alpha-map-plane]')?.dataset.mapReady==='true');
- const query=page.getByRole('textbox',{name:'Search places',exact:true});await query.fill('Casino');await query.press('Enter');
+ const query=page.getByRole('searchbox',{name:'Search places',exact:true});await query.fill('Casino');await query.press('Enter');
  // Result pins: one map marker per provider result, from the same response.
  const casinoResults=await json('/search?q=Casino');
  await page.waitForFunction(count=>document.querySelectorAll('[data-alpha-map-plane] [data-map-pin]').length===count,casinoResults.length);
@@ -46,10 +46,10 @@ try{
  const casino=casinoResults.find(p=>p.name==='Casino de Monte Carlo');assert.ok(casino,'Actual Monaco destination');
  // Tapping a pin selects that exact provider place.
  await page.evaluate(id=>document.querySelector(`[data-alpha-map-plane] [data-map-pin="${id}"]`).click(),casino.id);
- await page.getByRole('button',{name:'Rename place'}).filter({hasText:'Casino de Monte Carlo'}).waitFor();
+ await page.getByRole('heading',{name:'Casino de Monte Carlo',exact:true}).waitFor();
  assert.equal(await page.locator('[data-alpha-map-plane] [data-map-pin]').count(),0,'Pins clear when a place is selected');
  await page.getByRole('button',{name:'Directions',exact:true}).click();
- const origin=page.getByRole('textbox',{name:'Route origin coordinates'});await origin.fill('43.7384, 7.4246');await origin.press('Enter');
+ const origin=page.getByRole('textbox',{name:'Starting point'});await origin.fill('43.7384, 7.4246');await origin.press('Enter');
  await detailReady;
  assert.equal(requests.filter(p=>p==='/route').length,0,'Route waits for the selected place detail');
  releaseDetail();holdDetail=false;

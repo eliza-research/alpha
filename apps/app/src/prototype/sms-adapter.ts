@@ -31,7 +31,11 @@ export function installSmsAdapter(Component:any,views:Bag){
  registerTelephonyProfile(client);
  const session=createSmsSession(client,true,changed,id=>{if(id===operationId)void reconcile();},id=>{if(id===mmsOperationId)void reconcileMms();});
  /* Android's picture chooser covers the WebView and reports it hidden; the draft stays while it is open. */
- const sync=()=>{const next=!!owner&&owner.S().view==='messages'&&(!document.hidden||picking);if(next===active)return;active=next;lifecycle++;session.setActive(next);if(!next){busy=false;draftRevision++;recipients='';body='';sim='';operationId='';notice='';receipt=null;resetMms(true);}};
+ const sync=()=>{const next=!!owner&&owner.S().view==='messages'&&(!document.hidden||picking);if(next===active)return;active=next;lifecycle++;session.setActive(next);if(!next){busy=false;draftRevision++;
+  // Provider rows and observation are cleared by the inactive session. Keep the
+  // owner's unfinished draft in memory across navigation/backgrounding. Preserve
+  // its operation identity so returning cannot replay an uncertain send.
+ }else{void reconcile();void reconcileMms();}};
  const resetMms=(pictures:boolean)=>{mmsOperationId='';mmsReview=null;if(pictures){attachments=[];pictureSeq=0;}};
  const draftRecipients=()=>recipients.split(',').map(v=>v.trim()).filter(Boolean);
  async function reconcile(){if(!active||!operationId||!smsReview)return;const token=lifecycle,draft=draftRevision,id=operationId,review=smsReview;try{const value=await client.smsSendResult(review,id);if(active&&token===lifecycle&&draft===draftRevision){receipt=value;notice=receiptLabel(value.status);changed();}}catch{/* No record or unavailable is never evidence of not sent. */}}

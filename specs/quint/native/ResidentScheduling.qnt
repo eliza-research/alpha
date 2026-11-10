@@ -3,7 +3,7 @@ module ResidentScheduling {
   type State = {
     unlocked: bool, packaged: bool, enabled: bool, lifecycle: str,
     running: bool, epoch: int, starts: int, lastDecision: str,
-    lastStartAdmitted: bool, replayedOccurrences: int
+    lastStartAdmitted: bool
   }
   var s: State
   action check(condition: bool): bool = all {assert(condition), s' = s}
@@ -17,7 +17,7 @@ module ResidentScheduling {
   action init = s' = {
     unlocked: true, packaged: true, enabled: true, lifecycle: "idle",
     running: false, epoch: 0, starts: 0, lastDecision: "IGNORE",
-    lastStartAdmitted: false, replayedOccurrences: 0
+    lastStartAdmitted: false
   }
   // The decision and start share one critical section. No delayed start token exists.
   action broadcast(event: str): bool = all {
@@ -54,9 +54,9 @@ module ResidentScheduling {
   }
   val NoStartDuringLifecycle = s.running implies s.lifecycle == "idle"
   val ActiveResidentAdmitted = s.running implies s.unlocked and s.enabled and s.packaged and s.lastStartAdmitted
-  val NoOccurrenceReplay = s.replayedOccurrences == 0
   val BoundedStarts = s.starts.in(0.to(3)) and s.epoch.in(0.to(3))
-  val safety = NoStartDuringLifecycle and ActiveResidentAdmitted and NoOccurrenceReplay and BoundedStarts
+  // Occurrence recovery belongs to the task-scheduler models, not this rearm policy.
+  val safety = NoStartDuringLifecycle and ActiveResidentAdmitted and BoundedStarts
 
   run allRearmBroadcastsTest = init.then(broadcast("boot")).then(broadcast("update"))
     .then(broadcast("time")).then(broadcast("zone"))

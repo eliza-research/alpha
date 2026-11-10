@@ -18,6 +18,8 @@ module MapsReplay {
   action OpenAssistant = Design::OpenAssistant
   action CloseAssistant = Design::CloseAssistant
   action OffRoute = Design::OffRoute
+  // Physical GPS progress has no field in the historical service-fault abstraction.
+  action PositionFix = Design::Track(Design::s)
   action CloudFault = all {
     Design::s.faults < Design::MaxFaults,
     Design::s.cloud == "ok",

@@ -1,6 +1,6 @@
 import {iconStyle} from '../icon-style';
 import React from "react";
-import templateHtml from "./template.html?raw";
+import templateHtml from "./template-source";
 /* Minimal renderer for the prototype's .dc.html template: {{holes}}, sc-if, sc-for, events, refs. */
 
   var h = React.createElement;
@@ -69,6 +69,9 @@ import templateHtml from "./template.html?raw";
       else if (n === "referrerpolicy") n = "referrerPolicy";
       else if (n === "enterkeyhint") n = "enterKeyHint";
       else if (n === "autocomplete") n = "autoComplete";
+      else if (n === "autocapitalize") n = "autoCapitalize";
+      else if (n === "autocorrect") n = "autoCorrect";
+      else if (n === "spellcheck") n = "spellCheck";
       else if (n === "popovertarget") n = "popoverTarget";
       else if (n === "popovertargetaction") n = "popoverTargetAction";
       else if (n === "tabindex") n = "tabIndex";

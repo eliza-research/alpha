@@ -141,7 +141,7 @@ test('Cloud native Browser hides local-only reading without disabling page quest
   const menu='<main class="os"><section data-screen>'+guarded('Read aloud')+guarded('Ask about page')+'</section></main>';
   const renderer=fs.readFileSync('apps/app/src/prototype/dc-lite.js','utf8')
    .replace("import {iconStyle} from '../icon-style';",'const iconStyle=()=>({});')
-   .replace('import templateHtml from "./template.html?raw";',`const templateHtml=${JSON.stringify(menu)};`);
+   .replace('import templateHtml from "./template-source";',`const templateHtml=${JSON.stringify(menu)};`);
   const code=buildSync({stdin:{contents:renderer,resolveDir:process.cwd(),loader:'js'},bundle:true,write:false,platform:'node',format:'cjs',external:['react']}).outputFiles[0].text;
   const module={exports:{}};new Function('require','module','exports','document',code)(createRequire(import.meta.url),module,module.exports,dom.window.document);
   class Menu extends module.exports.DCLogic{renderVals(){return {browser:this.props.browser};}}
