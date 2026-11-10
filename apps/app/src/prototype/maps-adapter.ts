@@ -12,7 +12,9 @@ import type {MapBasemap} from '../../../../.eliza/client-features/plugins/plugin
 import { globalBasemap } from '../maps/basemap';
 import { initializeRegionalMaps, regionalMap, regionalDiagnostics, regionalMapsConfigured } from '../maps/regional-provider';
 import { initializeCloudMaps, cloudMapsCoverage, cloudMapsDiagnostics, cloudMapsBasemap } from '../maps/cloud-maps';
-import { describeMapsDisclosure, insideCloudCoverage } from '../maps/cloud-provider';
+import { describeMapsDisclosure, insideCloudCoverage, isGoogleMapsCoverage, isGoogleMapsProvider } from '../maps/cloud-provider';
+import googleMapsLogo from '../maps/google-maps-attribution.svg?url';
+import { SavedPlaces } from '../maps/saved-places';
 import { NativeMapsLocation, locationPermissionGranted } from '../maps/native-location';
 import { bindAgentNavigation, keepCloudMapsCoverage, residentMapsNavigationPort } from '../maps/agent-navigation';
 import { publishMapsSelection, clearMapsSelection } from '../maps/agent-context';
@@ -48,7 +50,15 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   let pendingHandoff: {query:string}|undefined, mapsController:MapsController|undefined;
   const active=()=>!disposed&&!document.hidden&&!!api?.isActive();
   const dropPlane=()=>{++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;mapCopyright='';plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;};
-  const navigationVoice=new NavigationVoice(error=>screen.notify((error instanceof Error?error.message+' ':'')+'Voice guidance paused. Tap Enable voice guidance to retry.'));
+  const googleContent = () => {
+    if (regionalMapsConfigured) return false;
+    const coverage = cloudMapsCoverage();
+    return isGoogleMapsCoverage(coverage) || isGoogleMapsProvider(mapsController?.snapshot().route.value?.providerId, coverage);
+  };
+  const navigationVoice = new NavigationVoice(
+    error => screen.notify((error instanceof Error ? error.message + ' ' : '') + 'Voice guidance paused. Tap Enable voice guidance to retry.'),
+    () => !googleContent(),
+  );
   const background=new BackgroundNavigation(registerPlugin<NavigationBridge>('AlphaMapsTransport'),()=>Capacitor.isNativePlatform());
   // A Cloud read already made or under way for this account is not repeated: a second read would
   // uninstall the provider an open Maps search is using. An account change retires it first (cloud-maps.ts).
@@ -65,13 +75,15 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       return cloud&&{name:cloud.regions.map(item=>item.name).join(', '),mapRestricted:false,contains:point=>insideCloudCoverage(cloud,point)};
     },
     attribution: () => regionalMap()?.attribution || cloudMapsCoverage()?.attribution || '',
-    createController: (config, provider) => (mapsController = new MapsController(config, provider)),
+    createController: (config, provider) => (mapsController = new MapsController(
+      config, provider, new SavedPlaces(undefined, id => isGoogleMapsProvider(id, cloudMapsCoverage())),
+    )),
     navigationLocation: new NativeMapsLocation(),
     agentLocation: new NativeMapsLocation(),
     locationGranted: locationPermissionGranted,
     voice: navigationVoice,
     background,
-    share: shareMap,
+    share: (data, signal) => googleContent() ? Promise.resolve('closed') : shareMap(data, signal),
     openWebsite: url => {
       if (Capacitor.isNativePlatform()) void DailyApps.perform({ action: 'browser', url: url.href }).then(result => { if (result.status !== 'opened') api?.toast(result.message || 'The browser could not open.'); }, () => api?.toast('The browser could not open.'));
       else window.open(url.href, '_blank', 'noopener,noreferrer');
@@ -169,7 +181,10 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     return text.length > 200 ? `${text.slice(0, 199)}…` : text;
   }
   function bind(data: Bag, view: MapsScreenView, st: Bag, currentApi: Bag) {
-    const status = view.status, region = regionalMap(), raster=cloudMapsBasemap(), basemap = region || raster || globalBasemap, globalMap = !region&&!raster;
+    const status = view.status, region = regionalMap(), raster = cloudMapsBasemap();
+    const googleMaps = !region && googleContent();
+    const basemap = region || raster || (googleMaps ? undefined : globalBasemap);
+    const globalMap = basemap === globalBasemap;
     // Alpha's Cloud provider is operator-owned. Translate only the generic setup
     // prompt after a service-configuration refusal; preserve other recovery messages.
     const cloudFailure = cloudMapsDiagnostics();
@@ -184,9 +199,20 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       // Who receives search text and route points, from the connected Cloud provider.
       searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
       cloudCredit:cloudCredit(directionsOpen),
-      notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
+      notNative:false, hasNativeMap:true, globalBasemap:globalMap, regionalBasemap:!!region,
+      cloudBasemap:!region && !!raster && !googleMaps, googleMaps, googleMapsLogo,
+      googleMapMissing:googleMaps && !raster,
+      mapLabel:googleMaps ? 'Google Maps' : raster ? 'Cloud map' : globalMap ? 'World map' : 'Regional map',
+      mapAttribution:region?.attribution || (raster ? (planeBasemap === raster && mapCopyright || raster.attribution) : ''),
+      attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
       mapRef:(element:HTMLElement)=>{
-        if(!element||!basemap)return;
+        if (!element) return;
+        if (!basemap) {
+          if (planeElement) dropPlane();
+          delete element.dataset.mapReady;
+          delete element.dataset.mapError;
+          return;
+        }
         if(element!==planeElement||planeBasemap!==basemap){
           mapObserver?.disconnect();plane?.destroy();mapFailed=false;mapCopyright='';planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dataset.mapError;
           const current=()=>generation===mapGeneration&&planeElement===element&&!disposed&&!!api?.isActive();
@@ -234,13 +260,14 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         hasPhone: false, hasWeb: !!place.website, web: () => screen.openWebsite(),
         canDir: place.canDirections, min: 'Directions', saved: place.saved,
         saveLabel: place.saved ? 'Remove from saved' : 'Save', starCss: place.saved ? 'color:var(--acct)' : '', starFill: place.saved ? 'fill:currentColor' : '',
-        close: () => screen.closePlace(), save: () => screen.toggleSaved(),
+        close: () => screen.closePlace(), save: !googleMaps || place.saved ? () => screen.toggleSaved() : undefined,
         dirs: () => screen.openDirections(),
-        share: () => screen.sharePlace(),
+        share: googleMaps ? undefined : () => screen.sharePlace(),
         nativeName: place.name, nativeEditing: place.editingName,
-        nativeTitleRole: 'button', nativeTitleTabIndex: 0, nativeTitleLabel: 'Rename place',
-        nativeEdit: () => screen.startRename(),
-        nativeEditKey: (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); screen.startRename(); } },
+        nativeTitleRole: googleMaps ? undefined : 'button', nativeTitleTabIndex: googleMaps ? undefined : 0,
+        nativeTitleLabel: googleMaps ? undefined : 'Rename place',
+        nativeEdit: googleMaps ? undefined : () => screen.startRename(),
+        nativeEditKey: googleMaps ? undefined : (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); screen.startRename(); } },
         nativeRename: (event: Event) => screen.rename((event.target as HTMLInputElement).value),
         nativeApplyName: () => screen.applyName(),
       };
@@ -253,7 +280,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       data.originKey=(event:KeyboardEvent)=>{if(event.key==='Enter'){event.preventDefault();screen.planOrigin();}};
       data.originLocation=()=>screen.locate();
       const nav = view.navigation;
-      data.dr={name:directions.name,close:()=>screen.back(),min:directions.duration,meta:directions.meta,via:directions.via,shareLabel:'Share route',shareEta:()=>screen.shareRoute(),
+      data.dr={name:directions.name,close:()=>screen.back(),min:directions.duration,meta:directions.meta,via:directions.via,shareLabel:'Share route',shareEta:googleMaps ? undefined : () => screen.shareRoute(),
        modes:data.nativeModeMetadata.map((reference:{mode:'drive'|'walk'|'bike'|'transit';label:string;d:string})=>{const mode:TravelMode=reference.mode==='bike'?'bicycle':reference.mode;const on=!!directions.modes.find(choice=>choice.mode===mode)?.selected;return {label:reference.label,t:reference.label,d:reference.d,on,css:on?'background:var(--acc);color:#fff':'background:var(--s2);color:var(--fg)',go:()=>screen.setMode(mode)};}),
        // The provider's ordered route choice (recommended first); choosing requests nothing.
        hasRoutes:directions.routes.length>0,
@@ -262,7 +289,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
        nav:{going:!nav?.arrived,arrived:!!nav?.arrived,dist:nav?.distance||'Locating…',street:nav?.instruction||'Waiting for location',icon:nav?.maneuverIcon||PIN,hasThen:!!nav?.following,thenD:nav?.following?.icon||'',thenText:nav?.following?.text||'',
         left:nav?.remainingTime||'Guidance',meta:nav?.remaining&&nav.remaining===nav.meta?'':nav?.meta||'Foreground guidance',remaining:nav?.remaining||'',
         offRoute:!!nav?.offRoute,canReroute:!!nav?.canReroute,reroute:()=>screen.reroute(),rerouteLabel:'Reroute from here',background:!!nav?.background,
-        end:()=>screen.end(),ask:()=>currentApi.send('Help me with this route.'),voiceLabel:navigationVoice.enabled?'Mute voice guidance':'Enable voice guidance',voice:()=>screen.toggleVoice(),voiceD:navigationVoice.enabled?VOICE_ON:VOICE_OFF}};
+        end:()=>screen.end(),ask:()=>currentApi.send('Help me with this route.'),voiceLabel:navigationVoice.enabled?'Mute voice guidance':'Enable voice guidance',voice:googleMaps ? undefined : () => screen.toggleVoice(),voiceD:navigationVoice.enabled?VOICE_ON:VOICE_OFF}};
     }
     const eventOrigin=mapsEventReturnOffered(st.fromEvent,currentApi.S.stack,isNav);
     data.eventReturnFloating=!!eventOrigin&&!!data.showSearch;data.eventReturnInline=!!eventOrigin&&!!data.isDir;
