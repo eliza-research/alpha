@@ -384,6 +384,8 @@ public class MainActivity extends BridgeActivity {
   getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
   getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
   if (android.os.Build.VERSION.SDK_INT >= 29) getWindow().setNavigationBarContrastEnforced(false);
+  // Icons follow Alpha's theme once the renderer reports it, not only Android's night mode.
+  AlphaDevicePlugin.applySystemBarAppearance(this);
   ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), (view, insets) -> {
    boolean imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime());
    int bottom = imeVisible
