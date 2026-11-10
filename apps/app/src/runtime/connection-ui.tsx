@@ -3761,7 +3761,13 @@ export function ConnectionChooser() {
     const keyNotice=expiresAt!==undefined&&expiresAt>Date.now()&&expiresAt-Date.now()<=CLOUD_KEY_EXPIRY_WARNING_MS&&dismissedKeyExpiry!==expiresAt?expiresAt:null;
     const planShown=!!notice&&dismissedNotice!==notice;
     if(!planShown&&keyNotice===null)return null;
-    return <div className="alpha-plan-notices">{planShown&&<aside className="alpha-plan-notice" role="region" aria-label={`${serviceName} plan notice`}>
+    return <div className="alpha-plan-notices" ref={node=>{
+      if(!node)return;
+      const measure=()=>{node.dataset.scrollable=String(node.scrollHeight>node.clientHeight+1);};
+      const observer=new ResizeObserver(measure);observer.observe(node);
+      for(const child of node.children)observer.observe(child);
+      measure();return ()=>observer.disconnect();
+    }}>{planShown&&<aside className="alpha-plan-notice" role="region" aria-label={`${serviceName} plan notice`}>
       <p role="status">{NEEDS_PLAN_NOTICE}</p>
       <div className="alpha-plan-notice-actions">
         <button disabled={snapshot.busy} onClick={()=>connectionController.openPlan({codeEntry:true})}>Redeem code</button>

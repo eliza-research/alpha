@@ -38420,9 +38420,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "08ea9a6606309d6fc40b42838bb59e9327ee6ae7d20fb838fdbcf0879db3f2f3",
+      "sha256": "2006bc2449bb8861eb00e94f4183e47d7810d9cebed30060e95b51c0495d5abc",
       "stateAnchors": [],
-      "integrationReview": "2026-11-10: Visible notice cards accept pointer and wheel input so the bounded short-screen stack can scroll; empty outer stack space remains pointer-transparent. Real mounted Cloud-notice source traces verify scrolling, action hit targets, independent dismissal and Settings suppression; no account or provider effect is dispatched. This does not establish physical WebView or device acceptance."
+      "integrationReview": "2026-11-10: ResizeObserver derives overflow from this exact notice stack, updates only data-scrollable and disconnects on ref cleanup. Only overflowing notice card bodies accept scroll gestures; ordinary notices and outer gaps retain pointer transparency. Existing mounted notice campaign verifies overflow flag, wheel scrolling, hit targets, dismissal and Settings suppression; normal-height Calendar and Notes action checks remain required after the broader run caught unconditional pointer interception. No account or provider authority change."
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
@@ -38445,7 +38445,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "2276f87ae118203983ba92fa08a7170fd9b6f8b61474ae09133dfd90aff3fafd",
+      "sha256": "abbf34bdc4ec60517f481c0a025cfc0c6310aac49d9f4c82cad5d5a2ccd07740",
       "stateAnchors": [
         {
           "line": 205,
@@ -39260,35 +39260,35 @@
           "text": "const environment = useRef<HTMLSelectElement>(null);"
         },
         {
-          "line": 4005,
+          "line": 4011,
           "text": "const ai=useRef<HTMLInputElement>(null),speech=useRef<HTMLInputElement>(null);"
         },
         {
-          "line": 4026,
+          "line": 4032,
           "text": "const [editing,setEditing]=useState(false),[viewing,setViewing]=useState(false);"
         },
         {
-          "line": 4064,
+          "line": 4070,
           "text": "const [editing,setEditing]=useState<LocalProviderKey|null>(null),[removing,setRemoving]=useState<LocalProviderKey|null>(null);"
         },
         {
-          "line": 4065,
+          "line": 4071,
           "text": "const [revealed,setRevealed]=useState<{key:LocalProviderKey;value:string}|null>(null),[pending,setPending]=useState(false),[error,setError]=useState('');"
         },
         {
-          "line": 4066,
+          "line": 4072,
           "text": "const field=useRef<HTMLInputElement>(null),request=useRef<AbortController|null>(null),epoch=useRef(0),revision=useRef(status.revision);"
         },
         {
-          "line": 4067,
+          "line": 4073,
           "text": "const requestKind=useRef<'edit'|'remove'|'reveal'|null>(null);"
         },
         {
-          "line": 4082,
+          "line": 4088,
           "text": "const expected=status.revision,token=++epoch.current,controller=new AbortController();request.current=controller;requestKind.current=action;setPending(true);setError('');setRevealed(null);"
         }
       ],
-      "integrationReview": "Selected-conversation delivery is captured and checked before automation mutation. Existing lease/workflow allocations remain partial; payload and transport checks pass; full candidate qualification stays open."
+      "integrationReview": "2026-11-10: ResizeObserver derives overflow from this exact notice stack, updates only data-scrollable and disconnects on ref cleanup. Only overflowing notice card bodies accept scroll gestures; ordinary notices and outer gaps retain pointer transparency. Existing mounted notice campaign verifies overflow flag, wheel scrolling, hit targets, dismissal and Settings suppression; normal-height Calendar and Notes action checks remain required after the broader run caught unconditional pointer interception. No account or provider authority change."
     },
     {
       "path": "apps/app/src/runtime/conversation-selection.ts",

@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "07d680fa64b20999f5f25fe24d7cccb55b4bbc4d",
-  "ledgerSha256": "efef36a3a0ec7f08cb073bce86229b27bb84c85024df5897100e7b0b4b48619e",
+  "ledgerSha256": "9ace6917109287d684766d36acd0ccb144f1caadc8df9eaf662653cffc90fe9a",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,10 +29,10 @@
     "languageReview": 95,
     "parseErrors": 0,
     "candidates": 69993,
-    "writeSites": 68776,
+    "writeSites": 68777,
     "writeAssociations": 61651,
     "asynchronous": 8625,
-    "unassignedWrites": 10538
+    "unassignedWrites": 10539
   },
   "files": [
     {
@@ -42456,7 +42456,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.css",
-      "sha256": "08ea9a6606309d6fc40b42838bb59e9327ee6ae7d20fb838fdbcf0879db3f2f3",
+      "sha256": "2006bc2449bb8861eb00e94f4183e47d7810d9cebed30060e95b51c0495d5abc",
       "allocatedModels": [
         "Application",
         "CloudConnectionNotices",
@@ -42473,7 +42473,7 @@
     },
     {
       "path": "apps/app/src/runtime/connection-ui.tsx",
-      "sha256": "2276f87ae118203983ba92fa08a7170fd9b6f8b61474ae09133dfd90aff3fafd",
+      "sha256": "abbf34bdc4ec60517f481c0a025cfc0c6310aac49d9f4c82cad5d5a2ccd07740",
       "allocatedModels": [
         "Application",
         "ApplicationComposition",
@@ -42880,32 +42880,32 @@
         },
         {
           "owner": "OwnKeyForm",
-          "line": 4005,
+          "line": 4011,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "OwnProviderChoice",
-          "line": 4026,
+          "line": 4032,
           "bindings": 4,
           "writes": 0
         },
         {
           "owner": "ProviderKeys",
-          "line": 4064,
+          "line": 4070,
           "bindings": 15,
           "writes": 16
         },
         {
           "owner": "ProviderKeys.run",
-          "line": 4082,
+          "line": 4088,
           "bindings": 1,
           "writes": 0
         }
       ],
       "parseErrors": [],
       "asynchronous": 121,
-      "unassignedWrites": 17
+      "unassignedWrites": 18
     },
     {
       "path": "apps/app/src/runtime/conversation-selection.ts",
@@ -226058,6 +226058,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "7c708d92e188db714050cfeefed6df5a38c1f47308433da7cda9aa6e9169c0c8"
+    "sha256": "f2c43339bc28056bf512768fbc4ee818dd2c5334aa5a30892f64888245a6d39f"
   }
 }

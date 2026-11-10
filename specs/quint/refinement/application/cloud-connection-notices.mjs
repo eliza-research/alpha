@@ -46,6 +46,8 @@ async function observe(page) {
 }
 
 async function proveHitTargets(page, {short = false} = {}) {
+  const overflow = await stack(page).evaluate(node => ({needed: node.scrollHeight > node.clientHeight + 1, enabled: node.dataset.scrollable === 'true'}));
+  assert.equal(overflow.enabled, overflow.needed, 'Only an overflowing notice stack owns body gestures');
   const {notices} = await observeCloudNotices(page);
   for (const [index, notice] of notices.entries()) {
     assert.ok(notice.visible, notice.label+' is laid out');

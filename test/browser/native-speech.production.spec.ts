@@ -39,7 +39,7 @@ async function noteSpeech(page: Page, action: 'readAloud' | 'stopReading') {
  }, action);
 }
 test('production chat captures locally, transcribes locally, plays local reply and cancels playback',async({page})=>{
- const foreign=await setup(page);await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
+ const foreign=await setup(page);await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page).getByRole('status',{name:'Voice conversation status',exact:true})).toHaveText('Listening');await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  expect(await page.evaluate(()=>{const f=(window as any).nativeSpeech;return {starts:f.starts,stops:f.stops,transcripts:f.transcripts,spoken:f.spoken,plays:f.plays,posts:(window as any).flagOff.posts.map((text:string)=>text.split('[USER MESSAGE]\n').at(-1))};})).toEqual({starts:1,stops:1,transcripts:1,spoken:['Resident reply 1'],plays:1,posts:['Local spoken request']});
  // Issue #395: transcript, request and first token reach the native collector; later stages and the reply's synthesis carry its turn id.
  const linked=await page.evaluate(()=>{const f=(window as any).nativeSpeech;return {stages:f.stages,turns:f.turns};});
@@ -86,7 +86,7 @@ test('offline and fenced, speech still captures, transcribes and reads aloud on 
  await page.addInitScript(()=>{Object.defineProperty(Navigator.prototype,'onLine',{configurable:true,get:()=>false});});
  const foreign=await setup(page);await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
  expect(await page.evaluate(()=>navigator.onLine)).toBe(false);
- await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page)).toContainText('Listening…');await utterance(page);
+ await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page).getByRole('status',{name:'Voice conversation status',exact:true})).toHaveText('Listening');await utterance(page);
  await expect(voice(page)).toHaveAttribute('data-voice-state','error');await expect(voiceError(page)).toHaveCount(0);await expect.poll(()=>retainedVoiceTranscript(page)).toEqual({state:'error',transcript:'Local spoken request',failure:'Voice stopped. Check your connection and conversation history before trying again.'});
  expect(await page.evaluate(()=>{const f=(window as any).nativeSpeech;return {starts:f.starts,transcripts:f.transcripts,spoken:f.spoken,posts:(window as any).flagOff.posts.length};})).toEqual({starts:1,transcripts:1,spoken:[],posts:0});
  await button(page,'Stop voice conversation').click();await expect(voice(page)).toHaveCount(0);
