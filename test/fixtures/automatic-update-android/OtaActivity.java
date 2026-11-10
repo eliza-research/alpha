@@ -52,6 +52,8 @@ public final class OtaActivity extends Activity {
   return result;
  }
  private void prepare()throws Exception{
+  // Activity recreation must not replace the committed baseline or its Keystore key/ciphertext.
+  if(new File(getFilesDir(),"baseline.json").isFile())return;
   if(!getSharedPreferences("retained",MODE_PRIVATE).edit().putString("sentinel","retain-through-self-update").commit())throw new IllegalStateException();
   KeyGenerator generator=KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES,"AndroidKeyStore");
   generator.init(new KeyGenParameterSpec.Builder(ALIAS,KeyProperties.PURPOSE_ENCRYPT|KeyProperties.PURPOSE_DECRYPT).setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).build());
