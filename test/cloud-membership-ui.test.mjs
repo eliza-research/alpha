@@ -24,7 +24,7 @@ test('unavailable and checking plans do not invent an inactive subscription or a
 test('active subscription retains its verified plan and access end without implying automatic renewal',()=>{const s=render({plan:{kind:'active',planName:'Example plan'},endsAt:Date.now()+86400000});assert.match(s,/<dt>Membership<\/dt>/);assert.match(s,/Example plan/);assert.match(s,/Access through /);assert.doesNotMatch(s,/Renews|Next payment/);});
 test('busy prevents all membership actions and retains provided errors and notices',()=>{const s=render({busy:true,error:'Example error',notice:'Example notice'});const buttons=[...s.matchAll(/<button\b([^>]*)>/g)];assert.ok(buttons.length>=3);assert.ok(buttons.every(x=>x[1].includes('disabled')));assert.match(s,/role="alert">Example error/);assert.match(s,/Example notice/);assert.deepEqual(calls,[]);});
 test('the account sheet omits the redundant subscription paragraph and checkbox',()=>{
- const html=render();assert.doesNotMatch(html,/Choose a monthly plan or enter|type="checkbox"|Your browser may/);
+ const html=render();assert.doesNotMatch(html,/Choose a monthly plan or enter|type="checkbox"|Your browser may|Sign-in valid until/);
  assert.deepEqual(calls,[]);
 });
 
