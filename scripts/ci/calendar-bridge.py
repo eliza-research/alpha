@@ -16,7 +16,7 @@ import sys
 
 SDK = json.loads((Path(__file__).resolve().parents[2] / 'upstream.lock.json').read_text(encoding='utf-8'))['commit']
 NODE = '26.13.0'
-HOST = '23f89df01710da94040bfed14ad5b647347d6c8876571ac4e018d87b694a23aa'
+HOST = '4ba9ec0cbbb773855838b3ba45a59b97476a15f1d07983a3b5a039fcb00c7845'
 JSON_SHA = '3ea61b2a06e31edf1c91134fe9106b0ebb16628be169f3db75bc7a2b06b45796'
 ENTRY_SECONDS = 180  # <240s GHA timeout, leaving >=60s platform margin.
 PREFLIGHT_SECONDS = 20
