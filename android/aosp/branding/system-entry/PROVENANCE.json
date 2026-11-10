@@ -7,7 +7,7 @@
   "platformRelease": "android-17.0.0_r1",
   "sourceInputs": "SOURCE-INPUTS.json",
   "reviewedPatch": "alpha-native-system-entry.patch",
-  "reviewedPatchSHA256": "dba353a6d69110dbe2d010d73c965fb391e2a2561fae7c52bc9bb2ec42912391",
+  "reviewedPatchSHA256": "58e75d2ad0e02198bc46e49d3100f8bb5a422c4e8e18781e3d2f9dd28b53d8a0",
   "preparation": "prepare.py deterministically reproduces the reviewed patch; generated baseline/staged artifacts are excluded from Git",
   "brandSource": "apps/app/public/logo-mark.svg",
   "brandConversion": "One exact SVG path, original 120 by 120 viewport, native-tinted keyguard vector; text-only native serif header",

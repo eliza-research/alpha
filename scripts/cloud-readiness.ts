@@ -92,9 +92,9 @@ export function registrationValues(registration: Registration) {
     { step: "H-13", where: "ELIZA_ANDROID_ASSET_LINKS_JSON (GitHub variable of the Cloud environment)",
       value: `node scripts/render-assetlinks.ts --cloud-config --published ${web}/.well-known/assetlinks.json`,
       then: `Set the printed value, deploy, then node scripts/render-assetlinks.ts --check ${web}/.well-known/assetlinks.json.` },
-    { step: "H-13", where: `ELIZA_NATIVE_AUTH_CALLBACKS_JSON (Pages environment of ${new URL(web).host}), Alpha's entry`,
+    { step: "H-13", where: `ELIZA_NATIVE_AUTH_CALLBACKS_JSON (Cloud release GitHub Environment variable "${environment}" for ${new URL(web).host}), Alpha's entry`,
       value: { redirectUri: callback, androidPackage: packageName, appName, browserSignIn },
-      then: "Update the existing entry for this callback URI in the protected Pages environment. Preserve the other app entries and deploy the Pages configuration." },
+      then: "Update the existing entry for this callback URI in the protected Cloud release environment. Preserve the other app entries and deploy the Pages configuration." },
     { step: "H-15", where: "Entitlement issuer audience", value: entitlementAudience,
       then: "Cloud's ELIZA_ENTITLEMENT_* signer must issue this audience (scripts/cloud-deployment-policy.ts entitlementAudience)." },
   ];

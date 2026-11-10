@@ -11,7 +11,7 @@ import static org.junit.Assert.*;
 /** Bridge, Android Settings and fixture-app steps shared by the cross-app notification tests. */
 final class NotificationAccessTestDriver {
  private NotificationAccessTestDriver(){}
- static final String SELECTED="ai.elizaresearch.notificationfixture.selected",EXCLUDED="ai.elizaresearch.notificationfixture.excluded";
+ static final String SELECTED="ai.alphacompute.notificationfixture.selected",EXCLUDED="ai.alphacompute.notificationfixture.excluded";
  static Context context(){return InstrumentationRegistry.getInstrumentation().getTargetContext();}
  static UiAutomation ui(){return InstrumentationRegistry.getInstrumentation().getUiAutomation();}
  static void waitFor(java.util.concurrent.Callable<Boolean> condition,String label)throws Exception{for(int i=0;i<150;i++){if(condition.call())return;SystemClock.sleep(100);}fail(label);}
@@ -29,7 +29,7 @@ final class NotificationAccessTestDriver {
   waitFor(()->{AccessibilityNodeInfo root=ui().getRootInActiveWindow();return root!=null&&context().getPackageName().contentEquals(root.getPackageName());},"Alpha resumed");
  }
  static void witness(String pkg,String nonce,String operation)throws Exception{
-  context().startActivity(new Intent().setClassName(pkg,"ai.elizaresearch.notificationfixture.FixtureActivity").putExtra("nonce",nonce).putExtra("operation",operation).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP));
+  context().startActivity(new Intent().setClassName(pkg,"ai.alphacompute.notificationfixture.FixtureActivity").putExtra("nonce",nonce).putExtra("operation",operation).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_CLEAR_TOP));
   waitFor(()->{AccessibilityNodeInfo root=ui().getRootInActiveWindow();return root!=null&&pkg.contentEquals(root.getPackageName())&&!root.findAccessibilityNodeInfosByText((operation.equals("cleanup")?"Cleaned ":"Posted ")+nonce).isEmpty();},"Exact synthetic companion operation");
   foreground();
  }

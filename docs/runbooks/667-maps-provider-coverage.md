@@ -7,8 +7,8 @@ in to Eliza Cloud and needs an active or trialing Plus or Pro subscription.
 Google's server key belongs to Cloud. Maps does not require the phone's optional
 Gmail/Calendar Google connection.
 
-These instructions were checked against Eliza source
-`268733c01f239b352396abefb1b9a112a3cb65a6`. They describe operator setup and
+These instructions were checked against Alpha's Eliza source pin
+`ede068b56ab07df42e3038de9a108bc7daa6ae0c`. They describe operator setup and
 acceptance work. Source checks and synthetic browser tests do not establish a
 live deployment or Pixel acceptance. The earlier self-hosted OSM/Nominatim/
 GraphHopper setup is superseded for production.
@@ -55,7 +55,7 @@ GraphHopper setup is superseded for production.
    Google service availability and does not guarantee a route for every request.
    Google results must retain the matching Google basemap and attribution.
    The OSM geocoder/router URLs, extract revisions and GraphHopper secrets are
-   unused by this provider. [Pinned provider configuration](https://github.com/elizaOS/eliza/blob/268733c01f239b352396abefb1b9a112a3cb65a6/packages/cloud/shared/src/lib/services/maps/provider-registry.ts)
+   unused by this provider. [Pinned provider configuration](https://github.com/elizaOS/eliza/blob/ede068b56ab07df42e3038de9a108bc7daa6ae0c/packages/cloud/shared/src/lib/services/maps/provider-registry.ts)
 
 3. **Configure the Maps allowance on the Worker that owns admission.**
 
@@ -91,8 +91,8 @@ GraphHopper setup is superseded for production.
    Do not use `placeholder` or `selected:false`. The current Maps admission code
    accepts subscription IDs `plus_monthly` and `pro_monthly`; inference rate-tier
    overrides do not replace the subscribed plan. Confirm the pilot account's
-   organization has an active or trialing one of these plans. [Admission code](https://github.com/elizaOS/eliza/blob/268733c01f239b352396abefb1b9a112a3cb65a6/packages/cloud/api/src/lib/maps-request-admission.ts)
-   [Staging ownership contract](https://github.com/elizaOS/eliza/blob/268733c01f239b352396abefb1b9a112a3cb65a6/packages/cloud/admission-worker/verify-staging-contract.ts)
+   organization has an active or trialing one of these plans. [Admission code](https://github.com/elizaOS/eliza/blob/ede068b56ab07df42e3038de9a108bc7daa6ae0c/packages/cloud/api/src/lib/maps-request-admission.ts)
+   [Staging ownership contract](https://github.com/elizaOS/eliza/blob/ede068b56ab07df42e3038de9a108bc7daa6ae0c/packages/cloud/admission-worker/verify-staging-contract.ts)
 
    This revision enforces credential revocation through the bound organization
    gate. `INFERENCE_STRONG_REVOCATION_ENABLED` is no longer the activation switch.
@@ -106,12 +106,12 @@ GraphHopper setup is superseded for production.
    more on pan/zoom. Capabilities and viewport copyright reads are entitled
    metadata and consume no allowance. Daily windows reset at 00:00 UTC. These
    request units are separate from inference funds. Provider errors, cancellation
-   after admission and lost acknowledgements remain consumed. [Maps service contract](https://github.com/elizaOS/eliza/blob/268733c01f239b352396abefb1b9a112a3cb65a6/packages/cloud/api/README.md#maps)
+   after admission and lost acknowledgements remain consumed. [Maps service contract](https://github.com/elizaOS/eliza/blob/ede068b56ab07df42e3038de9a108bc7daa6ae0c/packages/cloud/api/README.md#maps)
 
 4. **Deploy the reviewed Cloud cache fix before the Google pilot.**
 
-   Deploy the API from the reviewed commit `268733c01f239b352396abefb1b9a112a3cb65a6`
-   or a release that includes its changes. Google tile fetches use the `no-store`
+   Deploy the API from the reviewed commit `ede068b56ab07df42e3038de9a108bc7daa6ae0c`
+   or a release that includes the reviewed Maps fix. Google tile fetches use the `no-store`
    fetch cache mode; both authenticated tile response formats carry
    `Cache-Control: no-store`. Incomplete viewport copyright
    is refused. The phone also uses the reviewed renderer that withholds imagery outside
@@ -223,12 +223,11 @@ under the operator's Google agreement before Google-derived spoken answers or
 persistent assistant memories are accepted for the pilot. The visual Maps checks
 above do not qualify that path.
 
-## Controlled browser evidence
+## Browser regression coverage
 
 The production browser regression uses intercepted native HTTP responses, a synthetic
 place and a generated white PNG. It exercises the production renderer, Google branding,
 complete Data sources disclosure in results and active guidance, portrait and landscape
-hit targets, 150% and 200%
-attribution text, missing/invalid imagery, and failed copyright retrieval. The
-[recorded walkthrough](../evidence/google-maps-rollout.mp4) shows that controlled
-browser path at one-third speed for readability. It establishes no live Google service result or installed Pixel behavior.
+hit targets, 150% and 200% attribution text, missing or invalid imagery, and
+failed copyright retrieval. Record live Google and Pixel checks separately.
+[Google Maps production browser test](../../test/browser/google-maps-raster.production.spec.ts).

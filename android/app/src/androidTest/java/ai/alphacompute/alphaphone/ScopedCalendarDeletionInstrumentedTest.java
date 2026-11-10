@@ -28,7 +28,7 @@ public final class ScopedCalendarDeletionInstrumentedTest {
   Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();ContentResolver resolver=context.getContentResolver();
   for(String permission:new String[]{Manifest.permission.READ_CALENDAR,Manifest.permission.WRITE_CALENDAR})assertEquals(PackageManager.PERMISSION_GRANTED,context.checkSelfPermission(permission));
   AlphaCredentialStore encrypted=new AlphaCredentialStore(context);assertNull("Fresh deletion journal required",encrypted.readCredentialSlot(NativeDeletionCoordinator.JOURNAL));
-  String name="alpha-delete-fixture-"+UUID.randomUUID(),type=synced?"ai.elizaresearch.synthetic.calendar":CalendarContract.ACCOUNT_TYPE_LOCAL;
+  String name="alpha-delete-fixture-"+UUID.randomUUID(),type=synced?"ai.alphacompute.synthetic.calendar":CalendarContract.ACCOUNT_TYPE_LOCAL;
   ContentValues calendar=new ContentValues();calendar.put("account_name",name);calendar.put("account_type",type);calendar.put("name",name);calendar.put("calendar_displayName",name);calendar.put("calendar_access_level",CalendarContract.Calendars.CAL_ACCESS_OWNER);calendar.put("ownerAccount",name);calendar.put("calendar_timezone","UTC");calendar.put("visible",1);calendar.put("sync_events",1);
   Uri calendars=CalendarContract.Calendars.CONTENT_URI.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER,"true").appendQueryParameter("account_name",name).appendQueryParameter("account_type",type).build();
   Uri created=resolver.insert(calendars,calendar);assertNotNull(created);long calendarId=ContentUris.parseId(created);

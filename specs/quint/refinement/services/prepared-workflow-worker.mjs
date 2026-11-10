@@ -42,6 +42,21 @@ const deferred = () => {
   return {promise, resolve};
 };
 
+export async function waitForPreparedWorkerProducer(entered, preparation, timeoutMs = 30000) {
+  let timer;
+  try {
+    await Promise.race([
+      entered,
+      preparation.then(
+        () => {throw Error('Prepared workflow worker preparation completed before the producer entered');},
+        cause => {throw Error('Prepared workflow worker preparation failed before the producer entered', {cause});}),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(Error(`Prepared workflow worker producer did not enter within ${timeoutMs} ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {clearTimeout(timer);}
+}
+
 export async function checkPreparedWorkflowWorker(extraSources = []) {
   const sources = [modelPath, fileURLToPath(import.meta.url), producerPath,
     'scripts/prepared-workflow-worker.ts', 'scripts/local-agent-source.ts',
@@ -110,10 +125,16 @@ export async function checkPreparedWorkflowWorker(extraSources = []) {
             phase = 'building'; result = 'pending';
             const entered = deferred(); gate = deferred();
             globalThis[symbol].set(source, {enter() {builds++; entered.resolve();}, release: gate.promise});
-            pending = ensurePreparedWorkflowWorker(fixtureRoot, source, output).then(
+            const preparation = ensurePreparedWorkflowWorker(fixtureRoot, source, output);
+            pending = preparation.then(
               value => {result = value.reused ? 'reused' : 'built'; phase = 'idle';},
               () => {result = 'refused'; phase = 'idle';});
-            await entered.promise;
+            try {await waitForPreparedWorkerProducer(entered.promise, preparation);}
+            catch (error) {
+              gate.resolve('failed');
+              globalThis[symbol].delete(source);
+              throw error;
+            }
           } else {
             const digest = artifactDigest(output);
             try {const value = await ensurePreparedWorkflowWorker(fixtureRoot, source, output); result = value.reused ? 'reused' : 'built';}

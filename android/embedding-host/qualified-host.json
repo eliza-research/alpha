@@ -1,5 +1,5 @@
 {
-  "pin": "a68b3525970fe9a30efd76979eb6ed4d8327b277",
+  "pin": "ede068b56ab07df42e3038de9a108bc7daa6ae0c",
   "forkPin": "6337fd4c4bd071c17235986344d552d4036e177b",
   "identity": "ai.alphacompute.alphaphone",
   "abi": "arm64-v8a",
@@ -64,15 +64,15 @@
   "producerInputs": [
     {
       "path": "package.json",
-      "sha256": "ba23d40894046883e07f707aa00fb41c24a8ff30411d41a1a7e6512c7f89ae97"
+      "sha256": "8f38e383982532c2248278a9fe8b1961c3c7511c60b3f394ad9939c8627f6962"
     },
     {
       "path": "packages/agent/package.json",
-      "sha256": "6f52bc7e7b132b9ac72a6ed938e90acc7d7178a2a03969e3c0fee79565b5b228"
+      "sha256": "6145a2e4e30c2ddadef4d24f2667914800e2c6d6ebb5d192bea5f684ba0666bf"
     },
     {
       "path": "packages/app/package.json",
-      "sha256": "9e6db34fb430a4369a14610dcd58d8c84507b86960d9b76dcdd82006939a1aaa"
+      "sha256": "3373697d70094963a31e756c5a439ab7a36e5106f1f60898182fd4809acf73d7"
     },
     {
       "path": "packages/app/scripts/aosp/compile-libllama-paths.ts",

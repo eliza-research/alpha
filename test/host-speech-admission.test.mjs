@@ -7,7 +7,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {verifiedFile,speechAssets} from '../scripts/host-speech-admission.ts';
 import {sourceManifest} from '../scripts/combined-agent-source.ts';
-import {verifyEmbeddingHost,verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
+import {verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
 import {mkdirSync} from 'node:fs';
 test('admission verifies exact bytes and reviewed digest, rejecting links and oversized assets',t=>{
  const root=mkdtempSync(join(tmpdir(),'alpha-speech-admission-'));t.after(()=>rmSync(root,{recursive:true,force:true}));
@@ -29,30 +29,27 @@ test('host asset manifest matches the current shared worker pins: Paradee, optio
  // No package script names the retired Kokoro or Whisper speech paths.
  assert.doesNotMatch(readFileSync(new URL('../package.json',import.meta.url),'utf8'),/kokoro|whisper/i);
 });
-test('the reviewed engine does not transfer native qualification to the renamed package',t=>{
+test('embedding source admission binds the current package and rejects legacy JNI identity',()=>{
  const source=readFileSync(new URL('../scripts/combined-agent-source.ts',import.meta.url),'utf8');
  const reviewed='6337fd4c4bd071c17235986344d552d4036e177b';
  assert.ok(source.includes("'plugins/plugin-local-inference/native/llama.cpp':'"+reviewed+"'"));
  const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
  assert.equal(actual,reviewed);
  const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
+ const {appId}=JSON.parse(readFileSync(new URL('../app.config.json',import.meta.url),'utf8'));
  assert.equal(qualification.forkPin,reviewed);
+ assert.equal(qualification.identity,appId);
+ assert.equal(qualification.jniBinding.className,appId.replaceAll('.','/')+'/ElizaVoiceNative');
+ assert.doesNotThrow(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}));
  const legacyAppId='ai.elizaresearch.alphaphone';
- assert.equal(qualification.identity,legacyAppId);
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}),/Embedding host source or identity admission changed/);
- assert.throws(()=>verifyEmbeddingHost(process.cwd()),/Embedding host source or identity admission changed/);
-
- // Replay the old package identity against the current engine inputs without altering the receipt.
- const legacyRoot=mkdtempSync(join(tmpdir(),'alpha-legacy-embedding-'));
- t.after(()=>rmSync(legacyRoot,{recursive:true,force:true}));
- for(const input of ['upstream.lock.json','vendor'])symlinkSync(join(process.cwd(),input),join(legacyRoot,input));
- writeFileSync(join(legacyRoot,'app.config.json'),JSON.stringify({appId:legacyAppId}));
- assert.throws(()=>verifyEmbeddingInputs(legacyRoot,qualification,{requireProducerInputs:true}),/Embedding producer input changed: package\.json/);
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,identity:legacyAppId}),/Embedding host source or identity admission changed/);
+ const legacyBinding={...qualification.jniBinding,className:legacyAppId.replaceAll('.','/')+'/ElizaVoiceNative'};
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,jniBinding:legacyBinding}),/Native registration identity qualification missing or changed/);
  const {producerInputs,...nativeOnly}=qualification;
  assert.ok(producerInputs.length>0,'the real qualification still binds its producer inputs');
- assert.doesNotThrow(()=>verifyEmbeddingInputs(legacyRoot,nativeOnly),'the recorded identity still matches every reviewed generated JNI input');
- assert.throws(()=>verifyEmbeddingInputs(legacyRoot,nativeOnly,{requireProducerInputs:true}),/Embedding producer input qualification missing or changed/,'native-only equality cannot replace full producer qualification');
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly,{requireProducerInputs:true}),/Embedding producer input qualification missing or changed/,'native-only equality cannot replace full producer qualification');
  const voice=JSON.parse(readFileSync(new URL('../android/voice-host/qualified-voice-host.json',import.meta.url),'utf8'));
+ assert.equal(voice.identity,appId);
  assert.equal(voice.qualified,false);
 });
 

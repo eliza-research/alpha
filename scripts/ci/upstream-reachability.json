@@ -3,25 +3,19 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "4a51bce4b89c000f2a7627f6cc3329ae3429b5ff",
-  "head": "f5ae78f8be2451a32168a9b671fd5840a97fa23b",
+  "head": "ede068b56ab07df42e3038de9a108bc7daa6ae0c",
   "recordedAt": "2026-11-10",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...f5ae78f8be2451a32168a9b671fd5840a97fa23b",
-  "status": "diverged",
-  "aheadBy": 1,
-  "behindBy": 114,
-  "mergeBase": "a68b3525970fe9a30efd76979eb6ed4d8327b277",
-  "pinOnlyCommits": [
-    {
-      "sha": "f5ae78f8be2451a32168a9b671fd5840a97fa23b",
-      "subject": "fix(os): retry rejected system update downloads"
-    }
-  ],
+  "command": "gh api repos/elizaOS/eliza/compare/develop...ede068b56ab07df42e3038de9a108bc7daa6ae0c",
+  "status": "behind",
+  "aheadBy": 0,
+  "behindBy": 78,
+  "mergeBase": "ede068b56ab07df42e3038de9a108bc7daa6ae0c",
+  "pinOnlyCommits": [],
   "pullRequests": [
     "https://github.com/elizaOS/eliza/pull/39247",
     "https://github.com/elizaOS/eliza/pull/39244",
     "https://github.com/elizaOS/eliza/pull/39231",
     "https://github.com/elizaOS/eliza/pull/39233",
-    "https://github.com/elizaOS/eliza/pull/39234",
-    "https://github.com/elizaOS/eliza/pull/39235"
+    "https://github.com/elizaOS/eliza/pull/39234"
   ]
 }

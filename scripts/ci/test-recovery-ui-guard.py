@@ -109,7 +109,7 @@ print('PASS: independent API35 main-user/profile transition waits read-only; tim
 
 # Unmodified hosted e4d transcript: stream has an unprefixed class-name line.
 captured=(Path(__file__).parent/'fixtures/recovery-storage-e4d-pass.txt').read_text()
-captured_class='ai.elizaresearch.alphaphone.ReminderDeletionStorageInstrumentedTest'
+captured_class='ai.alphacompute.alphaphone.ReminderDeletionStorageInstrumentedTest'
 captured_method='reminderDeletionSlotUsesEncryptedCompareExchange'
 terminal(captured,captured_class,captured_method)
 terminal(captured.replace('\n','\r\n'),captured_class,captured_method)

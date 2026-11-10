@@ -1,4 +1,4 @@
-package ai.elizaresearch.notificationfixture;
+package ai.alphacompute.notificationfixture;
 
 import android.app.*;
 import android.content.*;

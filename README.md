@@ -26,8 +26,7 @@ npm run dev
 
 `npm run verify` runs deployment-output checks, source preparation, executable
 Quint models, LemmaScript function proofs, TypeScript, host tests, the production web build and its bundle audit.
-Host scripts use native TypeScript; see [repository tooling](docs/scripts-tooling.md)
-for script checks and the Python/shell consolidation review.
+Host scripts use native TypeScript. `npm run typecheck:scripts` checks their interfaces.
 Host contract tests need a JDK and the `sqlite3` command-line tool on `PATH`
 for native Calendar queries. Archive builds check SQLite before verification.
 Tests that load the real SDK require the pinned Bun and a prepared SDK; set
@@ -72,14 +71,14 @@ npm run android:verify            # inspect APK contents and signatures
 The build produces standalone and launcher, debug and release APKs under
 `artifacts/`. The variants share `ai.alphacompute.alphaphone` and can replace one
 another with an admitted version and signer. The launcher declares HOME.
-Phone, Contacts and SMS/MMS require
-an admitted AOSP image capability; a launcher APK alone does not supply it.
+Phone, Contacts and SMS/MMS require an admitted AOSP image capability.
 
 Alpha Compute builds use the same ID for the installed package and native
 namespace. The retained Pixel v44 uses `ai.elizaresearch.alphaphone`. Android
 installs the new package separately, with its own private data, Keystore,
 permissions and roles. Establish a fresh baseline on each distribution form,
 then verify updates and data retention between builds with the new package ID.
+Qualify the native libraries and APKs for the exact product and SDK revisions.
 
 There is one runtime profile. Every build packages libelizainference with the
 on-device speech models and local embeddings. Stage on-device voice inputs with
@@ -165,6 +164,9 @@ Complete it in this order:
 
 1. Admit native voice inputs for the exact SDK, then build and sign both
    distribution variants. Preserve advancing versions and the enrolled signer.
+   The protected [release custody workflow](.github/workflows/release-custody-proof.yml)
+   exports the verified public certificates and fingerprints under
+   `artifacts/release-public-identities/` for enrollment.
 2. Register `ai.alphacompute.alphaphone` in production and staging. Run
    `node scripts/cloud-readiness.ts registration --environment <environment>`
    to print each environment's operator inputs. Keep the existing
@@ -189,9 +191,10 @@ Complete it in this order:
      Preserve existing grants and other products' entries. Deploy and verify
      the published file with `node scripts/render-assetlinks.ts --check <web-origin>/.well-known/assetlinks.json`.
    - Use `node scripts/cloud-deployment.ts --pages-registration` to update
-     Alpha's existing entry in `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` for both
-     Pages environments. Keep one entry per callback URI and preserve the
-     other products' entries. Verify the new Android target in the deployed
+     Alpha's entry in the protected Cloud release Environment variable
+     `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` for production and staging. Keep one
+     entry per callback URI and preserve the other products' entries. Verify
+     the new Android target in the deployed Pages
      callback page, run `node scripts/cloud-readiness.ts probe --environment <environment>`,
      then complete sign-in on the intended APK. Test with the new package
      selected to open its supported links if the old package is also installed.
@@ -229,12 +232,11 @@ before enrollment. [#400](https://github.com/eliza-research/alphaphone/issues/40
 tracks the overall release gate. A successful host test or model does not close
 these release and device gates. Alpha consumes the reviewed rejected-download
 retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) at
-`f5ae78f8be2451a32168a9b671fd5840a97fa23b`. This pin carries the seven-file
-repair from `4ce6c083f80893ce1601f15e9ff7fbb30028ec30` onto the reviewed Maps
-and speech integration from [eliza#39247](https://github.com/elizaOS/eliza/pull/39247).
-It preserves the dependency lock, core/mobile builder, voice sources and installed
-UUID inputs. Earlier voice and device evidence does not qualify OS enrollment;
-rebuild and qualify the exact product inputs before enabling it.
+`ede068b56ab07df42e3038de9a108bc7daa6ae0c`, which combines that repair with the
+reviewed Maps and speech changes through [eliza#39255](https://github.com/elizaOS/eliza/pull/39255). Its dependency-upgrade ancestry changes
+the SDK lock; core/mobile builder and installed UUID inputs were compared
+separately. Earlier APK, voice and device evidence does not qualify this pin;
+rebuild and qualify the exact product inputs before OS enrollment.
 
 ## Generated files
 
