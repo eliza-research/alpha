@@ -12,7 +12,7 @@ export function sharedRecordingPlatform(){
  files['com/getcapacitor/Plugin.java']=files['com/getcapacitor/Plugin.java'].replace(' public void load(){}',' public void load(){}\n public void requestPermissions(PluginCall call){throw new AssertionError("Unexercised generic permission");}');
  // Host org.json adds a float put overload absent from Android org.json. Widen this sink only.
  files['com/getcapacitor/Plugin.java']=files['com/getcapacitor/Plugin.java'].replace('String event,JSObject value','String event,org.json.JSONObject value');
- files['com/getcapacitor/PluginCall.java']=files['com/getcapacitor/PluginCall.java'].replace(' public final JSObject data;',' public final JSObject data;\n private static int sequence;\n private final String callback="callback-"+(++sequence);\n public String getCallbackId(){return callback;}\n public Integer getInt(String key,Integer fallback){return data.getInteger(key,fallback);}\n public Integer getInt(String key){return getInt(key,null);}');
+ files['com/getcapacitor/PluginCall.java']=files['com/getcapacitor/PluginCall.java'].replace(' public final JSObject data;',' public final JSObject data;\n private static int sequence;\n private final String callback="callback-"+(++sequence);\n public String getCallbackId(){return callback;}\n public Integer getInt(String key){return getInt(key,null);}\n public Integer getInt(String key,Integer fallback){return data.getInteger(key,fallback);}');
  Object.assign(files,{
   'android/content/ComponentCallbacks2.java':'package android.content;public interface ComponentCallbacks2 {int TRIM_MEMORY_UI_HIDDEN=20,TRIM_MEMORY_RUNNING_LOW=10;void onConfigurationChanged(android.content.res.Configuration value);void onLowMemory();void onTrimMemory(int level);}',
   'android/content/res/Configuration.java':'package android.content.res;public class Configuration {}',
@@ -43,6 +43,8 @@ public class SpeechAudioFocus {
  public void close(){}
 }`,
   'ai/eliza/voice/SessionSpeech.java':'package ai.eliza.voice;public class SessionSpeech {public static LocalSpeechEngine.Backend shared(android.content.Context context){throw new AssertionError("Unexercised speech inference");}}',
+  // Engine thread tuning is best effort when JNI is unavailable; no speech engine is loaded here.
+  'ai/eliza/voice/ParadeeVoice.java':'package ai.eliza.voice;public class ParadeeVoice {public static void setThreadCount(int threads){throw new UnsatisfiedLinkError("Unexercised native speech engine");}}',
   'ai/eliza/voice/VoiceLatencyProbe.java':`package ai.eliza.voice;
 public class VoiceLatencyProbe {
  public static final float AUDIBLE_LEVEL=0.01f;
@@ -53,12 +55,11 @@ public class VoiceLatencyProbe {
  public static org.json.JSONObject export(android.content.Context context){throw new AssertionError("Unexercised speech latency");}
 }`,
   'ai/eliza/voice/AudioTrackSpeechOutput.java':'package ai.eliza.voice;public class AudioTrackSpeechOutput {public static StreamingSpeechPlayback.Output open(int rate){throw new AssertionError("Unexercised audio output");}}',
-  // The native synthesis thread count is a primitive port: no native library loads in this JVM.
-  'ai/eliza/voice/ParadeeVoice.java':'package ai.eliza.voice;public class ParadeeVoice {public static void setThreadCount(int count){}}',
   'ai/eliza/voice/VoiceAssets.java':'package ai.eliza.voice;public class VoiceAssets {public static Object sharedInference(android.content.Context context){throw new AssertionError("Unexercised live inference");}}',
   'ai/eliza/voice/LiveVoiceCapture.java':`package ai.eliza.voice;
 public class LiveVoiceCapture {
- public interface Sink {void frames(String id,org.json.JSONArray frames,org.json.JSONArray vad,float peak);void ended(String id,String error);default boolean bargeIn(String id,long atMs){return true;}}
+ public interface Sink {void frames(String id,org.json.JSONArray frames,org.json.JSONArray vad,float peak);void ended(String id,String error);}
+ public LiveVoiceCapture(android.content.Context context,Object inference,String id,Sink sink,boolean echo){throw new AssertionError("Unexercised live microphone");}
  public LiveVoiceCapture(android.content.Context context,Object inference,String id,Sink sink,LiveCaptureOptions options){throw new AssertionError("Unexercised live microphone");}
  public static boolean vadAvailable(Object inference){throw new AssertionError("Unexercised live inference");}
 }`,
@@ -67,7 +68,6 @@ public class LiveCaptureController {
  public interface Host {
   boolean open(long epoch);LiveVoiceCapture capture(String id,LiveVoiceCapture.Sink sink,boolean echo)throws Exception;
   default LiveVoiceCapture capture(String id,LiveVoiceCapture.Sink sink,LiveCaptureOptions options)throws Exception{return capture(id,sink,options.echoCancel);}
-  default boolean bargeIn(String id,long atMs){return true;}
   void frames(String id,org.json.JSONArray frames,org.json.JSONArray vad,float peak);void ended(String id,String error);
   void transcript(String id,org.json.JSONObject value,String error);
  }
@@ -84,6 +84,7 @@ public class LiveCaptureController {
  public LiveCaptureAdmission.Ticket reserve(String id,long epoch){throw new AssertionError("Unexercised live admission");}
  public boolean current(LiveCaptureAdmission.Ticket ticket){throw new AssertionError("Unexercised live admission");}
  public void refuse(LiveCaptureAdmission.Ticket ticket,Started callback){throw new AssertionError("Unexercised live admission refusal");}
+ public void start(LiveCaptureAdmission.Ticket ticket,boolean echo,Route route,String room,boolean reopen,Started callback){throw new AssertionError("Unexercised live capture");}
  public void start(LiveCaptureAdmission.Ticket ticket,LiveCaptureOptions options,Route route,String room,boolean reopen,Started callback){throw new AssertionError("Unexercised live capture");}
  public void stop(String id,boolean discard,double cutoff,Stopped callback){throw new AssertionError("Unexercised live stop");}
 }`,

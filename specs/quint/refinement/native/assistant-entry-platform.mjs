@@ -5,6 +5,7 @@ import {app,root} from './java.mjs';
 import {mainActivityPlatform} from './main-activity-platform.mjs';
 
 export const assistantAgent=app+'AlphaLocalAgentPlugin.java';
+export const assistantNavigation=app+'AlphaNavigationService.java';
 export const senseFixtures='vendor/eliza/plugins/plugin-native-system/test/sense-client-stubs.json';
 export const systemModule='plugins/plugin-native-system/android';
 export const assistantShared=['SenseInvocation','SenseListenerClient','AssistantEntryTile'].map(name=>
@@ -30,6 +31,13 @@ export function assistantEntryPlatform() {
       assert.equal(files[path].split(from).length,2,`fixture anchor ${from}`);
       put(path,files[path].replace(from,()=>to));
     }
+    // Assistant entry references the navigation action without executing the Maps service.
+    // Bind that constant to its real owner; the actual one-use request class compiles separately.
+    const navigation = readFileSync(join(root,assistantNavigation),'utf8');
+    const action = [...navigation.matchAll(/\bstatic final String ACTION_SHOW_MAPS="([^"]+)";/g)];
+    assert.equal(action.length,1,'One source-owned Maps notification action');
+    put('ai/alphacompute/alphaphone/AlphaNavigationService.java',`package ai.alphacompute.alphaphone;
+final class AlphaNavigationService {static final String ACTION_SHOW_MAPS=${JSON.stringify(action[0][1])};}`);
     const sense=JSON.parse(readFileSync(join(root,senseFixtures),'utf8'));
     for(const name of ['android/app/KeyguardManager.java','android/os/SystemClock.java','android/os/Bundle.java',
       'android/net/Uri.java','android/content/pm/ApplicationInfo.java','android/content/pm/ActivityInfo.java'])
@@ -103,8 +111,7 @@ public record Icon(int id) {public static Icon createWithResource(android.conten
   private String action, type, packageName;`);
     edit(intent,'    action = "explicit:" + target.getName();','    action = "explicit:" + target.getName(); this.target=target;');
     edit(intent,'    action = other.action;','    action = other.action; target=other.target; flags=other.flags; component=other.component;');
-    edit(intent,'  public String getAction() {',`  public Intent setAction(String value){action=value;return this;}
-  public Intent setComponent(ComponentName value){component=value;return this;}
+    edit(intent,'  public String getAction() {',`  public Intent setComponent(ComponentName value){component=value;return this;}
   public java.util.Set<String> extraKeys(){return extras.keySet();}
   public String getAction() {`);
     edit(intent,'  public Intent addFlags(int flags) {\n    return this;', '  public Intent addFlags(int flags) {\n    this.flags|=flags;return this;');

@@ -15,7 +15,7 @@ export const currentNativeSource=name=>join(native.root,'plugins/plugin-local-in
 const voice='vendor/eliza/plugins/plugin-local-inference/native/android/';
 export function sharedRecordingSources(platform,source=currentNativeSource('LocalSpeechBridgePlugin.java')){
  return [source,
-  ...['SpeechRequestGate','SpeechAudioFocusPolicy','LiveCaptureAdmission','LocalSpeechEngine','StreamingSpeechPlayback','SpeechPcmQueue','VoiceLatencyTrials','LiveCaptureOptions','LiveVadGate','SpeechCores','SpeechEngineHold'].map(name=>name==='LiveCaptureAdmission'?currentNativeSource(name+'.java'):voice+'src/main/java/ai/eliza/voice/'+name+'.java'),
+  ...['SpeechRequestGate','SpeechAudioFocusPolicy','LiveCaptureAdmission','LiveCaptureOptions','LiveVadGate','SpeechEngineHold','SpeechCores','LocalSpeechEngine','StreamingSpeechPlayback','SpeechPcmQueue','VoiceLatencyTrials'].map(name=>name==='LiveCaptureAdmission'?currentNativeSource(name+'.java'):voice+'src/main/java/ai/eliza/voice/'+name+'.java'),
   ...['LocalVoiceRecording','SpeechOutputWarmup','SpeechLeadTrim','FirstWriteSpeechOutput'].map(name=>currentNativeSource(name+'.java')),directory+'/NoteBridgePorts.java',directory+'/NoteRecordingPorts.java',
   'node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/JSObject.java',...platform.paths];
 }
