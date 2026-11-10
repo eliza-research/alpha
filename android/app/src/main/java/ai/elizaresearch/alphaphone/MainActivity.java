@@ -25,7 +25,7 @@ public class MainActivity extends BridgeActivity {
  private boolean keyboardReturnPending;
  private static final NavigationOpenRequest navigationOpen = new NavigationOpenRequest();
  private boolean captureNavigationOpen(Intent intent) {
-  if (isAssistantSurface() || intent == null) return false;
+  if (isAssistantSurface() || intent == null || hasFrontMarker(intent)) return false;
   if (AlphaNavigationService.ACTION_SHOW_MAPS.equals(intent.getAction())) {
    navigationOpen.offer(SystemClock.elapsedRealtime());
    // The Activity keeps its launch intent across recreation. Never replay an already captured tap.

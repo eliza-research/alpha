@@ -38,4 +38,5 @@ test('native capture expires, survives renderer startup and never replays after 
  assert.match(activity,/captureNavigationOpen\(getIntent\(\)\)/);
  assert.match(activity,/boolean showMaps = captureNavigationOpen\(intent\)/);
  assert.match(activity,/intent\.setAction\(Intent\.ACTION_MAIN\)/,'recreation does not recapture the launch action');
+ assert.match(activity,/if \(isAssistantSurface\(\) \|\| intent == null \|\| hasFrontMarker\(intent\)\) return false/,'the internal HOME front marker cannot discard a handed-off notification tap');
 });
