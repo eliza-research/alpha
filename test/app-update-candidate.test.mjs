@@ -119,7 +119,7 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
     const format = (pattern, ...args) => pattern.replace(/\{(\d+)\}/g, (_, index) => args[index]);
     return new Function('github', 'inputs', 'vars', 'format', `return (${expression});`)(github, inputs, vars, format);
   };
-  const main = {event_name: 'push', ref: 'refs/heads/main', sha: 'a'.repeat(40)};
+  const main = {event_name: 'push', ref: 'refs/heads/main', sha: 'a'.repeat(40), run_id: '101', run_attempt: '1'};
   const build = workflow.jobs.build;
   assert.equal(evaluate(build.if, main), true);
   assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, main), '1');
@@ -127,9 +127,16 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   assert.equal(build.env.ELIZA_ANDROID_BUN_TARGET, 'linux-musl');
   assert.equal(build.env.ELIZA_ANDROID_TARGET_ABIS, 'arm64-v8a,x86_64');
   assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], main), true);
-  // One template string holds two GHA substitutions; test its auto-main key directly.
+  // Inspect the first substitution used to group candidate attempts.
   const group = workflow.concurrency.group.match(/\$\{\{([\s\S]*?)\}\}/)[1];
-  assert.equal(evaluate(group, main), evaluate(group, {...main, sha: 'b'.repeat(40)}));
+  const newer = {...main, sha: 'b'.repeat(40), run_id: '102'};
+  const oldRerun = {...main, run_attempt: '2'};
+  assert.equal(evaluate(group, main), evaluate(group, newer));
+  assert.notEqual(evaluate(group, oldRerun), evaluate(group, newer), 'rerunning an old push cannot enter the primary group');
+  assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], oldRerun), false);
+  assert.equal(evaluate(group, oldRerun), evaluate(group, {...oldRerun, run_attempt: '3'}), 'reruns keep their own run-ID group');
+  assert.notEqual(evaluate(group, oldRerun), evaluate(group, {...newer, run_attempt: '2'}));
+  assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, oldRerun), '1');
   const dispatch = {...main, event_name: 'workflow_dispatch'}, manual = {operation: 'build', build_version_code: '44'};
   assert.equal(evaluate(build.if, dispatch, manual), true);
   assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, dispatch, manual), '0');
@@ -138,6 +145,9 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   assert.equal(evaluate(build.env.ELIZAOS_VERSION_CODE, dispatch, manual), '44');
   assert.equal(evaluate(build.env.ELIZAOS_VERSION_CODE, main), '');
   assert.notEqual(evaluate(group, main), evaluate(group, dispatch, manual));
+  assert.equal(evaluate(group, dispatch, manual), 'refs/heads/main');
+  assert.equal(evaluate(group, dispatch, manual), evaluate(group, {...dispatch, run_attempt: '2'}, manual));
+  assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], {...dispatch, run_attempt: '2'}, manual), true);
   const develop = {...main, ref: 'refs/heads/develop'};
   assert.equal(evaluate(build.if, develop), false);
   assert.equal(evaluate(build.if, develop, {}, {ELIZA_RESIDENT_QUALIFICATION: 'push'}), true);
