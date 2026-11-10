@@ -198,6 +198,7 @@ export async function scheduledTaskControlsFixture({kind = 'preset', status = 's
           : {kind: result === 'exact' ? 'fired' : result, task: structuredClone(task)}});
       } else {
         assert.match(current.path, /^\/api\/lifeops\/scheduled-tasks\/weekly\/(?:reopen|snooze|acknowledge|complete|dismiss)$/);
+        if(result==='exact'&&current.path.endsWith('/snooze'))task={...task,state:{...task.state,status:'scheduled',firedAt:current.body.untilIso}};
         if (result === 'exact' && current.path.endsWith('/reopen')) task = {...task, state: {status: 'scheduled'}};
         current.resolve({task: result === 'exact' ? structuredClone(task) : {...task, taskId: 'other'}});
       }

@@ -131,3 +131,16 @@ test('Files selects the existing Photos items, saves original bytes and restores
  const photo=page.getByRole('button',{name:/^Photo /}).first();await photo.click();await page.getByRole('button',{name:'Restore',exact:true}).click();
  await expect.poll(()=>page.evaluate(async id=>{const row=await (await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary.read({id});return {trashed:row.trashed,image:row.image};},source.id)).toEqual({trashed:false,image:source.image});
 });
+
+test('Files adds selected media to a real folder and keeps the original photo',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto('/?mode=dev');
+ const original=await page.evaluate(async()=>{const {importBrowserPhoto}=await import('/src/prototype/browser-camera.ts');const c=document.createElement('canvas');c.width=10;c.height=10;const image=c.toDataURL('image/png');return {row:await importBrowserPhoto({original:new File(['fixture'],'folder.png'),image,width:10,height:10},new AbortController().signal),image};});
+ await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByLabel('Files tools',{exact:true}).click();await page.getByRole('button',{name:'New folder',exact:true}).click();
+ const create=page.getByRole('dialog',{name:'New folder',exact:true});await create.getByRole('textbox',{name:'Name',exact:true}).fill('Pictures');await create.getByRole('button',{name:'Create',exact:true}).click();
+ await page.getByRole('button',{name:'Back',exact:true}).click();await page.getByRole('button',{name:'Images',exact:true}).click();await page.getByRole('button',{name:'Open Images',exact:true}).click();
+ await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'Select',exact:true}).click();await page.getByRole('button',{name:'Select all',exact:true}).click();await page.getByRole('button',{name:'Add to folder',exact:true}).click();
+ const copy=page.getByRole('dialog',{name:'Copy to',exact:true});await copy.getByRole('button',{name:'Open Pictures',exact:true}).click();await copy.getByRole('button',{name:'Copy here',exact:true}).click();await expect(copy).toHaveCount(0);
+ const saved=await page.evaluate(async id=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const files=registerPlugin<any>('AlphaFiles');const rows=(await files.storageList({path:'Pictures'})).entries;const selected=await files.storageSelect({path:rows[0].path});const content=await files.attachment(selected);const original=await (await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary.read({id});return {count:rows.length,content:content.dataBase64,original:original.image,trashed:original.trashed};},original.row.id);
+ expect(saved).toEqual({count:1,content:original.image.split(',')[1],original:original.image,trashed:false});
+});

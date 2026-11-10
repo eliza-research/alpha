@@ -199,9 +199,13 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
   });
   const renderFiles=views.files.render;
   views.files.render=(state:Bag,api:Bag)=>{
-    const out=renderFiles(state,api),items=out.fd?.items;out.filePlacement=true;out.shareAvailable=Capacitor.isNativePlatform()||(typeof navigator.share==='function'&&typeof navigator.canShare==='function');
+    const out=renderFiles(state,api),items=out.fd?.items;out.filePlacement=true;
+    if(out.toolbar?.ready&&!out.toolbar.canCreate){const create=out.toolbar.newFolder;out.toolbar.canCreate=true;out.toolbar.newFolder=()=>{out.browse.allFiles();create();};}
+    if(out.fd?.menuRows){
+      const modes=[{mode:'name',icon:'type',up:'Name A–Z',down:'Name Z–A'},{mode:'date',icon:'calendar',up:'Newest first',down:'Oldest first'},{mode:'size',icon:'hard-drive',up:'Largest first',down:'Smallest first'}];
+      out.fd.menuRows=[...modes.flatMap(choice=>[false,true].map(reverse=>({id:'sort:'+choice.mode+':'+reverse,label:reverse?choice.down:choice.up,on:(state.sort==='name'||state.sort==='size'?state.sort:'date')===choice.mode&&!!state.sortReverse===reverse,iconStyle:`mask:url('/icons/lucide/${choice.icon}.svg') center/contain no-repeat`,directionStyle:`mask:url('/icons/lucide/${reverse?'arrow-up':'arrow-down'}.svg') center/contain no-repeat`,go:()=>api.set({menu:false,sort:choice.mode,sortReverse:reverse})}))),...out.fd.menuRows.filter((row:Bag)=>!row.id.startsWith('sort:')&&row.id!=='reverse-order')];
+    }out.shareAvailable=Capacitor.isNativePlatform()||(typeof navigator.share==='function'&&typeof navigator.canShare==='function');
     if(!Capacitor.isNativePlatform()&&Array.isArray(items)&&items.length&&items.every((row:Bag)=>{try{return /^Photos\/(Images|Videos)\//.test(JSON.parse(row.id)[1]);}catch{return false;}})){
-      out.toolbar.canCreate=false;
       out.mediaCollection=true;out.filePlacement=false;out.canRename=false;
       out.selSaveLocally=()=>registerPlugin<{storageSaveMedia(input:{paths:string[]}):Promise<unknown>}>('AlphaFiles').storageSaveMedia({paths:items.filter((row:Bag)=>row.selOn).map((row:Bag)=>JSON.parse(row.id)[1])});
     }

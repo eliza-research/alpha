@@ -48,7 +48,28 @@ export class BrowserFiles extends SharedFiles {
  }
  storageQuery(input:Record<string,unknown>){return this.volume.run('storageQuery',input);}
  async storageReviewedIdentities(input:{paths:string[]}){if(input.paths.every(path=>this.photoPath(path))){const rows=await this.photoRows(input.paths);return {status:'ready',reviewed:rows.map(row=>JSON.stringify([row.path,row.revision]))};}return this.volume.run('storageReviewedIdentities',input);}
- storageTransfer(input:{paths:string[];dest:string;copy?:boolean;reviewed?:string[]}){return this.volume.run('storageTransfer',input);}
+ async storageTransfer(input:{paths:string[];dest:string;copy?:boolean;reviewed?:string[]}){
+  if(!input.paths.every(path=>this.photoPath(path)))return this.volume.run('storageTransfer',input);
+  if(!input.copy)throw Error('Use Add to folder to keep the original in Photos.');
+  const rows=await this.photoRows(input.paths);
+  if(input.reviewed&&(input.reviewed.length!==rows.length||rows.some((row,i)=>input.reviewed![i]!==JSON.stringify([row.path,row.revision]))))throw Error('The selected media changed. Select it again.');
+  if(input.dest.split('/').some(part=>part==='.'||part==='..'))throw Error('Choose a Files folder.');
+  let folderId='root';
+  for(const part of input.dest.split('/').filter(Boolean)){const folder=(await super.list({id:folderId})).entries.find(row=>row.directory&&row.name===part);if(!folder)throw Error('The destination folder is unavailable.');folderId=folder.id;}
+  const outcomes:{path:string;status:string;to?:string}[]=[];
+  for(const row of rows){
+   if((await super.list({id:folderId})).entries.some(file=>file.name===row.name)){outcomes.push({path:row.path,status:'exists'});continue;}
+   const source=await browserPhotoLibrary.read({id:this.mediaId(row.path)});if(source.trashed||source.mutationRevision!==row.revision){outcomes.push({path:row.path,status:'changed'});continue;}
+   const blob=await (await fetch(source.path||source.image)).blob(),latest=await browserPhotoLibrary.read({id:source.id});
+   if(latest.trashed||latest.mutationRevision!==row.revision){outcomes.push({path:row.path,status:'changed'});continue;}
+   const selected=await super.importFile(new File([blob],row.name,{type:row.mimeType}),folderId);
+   await super.forgetSelected({selectionId:selected.selectionId});
+   const saved=(await super.list({id:folderId})).entries.find(file=>file.name===row.name);
+   if(!saved||saved.size!==blob.size)throw Error('The copied file could not be confirmed. Check the folder before trying again.');
+   outcomes.push({path:row.path,status:'copied',to:[input.dest,row.name].filter(Boolean).join('/')});
+  }
+  this.storageChanged();return {status:'ready',outcomes};
+ }
  storageRename(input:{path:string;name:string}){return this.volume.run('storageRename',input);}
  storageCreateFolder(input:{parent:string;name:string}){return this.volume.run('storageCreateFolder',input);}
  async storageTrash(input:{paths:string[];reviewed?:string[]}){

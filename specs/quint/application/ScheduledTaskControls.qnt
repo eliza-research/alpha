@@ -62,7 +62,7 @@ module ScheduledTaskControls {
     menu.indices().exists(i => menu.nth(i) == verb), not(menuDisabled),
     s' = if (verb == "edit")
       {...s, editing: true, draft: s.storedText, days: if (Set("0 8 * * 0,6", "30 9 * * 0,6").contains(s.storedCron)) "0,6" else if (Set("0 8 * * 1,3,5", "30 9 * * 1,3,5").contains(s.storedCron)) "1,3,5" else if (clockEditable) "1" else "*", time: if (Set("0 8 * * 1", "0 8 * * 0,6", "0 8 * * 1,3,5").contains(s.storedCron)) "08:00" else if (clockEditable) "09:30" else ""}
-      else {...s, review: {...Empty, verb: verb, minutes: if (verb == "snooze") 60 else 0}, message: ""},
+      else {...s, review: {...Empty, verb: verb, minutes: if (verb == "snooze") 10 else 0}, message: ""},
   }
   action enter(text: str, time: str): bool = all {
     s.editing, Drafts.contains(text), Times.contains(time), clockEditable or time == "",

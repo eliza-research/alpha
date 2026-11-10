@@ -32,22 +32,29 @@ export function workflowCronLabel(expression:string,zone:string,now=Date.now()):
  const canonical=expression.replace(/1,2,3,4,5$/, '1-5'),cadence=formatSchedule(canonical);
  if(/^Every (minute|hour|\d+ minutes|\d+ hours)$/.test(cadence))return cadence;
  if(zone===OWNER_LOCAL_TZ||zone===workflowDeviceTimeZone()){const label=formatSchedule(canonical);if(label!==canonical)return label;const clock=workflowClockSchedule(canonical);if(!clock)return 'Repeating schedule';const names=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];const at=formatSchedule(workflowClockExpression(clock.time,[0,1,2,3,4,5,6])).replace('Every day at ','');return clock.days.map(day=>names[day]).join(', ')+' at '+at;}
- const parts=expression.trim().split(/\s+/),[minute,hour,day,month,week]=parts;
- if(parts.length!==5||!/^\d+$/.test(minute)||!/^\d+$/.test(hour)||Number(minute)>59||Number(hour)>23||day!=='*'||month!=='*')return 'Repeating schedule';
- const days=week==='*'?[0,1,2,3,4,5,6]:week==='1-5'?[1,2,3,4,5]:week==='0,6'?[0,6]:/^[0-6](,[0-6])*$/.test(week)?week.split(',').map(Number):[];
- if(!days.length)return 'Repeating schedule';
+ const next=workflowNextClockOccurrence(expression,zone,now);
+ return next===null?'Scheduled time unavailable':'Next '+workflowLocalInstant(next);
+}
+/** Resolve a clock recurrence in its own zone, including DST gaps and repeated hours. */
+export function workflowNextClockOccurrence(expression:string,zone:string,now=Date.now()):number|null{
+ const clock=workflowClockSchedule(expression);if(!clock)return null;
+ zone=!zone||zone===OWNER_LOCAL_TZ?workflowDeviceTimeZone():zone;
  try{
-  const start=Date.parse(phoneWorkflowLocalDay(now,zone)+'T00:00:00Z');
-  const clock=new Intl.DateTimeFormat('en-GB',{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
-  const expected=hour.padStart(2,'0')+':'+minute.padStart(2,'0');
+  const start=Date.parse(phoneWorkflowLocalDay(now,zone)+'T00:00:00Z'),[hour,minute]=clock.time.split(':').map(Number);
+  const format=new Intl.DateTimeFormat('en-GB',{timeZone:zone,hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
   for(let offset=0;offset<8;offset++){
-   const date=new Date(start+offset*86400000);if(!days.includes(date.getUTCDay()))continue;
-   const wall=date.getTime()+(Number(hour)*60+Number(minute))*60000;
-   const candidates=[-36,0,36].map(delta=>wall-zoneOffsetMinutes(wall+delta*3600000,zone)*60000).filter(at=>at>now&&phoneWorkflowLocalDay(at,zone)===date.toISOString().slice(0,10)&&clock.format(at)===expected);
-   if(candidates.length)return 'Next '+workflowLocalInstant(Math.min(...candidates));
+   const date=new Date(start+offset*86400000);if(!clock.days.includes(date.getUTCDay()))continue;
+   const wall=date.getTime()+(hour*60+minute)*60000;
+   const candidates=[-36,0,36].map(delta=>wall-zoneOffsetMinutes(wall+delta*3600000,zone)*60000).filter(at=>at>=now&&phoneWorkflowLocalDay(at,zone)===date.toISOString().slice(0,10)&&format.format(at)===clock.time);
+   if(candidates.length)return Math.min(...candidates);
   }
- }catch{/* An invalid source clock cannot supply a made-up local time. */}
- return 'Scheduled time unavailable';
+ }catch{/* Invalid source zones do not invent an occurrence. */}
+ return null;
+}
+export function workflowSnoozeTime(stamp:string|number,now=Date.now()):string{
+ const date=new Date(stamp);if(!Number.isFinite(date.getTime()))return '';
+ const sameDay=date.toDateString()===new Date(now).toDateString();
+ return date.toLocaleString(undefined,{...(sameDay?{}:{month:'short',day:'numeric',...(date.getFullYear()!==new Date(now).getFullYear()?{year:'numeric'}:{})}),hour:'numeric',minute:'2-digit'});
 }
 
 /** Native datetime-local controls use the browser's zone; stored instants keep their zone. */
