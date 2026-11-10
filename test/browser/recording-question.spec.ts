@@ -30,6 +30,19 @@ async function sendAttached(page:Page){
  await expect(attachment(page)).toHaveCount(0);
 }
 
+test('the transcript selects and copies its full text without sending or changing the recording',async({page})=>{
+ await page.addInitScript(()=>{(window as any).copiedTranscripts=[];Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{(window as any).copiedTranscripts.push(text);}}});});
+ await setup(page);await captureSends(page);const before=await notes(page);
+ const text=page.locator('[data-alpha-note-transcript]'),ask=page.getByRole('button',{name:'Ask Alpha about this transcript',exact:true});
+ await expect(text).toHaveText(transcript);await expect(ask).toHaveText('Ask Alpha');await expect(ask.locator('.alpha-compute-mark')).toHaveCount(1);
+ expect(await text.evaluate(el=>getComputedStyle(el).userSelect)).toBe('text');
+ await text.dblclick();await expect.poll(()=>page.evaluate(()=>window.getSelection()?.toString()??'')).not.toBe('');
+ expect(await page.evaluate(()=>(window as any).copiedTranscripts)).toEqual([]);expect(await sentCount(page)).toBe(0);
+ await page.getByRole('button',{name:'Copy text',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).copiedTranscripts)).toEqual([transcript]);
+ expect(await sentCount(page)).toBe(0);expect(await notes(page)).toEqual(before);
+});
+
 test('a transcript attachment prefills an editable question without sending or changing the recording',async({page})=>{
  await setup(page);await captureSends(page);const before=await notes(page);
  await attach(page);await expect(draft(page)).toHaveValue('Summarize this for me');

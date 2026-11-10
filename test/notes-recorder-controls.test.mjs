@@ -56,6 +56,25 @@ test('the recorder surface has a named Stop action and no provider-branded trans
  assert.match(template,/aria-label="Record voice note" onClick="\{\{notes\.record\}\}"/);
 });
 
+test('Copy text preserves the full transcript and refuses a changed source note',async()=>{
+ const start=source.indexOf('      const vo=result.vo,transcriptSource='),end=source.indexOf('      vo.reviewTranscript=',start);assert.ok(start>=0&&end>start);
+ for(const selected of [{id:'note',body:'  First line\n'+('Full transcript. '.repeat(900))},{id:'note',body:'',lines:[{t:'  First line'},{t:'Full transcript. '.repeat(900)}]}]){
+  const expected=selected.body||selected.lines.map(line=>line.t).join('\n'),copied=[],toasts=[],state={open:'note',list:[selected]};
+  const context=vm.createContext({selected,result:{vo:{}},document:{hidden:false},current:{get:()=>state,isActive:()=>true,toast:text=>toasts.push(text)},copySelectedText:async text=>copied.push(text)});
+  vm.runInContext(stripTypeScriptTypes(source.slice(start,end),{mode:'strip'}),context);
+  assert.deepEqual(copied,[]);context.result.vo.copyTranscript();await Promise.resolve();assert.deepEqual(copied,[expected]);assert.deepEqual(toasts,['Text copied.']);
+  state.list=[{...selected,body:'Changed'}];context.result.vo.copyTranscript();await Promise.resolve();assert.equal(copied.length,1);
+ }
+});
+
+test('transcript text selection bypasses shell gestures without changing playback targets',()=>{
+ const model=fs.readFileSync(new URL('../apps/app/src/prototype/model.js',import.meta.url),'utf8'),line=model.split('\n').find(row=>row.trim().startsWith('gDown(e)'));
+ const down=vm.runInNewContext('({'+line+'}).gDown',{pullStart:()=>false});
+ const shell={g:{},scale:()=>({r:{left:0,top:0},s:1})};
+ down.call(shell,{target:{closest:selector=>selector.includes('[data-alpha-note-transcript]')},clientX:10,clientY:20});assert.equal(shell.g,null);
+ down.call(shell,{target:{closest:()=>false},clientX:10,clientY:20});assert.equal(shell.g.cx,10);assert.equal(shell.g.cy,20);
+});
+
 test('audio playback refuses a foreign or deleted native handle before starting playback',async()=>{
  const implementation=between('  async function playSaved(','  let listener:');
  for(const metadata of [{audioId:'audio',noteId:'other'},{audioId:'audio',noteId:'note',deletedAt:1},{audioId:'other',noteId:'note'},{audioId:'audio',noteId:'note'}]){

@@ -16943,12 +16943,13 @@
         "AgentCalendarMutation",
         "CalendarPreservationConfirmation",
         "CanonicalCalendarEditorClose",
-        "CanonicalCalendarDraftHandoff"
+        "CanonicalCalendarDraftHandoff",
+        "SavedServiceRead"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "90100540874ae21a8fd109fe9ef30cf06c9d9b6ab280ffe02ece9c38f909a3b6",
+      "sha256": "dd74f0c1c3ebbe987f9e4a5ea52bbb51dbce677fdfefed2e614974b03815af69",
       "stateAnchors": [
         {
           "line": 24,
@@ -20077,7 +20078,7 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "b91503f009c89c9f92b4661468e5598fed4a5b718f50252826cfc16a1d863186",
+      "sha256": "6e63cb7205727eb977319c3c8f03f12092a2ea13de329b1f55ebdd3ebf4de157",
       "stateAnchors": [
         {
           "line": 11,
@@ -22734,7 +22735,7 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "3ae5309e606bf863adc238be724cf1f5f577eedd2028bd983a84f0ce1b890dc5",
+      "sha256": "25668a024b997888fd7da0a2495d9038f1c2e7a3be5e15bac7becb4a1ff1670e",
       "stateAnchors": [
         {
           "line": 5,
@@ -22804,11 +22805,12 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "2a85648f3d8af42e5d829b9916cfeee04252038fb0b4bcafbe8b40c47bfa984a",
+      "sha256": "ee10bd34170d97bad21573ed4b6654009a3bff3624ca5b375c80eb14978094f2",
       "models": [
         "InboxDelivery",
         "InboxCoordinator",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "SavedServiceRead"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -25027,7 +25029,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "3a130dbdf4397cb8d4276e3238d768407af32b048107c60b4ab4aaf5c00b44c7",
+      "sha256": "beebe4acb3a5d0b996322d9a28985a4df6542f2b5789ca94930b5078e0fcc89e",
       "stateAnchors": [
         {
           "line": 26,
@@ -32470,7 +32472,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "0c5aee1d4f858d869ef0cf8980763f1bb4a5a3fad517872a1208d0831600bdc4",
+      "sha256": "5d0b164eb5fa5bd2c064070514e3d20469912eb54a1b66176177d8f2012942e4",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately."
     },
@@ -34786,7 +34788,7 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "8be1a7fb323a3e80faa372287af05aef8a5426726f38147481a058626a314750",
+      "sha256": "9bfacbecd9070975a9ae512b64c6cc53ce62db0442077b8825337bfd7083bf51",
       "stateAnchors": [
         {
           "line": 3358,
@@ -34969,7 +34971,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "c3b4c1dbf292304f05ec6024866fe71e16070a3b63339c378eb01eacf30f695d",
+      "sha256": "184549594547be71995cc61d06558e4048ae9c597e229574f8b248765a8eaae2",
       "stateAnchors": [
         {
           "line": 1105,
@@ -36331,12 +36333,13 @@
         "AgentCalendarEventReturn",
         "AgentCalendarSyncControl",
         "GoogleCalendarLinkFlow",
-        "CalendarPreservationConfirmation"
+        "CalendarPreservationConfirmation",
+        "SavedServiceRead"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "149a986b4e3f2a714cd6c1f41a85e5522807e5b35faba1564ba32c7b8e5c0d0e",
+      "sha256": "cc32afd77a8bac062af62677eda601a847830d879630504f16d967283b491ef1",
       "stateAnchors": [
         {
           "line": 13,
@@ -39059,7 +39062,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "ef0203ec11795a3abdf3131bea6ce3bf8b00c08c7b6126e30309a46c76ff89c4",
+      "sha256": "9273a63cbdf93c15a67c71462d64dffae322140869c13ca8811ebdcd5bad32dc",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open."
     },
@@ -41131,7 +41134,7 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "f86fabc5229dac1e920d2c6d9cf4b629a0d06eb15e2fff9a78f04f3787ac4b7c",
+      "sha256": "dc811ea1f5d3a653dbbc98501b24cab794941bfecb6efc6c34234275a03f8046",
       "stateAnchors": [
         {
           "line": 14,
@@ -618407,6 +618410,15 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "integrationReview": "specs/quint/pixel-native-review-20261109.md"
+    },
+    {
+      "path": "apps/app/src/runtime/note-default-title.ts",
+      "sha256": "9035685853a509f13c3d2228054d9820c269f286afd185f6c2e4b0cb4e42529d",
+      "models": [
+        "NotesLifecycle"
+      ],
+      "treatment": "domain-contract-or-support",
+      "scope": "Pure numbered default title selection from current owner notes and Trash; explicit titles and existing records are unchanged."
     }
   ],
   "configurationInputs": [

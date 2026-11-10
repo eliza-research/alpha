@@ -37,7 +37,7 @@ test('agenda card keeps the installed selectors for an event, an overdue reminde
   assert.match(out.event,/class="home-calendar-time">Wed, Oct 7<\/span><span data-overview-part="origin" class="home-calendar-origin" data-alpha-home-calendar-origin="">Work<\/span>/);
   assert.match(out.event,/class="serif home-calendar-title">Design review</);
   assert.match(out.event,/class="home-calendar-footer">4:00 PM – 5:00 PM</);
-  assert.match(out.event,/<svg width="16" height="16" viewBox="0 0 24 24"><path d="M1 1"><\/path><\/svg>/);
+  assert.match(out.event,/background:#ffffff;mask:url\(&#x27;\/icons\/lucide\/video\.svg&#x27;\)/);
   assert.match(out.event,/style="flex-shrink:0;scroll-snap-align:start;border-radius:30px;background:var\(--acc\);color:#ffffff;padding:22px;box-sizing:border-box"/);
   assert.ok(out.overdue.includes('data-alpha-home-calendar-overdue="true"')&&out.overdue.includes('data-alpha-home-calendar-next="true"'));
   assert.match(out.overdue,/class="home-calendar-meta home-calendar-next" data-alpha-home-calendar-next-line=""><span data-overview-part="nextText" class="home-calendar-next-text">Next: Design review 4:00 PM<\/span>/);
@@ -141,7 +141,7 @@ test('the Home agenda values come from the shared card model for an event, an ov
   assert.deepEqual([none.homeCalendarTitle,none.homeCalendarTime,none.homeCalendarLabel,none.homeCalendarHasEvent,none.homeCalendarHasMeta],['Calendar has not been verified','Wed, Oct 7','Open Agent Calendar',false,false]);
 });
 
-test('Home keeps Calendar, Inbox and Workflows visible but shows Brief only with a result', () => {
+test('Home hides empty Calendar, Inbox and Workflows and shows Brief only with a result', () => {
   class Shell {
     renderVals() { return this.values; }
   }

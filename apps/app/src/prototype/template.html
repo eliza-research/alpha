@@ -2298,8 +2298,6 @@
       <sc-if value="{{notes.ed.menuShown}}"><div ref="{{notes.noteMenu}}" data-alpha-popup style="display: contents">
       <sc-if value="{{notes.ed.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.ed.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.ed.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
-        <sc-if value="{{notes.ed.toCal}}"><button onClick="{{notes.ed.toCal}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review reminder draft</button></sc-if>
-        <sc-if value="{{notes.ed.toEvent}}"><button onClick="{{notes.ed.toEvent}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review calendar event draft</button></sc-if>
         <button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.ed.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button>
         <button onClick="{{notes.ed.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.ed.pinLabel}}</button>
         <hr>
@@ -2341,7 +2339,10 @@
             <button aria-label="Cancel transcription" onClick="{{notes.vo.cancelTranscript}}">Cancel</button>
           </div>
         </sc-if>
-        <sc-if value="{{notes.vo.canReviewTranscript}}"><button class="note-transcript-action" onClick="{{notes.vo.reviewTranscript}}">Ask Alpha about this transcript</button></sc-if>
+        <sc-if value="{{notes.vo.canReviewTranscript}}"><div class="note-transcript-actions">
+          <button class="note-transcript-action" aria-label="Ask Alpha about this transcript" onClick="{{notes.vo.reviewTranscript}}"><span class="alpha-compute-mark" aria-hidden="true"></span>Ask Alpha</button>
+          <button class="note-transcript-action" onClick="{{notes.vo.copyTranscript}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.copy}}"></path></svg>Copy text</button>
+        </div></sc-if>
         <sc-if value="{{notes.vo.proc}}">
           <div style="display: flex; flex-direction: column; gap: 12px; padding: 18px; border-radius: 24px; background: var(--s2); margin-top: 22px">
             <span class="dot" style="display: block"><span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;color:var(--acct)"><span class="alpha-compute-mark" aria-hidden="true" style="width:100%;height:100%"></span></span></span>
@@ -2371,23 +2372,21 @@
         </sc-if>
 
         <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 26px">
-          <sc-if value="{{notes.vo.savedTranscript}}"><p style="margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5">{{notes.vo.savedTranscript}}</p></sc-if>
+          <sc-if value="{{notes.vo.savedTranscript}}"><p data-alpha-note-transcript class="note-transcript-text">{{notes.vo.savedTranscript}}</p></sc-if>
           <sc-for list="{{notes.vo.lines}}" as="l">
-            <button onClick="{{l.seek}}" aria-label="Play from {{l.at}}" class="tap" style="display: flex; gap: 12px; align-items: flex-start; padding: 10px 8px; margin: 0 -8px; border-radius: 16px; text-align: left">
-              <span style="width: 30px; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10.5px; font-weight: 700; white-space: nowrap; {{l.chip}}">{{l.ini}}<sc-if value="{{l.statusIcon}}"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{l.statusIcon}}"></path></svg></sc-if></span>
+            <div class="note-transcript-line">
+              <button onClick="{{l.seek}}" aria-label="Play from {{l.at}}" class="tap note-transcript-seek"><span style="width: 30px; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10.5px; font-weight: 700; white-space: nowrap; {{l.chip}}">{{l.ini}}<sc-if value="{{l.statusIcon}}"><svg class="i" viewBox="0 0 24 24" style="width:16px;height:16px"><path d="{{l.statusIcon}}"></path></svg></sc-if></span></button>
               <div style="min-width: 0; flex-grow: 1">
                 <div style="font-size: 12px; color: var(--mut)">{{l.who}} · {{l.at}}</div>
-                <div style="font-size: 16px; line-height: 1.45; margin-top: 2px; {{l.css}}">{{l.t}}</div>
+                <p data-alpha-note-transcript class="note-transcript-text" style="font-size:16px;margin-top:2px;{{l.css}}">{{l.t}}</p>
               </div>
-            </button>
+            </div>
           </sc-for>
         </div>
       </div>
       <sc-if value="{{notes.vo.menuShown}}"><div ref="{{notes.noteMenu}}" data-alpha-popup style="display: contents">
       <sc-if value="{{notes.vo.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.vo.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.vo.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
-        <sc-if value="{{notes.vo.toCal}}"><button onClick="{{notes.vo.toCal}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review reminder draft</button></sc-if>
-        <sc-if value="{{notes.vo.toEvent}}"><button onClick="{{notes.vo.toEvent}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.cal}}"></path></svg>Review calendar event draft</button></sc-if>
         <button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.vo.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button>
         <button onClick="{{notes.vo.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.vo.pinLabel}}</button>
         <hr>

@@ -1,4 +1,6 @@
 import {STARTUP_PERMISSIONS_REOPEN} from '../startup-permission-flow';
+import {copySelectedText} from '../runtime/text-share';
+import {nextDefaultNoteTitle} from '../runtime/note-default-title';
 import type {VoiceStartupStage} from '../runtime/diagnostics-export';
 import type {RealtimeCancellationCause} from '../../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts';
 import { cloudServiceName } from '../runtime/cloud-protocol';
@@ -1116,7 +1118,8 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
     // A retried Done after a lost save response: the note is already there with this audio.
     const existing = latest.find((n: Bag) => n.id === saved.noteId);
     if (existing) return existing.audio?.audioId === saved.audioId;
-    const note = { id: saved.noteId, kind: 'voice', title: 'Voice note', body: transcript, audio: saved, transcription: transcript ? noteProvenance ?? { route: 'manual' } : { route: 'manual' }, dur: saved.durationMs / 1000, summary: [], actions: [], lines: [{ s: 'me', at: 0, t: transcript }], pinned: false, when: 'Now', createdAt: Date.now(), modifiedAt: Date.now(), ...(folderId ? { folderId } : {}) };
+    const title=nextDefaultNoteTitle([...latest,...(owner.get('notes').trash||[]).map((entry:Bag)=>entry.note||entry),...(owner.get('notes').audioDeletionPending||[]).map((entry:Bag)=>entry.note)],'Voice note');
+    const note = { id: saved.noteId, kind: 'voice', title, body: transcript, audio: saved, transcription: transcript ? noteProvenance ?? { route: 'manual' } : { route: 'manual' }, dur: saved.durationMs / 1000, summary: [], actions: [], lines: [{ s: 'me', at: 0, t: transcript }], pinned: false, when: 'Now', createdAt: Date.now(), modifiedAt: Date.now(), ...(folderId ? { folderId } : {}) };
     return await owner.saveVoiceNote({ list: [note, ...latest], open: saved.noteId }) === true;
   };
   const finishNoteRecording = () => noteRecorder.finishAudio(persistNoteRecording, !!noteDestination?.canonical);
@@ -1224,12 +1227,6 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
         }catch(failure){if(!controller.signal.aborted)current.toast(cloudVoiceFailure(failure,{recording:true})||(failure instanceof Error&&'code' in failure&&failure.code==='no-speech'?failure.message:'Couldn’t generate the transcript. Your recording is kept.'));}
         finally{controller.signal.removeEventListener('abort',cancel);unsubscribe();document.removeEventListener('visibilitychange',changed);if(driver&&requestId)await driver.cancel({requestId}).catch(()=>{});if(savedTranscription===task)savedTranscription=undefined;if(current.isActive()&&current.voiceNoteActive())current.setView('notes',{noteTranscriptRevision:Date.now()});}
       };
-      vo.reviewTranscript=()=>{
-        stopSaved();
-        if(current.isActive() && current.voiceNoteActive() && current.get('notes').open===selected.id) {
-          current.composeTranscriptQuestion(selected.id, selected.title || 'Voice note');
-        }
-      };
       // Both hand-offs open a Calendar draft only. Nothing is written until the user saves there.
       // The draft carries a back-reference to this exact note (id, recording and reviewed revision).
       const draftFromNote=async(kind:'reminder'|'event')=>{
@@ -1280,6 +1277,20 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
       const reviewed=structuredClone(selected);
       if(!current.canonicalNotes)vo.del = () => { void deleteVoiceNote(current,reviewed,false); };
 
+    }
+    if(selected&&result.vo){
+      const vo=result.vo,transcriptSource=JSON.stringify(selected);
+      const body=String(selected.body||''),transcriptText=body.trim()?body:String(selected.audio?.transcript||(selected.lines||[]).map((line:Bag)=>String(line.t??'')).join('\n'));
+      vo.canReviewTranscript=!!transcriptText.trim();
+      vo.copyTranscript=()=>{
+        const currentNote=current.get('notes').list.find((note:Bag)=>note.id===selected.id);
+        if(!current.isActive()||document.hidden||current.get('notes').open!==selected.id||JSON.stringify(currentNote)!==transcriptSource||!transcriptText.trim())return;
+        void copySelectedText(transcriptText).then(()=>{if(current.isActive())current.toast('Text copied.');},()=>{if(current.isActive())current.toast('Couldn’t copy text. Try again.');});
+      };
+      vo.reviewTranscript=()=>{
+        stopSaved();
+        if(current.isActive()&&current.voiceNoteActive()&&current.get('notes').open===selected.id)current.composeTranscriptQuestion(selected.id,selected.title||'Voice note');
+      };
     }
     result.record = startNoteRecorder;
     // Read aloud follows the runtime profile. Closing, leaving or editing the note stops it.

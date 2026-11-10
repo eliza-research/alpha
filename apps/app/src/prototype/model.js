@@ -1,4 +1,5 @@
 import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
+import { nextDefaultNoteTitle } from '../runtime/note-default-title';
 import { accessibilityTimeoutScale } from '../runtime/accessibility-timeout';
 import iconCatalog from '../icon-catalog.json';
 /* Seeds, scripted replies and fixture images. Production builds resolve this
@@ -2876,13 +2877,14 @@ function notesUpd(api, id, patch) {
     return next;
   });
   var change = { list: list };
-  if (s.blankCreationId === id && !notesEmpty(notesFind(list, id))) change.blankCreationId = null;
+  if (s.blankCreationId === id && !notesEmpty(notesFind(list, id), s.blankCreationTitle)) { change.blankCreationId = null; change.blankCreationTitle = null; }
   return api.set(change);
 }
-function notesEmpty(n) {
+function notesEmpty(n, defaultTitle) {
   if (!n) return false;
-  if (n.kind === "text") return !String(n.title || "").trim() && !String(n.body || "").trim();
-  if (n.kind === "list") return !String(n.title || "").trim() && !(n.items || []).some(function (i) { return String(i.t).trim(); });
+  var emptyTitle = !String(n.title || "").trim() || n.title === defaultTitle;
+  if (n.kind === "text") return emptyTitle && !String(n.body || "").trim();
+  if (n.kind === "list") return emptyTitle && !(n.items || []).some(function (i) { return String(i.t).trim(); });
   return false;
 }
 function notesStopTimers() { clearInterval(NT.playI); NT.playI = null; }
@@ -2895,8 +2897,8 @@ function notesLeave(api, next) {
   if (api.canonicalNotes) { void api.canonicalNotes.leave(next); return {}; }
   var s = api.get("notes"); notesStopTimers();
   var n = s.open !== next && s.open === s.blankCreationId ? notesFind(s.list, s.open) : null;
-  var patch = { open: next, sheet: null, playing: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null };
-  if (n && notesEmpty(n)) patch.list = s.list.filter(function (x) { return x.id !== n.id; });
+  var patch = { open: next, sheet: null, playing: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null, blankCreationTitle: next === s.open ? s.blankCreationTitle : null };
+  if (n && notesEmpty(n, s.blankCreationTitle)) patch.list = s.list.filter(function (x) { return x.id !== n.id; });
   return patch;
 }
 function notesUndoable(api, note, idx, label) {
@@ -2978,10 +2980,11 @@ function notesNew(api, kind) {
   var inFolder = notesFolderOf({ folderId: st0.folder }, st0.folders);
   if (api.canonicalNotes) { void api.canonicalNotes.create(kind, inFolder); api.set({ compose: false, q: null }); return; }
   var now = Date.now();
-  var n = kind === "list" ? { id: id, kind: "list", title: "", items: [], pinned: false, when: "Now", createdAt: now, modifiedAt: now } : { id: id, kind: "text", title: "", body: "", pinned: false, when: "Now", createdAt: now, modifiedAt: now };
+  var title = nextDefaultNoteTitle([...(st0.list || []), ...(st0.trash || []).map(function (entry) { return entry.note || entry; })], 'New note');
+  var n = kind === "list" ? { id: id, kind: "list", title: title, items: [], pinned: false, when: "Now", createdAt: now, modifiedAt: now } : { id: id, kind: "text", title: title, body: "", pinned: false, when: "Now", createdAt: now, modifiedAt: now };
   if (inFolder) n.folderId = inFolder;
   var leave = notesLeave(api, id);
-  api.set(Object.assign(leave, { list: [n].concat(leave.list || api.get("notes").list), blankCreationId: id, compose: false, q: null }));
+  api.set(Object.assign(leave, { list: [n].concat(leave.list || api.get("notes").list), blankCreationId: id, blankCreationTitle: title, compose: false, q: null }));
 }
 function notesLast(list) { for (var i = 0; i < list.length; i++) if (list[i].kind === "voice") return list[i]; return null; }
 function notesShare(api, n, via) {
@@ -5361,7 +5364,7 @@ class Component extends DCLogic {
 
   /* ---- gestures ---- */
   scale(el) { var sc = el && el.closest ? el.closest("[data-screen]") : null; var r = (sc || el).getBoundingClientRect(); return { r: r, s: r.width / 412 || 1 }; }
-  gDown(e) { if (e.target.closest?.("[data-alpha-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, pull: pullStart(e.target) }; }
+  gDown(e) { if (e.target.closest?.("[data-alpha-transcript],[data-alpha-note-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, pull: pullStart(e.target) }; }
   gUp(e) { var g = this.g; this.g = null; if (!g || window.getSelection()?.isCollapsed === false) return; this.swipe(g, (e.clientX - g.cx) / g.s, (e.clientY - g.cy) / g.s); }
   swipe(g, dx, dy) {
     // Gesture zones (docs/gesture-zones.md) are the shared shell's (resolveMobileShellSwipe). The top

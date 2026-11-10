@@ -198,7 +198,8 @@
       "apps/app/src/runtime/notes-folders.ts",
       "apps/app/src/runtime/notes-folders-model.ts",
       "apps/app/src/prototype/agent-adapter.ts",
-      "apps/app/src/prototype/legacy-notes-access.ts"
+      "apps/app/src/prototype/legacy-notes-access.ts",
+      "apps/app/src/runtime/note-default-title.ts"
     ],
     "abstractions": [
       "Legacy mode preserves the existing one-note local Trash/CAS compatibility contract. Canonical mode represents one existing record, one editor draft, one initial folder and one newly allocated folder identity.",
@@ -3394,6 +3395,29 @@
     "abstractions": [
       "Two account identities and two connection modes. Data and key revisions abstract preserved stores. Billing, authentication and provider behavior retain their existing contracts.",
       "Safety scenarios do not establish live-provider, device or UI conformance. No liveness claim."
+    ]
+  },
+  {
+    "path": "specs/quint/application/SavedServiceRead.qnt",
+    "module": "SavedServiceRead",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "savedThenFreshTest",
+      "lateSavedCannotReplaceLiveTest",
+      "refusedOldWindowStaysHiddenTest",
+      "changedOwnerStaysHiddenTest",
+      "changedCredentialStaysHiddenTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/agent-calendar.ts",
+      "apps/app/src/prototype/agent-calendar-adapter.ts",
+      "apps/app/src/prototype/inbox-cloud-adapter.ts"
+    ],
+    "abstractions": [
+      "Two owners, credentials and windows, three ordered clock values and eight read generations. Saved rows never authorize writes and never replace a settled fresh read.",
+      "Cache size/age policy is implemented by existing ServiceReadCache. Model scenarios and isolated implementation regressions do not prove live-provider or device behavior."
     ]
   }
 ]

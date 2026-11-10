@@ -228,13 +228,89 @@ console.log('PASS: Reloaded Inbox cache also restores Home subjects/count/time w
 }
 console.log('PASS: Home warmup outlives a late saved summary and a same-account rebind; a revoked warmup purges saved mail.');
 
+// Home-only use saves its accepted page without replacing the richer mailbox.
+await test('Home warmup persists headers for immediate reload while refresh is pending or fails',async()=>{
+ class HomeShell{constructor(){this.st={q:null,compose:null};}renderVals(){return {};}componentDidMount(){}componentWillUnmount(){}vset(_,patch){Object.assign(this.st,patch);}}
+ const owner='home-saved-read',original=structuredClone(retainedMailbox);
+ original.lists.push({...original.lists[0],query:'in:sent',messages:[mail('sent-retained')]});
+ original.bodies.push({at:Date.now(),body:{message:mail('retained-unread'),bodyText:'Previously opened body'}});
+ let raw={version:1,owner,entries:[{key:'gmail:mailbox',at:Date.now(),value:original}]};
+ const cache=new ServiceReadCache(owner,{read:async()=>structuredClone(raw),compareExchange:async(before,next)=>{assert.deepEqual(before,raw);raw=structuredClone(next);return 'saved';}});
+ const previousCache=sandbox.serviceReadCache,previousClient=controller.getCloudClient;
+ sandbox.serviceReadCache=async()=>cache;controller.getCloudClient=()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null;
+ const installed=[];
+ const mount=()=>{const v={inbox:{state:{}}};sandbox.installInboxCloudAdapter(HomeShell,v);const h=new HomeShell();h.componentDidMount();installed.push(h);return {h,v,a:{...api,get:()=>h.st,set:patch=>h.vset('inbox',patch)}};};
+ try{
+  inboxActive=false;connected=true;readGrant=true;delayAccounts=false;delay=false;failNext=null;
+  pages['in:inbox']=[[mail('home-saved',{unread:true})]];
+  const beforeBodies=reads.length,beforeSearch=searches.length,first=mount();await tick();
+  assert.equal(searches.length,beforeSearch+1,'Home uses its one existing header read');
+  assert.equal(reads.length,beforeBodies,'Home does not read bodies');
+  assert.deepEqual((await cache.get('gmail:mailbox')).value,original,'warmup preserves bodies and other folders');
+  const saved=(await cache.get('gmail:home')).value;
+  assert.deepEqual(local(saved.lists[0].messages),pages['in:inbox'][0],'cache contains the actual accepted header rows');
+  assert.deepEqual(local(saved.bodies),[]);assert.equal(saved.lists.length,1);assert.equal(saved.accounts.length,1);
+  first.h.componentWillUnmount();installed.pop();
+  delayAccounts=true;failNext=new CloudProtocolError('http',503);
+  const second=mount();await tick();
+  assert.deepEqual(local(second.h.renderVals().homeInboxRows),[{subject:'Fixture home-saved',from:'Sender'}],'saved Home rows appear before the network answers');
+  assert.equal(second.h.renderVals().homeInboxCount,'1 unread');
+  assert.equal(sandbox.inboxAttention().updatedAt,new Date(saved.lists[0].at).toISOString(),'reload keeps the accepted read time');
+  inboxActive=true;second.v.inbox.render(second.h.st,second.a);await tick();
+  assert.equal(second.v.inbox.render(second.h.st,second.a).rows[0].subj,'Fixture home-saved','Inbox also restores the newer header page while refresh is pending');
+  delayAccounts=false;releaseAccounts();await tick();
+  assert.equal(second.v.inbox.render(second.h.st,second.a).rows[0].subj,'Fixture home-saved','a failed refresh keeps the restored list');
+  const restored=(await cache.get('gmail:mailbox')).value;
+  assert.ok(restored.lists.some(row=>row.query==='in:sent'&&row.messages[0].id==='sent-retained'),'restoring the Home page keeps other folders');
+  assert.ok(restored.bodies.some(row=>row.body.bodyText==='Previously opened body'),'restoring the Home page keeps cached bodies');
+  assert.deepEqual((await cache.get('gmail:home')).value,saved,'failed refresh keeps the accepted Home snapshot');
+ }finally{for(const h of installed)h.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;delayAccounts=false;failNext=null;}
+});
+
+await test('a late disk restore cannot replace the newer live Home page when Inbox opens',async()=>{
+ class RaceShell{constructor(){this.st={q:null,compose:null};}renderVals(){return {};}componentDidMount(){}componentWillUnmount(){}vset(_,patch){Object.assign(this.st,patch);}}
+ const previousCache=sandbox.serviceReadCache,previousClient=controller.getCloudClient;
+ let gets=0,releaseDisk;const diskGate=new Promise(resolve=>{releaseDisk=resolve;});
+ sandbox.serviceReadCache=async()=>({get:async key=>{if(++gets>2)await diskGate;return key==='gmail:mailbox'?{value:structuredClone(retainedMailbox)}:null;},put:async()=>{},clear:async()=>{}});
+ controller.getCloudClient=()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null;
+ const v={inbox:{state:{}}};sandbox.installInboxCloudAdapter(RaceShell,v);const h=new RaceShell(),a={...api,get:()=>h.st,set:patch=>h.vset('inbox',patch)},inbox=()=>v.inbox.render(h.st,a);
+ try{
+  inboxActive=false;delayAccounts=false;delay=true;failNext=null;pages['in:inbox']=[[mail('live-after-disk-start',{unread:true})]];
+  const beforeSearch=searches.length;h.componentDidMount();await tick();
+  assert.deepEqual(local(h.renderVals().homeInboxRows),[{subject:'Fixture retained-unread',from:'Sender'}]);
+  assert.equal(searches.length,beforeSearch+1,'the existing Home refresh waits for its response');
+  inboxActive=true;inbox();await tick();assert.equal(gets,4,'Inbox restoration is waiting for both disk snapshots');
+  delay=false;releaseSearch();await tick();
+  assert.deepEqual(local(h.renderVals().homeInboxRows),[{subject:'Fixture live-after-disk-start',from:'Sender'}],'the live result is accepted before disk completes');
+  failNext=new CloudProtocolError('http',503);releaseDisk();await tick();
+  assert.deepEqual(local(inbox().rows.map(row=>row.subj)),['Fixture live-after-disk-start'],'late disk cannot replace the live page in Inbox');
+  assert.deepEqual(local(h.renderVals().homeInboxRows),[{subject:'Fixture live-after-disk-start',from:'Sender'}]);
+  assert.equal(searches.length,beforeSearch+1,'opening reuses the accepted live result without another page read');
+ }finally{releaseDisk();h.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;delay=false;delayAccounts=false;failNext=null;}
+});
+
+for(const candidate of ['newer-mailbox','invalid-home','different-account','home-only'])await test(`Home selects the latest valid saved page: ${candidate}`,async()=>{
+ class SavedHomeShell{constructor(){this.st={q:null,compose:null};}renderVals(){return {};}componentDidMount(){}componentWillUnmount(){}vset(_,patch){Object.assign(this.st,patch);}}
+ const full=structuredClone(retainedMailbox),home=structuredClone(retainedMailbox);
+ full.lists[0].at=Date.now()-1000;full.lists[0].messages=[mail('new-full',{unread:true})];
+ home.lists[0].at=full.lists[0].at-1000;home.lists[0].messages=[mail('old-home',{unread:true})];
+ if(candidate==='invalid-home'){home.lists[0].at=Date.now()+60000;}
+ if(candidate==='different-account'){home.selected='grant-b';home.accounts[0].connectionId='grant-b';home.lists[0].at=Date.now();}
+ const previousCache=sandbox.serviceReadCache,previousClient=controller.getCloudClient;
+ sandbox.serviceReadCache=async()=>({get:async key=>candidate==='home-only'&&key==='gmail:mailbox'?null:({value:key==='gmail:home'?home:full}),put:async()=>{},clear:async()=>{}});
+ controller.getCloudClient=()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null;
+ const v={inbox:{state:{}}};sandbox.installInboxCloudAdapter(SavedHomeShell,v);const h=new SavedHomeShell();
+ try{inboxActive=false;delayAccounts=true;h.componentDidMount();await tick();assert.deepEqual(local(h.renderVals().homeInboxRows),[{subject:candidate==='home-only'?'Fixture old-home':'Fixture new-full',from:'Sender'}]);}
+ finally{h.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;delayAccounts=false;releaseAccounts();await tick();}
+});
+
 // A fresh Home adapter never opens Inbox: `selected` must not mask the revoked restore gate.
 for(const purgeFailure of ['reject','exhausted-cas'])await test(`a fresh Home shell cannot restore revoked subjects after ${purgeFailure} purge`,async()=>{
  class FreshHomeShell{constructor(){this.st={q:null,compose:null};}renderVals(){return {};}componentDidMount(){}componentWillUnmount(){}vset(_,patch){Object.assign(this.st,patch);}}
  const freshViews={inbox:{state:{}}};sandbox.installInboxCloudAdapter(FreshHomeShell,freshViews);
  let localGets=0,casAttempts=0,purgeSettled;
  const owner='fresh-revoked-cache-'+purgeFailure;
- const raw={version:1,owner,entries:[{key:'gmail:mailbox',at:Date.now(),value:structuredClone(retainedMailbox)}]};
+ const raw={version:1,owner,entries:['gmail:mailbox','gmail:home'].map(key=>({key,at:Date.now(),value:structuredClone(retainedMailbox)}))};
  const cache=new ServiceReadCache(owner,{read:async()=>structuredClone(raw),compareExchange:async()=>{casAttempts++;if(purgeFailure==='reject')throw Error('Closed fixture failed purge');return 'conflict';}});
  const get=cache.get.bind(cache),clear=cache.clear.bind(cache);
  cache.get=async function(...args){localGets++;return get(...args);};
@@ -246,7 +322,7 @@ for(const purgeFailure of ['reject','exhausted-cas'])await test(`a fresh Home sh
  const beforeSearch=searches.length,beforeBodies=reads.length,priorAccountGate=releaseAccounts;
  try{
   fresh.componentDidMount();await tick();
-  assert.equal(localGets,1,'fresh Home reads the real retained cache once before network decision');
+  assert.equal(localGets,2,'fresh Home reads each saved snapshot once before the network decision');
   assert.deepEqual(local(fresh.renderVals().homeInboxRows),[{subject:'Fixture retained-unread',from:'Sender'}],'saved subject was genuinely visible before revocation');
   assert.equal(typeof releaseAccounts,'function','warmup discovery is pending, without an Inbox render/open');
   assert.notEqual(releaseAccounts,priorAccountGate,'this fresh shell reached its own gated account discovery');

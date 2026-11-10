@@ -125,6 +125,12 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 .note-transcript-action, .note-transcript-progress { margin-top:12px; min-height:44px; font:inherit; }
 .note-transcript-action { align-self:flex-start; padding:0 14px; border-radius:22px; background:var(--s2); color:var(--fg); }
 .note-transcript-action:disabled { color:var(--mut); }
+.note-transcript-actions { display:flex;flex-wrap:wrap;gap:8px;margin-top:12px; }
+.note-transcript-actions .note-transcript-action { display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:0; }
+.note-transcript-actions .alpha-compute-mark,.note-transcript-actions .i { width:18px;height:18px;flex:none; }
+.note-transcript-text { margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;user-select:text;-webkit-user-select:text;touch-action:pan-y;cursor:text; }
+.note-transcript-line { display:flex;gap:8px;align-items:flex-start;padding:10px 0; }
+.note-transcript-seek { display:flex;align-items:center;justify-content:center;width:44px;min-height:44px;flex:none;border-radius:16px; }
 .note-transcript-progress { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .note-transcript-progress [role="status"] { display:inline-flex; align-items:center; gap:8px; color:var(--mut); }
 .note-transcript-progress i { width:14px; height:14px; border:2px solid var(--line); border-top-color:var(--acct); border-radius:50%; animation:note-transcribing 1s linear infinite; }
@@ -798,6 +804,9 @@ dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height
 [data-alpha-view-actions]{bottom:var(--alpha-dock-reserve,108px)!important}
 [data-alpha-photo-actions]>div{padding-bottom:12px!important}
 [data-alpha-popup] [role="dialog"],[data-alpha-album-manager]{bottom:var(--alpha-dock-reserve,108px)!important;max-height:calc(100% - var(--alpha-dock-reserve,108px) - 32px)!important;overflow-y:auto;box-sizing:border-box}
+/* The overflow menu is anchored below its header, so a dock bottom must cap,
+ * not stretch, its intrinsic height. Keep short screens scrollable. */
+[data-alpha-popup] .notes-menu[role="dialog"]{bottom:auto!important;height:auto;min-width:min(208px,calc(100% - 20px));max-width:calc(100% - 20px);max-height:max(0px,calc(100% - 56px - var(--alpha-dock-reserve,108px) - 8px))!important}
 
 .chat-image-preview{position:absolute;inset:0;z-index:130;background:var(--alpha-black);color:var(--alpha-white);overflow:hidden;touch-action:none}
 .chat-image-preview>[role="dialog"]{height:100%;display:flex;align-items:center;justify-content:center;padding:64px 16px 16px;box-sizing:border-box;overflow:hidden}

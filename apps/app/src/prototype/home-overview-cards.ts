@@ -19,7 +19,7 @@ export function homeAgendaCard(out: Bag): ReactElement | null {
     label: String(out.homeCalendarLabel ?? 'Open your calendar'), description: String(out.homeCalendarDescription ?? ''),
     onActivate: typeof out.goCalendar === 'function' ? out.goCalendar : undefined,
     icon: maskIcon('calendar', '#ffffff'),
-    videoIcon: out.homeCalendarVideo ? createElement('svg', {width: 16, height: 16, viewBox: '0 0 24 24'}, createElement('path', {d: out.ic?.video || ''})) : undefined,
+    videoIcon: out.homeCalendarVideo ? maskIcon('video', '#ffffff') : undefined,
     classNames: {card: 'home-calendar-card', head: 'home-calendar-head', heading: 'home-calendar-time', origin: 'home-calendar-origin', title: 'serif home-calendar-title',
       meta: 'home-calendar-meta', footer: 'home-calendar-footer', source: 'home-calendar-source', next: 'home-calendar-meta home-calendar-next',
       nextText: 'home-calendar-next-text', nextSource: 'home-calendar-source'},
