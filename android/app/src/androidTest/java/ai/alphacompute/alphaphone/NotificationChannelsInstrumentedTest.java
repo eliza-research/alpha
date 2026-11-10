@@ -54,7 +54,7 @@ public final class NotificationChannelsInstrumentedTest {
    until("document.body.textContent.includes('Channel blocked')&&document.body.textContent.includes('Some channels blocked')");assertTrue("Global app permission still allowed",manager.areNotificationsEnabled());assertEquals(NotificationManager.IMPORTANCE_NONE,manager.getNotificationChannel(id).getImportance());
    click("Manage "+name);toggle(true,name);channelState(manager,id,true);back();until("document.body.textContent.includes("+JSONObject.quote(name)+")&&document.body.textContent.includes('Channel allowed')");assertEquals(NotificationManager.IMPORTANCE_DEFAULT,manager.getNotificationChannel(id).getImportance());
    manager.notify(id,1,new Notification.Builder(context,id).setSmallIcon(android.R.drawable.ic_popup_reminder).setContentTitle(title).setContentText("Synthetic channel recovery body").setContentIntent(tap).setAutoCancel(true).build());
-   // The notice is shown and tapped in Android's own shade; Alpha draws none (#416, docs/gesture-zones.md).
+   // The notice is shown and tapped in Android's own shade; Alpha draws none (#416).
    WebViewTestDriver.evaluate(AppNavigation.request("Home"));until(AppNavigation.selected("Home"));until(AndroidShade.ALPHA_SHADE_ABSENT);
    // Android's own action on both flavors: channel recovery does not depend on a pull on launcher Home.
    assertTrue("Android's own action opens its shade",AndroidShade.openWithoutAlpha());

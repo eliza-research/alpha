@@ -1,5 +1,5 @@
-// Eliza Cloud operator values and the credential-free readiness probe (docs/human-actions.md H-11 to
-// H-16). A stubbed fetch stands in for Cloud; nothing here contacts a network, signs in or sends a code.
+// Eliza Cloud operator values and the credential-free readiness probe. A stubbed fetch stands
+// in for Cloud; nothing here contacts a network, signs in or sends a code.
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";

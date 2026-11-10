@@ -1,2 +1,0 @@
-wrote .eliza/phonon-c95a/bundle/asr/phonon-2-fv5.gguf (208932352 bytes, 805 tensors)
-verify: OK, 264 five-value records and 11 int records bit-identical; 723 records consumed; mel: librosa not installed; filterbank not cross-checked

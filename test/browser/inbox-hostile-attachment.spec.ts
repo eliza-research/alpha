@@ -1,4 +1,4 @@
-// J03-8 (docs/core-loop-audit.md): hostile mail attachments. An HTML file with script, an SVG with
+// J03-8: hostile mail attachments. An HTML file with script, an SVG with
 // script, an oversized file and files whose bytes do not match their declared type are driven
 // through the rendered Inbox attachment controls. None may execute, navigate, load anything, or
 // reach the agent; what the review shows is inert text.

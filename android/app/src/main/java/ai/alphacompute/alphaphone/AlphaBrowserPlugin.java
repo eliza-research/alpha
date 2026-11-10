@@ -11,7 +11,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
  * Alpha's browser: the shared native tab host (plugin-native-browser-surface) under Alpha's
  * Capacitor name, with Alpha's installed identity and stores (AlphaBrowserStores) and its speech
  * plugin as the reviewed-reading speech route. The tab model, profiles, pop-ups, app links,
- * clearing, find, reading and autofill binding are upstream; see docs/browser-storage.md.
+ * clearing, find, reading and autofill binding are upstream.
  */
 @CapacitorPlugin(name = "AlphaBrowser")
 public class AlphaBrowserPlugin extends BrowserTabHostPlugin {

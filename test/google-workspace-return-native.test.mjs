@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
+import {existsSync,mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -87,7 +87,7 @@ test('the Workspace return is the App Link on the build\'s ELIZAOS_APP_LINK_HOST
  assert.match(read('android/app/product.gradle'),/manifestPlaceholders\.put\('appLinkHost', appLinkHost\)/,'the placeholder is the build\'s App Link host');
  // The native host, association lookup and admission all read the build's App Link host.
  for(const call of ['new GoogleWorkspaceReturnFlow(BuildConfig.ELIZAOS_APP_LINK_HOST,','GoogleWorkspaceReturn.callback(BuildConfig.ELIZAOS_APP_LINK_HOST)','getHostToStateMap().get(BuildConfig.ELIZAOS_APP_LINK_HOST)','GoogleWorkspaceReturn.parse(BuildConfig.ELIZAOS_APP_LINK_HOST,url)'])assert.ok(connection.includes(call),call);
- const tracked=execFileSync('git',['ls-files','-z','android','apps/app/src'],{cwd:repo,encoding:'utf8'}).split('\0').filter(file=>/\.(java|kt|gradle|xml|ts|tsx|js|mjs|json)$/.test(file));
+ const tracked=execFileSync('git',['ls-files','-z','android','apps/app/src'],{cwd:repo,encoding:'utf8'}).split('\0').filter(file=>/\.(java|kt|gradle|xml|ts|tsx|js|mjs|json)$/.test(file)&&existsSync(join(repo,file)));
  assert.ok(tracked.length>100);
  for(const file of tracked)assert.doesNotMatch(read(file),/alphacompute\.ai/,file);
 });

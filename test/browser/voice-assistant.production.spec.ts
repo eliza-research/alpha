@@ -95,7 +95,7 @@ test('Mute controls capture, Stop speaking shows while speaking and Stop retires
  await expect.poll(()=>live(page,f=>f.stopped)).toBeGreaterThan(0);
  await expect(page.getByText('(Interrupted before this reply was played.)')).toBeVisible();
  expect(await posts(page)).toEqual(['How is the weather']);
- // Nothing was heard: the agent is told so explicitly ({ nothingHeard: true }, docs/fused-speech.md), never sent an empty prefix.
+ // Nothing was heard: the agent is told so explicitly ({ nothingHeard: true }), never sent an empty prefix.
  const heard=await live(page,f=>f.heard);
  expect(heard.map((row:any)=>[row.path.split('/')[5],row.nothingHeard,row.heardText])).toEqual([['11111111-1111-4111-8111-111111111111',true,undefined]]);
  expect(heard[0].ownerId).toBeTruthy();

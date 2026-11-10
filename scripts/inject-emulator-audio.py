@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Inject known PCM into an emulator's actual microphone; never replace app files.
-Deps: isolated venv with grpcio + grpcio-tools. See docs/emulator-audio-injection.md.
+Deps: isolated venv with grpcio + grpcio-tools.
 Default is read-only inspection. --inject must be explicitly supplied to stream.
 --check-microphone queries host input state only; run it before starting app capture.
 --port selects the emulator (default 5554, emulator-5554); only the process started with that

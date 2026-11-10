@@ -1,4 +1,4 @@
-// Release APK signing outside Gradle (docs/human-actions.md H-10): the ceremony's key files or a
+// Release APK signing outside Gradle: the ceremony's key files or a
 // PKCS#11 token sign the unsigned releases, and nothing replaces an unsigned release unless the
 // result verifies against android/release-signer.json. A stub apksigner records argument vectors;
 // where the Android SDK is installed, one case signs a real APK with a throwaway key.

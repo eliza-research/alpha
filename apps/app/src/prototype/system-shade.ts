@@ -11,8 +11,7 @@ import {
 } from '@elizaos/capacitor-system/shade';
 
 /*
- * Android's shade is the one notification and quick-settings surface (issues #416 and #417,
- * docs/gesture-zones.md). Alpha posts its notices as ordinary Android notifications with
+ * Android's shade is the one notification and quick-settings surface (issues #416 and #417). Alpha posts its notices as ordinary Android notifications with
  * owner-bound taps and draws no shade of its own in a product build:
  *
  * - launcher Home (Android): a downward pull that starts on empty Home asks Android to expand

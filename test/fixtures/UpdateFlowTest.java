@@ -622,7 +622,7 @@ public final class UpdateFlowTest {
   Intent confirm=confirmation(context,pending);
   check(owner.activity.started.equals(List.of(confirm))&&later.activity.started.isEmpty(),"and when it comes it opens on the bridge that asked");
  }
- /** Named in docs/android-and-aosp.md: a status lost is unknown, not a failure, and no process asks again. */
+ /** A status lost is unknown, not a failure, and no process asks again. */
  private static void aStatusNoProcessHearsStaysUnknown(File cache)throws Exception{
   Context context=installing(cache);
   PackageInstaller installer=context.packages.installer;

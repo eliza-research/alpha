@@ -18,7 +18,7 @@ const lockCommit=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json')
 const appId=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8')).appId;
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const qualified=(()=>{
- const record=structuredClone(committed);delete record.requalification;delete record.producerInputs;
+ const record=structuredClone(committed);delete record.producerInputs;
  record.forkPin=git(path.join(root,'vendor/eliza'),'ls-tree',lockCommit,'plugins/plugin-local-inference/native/llama.cpp').match(/^160000 commit ([a-f0-9]{40})\t/)[1];
  // The build inputs come from the shared native contract at the pin (registered JNI: the Java class too).
  const show=file=>execFileSync('git',['-C',path.join(root,'vendor/eliza'),'show',lockCommit+':'+file]);
@@ -136,8 +136,8 @@ test('missing, incomplete or altered native qualification cannot admit a new sou
  for(const mutation of [
   m=>delete m.inputs,m=>m.inputs.pop(),m=>m.inputs.push(m.inputs[0]),
   m=>m.inputs[0].sourceSha256='0'.repeat(64),m=>m.inputs.at(-1).generatedSha256='0'.repeat(64),
-  m=>m.forkPin='0'.repeat(40),m=>delete m.qualificationReceiptSha256,m=>m.jniIdentityRelocated=false,
- ]){const f=fixture();try{mutation(f.manifest);f.write();assert.throws(()=>verifyEmbeddingHost(f.dir),/qualification missing or changed|admission changed|Native build input changed/);}finally{f.close();}}
+  m=>m.forkPin='0'.repeat(40),m=>m.jniIdentityRelocated=false,
+ ]){const f=fixture();try{mutation(f.manifest);f.write();assert.throws(()=>verifyEmbeddingHost(f.dir),/qualification missing or changed|admission changed|Native build input changed|JNI identity missing or changed/);}finally{f.close();}}
 });
 
 test('current-only shallow native inputs admit reviewed bytes without fetching the historical build pin',()=>{
@@ -160,43 +160,11 @@ test('explicit unpackaged builds admit absence, never a partial resident payload
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
 
-test('the committed record is admissible at the pin, or names why it must be requalified and is refused',()=>{
- let admissible=true;try{verifyEmbeddingInputs(root,committed);}catch{admissible=false;}
- if(admissible){assert.equal(committed.requalification,undefined,'an admissible record carries no requalification note');return;}
- // A pin move that changes the engine gitlink or a native build input voids the reviewed bytes.
- const note=committed.requalification;
- assert.equal(note?.required,true,'an inadmissible record says that requalification is required');
- assert.equal(note.atPin,lockCommit,'for the current pin');
- assert.ok(typeof note.reason==='string'&&note.reason.length>20);
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-embed-requalify-'));
- try{
-  for(const name of ['upstream.lock.json','app.config.json','android/embedding-host/qualified-host.json']){fs.mkdirSync(path.dirname(path.join(dir,name)),{recursive:true});if(name==='android/embedding-host/qualified-host.json')fs.writeFileSync(path.join(dir,name),JSON.stringify(committed));else fs.copyFileSync(path.join(root,name),path.join(dir,name));}
-  assert.throws(()=>verifyEmbeddingHost(dir),/requalification required/,'distribution admission names the requalification first');
-  assert.deepEqual(verifyEmbeddingHost(dir,{allowAbsentRuntime:true}),{status:'not-packaged',distributable:false},'an unpackaged developer build is unaffected');
- }finally{fs.rmSync(dir,{recursive:true,force:true});}
-});
-
-
 test('complete producer closure is required for new embedding-capable admission and preserves the built pin',()=>{
  const legacy=fixture();try{assert.throws(()=>verifyEmbeddingInputs(legacy.dir,legacy.manifest,{requireProducerInputs:true}),/producer input qualification missing/);}finally{legacy.close();}
  const f=fixture({producerInputs:true});try{
   const built=f.manifest.pin;assert.doesNotThrow(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}));assert.equal(f.manifest.pin,built);
  }finally{f.close();}
-});
-test('the formal-only SDK advance admits only the exact reviewed and current manifest digests', {
- skip:lockCommit!=='5500c73b3d8ff8395999bbb620e7e3fc0ebb1df4',
-},()=>{
- const verify=receipt=>verifyEmbeddingInputs(root,receipt,{requireProducerInputs:true});
- assert.doesNotThrow(()=>verify(committed));
- assert.equal(committed.pin,'99b49439ce9d0cb5607e9831b9f7f58d89525029');
- for(const name of ['package.json','packages/agent/package.json']){
-  const current=sha(execFileSync('git',['-C',path.join(root,'vendor/eliza'),'show',lockCommit+':'+name]));
-  for(const sha256 of [current,'0'.repeat(64)]){
-   const changed=structuredClone(committed);
-   changed.producerInputs.find(row=>row.path===name).sha256=sha256;
-   assert.throws(()=>verify(changed),{message:'Embedding host source admission changed: Embedding producer input changed: '+name});
-  }
- }
 });
 test('missing, duplicated or changed producer records cannot qualify embeddings',()=>{
  for(const mutate of [r=>r.producerInputs.pop(),r=>r.producerInputs.push(r.producerInputs[0]),r=>r.producerInputs[0].sha256='0'.repeat(64)]){

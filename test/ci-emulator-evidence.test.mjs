@@ -134,9 +134,7 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
 
 test('a change to the emulator evidence workflow selects no automatic lane of its own',()=>{
  assert.deepEqual(affected([WORKFLOW]),{verify:true,browser:false,android:false,prepare:false});
- const policy=read('docs/ci-cost-policy.md');
- assert.match(policy,/android-emulator\.yml/);
- for(const suite of [...emulatorJobs,'all'])assert.ok(policy.includes(`gh workflow run android-emulator.yml --ref <branch> -f suite=${suite}`),suite);
+
 });
 
 test('the build job refuses the speech suite until hosted Paradee staging exists and hands over hash-anchored APKs',()=>{

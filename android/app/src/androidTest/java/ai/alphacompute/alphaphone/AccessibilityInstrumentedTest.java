@@ -147,7 +147,7 @@ public final class AccessibilityInstrumentedTest {
     assertEquals("Home text printed over other text at 200% font","[]",unquote(js(HOME_TEXT_OVERLAP)));
     assertEquals("Home app labels split mid-word at 200% font","[]",unquote(js(HOME_LABELS_SPLIT)));
 
-    // Gesture zones and Android's shade (#416, #417; docs/gesture-zones.md). Android's shade is the
+    // Gesture zones and Android's shade (#416, #417). Android's shade is the
     // one notification surface: Alpha draws none, in either flavor.
     until(AndroidShade.ALPHA_SHADE_ABSENT);
     Rect web=device.findObject(By.clazz("android.webkit.WebView")).getVisibleBounds();

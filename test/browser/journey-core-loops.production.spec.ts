@@ -15,7 +15,7 @@ import {seedCompletedAccessSetup} from './flag-off-android';
 // Evidence boundary: source/test evidence for the flag-off renderer only. The stub is not the
 // native plugins, the resident runtime, Eliza Cloud, Android Clock, a WebView or a device. A pass
 // says the shipped renderer takes the real path or shows an honest unavailable state; it never
-// says the native side of that path works. See docs/core-loop-audit.md.
+// says the native side of that path works.
 import { test, expect, type Page } from '@playwright/test';
 import {completeAccessSetup,expectNoDevelopmentSurface,fenceNetwork,openYourAgent} from './flag-off-android';
 
@@ -345,7 +345,7 @@ for (const outcome of ['opened', 'unavailable'] as const) {
   });
 }
 
-// Journey hardening (docs/core-loop-audit.md, work order 14): snooze and dismiss on the Android path.
+// Journey hardening: snooze and dismiss on the Android path.
 test('loop C on Android: snooze and dismiss are reviewed Clock requests, one handoff each, and neither claims an alarm changed', async ({ page }) => {
   test.setTimeout(120_000);
   await android(page, { clock: 'opened' });

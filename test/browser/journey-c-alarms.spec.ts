@@ -1,6 +1,6 @@
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 /*
- * Journey C (docs/mvp-completion-plan.md "C. Alarms"), browser build.
+ * Journey C, browser build.
  *
  * Evidence level: a pass is SOURCE/TEST evidence for the browser development profile only. It is not APK,
  * emulator, AOSP image, physical-device or real-integration evidence.
@@ -17,7 +17,7 @@ import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
  *    "Approved Clock handoff sent. Check Clock; Alpha cannot confirm an alarm was changed.", and whether any
  *    installed Clock app created, rang, snoozed or dismissed an alarm.
  *  - No Clock handler, denied access, reboot, DST/time-zone change, Doze, DND, sound and vibration on a device.
- *  - Alarm ownership (docs/decisions.md A-11) is an owner decision; this spec does not decide it. It only checks
+ *  - Alarm ownership is an owner decision; this spec does not decide it. It only checks
  *    that the recorded outcome of the reviewed handoff is "opened" and never a stronger claim.
  */
 import {test,expect,type Page} from '@playwright/test';
@@ -149,7 +149,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
  expect(state.journal.map((j:any)=>[j.status,j.result.clockResult.status])).toEqual([['succeeded','opened'],['succeeded','opened']]);
 });
 
-// Journey hardening (docs/core-loop-audit.md, work order 14): Decline was rendered and never pressed.
+// Journey hardening: Decline was rendered and never pressed.
 test('journey C: a declined alarm proposal hands nothing to Clock, before or after a reload',async({page})=>{
  test.setTimeout(120_000);
  await page.clock.setFixedTime(new Date('2027-06-01T06:00:00Z'));

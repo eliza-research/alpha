@@ -1,4 +1,4 @@
-// Faithful translation of docs/flow-redesign-2026-11/tla/SignIn.tla.
+// Historical design translation; the executable Quint model is retained here.
 module SignIn {
   type State = { Design: str, gms: bool, appLink: bool, stewardOk: bool,
     net: str, cred: str, screen: str, browser: str, method: str,

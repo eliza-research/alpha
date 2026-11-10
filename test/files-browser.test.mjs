@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {rea
 import {fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 import path from 'node:path';
-// Files browser rules (design/view-refresh-2026-11/PLAN.md section 4; spec files-browser Design.cfg).
+// Files browser rules.
 const storage=await import('../.eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts');
 const {BrowserStorageVolume}=await import('../.eliza/client-features/plugins/plugin-files/src/browser/storage-volume.ts');
 const contract=await import('../.eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts');

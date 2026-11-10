@@ -5308,7 +5308,7 @@ class Component extends DCLogic {
     }
   }
 
-  /* ---- Android's notification shade (#416, #417; docs/gesture-zones.md) ---- */
+  /* ---- Android's notification shade (#416, #417) ---- */
   /** Only the browser development build draws a stand-in for Android's shade. */
   simulatedShade() { return this.props.systemShade === "simulated"; }
   /** Opens the development stand-in for Android's shade. Product builds have no Alpha shade. */
@@ -5351,7 +5351,7 @@ class Component extends DCLogic {
   gDown(e) { if (e.target.closest?.("[data-alpha-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, pull: pullStart(e.target) }; }
   gUp(e) { var g = this.g; this.g = null; if (!g || window.getSelection()?.isCollapsed === false) return; this.swipe(g, (e.clientX - g.cx) / g.s, (e.clientY - g.cy) / g.s); }
   swipe(g, dx, dy) {
-    // Gesture zones (docs/gesture-zones.md) are the shared shell's (resolveMobileShellSwipe). The top
+    // Gesture zones are the shared shell's (resolveMobileShellSwipe). The top
     // edge belongs to Android; on launcher Home a pull down that starts
     // on empty Home asks Android for its shade (#417, @elizaos/capacitor-system/shade).
     var self = this, S = this.S();

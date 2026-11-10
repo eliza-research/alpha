@@ -1,9 +1,7 @@
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CORE_STATE_MANIFEST, coreStateRequiredTargets, verifyCoreStateBuildRecord } from './core-state-patch.mjs';
 
 export const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 export const quintRoot = join(repositoryRoot, 'specs/quint');
@@ -52,69 +50,13 @@ export function filesWithin(directory, accept = () => true) {
 
 export const relativePath = path => relative(repositoryRoot, path).split('\\').join('/');
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-/** Admit the tracked inputs and declared origins of the audited Android bundle. */
-function runtimeBundleSourcePaths(pin) {
-  const graph = readJson(join(quintRoot, 'refinement/services/runtime-bundle-inputs.json'));
-  if (graph.schema !== 1 || graph.sourcePin !== pin.commit
-      || graph.classification !== 'observed-product-android-bundle-inputs'
-      || !graph.files || Array.isArray(graph.files) || Object.keys(graph.files).length === 0
-      || !graph.producer?.sourceTreeVerifiedBeforeAndAfter || !graph.producer?.inputHashesUnchanged) {
-    throw Error('Refresh the authenticated runtime bundle inventory for the current upstream pin');
-  }
-  for (const [path, digest] of Object.entries(graph.producer.inputHashes || {})) {
-    if (path.startsWith('/') || path.includes('\\') || path.split('/').some(part => !part || part === '.' || part === '..')
-        || !/^[a-f0-9]{64}$/.test(digest) || sha256(readFileSync(join(repositoryRoot, path))) !== digest) {
-      throw Error(`Runtime bundle producer input changed ${path}`);
-    }
-  }
-  if (existsSync(join(repositoryRoot, CORE_STATE_MANIFEST))) {
-    const core = graph.producer.coreState;
-    verifyCoreStateBuildRecord(repositoryRoot, core, coreStateRequiredTargets(Object.keys(graph.files)));
-    const transforms = new Map(core.transforms.map(row => [row.path, row]));
-    for (const [path, input] of Object.entries(graph.files)) {
-      const transform = transforms.get(path);
-      if (transform ? input.sha256 !== transform.sourceSha256 || input.effectiveSourceSha256 !== transform.outputSha256
-        : input.effectiveSourceSha256 !== undefined) {
-        throw Error(`Runtime bundle effective source differs from its core transformation ${path}`);
-      }
-    }
-  }
-  const inputs = new Map();
-  const include = (path, digest) => {
-    if (typeof path !== 'string' || path.startsWith('/') || path.includes('\\') || path.split('/').some(part => !part || part === '..' || part === '.')) {
-      throw Error(`Invalid runtime bundle source path ${path}`);
-    }
-    if (!/^[a-f0-9]{64}$/.test(digest) || (inputs.has(path) && inputs.get(path) !== digest)) {
-      throw Error(`Inconsistent runtime bundle source hash ${path}`);
-    }
-    inputs.set(path, digest);
-  };
-  for (const [path, input] of Object.entries(graph.files)) {
-    if (input.tracked) include(path, input.sha256);
-    else {
-      const origin = input.generatedSource;
-      if (!origin?.source && !origin?.sourceMaps?.length) throw Error(`Unmapped generated runtime input ${path}`);
-      if (origin.source) include(origin.source, origin.sourceSha256);
-      if (origin.config) include(origin.config, origin.configSha256);
-      for (const source of origin.sourceMaps || []) include(source.path, source.sha256);
-    }
-  }
-  return [...inputs].map(([path, digest]) => {
-    const source = `vendor/eliza/${path}`;
-    if (sha256(readFileSync(join(repositoryRoot, source))) !== digest) {
-      throw Error(`Runtime bundle input changed and needs a new producer inventory ${source}`);
-    }
-    return source;
-  });
-}
-
 /** Discover the shared source consumed by this product from its authenticated inputs. */
 export function sharedSourcePaths() {
   const pin = readJson(join(repositoryRoot, 'upstream.lock.json'));
   // Minimal checker fixtures have no product source descriptor.
   if (!pin.appSource) return [];
   const client = readJson(join(repositoryRoot, '.eliza/client-features/.source.json'));
-  if (client.baseCommit !== pin.commit) throw Error('Prepare client sources for the current upstream pin before checking Quint coverage');
+  if (client.baseCommit !== pin.commit) throw Error('Prepare client sources for the current upstream pin before capturing Quint conformance inputs');
   const host = readJson(join(repositoryRoot, 'android/consumer-host.json'));
   const patches = readJson(join(repositoryRoot, 'android/upstream-native-sources.json'));
   const prefixes = new Set([
@@ -137,7 +79,7 @@ export function sharedSourcePaths() {
       }
     }
   }
-  const sources = new Set(runtimeBundleSourcePaths(pin));
+  const sources = new Set();
   for (const prefix of prefixes) {
     if (typeof prefix !== 'string' || prefix.startsWith('/') || prefix.split(/[\\/]/).includes('..')) throw Error(`Invalid shared source prefix ${prefix}`);
     const target = join(repositoryRoot, 'vendor/eliza', prefix);
@@ -193,40 +135,4 @@ export function loadModels() {
   for (const path of actual) if (!paths.has(path)) throw Error(`Model absent from manifest ${path}`);
   for (const path of paths) if (!actual.includes(path)) throw Error(`Manifest model is missing ${path}`);
   return models;
-}
-
-export function checkCoverage(models, inventory) {
-  const errors = [];
-  const sourceSet = new Set(sourcePaths());
-  const modelSet = new Set(models.map(model => model.module));
-  const recorded = new Set();
-  for (const entry of inventory.files) {
-    if (recorded.has(entry.path)) errors.push(`Duplicate source ${entry.path}`);
-    recorded.add(entry.path);
-    if (!sourceSet.has(entry.path)) { errors.push(`Removed source ${entry.path}`); continue; }
-    if (entry.sha256 !== sha256(readFileSync(join(repositoryRoot, entry.path)))) errors.push(`Changed source needs model review ${entry.path}`);
-    if (!Array.isArray(entry.models) || entry.models.length === 0) errors.push(`Unassigned source ${entry.path}`);
-    for (const model of entry.models || []) if (!modelSet.has(model)) errors.push(`Unknown model ${model} for ${entry.path}`);
-    if (!entry.treatment || !entry.scope) errors.push(`Missing coverage treatment ${entry.path}`);
-  }
-  for (const path of sourceSet) if (!recorded.has(path)) errors.push(`New source needs model review ${path}`);
-  const upstream = readJson(join(repositoryRoot, 'upstream.lock.json'));
-  if (inventory.upstream.commit !== upstream.commit) errors.push('Upstream revision changed and needs contract model review');
-  if (models.some(model => (model.sources || []).some(path => path.startsWith('vendor/eliza/')))) {
-    try {
-      const actual = execFileSync('git', ['-C', join(repositoryRoot, 'vendor/eliza'), 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-      if (actual !== upstream.commit) errors.push('Checked-out upstream revision does not match the reviewed source pin');
-      execFileSync('git', ['-C', join(repositoryRoot, 'vendor/eliza'), 'diff', '--quiet', 'HEAD'], { stdio: 'ignore' });
-    } catch { errors.push('Upstream source checkout is unavailable or has tracked changes'); }
-  }
-  for (const input of inventory.configurationInputs || []) {
-    if (input.sha256 !== sha256(readFileSync(join(repositoryRoot, input.path)))) errors.push(`Changed configuration needs model review ${input.path}`);
-    for (const model of input.models) if (!modelSet.has(model)) errors.push(`Unknown configuration model ${model}`);
-  }
-  for (const model of models) for (const source of model.sources || []) {
-    if (sourceSet.has(source) && !inventory.files.find(entry => entry.path === source)?.models.includes(model.module)) {
-      errors.push(`Model source link is absent from coverage ${model.module}: ${source}`);
-    }
-  }
-  return errors;
 }

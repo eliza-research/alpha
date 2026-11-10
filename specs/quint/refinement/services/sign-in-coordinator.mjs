@@ -28,7 +28,7 @@ export async function runSignInCoordinatorRefinement(scenarios = defaultScenario
     'specs/quint/refinement/services/SignInCoordinatorTraces.java',
   ];
   const sources = [
-    ...product, base + 'AlphaCredentialStore.java', 'docs/architecture.md',
+    ...product, base + 'AlphaCredentialStore.java',
     'android/upstream-native-sources.json',...fixture,
     fileURLToPath(import.meta.url), 'specs/quint/refinement/services/sign-in-platform.mjs',
     'specs/quint/refinement/native/java.mjs', 'specs/quint/refinement/native/Trace.java', ...extraSources,

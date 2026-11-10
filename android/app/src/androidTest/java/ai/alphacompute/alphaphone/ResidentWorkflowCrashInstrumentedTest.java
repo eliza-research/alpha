@@ -16,8 +16,7 @@ import org.junit.Test;
 import static ai.alphacompute.alphaphone.ResidentTestFixture.*;
 import static org.junit.Assert.*;
 
-/** Opt-in service-only resident test. No Activity, WebView, UI acceptance, or ordinary background-start claim.
- * The deferred local-survivor case is described in docs/resident-workflow-crash.md. */
+/** Opt-in service-only resident test. No Activity, WebView, UI acceptance, or ordinary background-start claim.  */
 public final class ResidentWorkflowCrashInstrumentedTest {
  private static String readUtf8(java.nio.file.Path path)throws IOException{return new String(Files.readAllBytes(path),StandardCharsets.UTF_8);}
  private Context context;

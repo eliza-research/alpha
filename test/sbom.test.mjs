@@ -108,7 +108,7 @@ test('the embedding host is listed from its reviewed pins, without claiming it i
     const component = byRef.get(`embedding-host:${host.abi}/${library.name}`);
     assert.deepEqual(component.hashes, [{alg: 'SHA-256', content: library.sha256}]);
     assert.equal(prop(component, 'bytes'), String(library.bytes));
-    assert.match(prop(component, 'source'), new RegExp(`qualification receipt sha256 ${host.qualificationReceiptSha256}`));
+    assert.ok(prop(component, 'source').includes(`engine ${host.forkPin}`));
     // The foundation job's unpackaged APKs contain no embedding host; the pin must not read as if they did.
     assert.match(prop(component, 'ships-in'), /legacy qualification record; incompatible with current Paradee engine/);
   }

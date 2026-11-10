@@ -91,11 +91,11 @@ test("AOSP staging refuses test-mocks and non-distributable inputs before any st
       releaseAdmission: { failures: [], blockers: [], signerMatches: true }, voiceHost: { packaged: true, asr: true, differences: [], qualified: true }, licenceBlockers: [] };
     const record = row => fs.writeFileSync(path.join(dir, "artifacts/apk-manifest.json"), JSON.stringify({ testMocks: false, results: [{ ...full, ...row }] }));
     const font = "unresolved-font-licence: Denton typeface (assets/denton.woff2) has no recorded embedding licence";
-    record({ distributable: false, licenceBlockers: [font], voiceHost: { packaged: true, asr: true, differences: [], qualified: false } });
+    record({ distributable: false, licenceBlockers: [font], voiceHost: { packaged: true, asr: true, differences: ["changed bytes"], qualified: false } });
     for (const mode of [["--development"], ["--descriptor", "reviewed.json", "--production"]]) {
       out = stage(["--apk", release, ...mode]);
       assert.notEqual(out.status, 0);
-      assert.match(out.stderr, /not distributable[\s\S]*- unqualified on-device voice \(device qualification pending\)/);
+      assert.match(out.stderr, /not distributable[\s\S]*bytes differ from the voice-host record/);
       // The Denton font check is flag-only (P-09, A-21): recorded on the row, never cited as a blocker.
       assert.doesNotMatch(out.stderr, /unresolved-font-licence/);
     }

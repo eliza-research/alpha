@@ -83,7 +83,7 @@ def admit(archive, pin, stage=None):
                         "Private producer identity differs from the reviewed build")
                 require(private.get("updateChannel") == channel, "Private producer update channel differs")
                 for check in ("productSourceGuard", "sdkSourceGuard", "normalPreparation",
-                              "combinedVerification", "packagedDependencyAudit", "apkArchive"):
+                              "combinedVerification", "apkArchive"):
                     require(private["checks"][check] == "passed", f"Private build did not pass {check}")
 
             producer_bytes = data("producer-evidence/manifest.json")

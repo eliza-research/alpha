@@ -4,7 +4,7 @@
 //
 // Evidence boundary: browser build, development profile, source/test only. Voice notes are seeded
 // through the real Notes document and retained-audio store (no microphone). Native reminders keep the
-// same link store; native CalendarProvider events are not linked (see docs/core-loop-status.md).
+// same link store; native CalendarProvider events are not linked.
 import {test,expect,type Page} from '@playwright/test';
 import {returnToApps} from './app-navigation';
 import {openLegacyNotes,selectLegacyNotes} from './helpers/legacy-notes';

@@ -130,10 +130,6 @@ includes the five failures those suites reported during the aggregate run. The
 log is `test-results/quint/existing-jdk-targeted.log`. The Notes query script also
 passed separately because the failed aggregate test command stopped before it.
 
-The Quint dependency changed the lockfile. The dependency-audit snapshot was
-refreshed with the repository's audit command, and all 14 dependency-audit tests
-passed afterward. The full suite had already read the preceding snapshot and
-retains its failures against that version. The refresh did not add exceptions.
 
 A separate production web build and bundle audit passed. The audit checked 408
 files with `testMocks=false` and found no mock, fixture or developer surfaces.
@@ -185,7 +181,5 @@ scenario setup was corrected, all 27 composition cases passed, and the complete
 ## Published baseline
 
 The PR carries prerequisite product source in commit `875f5a8550935c5ca1797cea4ea38e7c7759ca54`.
-A compact copy of the checked migration receipts is retained in
-`specs/quint/evidence/migration-baseline.json`. Complete raw logs remain in the
-local `test-results` directories named above. Implementation refinement follows
-in subsequent commits.
+Current verification writes fresh results under `test-results/quint/`.
+Implementation refinement follows in subsequent commits.

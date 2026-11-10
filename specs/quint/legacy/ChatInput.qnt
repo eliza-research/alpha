@@ -1,4 +1,4 @@
-// Faithful translation of docs/ui-refresh-2026-11/tla/ChatInput.tla.
+// Historical design translation; the executable Quint model is retained here.
 // Design is immutable state so the same actions check both historical designs.
 module ChatInput {
   type State = { Design: str, view: str, mode: str, focus: bool, draft: str,

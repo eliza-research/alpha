@@ -113,8 +113,7 @@ if(process.env.ALPHA_DIGEST_CRASH_CHILD==='1'){
  const supplied=process.env.ALPHA_ELIZA_SOURCE;
  const prepare='  ALPHA_RUNTIME_GIT_CACHE="$PWD/vendor/eliza" npm run agent:prepare\n'
   +`(creates artifacts/local-agent-resident-${commit} from the pinned commit and installs its dependencies with Bun; about 6 GB).\n`
-  +'Then run `npm run agent:test-digest-restart` again, or set ALPHA_ELIZA_SOURCE to the absolute path of another prepared checkout of that commit.\n'
-  +'See docs/local-agent-development.md, "Isolated digest process-recovery check".';
+  +'Then run `npm run agent:test-digest-restart` again, or set ALPHA_ELIZA_SOURCE to the absolute path of another prepared checkout of that commit.';
  const refuse=reason=>{console.error(`agent:test-digest-restart cannot run: ${reason}\nPrepare the pinned runtime source first:\n${prepare}`);process.exit(2);};
  if(supplied!==undefined&&!path.isAbsolute(supplied))refuse(`ALPHA_ELIZA_SOURCE must be an absolute path (got ${JSON.stringify(supplied)}).`);
  const source=supplied||sourceDirectory(product);

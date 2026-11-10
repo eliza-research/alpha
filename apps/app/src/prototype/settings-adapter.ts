@@ -705,7 +705,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         }
         // calendar-settings:end
         // Only performRequested reads this preference: canonical Notes writes and in-app navigation are
-        // not reviewed (docs/decisions.md, November 6). Unreadable preferences never draw as Off.
+        // not reviewed (owner decision, November 6). Unreadable preferences never draw as Off.
         const preferences=devicePreferencesStatus();
         page.groups.push(group([{
           kTog:true,label:'Review phone actions first',aria:'Review phone actions first',hasSub:true,

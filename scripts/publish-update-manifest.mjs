@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Write the one-tap update manifest (docs/android-and-aosp.md, Publish an update) from a verified release.
+ * Write the one-tap update manifest from a verified release.
  *
  *   node scripts/publish-update-manifest.mjs --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]
  *

@@ -534,7 +534,7 @@ dialog:is(.alpha-operation-review,.alpha-calendar-editor,.alpha-calendar-meeting
 .note-editor > .note-checklist-column { width:100%; max-width:744px; align-self:center; box-sizing:border-box; min-height:0; }
 [data-alpha-subview="notes-voice"] > .note-voice-column { width:100%; max-width:768px; align-self:center; box-sizing:border-box; min-height:0; }
 
-/* Responsive surfaces (#411; matrix in docs/implementation-plan.md). `alpha-wide` is set from the
+/* Responsive surfaces (#411). `alpha-wide` is set from the
  * measured canvas width (runtime/canvas-geometry.ts), not from orientation. On a wide canvas,
  * lists, readers, editors and settings keep a readable centred column instead of stretching;
  * their scroll containers stay full width so the scroll edge and gestures do not move. Nested

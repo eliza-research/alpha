@@ -427,7 +427,7 @@ test('a new conversation after Stop retires the check; the stopped reply never r
 
 // HOME while another app is current changes the screen the turn was asked from, which is an explicit
 // Stop with its one cancel attempt and one check (AlphaClient.setViewContext aborts the foreground
-// request when the view context's revision moves; docs/decisions.md keeps this an open question).
+// request when the view context's revision moves).
 test('HOME from another app during a reply is a Stop: one cancel, the reconciliation statement, and no resend', async ({ page }) => {
   test.setTimeout(120_000);
   const foreign = await connected(page, { clock: true, abortRoute: true });

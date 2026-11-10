@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {deploymentOutputs,validateCloudDeployment,PAGES_NATIVE_AUTH_CALLBACKS} from '../scripts/cloud-deployment.mjs';
+import {deploymentOutputs,validateCloudDeployment,nativeAuthCallbackRegistration} from '../scripts/cloud-deployment.mjs';
 import {CLOUD_DEPLOYMENT as defaults} from '../scripts/cloud-deployment-policy.mjs';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 import {runJvm} from './fixtures/jvm-tools.mjs';
@@ -14,8 +14,8 @@ test('committed renderer, native and Gradle authorities match the deployment con
 test('protected Pages registrations preserve installed routes and select each configured authority',()=>{
  const config=structuredClone(defaults);
  config.production={...config.production,api:'https://api.example.org',web:'https://login.example.org',tenant:'example'};
- const pages=JSON.parse(deploymentOutputs(config)[PAGES_NATIVE_AUTH_CALLBACKS]);
  const identity=JSON.parse(fs.readFileSync('app.config.json','utf8'));
+ const pages=Object.fromEntries(['production','staging'].map(environment=>[environment,[nativeAuthCallbackRegistration(config,identity,environment)]]));
  assert.deepEqual(Object.keys(pages),['production','staging']);
  for(const environment of ['production','staging']){
   assert.equal(pages[environment].length,1);

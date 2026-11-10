@@ -1,4 +1,4 @@
-// App Links association on the Eliza Cloud web host (docs/human-actions.md H-13). Cloud publishes
+// App Links association on the Eliza Cloud web host. Cloud publishes
 // /.well-known/assetlinks.json only from ELIZA_ANDROID_ASSET_LINKS_JSON, one entry per app, and a
 // malformed value or a duplicate package publishes [] for every app. These cases check the value an
 // operator is given and the published-document check, with synthetic fingerprints and a stubbed fetch.

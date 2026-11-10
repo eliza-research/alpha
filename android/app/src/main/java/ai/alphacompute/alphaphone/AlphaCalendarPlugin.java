@@ -26,7 +26,7 @@ import ai.eliza.plugins.calendar.write.CalendarOptionCreationStore;
 public final class AlphaCalendarPlugin extends CalendarPlugin {
  /**
   * The shared list reads at most 2,000 instances per range and reports truncated when the
-  * provider held more (docs/calendar-range-and-text-size.md). The bound is read policy, not
+  * provider held more. The bound is read policy, not
   * journal identity.
   */
  static final CalendarConfiguration CONFIGURATION=new CalendarConfiguration(

@@ -28,7 +28,7 @@ const dueOf=reminderDueAt;
 /**
  * One-off reminders are absolute instants (dueAt). Only the rendered wall time follows the
  * phone's current time zone, so a zone change moves the displayed hour, never the instant.
- * Repeats keep their civil time in recurrence.zone (see docs/calendar-reminder-contract.md).
+ * Repeats keep their civil time in recurrence.zone.
  */
 export function reminderEvents(rows:Reminder[],now=new Date()):Bag[]{
   return rows.filter(r=>!isUndatedReminder(r)&&(r.status === 'pending' || r.status === 'completed' || r.status === 'scheduled' || r.status === 'posted' || r.status === 'permission-denied' || r.status === 'scheduling-failed')).map(r => {

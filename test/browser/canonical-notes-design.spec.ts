@@ -3,7 +3,7 @@ import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-note
 import {setTextScale} from './accessibility-states';
 
 // Live agent Notes are drawn by Alpha's own Notes template, the one mock mode shows, in the view refresh
-// layout (PLAN.md section 3): header with Back, title, Record and +, the folder chips, and a one-column
+// layout: header with Back, title, Record and +, the folder chips, and a one-column
 // list (title, date, two-line preview) with a Pinned section. Recently deleted is a folder chip while it
 // has items; Previous notes is a quiet text action under the list. Screenshots land in test-results/notes-restore for side-by-side review
 // with the mock-mode reference.

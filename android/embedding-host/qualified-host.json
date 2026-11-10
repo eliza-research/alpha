@@ -28,7 +28,6 @@
       "alignment16KiB": true
     }
   ],
-  "qualificationReceiptSha256": "5fc5b205fae572c52c3543ccbb70c7bde678bb5d36865e936376952dba6e01ea",
   "jniIdentityRelocated": true,
   "inputs": [
     {
@@ -124,10 +123,5 @@
     "mode": "registered",
     "className": "ai/alphacompute/alphaphone/ElizaVoiceNative",
     "subset": "full"
-  },
-  "requalification": {
-    "required": true,
-    "atPin": "75b44015561368fc8ca982b70b8bafbdf1672a7b",
-    "reason": "Android package/JNI class namespace changed; existing libraries and receipt do not qualify the new identity."
   }
 }

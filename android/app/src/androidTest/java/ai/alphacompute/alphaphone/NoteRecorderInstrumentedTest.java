@@ -20,8 +20,7 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
 /**
- * The native Notes recorder on a device (design/view-refresh-2026-11 PLAN.md section 3; spec
- * notes-view CrashKeepsAudio, NoLengthLimit). Records real microphone audio across more than two
+ * The native Notes recorder on a device (CrashKeepsAudio, NoLengthLimit). Records real microphone audio across more than two
  * segments with a pause, then recovers a copy of the recording in a new recorder (as a new process
  * would after a crash), drops the partial segment, keeps journaled text, and joins the segments
  * into one playable file whose length matches the journal. Takes about a minute and a half.

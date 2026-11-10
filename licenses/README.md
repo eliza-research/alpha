@@ -15,10 +15,10 @@ node --test test/licenses.test.mjs test/runtime-licenses.test.mjs test/font-lice
 
 ## Policy: licences are included and flagged, never blocking
 
-Owner decision P-09 (`docs/decisions.md`, 2026-10-10): an open-source dependency licence never
+Owner decision P-09 (2026-10-10): an open-source dependency licence never
 stops a build and is never a release blocker. Every licence text and notice still ships, and
 anything copyleft, unknown or unverified is flagged with what it obliges. The policy lives in
-`scripts/licence-policy.mjs`; `docs/dependency-audit.md` lists the flags and where they appear.
+`scripts/licence-policy.mjs`.
 
 - Generation never fails on what a licence is. It exits 0 and prints each flag as
   `LICENCE FLAG <flag>: <package>@<version> (<licence>)` on standard error.
@@ -56,7 +56,7 @@ Inputs:
 - `android/voice-host/qualified-voice-host.json`, the record of the on-device speech engine:
   `libelizainference` (llama.cpp/ggml; Paradee-8M TTS with misaki G2P and statically linked
   eSpeak NG; the ASR slot; Silero VAD) and every voice bundle file. The schema is in
-  `scripts/voice-host.mjs` and `docs/fused-speech.md`. Each source component and each model or
+  `scripts/voice-host.mjs`. Each source component and each model or
   data file is listed with its licence: eSpeak NG (GPL-3.0-or-later) is flagged copyleft, Paradee,
   misaki and the ASR slot model are Apache-2.0, Silero VAD is MIT. The record carries no licence
   files, so canonical SPDX texts stand in and are flagged `licence-text-missing-from-package`;
@@ -109,7 +109,7 @@ recorded` and flagged `proprietary-no-licence-recorded`. The separately named ch
 `unresolved-font-licence` reports recorded fonts as resolved-by-owner-statement and unrecorded
 ones as unresolved; whether an unresolved font keeps a release `distributable: false` is the
 constant `UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION` in `scripts/licence-policy.mjs` (default
-`false`). See `docs/dependency-audit.md`.
+`false`).
 
 Prototype design images are not part of production builds; their licensing is recorded in
 `apps/app/src/prototype/README.md`.
