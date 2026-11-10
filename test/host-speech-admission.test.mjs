@@ -36,14 +36,15 @@ test('reviewed engine source keeps current embedding and voice qualification sep
  const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
  assert.equal(actual,reviewed);
  const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
- // Renaming the installed package changes the JNI identity.
+ // Native equality for the preserved installed identity is separate from producer qualification.
  assert.equal(qualification.forkPin,reviewed);
- // The current producer manifests also changed. Full admission rejects those first; neither that
- // refusal nor a native-only comparison admits changed generated JNI inputs.
+ // The current producer manifests changed. Native byte equality cannot admit that producer.
  assert.throws(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}),/Embedding producer input changed: package\.json/);
  const {producerInputs,...nativeOnly}=qualification;
  assert.ok(producerInputs.length>0,'the real qualification still binds its producer inputs');
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly),/Native build input changed|Native registration identity qualification missing or changed/, 'the historical generated JNI inputs do not qualify the renamed package');
+ assert.doesNotThrow(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly),'the preserved installed identity matches the reviewed native inputs');
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...nativeOnly,identity:'ai.alphacompute.alphaphone'}),/Embedding host source or identity admission changed/,'a different identity cannot borrow native qualification');
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly,{requireProducerInputs:true}),/Embedding producer input qualification missing or changed/,'native equality cannot replace producer qualification');
  assert.throws(()=>verifyEmbeddingHost(process.cwd()),/Embedding host source admission changed/);
  const voice=JSON.parse(readFileSync(new URL('../android/voice-host/qualified-voice-host.json',import.meta.url),'utf8'));
  assert.equal(voice.qualified,false);
