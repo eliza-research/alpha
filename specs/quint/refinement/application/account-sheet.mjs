@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import {readFileSync,writeFileSync,mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
+import {dirname,join,resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
+import {buildSync} from 'esbuild';
 import {chromium,expect as baseExpect} from '@playwright/test';
 import {createServer} from 'vite';
 import {checkClientFeatures} from '../../../../scripts/prepare-client-features.mjs';
@@ -58,7 +60,19 @@ async function observe(page){
 
 export async function checkAccountSheet(extraSources=[]){
  checkClientFeatures();
+ // Discover the repository-owned config import graph without executing it. Vite later
+ // executes this same config, including the plugin that can replace mounted documents.
+ const configGraph=buildSync({absWorkingDir:root,entryPoints:['vite.config.ts'],bundle:true,write:false,
+  metafile:true,platform:'node',format:'esm',packages:'external',logLevel:'silent'});
+ const configInputs=Object.keys(configGraph.metafile.inputs);
+ const require=createRequire(import.meta.url),asset=(pkg,path)=>join(dirname(require.resolve(pkg+'/package.json')),path);
+ const ocrInputs=[asset('tesseract.js','dist/worker.min.js'),
+  ...['lstm','simd-lstm','relaxedsimd-lstm'].map(variant=>asset('tesseract.js-core',`tesseract-core-${variant}.wasm.js`)),
+  asset('@tesseract.js-data/eng','4.0.0_best_int/eng.traineddata.gz'),asset('tesseract.js','LICENSE.md'),
+  asset('tesseract.js-core','LICENSE'),asset('pdf-lib','LICENSE.md'),'licenses/tessdata-APACHE-2.0.txt'];
  const sources=[...filesWithin(resolve(root,'apps/app/src')),...filesWithin(resolve(root,'.eliza/client-features')),
+  ...configInputs,...ocrInputs,'app.config.json','config/pages-native-auth-callbacks.generated.json',
+  'android/app/src/main/java/ai/elizaresearch/alphaphone/CloudDeployment.java','android/app/cloud-deployment.generated.gradle',
   'apps/app/index.html','vite.config.ts','upstream.lock.json','package-lock.json','scripts/prepare-client-features.mjs',
   'test/browser/flag-off-android.ts','test/browser/helpers/native-cloud-plan-fixture.ts',
   'test/browser/helpers/resident-agent-plugin.ts','test/browser/helpers/native-navigation-protocol.ts',
