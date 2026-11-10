@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { prototypeScript } from './fixtures/prototype-script.ts';
+import { createMapsNotificationOpen } from '../apps/app/src/runtime/maps-notification-open.ts';
 import { usableNavigationFix } from '../.eliza/client-features/plugins/plugin-maps/src/client/navigation-fix.ts';
 import { MapsController } from '../.eliza/client-features/plugins/plugin-maps/src/client/state.ts';
 import { SavedPlaces } from '../apps/app/src/maps/saved-places.ts';
@@ -44,7 +45,7 @@ async function fixture() {
  class Background { async start(){return false;} async stop(){} active(){return false;} update(){} }
  class Voice { enabled=true; pause(){} update(){} toggle(){this.enabled=!this.enabled;} }
  const storage = {getItem:()=>null,setItem:noop};
- const context = vm.createContext({console,queueMicrotask, setTimeout, clearTimeout, AbortController,
+ const context = vm.createContext({createMapsNotificationOpen,console,queueMicrotask, setTimeout, clearTimeout, AbortController,
   MapsScreenController, shareMap:async()=>'closed', insideCloudCoverage:()=>true, describeMapsDisclosure:()=>'', DailyApps:{}, mapsEventStillThere:()=>false, connectionController:{getSnapshot:()=>({open:false})},
   initializeRegionalMaps:async()=>{}, regionalDiagnostics:()=>({}),
   SavedPlaces:class extends SavedPlaces { constructor(_storage: Pick<Storage, 'getItem' | 'setItem'> | undefined, isGoogleProvider: (providerId: string) => boolean){super(storage,isGoogleProvider);} },
