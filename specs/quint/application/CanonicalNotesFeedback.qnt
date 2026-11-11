@@ -22,11 +22,13 @@ module CanonicalNotesFeedback {
       s' = {...s, review: "none", failure: "none"}
     else s' = s
   action discard = s' = {...s, review: "none", failure: "none", uncertain: false}
+  // Try again read the collection and found the draft's words already saved there.
+  action retryConfirmed = s' = {phase: "ready", review: "none", failure: "none", uncertain: false}
   action step = any {
     {nondet value = Phases.oneOf(); phase(value)},
     {nondet operation = Set("read", "interact").oneOf(); failed(operation)},
     {nondet dirty = Bool.oneOf(); nondet current = Bool.oneOf(); nondet pending = Bool.oneOf(); readSnapshot(dirty, current, pending)},
-    changeReview, committed, discard, s' = s}
+    changeReview, committed, discard, retryConfirmed, s' = s}
   val TypeOK = Phases.contains(s.phase) and Set("none", "read", "change").contains(s.review)
     and Set("none", "read", "interact").contains(s.failure)
   val InteractionFailureRetained = s.uncertain implies s.review == "change" and s.failure == "interact"
@@ -44,6 +46,14 @@ module CanonicalNotesFeedback {
   run explicitDiscardReclassifiesReadFailureTest = init.then(failed("interact")).then(phase("review"))
     .then(discard).then(phase("loading")).then(failed("read")).then(phase("review")).then(changeReview)
     .expect(s.review == "change" and s.failure == "read" and not(s.uncertain) and safety)
+  run retryReadbackClearsUncertaintyTest = init.then(failed("interact")).then(phase("review"))
+    .then(phase("loading")).then(readSnapshot(true, true, false)).then(phase("ready"))
+    .expect(s.review == "change" and s.phase == "review" and s.uncertain and safety)
+    .then(retryConfirmed)
+    .expect(s.review == "none" and s.failure == "none" and s.phase == "ready" and not(s.uncertain) and safety)
+  run retryRefusalKeepsReviewTest = init.then(phase("ready")).then(changeReview)
+    .then(phase("loading")).then(readSnapshot(true, true, false)).then(phase("ready"))
+    .expect(s.review == "change" and s.phase == "review" and safety)
   run ownedCommitClearsUncertaintyTest = init.then(failed("interact")).then(phase("review")).then(committed)
     .expect(s.review == "none" and not(s.uncertain) and safety)
 }

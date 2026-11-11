@@ -86,3 +86,52 @@ test('a clipboard completion after owner retirement preserves the draft and give
   assert.equal(f.observe().toasts,0);
  }finally{await f.close();if(previous)Object.defineProperty(globalThis,'document',previous);else delete globalThis.document;}
 });
+
+// Try again (retryDraft). The refinement schedules cover a saved record; these cover a note with no record yet and a deleted one.
+const settle=()=>new Promise(resolve=>setTimeout(resolve,0));
+const posts=f=>f.requests.filter(request=>request.method==='POST');
+async function failedNewNote(){
+ const f=await createCanonicalNotesUiFixture(compiled);
+ f.run('refresh');await f.resolveRequest({revision:1,notes:[note],trash:[]});
+ assert.equal(await f.ui.create('text'),true);
+ f.ui.editor.edit({title:'Fresh note',body:'First words'});
+ const save=f.ui.editor.save();await settle();
+ await f.resolveRequest({revision:1,notes:[note],trash:[]},undefined,false);
+ assert.equal(await save,false);assert.equal(f.ui.phase,'review');
+ assert.equal(view(f).retryDraftAvailable,true);
+ return f;
+}
+test('Try again creates a new note once when the first attempt did not land',async()=>{
+ const f=await failedNewNote();
+ try{
+  const retry=view(f).retryDraft();await settle();
+  await f.resolveRequest({revision:2,notes:[note],trash:[]});
+  assert.equal(posts(f).length,2);
+  const created={...note,id:'note-two',title:'Fresh note',body:'\nFirst words'};
+  await f.resolveRequest({revision:3,notes:[created,note],trash:[]},created);
+  assert.equal(await retry,true);
+  assert.deepEqual([f.ui.phase,f.ui.dirty,f.ui.editor.draft.id,view(f).retryDraftAvailable],['ready',false,'note-two',false]);
+ }finally{await f.close();}
+});
+test('Try again does not create a second note when the first attempt is found saved',async()=>{
+ const f=await failedNewNote();
+ try{
+  const retry=view(f).retryDraft();await settle();
+  await f.resolveRequest({revision:2,notes:[{...note,id:'note-two',title:'Fresh note',body:'\nFirst words'},note],trash:[]});
+  assert.equal(await retry,true);
+  assert.equal(posts(f).length,1);
+  assert.deepEqual([f.ui.phase,f.ui.dirty,f.ui.editor.draft.id],['ready',false,'note-two']);
+ }finally{await f.close();}
+});
+test('Try again keeps the draft and writes nothing when its note was deleted elsewhere',async()=>{
+ const f=await failedDraft(()=>{});
+ try{
+  const before=structuredClone(f.ui.editor.draft),retry=view(f).retryDraft();await settle();
+  await f.resolveRequest({revision:2,notes:[],trash:[{note,deletedAt:'2026-11-10T13:00:00Z'}]});
+  assert.equal(await retry,false);
+  assert.equal(posts(f).length,1);
+  assert.deepEqual(f.ui.editor.draft,before);
+  assert.equal(f.ui.phase,'review');
+  assert.equal(f.observe().toasts,1);
+ }finally{await f.close();}
+});

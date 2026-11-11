@@ -76,7 +76,7 @@ export async function createCanonicalNotesUiFixture(compiled, onViewObservation 
     const actions = [...prefix.splice(0), action];
     for (const item of actions) {
       if (item.name === 'failed' && item.args[0] === 'interact') uncertain = true;
-      if (item.name === 'committed' || item.name === 'discard') uncertain = false;
+      if (item.name === 'committed' || item.name === 'discard' || item.name === 'retryConfirmed') uncertain = false;
     }
     feedbackSteps.push({label: 'actual ' + action.name + ' callback', action: actions.length === 1 ? action : actions,
       expect: feedback(), source: observe()});
@@ -94,6 +94,8 @@ export async function createCanonicalNotesUiFixture(compiled, onViewObservation 
   ui.needsReview = () => {originalReview(); record(actionCall('changeReview'));};
   const originalCommitted = ui.editor.hooks.committed;
   ui.editor.hooks.committed = (target, token) => {originalCommitted(target, token); record(actionCall('committed'));};
+  const originalConfirmed = ui.draftConfirmed.bind(ui);
+  ui.draftConfirmed = () => {originalConfirmed(); record(actionCall('retryConfirmed'));};
   const originalDiscard = ui.discardDraftAndReload.bind(ui);
   ui.discardDraftAndReload = () => {prefix.push(actionCall('discard')); return originalDiscard();};
   return {ui, projectNoteForModel: module.exports.projectNoteForModel, observe, feedback, initial, feedbackSteps, run, resolveRequest, api, requests,
@@ -113,7 +115,8 @@ export async function checkCanonicalNotesFeedback(extraSources = []) {
   const state = (revision = 1, notes = [note], trash = []) => ({revision, notes, trash});
   for (const scenario of ['initial-read', 'initial-read-failure', 'read-recovery', 'dirty-read-recovery', 'dirty-new-revision',
     'uncertain-delete', 'uncertain-restore', 'uncertain-update', 'discard-success', 'discard-failure',
-    'commit-after-uncertain', 'card-after-uncertain', 'local-invalid-update', 'owner-read', 'retire-read', 'retire-uncertain']) {
+    'commit-after-uncertain', 'card-after-uncertain', 'local-invalid-update', 'owner-read', 'retire-read', 'retire-uncertain',
+    'retry-save', 'retry-confirmed', 'retry-conflict', 'retry-read-failure']) {
     const f = await createCanonicalNotesUiFixture(compiled);
     try {
       f.run('refresh');
@@ -155,6 +158,32 @@ export async function checkCanonicalNotesFeedback(extraSources = []) {
             await f.resolveRequest(state(2, [note, created]), created);
           }
           if (scenario === 'retire-uncertain') f.ui.retire();
+        }
+        if (scenario.startsWith('retry-')) {
+          // Try again (retryDraft): one read, then a save only on top of the record the draft started from.
+          const other = {...note, id: 'note-two', title: 'Other', body: ''}, mine = {...note, body: '\nDirty source text'};
+          if (scenario === 'retry-confirmed') {
+            // The update's reply was lost although it was saved; the read finds the draft's words.
+            f.run('update', 'note-one', {body: 'Dirty source text'}); await tick(); await f.resolveRequest(state(), undefined, false);
+            f.run('retryDraft', f.api); await tick(); await f.resolveRequest(state(2, [mine]));
+            assert.deepEqual([f.ui.phase, f.ui.dirty, f.ui.editor.draft?.id], ['ready', false, 'note-one']);
+          } else {
+            await f.ui.leave('note-one'); f.ui.editor.edit({body: 'Dirty source text'});
+            const elsewhere = scenario === 'retry-conflict' ? [{...note, body: '\nChanged elsewhere'}] : [note, other];
+            f.run('refresh'); await f.resolveRequest(state(2, elsewhere));
+            assert.equal(f.ui.phase, 'review');
+            const posts = () => f.requests.filter(request => request.method === 'POST').length, before = posts();
+            const retry = f.run('retryDraft', f.api); await tick();
+            await f.resolveRequest(state(2, elsewhere), undefined, scenario !== 'retry-read-failure');
+            if (scenario === 'retry-save') {
+              assert.equal(posts(), before + 1, 'the untouched record is saved on top of the newer collection');
+              await f.resolveRequest(state(3, [mine, other]), mine);
+              assert.deepEqual([await retry.promise, f.ui.phase, f.ui.dirty], [true, 'ready', false]);
+            } else {
+              assert.deepEqual([await retry.promise, posts(), f.ui.phase, f.ui.editor.draft?.body], [false, before, 'review', 'Dirty source text'],
+                'a record changed elsewhere, or an unread collection, is never written over and the draft stays');
+            }
+          }
         }
         if (scenario === 'local-invalid-update') {f.run('update', 'missing', {body: 'Invalid target'}); await tick();}
       }

@@ -19,10 +19,15 @@ also check that retired or obsolete-owner replies produce no feedback change.
 | Local review request | Enter change review without replacing the prior failure origin |
 | Current editor commit | Clear feedback and the failed-interaction latch |
 | Explicit discard/reload | Clear prior feedback before the new read starts |
+| Try again finds the draft already saved | Clear feedback and the failed-interaction latch, as a commit does |
 
-The sixteen source schedules include delete/restore failures, read recovery with
+The twenty source schedules include delete/restore failures, read recovery with
 and without a dirty draft, a successful editor commit, direct card creation,
-failed discard/reload and retirement. The delete and restore paths execute their
+failed discard/reload and retirement. Four cover Try again (`retryDraft`): a
+draft saved on top of a newer collection whose own record is untouched (an
+ordinary commit), an update whose lost reply is found saved by the read, a
+record changed elsewhere and a failed read. The last two write nothing and keep
+the draft in review. The delete and restore paths execute their
 real controller/editor join. Raw source observations also retain row IDs,
 selection, request/callback activity and command completion for later view work.
 Credit in this model is limited to the four feedback fields.
@@ -33,6 +38,8 @@ rendering, pending navigation waits, recorder/dictation, folder state and
 Calendar handoff remain separate application-state obligations.
 
 TLC completed the finite safety graph with 23 distinct states, 438 generated
-states and search depth five. The source adapter passed sixteen traces with
-155 checkpoints. These are separate forms of evidence for the recorded
+states and search depth five before `retryConfirmed` was added; that action has
+the same effect as `committed`, and the TLC run has not been repeated with it
+(typecheck, scenario tests and simulation pass). The source adapter passed
+twenty traces with 211 checkpoints. These are separate forms of evidence for the recorded
 feedback projection, while broader implementation refinement remains open.

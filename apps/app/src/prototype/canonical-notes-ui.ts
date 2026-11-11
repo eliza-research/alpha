@@ -6,7 +6,6 @@ import {noteScheduleDraft,type NoteScheduleKind} from '../../../../.eliza/client
 import {noteShareText} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-share-text.ts';
 import type {AppRecordPort} from '../runtime/app-record-route-policy';
 import {agentPendingText,agentAvailabilityNotice,connectionController} from '../runtime/connection-ui';
-import {DailyApps} from '../daily';
 import {copySelectedText} from '../runtime/text-share';
 import {CanonicalNotesController,type NotesPhase} from './canonical-notes-controller';
 import {CanonicalNotesEditor} from './canonical-notes-editor';
@@ -37,6 +36,10 @@ function voiceAudio(data:Bag):{audioId:string;durationMs:number}|undefined{
  if(typeof data.recordingId!=='string'||audio.audioId!==data.recordingId||!/^[A-Za-z0-9_-]{1,128}$/.test(audio.audioId)||!Number.isFinite(audio.durationMs)||audio.durationMs<0)return;
  return {audioId:audio.audioId,durationMs:audio.durationMs};
 }
+const stable=(value:unknown):unknown=>Array.isArray(value)?value.map(stable):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,stable((value as Bag)[key])])):value;
+/** What a record or a draft says, for comparing the two: its text and authored rich data. Colour has no control here and is left out. */
+const contentPrint=(content:string,format:{kind?:string;data?:unknown}|undefined):string=>JSON.stringify([content,format?.kind??'text',stable(format?.data??{})]);
+const notePrint=(note:StickyNote):string=>contentPrint(reconstructNoteContent(note),note.format);
 function domainOf(url:string):string{try{return new URL(url).hostname;}catch{return url;}}
 
 /** Alpha's own Notes template over the canonical Notes client: one controller, one editor draft. */
@@ -53,6 +56,10 @@ export class CanonicalNotesUi {
  private openValue:string|null=null;
  private blankCreationValue:string|null=null;
  private trashValue:CanonicalTrashEntry[]=[];
+ /** The saved record the open draft started from, so Try again can tell an untouched record from one changed elsewhere. */
+ private draftBase:{token:string;print:string}|null=null;
+ private rebasing=false;
+ private retrying=false;
  constructor(port:AppRecordPort,private readonly hooks:{paint():void;review():void;committed?(id:string):void;dropped?(title:string):void}){
   this.controller=new CanonicalNotesController(port,{
    snapshot:(snapshot,reason)=>{
@@ -90,7 +97,10 @@ export class CanonicalNotesUi {
   return row;
  }
  private refreshDraftView():void{
+  if(this.rebasing)return;
   const rows=this.baseRows.slice(),draft=this.editor?.draft;
+  if(!draft)this.draftBase=null;
+  else if(draft.id&&draft.baseRevision===this.controller.revision){const saved=this.controller.viewNote(draft.id);if(saved)this.draftBase={token:draft.token,print:notePrint(saved)};}
   this.openValue=draft?draft.id??'draft-'+draft.token:null;this.blankCreationValue=draft&&!draft.id?this.openValue:null;
   if(draft){
    const base=rows.find(row=>row.id===draft.id),data:Bag=structuredClone(draft.format?.data??{}),audio=draft.format?.kind==='voice'?voiceAudio(data):undefined,kind=shownKind(draft.format?.kind??'text',data);for(const key of LOCAL_HANDLES)delete data[key];
@@ -264,21 +274,44 @@ export class CanonicalNotesUi {
   else api.open('calendar',{calendarAuthority:api.get('calendar').calendarAuthority,form:{...shared,cal:'alpha-reminders',alert:0},open:null,month:null,day:1},'hidden');
   api.toast('Check time');
  }
- /** Speech recognition through the platform port; the transcript lands at the caret of the note it was started from. */
- private async dictate(id:string,api:Bag):Promise<void>{
-  const before=this.list.find(row=>row.id===id);if(!before)return;
-  if(before.kind==='list'){api.toast('Text notes only');return;}
-  const editor=document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Note"]'),caret=editor&&editor.value===before.body?editor:null,start=caret?caret.selectionStart:before.body.length,end=caret?caret.selectionEnd:before.body.length;
+ /** The draft's words are in the collection Alpha just read, so nothing is left to review. */
+ private draftConfirmed():void{this.reviewPending=false;this.failure=null;this.phase='ready';this.hooks.paint();}
+ /** Replace the editor draft in one step; the view repaints once, after it. */
+ private rebase(apply:()=>void):void{this.rebasing=true;try{apply();}finally{this.rebasing=false;}this.refreshDraftView();}
+ /**
+  * Try again after a save that failed or was refused: read the notes again, then save the draft on top of
+  * the record it started from. A record that changed elsewhere, or was deleted, is never overwritten; the
+  * draft then stays for Copy draft or Discard. A save that did land is recognised and not repeated.
+  */
+ async retryDraft(api:Bag):Promise<boolean>{
+  const started=this.editor.draft;
+  if(!started?.version||this.phase!=='review'||this.controller.pending||this.retrying)return false;
+  this.retrying=true;
+  const tell=(message:string)=>{if(this.controller.current&&api.isActive())api.toast(message);};
   try{
-   const result=await DailyApps.perform({action:'voice'});
-   // A new note's first save (a title typed while listening) names its record by now.
-   id=this.resolve(id);
-   if(!this.controller.current||this.open!==id)return;
-   if(typeof result.transcript!=='string'||!result.transcript){api.toast(result.message||'No speech input');return;}
-   const current=this.list.find(row=>row.id===id);if(!current)return;
-   const body=current.body===before.body?current.body.slice(0,start)+result.transcript+current.body.slice(end):[current.body,result.transcript].filter(Boolean).join('\n');
-   await this.update(id,{body});
-  }catch{api.toast('No speech input');}
+   const base=this.draftBase?.token===started.token?this.draftBase.print:null;
+   const snapshot=await this.controller.refresh();
+   const draft=this.editor.draft;
+   if(!this.controller.current||!draft?.version||draft.token!==started.token||this.controller.pending)return false;
+   const mine=contentPrint(reconstructNoteContent({title:draft.title,body:draft.body,bodySeparator:draft.separator}),draft.format);
+   const words={title:draft.title,body:draft.body,...(draft.format?{format:draft.format}:{})};
+   if(draft.id){
+    const id=draft.id,saved=this.controller.viewNote(id);
+    if(!saved){tell('Note was deleted');return false;}
+    const theirs=notePrint(saved);
+    if(theirs===mine){this.rebase(()=>{this.editor.close();this.editor.open(id);});this.draftConfirmed();return true;}
+    if(base===null||theirs!==base){tell('Changed elsewhere');return false;}
+    this.rebase(()=>{this.editor.close();this.editor.open(id);this.editor.edit(words);});
+   }else{
+    const landed=snapshot.notes.find(note=>notePrint(note)===mine);
+    if(landed){this.rebase(()=>{this.editor.close();this.editor.open(landed.id);});this.draftConfirmed();this.hooks.committed?.(landed.id);return true;}
+    const named=this.defaultTitle?.token===draft.token?this.defaultTitle.title:null;
+    this.rebase(()=>{this.editor.begin(draft.format?.kind==='list'?'list':'text');this.editor.edit(words);if(named!==null)this.defaultTitle={token:this.editor.draft!.token,title:named};});
+   }
+   if(await this.editor.save())return true;
+   tell('Not saved');return false;
+  }catch{if(this.controller.current){this.needsReview();tell('Not saved');}return false;}
+  finally{this.retrying=false;}
  }
  /** Canonical behaviour on top of Alpha's Notes view: the restore-only Trash as the Recently deleted
   * folder, review and reload, and the Notes recorder saving one voice record with an owned opaque audio attachment. */
@@ -298,13 +331,14 @@ export class CanonicalNotesUi {
   };
   const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:true,canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,
    canonicalReview:this.phase==='review',canonicalReviewLabel:this.editor.draft?.version?'Discard':'Reload Notes',canonicalReviewAction:()=>void this.discardDraftAndReload(),
+   retryDraftAvailable:this.phase==='review'&&this.dirty,retryDraft:()=>this.retryDraft(api),
    copyDraftAvailable:this.phase==='review'&&this.dirty,copyDraft:()=>draft?this.copyDraft(draft.token,draft.version,api):Promise.resolve(),
    trashAvailable:false,hasDeleted:rows.length>0,trashOpen,trashCanErase:false,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
    trashRows:rows.map(row=>{const deleted=deletionDate(row);return {id:row.id,title:row.title,label:row.title,preview:deleted,previewDescription:deleted,left:'',disabled:busy,ask:()=>api.set({trashAsk:row})};}),
    trashAskOpen:!!asked,trashAskTitle:asked?.title||'',trashAskDescription:asked?deletionDate(asked):'',trashAskClose:()=>api.set({trashAsk:null}),trashAskRecover:()=>{if(asked)restore(asked);},trashAskDelete:()=>{},
    openTrash:()=>{void this.leave(null).then(left=>{if(left&&this.controller.current&&api.isActive()){api.set({folder:'deleted',filter:null,folderSheet:null,sheet:null,q:null});void this.controller.refresh().catch(()=>{});}});},
    closeTrash:()=>api.set({folder:null,trashAsk:null}),emptyTrash:()=>{},trashConfirmGo:()=>{},trashCancel:()=>api.set({trashConfirm:null,trashFull:null})};
-  if(out.ed&&open){out.ed={...out.ed,dictate:()=>void this.dictate(open,api),
+  if(out.ed&&open){out.ed={...out.ed,
    toCal:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'reminder',api);}:undefined,
    toEvent:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'event',api);}:undefined,
    saveStatus:this.phase==='review'?'Save unconfirmed':''};}
