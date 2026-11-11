@@ -21,6 +21,7 @@
     "moon": "moon",
     "lock": "lock-keyhole",
     "shield": "shield",
+    "private": "venetian-mask",
     "x": "x",
     "down": "chevron-down",
     "up": "chevron-up",
@@ -149,8 +150,7 @@
     "stHeadph": "headphones",
     "stCar": "car",
     "stUndo": "undo-2",
-    "stAt": "at-sign",
-    "private": "venetian-mask"
+    "stAt": "at-sign"
   },
   "aliases": {
     "edit": "pencil"
