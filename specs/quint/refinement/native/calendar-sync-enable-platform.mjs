@@ -188,8 +188,7 @@ export function calendarSyncEnablePlatform(){
     const catalog=JSON.parse(readFileSync(join(root,manifest),'utf8'));
     const modules=[calendar,deletion],patches=catalog.patches.filter(row=>modules.includes(row.module));
     const source=upstreamNativeSource(root);
-    const verified=materializeNativePatches({source,manifest:{...catalog,baseCommit:source.pin,modules,patches},
-      patchRoot:join(root,'patches/eliza'),temporary:staged});
+    const verified=materializeNativePatches({source,manifest:{...catalog,baseCommit:source.pin,modules},temporary:staged});
     const expected=Object.fromEntries(stagedPaths.map(name=>[join(staged,name),verified.files[name]]));
     for(const name of pinnedPaths){
       assert.ok(catalog.patches.every(row=>row.targets.every(target=>target.path!==name)));

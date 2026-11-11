@@ -2417,16 +2417,11 @@
       "step": "step",
       "invariant": "safety",
       "tests": [
-        "exactThenOrdinaryReuseTest",
-        "staleAndDefaultRequireCurrentTest",
-        "dirtyOrWrongCommitRefusesTest",
-        "ownedLockAndOccupiedBackupAreKeptTest",
-        "occupiedCandidateFailsSourceAdmissionTest",
-        "refusedCandidateWriteLeavesPreservedPriorTest",
-        "invalidLocationsRefuseTest"
+        "currentStampReuseTest",
+        "movedLockRefusesStaleStampTest",
+        "dirtyOrWrongCommitRefusesTest"
       ],
       "invariants": [
-        "CurrentHasPriorStamp",
         "SuccessRequiresCurrentVerifiedSource"
       ],
       "sources": [
@@ -2437,13 +2432,13 @@
         "vendor/eliza/packages/app/scripts/lib/committed-source.mjs"
       ],
       "stateMapping": {
-        "source": "Checked-out commit, tracked bytes and selected untracked sidecars",
-        "stamp/backup": "Exact source-only live stamp and external preserved or preexisting peer bytes",
+        "source": "Checked-out commit and tracked bytes",
+        "stamp": "Whether the live source-only stamp names the pinned lock",
         "outcome": "Actual preparer process result after final source verification"
       },
       "abstractions": [
-        "An existing local prepared source, two synthetic Git revisions, one backup slot and settled source-only operations. Existing sidecars are observed without modeling the independent process that created them.",
-        "The selected candidate open can fail after preserving the prior stamp. Source checkout creation, concurrent producers, full dependency installation and interruption remain separate."
+        "An existing local prepared source, two synthetic Git revisions and settled source-only operations.",
+        "Source checkout creation, concurrent producers, full dependency installation and interruption remain separate."
       ],
       "bounds": {
         "maxSamples": 1000,

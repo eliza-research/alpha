@@ -11,50 +11,8 @@ const stamp={lockSha256:digest(path.join(root,'upstream.lock.json')),preparerSha
 // Agent-detection variables are removed so turbo cannot rewrite the checkout's AGENTS.md.
 const run=(command: string,args: string[],cwd=directory,extra: NodeJS.ProcessEnv = {})=>execFileSync(command,args,{cwd,stdio:'inherit',env:preparedSourceEnv(process.env,{ELIZA_SKIP_FUSED_INFERENCE_SETUP:'1',...extra})});
 const stampFile=path.join(directory,'.alpha-runtime-source.json');
-function requalification() {
- const requalifyAt=process.argv.indexOf('--requalify-from');
- if(requalifyAt<0)return null;
- const from=process.argv[requalifyAt+1];
- const preserveAt=process.argv.indexOf('--preserve-stamp');
- const preserve=preserveAt<0?undefined:process.argv[preserveAt+1];
- if(!from||!/^[a-f0-9]{64}$/.test(from)||!process.env.ALPHA_LOCAL_AGENT_SOURCE_DIR||!process.argv.includes('--source-only')||!preserve||!path.isAbsolute(preserve)||!path.relative(directory,preserve).startsWith('..'+path.sep))
-  throw Error('Requalification requires an exact prior stamp SHA-256, explicit source directory, --source-only and an external --preserve-stamp path');
- if(!fs.existsSync(directory))throw Error('Requalification requires an existing prepared source');
- if(path.resolve(preserve)!==preserve)throw Error('Preserved stamp path must be canonical');
- const parent=path.dirname(preserve);
- for(let current=parent;;current=path.dirname(current)){
-  const stat=fs.lstatSync(current);
-  if(!stat.isDirectory()||stat.isSymbolicLink())throw Error('Preserved stamp parent must contain no symlinks');
-  if(current===path.dirname(current))break;
- }
- const relative=path.relative(directory,fs.realpathSync(parent));
- if(relative!== '..'&&!relative.startsWith('..'+path.sep))throw Error('Preserved stamp must be outside the prepared source');
- return {from,preserve};
-}
-const requalify = requalification();
 if(fs.existsSync(directory)){
- if(!fs.existsSync(stampFile)||fs.readFileSync(stampFile,'utf8')!==JSON.stringify(stamp,null,2)+'\n'){
-  if(!requalify||!fs.existsSync(stampFile)||!fs.lstatSync(stampFile).isFile()||digest(stampFile)!==requalify.from)throw Error('Prepared runtime differs or preparation was interrupted. Preserve it and choose a fresh artifacts/local-agent-source directory.');
-  verifySource(directory,lock.commit);
-  const lockFile=stampFile+'.requalify-lock';
-  const lockFd=fs.openSync(lockFile,'wx',0o600);
-  try{
-   const prior=fs.readFileSync(stampFile);
-   if(digest(stampFile)!==requalify.from)throw Error('Prior runtime stamp changed during requalification');
-   const backupFd=fs.openSync(requalify.preserve,'wx',0o600);
-   try{fs.writeFileSync(backupFd,prior);fs.fsyncSync(backupFd);}finally{fs.closeSync(backupFd);}
-   const backupParent=fs.openSync(path.dirname(requalify.preserve),fs.constants.O_RDONLY|fs.constants.O_DIRECTORY|fs.constants.O_NOFOLLOW);
-   try{fs.fsyncSync(backupParent);}finally{fs.closeSync(backupParent);}
-   const nextStamp=stampFile+'.requalify';
-   const nextFd=fs.openSync(nextStamp,'wx',0o600);
-   try{fs.writeFileSync(nextFd,JSON.stringify(stamp,null,2)+'\n');fs.fsyncSync(nextFd);}finally{fs.closeSync(nextFd);}
-   fs.renameSync(nextStamp,stampFile);
-  }finally{
-   fs.closeSync(lockFd);fs.unlinkSync(lockFile);
-   const stampParent=fs.openSync(directory,fs.constants.O_RDONLY|fs.constants.O_DIRECTORY|fs.constants.O_NOFOLLOW);
-   try{fs.fsyncSync(stampParent);}finally{fs.closeSync(stampParent);}
-  }
- }
+ if(!fs.existsSync(stampFile)||fs.readFileSync(stampFile,'utf8')!==JSON.stringify(stamp,null,2)+'\n')throw Error('Prepared runtime differs or preparation was interrupted. Preserve it and choose a fresh artifacts/local-agent-source directory.');
 } else {
  fs.mkdirSync(directory,{recursive:true});
  run('git',['init','--quiet']);

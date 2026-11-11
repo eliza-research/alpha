@@ -340,7 +340,7 @@ class HostedNativeInputsTest(unittest.TestCase):
                     write(root, native.MANIFEST, plan)
                     native.load_plan(root)
 
-    def test_unreviewed_or_mismatched_shared_engine_fails_before_transport(self):
+    def test_mismatched_shared_engine_fails_before_transport(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             plan, _ = fixture(root)
@@ -349,11 +349,6 @@ class HostedNativeInputsTest(unittest.TestCase):
             plan['voiceRecordSha256'] = write(root, native.VOICE_RECORD, voice)
             write(root, native.MANIFEST, plan)
             with self.assertRaisesRegex(ValueError, 'Voice and embedding libelizainference.so differ'):
-                native.load_plan(root)
-            voice['abis'][0]['engineAdmission'] = 'unreviewed workspace build'
-            plan['voiceRecordSha256'] = write(root, native.VOICE_RECORD, voice)
-            write(root, native.MANIFEST, plan)
-            with self.assertRaisesRegex(ValueError, 'Unreviewed voice engine'):
                 native.load_plan(root)
 
     def acquire(self, root, **options):

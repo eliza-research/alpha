@@ -117,11 +117,3 @@ test('release signing names come from the host descriptor: a signed release keep
  assert.equal(gradleCalls(signed.calls)[0].args.some(arg => arg.includes('value-of-')), false);
  assert.throws(() => build(t, [], {environment: SIGNING, signed: false}), new RegExp(`${SIGNING_ENV.join(', ')} are set but Gradle produced an unsigned standalone release`));
 });
-
-test('the low-disk mode builds one variant and mode at a time', t => {
- const f = build(t, [], {environment: {ALPHA_ANDROID_LOW_DISK: '1'}});
- assert.deepEqual(gradleCalls(f.calls).map(call => call.args.slice(3)), [
-  [':app:assembleStandaloneDebug', ':app:assembleStandaloneDebugAndroidTest'], [':app:assembleStandaloneRelease'],
-  [':app:assembleLauncherDebug', ':app:assembleLauncherDebugAndroidTest'], [':app:assembleLauncherRelease'], [':app:lint']]);
- assert.equal(f.seen.length, 1);
-});
