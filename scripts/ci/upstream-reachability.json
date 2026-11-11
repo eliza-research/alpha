@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "c9119dc5c5eb088bba94f3b58aab2ef2df4f88a2",
-  "head": "83c2334554b8562d16340f1433d4200bc1287c1f",
+  "baseCommit": "cbdfbbca0d5cebdd729f4404c4517cd78f7b516a",
+  "head": "cd337bd1abeaa07b252a628187cbd589f04105f9",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...83c2334554b8562d16340f1433d4200bc1287c1f",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...cd337bd1abeaa07b252a628187cbd589f04105f9",
   "status": "diverged",
-  "aheadBy": 14,
-  "behindBy": 375,
+  "aheadBy": 15,
+  "behindBy": 380,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -66,6 +66,10 @@
     {
       "sha": "83c2334554b8562d16340f1433d4200bc1287c1f",
       "subject": "test(calendar): resolve approval mocks against current source"
+    },
+    {
+      "sha": "cd337bd1abeaa07b252a628187cbd589f04105f9",
+      "subject": "fix(calendar): use the current client clock for event creation"
     }
   ],
   "pullRequests": [
