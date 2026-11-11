@@ -311,7 +311,6 @@ out.weeks=[];for(const [zone,localTime,start] of [['America/New_York','02:30','2
  for(let day=0;day<9;day++){const end=at(start)+day*86400000+86399000;const found=o.scheduledOccurrence(loop,end);if(found&&found.at<=at(agentAt.at(-1)))devAt.add(new Date(found.at).toISOString());}
  out.weeks.push({zone,localTime,agent:agentAt,dev:[...devAt].sort()});}
 console.log(JSON.stringify(out));`);
-  if(process.env.DIGEST_PARITY_DEBUG)console.log(JSON.stringify(out,null,1));
   for(const row of out.rows)assert.deepEqual(row.dev,row.agent,`${row.name}: development and agent admission agree`);
   // The table exercises every status, not only the happy path.
   assert.deepEqual([...new Set(out.rows.map(row=>row.agent?.status??'none'))].sort(),['missed','none','ready','unavailable']);

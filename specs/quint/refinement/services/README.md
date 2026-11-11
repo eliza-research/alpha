@@ -26,9 +26,8 @@ retain the implementation observations, selected model transitions and input has
 | PdfWorker | Actual service admission, render cleanup and reply code | Real renderer, kernel isolation, transfer and process death |
 
 Chromium supplies the real DOM and IndexedDB for scan and content-question checks.
-The default is Playwright's installed Chromium. `ALPHA_CHROMIUM_PATH` explicitly
-selects another binary. Java component checks use the installed JDK and pinned
-`org.json` jar. Android primitive ports record calls and resource state but do not
+The browser is Playwright's installed Chromium. Java component checks use the
+installed JDK and pinned `org.json` jar. Android primitive ports record calls and resource state but do not
 establish Android kernel, Keystore or physical-device behavior.
 
 The scan source now preserves an explicitly saved or loaded draft through later

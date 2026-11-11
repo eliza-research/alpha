@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {readNativeNetwork} from '../apps/app/src/runtime/native-network.ts';
-const source=await readFile(process.env.ALPHA_PRESENTATION_SOURCE||new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
+const source=await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 function section(start,end){const a=source.indexOf(start),b=source.indexOf(end,a+start.length);assert.ok(a>=0&&b>a);return source.slice(a,b).replace(/^export /gm,'');}
 const functions=[
  section('function ownProviderSelected(', '\n'),

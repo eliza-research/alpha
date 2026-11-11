@@ -8,8 +8,7 @@ import {root,jsonJar,javaBinary,nativeSource,fixture} from './jvm-tools.mjs';
 
 export function calendarSyncSnapshotJvm(){
  const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-calendar-sync-snapshot-'));
- const sourceRoot=process.env.ALPHA_NATIVE_UPSTREAM_ROOT||root;
- const shared=path.join(sourceRoot,'vendor/eliza/plugins/plugin-native-calendar/test/jvm/android');
+ const shared=path.join(root,'vendor/eliza/plugins/plugin-native-calendar/test/jvm/android');
  try{
   const contract=path.join(temporary,'CalendarContract.java');
   fs.writeFileSync(contract,'package android.provider;import android.net.Uri;public final class CalendarContract {public static final String ACCOUNT_TYPE_LOCAL="LOCAL";public static final class Calendars {public static final Uri CONTENT_URI=new Uri("calendars");public static final int CAL_ACCESS_CONTRIBUTOR=500;}public static final class Events {public static final Uri CONTENT_URI=new Uri("events");}public static final class Attendees {public static final Uri CONTENT_URI=new Uri("attendees");}public static final class Reminders {public static final Uri CONTENT_URI=new Uri("reminders");}public static final class ExtendedProperties {public static final Uri CONTENT_URI=new Uri("properties");}}');

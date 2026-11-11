@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 import vm from 'node:vm';
 import {BrowserTabSession} from '../.eliza/client-features/plugins/plugin-native-browser-surface/src/tab-host.ts';
-const source=readFileSync(process.env.ALPHA_BROWSER_ADAPTER_SOURCE||'apps/app/src/prototype/browser-adapter.ts','utf8');
+const source=readFileSync('apps/app/src/prototype/browser-adapter.ts','utf8');
 const openedStart="  void Browser.addListener('tabOpened',";
 const begin=source.indexOf(openedStart)+openedStart.length;
 const openedSource=stripTypeScriptTypes(source.slice(begin,source.indexOf(').then((value:any)=>{openedListener=value;})',begin)),{mode:'strip'});

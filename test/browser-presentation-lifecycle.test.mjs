@@ -5,7 +5,7 @@ import {stripTypeScriptTypes} from 'node:module';
 import vm from 'node:vm';
 import {surfacePollIdle} from '../apps/app/src/browser/browser-poll.ts';
 
-const source=readFileSync(process.env.ALPHA_BROWSER_ADAPTER_SOURCE||'apps/app/src/prototype/browser-adapter.ts','utf8');
+const source=readFileSync('apps/app/src/prototype/browser-adapter.ts','utf8');
 const start=source.indexOf('  const nativeUnderlay =');
 const end=source.indexOf('  const openBrowserView =',start);
 assert.ok(start>=0&&end>start,'exercise the actual renderer presentation update');

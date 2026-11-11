@@ -2,8 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import type {BatchProgressCue} from '../apps/app/src/runtime/local-agent-stream.ts';
 import {loadLocalAgentStream} from './fixtures/local-agent-stream.ts';
-// Local evidence may select an existing admitted fixture graph; committed default is this repository.
-const {readLocalAgentStream,batchVoiceProgressEvents:events,batchVoiceReplyEvents:replies,localTurnStatus}=await loadLocalAgentStream(process.env.ALPHA_ACK_HOST_ROOT || undefined);
+const {readLocalAgentStream,batchVoiceProgressEvents:events,batchVoiceReplyEvents:replies,localTurnStatus}=await loadLocalAgentStream();
 const turn='11111111-1111-4111-8111-111111111111',room='22222222-2222-4222-8222-222222222222';
 const request={path:`/api/conversations/${room}/messages/stream`,ownerId:'owner',body:JSON.stringify({clientMessageId:turn,channelType:'VOICE_DM'})};
 const response=(frames: object[])=>new Response(frames.map(frame=>'data: '+JSON.stringify(frame)+'\n\n').join(''),{headers:{'Content-Type':'text/event-stream'}});
