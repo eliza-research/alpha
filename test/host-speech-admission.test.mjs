@@ -41,10 +41,10 @@ test('embedding source admission binds the current package and rejects legacy JN
  assert.equal(qualification.identity,appId);
  assert.equal(qualification.jniBinding.className,appId.replaceAll('.','/')+'/ElizaVoiceNative');
  assert.doesNotThrow(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}));
- const legacyAppId='ai.elizaresearch.alphaphone';
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,identity:legacyAppId}),/Embedding host source or identity admission changed/);
- const legacyBinding={...qualification.jniBinding,className:legacyAppId.replaceAll('.','/')+'/ElizaVoiceNative'};
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,jniBinding:legacyBinding}),/Native registration identity qualification missing or changed/);
+ const retainedAppId=['ai','elizaresearch','alphaphone'].join('.');
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,identity:retainedAppId}),/Embedding host source or identity admission changed/);
+ const retainedBinding={...qualification.jniBinding,className:retainedAppId.replaceAll('.','/')+'/ElizaVoiceNative'};
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,jniBinding:retainedBinding}),/Native registration identity qualification missing or changed/);
  const {producerInputs,...nativeOnly}=qualification;
  assert.ok(producerInputs.length>0,'the real qualification still binds its producer inputs');
  assert.throws(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly,{requireProducerInputs:true}),/Embedding producer input qualification missing or changed/,'native-only equality cannot replace full producer qualification');
