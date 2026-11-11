@@ -238,6 +238,76 @@ class CloudSigningInputTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     ADMISSION.prepare_candidate(self.archive, "202", api=responses.__getitem__)
 
+    def test_candidate_fetch_checks_metadata_before_transfer_and_publishes_verified_bytes(self):
+        self.write_candidate()
+        responses = self.candidate_api_responses()
+        destination = self.archive.with_name("downloaded.zip")
+        calls = []
+
+        def api(endpoint):
+            calls.append(endpoint)
+            return responses[endpoint]
+
+        def download(pins, target):
+            self.assertEqual(calls, [f"repos/{PRODUCER.REPOSITORY}/actions/artifacts/202",
+                                     f"repos/{PRODUCER.REPOSITORY}/actions/runs/171/attempts/2"])
+            self.assertEqual(pins["archiveBytes"], self.pin["archiveBytes"])
+            self.assertEqual(pins["archiveSHA256"], self.pin["archiveSHA256"])
+            self.assertFalse(destination.exists())
+            shutil.copyfile(self.archive, target)
+
+        request = ADMISSION.fetch_candidate(destination, "202", api=api, download=download)
+        self.assertEqual(request, ADMISSION.prepare_candidate(self.archive, "202", api=responses.__getitem__))
+        self.assertEqual(destination.read_bytes(), self.archive.read_bytes())
+        self.assertEqual(set(self.archive.parent.iterdir()), {self.archive, destination})
+
+    def test_candidate_fetch_refuses_unbounded_or_untrusted_metadata_before_transfer(self):
+        self.write_candidate()
+        destination = self.archive.with_name("downloaded.zip")
+        for endpoint, field, value in (
+            ("artifacts/202", "size_in_bytes", PRODUCER.MAX_ARCHIVE_BYTES + 1),
+            ("artifacts/202", "name", "developer-apks"),
+            ("artifacts/202", "expired", True),
+            ("runs/171/attempts/2", "conclusion", "failure"),
+            ("runs/171/attempts/2", "event", "workflow_dispatch"),
+        ):
+            with self.subTest(field=field):
+                responses = self.candidate_api_responses()
+                responses[f"repos/{PRODUCER.REPOSITORY}/actions/{endpoint}"][field] = value
+                with self.assertRaises(ValueError):
+                    ADMISSION.fetch_candidate(destination, "202", api=responses.__getitem__,
+                                              download=lambda *_: self.fail("Unadmitted download"))
+                self.assertEqual(set(self.archive.parent.iterdir()), {self.archive})
+
+    def test_candidate_fetch_preserves_destination_on_bad_bytes_expiry_or_publication_race(self):
+        self.write_candidate()
+        responses = self.candidate_api_responses()
+        api = responses.__getitem__
+        destination = self.archive.with_name("downloaded.zip")
+        with self.assertRaisesRegex(ValueError, "ZIP differs"):
+            ADMISSION.fetch_candidate(destination, "202", api=api,
+                                      download=lambda _, target: target.write_bytes(b"partial transfer"))
+        self.assertEqual(set(self.archive.parent.iterdir()), {self.archive})
+
+        def expire(_, target):
+            shutil.copyfile(self.archive, target)
+            responses[f"repos/{PRODUCER.REPOSITORY}/actions/artifacts/202"]["expired"] = True
+
+        with self.assertRaisesRegex(ValueError, "expiry differs"):
+            ADMISSION.fetch_candidate(destination, "202", api=api, download=expire)
+        self.assertEqual(set(self.archive.parent.iterdir()), {self.archive})
+        responses = self.candidate_api_responses()
+        api = responses.__getitem__
+
+        def download(_, target):
+            shutil.copyfile(self.archive, target)
+            destination.write_bytes(b"existing destination")
+
+        with self.assertRaises(FileExistsError):
+            ADMISSION.fetch_candidate(destination, "202", api=api, download=download)
+        self.assertEqual(destination.read_bytes(), b"existing destination")
+        self.assertEqual(set(self.archive.parent.iterdir()), {self.archive, destination})
+
     def test_candidate_preparation_checks_archive_evidence_and_unsigned_bytes(self):
         for extra in (
             {"inputs-after.json": b"{}"},
@@ -247,6 +317,52 @@ class CloudSigningInputTest(unittest.TestCase):
                 self.write_candidate(extra)
                 with self.assertRaises(ValueError):
                     ADMISSION.prepare_candidate(self.archive, "202", api=self.candidate_api_responses().__getitem__)
+
+    def test_native_handoff_requires_publication_debug_and_indexed_evidence(self):
+        manifest_name = "producer-evidence/manifest.json"
+        evidence_name = "artifacts/sbom/alpha.cdx.json"
+        evidence = b'{"verified":true}'
+        for case, refusal in (
+            ("valid", None),
+            ("changed-debug", "Producer debug APK bytes differ"),
+            ("missing-evidence", "Missing, nonregular or oversized archive member"),
+            ("changed-evidence", "Producer evidence bytes differ"),
+        ):
+            with self.subTest(case=case):
+                self.write_candidate()
+                with zipfile.ZipFile(self.archive) as source:
+                    entries = {entry.filename: source.read(entry) for entry in source.infolist()}
+                manifest = json.loads(entries[manifest_name])
+                manifest["files"][evidence_name] = {"bytes": len(evidence), "sha256": ADMISSION.digest(evidence)}
+                entries[manifest_name] = json.dumps(manifest).encode()
+                if case != "missing-evidence":
+                    entries["producer-evidence/" + evidence_name] = evidence.upper() if case == "changed-evidence" else evidence
+                if case == "changed-debug":
+                    entries["standalone-debug.apk"] = entries["standalone-debug.apk"].upper()
+                with zipfile.ZipFile(self.archive, "w", compression=zipfile.ZIP_DEFLATED) as target:
+                    for name, data in entries.items():
+                        target.writestr(name, data)
+                archive_bytes = self.archive.read_bytes()
+                digest = ADMISSION.digest(archive_bytes)
+                self.pin.update(archiveBytes=len(archive_bytes), archiveSHA256=digest,
+                                producerManifestSHA256=ADMISSION.digest(entries[manifest_name]))
+                self.pin["privateStorage"].update(inputObject=f"unsigned/{digest}.zip",
+                                                  outputObject=f"signed/{digest}/{'d' * 32}/signed-apks.tar")
+                PRODUCER.validate_private_storage(self.pin)
+                api = self.candidate_api_responses().__getitem__
+                delivery = {"input_generation": "123", "delivery_id": "d" * 32}
+                if refusal:
+                    for options in ({}, delivery):
+                        with self.assertRaisesRegex(ValueError, refusal):
+                            ADMISSION.prepare_candidate(self.archive, "202", api=api, **options)
+                    stage = self.archive.with_name("protected-stage")
+                    with self.assertRaisesRegex(ValueError, refusal):
+                        ADMISSION.admit(self.archive, self.pin, stage)
+                    self.assertFalse(stage.exists())
+                else:
+                    self.assertEqual(ADMISSION.prepare_candidate(self.archive, "202", api=api, **delivery), self.pin)
+                    self.assertTrue(ADMISSION.admit(self.archive, self.pin)["inputVerified"])
+                self.assertEqual(self.archive.read_bytes(), archive_bytes)
 
     def test_candidate_preparation_refuses_invalid_or_unpaired_delivery_fields(self):
         self.write_candidate()

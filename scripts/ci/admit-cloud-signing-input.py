@@ -3,18 +3,21 @@
 import argparse
 import hashlib
 import json
-from pathlib import Path
+import os
+from pathlib import Path, PurePosixPath
 import re
 import shutil
 import stat
 import subprocess
 import sys
+from tempfile import TemporaryDirectory
 import zipfile
 
 from app_update_producer import (
     CANDIDATE, CANDIDATE_PACKAGE, MAX_ARCHIVE_BYTES, PRIVATE_APK_BUCKET, PRIVATE_RUNNER, REPOSITORY,
-    WORKFLOW, WORKFLOW_ID, apk_member_limit, archive_pins, copy_verified, gh_json, github_candidate,
-    matches, positive_id, producer_kind, validate_private_storage,
+    WORKFLOW, WORKFLOW_ID, apk_member_limit, archive_pins, copy_verified, decode, download_github_archive,
+    gh_json, github_candidate, github_candidate_download_pins, matches, positive_id, producer_kind,
+    validate_private_storage,
 )
 
 VARIANTS = ("standalone", "launcher")
@@ -141,8 +144,30 @@ def read_evidence(bundle, names, name):
     return bundle.read(regular_member(names, name, 4 * 1024**2))
 
 
+def producer_evidence_members(names, inventory):
+    """Apply the same member and expansion limits before signing and restoring."""
+    require(isinstance(inventory, dict) and len(inventory) <= 4096, "Invalid producer inventory")
+    exact_paths = ("artifacts/build-config.json", "artifacts/apk-manifest.json", "native-source-manifest.json",
+                   "prepared-source-stamp.json", "worker-manifest.json")
+    directories = ("artifacts/sbom/", "apps/app/public/licenses/", "licenses/",
+                   "android/app/src/main/assets/agent/", "android/app/src/main/jniLibs/")
+    total = 0
+    for name, fact in inventory.items():
+        relative = PurePosixPath(name)
+        require((name in exact_paths or name.startswith(directories)) and not relative.is_absolute() and
+                all(part not in ("..", ".git") for part in relative.parts) and
+                isinstance(fact, dict) and set(fact) == {"bytes", "sha256"} and matches(SHA, fact["sha256"]) and
+                type(fact["bytes"]) is int and 0 < fact["bytes"] <= 512 * 1024**2, "Unsupported producer evidence path")
+        total += fact["bytes"]
+        require(total <= 512 * 1024**2, "Producer evidence exceeds restore bound")
+        entry = regular_member(names, "producer-evidence/" + name, fact["bytes"])
+        require(entry.file_size == fact["bytes"], "Invalid evidence member length")
+        yield name, entry, fact["sha256"]
+
+
 def admit(archive, pin, stage=None):
     kind = producer_kind(pin)
+    archive_json = decode if kind == CANDIDATE else json.loads
     profile = "native" if kind == CANDIDATE else "cloud"
     package = CANDIDATE_PACKAGE if kind == CANDIDATE else PACKAGE
     for field in ("alphaCommit", "sdkCommit"):
@@ -197,7 +222,7 @@ def admit(archive, pin, stage=None):
 
             producer_bytes = data("producer-evidence/manifest.json")
             require(digest(producer_bytes) == pin["producerManifestSHA256"], "Producer manifest digest differs")
-            producer = json.loads(producer_bytes)
+            producer = archive_json(producer_bytes)
             require(producer["source"] == pin["alphaCommit"] and producer["versionCode"] == pin["versionCode"]
                     and single_profile(producer, profile),
                     "Producer source, version or runtime profile differs")
@@ -210,7 +235,7 @@ def admit(archive, pin, stage=None):
                 require(producer["files"][name] == {"bytes": len(value), "sha256": digest(value)},
                         f"Producer evidence does not bind {name}")
             candidate_apks = candidate_evidence(data, pin, apk_manifest) if kind == CANDIDATE else None
-            verified = json.loads(apk_manifest)
+            verified = archive_json(apk_manifest)
             require(verified.get("updateChannel") == channel, "Verified update channel differs")
             require(verified["upstream"]["commit"] == pin["sdkCommit"], "Verified SDK commit differs")
             require(single_profile(verified, profile) and verified["testMocks"] is False
@@ -252,9 +277,13 @@ def admit(archive, pin, stage=None):
                 release_members[variant] = apk_member
             check_apk_pair(kind, release_members.values())
             if kind == CANDIDATE:
-                # An archive whose debug pair cannot be restored cannot be
-                # promoted. Publication verifies its streams against these headers.
-                debug_apk_members(bundle, verified, kind)
+                # Refuse archives that publication cannot restore before signing.
+                for entry, expected in debug_apk_members(bundle, verified, kind).values():
+                    with bundle.open(entry) as apk:
+                        copy_verified(apk, entry.file_size, expected, "Producer debug APK bytes differ")
+                for _, entry, expected in producer_evidence_members(names, producer["files"]):
+                    with bundle.open(entry) as evidence:
+                        copy_verified(evidence, entry.file_size, expected, "Producer evidence bytes differ")
             for variant, apk_member in release_members.items():
                 with bundle.open(apk_member) as apk:
                     copy_verified(apk, apk_member.file_size, apks[variant], f"{variant} APK bytes differ")
@@ -321,26 +350,45 @@ def prepare_candidate(archive, artifact_id, *, input_generation=None, delivery_i
                        "sha256": archive_hash}}
 
 
-def candidate_cli(argv):
-    parser = argparse.ArgumentParser(description="Prepare a read-only Alpha native candidate signing handoff")
+def fetch_candidate(archive, artifact_id, *, api=gh_json, download=download_github_archive):
+    require(not os.path.lexists(archive), "Candidate archive destination already exists")
+    pins = github_candidate_download_pins(artifact_id, api)
+    with TemporaryDirectory(prefix=".alpha-candidate-", dir=archive.parent) as temporary:
+        downloaded = Path(temporary) / "candidate.zip"
+        download(pins, downloaded)
+        request = prepare_candidate(downloaded, artifact_id, api=api)
+        require(request["mirror"]["bytes"] == pins["archiveBytes"] and
+                request["mirror"]["sha256"] == pins["archiveSHA256"],
+                "Candidate artifact changed during download")
+        os.link(downloaded, archive)
+    return request
+
+
+def candidate_cli(command, argv):
+    parser = argparse.ArgumentParser(prog=f"{Path(sys.argv[0]).name} {command}",
+                                     description="Prepare an Alpha native candidate signing handoff")
     parser.add_argument("archive", type=Path)
     parser.add_argument("artifact_id")
-    parser.add_argument("--input-generation")
-    parser.add_argument("--delivery-id")
+    if command == "prepare-candidate":
+        parser.add_argument("--input-generation")
+        parser.add_argument("--delivery-id")
     args = parser.parse_args(argv)
     try:
-        plan = prepare_candidate(args.archive, args.artifact_id, input_generation=args.input_generation,
-                                 delivery_id=args.delivery_id)
+        if command == "fetch-candidate":
+            plan = fetch_candidate(args.archive, args.artifact_id)
+        else:
+            plan = prepare_candidate(args.archive, args.artifact_id, input_generation=args.input_generation,
+                                     delivery_id=args.delivery_id)
         print(json.dumps(plan, indent=2))
     except (KeyError, TypeError, ValueError, OSError, zipfile.BadZipFile) as error:
         parser.exit(1, f"Refused candidate signing handoff: {error}\n")
     except subprocess.SubprocessError:
-        parser.exit(1, "Refused candidate signing handoff: GitHub metadata unavailable.\n")
+        parser.exit(1, "Refused candidate signing handoff: GitHub metadata or download failed.\n")
 
 
 if __name__ == "__main__":
-    if sys.argv[1:2] == ["prepare-candidate"]:
-        candidate_cli(sys.argv[2:])
+    if sys.argv[1:2] in (["fetch-candidate"], ["prepare-candidate"]):
+        candidate_cli(sys.argv[1], sys.argv[2:])
         sys.exit(0)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("archive", type=Path)

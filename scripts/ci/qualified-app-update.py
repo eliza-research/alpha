@@ -23,7 +23,7 @@ import tempfile
 from urllib.parse import quote, urlencode
 import zipfile
 
-from app_update_producer import CANDIDATE, HOSTED_DISPATCH, apk_member_limit, copy_verified, producer_kind
+from app_update_producer import CANDIDATE, HOSTED_DISPATCH, apk_member_limit, copy_verified, decode, producer_kind
 
 ROOT = Path(__file__).resolve().parents[2]
 REPOSITORY = "eliza-research/alpha"
@@ -87,19 +87,6 @@ def read_bounded(file, limit):
         value = stream.read(limit + 1)
         require(len(value) == size, "Evidence file length changed")
         return value
-
-
-def pairs(rows):
-    value = {}
-    for key, item in rows:
-        require(key not in value, "Duplicate JSON field")
-        value[key] = item
-    return value
-
-
-def decode(data):
-    return json.loads(data.decode("utf-8", errors="strict"), object_pairs_hook=pairs,
-                      parse_constant=lambda _: (_ for _ in ()).throw(ValueError("Non-JSON number")))
 
 
 def encoded(record, field, limit):
@@ -303,24 +290,15 @@ def restore_producer_evidence(unsigned, product, kind):
         verified = decode(archive.read("apk-verification.json"))
         debug = PRODUCER.debug_apk_members(archive, verified, kind)
         producer = decode(archive.read("producer-evidence/manifest.json"))
-        inventory = producer["files"]
-        require(isinstance(inventory, dict) and len(inventory) <= 4096, "Invalid producer inventory")
-        total = 0
-        for name, fact in inventory.items():
-            allowed = name in ("artifacts/build-config.json", "artifacts/apk-manifest.json", "native-source-manifest.json", "prepared-source-stamp.json", "worker-manifest.json") or name.startswith(("artifacts/sbom/", "apps/app/public/licenses/", "licenses/", "android/app/src/main/assets/agent/", "android/app/src/main/jniLibs/"))
-            require(allowed and isinstance(fact, dict) and set(fact) == {"bytes", "sha256"} and
-                    type(fact["bytes"]) is int and 0 < fact["bytes"] <= 512 * 1024**2, "Unsupported producer evidence path")
-            total += fact["bytes"]
-            require(total <= 512 * 1024**2, "Producer evidence exceeds restore bound")
-            entry = archive.getinfo("producer-evidence/" + name)
-            require(entry.file_size == fact["bytes"] and stat.S_IFMT(entry.external_attr >> 16) in (0, stat.S_IFREG) and not entry.flag_bits & 1, "Invalid evidence member")
+        names = PRODUCER.archive_members(archive)
+        for name, entry, expected in PRODUCER.producer_evidence_members(names, producer["files"]):
             with archive.open(entry) as content:
                 failure = "Producer evidence bytes differ"
                 if name in ("prepared-source-stamp.json", "worker-manifest.json"):
-                    copy_verified(content, fact["bytes"], fact["sha256"], failure)
+                    copy_verified(content, entry.file_size, expected, failure)
                 else:
                     target = "android/app/build/generated/local-agent/source-manifest.json" if name == "native-source-manifest.json" else name
-                    restore_file(product, target, content, fact["bytes"], fact["sha256"], failure)
+                    restore_file(product, target, content, entry.file_size, expected, failure)
         for name, (entry, digest) in debug.items():
             with archive.open(entry) as content:
                 restore_file(product, "artifacts/" + name, content, entry.file_size, digest,
