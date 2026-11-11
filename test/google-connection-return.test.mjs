@@ -10,7 +10,7 @@ import {GMAIL_MODIFY_CAPABILITIES,GMAIL_READ_CAPABILITY,gmailGrantTier} from '..
 const ui=readFileSync(process.env.ALPHA_GOOGLE_RETURN_UI_SOURCE||'apps/app/src/runtime/google-connection-ui.tsx','utf8');
 const accountsSource=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/google-accounts.ts','utf8'),{mode:'strip'}).replace(/^import[^;]+;\n/gm,'').replace(/^export /gm,'');
 const createGoogleAccounts=vm.runInNewContext(accountsSource+';createGoogleAccounts',{DOMException,Event});
-const admissionCode=stripTypeScriptTypes(ui.slice(ui.indexOf('const unverifiedAccounts='),ui.indexOf('/** Browser Cloud stage only:')),{mode:'strip'});
+const admissionCode=stripTypeScriptTypes(ui.slice(ui.indexOf('const unverifiedAccounts='),ui.indexOf('export function GoogleConnectionsPanel')),{mode:'strip'});
 const loadCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' function accountRead()'),ui.indexOf('\n useEffect(()=>{if(!open)return;void load();')),{mode:'strip'});
 const connectCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' async function connect('),ui.indexOf(' async function disconnect(')),{mode:'strip'});
 function deferred(){let resolve;const promise=new Promise(r=>{resolve=r;});return {promise,resolve};}
@@ -161,7 +161,7 @@ test('actual closed panel ignores unaccepted native callback without opening or 
 });
 
 
-const disconnectCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' async function disconnect('),ui.indexOf(' /** Explicit Connect persists')),{mode:'strip'});
+const disconnectCode=stripTypeScriptTypes(ui.slice(ui.indexOf(' async function disconnect('),ui.indexOf(' function calendarScopeCurrent(')),{mode:'strip'});
 function disconnectFixture(){
  const f=fixture(),operation=deferred(),cleared=[];
  f.globals.createGoogleAccounts=()=>({disconnect:()=>operation.promise,list:async()=>[]});

@@ -6426,7 +6426,7 @@
     },
     {
       "path": "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
-      "sha256": "47ea0b9080b5cdb79796e01c7cd699b72bb611cf23449c40588431c50eb52d91",
+      "sha256": "e8d18e5cde7bcba98c858da07cfe8a38aa0f785ad0e2f4f3d5dae560e252a516",
       "models": [
         "NativeCredentialMutation",
         "ResidentRuntime",
@@ -10443,7 +10443,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "d06f7d6578d69e7a0e6fa7962a4a43780e4d95e6ef4594b0abaff411480309f1",
+      "sha256": "7511797734293d78baaf6a39bf6477aea10e3065e3d61559a79400e0227c6f69",
       "stateAnchors": [
         {
           "line": 47,
@@ -12127,7 +12127,7 @@
     },
     {
       "path": "apps/app/src/browser/files.ts",
-      "sha256": "79890f6d2d3adb963aca66b53e486e07c27a0fc7430d5be4f8d3311057dbbfe8",
+      "sha256": "28e770a3b346e3b0642d1c5f15497f386f7c3927725350f2030bb02bde81a608",
       "models": [
         "BrowserSession",
         "BrowserFilesTrash"
@@ -14501,7 +14501,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "f48dce1dbb928377b88fe9d984b9e0c9bbca0ba121a913395b4d21213afbb20b",
+      "sha256": "59ca7a5719de497531455f8da3ab700dac831f1888b533262a56b006030917f6",
       "stateAnchors": [
         {
           "line": 92,
@@ -17584,7 +17584,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "2d5f5cf5b67bf9612acecc993b54bd258a77440e1038cea2eabebebc5d612646",
+      "sha256": "e8f31b615c3d4de3308b04df3c42a71f18e9ead5a7c86accf8cda4368e0b66bd",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 inline schedule editor: daily/weekly day selection, no-write draft cancellation, exact reviewed cron payload. ScheduledTaskControls covers bounded day sets and retained owner intent. Month/interval cron remains unmodified. CSS has no scheduling authority."
     },
@@ -18016,7 +18016,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "1b8559b0afacfeac49f8e8cf5f12e8438ee1a5a3d5f94e91844a4cf373a15541",
+      "sha256": "2245adc7e4a6e2571de07e940b760b7c97a892eb769983258d6ddc1a012b6032",
       "stateAnchors": [
         {
           "line": 14,
@@ -18483,7 +18483,7 @@
     },
     {
       "path": "apps/app/src/prototype/calendar-adapter.ts",
-      "sha256": "695dc4d914d8a6f9275aa227e83dc2d4c688cd45afc50f9fcea62b4a7735ed94",
+      "sha256": "fbdd8f613234a92c69a8d88c8849f52b97e4c42e48cb79a50bc9c82557e3d15e",
       "models": [
         "Calendar",
         "CalendarPresentation",
@@ -19618,7 +19618,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "d4719fb423bba2d39237b97e30d32f0eb8b021c616fc6b7d2029c5c05d15a966",
+      "sha256": "8859d1729e24525037a73ca50a30dc76f583a423d46b977cfc4ef6a6adb4dc8d",
       "stateAnchors": [
         {
           "line": 31,
@@ -34158,7 +34158,7 @@
     },
     {
       "path": "apps/app/src/prototype/share-panel-adapter.ts",
-      "sha256": "23a3eb45e4307571601edac8f5cb444843d6740a750b62d35220b79336557d89",
+      "sha256": "78cd92628c18316667fec89715a9207f3c171468ebf4fdbb9ba83ea6b2aa4f74",
       "models": [
         "FilesAndSharing"
       ],
@@ -35023,7 +35023,7 @@
     },
     {
       "path": "apps/app/src/prototype/workflow-adapter.ts",
-      "sha256": "2ef2b5ab283825eee06f440cea6683692900deb5aba9d16d7f36280ab6d02337",
+      "sha256": "7168fe291a80ce4905faea251604928ae5705f0c28b37a42f92aacedd18d7251",
       "models": [
         "WorkflowExecution",
         "NoticesAndCaches"
@@ -35838,7 +35838,7 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "786ab10fe6939b942ca970370a9ad3b6cc6fbc113a302622286d1e550008758b",
+      "sha256": "67e7fb4296b196fc61178571561a34e4d2afe9e4ca42e31017f41635120e4b3d",
       "stateAnchors": [
         {
           "line": 5,
@@ -37042,7 +37042,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "2fcc2fce4f2340f5da6f452d733e958a5ea2e446c25dc8da00d85f82d768587a",
+      "sha256": "ddf5e6df521b097ebc99ecabba10ae5d998e00617a28bf4383b9081aaf53943e",
       "stateAnchors": [
         {
           "line": 9,
@@ -39104,7 +39104,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "9273a63cbdf93c15a67c71462d64dffae322140869c13ca8811ebdcd5bad32dc",
+      "sha256": "eb9c61a5cd7c715ea44c2952872f37ee65f26aef1d574a27b91739536f4a7acf",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open."
     },
@@ -40962,7 +40962,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "55e1b1d5f527f42c5b50aa8a090cfdae9bed31c167eba6f34a0f42add0c964e8",
+      "sha256": "e0906f882a4afd14acd1a8c0bc88c93cc55e9aeb367fa8d06e45eed931b2fc2b",
       "stateAnchors": [
         {
           "line": 9,
@@ -41121,7 +41121,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "618fa22732b2307e1501bd897d3185cffa5593817557204d89bde7933a8acf2d",
+      "sha256": "fbb8844271a43a64c8686380d7d0d7046f1c3be5f4332eb4e71bff0c95844d84",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
     },
@@ -44978,7 +44978,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "fb2264d0d1adc4a95f7b6e334af28d47fcb44017a93ebfd9a6f5d159e335e093",
+      "sha256": "06973ee563e28941efc6f3a616ae43f08353cd14d68a1d2f77e7b250d1f9788c",
       "stateAnchors": [
         {
           "line": 4,
@@ -46106,7 +46106,7 @@
     },
     {
       "path": "apps/app/src/runtime/workflow-local-time.ts",
-      "sha256": "ab81f26c2fc0f1628f5d846cd3cb8f8b4285a22077f7ef78148dc5a37ed9585b",
+      "sha256": "3a8544f34085488deb2de1080cdab225c645f936db8cfb0d1ff193e834841fdd",
       "models": [
         "WorkflowExecution",
         "ScheduledTaskControls"
@@ -46877,7 +46877,7 @@
     },
     {
       "path": "scripts/browser-cloud-dev-bridge.ts",
-      "sha256": "92c930e1546b80298c772ae9fa2f1fb0b0fd280a97b15b1e34825b9ff95d9718",
+      "sha256": "6ceeedac9d3bd268ba0626f2807dbbabc6fe996eb1c9660394a80acf429f814a",
       "models": [
         "DevelopmentHost",
         "DevelopmentSurfaces",
@@ -47548,7 +47548,7 @@
       "scope": "development-runtime",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "e269e1aef57e5ba976d317e435b0c76e52e32648f1e90ade66173d27616d08d5",
+      "sha256": "addd6482b1a774b3077534f7bd7fd08c90a9f986af3c41bc8c7a39a65ac72e14",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open."
     },
