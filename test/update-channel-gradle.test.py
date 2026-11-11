@@ -36,11 +36,13 @@ with tempfile.TemporaryDirectory(prefix='alpha-channel-gradle-') as temporary:
     cases = [
         ('public', {}, public, True),
         ('private', {}, url, True),
+        ('private-gcloud-lowercase', {}, url.replace('X-Goog-', 'x-goog-'), True),
         ('wrong-digest', {'ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256': 'f' * 64}, url, False),
         ('undeclared', {'ALPHA_UPDATE_CHANNEL': 'public'}, url, False),
         ('wrong-prefix', {}, url.replace('update-qa/', 'public/'), False),
         ('readable-file', {}, url, False),
         ('duplicate-query', {}, url + '&X-Goog-Expires=300', False),
+        ('duplicate-query-case-alias', {}, url + '&x-goog-expires=300', False),
         # The private channel no longer depends on a runtime profile: it needs a complete packaged
         # build with test mocks off.
         ('unpackaged-runtime', {'QA_TEST_UNPACKAGED': '1'}, url, False),
@@ -70,7 +72,7 @@ with tempfile.TemporaryDirectory(prefix='alpha-channel-gradle-') as temporary:
         run = subprocess.run([java, '-cp', classpath, 'groovy.ui.GroovyMain', str(script)],
                              env=env, capture_output=True, text=True, timeout=40)
         output = run.stdout + run.stderr
-        assert url not in output, 'Input capability leaked into diagnostics'
+        assert value.strip() not in output, 'Input capability leaked into diagnostics'
         if accepted:
             assert run.returncode == 0, f'{name}: configuration execution failed: {output}'
             assert json.loads(run.stdout) == {'kind': 'public' if name == 'public' else 'private-qa',
