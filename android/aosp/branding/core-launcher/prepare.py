@@ -144,17 +144,12 @@ edit(config, text)
 
 permission = 'services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java'
 text = original(permission)
-text = replace(text, '        mServiceInternal = LocalServices.getService(PackageManagerInternal.class);', '''        mServiceInternal = LocalServices.getService(PackageManagerInternal.class);
-        // Covers OS updates that do not rerun runtime-permission upgrades.
-        // The bounded policy preserves existing owner and enterprise decisions.
-        mContext.registerReceiverAsUser(new android.content.BroadcastReceiver() {
-            @Override public void onReceive(Context context, Intent intent) {
-                if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-                    grantAlphaSharedStorageDefault(NO_PM_CACHE, UserHandle.USER_SYSTEM);
-                }
-            }
-        }, UserHandle.SYSTEM, new android.content.IntentFilter(Intent.ACTION_BOOT_COMPLETED),
-                null, mHandler, Context.RECEIVER_NOT_EXPORTED);''')
+text = replace(text, '    private final PackageManagerInternal mServiceInternal;',
+    '    private final PackageManagerInternal mServiceInternal;\n    private boolean mAlphaStorageReceiverRegistered;')
+text = replace(text, '    public void grantDefaultPermissions(int userId) {',
+    '    public void grantDefaultPermissions(int userId) {\n        registerAlphaStorageBootReceiver();')
+text = replace(text, '    public void scheduleReadDefaultPermissionExceptions() {',
+    '    public void scheduleReadDefaultPermissionExceptions() {\n        registerAlphaStorageBootReceiver();')
 text = replace(text, '        pm.apply();\n    }',
     '        pm.apply();\n        grantAlphaSharedStorageDefault(pm, userId);\n    }')
 text = replace(text, '    private void grantSignatureAppsNotificationPermissions(', '''    /** Primary-user factory default only; explicit owner modes and managed devices are retained. */
@@ -188,6 +183,21 @@ text = replace(text, '    private void grantSignatureAppsNotificationPermissions
     }
 
     private void grantSignatureAppsNotificationPermissions(''')
+text = replace(text, '    private void grantPermissionsToSysComponentsAndPrivApps(', '''    /** Both callers run from PackageManagerService.systemReady, after Activity Manager exists. */
+    private synchronized void registerAlphaStorageBootReceiver() {
+        if (mAlphaStorageReceiverRegistered) return;
+        mContext.registerReceiverAsUser(new android.content.BroadcastReceiver() {
+            @Override public void onReceive(Context context, Intent intent) {
+                if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
+                    grantAlphaSharedStorageDefault(NO_PM_CACHE, UserHandle.USER_SYSTEM);
+                }
+            }
+        }, UserHandle.SYSTEM, new android.content.IntentFilter(Intent.ACTION_BOOT_COMPLETED),
+                null, mHandler, Context.RECEIVER_NOT_EXPORTED);
+        mAlphaStorageReceiverRegistered = true;
+    }
+
+    private void grantPermissionsToSysComponentsAndPrivApps(''')
 edit(permission, text)
 
 for name, target in {

@@ -4,7 +4,7 @@
   "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
   "targetAppId": "ai.alphacompute.alphaphone",
   "patch": "alpha-core-launcher.patch",
-  "patchSha256": "a2c194b12d5eb92107178977d893d65321c12f77335a545af5e9800eb49d7a8f",
+  "patchSha256": "39207913d620ee7d51a7ba08646584cd44b2b7055e107febb0d5bd5d6973cb12",
   "files": [
     {
       "path": "packages/SystemUI/res/values/config.xml",
@@ -45,7 +45,7 @@
     {
       "path": "services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java",
       "beforeSha256": "5678cf02ef133d61585e5be1b59d5a6b74f6e4768d50f2480432fb78cc973ff8",
-      "afterSha256": "a48f8c0634a572e580c7feec07aa5d444ba11cc1aeaa884d4c95de57695917c4",
+      "afterSha256": "b2206dea1227975ef8e4178d26ddd9598feb894081f99a256ea70fa824c1446f",
       "new": false
     }
   ],
