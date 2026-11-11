@@ -194,6 +194,37 @@ class QualifiedUpdateTest(unittest.TestCase):
                 BRIDGE.preflight(self.record, "f" * 40, self.directory / f"wrong-history-{index}",
                                  lambda endpoint: comparison if "/compare/" in endpoint else self.api(endpoint), self.download)
 
+    def test_isolated_source_requires_exact_approval_and_main_signing_workflow(self):
+        fields = ("alphaCommit", "sdkCommit", "versionCode", "updateChannel", "archiveBytes",
+                  "archiveSHA256", "producerManifestSHA256", "privateProducerReceiptSHA256", "unsignedApkSHA256")
+        approval = {"approval": "approved", **{key: self.plan[key] for key in fields}}
+        (self.directory / "android").mkdir()
+        descriptor = self.directory / "android/release-signer.json"
+
+        def isolated_source(endpoint):
+            if f'/compare/{self.plan["alphaCommit"]}...' in endpoint:
+                return {"status": "diverged", "merge_base_commit": {"sha": "0" * 40}}
+            return self.api(endpoint)
+
+        with patch.object(BRIDGE, "ROOT", self.directory):
+            for index, field in enumerate((None, "approval", *fields)):
+                candidate = copy.deepcopy(approval)
+                if field is not None:
+                    candidate[field] = "unreviewed"
+                descriptor.write_text(json.dumps({"privateProducerApproval": candidate}))
+                work = self.directory / f"source-review-{index}"
+                if field is None:
+                    self.assertEqual(BRIDGE.preflight(self.record, "f" * 40, work,
+                                                     isolated_source, self.download), self.plan)
+                else:
+                    with self.assertRaises(ValueError):
+                        BRIDGE.preflight(self.record, "f" * 40, work, isolated_source, self.download)
+            descriptor.write_text(json.dumps({"privateProducerApproval": approval}))
+            with self.assertRaises(ValueError):
+                BRIDGE.preflight(self.record, "f" * 40, self.directory / "unreviewed-signer",
+                                 lambda endpoint: {"status": "diverged"} if "/compare/" in endpoint else self.api(endpoint),
+                                 self.download)
+
     def test_duplicate_json_and_symlink_restore_paths_are_refused(self):
         with self.assertRaises(ValueError):
             BRIDGE.decode(b'{"schema":1,"schema":2}')

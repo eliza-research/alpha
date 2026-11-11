@@ -245,7 +245,7 @@ class PrivateProducerSourceReviewTest(unittest.TestCase):
             (root / "scripts/ci").mkdir(parents=True)
             (root / "android").mkdir()
             (root / "bin").mkdir()
-            for name in ("verify-cloud-signing-input.sh", "private-apk-storage.py"):
+            for name in ("verify-cloud-signing-input.sh", "private-apk-storage.py", "admit-cloud-signing-input.py"):
                 shutil.copyfile(ROOT / "scripts/ci" / name, root / "scripts/ci" / name)
             plan = {
                 "alphaCommit": "a" * 40, "sdkCommit": "b" * 40, "versionCode": 50,

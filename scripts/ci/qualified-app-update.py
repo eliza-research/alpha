@@ -150,10 +150,12 @@ def gh_download(endpoint, destination, size, digest):
 def preflight(record, workflow_commit, work, api=gh_json, download=gh_download):
     plan, plan_bytes, voice_bytes = validate(record)
     require(COMMIT.fullmatch(workflow_commit), "Exact publication workflow commit required")
-    for source in (plan["alphaCommit"], record["signingWorkflowCommit"]):
+    for source, producer in ((plan["alphaCommit"], True), (record["signingWorkflowCommit"], False)):
         compared = api(f"repos/{REPOSITORY}/compare/{source}...{workflow_commit}")
-        require(compared.get("status") in ("ahead", "identical") and
-                compared.get("merge_base_commit", {}).get("sha") == source,
+        on_main = compared.get("status") in ("ahead", "identical") and compared.get("merge_base_commit", {}).get("sha") == source
+        reviewed_producer = producer and not on_main and PRODUCER.reviewed_private_producer(
+            plan, decode((ROOT / "android/release-signer.json").read_bytes()))
+        require(on_main or reviewed_producer,
                 "Producer or signing workflow is not on reviewed main history")
     run = api(f"repos/{REPOSITORY}/actions/runs/{record['signingRunId']}")
     require(run.get("status") == "completed" and run.get("conclusion") == "success" and
