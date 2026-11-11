@@ -4,13 +4,14 @@ This reviewed Android 17 patch keeps ordinary assist, Quick Settings and lock-sc
 invocations surface-only. It strips the Power invocation marker at the public search
 service for non-system callers. SystemUI can launch the exact protected Alpha Power
 component only for the selected assistant on a provisioned, unlocked current user.
-Caller text, URI and assist context are not forwarded to that component.
+The dedicated Alpha Sense image feature is required. Only the protected child
+launch shares Android's SystemUI caller identity. Caller text, URI and assist
+context are dropped.
 
 The manifest binds both framework files to revision
-94b4c163b7dfe5ce3607f7bb8456f9573f7de57d and requires the existing Alpha system-entry
-resource/source patch. Unknown preimages, partial applications and unrelated source
-changes must be reviewed through the normal whole-source inventory verifier. Do not
-change the immutable baseline inventory to make modified files appear stock.
+94b4c163b7dfe5ce3607f7bb8456f9573f7de57d and the exact Pixel source inventory.
+Pass `--applied-systemui-patch alpha-protected-power` after applying the patch to
+the build copy. The shared generic `assist` patch touches the same file.
 
 The earlier Android services and SystemUI sources compiled on the preserved stallion
 builder. That result retains its original package and patch hashes. The current
