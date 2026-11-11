@@ -5315,6 +5315,20 @@ class Component extends DCLogic {
   mod(k) { return VIEWS[k] || {}; }
   defaultChat(k) { return this.mod(k).chat === "input" ? "input" : "hidden"; }
   rest() { var v = this.S().view; return v ? this.defaultChat(v) : "input"; }
+  /* A view whose render threw is left after the current render pass. Its own onLeave may fail the
+     same way, so the view is then dropped directly: the launcher never loops on a broken view. */
+  closeFailedView(v, error) {
+    if (this.failedView === v) return;
+    this.failedView = v; var self = this;
+    if (typeof console !== "undefined") console.error("View render failed: " + v, error);
+    this.later(function () {
+      self.failedView = null;
+      if (self.S().view !== v) return;
+      try { self.goHome(); } catch (ignored) { /* dropped below */ }
+      self.setState(function (previous) { return previous && previous.view === v ? { view: null, stack: [] } : null; });
+      self.toast(((VIEWS[v] && VIEWS[v].title) || "This app") + " had a problem and was closed.");
+    }, 0, "viewFailure");
+  }
   leave() {
     var v = this.S().view;
     if (v) { this.clear("m_" + v); this.stopEvery("m_" + v); var m = this.mod(v); if (m.onLeave) m.onLeave(this.api(v)); }
@@ -5651,7 +5665,12 @@ class Component extends DCLogic {
     var is = {};
     ORDER.forEach(function (k) { is[k] = isView && v === k; });
     out.is = is;
-    if (isView && mod && mod.render) out[v] = mod.render(st, this.api(v));
+    // One view's render failure closes that view only: Home, the conversation and every other app
+    // keep running instead of the whole launcher falling to the reload screen.
+    if (isView && mod && mod.render) {
+      try { out[v] = mod.render(st, this.api(v)); }
+      catch (error) { is[v] = false; this.closeFailedView(v, error); }
+    }
     if (v === "inbox" && out.inbox && !out.inbox.folderTitle) out.inbox.folderTitle = "Inbox";
     // Compose attach copy follows the provider adapter's attachment limit (c.attachLabel); one
     // reviewed file until an adapter reports more.

@@ -253,7 +253,7 @@ export class ViewNavigationClient {
 		results: readonly unknown[] | undefined,
 		attempt: NavigationAttempt,
 		navigate: (view: string, current: () => void) => Promise<boolean>,
-	): Promise<{ status: "none" | "delivered" | "unknown" | "unavailable"; label?: string }> {
+	): Promise<{ status: "none" | "delivered" | "unknown" | "unavailable"; label?: string; parentView?: string }> {
 		const views = results?.filter(
 			(result) => findViewActionHandoff([result])?.navigationPrepared === true,
 		);
@@ -271,13 +271,18 @@ export class ViewNavigationClient {
 			);
 		// A view this phone does not map is reported, not thrown: the agent's reply already
 		// stands, and nothing is claimed or acknowledged for it.
+		// A page inside a view this phone does have is named as such (`parentView`), so the chat can
+		// say where to look instead of claiming the screen does not exist. Still nothing is claimed.
 		if (
 			handoff.subview ||
 			!target ||
 			(handoff.viewPath &&
 				!alphaViewPaths(handoff.viewId).includes(handoff.viewPath))
 		)
-			return { status: "unavailable" };
+			return {
+				status: "unavailable",
+				...(handoff.subview && target ? { parentView: target } : {}),
+			};
 		const selected = views
 				?.slice()
 				.reverse()

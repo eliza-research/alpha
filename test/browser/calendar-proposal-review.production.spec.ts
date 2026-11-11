@@ -211,7 +211,7 @@ test('Android: declining the calendar proposal hands nothing to the Calendar plu
   await connected(page);
   await page.getByRole('button', { name: 'Open conversation', exact: true }).click();
   await expect(page.getByText('Create event', { exact: true })).toBeVisible({ timeout: 20_000 });
-  await page.getByRole('button', { name: /^Cancel Keep things as they are\./ }).click();
+  await page.getByRole('button', { name: /^Decline Keep things as they are\./ }).click();
   await expect(page.getByText('Declined. No phone action was performed.', { exact: true })).toBeVisible({ timeout: 20_000 });
   const state = await fixture(page);
   expect(state.calendar).toEqual([]);
