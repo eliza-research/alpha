@@ -121,7 +121,7 @@ jobs:
         run: npm run upstream:prepare-client
       - name: Reverify all signed bytes and exact reviewed Cloud voice evidence
         working-directory: qualified-product
-        run: npm run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
+        run: npm run android:verify -- --runtime-profile=cloud --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
       - name: Require both qualified release rows before publication
         run: |
           python3 - <<'PY'
