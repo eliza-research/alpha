@@ -32,3 +32,5 @@ export async function openConnectionBrowser(url: string) {
   controls.authorizationUrl = url;
   controls.opened++;
 }
+
+export const isAndroid = true;
