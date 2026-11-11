@@ -8,44 +8,147 @@ import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 
 const source=readFileSync('apps/app/src/prototype/settings-adapter.ts','utf8');
 const facts=source.slice(source.indexOf('// settings-facts:begin'),source.indexOf('// settings-facts:end'));
+const cache=source.slice(source.indexOf('const UPDATE_KEY = '),source.indexOf('// settings-reads:begin'));
 const start=source.indexOf('  async function pollAutomaticUpdate(');
 const poll=source.slice(start,source.indexOf('\n  let gmail =',start));
 assert.ok(poll.includes('automatic:true'),'execute the product automatic install orchestration');
-const root='5c'.repeat(32), sha256='0a'.repeat(32);
+const root='5c'.repeat(32), sha256='0a'.repeat(32), manifestSha256='2b'.repeat(32);
+const updateKey='alpha.app-update.v1';
 const manifest={schema:'alpha-update/v1',variant:'launcher',signerSha256:root,versionCode:8,
   apkUrl:'https://example.test/launcher-8.apk',sha256,sizeBytes:500};
 const gate=readFileSync('.eliza/client-features/packages/ui/src/state/app-update-gate.ts','utf8');
 const scheduler=gate.slice(gate.indexOf('export function createAppUpdateScheduler('));
-function fixture(voiceShell){
-  const installs=[];
-  let current=true, editor=false, answer=true, pending=false, capability='supported', inFlight=0, maxInFlight=0;
+function fixture(voiceShell, seed) {
+  const installs=[],storage=new Map();
+  let current=true, editor=false, pending=false, capability='supported', inFlight=0, maxInFlight=0, checks=0, clock=0;
   let read=()=>Promise.resolve({appVersionCode:7,appSigner:root,appAutomaticUpdates:capability}), install=async()=>({});
+  let check=async()=>({manifest:JSON.stringify(manifest),manifestSha256});
+  if(seed)storage.set(updateKey,JSON.stringify(seed));
   const shell={screen:'home',view:null,voice:'off',typing:false,chat:'input'};
-  const context=vm.createContext({URL,Number,document:{querySelector:()=>editor?{}:null},
+  const context=vm.createContext({URL,Number,Date:{now:()=>clock},Capacitor:{isNativePlatform:()=>true},
+    localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},
+    document:{querySelector:()=>editor?{}:null},
     owner:voiceShell??{S:()=>shell,voiceConversationActive:()=>false},connectionController:{getSnapshot:()=>({busy:false,open:false})},
-    updateBusy:'',changed(){},checkForUpdate:async()=>answer,savedUpdate:()=>({manifest}),
-    device:{snapshot:()=>read(),updateState:async()=>({pending}),installUpdate:async input=>{
+    updateBusy:'',changed(){},
+    device:{checkForUpdate:()=>{checks++;return check();},snapshot:()=>read(),updateState:async()=>({pending}),installUpdate:async input=>{
       installs.push(JSON.parse(JSON.stringify(input)));maxInFlight=Math.max(maxInFlight,++inFlight);
       try{return await install();}finally{inFlight--;}
     }},
     system:{getBuildInfo:async()=>({launcher:true})}});
-  vm.runInContext(stripTypeScriptTypes(facts.replace(/^export /gm,'')+'\n'+poll+'\n'+scheduler.replace(/^export /gm,'')+'\nglobalThis.poll=pollAutomaticUpdate;globalThis.schedule=createAppUpdateScheduler;',{mode:'strip'}),context);
-  return {installs,shell,run:()=>context.poll(()=>current),retire(){current=false;},editor(){editor=true;},offline(){answer=false;},pending(){pending=true;},unsupported(){capability='permission-required';},capability(value){capability=value;},read(value){read=value;},install(value){install=value;},maxInFlight:()=>maxInFlight,
+  const program=facts.replace(/^export /gm,'')+'\n'+cache+'\n'+poll+'\n'+scheduler.replace(/^export /gm,'')
+    +'\nglobalThis.api={pollAutomaticUpdate,createAppUpdateScheduler,checkForUpdate,savedUpdate,parseUpdateManifest};';
+  vm.runInContext(stripTypeScriptTypes(program,{mode:'strip'}),context);
+  const api=context.api;
+  return {installs,shell,run:()=>api.pollAutomaticUpdate(()=>current),retire(){current=false;},editor(){editor=true;},
+    offline(){check=async()=>{throw Error('offline');};},pending(){pending=true;},unsupported(){capability='permission-required';},
+    capability(value){capability=value;},read(value){read=value;},install(value){install=value;},maxInFlight:()=>maxInFlight,
+    offer(value){check=async()=>value;},checks:()=>checks,check:()=>api.checkForUpdate(true),
+    saved:()=>JSON.parse(storage.get(updateKey)??'null'),
+    manualOffer:()=>api.parseUpdateManifest(api.savedUpdate().manifest,{versionCode:7,launcher:true,signerSha256:root}),
     scheduled(){
       let now=0,serial=0;const jobs=new Map();
-      const schedule=context.schedule({run:context.poll,now:()=>now,
+      const schedule=api.createAppUpdateScheduler({run:api.pollAutomaticUpdate,now:()=>now,
         schedule(callback,delay){const id=++serial;jobs.set(id,{callback,at:now+delay});return id;},cancel(id){jobs.delete(id);}});
       return {...schedule,times:()=>[...jobs.values()].map(job=>job.at),async tick(milliseconds=0){
-        now+=milliseconds;
+        now+=milliseconds;clock=now;
         for(const [id,job] of [...jobs])if(job.at<=now){jobs.delete(id);job.callback();}
         await new Promise(setImmediate);
       }};
     }};
 }
-test('automatic discovery selects exact installed flavor/signer and sends only admitted update bytes',async()=>{
+const request=(offer=manifest,digest=manifestSha256)=>({apkUrl:offer.apkUrl,sha256:offer.sha256,sizeBytes:offer.sizeBytes,
+  versionCode:offer.versionCode,automatic:true,manifestSha256:digest});
+
+test('automatic discovery sends the native digest bound to the exact admitted update',async()=>{
   const f=fixture();await f.run();
-  assert.deepEqual(f.installs,[{apkUrl:manifest.apkUrl,sha256,sizeBytes:500,versionCode:8,automatic:true}]);
+  assert.deepEqual(f.installs,[request()]);
+  assert.deepEqual(f.saved(),{checkedAt:0,manifest,manifestSha256});
 });
+
+test('a legacy cached offer remains visible for manual install and forces an automatic refresh',async()=>{
+  const f=fixture(undefined,{checkedAt:0,manifest});
+  assert.equal(f.manualOffer()?.versionCode,8);
+  f.offline();
+  await assert.rejects(f.run(),/Update check unavailable/);
+  assert.equal(f.manualOffer()?.versionCode,8);
+  assert.deepEqual(f.installs,[]);
+  assert.equal(f.checks(),1);
+  f.offer({manifest:JSON.stringify(manifest)});
+  await assert.rejects(f.run(),/requires a fresh check/);
+  assert.deepEqual(f.installs,[]);
+  f.offer({manifest:JSON.stringify(manifest),manifestSha256});
+  await f.run();
+  assert.deepEqual(f.installs,[request()]);
+  assert.equal(f.checks(),3);
+});
+
+test('failed or malformed refresh cannot authorize an old cached offer automatically',async()=>{
+  for(const reply of [null,{manifest:'{'},{manifest:'null'},{manifest:JSON.stringify(manifest),manifestSha256:'bad'}]){
+    const f=fixture(undefined,{checkedAt:0,manifest,manifestSha256});
+    if(reply===null)f.offline();else f.offer(reply);
+    assert.equal(await f.check(),false);
+    assert.deepEqual(f.saved(),{checkedAt:0,manifest});
+    assert.equal(f.manualOffer()?.versionCode,8);
+    await assert.rejects(f.run(),/Update check unavailable/);
+    assert.deepEqual(f.installs,[]);
+    assert.equal(f.checks(),2,'even a recent answer no longer authorizes an install');
+  }
+});
+
+test('a withdrawn offer clears storage and retries at backoff with a fresh native digest',async()=>{
+  const f=fixture(),s=f.scheduled();
+  f.install(async()=>({status:'offer-unavailable'}));
+  try{
+    s.setActive(true);await s.tick();
+    assert.deepEqual(f.installs,[request()]);
+    assert.equal(f.saved(),null);
+    assert.equal(f.manualOffer(),null);
+    assert.equal(s.snapshot().failures,1);
+    assert.deepEqual(s.times(),[60_000]);
+    const next={...manifest,versionCode:9,apkUrl:'https://example.test/launcher-9.apk',sha256:'1c'.repeat(32)};
+    const digest='3d'.repeat(32);
+    f.offer({manifest:JSON.stringify(next),manifestSha256:digest});
+    f.install(async()=>({}));
+    await s.tick(60_000);
+    assert.equal(f.checks(),2);
+    assert.deepEqual(f.installs,[request(),request(next,digest)]);
+    assert.deepEqual(f.saved(),{checkedAt:60_000,manifest:next,manifestSha256:digest});
+    assert.equal(s.snapshot().failures,0);
+  }finally{s.dispose();}
+});
+
+test('a late stale reply preserves a fresher in-flight manual check result',async()=>{
+  const f=fixture(),s=f.scheduled();
+  let finish;
+  f.install(()=>new Promise(resolve=>{finish=resolve;}));
+  try{
+    s.setActive(true);await s.tick();
+    assert.deepEqual(f.installs,[request()]);
+    const next={...manifest,versionCode:9,apkUrl:'https://example.test/launcher-9.apk'};
+    const digest='3d'.repeat(32);
+    f.offer({manifest:JSON.stringify(next),manifestSha256:digest});
+    assert.equal(await f.check(),true);
+    finish({status:'offer-unavailable'});await new Promise(setImmediate);
+    assert.deepEqual(f.saved(),{checkedAt:0,manifest:next,manifestSha256:digest});
+    assert.equal(s.snapshot().failures,1);
+    f.install(async()=>({}));
+    await s.tick(60_000);
+    assert.deepEqual(f.installs,[request(),request(next,digest)]);
+    assert.equal(f.checks(),2,'the newer result remains the current cached offer');
+    assert.equal(f.maxInFlight(),1);
+  }finally{s.dispose();}
+});
+
+test('a fresh 404 withdraws a cached offer without bypassing the answered-check interval',async()=>{
+  const f=fixture(undefined,{checkedAt:0,manifest,manifestSha256});
+  f.offer({});
+  assert.equal(await f.check(),true);
+  assert.deepEqual(f.saved(),{checkedAt:0,manifest:null});
+  await f.run();
+  assert.deepEqual(f.installs,[]);
+  assert.equal(f.checks(),1);
+});
+
 test('missing install permission and an existing pending Android session never start another automatic install',async()=>{
   for(const state of ['unsupported','pending']){const f=fixture();f[state]();await f.run();assert.deepEqual(f.installs,[]);}
 });

@@ -132,7 +132,7 @@ function renderer(program, name, responses) {
       const source = responses[nativeMode];
       assert.ok(source);
       writable=saved;
-      if (source.resolved) settle.resolve(source.manifest == null ? {} : {manifest:source.manifest});
+      if (source.resolved) settle.resolve(source.manifest == null ? {} : {manifest:source.manifest,manifestSha256:source.manifestSha256});
       else settle.reject(Error('Controlled native check refusal'));
       await pending;
       point('actual native reply updates the Settings cache according to its outcome','answerCheck',answer,saved);
@@ -141,7 +141,7 @@ function renderer(program, name, responses) {
     receipt() {
       const result = context.review(context.inspect().cache.manifest,installed);
       assert.ok(result);
-      return {...result, signer};
+      return {...result, signer, manifestSha256:context.inspect().cache.manifestSha256};
     },
   };
 }
@@ -165,7 +165,7 @@ export async function checkNativeUpdateStaging(extraSources = []) {
     writeFileSync(members,exactUpdateMembers(readFileSync(join(root,plugin),'utf8')));
     const native = Object.entries(nativeInputs);
     const program = settingsProgram();
-    const bootstrap = renderer(program,'bootstrap',{offer1:{resolved:true,manifest:offerJson}});
+    const bootstrap = renderer(program,'bootstrap',{offer1:{resolved:true,manifest:offerJson,manifestSha256:sha(offerJson)}});
     bootstrap.request();
     await bootstrap.answer('offer1');
     const receipt = bootstrap.receipt();
@@ -175,11 +175,11 @@ export async function checkNativeUpdateStaging(extraSources = []) {
       ['deadline'], ...modes.map(mode => [mode,JSON.stringify(receipt)])];
     const results = javaTraceCampaign(harness,[members,...compiled],args);
     const responses = Object.fromEntries(native.map(([key],index) => [key,results[index]]));
-    assert.deepEqual(responses.offer1,{resolved:true,manifest:offerJson});
-    assert.deepEqual(responses.withdrawn,{resolved:true,manifest:null});
-    assert.deepEqual(responses.transport,{resolved:false,manifest:null});
+    assert.deepEqual(responses.offer1,{resolved:true,manifest:offerJson,manifestSha256:sha(offerJson)});
+    assert.deepEqual(responses.withdrawn,{resolved:true,manifest:null,manifestSha256:null});
+    assert.deepEqual(responses.transport,{resolved:false,manifest:null,manifestSha256:null});
     assert.equal(responses.exactLimit.manifest.length,65536);
-    assert.deepEqual(responses.oversized,{resolved:false,manifest:null});
+    assert.deepEqual(responses.oversized,{resolved:false,manifest:null,manifestSha256:null});
     const deadline = results[native.length];
     assert.deepEqual(deadline,{lateBody:{verified:false,bytes:2},lateEof:{verified:true,bytes:4}});
 
