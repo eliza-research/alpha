@@ -17584,9 +17584,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "e8f31b615c3d4de3308b04df3c42a71f18e9ead5a7c86accf8cda4368e0b66bd",
+      "sha256": "7bf015554ea4739088c6fe149dcc9d04680359e1e8f317c2eee49bdb0f7ef58c",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09 inline schedule editor: daily/weekly day selection, no-write draft cancellation, exact reviewed cron payload. ScheduledTaskControls covers bounded day sets and retained owner intent. Month/interval cron remains unmodified. CSS has no scheduling authority."
+      "integrationReview": "2026-11-11 Home entry resets carousel position without resetting manual swipes. Shared bottom-sheet marker keeps sheet surface at the phone bottom and leaves dock clearance inside its padding. Anchored menus keep their original positioning. Full native acceptance remains separate."
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
@@ -22838,8 +22838,9 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "88000bf57ccc84ed5e762d5e87fa43513f1d1f9da3d1733a5b55fde3d227d64a",
-      "stateAnchors": []
+      "sha256": "865902dc786b5d253fdad850a837f793286cd8adbe16c0f86a312dcbf6ef23f3",
+      "stateAnchors": [],
+      "integrationReview": "2026-11-11 Home entry resets carousel position without resetting manual swipes. Shared bottom-sheet marker keeps sheet surface at the phone bottom and leaves dock clearance inside its padding. Anchored menus keep their original positioning. Full native acceptance remains separate."
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
@@ -32511,9 +32512,9 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "246145cd2ac9f2a3e7d29dd6f31e864664388a974a0a9378b8fdbc0957da97e7",
+      "sha256": "91407c3e4750992228008724938bb9b796d1f2cad607cf1b60cdee9e62ab25b3",
       "stateAnchors": [],
-      "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately."
+      "integrationReview": "2026-11-11 Home entry resets carousel position without resetting manual swipes. Shared bottom-sheet marker keeps sheet surface at the phone bottom and leaves dock clearance inside its padding. Anchored menus keep their original positioning. Full native acceptance remains separate."
     },
     {
       "path": "apps/app/src/prototype/photo-library-adapter.ts",
@@ -42046,7 +42047,7 @@
     },
     {
       "path": "apps/app/src/runtime/inline-modal.ts",
-      "sha256": "ec313b1d338f9d4ec8beb12ec2b6b02fa837bb59db75d3100dbbbd80926420b8",
+      "sha256": "2f7b66da4038a01487928e87eb34552ff11c145cc5d75acdc204db55d0dab85b",
       "models": [
         "ShellNavigation",
         "ModalScrimOwnership"
@@ -42139,7 +42140,7 @@
           "text": "const changed=()=>{if(displaced())stop();};"
         }
       ],
-      "integrationReview": "2026-11-09 image preview covers the assistant as an opaque modal. Default inline dialogs retain existing assistant behavior. Image zoom/pan stays local to the viewer and is discarded on close; draft and attachment are retained. ModalScrimOwnership image scenario and browser pointer/layout tests qualify this scope.",
+      "integrationReview": "2026-11-11 Home entry resets carousel position without resetting manual swipes. Shared bottom-sheet marker keeps sheet surface at the phone bottom and leaves dock clearance inside its padding. Anchored menus keep their original positioning. Full native acceptance remains separate.",
       "reviewStatus": "state-audit-required"
     },
     {

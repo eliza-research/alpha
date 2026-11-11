@@ -339,7 +339,9 @@
       "preferenceReadbackTest",
       "emptyWidgetsHiddenTest",
       "populatedWidgetsShownTest",
-      "disconnectedMailHiddenTest"
+      "disconnectedMailHiddenTest",
+      "returnHomeShowsFirstWidgetTest",
+      "widgetRefreshKeepsSwipeTest"
     ],
     "sources": [
       "apps/app/src/runtime/canvas-geometry.ts",

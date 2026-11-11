@@ -111,6 +111,11 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     launcher.clearError();
     for (let step = 0; step < Math.abs(to - from); step++) launcher.moveFavorite(app, to > from ? 1 : -1);
   };
+  const showFirstWidget = (self: any) => requestAnimationFrame(() => {
+    if (owner !== self || self.S().view || self.S().drawer) return;
+    const cards = document.querySelector<HTMLElement>('[data-mobile-shell-cards]');
+    if (cards) cards.scrollLeft = 0;
+  });
   // Each edit starts without the last one's error; a failed save shows in the edit bar.
   const remove = (key: string) => { const app = installedApp(key); if (app && launcher.isFavorite(app)) { launcher.clearError(); launcher.toggleFavorite(app); } };
 
@@ -120,6 +125,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     if (inventory) stop = shell.observe({follow: options.follow});
     const result = mount?.apply(this, args);
     if (inventory) shell.prepareHome();
+    showFirstWidget(this);
     return result;
   };
   p.componentWillUnmount = function (...args: any[]) {
@@ -142,9 +148,11 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       if (!above && S.homeAdd) return this.setState({homeAdd: false});
       if (!above && S.homeEdit && !S.drawer) { endDrag(); return this.setState({homeEdit: false}); }
     }
-    return back?.apply(this, args);
+    const result = back?.apply(this, args);
+    if (S.view || S.drawer) showFirstWidget(this);
+    return result;
   };
-  p.goHome = function (...args: any[]) { const result = goHome?.apply(this, args); closeEdit(this); return result; };
+  p.goHome = function (...args: any[]) { const result = goHome?.apply(this, args); closeEdit(this); showFirstWidget(this); return result; };
   // Opening a view (a tap, the agent or a notification) ends Home edit mode.
   p.openView = function (...args: any[]) { closeEdit(this); return openView?.apply(this, args); };
   p.openAllApps = function () {

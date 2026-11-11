@@ -53,6 +53,7 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
  * line clamp alone, and the card widens with the measured text scale (runtime/text-scale.ts) up
  * to the width of the screen so an ordinary word of the title still fits on one line. */
 [data-alpha-home-layout] { --alpha-card-scale:clamp(1,var(--alpha-text-scale,1),1.3); }
+.home-card-row { overflow-anchor:none; }
 /* The shared mobile shell's app grid drops a column when its labels stop fitting the measured text size. */
 [data-alpha-layer="home"] { --mobile-shell-text-scale:var(--alpha-text-scale,1); }
 .home-calendar-card { display:grid; grid-template-rows:auto minmax(0,1fr); gap:12px; text-align:left; width:min(calc(280px * var(--alpha-card-scale,1)),100%); min-height:196px; }
@@ -898,3 +899,12 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
 .notes-folder-sheet input{width:100%;box-sizing:border-box;background:var(--s2);border:0;border-radius:16px;padding:16px;color:var(--fg);font:inherit}
 .notes-folder-submit{display:flex;align-items:center;justify-content:center;text-align:center;width:100%;min-height:48px;margin-top:16px;border-radius:24px;background:var(--fg);color:var(--bg);font-weight:600}
 .notes-folder-submit:disabled{opacity:.35}
+
+/* Bottom sheets fill the phone edge; content clears the persistent assistant. */
+[data-alpha-popup] [role="dialog"][data-alpha-bottom-sheet] {
+  bottom:0!important;
+  max-height:calc(100% - 24px)!important;
+  padding-bottom:calc(var(--alpha-dock-reserve,108px) + 24px)!important;
+  border-bottom-left-radius:0!important;
+  border-bottom-right-radius:0!important;
+}
