@@ -34,6 +34,80 @@ test('encoded video and thumbnail use the zoomed crop and release the processing
   await c.stopPreview();return {pixels,thumbnail,released:(window as any).controlStreams.every((s:MediaStream)=>s.getTracks().every(t=>t.readyState==='ended'))};
  });expect(result.pixels[0][1]).toBeGreaterThan(220);expect(result.pixels[1][2]).toBeGreaterThan(220);expect(result.thumbnail[0][1]).toBeGreaterThan(230);expect(result.thumbnail[1][2]).toBeGreaterThan(230);expect(result.released).toBe(true);
 });
+for (const mime of ['video/webm;codecs=vp8', 'video/mp4;codecs=avc1.42001f']) {
+ test(`a capped ${mime.split(';')[0]} saves the retained frames and measured duration`, async ({page}) => {
+  test.skip(!await page.evaluate(type => MediaRecorder.isTypeSupported(type), mime), 'Browser recorder lacks this codec');
+  const result = await page.evaluate(async type => {
+   const {browserCamera, browserPhotoLibrary} = await import('/src/prototype/browser-camera.ts');
+   const source = document.querySelector<HTMLVideoElement>('[data-alpha-camera="viewfinder"] video')!;
+   const Recorder = window.MediaRecorder;
+   const encoder = new Recorder(source.srcObject as MediaStream, {mimeType: type});
+   const chunks: Blob[] = [];
+   encoder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+   const encoded = new Promise<void>(resolve => { encoder.onstop = () => resolve(); });
+   encoder.start(150);
+   await new Promise(resolve => setTimeout(resolve, 1250));
+   encoder.stop();
+   await encoded;
+   const [prefix, overflow] = chunks;
+   if (!prefix || !overflow) throw Error('The browser recorder did not emit a prefix and a terminal chunk');
+
+   // Use the real encoder bytes with a controlled delivery order. Reaching the
+   // exact cap requests stop, then the encoder's nonempty terminal chunk arrives.
+   let deliver!: () => void;
+   class CappedRecorder {
+    state: RecordingState = 'inactive';
+    mimeType = type;
+    ondataavailable?: (event: BlobEvent) => void;
+    onstop?: () => void;
+    start() {
+     this.state = 'recording';
+     deliver = () => this.ondataavailable?.(new BlobEvent('dataavailable', {data: prefix}));
+    }
+    stop() {
+     if (this.state === 'inactive') return;
+     this.state = 'inactive';
+     queueMicrotask(() => {
+      this.ondataavailable?.(new BlobEvent('dataavailable', {data: overflow}));
+      this.onstop?.();
+     });
+    }
+   }
+   window.MediaRecorder = CappedRecorder as unknown as typeof MediaRecorder;
+   try {
+    await browserCamera.startRecording({audio: false, maxDuration: 5, maxFileSize: prefix.size});
+    await new Promise(resolve => setTimeout(resolve, 650));
+    deliver();
+    const result = await browserCamera.stopRecording();
+    const row = await browserPhotoLibrary.read({id: (await browserPhotoLibrary.list()).items.find(item => item.kind === 'video')!.id});
+    const playback = document.createElement('video');
+    playback.preload = 'auto';
+    const decoded = new Promise<void>((resolve, reject) => {
+     const deadline = setTimeout(() => reject(Error('Saved prefix did not decode')), 5000);
+     playback.onloadeddata = () => { clearTimeout(deadline); resolve(); };
+     playback.onerror = () => { clearTimeout(deadline); reject(Error('Saved prefix was unreadable')); };
+    });
+    playback.src = row.path!;
+    try {
+     await decoded;
+     return {size: result.fileSize, prefixSize: prefix.size, duration: result.duration, storedDuration: row.duration, decodedWidth: playback.videoWidth};
+    } finally {
+     playback.removeAttribute('src');
+     playback.load();
+    }
+   } finally {
+    window.MediaRecorder = Recorder;
+    await browserCamera.stopPreview();
+   }
+  }, mime);
+  expect(result.size).toBe(result.prefixSize);
+  expect(result.decodedWidth).toBeGreaterThan(0);
+  expect(result.duration).toBeGreaterThan(0);
+  expect(result.duration).toBeLessThan(0.45);
+  expect(result.storedDuration).toBe(result.duration);
+ });
+}
+
 test('flash requires a confirmed torch capability and never applies a brightness filter',async({page})=>{
  const result=await page.evaluate(async()=>{
   const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');const video=document.querySelector('[data-alpha-camera="viewfinder"] video') as HTMLVideoElement,track=(video.srcObject as MediaStream).getVideoTracks()[0];let unavailable=false;

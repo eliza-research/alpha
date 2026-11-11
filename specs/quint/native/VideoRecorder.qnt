@@ -4,13 +4,13 @@
 module VideoRecorder {
   pure val Max = 2
   type State = {
-    session: str, generation: int, bytes: int, chunks: int, full: bool, settles: int, cause: str,
+    session: str, generation: int, bytes: int, chunks: int, full: bool, truncated: bool, prefix: str, settles: int, cause: str,
     adapter: str, finalizing: bool, leaving: bool, previewStopped: bool,
     rows: int, resolved: int, savedGeneration: int, settledGeneration: int, failures: int
   }
   var s: State
   action init = s' = {
-    session: "none", generation: 0, bytes: 0, chunks: 0, full: false, settles: 0, cause: "none",
+    session: "none", generation: 0, bytes: 0, chunks: 0, full: false, truncated: false, prefix: "unread", settles: 0, cause: "none",
     adapter: "idle", finalizing: false, leaving: false, previewStopped: false,
     rows: 0, resolved: 0, savedGeneration: -1, settledGeneration: -1, failures: 0
   }
@@ -25,7 +25,7 @@ module VideoRecorder {
     s.adapter == "starting",
     s' = if (ok and not(s.previewStopped))
         { ...s, adapter: "recording", session: "recording", generation: s.generation + 1,
-          bytes: 0, chunks: 0, full: false, settles: 0, cause: "none" }
+          bytes: 0, chunks: 0, full: false, truncated: false, prefix: "unread", settles: 0, cause: "none" }
       else { ...s, adapter: "idle" }
   }
   // A chunk that would pass the limit is left out and recording stops with what was collected.
@@ -33,7 +33,8 @@ module VideoRecorder {
   action chunk(units: int): bool = all {
     s.session.in(Set("recording", "stopping")), Set(1, 2, 3).contains(units),
     val admitted = admit(s.bytes, units, Max)
-    s' = if (s.full) s else { ...s, bytes: admitted.bytes, chunks: if (admitted.keep) s.chunks + 1 else s.chunks,
+    s' = if (s.full) { ...s, truncated: true } else { ...s, bytes: admitted.bytes,
+      chunks: if (admitted.keep) s.chunks + 1 else s.chunks, truncated: not(admitted.keep),
       full: admitted.stop, session: if (admitted.stop) "stopping" else s.session }
   }
   // The duration limit or an ended camera track stops the recorder.
@@ -43,7 +44,12 @@ module VideoRecorder {
       cause: cause, chunks: if (ok) v.chunks else 0, settledGeneration: v.generation,
       resolved: if (ok) v.resolved + 1 else v.resolved }
   action recorderStopped = all { s.session == "stopping",
-    s' = if (s.bytes == 0) settled(s, false, "empty") else settled(s, true, "none") }
+    s' = if (s.bytes == 0) settled(s, false, "empty")
+      else if (s.truncated) { ...s, session: "reading-prefix" }
+      else settled(s, true, "none") }
+  action prefixRead(ok: bool): bool = all { s.session == "reading-prefix",
+    s' = settled({ ...s, prefix: if (ok) "verified" else "invalid" },
+      ok, if (ok) "none" else "prefix-invalid") }
   action recorderError = all { s.session.in(Set("recording", "stopping")), s' = settled(s, false, "recorder-error") }
   action stopDeadline = all { s.session == "stopping", s' = settled(s, false, "deadline") }
   // The shutter again, back, the recording poll or leaving the view finalises once.
@@ -65,35 +71,45 @@ module VideoRecorder {
   action stopPreview = all { s.leaving, s.adapter != "recording", not(s.finalizing), not(s.previewStopped),
     s' = { ...s, previewStopped: true,
       session: if (s.session == "none") "none" else "cancelled",
-      settles: if (s.session.in(Set("recording", "stopping"))) s.settles + 1 else s.settles } }
+      settles: if (s.session.in(Set("recording", "stopping", "reading-prefix"))) s.settles + 1 else s.settles } }
   action returnToCamera = all { s.previewStopped, s.adapter == "idle",
     s' = { ...s, leaving: false, previewStopped: false } }
   action step = {
     nondet units = Set(1, 2, 3).oneOf()
     nondet ok = Bool.oneOf()
-    any { shutter, startResolved(ok), chunk(units), limitOrTrackEnded, recorderStopped, recorderError,
+    any { shutter, startResolved(ok), chunk(units), limitOrTrackEnded, recorderStopped, recorderError, prefixRead(ok),
       stopDeadline, finish, finalized, leave, finishOnLeave, stopPreview, returnToCamera, s' = s }
   }
-  val LimitTruncatesNotDiscards = s.cause.in(Set("none", "empty", "recorder-error", "deadline"))
+  val LimitTruncatesNotDiscards = s.cause.in(Set("none", "empty", "recorder-error", "deadline", "prefix-invalid"))
     and (s.session == "saved-pending" implies s.chunks > 0 and s.bytes > 0)
     and (s.cause == "empty" implies s.bytes == 0)
+  val VerifiedRetainedPrefix =
+    (s.session == "reading-prefix" implies s.truncated and s.bytes > 0 and s.settles == 0)
+    and (s.session == "saved-pending" and s.truncated implies s.prefix == "verified")
+    and (s.cause == "prefix-invalid" implies s.truncated and s.prefix == "invalid")
   val WithinSizeLimit = s.bytes <= Max and (s.full implies s.session != "recording")
   val SettledExactlyOnce = s.settles.in(Set(0, 1))
   val CancelledSessionNeverWritesRow = s.rows <= s.resolved and (s.rows > 0 implies s.savedGeneration != -1)
   val LeaveFinalisesBeforePreviewStop = s.previewStopped implies s.adapter != "recording" and not(s.finalizing)
   val OneFinalisation = s.finalizing implies s.adapter == "idle"
-  val safety = LimitTruncatesNotDiscards and WithinSizeLimit and SettledExactlyOnce
+  val safety = LimitTruncatesNotDiscards and VerifiedRetainedPrefix and WithinSizeLimit and SettledExactlyOnce
     and CancelledSessionNeverWritesRow and LeaveFinalisesBeforePreviewStop and OneFinalisation
   val LimitReachedWithVideoWitness = s.full and s.bytes > 0 and s.session == "saved-pending"
   val OverflowChunkDroppedWitness = s.full and s.bytes == 1 and s.chunks == 1
+  val InvalidPrefixWitness = s.session == "failed-pending" and s.cause == "prefix-invalid"
   val SavedRowWitness = s.rows > 0
   val LeavingWhileRecordingWitness = s.leaving and s.finalizing and not(s.previewStopped)
   val FailedFinalisationWitness = s.failures > 0
   // The size limit is reached mid-recording: the video collected so far is saved.
   run limitReachedStillSavesTest = init.then(shutter).then(startResolved(true)).then(chunk(1)).then(chunk(2))
     .expect(s.full and s.bytes == 1 and s.chunks == 1 and s.session == "stopping" and safety)
-    .then(chunk(1)).expect(s.bytes == 1 and safety).then(recorderStopped).then(finish).then(finalized)
+    .then(chunk(1)).expect(s.bytes == 1 and safety).then(recorderStopped)
+    .expect(s.session == "reading-prefix" and s.rows == 0 and safety)
+    .then(prefixRead(true)).then(finish).then(finalized)
     .expect(s.rows == 1 and s.failures == 0 and safety)
+  run unreadablePrefixDoesNotSaveTest = init.then(shutter).then(startResolved(true)).then(chunk(1)).then(chunk(2))
+    .then(recorderStopped).then(finish).then(prefixRead(false)).then(finalized)
+    .expect(s.rows == 0 and s.failures == 1 and s.cause == "prefix-invalid" and safety)
   run exactLimitKeepsChunkTest = init.then(shutter).then(startResolved(true)).then(chunk(2))
     .expect(s.full and s.bytes == 2 and s.chunks == 1 and safety).then(recorderStopped)
     .expect(s.session == "saved-pending" and safety)
