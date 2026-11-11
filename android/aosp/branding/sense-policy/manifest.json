@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "project": "build/make",
+  "revision": "5ce6f787337d0223710bf7d4a16dbe6d2a35f777",
+  "baselineLockSha256": "760a7184c62c93aeac40595cf5733f8089aa16ccd28eb7a5f5ce41d4dae741d3",
+  "patch": "alpha-sense-policy.patch",
+  "patchSha256": "32f7104abbe9395829f821847d4577a94f93053e496545e82759d710f5e9086f",
+  "purpose": "Add the staged private system_ext SELinux policy to the Alpha Pixel 10a board configuration when the admitted listener is present.",
+  "files": [
+    {
+      "path": "core/board_config.mk",
+      "beforeSha256": "b9652a852f5fe5bbe759be18d9c4a67a4859463c71436cdcfa9af18eeffaae39",
+      "afterSha256": "76ae8a8f904391fa85058ab7e6a38f7b731ab32b4bea458e09b8f830333331a6"
+    }
+  ]
+}

@@ -109,7 +109,7 @@ export function honestTiles(tiles: ShadeTile[], facts: TileFacts, options: { fla
 // return-gate:begin (dependency-free; test/comms-settings.test.mjs)
 /** One run per return to the app. Android reports a single return as visibilitychange, focus and
  * appResumed together, so triggers inside the window after a run are ignored until the app is left. */
-export function returnGate(windowMs = 250, now: () => number = () => Date.now()) {
+export function returnGate(windowMs = 250, now: () => number = () => performance.now()) {
   let last = -Infinity;
   return {
     returned(): boolean { const at = now(); if (at - last < windowMs) return false; last = at; return true; },
@@ -120,10 +120,18 @@ export function returnGate(windowMs = 250, now: () => number = () => Date.now())
 /** Run each time the owner comes back to the app or its window regains focus (returning from an
  * Android page, or closing Android's own quick settings), so a changed switch is read again. */
 export function watchReturnToApp(run: () => void): () => void {
-  const gate = returnGate(), check = () => { if (document.hidden) gate.left(); else if (gate.returned()) run(); };
+  const gate = returnGate();
+  let watching = true;
+  const check = () => { if (!watching) return; if (document.hidden) gate.left(); else if (gate.returned()) run(); };
   document.addEventListener('visibilitychange', check); window.addEventListener('focus', check);
   const handle = DailyApps.addListener('appResumed', check).catch(() => null);
-  return () => { document.removeEventListener('visibilitychange', check); window.removeEventListener('focus', check); void handle.then(listener => listener?.remove()); };
+  return () => {
+    if (!watching) return;
+    watching = false;
+    document.removeEventListener('visibilitychange', check);
+    window.removeEventListener('focus', check);
+    void handle.then(listener => listener?.remove()).catch(() => {});
+  };
 }
 /** Keep the prototype's render tree and local navigation; replace simulated effects.
  * Install once before mounting. Component is accepted for the extraction seam but

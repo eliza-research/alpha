@@ -56,9 +56,10 @@ test('a cold listener wake is bound to Alpha native owner state, never renderer 
  assert.match(shared,/if \(!waitingOwner\.equals\(admittedOwner\(\)\)\) \{ clear\(\); return; \}/);
  // The assist surface still records only Android caller identity; no extra or deep link reaches it.
  const assist=strip(fs.readFileSync(path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaAssistActivity.java'),'utf8'));
- // An ordinary assist records the caller; a protected Power entry records no caller package.
+ // Only the qualified Sense companion can give ordinary Assist a wake origin.
  assert.match(assist,/new ai\.eliza\.plugins\.system\.SenseListenerClient\(this\);/);
- assert.match(assist,/sense\.recordInvocation\(isProtectedPowerEntry\(\) \? null : caller\);/);
+ assert.match(assist,/!isProtectedPowerEntry\(\) && AlphaSenseAdmission\.listenerCaller\(this, caller, callerUid\)/);
+ assert.match(assist,/sense\.recordInvocation\(listener \? caller : null\);/);
  assert.doesNotMatch(assist,/getStringExtra|getData\(\)|getExtras\(\)/);
 });
 test('press-and-hold power starts voice only through SystemUI identity that Android reports',()=>{
@@ -66,10 +67,13 @@ test('press-and-hold power starts voice only through SystemUI identity that Andr
  // The image routes press-and-hold power to the assistant role holder (Alpha's ACTION_ASSIST surface).
  const overlay=fs.readFileSync(path.join(root,'vendor/eliza/packages/os/android/sense/config.xml'),'utf8');
  assert.match(overlay,/<integer name="config_longPressOnPowerBehavior">5<\/integer>/);
- // Alpha records only Android's caller APIs: the launching package on create and ComponentCaller on new intents.
+ // Both Android caller APIs supply the package and UID that the product admission checks.
  const assist=strip(fs.readFileSync(path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaAssistActivity.java'),'utf8'));
- assert.match(assist,/state == null && Build\.VERSION\.SDK_INT >= Build\.VERSION_CODES\.UPSIDE_DOWN_CAKE \? getLaunchedFromPackage\(\) : null/);
+ assert.match(assist,/boolean freshCaller = state == null && Build\.VERSION\.SDK_INT >= Build\.VERSION_CODES\.UPSIDE_DOWN_CAKE/);
+ assert.match(assist,/cleanIntent\(freshCaller \? getLaunchedFromPackage\(\) : null, freshCaller \? getLaunchedFromUid\(\) : -1, false\)/);
  assert.match(assist,/newIntentCaller = caller == null \? null : caller\.getPackage\(\);/);
+ assert.match(assist,/newIntentCallerUid = caller == null \? -1 : caller\.getUid\(\);/);
+ assert.match(assist,/if \(AlphaSenseAdmission\.protectedPowerCaller\(this, caller, callerUid\)\) sense\.recordProtectedPower\(\);/);
  // Shared Sense marks a system gesture only for the platform-signed system UI; the shared renderer policy starts voice for it.
  const client=strip(fs.readFileSync(path.join(root,'vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/SenseListenerClient.java'),'utf8'));
  assert.match(client,/SYSTEM_UI_PACKAGE = "com\.android\.systemui"/);
