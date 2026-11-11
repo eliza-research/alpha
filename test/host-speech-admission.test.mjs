@@ -29,7 +29,7 @@ test('host asset manifest matches the current shared worker pins: Paradee, optio
  // No package script names the retired Kokoro or Whisper speech paths.
  assert.doesNotMatch(readFileSync(new URL('../package.json',import.meta.url),'utf8'),/kokoro|whisper/i);
 });
-test('embedding source admission binds the current package and rejects legacy JNI identity',()=>{
+test('embedding source admission binds the current package and rejects another JNI identity',()=>{
  const source=readFileSync(new URL('../scripts/combined-agent-source.ts',import.meta.url),'utf8');
  const reviewed='6337fd4c4bd071c17235986344d552d4036e177b';
  assert.ok(source.includes("'plugins/plugin-local-inference/native/llama.cpp':'"+reviewed+"'"));
@@ -41,7 +41,7 @@ test('embedding source admission binds the current package and rejects legacy JN
  assert.equal(qualification.identity,appId);
  assert.equal(qualification.jniBinding.className,appId.replaceAll('.','/')+'/ElizaVoiceNative');
  assert.doesNotThrow(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}));
- const retainedAppId=['ai','elizaresearch','alphaphone'].join('.');
+ const retainedAppId='ai.example.other';
  assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,identity:retainedAppId}),/Embedding host source or identity admission changed/);
  const retainedBinding={...qualification.jniBinding,className:retainedAppId.replaceAll('.','/')+'/ElizaVoiceNative'};
  assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,jniBinding:retainedBinding}),/Native registration identity qualification missing or changed/);

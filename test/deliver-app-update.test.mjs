@@ -9,8 +9,8 @@ import {deliver, publicObject} from '../scripts/deliver-app-update.ts';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const stableTag = 'app-stable-alphacompute';
 const legacyTag = 'app-stable';
-const manifestUrl = `https://github.com/eliza-research/alpha/releases/download/${stableTag}/alpha-update-stable.json`;
-const legacyManifestUrl = `https://github.com/eliza-research/alpha/releases/download/${legacyTag}/alpha-update-stable.json`;
+const manifestUrl = `https://github.com/alphacompute/alpha/releases/download/${stableTag}/alpha-update-stable.json`;
+const legacyManifestUrl = `https://github.com/alphacompute/alpha/releases/download/${legacyTag}/alpha-update-stable.json`;
 const source = '1'.repeat(40);
 const object = bytes => ({bytes: Buffer.from(bytes), size: Buffer.byteLength(bytes), sha256: sha(bytes)});
 function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], isPrivate = false, repoId = 1396333361, releaseMissing = false, apkWrong = false, pointerRace = false, manifestInvisible = false} = {}) {
@@ -36,8 +36,8 @@ function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], 
     run(args) {
       events.push(args.slice(0,2).join(' '));
       if (args[0] === 'api') {
-        assert.deepEqual(args,['api','repos/eliza-research/alpha']);
-        return JSON.stringify({id:repoId,full_name:'eliza-research/alpha',owner:{id:314117943},private:isPrivate});
+        assert.deepEqual(args,['api','repos/alphacompute/alpha']);
+        return JSON.stringify({id:repoId,full_name:'alphacompute/alpha',private:isPrivate});
       }
       if (args[1] === 'view') {
         if (args[2] === legacyTag) return legacyPointer || legacyAssets.length ? JSON.stringify({isDraft:false,assets:legacyAssets}) : null;

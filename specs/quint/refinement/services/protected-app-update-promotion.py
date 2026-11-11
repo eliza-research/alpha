@@ -107,7 +107,7 @@ def campaign(scratch, signing_commit, name, schedule):
     trace = {"name": name, "expect": {"s": blank()}, "steps": []}
     plan = copy.deepcopy(fixture.plan)
     repo = producer.REPOSITORY
-    identity = {"id": producer.REPOSITORY_ID, "full_name": repo, "owner": {"id": producer.OWNER_ID}}
+    identity = {"id": producer.REPOSITORY_ID, "full_name": repo}
     prefix = f"repos/{repo}"
     number, artifact = "171", "202"
     stage = fixture.directory / "unsigned"
@@ -187,7 +187,7 @@ def campaign(scratch, signing_commit, name, schedule):
         result = subprocess.run(args, cwd=scratch, capture_output=True, timeout=30, env={
             "PATH": str(scratch / "closed-bin") + os.pathsep + os.environ["PATH"],
             "GITHUB_SHA": signing_commit, "GITHUB_REPOSITORY": repo, "GITHUB_REF": "refs/heads/main",
-            "GITHUB_REPOSITORY_ID": str(producer.REPOSITORY_ID), "GITHUB_REPOSITORY_OWNER_ID": str(producer.OWNER_ID),
+            "GITHUB_REPOSITORY_ID": str(producer.REPOSITORY_ID),
             "RUNNER_TEMP": str(fixture.directory), "GITHUB_OUTPUT": str(output),
             "SIGNING_PLAN": plan_bytes.decode(), "GH_FIXTURE": str(endpoints_path),
         })

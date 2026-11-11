@@ -91,7 +91,7 @@ test('Alpha stays nonprivileged and reads one configured HTTPS manifest from its
  const url=JSON.parse(readFileSync(join(root,'app.config.json'),'utf8')).updateManifestUrl;
  assert.equal(new URL(url).protocol,'https:');
  // Not releases/latest: any newer release of the repository without the manifest would answer 404 and withdraw a valid offer.
- assert.equal(url,'https://github.com/eliza-research/alpha/releases/download/app-stable-alphacompute/alpha-update-stable.json');
+ assert.equal(url,'https://github.com/alphacompute/alpha/releases/download/app-stable-alphacompute/alpha-update-stable.json');
  // Reads enforce a soft download ceiling rather than interrupting a blocked read.
  assert.ok(plugin.includes('Soft ceiling on one update download'));
  assert.match(readFileSync(join(root,'android/app/product.gradle'),'utf8'),/buildConfigField 'String', 'ALPHA_UPDATE_MANIFEST_URL', "\\"\$\{updateManifestUrl\}\\""/);

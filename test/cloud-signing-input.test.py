@@ -192,7 +192,7 @@ class CloudSigningInputTest(unittest.TestCase):
                 self.write_candidate(change_receipt=lambda receipt: receipt.update({field: value}))
                 with self.assertRaises(ValueError):
                     ADMISSION.admit(self.archive, self.pin)
-        for field, value in (("attempt", "1"), ("packageName", ADMISSION.PACKAGE), ("voiceRecordSha256", "0" * 64)):
+        for field, value in (("attempt", "1"), ("packageName", "ai.example.other"), ("voiceRecordSha256", "0" * 64)):
             with self.subTest(field=field):
                 self.write_candidate(change_native=lambda native: native.update({field: value}))
                 with self.assertRaises(ValueError):
@@ -416,7 +416,7 @@ class PrivateProducerSourceReviewTest(unittest.TestCase):
             env = {**os.environ, "PATH": str(root / "bin") + os.pathsep + os.environ["PATH"],
                    "GITHUB_REF": "refs/heads/main", "GITHUB_SHA": "5" * 40,
                    "GITHUB_REPOSITORY": PRODUCER.REPOSITORY, "GITHUB_REPOSITORY_ID": str(PRODUCER.REPOSITORY_ID),
-                   "GITHUB_REPOSITORY_OWNER_ID": str(PRODUCER.OWNER_ID), "RUNNER_TEMP": directory,
+                   "RUNNER_TEMP": directory,
                    "GITHUB_OUTPUT": str(root / "output"), "SIGNING_PLAN": json.dumps(plan),
                    "TEST_COMPARISON": json.dumps(comparison)}
             for field in (None, "approval", *fields):

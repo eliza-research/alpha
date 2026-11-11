@@ -49,7 +49,7 @@ Try Alpha in your browser. You need [Git](https://git-scm.com) and
 `.nvmrc`). No Android tools and no account are required.
 
 ```bash
-git clone --recurse-submodules https://github.com/eliza-research/alpha.git
+git clone --recurse-submodules https://github.com/alphacompute/alpha.git
 ```
 
 ```bash

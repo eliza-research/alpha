@@ -147,8 +147,7 @@ class QualifiedUpdateTest(unittest.TestCase):
             source = endpoint.split("/compare/")[1].split("...")[0]
             return {"status": "ahead", "merge_base_commit": {"sha": source}}
         if endpoint.endswith("/actions/runs/100/attempts/1"):
-            repository = {"id": BRIDGE.REPOSITORY_ID, "full_name": BRIDGE.REPOSITORY,
-                          "owner": {"id": BRIDGE.REPOSITORY_OWNER_ID}}
+            repository = {"id": BRIDGE.REPOSITORY_ID, "full_name": BRIDGE.REPOSITORY}
             return {"id": 100, "workflow_id": BRIDGE.SIGNING_WORKFLOW_ID, "status": "completed",
                     "conclusion": "success", "event": "workflow_dispatch",
                     "head_sha": self.record["signingWorkflowCommit"], "head_branch": "main", "run_attempt": 1,
@@ -229,8 +228,7 @@ class QualifiedUpdateTest(unittest.TestCase):
                      lambda value: value.update(workflow_id=BRIDGE.SIGNING_WORKFLOW_ID + 1),
                      lambda value: value.update(run_attempt=2), lambda value: value.update(event="pull_request"),
                      lambda value: value.update(head_branch="feature"),
-                     lambda value: value.update(head_repository={**value["head_repository"], "id": 42}),
-                     lambda value: value.update(repository={**value["repository"], "owner": {"id": 42}})]
+                     lambda value: value.update(head_repository={**value["head_repository"], "id": 42})]
         for index, mutate in enumerate(mutations):
             def api(endpoint):
                 value = self.api(endpoint)

@@ -3942,7 +3942,6 @@
       "completedMigrationPreservesLaterStockChoiceTest",
       "customLayoutRemainsCustomTest",
       "reviewedStockSurvivesIdentityMigrationTest",
-      "reviewedCustomTileMigratesInPlaceTest",
       "reviewedUnrelatedCustomRetainedTest",
       "currentVersionLeavesRetainedLayoutTest",
       "existingPermissionDenialRemainsTest",

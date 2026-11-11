@@ -192,7 +192,7 @@ export function analyse(root: string, runner: Runner, suite: Suite) {
 }
 
 /** Commands for one exact commit; printed, never executed. */
-export function dispatchPlan(sha: string | undefined, { repo = "eliza-research/alphaphone", gh = "gh" } = {}) {
+export function dispatchPlan(sha: string | undefined, { repo = "alphacompute/alphaphone", gh = "gh" } = {}) {
   if (!sha || !/^[0-9a-f]{40}$/.test(sha)) throw new Error("--sha needs the full 40-character commit");
   const ref = `ci/h31-${sha.slice(0, 12)}`;
   const R = `-R ${repo}`;

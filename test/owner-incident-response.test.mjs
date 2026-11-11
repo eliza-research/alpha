@@ -21,8 +21,8 @@ test('the IOC file transcribes the cleanup record', () => {
   assert.equal(Object.keys(iocs.ciRunsOnForgedCommits).length, 18);
   assert.equal(Object.values(iocs.ciRunsOnForgedCommits).reduce((a, b) => a + b, 0), 117);
   assert.equal(iocs.ciRunsOnForgedCommits.alphaphone, 6);
-  assert.deepEqual(forgedPrefixes(iocs, 'eliza-research/alphaphone').sort(), ['0cefd6e47', '131cd0e63', '39ef59401', '61d293f61', 'cc3f7a709']);
-  assert.equal(fullName(iocs, 'alphaphone'), 'eliza-research/alphaphone');
+  assert.deepEqual(forgedPrefixes(iocs, 'alphacompute/alphaphone').sort(), ['0cefd6e47', '131cd0e63', '39ef59401', '61d293f61', 'cc3f7a709']);
+  assert.equal(fullName(iocs, 'alphaphone'), 'alphacompute/alphaphone');
   assert.equal(fullName(iocs, 'vera'), 'AlphaCompute/vera');
   for (const row of iocs.branches) for (const key of ['preAttack', 'forged']) assert.match(row[key], /^[0-9a-f]{9}$/);
 });
