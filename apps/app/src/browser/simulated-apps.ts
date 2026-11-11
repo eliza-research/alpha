@@ -43,7 +43,7 @@ function installDevelopmentApps(Component:any,views:Bag,original:Bag){
  const open=Component.prototype.openView;
  Component.prototype.openView=function(name:string,...args:any[]){if(simulatorNeedsRecovery(name)){showSimulatorRecovery();return;}return open.call(this,name,...args);};
  const set=Component.prototype.vset;
- Component.prototype.vset=function(name:string,patch:Bag){
+ Component.prototype.vset=function(name:string,patch:Bag,options?:Bag){
   if(simulatorNeedsRecovery(name)){showSimulatorRecovery();throw Error('Saved app data needs recovery.');}
   if(name==='inbox'&&Array.isArray(patch.mails)){const known=new Set(this.vget('inbox').mails.map((mail:Bag)=>String(mail.id)));patch={...patch,mails:patch.mails.map((mail:Bag)=>known.has(String(mail.id))?mail:{...mail,receivedAt:Number.isFinite(mail.receivedAt)?mail.receivedAt:Date.now()})};}
   const fields=views[name]?.persist||[];
@@ -53,6 +53,6 @@ function installDevelopmentApps(Component:any,views:Bag,original:Bag){
     try{writer.write('alpha.dev.app.'+name,JSON.stringify(stored));}
     catch(error){this.toast(error instanceof Error&&/development|Saved app data changed/.test(error.message)?error.message:'Could not save '+views[name].title+'. Your changes are still here. Try again after freeing app storage.');throw Error('Development app save failed.');}
   }
-  const result=set.call(this,name,patch);if(name==='messages'&&patch.threads||name==='inbox'&&patch.mails||name==='workflows'&&patch.flows)queueMicrotask(()=>window.dispatchEvent(new Event('alpha:dev-app-change')));return result;
+  const result=set.call(this,name,patch,options);if(name==='messages'&&patch.threads||name==='inbox'&&patch.mails||name==='workflows'&&patch.flows)queueMicrotask(()=>window.dispatchEvent(new Event('alpha:dev-app-change')));return result;
  };
 }

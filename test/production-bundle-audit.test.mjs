@@ -20,7 +20,7 @@ function bundle(files,flags={testMocks:false}){
 const cli=(dir,...args)=>spawnSync(process.execPath,[script,dir,...args],{encoding:'utf8'});
 const escape=text=>text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const MARKERS=['demo-only-password','Development password provider','Add development provider','Proton Pass · development','10.0.2.2:47850','127.0.0.1:47850'];
-const SIMULATION_MARKERS=['Kitchen Speaker','4000 1234 5678 9017','Card scanned','Simulated payment','Memory wiped','Logs saved to Downloads','Up to date','This page is a visual prototype','Pixel 11 Pro','Powered by elizaOS ·','data-alpha-development-lock-screen'];
+const SIMULATION_MARKERS=['Kitchen Speaker','4000 1234 5678 9017','Card scanned','Simulated payment','Memory wiped','Logs saved to Downloads','Up to date','This page is a visual prototype','Pixel 11 Pro','Powered by elizaOS ·','data-alpha-development-lock-screen','Booked · ','Agent booking'];
 
 // The loop over DENYLIST below cannot see an entry being removed; this can.
 test('the denylist names the development password provider and the emulator Maps gateway',()=>{

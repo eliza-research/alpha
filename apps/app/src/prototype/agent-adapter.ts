@@ -1190,9 +1190,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     this.live = false; alphaClient.disconnect(); window.removeEventListener('alpha-back', this.backHandler); window.removeEventListener('launcher-home', this.homeHandler); window.removeEventListener('alpha-selected-context', this.selectionHandler);
     void this.assistListener?.then((l: Shell) => l?.remove()); originalUnmount.call(this);
   };
-  p.vset = function (key: string, patch: Shell, options?: {exact?: boolean;keepSelection?: boolean}) {
+  p.vset = function (key: string, patch: Shell, options?: {exact?: boolean;keepSelection?: boolean;afterCommit?: () => void}) {
     if(key==='notes'&&Object.hasOwn(patch,'list')&&this.notesSourceMode!=='legacy'){originalSet.call(this,key,{compose:false,record:false});this.toast('That note change could not be saved. Your draft is still open.');return false;}
-    if (key !== 'notes' || !patch.list) { originalSet.call(this,key,patch);return true; }
+    if (key !== 'notes' || !patch.list) { originalSet.call(this,key,patch,options);return true; }
     if(this.notesLegacyAbsent){this.toast('There are no previous notes on this phone.');return false;}
     if(this.notesAgentBusy||!!this.notesAgentRaw&&this.notesAgentRaw===this.notesStore?.raw&&this.notesRaw!==this.notesStore?.raw){this.toast('Your agent is updating Notes. Try again in a moment.');return false;}
     if (this.notesStorageFailed||!this.notesStore) {

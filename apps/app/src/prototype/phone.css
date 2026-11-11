@@ -417,6 +417,18 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
 .alpha-landscape [data-alpha-maps-sheet]{left:auto!important;width:min(440px,50%);border-radius:28px 0 0 0!important}
 .alpha-landscape [data-alpha-maps-directions]{right:auto!important;width:calc(50% - 24px);box-sizing:border-box;max-height:calc(100% - 64px);overflow-y:auto}
 
+/* A tall location card can reach the credits at large text. Put both in
+   reading order above the assistant and let the card scroll if needed. */
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-base="true"]:has([data-alpha-maps-status]) {
+  box-sizing:border-box; padding-block:174px max(130px,var(--alpha-dock-clearance,102px)); row-gap:8px;
+}
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-base="true"] [data-alpha-maps-status] {
+  position:relative!important; inset:auto!important; min-height:0; max-height:none!important; margin-inline:20px;
+}
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-base="true"]:has([data-alpha-maps-status]) > .alpha-map-credits {
+  position:relative!important; inset:auto!important; flex:none; margin-inline:12px 76px;
+}
+
 /* Guidance controls float above the measured assistant dock in portrait. */
 html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
   --alpha-maps-guidance-bottom:calc(var(--alpha-dock-clearance,102px) + 8px);

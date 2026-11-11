@@ -24,7 +24,7 @@ test('holding the side key never opens the microphone while the chat mic still w
  assert.equal(microphones,1,'the in-chat microphone remains callable');
  const template=read('apps/app/src/prototype/template.html');
  assert.doesNotMatch(template,/hold to talk/);
- assert.match(template,/<sc-if value="\{\{externalVoiceInvocation\}\}"><button aria-label="Talk to/);
+ assert.match(read('apps/app/src/prototype/development-system-surfaces.html'),/<sc-if value="\{\{externalVoiceInvocation\}\}"><button aria-label="Talk to/);
  assert.match(read('apps/app/src/main.tsx'),/if \(externalVoiceInvocationEnabled && isAndroid && assistantSurface\) installListenerInvocation/);
  assert.match(read('apps/app/src/runtime/always-on-listener.ts'),/if\(!externalVoiceInvocationEnabled \|\| !nativeListener\(\)\)return/);
  for(const name of ['AlphaAssistActivity','AlphaPowerVoiceActivity'])assert.match(read('android/app/src/main/AndroidManifest.xml'),new RegExp('<activity android:name="\\.'+name+'" android:enabled="false" android:exported="false"'));
