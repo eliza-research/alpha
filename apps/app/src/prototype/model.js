@@ -5524,10 +5524,10 @@ class Component extends DCLogic {
     var S = this.S();
     if (S.shade) return this.setState({ shade: false });
     if (this.props && this.props.assistantSurface && !S.view && S.voice === "off") return this.closeAssistant();
-    if (S.drawer && !S.view) return this.setState(this.shellNavigate({ type: "back" }));
     if (S.voice !== "off") return this.stopVoice();
-    // An open conversation lowers one detent (full, sheet, rest) before Back leaves the view.
-    if (S.chat === "full" || S.chat === "sheet") return this.setState(this.shellNavigate({ type: "back" }));
+    // Alpha's assistant floats above the Apps drawer and the current view.
+    if (S.chat === "full" || S.chat === "sheet") return this.setState(this.shellNavigate({ type: "assistant", detent: S.chat === "full" ? "sheet" : "rest" }));
+    if (S.drawer && !S.view) return this.setState(this.shellNavigate({ type: "back" }));
     // A bar raised from the pill lowers before Back leaves the view.
     if (S.chat === "input" && this.rest() === "hidden") return this.setState({ chat: "hidden" });
     if (S.view) {

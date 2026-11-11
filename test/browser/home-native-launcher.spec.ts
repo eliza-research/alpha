@@ -180,6 +180,29 @@ test('a mounted Android WebView refuses an update when draft readback differs', 
   await expect(page.getByText('Finish your changes, then try updating again.',{exact:true})).toBeVisible();
 });
 
+test('Android Back lowers chat above Apps before closing the drawer', async ({ page }) => {
+  await nativeStub(page, { apps: [{ packageName: 'com.android.settings', label: 'Settings' }] });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Apps', exact: true }).click();
+  const drawer = page.locator('[data-alpha-layer="drawer"]');
+  const search = drawer.getByRole('searchbox', { name: 'Search apps', exact: true });
+  await search.fill('sett');
+
+  await page.getByRole('button', { name: 'Open conversation', exact: true }).click();
+  await page.getByRole('button', { name: 'Expand chat', exact: true }).click();
+  await expect(drawer).toHaveAttribute('aria-hidden', 'true');
+  await expect(drawer).toHaveAttribute('inert', '');
+  const back = () => page.evaluate(() => window.dispatchEvent(new Event('alpha-back', { cancelable: true })));
+  await back();
+  await expect(drawer).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Expand chat', exact: true })).toBeVisible();
+  await back();
+  await expect(page.getByRole('button', { name: 'Open conversation', exact: true })).toBeVisible();
+  await expect(search).toHaveValue('sett');
+  await back();
+  await expect(drawer).toHaveCount(0);
+});
+
 test('Apps lists Android entries with icons and launches by package', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await nativeStub(page, {
