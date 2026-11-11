@@ -24,9 +24,6 @@ jobs:
     name: Dafny proofs
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    env:
-      DAFNY_VERSION: 4.11.0
-      DAFNY_SHA256: a46a9ff7cdd720f7955854c78e95df13f4cfe6b80691b05f8654fe19e8267179
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -37,13 +34,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run upstream:prepare-client
+      # The checker and LemmaScript run `dafny` from PATH; the shared script pins the
+      # same archive hash and puts the verified binary on PATH.
       - name: Install the pinned Dafny release
-        shell: bash
-        run: |
-          curl -sSfL -o "$RUNNER_TEMP/dafny.zip" "https://github.com/dafny-lang/dafny/releases/download/v${DAFNY_VERSION}/dafny-${DAFNY_VERSION}-x64-ubuntu-22.04.zip"
-          echo "${DAFNY_SHA256}  $RUNNER_TEMP/dafny.zip" | sha256sum --check
-          unzip -q "$RUNNER_TEMP/dafny.zip" -d "$RUNNER_TEMP"
-          echo "DAFNY=$RUNNER_TEMP/dafny/dafny" >> "$GITHUB_ENV"
+        run: bash scripts/ci/prepare-dafny.sh
       - name: Check every listed proof
         env:
           LEMMA_REQUIRE_BACKEND: '1'
