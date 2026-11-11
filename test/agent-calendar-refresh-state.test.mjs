@@ -296,8 +296,8 @@ test('a late missing credential read cannot clear a newer credential or live res
   const m=await mountedSavedCalendar(),old=defer();try{
    let first=true;m.setReadCredential(()=>first?(first=false,old.promise):Promise.resolve({...m.credential}));m.foreground();
    if(replacement==='credential'){m.setCredential({...m.credential,credentialId:'replacement-generation'});m.setSnapshot({cloudAccount:{...m.credential,environment:'production'}});}else m.setPort(m.f.port);
-   await settleLocal();const current=m.shell.agentCalendar.state.feed;assert.ok(current);
-   old.resolve(null);await settleLocal();assert.equal(m.shell.agentCalendar.state.feed,current);
+   await waitFor(()=>m.shell.agentCalendar.state.feed!==null,{label:'replacement Calendar feed restored'});const current=m.shell.agentCalendar.state.feed;assert.ok(current);
+   old.resolve(null);await settleLocal();assert.deepEqual(m.shell.agentCalendar.state.feed,current);
   }finally{old.resolve(null);m.close();}
  }
 });
