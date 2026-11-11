@@ -172,7 +172,7 @@ test('saved feed refuses foreign owners, windows, malformed rows and source ambi
 test('owner retirement, legacy review and provider revocation hide saved rows',async()=>{
  const f=await savedFixture(),held=defer(),calendar=f.make({...f.api,getLifeOpsCalendarFeed:()=>held.promise});const pending=calendar.refresh(f.window);await settleLocal();calendar.retire();held.resolve(f.feed);await pending;assert.equal(calendar.state.feed,null);
  const gate=f.make(f.api,f.cache,f.port,{capture:async()=>({fingerprint:'legacy',present:true,readable:true,pending:false,records:[]}),retainedReadOnly:async()=>false});await gate.refresh(f.window);assert.equal(gate.state.status,'transition-required');assert.equal(gate.state.feed,null);gate.retire();
- const revoked=defer(),read=f.make({...f.api,getLifeOpsCalendarFeed:()=>revoked.promise,getLifeOpsCalendars:async()=>({calendars:[]})});const refresh=read.refresh(f.window);await settleLocal();assert.ok(read.state.savedAt);revoked.resolve(Promise.reject(Error('revoked')));await refresh;await settleLocal();assert.equal(read.state.feed,null);assert.equal(read.state.savedAt,null);assert.equal(f.raw().entries.find(entry=>entry.key.includes('calendar:feed:v1')).value,null);read.retire();f.retire();
+ const revoked=defer(),read=f.make({...f.api,getLifeOpsCalendarFeed:()=>revoked.promise,getLifeOpsCalendars:async()=>({calendars:[]})});const refresh=read.refresh(f.window);await waitFor(()=>read.state.savedAt!==null,{label:'saved Calendar before source revocation'});assert.ok(read.state.savedAt);revoked.resolve(Promise.reject(Error('revoked')));await refresh;await settleLocal();assert.equal(read.state.feed,null);assert.equal(read.state.savedAt,null);assert.equal(f.raw().entries.find(entry=>entry.key.includes('calendar:feed:v1')).value,null);read.retire();f.retire();
 });
 test('an immediate transport failure still waits for the saved local read',async()=>{
  const f=await savedFixture(),held=defer(),calendar=f.make({...f.api,getLifeOpsCalendarFeed:async()=>{throw Error('offline');}},{get:()=>held.promise,put:async()=>{}});
@@ -215,7 +215,7 @@ test('saved Calendar bootstraps before a resident port exists and survives its d
  const f=await savedFixture(),today=new Date(),zone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
  const window={side:'owner',timeMin:new Date(today.getFullYear(),today.getMonth()-1,1).toISOString(),timeMax:new Date(today.getFullYear(),today.getMonth()+2,1).toISOString(),timeZone:zone};
  const tomorrow=new Date(today.getTime()+86400000);f.event.startAt=tomorrow.toISOString();f.event.endAt=new Date(tomorrow.getTime()+3600000).toISOString();Object.assign(f.feed,window);
- const writer=f.make();await writer.refresh(window);await settleLocal();writer.retire();
+ const writer=f.make();await writer.refresh(window);await waitFor(()=>f.raw().entries.some(entry=>entry.value?.query===JSON.stringify(window)),{label:'current Calendar window saved'});writer.retire();
  let active=null;const calendar=f.make(f.api,f.cache,()=>active),reads=f.reads.length;
  await calendar.restoreSaved(window,f.cache,()=>true,async()=>true);
  assert.equal(f.reads.length,reads,'restoration never requests the agent or providers');assert.equal(calendar.state.feed.events[0].title,f.event.title);assert.ok(calendar.state.savedAt);assert.equal(calendar.selection(JSON.stringify([f.event.provider,f.event.side,f.event.grantId,f.event.connectorAccountId,f.event.calendarId,f.event.externalId,f.event.id])),undefined);
@@ -247,7 +247,7 @@ async function mountedSavedCalendar(){
  const f=await savedFixture(),today=new Date(),zone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
  const window={side:'owner',timeMin:new Date(today.getFullYear(),today.getMonth()-1,1).toISOString(),timeMax:new Date(today.getFullYear(),today.getMonth()+2,1).toISOString(),timeZone:zone};
  f.event.startAt=new Date(Date.now()+3600000).toISOString();f.event.endAt=new Date(Date.now()+7200000).toISOString();Object.assign(f.feed,window);
- const writer=f.make();await writer.refresh(window);await settleLocal();writer.retire();const reads=f.reads.length;
+ const writer=f.make();await writer.refresh(window);await waitFor(()=>f.raw().entries.some(entry=>entry.value?.query===JSON.stringify(window)),{label:'current Calendar window saved'});writer.retire();const reads=f.reads.length;
  let active=null,credential={credentialId:'saved-key-generation',userId:'cloud-owner',organizationId:'cloud-org'},snapshot={startupResolved:false,cloudAccount:null,residentSavedCredential:true};const subscribers=new Set(),documentListeners=new Map();let writesFail=false;const readCache={get:key=>f.cache.get(key),put:(...args)=>writesFail?Promise.reject(Error('local write failed')):f.cache.put(...args)};let readCredential=async()=>credential?({...credential}):null;
  const preservation={capture:async()=>({fingerprint:'same',present:false,readable:true,pending:false,records:[]}),retainedReadOnly:async()=>true};
  const dependencies={
