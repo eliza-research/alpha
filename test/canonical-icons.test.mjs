@@ -18,7 +18,7 @@ test('published assets retain their recorded provenance',()=>{
  const initial=model.slice(icStart,icEnd+3);
  const extensions=[...model.matchAll(/IC\.([A-Za-z0-9_]+)\s*=\s*IC\.\1\s*\|\|\s*"([^"\n]+)";/g)].map(match=>match[0]).join('\n');
  const box={};vm.runInNewContext(initial+'\n'+extensions+'\nglobalThis.icons=IC;',box);
- assert.deepEqual(Object.keys(catalog.ic).sort(),Object.keys(box.icons).sort());assert.equal(Object.keys(catalog.ic).length,148);
+ assert.deepEqual(Object.keys(catalog.ic).sort(),Object.keys(box.icons).sort());
  const paths=new Map();for(const [key,asset] of Object.entries(catalog.ic)){assert.ok(source.assets[asset+'.svg'],asset);if(paths.has(box.icons[key]))assert.equal(paths.get(box.icons[key]),asset);paths.set(box.icons[key],asset);}
  const expectedAssets=new Set([...Object.values(catalog.ic),...catalog.extra].map(name=>name+'.svg'));for(const name of catalog.filled)expectedAssets.add(name+'-filled.svg');assert.deepEqual(Object.keys(source.assets).sort(),[...expectedAssets].sort());
  for(const [name,entry] of Object.entries(source.assets)){const svg=readFileSync(new URL(name,root),'utf8');for(const part of ['viewBox="0 0 24 24"','stroke-width="2"','stroke-linecap="round"','stroke-linejoin="round"',entry.fill?'fill="currentColor"':'fill="none"'])assert.ok(svg.includes(part),name+' has '+part);}

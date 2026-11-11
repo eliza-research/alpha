@@ -22,6 +22,7 @@
     "moon.mjs": "715b2723a78f6737a61053972f7c827791506d58948a64b2286c0061aaeb0f4d",
     "lock-keyhole.mjs": "c74235ca04a378063f44228a3a3a6bcd7da6d4a0061c204563be85e12e55ad1d",
     "shield.mjs": "1258855fced72fc01714cf9de670fe92a4ee8fe5e39920a71d354ca82f3698b0",
+    "venetian-mask.mjs": "92c59c78481b47c61f97429ef4355087005097ec8646de42bb78f99e33e1fba9",
     "x.mjs": "6989a42acedfba40eef43809386d38cbb1392ee827f7054c3b7420ca364f271b",
     "chevron-down.mjs": "cfdc21f0df4a3a951817f08678a9b287a7832f0a9664bd8c0bf6b1f6b968ff19",
     "chevron-up.mjs": "9d42f4a121a52af1682bfd02b63145b96335cabfc4f157d4820aa15772de5333",
@@ -221,6 +222,10 @@
     "shield.svg": {
       "source": "shield.mjs",
       "sha256": "6e125504e6e91e33125c347e7402a98035a40b7ec7af8205ed41e40c6dcb517c"
+    },
+    "venetian-mask.svg": {
+      "source": "venetian-mask.mjs",
+      "sha256": "254c8c3e44d0a92122ec46958afffd32852754130c7c44d3ff5da2623d16ea57"
     },
     "x.svg": {
       "source": "x.mjs",
