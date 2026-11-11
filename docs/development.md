@@ -26,18 +26,20 @@ bun run verify
 bun run dev
 ```
 
-`bun run verify` runs deployment-output checks, source preparation, executable
-Quint models, LemmaScript function proofs, TypeScript, host tests, the production web build and its bundle audit.
+`bun run verify` runs deployment-output checks, source preparation, TypeScript, host tests,
+the production web build and its bundle audit.
 Host scripts use native TypeScript. `bun run typecheck:scripts` checks their interfaces.
 Host contract tests need a JDK and the `sqlite3` command-line tool on `PATH`
 for native Calendar queries. Archive builds check SQLite before verification.
 Tests that load the real SDK require the pinned Bun and a prepared SDK; set
 `ALPHA_REQUIRE_PREPARED_SDK=1` to fail instead of skipping when preparation is missing.
+
+The Quint models and LemmaScript function proofs are not part of `bun run verify`. Run
+`bun run quint:check`, `bun run quint:tests` and `bun run lemma:check` before merging a PR;
+CI runs them only when `develop` is promoted to `main`. See [CONTRIBUTING.md](../CONTRIBUTING.md).
 Function proofs require Dafny 4.11.0 on `PATH`; `LEMMA_REQUIRE_BACKEND=1` makes a
-missing backend fail. A generation-only run records a skipped proof. CI installs the
-hash-pinned backend and requires proofs. `bun run quint:changed -- --base=<commit>`
-also model-checks changed models and their importing compositions, including their
-declared temporal checks and required historical counterexamples.
+missing backend fail. A generation-only run records a skipped proof. Promotion CI installs the
+hash-pinned backend and requires proofs.
 
 ## Development
 
