@@ -48,8 +48,8 @@ import { boot, deq, searches, inboxPage } from './inbox-adapter-fixture.mjs';
  t.render().rows[0].open();await t.tick();if(t.render().d?.canLoadThread){t.render().d.loadThread();await t.tick();}
  const d=t.render().d;assert.equal(d.hasLinks,true);assert.equal(t.render().d.links,d.links,'link rows are computed once per opened body');
  deq(d.links.map(l=>[l.href,l.mismatch]),[['https://tracker.attacker.invalid/r',true],['https://docs.example.org/plan?x=1',false]],'HTML links first, plain-text URL deduplicated, http dropped');
- t.answer(false);d.links[0].open();assert.equal(t.navigations.length,0,'declined review opens nothing');assert.match(t.confirms.at(-1),/tracker\.attacker\.invalid/);assert.match(t.confirms.at(-1),/Warning: the email shows/);
- t.answer(true);d.links[1].open();await t.tick();deq(t.navigations,['https://docs.example.org/plan?x=1'],'approved link opens in Alpha Browser');
+ d.links[0].open();await t.tick();deq(t.navigations,['https://tracker.attacker.invalid/r'],'a mismatched label opens its actual inspected destination');assert.equal(t.confirms.length,0,'ordinary in-app links need no extra confirmation');
+ t.shell.openView('inbox');d.links[1].open();await t.tick();deq(t.navigations,['https://tracker.attacker.invalid/r','https://docs.example.org/plan?x=1'],'links open in Alpha Browser');
  // Unsupported attachment: opaque byte copy, Save to Files only, no preview or viewer.
  assert.match(d.atts[0].size,/No preview · Save to Files/);
  d.atts[0].open();await t.tick();const review=t.render().attachment;assert.ok(review,'opaque review shown');assert.equal(review.external,false,'no viewer handoff for opaque bytes');

@@ -25,12 +25,6 @@ export function inboxDrafts(publish:()=>void,toast:(text:string)=>void, provider
   identity:()=>({sessionId:connectionController.getCloudClient()?.sessionId,account:connectionController.getSnapshot().cloudAccount??null}),
   attachments:{select:()=>DailyApps.perform({action:'files'}),read:selectionId=>attachmentNative.readSelected({selectionId}),forget:selectionId=>DailyApps.forgetSelected({selectionId})}});
  return Object.assign(drafts,{
-  requestClose(){
-   const view=drafts.render();
-   if(!view.composing)return false;
-   view.c?.discard();
-   return true;
-  },
   async flushForAppUpdate(current:()=>boolean){
   const retained=new Set(copies);
   const exact=()=>current()&&(!drafts.hasDraft||drafts.ready)&&[...copies].every(copy=>retained.has(copy));
