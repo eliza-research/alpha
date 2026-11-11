@@ -254,7 +254,7 @@ public final class AlphaDevicePlugin extends Plugin {
   if(total!=sizeBytes||!hex(digest.digest()).equals(sha256))throw new UpdateMismatch("Update does not match its manifest");
  }
 
- private static final String UPDATE_STATUS="ai.alphacompute.alphaphone.UPDATE_STATUS";
+ static final String UPDATE_STATUS="ai.alphacompute.alphaphone.UPDATE_STATUS";
  /** Self-update without a system dialog is supported from Android 12. Android still decides at commit. */
  static String automaticUpdateStatus(Context context){
   if(Build.VERSION.SDK_INT<31)return "unsupported";
@@ -461,9 +461,9 @@ public final class AlphaDevicePlugin extends Plugin {
    if(record!=null){
     Intent confirm=record.session==updateSession?updateConfirm:null;
     boolean canContinue=false;
-    if(record.committing&&confirm!=null&&record.boot==updateBoot()){
+    if(record.committing&&record.boot==updateBoot()){
      var session=getContext().getPackageManager().getPackageInstaller().getSessionInfo(record.session);
-     canContinue=UpdatePause.binds(record,session)&&!pastConfirmation(session,confirm);
+     canContinue=confirm==null?readUpdateConfirmation(record,session)!=null:UpdatePause.binds(record,session)&&!pastConfirmation(session,confirm);
     }
     result.put("activationId",record.id).put("phase","paused").put("canContinue",canContinue);
    }
@@ -482,7 +482,14 @@ public final class AlphaDevicePlugin extends Plugin {
   },()->call.reject("Update status unavailable"));
  }
  private boolean reconcileUpdate(){
-  try{var settled=UpdatePause.reconcile();if(settled!=null){settleUpdate(settled.id,BuildConfig.VERSION_CODE==settled.targetCode?"installed":"canceled");return true;}}catch(Exception unavailable){/* Unknown stays paused; no replay. */}
+  try{
+   var settled=UpdatePause.reconcile();
+   if(settled!=null){
+    try{UpdateConfirmationReceipt.retire(getContext(),settled);}catch(Exception unavailable){/* A leftover receipt requires the now-settled ownership record. */}
+    settleUpdate(settled.id,BuildConfig.VERSION_CODE==settled.targetCode?"installed":"canceled");
+    return true;
+   }
+  }catch(Exception unavailable){/* Unknown stays paused; no replay. */}
   return false;
  }
  @PluginMethod public void reconcileUpdate(PluginCall call){
@@ -490,13 +497,15 @@ public final class AlphaDevicePlugin extends Plugin {
  }
  /** Downloads run here, never on the problem-log worker. */
  private final java.util.concurrent.ExecutorService updateWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
- /** The session this process last handed to Android, set before its commit. Every bridge's receiver hears every session's status, and only updateOwner acts on it. */
+ /** The session this process last handed to Android, set before its commit. Only updateOwner acts on a forwarded status. */
  private static volatile int updateSession;
  /**
   * Android's request for the owner's confirmation of updateSession, kept until that session ends: Android offers no way to
   * ask again but a second commit, which can end an install already accepted, so a tap after a dismissal opens this same request.
   */
  private static volatile Intent updateConfirm;
+ /** The private receiver has recorded the current platform callback before forwarding it. */
+ private static volatile boolean updateReceiptRequired;
  /** updateConfirm waits for its owner: Android silently drops an activity Alpha starts while it is not in front (screen locked during the download, another app open). */
  private static volatile boolean updateDue;
  /** updateConfirm has started and its owner has not resumed since, so the confirmation may still be up, in a task another bridge cannot see. */
@@ -520,6 +529,7 @@ public final class AlphaDevicePlugin extends Plugin {
    if(updateOwner!=AlphaDevicePlugin.this||id!=updateSession)return;
    updateDue=intent.getIntExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_FAILURE)==PackageInstaller.STATUS_PENDING_USER_ACTION;
    updateConfirm=updateDue?androidx.core.content.IntentCompat.getParcelableExtra(intent,Intent.EXTRA_INTENT,Intent.class):null;
+   updateReceiptRequired=updateDue&&intent.getBooleanExtra(AlphaUpdateStatusReceiver.RECEIPT_REQUIRED,false);
    if(inFront()&&!updateAutomatic)confirmUpdate();
    PluginWorkers.submit(updateWorker,()->reconcileUpdate(),()->{});
   }
@@ -534,10 +544,36 @@ public final class AlphaDevicePlugin extends Plugin {
  private static boolean pastConfirmation(PackageInstaller.SessionInfo session,Intent confirm){
   return session==null||session.getProgress()>0.8f||session.isActive()&&!"android.content.pm.action.CONFIRM_DEVELOPER_VERIFICATION".equals(confirm.getAction());
  }
+ /** Only a received, unopened callback for the sealed session survives a process restart. */
+ private Intent readUpdateConfirmation(ai.eliza.plugins.agent.updater.RuntimeUpdatePause.Record record,PackageInstaller.SessionInfo session){
+  if(record==null||!record.committing||session==null||session.getSessionId()!=record.session||!session.isSealed()||!UpdatePause.binds(record,session))return null;
+  try{
+   if(record.boot!=updateBoot()||!record.signer.equals(appSigner(getContext())))return null;
+   Intent received=UpdateConfirmationReceipt.readUnopened(getContext(),record);
+   return received!=null&&!pastConfirmation(session,received)?received:null;
+  }catch(Exception unavailable){return null;}
+ }
+
+ private void recoverUpdateConfirmation(int sessionId){
+  getActivity().runOnUiThread(()->{
+   if(updateWorker.isShutdown()||!inFront()||updateConfirm!=null&&updateSession==sessionId)return;
+   try{
+    var record=UpdatePause.store().read();
+    if(record==null||record.session!=sessionId)return;
+    var current=getContext().getPackageManager().getPackageInstaller().getSessionInfo(sessionId);
+    Intent received=readUpdateConfirmation(record,current);
+    if(received==null)return;
+    updateOwner=this;updateSession=sessionId;updateConfirm=received;updateReceiptRequired=true;
+    updateAutomatic=false;updateOpen=false;updateDue=true;
+    confirmUpdate();
+   }catch(Exception unavailable){/* A changed or unknown session stays fenced. */}
+  });
+ }
  /** Reopens only Android's kept confirmation, using the same session and timing fence as the Settings tap. */
  private void reopenUpdateConfirmation(PackageInstaller.SessionInfo pending){
   int id=pending.getSessionId();
   Intent confirm=id==updateSession?updateConfirm:null;
+  if(confirm==null){recoverUpdateConfirmation(id);return;}
   AlphaDevicePlugin owner=updateOwner;
   long asked=updateAsked;
   // Leave time for a queued accept, an activity not yet covering Alpha, or a status in flight.
@@ -573,7 +609,14 @@ public final class AlphaDevicePlugin extends Plugin {
  }
  /** Opens the kept confirmation once, never over one still open, on the main thread like updateStatus and handleOnResume. */
  private void confirmUpdate(){
-  if(!updateDue||updateOpen)return;
+  if(!updateDue||updateOpen||updateConfirm==null)return;
+  if(updateReceiptRequired){
+   try{
+    var record=UpdatePause.store().read();
+    if(record==null||!record.committing||record.session!=updateSession||record.boot!=updateBoot()||
+       !UpdateConfirmationReceipt.markOpened(getContext(),record,updateConfirm))return;
+   }catch(Exception unavailable){return;}
+  }
   updateDue=false;updateOpen=true;updateAsked=System.nanoTime();
   try{getActivity().startActivity(updateConfirm);}catch(RuntimeException unavailable){updateOpen=false;/* The next tap opens it. */}
  }
@@ -764,7 +807,7 @@ public final class AlphaDevicePlugin extends Plugin {
        throwIfDestroyed();
        if(automatic&&!automaticUpdateReady()){keepApk=true;throw new java.io.IOException("Automatic update deferred");}
        UpdatePause.committing(preparation.id);
-       android.content.IntentSender status=android.app.PendingIntent.getBroadcast(getContext(),id,new Intent(UPDATE_STATUS).setPackage(getContext().getPackageName()),android.app.PendingIntent.FLAG_UPDATE_CURRENT|android.app.PendingIntent.FLAG_MUTABLE).getIntentSender();
+       android.content.IntentSender status=AlphaUpdateStatusReceiver.sender(getContext(),preparation.id,id);
        // The commit intent. Android holds this before the call returns, so on a level that orders a later read after it (above), a
        // session reading 0 was sent no commit, and it lasts in Android's memory for exactly as long as a queued commit can: no corrupt
        // store to read as clear, and nothing for Alpha to clear. On 12, 12L and code not read the boot in the binding does that work alone.
@@ -773,7 +816,7 @@ public final class AlphaDevicePlugin extends Plugin {
        // a commit can succeed ahead of a lost reply and the close after it can throw, and no exception class means the same on
        // every Android, so the session and its owner stay, and what happened comes from Android's status or list.
        updateAutomatic=automatic;
-       updateOwner=this;updateSession=id;updateConfirm=null;updateDue=false;updateOpen=false;updateAsked=System.nanoTime();
+       updateOwner=this;updateSession=id;updateConfirm=null;updateReceiptRequired=false;updateDue=false;updateOpen=false;updateAsked=System.nanoTime();
        // A destroy past the last check cannot stop this commit, and a dead owner would keep every live receiver from its status. handleOnDestroy interrupts ahead of reading updateOwner, so one side always sees the other.
        if(Thread.currentThread().isInterrupted())updateOwner=null;
        commitAttempted=true;

@@ -1757,6 +1757,8 @@
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaUpdateStatusReceiver.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/UpdateConfirmationReceipt.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java"
       ],
@@ -1844,6 +1846,8 @@
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaUpdateStatusReceiver.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/UpdateConfirmationReceipt.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java",
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialShutdownLease.java"
@@ -1958,6 +1962,8 @@
       "sources": [
         "apps/app/src/prototype/settings-adapter.ts",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaUpdateStatusReceiver.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/UpdateConfirmationReceipt.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/ConnectionTransport.java"
       ],

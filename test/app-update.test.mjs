@@ -15,7 +15,7 @@ const install=plugin.slice(plugin.indexOf('@PluginMethod public void installUpda
 const javaFiles=dir=>readdirSync(dir,{recursive:true}).filter(file=>file.endsWith('.java')).map(file=>join(dir,file));
 
 test('the download is admitted only at its declared size and SHA-256',()=>{
- const start=plugin.indexOf(' static final long UPDATE_MAX_BYTES='),end=plugin.indexOf(' private static final String UPDATE_STATUS=');
+ const start=plugin.indexOf(' static final long UPDATE_MAX_BYTES='),end=plugin.indexOf(' static final String UPDATE_STATUS=');
  assert.ok(start>0&&end>start,'the admission members exist');
  const dir=mkdtempSync(join(tmpdir(),'alpha-update-'));
  try{
@@ -55,8 +55,9 @@ ${handOff}
 ${foreground}
 ${plugin.slice(start,end).replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)')}}
 `);
-  const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{timeout:240000,args:[keyStore]});
+  const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),nativeSource('AlphaUpdateStatusReceiver.java'),nativeSource('UpdateConfirmationReceipt.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{timeout:240000,args:[keyStore]});
   assert.match(result,/PASS verified cache retry over owned TLS: one request, exact retained bytes, one synthetic installer commit/);
+  assert.match(result,/PASS exact pending installer callback survives process replacement once/);
   assert.match(result,/^PASS update flow/m);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
@@ -79,8 +80,10 @@ test('Android installs only the offered newer build of this package, and only wh
  assert.doesNotMatch(plugin,/refused\)\{updateOwner=null|commitUpdate|getUpdatedMillis|elapsedRealtime/);
  assert.match(install,/params\.setAppPackageName\(getContext\(\)\.getPackageName\(\)\);/);
  // The status intent reaches only this app's receiver, and Android must be able to add the session result to it.
- assert.match(install,/new Intent\(UPDATE_STATUS\)\.setPackage\(getContext\(\)\.getPackageName\(\)\)/);
- assert.match(install,/PendingIntent\.FLAG_MUTABLE/);
+ assert.match(install,/AlphaUpdateStatusReceiver\.sender\(getContext\(\),preparation\.id,id\)/);
+ const receiver=readFileSync(nativeSource('AlphaUpdateStatusReceiver.java'),'utf8');
+ assert.match(receiver,/new Intent\(context,AlphaUpdateStatusReceiver\.class\)/);
+ assert.match(receiver,/PendingIntent\.FLAG_MUTABLE/);
  assert.match(plugin,/registerReceiver\(getContext\(\),updateStatus,new android\.content\.IntentFilter\(UPDATE_STATUS\),androidx\.core\.content\.ContextCompat\.RECEIVER_NOT_EXPORTED\)/);
  assert.match(install,/catch\(Exception failed\)\{\s*if\(!commitAttempted\)try\{installer\.abandonSession\(id\);\}catch\(RuntimeException cleanup\)\{failed\.addSuppressed\(cleanup\);\}\s*throw failed;\s*\}/);
  // The file goes while the flag is held: a delete after it would hit the next attempt's download.
@@ -95,6 +98,7 @@ test('Android installs only the offered newer build of this package, and only wh
 
 test('Alpha stays nonprivileged and reads one configured HTTPS manifest from its own rolling release',()=>{
  const manifestXml=readFileSync(join(root,'android/app/src/main/AndroidManifest.xml'),'utf8');
+ assert.match(manifestXml,/<receiver android:name="\.AlphaUpdateStatusReceiver" android:exported="false" \/>/);
  assert.match(manifestXml,/<uses-permission android:name="android\.permission\.REQUEST_INSTALL_PACKAGES" \/>/);
  assert.match(manifestXml,/<uses-permission android:name="android\.permission\.UPDATE_PACKAGES_WITHOUT_USER_ACTION" \/>/);
  assert.doesNotMatch(manifestXml,/android\.permission\.(INSTALL_PACKAGES|DELETE_PACKAGES)"/);

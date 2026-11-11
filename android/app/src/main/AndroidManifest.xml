@@ -45,6 +45,7 @@
   <package android:name="ai.alphacompute.alphaphone.sense"/>
   <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="content" android:mimeType="application/pdf"/></intent><intent><action android:name="android.intent.action.VIEW"/><data android:scheme="content" android:mimeType="image/*"/></intent><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent>
   <intent><action android:name="android.media.action.STILL_IMAGE_CAMERA"/></intent>
+  <intent><action android:name="android.content.pm.action.CONFIRM_INSTALL"/></intent>
   <intent><action android:name="android.intent.action.OPEN_DOCUMENT"/><data android:mimeType="*/*"/></intent>
   <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="geo"/></intent>
   <intent><action android:name="android.intent.action.VIEW"/><data android:scheme="https"/></intent>
@@ -109,6 +110,7 @@
    <intent-filter><action android:name="android.service.autofill.AutofillService"/></intent-filter>
    <meta-data android:name="android.autofill" android:resource="@xml/eliza_passwords_autofill_service"/>
   </service>
+  <receiver android:name=".AlphaUpdateStatusReceiver" android:exported="false" />
   <receiver android:name=".ReminderReceiver" android:exported="false">
    <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/><action android:name="android.intent.action.TIME_SET"/><action android:name="android.intent.action.TIMEZONE_CHANGED"/></intent-filter>
   </receiver>
