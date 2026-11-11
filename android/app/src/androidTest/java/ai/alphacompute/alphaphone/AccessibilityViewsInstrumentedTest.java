@@ -49,6 +49,21 @@ public final class AccessibilityViewsInstrumentedTest {
   return value == null ? shell("settings get --user " + user + " system font_scale") : shell("settings put --user " + user + " system font_scale " + value);
  }
  static void restoreFontScale(String previous) throws Exception { fontScale(previous == null || previous.isEmpty() || "null".equals(previous) ? "1.0" : previous); }
+ /** Wait for the per-user setting and the Android configuration it triggers before continuing. */
+ private static void setSystemFontScale(String value) throws Exception {
+  float expected = Float.parseFloat(value);
+  android.content.Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+  fontScale(value);
+  float setting = 0;
+  float configured = 0;
+  for (int i = 0; i < 150; i++) {
+   setting = android.provider.Settings.System.getFloat(context.getContentResolver(), android.provider.Settings.System.FONT_SCALE, 1.0f);
+   configured = context.getResources().getConfiguration().fontScale;
+   if (setting == expected && configured == expected) return;
+   SystemClock.sleep(100);
+  }
+  fail("System font scale " + expected + " did not settle: setting=" + setting + ", configuration=" + configured);
+ }
  private static String js(String code) throws Exception { return WebViewTestDriver.evaluate(code); }
  private static void appTextScale(int percent, Float requiredSystemScale) throws Exception {
   js("window.Capacitor.Plugins.AlphaDevice.setTextScale({percent:" + percent + "})");
@@ -93,12 +108,13 @@ public final class AccessibilityViewsInstrumentedTest {
 
  private void auditViews(int appPercent, int effectiveScale) throws Exception {
   assumeViews("Every view at " + effectiveScale * 100 + "% font");
-  String previous = fontScale(null);
+  String savedSystemScale = fontScale(null);
+  String previous = savedSystemScale.isEmpty() || "null".equals(savedSystemScale) ? "1.0" : savedSystemScale;
   int previousAppPercent = AlphaDevicePlugin.textScalePercent(InstrumentationRegistry.getInstrumentation().getTargetContext());
   UiDevice device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation());
   List<String> problems = new ArrayList<>();
   try {
-   fontScale("2.0");
+   setSystemFontScale("2.0");
    try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(MainActivity.class)) {
     try {
     AppNavigation.liveMode();
@@ -134,7 +150,7 @@ public final class AccessibilityViewsInstrumentedTest {
      appTextScale(previousAppPercent, null);
     }
    }
-  } finally { restoreFontScale(previous); }
+  } finally { setSystemFontScale(previous); }
   assertTrue("Views at " + effectiveScale * 100 + "% font:\n" + String.join("\n", problems), problems.isEmpty());
  }
 }
