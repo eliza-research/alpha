@@ -72,6 +72,11 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.2"
+      # The exact producer may predate the Bun migration and call Node on TypeScript.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: hashFiles('qualified-product/bun.lock') == ''
+        with:
+          node-version-file: .nvmrc
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -114,14 +119,24 @@ jobs:
       - name: Install locked verifier dependencies without lifecycle scripts
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Install locked product verifier dependencies without lifecycle scripts
+        if: hashFiles('qualified-product/bun.lock') != ''
         working-directory: qualified-product
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Project the exact product's reviewed client sources
+        if: hashFiles('qualified-product/bun.lock') != ''
         working-directory: qualified-product
         run: bun run upstream:prepare-client
       - name: Reverify all signed bytes and exact reviewed Cloud voice evidence
+        if: hashFiles('qualified-product/bun.lock') != ''
         working-directory: qualified-product
         run: bun run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
+      - name: Reverify the exact pre-Bun producer with its locked dependencies
+        if: hashFiles('qualified-product/bun.lock') == ''
+        working-directory: qualified-product
+        run: |
+          npm ci --ignore-scripts
+          npm run upstream:prepare-client
+          npm run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
       - name: Require both qualified release rows before publication
         run: |
           python3 - <<'PY'
@@ -143,10 +158,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         working-directory: qualified-product
         run: |
+          runtime=bun
+          if [ ! -f bun.lock ]; then runtime=node; fi
           if test -f scripts/deliver-app-update.mjs; then
-            bun scripts/deliver-app-update.mjs --variant launcher --apk-manifest artifacts/apk-manifest.json
+            "$runtime" scripts/deliver-app-update.mjs --variant launcher --apk-manifest artifacts/apk-manifest.json
           else
-            bun scripts/deliver-app-update.ts --variant launcher --apk-manifest artifacts/apk-manifest.json
+            "$runtime" scripts/deliver-app-update.ts --variant launcher --apk-manifest artifacts/apk-manifest.json
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
