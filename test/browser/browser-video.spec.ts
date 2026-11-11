@@ -87,3 +87,22 @@ test('Stop during pending microphone permission rejects a late start',async({pag
  expect(await page.evaluate(()=>(window as any).pendingVideo)).toBe(true);
  expect(await page.evaluate(()=>(window as any).videoTest.streams.filter((s:MediaStream)=>s.getAudioTracks().length).every((s:MediaStream)=>s.getTracks().every(t=>t.readyState==='ended')))).toBe(true);
 });
+
+test('saved video exposes working seek, elapsed time, mute and source-bound playback retirement',async({page})=>{
+ await page.evaluate(async()=>{const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');await c.startRecording({audio:true,maxDuration:2,maxFileSize:2_000_000});await new Promise(r=>setTimeout(r,2200));await c.stopRecording();});
+ await page.reload();await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Video, /}).click();
+ const seek=page.getByRole('slider',{name:'Video position',exact:true});await expect(seek).toBeDisabled();
+ await page.getByRole('button',{name:'Play video',exact:true}).click();await expect(seek).toBeEnabled();
+ await page.getByRole('button',{name:'Pause video',exact:true}).click();
+ await seek.focus();await seek.press('Home');for(let i=0;i<5;i++)await seek.press('ArrowRight');
+ await expect.poll(()=>page.locator('video[data-alpha-captured-video]').evaluate((video:HTMLVideoElement)=>video.currentTime)).toBeCloseTo(.5,1);
+ const mute=page.getByRole('button',{name:'Mute video',exact:true});await mute.click();await expect(page.getByRole('button',{name:'Unmute video',exact:true})).toHaveAttribute('aria-pressed','true');
+ expect(await page.locator('video[data-alpha-captured-video]').evaluate((video:HTMLVideoElement)=>video.muted)).toBe(true);
+ await expect(page.locator('[data-alpha-video-controls]')).toContainText(/0:00 \/ 0:0[12]/);
+ await page.evaluate(()=>(window as any).retiredVideoError=document.querySelector<HTMLVideoElement>('video[data-alpha-captured-video]')!.onerror);
+ await page.getByRole('button',{name:'Back from photo',exact:true}).click();await expect(page.locator('video[data-alpha-captured-video]')).toHaveCount(0);
+ await page.getByRole('button',{name:/^Video, /}).click();await expect(seek).toBeDisabled();
+ await page.getByRole('button',{name:'Play video',exact:true}).click();await expect(seek).toBeEnabled();
+ await page.evaluate(()=>(window as any).retiredVideoError(new Event('error')));
+ await expect(page.locator('video[data-alpha-captured-video]')).toHaveCount(1);await expect(page.getByText('This saved video could not be played.',{exact:true})).toHaveCount(0);
+});

@@ -3,7 +3,7 @@ import test from 'node:test';
 import {AgentCalendar,calendarSourceKey,type CalendarPreservation} from '../apps/app/src/runtime/agent-calendar';
 import {assertAppRecordRequestAllowed} from '../apps/app/src/runtime/app-record-route-policy';
 import type {AppRecordPort} from '../apps/app/src/runtime/agent-calendar-client';
-import {canonicalCalendarRow,calendarFormMinutes,calendarFormPatch,type CanonicalCalendarForm} from '../apps/app/src/runtime/agent-calendar-view';
+import {canonicalCalendarRow,canonicalCalendarEditorTiming,calendarFormMinutes,calendarFormPatch,type CanonicalCalendarForm} from '../apps/app/src/runtime/agent-calendar-view';
 
 function deferred<T>(){
  let resolve!:(value:T)=>void, reject!:(error:Error)=>void;
@@ -128,4 +128,27 @@ test('moving an event that starts at an awkward minute to another day keeps its 
   assert.equal(Date.parse(patch.startAt as string),Date.parse(`2026-11-08T${start}:00Z`));assert.equal(Date.parse(patch.endAt as string),Date.parse(`2026-11-08T${end}:00Z`));
  }
  const row=canonicalCalendarRow(timed('2026-11-07T16:20:00Z','2026-11-07T17:35:00Z'),'UTC',now);assert.equal(calendarFormMinutes(row.d),75);
+});
+
+// A layout row uses elapsed duration. A civil editor must derive both displayed endpoints instead.
+test('spring clock change and multi-day editor ranges retain their real endpoint clocks',()=>{
+ const event=timed('2027-03-14T06:30:00Z','2027-03-14T07:30:00Z');
+ const row=canonicalCalendarEditorTiming(event,'America/New_York',new Date('2027-03-14T12:00Z'));
+ assert.equal(row.t,1.5);assert.equal(row.d,2);assert.equal(row.locked,false);
+ const fields={...form(row,14),date:{year:2027,month:3,day:14},timeZone:'America/New_York',title:'Metadata edit'};
+ const metadata=calendarFormPatch(fields,event,{timing:false,zone:false});assert.equal(metadata.title,'Metadata edit');assert(!('startAt' in metadata));assert(!('endAt' in metadata));
+ const move=calendarFormPatch({...fields,date:{year:2027,month:3,day:15}},event,{timing:true,zone:false});
+ assert.equal(move.startAt,'2027-03-15T05:30:00.000Z');assert.equal(move.endAt,'2027-03-15T07:30:00.000Z');
+ const long=canonicalCalendarEditorTiming(timed('2027-03-13T22:17Z','2027-03-16T08:23Z'),'America/New_York',new Date('2027-03-13T12:00Z'));
+ assert.equal(calendarFormMinutes(long.d),3546);
+});
+test('changing one endpoint preserves the original repeated hour and seconds on the untouched endpoint',()=>{
+ const event=timed('2027-11-07T05:30:23Z','2027-11-07T07:30:19Z');
+ const row=canonicalCalendarEditorTiming(event,'America/New_York',new Date('2027-11-07T12:00Z'));
+ const fields={...form(row,7),date:{year:2027,month:11,day:7},timeZone:'America/New_York',durationMinutes:120};
+ const patch=calendarFormPatch(fields,event,{timing:true,zone:false});
+ assert(!('startAt' in patch));assert.equal(patch.endAt,'2027-11-07T08:30:00.000Z');
+ assert.throws(()=>calendarFormPatch({...fields,startMinutes:75},event,{timing:true,zone:false}),/ambiguous|repeated|more than one|twice/i);
+ const backwards=canonicalCalendarEditorTiming(timed('2027-11-07T05:45:00Z','2027-11-07T06:15:00Z'),'America/New_York');
+ assert.equal(backwards.locked,true);
 });

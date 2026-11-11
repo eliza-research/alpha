@@ -21,6 +21,7 @@ import { emptyHomeShadePull, pullStart, shadeFallback } from "./system-shade";
 import React from "react";
 import { DCLogic } from "./dc-lite.js";
 import { calendarDayColumns, calendarDayCount, calendarReturnDay, markVisibleWeek, visibleCalendarDays } from "./calendar-days";
+import { calendarFormInputs, calendarFormInputPatch, calendarDefaultEventStart, calendarGuestEmail } from "./calendar-form-inputs";
 import { filterNotes, sortNotes, notePreview, noteDateLabel, notesFilterLabel } from "../runtime/notes-view";
 import { WEEKDAYS, MONTHS, formatTime, formatClock, formatHours, formatHoursRange, formatHour, weekdayName, formatShortDate, formatLongDate, formatMonthDay, formatMonthTitle } from "./locale-time";
 
@@ -1132,7 +1133,7 @@ function calOccurs(e, off, api) {
 function calEvents(api) { var st = api.get("calendar"); return st.events || CAL_SEED; }
 function calFind(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
 function calPeople(api) { var c = api.get("contacts"); return (c && c.list && c.list.length) ? c.list : PEOPLE; }
-function calPerson(api, id) { var l = calPeople(api); for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return api.person(id) || { id: id, name: id, ini: id.slice(0, 2).toUpperCase() }; }
+function calPerson(api, id) { var l = calPeople(api); for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; var email=calendarGuestEmail(id);return email?{id:id,name:email,email:email,ini:email.slice(0,2).toUpperCase()}:api.person(id) || { id: id, name: id, ini: id.slice(0, 2).toUpperCase() }; }
 function calCals(st, api) {
   if(Array.isArray(st.calendarPresentationSources))return st.calendarPresentationSources;
   if(Array.isArray(st.canonicalCalendars))return st.canonicalCalendars;
@@ -1439,7 +1440,7 @@ registerView("calendar", {
       var repeatLabel = ev.repeat && ev.repeat !== "none" ? CAL_REPEAT.filter(function (r) { return r[0] === ev.repeat; })[0][1] : "";
       var alertLabel = ev.alert == null ? "" : (ev.alert === 0 ? "Alert at start" : (ev.alert >= 60 ? ev.alert / 60 + " hour before" : ev.alert + " min before"));
       D = {
-        title: ev.title, when: calRange(ev.t, ev.d), day: calDayName(api, evDay) + (repeatLabel ? " · " + repeatLabel : ""),
+        title: ev.title, deleteLabel:'Delete event',deleteText:'Delete',when: calRange(ev.t, ev.d), day: calDayName(api, evDay) + (repeatLabel ? " · " + repeatLabel : ""),
         dot: CAL_COLORS[c.color], calName: c.name, canModify: true,
         recurringReminder: false, reminderPolicy: "", reminderHistory: [], reminderDone: function () {}, reminderSnooze: function () {},
         hasWhere: !!ev.where, where: isPhone ? ((ev.who || [])[0] ? "Call " + calPerson(api, ev.who[0]).name.split(" ")[0] : "Phone call") : ev.where, whereIcon: isPhone ? IC.phone : IC.pin,
@@ -1463,6 +1464,8 @@ registerView("calendar", {
     var f = st.form; var F = null;
     if (f) {
       var fp = function (p) { set({ form: Object.assign({}, f, p) }); };
+      var inputs=calendarFormInputs(f,new Date(api.now==null?Date.now():api.now));
+      var inputChange=function(kind){return function(event){if(api.get('calendar').form!==f)return;try{fp(calendarFormInputPatch(f,kind,event.target.value,new Date(api.now==null?Date.now():api.now)));}catch(error){api.toast(error.message);fp({});}};};
       var dayChips = [];
       var first = f.off === 0 ? 1 : (f.off > 0 ? Math.max(1, f.off - 3) : f.off - 3);
       var offsets = [0];
@@ -1471,27 +1474,33 @@ registerView("calendar", {
         var dt = calDate(api, k); var act = k === f.off;
         dayChips.push({ on: act, top: k === 0 ? "Today" : weekdayName(dt, "short"), n: dt.getDate(), css: act ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2)", pick: function () { fp({ off: k }); }, label: calDayName(api, k) });
       });
-      var chosen = f.who.map(function (id) { var p = calPerson(api, id); return { ini: p.ini, first: p.name.split(" ")[0], label: "Remove " + p.name, remove: function () { fp({ who: f.who.filter(function (x) { return x !== id; }) }); } }; });
+      var chosen = f.who.map(function (id) { var p = calPerson(api, id); return { ini: p.ini, first: p.name.split(" ")[0], label: "Remove " + p.name, remove: function () { fp({ who: f.who.filter(function (x) { return x !== id; }),canonicalGuestsReviewed:true }); } }; });
       var q = (f.pq || "").toLowerCase().trim();
-      var sugg = f.pq == null ? [] : calPeople(api).filter(function (p) { return f.who.indexOf(p.id) < 0 && (!q || p.name.toLowerCase().indexOf(q) >= 0 || (p.email || "").toLowerCase().indexOf(q) >= 0); }).slice(0, 4).map(function (p) {
-        return { ini: p.ini, name: p.name, sub: p.email || p.phone || "", pick: function () { fp({ who: f.who.concat([p.id]), pq: null }); } };
+      var selectedEmails=f.who.map(function(id){return calendarGuestEmail(calPerson(api,id).email);}).filter(Boolean).map(function(email){return email.toLowerCase();});
+      var typedEmail=calendarGuestEmail(f.pq),canAddEmail=!!typedEmail&&selectedEmails.indexOf(typedEmail.toLowerCase())<0;
+      var guestPatch=function(who){fp({who:who,pq:null,canonicalGuestsReviewed:true});};
+      var sugg = f.pq == null ? [] : calPeople(api).filter(function (p) { return f.who.indexOf(p.id) < 0 && (!p.email||selectedEmails.indexOf(p.email.toLowerCase())<0) && (!q || p.name.toLowerCase().indexOf(q) >= 0 || (p.email || "").toLowerCase().indexOf(q) >= 0); }).slice(0, 4).map(function (p) {
+        return { ini: p.ini, name: p.name, sub: p.email || p.phone || "", pick: function () { guestPatch(f.who.concat([p.id])); } };
       });
       var chip = function (on) { return on ? "background:var(--fg);color:var(--bg)" : "background:var(--bg)"; };
       F = {
         isNew: !f.id, title: f.title, where: f.where, notes: f.notes,
+        hasEventFields: f.cal !== 'alpha-reminders', hasVideo: f.cal !== 'alpha-reminders',
+        date:inputs.date,startTime:inputs.startTime,endDate:inputs.endDate,endTime:inputs.endTime,onDate:inputChange('date'),onStartTime:inputChange('startTime'),onEndDate:inputChange('endDate'),onEndTime:inputChange('endTime'),timed:!f.allDay,timingEditable:true,startInputLabel:f.cal==='alpha-reminders'?'Reminder time':'Start time',
         onTitle: function (e) { fp({ title: e.target.value }); },
         onWhere: function (e) { fp({ where: e.target.value }); },
         onNotes: function (e) { fp({ notes: e.target.value }); },
         days: dayChips,
         start: calAmpm(f.t), end: calAmpm(f.t + f.d), dur: calDur(f.d),
-        sMinus: function () { fp({ t: Math.max(0, f.t - 0.25) }); }, sPlus: function () { fp({ t: Math.max(f.t, Math.min(24 - f.d, f.t + 0.25)) }); },
-        eMinus: function () { fp({ d: Math.max(0.25, f.d - 0.25) }); }, ePlus: function () { fp({ d: Math.min(24 - f.t, f.d + 0.25) }); },
+        sMinus: function () { fp({ t: Math.max(0, f.t - 0.25) }); }, sPlus: function () { fp({ t: Math.min(23+59/60, f.t + 0.25) }); },
+        eMinus: function () { fp({ d: Math.max(1/60, f.d - 0.25) }); }, ePlus: function () { fp({ d: f.d + 0.25 }); },
         video: f.video, vTrack: api.track(f.video), vKx: api.kx(f.video), toggleVideo: function () { fp({ video: !f.video }); },
         chosen: chosen, hasChosen: chosen.length > 0,
         picking: f.pq != null, notPicking: f.pq == null, pq: f.pq || "", sugg: sugg, noSugg: f.pq != null && sugg.length === 0,
         openPick: function () { fp({ pq: "" }); }, closePick: function () { fp({ pq: null }); },
+        canAddEmail:canAddEmail,typedEmail:typedEmail||'',addEmail:function(){if(canAddEmail)guestPatch(f.who.concat([typedEmail]));},
         onPq: function (e) { fp({ pq: e.target.value }); },
-        pqKey: function (e) { if (e.key === "Enter" && sugg.length) { e.preventDefault(); sugg[0].pick(); } if (e.key === "Escape") fp({ pq: null }); },
+        pqKey: function (e) { if(e.key==='Enter'&&canAddEmail){e.preventDefault();guestPatch(f.who.concat([typedEmail]));}else if (e.key === "Enter" && sugg.length) { e.preventDefault(); sugg[0].pick(); } if (e.key === "Escape") fp({ pq: null }); },
         valid: !!(f.title || "").trim(), saveOff: !(f.title || "").trim(), saveCss: (f.title || "").trim() ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2);color:var(--mut)",
         cals: (Array.isArray(st.canonicalCalendars) ? st.canonicalCalendars : cals).map(function (c) { return { name: c.name, dot: CAL_COLORS[c.color], css: chip(f.cal === c.id), pick: function () { fp({ cal: c.id }); } }; }),
         repeats: CAL_REPEAT.map(function (r) { return { label: r[1], css: chip(f.repeat === r[0]), pick: function () { fp({ repeat: r[0] }); } }; }),
@@ -1526,7 +1535,7 @@ registerView("calendar", {
       tlDown: tlDown, tlUp: tlUp,
       notToday: sel !== 0, goToday: function () { set({ day: 0, month: null }); },
       toggleMonth: function () { set({ month: monthOpen ? null : 0 }); },
-      newEvent: function () { var nx = sel === 0 ? Math.min(21, Math.ceil(nowT + 0.01)) : 10; set({ form: Object.assign(formFrom(null, sel), { t: nx }), month: null }); },
+      newEvent: function () { set({ form: Object.assign(formFrom(null, sel), calendarDefaultEventStart(sel,new Date(api.now))), month: null }); },
       hasInvites: invites.length > 0 && !monthOpen, invites: invites,
       monthOpen: monthOpen, mTitle: formatMonthTitle(mBase, mBase.getFullYear() !== today.getFullYear()),
       mdays: mdays, mPrev: function () { set({ month: (st.month || 0) - 1 }); }, mNext: function () { set({ month: (st.month || 0) + 1 }); },
@@ -5739,11 +5748,8 @@ class Component extends DCLogic {
       simulatedShade: this.simulatedShade(),
       closeShade: function () { self.setState({ shade: false }); }, openSystemShade: function () { self.openSystemShade(); },
       shadeKey: function (event) { if (event.key === "Escape" && !event.defaultPrevented) { event.preventDefault(); self.setState({ shade: false }); } }, clearAll: function () { self.setState({ nGone: NOTIFS.map(function (n) { return n.id; }), shade: false }); },
-      // Policy P-23: on Android the system Keyguard owns the secure camera; Alpha never
-      // opens its own camera, gallery or agent from a locked state. Only the simulated
-      // phone frame (no OS lock screen) keeps the prototype's lock-screen camera.
-      lockCameraOffered: !P.nativeSystemChrome, noLockCamera: !!P.nativeSystemChrome,
-      lockCamera: function () { if (P.nativeSystemChrome) return; self.setState({ screen: "home", secure: true }); self.openView("camera"); },
+      // Policy P-23: the system Keyguard owns secure camera access. The preview
+      // lock frame also requires Unlock before opening Camera or the media library.
       msgs: msgs, typing: S.typing && !S.turnStatus, turnStatus: S.typing ? S.turnStatus || "" : "", sugg: sugg, showSugg: panelOpen && !S.draft && !S.typing && !voiceOn,
       panelComposer: panelOpen && !voiceOn,
       panelH: !isOn ? 0 : (S.chat === "full" ? 915 : (S.chat === "sheet" ? 560 : 0)), panelR: S.chat === "full" ? "0px" : "30px 30px 0 0",

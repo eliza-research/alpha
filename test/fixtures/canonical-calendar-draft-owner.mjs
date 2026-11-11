@@ -11,6 +11,7 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 
 export async function buildCalendarDraftFixture() {
   const ports = new Map([
+    ['./calendar-confirmation', 'export const confirmCalendarAction=async(_shell,_api,_title,_details,_label,current)=>current();'],
     ['../runtime/assistant-draft-store', 'export const assistantDraftStore=(binding)=>__port.store(binding);'],
     ['./agent-calendar-adapter', 'export const browserCalendarScope=()=>false;'],
     ['../browser/domain-recovery', 'export const openDomainRecovery=(...args)=>__port.recover(...args);'],

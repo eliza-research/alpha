@@ -148,14 +148,18 @@ public class CoreProbe {
   check(!AlphaQsDefaultsPolicy.shouldMigrate(defaults,defaults,0));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),list("wifi,bt"),0));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(Collections.emptyList(),defaults,0));
-  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),defaults,2));
-  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy),defaults,2));
+  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),defaults,3));
+  check(!AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy),defaults,3));
+  String oldTile="custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile)";
+  check(AlphaQsDefaultsPolicy.migrate(list("bt,"+oldTile+",inversion"),defaults,2).equals(list("bt,"+a+",inversion")));
+  check(AlphaQsDefaultsPolicy.migrate(list("bt,"+oldTile+","+a),defaults,2).equals(list("bt,"+a)));
+  check(AlphaQsDefaultsPolicy.migrate(list("bt,"+oldTile),defaults,3).equals(list("bt,"+oldTile)));
   System.out.println("PASS core and QS policy "+checks);
  }
 }''')
             subprocess.run([str(JDK/'bin/javac'), '-d', str(d), str(ROOT/'AlphaCoreLauncherPolicy.java'),
                 str(ROOT/'AlphaQsDefaultsPolicy.java'), str(probe)], check=True, capture_output=True)
-            self.assertIn('PASS core and QS policy 26', subprocess.check_output(
+            self.assertIn('PASS core and QS policy 29', subprocess.check_output(
                 [str(JDK/'bin/java'), '-cp', str(d), 'CoreProbe'], text=True))
 
     def test_storage_default_refuses_non_owner_sideloaded_and_existing_modes(self):

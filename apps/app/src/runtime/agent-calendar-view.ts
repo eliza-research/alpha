@@ -10,6 +10,12 @@ export function canonicalCalendarRow(event:LifeOpsCalendarEvent,displayZone:stri
  const today=getZonedDateParts(now,displayZone),start=getZonedDateParts(new Date(event.startAt),event.isAllDay?'UTC':displayZone),end=getZonedDateParts(new Date(event.endAt),event.isAllDay?'UTC':displayZone);
  return{id:'canonical-calendar:'+calendarEventKey(event),canonicalEvent:structuredClone(event),canonicalEventKey:calendarEventKey(event),off:(civil(start)-civil(today))/DAY,t:event.isAllDay?0:start.hour+start.minute/60,d:event.isAllDay?0:(Date.parse(event.endAt)-Date.parse(event.startAt))/3600000,allDay:event.isAllDay,allDayEndOff:(civil(end)-civil(today))/DAY,title:event.title,notes:event.description,where:event.location,who:[],video:false,repeat:'none',alert:null,cal:calendarSourceKey({provider:event.provider,side:event.side,grantId:event.grantId??'',connectorAccountId:event.connectorAccountId??'',calendarId:event.calendarId})};
 }
+/** Editors use wall minutes; layout keeps elapsed duration and original instants separately. */
+export function canonicalCalendarEditorTiming(event:LifeOpsCalendarEvent,displayZone:string,now=new Date()){
+ const row=canonicalCalendarRow(event,displayZone,now),start=getZonedDateParts(new Date(event.startAt),displayZone),end=getZonedDateParts(new Date(event.endAt),displayZone);
+ const wall=(civil(end)-civil(start))/DAY*24+end.hour+end.minute/60-start.hour-start.minute/60;
+ return {off:row.off,t:row.t,d:event.isAllDay?1:wall>0?wall:Math.max(1/60,row.d),locked:!event.isAllDay&&wall<=0};
+}
 export type CanonicalCalendarForm={ownerKey:string;operationKey:string;sourceKey:string;eventKey?:string;expectedProviderVersion?:string;date:{year:number;month:number;day:number};startMinutes:number;durationMinutes:number;timeZone:string;title:string;notes:string;location:string;allDay?:{startDate:string;endDateExclusive:string};recurrence?:string[];recurrenceScope?:LifeOpsCalendarEventUpdate['recurrenceScope'];attendees?:CreateLifeOpsCalendarEventRequest['attendees']};
 /** Form rows carry fractional hours; h+m/60 does not always multiply back to whole minutes (16:20 gives 979.99…). */
 export const calendarFormMinutes=(hours:unknown)=>Math.round(Number(hours)*60);
@@ -22,5 +28,21 @@ export function calendarFormRange(form:CanonicalCalendarForm){
 }
 export function calendarFormCreate(form:CanonicalCalendarForm):Omit<CreateLifeOpsCalendarEventRequest,'side'|'grantId'|'calendarId'> & {idempotencyKey:string}{return calendarEditorCommand({kind:'create',fields:form,range:calendarFormRange(form),operationKey:form.operationKey});}
 /** UI conversion only; shared command helper owns field/range/recurrence diffing. */
-export function calendarFormPatch(form:CanonicalCalendarForm,event:LifeOpsCalendarEvent,changed:{timing?:boolean;zone?:boolean}={timing:true,zone:true}):LifeOpsCalendarEventUpdate & {idempotencyKey:string}{return calendarEditorCommand({kind:'update',fields:form,event,changed:{timing:!!changed.timing,zone:!!changed.zone},...(changed.timing?{range:calendarFormRange(form)}:{}),operationKey:form.operationKey});}
+export function calendarFormPatch(form:CanonicalCalendarForm,event:LifeOpsCalendarEvent,changed:{timing?:boolean;zone?:boolean}={timing:true,zone:true}):LifeOpsCalendarEventUpdate & {idempotencyKey:string}{
+ let range:ReturnType<typeof calendarFormRange>|undefined;
+ if(changed.timing){
+  if(form.allDay)range={allDay:{...form.allDay}};
+  else{
+   if(!Number.isInteger(form.startMinutes)||form.startMinutes<0||form.startMinutes>=1440||!Number.isSafeInteger(form.durationMinutes)||form.durationMinutes<=0)throw Error('Choose a valid start and end time');
+   const at=(minutes:number,original:string)=>{const date=addDaysToLocalDate(form.date,Math.floor(minutes/1440)),time=minutes%1440,parts={...date,hour:Math.floor(time/60),minute:time%60,second:0},before=getZonedDateParts(new Date(original),form.timeZone);
+    // An unchanged endpoint retains its exact original instant, including which repeated hour and seconds.
+    if(!changed.zone&&!event.isAllDay&&['year','month','day','hour','minute'].every(key=>parts[key as keyof typeof parts]===before[key as keyof typeof before]))return original;
+    return buildUtcDateFromLocalParts(form.timeZone,parts,'reject').toISOString();};
+   const startAt=at(form.startMinutes,event.startAt),endAt=at(form.startMinutes+form.durationMinutes,event.endAt);
+   if(Date.parse(endAt)<=Date.parse(startAt))throw Error('Choose an end after the start');
+   range={startAt,endAt};
+  }
+ }
+ return calendarEditorCommand({kind:'update',fields:form,event,changed:{timing:!!changed.timing,zone:!!changed.zone},...(range?{range}:{}),operationKey:form.operationKey});
+}
 export function canonicalHomeCalendar(next:{event:LifeOpsCalendarEvent|null;calendarFeedState:string;readScope:{timeMin:string;timeMax:string}}|null,fresh=true){return{kind:'canonical-calendar' as const,event:next?.event??null,verified:fresh&&next?.calendarFeedState==='complete',emptyLabel:fresh&&next?.calendarFeedState==='complete'?'No upcoming events in this window':'Calendar has not been verified',window:next?.readScope??null};}
