@@ -53,6 +53,8 @@ import {
 } from "./hosted-digests";
 import { DailyApps } from "../daily";
 import { formatDateTime } from "../prototype/locale-time";
+import { androidScheduleDelay } from "./workflow-local-time";
+import { DIGEST_RUN_WINDOW_MS } from "../../../../.eliza/client-features/plugins/plugin-workflow/src/services/hosted-digest-policy.ts";
 type Pending = {
 	path: "sources" | "loops" | "sources/revoke" | "dossier";
 	body: Record<string, unknown>;
@@ -601,6 +603,10 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 	}
 	const liveBinding = binding.current;
     const now=Date.now(),renewals=digestRenewals(sources,loops,now);
+    const digestWindowMinutes = DIGEST_RUN_WINDOW_MS / 60_000;
+    const digestScheduleTiming = (connection.kind==='resident'&&isAndroid
+        ? `${androidScheduleDelay} `
+        : '') + `Runs more than ${digestWindowMinutes} minutes late are marked missed.`;
     // Read at render: travel or a changed system setting moves the device zone, never a reviewed schedule.
     const deviceZone=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone;}catch{return '';}})();
 	if (!open || (binding.current && binding.current.sessionId!==connection.session?.sessionId)) return null;
@@ -658,6 +664,8 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 					<section id="hosted-digest-review" tabIndex={-1}>
 						<h2>Review</h2>
 						<p style={{ whiteSpace: "pre-wrap" }}>{review.summary}</p>
+                        {review.path==='loops'&&(review.body.spec as {enabled?:boolean}|undefined)?.enabled===true&&
+                            <p role="note">{digestScheduleTiming}</p>}
 						{(review.path==='loops'||review.path==='dossier')&&<p><span aria-hidden="true" style={{...iconStyle("info"),width:'16px',height:'16px',marginRight:6,verticalAlign:'middle'}}/>{billing}</p>}
 						<button disabled={busy} onClick={() => void submit(review)}>
 							Confirm
@@ -793,7 +801,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 								/>
 							</label>}
 							<p>
-								Missed times don’t run later. Only these digests run on a schedule.
+								{digestScheduleTiming}
 							</p>
 							{(["morning", "evening"] as const).filter(t=>t==='morning'||features.nativeEvening||sources.find(source=>source.id===sourceId)?.live?.provider!=='native').map((t) => (
 								<div key={t}>
