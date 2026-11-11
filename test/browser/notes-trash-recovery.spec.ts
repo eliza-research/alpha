@@ -5,7 +5,7 @@ import {test,expect,type Page} from '@playwright/test';
 /** A Recently deleted row → its action sheet. */
 async function rowAction(page:Page,title:string,action:'Recover'|'Delete now'){
  await page.locator('[data-alpha-subview="notes-trash"]').getByRole('button',{name:new RegExp(`^${title}, `)}).click();
- await page.getByRole('dialog',{name:title,exact:true}).getByRole('button',{name:action,exact:true}).click();
+ await page.getByRole('dialog',{name:`Recover or delete “${title}”?`,exact:true}).getByRole('button',{name:action,exact:true}).click();
 }
 /** Delete now → the confirmation → Delete. */
 async function deleteNow(page:Page,title:string){

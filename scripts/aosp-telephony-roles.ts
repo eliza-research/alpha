@@ -1,5 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import {parseXmlTree, type ManifestNode} from './apk.ts';
 
 type RoleFilter = {
@@ -91,23 +89,4 @@ export function aospTelephonyRoleComponents(xmltree: string, packageName: string
     }
     return name;
   });
-}
-
-export function writeAospTelephonyRoles(output: string, xmltree: string, packageName: string) {
-  const names = aospTelephonyRoleComponents(xmltree, packageName);
-  const name = 'alpha-telephony-components.xml';
-  const components = names.map(component => `        <component class="${component}" enabled="true" />`).join('\n');
-  // Provision uses this versioned feature to distinguish production role setup
-  // from the HOME-only path on branded development images.
-  const xml = `<?xml version="1.0" encoding="utf-8"?>
-<config>
-    <feature name="${packageName}.feature.INITIAL_TELEPHONY_ROLES" version="1" />
-    <component-override package="${packageName}">
-${components}
-    </component-override>
-</config>
-`;
-  fs.writeFileSync(path.join(output, 'provisioning', name), xml, {flag: 'wx'});
-  fs.appendFileSync(path.join(output, 'product.mk'),
-    `\nPRODUCT_COPY_FILES += $(launcher_provisioning_dir)/${name}:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/sysconfig/${name}\n`);
 }

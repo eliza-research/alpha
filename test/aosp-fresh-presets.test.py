@@ -14,7 +14,7 @@ CORE=BRAND/'core-launcher'
 core_baseline=lambda relative:(CORE/'.cache/baseline'/relative).read_bytes()
 
 class FreshPresets(unittest.TestCase):
- def test_actual_policy_completed_managed_and_existing_ime_choices(self):
+ def test_actual_policy_completed_managed_home_failure_and_existing_ime_choices(self):
   with tempfile.TemporaryDirectory(prefix='alpha-fresh-policy-')as d:
    p=Path(d)/'FreshTest.java';p.write_text('''package com.android.provision;
 public class FreshTest {
@@ -28,6 +28,7 @@ public class FreshTest {
  public static void main(String[] args){
   for(boolean done:new boolean[]{false,true})for(boolean managed:new boolean[]{false,true})for(boolean primary:new boolean[]{false,true})
    check(AlphaFreshSetupPolicy.eligible(done,managed,primary)==(!done&&!managed&&primary));
+  for(boolean accepted:new boolean[]{false,true})for(boolean held:new boolean[]{false,true})check(AlphaFreshSetupPolicy.roleVerified(accepted,held)==(accepted&&held));
   Port fresh=new Port();check(AlphaFreshSetupPolicy.ensureKeyboard(fresh)==AlphaFreshSetupPolicy.ImeResult.READY);check(fresh.target.equals(fresh.selected)&&fresh.target.equals(fresh.enabled)&&fresh.writes==2);
   Port previous=new Port();previous.fresh=false;check(AlphaFreshSetupPolicy.ensureKeyboard(previous)==AlphaFreshSetupPolicy.ImeResult.SKIPPED&&previous.writes==0);
   Port managed=new Port();managed.fresh=false;managed.selected="enterprise/.IME";check(AlphaFreshSetupPolicy.ensureKeyboard(managed)==AlphaFreshSetupPolicy.ImeResult.SKIPPED&&managed.writes==0);
@@ -72,6 +73,11 @@ public class FreshTest {
    self.assertIn('AlphaFreshPresets.shouldRunWelcome(this)',after)
    stage.apply_plan(root,plan,rows,Path(d)/'backup')
    for row in rows:self.assertEqual(stage.digest((root/row['path']).read_bytes()),row['sha256'])
+   feature='vendor/alphaphone/branding/provision/fresh-telephony.xml'
+   welcome='packages/apps/Provision/src/com/android/provision/AlphaWelcome.java'
+   self.assertGreater(list(plan).index(feature),list(plan).index(welcome))
+   self.assertEqual(ET.parse(root/feature).getroot().find('feature').attrib,
+                    {'name':'ai.alphacompute.alphaphone.fresh_telephony_setup'})
    # Every existing hardware/power overlay is copied exactly, not recreated or filtered out.
    for file in (BRAND/'overlay').rglob('*'):
     if file.is_file():self.assertEqual((root/'vendor/alphaphone/branding'/file.relative_to(BRAND)).read_bytes(),file.read_bytes())
@@ -125,231 +131,266 @@ public class FreshTest {
    with self.assertRaises(AssertionError):stage.apply_plan(root,plan,rows,Path(d)/'backup')
    self.assertFalse((root/'vendor/alphaphone/branding').exists())
 
- def test_pinned_api_sources_and_existing_presets_retain_authority(self):
+ def test_real_api_sources_and_home_failure_ui_retain_authority(self):
   imm=(INPUT/'frameworks/base/core/java/android/view/inputmethod/InputMethodManager.java').read_text()
   self.assertIn('Update secure settings directly',imm)
   settings=(INPUT/'frameworks/base/core/java/android/provider/Settings.java').read_text()
   for text in ['DEFAULT_INPUT_METHOD = "default_input_method"','ENABLED_INPUT_METHODS = "enabled_input_methods"']:self.assertIn(text,settings)
-  role_manager=(INPUT/'packages/modules/Permission/framework-s/java/android/app/role/RoleManager.java').read_text()
-  for role in ('HOME','DIALER','SMS'):
-   self.assertIn(f'ROLE_{role} = "android.app.role.{role}"',role_manager)
-  self.assertIn('public List<String> getRoleHoldersAsUser(',role_manager)
-  self.assertIn('public void addRoleHolderAsUser(',role_manager)
   java=(BRAND/'provision/AlphaFreshPresets.java').read_text()
   self.assertIn('if (!eligible() || nonempty(selected())) return false;',java)
   self.assertIn('policy.getDeviceOwnerComponentOnCallingUser() != null || users.isManagedProfile()',java)
   self.assertNotIn('policy.isDeviceManaged()',java,'do not introduce a MANAGE_USERS permission requirement')
   welcome=(BRAND/'provision/AlphaWelcome.java').read_text()
+  self.assertNotIn('accepted -> completed.run()',welcome)
+  self.assertIn('Settings.ACTION_HOME_SETTINGS',welcome)
   self.assertIn('palette == null || palette.isEmpty() || palette.equals("{}")',welcome)
   self.assertEqual(welcome.count('completed.run()'),1,'only confirmed completion path calls upstream finisher')
 
- def test_actual_role_sequence_retries_only_missing_grants_and_verifies_final_holders(self):
+ def test_actual_setup_completion_retries_roles_and_preserves_existing_presets(self):
   source=(BRAND/'provision/AlphaWelcome.java').read_text()
   start=source.index('    private static final class Completion {')
-  end=source.index('    private static TextView text(', start)
-  completion=source[start:end]
+  completion=source[start:source.index('    private static TextView text(',start)]
   strings=ET.parse(BRAND/'provision/strings.xml').getroot()
-  resources={node.attrib['name']:i for i,node in enumerate(strings,1)}
-  constants=';'.join(f'static final int {name}={i}' for name,i in resources.items())
-  with tempfile.TemporaryDirectory(prefix='alpha-preset-role-sequence-')as d:
-   file=Path(d)/'RoleSequenceTest.java'
-   file.write_text('''
-package com.android.provision;
-
+  ids='\n'.join(f"static final int {row.attrib['name']} = {i};" for i,row in enumerate(strings,1))
+  with tempfile.TemporaryDirectory(prefix='alpha-preset-recovery-')as d:
+   file=Path(d)/'CompletionTest.java';file.write_text('''package com.android.provision;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
-
-public class RoleSequenceTest {
- static class R { static class string {''' + constants + ''';} }
+public class CompletionTest {
+ static final String ALPHA="ai.alphacompute.alphaphone", OTHER="other.app";
+ static final String HOME="home", DIALER="dialer", SMS="sms";
+ static void check(boolean result,String message){if(!result)throw new AssertionError(message);}
+ static class R { static class string {'''+ids+'''} }
  static class Settings {
-  static final String ACTION_HOME_SETTINGS="home settings", ACTION_MANAGE_DEFAULT_APPS_SETTINGS="default apps",
-    ACTION_INPUT_METHOD_SETTINGS="input settings", ACTION_SETTINGS="settings";
+  static final String ACTION_HOME_SETTINGS="home-settings", ACTION_INPUT_METHOD_SETTINGS="ime-settings",
+   ACTION_SETTINGS="settings", ACTION_MANAGE_DEFAULT_APPS_SETTINGS="default-apps-settings";
   static class Secure {
    static final String THEME_CUSTOMIZATION_OVERLAY_PACKAGES="palette";
-   static String getString(Object resolver,String key){return "existing";}
+   static String getString(Activity activity,String key){return activity.palette;}
   }
  }
- static class View {static final int VISIBLE=0,GONE=8;}
- static class Text {int text;void setText(int value){text=value;}}
- static class TextView extends Text {}
- static class Button extends Text {
-  int visibility;boolean enabled=true;Consumer<Object> click;
+ static class View {static final int VISIBLE=0, GONE=8;}
+ static class Button {
+  int text,visibility; boolean enabled=true; Consumer<Object> click;
+  void setText(int value){text=value;}
   void setEnabled(boolean value){enabled=value;}
   void setVisibility(int value){visibility=value;}
-  void setOnClickListener(Consumer<Object> value){click=value;}
+  void setOnClickListener(Consumer<Object> listener){click=listener;}
  }
- static final Object USER=new Object();
- static class Process {static Object myUserHandle(){return USER;}}
+ static class TextView {int text; void setText(int value){text=value;}}
  static class Looper {static Looper getMainLooper(){return new Looper();}}
  static class Handler {
-  static final List<Runnable> timers=new ArrayList<>();
-  Handler(Looper looper){}
-  void postDelayed(Runnable timer,long delay){check(delay==15000,"bounded request timeout");timers.add(timer);}
+  static List<Runnable> clock;
+  final List<Runnable> timers=clock;
+  Handler(Looper unused){}
+  void postDelayed(Runnable task,long delay){check(delay==15000,"setup timeout");timers.add(task);}
  }
- static final String ALPHA="ai.alphacompute.alphaphone";
- static final String HOME="home",DIALER="dialer",SMS="sms";
- static class RoleManager {
-  static final String ROLE_HOME=HOME,ROLE_DIALER=DIALER,ROLE_SMS=SMS;
-  final Map<String,List<String>> holders=new HashMap<>();
-  final List<String> requests=new ArrayList<>(),checked=new ArrayList<>();
-  final List<Consumer<Boolean>> callbacks=new ArrayList<>();
-  String unavailable,deniedRead,deniedWrite;
-  boolean isRoleAvailable(String role){checked.add(role);return !role.equals(unavailable);}
-  List<String> getRoleHoldersAsUser(String role,Object user){
-   check(user==USER,"read current user");
-   if(role.equals(deniedRead))throw new SecurityException();
-   return holders.get(role);
-  }
-  void addRoleHolderAsUser(String role,String holder,int flags,Object user,Executor executor,Consumer<Boolean> reply){
-   check(ALPHA.equals(holder)&&flags==0&&user==USER,"write exact target and current user");
-   if(role.equals(deniedWrite))throw new SecurityException();
-   requests.add(role);callbacks.add(reply);
-  }
-  void set(String role,String... values){holders.put(role,List.of(values));}
-  void reply(int index,Boolean accepted,String... values){
-   set(requests.get(index),values);callbacks.get(index).accept(accepted);
-  }
- }
+ static class Process {static int myUserHandle(){return 0;}}
  static class PackageManager {
-  final int version;
-  PackageManager(int version){this.version=version;}
-  boolean hasSystemFeature(String feature,int minimum){
-   check(feature.equals(ALPHA+".feature.INITIAL_TELEPHONY_ROLES")&&minimum==1,"image feature name and version");
-   return version>=minimum;
+  static final String FEATURE_TELEPHONY="android.hardware.telephony";
+  final Activity activity;
+  PackageManager(Activity activity){this.activity=activity;}
+  boolean hasSystemFeature(String feature){
+   if(FEATURE_TELEPHONY.equals(feature))return activity.telephony;
+   check((ALPHA+".fresh_telephony_setup").equals(feature),"factory telephony feature");
+   return activity.factoryTelephony;
   }
  }
- static class Activity {
-  final RoleManager service;
-  final PackageManager packages;
-  boolean fresh=true,destroyed,finishing;
-  AlphaFreshSetupPolicy.ImeResult keyboard=AlphaFreshSetupPolicy.ImeResult.READY;
-  Activity(RoleManager roles,int featureVersion){service=roles;packages=new PackageManager(featureVersion);}
-  PackageManager getPackageManager(){return packages;}
-  boolean isFinishing(){return finishing;}
+ static class Intent {
+  static final int FLAG_INCLUDE_STOPPED_PACKAGES=32;
+  final String action; String pkg,target; int flags;
+  Intent(String action){this.action=action;}
+  Intent setClassName(String pkg,String target){this.pkg=pkg;this.target=target;return this;}
+  Intent addFlags(int flags){this.flags|=flags;return this;}
+ }
+ static class Context {}
+ static abstract class BroadcastReceiver {
+  int code;
+  int getResultCode(){return code;}
+  abstract void onReceive(Context context,Intent intent);
+ }
+ static class Activity extends Context {
+  static final int RESULT_OK=-1, RESULT_CANCELED=0;
+  final List<String> effects=new ArrayList<>();
+  final RoleManager roles=new RoleManager(this);
+  boolean telephony=true, factoryTelephony=true, primary=true, managed, complete, destroyed, prepared, missingRoles;
+  boolean paletteAccepted=true;
+  Runnable afterPalette=()->{};
+  String opened,palette="owner palette";
+  int completions;
+  BroadcastReceiver prepareReply;
+  Intent prepareRequest;
+  AlphaFreshSetupPolicy.ImeResult keyboard=AlphaFreshSetupPolicy.ImeResult.EXISTING_CHOICE;
+  boolean isFinishing(){return false;}
   boolean isDestroyed(){return destroyed;}
-  <T> T getSystemService(Class<T> type){return type.cast(service);}
-  Object getContentResolver(){return new Object();}
+  <T> T getSystemService(Class<T> type){return missingRoles ? null : type.cast(roles);}
+  PackageManager getPackageManager(){return new PackageManager(this);}
   Executor getMainExecutor(){return Runnable::run;}
+  Activity getContentResolver(){return this;}
+  void sendOrderedBroadcast(Intent intent,String permission,BroadcastReceiver reply,Handler handler,
+      int result,String data,Object extras){
+   check(intent.action.equals(ALPHA+".action.PREPARE_TELEPHONY_ROLES")
+       && intent.pkg.equals(ALPHA) && intent.target.equals(ALPHA+".AlphaTelephonySetupReceiver")
+       && intent.flags==Intent.FLAG_INCLUDE_STOPPED_PACKAGES && result==RESULT_CANCELED,"explicit fail-closed preparation");
+   effects.add("prepare");prepareReply=reply;prepareRequest=intent;
+  }
+  void prepared(int result){
+   var reply=prepareReply;prepareReply=null;check(reply!=null,"pending preparation");
+   prepared=result==RESULT_OK;reply.code=result;reply.onReceive(this,prepareRequest);
+  }
+  void finishSetup(){effects.add("finish");completions++;complete=true;}
+ }
+ static class RoleManager {
+  static final String ROLE_HOME=HOME, ROLE_DIALER=DIALER, ROLE_SMS=SMS;
+  final Activity activity;
+  final Map<String,List<String>> holders=new HashMap<>();
+  final Set<String> unavailable=new HashSet<>();
+  Consumer<Boolean> reply; String pending;
+  RoleManager(Activity activity){this.activity=activity;}
+  boolean isRoleAvailable(String role){return !unavailable.contains(role);}
+  List<String> getRoleHoldersAsUser(String role,int user){
+   check(user==0,"read primary user");
+   return holders.getOrDefault(role,List.of());
+  }
+  void addRoleHolderAsUser(String role,String pkg,int flags,int user,Executor executor,Consumer<Boolean> callback){
+   check(pkg.equals(ALPHA) && flags==0 && user==0,"role request identity");
+   check(!activity.telephony || !activity.factoryTelephony || activity.prepared,"prepare components before assigning roles");
+   activity.effects.add(role);pending=role;reply=callback;
+  }
+  void answer(String expected,boolean accepted,List<String> readback){
+   check(expected.equals(pending)&&reply!=null,"unexpected pending role "+pending);
+   var callback=reply;reply=null;pending=null;
+   if(readback!=null)holders.put(expected,readback);
+   callback.accept(accepted);
+  }
+  void grant(String role){answer(role,true,List.of(ALPHA));}
  }
  static class AlphaFreshPresets {
-  static boolean eligible(Activity activity){return activity.fresh;}
-  static AlphaFreshSetupPolicy.ImeResult ensureKeyboard(Activity activity){return activity.keyboard;}
+  static boolean eligible(Activity activity){return AlphaFreshSetupPolicy.eligible(activity.complete,activity.managed,activity.primary);}
+  static AlphaFreshSetupPolicy.ImeResult ensureKeyboard(Activity activity){activity.effects.add("keyboard");return activity.keyboard;}
  }
- static class AlphaAppearance {static boolean applyPalette(Activity activity){throw new AssertionError("saved palette");}}
- static String opened;
- static void open(Activity activity,String action){opened=action;}
-''' + completion + '''
- static int cases;
- static void check(boolean result,String detail){if(!result)throw new AssertionError(detail);}
- static class Setup {
-  final Activity activity;
-  final RoleManager roles;
+ static class AlphaAppearance {
+  static boolean applyPalette(Activity activity){activity.effects.add("palette");activity.afterPalette.run();return activity.paletteAccepted;}
+ }
+ static void open(Activity activity,String action){activity.opened=action;}
+'''+completion+'''
+ static class Fixture {
+  final Activity activity=new Activity();
+  final RoleManager roles=activity.roles;
   final Button next=new Button(),settings=new Button();
   final TextView notice=new TextView();
-  final Completion completion;
-  int completed;
-  Setup(RoleManager roles){this(roles,1);}
-  Setup(RoleManager roles,int featureVersion){
-   this.roles=roles;activity=new Activity(roles,featureVersion);
-   completion=new Completion(activity,()->{completed++;activity.fresh=false;},next,settings,notice,
-     Completion.hasInitialTelephonyRoles(activity));
+  final List<Runnable> timers=new ArrayList<>();
+  final Completion setup;
+  Fixture(){Handler.clock=timers;setup=new Completion(activity,activity::finishSetup,next,settings,notice);}
+  void effects(String... expected){check(activity.effects.equals(List.of(expected)),"effects "+activity.effects);}
+  void failure(int message,String action){
+   check(activity.completions==0 && next.enabled && next.text==R.string.alpha_retry_setup
+       && notice.text==message && settings.visibility==View.VISIBLE
+       && settings.text==(message==R.string.alpha_home_failed ? R.string.alpha_home_settings
+         : message==R.string.alpha_roles_failed ? R.string.alpha_default_apps_settings : R.string.alpha_open_settings),
+       "failure remains retryable");
+   settings.click.accept(null);check(action.equals(activity.opened),"failure recovery destination");
   }
-  void begin(){completion.begin();}
-  void requests(String... rolesRequested){check(roles.requests.equals(List.of(rolesRequested)),"unexpected writes: "+roles.requests);}
-  void failed(int message,int label,String target){
-   check(completed==0&&notice.text==message&&next.enabled&&next.text==R.string.alpha_retry_setup,"failure permits retry");
-   check(settings.text==label&&settings.visibility==View.VISIBLE,"failure offers relevant settings");
-   settings.click.accept(null);check(target.equals(opened),"failure opens "+target);
-   cases++;
-  }
- }
- static RoleManager factory(){
-  RoleManager roles=new RoleManager();
-  roles.set(HOME,"stock.home");roles.set(DIALER,"stock.phone");roles.set(SMS,"stock.messages");
-  return roles;
- }
- static Setup startWithHome(){
-  RoleManager roles=factory();roles.set(HOME,ALPHA);
-  Setup setup=new Setup(roles);setup.begin();setup.requests(DIALER);return setup;
+  void complete(){check(activity.completions==1 && activity.complete,"setup completes once");}
  }
  public static void main(String[] args){
-  for(int featureVersion:new int[]{-1,0}){
-   RoleManager homeOnly=factory();homeOnly.unavailable=DIALER;
-   Setup ordinary=new Setup(homeOnly,featureVersion);ordinary.begin();ordinary.requests(HOME);
-   ordinary.roles.reply(0,true,ALPHA);ordinary.requests(HOME);
-   check(ordinary.completed==1&&homeOnly.checked.equals(List.of(HOME,HOME)),
-     "ordinary branded setup uses only HOME");cases++;
+  Fixture retry=new Fixture();
+  retry.setup.begin();retry.setup.begin();retry.effects("prepare");
+  retry.activity.prepared(Activity.RESULT_OK);
+  retry.roles.grant(HOME);retry.roles.grant(DIALER);retry.roles.answer(SMS,false,null);
+  retry.failure(R.string.alpha_roles_failed,Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
+  retry.effects("prepare",HOME,DIALER,SMS);
+  retry.setup.begin();retry.activity.prepared(Activity.RESULT_OK);retry.roles.grant(SMS);
+  retry.effects("prepare",HOME,DIALER,SMS,"prepare",SMS,"keyboard","finish");retry.complete();
+  retry.roles.holders.put(DIALER,List.of(OTHER));retry.setup.begin();
+  check(retry.roles.holders.get(DIALER).equals(List.of(OTHER)),"completed setup preserves owner change");
+  retry.effects("prepare",HOME,DIALER,SMS,"prepare",SMS,"keyboard","finish");retry.complete();
+
+  Fixture mismatch=new Fixture();
+  mismatch.setup.begin();mismatch.activity.prepared(Activity.RESULT_OK);
+  mismatch.roles.answer(HOME,true,List.of(ALPHA,OTHER));
+  mismatch.failure(R.string.alpha_home_failed,Settings.ACTION_HOME_SETTINGS);mismatch.effects("prepare",HOME);
+
+  Fixture drift=new Fixture();
+  drift.setup.begin();drift.activity.prepared(Activity.RESULT_OK);drift.roles.grant(HOME);drift.roles.grant(DIALER);
+  drift.roles.holders.put(DIALER,List.of(OTHER));drift.roles.grant(SMS);
+  drift.failure(R.string.alpha_roles_failed,Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
+  drift.effects("prepare",HOME,DIALER,SMS);
+
+  Fixture unavailable=new Fixture();
+  unavailable.roles.unavailable.add(SMS);unavailable.setup.begin();
+  unavailable.failure(R.string.alpha_roles_failed,Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);unavailable.effects();
+  Fixture missing=new Fixture();
+  missing.activity.missingRoles=true;missing.setup.begin();
+  missing.failure(R.string.alpha_home_failed,Settings.ACTION_HOME_SETTINGS);missing.effects();
+  Fixture refused=new Fixture();
+  refused.setup.begin();refused.activity.prepared(Activity.RESULT_CANCELED);
+  refused.failure(R.string.alpha_roles_failed,Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);refused.effects("prepare");
+
+  Fixture timedOut=new Fixture();
+  timedOut.setup.begin();timedOut.activity.prepared(Activity.RESULT_OK);
+  timedOut.timers.get(0).run();check(!timedOut.next.enabled,"earlier preparation timer cannot fail HOME");
+  var lateHome=timedOut.roles.reply;timedOut.timers.get(1).run();
+  timedOut.failure(R.string.alpha_home_failed,Settings.ACTION_HOME_SETTINGS);
+  timedOut.setup.begin();timedOut.roles.holders.put(HOME,List.of(ALPHA));lateHome.accept(true);
+  timedOut.effects("prepare",HOME,"prepare");
+  timedOut.activity.prepared(Activity.RESULT_OK);timedOut.roles.grant(DIALER);timedOut.roles.grant(SMS);
+  timedOut.effects("prepare",HOME,"prepare",DIALER,SMS,"keyboard","finish");timedOut.complete();
+
+  Fixture stalePrepare=new Fixture();
+  stalePrepare.setup.begin();var stale=stalePrepare.activity.prepareReply;
+  stalePrepare.timers.get(0).run();stalePrepare.failure(R.string.alpha_roles_failed,Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
+  stalePrepare.setup.begin();stale.code=Activity.RESULT_OK;stale.onReceive(stalePrepare.activity,stalePrepare.activity.prepareRequest);
+  stalePrepare.effects("prepare","prepare");
+  stalePrepare.activity.prepared(Activity.RESULT_OK);stalePrepare.roles.grant(HOME);stalePrepare.roles.grant(DIALER);stalePrepare.roles.grant(SMS);
+  stalePrepare.complete();
+
+  Fixture destroyed=new Fixture();
+  destroyed.setup.begin();destroyed.activity.prepared(Activity.RESULT_OK);destroyed.activity.destroyed=true;
+  destroyed.roles.grant(HOME);
+  destroyed.effects("prepare",HOME);check(destroyed.activity.completions==0,"dead activity cannot finish or assign another role");
+
+  Fixture nonTelephony=new Fixture();
+  nonTelephony.activity.telephony=false;nonTelephony.roles.unavailable.addAll(List.of(DIALER,SMS));
+  nonTelephony.setup.begin();nonTelephony.roles.grant(HOME);
+  nonTelephony.effects(HOME,"keyboard","finish");nonTelephony.complete();
+  Fixture development=new Fixture();
+  development.activity.factoryTelephony=false;development.roles.unavailable.addAll(List.of(DIALER,SMS));
+  development.setup.begin();development.roles.grant(HOME);
+  development.effects(HOME,"keyboard","finish");development.complete();
+  for(int condition=0;condition<3;condition++){
+   Fixture blocked=new Fixture();blocked.activity.complete=condition==0;
+   blocked.activity.managed=condition==1;blocked.activity.primary=condition!=2;blocked.setup.begin();
+   blocked.failure(R.string.alpha_setup_state_changed,Settings.ACTION_SETTINGS);blocked.effects();
   }
-  RoleManager noDialer=factory();noDialer.set(HOME,ALPHA);noDialer.unavailable=DIALER;
-  Setup required=new Setup(noDialer);required.begin();required.requests();
-  required.failed(R.string.alpha_dialer_failed,R.string.alpha_default_apps_settings,Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
+  Fixture lost=new Fixture();
+  lost.setup.begin();lost.activity.prepared(Activity.RESULT_OK);lost.activity.managed=true;lost.roles.grant(HOME);
+  lost.failure(R.string.alpha_setup_state_changed,Settings.ACTION_SETTINGS);lost.effects("prepare",HOME);
 
-  Setup fresh=new Setup(factory());fresh.begin();fresh.begin();fresh.requests(HOME);
-  fresh.roles.reply(0,true,ALPHA);fresh.requests(HOME,DIALER);
-  fresh.roles.reply(1,true,ALPHA);fresh.requests(HOME,DIALER,SMS);
-  fresh.roles.reply(2,true,ALPHA);
-  check(fresh.completed==1,"only all confirmed holders finish setup");cases++;
-  fresh.roles.set(DIALER,"owner.phone");fresh.roles.set(SMS,"owner.messages");fresh.begin();
-  fresh.requests(HOME,DIALER,SMS);
-  check(fresh.completed==1&&fresh.roles.holders.get(DIALER).equals(List.of("owner.phone"))
-    &&fresh.roles.holders.get(SMS).equals(List.of("owner.messages")),"completed setup preserves owner holders");cases++;
+  Fixture keyboard=new Fixture();keyboard.activity.telephony=false;keyboard.activity.keyboard=AlphaFreshSetupPolicy.ImeResult.FAILED;
+  keyboard.setup.begin();keyboard.roles.grant(HOME);keyboard.failure(R.string.alpha_keyboard_failed,Settings.ACTION_INPUT_METHOD_SETTINGS);
+  Fixture palette=new Fixture();palette.activity.telephony=false;palette.activity.palette="{}";palette.activity.paletteAccepted=false;
+  palette.setup.begin();palette.roles.grant(HOME);palette.failure(R.string.alpha_appearance_preset_failed,Settings.ACTION_SETTINGS);
 
-  Setup interrupted=startWithHome();interrupted.activity.destroyed=true;
-  interrupted.roles.reply(0,true,ALPHA);interrupted.requests(DIALER);
-  check(interrupted.completed==0,"destroyed activity cannot finish");
-  Setup restarted=new Setup(interrupted.roles);restarted.begin();restarted.requests(DIALER,SMS);
-  restarted.roles.reply(1,true,ALPHA);
-  check(restarted.completed==1,"new activity resumes only the missing role");cases++;
+  Fixture driftAfterPalette=new Fixture();driftAfterPalette.activity.telephony=false;driftAfterPalette.activity.palette="{}";
+  driftAfterPalette.activity.afterPalette=()->driftAfterPalette.roles.holders.put(HOME,List.of(OTHER));
+  driftAfterPalette.setup.begin();driftAfterPalette.roles.grant(HOME);
+  driftAfterPalette.failure(R.string.alpha_home_failed,Settings.ACTION_HOME_SETTINGS);
+  driftAfterPalette.effects(HOME,"keyboard","palette");
 
-  int firstTimer=Handler.timers.size();
-  Setup timeout=startWithHome();Handler.timers.get(firstTimer).run();
-  timeout.failed(R.string.alpha_dialer_failed,R.string.alpha_default_apps_settings,Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
-  timeout.begin();timeout.roles.reply(0,true,ALPHA);timeout.requests(DIALER,DIALER);
-  Handler.timers.get(firstTimer).run();
-  check(!timeout.next.enabled,"old timer cannot end a newer request");
-  timeout.roles.reply(1,true,ALPHA);timeout.requests(DIALER,DIALER,SMS);
-  timeout.roles.reply(2,true,ALPHA);check(timeout.completed==1,"active callback completes retry");cases++;
-
-  Setup absent=new Setup(null);absent.begin();
-  absent.failed(R.string.alpha_home_failed,R.string.alpha_home_settings,Settings.ACTION_HOME_SETTINGS);
-  Setup unavailable=startWithHome();unavailable.roles.unavailable=SMS;
-  unavailable.roles.reply(0,true,ALPHA);unavailable.requests(DIALER);
-  unavailable.failed(R.string.alpha_sms_failed,R.string.alpha_default_apps_settings,Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
-
-  for(Boolean rejected:new Boolean[]{false,null}){
-   Setup denied=startWithHome();denied.roles.reply(0,rejected,ALPHA);denied.requests(DIALER);
-   denied.failed(R.string.alpha_dialer_failed,R.string.alpha_default_apps_settings,Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
-  }
-  for(String[] held:new String[][]{{},{"stock.phone"},{ALPHA,"stock.phone"},{ALPHA,ALPHA}}){
-   Setup unchecked=startWithHome();unchecked.roles.reply(0,true,held);unchecked.requests(DIALER);
-   unchecked.failed(R.string.alpha_dialer_failed,R.string.alpha_default_apps_settings,Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
-  }
-  Setup missingReadback=startWithHome();missingReadback.roles.holders.remove(DIALER);
-  missingReadback.roles.callbacks.get(0).accept(true);missingReadback.requests(DIALER);
-  missingReadback.failed(R.string.alpha_dialer_failed,R.string.alpha_default_apps_settings,Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
-
-  Setup deniedRead=startWithHome();deniedRead.roles.deniedRead=DIALER;
-  deniedRead.roles.reply(0,true,ALPHA);deniedRead.requests(DIALER);
-  deniedRead.failed(R.string.alpha_dialer_failed,R.string.alpha_default_apps_settings,Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS);
-  RoleManager deniedWriter=factory();deniedWriter.deniedWrite=HOME;
-  Setup deniedWrite=new Setup(deniedWriter);deniedWrite.begin();deniedWrite.requests();
-  deniedWrite.failed(R.string.alpha_home_failed,R.string.alpha_home_settings,Settings.ACTION_HOME_SETTINGS);
-
-  Setup changed=startWithHome();changed.activity.fresh=false;changed.roles.reply(0,true,ALPHA);changed.requests(DIALER);
-  changed.failed(R.string.alpha_setup_state_changed,R.string.alpha_open_settings,Settings.ACTION_SETTINGS);
-  Setup replaced=startWithHome();replaced.roles.reply(0,true,ALPHA);replaced.roles.set(HOME,"other.home");
-  replaced.roles.reply(1,true,ALPHA);
-  replaced.failed(R.string.alpha_home_failed,R.string.alpha_home_settings,Settings.ACTION_HOME_SETTINGS);
-  Setup keyboard=startWithHome();keyboard.roles.reply(0,true,ALPHA);keyboard.activity.keyboard=AlphaFreshSetupPolicy.ImeResult.FAILED;
-  keyboard.roles.reply(1,true,ALPHA);
-  keyboard.failed(R.string.alpha_keyboard_failed,R.string.alpha_open_settings,Settings.ACTION_INPUT_METHOD_SETTINGS);
-
-  System.out.println("PASS actual role sequence: "+cases+" cases");
+  Fixture managedAfterPalette=new Fixture();managedAfterPalette.activity.telephony=false;managedAfterPalette.activity.palette="{}";
+  managedAfterPalette.activity.afterPalette=()->managedAfterPalette.activity.managed=true;
+  managedAfterPalette.setup.begin();managedAfterPalette.roles.grant(HOME);
+  managedAfterPalette.failure(R.string.alpha_setup_state_changed,Settings.ACTION_SETTINGS);
+  managedAfterPalette.effects(HOME,"keyboard","palette");
+  System.out.println("PASS actual setup completion and recovery");
  }
-}
-''')
-   subprocess.run([java_binary('javac'),'--release','11','-d',d,str(BRAND/'provision/AlphaFreshSetupPolicy.java'),str(file)],check=True)
-   self.assertIn('PASS actual role sequence: 22 cases',subprocess.check_output([java_binary('java'),'-cp',d,'com.android.provision.RoleSequenceTest'],text=True))
+}''')
+   compiled=subprocess.run([java_binary('javac'),'--release','11','-d',d,
+                            str(BRAND/'provision/AlphaFreshSetupPolicy.java'),str(file)],capture_output=True,text=True)
+   self.assertEqual(compiled.returncode,0,compiled.stderr)
+   self.assertIn('PASS actual setup completion and recovery',
+                 subprocess.check_output([java_binary('java'),'-cp',d,'com.android.provision.CompletionTest'],text=True))
 
 if __name__=='__main__':unittest.main(verbosity=2)

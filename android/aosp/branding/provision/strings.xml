@@ -3,7 +3,7 @@
     <string name="alpha_name">Alpha Phone</string>
     <string name="alpha_welcome">Welcome to Alpha Phone</string>
     <string name="alpha_setup_description">Make this phone yours. Connect to a network, secure your screen, then continue to Alpha.</string>
-    <string name="alpha_setup_telephony_description">Connect to a network, secure your screen, then continue with Alpha as your Home, Phone, and SMS app.</string>
+    <string name="alpha_setup_telephony_description">Connect to a network, secure your screen, then continue with Alpha as your default Home, Phone, and Messages app.</string>
     <string name="alpha_wifi">Set up Wi-Fi</string>
     <string name="alpha_security">Screen security</string>
     <string name="alpha_continue">Continue to Alpha</string>
@@ -13,10 +13,8 @@
     <string name="alpha_retry_setup">Try setup again</string>
     <string name="alpha_home_checking">Preparing Alpha as Home…</string>
     <string name="alpha_home_failed">Alpha could not be confirmed as your Home app. Try again, or review the Home app choice and return here.</string>
-    <string name="alpha_dialer_checking">Preparing Alpha as your Phone app…</string>
-    <string name="alpha_dialer_failed">Alpha could not be confirmed as your Phone app. Try again, or review your default apps and return here.</string>
-    <string name="alpha_sms_checking">Preparing Alpha as your SMS app…</string>
-    <string name="alpha_sms_failed">Alpha could not be confirmed as your SMS app. Try again, or review your default apps and return here.</string>
+    <string name="alpha_roles_checking">Preparing Alpha as your Home, Phone, and Messages apps…</string>
+    <string name="alpha_roles_failed">Alpha could not be confirmed as your default Phone and Messages apps. Try again, or review Default apps in Settings.</string>
     <string name="alpha_keyboard_failed">The keyboard preset could not be confirmed. Your previous choices are kept. Try again.</string>
     <string name="alpha_appearance_preset_failed">Alpha’s appearance preset could not be saved. Try again. Existing colors are kept.</string>
     <string name="alpha_setup_state_changed">This setup is no longer eligible for fresh-device presets. Restart setup or ask the device administrator for help.</string>

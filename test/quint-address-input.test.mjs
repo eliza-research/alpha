@@ -13,7 +13,10 @@ test('the corpus covers each kind of typed text the model names', () => {
   const found = corpus.map(describe);
   for (const [name, holds] of Object.entries({
     'too long': input => input.tooLong, 'time': input => input.timeLike, 'web address': input => input.webScheme && input.verdict === 'url',
-    'email address': input => input.emailShaped && input.reason === 'credentials', 'credentials': input => input.reason === 'credentials' && !input.emailShaped,
+    'simple @ search': input => input.simpleAtSearch && input.reason === 'credentials', 'credentials': input => input.reason === 'credentials' && !input.simpleAtSearch,
+    'unsafe @ search verdict': input => input.verdict === 'search' && input.hasAt && !input.simpleAtSearch,
+    'unsafe @ time correction': input => input.timeLike && input.hasAt && !input.simpleAtSearch,
+    'unsafe @ localhost alias': input => input.localhostAlias && input.hasAt && !input.simpleAtSearch,
     'other scheme': input => input.reason === 'unsupported-protocol' && !input.hasAt, 'scheme with @': input => input.reason === 'unsupported-protocol' && input.hasAt,
     'short decimal': input => input.shortDecimal && input.verdict === 'url', 'localhost': input => input.localhostAlias, 'words': input => input.verdict === 'search' && !input.localhostAlias,
     'host': input => input.verdict === 'url' && !input.timeLike && !input.shortDecimal && !input.webScheme}))

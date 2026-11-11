@@ -65,7 +65,7 @@ test("staging, native check and feature declaration agree", () => {
   // The production-only provisioning overlay comes after the capability (an earlier production branch
   // only refuses an incomplete product lock), so development and production images both declare it.
   assert.ok(call < stage.indexOf("writeProvisioningOverlay(output"), "development and production images both declare it");
-  const admission = stage.indexOf("\nadmitApk({");
+  const admission = stage.indexOf("const reviewedUpdateChannel = admitApk({");
   assert.ok(admission > stage.indexOf("function admitApk("), "the admission call site, not the definition");
   assert.ok(admission > 0 && admission < call, "test-mocks and non-distributable APKs are refused before the capability is written");
   // Pixel 10a takes the declaration from the shared composition every brand uses; it is never written twice.
@@ -250,8 +250,7 @@ test("dialer- and SMS-role components exist only in the launcher, disabled until
   assert.match(launcher, /android\.telecom\.IN_CALL_SERVICE_UI" android:value="true"/);
   const roles = read("android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaTelephonyRoles.java");
   assert.match(roles, /boolean image = AlphaImageCapability\.verified\(context\);/);
-  assert.match(roles, /if \(!image\) \{[^]*wanted = PackageManager\.COMPONENT_ENABLED_STATE_DISABLED;/);
-  assert.match(roles, /if \(!packages\.hasSystemFeature\(context\.getPackageName\(\) \+ "\.feature\.INITIAL_TELEPHONY_ROLES", 1\)\)\s*wanted = PackageManager\.COMPONENT_ENABLED_STATE_DEFAULT;/);
+  assert.match(roles, /int wanted = image \? PackageManager\.COMPONENT_ENABLED_STATE_ENABLED : PackageManager\.COMPONENT_ENABLED_STATE_DEFAULT;/, "anything but the verified image returns to the disabled manifest state");
   assert.match(read("android/app/src/standalone/java/ai/alphacompute/alphaphone/AlphaTelephonyRoles.java"), /static void sync\(Context context\) \{\}/);
   const activity = read(`${JAVA}/MainActivity.java`);
   assert.ok(activity.indexOf("AlphaTelephonyRoles.sync(this);") > 0 && activity.indexOf("AlphaTelephonyRoles.sync(this);") < activity.indexOf("registerPlugin(AlphaTelephonyPlugin.class)"), "roles follow the image before the plugin is registered");

@@ -73,15 +73,44 @@ export function validateUpdateChannel(value: unknown): UpdateChannel {
  return value as UpdateChannel;
 }
 
-/** Read the channel from compiled Android metadata, never from a renderer flag. */
-export function apkUpdateChannel(tree: ManifestNode){
+/**
+ * A legacy APK can lack both metadata fields. Partial or ambiguous metadata
+ * never qualifies for that exception.
+ */
+export function apkUpdateChannelOrLegacy(tree: ManifestNode): UpdateChannel | null {
  const application=tree.children.find(node=>node.name==='manifest')?.children.find(node=>node.name==='application');
+ if(!application)throw Error('APK application manifest is unavailable');
+ const metadata=application.children.filter(node=>node.name==='meta-data'&&
+  (node.attrs.name===UPDATE_CHANNEL_META||node.attrs.name===UPDATE_DIGEST_META));
+ if(!metadata.length)return null;
  const field=(name: string)=>{
-  const rows=application?.children.filter(node=>node.name==='meta-data'&&node.attrs.name===name)||[];
-  if(rows.length!==1)throw new Error('APK update channel metadata missing or duplicated');
+  const rows=metadata.filter(node=>node.attrs.name===name);
+  if(rows.length!==1)throw Error('APK update channel metadata missing or duplicated');
   return rows[0].attrs.value;
  };
  const sha=field(UPDATE_DIGEST_META);
  if(typeof sha!=='string'||!sha.startsWith('sha256:'))throw refused();
  return validateUpdateChannel({kind:field(UPDATE_CHANNEL_META),manifestUrlSha256:sha.slice(7)});
+}
+
+/** Read the channel from compiled Android metadata, never from a renderer flag. */
+export function apkUpdateChannel(tree: ManifestNode) {
+ const channel=apkUpdateChannelOrLegacy(tree);
+ if(!channel)throw Error('APK update channel metadata missing');
+ return channel;
+}
+
+/** Refuse private or conflicting release evidence before any provisioning effect. */
+export function recordedProvisioningUpdateChannel(...records: unknown[]): UpdateChannel | null {
+ const channels=records.filter(record=>record!==undefined).map(validateUpdateChannel);
+ const reviewed=channels[0]??null;
+ for(const channel of channels)assertProvisioningUpdateChannel(channel,reviewed);
+ return reviewed;
+}
+
+/** Require exact agreement between compiled and reviewed evidence, including legacy absence. */
+export function assertProvisioningUpdateChannel(compiled: UpdateChannel | null, reviewed: UpdateChannel | null) {
+ if(compiled?.kind==='private-qa')throw Error('Private QA update channels are refused for production provisioning');
+ if(compiled?.kind!==reviewed?.kind||compiled?.manifestUrlSha256!==reviewed?.manifestUrlSha256)
+  throw Error('APK update channel differs from the reviewed release');
 }
