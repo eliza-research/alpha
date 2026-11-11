@@ -92,21 +92,28 @@ def fixture(root, *, bad_voice=False, bad_component=False):
 
 
 class ArtifactAPI:
-    def __init__(self, archives):
+    def __init__(self, archives, *, overrides=None, result='success'):
         self.archives = archives
+        self.overrides = overrides or {}
+        self.result = result
+        self.requests = []
+        self.expiry = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=3)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
     def open(self, request, timeout):
         path = request.full_url.split('/actions/', 1)[1].split('/')
+        self.requests.append(path)
         if path == ['runs', '7']:
-            return io.BytesIO(encoded({'head_sha': SOURCE, 'conclusion': 'success'}))
+            return io.BytesIO(encoded({'head_sha': SOURCE, 'conclusion': self.result}))
         assert path[0] == 'artifacts'
         data = self.archives[path[1]]
         if path[-1] == 'zip':
             return io.BytesIO(data)
         return io.BytesIO(encoded({
             'id': int(path[1]), 'digest': 'sha256:' + digest(data), 'size_in_bytes': len(data), 'expired': False,
+            'expires_at': self.expiry,
             'workflow_run': {'id': 7, 'repository_id': native.embedding.REPOSITORY_ID,
                              'head_repository_id': native.embedding.REPOSITORY_ID, 'head_sha': SOURCE},
+            **self.overrides.get(path[1], {}),
         }))
 
 
@@ -208,13 +215,57 @@ class HostedNativeInputsTest(unittest.TestCase):
                     self.acquire(root, **options)
                 self.assertFalse((root / native.OUTPUT).exists())
 
+    def test_remote_preflight_reports_all_exact_expiries_without_archive_requests_or_writes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, archives = fixture(root)
+            plan, plan_digest, _, inventory = native.load_plan(root)
+            api = ArtifactAPI(archives, overrides={'12': {'expires_at': '2098-01-01T00:00:00Z'}})
+            with patch.object(native, 'admit_consumer', return_value=('fixture-token', SOURCE, '123', '1')) as consumer, \
+                 patch.object(native.urllib.request, 'build_opener', return_value=api):
+                self.assertEqual(native.check_remote(root, {}, plan, plan_digest, inventory),
+                                 {'voice': api.expiry, 'embeddingComponent': '2098-01-01T00:00:00Z',
+                                  'embeddingQualification': api.expiry})
+            consumer.assert_called_once_with(root, {}, plan, plan_digest)
+            self.assertEqual(api.requests, [path for artifact_id in archives
+                                           for path in (['artifacts', artifact_id], ['runs', '7'])])
+            self.assertFalse((root / native.OUTPUT).parent.exists())
+
+    def test_remote_preflight_names_each_expired_or_replaced_pin_and_rejects_failed_producers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, archives = fixture(root)
+            plan, plan_digest, _, inventory = native.load_plan(root)
+            cases = (
+                (ArtifactAPI(archives, overrides={'11': {'expired': True}, '12': {'digest': 'different'},
+                                                '13': {'expires_at': '2001-01-01T00:00:00Z'}}),
+                 r'(?s)voice artifact 11: .*expired.*embeddingComponent artifact 12: .*digest.*'
+                 r'embeddingQualification artifact 13: .*expired'),
+                (ArtifactAPI(archives, result='failure'), r'voice artifact 11: Artifact run did not succeed'),
+                (ArtifactAPI(archives, overrides={'13': {'expires_at': 'not a date'}}),
+                 r'embeddingQualification artifact 13: Artifact expiry timestamp is unavailable'),
+            )
+            for api, reason in cases:
+                with self.subTest(reason=reason), \
+                     patch.object(native, 'admit_consumer', return_value=('fixture-token', SOURCE, '123', '1')), \
+                     patch.object(native.urllib.request, 'build_opener', return_value=api), \
+                     self.assertRaisesRegex(ValueError, reason):
+                    native.check_remote(root, {}, plan, plan_digest, inventory)
+                self.assertTrue(all(path[-1] != 'zip' for path in api.requests))
+                self.assertFalse((root / native.OUTPUT).parent.exists())
+
     def test_automatic_workflow_admits_inputs_before_prepare_and_keeps_diagnostics(self):
         workflow = (ROOT / '.github/workflows/resident-android.yml').read_text()
-        steps = ('Check the automatic native input manifest', 'Install pinned Android native toolchain',
+        steps = ('Check the automatic native input manifest and artifact availability',
+                 'actions/setup-java@', 'android-actions/setup-android@', 'Install pinned Android native toolchain',
                  'Acquire exact native inputs for the automatic candidate', 'Stage the admitted voice and embedding inputs',
                  'Prepare and qualify fresh resident source', 'node scripts/stage-embedding-host.ts --verify',
                  'native-input-admission.json')
         self.assertEqual(sorted(workflow.index(step) for step in steps), [workflow.index(step) for step in steps])
+        preflight = workflow.split('Check the automatic native input manifest and artifact availability', 1)[1].split('      - ', 1)[0]
+        self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'", preflight)
+        self.assertIn('GH_TOKEN:', preflight)
+        self.assertIn('--check-remote', preflight)
         acquire = workflow.split('Acquire exact native inputs for the automatic candidate', 1)[1].split('      - name:', 1)[0]
         stage = workflow.split('Stage the admitted voice and embedding inputs', 1)[1].split('      - name:', 1)[0]
         self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'", acquire)

@@ -1,4 +1,5 @@
 """Resolve the reviewed native inputs for an automatic unsigned APK candidate."""
+import datetime
 import hashlib
 import importlib.util
 import json
@@ -24,6 +25,7 @@ ARTIFACTS = ('voice', 'embeddingComponent', 'embeddingQualification')
 SHA256 = re.compile(r'[0-9a-f]{64}')
 COMMIT = re.compile(r'[0-9a-f]{40}')
 ID = re.compile(r'[1-9][0-9]{0,19}')
+EXPIRY = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z')
 
 spec = importlib.util.spec_from_file_location('embedding_artifacts', Path(__file__).with_name('embedding-artifacts.py'))
 embedding = importlib.util.module_from_spec(spec)
@@ -132,7 +134,7 @@ def verify_component(component, reviewed):
     require(compiled == expected, 'Embedding component libraries differ from the reviewed record')
 
 
-def acquire(root, env, plan, plan_digest, reviewed, inventory):
+def admit_consumer(root, env, plan, plan_digest):
     require(embedding.canonical_repository(env), 'Canonical repository required')
     token = env.get('GH_TOKEN')
     require(token, 'Native artifact access token unavailable')
@@ -145,6 +147,40 @@ def acquire(root, env, plan, plan_digest, reviewed, inventory):
                 f'{name} differs from the reviewed checkout')
     run, attempt = env.get('GITHUB_RUN_ID'), env.get('GITHUB_RUN_ATTEMPT')
     require(matches(ID, run) and matches(ID, attempt), 'Native inputs consumer run identity missing')
+    return token, source, run, attempt
+
+
+def archive_bound(name, inventory):
+    if name != 'voice':
+        return embedding.MAX_ARCHIVE
+    # Exact expanded file sizes are checked separately. Allow ZIP framing and
+    # compression overhead only for this voice archive's known inventory.
+    voice_bytes = sum(row['bytes'] for row in inventory.values())
+    return voice_bytes + (voice_bytes + 99) // 100 + 65536
+
+
+def check_remote(root, env, plan, plan_digest, inventory):
+    token, _, _, _ = admit_consumer(root, env, plan, plan_digest)
+    opener = urllib.request.build_opener(embedding.NoRedirect())
+    now = datetime.datetime.now(datetime.timezone.utc)
+    expirations, refusals = {}, []
+    for name in ARTIFACTS:
+        pin = plan['artifacts'][name]
+        try:
+            metadata, _ = embedding.admit_artifact_metadata(
+                pin['id'], pin['sha256'], token, opener, max_archive=archive_bound(name, inventory))
+            expires = metadata.get('expires_at')
+            require(matches(EXPIRY, expires), 'Artifact expiry timestamp is unavailable')
+            require(datetime.datetime.fromisoformat(expires) > now, 'Artifact has expired')
+            expirations[name] = expires
+        except (OSError, KeyError, TypeError, ValueError) as failure:
+            refusals.append(f'{name} artifact {pin["id"]}: {failure}')
+    require(not refusals, '\n'.join(refusals))
+    return expirations
+
+
+def acquire(root, env, plan, plan_digest, reviewed, inventory):
+    token, source, run, attempt = admit_consumer(root, env, plan, plan_digest)
     target = root / OUTPUT
     target.parent.mkdir(parents=True, exist_ok=True)
     require(not target.exists() and not target.is_symlink(), 'Native input output already exists')
@@ -153,15 +189,14 @@ def acquire(root, env, plan, plan_digest, reviewed, inventory):
         pending = Path(directory) / 'inputs'
         pending.mkdir(mode=0o700)
         receipts = {}
-        voice_bytes = sum(row['bytes'] for row in inventory.values())
-        # Exact expanded file sizes are checked separately. Allow ZIP framing and
-        # compression overhead only for this voice archive's known inventory.
-        voice_bound = voice_bytes + (voice_bytes + 99) // 100 + 65536
         for name in ARTIFACTS:
             pin = plan['artifacts'][name]
             archive = pending / f'{name}.zip'
-            receipt = embedding.download(pin['id'], pin['sha256'], archive, token, opener,
-                                         max_archive=voice_bound if name == 'voice' else embedding.MAX_ARCHIVE)
+            try:
+                receipt = embedding.download(pin['id'], pin['sha256'], archive, token, opener,
+                                             max_archive=archive_bound(name, inventory))
+            except (OSError, KeyError, TypeError, ValueError) as failure:
+                raise ValueError(f'{name} artifact {pin["id"]}: {failure}') from None
             if name == 'voice':
                 extract_voice(archive, pending / 'voice', inventory)
             elif name == 'embeddingComponent':
@@ -194,11 +229,17 @@ def acquire(root, env, plan, plan_digest, reviewed, inventory):
 
 
 def main(args):
-    require(args in (['--check'], ['--acquire']), 'Use hosted-native-inputs.py --check or --acquire')
+    require(args in (['--check'], ['--check-remote'], ['--acquire']),
+            'Use hosted-native-inputs.py --check, --check-remote or --acquire')
     plan, digest, reviewed, inventory = load_plan(ROOT)
     if args == ['--acquire']:
         acquire(ROOT, os.environ, plan, digest, reviewed, inventory)
         print('Verified exact hosted native artifacts; canonical staging is required')
+    elif args == ['--check-remote']:
+        expirations = check_remote(ROOT, os.environ, plan, digest, inventory)
+        for name, expiry in expirations.items():
+            print(f'{name} artifact {plan["artifacts"][name]["id"]} expires at {expiry}')
+        print(f'Earliest native artifact expiry: {min(expirations.values())}')
     else:
         print('Automatic native input manifest matches the current package, SDK and records')
 
