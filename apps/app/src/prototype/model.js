@@ -3241,10 +3241,12 @@ registerView("notes", {
           else notesUpd(api, n.id, { kind: "text", items: [], body: (n.items || []).map(function (i) { return i.t; }).join("\n") });
         },
         items: (n.items || []).map(function (it, i) {
+          var itemLabel = String(it.t || "").trim() || "item";
           return {
             t: it.t, done: it.done, idx: i, css: it.done ? "text-decoration: line-through; color: var(--mut)" : "",
             box: it.done ? "background: var(--fg); color: var(--bg)" : "box-shadow: inset 0 0 0 1.5px var(--mut); color: transparent",
-            label: (it.done ? "Uncheck " : "Check ") + (it.t || "item"),
+            label: (it.done ? "Uncheck " : "Check ") + itemLabel,
+            removeLabel: "Remove " + itemLabel,
             toggle: function () { notesUpd(api, n.id, function (x) { return { items: x.items.map(function (y, j) { return j === i ? Object.assign({}, y, { done: !y.done }) : y; }) }; }); },
             onText: function (e) { var v = e.target.value; notesUpd(api, n.id, function (x) { return { items: x.items.map(function (y, j) { return j === i ? Object.assign({}, y, { t: v }) : y; }) }; }); },
             remove: function () { notesUpd(api, n.id, function (x) { return { items: x.items.filter(function (y, j) { return j !== i; }) }; }); }
