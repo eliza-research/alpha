@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Reviewed version 56 restores keyboard Start after reopening while preserving the existing app identity, retained data and approved signing lineage.",
+  "description": "Reviewed app57 current UI and Cloud release with responsive keyboard dictation. Preserve the existing Alpha identity, data and signature-protected receiver permission.",
   "signerSha256": "edbfcacb1da689008bf4e7d675176c302decf83161a877eb8b1de4ffae0445ed",
   "lastRelease": {
     "versionCode": null,
@@ -11,33 +11,33 @@
     "schema": 1,
     "approval": "approved",
     "fromVersionCode": 49,
-    "versionCode": 56,
+    "versionCode": 57,
     "previousSignerSha256": "0438dccb2d5e83fc2ad1ab11cbb882f837d97c4aee7cba72af9229c39b149b80",
     "lineageSha256": "bca212509a83e8f2e60d2b9b744b1e0a4a014b780be058dcf81ff88a5d593759",
     "apksignerSha256": "b47549e373b895ce6ca620d0c7887e674d9615ffa837a86ac601dcfd04adb0f0",
     "verifierJarSha256": "3716d9311e55d2b0918a2fd9d54ba9e406c5f6abeea700b287f11259bc163dec",
     "unsignedApkSHA256": {
-      "standalone": "0a5ddb0d5d9754da700d05e330fa657154207665eb67e429c1d97d2ab76ab548",
-      "launcher": "333db9fb42250d4ac2a85c04d5377b3c7eb175d8484ed0c8634a5a50fa5f75e2"
+      "standalone": "72c6edab5208515bbe0f1b930954a368c584cf258dac604b09d1d7041d64d705",
+      "launcher": "c20dfd14956d6b7e1ace853f9b6ef5c50f0596aafcbce607e6baf94c09f49ef7"
     },
     "preserveSignaturePermissions": true
   },
   "privateProducerApproval": {
     "approval": "approved",
-    "alphaCommit": "b7995a6ec2fb0e2c33e0a0718df8bc4a15319b85",
+    "alphaCommit": "18d01c68aa053fba23d4a9a491b8a5281ef6b15f",
     "sdkCommit": "30ee5ba3445237d6ae6e82d698794521f169d267",
-    "versionCode": 56,
+    "versionCode": 57,
     "updateChannel": {
       "kind": "public",
       "manifestUrlSha256": "8e54b15a945c0fe1fd18bca9b4f4389249c5260bd72c912bccb6cd98e10308db"
     },
-    "archiveBytes": 633668096,
-    "archiveSHA256": "ed2889b43c1bb8e2f0ce34617cc16963168ea588681a5003c698e8fef77de7ea",
-    "producerManifestSHA256": "f5985916644e048d92e54f8f09de6f8b3718942628cd96edead0727ed716dbbb",
-    "privateProducerReceiptSHA256": "b2241f01ced59b679b6134f3a6a88cacfa59bd380aa8ce40f721cee11b3b1d24",
+    "archiveBytes": 633671057,
+    "archiveSHA256": "f44f8dfb6cd20085bf8e1b4cf9d3726dea6e79528d9b56e35f32e653f6fa0d7a",
+    "producerManifestSHA256": "c41c3628bd5e2f0b81740cb6316b8e5c44d809589f5cbf49ab1e96b17e46460c",
+    "privateProducerReceiptSHA256": "0f4d148d6eb0cd54fdc7c54939fa85e98e663d030180f2ee078fc1f32e950a2c",
     "unsignedApkSHA256": {
-      "standalone": "0a5ddb0d5d9754da700d05e330fa657154207665eb67e429c1d97d2ab76ab548",
-      "launcher": "333db9fb42250d4ac2a85c04d5377b3c7eb175d8484ed0c8634a5a50fa5f75e2"
+      "standalone": "72c6edab5208515bbe0f1b930954a368c584cf258dac604b09d1d7041d64d705",
+      "launcher": "c20dfd14956d6b7e1ace853f9b6ef5c50f0596aafcbce607e6baf94c09f49ef7"
     }
   }
 }
