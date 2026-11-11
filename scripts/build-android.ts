@@ -36,7 +36,6 @@ export interface AndroidBuildOptions {
   testMocks: boolean;
   allowUnpackagedRuntime?: boolean;
   skipInstrumentation?: boolean;
-  allowOlderUpstreamPin?: boolean;
 }
 
 type BuildCommand = (command: string, args: string[], extra?: ExecFileSyncOptionsWithBufferEncoding) => unknown;
@@ -58,7 +57,7 @@ export const SIGNING_ENV = (() => {
     throw new Error("android/consumer-host.json must name four release-signing environment variables");
   return Object.freeze(names);
 })();
-const USAGE = "Usage: npm run android:build -- [--test-mocks] [--allow-unpackaged-runtime] [--skip-instrumentation] [--allow-older-upstream-pin]";
+const USAGE = "Usage: npm run android:build -- [--test-mocks] [--allow-unpackaged-runtime] [--skip-instrumentation]";
 
 export function parseBuildArgs(argv: readonly string[]): AndroidBuildOptions {
   const options: AndroidBuildOptions = { testMocks: false, allowUnpackagedRuntime: false, skipInstrumentation: false };
@@ -66,8 +65,6 @@ export function parseBuildArgs(argv: readonly string[]): AndroidBuildOptions {
     if (arg === "--test-mocks") options.testMocks = true;
     else if (arg === "--skip-instrumentation") options.skipInstrumentation = true;
     else if (arg === "--allow-unpackaged-runtime") options.allowUnpackagedRuntime = true;
-    // Checked by the preflight only (it receives the same arguments): a reviewed upstream rollback.
-    else if (arg === "--allow-older-upstream-pin") options.allowOlderUpstreamPin = true;
     else throw new Error(`Unknown option ${arg}. ${USAGE}`);
   }
   if (options.testMocks && options.skipInstrumentation) throw new Error("Test-mocks builds require instrumentation APKs");
@@ -241,9 +238,8 @@ async function main() {
 /**
  * What the upstream consumer build receives for one Alpha build. Upstream owns the Gradle
  * invocation and artifact collection: the four distribution APKs (signed releases keep
- * `<variant>-release.apk`), instrumentation APKs, R8 mappings and the optional sequential
- * low-disk mode (ALPHA_ANDROID_LOW_DISK=1). Alpha supplies the flags, output directory,
- * signing variable names, build record and its own APK verification.
+ * `<variant>-release.apk`), instrumentation APKs and R8 mappings. Alpha supplies the flags,
+ * output directory, signing variable names, build record and its own APK verification.
  */
 export function consumerBuildOptions(options: AndroidBuildOptions, env: NodeJS.ProcessEnv, root: string, updateChannel = readUpdateChannel(env, JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl)) {
   if(updateChannel.kind==='private-qa'&&(options.testMocks||options.allowUnpackagedRuntime))throw Error('Private update QA requires a complete packaged build with test mocks off');
@@ -261,8 +257,6 @@ export function consumerBuildOptions(options: AndroidBuildOptions, env: NodeJS.P
     lint: !options.testMocks,
     signing: { environment: [...SIGNING_ENV] },
     mappings: true,
-    // Opt-in for constrained builders; retained APKs and source evidence are never cleaned.
-    sequential: env.ALPHA_ANDROID_LOW_DISK === "1",
     // verify-apks compares this record with the APKs it verifies. Upstream writes it only after
     // every APK of this build is in place, so a failed build keeps the previous APKs and record.
     record: {
