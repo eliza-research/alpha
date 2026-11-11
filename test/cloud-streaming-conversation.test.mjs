@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 const {buildVoiceTurnSignal}=await tsImport(new URL('../.eliza/client-features/packages/voice/src/respond-gate.ts',import.meta.url).href,{parentURL:import.meta.url});
 
 function fixture(streamError,{speak}={}){
@@ -167,7 +167,8 @@ test('Cloud input held during a reply is presented as automatically muted',async
   await f.clock.advance(400);await f.clock.flush();
   const held=f.renderChat();assert.equal(held.state,'thinking');assert.equal(held.muteAutomatically,true);assert.equal(held.muted,'true');
   assert.equal(held.muteLabel,'Microphone paused while Alpha responds');
-  f.releaseReply();await f.clock.flush();
+  // The released reply settles through more promise jobs on JavaScriptCore than one 30-job flush drains.
+  f.releaseReply();await f.clock.flush();await f.clock.flush();
   assert.equal(f.renderChat().state,'listening');assert.equal(f.renderChat().muteAutomatically,false);assert.equal(f.renderChat().muted,'false');
  }finally{f.releaseReply?.();f.close();await f.clock.flush();}
 });

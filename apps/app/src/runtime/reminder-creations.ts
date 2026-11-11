@@ -37,6 +37,13 @@ export function reminderEvents(rows:Reminder[],now=new Date()):Bag[]{
     return { id: 'reminder:' + r.id, alphaReminderId: r.id, reminderBody:r.body, reminderAt:r.at, reminderDueAt:dueOf(r), reminderOccurrence:r.occurrenceId, reminderRecurrence:r.recurrence, reminderHistory:r.history, reminderStatus:r.status, reminderTarget:r.target, off: Math.round((day.getTime()-today.getTime())/86400000), t: date.getHours()+date.getMinutes()/60, d: .25, title:r.title, cal:'personal', who:[], repeat:'none', alert:r.alertMinutes!==undefined?r.alertMinutes:r.recurrence?.leadMinutes || 0, notes:[r.body, r.snoozedAt && r.status==='scheduled' ? `Snoozed until ${new Date(r.at).toLocaleString()}` : '', r.recurrence ? `${r.recurrence.rule} · ${r.recurrence.zone}. ${r.alertMinutes===null?'Next occurrence is saved with no alert after Done.':'Next occurrence is scheduled after Done.'}` : '', r.status === 'scheduling-failed' ? 'Saved, scheduling failed. Tap Snooze 10 minutes to retry.' : '', r.status === 'pending' ? 'No alert · saved on this device' : r.status === 'completed' ? 'Completed · no further alarm scheduled' : r.status === 'posted' ? 'Notification posted' : r.status === 'permission-denied' ? `Not delivered · notifications were disabled. Enable notifications in ${Capacitor.isNativePlatform()?'Android settings':'Settings'}, then edit this reminder to choose a new time and save.` : 'Scheduled. Alerts may arrive a few minutes late.'].filter(Boolean).join('\n') };
   });
 }
+/** Event-only draft fields a reminder cannot keep, as one sentence; '' when the draft has none. */
+export function reminderUnsavedFields(form:Bag|null|undefined):string{
+  const fields=[String(form?.where??'').trim()?'location':'',Array.isArray(form?.who)&&form.who.length?'guests':'',form?.allDay?'all-day setting':''].filter(Boolean);
+  if(!fields.length)return '';
+  const list=fields.length===1?fields[0]:fields.slice(0,-1).join(', ')+' or '+fields[fields.length-1];
+  return `Reminders don’t keep the ${list}.`;
+}
 /** Specific, stable reason for a definite native refusal. Nothing was saved in every case. */
 export function reminderRefusalMessage(status:ReminderRefusal,native=Capacitor.isNativePlatform()):string{
   return sharedRefusalMessage(status,{appName:'Alpha',settingsName:native?'Android settings':'Settings'});

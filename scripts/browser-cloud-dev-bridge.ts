@@ -39,6 +39,21 @@ type Environment=keyof typeof authorities;
 type Credential={credentialReference:string;credentialId:string;userId:string;organizationId:string;email?:string;expiresAt?:number;token?:string;credentialFile?:string;credentialSha256?:string};
 const publicCredential=(c:Credential)=>({credentialReference:c.credentialReference,credentialId:c.credentialId,userId:c.userId,organizationId:c.organizationId,...(c.expiresAt===undefined?{}:{expiresAt:c.expiresAt})});
 function environment(value:unknown):Environment{if(value!=='production'&&value!=='staging')throw Error('Unsupported Cloud environment');return value;}
+// The Content-Type a multipart file part declares, read from the part's own headers. Request.formData()
+// on Bun names a file's type after its filename extension instead (audio/webm arrives as video/webm).
+function multipartFileType(bytes:Buffer,content:string,field:string):string|undefined{
+  const boundary=/;\s*boundary=(?:"([^"]+)"|([^;\s]+))/i.exec(content);if(!boundary)return undefined;
+  const marker=Buffer.from('--'+(boundary[1]??boundary[2]));
+  for(let at=bytes.indexOf(marker);at>=0;at=bytes.indexOf(marker,at+marker.length)){
+    // A delimiter starts the body or follows a line break; part content cannot contain one.
+    if(at>0&&bytes.toString('latin1',at-2,at)!=='\r\n')continue;
+    const start=at+marker.length,end=bytes.indexOf('\r\n\r\n',start);if(end<0)return undefined;
+    const headers=bytes.toString('latin1',start,end);
+    if(/^content-disposition:[ \t]*form-data;[ \t]*name="([^"]*)"/im.exec(headers)?.[1]!==field)continue;
+    return /^content-type:[ \t]*([^\r\n]+)$/im.exec(headers)?.[1].trim();
+  }
+  return undefined;
+}
 function refusal(status:number,code:string){return Object.assign(Error(code),{status,code});}
 function requestId(value:unknown):string{if(typeof value!=='string'||!UUID.test(value))throw Error('Invalid request identity');return value;}
 /** DEV transport only. Canonical Cloud owns login, identity, plan entitlement and speech authorization. */
@@ -335,7 +350,7 @@ export function createBrowserCloudDevHandler(options:{profile:string;request?:ty
   try{
    const chunks:Buffer[]=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>17_000_000)throw Error('Cloud request too large');chunks.push(Buffer.from(chunk));}
    const bytes=Buffer.concat(chunks),content=req.headers['content-type']||'';let data:Record<string,any>,audio:File|undefined;
-   if(content.startsWith('multipart/form-data;')){const form=await new Request('http://127.0.0.1',{method:'POST',headers:{'Content-Type':content},body:bytes}).formData();if([...form.keys()].some(k=>!['operation','environment','credentialReference','credentialId','requestId','audio'].includes(k)))throw Error('Invalid speech form');data=Object.fromEntries([...form].filter(([k])=>k!=='audio'));const value=form.get('audio');if(!(value instanceof File)||value.size<1||value.size>16_000_000||!['audio/webm','audio/ogg','audio/mp4','audio/wav','audio/mpeg'].includes(value.type.split(';')[0]))throw Error('Invalid speech audio');audio=value;}
+   if(content.startsWith('multipart/form-data;')){const form=await new Request('http://127.0.0.1',{method:'POST',headers:{'Content-Type':content},body:bytes}).formData();if([...form.keys()].some(k=>!['operation','environment','credentialReference','credentialId','requestId','audio'].includes(k)))throw Error('Invalid speech form');data=Object.fromEntries([...form].filter(([k])=>k!=='audio'));const value=form.get('audio'),type=multipartFileType(bytes,content,'audio');if(!(value instanceof File)||!type||value.size<1||value.size>16_000_000||!['audio/webm','audio/ogg','audio/mp4','audio/wav','audio/mpeg'].includes(type.split(';')[0]))throw Error('Invalid speech audio');audio=value.type===type?value:new File([value],value.name,{type});}
    else{if(content!=='application/json'||size>9*1024*1024)throw Error('JSON development request required');data=object(JSON.parse(bytes.toString('utf8')));}
    if(typeof data.operation==='string'&&data.operation.startsWith('signIn')){send(res,200,await signInOperation(data,controller.signal));return;}
    if(data.operation==='cancel'){active.get(requestId(data.requestId))?.controller.abort();send(res,200,{});return;}

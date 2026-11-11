@@ -26,5 +26,5 @@ persistence, link readback, Calendar control, disconnect, native access
 publication and installed provider effects have separate scopes.
 
 ```sh
-node --test test/quint-google-calendar-link-publication.test.mjs
+bun test test/quint-google-calendar-link-publication.test.mjs
 ```

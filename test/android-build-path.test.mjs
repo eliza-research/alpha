@@ -63,7 +63,7 @@ test('preflight names the exact command for each missing build input', t => {
   let problems = checkoutProblems(f.root, {voiceHost: () => { throw Error('Voice bundle lacks the ASR slot'); }});
   assert.equal(problems.length, 1);
   assert.ok(problems[0].startsWith(`The on-device voice outputs in ${VOICE_ASSET_ROOT} are not admitted by ${VOICE_HOST_MANIFEST} (Voice bundle lacks the ASR slot; Gradle :app:verifyVoiceHost rejects the build).`), problems[0]);
-  assert.match(problems[0], /npm run android:build:local does not produce them: stage them with node scripts\/android-stage-voice-models\.ts --from <directory of the recorded voice outputs and models> \(see README\.md\)\./);
+  assert.match(problems[0], /bun run android:build:local does not produce them: stage them with bun scripts\/android-stage-voice-models\.ts --from <directory of the recorded voice outputs and models> \(see README\.md\)\./);
   // Staged outputs that the record does not admit are refused by the real verifier, never repaired, in either lane.
   f.write(`${VOICE_ASSET_ROOT}/build-record.json`, '{}');
   assert.match(checkoutProblems(f.root, {allowUnpackagedRuntime: true})[0], /are not admitted by android\/voice-host\/qualified-voice-host\.json/);
@@ -74,15 +74,15 @@ test('preflight names the exact command for each missing build input', t => {
   problems = preparedRuntimeProblems(f.root, f.source);
   assert.equal(problems.length, 1);
   assert.match(problems[0], /:app:stageLocalAgentSources/);
-  assert.match(problems[0], /Run: npm run android:build:local/);
-  assert.match(problems[0], /npm run agent:prepare before npm run android:build -- --allow-unpackaged-runtime/);
+  assert.match(problems[0], /Run: bun run android:build:local/);
+  assert.match(problems[0], /bun run agent:prepare before bun run android:build -- --allow-unpackaged-runtime/);
 
   f.write(path.relative(f.root, path.join(f.source, '.alpha-runtime-source.json')), '{"stamp":1}\n');
   // The embedding host has its own test below; here it is staged.
   const embeddingHost = () => ({});
   assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {allowUnpackagedRuntime: true}), []);
   assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {testMocks: true, embeddingHost}), []);
-  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost})[0], /not staged.*npm run agent:build-workflow-worker && npm run agent:stage-android/);
+  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost})[0], /not staged.*bun run agent:build-workflow-worker && bun run agent:stage-android/);
 
   f.write('android/app/src/main/assets/agent/workflow-worker/manifest.json', '{}');
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":0}\n');
@@ -90,7 +90,7 @@ test('preflight names the exact command for each missing build input', t => {
   f.write('android/app/src/main/assets/agent/alpha-source.json', '{"stamp":1}\n');
   // agent:stage-android writes the profile marker; a native build refuses a missing or Cloud one.
   const marker = 'android/app/src/main/assets/agent/alpha-runtime-profile.json';
-  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*is missing.*Run: npm run agent:stage-android \(or /);
+  assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*is missing.*Run: bun run agent:stage-android \(or /);
   f.write(marker, JSON.stringify({version: 1, runtimeProfile: 'cloud', omittedLocalModels: []}));
   assert.match(preparedRuntimeProblems(f.root, f.source, {embeddingHost, googleHost: () => {}})[0], /not the native profile .*names "cloud"/);
   f.write(marker, JSON.stringify({version: 1, runtimeProfile: 'native'}, null, 2) + '\n');
@@ -128,7 +128,7 @@ test('preflight refuses a staged native Google host older than its product sourc
   let problems = preparedRuntimeProblems(f.root, f.source, options);
   assert.equal(problems.length, 1);
   assert.match(problems[0], /staged native Google host is not current \(Native Google host source changed; build a fresh host artifact; Gradle :app:verifyNativeGoogleHost/);
-  assert.match(problems[0], /Run: npm run agent:build-workflow-worker && npm run agent:stage-android/);
+  assert.match(problems[0], /Run: bun run agent:build-workflow-worker && bun run agent:stage-android/);
   // The developer lanes stage no resident and skip the check.
   assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {...options, allowUnpackagedRuntime: true}), []);
   assert.deepEqual(preparedRuntimeProblems(f.root, f.source, {...options, testMocks: true}), []);
@@ -186,25 +186,25 @@ test('android:build:local builds the workflow worker before staging and stages b
   const scripts = JSON.parse(read('package.json')).scripts;
   const chain = scripts['android:build:local'].split('&&').map(step => step.trim());
   assert.deepEqual(chain, [
-    'node scripts/android-build-preflight.ts --before-prepare',
+    'bun scripts/android-build-preflight.ts --before-prepare',
     // Before the long preparation: it either has the reviewed libraries, reproduces them, or
     // stops in under a second naming the person who must supply them.
-    'npm run agent:build-embedding-host',
-    'npm run agent:prepare',
-    'npm run agent:build-workflow-worker',
-    'npm run agent:stage-android',
+    'bun run agent:build-embedding-host',
+    'bun run agent:prepare',
+    'bun run agent:build-workflow-worker',
+    'bun run agent:stage-android',
     // The shipped notices must list the staged runtime, or verify-apks records the releases
     // distributable:false ("notices lack the packaged runtime"). It rewrites the tracked
     // notices in the working tree for this build; that change is not committed.
-    'npm run licenses:packaged-runtime',
-    'npm run android:build',
+    'bun run licenses:packaged-runtime',
+    'bun run android:build',
   ]);
-  assert.equal(scripts['licenses:packaged-runtime'], 'node scripts/generate-licenses.ts --packaged-runtime');
-  for (const step of chain.slice(1)) assert.ok(scripts[step.replace('npm run ', '')], step);
+  assert.equal(scripts['licenses:packaged-runtime'], 'bun scripts/generate-licenses.ts --packaged-runtime');
+  for (const step of chain.slice(1)) assert.ok(scripts[step.replace('bun run ', '')], step);
   // The chain ends in the strict build: no developer override may be baked into it.
   assert.doesNotMatch(scripts['android:build:local'], /--allow-unpackaged-runtime|--allow-unqualified-runtime|--test-mocks|--skip-instrumentation/);
-  assert.equal(scripts['android:build'], 'node scripts/build-android.ts');
-  assert.equal(scripts['agent:build-embedding-host'], 'node scripts/build-embedding-host.ts', 'no option in the chain');
+  assert.equal(scripts['android:build'], 'bun scripts/build-android.ts');
+  assert.equal(scripts['agent:build-embedding-host'], 'bun scripts/build-embedding-host.ts', 'no option in the chain');
   // Staging itself refuses a missing or foreign worker artifact before the long mobile bundle build.
   const stage = read('scripts/stage-local-agent-runtime.ts');
   assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') > 0);
@@ -223,7 +223,7 @@ test('preflight names missing embedding build inputs', t => {
   let problems = preparedRuntimeProblems(f.root, f.source, {embeddingHost: missing, googleHost: () => {}});
   assert.equal(problems.length, 1);
   assert.match(problems[0], /qualified embedding host is not staged \(Qualified embedding host library missing or changed: libelizainference\.so; Gradle :app:verifyEmbeddingHost/);
-  assert.match(problems[0], /npm run agent:build-embedding-host \(a step of npm run android:build:local\) stages the libraries only when it can reproduce the reviewed bytes/);
+  assert.match(problems[0], /bun run agent:build-embedding-host \(a step of bun run android:build:local\) stages the libraries only when it can reproduce the reviewed bytes/);
   // Test-mocks builds run the same strict Gradle check.
   assert.equal(preparedRuntimeProblems(f.root, f.source, {testMocks: true, embeddingHost: missing}).length, 1);
 

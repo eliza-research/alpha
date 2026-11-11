@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../timeouts.mjs';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync} from 'node:fs';
@@ -22,9 +23,9 @@ function runScenario(name) {
   try {
     mkdirSync(home, {mode: 0o700});
     const result = spawnSync(process.execPath, [probe, scratch, name], {
-      cwd: scratch, encoding: 'utf8', timeout: 12000, maxBuffer: 256*1024,
+      cwd: scratch, encoding: 'utf8', timeout: scaledTimeout(12000), maxBuffer: 256*1024,
       env: {PATH: '/usr/bin:/bin', HOME: home, TMPDIR: scratch, GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null',
-        GIT_ALLOW_PROTOCOL: 'file', GIT_OPTIONAL_LOCKS: '0'},
+        GIT_ALLOW_PROTOCOL: 'file', GIT_OPTIONAL_LOCKS: '0', ALPHA_TIMEOUT_SCALE: process.env.ALPHA_TIMEOUT_SCALE ?? '1'},
     });
     if (result.error) throw result.error;
     assert.equal(result.signal, null, name+' failed: '+result.stderr);
@@ -39,7 +40,7 @@ function runScenario(name) {
 export async function checkCloudQaLauncher(extraSources = []) {
   const core = coreStateReceipt(root);
   const sources = [
-    fileURLToPath(import.meta.url), probe, 'test/fixtures/core-state-root.mjs',
+    fileURLToPath(import.meta.url), probe, 'specs/quint/refinement/timeouts.mjs', 'test/fixtures/core-state-root.mjs',
     'scripts/start-cloud-qa.ts', 'scripts/private-runtime-launch.ts', 'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts',
     'scripts/cloud-sdk-authority.ts', 'scripts/native-view-policy.ts',
     'scripts/cloud-deployment-policy.ts', 'upstream.lock.json',

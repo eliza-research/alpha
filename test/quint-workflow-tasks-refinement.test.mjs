@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 
 test('workflow task registration and cleanup refine actual source operations', {timeout: 300000}, () => {
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
+  const result = spawnSync(process.execPath, ['-e', `
     import assert from 'node:assert/strict';
     import {runWorkflowTaskRefinement} from './specs/quint/refinement/services/workflow-scheduler/registration.mjs';
     const result = await runWorkflowTaskRefinement(['test/quint-workflow-tasks-refinement.test.mjs']);

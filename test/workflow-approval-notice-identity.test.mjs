@@ -10,7 +10,7 @@ const one=await c.workflowApprovalNotice(route,'proposal-1'),again=await c.workf
 let rejected=false;try{await c.workflowApprovalNotice(route,'');}catch{rejected=true;}
 console.log(JSON.stringify({one,again,other,otherRun,otherVersion,rejected}));`;
 test('approval notice identities are opaque, stable per approval and bound to the exact run route',()=>{
- const out=JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
+ const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
  assert.match(out.one.id,/^approval-[a-f0-9]{64}$/);assert.match(out.one.bindingHash,/^[a-f0-9]{64}$/);
  assert.deepEqual(out.again,out.one);
  assert.notEqual(out.other.id,out.one.id);assert.notEqual(out.otherRun.id,out.one.id);

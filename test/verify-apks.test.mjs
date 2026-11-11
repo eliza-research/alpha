@@ -218,7 +218,8 @@ for (const mode of ['native', 'test-mocks', 'inherited', 'wrong-profile', 'priva
   // The generated Gradle host is written before the source snapshot; the stub stands in for it.
   fs.writeFileSync(path.join(dir, 'scripts/android-host.ts'), '');
   fs.writeFileSync(path.join(dir, 'scripts/source-snapshot.ts'), 'console.log(JSON.stringify({digest:"synthetic-stable-source"}));');
-  fs.writeFileSync(path.join(dir, 'bin/npm'), `#!/usr/bin/env node
+  // The archive runs its package scripts as `bun run`; this stand-in is first on PATH, so it names the real Bun absolutely.
+  fs.writeFileSync(path.join(dir, 'bin/bun'), `#!${process.execPath}
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';

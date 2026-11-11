@@ -22,5 +22,5 @@ attempt, interleavings within a worker, Android App Link delivery, secure
 storage durability and provider behavior require separate evidence.
 
 ```sh
-node --test test/quint-google-browser-return-claim.test.mjs
+bun test test/quint-google-browser-return-claim.test.mjs
 ```

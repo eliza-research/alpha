@@ -19,7 +19,7 @@ either readback, modified data, failed cleanup, unknown install response and ver
 rotation followed by startup refusal. The witness rejects competing device claims and
 attempts to reserve a consumed rotation.
 
-Run the source campaign with `node --test test/quint-pilot-update-refinement.test.mjs`.
+Run the source campaign with `bun test test/quint-pilot-update-refinement.test.mjs`.
 The receipt records all named observations and binds source inputs before execution.
 Startup logs and process/HOME replies are controlled inputs. Actual Android process
 and RoleManager behavior, signed APK admission, host crash recovery, the full CLI

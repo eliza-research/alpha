@@ -107,7 +107,7 @@ android {
 // The shared bionic host is packaged only from the reviewed consumer artifact and BGE pin.
 def verifyEmbeddingHost = tasks.register('verifyEmbeddingHost', Exec) {
  workingDir rootProject.projectDir.parentFile
- def args = ['node', 'scripts/stage-embedding-host.ts', '--verify']
+ def args = ['bun', 'scripts/stage-embedding-host.ts', '--verify']
  if (unpackagedRuntime) args += '--allow-unpackaged-runtime'
  commandLine args
 }
@@ -117,7 +117,7 @@ tasks.named('preBuild').configure { dependsOn verifyEmbeddingHost }
 def verifyNativeGoogleHost = tasks.register('verifyNativeGoogleHost', Exec) {
  onlyIf { !unpackagedRuntime && testMocksRaw?.toString() != '1' }
  workingDir rootProject.projectDir.parentFile
- commandLine 'node', 'scripts/runtime-profile.ts', '--verify-native'
+ commandLine 'bun', 'scripts/runtime-profile.ts', '--verify-native'
 }
 tasks.named('preBuild').configure { dependsOn verifyNativeGoogleHost }
 
@@ -131,10 +131,10 @@ if (!selectedParadeeAbis || selectedParadeeAbis.toSet().size() != selectedParade
 def paradeeAbiArgs = selectedParadeeAbis.collectMany { ['--abi', it] }
 def verifyParadeeAppLinkage = tasks.register('verifyParadeeAppLinkage', Exec) {
  workingDir rootProject.projectDir.parentFile
- commandLine(['node', 'scripts/paradee-runtime.ts', '--app-linkage'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
+ commandLine(['bun', 'scripts/paradee-runtime.ts', '--app-linkage'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
 }
 def verifyVoiceHost = tasks.register('verifyVoiceHost', Exec) {
  workingDir rootProject.projectDir.parentFile
- commandLine(['node', 'scripts/voice-host.ts', '--verify'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
+ commandLine(['bun', 'scripts/voice-host.ts', '--verify'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
 }
 tasks.named('preBuild').configure { dependsOn verifyParadeeAppLinkage, verifyVoiceHost }

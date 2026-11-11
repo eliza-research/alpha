@@ -37,8 +37,8 @@ exercise automatic cleanup, explicit preservation, a later autosave and an
 unverified export through the normal UI entry point.
 
 ```sh
-node --test test/quint-services-refinement.test.mjs
-node --test test/quint-scan-conformance.test.mjs
+bun test test/quint-services-refinement.test.mjs
+bun test test/quint-scan-conformance.test.mjs
 ```
 
 These are bounded component and orchestration checks. Remaining obligations in

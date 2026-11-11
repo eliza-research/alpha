@@ -42,7 +42,7 @@ export async function ensurePreparedWorkflowWorker(root: string, source: string,
  if(existsSync(resolve(output))){
   const expected=preparedWorkerIdentity(source);
   try{return {reused:true,...verifyWorkerArtifact(output,expected)};}
-  catch(error){throw Error(`Existing worker artifact ${output} does not match the prepared runtime source (${error instanceof Error ? error.message : String(error)}). Move it aside, or set ALPHA_WORKFLOW_WORKER_OUTPUT to a fresh directory under artifacts, then rerun npm run agent:build-workflow-worker.`);}
+  catch(error){throw Error(`Existing worker artifact ${output} does not match the prepared runtime source (${error instanceof Error ? error.message : String(error)}). Move it aside, or set ALPHA_WORKFLOW_WORKER_OUTPUT to a fresh directory under artifacts, then rerun bun run agent:build-workflow-worker.`);}
  }
  return {reused:false,...await buildPreparedWorkflowWorker(root,source,output)};
 }

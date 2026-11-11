@@ -232,8 +232,8 @@ test("head qualification records the full Chromium suite and the production surf
   // Campaign evidence never enters the S/B verdict, whatever it says.
   assert.equal(verdict({ ...result, candidate: { complete: false, campaigns: [] }, candidateQualified: false }), true);
   const source = fs.readFileSync("scripts/qualify-head.ts", "utf8");
-  assert.match(source, /step\("browser-chromium", "npm", \["run", "test:browser"\]/);
-  assert.match(source, /step\("browser-production", "npm", \["run", "test:browser:production"\], flagOff\)/);
+  assert.match(source, /step\("browser-chromium", "bun", \["run", "test:browser"\]/);
+  assert.match(source, /step\("browser-production", "bun", \["run", "test:browser:production"\], flagOff\)/);
   assert.deepEqual(parseQualifyArgs(["--candidate"]).candidateOnly, true);
   assert.throws(() => parseQualifyArgs(["--candidate", "--fresh"]), /takes no other option/);
 });

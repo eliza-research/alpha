@@ -1,7 +1,7 @@
 /**
  * Verify the four APKs of one build and record the result in apk-manifest.json.
  *
- *   node scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime]
+ *   bun scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime]
  *
  * Default: the distribution APKs in artifacts/. They must be flag-off
  * (testMocks:false), pass the shared production bundle audit, carry no
@@ -55,7 +55,7 @@ import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, li
 
 import {cloudVoiceAdmission, cloudVoiceBlockers} from '../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs';
 import { preparePatchedNative, nativePatchReceipt, verifyNativePatchReceipt } from './prepare-patched-native.ts';
-const USAGE = "Usage: node scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime] [--cloud-voice-evidence=FILE]";
+const USAGE = "Usage: bun scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime] [--cloud-voice-evidence=FILE]";
 interface RuntimePackaging {
   apk: string;
   runtime: "PACKAGED" | "NOT_PACKAGED";
@@ -135,7 +135,7 @@ const webViewFiltersAllowed = (mode: ApkMode) => [
   ...(testMocks && mode === "debug" ? [`${mainActivity} https://${new URL(CLOUD_DEPLOYMENT.staging.web).hostname}/alphaphone/auth/callback`] : []),
 ];
 const buildRecordFile = path.join(directory, "build-config.json");
-if (!fs.existsSync(buildRecordFile)) throw new Error(`Missing ${buildRecordFile}. Run npm run android:build first.`);
+if (!fs.existsSync(buildRecordFile)) throw new Error(`Missing ${buildRecordFile}. Run bun run android:build first.`);
 const buildRecord: BuildRecord = JSON.parse(fs.readFileSync(buildRecordFile, "utf8"));
 const updateChannel=validateUpdateChannel(buildRecord?.updateChannel);
 if(updateChannel.kind==='public'&&updateChannel.manifestUrlSha256!==createHash('sha256').update(identity.updateManifestUrl).digest('hex'))throw Error('Public update channel differs from source configuration');
@@ -434,7 +434,7 @@ fs.writeFileSync(
 console.log(JSON.stringify(results, null, 2));
 const undistributable = release.filter(row => !row.distributable);
 if (undistributable.length)
-  console.warn(`Not distributable: ${undistributable.map(row => `${row.file} (${[row.runtime !== "PACKAGED" && "no packaged runtime", testMocks && "test-mocks build", updateChannel.kind === "private-qa" && "private QA update channel", !row.runtimeNotices && "notices lack the packaged runtime (run node scripts/generate-licenses.ts --packaged-runtime after staging)", !row.voiceHost?.packaged && "no on-device voice packaged", row.voiceHost?.packaged && !row.voiceHost.asr && "on-device voice has no ASR", ...(cloudEvidence ? cloudVoiceBlockers(row, "cartesia") : []), ...(row.releaseAdmission?.blockers ?? []), ...row.licenceBlockers].filter(Boolean).join(", ")})`).join("; ")}`);
+  console.warn(`Not distributable: ${undistributable.map(row => `${row.file} (${[row.runtime !== "PACKAGED" && "no packaged runtime", testMocks && "test-mocks build", updateChannel.kind === "private-qa" && "private QA update channel", !row.runtimeNotices && "notices lack the packaged runtime (run bun scripts/generate-licenses.ts --packaged-runtime after staging)", !row.voiceHost?.packaged && "no on-device voice packaged", row.voiceHost?.packaged && !row.voiceHost.asr && "on-device voice has no ASR", ...(cloudEvidence ? cloudVoiceBlockers(row, "cartesia") : []), ...(row.releaseAdmission?.blockers ?? []), ...row.licenceBlockers].filter(Boolean).join(", ")})`).join("; ")}`);
 // Licence flags are warnings: recorded per APK above, printed once here, never a failure.
 for (const line of flagLines) console.warn(line);
 const fontItems = new Map(release.flatMap(row => [...row.fontLicenceCheck.items, ...row.fontLicenceCheck.resolved].map(item => [item, row.fontLicenceCheck.blocksDistribution] as const)));

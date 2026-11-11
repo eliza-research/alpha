@@ -320,7 +320,7 @@ public class SelectedDocumentInstrumentedTest {
    assertNull("A deleted source fails closed",openReference(scenario,second,sha,bytes.length,"text/plain"));
   }finally{if(selectionId!=null)SelectedDocumentAccess.forget(selectionId);if(!deleted)resolver.delete(file,null,null);}
  }
- /** node scripts/test-native-restart.ts source-reference: prepare retains a reference in one
+ /** bun scripts/test-native-restart.ts source-reference: prepare retains a reference in one
   * process; verify (a new process) reopens exactly the same bytes through it; cleanup releases. */
  @Test public void sourceReferenceProcessRestartPhase()throws Exception{
   String phase=InstrumentationRegistry.getArguments().getString("sourceReferencePhase");

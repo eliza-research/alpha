@@ -1,5 +1,5 @@
 // Production bundle audit (scripts/audit-production-bundle.ts) on fixture bundles. The flag-off
-// web-dist audit runs separately as npm run audit:bundle. LOOP-E, J04: the simulated password
+// web-dist audit runs separately as bun run audit:bundle. LOOP-E, J04: the simulated password
 // provider and the Maps emulator gateway are denylisted in case their flags stop folding away.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,7 +7,7 @@ import {mkdtempSync,mkdirSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {execFileSync,spawnSync} from 'node:child_process';
-import {auditWebBundle,DENYLIST} from '../scripts/audit-production-bundle.ts';
+import {auditWebBundle,DENYLIST,SIMULATED_STUB_TEXT} from '../scripts/audit-production-bundle.ts';
 
 const script=path.resolve('scripts/audit-production-bundle.ts');
 function bundle(files,flags={testMocks:false}){
@@ -35,6 +35,12 @@ test('fixture-only effects and development controls stay denied when their views
     assert.equal(result.ok,false);
     assert.deepEqual(result.findings.map(finding=>finding.rule),SIMULATION_MARKERS);
   }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test('simulated stand-in toasts are denied and no denylist entry hides inside another',()=>{
+  assert.ok(SIMULATED_STUB_TEXT.length>0);
+  for(const marker of SIMULATED_STUB_TEXT)assert.ok(DENYLIST.includes(marker),marker);
+  for(const marker of SIMULATED_STUB_TEXT)for(const entry of DENYLIST)if(entry!==marker)assert.ok(!entry.includes(marker)&&!marker.includes(entry),`${marker} overlaps ${entry}`);
 });
 
 test('a clean production bundle passes through the API and CLI',()=>{

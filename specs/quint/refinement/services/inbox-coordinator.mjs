@@ -82,7 +82,7 @@ async function startSend(fixture, coordinator, trace) {
 }
 export async function runInboxCoordinatorRefinement(extraSources = []) {
   const discovered = await inboxDriverSources();
-  const sources = [...discovered, fileURLToPath(import.meta.url), "specs/quint/refinement/services/inbox-coordinator-ports.mjs", "package-lock.json", ...extraSources];
+  const sources = [...discovered, fileURLToPath(import.meta.url), "specs/quint/refinement/services/inbox-coordinator-ports.mjs", "bun.lock", ...extraSources];
   const driverHashes = captureInputs(sources);
   rebuildInboxDriver(discovered);
   const traces = [];

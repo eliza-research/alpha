@@ -1,9 +1,9 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Fail fast, before web sync and Gradle, when an Android build input is missing.
  *
- *   node scripts/android-build-preflight.ts [--before-prepare] [--allow-unpackaged-runtime] [--test-mocks]
- *   node scripts/android-build-preflight.ts --report     (npm run android:build:inputs)
+ *   bun scripts/android-build-preflight.ts [--before-prepare] [--allow-unpackaged-runtime] [--test-mocks]
+ *   bun scripts/android-build-preflight.ts --report     (bun run android:build:inputs)
  *
  * build-android.ts runs the full check. `--before-prepare` checks only inputs that
  * android:build:local does not produce (the pinned checkout and the on-device voice outputs), so
@@ -22,7 +22,7 @@ import {verifyMobileBuildReceipt,MOBILE_UUID_POLICY} from './mobile-uuid-adapter
 
 export {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST};
 export const GRADLE_VERIFICATION = 'android/gradle/verification-metadata.xml';
-const FULL_CHAIN = 'npm run android:build:local';
+const FULL_CHAIN = 'bun run android:build:local';
 const VOICE_GUIDE = 'README.md';
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 
@@ -145,7 +145,7 @@ function assessVoiceHost(root: string, {allowUnpackagedRuntime = false, voiceHos
   try {
     return {status: voiceHost(root, {allowAbsentRuntime: allowUnpackagedRuntime}), problems: []};
   } catch (error) {
-    return {status: null, problems: [`The on-device voice outputs in ${VOICE_ASSET_ROOT} are not admitted by ${VOICE_HOST_MANIFEST} (${message(error)}; Gradle :app:verifyVoiceHost rejects the build). ${FULL_CHAIN} does not produce them: stage them with node scripts/android-stage-voice-models.ts --from <directory of the recorded voice outputs and models> (see ${VOICE_GUIDE}).`]};
+    return {status: null, problems: [`The on-device voice outputs in ${VOICE_ASSET_ROOT} are not admitted by ${VOICE_HOST_MANIFEST} (${message(error)}; Gradle :app:verifyVoiceHost rejects the build). ${FULL_CHAIN} does not produce them: stage them with bun scripts/android-stage-voice-models.ts --from <directory of the recorded voice outputs and models> (see ${VOICE_GUIDE}).`]};
   }
 }
 
@@ -156,7 +156,7 @@ function assessVoiceHost(root: string, {allowUnpackagedRuntime = false, voiceHos
 export function preparedRuntimeProblems(root: string, preparedSource: string, {allowUnpackagedRuntime = false, testMocks = false, embeddingHost = verifyEmbeddingHost, googleHost = verifyStagedGoogleHost}: RuntimeOptions = {}): string[] {
   const stamp = path.join(preparedSource, '.alpha-runtime-source.json');
   if (!fs.existsSync(stamp))
-    return [`Prepared runtime source ${path.relative(root, preparedSource)} is missing (Gradle :app:stageLocalAgentSources reads it). Run: ${FULL_CHAIN} for distributable APKs, or npm run agent:prepare before npm run android:build -- --allow-unpackaged-runtime for developer APKs.`];
+    return [`Prepared runtime source ${path.relative(root, preparedSource)} is missing (Gradle :app:stageLocalAgentSources reads it). Run: ${FULL_CHAIN} for distributable APKs, or bun run agent:prepare before bun run android:build -- --allow-unpackaged-runtime for developer APKs.`];
   // Gradle's :app:verifyEmbeddingHost runs for every build. Only the explicit unpackaged
   // developer build may omit the host, and only when no resident payload is staged at all.
   const embedding = embeddingHostProblems(root, {allowUnpackagedRuntime, embeddingHost});
@@ -164,23 +164,23 @@ export function preparedRuntimeProblems(root: string, preparedSource: string, {a
   const staged = path.join(root, 'android/app/src/main/assets/agent/alpha-source.json');
   const worker = path.join(root, 'android/app/src/main/assets/agent/workflow-worker/manifest.json');
   if (!fs.existsSync(staged) || !fs.existsSync(worker))
-    return [`The resident runtime is not staged, so release APKs would not be distributable. Run: npm run agent:build-workflow-worker && npm run agent:stage-android (or ${FULL_CHAIN}), or pass -- --allow-unpackaged-runtime for non-distributable developer APKs.`, ...embedding];
+    return [`The resident runtime is not staged, so release APKs would not be distributable. Run: bun run agent:build-workflow-worker && bun run agent:stage-android (or ${FULL_CHAIN}), or pass -- --allow-unpackaged-runtime for non-distributable developer APKs.`, ...embedding];
   if (fs.readFileSync(staged, 'utf8') !== fs.readFileSync(stamp, 'utf8'))
-    return [`The staged resident runtime was built from a different prepared source than ${path.relative(root, preparedSource)}. Run: npm run agent:build-workflow-worker && npm run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
+    return [`The staged resident runtime was built from a different prepared source than ${path.relative(root, preparedSource)}. Run: bun run agent:build-workflow-worker && bun run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
   // agent:stage-android writes the profile marker; a payload staged for the removed Cloud
   // profile omitted the local embedding model and is refused.
   const marker = path.join(path.dirname(staged), 'alpha-runtime-profile.json');
   let profile: {version?: unknown; runtimeProfile?: unknown} | null = null;
   try { profile = JSON.parse(fs.readFileSync(marker, 'utf8')); } catch {}
   if (JSON.stringify(profile) !== JSON.stringify({version: 1, runtimeProfile: 'native'}))
-    return [`The staged resident runtime is not the native profile (${path.relative(root, marker)} ${profile ? `names ${JSON.stringify(profile.runtimeProfile)}` : 'is missing or unreadable'}). Run: npm run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
+    return [`The staged resident runtime is not the native profile (${path.relative(root, marker)} ${profile ? `names ${JSON.stringify(profile.runtimeProfile)}` : 'is missing or unreadable'}). Run: bun run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding];
   if(fs.existsSync(path.join(root,MOBILE_UUID_POLICY))){
     try{verifyMobileBuildReceipt(root,preparedSource,path.dirname(staged));}
-    catch(error){return [`The staged resident build producer is not admitted (${message(error)}). Run: npm run agent:stage-android.`,...embedding];}
+    catch(error){return [`The staged resident build producer is not admitted (${message(error)}). Run: bun run agent:stage-android.`,...embedding];}
   }
   // The in-process Google host is built from product sources the upstream stamp does not cover.
   try { googleHost(root, preparedSource); }
-  catch (error) { return [`The staged native Google host is not current (${message(error)}; Gradle :app:verifyNativeGoogleHost rejects the build). Run: npm run agent:build-workflow-worker && npm run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding]; }
+  catch (error) { return [`The staged native Google host is not current (${message(error)}; Gradle :app:verifyNativeGoogleHost rejects the build). Run: bun run agent:build-workflow-worker && bun run agent:stage-android (or ${FULL_CHAIN}).`, ...embedding]; }
   return embedding;
 }
 
@@ -195,7 +195,7 @@ function verifyStagedGoogleHost(root: string, preparedSource: string) {
 
 /**
  * The reviewed ARM64 embedding host (android/embedding-host/qualified-host.json). Its libraries
- * are staged byte for byte: by `npm run agent:build-embedding-host` when a rebuild reproduces
+ * are staged byte for byte: by `bun run agent:build-embedding-host` when a rebuild reproduces
  * them, or by staging a verified build receipt.
  */
 export function embeddingHostProblems(root: string, {allowUnpackagedRuntime = false, embeddingHost = verifyEmbeddingHost}: Pick<RuntimeOptions, "allowUnpackagedRuntime" | "embeddingHost"> = {}): string[] {
@@ -206,7 +206,7 @@ export function embeddingHostProblems(root: string, {allowUnpackagedRuntime = fa
     const partial = allowUnpackagedRuntime
       ? ' An unpackaged developer build must have no resident payload at all: remove android/app/src/main/assets/agent, android/app/src/main/jniLibs and .eliza/paradee-voice/native (its staged voice outputs keep :app:verifyParadeeAppLinkage checking jniLibs), or stage the host.'
       : '';
-    return [`The qualified embedding host is not staged (${message(error)}; Gradle :app:verifyEmbeddingHost rejects the build). npm run agent:build-embedding-host (a step of ${FULL_CHAIN}) stages the libraries only when it can reproduce the reviewed bytes, and says so when it cannot. ${partial}`];
+    return [`The qualified embedding host is not staged (${message(error)}; Gradle :app:verifyEmbeddingHost rejects the build). bun run agent:build-embedding-host (a step of ${FULL_CHAIN}) stages the libraries only when it can reproduce the reviewed bytes, and says so when it cannot. ${partial}`];
   }
 }
 
@@ -218,7 +218,7 @@ const SIGNING_ENV = ['ELIZAOS_KEYSTORE_PATH', 'ELIZAOS_KEYSTORE_PASSWORD', 'ELIZ
 const readJson = (root: string, rel: string) => JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
 
 /**
- * Every input of the strict distribution build (`npm run android:build:local` with no override),
+ * Every input of the strict distribution build (`bun run android:build:local` with no override),
  * in the order the chain needs it. `suppliedBy` is 'script' when a committed command produces the
  * input from pinned source and 'person' when no script may. `preparedSource` is null while the
  * pinned checkout is absent (its location cannot be resolved then).
@@ -240,7 +240,7 @@ export function strictBuildInputs(root: string, preparedSource: string | null, {
     const {status: voiceStatus, problems: voice} = assessVoiceHost(root, {voiceHost});
     add('on-device voice outputs', voice.length === 0, 'person',
       voice.length ? voice[0] : `staged outputs match ${VOICE_HOST_MANIFEST}`,
-      `Needs a person to supply the recorded voice outputs and models: node scripts/android-stage-voice-models.ts --from <directory> (see ${VOICE_GUIDE}).`);
+      `Needs a person to supply the recorded voice outputs and models: bun scripts/android-stage-voice-models.ts --from <directory> (see ${VOICE_GUIDE}).`);
 
   }
 
@@ -250,23 +250,23 @@ export function strictBuildInputs(root: string, preparedSource: string | null, {
     const hostState = embeddingHostState(host, toolchain, libraries);
     add('embedding host libraries', hostState.ready, hostState.suppliedBy,
       hostState.ready ? `reviewed bytes staged in android/app/src/main/jniLibs/${host.abi}` : libraries.filter(row => row.state !== 'staged').map(row => `${row.name} ${row.state === 'missing' ? 'missing' : 'is not the reviewed bytes'}`).join(', '),
-      'npm run agent:build-embedding-host');
+      'bun run agent:build-embedding-host');
   }
 
   const stamp = preparedSource ? path.join(preparedSource, '.alpha-runtime-source.json') : null;
   const prepared = stamp !== null && fs.existsSync(stamp);
-  add('prepared resident runtime source', prepared, 'script', preparedSource ? path.relative(root, preparedSource) : 'needs the pinned checkout first', 'npm run agent:prepare');
+  add('prepared resident runtime source', prepared, 'script', preparedSource ? path.relative(root, preparedSource) : 'needs the pinned checkout first', 'bun run agent:prepare');
   const worker = path.join(workerDirectory || path.join(root, 'artifacts', `mobile-workflow-worker-${pin}`), 'manifest.json');
-  add('workflow worker artifact', fs.existsSync(worker), 'script', path.relative(root, path.dirname(worker)), 'npm run agent:build-workflow-worker');
+  add('workflow worker artifact', fs.existsSync(worker), 'script', path.relative(root, path.dirname(worker)), 'bun run agent:build-workflow-worker');
   const staged = path.join(root, 'android/app/src/main/assets/agent/alpha-source.json');
   const stagedWorker = path.join(root, 'android/app/src/main/assets/agent/workflow-worker/manifest.json');
   const current = prepared && fs.existsSync(staged) && fs.existsSync(stagedWorker) && fs.readFileSync(staged, 'utf8') === fs.readFileSync(stamp, 'utf8');
-  add('staged resident runtime payload', current, 'script', !fs.existsSync(staged) ? 'android/app/src/main/assets/agent is not staged' : current ? 'staged from the prepared source' : 'staged from a different prepared source', 'npm run agent:stage-android');
+  add('staged resident runtime payload', current, 'script', !fs.existsSync(staged) ? 'android/app/src/main/assets/agent is not staged' : current ? 'staged from the prepared source' : 'staged from a different prepared source', 'bun run agent:stage-android');
   {
     const host = readJson(root, QUALIFIED_HOST), model = path.join(root, host.model.path);
-    add('embedding model', fs.existsSync(model), 'script', host.model.path, 'npm run agent:stage-android (it stages the pinned model with the payload)');
+    add('embedding model', fs.existsSync(model), 'script', host.model.path, 'bun run agent:stage-android (it stages the pinned model with the payload)');
   }
-  add('Gradle dependency verification metadata', fs.existsSync(path.join(root, GRADLE_VERIFICATION)), 'script', GRADLE_VERIFICATION, 'npm run android:deps:write-verification (then review the diff)');
+  add('Gradle dependency verification metadata', fs.existsSync(path.join(root, GRADLE_VERIFICATION)), 'script', GRADLE_VERIFICATION, 'bun run android:deps:write-verification (then review the diff)');
 
   const signer = readJson(root, 'android/release-signer.json').signerSha256;
   const missingSigning = SIGNING_ENV.filter(name => {
@@ -275,7 +275,7 @@ export function strictBuildInputs(root: string, preparedSource: string | null, {
   });
   add('release signer', signer !== 'unset' && missingSigning.length === 0, 'person',
     [signer === 'unset' ? 'android/release-signer.json says unset' : `android/release-signer.json names ${signer}`, missingSigning.length ? `not set in this environment: ${missingSigning.join(', ')}` : 'signing variables are set'].join('; '),
-    'Needs a person: Alpha Compute controls signing and Shaw owns release/support/rollback (#400). After the offline key ceremony, node scripts/enroll-release-keys.ts records the certificate digest in android/release-signer.json; then the release operator either supplies ELIZAOS_KEYSTORE_PATH, ELIZAOS_KEYSTORE_PASSWORD, ELIZAOS_KEY_ALIAS and ELIZAOS_KEY_PASSWORD to the build or signs the unsigned releases afterwards with node scripts/sign-release-apks.ts (ceremony key files or a PKCS#11 token; H-10). Without either the build still completes and records unsigned, non-distributable releases.');
+    'Needs a person: Alpha Compute controls signing and Shaw owns release/support/rollback (#400). After the offline key ceremony, bun scripts/enroll-release-keys.ts records the certificate digest in android/release-signer.json; then the release operator either supplies ELIZAOS_KEYSTORE_PATH, ELIZAOS_KEYSTORE_PASSWORD, ELIZAOS_KEY_ALIAS and ELIZAOS_KEY_PASSWORD to the build or signs the unsigned releases afterwards with bun scripts/sign-release-apks.ts (ceremony key files or a PKCS#11 token; H-10). Without either the build still completes and records unsigned, non-distributable releases.');
   return rows;
 }
 

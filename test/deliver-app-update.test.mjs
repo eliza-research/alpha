@@ -82,8 +82,9 @@ function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], 
   return {directory,manifestUrl,source,ports,events,uploads,offer,manifestBytes};
 }
 
-test('delivery proves anonymous APK bytes before moving and reading back the stable manifest',async t => {
-  const formerLegacyApk = new URL('alpha-phone-7.apk',legacyManifestUrl.replace('/alpha/','/alphaphone/')).href;
+for (const repository of ['eliza-research/alpha', 'eliza-research/alphaphone', 'alphacompute/alphaphone']) {
+test(`delivery retains ${repository} pointers and proves anonymous APK bytes before moving the manifest`,async t => {
+  const formerLegacyApk = new URL('alpha-phone-7.apk',legacyManifestUrl.replace('alphacompute/alpha',repository)).href;
   const f = fixture(t,{legacyPrevious:{apkUrl:formerLegacyApk},releaseMissing:true});
   const receipt = await deliver(f,f.ports);
   assert.deepEqual(f.uploads,['alpha-phone-8.apk','alpha-update-stable.json']);
@@ -92,6 +93,7 @@ test('delivery proves anonymous APK bytes before moving and reading back the sta
   assert.deepEqual(receipt,{schema:'alpha-app-update-delivery/v1',publisherCommit:source,sourceScope:'publication-tooling-only',variant:'launcher',versionCode:8,
     apkSha256:f.offer.sha256,manifestSha256:sha(f.manifestBytes),anonymousReadback:true});
 });
+}
 
 test('retired-channel versions remain reserved and its pointer cannot be published',async t => {
   for (const options of [{legacyPrevious:{versionCode:8}}, {legacyAssets:[{name:'alpha-phone-9.apk'}]},

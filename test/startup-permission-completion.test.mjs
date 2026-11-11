@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import {JSDOM} from 'jsdom';
-import {registerHooks} from 'node:module';
+import {registerHooks} from './support/module-hooks.mjs';
 import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 const BASE=resolve(import.meta.dirname,'..');
 const temp=await mkdtemp(join(tmpdir(),'alpha-required-onboarding-')),bridge=pathToFileURL(join(temp,'bridge.mjs')).href,connection=pathToFileURL(join(temp,'connection.mjs')).href,style=pathToFileURL(join(temp,'style.mjs')).href;
 await writeFile(new URL(bridge),`export const Capacitor={getPlatform:()=>globalThis.requiredPlatform||'web'};export function registerPlugin(name){return new Proxy({},{get:(_,method)=>(...args)=>globalThis.requiredPorts[name][method](...args)});}`);
@@ -33,7 +33,7 @@ async function fixture(t,{native=false,denied=false,unsupported=false,legacy=nul
  const heading=()=>(()=>{const name=document.querySelector('[aria-current=step] .alpha-permission-name');return name?[...name.childNodes].filter(node=>node.nodeType===3).map(node=>node.textContent).join('').trim():undefined;})()??document.querySelector('h2')?.textContent,buttons=()=>[...document.querySelectorAll('button')].map(x=>x.textContent),button=name=>{const n=[...document.querySelectorAll('button')].find(x=>x.textContent===name);assert(n,`Missing ${name}; ${document.body.textContent}`);return n;};
  return {held,buttons,dialog:()=>document.querySelector('dialog'),settle:async reads=>React.act(async()=>{for(const done of reads)done();}),resume:async()=>React.act(async()=>{for(const fn of resumed)fn();document.dispatchEvent(new dom.window.Event('visibilitychange'));}),visibility:async()=>React.act(async()=>document.dispatchEvent(new dom.window.Event('visibilitychange'))),reopen:async permission=>React.act(async()=>dom.window.dispatchEvent(permission?new dom.window.CustomEvent(STARTUP_PERMISSIONS_REOPEN,{detail:{permission}}):new dom.window.Event(STARTUP_PERMISSIONS_REOPEN))),auth:async(patch={})=>React.act(async()=>{globalThis.requiredConnection={...globalThis.requiredConnection,...patch,setupRevision:(globalThis.requiredConnection.setupRevision||0)+1};render();}),setActive:async value=>React.act(async()=>{active=value;render();}),failNextWrite:()=>{failures=1;},google:async value=>React.act(async()=>{globalThis.requiredGoogle=value;for(const fn of globalThis.requiredGoogleListeners)fn();}),state,calls,dom,heading,button,click:async name=>React.act(async()=>button(name).click()),progress:()=>JSON.parse(localStorage.getItem(startupPermissionProgressKey)||'null'),cancel:async()=>React.act(async()=>document.querySelector('dialog').dispatchEvent(new dom.window.Event('cancel',{cancelable:true}))),back:async()=>React.act(async()=>dom.window.dispatchEvent(new dom.window.Event('alpha-back',{cancelable:true}))),open:async permission=>React.act(async()=>dom.window.dispatchEvent(new dom.window.CustomEvent('alpha:startup-permissions-reopen',{detail:{permission}}))),remount:async()=>{await React.act(async()=>root.unmount());root=createRoot(document.getElementById('root'));await React.act(async()=>render());}};
 }
-test('actual recovered order is required, no Skip/Not now/Back/footer/count, then Ready and Home',async t=>{
+test('the required permission order leads to Ready and Home without an immediate exit',async t=>{
  const f=await fixture(t);let homes=0;window.addEventListener('launcher-home',()=>homes++);
  for(const title of ['Notifications','Microphone','Camera','Location']){assert.equal(f.heading(),title);assert(![...document.querySelectorAll('button')].some(x=>/Skip|Not now|Back/.test(x.textContent)));assert.equal(document.querySelector('.alpha-startup-header'),null);await f.click('Continue');}
  assert.equal(f.heading(),'All set');assert.equal(f.calls.length,0);await f.click('Done');assert.equal(document.querySelector('dialog'),null);assert.equal(homes,1);assert.deepEqual(f.progress(),{version:1,status:'completed',step:4});assert.deepEqual(JSON.parse(localStorage.getItem('alpha.startup-permissions.v1')).attempted,{camera:true});await f.remount();assert.equal(document.querySelector('dialog'),null);

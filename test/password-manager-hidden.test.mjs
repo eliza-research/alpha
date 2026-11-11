@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {mkdtempSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
 import {build} from 'esbuild';
 
 // The real module over a fake vault: every import outside the module is a small port.
@@ -44,7 +43,8 @@ async function open(overrides = {}) {
   globalThis.__passwordHiddenFixture = {ElizaPasswords: vault, AlphaBrowser: {loginFillStatus: async () => ({available: true})}};
   globalThis.document = {hidden: false, addEventListener: (name, run) => { listeners[name] = run; }, removeEventListener() {}};
   globalThis.window = {addEventListener() {}, removeEventListener() {}};
-  const manager = await import(pathToFileURL(file).href + '?instance=' + copy++);
+  // A path specifier: Bun returns the cached module for a file: URL that differs only in its query.
+  const manager = await import(file + '?instance=' + copy++);
   const helpers = {info: (label, val) => ({label, val}), group: rows => ({rows}), toast() {}, set() {}, ic: {}};
   const render = () => manager.passwordManagerGroups(helpers);
   // Settings stays on the password page, so every change notice renders it again.

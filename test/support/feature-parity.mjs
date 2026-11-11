@@ -25,6 +25,9 @@ export const featureParityAllowlist = {
     "capability:sms.send.v1:only-a": "apps/app/src/runtime/connection-ui.tsx deviceCapabilities and apps/app/src/runtime/device-actions.ts"
   },
   reviewedHelpers: {
+    "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationChannels.java": {"owner": "android/app/src/main/java/ai/alphacompute/alphaphone/DailyAppsPlugin.java", "reason": "Describes existing notification channels on the owning plugin's load, resume and reminder scheduling paths, retaining each channel ID and importance.", "tests": ["test/native-notification-channels.test.mjs", "test/native-plugin-teardown.test.mjs"]},
+    "apps/app/src/browser/video-capture-prefix.ts": {"owner": "apps/app/src/browser/video-capture.ts", "reason": "Reads the playable duration of the existing recorder's retained byte-limited prefix with bounded cancellation and resource cleanup.", "tests": ["test/video-capture-limit.test.mjs", "test/browser/camera-controls.spec.ts"]},
+    "apps/app/src/runtime/error-notice.ts": {"owner": "apps/app/src/prototype/agent-adapter.ts", "reason": "Bounds the existing adapters' failure toasts to plain owner-facing messages and caller-provided fallbacks.", "tests": ["test/error-notice.test.mjs"]},
     "apps/app/src/runtime/native-network.ts": {"owner": "apps/app/src/runtime/connection-ui.tsx", "reason": "Bounds the existing resident send and lifecycle connectivity reads to native Android facts while preserving cancellation and observation order.", "tests": ["test/native-network.test.mjs", "test/native-network-lifecycle.test.mjs", "test/connection-presentation-state.test.mjs"]},
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaUpdateStatusReceiver.java": {"owner": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java", "reason": "Receives and binds the system installer result to Alpha’s existing update session.", "tests": ["test/app-update.test.mjs"]},
     "android/app/src/main/java/ai/alphacompute/alphaphone/UpdateConfirmationReceipt.java": {"owner": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java", "reason": "Persists the exact unopened Android installer confirmation across process replacement.", "tests": ["test/app-update.test.mjs"]},
@@ -75,6 +78,7 @@ export const featureParityAllowlist = {
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteDocumentsPlugin.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecorder.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecordingService.java",
+    "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationChannels.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationListener.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotoLibraryPlugin.java",
@@ -284,6 +288,7 @@ export const featureParityAllowlist = {
     "apps/app/src/browser/simulator-writer.ts",
     "apps/app/src/browser/speech-errors.ts",
     "apps/app/src/browser/storage-usage.ts",
+    "apps/app/src/browser/video-capture-prefix.ts",
     "apps/app/src/browser/video-capture.ts",
     "apps/app/src/browser/video-codecs.ts",
     "apps/app/src/browser/video-edit.ts",
@@ -507,6 +512,7 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/digest-inbox.ts",
     "apps/app/src/runtime/dock-clearance.ts",
     "apps/app/src/runtime/error-boundary.tsx",
+    "apps/app/src/runtime/error-notice.ts",
     "apps/app/src/runtime/gmail-account-selection.ts",
     "apps/app/src/runtime/gmail-background.ts",
     "apps/app/src/runtime/gmail-grants.ts",

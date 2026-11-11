@@ -17,6 +17,6 @@ Read [README.md](README.md), [docs/development.md](docs/development.md) and [AGE
 ## Formal models
 
 Run the Quint models and LemmaScript proofs locally before merging a PR:
-`npm run quint:check`, `npm run quint:tests` and `npm run lemma:check`. That is the only point
-at which running them is required. They are not part of `npm run verify` or of PR and push CI; CI runs them only
+`bun run quint:check`, `bun run quint:tests` and `bun run lemma:check`. That is the only point
+at which running them is required. They are not part of `bun run verify` or of PR and push CI; CI runs them only
 when `develop` is promoted to `main`. Proofs need Dafny 4.11.0 on `PATH`.

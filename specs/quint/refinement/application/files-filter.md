@@ -30,5 +30,5 @@ full watch/reload coordinator, provider query implementation, arbitrary
 metadata or file mutations.
 
 ```sh
-node --test test/quint-files-filter.test.mjs
+bun test test/quint-files-filter.test.mjs
 ```

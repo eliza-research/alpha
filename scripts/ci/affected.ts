@@ -24,7 +24,7 @@ export function affected(paths: readonly string[]) {
     }
     result.verify = true;
     if (/^specs\/quint\//.test(path) || /^scripts\/(check-quint|quint-lib)\.ts$/.test(path)) {
-      // Formal models change no APK or browser bytes; host tests in verify replay them against source.
+      // Formal models change no APK or browser bytes; the promotion workflow checks them.
     } else if (/^test\/browser\//.test(path) || path === 'playwright.config.ts' || path === 'scripts/storage-specs.ts') {
       result.browser = true;
     } else if (/^test\//.test(path)) {

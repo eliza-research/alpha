@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 const viewSource=readFileSync(new URL('../apps/app/src/runtime/view-navigation.ts',import.meta.url),'utf8');
 const start=viewSource.indexOf('\tmetadata(context:');
 const end=viewSource.indexOf('\n\tcapture(',start);

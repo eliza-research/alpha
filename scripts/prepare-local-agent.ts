@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Prepare one immutable upstream commit without consumer source overlays. */
 import fs from 'node:fs';
 import path from 'node:path';

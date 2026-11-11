@@ -122,7 +122,7 @@ From the repository root, a single model can be checked with the pinned executab
 node_modules/.bin/quint typecheck specs/quint/native/VoiceSession.qnt
 node_modules/.bin/quint test specs/quint/native/VoiceSession.qnt --backend=typescript --seed=1701 --max-samples=1
 node_modules/.bin/quint run specs/quint/native/VoiceSession.qnt --backend=typescript --invariant=safety --seed=1701 --max-samples=300 --max-steps=60
-node specs/quint/native/conformance.mjs
+bun specs/quint/native/conformance.mjs
 ```
 
 The 98 deterministic scenarios exercise accepted, denied, canceled, stale,
@@ -783,6 +783,15 @@ when the journal has a recorded attempt. Notification receipt promotion and acti
 settlement can commit separately, including a storage error reported after
 either commit. Missing, conflicting, pending and exact retained evidence
 are observed alongside legacy unknown rows and retired bridges.
+
+The model also names the journaled operation classes that have no native
+receipt reader: `note-write`, `calendar-write`, `files-write`,
+`camera-capture`, `browser-navigate` and `view-only`.
+`NoNativeProofNeverSettles` and `ViewOnlyNeverRecoversToSuccess` state that
+no notice, reminder or deletion recovery call settles such a row. These
+kinds are model-only: the host-JVM replay does not drive them, and the
+shared coordinator's saved-receipt reconciliation for camera, Calendar and
+Notes results is a separate, unmodeled contract.
 
 The as-built replay in commit `00a4872aea` observed a synthetic reminder
 receipt settling an applying row under a different owner and proposal

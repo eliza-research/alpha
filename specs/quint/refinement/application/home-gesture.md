@@ -21,5 +21,5 @@ host instances and physical Android touch delivery require separate
 evidence.
 
 ```sh
-node --test test/quint-home-gesture.test.mjs
+bun test test/quint-home-gesture.test.mjs
 ```

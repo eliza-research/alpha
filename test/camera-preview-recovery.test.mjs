@@ -340,4 +340,15 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,browser
  remove();shell.componentDidUpdate();f.env.window.document.dispatchEvent(new f.env.window.Event('visibilitychange'));assert.equal(calls,3);assert.equal(Shell.prototype.componentDidUpdate.name,'componentDidUpdate','Uninstall restores the shell');
  assert.ok(!/new MutationObserver\(schedule\)|observe\(document\.body/.test(source),'No body-wide DOM observer drives the camera or Photos');f.env.window.close();
 }
+// A denied microphone offers a recording without sound; sound is left out of that one recording only.
+{
+ const f=fixture({failing:false});await f.api.start();await settle();const asked=[];let deny=true;
+ f.camera.startRecording=async options=>{asked.push(options.audio);if(deny&&options.audio)throw Object.assign(Error('Microphone permission denied'),{code:'MICROPHONE_DENIED'});};
+ await f.api.record();await settle();assert.equal(f.api.state().denied,'microphone');
+ const panel=f.env.window.document.querySelector('[role="alert"]');assert.equal(panel.getAttribute('aria-label'),'Mic off');
+ const silent=[...panel.querySelectorAll('button')].find(b=>b.textContent==='No sound');assert.equal(silent.getAttribute('aria-label'),'Record without sound');
+ silent.click();await settle();assert.deepEqual(asked,[true,false]);assert.equal(f.api.state().recording,true);assert.equal(f.api.state().denied,undefined);assert.equal(f.env.window.document.querySelector('[role="alert"]'),null);
+ await f.api.record();await settle();assert.equal(f.api.state().recording,false);deny=false;
+ await f.api.record();await settle();assert.deepEqual(asked,[true,false,true],'The next recording asks for sound again');assert.equal(f.api.recordingOptions().audio,true);f.env.window.close();
+}
 console.log('PASS camera session: preview recovery, lens-driven zoom/flash, flip reset, focus never blocks, leave settles capture, agent capture queue/cancel/fail/refuse, chat grace, scan request. Synthetic camera boundary; no camera frames/provider/native writes.');

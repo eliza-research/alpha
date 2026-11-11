@@ -1,11 +1,11 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Render the /.well-known/assetlinks.json for the verified App Links return host from the
  * committed release-signer descriptor, and check rendered or published copies.
  *
- *   node scripts/render-assetlinks.ts [--out FILE] [--debug-fingerprint HEX ...]
- *   node scripts/render-assetlinks.ts --cloud-config [--published FILE|URL] [--keep-fingerprint HEX ...]
- *   node scripts/render-assetlinks.ts --check FILE|URL [--debug-fingerprint HEX ...]
+ *   bun scripts/render-assetlinks.ts [--out FILE] [--debug-fingerprint HEX ...]
+ *   bun scripts/render-assetlinks.ts --cloud-config [--published FILE|URL] [--keep-fingerprint HEX ...]
+ *   bun scripts/render-assetlinks.ts --check FILE|URL [--debug-fingerprint HEX ...]
  *
  * The fingerprint comes only from android/release-signer.json signerSha256. It is refused while
  * that is "unset", when the template placeholder would remain, and when it equals a debug signing
@@ -365,9 +365,9 @@ export async function readAssetLinksSource(source: string, { fetchImpl = globalT
 }
 
 const USAGE = [
-  "Usage: node scripts/render-assetlinks.ts [--out FILE] [--debug-fingerprint HEX ...]",
-  "       node scripts/render-assetlinks.ts --cloud-config [--published FILE|URL] [--keep-fingerprint HEX ...] [--debug-fingerprint HEX ...]",
-  "       node scripts/render-assetlinks.ts --check FILE|URL [--debug-fingerprint HEX ...]",
+  "Usage: bun scripts/render-assetlinks.ts [--out FILE] [--debug-fingerprint HEX ...]",
+  "       bun scripts/render-assetlinks.ts --cloud-config [--published FILE|URL] [--keep-fingerprint HEX ...] [--debug-fingerprint HEX ...]",
+  "       bun scripts/render-assetlinks.ts --check FILE|URL [--debug-fingerprint HEX ...]",
 ].join("\n");
 
 function parseArgs(argv: string[]) {
@@ -420,7 +420,7 @@ async function main(argv: string[]) {
       const result = cloudAssetLinksConfig({ entries, packageName, signerSha256, keep: options.keep, debugFingerprints });
       for (const value of result.removed) console.error(`note: ${packageName} no longer lists ${value}; pass --keep-fingerprint ${value} to keep it`);
       for (const value of result.keptDebug) console.error(`warning: ${value} is a recorded debug signing certificate; keep it only where debug builds must verify (staging), never as a release identity`);
-      console.error(`Set ${CLOUD_ASSET_LINKS.variable} on the Cloud environment to the value below, deploy, then run: node scripts/render-assetlinks.ts --check https://<web host>/.well-known/assetlinks.json`);
+      console.error(`Set ${CLOUD_ASSET_LINKS.variable} on the Cloud environment to the value below, deploy, then run: bun scripts/render-assetlinks.ts --check https://<web host>/.well-known/assetlinks.json`);
       console.log(result.text);
       return 0;
     }

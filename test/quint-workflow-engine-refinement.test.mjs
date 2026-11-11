@@ -15,7 +15,7 @@ test('workflow compilation rejects a changed graph or mismatched captured source
 });
 
 test('workflow engine SQL admission and source coordinator refine bounded Quint traces', {timeout: 360000}, () => {
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
+  const result = spawnSync(process.execPath, ['-e', `
     import assert from 'node:assert/strict';
     import {runWorkflowEngineRefinement} from './specs/quint/refinement/services/workflow-engine/index.mjs';
     const result = await runWorkflowEngineRefinement(['test/quint-workflow-engine-refinement.test.mjs']);

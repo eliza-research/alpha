@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 
 const {AlphaClient} = await tsImport('../apps/app/src/runtime/alpha-client.ts', import.meta.url);
 const session = sessionId => ({ownerId: 'synthetic-owner', agentId: 'synthetic-agent', sessionId, origin: 'https://agent.example'});

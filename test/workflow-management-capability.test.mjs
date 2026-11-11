@@ -4,10 +4,6 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {spawnSync} from 'node:child_process';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
-if(!process.versions.bun&&!process.execArgv.some(value=>value==='tsx'||value==='--import=tsx')){
- const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});
- if(child.error)throw child.error;process.exit(child.status??1);
-}
 const {workflowRendererFixture}=await import('../scripts/workflow-renderer-fixture.ts');
 const source=fs.readFileSync('apps/app/src/prototype/workflow-adapter.ts','utf8').replace(/^import .*;\n/gm,'').replace('export function','function')+'\nglobalThis.install=installWorkflowAdapter;';
 function fixture(){

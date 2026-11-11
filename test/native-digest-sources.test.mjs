@@ -10,7 +10,7 @@ const cached=existsSync(cache)?readdirSync(cache).flatMap(hash=>readdirSync(join
 import {javaBinary as binary} from './fixtures/jvm-tools.mjs';
 const jsonJar=process.env.ALPHA_JSON_JAR||cached;
 // Without the pinned org.json jar NativeDigestSources is never compiled. On CI that is a failure, not a
-// skip, so npm run verify cannot pass there without this test; elsewhere the skip is printed.
+// skip, so bun run verify cannot pass there without this test; elsewhere the skip is printed.
 const missingJar='Pinned JVM JSON dependency unavailable (no org.json 20250517 jar in ~/.gradle and ALPHA_JSON_JAR unset)';
 if(!jsonJar&&!process.env.CI)process.stderr.write(`SKIPPED native digest sources: ${missingJar}. Run a Gradle build once or set ALPHA_JSON_JAR.\n`);
 test('native digest consent and source reads remain bounded across persistence and revocation',{skip:!jsonJar&&!process.env.CI?missingJar:false},()=>{

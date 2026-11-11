@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 
 test('workflow wakeups and restart refine actual source callbacks and persisted state', {timeout: 300000}, () => {
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
+  const result = spawnSync(process.execPath, ['-e', `
     import assert from 'node:assert/strict';
     import {runWorkflowWakeupRefinement} from './specs/quint/refinement/services/workflow-scheduler/index.mjs';
     const result = await runWorkflowWakeupRefinement(['test/quint-workflow-wakeups-refinement.test.mjs']);

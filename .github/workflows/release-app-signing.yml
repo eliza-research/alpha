@@ -33,9 +33,9 @@ jobs:
           ref: ${{ github.sha }}
           submodules: true
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          node-version-file: .nvmrc
+          bun-version: "1.4.2"
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -56,7 +56,7 @@ jobs:
           test "$SOURCE_COMMIT" = "$(git rev-parse HEAD)"
           [[ "$FIXTURE_GENERATOR_SHA256" =~ ^[0-9a-f]{64}$ ]]
           printf '%s  scripts/ci/build-app-signing-fixtures.py\n' "$FIXTURE_GENERATOR_SHA256" | sha256sum --check --strict
-          node -e 'if (!/^[0-9a-f]{64}$/.test(require("./android/release-signer.json").signerSha256)) process.exit(1)'
+          bun -e 'if (!/^[0-9a-f]{64}$/.test(require("./android/release-signer.json").signerSha256)) process.exit(1)'
           python3 scripts/ci/build-app-signing-fixtures.py "$ANDROID_HOME" artifacts
           sha256sum artifacts/standalone-release-unsigned.apk artifacts/launcher-release-unsigned.apk > artifacts/unsigned-fixtures.sha256
       - name: Sign both fixtures using the protected app keystore
@@ -76,19 +76,19 @@ jobs:
           keystore="$key_directory/app.p12"
           printf '%s' "$ALPHA_APP_RELEASE_KEYSTORE_B64" | base64 --decode > "$keystore"
           unset ALPHA_APP_RELEASE_KEYSTORE_B64
-          expected=$(node -p 'require("./android/release-signer.json").signerSha256')
+          expected=$(bun -p 'require("./android/release-signer.json").signerSha256')
           actual=$(keytool -exportcert -storetype PKCS12 -keystore "$keystore" -alias alpha-release \
             -storepass:env ALPHA_APP_RELEASE_KEYSTORE_PASSWORD | sha256sum | cut -d ' ' -f 1)
           test "$actual" = "$expected"
           for variant in standalone launcher; do
-            node scripts/sign-release-apks.ts --keystore "$keystore" --key-label alpha-release \
+            bun scripts/sign-release-apks.ts --keystore "$keystore" --key-label alpha-release \
               --apk "artifacts/$variant-release-unsigned.apk" --out "artifacts/$variant-release.apk"
           done
       - name: Record fixture signing proof without exporting APKs
         env:
           FIXTURE_GENERATOR_SHA256: ${{ inputs.fixture_generator_sha256 }}
         run: |
-          node --input-type=module <<'NODE'
+          bun - <<'NODE'
           import { createHash } from 'node:crypto';
           import { createReadStream, readFileSync, statSync, writeFileSync } from 'node:fs';
           const read = file => JSON.parse(readFileSync(file, 'utf8'));

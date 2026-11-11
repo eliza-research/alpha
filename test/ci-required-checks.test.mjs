@@ -39,7 +39,7 @@ test('production lane selects production-surface and every *.production.spec.ts 
 test('the local-agent profile step runs every profile spec whole and the change gate selects each of them', async () => {
   const { browserPlan } = await import('../scripts/ci/affected.ts');
   const files = ['test/browser/browser-agent-tts.spec.ts', 'test/browser/browser-host-disclosure.spec.ts', 'test/browser/host-reminder-recovery.spec.ts'];
-  const step = /name: Exercise synthetic local-agent speech profile[^\n]*\n(?:.*\n)*?.*VITE_LOCAL_AGENT=1 .*npm run test:browser -- (.*)\n/.exec(read('.github/workflows/browser.yml'))?.[1];
+  const step = /name: Exercise synthetic local-agent speech profile[^\n]*\n(?:.*\n)*?.*VITE_LOCAL_AGENT=1 .*bun run test:browser -- (.*)\n/.exec(read('.github/workflows/browser.yml'))?.[1];
   assert.ok(step, 'profile step');
   assert.doesNotMatch(step, /--grep/);
   for (const file of files) {
@@ -59,19 +59,19 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   // The event name also keeps a dispatch on main from cancelling the daily scheduled run.
   assert.ok(browser.includes("group: browser-${{ github.event_name }}-${{ github.event_name == 'push' && github.sha || github.ref }}\n"));
   assert.match(browser, /^on:\n(?:.*\n)*?  schedule:\n    - cron: '[^']+'\n/m);
-  assert.match(browser, /- run: npm run verify\n        env:\n(?:.*\n)*?          ALPHA_REQUIRE_PREPARED_SDK: '1'\n/);
+  assert.match(browser, /- run: bun run verify\n        env:\n(?:.*\n)*?          ALPHA_REQUIRE_PREPARED_SDK: '1'\n/);
   assert.match(android, /name: Android foundation result\n    needs: \[changes, build\]\n    if: always\(\)/);
   assert.match(android, /artifacts\/mapping\/\*\.txt/);
   const manualVerify = android.split('- name: Verify standalone manual qualification\n')[1]?.split('\n      - ')[0];
   assert.match(manualVerify, /if: github\.event_name == 'workflow_dispatch'/);
   assert.match(manualVerify, /ALPHA_REQUIRE_PREPARED_SDK: '1'/);
-  assert.match(manualVerify, /run: npm run verify/);
-  assert.match(android, /name: Prepare pinned SDK for manual verification[\s\S]*node scripts\/prepare-local-agent\.ts/);
+  assert.match(manualVerify, /run: bun run verify/);
+  assert.match(android, /name: Prepare pinned SDK for manual verification[\s\S]*bun scripts\/prepare-local-agent\.ts/);
   assert.match(android, /name: Prepare pinned native lifecycle sources\n\s+if: github\.event_name != 'workflow_dispatch'/);
 
   assert.match(browser, /name: Browser MVP result\n    needs: \[changes, verify, browser, production\]\n    if: always\(\)/);
   assert.match(browser, /name: Repository verification\n/);
-  assert.match(browser, /node scripts\/verify-upstream\.ts/);
+  assert.match(browser, /bun scripts\/verify-upstream\.ts/);
   const resident = read('.github/workflows/resident-android.yml');
   // The candidate workflow test checks the other concurrency groups.
   assert.ok(resident.includes("${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}"));
@@ -98,6 +98,9 @@ test('the Quint gate, its node tests and the Lemma proofs run in CI only for pro
   for (const command of ['quint:prepare-history', 'quint:check', 'quint:tests', 'quint:refinement -- --families=composition',
     'quint:verify', 'quint:compare', 'quint:temporal', 'lemma:check', 'scripts/ci/prepare-dafny.sh'])
     assert.ok(commands.includes(command), command);
+  for (const step of Object.values(promotion.jobs).flatMap(job => job.steps))
+    if (/quint:(compare|temporal)/.test(step.run ?? '')) assert.doesNotMatch(step.run, /--models=/, 'promotion preserves every declared proof');
+  assert.match(JSON.parse(read('package.json')).scripts['quint:tests'], /bun run test:node/, 'Node-only conformance remains in the formal suite');
 });
 
 test('committed ruleset requires exactly the stable check names', () => {

@@ -1,10 +1,11 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
 import {checkGmailAgentMailboxRecovery} from '../specs/quint/refinement/services/gmail-agent-mailbox-recovery.mjs';
 
-test('Gmail agent mailbox confirms the exact review and only reads back a lost dispatch', {timeout: 30000}, async () => {
+test('Gmail agent mailbox confirms the exact review and only reads back a lost dispatch', {timeout: scaledTimeout(30000)}, async () => {
   const receipt = await checkGmailAgentMailboxRecovery([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.traces, 45);
   assert.equal(receipt.checkpoints, 299);

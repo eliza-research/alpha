@@ -63,7 +63,7 @@ export function nativeAuthCallbackRegistration(config: CloudDeploymentConfig,ide
 export function deploymentOutputs(config: CloudDeploymentConfig){
  validateCloudDeployment(config);
  const fingerprint=storageFingerprint(config);
- const generated='Generated from scripts/cloud-deployment-policy.ts. Run node scripts/cloud-deployment.ts.';
+ const generated='Generated from scripts/cloud-deployment-policy.ts. Run bun scripts/cloud-deployment.ts.';
  const java=['package '+productIdentity.appId+';','','/** '+generated+' */','final class CloudDeployment {',' private CloudDeployment() {}'];
  const ts=['// '+generated];
  const gradle=['// '+generated,'ext.alphaCloudWebHosts = ['];
@@ -91,7 +91,7 @@ export function checkCloudDeployment(directory=root,{config=CLOUD_DEPLOYMENT,sdk
  const outputs=deploymentOutputs(config);
  for(const [name,contents] of Object.entries(outputs)){
   const file=path.join(directory,name);
-  if(!fs.existsSync(file)||fs.readFileSync(file,'utf8')!==contents)throw Error('Stale Cloud deployment output: '+name+'; run node scripts/cloud-deployment.ts');
+  if(!fs.existsSync(file)||fs.readFileSync(file,'utf8')!==contents)throw Error('Stale Cloud deployment output: '+name+'; run bun scripts/cloud-deployment.ts');
  }
  if(storageFingerprint(config)!==namespaces.at(-1))throw Error('Cloud storage namespace would change: every installed phone loses its production credential; add a tested migration (LegacyCloudRecovery) and append the new namespace to STORAGE_NAMESPACES in scripts/cloud-deployment.ts');
  // The resident agent's inference base (ELIZAOS_CLOUD_BASE_URL) must be the configured API, never a second authority.

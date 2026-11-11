@@ -9,31 +9,15 @@ import re
 import stat
 from urllib.parse import quote, urlencode
 
-from app_update_producer import CANDIDATE, MAX_ARCHIVE_BYTES, PRIVATE_RUNNER, producer_kind
+from app_update_producer import MAX_ARCHIVE_BYTES, PRIVATE_APK_BUCKET, validate_private_storage as validate
 
-BUCKET = "alpha-aosp-lab-20261024-private-apks"
+BUCKET = PRIVATE_APK_BUCKET
 MAX_BYTES = MAX_ARCHIVE_BYTES
 
 
 def require(value, message):
     if not value:
         raise ValueError(message)
-
-
-def validate(plan):
-    storage = plan["privateStorage"]
-    require(storage["bucket"] == BUCKET, "Unexpected private bucket")
-    sha = plan["archiveSHA256"]
-    require(isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{64}", sha), "Invalid archive digest")
-    require(storage["inputObject"] == f"unsigned/{sha}.zip", "Input object must bind the archive digest")
-    require(isinstance(storage["inputGeneration"], str) and
-            re.fullmatch(r"[1-9][0-9]{0,24}", storage["inputGeneration"]), "Exact input generation required")
-    require(re.fullmatch(r"signed/" + sha + r"/[0-9a-f]{32}/signed-apks.tar",
-                         storage["outputObject"]), "Invalid exclusive delivery object")
-    require(type(plan["archiveBytes"]) is int and 0 < plan["archiveBytes"] <= MAX_BYTES,
-            "Invalid archive byte bound")
-    require(producer_kind(plan) in (PRIVATE_RUNNER, CANDIDATE), "Unreviewed private producer kind")
-    return storage
 
 
 def connection():

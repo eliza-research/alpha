@@ -16,7 +16,7 @@ The baseline comparison covered one private worker directory, one product input,
 Run the replay with Node 26.
 
 ```sh
-node --test test/quint-native-google-host-artifact.test.mjs
+bun test test/quint-native-google-host-artifact.test.mjs
 ```
 
 
@@ -29,7 +29,7 @@ The selected rollback test refuses the final manifest rename after the new modul
 A separate optional pinned Bun 1.4.2 test compiles and executes only inert synthetic modules in a private tree. It verifies 13 graph input bindings, including TypeScript and JavaScript module variants, JSX, JSON and a text import. The connector's public input digest binds the raw preimage while the emitted module executes the reviewed transformed bytes.
 
 ```sh
-ALPHA_QUINT_BUN=/absolute/path/to/bun node --test test/quint-native-google-host-artifact.test.mjs
+ALPHA_QUINT_BUN=/absolute/path/to/bun bun test test/quint-native-google-host-artifact.test.mjs
 ```
 
 The selected guarantees cover serial local producer execution and definite filesystem refusals. Fixed-name publication still uses two renames, so independent readers can see an intermediate pair, and process interruption or rollback failure can require a rebuild. Cross-process exclusion, full product Bun graph admission, staged worker custody and installed Android acceptance are separate checks.

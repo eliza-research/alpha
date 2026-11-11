@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Publish an admitted release APK first, verify anonymous download, then move
  * the stable manifest. No keys, builds or private QA URLs enter this command.
  * GitHub asset replacement is not atomic: a manifest upload failure is reported
@@ -81,7 +81,7 @@ export async function publicObject(url: string, {maxBytes, missing = false, fetc
   } finally {clearTimeout(timeout);}
 }
 
-function parseOffer(bytes: Buffer): UpdateOffer {
+export function parseOffer(bytes: Buffer): UpdateOffer {
   const value: UpdateOffer = JSON.parse(bytes.toString('utf8'));
   if (value?.schema !== 'alpha-update/v1' || !['launcher','standalone'].includes(value.variant) ||
       !Number.isSafeInteger(value.versionCode) || value.versionCode < 1 || !/^[0-9a-f]{64}$/.test(value.signerSha256 || '') ||
@@ -214,7 +214,7 @@ export async function main(argv: string[], {root = process.cwd(), log = console.
   let variant: string | undefined, apkManifest = 'artifacts/apk-manifest.json', notes: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i], value = argv[++i];
-    if (!value || value.startsWith('--')) throw Error('Usage: node scripts/deliver-app-update.ts --variant launcher|standalone [--apk-manifest FILE] [--notes TEXT]');
+    if (!value || value.startsWith('--')) throw Error('Usage: bun scripts/deliver-app-update.ts --variant launcher|standalone [--apk-manifest FILE] [--notes TEXT]');
     if (flag === '--variant') variant = value;
     else if (flag === '--apk-manifest') apkManifest = value;
     else if (flag === '--notes') notes = value;

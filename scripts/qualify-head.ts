@@ -1,17 +1,17 @@
 /**
  * Qualify the current checkout HEAD from scratch and record one result file.
  *
- *   node scripts/qualify-head.ts [--allow-unpackaged-runtime] [--fresh]
+ *   bun scripts/qualify-head.ts [--allow-unpackaged-runtime] [--fresh]
  *                                 [--engines chromium,firefox,webkit] [--skip-android]
  *                                 [--candidate-archive <apk-manifest.json>]
- *   node scripts/qualify-head.ts --candidate [--candidate-archive <apk-manifest.json>]
+ *   bun scripts/qualify-head.ts --candidate [--candidate-archive <apk-manifest.json>]
  *                                 # re-read campaign evidence for HEAD's existing result
  *
  * Writes test-results/qualify/<sha>/result.json with the git SHA, the
- * upstream.lock.json commit, `npm run verify`, `npm run android:build` (standalone
+ * upstream.lock.json commit, `bun run verify`, `bun run android:build` (standalone
  * and launcher, debug and release), the production bundle audit, and per-engine
- * results for the browser storage-domain specs, the full Chromium suite (`npm run test:browser`)
- * and the production-surface project (`npm run test:browser:production`). Every step runs now; no earlier
+ * results for the browser storage-domain specs, the full Chromium suite (`bun run test:browser`)
+ * and the production-surface project (`bun run test:browser:production`). Every step runs now; no earlier
  * log, manifest or result is reused (--fresh deletes an older directory for the
  * same SHA, otherwise the script refuses to overwrite it). A dirty tree is
  * recorded and can never qualify.
@@ -378,7 +378,7 @@ function main() {
   if (!result.upstream.matches) {
     result.verify = { status: "failed", reason: "vendor/eliza HEAD differs from upstream.lock.json" };
   } else {
-    result.verify = step("verify", "npm", ["run", "verify"]);
+    result.verify = step("verify", "bun", ["run", "verify"]);
   }
   write();
 
@@ -386,7 +386,7 @@ function main() {
   else {
     // Remove the previous manifest first so a failed build can never report it.
     fs.rmSync("artifacts/apk-manifest.json", { force: true });
-    result.androidBuild = step("android-build", "npm", ["run", "android:build", ...(options.allowUnpackagedRuntime ? ["--", "--allow-unpackaged-runtime"] : [])]);
+    result.androidBuild = step("android-build", "bun", ["run", "android:build", ...(options.allowUnpackagedRuntime ? ["--", "--allow-unpackaged-runtime"] : [])]);
     if (fs.existsSync("artifacts/apk-manifest.json")) {
       const manifest: ApkManifest = JSON.parse(fs.readFileSync("artifacts/apk-manifest.json", "utf8"));
       fs.copyFileSync("artifacts/apk-manifest.json", path.join(directory, "apk-manifest.json"));
@@ -444,9 +444,9 @@ function main() {
   }
 
   // The full Chromium suite (development project) and the flag-off production-surface project.
-  result.browserSuite = step("browser-chromium", "npm", ["run", "test:browser"], { ...process.env });
+  result.browserSuite = step("browser-chromium", "bun", ["run", "test:browser"], { ...process.env });
   write();
-  result.productionSurface = step("browser-production", "npm", ["run", "test:browser:production"], flagOff);
+  result.productionSurface = step("browser-production", "bun", ["run", "test:browser:production"], flagOff);
   write();
 
   result.finishedAt = new Date().toISOString();

@@ -154,22 +154,22 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 .note-source-actions { display:flex; flex-wrap:wrap; gap:8px; margin:4px 24px; flex-shrink:0; }
 .note-source-actions:empty { display:none; }
 .note-source-actions .note-source-trigger { flex:1; margin:0; }
-.note-transcript-action, .note-transcript-progress { margin-top:12px; min-height:44px; font:inherit; }
-.note-transcript-action { align-self:flex-start; padding:0 14px; border-radius:22px; background:var(--s2); color:var(--fg); }
+.note-transcript-action, .note-transcript-progress { margin-top:12px; min-height:48px; font:inherit; }
+.note-transcript-action { align-self:flex-start; padding:0 14px; border-radius:24px; background:var(--s2); color:var(--fg); }
 .note-transcript-action:disabled { color:var(--mut); }
 .note-transcript-actions { display:flex;flex-wrap:wrap;gap:8px;margin-top:12px; }
 .note-transcript-actions .note-transcript-action { display:inline-flex;align-items:center;justify-content:center;gap:8px;margin-top:0; }
 .note-transcript-actions .alpha-compute-mark,.note-transcript-actions .i { width:18px;height:18px;flex:none; }
 .note-transcript-text { margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;user-select:text;-webkit-user-select:text;touch-action:pan-y;cursor:text; }
 .note-transcript-line { display:flex;gap:8px;align-items:flex-start;padding:10px 0; }
-.note-transcript-seek { display:flex;align-items:center;justify-content:center;width:44px;min-height:44px;flex:none;border-radius:16px; }
+.note-transcript-seek { display:flex;align-items:center;justify-content:center;width:48px;min-height:48px;flex:none;border-radius:16px; }
 .note-transcript-progress { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .note-transcript-progress [role="status"] { display:inline-flex; align-items:center; gap:8px; color:var(--mut); }
 .note-transcript-progress i { width:14px; height:14px; border:2px solid var(--line); border-top-color:var(--acct); border-radius:50%; animation:note-transcribing 1s linear infinite; }
-.note-transcript-progress button { min-height:44px; padding:0 10px; color:var(--acct); font:inherit; }
+.note-transcript-progress button { min-height:48px; padding:0 10px; color:var(--acct); font:inherit; }
 @keyframes note-transcribing { to { transform:rotate(1turn); } }
 @media (prefers-reduced-motion:reduce) { .note-transcript-progress i { animation:none; } }
-.note-source-trigger { flex-shrink:0; min-height:44px; margin:4px 24px; padding:8px 12px; border-radius:16px; background:var(--s2); text-align:left; font:inherit; }
+.note-source-trigger { flex-shrink:0; min-height:48px; margin:4px 24px; padding:8px 12px; border-radius:16px; background:var(--s2); text-align:left; font:inherit; }
 .note-source-dialog { width:min(480px,calc(100vw - 24px),calc(var(--phone-width,100vw) - 24px)); max-height:min(calc(100dvh - 24px),calc(var(--phone-height,100dvh) - 24px)); box-sizing:border-box; padding:20px; border:0; border-radius:20px; background:var(--source-bg,Canvas); color:var(--source-fg,CanvasText); font:16px 'Public Sans',system-ui,sans-serif; font-size:calc(16px * var(--browser-text-scale,1)); overflow:hidden; }
 .note-source-dialog[open] { display:flex; flex-direction:column; gap:12px; }
 .note-source-dialog h2 { margin:0 0 12px; font-family:Denton,Fraunces,Georgia,serif; font-weight:300; font-size:1.875em; overflow-wrap:anywhere; }
@@ -811,13 +811,6 @@ html.alpha-large-text .alpha-google-sources { display:block; }
 .calendar-request-review strong { font-size:15px;line-height:1.4; }
 .calendar-request-review p { margin:0;color:var(--mut);font-size:14px;line-height:1.4; }
 .calendar-request-review button { min-height:44px;padding:8px 16px;border-radius:22px;background:var(--acc);color:var(--alpha-white);font:inherit;font-weight:600; }
-.maps-chat-card { background:var(--s2);padding:16px;border-radius:16px;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere; }
-.maps-chat-card strong { font-size:15px;line-height:1.4; }
-.maps-chat-card p { margin:0;font-size:14px;line-height:1.4; }
-.maps-chat-card small { color:var(--mut);font-size:12px;line-height:1.4; }
-.maps-chat-choice { display:flex;flex-wrap:wrap;gap:8px; }
-.maps-chat-choice button { min-height:44px;padding:8px 16px;border-radius:22px;background:var(--s2);color:var(--fg);font:inherit;font-weight:600; }
-.maps-chat-choice button:first-child { background:var(--acc);color:var(--alpha-white); }
 .calendar-approval-review h2 { font-family:'Public Sans',system-ui,sans-serif;font-size:22px;line-height:1.2;font-weight:600;margin:0 0 16px;letter-spacing:normal; }
 .calendar-approval-review p { font-size:15px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap; }
 .calendar-approval-review footer button { min-height:44px;font:inherit; }
@@ -827,6 +820,15 @@ html.alpha-large-text .alpha-google-sources { display:block; }
 
 /* Action details must remain fully readable before approval. */
 .alpha-action-review button > span { display:none!important; }
+/* The approval row says what a tap does; rows without a label keep their icon. */
+.alpha-row-label:empty { display:none; }
+.alpha-row-label { flex-shrink:0; min-height:36px; padding:0 16px; border-radius:18px; background:var(--acc); color:var(--alpha-white); font-size:14px; font-weight:600; display:inline-flex; align-items:center; }
+.alpha-row-label:not(:empty) + svg { display:none; }
+.alpha-action-review button { min-height:56px; }
+/* What the phone itself reports (done, declined, not completed) is set apart from the assistant's own words. */
+[data-alpha-device-receipt="true"] { align-self:flex-start; max-width:100%; box-sizing:border-box; padding:10px 14px; border-radius:6px 16px 16px 6px; border-left:3px solid var(--acct); background:var(--s2); font-size:14px!important; line-height:1.45!important; overflow-wrap:anywhere; }
+/* Narrow phones keep New chat and History reachable by dropping the assistant's name beside its mark. */
+@media (max-width: 439px) { [data-alpha-chat-lead] [data-alpha-chat-name] { display:none; } }
 .alpha-action-review button > div > div:last-child { white-space:pre-wrap!important; overflow:visible!important; text-overflow:clip!important; overflow-wrap:anywhere; line-height:1.45; }
 
 /* Older Android WebViews ignore popover; React visibility must still hide the menu. */
@@ -845,19 +847,11 @@ html.alpha-large-text .alpha-google-sources { display:block; }
 /* Notes folders, filter chip and the editor's ⋯ menu (view refresh 2026-11, PLAN.md section 3). */
 .notes-folders { scrollbar-width:none; }
 .notes-folders::-webkit-scrollbar { display:none; }
-.notes-chip { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; min-height:36px; padding:0 14px; border-radius:18px; background:var(--s2); color:var(--fg); font-size:14px; font-weight:500; white-space:nowrap; }
+.notes-chip { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; min-height:48px; padding:0 16px; border-radius:24px; background:var(--s2); color:var(--fg); font-size:14px; font-weight:500; white-space:nowrap; }
 .notes-chip[aria-pressed="true"] { background:var(--fg); color:var(--bg); }
 .notes-menu { position:absolute; right:10px; top:56px; z-index:12; min-width:208px; padding:6px; border-radius:16px; background:var(--s1); box-shadow:0 10px 30px rgba(0,0,0,.2); }
-.notes-menu button { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:0 12px; border-radius:10px; color:var(--fg); font-size:15px; text-align:left; box-sizing:border-box; }
+.notes-menu button { display:flex; align-items:center; gap:12px; width:100%; min-height:48px; padding:0 12px; border-radius:10px; color:var(--fg); font-size:15px; text-align:left; box-sizing:border-box; }
 .notes-menu hr { border:0; border-top:1px solid var(--line); margin:4px 0; }
-
-.maps-chat-card { background:var(--s2);padding:16px;border-radius:16px;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere; }
-.maps-chat-card strong { font-size:15px;line-height:1.4; }
-.maps-chat-card p { margin:0;font-size:14px;line-height:1.4; }
-.maps-chat-card small { color:var(--mut);font-size:12px;line-height:1.4; }
-.maps-chat-choice { display:flex;flex-wrap:wrap;gap:8px; }
-.maps-chat-choice button { min-height:44px;padding:8px 16px;border-radius:22px;background:var(--s2);color:var(--fg);font:inherit;font-weight:600; }
-.maps-chat-choice button:first-child { background:var(--acc);color:var(--alpha-white); }
 
 .maps-chat-card { background:var(--s2);padding:16px;border-radius:16px;display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere; }
 .maps-chat-card strong { font-size:15px;line-height:1.4; }

@@ -1229,6 +1229,8 @@
         "pausedNotificationCanResumeTest",
         "staleToggleCannotChangeNewRecordingTest",
         "staleStartPreservesCurrentOwnerTest",
+        "notificationStopKeepsRecordingForNotesTest",
+        "staleNotificationStopCannotStopNewRecordingTest",
         "pendingStartRejectsFallbackStopTest",
         "resumedRecordingRejectsLateCloseTest"
       ],
@@ -2136,14 +2138,21 @@
         "unconfirmedTombstoneDoesNotAuthorizeReconnectTest",
         "coldAutomaticCannotAcquireBarrierPauseOrStopTest",
         "manualColdBootStillUsesExactBarrierTest",
-        "processReplacementPreservesWarmBootTest"
+        "processReplacementPreservesWarmBootTest",
+        "unreadAutomaticOfferCannotMarkCommittingTest",
+        "unavailableAutomaticOfferCannotMarkCommittingTest",
+        "unavailableAutomaticOfferAbandonsBeforeCommitTest",
+        "revokedAutomaticCannotMarkCommittingTest",
+        "revokedAutomaticConsentAbandonsBeforeCommitTest",
+        "lateConsentChangeDoesNotGateExplicitManualCommitTest"
       ],
       "invariants": [
         "DurablePauseHasExactBarrier",
         "StopRequiresOwnedPause",
         "CommitRequiresConfirmedStop",
         "ResumeRequiresReleasedLease",
-        "AutomaticAuthorityHadReadyBoot"
+        "AutomaticAuthorityHadReadyBoot",
+        "AutomaticCommitHadFinalOffer"
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
@@ -2158,12 +2167,15 @@
         "startupAdmitted": "Actual journal-plus-activation start gate and native renderer pending readback",
         "residentStartAdmitted": "Start gate combined with the actual service shutdown lease policy",
         "resumeAudience": "Exact native terminal readback recipient while startup is admitted",
-        "admission.platform/admission.captured": "The shared staging boot-admission policy and captured automatic authority; cold deferral frames activation, durable pause, shutdown lease, stop and commit components"
+        "admission.platform/admission.captured": "The shared staging boot-admission policy and captured automatic authority; cold deferral frames activation, durable pause, shutdown lease, stop and commit components",
+        "admission.finalOffer": "Observed fresh native feed response matching the discovery SHA-256 and exact APK tuple, a failed confirmation, or no read. The replay checks the served bytes, request binding and read count."
       },
       "abstractions": [
         "One activation and one committed Android session with two synthetic renderer receipts. Source checkpoints use the actual updater, POSIX journal and exact shutdown lease under controlled Android and stop observation ports.",
         "An observed confirmed stop is a macrostep. Session handoff retains the native reconnect receipt until exact settlement; a visible unconfirmed tombstone still retains the separate service lease. Independent journal and activation campaigns exercise additional branches.",
         "The staging policy uses SDK classes 30/31 and monotonic uptime observations 0,26681,29999,30000,30001,35000. This composition permits one pre-attempt process boundary (same-boot replacement or new boot), at most two boots/processes, and leaves in-flight process-death/reboot recovery to the unchanged RuntimeUpdatePause model.",
+        "The final offer read precedes the last consent observation and durable commit mark. Changed, withdrawn and unavailable offers share the same precommit refusal. A successful abandonment and confirmed lease release form one cleanup checkpoint.",
+        "The JVM replay changes only the fresh response's whitespace after a confirmed stop and observes exact precommit abandonment. The owned TLS fixture separately covers a changed offer, wrong tuple, HTTP 404 and transport failures, plus consent revocation during the final HTTPS response.",
         "Actual extracted-Java traces exercise cold and unsupported automatic no-effect paths, later warm exact barrier/pause/stop/commit handoff, cold manual readiness and warm same-boot replacement. Bounded safety and selected traces do not prove uptime progress, Android acceptance, network availability or eventual installation."
       ],
       "bounds": {
@@ -2895,7 +2907,9 @@
         "settledLegacyReminderStillReadableTest",
         "legacyReminderWithoutBindingCannotSettleTest",
         "passiveNoteDoesNotMutateExactReadTest",
-        "retiredBridgeCannotRecoverTest"
+        "retiredBridgeCannotRecoverTest",
+        "unprovenKindsStayUnsettledTest",
+        "viewOnlyNeverRecoversTest"
       ],
       "invariants": [
         "SuccessRequiresAdmission",
@@ -2903,7 +2917,9 @@
         "PassiveReadOnly",
         "IndependentCommitBoundaries",
         "RedactedPassiveReads",
-        "ReminderLookupUsesSelectedBinding"
+        "ReminderLookupUsesSelectedBinding",
+        "NoNativeProofNeverSettles",
+        "ViewOnlyNeverRecoversToSuccess"
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaActionJournal.java",
@@ -2925,7 +2941,8 @@
       "abstractions": [
         "One selected row, absent/foreign request addresses, exact known operation and bounded receipt equality classes.",
         "The selected binding fences unresolved reminder receipt lookup. Passive selected-reminder reads retain a marker and summary, with the full result preserved for exact get.",
-        "Native worker and journal run on the host JVM. Deletion provider, notification manager and ReminderEnvelope are closed synthetic inputs, with pre- and post-commit store failure."
+        "Native worker and journal run on the host JVM. Deletion provider, notification manager and ReminderEnvelope are closed synthetic inputs, with pre- and post-commit store failure.",
+        "The kinds note-write, calendar-write, files-write, camera-capture, browser-navigate and view-only are journaled operation classes with no native receipt reader: NoNativeProofNeverSettles and ViewOnlyNeverRecoversToSuccess state that no notice, reminder or deletion recovery call settles them. These kinds are model-only; the host-JVM replay does not drive them, and the shared coordinator's own saved-receipt reconciliation for camera, Calendar and Notes results is not modeled here."
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -3737,6 +3754,7 @@
       "invariant": "safety",
       "tests": [
         "limitReachedStillSavesTest",
+        "unreadablePrefixDoesNotSaveTest",
         "exactLimitKeepsChunkTest",
         "emptyRecordingFailsTest",
         "leaveFinalisesFirstTest",
@@ -3744,6 +3762,7 @@
       ],
       "invariants": [
         "LimitTruncatesNotDiscards",
+        "VerifiedRetainedPrefix",
         "WithinSizeLimit",
         "SettledExactlyOnce",
         "CancelledSessionNeverWritesRow",
@@ -3753,15 +3772,21 @@
       "witnesses": [
         "LimitReachedWithVideoWitness",
         "OverflowChunkDroppedWitness",
+        "InvalidPrefixWitness",
         "SavedRowWitness",
         "LeavingWhileRecordingWitness",
         "FailedFinalisationWitness"
       ],
       "sources": [
         "apps/app/src/browser/video-capture.ts",
+        "apps/app/src/browser/video-capture-prefix.ts",
         "apps/app/src/prototype/camera-adapter.ts"
       ],
       "symbols": [
+        {
+          "path": "apps/app/src/browser/video-capture-prefix.ts",
+          "name": "measureVideoPrefix"
+        },
         {
           "path": "apps/app/src/browser/video-capture.ts",
           "name": "BrowserVideoCapture"
@@ -3793,13 +3818,14 @@
       ],
       "stateMapping": {
         "session/generation/settles/cause": "One recorder Session, its settled latch and the error it settled with",
-        "bytes/chunks/full": "Bytes admitted against maxFileSize, chunks kept, and the limit having stopped the recording",
+        "bytes/chunks/full/truncated": "Admitted bytes, kept chunks, size-limit stop and whether nonempty media was dropped",
+        "prefix": "Bounded retained-media read before reporting a truncated recording as saved",
         "adapter/finalizing/leaving/previewStopped": "The camera view recording flags and the order of finalisation and preview stop on leave",
         "rows/resolved/savedGeneration/failures": "Saved video rows, resolved recordings and finalisation failures"
       },
       "abstractions": [
         "Sizes are units with a limit of two; three recordings. The duration limit and an ended camera track are one stop event.",
-        "A chunk that would pass the size limit is left out and the recording stops with what it has. Microphone loss and frame-draw failures are the recorder error.",
+        "A chunk that would pass the size limit is left out. A retained prefix with nonempty dropped data needs a successful media read before saving. The prefix read port groups an unreadable prefix and its deadline into one refusal. Microphone loss and frame-draw failures are the recorder error.",
         "No reachable state has a recorder session cancelled by the stopped preview: leaving finalises first, so the cancelled branch of stopPreview is unreachable.",
         "Trace replay: test/quint-video-recorder.test.mjs replays simulator traces step by step against BrowserVideoCapture with MediaRecorder, the camera track and timers as ports; the Camera view half (shutter, leaving, preview) is supplied by the driver as the calls the camera adapter makes and compares the observed state after every step. It is bounded evidence for the sampled traces, not a refinement proof or device acceptance."
       ],
