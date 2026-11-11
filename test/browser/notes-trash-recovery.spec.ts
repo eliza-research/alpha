@@ -1,10 +1,11 @@
+import {expectPendingToast,finishUndoWindow} from './helpers/undo-feedback';
 import {openLegacyNotes} from './helpers/legacy-notes';
 import { returnToApps } from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
 /** A Recently deleted row → its action sheet. */
 async function rowAction(page:Page,title:string,action:'Recover'|'Delete now'){
  await page.locator('[data-alpha-subview="notes-trash"]').getByRole('button',{name:new RegExp(`^${title}, `)}).click();
- await page.getByRole('dialog',{name:title,exact:true}).getByRole('button',{name:action,exact:true}).click();
+ await page.getByRole('dialog',{name:`Recover or delete “${title}”?`,exact:true}).getByRole('button',{name:action,exact:true}).click();
 }
 /** Delete now → the confirmation → Delete. */
 async function deleteNow(page:Page,title:string){
@@ -141,9 +142,11 @@ test('Trash written under a larger limit stays readable, restorable and purgeabl
 });
 
 test('a note edited after a full Trash refused it is not deleted by the earlier confirmation',async({page})=>{
+ await page.clock.install();
  await lowerEntryLimit(page,1);
  await page.goto('/');await openNotes(page);
  await createNote(page,'Filler','Occupies Trash');await createNote(page,'Changing','First text');
+ await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now()+1000)));
  await deleteNote(page,'Filler');
  await page.getByRole('button',{name:'Open Changing',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
@@ -153,6 +156,10 @@ test('a note edited after a full Trash refused it is not deleted by the earlier 
  await page.evaluate(async()=>{const store=await (await import('/src/runtime/browser-notes-document.ts')).openBrowserNotes();await store.replace(store.list.map((n:any)=>n.title==='Changing'?{...n,body:'Newer text'}:n));});
  await full.getByRole('button',{name:'Delete permanently',exact:true}).click();
  // Decided from authoritative storage before any write, so it is a definite "changed", not an unknown outcome.
+ await expectPendingToast(page,'Note changed');
+ expect((await savedRecords(page)).map((note:any)=>[note.title,note.body])).toEqual([['Changing','Newer text']]);
+ expect((await trashEntries(page)).map((entry:any)=>entry.note.title)).toEqual(['Filler']);
+ await finishUndoWindow(page);
  await expect(page.getByText('Note changed',{exact:true})).toBeVisible();
  await expect(full).toHaveCount(0);
  const saved=await savedRecords(page);
@@ -161,9 +168,11 @@ test('a note edited after a full Trash refused it is not deleted by the earlier 
 });
 
 test('a permanent-delete confirmation in a stale view never drops the Trash copy another view wrote for that note',async({page})=>{
+ await page.clock.install();
  await lowerEntryLimit(page,1);
  await page.goto('/');await openNotes(page);
  await createNote(page,'Filler','Occupies Trash');await createNote(page,'Moved','First text');
+ await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now()+1000)));
  await deleteNote(page,'Filler');
  await page.getByRole('button',{name:'Open Moved',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
@@ -184,6 +193,10 @@ test('a permanent-delete confirmation in a stale view never drops the Trash copy
  });
  expect((await savedRecords(page)).map((n:any)=>n.title)).toEqual([]);
  await full.getByRole('button',{name:'Delete permanently',exact:true}).click();
+ await expectPendingToast(page,'Note changed');
+ expect((await trashEntries(page)).find((entry:any)=>entry.id===row.id)).toEqual(row);
+ expect(await savedRecords(page)).toEqual([]);
+ await finishUndoWindow(page);
  await expect(page.getByText('Note changed',{exact:true})).toBeVisible();
  // The other view's Trash row, with the newer text, is exactly as it was written.
  const entries=await trashEntries(page);
@@ -193,13 +206,15 @@ test('a permanent-delete confirmation in a stale view never drops the Trash copy
 });
 
 test('a voice note refused by a full Trash is erased with its own recording only after separate confirmation',async({page})=>{
+ await page.clock.install();
  await lowerEntryLimit(page,1);
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');
  await seedVoice(page,'full-voice','full-audio','Full memo','Words to erase');
  await seedVoice(page,'other-voice','other-audio','Other memo','Words to keep');
  await page.reload();await openNotes(page);
- await createNote(page,'Filler','Occupies Trash');await deleteNote(page,'Filler');
+ await createNote(page,'Filler','Occupies Trash');await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now()+1000)));
+ await deleteNote(page,'Filler');
  const filler=await trashEntries(page);
 
  await page.getByRole('button',{name:'Open Full memo',exact:true}).click();
@@ -214,6 +229,11 @@ test('a voice note refused by a full Trash is erased with its own recording only
  expect(await trashEntries(page)).toEqual(filler);
 
  await full.getByRole('button',{name:'Delete permanently',exact:true}).click();
+ await expectPendingToast(page,'Full memo and its recording deleted forever');
+ expect((await savedRecords(page)).map((note:any)=>note.id)).toEqual(['other-voice']);
+ expect((await describeAudio(page,'full-audio')).transcript).toBe('');
+ expect(await pendingDeletions(page)).toEqual([]);expect(await trashEntries(page)).toEqual(filler);
+ await finishUndoWindow(page);
  await expect(page.getByText('Full memo and its recording deleted forever',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Undo',exact:true})).toHaveCount(0);
  expect((await savedRecords(page)).map((n:any)=>n.id)).toEqual(['other-voice']);
@@ -230,12 +250,14 @@ test('a voice note refused by a full Trash is erased with its own recording only
 
 test('a stale Trash row of a note that is then deleted permanently is dropped, so the note cannot be restored from Trash afterwards',async({page})=>{
  test.setTimeout(60_000);
+ await page.clock.install();
  await lowerEntryLimit(page,1);
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');
  await seedVoice(page,'stale-voice','stale-audio','Stale memo','Spoken, then erased');
  await page.reload();await openNotes(page);
  await createNote(page,'Filler','Occupies Trash');await createNote(page,'Stale text','Typed, then erased');
+ await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now()+1000)));
  await deleteNote(page,'Filler');
  const filler=await trashEntries(page);
  // Rows an interrupted earlier deletion left behind for two notes that are still saved (written by a
@@ -251,8 +273,14 @@ test('a stale Trash row of a note that is then deleted permanently is dropped, s
  await page.getByRole('button',{name:'Open Stale text',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await full.getByRole('button',{name:'Delete permanently',exact:true}).click();
+ await expectPendingToast(page,'Stale text deleted forever');
+ expect((await trashEntries(page)).map((entry:any)=>entry.note.title).sort()).toEqual(['Filler','Stale memo']);
+ expect((await savedRecords(page)).some((note:any)=>note.title==='Stale text')).toBe(false);
+ await finishUndoWindow(page);
  await expect(page.getByText('Stale text deleted forever',{exact:true})).toBeVisible();
  expect((await trashEntries(page)).map((e:any)=>e.note.title).sort()).toEqual(['Filler','Stale memo']);
+ // The full Undo offer is finished; subsequent passive feedback uses ordinary elapsed time.
+ await page.clock.resume();
 
  await page.getByRole('button',{name:'Open Stale memo',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
@@ -284,7 +312,7 @@ test('an interrupted permanent voice deletion keeps a recovery row and finishes 
  await page.evaluate(async()=>{const {BrowserVoice}=await import('/src/browser/voice.ts');(window as any).purgeCalls=0;BrowserVoice.prototype.purge=async function(){(window as any).purgeCalls++;throw Error('Process stopped before the erase');};});
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await page.getByRole('dialog',{name:'Full'}).getByRole('button',{name:'Delete permanently',exact:true}).click();
- await expect(page.getByText(/Deletion (?:is|remains) unconfirmed/).first()).toBeVisible();
+ await expect(page.getByRole('status').filter({hasText:"Voice note deletion not confirmed. Check Notes. It won't be repeated."}).first()).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>(window as any).purgeCalls)).toBeGreaterThan(0);
  // The tombstone committed and the recording is in the audio trash under this operation, not erased.
  const pending:any[]=await pendingDeletions(page);
@@ -454,7 +482,7 @@ test('two views: a second tab never settles a permanent deletion the first open 
   await first.getByRole('button',{name:'Open Held memo',exact:true}).click();
   await first.getByRole('button',{name:'More',exact:true}).click();await first.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
   await first.getByRole('dialog',{name:'Full'}).getByRole('button',{name:'Delete permanently',exact:true}).click();
-  await expect(first.getByText(/Deletion (?:is|remains) unconfirmed/).first()).toBeVisible();
+  await expect(first.getByRole('status').filter({hasText:"Voice note deletion not confirmed. Check Notes. It won't be repeated."}).first()).toBeVisible();
   const held=await pendingDeletions(first);
   expect(held.map((row:any)=>[row.note.id,row.permanent])).toEqual([['held-voice',true]]);
   expect(held[0].lease.until).toBeGreaterThan(Date.now());

@@ -41,7 +41,18 @@ export class BrowserVideoCapture {
   if(width<=0||height<=0||width*height>32_000_000)throw Error('Unsupported video dimensions.');
   let microphoneOwner:BrowserMicrophone|undefined;let microphone:MediaStream|undefined,owned:MediaStream|undefined;let cleanup=()=>{};
   try{
-   if(input.audio!==false){const lease=microphoneOwner=this.microphone=new BrowserMicrophone(()=>this.cancel());microphone=await lease.open();if(!microphone.getAudioTracks().some(t=>t.readyState==='live'))throw Error('Microphone did not provide audio.');}
+   if(input.audio!==false){
+    const lease=microphoneOwner=this.microphone=new BrowserMicrophone(()=>this.cancel());
+    try{microphone=await lease.open();}
+    catch(error){
+     // This permission request belongs to the microphone; a browser's generic denial
+     // must not be mistaken for a camera refusal by the shared session.
+     if(error&&typeof error==='object'&&'name' in error&&(error.name==='NotAllowedError'||error.name==='PermissionDeniedError'))
+      throw Object.assign(new Error('Microphone permission denied',{cause:error}),{code:'MICROPHONE_DENIED'});
+     throw error;
+    }
+    if(!microphone.getAudioTracks().some(t=>t.readyState==='live'))throw Error('Microphone did not provide audio.');
+   }
    if(generation!==this.generation||document.hidden||track.readyState!=='live')throw cancelled();
    let output=track.clone();let transformed:HTMLCanvasElement|undefined;
    if(transform.zoom!==1||transform.mirror){

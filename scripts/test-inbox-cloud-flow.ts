@@ -68,7 +68,7 @@ const sandbox = await loadInboxFixture(inboxAdapterBindings({
  pendingGmailNotice: async () => null,
  consumeGmailNotice: async () => {},
  onGmailNotice: async () => ({remove:async()=>{}}),
- readGmailAccountChoice: () => 'grant-a',
+ readGmailAccountChoice: (): string | null => 'grant-a',
  saveGmailAccountChoice,
  presentHomeInboxStatus,
  presentHomeInboxCard,
@@ -446,4 +446,105 @@ await test('read state with an expired Cloud key rejects the captured session an
  }finally{
   shellR.componentWillUnmount();controller.getCloudClient=previousClient;controller.rejectCloudSession=previousReject;sandbox.serviceReadCache=previousCache;
  }
+});
+
+for(const outcome of ['accepted','revoked','failed'] as const)await test(`opening saved Inbox consumes a held Home page only after current grants: ${outcome}`,async()=>{
+ const previousCache=sandbox.serviceReadCache,previousClient=controller.getCloudClient,previousAccounts=client.gmailAccounts;
+ const old=structuredClone(retainedMailbox);old.lists[0].at=Date.now()-1000;
+ const checked=Promise.withResolvers<void>();let checkedCalls=0;
+ sandbox.serviceReadCache=async()=>({get:async key=>key==='gmail:mailbox'?{value:structuredClone(old)}:null,put:async()=>{},clear:async()=>{}});
+ controller.getCloudClient=()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null;
+ const {shell:h,render:inbox}=inboxFixture();
+ try{
+  inboxActive=false;connected=true;readGrant=true;delayAccounts=false;delay=true;failNext=null;
+  pages['in:inbox']=[[fixtureMail('accepted-home-fresh',{unread:true})]];
+  const beforeSearch=searches.length,beforeAccounts=accountReads;
+  h.componentDidMount();await tick();
+  assert.equal(searches.length,beforeSearch+1,'one Home header request is held');
+  const releaseHome=pending.search;assert.ok(releaseHome);
+  inboxActive=true;inbox();await tick();
+  assert.deepEqual(local(inbox().rows.map(row=>row.subj)),['Fixture retained-unread'],'saved mail remains visible while Home is pending');
+  // This account call is independent of the saved account rows and of Home's earlier discovery.
+  client.gmailAccounts=async()=>{accountReads++;checkedCalls++;await checked.promise;if(outcome==='failed')throw new CloudProtocolError('http',503);return [{connectionId:'grant-a',label:'Current checked grant',connected:true,grantedCapabilities:outcome==='revoked'?[]:['google.gmail.triage']}];};
+  delay=false;releaseHome();await tick();
+  assert.equal(checkedCalls,1,'saved accounts receive exactly one current grant recheck');
+  assert.deepEqual(local(inbox().rows.map(row=>row.subj)),['Fixture retained-unread'],'accepted headers do not bypass the pending grant check');
+  checked.resolve();await tick();
+  if(outcome==='accepted')assert.deepEqual(local(inbox().rows.map(row=>row.subj)),['Fixture accepted-home-fresh'],'current grant check must consume the exact accepted Home page');
+  else if(outcome==='revoked')assert.deepEqual(local(inbox().rows),[],'withdrawn read access refuses both saved and accepted headers');
+  else assert.deepEqual(local(inbox().rows.map(row=>row.subj)),['Fixture retained-unread'],'failed recheck cannot authorize the fresh header page');
+  assert.equal(accountReads,beforeAccounts+2,'one warm discovery plus one mandatory fresh grant recheck');
+  assert.equal(searches.length,beforeSearch+1,'opening never fetches a second header page');
+ }finally{checked.resolve();h.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;client.gmailAccounts=previousAccounts;delay=false;delayAccounts=false;failNext=null;readGrant=true;}
+});
+
+for(const retired of ['query','inactive','session','credential'] as const)await test(`accepted Home page stays retired after a pending grant check loses its ${retired}`,async()=>{
+ const previousCache=sandbox.serviceReadCache,previousClient=controller.getCloudClient,previousAccounts=client.gmailAccounts,previousSession=session;
+ const old=structuredClone(retainedMailbox);old.lists[0].at=Date.now()-1000;let credential='fixture-credential';
+ const checked=Promise.withResolvers<void>();let checkedCalls=0;
+ sandbox.serviceReadCache=async()=>({get:async key=>key==='gmail:mailbox'?{value:structuredClone(old)}:null,put:async()=>{},clear:async()=>{}});
+ controller.getCloudClient=()=>session?{client,sessionId:session,credentialId:credential}:null;
+ const {shell:h,views:v,render:inbox}=inboxFixture();
+ try{
+  inboxActive=false;connected=true;readGrant=true;delayAccounts=false;delay=true;failNext=null;
+  pages['in:inbox']=[[fixtureMail('retired-home-page',{unread:true})]];
+  h.componentDidMount();await tick();const releaseHome=pending.search;assert.ok(releaseHome);
+  inboxActive=true;inbox();await tick();assert.deepEqual(local(inbox().rows.map(row=>row.subj)),['Fixture retained-unread']);
+  client.gmailAccounts=async()=>{accountReads++;checkedCalls++;await checked.promise;return [{connectionId:'grant-a',label:'Checked grant',connected:true,grantedCapabilities:['google.gmail.triage']}];};
+  delay=false;releaseHome();await tick();assert.equal(checkedCalls,1);
+  if(retired==='query')inbox().onQ({target:{value:'from:new-query'}});
+  else if(retired==='inactive'){inboxActive=false;v.inbox.onLeave();}
+  else{if(retired==='session')session='replacement-session';else credential='replacement-credential';for(const fn of listeners)fn();}
+  checked.resolve();await tick();
+  const values=local(inbox().rows.map(row=>row.subj));assert.ok(!values.includes('Fixture retired-home-page'),'late grant completion cannot revive the retired Home page');
+  if(retired==='query')assert.equal(h.st.q,'from:new-query','the newer query is preserved');
+  if(retired==='session'||retired==='credential')assert.ok(!values.includes('Fixture retained-unread'),'old saved mail is retired with its owner binding');
+ }finally{checked.resolve();h.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;client.gmailAccounts=previousAccounts;session=previousSession;delay=false;delayAccounts=false;failNext=null;readGrant=true;inboxActive=false;}
+});
+
+await test('a fresh Home A preview cannot override the current explicit B mailbox choice when B fails',async()=>{
+ const previousCache=sandbox.serviceReadCache,previousClient=controller.getCloudClient,previousAccounts=client.gmailAccounts,previousSearch=client.gmailSearch,previousRead=sandbox.readGmailAccountChoice,previousSave=sandbox.saveGmailAccountChoice;
+ let choice:string|null='grant-a';const saves:(string|null)[]=[],grants:string[]=[];
+ sandbox.readGmailAccountChoice=()=>choice;sandbox.saveGmailAccountChoice=(_owner,id)=>{choice=id;saves.push(id);};sandbox.serviceReadCache=async()=>null;
+ const rows=['a','b'].map(id=>({connectionId:'grant-'+id,label:'Mailbox '+id,connected:true,grantedCapabilities:['google.gmail.triage']}));
+ client.gmailAccounts=async()=>{accountReads++;return rows;};
+ client.gmailSearch=async(grant,query,signal,size,cursor)=>{grants.push(grant);if(grant==='grant-b')throw new CloudProtocolError('http',503);return previousSearch(grant,query,signal,size,cursor);};
+ controller.getCloudClient=()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null;
+ const {shell:h,render:inbox}=inboxFixture();
+ try{
+  inboxActive=false;connected=true;readGrant=true;delayAccounts=false;delay=false;failNext=null;pages['in:inbox']=[[fixtureMail('choice-a-only',{unread:true})]];
+  h.componentDidMount();await tick();assert.deepEqual(grants,['grant-a']);assert.deepEqual(local(homeValues(h).homeInboxRows),[{subject:'Fixture choice-a-only',from:'Sender'}],'A preview genuinely exists');
+  // This port is the actual durable account-choice boundary, not private adapter state.
+  sandbox.saveGmailAccountChoice(controller.getSnapshot().cloudAccount,'grant-b');const before=saves.length;
+  inboxActive=true;inbox();await tick();
+  assert.equal(choice,'grant-b','the current explicit B choice must survive the older A preview');
+  assert.ok(!saves.slice(before).includes('grant-a'),'neither preview reuse nor account refresh may write the old A choice');
+  assert.deepEqual(local(inbox().rows),[],'failed B read must not reveal the older A page');
+  assert.ok(grants.includes('grant-b'),'the current B mailbox was attempted rather than silently falling back to A');
+ }finally{h.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;client.gmailAccounts=previousAccounts;client.gmailSearch=previousSearch;sandbox.readGmailAccountChoice=previousRead;sandbox.saveGmailAccountChoice=previousSave;delay=false;delayAccounts=false;failNext=null;readGrant=true;inboxActive=false;}
+});
+
+await test('a choice changed during the mandatory grant recheck is never overwritten by that older check',async()=>{
+ const previousCache=sandbox.serviceReadCache,previousClient=controller.getCloudClient,previousAccounts=client.gmailAccounts,previousRead=sandbox.readGmailAccountChoice,previousSave=sandbox.saveGmailAccountChoice;
+ let choice:string|null='grant-a';const saves:(string|null)[]=[];
+ sandbox.readGmailAccountChoice=()=>choice;sandbox.saveGmailAccountChoice=(_owner,id)=>{choice=id;saves.push(id);};
+ const old=structuredClone(retainedMailbox);old.lists[0].at=Date.now()-1000;
+ const checked=Promise.withResolvers<void>();let checkedCalls=0;
+ sandbox.serviceReadCache=async()=>({get:async key=>key==='gmail:mailbox'?{value:structuredClone(old)}:null,put:async()=>{},clear:async()=>{}});
+ controller.getCloudClient=()=>session?{client,sessionId:session,credentialId:'fixture-credential'}:null;
+ const {shell:h,render:inbox}=inboxFixture();
+ try{
+  inboxActive=false;connected=true;readGrant=true;delayAccounts=false;delay=true;failNext=null;
+  pages['in:inbox']=[[fixtureMail('choice-changed-before-check',{unread:true})]];
+  const beforeSearch=searches.length;h.componentDidMount();await tick();const releaseHome=pending.search;assert.ok(releaseHome);
+  inboxActive=true;inbox();await tick();
+  client.gmailAccounts=async()=>{accountReads++;checkedCalls++;await checked.promise;return ['a','b'].map(id=>({connectionId:'grant-'+id,label:'Current grant '+id,connected:true,grantedCapabilities:['google.gmail.triage']}));};
+  delay=false;releaseHome();await tick();assert.equal(checkedCalls,1);
+  sandbox.saveGmailAccountChoice(controller.getSnapshot().cloudAccount,'grant-b');const before=saves.length;
+  checked.resolve();await tick();
+  assert.equal(choice,'grant-b','the older account check must not overwrite a new explicit choice');
+  assert.ok(!saves.slice(before).includes('grant-a'),'no old A choice is committed after the user selected B');
+  assert.ok(!local(inbox().rows.map(row=>row.subj)).includes('Fixture choice-changed-before-check'),'a retired choice cannot consume its accepted header page');
+  assert.equal(searches.length,beforeSearch+1,'refusing a stale check does not issue another header request');
+ }finally{checked.resolve();h.componentWillUnmount();sandbox.serviceReadCache=previousCache;controller.getCloudClient=previousClient;client.gmailAccounts=previousAccounts;sandbox.readGmailAccountChoice=previousRead;sandbox.saveGmailAccountChoice=previousSave;delay=false;delayAccounts=false;failNext=null;readGrant=true;inboxActive=false;}
 });

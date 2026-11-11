@@ -4804,10 +4804,13 @@
       "finishedAfterStopTest",
       "confirmedStopTest",
       "newSendRetiresCheckTest",
+      "newSendRetiresReadTest",
       "refusedSendAfterStopSaysUncheckedTest",
       "busyAtTimerSkipsReadTest",
       "operationDuringReadKeepsChatTest",
-      "laterStopClearsEarlierConfirmationTest"
+      "laterStopClearsEarlierConfirmationTest",
+      "historyReadFailureTest",
+      "unrecordedTurnTest"
     ],
     "invariants": [
       "RetiredCheckBelongsToRequest",
@@ -4881,7 +4884,8 @@
       "One check at a time; at most three stops. The 15-second delay is a nondeterministic timer that waits for the cancel attempt.",
       "The conversation read yields one of four classes: error, stopped message not recorded, reply not finished, reply finished. Matching by clientMessageId or by text and time is abstracted into the unrecorded class.",
       "Selecting another agent, an explicit history load, a new conversation and a new send retire the check and clear its notice in one step, as the controller does. A new send that never reached the agent puts the unchecked notice back.",
-      "The chat bubble that mirrors the notice (syncStoppedReplyNotice) and automatic restores that change the selected conversation are not modeled."
+      "The chat bubble that mirrors the notice (syncStoppedReplyNotice) and automatic restores that change the selected conversation are not modeled.",
+      "Source replay executes the actual connection send and stopped-reply callbacks over controlled cancellation, transport, history and timer ports. The restore trace enters at scheduleStoppedReply with cancellation disabled."
     ],
     "sharedSources": [
       "packages/ui/src/api/conversation-turn-controller.ts"
@@ -5883,11 +5887,13 @@
       "CredentialsNeverSearched",
       "ExplicitAddressNeverSearched",
       "TimeNeverOpens",
-      "ApprovedNotReread"
+      "ApprovedNotReread",
+      "UnsafeAtNeverSearched",
+      "ApprovedSearchRefused"
     ],
     "witnesses": [
       "SchemeLikeWordSearchedWitness",
-      "EmailSearchedWitness",
+      "SimpleAtSearchedWitness",
       "DecimalSearchedWitness",
       "ApprovedRefusedWitness"
     ],
@@ -5902,6 +5908,10 @@
       {
         "path": "apps/app/src/prototype/browser-adapter.ts",
         "name": "approvedSignal"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "simpleAtSearch"
       },
       {
         "path": "apps/app/src/prototype/browser-adapter.ts",

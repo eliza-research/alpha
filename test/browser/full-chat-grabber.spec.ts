@@ -24,10 +24,25 @@ async function slow(page:Page,dy:number){
 /** A finger flick through Chromium's touch pipeline: lifted at speed, far from either zone. */
 async function flick(page:Page,dy:number){
  const box=(await grabber(page).boundingBox())!,x=box.x+box.width/2,y=box.y+box.height/2,cdp=await page.context().newCDPSession(page);
- await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y}]});
- await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x,y:y+dy}]});
- await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+ // Observe Chromium's actual pointer events while controlling the intended input speed.
+ // Host/CDP scheduling must not turn the fixture's flick into a deliberate slow drag.
+ await page.evaluate(()=>{
+  const w=window as any,abort=new AbortController();w.flickInputAbort=abort;w.flickInputSamples=[];
+  for(const type of ['pointerdown','pointermove','pointerup'])window.addEventListener(type,event=>{
+   const pointer=event as PointerEvent;if(pointer.pointerType==='touch')w.flickInputSamples.push({type:pointer.type,y:pointer.clientY,t:pointer.timeStamp});
+  },{capture:true,signal:abort.signal});
+ });
+ const timestamp=await page.evaluate(()=>Date.now()/1000);
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',timestamp,touchPoints:[{x,y}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',timestamp:timestamp+0.02,touchPoints:[{x,y:y+dy}]});
+ await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',timestamp:timestamp+0.03,touchPoints:[]});
  await cdp.detach();
+ const samples=await page.evaluate(()=>{const w=window as any;w.flickInputAbort.abort();return w.flickInputSamples as Array<{type:string;y:number;t:number}>;});
+ await test.info().attach('touch-flick-input-'+dy,{body:JSON.stringify(samples),contentType:'application/json'});
+ expect(samples.map(sample=>sample.type)).toEqual(['pointerdown','pointermove','pointerup']);
+ expect(samples[1].y-samples[0].y).toBeCloseTo(dy,0);
+ expect(samples[1].t-samples[0].t).toBeCloseTo(20,0);
+ expect(samples[2].t-samples[0].t).toBeCloseTo(30,0);
 }
 
 for(const dy of [-120,90])test(`a slow drag of ${dy} rests where it is released`,async({page})=>{

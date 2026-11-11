@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { admitUnitApk, apkContradictions, apkFacts, apkRuntimeIdentity, packageFacts, parseUnitArgs, requireConsistentApk } from "../scripts/provision-unit.ts";
+import { admitUnitApk, apkContradictions, apkFacts, apkRuntimeIdentity, packageFacts, parseUnitArgs, requireConsistentApk, snapshotUnitApk } from "../scripts/provision-unit.ts";
 import { releaseBlockers } from "../scripts/release-blockers.ts";
 import { CAMPAIGNS, candidateManifest, parseQualifyArgs, readCampaigns, recordCandidate, releaseDistribution, verdict } from "../scripts/qualify-head.ts";
 import { compareDomains, DOMAIN_SCRIPT, parseDomainInventory, readbackInventory, unitApkMismatch, updateAdmission } from "../scripts/pilot-update.ts";
@@ -92,6 +92,39 @@ test("a pilot or acceptance unit never gets a non-distributable release, and eve
   assert.throws(() => admitUnitApk(build(t, { mode: "debug", signed: true, distributable: true }), { variant: "launcher", build: "release" }, { descriptor: descriptor() }), /no launcher release APK/);
 });
 
+test("pilot release admission rejects private QA in either the record or the exact APK", t => {
+  const publicChannel = {kind: "public", manifestUrlSha256: sha("public")};
+  const privateChannel = {kind: "private-qa", manifestUrlSha256: sha("private fixture")};
+  const admit = (row, extra) => admitUnitApk(build(t, {...DISTRIBUTABLE, ...row}, extra),
+    {variant: "launcher", build: "release"}, {descriptor: descriptor()});
+  assert.throws(() => admit({updateChannel: privateChannel}, {updateChannel: publicChannel}), /Private QA/);
+  assert.throws(() => admit({updateChannel: publicChannel}, {updateChannel: privateChannel}), /Private QA/);
+  const legacy = admit({}, {});
+  const release = admit({updateChannel: publicChannel}, {updateChannel: publicChannel});
+  const facts = {testMocks: false, debuggable: false, runtime: "PACKAGED", signerSha256: SIGNER};
+  const check = (apk, updateChannel) => apkContradictions(apk, {descriptor: descriptor(), facts: {...facts, updateChannel}});
+  assert.deepEqual(check(legacy, "legacy"), []);
+  assert.deepEqual(check(release, publicChannel), []);
+  assert.match(check(legacy, publicChannel).join(), /differs from the reviewed release/);
+  assert.match(check(release, "legacy").join(), /differs from the reviewed release/);
+  assert.match(check(legacy, privateChannel).join(), /Private QA/);
+  assert.match(check(release, privateChannel).join(), /Private QA/);
+  assert.match(check(release, null).join(), /could not be verified/);
+});
+
+test("pilot installers get a private copy of the admitted APK bytes", t => {
+  const manifest = build(t, DISTRIBUTABLE);
+  const release = admitUnitApk(manifest, {variant: "launcher", build: "release"}, {descriptor: descriptor()});
+  const destination = fs.mkdtempSync(path.join(path.dirname(manifest), "staged-"));
+  const candidate = snapshotUnitApk(release, destination);
+  assert.equal(candidate.sha256, release.sha256);
+  assert.equal(fs.statSync(candidate.file).mode & 0o777, 0o400);
+  fs.writeFileSync(release.file, "different bytes");
+  assert.equal(fs.readFileSync(candidate.file, "utf8"), "apk bytes");
+  const next = fs.mkdtempSync(path.join(path.dirname(manifest), "staged-"));
+  assert.throws(() => snapshotUnitApk(release, next), /changed after APK admission/);
+});
+
 test("the packaged agent bundle is hashed whatever its size, and an unreadable bundle fails provisioning", t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-runtime-"));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
@@ -109,7 +142,7 @@ test("the packaged agent bundle is hashed whatever its size, and an unreadable b
 
 test("an admitted APK whose own contents contradict its manifest row is refused before any device is touched", t => {
   const release = admitUnitApk(build(t, DISTRIBUTABLE), { variant: "launcher", build: "release" }, { descriptor: descriptor() });
-  const good = { testMocks: false, debuggable: false, runtime: "PACKAGED", signerSha256: SIGNER };
+  const good = { testMocks: false, debuggable: false, runtime: "PACKAGED", signerSha256: SIGNER, updateChannel: "legacy" };
   const check = (apk, facts) => apkContradictions(apk, { descriptor: descriptor(), facts });
   assert.deepEqual(check(release, good), []);
   // A hand-edited row can claim anything; the file is what gets installed.
@@ -119,10 +152,10 @@ test("an admitted APK whose own contents contradict its manifest row is refused 
   assert.match(check(release, { ...good, debuggable: true }).join(), /not a release build/);
   assert.match(check(release, { ...good, testMocks: true }).join(), /not a verified flag-off build/);
   // A fact that could not be read is never taken as good.
-  assert.equal(check(release, { testMocks: null, debuggable: null, runtime: null, signerSha256: null }).length, 4);
+  assert.equal(check(release, { testMocks: null, debuggable: null, runtime: null, signerSha256: null, updateChannel: null }).length, 5);
   assert.throws(() => requireConsistentApk(release, { descriptor: descriptor(), facts: { ...good, runtime: "NOT_PACKAGED" } }), /contradicts the manifest row that admitted it:\n  - it does not package the resident runtime/);
   // The synthetic file in this test is not an APK: reading it yields no fact, so it is refused.
-  assert.deepEqual(apkFacts(release.file), { testMocks: null, debuggable: null, signerSha256: null, runtime: "NOT_PACKAGED" });
+  assert.deepEqual(apkFacts(release.file), { testMocks: null, debuggable: null, signerSha256: null, runtime: "NOT_PACKAGED", updateChannel: null });
   assert.throws(() => requireConsistentApk(release, { descriptor: descriptor() }), /contradicts the manifest row/);
   // The rehearsal build must really be the debug build, flag-off; a release relabelled "debug" is not a rehearsal.
   const rehearsal = admitUnitApk(build(t, { mode: "debug", signed: true }), { variant: "launcher", build: "debug" }, { descriptor: descriptor() });

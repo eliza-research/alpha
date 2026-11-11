@@ -19,9 +19,10 @@ function range(source, start, end) {
 }
 
 /** Real adapter, row checks and dialog handlers. Shell and list/composer ports are closed. */
-export function shadeNoticeQuestionFixture() {
+export function shadeNoticeQuestionFixture({initialRows} = {}) {
   const a = readFileSync(adapter, 'utf8'), s = readFileSync(selection, 'utf8');
   const code = stripTypeScriptTypes([range(s, 'const OPAQUE = ', '\n'),
+    range(s, 'const sessionMarker = ', 'export type FolderSelection'),
     range(s, 'export const ASKABLE_NOTICE_KINDS', 'export type CaptureSelection'),
     range(a, 'const opaque', 'type Notice ='), a.slice(a.indexOf('export function installNotificationsAdapter')),
     readFileSync(dialog, 'utf8').replace(/^import .*?;?\n/gm, ''), 'installNotificationsAdapter(Shell);',
@@ -33,7 +34,7 @@ export function shadeNoticeQuestionFixture() {
   window.setInterval = () => 1;
   let hidden = false;
   Object.defineProperty(document, 'hidden', {get: () => hidden});
-  const rows = ['a', 'b'].map(id => ({id: 'reminder:' + id, revision: 'revision-' + id, source: 'own', kind: 'reminder',
+  const rows = initialRows ? structuredClone(initialRows) : ['a', 'b'].map(id => ({id: 'reminder:' + id, revision: 'revision-' + id, source: 'own', kind: 'reminder',
     title: 'Saved ' + id, text: 'Synthetic text ' + id, appLabel: 'Alpha Phone', at: 0, canOpen: true}));
   const requests = [], drafts = [], toasts = [];
   const leases = new WeakMap(), dialogs = new WeakMap(), reviews = [], composed = [], reported = [];
@@ -76,7 +77,7 @@ export function shadeNoticeQuestionFixture() {
     return new Promise((resolve, reject) => requests.push({id: leaseId(), pending: true, resolve, reject}));
   }};
   const box = vm.createContext({Shell, window, document, HTMLElement: window.HTMLElement, AbortController, queueMicrotask,
-    native, Capacitor: {isNativePlatform: () => false}, sensitiveReadingText: () => false,
+    native, crypto, Capacitor: {isNativePlatform: () => false}, sensitiveReadingText: () => false,
     formatTime: () => 'time', clearInterval() {}});
   vm.runInContext(code, box);
   const shell = new Shell();
@@ -93,11 +94,15 @@ export function shadeNoticeQuestionFixture() {
     settling = 0;
   };
   return {rows, requests, drafts, toasts, content,
+    selection:()=>structuredClone(shell.notificationSelection()),
+    rawSelection:()=>structuredClone(shell.alphaNoticeSelection),
+    async refresh(){await shell.refreshAlphaNotices();await tick();},
     ask(id) {
-      const row = shell.renderVals().shadeN.find(row => row.id === 'reminder:' + id);
+      const row = shell.renderVals().shadeN.find(row => row.id === id || row.id === 'reminder:' + id);
       assert.ok(row?.canAsk);
       row.ask();
-      assert.equal(content(), 'Saved ' + id + '\nSynthetic text ' + id);
+      const selected=rows.find(item=>item.id===row.id);
+      assert.equal(content(), [selected.title,selected.text].filter(Boolean).join('\n'));
       const review = reviews.length + 1;
       assert.ok(shell.alphaNoticeQuestionLease);
       leases.set(shell.alphaNoticeQuestionLease, review);

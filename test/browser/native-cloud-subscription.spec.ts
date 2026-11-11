@@ -59,7 +59,7 @@ const idle=(page:Page)=>expect.poll(()=>page.evaluate(()=>(window as any).planCo
 async function release(page:Page){await page.evaluate(()=>{const w=window as any;w.planController.cancel();w.planFixture.releaseProvider?.();});await idle(page);}
 const fixture=(page:Page,patch:Record<string,unknown>)=>page.evaluate(patch=>Object.assign((window as any).planFixture,patch),patch);
 /** A network event, then Android's own network read that follows it (the product ignores a read a newer event superseded). */
-async function network(page:Page,online:boolean){await page.evaluate(type=>window.dispatchEvent(new Event(type)),online?'online':'offline');await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().inferenceOffline)).toBe(!online);}
+async function network(page:Page,online:boolean){await page.evaluate(online=>{(window as any).planFixture.networkConnected=online;window.dispatchEvent(new Event(online?'online':'offline'));},online);await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().inferenceOffline)).toBe(!online);}
 const started=(page:Page)=>expect.poll(async()=>(await calls(page)).some(c=>c.plugin==='Agent'&&c.method==='start')).toBe(true);
 /** This focused composition mounts account/plan UI. Agent controls themselves now live in
  * the actual Settings stack, covered by signed-out-page.production.spec.ts. */
@@ -458,7 +458,12 @@ test.describe('outages and offline use',()=>{
   expect(await configured(page)).toBe(0);
   // The network goes away and comes back while Cloud is still unreachable: one read, the plan stays
   // unknown with no notice or sign-in, and repeated online events read nothing more.
-  await network(page,false);await network(page,true);await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  // Android re-reads native connectivity. Observe the offline result before returning online;
+  // synchronous browser hints would let the generation fence correctly discard that old read.
+  await network(page,false);
+  expect(await page.evaluate(()=>(window as any).planFixture.networkObservations.includes(false))).toBe(true);
+  expect(await identityReads()).toBe(before+1);
+  await page.evaluate(()=>{(window as any).planFixture.networkConnected=true;window.dispatchEvent(new Event('online'));window.dispatchEvent(new Event('online'));});
   await expect.poll(identityReads).toBe(before+2);
   await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().residentSubscription?.kind)).toBe('unavailable');await idle(page);
   expect(await identityReads()).toBe(before+2);
@@ -475,7 +480,7 @@ test.describe('outages and offline use',()=>{
    await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});});await network(page,true);await idle(page);
    expect(await identityReads()).toBe(before+2);
    await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});document.dispatchEvent(new Event('visibilitychange'));});
-  }else await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  }else await network(page,true);
   // Within the minute only the network's return could have read Cloud again (the rebind reads it once more).
   await admitted(page);
   expect(await identityReads()).toBeGreaterThan(before+2);
