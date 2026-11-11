@@ -19,7 +19,6 @@ import {verifyEmbeddingHost} from './stage-embedding-host.ts';
 import {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST, verifyVoiceHost} from './voice-host.ts';
 import {BUILD_TOOLCHAIN, QUALIFIED_HOST, embeddingHostState, stagedLibraries} from './build-embedding-host.ts';
 import {verifyMobileBuildReceipt,MOBILE_UUID_POLICY} from './mobile-uuid-adapter.ts';
-import {refuseRemovedProfileFlags} from './removed-profile-flags.ts';
 
 export {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST};
 export const GRADLE_VERIFICATION = 'android/gradle/verification-metadata.xml';
@@ -304,7 +303,6 @@ export function formatReport(rows: readonly InputReportRow[]) {
 
 async function main() {
   const args = process.argv.slice(2);
-  refuseRemovedProfileFlags(args);
   for (const arg of args)
     if (!['--before-prepare', '--allow-unpackaged-runtime', '--test-mocks', '--report', '--json', ALLOW_OLDER_PIN].includes(arg)) throw new Error(`Unknown option ${arg}`);
   const root = path.resolve(import.meta.dirname, '..');

@@ -93,9 +93,7 @@ revision. Build inputs must agree with the staged runtime and native libraries.
 Speech is routed at run time, not at build time: the owner's Cartesia key when
 their own provider is selected, Eliza Cloud speech when signed in to Cloud with
 no plan limit in force, otherwise on-device speech. A Cloud or provider speech
-request that fails before audio plays falls back to on-device speech. The
-`--runtime-profile` and `--local-embeddings` options are gone; the scripts
-refuse them with a one-line message.
+request that fails before audio plays falls back to on-device speech.
 
 Developer APKs may explicitly omit the runtime:
 

@@ -29,7 +29,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {readUpdateChannel} from './update-channel.ts';
-import {refuseRemovedProfileFlags} from './removed-profile-flags.ts';
 import type {UpdateChannel} from './update-channel.ts';
 
 
@@ -63,8 +62,6 @@ const USAGE = "Usage: bun run android:build -- [--test-mocks] [--allow-unpackage
 
 export function parseBuildArgs(argv: readonly string[]): AndroidBuildOptions {
   const options: AndroidBuildOptions = { testMocks: false, allowUnpackagedRuntime: false, skipInstrumentation: false };
-  // One profile: every build packages local speech and embeddings.
-  refuseRemovedProfileFlags(argv);
   for (const arg of argv) {
     if (arg === "--test-mocks") options.testMocks = true;
     else if (arg === "--skip-instrumentation") options.skipInstrumentation = true;
@@ -85,8 +82,6 @@ export function buildEnv(base: NodeJS.ProcessEnv, { testMocks }: AndroidBuildOpt
   const env: NodeJS.ProcessEnv = { ...base };
   if (testMocks) for (const name of SIGNING_ENV) delete env[name];
   for (const name of FLAG_ENV_NAMES) delete env[name];
-  // The removed profile switches never reach Vite or Gradle from a caller's environment.
-  for (const name of ["ELIZA_LOCAL_EMBEDDINGS", "ORG_GRADLE_PROJECT_ELIZA_LOCAL_EMBEDDINGS", "ORG_GRADLE_PROJECT_ELIZA_RUNTIME_PROFILE", "VITE_ELIZA_RUNTIME_PROFILE"]) delete env[name];
   if (testMocks) {
     env[FLAG] = "1";
     env[`VITE_${FLAG}`] = "1";
@@ -304,7 +299,6 @@ function build(options: AndroidBuildOptions, updateChannel: UpdateChannel, baseE
   const flagsFile = "web-dist/build-flags.json";
   if (fs.existsSync(flagsFile)) {
     const flags = JSON.parse(fs.readFileSync(flagsFile, "utf8"));
-    if (flags.runtimeProfile !== undefined) throw Error(`${flagsFile} names a runtime profile; rebuild the renderer (there is one profile now)`);
     if (flags.testMocks !== options.testMocks)
       throw new Error(`${flagsFile} records testMocks=${flags.testMocks}; expected ${options.testMocks}`);
   }

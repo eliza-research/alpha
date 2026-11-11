@@ -89,7 +89,7 @@ function exportBytes(path: string,bytes: Buffer){
 }
 if(mode==='renderer'){
  const flags=JSON.parse(read(join(source,'build-flags.json')).toString('utf8'));
- if(flags.testMocks!==false||flags.runtimeProfile!==undefined)throw Error('Expected flag-off renderer');
+ if(flags.testMocks!==false)throw Error('Expected flag-off renderer');
 }else{
  const {verifyWorkerArtifact}=await import('../workflow-worker-artifact.ts');
  const prepared=checked(resolve(`artifacts/local-agent-resident-${sdk}`));

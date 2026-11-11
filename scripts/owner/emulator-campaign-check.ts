@@ -198,7 +198,7 @@ export function dispatchPlan(sha: string | undefined, { repo = "eliza-research/a
   const ref = `ci/h31-${sha.slice(0, 12)}`;
   const R = `-R ${repo}`;
   const runs = [
-    { workflow: "resident-android.yml", fields: ["-f runtime_profile=native"], jobs: "build, then native and recovery-ui", artifacts: ["resident-native-evidence-<RUN_ID>", "pending-recovery-ui-evidence-<RUN_ID>"] },
+    { workflow: "resident-android.yml", fields: [], jobs: "build, then native and recovery-ui", artifacts: ["resident-native-evidence-<RUN_ID>", "pending-recovery-ui-evidence-<RUN_ID>"] },
     { workflow: "android-emulator.yml", fields: ["-f suite=instrumentation"], jobs: "build, instrumentation", artifacts: ["android-emulator-build-evidence-<RUN_ID>-<ATTEMPT>", "the instrumentation job's evidence artifact"] },
     { workflow: "android-emulator.yml", fields: ["-f suite=browser-reading"], jobs: "build, browser-reading", artifacts: ["the browser-reading job's evidence artifact"] },
     { workflow: "digest-restart.yml", fields: [], jobs: "digest-restart (host runtime, no emulator)", artifacts: ["the digest-restart artifact"] },

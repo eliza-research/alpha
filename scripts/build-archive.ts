@@ -16,11 +16,10 @@ import {archiveWebPayload} from './apk.ts';
 import {parseBuildArgs,buildEnv as androidBuildEnv} from './build-android.ts';
 import {readUpdateChannel} from './update-channel.ts';
 const cli=process.argv.slice(2);
-// One profile: parseBuildArgs refuses the removed --runtime-profile and --local-embeddings flags.
-const buildArgs=cli.filter(arg=>arg==='--test-mocks'||arg.startsWith('--runtime-profile')||arg==='--local-embeddings');
+const buildArgs=cli.filter(arg=>arg==='--test-mocks');
 const options=parseBuildArgs(buildArgs);
 const {testMocks}=options,runtimeProfile='native';
-const positional=cli.filter(arg=>!buildArgs.includes(arg));
+const positional=cli.filter(arg=>arg!=='--test-mocks');
 assert.ok(positional.length===1&&!positional[0].startsWith('--'),'Use: bun scripts/build-archive.ts [--test-mocks] test-results/<new-archive>');
 const [destination]=positional;
 // Full verification compiles Calendar host tests which run real SQLite queries.
@@ -73,7 +72,7 @@ assert.equal(after.digest,before.digest,'Build inputs changed; do not qualify th
 const manifest: Record<string, string>={};
 function retain(source: string,name: string){const target=path.join(destination,name);fs.copyFileSync(source,target,fs.constants.COPYFILE_EXCL);manifest[name]=crypto.createHash('sha256').update(fs.readFileSync(target)).digest('hex');}
 // Retain exactly the build verify-apks checked, with its flag state.
-const verification: {testMocks: boolean; runtimeProfile?: string; updateChannel: unknown; localEmbeddings?: boolean; results: {file: string; sha256: string}[]}=JSON.parse(fs.readFileSync(path.join(sourceDir,'apk-manifest.json'),'utf8'));
+const verification: {testMocks: boolean; runtimeProfile?: string; updateChannel: unknown; results: {file: string; sha256: string}[]}=JSON.parse(fs.readFileSync(path.join(sourceDir,'apk-manifest.json'),'utf8'));
 assert.equal(verification.testMocks,testMocks,`Archive expects a testMocks=${testMocks} build`);
 assert.equal(verification.runtimeProfile||'native',runtimeProfile,'Verified APK runtime profile differs from archive');
 assert.deepEqual(verification.updateChannel,updateChannel,'Verified APK update channel differs from archive');
