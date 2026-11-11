@@ -35,9 +35,11 @@ for(const action of ['done','snooze'] as const)for(const mode of ['fresh','stale
    await expect(page.getByRole('button',{name:'Check reminder action status',exact:true})).toBeVisible();await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await expect.poll(()=>page.evaluate(async()=>Object.keys(await (await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions()).length)).toBe(0);
   }else{
    const retained=await page.evaluate(async()=>(await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions());
-   await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Changed elsewhere,/}).click();await button.click();await expect(page.getByText(action==='done'?'Done':'Snoozed 10 minutes',{exact:true})).toBeVisible();expect(await page.evaluate(async()=>(await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions())).toEqual(retained);
+   await page.reload();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByRole('button',{name:/^Changed elsewhere,/}).click();await button.click();await expect(page.getByText(action==='done'?'Done':'Snoozed 10 minutes',{exact:true})).toBeVisible();await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions())).toEqual(retained);
   }
  }else await expect(page.getByText(action==='done'?'Done':'Snoozed 10 minutes',{exact:true})).toBeVisible();
+ // The short success toast "Done" also matches a Done button; wait for the saved receipt before reading it.
+ await expect.poll(()=>page.evaluate(async()=>Object.keys(JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())??'{}').receipts??{}).length)).toBe(1);
  const data=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!));expect(Object.keys(data.receipts)).toHaveLength(1);expect(data.reminders[0].status).toBe(action==='done'?'completed':'scheduled');if(action==='snooze'){expect(data.reminders[0].at).toBe(Date.parse('2027-03-13T00:10Z'));expect(data.reminders[0].occurrenceId).toBe(original.occurrenceId);}else expect(data.reminders[0].history).toHaveLength(1);
 });
 // Controlled provider-result boundary; Android notification permission/scheduler
