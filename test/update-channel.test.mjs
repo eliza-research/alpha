@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
-import {readUpdateChannel,apkUpdateChannel,validateUpdateChannel,UPDATE_CHANNEL_META,UPDATE_DIGEST_META} from '../scripts/update-channel.ts';
+import {readUpdateChannel,apkUpdateChannel,apkUpdateChannelOrLegacy,assertProvisioningUpdateChannel,recordedProvisioningUpdateChannel,validateUpdateChannel,UPDATE_CHANNEL_META,UPDATE_DIGEST_META} from '../scripts/update-channel.ts';
 import {consumerBuildOptions} from '../scripts/build-android.ts';
 import {parseXmlTree} from '../scripts/apk.ts';
 
@@ -53,6 +53,29 @@ test('compiled metadata has one channel and digest; substituted or secret-bearin
  assert.deepEqual(apkUpdateChannel(parseXmlTree(xml)),{kind:'private-qa',manifestUrlSha256:hash(privateUrl)});
  assert.throws(()=>apkUpdateChannel(parseXmlTree(xml+meta(UPDATE_CHANNEL_META,'public'))));
  assert.throws(()=>validateUpdateChannel({kind:'private-qa',manifestUrlSha256:hash(privateUrl),url:privateUrl}));
+});
+
+test('production provisioning checks compiled channel against release evidence with a legacy absence rule',()=>{
+ const meta=(name,value)=>`    E: meta-data\n      A: android:name="${name}"\n      A: android:value="${value}"\n`;
+ const manifest='E: manifest\n  E: application\n';
+ const channel=kind=>meta(UPDATE_CHANNEL_META,kind);
+ const digest=value=>meta(UPDATE_DIGEST_META,'sha256:'+value);
+ const publicRecord={kind:'public',manifestUrlSha256:hash(publicUrl)};
+ const privateRecord={kind:'private-qa',manifestUrlSha256:hash(privateUrl)};
+ const compiled=(...metadata)=>apkUpdateChannelOrLegacy(parseXmlTree(manifest+metadata.join('')));
+ assert.equal(compiled(),null);
+ assert.equal(recordedProvisioningUpdateChannel(undefined,undefined),null);
+ assert.doesNotThrow(()=>assertProvisioningUpdateChannel(compiled(),null));
+ assert.deepEqual(recordedProvisioningUpdateChannel(publicRecord,publicRecord),publicRecord);
+ assert.doesNotThrow(()=>assertProvisioningUpdateChannel(compiled(channel('public'),digest(hash(publicUrl))),publicRecord));
+ assert.throws(()=>assertProvisioningUpdateChannel(compiled(),publicRecord),/differs from the reviewed release/);
+ assert.throws(()=>assertProvisioningUpdateChannel(compiled(channel('public'),digest(hash(privateUrl))),publicRecord),/differs from the reviewed release/);
+ assert.throws(()=>assertProvisioningUpdateChannel(compiled(channel('private-qa'),digest(hash(privateUrl))),null),/Private QA/);
+ assert.throws(()=>recordedProvisioningUpdateChannel(publicRecord,privateRecord),/Private QA/);
+ assert.throws(()=>recordedProvisioningUpdateChannel(publicRecord,{...publicRecord,manifestUrlSha256:hash(privateUrl)}),/differs from the reviewed release/);
+ for(const fields of [[channel('public')],[digest(hash(publicUrl))],[channel('public'),channel('public'),digest(hash(publicUrl))]])
+  assert.throws(()=>compiled(...fields),/missing or duplicated/);
+ assert.throws(()=>apkUpdateChannelOrLegacy(parseXmlTree('E: manifest\n')),/application manifest/);
 });
 
 test('current gcloud lowercase signing fields retain exact bytes and reject case aliases',t=>{
