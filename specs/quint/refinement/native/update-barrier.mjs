@@ -27,7 +27,7 @@ const scenarioNames = [
 
 export function exactUpdateMembers(source) {
   const start = source.indexOf(' static final long UPDATE_MAX_BYTES=');
-  const end = source.lastIndexOf('}');
+  const end = source.indexOf(' // End of updater methods for host replay.');
   const handOff = /^ private static Intent handOff\(Intent intent\)\{[^\n]*$/m.exec(source)?.[0];
   const foreground = / static boolean shareForeground\(android\.app\.Activity activity\)\{[\s\S]*?\n \}/.exec(source)?.[0];
   assert.ok(start > 0 && end > start && handOff && foreground, 'Exact updater method slice exists');

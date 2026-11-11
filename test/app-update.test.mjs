@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {nativeSource,fixture,runJvm,root,javaBinary,jvmTimeout} from './fixtures/jvm-tools.mjs';
+import {exactUpdateMembers} from '../specs/quint/refinement/native/update-barrier.mjs';
 
 // One-tap app update, native side (AlphaDevicePlugin). The download admission and the update flow run on the
 // host JVM from the plugin's own source; the rest are source checks (class S) of Android wiring that only a
@@ -27,9 +28,8 @@ test('the download is admitted only at its declared size and SHA-256',()=>{
 });
 
 test('the update flow runs one attempt per process, fences a session Android still holds, keeps its confirmation for the bridge that asked, opens it once, and settles every failure quietly',()=>{
- const start=plugin.indexOf(' static final long UPDATE_MAX_BYTES='),end=plugin.lastIndexOf('}');
  const deadline='static final long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.HOURS.toNanos(6)';
- assert.ok(start>0&&end>start&&plugin.includes(deadline),'the update members exist');
+ assert.ok(plugin.includes(deadline),'the production download deadline exists');
  const dir=mkdtempSync(join(tmpdir(),'alpha-update-flow-'));
  try{
   // The plugin's own members in a class of its name, with only the deadline shortened to seconds and settable by the scenario that waits it out; the stubs state what Android and Capacitor do.
@@ -38,23 +38,7 @@ test('the update flow runs one attempt per process, fences a session Android sti
   execFileSync(javaBinary('keytool'),['-genkeypair','-alias','fixture','-keyalg','RSA','-storetype','PKCS12',
    '-keystore',keyStore,'-storepass','fixture-pass','-keypass','fixture-pass','-dname','CN=localhost',
    '-ext','SAN=dns:localhost,ip:127.0.0.1','-validity','2','-noprompt'],{stdio:'pipe',timeout:jvmTimeout});
-  // The update flow opens the unknown-sources page through the plugin's own hand-off helper.
-  const handOff=/ private static Intent handOff\(Intent intent\)\{[^\n]*/.exec(plugin)?.[0];assert.ok(handOff,'AlphaDevicePlugin.handOff');
-  const foreground=/ static boolean shareForeground\(android\.app\.Activity activity\)\{[\s\S]*?\n \}/.exec(plugin)?.[0];assert.ok(foreground,'AlphaDevicePlugin.shareForeground');
-  writeFileSync(members,`package ai.alphacompute.alphaphone;
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageInstaller;
-import android.content.pm.PackageManager;
-import android.os.Build;
-import android.provider.Settings;
-import com.getcapacitor.*;
-final class AlphaDevicePlugin extends Plugin {
- private final java.util.concurrent.ExecutorService diagnosticsWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
-${handOff}
-${foreground}
-${plugin.slice(start,end).replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)')}}
-`);
+  writeFileSync(members,exactUpdateMembers(plugin).replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)'));
   const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),nativeSource('AlphaUpdateStatusReceiver.java'),nativeSource('UpdateConfirmationReceipt.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{timeout:240000,args:[keyStore]});
   assert.match(result,/PASS verified cache retry over owned TLS: one request, exact retained bytes, one synthetic installer commit/);
   assert.match(result,/PASS exact pending installer callback survives process replacement once/);
@@ -105,7 +89,7 @@ test('Alpha stays nonprivileged and reads one configured HTTPS manifest from its
  const url=JSON.parse(readFileSync(join(root,'app.config.json'),'utf8')).updateManifestUrl;
  assert.equal(new URL(url).protocol,'https:');
  // Not releases/latest: any newer release of the repository without the manifest would answer 404 and withdraw a valid offer.
- assert.equal(url,'https://github.com/eliza-research/alphaphone/releases/download/app-stable/alpha-update-stable.json');
+ assert.equal(url,'https://github.com/eliza-research/alphaphone/releases/download/app-stable-alphacompute/alpha-update-stable.json');
  // Reads enforce a soft download ceiling rather than interrupting a blocked read.
  assert.ok(plugin.includes('Soft ceiling on one update download'));
  assert.match(readFileSync(join(root,'android/app/product.gradle'),'utf8'),/buildConfigField 'String', 'ALPHA_UPDATE_MANIFEST_URL', "\\"\$\{updateManifestUrl\}\\""/);
