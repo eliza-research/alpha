@@ -174,7 +174,7 @@ public final class UpdateStagingHarness {
  private void deferred(String status)throws Exception{
   // A shut-down worker proves this refusal occurs before executor admission.
   ((java.util.concurrent.ExecutorService)Trace.read(bridges.get(1),"updateWorker")).shutdownNow();
-  calls[1]=payload();calls[1].getData().put("automatic",true);bridges.get(1).installUpdate(calls[1]);answer(1,true);
+  calls[1]=payload();bindAutomatic(calls[1]);bridges.get(1).installUpdate(calls[1]);answer(1,true);
   require(status.equals(calls[1].result.optString("status")),"exact automatic refusal status");
   require(bridges.get(1).activity.started.isEmpty()&&installerEmpty()&&bridges.get(1).events.isEmpty(),"refusal has no settings, session or barrier effect");
   outcome=status;trace.step("automaticTap",observe(),1);
@@ -189,6 +189,9 @@ public final class UpdateStagingHarness {
   return new PluginCall(new JSObject().put("apkUrl",offer.getString("apkUrl")).put("sha256",offer.getString("sha256"))
     .put("sizeBytes",offer.getLong("sizeBytes")).put("versionCode",offer.getLong("versionCode")));
  }
+ private void bindAutomatic(PluginCall call)throws Exception{
+  call.getData().put("automatic",true).put("manifestSha256",offer.getString("manifestSha256"));
+ }
  private void tap(int id){calls[id]=payload();bridges.get(id).installUpdate(calls[id]);}
  private void answer(int id,boolean success)throws Exception{
   calls[id].awaitAnswer();
@@ -198,7 +201,7 @@ public final class UpdateStagingHarness {
  private void start(int bridge)throws Exception{start(bridge,false);}
  private void start(int bridge,boolean automatic)throws Exception{
   int previous=connections.size();
-  heldRead=new Gate();calls[bridge]=payload();if(automatic)calls[bridge].getData().put("automatic",true);
+  heldRead=new Gate();calls[bridge]=payload();if(automatic)bindAutomatic(calls[bridge]);
   bridges.get(bridge).installUpdate(calls[bridge]);heldRead.await();
   require(connections.size()==previous+1&&connections.get(previous).getURL().toString().equals(offer.getString("apkUrl")),"exact renderer URL used");
   owner=bridge;phase="copying";outcome="none";
@@ -231,14 +234,14 @@ public final class UpdateStagingHarness {
     start(1,true);verified();staged();
     bridges.get(1).activity.focused=false;stage.open();settled("deferred",false,true);
     register(2);trace.step("loadBridge",observe(),true);
-    calls[1]=payload();calls[1].getData().put("automatic",true);bridges.get(1).installUpdate(calls[1]);answer(1,false);
+    calls[1]=payload();bindAutomatic(calls[1]);bridges.get(1).installUpdate(calls[1]);answer(1,false);
     outcome="deferred";trace.step("deferBeforeWork",observe());
     bridges.get(1).activity.focused=true;
     if(mode.equals("verified-cache-corrupt-refetch")){
      Files.write(apk,new byte[]{1,2,3,5});trace.step("cacheChanged",observe());
     }
     if(mode.equals("verified-cache-restart-sweep"))restart();
-    heldRead=new Gate();heldRead.open();calls[1]=payload();calls[1].getData().put("automatic",true);
+    heldRead=new Gate();heldRead.open();calls[1]=payload();bindAutomatic(calls[1]);
     bridges.get(1).installUpdate(calls[1]);answer(1,false);owner=0;phase="idle";outcome="barrier";
     java.util.List<JSONObject> actions=new java.util.ArrayList<>();
     actions.add(Trace.action("automaticTap",1));
@@ -350,7 +353,8 @@ public final class UpdateStagingHarness {
    require(connections.get(0).disconnected.await(10,TimeUnit.SECONDS),"native check closes its own connection");
    require(connections.get(0).getURL().toString().equals(BuildConfig.ALPHA_UPDATE_MANIFEST_URL),"native check used configured manifest");
    return new JSONObject().put("resolved",call.resolved.get()==1)
-    .put("manifest",call.result==null?JSONObject.NULL:java.util.Objects.requireNonNullElse(call.result.opt("manifest"),JSONObject.NULL));
+    .put("manifest",call.result==null?JSONObject.NULL:java.util.Objects.requireNonNullElse(call.result.opt("manifest"),JSONObject.NULL))
+    .put("manifestSha256",call.result==null?JSONObject.NULL:java.util.Objects.requireNonNullElse(call.result.opt("manifestSha256"),JSONObject.NULL));
   }finally{UpdateFlowTest.retireFixtureWorkers();erase(context.data.toPath());}
  }
 
