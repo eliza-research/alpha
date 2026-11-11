@@ -14,7 +14,7 @@ import { clockProductRequirement } from "./aosp-clock-contract.ts";
 import { provisioningComponents, writeProvisioningOverlay } from "./aosp-provisioning-overlay.ts";
 import { writeImageCapability } from "./aosp-image-capability.ts";
 import { releaseBlockers } from "./release-blockers.ts";
-import {signerDigest} from "./apk.ts";
+import {parseXmlTree, signerDigest, telephonySetupReceiverProblems} from "./apk.ts";
 import {readApkEntries} from "../vendor/eliza/packages/app/scripts/mobile/artifact-inspection/apk-distribution.mjs";
 import { aaptManifestTree, admitImageApk, manifestTreeIsDebuggable, reviewedSourceOverrides as sharedReviewedSourceOverrides } from "../vendor/eliza/packages/os/scripts/android/image-apk-admission.mjs";
 import { CUTTLEFISH_TARGETS, cuttlefishProductProblems } from "../vendor/eliza/packages/os/scripts/android/cuttlefish-product.mjs";
@@ -52,6 +52,14 @@ interface ListenerOptions {
   env: NodeJS.ProcessEnv;
 }
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
+
+/** Require the first-run contract from the APK itself, including when reusing an old admission receipt. */
+export function assertImageLauncherManifest(tree: string, production: boolean) {
+  assertNoAlphaLockScreenSurface(tree);
+  if (!production) return;
+  const problems = telephonySetupReceiverProblems(parseXmlTree(tree));
+  if (problems.length) throw Error(`Production launcher cannot be staged: ${problems.join("; ")}`);
+}
 
 
 /**
@@ -252,7 +260,7 @@ const cameraSource = source || !development
   : { sourceVerified: false, imageVerified: false, lockedCaptureVerified: false, deviceAcceptanceVerified: false, reason: "Development staging without reviewed AOSP source" };
 const env = androidEnv();
 const tree = execFileSync(tool("aapt"), ["dump", "xmltree", apk, "AndroidManifest.xml"], { encoding: "utf8", env, maxBuffer: 64 << 20 });
-assertNoAlphaLockScreenSurface(tree);
+assertImageLauncherManifest(tree, production);
 if (!descriptor) {
   if (!development)
     throw new Error(
