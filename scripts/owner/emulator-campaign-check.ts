@@ -101,10 +101,10 @@ type Runner = Pick<typeof import("../android-instrumentation.ts"),
   "DEFAULT_CLASSES" | "CLASS_REGISTRY" | "CAMPAIGN_RUNNERS" | "NOT_RUN_BY_A_RUNNER">;
 type ClassSpec = Runner["CLASS_REGISTRY"][string];
 type Suite = Pick<typeof import("../ci/emulator-suite.ts"),
-  "suitePlan" | "READING_CLASSES" | "READING_TEST_MOCKS_CLASSES" | "FUSED_SPEECH_CLASSES">;
+  "suitePlan" | "READING_CLASSES" | "READING_TEST_MOCKS_CLASSES" | "BROWSER_CONTROLS_CLASSES" | "FUSED_SPEECH_CLASSES">;
 
 /** Classes each hosted job runs, from the job's own scripts. */
-export function hostedSuites(root: string, { suitePlan, DEFAULT_CLASSES, READING_CLASSES, READING_TEST_MOCKS_CLASSES, FUSED_SPEECH_CLASSES }: Suite & Pick<Runner, "DEFAULT_CLASSES">) {
+export function hostedSuites(root: string, { suitePlan, DEFAULT_CLASSES, READING_CLASSES, READING_TEST_MOCKS_CLASSES, BROWSER_CONTROLS_CLASSES, FUSED_SPEECH_CLASSES }: Suite & Pick<Runner, "DEFAULT_CLASSES">) {
   const named = (file: string) => new Set([...read(root, file).matchAll(/(?<![A-Za-z0-9_])([A-Za-z0-9_]+)InstrumentedTest/g)].map(match => match[1]));
   // Bind the suite constants to the plan so a renamed suite cannot pass silently.
   const plan = (suite: string) => suitePlan(suite).map(step => step.command?.join(" ") ?? step.action).join("\n");
@@ -117,6 +117,7 @@ export function hostedSuites(root: string, { suitePlan, DEFAULT_CLASSES, READING
     "android-emulator.yml suite=instrumentation (flag-off developer pair, both flavors)": new Set(inPlan("instrumentation", DEFAULT_CLASSES)),
     "android-emulator.yml suite=browser-reading (flag-off pair)": new Set(inPlan("browser-reading", READING_CLASSES)),
     "android-emulator.yml suite=browser-reading (test-mocks pair)": new Set(inPlan("browser-reading", READING_TEST_MOCKS_CLASSES)),
+    "android-emulator.yml suite=browser-controls (test-mocks pair, both flavors)": new Set(inPlan("browser-controls", BROWSER_CONTROLS_CLASSES)),
     "android-emulator.yml suite=fused-speech (refused until hosted voice staging exists)": new Set(inPlan("fused-speech", FUSED_SPEECH_CLASSES)),
     "resident-android.yml job native (scripts/ci/resident-native.py)": named("scripts/ci/resident-native.py"),
     "resident-android.yml job recovery-ui (scripts/ci/pending-recovery-ui.py)": named("scripts/ci/pending-recovery-ui.py"),

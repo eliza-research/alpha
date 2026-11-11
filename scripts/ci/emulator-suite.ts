@@ -3,7 +3,7 @@
  * One dispatch-only emulator suite of .github/workflows/android-emulator.yml, run inside the
  * hosted runner's disposable emulator:
  *
- *   bun scripts/ci/emulator-suite.ts instrumentation | browser-reading | fused-speech
+ *   bun scripts/ci/emulator-suite.ts instrumentation | browser-reading | browser-controls | fused-speech
  *
  * instrumentation   `bun run test:android:instrumentation` with its default classes on both
  *                   distributions of the flag-off developer APKs.
@@ -12,6 +12,8 @@
  *                   BrowserPageQuestion on the flag-off pair, then BrowserReading,
  *                   BrowserSensitiveReading and BrowserIsolatedReading on the test-mocks pair,
  *                   which is the only build that admits their loopback speech route.
+ * browser-controls  BrowserDownload, BrowserAutofill and PasswordBrowserFill on both distributions
+ *                   of the test-mocks pair with pinned WebView 157 and network access.
  * fused-speech      the on-device speech classes (fused libelizainference ASR, Paradee TTS and VAD)
  *                   with networking off, on developer APKs that carry the voice bundle and the
  *                   x86_64 voice-qualified engine (scripts/ci/speech-candidate.ts check). It is
@@ -36,6 +38,7 @@ export const FUSED_SPEECH_CLASSES = ["LocalSpeech", "LocalSpeechBridge", "Speech
 /** Flag-off classes that need isolated-world injection, and the ones that also need the test-mocks build. */
 export const READING_CLASSES = ["BrowserReadingNavigation", "BrowserPageQuestion"];
 export const READING_TEST_MOCKS_CLASSES = ["BrowserReading", "BrowserSensitiveReading", "BrowserIsolatedReading"];
+export const BROWSER_CONTROLS_CLASSES = ["BrowserDownload", "BrowserAutofill", "PasswordBrowserFill"];
 
 type Command = string[];
 type SuiteStep = {name: string} & (
@@ -97,16 +100,22 @@ const runner = (name: string, ...args: string[]): SuiteStep => ({
     "--output", `test-results/android-instrumentation/${name}`, ...args],
 });
 const prepareEmulator: SuiteStep = { name: "prepare-emulator", kind: "preparation", command: node("scripts/prepare-ci-emulator.ts"), env: { ANDROID_SERIAL: SERIAL } };
+// Replace the image's WebView with Chromium 157 on the hosted API 35 x86_64 fixture.
+const prepareWebView: SuiteStep = { name: "prepare-webview", kind: "preparation", command: node("scripts/prepare-ci-webview.ts"), env: { ANDROID_SERIAL: SERIAL, ALPHA_DISPOSABLE_WEBVIEW_FIXTURE: "api35-default-x86_64" } };
 
 /** The ordered steps of a suite. Pure: nothing is run. */
 export function suitePlan(suite: string): SuiteStep[] {
   if (suite === "instrumentation") return [prepareEmulator, runner("ci-default")];
   if (suite === "browser-reading") return [
     prepareEmulator,
-    // Replaces the image's WebView 124 with the pinned 157.0.8083.0 snapshot; hosted API 35 x86_64 fixture only.
-    { name: "prepare-webview", kind: "preparation", command: node("scripts/prepare-ci-webview.ts"), env: { ANDROID_SERIAL: SERIAL, ALPHA_DISPOSABLE_WEBVIEW_FIXTURE: "api35-default-x86_64" } },
+    prepareWebView,
     runner("ci-reading", "--classes", READING_CLASSES.join(",")),
     runner("ci-reading-test-mocks", "--test-mocks", "--classes", READING_TEST_MOCKS_CLASSES.join(",")),
+  ];
+  if (suite === "browser-controls") return [
+    prepareEmulator,
+    prepareWebView,
+    runner("ci-browser-controls", "--test-mocks", "--variants", "standalone,launcher", "--classes", BROWSER_CONTROLS_CLASSES.join(",")),
   ];
   if (suite === "fused-speech") return [
     prepareEmulator,
@@ -114,7 +123,7 @@ export function suitePlan(suite: string): SuiteStep[] {
     { name: "network-off", kind: "preparation", action: "network-off" },
     runner("ci-fused-speech", "--variants", "standalone", "--classes", FUSED_SPEECH_CLASSES.join(",")),
   ];
-  throw new Error(`Unknown suite ${JSON.stringify(suite)}; use instrumentation, browser-reading or fused-speech`);
+  throw new Error(`Unknown suite ${JSON.stringify(suite)}. Use instrumentation, browser-reading, browser-controls or fused-speech`);
 }
 
 /** Airplane mode, then proof that Android reports no default network. `adb` returns stdout. */
@@ -195,7 +204,7 @@ export function summarize(report: SuiteReport) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const suite = process.argv[2];
-  if (process.argv.length !== 3) throw new Error("Use: bun scripts/ci/emulator-suite.ts instrumentation|browser-reading|fused-speech");
+  if (process.argv.length !== 3) throw new Error("Run bun scripts/ci/emulator-suite.ts instrumentation|browser-reading|browser-controls|fused-speech");
   suitePlan(suite); // Refuse an unknown suite before anything is written.
   requireHostedRunner();
   const output = path.resolve("test-results/emulator-suite", `${suite}.json`);
