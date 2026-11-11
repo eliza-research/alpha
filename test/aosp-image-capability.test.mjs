@@ -65,7 +65,7 @@ test("staging, native check and feature declaration agree", () => {
   // The production-only provisioning overlay comes after the capability (an earlier production branch
   // only refuses an incomplete product lock), so development and production images both declare it.
   assert.ok(call < stage.indexOf("writeProvisioningOverlay(output"), "development and production images both declare it");
-  const admission = stage.indexOf("\nadmitApk({");
+  const admission = stage.indexOf("const reviewedUpdateChannel = admitApk({");
   assert.ok(admission > stage.indexOf("function admitApk("), "the admission call site, not the definition");
   assert.ok(admission > 0 && admission < call, "test-mocks and non-distributable APKs are refused before the capability is written");
   // Pixel 10a takes the declaration from the shared composition every brand uses; it is never written twice.

@@ -48,7 +48,13 @@ export function installSubviewAccessibility(views:Bag){
   ['calendar',['detail','form'],(out:Bag)=>({listCovered:!!(out.detail||out.form),detailCovered:!!out.form})],
   ['browser',['tabs','library'],(out:Bag)=>({listCovered:!!(out.tabsOpen||out.lib),tabsCovered:!!out.lib,pageCovered:!!out.editing})],
   ['photos',['album','viewer','edit','empty'],(out:Bag)=>({listCovered:!!(out.album||out.viewing||out.editing||out.viewEmpty),albumCovered:!!(out.viewing||out.editing||out.viewEmpty),viewerCovered:!!out.editing})],
-  ['notes',['editor','voice','link','recorder','trash'],(out:Bag)=>({listCovered:!!(((out.isEdit||out.isVoice||out.isLink)&&!split())||out.noteRecorder||out.trashOpen),detailCovered:!!(out.noteRecorder||out.trashFullOpen),trashCovered:!!out.trashConfirmOpen})],
+  ['notes',['editor','voice','link','recorder','trash'],(out:Bag)=>({
+   listCovered:!!(((out.isEdit||out.isVoice||out.isLink)&&!split())||out.noteRecorder||out.trashOpen),
+   detailCovered:!!(out.noteRecorder||out.trashFullOpen),trashCovered:!!out.trashConfirmOpen,
+   trashAskLabel:out.trashAskOpen
+    ? `${out.trashCanErase?'Recover or delete':'Recover'} ${out.trashAskTitle?`“${out.trashAskTitle}”`:'this note'}?`
+    : '',
+  })],
   ['files',['folder','preview'],(out:Bag)=>({listCovered:!!(out.inFolder||(out.isPreview&&!split())),detailCovered:!!out.isPreview&&!split()})],
  ] as Array<[string,string[],(out:Bag)=>Bag]>){
   const render=views[name].render,focus=focusHistory(),refs=Object.fromEntries(keys.map(key=>[key+'Focus',subviewFocus(focus.read)]));

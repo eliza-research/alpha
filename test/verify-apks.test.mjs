@@ -7,7 +7,7 @@ import { serializeOwnerRouteTable } from "../apps/app/src/product/owner-route-ta
 import os from "node:os";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
-import { archiveWebPayload, parseXmlTree, readBuildFlags, validateApk, verifyOwnerRouteTable } from "../scripts/apk.ts";
+import { archiveWebPayload, parseXmlTree, readBuildFlags, telephonySetupReceiverProblems, validateApk, verifyOwnerRouteTable } from "../scripts/apk.ts";
 import { webViewFilterProblems, webViewFilters } from "../scripts/render-assetlinks.ts";
 import { voiceBundleAdmission, VOICE_BUNDLE_FORMAT } from "../scripts/voice-host.ts";
 const root = path.resolve(import.meta.dirname, "..");
@@ -163,6 +163,15 @@ test("AOSP staging refuses --production without a descriptor, with --development
     fs.writeFileSync(path.join(dir, "artifacts/apk-manifest.json"), JSON.stringify({ testMocks: false, results: [{ file: "artifacts/launcher-release.apk", mode: "release", sha256,
       testMocks: false, bundleAudit: "passed", signed: true, signerSha256: "d".repeat(64), runtime: "PACKAGED", runtimeNotices: true, distributable: true, licenceBlockers: [],
       releaseAdmission: { failures: [], blockers: [], signerMatches: true }, voiceHost: { packaged: true, asr: true, differences: [], qualified: true } }] }));
+    const manifestFile = path.join(dir, "artifacts/apk-manifest.json");
+    const original = fs.readFileSync(manifestFile, "utf8");
+    const privateRecord = JSON.parse(original);
+    privateRecord.results[0].updateChannel = {kind: "private-qa", manifestUrlSha256: "a".repeat(64)};
+    fs.writeFileSync(manifestFile, JSON.stringify(privateRecord));
+    out = stage(["--apk", release, "--descriptor", "reviewed.json", "--production"]);
+    assert.notEqual(out.status, 0);
+    assert.match(out.stderr, /Private QA update channels are refused for production provisioning/);
+    fs.writeFileSync(manifestFile, original);
     const identity = JSON.parse(fs.readFileSync(path.join(root, "app.config.json"), "utf8"));
     for (const [name, foreign] of [["package", { packageName: "ai.elizaos.app", moduleName: identity.moduleName }], ["module", { packageName: identity.appId, moduleName: "Eliza" }]]) {
       fs.writeFileSync(path.join(dir, "foreign.json"), JSON.stringify({ schemaVersion: 1, apkSha256: sha256, certificateSha256: "d".repeat(64), ...foreign }));
@@ -355,11 +364,18 @@ test('merged-manifest check keeps launcher-only permissions and components out o
   const identity = {appId: 'ai.alphacompute.alphaphone'};
   const launcherOnly = ['READ_CONTACTS', 'READ_SMS', 'SEND_SMS', 'CALL_PHONE', 'READ_PHONE_STATE', 'EXPAND_STATUS_BAR', 'RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH', 'READ_CALL_LOG', 'WRITE_CONTACTS', 'READ_PHONE_NUMBERS', 'READ_PRIVILEGED_PHONE_STATE']
     .map(name => `android.permission.${name}`)
-    .concat(['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'].map(name => `ai.alphacompute.alphaphone.${name}`));
-  const apk = (home, entries) => () => ({packageName: identity.appId, home, launcher: true, webPayload: true, badging: '', xml: ['android.permission.CAMERA', ...entries].map(name => `A: android:name="${name}"`).join('\n')});
+    .concat(['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity', 'AlphaTelephonySetupReceiver'].map(name => `ai.alphacompute.alphaphone.${name}`));
+  const apk = (home, entries) => () => {
+    const setup = `${identity.appId}.AlphaTelephonySetupReceiver`;
+    const xml = ['E: manifest', '  E: application', ...['android.permission.CAMERA', ...entries].map(name =>
+      name === setup
+        ? `    E: receiver\n      A: android:name="${name}"\n      A: android:exported=(type 0x12)0xffffffff\n      A: android:permission="android.permission.MANAGE_ROLE_HOLDERS"`
+        : `    A: android:name="${name}"`)].join('\n');
+    return {packageName: identity.appId, home, launcher: true, webPayload: true, badging: '', xml};
+  };
   assert.doesNotThrow(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly)));
   assert.doesNotThrow(() => validateApk('standalone.apk', identity, false, apk(false, [])));
-  for (const entry of ['android.permission.READ_PHONE_STATE', 'android.permission.EXPAND_STATUS_BAR', 'ai.alphacompute.alphaphone.AlphaSmsSendReceiver', 'android.permission.WRITE_CONTACTS', 'android.permission.READ_PRIVILEGED_PHONE_STATE']) {
+  for (const entry of ['android.permission.READ_PHONE_STATE', 'android.permission.EXPAND_STATUS_BAR', 'ai.alphacompute.alphaphone.AlphaSmsSendReceiver', 'ai.alphacompute.alphaphone.AlphaTelephonySetupReceiver', 'android.permission.WRITE_CONTACTS', 'android.permission.READ_PRIVILEGED_PHONE_STATE']) {
     const name = entry.split('.').at(-1);
     assert.throws(() => validateApk('launcher.apk', identity, true, apk(true, launcherOnly.filter(other => other !== entry))), new RegExp(`Invalid.*${name}.*launcher\\.apk`));
     assert.throws(() => validateApk('standalone.apk', identity, false, apk(false, [entry])), new RegExp(`Invalid.*${name}.*standalone\\.apk`));
@@ -368,6 +384,34 @@ test('merged-manifest check keeps launcher-only permissions and components out o
     assert.throws(() => validateApk('launcher.apk', identity, true, apk(true, [...launcherOnly, entry])), /Unexpected carrier voicemail manifest entry/);
     assert.throws(() => validateApk('standalone.apk', identity, false, apk(false, [entry])), /Unexpected carrier voicemail manifest entry/);
   }
+});
+
+test("release accepts only a sender-protected telephony setup receiver without granting role authority to Alpha", () => {
+  const rolePermission = "android.permission.MANAGE_ROLE_HOLDERS";
+  function assess({ permission = rolePermission, tag = "receiver", requested = false,
+      exported = true, enabled = true, present = true, implicit = false } = {}) {
+    const xml = [
+      "E: manifest",
+      '  A: package="ai.alphacompute.alphaphone"',
+      ...(requested ? ["  E: uses-permission", `    A: android:name="${rolePermission}"`] : []),
+      "  E: application",
+      ...(present ? [
+        `    E: ${tag}`,
+        '      A: android:name=".AlphaTelephonySetupReceiver"',
+        `      A: android:exported=(type 0x12)${exported ? "0xffffffff" : "0x0"}`,
+        ...(enabled ? [] : ["      A: android:enabled=(type 0x12)0x0"]),
+        ...(permission ? [`      A: android:permission="${permission}"`] : []),
+        ...(implicit ? ["      E: intent-filter"] : []),
+      ] : []),
+    ].join("\n");
+    return telephonySetupReceiverProblems(parseXmlTree(xml));
+  }
+  assert.deepEqual(assess(), []);
+  for (const invalid of [{ present: false }, { permission: "" }, { permission: "android.permission.INTERNET" },
+    { tag: "service" }, { exported: false }, { enabled: false }, { implicit: true }]) {
+    assert.match(assess(invalid).join("\n"), /AlphaTelephonySetupReceiver/);
+  }
+  assert.match(assess({ requested: true }).join("\n"), /must not request MANAGE_ROLE_HOLDERS/);
 });
 
 // A merged-manifest xmltree with the main manifest's two web returns on MainActivity.
