@@ -251,9 +251,48 @@ Actions ZIP. The protected job checks the same run attempt and artifact again,
 then stages the pinned private generation before accessing the signing key.
 [Protected signing workflow](.github/workflows/release-cloud-app-signing.yml)
 
-Qualified publication restores the same private mirror and exact signed output.
-Complete the reviewed Cartesia voice checks on both signed APK digests and admit
-publication while the one-day signing delivery receipt is still available.
+For publication, set `delivery_artifact_id` to the numeric ID of the original
+`private-cloud-apk-delivery-*` artifact from the successful signing attempt.
+Save its ZIP.
+
+```sh
+gh api "repos/eliza-research/alpha/actions/artifacts/$delivery_artifact_id/zip" > delivery.zip
+```
+
+Read `private-storage-receipt.json` from the ZIP and confirm its
+bucket and object match the signed destination in the reviewed plan. An authorized
+operator sets `signed_uri` to the receipt's `gs://BUCKET/OBJECT#GENERATION` and
+retrieves that generation.
+
+```sh
+gcloud storage cp "$signed_uri" signed.tar
+```
+
+Complete Cartesia qualification on each exact signed APK. Record a content-free
+`alpha-cloud-voice-qualification-v1` JSON receipt with two `results` rows. Each
+row names the observed `apkSha256`, `provider` and `outcome`, and records the
+observed booleans in `checks` for `consent`, `session`, `acousticInput`,
+`blueBar`, `transcript`, `audibleSpeakerReply`, `mute`, `unmute` and
+`stopReleased`. Record only the check outcomes and omit transcripts, recordings
+and credentials. The workflow admits passing Cartesia checks for both APKs.
+
+Set `publication_commit` to the exact reviewed commit currently on `main`.
+Prepare the qualification using the original plan bytes and the reviewed voice
+receipt. The command checks the official signing attempt and delivery ZIP,
+streams both APKs from the local signed TAR and retains the original evidence bytes.
+
+```sh
+python3 -B scripts/ci/qualified-app-update.py prepare-qualification \
+  --signing-plan signing-plan.json --voice-evidence cartesia-voice.json \
+  --signed-tar signed.tar --delivery-zip delivery.zip \
+  --delivery-artifact-id "$delivery_artifact_id" --workflow-commit "$publication_commit" \
+  > qualification.json
+```
+
+Review `qualification.json` and supply it as the protected workflow's
+`qualification` input with the reviewed `workflow_commit`. Complete both
+admissions before the one-day signing delivery receipt expires. The protected
+job restores the same private mirror and exact signed output before publication.
 [Qualified publication workflow](.github/workflows/publish-qualified-app-update.yml)
 
 The existing reviewed Cloud producer routes remain available for their
