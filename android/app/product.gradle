@@ -71,9 +71,10 @@ if (updateChannel == 'private-qa') {
   def uri = new URI(candidate)
   if (uri.scheme != 'https' || uri.rawAuthority != 'storage.googleapis.com' || uri.fragment != null || !(uri.rawPath ==~ /\/alpha-aosp-lab-20261024-private-apks\/update-qa\/[a-f0-9]{32}\/alpha-update\.json/) || !uri.rawQuery) throw new Exception()
   def pairs = uri.rawQuery.split('&').collect { it.split('=',2) }
-  def query = pairs.collectEntries { [(java.net.URLDecoder.decode(it[0],'UTF-8')):it.length == 2 ? java.net.URLDecoder.decode(it[1],'UTF-8') : ''] }
+  // Match the Node preflight for gcloud's lowercase keys without rewriting the signed URL.
+  def query = pairs.collectEntries { [(java.net.URLDecoder.decode(it[0],'UTF-8').toLowerCase(Locale.ROOT)):it.length == 2 ? java.net.URLDecoder.decode(it[1],'UTF-8') : ''] }
   if (query.size() != pairs.size()) throw new Exception()
-  if (query['X-Goog-Algorithm'] != 'GOOG4-RSA-SHA256' || !(query['X-Goog-Expires'] ==~ /[0-9]+/) || new BigInteger(query['X-Goog-Expires']) < 300 || new BigInteger(query['X-Goog-Expires']) > 86400) throw new Exception()
+  if (query['x-goog-algorithm'] != 'GOOG4-RSA-SHA256' || !(query['x-goog-expires'] ==~ /[0-9]+/) || new BigInteger(query['x-goog-expires']) < 300 || new BigInteger(query['x-goog-expires']) > 86400) throw new Exception()
   updateManifestUrl = candidate
  } catch (Exception ignored) { throw new GradleException('Update channel input refused') }
 }
