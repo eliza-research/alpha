@@ -2228,7 +2228,6 @@
         <button class="ib" aria-label="Back to place" onClick="{{maps.dr.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
           <sc-if value="{{maps.native}}"><input aria-label="Starting point" placeholder="Search or enter coordinates" value="{{maps.originText}}" onChange="{{maps.onOrigin}}" onKeyDown="{{maps.originKey}}" style="height:32px;border:0;background:transparent;color:var(--fg);font-size:15px;width:100%"><button aria-label="Use current location for route" onClick="{{maps.originLocation}}" style="min-height:48px;font-size:15px;text-align:left;color:var(--acct);display:flex;align-items:center;gap:6px"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.mapsLoc}}"></path></svg>My location</button></sc-if>
-          <sc-if value="{{maps.notNative}}"><div style="display: flex; align-items: center; gap: 12px; height: 32px; font-size: 15px; color: var(--mut)"><span style="width: 10px; height: 10px; border-radius: 5px; background: var(--acc); box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--acc); margin: 0 4px; flex-shrink: 0"></span>Your location</div></sc-if>
           <div style="display: flex; align-items: center; gap: 12px; height: 32px; font-size: 15px; font-weight: 600"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--acct)"><path d="{{ic.pin}}"></path></svg>{{maps.dr.name}}</div>
         </div>
       </div>
@@ -2358,9 +2357,6 @@
       <div style="display: flex; gap: 8px; margin-top: 20px; align-items: center">
         <sc-if value="{{maps.pc.canDir}}">
         <button aria-label="Directions" onClick="{{maps.pc.dirs}}" style="flex-grow: 1; height: 52px; border-radius: 26px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; font-weight: 600"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.mapsCar}}"></path></svg>{{maps.pc.min}}</button>
-        </sc-if>
-        <sc-if value="{{maps.pc.hasPhone}}">
-          <button class="ib" aria-label="Call" onClick="{{maps.pc.call}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.phone}}"></path></svg></button>
         </sc-if>
         <sc-if value="{{maps.pc.save}}"><button class="ib" aria-label="{{maps.pc.saveLabel}}" aria-pressed="{{maps.pc.saved}}" onClick="{{maps.pc.save}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2); {{maps.pc.starCss}}"><svg class="i" viewBox="0 0 24 24" style="{{maps.pc.starFill}}"><path d="{{ic.star}}"></path></svg></button></sc-if>
         <sc-if value="{{maps.pc.share}}"><button class="ib" aria-label="Share" onClick="{{maps.pc.share}}" style="width: 52px; height: 52px; border-radius: 26px; background: var(--s2)"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.share}}"></path></svg></button></sc-if>
