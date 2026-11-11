@@ -45,12 +45,22 @@ export async function verifyPixel10aSource({source, factory, lock = defaultLockP
 /** A reviewed SystemUI bundle ('ops', 'chip' or 'assist') in the form verifyPixel10aSource accepts. */
 export {senseSystemuiPatch as listenerSystemuiPatch} from '../vendor/eliza/packages/os/scripts/android/sense-systemui.mjs';
 
+/** Alpha's protected Power route, independent of the optional SystemUI branding patch. */
+export function alphaProtectedPowerPatch(): ReviewedSourcePatch {
+  return readAlphaSourcePatch('alpha-protected-power', new URL('../android/aosp/branding/power-voice/', import.meta.url));
+}
+
 /** Explicit host-build patches; defaults and device source remain unchanged. */
 export function aospBuildPatch(bundle: string): ReviewedSourcePatch {
   if (bundle === 'soong-app-native') return soongAppNativePatch();
+  if (bundle === 'alpha-sense-policy') return readAlphaSourcePatch(bundle, new URL('../android/aosp/branding/sense-policy/', import.meta.url));
   if (bundle !== 'soong-memory') throw Error(`Unknown AOSP build patch: ${bundle}`);
-  const directory = fileURLToPath(new URL('../android/aosp/build-host/', import.meta.url));
+  return readAlphaSourcePatch(bundle, new URL('../android/aosp/build-host/', import.meta.url));
+}
+
+function readAlphaSourcePatch(bundle: string, location: URL): ReviewedSourcePatch {
+  const directory = fileURLToPath(location);
   const bytes = fs.readFileSync(path.join(directory, 'manifest.json')), manifest = JSON.parse(bytes.toString('utf8'));
-  if (digest(fs.readFileSync(path.join(directory, manifest.patch))) !== manifest.patchSha256) throw Error(`AOSP build patch ${bundle} hash mismatch`);
+  if (digest(fs.readFileSync(path.join(directory, manifest.patch))) !== manifest.patchSha256) throw Error(`AOSP patch ${bundle} hash mismatch`);
   return {name:bundle, manifest, manifestSha256:digest(bytes)};
 }

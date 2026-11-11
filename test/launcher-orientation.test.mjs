@@ -8,8 +8,11 @@ const read = file => readFileSync(file, 'utf8');
 
 test('every launcher surface is locked to portrait', () => {
   const launcher = read('android/app/src/launcher/AndroidManifest.xml');
-  for (const activity of ['MainActivity', 'AlphaAssistActivity', 'AlphaPowerVoiceActivity'])
-    assert.match(launcher, new RegExp(`<activity android:name="\\.${activity}"[^>]*android:screenOrientation="portrait" tools:replace="android:screenOrientation"`));
+  for (const activity of ['MainActivity', 'AlphaAssistActivity', 'AlphaPowerVoiceActivity']) {
+    const entry = launcher.match(new RegExp(`<activity android:name="\\.${activity}"[^>]*>`))?.[0];
+    assert.match(entry, /android:screenOrientation="portrait"/);
+    assert.ok(entry.match(/tools:replace="([^"]*)"/)?.[1].split(',').includes('android:screenOrientation'));
+  }
 });
 
 test('the standalone app keeps the shared orientation', () => {

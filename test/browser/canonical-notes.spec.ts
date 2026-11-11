@@ -19,7 +19,7 @@ test('canonical Trash dates the deletion and requires a fresh review after its s
  await canonicalNotesFixture(page,{trash:[{note:trashedNote,deletedAt:'2026-11-08T12:00:00Z'}]});await openCanonicalNotes(page);
  await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
  const trash=page.locator('[data-alpha-subview="notes-trash"]'),row=trash.getByRole('button',{name:'A trashed note',exact:true});
- await row.click();const review=page.getByRole('dialog',{name:'A trashed note',exact:true});await expect(review).toBeVisible();
+ await row.click();const review=page.getByRole('dialog',{name:'Recover “A trashed note”?',exact:true});await expect(review).toBeVisible();
  const revision=await replaceTrashEntry(page,'2026-11-09T12:00:00Z');
  await expect(review).toHaveCount(0);
  await expect(row).toContainText('Deleted Nov 9, 2026');
@@ -112,7 +112,7 @@ test('canonical Notes UI creates, edits, trashes and restores the same committed
  const trash=page.locator('[data-alpha-subview="notes-trash"]');
  await expect(trash.getByRole('button',{name:'Empty Recently deleted',exact:true})).toHaveCount(0);
  await trash.getByRole('button',{name:'Canonical browser note',exact:true}).click();
- const ask=page.getByRole('dialog',{name:'Canonical browser note'});
+ const ask=page.getByRole('dialog',{name:'Recover “Canonical browser note”?',exact:true});
  await expect(ask.getByRole('button',{name:'Delete now',exact:true})).toHaveCount(0);
  await ask.getByRole('button',{name:'Recover',exact:true}).click();
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.length)).toBe(1);
