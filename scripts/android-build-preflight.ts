@@ -3,7 +3,7 @@
  * Fail fast, before web sync and Gradle, when an Android build input is missing.
  *
  *   node scripts/android-build-preflight.ts [--before-prepare] [--allow-unpackaged-runtime] [--test-mocks] [--allow-older-upstream-pin]
- *   node scripts/android-build-preflight.ts --report [--json]     (npm run android:build:inputs)
+ *   node scripts/android-build-preflight.ts --report     (npm run android:build:inputs)
  *
  * build-android.ts runs the full check. `--before-prepare` checks only inputs that
  * android:build:local does not produce (the pinned checkout and the on-device voice outputs), so
@@ -304,14 +304,13 @@ export function formatReport(rows: readonly InputReportRow[]) {
 async function main() {
   const args = process.argv.slice(2);
   for (const arg of args)
-    if (!['--before-prepare', '--allow-unpackaged-runtime', '--test-mocks', '--report', '--json', ALLOW_OLDER_PIN].includes(arg)) throw new Error(`Unknown option ${arg}`);
+    if (!['--before-prepare', '--allow-unpackaged-runtime', '--test-mocks', '--report', ALLOW_OLDER_PIN].includes(arg)) throw new Error(`Unknown option ${arg}`);
   const root = path.resolve(import.meta.dirname, '..');
   if (args.includes('--report')) {
     // The source guard imports the pinned checkout; without it the prepared path is unknown.
     let prepared: string | null = null, workerDirectory: string | undefined;
     try { const source = await import('./local-agent-source.ts'); prepared = source.sourceDirectory(root); workerDirectory = source.workerArtifactDirectory(root); } catch { /* reported as the missing checkout */ }
-    const rows = strictBuildInputs(root, prepared, {workerDirectory});
-    console.log(args.includes('--json') ? JSON.stringify(rows, null, 2) : formatReport(rows));
+    console.log(formatReport(strictBuildInputs(root, prepared, {workerDirectory})));
     return;
   }
   const notes: string[] = [];

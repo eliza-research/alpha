@@ -204,7 +204,7 @@ test('android:build:local builds the workflow worker before staging and stages b
   // The chain ends in the strict build: no developer override may be baked into it.
   assert.doesNotMatch(scripts['android:build:local'], /--allow-unpackaged-runtime|--allow-unqualified-runtime|--test-mocks|--skip-instrumentation/);
   assert.equal(scripts['android:build'], 'node scripts/build-android.ts');
-  assert.equal(scripts['agent:build-embedding-host'], 'node scripts/build-embedding-host.ts', 'no --candidate or other option in the chain');
+  assert.equal(scripts['agent:build-embedding-host'], 'node scripts/build-embedding-host.ts', 'no option in the chain');
   // Staging itself refuses a missing or foreign worker artifact before the long mobile bundle build.
   const stage = read('scripts/stage-local-agent-runtime.ts');
   assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') > 0);
