@@ -21,9 +21,11 @@ test('publication workflow preserves protected review, exact source and verifica
   assert.match(workflow.jobs.admit.if,/inputs.workflow_commit == github.sha/);
   const steps=publish.steps;
   assert(steps.filter(step=>step.uses?.startsWith('actions/checkout@')).every(step=>step.with['persist-credentials']===false));
-  const verification=steps.findIndex(step=>step.run?.includes('node scripts/verify-apks.ts --cloud-voice-evidence='));
+  const verification=steps.findIndex(step=>step.run?.includes('npm run android:verify -- --cloud-voice-evidence='));
   const delivery=steps.findIndex(step=>step.run?.includes('node scripts/deliver-app-update.ts --variant launcher'));
   assert(verification>=0&&delivery>verification);
+  assert.equal(steps[delivery]['working-directory'],'qualified-product');
+  assert.match(steps[delivery].run,/scripts\/deliver-app-update\.mjs/);
   assert.match(steps[verification].run,/qualified-stage\/cloud-voice.json/);
   const secretSteps=steps.filter(step=>JSON.stringify(step.env||{}).includes('secrets.'));
   assert.equal(secretSteps.length,0,'private delivery must not depend on a copied storage token');
@@ -51,6 +53,12 @@ test('artifact identity is confined to protected signing and publication jobs',(
   assert.equal(auth.with.access_token_scopes,'https://www.googleapis.com/auth/devstorage.read_write');
   assert.equal(auth.with.create_credentials_file,false);assert.equal(auth.with.export_environment_variables,false);
   const consumers=job.steps.filter(step=>step.env?.ALPHA_PRIVATE_STORAGE_TOKEN);assert(consumers.length);
+  if(name==='sign'){
+   const source=job.steps.find(step=>step.with?.path==='qualified-producer');assert(source);
+   assert.equal(source.with.ref,'${{ fromJSON(inputs.signing_plan).alphaCommit }}');
+   const staged=job.steps.find(step=>step.run?.includes('ALPHA_ADMITTED_APK_DIR='));assert(staged);
+   assert(staged.run.indexOf('unset ALPHA_PRIVATE_STORAGE_TOKEN')<staged.run.indexOf('await import('));
+  }
   for(const step of consumers){assert.equal(step.env.ALPHA_PRIVATE_STORAGE_TOKEN,'${{ steps.private_storage_auth.outputs.access_token }}');assert(job.steps.indexOf(step)>index);}
   assert(!source.includes('secrets.ALPHA_PRIVATE_APK_STORAGE_TOKEN'));
  }
