@@ -126,8 +126,15 @@ public final class NotificationChannel {
  public void setLockscreenVisibility(int value){}
  public int getImportance(){return importance;}
 }`,
+    'android/os/Bundle.java':`package android.os;
+public final class Bundle {
+ private final java.util.Map<String,String> strings=new java.util.HashMap<>();
+ public void putString(String key,String value){strings.put(key,value);}
+ public String getString(String key){return strings.get(key);}
+}`,
     'android/app/Notification.java':`package android.app;
 import android.content.Context;
+import android.os.Bundle;
 import java.util.*;
 public final class Notification {
  public static final int GROUP_ALERT_SUMMARY=1;
@@ -139,6 +146,7 @@ public final class Notification {
  public boolean onlyOnce,autoCancel;
  public PendingIntent tap;
  public Notification publicNotice;
+ public Bundle extras=new Bundle();
  public final List<Action> actions=new ArrayList<>();
  public record Action(String title,PendingIntent tap,boolean authenticated) {
   public static final class Builder {
@@ -157,6 +165,7 @@ public final class Notification {
   public Builder setVisibility(int value){n.visibility=value;return this;}
   public Builder setPublicVersion(Notification value){n.publicNotice=value;return this;}
   public Builder setContentIntent(PendingIntent value){n.tap=value;return this;}
+  public Builder addExtras(Bundle value){n.extras=value;return this;}
   public Builder addAction(Action value){n.actions.add(value);return this;}
   public Builder setOnlyAlertOnce(boolean value){n.onlyOnce=value;return this;}
   public Builder setGroup(String group){return this;}
@@ -168,7 +177,11 @@ public final class Notification {
  }
 }`,
     'android/service/notification/StatusBarNotification.java':`package android.service.notification;
-public record StatusBarNotification(String tag) {public String getTag(){return tag;}}`,
+public record StatusBarNotification(String tag,int id,android.app.Notification notification) {
+ public String getTag(){return tag;}
+ public int getId(){return id;}
+ public android.app.Notification getNotification(){return notification;}
+}`,
     'android/app/NotificationManager.java':`package android.app;
 import android.content.Intent;
 import android.service.notification.StatusBarNotification;
@@ -184,7 +197,7 @@ public final class NotificationManager {
  public void createNotificationChannel(NotificationChannel c){channels.putIfAbsent(c.id,c);}
  public NotificationChannel getNotificationChannel(String id){return channels.get(id);}
  public boolean areNotificationsEnabled(){return gate.equals("allowed")||gate.equals("flip")&&reads++%2==0;}
- public StatusBarNotification[] getActiveNotifications(){return active.keySet().stream().map(StatusBarNotification::new).toArray(StatusBarNotification[]::new);}
+ public StatusBarNotification[] getActiveNotifications(){return active.entrySet().stream().map(row->new StatusBarNotification(row.getKey(),0,row.getValue())).toArray(StatusBarNotification[]::new);}
  public PendingIntent tap(int code,Intent intent,boolean existing){
   String key=code+"|"+intent.component.getName()+"|"+intent.action+"|"+intent.data;
   PendingIntent old=taps.get(key);

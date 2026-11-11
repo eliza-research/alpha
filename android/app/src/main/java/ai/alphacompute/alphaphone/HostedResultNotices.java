@@ -12,15 +12,7 @@ import java.util.UUID;
 /** Durable, redacted notice projection; it never schedules or executes a workflow. */
 final class HostedResultNotices {
  interface Storage { String read(String slot)throws Exception; void write(String slot,String value)throws Exception; }
- interface Poster { boolean allowed(); boolean active(String key); void post(String key); void cancel(String key); default void post(String key,boolean silent){post(key);}
-  /** The retained record's status picks the wording: a missed, skipped or failed occurrence is never announced as ready. */
-  default void post(String key,boolean silent,String status){post(key,silent);} }
- /** What the notice of a retained record says. Only an occurrence that ran to completion is a brief that is ready. */
- static String title(String status){
-  if("missed".equals(status)||"overlap".equals(status)||"unavailable".equals(status))return "Your brief didn’t run";
-  if("failed".equals(status)||"cancelled".equals(status))return "Your brief didn’t finish";
-  return "Your brief is ready";
- }
+ interface Poster { boolean allowed(); boolean active(String key,String dispatchId); void post(String key,String dispatchId,String title,boolean silent); void cancel(String key); }
  /** A daily brief supersedes the previous one; an unopened result notice withdraws itself after a day. History stays in the inbox. */
  static final long SUPERSEDE_AFTER_MS=24L*3600000;
  /** Source renewal notices appear within the final 24 hours of a reviewed source and withdraw themselves at expiry. */
@@ -61,14 +53,22 @@ final class HostedResultNotices {
   JSONObject result=result(requested);String digest=hash(result.toString()),key=hash(requested.getString("scope")+":"+requested.getString("runId"));
   JSONObject ledger=read(LEDGER),record=ledger.optJSONObject(key);
   // HostedInbox replaces a retained result only for a reconciled cancellation; that outcome gets a fresh notice under the same tag.
-  if(record!=null&&!digest.equals(record.getString("digest"))){ledger.remove(key);record=null;}
+  if(record!=null&&!digest.equals(record.getString("digest"))){
+   poster.cancel(key); // Retire the previous notice before arming its replacement.
+   ledger.remove(key);record=null;
+  }
   if(record!=null){
    String phase=record.getString("phase");
-   if(phase.equals("dispatching")){record.put("phase",poster.active(key)?"posted":"uncertain");write(LEDGER,ledger);}
+   if(phase.equals("dispatching")){
+    String dispatchId=record.optString("dispatchId");
+    record.put("phase",!dispatchId.isEmpty()&&poster.active(key,dispatchId)?"posted":"uncertain");
+    write(LEDGER,ledger);
+   }
    return record.getString("phase");
   }
   record=new JSONObject();for(String field:new String[]{"scope","origin","ownerId","agentId","runId","workflowId","workflowVersionId"})record.put(field,required(requested,field));
-  record.put("key",key).put("digest",digest).put("createdAt",System.currentTimeMillis()).put("phase",poster.allowed()?"dispatching":"denied");
+  String dispatchId=UUID.randomUUID().toString();
+  record.put("key",key).put("digest",digest).put("dispatchId",dispatchId).put("createdAt",System.currentTimeMillis()).put("phase",poster.allowed()?"dispatching":"denied");
   ledger.put(key,record);
   // Bound encrypted metadata across accounts. A pending tap is never evicted.
   String pendingKey=read(PENDING).optString("key");ArrayList<String> keys=new ArrayList<>();ledger.keys().forEachRemaining(keys::add);keys.sort(Comparator.comparingLong(k->ledger.optJSONObject(k).optLong("createdAt")));
@@ -77,8 +77,21 @@ final class HostedResultNotices {
   for(String other:keys){JSONObject prior=ledger.optJSONObject(other);if(prior==null||other.equals(key)||other.equals(pendingKey)||!"posted".equals(prior.optString("phase"))||!record.getString("scope").equals(prior.optString("scope"))||!record.getString("workflowId").equals(prior.optString("workflowId")))continue;prior.put("phase","superseded");poster.cancel(other);}
   write(LEDGER,ledger); // Exact route and uncertain dispatch state precede any OS effect.
   if(record.getString("phase").equals("denied"))return "denied";
-  try {poster.post(key,record.getString("scope").equals(showing),result.optString("status"));record.put("phase","posted");write(LEDGER,ledger);return "posted";}
+  try {poster.post(key,dispatchId,resultTitle(result.optString("status")),record.getString("scope").equals(showing));record.put("phase","posted");write(LEDGER,ledger);return "posted";}
   catch(SecurityException denied){record.put("phase","denied");write(LEDGER,ledger);return "denied";}
+ }
+ /** Only the retained workflow result can establish success. Titles never include its content. */
+ static String resultTitle(String status) {
+  switch(status) {
+   case "finished": return "Your brief is ready";
+   case "missed": return "Your brief was missed";
+   case "overlap":
+   case "skipped": return "Your brief was skipped";
+   case "unavailable": return "Brief source unavailable";
+   case "failed": return "Your brief failed";
+   case "cancelled": return "Your brief was cancelled";
+   default: return "Brief update";
+  }
  }
  synchronized void capture(String key)throws Exception {
   capture(key,false);
@@ -103,7 +116,7 @@ final class HostedResultNotices {
  synchronized JSONObject peek()throws Exception {
   JSONObject pending=read(PENDING),record=read(LEDGER).optJSONObject(pending.optString("key"));
   if(record==null||!ownerMatches(record))return new JSONObject();
-  JSONObject out=new JSONObject(record.toString());out.remove("digest");out.remove("createdAt");out.remove("phase");out.put("token",pending.getString("token"));
+  JSONObject out=new JSONObject(record.toString());out.remove("digest");out.remove("dispatchId");out.remove("createdAt");out.remove("phase");out.put("token",pending.getString("token"));
   try{JSONObject result=result(record);if(!hash(result.toString()).equals(record.getString("digest")))throw new IllegalStateException();out.put("retained",true);}catch(Exception missing){out.put("retained",false);}
   out.put("question",pending.optBoolean("question"));return out;
  }
