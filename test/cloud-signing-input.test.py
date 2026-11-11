@@ -248,6 +248,52 @@ class CloudSigningInputTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     ADMISSION.prepare_candidate(self.archive, "202", api=self.candidate_api_responses().__getitem__)
 
+    def test_native_handoff_requires_publication_debug_and_indexed_evidence(self):
+        manifest_name = "producer-evidence/manifest.json"
+        evidence_name = "artifacts/sbom/alpha.cdx.json"
+        evidence = b'{"verified":true}'
+        for case, refusal in (
+            ("valid", None),
+            ("changed-debug", "Producer debug APK bytes differ"),
+            ("missing-evidence", "Missing, nonregular or oversized archive member"),
+            ("changed-evidence", "Producer evidence bytes differ"),
+        ):
+            with self.subTest(case=case):
+                self.write_candidate()
+                with zipfile.ZipFile(self.archive) as source:
+                    entries = {entry.filename: source.read(entry) for entry in source.infolist()}
+                manifest = json.loads(entries[manifest_name])
+                manifest["files"][evidence_name] = {"bytes": len(evidence), "sha256": ADMISSION.digest(evidence)}
+                entries[manifest_name] = json.dumps(manifest).encode()
+                if case != "missing-evidence":
+                    entries["producer-evidence/" + evidence_name] = evidence.upper() if case == "changed-evidence" else evidence
+                if case == "changed-debug":
+                    entries["standalone-debug.apk"] = entries["standalone-debug.apk"].upper()
+                with zipfile.ZipFile(self.archive, "w", compression=zipfile.ZIP_DEFLATED) as target:
+                    for name, data in entries.items():
+                        target.writestr(name, data)
+                archive_bytes = self.archive.read_bytes()
+                digest = ADMISSION.digest(archive_bytes)
+                self.pin.update(archiveBytes=len(archive_bytes), archiveSHA256=digest,
+                                producerManifestSHA256=ADMISSION.digest(entries[manifest_name]))
+                self.pin["privateStorage"].update(inputObject=f"unsigned/{digest}.zip",
+                                                  outputObject=f"signed/{digest}/{'d' * 32}/signed-apks.tar")
+                PRODUCER.validate_private_storage(self.pin)
+                api = self.candidate_api_responses().__getitem__
+                delivery = {"input_generation": "123", "delivery_id": "d" * 32}
+                if refusal:
+                    for options in ({}, delivery):
+                        with self.assertRaisesRegex(ValueError, refusal):
+                            ADMISSION.prepare_candidate(self.archive, "202", api=api, **options)
+                    stage = self.archive.with_name("protected-stage")
+                    with self.assertRaisesRegex(ValueError, refusal):
+                        ADMISSION.admit(self.archive, self.pin, stage)
+                    self.assertFalse(stage.exists())
+                else:
+                    self.assertEqual(ADMISSION.prepare_candidate(self.archive, "202", api=api, **delivery), self.pin)
+                    self.assertTrue(ADMISSION.admit(self.archive, self.pin)["inputVerified"])
+                self.assertEqual(self.archive.read_bytes(), archive_bytes)
+
     def test_candidate_preparation_refuses_invalid_or_unpaired_delivery_fields(self):
         self.write_candidate()
         api = self.candidate_api_responses().__getitem__
