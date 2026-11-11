@@ -75,6 +75,8 @@ export function installToastLayer(): () => void {
       const wanted = region === regions.at(-1) ? signature : '';
       if ((region.dataset.alphaToastShown ?? '') === wanted) continue;
       region.dataset.alphaToastShown = wanted;
+      // A failure is assertive in the page's region; its copy inside the dialog interrupts the same way.
+      region.setAttribute('aria-live', wanted && source?.getAttribute('aria-live') === 'assertive' ? 'assertive' : 'polite');
       region.replaceChildren();
       if (!wanted || !shown) continue;
       const paint = getComputedStyle(shown);

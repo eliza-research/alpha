@@ -4570,7 +4570,7 @@
 </sc-if>
 
 
-<div data-alpha-toast aria-live="polite" aria-atomic="true">
+<div data-alpha-toast aria-live="{{toastLive}}" aria-atomic="true">
 <sc-if value="{{toastOn}}">
   <div class="drop" role="{{toastRole}}" tabindex="{{toastTabIndex}}" onFocus="{{toastFocus}}" onBlur="{{toastBlur}}" onClick="{{toastTap}}" onKeyDown="{{toastKey}}" style="pointer-events: auto; min-height: 48px; max-width: 100%; box-sizing: border-box; padding: 0 {{toastPadR}}px 0 18px; border-radius: 24px; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 600; display: flex; gap: 14px; align-items: center; box-shadow: 0 8px 24px var(--shc)">
     <span style="flex-grow: 1; min-width: 0; padding: 8px 0; overflow-wrap: anywhere">{{toast}}</span>
