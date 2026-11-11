@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "0f86cbc4e7a3adfd30a6585b5bd31a9520b5846d",
-  "head": "39f4b8b7fbc61fdac55522f69d40bdede1b8ae0a",
+  "baseCommit": "c5eb8cda8caf5e4cfcc81e01fe6eb62f97ded615",
+  "head": "b89f0e711bb93fbd8414a034985ebbbda73b618c",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...39f4b8b7fbc61fdac55522f69d40bdede1b8ae0a",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...b89f0e711bb93fbd8414a034985ebbbda73b618c",
   "status": "diverged",
-  "aheadBy": 5,
-  "behindBy": 177,
+  "aheadBy": 7,
+  "behindBy": 194,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -30,6 +30,14 @@
     {
       "sha": "39f4b8b7fbc61fdac55522f69d40bdede1b8ae0a",
       "subject": "Make released credential-lock cleanup idempotent"
+    },
+    {
+      "sha": "46dcd50a0972e3dcd4e87d1c13fa7ec7c250f998",
+      "subject": "Retain saved mail drafts and support reviewed local selection"
+    },
+    {
+      "sha": "b89f0e711bb93fbd8414a034985ebbbda73b618c",
+      "subject": "Keep pending draft state until provider adoption commits"
     }
   ],
   "pullRequests": [
