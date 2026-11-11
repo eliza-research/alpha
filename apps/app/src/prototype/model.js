@@ -2409,7 +2409,7 @@ registerView("photos", {
         prevItem: function () { go(-1); }, nextItem: function () { go(1); },
         askLabel: "Ask Alpha about this " + (cur.kind === "video" ? "video" : "photo"),
         editLabel: cur.kind === "video" ? "Edit video" : "Edit photo", shareLabel: cur.kind === "video" ? "Share video" : "Share photo", infoLabel: cur.kind === "video" ? "Video info" : "Photo info", deleteLabel: cur.kind === "video" ? "Delete video" : "Delete photo",
-        vid: cur.kind === "video", playBtn: cur.kind === "video" && !st.playing, playing: !!st.playing,
+        vid: cur.kind === "video", playBtn: cur.kind === "video" && !st.playing, playing: !!st.playing, playLabel: "Play video", muteLabel: "Mute video", videoUnavailable: true,
         prog: "width: " + (st.ppos || 0) + "%; transition: " + (st.ppos ? "width " + phSecs(cur.dur) + "s linear" : "none"),
         dur: cur.dur,
         down: function (e) { try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} sw.down(e); },

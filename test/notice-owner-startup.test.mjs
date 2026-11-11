@@ -1,4 +1,3 @@
-import {CalendarApprovalClient} from '../apps/app/src/runtime/calendar-approval-client.ts';
 import * as residentRecovery from '../apps/app/src/runtime/resident-recovery.ts';
 import {resolveCloudEnvironment} from '../apps/app/src/runtime/cloud-environment-selection.ts';
 import test from 'node:test';

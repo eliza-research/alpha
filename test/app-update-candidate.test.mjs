@@ -42,7 +42,7 @@ test('retired-channel inventory sets a version floor while the receipt binds onl
   };
   f.state.legacyMissing = false;
   f.state.legacyPages = [[{name: 'alpha-phone-703.apk'}]];
-  f.state.legacyPointer = pointer(legacyManifestUrl, 704);
+  f.state.legacyPointer = pointer(legacyManifestUrl.replace('/alpha/', '/alphaphone/'), 704);
   const initial = await candidateVersion(f);
   assert.equal(initial.observedFloor, 704);
   assert.equal(initial.manifestSha256, null);
@@ -58,6 +58,7 @@ test('retired-channel inventory sets a version floor while the receipt binds onl
 test('missing or malformed inventories, hidden pointers and wrong source/workflow epochs fail before writing a candidate', async t => {
   const f = fixture(t), destination = 'test-results/version.json';
   for (const change of [{GITHUB_EVENT_NAME: 'workflow_dispatch'}, {GITHUB_REF: 'refs/heads/develop'},
+    {GITHUB_REPOSITORY_ID: '99'}, {GITHUB_REPOSITORY_OWNER_ID: '99'},
     {GITHUB_WORKFLOW_REF: f.env.GITHUB_WORKFLOW_REF.replace('resident-android', 'new-workflow')},
     {GITHUB_SHA: '0'.repeat(40)}, {GITHUB_RUN_NUMBER: '2100000001'}, {GITHUB_RUN_ATTEMPT: '0'}]) {
     await assert.rejects(main(['version', destination], {...f, env: {...f.env, ...change}}));
@@ -79,7 +80,8 @@ test('missing or malformed inventories, hidden pointers and wrong source/workflo
   await assert.rejects(candidateVersion(f), /version floor/);
   f.state.pointer = null; f.state.missing = true;
   assert.equal((await candidateVersion(f)).observedFloor, 1);
-  for (const runChanges of [{workflow_id: 373209005}, {event: 'pull_request'}, {head_sha: '0'.repeat(40)}, {run_attempt: 2}, {run_number: 704}]) {
+  for (const runChanges of [{workflow_id: 373209005}, {event: 'pull_request'}, {head_sha: '0'.repeat(40)}, {run_attempt: 2}, {run_number: 704},
+    {repository: {id: 99, full_name: f.env.GITHUB_REPOSITORY}}, {head_repository: {id: 99, full_name: f.env.GITHUB_REPOSITORY}}]) {
     f.state.runChanges = runChanges;
     await assert.rejects(candidateVersion(f), /run identity or workflow version epoch/);
   }
@@ -142,10 +144,11 @@ test('archive measurement binds the actual artifact metadata and expanded upload
   const candidate = await main(['receipt', versionFile, archive.relative], f);
   const uploaded = {id: 4242, digest: 'sha256:' + 'a'.repeat(64), expired: false, size_in_bytes: 1500,
     name: `app-native-candidate-${admission.runNumber}-${admission.sourceCommit}-${admission.runId}-${admission.runAttempt}`,
-    workflow_run: {id: Number(admission.runId), head_sha: admission.sourceCommit}};
+    workflow_run: {id: Number(admission.runId), head_sha: admission.sourceCommit, head_branch: 'main',
+      repository_id: 1396333361, head_repository_id: 1396333361}};
   const options = {...f, archive: archive.relative, env: {...f.env, ALPHA_CANDIDATE_ARTIFACT_ID: '4242',
     ALPHA_CANDIDATE_ARTIFACT_SHA256: 'a'.repeat(64)}, api: args => {
-      assert.deepEqual(args, ['repos/eliza-research/alphaphone/actions/artifacts/4242']); return uploaded;
+      assert.deepEqual(args, ['repos/eliza-research/alpha/actions/artifacts/4242']); return uploaded;
     }};
   const files = fs.readdirSync(archive.output);
   const expandedBytes = files.reduce((sum, file) => sum + fs.statSync(path.join(archive.output, file)).size, 0);

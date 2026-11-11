@@ -135,6 +135,13 @@ checks anonymous readback. Merging source does not publish an application update
 New builds read the `app-stable-alphacompute` release. The previous package
 reads `app-stable`. Publication keeps each package on its own release and
 checks retained versions on both. Android may require installation confirmation.
+New builds use the canonical `eliza-research/alpha` URL. Previously issued
+GitHub release URLs rely on the redirect from the former repository name.
+Protected release jobs check the immutable repository and owner IDs. The
+release owner applies the reviewed workflow reference allowlist in
+[`scripts/ci/private-artifact-identity.json`](scripts/ci/private-artifact-identity.json)
+to the existing Workload Identity Federation provider before protected signing
+or publication uses private artifact storage.
 
 An automatic attempt that loses idle HOME after verifying its APK can retain
 that one file for a later attempt in the same process. Reuse checks the complete

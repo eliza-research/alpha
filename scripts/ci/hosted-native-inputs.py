@@ -133,7 +133,7 @@ def verify_component(component, reviewed):
 
 
 def acquire(root, env, plan, plan_digest, reviewed, inventory):
-    require(env.get('GITHUB_REPOSITORY') == embedding.REPOSITORY, 'Canonical repository required')
+    require(embedding.canonical_repository(env), 'Canonical repository required')
     token = env.get('GH_TOKEN')
     require(token, 'Native artifact access token unavailable')
     source = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()

@@ -40,7 +40,8 @@ object AlphaQsDefaultsPolicy {
 }
 val stock="internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery"
 val defaultLayouts=listOf(${defaults.map(value=>JSON.stringify(value)).join(',')})
-val legacyTile="custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile)"
+val legacyPackage=listOf("ai","elizaresearch","alphaphone").joinToString(".")
+val legacyTile="custom("+legacyPackage+"/.AlphaQuickSettingsTile)"
 val legacyCustom="flashlight,"+legacyTile+",wifi"
 val currentCustom="flashlight,"+AlphaQsDefaultsPolicy.ALPHA+",wifi"
 val duplicateCustom=legacyTile+","+currentCustom

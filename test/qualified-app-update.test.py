@@ -96,12 +96,18 @@ class QualifiedUpdateTest(unittest.TestCase):
         if "/compare/" in endpoint:
             source = endpoint.split("/compare/")[1].split("...")[0]
             return {"status": "ahead", "merge_base_commit": {"sha": source}}
-        if endpoint.endswith("/actions/runs/100"):
-            return {"status": "completed", "conclusion": "success", "event": "workflow_dispatch",
+        if endpoint.endswith("/actions/runs/100/attempts/1"):
+            repository = {"id": BRIDGE.REPOSITORY_ID, "full_name": BRIDGE.REPOSITORY,
+                          "owner": {"id": BRIDGE.REPOSITORY_OWNER_ID}}
+            return {"id": 100, "workflow_id": BRIDGE.SIGNING_WORKFLOW_ID, "status": "completed",
+                    "conclusion": "success", "event": "workflow_dispatch",
                     "head_sha": self.record["signingWorkflowCommit"], "head_branch": "main", "run_attempt": 1,
-                    "head_repository": {"full_name": BRIDGE.REPOSITORY}, "path": ".github/workflows/release-cloud-app-signing.yml"}
+                    "repository": repository, "head_repository": repository,
+                    "path": ".github/workflows/release-cloud-app-signing.yml"}
         if endpoint.endswith("/actions/artifacts/200"):
-            return {"expired": False, "workflow_run": {"id": 100, "head_sha": self.record["signingWorkflowCommit"]},
+            return {"id": 200, "expired": False, "workflow_run": {
+                        "id": 100, "head_sha": self.record["signingWorkflowCommit"], "head_branch": "main",
+                        "repository_id": BRIDGE.REPOSITORY_ID, "head_repository_id": BRIDGE.REPOSITORY_ID},
                     "name": "private-cloud-apk-delivery-100-1", "size_in_bytes": self.record["deliveryArtifactBytes"],
                     "digest": "sha256:" + self.record["deliveryArtifactSHA256"]}
         self.fail("Unexpected endpoint")
@@ -170,13 +176,15 @@ class QualifiedUpdateTest(unittest.TestCase):
 
     def test_wrong_workflow_fork_attempt_artifact_and_main_history_fail_before_private_access(self):
         mutations = [lambda value: value.update(path=".github/workflows/other.yml"),
+                     lambda value: value.update(workflow_id=BRIDGE.SIGNING_WORKFLOW_ID + 1),
                      lambda value: value.update(run_attempt=2), lambda value: value.update(event="pull_request"),
                      lambda value: value.update(head_branch="feature"),
-                     lambda value: value.update(head_repository={"full_name": "other/repository"})]
+                     lambda value: value.update(head_repository={**value["head_repository"], "id": 42}),
+                     lambda value: value.update(repository={**value["repository"], "owner": {"id": 42}})]
         for index, mutate in enumerate(mutations):
             def api(endpoint):
                 value = self.api(endpoint)
-                if endpoint.endswith("/actions/runs/100"):
+                if endpoint.endswith("/actions/runs/100/attempts/1"):
                     mutate(value)
                 return value
             with self.assertRaises(ValueError):
