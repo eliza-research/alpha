@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "c5eb8cda8caf5e4cfcc81e01fe6eb62f97ded615",
-  "head": "30ee5ba3445237d6ae6e82d698794521f169d267",
+  "baseCommit": "cbdfbbca0d5cebdd729f4404c4517cd78f7b516a",
+  "head": "15317284561239eaedbb4b9d9af1d3c535c380b7",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...30ee5ba3445237d6ae6e82d698794521f169d267",
+  "command": "Prior recorded comparison, extended by git rev-list e871f0ca87e941556fc50e48f255e943d6b0eb4f..15317284561239eaedbb4b9d9af1d3c535c380b7",
   "status": "diverged",
-  "aheadBy": 10,
-  "behindBy": 194,
+  "aheadBy": 19,
+  "behindBy": 380,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -50,6 +50,42 @@
     {
       "sha": "30ee5ba3445237d6ae6e82d698794521f169d267",
       "subject": "Format the restored recovery model with the current config"
+    },
+    {
+      "sha": "4b8a7a2c32d698843570fe67cab47e9cdc58163d",
+      "subject": "fix(host): allow cold Cloud speech websocket upgrades to finish"
+    },
+    {
+      "sha": "8d06f92118e9b9b7358c56247345fd7afbed8ee5",
+      "subject": "fix(automations): fence permanent deletion to the archived revision"
+    },
+    {
+      "sha": "3aff22199772c233dfc63f03f8c68d61d774a473",
+      "subject": "fix(calendar): bind absent-effect extraction to original request"
+    },
+    {
+      "sha": "83c2334554b8562d16340f1433d4200bc1287c1f",
+      "subject": "test(calendar): resolve approval mocks against current source"
+    },
+    {
+      "sha": "cd337bd1abeaa07b252a628187cbd589f04105f9",
+      "subject": "fix(calendar): use the current client clock for event creation"
+    },
+    {
+      "sha": "2570d39b5e36c856adfeccd8c5e9de39fa21768e",
+      "subject": "fix(calendar): return empty extraction to planner repair"
+    },
+    {
+      "sha": "386846588f6d2ed1dfc0154d372834800bba0f6d",
+      "subject": "fix(reminders): verify original request before creating reminder"
+    },
+    {
+      "sha": "e871f0ca87e941556fc50e48f255e943d6b0eb4f",
+      "subject": "test(reminders): bind progress fairness to model state"
+    },
+    {
+      "sha": "15317284561239eaedbb4b9d9af1d3c535c380b7",
+      "subject": "fix(reminders): validate legacy create routes against owner intent"
     }
   ],
   "pullRequests": [

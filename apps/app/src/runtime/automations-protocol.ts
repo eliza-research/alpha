@@ -165,17 +165,11 @@ export class AutomationsProtocol {
   throw new AutomationOutcomeError('This item cannot be changed here.');
  }
  async eraseRemoved(row:AutomationRow,signal:AbortSignal):Promise<void> {
-  if(!removedAutomation(row))throw new AutomationOutcomeError('Only recently deleted items can be deleted permanently.');
-  if(row.kind==='prompt'&&row.triggerId){
-   const current=await this.prompt(row.triggerId,signal);
-   if(current.revision!==row.record.trigger?.revision||typeof current.removedAt!=='number')throw new AutomationOutcomeError('This automation changed. Open it again before deleting.');
-   await this.deletePrompt(row.triggerId,signal);
-  }else if(row.kind==='reminder'||row.kind==='routine'){
-   const current=object(await this.request('/api/lifeops/definitions/'+automationId(row.id),'GET',undefined,signal));
-   const definition=object(current.definition??current);
-   if(definition.status!=='archived'||definition.updatedAt!==row.record.definition?.updatedAt)throw new AutomationOutcomeError('This item changed. Open it again before deleting.');
-   await this.deleteDefinition(row.id,signal);
-  }else throw new AutomationOutcomeError('Permanent deletion is unavailable for this item.');
+  if(row.kind!=='prompt'||!row.triggerId||!removedAutomation(row)||row.record.permanentDeletion!==true)throw new AutomationOutcomeError('Permanent deletion is unavailable for this item.');
+  const revision=row.record.trigger?.revision;
+  if(typeof revision!=='string'||!/^[a-f0-9]{64}$/.test(revision))throw new AutomationOutcomeError('Open Recently deleted again before deleting.');
+  const result=object(await this.request('/api/triggers/'+automationId(row.triggerId)+'/erase','POST',{expectedRevision:revision},signal));
+  if(result.ok!==true||result.erased!==true||result.id!==row.triggerId)throw Error('Permanent deletion could not be confirmed.');
   const remaining=await this.removed(signal);
   if(remaining.issues.length||remaining.rows.some(value=>value.key===row.key))throw Error('Permanent deletion could not be confirmed.');
  }
@@ -192,7 +186,7 @@ export class AutomationsProtocol {
   return list(result.triggers).map(value=>{
    const trigger=object(value),id=automationId(trigger.id);
    if(typeof trigger.removedAt!=='number'||typeof trigger.revision!=='string'||!/^[a-f0-9]{64}$/.test(trigger.revision))throw Error('Invalid removed automation.');
-   return automation({id:'trigger:'+id,type:'coordinator_text',title:trigger.displayName,description:trigger.instructions,status:'removed',enabled:false,triggerId:id,trigger,schedules:[trigger]});
+   return automation({id:'trigger:'+id,type:'coordinator_text',title:trigger.displayName,description:trigger.instructions,status:'removed',enabled:false,triggerId:id,trigger,schedules:[trigger],permanentDeletion:result.permanentDeletion===true});
   });
  }
  async changePromptRecovery(row:AutomationRow,operation:'archive'|'restore',signal:AbortSignal):Promise<void> {

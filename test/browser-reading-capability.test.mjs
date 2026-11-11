@@ -95,7 +95,7 @@ test("the renderer and the native side say the same words", () => {
   assert.match(message, /Update Android System WebView\.$/);
 });
 
-test("the renderer checks Android reading support before preparing speech or a page excerpt", () => {
+test("the renderer checks Android reading support before preparing any speech route or excerpt", () => {
   assert.match(adapter, /const readingSupport = Capacitor\.isNativePlatform\(\) \? createReadingSupport\(\(\) => Browser\.readingSupport\(\), \(\) => refresh\(\)\) : undefined;/);
   assert.match(adapter, /if \(browserActive && !browserWasActive\) void readingSupport\?\.check\(\);/, "asked when the browser opens, so the menu already knows");
   const read = adapter.slice(adapter.indexOf("async function readPage()"), adapter.indexOf("async function askPage()"));
@@ -104,7 +104,7 @@ test("the renderer checks Android reading support before preparing speech or a p
   assert.ok(ask.indexOf("if(await readingUnsupported())return;") > 0 && ask.indexOf("if(await readingUnsupported())return;") < ask.indexOf("Browser.reviewQuestion"), "Ask about page refuses before preparing an excerpt");
   assert.match(adapter, /report\(new Error\(READING_UNSUPPORTED_MESSAGE\)\)/);
   assert.match(adapter, /readingUnavailable:readingSupport\?\.state==='unavailable',readingNote:READING_UNSUPPORTED_MESSAGE,/);
-  assert.match(template, /<sc-if value="\{\{browser\.pageContentAvailable\}\}"><button[^>]+aria-label="Ask about page"/);
+  assert.doesNotMatch(template, /aria-label="Page reading unavailable"/);
 });
 
 test("each refusal carries its own reject code, so the renderer never parses message text", () => {
@@ -121,7 +121,7 @@ test("each refusal carries its own reject code, so the renderer never parses mes
 });
 
 
-test('Browser keeps guarded page questions while Read aloud is absent from its menu',()=>{
+test('Browser menu omits Read aloud and retains available page questions',()=>{
  const match=/readAloudAvailable:([^,]+),/.exec(adapter);assert.ok(match);
  for(const native of [true,false])for(const cloud of [true,false]){
   const available=new Function('Capacitor','cloudRuntimeEnabled','return '+match[1])({isNativePlatform:()=>native},cloud);
@@ -130,8 +130,7 @@ test('Browser keeps guarded page questions while Read aloud is absent from its m
  // Render the real menu guards through dc-lite: a source-shape assertion alone
  // previously accepted an unsupported compound expression that hid the control.
  const menuRows=template.split('\n').filter(row=>row.includes('aria-label="Read aloud"')||row.includes('aria-label="Ask about page"'));
- assert.equal(menuRows.length,1,'the actual page-question menu control is captured');
- assert.doesNotMatch(menuRows[0],/aria-label="Read aloud"/);
+ assert.equal(menuRows.length,1,'only the page question control remains in the Browser menu');
  const dom=new JSDOM(menuRows.join('\n'));
  try{
   const guarded=label=>{

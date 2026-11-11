@@ -48,6 +48,9 @@ for(const [name,guard] of [
 ])test(`foreground ${name} still withdraws the native page`,async()=>{
  const h=fixture();await h.update();guard(h);await h.update();assert.equal(h.present.at(-1).id,null);
 });
+test('the menu keeps the native page drawn while the host owns page input',async()=>{
+ const h=fixture();await h.update();const before=h.present.at(-1);h.state.menu=true;await h.update();const after=h.present.at(-1);assert.equal(after.id,before.id);assert.equal(after.height,before.height);assert.equal(after.hostRects[0].height,before.height);
+});
 test('a disposed adapter neither persists nor presents',async()=>{
  const h=fixture();h.context.disposed=true;await h.update();assert.equal(h.saves,0);assert.equal(h.present.length,0);
 });

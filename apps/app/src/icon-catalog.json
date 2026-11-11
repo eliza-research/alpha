@@ -149,7 +149,8 @@
     "stHeadph": "headphones",
     "stCar": "car",
     "stUndo": "undo-2",
-    "stAt": "at-sign"
+    "stAt": "at-sign",
+    "private": "venetian-mask"
   },
   "aliases": {
     "edit": "pencil"
