@@ -981,6 +981,7 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
 .alpha-share-panel .share-row::before { content:""; width:21px; height:21px; flex:none; background:currentColor; mask:var(--share-icon) center/contain no-repeat; }
 .alpha-share-panel [role="status"]:empty { display:none; }
 
+.files-empty-state{display:flex;flex-direction:column;align-items:center;gap:12px;padding:96px 16px 16px;color:var(--mut);font-size:15px;text-align:center}
 [data-alpha-popup] .files-actions-menu[role="dialog"] { bottom:auto!important; height:auto; max-height:calc(100% - var(--alpha-dock-reserve,108px) - 112px)!important; }
 
 .file-sort-icon{display:block;width:20px;height:20px;flex:none;background:currentColor}.file-sort-direction{display:block;width:12px;height:16px;flex:none;background:currentColor;margin-left:-9px}
