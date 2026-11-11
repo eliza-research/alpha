@@ -19,7 +19,7 @@ const gate = snapshot => { const box = vm.createContext({isAndroid: true, testMo
 test('the required sign-in page follows a refused sign-in, never another error while offline', () => {
   const offline = {cloudAccount: null, startupResolved: true, residentSavedCredential: true, residentPlanNotice: 'offline'};
   for (const [name, snapshot, required] of [
-    ['offline, saved credential, start error', {...offline, error: 'Your agent stopped. Retry in Settings › Agent connection.', errorKind: null}, false],
+    ['offline, saved credential, start error', {...offline, error: 'Agent stopped', errorKind: null}, false],
     ['offline, saved credential, unconfirmed provider removal', {...offline, error: 'AI could not be confirmed off.'}, false],
     ['offline, saved credential, refused sign-in', {...offline, error: 'Sign in to Eliza Cloud again to turn AI back on.', errorKind: 'sign-in-rejected'}, true],
     ['signed out', {cloudAccount: null, startupResolved: true, error: ''}, true],
@@ -53,8 +53,8 @@ test('every upstream failure kind maps to owner copy with its kind; an unknown k
   const unknown = mapper().map('future_kind');
   assert.equal(unknown instanceof AlphaClientError, false);
   assert.equal(unknown.message, 'The agent could not complete this response.');
-  assert.equal(mapper().map('context_overflow').message, 'That was too long for your agent. Shorten it or start a new chat.');
-  assert.match(mapper().map('handler_error').message, /Part of it may already be done/);
+  assert.equal(mapper().map('context_overflow').message, 'Too long');
+  assert.match(mapper().map('handler_error').message, /Partly done/);
 });
 test('a resident provider failure rechecks the plan; a rejected key goes to sign-in; AI believed bound offers a provider check', () => {
   const issue = mapper();
@@ -62,7 +62,7 @@ test('a resident provider failure rechecks the plan; a rejected key goes to sign
   const rejected = mapper().map('provider_issue', 'PROVIDER_AUTH_REJECTED');
   assert.equal(rejected.planAction, 'sign-in'); assert.equal(rejected.message, 'Sign in to Eliza Cloud again to turn AI back on.');
   const noProvider = mapper().map('no_provider');
-  assert.equal(noProvider.planAction, 'provider'); assert.equal(noProvider.message, 'AI isn’t connected right now. Check Eliza Cloud again.');
+  assert.equal(noProvider.planAction, 'provider'); assert.equal(noProvider.message, 'AI offline');
   assert.equal(mapper({residentInference: 'unavailable'}).map('no_provider').planAction, 'plan');
 });
 

@@ -12,7 +12,14 @@ import type {MapBasemap} from '../../../../.eliza/client-features/plugins/plugin
 import { globalBasemap } from '../maps/basemap';
 import { initializeRegionalMaps, regionalMap, regionalDiagnostics, regionalMapsConfigured } from '../maps/regional-provider';
 import { initializeCloudMaps, cloudMapsCoverage, cloudMapsDiagnostics, cloudMapsBasemap } from '../maps/cloud-maps';
-import { describeMapsDisclosure, insideCloudCoverage } from '../maps/cloud-provider';
+import { insideCloudCoverage, type CloudMapsDisclosure } from '../maps/cloud-provider';
+
+/** Who receives searches, in ≤4 words (full recipients and roles are in the provider's own disclosure). */
+function searchRecipients(disclosure: CloudMapsDisclosure | undefined): string {
+  if (!disclosure) return '';
+  const names = [...new Set(disclosure.recipients.map(recipient => recipient.name))];
+  return names.length ? `Search → ${names.join(', ')}` : '';
+}
 import { NativeMapsLocation, locationPermissionGranted } from '../maps/native-location';
 import { bindAgentNavigation, keepCloudMapsCoverage, residentMapsNavigationPort } from '../maps/agent-navigation';
 import { publishMapsSelection, clearMapsSelection } from '../maps/agent-context';
@@ -48,7 +55,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   let pendingHandoff: {query:string}|undefined, mapsController:MapsController|undefined;
   const active=()=>!disposed&&!document.hidden&&!!api?.isActive();
   const dropPlane=()=>{++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;mapCopyright='';plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;};
-  const navigationVoice=new NavigationVoice(error=>screen.notify((error instanceof Error?error.message+' ':'')+'Voice guidance paused. Tap Enable voice guidance to retry.'));
+  const navigationVoice=new NavigationVoice(error=>screen.notify((error instanceof Error?error.message+' ':'')+'Voice paused'));
   const background=new BackgroundNavigation(registerPlugin<NavigationBridge>('AlphaMapsTransport'),()=>Capacitor.isNativePlatform());
   // A Cloud read already made or under way for this account is not repeated: a second read would
   // uninstall the provider an open Maps search is using. An account change retires it first (cloud-maps.ts).
@@ -73,7 +80,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     background,
     share: shareMap,
     openWebsite: url => {
-      if (Capacitor.isNativePlatform()) void DailyApps.perform({ action: 'browser', url: url.href }).then(result => { if (result.status !== 'opened') api?.toast(result.message || 'The browser could not open.'); }, () => api?.toast('The browser could not open.'));
+      if (Capacitor.isNativePlatform()) void DailyApps.perform({ action: 'browser', url: url.href }).then(result => { if (result.status !== 'opened') api?.toast(result.message || 'Couldn’t open'); }, () => api?.toast('Couldn’t open'));
       else window.open(url.href, '_blank', 'noopener,noreferrer');
     },
     active,
@@ -88,7 +95,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       available: () => DailyApps.capabilities().then(result => result.actions.some(row => row.action === 'maps' && row.available)),
       open: (text: string) => DailyApps.perform({ action: 'maps', query: text }).then(result => ({ opened: result.status === 'opened', message: result.message })),
     } } : {}),
-    deniedLocationHelp: isAndroid ? 'Allow location in app settings, or enter coordinates.' : 'Allow location in browser site settings, or enter coordinates.',
+    deniedLocationHelp: 'Location off',
     publishContext: publishMapsSelection,
     clearContext: clearMapsSelection,
   });
@@ -122,9 +129,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         }
       } catch { /* A thrown read says nothing about the event. */ }
       if (returningToEvent !== attempt || !returnIsCurrent(currentApi, raw)) return;
-      if(outcome==='permission'){currentApi.toast('Allow Calendar access to check this event.');return;}
-      if(outcome==='unknown'){currentApi.toast("Can't check this event. Try again.");return;}
-      if(outcome==='missing'){currentApi.set({fromEvent:null});currentApi.toast('That event was deleted or moved.');return;}
+      if(outcome==='permission'){currentApi.toast('Allow Calendar');return;}
+      if(outcome==='unknown'){currentApi.toast('Couldn’t check');return;}
+      if(outcome==='missing'){currentApi.set({fromEvent:null});currentApi.toast('Event moved');return;}
       const stack=(api?.S.stack||[]).slice(0,-1);
       // Unwind this visit's Maps layers (route, place, results, search text) as system Back would, so
       // nothing of the hand-off is left to show or replay when Maps is opened again.
@@ -176,16 +183,18 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const cloudFailure = cloudMapsDiagnostics();
     const statusText = !regionalMapsConfigured && cloudFailure.error === 'unconfigured' &&
       (status.text.startsWith('Connect a Maps provider') || status.text === cloudFailure.message)
-      ? 'Maps is unavailable right now. Try again later.' : status.text;
+      ? 'Maps unavailable' : status.text;
     const directionsOpen = view.mode === 'directions' || view.mode === 'origin' || view.mode === 'navigation';
     const isPlace = view.mode === 'place', isResults = view.mode === 'results' || view.mode === 'origin', isNav = view.mode === 'navigation';
     const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;
+    // The ⓘ and recenter buttons share one baseline: just above an open sheet, else above the dock.
+    const recBottom = isPlace || isResults || (directionsOpen && !isNav) ? sheetHeight + 14 : 124;
     Object.assign(data, {
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
-      searchDisclosure:region?'':describeMapsDisclosure(cloudMapsCoverage()?.disclosure),
+      searchDisclosure:region?'':searchRecipients(cloudMapsCoverage()?.disclosure),
       cloudCredit:cloudCredit(directionsOpen),
-      notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:directionsOpen||isPlace||isResults?sheetHeight+10:130,
+      notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:recBottom,
       mapRef:(element:HTMLElement)=>{
         if(!element||!basemap)return;
         if(element!==planeElement||planeBasemap!==basemap){
@@ -204,13 +213,13 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       nativeLocationState:status.location,nativeMapState:status.map,nativeMapStatus:status.mapText,
       nativeLocationLabel:status.locationLabel,nativeLocationDenied:status.locationDenied,nativeStatusControls:status.controls,
       nativeLocationHelp:status.locationHelp,
-      nativeLocationSettings:()=>{if(!active())return;void device.openSettings({page:'privacy'}).catch(()=>{if(!disposed&&currentApi.isActive())screen.notify('Location settings could not be opened. Check device or browser permissions, or enter coordinates.');});},
+      nativeLocationSettings:()=>{if(!active())return;void device.openSettings({page:'privacy'}).catch(()=>{if(!disposed&&currentApi.isActive())screen.notify('Couldn’t open settings');});},
       nativeManualLocation:()=>{if(!active())return;screen.manualLocation();queueMicrotask(()=>{if(active())document.querySelector<HTMLInputElement>('input[aria-label="Search places"]')?.focus();});},
       nativeMapRetry:status.mapRetry,
       retryNativeMap:()=>{if(!active())return;dropPlane();screen.retryMap();},
       mode:view.mode==='navigation'?'nav':view.mode==='directions'?'dir':view.mode, isBase:view.mode==='base',isResults,isPlace,isDir:view.mode==='directions',isNav,
       showSearch:view.showSearch, showRec:!isNav||view.map.overlay.follow===false, grid: '', major: '', fwy: '', water: '', parks: '', rwy: '', routeD: '', doneD: '', hasRoute: false, pins: [], labels: [], meCss: 'display:none;',
-      mapDown: () => {}, mapUp: () => {}, q: view.query, hasQ: !!view.query, searchIcon:view.searchLead==='back'?'M15 5l-7 7 7 7':data.searchIcon, searchLabel: view.searchLead === 'back' ? 'Back' : 'Search',
+      mapDown: () => {}, mapUp: () => {}, q: view.query, hasQ: !!view.query, searchIcon:view.searchLead==='back'?'M15 5l-7 7 7 7':data.searchIcon, searchLabel: view.searchLead === 'back' ? 'Back' : 'Search', leadIsSearch: view.searchLead !== 'back',
       searchLead: () => screen.searchLead(),
       onQ: (event: Event) => screen.setQuery((event.target as HTMLInputElement).value),
       focusQ: () => screen.focusQuery(),
@@ -221,9 +230,9 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       savedRows: view.saved.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: coordLabel(item.coordinate), d: PIN, go: () => screen.chooseSaved(item.id) })),
       results: view.results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => screen.choose(row.key) })),
       hasResults: view.hasResults, noResults: view.noResults, emptyQ: view.emptyQuery,
-      recenter: () => screen.recenter(), recBottom: isPlace ? 414 : view.mode === 'results' ? 534 : 124, recCss: '',
+      recenter: () => screen.recenter(), recBottom, recCss: '',
       sheetH: sheetHeight, sheetSw: { down: () => {}, up: () => {} }, sheetTap: () => {},
-      askAlpha: () => currentApi.send(view.query || 'Help me with Maps.'), noResTxt: `Ask ${currentApi.name} about this search`,
+      askAlpha: () => currentApi.send(view.query || 'Help me with Maps.'), noResTxt: 'Ask',
     });
     const place = view.place;
     if (place) {
@@ -337,11 +346,11 @@ export function installMapsChatAdapter(Component:Bag){
  async function answer(shell:Bag,id:string,value:string,current:()=>boolean){
   const snapshot=connectionController.getSnapshot(),done=answers(shell);
   if(done.has(id)||!shell.live||document.hidden||snapshot.open||snapshot.busy||shell.S().typing||shell.S().recording||!current())return;
-  if(String(shell.S().draft||'').trim()){shell.toast('Keep or send your chat draft before answering.');return;}
+  if(String(shell.S().draft||'').trim()){shell.toast('Chat draft open');return;}
   // send() refuses a prompt while a message edit is open; do not mark the answer as sent.
-  if(shell.messageEditTarget){shell.toast('Finish or cancel the message you are editing first.');return;}
+  if(shell.messageEditTarget){shell.toast('Editing message');return;}
   done.add(id);if(shell.live)shell.setState({});
-  try{if(!current()){done.delete(id);return;}await shell.send(value);}catch(error){done.delete(id);if(shell.live){shell.setState({});shell.toast(error instanceof Error?error.message:'The answer was not sent.');}}
+  try{if(!current()){done.delete(id);return;}await shell.send(value);}catch(error){done.delete(id);if(shell.live){shell.setState({});shell.toast(error instanceof Error?error.message:'Not sent');}}
  }
  p.renderVals=function(){
   const out=render.call(this),msgs=out.msgs||[],done=answers(this);

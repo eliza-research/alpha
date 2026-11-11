@@ -38,7 +38,7 @@ test('web reading stays unavailable for blank, loading, stopped and external-onl
 
  await page.getByRole('button',{name:'Menu',exact:true}).click();await unavailable();
  await menu.getByRole('button',{name:'Stop loading',exact:true}).click();
- await expect(page.getByText('Loading stopped. Reload to open this page.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Stopped',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Menu',exact:true}).click();await unavailable();
  release();await menu.getByRole('button',{name:'Reload page',exact:true}).click();
  await expect(page.frameLocator('iframe[title="Website"]').getByRole('heading',{name:'Loaded reading fixture'})).toBeVisible();

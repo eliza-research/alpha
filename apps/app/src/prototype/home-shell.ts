@@ -64,7 +64,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     if (fresh) { owner.toast(error); launchReported = true; }
     else if (failed && !afterLaunch) {
       const listed = new Set(snapshot.apps.map(appKey));
-      if (snapshot.favorites.some(key => !listed.has(key))) owner.toast("Apps couldn't load. Open Apps to try again.");
+      if (snapshot.favorites.some(key => !listed.has(key))) owner.toast('Couldn’t load');
     }
   };
   const shell = createMobileShellLauncher({
@@ -280,8 +280,8 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
         const target: {packageName: string; activityName?: string; user?: string} = {packageName: app.packageName};
         if (app.activityName) target.activityName = app.activityName;
         if (app.user) target.user = app.user;
-        appInfo(target).catch((error: unknown) => {
-          self.toast?.(`${app.label} info could not be opened. ${error instanceof Error && error.message ? error.message : 'Unavailable'}`);
+        appInfo(target).catch(() => {
+          self.toast?.('Couldn’t open');
           void launcher.refresh();
         });
       } : undefined,

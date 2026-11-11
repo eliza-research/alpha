@@ -31,28 +31,28 @@ export function openWorkflowHistory(read:()=>Bag,write:(patch:Bag)=>void,isRunni
  const dialog=current=document.createElement('dialog');dialog.setAttribute('aria-label','Workflow history');dialog.style.cssText='box-sizing:border-box;width:min(380px,92vw);max-height:85dvh;overflow:auto;border:0;border-radius:20px;padding:24px;background:var(--bg,#fff);color:var(--fg,#111);font:16px/1.5 system-ui';
  const shell=document.querySelector('.os');if(shell)for(const name of ['--bg','--fg','--s2'])dialog.style.setProperty(name,getComputedStyle(shell).getPropertyValue(name));
  const heading=document.createElement('h2');heading.textContent='Workflow history';
- const description=document.createElement('p');description.textContent='Download a copy of local workflow definitions and run history. Remove finished runs to free space; running and interrupted records are retained. Saved notes, messages and notification receipts remain available.';
- const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-label','Run history status');status.textContent=error||(plan?.pending||isRunning()?'Wait for running workflows to finish or cancel them first.':`${plan!.count} finished runs can be removed.`);
+ const description=document.createElement('p');description.hidden=true;
+ const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-label','Run history status');status.textContent=error||(plan?.pending||isRunning()?'Runs active':`${plan!.count} finished`);
  const download=document.createElement('a');download.textContent='Download history';download.download='alpha-workflow-history.json';const url=URL.createObjectURL(new Blob([snapshot],{type:'application/json'}));download.href=url;
  const remove=document.createElement('button');remove.textContent='Remove finished runs';remove.disabled=!plan||!plan.count||plan.pending||isRunning();
  let confirming=false;
  remove.onclick=()=>{
   if(!plan)return;
-  if(!confirming){confirming=true;remove.textContent='Confirm remove finished runs';status.textContent='This removes finished run logs and outputs from this app. Download history first if you want to retain them.';return;}
+  if(!confirming){confirming=true;remove.textContent='Confirm remove';status.textContent=`Remove ${plan.count} runs?`;return;}
   try{
    if(isRunning()||JSON.stringify(read())!==snapshot)throw Error('Workflow history changed. Close and reopen this dialog to review it again.');
-   write(plan.patch);remove.disabled=true;status.textContent=`Removed ${plan.count} finished runs.`;
-  }catch(cause){remove.disabled=true;status.textContent=cause instanceof Error?cause.message:'Could not save history. Close and reopen to inspect it.';}
+   write(plan.patch);remove.disabled=true;status.textContent=`${plan.count} removed`;
+  }catch(cause){remove.disabled=true;status.textContent=cause instanceof Error?cause.message:'Couldn’t save';}
  };
  const noticeAbort=new AbortController();
  const noticeHeading=document.createElement('h3');noticeHeading.textContent='Notification history';
- const noticeDescription=document.createElement('p');noticeDescription.textContent='Download notification text before freeing space. Opened and dismissed text will be removed; compact receipts remain to prevent duplicate notifications. Active notices stay available.';
+ const noticeDescription=document.createElement('p');noticeDescription.hidden=true;
  const noticeStatus=document.createElement('p');noticeStatus.setAttribute('role','status');noticeStatus.setAttribute('aria-label','Notification history status');
  let noticePlan:Awaited<ReturnType<typeof workflowNoticeHistory>>|undefined;
  noticeStatus.textContent='Loading notification history…';
  const noticeUrls:string[]=[];
  const noticeDownload=document.createElement('a');noticeDownload.textContent='Download notification history';noticeDownload.download='alpha-notification-history.json';noticeDownload.setAttribute('aria-disabled','true');
- const legacyDownload=document.createElement('a');legacyDownload.textContent='Download older notification history';legacyDownload.download='alpha-notification-history-older.json';legacyDownload.hidden=true;
+ const legacyDownload=document.createElement('a');legacyDownload.textContent='⤓ Older';legacyDownload.setAttribute('aria-label','Download older notification history');legacyDownload.download='alpha-notification-history-older.json';legacyDownload.hidden=true;
  const compact=document.createElement('button');compact.textContent='Free notification space';compact.disabled=true;
  const offer=(link:HTMLAnchorElement,raw:string)=>{const blob=URL.createObjectURL(new Blob([raw],{type:'application/json'}));noticeUrls.push(blob);link.href=blob;link.removeAttribute('aria-disabled');};
  const loadNotices=async()=>{
@@ -64,16 +64,16 @@ export function openWorkflowHistory(read:()=>Bag,write:(patch:Bag)=>void,isRunni
    offer(noticeDownload,recovery.raw??JSON.stringify({rows:[]}));
    if(recovery.legacy!==null&&(recovery.legacyChanged||recovery.legacy!==recovery.raw)){offer(legacyDownload,recovery.legacy);legacyDownload.hidden=false;legacyDownload.style.display='inline-block';}
    if(failure)throw failure;
-   noticeStatus.textContent=`${noticePlan!.eligible} opened or dismissed notices can be compacted. ${noticePlan!.state.archived?.length||0} compact receipts retained.`;
+   noticeStatus.textContent=`${noticePlan!.eligible} to free`;
    compact.disabled=!noticePlan!.eligible;
-  }catch(error){if(!noticeAbort.signal.aborted)noticeStatus.textContent=error instanceof Error?error.message:'Notification history needs recovery.';}
+  }catch(error){if(!noticeAbort.signal.aborted)noticeStatus.textContent=error instanceof Error?error.message:'Needs recovery';}
  };
  let noticeConfirm=false;
  compact.onclick=async()=>{
   if(!noticePlan)return;
-  if(!noticeConfirm){noticeConfirm=true;compact.textContent='Confirm free notification space';noticeStatus.textContent='Download notification history first to retain its text. Compact receipts will stay in this app.';return;}
+  if(!noticeConfirm){noticeConfirm=true;compact.textContent='Confirm free space';return;}
   compact.disabled=true;
-  try{const count=await compactWorkflowNotices(noticePlan.recovery,noticeAbort.signal);noticeStatus.textContent=`Freed space for ${count} notifications. Replay receipts retained.`;}catch(error){noticeStatus.textContent=error instanceof Error?error.message:'Could not save notification history. Reopen to inspect it.';}
+  try{const count=await compactWorkflowNotices(noticePlan.recovery,noticeAbort.signal);noticeStatus.textContent=`Freed ${count}`;}catch(error){noticeStatus.textContent=error instanceof Error?error.message:'Couldn’t save';}
  };
  const close=document.createElement('button');close.textContent='Close history';close.onclick=()=>finish();
  for(const item of [download,remove,noticeDownload,legacyDownload,compact,close])item.style.cssText='display:inline-block;min-height:44px;box-sizing:border-box;margin:4px;padding:10px;border:1px solid #999;border-radius:10px;color:inherit;background:var(--s2,#eee);font:inherit';

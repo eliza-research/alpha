@@ -77,7 +77,7 @@ export class WorkflowTriggerRuntime {
     const next={cursors:detected.cursors,queue};if(JSON.stringify({...state,triggerState:next}).length>2_000_000)throw Error('Workflow history is full. Remove finished runs before checking more triggers.');api.setView('workflows',{triggerState:next});
    }
    if(this.report){this.report='';api.setView('workflows',{localTriggerError:''});}
-  }catch(error){this.blocked=true;const message=error instanceof Error?error.message:'Workflow triggers could not be checked.';if(message!==this.report){this.report=message;api.setView('workflows',{localTriggerError:message});}}
+  }catch(error){this.blocked=true;const message=error instanceof Error?error.message:'Couldn’t check triggers';if(message!==this.report){this.report=message;api.setView('workflows',{localTriggerError:message});}}
   finally{this.scanning=false;}
   if(!this.stopped&&foreground()){
    const state=app(api,'workflows'),job=(state.triggerState?.queue||[]).find((job:TriggerJob)=>{const flow=state.flows.find((flow:Bag)=>flow.on&&String(flow.id)===job.flowId&&triggerDefinition(flow)===job.definition);return flow&&!this.busy(job.flowId)&&!(workflowUsesAgent(flow)&&api.localWorkflowBusy?.())&&(!workflowNeedsReview(flow,api.localWorkflowReady?.())||api.isActive()&&String(state.open)===job.flowId&&!document.querySelector('dialog[open]'));});

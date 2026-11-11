@@ -37,7 +37,7 @@ test.describe('notification',()=>{
   await expect(dialog.getByRole('textbox',{name:'Content excerpt'})).toHaveValue('Call the clinic\nAsk about Tuesday');
   // Verification codes are not placed in a draft.
   await dialog.getByRole('textbox',{name:'Content excerpt'}).fill('Your verification code is 481516');await dialog.getByRole('button',{name:'Use in conversation',exact:true}).click();
-  await expect(dialog.getByRole('status')).toHaveText('This excerpt may contain credentials or verification codes. Remove them before continuing.');
+  await expect(dialog.getByRole('status')).toHaveText('Remove secrets first');
   await dialog.getByRole('textbox',{name:'Content excerpt'}).fill('Call the clinic');await dialog.getByRole('button',{name:'Use in conversation',exact:true}).click();
   await expect(composer(page)).toHaveValue('Help me with this notification.\n\nSource: Alpha Phone notification\n\nCall the clinic');
   // The selection does not outlive the shade.

@@ -43,7 +43,7 @@ test.setTimeout(300_000);
 const contents='Public fact: twelve raised beds.\nPRIVATE OMIT: do not send this line.';
 const excerpt='Public fact: twelve raised beds.';
 const reply='The report says there are twelve raised beds.';
-const failClosed='Linked source changed or access is unavailable. Choose the matching source file again.';
+const failClosed='Source missing';
 
 // READ-ONLY views of persisted state.
 const notes=(page:Page)=>page.evaluate(async()=>JSON.parse((await (await import('/src/runtime/browser-notes-document.ts')).readBrowserNotesRaw())||'{"records":[]}').records as any[]);
@@ -109,7 +109,7 @@ test('J03: an Inbox attachment is saved to Files, analysed, and kept as a review
  await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
  const question=page.getByRole('dialog',{name:'Ask about selected content'});
  await expect(question.getByRole('textbox',{name:'Content excerpt'})).toHaveValue(contents);
- await expect(question.getByRole('checkbox',{name:'Link this source when saving the answer to Notes'})).toBeChecked();
+ await expect(question.getByRole('checkbox',{name:'Link source'})).toBeChecked();
  await question.getByRole('textbox',{name:'Content excerpt'}).fill(excerpt);
  await question.getByRole('button',{name:'Use in conversation',exact:true}).click();
  await expect(question).toHaveCount(0);
@@ -126,7 +126,7 @@ test('J03: an Inbox attachment is saved to Files, analysed, and kept as a review
  // ---- 3. Reviewed, editable summary note with a source reference ----
  expect(await notes(page)).toEqual([]);
  await page.getByText('Review summary note',{exact:true}).click();
- const review=page.getByRole('dialog',{name:'Save reviewed summary note'});
+ const review=page.getByRole('dialog',{name:'Save summary'});
  await expect(review.getByRole('textbox',{name:'Summary note text'})).toHaveValue(reply);
  await expect(review).toContainText('The note will link to garden-report.txt.');
  await review.getByRole('button',{name:'Cancel',exact:true}).click();

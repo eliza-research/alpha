@@ -43,7 +43,7 @@ async function askAboutDocument(page: Page) {
   await button(page, 'Ask Alpha').click();
   const question = page.getByRole('dialog', { name: 'Ask about selected content' });
   await expect(question.getByRole('textbox', { name: 'Content excerpt' })).toHaveValue(contents);
-  await expect(question.getByRole('checkbox', { name: 'Link this source when saving the answer to Notes' })).toBeChecked();
+  await expect(question.getByRole('checkbox', { name: 'Link source' })).toBeChecked();
   await question.getByRole('textbox', { name: 'Content excerpt' }).fill(excerpt);
   await question.getByRole('button', { name: 'Use in conversation', exact: true }).click();
   await expect(question).toHaveCount(0);
@@ -72,7 +72,7 @@ test('J03 on Android: a picked document, a trimmed question and the resident ans
   const card = page.getByRole('button', { name: /^Review summary note/ });
   await expect(card).toHaveCount(1);
   await card.click();
-  const review = page.getByRole('dialog', { name: 'Save reviewed summary note' });
+  const review = page.getByRole('dialog', { name: 'Save summary' });
   await expect(review.getByRole('textbox', { name: 'Summary note text' })).toHaveValue(answer);
   await expect(review).toContainText('The note will link to garden-report.txt.');
   await review.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -135,7 +135,7 @@ test('J03 on Android: a resident session that changes before Save withdraws the 
   // The restored conversation keeps the answer; the review bound to the earlier session is gone.
   await expect(bubble(page, answer)).toHaveCount(1, { timeout: 30_000 });
   await expect(page.getByRole('button', { name: /^Review summary note/ })).toHaveCount(0);
-  await expect(page.getByRole('dialog', { name: 'Save reviewed summary note' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Save summary' })).toHaveCount(0);
   expect(await savedNotes(page)).toEqual([]);
   await expectNoDevelopmentSurface(page);
   expect(await harness(page, f => f.unexpected)).toEqual([]);

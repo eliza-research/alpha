@@ -83,5 +83,5 @@ export function createStartupPermissionFlow(bridge: StartupPermissionBridge, opt
  * revocation of the earlier sign-in that arrives after it opens the card, so the owner still sees it.
  */
 export function lateReadyNotice(input: {silent: boolean; error?: string; message?: string}): boolean {
-  return input.silent && (!!input.error || !!input.message?.includes('did not confirm revoking'));
+  return input.silent && (!!input.error || !!input.message?.includes('check devices'));
 }

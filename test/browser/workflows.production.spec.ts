@@ -130,12 +130,12 @@ test('the list shows only the agent’s workflows; detail, Run with its receipt,
   // Detail: the reviewed steps and the agent's state.
   await openFlow(page, 'Agenda digest');
   await expect(page.getByText('Draft agenda', { exact: true }).first()).toBeVisible();
-  await expect(runStatus(page)).toHaveText('Paused on this agent');
+  await expect(runStatus(page)).toHaveText('Paused');
   // Run needs a second tap; the first sends nothing.
   await button(page, 'Run now').click();
-  await expect(runStatus(page)).toHaveText('Tap Run now again to start it.');
+  await expect(button(page, 'Confirm run')).toBeVisible();
   expect(await posts(page, '/run')).toEqual([]);
-  await button(page, 'Run now').click();
+  await button(page, 'Confirm run').click();
   await expect.poll(() => posts(page, '/run').then(rows => rows.length)).toBe(1);
   const [sent] = await posts(page, '/run');
   expect(sent.body).toMatchObject({ input: {}, expectedVersionId: 'agenda-v1' });
@@ -150,15 +150,15 @@ test('the list shows only the agent’s workflows; detail, Run with its receipt,
   // Enable takes a second tap; pause is immediate and confirmed by the agent.
   const toggle = button(page, 'Turn Agenda digest on or off');
   await toggle.click();
-  await expect(runStatus(page)).toHaveText('Tap the switch again to enable scheduled runs');
+  await expect(page.getByRole('status').filter({ hasText: /^Confirm$/ })).toBeVisible();
   expect(await posts(page, '/activate')).toEqual([]);
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-  await expect(runStatus(page)).toHaveText('Enabled on this agent');
+  await expect(runStatus(page)).toHaveText('On');
   expect(await posts(page, '/activate')).toHaveLength(1);
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-  await expect(runStatus(page)).toHaveText('Paused on this agent');
+  await expect(runStatus(page)).toHaveText('Paused');
   expect(await posts(page, '/deactivate')).toHaveLength(1);
   expect(await posts(page, '/run')).toHaveLength(1);
   expect(await agent(page, s => s.unexpected)).toEqual([]);
@@ -177,30 +177,30 @@ test('an approval waits for a second confirmation to approve or deny, and a runn
   await expect(save).toContainText('Save a note');
   // Approve: the first tap asks for confirmation and sends nothing.
   await save.getByRole('button', { name: 'Approve', exact: true }).click();
-  await expect(save.getByRole('button', { name: 'Confirm approval', exact: true })).toBeVisible();
+  await expect(save.getByRole('button', { name: 'Confirm approve', exact: true })).toBeVisible();
   expect(await posts(page, '/0')).toEqual([]);
-  await save.getByRole('button', { name: 'Confirm approval', exact: true }).click();
+  await save.getByRole('button', { name: 'Confirm approve', exact: true }).click();
   await expect(save).toContainText('approved');
   // Deny: the same second confirmation.
   await remove.getByRole('button', { name: 'Deny', exact: true }).click();
-  await expect(remove.getByRole('button', { name: 'Confirm denial', exact: true })).toBeVisible();
+  await expect(remove.getByRole('button', { name: 'Confirm deny', exact: true })).toBeVisible();
   expect(await posts(page, '/approvals/delete-review/0')).toEqual([]);
-  await remove.getByRole('button', { name: 'Confirm denial', exact: true }).click();
+  await remove.getByRole('button', { name: 'Confirm deny', exact: true }).click();
   await expect(remove).toContainText('denied');
   const decisions = await posts(page, '/0');
   expect(decisions.map(row => [row.path, row.body.approved])).toEqual([['/api/workflow/executions/run-approval/approvals/save-review/0', true], ['/api/workflow/executions/run-approval/approvals/delete-review/0', false]]);
   expect(decisions.map(row => row.body.requestDigest)).toEqual(['a'.repeat(64), 'd'.repeat(64)]);
-  await expect(reviews.getByRole('button', { name: /^(Approve|Deny|Confirm approval|Confirm denial)$/ })).toHaveCount(0);
+  await expect(reviews.getByRole('button', { name: /^(Approve|Deny|Confirm approve|Confirm deny)$/ })).toHaveCount(0);
   await button(page, 'Back to Reviewed note saver').click();
 
   // Cancel: a running execution, cancelled only on the confirming tap.
   await button(page, 'Back to workflows').click();
   await openFlow(page, 'Long running watch');
   await button(page, 'running execution').click();
-  await button(page, 'Cancel execution').click();
-  await expect(button(page, 'Confirm cancellation')).toBeVisible();
+  await button(page, 'Cancel run').click();
+  await expect(button(page, 'Confirm cancel')).toBeVisible();
   expect(await posts(page, '/cancel')).toEqual([]);
-  await button(page, 'Confirm cancellation').click();
+  await button(page, 'Confirm cancel').click();
   await expect.poll(() => posts(page, '/cancel').then(rows => rows.length)).toBe(1);
   await button(page, 'Back to Long running watch').click();
   await expect(button(page, 'cancelled execution')).toBeVisible();
@@ -215,10 +215,10 @@ test('a lost Run request stays outcome unknown until the owner sends the same su
   await openFlow(page, 'Agenda digest');
   await page.evaluate(() => { (window as any).workflowAgent.loseNextRun = true; });
   await button(page, 'Run now').click();
-  await button(page, 'Run now').click();
+  await button(page, 'Confirm run').click();
   await expect.poll(() => posts(page, '/run').then(rows => rows.length)).toBe(1);
   // Nothing is retried on its own, and another Run is blocked while the outcome is unknown.
-  await expect(runStatus(page)).toHaveText('Prior run outcome unknown — inspect history; repeat submission blocked');
+  await expect(runStatus(page)).toHaveText('Check before running again');
   await button(page, 'Run now').click();
   await page.waitForTimeout(500);
   expect(await posts(page, '/run')).toHaveLength(1);
@@ -229,11 +229,11 @@ test('a lost Run request stays outcome unknown until the owner sends the same su
   await openFlow(page, 'Agenda digest');
   const [lost] = await posts(page, '/run');
   expect(await agent(page, s => s.gets)).toContain(`/api/workflow/workflows/agenda/submissions/${lost.body.submissionId}`);
-  await expect(runStatus(page)).toHaveText('The agent has no run for your earlier request. Run now sends that same request again');
-  await button(page, 'Run now').click();
-  await expect(runStatus(page)).toHaveText('Your earlier run may not have arrived. Tap Run now again to resend it. It can only start once.');
+  await expect(runStatus(page)).toHaveText('Not received');
+  await button(page, 'Resend').click();
+  await expect(runStatus(page)).toHaveText('Not received · Resend once');
   expect(await posts(page, '/run')).toHaveLength(1);
-  await button(page, 'Run now').click();
+  await button(page, 'Confirm resend').click();
   await expect.poll(() => posts(page, '/run').then(rows => rows.length)).toBe(2);
   const [, resent] = await posts(page, '/run');
   // The owner's resend carries the original submission identity and reviewed version.
@@ -246,7 +246,7 @@ test('a lost Run request stays outcome unknown until the owner sends the same su
   await button(page, 'Workflows').click();
   await openFlow(page, 'Agenda digest');
   await expect(button(page, 'finished execution')).toHaveCount(1);
-  await expect(runStatus(page)).toHaveText('Paused on this agent');
+  await expect(runStatus(page)).toHaveText('Paused');
   expect(await agent(page, s => s.runs.agenda.length)).toBe(1);
   expect(await posts(page, '/run')).toHaveLength(2);
   expect(await agent(page, s => s.unexpected)).toEqual([]);

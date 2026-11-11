@@ -81,26 +81,26 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   const chooser = page.locator('.alpha-connection');
   await expect(chooser).toBeVisible();
   await chooser.getByText('Model provider', { exact: true }).click();
-  await expect(chooser.getByText('Not configured', { exact: true })).toBeVisible();
+  await expect(chooser.getByText('Not set', { exact: true })).toBeVisible();
   // The model is fixed; there is no editable model field.
   await expect(chooser.getByLabel('Model')).toHaveCount(0);
   await expect(chooser.getByText('Model: qwen-3.8-27b', { exact: true })).toBeVisible();
 
   await page.evaluate(() => { (window as any).providerFixture.reject = 'Cerebras did not accept this key. It was not saved.'; });
   await chooser.getByLabel('Cerebras API key').fill('synthetic-rejected-key');
-  await chooser.getByRole('button', { name: 'Save provider', exact: true }).click();
+  await chooser.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(chooser.getByRole('alert')).toContainText('Cerebras did not accept this key');
-  await expect(chooser.getByText('Not configured', { exact: true })).toBeVisible();
+  await expect(chooser.getByText('Not set', { exact: true })).toBeVisible();
 
   await page.evaluate(() => { (window as any).providerFixture.reject = ''; });
   await chooser.getByLabel('Cerebras API key').fill('synthetic-accepted-key');
-  await chooser.getByRole('button', { name: 'Save provider', exact: true }).click();
+  await chooser.getByRole('button', { name: 'Save', exact: true }).click();
   // A verified key is selected at once and the agent restarts with it; the chooser closes on it
   // (the receipt is a toast, not a message left in the closed sheet).
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'About', exact: true }).click();
-  const agentConnection = page.getByRole('button', { name: 'Connection help', exact: true });
+  const agentConnection = page.getByRole('button', { name: 'Status', exact: true });
   await expect(agentConnection).toContainText('Provider fixture');
   await agentConnection.click();
   await chooser.getByText('Model provider', { exact: true }).click();
@@ -112,12 +112,12 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   expect(configures.map((item: any) => item.requestId)).toEqual(['provider-lease-1', 'provider-lease-2']);
   expect(cancelled).toEqual(['provider-lease-1']);
 
-  await chooser.getByRole('button', { name: 'Remove key…', exact: true }).click();
-  await expect(chooser.getByText(/Remove the saved Cerebras key from this phone\?/)).toBeVisible();
-  await chooser.getByRole('button', { name: 'Keep key', exact: true }).click();
-  expect(await page.evaluate(() => (window as any).providerFixture.clears)).toBe(0);
-  await chooser.getByRole('button', { name: 'Remove key…', exact: true }).click();
   await chooser.getByRole('button', { name: 'Remove key', exact: true }).click();
+  await expect(chooser.getByText('Remove key?', { exact: true })).toBeVisible();
+  await chooser.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect(await page.evaluate(() => (window as any).providerFixture.clears)).toBe(0);
+  await chooser.getByRole('button', { name: 'Remove key', exact: true }).click();
+  await chooser.getByRole('button', { name: 'Remove', exact: true }).click();
   // Removal stops the agent that holds the key, deletes the key, then starts the agent again without it.
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   expect(await page.evaluate(() => { const f = (window as any).providerFixture; return { clears: f.clears, stops: f.stops }; })).toEqual({ clears: 1, stops: 1 });
@@ -128,11 +128,11 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   await aiConnection.getByRole('button', { name: 'Close Account', exact: true }).click();
   await page.getByRole('button', { name: 'About', exact: true }).click();
   await agentConnection.click();
-  await expect(chooser.getByText('Connected · On this device', { exact: true })).toBeVisible();
+  await expect(chooser.getByText('On this device', { exact: true })).toBeVisible();
   await chooser.getByText('Model provider', { exact: true }).click();
-  await expect(chooser.getByText('Not configured', { exact: true })).toBeVisible();
+  await expect(chooser.getByText('Not set', { exact: true })).toBeVisible();
   await expect(chooser.getByLabel('Cerebras API key')).toHaveValue('');
-  await expect(chooser.getByRole('button', { name: 'Remove key…', exact: true })).toHaveCount(0);
+  await expect(chooser.getByRole('button', { name: 'Remove key', exact: true })).toHaveCount(0);
   // Nothing in the page carries the key.
   expect(await page.content()).not.toContain('synthetic-accepted-key');
 });

@@ -153,9 +153,9 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
  await page.getByRole('button',{name:'Send',exact:true}).click();
  await page.getByText('Review summary note',{exact:true}).click();
- const summaryReview=page.getByRole('dialog',{name:'Save reviewed summary note'});
+ const summaryReview=page.getByRole('dialog',{name:'Save summary'});
  await expect(summaryReview.getByRole('textbox',{name:'Summary note text'})).toHaveValue(summary);
- await expect(summaryReview.getByRole('textbox',{name:'Action items, one per line'})).toHaveValue(actionText);
+ await expect(summaryReview.getByRole('textbox',{name:'Action items'})).toHaveValue(actionText);
  expect((await notes(page))[0]).toEqual(recorded);
  await summaryReview.getByRole('button',{name:'Save recording summary',exact:true}).click();
  await expect(summaryReview).toHaveCount(0);
@@ -249,11 +249,10 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  expect((await calendarReview.getByRole('paragraph').innerText()).split('\n')).toEqual([
   'Create event',
   '“Venue booking call”',
-  'Calendar: App calendar · Account: Alpha Phone',
+  'App calendar · Alpha Phone',
   `${zoned(eventStart)} – ${zoned(eventEnd)}`,
   `Time zone: ${eventZone} (this phone is set to ${source.timeZone})`,
-  'All day: no. This is a timed event.',
-  'Attendees: none. This change adds no attendees and sends no invitations.',
+  'No invites sent',
   'Location: Main hall',
   'From the venue meeting note',
  ]);

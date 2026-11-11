@@ -83,7 +83,7 @@ export async function readNoteAloud(text: string, owner: { noteId?: string } = {
   } catch (error) {
     if (noteReading !== reading || signal.aborted) return done('stopped');
     const cause = (cloudRuntimeEnabled ? cloudVoiceFailure(error) : null) || (error instanceof Error && !(error instanceof DOMException) && error.message ? error.message : '');
-    return done('failed', reading.state === 'reading' ? ['Reading stopped before the end.', cause || 'The note is unchanged.'].join(' ') : ['Couldn’t start reading.', cause || 'The note is unchanged.'].join(' '));
+    return done('failed', reading.state === 'reading' ? (cause ? `Stopped · ${cause}` : 'Stopped') : (cause ? `Couldn’t start reading · ${cause}` : 'Couldn’t start reading'));
   }
   finally { if (noteReading === reading) { noteReading = undefined; noteReadingChanged(); } }
 }
@@ -157,7 +157,7 @@ export function installLocalSpeechPlayback(Component: Shell) {
     const retiring=shell.stopVoiceConversation?.();
     const directReadAloud=developmentCartesiaVoiceEnabled;
     const cloud = selectVoiceRoute() === 'cloud'||directReadAloud;
-    const controller = new AbortController(), state: Reading = { id, text, controller, message: 'Waiting for the previous audio to stop…' };
+    const controller = new AbortController(), state: Reading = { id, text, controller, message: 'Waiting…' };
     let reached = false;
     const current=()=>!(shell.S().msgs||[]).some((row:Shell)=>row.from==='user'&&!knownUsers.has(row.id))&&states.get(shell)===state&&!controller.signal.aborted&&shell.live!==false&&!document.hidden&&!connectionController.getSnapshot().open&&selection()===binding&&shell.S().view===view&&['sheet','full'].includes(shell.S().chat)&&(shell.S().msgs||[]).some((row:Shell)=>row.id===id&&row.text===text&&JSON.stringify(row.messageBinding)===messageBinding);
     state.current=current;states.set(shell,state);cancelOwner=shell;cancelCurrent=()=>{stop(shell);refresh(shell);return state.pending;};refresh(shell);
@@ -169,7 +169,7 @@ export function installLocalSpeechPlayback(Component: Shell) {
       screenSpeechText(text);
       if (cloud && !developmentCloudVoiceEnabled && !directReadAloud && (!connectionController.getCloudEnvironment() || !connectionController.getCloudClient()?.credentialId)) { stop(shell);connectionController.openCloudAccount();return; }
       const voice = cloud ? createCloudVoice(directReadAloud?'direct':'cloud') : createOnDeviceVoice(); if (!voice) {stop(shell);return;}
-      state.message=cloud?'Preparing audio…':'Preparing audio on this phone…';refresh(shell);
+      state.message='Preparing audio…';refresh(shell);
       if ('playbackReady' in voice) {
         planLocalSpeech(text);
         if (!await voice.playbackReady(controller.signal)) throw new Error('On-device speech isn’t ready.');
@@ -186,7 +186,7 @@ export function installLocalSpeechPlayback(Component: Shell) {
       if (!current()) return;
       state.controller = undefined;
       const recovery = cloud ? cloudVoiceFailure(error) : null;
-      state.message = controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError') ? 'Reading stopped.' : recovery || (error instanceof Error ? error.message + (reached ? ' The complete message may not have been read.' : '') : 'Reading stopped before the end.');
+      state.message = controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError') ? 'Reading stopped.' : recovery || (error instanceof Error && !reached ? error.message : 'Stopped');
       refresh(shell);
     } finally {if(states.get(shell)===state&&!current()){stop(shell);refresh(shell);}}
   }
@@ -253,7 +253,7 @@ export function installLocalSpeechPlayback(Component: Shell) {
         copyMessage: async () => {
           if (!menu || menus.get(this) !== menu || menu.binding !== JSON.stringify(connectionController.getSnapshot().session)) return;
           try { await navigator.clipboard.writeText(visibleText); if (menus.get(this) === menu) { menu.notice = ''; menu.announcement = 'Copied.'; menu.copied=true; refresh(this);setTimeout(()=>{if(menus.get(this)===menu){menu.copied=false;refresh(this);}},1400); } }
-          catch { if (menus.get(this) === menu) { menu.copied=false; menu.announcement = ''; menu.notice = 'Copy unavailable. Select the message text to copy it.'; refresh(this); } }
+          catch { if (menus.get(this) === menu) { menu.copied=false; menu.announcement = ''; menu.notice = 'Copy failed'; refresh(this); } }
         },
         copyMessageLabel: opened&&menu?.copied?'Copied!':'Copy',
         copyMessageIcon: opened&&menu?.copied?out.ic.check:out.ic.copy,

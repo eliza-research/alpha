@@ -81,7 +81,7 @@ async function openDigests(page:Page){
 }
 async function createSchedules(page:Page){
  const panel=await openDigests(page);
- await expect(panel.getByText('Schedules run while this app is open. Missed times don’t run later.',{exact:true})).toBeVisible();
+ await expect(panel.getByRole('switch',{name:'Result checks',exact:true})).toBeVisible();
  await panel.getByText('Share a snapshot',{exact:true}).click();
  await panel.getByLabel('Label',{exact:true}).fill('Journey source');
  await panel.getByLabel('Snapshot text',{exact:true}).fill('Reviewed snapshot content');
@@ -93,8 +93,8 @@ async function createSchedules(page:Page){
  for(const [template,label,time] of [['morning','Morning','07:00'],['evening','Evening','19:00']] as const){
   await panel.getByLabel(label,{exact:true}).fill(time);
   await panel.getByRole('button',{name:`Review ${template} schedule`,exact:true}).click();
-  await expect(panel.getByText(new RegExp(`^Turn on the ${template} digest\\?\\s+Runs daily at ${time} \\(UTC\\) and reads the Journey source snapshot\\.`))).toBeVisible();
-  await expect(panel.getByText(/It can’t send email or act on your phone\. Digests use the configured development reply\.$/)).toBeVisible();
+  await expect(panel.getByText(new RegExp(`^Turn on ${template} digest at ${time}\\?\\s+Sends Journey source to agent AI$`))).toBeVisible();
+  await expect(panel.getByText('Development reply',{exact:true})).toBeVisible();
   await panel.getByRole('button',{name:'Confirm',exact:true}).click();
   await expect(panel.getByRole('region',{name:'Digest schedules'}).getByRole('listitem').filter({hasText:`${label} at ${time} (UTC) · Journey source · On`})).toHaveCount(1);
  }
@@ -183,7 +183,7 @@ test('journey D: morning and evening digests run once each, are retained and ack
  await panel.getByRole('button',{name:'Refresh',exact:true}).click();
  await expect(panel.getByRole('status')).toHaveText('Synced with this agent.');
  await expect(panel.getByRole('article')).toHaveCount(3);
- await expect(panel.getByText('Schedules run while this app is open. Missed times don’t run later.',{exact:true})).toBeVisible();
+ await expect(panel.getByRole('switch',{name:'Result checks',exact:true})).toBeVisible();
  await expect(panel.getByRole('region',{name:'Digest schedules'}).getByRole('listitem')).toHaveCount(2);
  // The panel labels it as not run, once, and shows no scripted output for it.
  const missedArticle=panel.getByRole('article').filter({hasText:'Oct 4, 2026, 7:00 AM'});

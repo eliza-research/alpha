@@ -98,7 +98,7 @@ async function fixture(compiled, savedOn) {
           return [id, request ? {owner: request.owner, kind: request.kind} : {owner: 0, kind: 'none'}];
         })),
         's.verified': read?.id ?? 0, 's.tier': read?.tier ?? 0, busy: open() && view.busy,
-        's.unverified': open() && /^Google connections could not be verified\./.test(view.notice),
+        's.unverified': open() && view.notice === 'Couldn’t verify',
         's.savedOn': p.access.calendarEdits, 's.permission': permission?.record ?? noPermission,
         's.choice': open() && !!p.button('Allow Calendar changes'), 's.dispatches': [...dispatches],
       };
@@ -128,7 +128,7 @@ async function fixture(compiled, savedOn) {
         else request.task.reject(Error('Injected account list failure'));
       });
     },
-    connectSettings() {return click(verified() ? 'Add Google account' : 'Connect Google account');},
+    connectSettings() {return click(verified() ? 'Add account' : 'Connect Google account');},
     async connectCalendar() {
       holdCapture = true;
       try {await click('Connect Google Calendar');} finally {holdCapture = false;}

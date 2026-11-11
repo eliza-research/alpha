@@ -41,7 +41,7 @@ for(const [name,options] of [['failed start',{credential:{credentialId:'revoked'
 });
 
 test('reconnects retire the session while busy, and the notice owner update carries that state',async()=>{
- // The real controller marks the connection busy before Continue / Check plan again / pairing
+ // The real controller marks the connection busy before Continue / Recheck / pairing
  // retires the session; the coordinator (tested directly) defers a null owner until it settles.
  const controller=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8'),adapter=readFileSync('apps/app/src/prototype/workflow-adapter.ts','utf8');
  assert.match(controller,/update\(\{ busy: true, backgroundWork: background, \.\.\.\(background \? \{\} : \{ open: true \}\), message, error: preserveError \? state\.error : '' \}\);\s*try \{ await action\(controller\.signal\); \}/);

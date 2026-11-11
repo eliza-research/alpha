@@ -14,7 +14,7 @@ export function checkinDisplayText(message: {role?:unknown;source?:unknown;text?
   if(!prose.trim()||/^[ \t]*(?:```|~~~)|\[\/?CHOICE\b/gim.test(prose))return;
   return prose.trimEnd();
 }
-const REVIEW_TEXT = 'Review this request on your phone before it can run.';
+const REVIEW_TEXT = 'Review on phone';
 export function browserNavigationSummary(url: string): string {
   const destination = new URL(url);
   if (destination.protocol !== 'https:') throw Error('Expected an HTTPS destination');
@@ -74,7 +74,7 @@ export function projectActionMessages(rendered: Message[], source: Message[]): M
       try { return {...message, displayText:browserNavigationSummary(stored.browserDestination), hasCalendarText:true}; } catch { return message; }
     }
     if (destination && message.cDigest && message.rows?.length) {
-      return {...message,hasCalendarText:false,rows:message.rows.map((row:Message,index:number)=>index===0?{...row,who:`Open ${new URL(destination).host}?`,text:'Open in Browser.'}:row)};
+      return {...message,hasCalendarText:false,rows:message.rows.map((row:Message,index:number)=>index===0?{...row,who:new URL(destination).host,text:'Open'}:row)};
     }
     return message;
   });
@@ -104,12 +104,12 @@ export const UPSTREAM_RUNTIME_ERROR_NOTICE = systemNoticeText('runtime-error');
 const UPSTREAM_COMBINED_NOTICE = `${UPSTREAM_MODEL_UNAVAILABLE_NOTICE}\n---\n${UPSTREAM_RUNTIME_ERROR_NOTICE}`;
 
 /** A model-unavailable notice in Alpha's words: the owner's own recovery step. */
-export const MODEL_UNAVAILABLE_NOTICE = 'Your agent cannot reply yet. Choose an AI provider in Settings, then send your message again.';
+export const MODEL_UNAVAILABLE_NOTICE = 'No AI provider · Open Settings';
 
 /** A runtime-error notice that arrived while the owner's latest message was unanswered. */
-export const RUNTIME_ERROR_NOTICE = 'Part of your agent stopped working. Send your message again in a moment.';
+export const RUNTIME_ERROR_NOTICE = 'Agent error · Send again';
 /** A runtime-error notice that arrived with nothing waiting (a service failing at start, for example). */
-export const RUNTIME_ERROR_BACKGROUND_NOTICE = 'Part of your agent stopped working. Some features may not work until it recovers.';
+export const RUNTIME_ERROR_BACKGROUND_NOTICE = 'Agent degraded';
 
 /** The upstream notice a stored assistant text is, if any. */
 export function systemNoticeKind(text: unknown): SystemNoticeKind | undefined {
@@ -176,7 +176,7 @@ export type MapsShareChoice={id:string;options:{label:string;value:string}[]};
 const MODES:Record<string,string>={drive:'Driving',walk:'Walking',bicycle:'Cycling',transit:'Transit'};
 const placeLine=(place:MapsCardPlace)=>place.formattedAddress?`${place.name}, ${place.formattedAddress}`:place.name;
 // Alpha's agent context carries no device position, so the locate card cannot be answered here.
-const LOCATE_LINE='Alpha does not send your location to the agent. Name a starting place or address instead.';
+const LOCATE_LINE='Name a start · Location not shared';
 
 function present(card:MapsCardSpec):MapsChatCard{
  switch(card.kind){
@@ -184,7 +184,7 @@ function present(card:MapsCardSpec):MapsChatCard{
   case 'places':return {kind:card.kind,title:`Places for “${card.query}”`,lines:card.places.map(placeLine),attribution:card.attribution||'',mapQuery:card.query};
   case 'route':return {kind:card.kind,title:`Route to ${card.destination.name}`,lines:[`From ${card.origin.name}`,`${MODES[card.travelMode]} · ${guidanceDistance(card.distanceMeters)} · ${guidanceDuration(card.durationSeconds)}`,...card.warnings],attribution:card.attribution||'',mapQuery:`${card.destination.latitude}, ${card.destination.longitude}`};
   case 'handoff':return {kind:card.kind,title:card.handoffKind==='share'?`Location link for ${card.place.name}`:`Directions to ${card.place.name}`,lines:[...(card.place.formattedAddress?[card.place.formattedAddress]:[]),card.webUri],attribution:'',mapQuery:`${card.place.latitude}, ${card.place.longitude}`};
-  case 'locate':return {kind:card.kind,title:'Location needed',lines:[card.intent==='place-near'?'Choose an area in Maps to search nearby. Your position is not sent to the agent.':LOCATE_LINE],attribution:''};
+  case 'locate':return {kind:card.kind,title:'Location needed',lines:[card.intent==='place-near'?'Pick an area in Maps · Location not shared':LOCATE_LINE],attribution:''};
  }
 }
 

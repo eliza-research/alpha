@@ -80,7 +80,7 @@ export function browserCalendarSyncPort(
 		const row = calendarRecord(data.events, id);
 		if (row && calendarDeletionPending(data, id))
 			throw Error(
-				"This event has a pending deletion. Finish or undo it before syncing.",
+				"Deletion pending",
 			);
 		return row;
 	};
@@ -112,7 +112,7 @@ export function browserCalendarSyncPort(
 				event.deleted
 			)
 				throw Error(
-					"This Google event cannot be represented locally without losing fields. Nothing changed.",
+					"Unsupported event",
 				);
 			if (
 				event.isAllDay &&
@@ -122,7 +122,7 @@ export function browserCalendarSyncPort(
 				throw Error("Review whole all-day dates before syncing.");
 			if (!event.isAllDay && !event.timeZone)
 				throw Error(
-					"The Google event timezone must be known before applying it locally.",
+					"Missing time zone",
 				);
 			if (event.timeZone)
 				new Intl.DateTimeFormat("en-US", { timeZone: event.timeZone }).format();

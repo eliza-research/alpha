@@ -6,6 +6,20 @@ import {
 	openConnectionBrowser,
 } from "./native-connection";
 import type { HostedDigestProtocol } from "./hosted-digests";
+import { iconStyle } from "../icon-style";
+const small = (name: string) => ({ ...iconStyle(name), width: "18px", height: "18px", verticalAlign: "middle", marginRight: 6 });
+/** Presentation for the one status line: a spinner keeps its words for screen readers, Connected gets a check. */
+function DelegationStatus({ message }: { message: string }) {
+	const spinning = message === "Finishing…" || message === "Waiting for browser";
+	return (
+		<p role="status">
+			{spinning && <span className="alpha-spinner" aria-hidden="true" style={{ display: "inline-block", width: 16, height: 16, borderWidth: 2, marginRight: 8, verticalAlign: "middle" }} />}
+			{message === "Expires in 7 days" && <span aria-hidden="true" style={small("clock")} />}
+			{message === "Connected" && <span aria-hidden="true" style={{ ...small("circle-check"), color: "#1a7f37" }} />}
+			{message}
+		</p>
+	);
+}
 export const delegationNative = registerPlugin<{
 	addListener(
 		event: "cloudDelegationCallback",
@@ -44,7 +58,7 @@ export function CloudDelegationPanel({
 	const [pending, setPending] = useState<Pending | null>(null),
 		[busy, setBusy] = useState(false),
 		[message, setMessage] = useState(
-			"Allow this agent to read selected Google data when this agent is running. Access expires within seven days.",
+			"Expires in 7 days",
 		);
 	const [email, setEmail] = useState(true),
 		[calendar, setCalendar] = useState(false),
@@ -61,7 +75,7 @@ export function CloudDelegationPanel({
 			null,
 		);
 		if (result.status !== "saved")
-			throw Error("The connection changed. Reopen this screen.");
+			throw Error("Changed — reopen");
 		if (valid()) setPending(null);
 	}
 	async function run(work: () => Promise<void>) {
@@ -72,9 +86,7 @@ export function CloudDelegationPanel({
 			await work();
 		} catch {
 			if (valid())
-				setMessage(
-					"The connection is not confirmed. Check its status before starting another grant.",
-				);
+				setMessage("Unconfirmed");
 		} finally {
 			locked.current = false;
 			if (valid()) setBusy(false);
@@ -99,9 +111,7 @@ export function CloudDelegationPanel({
 			await releaseCallback(record.state);
 			if (!valid()) return;
 			setGrantId(status.grantId);
-			setMessage(
-				"Cloud read access is connected. Choose the Google account and source below.",
-			);
+			setMessage("Connected");
 			onConnected();
 			return;
 		}
@@ -109,9 +119,7 @@ export function CloudDelegationPanel({
 			await clear(record);
 			await releaseCallback(record.state);
 			if (!valid()) return;
-			setMessage(
-				"This authorization expired or was cancelled. Start a new review.",
-			);
+			setMessage("Expired");
 			return;
 		}
 		if (status.status === "waiting" && record.code && allowCompletion) {
@@ -125,10 +133,10 @@ export function CloudDelegationPanel({
 		}
 		setMessage(
 			status.status === "finishing"
-				? "Cloud is finishing authorization. Check again shortly."
+				? "Finishing…"
 				: record.code
-					? "Authorization completion is not confirmed. Check status again; it will not be retried automatically."
-					: "Finish authorization in the browser, then return here.",
+					? "Unconfirmed"
+					: "Waiting for browser",
 		);
 	}
 	async function callback() {
@@ -145,9 +153,7 @@ export function CloudDelegationPanel({
 			if (!record) return;
 			setExpanded(true);
 			if (record.state !== value.state) {
-				setMessage(
-					"This return link belongs to another account or an older connection. Select the account that started it.",
-				);
+				setMessage("Wrong account");
 				return;
 			}
 			if (value.error) {
@@ -158,14 +164,12 @@ export function CloudDelegationPanel({
 				);
 				await clear(record);
 				await delegationNative.clearDelegationCallback({ state: record.state });
-				setMessage("Authorization cancelled.");
+				setMessage("Cancelled");
 				return;
 			}
 			if (!value.code || Date.parse(record.expiresAt) <= Date.now()) {
 				await releaseCallback(record.state);
-				setMessage(
-					"Authorization expired. Check status, then start a new review.",
-				);
+				setMessage("Expired");
 				return;
 			}
 			const next: Pending = { ...record, phase: "finishing", code: value.code };
@@ -194,7 +198,7 @@ export function CloudDelegationPanel({
 			})
 			.catch(() => {
 				if (!disposed)
-					setMessage("Secure authorization storage is unavailable.");
+					setMessage("Storage unavailable");
 			});
 		const listener = delegationNative
 			.addListener("cloudDelegationCallback", () => void callback())
@@ -247,9 +251,7 @@ export function CloudDelegationPanel({
 			if (!valid()) return;
 			setPending(record);
 			await openConnectionBrowser(url.href, signal);
-			setMessage(
-				"Review the read permissions in Cloud, then choose Continue in Alpha Phone.",
-			);
+			setMessage("Waiting for browser");
 		});
 	}
 	return (
@@ -258,8 +260,8 @@ export function CloudDelegationPanel({
 			open={expanded}
 			onToggle={(e) => setExpanded(e.currentTarget.open)}
 		>
-			<summary>Connect Cloud for scheduled reads</summary>
-			<p>{message}</p>
+			<summary>Cloud reads</summary>
+			<DelegationStatus message={message} />
 			{!pending && (
 				<>
 					<label style={{ flexDirection: "row", alignItems: "center" }}>
@@ -270,7 +272,7 @@ export function CloudDelegationPanel({
 							disabled={busy}
 							onChange={(e) => setEmail(e.target.checked)}
 						/>{" "}
-						Inbox subjects and snippets
+						<span aria-hidden="true" style={small("mail")} />Inbox
 					</label>
 					<label style={{ flexDirection: "row", alignItems: "center" }}>
 						<input
@@ -280,14 +282,14 @@ export function CloudDelegationPanel({
 							disabled={busy}
 							onChange={(e) => setCalendar(e.target.checked)}
 						/>{" "}
-						Calendar events
+						<span aria-hidden="true" style={small("calendar")} />Calendar
 					</label>
-					<p>No sending, calendar changes, or billing access is requested.</p>
+					<p><span aria-hidden="true" style={small("eye")} />Read only</p>
 					<button
 						disabled={busy || (!email && !calendar)}
 						onClick={() => void start()}
 					>
-						Review Cloud read access
+						Continue
 					</button>
 				</>
 			)}
@@ -297,7 +299,7 @@ export function CloudDelegationPanel({
 						disabled={busy}
 						onClick={() => void run(() => recover(pending))}
 					>
-						Check authorization status
+						<span aria-hidden="true" style={small("rotate-cw")} />Refresh
 					</button>
 					<button
 						disabled={busy}
@@ -305,7 +307,7 @@ export function CloudDelegationPanel({
 							void run(() => openConnectionBrowser(pending.authUrl, signal))
 						}
 					>
-						Return to authorization
+						<span aria-hidden="true" style={small("external-link")} />Open
 					</button>
 					<button
 						disabled={busy || pending.phase === "finishing"}
@@ -317,15 +319,15 @@ export function CloudDelegationPanel({
 									signal,
 								);
 								await clear(pending);
-								setMessage("Authorization cancelled.");
+								setMessage("Cancelled");
 							})
 						}
 					>
-						Cancel authorization
+						Cancel
 					</button>
 				</>
 			)}
-            {revocations.filter(g=>g.grantId!==grantId).map(g=><div key={g.grantId}><p>Reads are disabled. Cloud disconnect still needs confirmation.</p><button disabled={busy} onClick={()=>void run(async()=>{const result=await client.delegation("revoke",{grantId:g.grantId,confirmed:true},signal);if(!valid())return;await refreshRevocations();setMessage(result.remoteRevocation==="confirmed"?"Cloud read access revoked.":"Reads disabled. Retry revocation to finish disconnecting in Cloud.");})}>Retry Cloud disconnect</button></div>)}
+            {revocations.filter(g=>g.grantId!==grantId).map(g=><div key={g.grantId} style={{display:"flex",alignItems:"center",gap:8}}><p style={{flex:1}}><span aria-hidden="true" style={{display:"inline-block",width:8,height:8,borderRadius:"50%",marginRight:6,verticalAlign:"middle",background:"#b26a00"}}/>Disconnect pending</p><button aria-label="Retry Cloud disconnect" disabled={busy} onClick={()=>void run(async()=>{const result=await client.delegation("revoke",{grantId:g.grantId,confirmed:true},signal);if(!valid())return;await refreshRevocations();setMessage(result.remoteRevocation==="confirmed"?"Revoked":"Off · retry");})}><span aria-hidden="true" style={iconStyle("rotate-cw")}/></button></div>)}
 			{grantId && (
 				<button
 					disabled={busy}
@@ -338,8 +340,8 @@ export function CloudDelegationPanel({
 							);
 							setMessage(
 								result.remoteRevocation === "confirmed"
-									? "Cloud read access revoked."
-									: "Reads disabled. Retry revocation to finish disconnecting in Cloud.",
+									? "Revoked"
+									: "Off · retry",
 							);
 							if (result.remoteRevocation === "confirmed") setGrantId("");
                             await refreshRevocations();
@@ -347,7 +349,7 @@ export function CloudDelegationPanel({
 						})
 					}
 				>
-					Revoke this Cloud read grant
+					Revoke
 				</button>
 			)}
 		</details>

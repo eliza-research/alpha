@@ -23,7 +23,7 @@ test('the simulated call, agent reply and suggestions are replaced on the image'
 });
 test('a host without the read shows no history and never asks for it',async()=>{
  const {views,calls}=mount({status:status()});await settle();
- assert.equal(views.phone.render({},{}).nativeStatus,'Recent calls aren\'t available.');assert.ok(!calls.some(([m])=>m==='listRecentCalls'||m==='requestAccess'));
+ assert.equal(views.phone.render({},{}).nativeStatus,'No recents');assert.ok(!calls.some(([m])=>m==='listRecentCalls'||m==='requestAccess'));
 });
 test('access is asked for only from the owner control; recents are then read bounded',async()=>{
  let granted=false;const {views,calls}=mount({status:()=>status(granted?'granted':'prompt'),requestAccess:()=>{granted=true;return status('granted');},listRecentCalls:{calls:[call]}});await settle();
@@ -37,7 +37,7 @@ test('dialing a recent call or a typed number is a handoff with the native messa
  views.phone.render({},{}).nativeRows[0].dial();await settle();
  assert.deepEqual(calls.find(([m])=>m==='dial'),['dial',{number:'+15555550100'}]);assert.match(views.phone.render({},{}).nativeNotice,/phone app is open/);
  const model=views.phone.render({},{});model.nativeOnNumber({target:{value:'*#06#'}});views.phone.render({},{}).nativeDial();await settle();
- assert.equal(views.phone.render({},{}).nativeNotice,'Enter a valid phone number.');assert.equal(calls.filter(([m])=>m==='dial').length,1,'an MMI string never reaches the dial handoff');
+ assert.equal(views.phone.render({},{}).nativeNotice,'Invalid number');assert.equal(calls.filter(([m])=>m==='dial').length,1,'an MMI string never reaches the dial handoff');
 });
 test('a number from Contacts fills the field once and dials only on the owner tap',async()=>{
  const {views,calls}=mount({status:status('granted'),listRecentCalls:{calls:[]},dial:{status:'handed-off',target:'dialer',handler:null,message:'Your phone app is open with the number.'}});await settle();
@@ -49,11 +49,11 @@ test('a number from Contacts fills the field once and dials only on the owner ta
 });
 test('a failed handoff says the phone app did not open',async()=>{
  const {views}=mount({status:status('granted'),listRecentCalls:{calls:[call]},dial:()=>{throw Error('no activity');}});await settle();
- views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(views.phone.render({},{}).nativeNotice,'Couldn\'t open the phone app.');
+ views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(views.phone.render({},{}).nativeNotice,'Couldn’t open');
 });
 test('Contacts opens only where Contacts is admitted',async()=>{
  const {views}=mount({status:status()});await settle();const opened=[],toasts=[];const api={open:view=>opened.push(view),toast:text=>toasts.push(text)};
- globalThis.mvpViews=[];views.phone.render({},api).nativeContacts();assert.deepEqual(opened,[]);assert.deepEqual(toasts,['Contacts isn\'t available on this phone.']);
+ globalThis.mvpViews=[];views.phone.render({},api).nativeContacts();assert.deepEqual(opened,[]);assert.deepEqual(toasts,['Unavailable']);
  globalThis.mvpViews=['contacts'];views.phone.render({},api).nativeContacts();assert.deepEqual(opened,['contacts']);globalThis.mvpViews=[];
 });
 test('rows without a dialable number cannot dial',()=>{const rows=phoneRows([{...call,number:'',cachedName:null}],()=>{throw Error('dialed');});assert.equal(rows[0].noDial,true);rows[0].dial();assert.match(rows[0].label,/Unknown caller/);});

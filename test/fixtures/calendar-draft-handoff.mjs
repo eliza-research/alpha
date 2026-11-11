@@ -7,7 +7,7 @@ export const fixtureNote = {
   id: 'fixture-schedule-note', title: noteTitle, body: 'Plan the meeting',
   color: 'yellow', createdAt: '2026-11-01T12:00:00.000Z', updatedAt: '2026-11-01T12:00:00.000Z',
 };
-export const noteRefusal = "Calendar can't open this event yet. Finish any open Calendar draft and try again.";
+export const noteRefusal = 'Calendar busy';
 export const titleInput = f => f.page.getByRole('textbox', {name: 'Title', exact: true});
 
 export async function goHome(f) {

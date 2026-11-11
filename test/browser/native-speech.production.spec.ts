@@ -87,7 +87,7 @@ test('offline and fenced, speech still captures, transcribes and reads aloud on 
  const foreign=await setup(page);await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
  expect(await page.evaluate(()=>navigator.onLine)).toBe(false);
  await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page).getByRole('status',{name:'Voice conversation status',exact:true})).toHaveText('Listening');await utterance(page);
- await expect(voice(page)).toHaveAttribute('data-voice-state','error');await expect(voiceError(page)).toHaveCount(0);await expect.poll(()=>retainedVoiceTranscript(page)).toEqual({state:'error',transcript:'Local spoken request',failure:'Voice stopped. Check your connection and conversation history before trying again.'});
+ await expect(voice(page)).toHaveAttribute('data-voice-state','error');await expect(voiceError(page)).toHaveCount(0);await expect.poll(()=>retainedVoiceTranscript(page)).toEqual({state:'error',transcript:'Local spoken request',failure:'Voice stopped'});
  expect(await page.evaluate(()=>{const f=(window as any).nativeSpeech;return {starts:f.starts,transcripts:f.transcripts,spoken:f.spoken,posts:(window as any).flagOff.posts.length};})).toEqual({starts:1,transcripts:1,spoken:[],posts:0});
  await button(page,'Stop voice conversation').click();await expect(voice(page)).toHaveCount(0);
  // A touch outside the open chat only collapses it, so collapse it before going to Notes.

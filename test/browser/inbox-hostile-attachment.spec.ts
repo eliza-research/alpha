@@ -107,7 +107,7 @@ test(`${label} is never rendered: the review is inert text, Save to Files keeps 
  // The review names the file, its hash, type and size, and shows none of its content.
  await expect(review(page).getByRole('heading',{name,exact:true})).toBeVisible();
  await expect(review(page)).toContainText(`SHA-256 ${sha(bytes)}`);
- await expect(review(page)).toContainText("Alpha can't preview this file type. Save to Files keeps a copy; it isn't shared with the agent.");
+ await expect(review(page)).toContainText('No preview');
  await expect(review(page)).not.toContainText('Invoice');
  await expect(review(page).getByRole('button',{name:'Open reviewed file',exact:true})).toHaveCount(0);
  expect(await review(page).locator('iframe, object, embed, img, svg image, script, a[href]').count()).toBe(0);
@@ -180,7 +180,7 @@ test('an oversized attachment is refused before any bytes are requested, and a r
   part('traversal','..','text/html',false,html),
  ]);
  await page.getByText('archive.zip',{exact:true}).click();
- await expect(page.getByText('Open this attachment in Gmail.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Open in Gmail',{exact:true})).toBeVisible();
  await expect(review(page)).toHaveCount(0);
  expect((await fixture(page)).attachmentRequests).toEqual([]);
 
@@ -200,7 +200,7 @@ test('an account that cannot save unpreviewed types offers nothing for an HTML a
  await setup(page,[part('p1','invoice.html','text/html',false,html)],{opaque:false});
  await expect(page.getByRole('region',{name:'Email message'})).toContainText('Unsupported type or size');
  await page.getByText('invoice.html',{exact:true}).click();
- await expect(page.getByText('Open this attachment in Gmail.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Open in Gmail',{exact:true})).toBeVisible();
  await expect(review(page)).toHaveCount(0);
  expect(await fixture(page)).toMatchObject({attachmentRequests:[],mutations:0});
  expect(await files(page)).toEqual([]);

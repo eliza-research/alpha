@@ -110,7 +110,7 @@ function preflightFixture(balance, options = {}) {
   let bindings = 0;
   Object.assign(f.context, {
     AbortController, DOMException, document: {hidden: false}, navigator: {onLine: true}, setTimeout,
-    FUNDING_NEEDED: 'Choose a monthly plan or enter a membership code to ask Alpha.',
+    FUNDING_NEEDED: 'Plan needed',
     AlphaClientError: class AlphaClientError extends Error {constructor(code, message) {super(message); this.code = code;}},
     residentCloudFlow: () => true, residentAlwaysPresent: true,
     residentStartInBackground: false, pendingBillingReview: null,
@@ -141,7 +141,7 @@ for (const balance of ['zero', 'checking', 'unavailable', undefined, 'funded', '
       if (balance === 'zero') {
         f.context.state.membershipDismissed = true;
         await assert.rejects(f[method](), error => {
-          assert.equal(error.message, 'Choose a monthly plan or enter a membership code to ask Alpha.');
+          assert.equal(error.message, 'Plan needed');
           // Nothing was sent, and the composer says why instead of a generic "Not sent".
           assert.equal(error.notDispatched, true);
           assert.equal(error.refusedBeforeTurn, true);
@@ -216,7 +216,7 @@ const toastsFor = (e, {fromComposer = true, preview = false, holding = true} = {
   return toasts;
 };
 const reasonRefusals = [
-  [Object.assign(new AlphaClientError('transport-failed', 'The agent is busy and did not accept this message. Wait, then send it again.'), {refusedBeforeTurn: true}), 'Not sent. The agent is busy and did not accept this message. Wait, then send it again.'],
+  [Object.assign(new AlphaClientError('transport-failed', 'Busy · not sent'), {refusedBeforeTurn: true}), 'Not sent. Busy · not sent'],
   [new AlphaClientError('unconfigured', 'AI replies aren’t available right now.'), 'Not sent. AI replies aren’t available right now.'],
   [new AlphaClientError('sensitive', 'Agent observation is paused on this screen.'), 'Not sent. Agent observation is paused on this screen.'],
   [new NotDispatched('Agent changed. Review this message again.'), 'Agent changed. Review this message again.'],
@@ -629,7 +629,7 @@ test('unknown balance does not bypass missing, expired or busy conversation guar
       assert.equal(expired.bindings, 0);
       const busy = preflightFixture(balance);
       busy.context.operation = new AbortController();
-      await assert.rejects(busy[method](), /Finish the.*operation/);
+      await assert.rejects(busy[method](), /^Error: Busy$|Finish the.*operation/);
       assert.equal(busy.bindings, 0);
     }
   }
@@ -904,7 +904,7 @@ function providerSwitchFixture(){
  const context=vm.createContext({AbortController,DOMException,
   operation:null,sending:null,providerStatusGeneration:0,epoch:1,active:null,state:{session:null,open:true,purpose:'provider',signIn:null,cloudAccount:{userId:'fixture-owner'},providerStatus:{mode:'own',revision:'fixture-own',keys:{text:{configured:true},voice:{configured:true}}}},appRequests:new Set(),actionReceipts:new Map(),conversationMemory:new Map(),
   testMocksEnabled:false,residentAlwaysPresent:true,RESIDENT_NAME:'Alpha',isAndroid:true,browserCloudResidentEnabled:false,OWN_KEYS_NOT_SET_UP:'Own API keys could not be set up.',LOCAL_PROVIDER_MODEL:'model',
-  signInReadinessOwner:null,OWN_KEY_BUSY:'Alpha is busy. Try again in a moment.',OWN_KEY_CHECKING:'Checking key…',connectionToast(){},
+  signInReadinessOwner:null,OWN_KEY_BUSY:'Busy',OWN_KEY_CHECKING:'Checking key',connectionToast(){},
   clearClientObservationSupport(){},retireConversationEvents(){},retireReadReplies(){},pauseHostedBackground:async()=>{},retireClockReviews:async()=>{},cancelStoppedReply(){},
   secureConnectionStore:{remove:async()=>{}},update:patch=>Object.assign(context.state,patch),showPostSignInSetup(){},
   work:async(label,run)=>{events.push(label);await run(new AbortController().signal);},
@@ -916,8 +916,8 @@ function providerSwitchFixture(){
  return {context,events,controller:context.providerController};
 }
 test('a provider switch during a streaming reply leaves the reply running; once it settles the switch works as before',async()=>{
- const switches={configureLocal:[f=>f.controller.configureLocal('synthetic-cerebras-key','model'),['Checking key…','check key','restart agent']],
-  selectCloudProvider:[f=>f.controller.selectCloudProvider(),['Switching to Cloud…','select Cloud with saved keys retained','restart agent']]};
+ const switches={configureLocal:[f=>f.controller.configureLocal('synthetic-cerebras-key','model'),['Checking key','check key','restart agent']],
+  selectCloudProvider:[f=>f.controller.selectCloudProvider(),['Switching to Cloud','select Cloud with saved keys retained','restart agent']]};
  for(const [name,[run,idle]] of Object.entries(switches)){
   const f=providerSwitchFixture(),reply=new AbortController();
   f.context.sending=reply;await run(f);

@@ -128,8 +128,8 @@ test('Notes scheduling contract: an event draft writes nothing until Save, then 
  // the note lives without claiming it is gone; Open note opens Older notes and then that note.
  await page.reload({waitUntil:'domcontentloaded'});
  await openCalendarItem(page,'Water the plants');
- await expect(page.getByText('From a voice note in Previous notes',{exact:true})).toBeVisible();
- await expect(page.getByText('From a note that is no longer in Notes',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Voice note',{exact:true})).toBeVisible();
+ await expect(page.getByText('Deleted note',{exact:true})).toHaveCount(0);
  await button(page,'Open note').click();
  await expect(button(page,'Play recording')).toBeVisible();
  await expect(page.locator('input[aria-label="Title"]:visible').last()).toHaveValue('Garden meeting');
@@ -184,7 +184,7 @@ test('Notes scheduling contract: the open-note action fails closed when the note
  await openEvent();
  await button(page,'Open note Venue meeting').click();
  await expect(page.locator('input[aria-label="Title"]:visible').last()).toHaveValue('Venue meeting');
- await expect(page.getByText('This note may have changed since this was created from it.',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Edited',{exact:true})).toHaveCount(0);
 
  // Renamed after the hand-off: the link shows the note's current title, never the old one, and no
  // title is kept with the link.
@@ -200,7 +200,7 @@ test('Notes scheduling contract: the open-note action fails closed when the note
  expect(JSON.stringify(await stored(page))).not.toMatch(/Private debrief|Venue meeting/);
  await button(page,'Open note Private debrief').click();
  await expect(page.locator('input[aria-label="Title"]:visible').last()).toHaveValue('Private debrief');
- await expect(page.getByText('This note may have changed since this was created from it.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Edited',{exact:true})).toBeVisible();
  await page.evaluate(async raw=>{const port=await import('/src/runtime/browser-notes-document.ts');await port.browserNotesPort.compareExchange((await port.browserNotesPort.read())!,raw);},beforeRename);
  await page.reload({waitUntil:'domcontentloaded'});
 
@@ -212,10 +212,10 @@ test('Notes scheduling contract: the open-note action fails closed when the note
  });
  await reloadWithOlderNotes(page);
  await openEvent();
- await expect(page.getByText('From a note that is no longer in Notes',{exact:true})).toBeVisible();
+ await expect(page.getByText('Deleted note',{exact:true})).toBeVisible();
  await expect(page.getByText(/From note:/)).toHaveCount(0);
  await button(page,'Open note').click();
- await expect(page.getByText('The note this came from was deleted or replaced. Nothing was opened.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Source gone',{exact:true})).toBeVisible();
  await expect(page.getByRole('heading',{name:'Venue walkthrough',level:1})).toBeVisible();
  await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
  await page.evaluate(async raw=>{const port=await import('/src/runtime/browser-notes-document.ts');await port.browserNotesPort.compareExchange((await port.browserNotesPort.read())!,raw);},original);
@@ -227,11 +227,11 @@ test('Notes scheduling contract: the open-note action fails closed when the note
  await expect.poll(async()=>(await notes(page)).map(n=>n.title)).toEqual(['Garden meeting']);
  await openEvent();
  // A note in Trash is not shown as live: its title is not displayed and is stored nowhere with the link.
- await expect(page.getByText('From a note that is no longer in Notes',{exact:true})).toBeVisible();
+ await expect(page.getByText('Deleted note',{exact:true})).toBeVisible();
  await expect(page.getByText(/Venue meeting/)).toHaveCount(0);
  expect(JSON.stringify(await stored(page))).not.toMatch(/Venue meeting/);
  await button(page,'Open note').click();
- await expect(page.getByText('The note this came from was deleted or replaced. Nothing was opened.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Source gone',{exact:true})).toBeVisible();
  await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
  expect((await events(page))[0]).toEqual(event);
 });

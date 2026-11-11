@@ -44,7 +44,7 @@ test('actual voice activity sits below the chat notices, and an unconfirmed clea
   f.renderChat().stop();for(let count=0;count<10;count++)await f.tick();
   const held=f.renderChat();assert.equal(held.state,'error');assert.equal(held.activity,null);
   assert.equal(held.muted,'mixed');assert.equal(held.muteLabel,'Microphone status unconfirmed');
-  assert.ok(!held.recoveryLabel);assert.match(held.lines[0].t,/Could not confirm voice media stopped/);
+  assert.ok(!held.recoveryLabel);assert.equal(held.lines[0].t,'Mic may be on');
   const heldDoc=new JSDOM(render({inlineChatRecorder:true,chatRecorder:held})).window.document;
   assert.equal(heldDoc.querySelectorAll('[data-alpha-voice-animation]').length,0);
   assert.equal(heldDoc.querySelector('[role="alert"]'),null);assert.doesNotMatch(heldDoc.body.textContent,/Could not confirm|Close the app/);

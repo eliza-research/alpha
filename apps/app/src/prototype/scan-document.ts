@@ -33,7 +33,7 @@ export async function pickNativeScanImage():Promise<Blob|undefined>{
 /** Ordered image-only document review. Every export uses an immutable page snapshot. */
 export function openScanDocument(first?:Blob):()=>void{
  const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Review scan document');dialog.className='scan-dialog';
- const previous=document.activeElement,heading=document.createElement('h2');heading.textContent='Scan document';const description=document.createElement('p');description.textContent='Capture or add pages, then save a PDF.';
+ const previous=document.activeElement,heading=document.createElement('h2');heading.textContent='Scan document';const description=document.createElement('p');description.textContent='No pages';
  const list=document.createElement('div'),status=document.createElement('p');status.setAttribute('role','status');
  const button=(label:string,action:()=>void)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=action;return b;};
  /** Previews by page id; released when a page leaves the document. */
@@ -48,7 +48,7 @@ export function openScanDocument(first?:Blob):()=>void{
  const doc=createScanDocument<Blob,ScanTextLine[]>({
   drafts:{save:saveScanDraft,read:readScanDraft,remove:deleteScanDraft},autosave:native,
   changed:()=>{if(!closed)render();},
-  autosaveFailed:error=>{if(!closed)status.textContent=(error instanceof Error?error.message:'This change was not saved to the device draft.')+' Pages stay open here.';},
+  autosaveFailed:error=>{if(!closed)status.textContent=error instanceof Error?error.message:'Draft not saved';},
  });
  const render=()=>{
   if(closed)return;release();list.replaceChildren();
@@ -62,14 +62,14 @@ export function openScanDocument(first?:Blob):()=>void{
   });
   capture.disabled=add.disabled=!controls.addPage;searchable.disabled=save.disabled=!controls.export;saveDraft.disabled=!controls.saveDraft;loadDraft.disabled=!controls.loadDraft;removeDraft.disabled=!controls.deleteDraft;removeDraft.hidden=!draftRevision;saveDraft.hidden=!pages.length;actions.hidden=!pages.length;empty.hidden=!!pages.length;capture.classList.toggle('primary',!pages.length);
   if(stored&&stored===draftRevision)stored=undefined;notice.hidden=!stored;
-  description.textContent=pages.length?`${pages.length} of ${SCAN_LIMITS.pages} pages · Review the order before saving.`:'Capture or add pages, then save a PDF.';
+  description.textContent=pages.length?`${pages.length}/${SCAN_LIMITS.pages} pages`:'No pages';
  };
  const failed=(error:unknown,fallback:string)=>{if(!closed)status.textContent=error instanceof Error?error.message:fallback;};
  const correctPage=(index:number)=>doc.run(async signal=>{
   try{const page=doc.pages()[index];const corrected=await reviewScanCorrection(page.image,signal);signal.throwIfAborted();if(!corrected)return;
    if(doc.pages().reduce((total,p,i)=>total+(i===index?0:p.image.size),0)+corrected.size>SCAN_LIMITS.documentBytes)throw Error('Corrected document exceeds 64 MB.');
-   doc.put(corrected,index);status.textContent=native?'Corrected page applied.':'Corrected page applied. Save the document draft to keep this change.';
-  }catch(error){failed(error,'Could not correct page.');}
+   doc.put(corrected,index);status.textContent='Applied';
+  }catch(error){failed(error,'Correction failed');}
  });
  const search=()=>{if(!doc.pages().length)return;void doc.run(async signal=>{
   const result=await reviewSearchableScan(doc.pages().map(p=>p.image),signal,doc.pages().map(p=>p.textLayer??null));if(closed||!result)return;
@@ -80,22 +80,22 @@ export function openScanDocument(first?:Blob):()=>void{
   try{const image=camera?await captureScanPage(signal):native?await pickNativeScanImage():(await runFilePicker(picker=>inputFiles(anyAbortSignal([picker,signal]),{photos:true}),[]))[0];signal.throwIfAborted();if(!image)return;
    admitScanImage(image);const bitmap=await createImageBitmap(image);try{signal.throwIfAborted();admitScanDimensions(bitmap.width,bitmap.height);}finally{bitmap.close();}
    doc.put(image,index);status.textContent='';
-  }catch(error){failed(error,'Could not add page.');}
+  }catch(error){failed(error,'Add failed');}
  });
  const draftAction=async(action:()=>Promise<unknown>)=>{try{await action();}catch(error){failed(error,'Draft action failed.');}};
- const saveDraft=button('Save document draft',()=>void draftAction(async()=>{if(await doc.saveDraft()&&!closed)status.textContent=native?'Document draft saved on this device. Resume it from Draft options.':'Document draft saved in this app.';}));
- const resumeDraft=()=>void draftAction(async()=>{const outcome=await doc.loadDraft(()=>confirm('load-scan-draft','Load saved draft?','Replace the pages open here with the saved document draft.','Load draft'));if(closed)return;if(outcome==='none')status.textContent='No saved document draft.';else if(outcome==='loaded')status.textContent='Saved document draft loaded.';});
+ const saveDraft=button('Save document draft',()=>void draftAction(async()=>{if(await doc.saveDraft()&&!closed)status.textContent='Draft saved';}));
+ const resumeDraft=()=>void draftAction(async()=>{const outcome=await doc.loadDraft(()=>confirm('load-scan-draft','Load saved draft?','','Load draft'));if(closed)return;if(outcome==='none')status.textContent='No draft';else if(outcome==='loaded')status.textContent='Draft loaded';});
  const loadDraft=button('Load saved draft',resumeDraft);
- const removeDraft=button('Delete saved draft',()=>void draftAction(async()=>{if(await doc.deleteDraft(()=>confirm('delete-scan-draft','Delete saved draft?','The pages open here will remain. The saved draft will be removed.','Delete draft'))&&!closed)status.textContent='Saved draft deleted. Reviewed pages remain open.';}));
+ const removeDraft=button('Delete saved draft',()=>void draftAction(async()=>{if(await doc.deleteDraft(()=>confirm('delete-scan-draft','Delete saved draft?','','Delete draft'))&&!closed)status.textContent='Draft deleted';}));
  /** A draft stored before this review opened blocks autosave and Save draft (compare-and-set), so it is offered here. */
  let stored:string|undefined;
- const notice=document.createElement('div'),noticeText=document.createElement('p');notice.hidden=true;notice.setAttribute('role','group');notice.setAttribute('aria-label','Saved draft');noticeText.textContent='A saved draft exists.';
- const resumeStored=button('Resume the saved draft',resumeDraft),deleteStored=button('Delete the saved draft',()=>void draftAction(async()=>{const revision=stored;if(!revision||!await confirm('delete-stored-scan-draft','Delete saved draft?','The pages open here will remain. The saved draft will be removed.','Delete draft'))return;await doc.settled();await deleteScanDraft(revision,doc.signal);if(closed)return;stored=undefined;status.textContent='Saved draft deleted.';render();}));
- resumeStored.setAttribute('aria-label','Resume the saved draft');resumeStored.textContent='Resume';deleteStored.setAttribute('aria-label','Delete the saved draft');deleteStored.textContent='Delete';const noticeTools=document.createElement('div');noticeTools.className='scan-dialog-tools';noticeTools.append(resumeStored,deleteStored);notice.append(noticeText,noticeTools);
+ const notice=document.createElement('div'),noticeText=document.createElement('p');notice.hidden=true;notice.setAttribute('role','group');notice.setAttribute('aria-label','Saved draft');{const dot=document.createElement('span');dot.setAttribute('aria-hidden','true');dot.style.cssText='display:inline-block;width:8px;height:8px;border-radius:4px;background:#f5a524;margin-right:6px;vertical-align:middle';noticeText.append(dot,'Draft');}
+ const resumeStored=button('Resume',resumeDraft),deleteStored=button('Delete draft',()=>void draftAction(async()=>{const revision=stored;if(!revision||!await confirm('delete-stored-scan-draft','Delete saved draft?','','Delete draft'))return;await doc.settled();await deleteScanDraft(revision,doc.signal);if(closed)return;stored=undefined;status.textContent='Draft deleted';render();}));
+ resumeStored.setAttribute('aria-label','Resume');resumeStored.textContent='Resume';deleteStored.setAttribute('aria-label','Delete draft');deleteStored.textContent='Delete';const noticeTools=document.createElement('div');noticeTools.className='scan-dialog-tools';noticeTools.append(resumeStored,deleteStored);notice.append(noticeText,noticeTools);
  const dispose=()=>{if(closed)return;closed=true;doc.close();for(const value of urls.values())URL.revokeObjectURL(value);urls.clear();dialog.remove();window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',dispose);document.removeEventListener('visibilitychange',visibility);if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
  /** Close and Back on native ask about the draft this review wrote by itself; pagehide and a
   * hidden page keep it, since Android may be ending Alpha. */
- const keepPrompt=document.createElement('div'),keepText=document.createElement('p');keepPrompt.hidden=true;keepPrompt.className='scan-dialog-actions';keepText.style.cssText='flex-basis:100%;margin:0';keepPrompt.setAttribute('role','group');keepPrompt.setAttribute('aria-label','Close document');keepText.textContent='Keep these pages as a draft?';
+ const keepPrompt=document.createElement('div'),keepText=document.createElement('p');keepPrompt.hidden=true;keepPrompt.className='scan-dialog-actions';keepText.style.cssText='flex-basis:100%;margin:0';keepPrompt.setAttribute('role','group');keepPrompt.setAttribute('aria-label','Close document');keepText.textContent='Keep draft?';
  const keep=button('Keep draft',dispose),discard=button('Discard draft',()=>void draftAction(async()=>{await doc.settled();const {autoSaved,draftRevision}=doc.snapshot();if(autoSaved&&draftRevision)await deleteScanDraft(draftRevision,doc.signal);dispose();}));
  keepPrompt.append(keepText,keep,discard);
  const requestClose=async()=>{
@@ -107,7 +107,7 @@ export function openScanDocument(first?:Blob):()=>void{
  const searchable=button(native?'Save searchable PDF':'Download searchable PDF',()=>search());
  const add=button('Add page',()=>void pick()),capture=button('Capture new page',()=>void pick(undefined,true)),save=button(native?'Save document PDF':'Download document PDF',()=>{
   if(!doc.snapshot().controls.export)return;status.textContent='Preparing document…';
-  void doc.exportPages((pages,_layers,signal)=>exportScanPdf(pages,signal,scanExportTitle('document')),error=>error instanceof ScanPdfExportError).then(result=>{if(!closed&&result)status.textContent=result.message;},error=>{if(closed)return;status.textContent=error instanceof ScanPdfExportError?(native?'Export unconfirmed. Inspect the chosen destination before exporting again.':'Export unconfirmed. Check Downloads before exporting again.'):error instanceof Error?error.message:'Could not prepare the PDF. Try again.';});
+  void doc.exportPages((pages,_layers,signal)=>exportScanPdf(pages,signal,scanExportTitle('document')),error=>error instanceof ScanPdfExportError).then(result=>{if(!closed&&result)status.textContent=result.message;},error=>{if(closed)return;status.textContent=error instanceof ScanPdfExportError?'Export unconfirmed':error instanceof Error?error.message:'PDF failed';});
  }),close=button('Close document',()=>void requestClose());
  capture.setAttribute('aria-label','Capture new page');capture.textContent='Capture page';add.setAttribute('aria-label','Add page');add.textContent='Add image';
  save.setAttribute('aria-label',native?'Save document PDF':'Download document PDF');save.textContent=native?'Save PDF':'Download PDF';save.className='primary';
@@ -124,7 +124,7 @@ export function openScanDocument(first?:Blob):()=>void{
  window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',dispose);document.addEventListener('visibilitychange',visibility);
  (document.querySelector('.os')||document.body).append(dialog);
  // The first page is admitted like any other; with autosave it is written to the device draft.
- if(first)try{doc.put(first);}catch(error){failed(error,'Could not add page.');}
+ if(first)try{doc.put(first);}catch(error){failed(error,'Add failed');}
  render();dialog.showModal();(native?add:capture).focus();
  void(async()=>{try{await doc.settled();if(closed)return;const draft=await readScanDraft();if(closed||!draft||doc.snapshot().draftRevision)return;stored=draft.revision;render();}catch{/* An unreadable draft stays reachable through Draft options. */}})();
  return dispose;

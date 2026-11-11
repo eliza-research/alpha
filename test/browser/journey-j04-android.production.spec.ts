@@ -143,7 +143,7 @@ test('a retained native-authority event draft from a note no longer says it will
     }
     throw Error('No phone shell');
   });
-  await expect(notice).toHaveText('This event will not link back to the note on this phone.');
+  await expect(notice).toHaveAttribute('aria-label', 'Not linked to note');
   // Neither draft saves or links anything before Save.
   expect(await harness(page, f => f.calls.filter((call: string) => /AlphaCalendar\.save|compareExchange/.test(call)))).toEqual([]);
   await expectNoDevelopmentSurface(page);

@@ -80,7 +80,7 @@ test('Sign-in dialog follows a live theme change and remains keyboard accessible
   // Open by keyboard: WebKit intentionally does not focus buttons on a pointer click.
   await returnToApps(page);await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   const opener=page.getByRole('button',{name:'Account',exact:true});await opener.focus();await opener.press('Enter');
-  const dialog=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
+  const dialog=page.getByRole('dialog',{name:'Alpha',exact:true});
   await expect(dialog).toHaveCSS('background-color','rgb(0, 0, 0)');
   await page.setViewportSize({width:412,height:300});
   await expect(dialog.getByText('Remote agent',{exact:true})).toHaveCount(0);

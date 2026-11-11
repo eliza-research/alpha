@@ -17,8 +17,8 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
   shell.agentCalendar?.state.ownerKey===key&&shell.canonicalDraftOwner===key&&shell.canonicalDraftBinding===binding;
  p.canonicalCalendarDraftEntryBlocker=function(key:string){
   const pending=this.canonicalDraft?.state;
-  if(!pending||this.canonicalDraftOwner!==key||pending.opening||pending.consuming)return 'Opening your draft. Try again in a moment.';
-  return this.canonicalDraftText?'Finish or discard your draft first.':'';
+  if(!pending||this.canonicalDraftOwner!==key||pending.opening||pending.consuming)return 'Opening draft';
+  return this.canonicalDraftText?'Draft open':'';
  };
  p.flushCalendarForAppUpdate=async function(current:()=>boolean){
   const exact=()=>current()&&!this.calendarSaving&&!this.agentCalendar?.state.mutating&&
@@ -110,11 +110,11 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
    const exact=()=>{const visible=this.vget('calendar').form;return ownsDraft(this,retained.ownerKey,retained.binding)&&(!visible||Reflect.get(visible,reminderDraftOrigin)===submitted.origin&&submittedForm(visible)===submitted.signature);};
    if(!exact()||this.canonicalDraftText!==retained.text)return;
    this.canonicalDraftSuppressed=retained.text;
-   void this.canonicalDraft.consume(retained.text,exact).then(()=>origins.delete(submitted.origin)).catch(()=>{if(ownsDraft(this,retained.ownerKey,retained.binding))this.toast('Saved. Discard the leftover draft before saving again.');});return;
+   void this.canonicalDraft.consume(retained.text,exact).then(()=>origins.delete(submitted.origin)).catch(()=>{if(ownsDraft(this,retained.ownerKey,retained.binding))this.toast('Saved · discard draft');});return;
   }
   const key=form.canonicalOwnerKey,binding=this.canonicalDraftBinding;
   if(!ownsDraft(this,key,binding))return;
-  try{const text=encodeCanonicalCalendarDraft(form,this.canonicalDraftAnchor??new Date());this.canonicalDraftSuppressed=text;void this.canonicalDraft.consume(text,()=>ownsDraft(this,key,binding)).catch(()=>{if(ownsDraft(this,key,binding))this.toast('Saved. Discard the leftover draft before saving again.');});}catch{this.toast('Saved. Discard the leftover draft before saving again.');}
+  try{const text=encodeCanonicalCalendarDraft(form,this.canonicalDraftAnchor??new Date());this.canonicalDraftSuppressed=text;void this.canonicalDraft.consume(text,()=>ownsDraft(this,key,binding)).catch(()=>{if(ownsDraft(this,key,binding))this.toast('Saved · discard draft');});}catch{this.toast('Saved · discard draft');}
  };
  p.componentWillUnmount=function(){this.canonicalDraft?.retire(false);this.canonicalDraftRecovery?.abort();if(owner===this)owner=undefined;unmount.call(this);};
  views.calendar.render=function(state:Bag,api:Bag){
@@ -127,8 +127,8 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
   out.formDraftAvailable=!state.form&&!!shell.canonicalDraftText;out.canDiscardFormDraft=out.formDraftAvailable;out.formDraftBusy=draft.opening||draft.consuming;out.formDraftStatus=active?(shell.canonicalDraftInvalid?'Check this draft.':draft.message.replace('before sending','before saving')):'';out.formDraftConflict=active&&draft.conflict;out.formDraftError=active&&draft.error;out.formDraftListError=!state.form&&draft.error;
   const restore=(saved=false)=>{if(!current())return;try{shell.canonicalDraftRestoring=true;if(saved)controller.restoreSaved();else{const restored=decodeCanonicalCalendarDraft(shell.canonicalDraftText);if(restored.form.canonicalOwnerKey!==key)throw Error('This draft belongs to another account');shell.canonicalDraftAnchor=new Date();api.set({form:restored.form,open:null});}}catch{api.toast('This draft belongs to another account. Open it to review.');}finally{shell.canonicalDraftRestoring=false;}};
   out.resumeFormDraft=()=>restore();out.restoreFormDraft=()=>restore(true);out.replaceFormDraft=()=>{if(current())controller.keepCurrent();};out.retryFormDraft=()=>{if(current())controller.retry();};out.formDraftSavedTitle=(()=>{try{return decodeCanonicalCalendarDraft(draft.savedText).form.title;}catch{return 'Saved draft';}})();
-  out.discardFormDraft=()=>{if(!current()||state.form||!window.confirm('Discard this draft? Saved events won’t change.'))return;const text=shell.canonicalDraftText;void controller.consume(text,()=>current()&&!shell.vget('calendar').form).catch(()=>{if(current())api.toast('This draft changed. Try again.');});};
-  out.recoverFormDraft=()=>{if(!current())return;const recovery=controller.recovery();if(!recovery)return;shell.canonicalDraftRecovery?.abort();const abort=shell.canonicalDraftRecovery=new AbortController();openDomainRecovery(recovery,'calendar form','Calendar form recovery','Download this draft before resetting it. Saved events won’t change.',abort.signal);};
+  out.discardFormDraft=()=>{if(!current()||state.form||!window.confirm('Discard draft?'))return;const text=shell.canonicalDraftText;void controller.consume(text,()=>current()&&!shell.vget('calendar').form).catch(()=>{if(current())api.toast('Changed');});};
+  out.recoverFormDraft=()=>{if(!current())return;const recovery=controller.recovery();if(!recovery)return;shell.canonicalDraftRecovery?.abort();const abort=shell.canonicalDraftRecovery=new AbortController();openDomainRecovery(recovery,'calendar form','Calendar form recovery','Download first',abort.signal);};
   const guardStart=(start:(...args:any[])=>unknown)=>(...args:any[])=>{
    if(!current())return;
    const blocked=!shell.vget('calendar').form&&shell.canonicalCalendarDraftEntryBlocker(key);

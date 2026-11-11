@@ -9,7 +9,7 @@ await owned(async(f,clock)=>{
  f.shell.notes={open:'kept-note',list:[{id:'kept-note',title:'Kept note',body:'Reviewed note text.',updatedAt:1}]};
  const view=()=>f.render().ed;
  assert.equal(typeof view().readAloud,'function');
- assert.match(view().cloudSpeechDisclosure,/uploads this note’s text to your selected Cloud account/);
+ assert.match(view().cloudSpeechDisclosure,/^Text → /);
  view().readAloud();await clock.flush();assert.equal(f.cloudSpeech,1);assert.equal(typeof view().stopReading,'function');
  assert.equal(f.localFactories,0);assert.equal(f.pairedFactories,0);
  const request=f.speechInputs[0].requestId;f.holdPlaybackCleanup=true;view().stopReading();await clock.advance(650);

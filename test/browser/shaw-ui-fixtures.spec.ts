@@ -14,7 +14,7 @@ async function capture(page:Page,info:TestInfo,name:string){
  }
  await settled(page);
  // The synthetic Photos bridge has no secure reminder store; let its startup notice expire before the layout receipt.
- await expect(page.getByText('Reminders could not refresh. Previously loaded reminders may be out of date.',{exact:true})).toBeHidden();
+ await expect(page.getByText('Couldn’t refresh',{exact:true})).toBeHidden();
  await page.evaluate(()=>{const badge=document.createElement('div');badge.textContent='UI FIXTURE · synthetic data';badge.style.cssText='position:fixed;right:4px;top:4px;z-index:2147483647;padding:3px 6px;background:#112b46;color:white;font:10px sans-serif;pointer-events:none';badge.setAttribute('aria-hidden','true');document.body.append(badge);});
  await page.screenshot({path:info.outputPath(`UI-FIXTURE-${name}.png`),animations:'disabled'});
 }
@@ -36,7 +36,7 @@ async function emptyHome(page:Page){
   c.close();
  });
  await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).emptyHomeFixture.mailReads)).toBeGreaterThan(0);await returnToApps(page);
- await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.locator('[data-alpha-subview="workflows-list"]').getByText('No workflows yet',{exact:true})).toBeVisible();await returnToApps(page);
+ await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.locator('[data-alpha-subview="workflows-list"]').getByText('No automations',{exact:true})).toBeVisible();await returnToApps(page);
  for(const kind of ['calendar','inbox','workflows'])await expect(page.locator(`[data-alpha-home-${kind}]`)).toHaveCount(0);
  await expect(page.locator('[data-mobile-shell-cards]')).toBeHidden();await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeVisible();expect(await page.evaluate(()=>(window as any).emptyHomeFixture.writes)).toBe(0);
 }

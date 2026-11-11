@@ -123,13 +123,13 @@ export class BrowserDaily extends WebPlugin {
   async clockHandoff(input:ClockRequest){
     if(input.reviewed!==true||!['set','show','dismiss','snooze'].includes(input.action))throw Error('Review the alarm action first.');
     // Browser alarms are one-time reminders. A reviewed repeat is refused, never saved as a single alarm.
-    if(input.action==='set'&&Object.hasOwn(input,'days'))return {action:input.action,status:'failed' as const,message:'Repeating alarms are not available in this browser. No alarm was saved.'};
+    if(input.action==='set'&&Object.hasOwn(input,'days'))return {action:input.action,status:'failed' as const,message:'No repeat here'};
     if(input.action==='set'){
       if(!Number.isInteger(input.hour)||input.hour<0||input.hour>23||!Number.isInteger(input.minute)||input.minute<0||input.minute>59||typeof input.label!=='string'||input.label.length>200||input.label.includes('\0'))throw Error('Choose a valid alarm time and label.');
       const date=new Date();date.setHours(input.hour,input.minute,0,0);if(date.getTime()<=Date.now())date.setDate(date.getDate()+1);const saved=await this.scheduleReminder({id:'alarm_'+crypto.randomUUID(),title:input.label||'Alarm',at:date.getTime()});
       if(saved.status==='past')throw Error('The alarm time passed. Choose another time.');
       // The alarm is committed; reporting a failure here would invite a duplicate retry.
-      if(saved.status==='permission-denied'){window.dispatchEvent(new Event('alpha:alarms-changed'));return {action:input.action,status:'opened' as const,message:'Alarm saved. Notifications are off, so it will not ring until you turn them on.'};}
+      if(saved.status==='permission-denied'){window.dispatchEvent(new Event('alpha:alarms-changed'));return {action:input.action,status:'opened' as const,message:'Saved · muted'};}
     }else if(input.action==='show')window.dispatchEvent(new Event('alpha:clock-open'));
     else{
       if(input.action==='snooze'&&(!Number.isInteger(input.snoozeMinutes)||input.snoozeMinutes<1||input.snoozeMinutes>60))throw Error('Choose 1 to 60 snooze minutes.');

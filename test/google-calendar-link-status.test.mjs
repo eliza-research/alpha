@@ -40,27 +40,27 @@ async function linked({dispatches=[null],links=[],linksFail=false}={}){
 test('the same pending dispatch on two readbacks is waiting, never Sync on',async()=>{
  const {f,result}=await linked({dispatches:[{linkId:'stuck'}]});
  assert.equal(result.outcome,'unconfirmed');
- assert.equal(result.message,'Calendar sync is waiting on an earlier change. Ask your agent to check Calendar sync.');
+ assert.equal(result.message,'Waiting');
  assert.equal(f.controlReads,2);assert.equal(f.writes,0);assert.equal(f.linkReads,0);
 });
 
 test('a dispatch that moves between readbacks is Sync on',async()=>{
  const {result}=await linked({dispatches:[{linkId:'first'},{linkId:'second'}]});
- assert.equal(result.outcome,'syncing');assert.equal(result.message,`Sync on. Calendar is syncing with ${OWNER} in Google.`);
+ assert.equal(result.outcome,'syncing');assert.equal(result.message,`Syncing · ${OWNER}`);
 });
 
-test('a conflicted or quarantined event on the destination blocks Synced and is named',async()=>{
+test('a conflicted or quarantined event on the destination blocks Synced and is counted',async()=>{
  const {f,result}=await linked({links:[row('Dentist','conflicted'),row('Clean','clean'),row('','quarantined'),row('Elsewhere','conflicted',{connectorAccountId:GRANT,providerCalendarId:'team'})]});
  assert.equal(result.outcome,'unconfirmed');
- assert.equal(result.message,'Some events need a decision before they sync: Dentist, Untitled event. Ask your agent to resolve them.');
+ assert.equal(result.message,'2 held');
  assert.equal(f.linkReads,1);assert.equal(f.writes,0);
  const many=await linked({links:['A','B','C','D'].map(title=>row(title,'conflicted'))});
- assert.match(many.result.message,/: A, B, C\. Ask/);
+ assert.equal(many.result.message,'4 held');
 });
 
 test('Synced needs a clean link readback; an unreadable one is not confirmed',async()=>{
  const clean=await linked({links:[row('Clean','clean'),row('Other','conflicted',{connectorAccountId:GRANT,providerCalendarId:'team'})]});
- assert.equal(clean.result.outcome,'synced');assert.equal(clean.result.message,`Calendar syncs with ${OWNER} in Google.`);
+ assert.equal(clean.result.outcome,'synced');assert.equal(clean.result.message,`Synced · ${OWNER}`);
  const failed=await linked({linksFail:true});
- assert.equal(failed.result.outcome,'unconfirmed');assert.match(failed.result.message,/^Calendar links are unavailable\. Calendar sync was not confirmed/);
+ assert.equal(failed.result.outcome,'unconfirmed');assert.equal(failed.result.message,'Unconfirmed · Calendar links are unavailable');
 });

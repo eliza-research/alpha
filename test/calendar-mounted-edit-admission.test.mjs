@@ -33,7 +33,7 @@ test('mounted Calendar Edit keeps the retained draft until explicit Resume or Di
           await edit();
           const blocked = await f.snapshot();
           assert.equal(!!blocked.form, false, 'Edit must keep the existing durable draft until explicit action');
-          assert.equal(blocked.notices.at(-1), 'Finish or discard your draft first.');
+          assert.equal(blocked.notices.at(-1), 'Draft open');
           assert.equal(blocked.retained, durable);
           assert.equal(await f.invoke('saved', 'owner-a'), durable);
           assert.ok(await detail.isVisible(), 'The current event remains open');

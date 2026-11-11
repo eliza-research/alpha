@@ -439,12 +439,12 @@ export async function seedCompletedAccessSetup(page: Page) {
 export async function completeAccessSetup(page: Page) {
   const panel=page.locator('dialog.alpha-startup-permissions');
   // The heading depends on whether the agent's AI binding was confirmed before the last step.
-  const ready=panel.getByRole('heading',{name:/^(You’re all set|Setup finished)$/});
+  const ready=panel.getByRole('heading',{name:/^(All set|All set)$/});
   const stored=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')||'null')?.status);
   let outcome='';
   await expect.poll(async()=>outcome=await ready.isVisible()?'ready':!await panel.count()&&await stored()==='completed'?'completed':'',{message:'Access setup shows the Ready card or is stored as completed',timeout:15_000}).not.toBe('');
   if(outcome==='ready'){
-    await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
+    await panel.getByRole('button',{name:'Done',exact:true}).click();
     await expect(panel).toHaveCount(0);
   }
   expect(await stored()).toBe('completed');
@@ -465,10 +465,10 @@ export async function openYourAgent(page: Page) {
   const minimize = page.getByRole('button', { name: 'Minimize chat', exact: true });
   if (await minimize.isVisible()) await minimize.click();
   await button(page, 'Settings').click();
-  // Recovery and conversation controls live under Settings › About › Connection help.
+  // Recovery and conversation controls live under Settings › About › Status.
   await page.getByRole('button', { name: 'About', exact: true }).click();
-  await page.getByRole('button', { name: 'Connection help', exact: true }).click();
+  await page.getByRole('button', { name: 'Status', exact: true }).click();
   const panel = page.getByRole('region', { name: 'Settings', exact: true });
-  await expect(panel.getByRole('heading', {name:'Connection help',exact:true})).toBeVisible();
+  await expect(panel.getByRole('heading', {name:'Status',exact:true})).toBeVisible();
   return panel;
 }

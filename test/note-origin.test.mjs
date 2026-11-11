@@ -147,7 +147,7 @@ test('an event link to an agent note opens it while Previous notes is selected',
     const canonicalOrigin = new Function('shell', 'resolveNoteLink', 'noteOriginTitle', 'recordNoteRevision', 'document',
       'let opening=false;' + stripTypeScriptTypes(source.slice(start, end), {mode:'strip'}) + ';return canonicalOrigin;')(shell, resolveNoteLink, noteOriginTitle, recordNoteRevision, {hidden: false});
     const out = canonicalOrigin({ev: {}}, link, api, 'e1');
-    assert.equal(out.ev.originLabel, 'From a note in Notes');
+    assert.equal(out.ev.originLabel, 'Note');
     await out.ev.openOrigin();
     return {toasts, opened, selected, shell};
   };
@@ -159,5 +159,5 @@ test('an event link to an agent note opens it while Previous notes is selected',
   const refused = await run({refuse: true});
   assert.deepEqual([refused.opened, refused.toasts], [[], []], 'a refused switch already said why and opens nothing');
   const missing = await run({port: false});
-  assert.deepEqual(missing.toasts, ['Notes is unavailable for this agent connection. Nothing was opened.'], 'a real missing binding still says so');
+  assert.deepEqual(missing.toasts, ['Notes unavailable'], 'a real missing binding still says so');
 });

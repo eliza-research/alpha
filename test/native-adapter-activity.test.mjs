@@ -34,9 +34,9 @@ const settle=()=>new Promise(r=>setTimeout(r,5));
 
 test('a rejected review shows a toast and frees the entry for another try',async()=>{
  controller.calls=[];controller.next=()=>Promise.reject(new Error('SMS reconciliation requires exact saved evidence'));
- const view=open();assert.ok(view.row('Check your phone, then confirm whether this happened.'));
+ const view=open();assert.ok(!view.row('Check your phone, then confirm whether this happened.'));
  view.row('It happened').go();await settle();
- assert.deepEqual(view.toasts,['Not recorded. SMS reconciliation requires exact saved evidence.']);
+ assert.deepEqual(view.toasts,['Not recorded']);
  controller.next=()=>Promise.resolve();open().row('It happened').go();await settle();
  assert.equal(controller.calls.length,2,'busy was cleared after the failure');
 });
@@ -49,5 +49,5 @@ test('a second tap while a review is in flight issues no second call',async()=>{
 test('an error without a message still says the review was not recorded',async()=>{
  controller.calls=[];controller.next=()=>Promise.reject('offline');
  const view=open();view.row('It did not happen').go();await settle();
- assert.deepEqual(view.toasts,['Not recorded. Nothing was repeated.']);
+ assert.deepEqual(view.toasts,['Not recorded']);
 });

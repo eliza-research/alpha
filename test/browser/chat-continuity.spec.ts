@@ -128,7 +128,7 @@ async function typeDraft(page: Page, text: string) {
   await composer(page).fill(text);
   await expect.poll(() => savedDraft(page), { timeout: 15_000 }).toBe(text);
 }
-const MAY_FINISH = 'This reply may still finish. It will appear here if it does.';
+const MAY_FINISH = 'May still finish';
 // The pending notice (may still finish, or cancelled) until the single check settles it.
 const CHECK_PENDING = /[Ii]t will appear here/;
 const UNKNOWN = 'Your message may have reached the agent. Check before sending it again.';
@@ -324,7 +324,7 @@ test('Stop asks the agent to cancel exactly once and reports a confirmed cancel 
   await composer(page).press('Enter');
   await expect.poll(() => fixture(page, f => f.posts), { timeout: 15_000 }).toBe(1);
   await stop(page).click();
-  await expect(conversation(page).getByText('Reply cancelled. If it had already finished, it will appear here.', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(conversation(page).getByText('Cancelled', { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(conversation(page).getByText('The agent stopped this reply.', { exact: true })).toBeVisible({ timeout: 40_000 });
   await expect(conversation(page).getByText(CHECK_PENDING)).toHaveCount(0);
   await expect(conversation(page).getByText('Please stop this one', { exact: true })).toHaveCount(1);
@@ -475,7 +475,7 @@ test('a restored conversation longer than the chat window scrolls up to its firs
 });
 
 // One notice for every stop the single check could not settle (not run, not finished, overtaken).
-const UNCHECKED = 'Stopped. To see if it finished, load this conversation in Connection help.';
+const UNCHECKED = 'Stopped';
 
 test('a rate limit before the message is posted keeps the text instead of reporting an unknown outcome', async ({ page }) => {
   test.setTimeout(90_000);

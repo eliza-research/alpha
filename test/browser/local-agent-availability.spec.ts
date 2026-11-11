@@ -56,7 +56,7 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
     const chooser = page.locator('.alpha-connection');
     const start = chooser.getByRole('button', { name: 'Start local agent', exact: true });
     if (mode === 'checking') {
-      await expect(chooser.getByText('Checking local agent availability…')).toBeVisible();
+      await expect(chooser.getByRole('status').getByText('Checking', { exact: true })).toBeVisible();
       await expect(start).toBeDisabled();
       await expect(chooser.getByLabel('Cerebras API key')).toHaveCount(0);
     } else if (mode === 'unavailable') {
@@ -67,7 +67,7 @@ for (const mode of ['checking', 'unavailable', 'available'] as const) {
       await expect(start).toBeEnabled();
       await chooser.locator('summary').filter({ hasText: /^Model provider$/ }).click();
       await chooser.getByLabel('Cerebras API key').fill('synthetic-e2e-key');
-      await chooser.getByRole('button', { name: 'Save provider', exact: true }).click();
+      await chooser.getByRole('button', { name: 'Save', exact: true }).click();
       // A verified key is selected and the agent restarts with it at once; this fixture refuses the start.
       const provider = page.getByRole('dialog', { name: 'AI connection', exact: true });
       await expect(provider.getByRole('alert')).toHaveText('Runtime start is outside this fixture');

@@ -19,7 +19,7 @@ const {createRoot}=await import('react-dom/client');
 after(()=>{dom.window.close();for(const [key,descriptor]of previous){if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];}});
 
 const code=buildSync({entryPoints:['apps/app/src/runtime/error-boundary.tsx'],bundle:true,write:false,platform:'node',format:'cjs',jsx:'automatic',external:['react','react/jsx-runtime','@capacitor/core'],define:{'import.meta.env':'{}',__APP_VERSION__:'"test"'},loader:{'.css':'empty'}}).outputFiles[0].text;
-const HOME='Choose another Home app';
+const HOME='Switch Home';
 const settle=()=>act(async()=>{for(let i=0;i<5;i++)await new Promise(resolve=>setTimeout(resolve,0));});
 
 /** A fresh module per case: showRecoveryScreen shows once per page. */

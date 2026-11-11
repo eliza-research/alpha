@@ -45,7 +45,7 @@ async function mount({selected='none'}={}){
  const find=(list,label)=>{const row=list.find(r=>r.label===label);assert.ok(row,`row ${label} in ${list.map(r=>r.label).join(', ')}`);return row;};
  const type=(label,value)=>find(rows(entryPage().groups),label).change({target:{value}});
  const press=async(list,label)=>{find(list,label).go();await settle();};
- const openShop=async()=>{manager();await settle();await press(manager(),'Unlock passwords');await press(manager(),'Shop');};
+ const openShop=async()=>{manager();await settle();await press(manager(),'Unlock');await press(manager(),'Shop');};
  return {pm,calls,fail,toasts,pages,manager,entryPage,rows,find,type,press,openShop,setLocked:()=>{unlocked=false;}};
 }
 
@@ -60,7 +60,7 @@ test('a rejected save keeps the typed password, so the retry sends it',async()=>
  const saves=t.calls.filter(([m])=>m==='save');
  assert.equal(saves.length,2);assert.equal(saves[1][1].password,'new-secret-1');
  assert.equal(t.entryPage(),null,'the draft closes once saved');
- assert.ok(t.manager().some(r=>r.val==='Password saved.'));
+ t.manager();await settle();assert.ok(t.toasts.includes('Saved'));
 });
 
 test('unlock expiry hides the draft, restores it after a fresh unlock and refuses an empty Save',async()=>{
@@ -71,13 +71,13 @@ test('unlock expiry hides the draft, restores it after a fresh unlock and refuse
   t.setLocked();mock.timers.tick(58_000);await settle();
   const locked=t.entryPage();
   assert.equal(locked.title,'Edit password');
-  assert.deepEqual(t.rows(locked.groups).map(r=>[r.label,r.sub]),[['Unlock passwords','Locked. Unlock to continue.']]);
+  assert.deepEqual(t.rows(locked.groups).map(r=>[r.label,r.sub]),[['Unlock','']]);
   assert.ok(!JSON.stringify(locked).includes('Shop renamed')&&!JSON.stringify(locked).includes('sam@example.test')&&!JSON.stringify(locked).includes('typed-before-expiry'),'no field value is shown while locked');
-  assert.ok(t.manager().some(r=>r.val==='Locked after the unlock time ended.'));
-  await t.press(t.rows(locked.groups),'Unlock passwords');
+  t.manager();await settle();assert.ok(t.toasts.includes('Locked'));
+  await t.press(t.rows(locked.groups),'Unlock');
   const form=t.rows(t.entryPage().groups);
   assert.equal(t.find(form,'Name').value,'Shop renamed');assert.equal(t.find(form,'Username').value,'sam@example.test');
-  assert.equal(t.find(form,'Password').value,'');assert.equal(t.find(form,'Password').ph,'Type the new password again');
+  assert.equal(t.find(form,'Password').value,'');assert.equal(t.find(form,'Password').ph,'Retype');
   await t.press(form,'Save');
   assert.equal(t.find(t.rows(t.entryPage().groups),'Not saved').val,'Type the new password again.');
   assert.ok(!t.calls.some(([m])=>m==='save'),'an empty field after expiry never keeps the old password');
@@ -89,7 +89,7 @@ test('unlock expiry hides the draft, restores it after a fresh unlock and refuse
 test('leaving, backgrounding and Lock still forget the draft',async()=>{
  let t=await mount();await t.openShop();t.pm.leavePasswordManager();assert.equal(t.entryPage(),null);
  t=await mount();t.pm.passwordManagerLifecycle(()=>{});await t.openShop();document.hidden=true;listeners.visibilitychange();document.hidden=false;assert.equal(t.entryPage(),null);
- t=await mount();await t.openShop();await t.press(t.manager(),'Lock passwords');assert.equal(t.entryPage(),null);
+ t=await mount();await t.openShop();await t.press(t.manager(),'Lock');assert.equal(t.entryPage(),null);
 });
 
 

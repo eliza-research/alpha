@@ -13,7 +13,7 @@ const code=stripTypeScriptTypes(`globalThis.controller={${between('  async cance
 
 function harness({stored,prior='old-key',environment='production',active=true}){
   const view={step:'google',environment},operation=new AbortController(),events=[];
-  const box={state:{signIn:view,open:true,message:'Continue in your browser.',error:''},operation,signInReadinessOwner:null,active:active?{}:null,
+  const box={state:{signIn:view,open:true,message:'In browser',error:''},operation,signInReadinessOwner:null,active:active?{}:null,
     googleSignInGeneration:3,googleSignInPrior:{generation:3,environment,credentialId:prior},setTimeout,
     signInClient:()=>({googleCancellationSupported:false}),signInEntryPage:()=>false,explicitSignedOutCloudEntry:()=>false,
     residentCloudFlow:()=>true,residentEnvironment:()=>'production',
@@ -27,7 +27,7 @@ function harness({stored,prior='old-key',environment='production',active=true}){
 test('a key stored before the cancel landed is adopted, not hidden behind the method screen',async()=>{
   const {box,events}=harness({stored:{credentialId:'new-key'}});
   await box.controller.cancelSignIn();
-  assert.deepEqual({signIn:box.state.signIn,message:box.state.message,saved:box.state.residentSavedCredential},{signIn:null,message:'Signed in.',saved:true});
+  assert.deepEqual({signIn:box.state.signIn,message:box.state.message,saved:box.state.residentSavedCredential},{signIn:null,message:'Signed in',saved:true});
   assert.deepEqual(events,['cancel','rebind']);
   const stopped=harness({stored:{credentialId:'new-key'},active:false});
   await stopped.box.controller.cancelSignIn();

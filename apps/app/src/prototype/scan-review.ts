@@ -19,26 +19,26 @@ export function openScanReview(image:Blob,save:(text:string,id:string)=>Promise<
   const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Review scanned text');
   dialog.className='scan-dialog scan-text-review';
   const heading=document.createElement('h2');heading.textContent='Scan text';
-  const disclosure=document.createElement('p');disclosure.textContent='English text recognition runs on this device. Check the result before saving. '+(source==='captured'?'The captured photo remains in Photos.':source==='unsaved'?'This photo is not saved to Photos unless you choose Keep photo.':'The selected file stays unchanged and is not copied to Photos.');
+  const disclosure=document.createElement('p');disclosure.style.margin='0';const onDevice=document.createElement('span');onDevice.textContent='On device';onDevice.style.cssText='display:inline-block;padding:2px 10px;border-radius:999px;background:var(--s2,#eee);font-size:13px;font-weight:600';disclosure.append(onDevice);
   const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-label','Scan status');status.textContent='Starting local scan…';
   const field=document.createElement('textarea');field.setAttribute('aria-label','Scanned text');field.rows=9;field.maxLength=100000;field.disabled=true;field.className='scan-dialog-text';
   const actions=document.createElement('div');actions.className='scan-dialog-actions';
   const button=(label:string)=>{const value=document.createElement('button');value.type='button';value.textContent=label;actions.append(value);return value;};
   const tools=document.createElement('div');tools.className='scan-dialog-tools';
   let closeDocument:(()=>void)|undefined;
-  {const document=button('Build multi-page PDF');document.onclick=()=>{closeDocument?.();closeDocument=openScanDocument(image);};tools.append(document);}
-  if(source==='unsaved'&&keep){const kept=button('Keep photo');let keeping=false;kept.onclick=()=>{if(keeping||closed)return;keeping=true;kept.disabled=true;status.textContent='Saving photo to Photos…';void keep(image,controller.signal).then(message=>{if(!closed){status.textContent=message;kept.textContent='Photo kept';}},error=>{if(closed)return;
+  {const document=button('Multi-page');document.onclick=()=>{closeDocument?.();closeDocument=openScanDocument(image);};tools.append(document);}
+  if(source==='unsaved'&&keep){const kept=button('Keep photo');let keeping=false;kept.onclick=()=>{if(keeping||closed)return;keeping=true;kept.disabled=true;status.textContent='Saving…';void keep(image,controller.signal).then(message=>{if(!closed){status.textContent=message;kept.textContent='Photo kept';}},error=>{if(closed)return;
     // A host that keeps under one operation identity (or kept nothing) marks the failure retryable:
     // trying again resolves the same save. Otherwise Keep stays off so a retry cannot duplicate it.
     const retry=error instanceof ScanKeepError&&error.retry;
-    status.textContent=error instanceof ScanKeepError&&error.message?error.message:'Keep photo unconfirmed. Check Photos before keeping it again.';
+    status.textContent=error instanceof ScanKeepError&&error.message?error.message:'Unconfirmed';
     if(retry){keeping=false;kept.disabled=false;kept.textContent='Try keeping again';}});};tools.append(kept);}
   const pdf=button(Capacitor.isNativePlatform()?'Save photo PDF':'Download photo PDF');
   const copy=button('Copy text'),commit=button('Save to Notes'),close=button('Cancel scan');copy.disabled=true;commit.disabled=true;commit.className='primary';
   const pdfStatus=document.createElement('p');pdfStatus.setAttribute('role','status');pdfStatus.setAttribute('aria-label','PDF export status');
   let pdfAttempted=false;
   const previewUrl=URL.createObjectURL(image),preview=document.createElement('img');preview.src=previewUrl;preview.alt=source==='selected'?'Selected image for PDF export':'Captured page for PDF export';preview.style.cssText='display:block;width:100%;max-height:160px;object-fit:contain;background:var(--s2,#eee);border-radius:8px';
-  const pdfDisclosure=document.createElement('p');pdfDisclosure.textContent='Photo PDF exports this image. Text corrections are saved separately to Notes.';
+  const pdfDisclosure=document.createElement('p');pdfDisclosure.hidden=true;
   let closed=false,attempted=false;const noteId='scan-'+crypto.randomUUID();
   const dispose=()=>{if(closed)return;closed=true;closeDocument?.();controller.abort();URL.revokeObjectURL(previewUrl);dialog.remove();window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',dispose);document.removeEventListener('visibilitychange',visibility);if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
   const back=(event:Event)=>{if(document.querySelector('dialog[aria-label="Review scan document"]'))return;event.preventDefault();event.stopImmediatePropagation();dispose();};
@@ -49,14 +49,14 @@ export function openScanReview(image:Blob,save:(text:string,id:string)=>Promise<
   if(eventReview)eventReview.hidden=true;
   const links=createScanLinkReview(()=>field.value,()=>!closed&&!document.hidden);
   field.oninput=()=>{links.update();copy.disabled=!field.value.trim();commit.disabled=attempted||!field.value.trim();};
-  copy.onclick=()=>{void navigator.clipboard.writeText(field.value).then(()=>{if(!closed)status.textContent='Text copied.';},()=>{if(!closed)status.textContent='Copy unavailable. Select and copy the text manually.';});};
+  copy.onclick=()=>{void navigator.clipboard.writeText(field.value).then(()=>{if(!closed)status.textContent='Text copied.';},()=>{if(!closed)status.textContent='Copy failed';});};
   pdf.onclick=()=>{if(pdfAttempted)return;pdfAttempted=true;pdf.disabled=true;pdfStatus.textContent='Preparing photo PDF…';void exportScanPdf(image,controller.signal,scanExportTitle('scan')).then(result=>{if(closed)return;pdfStatus.textContent=result.message;if(scanPdfRetryable(result.status)){pdfAttempted=false;pdf.disabled=false;}},error=>{if(closed)return;const failure=scanPdfFailure(error);pdfStatus.textContent=failure.message;if(failure.retry){pdfAttempted=false;pdf.disabled=false;}});};
-  commit.onclick=()=>{if(attempted||!field.value.trim())return;attempted=true;commit.disabled=true;field.readOnly=true;status.textContent='Saving to Notes…';void save(field.value.trim(),noteId).then(saved=>{if(!closed){status.textContent=saved?'Saved to Notes.':'Save unconfirmed. Keep or copy this text and inspect Notes before saving again.';commit.textContent=saved?'Saved':'Save unconfirmed';}},()=>{if(!closed)status.textContent='Save unconfirmed. Keep or copy this text and inspect Notes before saving again.';});};
+  commit.onclick=()=>{if(attempted||!field.value.trim())return;attempted=true;commit.disabled=true;field.readOnly=true;status.textContent='Saving to Notes…';void save(field.value.trim(),noteId).then(saved=>{if(!closed){status.textContent=saved?'Saved to Notes.':'Save unconfirmed';commit.textContent=saved?'Saved':'Save unconfirmed';}},()=>{if(!closed)status.textContent='Save unconfirmed';});};
   const content=document.createElement('div');content.className='scan-dialog-content';content.tabIndex=0;content.setAttribute('role','region');content.setAttribute('aria-label','Review details');content.append(disclosure,preview,pdfDisclosure,status,field,tools,links.element,pdfStatus);
   if(eventReview)content.append(eventReview);
   dialog.append(heading,content,actions);(document.querySelector('.os')||document.body).append(dialog);dialog.showModal();close.focus();
   void recognizeLocalText(image,controller.signal,value=>{if(!closed)status.textContent=`Reading text… ${Math.round(value.progress*100)}%`;}).then(result=>{
-    if(closed)return;field.disabled=false;if(eventReview)eventReview.hidden=false;field.value=result.text;links.update();copy.disabled=!result.text;commit.disabled=!result.text;close.textContent='Close scan';status.textContent=result.text?'Review and correct the recognized text.':'No text recognized. You can type a correction or close and try a clearer photo.';field.focus();
-  },error=>{if(closed)return;close.textContent='Close scan';status.textContent=error instanceof Error?error.message:'Local scan failed. Try a clearer photo.';});
+    if(closed)return;field.disabled=false;if(eventReview)eventReview.hidden=false;field.value=result.text;links.update();copy.disabled=!result.text;commit.disabled=!result.text;close.textContent='Close scan';status.textContent=result.text?'':'No text';field.focus();
+  },error=>{if(closed)return;close.textContent='Close scan';status.textContent=error instanceof Error?error.message:'Scan failed';});
   return dispose;
 }

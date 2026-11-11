@@ -9,6 +9,6 @@ test('the Android Cloud delegation panel is not mounted in a browser host',()=>{
  assert.equal(picker.match(/<CloudDelegationPanel /g).length,1);
  assert.ok(picker.indexOf('<BrowserDigestDelegation ')<mount.index,'the development profile branch is checked first');
 });
-test('the schedule note separates its two sentences',()=>{
- assert.match(digest,/Only these digests run on a schedule\.\{' '\}\n\s*\{billing\}/);
+test('billing is one short line in the schedule review, not in the schedule note',()=>{
+ assert.doesNotMatch(digest,/Only these digests run on a schedule\.\{' '\}/);assert.match(digest,/review\.path==='loops'\|\|review\.path==='dossier'\)&&<p>[^\n]*\{billing\}<\/p>/);
 });

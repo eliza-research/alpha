@@ -109,7 +109,7 @@ test('direct navigation journals once and shows Browser after the chat request s
  await d.run();assert.equal(h.controller.signal.aborted,false,'the reply request is not cancelled');assert.equal(h.events.filter(e=>e==='dispatch').length,1);assert.ok(!h.events.includes('present'));
  h.settle();await new Promise(resolve=>setTimeout(resolve,0));assert.equal(h.events.at(-1),'present');
  const delivery=d.state.conversationDelivery;assert.equal(delivery.messages.length,1);assert.equal(delivery.messages[0].inReplyTo,'canonical-user');assert.equal(delivery.messages[0].text,'Opened example.com.');assert.equal(delivery.messages[0].browserDestination,'https://example.com');
- const user={id:'optimistic-user',from:'user',text:'Open example.com.'},pause={id:'streamed-pause',from:'agent',text:'Review this request on your phone before it can run.'};const original=[user,pause];
+ const user={id:'optimistic-user',from:'user',text:'Open example.com.'},pause={id:'streamed-pause',from:'agent',text:'Review on phone'};const original=[user,pause];
  const merge=vm.runInNewContext(mergeSource+';mergeConversationDelivery',{});const reopened=merge(original,delivery.messages);const shown=projectActionMessages(reopened.map(m=>({...m,displayText:m.text,hasCalendarText:true})),reopened);
  assert.deepEqual(Array.from(shown,m=>m.id),['optimistic-user','device-receipt:proposal']);assert.equal(shown[1].displayText,'Opened example.com.');assert.equal(original[1].text,pause.text,'raw stored protocol remains intact');assert.equal(merge(reopened,delivery.messages).length,3,'redelivery is idempotent');
  // Live tj-79465dcbc873b2: with the agent reply "Opening example.com." in the turn, that reply is the one line shown.

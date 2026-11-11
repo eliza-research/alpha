@@ -68,12 +68,12 @@ export function installNoteOriginAdapter(Component:Bag,views:Bag){
   if(origin.version===2)return canonicalOrigin(out,origin,api,openId);
   // The title is the note's current one. A link whose note is gone names no note at all.
   const known=olderNotesOpen(),live=known?resolveNoteOrigin(origin as NoteOrigin,olderNotes(api)):undefined,name=live?.status==='found'?noteOriginTitle(live.note):'';
-  out.ev.hasOrigin=true;out.ev.originLabel=!known?'From a voice note in Previous notes':name?`From note: ${name}`:'From a note that is no longer in Notes';out.ev.originOpenLabel=name?`Open note ${name}`:'Open note';
+  out.ev.hasOrigin=true;out.ev.originLabel=!known?'Voice note':name?`From note: ${name}`:'Deleted note';out.ev.originOpenLabel=name?`Open note ${name}`:'Open note';
   out.ev.openOrigin=async()=>{
    if(opening)return;opening=true;
    try{
-    const gone=()=>api.toast('The note this came from was deleted or replaced. Nothing was opened.');
-    if(!await openOlderNotes()){if(api.isActive()&&!document.hidden)api.toast('Previous notes could not be opened. Nothing was changed.');return;}
+    const gone=()=>api.toast('Source gone');
+    if(!await openOlderNotes()){if(api.isActive()&&!document.hidden)api.toast('Couldn’t open');return;}
     if(!api.isActive()||document.hidden||api.get('calendar').open!==openId)return;
     const found=resolveNoteOrigin(origin as NoteOrigin,olderNotes(api));
     if(found.status!=='found'){gone();return;}
@@ -83,7 +83,7 @@ export function installNoteOriginAdapter(Component:Bag,views:Bag){
     if(resolveNoteOrigin(origin as NoteOrigin,olderNotes(api)).status!=='found'){gone();return;}
     api.open('notes',{open:origin.noteId});
     // An older link hashed the whole record, so a pin or a ticked item also counts as a change.
-    if(changed)api.toast('This note may have changed since this was created from it.');
+    if(changed)api.toast('Edited');
    }finally{opening=false;}
   };
   return out;
@@ -103,7 +103,7 @@ export function installNoteOriginAdapter(Component:Bag,views:Bag){
  };
  const canonicalOrigin=(out:Bag,origin:NoteLink,api:Bag,openId:unknown)=>{
   const ui=canonicalNotes(),live=ui?resolveNoteLink(origin,ui.notes()):undefined,name=live?.status==='found'?noteOriginTitle(live.note,'Note'):'';
-  out.ev.hasOrigin=true;out.ev.originLabel=!ui?'From a note in Notes':name?`From note: ${name}`:'From a note that is no longer in Notes';out.ev.originOpenLabel=name?`Open note ${name}`:'Open note';
+  out.ev.hasOrigin=true;out.ev.originLabel=!ui?'Note':name?`From note: ${name}`:'Deleted note';out.ev.originOpenLabel=name?`Open note ${name}`:'Open note';
   out.ev.openOrigin=async()=>{
    if(opening)return;opening=true;
    try{
@@ -111,13 +111,13 @@ export function installNoteOriginAdapter(Component:Bag,views:Bag){
     if(open==='refused')return;
     if(!api.isActive()||document.hidden||api.get('calendar').open!==openId)return;
     const notes=canonicalNotes(),found=notes?resolveNoteLink(origin,notes.notes()):undefined;
-    if(!notes){if(api.isActive()&&!document.hidden)api.toast('Notes is unavailable for this agent connection. Nothing was opened.');return;}
-    if(found?.status!=='found'){api.toast('The note this came from was deleted or replaced. Nothing was opened.');return;}
+    if(!notes){if(api.isActive()&&!document.hidden)api.toast('Notes unavailable');return;}
+    if(found?.status!=='found'){api.toast('Source gone');return;}
     const changed=await recordNoteRevision(found.note as {id:string})!==origin.revision;
     if(!api.isActive()||document.hidden||api.get('calendar').open!==openId||canonicalNotes()!==notes)return;
-    if(resolveNoteLink(origin,notes.notes()).status!=='found'){api.toast('The note this came from was deleted or replaced. Nothing was opened.');return;}
+    if(resolveNoteLink(origin,notes.notes()).status!=='found'){api.toast('Source gone');return;}
     api.open('notes',{});notes.select(origin.noteId);
-    if(changed)api.toast('This note was edited after this was created from it.');
+    if(changed)api.toast('Edited');
    }finally{opening=false;}
   };
   return out;

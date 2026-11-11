@@ -29,8 +29,8 @@ for(const mode of ['fresh','stale','response-loss','staging-loss','navigate','le
   else await review.getByRole('button',{name:'Delete reminder',exact:true}).click();
  }
  // A changed selection is refused before admission: definite, never reported as an uncertain outcome.
- if(mode==='stale'){await expect(page.getByText('This reminder changed. Review it again before deleting.',{exact:true})).toBeVisible();await expect(page.getByText('Not confirmed. Check its status in Calendar.',{exact:true})).toHaveCount(0);expect(await page.evaluate(()=>(window as any).stages)).toBe(0);}
- if(['staging-loss','late-stale'].includes(mode))await expect(page.getByText('Not confirmed. Check its status in Calendar.',{exact:true})).toBeVisible();
+ if(mode==='stale'){await expect(page.getByText('This reminder changed. Review it again before deleting.',{exact:true})).toBeVisible();await expect(page.getByText('Unconfirmed',{exact:true})).toHaveCount(0);expect(await page.evaluate(()=>(window as any).stages)).toBe(0);}
+ if(['staging-loss','late-stale'].includes(mode))await expect(page.getByText('Unconfirmed',{exact:true})).toBeVisible();
  if(['fresh','response-loss','reload-loss'].includes(mode)){
   const panel=page.getByRole('complementary',{name:'Pending deletions'});await expect(panel.getByRole('button',{name:'Undo',exact:true})).toBeVisible();
   expect((await read(page)).reminders[0].status).toBe('scheduled');expect(Object.keys((await read(page)).deletions)).toHaveLength(1);
@@ -50,7 +50,7 @@ for(const width of [412,1440])test(`two browser tabs retain separate Undo intent
 test('legacy uncertain deletion remains receipt-only across retry and reload',async({page})=>{
  await setup(page);await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts'),target=await registerPlugin<any>('DailyApps').selectedReminder({id:'delete-boundary'});await(await import('/src/runtime/reminder-deletions.ts')).retainReminderDeletion({operationId:'legacy-uncertain',bindingHash:'a'.repeat(64),operation:{type:'reminder_cancel',target}});});
  await chooseCalendarEventAction(page, 'Delete event');await expect(page.getByRole('dialog',{name:'Delete reminder?',exact:true})).toHaveCount(0);
- await expect(page.getByText('Not confirmed. Check its status in Calendar.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Unconfirmed',{exact:true})).toBeVisible();
  await page.reload();expect((await read(page)).reminders[0].status).toBe('scheduled');expect(Object.keys((await read(page)).deletions||{})).toHaveLength(0);
  expect(await page.evaluate(async()=>Object.keys(await(await import('/src/runtime/reminder-deletions.ts')).pendingReminderDeletions()))).toEqual(['legacy-uncertain']);
 });

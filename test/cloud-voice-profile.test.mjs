@@ -167,10 +167,10 @@ test('Cloud Notes exposes only read while idle, only Stop while live, and cancel
  try {
   f.box.pendingAudioDeletions=async()=>({});
   f.shell.notes={open:'qa-note',list:[{id:'qa-note',title:'QA note',body:'Reviewed text.',updatedAt:1}]};
-  let view=f.render().ed;assert.equal(view.stopReading,undefined);assert.equal(typeof view.readAloud,'function');assert.equal(view.cloudSpeechDisclosure,'Read with Eliza Cloud uploads this note’s text to your selected Cloud account for Cartesia speech and uses your plan allowance.');
+  let view=f.render().ed;assert.equal(view.stopReading,undefined);assert.equal(typeof view.readAloud,'function');assert.equal(view.cloudSpeechDisclosure,'Text → Eliza Cloud');
   // Read-aloud sends only the note's text, on either route; own keys bill the owner's Cartesia account.
   const snapshot=f.box.connectionController.getSnapshot;f.box.connectionController.getSnapshot=()=>({...snapshot(),residentInference:'direct'});
-  assert.equal(f.render().ed.cloudSpeechDisclosure,'Cartesia speech sends this note’s text using your own API key and provider allowance.');f.box.connectionController.getSnapshot=snapshot;
+  assert.equal(f.render().ed.cloudSpeechDisclosure,'Text → Cartesia');f.box.connectionController.getSnapshot=snapshot;
   view.readAloud();for(let i=0;i<20&&!f.cloudSpeech;i++)await f.tick();
   assert.equal(f.cloudSpeech,1);assert.equal(f.localFactories,0);assert.equal(f.speechInputs[0].credentialId,'cloud-credential');
   view=f.render().ed;assert.equal(typeof view.stopReading,'function');assert.equal(view.readAloud,undefined);

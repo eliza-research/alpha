@@ -28,7 +28,7 @@ for (const theme of ['light', 'dark']) {
         expect(box!.x).toBeGreaterThanOrEqual(0);
         expect(box!.x + box!.width).toBeLessThanOrEqual(width + 1);
         expect(box!.y + box!.height).toBeLessThanOrEqual(916);
-        await expect(page.getByText('Reminders could not refresh.', { exact: false })).toHaveCount(0);
+        await expect(page.getByText('Couldn’t refresh', { exact: false })).toHaveCount(0);
         if (width === 412) await page.screenshot({ path: info.outputPath(`${name}.png`) });
       }
       expect(errors).toEqual([]);
@@ -136,7 +136,7 @@ test('Unsigned recorder opens without a sign-in step and a refused microphone sh
   await page.getByRole('button',{name:'Record voice note',exact:true}).click();
   const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
   await expect(recorder).toHaveAttribute('data-recorder-state','failed');
-  await expect(recorder.getByRole('alert')).toHaveText('The microphone isn’t available.');
+  await expect(recorder.getByRole('alert')).toHaveText('Mic unavailable');
   await expect(recorder.getByRole('button',{name:'Stop recording',exact:true})).toBeDisabled();
   await expect(page.getByRole('button',{name:/Connect Eliza Cloud|Record without transcription|Start recording/})).toHaveCount(0);
   expect(await page.evaluate(()=>(window as any).microphoneRequests)).toBe(1);

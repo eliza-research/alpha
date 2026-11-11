@@ -8,9 +8,9 @@ import { test, expect, type Page } from '@playwright/test';
 const REMOTE = 'https://agent.example.test';
 const UPSTREAM_RUNTIME = 'Eliza needs attention. Check the connected host\'s diagnostics before trying again.';
 const UPSTREAM_MODEL = 'Eliza cannot respond yet. Configure a model provider on the connected host in Settings.';
-const ALPHA_MODEL = 'Your agent cannot reply yet. Choose an AI provider in Settings, then send your message again.';
-const ALPHA_RUNTIME = 'Part of your agent stopped working. Send your message again in a moment.';
-const ALPHA_BACKGROUND = 'Part of your agent stopped working. Some features may not work until it recovers.';
+const ALPHA_MODEL = 'No AI provider · Open Settings';
+const ALPHA_RUNTIME = 'Agent error · Send again';
+const ALPHA_BACKGROUND = 'Agent degraded';
 type Row = { role: 'user' | 'assistant'; text: string };
 
 async function remoteAgent(page: Page, rows: Row[]) {

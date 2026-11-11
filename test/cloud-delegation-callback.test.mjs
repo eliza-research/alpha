@@ -42,12 +42,12 @@ test('a return that arrives while a status request runs is consumed after it',as
  await mount(f,async text=>{
   assert.equal(f.calls.filter(c=>c[0]==='status').length,0);
   const release=f.hold();
-  const check=[...document.querySelectorAll('button')].find(b=>b.textContent==='Check authorization status');
+  const check=[...document.querySelectorAll('button')].find(b=>b.textContent==='Refresh');
   await act(async()=>check.click());
   await act(async()=>f.deliver({state,code:'c1'}));
   release();await settle();
   assert.deepEqual(f.calls.filter(c=>c[0]==='complete'),[['complete',state]]);
-  assert.match(text(),/Cloud read access is connected/);
+  assert.match(text(),/Connected/);
   assert.equal(f.native,null);assert.equal(f.slots.size,0);
  });
 });
@@ -55,7 +55,7 @@ test('an expired record clears the native return',async()=>{
  const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:new Date(Date.now()-1000).toISOString(),phase:'waiting'};
  const f=fixture({record,callback:{state,code:'c1'},status:()=>({status:'waiting'})});
  await mount(f,async text=>{
-  assert.match(text(),/Authorization expired/);
+  assert.match(text(),/Expired/);
   assert.deepEqual(f.calls.filter(c=>c[0]==='clearNative'),[['clearNative',state]]);
   assert.equal(f.calls.filter(c=>c[0]==='complete').length,0);
  });
@@ -63,8 +63,8 @@ test('an expired record clears the native return',async()=>{
 test('a return with no pending record here says nothing about another account and stays in the slot',async()=>{
  const f=fixture({callback:{state:other,code:'c2'},status:()=>({status:'waiting'})});
  await mount(f,async text=>{
-  assert.doesNotMatch(text(),/another account/);
-  assert.match(text(),/Allow this agent to read selected Google data/);
+  assert.doesNotMatch(text(),/Wrong account/);
+  assert.match(text(),/Expires in 7 days/);
   assert.deepEqual(f.native,{state:other,code:'c2'});
   assert.equal(f.calls.filter(c=>c[0]==='clearNative').length,0);
  });
@@ -73,9 +73,9 @@ test('a finished status releases the native return for that state',async()=>{
  const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'waiting'};
  const f=fixture({record,status:()=>({status:'failed'})});
  await mount(f,async text=>{
-  const check=[...document.querySelectorAll('button')].find(b=>b.textContent==='Check authorization status');
+  const check=[...document.querySelectorAll('button')].find(b=>b.textContent==='Refresh');
   await act(async()=>check.click());await settle();
-  assert.match(text(),/expired or was cancelled/);
+  assert.match(text(),/Expired/);
   assert.deepEqual(f.calls.filter(c=>c[0]==='clearNative'),[['clearNative',state]]);
  });
 });

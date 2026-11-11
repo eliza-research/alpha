@@ -37,7 +37,7 @@ hold({action:'set',status:'opened',message:'Clock request sent. Check Clock.'});
 // Repeat days: chips toggle a sorted EXTRA_DAYS list on a new review; clearing them is one-time again.
 {const chips=()=>f.render().clock.days;assert.deepEqual(JSON.parse(JSON.stringify(chips().map(d=>d.label))),['Mon','Tue','Wed','Thu','Fri','Sat','Sun']);
  chips().find(d=>d.label==='Wed').toggle();chips().find(d=>d.label==='Mon').toggle();assert.equal(f.render().clock.repeatText,'Repeats Mon, Wed');
- f.render().clock.prepare();const repeat=f.render().clock.review;assert.match(repeat.text,/repeating alarm \(Mon, Wed\)/);await repeat.confirm();
+ f.render().clock.prepare();const repeat=f.render().clock.review;assert.match(repeat.text,/ · Mon, Wed · /);await repeat.confirm();
  assert.deepEqual(JSON.parse(JSON.stringify(writes.at(-1))).days,[2,4]);writes.pop();// keep later write indexes stable
  chips().find(d=>d.label==='Mon').toggle();chips().find(d=>d.label==='Wed').toggle();assert.equal(f.render().clock.repeatText,'One time');}
 // Without native EXTRA_DAYS support (no clockRepeatDaysVersion) the chips are hidden and a repeat is never sent.
@@ -47,16 +47,16 @@ hold({action:'set',status:'opened',message:'Clock request sent. Check Clock.'});
 // All other standard intents require a fresh review; no broad alarm identity is inferred.
 for(const [name,action] of [['Show alarms','show'],['Snooze','snooze'],['Dismiss','dismiss']]){
  f.render().clock.actions.find(a=>a.label===name).pick();f.render().clock.prepare();const review=f.render().clock.review;
- if(action==='snooze'){assert.match(review.text,/requesting 10 minutes/);assert.match(review.text,/default duration/);assert.match(review.text,/all ringing alarms/);}
- if(action==='dismiss')assert.match(review.text,/one-time alarm is disabled/);
+ if(action==='snooze'){assert.equal(review.text,'Snooze 10 min');}
+ if(action==='dismiss')assert.equal(review.text,'Dismiss alarm');
  await review.confirm();assert.equal(writes.at(-1).action,action);
 }
 assert.equal(writes[2].snoozeMinutes,10);
 response={status:'unavailable',message:'No installed Clock app handles this action'};f.render().clock.prepare();await f.render().clock.review.confirm();assert.match(f.render().clock.message,/No installed Clock/);
 for(const status of ['denied','failed']){response={status,message:`Clock ${status}`};f.render().clock.prepare();await f.render().clock.review.confirm();assert.equal(f.render().clock.message,`Clock ${status}`);}
-response=new Error('lost response');f.render().clock.prepare();await f.render().clock.review.confirm();assert.match(f.render().clock.message,/unknown/);const count=writes.length;
-f.shell.componentWillUnmount();f=await fixture();assert.match(f.render().clock.message,/unknown/);assert.equal(writes.length,count,'recreation must not dispatch or retry');
-failStorage=true;f.render().clock.prepare();await f.render().clock.review.confirm();assert.equal(writes.length,count);assert.equal(f.render().clock.message,"Can’t reach Clock. Reopen it and try again.");failStorage=false;
+response=new Error('lost response');f.render().clock.prepare();await f.render().clock.review.confirm();assert.match(f.render().clock.message,/unknown/i);const count=writes.length;
+f.shell.componentWillUnmount();f=await fixture();assert.match(f.render().clock.message,/unknown/i);assert.equal(writes.length,count,'recreation must not dispatch or retry');
+failStorage=true;f.render().clock.prepare();await f.render().clock.review.confirm();assert.equal(writes.length,count);assert.equal(f.render().clock.message,"Can’t reach Clock");failStorage=false;
 hidden=true;f.render().clock.prepare();await f.render().clock.review.confirm();assert.equal(writes.length,count);hidden=false;
 // A mode change during the opening write must also prevent the synthetic handoff.
 f.render().clock.close();f.render().openClock();await settle();f.render().clock.prepare();
@@ -70,6 +70,6 @@ f.enter();staleOpener();assert.equal(f.render().clock,null,'returning to Workflo
 f.render().openClock();assert.equal(f.render().clock.review,null);
 // Both startup mock and a mode switch during review prevent the native call.
 // Without ELIZA_DEV_ALLOW_TEST_MOCKS there is no simulation: a mock request fails closed.
-for(const startupMock of [true,false]){const mock=await fixture(startupMock);mock.render().clock.prepare();document.documentElement.dataset.connectionMode='mock';const review=mock.render().clock.review;assert.equal(review.label,testMocksEnabled?'Simulate Clock request':'Continue to Clock');await review.confirm();assert.equal(writes.length,count);assert.match(mock.render().clock.message,testMocksEnabled?/simulated/:/unavailable without a live connection/);mock.shell.componentWillUnmount();document.documentElement.dataset.connectionMode='live';}
+for(const startupMock of [true,false]){const mock=await fixture(startupMock);mock.render().clock.prepare();document.documentElement.dataset.connectionMode='mock';const review=mock.render().clock.review;assert.equal(review.label,testMocksEnabled?'Simulate Clock request':'Open Clock');await review.confirm();assert.equal(writes.length,count);assert.match(mock.render().clock.message,testMocksEnabled?/simulated/:/^Offline$/);mock.shell.componentWillUnmount();document.documentElement.dataset.connectionMode='live';}
 }
 console.log('PASS actual Clock adapter flow: review/snapshot, invalid input, duplicate taps, all four operations, no handler, response loss/recreation, storage failure, foreground and mock isolation, with and without ELIZA_DEV_ALLOW_TEST_MOCKS. Native boundary is synthetic.');

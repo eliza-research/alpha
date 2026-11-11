@@ -29,6 +29,34 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
 .voice-overlay button{border:0;border-radius:24px;padding:12px 18px;margin:6px;background:var(--alpha-blue);color:var(--alpha-white);font:inherit}
 .voice-overlay textarea{width:100%;min-height:100px;box-sizing:border-box;font:inherit}
 .settings-info-description{display:block;margin-top:2px;font-size:14px;line-height:1.4;color:var(--mut)}
+/* Settings status: a dot always sits beside one word (never colour alone). */
+.settings-dot{display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:6px;flex-shrink:0;vertical-align:middle;background:var(--mut)}
+.settings-dot[data-dot="ok"]{background:#1e8e3e}
+.settings-dot[data-dot="warn"]{background:#e8a200}
+.settings-dot[data-dot="err"]{background:#d93025}
+.settings-dot[data-dot=""]{display:none}
+.settings-sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.settings-ext{display:block;width:16px;height:16px;flex-shrink:0;color:var(--mut);background:currentColor;mask:url('/icons/lucide/external-link.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/external-link.svg') center/contain no-repeat}
+.settings-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.settings-tag{padding:3px 10px;border-radius:12px;background:var(--bg);color:var(--mut);font-size:12.5px;line-height:1.4}
+.settings-badge{flex-shrink:0;padding:3px 10px;border-radius:12px;background:var(--bg);color:var(--mut);font-size:12.5px;font-variant-numeric:tabular-nums}
+.settings-app-chips{display:flex;flex-wrap:wrap;gap:8px;padding:6px 16px 14px 18px}
+.settings-app-chip{display:inline-flex;align-items:center;gap:2px;min-height:44px;padding:0 4px 0 14px;border-radius:22px;background:var(--bg);font-size:14px}
+.settings-app-chip[data-warn="true"]{box-shadow:inset 0 0 0 1.5px #e8a200}
+.settings-chip-btn{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;border-radius:20px;color:var(--mut)}
+.settings-chip-btn[aria-pressed="true"]{color:var(--acct)}
+.settings-chip-icon{display:block;width:18px;height:18px;background:currentColor;-webkit-mask:var(--chip-icon) center/contain no-repeat;mask:var(--chip-icon) center/contain no-repeat}
+.settings-chip-icon[data-icon="eye"]{--chip-icon:url('/icons/lucide/eye.svg')}
+.settings-chip-icon[data-icon="x"]{--chip-icon:url('/icons/lucide/x.svg')}
+.settings-chip-icon[data-icon="plus"]{--chip-icon:url('/icons/lucide/plus.svg')}
+.settings-aa{display:flex;gap:4px;padding:8px 10px}
+.settings-aa-btn{flex:1 1 0;min-width:44px;min-height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;color:var(--fg);line-height:1}
+.settings-aa-btn[aria-pressed="true"]{background:var(--acc);color:#fff}
+.settings-spin{display:block;width:16px;height:16px;flex-shrink:0;border-radius:50%;border:2px solid var(--line);border-top-color:var(--mut);animation:note-transcribing .8s linear infinite}
+@media (prefers-reduced-motion:reduce){.settings-spin{animation:none}}
+.storage-access-warning > summary{display:flex;align-items:center;cursor:pointer;list-style:none;font-weight:600}
+.storage-access-warning > summary::-webkit-details-marker{display:none}
+.storage-access-warning[open] > summary{margin-bottom:6px}
 
 
 /* The reference canvas is 915px tall; keyboard and compact windows are not. */
@@ -431,7 +459,7 @@ html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] [d
   position:relative!important; inset:auto!important; flex:none;
 }
 html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] [data-alpha-maps-status] { margin-inline:20px; }
-html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > .alpha-map-credits { margin-inline:12px 76px; }
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > .alpha-map-credits { margin-inline:16px; align-self:flex-start; }
 html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-controls] { margin-inline:12px; }
 
 /* Keep the guidance controls and credits in flow on the clear side of the
@@ -450,8 +478,11 @@ html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > 
   position:relative!important; inset:auto!important; width:auto; height:auto!important;
   max-height:none!important; flex:none; padding:8px 12px!important;
 }
-.alpha-landscape [data-alpha-maps-guidance="true"] > :is(.alpha-map-credits,[data-alpha-maps-guidance-controls]) {
+.alpha-landscape [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-controls] {
   position:relative!important; inset:auto!important; width:auto; flex:none;
+}
+.alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits {
+  position:relative!important; inset:auto!important; flex:none; align-self:flex-start;
 }
 /* Keep the same left-to-right reading order as portrait. A second grid row
    placed the time above the first control in the accessibility tree. */
@@ -462,7 +493,7 @@ html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > 
 .alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif { font-size:24px!important; overflow-wrap:anywhere; }
 .alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits:has(details[open]) { z-index:6; }
 .alpha-landscape [data-alpha-maps-guidance="true"] .alpha-map-info {
-  top:0; right:44px; bottom:auto; width:min(320px,calc(100% - 52px)); max-height:160px;
+  top:0; left:60px; bottom:auto; width:min(300px,calc(100vw - 92px)); max-height:160px;
   box-sizing:border-box; overflow:auto;
 }
 
@@ -628,16 +659,25 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .note-source-dialog footer button{flex:1 1 120px}
 .note-source-dialog [role=status]:empty{display:none}
 
-.alpha-map-credits { position:absolute; left:12px; right:76px; z-index:3; display:flex; align-items:center; gap:8px; padding-left:10px; border-radius:16px; background:var(--bg); color:var(--fg); box-shadow:0 2px 12px var(--shc); font-size:12px; line-height:1.4; }
-.alpha-map-credit-links { flex:1; min-width:0; }
-.alpha-map-credit-links a { color:inherit; text-decoration:underline; }
-.alpha-map-privacy { flex-shrink:0; }
-.alpha-map-privacy > summary { display:flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; cursor:pointer; list-style:none; }
+/* Maps chrome: the search pill sits below the system bar; in the standalone app there is no
+   simulated status bar, so every overlay shifts up with --maps-top. */
+[data-alpha-maps-root] { --maps-top:52px; }
+.standalone-app [data-alpha-maps-root] { --maps-top:8px; }
+.standalone-app [data-alpha-maps-root] [data-alpha-app-header-overlay] { top:var(--maps-top)!important; }
+[data-alpha-maps-root] input[type="search"]::-webkit-search-cancel-button { -webkit-appearance:none; appearance:none; display:none; }
+/* Attribution is one ⓘ button, mirroring the recenter button on the right. */
+.alpha-map-credits { position:absolute; left:16px; z-index:3; width:50px; height:50px; border-radius:25px; background:var(--bg); color:var(--fg); box-shadow:0 6px 20px var(--shc), 0 0 0 1px var(--line); }
+.alpha-map-privacy, .alpha-map-privacy > summary { width:100%; height:100%; }
+.alpha-map-privacy > summary { display:flex; align-items:center; justify-content:center; border-radius:inherit; cursor:pointer; list-style:none; }
 .alpha-map-privacy > summary::-webkit-details-marker { display:none; }
-.alpha-map-privacy > summary [data-alpha-icon] { width:18px; height:18px; }
-.alpha-map-info { position:absolute; right:0; bottom:calc(100% + 8px); width:min(320px,100%); padding:12px; border:1px solid var(--line); border-radius:16px; background:var(--bg); color:var(--fg); box-shadow:0 4px 20px var(--shc); font-size:14px; }
-.alpha-landscape .alpha-map-credits { bottom:12px!important; right:auto; width:calc(100% - min(440px,50%) - 24px); box-sizing:border-box; }
-.alpha-map-privacy:not([open]) > p { display:none; }
+.alpha-map-privacy > summary [data-alpha-icon] { width:20px; height:20px; }
+.alpha-map-info { position:absolute; left:0; bottom:calc(100% + 10px); width:min(300px,calc(100vw - 32px)); box-sizing:border-box; display:grid; gap:10px; padding:14px 16px; border-radius:20px; background:var(--bg); color:var(--fg); box-shadow:0 6px 24px var(--shc), 0 0 0 1px var(--line); font-size:14px; line-height:1.35; }
+.alpha-map-info p { margin:0; display:flex; align-items:center; gap:8px; }
+.alpha-map-info p svg { width:16px; height:16px; flex-shrink:0; }
+.alpha-map-info .alpha-map-credit-links { display:block; font-size:12px; color:var(--mut); }
+.alpha-map-info .alpha-map-credit-links a { color:inherit; text-decoration:underline; }
+.alpha-map-info > button { justify-self:start; min-height:40px; padding:0 14px; border-radius:20px; background:var(--s2); color:var(--fg); font:inherit; font-weight:600; }
+.alpha-landscape .alpha-map-credits { bottom:12px!important; }
 
 .alpha-chat-composer { display:flex; align-items:center; gap:6px; flex-shrink:0; min-height:68px; box-sizing:border-box; margin:0 12px max(30px,var(--alpha-bottom-clearance)); padding:6px 6px 6px 20px; border-radius:28px; background:var(--s2); color:var(--fg); }
 .alpha-wide:not(.alpha-landscape) .alpha-chat-composer { width:calc(100% - 24px); max-width:560px; margin-inline:auto; }

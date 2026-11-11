@@ -36,8 +36,8 @@ test('retained email edits publish Inbox status copy verbatim',async()=>{
  let release;fixture.gate=new Promise(resolve=>{release=resolve;});
  const clearing=unsaved.clear();
  await new Promise(resolve=>setTimeout(resolve,1));
- assert.equal(unsaved.status,'Clearing retained edits…');
- await assert.rejects(unsaved.clear(),{message:'Local draft storage is unavailable. Check it before sending.'});
+ assert.equal(unsaved.status,'Clearing…');
+ await assert.rejects(unsaved.clear(),{message:'Storage unavailable'});
  release();await clearing;
  assert.equal(unsaved.status,'');
  assert.equal(fixture.row.text,'');

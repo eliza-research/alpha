@@ -1067,7 +1067,7 @@ test('an unconfirmed Google cancel keeps the attempt and reports only its state'
  const f=await wholeGoogleStackFixture({cancelFails:true});try{
   const signing=f.harness.actions.signInGoogle();await f.commit.writeEntered.promise;
   await f.harness.actions.cancelSignIn();
-  assert.equal(f.harness.state.error,'Cancel could not be confirmed. Sign-in is still in progress.');assert.doesNotMatch(f.harness.state.error,/try(ing)? again/i);
+  assert.equal(f.harness.state.error,'Still signing in');assert.doesNotMatch(f.harness.state.error,/try(ing)? again/i);
   assert.equal(f.harness.state.signIn.step,'google');assert.equal(f.harness.operation.signal.aborted,false);
   f.commit.releaseWrite.resolve();await f.commit.renameEntered.promise;f.commit.releaseRename.resolve();await signing;
   assert.equal(f.harness.adopted,true);assert.equal(f.harness.state.signIn,null);assert.equal(f.harness.state.error,'');

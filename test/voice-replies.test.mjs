@@ -201,7 +201,7 @@ test('a reply that looks like a password stops voice with the refusal, not a con
   assert.equal(failure?.code, 'speech-refused');
   assert.deepEqual(f.spoken, [], 'nothing of the reply is spoken');
   f.batch.onState({phase: 'error', error: failure}); await f.tick();
-  assert.equal(f.renderChat().lines[0].t, "This reply may contain a password or code, so it wasn't read aloud. It's in the chat.");
+  assert.equal(f.renderChat().lines[0].t, 'Not read aloud (sensitive)');
 });
 
 test('own keys without a Cartesia key keep the voice conversation on this phone', async t => {

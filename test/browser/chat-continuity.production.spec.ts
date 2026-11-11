@@ -302,8 +302,8 @@ test('the transcript keeps its reading position through a keyboard resize, Back 
   await noResend(page, foreign, 0);
 });
 
-const MAY_FINISH = 'This reply may still finish. It will appear here if it does.';
-const LOAD_TO_SEE = 'Stopped. To see if it finished, load this conversation in Connection help.';
+const MAY_FINISH = 'May still finish';
+const LOAD_TO_SEE = 'Stopped';
 /** Past the single stop check's 15 s timer (STOPPED_REPLY_CHECK_MS in connection-ui.tsx). */
 const pastStopCheck = (page: Page) => page.clock.runFor(16_000);
 /** Sends a message whose reply the resident holds until `release()`. */

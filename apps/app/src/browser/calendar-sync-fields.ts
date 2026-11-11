@@ -13,7 +13,7 @@ function address(id: string, resolve?: CalendarAttendeeResolver) {
 	const value = resolve?.(id) || id;
 	if (!email(value))
 		throw Error(
-			"This attendee needs an email address before syncing. Nothing changed.",
+			"Email needed",
 		);
 	return value.toLowerCase();
 }
@@ -26,7 +26,7 @@ export function syncAttendees(
 		const value = address(id, resolve);
 		if (seen.has(value))
 			throw Error(
-				"Two local attendees resolve to the same email address. Review the guest list.",
+				"Duplicate guest",
 			);
 		seen.add(value);
 		return {
@@ -59,7 +59,7 @@ export function localAttendees(
 export function syncRecurrence(row: CalendarRecord): string[] {
 	if (row.seriesId)
 		throw Error(
-			"Sync the series rather than an individual occurrence. Nothing changed.",
+			"Sync series",
 		);
 	const repeat = row.repeat || "none";
 	// Deleted dates mean nothing once an event no longer repeats. Older edits kept them.
@@ -67,7 +67,7 @@ export function syncRecurrence(row: CalendarRecord): string[] {
 	const rule = rules[repeat];
 	if (!rule)
 		throw Error(
-			"This repeat rule cannot be synced without losing fields. Nothing changed.",
+			"Unsupported repeat",
 		);
 	const recurrence = [rule];
 	if (row.excluded?.length) {
@@ -126,13 +126,13 @@ export function localRecurrence(
 				repeat = "weekdays";
 			else
 				throw Error(
-					"This Google repeat rule cannot be represented locally without losing fields. Nothing changed.",
+					"Unsupported repeat",
 				);
 		} else {
 			const prefix = allDay ? "EXDATE;VALUE=DATE:" : "EXDATE:";
 			if (!line.startsWith(prefix))
 				throw Error(
-					"This Google recurrence metadata cannot be represented locally. Nothing changed.",
+					"Unsupported repeat",
 				);
 			for (const raw of line.slice(prefix.length).split(",")) {
 				const match = (
@@ -159,7 +159,7 @@ export function localRecurrence(
 	}
 	if (!repeat)
 		throw Error(
-			"Google recurrence is missing its repeat rule. Nothing changed.",
+			"Repeat rule missing",
 		);
 	return { repeat, excluded: [...new Set(excluded)].sort((a, b) => a - b) };
 }

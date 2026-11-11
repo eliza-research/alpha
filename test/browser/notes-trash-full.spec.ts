@@ -66,7 +66,7 @@ test('a deletion that would overfill Trash is refused: the note stays saved, Tra
  // One more deletion: refused, in words, before anything is written.
  await page.getByRole('button',{name:'Open Charlie',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
- const dialog=page.getByRole('dialog',{name:'Recently deleted is full'});
+ const dialog=page.getByRole('dialog',{name:'Full'});
  await expect(dialog).toBeVisible();
  await expect(page.getByText('Moved to Recently deleted',{exact:true})).toHaveCount(0);
  // The note is still saved, byte for byte, and Trash holds exactly what it held.
@@ -144,7 +144,7 @@ test('a deletion that would push Trash past its byte limit is refused: the note 
  // A second heavy note does not fit: refused in words before anything is written.
  await page.getByRole('button',{name:'Open Second heavy',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
- const dialog=page.getByRole('dialog',{name:'Recently deleted is full'});
+ const dialog=page.getByRole('dialog',{name:'Full'});
  await expect(dialog).toBeVisible();
  await expect(dialog.getByRole('button',{name:'Delete permanently',exact:true})).toBeVisible();await expect(dialog).not.toContainText('was not deleted');
  await expect(page.getByText('Moved to Recently deleted',{exact:true})).toHaveCount(0);

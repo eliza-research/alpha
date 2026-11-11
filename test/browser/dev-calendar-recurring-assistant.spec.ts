@@ -99,7 +99,7 @@ for (const mode of ['read', 'update', 'delete', 'cancel', 'stale'] as const) {
     expect(JSON.stringify(await page.evaluate(()=>(window as any).calendarSent))).not.toContain('Private description');
     const operation=await page.evaluate(()=>(window as any).recoveryFixture.proposal.payload.operation);
     await page.getByText(presentDeviceRecordOperation(operation,'UTC').title,{exact:true}).click();
-    const review=page.getByRole('dialog',{name:mode==='read'?'Share calendar event with agent?':'Review calendar change'});
+    const review=page.getByRole('dialog',{name:mode==='read'?'Share event?':'Review calendar change'});
     await expect(review).toBeVisible();await expect(review).toContainText(mode==='read'||mode==='delete'?'Selected private event':'Assistant planned event');
     await expect(review).toContainText('This occurrence only');
     const selected=await page.evaluate(()=>(window as any).calendarSent.metadata.clientDevice.context.selectedObject.id);expect(selected).toContain(':occ:');

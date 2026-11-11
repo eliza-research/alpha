@@ -12,13 +12,13 @@ const end=source.indexOf(':null;',begin)+5;
 const fragment=source.slice(begin+'const restoreSaved='.length,end);
 const code=transformSync('function recovery(snapshot,requiredSignInView){return ('+fragment+')||null;}',{loader:'tsx',jsxFactory:'React.createElement'}).code;
 let calls=0;
-const recovery=new Function('React','connectionController',code+';return recovery;')(React,{restoreSavedSignIn:()=>{calls++;}});
+const recovery=new Function('React','connectionController','iconStyle',code+';return recovery;')(React,{restoreSavedSignIn:()=>{calls++;}},()=>({}));
 const eligible={cloudAccount:null,legacySignInRecovery:true,busy:false};
 const choose={step:'choose',environment:'production'};
 test('actual eligible legacy action is a direct button with no disclosure or explainer',()=>{
  const element=recovery(eligible,choose),html=renderToStaticMarkup(element);
  // A low-emphasis recovery entry under the sign-in methods, never a filled primary.
- assert.equal(html,'<button type="button" class="alpha-btn alpha-btn--text">Restore saved sign-in</button>');
+ assert.equal(html,'<button type="button" class="alpha-btn alpha-btn--text" aria-label="Restore saved sign-in"><span aria-hidden="true" data-alpha-icon="/icons/lucide/undo-2.svg"></span>Restore</button>');
  assert.equal(calls,0);element.props.onClick();assert.equal(calls,1);
 });
 test('ordinary, signed-in, staging and verification states expose no legacy restore; busy disables it',()=>{

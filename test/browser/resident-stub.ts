@@ -277,7 +277,7 @@ export async function emailCode(page: Page, verify = true) {
   const dialog=page.locator('.alpha-cloud-sign-in');
   await expect(dialog).toBeVisible();
   await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('fixture@example.invalid');
-  await dialog.getByRole('button',{name:'Email me a code',exact:true}).click();
+  await dialog.getByRole('button',{name:'Send code',exact:true}).click();
   await expect(dialog.getByLabel('Six-digit code')).toBeVisible();
   if(verify){await dialog.getByLabel('Six-digit code').fill('123456');await dialog.getByRole('button',{name:'Verify',exact:true}).click();}
 }
@@ -287,7 +287,7 @@ export async function enterNativeEmailCode(page: Page, email='owner@example.inva
   const panel=page.locator('.alpha-cloud-sign-in');
   await expect(panel).toBeVisible();
   await panel.getByRole('textbox',{name:'Email',exact:true}).fill(email);
-  await panel.getByRole('button',{name:'Email me a code',exact:true}).click();
+  await panel.getByRole('button',{name:'Send code',exact:true}).click();
   await panel.getByLabel('Six-digit code').fill('123456');
   await panel.getByRole('button',{name:'Verify',exact:true}).click();
 }

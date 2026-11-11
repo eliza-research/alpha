@@ -20,7 +20,7 @@ test('SMS review completion cannot mutate a later visit and transport errors kee
   const views={messages:{}};installSmsAdapter(Component,views);const owner=new Component();owner.componentDidMount();await tick();
   const compose=()=>{let model=views.messages.render();model.nativeOnRecipients({target:{value:'+15555550100'}});model.nativeOnBody({target:{value:'hello'}});model=views.messages.render();model.nativeSims[0].pick();views.messages.render().nativeSend();};
   compose();await tick();owner.view='home';owner.componentDidUpdate();owner.view='messages';owner.componentDidUpdate();await tick();pending[0].resolve({status:'sent'});await tick();assert.equal(views.messages.render().nativeNotice,'');assert.equal(views.messages.render().nativeBody,'hello','navigating within Alpha retains the draft');assert.equal(views.messages.render().nativeRecipients,'+15555550100');assert.equal(calls.length,1,'returning never dispatches a send');views.messages.render().nativeSend();await tick();assert.equal(calls[1].operationId,calls[0].operationId,'returning preserves the uncertain operation identity');pending[1].resolve({status:'unknown'});await tick();
-  compose();await tick();pending[2].reject(Error('transport lost'));await tick();assert.match(views.messages.render().nativeNotice,/This text may have sent/);views.messages.render().nativeSend();await tick();assert.equal(calls[2].operationId,calls[3].operationId,'same uncertain operation is queried, never assigned a fresh replay ID');pending[3].resolve({status:'unknown'});await tick();owner.componentWillUnmount();
+  compose();await tick();pending[2].reject(Error('transport lost'));await tick();assert.match(views.messages.render().nativeNotice,/May have sent/);views.messages.render().nativeSend();await tick();assert.equal(calls[2].operationId,calls[3].operationId,'same uncertain operation is queried, never assigned a fresh replay ID');pending[3].resolve({status:'unknown'});await tick();owner.componentWillUnmount();
  }finally{globalThis.document=priorDocument;delete globalThis.__smsFixturePort;rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -63,7 +63,7 @@ test('Cancel, denial and native refusals let Send review again; Back and the pic
   pending[3].reject(refusal('This request is too old to read back. Nothing was sent again.','expired'));await tick();await tick();
   assert.equal(model().nativeNotice,'This request is too old to read back. Nothing was sent again.');
   await send();assert.equal(calls[4].operationId,calls[3].operationId,'an expired request keeps its ID');
-  pending[4].reject(Error('bridge closed'));await tick();await tick();assert.match(model().nativeNotice,/This text may have sent/);
+  pending[4].reject(Error('bridge closed'));await tick();await tick();assert.match(model().nativeNotice,/May have sent/);
   await send();assert.equal(calls[5].operationId,calls[4].operationId,'an unknown outcome keeps its ID');pending[5].resolve({status:'unknown'});await tick();await tick();
 
   assert.equal(views.messages.back({},{}),false);assert.equal(shellBack,1,'Back on the list is the shell\'s');
@@ -108,7 +108,7 @@ test('a reviewed MMS carries the picked pictures, keeps its operation ID when un
   assert.deepEqual(model().nativeAttachments.map(row=>row.label),['picture-1.jpg · 1 KB','picture-2.png · 1 KB']);
   model().nativeSendMms();await tick();await tick();assert.equal(calls.length,1);
   assert.deepEqual(calls[0].review.recipients,['+15555550100','+15555550101']);assert.deepEqual(calls[0].review.attachments.map(a=>[a.name,a.contentType,[...a.bytes]]),[['picture-1.jpg','image/jpeg',[1,2,3]],['picture-2.png','image/png',[4,5]]]);
-  pending[0].reject(Error('transport lost'));await tick();await tick();assert.match(model().nativeNotice,/This MMS may have sent/);
+  pending[0].reject(Error('transport lost'));await tick();await tick();assert.match(model().nativeNotice,/May have sent/);
   model().nativeSendMms();await tick();await tick();assert.equal(calls[1].operationId,calls[0].operationId,'an uncertain MMS is never given a fresh ID');
   pending[1].resolve({status:'submitted'});await tick();await tick();assert.match(model().nativeNotice,/submitted/);
   mmsUpdated('someone-else');await tick();assert.equal(reads.length,0,'another operation is not read');
@@ -137,14 +137,14 @@ test('direct SMS and the handoff go through the shared SMS review',async()=>{
   assert.equal(sends.length,1,'a pasted formatted number sends');assert.deepEqual(sends[0].review,{recipients:['+14155550100'],body:'hello',subscriptionId:3},'normalized, deduped, and the only active SIM is used');
   smsUpdated(sends[0].operationId);await settle();assert.equal(reads.length,1);assert.equal(reads[0].review,sends[0].review,'the read-back is bound to the reviewed text');
   model().nativeHandoff();await settle();assert.deepEqual(handoffs,[{recipients:['+14155550100'],body:'hello',subscriptionId:null}],'a handoff carries no SIM');
-  model().nativeOnRecipients({target:{value:'+1 415 555 0100, 911a'}});model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Check the phone numbers.');
+  model().nativeOnRecipients({target:{value:'+1 415 555 0100, 911a'}});model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Invalid number');
   model().nativeHandoff();await settle();assert.equal(handoffs.length,1,'an invalid handoff is refused before the messaging app opens');
   model().nativeOnRecipients({target:{value:'4155550100'}});sims=[{id:3,slot:0,displayName:'SIM'},{id:4,slot:1,displayName:'Work'}];await model().nativeRefresh();await settle();
-  model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Select a SIM for this text.');
+  model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Pick a SIM');
   model().nativeSims[1].pick();sims=[{id:3,slot:0,displayName:'SIM'}];model().nativeRefresh();await settle();
-  model().nativeSend();await settle();assert.equal(sends.length,1,'a SIM that is no longer active is refused');assert.match(model().nativeNotice,/no longer active/);
+  model().nativeSend();await settle();assert.equal(sends.length,1,'a SIM that is no longer active is refused');assert.match(model().nativeNotice,/SIM inactive/);
   owner.view='home';owner.componentDidUpdate();sims=null;owner.view='messages';owner.componentDidUpdate();await settle();
-  model().nativeOnRecipients({target:{value:'4155550100'}});model().nativeOnBody({target:{value:'hello'}});model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Grant SIM access to select a SIM.','without SIM access the owner is asked for it, not told there is no SIM');
+  model().nativeOnRecipients({target:{value:'4155550100'}});model().nativeOnBody({target:{value:'hello'}});model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Allow SIM','without SIM access the owner is asked for it, not told there is no SIM');
   owner.view='home';owner.componentDidUpdate();owner.componentWillUnmount();
  }finally{globalThis.document=priorDocument;delete globalThis.__smsReviewPort;rmSync(dir,{recursive:true,force:true});}
 });

@@ -161,7 +161,7 @@ export async function openCanonicalCalendar(page:Page,options:CanonicalCalendarF
       ),
     )
     .toBeGreaterThanOrEqual(3);
-  if(!options.eventTitle)await expect(page.getByText("No events in this Calendar window", { exact: true })).toBeVisible();
+  if(!options.eventTitle)await expect(page.getByText("No events", { exact: true })).toBeVisible();
   expect(fixture.foreign).toEqual([]);
 }
 /** Accessibility form fixture: opening New event never writes a record. */

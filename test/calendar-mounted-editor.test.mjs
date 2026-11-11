@@ -57,7 +57,7 @@ test('mounted Calendar Back and Discard clear the validation latch after the ret
       assert.equal(afterDiscard.retained, '');
       assert.equal(afterDiscard.invalid, false, 'The discarded editor cannot retain an invalid flag');
       assert.equal(available, true, 'No retained draft blocks the Calendar scope');
-      assert.ok(!state.notices.slice(afterDiscard.notices.length).includes('Finish or keep your current draft before connecting Google Calendar.'));
+      assert.ok(!state.notices.slice(afterDiscard.notices.length).includes('Save draft first'));
       await f.page.getByRole('dialog', {name: 'Google accounts', exact: true}).waitFor();
     } finally {await f.close();}
   } finally {await browser.close();}

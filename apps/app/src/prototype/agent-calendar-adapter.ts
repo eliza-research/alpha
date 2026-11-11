@@ -27,15 +27,15 @@ type Bag=Record<string,any>;
 export const managedGoogleSource=(calendar:{provider?:string;grantId?:string|null}|undefined)=>calendar?.provider==='google'&&/^alpha-google:[a-f0-9]{64}$/.test(calendar.grantId??'');
 /** Owner text for a refused Calendar action. Messages from runtime/agent-calendar.ts and the host are mapped here. */
 const OWNER_ERRORS:[RegExp,string][]=[
- [/^Calendar owner or agent changed/,'Calendar changed. Try again.'],
- [/^Retain this (draft|deletion) operation key/,"This draft can't be saved. Reopen it and try again."],
- [/^Organizer disposition is unavailable; no cancellation was sent/,"This event can't be deleted here. No cancellation was sent."],
- [/^Moving events between sources/,"Events can't move to another calendar."],
- [/^Review recurring-series changes in Calendar/,'Edit the whole series in Google Calendar.'],
+ [/^Calendar owner or agent changed/,'Changed'],
+ [/^Retain this (draft|deletion) operation key/,'Can’t save'],
+ [/^Organizer disposition is unavailable; no cancellation was sent/,'Can’t delete here'],
+ [/^Moving events between sources/,'Can’t move calendars'],
+ [/^Review recurring-series changes in Calendar/,'Edit in Google'],
 ];
 export function calendarErrorText(error:unknown):string{
  const message=error instanceof Error?error.message:typeof error==='string'?error:'';
- return OWNER_ERRORS.find(([pattern])=>pattern.test(message))?.[1]??(message||'Calendar could not be updated. Try again.');
+ return OWNER_ERRORS.find(([pattern])=>pattern.test(message))?.[1]??(message||'Couldn’t update');
 }
 const DAY=86400000;
 /** Day offset from today by civil dates, so a DST change never moves a row. Legacy all-day records are stored at
@@ -122,7 +122,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
  const watchNextEnd=()=>{clearTimeout(nextEnded);const end=Date.parse(controller?.state.next?.event?.endAt??'');if(end>Date.now())nextEnded=setTimeout(readNext,Math.min(end-Date.now()+1000,2147483647));};
  const resumed=()=>{if(document.hidden)cancelRetention();else if(owner?.live)readNext();};
  p.componentDidMount=function(){mount.call(this);cancelRetention();owner=this;
-  // The read-only "Previously connected calendars" source is gone: Google calendars are part of the one Calendar.
+  // The read-only "Previous" calendars source is gone: Google calendars are part of the one Calendar.
   if(this.vget('calendar').calendarAuthority==='legacy-google')this.vset('calendar',{calendarAuthority:'canonical'});
   controller=new AgentCalendar(port,retention,undefined,async target=>{
    const readOwner=readCacheOwner();if(!readOwner||!target.current())return null;
@@ -139,8 +139,8 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   const binding=target?JSON.stringify([calendarOwnerKey(target),target.sessionId,target.scope]):'';
   const current=()=>{const now=port();if(!now)return false;return owner===shell&&shell.live&&shell.agentCalendar===calendar&&controller===calendar&&!!now?.current()&&JSON.stringify([calendarOwnerKey(now),now.sessionId,now.scope])===binding&&calendar?.state.ownerKey===ownerKey&&!['android-native','browser-local','legacy','legacy-google'].includes(shell.vget('calendar').calendarAuthority);};
   const canChange=()=>!shell.vget('calendar').form&&!shell.canonicalDraftText&&!shell.canonicalDraftInvalid&&!shell.canonicalDraft?.state.opening&&!shell.canonicalDraft?.state.consuming;
-  if(!calendar||!ownerKey||!target?.current()||calendarOwnerKey(target)!==ownerKey||!current()){shell.toast('Return to Calendar and finish checking saved events before connecting Google.');return null;}
-  if(!canChange()){shell.toast('Finish or keep your current draft before connecting Google Calendar.');return null;}
+  if(!calendar||!ownerKey||!target?.current()||calendarOwnerKey(target)!==ownerKey||!current()){shell.toast('Finish sync first');return null;}
+  if(!canChange()){shell.toast('Save draft first');return null;}
   return{calendar,current,canChange};
  };
  p.calendarSelection=function(){
@@ -168,10 +168,10 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   return{native:false,canonical:true,status:controller?.state.status??'disconnected',ready:controller?.state.status==='ready'&&!controller?.state.error,loading:controller?.state.status==='loading',error:controller?.state.status==='error'||!!controller?.state.error,sources,retry:()=>refresh(true)};
  };
  function newForm(api:Bag){
-  const state=api.get('calendar');if(state.form){api.toast('Keep or finish the current form before creating another event.');return;}
-  const target=port();if(!target?.current()){api.toast(agentPendingText(undefined,'Calendar is unavailable for this agent connection. Check Settings › Agent connection.'));return;}
-  const model=controller?.state,source=newEventSource();if(!model?.ownerKey||model.ownerKey!==calendarOwnerKey(target)||!['ready','partial','unavailable'].includes(model.status)){api.toast('Calendar is still loading. Try again in a moment.');return;}
-  if(!source){api.toast('Calendar is not ready to create an event. Your saved events are unchanged.');return;}
+  const state=api.get('calendar');if(state.form){api.toast('Finish current event');return;}
+  const target=port();if(!target?.current()){api.toast(agentPendingText(undefined,'Calendar unavailable'));return;}
+  const model=controller?.state,source=newEventSource();if(!model?.ownerKey||model.ownerKey!==calendarOwnerKey(target)||!['ready','partial','unavailable'].includes(model.status)){api.toast('Loading');return;}
+  if(!source){api.toast('Not ready');return;}
   api.set({open:null,form:{id:null,canonicalOwnerKey:model.ownerKey,creationId:crypto.randomUUID(),title:'',notes:'',where:'',off:state.day||0,t:17,d:1,zone:zone(),who:[],video:false,repeat:'none',alert:null,cal:controller!.sourceHandle(calendarSourceKey(source))}});
  }
  // A scan is only a draft. Admit it to the current source without writing or
@@ -188,7 +188,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   this.openView('calendar',{calendarAuthority:'canonical',form:{...draft,canonicalOwnerKey:model.ownerKey,creationId:crypto.randomUUID(),cal:controller!.sourceHandle(calendarSourceKey(source)),zone:zone()},open:null,month:null,day:draft.off},'hidden');return true;
  };
  function typedForm(f:Bag):CanonicalCalendarForm{
-  const model=controller!.state;if(f.canonicalOwnerKey!==model.ownerKey)throw Error('This draft is from another account.');
+  const model=controller!.state;if(f.canonicalOwnerKey!==model.ownerKey)throw Error('Other account');
   const sourceKey=controller!.sourceKeyForHandle(f.cal);if(!sourceKey)throw Error('Choose a calendar.');
   const selectedSource=controller!.state.calendars.find(c=>calendarSourceKey(c)===sourceKey);
   if(!f.id){const source=newEventSource();if(!source)throw Error('Calendar is not ready to create an event. Your draft is kept.');if(calendarSourceKey(source)!==sourceKey)throw Error('Choose Calendar for this new event. Your draft is kept.');}
@@ -203,7 +203,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
  }
  const choices=(state:Bag,api:Bag)=>{const model=controller?.state;
   const chooseAuthority=(authority:string)=>{if(state.form){api.toast('The current draft is kept. Finish it or return to its source before switching.');return;}api.set({calendarAuthority:authority,open:null});};
-  return [{label:'Agent Calendar',go:()=>chooseAuthority('canonical')},...(model?.legacy?.present?[{label:'Saved app calendar · Read only',go:()=>chooseAuthority('legacy')}]:[]),...(Capacitor.getPlatform()==='android'?[{label:'Android calendars',go:()=>chooseAuthority('android-native')}]:[]),...(testMocksEnabled&&Capacitor.getPlatform()==='web'?[{label:'Browser calendar (development)',go:()=>chooseAuthority('browser-local')}]:[])];
+  return [{label:'Agent Calendar',go:()=>chooseAuthority('canonical')},...(model?.legacy?.present?[{label:'Saved · Read only',go:()=>chooseAuthority('legacy')}]:[]),...(Capacitor.getPlatform()==='android'?[{label:'Android calendars',go:()=>chooseAuthority('android-native')}]:[]),...(testMocksEnabled&&Capacitor.getPlatform()==='web'?[{label:'Browser calendar (development)',go:()=>chooseAuthority('browser-local')}]:[])];
  };
  views.calendar.render=function(state:Bag,api:Bag){
   if(deviceCalendarScope(owner)){const out=render(state,api);out.calendarAuthorityChoices=choices(state,api);out.calendarSourceLabel=testMocksEnabled&&browserCalendarScope(owner)?'Browser calendar (development)':'Android calendars';return out;}
@@ -212,7 +212,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   const rows:Bag[]=legacy?(model?.legacy?.readable?calendarRange(model.legacy.records as any[],{begin:Date.parse(range(state).timeMin),end:Date.parse(range(state).timeMax)}).events:[]).map((e:any)=>({id:'legacy-calendar:'+e.id,title:e.title,notes:e.body||'',where:e.location||'',off:legacyDayOffset(e.begin,!!e.allDay),t:new Date(e.begin).getHours()+new Date(e.begin).getMinutes()/60,d:(e.end-e.begin)/3600000,cal:'legacy',who:[],repeat:'none',alert:null,legacyRecord:e,calendarInterval:true,calendarIntervalData:{begin:e.begin,end:e.end},allDay:!!e.allDay,allDayEndOff:legacyDayOffset(e.end,!!e.allDay)})):model?.feed?.events.flatMap(e=>{const row=canonicalCalendarRow(e,zone());const source=controller!.state.calendars.find(c=>c.provider===e.provider&&c.side===e.side&&c.grantId===e.grantId&&c.calendarId===e.calendarId);if(!source){unresolvedCalendarSources++;return [];}return[{...row,calendarInterval:true,calendarIntervalData:{begin:Date.parse(e.startAt),end:Date.parse(e.endAt)},cal:controller!.sourceHandle(calendarSourceKey(source))}];})??[];
   const reminderRows=(state.events??[]).filter((row:Bag)=>!!row.alphaReminderId).map((row:Bag)=>({...row,cal:'alpha-reminders'}));
   rows.push(...reminderRows);
-  const cals=legacy?[{id:'legacy',name:'Saved app calendar · Read only',sub:'Kept on this device',color:'mut',on:true}]:sourceRows();
+  const cals=legacy?[{id:'legacy',name:'Saved · Read only',sub:'',color:'mut',on:true}]:sourceRows();
   // Presentation domains are not Calendar write destinations. These rows
   // already came from the existing reminder read; no reminder/provider read here.
   const presentationSources=[...cals,...(reminderRows.length?[{id:'alpha-reminders',name:'Reminders',sub:'On this device',color:'acc',on:true}]:[])].map(source=>{const preference=source.id?state.calPrefs?.[source.id]:undefined;return{...source,on:source.on!==false&&(!legacy&&source.id!=='alpha-reminders'||preference?.on!==false),color:preference?.color??source.color};});
@@ -220,8 +220,8 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   const presentation={...state,add:null,events:visibleRows,canonicalCalendars:cals,calendarPresentationSources:presentationSources};
   const out=render(presentation,api);
   presentCalendarIntervals(render,presentation,api,out,legacy?!!model?.legacy?.readable:!!model?.feed);
-  out.calendarSourceLabel=legacy?'Saved app calendar · Read only':'Agent Calendar';out.calendarSourceText=!legacy&&model?.savedAt!=null?(controller?.refreshing?'Saved Calendar · Refreshing…':'Saved Calendar · Could not refresh. Try again.') : !legacy&&model?.status==='unavailable'?'Calendar is unavailable. Retry to load your schedule.':model?.error??(!model?.ownerKey?'Connect to view Agent Calendar.':model?.status==='loading'?'Loading Agent Calendar…':unresolvedCalendarSources||model?.status==='partial'?'Refresh Calendar':model?.status==='transition-required'?'Saved app records are kept unchanged. Review the transition before using Agent Calendar.':model?.status==='legacy-recovery'?'Saved calendar data needs review. Nothing was imported or reset.':'Uses the same Calendar service as your active agent.');
-  out.nativeStatusLabel=model?.status==='ready'&&!unresolvedCalendarSources?'':out.calendarSourceText;out.nativeStatusRetry=()=>refresh(true);out.newEvent=out.addAt=()=>legacy?api.toast('Choose Agent Calendar to create an event.'):newForm(api);
+  out.calendarSourceLabel=legacy?'Saved · Read only':'Agent Calendar';out.calendarSourceText=!legacy&&model?.savedAt!=null?(controller?.refreshing?'Refreshing':'Couldn’t refresh') : !legacy&&model?.status==='unavailable'?'Unavailable':model?.error??(!model?.ownerKey?'Connect':model?.status==='loading'?'Loading':unresolvedCalendarSources||model?.status==='partial'?'Refresh Calendar':model?.status==='transition-required'?'Review needed':model?.status==='legacy-recovery'?'Needs review':'');
+  out.nativeStatusLabel=model?.status==='ready'&&!unresolvedCalendarSources?'':out.calendarSourceText;out.nativeStatusRetry=()=>refresh(true);out.newEvent=out.addAt=()=>legacy?api.toast('Agent Calendar only'):newForm(api);
   out.calendarAuthorityChoices=choices(state,api);
   out.canConfirmCalendarTransition=model?.status==='transition-required';
   if(out.canConfirmCalendarTransition){
@@ -246,45 +246,45 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   }
   const chosen=rows.find((e:any)=>e.id===state.open);
   if(chosen&&out.ev&&(chosen.legacyRecord||chosen.canonicalEvent)){
-   if(chosen.legacyRecord){out.ev.edit=out.ev.del=()=>api.toast('These events are read only.');out.ev.busy=true;out.ev.readOnly=true;out.ev.readOnlyLabel='Saved app calendar · Read only';}
+   if(chosen.legacyRecord){out.ev.edit=out.ev.del=()=>api.toast('Read only');out.ev.busy=true;out.ev.readOnly=true;out.ev.readOnlyLabel='Saved · Read only';}
    else{const target=port(),selected=controller?.selection(chosen.canonicalEventKey),origin=target?.current()?canonicalMapsEventOriginFor(chosen,state.openDay??state.day??chosen.off,mapBinding(target),selected):undefined;
-    if(chosen.where&&origin)out.ev.goWhere=()=>{const now=port(),current=controller?.selection(chosen.canonicalEventKey);if(!now?.current()||mapBinding(now)!==origin.binding||current?.revision!==origin.revision||current.sourceRevision!==origin.sourceRevision){api.toast('This Calendar event changed. Open it again before viewing its location.');return;}api.open('maps',{query:chosen.where,fromEvent:origin});};
+    if(chosen.where&&origin)out.ev.goWhere=()=>{const now=port(),current=controller?.selection(chosen.canonicalEventKey);if(!now?.current()||mapBinding(now)!==origin.binding||current?.revision!==origin.revision||current.sourceRevision!==origin.sourceRevision){api.toast('Event changed');return;}api.open('maps',{query:chosen.where,fromEvent:origin});};
     out.ev.canonicalDraftEntry=true;
-    const e=chosen.canonicalEvent,policy=eventEditorMutability(e),managed=managedGoogleSource(e),recurringEvent=!!(e.recurringEventId||e.recurrence?.length),sourceReadOnly=(cals as Bag[]).find(c=>c.id===chosen.cal)?.writable===false;out.ev.calName=cals.find(c=>c.id===chosen.cal)?.name??'Agent Calendar';out.ev.notes=e.description;out.ev.hasNotes=!!e.description;if(e.isAllDay){out.ev.when='All day';const options:Intl.DateTimeFormatOptions={weekday:'short',month:'short',day:'numeric',year:'numeric',timeZone:'UTC'},start=new Date(e.startAt).toLocaleDateString(undefined,options),end=new Date(Date.parse(e.endAt)-86400000).toLocaleDateString(undefined,options);out.ev.day=start+(start===end?'':' – '+end);}out.ev.readOnly=policy.kind!=='editable'||sourceReadOnly;out.ev.readOnlyLabel=model?.savedAt!=null?'Saved event · Refresh to edit':sourceReadOnly?`${out.ev.calName} · Read only`:'Calendar event · Read only';const deleteScope=state.canonicalDeleteScope?.eventKey===calendarEventKey(e)?state.canonicalDeleteScope.scope:undefined;out.ev.recurrenceScopes=recurringEvent&&!managed?['instance','this_and_following','series'].map(scope=>({label:scope==='instance'?'This occurrence':scope==='series'?'Entire series':'This and following',selected:deleteScope===scope,pick:()=>api.set({canonicalDeleteScope:{eventKey:calendarEventKey(e),scope}})})):[];out.ev.edit=()=>{if(policy.kind!=='editable'||sourceReadOnly){api.toast(sourceReadOnly?'This calendar is read only.':'This event is read only.');return;}api.set({form:{id:chosen.id,canonicalOwnerKey:model!.ownerKey,canonicalEventKey:calendarEventKey(e),expectedProviderVersion:policy.providerVersion,creationId:crypto.randomUUID(),title:e.title,notes:e.description,where:e.location,off:chosen.off,t:chosen.t,d:chosen.d||1,zone:zone(),who:[],video:false,repeat:recurringEvent?'preserve':'none',alert:null,cal:chosen.cal,allDay:e.isAllDay,canonicalAllDay:e.isAllDay?{startDate:e.startAt.slice(0,10),endDateExclusive:e.endAt.slice(0,10)}:undefined,canonicalTiming:[chosen.off,chosen.t,chosen.d||1,zone(),!!e.isAllDay],recurrenceScope:managed&&recurringEvent?'instance':undefined}});};out.ev.del=async()=>{if(policy.kind!=='editable'||sourceReadOnly){api.toast(sourceReadOnly?'This calendar is read only.':'This event is read only.');return;}if(recurringEvent&&!deleteScope){api.toast('Choose which occurrences to delete before continuing.');return;}if(!window.confirm('Delete or decline this event?'))return;try{await controller!.delete(calendarEventKey(e),policy.providerVersion,crypto.randomUUID(),deleteScope);api.set({open:null,canonicalDeleteScope:null});refresh(true);}catch(error){api.toast(calendarErrorText(error));}};
-    if(managed){out.ev.del=null;out.ev.providerNotice='Delete or decline this event in Google Calendar.';}}
+    const e=chosen.canonicalEvent,policy=eventEditorMutability(e),managed=managedGoogleSource(e),recurringEvent=!!(e.recurringEventId||e.recurrence?.length),sourceReadOnly=(cals as Bag[]).find(c=>c.id===chosen.cal)?.writable===false;out.ev.calName=cals.find(c=>c.id===chosen.cal)?.name??'Agent Calendar';out.ev.notes=e.description;out.ev.hasNotes=!!e.description;if(e.isAllDay){out.ev.when='All day';const options:Intl.DateTimeFormatOptions={weekday:'short',month:'short',day:'numeric',year:'numeric',timeZone:'UTC'},start=new Date(e.startAt).toLocaleDateString(undefined,options),end=new Date(Date.parse(e.endAt)-86400000).toLocaleDateString(undefined,options);out.ev.day=start+(start===end?'':' – '+end);}out.ev.readOnly=policy.kind!=='editable'||sourceReadOnly;out.ev.readOnlyLabel=model?.savedAt!=null?'Saved':sourceReadOnly?`${out.ev.calName} · Read only`:'Read only';const deleteScope=state.canonicalDeleteScope?.eventKey===calendarEventKey(e)?state.canonicalDeleteScope.scope:undefined;out.ev.recurrenceScopes=recurringEvent&&!managed?['instance','this_and_following','series'].map(scope=>({label:scope==='instance'?'This occurrence':scope==='series'?'Entire series':'This and following',selected:deleteScope===scope,pick:()=>api.set({canonicalDeleteScope:{eventKey:calendarEventKey(e),scope}})})):[];out.ev.edit=()=>{if(policy.kind!=='editable'||sourceReadOnly){api.toast('Read only');return;}api.set({form:{id:chosen.id,canonicalOwnerKey:model!.ownerKey,canonicalEventKey:calendarEventKey(e),expectedProviderVersion:policy.providerVersion,creationId:crypto.randomUUID(),title:e.title,notes:e.description,where:e.location,off:chosen.off,t:chosen.t,d:chosen.d||1,zone:zone(),who:[],video:false,repeat:recurringEvent?'preserve':'none',alert:null,cal:chosen.cal,allDay:e.isAllDay,canonicalAllDay:e.isAllDay?{startDate:e.startAt.slice(0,10),endDateExclusive:e.endAt.slice(0,10)}:undefined,canonicalTiming:[chosen.off,chosen.t,chosen.d||1,zone(),!!e.isAllDay],recurrenceScope:managed&&recurringEvent?'instance':undefined}});};out.ev.del=async()=>{if(policy.kind!=='editable'||sourceReadOnly){api.toast('Read only');return;}if(recurringEvent&&!deleteScope){api.toast('Pick occurrences');return;}if(!window.confirm('Delete event?'))return;try{await controller!.delete(calendarEventKey(e),policy.providerVersion,crypto.randomUUID(),deleteScope);api.set({open:null,canonicalDeleteScope:null});refresh(true);}catch(error){api.toast(calendarErrorText(error));}};
+    if(managed){out.ev.del=null;out.ev.providerNotice='Open in Google';}}
   }
   if(out.ev){out.ev.canModify=!out.ev.readOnly;out.ev.sourceLabel=out.ev.readOnly?out.ev.readOnlyLabel:out.ev.calName;}
   if(state.form&&state.form.cal!=='alpha-reminders'&&out.f){const f=state.form;
-   const reminderSource=out.f.cals?.filter((c:Bag)=>c.domain==='reminders')??[];out.f.cals=[...cals.filter((c:Bag)=>c.writable).map(c=>({...c,on:f.cal===c.id,pick:()=>api.set({form:{...f,cal:c.id}})})),...reminderSource];out.f.alerts=null;out.f.video=false;out.f.toggleVideo=()=>api.toast('Use a meeting action to create a video room.');
+   const reminderSource=out.f.cals?.filter((c:Bag)=>c.domain==='reminders')??[];out.f.cals=[...cals.filter((c:Bag)=>c.writable).map(c=>({...c,on:f.cal===c.id,pick:()=>api.set({form:{...f,cal:c.id}})})),...reminderSource];out.f.alerts=null;out.f.video=false;out.f.toggleVideo=()=>api.toast('Use a meeting action');
    const original=model?.feed?.events.find(e=>calendarEventKey(e)===f.canonicalEventKey),recurring=!!(original?.recurringEventId||original?.recurrence?.length),managedSeries=recurring&&managedGoogleSource(original);
    out.f.allDay=!!f.allDay;out.f.allDayTrack='background: '+(f.allDay?'var(--acc)':'var(--s3)');out.f.allDayKx=f.allDay?20:0;out.f.toggleAllDay=()=>api.set({form:{...f,allDay:!f.allDay}});
    out.f.recurrenceScopes=recurring?(managedSeries?['instance']:['instance','this_and_following','series']).map(scope=>({label:scope==='instance'?'This occurrence':scope==='series'?'Entire series':'This and following',selected:f.recurrenceScope===scope,pick:()=>api.set({form:{...f,recurrenceScope:scope}})})):[];
    // The host writes one occurrence of a managed Google series; the series itself is edited in Google Calendar.
    if(managedSeries)out.f.repeats=null;
-   else if(recurring)out.f.repeats=[{label:'Keep existing repeat',on:f.repeat==='preserve',pick:()=>api.set({form:{...f,repeat:'preserve'}})},...out.f.repeats];
+   else if(recurring)out.f.repeats=[{label:'Keep repeat',on:f.repeat==='preserve',pick:()=>api.set({form:{...f,repeat:'preserve'}})},...out.f.repeats];
    const selectedSourceKey=controller?.sourceKeyForHandle(f.cal),selectedSource=controller?.state.calendars.find(c=>calendarSourceKey(c)===selectedSourceKey);
    if(!f.id){const source=newEventSource(),key=source?calendarSourceKey(source):null,eventHandle=key===null?undefined:controller?.sourceHandle(key),reminders=out.f.cals.filter((choice:Bag)=>choice.domain==='reminders'),events=out.f.cals.filter((choice:Bag)=>!!eventHandle&&choice.id===eventHandle);out.f.cals=reminders.length?[...events.map((choice:Bag)=>({...choice,on:f.cal===choice.id,name:'Event',dot:'var(--acc)',css:f.cal===choice.id?'background:var(--fg);color:var(--bg)':'background:var(--bg)'})),...reminders]:selectedSourceKey===key?[]:events;}
    // Unsupported retained intent stays in the draft until the owner removes it.
-   if((original??selectedSource)?.provider==='eliza')out.f.repeats=f.repeat==='none'?null:[{label:'Remove requested repeat',on:false,pick:()=>api.set({form:{...f,repeat:'none'}})}];
+   if((original??selectedSource)?.provider==='eliza')out.f.repeats=f.repeat==='none'?null:[{label:'No repeat',on:false,pick:()=>api.set({form:{...f,repeat:'none'}})}];
    // aria-disabled does not stop a tap, so a disabled Save says why and does nothing.
-   const saveOffReason=!model||!['ready','partial','unavailable'].includes(model.status)?'Calendar is still loading. Try again in a moment.':model.mutating?'Calendar is saving. Try again in a moment.':f.canonicalOwnerKey!==model.ownerKey?'This draft is from another account.':f.canonicalUncertain===true?'Check this event in Calendar before saving again.':'';
+   const saveOffReason=!model||!['ready','partial','unavailable'].includes(model.status)?'Loading':model.mutating?'Saving':f.canonicalOwnerKey!==model.ownerKey?'Other account':f.canonicalUncertain===true?'Check event':'';
    out.f.saveOff=!!saveOffReason;out.f.save=async()=>{if(saveOffReason){api.toast(saveOffReason);return;}try{
     const draft=typedForm(f);if(f.id&&recurring&&draft.recurrence!==undefined&&f.recurrenceScope!=='series')throw Error('Choose Entire series to change how it repeats.');let saved:any;
     if(f.id){const event=model?.feed?.events.find(e=>calendarEventKey(e)===f.canonicalEventKey);if(!event)throw Error('Refresh this event before saving');const timing=JSON.stringify(f.canonicalTiming)!==JSON.stringify([f.off,f.t,f.d,f.zone,!!f.allDay]);saved=await controller!.update(f.canonicalEventKey,f.expectedProviderVersion,calendarFormPatch(draft,event,{timing,zone:f.zone!==f.canonicalTiming?.[3]}));}
     else{saved=await controller!.create(draft.sourceKey,calendarFormCreate(draft));
      // A note's draft links the event it created; note-origin-adapter finds it by the same event key.
-     const shell=owner;if(f.origin&&saved.event)void rememberNoteOrigin('event',calendarEventKey(saved.event),f.origin).then(linked=>{if(!linked&&owner===shell&&shell?.live)api.toast('Event saved. The link to its note could not be saved.');});}
+     const shell=owner;if(f.origin&&saved.event)void rememberNoteOrigin('event',calendarEventKey(saved.event),f.origin).then(linked=>{if(!linked&&owner===shell&&shell?.live)api.toast('Saved · Not linked');});}
     owner?.calendarFormCommitted?.(f);const latest=api.get('calendar').form;
     if(latest===f)api.set({form:null});
     else if(latest?.canonicalOwnerKey===f.canonicalOwnerKey&&latest.creationId===f.creationId){
-      if(saved.event){const policy=eventEditorMutability(saved.event),row=canonicalCalendarRow(saved.event,zone());api.set({form:{...latest,id:row.id,canonicalEventKey:calendarEventKey(saved.event),expectedProviderVersion:policy.kind==='editable'?policy.providerVersion:undefined,canonicalTiming:[row.off,row.t,row.d||1,zone(),!!saved.event.isAllDay],creationId:crypto.randomUUID()}});api.toast('Saved an earlier version. Your newer edits are kept.');}
-      else{api.set({form:{...latest,canonicalUncertain:true}});api.toast('Saved an earlier version. Your newer edits are kept. Check this event before saving again.');}
+      if(saved.event){const policy=eventEditorMutability(saved.event),row=canonicalCalendarRow(saved.event,zone());api.set({form:{...latest,id:row.id,canonicalEventKey:calendarEventKey(saved.event),expectedProviderVersion:policy.kind==='editable'?policy.providerVersion:undefined,canonicalTiming:[row.off,row.t,row.d||1,zone(),!!saved.event.isAllDay],creationId:crypto.randomUUID()}});api.toast('Older version saved');}
+      else{api.set({form:{...latest,canonicalUncertain:true}});api.toast('Older version saved');}
     }
-    if(saved.outcome==='accepted_without_readback')api.toast(f.origin&&!f.id?"Event sent. Check it in Calendar. It won't link back to the note.":'Event sent. Check it in Calendar.');refresh(true);
+    if(saved.outcome==='accepted_without_readback')api.toast(f.origin&&!f.id?'Sent · Not linked':'Sent');refresh(true);
    }catch(error){api.toast(calendarErrorText(error));}};
   }
   if(out.empty&&!legacy&&!model?.feed)out.emptyText=out.calendarSourceText;
-  else if(!rows.length)out.emptyText=model?.status==='ready'?'No events in this Calendar window':out.calendarSourceText;
+  else if(!rows.length)out.emptyText=model?.status==='ready'?'No events':out.calendarSourceText;
   // An incomplete window cannot establish that the selected day is free, even if verified rows exist on other days.
   if(out.empty&&!legacy&&(unresolvedCalendarSources>0||model?.status==='partial'||model?.status==='unavailable')&&out.nativeStatusLabel)out.emptyText=out.nativeStatusLabel;
   // The header already owns this warning and its retry action; do not repeat it in the grid.
@@ -310,10 +310,10 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   const source=event&&home.verified?'Agent Calendar':'';
   let feed=failed||unverified?presentHomeAgendaFeed({status:model?.error?'error':model!.status,hasItem:!!event,feedState:model?.feed?.state??null,asOf:Date.parse(model?.feed?.syncedAt??'')||null,error:model?.error??null,now,source:'Agent Calendar',emptyLabel:home.emptyLabel}):{state:home.verified?'ready':'pending',read:'',description:source,stale:false,title:home.emptyLabel};
   // A complete historical or future-dated empty snapshot cannot establish today's empty calendar.
-  if(home.verified&&!event&&!confirmedEmpty)feed={state:'error',read:'Open Calendar to retry',description:'Agent Calendar has not been verified. Open Calendar to retry.',stale:false,title:'Calendar has not been verified'};
+  if(home.verified&&!event&&!confirmedEmpty)feed={state:'error',read:'Retry',description:'Unverified · Open Calendar to retry',stale:false,title:'Unverified'};
   // A partial feed is still retryable, but Home need only show the Calendar entry.
   if(unverified&&!failed){feed.title=home.emptyLabel;feed.description=feed.read;}
-  if(model?.savedAt!=null)feed={state:'stale',read:controller?.refreshing?'Saved · Refreshing…':'Saved · Open Calendar to retry',description:'Saved Calendar event. Not yet checked with your calendars.',stale:true,title:'Calendar'};
+  if(model?.savedAt!=null)feed={state:'stale',read:controller?.refreshing?'Saved · Refreshing…':'Saved',description:'Saved',stale:true,title:'Calendar'};
   // Routine saved/refresh state remains accessible without adding status prose to Home.
   const provenance={origin:'',read:'',description:feed.description};
   // The agent's next event as an agenda item; an all-day event starts at local midnight of its first day.

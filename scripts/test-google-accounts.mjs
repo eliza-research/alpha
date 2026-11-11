@@ -81,11 +81,10 @@ test('abort and an empty connection ID cannot start a disconnect',async()=>{
   await assert.rejects(f.helper.disconnect(' ',signal()),TypeError);
   assert.deepEqual(f.calls,[]);
 });
-test('disconnect copy names the account and the service, and keeps personal data',()=>{
+test('disconnect copy names the account and keeps personal data',()=>{
   const prompt=googleDisconnectConfirmation(account.label,'Nebula'),done=googleDisconnectMessage('disconnected',account.label);
-  assert.match(prompt,/Gmail and Calendar access through Nebula end/);assert.match(prompt,/Google account, mail and events aren't deleted/);
-  assert.ok(prompt.startsWith(`Disconnect ${account.label}?`));assert.doesNotMatch(prompt+done,/Eliza/);
-  assert.equal(done,`${account.label} disconnected. Google may still list Alpha in your account permissions.`);
-  assert.match(googleDisconnectMessage('still-connected',account.label),/still reports/);
-  assert.match(googleDisconnectMessage('unconfirmed',account.label),/not confirmed/);
+  assert.equal(prompt,`Disconnect ${account.label}? Mail and events stay.`);assert.doesNotMatch(prompt+done,/Eliza/);
+  assert.equal(done,`${account.label} disconnected`);
+  assert.equal(googleDisconnectMessage('still-connected',account.label),`${account.label}: Still connected`);
+  assert.equal(googleDisconnectMessage('unconfirmed',account.label),`${account.label}: Unconfirmed`);
 });

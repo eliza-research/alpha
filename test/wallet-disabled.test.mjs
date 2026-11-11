@@ -43,8 +43,8 @@ test('Wallet has no view, deep link or quick command in the standalone, launcher
  }
  // The prototype payment handlers are inert even if a stale state names the view.
  const data=read('apps/app/src/prototype/data-adapter.ts');
- assert.match(data,/startAdd: \(\) => api\.toast\('Wallet is not connected\. No card details are collected\.'\)/);
- assert.match(data,/startPay: \(\) => api\.toast\('Wallet is not connected\. Nothing has been charged\.'\)/);
+ assert.match(data,/startAdd: \(\) => api\.toast\('Not connected'\)/);
+ assert.match(data,/startPay: \(\) => api\.toast\('Not connected'\)/);
  assert.match(read('apps/app/src/prototype/native-adapter.ts'),/if \(module === 'wallet'\) \{/);
 });
 

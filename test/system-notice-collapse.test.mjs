@@ -25,16 +25,16 @@ test('the recognized texts are byte-equal to the pinned upstream systemNoticeTex
 
 test('the runtime-error copy names an owner step, not the host operator diagnostics',()=>{
  for(const copy of [RUNTIME_ERROR_NOTICE,RUNTIME_ERROR_BACKGROUND_NOTICE])assert.doesNotMatch(copy,/host|diagnostics|—/);
- assert.match(RUNTIME_ERROR_NOTICE,/Send your message again/);
+ assert.match(RUNTIME_ERROR_NOTICE,/Send again/);
  assert.doesNotMatch(RUNTIME_ERROR_BACKGROUND_NOTICE,/may not arrive|resent/,'nothing was waiting, so nothing is said about a reply');
  assert.equal(systemNoticeDisplayText('runtime-error'),RUNTIME_ERROR_BACKGROUND_NOTICE);
  assert.equal(systemNoticeDisplayText('runtime-error',true),RUNTIME_ERROR_NOTICE);
  assert.equal(systemNoticeDisplayText('model-and-runtime-error'),`${MODEL_UNAVAILABLE_NOTICE}\n${RUNTIME_ERROR_BACKGROUND_NOTICE}`,'a combined notice keeps both halves');
- for(const waiting of [false,true])assert.equal(systemNoticeDisplayText('model-and-runtime-error',waiting).match(/send your message again/gi).length,1,'a combined notice gives one send-again step');
+ for(const waiting of [false,true])assert.equal(systemNoticeDisplayText('model-and-runtime-error',waiting).match(/Open Settings/g).length,1,'a combined notice gives one recovery step');
 });
 
 test('model-unavailable display is product-neutral while raw protocol recognition and stored bytes remain intact',()=>{
- assert.match(MODEL_UNAVAILABLE_NOTICE,/AI provider in Settings/);
+ assert.match(MODEL_UNAVAILABLE_NOTICE,/AI provider · Open Settings/);
  for(const kind of ['model-unavailable','runtime-error','model-and-runtime-error'])assert.doesNotMatch(systemNoticeDisplayText(kind),/Eliza|connected host|host's diagnostics/);
  const original=[user('u1'),{id:'m1',from:'agent',text:systemNoticeText('model-unavailable'),systemNotice:'model-unavailable'}],saved=structuredClone(original);
  const shown=collapseSystemNotices(original);

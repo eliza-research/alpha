@@ -182,7 +182,7 @@ adapterTest('Cloud startup bounds a stalled draft and fences its late completion
     assert.equal(typeof release,'function');
     assert.equal(h.renderChat().lines[0].t,'Connecting to voice…');
     await clock.advance(12001);
-    assert.match(h.renderChat().lines[0].t,/setup is taking too long/i);
+    assert.equal(h.renderChat().lines[0].t,'Timed out');
     assert.deepEqual(JSON.parse(JSON.stringify(h.box.voiceStartupTiming())),{stage:'draft-binding',outcome:'timeout',elapsedMs:12000,phaseMs:{'conversation-selection':0,'draft-binding':12000}});
     assert.equal(finished,true);
     release();release=undefined;await clock.flush();

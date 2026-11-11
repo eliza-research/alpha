@@ -145,7 +145,7 @@ for (const mode of ['confirm','transcribed','zone','modal','unknown','receipt-lo
     // Activate the actual review button through its keyboard path. The chat sheet
     // can still be settling after voice closes; nested text is not a stable click target.
     await page.getByRole('button',{name:/^clock handoff /}).press('Enter');
-    if(mode==='zone'){await expect(page.getByText('This action is no longer pending for the current screen. Open its original selection and review again.',{exact:true}).first()).toBeVisible();expect(await page.evaluate(()=>(window as any).recoveryFixture.effects)).toBe(0);return;}
+    if(mode==='zone'){await expect(page.getByText('No longer pending',{exact:true}).first()).toBeVisible();expect(await page.evaluate(()=>(window as any).recoveryFixture.effects)).toBe(0);return;}
 
     if(mode==='review-cancel'){
       await expect.poll(()=>page.evaluate(()=>(window as any).recoveryFixture.receipts)).toBe(1);
@@ -226,7 +226,7 @@ test('agent Clock handoff: browser development refuses a repeat instead of savin
     const alarms=(await DailyApps.listReminders()).reminders.filter((row:any)=>row.id.startsWith('alarm_'));
     return {days:request.days,status:result.status,message:result.message,clockStatus:clockResult.status,alarms:alarms.length};
   });
-  expect(outcome).toEqual({days:[2,3,4,5,6],status:'failed',message:'Repeating alarms are not available in this browser. No alarm was saved.',clockStatus:'failed',alarms:0});
+  expect(outcome).toEqual({days:[2,3,4,5,6],status:'failed',message:'No repeat here',clockStatus:'failed',alarms:0});
   expect(outcome.message).not.toContain('Alarm saved.');
   // A one-time request through the same call still saves exactly one alarm.
   expect(await page.evaluate(async()=>{const {DailyApps}=await import('/src/daily.ts');const result=await DailyApps.clockHandoff({action:'set',hour:7,minute:0,label:'Once',reviewed:true});return [result.message,(await DailyApps.listReminders()).reminders.filter((row:any)=>row.id.startsWith('alarm_')).length];})).toEqual(['Alarm saved.',1]);

@@ -114,7 +114,7 @@ test('pending optional Cloud restoration does not offer a second sign-in',async(
  await expect(tile(page)).toHaveCount(0);
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:'Connect Eliza Cloud',exact:true})).toHaveCount(0);
- await expect(page.getByText('Connect Eliza Cloud to use Gmail',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Connect Eliza Cloud',{exact:true})).toHaveCount(0);
  await page.evaluate(()=>(window as any).homeInboxFixture.restoringCloud=false);await notifyHomeOwner(page);
  await expect(page.getByRole('button',{name:/Unread, Synthetic sender A/})).toBeVisible();
 });

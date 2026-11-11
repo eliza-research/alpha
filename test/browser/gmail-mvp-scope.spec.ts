@@ -82,20 +82,20 @@ for(const scenario of ['connected','empty','error','restored'] as const)test(`Sh
  await page.getByRole('button',{name:'More',exact:true}).click();
   await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();await page.getByRole('button',{name:'Email',exact:true}).click();
  await expect.poll(async()=>{const f=await gm(page);return scenario==='restored'?f.restoreReads:f.accountReads;}).toBeGreaterThan(0);
- await expect(page.getByText('Checking Gmail connection…',{exact:true})).toBeVisible();
+ await expect(page.getByText('Checking…',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toHaveCount(0);
- await expect(page.getByText(/Shared content is ready for a new email\. Connect Gmail/)).toHaveCount(0);
+ await expect(page.getByText(/Connect Gmail/)).toHaveCount(0);
  expect((await gm(page)).prepares).toEqual([]);expect((await gm(page)).dispatches).toEqual([]);
  await page.evaluate(scenario=>{const f=(window as any).gm;if(scenario==='empty')f.accounts=[];if(scenario==='error')f.accountFailure=true;f.accountGate=null;f.releaseAccounts();},scenario);
  if(scenario==='empty'){
   await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toBeVisible();
-  await expect(page.getByText('Shared content is ready for a new email. Connect Gmail to continue.',{exact:true})).toBeVisible();
+  await expect(page.getByText('Connect Gmail',{exact:true})).toBeVisible();
   await page.evaluate(()=>{const f=(window as any).gm;f.accounts=f.originalAccounts;window.dispatchEvent(new Event('alpha:google-accounts-changed'));});
  }else if(scenario==='error'){
   await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
   await expect(page.getByText('You appear to be offline. Gmail was not reached. Retry when you are connected.',{exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toHaveCount(0);
-  await expect(page.getByText('Checking Gmail connection…',{exact:true})).toHaveCount(0);
+  await expect(page.getByText('Checking…',{exact:true})).toHaveCount(0);
   await page.evaluate(()=>(window as any).gm.accountFailure=false);await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();
  }
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Waiting shared note');
@@ -198,8 +198,8 @@ test('Settings disconnect asks first and Inbox then shows the honest disconnecte
  await expect(page.getByRole('region',{name:'Inbox',exact:true}).getByText('Subject in-0-a',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Google & email',exact:true}).click();
  const disconnect=page.getByRole('button',{name:'Disconnect Google account owner@example.test',exact:true});await expect(disconnect).toBeVisible();
- await disconnect.click();await page.getByRole('button',{name:'Keep connected',exact:true}).click();expect((await gm(page)).disconnects).toEqual([]);
- await disconnect.click();const review=page.getByRole('alert');await expect(review).toContainText('Gmail and Calendar access through Eliza Cloud end');await expect(review).toContainText("mail and events aren't deleted");await review.getByRole('button',{name:'Confirm disconnect Google account',exact:true}).click();
+ await disconnect.click();await page.getByRole('button',{name:'Cancel',exact:true}).click();expect((await gm(page)).disconnects).toEqual([]);
+ await disconnect.click();const review=page.getByRole('alert');await expect(review).toContainText('Mail and events stay.');await review.getByRole('button',{name:'Confirm disconnect Google account',exact:true}).click();
  await expect(disconnect).toHaveCount(0);expect((await gm(page)).disconnects).toEqual(['grant-0']);
  await page.getByRole('button',{name:'Close Google accounts',exact:true}).click();await returnToApps(page);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByText('Subject in-0-a',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toBeVisible();
 });
@@ -210,7 +210,7 @@ test('Settings Connections disconnects one confirmed account and reports the rea
  await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Google & email',exact:true}).click();
  await expect(page.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true}).click();
- await expect(page.getByRole('alert')).toContainText('Calendar');await page.getByRole('button',{name:'Confirm disconnect Google account',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('second@example.test');await page.getByRole('button',{name:'Confirm disconnect Google account',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Google accounts',exact:true}).getByText('first@example.test',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Disconnect Google account second@example.test',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Disconnect Google account first@example.test',exact:true})).toBeVisible();
@@ -314,7 +314,7 @@ test('From switcher returns the email to its account when the other account alre
  await page.getByRole('textbox',{name:'Subject',exact:true}).fill('Stays subject');
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Stays body');
  await page.getByRole('button',{name:'From account',exact:true}).click();
- await expect(page.getByText(/already has a draft\. This email stays with first@example\.test/).first()).toBeVisible();
+ await expect(page.getByText('Draft in second@example.test').first()).toBeVisible();
  await expect(page.getByRole('button',{name:'From account',exact:true})).toContainText('From first@example.test');
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Stays subject');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Stays body');

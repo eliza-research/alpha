@@ -39,7 +39,7 @@ test('production bundles forbid remote-agent fallback copy, which stays test-moc
     }
   }
   assert.match(ui, /const PENDING_FALLBACK = testMocksEnabled \? 'Connect your remote agent in Settings\.' : LOCAL_AGENT_ELSEWHERE;/);
-  assert.match(ui, /export const LOCAL_AGENT_ELSEWHERE = 'Your agent runs on your phone, not here\. Open Alpha on your Android phone to use it\.';/);
+  assert.match(ui, /export const LOCAL_AGENT_ELSEWHERE = 'Use on phone';/);
   assert.doesNotMatch(ui, /NO_REMOTE_(SEND|VOICE)/);
 });
 
@@ -145,11 +145,11 @@ test('a chat turn without Cloud inference gets an honest answer with the plan ac
     reply.replace(/^export /, '').replace(/notice: ConnectionSnapshot\['residentPlanNotice'\], signedIn: boolean\): string/, 'notice, signedIn)')
       + '\n}; return inferenceUnavailableReply;')(() => 'Nebula', {environment:'production'}, state);
   const replies = [renderReply('offline', true), renderReply(null, false), renderReply(null, true)].join('\n');
-  for (const text of ["Nebula couldn't confirm your plan right now", "can't reach Nebula", 'Sign in with Nebula', 'Local apps keep working'])
+  for (const text of ['Plan unconfirmed', 'Can’t reach Nebula', 'Sign in for AI'])
     assert.ok(replies.includes(text), text);
   // A verified account without a plan is told so; nothing claims a purchase either way.
   state.residentSubscription = {kind: 'inactive'};
-  assert.equal(renderReply(null, true), "I'm running on this device, but AI replies need a Nebula plan. Local apps keep working.");
+  assert.equal(renderReply(null, true), 'Plan needed');
   assert.doesNotMatch(replies, /Nothing was purchased/);
   assert.doesNotMatch(reply, /no agent|without AI|credit|top.?up|upgrade|needs? (?:an? )?Eliza Cloud (?:account with a )?plan|on-device speech|Nothing was sent to Cloud/i);
   // Workflow text generation fails honestly instead of using the plan answer as generated text.
@@ -165,11 +165,10 @@ test('a chat turn without Cloud inference gets an honest answer with the plan ac
   assert.equal(renderCard('sign-in').title,'Sign in with Nebula');
   assert.equal(renderCard('retry').title,'Check Nebula again');
   assert.equal(renderCard('plan').planAction,'plan');
-  assert.ok(renderCard('plan').sub.includes('Nebula account & plan'));
+  assert.equal(renderCard('plan').title,'Choose plan');
   // A Cloud billing refusal offers the current account's subscription and membership code controls.
   assert.equal(renderCard('funding').planAction,'funding');
-  assert.equal(renderCard('funding').title,'Check subscription or enter a membership code');
-  assert.ok(renderCard('funding').sub.includes('Nebula subscription'));
+  assert.equal(renderCard('funding').title,'Subscription');
   assert.equal(renderCard('unknown'),undefined);
 
   assert.match(adapter, /const planCard=planActionCard\(\(e as \{planAction\?:unknown\}\)\.planAction\)\?\?managePlan;/);
@@ -219,15 +218,15 @@ test('the plan surface is a notice beside the running agent, not a gate', () => 
   const resident = between(chooser, 'if(residentCloudFlow())return', 'if(browserOnly)return');
   assert.doesNotMatch(resident, /Use local apps without AI|without AI|No agent connected/);  // The subscription sheet replaces the plan dialog only off the phone's own agent: Settings ›
   // Plan and the post-redemption screen keep the resident plan headline, needs-plan notice, Check plan
-  // again and Approve this phone again (the panel carries the sheet's controls itself).
+  // again and Renew (the panel carries the sheet's controls itself).
   assert.ok(chooser.includes("const accountSheet=fundingRequired||snapshot.purpose==='plan'||snapshot.purpose==='cloud-account';"), 'Account serves the same plan flow for every host');
   assert.ok(chooser.includes('if(accountSheet)return <div className="alpha-connection-scrim" data-alpha-billing-overlay="true" data-alpha-membership-sheet="true">'));
-  for (const control of ['>Approve this phone again<', '>Check plan again<', '{residentPlan.headline}', '{residentMembershipVisible&&membershipControls}']) assert.ok(resident.includes(control), control);
+  for (const control of ['>Renew<', '>Recheck<', '{residentPlan.headline}', '{residentMembershipVisible&&membershipControls}']) assert.ok(resident.includes(control), control);
   // The component owns plan presentation while it is visible; the host's summary and actions are suppressed.
   assert.match(resident, /!residentMembershipVisible&&<section aria-label=\{`\$\{serviceName\} plan`\}/);
   // Inside the panel the plan headline already states plan state; the closable notice is outside Settings only.
   assert.doesNotMatch(resident, /\{NEEDS_PLAN_NOTICE\}/);
-  assert.ok(chooser.includes('<p role="status">{NEEDS_PLAN_NOTICE}</p>'));
+  assert.ok(chooser.includes('<p role="status"><StatusDot tone="off">{NEEDS_PLAN_NOTICE}</StatusDot></p>'));
   assert.doesNotMatch(resident, /cloneElement|planShownByHost/);
 });
 
