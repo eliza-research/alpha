@@ -119,6 +119,56 @@ test('fresh Alpha Home shows core apps and loads installed apps only in Apps', a
   expect((await calls(page, 'launch'))[1]).toEqual({packageName: SETTINGS.packageName, activityName: SETTINGS.activityName});
 });
 
+test('Home reuses its launcher projection during composer edits and refreshes changed apps', async ({ page }, info) => {
+  const inventory: App[] = Array.from({ length: 60 }, (_, index) => ({
+    packageName: `org.example.app${index}`, label: `Installed app ${index}`,
+  }));
+  await nativeStub(page, inventory, {}, false);
+  await page.goto('/');
+  const home = page.locator('[data-mobile-shell-home]');
+  const drawer = await openDrawer(page);
+  await expect(drawer.getByRole('button', { name: 'Open Installed app 59', exact: true })).toBeVisible();
+  await drawer.getByRole('button', { name: 'Close apps', exact: true }).click();
+  await expect(home.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => (window as any).deviceListening())).toBe(true);
+
+  await page.evaluate(async () => {
+    const {alphaViews} = await import('/src/product/alpha-product.ts');
+    const counts = (window as any).homeProjectionCounts = { renders: 0, builtinKeys: 0, favoriteKeys: 0 };
+    const {available, launcherKey, fromLauncherKey} = alphaViews;
+    alphaViews.available = () => { counts.renders++; return available(); };
+    alphaViews.launcherKey = view => { counts.builtinKeys++; return launcherKey(view); };
+    alphaViews.fromLauncherKey = key => { counts.favoriteKeys++; return fromLauncherKey(key); };
+  });
+  const counts = () => page.evaluate(() => ({ ...(window as any).homeProjectionCounts }));
+  const ask = page.getByRole('textbox', { name: 'Ask Alpha', exact: true });
+  for (const text of ['a', 'ab', 'abc', 'abcd']) {
+    const before = await counts();
+    await ask.fill(text);
+    await expect(ask).toHaveValue(text);
+    await expect.poll(() => counts().then(value => value.renders)).toBeGreaterThan(before.renders);
+  }
+  const measured = await counts();
+  await info.attach('stable Home projection counts', { body: JSON.stringify(measured), contentType: 'application/json' });
+  expect(measured).toMatchObject({ builtinKeys: 0, favoriteKeys: 0 });
+
+  await page.locator('[data-alpha-dock-scrim="true"]').click({ position: { x: 12, y: 12 } });
+  const reopened = await openDrawer(page);
+  await longPress(reopened.getByRole('button', { name: 'Open Installed app 0', exact: true }));
+  await reopened.getByRole('menuitem', { name: 'Add to Home', exact: true }).click();
+  const added = home.getByRole('button', { name: 'Installed app 0', exact: true });
+  await expect(added).toBeVisible();
+  const renamed = { ...inventory[0], label: 'Renamed app' };
+  await page.evaluate(apps => (window as any).deviceChange(apps, true), [renamed, ...inventory.slice(1)]);
+  await expect(added).toHaveCount(0);
+  const current = home.getByRole('button', { name: 'Renamed app', exact: true });
+  await expect(current).toBeVisible();
+  await current.click();
+  expect(await calls(page, 'launch')).toEqual([{ packageName: renamed.packageName }]);
+  await page.evaluate(apps => (window as any).deviceChange(apps, true), inventory.slice(1));
+  await expect(current).toHaveCount(0);
+});
+
 test('same-label apps are separate tiles and each opens exactly its own component and profile', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await nativeStub(page, ALL, { 'com.vendor.notes/com.vendor.notes.Launch#10': { message: 'Work apps are paused or locked. Turn on work apps in Android, then try again.', code: 'profile-locked' } });
