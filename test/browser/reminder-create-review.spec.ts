@@ -1,3 +1,4 @@
+import {reviewCalendarAction} from './helpers/calendar-review';
 import {openBrowserCalendar} from './helpers/browser-calendar';
 import { returnToApps } from './app-navigation';
 import {test,expect} from '@playwright/test';
@@ -24,8 +25,7 @@ for(const mode of ['fresh','double','response-loss','reload-loss','mismatch','mi
    };
   }
  },mode);
- if(mode==='sibling-pending')page.once('dialog',d=>void d.accept());
- const save=page.getByRole('button',{name:'Save event',exact:true});await save.click();
+ const save=page.getByRole('button',{name:'Save event',exact:true});if(mode==='sibling-pending')await reviewCalendarAction(page,()=>save.click());else await save.click();
  if(mode==='history-navigate'){await expect(page.locator('html')).toHaveAttribute('data-active-view','home');expect(await page.evaluate(()=>(window as any).confirmCalls)).toBe(0);expect(await page.evaluate(()=>(window as any).creates)).toBe(0);return;}
  if(mode==='double'||mode==='navigate-after-dispatch'||mode==='newer-draft'){
   await expect.poll(()=>page.evaluate(()=>typeof(window as any).releaseCreate)).toBe('function');
@@ -56,9 +56,9 @@ for(const mode of ['fresh','double','response-loss','reload-loss','mismatch','mi
   await page.getByRole('button',{name:'Back to calendar',exact:true}).last().click();await expect(page.getByRole('button',{name:'Check new reminder status',exact:true})).toBeVisible();
   if(mode==='fresh-attempt'){
    // New event resumes the retained form; explicitly discard only that draft before a separate attempt.
-   await page.getByRole('button',{name:'New event',exact:true}).click();page.once('dialog',d=>void d.accept());await page.getByRole('button',{name:'Discard calendar draft',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveCount(0);
-   await newForm();const dismissed=new Promise<void>(resolve=>page.once('dialog',async d=>{expect(d.message()).toContain('may already exist');await d.dismiss();resolve();}));await save.click();await dismissed;await expect(save).toBeEnabled();expect(await page.evaluate(()=>(window as any).creates)).toBe(1);
-   page.once('dialog',d=>void d.accept());await save.click();await expect.poll(()=>page.evaluate(()=>(window as any).creates)).toBe(2);expect(await page.evaluate(async()=>Object.keys(await (await import('/src/runtime/reminder-creations.ts')).reminderCreations()).length)).toBe(2);return;
+   await page.getByRole('button',{name:'New event',exact:true}).click();await reviewCalendarAction(page,()=>page.getByRole('button',{name:'Discard calendar draft',exact:true}).click());await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveCount(0);
+   await newForm();await reviewCalendarAction(page,()=>save.click(),false);await expect(save).toBeEnabled();expect(await page.evaluate(()=>(window as any).creates)).toBe(1);
+   await reviewCalendarAction(page,()=>save.click());await expect.poll(()=>page.evaluate(()=>(window as any).creates)).toBe(2);expect(await page.evaluate(async()=>Object.keys(await (await import('/src/runtime/reminder-creations.ts')).reminderCreations()).length)).toBe(2);return;
   }
   await page.getByRole('button',{name:'Check new reminder status',exact:true}).click();expect(await page.evaluate(()=>(window as any).creates)).toBe(1);await page.reload();await openBrowserCalendar(page);
   if(mode==='missing')await expect(page.getByRole('button',{name:'Check new reminder status',exact:true})).toBeVisible();else await expect.poll(()=>page.evaluate(async()=>Object.values(await (await import('/src/runtime/reminder-creations.ts')).reminderCreations()).every(r=>r.state==='found'))).toBe(true);

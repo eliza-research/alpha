@@ -107,7 +107,7 @@ def avb_metadata(public, bits):
     return struct.pack(">II", bits, n0inv) + n.to_bytes(bits // 8, "big") + rr.to_bytes(bits // 8, "big")
 
 
-def verify(root, tmpfs, secrets):
+def verify(root, tmpfs, secrets, public_directory=None):
     def record(relative):
         return json.loads((root / relative).read_bytes())
 
@@ -178,6 +178,42 @@ def verify(root, tmpfs, secrets):
         require(digest == signer["signerSha256"] and private_public(private) == public)
         public_keys.append(public)
         require(len(set(public_keys)) == len(public_keys))
+        if public_directory is not None:
+            # Enrollment needs the actual public certificates, not just a digest assertion.
+            # Construct this fixed allowlist only after every private/public pair passed.
+            public_files = {
+                f"{name}.x509.pem": files[f"{name}.x509.pem"] for name in OS_CERTS
+            }
+            public_files["alphaphone_app.x509.pem"] = openssl(
+                "x509", "-outform", "PEM", data=certificate,
+            )
+            public_files["avb_pkmd.bin"] = files["avb_pkmd.bin"]
+            public_files["apex_payload.avbpubkey"] = files["apex_payload.avbpubkey"]
+            public_entries = []
+            for key in key_manifest["keys"]:
+                name = key["name"]
+                if name in AVB_KEYS:
+                    public_entries.append({
+                        "name": name, "kind": "avb-rsa", "bits": bits[name],
+                        "avbPublicKeySha256": entries[name]["avbPublicKeySha256"],
+                    })
+                else:
+                    cert = public_files[f"{name}.x509.pem"]
+                    cert_public, cert_digest = certificate_identity(cert)
+                    text = openssl("pkey", "-pubin", "-inform", "DER", "-text", "-noout", data=cert_public)
+                    size = re.search(rb"Public-Key: \((\d+) bit\)", text)
+                    require(size)
+                    public_entries.append({
+                        "name": name, "kind": "x509-pk8", "bits": int(size[1]),
+                        "certificateSha256": cert_digest,
+                        "subject": openssl("x509", "-noout", "-subject", data=cert).decode().strip().removeprefix("subject="),
+                    })
+            public_files["fingerprints.json"] = (json.dumps({
+                "schemaVersion": 1, "testKeys": False, "keys": public_entries,
+            }, indent=2) + "\n").encode()
+            public_directory.mkdir(mode=0o700, parents=True, exist_ok=False)
+            for name, data in public_files.items():
+                (public_directory / name).write_bytes(data)
         return {
             "schemaVersion": 1,
             "sourceCommit": os.environ.get("GITHUB_SHA"),
@@ -200,7 +236,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGTERM, interrupted)
     try:
         secrets = {name: os.environ.pop(name) for name in SECRET_NAMES}
-        result = verify(Path.cwd(), Path("/dev/shm"), secrets)
+        result = verify(Path.cwd(), Path("/dev/shm"), secrets,
+                        Path("artifacts/release-public-identities"))
         output = Path("artifacts/release-custody-proof.json")
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(json.dumps(result, indent=2) + "\n")

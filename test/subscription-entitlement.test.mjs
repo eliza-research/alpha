@@ -48,7 +48,7 @@ test('Alpha keeps no second entitlement implementation: it re-exports the projec
   assert.match(binding, /^export \* from '\.\.\/\.\.\/\.\.\/\.\.\/\.eliza\/client-features\/packages\/cloud\/sdk\/src\/subscription-entitlement\.ts';$/m);
   for (const duplicate of [/subtle\.verify/, /class EntitlementRefresher/, /function readServiceLimit/, /function checkEntitlement/, /eliza-entitlement\+jwt/])
     assert.doesNotMatch(binding, duplicate);
-  assert.ok(fs.readFileSync('scripts/prepare-client-features.mjs', 'utf8').includes("'packages/cloud/sdk/src/subscription-entitlement.ts',"));
+  assert.ok(fs.readFileSync('scripts/prepare-client-features.ts', 'utf8').includes("'packages/cloud/sdk/src/subscription-entitlement.ts',"));
 });
 
 test('the organization credit balance is read only from an exact, fresh billing snapshot', () => {

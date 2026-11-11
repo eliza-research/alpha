@@ -1,5 +1,5 @@
 {
-  "pin": "99b49439ce9d0cb5607e9831b9f7f58d89525029",
+  "pin": "489fdf6ac3532ba5fbfeb7464ec509a44f5a66d1",
   "forkPin": "6337fd4c4bd071c17235986344d552d4036e177b",
   "identity": "ai.alphacompute.alphaphone",
   "abi": "arm64-v8a",
@@ -17,7 +17,7 @@
     },
     {
       "name": "libelizavoicejni.so",
-      "sha256": "4244312b8c63988b606f8d120c53335dce28b27b0d339128670afa684e9cc59e",
+      "sha256": "238bdf0738ef60c6705dc6c4c156baa516e27121347e1699ac6ae0fc0a40406f",
       "bytes": 1234768,
       "alignment16KiB": true
     },
@@ -58,21 +58,21 @@
     {
       "path": "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaVoiceNative.java",
       "sourceSha256": "328c96c067aabdae17adcc6534b41abfb6befd9d598a1d44b30ffc20a5157c87",
-      "generatedSha256": "b22b27587e71352266c7ba200f70d65f571c11a6015e4c43f979622ff0fccfea"
+      "generatedSha256": "f927fce9daee798f2409cd577dc0e30d37581adda7be2fef280b4ce3d7074525"
     }
   ],
   "producerInputs": [
     {
       "path": "package.json",
-      "sha256": "d0c735b8ea487c192a9f6839a64db6c6185ec753f177836d96f73b86abf35f6a"
+      "sha256": "29ff6a61cff220234cbe72a58b6047733996362ac7182298f3609115290d52d4"
     },
     {
       "path": "packages/agent/package.json",
-      "sha256": "1082dc34ec6894e19a43003528fd5701ebe53621f77c37d1bec37662bd822554"
+      "sha256": "6145a2e4e30c2ddadef4d24f2667914800e2c6d6ebb5d192bea5f684ba0666bf"
     },
     {
       "path": "packages/app/package.json",
-      "sha256": "c7529a8a353ca9c58e6f2165070b12805be01d613f5643202fd29287785c51f3"
+      "sha256": "3373697d70094963a31e756c5a439ab7a36e5106f1f60898182fd4809acf73d7"
     },
     {
       "path": "packages/app/scripts/aosp/compile-libllama-paths.ts",

@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {selectDeviceCapabilities} from '../apps/app/src/runtime/phone-context.ts';
-import {DEVICE_PROFILE} from '../scripts/eval-device-action-clarification.mjs';
+import {DEVICE_PROFILE} from '../scripts/eval-device-action-clarification.ts';
 
 const everything = [
   'calendar.local-event.v1', 'notes.local-record.v1', 'camera.capture-photo.v1', 'reminders.local-record.v1', 'reminders.local-record.v2',

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build a bounded real OSM Monaco region; never calls public search/route APIs."""
-import pathlib,urllib.request,hashlib,json,subprocess,os,sys,sqlite3,contextlib
+import pathlib,urllib.request,hashlib,json,subprocess,os,sqlite3,contextlib
 # Every fetched byte is pinned; a tool or extract change needs a reviewed sha256/size change here.
 assets={
  'monaco.osm.pbf':('https://download.geofabrik.de/europe/monaco-261011.osm.pbf','5ba0c7e6bc8e61dc8f278a0cb97d1510124804f84d9dce8a1e492da7be41b5d2',691631),

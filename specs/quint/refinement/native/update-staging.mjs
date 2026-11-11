@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {app, directory, javaTraceCampaign, root} from './java.mjs';
 import {exactUpdateMembers} from './update-barrier.mjs';
@@ -25,7 +25,8 @@ const modes = ['permission-only', 'busy-peer-and-exact-staged-copy', 'owner-dest
   'owner-destroy-during-archive-read', 'same-size-corrupt-body', 'wrong-archive-version', 'wrong-archive-package',
   'wrong-archive-flavor', 'wrong-archive-signer', 'abandon-refused',
   'stale-cache-sweep', 'cache-delete-refused', 'boot-inclusive-boundary-and-process', 'boot-precedence',
-  'boot-permission-and-later-admission', 'boot-manual-cold', 'boot-download-failure-and-warm-process'];
+  'boot-permission-and-later-admission', 'boot-manual-cold', 'boot-download-failure-and-warm-process',
+  'verified-cache-reuse', 'verified-cache-corrupt-refetch', 'verified-cache-restart-sweep'];
 const sha = value => createHash('sha256').update(value).digest('hex');
 const signer = sha(Buffer.of(7));
 const installed = {versionCode: 7, launcher: true, signerSha256: signer};
@@ -46,12 +47,15 @@ const nativeInputs = {
 };
 const minuteMs = 60 * 1000;
 const initialNative = {'s.owner':0, 's.target':0, 's.phase':'idle', 's.file':'absent', 's.bytes':0, 's.session':'none',
+  's.kept':0, 's.reuses':0,
   's.stagedBytes':0, 's.connected':false, 's.fetches':0, 's.created':0, 's.abandoned':0, 's.outcome':'none'};
 
 function settingsProgram() {
   const source = readFileSync(join(root, settings), 'utf8');
-  const review = source.slice(source.indexOf('export const UPDATE_SCHEMA'), source.indexOf('/** Cloud QA profile facts'));
-  const cache = source.slice(source.indexOf('const UPDATE_KEY'), source.indexOf('/** Keep the reference settings components'));
+  const reviewStart=source.indexOf('export const UPDATE_SCHEMA'), reviewEnd=source.indexOf('/** Field updates wait for Home',reviewStart);
+  const cacheStart=source.indexOf('const UPDATE_KEY'), cacheEnd=source.indexOf('/** Keep the reference settings components',cacheStart);
+  assert.ok(reviewStart>=0&&reviewEnd>reviewStart&&cacheStart>reviewEnd&&cacheEnd>cacheStart,'Exact non-overlapping update parser and cache source blocks');
+  const review=source.slice(reviewStart,reviewEnd), cache=source.slice(cacheStart,cacheEnd);
   assert.ok(review.includes('function parseUpdateManifest(') && cache.includes('device.checkForUpdate()'));
   return new vm.Script(stripTypeScriptTypes((review + cache).replace(/^export /gm, '') + `
 globalThis.inspect = () => ({cache: savedUpdate(), checking: !!updateCheck});
@@ -148,7 +152,7 @@ export async function checkNativeUpdateStaging(extraSources = []) {
     'test/fixtures/UpdateFlowTest.java', ...fixtureSources];
   const sources = [fileURLToPath(import.meta.url), plugin, settings, ...compiled, join(directory,harness),
     join(directory,'Trace.java'), join(directory,'java.mjs'), join(directory,'update-barrier.mjs'),
-    'scripts/upstream-native-source.mjs', 'upstream.lock.json', 'test/fixtures/jvm-tools.mjs',
+    'scripts/upstream-native-source.ts', 'upstream.lock.json', 'test/fixtures/jvm-tools.mjs',
     'test/support/strip-types.mjs', ...(jsonJar ? [jsonJar] : []), ...extraSources];
   const driverHashes = captureInputs(sources);
   const upstream = upstreamNativeSource(root);
@@ -224,6 +228,7 @@ export async function checkNativeUpdateStaging(extraSources = []) {
     'Direct copyVerified probes test the real deadline behavior: late body bytes are rejected and a late EOF can verify bytes already read. The full install traces use the production deadline.',
     'Cold-boot traces execute the actual capability and installer functions with controlled SDK, consent and Android SystemClock. Uptime samples 0,26681,29999,30000,30001,35000 preserve the inclusive boundary. A shut-down executor proves refused calls resolve before worker admission; real cache/network/session/barrier/stop/commit effects remain absent.',
     'Same-boot process replacement preserves controlled uptime; a new boot resets it. These are explicit fixture observations between attempts, not installed-device reboot validation. A failed actual digest and later warm-process admission retain the existing cleanup contract.',
+    'A known automatic lifecycle deferral may retain one process-local exact tuple. Actual cached bytes, marker, network-call counts and staged copies are observed through retry, corruption/refetch and process-loss cleanup. Cache reuse reruns digest and archive admission; the source fixture stops at renderer refusal and proves no commit or resident stop. Transport/archive metadata are controlled ports, not real TLS or Android installation.',
     ...skipped.map(({mode,reason}) => `Host capability omitted ${mode}: ${reason}.`),
   ]});
   return {receipt,skipped,obligations:[

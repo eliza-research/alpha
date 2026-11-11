@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Alpha Phone production product descriptor for Pixel 10a (stallion) on Android 17. scripts/stage-aosp.mjs --target pixel10a --production refuses to stage while any field here is UNSET or a placeholder, while the pinned source lock differs from sourceLock.sha256 or is still marked developmentOnly, or while android/release-signer.json has no reviewed signer. scripts/sign-aosp-release.mjs reads the avb and ota sections. Values are reviewed public identities only (certificate and key digests, never key material). releaseQualified and deviceAcceptanceVerified are recorded by release evidence, never by software.",
+  "description": "Alpha Phone production product descriptor for Pixel 10a (stallion) on Android 17. scripts/stage-aosp.ts --target pixel10a --production refuses to stage while any field here is UNSET or a placeholder, while the pinned source lock differs from sourceLock.sha256 or is still marked developmentOnly, or while android/release-signer.json has no reviewed signer. scripts/sign-aosp-release.ts reads the avb and ota sections. Values are reviewed public identities only (certificate and key digests, never key material). releaseQualified and deviceAcceptanceVerified are recorded by release evidence, never by software.",
   "product": "alpha_stallion_phone",
   "target": "pixel10a",
   "device": {
@@ -17,24 +17,25 @@
   },
   "signer": {
     "apkDescriptor": "android/release-signer.json",
-    "platformCertificateSha256": "UNSET",
+    "platformCertificateSha256": "e76e132cb233d302b93e4fb9b561f114215ea884235dfba8ed675878047e3998",
     "releaseCertificates": {
-      "shared": "UNSET",
-      "media": "UNSET",
-      "networkstack": "UNSET",
-      "sdk_sandbox": "UNSET",
-      "bluetooth": "UNSET",
-      "nfc": "UNSET",
-      "apex": "UNSET"
+      "shared": "a4b031a35fe1a9d79a2ca24efbf43145a06ff0715ddfe4b622239193def30482",
+      "media": "7808038475ff38f0969040ebe9deb30d7cf96fca91795272a623d76a331c0529",
+      "networkstack": "6fba8451b8c342208a538c2b3a77f5361e1567901473f94f865456ce3640542a",
+      "sdk_sandbox": "faffa391d0fbbddcac89b7edcef74b8d63904cfc67f2075c41a6b29f5ddeee3d",
+      "bluetooth": "afa35217a7a6eece7c65887d72f5c0d58fdd5e44f015540ad963d4c7a847f292",
+      "nfc": "f0631050e868474c266ed226aeb970ecd7f875df1770464ca601f077b30985e9",
+      "apex": "e15d5665684a60dca9f4e4a707471d40a8eaf9648761f15ed1615a1a19b6492f"
     },
-    "decision": "A-06"
+    "decision": "A-06",
+    "apexPayloadAvbPublicKeySha256": "5c3d3fb88c4b07d1f34eb90edc48f3b7de6519efb877f6a4dfecac4dde985978"
   },
   "avb": {
     "algorithm": "SHA256_RSA4096",
     "vbmetaKey": "avb.pem",
     "chainedPartitions": ["vbmeta_system", "vbmeta_vendor"],
     "publicKeyMetadata": "avb_pkmd.bin",
-    "publicKeySha256": "UNSET"
+    "publicKeySha256": "ef17e93cb331c37187cb15c666c09b3861d539f8b24662f4fa3fd7314d806daa"
   },
   "ota": {
     "channel": "android/aosp/pixel10a-ota-channel.json"

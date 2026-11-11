@@ -27,7 +27,10 @@ export function inboxChoiceText(text:string){
  });
  return removed?rendered.replace(/\n{3,}/g,'\n\n').trim():text;
 }
+export type CalendarApprovalDecision='approve'|'reject';
 export type CalendarApproval={id:string;ownerVerified:boolean;state:string;action:'schedule_event'|'modify_event'|'cancel_event';reason:string;expiresAt:string;payload:Record<string,unknown>;revision:string};
+export type CalendarApprovalResolution={requestId:string;decision:CalendarApprovalDecision;kind:'succeeded'|'rejected'|'invalidated'|'retryable'|'blocked';text:string;failure?:{code:string;retryable:boolean;acceptance:'not_accepted'|'unknown'}};
+export function calendarApprovalResolvePath(id:string){if(!calendarApprovalId(id))throw Error('Invalid Calendar request.');return `/api/approvals/${id}/resolve`;}
 const object=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 export function calendarApprovalFromList(raw:unknown,id:string,ownerId:string):CalendarApproval|null{
  if(!calendarApprovalId(id)||!ownerId||!object(raw)||!Array.isArray(raw.approvals))throw Error('Calendar review status is unavailable.');
@@ -47,7 +50,13 @@ export function calendarApprovalStatus(row:CalendarApproval|null,now=Date.now())
  if(row.state==='done')return 'Review closed';
  return 'Change not confirmed';
 }
-export function calendarApprovalCommand(row:CalendarApproval,decision:'approve'|'reject'){
- if(!calendarApprovalPending(row)||!['approve','reject'].includes(decision))throw Error('This Calendar request is no longer pending.');
- return `${decision==='approve'?'Approve':'Reject'} Calendar request ${row.id} exactly as reviewed. Use CALENDAR_REVIEW with requestId ${row.id} and decision ${decision}; do not create another request.`;
+/** Finite canonical receipt; a malformed or mismatched reply never becomes a success message. */
+export function parseCalendarApprovalResolution(raw:unknown,id:string,decision:CalendarApprovalDecision):CalendarApprovalResolution{
+ if(!object(raw)||raw.requestId!==id||raw.decision!==decision||!['succeeded','rejected','invalidated','retryable','blocked'].includes(String(raw.kind))||decision==='reject'&&raw.kind!=='rejected'||decision==='approve'&&raw.kind==='rejected')throw Error('Calendar change is not confirmed. Check its saved status before trying again.');
+ const kind=raw.kind as CalendarApprovalResolution['kind'];
+ const fallback={succeeded:'Calendar change completed.',rejected:'Calendar change declined. Nothing was changed.',invalidated:'Calendar change was not made. Review the current event.',retryable:'Calendar change was not made. Review it again before trying.',blocked:'Calendar change is not confirmed. Check its saved status before trying again.'};
+ const text=typeof raw.text==='string'&&raw.text.trim()&&raw.text.length<=8192?raw.text:fallback[kind];
+ if(raw.failure!==undefined&&(!object(raw.failure)||typeof raw.failure.code!=='string'||typeof raw.failure.retryable!=='boolean'||!['not_accepted','unknown'].includes(String(raw.failure.acceptance))))throw Error(fallback.blocked);
+ if((kind==='succeeded'||kind==='rejected')&&raw.failure!==undefined)throw Error(fallback.blocked);
+ return {requestId:id,decision,kind,text,...(raw.failure?{failure:raw.failure as CalendarApprovalResolution['failure']}:{})};
 }

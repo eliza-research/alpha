@@ -13,7 +13,7 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
 /**
- * Screen-off navigation through AlphaNavigationService, driven by scripts/maps/test-native-navigation.mjs
+ * Screen-off navigation through AlphaNavigationService, driven by scripts/maps/test-native-navigation.ts
  * (simulator GPS through the actual Android location provider, explicit argument mapsBackground=1).
  * Proves guidance keeps updating with the screen off and that the notification's Stop ends the
  * session exactly once, delivered to the bridge that started it even after a second Maps bridge

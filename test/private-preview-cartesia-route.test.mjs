@@ -302,6 +302,9 @@ adapterTest('typed native 503 is waited out quietly, then voice ends with one ca
   // A Cloud 503 while voice warms is transient: no alarming copy, no support code, no Try voice again.
   const failure=Object.assign(new Error('PRIVATE_PROVIDER_BODY'),{code:'voice-http-503'}),clock=voiceFakeClock();
   const h=cloudFixture({startError:failure,clock});t.after(()=>h.close());
+  // With on-device speech the conversation moves to this phone at once (voice-calm-cloud-errors.test.mjs);
+  // the quiet waits are the network route's handling when on-device speech is unavailable.
+  h.box.createOnDeviceVoice=()=>null;
   const originalMessages=JSON.stringify(h.shell.state.msgs);
   await h.shell.startVoice();await clock.flush();
   for(let attempt=1;attempt<=2;attempt++){

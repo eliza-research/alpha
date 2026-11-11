@@ -7,7 +7,7 @@ import {execFileSync,spawnSync} from 'node:child_process';
 import child from 'node:child_process';
 import {syncBuiltinESMExports} from 'node:module';
 import {createHash,randomBytes} from 'node:crypto';
-import {copyFilesClone,planCloneBatches,cloneArgumentBytes,CLONE_ARGUMENT_BYTES} from '../scripts/copy-file-clone.mjs';
+import {copyFilesClone,planCloneBatches,cloneArgumentBytes,CLONE_ARGUMENT_BYTES} from '../scripts/copy-file-clone.ts';
 const root=path.resolve(import.meta.dirname,'..');
 const hash=file=>createHash('sha256').update(fs.readFileSync(file)).digest('hex');
 function fixture(t){
@@ -33,11 +33,11 @@ function fixture(t){
  git('init','-q');git('add','.');git('update-index','--add','--cacheinfo',`160000,${subgit('rev-parse','HEAD')},packages/example/external`);git('-c','user.name=Fixture','-c','user.email=fixture@example.invalid','commit','-qm','Small committed cache');
  const commit=git('rev-parse','HEAD');
  write(path.join(cache,'ignored/native-build.bin'),'ignored cache output');
- for(const file of ['scripts/prepare-local-agent.mjs','scripts/local-agent-source.mjs','scripts/copy-file-clone.mjs'])write(path.join(consumer,file),fs.readFileSync(path.join(root,file)));
+ for(const file of ['scripts/prepare-local-agent.ts','scripts/local-agent-source.ts','scripts/copy-file-clone.ts'])write(path.join(consumer,file),fs.readFileSync(path.join(root,file)));
  write(path.join(consumer,'upstream.lock.json'),JSON.stringify({commit,url:cache}));
  fs.mkdirSync(path.join(consumer,'vendor'),{recursive:true});fs.symlinkSync(cache,path.join(consumer,'vendor/eliza'));
  const snapshot=()=>({head:git('rev-parse','HEAD'),index:hash(path.join(cache,'.git/index')),data:hash(path.join(cache,'packages/example/data.bin')),tool:fs.statSync(path.join(cache,'packages/example/tool.sh')).mode,ignored:hash(path.join(cache,'ignored/native-build.bin')),submoduleHead:subgit('rev-parse','HEAD'),submoduleFile:hash(path.join(external,'submodule-only.txt')),files:Object.fromEntries(git('ls-files','-z').split('\0').filter(Boolean).map(name=>{const file=path.join(cache,name),stat=fs.lstatSync(file);return [name,{mode:stat.mode,value:stat.isSymbolicLink()?fs.readlinkSync(file):stat.isFile()?hash(file):null}];}))});
- const run=(options={})=>spawnSync(process.execPath,[...(options.preload?['--import',options.preload]:[]),path.join(consumer,'scripts/prepare-local-agent.mjs'),...(options.full?[]:['--source-only'])],{cwd:consumer,env:{...process.env,ALPHA_LOCAL_AGENT_SOURCE_DIR:destination,ALPHA_RUNTIME_GIT_CACHE:options.cache??cache,...options.env},encoding:'utf8',timeout:20000});
+ const run=(options={})=>spawnSync(process.execPath,[...(options.preload?['--import',options.preload]:[]),path.join(consumer,'scripts/prepare-local-agent.ts'),...(options.full?[]:['--source-only'])],{cwd:consumer,env:{...process.env,ALPHA_LOCAL_AGENT_SOURCE_DIR:destination,ALPHA_RUNTIME_GIT_CACHE:options.cache??cache,...options.env},encoding:'utf8',timeout:20000});
  return {directory,cache,consumer,destination,commit,git,write,snapshot,run};
 }
 test('verified cache seeds independent committed files and metadata, excluding ignored output',t=>{
@@ -50,7 +50,7 @@ test('verified cache seeds independent committed files and metadata, excluding i
  assert.equal(fs.readlinkSync(path.join(f.destination,'packages/example/linked-data')),'data.bin');assert.equal(fs.existsSync(path.join(f.destination,'ignored')),false);
  assert.ok(fs.lstatSync(path.join(f.destination,'packages/example/external')).isDirectory());assert.deepEqual(fs.readdirSync(path.join(f.destination,'packages/example/external')),[]);
  const stamp=JSON.parse(fs.readFileSync(path.join(f.destination,'.alpha-runtime-source.json')));
- assert.equal(stamp.base,f.commit);assert.equal(stamp.copySha256,hash(path.join(f.consumer,'scripts/copy-file-clone.mjs')));
+ assert.equal(stamp.base,f.commit);assert.equal(stamp.copySha256,hash(path.join(f.consumer,'scripts/copy-file-clone.ts')));
  const moved=f.cache+'.moved';fs.renameSync(f.cache,moved);
  try{assert.equal(spawnSync('git',['-C',f.destination,'fsck','--connectivity-only','--no-reflogs']).status,0);}finally{fs.renameSync(moved,f.cache);}
  if(process.platform==='darwin'){
@@ -126,7 +126,7 @@ test('copy-on-write hints retain correct independent files when the filesystem f
 
 test('clone helper provenance changes refuse reuse and existing APK copy semantics remain',t=>{
  const f=fixture(t),before=f.snapshot(),result=f.run();assert.equal(result.status,0,result.stderr);
- const helper=path.join(f.consumer,'scripts/copy-file-clone.mjs');fs.appendFileSync(helper,'\n');
+ const helper=path.join(f.consumer,'scripts/copy-file-clone.ts');fs.appendFileSync(helper,'\n');
  const changed=f.run();assert.notEqual(changed.status,0);assert.match(changed.stderr,/Prepared runtime differs/);assert.deepEqual(f.snapshot(),before);
  const copy=path.join(f.directory,'apk-copy');copyFilesClone([{source:path.join(f.cache,'packages/example/data.bin'),destination:copy}]);assert.equal(hash(copy),before.data);
  assert.throws(()=>copyFilesClone([{source:path.join(f.cache,'packages/example/data.bin'),destination:copy}],{exclusive:true}),error=>error.code==='EEXIST');assert.equal(hash(copy),before.data);

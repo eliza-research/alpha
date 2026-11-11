@@ -1,4 +1,3 @@
-import {cloudRuntimeEnabled} from '../build-flags';
 import {parseNativeHistoryCommand} from "../../../../.eliza/client-features/plugins/plugin-browser/src/native-client-command.ts";
 import {parseBrowserAddressInput} from "../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/address-input.ts";
 import {browsingSnapshot, restoreBrowsing, DEFAULT_BROWSING_LIMITS} from "../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/browsing-session.ts";
@@ -43,6 +42,9 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   let lastPresented:Bag|undefined,presentationFrame:number|undefined,presentationFailed=false;
   // Saving waits for a successful read so a damaged saved record is never overwritten implicitly.
   let sessionRead = false, sessionHydrated = false, lastSaved = '', saveQueue = Promise.resolve();
+  let snapshotRevision = 0, snapshotInputs: Bag | undefined;
+  let snapshotValue: ReturnType<typeof browsingSnapshot> | null = null, snapshotJson = '';
+  let saveEpoch = 0, failedSnapshot = '', retryAt = 0, retryDelay = 2000, saveWarning = false;
   const tabOf = (id: string) => state()?.tabs?.find((tab: Bag) => tab.id === id);
   const isPrivate = (id: string) => !!tabOf(id)?.priv;
   let bookmarkRead: Promise<void> | undefined, bookmarkQueue = Promise.resolve();
@@ -95,7 +97,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     }).catch(report);
   }
   const state = () => shell?.vget('browser');
-  const refresh = () => shell?.vset('browser', { nativeRevision: Date.now() });
+  const refresh = () => { ++snapshotRevision; shell?.vset('browser', { nativeRevision: Date.now() }); };
   const report = (error: unknown) => !disposed && shell?.toast(browserErrorMessage(error));
   let reading: AbortController | undefined, questionReview=false;
   // Android only: whether this WebView provider can read a page in isolation.
@@ -111,7 +113,6 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   const unsubscribeReading = connectionController.subscribe(()=>{ if(reading && (connectionController.getSnapshot().open || document.hidden)) stopReading(); });
   async function readPage() {
     if(reading){stopReading();return;}
-    if(Capacitor.isNativePlatform()&&cloudRuntimeEnabled)return;
     const id=state()?.cur, info=tabInfo(id), revision=tabs.revision(id);
     if(!Capacitor.isNativePlatform()){
       // The refusal is not left behind an open menu (the same rule as Ask about page).
@@ -308,14 +309,33 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   }
   function savedSnapshot() {
     const s = state(); if (!s) return null;
-    return browsingSnapshot(s, id => { const info = tabInfo(id), saved = restored.get(id); return { url: (!Capacitor.isNativePlatform()&&info?.externalOnly?info.url:info?.savedUrl) || saved?.url, title: info?.title || saved?.title }; });
+    // The 100ms native geometry check also runs while another app is open. Only
+    // changed tab/history references, selection or native metadata need URL normalization.
+    if (!snapshotInputs || snapshotInputs.tabs !== s.tabs || snapshotInputs.visits !== s.visits || snapshotInputs.cur !== s.cur || snapshotInputs.revision !== snapshotRevision) {
+      snapshotInputs = {tabs: s.tabs, visits: s.visits, cur: s.cur, revision: snapshotRevision};
+      snapshotValue = browsingSnapshot(s, id => { const info = tabInfo(id), saved = restored.get(id); return { url: (!Capacitor.isNativePlatform()&&info?.externalOnly?info.url:info?.savedUrl) || saved?.url, title: info?.title || saved?.title }; });
+      snapshotJson = JSON.stringify(snapshotValue);
+    }
+    return snapshotValue;
   }
   function saveSession() {
     if (!sessionHydrated || clearingData || disposed) return;
     const snapshot = savedSnapshot(); if (!snapshot) return;
-    const next = JSON.stringify(snapshot); if (next === lastSaved) return;
+    const next = snapshotJson; if (next === lastSaved || (next === failedSnapshot && Date.now() < retryAt)) return;
+    const epoch = saveEpoch;
     lastSaved = next;
-    saveQueue = saveQueue.then(() => disposed || clearingData ? undefined : Browser.saveBrowsingState({ session, ...snapshot })).catch(() => { if (lastSaved === next) lastSaved = ''; });
+    saveQueue = saveQueue.then(async () => {
+      if (disposed || clearingData || epoch !== saveEpoch) return;
+      try {
+        await Browser.saveBrowsingState({ session, ...snapshot });
+        if (disposed || epoch !== saveEpoch) return;
+        failedSnapshot = ''; retryAt = 0; retryDelay = 2000; saveWarning = false;
+      } catch {
+        if (disposed || epoch !== saveEpoch || lastSaved !== next) return;
+        lastSaved = ''; failedSnapshot = next; retryAt = Date.now() + retryDelay; retryDelay = Math.min(60000, retryDelay * 2);
+        if (!saveWarning) { saveWarning = true; report(new Error('Tabs and history could not be saved. Alpha will try again shortly.')); }
+      }
+    });
   }
   async function restoreSession() {
     if (sessionRead) return; sessionRead = true;
@@ -349,7 +369,12 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     const ok = await confirmBrowser('browser-clear-data', 'Clear browsing data?', Capacitor.isNativePlatform() ? 'Clears history, cookies and tabs.' : 'Clears history and tabs.');
     if (!ok || disposed) return;
     clearingData = true;
+    // Retire queued snapshots and let an already-dispatched save finish before
+    // Clear. No old write may restore history after the native clear completes.
+    ++saveEpoch; lastSaved = ''; failedSnapshot = ''; retryAt = 0; retryDelay = 2000; saveWarning = false;
     try {
+      await saveQueue;
+      if (disposed) return;
       const result = await Browser.clearBrowsingData({ session });
       if (disposed) return;
       const normal = state().tabs.filter((tab: Bag) => !tab.priv).map((tab: Bag) => tab.id);
@@ -412,7 +437,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       host:url?.host || 'Search or address',hostCss:url?'':'color:var(--mut)',path:url ? url.pathname + url.search : '', hasLock:Capacitor.isNativePlatform() && !!url && url.protocol==='https:' && !!info?.committed && !info?.loading && !info?.error,
       pageShareAvailable:Capacitor.isNativePlatform(),canCopyLink:!!info?.committed&&!info.loading&&!info.error,pageContentAvailable:Capacitor.isNativePlatform()||!!info?.committed&&!info.loading&&!info.error&&!info.externalOnly,nativeControls:true,externalBrowserAvailable:Capacitor.isNativePlatform(),openExternalBrowser:()=>void externalHandoff.open(),openPasswordProvider:()=>{api.set({menu:false});api.open('settings',{page:'password-provider'});},openDownloads:()=>{api.set({menu:false});void Browser.downloads({session}).catch(report);},copyLink:()=>void copyPageLink(),reload:()=>{api.set({menu:false});void command('reload');},stopLoading:()=>{api.set({menu:false});void command('stop');},loading:!!info?.loading,goBack:()=>void command('back'),goFwd:()=>void command('forward'),backOp:info?.canBack?1:0.3,fwdOp:info?.canForward?1:0.3,
       startEdit:()=>api.set({editing:true,addr:info?.url||'',menu:false}),onAddrKey:(e:KeyboardEvent)=>{ if(e.key==='Enter'){e.preventDefault();void navigate((e.target as HTMLInputElement).value);} else if(e.key==='Escape')api.set({editing:false}); },
-      toggleMark:()=>{if((!info?.committed&&!(info?.externalOnly&&!Capacitor.isNativePlatform())) || info.loading || info.error || url?.protocol!=='https:'){api.toast('HTTPS only');return;}saveBookmark(info.url);},markLabel:s.marks.includes(info?.url)?'Bookmarked':'Bookmark',markFill:s.marks.includes(info?.url)?'currentColor':'none',libRows:[...(bookmarkRecovery&&s.lib!=='history'?[{id:'bookmark-recovery',title:'Recover saved bookmarks',host:'Bookmarks unavailable',ini:'!',go:openBookmarkRecovery,canRemove:false,removeAria:'',remove:()=>{}}]:[]),...Array.from(new Set<string>(s.lib==='history'?s.visits:s.marks)).map((u:string)=>({id:u,title:u,host:u,ini:new URL(u).hostname[0],go:()=>void navigate(u),canRemove:s.lib!=='history',removeAria:'Remove bookmark',remove:()=>saveBookmark(u,false)}))],libEmpty:!(bookmarkRecovery&&s.lib!=='history')&&!(s.lib==='history'?s.visits:s.marks).length,newTab:()=>openNew(false),askPage:()=>void askPage(),readAloud:()=>void readPage(),readingUnavailable:readingSupport?.state==='unavailable',readingNote:READING_UNSUPPORTED_MESSAGE,readAloudAvailable:!(Capacitor.isNativePlatform()&&cloudRuntimeEnabled),bookNow:unavailable,cfOk:unavailable,openShare:()=>void sharePage(),shareEmail:()=>sharePageEmail(),
+      toggleMark:()=>{if((!info?.committed&&!(info?.externalOnly&&!Capacitor.isNativePlatform())) || info.loading || info.error || url?.protocol!=='https:'){api.toast('HTTPS only');return;}saveBookmark(info.url);},markLabel:s.marks.includes(info?.url)?'Bookmarked':'Bookmark',markFill:s.marks.includes(info?.url)?'currentColor':'none',libRows:[...(bookmarkRecovery&&s.lib!=='history'?[{id:'bookmark-recovery',title:'Recover saved bookmarks',host:'Bookmarks unavailable',ini:'!',go:openBookmarkRecovery,canRemove:false,removeAria:'',remove:()=>{}}]:[]),...Array.from(new Set<string>(s.lib==='history'?s.visits:s.marks)).map((u:string)=>({id:u,title:u,host:u,ini:new URL(u).hostname[0],go:()=>void navigate(u),canRemove:s.lib!=='history',removeAria:'Remove bookmark',remove:()=>saveBookmark(u,false)}))],libEmpty:!(bookmarkRecovery&&s.lib!=='history')&&!(s.lib==='history'?s.visits:s.marks).length,newTab:()=>openNew(false),askPage:()=>void askPage(),readAloud:()=>void readPage(),readingUnavailable:readingSupport?.state==='unavailable',readingNote:READING_UNSUPPORTED_MESSAGE,readAloudAvailable:true,bookNow:unavailable,cfOk:unavailable,openShare:()=>void sharePage(),shareEmail:()=>sharePageEmail(),
       tabCards:s.tabs.map((tab:Bag)=>{const page=known(tab.id),label=page?.title||(tab.priv?'New private tab':'New tab');return {id:tab.id,title:page?.title || page?.url || (tab.priv?'New private tab':'New tab'),host:(tab.priv?'Private · ':'')+(page?.url||''),css:tab.id===s.cur?'box-shadow:inset 0 0 0 2px var(--acc)':'',prev:tab.priv?'background:var(--fg);opacity:.85':'background:var(--s2)',aria:'Switch to '+(tab.priv?'private tab ':'')+label,closeAria:tab.priv?'Close private tab':'Close tab',pick:()=>api.set({cur:tab.id,tabsOpen:false}),close:()=>{ const rest=state().tabs.filter((t:Bag)=>t.id!==tab.id); const fallback=newTabId();if(tabs.has(tab.id))void Browser.close({session,id:tab.id}).catch(report);tabs.forget([tab.id]);restored.delete(tab.id);api.set({tabs:rest.length?rest:[{id:fallback,hist:['newtab'],pos:0}],cur:state().cur===tab.id?(rest[0]?.id||fallback):state().cur}); }};}),
       rootRef:(element:HTMLElement)=>{out.rootRef?.(element); if(!element)return; const viewport=element.querySelector('[data-bscroll]'); if(viewport){viewport.setAttribute('data-native-browser-viewport','true'); viewport.setAttribute('aria-label',info?.error || (info?.externalOnly?'Open externally':info?.loading?'Loading website':'Browser page'));} },
     };

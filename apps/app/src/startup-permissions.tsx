@@ -25,13 +25,13 @@ const calendar = registerPlugin<{checkPermissions(): Promise<{calendar: string}>
 const device = registerPlugin<{openSettings(options: {page: 'notifications' | 'privacy'}): Promise<unknown>}>('AlphaDevice');
 const files = registerPlugin<{storageState(): Promise<{access?: string}>; storageRequestAccess(options?: {settings?: boolean}): Promise<{access?: string}>}>('AlphaFiles');
 const details = {
-  notifications: {title: 'Notifications', icon: 'bell'},
-  microphone: {title: 'Microphone', icon: 'mic'},
-  camera: {title: 'Camera', icon: 'camera'},
-  photos: {title: 'Photos', icon: 'images'},
-  calendar: {title: 'Calendar', icon: 'calendar'},
-  location: {title: 'Location', icon: 'map-pin'},
-  files: {title: 'Files', icon: 'folder'},
+  notifications: {title: 'Notifications', icon: 'bell', reason: 'Reminders and updates'},
+  microphone: {title: 'Microphone', icon: 'mic', reason: 'Voice notes and talk'},
+  camera: {title: 'Camera', icon: 'camera', reason: 'Photos and text scans'},
+  photos: {title: 'Photos', icon: 'images', reason: 'Photos you allow'},
+  calendar: {title: 'Calendar', icon: 'calendar', reason: 'Read; add after review'},
+  location: {title: 'Location', icon: 'map-pin', reason: 'Nearby places, directions'},
+  files: {title: 'Files', icon: 'folder', reason: 'Shared storage files'},
 };
 const progressKey = 'alpha:startup-permission-progress:v1';
 type Progress = {version: 3; step: number; choices: ('allowed' | 'continued' | 'skipped')[]};
@@ -281,7 +281,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       <h2 id="alpha-permission-title" className="serif" tabIndex={-1}>Access</h2>
       <ul className="alpha-permission-rows">{keys.map(k => <li key={k} className="alpha-permission-row" aria-current={k === key ? 'step' : undefined} data-state={states[k]}>
         <span className="alpha-permission-row-icon" aria-hidden="true"><span style={iconStyle(details[k].icon)}/></span>
-        <span className="alpha-permission-name">{details[k].title}</span>
+        <span className="alpha-permission-name">{details[k].title}{k === key && <span className="alpha-permission-rationale" style={{display: 'block', fontSize: 13, color: 'var(--connection-mut,#6b6b6b)'}}>{details[k].reason}</span>}</span>
         {k === key && (chip || busy || state === 'checking') ? <button className="alpha-permission-chip" type="button" disabled={busy || state === 'checking'} onClick={() => void allow()}>{busy || state === 'checking' ? <Busy label="Checking"/> : chip}</button> : <span className="alpha-permission-state">{stateWord(k)}</span>}
       </li>)}</ul>
       {progressError && <p className="alpha-permission-status" role="alert"><StatusDot tone="warn">Not saved</StatusDot></p>}

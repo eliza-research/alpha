@@ -1,4 +1,4 @@
-import {cloudRuntimeEnabled,testMocksEnabled} from '../build-flags';
+import {testMocksEnabled} from '../build-flags';
 import {registerPlugin} from '../platform-plugins';
 import {playOwnedSpeech} from '../local-speech-playback';
 import {createOnDeviceVoice} from './local-voice';
@@ -8,10 +8,9 @@ const native=registerPlugin<any>('AlphaVoiceCloud');
 /** Approved page text stays native; the renderer passes only its one-use token.
  * Resident reading plays with Paradee-8M; it gates on playbackReady, which today waits for full speech readiness
  * because native prepares recognition and playback together.
- * The Cloud QA profile has no on-device speech, and page text is never sent to Cloud. */
-export const CLOUD_PROFILE_READING_NOTE="Page reading uses on-device speech, which this build doesn't include.";
+ * Page text is never sent to Cloud or a provider, whatever the speech route (voice-selection.ts):
+ * every build packages the on-device voice, so page reading always uses it. */
 export function createNativeReadingVoice(){
- if(cloudRuntimeEnabled)return null;
  const resident=connectionController.getResidentReadingBinding();
  if(resident){
   const voice=createOnDeviceVoice();if(!voice)return null;

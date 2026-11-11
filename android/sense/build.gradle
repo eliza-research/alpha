@@ -2,7 +2,7 @@
 def identity = new groovy.json.JsonSlurper().parse(file('../../app.config.json'))
 def preparedSense = new groovy.json.JsonSlurper().parseText(providers.exec {
  workingDir rootProject.projectDir.parentFile
- commandLine 'node', 'scripts/prepare-patched-native.mjs'
+ commandLine 'node', 'scripts/prepare-patched-native.ts'
 }.standardOutput.asText.get())
 ext.elizaSenseSourceDir = new File(preparedSense.root.toString(), 'packages/app/platforms/android/sense')
 ext.elizaSenseProfile = file('../aosp/pixel10a-composition.json')

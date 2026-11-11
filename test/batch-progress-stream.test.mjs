@@ -1,1 +1,1 @@
-import '../scripts/test-batch-progress-stream.mjs';
+import '../scripts/test-batch-progress-stream.ts';

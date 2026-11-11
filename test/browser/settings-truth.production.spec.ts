@@ -211,11 +211,11 @@ test('every Settings row is a control backed by real state, with no fixture valu
   await expect(current(page).getByRole('button',{name:'Developer',exact:true})).toHaveCount(0);
  }
  await openSettings(page,'Privacy');
- const review=()=>current(page).getByRole('button',{name:'Ask before Alpha acts',exact:true});
- await expect(review()).toHaveAttribute('aria-pressed','false');
- await review().click();await expect(review()).toHaveAttribute('aria-pressed','true');
- await openSettings(page,'Privacy');await expect(review()).toHaveAttribute('aria-pressed','true');
- await review().click();await expect(review()).toHaveAttribute('aria-pressed','false');
+ const review=()=>current(page).getByRole('switch',{name:'Ask before Alpha acts',exact:true});
+ await expect(review()).toHaveAttribute('aria-checked','false');
+ await review().click();await expect(review()).toHaveAttribute('aria-checked','true');
+ await openSettings(page,'Privacy');await expect(review()).toHaveAttribute('aria-checked','true');
+ await review().click();await expect(review()).toHaveAttribute('aria-checked','false');
  expect((await callNames(page)).filter(name=>name!=='Agent.setGoogleAgentAccess'&&/\.set(?!Flashlight)|\.perform$/i.test(name))).toEqual([]);
 });
 
@@ -227,8 +227,8 @@ test('an unreadable action preference keeps review enabled and offers recovery w
  await nativeStub(page);
  await page.addInitScript(()=>localStorage.setItem('alpha.browser.device.v1','{damaged settings'));
  await openSettings(page,'Privacy');
- const review=current(page).getByRole('button',{name:'Ask before Alpha acts',exact:true});
- await expect(review).toHaveAttribute('aria-pressed','true');await expect(review).toBeDisabled();
+ const review=current(page).getByRole('switch',{name:'Ask before Alpha acts',exact:true});
+ await expect(review).toHaveAttribute('aria-checked','true');await expect(review).toBeDisabled();
  await openSettings(page,'General');
  await current(page).getByRole('button',{name:'Recover device settings',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Device settings recovery'})).toBeVisible();
@@ -258,8 +258,8 @@ test('the browser build of Settings shows no fixture value and no radio or senso
  await openSettings(page);noFixtures(await current(page).innerText(),'Settings');
  for(const name of ['Wi-Fi','Bluetooth','Airplane mode','Battery','Android settings'])await expect(current(page).getByRole('button',{name,exact:true})).toHaveCount(0);
  await openSettings(page,'General','Notifications');
- const allow=current(page).getByRole('button',{name:'Allow alerts',exact:true});
- await expect(allow).toHaveAttribute('aria-pressed','true');await allow.click();await expect(allow).toHaveAttribute('aria-pressed','false');
+ const allow=current(page).getByRole('switch',{name:'Allow alerts',exact:true});
+ await expect(allow).toHaveAttribute('aria-checked','true');await allow.click();await expect(allow).toHaveAttribute('aria-checked','false');
  await openSettings(page,'About');
  for(const name of ['Problem log','Export diagnostics'])await expect(current(page).getByRole('button',{name,exact:true})).toHaveCount(0);
  await expect(current(page).getByRole('button',{name:'Licenses',exact:true})).toBeVisible();

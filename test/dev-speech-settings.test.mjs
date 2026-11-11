@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtempSync,writeFileSync,chmodSync,symlinkSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
-import {developmentSpeechEnvironment} from '../scripts/dev-speech-settings.mjs';
+import {developmentSpeechEnvironment} from '../scripts/dev-speech-settings.ts';
 function profile(t,raw){const directory=mkdtempSync(join(tmpdir(),'alpha-dev-speech-'));t.after(()=>rmSync(directory,{recursive:true,force:true}));if(raw!==undefined)writeFileSync(join(directory,'local-speech.json'),typeof raw==='string'?raw:JSON.stringify(raw),{mode:0o600});return directory;}
 test('a profile without saved speech settings retains the supplied environment',t=>{
  const env={PATH:'/usr/bin',ELIZA_PARADEE_ENABLED:'0'};assert.deepEqual(developmentSpeechEnvironment(profile(t),env),env);

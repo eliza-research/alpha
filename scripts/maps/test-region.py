@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Actual local OSM/GraphHopper integration, not provider response fixtures."""
 from dataset_manifest import verify
-import urllib.request,urllib.error,json,pathlib,time,hashlib,os,sqlite3
+import urllib.request,urllib.error,json,pathlib,os,sqlite3
 base='http://127.0.0.1:47850'
 def get(path):
  with urllib.request.urlopen(base+path,timeout=20) as r:return json.load(r)

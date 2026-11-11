@@ -1,0 +1,403 @@
+// The phone's MapsDeviceNavigation binding (upstream plugin-maps device-navigation) against the real shared MapsController and a
+// stubbed Eliza Cloud Maps provider. The Maps screen is a scripted surface with the
+// adapter's semantics. Nothing leaves the process; this is not evidence of a resident
+// agent reaching the phone, a live route, a device location or physical navigation.
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import { DeviceMapsNavigation, DeviceNavigationFailure, type ActiveGuidance, type AgentPlaceRef, type DeviceNavigationMapsCode, type MapsDeviceNavigation, type MapsNavigationSurface } from '../apps/app/src/maps/device-navigation.ts';
+import { withResidentMapsNavigation } from '../apps/app/src/maps/resident-relay.ts';
+import { bindAgentNavigation, residentMapsNavigationPort, type AgentNavigationOptions, type CloudInstallation } from '../apps/app/src/maps/agent-navigation.ts';
+import { MapsController } from '../.eliza/client-features/plugins/plugin-maps/src/client/state.ts';
+import { SavedPlaces } from '../.eliza/client-features/plugins/plugin-maps/src/client/saved-places.ts';
+import { MapsFailure, type Coordinate, type MapsProvider, type ProviderConfig, type TravelMode } from '../.eliza/client-features/plugins/plugin-maps/src/client/contracts.ts';
+import type { Position } from '../.eliza/client-features/plugins/plugin-maps/src/client/location.ts';
+import { upstreamNativeSource } from './upstream-native-source.ts';
+
+const root = path.resolve(import.meta.dirname, '..');
+const ATTRIBUTION = '© OpenStreetMap contributors (ODbL).';
+const CASINO = { latitude: 43.7397, longitude: 7.4276 }, PORT = { latitude: 43.7347, longitude: 7.4206 }, PALACE = { latitude: 43.7314, longitude: 7.4199 };
+const config = { status: 'configured', providerId: 'eliza-cloud-osm', connectionId: 'conn_eliza_cloud_maps_osm', revision: 'osm-monaco-2026-09-29',
+ capabilities: { map: false, search: true, placeDetails: true, modes: ['drive', 'walk', 'bicycle'], traffic: 'none', transit: 'none', offline: { map: false, search: false, routing: false } } } satisfies ProviderConfig;
+const owner = { providerId: config.providerId, attribution: ATTRIBUTION, current: () => true };
+const portRef: AgentPlaceRef = { provider: 'eliza-cloud', providerPlaceId: 'N1234', name: 'Port', coordinates: PORT, categories: [] };
+const memory = (): Pick<Storage, 'getItem' | 'setItem'> => {
+ const values = new Map<string, string>();
+ return { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+};
+const noLocation = { awaitingPermission: () => false, start: async () => {}, stop: async () => {} };
+const failsWith = async (promise: Promise<unknown>, code: DeviceNavigationMapsCode, pattern?: RegExp) => {
+ await assert.rejects(promise, error => {
+  assert.ok(error instanceof DeviceNavigationFailure);
+  assert.equal(error.name, 'DeviceNavigationFailure');
+  assert.equal(error.code, code);
+  if (pattern) assert.match(error.message, pattern);
+  return true;
+ });
+};
+const currentFix = (): Position => ({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
+type ProviderCall = ['detail', string] | ['route', Coordinate, Coordinate, TravelMode];
+
+/** A stubbed Cloud provider that records each request. Routes end exactly at the destination. */
+function provider(options: { route?: (signal: AbortSignal) => Promise<void>; noRoute?: boolean } = {}): MapsProvider & { calls: ProviderCall[] } {
+ const calls: ProviderCall[] = [];
+ let routeCount = 0;
+ return {
+  calls,
+  providerId: config.providerId, connectionId: config.connectionId,
+  async search() { return []; },
+  async detail(id) {
+   calls.push(['detail', id]);
+   if (id !== 'N1234') return null;
+   return { providerId: config.providerId, id, name: 'Port Hercule', coordinate: PORT, address: 'Port Hercule, Monaco', attribution: ATTRIBUTION, fetchedAt: Date.now() };
+  },
+  async route(from, to, mode, signal) {
+   calls.push(['route', from, to, mode]);
+   if (options.route) await options.route(signal);
+   if (options.noRoute) throw new MapsFailure('unsupported', 'No route is available between these places.');
+   return { providerId: config.providerId, id: `route_${++routeCount}_0123456789abcdef`, from, to, mode, geometry: [from, to], distanceMeters: 640, durationSeconds: 480,
+    steps: [{ instruction: 'Head south', coordinate: from, distanceMeters: 640, maneuver: 'depart' }, { instruction: 'Arrive', coordinate: to, distanceMeters: 0, maneuver: 'arrive' }],
+    attribution: ATTRIBUTION, fetchedAt: Date.now(), traffic: 'none' };
+  },
+ };
+}
+
+/** The Maps screen as prototype/maps-adapter.ts drives it: the user's Start is the only way guidance begins. */
+function screen(maps: MapsProvider, options: { present?: boolean; granted?: boolean; locate?: MapsNavigationSurface['locate'] } = {}) {
+ const controller = new MapsController(config, maps, new SavedPlaces('test.maps.agent', memory()), noLocation);
+ let navigating = false, session = 0, routeId = '', placeName = '', sheet = 'base', rerouting = false, arrived = false;
+ let fix: Position | undefined;
+ const released = new Set<() => void>();
+ const located: AbortSignal[] = [];
+ const surface: MapsNavigationSurface & { sheet(): string } = {
+  sheet: () => sheet,
+  async present() { return options.present ?? true; },
+  snapshot: () => controller.snapshot(),
+  async showPlace(place, resolve) { sheet = 'place'; await controller.select(place, resolve); placeName = controller.snapshot().selection.value?.name ?? place.name; },
+  async showDirections(place, mode, resolve) { sheet = 'directions'; controller.clearOrigin(); controller.setMode(mode); await controller.select(place, resolve); placeName = controller.snapshot().selection.value?.name ?? place.name; },
+  async locationGranted() { return options.granted ?? true; },
+  async locate(signal) { located.push(signal); return options.locate ? options.locate(signal) : currentFix(); },
+  async planFrom(origin) { controller.setOrigin(origin); await controller.planRoute(); },
+  // As the adapter: the session lasts from the user's Start to End, through rerouting and arrival.
+  guidance: () => navigating ? { session, routeId, placeName, travelMode: controller.snapshot().mode, rerouting, arrived, ...(fix ? { fix } : {}) } : null,
+  async reroute(from) {
+   rerouting = true;
+   try {
+    const reply = await controller.reroute(from);
+    const route = controller.snapshot().route;
+    if (route.phase === 'ready' && route.value) routeId = route.value.id; else navigating = false;
+    return reply;
+   } finally { rerouting = false; }
+  },
+  async stop() { navigating = false; routeId = ''; fix = undefined; rerouting = false; arrived = false; },
+  onRelease(listener) { released.add(listener); return () => released.delete(listener); },
+ };
+ return {
+  controller, surface, located,
+  guidance(): ActiveGuidance {
+   const guidance = surface.guidance();
+   assert.ok(guidance, 'Expected active guidance');
+   return guidance;
+  },
+  /** The user's own Start on the reviewed route sheet. */
+  userStarts(position: Position) { const route = controller.snapshot().route; assert.ok(route.phase === 'ready' && route.value); navigating = true; session++; routeId = route.value.id; sheet = 'navigation'; fix = position; },
+  moveTo(position: Position) { fix = position; },
+  arrive() { arrived = true; },
+  release() { for (const listener of [...released]) listener(); },
+ };
+}
+
+// Contract: the binding implements the exact upstream interface at the pinned revision.
+{
+ const upstream = upstreamNativeSource(root);
+ const text = (name: string) => {
+  const blob = upstream.read(name).get(name);
+  assert.ok(blob, `Missing upstream blob ${name}`);
+  return blob.bytes.toString();
+ };
+ const navigation = text('plugins/plugin-maps/src/navigation.ts');
+ assert.match(navigation, /export type MapsDeviceNavigationState =\s*\| "selected"\s*\| "navigating"\s*\| "stopped"\s*\| "awaiting-location"\s*\| "awaiting-confirmation";/, 'device navigation states changed upstream');
+ for (const method of ['select(place: PlaceRef): Promise<MapsDeviceNavigationStatus>;', 'reroute(): Promise<MapsDeviceNavigationStatus>;', 'stop(): Promise<MapsDeviceNavigationStatus>;'])
+  assert.ok(navigation.includes(method), `upstream contract changed: ${method}`);
+ assert.match(navigation, /start\(request: \{\s*destination: PlaceRef;\s*travelMode: TravelMode;\s*\}\): Promise<MapsDeviceNavigationStatus>;/);
+ assert.match(text('plugins/plugin-maps/src/cloud-adapter.ts'), /export const ELIZA_CLOUD_MAPS_PROVIDER_ID = "eliza-cloud";/, 'the agent Cloud provider id changed');
+ assert.match(text('plugins/plugin-maps/src/service.ts'), /registerDeviceNavigation\(controller: MapsDeviceNavigation \| null\): void/);
+ // The reviewed upstream pin must load Maps and expose the authenticated turn relay.
+ assert.match(text('packages/agent/src/runtime/core-plugins.ts'), /@elizaos\/plugin-maps/);
+ assert.match(text('packages/agent/src/runtime/optional-plugin-imports.ts'), /import\("@elizaos\/plugin-maps\/plugin"\)/);
+ assert.match(text('packages/agent/src/api/device-action-routes.ts'), /\/api\/client-devices\/maps-navigation/);
+ assert.match(text('plugins/plugin-maps/src/client/navigation-relay.ts'), /export async function withMapsNavigationRelay/);
+ assert.equal(residentMapsNavigationPort.relay, false);
+}
+
+// Select: a Cloud place from the agent is re-read from the phone's own Cloud provider and shown.
+{
+ const maps = provider(), phone = screen(maps), nav = new DeviceMapsNavigation(phone.surface, owner);
+ assert.deepEqual(await nav.select(portRef), { state: 'selected', placeName: 'Port Hercule' });
+ assert.deepEqual(maps.calls, [['detail', 'N1234']]);
+ assert.equal(phone.surface.sheet(), 'place');
+ assert.equal(phone.controller.snapshot().selection.value?.address, 'Port Hercule, Monaco');
+ // A coordinate place is a dropped pin; no provider request.
+ assert.deepEqual(await nav.select({ provider: 'coordinates', providerPlaceId: 'geo:43.7314,7.4199', name: 'Palace', coordinates: PALACE, categories: [] }), { state: 'selected', placeName: 'Palace' });
+ assert.equal(maps.calls.length, 1);
+ await failsWith(nav.select({ ...portRef, providerPlaceId: 'N9999' }), 'MAPS_NOT_FOUND');
+ await failsWith(nav.select({ ...portRef, provider: 'google' }), 'MAPS_INVALID_INPUT', /Cloud Maps places or coordinates/);
+ await failsWith(nav.select({ ...portRef, coordinates: { latitude: 91, longitude: 0 } }), 'MAPS_INVALID_INPUT');
+ const hidden = screen(provider(), { present: false });
+ await failsWith(new DeviceMapsNavigation(hidden.surface, owner).select(portRef), 'MAPS_DEVICE_UNAVAILABLE', /Open Maps/);
+ assert.equal(hidden.controller.snapshot().selection.phase, 'idle', 'nothing is shown when the phone cannot present Maps');
+}
+
+// Start: plans from a fresh device fix and stops at the reviewed route sheet; the user starts guidance.
+{
+ const maps = provider(), phone = screen(maps), nav = new DeviceMapsNavigation(phone.surface, owner);
+ assert.deepEqual(await nav.start({ destination: portRef, travelMode: 'walk' }), { state: 'awaiting-confirmation', placeName: 'Port Hercule', travelMode: 'walk' });
+ assert.deepEqual(maps.calls.at(-1), ['route', CASINO, PORT, 'walk']);
+ assert.equal(phone.surface.sheet(), 'directions');
+ assert.equal(phone.surface.guidance(), null, 'an agent request never begins guidance');
+ assert.equal(phone.controller.snapshot().route.value?.mode, 'walk');
+ phone.userStarts({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
+ // Active guidance is not replaced by another agent request.
+ await failsWith(nav.start({ destination: portRef, travelMode: 'drive' }), 'MAPS_INVALID_INPUT', /already active/);
+ await failsWith(nav.select(portRef), 'MAPS_INVALID_INPUT', /End it/);
+ assert.equal(phone.guidance().travelMode, 'walk');
+ // Unsupported modes and unroutable places are typed, never guessed.
+ const other = screen(provider());
+ await failsWith(new DeviceMapsNavigation(other.surface, owner).start({ destination: portRef, travelMode: 'transit' }), 'MAPS_UNSUPPORTED_REGION', /transit/);
+ const invalidMode = 'fly' as TravelMode; // Malformed relay input must still be checked at runtime.
+ await failsWith(new DeviceMapsNavigation(other.surface, owner).start({ destination: portRef, travelMode: invalidMode }), 'MAPS_INVALID_INPUT');
+ const blocked = screen(provider({ noRoute: true }));
+ await failsWith(new DeviceMapsNavigation(blocked.surface, owner).start({ destination: portRef, travelMode: 'drive' }), 'MAPS_NOT_FOUND', /No route/);
+}
+
+// Stale location: no permission, a stale fix, an approximate fix or no fix is awaiting-location, and no route is planned.
+{
+ const ungranted = screen(provider(), { granted: false });
+ assert.deepEqual(await new DeviceMapsNavigation(ungranted.surface, owner).start({ destination: portRef, travelMode: 'drive' }), { state: 'awaiting-location', placeName: 'Port Hercule', travelMode: 'drive' });
+ assert.equal(ungranted.located.length, 0, 'an agent request never shows a permission prompt');
+ const unavailableFixes: [string, MapsNavigationSurface['locate']][] = [
+  ['stale', async () => ({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now() - 120_000, precision: 'precise' })],
+  ['approximate', async () => ({ coordinate: CASINO, accuracyMeters: 900, timestamp: Date.now(), precision: 'approximate' })],
+  ['denied', async () => { throw new MapsFailure('permission-denied', 'Location permission was denied.'); }],
+  ['silent', signal => new Promise((_, reject) => signal.addEventListener('abort', () => reject(new MapsFailure('cancelled', 'stopped'))))],
+ ];
+ for (const [label, locate] of unavailableFixes) {
+  const maps = provider(), phone = screen(maps, { locate }), nav = new DeviceMapsNavigation(phone.surface, owner, { fixTimeoutMs: 20 });
+  assert.deepEqual(await nav.start({ destination: portRef, travelMode: 'drive' }), { state: 'awaiting-location', placeName: 'Port Hercule', travelMode: 'drive' }, label);
+  assert.ok(!maps.calls.some(([kind]) => kind === 'route'), `${label}: no route without a fresh fix`);
+  assert.ok(phone.located[0].aborted, `${label}: the one-shot location request is released`);
+ }
+}
+
+// Reroute: only active guidance; a stale fix is reported and the old route kept; a fresh fix replans the same session.
+{
+ const maps = provider(), phone = screen(maps), nav = new DeviceMapsNavigation(phone.surface, owner);
+ await failsWith(nav.reroute(), 'MAPS_INVALID_INPUT', /No navigation is active/);
+ await nav.start({ destination: portRef, travelMode: 'drive' });
+ phone.userStarts({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now() - 60_000, precision: 'precise' });
+ const before = phone.guidance().routeId, routes = maps.calls.length;
+ await failsWith(nav.reroute(), 'MAPS_DEVICE_UNAVAILABLE', /kept the current route/);
+ assert.equal(maps.calls.length, routes, 'a stale fix never becomes a route origin');
+ assert.equal(phone.guidance().routeId, before, 'guidance continues on the current route');
+ phone.moveTo({ coordinate: PALACE, accuracyMeters: 120, timestamp: Date.now(), precision: 'approximate' });
+ await failsWith(nav.reroute(), 'MAPS_DEVICE_UNAVAILABLE', /fresh, precise/);
+ phone.moveTo({ coordinate: PALACE, accuracyMeters: 6, timestamp: Date.now(), precision: 'precise' });
+ assert.deepEqual(await nav.reroute(), { state: 'navigating', placeName: 'Port Hercule', travelMode: 'drive' });
+ assert.deepEqual(maps.calls.at(-1), ['route', PALACE, PORT, 'drive']);
+ assert.notEqual(phone.guidance().routeId, before);
+ // A failed replan keeps the current guidance and route; the agent still hears the typed reason.
+ const failing = provider(), broken = screen(failing), brokenNav = new DeviceMapsNavigation(broken.surface, owner);
+ await brokenNav.start({ destination: portRef, travelMode: 'drive' });
+ broken.userStarts({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
+ const keptGuidance = broken.guidance(), keptRoute = broken.controller.snapshot().route.value;
+ failing.route = async () => { throw new MapsFailure('offline', 'Eliza Cloud Maps is unreachable. Check the connection.'); };
+ await failsWith(brokenNav.reroute(), 'MAPS_PROVIDER_NETWORK', /unreachable/);
+ assert.deepEqual(broken.guidance(), keptGuidance, 'failed replanning preserves the active guidance session');
+ const refusedRoute = broken.controller.snapshot().route;
+ assert.equal(refusedRoute.phase, 'ready');
+ assert.deepEqual(refusedRoute.value, keptRoute, 'the previously reviewed route remains available');
+ assert.equal(refusedRoute.error?.code, 'offline');
+ assert.match(refusedRoute.error?.message ?? '', /unreachable/, 'the failure remains visible beside the retained route');
+}
+
+// While a new route is planned, the session is still active: no agent request takes it over, and arrival ends rerouting.
+{
+ const gate = Promise.withResolvers<void>(), maps = provider(), phone = screen(maps), nav = new DeviceMapsNavigation(phone.surface, owner);
+ await nav.start({ destination: portRef, travelMode: 'drive' });
+ phone.userStarts({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
+ maps.route = async (from, to, mode) => { await gate.promise; return { providerId: config.providerId, id: 'route_slow_0123456789abcdef', from, to, mode, geometry: [from, to], distanceMeters: 1, durationSeconds: 1, steps: [], attribution: ATTRIBUTION, fetchedAt: Date.now(), traffic: 'none' }; };
+ const user = phone.surface.reroute(PALACE);
+ assert.equal(phone.guidance().rerouting, true);
+ await failsWith(nav.start({ destination: portRef, travelMode: 'walk' }), 'MAPS_INVALID_INPUT', /already active/);
+ await failsWith(nav.select(portRef), 'MAPS_INVALID_INPUT', /End it/);
+ await failsWith(nav.reroute(), 'MAPS_DEVICE_UNAVAILABLE', /already planning/);
+ gate.resolve(); await user;
+ assert.equal(phone.guidance().routeId, 'route_slow_0123456789abcdef');
+ phone.arrive();
+ phone.moveTo({ coordinate: PORT, accuracyMeters: 5, timestamp: Date.now(), precision: 'precise' });
+ await failsWith(nav.reroute(), 'MAPS_INVALID_INPUT', /arrived/);
+}
+
+// Stop: ends guidance and is idempotent.
+{
+ const phone = screen(provider()), nav = new DeviceMapsNavigation(phone.surface, owner);
+ await nav.start({ destination: portRef, travelMode: 'bicycle' });
+ phone.userStarts({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
+ assert.deepEqual(await nav.stop(), { state: 'stopped', placeName: 'Port Hercule', travelMode: 'bicycle' });
+ assert.equal(phone.surface.guidance(), null);
+ assert.deepEqual(await nav.stop(), { state: 'stopped' });
+}
+
+// Cancellation: Stop, a newer request or leaving Maps cancels a pending start before any route is planned.
+{
+ for (const cancel of ['stop', 'newer', 'release']) {
+  const fix = Promise.withResolvers<Position>(), maps = provider();
+  let first = true;
+  const phone = screen(maps, { locate: () => first ? (first = false, fix.promise) : Promise.resolve({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' }) });
+  const nav = new DeviceMapsNavigation(phone.surface, owner);
+  const pending = nav.start({ destination: portRef, travelMode: 'drive' });
+  while (!phone.located.length) await new Promise(resolve => setTimeout(resolve, 1));
+  const later = cancel === 'stop' ? nav.stop() : cancel === 'newer' ? nav.start({ destination: portRef, travelMode: 'walk' }) : (phone.release(), undefined);
+  fix.resolve({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
+  await failsWith(pending, 'MAPS_DEVICE_UNAVAILABLE', /cancelled/);
+  assert.ok(phone.located[0].aborted, `${cancel}: the pending location request is released`);
+  if (cancel === 'newer') assert.equal((await later)?.travelMode, 'walk');
+  else { await later; assert.ok(!maps.calls.some(([kind, , , mode]) => kind === 'route' && mode === 'drive'), `${cancel}: the cancelled start planned no route`); }
+ }
+ // A route already in flight is abandoned, not reported.
+ const gate = Promise.withResolvers<void>(), maps = provider({ route: () => gate.promise }), phone = screen(maps), nav = new DeviceMapsNavigation(phone.surface, owner);
+ const pending = nav.start({ destination: portRef, travelMode: 'drive' });
+ while (!maps.calls.some(([kind]) => kind === 'route')) await new Promise(resolve => setTimeout(resolve, 1));
+ await nav.stop();
+ gate.resolve();
+ await failsWith(pending, 'MAPS_DEVICE_UNAVAILABLE', /cancelled/);
+}
+
+// User actions during asynchronous presentation or GPS always retain ownership of the route.
+{
+ for (const operation of ['select', 'start']) {
+  const phone = screen(provider()), nav = new DeviceMapsNavigation(phone.surface, owner);
+  await nav.start({ destination: portRef, travelMode: 'drive' });
+  const gate = Promise.withResolvers<boolean>();
+  phone.surface.present = () => gate.promise;
+  const pending = operation === 'select' ? nav.select(portRef) : nav.start({ destination: portRef, travelMode: 'walk' });
+  phone.userStarts({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
+  const active = phone.surface.guidance();
+  gate.resolve(true);
+  await failsWith(pending, 'MAPS_INVALID_INPUT', /Navigation started/);
+  assert.deepEqual(phone.surface.guidance(), active);
+  assert.equal(phone.surface.sheet(), 'navigation');
+ }
+ for (const change of ['mode', 'selection']) {
+  const fix = Promise.withResolvers<Position>(), maps = provider(), phone = screen(maps, { locate: () => fix.promise });
+  const nav = new DeviceMapsNavigation(phone.surface, owner);
+  const pending = nav.start({ destination: portRef, travelMode: 'drive' });
+  while (!phone.located.length) await new Promise(resolve => setTimeout(resolve, 1));
+  if (change === 'mode') phone.controller.setMode('walk');
+  else {
+   const selected = phone.controller.snapshot().selection.value;
+   assert.ok(selected);
+   await phone.controller.select({ ...selected, id: 'coordinates', coordinate: PALACE }, false);
+  }
+  fix.resolve({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
+  await failsWith(pending, 'MAPS_DEVICE_UNAVAILABLE', /Maps changed/);
+  assert.equal(maps.calls.some(([kind]) => kind === 'route'), false, 'a delayed fix never replans a changed sheet');
+ }
+}
+
+// Registration: offered only while Eliza Cloud Maps is installed for the signed-in account; an account change retires it.
+{
+ const listeners = new Set<() => void>(), registered: (MapsDeviceNavigation | null)[] = [];
+ let connection: ReturnType<AgentNavigationOptions['connection']> = { config: { status: 'unconfigured' } };
+ let coverage: CloudInstallation;
+ const change = () => listeners.forEach(listener => listener());
+ const port: AgentNavigationOptions['port'] = { register: navigation => { registered.push(navigation); } };
+ const phoneA = screen(provider());
+ const options: Omit<AgentNavigationOptions, 'enabled'> = { installation: () => coverage, connection: () => connection, onChange: listener => { listeners.add(listener); return () => listeners.delete(listener); }, surface: phoneA.surface, port };
+ // Unconfigured (signed out, no subscription, Cloud Maps not deployed): nothing is offered, so the agent reports unavailable.
+ const binding = bindAgentNavigation({ ...options, enabled: () => true });
+ assert.equal(binding.registered(), false);
+ assert.equal(registered.length, 0);
+ // The test-mocks regional gateway is never offered to the agent.
+ const regional = bindAgentNavigation({ ...options, enabled: () => false, port: { register: () => assert.fail('regional development Maps was offered to the agent') } });
+ const accountA = provider();
+ coverage = { providerId: config.providerId, attribution: ATTRIBUTION }; connection = { config, provider: accountA }; change();
+ assert.equal(binding.registered(), true);
+ const offeredA = registered.at(-1);
+ assert.ok(offeredA);
+ assert.equal((await offeredA.select(portRef)).state, 'selected');
+ // An unrelated change event keeps the same binding.
+ change();
+ assert.equal(registered.at(-1), offeredA);
+ // Account change: in-flight work is cancelled, the old binding is withdrawn and refuses later calls.
+ const fix = Promise.withResolvers<Position>();
+ phoneA.surface.locate = () => fix.promise;
+ const pending = offeredA.start({ destination: portRef, travelMode: 'drive' });
+ await new Promise(resolve => setTimeout(resolve, 1));
+ coverage = undefined; connection = { config: { status: 'unconfigured' } }; change();
+ fix.resolve({ coordinate: CASINO, accuracyMeters: 8, timestamp: Date.now(), precision: 'precise' });
+ await failsWith(pending, 'MAPS_DEVICE_UNAVAILABLE', /cancelled/);
+ assert.equal(registered.at(-1), null, 'the agent is told navigation is gone');
+ await failsWith(offeredA.select(portRef), 'MAPS_PROVIDER_CHANGED', /account on the phone changed/);
+ await failsWith(offeredA.stop(), 'MAPS_PROVIDER_CHANGED', /account/);
+ // The next account gets a fresh binding; the previous one stays retired.
+ const accountB = provider();
+ coverage = { providerId: config.providerId, attribution: ATTRIBUTION }; connection = { config, provider: accountB }; change();
+ const offeredB = registered.at(-1);
+ assert.ok(offeredB && offeredB !== offeredA);
+ await failsWith(offeredA.select(portRef), 'MAPS_PROVIDER_CHANGED');
+ // A direct provider swap without an unconfigured step also retires the old binding first.
+ connection = { config, provider: provider() }; change();
+ assert.deepEqual(registered.slice(-2).map(value => value === null ? null : value === offeredB ? 'B' : 'C'), [null, 'C']);
+ await failsWith(offeredB.select(portRef), 'MAPS_PROVIDER_CHANGED');
+ binding.dispose(); regional.dispose();
+ assert.equal(registered.at(-1), null);
+ assert.equal(listeners.size, 0);
+}
+
+// A cancelled resident turn cannot use a late GPS fix to plan a route.
+{
+ const maps=provider(), fix=Promise.withResolvers<Position>(), phone=screen(maps,{locate:()=>fix.promise});
+ const navigation=new DeviceMapsNavigation(phone.surface,owner), turn=new AbortController();
+ const pending=navigation.start({destination:portRef,travelMode:'drive'},turn.signal);
+ await new Promise(resolve=>setTimeout(resolve,1));
+ turn.abort();fix.resolve({coordinate:CASINO,accuracyMeters:8,timestamp:Date.now(),precision:'precise'});
+ await failsWith(pending,'MAPS_DEVICE_UNAVAILABLE',/cancelled/);
+ assert.equal(maps.calls.filter(call=>call[0]==='route').length,0,'cancelled turn never plans from its late fix');
+ await failsWith(navigation.stop(turn.signal),'MAPS_DEVICE_UNAVAILABLE',/cancelled/);
+ navigation.retire();
+}
+
+console.log('maps device navigation: select, start, reroute, stop, cancellation, stale location, account change and unconfigured registration passed');
+
+// The consumer transport dispatches the actual phone binding and retires its offer.
+{
+ const maps = provider(), phone = screen(maps), nav = new DeviceMapsNavigation(phone.surface, owner);
+ const reply = Promise.withResolvers<string>(), lifetime = new AbortController();
+ let delivered = false, retired = false;
+ residentMapsNavigationPort.register(nav);
+ const request = async (path: string, body: unknown, signal: AbortSignal) => {
+  assert.equal(path, '/api/client-devices/maps-navigation');
+  assert.ok(body && typeof body === 'object' && 'phase' in body);
+  if (body.phase === 'open') return { protocol: 1, request: null };
+  if (body.phase === 'retire') { retired = true; return { protocol: 1, request: null }; }
+  if (body.phase === 'result') {
+   assert.ok('status' in body && body.status && typeof body.status === 'object');
+   assert.ok('state' in body.status && 'placeName' in body.status);
+   assert.equal(body.status.state, 'selected');
+   assert.equal(body.status.placeName, 'Port Hercule');
+   reply.resolve('done'); return { protocol: 1, request: null };
+  }
+  if (!delivered) {
+   delivered = true;
+   return { protocol: 1, request: { id: crypto.randomUUID(), expiresAt: Date.now() + 30_000, operation: { kind: 'select', place: portRef } } };
+  }
+  return new Promise((_resolve, reject) => {
+   if (signal.aborted) { reject(signal.reason); return; }
+   signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+  });
+ };
+ assert.equal(await withResidentMapsNavigation(request, crypto.randomUUID(), lifetime.signal, () => reply.promise), 'done');
+ assert.equal(retired, true);
+ assert.equal(residentMapsNavigationPort.relay, false);
+ residentMapsNavigationPort.register(null); nav.retire();
+}

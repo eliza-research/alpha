@@ -8,17 +8,18 @@ import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // Real playback, selection and timing sources; the speech engine boundary is a fixture.
 function load(file, name, box) {
   const source = fs.readFileSync('apps/app/src/' + file, 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export async function', 'async function').replaceAll('export function', 'function').replaceAll('export const', 'const').replaceAll('export type', 'type');
-  vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'transform'}) + '\nglobalThis.' + name + '=' + name + ';}', box);
+  vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'transform'}) + '\n' + [name].flat().map(each => 'globalThis.' + each + '=' + each + ';').join('') + '}', box);
 }
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 function fixture({native = true} = {}) {
   const f = {spoken: [], signals: [], hold: false, releases: [], store: new Map(), session: 'agent-session', conversation: 'conversation-1', open: false, events: []};
   const box = {
-    cloudRuntimeEnabled:false,    developmentCartesiaVoiceEnabled:false,developmentCloudVoiceEnabled:false, testMocksEnabled: false, browserDevProfile: false, Date, JSON, Number, Set, console, AbortController, DOMException, setTimeout, clearTimeout,
+    developmentCartesiaVoiceEnabled:false,developmentCloudVoiceEnabled:false, testMocksEnabled: false, browserDevProfile: false, Date, JSON, Number, Set, console, AbortController, DOMException, setTimeout, clearTimeout,
     crypto, performance, TextEncoder,
     Event: class { constructor(type) { this.type = type; } },
     Capacitor: {isNativePlatform: () => native, getPlatform: () => native ? 'android' : 'web'},
-    connectionController: {getCloudEnvironment: () => 'production', getCloudClient: () => ({sessionId: 'cloud-session', credentialId: 'cloud-credential'}), getSnapshot: () => ({open: f.open, session: {sessionId: f.session}, history: {conversationId: f.conversation}}), subscribe: () => () => {}},
+    // Signed out: the run-time speech route (voice-selection.ts speechRoute) is this phone.
+    connectionController: {getCloudEnvironment: () => null, getCloudClient: () => null, getSnapshot: () => ({open: f.open, session: {sessionId: f.session}, history: {conversationId: f.conversation}}), subscribe: () => () => {}},
     registerPlugin: () => ({}),
     localStorage: {getItem: k => f.store.has(k) ? f.store.get(k) : null, setItem: (k, v) => f.store.set(k, String(v)), removeItem: k => f.store.delete(k)},
     window: {dispatchEvent: event => { f.events.push(event.type); return true; }, addEventListener() {}, removeEventListener() {}},
@@ -35,7 +36,7 @@ function fixture({native = true} = {}) {
     },
   };
   // voice-timing.ts configures the shared recorder projected from the pin, evaluated in this realm.
-  for (const [file, name] of [['../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts', 'createRealtimeVoiceTiming'], ['../../../.eliza/client-features/packages/voice/src/voice-turn-timing.ts', 'createVoiceTurnTiming'], ['runtime/local-speech-text.ts', 'screenSpeechText'], ['runtime/voice-selection.ts', 'selectVoiceRoute'], ['runtime/voice-timing.ts', 'markVoiceTiming'], ['prototype/local-speech-playback.ts', 'installLocalSpeechPlayback']]) load(file, name, box);
+  for (const [file, name] of [['../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts', 'createRealtimeVoiceTiming'], ['../../../.eliza/client-features/packages/voice/src/voice-turn-timing.ts', 'createVoiceTurnTiming'], ['runtime/local-speech-text.ts', 'screenSpeechText'], ['runtime/voice-selection.ts', ['selectVoiceRoute', 'speechRoute', 'noteNetworkSpeechFailure']], ['runtime/voice-timing.ts', 'markVoiceTiming'], ['prototype/local-speech-playback.ts', 'installLocalSpeechPlayback']]) load(file, name, box);
   class Shell {
     constructor() { this.state = {chat: 'sheet', msgs: []}; this.live = true; }
     S() { return this.state; }

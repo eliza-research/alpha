@@ -91,10 +91,10 @@ export async function notificationCollection() {
 }
 
 export async function developmentHost() {
-  const source = 'scripts/cloud-resident-host.mjs';
-  captureSources([source, 'scripts/local-agent-source.mjs', 'scripts/native-view-policy.mjs',
-    'scripts/cloud-sdk-authority.mjs', 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
-    'test/fixtures/product-character-host.mjs', 'scripts/native-google-host-artifact.mjs', 'scripts/workflow-worker-artifact.mjs']);
+  const source = 'scripts/cloud-resident-host.ts';
+  captureSources([source, 'scripts/local-agent-source.ts', 'scripts/native-view-policy.ts',
+    'scripts/cloud-sdk-authority.ts', 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
+    'test/fixtures/product-character-host.mjs', 'scripts/native-google-host-artifact.ts', 'scripts/workflow-worker-artifact.ts']);
   const fixtureGraph=buildSync({absWorkingDir:root,entryPoints:['test/fixtures/product-character-host.mjs'],bundle:true,write:false,platform:'node',format:'esm',metafile:true});
   captureSources(Object.keys(fixtureGraph.metafile.inputs).filter(path=>!path.startsWith('node_modules/')));
   const {createCloudResidentHost} = await import(new URL('../../../../test/fixtures/product-character-host.mjs', import.meta.url));
@@ -115,8 +115,8 @@ export async function developmentHost() {
     await host.close();
     assert.throws(()=>host.status('one'),{code:'provider-changed'},'closed hosts retire provider-status authority');
     checkpoint(t, 'close source host', call('close'), {'s.bound':0});
-    return checkTraces({model: 'DevelopmentHost', sources: [source, 'scripts/local-agent-source.mjs', 'scripts/native-view-policy.mjs',
-      'scripts/cloud-sdk-authority.mjs', 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs'], traces: [t], scope: 'bounded-component', assumptions: [
+    return checkTraces({model: 'DevelopmentHost', sources: [source, 'scripts/local-agent-source.ts', 'scripts/native-view-policy.ts',
+      'scripts/cloud-sdk-authority.ts', 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs'], traces: [t], scope: 'bounded-component', assumptions: [
       'Actual private-profile and resident-host logic execute through the existing product-character fixture with a relocated synthetic SDK/worker root and a process-launch port. All source and worker admission checks run; no network or real child starts.',
       'Binding observation covers attachability, retirement and same-binding reuse. Browser credential claims, requests, failed stop and launcher shutdown schedules remain untested.']});
   } finally {await host.close(); await rm(directory, {recursive: true, force: true});}

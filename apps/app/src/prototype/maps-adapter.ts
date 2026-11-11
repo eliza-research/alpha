@@ -1,3 +1,4 @@
+import {createMapsNotificationOpen} from '../runtime/maps-notification-open';
 import {mapsChatText} from '../runtime/action-message-presentation';
 import {BackgroundNavigation,type NavigationBridge} from '../maps/background-navigation';
 import {registerPlugin} from '../platform-plugins';
@@ -12,7 +13,9 @@ import type {MapBasemap} from '../../../../.eliza/client-features/plugins/plugin
 import { globalBasemap } from '../maps/basemap';
 import { initializeRegionalMaps, regionalMap, regionalDiagnostics, regionalMapsConfigured } from '../maps/regional-provider';
 import { initializeCloudMaps, cloudMapsCoverage, cloudMapsDiagnostics, cloudMapsBasemap } from '../maps/cloud-maps';
-import { insideCloudCoverage, type CloudMapsDisclosure } from '../maps/cloud-provider';
+import { insideCloudCoverage, type CloudMapsDisclosure, isGoogleMapsCoverage, isGoogleMapsProvider, isLocalMapsPlace } from '../maps/cloud-provider';
+import googleMapsLogo from '../maps/google-maps-attribution.svg?url';
+import { SavedPlaces } from '../maps/saved-places';
 
 /** Who receives searches, in ≤4 words (full recipients and roles are in the provider's own disclosure). */
 function searchRecipients(disclosure: CloudMapsDisclosure | undefined): string {
@@ -55,8 +58,27 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   let pendingHandoff: {query:string}|undefined, mapsController:MapsController|undefined;
   const active=()=>!disposed&&!document.hidden&&!!api?.isActive();
   const dropPlane=()=>{++mapGeneration;mapObserver?.disconnect();mapObserver=undefined;mapFailed=false;mapCopyright='';plane?.destroy();plane=undefined;planeElement=undefined;planeBasemap=undefined;};
-  const navigationVoice=new NavigationVoice(error=>screen.notify((error instanceof Error?error.message+' ':'')+'Voice paused'));
-  const background=new BackgroundNavigation(registerPlugin<NavigationBridge>('AlphaMapsTransport'),()=>Capacitor.isNativePlatform());
+  const googleProviders = new Set<string>();
+  const isGoogleProvider = (id?: string) => !!id && (googleProviders.has(id) || isGoogleMapsProvider(id, cloudMapsCoverage()));
+  const googleContent = () => {
+    if (regionalMapsConfigured) return false;
+    const coverage = cloudMapsCoverage();
+    if (isGoogleMapsCoverage(coverage)) googleProviders.add(coverage!.providerId);
+    return isGoogleMapsCoverage(coverage) || isGoogleProvider(mapsController?.snapshot().route.value?.providerId);
+  };
+  const localPlace = (view: MapsScreenView) => {
+    const controller = mapsController?.snapshot().provider;
+    return isLocalMapsPlace(
+      view.place, regionalMap()?.providerId || cloudMapsCoverage()?.providerId, isGoogleProvider,
+      controller ? {controller, connection: mapsConnection().config} : undefined,
+    );
+  };
+  const navigationVoice = new NavigationVoice(
+    error => screen.notify((error instanceof Error ? error.message + ' ' : '') + 'Voice paused'),
+    () => !googleContent(),
+  );
+  const navigationTransport=registerPlugin<NavigationBridge & {consumeNavigationOpen():Promise<{open:boolean}>;clearNavigationOpen():Promise<unknown>}>('AlphaMapsTransport');
+  const background=new BackgroundNavigation(navigationTransport,()=>Capacitor.isNativePlatform());
   // A Cloud read already made or under way for this account is not repeated: a second read would
   // uninstall the provider an open Maps search is using. An account change retires it first (cloud-maps.ts).
   const readCloudMaps = () => { const read = cloudMapsDiagnostics(); return read.configured && !read.error ? Promise.resolve() : initializeCloudMaps(); };
@@ -72,13 +94,20 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       return cloud&&{name:cloud.regions.map(item=>item.name).join(', '),mapRestricted:false,contains:point=>insideCloudCoverage(cloud,point)};
     },
     attribution: () => regionalMap()?.attribution || cloudMapsCoverage()?.attribution || '',
-    createController: (config, provider) => (mapsController = new MapsController(config, provider)),
+    createController: (config, provider) => (mapsController = new MapsController(
+      config, provider, new SavedPlaces(undefined, isGoogleProvider), undefined, isGoogleProvider,
+    )),
     navigationLocation: new NativeMapsLocation(),
     agentLocation: new NativeMapsLocation(),
     locationGranted: locationPermissionGranted,
     voice: navigationVoice,
     background,
-    share: shareMap,
+    share: (data, signal) => {
+      signal.throwIfAborted();
+      const view = screen.view();
+      if ((view.place && !localPlace(view)) || (view.mode !== 'place' && googleContent())) return Promise.resolve('closed');
+      return shareMap(data, signal);
+    },
     openWebsite: url => {
       if (Capacitor.isNativePlatform()) void DailyApps.perform({ action: 'browser', url: url.href }).then(result => { if (result.status !== 'opened') api?.toast(result.message || 'Couldn’t open'); }, () => api?.toast('Couldn’t open'));
       else window.open(url.href, '_blank', 'noopener,noreferrer');
@@ -177,7 +206,27 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     return text.length > 200 ? `${text.slice(0, 199)}…` : text;
   }
   function bind(data: Bag, view: MapsScreenView, st: Bag, currentApi: Bag) {
-    const status = view.status, region = regionalMap(), raster=cloudMapsBasemap(), basemap = region || raster || globalBasemap, globalMap = !region&&!raster;
+    const status = view.status, region = regionalMap(), raster = cloudMapsBasemap();
+    const coverage = cloudMapsCoverage();
+    const connectedGoogle = !region && googleContent();
+    const restrictedPlace = !!view.place && !localPlace(view);
+    const googlePlace = restrictedPlace && isGoogleProvider(view.place?.providerId);
+    const placeSourceVerified = !restrictedPlace || view.place?.origin === 'provider' && googlePlace && isGoogleMapsCoverage(coverage);
+    const results = view.results.filter(row => !row.saved || view.saved.some(item =>
+      row.key === 'saved:' + item.id && isLocalMapsPlace(
+        {origin:'saved', providerId:item.providerId}, region?.providerId || coverage?.providerId, isGoogleProvider,
+      ),
+    ));
+    const savedListVisible = view.mode === 'base' || view.mode === 'results' && view.emptyQuery;
+    const restrictedSaved = savedListVisible ? view.saved.filter(item => !isLocalMapsPlace(
+      {origin:'saved', providerId:item.providerId}, region?.providerId || coverage?.providerId, isGoogleProvider,
+    )) : [];
+    const googleMaps = googlePlace || restrictedSaved.some(item => isGoogleProvider(item.providerId)) || connectedGoogle;
+    const googleOnly = (!restrictedPlace || googlePlace) && restrictedSaved.every(item => isGoogleProvider(item.providerId));
+    const basemap = restrictedPlace || restrictedSaved.length
+      ? googleOnly && isGoogleMapsCoverage(coverage) ? raster : undefined
+      : region || raster || (googleMaps ? undefined : globalBasemap);
+    const globalMap = basemap === globalBasemap;
     // Alpha's Cloud provider is operator-owned. Translate only the generic setup
     // prompt after a service-configuration refusal; preserve other recovery messages.
     const cloudFailure = cloudMapsDiagnostics();
@@ -194,16 +243,28 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       // Who receives search text and route points, from the connected Cloud provider.
       searchDisclosure:region?'':searchRecipients(cloudMapsCoverage()?.disclosure),
       cloudCredit:cloudCredit(directionsOpen),
-      notNative:false, hasNativeMap:true,globalBasemap:globalMap,regionalBasemap:!!region,cloudBasemap:!region&&!!raster,mapLabel:raster?'Google Maps':globalMap?'World map':'Regional map',mapAttribution:region?.attribution||(raster?(mapCopyright||raster.attribution):globalBasemap.attribution),attributionBottom:recBottom,
+      notNative:false, hasNativeMap:true, globalBasemap:globalMap, regionalBasemap:!!region && basemap === region,
+      cloudBasemap:!!raster && basemap === raster && !googleMaps, googleMaps, googleMapsLogo,
+      googleMapMissing:googleMaps && !basemap,
+      mapLabel:googleMaps ? 'Google Maps' : globalMap ? 'World map' : basemap === region && region ? 'Regional map' : basemap ? 'Cloud map' : 'Map',
+      mapAttribution:region && basemap === region ? region.attribution : raster && basemap === raster ? (planeBasemap === raster && mapCopyright || raster.attribution) : '',
+      attributionBottom:recBottom,
       mapRef:(element:HTMLElement)=>{
-        if(!element||!basemap)return;
+        if (!element) return;
+        if (!basemap) {
+          if (planeElement) dropPlane();
+          delete element.dataset.mapReady;
+          delete element.dataset.mapError;
+          queueMicrotask(() => { if (active() && element.isConnected && !planeElement) screen.setMapState('error'); });
+          return;
+        }
         if(element!==planeElement||planeBasemap!==basemap){
           mapObserver?.disconnect();plane?.destroy();mapFailed=false;mapCopyright='';planeElement=element;planeBasemap=basemap;const generation=++mapGeneration;delete element.dataset.mapReady;delete element.dataset.mapError;
           const current=()=>generation===mapGeneration&&planeElement===element&&!disposed&&!!api?.isActive();
           try{
             plane=new MapPlane(element,basemap,()=>{if(!current())return;mapFailed=true;screen.setMapState('error');},data.C,id=>screen.pin(id),text=>{if(current()&&text!==mapCopyright){mapCopyright=text;screen.refresh();}},()=>screen.stopFollowing());
-            mapObserver=new MutationObserver(()=>{if(current())screen.setMapState(element.dataset.mapReady==='true'?'ready':'loading');});
-            mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready']});
+            mapObserver=new MutationObserver(()=>{if(current())screen.setMapState(element.dataset.mapError ? 'error' : element.dataset.mapReady === 'true' ? 'ready' : 'loading');});
+            mapObserver.observe(element,{attributes:true,attributeFilter:['data-map-ready','data-map-error']});
           }catch{mapFailed=true;element.replaceChildren();queueMicrotask(()=>{if(current())screen.setMapState('error');});}
         }
         plane?.update(view.map.selected,view.map.route,view.map.overlay);
@@ -216,7 +277,12 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       nativeLocationSettings:()=>{if(!active())return;void device.openSettings({page:'privacy'}).catch(()=>{if(!disposed&&currentApi.isActive())screen.notify('Couldn’t open settings');});},
       nativeManualLocation:()=>{if(!active())return;screen.manualLocation();queueMicrotask(()=>{if(active())document.querySelector<HTMLInputElement>('input[aria-label="Search places"]')?.focus();});},
       nativeMapRetry:status.mapRetry,
-      retryNativeMap:()=>{if(!active())return;dropPlane();screen.retryMap();},
+      retryNativeMap:()=>{
+        if(!active())return;
+        dropPlane();
+        if (!basemap && !regionalMapsConfigured) void initializeCloudMaps();
+        screen.retryMap();
+      },
       mode:view.mode==='navigation'?'nav':view.mode==='directions'?'dir':view.mode, isBase:view.mode==='base',isResults,isPlace,isDir:view.mode==='directions',isNav,
       showSearch:view.showSearch, showRec:!isNav||view.map.overlay.follow===false, grid: '', major: '', fwy: '', water: '', parks: '', rwy: '', routeD: '', doneD: '', hasRoute: false, pins: [], labels: [], meCss: 'display:none;',
       mapDown: () => {}, mapUp: () => {}, q: view.query, hasQ: !!view.query, searchIcon:view.searchLead==='back'?'M15 5l-7 7 7 7':data.searchIcon, searchLabel: view.searchLead === 'back' ? 'Back' : 'Search', leadIsSearch: view.searchLead !== 'back',
@@ -228,8 +294,8 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       chips: view.saved.map(item => ({ id: 'saved:' + item.id, label: item.label, d: PIN, go: () => screen.chooseSaved(item.id) })),
       cats: (view.map.selected||view.map.overlay.position?data.cats:[]).map((category: Bag) => ({ ...category, go: () => screen.searchFor(category.label) })),
       savedRows: view.saved.map(item => ({ id: 'saved:' + item.id, name: item.label, sub: coordLabel(item.coordinate), d: PIN, go: () => screen.chooseSaved(item.id) })),
-      results: view.results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => screen.choose(row.key) })),
-      hasResults: view.hasResults, noResults: view.noResults, emptyQ: view.emptyQuery,
+      results: results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => screen.choose(row.key) })),
+      hasResults: results.length > 0, noResults: view.noResults || view.hasResults && results.length === 0, emptyQ: view.emptyQuery,
       recenter: () => screen.recenter(), recBottom, recCss: '',
       sheetH: sheetHeight, sheetSw: { down: () => {}, up: () => {} }, sheetTap: () => {},
       askAlpha: () => currentApi.send(view.query || 'Help me with Maps.'), noResTxt: 'Ask',
@@ -242,15 +308,17 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         name: place.name, meta: place.meta, addr: place.address,
         hasHours: !!place.hours, openTxt: 'Hours', openCss: '', hoursTxt: place.hours || '',
         hasPhone: false, hasWeb: !!place.website, web: () => screen.openWebsite(),
-        canDir: place.canDirections, min: 'Directions', saved: place.saved,
+        canDir: place.canDirections && placeSourceVerified, min: 'Directions', saved: place.saved,
         saveLabel: place.saved ? 'Remove from saved' : 'Save', starCss: place.saved ? 'color:var(--acct)' : '', starFill: place.saved ? 'fill:currentColor' : '',
-        close: () => screen.closePlace(), save: () => screen.toggleSaved(),
-        dirs: () => screen.openDirections(),
-        share: () => screen.sharePlace(),
+        close: () => screen.closePlace(), save: !restrictedPlace || place.saved ? () => screen.toggleSaved() : undefined,
+        dirs: placeSourceVerified ? () => screen.openDirections() : undefined,
+        share: restrictedPlace ? undefined : () => screen.sharePlace(),
         nativeName: place.name, nativeEditing: place.editingName,
-        canRename:place.saved||place.meta==='Coordinates'||place.meta==='Device location',
-        nativeEdit: () => screen.startRename(),
-        nativeEditKey: (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); screen.startRename(); } },
+        canRename:!restrictedPlace&&(place.saved||place.meta==='Coordinates'||place.meta==='Device location'),
+        nativeTitleRole: restrictedPlace ? undefined : 'button', nativeTitleTabIndex: restrictedPlace ? undefined : 0,
+        nativeTitleLabel: restrictedPlace ? undefined : 'Rename place',
+        nativeEdit: restrictedPlace ? undefined : () => screen.startRename(),
+        nativeEditKey: restrictedPlace ? undefined : (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); screen.startRename(); } },
         nativeRename: (event: Event) => screen.rename((event.target as HTMLInputElement).value),
         nativeApplyName: () => screen.applyName(),
       };
@@ -263,7 +331,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       data.originKey=(event:KeyboardEvent)=>{if(event.key==='Enter'){event.preventDefault();screen.planOrigin();}};
       data.originLocation=()=>screen.locate();
       const nav = view.navigation;
-      data.dr={name:directions.name,close:()=>screen.back(),min:directions.duration,meta:directions.meta,via:directions.via,shareLabel:'Share route',shareEta:()=>screen.shareRoute(),
+      data.dr={name:directions.name,close:()=>screen.back(),min:directions.duration,meta:directions.meta,via:directions.via,shareLabel:'Share route',shareEta:googleMaps ? undefined : () => screen.shareRoute(),
        modes:data.nativeModeMetadata.map((reference:{mode:'drive'|'walk'|'bike'|'transit';label:string;d:string})=>{const mode:TravelMode=reference.mode==='bike'?'bicycle':reference.mode;const on=!!directions.modes.find(choice=>choice.mode===mode)?.selected;return {label:reference.label,t:reference.label,d:reference.d,on,available:!!directions.modes.find(choice=>choice.mode===mode)?.available,css:on?'background:var(--acc);color:#fff':'background:var(--s2);color:var(--fg)',go:()=>screen.setMode(mode)};}),
        // The provider's ordered route choice (recommended first); choosing requests nothing.
        hasRoutes:directions.routes.length>0,
@@ -272,7 +340,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
        nav:{going:!nav?.arrived,arrived:!!nav?.arrived,dist:nav?.distance||'Locating…',street:nav?.instruction||'Waiting for location',icon:nav?.maneuverIcon||PIN,hasThen:!!nav?.following,thenD:nav?.following?.icon||'',thenText:nav?.following?.text||'',
         left:nav?.remainingTime||'Guidance',meta:nav?.remaining&&nav.remaining===nav.meta?'':nav?.meta||'Foreground guidance',remaining:nav?.remaining||'',
         offRoute:!!nav?.offRoute,canReroute:!!nav?.canReroute,reroute:()=>screen.reroute(),rerouteLabel:'Reroute from here',background:!!nav?.background,
-        end:()=>screen.end(),ask:()=>currentApi.send('Help me with this route.'),voiceLabel:navigationVoice.enabled?'Mute voice guidance':'Enable voice guidance',voice:()=>{screen.toggleVoice();currentApi.set({voice:navigationVoice.enabled});},voiceD:navigationVoice.enabled?VOICE_ON:VOICE_OFF}};
+        end:()=>screen.end(),ask:()=>currentApi.send('Help me with this route.'),voiceLabel:navigationVoice.enabled?'Mute voice guidance':'Enable voice guidance',voice:googleMaps ? undefined : ()=>{screen.toggleVoice();currentApi.set({voice:navigationVoice.enabled});},voiceD:navigationVoice.enabled?VOICE_ON:VOICE_OFF}};
     }
     const eventOrigin=mapsEventReturnOffered(st.fromEvent,currentApi.S.stack,isNav);
     data.eventReturnFloating=!!eventOrigin&&!!data.showSearch;data.eventReturnInline=!!eventOrigin&&!!data.isDir;
@@ -283,9 +351,14 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   }
   // The shell instance opens Maps for an agent request, exactly as a user's open would.
   let shell: Bag | undefined;
+  const notificationOpen=createMapsNotificationOpen({
+    ready:()=>{const state=shell?.S?.();return Capacitor.isNativePlatform()&&!disposed&&!!shell?.live&&!document.hidden&&!shell.pageSuspended&&!shell.props?.assistantSurface&&!connectionController.getSnapshot().open&&state?.screen==='home'&&!state.secure&&!state.shade;},
+    consume:()=>navigationTransport.consumeNavigationOpen(),clear:()=>navigationTransport.clearNavigationOpen(),
+    open:()=>shell!.openView('maps',{keepState:true}),
+  });
   const renderVals=Component.prototype.renderVals;
   // Later adapters wrap renderVals too, so disposal leaves this wrapper in place as a pass-through.
-  Component.prototype.renderVals=function(this: Bag,...args: unknown[]){if(!disposed)shell=this;return renderVals.apply(this,args);};
+  Component.prototype.renderVals=function(this: Bag,...args: unknown[]){if(!disposed){shell=this;queueMicrotask(()=>void notificationOpen.flush());}return renderVals.apply(this,args);};
   // Maps opens only over Home or itself, on an unlocked, visible, non-sensitive launcher screen.
   // Any other app keeps the screen; the agent hears that the phone cannot show Maps now.
   const surface = screen.surface(async () => {
@@ -324,17 +397,19 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     if (document.hidden) {
       retireEventReturn();
       screen.hidden();
-    } else screen.refresh();
+    } else {screen.refresh();void notificationOpen.flush();}
   };
   const pagehide = () => {
     retireEventReturn();
     screen.release();
   };
-  const openNavigation=()=>{const state=shell?.S?.();if(screen.isNavigating()&&shell?.live&&!document.hidden&&state?.screen==='home'&&!state.secure&&!state.shade)shell.openView('maps',{keepState:true});};
+  const openNavigation=()=>notificationOpen.request();
+  const cancelNavigationOpen=()=>notificationOpen.cancel();
+  window.addEventListener('launcher-home',cancelNavigationOpen);
   window.addEventListener('alpha:maps-open',openNavigation);
   window.addEventListener('pagehide', pagehide);
   document.addEventListener('visibilitychange', visibility);
-  return () => { disposed = true; retireEventReturn(); stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('alpha:maps-open',openNavigation); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
+  return () => { disposed = true; notificationOpen.dispose(); window.removeEventListener('launcher-home',cancelNavigationOpen); retireEventReturn(); stopCoverage(); agentNavigation.dispose(); shell=undefined; for(const event of shareEvents)window.removeEventListener(event,retireShare); screen.dispose(); window.removeEventListener('alpha:maps-open',openNavigation); window.removeEventListener('pagehide', pagehide); document.removeEventListener('visibilitychange', visibility); Object.assign(module, original); };
 }
 
 /** Presentation only: stored messages, model context and copied source text remain unchanged.

@@ -8,8 +8,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {auditWebBundle, engineFindings} from '../scripts/audit-production-bundle.mjs';
-import {REMOVED_SPEECH_CLASSES, REMOVED_SPEECH_ENTRY} from '../scripts/apk.mjs';
+import {auditWebBundle, engineFindings} from '../scripts/audit-production-bundle.ts';
+import {REMOVED_SPEECH_CLASSES, REMOVED_SPEECH_ENTRY} from '../scripts/apk.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WORD = 'on' + 'nx';

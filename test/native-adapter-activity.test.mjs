@@ -4,7 +4,8 @@ import test from 'node:test';import assert from 'node:assert/strict';import {bui
 const stubs={
  '../runtime/cloud-protocol':'export const cloudServiceName=()=>"Cloud";',
  '../browser/dev-profile':'export const browserDevProfile=false;',
- '../build-flags':'export const cloudRuntimeEnabled=false,testMocksEnabled=false;',
+ '../build-flags':'export const testMocksEnabled=false;',
+ '../runtime/voice-selection':'export const speechRoute=()=>"device";',
  '@capacitor/core':'export const Capacitor={isNativePlatform:()=>true};',
  '../daily':'export const DailyApps={perform:async()=>({status:"opened"}),addListener:async()=>null};',
  '../platform-plugins':'export function registerPlugin(){return {providerStatus:async()=>({})};}',

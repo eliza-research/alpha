@@ -12,14 +12,15 @@ import tempfile
 import unittest
 import zipfile
 
-spec = importlib.util.spec_from_file_location('embedding_artifacts', Path(__file__).resolve().parents[1] / 'scripts/ci/embedding-artifacts.py')
+ROOT = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location('embedding_artifacts', ROOT / 'scripts/ci/embedding-artifacts.py')
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 
 
 class EmbeddingInputsTest(unittest.TestCase):
     def environment(self):
-        return {'ALPHA_LOCAL_EMBEDDINGS':'1','ALPHA_RUNTIME_PROFILE':'cloud',
+        return {'ALPHA_LOCAL_EMBEDDINGS':'1',
                 'ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID':'11','ALPHA_EMBEDDING_COMPONENT_SHA256':'a'*64,
                 'ALPHA_EMBEDDING_QUALIFICATION_ARTIFACT_ID':'12','ALPHA_EMBEDDING_QUALIFICATION_SHA256':'b'*64}
 
@@ -35,9 +36,10 @@ class EmbeddingInputsTest(unittest.TestCase):
             with self.subTest(key=key),self.assertRaises(ValueError):module.settings(env)
         with self.assertRaises(ValueError):module.settings({'ALPHA_EMBEDDING_COMPONENT_ARTIFACT_ID':'11'})
 
-    def test_wrong_profile_and_duplicate_artifacts_rejected(self):
+    def test_no_runtime_profile_is_required_and_duplicate_artifacts_rejected(self):
+        # One runtime profile: the inputs no longer depend on ALPHA_RUNTIME_PROFILE.
         env=self.environment();env['ALPHA_RUNTIME_PROFILE']='native'
-        with self.assertRaises(ValueError):module.settings(env)
+        self.assertEqual(module.settings(env), [('11','a'*64),('12','b'*64)])
         env=self.environment();env['ALPHA_EMBEDDING_QUALIFICATION_ARTIFACT_ID']='11'
         with self.assertRaises(ValueError):module.settings(env)
 
@@ -106,8 +108,10 @@ class EmbeddingInputsTest(unittest.TestCase):
                   'nativeKernelCancellationClaimed':False,'rawNorms':[1.0]*10,'repeatCosine':1.0,'reopenCosine':1.0,
                   'relatedCosine':.8,'unrelatedCosine':.2,'elapsedMs':100}
         raw=json.dumps(semantic).encode()
+        inventory=json.loads((ROOT / 'android/embedding-host/qualified-host.json').read_text())
         component={'pin':'a'*40,'forkPin':'b'*40,'identity':'ai.alphacompute.alphaphone','abi':'arm64-v8a','built':True,
-                   'inputs':[{'path':str(i),'sourceSha256':'a'*64,'generatedSha256':'b'*64} for i in range(6)],'producerInputs':[{'path':str(i),'sha256':'c'*64} for i in range(13)],
+                   'inputs':[{'path':row['path'],'sourceSha256':'a'*64,'generatedSha256':'b'*64} for row in inventory['inputs']],
+                   'producerInputs':[{'path':row['path'],'sha256':'c'*64} for row in inventory['producerInputs']],
                    'jniBinding':{'mode':'registered'},'libraries':[]}
         for name in module.LIBRARIES:
             data=name.encode();(root/name).write_bytes(data)
@@ -121,15 +125,33 @@ class EmbeddingInputsTest(unittest.TestCase):
     def test_valid_receipts_preserve_original_compiled_identity(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);args=self.fixture(root);original=copy.deepcopy(args[2])
+            self.assertEqual(len(args[0]['producerInputs']), 14)
             result=module.validate_receipts(*args,root)
             self.assertEqual(result['compiledSDK'],'a'*40);self.assertFalse(result['qualificationTransferred'])
             self.assertEqual(args[2],original,'validation must not relabel or rewrite the receipt')
+
+    def test_incomplete_or_changed_compiled_input_inventories_are_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            for key,digest in [('inputs','generatedSha256'),('producerInputs','sha256')]:
+                mutations={
+                    'missing':lambda rows:rows.pop(),
+                    'duplicate':lambda rows:rows.__setitem__(0,copy.deepcopy(rows[1])),
+                    'unexpected':lambda rows:rows[0].update(path='unreviewed/input.ts'),
+                    'malformed digest':lambda rows:rows[0].update({digest:'not-a-digest'}),
+                }
+                for name,mutate in mutations.items():
+                    with self.subTest(inventory=key,mutation=name):
+                        args=self.fixture(root);mutate(args[0][key]);args[2][key]=copy.deepcopy(args[0][key])
+                        with self.assertRaisesRegex(ValueError,'Complete producer/native inputs required'):
+                            module.validate_receipts(*args,root)
 
     def test_compile_only_or_relabelled_receipts_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
             for mutation in [lambda q:q.pop('qualifiedAt'),lambda q:q.update(pin='d'*40),
-                             lambda q:q.update(producerInputs=[]),lambda q:q.update(semanticReceiptSha256='0'*64)]:
+                             lambda q:q.update(producerInputs=[]),lambda q:q['producerInputs'][0].update(sha256='d'*64),
+                             lambda q:q.update(semanticReceiptSha256='0'*64)]:
                 args=self.fixture(root);mutation(args[2])
                 with self.assertRaises(ValueError):module.validate_receipts(*args,root)
 

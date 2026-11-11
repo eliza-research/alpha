@@ -406,8 +406,8 @@ test('the web build\'s forced sign-out does not create a secret store in a brows
 });
 
 // Production no longer offers remote pairing. Protocol-level wrong-owner, expired-session,
-// revocation and history tests remain in scripts/test-remote-protocol.mjs and
-// scripts/test-connection-history.mjs as explicitly non-product development infrastructure.
+// revocation and history tests remain in scripts/test-remote-protocol.ts and
+// scripts/test-connection-history.ts as explicitly non-product development infrastructure.
 
 test('automatic agent startup stays quiet while local apps remain usable',async({page})=>{
   await android(page,{cloudCredential:true,balance:5});

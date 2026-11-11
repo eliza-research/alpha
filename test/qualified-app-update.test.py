@@ -46,7 +46,7 @@ class QualifiedUpdateTest(unittest.TestCase):
                    "project": "alpha-aosp-lab-20261024", "instanceId": "8999310923263914877",
                    "alphaCommit": self.plan["alphaCommit"], "sdkCommit": self.plan["sdkCommit"],
                    "versionCode": self.plan["versionCode"], "unsignedApkSHA256": self.plan["unsignedApkSHA256"],
-                   "runtimeProfile": "cloud", "updateChannel": self.plan["updateChannel"],
+                   "runtimeProfile": "native", "updateChannel": self.plan["updateChannel"],
                    "checks": {name: "passed" for name in ("productSourceGuard", "sdkSourceGuard", "normalPreparation",
                                                          "combinedVerification", "apkArchive")}}
         private_bytes = json.dumps(private).encode()
@@ -122,7 +122,7 @@ class QualifiedUpdateTest(unittest.TestCase):
         for variant in BRIDGE.VARIANTS:
             self.assertEqual((product / f"artifacts/{variant}-release.apk").read_bytes(), self.signed_apks[variant])
             self.assertTrue((product / f"artifacts/{variant}-debug.apk").exists())
-        self.assertEqual(json.loads((product / "artifacts/build-config.json").read_text())["runtimeProfile"], "cloud")
+        self.assertEqual(json.loads((product / "artifacts/build-config.json").read_text())["runtimeProfile"], "native")
         self.assertEqual(BRIDGE.sha((work / "cloud-voice.json").read_bytes()), self.record["cloudVoiceEvidenceSHA256"])
 
     def test_voice_receipt_cannot_be_substituted_failed_duplicated_or_carry_content(self):

@@ -14,7 +14,7 @@ const gmailGrants=await load('../apps/app/src/runtime/gmail-grants.ts');
 const {cloudServiceName}=await load('../apps/app/src/runtime/cloud-protocol.ts');
 const connectionReturn=await load('../apps/app/src/runtime/google-connection-return.ts');
 const workspaceReturn=await load('../apps/app/src/runtime/google-workspace-return.ts');
-/** The actual Google accounts callsite and disconnect helper, bundled as scripts/test-google-accounts.mjs does. */
+/** The actual Google accounts callsite and disconnect helper, bundled as scripts/test-google-accounts.ts does. */
 const accountsBundle=buildSync({entryPoints:[new URL('../apps/app/src/runtime/google-accounts.ts',import.meta.url).pathname],bundle:true,write:false,platform:'node',format:'esm',define:{'import.meta.env':'{}'}}).outputFiles[0].text;
 const googleAccounts=await import('data:text/javascript;base64,'+Buffer.from(accountsBundle).toString('base64'));
 // The Calendar link and its disconnect lifecycle are part of the same Google accounts module.

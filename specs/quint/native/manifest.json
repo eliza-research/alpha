@@ -77,7 +77,7 @@
         "android/app/src/main/java/ai/alphacompute/alphaphone/VoiceEventAdmission.java",
         "vendor/eliza/packages/voice/src/voice-assistant-session.ts",
         "upstream.lock.json",
-        "scripts/prepare-client-features.mjs"
+        "scripts/prepare-client-features.ts"
       ],
       "tests": [
         "longGapAndPlaybackTest",
@@ -187,7 +187,8 @@
         "lostLeaseNeedsResumeTest",
         "resetInvalidatesQueuedRecognitionTest",
         "silencedCaptureDropsFramesTest",
-        "explainedPauseCanResumeTest"
+        "explainedPauseCanResumeTest",
+        "unexplainedLossAfterPauseLatchesTest"
       ],
       "invariants": [
         "CaptureRequiresAuthority",
@@ -381,7 +382,6 @@
         "apps/app/src/runtime/sms-subscription-revision.ts",
         "apps/app/src/runtime/reminder-creations.ts",
         "apps/app/src/runtime/reminder-deletions.ts",
-        "apps/app/src/runtime/clock-contract.ts",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaImageCapabilities.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephonyPlugin.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaReminders.java",
@@ -395,8 +395,7 @@
         "staleReminderTicketTest",
         "staleContactsReplyAfterPauseTest",
         "unknownReminderCreationDoesNotRepeatTest",
-        "silentTodoCompletesWithoutAlertTest",
-        "clockHandoffDoesNotClaimRingTest"
+        "silentTodoCompletesWithoutAlertTest"
       ],
       "invariants": [
         "SingleSmsDispatch",
@@ -404,7 +403,6 @@
         "SentRequiresAllCallbacks",
         "DeliveryNeedsProviderEvidence",
         "RetiredIdNeverForgotten",
-        "HandoffIsHonest",
         "ReminderCurrent",
         "ContactReadCurrent",
         "ReminderCreationDoesNotReplay"
@@ -412,16 +410,15 @@
       "abstractions": [
         "One SMS id, one or two message parts, two SIM/text identities and permanent retired-id membership.",
         "Carrier and provider evidence are distinct inputs; multipart never claims delivered.",
-        "One reminder creation and three reminder revisions; notification delivery is posted rather than evidence of Clock execution."
+        "One reminder creation and three reminder revisions; notification delivery is posted rather than evidence of Clock execution.",
+        "Clock admission and evidence belong to NativeClockReview; the former unconditional handoff string was retired as unbound."
       ],
       "sharedSources": [
         "packages/contracts/src/native-telephony.ts",
         "plugins/plugin-native-contacts/android/src/main/java/ai/eliza/plugins/contacts/ContactsCatalog.java",
         "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsSendJournal.java",
         "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsRecords.java",
-        "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsPageCursor.java",
-        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockDays.java",
-        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockHandoff.java"
+        "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsPageCursor.java"
       ]
     },
     {
@@ -1943,7 +1940,11 @@
         "processRestartCannotFabricateBootReadinessTest",
         "downloadFailureAndRestartKeepWarmReadinessTest",
         "newBootReturnsWarmProcessToStartingTest",
-        "manualColdAttemptKeepsItsExistingPathTest"
+        "manualColdAttemptKeepsItsExistingPathTest",
+        "sameProcessDeferredCacheRevalidatesWithoutRefetchTest",
+        "corruptRetainedCacheMustRefetchTest",
+        "changedOfferCannotUseRetainedCacheTest",
+        "processRestartSweepsMarkedCacheTest"
       ],
       "invariants": [
         "CacheCustody",
@@ -1951,7 +1952,8 @@
         "CleanupBound",
         "ConnectionCustody",
         "AutomaticAdmissionHadReadyBoot",
-        "MonotonicBootReadiness"
+        "MonotonicBootReadiness",
+        "RetainedHintIsNotAdmission"
       ],
       "sources": [
         "apps/app/src/prototype/settings-adapter.ts",
@@ -1964,10 +1966,12 @@
         "owner/target/phase/file/bytes/connected": "Process guard, exact reviewed tuple, active bridge connection and real cache-file bytes",
         "session/stagedBytes/created/abandoned": "Synthetic PackageInstaller custody and actual staged output bytes",
         "outcome/fetches": "Observed tap settlement class and controlled HTTPS opens",
+        "kept/reuses": "Actual process-local exact tuple hint and archive readbacks that completed without another controlled transport open",
         "platform/automatic/admitted": "Actual SDK capability class, install consent, controlled Android SystemClock uptime, boot/process identities and automatic call captured before worker admission"
       },
       "abstractions": [
-        "Two reviewed tuples and one installed identity, three bridge classes, four byte positions and up to two admitted attempts. Native source checks terminate at the activation boundary.",
+        "Two reviewed tuples and one installed identity, three bridge classes, four byte positions, up to two fetches and two successful cache revalidations. Native source checks terminate at the activation boundary.",
+        "Only a known automatic postverification lifecycle deferral retains one process-local hint. Real bytes and current archive metadata are rechecked; corruption refetches, another tuple misses, and process loss removes the hint. The hint grants no install/session/pause authority. No completion is promised under continued activity, input withdrawal, storage eviction, IO failure or process death.",
         "Actual renderer review and cache share the selected tuple with the JVM. Native response limits and soft expiry run through controlled inputs. Independent durable pause and install-session behavior remain separate.",
         "SDK classes 30 and 31 represent below31 and at-least31 capability. Six boot-relative monotonic uptime observations are 0,26681,29999,30000,30001,35000. At most two boots and two process identities; same-boot process replacement preserves uptime and only reboot resets readiness.",
         "Cold automatic refusals frame all network/cache/session custody fields and precede worker submission. Manual admission is unchanged. Selected actual-Java traces use a shut-down executor, exact boundary observations, failure cleanup and later warm admission. These between-attempt process cuts do not replace the separate durable journal model or establish clock/network/install progress."
@@ -2904,6 +2908,30 @@
         "One current editor and account; eligibility and same-editor/account checks are input facts. Exact Android InputConnection behavior and physical Cartesia output remain device gates.",
         "Six bounded generation advances; every emitted Quint transition is compared with the actual Java gate in test/keyboard-dictation.test.mjs. The recording-id fence and sensitive field admission have separate host Java scenarios.",
         "Network transport, Android media capture and framework voice IME selection are not established by this gate model."
+      ]
+    },
+    {
+      "path": "specs/quint/native/KeyboardDictationCloud.qnt",
+      "module": "KeyboardDictationCloud",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "cloudSuccessTest",
+        "providerSwitchRefusesResultTest",
+        "cancelledConnectionCleansUpTest",
+        "changedAccountCannotStartTest",
+        "directDoesNotBorrowCloudAccountTest",
+        "malformedReplyStillWipesAudioTest"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/alphacompute/alphaphone/KeyboardDictationCloud.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/KeyboardDictationPolicy.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CloudSpeechPolicy.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/CloudDeployment.java"
+      ],
+      "abstractions": [
+        "Closed credential, PCM, provider and HTTPS ports exercise one transport call per trace. Direct guard and PCM decoding have declared synthetic boundaries. Installed authority and provider acceptance remain separate."
       ]
     }
   ]

@@ -5,7 +5,7 @@ import {mkdtempSync,rmSync,readFileSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 
 function declaration(source, signature) {
  const start=source.indexOf(signature);

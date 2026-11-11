@@ -669,6 +669,33 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .alpha-map-credits { position:absolute; left:16px; z-index:3; width:50px; height:50px; border-radius:25px; background:var(--bg); color:var(--fg); box-shadow:0 6px 20px var(--shc), 0 0 0 1px var(--line); }
 .alpha-map-privacy, .alpha-map-privacy > summary { width:100%; height:100%; }
 .alpha-map-privacy > summary { display:flex; align-items:center; justify-content:center; border-radius:inherit; cursor:pointer; list-style:none; }
+[data-alpha-map-plane][data-imagery-unavailable="true"] { background:var(--s2); }
+.alpha-map-credits[data-google-maps="true"] {
+  container:alpha-map-credit / inline-size; right:76px; width:auto; height:auto; display:flex; align-items:center; gap:4px; padding:0; border-radius:0; background:transparent; box-shadow:none;
+}
+.alpha-google-credit { flex:1; min-width:0; display:flex; align-items:center; gap:4px; }
+.alpha-google-mark,.alpha-google-copyright,.alpha-google-map-missing,.alpha-google-sources > summary,
+.alpha-map-credits[data-google-maps="true"] > .alpha-map-privacy > summary {
+  border-radius:14px; background:var(--bg); color:var(--fg); box-shadow:0 2px 12px var(--shc);
+}
+.alpha-google-mark { flex:none; display:inline-flex; align-items:center; padding:10px 10px 5px; background:var(--alpha-white); }
+.alpha-google-mark img { display:block; width:auto; height:16px; }
+.alpha-google-copyright,.alpha-google-map-missing { min-width:0; padding:6px 8px; overflow-wrap:anywhere; }
+.alpha-google-sources { display:none; min-width:0; }
+.alpha-google-sources > summary {
+  display:flex; align-items:center; min-height:44px; padding:4px 8px; cursor:pointer; list-style:none;
+}
+.alpha-google-sources > summary::-webkit-details-marker { display:none; }
+.alpha-map-credits .alpha-google-sources > .alpha-map-info {
+  top:auto; left:auto; right:0; bottom:calc(100% + 8px); box-sizing:border-box; max-height:160px; overflow:auto; overflow-wrap:anywhere;
+}
+@container alpha-map-credit (max-width: 375px) {
+  .alpha-google-copyright { display:none; }
+  .alpha-google-sources { display:block; }
+}
+html.alpha-large-text .alpha-google-copyright { display:none; }
+html.alpha-large-text .alpha-google-sources { display:block; }
+.alpha-map-credits[data-google-maps="true"] > .alpha-map-privacy { flex:none; width:44px; height:44px; }
 .alpha-map-privacy > summary::-webkit-details-marker { display:none; }
 .alpha-map-privacy > summary [data-alpha-icon] { width:20px; height:20px; }
 .alpha-map-info { position:absolute; left:0; bottom:calc(100% + 10px); width:min(300px,calc(100vw - 32px)); box-sizing:border-box; display:grid; gap:10px; padding:14px 16px; border-radius:20px; background:var(--bg); color:var(--fg); box-shadow:0 6px 24px var(--shc), 0 0 0 1px var(--line); font-size:14px; line-height:1.35; }

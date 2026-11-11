@@ -5,13 +5,13 @@ import fs from 'node:fs';
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {checkoutProblems, formatProblems, formatReport, preparedRuntimeProblems, strictBuildInputs} from '../../../../scripts/android-build-preflight.mjs';
-import {BUILD_TOOLCHAIN, QUALIFIED_HOST} from '../../../../scripts/build-embedding-host.mjs';
-import {MOBILE_UUID_POLICY} from '../../../../scripts/mobile-uuid-adapter.mjs';
+import {checkoutProblems, formatProblems, formatReport, preparedRuntimeProblems, strictBuildInputs} from '../../../../scripts/android-build-preflight.ts';
+import {BUILD_TOOLCHAIN, QUALIFIED_HOST} from '../../../../scripts/build-embedding-host.ts';
+import {MOBILE_UUID_POLICY} from '../../../../scripts/mobile-uuid-adapter.ts';
 import {captureInputs, checkTraces, qset} from '../check-traces.mjs';
 
-const inputs = ['scripts/android-build-preflight.mjs', 'scripts/build-embedding-host.mjs',
-  'scripts/mobile-uuid-adapter.mjs', 'scripts/stage-embedding-host.mjs', 'scripts/voice-host.mjs'];
+const inputs = ['scripts/android-build-preflight.ts', 'scripts/build-embedding-host.ts',
+  'scripts/mobile-uuid-adapter.ts', 'scripts/stage-embedding-host.ts', 'scripts/voice-host.ts'];
 const labels = new Map([
   ['pinned upstream checkout', 'pin'], ['on-device voice outputs', 'voice'],
   ['embedding host libraries', 'embedding'],

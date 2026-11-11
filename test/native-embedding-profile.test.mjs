@@ -19,7 +19,7 @@ test('Alpha selects embeddings only through the shared native runtime profile',(
  assert.ok(launch.indexOf('applyProviderEnvironment(')<launch.indexOf('NativeRuntimeEmbeddings.apply(')&&launch.indexOf('applyUnboundEnvironment(env)')<launch.indexOf('NativeRuntimeEmbeddings.apply('),'the embedding route is applied after provider admission');
  assert.ok(JSON.parse(fs.readFileSync('android/consumer-host.json','utf8')).residentHost.helpers.includes('plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeProviderSlot.java'),'NativeProviderSlot.java must be staged for the APK compile');
  // The shared class is compiled from the selected-source staging list, like NativeProviderAdmission.
- // stage-local-agent-sources.mjs stages the consumer host descriptor's resident helpers.
+ // stage-local-agent-sources.ts stages the consumer host descriptor's resident helpers.
  assert.ok(JSON.parse(fs.readFileSync('android/consumer-host.json','utf8')).residentHost.helpers.includes('plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/NativeRuntimeEmbeddings.java'),'NativeRuntimeEmbeddings.java must be staged for the APK compile');
 });
 test('the shared profile keeps native embeddings local and Cloud QA on Cloud',()=>{

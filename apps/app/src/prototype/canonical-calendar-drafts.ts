@@ -1,3 +1,4 @@
+import {confirmCalendarAction} from './calendar-confirmation';
 import {snapshotCalendarForm} from '../runtime/calendar-form-draft';
 import {AssistantDraftController} from './assistant-draft-controller';
 import {assistantDraftStore} from '../runtime/assistant-draft-store';
@@ -127,7 +128,7 @@ export function installCanonicalCalendarDrafts(Component:any,views:Bag){
   out.formDraftAvailable=!state.form&&!!shell.canonicalDraftText;out.canDiscardFormDraft=out.formDraftAvailable;out.formDraftBusy=draft.opening||draft.consuming;out.formDraftStatus=active?(shell.canonicalDraftInvalid?'Check this draft.':draft.message.replace('before sending','before saving')):'';out.formDraftConflict=active&&draft.conflict;out.formDraftError=active&&draft.error;out.formDraftListError=!state.form&&draft.error;
   const restore=(saved=false)=>{if(!current())return;try{shell.canonicalDraftRestoring=true;if(saved)controller.restoreSaved();else{const restored=decodeCanonicalCalendarDraft(shell.canonicalDraftText);if(restored.form.canonicalOwnerKey!==key)throw Error('This draft belongs to another account');shell.canonicalDraftAnchor=new Date();api.set({form:restored.form,open:null});}}catch{api.toast('This draft belongs to another account. Open it to review.');}finally{shell.canonicalDraftRestoring=false;}};
   out.resumeFormDraft=()=>restore();out.restoreFormDraft=()=>restore(true);out.replaceFormDraft=()=>{if(current())controller.keepCurrent();};out.retryFormDraft=()=>{if(current())controller.retry();};out.formDraftSavedTitle=(()=>{try{return decodeCanonicalCalendarDraft(draft.savedText).form.title;}catch{return 'Saved draft';}})();
-  out.discardFormDraft=()=>{if(!current()||state.form||!window.confirm('Discard draft?'))return;const text=shell.canonicalDraftText;void controller.consume(text,()=>current()&&!shell.vget('calendar').form).catch(()=>{if(current())api.toast('Changed');});};
+  out.discardFormDraft=async()=>{if(!current()||state.form)return;const text=shell.canonicalDraftText,exact=()=>current()&&!shell.vget('calendar').form&&shell.canonicalDraftText===text;if(!await confirmCalendarAction(shell,api,'Discard draft?','','Discard draft',exact)||!exact())return;void controller.consume(text,()=>current()&&!shell.vget('calendar').form).catch(()=>{if(current())api.toast('Changed');});};
   out.recoverFormDraft=()=>{if(!current())return;const recovery=controller.recovery();if(!recovery)return;shell.canonicalDraftRecovery?.abort();const abort=shell.canonicalDraftRecovery=new AbortController();openDomainRecovery(recovery,'calendar form','Calendar form recovery','Download first',abort.signal);};
   const guardStart=(start:(...args:any[])=>unknown)=>(...args:any[])=>{
    if(!current())return;

@@ -5,11 +5,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {featureParity} from '../scripts/feature-manifest.mjs';
+import {featureParity} from '../scripts/feature-manifest.ts';
 import {featureParityAllowlist as allowlist} from './support/feature-parity.mjs';
 
 const parity = await featureParity();
-const regenerate = 'Run node scripts/feature-manifest.mjs --parity to see the current lists.';
+const regenerate = 'Run node scripts/feature-manifest.ts --parity to see the current lists.';
 
 test('Alpha and Eliza differ functionally only where the allowlist says so', () => {
   const allowed = Object.keys(allowlist.differences);
@@ -28,6 +28,16 @@ test('every Alpha-owned behavioural module is listed; moved modules leave the al
   const gone = allowlist.modules.filter(file => !parity.modules.includes(file));
   assert.deepEqual(gone, [], `These modules are gone: remove them from test/support/feature-parity.mjs. ${regenerate}`);
   assert.deepEqual(allowlist.modules, [...allowlist.modules].sort(), 'modules stay sorted');
+});
+
+
+test('reviewed product helpers retain an inventoried owner and focused validation', () => {
+  for (const [module, review] of Object.entries(allowlist.reviewedHelpers)) {
+    assert.ok(allowlist.modules.includes(module), `${module} remains in the exact inventory`);
+    assert.ok(allowlist.modules.includes(review.owner), `${module} names its existing owning module`);
+    assert.ok(review.reason.trim(), `${module} explains the extracted behavior`);
+    assert.ok(review.tests.length > 0 && review.tests.every(file => fs.existsSync(file)), `${module} names retained focused validation`);
+  }
 });
 
 test('branding never counts as a functional difference, and the launcher is shared by both brands', () => {

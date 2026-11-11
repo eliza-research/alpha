@@ -42,6 +42,7 @@ import {checkWorkflowWorkerStaging} from './workflow-worker-staging.mjs';
 import {checkNativeGoogleHostArtifact} from './native-google-host-artifact.mjs';
 import {checkPreparedSourceStamp} from './prepared-source-stamp.mjs';
 import {checkClientFeaturePublication} from './client-feature-publication.mjs';
+import {checkAppUpdateCandidate} from './app-update-candidate.mjs';
 import {checkCloudQaLauncher} from './cloud-qa-launcher.mjs';
 import {checkBrowserCloudRequestCustody} from './browser-cloud-request-custody.mjs';
 import {checkGmailAgentMailboxRecovery} from './gmail-agent-mailbox-recovery.mjs';
@@ -51,6 +52,7 @@ import {checkResidentJavaSourceStage} from './resident-java-source-stage.mjs';
 import {checkAndroidBrowserModuleStage} from './android-browser-module-stage.mjs';
 import {checkAndroidBuildInputReadiness} from './android-build-input-readiness.mjs';
 import {checkLifeOpsScheduledTaskRoute} from './lifeops-scheduled-task-route.mjs';
+import {checkPreparedWorkflowWorker} from './prepared-workflow-worker.mjs';
 import {checkPersonalAssistantScheduledTaskCustody} from './personal-assistant-scheduled-task-custody.mjs';
 
 export async function runServicesRefinement(onProgress) {
@@ -65,10 +67,10 @@ export async function runServicesRefinement(onProgress) {
       runTurnControllerRefinement].map(direct),
     ...[checkBrowserGoogleReturn, checkCombinedAgentLauncher, checkReviewedWorkflowLauncher,
       checkCoreConnectorCustody, checkMobileBundleAdmission, checkWorkflowWorkerStaging, checkNativeGoogleHostArtifact,
-      checkPreparedSourceStamp, checkClientFeaturePublication, checkCloudQaLauncher, checkBrowserCloudRequestCustody, checkGmailAgentMailboxRecovery,
+      checkPreparedSourceStamp, checkClientFeaturePublication, checkAppUpdateCandidate, checkCloudQaLauncher, checkBrowserCloudRequestCustody, checkGmailAgentMailboxRecovery,
       checkDevelopmentDigestPending, checkAndroidGzipAssetStage, checkResidentJavaSourceStage,
       checkAndroidBrowserModuleStage, checkAndroidBuildInputReadiness, checkLifeOpsScheduledTaskRoute,
-      checkPersonalAssistantScheduledTaskCustody].map(withDriver),
+      checkPersonalAssistantScheduledTaskCustody, checkPreparedWorkflowWorker].map(withDriver),
     ...[runInboxCoordinatorRefinement, runInboxCleanupRefinement, runInboxProviderDraftsRefinement,
       runWorkflowEngineRefinement, runWorkflowWakeupRefinement, runWorkflowTaskRefinement, runCanonicalNotesRefinement,
       runTaskServiceRefinement, runTaskSchedulerRuntimeRefinement, runPilotApkUpdateRefinement,
@@ -91,6 +93,8 @@ export async function runServicesRefinement(onProgress) {
       reason: 'The source-only schedules observe settled outcomes and one candidate refusal on local disposable Git trees. Racing writers, restart after process loss and the full dependency install retain separate evidence.'},
     {model: 'ClientFeaturePublication', obligation: 'Other targets, interruption, cleanup failures and independent cache readers',
       reason: 'Three actual publishers cover one vanished-winner collision. Model scenarios cover selected refusal/failure branches; abrupt process loss, arbitrary generations, orphan recovery and a stable path lease for independent readers remain separate.'},
+    {model: 'AppUpdateCandidate', obligation: 'Real candidate builds, hosted inventory and protected promotion',
+      reason: 'The source calls use real private files and byte hashing with closed metadata and synthetic archives. GitHub run-number custody, actual APK/voice admission, concurrent IO, signing, publication and installed updates retain separate evidence.'},
     {model: 'CloudQaLauncher', obligation: 'Concurrent launcher, kernel signal and live readiness behavior',
       reason: 'Private files and receipts use the real implementation in scratch, with closed child events. Concurrent profile writers, kernel delivery and a running Cloud session retain separate evidence.'},
     {model: 'BrowserCloudRequestCustody', obligation: 'Authenticated requests, real HTTP and process restart',

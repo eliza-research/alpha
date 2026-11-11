@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {importedModelPaths,proofPhases,selectChangedModels} from '../scripts/ci/check-changed-models.mjs';
+import {importedModelPaths,proofPhases,selectChangedModels} from '../scripts/ci/check-changed-models.ts';
 
 const a={module:'A',family:'application',path:'specs/quint/application/A.qnt',sources:['apps/app/src/a.ts']};
 const b={module:'B',family:'native',path:'specs/quint/native/B.qnt',sources:['vendor/eliza/plugins/maps/b.ts']};
@@ -18,7 +18,7 @@ test('a manifest edit selects changed/new entries without skipping source owners
  assert.deepEqual(selectChangedModels([a,b],['specs/quint/application/manifest.json'],new Map()),[a]);
 });
 test('checker changes require every proof and known counterexamples remain required phases',()=>{
- assert.deepEqual(selectChangedModels([a,b],['scripts/check-quint.mjs']),[a,b]);
+ assert.deepEqual(selectChangedModels([a,b],['scripts/check-quint.ts']),[a,b]);
  assert.deepEqual(proofPhases(a),['verify']);
  assert.deepEqual(proofPhases({...a,temporal:['EventuallyReady'],expectedViolations:[{invariant:'HistoricalBug'}]}),['verify','temporal','compare']);
  assert.deepEqual(proofPhases({...a,currentTemporalChecks:[{property:'OldLiveness'}]}),['verify','compare']);

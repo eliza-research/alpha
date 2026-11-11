@@ -5,17 +5,17 @@ import {resolve, join, dirname, basename} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {execFileSync, spawn} from 'node:child_process';
 import {EventEmitter} from 'node:events';
-import {CORE_STATE_MANIFEST} from '../../../../scripts/core-state-patch.mjs';
-import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
-import {sourceManifest, sha} from '../../../../scripts/combined-agent-source.mjs';
+import {CORE_STATE_MANIFEST} from '../../../../scripts/core-state-patch.ts';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.ts';
+import {sourceManifest, sha} from '../../../../scripts/combined-agent-source.ts';
 import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
 
 const root = resolve(import.meta.dirname, '../../../..');
-const launcher = 'scripts/start-combined-agent.mjs';
+const launcher = 'scripts/start-combined-agent.ts';
 const support = [
-  'scripts/launcher-child.mjs',
-  'scripts/combined-agent-source.mjs', 'scripts/host-speech-admission.mjs', 'scripts/agent-model.mjs',
-  'scripts/agent-identity.mjs', 'apps/app/src/product/alpha-product-registration.ts',
+  'scripts/launcher-child.ts', 'scripts/private-runtime-launch.ts', 'scripts/speech-env.ts',
+  'scripts/combined-agent-source.ts', 'scripts/host-speech-admission.ts', 'scripts/agent-model.ts',
+  'scripts/agent-identity.ts', 'apps/app/src/product/alpha-product-registration.ts',
   'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
   'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
 ];
@@ -85,7 +85,7 @@ function createFixture(scratch, scenario) {
 }
 
 const refusals = {
-  'node-version': /Combined runtime requires Node24\.15\.0 and Bun1\.4\.2/,
+  'node-version': /Combined runtime requires Node26\.13\.0 and Bun1\.4\.2/,
   'source-mismatch': /Frozen source content differs/,
   'port-busy': /Combined port47858 unavailable/,
   'profile-source': /Private profile must be outside frozen source/,

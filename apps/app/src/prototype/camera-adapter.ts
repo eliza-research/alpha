@@ -20,12 +20,16 @@ import {LIBRARY_LIMITS,type LibraryAgentOperation,type LibraryAgentResult} from 
 import {openVideoEditReview} from './video-edit-review';
 import {openScanReview,ScanKeepError} from './scan-review';
 import {openScanDocument,pickNativeScanImage} from './scan-document';
+import type {ScanPageCamera} from './scan-page-camera';
 import {systemPickerActive} from './scan-pdf';
 import {DailyApps} from '../daily';
 import {browserCamera,browserLibrary,browserPhotoLibrary,mountBrowserCamera,importBrowserPhoto,openCameraImageImport,saveBrowserMedia} from './browser-camera';
 import { registerPlugin } from '../platform-plugins';
 import { Capacitor } from '@capacitor/core';
 import {cameraFocusTarget} from '../browser/camera-focus';
+import {BrowserReviews} from '../browser/review';
+import {testMocksEnabled} from '../build-flags';
+import {createPhotoViewport} from './photo-viewport';
 
 type CameraCaptureAttempt={status:'succeeded'|'failed'|'unknown';summary:string;cameraResult?:CameraCaptureResult};
 let requestedPhoto:((operationId:string,signal:AbortSignal,current:()=>void)=>Promise<CameraCaptureAttempt>)|undefined;
@@ -39,14 +43,14 @@ type VideoReceipt = { path: string; duration: number; width: number; height: num
 type Photo = { base64?: string; thumbnail?: string; format: string; width: number; height: number; path?: string };
 /** The bound lens: its real zoom range, whether it has a flash unit, and the settings it was restored with. */
 type Lens = { minZoom: number; maxZoom: number; hasFlash: boolean; zoom: number; flash: boolean };
-type PreviewReceipt = { width: number; height: number; deviceId: string; minZoom?: number; maxZoom?: number; hasFlash?: boolean; zoom?: number; flash?: string };
+type PreviewReceipt = { width: number; height: number; deviceId: string; captureSize?:{width:number;height:number}; minZoom?: number; maxZoom?: number; hasFlash?: boolean; zoom?: number; flash?: string };
 /** Android wire subset. Upstream's HTMLElement is a web-only argument: the
  * pinned Android implementation ignores it and mounts a full-parent PreviewView.
  * Do not serialize a DOM node or invent rectangle arguments. */
 const nativeCamera = registerPlugin<{
   startPreview(options: { direction: 'front' | 'back'; resolution: { width: number; height: number }; mirror: boolean }): Promise<PreviewReceipt>;
   stopPreview(): Promise<void>;
-  capturePhoto(options: { format: 'jpeg'; quality?: number; saveToGallery: boolean; thumbnailOnly?: boolean }): Promise<Photo>;
+  capturePhoto(options: { format: 'jpeg'; quality?: number; width?:number; height?:number; saveToGallery: boolean; thumbnailOnly?: boolean }): Promise<Photo>;
   startRecording(options: { audio: boolean; saveToGallery: boolean; quality: string; maxDuration: number; maxFileSize: number }): Promise<void>;
   stopRecording(): Promise<VideoReceipt>;
   getRecordingState(): Promise<{ isRecording: boolean; duration: number; fileSize: number }>;
@@ -198,6 +202,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   }:undefined;
   if(scanApi)prototype.api=scanApi;
   let closeQuestion:(()=>void)|undefined;
+  const mediaReviews=new BrowserReviews();
   /** Agent-context identity of the open capture: its id and a session-local revision, never the library's own. */
   const captureSelection=createCaptureRevisions();
   const deviceLibrary=createDeviceLibrary();
@@ -213,8 +218,10 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   function staleLast(){if(session.phase==='ready'&&!document.hidden)void loadLast(session.token());else setLast(undefined);}
   let accessPanel: HTMLElement | undefined;
   let duration = 0;
-  let video: HTMLVideoElement | undefined, videoId = '';
-  function closeVideo() { if (video) { video.pause(); video.removeAttribute('src'); video.load(); video.remove(); } video = undefined; videoId = ''; }
+  const photoViewport=createPhotoViewport();
+  let viewerRevision=0;
+  let video: HTMLVideoElement | undefined, videoId = '', videoRevision = '';
+  function closeVideo() { if (video) { video.pause(); video.removeAttribute('src'); video.load(); video.remove(); } video = undefined; videoId = ''; videoRevision = ''; }
   let captures: SavedPhoto[] = [];
   let photosApi: Bag | undefined, loaded = false, loading = false, next = '', libraryEpoch = 0;
   let libraryAccess:LibraryAccess|undefined,requestingLibraryAccess=false;
@@ -240,7 +247,23 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   let closeVideoEdit:(()=>void)|undefined,videoEditSource:string|undefined,nativeVideoSession:string|undefined,nativeVideoOpening:number|undefined;
   type PendingNativeVideoCopy={source:SavedPhoto;epoch:number;refresh:boolean;checkAgain:boolean;checking?:Promise<void>};
   let pendingNativeVideoCopy:PendingNativeVideoCopy|undefined;
-  function cancelEdit(){copyRecovery?.abort();copyRecovery=undefined;const oldVideo=nativeVideoSession,opening=nativeVideoOpening;nativeVideoSession=undefined;nativeVideoOpening=undefined;closeVideoEdit?.();closeVideoEdit=undefined;videoEditSource=undefined;++editEpoch;const old=edit;edit=undefined;if(old)void library.cancelEdit({sessionId:old.sessionId}).catch(()=>{});if(oldVideo||opening!==undefined)void nativeLibrary.cancelVideoEdit(oldVideo?{sessionId:oldVideo}:{}).catch(()=>{});}
+  function cancelEdit(){mediaReviews.cancelAll();copyRecovery?.abort();copyRecovery=undefined;const oldVideo=nativeVideoSession,opening=nativeVideoOpening;nativeVideoSession=undefined;nativeVideoOpening=undefined;closeVideoEdit?.();closeVideoEdit=undefined;videoEditSource=undefined;++editEpoch;const old=edit;edit=undefined;if(old)void library.cancelEdit({sessionId:old.sessionId}).catch(()=>{});if(oldVideo||opening!==undefined)void nativeLibrary.cancelVideoEdit(oldVideo?{sessionId:oldVideo}:{}).catch(()=>{});}
+  const editChanged=(value:NonNullable<typeof edit>)=>value.rotation!==0||value.crop||value.filter!=='none';
+  const editCurrent=(value:NonNullable<typeof edit>,owner:Bag,epoch:number)=>edit===value&&editEpoch===epoch&&!disposed&&!document.hidden&&owner.isActive()&&owner.get('photos').open===value.source;
+  async function requestCancelEdit(owner:Bag){
+    const value=edit;if(!value)return;const epoch=editEpoch;
+    if(editChanged(value)||value.busy||value.uncertain){
+      const pending=value.busy||value.uncertain;
+      const accepted=await mediaReviews.confirm('close-photo-edit:'+value.sessionId,pending?'Close photo editor?':'Discard photo changes?',pending?'A save may already be in progress. Closing does not undo a completed save. Photos will check its status when you return.':'Your original photo stays unchanged. Discard the changes shown in this editor?',pending?'Close editor':'Discard changes',{current:()=>editCurrent(value,owner,epoch)});
+      if(!accepted||!editCurrent(value,owner,epoch))return;
+    }
+    cancelEdit();owner.set({nativeEditRevision:Date.now()});
+  }
+  async function requestReplaceEdit(owner:Bag){
+    const value=edit;if(!value||value.busy||value.uncertain||!editChanged(value))return;const epoch=editEpoch;
+    const accepted=await mediaReviews.confirm('replace-photo:'+value.sessionId,'Replace original photo?','Replace this photo with the reviewed changes. Save copy keeps the original instead.','Replace original',{current:()=>editCurrent(value,owner,epoch)&&!value.busy&&!value.uncertain});
+    if(accepted&&editCurrent(value,owner,epoch))await saveEdit(owner,true);
+  }
   async function beginEdit(row:SavedPhoto,owner:Bag){
     if(!row.mutationRevision||edit||mutating||nativeVideoOpening!==undefined||closeVideoEdit)return;
     cancelEdit();closeVideo();const token=editEpoch;let videoSessionId:string|undefined,copyIntentChecked=false;
@@ -266,7 +289,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
             const receipt=session?await nativeLibrary.saveVideoEdit({sessionId:session.sessionId,...parameters}):await browserPhotoLibrary.saveVideoCopy({id:source.id,revision:row.mutationRevision!,operationId,edit:parameters},signal);
             await pendingCopy?.checking;
             await finishEdit(receipt,owner,ticket);return receipt.status==='saved';
-          }catch{if(ticket.intent)await recoverEdit(owner,ticket);else if(current()){owner.set({nativeCopyRecovery:true});owner.toast('Save failed');}return false;}
+          }catch{if(ticket.intent)await recoverEdit(owner,ticket);else if(current()){owner.set({nativeCopyRecovery:true});owner.toast(browserMode&&testMocksEnabled?'Copy request could not be retained. Check saved-copy recovery before another save.':'Save failed');}return false;}
           finally{signal.removeEventListener('abort',abort);if(pendingCopy&&pendingNativeVideoCopy===pendingCopy){pendingNativeVideoCopy=undefined;if(pendingCopy.refresh&&!disposed)invalidateLibrary();}}
         },()=>{if(session){if(nativeVideoSession===session.sessionId)nativeVideoSession=undefined;void nativeLibrary.cancelVideoEdit({sessionId:session.sessionId}).catch(()=>{});}if(editEpoch===token){++editEpoch;closeVideoEdit=undefined;videoEditSource=undefined;}});
         return;
@@ -307,7 +330,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       const intent=await readMediaCopyIntent();if(!intent||original&&JSON.stringify(original.intent)!==JSON.stringify(intent))return;
       ticket=original||{token:intent.token,epoch,source,intent};
       const value=await library.editResult({operationId:intent.token});if(!await finishEdit(value,owner,ticket)&&completionCurrent(ticket,owner)){owner.set({nativeCopyRecovery:true});owner.toast('Save unconfirmed');}
-    }catch{if(!disposed&&owner.isActive()&&editEpoch===epoch){owner.set({nativeCopyRecovery:true});owner.toast('Save unconfirmed');}}
+    }catch{if(!disposed&&owner.isActive()&&editEpoch===epoch){owner.set({nativeCopyRecovery:true});owner.set({nativeCopyRecovery:true});owner.toast(browserMode&&testMocksEnabled?'Copy outcome could not be checked. Use saved-copy recovery; no additional copy was created.':'Save unconfirmed');}}
     finally{recoveringEdit=false;}
   }
   async function saveEdit(owner:Bag,replace=false){
@@ -319,7 +342,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       if(!completionCurrent(ticket,owner)){await acknowledgeMediaCopyIntent(ticket.intent);return;}
       const value=await library.saveEdit({sessionId:current.sessionId,rotation:current.rotation,crop:current.crop,filter:current.filter,...(replace?{replace:true}:{})});
       if(!await finishEdit(value,owner,ticket)){if(edit===current)current.uncertain=true;await recoverEdit(owner,ticket);}
-    }catch{if(edit===current)current.uncertain=true;if(ticket.intent)await recoverEdit(owner,ticket);else if(completionCurrent(ticket,owner)){owner.set({nativeCopyRecovery:true});owner.toast('Save failed');}}
+    }catch{if(edit===current)current.uncertain=true;if(ticket.intent)await recoverEdit(owner,ticket);else if(completionCurrent(ticket,owner)){owner.set({nativeCopyRecovery:true});owner.toast(browserMode&&testMocksEnabled?'Copy request could not be retained. Check saved-copy recovery before another save.':'Save failed');}}
     finally{if(edit===current){current.busy=false;if(completionCurrent(ticket,owner))owner.set({nativeEditRevision:Date.now()});}}
   }
   async function openCopyRecovery(owner:Bag){
@@ -615,7 +638,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       trash = more ? mergeWindow(trash, rows, WINDOW) : newestFirst(rows);
       trashNext = result.next; trashLoaded = true; patchView();
       owner.set({ nativeTrashError: '', nativeTrashRevision: Date.now() });
-    } catch { if (!disposed && !document.hidden && token === trashEpoch) owner.set({ nativeTrashError: browserMode?'Couldn’t load':'Needs Android 11+' }); }
+    } catch { if (!disposed && !document.hidden && token === trashEpoch) owner.set({ nativeTrashError: 'Couldn’t load' }); }
     finally { trashLoading = false; if (trashRefreshAgain && !disposed) { trashRefreshAgain = false; queueMicrotask(() => { void loadTrash(owner); }); } }
   }
   async function changeTrash(row: SavedPhoto, desired: boolean, owner: Bag, nextId?: string) {
@@ -1057,6 +1080,26 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   /** Scanning is not a camera mode: asking Alpha to scan while Camera is open captures one
    * frame, kept in memory, into scan review. Photos receives it only through Keep photo. */
   let scanning=false;
+  /** Document pages borrow this Camera visit's preview. No new camera owner,
+   * gallery write or browser getUserMedia request is created on Android. */
+  function documentCamera(owner:Bag):ScanPageCamera|undefined{
+    if(browserMode)return undefined;
+    const current=()=>!disposed&&!document.hidden&&owner.isActive()&&active()&&session.phase==='ready';
+    return {current,viewfinder:()=>document.querySelector<HTMLElement>(finder)||undefined,capture:async signal=>{
+      signal.throwIfAborted();if(!current())throw Error('Start Camera before capturing a document page.');
+      const result=await session.exclusive(async token=>{
+        await modeChange;signal.throwIfAborted();if(!current()||!session.current(token))throw Error('Camera changed. Try capturing again.');
+        const size=previewReceipt?.captureSize;
+        if(!size||!Number.isFinite(size.width)||!Number.isFinite(size.height)||size.width<=0||size.height<=0)throw Error('Camera capture size is unavailable. Close the document and start Camera again.');
+        const scale=Math.min(1,2048/Math.max(size.width,size.height));
+        const photo=await camera.capturePhoto({format:'jpeg',quality:85,saveToGallery:false,width:Math.max(1,Math.round(size.width*scale)),height:Math.max(1,Math.round(size.height*scale))});
+        signal.throwIfAborted();if(!current()||!session.current(token))throw Error('Camera changed. The page was not added.');
+        if(photo.format!=='jpeg'||!photo.base64||photo.width<=0||photo.height<=0||photo.width>2048||photo.height>2048)throw Error('Camera returned an incomplete document page. Try again.');
+        return new Blob([Uint8Array.from(atob(photo.base64),char=>char.charCodeAt(0))],{type:'image/jpeg'});
+      });
+      if(result.status!=='done')throw Error('Camera is busy. Try again.');return result.value;
+    }};
+  }
   async function scanFrame(owner:Bag){
     if(scanning||session.busy){message('Busy');return;}
     scanning=true;requestedCaptureHolds++;
@@ -1078,7 +1121,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
             // retried under the same operation identity, which the owned captures store resolves once. The
             // browser photo store has no operation identity, so an unknown outcome there is not retried.
             if(outcome.status==='failed')throw new ScanKeepError(outcome.message||'Not saved',true);
-            throw new ScanKeepError('Unconfirmed',!browserMode);});
+            throw new ScanKeepError('Unconfirmed',!browserMode);},documentCamera(owner));
           closeScan=()=>{scan.close();closeReview();};
         }catch{if(session.current(token))message('Not captured');}
       });
@@ -1097,7 +1140,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       const image=await pickNativeScanImage();
       // The picker covered the page, so the preview restarted: check the view, not the camera epoch.
       if(!image||disposed||!owner.isActive())return;
-      closeScan=openScanReview(image,(text,id)=>owner.saveScannedNote?.(text,id)??Promise.resolve(false),draft=>{if(disposed||!owner.isActive())return false;return owner.reviewScannedCalendarDraft?.(draft)??false;},'selected');
+      closeScan=openScanReview(image,(text,id)=>owner.saveScannedNote?.(text,id)??Promise.resolve(false),draft=>{if(disposed||!owner.isActive())return false;return owner.reviewScannedCalendarDraft?.(draft)??false;},'selected',undefined,owner.S.view==='camera'?documentCamera(owner):undefined);
     }catch(error){if(!disposed&&owner.isActive())owner.toast(error instanceof Error&&error.message?error.message:'Unreadable image');}
   }
   function chooseImage(owner:Bag){
@@ -1174,6 +1217,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     data.ask = () => {
       if (!askCameraFrame(currentApi)) message(ready ? 'Capture in progress' : 'Camera off');
     };
+    data.scanDocumentAvailable=!recordingBusy;
+    data.scanDocument=()=>{if(!currentApi.isActive()||recordingBusy)return;cancelScan();if(currentApi.S.chat!=='hidden')currentApi.shell({chat:'hidden'});closeScan=openScanDocument(undefined,documentCamera(currentApi));};
     data.flip = () => { void flipLens(currentApi); };
     data.flashAvailable = ready && !recordingBusy && (browserMode ? browserCamera.flashAvailable() : lens.hasFlash);
     if (browserMode) data.flashLabel = browserCamera.lightingLabel(flash);
@@ -1353,6 +1398,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       }
       const wanted=new Set(operation.ids),rows=captures.filter(row=>wanted.has(nativeId(row.id)));
       if(operation.type==='photo_library_select'){
+        if(!rows.length)throw new LibraryAgentRefusal('None of those items are in Photos. The current selection was kept.');
         selection=rows;selectionTab='lib';photosFilter=undefined;
         owner.set({tab:'lib',album:null,open:null,nativePhotoSelection:null,nativeMultiSelection:Date.now()});
         return {kind:'photo_library_select',selected:rows.length,missing:operation.ids.length-rows.length};
@@ -1397,7 +1443,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     // Read canonical intent once per Photos entry, without replaying a save.
     if(currentApi.isActive()&&!edit&&!editRecoveryChecked){
       editRecoveryChecked=true;const token=editEpoch;
-      queueMicrotask(()=>{void readMediaCopyIntent().then(pending=>{if(!disposed&&currentApi.isActive()&&editEpoch===token&&pending&&automaticEditRecovery!==pending.token){automaticEditRecovery=pending.token;void recoverEdit(currentApi);}}).catch(()=>{if(!disposed&&currentApi.isActive()&&editEpoch===token){currentApi.set({nativeCopyRecovery:true});currentApi.toast('Needs recovery');}});});
+      queueMicrotask(()=>{void readMediaCopyIntent().then(pending=>{if(!disposed&&currentApi.isActive()&&editEpoch===token&&pending&&automaticEditRecovery!==pending.token){automaticEditRecovery=pending.token;void recoverEdit(currentApi);}}).catch(()=>{if(!disposed&&currentApi.isActive()&&editEpoch===token){currentApi.set({nativeCopyRecovery:true});currentApi.toast(browserMode&&testMocksEnabled?'Saved-copy request needs recovery. No edit was repeated.':'Needs recovery');}});});
     }
     if (!loaded && !loading) queueMicrotask(() => { void refresh(); });
     const data = photosRender(st, currentApi);data.normalSelecting=true;if(data.v)data.v.notDeleted=true;
@@ -1408,12 +1454,13 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     // Access: one row while access is partial or denied; nothing once it is full.
 
     data.importAvailable=browserMode||Capacitor.isPluginAvailable('DailyApps');
-    data.importImage=()=>chooseImage(currentApi);
+    data.importLabel=browserMode?'Choose image':'Scan image text';
+    data.importImage=(event?:Event)=>{(event?.currentTarget as HTMLElement|undefined)?.closest('details')?.removeAttribute('open');chooseImage(currentApi);};
     data.scanDocument=()=>{if(currentApi.isActive()){cancelScan();closeScan=openScanDocument();}};
     data.libraryAccessControl=!browserMode&&!!libraryAccess&&libraryAccess.scope!=='full'&&!st.open&&!st.album&&!selection&&!onAlbums;
     data.libraryAccessBusy=requestingLibraryAccess;
     data.libraryAccessChoose=async()=>{if(requestingLibraryAccess)return;requestingLibraryAccess=true;currentApi.set({nativeLibraryAccessRevision:Date.now()});const before=libraryAccess?.scope;try{libraryAccess=await nativeLibrary.requestLibraryAccess();if(libraryAccess.scope===before&&before==='denied')await nativeLibrary.openLibrarySettings();retirePhotoRead();captures=[];preview=undefined;next='';loaded=false;cancelEdit();closeVideo();currentApi.set({open:null,nativePhotoSelection:null});await refresh();}catch{currentApi.toast('Couldn’t open settings');}finally{requestingLibraryAccess=false;currentApi.set({nativeLibraryAccessRevision:Date.now()});}};
-    data.copyRecovery=browserMode&&!!st.nativeCopyRecovery;data.openCopyRecovery=()=>void openCopyRecovery(currentApi);
+    data.copyRecovery=!!st.nativeCopyRecovery;data.copyRecoveryLabel=browserMode&&testMocksEnabled?'Recover saved-copy request':'Check pending save';data.copyRecoveryText=browserMode&&testMocksEnabled?'Saved-copy recovery':'Check pending save';data.openCopyRecovery=()=>{if(browserMode&&testMocksEnabled)void openCopyRecovery(currentApi);else void recoverEdit(currentApi);};
     if (!trashLoaded && !trashLoading && !st.nativeTrashError && libraryAvailable()) queueMicrotask(() => { void loadTrash(currentApi); });
     if (!counts && !countsBusy && !countsError && libraryAvailable()) queueMicrotask(() => { void loadCounts(currentApi); });
     if(!albumsLoaded&&!albumsBusy)queueMicrotask(()=>{void loadCustomAlbums(currentApi);});
@@ -1526,14 +1573,16 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       if (!st.nativePhotoSelection && preview?.id !== st.open) queueMicrotask(() => { if (currentApi.get('photos').open === selected.id) void openSaved(selected.id, currentApi); });
       const index = sequence.findIndex(row => row.id === selected.id);
       const go = (step: number) => { const target = sequence[index + step]; if (index < 0 || !target) return; void openSaved(target.id, currentApi); };
-      let gesture: { x: number; y: number } | undefined, swiped = false;
+      const viewport=photoViewport.bind({key:`${selected.id}:${selected.revision}`,width:selected.width,height:selected.height,zoomable:selected.kind!=='video',
+        current:()=>!disposed&&!document.hidden&&currentApi.isActive()&&currentApi.get('photos').open===selected.id&&!edit&&sameCapture(selected),
+        changed:()=>currentApi.set({nativeViewerRevision:++viewerRevision,chrome:true}),
+        toggle:()=>currentApi.set({chrome:currentApi.get('photos').chrome===false}),step:go});
       const when = viewerTitle(shotAt(selected)), chrome = st.chrome !== false;
       data.viewing = true; data.viewEmpty = false; data.editing = !!edit&&edit.source===selected.id;
-      data.v = { bg: imageCss(selected).replace('cover', 'contain'), tf: '', flt: '', slide: '', day: when.day, sub: when.time, chromeOp: chrome ? 1 : 0, chromePE: chrome ? 'auto' : 'none', favIcon: selected.favorite ? 'fill:currentColor' : 'fill:none', favLabel: selected.favorite ? 'Remove from favorites' : 'Favorite', vid: selected.kind === 'video', playing: !!video && !video.paused, playBtn: selected.kind === 'video' && (!video || video.paused), prog: `width:${video?.duration ? Math.min(100, video.currentTime / video.duration * 100) : 0}%`, play: () => { void playVideo(selected, currentApi); }, pause: () => { video?.pause(); currentApi.set({ nativePlaybackRevision: Date.now() }); }, notSecure: true,
-        // Tap shows or hides the controls; a horizontal swipe moves to the neighbouring item.
-        tap: () => { if (swiped) { swiped = false; return; } currentApi.set({ chrome: !chrome }); },
-        down: (event: PointerEvent) => { gesture = { x: event.clientX, y: event.clientY }; swiped = false; },
-        up: (event: PointerEvent) => { const start = gesture; gesture = undefined; if (!start) return; const dx = event.clientX - start.x, dy = event.clientY - start.y; if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) { swiped = true; go(dx < 0 ? 1 : -1); } },
+      data.v = { bg: imageCss(selected).replace('cover', 'contain'), tf: selected.kind==='video'?'':viewport.transform, flt: '', slide: '', day: when.day, sub: when.time, chromeOp: chrome ? 1 : 0, chromePE: chrome ? 'auto' : 'none', favIcon: selected.favorite ? 'fill:currentColor' : 'fill:none', favLabel: selected.favorite ? 'Remove from favorites' : 'Favorite', vid: selected.kind === 'video', playing: !!video && !video.paused, playBtn: selected.kind === 'video' && (!video || video.paused), prog: `width:${video?.duration ? Math.min(100, video.currentTime / video.duration * 100) : 0}%`, play: () => { void playVideo(selected, currentApi); }, pause: () => { video?.pause(); currentApi.set({ nativePlaybackRevision: Date.now() }); }, notSecure: true,
+        tap:()=>viewport.tap(),down:(event:PointerEvent)=>viewport.down(event),move:(event:PointerEvent)=>viewport.move(event),up:(event:PointerEvent)=>viewport.up(event),cancel:()=>viewport.cancel(),
+        viewerRef:(element:HTMLElement|null)=>{if(element)element.ondblclick=selected.kind==='video'?null:event=>viewport.double(event);},key:(event:KeyboardEvent)=>viewport.key(event),frame:(element:HTMLElement|null)=>viewport.ref(element),
+        canZoom:selected.kind!=='video',zoomIn:()=>viewport.zoomIn(),zoomOut:()=>viewport.zoomOut(),fit:()=>viewport.fit(),zoomMax:viewport.scale>=4,zoomMin:viewport.scale<=1,zoomLabel:`${Math.round(viewport.scale*100)}%`,
         hasPrev: index > 0, hasNext: index >= 0 && index < sequence.length - 1, prev: () => go(-1), next: () => go(1),
         share: async () => {
         if(sharing || mutating)return;
@@ -1542,13 +1591,22 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
         catch(error) { if(!(browserMode&&error instanceof DOMException&&error.name==='AbortError'))currentApi.toast(browserMode&&error instanceof Error?error.message:'Unavailable'); }
         finally { sharing=false; }
       }, fav: () => { void favorite(selected,currentApi); }, edit: () => {void beginEdit(selected,currentApi);}, del: () => { void changeTrash(selected, true, currentApi, (sequence[index + 1] || sequence[index - 1])?.id); }, info: () => { currentApi.set({ sheet: 'photo-info', chrome: true }); }, ask: selected.kind==='video'||selected.trashed?undefined:() => { askCapture(selected,currentApi); } };
+      const playbackCurrent=()=>!!video&&videoId===selected.id&&videoRevision===(selected.contentRevision||selected.revision)&&!disposed&&!document.hidden&&currentApi.isActive()&&currentApi.get('photos').open===selected.id&&sameCapture(selected);
+      const playingVideo=playbackCurrent()?video:undefined;
+      const total=Number.isFinite(playingVideo?.duration)&&playingVideo!.duration>0?playingVideo!.duration:selected.duration||0;
+      const elapsed=playingVideo?.currentTime||0;
+      const time=(seconds:number)=>{const value=Math.max(0,Math.floor(Number.isFinite(seconds)?seconds:0));return `${Math.floor(value/60)}:${String(value%60).padStart(2,'0')}`;};
+      data.v.videoTime=`${time(elapsed)} / ${time(total)}`;data.v.videoDuration=total;data.v.videoCurrent=Math.min(total,elapsed);data.v.videoReady=!!playingVideo&&playingVideo.readyState>=1&&total>0;data.v.videoUnavailable=!data.v.videoReady;
+      data.v.videoMuted=!!playingVideo?.muted;data.v.muteLabel=playingVideo?.muted?'Unmute video':'Mute video';data.v.playLabel=playingVideo?.ended?'Replay video':'Play video';
+      data.v.seek=(event:Event)=>{if(!playbackCurrent())return;const target=Number((event.target as HTMLInputElement).value);if(!Number.isFinite(target)||!total)return;try{video!.currentTime=Math.max(0,Math.min(total,target));currentApi.set({nativePlaybackRevision:++viewerRevision});}catch{currentApi.toast('This video cannot seek to that time.');}};
+      data.v.mute=()=>{if(!playbackCurrent())return;video!.muted=!video!.muted;currentApi.set({nativePlaybackRevision:++viewerRevision});};
       data.v.shareAvailable=!browserMode||(typeof navigator.share==='function'&&typeof navigator.canShare==='function');
       data.v.saveLocally=browserMode?()=>{const token=photoReadEpoch;return saveBrowserMedia({items:[{id:nativeId(selected.id),revision:selected.mutationRevision||''}]},()=>!disposed&&!document.hidden&&photoReadEpoch===token&&currentApi.isActive()&&currentApi.get('photos').open===selected.id&&sameCapture(selected));}:undefined;
       data.v.isDeleted=!!selected.trashed;data.v.notDeleted=!selected.trashed;data.v.canDeleteForever=!!selected.trashed;data.v.recover=()=>void changeTrash(selected,false,currentApi);data.v.deleteForever=()=>void preparePermanent(currentApi,[selected]);if(selected.trashed){data.v.notSecure=false;const left=daysLeft(selected.expiresAt);data.v.sub=left===undefined?when.time:`${left} ${left===1?'day':'days'} left`;}
       const shown=st.album==='trash'?trash:st.album?albumRows:shownCaptures,at=shown.findIndex(row=>row.id===selected.id);
       const step=(row:SavedPhoto|undefined)=>()=>{if(row&&!edit&&!mutating&&!sharing)void openSaved(row.id,currentApi);};
       data.v.hasPrevItem=at>0&&!edit;data.v.hasNextItem=at>=0&&at<shown.length-1&&!edit;data.v.prevItem=step(shown[at-1]);data.v.nextItem=step(shown[at+1]);
-      data.v.viewerLabel=`${selected.kind==='video'?'Video':'Photo'}. Tap to show or hide controls, swipe to browse`;data.v.askLabel=`Ask Alpha about this ${selected.kind==='video'?'video':'photo'}`;
+      data.v.viewerLabel=selected.kind==='video'?'Video. Tap to show or hide controls, swipe to browse':`Photo. Zoom ${Math.round(viewport.scale*100)} percent. Pinch or double tap to zoom; drag to pan. Use plus, minus, 0 and arrow keys.`;data.v.askLabel=`Ask Alpha about this ${selected.kind==='video'?'video':'photo'}`;
       data.v.editLabel=selected.kind==='video'?'Edit video':'Edit photo';data.v.shareLabel=selected.kind==='video'?'Share video':'Share photo';data.v.infoLabel=selected.kind==='video'?'Video info':'Photo info';data.v.deleteLabel=selected.kind==='video'?'Delete video':'Delete photo';
       data.v.canEmail=!browserMode&&selected.kind!=='video'&&!selected.trashed&&nativeId(selected.id).startsWith('m:')&&!!selected.mutationRevision&&Capacitor.isPluginAvailable('AlphaMailAttachments')&&typeof views.inbox.fileEmailTarget==='function';
       data.v.email=()=>emailPhoto(selected,currentApi);
@@ -1560,32 +1618,33 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
         const infoControl=document.querySelector<HTMLElement>(`[data-alpha-subview="photos-viewer"] button[aria-label="${data.v.infoLabel}"]`)||undefined;
         openAlbumManager(currentApi,selected,undefined,infoControl);if(manager)manager.choosing=true;currentApi.set({nativeAlbumDraft:Date.now()});}};
       data.infoOpen=st.sheet==='photo-info'||!!data.infoOpen;
-      if(edit?.source===selected.id){const current=edit;data.v.ed={bg:`url("${current.image}") center / contain no-repeat`,tf:'',flt:'none',cropOn:current.crop,cropCss:current.crop?'background:#ffffff;color:#000000':'background:rgba(255,255,255,.12);color:#ffffff',status:current.uncertain?'Unconfirmed':'',saveLabel:'Save copy',saveDisabled:current.busy,canReplace:!!current.canReplace&&!current.uncertain,replace:()=>void saveEdit(currentApi,true),rotate:()=>void transformEdit(currentApi,true),crop:()=>void transformEdit(currentApi,false),cancel:()=>{cancelEdit();currentApi.set({nativeEditRevision:Date.now()});},save:()=>void saveEdit(currentApi),filters:[['none','Original'],['vivid','Vivid'],['warm','Warm'],['cool','Cool'],['mono','Mono'],['fade','Fade'],['noir','Noir']].map(([id,label])=>({id,label,bg:`url("${selected.image}") center / cover no-repeat`,flt:({none:'none',vivid:'saturate(1.55) contrast(1.08)',warm:'sepia(.3) saturate(1.35) hue-rotate(-8deg)',cool:'saturate(1.1) hue-rotate(14deg) brightness(1.03)',mono:'grayscale(1) contrast(1.05)',fade:'contrast(.78) brightness(1.12) saturate(.75)',noir:'grayscale(1) contrast(1.55) brightness(.88)'} as Record<string,string>)[id],on:current.filter===id,ring:current.filter===id?'box-shadow:0 0 0 2px #000,0 0 0 4px #fff':'',lc:current.filter===id?'#fff':'rgba(255,255,255,.6)',pick:()=>void transformEdit(currentApi,false,id)}))};}
+      if(edit?.source===selected.id){const current=edit;data.v.ed={bg:`url("${current.image}") center / contain no-repeat`,tf:'',flt:'none',cropOn:current.crop,cropCss:current.crop?'background:#ffffff;color:#000000':'background:rgba(255,255,255,.12);color:#ffffff',status:current.uncertain?'Unconfirmed':'',saveLabel:'Save copy',saveDisabled:current.busy||!current.uncertain&&!editChanged(current),canReplace:!!current.canReplace&&!current.uncertain,replace:()=>void requestReplaceEdit(currentApi),rotate:()=>void transformEdit(currentApi,true),crop:()=>void transformEdit(currentApi,false),cancel:()=>{void requestCancelEdit(currentApi);},save:()=>void saveEdit(currentApi),filters:[['none','Original'],['vivid','Vivid'],['warm','Warm'],['cool','Cool'],['mono','Mono'],['fade','Fade'],['noir','Noir']].map(([id,label])=>({id,label,bg:`url("${selected.image}") center / cover no-repeat`,flt:({none:'none',vivid:'saturate(1.55) contrast(1.08)',warm:'sepia(.3) saturate(1.35) hue-rotate(-8deg)',cool:'saturate(1.1) hue-rotate(14deg) brightness(1.03)',mono:'grayscale(1) contrast(1.05)',fade:'contrast(.78) brightness(1.12) saturate(.75)',noir:'grayscale(1) contrast(1.55) brightness(.88)'} as Record<string,string>)[id],on:current.filter===id,ring:current.filter===id?'box-shadow:0 0 0 2px #000,0 0 0 4px #fff':'',lc:current.filter===id?'#fff':'rgba(255,255,255,.6)',pick:()=>void transformEdit(currentApi,false,id)}))};}
     }
     data.closeActions=(event:Event)=>{(event.currentTarget as HTMLElement)?.closest('details')?.removeAttribute('open');};
     if(data.alb)data.alb.menu=!!(data.alb.canSelect||data.alb.isCustom||data.alb.canEmpty);
     return data;
   };
-  if (views.photos) views.photos.back = (st: Bag, currentApi: Bag) => { if(edit){cancelEdit();currentApi.set({nativeEditRevision:Date.now()});return true;}if(selection){cancelPhotoSelection(currentApi);return true;}if(st.sheet==='owned-album'){manager=undefined;currentApi.set({sheet:null});return true;}if(st.sheet==='empty'){cancelPermanent(currentApi);return true;}if(st.sheet)return photosBack?.(st,currentApi); if(st.from==='camera'&&currentApi.S?.stack?.length)return photosBack?.(st,currentApi); if (preview?.id === st.open || captures.some(c => c.id === st.open) || albumRows.some(c => c.id === st.open)) { retirePhotoRead();currentApi.set({ open: null, nativePhotoSelection: null }); preview = undefined; closeVideo(); return true; } return photosBack?.(st, currentApi); };
-  if(views.photos)views.photos.onLeave=(owner:Bag)=>{cancelScan();retirePhotoRead();window.clearTimeout(thumbTimer);deviceLibrary.leave();shareReview=undefined;albumReview=undefined;closeQuestion?.();closeQuestion=undefined;void photoAttachments.cancelPhotoSelected().catch(()=>{});cancelEdit();editRecoveryChecked=false;automaticEditRecovery='';selection=undefined;selectionTab=undefined;swallowedTap='';endHold();manager=undefined;const old=prepared;prepared=undefined;if(old)void library.cancelDeleteTrash({confirmation:old.confirmation}).catch(()=>{});owner.set({sheet:null});photosLeave?.(owner);};
+  if (views.photos) views.photos.back = (st: Bag, currentApi: Bag) => { if(edit){void requestCancelEdit(currentApi);return true;}if(selection){cancelPhotoSelection(currentApi);return true;}if(st.sheet==='owned-album'){manager=undefined;currentApi.set({sheet:null});return true;}if(st.sheet==='empty'){cancelPermanent(currentApi);return true;}if(st.sheet)return photosBack?.(st,currentApi); if(st.from==='camera'&&currentApi.S?.stack?.length)return photosBack?.(st,currentApi); if (preview?.id === st.open || captures.some(c => c.id === st.open) || albumRows.some(c => c.id === st.open)) { retirePhotoRead();currentApi.set({ open: null, nativePhotoSelection: null }); preview = undefined; photoViewport.clear(); closeVideo(); return true; } return photosBack?.(st, currentApi); };
+  if(views.photos)views.photos.onLeave=(owner:Bag)=>{photoViewport.clear();cancelScan();retirePhotoRead();window.clearTimeout(thumbTimer);deviceLibrary.leave();shareReview=undefined;albumReview=undefined;closeQuestion?.();closeQuestion=undefined;void photoAttachments.cancelPhotoSelected().catch(()=>{});cancelEdit();editRecoveryChecked=false;automaticEditRecovery='';selection=undefined;selectionTab=undefined;swallowedTap='';endHold();manager=undefined;const old=prepared;prepared=undefined;if(old)void library.cancelDeleteTrash({confirmation:old.confirmation}).catch(()=>{});owner.set({sheet:null});photosLeave?.(owner);};
   async function playVideo(selected: SavedPhoto, owner: Bag) {
     if (selected.kind !== 'video') return;
+    const token=photoReadEpoch,current=()=>!disposed&&!document.hidden&&photoReadEpoch===token&&owner.isActive()&&owner.get('photos').open===selected.id&&sameCapture(selected);
     try {
       // Read verifies published MediaStore ownership before returning its local URI.
       const row = preview?.id === selected.id ? preview : normalize(await library.read({ id: nativeId(selected.id) }));
-      if (!row.path || owner.get('photos').open !== selected.id || !owner.isActive()) return;
-      if (videoId !== selected.id) {
-        closeVideo(); video = document.createElement('video'); videoId = selected.id;
+      if (!row.path || !current() || !captureUnchanged(selected,row)) return;
+      if (videoId !== selected.id || videoRevision !== (selected.contentRevision||selected.revision)) {
+        closeVideo(); video = document.createElement('video'); videoId = selected.id; videoRevision=selected.contentRevision||selected.revision;
         video.dataset.alphaCapturedVideo = selected.id; video.playsInline = true; video.preload = 'metadata';
         video.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;background:#000';
         video.src = row.path;
         video.setAttribute('type', 'video/mp4');
-        const update = () => { if (owner.isActive() && owner.get('photos').open === selected.id) owner.set({ nativePlaybackRevision: Date.now() }); };
-        video.onplay = update; video.onpause = update; video.ontimeupdate = update; video.onended = update;
-        video.onerror = () => { closeVideo(); owner.toast('Can’t play'); update(); };
+        const instance=video,update = () => { if (video===instance&&current()) owner.set({ nativePlaybackRevision: ++viewerRevision }); };
+        video.onplay = update; video.onpause = update; video.ontimeupdate = update; video.onended = update;video.onloadedmetadata=update;video.ondurationchange=update;video.onvolumechange=update;
+        video.onerror = () => { if(video!==instance||!current())return;closeVideo();owner.toast('Can’t play');owner.set({nativePlaybackRevision:++viewerRevision}); };
       }
-      mountVideo(); await video?.play();
-    } catch { owner.toast('Couldn’t play'); }
+      mountVideo(); if(video?.ended)video.currentTime=0;await video?.play();
+    } catch { if(current())owner.toast('Couldn’t play'); }
   }
   function mountVideo() {
     if (!video) return;

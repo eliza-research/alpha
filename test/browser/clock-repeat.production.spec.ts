@@ -56,6 +56,11 @@ for (const version of [1, 2]) test(`clockRepeatDaysVersion ${version}: Mon to Fr
   // Chosen out of order; the request is still the ascending Calendar values.
   for (const day of ['Fri', 'Mon', 'Wed', 'Tue', 'Thu']) await repeat.getByRole('button', { name: `Repeat on ${day}`, exact: true }).click();
   for (const day of weekdays) await expect(repeat.getByRole('button', { name: `Repeat on ${day}`, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(repeat).toContainText('Repeats weekdays');
+  // Repeat belongs only to Set; changing the action keeps the unfinished Set draft.
+  for(const action of ['Show alarms','Snooze','Dismiss']){await clock.getByRole('button',{name:action,exact:true}).click();await expect(clock.getByRole('group',{name:'Repeat',exact:true})).toHaveCount(0);}
+  await clock.getByRole('button',{name:'Set alarm',exact:true}).click();
+  await expect(repeat).toContainText('Repeats weekdays');
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
   await expect(clock).toContainText('06:30 · weekdays · Weekday wake');
   expect(await handoffs(page)).toEqual([]);

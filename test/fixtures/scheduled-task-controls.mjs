@@ -12,7 +12,7 @@ const route = 'apps/app/src/runtime/automations-route-policy.ts';
 const intentPrefix = 'alpha.workflow.pending.v1:';
 const listPath = '/api/lifeops/scheduled-tasks?ownerVisibleOnly=1';
 const taskPath = '/api/lifeops/scheduled-tasks/weekly';
-const prepare = join(root, 'scripts/prepare-client-features.mjs');
+const prepare = join(root, 'scripts/prepare-client-features.ts');
 const pin = join(root, 'upstream.lock.json');
 const fixture = fileURLToPath(import.meta.url);
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');

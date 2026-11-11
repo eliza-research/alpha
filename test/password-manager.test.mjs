@@ -22,15 +22,17 @@ let loads=0,mounted;
 test.afterEach(()=>mounted?.leavePasswordManager());
 
 /** A fresh module over a bridge that records each call; `fail` makes a method reject once. */
-async function mount({selected='none'}={}){
+async function mount({selected='none',damaged=false}={}){
  const calls=[],fail={};let unlocked=false;
  const entry={id:'e1',label:'Shop',username:'sam@example.test',updatedAt:1,bindings:[{kind:'web',facet:'https://shop.example.test',display:'shop.example.test'}]};
  const reject=name=>{const error=fail[name];if(error){delete fail[name];throw error;}};
  globalThis.__passwordVault={
   async status(){calls.push(['status']);return {available:true,locked:!unlocked,unlockRemainingMs:unlocked?58_000:0,unlockSeconds:58,biometric:true,autofill:{supported:true,selected}};},
-  async unlock(){calls.push(['unlock']);unlocked=true;return {unlocked:true,unlockRemainingMs:58_000};},
+  async unlock(){calls.push(['unlock']);reject('unlock');unlocked=true;return {unlocked:true,unlockRemainingMs:58_000};},
   async lock(){calls.push(['lock']);unlocked=false;return {locked:true};},
-  async list(){calls.push(['list']);return {entries:[entry]};},
+  async list(){calls.push(['list']);if(damaged){unlocked=false;throw Object.assign(Error('The vault key changed'),{code:'key-invalidated'});}return {entries:[entry]};},
+  async remove(input){calls.push(['remove',input]);return {removed:true};},
+  async reset(){calls.push(['reset']);damaged=false;return {reset:true};},
   async save(input){calls.push(['save',input]);reject('save');return {id:input.id||'e2'};},
   async copy(input){calls.push(['copy',input]);reject('copy');return {copied:true,clearsAfterMs:45_000};},
   async reveal(input){calls.push(['reveal',input]);reject('reveal');return {shown:true,hidesAfterMs:30_000};},
@@ -46,7 +48,13 @@ async function mount({selected='none'}={}){
  const type=(label,value)=>find(rows(entryPage().groups),label).change({target:{value}});
  const press=async(list,label)=>{find(list,label).go();await settle();};
  const openShop=async()=>{manager();await settle();await press(manager(),'Unlock');await press(manager(),'Shop');};
- return {pm,calls,fail,toasts,pages,manager,entryPage,rows,find,type,press,openShop,setLocked:()=>{unlocked=false;}};
+ const hold=method=>{
+  const bridge=globalThis.__passwordVault,original=bridge[method];let release,started;
+  const waiting=new Promise(resolve=>{started=resolve;});
+  bridge[method]=async(...args)=>{bridge[method]=original;const value=await original(...args);started();return new Promise(resolve=>{release=()=>resolve(value);});};
+  return {waiting,release:()=>release()};
+ };
+ return {pm,calls,fail,toasts,pages,manager,entryPage,rows,find,type,press,openShop,hold,setLocked:()=>{unlocked=false;}};
 }
 
 test('a rejected save keeps the typed password, so the retry sends it',async()=>{
@@ -90,6 +98,74 @@ test('leaving, backgrounding and Lock still forget the draft',async()=>{
  let t=await mount();await t.openShop();t.pm.leavePasswordManager();assert.equal(t.entryPage(),null);
  t=await mount();t.pm.passwordManagerLifecycle(()=>{});await t.openShop();document.hidden=true;listeners.visibilitychange();document.hidden=false;assert.equal(t.entryPage(),null);
  t=await mount();await t.openShop();await t.press(t.manager(),'Lock');assert.equal(t.entryPage(),null);
+});
+
+test('Lock fences a list response already waiting in the renderer',async()=>{
+ const t=await mount();await t.openShop();const held=t.hold('list');
+ t.pm.refreshPasswordManager();await held.waiting;
+ await t.press(t.manager(),'Lock');
+ held.release();await settle();
+ assert.equal(t.pm.passwordManagerHoldsEntries(),false);
+ assert.ok(t.manager().some(row=>row.label==='Unlock'));
+});
+
+test('unlock expiry fences a delayed metadata refresh',async()=>{
+ mock.timers.enable({apis:['setTimeout']});
+ try{
+  const t=await mount();await t.openShop();const held=t.hold('list');
+  t.pm.refreshPasswordManager();await held.waiting;t.setLocked();mock.timers.tick(58_000);
+  held.release();await settle();
+  assert.equal(t.pm.passwordManagerHoldsEntries(),false);
+  assert.equal(t.entryPage().groups[0].rows[0].label,'Unlock');
+ }finally{mock.timers.reset();}
+});
+
+test('a completed removal cannot navigate or refresh after leaving Passwords',async()=>{
+ const t=await mount();await t.openShop();const held=t.hold('remove');
+ await t.press(t.rows(t.entryPage().groups),'Delete');
+ t.find(t.rows(t.entryPage().groups),'Confirm delete').go();await held.waiting;
+ t.pm.leavePasswordManager();const pages=t.pages.length,statusReads=t.calls.filter(([method])=>method==='status').length;
+ held.release();await settle();
+ assert.equal(t.pages.length,pages,'the old task cannot reopen Passwords');
+ assert.equal(t.calls.filter(([method])=>method==='status').length,statusReads,'the old task cannot start a new refresh');
+ assert.equal(t.pm.passwordManagerHoldsEntries(),false);
+});
+
+test('leaving during reset authentication never calls reset from the retired page',async()=>{
+ const t=await mount({damaged:true});t.manager();await settle();await t.press(t.manager(),'Unlock');
+ await t.press(t.manager(),'Reset vault');
+ const held=t.hold('unlock');t.find(t.manager(),'Confirm reset').go();await held.waiting;
+ t.pm.leavePasswordManager();held.release();await settle();
+ assert.equal(t.calls.filter(([method])=>method==='reset').length,0);
+});
+
+test('a refresh retires the earlier reset review',async()=>{
+ const t=await mount({damaged:true});t.manager();await settle();await t.press(t.manager(),'Unlock');
+ await t.press(t.manager(),'Reset vault');
+ t.pm.refreshPasswordManager();await settle();
+ assert.ok(t.manager().some(row=>row.label==='Reset vault'));
+ assert.ok(!t.manager().some(row=>row.label==='Confirm reset'));
+});
+
+test('an old task cannot block or clear the busy state of a new password visit',async()=>{
+ const t=await mount();await t.openShop();const copy=t.hold('copy');
+ t.find(t.rows(t.entryPage().groups),'Copy password').go();await copy.waiting;
+ t.pm.leavePasswordManager();t.manager();await settle();
+ const unlock=t.hold('unlock');t.find(t.manager(),'Unlock').go();await settle();
+ assert.equal(t.calls.filter(([method])=>method==='unlock').length,2,'the new visit can unlock while an old callback is pending');
+ await unlock.waiting;copy.release();await settle();
+ assert.ok(t.manager().some(row=>row.label==='Unlocking…'));
+ assert.deepEqual(t.toasts,[],'a previous visit cannot publish a copy notice');
+ unlock.release();await settle();assert.ok(t.manager().some(row=>row.label==='Shop'));
+});
+
+test('a refused reset authentication needs a fresh review',async()=>{
+ const t=await mount({damaged:true});t.manager();await settle();await t.press(t.manager(),'Unlock');
+ await t.press(t.manager(),'Reset vault');
+ t.fail.unlock=Object.assign(Error('Authentication cancelled'),{code:'cancelled'});
+ await t.press(t.manager(),'Confirm reset');
+ assert.ok(t.manager().some(row=>row.label==='Reset vault'));
+ assert.equal(t.calls.filter(([method])=>method==='reset').length,0);
 });
 
 

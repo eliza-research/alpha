@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import {verifyVoiceHost} from '../scripts/voice-host.mjs';
+import {verifyVoiceHost} from '../scripts/voice-host.ts';
 
 const baseline = JSON.parse(fs.readFileSync(new URL('../android/voice-host/qualified-voice-host.json', import.meta.url), 'utf8'));
 const asrSlot = fs.readFileSync(new URL('../android/paradee-voice/asr-inputs.json', import.meta.url));

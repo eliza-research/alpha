@@ -8,8 +8,8 @@ import {appInfoPlatform, appInfoSource, launcherPath, pluginCallSource} from './
 import {directory, javaTraces, root} from './java.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 import {prepareNativeFixture} from '../../../../test/fixtures/native-source.mjs';
-import {verifyNativePatchReceipt} from '../../../../scripts/prepare-patched-native.mjs';
-import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.mjs';
+import {verifyNativePatchReceipt} from '../../../../scripts/prepare-patched-native.ts';
+import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 
 const model = 'NativeAppInfoHandoff';
 const harness = 'AppInfoHandoffTraces.java';
@@ -27,7 +27,7 @@ export async function withAppInfoSource(run, extraSources = []) {
       appInfoSource, pluginCallSource, 'vendor/eliza/' + launcherPath,
       'android/consumer-host.json', 'upstream.lock.json', 'android/upstream-native-sources.json',
       'test/fixtures/native-source.mjs', 'test/fixtures/jvm-tools.mjs',
-      'scripts/prepare-patched-native.mjs', 'scripts/upstream-native-source.mjs',
+      'scripts/prepare-patched-native.ts', 'scripts/upstream-native-source.ts',
       ...['Trace.java', 'java.mjs', 'app-info-handoff-platform.mjs'].map(name => join(directory, name)),
       fileURLToPath(import.meta.url), ...(jsonJar ? [jsonJar] : []), ...generatedSources, ...extraSources,
     ];

@@ -151,3 +151,36 @@ test('a restored tab keeps its committed address while a reload is interrupted',
  await expect(page.getByRole('button',{name:'Tabs',exact:true})).toHaveText('1');
  expect((await saved(page)).tabs[0].url).toBe('https://signins.example/retained');
 });
+
+test('a save failure reports once and retries without following the geometry polling rate',async({page})=>{
+ await page.evaluate(async()=>{
+  const {BrowserSurface}=await import('/src/browser/browser-surface.ts'),save=BrowserSurface.prototype.saveBrowsingState;
+  const w=window as any;w.sessionSaveCalls=0;w.sessionSaveFail=true;
+  BrowserSurface.prototype.saveBrowsingState=async function(input:any){w.sessionSaveCalls++;if(w.sessionSaveFail)throw Error('Controlled storage failure');return save.call(this,input);};
+ });
+ await openBrowser(page);await navigate(page,'retry-save');
+ await expect(page.getByText('Tabs and history could not be saved. Alpha will try again shortly.',{exact:true})).toBeVisible();
+ const count=await page.evaluate(()=>(window as any).sessionSaveCalls);
+ await page.waitForTimeout(1000);
+ expect(await page.evaluate(()=>(window as any).sessionSaveCalls)).toBe(count);
+ await page.evaluate(()=>(window as any).sessionSaveFail=false);
+ await expect.poll(async()=>(await saved(page)).tabs.map((tab:any)=>tab.url)).toEqual(['https://signins.example/retry-save']);
+});
+
+test('Clear browsing data cannot be overtaken by a held earlier save',async({page})=>{
+ await page.evaluate(async()=>{
+  const {BrowserSurface}=await import('/src/browser/browser-surface.ts'),save=BrowserSurface.prototype.saveBrowsingState,clear=BrowserSurface.prototype.clearBrowsingData;
+  const w=window as any;w.sessionSaveCalls=0;w.sessionClearCalls=0;
+  BrowserSurface.prototype.saveBrowsingState=async function(input:any){w.sessionSaveCalls++;if(w.sessionSaveCalls===1)await new Promise<void>(resolve=>w.releaseSessionSave=resolve);return save.call(this,input);};
+  BrowserSurface.prototype.clearBrowsingData=async function(input:any){w.sessionClearCalls++;return clear.call(this,input);};
+ });
+ await openBrowser(page);await navigate(page,'held-save');
+ await expect.poll(()=>page.evaluate(()=>(window as any).sessionSaveCalls)).toBe(1);
+ await navigate(page,'queued-save');
+ await menu(page,'Clear browsing data');await page.getByRole('dialog',{name:'Clear browsing data?'}).getByRole('button',{name:'Clear data',exact:true}).click();
+ expect(await page.evaluate(()=>(window as any).sessionClearCalls)).toBe(0);
+ await page.evaluate(()=>(window as any).releaseSessionSave());
+ await expect(page.getByText('Browsing data cleared',{exact:true})).toBeVisible();
+ await expect.poll(async()=>await saved(page)).toEqual({history:[],tabs:[],cur:''});
+ expect(await page.evaluate(()=>(window as any).sessionSaveCalls)).toBe(1);
+});

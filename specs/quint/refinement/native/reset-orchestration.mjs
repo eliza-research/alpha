@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {runInNewContext} from 'node:vm';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {app, directory, javaTraces, root} from './java.mjs';
-import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.mjs';
+import {preparePatchedNative} from '../../../../scripts/prepare-patched-native.ts';
 
 const fixturePath = 'test/reset-startup.test.mjs';
 const productSources = ['AlphaDataReset.java', 'AlphaApplication.java'].map(name => app + name);

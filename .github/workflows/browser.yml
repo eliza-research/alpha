@@ -61,8 +61,8 @@ jobs:
         run: |
           export ALPHA_BUN="$(command -v bun)"
           test "$("$ALPHA_BUN" --version)" = '1.4.2'
-          node scripts/prepare-local-agent.mjs
-          prepared_source=$(node --input-type=module -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.mjs'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
+          node scripts/prepare-local-agent.ts
+          prepared_source=$(node --input-type=module -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
           echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
           echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
       - run: npm run verify
@@ -89,13 +89,12 @@ jobs:
           VITE_ALPHA_CLOUD_RESIDENT: '1'
           VITE_ALPHA_CLOUD_ENVIRONMENT: staging
           VITE_LOCAL_AGENT: '1'
-          VITE_ELIZA_RUNTIME_PROFILE: cloud
           VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ''
           ELIZA_DEV_ALLOW_TEST_MOCKS: ''
         run: |
           npx vite build --outDir ../../test-results/browser-proof-renderer
-          node scripts/audit-production-bundle.mjs test-results/browser-proof-renderer
-          node scripts/ci/export-browser-proof.mjs renderer
+          node scripts/audit-production-bundle.ts test-results/browser-proof-renderer
+          node scripts/ci/export-browser-proof.ts renderer
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: browser-proof-renderer-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -104,7 +103,7 @@ jobs:
           if-no-files-found: error
       # Recorded develop compare; warns (never networks) when develop cannot reach the pin.
       - name: Report upstream develop reachability
-        run: node scripts/verify-upstream.mjs --reachability-only
+        run: node scripts/verify-upstream.ts --reachability-only
   formal:
     name: Changed-model proofs
     needs: changes
@@ -171,7 +170,7 @@ jobs:
           # Development shards opt into test mocks, fixtures and device controls explicitly.
           ELIZA_DEV_ALLOW_TEST_MOCKS: '1'
           ALPHA_CI_BROWSER_SPECS: ${{ needs.changes.outputs.browser_specs }}
-        run: node scripts/ci/run-browser.mjs --shard=${{ matrix.shard }}/${{ needs.changes.outputs.browser_total }}
+        run: node scripts/ci/run-browser.ts --shard=${{ matrix.shard }}/${{ needs.changes.outputs.browser_total }}
       # Every case in these files needs the local-agent bridge profile. The bridge answers the
       # reminder spec's storage route itself, so the unreachable synthetic agent origin is enough.
       - name: Exercise synthetic local-agent speech profile and host reminder recovery
@@ -220,7 +219,7 @@ jobs:
       - name: Test-mocks bundle records its flag
         run: |
           npm run build:test-mocks -- --outDir ../../test-results/test-mocks-web
-          node scripts/audit-production-bundle.mjs test-results/test-mocks-web --expect-test-mocks
+          node scripts/audit-production-bundle.ts test-results/test-mocks-web --expect-test-mocks
       # Builds and previews a flag-off bundle; the flag is deliberately unset here.
       - run: npm run test:browser:production
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -253,7 +252,7 @@ jobs:
           BROWSER_SELECTED: ${{ github.event_name != 'push' && needs.changes.outputs.browser == 'true' && needs.changes.outputs.browser_development }}
           PRODUCTION: ${{ needs.production.result }}
           PRODUCTION_SELECTED: ${{ github.event_name != 'push' && needs.changes.outputs.browser == 'true' && needs.changes.outputs.browser_production }}
-        run: node scripts/ci/required-result.mjs "changes=$CHANGES" "verify=$VERIFY:$VERIFY_SELECTED" "formal=$FORMAL:$VERIFY_SELECTED" "browser=$BROWSER:$BROWSER_SELECTED" "production=$PRODUCTION:$PRODUCTION_SELECTED"
+        run: node scripts/ci/required-result.ts "changes=$CHANGES" "verify=$VERIFY:$VERIFY_SELECTED" "formal=$FORMAL:$VERIFY_SELECTED" "browser=$BROWSER:$BROWSER_SELECTED" "production=$PRODUCTION:$PRODUCTION_SELECTED"
   storage:
     if: github.event_name == 'workflow_dispatch' && inputs.cross_browser
     name: Browser storage (${{ matrix.browser }}, shard ${{ matrix.shard }}/2)

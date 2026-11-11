@@ -1,3 +1,4 @@
+import {confirmCalendarAction} from './calendar-confirmation';
 import {Capacitor} from '@capacitor/core';
 import {AssistantDraftController} from './assistant-draft-controller';
 import {assistantDraftStore} from '../runtime/assistant-draft-store';
@@ -48,10 +49,10 @@ export function installCalendarEditDraftAdapter(Component:any,views:Bag,options:
   out.editDraftError=active&&draft.error;out.editDraftListError=!state.form&&draft.error;
   out.editDraftSavedTitle=(()=>{try{return decodeCalendarEdit(draft.savedText).form.title||'Untitled event';}catch{return 'Unavailable';}})();
   const restore=(saved=false)=>{try{shell.calendarEditDraftRestore=true;if(saved)controller.restoreSaved();else{const restored=decodeCalendarEdit(shell.calendarEditDraftText);shell.calendarEditDraftAnchor=new Date();shell.calendarEditDraftIdentity=calendarEditIdentity(restored.form);api.set({form:restored.form,open:null,month:null});if(restored.zone!==Intl.DateTimeFormat().resolvedOptions().timeZone)api.toast('Time zone changed');}}catch{api.toast('Can’t restore');}finally{shell.calendarEditDraftRestore=false;}};
-  out.discardEditDraft=()=>{if(state.form||!window.confirm('Discard edits?'))return;const text=shell.calendarEditDraftText;void controller.consume(text,()=>shell.live&&!shell.vget('calendar').form).catch(()=>api.toast('Draft changed'));};
+  out.discardEditDraft=async()=>{if(state.form)return;const text=shell.calendarEditDraftText,current=()=>owner===shell&&shell.live&&api.isActive()&&!shell.vget('calendar').form&&shell.calendarEditDraftText===text;if(!await confirmCalendarAction(shell,api,'Discard edits?','','Discard edits',current)||!current())return;void controller.consume(text,()=>owner===shell&&shell.live&&api.isActive()&&!shell.vget('calendar').form).catch(()=>{if(owner===shell&&shell.live&&api.isActive())api.toast('Draft changed');});};
   out.resumeEditDraft=()=>restore();out.restoreEditDraft=()=>restore(true);out.replaceEditDraft=()=>controller.keepCurrent();out.retryEditDraft=()=>controller.retry();
   out.recoverEditDraft=()=>{const recovery=controller.recovery();if(!recovery)return;shell.calendarEditDraftRecovery?.abort();const abort=shell.calendarEditDraftRecovery=new AbortController();openDomainRecovery({capture:async signal=>{const captured=await recovery.capture(signal);return {...captured,raw:JSON.stringify({saved:captured.raw,currentForm:shell.vget('calendar').form?snapshotCalendarEdit(shell.vget('calendar').form):shell.calendarEditDraftText})};},reset:recovery.reset},'calendar edits','Calendar edit recovery','Download first',abort.signal,undefined,Capacitor.getPlatform()==='android'?'device':'browser');};
-  if(out.ev?.edit){const edit=out.ev.edit;out.ev.edit=()=>{if(shell.calendarEditDraftText&&!window.confirm('Replace edits?'))return;return edit();};}
+  if(out.ev?.edit){const edit=out.ev.edit;out.ev.edit=async()=>{const text=shell.calendarEditDraftText,open=state.open,current=()=>owner===shell&&shell.live&&api.isActive()&&shell.vget('calendar').open===open&&!shell.vget('calendar').form&&shell.calendarEditDraftText===text;if(text&&!await confirmCalendarAction(shell,api,'Replace edits?','','Replace edits',current))return;if(current())return edit();};}
   return out;
  };
 }

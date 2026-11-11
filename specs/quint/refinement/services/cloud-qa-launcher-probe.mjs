@@ -6,17 +6,17 @@ import {execFileSync} from 'node:child_process';
 import {registerHooks} from 'node:module';
 import {basename, dirname, join, resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {CORE_STATE_MANIFEST} from '../../../../scripts/core-state-patch.mjs';
-import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
+import {CORE_STATE_MANIFEST} from '../../../../scripts/core-state-patch.ts';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.ts';
 import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
 
 const repository = resolve(import.meta.dirname, '../../../..');
-const launcher = 'scripts/start-cloud-qa.mjs';
+const launcher = 'scripts/start-cloud-qa.ts';
 const shared = 'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs';
 const support = [
-  launcher, shared, 'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
-  'scripts/cloud-sdk-authority.mjs', 'scripts/native-view-policy.mjs',
-  'scripts/cloud-deployment-policy.mjs',
+  launcher, 'scripts/private-runtime-launch.ts', shared, 'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
+  'scripts/cloud-sdk-authority.ts', 'scripts/native-view-policy.ts',
+  'scripts/cloud-deployment-policy.ts',
 ];
 const input = 'synthetic-staging-fixture-input';
 const model = 'reviewed/fixture-model';
@@ -193,7 +193,7 @@ console.log = line => {
 };
 const launchUrl = pathToFileURL(join(root, launcher)).href;
 const sharedUrl = pathToFileURL(join(root, shared)).href;
-const coreUrl = pathToFileURL(join(root, 'scripts/core-state-patch.mjs')).href;
+const coreUrl = pathToFileURL(join(root, 'scripts/core-state-patch.ts')).href;
 const immutableUrl = pathToFileURL(join(root, 'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs')).href;
 globalThis.cloudQaPorts = {
   fs: {
@@ -300,7 +300,7 @@ globalThis.cloudQaPorts = {
   },
   spawn(executable, argv, options) {
     assert.equal(executable, command);
-    assert.deepEqual(argv, ['--preload', join(root, 'scripts/core-state-preload.mjs'), '--no-install', '--conditions=eliza-source', entry]);
+    assert.deepEqual(argv, ['--preload', join(root, 'scripts/core-state-preload.ts'), '--no-install', '--conditions=eliza-source', entry]);
     assert.equal(options.cwd, profile);
     assert.deepEqual(options.stdio, ['ignore', logFd, logFd]);
     const env = options.env;

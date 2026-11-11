@@ -19,7 +19,8 @@
     ],
     "abstractions": [
       "Finite representative identities and contents. Exact source symbols and modeling limits are documented in the family README.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "Model safety checks do not establish implementation refinement or device acceptance.",
+      "The review/dispatch branch describes explicit-review effects only; optional current-request execution is modeled against the actual coordinator by DeviceActionReview. ReviewedDispatch is not a universal claim that every device effect requires a second tap."
     ]
   },
   {
@@ -263,7 +264,9 @@
       "backgroundPreventsResetTest",
       "explicitTestBuildTransferTest",
       "leaveRetiresResetReviewTest",
-      "nativeLockRefusesPendingResetTest"
+      "nativeLockRefusesPendingResetTest",
+      "lockRetiresPendingMetadataTest",
+      "refreshRetiresResetReviewTest"
     ],
     "sources": [
       "apps/app/src/passwords/password-manager.ts",
@@ -563,11 +566,11 @@
     "invariant": "safety",
     "sources": [
       "scripts/browser-cloud-dev-bridge.ts",
-      "scripts/cloud-resident-host.mjs",
-      "scripts/dev-cloud.mjs",
-      "scripts/dev-local.mjs",
-      "scripts/start-local-voice-agent.mjs",
-      "scripts/start-local-remote.mjs",
+      "scripts/cloud-resident-host.ts",
+      "scripts/dev-cloud.ts",
+      "scripts/dev-local.ts",
+      "scripts/start-local-voice-agent.ts",
+      "scripts/start-local-remote.ts",
       "scripts/cloud-email-code.ts"
     ],
     "tests": [
@@ -1086,7 +1089,7 @@
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/files-agent-contract.ts",
       "upstream.lock.json",
-      "scripts/prepare-client-features.mjs"
+      "scripts/prepare-client-features.ts"
     ],
     "abstractions": [
       "One outstanding storageSelect capability, three owner epochs, one representative selected identity. The caller keeps the document visible while awaiting selection.",
@@ -3502,7 +3505,7 @@
     ],
     "sources": [
       "scripts/stage-alpha-os-branding.py",
-      "scripts/generate-alpha-os-branding.mjs",
+      "scripts/generate-alpha-os-branding.ts",
       "scripts/fetch-alpha-os-preset-inputs.py"
     ],
     "abstractions": [
@@ -3617,6 +3620,117 @@
       "One voice turn, one old and one delivered user-row ID, and matching/mismatched conversation and text classes. Both accepted-final/delivery orderings are explicit. No model/provider/native calls.",
       "Render is a snapshot/commit macrostep. Progress scenarios assume the accepted callback and matching delivery occur and React performs a subsequent commit; no scheduler fairness or unbounded liveness proof is claimed.",
       "Focus is an unchanged abstract field. Real focus, scroll geometry, resize transitions, multi-turn sessions, streaming layout and message-delivery ordering remain separate browser/runtime conformance obligations. The independent browser regression supplies that evidence."
+    ]
+  },
+  {
+    "path": "specs/quint/application/DeviceActionReview.qnt",
+    "module": "DeviceActionReview",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "reviewedEffectTest",
+      "failedUploadDoesNotReplayTest",
+      "abortBeforeEffectTest",
+      "staleCardTest",
+      "directRequestTest",
+      "askFirstTest",
+      "foreignRequestTest",
+      "changedJournalIdentityTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/device-actions.ts",
+      "apps/app/src/runtime/alpha-client.ts",
+      "apps/app/src/browser/device-preferences.ts"
+    ],
+    "sharedSources": [
+      "plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts",
+      "packages/contracts/src/device-action-execution.ts"
+    ],
+    "abstractions": [
+      "One opaque proposal and effect; actual coordinator source replay observes controlled journal/transport/executor ports.",
+      "Context equality, reservation identity, server decision/claim, durable applying/terminal and no-replay are distinct observation boundaries.",
+      "Direct mode still requires enumerated operation/current request/preference admission. Domain-specific ports, multi-proposal batch, browser request proofs and physical durability are separate contracts."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CalendarApprovalReview.qnt",
+    "module": "CalendarApprovalReview",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "approveTest",
+      "rejectTest",
+      "lostReplyNeverRearmsTest",
+      "lateReadTest",
+      "lateDecisionTest",
+      "copiedRowTest",
+      "abortedReadAdmissionTest",
+      "changedRowTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/calendar-approval-client.ts",
+      "apps/app/src/runtime/calendar-approval.ts",
+      "apps/app/src/prototype/calendar-approval-adapter.ts",
+      "apps/app/src/prototype/calendar-approval-review.ts"
+    ],
+    "abstractions": [
+      "One exact authenticated read admission is consumed before one typed POST with the captured revision.",
+      "Actual source replay covers finite results, copied/terminal/expired/foreign rows, owner retirement including A-B-A, abort, late reply and lost response.",
+      "DOM presentation reread and provider/server CAS behavior remain separate boundaries."
+    ]
+  },
+  {
+    "path": "specs/quint/application/BrowserNoteRecordingJournal.qnt",
+    "module": "BrowserNoteRecordingJournal",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "invariants": [
+      "RetiredBytesStayRetired",
+      "BoundFields"
+    ],
+    "tests": [
+      "bytesPrecedeManifestTest",
+      "retryPreservesLateTextTest",
+      "retirementFencesPreparedSaveTest",
+      "partialRetirementIsUnreadableTest",
+      "retiredReadCannotReturnDeletedBytesTest",
+      "retirementBeforePublicationIsNoOpTest",
+      "offsetSegmentsNeedNoClipsTest"
+    ],
+    "sources": [
+      "apps/app/src/browser/note-recording-journal.ts"
+    ],
+    "abstractions": [
+      "Closed multi-document store with one recording and representative owner/folder, read/write failure and retry schedules. Retirement before first manifest publication is a no-op. Browser persistence and unbounded concurrent writers remain separate."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ScheduledSnoozeAdmission.qnt",
+    "module": "ScheduledSnoozeAdmission",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "invariants": [
+      "ExactRequest",
+      "ConfirmationRequiresRequest",
+      "FutureAtDispatch"
+    ],
+    "tests": [
+      "recurrenceDeferralTest",
+      "validDeferralContinuesTest",
+      "earlyDeferralRepairsTest",
+      "expiredReviewRefusesTest",
+      "mismatchedReceiptRefusesTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/automations-protocol.ts",
+      "apps/app/src/runtime/workflow-local-time.ts"
+    ],
+    "abstractions": [
+      "One explicit snooze request with representative recurring times, saved timezone and DST transitions. Response identity, expiry and cancellation execute through closed protocol ports. Scheduler persistence and actual delivery remain separate."
     ]
   }
 ]

@@ -179,6 +179,11 @@ test('location tiles ask the picker for a list of valid document types',()=>{
 });
 test('a Settings page identity is its section slug; credential pages have none',()=>{
  assert.deepEqual(m.settingsSelection({page:'privacy'}),{kind:'settings',id:'privacy'});
+ assert.deepEqual(m.settingsSelection({page:null,settingsCategory:'settings-apps'}),{kind:'settings',id:'settings-apps'});
+ assert.deepEqual(m.settingsSelection({page:'display',settingsCategory:'settings-general'}),{kind:'settings',id:'display'});
+ assert.equal(m.settingsSelection({page:null,settingsCategory:'passwords'}),undefined);
+ assert.equal(m.settingsSelection({page:null,settingsCategory:'display'}),undefined);
+ assert.equal(m.settingsSelection({page:'password-entry',settingsCategory:'settings-apps'}),undefined);
  assert.deepEqual(sanitizePhoneContext({view:'settings',revision:2,sensitive:false,selectedObject:m.settingsSelection({page:'display'})}).selectedObject,{kind:'settings',id:'display'});
  for(const page of ['passwords','vault','unlock','api-keys','Privacy','a b',null,undefined,7])assert.equal(m.settingsSelection({page}),undefined,String(page));
  assert.equal(m.settingsSelection(undefined),undefined);

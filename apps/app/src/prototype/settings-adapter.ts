@@ -3,7 +3,8 @@ import {BrowserReviews} from '../browser/review';
 import {residentRecoveryCopy} from '../runtime/resident-recovery';
 import {cloudServiceName} from '../runtime/cloud-protocol';
 import {browserDevProfile as devProfileQuery,developerTools} from '../browser/dev-profile';
-import {cloudRuntimeEnabled,testMocksEnabled,devSurfacesEnabled} from '../build-flags';
+import {testMocksEnabled,devSurfacesEnabled} from '../build-flags';
+import {speechRoute,type SpeechRoute} from '../runtime/voice-selection';
 import {openCalendarRecovery} from '../browser/calendar-recovery';
 import {openNotificationRecovery} from '../browser/notification-recovery';
 import {openAlertSoundRecovery,openDevicePreferencesRecovery,openDeviceRolesRecovery} from '../browser/preference-recovery';
@@ -43,7 +44,7 @@ const browserDevProfile = devSurfacesEnabled && devProfileQuery;
 /** Build version injected at build time from app.config.json or ELIZAOS_VERSION_NAME. */
 export const buildVersion = typeof __APP_VERSION__ === 'string' && __APP_VERSION__ ? __APP_VERSION__ : 'Unavailable';
 export type LicenseNotice = { name: string; version: string; license: string; source: string; text: string; flags?: unknown; obligations?: unknown };
-/** Labels for the flags scripts/licence-policy.mjs writes into the shipped notices. An unlisted flag is shown as written. */
+/** Labels for the flags scripts/licence-policy.ts writes into the shipped notices. An unlisted flag is shown as written. */
 const LICENSE_FLAG_LABELS: Record<string, string> = {
   'copyleft-strong': 'Copyleft (GPL family)', 'network-copyleft': 'Network copyleft (AGPL)', 'copyleft-weak': 'Weak copyleft (LGPL, MPL, EPL)',
   'share-alike-data': 'Share-alike data', 'unknown-licence': 'Unknown license', 'licence-text-missing-from-package': 'No license file in package',
@@ -193,11 +194,13 @@ export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?
     !shell.homeEdit && !shell.homeAdd && !shell.drawerMenu &&
     !connection.busy && !connection.open && !editor;
 }
-/** Cloud QA profile facts replace prototype navigation, not device settings links. */
-export function cloudPrivacyRow(label: string): [string, string] | null {
-  if (label === 'Leaves this device') return ['Shared with Cloud', 'Messages, content'];
-  if (label === 'On-device model') return ['Voice', 'Recordings, replies'];
-  return null;
+/** The Privacy page's voice fact: the speech route in use now (voice-selection.ts) and what it sends.
+ * It replaces the prototype's on-device model row; device settings links are untouched. */
+export function voicePrivacyRow(label: string, route: SpeechRoute, serviceName = 'Cloud'): [string, string] | null {
+  if (label !== 'On-device model') return null;
+  if (route === 'cloud') return ['Voice', `Recordings, replies → ${serviceName}`];
+  if (route === 'direct') return ['Voice', 'Recordings, replies → Cartesia'];
+  return ['Voice', 'On this phone'];
 }
 /** A stale or direct Developer selection cannot open the page in a product build. */
 export function settingsPage(page: string | null | undefined, developerSurfaces: boolean): string | null | undefined {
@@ -253,6 +256,7 @@ function checkForUpdate(force: boolean): Promise<boolean> | undefined {
 /** Keep the reference settings components; never present fixture device facts. */
 export function installSettingsAdapter(Component: any, views: Bag) {
   const definition = views.settings, render = definition.render, p = Component.prototype;
+  definition.state={...definition.state,settingsCategory:null};
   const mount = p.componentDidMount, unmount = p.componentWillUnmount, openView = p.openView, update = p.componentDidUpdate;
   // Android Back on New or Edit password returns to the unlocked list, like the page's own Back.
   const back = definition.back;
@@ -260,7 +264,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (st.page === 'password-entry' && !st.sheet) { leavePasswordEntry(); api.set({ page: 'password-provider' }); return true; }
     return back?.(st, api) ?? false;
   };
-  let owner: any, facts: Bag = {}, controls: Bag = {}, delivery: Bag = {}, generation = 0,scaleGeneration=0, cross:Bag={}, choices:Bag[]|null=null, history:Bag[]|null=null, notificationBusy=false;
+  let owner: any, facts: Bag = {}, controls: Bag = {}, delivery: Bag = {}, generation = 0,scaleGeneration=0,scaleVersion=0,scalePending=false, cross:Bag={}, choices:Bag[]|null=null, history:Bag[]|null=null, notificationBusy=false;
   let passwordOpening=false,photoAccessBusy=false,protonOpen=false;
   let photoAccess:PhotoAccess|null=null;
   let recovery: RecoveryDomain[] = [];
@@ -269,7 +273,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   let gmailAccounts: GmailAccount[] = [], gmailBusy = '', settingsApi: Bag | undefined;
   let roles: Record<string, RoleRow> | null = null, launcher: boolean | null = null, roleBusy = false;
   let crashLog: CrashLog | null = null, crashBusy = false, diagnosticsBusy = false;
-  let updateBusy: '' | 'check' | 'install' = '';
+  let updateBusy: '' | 'check' | 'install' = '', updateResult='';
   const reviews=new BrowserReviews();
   async function review(id:string,title:string,details:string,label:string,guard:()=>boolean=()=>true){
     const instance=owner,page=owner?.vget('settings').page,session=connectionController.getSnapshot().session,cloud=connectionController.getCloudClient()?.sessionId;
@@ -464,14 +468,18 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     catch { if (owner === instance) api.toast('Couldn’t clear'); }
     finally { crashBusy = false; if (owner === instance) changed(); }
   }
-  /** Software update is quiet: only the busy label changes while a check or install runs. */
+  /** Background checks stay quiet; the owner's explicit check keeps its result in Settings. */
   async function updateAction(busy: 'check' | 'install', run: () => Promise<unknown> | undefined) {
     if (updateBusy) return;
-    updateBusy = busy; changed();
-    try { await run(); } finally { updateBusy = ''; changed(); }
+    const instance=owner;
+    updateBusy = busy; if(busy==='check')updateResult=''; changed();
+    try {
+      const answered=await run();
+      if(owner===instance&&busy==='check')updateResult=answered===false?'Couldn’t check for updates. Try again.':parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner})?'A compatible update is ready below.':'No compatible update was offered.';
+    } finally { if(owner===instance){updateBusy = ''; changed();} }
   }
   async function refresh() {
-    const instance = owner, token = ++generation;
+    const instance = owner, token = ++generation, scaleAtRead = scaleVersion;
     if (!instance) return;
     const native = Capacitor.isNativePlatform();
     const [state, settings, noticeState, crossState, metadata, roleState, build, problems, photos] = await Promise.allSettled([device.snapshot(), system.getDeviceSettings(), notifications.status(), notifications.crossAppStatus(), history===null?Promise.resolve(null):notifications.notificationHistory(),
@@ -482,7 +490,14 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (build.status === 'fulfilled' && build.value) launcher = build.value.launcher === true;
     crashLog = problems.status === 'fulfilled' ? problems.value : null;
     photoAccess = photos.status === 'fulfilled' ? photos.value : null;
-    facts = state.status === 'fulfilled' ? state.value : {};
+    const previousFacts = facts;
+    facts = state.status === 'fulfilled' ? {...state.value} : {};
+    // A device snapshot can predate a text-size write. Keep that write's fields,
+    // while still publishing unrelated facts from the same pending refresh.
+    if (scalePending || scaleAtRead !== scaleVersion) for (const key of ['textScalePercent','effectiveTextZoom']) {
+      if (Object.hasOwn(previousFacts,key)) facts[key]=previousFacts[key];
+      else delete facts[key];
+    }
     controls = settings.status === 'fulfilled' ? settings.value : {};
     delivery = noticeState.status === 'fulfilled' ? noticeState.value : {};
     cross = crossState.status === 'fulfilled' ? crossState.value : {};
@@ -492,10 +507,26 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     instance.vset('settings', { nativeReadAt: Date.now() });
     refreshPasswordManager();
   }
+  async function changeTextScale(percent:number, api:Bag) {
+    const instance=owner, token=++scaleGeneration;
+    if (!instance) return;
+    scalePending=true;
+    try {
+      const result=await device.setTextScale({percent});
+      if(owner!==instance||token!==scaleGeneration)return;
+      scalePending=false;++scaleVersion;facts={...facts,...result};
+      instance.vset('settings',{nativeReadAt:Date.now()});
+    } catch {
+      if(owner!==instance||token!==scaleGeneration)return;
+      scalePending=false;++scaleVersion;
+      api.toast('Text size could not be saved.');
+      void refresh();
+    }
+  }
   p.componentDidMount = function () {
     mount.call(this); owner = this;
     this.mailImagePreferenceChanged=changed;
-    this.settingsNavigation=(event:Event)=>{const page=(event as CustomEvent).detail?.page;if(typeof page!=='string'||!new Set(['display','sound','notifications','privacy','settings-account','settings-apps','settings-general','calendar','app-settings-workflows']).has(page))return;event.preventDefault();activeSettingsCategory=page==='privacy'?'settings-privacy':page==='settings-account'?'settings-account':['settings-apps','calendar','app-settings-workflows'].includes(page)?'settings-apps':'settings-general';this.openView('settings');this.vset('settings',{page});};
+    this.settingsNavigation=(event:Event)=>{const page=(event as CustomEvent).detail?.page;if(typeof page!=='string'||!new Set(['display','sound','notifications','privacy','settings-account','settings-apps','settings-general','calendar','app-settings-workflows']).has(page))return;event.preventDefault();const settingsCategory=page==='privacy'?'settings-privacy':page==='settings-account'?'settings-account':['settings-apps','calendar','app-settings-workflows'].includes(page)?'settings-apps':'settings-general';this.openView('settings');this.vset('settings',{page,settingsCategory});};
     window.addEventListener('alpha:settings-page',this.settingsNavigation);
     window.addEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
     initializeDevicePreferences(); void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed);
@@ -547,7 +578,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     reviews.cancelAll();
     automaticUpdates?.dispose(); automaticUpdates = undefined;
     document.removeEventListener('visibilitychange',automaticUpdateActive);
-    if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; facts = {}; controls = {}; delivery = {}; cross={}; choices=null; history=null; roles=null; crashLog=null; }
+    if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; ++scaleGeneration; ++scaleVersion; scalePending=false; updateBusy=''; updateResult=''; facts = {}; controls = {}; delivery = {}; cross={}; choices=null; history=null; roles=null; crashLog=null; }
     window.removeEventListener('alpha:settings-page',this.settingsNavigation);
     window.removeEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
     window.removeEventListener('storage',this.appearanceStorageListener);
@@ -564,17 +595,17 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     return result;
   };
   const categoryNames:Record<string,string>={'settings-account':'Account','settings-general':'General','settings-privacy':'Privacy','settings-help':'About','settings-apps':'Apps'};
-  let activeSettingsCategory:string|null=null;
   const settingsBack = definition.back;
   const settingsParents: Record<string,string> = {history:'agent-connection','agent-connection':'about',problems:'about',licenses:'about','password-entry':'password-provider','settings-permissions':'settings-privacy','license-detail':'licenses'};
   definition.back = (state:Bag,api:Bag) => {
-    if(!state.sheet&&((typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page))||(!state.page&&activeSettingsCategory))){activeSettingsCategory=null;api.set({page:null});return true;}
+    if(!state.sheet&&((typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page))||(!state.page&&state.settingsCategory))){api.set({page:null,settingsCategory:null});return true;}
     if(!state.sheet&&settingsParents[state.page]){if(state.page==='password-entry')leavePasswordEntry();api.set({page:settingsParents[state.page]});return true;}
     if(!state.sheet&&PASSWORD_PAGES.includes(state.page))leavePasswordManager();
     return settingsBack ? settingsBack(state,api) : false;
   };
   definition.render = (state: Bag, api: Bag) => {
     settingsApi = api;
+    const activeSettingsCategory=typeof state.settingsCategory==='string'&&Object.hasOwn(categoryNames,state.settingsCategory)?state.settingsCategory:null;
     const permissionsPage=state.page==='settings-permissions'||state.page==='privacy';
     const appSettingsPage=typeof state.page==='string'&&state.page.startsWith('app-settings-')?state.page.slice(13):null;
     const categoryPage=typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page)?state.page:!state.page?activeSettingsCategory:null;
@@ -607,11 +638,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const nav = (label: string, page: string, aria = label): Bag => ({ kNav: true, label, lbl: aria, chev: false, hasExt: true, noAB: true, go: manage(page) });
     const group = (rows: Bag[], id?: string) => ({ ...(id ? {id} : {}), css: 'background:var(--s2);padding:4px 0', rows });
     const run = async (task:()=>Promise<void>)=>{if(notificationBusy)return;notificationBusy=true;changed();const current=owner;try{await task();if(owner===current)await refresh();}catch{if(owner===current)api.toast('Couldn’t update');}finally{notificationBusy=false;if(owner===current)changed();}};
-    // Speech follows the explicit production runtime profile; developer routes stay separate.
+    // Speech follows the run-time route (voice-selection.ts): the row names the route in use now.
+    // Developer routes stay separate.
+    const voiceRoute = speechRoute();
     const speechRows = (): Bag[] => [
       // Data leaving the phone stays at the Speech row (≤4 words).
-      {...info('Speech', connection.residentInference==='direct'&&connection.providerStatus?.voiceConfigured?'Cartesia':connection.residentInference==='direct'&&(cloudRuntimeEnabled||testMocksEnabled)?'Off':developmentCartesiaVoiceEnabled?'Cartesia':cloudRuntimeEnabled||testMocksEnabled?serviceName:'On this device'),
-        ...(cloudRuntimeEnabled&&!developmentCartesiaVoiceEnabled&&connection.residentInference!=='direct'?{hasSub:true,sub:`Audio → ${serviceName}`}:{})},
+      {...info('Speech', voiceRoute==='direct'?'Cartesia':testMocksEnabled&&connection.residentInference==='direct'?'Off':developmentCartesiaVoiceEnabled?'Cartesia':voiceRoute==='cloud'||testMocksEnabled?serviceName:'On this device'),
+        ...(voiceRoute==='cloud'&&!developmentCartesiaVoiceEnabled?{hasSub:true,sub:`Audio → ${serviceName}`}:{})},
       ...(wakeListeningStopUnconfirmed() ? [micMayBeOn()] : []),
     ];
     const action = (label: string, go: () => void, id = label): Bag => ({ id, kNav:true, label, lbl:label, chev:true, noAB:true, go });
@@ -755,7 +788,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           const update=parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner});
           page.groups.push(group([
             ...(update?[{...action('Update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,sizeBytes:update.sizeBytes,versionCode:update.versionCode}).catch(()=>{/* Quiet: the row stays and the next tap retries. */}))),lbl:updateBusy==='install'?'Downloading update':'Install update',lucide:'download',val:update.versionName?versionLabel(update.versionName,update.versionCode):String(update.versionCode),hasVal:true,busy:!!updateBusy,hasSpin:updateBusy==='install',chev:false,id:'update-install'}]:[]),
-            {...action('Check',()=>void updateAction('check',()=>checkForUpdate(true)),'update-check'),lbl:updateBusy==='check'?'Checking for updates':'Check for updates',lucide:'rotate-cw',busy:!!updateBusy,hasSpin:updateBusy==='check',chev:false}]));
+            {...action('Check',()=>void updateAction('check',()=>checkForUpdate(true)),'update-check'),lbl:updateBusy==='check'?'Checking for updates':'Check for updates',lucide:'rotate-cw',busy:!!updateBusy,hasSpin:updateBusy==='check',chev:false},
+            ...(updateResult?[{...info('Update check',updateResult),role:'status',live:'polite'}]:[])]));
         }
         // Every Alpha Phone signs in to Eliza Cloud and holds a plan: account, plan and sign-in expiry.
         const plan=connectionController.residentPlanSettings();
@@ -896,7 +930,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       } else if (page.title === 'Models') {
         const native=Capacitor.isNativePlatform();
         page.hero = { ...page.hero, big: target, sub: '' };
-        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Off':'—')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&connection.residentInference==='direct'&&connection.providerStatus?.voiceConfigured?'Cartesia':connection.residentInference==='direct'&&(cloudRuntimeEnabled||testMocksEnabled)?'Off':cloudRuntimeEnabled?(account?serviceName:'Sign in'):native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia':account ? serviceName : 'Sign in'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
+        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Off':'—')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia':testMocksEnabled&&connection.residentInference==='direct'?'Off':native&&voiceRoute==='cloud'?serviceName:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia':account ? serviceName : 'Sign in'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
       } else if (page.title === 'Developer') {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'—':pending)]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {
@@ -939,8 +973,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         page.groups = [group(Capacitor.isNativePlatform()?[{...info('Alpha notifications',alerts),hasDot:alerts!=='Unavailable',dot:alerts==='On'?'ok':alerts==='Some off'?'warn':'off'},info('Do Not Disturb',interruptionLabels[delivery.interruption]||'Not available'),nav('Notifications','notifications','Manage Alpha notifications')]:[{kTog:true,label:'Alerts',aria:'Allow alerts',on:delivery.appEnabled===true,track:delivery.appEnabled?'background:var(--acc)':'background:var(--line)',kx:delivery.appEnabled?20:0,toggle:()=>void run(async()=>{await notifications.setAlertPreferences({appEnabled:delivery.appEnabled!==true});})}]),
           ...(Capacitor.isNativePlatform()?(delivery.channels||[]).map((channel:Bag)=>group([{id:`notification-channel:${channel.id}`,kNav:true,label:channel.name,lbl:channel.name,chev:true,noAB:true,go:()=>void notifications.openChannelSettings({id:channel.id})}],`notification-channel:${channel.id}`)):[]),...(crossRows.length?[group(crossRows)]:[])];
       } else if (page.title === 'Privacy & data') {
-        if (cloudRuntimeEnabled) page.groups = page.groups.map((g: Bag) => ({ ...g, rows: g.rows.map((row: Bag) => {
-          const fact = cloudPrivacyRow(row.label);
+        page.groups = page.groups.map((g: Bag) => ({ ...g, rows: g.rows.map((row: Bag) => {
+          const fact = voicePrivacyRow(row.label, voiceRoute, serviceName);
           return fact ? info(...fact) : row;
         }) }));
         // Alpha declares no Contacts permission; Calendar is the fourth runtime grant it uses.
@@ -986,14 +1020,14 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           if(!Number.isInteger(facts.textScalePercent))return info('Text size','—');
           const percent=facts.textScalePercent;
           return {...row,valueLabel:`${percent}%`,v:percent<=100?(percent-75)*2:percent-50,set:(event:Event)=>{
-            const value=Number((event.target as HTMLInputElement).value),requested=Math.round(value<=50?75+value/2:value+50),token=++scaleGeneration,instance=owner;
-            ++generation;void device.setTextScale({percent:requested}).then(result=>{if(owner===instance&&token===scaleGeneration){facts={...facts,...result};instance?.vset('settings',{nativeReadAt:Date.now()});}}).catch(()=>{if(owner===instance&&token===scaleGeneration)api.toast('Not saved');});
+            const value=Number((event.target as HTMLInputElement).value),requested=Math.round(value<=50?75+value/2:value+50);
+            void changeTextScale(requested,api);
           }};
         });
         page.groups=page.groups.map((g:Bag)=>({...g,rows:g.rows.filter((row:Bag)=>row.label!=='Text size'&&(Capacitor.isNativePlatform()||row.lbl!=='Manage brightness in Android'))})).filter((g:Bag)=>g.rows.length);
         const percent=Number.isInteger(facts.textScalePercent)?facts.textScalePercent:100;
         // Five Aa samples in one row; each sample is drawn at its own size.
-        page.groups.push({...group([{id:'text-size',kAa:true,label:'Text size',sizes:([['Small',75],['Default',100],['Large',115],['Larger',130],['Largest',150]] as const).map(([label,value])=>({on:percent===value,css:`font-size:${Math.round(value*.16)}px`,lbl:`Text size: ${label}${percent===value?', selected':''}`,go:async()=>{const token=++scaleGeneration,instance=owner;++generation;try{const result=await device.setTextScale({percent:value});if(owner===instance&&token===scaleGeneration){facts={...facts,...result};instance?.vset('settings',{nativeReadAt:Date.now()});}}catch{if(owner===instance&&token===scaleGeneration)api.toast('Not saved');}}}))}]),cap:'Text size',hasCap:true});
+        page.groups.push({...group([{id:'text-size',kAa:true,label:'Text size',sizes:([['Small',75],['Default',100],['Large',115],['Larger',130],['Largest',150]] as const).map(([label,value])=>({on:percent===value,css:`font-size:${Math.round(value*.16)}px`,lbl:`Text size: ${label}${percent===value?', selected':''}`,go:()=>void changeTextScale(value,api)}))}]),cap:'Text size',hasCap:true});
       }
     }
     const settingsTop = out.stack.find((page: Bag) => page.isTop);
@@ -1027,7 +1061,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           const label = labels[name] || name;
           return [{...row, label, lbl: label, ...(row.aria ? {aria: label} : {}),
             ...(name === 'Accounts' ? {go:()=>connectionController.openPlan()} : {}),
-            ...(name === 'Set up Alpha access' ? {go:()=>{activeSettingsCategory='settings-privacy';api.set({page:'settings-permissions'});}} : {}),
+            ...(name === 'Set up Alpha access' ? {go:()=>{api.set({page:'settings-permissions',settingsCategory:'settings-privacy'});}} : {}),
             ...(name === 'Connections' ? {go:()=>googleConnectionController.open(),...(!account?{lucide:'lock-keyhole',lbl:'Google & email, sign in first'}:{})} : {}),
             ...(name === 'About' ? {hasVal:false, hasSub:false, sub:'', val:''} : {})}];
         });
@@ -1042,7 +1076,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if(settingsTop){
       const detailGroups=settingsTop.groups;
       const categories=[['settings-account','Account',['Account']],['settings-general','General',['Preferences','Device']],['settings-privacy','Privacy',['Privacy']],['settings-apps','Apps',['Apps']],['settings-help','About',['Help']]] as const;
-      settingsTop.groups=categories.filter(([key])=>key!=='settings-account').map(([key,title])=>group([{kNav:true,label:title,lbl:title,chev:true,noAB:true,go:()=>{activeSettingsCategory=key==='settings-help'?null:key;api.set({page:key==='settings-help'?'about':key});}}]));
+      settingsTop.groups=categories.filter(([key])=>key!=='settings-account').map(([key,title])=>group([{kNav:true,label:title,lbl:title,chev:true,noAB:true,go:()=>{api.set({page:key==='settings-help'?'about':key,settingsCategory:key==='settings-help'?null:key});}}]));
       if(wakeListeningStopUnconfirmed())settingsTop.groups.unshift(group([micMayBeOn()],'wake-stop-unconfirmed'));
       const appSettingsRows=detailGroups.filter((section:Bag)=>section.cap==='Apps').flatMap((section:Bag)=>section.rows);
       const appCatalog=[['Browser','browser'],['Calendar','calendar'],['Camera','camera'],['Files','files'],['Inbox','inbox'],['Maps','maps'],['Notes','notes'],['Passwords','passwords'],['Photos','photos'],['Workflows','workflows']] as const;
@@ -1053,8 +1087,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         let groups=detailGroups.filter((section:Bag)=>(captions as readonly string[]).includes(section.cap)).map((section:Bag)=>({...section,hasCap:false,cap:undefined}));
         // An app with nothing to set here opens the app itself (owner decision: no one-row pages).
         const direct=new Set(['browser','files',...(Capacitor.isNativePlatform()?[]:['photos'])]);
-        if(key==='settings-apps')groups=[group(appCatalog.map(([label,id])=>({kNav:true,label,lbl:label,chev:true,noAB:true,go:()=>{activeSettingsCategory='settings-apps';const existing=existingAppRow(id);if(existing&&id!=='workflows')existing.go();else if(direct.has(id))owner?.openView(id);else api.set({page:'app-settings-'+id});}})))];
-        out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title,hasTitle:true,backLabel:'Back to Settings',back:()=>{activeSettingsCategory=null;api.set({page:null});},hero:{},groups});
+        if(key==='settings-apps')groups=[group(appCatalog.map(([label,id])=>({kNav:true,label,lbl:label,chev:true,noAB:true,go:()=>{const existing=existingAppRow(id);if(existing&&id!=='workflows'){api.set({settingsCategory:'settings-apps'});existing.go();}else if(direct.has(id)){api.set({settingsCategory:'settings-apps'});owner?.openView(id);}else api.set({page:'app-settings-'+id,settingsCategory:'settings-apps'});}})))];
+        out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title,hasTitle:true,backLabel:'Back to Settings',back:()=>{api.set({page:null,settingsCategory:null});},hero:{},groups});
       }
     }
     if(appSettingsPage){
@@ -1071,7 +1105,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if(appSettingsPage==='workflows'){const channel=(delivery.channels||[]).find((c:Bag)=>c.id==='reminders');if(channel&&!Capacitor.isNativePlatform())rows.push({kTog:true,label:'Alerts',aria:'Show alerts',on:!channel.blocked,track:!channel.blocked?'background:var(--acc)':'background:var(--line)',kx:!channel.blocked?20:0,toggle:()=>void run(async()=>{await notifications.setAlertPreferences({channelId:channel.id,enabled:!!channel.blocked});})});}
       const permissions:Record<string,string[]>={camera:['Camera','Microphone'],maps:['Location'],notes:['Microphone']};
       for(const label of permissions[appSettingsPage]||[])rows.push(permissionInfo(label,typeof facts.permissions?.[label]==='boolean'?(facts.permissions[label]?'Allowed':'Off'):'—'));
-      out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:names[appSettingsPage]||'App settings',hasTitle:true,backLabel:'Back to Apps',back:()=>{activeSettingsCategory='settings-apps';api.set({page:'settings-apps'});},hero:{},groups:rows.length?[group(rows)]:[]});
+      out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:names[appSettingsPage]||'App settings',hasTitle:true,backLabel:'Back to Apps',back:()=>{api.set({page:'settings-apps',settingsCategory:'settings-apps'});},hero:{},groups:rows.length?[group(rows)]:[]});
     }
     if(permissionsPage){
       const native=Capacitor.isNativePlatform();

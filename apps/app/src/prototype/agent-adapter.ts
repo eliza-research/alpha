@@ -952,8 +952,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         signal.throwIfAborted();context(this);
         // Selection deliberately changes the selected object; every other operation must leave the context as approved.
         if(operation.type!=='photo_library_select'&&JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Photos context changed');
-        const summary=photoLibraryResult.kind==='photo_library_search'?`Shared ${photoLibraryResult.items.length} library ${photoLibraryResult.items.length===1?'item':'items'} by id, kind, date and size in pixels. No names, location or pixels were shared.`:photoLibraryResult.kind==='photo_library_inspect'?'Shared one library item by id, kind, date and size in pixels. No name, location or pixels were shared.':photoLibraryResult.kind==='photo_library_select'?`Selected ${photoLibraryResult.selected} ${photoLibraryResult.selected===1?'item':'items'} in Photos. Nothing was changed or shared.`:'Opened the review in Photos. Nothing changes until you confirm there and in Android.';
-        return {status:'succeeded',summary,photoLibraryResult};
+        const summary=photoLibraryResult.kind==='photo_library_search'?`Shared ${photoLibraryResult.items.length} library ${photoLibraryResult.items.length===1?'item':'items'} by id, kind, date and size in pixels. No names, location or pixels were shared.`:photoLibraryResult.kind==='photo_library_inspect'?'Shared one library item by id, kind, date and size in pixels. No name, location or pixels were shared.':photoLibraryResult.kind==='photo_library_select'?`Selected ${photoLibraryResult.selected} ${photoLibraryResult.selected===1?'item':'items'} in Photos.${photoLibraryResult.missing?` ${photoLibraryResult.missing} requested ${photoLibraryResult.missing===1?'item was':'items were'} not found.`:''} No media was changed or shared.`:'Opened the review in Photos. Nothing changes until you confirm there and in Android.';
+        return {status:photoLibraryResult.kind==='photo_library_select'&&photoLibraryResult.selected===0?'failed':'succeeded',summary,photoLibraryResult};
       }
       if(isCalendarOperation(operation)){
         if(operation.type==='calendar_create_local'||operation.type==='calendar_read_next'){if(operation.type==='calendar_read_next'&&Capacitor.isNativePlatform()&&Capacitor.getPlatform()!=='android'||expectedContext.sensitive||document.hidden)throw Error('Return to the supported foreground Calendar');const permission=await registerPlugin<{requestAccess():Promise<{status:string}>;requestWorkflowReadAccess():Promise<{status:string}>}>('AlphaCalendar')[operation.type==='calendar_create_local'?'requestAccess':'requestWorkflowReadAccess']();signal.throwIfAborted();context(this);if(permission.status!=='granted'||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Calendar permission or phone context changed');}
@@ -1542,7 +1542,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       delivered=await input.navigation.apply(target,current,(chat,onCommitted)=>new Promise<boolean>((resolve,reject)=>{try{current();if(!openInternalView(this,target,chat)){resolve(false);return;}this.setState({},()=>{try{current();context(this);const switched=(this.S().view||'home')===target&&!alphaClient.getState().context.sensitive;if(switched)onCommitted(alphaClient.getState().context);resolve(switched);}catch(error){reject(error);}});}catch(error){reject(error);}}));return delivered;}finally{input.navigation.finish(delivered);}
   };
-  p.sendVoiceTurn = async function(input:{text:string;turnId:string;voiceTurnSignal:import('../runtime/alpha-client').VoiceTurnSignal;signal:AbortSignal;binding:import('../runtime/alpha-client').VoiceConversationBinding;context:import('../runtime/alpha-client').ContextEnvelope;assertCurrent:()=>void;onProgress?:(value:BatchProgressCue)=>void;onReplyStarted?:()=>void;onText?:(text:string,frame:import('../runtime/voice-assistant').AssistantTextFrame)=>void;navigation?:import('../runtime/alpha-client').VoiceNavigationContinuation}){
+  p.sendVoiceTurn = async function(input:{text:string;turnId:string;voiceTurnSignal:import('../runtime/alpha-client').VoiceTurnSignal;signal:AbortSignal;binding:import('../runtime/alpha-client').VoiceConversationBinding;context:import('../runtime/alpha-client').ContextEnvelope;assertCurrent:()=>void;onProgress?:(value:BatchProgressCue)=>void;onReplyStarted?:()=>void;onText?:(text:string,frame:import('../runtime/voice-assistant').AssistantTextFrame)=>void;supersedes?:string;navigation?:import('../runtime/alpha-client').VoiceNavigationContinuation}){
     const {text,turnId,signal,binding}=input;let acceptedContext=input.context;
     const belongs=()=>{try{signal.throwIfAborted();input.assertCurrent();return this.live&&!document.hidden&&connectionController.voiceConversationCurrent(binding)&&JSON.stringify(alphaClient.getState().context)===JSON.stringify(acceptedContext);}catch{return false;}};
     const current=()=>{signal.throwIfAborted();input.assertCurrent();context(this);if(!belongs())throw Error('The voice conversation changed.');};
@@ -1550,7 +1550,11 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     this.voiceSendTurnId=turnId;
     const navigation=connectionController.captureViewNavigation(input.context),userId=crypto.randomUUID(),streamId=crypto.randomUUID();let streamed=false;
     try{
-      await new Promise<void>(resolve=>this.setState((previous:Shell)=>belongs()?{msgs:[...previous.msgs,{id:userId,from:'user',text}],typing:true}:null,resolve));
+      // A turn sent at a pause and taken back unheard when the user kept speaking: its local user
+      // message and streamed draft leave the conversation view, and this turn carries the joined text.
+      const replaced=input.supersedes&&this.voiceTurnMessages?.turnId===input.supersedes?this.voiceTurnMessages.ids:[];
+      this.voiceTurnMessages={turnId,ids:[userId,streamId]};
+      await new Promise<void>(resolve=>this.setState((previous:Shell)=>belongs()?{msgs:[...previous.msgs.filter((m:Shell)=>!replaced.includes(m.id)),{id:userId,from:'user',text}],typing:true}:null,resolve));
       current();
       const progress=(event:Event)=>{const value=(event as CustomEvent<BatchProgressCue>).detail;if(belongs()&&value.turnId===turnId&&value.conversationId===binding.conversationId&&value.ownerId===binding.session.ownerId)input.onProgress?.(value);};
       const replyStarted=(event:Event)=>{const value=(event as CustomEvent<BatchProgressCue>).detail;if(belongs()&&value.turnId===turnId&&value.conversationId===binding.conversationId&&value.ownerId===binding.session.ownerId)input.onReplyStarted?.();};
@@ -1835,7 +1839,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         }
       }
     }
-    finally { if(this.sendAttempt===attempt)this.sendAttempt=null; if (this.live) this.setState({ typing: false, turnStatus: '' }); }
+    finally { if(this.sendAttempt===attempt){this.sendAttempt=null;if(this.live)this.setState({typing:false,turnStatus:''});} }
   };
   p.agentSay = function (text: string, card?: Shell, identity?:{id?:string;messageBinding?:{conversationId:string;session:unknown};deviceReceipt?:true},current?:()=>boolean) {
     this.setState((previous: Shell) => {

@@ -5,11 +5,11 @@ import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
-import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.ts';
 
 const root = resolve(import.meta.dirname, '../../../..');
 const probe = join(import.meta.dirname, 'combined-agent-launcher-probe.mjs');
-const manifest = 'scripts/upstream-core-sources.mjs';
+const manifest = 'scripts/upstream-core-sources.ts';
 const scenarios = [
   'node-version', 'source-mismatch', 'port-busy', 'profile-source', 'key-mode', 'speech',
   'unmarked', 'bad-marker', 'bad-routing', 'validate', 'validate-bad-marker', 'empty-input', 'core-refused',
@@ -19,11 +19,11 @@ const scenarios = [
 function sourceInputs(extraSources) {
   const {files} = parseBuildPolicy(readFileSync(join(root, manifest)));
   return [
-    'scripts/launcher-child.mjs', 'scripts/start-combined-agent.mjs', 'scripts/combined-agent-source.mjs',
-    'scripts/host-speech-admission.mjs', 'scripts/host-speech-assets.json', 'scripts/agent-model.mjs',
-    'scripts/agent-identity.mjs', 'apps/app/src/product/alpha-product-registration.ts',
-    'scripts/core-state-patch.mjs', 'scripts/core-state-preload.mjs', 'scripts/build-policy-source.mjs',
-    'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs', manifest, 'upstream.lock.json',
+    'scripts/launcher-child.ts', 'scripts/start-combined-agent.ts', 'scripts/combined-agent-source.ts',
+    'scripts/private-runtime-launch.ts', 'scripts/host-speech-admission.ts', 'scripts/speech-env.ts', 'scripts/host-speech-assets.json', 'scripts/agent-model.ts',
+    'scripts/agent-identity.ts', 'apps/app/src/product/alpha-product-registration.ts',
+    'scripts/core-state-patch.ts', 'scripts/core-state-preload.ts', 'scripts/build-policy-source.ts',
+    'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts', manifest, 'upstream.lock.json',
     'vendor/eliza/packages/agent/native-host/private-runtime-launch.mjs',
     'vendor/eliza/packages/agent/native-host/private-runtime-json.mjs',
     'vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs',

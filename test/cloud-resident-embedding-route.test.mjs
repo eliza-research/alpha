@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {createCloudResidentHost} from './fixtures/product-character-host.mjs';
-import {CLOUD_MODEL} from '../scripts/cloud-resident-host.mjs';
+import {CLOUD_MODEL} from '../scripts/cloud-resident-host.ts';
 
 // npm test runs without the prepared SDK and skips. browser.yml's verify job prepares it, exports
 // ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN, and sets ALPHA_REQUIRE_PREPARED_SDK=1 so a missing SDK fails there.

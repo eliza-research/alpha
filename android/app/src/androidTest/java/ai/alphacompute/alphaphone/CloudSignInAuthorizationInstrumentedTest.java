@@ -26,8 +26,8 @@ public final class CloudSignInAuthorizationInstrumentedTest {
     AlphaCloudSignInPlugin plugin=new AlphaCloudSignInPlugin();
     WebViewTestDriver.withActivity(MainActivity.class,a->plugin.setBridge(a.getBridge()));
     Class<?> attemptType=Class.forName("ai.eliza.auth.cloud.CloudSignInPlugin$Attempt");
-    Constructor<?> constructor=attemptType.getDeclaredConstructor(CloudSignInEnvironment.class,boolean.class);constructor.setAccessible(true);
-    Object attempt=constructor.newInstance(AlphaCloudSignInPlugin.REGISTRATION.defaultEnvironment(),false);
+    Constructor<?> constructor=attemptType.getDeclaredConstructor(CloudSignInEnvironment.class,boolean.class,String.class,Runnable.class);constructor.setAccessible(true);
+    Object attempt=constructor.newInstance(AlphaCloudSignInPlugin.REGISTRATION.defaultEnvironment(),false,null,(Runnable)()->{});
     Field expires=field(attemptType,"expiresAt");expires.setLong(attempt,System.currentTimeMillis()+60000);
     Field owner=field(CloudSignInPlugin.class,"attempt");owner.set(plugin,attempt);
     Method gate=CloudSignInPlugin.class.getDeclaredMethod("requireAuthorization",attemptType);gate.setAccessible(true);

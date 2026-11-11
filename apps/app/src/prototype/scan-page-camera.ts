@@ -1,6 +1,59 @@
 import './scan-dialog.css';
+/** Camera owns the native preview and serializes capture. A scan only borrows it. */
+export interface ScanPageCamera {
+ current():boolean;
+ viewfinder():HTMLElement|undefined;
+ capture(signal:AbortSignal):Promise<Blob>;
+}
+function captureBoundPage(signal:AbortSignal,camera:ScanPageCamera):Promise<Blob|undefined>{
+ if(signal.aborted)return Promise.resolve(undefined);
+ if(!camera.current()||!camera.viewfinder())return Promise.reject(Error('Open Camera before capturing a document page.'));
+ return new Promise(resolve=>{
+  const dialog=document.createElement('dialog');dialog.className='scan-dialog scan-native-capture';dialog.setAttribute('aria-label','Capture document page');
+  const heading=document.createElement('h2');heading.textContent='Capture page';
+  const status=document.createElement('p');status.setAttribute('role','status');status.textContent='Frame the page in Camera, then capture. Nothing is saved to Photos.';
+  const preview=document.createElement('img');preview.alt='Review captured document page';preview.hidden=true;
+  const panel=document.createElement('div');panel.className='scan-native-capture-panel';
+  const tools=document.createElement('div');tools.className='scan-dialog-tools';
+  const actions=document.createElement('div');actions.className='scan-dialog-actions';
+  const controller=new AbortController();let closed=false,busy=false,blob:Blob|undefined,url:string|undefined;
+  // A document or OCR review must not paint over Camera's existing transparent
+  // viewfinder. Preserve each dialog's exact visibility until capture finishes.
+  const covered=[...document.querySelectorAll<HTMLDialogElement>('dialog[open]')].map(element=>({element,visibility:element.style.visibility}));
+  for(const {element} of covered)element.style.visibility='hidden';
+  const button=(name:string,action:()=>void)=>{const value=document.createElement('button');value.type='button';value.textContent=name;value.onclick=action;return value;};
+  const finish=(result?:Blob)=>{
+   if(closed)return;closed=true;controller.abort();signal.removeEventListener('abort',abort);
+   window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',abort);window.removeEventListener('resize',layout);document.removeEventListener('visibilitychange',visibility);
+   if(url)URL.revokeObjectURL(url);dialog.remove();for(const {element,visibility} of covered)if(element.isConnected)element.style.visibility=visibility;resolve(result);
+  };
+  const abort=()=>finish(),visibility=()=>{if(document.hidden)finish();};
+  const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();finish();};
+  const layout=()=>{
+   const finder=camera.viewfinder(),screen=finder?.closest<HTMLElement>('[data-screen]');
+   if(!camera.current()||!finder||!screen){finish();return;}
+   const rect=screen.getBoundingClientRect();Object.assign(dialog.style,{left:rect.x+'px',top:rect.y+'px',width:rect.width+'px',height:rect.height+'px'});
+  };
+  const capture=button('Capture page',()=>{
+   if(closed||busy||!camera.current())return;busy=true;capture.disabled=true;status.textContent='Capturing page…';
+   void camera.capture(controller.signal).then(value=>{
+    if(closed)return;if(!camera.current()){finish();return;}blob=value;url=URL.createObjectURL(value);preview.src=url;preview.hidden=false;
+    dialog.classList.add('scan-native-captured');capture.hidden=true;retake.hidden=false;use.disabled=false;status.textContent='Review this page before adding it. Nothing is saved to Photos.';
+   },error=>{if(!closed){status.textContent=error instanceof Error?error.message:'Page could not be captured. Try again.';capture.disabled=false;}}).finally(()=>{busy=false;});
+  });
+  const retake=button('Retake capture',()=>{
+   if(!camera.current()){finish();return;}if(url)URL.revokeObjectURL(url);url=undefined;blob=undefined;preview.removeAttribute('src');preview.hidden=true;
+   dialog.classList.remove('scan-native-captured');capture.hidden=false;capture.disabled=false;retake.hidden=true;use.disabled=true;status.textContent='Frame the page in Camera, then capture.';
+  });retake.hidden=true;
+  const use=button('Use captured page',()=>{if(blob&&camera.current())finish(blob);});use.disabled=true;use.className='primary';
+  tools.append(capture,retake);actions.append(use,button('Cancel capture',abort));panel.append(heading,status,tools,actions);dialog.append(preview,panel);
+  signal.addEventListener('abort',abort,{once:true});window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',abort);window.addEventListener('resize',layout);document.addEventListener('visibilitychange',visibility);
+  dialog.oncancel=event=>{event.preventDefault();finish();};(document.querySelector('.os')||document.body).append(dialog);dialog.showModal();layout();capture.focus();
+ });
+}
 /** A document capture owns cloned preview tracks or its own camera request. */
-export function captureScanPage(signal:AbortSignal):Promise<Blob|undefined>{
+export function captureScanPage(signal:AbortSignal,camera?:ScanPageCamera):Promise<Blob|undefined>{
+ if(camera)return captureBoundPage(signal,camera);
  return new Promise(resolve=>{
   const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Capture document page');dialog.className='scan-dialog';const heading=document.createElement('h2');heading.textContent='Capture page';const video=document.createElement('video');video.playsInline=true;video.muted=true;video.style.cssText='width:100%;max-height:48dvh;object-fit:contain;background:#111';const preview=document.createElement('img');preview.alt='Review page';preview.hidden=true;preview.style.cssText=video.style.cssText;const status=document.createElement('p');status.setAttribute('role','status');status.textContent='Starting camera…';let closed=false,stream:MediaStream|undefined,blob:Blob|undefined,url:string|undefined,busy=false;
   const button=(name:string,action:()=>void)=>{const b=document.createElement('button');b.type='button';b.textContent=name;b.onclick=action;return b;};

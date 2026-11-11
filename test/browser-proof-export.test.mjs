@@ -7,7 +7,7 @@ import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {execFileSync,spawnSync} from 'node:child_process';
 
-const exporter=fileURLToPath(new URL('../scripts/ci/export-browser-proof.mjs',import.meta.url));
+const exporter=fileURLToPath(new URL('../scripts/ci/export-browser-proof.ts',import.meta.url));
 function fixture(t){
  const root=realpathSync(mkdtempSync(join(tmpdir(),'alpha-export-test-')));
  t.after(()=>rmSync(root,{recursive:true,force:true}));
@@ -20,7 +20,7 @@ function fixture(t){
  git(root,'init','-q','--object-format=sha1');
  write('upstream.lock.json',JSON.stringify({commit:sdk}));
  write('.eliza/client-features/.source.json','{}');
- write('test-results/browser-proof-renderer/build-flags.json',JSON.stringify({testMocks:false,runtimeProfile:'cloud'}));
+ write('test-results/browser-proof-renderer/build-flags.json',JSON.stringify({testMocks:false}));
  write('test-results/browser-proof-renderer/index.html','<!doctype html><title>Fixture</title>');
  git(root,'add','upstream.lock.json');git(root,'update-index','--add','--cacheinfo',`160000,${sdk},vendor/eliza`);git(root,'commit','-qm','fixture');
  return {root,sdk,write,run:(mode='renderer')=>spawnSync(process.execPath,[exporter,mode],{cwd:root,env,encoding:'utf8'})};

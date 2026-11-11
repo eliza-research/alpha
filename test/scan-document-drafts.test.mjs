@@ -23,29 +23,30 @@ function drafts(){let draft,n=0;return {
 };}
 let opened=0;
 async function open({native,stored,create}){
- const dom=new JSDOM('<div class="os"></div>');const {window}=dom;
+ const dom=new JSDOM('<div class="os"></div>',{pretendToBeVisual:true});const {window}=dom;
  window.HTMLDialogElement.prototype.showModal??=function(){this.open=true;};window.confirm=()=>true;
- Object.assign(globalThis,{window,document:window.document,HTMLElement:window.HTMLElement});
+ Object.assign(globalThis,{window,document:window.document,HTMLElement:window.HTMLElement,getComputedStyle:window.getComputedStyle.bind(window)});
  const store=drafts();if(stored)await store.save([new Blob(['old'],{type:'image/png'})],undefined);
  globalThis.scanTest={native,drafts:store,create};
  const {openScanDocument}=await import('data:text/javascript;base64,'+Buffer.from(bundle+'//'+ ++opened).toString('base64'));
  openScanDocument(new Blob(['page'],{type:'image/jpeg'}));await settle();
  const dialog=()=>window.document.querySelector('dialog[aria-label="Review scan document"]');
  const button=name=>[...window.document.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')??b.textContent)===name);
- return {window,store,dialog,button,group:name=>window.document.querySelector(`[role=group][aria-label="${name}"]`),status:()=>window.document.querySelector('[role=status]').textContent};
+ const approve=async label=>{await settle();const review=window.document.querySelector('dialog.alpha-operation-review');assert.ok(review,'the draft action opens its operation review');const accept=[...review.querySelectorAll('button')].find(button=>button.textContent===label);assert.ok(accept,'the review has the requested approval');accept.click();await settle();};
+ return {window,store,dialog,button,approve,group:name=>window.document.querySelector(`[role=group][aria-label="${name}"]`),status:()=>window.document.querySelector('[role=status]').textContent};
 }
 
 test('a draft stored before the scan opened offers Resume and Delete, and Delete unblocks autosave',async()=>{
  const s=await open({native:true,stored:true});
  assert.equal(s.group('Saved draft').hidden,false);assert.match(s.group('Saved draft').textContent,/^Draft/);
  assert.match(s.status(),/already exists/,'the first page could not replace the stored draft');assert.equal(s.store.get().revision,'r1');
- s.button('Delete draft').click();await settle();
+ s.button('Delete draft').click();await s.approve('Delete draft');
  assert.equal(s.store.get(),undefined);assert.equal(s.group('Saved draft').hidden,true);assert.equal(s.status(),'Draft deleted');
  s.button('Save document draft').click();await settle();assert.equal(s.store.get().revision,'r2','Save draft is no longer blocked');assert.equal(s.status(),'Draft saved');
 });
 test('Resume loads the stored draft and the notice goes away',async()=>{
  const s=await open({native:true,stored:true});
- s.button('Resume').click();await settle();
+ s.button('Resume').click();await s.approve('Load draft');
  assert.equal(s.status(),'Draft loaded');assert.equal(s.group('Saved draft').hidden,true);
 });
 test('Close on native with autosaved pages asks before the draft is discarded',async()=>{

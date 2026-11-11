@@ -2,28 +2,38 @@ import {type Page} from '@playwright/test';
 import {flagOffAndroid,residentHome,fenceNetwork} from './flag-off-android';
 import {observeVoiceFixture} from './voice-fixture-failure-metadata';
 // Synthetic native ports: routing and lifecycle evidence only.
-export async function setupLiveAssistant(page:Page){
+export async function setupLiveAssistant(page:Page,options:{echoCancelled?:boolean}={}){
  const foreign=await fenceNetwork(page);await flagOffAndroid(page);
- await page.addInitScript(()=>{
+ await page.addInitScript(({echoCancelled})=>{
   const w=window as any,c=w.Capacitor,prior=c.nativePromise;
+  // An already selected Text key without a Cartesia key is the supported local speech route.
+  // The Cloud account is absent at this native storage boundary; no renderer route is overridden.
+  delete w.flagOff.slots['cloud:production'];w.flagOff.persist();
+  const provider={mode:'own',revision:'synthetic-local-voice-provider-r1',persistence:'native-secure-store',keys:{text:{configured:true},voice:{configured:false}},provider:'cerebras',configured:true,selected:true,model:'qwen-3.8-27b',voiceConfigured:false};
   // Voice replies need correlated message identities; the generic chat fixture omits them.
   const emit=w.flagOff.emit;let reply=0;w.flagOff.emit=(plugin:string,event:string,value:any)=>{
+   if(plugin==='Agent'&&event==='alphaAgentStream'&&w.live?.cancelledStreams.includes(value.streamId))return;
+   if(plugin==='Agent'&&event==='alphaAgentStream'&&w.live?.heldStreamId===value.streamId){w.live.heldFrames++;return;}
    if(plugin==='Agent'&&event==='alphaAgentStream'&&value.event?.type==='chunk'){
     const data=JSON.parse(atob(value.event.dataBase64).slice(6));
     if(data.type==='done'){reply++;value={...value,event:{...value.event,dataBase64:btoa('data: '+JSON.stringify({...data,messageId:'11111111-1111-4111-8111-11111111111'+reply,userMessageId:'22222222-2222-4222-8222-22222222222'+reply})+'\n\n')}};}
    }
    return emit(plugin,event,value);
   };
-  const f=w.live={eot:{available:false,reason:'voice-not-started'} as any,eotCalls:[] as string[],heard:[] as any[],noCanceller:false,captures:[] as any[],stops:[] as string[],active:null as string|null,routes:[] as any[],finals:[] as string[],spoken:[] as string[],plays:[] as string[],stopped:0,forbidden:[] as string[],onStop:null as null|((id:string)=>void)};
+  const f=w.live={holdNextReply:false,heldStreamId:null as string|null,heldStreamIds:[] as string[],heldFrames:0,cancelledStreams:[] as string[],eot:{available:false,reason:'voice-not-started'} as any,eotCalls:[] as string[],heard:[] as any[],noCanceller:!echoCancelled,captures:[] as any[],stops:[] as string[],active:null as string|null,routes:[] as any[],finals:[] as string[],spoken:[] as string[],plays:[] as string[],stopped:0,forbidden:[] as string[],onStop:null as null|((id:string)=>void)};
   const events:Array<{event:string;callback:(value:any)=>void}>=[];
+ let playback:string|null=null,segments:Array<{requestId:string;playbackId:string}>=[];let playbackSerial=0;
   f.emit=(event:string,value:any)=>{for(const row of events)if(row.event===event)row.callback(value);};
   f.frame=(timestamp:number)=>({pcm16:btoa(String.fromCharCode(...new Uint8Array(1024))),sampleRate:16000,channels:1,samples:512,timestamp});
   f.frames=(frames:number[],vad:Array<{type:string;timestampMs:number}>=[])=>f.emit('liveCaptureFrames',{captureId:f.active,frames:frames.map(f.frame),vad,peak:.3});
-  f.finishPlayback=()=>f.emit('playbackEnded',{playbackId:f.plays.at(-1)});
+  f.finishPlayback=()=>{if(!playback)return;segments.shift();if(segments.length)f.emit('playbackSegmentStarted',{...segments[0],atMs:Date.now()});else{const id=playback;playback=null;f.emit('playbackEnded',{playbackId:id});}};
   const header=c.PluginHeaders.find((p:any)=>p.name==='AlphaVoiceCloud');
-  header.methods=[...['checkPermissions','localSpeechStatus','liveCaptureStatus','startLiveCapture','stopLiveCapture','synthesizeLocal','play','stopPlayback','cancel','releaseLocalSpeech','cancelRecording'].map(name=>({name,rtype:'promise'})),{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'}];
+  header.methods=[...['checkPermissions','localSpeechStatus','liveCaptureStatus','startLiveCapture','stopLiveCapture','synthesizeLocal','play','stopPlayback','cancel','releaseLocalSpeech','cancelRecording','holdSpeechEngine','releaseSpeechEngineHold','warmSpeechOutput'].map(name=>({name,rtype:'promise'})),{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'}];
   const callback=c.nativeCallback;c.nativeCallback=(plugin:string,method:string,input:any,fn:any)=>{if(plugin==='AlphaVoiceCloud'&&method==='addListener'){events.push({event:input.eventName,callback:fn});return String(events.length);}return callback(plugin,method,input,fn);};
   c.nativePromise=async(plugin:string,method:string,input:any)=>{
+   if(plugin==='Agent'&&method==='providerStatus')return provider;
+   if(plugin==='Agent'&&method==='requestStream'&&f.holdNextReply){f.holdNextReply=false;f.heldStreamId=input.streamId;f.heldStreamIds.push(input.streamId);}
+   if(plugin==='Agent'&&method==='cancelStream'){f.cancelledStreams.push(input.streamId);if(f.heldStreamId===input.streamId)f.heldStreamId=null;}
    if(plugin==='Agent'&&method==='request'&&input.path==='/api/asr/local-inference/end-of-turn'){
     if(input.method!=='POST')throw Error('Unsupported local agent request.');
     f.eotCalls.push(JSON.parse(input.body).transcript);return {status:200,body:JSON.stringify(f.eot)};
@@ -48,11 +58,11 @@ export async function setupLiveAssistant(page:Page){
    if(method==='liveCaptureStatus')return {permission:true,available:true};
    if(method==='startLiveCapture'){f.captures.push({captureId:input.captureId,echoCancel:input.echoCancel===true});f.active=input.captureId;return {captureId:input.captureId,sampleRate:16000,echoCancelled:input.echoCancel===true&&!f.noCanceller};}
    if(method==='stopLiveCapture'){const id=input.captureId;f.stops.push(id);f.onStop?.(id);if(f.active===id){f.active=null;}f.emit('liveCaptureEnded',{captureId:id});return {captureId:id,durationMs:1000};}
-   if(method==='synthesizeLocal'){f.spoken.push(input.text);return {playbackId:'play-'+f.spoken.length,execution:'device'};}
+   if(method==='synthesizeLocal'){f.spoken.push(input.text);const appended=input.append===true&&playback!==null;if(!appended){playback='play-'+(++playbackSerial);segments=[];}segments.push({requestId:input.requestId,playbackId:playback!});return {playbackId:playback,execution:'device',...(appended?{appended:true}:{})};}
    if(method==='play'){f.plays.push(input.playbackId);return {};}
-   if(method==='stopPlayback'){f.stopped++;return {};}
-   if(['cancel','releaseLocalSpeech','removeListener','cancelRecording'].includes(method))return {};
+   if(method==='stopPlayback'){f.stopped++;playback=null;segments=[];return {};}
+   if(['cancel','releaseLocalSpeech','removeListener','cancelRecording','holdSpeechEngine','releaseSpeechEngineHold','warmSpeechOutput'].includes(method))return {};
    f.forbidden.push(method);throw Error('Not part of the live voice path: '+method);
   };
- });await residentHome(page);await page.evaluate(observeVoiceFixture);return foreign;
+ },{echoCancelled:options.echoCancelled??true});await residentHome(page);await page.evaluate(observeVoiceFixture);return foreign;
 }

@@ -1,6 +1,7 @@
 import {cloudServiceName} from '../runtime/cloud-protocol';
 import {browserDevProfile} from '../browser/dev-profile';
-import { cloudRuntimeEnabled } from '../build-flags';
+import { testMocksEnabled } from '../build-flags';
+import { speechRoute, type SpeechRoute } from '../runtime/voice-selection';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps, type Action, type NativeResult } from '../daily';
 import { registerPlugin } from '../platform-plugins';
@@ -48,13 +49,11 @@ export function residentRecipients(connection: EgressConnection, native = Capaci
 }
 /** Per-connection wording. Only the packaged Android resident runtime is known to enable
  * the upstream secret and PII swaps; every other agent decides for itself and does not report it. */
-export function egressPrivacy(connection: EgressConnection, native = Capacitor.isNativePlatform()): EgressPrivacy {
-  if (cloudRuntimeEnabled && (connection.session || connection.cloudAccount)) {
-    const serviceName = cloudServiceName(connection.cloudAccount?.environment ?? 'production');
-    return { big: `Uses ${serviceName}`, sub: `To ${serviceName}` };
-  }
+export function egressPrivacy(connection: EgressConnection, native = Capacitor.isNativePlatform(), speech: SpeechRoute = speechRoute()): EgressPrivacy {
   const resident = residentRecipients(connection, native);
-  if (resident) return { big: resident.big, sub: resident.sub };
+  // Cloud speech is in use now (voice-selection.ts): say what it sends. Own-key speech is named with its provider above.
+  const cloudSpeech = speech === 'cloud' ? ` · Voice → ${cloudServiceName(connection.cloudAccount?.environment ?? 'production')}` : '';
+  if (resident) return { big: resident.big, sub: resident.sub + cloudSpeech };
   if (connection.session || connection.cloudAccount) return { big: 'Not reported', sub: 'Depends on your agent' };
   // P-43: no session means the resident is starting or recovering, never "no agent".
   if (connection.kind === 'recovering') return { big: 'Agent not running', sub: 'AI off' };
@@ -299,7 +298,7 @@ export function installPrototypeNativeAdapters(
         const connection=connectionController.getSnapshot();
         result.val=connection.session&&connection.kind==='resident'&&!Capacitor.isNativePlatform()
           ? 'Dev host'
-          : !cloudRuntimeEnabled&&residentRecipients(connection)?.leaves||'Varies';
+          : residentRecipients(connection)?.leaves||'Varies';
       }
       // Nothing here reads on-device model or speech readiness; say so instead of guessing.
       if (result.label === 'On-device model') result.val = 'Not reported';

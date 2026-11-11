@@ -12,7 +12,7 @@ import { pathToFileURL } from "node:url";
 import {
   CLOUD_ASSET_LINKS, cloudAssetLinksConfig, cloudEntryProblems, fingerprint, publishedAssetLinksCheck,
   readAssetLinksSource, renderAssetLinks, statementsToCloudEntries, TEMPLATE,
-} from "../scripts/render-assetlinks.mjs";
+} from "../scripts/render-assetlinks.ts";
 
 const root = path.resolve(import.meta.dirname, "..");
 const packageName = JSON.parse(fs.readFileSync(path.join(root, "app.config.json"), "utf8")).appId;
@@ -89,12 +89,12 @@ test("a published URL must answer 200 with JSON and no redirect, as Android's ve
 test("the CLI prints the Cloud value, checks a file and refuses unknown option mixes", t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-assetlinks-cloud-"));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
-  for (const file of ["scripts/render-assetlinks.mjs", TEMPLATE, "app.config.json"]) {
+  for (const file of ["scripts/render-assetlinks.ts", TEMPLATE, "app.config.json"]) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.copyFileSync(path.join(root, file), path.join(dir, file));
   }
   const signer = value => fs.writeFileSync(path.join(dir, "android/release-signer.json"), JSON.stringify({ schema: 1, signerSha256: value, lastRelease: { versionCode: null, versionName: null, recordedAt: null } }));
-  const cli = args => spawnSync(process.execPath, ["scripts/render-assetlinks.mjs", ...args], { cwd: dir, encoding: "utf8" });
+  const cli = args => spawnSync(process.execPath, ["scripts/render-assetlinks.ts", ...args], { cwd: dir, encoding: "utf8" });
   const published = path.join(dir, "published.json");
   fs.writeFileSync(published, publish([elizaEntry, { package_name: packageName, sha256_cert_fingerprints: [fingerprint(DEV)] }]));
 

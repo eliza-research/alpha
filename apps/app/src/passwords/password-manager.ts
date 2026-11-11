@@ -28,10 +28,10 @@ export const passwordSurfaceOpen = (settings: Bag | undefined | null) => PASSWOR
 let client: PasswordsClient | null | undefined;
 let resolving: Promise<PasswordsClient | null> | undefined;
 let status: PasswordsStatus | null = null, entries: PasswordEntrySummary[] | null = null;
-let query = '', busy = '', notice = '', draft: Draft | null = null, generation = 0, active = false;
+let query = '', busy = '', notice = '', draft: Draft | null = null, generation = 0, lifetime = 0, operation = 0, active = false;
 // The vault key was lost or invalidated (for example, the screen lock was removed): the records
 // can never be decrypted, and the only action is a confirmed, freshly unlocked reset.
-let damaged = false, confirmReset = false;
+let damaged = false, confirmReset: number | null = null;
 let expiry: ReturnType<typeof setTimeout> | undefined;
 // Whether Alpha's browser can attest which site owns a login field (WebView capability only).
 let browserFill: { available: boolean } | null = null;
@@ -61,6 +61,7 @@ function transferClient(): PasswordTransferClient | null {
 
 function clearSecrets() { if (draft) draft.password = ''; draft = null; }
 function lockState(message: string) {
+  ++generation; confirmReset = null;
   entries = null; if (status) status = { ...status, locked: true, unlockRemainingMs: 0 };
   if (expiry) clearTimeout(expiry); expiry = undefined; notice = message;
 }
@@ -73,33 +74,38 @@ function expired(message: string) {
 }
 
 /** Native browser capability; no tab, page or credential data crosses this call. */
-async function refreshBrowserFill() {
+async function refreshBrowserFill(current: () => boolean) {
   if (!Capacitor.isNativePlatform()) return;
   try {
     const result = await registerPlugin<{ loginFillStatus(): Promise<{ available?: unknown }> }>('AlphaBrowser').loginFillStatus();
-    browserFill = { available: result?.available === true };
-  } catch { browserFill = null; }
+    if (current()) browserFill = { available: result?.available === true };
+  } catch { if (current()) browserFill = null; }
 }
 
 async function refresh() {
-  void refreshBrowserFill().then(() => notify());
-  const token = ++generation, vault = await resolveClient();
-  if (!vault || token !== generation) { notify(); return; }
+  if (!active || document.hidden) return;
+  confirmReset = null;
+  const token = ++generation, visit = lifetime;
+  const current = () => active && !document.hidden && token === generation && visit === lifetime;
+  void refreshBrowserFill(current).then(() => { if (current()) notify(); });
+  const vault = await resolveClient();
+  if (!current()) return;
+  if (!vault) { notify(); return; }
   try {
     const next = await vault.status();
-    if (token !== generation) return;
+    if (!current()) return;
     status = next;
-    if (next.locked) expired(notice);
+    if (next.locked) { expired(notice); notify(); return; }
     else {
       const list = await vault.list();
-      if (token !== generation) return;
+      if (!current()) return;
       entries = list;
       if (expiry) clearTimeout(expiry);
       // Reflect the native unlock window; native code enforces it independently.
       expiry = setTimeout(() => { expired('Locked'); notify(); }, Math.max(1000, next.unlockRemainingMs));
     }
   } catch (error) {
-    if (token !== generation) return;
+    if (!current()) return;
     const failure = passwordsError(error);
     if (failure.code === 'locked') expired('Locked.');
     else { if (failure.code === 'key-invalidated') { damaged = true; locked(); } notice = failure.message; }
@@ -107,12 +113,17 @@ async function refresh() {
   notify();
 }
 
-async function run(name: string, task: (vault: PasswordsClient) => Promise<void>, fail?: (message: string) => void) {
+async function run(name: string, task: (vault: PasswordsClient, current: () => boolean) => Promise<void>, fail?: (message: string) => void) {
+  const visit = lifetime, current = () => active && !document.hidden && visit === lifetime;
+  if (!current() || busy) return;
   const vault = await resolveClient();
-  if (!vault || busy) return;
+  if (!vault || !current() || busy) return;
+  const ticket = ++operation;
   busy = name; notice = ''; notify();
-  try { await task(vault); }
+  try { await task(vault, current); }
   catch (error) {
+    if (!current()) return;
+    confirmReset = null;
     const failure = passwordsError(error);
     if (failure.code === 'locked') expired('Locked.');
     else if (failure.code === 'key-invalidated') { damaged = true; locked(failure.message); }
@@ -123,7 +134,7 @@ async function run(name: string, task: (vault: PasswordsClient) => Promise<void>
     // this warning when the generic vault mapper replaces native error text.
     if (name === 'export') notice = 'Export failed · delete file';
     else if (name === 'import') notice = 'Import failed';
-  } finally { busy = ''; notify(); }
+  } finally { if (ticket === operation) { busy = ''; if (active && !document.hidden) notify(); } }
 }
 
 /** Leaving New or Edit password for the list forgets the typed password; the list stays unlocked. */
@@ -132,7 +143,7 @@ export function leavePasswordEntry() { clearSecrets(); }
 /** Leaving the password pages, unmounting or backgrounding locks and forgets everything. */
 export function leavePasswordManager() {
   if (!active) return;
-  active = false; ++generation; query = ''; notice = ''; damaged = false; confirmReset = false; locked();
+  active = false; ++lifetime; ++operation; busy = ''; query = ''; notice = ''; damaged = false; locked();
   void resolveClient().then(vault => vault?.lock()).catch(() => {});
 }
 
@@ -160,6 +171,7 @@ const input = (ic: Bag, label: string, placeholder: string, type: string, value:
 const captioned = (helpers: Helpers, cap: string, rows: Bag[], plain = false): Bag => ({ ...helpers.group(rows), ...(plain ? { css: 'display:flex;flex-direction:column;gap:10px' } : {}), cap, hasCap: !!cap });
 
 function openEntry(helpers: Helpers, entry: PasswordEntrySummary | null) {
+  if (!active || document.hidden) return;
   clearSecrets();
   draft = { id: entry?.id, label: entry?.label || '', username: entry?.username || '', website: '', keep: entry ? [...entry.bindings] : [], password: '', generate: false, length: 20, confirmDelete: false, error: '' };
   helpers.set({ page: 'password-entry' });
@@ -178,10 +190,10 @@ function save(helpers: Helpers) {
   if (!current.id && !current.generate && !current.password) { current.error = 'Password needed'; notify(); return; }
   const secret = current.generate ? undefined : current.password || undefined;
   // The typed password stays in the draft until the vault accepts it, so a retry sends it again.
-  void run('save', async vault => {
+  void run('save', async (vault, currentRun) => {
     await vault.save({ ...(current.id ? { id: current.id } : {}), label: current.label.trim(), username: current.username, websites, keepBindings: current.keep.map(binding => binding.facet), ...(current.generate ? { generate: { length: current.length } } : secret ? { password: secret } : {}) });
     current.password = '';
-    if (draft !== current) return;
+    if (!currentRun() || draft !== current) return;
     draft = null;
     notice = 'Saved';
     helpers.set({ page: 'password-provider' });
@@ -191,6 +203,7 @@ function save(helpers: Helpers) {
 
 /** Rows for Settings → Password manager, placed above the other-provider (Proton) section. */
 export function passwordManagerGroups(helpers: Helpers): Bag[] {
+  if (document.hidden) return [];
   if (!active) { active = true; notice = ''; void refresh(); }
   toast = helpers.toast;
   const vault = client;
@@ -203,16 +216,23 @@ export function passwordManagerGroups(helpers: Helpers): Bag[] {
   else if (damaged) {
     head.push(iconInfo(helpers, 'Vault', 'Damaged', 'info'));
     // Irreversible: the confirm keeps a one-line consequence.
-    head.push(nav(busy === 'reset' ? 'Resetting…' : confirmReset ? 'Confirm reset' : 'Reset vault', () => {
-      if (!confirmReset) { confirmReset = true; notify(); return; }
-      void run('reset', async v => { await v.unlock(); await v.reset(); damaged = false; confirmReset = false; notice = 'Vault reset'; await refresh(); });
-    }, { sub: confirmReset && busy !== 'reset' ? 'Can’t be undone.' : '', aria: confirmReset ? 'Confirm reset vault' : 'Reset vault', labCss: 'color:var(--warn)', lucide: 'trash-2' }));
+    head.push(nav(busy === 'reset' ? 'Resetting…' : confirmReset !== null ? 'Confirm reset' : 'Reset vault', () => {
+      if (confirmReset === null) { confirmReset = generation; notify(); return; }
+      const reviewed = confirmReset;
+      void run('reset', async (v, current) => {
+        const reviewedNow = () => current() && damaged && confirmReset === reviewed && generation === reviewed;
+        if (!reviewedNow()) return;
+        await v.unlock(); if (!reviewedNow()) return;
+        await v.reset(); if (!current()) return;
+        damaged = false; confirmReset = null; notice = 'Vault reset'; await refresh();
+      });
+    }, { sub: confirmReset !== null && busy !== 'reset' ? 'Can’t be undone.' : '', aria: confirmReset !== null ? 'Confirm reset vault' : 'Reset vault', labCss: 'color:var(--warn)', lucide: 'trash-2' }));
   }
   else if (status.locked || !entries) {
-    head.push(nav(busy === 'unlock' ? 'Unlocking…' : 'Unlock', () => void run('unlock', async v => { await v.unlock(); await refresh(); }), { aria: 'Unlock passwords', lucide: status.biometric ? 'fingerprint-pattern' : 'lock-keyhole' }));
+    head.push(nav(busy === 'unlock' ? 'Unlocking…' : 'Unlock', () => void run('unlock', async (v, current) => { await v.unlock(); if (current()) await refresh(); }), { aria: 'Unlock passwords', lucide: status.biometric ? 'fingerprint-pattern' : 'lock-keyhole' }));
   } else {
     head.push(iconInfo(helpers, `Locks in ${status.unlockSeconds || 60}s`, '', 'lock'));
-    head.push(nav('Lock', () => void run('lock', async v => { await v.lock(); locked(); }), { aria: 'Lock passwords', lucide: 'lock-keyhole' }));
+    head.push(nav('Lock', () => void run('lock', async (v, current) => { await v.lock(); if (current()) locked(); }), { aria: 'Lock passwords', lucide: 'lock-keyhole' }));
   }
   // Outcome notices show once as a toast; a notice while the vault status is unknown stays in the row above.
   if (notice && status) { const message = notice; notice = ''; queueMicrotask(() => toast(message)); }
@@ -223,19 +243,21 @@ export function passwordManagerGroups(helpers: Helpers): Bag[] {
     groups.push(helpers.group(shown.length ? shown.map(entry => nav(entry.label, () => openEntry(helpers, entry), { sub: entry.username, aria: `Open ${entry.label}`, lucide: 'globe' })) : [helpers.info(entries.length ? 'No matching passwords' : 'No saved passwords', '')]));
     const move = transferClient();
     if (move) groups.push(helpers.group([
-      nav(busy === 'import' ? 'Importing…' : 'Import passwords', () => void run('import', async () => {
+      nav(busy === 'import' ? 'Importing…' : 'Import passwords', () => void run('import', async (_vault, current) => {
         try {
           const result = await move.importVault();
+          if (!current()) return;
           notice = result.imported ? `Imported ${result.imported} ${result.imported === 1 ? 'password' : 'passwords'}${result.skipped ? `, ${result.skipped} not imported` : ''}.` : 'No passwords were imported.';
-        } finally { await refresh(); }
+        } finally { if (current()) await refresh(); }
       }), { lucide: 'download' }),
-      nav(busy === 'export' ? 'Exporting…' : 'Export passwords', () => void run('export', async () => {
+      nav(busy === 'export' ? 'Exporting…' : 'Export passwords', () => void run('export', async (_vault, current) => {
         // Native export locks the vault before its fresh authentication, so the list is
         // refreshed after a cancelled or failed export too.
         try {
           const result = await move.exportVault();
+          if (!current()) return;
           notice = `Exported ${result.exported}`;
-        } finally { await refresh(); }
+        } finally { if (current()) await refresh(); }
       }), { aria: 'Export passwords, unencrypted file', lucide: 'share-2', trail: helpers.ic.info || '', trailCss: 'color:var(--warn)' }),
     ]));
   }
@@ -262,9 +284,9 @@ export function passwordEntryPage(helpers: Helpers, back: () => void): Bag | nul
   const leave = () => { clearSecrets(); back(); };
   // Locked with a draft open: an edit draft holds vault metadata, so no field value is shown.
   if (!entries) return { isTop: false, notTop: true, cls: 'enter', z: 5, title, hasTitle: true, backLabel: 'Back to Password manager', back: leave, hero: {}, groups: [helpers.group([
-    nav(busy === 'unlock' ? 'Unlocking…' : 'Unlock', () => void run('unlock', async v => { await v.unlock(); await refresh(); }), { aria: 'Unlock passwords', lucide: 'lock-keyhole' }),
+    nav(busy === 'unlock' ? 'Unlocking…' : 'Unlock', () => void run('unlock', async (v, current) => { await v.unlock(); if (current()) await refresh(); }), { aria: 'Unlock passwords', lucide: 'lock-keyhole' }),
   ])] };
-  const set = (patch: Partial<Draft>) => { Object.assign(current, patch, { error: '' }, patch.password || patch.generate ? { passwordDropped: false } : {}); notify(); };
+  const set = (patch: Partial<Draft>) => { if (!active || document.hidden || draft !== current) return; Object.assign(current, patch, { error: '' }, patch.password || patch.generate ? { passwordDropped: false } : {}); notify(); };
   const groups: Bag[] = [
     captioned(helpers, '', [
       input(helpers.ic, 'Name', 'Name', 'text', current.label, value => set({ label: value }), 'user'),
@@ -287,7 +309,7 @@ export function passwordEntryPage(helpers: Helpers, back: () => void): Bag | nul
     const id = current.id;
     groups.push(helpers.group([
       nav('Show password', () => void run('reveal', async v => { await v.reveal(id); }, message => helpers.toast(message)), { lucide: 'eye' }),
-      nav('Copy password', () => void run('copy', async v => { await v.copy(id); helpers.toast('Copied'); }, message => helpers.toast(message)), { lucide: 'copy' }),
+      nav('Copy password', () => void run('copy', async (v, current) => { await v.copy(id); if (current()) helpers.toast('Copied'); }, message => helpers.toast(message)), { lucide: 'copy' }),
     ]));
   }
   const actions: Bag[] = [];
@@ -299,7 +321,7 @@ export function passwordEntryPage(helpers: Helpers, back: () => void): Bag | nul
     if (current.confirmDelete) actions.push(helpers.info('Can’t be undone.', ''));
     actions.push(button(current.confirmDelete ? 'Confirm delete' : 'Delete', () => {
       if (!current.confirmDelete) { set({ confirmDelete: true }); return; }
-      void run('remove', async v => { await v.remove(id); if (draft === current) draft = null; notice = 'Password deleted.'; helpers.set({ page: 'password-provider' }); await refresh(); });
+      void run('remove', async (v, currentRun) => { await v.remove(id); if (!currentRun()) return; if (draft === current) draft = null; notice = 'Password deleted.'; helpers.set({ page: 'password-provider' }); await refresh(); });
     }, false, false, helpers.ic.trash || ''));
   }
   groups.push(captioned(helpers, '', actions, true));

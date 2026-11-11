@@ -1,3 +1,4 @@
+import {checkKeyboardDictationCloud} from './keyboard-dictation-cloud.mjs';
 import {checkKeyboardDictation} from './keyboard-dictation.mjs';
 import {collectRefinementCampaigns} from '../campaigns.mjs';
 import {fileURLToPath} from 'node:url';
@@ -5,7 +6,7 @@ import {readdirSync} from 'node:fs';
 import {join} from 'node:path';
 import {checkTraces, captureInputs} from '../check-traces.mjs';
 import {app, sense, voice, directory, javaTraces, root} from './java.mjs';
-import {loadModels} from '../../../../scripts/quint-lib.mjs';
+import {loadModels} from '../../../../scripts/quint-lib.ts';
 import {captureRendererImplementation, voiceTraces} from './renderer.mjs';
 import {residentLifecycleTraces} from './local-agent.mjs';
 import {checkResetOrchestration} from './reset-orchestration.mjs';
@@ -182,7 +183,7 @@ export async function runNativeRefinement(onProgress) {
       checkNativeUpdateStaging, checkCanonicalNotificationTap, checkWorkflowNoticeDelivery,
       checkNativeHostedResultNotices, checkNativeHostedInbox, checkNativeReminderDelivery, checkNativeClockReview,
       checkNativeSmsDispatch, checkNativeMmsDispatch, checkNativeTextScaleLifecycle, checkNativeCrashJournal,
-      checkNativeSettingsHandoff, checkNativeAppInfoHandoff, checkNativeSourceRenewal, checkNativeAssistantEntry, checkNativeActionRecovery,
+      checkNativeSettingsHandoff, checkNativeAppInfoHandoff, checkKeyboardDictationCloud, checkNativeSourceRenewal, checkNativeAssistantEntry, checkNativeActionRecovery,
       checkNativeGmailBackground, checkNativeDigestConsent, checkNativeCalendarScopedReview,
       checkNativeCalendarSyncEnable, checkBrowserUnderlay].map(withInputs(nativeInputs)),
   ];
@@ -202,7 +203,7 @@ export async function runNativeRefinement(onProgress) {
     {model: 'ResetRecovery', obligation: 'Device credentials, physical durability and externally observed erasure', reason: 'The patched shared coordinator and Alpha startup execute with controlled listener/Android/storage ports, including actual file locks. Android credentials, power-loss durability and package erasure remain external.'},
     {model: 'DeletionJournal', obligation: 'Physical persistence and real provider execution', reason: 'The shared coordinator, journal and Alpha owner binding execute under controlled storage, scheduling and provider ports, including stale-owner and multi-row checks. Power-loss durability and real effects remain external.'},
     {model: 'MediaLifecycle', obligation: 'Catalog, edit review, temporary camera resources and video lifecycle', reason: 'NativeReadEpoch and exact attachment copy/publication guards execute. MediaStore, camera and Activity lifecycle remain external.'},
-    {model: 'DeviceActions', obligation: 'AOSP image/role, Contacts, Reminders and Clock', reason: 'Only the real SMS journal executes in these traces. Carrier outcomes are fixture inputs.'},
+    {model: 'DeviceActions', obligation: 'AOSP image/role, Contacts and Reminders', reason: 'Only the real SMS journal executes in these traces. Carrier outcomes are fixture inputs. NativeClockReview owns its separate actual Clock contract.'},
     {model: 'ApplicationComposition', obligation: 'Cross-domain implementation orchestration', reason: 'Root integration driver owns this combined scope. Standalone native receipts do not establish composition.'},
     {model: 'ControllerComposition', obligation: 'Cross-controller implementation orchestration', reason: 'The dedicated composition campaign executes these shared-controller schedules. Standalone native receipts do not establish composition.'},
     {model: 'NavigationProgress', obligation: 'Physical location and installed background service', reason: 'The actual shared screen, route controller and background bridge run with controlled coordinates, route replies and native effects. NativeNavigationOwnership covers the Java service separately. Physical GPS, unrestricted geometries and intermediate asynchronous cleanup remain external.'},

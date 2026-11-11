@@ -10,7 +10,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const descriptor = 'android/consumer-host.json';
 const config = 'app.config.json';
 const lock = 'upstream.lock.json';
-const stageScript = 'scripts/stage-local-agent-sources.mjs';
+const stageScript = 'scripts/stage-local-agent-sources.ts';
 const sdkPrefix = 'vendor/eliza/';
 const sdkScripts = ['packages/app/scripts/mobile/android/resident-host-sources.mjs',
   'packages/app/scripts/lib/immutable-workspace-source.mjs', 'packages/app/scripts/lib/committed-source.mjs'];
@@ -20,7 +20,7 @@ const generatedDirectory = 'android/app/build/generated/local-agent';
 const {residentHost} = JSON.parse(fs.readFileSync(join(root, descriptor), 'utf8'));
 const sources = [...RESIDENT_HOST_CLASSES, ...residentHost.classes].map(name => `${residentDirectory}/${name}.java`)
   .concat(residentHost.helpers);
-const productFiles = [stageScript, 'scripts/local-agent-source.mjs', 'scripts/copy-file-clone.mjs', descriptor, config];
+const productFiles = [stageScript, 'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts', descriptor, config];
 
 export const residentJavaStageInputs = [lock, ...productFiles, ...[...sdkScripts, ...sources].map(file => sdkPrefix+file)];
 

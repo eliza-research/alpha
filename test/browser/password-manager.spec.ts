@@ -117,7 +117,7 @@ async function nativeVault(page: Page, options: { leak?: boolean; selected?: str
     const w = window as any; w.androidBridge = {}; localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' }));
     const f = w.vaultFixture = { calls: [] as any[], locked: true, damaged: !!damaged, selected: selected || 'none', entries: [
       { id: 'n1', label: 'Bank app', username: 'holder@example.test', updatedAt: 1, bindings: [{ kind: 'android', facet: `android://${'ab'.repeat(32)}@com.example.bank`, display: 'Bank (com.example.bank)' }] },
-    ] as any[], listeners: {} as any, transferCode: 'locked' };
+    ] as any[], listeners: {} as any, transferCode: 'locked',holdNextList:false,holdNextUnlock:false,releaseList:undefined as (()=>void)|undefined,releaseUnlock:undefined as (()=>void)|undefined };
     const methods = (names: string[]) => names.map(name => ({ name, rtype: 'promise' }));
     w.Capacitor = { PluginHeaders: [
       {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','addListener','removeListener'])},
@@ -138,11 +138,11 @@ async function nativeVault(page: Page, options: { leak?: boolean; selected?: str
       if (plugin === 'ElizaPasswords') {
         f.calls.push({ method, input });
         if (method === 'status') return { available: true, locked: f.locked, unlockRemainingMs: f.locked ? 0 : 50000, unlockSeconds: 60, biometric: true, autofill: { supported: true, selected: f.selected } };
-        if (method === 'unlock') { f.locked = false; return { unlocked: true, unlockRemainingMs: 58000 }; }
+        if (method === 'unlock') { f.locked = false;if(f.holdNextUnlock){f.holdNextUnlock=false;await new Promise<void>(resolve=>{f.releaseUnlock=()=>{f.releaseUnlock=undefined;resolve();};});}return { unlocked: true, unlockRemainingMs: 58000 }; }
         if (method === 'lock') { f.locked = true; return { locked: true }; }
         if (method === 'list' && f.damaged) { f.locked = true; throw Object.assign(new Error('Saved passwords can no longer be decrypted on this device'), { code: 'key-invalidated' }); }
         if (method === 'reset') { if (f.locked) throw Object.assign(new Error('Unlock saved passwords first'), { code: 'locked' }); if (!f.damaged) throw Object.assign(new Error('Saved passwords are not damaged'), { code: 'invalid' }); f.damaged = false; f.entries = []; return { reset: true }; }
-        if (method === 'list') { if (f.locked) throw Object.assign(new Error('Unlock saved passwords first'), { code: 'locked' }); return { entries: leak ? f.entries.map((e: any) => ({ ...e, password: 'synthetic-dev-leak' })) : f.entries }; }
+        if (method === 'list') { if (f.locked) throw Object.assign(new Error('Unlock saved passwords first'), { code: 'locked' });const result={ entries: leak ? f.entries.map((e: any) => ({ ...e, password: 'synthetic-dev-leak' })) : f.entries };if(f.holdNextList){f.holdNextList=false;await new Promise<void>(resolve=>{f.releaseList=()=>{f.releaseList=undefined;resolve();};});}return result; }
         if (method === 'copy') return { copied: true, clearsAfterMs: 45000 };
         if (method === 'openAutofillSettings') return { status: 'opened', destination: 'autofill-picker' };
         return {};
@@ -159,6 +159,32 @@ async function nativeVault(page: Page, options: { leak?: boolean; selected?: str
   await page.getByRole('button', { name: 'Apps', exact: true }).click();
   await page.getByRole('button', { name: 'Passwords', exact: true }).click();
 }
+
+test('a delayed native list cannot restore metadata after Lock',async({page})=>{
+ await nativeVault(page);
+ await page.getByRole('button',{name:'Unlock passwords',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Open Bank app',exact:true})).toBeVisible();
+ await page.evaluate(()=>{(window as any).vaultFixture.holdNextList=true;});
+ await page.getByRole('button',{name:'Refresh autofill status',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>typeof (window as any).vaultFixture.releaseList)).toBe('function');
+ await page.getByRole('button',{name:'Lock passwords',exact:true}).click();
+ await expect(page.getByText('Locked',{exact:true})).toBeVisible();
+ expect(await page.evaluate(async()=>{(window as any).vaultFixture.releaseList();await new Promise(resolve=>setTimeout(resolve,0));return (await import('/src/passwords/password-manager.ts')).passwordManagerHoldsEntries();})).toBe(false);
+ await expect(page.getByRole('button',{name:'Open Bank app',exact:true})).toHaveCount(0);
+});
+
+test('leaving a pending native reset review prevents a later reset request',async({page})=>{
+ await nativeVault(page,{damaged:true});
+ await page.getByRole('button',{name:'Unlock passwords',exact:true}).click();
+ await expect(page.getByText('Cannot be decrypted on this phone',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Delete saved passwords and start over',exact:true}).click();
+ await page.evaluate(()=>{(window as any).vaultFixture.holdNextUnlock=true;});
+ await page.getByRole('button',{name:'Tap again to delete all saved passwords',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>typeof (window as any).vaultFixture.releaseUnlock)).toBe('function');
+ await page.getByRole('button',{name:'Back to Apps',exact:true}).click();
+ expect(await page.evaluate(async()=>{const f=(window as any).vaultFixture;f.releaseUnlock();await new Promise(resolve=>setTimeout(resolve,0));return f.calls.filter((call:any)=>call.method==='reset').length;})).toBe(0);
+ await expect.poll(async()=>(await agentContext(page)).sensitive).toBe(false);
+});
 
 test('native vault: Android unlock, app bindings, copy and autofill picker with status readback', async ({ page }) => {
   await nativeVault(page, { transfer: true });
@@ -267,8 +293,8 @@ test('leaving Settings for another view locks the development vault', async ({ p
   // Locked and forgotten as soon as Settings is left, not only when it is reopened.
   expect(await page.evaluate(async () => (await import('/src/passwords/password-manager.ts')).passwordManagerHoldsEntries())).toBe(false);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  // Returning retains the Apps category, but never the unlocked vault.
-  await expect(page.getByRole('heading', { name: 'Apps', exact: true })).toBeVisible();
+  // A fresh Settings visit starts at its root and never retains an unlocked vault.
+  await page.getByRole('button', { name: 'Apps', exact: true }).click();
   await page.getByRole('button', { name: 'Passwords', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Unlock passwords', exact: true })).toBeVisible();
 });

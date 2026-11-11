@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "description": "The one signed Alpha Phone update channel for Pixel 10a (stallion) on Android 17 (issue #400). scripts/sign-aosp-release.mjs refuses to sign while a field here is UNSET: the OTA package certificate (releasekey x509, installed as otacerts by sign_target_files_apks -o) and the AVB public key must match the runtime key directory. Alpha Compute holds signing and update authority; the release owner is accountable for support and rollback. No key material, URL credential or recovery code belongs here. Drill results are recorded from executed drills, never by software.",
+  "description": "The one signed Alpha Phone update channel for Pixel 10a (stallion) on Android 17 (issue #400). scripts/sign-aosp-release.ts refuses to sign while a field here is UNSET: the OTA package certificate (releasekey x509, installed as otacerts by sign_target_files_apks -o) and the AVB public key must match the runtime key directory. Alpha Compute holds signing and update authority; the release owner is accountable for support and rollback. No key material, URL credential or recovery code belongs here. Drill results are recorded from executed drills, never by software.",
   "channel": "stable",
   "product": "alpha_stallion_phone",
   "device": "stallion",
   "authority": "Alpha Compute",
   "releaseOwner": "Shaw",
   "decision": "A-06",
-  "otaCertificateSha256": "UNSET",
-  "avbPublicKeySha256": "UNSET",
+  "otaCertificateSha256": "66046a0729fe8d14b9bb53051b2225b396f7bcb07b2a757eac6fc799b1aee11e",
+  "avbPublicKeySha256": "ef17e93cb331c37187cb15c666c09b3861d539f8b24662f4fa3fd7314d806daa",
   "downgradeAllowed": false,
   "recovery": {
     "stockFactoryImage": {

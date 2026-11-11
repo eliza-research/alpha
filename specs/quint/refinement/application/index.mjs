@@ -1,3 +1,5 @@
+import {checkCalendarApprovalReview} from './calendar-approval-review.mjs';
+import {checkDeviceActionReview} from './device-action-review.mjs';
 import {checkCalendarFormControls} from './calendar-form-controls.mjs';
 import {checkSettingsPageFocus} from './settings-page-focus.mjs';
 import {checkKeyboardFocus} from './keyboard-focus.mjs';
@@ -42,6 +44,8 @@ import {checkShadeNoticeQuestionAdmission} from './shade-notice-question-admissi
 import {checkWorkflowClockAdmission} from './workflow-clock-admission.mjs';
 import {checkBrowserAlbumStorage} from './browser-album-storage.mjs';
 import {checkShadeRowCustody} from './shade-row-custody.mjs';
+import {checkScheduledSnoozeAdmission} from './scheduled-snooze-admission.mjs';
+import {checkBrowserNoteRecordingJournal} from './browser-note-recording-journal.mjs';
 import {checkPhotosOwnedAlbumDialog} from './photos-owned-album-dialog.mjs';
 import {checkBrowserExternalHandoff} from './browser-external-handoff.mjs';
 import {checkObservationTurnDispatch} from './observation-turn-dispatch.mjs';
@@ -109,7 +113,7 @@ import {checkOSDefaults} from './os-defaults.mjs';
 import {checkOSProvisioning} from './os-provisioning.mjs';
 import {checkOSSourceStaging} from './os-source-staging.mjs';
 
-const adapters = [checkCalendarFormControls, checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
+const adapters = [checkCalendarApprovalReview, checkDeviceActionReview, checkCalendarFormControls, checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
@@ -124,6 +128,8 @@ const adapters = [checkCalendarFormControls, checkSettingsPageFocus, checkKeyboa
   checkShadeNoticeQuestionAdmission, checkWorkflowClockAdmission,
   checkBrowserExternalHandoff,
   checkPhotosOwnedAlbumDialog,
+  checkBrowserNoteRecordingJournal,
+  checkScheduledSnoozeAdmission,
   checkShadeRowCustody,
   checkBrowserAlbumStorage,
   checkClientObservationSupport,

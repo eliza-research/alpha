@@ -1,7 +1,7 @@
 # Combined agent launcher source refinement
 
 `CombinedAgentLauncher` covers one invocation of
-`scripts/start-combined-agent.mjs`. The launcher verifies the executable
+`scripts/start-combined-agent.ts`. The launcher verifies the executable
 versions and frozen source manifest, probes its fixed loopback port, checks
 private profile and speech prerequisites, then prepares the profile and selects
 the core overlay before requesting one child. The launcher installs child and
@@ -38,7 +38,7 @@ invariant. The prior source observation is preserved in the
 [baseline record](combined-agent-launcher-baseline.md).
 
 `DevelopmentHost` covers Cloud resident binding and retirement through
-`scripts/cloud-resident-host.mjs`. The combined launcher has a distinct
+`scripts/cloud-resident-host.ts`. The combined launcher has a distinct
 source and process boundary. Concurrent launchers and competing binders,
 signal handling after process termination, actual tool execution, real
 speech assets and authenticated service readiness are separate obligations.

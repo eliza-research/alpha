@@ -59,10 +59,9 @@ class TargetTests(unittest.TestCase):
         self.lock['targets']['android']['stable']['artifacts']['aarch64']['binarySha256'] = 'bad'; self.save()
         with self.assertRaises(ValueError): acquire.read_artifacts(self.root, 'android')
 
-    def run_main(self, target=None, abis=None, profile='native'):
+    def run_main(self, target=None, abis=None):
         env = {'GH_TOKEN': 'UNIT_TEST_NOT_A_CREDENTIAL', 'ALPHA_LOCAL_AGENT_SOURCE_DIR': str(self.root),
-               'RUNNER_TEMP': str(self.root), 'GITHUB_ENV': str(self.root / 'github-env'),
-               'ALPHA_RUNTIME_PROFILE': profile}
+               'RUNNER_TEMP': str(self.root), 'GITHUB_ENV': str(self.root / 'github-env')}
         if target is not None: env['ELIZA_ANDROID_BUN_TARGET'] = target
         if abis is not None: env['ELIZA_ANDROID_TARGET_ABIS'] = abis
         with patch.dict(os.environ, env, clear=True), patch.object(acquire, 'download') as download, contextlib.redirect_stdout(io.StringIO()):
@@ -77,17 +76,16 @@ class TargetTests(unittest.TestCase):
         self.assertIn('ELIZA_BUN_X64_FILE=', output)
         self.assertIn('ELIZA_BUN_AARCH64_FILE=', output)
 
-    def test_main_cloud_acquires_only_bionic_arm64(self):
-        calls, output = self.run_main('android', 'arm64-v8a', 'cloud')
+    def test_main_android_target_acquires_only_bionic_arm64(self):
+        calls, output = self.run_main('android', 'arm64-v8a')
         self.assertEqual([c.args[0] for c in calls], [3])
         self.assertEqual(calls[0].kwargs['max_bytes'], 40 * 1024**2)
         self.assertNotIn('X64', output)
         self.assertIn('bun-linux-aarch64-android.zip', output)
 
-    def test_cloud_wrong_target_or_abis_fails_before_download(self):
-        for target, abis in [('linux-musl', 'arm64-v8a'), ('android', 'arm64-v8a,x86_64')]:
-            with self.subTest(target=target), self.assertRaises(ValueError):
-                self.run_main(target, abis, 'cloud')
+    def test_android_target_with_wrong_abis_fails_before_download(self):
+        with self.assertRaises(ValueError):
+            self.run_main('android', 'arm64-v8a,x86_64')
 
 
 class TransportTests(unittest.TestCase):

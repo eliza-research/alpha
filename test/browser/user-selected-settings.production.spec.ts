@@ -54,10 +54,10 @@ for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
   await expect(panel('Display').getByRole('button',{name:'Text size: Large, selected',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Back to General',exact:true}).click();
   await panel('General').getByRole('button',{name:'Notifications',exact:true}).click();
-  const alerts=panel('Notifications').getByRole('button',{name:'Allow alerts',exact:true});
-  const before=await alerts.getAttribute('aria-pressed');
+  const alerts=panel('Notifications').getByRole('switch',{name:'Allow alerts',exact:true});
+  const before=await alerts.getAttribute('aria-checked');
   await alerts.click();
-  await expect(alerts).toHaveAttribute('aria-pressed',before==='true'?'false':'true');
+  await expect(alerts).toHaveAttribute('aria-checked',before==='true'?'false':'true');
   await expect(page.locator('[data-browser-settings]')).toHaveCount(0);
   await open();
   await root.getByRole('button',{name:'General',exact:true}).click();
@@ -65,7 +65,7 @@ for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
   await expect(panel('Display').getByRole('button',{name:'Text size: Large, selected',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Back to General',exact:true}).click();
   await panel('General').getByRole('button',{name:'Notifications',exact:true}).click();
-  await expect(panel('Notifications').getByRole('button',{name:'Allow alerts',exact:true})).toHaveAttribute('aria-pressed',before==='true'?'false':'true');
+  await expect(panel('Notifications').getByRole('switch',{name:'Allow alerts',exact:true})).toHaveAttribute('aria-checked',before==='true'?'false':'true');
   await page.getByRole('button',{name:'Back to General',exact:true}).click();
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await root.getByRole('button',{name:'Apps',exact:true}).click();
