@@ -4,7 +4,7 @@
   "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
   "targetAppId": "ai.alphacompute.alphaphone",
   "patch": "alpha-core-launcher.patch",
-  "patchSha256": "79de144a70cc4b1e5c3b9d3ca85822227ea2ca18e3af9aec06d583e01647441b",
+  "patchSha256": "c85009fa400bb714bfebd0b95212f78721031f016572b3e1de66281745364032",
   "files": [
     {
       "path": "packages/SystemUI/res/values/config.xml",

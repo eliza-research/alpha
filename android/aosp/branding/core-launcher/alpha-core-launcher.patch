@@ -181,7 +181,6 @@
 +        return false;
 +    }
 +}
-
 --- a/packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/UserTileSpecRepository.kt
 +++ b/packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/UserTileSpecRepository.kt
 @@ -66,6 +66,7 @@
