@@ -50,17 +50,26 @@ public final class AccessibilityViewsInstrumentedTest {
  }
  static void restoreFontScale(String previous) throws Exception { fontScale(previous == null || previous.isEmpty() || "null".equals(previous) ? "1.0" : previous); }
  private static String js(String code) throws Exception { return WebViewTestDriver.evaluate(code); }
- private static void appTextScale(int percent) throws Exception {
+ private static void appTextScale(int percent, Float requiredSystemScale) throws Exception {
   js("window.Capacitor.Plugins.AlphaDevice.setTextScale({percent:" + percent + "})");
-  java.util.concurrent.atomic.AtomicBoolean restored = new java.util.concurrent.atomic.AtomicBoolean();
+  java.util.concurrent.atomic.AtomicBoolean applied = new java.util.concurrent.atomic.AtomicBoolean();
+  java.util.concurrent.atomic.AtomicReference<String> observed = new java.util.concurrent.atomic.AtomicReference<>();
   for (int i = 0; i < 100; i++) {
-   WebViewTestDriver.withActivity(MainActivity.class, activity -> restored.set(
-    AlphaDevicePlugin.textScalePercent(activity) == percent &&
-    activity.getBridge().getWebView().getSettings().getTextZoom() == AlphaDevicePlugin.effectiveTextZoom(activity, percent)));
-   if (restored.get()) return;
+   WebViewTestDriver.withActivity(MainActivity.class, activity -> {
+    float systemScale = activity.getResources().getConfiguration().fontScale;
+    int saved = AlphaDevicePlugin.textScalePercent(activity);
+    int zoom = activity.getBridge().getWebView().getSettings().getTextZoom();
+    int expectedZoom = requiredSystemScale == null
+     ? AlphaDevicePlugin.effectiveTextZoom(activity, percent) : Math.round(percent * requiredSystemScale);
+    // A settings write can return before the activity receives its new font configuration.
+    boolean expectedConfiguration = requiredSystemScale == null || systemScale == requiredSystemScale;
+    observed.set("system font=" + systemScale + ", saved text=" + saved + ", WebView zoom=" + zoom);
+    applied.set(expectedConfiguration && saved == percent && zoom == expectedZoom);
+   });
+   if (applied.get()) return;
    SystemClock.sleep(100);
   }
-  fail("Native in-app text size was not applied: " + percent);
+  fail("Native in-app text size " + percent + " was not applied: " + observed.get());
  }
  private static boolean until(String code, int tenths) throws Exception {
   for (int i = 0; i < tenths; i++) { if ("true".equals(js("Boolean(" + code + ")"))) return true; SystemClock.sleep(100); }
@@ -93,11 +102,13 @@ public final class AccessibilityViewsInstrumentedTest {
    try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(MainActivity.class)) {
     try {
     AppNavigation.liveMode();
-    appTextScale(appPercent);
+    appTextScale(appPercent, 2.0f);
     js(AppNavigation.request("Home")); assertTrue("Home ready", until(AppNavigation.selected("Home"), 200));
     AppNavigation.declineStartupAccess();
     AccessibilityChecks.enable().setRunChecksFromRootView(true);
-    assertTrue("The page measures the " + effectiveScale * 100 + "% text it is drawn at", until("Math.abs(Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale'))-" + effectiveScale + ")<0.2", 100));
+    String measuredScale = "Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale'))";
+    if (!until("Math.abs(" + measuredScale + "-" + effectiveScale + ")<0.2", 100))
+     fail("Expected the page to measure " + effectiveScale * 100 + "% text; measured scale " + js(measuredScale));
     // The Apps drawer is a dialog over Home: its own names and order, nothing of Home after it.
     js("document.querySelector('[data-alpha-layer=\"home\"] button[aria-label=\"Apps\"]')?.click()");
     if (until("document.querySelector('[data-alpha-layer=\"drawer\"]')", 100)) {
@@ -120,7 +131,7 @@ public final class AccessibilityViewsInstrumentedTest {
      if (!until(AppNavigation.selected("Home"), 200)) problems.add(view + ": did not return Home");
     }
     } finally {
-     appTextScale(previousAppPercent);
+     appTextScale(previousAppPercent, null);
     }
    }
   } finally { restoreFontScale(previous); }
