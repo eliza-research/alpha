@@ -39,9 +39,9 @@ const detail=version=>({id:'1',lookup:'k',displayName:'Ada',starred:false,phoneN
 function mountBook(answers){const calls=[],sets=[],toasts=[];globalThis.mvpViews=['contacts'];
  globalThis.contactsPlugin=async(method,options)=>{calls.push([method,options]);if(method==='status'||method==='requestPermissions')return {available:true,readable:true,writable:answers.writable!==false};if(method==='list')return {contacts:[ada],more:false};const answer=answers[method];return typeof answer==='function'?answer(options):answer;};
  const views={contacts:{render:st=>({d:st.open?{}:null}),back:()=>false}};
- class Shell{S(){return {view:'contacts'};}vget(){return {q:''};}setState(){}toast(text){toasts.push(text);}}
+ class Shell{view='contacts';S(){return {view:this.view};}vget(){return {q:''};}setState(){}toast(text){toasts.push(text);}}
  installContactsAdapter(Shell,views);const shell=new Shell();shell.componentDidMount();const api={open(){},set:patch=>sets.push(patch)};
- return {views,calls,sets,toasts,api,model:(st={open:'1'})=>views.contacts.render(st,api)};}
+ return {views,calls,sets,toasts,api,shell,Shell,model:(st={open:'1'})=>views.contacts.render(st,api)};}
 const typeInto=(handler,value)=>handler({target:{value}});
 
 test('an owner edit saves with the version that was shown and closes the editor',async()=>{
@@ -180,4 +180,38 @@ test('a newer read in the same Contacts visit owns the editor completion',async(
   assert.deepEqual(f.views.contacts.render({},api).contactsRows.map(row=>row.name),['Current read']);
   assert.equal(f.views.contacts.render({},api).nativeBusy,false);f.shell.componentWillUnmount();
  }
+});
+
+test('pending and uncertain contact writes retain authority across visits and mounted owners',async()=>{
+ for(const operation of ['create','edit','delete'])for(const retire of ['visit','owner'])for(const reply of ['unknown','lost']){
+  const pending=Promise.withResolvers(),method=operation==='delete'?'remove':'save';
+  const book=mountBook({get:()=>detail('a1'.repeat(32)),[method]:()=>pending.promise});await settle();book.model();await settle();
+  if(operation==='create'){book.model({}).addNew();await settle();typeInto(book.model({}).ed.onName,'New contact');book.model({}).ed.save();}
+  else if(operation==='edit'){book.model().d.edit();await settle();typeInto(book.model().ed.onName,'Changed contact');book.model().ed.save();}
+  else{book.model().d.del();book.model().d.confirmDelete();}
+  await settle();assert.equal(book.calls.filter(([name])=>name===method).length,1);
+  let owner=book.shell;
+  if(retire==='owner'){owner.componentWillUnmount();owner=new book.Shell();owner.componentDidMount();}
+  else{owner.view='home';owner.componentDidUpdate();owner.view='contacts';owner.componentDidUpdate();}
+  await settle();assert.equal(book.model({}).nativeBusy,true,'a retired provider write still owns the write gate');
+  book.model({}).addNew();await settle();assert.equal(book.model({}).ed.open,false);
+  book.model({}).nativeRefresh();await settle();
+  if(reply==='unknown')pending.resolve({status:'unknown'});else pending.reject(Error('Reply lost after commit'));await settle();
+  assert.match(book.model({}).nativeStatus,/Outcome unknown/);book.model({}).addNew();await settle();
+  assert.equal(book.model({}).ed.open,false,'an old-visit read cannot confirm a later uncertain completion');
+  assert.equal(book.calls.filter(([name])=>name===method).length,1);
+  book.model({}).nativeRefresh();await settle();book.model({}).addNew();await settle();
+  assert.equal(book.model({}).ed.open,true,'a successful read begun after terminal uncertainty permits a newly reviewed write');
+  owner.componentWillUnmount();
+ }
+});
+test('a held refresh begun before terminal uncertainty cannot release the contact write gate',async()=>{
+ const pending=Promise.withResolvers(),read=Promise.withResolvers();let held=false;
+ const book=mountBook({save:()=>pending.promise});await settle();book.model({}).addNew();await settle();typeInto(book.model({}).ed.onName,'New contact');book.model({}).ed.save();await settle();
+ book.shell.view='home';book.shell.componentDidUpdate();book.shell.view='contacts';book.shell.componentDidUpdate();await settle();
+ const original=globalThis.contactsPlugin;globalThis.contactsPlugin=(method,options)=>method==='list'&&held?read.promise:original(method,options);
+ held=true;book.model({}).nativeRefresh();await settle();pending.resolve({status:'unknown'});await settle();
+ read.resolve({contacts:[ada],more:false});await settle();book.model({}).addNew();await settle();assert.equal(book.model({}).ed.open,false);
+ assert.match(book.model({}).nativeStatus,/Outcome unknown/);held=false;book.model({}).nativeRefresh();await settle();book.model({}).addNew();await settle();assert.equal(book.model({}).ed.open,true);
+ book.shell.componentWillUnmount();
 });

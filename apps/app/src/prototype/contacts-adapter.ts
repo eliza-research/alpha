@@ -19,7 +19,8 @@ type Editor={mode:'creating'|'editing';id:string|null;version:string|null;draft:
 /** Native address-book rows stay in memory, never in prototype persistence or agent context. */
 export function installContactsAdapter(Component:any,views:Bag){
  const render=views.contacts.render,p=Component.prototype,mount=p.componentDidMount,update=p.componentDidUpdate,unmount=p.componentWillUnmount;
- let uncertain=false;
+ // A dispatched provider write outlives the view; only a later explicit read clears uncertainty.
+ let uncertain=false,pendingWrite=false,writeEpoch=0;
  let owner:any,rows:Bag[]=[],status='Off',readable=false,writable=false,loading=false,more=false,limit=50,epoch=0,visit=0,active=false;
  /* The open contact as the phone holds it now, the in-app editor and a pending delete confirmation. */
  let detail:ContactDetail|null=null,detailFor='',detailEpoch=0,form:Editor|null=null,confirming=false,saving=false,opening=false,api:Bag|null=null;
@@ -29,7 +30,7 @@ export function installContactsAdapter(Component:any,views:Bag){
  const available=()=>!!owner&&owner.S().view==='contacts'&&isMvpView('contacts')&&!document.hidden;
  const sync=()=>{const next=available();if(next===active)return;active=next;if(next)void refresh();else clear();};
  async function refresh(request=false,queryOverride?:string,confirmUnknown=false){
-  const target=owner,token=++epoch;if(!available()){return;}
+  const target=owner,token=++epoch,writeAtStart=writeEpoch,pendingAtStart=pendingWrite;if(!available()){return;}
   // Rows already shown stay until this read answers; leaving the view or losing access clears them.
   loading=true;changed();
   try{
@@ -39,7 +40,7 @@ export function installContactsAdapter(Component:any,views:Bag){
    if(!readable){rows=[];more=false;status='Off';return;}
    const value=await contacts.list({query:queryOverride??String(target.vget('contacts').q||''),limit});
    if(token!==epoch||target!==owner||!available())return;
-   if(!Array.isArray(value.contacts))throw Error();rows=value.contacts;more=value.more===true;if(confirmUnknown)uncertain=false;
+   if(!Array.isArray(value.contacts))throw Error();rows=value.contacts;more=value.more===true;if(confirmUnknown&&!pendingAtStart&&!pendingWrite&&writeAtStart===writeEpoch)uncertain=false;
    status=uncertain?'Outcome unknown · refresh Contacts':more&&limit>=200?'200 shown. Search to find other contacts.':rows.length?`${rows.length} contacts${more?' · more available':''}`:'No contacts found.';
   }catch{if(token===epoch){rows=[];more=false;status='Couldn’t load';}}
   finally{if(token===epoch){loading=false;changed();}}
@@ -62,6 +63,7 @@ export function installContactsAdapter(Component:any,views:Bag){
  const unknownWrite=()=>{uncertain=true;form=null;confirming=false;detail=null;detailFor='';detailEpoch++;api?.set?.({open:null});status='Outcome unknown · refresh Contacts';owner?.toast('Outcome unknown. Refresh Contacts before trying again.');changed();};
  const blank=():ContactDraft=>({displayName:'',phoneNumbers:[],emailAddresses:[]});
  async function openEditor(selected?:Bag){
+  if(pendingWrite){owner?.toast('Contact change pending');return;}
   if(uncertain){owner?.toast('Refresh Contacts first');return;}
   if(loading||saving||opening||form||!available())return;
   const token=visit,selectedAt=detailEpoch;opening=true;
@@ -87,12 +89,13 @@ export function installContactsAdapter(Component:any,views:Bag){
  const tidy=(draft:ContactDraft):ContactDraft=>({displayName:draft.displayName.trim(),phoneNumbers:draft.phoneNumbers.map(row=>({number:row.number.trim(),type:row.type})).filter(row=>row.number),emailAddresses:draft.emailAddresses.map(row=>({address:row.address.trim(),type:row.type})).filter(row=>row.address)});
  /* A save names the version that was shown. A contact that changed since keeps the editor and says so; nothing is written. */
  async function save(){
-  if(!form||saving||!form.dirty||form.stale||!available())return;const token=visit,current=form,draft=tidy(current.draft),problem=contactDraftProblem(draft);
+  if(pendingWrite||!form||saving||!form.dirty||form.stale||!available())return;const token=visit,ownerAtStart=owner,current=form,draft=tidy(current.draft),problem=contactDraftProblem(draft);
   if(problem){current.notice=PROBLEM[problem]||'Check the contact.';changed();return;}
-  saving=true;changed();
+  let unconfirmed=true;pendingWrite=true;writeEpoch++;saving=true;changed();
   try{
    const result=parseContactSave(await contacts.save(current.mode==='editing'?{id:current.id,version:current.version,...draft}:draft),current.mode==='editing'?current.id!:undefined);
-   if(token!==visit||form!==current||!available())return;
+   unconfirmed=result.status==='unknown';
+   if(token!==visit||owner!==ownerAtStart||form!==current||!available())return;
    if(result.status==='saved'){form=null;const id=result.id||current.id;if(id){api?.set?.({open:id});void loadDetail(id);}void refresh();}
    else if(result.status==='stale'){
     current.stale=true;current.notice='This contact changed. Close the editor and reopen it to review the latest fields.';
@@ -101,20 +104,21 @@ export function installContactsAdapter(Component:any,views:Bag){
    else if(result.status==='unknown'){unknownWrite();}
    else if(result.status==='not-found'){form=null;api?.set?.({open:null});owner?.toast('That contact is no longer on this phone.');void refresh();}
    else current.notice='The contact could not be saved.';
-  }catch{if(token===visit&&form===current)unknownWrite();}
-  finally{if(token===visit){saving=false;changed();}}
+  }catch{if(token===visit&&owner===ownerAtStart&&form===current)unknownWrite();}
+  finally{pendingWrite=false;writeEpoch++;if(unconfirmed)uncertain=true;if(token===visit&&owner===ownerAtStart)saving=false;if(available())changed();}
  }
  async function remove(){
-  if(uncertain||!confirming||saving||opening||form||!detail||!available())return;const token=visit,target=detail;saving=true;changed();
+  if(pendingWrite||uncertain||!confirming||saving||opening||form||!detail||!available())return;const token=visit,ownerAtStart=owner,target=detail;let unconfirmed=true;pendingWrite=true;writeEpoch++;saving=true;changed();
   try{
    const result=parseContactRemove(await contacts.remove({id:target.id,version:target.version}));
-   if(token!==visit||detail!==target||!available())return;
+   unconfirmed=result.status==='unknown';
+   if(token!==visit||owner!==ownerAtStart||detail!==target||!available())return;
    if(result.status==='deleted'||result.status==='not-found'){confirming=false;detail=null;detailFor='';api?.set?.({open:null});void refresh();}
    else if(result.status==='unknown'){unknownWrite();}
    else if(result.status==='stale'){confirming=false;owner?.toast('This contact changed. Check it and delete again.');void loadDetail(target.id);}
    else{confirming=false;owner?.toast('The contact could not be deleted.');}
-  }catch{if(token===visit&&detail===target&&available())unknownWrite();}
-  finally{if(token===visit){saving=false;changed();}}
+  }catch{if(token===visit&&owner===ownerAtStart&&detail===target&&available())unknownWrite();}
+  finally{pendingWrite=false;writeEpoch++;if(unconfirmed)uncertain=true;if(token===visit&&owner===ownerAtStart)saving=false;if(available())changed();}
  }
  views.contacts.reply=()=>null;
  views.contacts.suggestions=()=>[];
@@ -124,7 +128,7 @@ export function installContactsAdapter(Component:any,views:Bag){
   if(!st.open&&detailFor){detailFor='';detail=null;detailEpoch++;confirming=false;}
   const list=rows.map(row=>({id:row.id,name:row.name||'Unnamed contact',first:row.name||'Unnamed contact',ini:initials(row.name||''),phone:'',email:'',fav:false}));
   const model=render({...st,list,edit:null,add:null,form:null},api);
-  model.nativeManaged=true;model.nativePrototype=false;model.nativeStatus=status;model.nativeStatusDot=!status?'':!readable?'warn':'';model.nativeBusy=loading;model.nativeAccess=!readable;model.nativeMore=more&&limit<200;
+  model.nativeManaged=true;model.nativePrototype=false;model.nativeStatus=uncertain?'Outcome unknown · refresh Contacts':pendingWrite?'Contact change pending':status;model.nativeStatusDot=!status?'':!readable?'warn':'';model.nativeBusy=loading||pendingWrite;model.nativeAccess=!readable;model.nativeMore=more&&limit<200;
   model.nativeRefresh=()=>void refresh(false,undefined,true);model.nativeRequest=()=>void refresh(true);model.nativeLoadMore=()=>{limit=Math.min(200,limit+50);void refresh();};
   model.hasQ=false;model.noHits=false;model.addNew=()=>void openEditor();model.notSearching=false;model.searching=false;model.hasQuery=!!String(st.q||'');
   /* A short list needs no letter headings; the search field is always there. */
@@ -135,7 +139,7 @@ export function installContactsAdapter(Component:any,views:Bag){
    model.d.fields=selected?[...(selected.phones||[]).map((v:string)=>({d:PHONE,v:displayNumber(v)})),...(selected.emails||[]).map((v:string)=>({d:'M3 5h18v14H3zM3 5l9 7 9-7',v}))]:[];
    if(selected&&detail&&detail.id===selected.id)model.d.fields=[...detail.phoneNumbers.map(row=>({d:PHONE,v:displayNumber(row.number),sub:TYPE_LABEL(row.type)})),...detail.emailAddresses.map(row=>({d:'M3 5h18v14H3zM3 5l9 7 9-7',v:row.address,sub:TYPE_LABEL(row.type)}))];
    model.d.hasFields=model.d.fields.length>0;model.d.edit=()=>selected&&void openEditor(selected);model.d.toggleFav=()=>{};
-   model.d.canDelete=!uncertain&&!!selected&&!!detail&&detail.id===selected.id&&writable;model.d.del=()=>{if(model.d.canDelete&&!saving&&!opening&&!form){confirming=true;changed();}};
+   model.d.canDelete=!pendingWrite&&!uncertain&&!!selected&&!!detail&&detail.id===selected.id&&writable;model.d.del=()=>{if(model.d.canDelete&&!saving&&!opening&&!form){confirming=true;changed();}};
    model.d.confirming=confirming;model.d.cancelDelete=()=>{if(!saving){confirming=false;changed();}};model.d.confirmDelete=()=>void remove();model.d.busy=saving;
   }
   const current=form;
