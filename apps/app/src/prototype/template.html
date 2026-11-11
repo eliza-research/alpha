@@ -9,6 +9,7 @@
 <div style="position: absolute; right: -5px; top: 316px; width: 6px; height: 118px; border-radius: 0 4px 4px 0; background: var(--alpha-gray-26)"></div>
 
 <div data-screen="1" data-alpha-chat-half="{{nonblockingChat}}" onPointerDown="{{gDown}}" onPointerUp="{{gUp}}" onPointerCancel="{{gCancel}}" style="position: absolute; top: 12px; left: 14px; width: 412px; height: 915px; border-radius: 48px; overflow: hidden; background: var(--bg); color: var(--fg); user-select: none; -webkit-user-select: none; touch-action: none; font-size: 15px; --alpha-chat-clearance:{{panelH}}px">
+<sc-element value="{{viewRenderRecovery}}"></sc-element>
 <sc-if value="{{chatImagePreview}}">
   <div ref="{{chatImagePreviewRef}}" class="chat-image-preview">
     <div role="dialog" aria-modal="true" aria-label="Image preview" tabindex="-1">
