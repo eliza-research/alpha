@@ -55,14 +55,28 @@ def read_json(conn, method, route, headers, body=None):
 
 def download(plan, destination):
     storage = validate(plan)
+    return download_object({"bucket": BUCKET, "object": storage["inputObject"],
+                            "generation": storage["inputGeneration"],
+                            "bytes": plan["archiveBytes"], "sha256": plan["archiveSHA256"]},
+                           destination, MAX_BYTES)
+
+
+def download_object(pin, destination, max_bytes):
+    require(set(pin) == {"bucket", "object", "generation", "bytes", "sha256"} and
+            pin["bucket"] == BUCKET and isinstance(pin["object"], str) and
+            re.fullmatch(r"unsigned/[a-z0-9/_-]*[0-9a-f]{64}\.zip", pin["object"]) and
+            isinstance(pin["generation"], str) and re.fullmatch(r"[1-9][0-9]{0,24}", pin["generation"]) and
+            type(pin["bytes"]) is int and 0 < pin["bytes"] <= max_bytes and
+            isinstance(pin["sha256"], str) and re.fullmatch(r"[0-9a-f]{64}", pin["sha256"]),
+            "Invalid exact private object")
     conn, headers = connection()
-    route = "/storage/v1/b/" + BUCKET + "/o/" + quote(storage["inputObject"], safe="")
-    query = {"generation": storage["inputGeneration"]}
+    route = "/storage/v1/b/" + BUCKET + "/o/" + quote(pin["object"], safe="")
+    query = {"generation": pin["generation"]}
     try:
         metadata = read_json(conn, "GET", route + "?" + urlencode(query), headers)
-        require(metadata["bucket"] == BUCKET and metadata["name"] == storage["inputObject"] and
-                metadata["generation"] == storage["inputGeneration"] and
-                int(metadata["size"]) == plan["archiveBytes"], "Pinned storage metadata differs")
+        require(metadata["bucket"] == BUCKET and metadata["name"] == pin["object"] and
+                metadata["generation"] == pin["generation"] and
+                int(metadata["size"]) == pin["bytes"], "Pinned storage metadata differs")
         conn.request("GET", route + "?" + urlencode({**query, "alt": "media"}), headers=headers)
         response = conn.getresponse()
         require(response.status == 200, "Private archive download refused; no redirect or retry")
@@ -70,10 +84,10 @@ def download(plan, destination):
         with destination.open("xb") as output:
             while chunk := response.read(1024 * 1024):
                 size += len(chunk)
-                require(size <= plan["archiveBytes"], "Private archive exceeds its reviewed size")
+                require(size <= pin["bytes"], "Private archive exceeds its reviewed size")
                 digest.update(chunk)
                 output.write(chunk)
-        require(size == plan["archiveBytes"] and digest.hexdigest() == plan["archiveSHA256"],
+        require(size == pin["bytes"] and digest.hexdigest() == pin["sha256"],
                 "Downloaded archive differs from reviewed bytes")
     finally:
         conn.close()
@@ -81,16 +95,22 @@ def download(plan, destination):
 
 def upload(plan, source):
     storage = validate(plan)
+    return upload_object(storage["outputObject"], source, MAX_BYTES)
+
+
+def upload_object(object_name, source, max_bytes):
+    require(isinstance(object_name, str) and len(object_name) < 512 and
+            re.fullmatch(r"signed/[a-z0-9/_-]+\.(?:tar|zip)", object_name), "Invalid exclusive output object")
     require(not source.is_symlink(), "Delivery source cannot be a symlink")
     with source.open("rb") as stream:
         before = os.fstat(stream.fileno())
-        require(stat.S_ISREG(before.st_mode) and 0 < before.st_size <= MAX_BYTES, "Invalid delivery file")
+        require(stat.S_ISREG(before.st_mode) and 0 < before.st_size <= max_bytes, "Invalid delivery file")
         digest = hashlib.file_digest(stream, "sha256").hexdigest()
         stream.seek(0)
         conn, headers = connection()
         headers.update({"Content-Type": "application/octet-stream", "Content-Length": str(before.st_size)})
         route = "/upload/storage/v1/b/" + BUCKET + "/o?" + urlencode({
-            "uploadType": "media", "name": storage["outputObject"], "ifGenerationMatch": "0",
+            "uploadType": "media", "name": object_name, "ifGenerationMatch": "0",
         })
         try:
             metadata = read_json(conn, "POST", route, headers, stream)
@@ -101,10 +121,10 @@ def upload(plan, source):
                 (after.st_ino, after.st_size, after.st_mtime_ns), "Delivery source changed during upload")
         stream.seek(0)
         require(hashlib.file_digest(stream, "sha256").hexdigest() == digest, "Delivery bytes changed")
-        require(metadata["bucket"] == BUCKET and metadata["name"] == storage["outputObject"] and
+        require(metadata["bucket"] == BUCKET and metadata["name"] == object_name and
                 int(metadata["size"]) == before.st_size and
                 re.fullmatch(r"[1-9][0-9]{0,24}", metadata["generation"]), "Delivery metadata differs")
-        return {"bucket": BUCKET, "object": storage["outputObject"], "generation": metadata["generation"],
+        return {"bucket": BUCKET, "object": object_name, "generation": metadata["generation"],
                 "bytes": before.st_size, "sha256": digest, "public": False}
 
 

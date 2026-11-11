@@ -1,0 +1,124 @@
+name: Protected preserving OS OTA signing
+run-name: Preserving OS OTA signing ${{ inputs.plan_sha256 }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_commit:
+        description: Exact reviewed workflow commit on main
+        required: true
+        type: string
+      signing_plan:
+        description: Reviewed exact-object preserving OTA plan as JSON
+        required: true
+        type: string
+      plan_sha256:
+        description: SHA-256 of the exact plan text
+        required: true
+        type: string
+
+permissions: {}
+concurrency:
+  group: preserving-os-ota-signing
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    if: github.repository == 'eliza-research/alphaphone' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha
+    runs-on: ubuntu-24.04
+    environment: release
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          submodules: false
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Prepare the hosted signing workspace
+        run: |
+          set -euo pipefail
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$RUNNER_OS" = Linux
+          sudo swapoff -a
+          if ! python3 -c 'import os,shutil; assert shutil.disk_usage(os.environ["RUNNER_TEMP"]).free >= 45 * 1024**3'; then
+            # This VM is disposable. These preinstalled SDKs are not used by OTA signing.
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          fi
+          python3 -c 'import os,shutil; assert shutil.disk_usage(os.environ["RUNNER_TEMP"]).free >= 45 * 1024**3, "45GiB signing workspace required"'
+      - name: Admit exact plan before accessing keys
+        env:
+          SIGNING_PLAN: ${{ inputs.signing_plan }}
+          PLAN_SHA256: ${{ inputs.plan_sha256 }}
+          WORKFLOW_COMMIT: ${{ inputs.workflow_commit }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test "$WORKFLOW_COMMIT" = "$GITHUB_SHA"
+          test "$WORKFLOW_COMMIT" = "$(git rev-parse HEAD)"
+          [[ "$PLAN_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          test "$(printf '%s' "$SIGNING_PLAN" | sha256sum | cut -d ' ' -f 1)" = "$PLAN_SHA256"
+          plan="$RUNNER_TEMP/os-plan.json"
+          work="$RUNNER_TEMP/alpha-os-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          test ! -e "$plan"
+          printf '%s' "$SIGNING_PLAN" > "$plan"
+          python3 -B scripts/ci/sign-os-ota.py validate "$plan" "$work"
+          printf 'ALPHA_OS_PLAN=%s\nALPHA_OS_WORK=%s\n' "$plan" "$work" >> "$GITHUB_ENV"
+      - name: Check data-preservation and input admission refusals
+        run: python3 -B scripts/ci/sign-os-ota.test.py
+      - name: Authenticate exact private input reads
+        id: input_auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: alpha-aosp-lab-20261024
+          workload_identity_provider: projects/484320254111/locations/global/workloadIdentityPools/alpha-github-release/providers/github
+          service_account: alpha-release-artifacts@alpha-aosp-lab-20261024.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_lifetime: 3600s
+          access_token_scopes: https://www.googleapis.com/auth/devstorage.read_write
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Download, hash and inspect private inputs without signing keys
+        env:
+          ALPHA_PRIVATE_STORAGE_TOKEN: ${{ steps.input_auth.outputs.access_token }}
+        run: python3 -B scripts/ci/sign-os-ota.py download "$ALPHA_OS_PLAN" "$ALPHA_OS_WORK"
+      - name: Sign the admitted preserving OTA
+        env:
+          ALPHA_OS_RELEASE_KEYS_PART1_B64: ${{ secrets.ALPHA_OS_RELEASE_KEYS_PART1_B64 }}
+          ALPHA_OS_RELEASE_KEYS_PART2_B64: ${{ secrets.ALPHA_OS_RELEASE_KEYS_PART2_B64 }}
+          ALPHA_OS_RELEASE_KEYS_PASSPHRASE: ${{ secrets.ALPHA_OS_RELEASE_KEYS_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          ulimit -c 0
+          python3 -B scripts/ci/sign-os-ota.py sign "$ALPHA_OS_PLAN" "$ALPHA_OS_WORK"
+      - name: Authenticate exclusive signed output creation
+        id: output_auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          project_id: alpha-aosp-lab-20261024
+          workload_identity_provider: projects/484320254111/locations/global/workloadIdentityPools/alpha-github-release/providers/github
+          service_account: alpha-release-artifacts@alpha-aosp-lab-20261024.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_lifetime: 3600s
+          access_token_scopes: https://www.googleapis.com/auth/devstorage.read_write
+          create_credentials_file: false
+          export_environment_variables: false
+      - name: Retain signed OTA privately without overwrite
+        env:
+          ALPHA_PRIVATE_STORAGE_TOKEN: ${{ steps.output_auth.outputs.access_token }}
+        run: python3 -B scripts/ci/sign-os-ota.py upload "$ALPHA_OS_PLAN" "$ALPHA_OS_WORK"
+      - name: Export only public delivery evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: preserving-os-ota-delivery-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.ALPHA_OS_WORK }}/private-storage-receipt.json
+          if-no-files-found: error
+          retention-days: 14
