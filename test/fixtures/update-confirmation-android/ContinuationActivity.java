@@ -64,7 +64,7 @@ public final class ContinuationActivity extends Activity {
    session.commit(AlphaUpdateStatusReceiver.sender(this,id,sessionId));
   }
  }
- private void write(String name,JSONObject value)throws Exception{Files.writeString(new File(getFilesDir(),name).toPath(),value.toString());}
+ private void write(String name,JSONObject value)throws Exception{Files.write(new File(getFilesDir(),name).toPath(),value.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));}
  static int boot(Context context)throws Exception{return Settings.Global.getInt(context.getContentResolver(),Settings.Global.BOOT_COUNT);}
  static String sha(byte[] bytes)throws Exception{
   byte[] hash=MessageDigest.getInstance("SHA-256").digest(bytes);StringBuilder result=new StringBuilder();
