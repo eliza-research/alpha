@@ -54,7 +54,7 @@ async function seed(page:Page,mode:'compose'|'phone'='compose'){return page.eval
   const spec=normalizePhoneSpec(mode==='phone'?{version:1,name:'Execution fixture',description:'Reviewed workflow',device:c.getWorkflowDeviceTarget()!,trigger:{kind:'manual'},steps:[{id:'read',kind:'Read',operation:'supplied_text',text:'pending text'},{id:'save',kind:'Write',operation:'save_note',source:'read',title:'Pending workflow note'}]}:{version:1,name:'Execution fixture',description:'Reviewed workflow',trigger:{kind:'manual'},steps:[{id:'read',kind:'Read',operation:'supplied_text',text:'alpha input'},{id:'write',kind:'Write',operation:'compose_draft',source:'read',prefix:'Before ',suffix:' after'}]});
   const validation=await client.validatePhone(spec,catalog,signal);return client.savePhone(spec,catalog,{mutationId:crypto.randomUUID(),specDigest:validation.specDigest,compilerRevision:catalog.compilerRevision},signal);},mode);}
 async function openFixture(page:Page){await returnToApps(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await workflowCard(page,'Execution fixture').click();await expect(runNow(page)).toBeVisible();}
-async function reopenFixture(page:Page){await page.getByRole('button',{name:'Back to workflows',exact:true}).click();await workflowCard(page,'Execution fixture').click();await expect(runNow(page)).toBeVisible();}
+async function reopenFixture(page:Page,expected:'run'|'clear'='run'){await page.getByRole('button',{name:'Back to workflows',exact:true}).click();await workflowCard(page,'Execution fixture').click();await expect(expected==='clear'?page.getByRole('button',{name:'Clear earlier run request',exact:true}):runNow(page)).toBeVisible();}
 
 test('repeated and rapid Run taps admit exactly one run',async({page})=>{
  await setup(page);await seed(page);await openFixture(page);await rule(page,{method:'POST',suffix:'/run',kind:'hold',times:1});
@@ -98,7 +98,7 @@ test('an unaccepted run request for a workflow that has since changed is closed 
  await runNow(page).click();await runNow(page).click();await expect(status(page)).toHaveText('Check before running again');
  // The workflow is changed elsewhere (another tab or device), giving it a new version.
  await page.evaluate(async saved=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');await c.getWorkflowClient()!.client.changeMetadata(saved.workflowId,saved.versionId,'Execution fixture','Changed elsewhere',new AbortController().signal,()=>{});},saved);
- await reopenFixture(page);await expect(page.getByText('Not run · workflow changed',{exact:true}).first()).toBeVisible();
+ await reopenFixture(page);await expect(page.getByText('Not run · Workflow changed',{exact:true}).first()).toBeVisible();
  await expect(status(page)).toHaveText('Paused');expect(await posts(page,'/run')).toHaveLength(1);expect((await stored(page)).runs).toHaveLength(0);
  await runNow(page).click();await runNow(page).click();await expect(page.getByText('Before alpha input after',{exact:true})).toBeVisible();
  const sent=await posts(page,'/run');expect(sent).toHaveLength(2);expect(sent[1].submissionId).not.toBe(sent[0].submissionId);expect(sent[1].expectedVersionId).not.toBe(saved.versionId);expect((await stored(page)).runs).toHaveLength(1);
@@ -135,9 +135,19 @@ test('an agent without submission identities never offers a resend: the request 
  await rule(page,{method:'POST',suffix:'/run',kind:'lost',times:1});await runNow(page).click();await runNow(page).click();
  await expect(status(page)).toHaveText('Check before running again');
  const sent=await posts(page,'/run');expect(sent).toHaveLength(1);expect(sent[0]).not.toHaveProperty('submissionId');
- await reopenFixture(page);await expect(status(page)).toHaveText('Check before running again');
- await runNow(page).click();await runNow(page).click();await expect(page.getByText('May have run',{exact:true}).first()).toBeVisible();
+ await reopenFixture(page,'clear');await expect(status(page)).toHaveText('Check runs · Clear request');
+ await expect(page.getByText('May have run',{exact:true}).first()).toBeVisible();
+ await expect(runNow(page)).toHaveCount(0);await expect(page.getByRole('button',{name:/^(Resend|Confirm resend)$/})).toHaveCount(0);
+ // An unverifiable request has no safe resend. Opening its explicit clear review
+ // sends nothing and keeps the request retained until a separate confirmation.
+ await page.getByRole('button',{name:'Clear earlier run request',exact:true}).click();
+ await expect(status(page)).toHaveText('Confirm clear · Nothing sent');
+ await expect(page.getByRole('button',{name:'Confirm clearing earlier run request',exact:true})).toBeVisible();
+ await expect(runNow(page)).toHaveCount(0);await expect(page.getByRole('button',{name:/^(Resend|Confirm resend)$/})).toHaveCount(0);
  expect(await posts(page,'/run')).toHaveLength(1);expect((await page.evaluate(()=>(window as any).faults.calls.filter((call:any)=>call.path.includes('/submissions/')).length))).toBe(0);expect((await stored(page)).runs).toHaveLength(0);
+ // Leaving the unconfirmed review cannot release that block or create a run.
+ await reopenFixture(page,'clear');await expect(status(page)).toHaveText('Check runs · Clear request');
+ expect(await posts(page,'/run')).toHaveLength(1);expect((await stored(page)).runs).toHaveLength(0);
 });
 
 test('a run request held in one tab blocks a second tab from submitting another',async({page})=>{
@@ -231,7 +241,9 @@ test('editing while a run awaits approval leaves that run on its reviewed versio
  await expect.poll(async()=>(await stored(page)).runs.map(run=>run.finished)).toEqual([true]);
  const notes=await page.evaluate(async()=>(await (await import('/src/runtime/browser-notes-document.ts')).browserNotesPort.read())?.raw||'');expect(notes).not.toContain('Pending workflow note');
  await page.getByRole('button',{name:'Back to Execution fixture',exact:true}).click();await page.getByRole('button',{name:'Remove workflow',exact:true}).click();
- await expect(page.getByText('Remove?',{exact:true})).toBeVisible();expect(await posts(page,'/run')).toHaveLength(1);
+ await expect(page.getByText('Keeps history; stops future runs.',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Remove',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Cancel',exact:true})).toBeVisible();
+ expect(await posts(page,'/lifecycle')).toHaveLength(0);expect(await posts(page,'/run')).toHaveLength(1);
 });
 
 test('the assistant offers current actions without prototype automation suggestions',async({page})=>{
