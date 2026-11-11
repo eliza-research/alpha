@@ -7,10 +7,33 @@ import subprocess
 import tempfile
 
 root = Path(__file__).resolve().parents[1]
+toolchain = root / 'vendor/eliza/packages/app/scripts/mobile/android/consumer-host/toolchain.json'
+gradle_version = json.loads(toolchain.read_text())['gradle']
+
+
+def gradle_library():
+    def matches(library):
+        return (library / f'gradle-core-api-{gradle_version}.jar').is_file() and any(
+            jar.is_file() for jar in library.glob('groovy-[0-9]*.jar'))
+
+    if override := os.environ.get('GRADLE_LIB'):
+        library = Path(override).expanduser()
+        if not matches(library):
+            raise SystemExit(f'GRADLE_LIB must contain the pinned Gradle {gradle_version} libraries')
+        return library
+
+    home = Path(os.environ.get('GRADLE_USER_HOME') or Path.home() / '.gradle').expanduser()
+    archive = f'gradle-{gradle_version}-bin'
+    for library in sorted(home.glob(f'wrapper/dists/{archive}/*/gradle-{gradle_version}/lib')):
+        if (library.parent.parent / f'{archive}.zip.ok').is_file() and matches(library):
+            return library
+    raise SystemExit(f'Run the Android wrapper build to install pinned Gradle {gradle_version}')
+
+
 source = (root / 'android/app/product.gradle').read_text()
 block = source[source.index('// One-tap app update'):source.index("\nandroid {")]
 java = str(Path(os.environ['JAVA_HOME']) / 'bin/java')
-classpath = str(Path(os.environ['GRADLE_LIB']) / '*')
+classpath = str(gradle_library() / '*')
 public = 'https://example.test/public-update.json'
 url = ('https://storage.googleapis.com/alpha-aosp-lab-20261024-private-apks/update-qa/'
        + 'a' * 32 + '/alpha-update.json?X-Goog-Algorithm=GOOG4-RSA-SHA256'
@@ -80,4 +103,5 @@ with tempfile.TemporaryDirectory(prefix='alpha-channel-gradle-') as temporary:
         else:
             assert run.returncode != 0 and 'Update channel input refused' in output, name
         results.append({'case': name, 'passed': True})
-print(json.dumps({'scope': 'actual Gradle input block only; no APK or endpoint', 'results': results}, indent=2))
+print(json.dumps({'scope': 'actual Gradle input block only; no APK or endpoint',
+                  'gradleVersion': gradle_version, 'results': results}, indent=2))

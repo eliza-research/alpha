@@ -27,12 +27,12 @@ export function affected(paths: readonly string[]) {
       // Executable formal models are checked by verify and do not change APK or browser bytes.
     } else if (/^test\/browser\//.test(path) || path === 'playwright.config.ts' || path === 'scripts/storage-specs.ts') {
       result.browser = true;
+    } else if (path === 'test/update-channel-gradle.test.py' || path === '.github/workflows/android.yml') {
+      result.android = true;
     } else if (/^test\//.test(path)) {
       // Host contract tests run in verify, not in an emulator.
     } else if (path === '.github/workflows/browser.yml') {
       result.browser = true;
-    } else if (path === '.github/workflows/android.yml') {
-      result.android = true;
     } else if (path === '.github/workflows/resident-prepare.yml') {
       result.prepare = true;
     } else if (/^\.github\/workflows\/(resident-android|bun-spawn-seccomp|android-emulator|digest-restart)\.yml$/.test(path)) {
