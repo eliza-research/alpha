@@ -2288,7 +2288,7 @@
             <div style="display: flex; align-items: center; gap: 2px; min-height: 48px">
               <button aria-label="{{it.label}}" onClick="{{it.toggle}}" style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><span style="width: 22px; height: 22px; border-radius: 7px; display: flex; align-items: center; justify-content: center; {{it.box}}"><svg class="i" viewBox="0 0 24 24" style="width: 15px; height: 15px; "><path d="{{ic.check}}"></path></svg></span></button>
               <input aria-label="Item" value="{{it.t}}" onChange="{{it.onText}}" style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: 0; background: transparent; color: var(--fg); font-size: 17px; {{it.css}}">
-              <button class="ib" data-agent-id="notes-remove-item-{{it.idx}}" aria-label="Remove {{it.t}}" onClick="{{it.remove}}" style="color: var(--mut)"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.x}}"></path></svg></button>
+              <button class="ib" data-agent-id="notes-remove-item-{{it.idx}}" aria-label="{{it.removeLabel}}" onClick="{{it.remove}}" style="color: var(--mut)"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.x}}"></path></svg></button>
             </div>
           </sc-for>
           <div style="display: flex; align-items: center; gap: 2px; min-height: 48px">

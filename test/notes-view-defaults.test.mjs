@@ -15,6 +15,18 @@ test('a voice row without a duration shows no clock and never NaN',()=>{
  const f=fixture([{id:'v',kind:'voice',title:'Sync',lines:[],summary:[],actions:[{t:'One',done:false}],pinned:false}]),out=f.view.render(f.state,f.api);
  assert.equal(out.otherRows.length,1);assert.equal(out.otherRows[0].isVoice,true);assert.doesNotMatch(out.otherRows[0].preview,/NaN/);assert.equal(out.otherRows[0].preview,'');
 });
+test('checklist action names identify blank items without changing text or row operations',()=>{
+ const items=[{t:'',done:false},{t:' \t ',done:true},{t:'  Milk  ',done:false}];
+ const f=fixture([{id:'checklist',kind:'list',title:'Checklist',items}]);f.state.open='checklist';
+ const before=structuredClone(f.state),rows=f.view.render(f.state,f.api).ed.items;
+ assert.deepEqual(Array.from(rows,row=>row.label),['Check item','Uncheck item','Check Milk']);
+ assert.deepEqual(Array.from(rows,row=>row.removeLabel),['Remove item','Remove item','Remove Milk']);
+ assert.deepEqual(Array.from(rows,row=>row.t),items.map(item=>item.t));
+ assert.deepEqual(f.state,before);
+ f.api.set=patch=>Object.assign(f.state,patch);
+ rows[1].remove();
+ assert.deepEqual(structuredClone(f.state.list[0].items),[items[0],items[2]]);
+});
 /** The restored projection (canonical-notes-ui.ts) over the real model.js Notes view. */
 function installCanonicalProjection(f){
  const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/canonical-notes-ui.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
