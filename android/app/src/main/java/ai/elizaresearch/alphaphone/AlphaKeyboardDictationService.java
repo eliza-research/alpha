@@ -123,6 +123,8 @@ public final class AlphaKeyboardDictationService extends InputMethodService {
  }
  private String text(CharSequence value) { return value == null ? "" : value.toString(); }
  private void start() {
+  // Android can reopen this keyboard for the same editor without onStartInput.
+  if (policy.state() == KeyboardDictationPolicy.State.CLOSED) policy.open();
   if (!allowedNow() || policy.state() != KeyboardDictationPolicy.State.READY) { renderReady(); return; }
   try {
    if (!getSystemService(AudioManager.class).getActiveRecordingConfigurations().isEmpty()) {
