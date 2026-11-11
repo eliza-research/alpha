@@ -135,7 +135,11 @@ def validate(record):
 
 
 def gh_json(endpoint):
-    result = subprocess.run(["gh", "api", endpoint], check=True, capture_output=True, timeout=60)
+    arguments = ["gh", "api", endpoint]
+    if "/compare/" in endpoint:
+        # Compare responses include patches. Admission consumes these ancestry facts.
+        arguments.extend(["--jq", "{status,merge_base_commit:{sha:.merge_base_commit.sha}}"])
+    result = subprocess.run(arguments, check=True, capture_output=True, timeout=60)
     require(len(result.stdout) <= 1048576, "GitHub metadata exceeds bound")
     return decode(result.stdout)
 
