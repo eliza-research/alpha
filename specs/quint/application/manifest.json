@@ -3484,7 +3484,9 @@
       "confirmOnceTest",
       "ownerChangeCancelsTest",
       "staleReadCannotRestoreDeletedTest",
-      "restoredRevisionIsVisibleTest"
+      "restoredRevisionIsVisibleTest",
+      "revisedReviewDoesNotWriteTest",
+      "revisedReviewCanConfirmTest"
     ],
     "invariants": [
       "safety"
@@ -3493,11 +3495,17 @@
       "apps/app/src/runtime/calendar-action-confirmation.ts",
       "apps/app/src/runtime/agent-calendar.ts",
       "apps/app/src/prototype/agent-calendar-adapter.ts",
-      "apps/app/src/prototype/template.html"
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/runtime/calendar-approval.ts",
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/prototype/calendar-approval-adapter.ts",
+      "apps/app/src/prototype/calendar-approval-review.ts",
+      "test/calendar-approval-ui.test.mjs"
     ],
     "abstractions": [
       "One event, two owners and provider revisions; confirmed/cancelled UI actions and receipt-backed stale-row suppression.",
-      "Provider I/O and real account permissions remain in AgentCalendarMutation conformance and live QA. Progress requires confirmation and provider response; cancellation has no progress assumption."
+      "Provider I/O and real account permissions remain in AgentCalendarMutation conformance and live QA. Progress requires confirmation and provider response; cancellation has no progress assumption.",
+      "A queued Calendar decision posts the exact reviewed revision through the authenticated resolver. A changed revision requires a fresh review before confirmation. The existing Calendar approval tests exercise the real adapter and modal with controlled queue reads; provider effects and transport are separately checked in live QA."
     ]
   },
   {

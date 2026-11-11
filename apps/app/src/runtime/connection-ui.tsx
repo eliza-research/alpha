@@ -1,10 +1,11 @@
+import {calendarApprovalBody,type CalendarApproval,type CalendarApprovalDecision,type CalendarApprovalResolution} from './calendar-approval';
 import {googleConnectionController} from './google-connection-ui';
 import {FILES_CAPABILITY} from '../../../../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts';
 import {isCalendarReadFailureCode} from "../../../../.eliza/client-features/packages/contracts/src/calendar.ts";
 import {SingleFlightMemo} from "@elizaos/core/read-memo";
 import {productionCloud, stagingCloud} from './cloud-deployment.generated.ts';
 import {browserCloudResidentEnabled,browserCloudResidentEnvironment,browserResidentCall,OWN_KEYS_NOT_SET_UP} from './browser-cloud-resident';
-import {appRecordInvalidations} from './app-record-completion';
+import {appRecordInvalidations,CALENDAR_INVALIDATED_EVENT} from './app-record-completion';
 import {normalizeEffectReceipts} from '../../../../.eliza/client-features/packages/core/src/types/effects.ts';
 import {assertAppRecordRequestAllowed,type AppRecordMethod,type AppRecordPort} from './app-record-route-policy';
 import {AUTOMATIONS_COMMITTED_EVENT,automationsCommitted} from './automation-completion';
@@ -2244,6 +2245,45 @@ export const connectionController = {
     const current=()=>{signal.throwIfAborted();if(generation!==epoch||active!==selected||state.session!==session||state.history!==history||service!==account||state.open||state.busy||document.hidden)throw Error('The agent or conversation changed.');};
     current();const result=await selected.remote.request(CALENDAR_APPROVAL_READ_PATH,undefined,signal);current();
     return calendarApprovalFromList(result,id,session.ownerId);
+  },
+  async resolveCalendarApproval(
+    row: CalendarApproval,
+    decision: CalendarApprovalDecision,
+    signal: AbortSignal,
+  ): Promise<CalendarApprovalResolution> {
+    const selected = active;
+    const session = state.session;
+    const generation = epoch;
+    const history = state.history;
+    const account = service;
+    if (selected?.kind !== 'resident' || !session || state.open || state.busy || document.hidden) {
+      throw Error('Calendar review is unavailable on this connection.');
+    }
+    const current = () => {
+      signal.throwIfAborted();
+      if (generation !== epoch || active !== selected || state.session !== session ||
+          state.history !== history || service !== account || state.open || state.busy || document.hidden) {
+        throw Error('The agent or conversation changed. Check the saved Calendar request before trying again.');
+      }
+    };
+    current();
+    const result = await selected.remote.request(
+      `/api/approvals/${encodeURIComponent(row.id)}/resolve`,
+      calendarApprovalBody(row, decision), signal, {}, 'POST',
+    );
+    current();
+    if (!result || typeof result !== 'object' || result.requestId !== row.id ||
+        result.decision !== decision ||
+        !['succeeded', 'rejected', 'invalidated', 'retryable', 'blocked'].includes(result.kind) ||
+        typeof result.text !== 'string') {
+      throw Error('The Calendar result could not be confirmed. Check the saved request before trying again.');
+    }
+    if (result.kind === 'succeeded') {
+      window.dispatchEvent(new CustomEvent(CALENDAR_INVALIDATED_EVENT, {
+        detail: { sessionId: session.sessionId },
+      }));
+    }
+    return result as CalendarApprovalResolution;
   },
   async pendingActions(context:ContextEnvelope,signal:AbortSignal):Promise<ActionProposal[]> {
     const selected=active,session=state.session,generation=epoch,history=state.history;

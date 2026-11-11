@@ -1,9 +1,9 @@
 import {connectionController} from '../runtime/connection-ui';
 import {alphaClient} from '../runtime/alpha-client';
-import {calendarReviewText,inboxChoiceText,calendarApprovalCommand,calendarApprovalStatus} from '../runtime/calendar-approval';
+import {calendarReviewText,inboxChoiceText,calendarApprovalStatus} from '../runtime/calendar-approval';
 import {reviewCalendarApproval} from './calendar-approval-review';
 type Shell=Record<string,any>;
-/** Presentation only: stored messages, model context and copied source text remain unchanged. */
+/** Keep stored messages intact; explicit reviews resolve through the owner API. */
 export function installCalendarApprovalAdapter(Component:Shell){
  const p=Component.prototype,render=p.renderVals,unmount=p.componentWillUnmount;
  const states=new WeakMap<object,{abort?:AbortController;statuses:Map<string,string>}>();
@@ -20,7 +20,7 @@ export function installCalendarApprovalAdapter(Component:Shell){
   const current=()=>{controller.signal.throwIfAborted();const now=connectionController.getSnapshot();if(!shell.live||document.hidden||binding()!==key||now.open||now.busy||JSON.stringify(alphaClient.getState().context)!==context||String(shell.S().draft||'').trim())throw Error('The agent, conversation or draft changed. Review the request again.');};
   try{
    const result=await reviewCalendarApproval(signal=>connectionController.readCalendarApproval(id,signal),controller.signal,current,row=>{value.statuses.set(key+id,calendarApprovalStatus(row));if(shell.live)shell.setState({});});
-   if(!result)return;current();await shell.send(calendarApprovalCommand(result.request,result.decision));value.statuses.set(key+id,'Check the agent reply for the result.');if(shell.live)shell.setState({});
+   if(!result)return;current();const outcome=await connectionController.resolveCalendarApproval(result.request,result.decision,controller.signal);value.statuses.set(key+id,outcome.text);if(shell.live)shell.setState({});
   }catch(error){if(shell.live&&!controller.signal.aborted)shell.toast(error instanceof Error?error.message:'Calendar review is unavailable.');}
   finally{if(value.abort===controller)value.abort=undefined;controller.abort();}
  }
