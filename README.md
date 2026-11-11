@@ -235,9 +235,10 @@ Release approval, signed-byte voice tests, publication and both sideload and
 image-preinstalled phone drills remain required for this batch.
 
 On the machine with the phone, record each [wireless drill](https://github.com/eliza-research/alpha/issues/889)
-with the release APK and its verification manifest available locally. Keep the
-phone out of idle HOME while taking the baseline so it cannot update before
-the capture. The baseline command verifies the anonymous offer and its APK.
+with the release APK and its verification manifest available locally. This capture
+requires Android 14 or later for package installer provenance. Keep the phone
+out of idle HOME while taking the baseline so it cannot update before the
+capture. The baseline command verifies the anonymous offer and its APK.
 
 ```sh
 node scripts/verify-wireless-launcher-update.ts before --serial <serial> \

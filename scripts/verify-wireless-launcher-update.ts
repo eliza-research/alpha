@@ -56,7 +56,8 @@ function installedState(adb: Adb) {
 export function captureLauncher(adb: Adb, serial: string) {
   assert.equal(adb(['get-state']), 'device', 'Device is unavailable');
   const device = deviceFacts(adb, serial);
-  assert.ok(!device.emulator && device.sdk && device.sdk >= 31, 'Use a physical Android device with API level 31 or later');
+  assert.ok(!device.emulator && device.sdk && device.sdk >= 34,
+    'Use a physical Android 14 or later device for install initiator readback');
   assert.ok(device.model && device.abi && device.buildFingerprintSha256 !== EMPTY_SHA256,
     'Device model, ABI or build fingerprint is unavailable');
   assert.equal(adb(['shell', 'am', 'get-current-user']), '0', 'Use the primary Android user');

@@ -21,7 +21,7 @@ const publicBytes = value => ({size: value.length, sha256: hash(value), bytes: v
 const pointer = publicBytes(Buffer.from(JSON.stringify(manifest)));
 const props = {
   'ro.kernel.qemu': '0', 'ro.boot.qemu': '', 'ro.product.model': 'Pixel',
-  'ro.build.version.sdk': '37', 'ro.product.cpu.abi': 'arm64-v8a',
+  'ro.product.cpu.abi': 'arm64-v8a',
   'ro.build.fingerprint': 'brand/device/product:17/build/100:user/release-keys',
   'ro.boot.verifiedbootstate': 'green', 'ro.boot.flash.locked': '1', 'ro.boot.vbmeta.digest': 'a'.repeat(64),
 };
@@ -29,12 +29,13 @@ const props = {
 function readDevice({
   version = 7, sha256 = 'c'.repeat(64), flags = 'HAS_CODE', initiator = 'com.android.shell',
   appId = 10123, firstInstallTime = '2026-11-01 10:00:00', packagePath = `package:${installedPath}`,
-  home = packageName, changeDuringReadback = false, serial = 'fixture-phone',
+  home = packageName, changeDuringReadback = false, serial = 'fixture-phone', sdk = '37',
 } = {}) {
   let dumps = 0;
   const adb = args => {
     if (args[0] === 'get-state') return 'device';
     assert.equal(args[0], 'shell', 'acceptance capture only uses read commands');
+    if (args[1] === 'getprop' && args[2] === 'ro.build.version.sdk') return sdk;
     if (args[1] === 'getprop' && Object.hasOwn(props, args[2])) return props[args[2]];
     switch (args.slice(1, 3).join(' ')) {
       case 'am get-current-user': return '0';
@@ -70,6 +71,8 @@ test('capture selects the active package and primary user, omitting raw device i
   assert.equal(state.installed.system, false);
   assert.ok(!JSON.stringify(state).includes('fixture-phone'));
   assert.throws(() => readDevice({serial: 'emulator-5554'}), /physical/);
+  assert.throws(() => readDevice({sdk: '33'}), /Android 14 or later/);
+  assert.equal(readDevice({sdk: '34'}).device.sdk, 34);
   assert.throws(() => readDevice({changeDuringReadback: true}), /changed during readback/);
   assert.throws(() => readDevice({packagePath: `package:${installedPath}\npackage:/data/app/split.apk`}), /one installed base/);
   assert.throws(() => readDevice({packagePath: 'package:/data/app/a;id.apk'}), /one installed base/);
