@@ -5,7 +5,7 @@ import {test,expect,type Page} from '@playwright/test';
 // recorded once as missed by the agent and never replayed. Its receipt says nothing ran and offers
 // an explicit Run now, which returns to the workflow's own reviewed run confirmation and starts one
 // new run. A synthetic agent in the page answers workflow routes; every request is recorded.
-type FixtureOptions={kind?:'typed'|'generic'|'hosted';occurrence?:'missed'|'overlap'};
+type FixtureOptions={kind?:'typed'|'generic'|'hosted';occurrence?:'missed'|'overlap';active?:boolean};
 async function setup(page:Page,options:FixtureOptions={}){
  await page.goto('/?mode=dev&workflows=agent');
  await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();
@@ -14,9 +14,11 @@ async function setup(page:Page,options:FixtureOptions={}){
   const trigger={kind:'time',localTime:'07:30',timeZone:'UTC',days:[3]};
   const spec=JSON.stringify({version:1,name:'Morning',description:'',trigger,steps:[{id:'s0',kind:'Read',operation:'supplied_text',text:'Synthetic source text'},{id:'s1',kind:'Write',operation:'model_draft',source:'s0',instruction:'Draft a short digest'}]});
   const metadata=options.kind==='hosted'?{elizaPhoneWorkflowSpec:spec,elizaHostedDigestV1:'{}'}:options.kind==='generic'?{}:{elizaPhoneWorkflowSpec:spec};
-  const flows:any={morning:{id:'morning',name:'Morning notes digest',description:'Reads selected notes and drafts a digest',active:true,versionId:'morning-v1',steps:[{label:'Read selected Notes'},{label:'Draft digest'}],metadata}};
+  const flows:any={morning:{id:'morning',name:'Morning notes digest',description:'Reads selected notes and drafts a digest',active:options.active??true,versionId:'morning-v1',steps:[{label:'Read selected Notes'},{label:'Draft digest'}],metadata}};
   const scheduledAt='2026-10-28T07:30:00.000Z';
-  const missed={id:'run-missed',workflowId:'morning',workflowVersionId:'morning-v1',status:'finished',startedAt:'2026-10-28T09:00:00Z',finished:true,stoppedAt:'2026-10-28T09:00:00Z',mode:'trigger',...((options.occurrence??'missed')==='missed'?{missedOccurrenceAt:scheduledAt}:{}),input:options.kind==='generic'||options.kind==='hosted'?{}:{typedSchedule:{scheduledAt,trigger,status:'ready',text:''}},output:{status:options.occurrence??'missed',scheduledAt,text:'Not run: synthetic scheduled occurrence'},events:[]};
+  const missed={id:'run-missed',workflowId:'morning',workflowVersionId:'morning-v1',status:'finished',startedAt:'2026-10-28T09:00:00Z',finished:true,stoppedAt:'2026-10-28T09:00:00Z',mode:'trigger',...((options.occurrence??'missed')==='missed'?{missedOccurrenceAt:scheduledAt}:{}),input:options.kind==='generic'||options.kind==='hosted'?{}:{typedSchedule:{scheduledAt,trigger,status:'ready',text:''}},output:{status:options.occurrence??'missed',scheduledAt,text:(options.kind??'typed')==='typed'&&(options.occurrence??'missed')==='missed'
+   ?'The scheduled time passed while the agent was not running. This occurrence did not run and will not run later.'
+   :'Not run: synthetic scheduled occurrence'},events:[]};
   // The agent's workflow service writes missedOccurrenceAt when it records a missed occurrence; a generic
   // schedule's output alone never makes a run missed (see scripts/test-workflow-protocol.ts, forged case).
   const runs:any={morning:[missed]};
@@ -48,7 +50,9 @@ const posts=(page:Page,suffix:string)=>page.evaluate(suffix=>(window as any).age
 
 test('a missed scheduled time says nothing ran and offers Run now only through the reviewed run confirmation',async({page})=>{
  await setup(page);await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Morning notes digest',{exact:true}).first().click();
- await page.getByRole('button',{name:'Missed execution',exact:true}).click();await page.getByText('Details',{exact:true}).click();
+ await page.getByRole('button',{name:'Missed execution',exact:true}).click();
+ await expect(page.getByText('This occurrence missed its run window and did not run.',{exact:true})).toBeVisible();
+ await page.getByText('Details',{exact:true}).click();
  await expect(page.locator('details[aria-label="Workflow execution details"] dd').filter({hasText:/^Missed$/})).toBeVisible();
  await page.waitForTimeout(500);expect(await posts(page,'/run')).toBe(0);
  await page.getByRole('button',{name:'Review and run now',exact:true}).click();
@@ -60,6 +64,15 @@ test('a missed scheduled time says nothing ran and offers Run now only through t
  await expect(page.getByRole('button',{name:'Missed execution',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'finished execution',exact:true})).toBeVisible();expect(await posts(page,'/run')).toBe(1);
 });
 
+
+test('the typed schedule enable review states the delay window without enabling',async({page})=>{
+ await setup(page,{active:false});
+ const workflows=page.getByRole('region',{name:'Workflows',exact:true});
+ await workflows.getByText('Morning notes digest',{exact:true}).first().click();
+ await workflows.getByRole('button',{name:'Turn Morning notes digest on or off',exact:true}).click();
+ await expect(workflows).toContainText('Android may delay scheduled runs. Runs more than 30 minutes late are marked missed.');
+ expect(await posts(page,'/activate')).toBe(0);
+});
 
 test('a missed-run action starts a fresh confirmation even after Run now was already armed',async({page})=>{
  await setup(page);await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Morning notes digest',{exact:true}).first().click();

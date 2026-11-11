@@ -52,7 +52,7 @@ const {homeReadIsStale,presentHomeWorkflowFreshness}=await import('../apps/app/s
 const transformed=file=>stripTypeScriptTypes(fs.readFileSync(file,'utf8').replace(/^import .*;\n/gm,'').replace(/export /g,''),{mode:'transform'});
 function adapterFixture(request,storage={},options={}){
  const listeners=new Set(),events=new Map(),session={sessionId:'session',origin:'https://synthetic.invalid',ownerId:'owner',agentId:'agent'};
- const controller={getAutomationsClient:()=>({sessionId:session.sessionId,request}),getSnapshot:()=>({session,open:false}),subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},open:()=>{throw Error('Unexpected account chooser');}};
+ const controller={getAutomationsClient:()=>({sessionId:session.sessionId,request}),getSnapshot:()=>({session,open:false,kind:options.agentKind}),subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},open:()=>{throw Error('Unexpected account chooser');}};
  const showAgentStatus=()=>{throw Error('Unexpected agent status route');};
  const localStorage=new Proxy({getItem:key=>storage[key]??null,setItem:(key,value)=>storage[key]=value,removeItem:key=>delete storage[key]},{ownKeys:()=>Object.keys(storage),getOwnPropertyDescriptor:()=>({configurable:true,enumerable:true})});
  let view=options.view===undefined?'workflows':options.view,workflowOpened='',deviceOpened='',newWorkflow=0;
@@ -210,6 +210,21 @@ test('a new automation says it saves paused, and once saved how to turn it on',a
  try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().automation.createPrompt();app.render().automation.fields.find(field=>field.name==='instructions').change({target:{value:'Read only the supplied text'}});
   assert.match(app.render().automation.promptSaveNote,/^Saves paused\. /);app.render().automation.save();await wait(()=>posts===1&&!app.render().automation.busy&&!app.render().automation.loading);
   assert.equal(app.render().automation.editing,false);assert.equal(app.render().automation.message,'Saved paused. Open it and tap Enable to turn it on.');
+ }finally{app.close();await f.close();}
+});
+test('resident prompt reviews disclose the timed window without applying it to event prompts',async()=>{
+ const f=await fixture(read),app=adapterFixture(f.request,{},{agentKind:'resident'});
+ const timing='Keep this phone on. Android may delay scheduled runs. If the agent was stopped at the scheduled time, runs more than 30 minutes late are marked missed.';
+ try{
+  await openPrompt(app);
+  app.render().automation.actions.find(action=>action.label==='Enable').run();
+  assert.ok(app.render().automation.reviewDetails.endsWith(timing));
+  app.render().automation.cancelReview();
+  app.render().automation.createPrompt();
+  assert.equal(app.render().automation.scheduleRule,timing);
+  app.render().automation.scheduleKinds.find(kind=>kind.label==='On event').pick();
+  assert.equal(app.render().automation.scheduleRule,'Runs while this phone and its agent are on.');
+  assert.equal(f.calls.filter(call=>call.method!=='GET').length,0);
  }finally{app.close();await f.close();}
 });
 test('a new prompt refused with 429 does not lock new prompts; an unknown one locks the form until Allow another',async()=>{
