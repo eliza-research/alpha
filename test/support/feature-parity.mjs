@@ -385,6 +385,7 @@ export const featureParityAllowlist = {
     "apps/app/src/prototype/notifications-adapter.ts",
     "apps/app/src/prototype/own-notice-question.ts",
     "apps/app/src/prototype/phone-adapter.ts",
+    "apps/app/src/prototype/phone-info-page.ts",
     "apps/app/src/prototype/photo-library-adapter.ts",
     "apps/app/src/prototype/reminder-adapter.ts",
     "apps/app/src/prototype/scan-correction-review.ts",

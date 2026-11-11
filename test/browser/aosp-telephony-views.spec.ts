@@ -143,3 +143,17 @@ test('Contacts searches in place, edits in the app with the version it read, and
   await expect.poll(() => inputs(page, 'contacts.remove')).toHaveLength(1);
   expect(await page.evaluate(() => /Carmen/.test(JSON.stringify({...localStorage})))).toBe(false);
 });
+
+test('Settings shows the SIM, carrier, number and network, and links to Android for the IMEI', async ({page}) => {
+  await setupTelephony(page);
+  await open(page, 'Settings');
+  await page.getByRole('button', {name: 'General', exact: true}).click();
+  expect(await inputs(page, 'phoneInfo'), 'nothing is read before the page opens').toEqual([]);
+  await page.getByRole('button', {name: 'Phone', exact: true}).click();
+  for (const text of ['Synthetic Carrier', '(555) 010-0100', '5G', 'Good', 'Slot 1']) await expect(page.getByText(text, {exact: true})).toBeVisible();
+  await expect(page.getByText('Alpha', {exact: true}).first()).toBeVisible();
+  expect(await inputs(page, 'phoneInfo')).toHaveLength(1);
+  await page.getByRole('button', {name: 'IMEI', exact: true}).click();
+  await expect.poll(() => inputs(page, 'openSettings')).toEqual([{page: 'about'}]);
+  expect(await page.evaluate(() => /Synthetic Carrier|5550100100/.test(JSON.stringify({...localStorage})))).toBe(false);
+});

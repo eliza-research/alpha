@@ -352,7 +352,7 @@ test("APK voice admission requires the complete recorded bundle and every record
 test('merged-manifest check keeps launcher-only permissions and components out of standalone', () => {
   // Stand-ins for aapt's merged xmltree: the launcher carries every launcher-only entry, standalone none.
   const identity = {appId: 'ai.alphacompute.alphaphone'};
-  const launcherOnly = ['READ_CONTACTS', 'READ_SMS', 'SEND_SMS', 'CALL_PHONE', 'READ_PHONE_STATE', 'EXPAND_STATUS_BAR', 'RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH', 'READ_CALL_LOG', 'WRITE_CONTACTS']
+  const launcherOnly = ['READ_CONTACTS', 'READ_SMS', 'SEND_SMS', 'CALL_PHONE', 'READ_PHONE_STATE', 'EXPAND_STATUS_BAR', 'RECEIVE_SMS', 'RECEIVE_MMS', 'RECEIVE_WAP_PUSH', 'READ_CALL_LOG', 'WRITE_CONTACTS', 'READ_PHONE_NUMBERS']
     .map(name => `android.permission.${name}`).concat('com.android.voicemail.permission.ADD_VOICEMAIL')
     .concat(['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity', 'AlphaVoicemailService', 'AlphaVoicemailReceiver'].map(name => `ai.alphacompute.alphaphone.${name}`));
   const apk = (home, entries) => () => ({packageName: identity.appId, home, launcher: true, webPayload: true, badging: '', xml: ['android.permission.CAMERA', ...entries].map(name => `A: android:name="${name}"`).join('\n')});

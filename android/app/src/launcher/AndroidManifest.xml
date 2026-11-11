@@ -10,6 +10,8 @@
       the standalone manifest removes it. -->
  <uses-permission android:name="android.permission.WRITE_CONTACTS" />
  <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+ <!-- The line's own number for Settings → Phone. Same runtime group as phone state; launcher only. -->
+ <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
  <!-- SMS/MMS provider reads and reviewed native sends (#421), on the verified image only. Both are
       hard-restricted: Android grants them to the preinstalled image app or the SMS role holder, never
       to a sideloaded launcher APK. AlphaTelephonyPlugin requests them only on the verified image. -->

@@ -30,7 +30,7 @@ test("off the verified image no client method reaches native code", async () => 
     sendMms: [mms, "op-1"], mmsSendResult: [mms, "op-1"], cancelSmsReview: ["op-1"], smsSendHistory: [], smsSendResult: [sms, "op-1"],
     // Calls placed on the owner's tap and carrier voicemail (AP-08): the same refusal off the image.
     placeCall: ["+15555550100"], voicemailStatus: [], listVoicemail: [], fetchVoicemailAudio: ["1"], voicemailAudio: ["1"], voicemailPcm: ["1"],
-    markVoicemailHeard: ["1"], deleteVoicemail: ["1"], observeVoicemail: [() => {}],
+    markVoicemailHeard: ["1"], deleteVoicemail: ["1"], observeVoicemail: [() => {}], phoneInfo: [],
   };
   const { plugin, calls: native } = stub({ status: status() });
   for (const client of [createAospTelephony(null, false), createAospTelephony(plugin, false), createAospTelephony(null, true)]) {

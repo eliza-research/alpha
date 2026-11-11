@@ -1,6 +1,6 @@
 export default {
   "schema": 1,
-  "baseCommit": "988e67d2992142af6495b30ac4a8e70f31347d1a",
+  "baseCommit": "02e50d67e2a3550bff31648e68cc46764e960c9c",
   "bun": {
     "version": "1.4.2",
     "revision": "744846f844374847c902b5e7fd59b4342a51ef99"

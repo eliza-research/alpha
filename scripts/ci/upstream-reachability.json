@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "71be5297ead163c7504b6c64f33e43400776ee09",
-  "head": "988e67d2992142af6495b30ac4a8e70f31347d1a",
-  "recordedAt": "2026-11-10",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...988e67d2992142af6495b30ac4a8e70f31347d1a",
+  "baseCommit": "489fdf6ac3532ba5fbfeb7464ec509a44f5a66d1",
+  "head": "02e50d67e2a3550bff31648e68cc46764e960c9c",
+  "recordedAt": "2026-11-11",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...02e50d67e2a3550bff31648e68cc46764e960c9c",
   "status": "diverged",
-  "aheadBy": 4,
-  "behindBy": 88,
+  "aheadBy": 5,
+  "behindBy": 141,
   "mergeBase": "ede068b56ab07df42e3038de9a108bc7daa6ae0c",
   "pinOnlyCommits": [
     {
@@ -26,6 +26,10 @@
     {
       "sha": "988e67d2992142af6495b30ac4a8e70f31347d1a",
       "subject": "Redesign the native call screen: caller block, round controls, keypad, timer"
+    },
+    {
+      "sha": "02e50d67e2a3550bff31648e68cc46764e960c9c",
+      "subject": "Add phoneInfo: a bounded foreground read of the phone's SIM lines for Settings"
     }
   ],
   "pullRequests": []

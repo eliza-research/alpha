@@ -92,7 +92,7 @@ export async function setupTelephony(page: Page, options: TelephonyFixture = {})
     const names = ['AlphaContacts', 'DailyApps', 'AlphaBrowser', 'AlphaConnection', 'AlphaDevice', 'AlphaLocalAgent', 'AlphaHostedResults', 'AlphaVoiceCloud', 'AlphaNotifications', 'ElizaSystem', 'AlphaCalendar', 'AlphaNoteDocuments', 'AlphaNoteAudio', 'AlphaFiles', 'AlphaPhotos', 'DeviceApps', 'ElizaLocation', 'AlphaActionJournal', 'AlphaTelephony', 'Agent'];
     const methods = ['addListener', 'removeListener', 'surfaceInfo', 'readPending', 'readPendingResult', 'readDelegationCallback', 'readSecret', 'secureRead', 'secureWrite', 'secureRemove', 'get', 'save', 'remove', 'status', 'getStatus', 'getState', 'state', 'permissionState', 'permissions', 'list', 'listCalendars', 'listEvents', 'listReminders', 'listBookmarks', 'getBookmarks', 'bookmarks', 'settings', 'getSettings', 'buildInfo', 'platformCapabilities', 'capabilities', 'query', 'read', 'readJournal', 'getPending', 'readSelection', 'requestPermissions', 'create', 'edit',
       'imageCapability', 'requestAccess', 'requestRole', 'searchContacts', 'listRecentCalls', 'dial', 'placeCall', 'composeSms', 'listThreads', 'listMessages', 'observeMessages', 'markThreadRead', 'sendSms', 'cancelSmsReview', 'smsSendHistory', 'smsSendResult',
-      'voicemailStatus', 'listVoicemail', 'fetchVoicemailAudio', 'voicemailAudio', 'voicemailPcm', 'markVoicemailHeard', 'deleteVoicemail', 'observeVoicemail', 'callState', 'answerCall', 'endCall', 'setCallAudio', 'observeCalls', 'sendCallTone', 'setGoogleAgentAccess'];
+      'voicemailStatus', 'listVoicemail', 'fetchVoicemailAudio', 'voicemailAudio', 'voicemailPcm', 'markVoicemailHeard', 'deleteVoicemail', 'observeVoicemail', 'callState', 'answerCall', 'endCall', 'setCallAudio', 'observeCalls', 'sendCallTone', 'setGoogleAgentAccess', 'phoneInfo', 'openSettings'];
     w.Capacitor = {Plugins: {}, PluginHeaders: names.map(name => ({name, methods: methods.map(name => ({name, rtype: name === 'addListener' ? 'callback' : 'promise'}))})), nativeCallback: () => 'fixture-callback', nativePromise: async (plugin: string, method: string, input: any) => {
       if (plugin === 'AlphaTelephony') {
         w.telephonyCalls.push(method); w.telephonyInputs.push([method, input]);
@@ -114,6 +114,7 @@ export async function setupTelephony(page: Page, options: TelephonyFixture = {})
         if (method === 'listMessages') return {messages: [...(w.messages[input.threadId] || [])].reverse().slice(0, input.limit), next: null};
         if (method === 'markThreadRead') { w.readThreads = [...(w.readThreads || []), input.threadId]; return {status: 'marked'}; }
         if (method === 'smsSendHistory') return {receipts: []};
+        if (method === 'phoneInfo') return {access: {phoneState: true, phoneNumbers: true, deviceIdentifiers: false}, lines: [{subscriptionId: 1, slot: 0, displayName: 'Synthetic SIM', carrierName: 'Synthetic Carrier', number: '+15550100100', countryIso: 'us', networkType: '5g', roaming: false, signalLevel: 3, embedded: false, iccid: null, imei: null}]};
         if (method === 'callState') return w.callState || {calls: []};
         return {};
       }
@@ -126,6 +127,7 @@ export async function setupTelephony(page: Page, options: TelephonyFixture = {})
         if (method === 'save') { if (w.contactAnswers?.save) return w.contactAnswers.save(input); return {status: 'saved', id: input.id || '99', version: 'b'.repeat(64)}; }
         if (method === 'remove') return {status: 'deleted'};
       }
+      if (method === 'openSettings') { w.telephonyInputs.push(['openSettings', input]); return {opened: input.page}; }
       if (method === 'surfaceInfo') return {topInset: 0, bottomInset: 0}; if (method === 'buildInfo') return {launcher: false};
       if (method === 'platformCapabilities') return {aospImage: true, contacts: true, phone: true, sms: true};
       if (['secureRead', 'readSecret'].includes(method)) return {value: null};
