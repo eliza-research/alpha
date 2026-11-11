@@ -236,16 +236,21 @@ image-preinstalled phone drills remain required for this batch.
 
 On the machine with the phone, record each [wireless drill](https://github.com/eliza-research/alpha/issues/889)
 with the release APK and its verification manifest available locally. Both captures
-admit the APK against the reviewed `android/release-signer.json` policy. This capture
+verify the installed bytes against the reviewed `android/release-signer.json` signing
+policy, including for versions already recorded as released. This capture
 requires Android 14 or later for package installer provenance. Keep the phone
-out of idle HOME while taking the baseline so it cannot update before the
-capture. The baseline command verifies the anonymous offer and its APK.
+offline from baseline installation through HOME selection, any one-time Android
+installation permission, and the `before` capture. Keep the host online and
+connect the phone by USB. The host verifies the anonymous offer and its APK
+while the phone is still offline. For the update, keep the screen unlocked and
+leave Alpha idle in the foreground. Allow one full 15-minute check interval
+plus download time.
 
 ```sh
 node scripts/verify-wireless-launcher-update.ts before --serial <serial> \
   --distribution sideload --apk-manifest <baseline>/apk-manifest.json --out <new-before.json>
-# Disconnect ADB. Let the launcher discover and install at idle HOME.
-# Reconnect ADB after the observed result.
+# Disconnect USB/ADB, restore the phone's network, and return to idle HOME.
+# Let Alpha discover and install the update. Reconnect after the observed result.
 node scripts/verify-wireless-launcher-update.ts after --serial <serial> \
   --before <before.json> --apk-manifest <update>/apk-manifest.json --out <new-after.json>
 ```
@@ -256,13 +261,20 @@ move the active APK to Android's app data while retaining its system-app
 provenance. For the next advancing release, use `before --previous <after.json>`
 with the same distribution and the previous release's APK manifest. This
 binds the next drill to the exact phone, image, HOME and APK of the previous
-replacement.
+replacement. Keep the first drill signed out. For the signed-in follow-up,
+seed the account and data before the next offer goes live, then take the phone
+offline again for baseline capture. Keep each public offer stable until both
+distribution paths have saved their `after` receipts.
 
 The readback uses the primary user and records the actual APK digest, update
 initiator, install identity, HOME, signing family, boot state and SDK revision.
-Include the reviewed image provenance and operator observations of the
-disconnected update, confirmation, retained data, Keystore, resident, voice
-and recovery in the acceptance evidence.
+Retain the protected `qualification-summary.json` and
+`app-update-delivery.json` with each published APK and its verification manifest
+to bind the exact producer commit to the launcher digest. Keep the signed
+image's `release-record.json` with its baseline. An unattended pass requires no
+manual Check, Install or Continue action in Alpha and no approval tap in
+Android during the disconnected update. Record those observations along with
+retained data, Keystore, resident, voice and recovery.
 
 The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alphaphone/issues/888)
 and [wireless launcher acceptance #889](https://github.com/eliza-research/alphaphone/issues/889).
@@ -318,11 +330,13 @@ Complete it in this order:
    The staging phone flow ends at plan admission. For production Cloud acceptance
    on the Pixel, use the admitted release APK. Android requires a separate device
    or fresh installation when the installed copy uses an incompatible signer.
-3. Qualify the exact signed APK bytes, publish the admitted launcher and
-   manifest, and verify anonymous full-byte readback. Then install the initial
-   baseline with the new package ID on each distribution form and run #889 on
-   the machine with the phone. Verify the manifest and APK on
-   `app-stable-alphacompute` before testing wireless delivery.
+3. Qualify the exact signed baseline and establish it on both distribution
+   paths before exposing the phones to a newer offer. If using
+   `scripts/provision-unit.ts`, provision before recording the baseline's version
+   as the release floor. Qualify and publish the first advancing launcher
+   on `app-stable-alphacompute`, verify anonymous full-byte readback, and run
+   #889 on the machine with the phone. Complete both captures before publishing
+   the next advancing release for the follow-up.
    The update itself must use the phone's channel; `scripts/pilot-update.ts` uses
    `adb install -r` and supplies separate in-place replacement evidence.
 4. Before distributing the batch, verify wireless replacement, retained data and
