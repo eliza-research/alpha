@@ -181,16 +181,12 @@ def validate_input_inventory(rows, reviewed, digest_fields):
         observed.add(path)
 
 
-def validate_receipts(component, intent, qualification, semantic, semantic_bytes, component_dir):
+def validate_receipt_contents(component, intent, qualification, semantic, semantic_bytes, reviewed, library_digest):
     require(component.get('built') is True and component.get('abi') == 'arm64-v8a', 'Component is not a built ARM64 input')
     for key in ('pin', 'forkPin', 'identity', 'abi', 'inputs', 'producerInputs', 'jniBinding', 'built'):
         require(qualification.get(key) == component.get(key), 'Qualification changes compiled field: ' + key)
     require(component.get('pin') == intent.get('SDK') and component.get('forkPin') == intent.get('native'), 'Component source intent differs')
     require(re.fullmatch(r'[0-9a-f]{40}', intent.get('source', '')), 'Compiled Alpha identity missing')
-    # This checkout owns the path inventory. The carrier binds the supplied digests
-    # to the original compiled receipt; canonical staging checks current source bytes.
-    record = Path(__file__).resolve().parents[2] / 'android/embedding-host/qualified-host.json'
-    reviewed = read_json(record)
     validate_input_inventory(component.get('inputs'), reviewed['inputs'], ('sourceSha256', 'generatedSha256'))
     validate_input_inventory(component.get('producerInputs'), reviewed['producerInputs'], ('sha256',))
     require(qualification.get('semanticReceiptSha256') == hashlib.sha256(semantic_bytes).hexdigest(), 'Semantic receipt not bound to qualification')
@@ -225,11 +221,24 @@ def validate_receipts(component, intent, qualification, semantic, semantic_bytes
         require(found[0].get('artifactPath', name) == name, 'Invalid artifact library mapping')
         for key in ('path', 'sha256', 'bytes', 'alignment16KiB'):
             require(found[0].get(key) == row.get(key), 'Qualification changes compiled library')
-        require(row.get('alignment16KiB') is True and (component_dir / name).stat().st_size == row.get('bytes'), 'Library size/alignment mismatch')
-        require(hashlib.sha256((component_dir / name).read_bytes()).hexdigest() == row.get('sha256'), 'Library digest mismatch')
+        require(row.get('alignment16KiB') is True, 'Library size/alignment mismatch')
+        require(library_digest(name, row.get('bytes')) == row.get('sha256'), 'Library digest mismatch')
     return {'compiledAlpha': intent['source'], 'compiledSDK': component['pin'], 'native': component['forkPin'],
             'qualifiedAt': qualification['qualifiedAt'], 'qualificationTransferred': False}
 
+
+def validate_receipts(component, intent, qualification, semantic, semantic_bytes, component_dir):
+    # This checkout owns the path inventory. The carrier binds the supplied digests
+    # to the original compiled receipt; canonical staging checks current source bytes.
+    record = Path(__file__).resolve().parents[2] / 'android/embedding-host/qualified-host.json'
+
+    def library_digest(name, size):
+        with (component_dir / name).open('rb') as stream:
+            require(os.fstat(stream.fileno()).st_size == size, 'Library size/alignment mismatch')
+            return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+    return validate_receipt_contents(component, intent, qualification, semantic, semantic_bytes,
+                                     read_json(record), library_digest)
 
 
 def carrier_environment(env):
