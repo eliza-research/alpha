@@ -333,6 +333,7 @@ def main():
         stage(record, plan, args.work, product)
     output = {"qualificationSHA256": sha(record_bytes), "sourceCommit": plan["alphaCommit"],
               "sdkCommit": plan["sdkCommit"], "versionCode": plan["versionCode"],
+              "runtimeProfile": "native" if PRODUCER.producer_kind(plan) == PRODUCER.CANDIDATE else "cloud",
               "signedApkSHA256": record["signedApkSHA256"], "voiceEvidenceSHA256": record["cloudVoiceEvidenceSHA256"],
               "voiceAuthority": "reviewed-external-receipt", "published": False}
     (args.work / "qualification-summary.json").write_text(json.dumps(output, indent=2) + "\n")

@@ -198,18 +198,36 @@ The candidate receipt binds its digest to the exact source, SDK and run attempt.
 The build evidence records the uploaded candidate's ID and compressed size
 from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
 Refresh the reviewed pins before an artifact expires or a bound source record
-changes. Manual diagnostics and protected signing keep their existing input
-and producer-evidence policy.
+changes. The candidate archive retains the distribution producer evidence
+before the test-mocks build can replace it.
 
 The existing workflow run number is the candidate versionCode, checked against
 both releases' retained APKs and public pointers, and the committed version floors.
 Failed or canceled runs consume their number. A manual release or workflow
 migration that exceeds this number stops candidate creation and needs a reviewed
 version migration. Manual builds keep their explicit version input.
-Candidates are unsigned build evidence. Native application signing/voice
-admission, protected release review, exact signed APK voice tests, publication
-and both sideload/image phone drills remain required before automatic delivery
-to users; the current protected application promotion bridge supports Cloud only.
+Candidates are unsigned build evidence. To promote a native candidate, use
+the existing protected signing workflow with a reviewed plan whose
+`producerKind` is `github-main-candidate`. Pin the exact successful
+main-push run ID, numeric run attempt, artifact ID, source and SDK commits,
+version, public channel, outer archive bytes and SHA-256, candidate receipt
+and producer manifest SHA-256, and both unsigned APK SHA-256 values.
+Use the artifact's original ZIP bytes and the existing private storage path
+`unsigned/<archiveSHA256>.zip`. Pin its generation and a fresh exclusive
+`signed/<archiveSHA256>/<32-hex-id>/signed-apks.tar` destination in
+`privateStorage`. Keep the Actions artifact available through both signing
+admissions.
+
+The preflight checks the official Actions ZIP. The protected job checks the
+same run attempt and artifact again, then stages the byte-identical private
+generation before accessing the signing key. The qualified publication workflow
+restores the same private mirror and exact signed output. Complete the reviewed
+voice checks for both signed APK digests before dispatching publication.
+The existing reviewed Cloud producer routes remain available for their
+approved package and profile.
+
+Release approval, signed-byte voice tests, publication and both sideload and
+image-preinstalled phone drills remain required for this batch.
 
 The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alphaphone/issues/888)
 and [wireless launcher acceptance #889](https://github.com/eliza-research/alphaphone/issues/889).

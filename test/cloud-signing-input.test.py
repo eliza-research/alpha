@@ -8,12 +8,16 @@ from pathlib import Path
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 import warnings
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts/ci"))
+import app_update_producer as PRODUCER
+
 SPEC = importlib.util.spec_from_file_location(
     "cloud_signing_input", ROOT / "scripts/ci/admit-cloud-signing-input.py"
 )
@@ -43,7 +47,7 @@ class CloudSigningInputTest(unittest.TestCase):
                 "variant": variant,
                 "mode": "release",
                 "file": f"artifacts/{variant}-release-unsigned.apk",
-                "packageName": "ai.elizaresearch.alphaphone",
+                "packageName": ADMISSION.PACKAGE,
                 "versionCode": 44,
                 "sha256": ADMISSION.digest(payload),
                 "signed": False,
@@ -110,6 +114,98 @@ class CloudSigningInputTest(unittest.TestCase):
                     bundle.writestr(duplicate, entries[duplicate])
         self.pin["archiveSHA256"] = ADMISSION.digest(self.archive.read_bytes())
         self.pin["producerManifestSHA256"] = ADMISSION.digest(producer)
+
+    def write_candidate(self, extra=None, change_receipt=None, change_native=None):
+        self.pin.pop("privateProducerReceiptSHA256", None)
+        self.pin.update(producerKind=PRODUCER.CANDIDATE, producerRunId="171", producerRunAttempt=2, artifactId="202")
+        for record in (self.verification, self.build, self.producer):
+            record["runtimeProfile"] = "native"
+        for row in self.verification["results"]:
+            if row["mode"] == "release":
+                row["packageName"] = PRODUCER.CANDIDATE_PACKAGE
+                row["distributable"] = False
+                row.setdefault("voiceHost", {"packaged": True, "asr": True, "differences": []})
+        source, sdk = self.pin["alphaCommit"], self.pin["sdkCommit"]
+        native = {
+            "schema": "alpha-hosted-native-input-admission/v1", "source": source, "sdkCommit": sdk,
+            "runId": "171", "attempt": "2", "packageName": PRODUCER.CANDIDATE_PACKAGE,
+            "manifestSha256": "a" * 64, "voiceRecordSha256": "b" * 64, "embeddingRecordSha256": "c" * 64,
+        }
+        if change_native:
+            change_native(native)
+        native_bytes = json.dumps(native).encode()
+        files = {"upstream.lock.json": "d" * 64, "android/hosted-native-inputs.json": "a" * 64,
+                 "android/voice-host/qualified-voice-host.json": "b" * 64,
+                 "android/embedding-host/qualified-host.json": "c" * 64,
+                 "test-results/resident-ci-native-inputs/admission.json": ADMISSION.digest(native_bytes)}
+        fingerprint = ADMISSION.digest(json.dumps(files, separators=(",", ":")).encode())
+        snapshot = json.dumps({"schemaVersion": 5, "digest": fingerprint, "files": files}).encode()
+        apks = {}
+        for variant in ADMISSION.VARIANTS:
+            name = f"{variant}-release-unsigned.apk"
+            apks[variant] = {"file": name, "bytes": len(self.apk_bytes[name]),
+                             "sha256": self.pin["unsignedApkSHA256"][variant]}
+        receipt = {
+            "schema": "alpha-app-update-candidate/v1", "sourceCommit": source, "sdkCommit": sdk,
+            "workflow": f"{PRODUCER.REPOSITORY}/{PRODUCER.WORKFLOW}@refs/heads/main",
+            "workflowId": PRODUCER.WORKFLOW_ID, "runId": "171", "runNumber": "44", "runAttempt": "2",
+            "versionCode": 44, "observedFloor": 40, "manifestSha256": None,
+            "finalObservedFloor": 43, "finalManifestSha256": "e" * 64,
+            "runtimeProfile": "native", "updateChannel": self.pin["updateChannel"],
+            "sourceScope": "checkout-commit-and-frozen-build-inputs", "sourceFingerprint": fingerprint,
+            "nativeInputAdmissionSha256": ADMISSION.digest(native_bytes),
+            "verificationSha256": ADMISSION.digest(json.dumps(self.verification).encode()), "apks": apks,
+            "signed": False, "distributionQualified": False,
+            "qualificationScope": "unsigned-build-and-source-freeze-only",
+        }
+        if change_receipt:
+            change_receipt(receipt)
+        raw = json.dumps(receipt).encode()
+        self.pin["candidateReceiptSHA256"] = ADMISSION.digest(raw)
+        self.write_archive({"app-update-candidate.json": raw, "native-input-admission.json": native_bytes,
+                            "inputs-before.json": snapshot, "inputs-after.json": snapshot, **(extra or {})})
+        digest = self.pin["archiveSHA256"]
+        self.pin["archiveBytes"] = self.archive.stat().st_size
+        self.pin["privateStorage"] = {
+            "bucket": "alpha-aosp-lab-20261024-private-apks", "inputGeneration": "123",
+            "inputObject": f"unsigned/{digest}.zip",
+            "outputObject": f"signed/{digest}/{'d' * 32}/signed-apks.tar",
+        }
+
+    def test_candidate_admits_only_exact_native_receipts_and_frozen_inputs(self):
+        self.write_candidate()
+        stage = self.archive.parent / "candidate-staged"
+        self.assertIs(ADMISSION.admit(self.archive, self.pin, stage)["signed"], False)
+        self.assertEqual({path.name: path.read_bytes() for path in stage.iterdir()}, self.apk_bytes)
+        for field, value in (("runAttempt", "1"), ("versionCode", 45), ("signed", True),
+                             ("finalObservedFloor", 44), ("sourceFingerprint", "0" * 64),
+                             ("nativeInputAdmissionSha256", "0" * 64)):
+            with self.subTest(field=field):
+                self.write_candidate(change_receipt=lambda receipt: receipt.update({field: value}))
+                with self.assertRaises(ValueError):
+                    ADMISSION.admit(self.archive, self.pin)
+        for field, value in (("attempt", "1"), ("packageName", ADMISSION.PACKAGE), ("voiceRecordSha256", "0" * 64)):
+            with self.subTest(field=field):
+                self.write_candidate(change_native=lambda native: native.update({field: value}))
+                with self.assertRaises(ValueError):
+                    ADMISSION.admit(self.archive, self.pin)
+        for extra in ({"inputs-after.json": b"{}"}, {"private-producer.json": b"{}"},
+                      {"launcher-release-unsigned.apk": self.apk_bytes["launcher-release-unsigned.apk"].upper()}):
+            self.write_candidate(extra)
+            with self.assertRaises(ValueError):
+                ADMISSION.admit(self.archive, self.pin)
+        self.verification["results"][0]["voiceHost"]["asr"] = False
+        self.write_candidate()
+        with self.assertRaisesRegex(ValueError, "on-device voice with ASR"):
+            ADMISSION.admit(self.archive, self.pin)
+
+    def test_candidate_cannot_claim_other_producer_or_delivery_routes(self):
+        self.write_candidate()
+        for drift in ({"privateProducerReceiptSHA256": "0" * 64}, {"producerKind": PRODUCER.PRIVATE_RUNNER},
+                      {"producerRunAttempt": "2"}, {"privateStorage": None}, {"encryptedArtifactApproved": True},
+                      {"purpose": "private-update-qa-baseline"}):
+            with self.assertRaises(ValueError):
+                ADMISSION.admit(self.archive, {**self.pin, **drift})
 
     def test_admits_both_exact_unsigned_cloud_variants(self):
         self.write_archive()
@@ -245,7 +341,8 @@ class PrivateProducerSourceReviewTest(unittest.TestCase):
             (root / "scripts/ci").mkdir(parents=True)
             (root / "android").mkdir()
             (root / "bin").mkdir()
-            for name in ("verify-cloud-signing-input.sh", "private-apk-storage.py", "admit-cloud-signing-input.py"):
+            for name in ("verify-cloud-signing-input.sh", "private-apk-storage.py",
+                         "admit-cloud-signing-input.py", "app_update_producer.py"):
                 shutil.copyfile(ROOT / "scripts/ci" / name, root / "scripts/ci" / name)
             plan = {
                 "alphaCommit": "a" * 40, "sdkCommit": "b" * 40, "versionCode": 50,
@@ -274,7 +371,8 @@ class PrivateProducerSourceReviewTest(unittest.TestCase):
                 path.chmod(0o700)
             env = {**os.environ, "PATH": str(root / "bin") + os.pathsep + os.environ["PATH"],
                    "GITHUB_REF": "refs/heads/main", "GITHUB_SHA": "5" * 40,
-                   "GITHUB_REPOSITORY": "eliza-research/alphaphone", "RUNNER_TEMP": directory,
+                   "GITHUB_REPOSITORY": PRODUCER.REPOSITORY, "GITHUB_REPOSITORY_ID": str(PRODUCER.REPOSITORY_ID),
+                   "GITHUB_REPOSITORY_OWNER_ID": str(PRODUCER.OWNER_ID), "RUNNER_TEMP": directory,
                    "GITHUB_OUTPUT": str(root / "output"), "SIGNING_PLAN": json.dumps(plan),
                    "TEST_COMPARISON": json.dumps(comparison)}
             for field in (None, "approval", *fields):

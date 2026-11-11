@@ -7,6 +7,7 @@ import io
 import json
 from pathlib import Path
 import shutil
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -14,6 +15,7 @@ from unittest.mock import patch
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts/ci"))
 
 
 def load(name, file):
@@ -76,10 +78,20 @@ class QualifiedUpdateTest(unittest.TestCase):
         self.signed_tar = self.directory / "signed-original.tar"
         self.write_signed()
         self.receipt_zip = self.directory / "delivery-original.zip"
+        self.write_delivery_receipt()
+
+    def write_delivery_receipt(self):
         with zipfile.ZipFile(self.receipt_zip, "w") as archive:
             archive.writestr("private-storage-receipt.json", json.dumps(self.record["signedBundle"]))
         self.record["deliveryArtifactBytes"] = self.receipt_zip.stat().st_size
         self.record["deliveryArtifactSHA256"] = BRIDGE.file_sha(self.receipt_zip)
+
+    def use_main_candidate(self):
+        debug = {v + "-debug.apk": (v + " debug fixture").encode() for v in BRIDGE.VARIANTS}
+        self.producer.write_candidate(debug)
+        self.signed_entries["signing-plan.json"] = encoded(self.record, "signingPlan", self.plan)
+        self.write_signed()
+        self.write_delivery_receipt()
 
     def write_signed(self, extra=None):
         entries = {**self.signed_entries, **(extra or {})}

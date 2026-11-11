@@ -7,7 +7,10 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import YAML from 'yaml';
 import {deliver} from '../../../../scripts/deliver-app-update.ts';
-import {APP_UPDATE_MANIFEST, APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG, appUpdateManifestUrl} from '../../../../scripts/update-channel.ts';
+import {
+  APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY, APP_UPDATE_REPOSITORY_ID, APP_UPDATE_REPOSITORY_OWNER_ID,
+  APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG, appUpdateManifestUrl,
+} from '../../../../scripts/update-channel.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const workflow = name => '.github/workflows/' + name + '.yml';
@@ -37,7 +40,9 @@ function checkWorkflows() {
   const producerJob = Object.values(YAML.parse(read(producer)).jobs)
     .find(job => job.env?.ALPHA_APP_UPDATE_CANDIDATE);
   assert.match(producerJob.env.ALPHA_APP_UPDATE_CANDIDATE, /github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'/);
-  ordered(producerJob.steps, runs('app-update-candidate.ts version'), runs('app-update-candidate.ts receipt'),
+  ordered(producerJob.steps, runs('app-update-candidate.ts version'),
+    runs('build-archive.ts test-results/resident-ci-distribution'), runs('Captured APK verification differs'),
+    runs('build-archive.ts --test-mocks'), runs('app-update-candidate.ts receipt'),
     step => step.with?.name?.startsWith('app-native-candidate-'));
   const signing = YAML.parse(read(signer)).jobs;
   assert.equal(signing.admit.uses, './' + verifier);
@@ -74,7 +79,7 @@ function checkWorkflows() {
   assert.equal(reverify.run, 'npm run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"');
   assert.equal(JSON.parse(read('package.json')).scripts['android:verify'], 'node scripts/verify-apks.ts');
   ordered(publishing.publish.steps, runs('--product "$GITHUB_WORKSPACE/qualified-product"'),
-    step => step === reverify, runs("row['cloudVoice']['evidenceSha256']"),
+    step => step === reverify, runs("manifest['runtimeProfile'] == summary['runtimeProfile']"),
     runs('scripts/deliver-app-update.ts --variant launcher'));
 }
 
@@ -122,7 +127,8 @@ function publicFixture(directory, launcherBytes, version) {
           run(args) {
             if (args[0] === 'api') {
               assert.deepEqual(args, ['api', 'repos/eliza-research/alpha']);
-              return JSON.stringify({id: 1396333361, full_name: 'eliza-research/alpha', owner: {id: 314117943}, private: false});
+              return JSON.stringify({id: 1396333361, owner: {id: 314117943},
+                full_name: 'eliza-research/alpha', private: false});
             }
             if (args[0] !== 'release') assert.fail('Unexpected command: ' + args.join(' '));
             if (args[1] === 'view' && args[2] === LEGACY_APP_UPDATE_TAG) {
@@ -203,25 +209,23 @@ export async function checkProtectedAppUpdatePromotion(extraSources = []) {
   const sources = [
     fileURLToPath(import.meta.url), python, signer, verifier, publisher, producer, 'package.json',
     'scripts/app-update-candidate.ts', 'scripts/ci/verify-cloud-signing-input.sh',
-    'scripts/ci/admit-cloud-signing-input.py', 'scripts/ci/private-apk-storage.py',
+    'scripts/ci/admit-cloud-signing-input.py', 'scripts/ci/app_update_producer.py', 'scripts/ci/private-apk-storage.py',
     'scripts/ci/qualified-app-update.py', 'scripts/verify-apks.ts', 'scripts/sign-release-apks.ts',
     'scripts/deliver-app-update.ts', 'scripts/update-artifact.ts', 'scripts/update-channel.ts', 'scripts/publish-update-manifest.ts',
     'test/cloud-signing-input.test.py', 'test/qualified-app-update.test.py', ...extraSources,
   ];
   const driverHashes = captureInputs(sources);
   checkWorkflows();
-  const {traces, launcherBytes, versionCode} = JSON.parse(execFileSync('python3', ['-B', python], {
+  const {traces, launcherBytes, mainCandidate, versionCode} = JSON.parse(execFileSync('python3', ['-B', python], {
     encoding: 'utf8', timeout: 120_000,
   }));
   for (const trace of traces) {
     trace.expect.s.public = initial;
     for (const step of trace.steps) step.expect.s.public = initial;
   }
-  const admitted = traces[0];
-  const restored = admitted.steps.at(-1).expect.s;
-  assert.equal(restored.restored, true);
-  assert.equal(admitted.concreteSourceObservations.at(-1).stagedSignedSHA256.launcher, sha(launcherBytes));
   const cases = [
+    ['first delivery of the exact reviewed main candidate', ['ok'],
+      {trace: traces[mainCandidate.index], launcherBytes: mainCandidate.launcherBytes}],
     ['raised retained version floor blocks otherwise exact bytes', ['advanceFloor', 'ok']],
     ['equal retained legacy floor blocks the current channel write', ['advanceLegacyFloor', 'ok']],
     ['changed stable pointer prevents moving it after APK readback', ['pointer-race', 'ok']],
@@ -233,10 +237,14 @@ export async function checkProtectedAppUpdatePromotion(extraSources = []) {
     ...faults.map(fault => ['before/after public effect: ' + fault,
       [...(fault.startsWith('manifest-') ? ['existingRelease'] : []), fault, 'ok']]),
   ];
-  for (const [name, schedule] of cases) {
+  for (const [name, schedule, source = {trace: traces[0], launcherBytes}] of cases) {
+    const admitted = source.trace;
+    const restored = admitted.steps.at(-1).expect.s;
+    assert.equal(restored.restored, true);
+    assert.equal(admitted.concreteSourceObservations.at(-1).stagedSignedSHA256.launcher, sha(source.launcherBytes));
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-promotion-public-'));
     try {
-      const fixture = publicFixture(directory, launcherBytes, versionCode);
+      const fixture = publicFixture(directory, source.launcherBytes, versionCode);
       const trace = {name, expect: admitted.expect, steps: [...admitted.steps], concreteSourceObservations: [...admitted.concreteSourceObservations]};
       for (const fault of schedule) {
         const effect = fault === 'advanceFloor' || fault === 'advanceLegacyFloor' || fault === 'existingRelease';
@@ -255,7 +263,7 @@ export async function checkProtectedAppUpdatePromotion(extraSources = []) {
       'The adjacent AppUpdateCandidate campaign exercises the live version and unsigned-receipt helper. The release workflow structures are parsed and their exact admission, verification and write order checked without executing jobs.',
       'The current signing admission shell runs against scratch Git and a closed gh command. Private object media, receipt staging and signed byte restoration run actual Python implementations against controlled transports. Signed APKs, signer facts and reviewed voice receipts are synthetic inputs.',
       'The actual publication helper runs with closed release and anonymous read ports using the restored launcher bytes. The ports choose possible failures before effects, after committed effects, and during a partial upload. They do not predict GitHub or object-storage durability or concurrency.',
-      'The main-push receipt has no current signer route. The dispatched archive path does not pin its producer attempt. The publication reader does pin the protected signing attempt and exact private object generation. No live credentials, approvals, signed APKs, rollout, voice qualification or device acceptance are exercised.',
+      'The main-push route checks the same exact successful attempt at preflight and before protected restore. The legacy dispatched archive path keeps its prior run-level identity. The publication reader pins the protected signing attempt and exact private object generation. No live credentials, approvals, signed APKs, rollout, voice qualification or device acceptance are exercised.',
     ],
   });
 }
