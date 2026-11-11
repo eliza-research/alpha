@@ -50,7 +50,10 @@ function matchesFilter(filter: ManifestNode, required: RoleFilter) {
   const has = (tag: string, attribute: string, value: string) =>
     filter.children.some(child => child.name === tag && child.attrs[attribute] === value);
   const data = filter.children.filter(child => child.name === 'data');
-  return has('action', 'name', required.action)
+  // Android qualifies roles with generic intents, without host or path selectors.
+  const uriRestricted = filter.children.some(child => child.name === 'uri-relative-filter-group')
+    || data.some(child => Object.keys(child.attrs).some(attribute => attribute !== 'scheme' && attribute !== 'mimeType'));
+  return !uriRestricted && has('action', 'name', required.action)
     && (!required.defaultCategory || has('category', 'name', 'android.intent.category.DEFAULT'))
     && (required.scheme ? has('data', 'scheme', required.scheme) : data.every(child => !child.attrs.scheme))
     && (required.mimeType ? has('data', 'mimeType', required.mimeType) : data.every(child => !child.attrs.mimeType));
@@ -77,6 +80,9 @@ export function aospTelephonyRoleComponents(xmltree: string, packageName: string
       throw Error(`Alpha telephony roles require exactly one disabled ${required.tag} with the expected protection: ${name}`);
     if (required.filters?.some(filter => !node.children.some(child => matchesFilter(child, filter))))
       throw Error(`Alpha telephony role intent filters are incomplete: ${name}`);
+    if (node.name === 'provider' &&
+        (node.attrs.authorities !== `${packageName}.mms` || !isTrue(node.attrs.grantUriPermissions)))
+      throw Error(`Alpha telephony roles require ${name} to grant URI access for ${packageName}.mms`);
     if (required.name === 'AlphaInCallService') {
       const metadata = node.children.filter(child => child.name === 'meta-data');
       if (!metadata.some(child => child.attrs.name === 'android.telecom.IN_CALL_SERVICE_UI' && isTrue(child.attrs.value))

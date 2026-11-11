@@ -13,8 +13,8 @@ const element = (depth, name, attrs) => [
   ...Object.entries(attrs).map(([key, value]) =>
     `${' '.repeat(depth + 2)}A: android:${key}(0x01010003)=${value.startsWith('(type') ? value : JSON.stringify(value)}`),
 ];
-const component = (tag, name, publicEntry, permission) =>
-  element(6, tag, {name, enabled: disabled, exported: publicEntry ? enabled : disabled, ...(permission && {permission})});
+const component = (tag, name, publicEntry, permission, attrs = {}) =>
+  element(6, tag, {name, enabled: disabled, exported: publicEntry ? enabled : disabled, ...(permission && {permission}), ...attrs});
 const filter = (action, data, defaultCategory = false) => [
   ...element(8, 'intent-filter', {}),
   ...element(10, 'action', {name: action}),
@@ -40,7 +40,9 @@ const apkTree = [
   ...filter('android.intent.action.RESPOND_VIA_MESSAGE', {scheme: 'smsto'}, true),
   ...component('activity', '.AlphaSmsComposeActivity', true),
   ...filter('android.intent.action.SENDTO', {scheme: 'smsto'}, true),
-  ...component('provider', 'ai.eliza.plugins.messages.MmsFileProvider', false),
+  ...component('provider', 'ai.eliza.plugins.messages.MmsFileProvider', false, null, {
+    authorities: `${pkg}.mms`, grantUriPermissions: enabled,
+  }),
 ].join('\n');
 
 test('the exact disabled launcher components become available to first-run role qualification on the image', t => {
@@ -79,6 +81,26 @@ test('refuses unqualified role handlers before enabling anything on the image', 
     assert.notEqual(broken, apkTree);
     assert.throws(() => aospTelephonyRoleComponents(broken, pkg), error);
   }
+});
+
+test('rejects role filters that narrow the required Android intents to specific URIs', () => {
+  const tel = element(10, 'data', {scheme: 'tel'}).join('\n');
+  for (const restriction of [{host: 'phone.example'}, {pathPrefix: '/extension'}, {sspPrefix: '012'}]) {
+    const narrowed = apkTree.replace(tel, element(10, 'data', {scheme: 'tel', ...restriction}).join('\n'));
+    assert.throws(() => aospTelephonyRoleComponents(narrowed, pkg), /AlphaDialPadActivity/);
+  }
+  const group = [
+    ...element(10, 'uri-relative-filter-group', {allow: enabled}),
+    ...element(12, 'data', {pathPrefix: '/extension'}),
+  ].join('\n');
+  assert.throws(() => aospTelephonyRoleComponents(apkTree.replace(tel, `${tel}\n${group}`), pkg), /AlphaDialPadActivity/);
+});
+
+test('requires the private MMS provider to serve the application authority and grant URI access', () => {
+  const badAuthority = apkTree.replace(`${pkg}.mms`, `${pkg}.other`);
+  const noGrant = apkTree.replace(`grantUriPermissions(0x01010003)=${enabled}`, `grantUriPermissions(0x01010003)=${disabled}`);
+  for (const manifest of [badAuthority, noGrant])
+    assert.throws(() => aospTelephonyRoleComponents(manifest, pkg), /MmsFileProvider/);
 });
 
 test('production image staging reads role declarations from the privately staged launcher', () => {
