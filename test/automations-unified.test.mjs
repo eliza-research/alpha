@@ -56,12 +56,12 @@ function adapterFixture(request,storage={},options={}){
  const localStorage=new Proxy({getItem:key=>storage[key]??null,setItem:(key,value)=>storage[key]=value,removeItem:key=>delete storage[key]},{ownKeys:()=>Object.keys(storage),getOwnPropertyDescriptor:()=>({configurable:true,enumerable:true})});
  let view=options.view===undefined?'workflows':options.view,workflowOpened='',deviceOpened='',newWorkflow=0;
  class Shell{live=true;renderVals(){return options.homeFallback||{};}componentDidMount(){}componentWillUnmount(){}S(){return {view};}vset(){}vget(){return {};}api(){return api;}openView(next){view=next;}refreshReminders(id){deviceOpened=id;}newDeviceReminderDraft(){deviceOpened='new-draft';}}
- const api={ic:{bell:'bell',spark:'sparkles',cal:'calendar',flow:'workflow'},track:()=>'',kx:()=>0,isActive:()=>true};
+ const api={ic:{bell:'bell',spark:'sparkles',cal:'calendar',flow:'workflow',play:'play',edit:'edit',pause:'pause',phRotate:'rotate-cw',clock:'clock',stUndo:'undo',trash:'trash'},track:()=>'',kx:()=>0,isActive:()=>true};
  const views={workflows:{render:()=>({cards:[],managementCards:[],openWorkflow:id=>workflowOpened=id,newFlow:()=>newWorkflow++,detail:false,builder:false,runOpen:false}),back:()=>false,onLeave(){},refreshManagement:options.refreshManagement}};
  const windowEvents=new Map();
  const dom=options.dom?new JSDOM('<div class="os"><button id="origin">Filters</button></div>',{pretendToBeVisual:true}):null;
  if(dom){dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};dom.window.document.querySelector('.os').inert=false;}
- const context={browserCloudResidentEnabled:false,browserCloudResidentEnvironment:"production",testMocksEnabled:false,cloudCredentialStore:{read:async()=>options.savedCredential??null},serviceReadCache:options.serviceReadCache,...protocol,workflowClockSchedule,workflowClockExpression,workflowSnoozeTime,homeReadIsStale,presentHomeWorkflowFreshness,connectionController:controller,showAgentStatus,DailyApps:{listReminders:async()=>({reminders:options.deviceReminders??[{id:'device',title:'On-device reminder',body:'Existing phone row',at:Date.now()+10000,status:'scheduled'}]})},Capacitor:{getPlatform:()=> 'android',isNativePlatform:()=>options.native!==false},localStorage,window:dom?.window||{dispatchEvent(event){for(const fn of windowEvents.get(event.type)||[])fn(event);},addEventListener(name,fn){const f=windowEvents.get(name)||new Set();f.add(fn);windowEvents.set(name,f);},removeEventListener(name,fn){windowEvents.get(name)?.delete(fn);}},document:dom?.window.document||{hidden:false,addEventListener:(name,fn)=>events.set(name,fn),removeEventListener(){}},getComputedStyle:dom?.window.getComputedStyle,innerWidth:400,innerHeight:800,catalog:JSON.parse(fs.readFileSync('apps/app/src/icon-catalog.json','utf8')),queueMicrotask,AbortController,Date:options.now?class extends Date{static now(){return options.now();}}:Date,crypto,Event,console};
+ const context={browserCloudResidentEnabled:false,browserCloudResidentEnvironment:"production",testMocksEnabled:false,cloudCredentialStore:{read:async()=>options.savedCredential??null},serviceReadCache:options.serviceReadCache,...protocol,workflowClockSchedule,workflowClockExpression,workflowSnoozeTime,homeReadIsStale,presentHomeWorkflowFreshness,agentPendingText:()=> 'Connecting',agentAvailabilityNotice:()=> '',connectionController:controller,showAgentStatus,DailyApps:{listReminders:async()=>({reminders:options.deviceReminders??[{id:'device',title:'On-device reminder',body:'Existing phone row',at:Date.now()+10000,status:'scheduled'}]})},Capacitor:{getPlatform:()=> 'android',isNativePlatform:()=>options.native!==false},localStorage,window:dom?.window||{dispatchEvent(event){for(const fn of windowEvents.get(event.type)||[])fn(event);},addEventListener(name,fn){const f=windowEvents.get(name)||new Set();f.add(fn);windowEvents.set(name,f);},removeEventListener(name,fn){windowEvents.get(name)?.delete(fn);}},document:dom?.window.document||{hidden:false,addEventListener:(name,fn)=>events.set(name,fn),removeEventListener(){}},getComputedStyle:dom?.window.getComputedStyle,innerWidth:400,innerHeight:800,catalog:JSON.parse(fs.readFileSync('apps/app/src/icon-catalog.json','utf8')),queueMicrotask,AbortController,Date:options.now?class extends Date{static now(){return options.now();}}:Date,crypto,Event,console};
  vm.runInNewContext('(()=>{'+transformed('.eliza/client-features/packages/contracts/src/workflow-intents.ts')+'\nglobalThis.SharedWorkflowIntentStore=WorkflowIntentStore;globalThis.sharedWorkflowIntentKey=workflowIntentKey;globalThis.emptyWorkflowIntentArchive=emptyWorkflowIntentArchive;globalThis.storageWorkflowIntentBackend=storageWorkflowIntentBackend;globalThis.workflowIntentOwnerPrefix=workflowIntentOwnerPrefix;})();',context);
  vm.runInNewContext(transformed('apps/app/src/runtime/workflow-intents.ts')+'\nglobalThis.WorkflowIntentStore=WorkflowIntentStore;globalThis.workflowIntentKey=workflowIntentKey;',context);
  vm.runInNewContext(transformed('.eliza/client-features/packages/ui/src/utils/automation-feed-filter.ts')+'\nglobalThis.FEED_FILTERS=FEED_FILTERS;globalThis.passesFilter=passesFilter;',context);
@@ -80,6 +80,39 @@ function adapterFixture(request,storage={},options={}){
  return {window:context.window,document:context.document,notify:(sessionId=session.sessionId)=>context.window.dispatchEvent(dom?new dom.window.CustomEvent(context.AUTOMATIONS_COMMITTED_EVENT,{detail:{sessionId}}):{type:context.AUTOMATIONS_COMMITTED_EVENT,detail:{sessionId}}),leave:()=>views.workflows.onLeave(),setView:next=>view=next,home:()=>shell.renderVals(),render:()=>views.workflows.render({},api),close:()=>shell.componentWillUnmount(),storage,retire:()=>{session.sessionId='replacement';session.ownerId='other';for(const fn of listeners)fn();},back:()=>views.workflows.back(),get workflowOpened(){return workflowOpened;},get deviceOpened(){return deviceOpened;},get newWorkflow(){return newWorkflow;}};
 }
 const wait=async fn=>{for(let count=0;count<300;count++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,5));}throw Error('Unified automation UI did not settle.');};
+test('an unbound startup does not report a confirmed empty workflow list',async()=>{
+ const f=await fixture(read),app=adapterFixture(f.request,{}, {disconnected:true,deviceReminders:[]});
+ try{
+  app.render();await wait(()=>!app.render().automation.loading);
+  assert.equal(app.render().cards.length,0);
+  assert.equal(app.render().automation.empty,false);
+  assert.equal(app.render().automation.itemCount,'');
+  assert.equal(f.calls.length,0);
+ }finally{app.close();await f.close();}
+});
+
+test('prompt actions use one primary action and an icon menu while confirmation keeps mutations pending',async()=>{
+ const f=await fixture(read),app=adapterFixture(f.request);
+ try{
+  app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);
+  app.render().cards.find(row=>row.name==='Owner prompt').open();
+  let detail=app.render().automation;
+  assert.deepEqual(Array.from(detail.schedulePrimary,item=>item.label),['Run now']);
+  assert.deepEqual(Array.from(detail.scheduleMore,item=>item.label),['Edit','History','Enable','Delete']);
+  assert.ok([...detail.schedulePrimary,...detail.scheduleMore].every(item=>item.icon));
+  detail.scheduleMore.find(item=>item.label==='Delete').run();
+  detail=app.render().automation;
+  assert.equal(detail.review,true);
+  assert.equal(detail.schedulePrimary.length,0);
+  assert.equal(detail.scheduleMore,null);
+  assert.equal(typeof detail.reviewModal,'function');
+  assert.equal(f.calls.some(call=>call.method!=='GET'),false);
+  detail.cancelReview();
+  assert.equal(app.render().automation.review,false);
+  assert.equal(f.calls.some(call=>call.method!=='GET'),false);
+ }finally{app.close();await f.close();}
+});
+
 test('unified Workflows hides request recovery from ordinary management controls',async()=>{
  const f=await fixture(read);
  const browser=adapterFixture(f.request,{}, {native:false});
@@ -114,7 +147,7 @@ test('the actual schedule menu renders visible text and accessible names for eve
  const f=await fixture(read),app=adapterFixture(f.request);
  try{
   app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Weekly review').open();
-  const dom=new JSDOM('<!doctype html><body></body>'),document=dom.window.document,template=document.createElement('template');const htmlSource=fs.readFileSync('apps/app/src/prototype/template.html','utf8'),start=htmlSource.indexOf('<div class="schedule-controls">');template.innerHTML=htmlSource.slice(start,htmlSource.indexOf('\n        <div class="automation-actions">',start));
+  const dom=new JSDOM('<!doctype html><body></body>'),document=dom.window.document,template=document.createElement('template');const htmlSource=fs.readFileSync('apps/app/src/prototype/template.html','utf8'),start=htmlSource.indexOf('<div class="schedule-controls">'),end=htmlSource.indexOf('\n        <sc-if value="{{workflows.automation.message}}"',start);assert.ok(start>=0&&end>start);template.innerHTML=htmlSource.slice(start,end);
   const source=fs.readFileSync('apps/app/src/prototype/dc-lite.js','utf8').replace(/^import .*;\n/gm,'');
   const node=vm.runInNewContext(source.slice(0,source.indexOf('  const templateElement'))+';node;',{React,document,iconStyle:()=>({})});
   const html=renderToStaticMarkup(node(template.content.querySelector('.schedule-controls'),{workflows:{automation:app.render().automation},ic:{}},'controls'));
@@ -183,6 +216,12 @@ test('unchanged repeated local times keep the original later offset and sub-minu
 // The real template must never ship ahead of its controller again.
 test('production Workflows template has every top-level automation binding',async()=>{
  const template=fs.readFileSync('apps/app/src/prototype/template.html','utf8');
+ // This placement check ignores styles that still contain template variables.
+ const document=new JSDOM(template.replace(/\sstyle="[^"]*"/g,'')).window.document;
+ const confirmation=document.querySelector('[ref="{{workflows.automation.reviewModal}}"]');
+ assert.ok(confirmation);
+ assert.equal(confirmation.closest('.workflow-list'),null);
+ assert.deepEqual([...confirmation.querySelectorAll('button')].map(button=>button.textContent),['No','Yes']);
  const expected=[...new Set([...template.matchAll(/workflows\.automation\.([A-Za-z_$][\w$]*)/g)].map(match=>match[1]))];
  const f=await fixture(read),app=adapterFixture(f.request);
  try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);const model=app.render().automation;assert.ok(expected.length>16);assert.deepEqual(expected.filter(name=>!Object.hasOwn(model,name)),[]);}finally{app.close();await f.close();}

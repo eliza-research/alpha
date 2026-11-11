@@ -3412,16 +3412,21 @@
       "changedOwnerStaysHiddenTest",
       "changedCredentialStaysHiddenTest",
       "cachedBeforeAgentTest",
-      "removedCredentialHidesCacheTest"
+      "removedCredentialHidesCacheTest",
+      "unboundReadCannotConfirmEmptyTest",
+      "settledReadCanConfirmEmptyTest"
     ],
     "sources": [
       "apps/app/src/runtime/agent-calendar.ts",
       "apps/app/src/prototype/agent-calendar-adapter.ts",
-      "apps/app/src/prototype/inbox-cloud-adapter.ts"
+      "apps/app/src/prototype/inbox-cloud-adapter.ts",
+      "apps/app/src/prototype/automations-adapter.ts",
+      "test/automations-unified.test.mjs"
     ],
     "abstractions": [
       "Two owners, credentials and windows, three ordered clock values and eight read generations. Saved rows never authorize writes and never replace a settled fresh read.",
-      "Cache size/age policy is implemented by existing ServiceReadCache. Model scenarios and isolated implementation regressions do not prove live-provider or device behavior."
+      "Cache size/age policy is implemented by existing ServiceReadCache. Model scenarios and isolated implementation regressions do not prove live-provider or device behavior.",
+      "Workflow empty-state confirmation requires a settled read on the current bound agent. UI regression checks cover the missing-binding case; existing Calendar/Inbox conformance has its own bounded scope."
     ]
   },
   {
