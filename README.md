@@ -277,12 +277,15 @@ and [applied-candidate recovery #891](https://github.com/eliza-research/alphapho
 before enrollment. [#400](https://github.com/eliza-research/alphaphone/issues/400)
 tracks the overall release gate. A successful host test or model does not close
 these release and device gates. Alpha consumes the reviewed rejected-download
-retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) at
-`ede068b56ab07df42e3038de9a108bc7daa6ae0c`, which combines that repair with the
-reviewed Maps and speech changes through [eliza#39255](https://github.com/elizaOS/eliza/pull/39255). Its dependency-upgrade ancestry changes
-the SDK lock; core/mobile builder and installed UUID inputs were compared
-separately. Earlier APK, voice and device evidence does not qualify this pin;
-rebuild and qualify the exact product inputs before OS enrollment.
+retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) and the
+reviewed Maps and speech changes through [eliza#39255](https://github.com/elizaOS/eliza/pull/39255)
+at `8876e369ca00d82f334e604aba3763a3998a854e`. This pin adds only the reviewed
+OS descriptor admission changes from [eliza#39291](https://github.com/elizaOS/eliza/pull/39291)
+to `06e268c7ecdc1a6451bfa1a0ad9665461a7f7d2b`; the core, runtime, mobile builder,
+Bun lock and recorded native producer inputs are unchanged. The exact pin is
+reachable from upstream develop through [eliza#39298](https://github.com/elizaOS/eliza/pull/39298).
+Earlier APK, voice and device evidence does not qualify this pin; rebuild and
+qualify the exact product inputs before OS enrollment.
 
 The protected [preserving OS OTA signing workflow](.github/workflows/release-os-ota-signing.yml)
 signs only an admitted OTA package with the existing release key. Its committed

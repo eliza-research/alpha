@@ -2,64 +2,15 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "fc9a333287ceb31f38731418800dbf86a1fc1ac4",
-  "head": "06e268c7ecdc1a6451bfa1a0ad9665461a7f7d2b",
+  "baseCommit": "0f86cbc4e7a3adfd30a6585b5bd31a9520b5846d",
+  "head": "8876e369ca00d82f334e604aba3763a3998a854e",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...06e268c7ecdc1a6451bfa1a0ad9665461a7f7d2b",
-  "status": "diverged",
-  "aheadBy": 12,
-  "behindBy": 23,
-  "mergeBase": "489fdf6ac3532ba5fbfeb7464ec509a44f5a66d1",
-  "pinOnlyCommits": [
-    {
-      "sha": "a670885de6e646a67b11070cf06e6db10045c742",
-      "subject": "Open Files from a cold view before selecting a file"
-    },
-    {
-      "sha": "d8d7069c9abec285482fba5e5ba2a36d574c775e",
-      "subject": "Add owner-approved telephony actions, voicemail store, contact writes and reply drafts"
-    },
-    {
-      "sha": "f3da1b310a0c3b927daf5c7e08517567eb9ad976",
-      "subject": "Add carrier visual voicemail client and supplied-audio transcription hook"
-    },
-    {
-      "sha": "880e1c176537c31cde73ffd9f00e58188f2b4fc4",
-      "subject": "Add sms_reply_selected: a draft into the open conversation, never a send"
-    },
-    {
-      "sha": "3fc95e898f2af7d7e9403b7743f73dd582f03639",
-      "subject": "Redesign the native call screen: caller block, round controls, keypad, timer"
-    },
-    {
-      "sha": "87d1da24a367baefda7fa271459907d922cb2692",
-      "subject": "Keep committed contact saves successful when readback fails"
-    },
-    {
-      "sha": "ef984dae89dd382787c4baeb89846aa1b3c3e8e9",
-      "subject": "Assert contact aggregate membership before writes"
-    },
-    {
-      "sha": "8757db108d9e103b403bcacc11c65522a2ce3e69",
-      "subject": "Admit owner SMS drafting on hosted Android without FFI inference"
-    },
-    {
-      "sha": "89f09e979ec2bc1ae8aa74a1716a658f6dde338f",
-      "subject": "Bind selected telephony actions to the original phone context"
-    },
-    {
-      "sha": "defa0a404d0bc9d99e2450e0f80240797d9b5ade",
-      "subject": "Sort selected telephony contract imports"
-    },
-    {
-      "sha": "6fd8f8c5cdc10bff44dc1850e3aa1fcdb72e27a6",
-      "subject": "Add phoneInfo: a bounded foreground read of the phone's SIM lines for Settings"
-    },
-    {
-      "sha": "06e268c7ecdc1a6451bfa1a0ad9665461a7f7d2b",
-      "subject": "Preserve uncertain contact writes and per-SIM read identity"
-    }
-  ],
+  "command": "gh api repos/elizaOS/eliza/compare/develop...8876e369ca00d82f334e604aba3763a3998a854e",
+  "status": "behind",
+  "aheadBy": 0,
+  "behindBy": 118,
+  "mergeBase": "8876e369ca00d82f334e604aba3763a3998a854e",
+  "pinOnlyCommits": [],
   "pullRequests": [
     "https://github.com/elizaOS/eliza/pull/39247",
     "https://github.com/elizaOS/eliza/pull/39244",
@@ -68,7 +19,8 @@
     "https://github.com/elizaOS/eliza/pull/39234",
     "https://github.com/elizaOS/eliza/pull/39266",
     "https://github.com/elizaOS/eliza/pull/39268",
-    "https://github.com/elizaOS/eliza/pull/39287"
-  ],
-  "pendingPullRequest": "https://github.com/elizaOS/eliza/pull/39287"
+    "https://github.com/elizaOS/eliza/pull/39287",
+    "https://github.com/elizaOS/eliza/pull/39291",
+    "https://github.com/elizaOS/eliza/pull/39298"
+  ]
 }
