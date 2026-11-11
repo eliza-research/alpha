@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {AutomaticInstallHistoryError, readAutomaticInstallHistory} from './wireless-install-history.ts';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const args=process.argv.slice(2),value=(name: string)=>args.find(arg=>arg.startsWith(`--${name}=`))?.slice(name.length+3);
@@ -66,6 +67,7 @@ interface PlatformRecord {
   status?: PlatformReadback;
   installedSuccessorObserved?: boolean;
   installedApkSha256?: string;
+  automaticInstall?: ReturnType<typeof readAutomaticInstallHistory>;
   failure?: string;
   fixtureError?: PlatformReadback;
   lastReadback?: PlatformReadback;
@@ -74,7 +76,7 @@ interface PlatformRecord {
   cleanupFailure?: string;
 }
 const record: PlatformRecord={schema:'alpha-automatic-update-platform-v1',scope:'Android PackageInstaller self-update API only; not Alpha APK, renderer, HTTPS, AOSP image, physical-device or user acceptance',serial,expectedApi:Number(api),compileSdk:36,targetSdk:36,sourceCommit:command('git',['rev-parse','HEAD'],{cwd:root}).trim(),outcome:'failed'};
-record.sources=Object.fromEntries(['scripts/test-automatic-update-platform.ts','test/fixtures/automatic-update-android/OtaActivity.java','android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java'].map(file=>[file,sha(path.join(root,file))]));
+record.sources=Object.fromEntries(['scripts/test-automatic-update-platform.ts','scripts/wireless-install-history.ts','test/fixtures/automatic-update-android/OtaActivity.java','android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java'].map(file=>[file,sha(path.join(root,file))]));
 const pause=(ms: number)=>new Promise(resolve=>setTimeout(resolve,ms));
 const read=(name: string): PlatformReadback=>JSON.parse(adb('exec-out','run-as',pkg,'cat',`files/${name}`));
 async function waitRead(name: string,predicate: (value: PlatformReadback)=>boolean=()=>true){for(let i=0;i<60;i++){try{const value=read(name);if(predicate(value))return value;}catch{}await pause(1000);}throw new Error(`Timed out waiting for ${name}`);}
@@ -83,6 +85,7 @@ try{
  record.sdkInt=Number(adb('shell','getprop','ro.build.version.sdk').trim());assert.equal(record.sdkInt,record.expectedApi,`This fixture campaign requires exactly API ${api}.`);
  for(let i=0;i<120&&adb('shell','getprop','sys.boot_completed').trim()!=='1';i++)await pause(1000);
  assert.equal(adb('shell','getprop','sys.boot_completed').trim(),'1','The disposable emulator must finish booting.');
+ assert.equal(adb('shell','am','get-current-user').trim(),'0','Run the fixture for the primary Android user.');
  record.fingerprint=adb('shell','getprop','ro.build.fingerprint').trim();
  assert.equal(packagePath(),'','Refuse an existing fixture package.');
  const source=fs.readFileSync(path.join(root,'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java'),'utf8');
@@ -154,6 +157,18 @@ try{
  assert.equal(record.successor.keystoreValueRetained,true);assert.notEqual(record.successor.pid,record.attempt.pid,'Self-update replaces the process.');
  assert.equal(record.successor.signerSha256,record.signer);assert(typeof record.successor.lastUpdateTime === 'number' && typeof record.baseline.lastUpdateTime === 'number' && record.successor.lastUpdateTime>=record.baseline.lastUpdateTime);
  const installedPath=packagePath().replace(/^package:/,'');const pulled=path.join(output,'installed-successor.apk');adb('pull',installedPath,pulled);assert.equal(sha(pulled),record.apks[1].sha256);record.installedApkSha256=sha(pulled);
+ const expectedInstall = {packageName: pkg, appId: String(record.successor.uid), versionCode: 2,
+   apkSha256: record.installedApkSha256, signerRootSha256: record.signer};
+ for (let attempt = 0; attempt < 10; attempt++) {
+   try {
+     record.automaticInstall = readAutomaticInstallHistory(adb('shell','dumpsys','package','installs'), expectedInstall);
+     break;
+   } catch (error) {
+     if (!(error instanceof AutomaticInstallHistoryError) || error.code !== 'not-found' || attempt === 9) throw error;
+     await pause(1000);
+   }
+ }
+ assert.equal(record.automaticInstall?.sessionId,record.attempt.session,'Android history must identify the committed fixture session.');
  record.outcome='passed';
 }catch(error){
  record.failure=error instanceof Error ? error.message : String(error);

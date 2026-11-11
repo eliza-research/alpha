@@ -9,6 +9,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import java.io.File;
@@ -65,13 +66,18 @@ public final class OtaActivity extends Activity {
   String admitted=SourcePolicy.automaticUpdateStatus(this);
   if(!"supported".equals(admitted)){save(this,"attempt.json",new JSONObject().put("status",admitted).put("uptimeMillis",android.os.SystemClock.uptimeMillis()));return;}
   File apk=new File(getFilesDir(),"candidate.apk");
-  if(!getIntent().getStringExtra("sha256").equals(digest(Files.readAllBytes(apk.toPath()))))throw new IllegalArgumentException();
+  String apkSha256=digest(Files.readAllBytes(apk.toPath()));
+  if(!getIntent().getStringExtra("sha256").equals(apkSha256))throw new IllegalArgumentException();
   var archive=getPackageManager().getPackageArchiveInfo(apk.getPath(),PackageManager.GET_SIGNING_CERTIFICATES);
   if(archive==null||!getPackageName().equals(archive.packageName)||archive.getLongVersionCode()!=2)throw new IllegalArgumentException();
-  if(!snapshot().getString("signerSha256").equals(digest(archive.signingInfo.getSigningCertificateHistory()[0].toByteArray())))throw new IllegalArgumentException();
+  String signerSha256=digest(archive.signingInfo.getSigningCertificateHistory()[0].toByteArray());
+  if(!snapshot().getString("signerSha256").equals(signerSha256))throw new IllegalArgumentException();
   PackageInstaller installer=getPackageManager().getPackageInstaller();
   PackageInstaller.SessionParams params=new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
   params.setAppPackageName(getPackageName());params.setSize(apk.length());SourcePolicy.configure(params,true);
+  int boot=Settings.Global.getInt(getContentResolver(),Settings.Global.BOOT_COUNT,0);
+  params.setReferrerUri(android.net.Uri.parse("alpha-update://"+getPackageName()+"/"+archive.getLongVersionCode()
+   +"/"+apkSha256+"/"+signerSha256+"/"+boot+"/intent/automatic"));
   int id=installer.createSession(params);
   try(PackageInstaller.Session session=installer.openSession(id)){
    try(var in=new FileInputStream(apk);var out=session.openWrite("base.apk",0,apk.length())){in.transferTo(out);session.fsync(out);}
