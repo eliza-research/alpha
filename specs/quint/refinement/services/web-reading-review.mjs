@@ -84,7 +84,7 @@ export async function webReadingReviewDriver() {
       observe() {
         const open = dialog.isConnected;
         assert.equal(returned, !open, 'the review call returns exactly when its dialog closes');
-        return {open, blocked: status.textContent.startsWith('Reading is unavailable'), readOffered: open ? !read.disabled : null,
+        return {open, blocked: status.textContent === 'Contains secrets', readOffered: open ? !read.disabled : null,
           fieldLocked: open ? field.disabled : null, sourceLive: !sourceSettled && !source.signal.aborted,
           text: kind(), speaking: !stop.disabled, unsettled: [...speeches.keys()].sort((a, b) => a - b),
           audible: [...speeches].filter(([, speech]) => !speech.signal.aborted).map(([id]) => id)};

@@ -12,8 +12,8 @@ const reference = id => `a1:${id.toString(16).padStart(64, '0')}`, referenceId =
 const digest = file => String(file).repeat(64);
 const link = (file, ref) => ({version: 1, name: `file-${file}.txt`, mimeType: 'text/plain', sha256: digest(file), size: 2048 * file, ...(ref ? {reference: reference(ref)} : {})});
 const statuses = [[/^$/, 'none'], [/^Choose a file…$/, 'choosing'], [/^Selection cancelled/, 'cancelled'], [/^Source linked\.$/, 'linked'],
-  [/^Source link removed/, 'removed'], [/^(Matching source opened\.|Opened\.)$/, 'opened'], [/^Opening verified source…$/, 'opening'],
-  [/^File access could not be released/, 'release-failed'], [/./, 'error']];
+  [/^Unlinked$/, 'removed'], [/^(Matching source opened\.|Opened\.)$/, 'opened'], [/^Opening verified source…$/, 'opening'],
+  [/^Reopen Files$/, 'release-failed'], [/./, 'error']];
 
 export async function replayNoteSourceDialog({rewrite, ...options} = {}) {
   const model = {path: 'specs/quint/application/NoteSourceDialog.qnt', main: 'NoteSourceDialog'};
@@ -44,7 +44,7 @@ export async function replayNoteSourceDialog({rewrite, ...options} = {}) {
     // source when an action ends, so the shown source is compared between actions.
     project: ({s}) => ({visit: s.visit, rev: s.rev, link: s.link, linkRef: s.linkRef, gen: s.gen, open: s.open,
       shown: s.open && s.op.stage === 'none' ? {source: s.source, referenced: s.sourceRef !== 0} : null,
-      status: s.status, stage: s.op.stage, serial: s.serial, grants: s.grants, leaked: s.leaked, refSerial: s.refSerial, refs: s.refs,
+      status: s.status === 'cancelled' ? 'none' : s.status, stage: s.op.stage, serial: s.serial, grants: s.grants, leaked: s.leaked, refSerial: s.refSerial, refs: s.refs,
       edits: s.edits, views: s.views, cancels: s.cancels, maintains: s.maintains}),
     async start(initial) {
       const dom = new JSDOM('<!doctype html><body></body>', {url: 'https://alpha.example/'}), {window} = dom;
@@ -98,9 +98,13 @@ export async function replayNoteSourceDialog({rewrite, ...options} = {}) {
           async choose({mode}) { await press(mode === 'link' ? 1 : 2)(); },
           remove: press(3), openLinked: press(0),
           async pickSettles({result}) {
+            const beforeCancel={rev, serial, refSerial, views, refs:[...refs], grants:[...issued]};
             if (result === 'selected') { selection = ++serial;issued.add(`sel-${selection}`); }
             answer().resolve(result === 'selected' ? {status: 'selected', selectionId: `sel-${selection}`} : {status: result === 'cancelled' ? 'cancelled' : 'failed'});
             await settle();if (!pending) done();
+            if(result==='cancelled'){
+              assert.deepEqual({rev, serial, refSerial, views, refs:[...refs], grants:[...issued]},beforeCancel,'cancelled picker has no save, grant, retained reference or viewer effect');
+            }
           },
           async readSettles({read, versioned}) {
             const file = read === 'two' ? 2 : 1;changed = read === 'changed';

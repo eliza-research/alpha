@@ -6,7 +6,7 @@ import {checkReminderOpenIntent} from '../specs/quint/refinement/application/rem
 test('a failed tap refresh tells the owner and a later successful refresh does not navigate',async()=>{
  const f=await fixture();
  const tap=f.shell.refreshReminders('tapped','one');(await f.read(0)).fail();await tap;
- assert.deepEqual(f.toasts,['Couldn’t open']);
+ assert.deepEqual(f.toasts,["Couldn't open that reminder. Open Calendar to find it."]);
  const later=f.shell.refreshReminders();(await f.read(1)).ok();await later;
  assert.deepEqual(f.opened,[]);assert.equal(f.shell.view,'home');
 });

@@ -169,8 +169,10 @@ async function fixture(component, options = {}) {
     assert.equal(refs.length,12,'Component ref-hook layout changed');
     const panel=document.querySelector('dialog'),primary=panel?.querySelector('button');
     const stored=localStorage.getItem(progressKey),memory=localStorage.getItem(memoryKey);
+    const stepName=panel?.querySelector('[aria-current=step] .alpha-permission-name');
+    const heading=stepName?[...stepName.childNodes].filter(node=>node.nodeType===3).map(node=>node.textContent).join('').trim():panel?.querySelector('h2')?.textContent??null;
     return {
-      ui:{visible:!!panel?.open,heading:panel?.querySelector('[aria-current=step] .alpha-permission-name')?.textContent??panel?.querySelector('h2')?.textContent??null,
+      ui:{visible:!!panel?.open,heading,
         primary:primary?.textContent??null,disabled:primary?.disabled??false,
         status:[...document.querySelectorAll('[role="status"],[role="alert"]')].map(node=>node.textContent)},
       component:{reopened:states[0],ready:states[1],progress:states[4],active:states[5],target:states[6],

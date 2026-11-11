@@ -66,7 +66,7 @@ export async function replayNoteWebSourceDialog({rewrite, ...options} = {}) {
         },
         observe: () => ({visit, hidden, rev, linked: !!notes.list[0].webSource, gen, open: !!dialog?.isConnected,
           busy: dialog ? button(0).disabled : false,
-          status: /unconfirmed/.test(dialog?.querySelector('[role="status"]').textContent ?? '') ? 'unconfirmed' : 'none',
+          status: dialog?.querySelector('[role="status"]').textContent === 'Unconfirmed' ? 'unconfirmed' : 'none',
           op: pending?.kind ?? 'none', edits, navigations, removals, refused}),
         close() {
           for (const [name, descriptor] of Object.entries(saved)) if (descriptor) Object.defineProperty(globalThis, name, descriptor);else delete globalThis[name];

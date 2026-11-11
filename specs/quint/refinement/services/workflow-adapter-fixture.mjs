@@ -18,7 +18,7 @@ export const wait = async (ready, label = 'The workflow adapter did not settle.'
  * same storage, as a new app process does; the earlier one is left where it stopped.
  */
 export async function workflowAdapter({client, storage = {}}) {
-  const {workflowRendererFixture} = await import('../../../../scripts/workflow-renderer-fixture.mjs');
+  const {workflowRendererFixture} = await import('../../../../scripts/workflow-renderer-fixture.ts');
   const protocol = await import('../../../../apps/app/src/runtime/workflow-protocol.ts');
   const contract = await import('../../../../apps/app/src/runtime/workflow-device-contract.ts');
   const source = fs.readFileSync(root + 'apps/app/src/prototype/workflow-adapter.ts', 'utf8').replace(/^import .*;\n/gm, '').replace('export function', 'function') + '\nglobalThis.install=installWorkflowAdapter;';

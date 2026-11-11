@@ -1,4 +1,4 @@
-/// Source-owned OS defaults with serialized settings writes and finite layout classes.
+/// Source-owned OS defaults; serialized version-3 writes and finite retained layout classes.
 module OSDefaults {
   type State = { saved: str, selected: str, version: int, pending: bool,
     written: bool, appop: str, eligible: bool, writeAuthorized: bool }
@@ -9,7 +9,7 @@ module OSDefaults {
     pending: false, written: false, appop: "unset", eligible: true, writeAuthorized: true }
   action init = s' = initialState("stock", 0)
   action initReviewed(layout: str, version: int): bool = all {
-    layout.in(Set("stock", "legacy-custom")), version.in(Set(2, 3)),
+    layout.in(Set("stock", "custom", "legacy-custom")), version.in(Set(2, 3)),
     s' = initialState(layout, version)
   }
   pure def migratedLayout(layout: str, version: int): str =
@@ -52,11 +52,14 @@ module OSDefaults {
   run customLayoutRemainsCustomTest = init.then(ownerLayout("custom")).then(load)
     .then(storeLayout(true)).then(storeVersion(true)).expect(s.saved == "custom" and s.version == 3 and safety)
   run reviewedStockSurvivesIdentityMigrationTest = initReviewed("stock", 2).then(load)
-    .then(storeLayout(true)).then(storeVersion(true)).expect(s.saved == "stock" and s.version == 3 and safety)
+    .expect(s.selected == "stock" and safety).then(storeLayout(true)).then(storeVersion(true))
+    .expect(s.saved == "stock" and s.version == 3 and safety)
   run reviewedCustomTileMigratesInPlaceTest = initReviewed("legacy-custom", 2).then(load)
     .then(storeLayout(false)).then(storeVersion(true)).expect(s.saved == "legacy-custom" and s.version == 2)
     .then(restart).then(load).then(storeLayout(true)).then(storeVersion(true))
     .expect(s.saved == "custom-alpha" and s.version == 3 and safety)
+  run reviewedUnrelatedCustomRetainedTest = initReviewed("custom", 2).then(load)
+    .then(storeLayout(true)).then(storeVersion(true)).expect(s.saved == "custom" and s.version == 3 and safety)
   run currentVersionLeavesRetainedLayoutTest = initReviewed("legacy-custom", 3).then(load)
     .expect(s.selected == "legacy-custom" and not(s.pending) and safety)
   run existingPermissionDenialRemainsTest = init.then(ownerAppop("deny")).then(defaultAppop)

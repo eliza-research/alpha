@@ -14,5 +14,5 @@ test('a receipt shown in a later Notes visit is rejected by the replay', {timeou
 });
 test('a second document operation started while one runs is rejected by the replay', {timeout: 180000}, async () => {
   await assert.rejects(replayNotesDocumentTransfer({traces: 300, maxSteps: 16, rewrite: {'prototype/notes-document-adapter.ts': text =>
-    text.replace("if(busy){api.toast('Finish the current document selection first.');return;}", '')}}), /trace \d+ step \d+ /);
+    text.replace("if(busy){api.toast('Busy');return;}", '')}}), /trace \d+ step \d+ /);
 });

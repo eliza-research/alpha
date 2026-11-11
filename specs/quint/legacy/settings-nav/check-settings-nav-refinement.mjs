@@ -63,7 +63,8 @@ async function snapshot(page, expectedTitle) {
     assert.equal(state.route, 'top', 'The Account sheet preserves the selected Settings root');
     return state;
   }
-  await expect(current(page)).toHaveAttribute('data-settings-page', expectedTitle);
+  const renderedTitle=expectedTitle==='Open source licenses'?'Licenses':expectedTitle;
+  await expect(current(page)).toHaveAttribute('data-settings-page', renderedTitle);
   const state = await current(page).evaluate(element => ({
     title: element.getAttribute('data-settings-page'),
     view: window.quintLegacySettings.S().view,
@@ -71,8 +72,8 @@ async function snapshot(page, expectedTitle) {
     confirming: false,
   }));
   assert.equal(state.view, 'settings');
-  assert.equal(state.title, expectedTitle);
-  return state;
+  assert.equal(state.title, renderedTitle);
+  return {...state, renderedTitle:state.title, title:expectedTitle};
 }
 
 function projection(state, profile) {
@@ -83,7 +84,7 @@ function projection(state, profile) {
     Apps: [['settings-apps', 'top'], ['top']],
     Account: ['settings-account', ['top']],
     About: ['about', ['top', 'about']],
-    Licenses: ['licenses', ['top', 'about', 'licenses']],
+    'Open source licenses': ['licenses', ['top', 'about', 'licenses']],
     'License details': ['license-detail', ['top', 'about', 'licenses', 'license-detail']],
     Calendar: ['calendar', ['top', 'calendar']],
     'Password manager': ['password-provider', ['top', 'passwords']],
@@ -127,17 +128,17 @@ async function collect(page, notice) {
   await button(page, 'About').click();
   await about.point('About opens from the visible Settings row', 'About', open('About', 'about'));
   await button(page, 'Licenses').click();
-  await about.point('Open source licenses opens from About', 'Licenses', open('Open source licenses', 'licenses'));
+  await about.point('Open source licenses opens from About', 'Open source licenses', open('Open source licenses', 'licenses'));
   const search = current(page).getByRole('searchbox', {name: 'Search components', exact: true});
   const component = button(page, notice.name+' '+notice.version);
   await expect(component).toBeVisible();
   await search.fill('no-component-matches-quint-settings');
   await expect(component).toHaveCount(0);
   await expect(current(page).getByText('No matches', {exact: true})).toBeVisible();
-  await about.point('Unmatched search changes results and keeps licenses selected', 'Licenses');
+  await about.point('Unmatched search changes results and keeps licenses selected', 'Open source licenses');
   await search.fill(notice.name);
   await expect(component).toBeVisible();
-  await about.point('Matching search displays the actual packaged React notice', 'Licenses');
+  await about.point('Matching search displays the actual packaged React notice', 'Open source licenses');
   await component.click();
   const detail = await snapshot(page, 'License details');
   await expect(current(page).getByText(notice.name, {exact: true})).toBeVisible();
@@ -148,7 +149,7 @@ async function collect(page, notice) {
   await nativeBack(page);
   await expect(search).toHaveValue(notice.name);
   await expect(component).toBeVisible();
-  await about.point('Delivered Back returns from the unmapped detail excursion and retains the search', 'Licenses');
+  await about.point('Delivered Back returns from the unmapped detail excursion and retains the search', 'Open source licenses');
   await nativeBack(page);
   await about.point('Delivered Back returns to About', 'About', action('Back'));
   await nativeBack(page);

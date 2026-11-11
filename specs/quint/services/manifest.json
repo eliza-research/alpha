@@ -5174,20 +5174,48 @@
       "step": "step",
       "invariant": "safety",
       "tests": [
-        "secondSelectionPreservesClaimedTaskTest"
+        "secondSelectionPreservesClaimedTaskTest",
+        "timeoutOwnsCallbackTest",
+        "failedCallbackSettlesTest",
+        "stopWaitsForClaimedCallbackTest",
+        "stopWaitsForAdmittedReadTest",
+        "stoppedDeliveryHasNoEffectsTest",
+        "cancelBeforeReadTest"
       ],
-      "temporal": [
-        "CheckedTemporal"
+      "invariants": [
+        "AtMostOneCallback",
+        "ResultAgrees",
+        "SingleOwner",
+        "RefusedCallbackHasNoEffect",
+        "StoppedAdmissionHasNoEffect",
+        "StopWaitsForWork"
       ],
-      "sharedSources": [
-        "packages/core/src/services/approval.ts"
+      "witnesses": [
+        "UnavailableSelectorWitness",
+        "StopWaitingWitness",
+        "StopDrainedWitness",
+        "FailureSettledWitness"
       ],
       "sources": [
-        "specs/quint/legacy/core/check-approval-service-refinement.mjs"
+        "vendor/eliza/packages/core/src/services/approval.ts",
+        "vendor/eliza/packages/core/src/runtime/retirement.ts"
       ],
+      "stateMapping": {
+        "state.*": "Actual pending approval, timer, task store, settled result and each invocation program counter; refused callback/stop errors and dispatched deletion identities are observed independently.",
+        "pendingWork/stopDone": "Actual RuntimeRetirement pending operation count and stop promise settlement, including the original approval request and nested worker/selection operations."
+      },
       "abstractions": [
-        "One callback-bearing approval, two selector deliveries, one timeout and one cancellation. The current service rejects a second selector without deleting the task held by the original callback.",
-        "Stop retires new work and drains admitted operations. Callback-free async approvals and task creation races have separate implementation coverage."
+        "Selected current-source synchronous callback-bearing approvals, two selector identities, one task and one controlled deadline. Source replay retains every historical PC/effect observation and adds refusal and draining-stop observations.",
+        "Task creation races, role checks, asynchronous callback-free persisted approvals, failed storage writes and arbitrary approval counts remain outside this bounded component; this is not complete implementation refinement.",
+        "Temporal properties assume weak fairness of admitted callback and storage continuations; unresponsive ports can intentionally keep stop pending."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "20261107"
+      },
+      "temporal": [
+        "CheckedTemporal"
       ]
     }
   ]

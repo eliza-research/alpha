@@ -65,7 +65,7 @@ async function fixture(extraSources) {
   const observe = label => {const state={...api.observe(),foreground:!document.hidden,
     resetCount:native.resetCount,nativeLocked:native.locked,page,calls:[...calls]};records.push({label,state});return state;};
   const rows = () => api.passwordManagerGroups(helpers).flatMap(group=>group.rows);
-  const invoke = label => {const row=rows().find(row=>row.label===label);assert.ok(row,label);row.go();};
+  const invoke = label => {const row=rows().find(row=>row.label===label||row.lbl===label);assert.ok(row,label);row.go();};
   const settle = async () => {for(let i=0;i<4;i++)await tick();};
   const hold=method=>{const original=port[method],pending=deferred(),entered=deferred();port[method]=async(...args)=>{port[method]=original;const result=await original(...args);entered.resolve();await pending.promise;return result;};return {entered:entered.promise,release:()=>pending.resolve()};};
   const expire=()=>{const [id,timer]=[...timers].find(([,timer])=>timer.delay===60000)||[];assert.ok(timer,'unlock expiry');timers.delete(id);timer.callback();};
@@ -79,7 +79,7 @@ export async function generateVaultCoordinatorTraces(extraSources=[]) {
     try {
       f.observe('initial');f.rows();await f.settle();f.observe('open locked vault');
       if(name.startsWith('typed')) {
-        f.invoke('Unlock');await f.settle();f.observe('unlock metadata');
+        f.invoke('Unlock passwords');await f.settle();f.observe('unlock metadata');
         f.invoke('Add password');
         const page=f.api.passwordEntryPage(f.helpers,()=>{});
         const password=page.groups.flatMap(group=>group.rows).find(row=>row.label==='Password');
@@ -93,7 +93,7 @@ export async function generateVaultCoordinatorTraces(extraSources=[]) {
         f.native.damaged=true;f.api.refreshPasswordManager();await f.settle();f.observe('native reports invalidated key');
         f.invoke('Reset vault');f.observe('review reset');
         if(name==='pending-reset-leave') {
-          f.native.pending=deferred();f.invoke('Confirm reset');
+          f.native.pending=deferred();f.invoke('Confirm reset vault');
           await f.settle();f.observe('native authentication pending');
         }
         f.api.leavePasswordManager();await f.settle();f.observe('leave retires review');
@@ -112,9 +112,9 @@ export async function generateVaultCoordinatorTraces(extraSources=[]) {
     try {
       f.observe('initial');f.rows();await f.settle();f.observe('open locked vault');
       if(name.startsWith('metadata')) {
-        f.invoke('Unlock');await f.settle();f.observe('unlock metadata');
+        f.invoke('Unlock passwords');await f.settle();f.observe('unlock metadata');
         const held=f.hold('list');f.api.refreshPasswordManager();await held.entered;f.observe('metadata read pending');
-        if(name==='metadata-lock'){f.invoke('Lock');await f.settle();f.observe('metadata lock');}
+        if(name==='metadata-lock'){f.invoke('Lock passwords');await f.settle();f.observe('metadata lock');}
         else if(name==='metadata-expiry'){f.expire();await f.settle();f.observe('metadata expires');}
         else {f.api.leavePasswordManager();await f.settle();f.observe('leave retires review');}
         held.release();await f.settle();f.observe('retired metadata completes');
@@ -122,7 +122,7 @@ export async function generateVaultCoordinatorTraces(extraSources=[]) {
       } else {
         f.native.damaged=true;f.api.refreshPasswordManager();await f.settle();f.observe('native reports invalidated key');
         f.invoke('Reset vault');f.observe('review reset');
-        if(name==='reset-auth-refresh'){f.native.pending=deferred();f.invoke('Confirm reset');await f.settle();f.observe('native authentication pending');}
+        if(name==='reset-auth-refresh'){f.native.pending=deferred();f.invoke('Confirm reset vault');await f.settle();f.observe('native authentication pending');}
         f.api.refreshPasswordManager();await f.settle();f.observe('refresh retires reset review');
         if(f.native.pending){f.native.pending.resolve();await f.settle();f.observe('retired reset authentication completes');}
         assert.equal(f.native.resetCount,0);assert.equal(f.records.at(-1).state.resetReviewed,false);

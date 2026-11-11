@@ -37,7 +37,7 @@ export async function replayNotesDocumentTransfer({rewrite, ...options} = {}) {
       const note = {id: 'note-1', kind: 'text', title: 'Kept note', body: 'Body', pinned: false, when: 'Today'};
       const state = {list: [note], open: note.id};
       const api = {
-        toast(message) { if (/Finish the current document selection first/.test(message)) refusedBusy = capped(refusedBusy + 1);else { shown++;lastShownEpoch = epoch; } },
+        toast(message) { if (message === 'Busy') refusedBusy = capped(refusedBusy + 1);else { shown++;lastShownEpoch = epoch; } },
         set(patch) { if ('noteDocumentBusy' in patch) busy = patch.noteDocumentBusy; },
         get: () => state, isActive: () => active,
         async saveImportedNote() { reads++;if (stored) imported++;return stored; },

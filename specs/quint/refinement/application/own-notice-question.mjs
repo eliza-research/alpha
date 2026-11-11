@@ -19,8 +19,8 @@ export const scenarios = ['questionIsDraftedTest', 'homeDuringConsumeStillDrafts
 export const witnesses = ['DraftAfterCancelWitness', 'ReleasedWitness', 'SpentButNotKeptWitness'];
 
 const flush = async () => { for (let turn = 0; turn < 3; turn++) await new Promise(resolve => setImmediate(resolve)); };
-const REPORTS = {'This notification is unavailable for review.': 'unavailable', 'This notification changed.': 'changed',
-  'The question could not be kept. Open the notification again.': 'not-kept'};
+const REPORTS = {'Unavailable': 'unavailable', 'This notification changed.': 'changed',
+  'Couldn’t keep': 'not-kept'};
 
 export function compile() {
   const read = path => stripTypeScriptTypes(readFileSync(`${repositoryRoot}/${path}`, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, ''), {mode: 'strip'});

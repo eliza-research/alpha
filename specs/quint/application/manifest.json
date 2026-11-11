@@ -3935,6 +3935,7 @@
       "customLayoutRemainsCustomTest",
       "reviewedStockSurvivesIdentityMigrationTest",
       "reviewedCustomTileMigratesInPlaceTest",
+      "reviewedUnrelatedCustomRetainedTest",
       "currentVersionLeavesRetainedLayoutTest",
       "existingPermissionDenialRemainsTest",
       "ineligiblePermissionDoesNotGrantTest",

@@ -56,10 +56,10 @@ async function subject(walk) {
   const storage = {};
   const app = await workflowAdapter({client, storage});
   const fd = () => app.render().fd;
-  const idle = () => wait(() => app.render().detail && !fd().isRunning, 'the workflow did not settle');
+  const idle = () => wait(() => app.render().detail && !fd().busy, 'the workflow did not settle');
   const open = async () => { app.render().openWorkflow('flow'); await idle(); opened = true; };
   await open();
-  const reviewing = () => opened && (fd().lifecycleReview || /Tap the workflow action again to resend it/.test(fd().last));
+  const reviewing = () => opened && (fd().lifecycleReview || fd().deleteLabel === 'Confirm resend');
   const answer = async settle => { const pending = call; call = null; settle(pending); await idle(); };
   const serve = (action) => {
     const copy = wire[wire.length - 1], receipt = agent.receipts.get(copy.mutationId);
@@ -100,7 +100,7 @@ async function subject(walk) {
     } else if (action === 'abortResend') { app.leave(); opened = false; held.refuse(Object.assign(Error('aborted'), {name: 'AbortError'})); held = null; await new Promise(resolve => setTimeout(resolve, 10)); }
     else if (action === 'remoteEdit') agent.edits++;
     // The model's tap guards read the run state itself. The phone reads it with the workflow, so each run event is followed by that read.
-    else if (['runStarts', 'runFinishes', 'runInterrupted'].includes(action)) { agent.run = action === 'runStarts' ? 'ongoing' : action === 'runFinishes' ? 'finished' : 'interrupted'; if (opened && !fd().isRunning) await open(); }
+    else if (['runStarts', 'runFinishes', 'runInterrupted'].includes(action)) { agent.run = action === 'runStarts' ? 'ongoing' : action === 'runFinishes' ? 'finished' : 'interrupted'; if (opened && !fd().busy) await open(); }
     else if (action === 'back') { if (reviewing()) app.back(); }
     // The app stops: a new adapter is mounted over the same journal, and the earlier one is never answered.
     else if (action === 'restart') { app.restart(); call = null; held = null; cancelling = null; opened = false; }
@@ -108,13 +108,13 @@ async function subject(walk) {
   };
   const observe = () => {
     const stored = slot in storage ? JSON.parse(storage[slot]) : null, current = admitted.at(-1), copies = posts.filter(post => post.mutationId === current), last = posts.at(-1);
-    const busy = opened ? fd().isRunning : false, text = opened && !busy ? fd().last : '';
+    const busy = opened ? fd().busy : false;
     return {agent: {removed: agent.removed, edits: agent.edits, applications: agent.applications, receipts: agent.receipts.size}, admissions: admitted.length,
       wire: wire.length, sent: Math.min(2, copies.length), resends: Math.min(2, copies.filter(post => post.resend).length),
       lastSent: last ? {edits: edits(last.versionId), remove: last.operation === 'remove', newest: last.mutationId === current} : null,
       intent: stored ? {edits: edits(stored.versionId), remove: stored.operation === 'remove', newest: stored.mutationId === current} : held?.stage === 'journal' ? 'recording' : null,
-      busy, review: opened ? fd().lifecycleReview : false, unknownReview: opened ? fd().lifecycleLabel === 'Cancel interrupted runs' : false,
-      offer: /sends that same request again|Tap the workflow action again to resend it/.test(text), resendReview: /Tap the workflow action again to resend it/.test(text),
+      busy, review: opened ? fd().lifecycleReview : false, unknownReview: opened ? fd().lifecycleLabel === 'Cancel runs' : false,
+      offer: opened && ['Resend', 'Confirm resend'].includes(fd().deleteLabel), resendReview: opened && fd().deleteLabel === 'Confirm resend',
       knownRemoved: opened ? fd().deleteLabel === 'Restore workflow' : null};
   };
   return {apply, observe, close: () => app.close(), at: i => { index = i; }, opened: () => opened};

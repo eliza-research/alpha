@@ -5,7 +5,7 @@ import {buildReminderAdapter, reminderAdapterFixture} from './reminder-adapter-f
 const model = {path: 'specs/quint/application/ReminderRefresh.qnt', module: 'ReminderRefresh',
   witnesses: ['StaleRemindersWitness', 'SupersededRefreshWitness', 'DroppedOpenWitness', 'OpenedWitness']};
 const dropped = "Couldn't open that reminder. Open Calendar to find it.";
-const failed = 'Reminders could not refresh. Previously loaded reminders may be out of date.';
+const failed = 'Couldn’t refresh';
 
 async function replay(compiled, trace) {
   const f = reminderAdapterFixture(compiled);

@@ -7,7 +7,7 @@ const model = {path: 'specs/quint/application/ReminderTodoAttempt.qnt', module: 
     'SavedNotListedWitness']};
 const idOf = uuid => Number(String(uuid).slice(-12));
 const textOf = title => Number(String(title).slice(5));
-const outcomes = [[/^To-do saved on this device/, 'saved'], [/^Not confirmed\. Try again/, 'unconfirmed'],
+const outcomes = [[/^Saved$/, 'saved'], [/^Unconfirmed$/, 'unconfirmed'],
   [/Nothing was saved\.$/, 'refused']];
 
 async function replay(compiled, trace) {

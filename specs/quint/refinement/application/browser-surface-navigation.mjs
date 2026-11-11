@@ -37,7 +37,7 @@ export async function browserSurfaceNavigationDriver() {
       async close() { await surface.close(tab); lastEvent = undefined; },
       observe() {
         const state = surface.tabs.get('session:tab');
-        const error = !state?.error ? '' : state.error.startsWith('Loading stopped') ? 'stopped' : state.error.startsWith('The website navigated inside') ? 'inner-navigation' : state.error;
+        const error = !state?.error ? '' : state.error === 'Stopped' ? 'stopped' : state.error === 'Page blocked' ? 'inner-navigation' : state.error;
         if (state && lastEvent) {
           // What listeners were told matches the tab the surface holds.
           if (lastEvent.navigation !== state.navigation || lastEvent.loading !== state.loading || lastEvent.committed !== state.committed) throw Error('stateChanged disagrees with the tab');

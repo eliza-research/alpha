@@ -2140,6 +2140,12 @@
       "sha256": "cf2e58f0d7e4eb70514fcad151eb44af19970246a1904f0a4560eda60c786dfb",
       "classification": "historical-upstream-runtime-fragment",
       "scope": "Original embedding provenance counterexample; not current runtime qualification"
+    },
+    {
+      "path": "packages/core/src/services/approval.ts",
+      "sha256": "62299e0c50c0835441d1737839f9a1b12a9fbc600617bf052e5e10688cfb7fad",
+      "classification": "historical-upstream-runtime-fragment",
+      "scope": "Literal 4787 approval settlement and callback ownership correspondence; not current runtime qualification"
     }
   ],
   "currentUpstream": {

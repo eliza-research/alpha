@@ -18,6 +18,7 @@ const ports = [
   [/native-connection$/, 'secure'], [/reminder-creation-document$/, 'document'], [/canvas-geometry$/, 'geometry'],
   [/assistant-draft-controller$/, 'drafts'], [/assistant-draft-store$/, 'drafts'], [/domain-recovery$/, 'recovery'],
   [/dev-profile$/, 'profile'],
+  [/browser\/review$/, 'reviews'], [/connection-ui$/, 'connection'], [/alpha-client$/, 'client'],
 ];
 const closures = [
   ['let creationPending = null, creationRecoveryFailed = false, creationDraftEpoch = 0, creationReadEpoch = 0;',
@@ -56,6 +57,7 @@ const turn = () => new Promise(resolve => setImmediate(resolve));
 export function calendarAdapterFixture(compiled, {native = true, drafts = false} = {}) {
   const calendar = {events: [], day: 0, month: null, open: null, form: null}, toasts = [], calls = [], held = [], holds = new Map();
   const listeners = new Map(), timers = [], document = new EventTarget(), window = new EventTarget();
+  const subscribers = new Set();
   const state = {view: 'calendar', active: true, confirm: true, now: new Date(2027, 0, 15, 12).getTime(), uuid: 0};
   document.hidden = false;
   window.confirm = () => state.confirm;
@@ -106,6 +108,15 @@ export function calendarAdapterFixture(compiled, {native = true, drafts = false}
     geometry: {currentSurfaceLayout: () => ({split: false, calendarDays: 1, agenda: false})},
     drafts: {AssistantDraftController: Draft, assistantDraftStore: async () => ({})},
     profile: {browserDevProfile: false},
+    connection: {connectionController: {getSnapshot: () => ({session: 'session'}),
+      subscribe(listener) { subscribers.add(listener); return () => subscribers.delete(listener); }}},
+    client: {alphaClient: {getState: () => ({context: {view: state.view}}),
+      subscribe(listener) { subscribers.add(listener); return () => subscribers.delete(listener); }}},
+    reviews: {BrowserReviews: class {
+      async confirm(_id, _title, _details, _label, guard) {
+        return state.confirm && !guard?.signal?.aborted && (!guard?.current || guard.current());
+      }
+    }},
     probe: {},
   };
   class Shell {
