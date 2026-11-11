@@ -58,6 +58,7 @@
     "predev:maps": "bun run upstream:prepare-client",
     "prebuild:test-mocks": "bun run upstream:prepare-client",
     "dev:cloud": "bun scripts/dev-cloud.ts",
+    "cloud:local": "bun scripts/local-cloud.ts",
     "quint:prepare-history": "bun scripts/prepare-quint-history.ts",
     "quint:check": "bun scripts/check-quint.ts check",
     "quint:typecheck": "bun scripts/check-quint.ts typecheck",
