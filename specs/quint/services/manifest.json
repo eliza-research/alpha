@@ -2608,6 +2608,21 @@
       "abstractions": [
         "One sequential caller, two source-stamp and lock identities, at most three producer calls. The actual verifier classifies complete manifested output, and independent whole-tree fingerprints check existing and retained interrupted bytes. Generic SDK bundling, concurrent producers and Android installation require separate evidence."
       ]
+    },
+    {
+      "path": "specs/quint/services/CoreApprovalServiceCurrent.qnt",
+      "module": "CoreApprovalServiceCurrent",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": ["secondSelectionPreservesClaimedTaskTest"],
+      "temporal": ["CheckedTemporal"],
+      "sharedSources": ["packages/core/src/services/approval.ts"],
+      "sources": ["specs/quint/legacy/core/check-approval-service-refinement.mjs"],
+      "abstractions": [
+        "One callback-bearing approval, two selector deliveries, one timeout and one cancellation. The current service rejects a second selector without deleting the task held by the original callback.",
+        "Stop retires new work and drains admitted operations. Callback-free async approvals and task creation races have separate implementation coverage."
+      ]
     }
   ]
 }
