@@ -3,9 +3,11 @@ import {authoredNoteText} from '../../../../.eliza/client-features/plugins/plugi
 import {nextDefaultNoteTitle} from '../runtime/note-default-title';
 import {projectNoteForModel,reconstructNoteContent,type NoteJson,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
 import {noteScheduleDraft,type NoteScheduleKind} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-schedule-draft.ts';
+import {noteShareText} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-share-text.ts';
 import type {AppRecordPort} from '../runtime/app-record-route-policy';
 import {agentPendingText,agentAvailabilityNotice,connectionController} from '../runtime/connection-ui';
 import {DailyApps} from '../daily';
+import {copySelectedText} from '../runtime/text-share';
 import {CanonicalNotesController,type NotesPhase} from './canonical-notes-controller';
 import {CanonicalNotesEditor} from './canonical-notes-editor';
 import type {CanonicalNoteSaveIntent} from './note-recorder';
@@ -108,11 +110,27 @@ export class CanonicalNotesUi {
  notes():StickyNote[]{return this.controller.current?this.controller.snapshot?.notes??[]:[];}
  selection(){return this.editor.selection();}
  private status():string{
-  if(this.phase==='review')return this.editor.draft?.version?'Your draft is shown here until you reload or the connection changes. Reload the current notes to discard it.':this.failure==='read'&&this.reviewPending==='read'?'Notes could not be opened. Check the agent connection, then reload.':'That change could not be confirmed. Reload Notes to see what was saved.';
+  if(this.phase==='review')return this.editor.draft?.version?'Save could not be confirmed. Your edits are shown here. Copy the draft before discarding or changing the connection.':this.failure==='read'&&this.reviewPending==='read'?'Notes could not be opened. Check the agent connection, then reload.':'That change could not be confirmed. Reload Notes to see what was saved.';
   return this.controller.revision===null?'Opening Notes…':'';
  }
  renderState(previous:Bag):Bag{return {...previous,...DEVICE_ONLY_STATE,list:this.list,open:this.open,storageStatus:this.status(),blankCreationId:this.blankCreationValue};}
  async refresh():Promise<void>{await this.controller.refresh();}
+ /** Copy the selected draft while preserving the editor and canonical collection. */
+ private async copyDraft(token:string,version:number,api:Bag):Promise<void>{
+  const current=()=>{
+   const draft=this.editor.draft;
+   return this.controller.current&&api.isActive()&&!document.hidden&&this.phase==='review'&&draft?.token===token&&draft.version===version;
+  };
+  if(!current())return;
+  const note=this.list.find(row=>row.id===this.open);
+  if(!note)return;
+  try{
+   await copySelectedText(noteShareText({...note,kind:note.kind}).text);
+   if(current())api.toast('Draft copied.');
+  }catch(error){
+   if(current()&&!(error instanceof DOMException&&error.name==='AbortError'))api.toast(error instanceof Error?error.message:'Draft could not be copied.');
+  }
+ }
  /** A connection change ends this binding; an unsaved edit is not carried over, so the owner is told. */
  retire():void{const draft=this.editor.draft;if(draft?.version)this.hooks.dropped?.(draft.title||'Untitled');this.editor.close();this.controller.retire();this.baseRows=[];this.rowsValue=[];this.openValue=null;this.trashValue=[];}
  /** Wait out an in-flight save and the follow-up it queued for edits typed meanwhile. */
@@ -258,12 +276,14 @@ export class CanonicalNotesUi {
   * folder, review and reload, and the Notes recorder saving one voice record with an owned opaque audio attachment. */
  decorate(view:Bag,api:Bag,state:Bag):Bag{
   const rows=this.controller.current?this.trashValue:[],ready=this.controller.revision!==null,busy=this.controller.pending,open=this.open,saved=!!open&&this.controller.hasViewNote(open);
+  const draft=this.editor.draft;
   const trashOpen=state.folder==='deleted'&&rows.length>0;
   if(state.folder==='deleted'&&!rows.length&&ready)queueMicrotask(()=>{if(api.get('notes').folder==='deleted')api.set({folder:null,trashAsk:null});});
   const ask=state.trashAsk as Bag|null,asked=ask&&trashOpen?rows.find(row=>row.id===ask.id):undefined;
   const restore=(id:string)=>{api.set({trashAsk:null});void this.editor.restore(id);};
   const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:true,canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,
    canonicalReview:this.phase==='review',canonicalReviewLabel:this.editor.draft?.version?'Discard draft and reload':'Reload Notes',canonicalReviewAction:()=>void this.discardDraftAndReload(),
+   copyDraftAvailable:this.phase==='review'&&this.dirty,copyDraft:()=>draft?this.copyDraft(draft.token,draft.version,api):Promise.resolve(),
    trashAvailable:false,hasDeleted:rows.length>0,trashOpen,trashCanErase:false,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
    trashRows:rows.map(row=>{const title=row.title||'Untitled';return {id:row.id,title,label:title,preview:'',left:'',disabled:busy,restore:()=>restore(row.id),ask:()=>api.set({trashAsk:{id:row.id,title}})};}),
    trashAskOpen:!!asked,trashAskTitle:asked?ask!.title:'',trashAskClose:()=>api.set({trashAsk:null}),trashAskRecover:()=>{if(asked)restore(asked.id);},trashAskDelete:()=>{},
@@ -272,7 +292,7 @@ export class CanonicalNotesUi {
   if(out.ed&&open){out.ed={...out.ed,dictate:()=>void this.dictate(open,api),
    toCal:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'reminder',api);}:undefined,
    toEvent:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'event',api);}:undefined,
-   saveStatus:this.phase==='review'?'Not saved':''};}
+   saveStatus:this.phase==='review'?'Save unconfirmed':''};}
   if(out.vo&&open){const note=this.controller.viewNote(open),audio=note?.format?.kind==='voice'?voiceAudio(note.format.data):undefined;
    const owned=!!audio&&out.vo.playbackAudioId===audio.audioId&&out.vo.hasPlayback===true;
    out.vo={...out.vo,...(owned?{}:{hasPlayback:false,play:()=>api.toast('No audio is available for this note.')}),
