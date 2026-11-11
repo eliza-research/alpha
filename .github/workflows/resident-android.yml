@@ -96,6 +96,15 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Check the automatic native input manifest and artifact availability
+        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -B scripts/ci/hosted-native-inputs.py --check-remote
       # Install the selected toolchain before capacity provisioning authenticates it.
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -105,12 +114,6 @@ jobs:
         with:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.12"
-      - name: Check the automatic native input manifest
-        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
-        run: python3 -B scripts/ci/hosted-native-inputs.py --check
       - name: Install pinned Android native toolchain
         run: |
           python3 scripts/ci/resident-phase.py --name android-toolchain --seconds 1200 sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'build-tools;36.0.0' 'ndk;28.2.13676358'
