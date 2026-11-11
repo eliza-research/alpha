@@ -12,7 +12,7 @@
  * certificate: every debug row's signerSha256 in artifacts/apk-manifest.json and each
  * --debug-fingerprint given. Writes artifacts/assetlinks.json by default. The file holds no secret.
  *
- * Alpha's return host is the Eliza Cloud web host (ELIZAOS_APP_LINK_HOST must equal
+ * Alpha's return host is the Eliza Cloud web host (BuildConfig.ELIZAOS_APP_LINK_HOST is
  * scripts/cloud-deployment-policy.ts production.web), whose assetlinks.json Cloud builds only from the
  * operator variable ELIZA_ANDROID_ASSET_LINKS_JSON: one {package_name, sha256_cert_fingerprints,
  * relations?} entry per app, and any malformed entry or duplicate package publishes [] for every

@@ -78,7 +78,7 @@ test('the sign-in App Link is on the configured Cloud host; staging lives in the
  const main=strip(read('android/app/src/main/AndroidManifest.xml')),mocks=strip(read('android/app/src/testMocks/AndroidManifest.xml')),gradle=read('android/app/product.gradle');
  const filter=host=>`<intent-filter android:autoVerify="true"><action android:name="android.intent.action.VIEW"/><category android:name="android.intent.category.DEFAULT"/><category android:name="android.intent.category.BROWSABLE"/><data android:scheme="https" android:host="${host}" android:path="/alphaphone/auth/callback"/></intent-filter>`;
  const activity=between(main,'<activity android:name=".MainActivity"','</activity>');
- assert.match(gradle,/\? cloudWebHost : appLinkHostRaw\.toString\(\)\.trim\(\)/,'every build declares the configured Cloud host');
+ assert.match(gradle,/^def appLinkHost = cloudWebHost$/m,'every build declares the configured Cloud host');
  assert.ok(activity.includes(filter('${appLinkHost}')),'MainActivity declares the sign-in return');
  assert.equal(main.match(/android:path="\/alphaphone\/auth\/callback"/g).length,1,'one sign-in return');
  assert.doesNotMatch(main,/scheme="https"[^>]*cloud-delegation/,'Cloud delegation returns only through the custom scheme');
