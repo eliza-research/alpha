@@ -268,7 +268,8 @@ export function installAutomationsAdapter(Component:any,views:Bag){
    'Enable':current.ic.play,'Pause':current.ic.pause,'Resume':current.ic.play,
    'Snooze 10 minutes':current.ic.clock,'Cancel reminder':current.ic.trash,'Reopen':current.ic.stUndo,
   };
-  const presentedActions=actions.map(item=>({...item,icon:actionIcons[item.label]||(item.label.startsWith('Delete')?current.ic.trash:current.ic.flow)}));
+  const actionLabels:Record<string,string>={'Edit prompt':'Edit','Refresh execution history':'History','Delete automation':'Delete'};
+  const presentedActions=actions.map(item=>({...item,label:actionLabels[item.label]||item.label,icon:actionIcons[item.label]||(item.label.startsWith('Delete')?current.ic.trash:current.ic.flow)}));
   const primaryAction=presentedActions.find(item=>item.label==='Run now')||(scheduled?presentedActions[0]:undefined);
   const moreActions=presentedActions.filter(item=>item!==primaryAction);
   const field=(name:string,label:string,fieldValue:string,type='text')=>({name,label,value:fieldValue,type,multiline:name==='instructions'||name==='message',singleLine:name!=='instructions'&&name!=='message',change:(event:Bag)=>{if(editor&&!controller){const value=String(event.target.value);if(name==='recurringTime'&&editor.kind==='prompt'){const clock=recurringClock(editor.draft.cron);if(clock&&/^([01]\d|2[0-3]):([0-5]\d)$/.test(value))editor.draft.cron=presetAt(clock.preset,value);}else (editor.draft as unknown as Bag)[name]=value;publish();}}});

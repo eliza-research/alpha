@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "ef49f5fe1a177a96d80b18f4a6927d665211f3cab5c902174a6e321cab53b00f",
+  "ledgerSha256": "536359d1a272a292df277431f6f24acdfc17f35d24e87e5b88496d78668f44fc",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,8 +29,8 @@
     "languageReview": 90,
     "parseErrors": 0,
     "candidates": 67730,
-    "writeSites": 67504,
-    "writeAssociations": 60472,
+    "writeSites": 67505,
+    "writeAssociations": 60473,
     "asynchronous": 8409,
     "unassignedWrites": 10405
   },
@@ -33694,14 +33694,15 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "11b5cc3b2e411a7c11d7ef41445e07011e8b64d6d681121e764b702ec4eb6930",
+      "sha256": "6c87f7beb71656a3cc2fe0c00849ab4b9b8663de46f15cdd616b360811fd9a6d",
       "allocatedModels": [
         "WorkflowExecution",
         "ReminderOpenIntent",
         "WorkflowRequestRecoveryAdmission",
         "ScheduledTaskControls",
         "HomeAutomationsRead",
-        "WorkflowRecoverySelection"
+        "WorkflowRecoverySelection",
+        "SavedServiceRead"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33717,7 +33718,7 @@
           "owner": "installAutomationsAdapter",
           "line": 45,
           "bindings": 44,
-          "writes": 230
+          "writes": 231
         },
         {
           "owner": "installAutomationsAdapter.preloadHome",
@@ -33757,7 +33758,7 @@
         },
         {
           "owner": "installAutomationsAdapter.ArrowFunction@237",
-          "line": 248,
+          "line": 249,
           "bindings": 4,
           "writes": 15
         }
@@ -39545,7 +39546,7 @@
     },
     {
       "path": "apps/app/src/prototype/phone.css",
-      "sha256": "eb2faa574453752201e86b41def1f03c41d4c9e9aa5f9805329310b970fe03d1",
+      "sha256": "2291a64b3e59032d4f8d68aacc631af7071caf4a84da9f3daecb14ccc96b5bfd",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40381,7 +40382,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "b0137e4ff22cfa6491d7f2f7348c293ded0cfac44b0bb62e30a694a27a8181ad",
+      "sha256": "483ab79a669ddb04f0eaa29f6c87bcb15b0203a19c54d69d691641d5712761b7",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -221476,6 +221477,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "52c157c74911ba8bb38989d997d16d758146b8f2b1f6707d631196df99754381"
+    "sha256": "09f36975a6f3d86b9bd316c2df1a23d560abde4a40aeaa2374ee5317431259fd"
   }
 }

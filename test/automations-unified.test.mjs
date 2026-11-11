@@ -98,9 +98,9 @@ test('prompt actions use one primary action and an icon menu while confirmation 
   app.render().cards.find(row=>row.name==='Owner prompt').open();
   let detail=app.render().automation;
   assert.deepEqual(Array.from(detail.schedulePrimary,item=>item.label),['Run now']);
-  assert.deepEqual(Array.from(detail.scheduleMore,item=>item.label),['Edit prompt','Refresh execution history','Enable','Delete automation']);
+  assert.deepEqual(Array.from(detail.scheduleMore,item=>item.label),['Edit','History','Enable','Delete']);
   assert.ok([...detail.schedulePrimary,...detail.scheduleMore].every(item=>item.icon));
-  detail.scheduleMore.find(item=>item.label==='Delete automation').run();
+  detail.scheduleMore.find(item=>item.label==='Delete').run();
   detail=app.render().automation;
   assert.equal(detail.review,true);
   assert.equal(detail.schedulePrimary.length,0);
