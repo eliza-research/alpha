@@ -11,7 +11,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const root = path.resolve(import.meta.dirname, '..');
-const docs = ['README.md', 'docs/prd.md'];
+const docs = ['README.md', 'docs/development.md', 'docs/prd.md'];
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const lineOf = (text, index) => text.slice(0, index).split('\n').length;
 

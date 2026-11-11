@@ -1,309 +1,200 @@
-# Alpha Phone (alphaphone)
+<p align="center">
+  <a href="https://alphacompute.ai">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/assets/alpha-compute-logo-dark.svg">
+      <img src="docs/assets/alpha-compute-logo-light.svg" alt="Alpha Compute" width="360">
+    </picture>
+  </a>
+</p>
 
-Alpha Phone is an Android application with a locally resident Eliza agent.
-Eliza Cloud supplies managed inference, subscriptions, Gmail, optional Google
-Calendar and Maps services. The [PRD](docs/prd.md) records product requirements;
-implementation and device acceptance are separate.
+<h1 align="center">Alpha</h1>
 
-`apps/app` owns the product renderer and registration. `android` owns product
-packaging and installed identity. Shared runtime, native plugins and OS tooling
-come from the exact `vendor/eliza` revision in `upstream.lock.json`. Make shared
-changes upstream and consume a reviewed commit; never edit the vendor checkout.
+<p align="center">
+  <b>The phone with its own AI agent.</b><br>
+  Built by <a href="https://alphacompute.ai">Alpha Compute</a>.
+</p>
 
-## Setup
+<p align="center">
+  <a href="https://alphacompute.ai"><img src="https://img.shields.io/badge/Built%20by-Alpha%20Compute-0000ff?style=for-the-badge" alt="Built by Alpha Compute"></a>
+  <a href="#status"><img src="https://img.shields.io/badge/Status-early%20pilot-orange?style=for-the-badge" alt="Status: early pilot"></a>
+</p>
 
-Use Node 26.13.0 (`.nvmrc`), Bun 1.4.2 for resident-agent preparation, and JDK 21.
-Native builds need Android SDK platform 36 and build-tools 36.0.0. Set
-`JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
+<p align="center">
+  <a href="#quickstart">Quickstart</a> ·
+  <a href="#what-you-get">What you get</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#put-it-on-a-phone">Android</a> ·
+  <a href="docs/development.md">Developer guide</a> ·
+  <a href="https://alphacompute.ai">Website</a>
+</p>
 
-```sh
-git clone --recurse-submodules https://github.com/eliza-research/alphaphone.git
-cd alphaphone
-npm ci
-npm run verify
-npm run dev
+<p align="center">
+  <img src="docs/assets/alpha-screens.png" alt="Alpha's Home screen with today's cards, Calendar with a request typed to Ask Alpha, and Inbox" width="820">
+</p>
+
+Alpha is an Android home screen and app suite with a personal AI agent that lives
+on the phone itself. Tap **Ask Alpha**, type or talk, and the agent works across
+your mail, calendar, maps, notes, photos and files. It asks before it does
+anything that matters.
+
+**Your agent stays with you.** The agent, its memory and its database run on your
+device, not on someone else's server. Speech is recognised and spoken on the
+phone by default. A cloud account is only for the services that need one, such as
+model inference and Gmail.
+
+## Quickstart
+
+Try Alpha in your browser. You need [Git](https://git-scm.com) and
+[Node.js 26](https://nodejs.org) (`nvm install` picks the right version from
+`.nvmrc`). No Android tools and no account are required.
+
+```bash
+git clone --recurse-submodules https://github.com/alphacompute/alpha.git
 ```
 
-`npm run verify` runs deployment-output checks, source preparation, executable
-Quint models, LemmaScript function proofs, TypeScript, host tests, the production web build and its bundle audit.
-Host scripts use native TypeScript. `npm run typecheck:scripts` checks their interfaces.
-Host contract tests need a JDK and the `sqlite3` command-line tool on `PATH`
-for native Calendar queries. Archive builds check SQLite before verification.
-Tests that load the real SDK require the pinned Bun and a prepared SDK; set
-`ALPHA_REQUIRE_PREPARED_SDK=1` to fail instead of skipping when preparation is missing.
-Function proofs require Dafny 4.11.0 on `PATH`; `LEMMA_REQUIRE_BACKEND=1` makes a
-missing backend fail. A generation-only run records a skipped proof. CI installs the
-hash-pinned backend and requires proofs. `npm run quint:changed -- --base=<commit>`
-also model-checks changed models and their importing compositions, including their
-declared temporal checks and required historical counterexamples.
-
-## Development
-
-```sh
-npm run dev                       # local agent and renderer
-npm run dev:ui                    # renderer only
-npm run dev:cloud                 # genuine account-bound Cloud development
-npm run test:browser              # Chromium, development surfaces enabled
-npm run test:browser:production   # production bundle
+```bash
+cd alpha && npm ci
 ```
 
-The web build is a development preview and the payload packaged into the APKs.
-Production builds start with live, empty or unconnected states. Mock data,
-fixtures and developer controls require exactly `ELIZA_DEV_ALLOW_TEST_MOCKS=1`.
-`npm run dev`, Playwright and explicit test-mocks builds enable this switch.
-Add `?tools=1` to an enabled development server to show developer controls;
-the query cannot enable them in production or on Android.
-
-`npm run dev:cloud` uses a local resident with real Cloud sign-in and service
-requests. Its default URL is `http://127.0.0.1:5318`.
-`ALPHA_CLOUD_ENVIRONMENT=staging` explicitly selects staging. Private account and
-resident profiles live under `~/.local/share/alphaphone/`. Existing accounts,
-credentials and histories are not copied or reset.
-
-## Android builds
-
-```sh
-npm run android:build:inputs       # report missing build inputs
-npm run android:build:local        # prepare, build worker, stage runtime and build
-npm run android:verify            # inspect APK contents and signatures
+```bash
+npm run dev:ui
 ```
 
-The build produces standalone and launcher, debug and release APKs under
-`artifacts/`. The variants share `ai.alphacompute.alphaphone` and can replace one
-another with an admitted version and signer. The launcher declares HOME.
-Phone, Contacts and SMS/MMS require an admitted AOSP image capability.
+Open the address it prints (usually <http://127.0.0.1:5173>) and you are on
+Alpha's Home screen. Narrow the window to phone width for the best view.
 
-Alpha Compute builds use the same ID for the installed package and native
-namespace. The retained Pixel v44 uses the former package ID. Android
-installs the new package separately, with its own private data, Keystore,
-permissions and roles. Establish a fresh baseline on each distribution form,
-then verify updates and data retention between builds with the new package ID.
-Qualify the native libraries and APKs for the exact product and SDK revisions.
+> [!TIP]
+> Forgot `--recurse-submodules`? Run `git submodule update --init --recursive`
+> inside the folder, then `npm ci` again.
 
-There is one runtime profile. Every build packages libelizainference with the
-on-device speech models and local embeddings. Stage on-device voice inputs with
-`node scripts/android-stage-voice-models.ts --from <directory>`.
-The resident source and workflow worker are prepared from the locked upstream
-revision. Build inputs must agree with the staged runtime and native libraries.
+### Next steps
 
-Speech is routed at run time, not at build time: the owner's Cartesia key when
-their own provider is selected, Eliza Cloud speech when signed in to Cloud with
-no plan limit in force, otherwise on-device speech. A Cloud or provider speech
-request that fails before audio plays falls back to on-device speech. The
-`--runtime-profile` and `--local-embeddings` options are gone; the scripts
-refuse them with a one-line message.
+| I want to…                              | Run                 | You also need                              |
+| --------------------------------------- | ------------------- | ------------------------------------------ |
+| Look around the interface               | `npm run dev:ui`    | Nothing else                               |
+| Run the agent on my computer            | `npm run dev`       | [Bun 1.4.2](https://bun.sh)                |
+| Sign in and use real Cloud services     | `npm run dev:cloud` | Bun, and an Eliza Cloud account            |
+| Check my changes before a pull request  | `npm run verify`    | JDK 21 and the `sqlite3` command-line tool |
+| Build the Android app                   | [See below](#put-it-on-a-phone) | JDK 21 and the Android SDK     |
 
-Developer APKs may explicitly omit the runtime:
+## What you get
 
-```sh
-npm run agent:prepare -- --source-only
-npm run android:build -- --allow-unpackaged-runtime
-npm run android:build -- --test-mocks
+<table>
+<tr><td><b>An agent that lives on your phone</b></td><td>The agent, its tools and its history stay on the device. There is no hosted copy of your agent to pair with or provision.</td></tr>
+<tr><td><b>Ask Alpha, anywhere</b></td><td>One bar at the bottom of every screen. Type, dictate into an editable draft, or hold a spoken conversation you can interrupt at any time.</td></tr>
+<tr><td><b>On-device voice</b></td><td>Speech-to-text and text-to-speech run locally by default. Cloud speech is an explicit choice in Settings, never a silent fallback.</td></tr>
+<tr><td><b>Everyday apps, built in</b></td><td>Inbox (Gmail), Calendar, Browser, Camera, Photos, Maps, Notes and Files, all designed around the agent.</td></tr>
+<tr><td><b>Workflows</b></td><td>Scheduled briefs and routines that run while the phone is on, with approvals and a run history you can inspect.</td></tr>
+<tr><td><b>You approve what matters</b></td><td>The agent shows you what it is about to do and waits for your go-ahead. Full photo access stays a local permission, not a bulk upload.</td></tr>
+<tr><td><b>An app or a whole phone</b></td><td>Install Alpha as a normal app, set it as your launcher, or run the Alpha OS image, which adds Phone, Contacts and SMS.</td></tr>
+</table>
+
+<p align="center">
+  <img src="docs/assets/alpha-screens-more.png" alt="Alpha's Workflows screen, the Ask Alpha conversation open over Home, and Maps" width="820">
+</p>
+
+## How it works
+
+```mermaid
+flowchart LR
+  you([You]) -- voice or text --> ui[Alpha<br/>Home, apps, Ask Alpha]
+  subgraph phone [Your phone]
+    ui <--> agent[Resident agent<br/>tools, memory, workflows]
+    agent <--> local[(Local database<br/>and on-device speech)]
+  end
+  agent -- only what a request needs --> cloud[Eliza Cloud<br/>inference, Gmail, Calendar, Maps]
 ```
 
-Test-mocks APKs go to `artifacts/test-mocks/`. Production Android builds remove
-mock flags from child environments. `scripts/audit-production-bundle.ts` checks
-the web output and APK assets for developer code, fixtures and source maps.
+- **Alpha** is the interface: Home, the built-in apps and the Ask Alpha bar.
+- **The resident agent** runs on the phone. It plans, calls tools, remembers and
+  schedules.
+- **Eliza Cloud** supplies managed services: model inference, your subscription,
+  Gmail, and optional Google Calendar and Maps. It never hosts your agent.
 
-Release signing uses `ELIZAOS_KEYSTORE_PATH`, `ELIZAOS_KEYSTORE_PASSWORD`,
-`ELIZAOS_KEY_ALIAS` and `ELIZAOS_KEY_PASSWORD`. Without signing inputs, release
-outputs are unsigned. `ELIZAOS_VERSION_CODE` and `ELIZAOS_VERSION_NAME` override
-versions from `app.config.json`. Keep signing secrets outside the repository.
+Local speech does not mean an offline language model: text inference is hosted,
+and Alpha tells you what context a request sends.
 
-The upstream consumer-host generator creates the ignored Gradle host from
-`android/consumer-host.json`. Run `npm run android:host` before direct Gradle or
-Android Studio use. Edit the descriptor and `android/app/product.gradle` for
-product build configuration. Dependency checksums remain in
-`android/gradle/verification-metadata.xml`; regenerate and review them with
-`npm run android:deps:write-verification` after dependency changes.
+## Put it on a phone
 
-## Device and image tooling
+You need JDK 21 and the Android SDK (platform 36, build-tools 36.0.0), with
+`JAVA_HOME` and `ANDROID_HOME` set.
 
-```sh
-npm run test:android:instrumentation -- --owned-emulator --avd <avd> --serial emulator-NNNN
-npm run aosp:stage -- --apk artifacts/launcher-debug.apk --development
+```bash
+npm run android:build:inputs
 ```
 
-Instrumentation uses an owned disposable emulator. Image staging emits an AOSP
-vendor add-on under `artifacts/aosp/`. APK builds, emulator HOME-role behavior,
-full AOSP boot, real integrations, physical-device testing and user acceptance
-are independent results.
-
-`scripts/deliver-app-update.ts` publishes an admitted signed launcher APK and
-checks anonymous readback. Merging source does not publish an application update.
-New builds read the `app-stable-alphacompute` release. The previous package
-reads `app-stable`. Publication keeps each package on its own release and
-checks retained versions on both. Android may require installation confirmation.
-
-An automatic attempt that loses idle HOME after verifying its APK can retain
-that one file for a later attempt in the same process. Reuse checks the complete
-bytes and current package, version, variant and signer again. A process restart
-discards the cache hint; the durable installer journal still owns recovery.
-
-Main pushes automatically build unsigned native candidates in the existing
-Resident Android workflow. The separate `app-native-candidate-*` artifact holds
-the genuine distribution archive and `app-update-candidate.json`, which binds
-source, SDK, run/attempt, profile, channel and actual APK hashes. Test-mocks stay
-in the qualification archive. Primary main-push attempts share a canceling group;
-reruns use their own run ID group and do not cancel running work. GitHub does not
-guarantee commit order. Completion needs a quiet main, build capacity and admitted
-native inputs.
-
-Before enabling a successful automatic build, a maintainer supplies
-`android/hosted-native-inputs.json` in the reviewed checkout. Use these exact
-fields and replace every placeholder with the reviewed value.
-
-```json
-{
-  "schema": "alpha-hosted-native-inputs/v1",
-  "packageName": "ai.alphacompute.alphaphone",
-  "sdkCommit": "<upstream.lock.json commit>",
-  "voiceRecordSha256": "<SHA-256 of android/voice-host/qualified-voice-host.json>",
-  "embeddingRecordSha256": "<SHA-256 of android/embedding-host/qualified-host.json>",
-  "artifacts": {
-    "voice": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"},
-    "embeddingComponent": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"},
-    "embeddingQualification": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"}
-  }
-}
+```bash
+npm run android:build:local
 ```
 
-Use three distinct, unexpired GitHub Actions artifact IDs from successful runs
-in this repository. Use the artifact metadata's digest without its `sha256:`
-prefix. The voice artifact contains the reviewed model, data and notice files at
-`assets/paradee-voice/v1/<path>` and the two recorded libraries per ABI at
-`jniLibs/<abi>/<name>`. Upload those files with their relative paths and omit
-generated manifests, APKs and logs. The embedding component contains
-`component-output/INTENT.json`, `component-output/export/PREPARATION.json` and
-the three reviewed ARM64 libraries alongside the preparation receipt. The
-qualification artifact contains `QUALIFICATION.json` and
-`embedding-qualification.json` at its root. These receipts must describe those
-same reviewed component bytes. The two hosts share the exact ARM64 engine and
-C++ runtime. Obtain the recorded bytes from the provisioned host or review and
-admit a reproducible replacement before updating the records and artifact IDs.
+```bash
+npm run android:verify
+```
 
-Run `python3 -B scripts/ci/hosted-native-inputs.py --check` to validate the
-manifest against the checkout without downloading. Automatic runs fail early
-when input pins are missing, stale or expired. They download through the
-workflow's read-only token, stage with the existing voice and embedding tools,
-and retain the input IDs, hashes and sizes in `native-input-admission.json`.
-The candidate receipt binds its digest to the exact source, SDK and run attempt.
-The build evidence records the uploaded candidate's ID and compressed size
-from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
-Refresh the reviewed pins before an artifact expires or a bound source record
-changes. Manual diagnostics and protected signing keep their existing input
-and producer-evidence policy.
+The first command lists anything that is missing. The second prepares the agent
+and builds the APKs into `artifacts/`. The third checks their contents and
+signatures.
 
-The existing workflow run number is the candidate versionCode, checked against
-both releases' retained APKs and public pointers, and the committed version floors.
-Failed or canceled runs consume their number. A manual release or workflow
-migration that exceeds this number stops candidate creation and needs a reviewed
-version migration. Manual builds keep their explicit version input.
-Candidates are unsigned build evidence. Native application signing/voice
-admission, protected release review, exact signed APK voice tests, publication
-and both sideload/image phone drills remain required before automatic delivery
-to users; the current protected application promotion bridge supports Cloud only.
+On-device voice needs model files that the build does not download for you.
+Stage them first with
+`node scripts/android-stage-voice-models.ts --from <directory>`, or skip local
+models by building the Cloud profile. Both paths, signing and emulator testing
+are covered in the [developer guide](docs/development.md#android-builds).
 
-The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alphaphone/issues/888)
-and [wireless launcher acceptance #889](https://github.com/eliza-research/alphaphone/issues/889).
-Complete it in this order:
+| Variant        | What it is                                                        |
+| -------------- | ----------------------------------------------------------------- |
+| **Standalone** | Alpha as a regular Android app, next to your current home screen. |
+| **Launcher**   | Alpha as your home screen.                                        |
+| **Alpha OS**   | A full phone image. Adds Phone, Contacts and SMS/MMS.             |
 
-1. Admit native voice inputs for the exact SDK, then build and sign both
-   distribution variants. Preserve advancing versions and the enrolled signer.
-   The protected [release custody workflow](.github/workflows/release-custody-proof.yml)
-   exports the verified public certificates and fingerprints under
-   `artifacts/release-public-identities/` for enrollment.
-2. Register `ai.alphacompute.alphaphone` in production and staging. Run
-   `node scripts/cloud-readiness.ts registration --environment <environment>`
-   to print each environment's operator inputs. Keep the existing
-   `/alphaphone/auth/callback` URLs and entitlement audience.
+## Status
 
-   - In `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON`, replace the former Alpha row's
-     `clientId` with `ai.alphacompute.alphaphone`. Keep its active, approved
-     app UUID, exact callback, and other settings. Preserve all other rows.
-     Cloud requires unique app UUIDs and callback URLs, so this change switches
-     new sign-ins on that environment from the old app to the new one. Run the
-     Cloud **Mobile App Auth Registration Admin** workflow in diagnose
-     mode for the new client. Use repair mode if diagnosis finds a missing
-     approved app binding. Verify the callback remains on that environment's
-     Steward redirect allowlist.
-   - For native Google sign-in, create an Android OAuth client for the new
-     package and admitted release certificate SHA-1 in the Google Cloud
-     project for Steward's web client. Add it under `alpha-phone` in
-     `STEWARD_GOOGLE_NATIVE_CLIENT_IDS`. Keep any active Android client IDs.
-   - Add the new package and its release certificate SHA-256 to the production
-     `ELIZA_ANDROID_ASSET_LINKS_JSON`. Generate the merged value with
-     `node scripts/render-assetlinks.ts --cloud-config --published https://eliza.app/.well-known/assetlinks.json`.
-     Preserve existing grants and other products' entries. Deploy and verify
-     the published file with `node scripts/render-assetlinks.ts --check <web-origin>/.well-known/assetlinks.json`.
-   - Use `node scripts/cloud-deployment.ts --pages-registration` to update
-     Alpha's entry in the protected Cloud release Environment variable
-     `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` for production and staging. Keep one
-     entry per callback URI and preserve the other products' entries. Verify
-     the new Android target in the deployed Pages
-     callback page, run `node scripts/cloud-readiness.ts probe --environment <environment>`,
-     then complete sign-in on the intended APK. Test with the new package
-     selected to open its supported links if the old package is also installed.
-     [Cloud registration #666](https://github.com/eliza-research/alphaphone/issues/666),
-     [App Links #670](https://github.com/eliza-research/alphaphone/issues/670).
+Alpha is in **early pilot**.
 
-   For a debug-signed Pixel, use an explicit `--test-mocks` APK on an owned
-   test device and select **Staging** in **Subscription gate QA**. The staging
-   App Links filter is part of that build. Use the staging URL
-   `https://staging.eliza.app/.well-known/assetlinks.json` and pass
-   `--keep-fingerprint <debug-SHA256>` to the asset-link config generator.
-   For native Google sign-in, add the package and that signer's SHA-1 in
-   the staging Steward project. After deploying, run
-   `node scripts/cloud-readiness.ts probe --environment staging --signer <debug-SHA256>`.
-   The staging phone flow ends at plan admission. For production Cloud acceptance
-   on the Pixel, use the admitted release APK. Android requires a separate device
-   or fresh installation when the installed copy uses an incompatible signer.
-3. Qualify the exact signed APK bytes, publish the admitted launcher and
-   manifest, and verify anonymous full-byte readback. Then install the initial
-   baseline with the new package ID on each distribution form and run #889 on
-   the machine with the phone. Verify the manifest and APK on
-   `app-stable-alphacompute` before testing wireless delivery.
-   The update itself must use the phone's channel; `scripts/pilot-update.ts` uses
-   `adb install -r` and supplies separate in-place replacement evidence.
-4. Before distributing the batch, verify wireless replacement, retained data and
-   Keystore, HOME, voice and recovery after interruption and process death.
-   API 36 fixture results do not qualify the Android 17 image or a physical phone.
+- There is no app-store or APK download yet. To try it today, use the
+  [Quickstart](#quickstart) or build from source.
+- Alpha OS updates are published for enrolled Pixel pilot devices only.
+- Wallet, passkeys, Telegram and Discord are not part of the first release.
+- Some requirements in the [PRD](docs/prd.md) are still being built. A passing
+  build is not a claim about real devices: APK builds, emulator runs, full image
+  boots, live integrations and hands-on acceptance are tracked separately.
 
-OS OTA is a separate A/B image path. The shared updater is staged disabled;
-keep `os_update_enabled` false until signed image, channel, trust, SELinux,
-engine and physical recovery gates pass. Resolve
-[cache retention #890](https://github.com/eliza-research/alphaphone/issues/890)
-and [applied-candidate recovery #891](https://github.com/eliza-research/alphaphone/issues/891)
-before enrollment. [#400](https://github.com/eliza-research/alphaphone/issues/400)
-tracks the overall release gate. A successful host test or model does not close
-these release and device gates. Alpha consumes the reviewed rejected-download
-retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) and the
-reviewed Maps and speech changes through [eliza#39255](https://github.com/elizaOS/eliza/pull/39255)
-at `8876e369ca00d82f334e604aba3763a3998a854e`. This pin adds only the reviewed
-OS descriptor admission changes from [eliza#39291](https://github.com/elizaOS/eliza/pull/39291)
-to `06e268c7ecdc1a6451bfa1a0ad9665461a7f7d2b`; the core, runtime, mobile builder,
-Bun lock and recorded native producer inputs are unchanged. The exact pin is
-reachable from upstream develop through [eliza#39298](https://github.com/elizaOS/eliza/pull/39298).
-Earlier APK, voice and device evidence does not qualify this pin; rebuild and
-qualify the exact product inputs before OS enrollment.
+## Documentation
 
-The protected [preserving OS OTA signing workflow](.github/workflows/release-os-ota-signing.yml)
-signs only an admitted OTA package with the existing release key. Its committed
-`android/signing/ota-tools.json` currently has `reviewedTargets: []`: validation,
-private input downloads and signing remain disabled before signing keys are read.
-Enabling a target requires an independently reviewed record binding its exact
-target-files SHA-256, producer source commit, SDK commit, fingerprint and build
-timestamp together. APK signer-map paths and AVB configuration paths alone do
-not establish the identities embedded in an image; review the exact target's
-APK, APEX and boot signing identities and producer lineage before committing
-that record. A qualified tools archive does not admit a target image. This
-operator does not enable OS enrollment or establish device acceptance.
+| Goal                                       | Start here                                                        |
+| ------------------------------------------ | ----------------------------------------------------------------- |
+| Set up, run and test locally               | [Developer guide](docs/development.md#setup)                      |
+| Build, sign and verify Android APKs        | [Android builds](docs/development.md#android-builds)              |
+| Test on an emulator or stage an OS image   | [Device and image tooling](docs/development.md#device-and-image-tooling) |
+| Understand what Alpha is meant to do       | [Product requirements](docs/prd.md)                               |
+| Work on the code with an AI coding agent   | [AGENTS.md](AGENTS.md)                                            |
 
-## Generated files
+## Project layout
 
-Build output belongs in ignored `web-dist/`, `artifacts/`, `test-results/` and
-`.eliza/` directories. Android host and Capacitor sync output are ignored too.
-Cloud deployment source is `scripts/cloud-deployment-policy.ts`; regenerate its
-renderer and Android bindings with `node scripts/cloud-deployment.ts`.
-`node scripts/cloud-deployment.ts --pages-registration` prints the public Pages
-callback registration for an operator without creating a `config/` directory.
+| Path           | What lives there                                                    |
+| -------------- | ------------------------------------------------------------------- |
+| `apps/app`     | The Alpha interface: Home, the built-in apps and Ask Alpha.         |
+| `android`      | Android packaging, native code and the Alpha OS image pieces.       |
+| `scripts`      | Build, test and release tooling.                                    |
+| `specs`        | Formal models of the trickiest behaviour, checked on every verify.  |
+| `vendor/eliza` | The pinned [elizaOS](https://github.com/elizaOS/eliza) runtime. Read-only here. |
+
+## Contributing
+
+Issues and pull requests are welcome.
+
+1. Fork the repository and create a branch.
+2. Make your change. Shared runtime changes belong upstream in elizaOS, not in
+   `vendor/eliza`.
+3. Run `npm run verify`. If you touched Android, also run
+   `npm run android:build:local`.
+4. Open a pull request that says what you changed and how you tested it.
+
+Found a security problem? Please do not open a public issue. Contact the team
+through [alphacompute.ai](https://alphacompute.ai).
+
+## Credits
+
+Alpha is built by [Alpha Compute](https://alphacompute.ai) on the open-source
+[elizaOS](https://github.com/elizaOS/eliza) agent runtime. Licence texts for
+bundled third-party software are in [`licenses/`](licenses).
