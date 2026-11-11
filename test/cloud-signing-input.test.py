@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 import warnings
 import zipfile
 
@@ -80,7 +81,7 @@ class CloudSigningInputTest(unittest.TestCase):
         for record in [self.verification, self.build, self.producer, *rows]:
             record["updateChannel"] = copy.deepcopy(self.pin["updateChannel"])
 
-    def write_archive(self, entries_update=None, duplicate=None, special=None):
+    def write_archive(self, entries_update=None, duplicate=None, special=None, compression=zipfile.ZIP_STORED):
         verification = json.dumps(self.verification).encode()
         build = json.dumps(self.build).encode()
         files = {"artifacts/apk-manifest.json": verification, "artifacts/build-config.json": build}
@@ -99,7 +100,7 @@ class CloudSigningInputTest(unittest.TestCase):
             }).encode(),
         }
         entries.update(entries_update or {})
-        with zipfile.ZipFile(self.archive, "w") as bundle:
+        with zipfile.ZipFile(self.archive, "w", compression=compression) as bundle:
             for name, payload in entries.items():
                 if name == special:
                     entry = zipfile.ZipInfo(name)
@@ -125,6 +126,12 @@ class CloudSigningInputTest(unittest.TestCase):
                 row["packageName"] = PRODUCER.CANDIDATE_PACKAGE
                 row["distributable"] = False
                 row.setdefault("voiceHost", {"packaged": True, "asr": True, "differences": []})
+        debug = {}
+        self.verification["results"] = [row for row in self.verification["results"] if row["mode"] != "debug"]
+        for variant in ADMISSION.VARIANTS:
+            name = f"{variant}-debug.apk"
+            debug[name] = (extra or {}).get(name, f"{variant} debug fixture".encode())
+            self.verification["results"].append({"variant": variant, "mode": "debug", "sha256": ADMISSION.digest(debug[name])})
         source, sdk = self.pin["alphaCommit"], self.pin["sdkCommit"]
         native = {
             "schema": "alpha-hosted-native-input-admission/v1", "source": source, "sdkCommit": sdk,
@@ -163,7 +170,8 @@ class CloudSigningInputTest(unittest.TestCase):
         raw = json.dumps(receipt).encode()
         self.pin["candidateReceiptSHA256"] = ADMISSION.digest(raw)
         self.write_archive({"app-update-candidate.json": raw, "native-input-admission.json": native_bytes,
-                            "inputs-before.json": snapshot, "inputs-after.json": snapshot, **(extra or {})})
+                            "inputs-before.json": snapshot, "inputs-after.json": snapshot, **debug, **(extra or {})},
+                           compression=zipfile.ZIP_DEFLATED)
         digest = self.pin["archiveSHA256"]
         self.pin["archiveBytes"] = self.archive.stat().st_size
         self.pin["privateStorage"] = {
@@ -206,6 +214,42 @@ class CloudSigningInputTest(unittest.TestCase):
                       {"purpose": "private-update-qa-baseline"}):
             with self.assertRaises(ValueError):
                 ADMISSION.admit(self.archive, {**self.pin, **drift})
+
+    def unsigned_pair(self, size):
+        for row in self.verification["results"]:
+            if row["mode"] == "release":
+                variant = row["variant"]
+                payload = bytes([1 if variant == "launcher" else 2]) * size
+                self.apk_bytes[f"{variant}-release-unsigned.apk"] = payload
+                row["sha256"] = self.pin["unsignedApkSHA256"][variant] = ADMISSION.digest(payload)
+
+    def test_native_unsigned_members_can_exceed_the_cloud_limit(self):
+        self.unsigned_pair(4097)
+        self.write_archive()
+        with patch.object(PRODUCER, "LEGACY_APK_MEMBER_BYTES", 4096):
+            with self.assertRaisesRegex(ValueError, "oversized archive member"):
+                ADMISSION.admit(self.archive, self.pin)
+            self.write_candidate()
+            stage = self.archive.parent / "large-native"
+            ADMISSION.admit(self.archive, self.pin, stage)
+            self.assertEqual({path.name: path.read_bytes() for path in stage.iterdir()}, self.apk_bytes)
+
+    def test_native_expanded_apk_pairs_are_bounded_independently(self):
+        ceiling = 12_000
+        debug = {f"{variant}-debug.apk": bytes(4_000) for variant in ADMISSION.VARIANTS}
+        with patch.object(PRODUCER, "MAX_ARCHIVE_BYTES", ceiling):
+            self.unsigned_pair(4_000)
+            self.write_candidate(debug)
+            self.assertLess(self.archive.stat().st_size, ceiling)
+            ADMISSION.admit(self.archive, self.pin)
+            self.unsigned_pair(6_001)
+            self.write_candidate(debug)
+            with self.assertRaisesRegex(ValueError, "expanded pair limit"):
+                ADMISSION.admit(self.archive, self.pin)
+            self.unsigned_pair(4_000)
+            self.write_candidate({name: bytes(6_001) for name in debug})
+            with self.assertRaisesRegex(ValueError, "expanded pair limit"):
+                ADMISSION.admit(self.archive, self.pin)
 
     def test_admits_both_exact_unsigned_cloud_variants(self):
         self.write_archive()

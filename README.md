@@ -226,6 +226,11 @@ voice checks for both signed APK digests before dispatching publication.
 The existing reviewed Cloud producer routes remain available for their
 approved package and profile.
 
+The native route keeps the 1.5 GB limit on the producer ZIP and signed TAR.
+The two unsigned APKs and the two debug APKs each have a separate 1.5 GB
+expanded pair limit. Admission checks exact member lengths against the
+reviewed archives and verifies the APK digests when streaming the bytes.
+
 Release approval, signed-byte voice tests, publication and both sideload and
 image-preinstalled phone drills remain required for this batch.
 

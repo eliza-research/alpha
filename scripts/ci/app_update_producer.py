@@ -16,6 +16,7 @@ CANDIDATE = "github-main-candidate"
 PRIVATE_RUNNER = "root-reviewed-private-runner"
 HOSTED_DISPATCH = "github-dispatch"
 MAX_ARCHIVE_BYTES = 1_500_000_000
+LEGACY_APK_MEMBER_BYTES = 400_000_000
 SHA = re.compile(r"[0-9a-f]{64}")
 COMMIT = re.compile(r"[0-9a-f]{40}")
 NUMBER = re.compile(r"[1-9][0-9]{0,15}")
@@ -65,6 +66,22 @@ def producer_kind(plan):
 def archive_pins(plan):
     require(type(plan.get("archiveBytes")) is int and 0 < plan["archiveBytes"] <= MAX_ARCHIVE_BYTES and
             matches(SHA, plan.get("archiveSHA256")), "Invalid exact producer archive pins")
+
+
+def apk_member_limit(kind):
+    return MAX_ARCHIVE_BYTES if kind == CANDIDATE else LEGACY_APK_MEMBER_BYTES
+
+
+def copy_verified(source, size, expected_digest, failure, destination=None):
+    digest = hashlib.sha256()
+    remaining = size
+    while chunk := source.read(min(1024 * 1024, remaining + 1)):
+        remaining -= len(chunk)
+        require(remaining >= 0, failure)
+        digest.update(chunk)
+        if destination is not None:
+            destination.write(chunk)
+    require(remaining == 0 and digest.hexdigest() == expected_digest, failure)
 
 
 def gh_json(endpoint):
