@@ -55,7 +55,7 @@ class Shell extends CalendarFixtureShell {
  vset(_view: string,patch: Partial<CalendarFixtureState>){Object.assign(state,patch);}
  async refreshReminders(){state.events=this.nativeCalendarRows??[];}
 }
-assert.match(fs.readFileSync(new URL('../apps/app/src/prototype/calendar-adapter.ts',import.meta.url),'utf8'),/^import \{reminderWallTime\} from '\.\.\/runtime\/reminder-creations';$/m,'The adapter takes its wall time from the runtime reminder module');
+assert.match(fs.readFileSync(new URL('../apps/app/src/prototype/calendar-adapter.ts',import.meta.url),'utf8'),/^import \{[^}\n]*\breminderWallTime\b[^}\n]*\} from '\.\.\/runtime\/reminder-creations';$/m,'The adapter takes its wall time from the runtime reminder module');
 assert.match(fs.readFileSync(new URL('../apps/app/src/runtime/reminder-creations.ts',import.meta.url),'utf8'),/export \{[^}]*\breminderWallTime\b[^}]*\} from '[^']*\/plugin-assistant\/src\/services\/device-actions\/reminder-journal\.ts';/,'The runtime reminder module re-exports the shared journal wall time the harness injects');
 installCalendarFixture({
  Shell, views, calendar, window:calendarEvents, mapsEventOriginFor, reminderWallTime,

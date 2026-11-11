@@ -279,6 +279,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   return <dialog ref={dialog} className="alpha-startup-permissions" aria-labelledby="alpha-permission-title" onCancel={event => {event.preventDefault(); close();}}>
     <div className="alpha-permission-content alpha-permission-checklist">
       <h2 id="alpha-permission-title" className="serif" tabIndex={-1}>Access</h2>
+      {progress && !review && !target && <p className="alpha-permission-progress" role="status">Step {progress.step + 1} of {keys.length}</p>}
       <ul className="alpha-permission-rows">{keys.map(k => <li key={k} className="alpha-permission-row" aria-current={k === key ? 'step' : undefined} data-state={states[k]}>
         <span className="alpha-permission-row-icon" aria-hidden="true"><span style={iconStyle(details[k].icon)}/></span>
         <span className="alpha-permission-label"><span className="alpha-permission-name">{details[k].title}</span>{k === key && <span className="alpha-permission-rationale">{details[k].reason}</span>}</span>

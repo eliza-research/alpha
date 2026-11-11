@@ -11,5 +11,6 @@ public class PluginCall {
  public void resolve(){resolved.incrementAndGet();answered.countDown();}
  public void resolve(JSObject value){result=value;resolve();}
  public void reject(String message){rejected.incrementAndGet();answered.countDown();}
- public void awaitAnswer()throws InterruptedException{if(!answered.await(60,java.util.concurrent.TimeUnit.SECONDS))throw new AssertionError("The call was never settled");}
+ public void awaitAnswer()throws InterruptedException{awaitAnswerWithin(60000);}
+ public void awaitAnswerWithin(long millis)throws InterruptedException{if(!answered.await(millis,java.util.concurrent.TimeUnit.MILLISECONDS))throw new AssertionError("The call was never settled");}
 }

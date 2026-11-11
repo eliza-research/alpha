@@ -2138,14 +2138,21 @@
         "unconfirmedTombstoneDoesNotAuthorizeReconnectTest",
         "coldAutomaticCannotAcquireBarrierPauseOrStopTest",
         "manualColdBootStillUsesExactBarrierTest",
-        "processReplacementPreservesWarmBootTest"
+        "processReplacementPreservesWarmBootTest",
+        "unreadAutomaticOfferCannotMarkCommittingTest",
+        "unavailableAutomaticOfferCannotMarkCommittingTest",
+        "unavailableAutomaticOfferAbandonsBeforeCommitTest",
+        "revokedAutomaticCannotMarkCommittingTest",
+        "revokedAutomaticConsentAbandonsBeforeCommitTest",
+        "lateConsentChangeDoesNotGateExplicitManualCommitTest"
       ],
       "invariants": [
         "DurablePauseHasExactBarrier",
         "StopRequiresOwnedPause",
         "CommitRequiresConfirmedStop",
         "ResumeRequiresReleasedLease",
-        "AutomaticAuthorityHadReadyBoot"
+        "AutomaticAuthorityHadReadyBoot",
+        "AutomaticCommitHadFinalOffer"
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
@@ -2160,12 +2167,15 @@
         "startupAdmitted": "Actual journal-plus-activation start gate and native renderer pending readback",
         "residentStartAdmitted": "Start gate combined with the actual service shutdown lease policy",
         "resumeAudience": "Exact native terminal readback recipient while startup is admitted",
-        "admission.platform/admission.captured": "The shared staging boot-admission policy and captured automatic authority; cold deferral frames activation, durable pause, shutdown lease, stop and commit components"
+        "admission.platform/admission.captured": "The shared staging boot-admission policy and captured automatic authority; cold deferral frames activation, durable pause, shutdown lease, stop and commit components",
+        "admission.finalOffer": "Observed fresh native feed response matching the discovery SHA-256 and exact APK tuple, a failed confirmation, or no read. The replay checks the served bytes, request binding and read count."
       },
       "abstractions": [
         "One activation and one committed Android session with two synthetic renderer receipts. Source checkpoints use the actual updater, POSIX journal and exact shutdown lease under controlled Android and stop observation ports.",
         "An observed confirmed stop is a macrostep. Session handoff retains the native reconnect receipt until exact settlement; a visible unconfirmed tombstone still retains the separate service lease. Independent journal and activation campaigns exercise additional branches.",
         "The staging policy uses SDK classes 30/31 and monotonic uptime observations 0,26681,29999,30000,30001,35000. This composition permits one pre-attempt process boundary (same-boot replacement or new boot), at most two boots/processes, and leaves in-flight process-death/reboot recovery to the unchanged RuntimeUpdatePause model.",
+        "The final offer read precedes the last consent observation and durable commit mark. Changed, withdrawn and unavailable offers share the same precommit refusal. A successful abandonment and confirmed lease release form one cleanup checkpoint.",
+        "The JVM replay changes only the fresh response's whitespace after a confirmed stop and observes exact precommit abandonment. The owned TLS fixture separately covers a changed offer, wrong tuple, HTTP 404 and transport failures, plus consent revocation during the final HTTPS response.",
         "Actual extracted-Java traces exercise cold and unsupported automatic no-effect paths, later warm exact barrier/pause/stop/commit handoff, cold manual readiness and warm same-boot replacement. Bounded safety and selected traces do not prove uptime progress, Android acceptance, network availability or eventual installation."
       ],
       "bounds": {

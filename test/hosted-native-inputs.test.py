@@ -6,6 +6,8 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import stat
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -15,6 +17,9 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('native_inputs', ROOT / 'scripts/ci/hosted-native-inputs.py')
 native = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(native)
+export_spec = importlib.util.spec_from_file_location('export_native_inputs', ROOT / 'scripts/ci/export-native-inputs.py')
+exporter = importlib.util.module_from_spec(export_spec)
+export_spec.loader.exec_module(exporter)
 PACKAGE, SDK, ENGINE, SOURCE = 'ai.alphacompute.alphaphone', 'a' * 40, 'b' * 40, 'c' * 40
 
 
@@ -92,22 +97,217 @@ def fixture(root, *, bad_voice=False, bad_component=False):
 
 
 class ArtifactAPI:
-    def __init__(self, archives):
+    def __init__(self, archives, *, overrides=None, result='success'):
         self.archives = archives
+        self.overrides = overrides or {}
+        self.result = result
+        self.requests = []
+        self.expiry = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=3)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
     def open(self, request, timeout):
         path = request.full_url.split('/actions/', 1)[1].split('/')
+        self.requests.append(path)
         if path == ['runs', '7']:
-            return io.BytesIO(encoded({'head_sha': SOURCE, 'conclusion': 'success'}))
+            return io.BytesIO(encoded({'head_sha': SOURCE, 'conclusion': self.result}))
         assert path[0] == 'artifacts'
         data = self.archives[path[1]]
         if path[-1] == 'zip':
             return io.BytesIO(data)
         return io.BytesIO(encoded({
             'id': int(path[1]), 'digest': 'sha256:' + digest(data), 'size_in_bytes': len(data), 'expired': False,
+            'expires_at': self.expiry,
             'workflow_run': {'id': 7, 'repository_id': native.embedding.REPOSITORY_ID,
                              'head_repository_id': native.embedding.REPOSITORY_ID, 'head_sha': SOURCE},
+            **self.overrides.get(path[1], {}),
         }))
+
+
+class NativeInputPacketTest(unittest.TestCase):
+    def setUp(self):
+        scratch = tempfile.TemporaryDirectory(prefix='alpha-input-packet-test-')
+        self.addCleanup(scratch.cleanup)
+        self.base = Path(scratch.name).resolve()
+        self.root = self.base / 'alpha'
+        self.root.mkdir()
+        plan, archives = fixture(self.root)
+        (self.root / native.MANIFEST).unlink()
+        self.git('init', '-q')
+        self.git('add', 'app.config.json', 'upstream.lock.json', 'android')
+        self.git('update-index', '--add', '--cacheinfo', f'160000,{SDK},vendor/eliza')
+        self.git('commit', '-qm', 'Reviewed product and native records')
+        self.source = self.git('rev-parse', 'HEAD').strip()
+        self.inputs = []
+        self.expected = {}
+        for artifact, folder in zip(native.ARTIFACTS, ('voice', 'embedding-component', 'embedding-qualification')):
+            directory = self.base / folder
+            directory.mkdir()
+            data = archives[plan['artifacts'][artifact]['id']]
+            with zipfile.ZipFile(io.BytesIO(data)) as archive:
+                for name in archive.namelist():
+                    content = archive.read(name)
+                    target = directory / name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(content)
+                    self.expected[f'{folder}/{name}'] = content
+            (directory / 'private-host-log.txt').write_text('outside the approved inventory')
+            self.inputs.append(directory)
+        self.output = self.base / 'output'
+        self.output.mkdir()
+
+    def git(self, *args):
+        return subprocess.check_output(['git', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+                                        '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', *args],
+                                       cwd=self.root, text=True)
+
+    def export(self):
+        return exporter.export_packet(self.root, *self.inputs, self.output)
+
+    def test_exports_only_exact_inputs_and_binds_the_committed_records(self):
+        target = self.export()
+        self.assertEqual(target, self.output / exporter.PACKET)
+        self.assertEqual(list(self.output.iterdir()), [target])
+        self.assertEqual(stat.S_IMODE(target.stat().st_mode), 0o600)
+        with zipfile.ZipFile(target) as archive:
+            self.assertEqual(set(archive.namelist()), {*self.expected, exporter.RECEIPT})
+            for name, data in self.expected.items():
+                self.assertEqual(archive.read(name), data)
+            receipt = json.loads(archive.read(exporter.RECEIPT))
+        self.assertEqual(receipt['sourceCommit'], self.source)
+        self.assertEqual(receipt['sdkCommit'], SDK)
+        self.assertEqual(receipt['packageName'], PACKAGE)
+        self.assertEqual(receipt['files'], {name: fact(data) for name, data in self.expected.items()})
+        self.assertEqual(receipt['recordSha256'], {name: digest((self.root / name).read_bytes())
+                                                   for name in ('app.config.json', 'upstream.lock.json',
+                                                                native.VOICE_RECORD, native.EMBEDDING_RECORD)})
+        self.assertNotIn('artifacts', receipt)
+        self.assertFalse((self.root / native.MANIFEST).exists())
+
+    def test_refuses_changed_voice_or_embedding_bytes_without_output(self):
+        for key, reason in ((f'voice/{native.VOICE_ASSETS}/model.gguf', 'Voice artifact digest'),
+                            ('embedding-component/component-output/export/libelizavoicejni.so', 'Embedding library digest')):
+            with self.subTest(member=key):
+                target = self.base / key
+                original = target.read_bytes()
+                target.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+                with self.assertRaisesRegex(ValueError, reason):
+                    self.export()
+                self.assertEqual(list(self.output.iterdir()), [])
+                target.write_bytes(original)
+
+    def test_semantic_receipt_must_pass_and_bind_the_copied_bytes(self):
+        semantic = self.inputs[2] / 'embedding-qualification.json'
+        invalid = json.loads(semantic.read_bytes())
+        invalid['pass'] = False
+        semantic.write_bytes(encoded(invalid))
+        with self.assertRaisesRegex(ValueError, 'Semantic receipt not bound'):
+            self.export()
+        qualification = self.inputs[2] / 'QUALIFICATION.json'
+        value = json.loads(qualification.read_bytes())
+        value['semanticReceiptSha256'] = digest(semantic.read_bytes())
+        qualification.write_bytes(encoded(value))
+        with self.assertRaisesRegex(ValueError, 'Actual ARM64 semantic qualification did not pass'):
+            self.export()
+        self.assertEqual(list(self.output.iterdir()), [])
+
+    def test_refuses_symlink_member_and_output_ancestor(self):
+        model = self.inputs[0] / native.VOICE_ASSETS / 'model.gguf'
+        exact = self.base / 'detached-model'
+        model.rename(exact)
+        model.symlink_to(exact)
+        with self.assertRaises(OSError):
+            self.export()
+        self.assertEqual(list(self.output.iterdir()), [])
+        model.unlink()
+        exact.rename(model)
+        alias = self.base / 'aliased'
+        alias.symlink_to(self.output, target_is_directory=True)
+        with self.assertRaises(OSError):
+            exporter.export_packet(self.root, *self.inputs, alias)
+        self.assertEqual(list(self.output.iterdir()), [])
+
+    def test_reviewed_records_must_match_the_commit_and_sdk_gitlink(self):
+        voice = self.root / native.VOICE_RECORD
+        original = voice.read_bytes()
+        voice.write_bytes(original + b'\n')
+        with self.assertRaisesRegex(ValueError, 'differs from committed Alpha source'):
+            self.export()
+        voice.write_bytes(original)
+        self.git('update-index', '--add', '--cacheinfo', f"160000,{'f' * 40},vendor/eliza")
+        self.git('commit', '-qm', 'Mismatched SDK gitlink')
+        with self.assertRaisesRegex(ValueError, 'SDK lock differs'):
+            self.export()
+        self.assertEqual(list(self.output.iterdir()), [])
+
+    def test_git_replacements_cannot_supply_the_committed_records(self):
+        voice = self.root / native.VOICE_RECORD
+        voice.write_bytes(voice.read_bytes() + b'\n')
+        self.git('add', native.VOICE_RECORD)
+        tree = self.git('write-tree').strip()
+        replacement = self.git('commit-tree', tree, '-m', 'Replacement source records').strip()
+        self.git('replace', self.source, replacement)
+        self.assertEqual(self.git('rev-parse', 'HEAD').strip(), self.source)
+        self.assertEqual(self.git('show', f'HEAD:{native.VOICE_RECORD}'), voice.read_text())
+        with self.assertRaisesRegex(ValueError, 'differs from committed Alpha source'):
+            self.export()
+        self.assertEqual(list(self.output.iterdir()), [])
+
+    def test_output_must_be_private_to_its_owner_and_outside_vendor(self):
+        self.output.chmod(0o775)
+        with self.assertRaisesRegex(ValueError, 'writable only by its owner'):
+            self.export()
+        self.assertEqual(list(self.output.iterdir()), [])
+        vendor = self.root / 'vendor/eliza'
+        vendor.mkdir(parents=True)
+        aliases = [vendor]
+        case_alias = self.root / 'Vendor/eliza'
+        if case_alias.is_dir():
+            aliases.append(case_alias)
+        for output in aliases:
+            with self.subTest(output=output), self.assertRaisesRegex(ValueError, 'Output must be outside vendor'):
+                exporter.export_packet(self.root, *self.inputs, output)
+        self.assertEqual(list(vendor.iterdir()), [])
+
+    def test_publication_race_preserves_other_packet(self):
+        target = self.output / exporter.PACKET
+        verify = exporter.verify_packet
+
+        def raced(*args):
+            verify(*args)
+            target.write_bytes(b'other operator packet')
+
+        with patch.object(exporter, 'verify_packet', side_effect=raced), self.assertRaises(FileExistsError):
+            self.export()
+        self.assertEqual(target.read_bytes(), b'other operator packet')
+        self.assertEqual(list(self.output.iterdir()), [target])
+
+    def test_verifies_the_actual_copied_packet_members(self):
+        pack = exporter.pack_member
+
+        def changed_copy(archive, root_fd, name, member, limit):
+            if member == f'voice/{native.VOICE_ASSETS}/model.gguf':
+                archive.writestr(member, b'other')
+                return fact(b'voice')
+            return pack(archive, root_fd, name, member, limit)
+
+        with patch.object(exporter, 'pack_member', side_effect=changed_copy):
+            with self.assertRaisesRegex(ValueError, 'Copied packet member differs'):
+                self.export()
+        self.assertEqual(list(self.output.iterdir()), [])
+
+    def test_retains_the_original_compiled_sdk_when_the_reviewed_inputs_match(self):
+        original_sdk = 'd' * 40
+        component = self.inputs[1] / 'component-output'
+        preparation = component / 'export/PREPARATION.json'
+        qualification = self.inputs[2] / 'QUALIFICATION.json'
+        for file in (preparation, qualification):
+            value = json.loads(file.read_bytes())
+            file.write_bytes(encoded({**value, 'pin': original_sdk}))
+        intent = component / 'INTENT.json'
+        intent.write_bytes(encoded({**json.loads(intent.read_bytes()), 'SDK': original_sdk}))
+        with zipfile.ZipFile(self.export()) as archive:
+            self.assertEqual(json.loads(archive.read(exporter.RECEIPT))['sdkCommit'], SDK)
+            self.assertEqual(json.loads(archive.read('embedding-component/component-output/export/PREPARATION.json'))['pin'],
+                             original_sdk)
 
 
 class HostedNativeInputsTest(unittest.TestCase):
@@ -208,13 +408,57 @@ class HostedNativeInputsTest(unittest.TestCase):
                     self.acquire(root, **options)
                 self.assertFalse((root / native.OUTPUT).exists())
 
+    def test_remote_preflight_reports_all_exact_expiries_without_archive_requests_or_writes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, archives = fixture(root)
+            plan, plan_digest, _, inventory = native.load_plan(root)
+            api = ArtifactAPI(archives, overrides={'12': {'expires_at': '2098-01-01T00:00:00Z'}})
+            with patch.object(native, 'admit_consumer', return_value=('fixture-token', SOURCE, '123', '1')) as consumer, \
+                 patch.object(native.urllib.request, 'build_opener', return_value=api):
+                self.assertEqual(native.check_remote(root, {}, plan, plan_digest, inventory),
+                                 {'voice': api.expiry, 'embeddingComponent': '2098-01-01T00:00:00Z',
+                                  'embeddingQualification': api.expiry})
+            consumer.assert_called_once_with(root, {}, plan, plan_digest)
+            self.assertEqual(api.requests, [path for artifact_id in archives
+                                           for path in (['artifacts', artifact_id], ['runs', '7'])])
+            self.assertFalse((root / native.OUTPUT).parent.exists())
+
+    def test_remote_preflight_names_each_expired_or_replaced_pin_and_rejects_failed_producers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            _, archives = fixture(root)
+            plan, plan_digest, _, inventory = native.load_plan(root)
+            cases = (
+                (ArtifactAPI(archives, overrides={'11': {'expired': True}, '12': {'digest': 'different'},
+                                                '13': {'expires_at': '2001-01-01T00:00:00Z'}}),
+                 r'(?s)voice artifact 11: .*expired.*embeddingComponent artifact 12: .*digest.*'
+                 r'embeddingQualification artifact 13: .*expired'),
+                (ArtifactAPI(archives, result='failure'), r'voice artifact 11: Artifact run did not succeed'),
+                (ArtifactAPI(archives, overrides={'13': {'expires_at': 'not a date'}}),
+                 r'embeddingQualification artifact 13: Artifact expiry timestamp is unavailable'),
+            )
+            for api, reason in cases:
+                with self.subTest(reason=reason), \
+                     patch.object(native, 'admit_consumer', return_value=('fixture-token', SOURCE, '123', '1')), \
+                     patch.object(native.urllib.request, 'build_opener', return_value=api), \
+                     self.assertRaisesRegex(ValueError, reason):
+                    native.check_remote(root, {}, plan, plan_digest, inventory)
+                self.assertTrue(all(path[-1] != 'zip' for path in api.requests))
+                self.assertFalse((root / native.OUTPUT).parent.exists())
+
     def test_automatic_workflow_admits_inputs_before_prepare_and_keeps_diagnostics(self):
         workflow = (ROOT / '.github/workflows/resident-android.yml').read_text()
-        steps = ('Check the automatic native input manifest', 'Install pinned Android native toolchain',
+        steps = ('Check the automatic native input manifest and artifact availability',
+                 'actions/setup-java@', 'android-actions/setup-android@', 'Install pinned Android native toolchain',
                  'Acquire exact native inputs for the automatic candidate', 'Stage the admitted voice and embedding inputs',
                  'Prepare and qualify fresh resident source', 'node scripts/stage-embedding-host.ts --verify',
                  'native-input-admission.json')
         self.assertEqual(sorted(workflow.index(step) for step in steps), [workflow.index(step) for step in steps])
+        preflight = workflow.split('Check the automatic native input manifest and artifact availability', 1)[1].split('      - ', 1)[0]
+        self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'", preflight)
+        self.assertIn('GH_TOKEN:', preflight)
+        self.assertIn('--check-remote', preflight)
         acquire = workflow.split('Acquire exact native inputs for the automatic candidate', 1)[1].split('      - name:', 1)[0]
         stage = workflow.split('Stage the admitted voice and embedding inputs', 1)[1].split('      - name:', 1)[0]
         self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'", acquire)
