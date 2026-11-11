@@ -3,11 +3,11 @@ import {jsonJar,jsonJarSkip,javaBinary} from './fixtures/jvm-tools.mjs';
 import {materializeNativePatches} from '../scripts/prepare-patched-native.ts';import {upstreamNativeSource} from '../scripts/upstream-native-source.ts';
 const root=path.resolve(import.meta.dirname,'..');
 test('conditional native Calendar plans preserve rich metadata and refuse unsupported mutations',{skip:jsonJarSkip},()=>{
- const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-calendar-sync-plan-')),sourceRoot=process.env.ALPHA_NATIVE_UPSTREAM_ROOT||root;
+ const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-calendar-sync-plan-'));
  try{
-  const source=upstreamNativeSource(sourceRoot);
+  const source=upstreamNativeSource(root);
   materializeNativePatches({source,manifest:{...JSON.parse(fs.readFileSync(path.join(root,'android/upstream-native-sources.json'))),baseCommit:source.pin},patchRoot:path.join(root,'patches/eliza'),temporary});
-  const shared=path.join(sourceRoot,'vendor/eliza/plugins/plugin-native-calendar/test/jvm/android');
+  const shared=path.join(root,'vendor/eliza/plugins/plugin-native-calendar/test/jvm/android');
   const values=path.join(temporary,'ContentValues.java');fs.writeFileSync(values,fs.readFileSync(path.join(shared,'content/ContentValues.java'),'utf8').replace('public void put(String key,Long value)','public int size(){return values.size();}public void put(String key,Integer value){values.put(key,value);}public void put(String key,Long value)'));
   const contract=path.join(temporary,'CalendarContract.java');const columns=['CALENDAR_ID','TITLE','DESCRIPTION','EVENT_LOCATION','DTSTART','EVENT_TIMEZONE','ALL_DAY','DTEND','RRULE','DURATION'];const names=['calendar_id','title','description','eventLocation','dtstart','eventTimezone','allDay','dtend','rrule','duration'];
   fs.writeFileSync(contract,'package android.provider;import android.net.Uri;public final class CalendarContract {public static final String ACCOUNT_TYPE_LOCAL="LOCAL";public static final class Calendars {public static final Uri CONTENT_URI=new Uri("calendars");public static final int CAL_ACCESS_CONTRIBUTOR=500;}public static final class Events {public static final Uri CONTENT_URI=new Uri("events");'+columns.map((column,index)=>'public static final String '+column+'="'+names[index]+'";').join('')+'}public static final class Attendees {public static final Uri CONTENT_URI=new Uri("attendees");}public static final class Reminders {public static final Uri CONTENT_URI=new Uri("reminders");}public static final class ExtendedProperties {public static final Uri CONTENT_URI=new Uri("properties");}}');

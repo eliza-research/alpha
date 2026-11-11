@@ -8,7 +8,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {tsImport} from './support/ts-import.mjs';
-const BASE=process.env.REQUIRED_SOURCE_ROOT||resolve(import.meta.dirname,'..');
+const BASE=resolve(import.meta.dirname,'..');
 const temp=await mkdtemp(join(tmpdir(),'alpha-required-onboarding-')),bridge=pathToFileURL(join(temp,'bridge.mjs')).href,connection=pathToFileURL(join(temp,'connection.mjs')).href,style=pathToFileURL(join(temp,'style.mjs')).href;
 await writeFile(new URL(bridge),`export const Capacitor={getPlatform:()=>globalThis.requiredPlatform||'web'};export function registerPlugin(name){return new Proxy({},{get:(_,method)=>(...args)=>globalThis.requiredPorts[name][method](...args)});}`);
 await writeFile(new URL(connection),`export const connectionController={subscribe:()=>()=>{},getSnapshot:()=>globalThis.requiredConnection};const listeners=new Set();globalThis.requiredGoogleListeners=listeners;export const googleConnectionController={subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},getSnapshot:()=>globalThis.requiredGoogle===true};`);await writeFile(new URL(style),'export{}');

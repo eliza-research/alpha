@@ -10,9 +10,8 @@ import {fileURLToPath} from 'node:url';
 
 // Actual adapter methods, actual delivery projection/merge and a controlled transport/React queue.
 // No SDK, app start, HTTP, model, microphone or device. These are UI-state ordering regressions.
-const sourceRoot=process.env.ALPHA_SETTLEMENT_SOURCE_ROOT?path.resolve(process.env.ALPHA_SETTLEMENT_SOURCE_ROOT):fileURLToPath(new URL('../',import.meta.url));
-const candidateRoot=fileURLToPath(new URL('../',import.meta.url));
-const read=relative=>fs.readFileSync(relative==='apps/app/src/prototype/agent-adapter.ts'&&process.env.ALPHA_ACK_AGENT_SOURCE?process.env.ALPHA_ACK_AGENT_SOURCE:path.join(relative==='apps/app/src/prototype/agent-adapter.ts'?candidateRoot:sourceRoot,relative),'utf8');
+const sourceRoot=fileURLToPath(new URL('../',import.meta.url));
+const read=relative=>fs.readFileSync(path.join(sourceRoot,relative),'utf8');
 const adapter=read('apps/app/src/prototype/agent-adapter.ts');
 const connection=read('apps/app/src/runtime/connection-ui.tsx');
 const between=(source,start,end)=>{const a=source.indexOf(start),b=source.indexOf(end,a);assert.ok(a>=0&&b>a,start);return source.slice(a,b);};

@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import path from 'node:path';import os from 'node:os';
 import {runJvm,sharedSpeechSource} from './fixtures/jvm-tools.mjs';
-const source=fs.readFileSync(process.env.ALPHA_SPEECH_HANDOFF_SOURCE||sharedSpeechSource('SpeechStreamBridgePlugin.java'),'utf8');
+const source=fs.readFileSync(sharedSpeechSource('SpeechStreamBridgePlugin.java'),'utf8');
 function method(needle){const begin=source.indexOf(needle);assert.ok(begin>=0,needle);let at=source.indexOf('{',begin),end=at+1,depth=1;for(;depth;end++){if(source[end]==='{')depth++;else if(source[end]==='}')depth--;}return source.slice(begin,end);}
 // Execute the real start path through session publication and deadline scheduling. The network
 // submission after that boundary is excluded; this fixture never requests consent, audio or a provider.

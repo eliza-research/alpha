@@ -3,7 +3,7 @@ import {parseBrowserAddressInput} from '../.eliza/client-features/plugins/plugin
 // The adapter's native tabs are the shared session model; the harnesses run the real one.
 import {BrowserTabSession} from '../.eliza/client-features/plugins/plugin-native-browser-surface/src/tab-host.ts';
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';import vm from 'node:vm';
-const source=readFileSync(process.env.ALPHA_BROWSER_ADAPTER_SOURCE||'apps/app/src/prototype/browser-adapter.ts','utf8');
+const source=readFileSync('apps/app/src/prototype/browser-adapter.ts','utf8');
 test('removing a history row removes its cached title unless a bookmark still retains it',()=>{
  const from=source.indexOf('libRows:['),to=source.indexOf(',libEmpty:',from);
  assert(from>=0&&to>from,'actual history-row projection is present');

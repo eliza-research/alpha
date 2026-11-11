@@ -5,7 +5,7 @@ import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {CapacitorException, ExceptionCode} from '@capacitor/core';
 
-const source = readFileSync(process.env.ALPHA_BROWSER_ADAPTER_SOURCE || 'apps/app/src/prototype/browser-adapter.ts', 'utf8');
+const source = readFileSync('apps/app/src/prototype/browser-adapter.ts', 'utf8');
 const start = source.indexOf('  let bookmarkRead:');
 const end = source.indexOf('  function saveBookmark(', start);
 assert.ok(start >= 0 && end > start, 'execute the actual bookmark read and coalescing paths');

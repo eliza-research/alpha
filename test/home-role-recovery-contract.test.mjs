@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';import {execFileSync} from 'node:child_process';import {runJvm,nativeSource} from './fixtures/jvm-tools.mjs';
-const base=process.env.ALPHA_RECOVERY_SOURCE_ROOT||path.resolve('.');
+const base=path.resolve('.');
 const read=n=>fs.readFileSync(path.join(base,'android/app/src/main/java/ai/alphacompute/alphaphone',n),'utf8');
 function run(name,source,files=[]){const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-home-contract-'));try{const file=path.join(temp,name+'.java');fs.writeFileSync(file,source);return runJvm([file,...files],`ai.alphacompute.alphaphone.${name}`);}finally{fs.rmSync(temp,{recursive:true,force:true});}}
 test('the exact HOME visibility predicate uses current role for icon-started and role-retired tasks',()=>{
