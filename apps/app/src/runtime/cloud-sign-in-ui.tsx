@@ -23,7 +23,7 @@ export const SIGN_IN_SENDING = 'Sending code';
 export const SIGN_IN_SIGNING_IN = 'Signing in…';
 export const SIGN_IN_BROWSER = 'In browser';
 type Pending = 'email' | 'phone' | 'resend' | null;
-export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = true, message, error, errorIsNotice = false, actions, extra, ready = true, dismissible = true, probing = false, unavailable = false, ownKeys, alternate }: {
+export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = true, message, error, errorIsNotice = false, actions, extra, ready = true, dismissible = true, probing = false, unavailable = false, ownKeys, alternate, focusEmailOnChoose = true }: {
   view: SignInView; busy: boolean; google: boolean; phone?: boolean; emailEnabled?: boolean; message: string; error: string; actions: CloudSignInActions;
   errorIsNotice?: boolean;
   /** Low-emphasis entries under the methods (saved sign-in recovery, test-mocks diagnostics). */
@@ -40,6 +40,8 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
   ownKeys?: () => void;
   /** Replaces the sign-in methods, status and footer while the owner-provided keys form is open. */
   alternate?: ReactNode;
+  /** An untouched first-run landing keeps focus outside the empty email field. */
+  focusEmailOnChoose?: boolean;
 }) {
   const googleButton=useRef<HTMLButtonElement>(null);
   const email = useRef<HTMLInputElement>(null), code = useRef<HTMLInputElement>(null);
@@ -68,10 +70,10 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
     // Disabled inputs lose focus during verification. Restore it for a wrong-code retry too, with
     // the rejected code selected so the next digits replace it.
     if (busy || checking || alternate) return;
-    const target = view.step === 'code' || view.step === 'mfa' ? code : view.step === 'choose' ? google ? googleButton : email : null;
+    const target = view.step === 'code' || view.step === 'mfa' ? code : view.step === 'choose' ? google ? googleButton : focusEmailOnChoose ? email : null : null;
     target?.current?.focus();
     if (error && target === code) code.current?.select();
-  }, [view.step, busy, checking, google, emailEnabled, phone, error, !!alternate]);
+  }, [view.step, busy, checking, google, emailEnabled, phone, error, !!alternate, focusEmailOnChoose]);
   const wait = view.step === 'code' ? Math.max(0, Math.ceil((view.resendAt - now) / 1000)) : 0;
   const sending = busy && message === SIGN_IN_SENDING;
   const signingIn = busy && message === SIGN_IN_SIGNING_IN;
