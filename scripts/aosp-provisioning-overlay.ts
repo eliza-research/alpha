@@ -24,10 +24,21 @@ export function renderProvisioningOverlay(packageName: string, components: Retur
   const files = sharedRender(packageName, components);
   const readme = files['provisioning/README.md'], tail = '\nThe stock launcher is not removed.';
   if (!readme.includes(tail)) throw new Error('Unexpected shared provisioning README');
+  const telephonyFeature = `${packageName}.fresh_telephony_setup`;
   files['provisioning/README.md'] = readme.replace(tail, `- All files access: \`MANAGE_EXTERNAL_STORAGE\` (signature|appop|preinstalled) is granted to the
   preinstalled launcher; the app-op stays at its default, which reads that grant.
+- Fresh telephony setup: \`${telephonyFeature}\` requires Provision to assign and verify Phone and Messages on hardware that advertises telephony.
 ${tail}`);
-  return files;
+  return {
+    ...files,
+    [`provisioning/${telephonyFeature}.xml`]: `<?xml version="1.0" encoding="utf-8"?>
+<permissions>
+    <feature name="${telephonyFeature}" />
+</permissions>
+`,
+    productMakefile: files.productMakefile
+      + `PRODUCT_COPY_FILES += $(launcher_provisioning_dir)/${telephonyFeature}.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/${telephonyFeature}.xml\n`,
+  };
 }
 
 export function writeProvisioningOverlay(output: string, packageName: string, components: ReturnType<typeof sharedComponents>) {

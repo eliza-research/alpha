@@ -73,6 +73,8 @@
   <!-- Sent and delivery results of reviewed native SMS sends: explicit PendingIntents only, no filter,
        not exported. The receiver ignores every broadcast unless the image capability holds. -->
   <receiver android:name=".AlphaSmsSendReceiver" android:exported="false" />
+  <receiver android:name=".AlphaTelephonySetupReceiver" android:exported="true"
+   android:permission="android.permission.MANAGE_ROLE_HOLDERS" />
   <!-- Dialer role surfaces (shared plugin-native-phone). Declared disabled: AlphaTelephonyRoles enables
        them only while AlphaImageCapability verifies the image, so no other install can be offered the
        role. Telecom binds the InCallService only for the role holder; emergency routing stays with

@@ -5,6 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { provisioningComponents, renderProvisioningOverlay, requestsAllFilesAccess, writeProvisioningOverlay } from "../scripts/aosp-provisioning-overlay.ts";
+import { assertImageLauncherManifest } from "../scripts/stage-aosp.ts";
 
 const PKG = "ai.alphacompute.alphaphone";
 const str = value => `"${value}" (Raw: "${value}")`;
@@ -58,6 +59,11 @@ test("the overlay sets default HOME, assistant and Autofill offer additively", t
   writeProvisioningOverlay(out, PKG, provisioningComponents(tree(), PKG));
   assert.match(fs.readFileSync(path.join(out, "product.mk"), "utf8"), /PRODUCT_PACKAGE_OVERLAYS \+= \$\(launcher_provisioning_dir\)\/overlay/);
   assert.ok(fs.existsSync(path.join(out, "provisioning/preferred-apps/launcher-home.xml")));
+  const feature = `${PKG}.fresh_telephony_setup`;
+  assert.ok(fs.readFileSync(path.join(out, "product.mk"), "utf8")
+    .includes(`$(launcher_provisioning_dir)/${feature}.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/${feature}.xml`));
+  assert.match(fs.readFileSync(path.join(out, "provisioning", `${feature}.xml`), "utf8"),
+    /<feature name="ai\.alphacompute\.alphaphone\.fresh_telephony_setup"\s*\/>/);
   assert.throws(() => writeProvisioningOverlay(out, PKG, provisioningComponents(tree(), PKG)), /EEXIST/);
 });
 
@@ -65,5 +71,21 @@ test("stage-aosp gates the overlay behind --production, never with --development
   const source = fs.readFileSync("scripts/stage-aosp.ts", "utf8");
   assert.match(source, /if \(production && development\) throw/);
   assert.match(source, /const tree = execFileSync\(tool\("aapt"\), \["dump", "xmltree", apk, "AndroidManifest\.xml"\]/);
+  assert.match(source, /assertImageLauncherManifest\(tree, production\);/);
   assert.match(source, /if \(production\) \{\n  const components = provisioningComponents\(tree, identity\.appId\);/);
+});
+
+test("production staging refuses an old or unprotected launcher manifest even with prior admission", () => {
+  const withReceiver = (permission, enabled = "(type 0x12)0xffffffff") => [tree(), ...element(6, "receiver", {
+    name: `${PKG}.AlphaTelephonySetupReceiver`,
+    exported: "(type 0x12)0xffffffff",
+    enabled,
+    permission,
+  })].join("\n");
+  const rolePermission = "android.permission.MANAGE_ROLE_HOLDERS";
+  assert.doesNotThrow(() => assertImageLauncherManifest(tree(), false));
+  assert.throws(() => assertImageLauncherManifest(tree(), true), /Invalid AlphaTelephonySetupReceiver/);
+  assert.throws(() => assertImageLauncherManifest(withReceiver("android.permission.INTERNET"), true), /MANAGE_ROLE_HOLDERS/);
+  assert.throws(() => assertImageLauncherManifest(withReceiver(rolePermission, "(type 0x12)0x0"), true), /AlphaTelephonySetupReceiver/);
+  assert.doesNotThrow(() => assertImageLauncherManifest(withReceiver(rolePermission), true));
 });
