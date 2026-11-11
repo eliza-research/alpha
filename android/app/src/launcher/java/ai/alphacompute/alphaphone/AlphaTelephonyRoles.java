@@ -6,10 +6,11 @@ import android.content.pm.PackageManager;
 
 /**
  * The dialer- and SMS-role components (and the MMS file provider) exist in the launcher manifest
- * disabled. They are enabled only while
+ * disabled. Production image staging makes them available before first-run role assignment.
+ * This runtime check enables them only while
  * {@link AlphaImageCapability} verifies the Alpha AOSP image, so a sideloaded launcher APK can never
  * be offered the dialer role, and an install that stops verifying (for example an image update that
- * drops the overlay) disables them again. The owner still chooses the role in Android's own dialog.
+ * drops the overlay) disables them again. After initial setup Android owns any role changes.
  */
 final class AlphaTelephonyRoles {
  private AlphaTelephonyRoles() {}
