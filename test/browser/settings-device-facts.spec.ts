@@ -6,24 +6,27 @@ const upstreamPin=JSON.parse(readFileSync(new URL('../../upstream.lock.json',imp
 // Real rendered Settings; only the Android IPC boundary is synthetic. These prove the renderer's
 // contract (what it reads, shows and sends). Emulator readback lives in SettingsRolesInstrumentedTest.
 // updates: AlphaDevice.checkForUpdate's answers in order: a manifest, null for a 404 (nothing published), or 'fail'.
-type Options={launcher?:boolean;decline?:number;updates?:Array<object|null|'fail'>;holdSnapshot?:boolean};
+type UpdatePermission = 'permission-required' | 'starting' | 'supported' | 'unsupported';
+type Options={launcher?:boolean;decline?:number;updates?:Array<object|null|'fail'>;holdSnapshot?:boolean;updatePermission?:UpdatePermission};
 async function nativeStub(page:Page,options:Options={}){
  const updates=(options.updates??[]).map(offer=>{
   if(offer===null||offer==='fail')return offer;
   const manifest=JSON.stringify(offer);
   return {manifest,manifestSha256:createHash('sha256').update(manifest).digest('hex')};
  });
- await page.addInitScript(({launcher,decline,updates,upstreamPin,holdSnapshot})=>{
+ await page.addInitScript(({launcher,decline,updates,upstreamPin,holdSnapshot,initialUpdatePermission})=>{
   const w=window as any;w.androidBridge={};
   try{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));}catch{/* covered elsewhere */}
   const now=Date.now(),store=new Map<string,string>();
   const roles:Record<string,{held:boolean;holders:string[]}>={home:{held:false,holders:['com.android.launcher3']},assistant:{held:false,holders:[]},dialer:{held:false,holders:[]},sms:{held:false,holders:[]}};
   let declines=decline,textScalePercent=100,snapshotWaited=false,releaseSnapshot!:()=>void;
+  let updatePermission = initialUpdatePermission;
   const snapshotGate=new Promise<void>(resolve=>{releaseSnapshot=resolve;});
   const answers=[...updates];
   const listeners:Array<{plugin:string;event:string;callback:(value:unknown)=>void}>=[];
   // Native events (appResumed) arrive through Capacitor's callback channel.
-  w.settingsFixture={calls:[] as any[],shared:[] as string[],releaseSnapshot,resume:()=>listeners.filter(l=>l.plugin==='DailyApps'&&l.event==='appResumed').forEach(l=>l.callback({}))};
+  w.settingsFixture={calls:[] as any[],shared:[] as string[],releaseSnapshot,
+   setUpdatePermission:(value:UpdatePermission)=>{updatePermission=value;},resume:()=>listeners.filter(l=>l.plugin==='DailyApps'&&l.event==='appResumed').forEach(l=>l.callback({}))};
   const methods=(names:string[])=>names.map(name=>({name,rtype:'promise'}));
   w.Capacitor={
    PluginHeaders:[
@@ -32,7 +35,7 @@ async function nativeStub(page:Page,options:Options={}){
     {name:'Agent',methods:methods(['getStatus','setGoogleAgentAccess'])},
     {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureCompareExchange','secureRemove','addListener','removeListener'])},
     {name:'ElizaSystem',methods:methods(['getStatus','requestRole','getDeviceSettings','getBuildInfo'])},
-    {name:'AlphaDevice',methods:methods(['snapshot','setTextScale','crashLog','clearCrashLog','recordRendererFailure','diagnosticsFacts','shareDiagnostics','openSettings','checkForUpdate','installUpdate'])},
+    {name:'AlphaDevice',methods:methods(['snapshot','setTextScale','crashLog','clearCrashLog','recordRendererFailure','diagnosticsFacts','shareDiagnostics','openSettings','checkForUpdate','openUpdatePermissionSettings','installUpdate'])},
     {name:'DailyApps',methods:[{name:'addListener',rtype:'callback'},{name:'removeListener',rtype:'callback'}]},
    ],
    nativeCallback:(plugin:string,method:string,options:any,callback:(value:unknown)=>void)=>{if(method==='addListener'){listeners.push({plugin,event:options?.eventName,callback});return String(listeners.length);}return '0';},
@@ -55,10 +58,11 @@ async function nativeStub(page:Page,options:Options={}){
      if(method==='getDeviceSettings')return {volumes:[]};
     }
     if(plugin==='AlphaDevice'){
-     if(method==='snapshot'){const snapshot={readAt:now,model:'Fixture phone',manufacturer:'Fixture',appVersion:'0.1.0',androidRelease:'16',build:'fixture',securityPatch:'2026-09-05',permissions:{Microphone:true,Location:false,Camera:false,Calendar:true},locationAccess:'denied',batteryPercent:64,charging:false,powerSave:false,wifiActive:true,cellularActive:false,textScalePercent,...(updates.length?{appVersionCode:7,appSigner:'5c'.repeat(32)}:{})};if(holdSnapshot&&!snapshotWaited){snapshotWaited=true;await snapshotGate;}return snapshot;}
+     if(method==='snapshot'){const snapshot={readAt:now,model:'Fixture phone',manufacturer:'Fixture',appVersion:'0.1.0',androidRelease:'16',build:'fixture',securityPatch:'2026-09-05',permissions:{Microphone:true,Location:false,Camera:false,Calendar:true},locationAccess:'denied',batteryPercent:64,charging:false,powerSave:false,wifiActive:true,cellularActive:false,textScalePercent,appAutomaticUpdates:updatePermission,...(updates.length?{appVersionCode:7,appSigner:'5c'.repeat(32)}:{})};if(holdSnapshot&&!snapshotWaited){snapshotWaited=true;await snapshotGate;}return snapshot;}
      if(method==='setTextScale'){textScalePercent=input.percent;return {textScalePercent,effectiveTextZoom:textScalePercent};}
      // Each check settles after 300 ms, so a second start or resume can arrive while it runs.
      if(method==='checkForUpdate'){const next=answers.shift();await new Promise(settle=>setTimeout(settle,300));if(next===undefined||next==='fail')throw Error('Update unavailable');return next===null?{}:next;}
+     if(method==='openUpdatePermissionSettings')return {status:'opened'};
      if(method==='installUpdate')return undefined;
      if(method==='crashLog')return {exitHistory:true,entries:[{at:now-60_000,source:'uncaught',errorClass:'java.lang.IllegalStateException',thread:'main',process:'main'},{at:now-30_000,source:'exit',reason:'anr',process:'main'},{at:now-10_000,source:'exit',reason:'crash',process:'main',description:'Fixture note text should not appear'}]};
      if(method==='diagnosticsFacts')return {appVersion:'0.1.0',versionCode:1,variant:launcher?'launcher':'standalone',buildType:'release',testMocks:false,sdkInt:36,androidRelease:'16',securityPatch:'2026-09-05',upstreamPin,runtimeHashes:{'agent/alpha-source.json':'c'.repeat(64)},apiKey:'csk-synthetic-provider-key'};
@@ -69,7 +73,7 @@ async function nativeStub(page:Page,options:Options={}){
     throw Error('Unexpected native operation '+plugin+'.'+method);
    },
   };
- },{launcher:options.launcher??true,decline:options.decline??0,updates,upstreamPin,holdSnapshot:options.holdSnapshot??false});
+ },{launcher:options.launcher??true,decline:options.decline??0,updates,upstreamPin,holdSnapshot:options.holdSnapshot??false,initialUpdatePermission:options.updatePermission});
 }
 const settings=async(page:Page,query='')=>{await page.goto(`/${query}`);await page.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');};
 const general=async(page:Page)=>{await app(page).getByRole('button',{name:'General',exact:true}).click();};
@@ -144,6 +148,27 @@ test('permission handoffs and developer navigation retain their boundaries while
 // Software update: what the app start, resume and owner taps send to AlphaDevice, and the rows they leave.
 const update={schema:'alpha-update/v1',versionCode:8,versionName:'0.1.1',variant:'launcher',signerSha256:'5c'.repeat(32),apkUrl:'https://github.com/eliza-research/alphaphone/releases/download/app-8/alpha-phone-8.apk',sha256:'0a'.repeat(32),sizeBytes:400_000_000,notes:'Faster Home'};
 const saved=(page:Page)=>page.evaluate(()=>localStorage.getItem('alpha.app-update.v1'));
+
+test('automatic update permission can be granted before any offer and is read back on Android resume',async({page})=>{
+ await nativeStub(page,{updates:[null],updatePermission:'permission-required'});
+ await settings(page);await general(page);
+ const allow=app(page).getByRole('button',{name:'Allow automatic updates',exact:true});
+ await expect(allow).toBeVisible();
+ await expect.poll(()=>saved(page)).not.toBeNull();
+ await expect(app(page).getByRole('button',{name:'Install update',exact:true})).toHaveCount(0);
+ expect(await calls(page,'AlphaDevice','openUpdatePermissionSettings')).toBe(0);
+ await allow.click();
+ await expect.poll(()=>calls(page,'AlphaDevice','openUpdatePermissionSettings')).toBe(1);
+ await expect(allow).toBeVisible();
+ expect(await calls(page,'AlphaDevice','installUpdate')).toBe(0);
+ await page.evaluate(()=>(window as any).settingsFixture.resume());
+ await expect(allow).toBeVisible();
+ await page.evaluate(()=>{const fixture=(window as any).settingsFixture;fixture.setUpdatePermission('supported');fixture.resume();});
+ await expect(allow).toHaveCount(0);
+ await expect(app(page).getByText('Automatic updates',{exact:true})).toBeVisible();
+ await expect(app(page).getByText('Allowed',{exact:true})).toBeVisible();
+ expect(await calls(page,'AlphaDevice','installUpdate')).toBe(0);
+});
 
 test('manual update checks retain truthful no-offer, failure and offered-update results',async({page})=>{
  await nativeStub(page,{updates:[null,null,'fail',update]});
