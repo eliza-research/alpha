@@ -3,7 +3,8 @@ import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkNativeUpdateComposition} from '../specs/quint/refinement/native/update-composition.mjs';
 
-test('native readiness, durable pause and resident lease compose through exact update settlement', {timeout: 120000}, async () => {
+// Seven complete programs retain their 120-second checker fuses; include JVM setup and cleanup.
+test('native readiness, durable pause and resident lease compose through exact update settlement', {timeout: 900000}, async () => {
   const {receipt, skipped} = await checkNativeUpdateComposition([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
   assert.equal(receipt.traces + skipped.length, 7);
