@@ -128,6 +128,52 @@ export function noticeKind(notice: Pick<Notice, 'id' | 'kind'>): string {
   if (notice.kind !== undefined) return notice.kind;
   return /^(workflow|focus):/.test(notice.id) ? 'workflow' : notice.id.startsWith('calendar:') ? 'calendar' : 'reminder';
 }
+/** Own browser revisions have exact producer-owned forms. They remain local readback
+ * keys; no title, excerpt, provider path or arbitrary JSON is admitted as an identity. */
+export function ownNoticeRevisionValid(notice: Pick<Notice, 'id' | 'revision' | 'source' | 'kind'>): boolean {
+  if (notice.source !== 'own' || typeof notice.id !== 'string' || !OPAQUE.test(notice.id) || typeof notice.revision !== 'string') return false;
+  if (OPAQUE.test(notice.revision)) return true;
+  if (notice.revision.length > 512) return false;
+  try {
+    if (noticeKind(notice) === 'reminder') {
+      const fields: unknown = JSON.parse(notice.revision);
+      return Array.isArray(fields) && fields.length === 4 && JSON.stringify(fields) === notice.revision
+        && typeof fields[0] === 'string' && /^[a-f0-9]{64}$/.test(fields[0])
+        && fields[1] === notice.id && /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/.test(notice.id)
+        && typeof fields[2] === 'string' && OPAQUE.test(fields[2])
+        && typeof fields[3] === 'string' && /^[a-f0-9]{64}$/.test(fields[3]);
+    }
+    if (noticeKind(notice) === 'calendar') {
+      const split = notice.revision.lastIndexOf(':'), receipt = notice.revision.slice(0, split), revision = notice.revision.slice(split + 1);
+      if (split < 1 || !/^[a-f0-9]{64}$/.test(revision)) return false;
+      const decoded = decodeURIComponent(receipt), fields: unknown = JSON.parse(decoded);
+      return encodeURIComponent(decoded) === receipt && JSON.stringify(fields) === decoded
+        && Array.isArray(fields) && fields.length === 3 && typeof fields[0] === 'string' && OPAQUE.test(fields[0])
+        && notice.id === 'calendar:' + fields[0] && Number.isSafeInteger(fields[1]) && (fields[1] as number) >= 0 && (fields[1] as number) <= 8640000000000000
+        && (fields[2] === 0 || fields[2] === 10 || fields[2] === 60);
+    }
+  } catch { return false; }
+  return false;
+}
+
+/** Local opaque wire revisions for structured own notices. Raw producer revisions stay
+ * in the shade's custody and exact rereads; this bounded cache never sends their tuple. */
+export function createOwnNoticeRevisions() {
+  const seen = new Map<string, { signature: string; revision: string }>();
+  let session = '', counter = 0;
+  return (notice: Pick<Notice, 'id' | 'revision' | 'source' | 'kind'>): string | undefined => {
+    if (!ownNoticeRevisionValid(notice)) return undefined;
+    const key = JSON.stringify([notice.source, notice.id]);
+    if (OPAQUE.test(notice.revision)) { seen.delete(key); return notice.revision; }
+    const signature = JSON.stringify([noticeKind(notice), notice.revision]), previous = seen.get(key);
+    if (!session) session = sessionMarker();
+    const revision = previous?.signature === signature ? previous.revision : 'notice-' + session + '-' + ++counter;
+    seen.delete(key); seen.set(key, { signature, revision });
+    if (seen.size > 128) seen.delete(seen.keys().next().value as string);
+    return revision;
+  };
+}
+
 /** What Android's AlphaNotificationsPlugin.list returns in place of a row's title and text
  * while the device is locked or the notification is secret (test/context-selection.test.mjs
  * keeps these in step with the Java source). */
@@ -144,7 +190,7 @@ export function noticeHidden(notice: Notice): boolean {
  * question. A row hidden by the lock screen or marked secret carries no content, which is
  * nothing to review; a hosted-result, digest or workflow notice may carry mail text. */
 export function noticeReviewable(notice: Notice): boolean {
-  return notice.source === 'own' && ASKABLE_NOTICE_KINDS.includes(noticeKind(notice)) && OPAQUE.test(notice.id) && OPAQUE.test(notice.revision) && !noticeHidden(notice);
+  return notice.source === 'own' && ASKABLE_NOTICE_KINDS.includes(noticeKind(notice)) && ownNoticeRevisionValid(notice) && !noticeHidden(notice);
 }
 /** The exact notification is still listed with the revision that was reviewed. */
 export type NoticeIdentity = Pick<Notice, 'id' | 'revision' | 'source'>;
