@@ -64,8 +64,8 @@ const server = http.createServer(async (req, res) => {
    res.end(JSON.stringify(value));
   };
   if (url.endsWith('/live-accounts')) return reply({accounts: owner === ownerA ? [
-   ...(revocations === 0 ? [{accountId: 'cloud:fixture-grant:connection-a', accountRevision: 'a', label: 'Fixture Google account', kinds: ['email']}] : []),
-   {accountId: 'cloud:other-grant:connection-b', accountRevision: 'b', label: 'Unrelated Google account', kinds: ['email']},
+   ...(revocations === 0 ? [{accountId: 'cloud:fixture-grant:connection-a', accountRevision: ownerA, label: 'Fixture Google account', kinds: ['email']}] : []),
+   {accountId: 'cloud:other-grant:connection-b', accountRevision: ownerB, label: 'Unrelated Google account', kinds: ['email']},
   ] : []});
   if (url.endsWith('/sources')) return reply({sources: []});
   if (url.endsWith('/loops')) return reply({loops: []});
