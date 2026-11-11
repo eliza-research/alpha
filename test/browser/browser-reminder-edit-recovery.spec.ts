@@ -1,3 +1,4 @@
+import {reviewCalendarAction} from './helpers/calendar-review';
 import {chooseCalendarEventAction} from './helpers/browser-calendar';
 import {test,expect} from '@playwright/test';
 test.use({timezoneId:'Asia/Tokyo'});
@@ -33,8 +34,7 @@ for(const scenario of ['metadata','reschedule-accept','reschedule-cancel'])test(
  await editor(page,true);if(scenario==='metadata')await page.getByRole('button',{name:'Start earlier',exact:true}).click();
  const before=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0]);
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Completed edited');
- let dialogs=0;page.on('dialog',async dialog=>{dialogs++;expect(dialog.message()).toContain('Schedule a new occurrence');if(scenario==='reschedule-accept')await dialog.accept();else await dialog.dismiss();});
- await page.getByRole('button',{name:'Save event',exact:true}).click();
+ let dialogs=0;if(scenario==='metadata')await page.getByRole('button',{name:'Save event',exact:true}).click();else{await reviewCalendarAction(page,()=>page.getByRole('button',{name:'Save event',exact:true}).click(),scenario==='reschedule-accept');dialogs++;}
  if(scenario==='reschedule-cancel'){await expect.poll(()=>dialogs).toBe(1);expect(await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0])).toEqual(before);return;}
  await expect(page.getByRole('button',{name:'Save event',exact:true})).toHaveCount(0);
  const after=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0]);expect(after.title).toBe('Completed edited');expect(after.history).toEqual(before.history);expect(before.completedAt).toBe(Date.parse('2027-03-13T00:00Z'));

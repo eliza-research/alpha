@@ -5,7 +5,7 @@ import type {ScanTextLine} from './scan-text-layer';
 import {reviewSearchableScan} from './scan-searchable-review';
 import {reviewScanCorrection} from './scan-correction-review';
 import {readScanDraft,saveScanDraft,deleteScanDraft} from '../browser/scan-draft';
-import {captureScanPage} from './scan-page-camera';
+import {captureScanPage,type ScanPageCamera} from './scan-page-camera';
 import {inputFiles,runFilePicker} from '../browser/file-picker';
 import {scanExportTitle,exportScanPdf,ScanPdfExportError,duringSystemPicker,systemPickerActive} from './scan-pdf';
 // The document state (page rules, order, one operation at a time, export snapshots, compare-and-set
@@ -31,7 +31,7 @@ export async function pickNativeScanImage():Promise<Blob|undefined>{
  }finally{if(result.selectionId)void DailyApps.forgetSelected({selectionId:result.selectionId}).catch(()=>{});}
 }
 /** Ordered image-only document review. Every export uses an immutable page snapshot. */
-export function openScanDocument(first?:Blob):()=>void{
+export function openScanDocument(first?:Blob,pageCamera?:ScanPageCamera):()=>void{
  const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Review scan document');dialog.className='scan-dialog';
  const previous=document.activeElement,heading=document.createElement('h2');heading.textContent='Scan document';const description=document.createElement('p');description.textContent='Capture or add pages, then save a PDF.';
  const list=document.createElement('div'),status=document.createElement('p');status.setAttribute('role','status');
@@ -58,7 +58,7 @@ export function openScanDocument(first?:Blob):()=>void{
    const page_=controls.pages[index];up.disabled=!page_.earlier;down.disabled=!page_.later;correct.disabled=retake.disabled=replace.disabled=remove.disabled=!page_.edit;
    const tools=document.createElement('div');tools.className='scan-dialog-tools';
    [[up,'arrow-up'],[down,'arrow-down'],[correct,'crop'],[replace,'image'],[retake,'camera'],[remove,'trash-2']].forEach(([control,icon])=>mediaToolIcon(control as HTMLButtonElement,icon as string));
-   tools.append(up,down,correct,replace,...(native?[]:[retake]),remove);section.append(label,image,tools);list.append(section);
+   tools.append(up,down,correct,replace,...(native&&!pageCamera?[]:[retake]),remove);section.append(label,image,tools);list.append(section);
   });
   capture.disabled=add.disabled=!controls.addPage;searchable.disabled=save.disabled=!controls.export;saveDraft.disabled=!controls.saveDraft;loadDraft.disabled=!controls.loadDraft;removeDraft.disabled=!controls.deleteDraft;removeDraft.hidden=!draftRevision;saveDraft.hidden=!pages.length;actions.hidden=!pages.length;empty.hidden=!!pages.length;capture.classList.toggle('primary',!pages.length);
   if(stored&&stored===draftRevision)stored=undefined;notice.hidden=!stored;
@@ -77,7 +77,7 @@ export function openScanDocument(first?:Blob):()=>void{
   doc.exportFinished(result.status);status.textContent=result.message;
  });};
  const pick=(index?:number,camera=false)=>doc.run(async signal=>{
-  try{const image=camera?await captureScanPage(signal):native?await pickNativeScanImage():(await runFilePicker(picker=>inputFiles(anyAbortSignal([picker,signal]),{photos:true}),[]))[0];signal.throwIfAborted();if(!image)return;
+  try{const image=camera?await captureScanPage(signal,pageCamera):native?await pickNativeScanImage():(await runFilePicker(picker=>inputFiles(anyAbortSignal([picker,signal]),{photos:true}),[]))[0];signal.throwIfAborted();if(!image)return;
    admitScanImage(image);const bitmap=await createImageBitmap(image);try{signal.throwIfAborted();admitScanDimensions(bitmap.width,bitmap.height);}finally{bitmap.close();}
    doc.put(image,index);status.textContent='';
   }catch(error){failed(error,'Could not add page.');}
@@ -115,7 +115,7 @@ export function openScanDocument(first?:Blob):()=>void{
  saveDraft.setAttribute('aria-label','Save document draft');saveDraft.textContent='Save draft';loadDraft.setAttribute('aria-label','Load saved draft');loadDraft.textContent='Resume draft';removeDraft.setAttribute('aria-label','Delete saved draft');removeDraft.textContent='Delete draft';
  mediaToolIcon(close,'x');close.classList.add('scan-dialog-close');const header=document.createElement('div');header.className='scan-dialog-header';header.append(heading,close);
  const content=document.createElement('div');content.className='scan-dialog-content';content.tabIndex=0;content.setAttribute('role','region');content.setAttribute('aria-label','Review details');
- const tools=document.createElement('div');tools.className='scan-dialog-tools';tools.append(...(native?[]:[capture]),add);
+ const tools=document.createElement('div');tools.className='scan-dialog-tools';tools.append(...(native&&!pageCamera?[]:[capture]),add);
  const empty=document.createElement('div');empty.className='scan-empty';empty.textContent='No pages yet';
  const draftOptions=document.createElement('details');draftOptions.className='scan-draft-options';const draftSummary=document.createElement('summary');draftSummary.textContent='Draft options';const draftTools=document.createElement('div');draftTools.className='scan-dialog-tools';draftTools.append(saveDraft,loadDraft,removeDraft);draftOptions.append(draftSummary,draftTools);
  const actions=document.createElement('div');actions.className='scan-dialog-actions';actions.append(save,searchable);
@@ -125,7 +125,7 @@ export function openScanDocument(first?:Blob):()=>void{
  (document.querySelector('.os')||document.body).append(dialog);
  // The first page is admitted like any other; with autosave it is written to the device draft.
  if(first)try{doc.put(first);}catch(error){failed(error,'Could not add page.');}
- render();dialog.showModal();(native?add:capture).focus();
+ render();dialog.showModal();(native&&!pageCamera?add:capture).focus();
  void(async()=>{try{await doc.settled();if(closed)return;const draft=await readScanDraft();if(closed||!draft||doc.snapshot().draftRevision)return;stored=draft.revision;render();}catch{/* An unreadable draft stays reachable through Draft options. */}})();
  return dispose;
 }

@@ -6,6 +6,8 @@ boundaries. The exact entry-point paths are recorded in `manifest.json`.
 | Module | Source symbols | Modeled state and abstraction |
 | --- | --- | --- |
 | `Application` | `AlphaClient.attachVerifiedTransport`, `disconnect`, `setViewContext`, native startup/reset gates | Two owners, three non-reused epochs, lifecycle, sensitive observation, pending work, reviewed dispatch, voice and owner-scoped visible cache |
+| `DeviceActionReview` | Current `DeviceActions` binding and shared `DeviceActionCoordinator.pendingReview`, `performRequested`, `approve` | One parsed proposal, exact context, current-request preference, consumed card, durable reservation identity, server decision/claim, applying marker, one effect, terminal journal and receipt |
+| `CalendarApprovalReview` | `CalendarApprovalClient.read`, `resolve`, exact Calendar DTO and finite result parsers | One authenticated read object and revision, captured owner/context, consumed admission before typed POST, cancellation and late-result fencing |
 | `ShellNavigation` | `ViewNavigationClient.capture`, `deliver`, `cancel`, shell `back`, `goHome`, `openView` | All 19 `AlphaView` values, modal/shade/composer ordering, focus, draft and one completed-action claim. View-specific record bodies use their domain models |
 | `StartupPermissions` | `createStartupPermissionFlow`, `readStartupPermissionMemory`, `readStartupPermissionProgress`, `writeStartupPermissionProgress` | One representative permission transaction, seven ordered native setup steps, durable prompt attempt and progress, legacy completed installation |
 | `PermissionWalkthrough` | `StartupPermissions.allow`, `advance`, `finish`, `savedProgress` | Seven independent permission maps, owner/sequence fences, read-only reactivation, targeted Settings review, durable choices and historical completed records |
@@ -88,6 +90,31 @@ These checks exercise selected contracts. General implementation refinement
 remains unproved.
 
 ## Bounds and exclusions
+
+`DeviceActionReview` replays the real coordinator with recording transport,
+journal and executor ports. Twenty-five schedules include exact-screen changes,
+foreign owners, expiration, double taps, failed reservation/decision/claim,
+changed digest or journal identity, cancellation before and after dispatch,
+unsynced receipts, a terminal journal refusing replay after coordinator recreation, and direct-request versus
+ask-first admission. Port calls and public-method settlement are observation
+boundaries. Context changes before approval are compared exactly; host retirement
+during approval is supplied through its AbortSignal. Crypto hashing is real and
+time is held constant across each synchronous port observation. Domain-specific
+result validators, Files identities, browser direct-request proofs, multi-proposal
+batch limits and native persistence remain separate obligations. The historical
+`Application.ReviewedDispatch` describes its explicit-review variant; it must not
+be used to infer that current-request execution requires a second user tap.
+
+`CalendarApprovalReview` executes the actual typed client and parsers over
+controlled authenticated transport. Twenty-nine schedules cover exact-object
+and immutable-byte admission, copied and foreign rows, expired and terminal requests, matching finite
+results, malformed receipts, a concurrent tap, lost reply, AbortSignal and owner
+retirement including A–B–A. Same-object field mutations cannot authorize a changed
+request, and a post-dispatch mutation cannot change the captured receipt identity.
+A row that names another owner may be displayed as
+unverified, but cannot authorize a decision. The DOM review's second read and
+presentation comparison, server revision CAS and Calendar effects have separate
+tests; client dispatch evidence does not establish a provider change.
 
 Record bodies, message text, byte hashes, provider IDs and time values use finite
 equality classes. A counter distinguishes old and current callbacks and is never

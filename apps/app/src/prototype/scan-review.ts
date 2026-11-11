@@ -6,6 +6,7 @@ import {createScanLinkReview} from './scan-link-review';
 import {scanExportTitle,exportScanPdf,scanPdfFailure,scanPdfRetryable,systemPickerActive} from './scan-pdf';
 import {Capacitor} from '@capacitor/core';
 import {recognizeLocalText} from './local-ocr';
+import type {ScanPageCamera} from './scan-page-camera';
 
 /** A scan is draft text until the user reviews it and receives a Notes commit. */
 /** 'unsaved' is a scan-mode capture that was not published to Photos. It stays
@@ -14,7 +15,7 @@ export type ScanSource='captured'|'selected'|'unsaved';
 /** A Keep photo outcome other than saved. `retry` is set only when keeping again cannot duplicate
  * the photo: the host kept nothing, or it resolves a retry against the same operation identity. */
 export class ScanKeepError extends Error {constructor(message:string,readonly retry:boolean){super(message);}}
-export function openScanReview(image:Blob,save:(text:string,id:string)=>Promise<boolean>,reviewEvent?:(draft:ScanEventDraft)=>boolean,source:ScanSource='captured',keep?:(image:Blob,signal:AbortSignal)=>Promise<string>):()=>void {
+export function openScanReview(image:Blob,save:(text:string,id:string)=>Promise<boolean>,reviewEvent?:(draft:ScanEventDraft)=>boolean,source:ScanSource='captured',keep?:(image:Blob,signal:AbortSignal)=>Promise<string>,pageCamera?:ScanPageCamera):()=>void {
   const controller=new AbortController();const previous=document.activeElement;
   const dialog=document.createElement('dialog');dialog.setAttribute('aria-label','Review scanned text');
   dialog.className='scan-dialog scan-text-review';
@@ -26,7 +27,7 @@ export function openScanReview(image:Blob,save:(text:string,id:string)=>Promise<
   const button=(label:string)=>{const value=document.createElement('button');value.type='button';value.textContent=label;actions.append(value);return value;};
   const tools=document.createElement('div');tools.className='scan-dialog-tools';
   let closeDocument:(()=>void)|undefined;
-  {const document=button('Build multi-page PDF');document.onclick=()=>{closeDocument?.();closeDocument=openScanDocument(image);};tools.append(document);}
+  {const document=button('Build multi-page PDF');document.onclick=()=>{closeDocument?.();closeDocument=openScanDocument(image,pageCamera);};tools.append(document);}
   if(source==='unsaved'&&keep){const kept=button('Keep photo');let keeping=false;kept.onclick=()=>{if(keeping||closed)return;keeping=true;kept.disabled=true;status.textContent='Saving photo to Photos…';void keep(image,controller.signal).then(message=>{if(!closed){status.textContent=message;kept.textContent='Photo kept';}},error=>{if(closed)return;
     // A host that keeps under one operation identity (or kept nothing) marks the failure retryable:
     // trying again resolves the same save. Otherwise Keep stays off so a retry cannot duplicate it.

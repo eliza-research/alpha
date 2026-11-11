@@ -1,4 +1,22 @@
 import {test,expect} from '@playwright/test';
+import {returnToApps} from './app-navigation';
+
+test('Settings category state matches the selected context and resets on a fresh visit',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto('/?mode=dev');
+ const current=()=>page.locator('[data-settings-page]:not([inert])').last();
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await current().getByRole('button',{name:'Apps',exact:true}).click();
+ await current().getByRole('button',{name:'Calendar',exact:true}).click();
+ await page.getByRole('button',{name:'Back to Apps',exact:true}).click();
+ await expect(current().getByRole('button',{name:'Calendar',exact:true})).toBeVisible();
+ await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/alpha-client.ts')).alphaClient.getState().context?.selectedObject)).toEqual({kind:'settings',id:'settings-apps'});
+ await returnToApps(page);
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await expect(current()).toHaveAttribute('data-settings-page','Settings');
+ await expect(current().getByRole('button',{name:'Apps',exact:true})).toBeVisible();
+ await expect(current().getByRole('button',{name:'Calendar',exact:true})).toHaveCount(0);
+});
 
 for(const size of [{width:390,height:844},{width:1280,height:900}]){
  test(`grouped Settings and signed-out Account fit at ${size.width}`,async({page},info)=>{
@@ -17,6 +35,13 @@ for(const size of [{width:390,height:844},{width:1280,height:900}]){
   const back=page.getByRole('button',{name:'Back to General',exact:true});
   await expect(back).toBeFocused();
   await back.press('Enter');await expect(display).toBeFocused();
+  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
+  await settings.getByRole('button',{name:'Privacy',exact:true}).click();
+  const review=current().getByRole('switch',{name:'Ask before taking actions',exact:true});
+  await expect(review).toHaveAttribute('aria-checked','false');
+  expect(await review.evaluate(element=>({width:(element as HTMLElement).offsetWidth,height:(element as HTMLElement).offsetHeight}))).toEqual({width:52,height:52});
+  const target=await review.boundingBox();expect(target!.width).toBeGreaterThanOrEqual(44);expect(target!.height).toBeGreaterThanOrEqual(44);
+  await review.focus();await review.press('Space');await expect(review).toHaveAttribute('aria-checked','true');
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await page.getByRole('button',{name:'Account',exact:true}).filter({visible:true}).click();
   const account=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});

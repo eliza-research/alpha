@@ -1,8 +1,14 @@
 import {calendarAgenda,calendarAgendaRows,calendarDayColumns,calendarDayCount,calendarDayLabel,visibleCalendarDays} from './calendar-days';
-import {formatHour} from './locale-time';
+import {formatHour,formatTime,formatMonthDay,formatFullDateTime} from './locale-time';
 type Bag=Record<string,any>;
 const DAY=86400000;
 const civilDay=(date:Date)=>Date.UTC(date.getFullYear(),date.getMonth(),date.getDate());
+/** Original instants, never a per-day layout duration, determine the readable detail. */
+export function calendarIntervalDetail(begin:number,end:number){
+ const start=new Date(begin),finish=new Date(end),crossDate=civilDay(start)!==civilDay(finish),offsetChanged=start.getTimezoneOffset()!==finish.getTimezoneOffset();
+ const offset=(date:Date)=>{const minutes=-date.getTimezoneOffset();return `UTC${minutes<0?'-':'+'}${String(Math.floor(Math.abs(minutes)/60)).padStart(2,'0')}:${String(Math.abs(minutes)%60).padStart(2,'0')}`;};
+ return {when:`${formatTime(start)}${offsetChanged?' '+offset(start):''} – ${formatTime(finish)}${offsetChanged?' '+offset(finish):''}`,...(crossDate?{day:`${formatMonthDay(start,true)} – ${formatMonthDay(finish,true)}`}:{}) ,summary:`${formatFullDateTime(start)}${offsetChanged?' '+offset(start):''} – ${formatFullDateTime(finish)}${offsetChanged?' '+offset(finish):''}`};
+}
 /** Shared presentation only: all provider identity stays in the unsplit records. */
 export function presentCalendarIntervals(render:(state:Bag,api:Bag)=>Bag,state:Bag,api:Bag,out:Bag,rangeReady:boolean){
     const allDay=(state.events||[]).filter((e:Bag)=>e.calendarInterval&&e.allDay);

@@ -13,7 +13,7 @@ const src = join(root, 'apps/app/src');
 // when a listed file no longer has a bare time call, so the list only shrinks.
 const pending = new Set([
   'browser/calendar.ts', 'browser/clock.ts', 'browser/incoming-simulation.ts', 'browser/simulated-workflows.ts',
-  'prototype/automations-adapter.ts', 'prototype/calendar-adapter.ts', 'prototype/calendar-approval-review.ts',
+  'prototype/automations-adapter.ts', 'prototype/calendar-adapter.ts',
   'prototype/reminder-adapter.ts', 'prototype/settings-adapter.ts',
   'runtime/cloud-voice.ts', 'runtime/hosted-live-source-ui.tsx', 'runtime/reminder-creations.ts',
 ]);

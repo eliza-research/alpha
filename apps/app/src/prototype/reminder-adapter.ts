@@ -1,3 +1,4 @@
+import {confirmCalendarAction} from './calendar-confirmation';
 import {reviewOwnNoticeQuestion} from './own-notice-question';
 import {deletions,refreshDeletionViews,reminderDeletionRefusal} from '../runtime/deletions';
 import { alphaClient } from '../runtime/alpha-client';
@@ -8,6 +9,7 @@ import { DailyApps, type Reminder } from '../daily';
 import { pendingReminderDeletions,retainReminderDeletion,acknowledgeReminderDeletion,reconcileReminderDeletions,discardUndispatchedReminderDeletion } from '../runtime/reminder-deletions';
 import { Capacitor } from '@capacitor/core';
 import {rememberNoteOrigin,forgetNoteOrigin} from './note-origin-adapter';
+import {formatTime,formatLongDate} from './locale-time';
 type Bag = any;
 /** Native reminders use the reference calendar form, timeline and detail sheet. */
 export function installReminderAdapter(Component: Bag, views: Bag) {
@@ -17,7 +19,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
   p.newDeviceReminderDraft=function(){
     const date=new Date();date.setHours(date.getHours()+1,0,0,0);
     const today=new Date();today.setHours(0,0,0,0);const day=new Date(date);day.setHours(0,0,0,0);
-    this.vset('calendar',{month:null,open:null,form:{id:null,title:'',off:Math.round((day.getTime()-today.getTime())/86400000),t:date.getHours(),d:1,where:'',video:false,who:[],cal:'alpha-reminders',repeat:'none',alert:0,notes:''}});
+    this.vset('calendar',{month:null,open:null,form:{id:null,creationId:crypto.randomUUID(),title:'',off:Math.round((day.getTime()-today.getTime())/86400000),t:date.getHours(),d:1,where:'',video:false,who:[],cal:'alpha-reminders',repeat:'none',alert:0,notes:''}});
   };
   const render = views.calendar.render;
   views.calendar.state = { ...views.calendar.state, events: [] };
@@ -184,7 +186,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
     const todoBusy=()=>!!owner?.reminderSaving;
     const todoDecision=async(r:Reminder,action:'done'|'reopen'|'cancel')=>{
       const todoOwner=owner;if(!todoOwner||todoBusy()||!r.target)return;
-      if(action==='cancel'&&!window.confirm(`Delete the to-do “${r.title}”?`))return;
+      const targetBytes=JSON.stringify(r.target),current=()=>owner===todoOwner&&todoOwner.live&&api.isActive()&&!todoBusy()&&JSON.stringify(todoOwner.reminderRows?.find((row:Reminder)=>row.id===r.id)?.target)===targetBytes;if(!current())return;if(action==='cancel'&&(!await confirmCalendarAction(todoOwner,api,'Delete to-do?',r.title,'Delete to-do',current)||!current()))return;
       todoOwner.reminderSaving=true;
       try{
         const result=await DailyApps.todoDecision({target:r.target,action});
@@ -248,7 +250,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
               const selected=await DailyApps.selectedReminder({id:current.alphaReminderId});
               if(!sameEditor())return;
               if(Object.entries(operation.target).some(([key,value])=>selected[key as keyof typeof selected]!==value)){api.toast('This reminder changed. Reopen it before saving.');await saveOwner.refreshReminders();return;}
-              if(schedule&&current.reminderStatus==='completed'&&!window.confirm('This reminder is completed. Schedule a new occurrence at the reviewed time?'))return;
+              if(schedule&&current.reminderStatus==='completed'&&!await confirmCalendarAction(saveOwner,api,'Reschedule completed reminder?','This reminder is completed. Schedule a new occurrence at the reviewed time?','Schedule occurrence',sameEditor))return;
               if(!sameEditor())return;
               const bindingHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(operation))))).map(v=>v.toString(16).padStart(2,'0')).join('');
               if(!sameEditor())return;
@@ -302,7 +304,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
               if(timingVersion!==2){api.toast('Update Alpha to save reminders with this alert setting. Nothing was saved.');return;}
               const pending=Object.values(await reminderCreations()).filter(row=>row.state==='pending');
               if(owner!==createOwner||!createOwner.live||!api.isActive()||api.get('calendar').form!==current||document.hidden)return;
-              if(pending.length&&!window.confirm('The earlier reminder may already exist. Create another?'))return;
+              if(pending.length&&!await confirmCalendarAction(createOwner,api,'Create another reminder?','The earlier reminder may already exist. Check Calendar before creating another.','Create another',()=>owner===createOwner&&createOwner.live&&api.isActive()&&api.get('calendar').form===current))return;
               if(owner!==createOwner||!createOwner.live||!api.isActive()||api.get('calendar').form!==current||document.hidden)return;
               api.set({form:{...current,reminderCreationId:id}});
               created={id,request,state:'pending'};
@@ -344,6 +346,9 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
     const event=(state.events||[]).find((e:Bag)=>e.id===state.open);
     if(event?.alphaReminderId && out.ev) {
       out.ev.calName='Reminders';
+      // A reminder has one due instant; its quarter-hour timeline height is only layout.
+      const due=new Date(dueOf({at:event.reminderAt,dueAt:event.reminderDueAt}));
+      out.ev.day=formatLongDate(due);out.ev.when='Due '+formatTime(due);
       const requireFresh=()=>{if(!api.get('calendar').reminderStale&&!owner?.reminderRefreshFailed)return true;api.toast('Refresh reminders before changing this saved reminder.');void owner?.refreshReminders();return false;};
       if(state.reminderStale||owner?.reminderRefreshFailed){out.ev.hasNotes=true;out.ev.notes='This reminder may be out of date. Return to Calendar and tap Retry.\n'+(out.ev.notes||'');}
       out.ev.recurringReminder=!!event.reminderOccurrence;
@@ -404,7 +409,7 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
         const stillSelected=()=>owner===reopenOwner&&reopenOwner?.live&&!document.hidden&&api.isActive()&&api.get('calendar').open===event.id&&!api.get('calendar').form;
         if(!stillSelected())return;
         const when=new Date(schedule.dueAt).toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
-        if(!window.confirm(mode==='open'?`Reopen “${event.title}” with no alert? It stays open, due ${when}.`:`Reopen “${event.title}” and alert ${when}? Alerts may arrive a few minutes late.`))return;
+        if(!await confirmCalendarAction(reopenOwner,api,'Reopen reminder?',mode==='open'?`Reopen “${event.title}” with no alert? It stays open, due ${when}.`:`Reopen “${event.title}” and alert ${when}? Alerts may arrive a few minutes late.`,'Reopen reminder',stillSelected))return;
         if(!stillSelected())return;
         // The reviewed time must still be in the future; never shift it silently after review.
         if(schedule.at<=Date.now()){api.toast('The reviewed time passed while this was open. Reopen it again to choose a new time. Nothing was saved.');return;}

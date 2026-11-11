@@ -27,7 +27,7 @@ refinement remains an additional obligation.
 | `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire`, shared `DataReset.record`, `attempt`, `automaticAttemptAllowed`, `recordFailure`, `admitAndExit` | Activity-bound approval, durable pending marker, listener-first reset, bounded automatic retry, recovery surface, accepted dispatch and externally observed erasure |
 | `DeletionJournal` | `DeferredDeletionJournal.stage`, `undo`, `expire`, `list`, `acknowledge`, shared `DeferredDeletionCoordinator.reconcile`, `stageOwnerCurrent` | Durable intent, monotonic Undo window, changed boot, exact owner/source admission, dispatch uncertainty and retained no-replay receipt |
 | `MediaLifecycle` | `NativeReadEpoch.current`, `PermittedMediaCatalog`, `SelectedPhotoCopy.read`, browser `beginPhotoEdit`, `savePhotoEdit`, `cancelPhotoEdit`, `resultPhotoEdit` | Per-item permission, lifecycle/source revision, selected read, reviewed output, canceled temporary capture and active playback |
-| `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, `sentResult`, `status`, `existing`, telephony read epoch checks, `retainReminderCreation`, `checkReminderCreation`, `reconcileReminderCreations`, shared `ClockHandoff` | Image/permission/SIM gates, exact reviewed SMS binding, durable dispatch, multipart evidence, retired operation id, stale contacts, reminder creation recovery and revision-bound notification |
+| `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, `sentResult`, `status`, `existing`, telephony read epoch checks, `retainReminderCreation`, `checkReminderCreation`, `reconcileReminderCreations` | Image/permission/SIM gates, exact reviewed SMS binding, durable dispatch, multipart evidence, retired operation id, stale contacts, reminder creation recovery and revision-bound notification |
 | `RendererRecovery` | `RendererRecoveryBudget.onLoss`, `MainActivity.onRenderProcessGone`, delayed recreation and stock Settings actions | Three immediate losses, exact 60-second window, five-second backoff, HOME escape, duplicate callbacks and activity ownership |
 | `VadSegmentation` | `LiveVadGate.accept`, `close` | Two high windows to open, sixteen low windows to close, hysteresis thresholds, nonfinite values and counter reset |
 | `VoiceIpcAssembly` | `BufferedStreamExchange.exchange` | Handle ownership, deadline, response/chunk assembly, size limit, completion validation, first failure and cleanup |
@@ -108,8 +108,10 @@ rewrite the history of a previously completed publication.
 one reminder and three reminder revisions. A permanent retired-id marker models
 the journal's tombstone and Bloom-filter no-false-negative contract. Provider
 completion is distinct from receiving a delivery callback, and multipart delivery
-stays unconfirmed. Reminder `posted` means a notification was posted. Clock remains
-a handoff to a separate Android app. Calendar/time-zone recurrence calculations,
+stays unconfirmed. Reminder `posted` means a notification was posted. Clock has its
+own source-bound `NativeClockReview` contract; the former unconditional handoff
+string and type-domain predicate supplied no Clock admission or outcome evidence
+and were retired. Calendar/time-zone recurrence calculations,
 carrier behavior and arbitrary provider records are outside this finite abstraction.
 
 ## Running the checks
@@ -148,7 +150,7 @@ checks.
 background-navigation owner. Maneuver guidance advances only inside 40 m, and
 arrival requires distance below 25 m and accuracy no worse than 30 m. A stored
 fix can age without another callback. Explicit reroute rechecks its freshness,
-and a provider error ends guidance. End retires guidance while allowing the
+and a failed reroute restores the accepted route and its guidance. End retires guidance while allowing the
 already requested route to finish in directions. Release aborts that request.
 Late background replies clean up their exact session, including a second stop
 command after a retired native Start finally succeeds. Dragging disables follow

@@ -1,3 +1,4 @@
+import {reviewCalendarAction} from './helpers/calendar-review';
 import {openBrowserCalendar} from './helpers/browser-calendar';
 import {expectSavedCalendarDraft,guardCalendarFixture} from './calendar-draft-readiness';
 import {test,expect} from '@playwright/test';
@@ -50,13 +51,13 @@ test('Calendar stays clean and discarding inside the editor requires confirmatio
  await expect(page.getByRole('button',{name:/^Resume .*draft$|^Discard .*draft$/i})).toHaveCount(0);await expect(page.getByRole('group',{name:'Unsaved event draft',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Calendar backups',exact:true})).toHaveCount(0);
  await page.screenshot({animations:'disabled',path:test.info().outputPath('calendar-clean-main.png')});
  await page.getByRole('button',{name:'New event',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Discard only this form');await page.screenshot({animations:'disabled',path:test.info().outputPath('calendar-editor-discard.png')});
- page.once('dialog',dialog=>{expect(dialog.message()).toBe('Discard this draft? Saved events and reminders won’t change.');void dialog.dismiss();});await page.getByRole('button',{name:'Discard calendar draft',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Discard only this form');
- page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Discard calendar draft',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveCount(0);
+ await reviewCalendarAction(page,()=>page.getByRole('button',{name:'Discard calendar draft',exact:true}).click(),false);await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Discard only this form');
+ await reviewCalendarAction(page,()=>page.getByRole('button',{name:'Discard calendar draft',exact:true}).click(),true);await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveCount(0);
  await page.reload();await openBrowserCalendar(page);await page.getByRole('button',{name:'New event',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('');expect(await page.evaluate(async()=>(await new (await import('/src/browser/calendar.ts')).BrowserCalendar().list({begin:0,end:Date.parse('2030-01-01')})).events.length)).toBe(0);
 });
 test('discard cannot erase a newer form from another tab',async({page,context})=>{
  await open(page);await begin(page,'First form');const other=await context.newPage();await open(other);await other.getByRole('button',{name:'New event',exact:true}).click();await other.getByRole('textbox',{name:'Title',exact:true}).fill('Newer form');await expectSavedCalendarDraft(other,'creation');
- page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Discard calendar draft',exact:true}).click();await expect(page.getByText('This draft changed. Review it before discarding.')).toBeVisible();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('First form');
+ await reviewCalendarAction(page,()=>page.getByRole('button',{name:'Discard calendar draft',exact:true}).click(),true);await expect(page.getByText('This draft changed. Review it before discarding.')).toBeVisible();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('First form');
  await page.reload();await openBrowserCalendar(page);await page.getByRole('button',{name:'New event',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Newer form');
 });
 test('damaged form recovery preserves existing calendar events',async({page})=>{
@@ -71,7 +72,7 @@ test('editing while discard is queued retains the newer current form',async({pag
   (window as any).releaseDiscard=()=>{holding=false;};(window as any).discardLock=new Promise<void>((resolve,reject)=>{transaction.oncomplete=()=>{database.close();resolve();};transaction.onabort=()=>{database.close();reject(transaction.error);};});
   const keepAlive=()=>{const request=store.get('calendar-discard-transaction');request.onsuccess=()=>{(window as any).discardEntered=true;if(holding)keepAlive();};};keepAlive();
  });
- await expect.poll(()=>page.evaluate(()=>(window as any).discardEntered)).toBe(true);page.once('dialog',dialog=>dialog.accept());await page.getByRole('button',{name:'Discard calendar draft',exact:true}).click();await page.getByRole('textbox',{name:'Title',exact:true}).fill('Newer unsaved edit');await page.evaluate(async()=>{(window as any).releaseDiscard();await (window as any).discardLock;});
+ await expect.poll(()=>page.evaluate(()=>(window as any).discardEntered)).toBe(true);await reviewCalendarAction(page,()=>page.getByRole('button',{name:'Discard calendar draft',exact:true}).click(),true);await page.getByRole('textbox',{name:'Title',exact:true}).fill('Newer unsaved edit');await page.evaluate(async()=>{(window as any).releaseDiscard();await (window as any).discardLock;});
  await expect(page.getByText('This draft changed. Review it before discarding.')).toBeVisible();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Newer unsaved edit');
  await page.reload();await openBrowserCalendar(page);await page.getByRole('button',{name:'New event',exact:true}).click();await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Newer unsaved edit');
 });
