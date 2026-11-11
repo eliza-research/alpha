@@ -67,8 +67,8 @@ function fixture(compiled) {
     retired.push(timers.get(token));
     timers.delete(token);
   };
-  new Function('require', 'module', 'exports', '__port', 'document', 'window', 'setTimeout', 'clearTimeout', 'CSS',
-    compiled.code)(createRequire(import.meta.url), module, module.exports, port, document, new EventTarget(), setTimeout, clearTimeout, {escape: String});
+  new Function('require', 'module', 'exports', '__port', 'document', 'window', 'setTimeout', 'clearTimeout', 'CSS', 'requestAnimationFrame',
+    compiled.code)(createRequire(import.meta.url), module, module.exports, port, document, new EventTarget(), setTimeout, clearTimeout, {escape: String}, () => 0);
   const {installHomeShell, navigateMobileShell} = module.exports;
   class Host {
     state = {drawer: false, drawerQ: '', view: null, stack: []};
