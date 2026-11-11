@@ -1,0 +1,70 @@
+--- a/plugins/plugin-inbox/src/mailbox/drafts-controller.ts
++++ b/plugins/plugin-inbox/src/mailbox/drafts-controller.ts
+@@ -1387,7 +1387,59 @@
+     ...(d.reply ? { replyMessageId: d.reply.messageId } : {}),
+   });
+ 
++  let selectionShelf: Shelf | null = null;
++  let selectionEpoch = -1;
++
++  async function prepareSelection(): Promise<boolean> {
++    selectionShelf = null;
++    selectionEpoch = -1;
++    if (!(await setAside())) return false;
++    selectionShelf = structuredClone(shelf);
++    selectionEpoch = epoch;
++    return true;
++  }
++
++  /** Remove only the exact saved versions selected by this owner. */
++  async function removeSelection(ids: readonly string[], current: () => boolean): Promise<boolean> {
++    if (!ready || busy || selectionEpoch !== epoch || !selectionShelf || !current()) return false;
++    const token = epoch;
++    const key = shelfSlot();
++    const selected = new Set(ids);
++    const targets = selectionShelf.items.filter(row => selected.has(row.draft.id));
++    if (!selected.size || targets.length !== selected.size) return false;
++    busy = true;
++    publish();
++    try {
++      const latest = await store.read<Shelf>(key);
++      if (token !== epoch || !current()) return false;
++      if (latest !== null && !shelfValid(latest)) throw Error("Saved drafts need recovery");
++      for (const target of targets) {
++        const found = latest?.items.find(row => row.draft.id === target.draft.id);
++        if (found && !same(found, target)) throw Error("A selected draft changed. Select it again.");
++      }
++      const next: Shelf = {version: 1, owner, items: (latest?.items || []).filter(row => !selected.has(row.draft.id))};
++      if (next.items.length !== (latest?.items.length || 0)) {
++        try {
++          const receipt = await store.compareExchange(key, latest, next);
++          if (receipt.status !== "saved") throw Error("Drafts changed. Select them again.");
++        } catch (error) {
++          // A lost reply is resolved by exact readback, never a second delete.
++          const observed = await store.read<Shelf>(key);
++          if (!same(observed, next)) throw error;
++        }
++      }
++      if (token !== epoch || !current()) return false;
++      shelf = next;
++      selectionShelf = structuredClone(next);
++      return true;
++    } finally {
++      if (token === epoch) { busy = false; publish(); }
++    }
++  }
++
+   const controller = {
++    prepareSelection,
++    removeSelection,
+     bind,
+     reset,
+     begin,
+@@ -1672,6 +1724,7 @@
+                   "Open local draft",
+                   () => void openShelved(row.draft.id),
+                 ),
++                id: row.draft.id,
+                 subject: row.draft.subject || "(No subject)",
+                 snippet: row.draft.body.slice(0, 160) || "Draft on this device",
+               })) || []),

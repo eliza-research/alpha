@@ -3618,5 +3618,29 @@
       "Two selected message identities and one provider receipt in flight. Rejection or unknown outcome stops the remaining selection.",
       "Actual account binding, storage compare-and-exchange and review digest checks remain owned by InboxOperation and InboxCoordinator. Model progress assumes an explicit approval, stable owner and successful provider replies."
     ]
+  },
+  {
+    "path": "specs/quint/application/MailDraftSelection.qnt",
+    "module": "MailDraftSelection",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "selectedVersionRemoved",
+      "changedVersionRefused",
+      "concurrentChangeRefused",
+      "lostReplyResolvedWithoutReplay",
+      "retiredOwnerCannotWrite"
+    ],
+    "sources": [
+      "patches/eliza/inbox-draft-selection-client.patch",
+      "patches/eliza/inbox-draft-selection-client-manifest.json",
+      "apps/app/src/prototype/inbox-cloud-adapter.ts",
+      "test/mail-draft-selection.test.mjs"
+    ],
+    "abstractions": [
+      "One selected saved version and one unrelated peer item in the existing account-bound shelf. No provider write is performed.",
+      "Controller tests execute existing local storage compare-and-exchange, rejection of changed selected content, peer-item preservation, retired binding and exact readback after a lost reply. Progress assumes a stable owner, unchanged selection and successful storage reads."
+    ]
   }
 ]

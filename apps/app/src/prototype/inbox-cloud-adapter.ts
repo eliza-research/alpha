@@ -74,8 +74,12 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   let selectedMailIds = new Set<string>();
   let mailBatch: AbortController | null = null;
   let mailBatchStatus = '';
-  let mailReview: {action: MailSelectionAction; ids: string[]; title: string} | null = null;
+  let mailReview: {action: MailSelectionAction | 'discard-local'; ids: string[]; title: string} | null = null;
+  let mailSelectionGeneration = 0;
+  let mailSelectionPreparing = false;
   const resetMailSelection = () => {
+    mailSelectionGeneration++;
+    mailSelectionPreparing = false;
     mailBatch?.abort();
     mailBatch = null;
     mailSelecting = false;
@@ -83,9 +87,26 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     mailReview = null;
     mailBatchStatus = '';
   };
-  function reviewMailSelection(action: MailSelectionAction, title: string) {
+  function reviewMailSelection(action: MailSelectionAction | 'discard-local', title: string) {
     if (mailBatch || !selectedMailIds.size) return;
     mailReview = {action, title, ids: [...selectedMailIds]};
+    publish();
+  }
+  async function toggleMailSelection() {
+    if (mailBatch || mailSelectionPreparing) return;
+    if (mailSelecting) { resetMailSelection(); publish(); return; }
+    const generation = ++mailSelectionGeneration;
+    if (draftsView()) {
+      mailSelectionPreparing = true;
+      publish();
+      const ready = await drafts.prepareSelection();
+      if (generation !== mailSelectionGeneration) return;
+      mailSelectionPreparing = false;
+      if (!ready || !api?.isActive() || !draftsView()) { publish(); return; }
+    }
+    if (generation !== mailSelectionGeneration) return;
+    mailSelecting = true;
+    selectedMailIds.clear();
     publish();
   }
   async function confirmMailSelection() {
@@ -96,10 +117,28 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     if (!review || !binding || !account || mailBatch) return;
     const abort = mailBatch = new AbortController();
     mailReview = null;
-    mailBatchStatus = 'Updating emails…';
+    mailBatchStatus = review.action === 'discard-local' ? 'Updating drafts…' : 'Updating emails…';
     publish();
     const current = () => mailBatch === abort && !!api?.isActive() && selected === grantId &&
       binding.sessionId === connectionController.getCloudClient()?.sessionId;
+    if (review.action === 'discard-local') {
+      try {
+        const removed = await drafts.removeSelection(review.ids, current);
+        if (current()) {
+          if (removed) {
+            mailSelecting = false;
+            selectedMailIds.clear();
+            mailBatchStatus = '';
+          }
+          else mailBatchStatus = 'The selected drafts changed. Select them again.';
+        }
+      } catch (error) {
+        if (current()) mailBatchStatus = error instanceof Error ? error.message : 'Drafts could not be removed.';
+      } finally {
+        if (mailBatch === abort) { mailBatch = null; publish(); }
+      }
+      return;
+    }
     provider.reset();
     try {
       const result = await applyMailSelection({
@@ -972,9 +1011,9 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
       label: `${m.unread ? 'Unread, ' : ''}${name}, ${m.subject}${m.hasAttachments ? ', has attachments' : ''}`, selecting:mailSelecting,notSelecting:!mailSelecting,selected:mailSelecting?selectedMailIds.has(m.id):undefined,rowRole:mailSelecting?'checkbox':undefined,open:()=>{if(mailBatch)return;if(mailSelecting){selectedMailIds.has(m.id)?selectedMailIds.delete(m.id):selectedMailIds.add(m.id);publish();}else void open(m);} }; });
     if (draftsView()) rows.splice(0, rows.length, ...providerDrafts.map(d => { const name = d.to.length ? `Draft to ${d.to.join(', ')}` : 'Draft (no recipients)';
       return { name, ini: 'D', subj: d.subject || '(no subject)', snip: decodeMailPreview(d.snippet), time: date(d.updatedAt), nameW: '500', subjCss: 'color:var(--fg)', dot: 'transparent', clip: false, tx: 0, current: 'false',
-        down: () => {}, up: () => {}, label: `Gmail draft, ${name}, ${d.subject || '(no subject)'}`, open: () => void openDraft(d) }; }));
-    if(draftsView())rows.unshift(...localDrafts.map(action=>({name:action.recovery?action.label:action.subject,ini:'D',subj:action.label==='Earlier version of a sent email'?action.label:action.snippet,snip:'',time:'',nameW:'500',subjCss:'color:var(--fg)',dot:'transparent',clip:false,tx:0,current:'false',down:()=>{},up:()=>{},label:`Local draft, ${action.recovery?action.label:action.subject}`,open:action.pick})));
-    for(const row of rows)row.notSelecting=!mailSelecting;
+        down: () => {}, up: () => {}, label: `Gmail draft, ${name}, ${d.subject || '(no subject)'}`, open: () => {if(!mailSelecting)void openDraft(d);} }; }));
+    if(draftsView())rows.unshift(...localDrafts.map(action=>({selecting:mailSelecting&&!!action.id,selected:mailSelecting&&!!action.id?selectedMailIds.has(action.id):undefined,rowRole:mailSelecting&&action.id?'checkbox':undefined,name:action.recovery?action.label:action.subject,ini:'D',subj:action.label==='Earlier version of a sent email'?action.label:action.snippet,snip:'',time:'',nameW:'500',subjCss:'color:var(--fg)',dot:'transparent',clip:false,tx:0,current:'false',down:()=>{},up:()=>{},label:`Draft, ${action.recovery?action.label:action.subject}`,open:()=>{if(mailBatch)return;if(mailSelecting){if(action.id){selectedMailIds.has(action.id)?selectedMailIds.delete(action.id):selectedMailIds.add(action.id);publish();}}else action.pick();}})));
+    for(const row of rows)row.notSelecting=!row.selecting;
     const linkRows = (source: NonNullable<typeof body>) => { const cached = linkRowCache.get(source); if (cached) return cached; const seen = new Set<string>(), list: GmailLink[] = [];
       for (const link of [...(source.links || []), ...linkifyMailText(source.bodyText)]) if (/^https?:\/\//.test(link.href) && !seen.has(link.href) && list.length < 50) { seen.add(link.href); list.push(link); }
       const rows = list.map(link => { const host = new URL(link.href).hostname; return { label: link.text === link.href ? host : `${link.text} (${host})`, href: link.href, host, mismatch: linkTextMismatch(link),
@@ -997,16 +1036,17 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     const needsGmailConnection=!!binding&&accountsChecked&&accountsSession===binding.sessionId&&!selected&&!operation&&phase!=='scheduled'&&!failure;
     const refreshInbox=()=>{if(failure){failure.retry();return;}if(!selected){void refreshAccounts();return;}const shown=cachedListShown;invalidateList(false);cachedListShown=shown;void provider.bind(selected);void load();};
     const mailOptions=[
-      {label:mailSelecting?'Finish selection':'Select emails',icon:'check',disabled:!!mailBatch||draftsView()||!messages.length,run:()=>{if(mailBatch)return;mailSelecting=!mailSelecting;selectedMailIds.clear();publish();}},
-      ...(mailSelecting?[{label:'Select all',icon:'list-checks',disabled:!!mailBatch,run:()=>{selectedMailIds=new Set(messages.map(m=>m.id));publish();}},
+      {label:mailSelecting?'Finish selection':draftsView()?'Select drafts':'Select emails',icon:'check',disabled:!!mailBatch||mailSelectionPreparing||(draftsView()?!localDrafts.length:!messages.length),run:()=>void toggleMailSelection()},
+      ...(mailSelecting?[{label:'Select all',icon:'list-checks',disabled:!!mailBatch,run:()=>{selectedMailIds=new Set(draftsView()?localDrafts.filter(row=>row.id).map(row=>row.id):messages.map(m=>m.id));publish();}},
+        ...(draftsView()?[{label:'Delete drafts',icon:'trash-2',disabled:!!mailBatch||!selectedMailIds.size,run:()=>reviewMailSelection('discard-local','Delete')}]:[
         {label:folder==='trash'?'Restore':'Archive',icon:folder==='trash'?'rotate-ccw':'archive',disabled:!!mailBatch||!selectedMailIds.size||!provider.capabilities()?.mailboxMutations,run:()=>reviewMailSelection(folder==='trash'?'untrash':'archive',folder==='trash'?'Restore':'Archive')},
         ...(provider.capabilities()?.stars?[{label:folder==='starred'?'Remove star':'Star',icon:'star',disabled:!!mailBatch||!selectedMailIds.size,run:()=>reviewMailSelection(folder==='starred'?'unstar':'star',folder==='starred'?'Remove stars from':'Star')}]:[]),
         ...(folder!=='trash'?[{label:'Move to Trash',icon:'trash-2',disabled:!!mailBatch||!selectedMailIds.size||!provider.capabilities()?.mailboxMutations,run:()=>reviewMailSelection('trash','Move to Trash')}]:[]),
-      ]:[]),
-      ...(!provider.capabilities()?.mailboxMutations?[{label:'Allow Gmail changes',icon:'mail',disabled:!!mailBatch,run:()=>googleConnectionController.open()}]:[]),
+      ]),]:[]),
+      ...(!draftsView()&&!provider.capabilities()?.mailboxMutations?[{label:'Allow Gmail changes',icon:'mail',disabled:!!mailBatch,run:()=>googleConnectionController.open()}]:[]),
       {label:'Refresh',icon:'rotate-cw',disabled:!!mailBatch||!!operation,run:refreshInbox},
     ].map(item=>({...item,icon:'/icons/lucide/'+item.icon+'.svg',pick:(event:Event)=>{(event.currentTarget as HTMLElement).closest('details')?.removeAttribute('open');item.run();}}));
-    return {mailOptions,mailSelecting,mailBatchStatus,mailBatchBusy:!!mailBatch,mailReview:mailReview?{title:`${mailReview.title} ${mailReview.ids.length} ${mailReview.ids.length===1?'email':'emails'}?`,confirm:()=>void confirmMailSelection(),close:()=>{mailReview=null;publish();}}:null,folderTitle:mailSelecting?`${selectedMailIds.size} selected`:folder==='inbox'?'Inbox':folder==='sent'?'Sent':folder==='archive'?'Archive':extraFolders.find(row=>row.value===folder)?.label||'Inbox',folderChips:chips.filter(row=>['Inbox','Sent','Archive'].includes(row.label)),actionChips:chips.filter(row=>!['Inbox','Sent','Archive'].includes(row.label)),hasActionChips:chips.some(row=>!['Inbox','Sent','Archive'].includes(row.label)),extraFolders,hasExtraFolders:!!extraFolders.length,extraFolderCss:extraFolders.some(row=>row.on)?'width:112px;background:var(--fg);color:var(--bg)':'',extraFolderLabel:extraFolders.find(row=>row.on)?.label||'More',folderPicker:extraFolders.length?React.createElement(MailFolderPicker,{folders:extraFolders,menuId:'alpha-mail-folders',themeTokens:MAIL_MENU_TOKENS,selectedStyle:MAIL_MENU_SELECTED}):null, attachmentOpen:!!attachmentView,attachment:attachmentView?{...attachmentView,close:()=>{void attachmentNative.cancel().catch(()=>{});attachmentView=null;publish();}}:null,chips, rows, searching: st.q != null, notSearching: st.q == null, q: st.q || '', hasQ: false,
+    return {mailOptions,mailSelecting,mailBatchStatus,mailBatchBusy:!!mailBatch,mailReview:mailReview?{title:`${mailReview.title} ${mailReview.ids.length} ${mailReview.action==='discard-local'?(mailReview.ids.length===1?'draft':'drafts'):(mailReview.ids.length===1?'email':'emails')}?`,confirm:()=>void confirmMailSelection(),close:()=>{mailReview=null;publish();}}:null,folderTitle:mailSelecting?`${selectedMailIds.size} selected`:folder==='inbox'?'Inbox':folder==='sent'?'Sent':folder==='archive'?'Archive':extraFolders.find(row=>row.value===folder)?.label||'Inbox',folderChips:chips.filter(row=>['Inbox','Sent','Archive'].includes(row.label)),actionChips:chips.filter(row=>!['Inbox','Sent','Archive'].includes(row.label)),hasActionChips:chips.some(row=>!['Inbox','Sent','Archive'].includes(row.label)),extraFolders,hasExtraFolders:!!extraFolders.length,extraFolderCss:extraFolders.some(row=>row.on)?'width:112px;background:var(--fg);color:var(--bg)':'',extraFolderLabel:extraFolders.find(row=>row.on)?.label||'More',folderPicker:extraFolders.length?React.createElement(MailFolderPicker,{folders:extraFolders,menuId:'alpha-mail-folders',themeTokens:MAIL_MENU_TOKENS,selectedStyle:MAIL_MENU_SELECTED}):null, attachmentOpen:!!attachmentView,attachment:attachmentView?{...attachmentView,close:()=>{void attachmentNative.cancel().catch(()=>{});attachmentView=null;publish();}}:null,chips, rows, searching: st.q != null, notSearching: st.q == null, q: st.q || '', hasQ: false,
       openSearch: () => changeQuery(''), closeSearch: () => changeQuery(null), clearSearch:()=>{changeQuery('');queueMicrotask(()=>document.querySelector<HTMLInputElement>('.mail-search-input')?.focus());}, onQ: (e: Bag) => changeQuery(e.target.value), submitSearch:(event:Event)=>{event.preventDefault();const input=(event.currentTarget as HTMLFormElement).querySelector<HTMLInputElement>('input');if(!input?.value.trim())return;input.blur();void load();},
       compose: () => void drafts.newEmail(), empty: rows.length === 0, emptyIcon: 'M4 6h16v12H4zM4 6l8 6 8-6', emptyText: restoringCloud ? 'Loading Inbox…' : pendingCompose && !selected && binding && !failure ? needsGmailConnection ? 'Shared content is ready for a new email. Connect Gmail to continue.' : 'Checking Gmail connection…' : status,
       hasMore: rows.length > 0 && (!!nextPageToken || (!!operation && loadingMore)), loadingMore: !!operation && loadingMore, loadMoreDisabled: !!operation, loadMoreLabel: operation && loadingMore ? 'Loading more…' : 'Load more', loadMore: () => void load(true),

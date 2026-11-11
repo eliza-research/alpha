@@ -155,7 +155,6 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
  assert.equal(stamp.calendarSemanticPatch.afterSha256,stamp.files[calendarPath]);
  for(const [key,file] of [
   ['inboxConfirmationPatch','plugins/plugin-inbox/src/mailbox/review-controller.ts'],
-  ['inboxCleanupPatch','plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
   ['crashErrorClassPatch','plugins/plugin-native-system/src/crash-log.ts'],
   ['launcherObserverPatch','plugins/plugin-native-system/src/client/launcher.ts'],
   ['launcherLegacyViewKeyPatch','packages/ui/src/mobile-shell/view-registry.ts'],
@@ -172,6 +171,10 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
   assert.equal(stamp[key].afterSha256,stamp.files[file]);
   assert.notEqual(stamp.sourceFiles[file],stamp.files[file],file+' carries its reviewed patch');
  }
+ const draftPath='plugins/plugin-inbox/src/mailbox/drafts-controller.ts';
+ assert.equal(stamp.inboxCleanupPatch.beforeSha256,stamp.sourceFiles[draftPath]);
+ assert.equal(stamp.inboxCleanupPatch.afterSha256,stamp.inboxDraftSelectionPatch.beforeSha256);
+ assert.equal(stamp.inboxDraftSelectionPatch.afterSha256,stamp.files[draftPath]);
  const calendarBundle=buildSync({entryPoints:[path.join(source,calendarPath)],bundle:true,write:false,platform:'browser',format:'esm',metafile:true});
  assert.equal(Object.keys(calendarBundle.metafile.inputs).length,1,'shared Calendar reconciliation has no Node, SQL, or runtime dependency');
  const voiceFiles=['packages/ui/src/voice/voice-session-client-core.ts','packages/ui/src/voice/voice-session-status.ts','packages/core/src/logging.ts','packages/core/src/view-interaction.ts','packages/host/src/voice/ui-context.ts'];
@@ -211,6 +214,7 @@ assert.equal(stamp.baseCommit,JSON.parse(fs.readFileSync('upstream.lock.json','u
 for(const [receipt,prefix,file] of [
  ['inboxConfirmationPatch','inbox-confirmation-client','plugins/plugin-inbox/src/mailbox/review-controller.ts'],
  ['inboxCleanupPatch','inbox-cleanup-client','plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
+ ['inboxDraftSelectionPatch','inbox-draft-selection-client','plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
  ['crashErrorClassPatch','crash-error-class-client','plugins/plugin-native-system/src/crash-log.ts'],
  ['launcherObserverPatch','launcher-observer-client','plugins/plugin-native-system/src/client/launcher.ts'],
  ['launcherLegacyViewKeyPatch','launcher-legacy-view-key-client','packages/ui/src/mobile-shell/view-registry.ts'],

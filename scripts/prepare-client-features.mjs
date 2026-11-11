@@ -319,6 +319,7 @@ export const CLIENT_FEATURE_PATCHES = [
   ['calendarSemanticPatch', 'calendar-semantic-client', 'packages/contracts/src/calendar-linked-sync.ts'],
   ['inboxConfirmationPatch', 'inbox-confirmation-client', 'plugins/plugin-inbox/src/mailbox/review-controller.ts'],
   ['inboxCleanupPatch', 'inbox-cleanup-client', 'plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
+  ['inboxDraftSelectionPatch', 'inbox-draft-selection-client', 'plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
   ['inboxStarTypesPatch', 'inbox-star-types-client', 'plugins/plugin-inbox/src/mailbox/types.ts'],
   ['inboxStarClientPatch', 'inbox-star-client', 'plugins/plugin-inbox/src/mailbox/managed-gmail-client.ts'],
   ['crashErrorClassPatch', 'crash-error-class-client', 'plugins/plugin-native-system/src/crash-log.ts'],

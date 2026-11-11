@@ -22861,14 +22861,15 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "b43bda799e2f384335bf5e802529c8064110b05fd6b90feb9c31ff75dbf1c416",
+      "sha256": "4ebaf021f3ac45d1bd830ca80333ebd843a2eb30eafa2cb97c09ef4c115ff955",
       "models": [
         "InboxDelivery",
         "InboxCoordinator",
         "InboxProviderDrafts",
         "SavedServiceRead",
         "ContentLinks",
-        "MailSelection"
+        "MailSelection",
+        "MailDraftSelection"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -48046,7 +48047,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "6b271c69a98b4a2ed1b66b96d0afd656f7b939d9691d3dab12849ff07bb9ec40",
+      "sha256": "1c86d6109235961d05d2182f43a5b37a7ccbe52c7d68b695eee70b71fc66057a",
       "stateAnchors": [],
       "integrationReview": "2026-11-10: retained brief opens existing Workflows view without schedule execution; shared brief does not impose dialog semantics. Home source guards and legacy navigation tests follow latest owner UI choices."
     },
@@ -619384,7 +619385,7 @@
         "InboxProviderDrafts",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "6b271c69a98b4a2ed1b66b96d0afd656f7b939d9691d3dab12849ff07bb9ec40",
+      "sha256": "1c86d6109235961d05d2182f43a5b37a7ccbe52c7d68b695eee70b71fc66057a",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
     },
     {
