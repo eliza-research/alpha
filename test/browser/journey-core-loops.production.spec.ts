@@ -363,7 +363,9 @@ test('loop C on Android: snooze and dismiss are reviewed Clock requests, one han
   await expect(clock.getByLabel('Alarm time', { exact: true })).toHaveCount(0);
   await clock.getByLabel('Snooze minutes', { exact: true }).fill('7');
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
-  await expect(clock).toContainText('Snooze 7 min');
+  await expect(clock).toContainText('Snooze: 7 min requested.');
+  // The review states the consequence: Clock may ignore the minutes and snooze every ringing alarm.
+  await expect(clock).toContainText('affect all ringing alarms');
   expect(await native(page, f => f.clock)).toEqual([]);
   await confirm.dblclick();
   await expect(clock).toContainText('Approved Clock handoff sent. Check Clock; Alpha cannot confirm an alarm was changed.');
@@ -444,7 +446,9 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   await page.goto('/');
   await button(page, 'Maps').click();
   await expect(page.getByRole('region', {name: 'Map', exact: true})).toBeVisible();
-  await expect(page.getByRole('region', {name: 'Maps', exact: true}).getByRole('status')).toContainText('Add a location');
+  // With no location the base map shows no notice (plugin-maps hides it until there is news); Recenter asks for one.
+  await expect(page.getByRole('region', {name: 'Maps', exact: true}).locator('[data-alpha-maps-status]')).toHaveCount(0);
+  await expect(page.getByRole('region', {name: 'Maps', exact: true}).getByRole('button', {name: 'Recenter', exact: true})).toBeVisible();
   await expect(button(page, 'Directions')).toHaveCount(0);
   await expect(page.getByRole('region', {name: 'Maps'})).not.toContainText(/\d+ min|\d km/);
   // The independent browser alarm list remains a durable local feature.

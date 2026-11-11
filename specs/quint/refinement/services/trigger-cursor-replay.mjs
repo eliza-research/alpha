@@ -11,11 +11,25 @@ const settle = async () => { for (let i = 0; i < 3; i++) await new Promise(resol
 // The development device around the runtime: its document, its stored app documents, its place
 // settings and its location watch. The runtime itself and trigger detection are the real modules.
 const device = {hidden: false, storage: new Map(), config: null, places: [], sensor: null, watch: null};
-globalThis.alphaTriggerDevice = device;
-globalThis.document = {get hidden() { return device.hidden; }, documentElement: {dataset: {}}, querySelectorAll: () => [], querySelector: () => null, addEventListener() {}, removeEventListener() {}};
-globalThis.window = {addEventListener() {}, removeEventListener() {}};
-globalThis.localStorage = {getItem: key => device.storage.get(key) ?? null, setItem: (key, value) => { device.storage.set(key, String(value)); }, removeItem: key => { device.storage.delete(key); }};
-const {WorkflowTriggerRuntime} = await sourceModule('apps/app/src/browser/workflow-trigger-runtime.ts', {replace: {
+const platform = {
+  alphaTriggerDevice: device,
+  document: {get hidden() { return device.hidden; }, documentElement: {dataset: {}}, querySelectorAll: () => [], querySelector: () => null, addEventListener() {}, removeEventListener() {}},
+  window: {addEventListener() {}, removeEventListener() {}},
+  localStorage: {getItem: key => device.storage.get(key) ?? null, setItem: (key, value) => { device.storage.set(key, String(value)); }, removeItem: key => { device.storage.delete(key); }},
+};
+async function withTriggerPlatform(run) {
+  const previous = Object.fromEntries(Object.keys(platform).map(name => [name, Object.getOwnPropertyDescriptor(globalThis, name)]));
+  try {
+    for (const [name, value] of Object.entries(platform)) Object.defineProperty(globalThis, name, {value, configurable: true, writable: true, enumerable: true});
+    return await run();
+  } finally {
+    for (const [name, descriptor] of Object.entries(previous)) {
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else delete globalThis[name];
+    }
+  }
+}
+const {WorkflowTriggerRuntime} = await withTriggerPlatform(() => sourceModule('apps/app/src/browser/workflow-trigger-runtime.ts', {replace: {
   'workflow-focus$': 'export const isFocusWorkflow=()=>false;',
   'platform-plugins$': `export const registerPlugin=()=>({checkPermissions:async()=>({location:'granted'}),list:async()=>({events:[],truncated:false})});`,
   'location-simulation$': 'export const readLocationSimulation=()=>globalThis.alphaTriggerDevice.config;',
@@ -23,7 +37,7 @@ const {WorkflowTriggerRuntime} = await sourceModule('apps/app/src/browser/workfl
   'saved-places$': 'export class SavedPlaces{read(){return globalThis.alphaTriggerDevice.places;}}',
   // A started watch reports the latest reading at once, as a location provider does.
   'native-location$': `const d=()=>globalThis.alphaTriggerDevice;export class NativeMapsLocation{async start(_precise,on,lost){d().watch={on,lost};if(d().sensor)on(d().sensor());}async stop(){d().watch=null;}}`,
-}});
+}}));
 const {triggerDefinition, detectWorkflowTriggers} = await import('../../../../apps/app/src/browser/workflow-triggers.ts');
 
 const home = {latitude: 37, longitude: -122}, away = {latitude: 37.02, longitude: -122};
@@ -117,32 +131,38 @@ async function replay(walk, label, seen) {
 
 
 export async function runTriggerCursorCase1(t, {canaries=true}={}) {
-  const seen = actionCounter();
-  for (const scenario of scenarios) await replay(modelScenario(model, scenario, {main}), scenario, seen);
-  for (const action of ['fix', 'scan', 'background', 'move', 'resume', 'breakB', 'repairB', 'arrive', 'remove', 'dispatch', 'wake', 'editPlace']) assert.ok(seen.count(action) > 0, action);
+  return withTriggerPlatform(async () => {
+    const seen = actionCounter();
+    for (const scenario of scenarios) await replay(modelScenario(model, scenario, {main}), scenario, seen);
+    for (const action of ['fix', 'scan', 'background', 'move', 'resume', 'breakB', 'repairB', 'arrive', 'remove', 'dispatch', 'wake', 'editPlace']) assert.ok(seen.count(action) > 0, action);
+  });
 }
 
 export async function runTriggerCursorCase2(t, {canaries=true}={}) {
-  const seen = actionCounter(), walks = modelWalks(model, {main, traces: 60, steps: 40});
-  assert.equal(walks.length, 60);
-  for (const [index, walk] of walks.entries()) await replay(walk.map(step => ({...step, rejected: false})), `walk ${index}`, seen);
-  for (const action of ['move', 'fix', 'loseFix', 'editPlace', 'background', 'resume', 'wake', 'arrive', 'remove', 'breakB', 'repairB', 'scan', 'dispatch']) assert.ok(seen.count(action) > 0, `${action} ${JSON.stringify(seen.all())}`);
+  return withTriggerPlatform(async () => {
+    const seen = actionCounter(), walks = modelWalks(model, {main, traces: 60, steps: 40});
+    assert.equal(walks.length, 60);
+    for (const [index, walk] of walks.entries()) await replay(walk.map(step => ({...step, rejected: false})), `walk ${index}`, seen);
+    for (const action of ['move', 'fix', 'loseFix', 'editPlace', 'background', 'resume', 'wake', 'arrive', 'remove', 'breakB', 'repairB', 'scan', 'dispatch']) assert.ok(seen.count(action) > 0, `${action} ${JSON.stringify(seen.all())}`);
+  });
 }
 
 export async function runTriggerCursorCase3(t, {canaries=true}={}) {
-  const snapshot = rows => ({messages: {maya: rows}, mails: [], events: [], places: {}});
-  const first = detectWorkflowTriggers([flowB], [], snapshot([{id: 'm1', me: false}]), 1000);
-  assert.deepEqual(first.occurrences, []);
-  // An unreadable source: reported, the cursor is kept, and the message that arrived meanwhile fires afterwards.
-  const unreadable = detectWorkflowTriggers([flowB], first.cursors, snapshot([{id: 'm1', me: false}, {id: 'm2', me: false}, {me: false}]), 2000);
-  assert.equal(unreadable.errors.length, 1); assert.deepEqual(unreadable.cursors, first.cursors); assert.deepEqual(unreadable.occurrences, []);
-  const readable = detectWorkflowTriggers([flowB], unreadable.cursors, snapshot([{id: 'm1', me: false}, {id: 'm2', me: false}]), 3000);
-  assert.deepEqual(readable.occurrences.map(row => row.source.id), ['m2']);
-  // An unsupported trigger is another definition: no cursor is kept for it, and the repaired workflow starts over.
-  const edited = detectWorkflowTriggers([{...flowB, trig: {kind: 'unsupported'}}], first.cursors, snapshot([{id: 'm1', me: false}, {id: 'm2', me: false}]), 2000);
-  assert.equal(edited.errors.length, 1); assert.deepEqual(edited.cursors, []);
-  const repaired = detectWorkflowTriggers([flowB], edited.cursors, snapshot([{id: 'm1', me: false}, {id: 'm2', me: false}]), 3000);
-  assert.deepEqual(repaired.occurrences, []); assert.equal(repaired.cursors[0].seen.length, 2);
+  return withTriggerPlatform(async () => {
+    const snapshot = rows => ({messages: {maya: rows}, mails: [], events: [], places: {}});
+    const first = detectWorkflowTriggers([flowB], [], snapshot([{id: 'm1', me: false}]), 1000);
+    assert.deepEqual(first.occurrences, []);
+    // An unreadable source: reported, the cursor is kept, and the message that arrived meanwhile fires afterwards.
+    const unreadable = detectWorkflowTriggers([flowB], first.cursors, snapshot([{id: 'm1', me: false}, {id: 'm2', me: false}, {me: false}]), 2000);
+    assert.equal(unreadable.errors.length, 1); assert.deepEqual(unreadable.cursors, first.cursors); assert.deepEqual(unreadable.occurrences, []);
+    const readable = detectWorkflowTriggers([flowB], unreadable.cursors, snapshot([{id: 'm1', me: false}, {id: 'm2', me: false}]), 3000);
+    assert.deepEqual(readable.occurrences.map(row => row.source.id), ['m2']);
+    // An unsupported trigger is another definition: no cursor is kept for it, and the repaired workflow starts over.
+    const edited = detectWorkflowTriggers([{...flowB, trig: {kind: 'unsupported'}}], first.cursors, snapshot([{id: 'm1', me: false}, {id: 'm2', me: false}]), 2000);
+    assert.equal(edited.errors.length, 1); assert.deepEqual(edited.cursors, []);
+    const repaired = detectWorkflowTriggers([flowB], edited.cursors, snapshot([{id: 'm1', me: false}, {id: 'm2', me: false}]), 3000);
+    assert.deepEqual(repaired.occurrences, []); assert.equal(repaired.cursors[0].seen.length, 2);
+  });
 }
 
 export async function runTriggerCursorReplay(){const beforeTraces=observedTraces,beforeCheckpoints=observedCheckpoints;await runTriggerCursorCase1(undefined,{canaries:false});await runTriggerCursorCase2(undefined,{canaries:false});return{traces:observedTraces-beforeTraces,checkpoints:observedCheckpoints-beforeCheckpoints};}
