@@ -112,7 +112,7 @@ const interrupt = () => {
   process.exit(130);
 };
 
-function runCommand(argv: string[]): Promise<CheckerResult> {
+function runCommand(argv: string[], commandTimeoutSeconds = timeoutSeconds): Promise<CheckerResult> {
   return new Promise(resolveResult => {
     const child = spawn(process.execPath, argv, {
       cwd: repositoryRoot, stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32',
@@ -132,10 +132,10 @@ function runCommand(argv: string[]): Promise<CheckerResult> {
     };
     activeStops.add(stop);
     const timer = setTimeout(() => {
-      error = Error(`Checker exceeded ${timeoutSeconds} seconds`);
+      error = Error(`Checker exceeded ${commandTimeoutSeconds} seconds`);
       stop('SIGTERM');
       hardStop = setTimeout(() => stop('SIGKILL'), 1000);
-    }, timeoutSeconds * 1000);
+    }, commandTimeoutSeconds * 1000);
     const append = (stream: 'stdout' | 'stderr', chunk: Buffer) => {
       if (stream === 'stdout') stdout += chunk.toString(); else stderr += chunk.toString();
       if (stdout.length + stderr.length > 8 * 1024 * 1024) {
@@ -230,20 +230,20 @@ try {
   if (rejected) throw rejected.reason;
   if (command === 'check') {
     const temporary = mkdtempSync(join(tmpdir(), 'alpha-quint-canary-'));
+    const removeTemporary = () => rmSync(temporary, { recursive: true, force: true });
+    process.once('exit', removeTemporary);
     try {
       const file = join(temporary, 'CounterexampleCanary.qnt');
       writeFileSync(file, 'module CounterexampleCanary { var n: int action init = n\' = 0 action step = n\' = n + 1 val safety = n == 0 run failingTest = init.expect(n == 1) }\n');
-      const {result, interruptedAttempt} = await runQuintChecker(() => spawnSync(process.execPath,
-        [cli, 'run', file, '--backend=typescript', '--seed=1', '--max-samples=1', '--max-steps=1', '--invariant=safety'],
-        { cwd: repositoryRoot, encoding: 'utf8', timeout: 30000 }));
+      const {result, interruptedAttempt} = await runQuintChecker(() => runCommand(
+        [cli, 'run', file, '--backend=typescript', '--seed=1', '--max-samples=1', '--max-steps=1', '--invariant=safety'], 30));
       const detected = Number.isInteger(result.status) && result.status !== 0 && !result.signal && !result.error
         && detectedCounterexample(`${result.stdout || ''}${result.stderr || ''}`);
       receipt.canary = { detected, exitCode: result.status, signal: result.signal, interruptedAttempt };
       if (!detected) { failed = true; console.error('FAIL counterexample detection canary'); }
       else console.log('PASS counterexample detection canary');
-      const scenario = await runQuintChecker(() => spawnSync(process.execPath,
-        [cli, 'test', file, '--backend=typescript', '--seed=1', '--max-samples=1', '--match=^failingTest$'],
-        {cwd: repositoryRoot, encoding: 'utf8', timeout: 30000}));
+      const scenario = await runQuintChecker(() => runCommand(
+        [cli, 'test', file, '--backend=typescript', '--seed=1', '--max-samples=1', '--match=^failingTest$'], 30));
       const scenarioOutput = `${scenario.result.stdout || ''}${scenario.result.stderr || ''}`;
       const scenarioDetected = Number.isInteger(scenario.result.status) && scenario.result.status !== 0
         && !scenario.result.signal && !scenario.result.error
@@ -254,7 +254,10 @@ try {
         signal: scenario.result.signal, interruptedAttempt: scenario.interruptedAttempt, output: scenarioOutput};
       if (!scenarioDetected) {failed = true; console.error('FAIL scenario assertion detection canary');}
       else console.log('PASS scenario assertion detection canary');
-    } finally { rmSync(temporary, { recursive: true, force: true }); }
+    } finally {
+      process.removeListener('exit', removeTemporary);
+      removeTemporary();
+    }
   }
 } catch (error) {
   failed = true;
