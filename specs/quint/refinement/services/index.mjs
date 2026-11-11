@@ -1,3 +1,11 @@
+import {serviceForwardReplayCampaigns} from './forward-replays.mjs';
+import {checkWorkflowAuthoring, checkWorkflowNoticeTaps} from './workflow-local-source.mjs';
+import {checkScanReviewDialogs} from './scan-review-dialogs.mjs';
+import {checkMapsScreenModes,checkMapsNavigationGuidanceReadback} from './maps-screen-source.mjs';
+import {checkPlanAdmissionGrace} from './plan-admission-grace.mjs';
+import {checkInboxListPaging} from './inbox-list-paging.mjs';
+import {checkAutomationRequestSettlement} from './automation-request-settlement.mjs';
+import {checkWorkflowExecutionAuditAdmission} from './workflow-execution-audit-admission.mjs';
 import {collectRefinementCampaigns} from '../campaigns.mjs';
 import {fileURLToPath} from 'node:url';
 import {checkBrowserGoogleReturn} from './browser-google-return.mjs';
@@ -62,6 +70,8 @@ export async function runServicesRefinement(onProgress) {
   const direct = check => [check.name, () => check()];
   const withDriver = check => [check.name, () => check([driver])];
   const campaigns = [
+    ...serviceForwardReplayCampaigns([driver]),
+    ...[checkWorkflowAuthoring,checkWorkflowNoticeTaps,checkScanReviewDialogs,checkMapsScreenModes,checkMapsNavigationGuidanceReadback,checkPlanAdmissionGrace,checkInboxListPaging,checkAutomationRequestSettlement,checkWorkflowExecutionAuditAdmission].map(withDriver),
     [checkCoreApprovalServiceCurrentRefinement.name, () => checkCoreApprovalServiceCurrentRefinement(undefined, [driver])],
     ...[authorizationRefinement, googleAccountsRefinement, googleAccountsLifecycleRefinement, calendarRefinement,
       calendarLinkedRefinement, inboxRefinement, mapsRefinement, cacheRefinement, workflowRefinement, policyRefinement,
@@ -81,6 +91,9 @@ export async function runServicesRefinement(onProgress) {
     ...[runFactWriteScopeRefinement, runNativeGoogleAccessFileRefinement, runNamedEmbeddingProvenanceRefinement].map(withDriver),
   ];
   const obligations = [
+    {model:'WorkflowAuthoring',obligation:'Unobserved agent save/application and durable device custody',reason:'The bounded local source adapter controls secure storage and client responses; successful remote saves, crash durability and arbitrary authoring races remain separate.'},
+    {model:'WorkflowNoticeTaps',obligation:'Unobserved question and generation races',reason:'The exact handler campaign observes non-question run taps; question review, absent or foreign taps, view-generation races and installed notification behavior remain separate.'},
+    {model:'ScanReviewDialogs',obligation:'Unobserved correction/camera and installed review paths',reason:'The source campaign covers actual text and searchable-PDF reviews with closed OCR/export ports; correction, camera, links, Calendar, multi-page reviews and native focus remain separate.'},
     {model: 'CoreApprovalServiceCurrent', obligation: 'Arbitrary approval creation, storage and persisted callback-free workflows', reason: 'The current source campaign observes one synchronous callback-bearing request, two selectors, a controlled deadline and draining shutdown. Role checks, task creation races, storage failures and callback-free asynchronous approvals remain separate.'},
     {model: 'BrowserGoogleReturn', obligation: 'Canonical account readback and browser presentation', reason: 'The real callback only emits a candidate wakeup. Account verification, panel dismissal, tab closing and live Google authorization require their own UI and integration evidence.'},
     {model: 'CombinedAgentLauncher', obligation: 'Confirm runtime readiness at the service boundary',

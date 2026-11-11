@@ -14,7 +14,7 @@ module CopyReceipt {
     sessionActive: false, recordedRevision: 0, sourceRevision: 0, sourceTrashed: false,
     externalEdits: 0, copies: 0, replaces: 0, reportedNoCopy: false, refusedSaves: 0
   }
-  pure val Terminal = Set("saved", "failed", "cancelled", "unchanged")
+  pure val Terminal = Set("saved", "failed", "cancelled", "unchanged", "abandoned")
   // Opening the editor writes a prepared receipt bound to the source revision shown.
   action begin = all { s.status == "none", not(s.sourceTrashed),
     s' = { ...s, status: "prepared", sessionActive: true, recordedRevision: s.sourceRevision } }
@@ -22,7 +22,7 @@ module CopyReceipt {
   // attempt: a retry cannot turn a copy into a replace.
   action save(parameters: int, replace: bool): bool = all { Set(0, 1, 2).contains(parameters), s.serial < 3,
     val other = s.parameters != -1 and (s.parameters != parameters or s.replace != replace)
-    val refused = s.status == "none" or other or s.status == "saving"
+    val refused = s.status.in(Set("none", "abandoned")) or other or s.status == "saving"
     s' = if (refused) { ...s, refusedSaves: if (s.refusedSaves < 2) s.refusedSaves + 1 else 2 }
       else if (Terminal.contains(s.status)) s
       else if (parameters == 0) { ...s, status: "unchanged", parameters: parameters, replace: replace, attempt: s.serial + 1, serial: s.serial + 1 }
@@ -44,15 +44,17 @@ module CopyReceipt {
   // Recovery reads the outcome. An uncommitted receipt is cancelled in the same transaction.
   action readResult = all { s.status != "none",
     s' = { ...s, status: if (s.status.in(Set("prepared", "saving"))) "cancelled" else s.status,
-      reportedNoCopy: s.reportedNoCopy or s.status.in(Set("prepared", "saving", "cancelled")) } }
+      reportedNoCopy: s.reportedNoCopy or s.status.in(Set("prepared", "saving", "cancelled", "abandoned")) } }
   action cancelEditor = all { s.status != "none",
     s' = { ...s, sessionActive: false,
-      status: if (s.status.in(Set("prepared", "saving"))) "cancelled" else s.status,
-      reportedNoCopy: s.reportedNoCopy or s.status.in(Set("prepared", "saving", "cancelled")) } }
+      status: if (s.status == "prepared") "abandoned" else if (s.status == "saving") "cancelled" else s.status,
+      reportedNoCopy: s.reportedNoCopy or s.status.in(Set("prepared", "saving", "cancelled", "abandoned")) } }
   action sessionExpires = s' = { ...s, sessionActive: false }
   action externalEdit = all { s.externalEdits < 2,
     s' = { ...s, sourceRevision: s.sourceRevision + 1, externalEdits: s.externalEdits + 1 } }
-  action trashSource = s' = { ...s, sourceTrashed: true }
+  // Trashing is an external mutation of the original row, with its own fresh mutation revision.
+  action trashSource = all { not(s.sourceTrashed), s.externalEdits < 2,
+    s' = { ...s, sourceTrashed: true, sourceRevision: s.sourceRevision + 1, externalEdits: s.externalEdits + 1 } }
   action step = {
     nondet choice = 0.to(5).oneOf()
     nondet attempt = 1.to(3).oneOf()
@@ -89,6 +91,13 @@ module CopyReceipt {
     .expect(s.status == "saved" and s.replaces == 1 and s.copies == 0 and s.sourceRevision == 1 and safety)
   run identityEditMakesNoCopyTest = init.then(begin).then(save(0, false))
     .expect(s.status == "unchanged" and s.copies == 0 and s.inflight == Set() and safety)
+  run preparedCancelRemovesAuthorityTest = init.then(begin).then(cancelEditor)
+    .expect(s.status == "abandoned" and not(s.sessionActive) and s.reportedNoCopy and safety)
+    .then(save(1, false)).expect(s.status == "abandoned" and s.refusedSaves == 1 and safety)
+    .then(readResult).expect(s.status == "abandoned" and s.copies == 0 and safety)
+  run trashMutationRefusesHeldReplaceTest = init.then(begin).then(save(1, true)).then(trashSource)
+    .expect(s.sourceRevision == 1 and s.externalEdits == 1 and safety).then(commit(1))
+    .expect(s.status == "failed" and s.copies == 0 and s.replaces == 0 and safety)
   run otherParametersRefusedTest = init.then(begin).then(save(1, false)).then(save(2, false))
     .expect(s.refusedSaves == 1 and s.parameters == 1 and s.inflight == Set(1) and safety)
 }

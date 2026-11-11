@@ -7,7 +7,7 @@ import {call, checkpoint, trace} from './support.mjs';
 const model = 'ScheduledTaskControls';
 const taskPrefix = '/api/lifeops/scheduled-tasks/weekly/';
 const controls = {'Run now': 'fire', 'Edit schedule': 'edit', 'Save schedule': 'edit',
-  '10 min': 'snooze', Acknowledge: 'acknowledge', Complete: 'complete', Dismiss: 'dismiss', Reopen: 'reopen'};
+  'Snooze 10 minutes': 'snooze', Acknowledge: 'acknowledge', Complete: 'complete', Dismiss: 'dismiss', Reopen: 'reopen'};
 const buttons = Object.fromEntries(Object.entries(controls).filter(([label]) => label !== 'Save schedule')
   .map(([label, verb]) => [verb, label]));
 const messages = {

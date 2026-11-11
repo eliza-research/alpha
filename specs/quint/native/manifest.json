@@ -3891,7 +3891,9 @@
         "retryCannotTurnCopyIntoReplaceTest",
         "replaceOverwritesReviewedRevisionTest",
         "identityEditMakesNoCopyTest",
-        "otherParametersRefusedTest"
+        "otherParametersRefusedTest",
+        "preparedCancelRemovesAuthorityTest",
+        "trashMutationRefusesHeldReplaceTest"
       ],
       "invariants": [
         "AtMostOneWritePerOperation",
@@ -3938,15 +3940,15 @@
         }
       ],
       "stateMapping": {
-        "status/parameters/replace/attempt": "The stored edit receipt: status, encoded parameters with mode, and the owning attempt",
+        "status/parameters/replace/attempt": "The stored edit receipt status, encoded parameters with mode and owning attempt. An absent receipt after prepared-editor cancellation is the explicit abandoned terminal; later saves are refused.",
         "inflight": "Save attempts suspended between claim and commit",
-        "sessionActive/recordedRevision/sourceRevision/sourceTrashed": "The editor session and the source row against the revision the receipt recorded",
+        "sessionActive/recordedRevision/sourceRevision/sourceTrashed": "The actual editor session and original photo row against the per-row mutationRevision recorded in its receipt. External metadata edits and trash each advance that original revision; adding a distinct copy row does not.",
         "copies/replaces/reportedNoCopy": "Committed copy rows, committed in-place replacements, and a recovery read that reported no write"
       },
       "abstractions": [
         "One receipt, three save attempts, two non-identity parameter sets and two modes. Rendering is an opaque suspended step.",
-        "Session expiry is a single flag. Receipts are never deleted in the source and are not aged here.",
-        "Model safety checks do not establish implementation refinement or device acceptance."
+        "Session expiry is an explicit clock boundary. Closing an unclaimed prepared editor deletes its receipt (abandoned); recovery reads retain cancelled receipts. Acknowledged receipt forgetting and age-based pruning are outside the single-operation replay.",
+        "The CopyReceipt adapter executes real Chromium canvas and IndexedDB save, recovery, cancellation and rollback schedules, comparing all state fields from actual receipts, sessions and persisted rows. Two source mutations test retirement and mode fences; physical durability, native editing and device acceptance remain separate."
       ],
       "bounds": {
         "attempts": 3

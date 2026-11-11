@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import vm from 'node:vm';
+import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 
@@ -17,11 +18,13 @@ export const wait = async (ready, label = 'The workflow adapter did not settle.'
  * client and a storage object that outlives the adapter. `restart()` mounts a new adapter over the
  * same storage, as a new app process does; the earlier one is left where it stopped.
  */
-export async function workflowAdapter({client, storage = {}}) {
+export async function workflowAdapter({client, storage = {}, rewrite}) {
   const {workflowRendererFixture} = await import('../../../../scripts/workflow-renderer-fixture.ts');
   const protocol = await import('../../../../apps/app/src/runtime/workflow-protocol.ts');
   const contract = await import('../../../../apps/app/src/runtime/workflow-device-contract.ts');
-  const source = fs.readFileSync(root + 'apps/app/src/prototype/workflow-adapter.ts', 'utf8').replace(/^import .*;\n/gm, '').replace('export function', 'function') + '\nglobalThis.install=installWorkflowAdapter;';
+  let source = fs.readFileSync(root + 'apps/app/src/prototype/workflow-adapter.ts', 'utf8');
+  if (rewrite) {const changed = rewrite(source);assert.notEqual(changed, source, 'Workflow source mutation must change the actual adapter');source = changed;}
+  source = source.replace(/^import .*;\n/gm, '').replace('export function', 'function') + '\nglobalThis.install=installWorkflowAdapter;';
   const localStorage = new Proxy({getItem: key => storage[key] ?? null, setItem: (key, value) => { storage[key] = value; }, removeItem: key => { delete storage[key]; }},
     {ownKeys: () => Object.keys(storage), getOwnPropertyDescriptor: () => ({configurable: true, enumerable: true})});
   const mount = () => {

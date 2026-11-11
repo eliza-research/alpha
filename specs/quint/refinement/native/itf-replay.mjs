@@ -8,6 +8,7 @@ import {mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'nod
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {javaTraceCampaign, root} from './java.mjs';
+import {recordComparedObservation} from '../observed-replay.mjs';
 
 const quint = join(root, 'node_modules/@informalsystems/quint/dist/src/cli.js');
 
@@ -73,9 +74,12 @@ export function replayJava({harness, sources, mainClass, traces, project = state
     for (const [index, trace] of traces.entries()) {
       assert.equal(observed[index].length, trace.length, `trace ${index}: one observation per model state`);
       for (const [at, {action, picks, state}] of trace.entries()) {
-        assert.deepEqual(observed[index][at], project(state),
+        const projection = project(state);
+        assert.deepEqual(observed[index][at], projection,
           `trace ${index} step ${at} ${action || 'stutter'} ${JSON.stringify(picks)}\nmodel path: ${
             trace.slice(0, at + 1).map(item => item.action || '-').join(' ')}`);
+        recordComparedObservation({trace: index, step: at, init: trace[0].action || 'init', action: at > 0 ? action : null,
+          picks, actual: observed[index][at], expected: projection});
         if (at > 0 && action) { actions.set(action, (actions.get(action) ?? 0) + 1); steps++; }
         for (const [name, holds] of Object.entries(reached)) if (holds(state)) hit.add(name);
       }

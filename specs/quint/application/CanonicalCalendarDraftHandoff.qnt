@@ -1,7 +1,8 @@
 // Current canonical Calendar receiver shared by mounted Note and scan review.
 module CanonicalCalendarDraftHandoff {
   // noteNotice is the last captured Note toast event; its on-screen timeout is separate.
-  // Successful draft routing emits no new toast, so it preserves that event.
+  // Accepted Note event and reminder drafts emit the current Check time notice.
+  // Scan drafts have their own review status and do not emit a Note notice.
   type State = {owner: int, view: str, ready: bool, editor: str, retained: str,
     busy: str, scanOpen: bool, scanNotice: str, noteNotice: str}
   var s: State
@@ -25,7 +26,7 @@ module CanonicalCalendarDraftHandoff {
   action closeScan = all {s.scanOpen, s' = {...s, scanOpen: false, scanNotice: ""}}
   action requestNote = all {
     s.view == "notes",
-    s' = if (admissionOpen) {...s, view: "calendar", editor: "note", retained: "note"}
+    s' = if (admissionOpen) {...s, view: "calendar", editor: "note", retained: "note", noteNotice: "review-time"}
       else {...s, noteNotice: "note-refused"},
   }
   action requestScan = all {
@@ -35,7 +36,7 @@ module CanonicalCalendarDraftHandoff {
   }
   action requestReminder = all {
     s.view == "notes",
-    s' = {...s, view: "calendar", editor: "reminder"},
+    s' = {...s, view: "calendar", editor: "reminder", noteNotice: "review-time"},
   }
   action closeForm = all {
     s.view == "calendar", s.editor != "",
@@ -69,7 +70,7 @@ module CanonicalCalendarDraftHandoff {
 
   run noteAndReminderUseSeparateDraftAdmissionTest = init.then(retainEarlier).then(home).then(openNote)
     .then(requestNote).expect(s.view == "notes" and s.retained == "earlier" and s.noteNotice == "note-refused")
-    .then(requestReminder).expect(s.editor == "reminder" and s.retained == "earlier" and safety)
+    .then(requestReminder).expect(s.editor == "reminder" and s.retained == "earlier" and s.noteNotice == "review-time" and safety)
   run scanRefusalKeepsReviewAndRetainedDraftTest = init.then(retainEarlier).then(home).then(openScan).then(requestScan)
     .expect(s.scanOpen and s.scanNotice == "scan-refused" and s.retained == "earlier" and safety)
   run deliberateClearAdmitsFreshScanTest = init.then(retainEarlier).then(beginDiscard).then(endDiscard)
@@ -77,10 +78,10 @@ module CanonicalCalendarDraftHandoff {
     .expect(not(s.scanOpen) and s.editor == "scan" and safety)
   run pendingConsumeDoesNotAdmitNoteTest = init.then(retainEarlier).then(beginDiscard).then(home).then(openNote)
     .then(requestNote).expect(s.view == "notes" and s.busy == "consume")
-    .then(endDiscard).then(requestNote).expect(s.editor == "note" and safety)
+    .then(endDiscard).then(requestNote).expect(s.editor == "note" and s.noteNotice == "review-time" and safety)
   run openingReplacementSlotDoesNotAdmitIncomingDraftTest = init.then(retainEarlier).then(home).then(beginOwnerOpen)
     .then(openNote).then(requestNote).expect(s.view == "notes" and s.busy == "open" and s.retained == "")
-    .then(endOwnerOpen).then(requestNote).expect(s.owner == 2 and s.editor == "note" and safety)
+    .then(endOwnerOpen).then(requestNote).expect(s.owner == 2 and s.editor == "note" and s.noteNotice == "review-time" and safety)
   run unavailableCanonicalSourceRetainsOriginTest = initWith(false).then(openNote).then(requestNote)
     .expect(s.view == "notes" and s.editor == "" and s.noteNotice == "note-refused" and safety)
 }

@@ -5,6 +5,7 @@
  * arguments and the model state after it. A driver runs the same action against product code and
  * the replay compares an observation of that code with the model state after every step. */
 import assert from 'node:assert/strict';
+import {captureReplayInputs,recordComparedObservation} from '../observed-replay.mjs';
 import {spawnSync} from 'node:child_process';
 import {mkdtempSync, readFileSync, readdirSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -184,10 +185,12 @@ export function modelTraces({path, module, scenarios = [], witnesses = [], rando
 export async function replayTraces(traces, create, {project = state => state} = {}) {
   const coverage = new Map();
   let checkpoints = 0, rejected = 0;
-  for (const trace of traces) {
+  for (const [traceIndex,trace] of traces.entries()) {
     const driver = await create(trace);
     try {
-      assert.deepEqual(await driver.observe(), project(trace.init), `${trace.name}: initial state`);
+      const actual=await driver.observe(),expected=project(trace.init);
+      assert.deepEqual(actual, expected, `${trace.name}: initial state`);
+      recordComparedObservation({trace:traceIndex,step:0,actual,expected});
       checkpoints++;
       let index = 0, before = trace.init;
       for (const step of trace.steps) {
@@ -199,7 +202,9 @@ export async function replayTraces(traces, create, {project = state => state} = 
           if (step.reject) rejected++;
           else coverage.set(step.action, (coverage.get(step.action) || 0) + 1);
         }
-        assert.deepEqual(await driver.observe(), project(step.state), label);
+        const actual=await driver.observe(),expected=project(step.state);
+        assert.deepEqual(actual, expected, label);
+        recordComparedObservation({trace:traceIndex,step:index,action:step.reject?null:step.action,args:step.args,actual,expected});
         before = step.state;
         checkpoints++;
       }
@@ -211,16 +216,18 @@ export async function replayTraces(traces, create, {project = state => state} = 
 /** Bundles one repository source (or several, as one module instance) for Node with the imports matching `stubs` keys (regular
  * expression source) replaced by the given module text, as the neighbouring adapter tests do. */
 export async function sourceModule(path, stubs = {}) {
+  captureReplayInputs(Array.isArray(path)?path:[path]);
   const entries = Object.entries(stubs).map(([pattern, contents]) => [new RegExp(pattern), contents]);
   const entry = Array.isArray(path)
     ? {stdin: {contents: path.map(item => `export * from './${item}';`).join('\n'), resolveDir: repositoryRoot, loader: 'ts'}}
     : {entryPoints: [path]};
-  const bundled = await build({absWorkingDir: repositoryRoot, ...entry, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'silent',
+  const bundled = await build({absWorkingDir: repositoryRoot, ...entry, bundle: true, format: 'esm', platform: 'node', write: false, metafile:true, logLevel: 'silent',
     external: ['react', 'react/jsx-runtime', 'react-dom', '@capacitor/core'],
     plugins: [{name: 'stubs', setup(builder) {
       builder.onResolve({filter: /.*/}, args => { const index = entries.findIndex(([pattern]) => pattern.test(args.path)); return index < 0 ? undefined : {path: String(index), namespace: 'stub'}; });
       builder.onLoad({filter: /.*/, namespace: 'stub'}, args => ({contents: entries[Number(args.path)][1], loader: 'js', resolveDir: repositoryRoot}));
     }}]});
+  captureReplayInputs(Object.keys(bundled.metafile.inputs).filter(path=>!path.startsWith('stub:')&&path!=='<stdin>'));
   return import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
 }
 

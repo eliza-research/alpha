@@ -5,6 +5,7 @@
  * arguments and the model state after it, so a driver can run the same action against product code
  * and compare an observation with the model state after every step. */
 import assert from 'node:assert/strict';
+import {recordComparedObservation} from '../observed-replay.mjs';
 import {spawnSync} from 'node:child_process';
 import {mkdtempSync, readFileSync, readdirSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -191,10 +192,12 @@ export function modelTraces({path, module, scenarios = [], witnesses = [], rando
 export async function replayTraces(traces, create, {project = state => state} = {}) {
   const coverage = new Map();
   let checkpoints = 0;
-  for (const trace of traces) {
+  for (const [traceIndex, trace] of traces.entries()) {
     const driver = await create(trace);
     try {
-      assert.deepEqual(await driver.observe(), project(trace.init), `${trace.name}: initial state`);
+      const actual=await driver.observe(),expected=project(trace.init);
+      assert.deepEqual(actual, expected, `${trace.name}: initial state`);
+      recordComparedObservation({trace:traceIndex,step:0,actual,expected});
       checkpoints++;
       let index = 0;
       for (const step of trace.steps) {
@@ -205,7 +208,9 @@ export async function replayTraces(traces, create, {project = state => state} = 
           await driver[step.action](...step.args);
           coverage.set(step.action, (coverage.get(step.action) || 0) + 1);
         }
-        assert.deepEqual(await driver.observe(), project(step.state), label);
+        const actual=await driver.observe(),expected=project(step.state);
+        assert.deepEqual(actual, expected, label);
+        recordComparedObservation({trace:traceIndex,step:index,action:step.action,args:step.args,actual,expected});
         checkpoints++;
       }
     } finally { await driver.close?.(); }

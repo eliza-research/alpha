@@ -4,10 +4,10 @@ import {mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync} from 'nod
 import {tmpdir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
+import {captureReplayInputs, observedReplay, recordComparedObservation} from '../refinement/observed-replay.mjs';
 
 const directory = dirname(fileURLToPath(import.meta.url));
 const root = resolve(directory, '../../..');
-const work = mkdtempSync(join(tmpdir(), 'alpha-quint-native-'));
 const quint = join(root, 'node_modules/.bin/quint');
 const specification = join(directory, 'AlwaysOnListenerIndicatorReadback.qnt');
 const nativeDirectory = join(root, 'android/app/src/main/java/ai/alphacompute/alphaphone');
@@ -49,13 +49,15 @@ const fields = ['consent', 'enabled', 'permission', 'notification', 'foregroundU
 // Each lease verdict the model applied, replayed through the listener's pure latch and pause rules.
 const observation = ['operation', 'obsHeld', 'obsBefore', 'obsLoss', 'obsInteractive', 'obsValid', 'obsLatched'];
 
-try {
+async function runIndicatorReadback() {
+ const work = mkdtempSync(join(tmpdir(), 'alpha-quint-native-'));
+ try {
   run(quint, ['test', specification, '--backend=typescript', '--seed=1701', '--max-samples=1',
     '--out-itf', join(work, 'scenario_{test}_{seq}.json'), '--verbosity=0']);
   run(quint, ['run', specification, '--backend=typescript', '--seed=1701', '--max-samples=32',
     '--n-traces=32', '--max-steps=60', '--invariant=safety',
     '--out-itf', join(work, 'sample_{seq}.json'), '--verbosity=0']);
-  const rows = [];
+  const rows = [], modelStates = [];
   const decisions = new Set();
   const verdicts = new Set();
   for (const name of readdirSync(work).filter(name => name.endsWith('.json')).sort()) {
@@ -65,6 +67,7 @@ try {
       assert.ok(enumNames[model.decision], `Unknown model decision ${model.decision}`);
       decisions.add(model.decision);
       if (model.operation === 'observe') verdicts.add(`${model.obsBefore}/${model.obsLoss}/${model.obsHeld}/${model.obsLatched}`);
+      modelStates.push({trace: name, step: index, model});
       rows.push([`${name}/${index}`, ...fields.map(field => model[field]), model.indicatorPause, model.indicatorLost,
         model.lease === 'fresh', enumNames[model.decision], model.microphone, model.analyzing,
         ...observation.map(field => model[field])].join(','));
@@ -122,6 +125,7 @@ public final class NativeQuintConformance {
       check(actual.name().equals(row[16]), row[0] + " expected " + row[16] + " got " + actual);
       check(ListenerPolicy.holdsMicrophone(actual) == bool(row, 17), row[0] + " microphone projection");
       check(ListenerPolicy.processesAudio(actual) == bool(row, 18), row[0] + " processing projection");
+      String observedValid = "-", observedLatch = "-", observedPause = "-";
       if (row[19].equals("observe")) {
         // The listener's step on one lease verdict: the same pure rules in the order Listener applies them.
         boolean held = bool(row, 20);
@@ -135,8 +139,10 @@ public final class NativeQuintConformance {
         check(latches == bool(row, 25), row[0] + " indicator latch");
         check(pause.name().equals(row[13]), row[0] + " explained pause " + pause + " expected " + row[13]);
         check(valid == bool(row, 15), row[0] + " lease projection");
+        observedValid = Boolean.toString(valid); observedLatch = Boolean.toString(latches); observedPause = pause.name();
         observations++;
       }
+      System.out.println("OBS\t" + row[0] + "\t" + actual.name() + "\t" + ListenerPolicy.holdsMicrophone(actual) + "\t" + ListenerPolicy.processesAudio(actual) + "\t" + observedValid + "\t" + observedLatch + "\t" + observedPause);
       states++;
     }
 
@@ -202,11 +208,29 @@ public final class NativeQuintConformance {
   }
 }
 `);
-  run('javac', ['-d', work, harness, join(listenerDirectory, 'ListenerPolicy.java'),
+  const javaSources = [harness, join(listenerDirectory, 'ListenerPolicy.java'),
     join(resetDirectory, 'ResetAuthorization.java'), join(speechDirectory, 'SpeechAudioFocusPolicy.java'),
     join(listenerDirectory, 'IndicatorLease.java'), join(listenerDirectory, 'CrashLoopBreaker.java'),
-    join(nativeDirectory, 'ResidentScheduleRearm.java')]);
-  console.log(run('java', ['-cp', work, 'ai.alphacompute.alphaphone.NativeQuintConformance', inputs]));
+    join(nativeDirectory, 'ResidentScheduleRearm.java')];
+  captureReplayInputs([specification, inputs, ...javaSources]);
+  run('javac', ['-d', work, ...javaSources]);
+  const output = run('java', ['-cp', work, 'ai.alphacompute.alphaphone.NativeQuintConformance', inputs]);
+  const observedRows = output.split('\n').filter(line => line.startsWith('OBS\t'));
+  assert.equal(observedRows.length, modelStates.length, 'One actual Java observation per Quint state');
+  for (const [at, line] of observedRows.entries()) {
+    const [_, label, decision, microphone, analyzing, valid, latches, pause] = line.split('\t');
+    const {trace, step, model} = modelStates[at];
+    assert.equal(label, trace + '/' + step);
+    const actual = {decision, microphone: microphone === 'true', analyzing: analyzing === 'true'};
+    const expected = {decision: enumNames[model.decision], microphone: model.microphone, analyzing: model.analyzing};
+    if (model.operation === 'observe') {
+      Object.assign(actual, {valid: valid === 'true', latches: latches === 'true', pause});
+      Object.assign(expected, {valid: model.obsValid, latches: model.obsLatched, pause: model.indicatorPause});
+    }
+    assert.deepEqual(actual, expected, label + ' actual policy/readback projection');
+    recordComparedObservation({trace, step, actual, expected});
+  }
+  console.log(output.split('\n').filter(line => !line.startsWith('OBS\t')).join('\n'));
   console.log(`Listener decisions covered ${[...decisions].sort().join(', ')}`);
   const {usableNavigationFix} = await import(pathToFileURL(join(root, '.eliza/client-features/plugins/plugin-maps/src/client/navigation-fix.ts')).href);
   const {atStep} = await import(pathToFileURL(join(root, '.eliza/client-features/plugins/plugin-maps/src/client/guidance.ts')).href);
@@ -227,6 +251,21 @@ public final class NativeQuintConformance {
   assert.equal(atStep(projection, steps, 0).next.distanceMeters, 0, 'Passed projection distance clamps to zero');
   assert.equal(atStep(projection, steps, 2).then, undefined, 'Last maneuver has no later instruction');
   console.log('Navigation conformance passed 10 TypeScript boundary assertions');
+  return {traces: new Set(modelStates.map(row => row.trace)).size, checkpoints: observedRows.length};
 } finally {
   rmSync(work, {recursive: true, force: true});
 }
+
+}
+
+export async function checkAlwaysOnListenerIndicatorReadback(extraSources = []) {
+  const receipt = await observedReplay({model: 'AlwaysOnListenerIndicatorReadback', run: runIndicatorReadback,
+    prefix: 'indicatorReadbackProjection',
+    projection: 'Actual ListenerPolicy decision/microphone/audio projection and IndicatorLease pause/latch readback at every emitted model state. This does not observe the complete Listener store, recognition epochs or service lifecycle.',
+    assumptions: ['The original eight model scenarios, 32 sampled walks, required policy decisions, required lease verdicts and all additional Java/navigation assertions remain enforced.',
+      'Pure shared Java rules execute with controlled policy inputs. Installed attribution, listener service scheduling and physical microphone acceptance remain separate.'],
+    extraSources: [fileURLToPath(import.meta.url), ...extraSources]});
+  return {receipt, obligations: [{model: receipt.model, obligation: 'Full listener/service refinement and installed attribution',
+    reason: receipt.projection}]};
+}
+if (process.argv[1] === fileURLToPath(import.meta.url)) await runIndicatorReadback();

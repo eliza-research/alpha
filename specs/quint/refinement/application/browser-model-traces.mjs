@@ -6,6 +6,7 @@
  * product code and returns what it observes; the observation must equal the driver's projection
  * of the model state after every step. */
 import assert from 'node:assert/strict';
+import {captureReplayInputs,recordComparedObservation} from '../observed-replay.mjs';
 import {spawnSync} from 'node:child_process';
 import {mkdtempSync, readFileSync, readdirSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -180,10 +181,12 @@ export function modelTraces({path, module, scenarios = [], witnesses = [], rando
 export async function replayTraces(traces, create, {project = state => state} = {}) {
   const actions = new Map();
   let checkpoints = 0;
-  for (const trace of traces) {
+  for (const [traceIndex,trace] of traces.entries()) {
     const driver = await create(trace);
     try {
-      assert.deepEqual(await driver.observe(), project(trace.init), `${trace.name}: initial state`);
+      const actual=await driver.observe(),expected=project(trace.init);
+      assert.deepEqual(actual,expected,`${trace.name}: initial state`);
+      recordComparedObservation({trace:traceIndex,step:0,actual,expected});
       checkpoints++;
       let index = 0;
       for (const step of trace.steps) {
@@ -194,7 +197,9 @@ export async function replayTraces(traces, create, {project = state => state} = 
           await driver[step.action](...step.args, step);
           actions.set(step.action, (actions.get(step.action) || 0) + 1);
         }
-        assert.deepEqual(await driver.observe(), project(step.after), label);
+        const actual=await driver.observe(),expected=project(step.after);
+        assert.deepEqual(actual,expected,label);
+        recordComparedObservation({trace:traceIndex,step:index,action:step.action,args:step.args,actual,expected});
         checkpoints++;
       }
     } finally { await driver.teardown?.(); }
@@ -214,14 +219,16 @@ let bundles = 0;
  * Every call returns its own module instance, so module-level state starts over.
  */
 export async function loadBundled(entry, stubs = {}) {
+  captureReplayInputs([entry]);
   const {build} = await import('esbuild');
   const names = Object.keys(stubs);
-  const built = await build({absWorkingDir: repositoryRoot, entryPoints: [entry], bundle: true, format: 'esm', platform: 'node', write: false,
+  const built = await build({absWorkingDir: repositoryRoot, entryPoints: [entry], bundle: true, format: 'esm', platform: 'node', write: false, metafile:true,
     loader: {'.css': 'empty'}, logLevel: 'silent',
     plugins: names.length ? [{name: 'ports', setup(builder) {
       builder.onResolve({filter: /.*/}, args => names.includes(args.path) ? {path: args.path, namespace: 'port'} : undefined);
       builder.onLoad({filter: /.*/, namespace: 'port'}, args => ({contents: stubs[args.path], loader: 'js'}));
     }}] : []});
+  captureReplayInputs(Object.keys(built.metafile.inputs).filter(path=>!path.startsWith('port:')));
   const text = built.outputFiles[0].text;
   return () => import('data:text/javascript;base64,' + Buffer.from(`${text}\n// instance ${++bundles}`).toString('base64'));
 }

@@ -66,6 +66,11 @@ import {checkNativeCalendarScopedReview} from './scoped-calendar-review.mjs';
 import {checkNativeCalendarSyncEnable} from './calendar-sync-enable.mjs';
 import {checkBrowserUnderlay} from './browser-underlay.mjs';
 import {checkTelephonyAttention, checkTelephonyContactsBook, checkTelephonyMessageThreads, checkTelephonyPhoneCalls, checkTelephonyVoicemail} from './telephony.mjs';
+import {forwardReplayCampaigns} from './forward-replays.mjs';
+import {checkCopyReceipt} from './copy-receipt.mjs';
+import {checkAlwaysOnListenerIndicatorReadback} from '../../native/conformance.mjs';
+import {checkNativeRequestWithdrawal} from './request-withdrawal.mjs';
+import {checkResidentSchedulingServiceAdmission} from './resident-scheduling-service-admission.mjs';
 
 export async function runNativeRefinement(onProgress) {
   const earlyInputs = [fileURLToPath(import.meta.url)];
@@ -85,6 +90,9 @@ export async function runNativeRefinement(onProgress) {
   };
   extraGroups.push(['ProducerTraces.java', producerSources, 'com.android.systemui.privacy.ProducerTraces']);
   const campaigns = [
+    ...forwardReplayCampaigns(earlyInputs),
+    ...[checkCopyReceipt, checkAlwaysOnListenerIndicatorReadback, checkNativeRequestWithdrawal,
+      checkResidentSchedulingServiceAdmission].map(withInputs(earlyInputs)),
     ['FinitePolicyTraces', async record => {
       const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
       const sources = [voice + 'LiveVadGate.java', app + 'RendererRecoveryBudget.java', app + 'ResidentScheduleRearm.java'];

@@ -10,6 +10,7 @@ import {mkdtempSync, readFileSync, readdirSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {recordComparedObservation} from './observed-replay.mjs';
 
 export const repositoryRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const cli = join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js');
@@ -174,10 +175,12 @@ export function modelTraces({path, module, scenarios = [], witnesses = [], rando
 export async function replayTraces(traces, create, {project = state => state} = {}) {
   const coverage = new Map();
   let checkpoints = 0;
-  for (const trace of traces) {
+  for (const [traceIndex, trace] of traces.entries()) {
     const driver = await create(trace);
     try {
-      assert.deepEqual(await driver.observe(), project(trace.init), `${trace.name}: initial state`);
+      const initialObservation = await driver.observe(), initialProjection = project(trace.init);
+      assert.deepEqual(initialObservation, initialProjection, `${trace.name}: initial state`);
+      recordComparedObservation({trace: traceIndex, step: 0, actual: initialObservation, expected: initialProjection});
       checkpoints++;
       let index = 0;
       for (const step of trace.steps) {
@@ -188,7 +191,9 @@ export async function replayTraces(traces, create, {project = state => state} = 
           await driver[step.action](...step.args);
           coverage.set(step.action, (coverage.get(step.action) || 0) + 1);
         }
-        assert.deepEqual(await driver.observe(), project(step.state), label);
+        const observation = await driver.observe(), projection = project(step.state);
+        assert.deepEqual(observation, projection, label);
+        recordComparedObservation({trace: traceIndex, step: index, action: step.action, args: step.args, actual: observation, expected: projection});
         checkpoints++;
       }
     } finally { await driver.close?.(); }

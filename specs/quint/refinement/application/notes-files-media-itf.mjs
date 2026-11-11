@@ -8,6 +8,7 @@ import {tmpdir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
+import {captureReplayInputs, recordComparedObservation} from '../observed-replay.mjs';
 
 export const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const quint = join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js');
@@ -69,6 +70,7 @@ let loads = 0;
 export async function loadProductModule(path, {stubs = {}, rewrite = {}} = {}) {
   const bundled = await build({absWorkingDir: repositoryRoot, entryPoints: [path], bundle: true, format: 'esm',
     platform: 'neutral', write: false, logLevel: 'silent', plugins: [{name: 'ports', setup(b) {
+      b.onLoad({filter: /.*/, namespace: 'file'}, args => {captureReplayInputs([args.path]);});
       b.onResolve({filter: /.*/}, args => args.path in stubs || args.path.endsWith('.css') ? {path: args.path, namespace: 'port'} : undefined);
       b.onLoad({filter: /.*/, namespace: 'port'}, args => ({contents: stubs[args.path] ?? '', loader: 'js'}));
       for (const [suffix, transform] of Object.entries(rewrite)) {
@@ -98,7 +100,9 @@ export async function replayTraces(traces, {start, project, required = [], reach
   for (const [index, trace] of traces.entries()) {
     const driver = await start(trace[0].state, trace[0].picks);
     try {
-      assert.deepEqual(await driver.observe(), project(trace[0].state), `trace ${index} initial state`);
+      const initialObservation = await driver.observe(), initialProjection = project(trace[0].state);
+      assert.deepEqual(initialObservation, initialProjection, `trace ${index} initial state`);
+      recordComparedObservation({trace: index, step: 0, init: trace[0].action || 'init', actual: initialObservation, expected: initialProjection});
       for (let at = 1; at < trace.length; at++) {
         const {action, picks, state} = trace[at], label = `trace ${index} step ${at} ${action || 'stutter'} ${JSON.stringify(picks)}`;
         if (action) {
@@ -108,7 +112,9 @@ export async function replayTraces(traces, {start, project, required = [], reach
           seen.set(action, (seen.get(action) ?? 0) + 1);
           steps++;
         }
-        assert.deepEqual(await driver.observe(), project(state), label);
+        const observation = await driver.observe(), projection = project(state);
+        assert.deepEqual(observation, projection, label);
+        recordComparedObservation({trace: index, step: at, action, picks, actual: observation, expected: projection});
       }
     } finally { await driver.close?.(); }
   }

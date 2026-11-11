@@ -1225,6 +1225,10 @@ async function admitCloudResident(signal:AbortSignal):Promise<ResidentAdmission>
   let account:NonNullable<typeof service>|null=null,checked:Awaited<ReturnType<typeof checkEntitlement>>|null=null;
   const binding=residentBindingController(environment,client,{verified:value=>{account=value;},checked:value=>{checked=value;}});
   const admission=await binding.admit(signal);
+  signal.throwIfAborted();
+  // A different read may have verified the newer sign-in while this plan read was held.
+  // Its admission record and view belong to that account; an old completion owns neither.
+  if(account&&service!==account)throw new CloudResidentBindingError('account-changed');
   const admitted=account as NonNullable<typeof service>|null,result=checked as Awaited<ReturnType<typeof checkEntitlement>>|null;
   if((admission.reason==='needs-plan'||admission.reason==='admitted')&&(!admitted||!admission.plan||!result))return {binding:'unbound',notice:{error:ACCOUNT_CHANGED,errorKind:'account-changed',open:true}};
   // The binding and plan view by reason (residentAdmissionOutcome); a missing plan or no network
@@ -1376,7 +1380,7 @@ function residentBindingController(environment:CloudEnvironment,client:CloudProt
       const account=service;
       const checked=await checkEntitlement(client.entitlementSource(),{userId:identity.userId,organizationId:identity.organizationId},signal);
       signal.throwIfAborted();
-      if(service!==account)throw Error(ACCOUNT_CHANGED);
+      if(service!==account)throw new CloudResidentBindingError('account-changed');
       hooks.checked?.(checked);
       const view=checked.view;
       // End of the plan window when Cloud reported one: the billing snapshot's period end, a redeemed grant's end, or the last known.

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {captureReplayInputs} from '../observed-replay.mjs';
 import {spawnSync} from 'node:child_process';
 import {mkdtempSync, readFileSync, readdirSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
@@ -115,6 +116,7 @@ export function modelScenario(model, scenario, {main, seed = 20261107, variable 
 
 /** Loads a repository TypeScript module as its neighbours' tests do: bundled for Node, with replaceable imports. */
 export async function sourceModule(path, {replace = {}, external = [], define = {}, fresh = false} = {}) {
+  captureReplayInputs([path]);
   const plugins = [{name: 'replace', setup(b) {
     for (const [filter, contents] of Object.entries(replace)) {
       const pattern = new RegExp(filter);
@@ -123,7 +125,8 @@ export async function sourceModule(path, {replace = {}, external = [], define = 
     }
   }}];
   const bundled = await build({absWorkingDir: root, entryPoints: [path], bundle: true, format: 'esm', platform: 'node',
-    write: false, logLevel: 'silent', plugins, external, define});
+    write: false, metafile:true, logLevel: 'silent', plugins, external, define});
+  captureReplayInputs(Object.keys(bundled.metafile.inputs).filter(path=>!path.startsWith('replaced-')));
   const text = bundled.outputFiles[0].text;
   let instance = 0;
   const load = () => import(`data:text/javascript;base64,${Buffer.from(`${text}\n// instance ${instance++}`).toString('base64')}`);

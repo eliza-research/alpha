@@ -69,8 +69,12 @@ function checkWorkflows() {
   assert.match(restored.run, /\$EXPECTED_QUALIFICATION/);
   assert.equal(publishing.publish.steps.find(step => step.with?.path === 'qualified-product').with.ref,
     '$' + '{{ needs.admit.outputs.source_commit }}');
+  const reverify = publishing.publish.steps.find(runs('npm run android:verify -- --cloud-voice-evidence='));
+  assert.equal(reverify?.['working-directory'], 'qualified-product');
+  assert.equal(reverify.run, 'npm run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"');
+  assert.equal(JSON.parse(read('package.json')).scripts['android:verify'], 'node scripts/verify-apks.ts');
   ordered(publishing.publish.steps, runs('--product "$GITHUB_WORKSPACE/qualified-product"'),
-    runs('scripts/verify-apks.ts --cloud-voice-evidence='), runs("row['cloudVoice']['evidenceSha256']"),
+    step => step === reverify, runs("row['cloudVoice']['evidenceSha256']"),
     runs('scripts/deliver-app-update.ts --variant launcher'));
 }
 
@@ -194,7 +198,7 @@ const faults = ['create-before', 'create-after', 'apk-before', 'apk-partial', 'a
 
 export async function checkProtectedAppUpdatePromotion(extraSources = []) {
   const sources = [
-    fileURLToPath(import.meta.url), python, signer, verifier, publisher, producer,
+    fileURLToPath(import.meta.url), python, signer, verifier, publisher, producer, 'package.json',
     'scripts/app-update-candidate.ts', 'scripts/ci/verify-cloud-signing-input.sh',
     'scripts/ci/admit-cloud-signing-input.py', 'scripts/ci/private-apk-storage.py',
     'scripts/ci/qualified-app-update.py', 'scripts/verify-apks.ts', 'scripts/sign-release-apks.ts',

@@ -3,6 +3,7 @@ import {existsSync, mkdtempSync, readdirSync, rmSync} from 'node:fs';
 import {tmpdir, homedir} from 'node:os';
 import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {captureReplayInputs} from '../observed-replay.mjs';
 
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 export const directory = dirname(fileURLToPath(import.meta.url));
@@ -41,6 +42,8 @@ export function javaTraceCampaign(harness, sources, argumentSets, mainClass) {
     return result.stdout;
   };
   try {
+    captureReplayInputs([jar, join(directory, 'Trace.java'), join(directory, harness), ...sources.map(path => resolve(root, path)),
+      ...argumentSets.flat().filter(path => existsSync(path))]);
     run(executable('javac'), ['-cp', jar, '-d', temporary, join(directory, 'Trace.java'), join(directory, harness), ...sources.map(path => resolve(root, path))]);
     const java = executable('java');
     const entry = mainClass || `ai.alphacompute.alphaphone.${harness.replace(/\.java$/, '')}`;
