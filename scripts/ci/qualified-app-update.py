@@ -15,6 +15,7 @@ import re
 import stat
 import subprocess
 import tarfile
+import tempfile
 from urllib.parse import quote, urlencode
 import zipfile
 
@@ -208,7 +209,19 @@ def signed_download(plan, receipt, destination):
         conn.close()
 
 
-def write_file(root, name, content):
+def copy_verified(source, size, expected_digest, failure, destination=None):
+    digest = hashlib.sha256()
+    remaining = size
+    while chunk := source.read(min(1024 * 1024, remaining + 1)):
+        remaining -= len(chunk)
+        require(remaining >= 0, failure)
+        digest.update(chunk)
+        if destination is not None:
+            destination.write(chunk)
+    require(remaining == 0 and digest.hexdigest() == expected_digest, failure)
+
+
+def restore_file(root, name, source, size, digest, failure):
     relative = PurePosixPath(name)
     require(not relative.is_absolute() and all(part not in ("..", ".git") for part in relative.parts), "Unsafe evidence path")
     target = root.joinpath(*relative.parts)
@@ -217,7 +230,14 @@ def write_file(root, name, content):
         if ancestor == root:
             break
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_bytes(content)
+    with tempfile.NamedTemporaryFile(dir=target.parent, prefix=".verified-", delete=False) as output:
+        temporary = Path(output.name)
+        try:
+            copy_verified(source, size, digest, failure, output)
+            output.close()
+            os.replace(temporary, target)
+        finally:
+            temporary.unlink(missing_ok=True)
 
 
 def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_signed=signed_download):
@@ -240,12 +260,13 @@ def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_si
             require(total <= 512 * 1024**2, "Producer evidence exceeds restore bound")
             entry = archive.getinfo("producer-evidence/" + name)
             require(entry.file_size == fact["bytes"] and stat.S_IFMT(entry.external_attr >> 16) in (0, stat.S_IFREG) and not entry.flag_bits & 1, "Invalid evidence member")
-            content = archive.read(entry)
-            require(sha(content) == fact["sha256"], "Producer evidence bytes differ")
-            if name in ("prepared-source-stamp.json", "worker-manifest.json"):
-                continue
-            target = "android/app/build/generated/local-agent/source-manifest.json" if name == "native-source-manifest.json" else name
-            write_file(product, target, content)
+            with archive.open(entry) as content:
+                failure = "Producer evidence bytes differ"
+                if name in ("prepared-source-stamp.json", "worker-manifest.json"):
+                    copy_verified(content, fact["bytes"], fact["sha256"], failure)
+                else:
+                    target = "android/app/build/generated/local-agent/source-manifest.json" if name == "native-source-manifest.json" else name
+                    restore_file(product, target, content, fact["bytes"], fact["sha256"], failure)
         verified = decode(archive.read("apk-verification.json"))
         for variant in VARIANTS:
             name = variant + "-debug.apk"
@@ -253,9 +274,9 @@ def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_si
             require(len(rows) == 1, "Producer debug APK is required for full verification")
             entry = archive.getinfo(name)
             require(0 < entry.file_size <= 400_000_000 and stat.S_IFMT(entry.external_attr >> 16) in (0, stat.S_IFREG) and not entry.flag_bits & 1, "Invalid debug archive member")
-            content = archive.read(entry)
-            require(sha(content) == rows[0]["sha256"], "Producer debug APK bytes differ")
-            write_file(product, "artifacts/" + name, content)
+            with archive.open(entry) as content:
+                restore_file(product, "artifacts/" + name, content, entry.file_size,
+                             rows[0]["sha256"], "Producer debug APK bytes differ")
     expected = {v + "-release.apk" for v in VARIANTS} | {"signed.sha256", "signing-plan.json", "production-signer.sha256"}
     if plan.get("rotation") is not None:
         expected.add("rotation.lineage")
@@ -263,14 +284,19 @@ def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_si
         members = archive.getmembers()
         require(len(members) == len(expected) and {item.name for item in members} == expected and
                 all(item.isfile() and 0 < item.size <= 400_000_000 for item in members), "Unexpected signed bundle members")
-        require(archive.extractfile("signing-plan.json").read() == (work / "signing-plan.json").read_bytes(), "Signed bundle plan differs")
+        with archive.extractfile("signing-plan.json") as source:
+            require(source.read(32769) == (work / "signing-plan.json").read_bytes(), "Signed bundle plan differs")
         expected_lines = {f"{record['signedApkSHA256'][v]}  {v}-release.apk" for v in VARIANTS}
-        require(set(archive.extractfile("signed.sha256").read().decode("ascii").strip().splitlines()) == expected_lines, "Signed checksum receipt differs")
+        with archive.extractfile("signed.sha256") as source:
+            checksum = source.read(257)
+        require(len(checksum) <= 256 and set(checksum.decode("ascii").strip().splitlines()) == expected_lines,
+                "Signed checksum receipt differs")
         for variant in VARIANTS:
             name = variant + "-release.apk"
-            content = archive.extractfile(name).read()
-            require(sha(content) == record["signedApkSHA256"][variant], "Signed APK bytes differ from qualification")
-            write_file(product, "artifacts/" + name, content)
+            member = archive.getmember(name)
+            with archive.extractfile(member) as content:
+                restore_file(product, "artifacts/" + name, content, member.size,
+                             record["signedApkSHA256"][variant], "Signed APK bytes differ from qualification")
 
 
 def main():

@@ -580,6 +580,12 @@ dialog:is(.alpha-operation-review,.alpha-calendar-editor,.alpha-calendar-meeting
 [data-alpha-subview="photos-viewer"] { container-type:size; }
 [data-alpha-photo-frame] { top:0!important; bottom:0!important; margin:auto!important; width:min(100cqw, 75cqh); height:min(133.333cqw, 100cqh)!important; }
 [data-alpha-photo-frame] > span:first-child { background-size:contain!important; background-position:center!important; background-repeat:no-repeat!important; }
+/* Keep the new tab action above the large-text composer and leave scroll clearance on short windows. */
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-browser-new] {
+  padding-top:clamp(30px,8vh,72px)!important;
+  padding-bottom:max(140px,var(--alpha-dock-reserve))!important;
+}
+
 /* The browser menu ends above the dock; its rows scroll inside it on short screens. */
 [data-alpha-browser-menu] { box-sizing:border-box; max-height:max(150px, calc(100% - 106px - var(--alpha-dock-clearance,102px)))!important; }
 /* Maps: the provider/location notice stays beside the map in landscape and bounded when wide. */

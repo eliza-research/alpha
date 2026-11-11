@@ -1271,7 +1271,7 @@
     </sc-if>
 
     <sc-if value="{{browser.isNew}}">
-      <div style="padding: 110px 24px 140px; display: flex; flex-direction: column; align-items: center; gap: 30px">
+      <div data-alpha-browser-new style="padding: 110px 24px 140px; display: flex; flex-direction: column; align-items: center; gap: 30px">
         <span style="width: 72px; height: 72px; border-radius: 36px; background: var(--s2); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" style="width: 30px; height: 30px"><path d="{{ic.globe}}"></path></svg></span><h2 class="serif" style="font-size:28px;margin:0">New tab</h2>
         <sc-if value="{{browser.isPrivate}}"><p role="note" aria-label="Private tab notice" style="margin: -14px 0 0; text-align: center; font-size: 14.5px; line-height: 1.4; color: var(--mut)">{{browser.privateNotice}}</p></sc-if>
         <button onClick="{{browser.startEdit}}" aria-label="Search or type address" style="width: 100%; min-height: 56px; border-radius: 28px; background: var(--s2); display: flex; align-items: center; gap: 12px; padding: 0 20px; box-sizing: border-box; color: var(--mut); font-size: 16px">
