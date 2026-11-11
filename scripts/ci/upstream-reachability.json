@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "cbdfbbca0d5cebdd729f4404c4517cd78f7b516a",
-  "head": "2570d39b5e36c856adfeccd8c5e9de39fa21768e",
+  "head": "e871f0ca87e941556fc50e48f255e943d6b0eb4f",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...2570d39b5e36c856adfeccd8c5e9de39fa21768e",
+  "command": "Prior recorded comparison, extended by git rev-list 2570d39b5e36c856adfeccd8c5e9de39fa21768e..e871f0ca87e941556fc50e48f255e943d6b0eb4f",
   "status": "diverged",
-  "aheadBy": 16,
+  "aheadBy": 18,
   "behindBy": 380,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -74,6 +74,14 @@
     {
       "sha": "2570d39b5e36c856adfeccd8c5e9de39fa21768e",
       "subject": "fix(calendar): return empty extraction to planner repair"
+    },
+    {
+      "sha": "386846588f6d2ed1dfc0154d372834800bba0f6d",
+      "subject": "fix(reminders): verify original request before creating reminder"
+    },
+    {
+      "sha": "e871f0ca87e941556fc50e48f255e943d6b0eb4f",
+      "subject": "test(reminders): bind progress fairness to model state"
     }
   ],
   "pullRequests": [
