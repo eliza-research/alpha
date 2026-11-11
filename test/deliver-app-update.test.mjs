@@ -30,7 +30,7 @@ function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], 
   };
   let pointer = retained(manifestUrl, previous);
   const legacyPointer = retained(legacyManifestUrl, legacyPrevious);
-  let apkVisible = false, pointerReads = 0;
+  let apkVisible = false, pointerReads = 0, releaseExists = !releaseMissing;
   const ports = {
     wait: async () => {},
     run(args) {
@@ -39,9 +39,14 @@ function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], 
       if (args[1] === 'view') {
         if (args[2] === legacyTag) return legacyPointer || legacyAssets.length ? JSON.stringify({isDraft:false,assets:legacyAssets}) : null;
         assert.equal(args[2],stableTag);
-        return releaseMissing ? null : JSON.stringify({isDraft:false,assets:[]});
+        if (!releaseExists) return null;
+        const assets = [];
+        if (apkVisible) assets.push({name:'alpha-phone-8.apk'});
+        if (pointer) assets.push({name:'alpha-update-stable.json'});
+        return JSON.stringify({isDraft:false,assets});
       }
       if (args[1] === 'create' || args[1] === 'upload') assert.equal(args[2],stableTag);
+      if (args[1] === 'create') releaseExists = true;
       if (args[1] === 'upload') {
         const name = path.basename(args[3]);
         uploads.push(name);
@@ -128,6 +133,34 @@ test('a missing manifest after interrupted replacement cannot reset the retained
       ? JSON.stringify({isDraft:false,assets}) : original(args,opts);
     await assert.rejects(deliver(f,f.ports),/retained stable APK version floor|not publicly readable/);
     assert.equal(f.uploads.length,0);
+  }
+});
+
+test('the publisher rechecks both release inventories after APK readback before moving the pointer',async t => {
+  for (const tag of [legacyTag,stableTag]) {
+    const f = fixture(t,{previous:{}});
+    const run = f.ports.run;
+    f.ports.run = (args,options) => {
+      const release = run(args,options);
+      if (args[0] !== 'release' || args[1] !== 'view' || args[2] !== tag || !f.events.includes('apk readback'))
+        return release;
+      const changed = release === null ? {isDraft:false,assets:[]} : JSON.parse(release);
+      changed.assets.push({name:'alpha-phone-9.apk'});
+      return JSON.stringify(changed);
+    };
+    await assert.rejects(deliver(f,f.ports),/version floor/);
+    assert.deepEqual(f.uploads,['alpha-phone-8.apk']);
+  }
+});
+
+test('final release inventory must still contain the verified APK and any listed pointer must be readable',async t => {
+  for (const assets of [[],[{name:'alpha-phone-8.apk'},{name:'alpha-update-stable.json'}]]) {
+    const f = fixture(t);
+    const run = f.ports.run;
+    f.ports.run = (args,options) => args[0] === 'release' && args[1] === 'view' && args[2] === stableTag && f.events.includes('apk readback')
+      ? JSON.stringify({isDraft:false,assets}) : run(args,options);
+    await assert.rejects(deliver(f,f.ports),/missing from the final stable release inventory|not publicly readable/);
+    assert.deepEqual(f.uploads,['alpha-phone-8.apk']);
   }
 });
 
