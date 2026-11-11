@@ -75,6 +75,7 @@
     "typecheck:scripts": "bun scripts/typecheck-scripts.ts",
     "typecheck:only": "tsc --noEmit && bun run typecheck:scripts",
     "test:only": "bun scripts/run-tests.ts",
+    "test:node": "bun scripts/run-node-only-tests.ts",
     "build:only": "vite build"
   },
   "dependencies": {

@@ -13,7 +13,9 @@ changes upstream and consume a reviewed commit; never edit the vendor checkout.
 ## Setup
 
 Use Bun 1.4.2 (`packageManager` in `package.json`) and JDK 21. Bun installs dependencies, runs every
-script and test, and is the agent runtime on the device; Node.js is not required.
+script and test, and is the agent runtime on the device. Node.js is not required, with one exception:
+`bun run test:node` runs two host tests that need platform features Bun lacks (jsdom script
+execution and Web Locks) on Node.js 24 or newer; `bun run verify` skips them and says so. CI runs that lane.
 Native builds need Android SDK platform 36 and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
 

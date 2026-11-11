@@ -100,6 +100,13 @@ jobs:
       # Recorded develop compare; warns (never networks) when develop cannot reach the pin.
       - name: Report upstream develop reachability
         run: bun scripts/verify-upstream.ts --reachability-only
+      # The only Node.js use in this repository: two host tests need platform features Bun lacks
+      # (scripts/run-node-only-tests.ts). bun run verify skips them with that reason.
+      # Last in the job, so no earlier step sees a Node on PATH.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26.13.0"
+      - run: bun run test:node
   formal:
     name: Changed-model proofs
     needs: changes
