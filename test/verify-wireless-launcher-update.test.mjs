@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -17,7 +17,7 @@ const dataApkPath = '/data/app/~~AA==/ai.alphacompute.alphaphone-X=/base.apk';
 const imageApkPath = '/product/app/AlphaPhone/AlphaPhone.apk';
 const imageFlags = 'SYSTEM HAS_CODE';
 const updatedImageFlags = 'SYSTEM HAS_CODE UPDATED_SYSTEM_APP';
-const schema = 'alpha-wireless-launcher-readback/v1';
+const schema = 'alpha-wireless-launcher-readback/v2';
 const hash = value => createHash('sha256').update(value).digest('hex');
 const signingFamily = 'b'.repeat(64);
 const apk = Buffer.from('fixture APK bytes');
@@ -32,14 +32,25 @@ const pointer = publicBytes(Buffer.from(JSON.stringify(manifest)));
 const props = {
   'ro.kernel.qemu': '0', 'ro.boot.qemu': '', 'ro.product.model': 'Pixel',
   'ro.product.cpu.abi': 'arm64-v8a',
+  'ro.product.device': 'stallion',
   'ro.build.fingerprint': 'brand/device/product:17/build/100:user/release-keys',
   'ro.boot.verifiedbootstate': 'green', 'ro.boot.flash.locked': '1', 'ro.boot.vbmeta.digest': 'a'.repeat(64),
+};
+const imageEvidence = {
+  releaseRecordSha256: hash('image release record'),
+  signedTargetFilesSha256: hash('signed target-files'),
+  fingerprintSha256: hash(props['ro.build.fingerprint']),
+  vbmetaDigest: props['ro.boot.vbmeta.digest'],
+};
+const automaticInstall = {
+  sessionId: 123, userId: 0, requireUserAction: 'NOT_REQUIRED', permissionsManuallyAccepted: false, finalStatus: 1,
 };
 
 function deviceReader({
   version = 7, sha256 = 'c'.repeat(64), flags = 'HAS_CODE', initiator = 'com.android.shell',
   appId = 10123, firstInstallTime = '2026-11-01 10:00:00', apkPath = dataApkPath, packagePath = `package:${apkPath}`,
   home = packageName, changeDuringReadback = false, serial = 'fixture-phone', sdk = '37', deviceProperties = {},
+  manualApproval = false,
 } = {}) {
   let dumps = 0;
   const properties = {...props, ...deviceProperties};
@@ -48,6 +59,13 @@ function deviceReader({
     assert.equal(args[0], 'shell', 'acceptance capture only uses read commands');
     if (args[1] === 'getprop' && args[2] === 'ro.build.version.sdk') return sdk;
     if (args[1] === 'getprop' && Object.hasOwn(properties, args[2])) return properties[args[2]];
+    if (args.slice(1).join(' ') === 'dumpsys package installs') return [
+      'Historical install sessions:', '  Session 123:',
+      `    userId=0 mOriginalInstallerUid=${appId} mOriginalInstallerPackageName=${packageName} installerPackageName=${packageName} installInitiatingPackageName=${packageName} installOriginatingPackageName=null mInstallerUid=${appId}`,
+      `    mode=1 appPackageName=${packageName} referrerUri=alpha-update://${packageName}/${version}/${sha256}/${signingFamily}/3/intent/automatic requireUserAction=NOT_REQUIRED`,
+      `    mCommitted=true mPermissionsManuallyAccepted=${manualApproval} mFinalStatus=1`,
+      '', 'Legacy install sessions:', '  []',
+    ].join('\n');
     switch (args.slice(1, 3).join(' ')) {
       case 'am get-current-user': return '0';
       case 'cmd role': return home;
@@ -119,6 +137,7 @@ test('both baseline shapes require an exact advancing self-initiated replacement
     const before = {
       schema, phase: 'before', packageName, distribution,
       observation: image ? readDevice({apkPath: imageApkPath, flags: imageFlags}) : readDevice(),
+      ...(image ? {image: imageEvidence} : {}),
       signerRootSha256: signingFamily, offer,
     };
     const flags = image ? updatedImageFlags : 'HAS_CODE';
@@ -146,10 +165,18 @@ test('both baseline shapes require an exact advancing self-initiated replacement
       for (const deviceProperties of [
         {'ro.boot.verifiedbootstate': 'orange'},
         {'ro.boot.verifiedbootstate': 'yellow', 'ro.boot.flash.locked': '0'},
+        {'ro.boot.flash.locked': ''},
+        {'ro.boot.flash.locked': 'locked'},
+        {'ro.product.device': 'other'},
       ]) {
         assert.throws(() => checkReplacement({
           ...before, observation: readDevice({apkPath: imageApkPath, flags: imageFlags, deviceProperties}),
         }, readDevice({...next, flags, deviceProperties}), signingFamily, offer), /locked verified boot/);
+      }
+      assert.throws(() => checkReplacement({...before, image: undefined}, after, signingFamily, offer), /reviewed signed image evidence/);
+      for (const key of ['vbmetaDigest', 'fingerprintSha256']) {
+        assert.throws(() => checkReplacement({...before, image: {...imageEvidence, [key]: hash('other image')}},
+          after, signingFamily, offer), /reviewed fingerprint or chained VBMeta/);
       }
     } else {
       assert.throws(() => checkReplacement({...before, observation: readDevice({apkPath: imageApkPath})},
@@ -172,18 +199,21 @@ test('a second advancing image or sideload update starts from the exact previous
     const previous = {
       schema, phase: 'after', packageName, distribution, observation: current,
       beforeReceiptSha256: hash('previous before receipt'), signerRootSha256: signingFamily,
-      sdkCommit: 'a'.repeat(40), offer,
+      sdkCommit: 'a'.repeat(40), offer, automaticInstall,
+      ...(distribution === 'image-preinstalled' ? {image: imageEvidence} : {}),
     };
     checkFollowup(previous, distribution, current, signingFamily);
     const before = {
       schema, phase: 'before', packageName, distribution, observation: current,
       previousReceiptSha256: hash(JSON.stringify(previous)), signerRootSha256: signingFamily, offer: nextOffer,
+      image: previous.image,
     };
     const after = readDevice({...prior, version: nextOffer.versionCode, sha256: nextOffer.sha256});
     checkReplacement(before, after, signingFamily, nextOffer);
 
     assert.throws(() => checkFollowup({...previous, phase: 'before'}, distribution, current, signingFamily), /requires a completed readback/);
     assert.throws(() => checkFollowup({...previous, beforeReceiptSha256: 'bad-digest'}, distribution, current, signingFamily), /requires a completed readback/);
+    assert.throws(() => checkFollowup({...previous, automaticInstall: undefined}, distribution, current, signingFamily), /verified automatic install history/);
     assert.throws(() => checkFollowup({...previous, packageName: 'other.package'}, distribution, current, signingFamily), /requires a completed readback/);
     assert.throws(() => checkFollowup({...previous, offer: {...offer, sha256: hash('other APK bytes')}}, distribution, current, signingFamily),
       /does not bind the installed update/);
@@ -196,7 +226,7 @@ test('a second advancing image or sideload update starts from the exact previous
   }
 });
 
-test('the before and after CLI admit installed releases at or below the recorded floor', async t => {
+test('the CLI binds installed releases, the production image and unattended history across two updates', async t => {
   const directory = mkdtempSync(path.join(tmpdir(), 'alpha-wireless-cli-'));
   t.after(() => rmSync(directory, {recursive: true, force: true}));
   const entry = fileURLToPath(new URL('../scripts/verify-wireless-launcher-update.ts', import.meta.url));
@@ -206,6 +236,21 @@ test('the before and after CLI admit installed releases at or below the recorded
   mkdirSync(path.dirname(output));
   writeFileSync(path.join(directory, 'app.config.json'), JSON.stringify({updateManifestUrl: publicUrl}));
   const initialApk = Buffer.from('initial CLI fixture APK bytes');
+  const channel = readFileSync(new URL('../android/aosp/pixel10a-ota-channel.json', import.meta.url));
+  mkdirSync(path.join(directory, 'android/aosp'), {recursive: true});
+  writeFileSync(path.join(directory, 'android/aosp/pixel10a-ota-channel.json'), channel);
+  const releaseChannel = JSON.parse(channel);
+  const imageRecord = path.join(directory, 'release-record.json');
+  writeFileSync(imageRecord, JSON.stringify({
+    schema: 1, kind: 'aosp-release-compatibility', problems: [],
+    product: releaseChannel.product, device: releaseChannel.device, channel: releaseChannel.channel,
+    build: {fingerprint: props['ro.build.fingerprint'], androidRelease: '17', dateUtc: '1794430000', securityPatch: '2026-11-05'},
+    artifacts: {signedTargetFiles: {sha256: imageEvidence.signedTargetFilesSha256}, ota: {type: 'full', sha256: hash('fixture OTA')}},
+    certificates: {releasekey: releaseChannel.otaCertificateSha256},
+    verifiedBoot: {publicKeySha256: releaseChannel.avbPublicKeySha256, rollbackIndexes: [{location: 0, index: '1'}]},
+    apks: [{versionCode: 7, sha256: hash(initialApk), signerSha256: signingFamily, distributable: true}],
+    imageBooted: false, signedUpdateApplied: false, releaseQualified: false, deviceAcceptanceVerified: false,
+  }));
   const secondApk = Buffer.from('second CLI fixture APK bytes');
   const secondManifest = {...manifest, versionCode: 9, sha256: hash(secondApk), sizeBytes: secondApk.length,
     apkUrl: new URL('alpha-phone-9.apk', publicUrl).href};
@@ -246,7 +291,7 @@ test('the before and after CLI admit installed releases at or below the recorded
       import {admitUnitApk as admit} from ${JSON.stringify(provision)};
       export {PACKAGE, packageFacts, deviceFacts} from ${JSON.stringify(provision)};
       const packageName=${JSON.stringify(packageName)}, dataApkPath=${JSON.stringify(dataApkPath)},
-        imageApkPath=${JSON.stringify(imageApkPath)}, props=${JSON.stringify(props)};
+        imageApkPath=${JSON.stringify(imageApkPath)}, props=${JSON.stringify(props)}, signingFamily=${JSON.stringify(signingFamily)};
       ${deviceReader.toString()}
       const after=process.argv[2]==='after', image=process.env.FIXTURE_DISTRIBUTION==='image-preinstalled',
         followup=process.env.FIXTURE_FOLLOWUP==='1';
@@ -256,6 +301,7 @@ test('the before and after CLI admit installed releases at or below the recorded
         assert.equal(serial,'fixture-phone');
         return deviceReader({version:versionCode,sha256:digest,initiator:after||followup?packageName:'com.android.shell',
           apkPath:image&&!after&&!followup?imageApkPath:dataApkPath,
+          manualApproval:process.env.FIXTURE_MANUAL_APPROVAL==='1',
           flags:image?(after||followup?${JSON.stringify(updatedImageFlags)}:${JSON.stringify(imageFlags)}):'HAS_CODE'});
       }
       export function admitUnitApk(file, selection, options={}) {
@@ -292,23 +338,50 @@ test('the before and after CLI admit installed releases at or below the recorded
     }}]});
   for (const distribution of ['sideload', 'image-preinstalled']) {
     const before = path.join(directory, distribution + '-before.json'), after = path.join(directory, distribution + '-after.json');
-    const run = (phase, receipt, extra, followup = false) => {
+    const run = (phase, receipt, extra, followup = false, manualApproval = false) => {
       const versionCode = (followup ? 9 : 8) - (phase === 'before' ? 1 : 0);
       return execFileSync(process.execPath, [realpathSync(output), phase, '--serial', 'fixture-phone',
         '--apk-manifest', manifests.get(versionCode), '--out', receipt, ...extra], {
-        encoding: 'utf8', timeout: 30_000, env: {...process.env, FIXTURE_DISTRIBUTION: distribution, FIXTURE_FOLLOWUP: followup ? '1' : '0'},
+        encoding: 'utf8', timeout: 30_000, stdio: 'pipe', env: {...process.env, FIXTURE_DISTRIBUTION: distribution,
+          FIXTURE_FOLLOWUP: followup ? '1' : '0', FIXTURE_MANUAL_APPROVAL: manualApproval ? '1' : '0'},
       });
     };
-    run('before', before, ['--distribution', distribution]);
+    const imageArgs = distribution === 'image-preinstalled'
+      ? ['--image-release-record', imageRecord, '--image-vbmeta-digest', imageEvidence.vbmetaDigest] : [];
+    if (distribution === 'image-preinstalled') {
+      const invalid = path.join(directory, 'wrong-image.json');
+      const wrongRecord = path.join(directory, 'wrong-release-record.json');
+      writeFileSync(wrongRecord, JSON.stringify({...JSON.parse(readFileSync(imageRecord)), apks: []}));
+      assert.throws(() => run('before', invalid, ['--distribution', distribution]),
+        error => /Provide --image-release-record/.test(error.stderr));
+      assert.throws(() => run('before', invalid, ['--distribution', distribution,
+        '--image-release-record', wrongRecord, '--image-vbmeta-digest', imageEvidence.vbmetaDigest]),
+      error => /does not admit the baked launcher APK/.test(error.stderr));
+      assert.throws(() => run('before', invalid, ['--distribution', distribution,
+        '--image-release-record', imageRecord, '--image-vbmeta-digest', hash('different signed image')]),
+      error => /Booted image differs/.test(error.stderr));
+      assert.equal(existsSync(invalid), false);
+    }
+    run('before', before, ['--distribution', distribution, ...imageArgs]);
+    const rejected = path.join(directory, distribution + '-manual-approval.json');
+    assert.throws(() => run('after', rejected, ['--before', before], false, true),
+      error => /manual|approval/i.test(error.stderr));
+    assert.equal(existsSync(rejected), false);
     run('after', after, ['--before', before]);
     const initial = JSON.parse(readFileSync(before)), updated = JSON.parse(readFileSync(after));
     assert.equal(initial.phase, 'before');
     assert.equal(updated.phase, 'after');
+    assert.deepEqual(updated.automaticInstall, automaticInstall);
+    assert.equal(initial.automaticInstall, undefined);
     assert.equal(updated.signerRootSha256, signingFamily);
     assert.equal(updated.observation.installed.initiator, packageName);
     assert.equal(updated.observation.installed.sha256, manifest.sha256);
     assert.equal(updated.observation.installed.firstInstallTime, initial.observation.installed.firstInstallTime);
     assert.equal(initial.observation.installed.apkLocation, distribution === 'image-preinstalled' ? 'image' : 'data');
+    assert.deepEqual(initial.image, distribution === 'image-preinstalled' ? {
+      ...imageEvidence, releaseRecordSha256: hash(readFileSync(imageRecord)),
+    } : undefined);
+    assert.deepEqual(updated.image, initial.image);
     assert.equal(updated.observation.installed.apkLocation, 'data');
     assert.equal(updated.beforeReceiptSha256, hash(readFileSync(before)), 'after links the actual baseline bytes');
 
@@ -319,6 +392,7 @@ test('the before and after CLI admit installed releases at or below the recorded
     const followingBaseline = JSON.parse(readFileSync(nextBefore)), followingUpdate = JSON.parse(readFileSync(nextAfter));
     assert.equal(followingBaseline.previousReceiptSha256, hash(readFileSync(after)), 'follow-up links the actual previous after bytes');
     assert.deepEqual(followingBaseline.observation, updated.observation, 'the prior phone, image, HOME and installed APK remain exact');
+    assert.deepEqual(followingUpdate.image, initial.image);
     assert.equal(followingUpdate.beforeReceiptSha256, hash(readFileSync(nextBefore)));
     assert.equal(followingUpdate.observation.installed.versionCode, secondManifest.versionCode);
     assert.equal(followingUpdate.observation.installed.sha256, secondManifest.sha256);

@@ -374,13 +374,22 @@ node scripts/verify-wireless-launcher-update.ts after --serial <serial> \
 ```
 
 Repeat with `--distribution image-preinstalled` on the signed image while
-the launcher baked into the image is still active. The first replacement must
+the launcher baked into the image is still active. For its first `before` capture
+pass `--image-release-record <release-record.json>` and
+`--image-vbmeta-digest <digest>`. On the image build host, verify that the signed
+target-files ZIP matches the record's SHA-256. Extract `IMAGES/vbmeta.img` and
+the recorded chained partition images together, then run
+`avbtool calculate_vbmeta_digest --hash_algorithm sha256 --image <vbmeta.img>`.
+Use that digest from the build host. The receipt checks it and the release
+fingerprint against the locked Pixel, and checks the baked launcher against the
+record. The first replacement must
 move the active APK to Android's app data while retaining its system-app
 provenance. For the next advancing release, use `before --previous <after.json>`
 with the same distribution and the previous release's APK manifest. This
 binds the next drill to the exact phone, image, HOME and APK of the previous
-replacement. Keep the first drill signed out. For the signed-in follow-up,
-seed the account and data before the next offer goes live, then take the phone
+replacement and carries forward the image evidence. Start the drill with a new
+baseline receipt from this checkout. Keep the first drill signed out. For the
+signed-in follow-up, seed the account and data before the next offer goes live, then take the phone
 offline again for baseline capture. Keep each public offer stable until both
 distribution paths have saved their `after` receipts.
 
@@ -389,10 +398,14 @@ initiator, install identity, HOME, signing family, boot state and SDK revision.
 Retain the protected `qualification-summary.json` and
 `app-update-delivery.json` with each published APK and its verification manifest
 to bind the exact producer commit to the launcher digest. Keep the signed
-image's `release-record.json` with its baseline. An unattended pass requires no
-manual Check, Install or Continue action in Alpha and no approval tap in
-Android during the disconnected update. Record those observations along with
-retained data, Keystore, resident, voice and recovery.
+image's `release-record.json` with its baseline. Capture `after` promptly,
+before rebooting. It requires the matching completed Android install session
+to identify the automatic mode and show no manual approval. The receipt keeps
+only the matching session facts. A device that omits or has discarded that
+history cannot supply this receipt. Observe the disconnected update without
+tapping Check, Install or Continue in Alpha or approving an Android prompt.
+Record those observations along with retained data, Keystore, resident, voice
+and recovery.
 
 The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alphaphone/issues/888)
 and [wireless launcher acceptance #889](https://github.com/eliza-research/alphaphone/issues/889).
