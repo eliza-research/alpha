@@ -240,7 +240,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
 
 type AgentStatusShell = {S():{view?:string|null};openView(view:string,patch?:Record<string,unknown>|null,chat?:unknown,opts?:{push?:boolean}):unknown};
 /** Where a tap on an unavailable agent goes. Product Android hides the connection chooser, so it opens
- * Settings > Agent connection (Back returns to the calling view); development and browser builds keep the chooser. */
+ * Settings > About > Status (Back returns to the calling view); development and browser builds keep the chooser. */
 export function showAgentStatus(shell:AgentStatusShell|null|undefined){
  if(!shell||!Capacitor.isNativePlatform()||testMocksEnabled){connectionController.open();return;}
  const from=shell.S().view;

@@ -21,7 +21,7 @@ let capabilityAbort = null, inferenceAbort = null, scaleGeneration = 0, scaleVer
 const textScaleSettlement = () => null, changed = () => { changes++; };
 let changes = 0;
 ${slice('let licenses: {', '/** Native reset results that only echo')}
-${slice('  async function refreshCapabilities(enteringSettings=false) {', '  /** Explicit, confirmed disconnect')}
+${slice('  async function refreshCapabilities(enteringSettings=false) {', '  /** Android shows its own role dialog')}
 globalThis.page = {
   mount(instance) { owner = instance; void refreshCapabilities(); }, unmount(instance) { (function () { ${slice('if (owner === this) { capabilityAbort?.abort();', '\n')} }).call(instance); },
   refreshCapabilities, loadLicenses: () => loadLicenses(changed), shown: () => ({gmail, licenses: licenses.status}),

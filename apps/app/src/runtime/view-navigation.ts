@@ -238,7 +238,7 @@ export class ViewNavigationClient {
     try{
       current();const claim=object(await this.request('/api/views/interact-claim',identity,controller.signal));
       if(typeof claim.claimId!=='string')return;claimId=claim.claimId;current();
-      // 'Review phone actions first' covers agent commands in a view; an unreadable choice counts as on.
+      // 'Ask before Alpha acts' covers agent commands in a view; an unreadable choice counts as on.
       if(this.reviewFirst){const review=await this.reviewFirst(controller.signal).catch(()=>true);current();if(review){error='review-required: the owner reviews phone actions first';return;}}
       result=await this.executeView(frame.viewId,frame.capability,frame.params,controller.signal,current);success=true;
     }catch{error='Native view command failed or its outcome is unknown; it was not repeated';}
