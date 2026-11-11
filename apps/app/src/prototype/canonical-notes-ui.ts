@@ -11,6 +11,7 @@ import {CanonicalNotesController,type NotesPhase} from './canonical-notes-contro
 import {CanonicalNotesEditor} from './canonical-notes-editor';
 import type {CanonicalNoteSaveIntent} from './note-recorder';
 import {formatDateTime} from './locale-time';
+import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 type Bag=Record<string,any>;
 type CanonicalTrashEntry={id:string;title:string;deletedAt:string;revision:number};
 const UNAVAILABLE='Agent offline';
@@ -140,7 +141,7 @@ export class CanonicalNotesUi {
    await copySelectedText(noteShareText({...note,kind:note.kind}).text);
    if(current())api.toast('Draft copied.');
   }catch(error){
-   if(current()&&!(error instanceof DOMException&&error.name==='AbortError'))api.toast(error instanceof Error?error.message:'Draft could not be copied.');
+   if(current()&&!(error instanceof DOMException&&error.name==='AbortError'))api.toast(errorNotice(error,'Draft could not be copied.'),ERROR_TOAST);
   }
  }
  /** A connection change ends this binding; an unsaved edit is not carried over, so the owner is told. */
@@ -268,7 +269,7 @@ export class CanonicalNotesUi {
   const note=this.controller.viewNote(id);if(!note||!api.isActive()||this.open!==id)return;
   const result=await noteScheduleDraft(note,kind);
   if(!this.controller.current||!api.isActive()||this.open!==id)return;
-  if(result.status!=='ready'){api.toast(result.message);return;}
+  if(result.status!=='ready'){api.toast(errorNotice(result.message,'Couldn’t start a draft from this note.'),ERROR_TOAST);return;}
   const {draft}=result,shared={id:null,title:draft.title,off:1,t:9,d:1,where:'',video:false,who:[],repeat:'none',notes:draft.notes,origin:draft.origin};
   if(kind==='event'){if(!api.reviewCalendarDraft?.({...shared,creationId:crypto.randomUUID(),separateCreation:false,cal:'native:local',alert:null})){api.toast('Calendar busy');return;}}
   else api.open('calendar',{calendarAuthority:api.get('calendar').calendarAuthority,form:{...shared,cal:'alpha-reminders',alert:0},open:null,month:null,day:1},'hidden');
