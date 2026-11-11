@@ -1394,8 +1394,8 @@
       </button>
       <div class="browser-page-controls" role="group" aria-label="Page navigation">
       <sc-if value="{{browser.loading}}"><button class="ib" aria-label="Stop loading" onClick="{{browser.stopLoading}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></sc-if>
-      <button class="ib" aria-label="Previous page" onClick="{{browser.goBack}}" style="width: 40px; opacity: {{browser.backOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></button>
-      <button class="ib" aria-label="Next page" onClick="{{browser.goFwd}}" style="width: 40px; opacity: {{browser.fwdOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="M5 12h14M12 5l7 7-7 7"></path></svg></button>
+      <button class="ib" aria-label="Previous page" onClick="{{browser.goBack}}" style="width: 40px; opacity: {{browser.backOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.back}}"></path></svg></button>
+      <button class="ib" aria-label="Next page" onClick="{{browser.goFwd}}" style="width: 40px; opacity: {{browser.fwdOp}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.right}}"></path></svg></button>
       </div>
       <button class="ib" aria-label="Tabs" onClick="{{browser.openTabs}}"><span style="min-width: 21px; height: 21px; border: 1.6px solid currentColor; border-radius: 7px; font-size: 11.5px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 3px; box-sizing: border-box">{{browser.nTabs}}</span></button>
       <button class="ib" aria-label="Menu" onClick="{{browser.toggleMenu}}"><svg class="i" viewBox="0 0 24 24" style=""><path d="{{ic.more}}"></path></svg></button>

@@ -5,6 +5,7 @@ import {test,expect} from '@playwright/test';
 // A synthetic canvas stream supplies only the camera permission boundary; encoding and IndexedDB are real.
 // No physical camera, model, native API, upload or external account is used.
 test('browser camera persists a real encoded frame, releases capture and restores Photos after reload',async({page},info)=>{
+ await page.clock.install();
  await page.addInitScript(()=>{
  const devices=navigator.mediaDevices;Object.defineProperty(navigator,'mediaDevices',{configurable:true,value:devices});
  localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
@@ -35,6 +36,8 @@ test('browser camera persists a real encoded frame, releases capture and restore
  await page.getByRole('button',{name:'Favorite',exact:true}).click();
  await expect(page.getByRole('button',{name:'Remove from favorites',exact:true})).toBeVisible();
  await page.screenshot({path:info.outputPath('saved-photo.png'),animations:'disabled'});
+ // Pause before the delete, so its real ten-second Undo window stays deterministic.
+ await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now()+1000)));
  await choosePhotoAction(page,'Delete photo');
  await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Albums',exact:true}).click();
@@ -42,7 +45,14 @@ test('browser camera persists a real encoded frame, releases capture and restore
  await page.getByRole('button',{name:/^Photo, /}).click();
  await page.getByLabel('Photo actions',{exact:true}).click();await expect(page.getByRole('button',{name:'Recover',exact:true})).toBeVisible();
  expect(await page.evaluate(async()=>{const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');return (await library.list({trashed:true})).items.length;})).toBe(1);
- await choosePhotoAction(page,'Recover');
+ await choosePhotoAction(page,'Recover');await page.mouse.move(0,0);
+ await expect.poll(()=>page.evaluate(async()=>{const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');return {trash:(await library.list({trashed:true})).items.length,live:(await library.list()).items.length};})).toEqual({trash:0,live:1});
+ // Restoration completed, but its notice must not replace the owner's retained Undo.
+ await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
+ await expect(page.getByText('Restored',{exact:true})).toHaveCount(0);
+ await page.clock.fastForward(9999);
+ await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
+ await page.clock.fastForward(1);
  await expect(page.getByText('Restored',{exact:true})).toBeVisible();
  const result=await page.evaluate(async()=>{
   const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');
