@@ -17,8 +17,8 @@ const timerPorts = {name: 'approval-service-timer-ports', setup(builder) {
 async function fixture(bundle) {
   const context = new AsyncLocalStorage();
   const reads = new Map(), callbacks = new Map(), deletions = new Map(), completed = new Set();
-  let worker, task, timer, result, stopped = false, stable = true;
-  const errors = [], workerErrors = [];
+  let worker, task, timer, result, stopRequest, stopped = false, stopSettled = false, stable = true;
+  const errors = [], workerErrors = new Map(), refusedSelectors = new Set();
   const {ApprovalService} = bundle.instantiate({
     setTimeout(callback, delay) {
       assert.equal(timer, undefined);
@@ -102,7 +102,7 @@ async function fixture(bundle) {
   function execute(owner, operation) {
     void context.run(owner, operation).then(
       () => completed.add(owner),
-      error => {workerErrors.push(error); completed.add(owner);},
+      error => {workerErrors.set(owner, error); completed.add(owner);},
     );
   }
   return {
@@ -113,7 +113,11 @@ async function fixture(bundle) {
       execute(owner, () => worker.execute(runtime, {option, resolvedBy: actorId}, delivered));
     },
     fire() {assert.equal(timer.status, 'armed'); timer.status = 'fired'; context.run('timeout', timer.callback);},
-    read(owner) {settle(reads, owner, task ?? null);},
+    read(owner) {
+      if ((owner === 1 || owner === 2) && task && !stopped && service.listPendingUserActions().length === 0)
+        refusedSelectors.add(owner);
+      settle(reads, owner, task ?? null);
+    },
     callback(owner, fails = false) {settle(callbacks, owner, undefined, fails);},
     delete(owner) {
       task = undefined;
@@ -121,11 +125,20 @@ async function fixture(bundle) {
       if (owner === 'timeout') completed.add(owner);
     },
     cancel() {execute('cancel', () => service.cancelApproval(taskId));},
-    async stop() {await service.stop(); stopped = true;},
+    stop() {
+      stopped = true;
+      stopRequest = service.stop().then(() => {stopSettled = true;});
+      void stopRequest.catch(() => {});
+    },
+    stopSettled: () => stopSettled,
     async outcome() {
       assert.ok(result, 'The original request settles');
       await outcome;
-      for (const error of workerErrors) assert.match(error.message, /Injected approval callback failure/);
+      await stopRequest;
+      for (const owner of refusedSelectors)
+        assert.equal(workerErrors.get(owner)?.code, 'APPROVAL_CALLBACK_UNAVAILABLE');
+      for (const [owner, error] of workerErrors)
+        if (!refusedSelectors.has(owner)) assert.match(error.message, /Injected approval callback failure/);
       for (const {scope, error} of errors) {
         assert.equal(scope, 'ApprovalService.timeout');
         assert.match(error.message, /Injected approval callback failure/);
@@ -142,7 +155,7 @@ export async function checkApprovalServiceRefinement(vendorPath, extraSources = 
   const selectionWins = (owner, fails = false) => {
     const other = 3 - owner;
     return [
-      ['deliver', owner], ['deliver', other], ['read', owner], ['read', other], ['delete', other],
+      ['deliver', owner], ['deliver', other], ['read', owner], ['read', other],
       ['callback', owner, fails], ...(fails ? [] : [['delete', owner]]),
     ];
   };
@@ -152,7 +165,7 @@ export async function checkApprovalServiceRefinement(vendorPath, extraSources = 
     ['typed-selection-denial', [['deliver', 1, 'decline'], ['read', 1], ['callback', 1], ['delete', 1]]],
     ['timeout-default', [['fire'], ['read', 'timeout'], ['callback', 'timeout'], ['delete', 'timeout']]],
     ['timeout-callback-rejects', [['fire'], ['read', 'timeout'], ['callback', 'timeout', true]]],
-    ['timeout-beats-delivered-selector', [['deliver', 1], ['fire'], ['read', 'timeout'], ['read', 1], ['delete', 1], ['callback', 'timeout'], ['delete', 'timeout']]],
+    ['timeout-beats-delivered-selector', [['deliver', 1], ['fire'], ['read', 'timeout'], ['read', 1], ['callback', 'timeout'], ['delete', 'timeout']]],
     ['expired-task-read-skips-callback', [['fire'], ['cancel'], ['delete', 'cancel'], ['read', 'timeout'], ['delete', 'timeout']]],
     ['cancel-owns-settlement', [['deliver', 1], ['cancel'], ['delete', 'cancel'], ['read', 1], ['delete', 1]]],
     ['stop-owns-settlement', [['deliver', 1], ['stop'], ['read', 1], ['delete', 1]]],
@@ -166,6 +179,8 @@ export async function checkApprovalServiceRefinement(vendorPath, extraSources = 
       const before = f.observe();
       await f[operation](owner, option);
       await tick();
+      if (operation === 'stop')
+        assert.equal(f.stopSettled(), false, 'Stop waits for the already-admitted operation');
       const after = f.observe();
       let action;
       switch (operation) {
@@ -191,11 +206,12 @@ export async function checkApprovalServiceRefinement(vendorPath, extraSources = 
     await f.outcome();
     traces.push(trace);
   }
-  return checkTraces({model: 'CoreApprovalService', id: 'CoreApprovalService-source', sources: bundle.sources,
+  return checkTraces({model: 'CoreApprovalServiceCurrent', id: 'CoreApprovalService-current-source', sources: bundle.sources,
     driverHashes: bundle.driverHashes, traces, scope: 'bounded-component', assumptions: [
       `Actual upstream ApprovalService at ${bundle.revision} executes requestApproval, the registered task worker, timeout, cancel and stop.`,
       'One installed task, one controllable timer and two selector identities. Task reads, deletions and callbacks are deferred ports. Task and result observations come from actual runtime requests and promise settlement.',
       'Atomic checkpoints drain promise microtasks. Worker phases and owner history are reconstructed from concrete getTask, callback and deleteTask requests. Timeout resolve and delete admission can share a checkpoint.',
+      'Callback-bearing tasks with no pending owner refuse selection without deleting the task. Shutdown waits for admitted worker and timeout operations to drain.',
       'Task creation timing, fire-and-forget approvals, role checks, worker restart, task-store rejection and arbitrary numbers of approvals remain outside these schedules.',
     ]});
 }

@@ -147,7 +147,6 @@ public class CameraScanInstrumentedTest {
   Set<Long> before=ownedImages();
   String builder=dialog("Review scan document"),capture=dialog("Capture document page");
   String filename="alpha-document-test-"+UUID.randomUUID()+".pdf";
-  File exported=new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),filename);
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
    AppNavigation.liveMode();eval(AppNavigation.request("Camera"));until(AppNavigation.selected("Camera"));AppNavigation.declineStartupAccess();
    View preview=streamingPreview();click("Scan document");until(builder);
@@ -175,10 +174,24 @@ public class CameraScanInstrumentedTest {
    captureScreen("camera-document-draft.png");
    click("Save document PDF");nativeSave(filename);
    until(builder+".textContent.includes('Saved.')",60000);
-   try(android.os.ParcelFileDescriptor fd=android.os.ParcelFileDescriptor.open(exported,android.os.ParcelFileDescriptor.MODE_READ_ONLY);
+   // DocumentsUI owns the exported file. Reopen it through a user-granted picker capability.
+   eval("window.Capacitor.Plugins.DailyApps.perform({action:'files',mimeTypes:['application/pdf'],initialLocation:'downloads'})");
+   new SelectedDocumentInstrumentedTest().selectDocument(filename);
+   com.getcapacitor.JSObject selected=null;
+   for(int attempt=0;attempt<100;attempt++){
+    com.getcapacitor.JSObject result=SelectedDocumentAccess.restore(context());
+    if("selected".equals(result.optString("status"))&&filename.equals(result.optString("name"))){selected=result;break;}
+    SystemClock.sleep(100);
+   }
+   assertNotNull("The picker granted access to the exact exported PDF",selected);
+   assertEquals("application/pdf",selected.getString("mimeType"));
+   String selectionId=selected.getString("selectionId");
+   Uri exported=SelectedDocumentAccess.resolve(selectionId);
+   assertNotNull("The selected PDF capability is live",exported);
+   try(android.os.ParcelFileDescriptor fd=resolver.openFileDescriptor(exported,"r");
        android.graphics.pdf.PdfRenderer pdf=new android.graphics.pdf.PdfRenderer(fd)){
     assertEquals("Actual SAF PDF has the two reviewed pages",2,pdf.getPageCount());
-   }
+   }finally{SelectedDocumentAccess.forget(selectionId);}
    assertEquals("Export publishes no Photos rows",before,ownedImages());
   }
   // The runner removes the disposable user and its files. Cleanup outside the

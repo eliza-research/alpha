@@ -5166,6 +5166,29 @@
         "plugins/plugin-maps/src/client/navigation-relay.ts",
         "plugins/plugin-maps/src/client/agent-navigation.ts"
       ]
+    },
+    {
+      "path": "specs/quint/services/CoreApprovalServiceCurrent.qnt",
+      "module": "CoreApprovalServiceCurrent",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "secondSelectionPreservesClaimedTaskTest"
+      ],
+      "temporal": [
+        "CheckedTemporal"
+      ],
+      "sharedSources": [
+        "packages/core/src/services/approval.ts"
+      ],
+      "sources": [
+        "specs/quint/legacy/core/check-approval-service-refinement.mjs"
+      ],
+      "abstractions": [
+        "One callback-bearing approval, two selector deliveries, one timeout and one cancellation. The current service rejects a second selector without deleting the task held by the original callback.",
+        "Stop retires new work and drains admitted operations. Callback-free async approvals and task creation races have separate implementation coverage."
+      ]
     }
   ]
 }

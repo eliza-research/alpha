@@ -314,11 +314,19 @@ async function editPhoto(page, rows, replace) {
   await expect(view(page, 'viewer')).toBeVisible();
   await t.point('Original photo opens in the actual viewer', action('OpenViewer', 3));
   await button(page, 'Edit photo').click();
-  await expect(button(page, 'Save copy')).toBeEnabled();
-  await expect(button(page, 'Replace original')).toBeEnabled();
+  await expect(button(page, 'Save copy')).toBeDisabled();
+  await expect(button(page, 'Replace original')).toBeDisabled();
   await button(page, 'Rotate').click();
   await expect(button(page, 'Save copy')).toBeEnabled();
+  await expect(button(page, 'Replace original')).toBeEnabled();
+  const beforeSave = await readRows(page);
   await button(page, replace ? 'Replace original' : 'Save copy').click();
+  if (replace) {
+    const confirmation = page.getByRole('dialog', {name: 'Replace original photo?', exact: true});
+    await expect(confirmation).toBeVisible();
+    assert.deepEqual(await readRows(page), beforeSave, 'Opening replacement review does not change any library row');
+    await confirmation.getByRole('button', {name: 'Replace original', exact: true}).click();
+  }
   await expect(toast(page)).toContainText(replace ? 'Saved' : 'Copy saved');
   const result = await readRows(page);
   const original = result.find(row => row.id === rows[2].id);
