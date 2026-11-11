@@ -88,11 +88,11 @@ test('development vault locks when leaving and reports autofill selection only a
   await devVault(page);
   await expect(page.getByText('None', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Use for autofill', exact: true }).click();
-  // The development picker selects its synthetic provider; the action's status readback confirms it.
-  await expect(page.getByText('Alpha', { exact: true }).last()).toBeVisible();
+  // The synthetic picker emits no Android resume event; the UI confirms selection only after readback.
+  await expect(page.getByRole('region', { name: 'Settings', exact: true }).getByText('None', { exact: true })).toBeVisible();
   await expect(page.getByText('Confirm Alpha Phone passwords in Android, then return here.', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Refresh autofill status', exact: true }).click();
-  await expect(page.getByText('Alpha', { exact: true }).last()).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Settings', exact: true }).getByText('Alpha', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Use for autofill', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open Example sign-in', exact: true })).toBeVisible();
@@ -200,7 +200,7 @@ test('native vault: Android unlock, app bindings, copy and autofill picker with 
   // Opening Android's confirmation is not a selection; only the readback changes the status.
   await expect(page.getByText('None', { exact: true })).toBeVisible();
   await page.evaluate(() => { const f = (window as any).vaultFixture; f.selected = 'this-app'; for (const callback of f.listeners.appResumed || []) callback({}); });
-  await expect(page.getByText('Alpha', { exact: true }).last()).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Settings', exact: true }).getByText('Alpha', { exact: true })).toBeVisible();
   const calls = await page.evaluate(() => (window as any).vaultFixture.calls.map((c: any) => c.method));
   expect(calls).toEqual(expect.arrayContaining(['status', 'unlock', 'list', 'copy', 'openAutofillSettings']));
   // Proton Pass remains an alternative provider on the same page.

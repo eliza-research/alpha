@@ -43,6 +43,8 @@ body:has([data-alpha-layer="conversation"][aria-hidden="false"]) .alpha-plan-not
 .alpha-plan-notice-actions button{pointer-events:auto;min-height:44px;padding:8px 13px;border-radius:22px;font:inherit;font-weight:500;color:var(--acct,#0000ff)}
 .alpha-plan-notice-actions button:first-child{background:var(--fg,#000);color:var(--bg,#fff)}
 .alpha-plan-notice-actions button[aria-label]{margin-left:auto;min-width:44px;font-size:22px;color:var(--fg,#000)}
+/* Dismiss uses the same x icon as every dialog close button. */
+.alpha-plan-notice-actions button[aria-label^="Dismiss"]{display:inline-flex;align-items:center;justify-content:center;padding:8px}
 .alpha-plan-notice-actions button:focus-visible{outline:2px solid var(--acct,#0000ff);outline-offset:3px}
 
 /* Shared buttons for sign-in, own keys and provider settings: one primary, one outlined

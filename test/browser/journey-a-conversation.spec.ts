@@ -243,7 +243,7 @@ test('journey A: a proposed phone action is declined from the conversation and n
  await ask.fill('Journey A request with a proposal');await ask.press('Enter');
  await expect(bubble(page,'Journey A request with a proposal')).toHaveCount(1);
  await expect(bubble(page,REPLY)).toHaveCount(1);
- const approve=page.getByRole('button',{name:/^Create note/}),decline=page.getByRole('button',{name:/^Cancel Keep things as they are\./});
+ const approve=page.getByRole('button',{name:/^Create note/}),decline=page.getByRole('button',{name:/^Decline Keep things as they are\./});
  await expect(approve).toHaveCount(1);
  // The exact content is shown for review and nothing has run.
  await expect(conversation).toContainText('“Journey A declined note”');

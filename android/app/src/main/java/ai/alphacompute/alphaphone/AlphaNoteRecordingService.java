@@ -18,6 +18,7 @@ import com.getcapacitor.JSObject;
  * foreground when a recording starts or resumes and ends when the recording is stopped,
  * saved or discarded. It never starts the microphone on its own; Pause in the notification
  * pauses the open recording, and while it is paused the notification says so and offers Resume.
+ * Stop in the notification stops it as Stop does in Notes: the recording is kept for Notes to save.
  * The chronometer shows the recording's own length, not the time since the last resume.
  */
 public final class AlphaNoteRecordingService extends Service {
@@ -27,6 +28,8 @@ public final class AlphaNoteRecordingService extends Service {
  static final String ACTION_PAUSE="ai.alphacompute.alphaphone.notes.recording.PAUSE";
  static final String ACTION_STOP="ai.alphacompute.alphaphone.notes.recording.STOP";
  static final String ACTION_RESUME="ai.alphacompute.alphaphone.notes.recording.RESUME";
+ /** Stop in the notification: the microphone is released and the recording is kept for Notes to save. */
+ static final String ACTION_FINISH="ai.alphacompute.alphaphone.notes.recording.FINISH";
  /** True while this service holds the foreground with its notification. */
  private static volatile boolean foreground;
  private static volatile String foregroundRecording;
@@ -58,7 +61,10 @@ public final class AlphaNoteRecordingService extends Service {
   context.getSystemService(NotificationManager.class).notify(NOTIFICATION_ID,notification(context,status));
  }
  private static Intent intent(Context context,String action,String recordingId){
-  return new Intent(context,AlphaNoteRecordingService.class).setAction(action).putExtra(EXTRA_RECORDING,recordingId==null?"":recordingId);
+  String identity=recordingId==null?"":recordingId;
+  // Extras do not identify a PendingIntent. UPDATE_CURRENT may rewrite even an immutable
+  // token held by an old notification, so give each recording its own filter identity.
+  return new Intent(context,AlphaNoteRecordingService.class).setAction(action).setIdentifier(identity).putExtra(EXTRA_RECORDING,identity);
  }
 
  @Override public IBinder onBind(Intent intent){return null;}
@@ -69,8 +75,15 @@ public final class AlphaNoteRecordingService extends Service {
   String recording=intent==null?"":intent.getStringExtra(EXTRA_RECORDING);
   AlphaNoteRecorder recorder=AlphaNoteRecorder.get(this);
   if(ACTION_PAUSE.equals(action)||ACTION_RESUME.equals(action)){
-   if(recording!=null&&recorder.owns(recording))try{if(ACTION_PAUSE.equals(action))recorder.pause(recording);else recorder.resume(recording);}catch(RuntimeException|java.io.IOException changed){/* Closed, or the microphone is unavailable: the state is shown as it is. */}
+   // A retained Resume must not rearm after Stop or revive a service that lost its foreground.
+   if(recording!=null&&recorder.owns(recording))try{if(ACTION_PAUSE.equals(action))recorder.pause(recording);else if(foreground&&recording.equals(foregroundRecording)&&"paused".equals(recorder.status().optString("state")))recorder.resume(recording);}catch(RuntimeException|java.io.IOException changed){/* Closed, or the microphone is unavailable: the state is shown as it is. */}
    refresh(this);
+   return START_NOT_STICKY;
+  }
+  if(ACTION_FINISH.equals(action)){
+   // The same stop as in Notes: the recording stays open, stopped, until Notes saves or discards it.
+   if(recording!=null&&recorder.owns(recording))try{recorder.stop(recording);}catch(RuntimeException changed){/* Closed meanwhile: the state is shown as it is. */}
+   stopClosedRecording(recording,startId);
    return START_NOT_STICKY;
   }
   if(ACTION_STOP.equals(action)){
@@ -107,26 +120,31 @@ public final class AlphaNoteRecordingService extends Service {
  }
  @Override public void onDestroy(){if(activeService==this){activeService=null;foregroundRecording=null;foreground=false;}super.onDestroy();}
 
- /** "Recording" with a chronometer at the recording's length and Pause, or "Paused" with Resume. */
+ /** "Recording" with a chronometer at the recording's length and Pause, or "Paused" with Resume; Stop in both. */
  static Notification notification(Context context,JSObject status){
   NotificationManager manager=context.getSystemService(NotificationManager.class);
-  if(manager.getNotificationChannel(CHANNEL)==null){
-   NotificationChannel channel=new NotificationChannel(CHANNEL,"Notes recording",NotificationManager.IMPORTANCE_LOW);
-   channel.setShowBadge(false);
-   manager.createNotificationChannel(channel);
-  }
+  // Created each time: on a phone that already has the channel this only adds its description.
+  NotificationChannel channel=new NotificationChannel(CHANNEL,"Notes recording",NotificationManager.IMPORTANCE_LOW);
+  channel.setDescription("Shown while Notes is recording, with Pause and Stop.");
+  channel.setShowBadge(false);
+  manager.createNotificationChannel(channel);
   String recording=status.optString("recordingId","");boolean paused="paused".equals(status.optString("state"));
   Intent open=new Intent(context,MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
   PendingIntent content=PendingIntent.getActivity(context,0,open,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
   PendingIntent toggle=PendingIntent.getService(context,paused?2:1,intent(context,paused?ACTION_RESUME:ACTION_PAUSE,recording),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
+  PendingIntent finish=PendingIntent.getService(context,3,intent(context,ACTION_FINISH,recording),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
   Notification.Builder builder=new Notification.Builder(context,CHANNEL)
-   .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+   .setSmallIcon(R.drawable.ic_note_recording)
    .setContentTitle(paused?"Paused":"Recording")
+   .setContentText("Stop here, then save it in Notes.")
    .setContentIntent(content)
    .setOngoing(true)
    .setOnlyAlertOnce(true)
    .setCategory(Notification.CATEGORY_SERVICE)
-   .addAction(new Notification.Action.Builder(null,paused?"Resume":"Pause",toggle).build());
+   // Nothing here is private: the lock screen shows the state with Pause and Stop.
+   .setVisibility(Notification.VISIBILITY_PUBLIC)
+   .addAction(new Notification.Action.Builder(null,paused?"Resume":"Pause",toggle).build())
+   .addAction(new Notification.Action.Builder(null,"Stop",finish).build());
   if(paused)builder.setShowWhen(false).setUsesChronometer(false);
   else builder.setUsesChronometer(true).setShowWhen(true).setWhen(System.currentTimeMillis()-Math.max(0,status.optLong("durationMs",0)));
   return builder.build();

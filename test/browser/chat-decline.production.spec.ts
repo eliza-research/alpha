@@ -128,7 +128,7 @@ test('a proposal is declined from its chat card and the agent records the reject
   // A pending proposal is recovered into the conversation for review; nothing is sent.
   await page.getByRole('button', { name: 'Open conversation', exact: true }).click();
   await expect(page.getByText('Create note', { exact: true })).toBeVisible({ timeout: 20_000 });
-  const decline = page.getByRole('button', { name: /^Cancel Keep things as they are\./ });
+  const decline = page.getByRole('button', { name: /^Decline Keep things as they are\./ });
   await expect(decline).toBeVisible();
   await decline.click();
   const declined = page.getByText('Declined. No phone action was performed.', { exact: true });
@@ -142,7 +142,7 @@ test('a proposal is declined from its chat card and the agent records the reject
   expect(state.effects).toBe(0);
   expect(state.journal.filter((m: string) => ['reserve', 'markApplying', 'finish'].includes(m))).toEqual([]);
   // The declined card has no approval or decline action left.
-  await expect(page.getByRole('button', { name: /^Cancel Keep things as they are\./ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Decline Keep things as they are\./ })).toHaveCount(0);
   await expect(page.getByText('Create note', { exact: true })).toHaveCount(0);
 });
 

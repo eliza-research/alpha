@@ -45,22 +45,43 @@ test('browser photo rotation, crop and filter save a distinct copy with unchange
  await page.screenshot({path:info.outputPath('saved-copy.png'),animations:'disabled'});
 });
 test('lost photo-copy response and reload recover the same durable receipt without another copy',async({page})=>{
- await seed(page);await openEditor(page);
+ const original=await seed(page);await openEditor(page);
  await page.getByRole('button',{name:'Rotate',exact:true}).click();await expect(page.getByRole('button',{name:'Save copy',exact:true})).toBeEnabled();
- await page.evaluate(async()=>{const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');const save=library.saveEdit;library.saveEdit=async input=>{(window as any).savedEdit=input;await save(input);throw Error('Synthetic lost reply after commit');};});
+ await page.evaluate(async()=>{
+  const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');
+  const save=library.saveEdit,result=library.editResult,forget=library.forgetEdit;
+  (window as any).copyFixture={save,result,recoveryReads:0,acknowledgements:0};
+  library.saveEdit=async input=>{(window as any).savedEdit=input;await save(input);throw Error('Synthetic lost reply after commit');};
+  // Withhold recovery as well: an immediately readable result would be acknowledged
+  // and its receipt intentionally removed before this test tries a replay.
+  library.editResult=async()=>{(window as any).copyFixture.recoveryReads++;throw Error('Synthetic unavailable recovery until reload');};
+  library.forgetEdit=async input=>{(window as any).copyFixture.acknowledgements++;return forget(input);};
+ });
  await page.getByRole('button',{name:'Save copy',exact:true}).click();
- await expect(page.getByText('Copy saved',{exact:true})).toBeVisible();
+ await expect(page.getByText('Copy outcome could not be checked. Use saved-copy recovery; no additional copy was created.',{exact:true})).toBeVisible();
  const request=await page.evaluate(()=>(window as any).savedEdit);
- await page.evaluate(async id=>(await import('/src/runtime/media-copy-intent.ts')).admitMediaCopyIntent(id),request.sessionId);
+ const unacknowledged=await page.evaluate(async request=>{
+  const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');const f=(window as any).copyFixture;
+  const intent=await(await import('/src/runtime/media-copy-intent.ts')).readMediaCopyIntent();
+  const first=await f.result({operationId:request.sessionId}),repeated=await f.save(request);
+  let changedRejected=false;try{await f.save({...request,rotation:180});}catch{changedRejected=true;}
+  return {intent,first,repeated,changedRejected,count:(await library.list()).items.length,
+   original:await library.read({id:'1000'}),recoveryReads:f.recoveryReads,acknowledgements:f.acknowledgements};
+ },request);
+ expect(unacknowledged.intent?.token).toBe(request.sessionId);
+ expect(unacknowledged.first.status).toBe('saved');expect(unacknowledged.first).toEqual(unacknowledged.repeated);
+ expect(unacknowledged.changedRejected).toBe(true);expect(unacknowledged.count).toBe(2);
+ expect(unacknowledged.original).toEqual(original);expect(unacknowledged.recoveryReads).toBeGreaterThan(0);
+ expect(unacknowledged.acknowledgements).toBe(0);
  await page.reload();await page.getByRole('button',{name:'Photos',exact:true}).click();
  await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/media-copy-intent.ts')).readMediaCopyIntent())).toBe(null);
- const result=await page.evaluate(async request=>{
+ await expect.poll(()=>page.evaluate(async request=>(await(await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary.editResult({operationId:request.sessionId})).status,request)).toBe('not-started');
+ const after=await page.evaluate(async request=>{
   const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');
-  const first=await library.editResult({operationId:request.sessionId}),repeated=await library.saveEdit(request);
-  let changedRejected=false;try{await library.saveEdit({...request,rotation:180});}catch{changedRejected=true;}
-  return {first,repeated,changedRejected,count:(await library.list()).items.length};
+  let retiredRejected=false;try{await library.saveEdit(request);}catch(error){retiredRejected=/Reopen the photo editor/.test(String((error as Error).message));}
+  return {retiredRejected,count:(await library.list()).items.length,original:await library.read({id:'1000'})};
  },request);
- expect(result.first.status).toBe('saved');expect(result.first).toEqual(result.repeated);expect(result.changedRejected).toBe(true);expect(result.count).toBe(2);
+ expect(after).toEqual({retiredRejected:true,count:2,original});
 });
 test('recovery retires a suspended photo save before it can commit in another tab',async({page,context})=>{
  const original=await seed(page);

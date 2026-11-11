@@ -1,3 +1,4 @@
+import {toastObservation,finishUndoWindow} from './helpers/undo-feedback';
 import {openLegacyNotes} from './helpers/legacy-notes';
 // B-10: a full Notes Trash refuses a deletion without losing data.
 // Browser build only; source/test evidence. The native slot cap ("storage-full" from
@@ -53,11 +54,13 @@ async function lowerEntryLimit(page:Page,limit:number){
 test('a deletion that would overfill Trash is refused: the note stays saved, Trash is unchanged, and making room lets it through',async({page})=>{
  test.setTimeout(120_000);
  const rewritten=await lowerEntryLimit(page,2);
+ await page.clock.install();
  await page.goto('/');await openNotes(page);
  expect(rewritten()).toBeGreaterThan(0);
  expect(await page.evaluate(async()=>(await import('/src/runtime/notes-trash-policy.ts')).NOTES_TRASH_MAX_ENTRIES)).toBe(2);
  for(const title of ['Alpha','Bravo','Charlie','Delta'])await createNote(page,title,`${title} body, exact.`);
  // Fill Trash to its limit through the Delete control.
+ await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now()+1000)));
  await deleteNote(page,'Alpha');await deleteNote(page,'Bravo');
  const full=await trashEntries(page),saved=await savedRecords(page);
  expect(full.map(entry=>entry.note.title).sort()).toEqual(['Alpha','Bravo']);
@@ -65,6 +68,9 @@ test('a deletion that would overfill Trash is refused: the note stays saved, Tra
 
  // One more deletion: refused, in words, before anything is written.
  // The earlier deletion's Undo toast has the same word; let it expire first.
+ await expect.poll(async()=>{const state=await toastObservation(page);return Number(state.undo)+state.queued.filter(notice=>notice.undo).length;}).toBe(2);
+ await finishUndoWindow(page);await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeVisible();
+ await finishUndoWindow(page);
  await expect(page.getByText('Deleted',{exact:true})).toHaveCount(0,{timeout:15_000});
  await page.getByRole('button',{name:'Open Charlie',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
@@ -126,6 +132,7 @@ test('a deletion that would push Trash past its byte limit is refused: the note 
  test.setTimeout(120_000);
  const LIMIT=5000;
  const rewritten=await lowerByteLimit(page,LIMIT);
+ await page.clock.install();
  await page.goto('/');await openNotes(page);
  expect(rewritten()).toBeGreaterThan(0);
  const limits=await page.evaluate(async()=>{const policy=await import('/src/runtime/notes-trash-policy.ts');return [policy.NOTES_TRASH_MAX_BYTES,policy.NOTES_TRASH_MAX_ENTRIES];});
@@ -136,6 +143,7 @@ test('a deletion that would push Trash past its byte limit is refused: the note 
  await createNote(page,'Heavy',heavy);
  await createNote(page,'Second heavy',heavy);
  await createNote(page,'Tiny','x');
+ await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now()+1000)));
  await deleteNote(page,'Small');await deleteNote(page,'Heavy');
  const full=await trashEntries(page),saved=await savedRecords(page),bytes=await trashBytes(page);
  expect(full.map(entry=>entry.note.title).sort()).toEqual(['Heavy','Small']);
@@ -145,6 +153,9 @@ test('a deletion that would push Trash past its byte limit is refused: the note 
 
  // A second heavy note does not fit: refused in words before anything is written.
  // The earlier deletion's Undo toast has the same word; let it expire first.
+ await expect.poll(async()=>{const state=await toastObservation(page);return Number(state.undo)+state.queued.filter(notice=>notice.undo).length;}).toBe(2);
+ await finishUndoWindow(page);await expect(page.getByRole('button',{name:'Undo',exact:true})).toBeVisible();
+ await finishUndoWindow(page);
  await expect(page.getByText('Deleted',{exact:true})).toHaveCount(0,{timeout:15_000});
  await page.getByRole('button',{name:'Open Second heavy',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();

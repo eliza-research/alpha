@@ -456,7 +456,14 @@ test.describe('outages and offline use',()=>{
   expect(await configured(page)).toBe(0);
   // The network goes away and comes back while Cloud is still unreachable: one read, the plan stays
   // unknown with no notice or sign-in, and repeated online events read nothing more.
-  await page.evaluate(()=>{for(const type of ['offline','online','online'])window.dispatchEvent(new Event(type));});
+  // Android re-reads native connectivity. Observe the offline result before returning online;
+  // synchronous browser hints would let the generation fence correctly discard that old read.
+  await page.evaluate(()=>{(window as any).planFixture.networkConnected=false;window.dispatchEvent(new Event('offline'));});
+  await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().inferenceOffline)).toBe(true);
+  expect(await page.evaluate(()=>(window as any).planFixture.networkObservations.includes(false))).toBe(true);
+  expect(await identityReads()).toBe(before+1);
+  await page.evaluate(()=>{(window as any).planFixture.networkConnected=true;window.dispatchEvent(new Event('online'));window.dispatchEvent(new Event('online'));});
+  await expect.poll(identityReads).toBe(before+2);
   await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().residentSubscription?.kind)).toBe('unavailable');
   expect(await identityReads()).toBe(before+2);
   await page.evaluate(()=>{window.dispatchEvent(new Event('online'));window.dispatchEvent(new Event('pageshow'));});await idle(page);
@@ -466,13 +473,15 @@ test.describe('outages and offline use',()=>{
   await noCloudNotice(page);
   // The network goes away and returns again: the plan is read again at once and Cloud AI is bound, with no tap.
   await fixture(page,{identity:'ok'});
-  await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
+  await page.evaluate(()=>{(window as any).planFixture.networkConnected=false;window.dispatchEvent(new Event('offline'));});
+  await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().inferenceOffline)).toBe(true);
   if(background){
    // Wi-Fi and Airplane mode open Android Settings, so the network often returns while Alpha is hidden.
-   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});window.dispatchEvent(new Event('online'));});await idle(page);
+   await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});(window as any).planFixture.networkConnected=true;window.dispatchEvent(new Event('online'));});
+   await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().inferenceOffline)).toBe(false);await idle(page);
    expect(await identityReads()).toBe(before+2);
    await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});document.dispatchEvent(new Event('visibilitychange'));});
-  }else await page.evaluate(()=>window.dispatchEvent(new Event('online')));
+  }else await page.evaluate(()=>{(window as any).planFixture.networkConnected=true;window.dispatchEvent(new Event('online'));});
   // Within the minute only the network's return could have read Cloud again (the rebind reads it once more).
   await admitted(page);
   expect(await identityReads()).toBeGreaterThan(before+2);
