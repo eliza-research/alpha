@@ -1757,6 +1757,8 @@
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaUpdateStatusReceiver.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/UpdateConfirmationReceipt.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java"
       ],
@@ -1844,6 +1846,8 @@
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaUpdateStatusReceiver.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/UpdateConfirmationReceipt.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java",
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialShutdownLease.java"
@@ -1958,6 +1962,8 @@
       "sources": [
         "apps/app/src/prototype/settings-adapter.ts",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaUpdateStatusReceiver.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/UpdateConfirmationReceipt.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",
         "vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/ConnectionTransport.java"
       ],
@@ -2932,6 +2938,31 @@
       ],
       "abstractions": [
         "Closed credential, PCM, provider and HTTPS ports exercise one transport call per trace. Direct guard and PCM decoding have declared synthetic boundaries. Installed authority and provider acceptance remain separate."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeDeletionReviewAdmission.qnt",
+      "module": "NativeDeletionReviewAdmission",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/alphacompute/alphaphone/DeletionReviewAdmission.java"
+      ],
+      "tests": [
+        "pauseWinsBeforeWorkerTest",
+        "workerAdmissionSurvivesPauseTest",
+        "dismissAndShowErrorSettleOnceTest"
+      ],
+      "invariants": [
+        "AtMostOneAdmission",
+        "AtMostOneSettlement",
+        "RetiredNeverAdmitted",
+        "SettledNeverQueued"
+      ],
+      "abstractions": [
+        "One review lease, with exact queued/admitted/retired state and successful return counts. The JVM adapter executes all 81 ordered four-call histories.",
+        "Android Activity/AlertDialog and worker scheduling, effect staging and actual device acceptance are separate obligations."
       ]
     }
   ]

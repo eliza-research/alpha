@@ -9,12 +9,12 @@ import { browserHostedResults } from './hosted-results';
 import { browserApps } from './apps';
 import { WebPlugin,registerPlugin } from '@capacitor/core';
 import {testMocksEnabled} from '../build-flags';
-import type { BrowserDaily } from './daily';
+import {reminderNoticeRevision,type BrowserDaily} from './daily';
 import { revision } from './revision';
 import {notificationDocument,notificationState,NotificationPolicyChanged,type NotificationState as State} from './notification-store';
 
 const apps=browserApps;
-type Notice = {id:string;revision:string;source:'own'|'external'|'hosted';appLabel:string;title:string;text:string;at:number;clearable:boolean;canOpen:boolean;packageName?:string;epoch?:string};
+type Notice = {id:string;revision:string;source:'own'|'external'|'hosted';appLabel:string;title:string;text:string;at:number;clearable:boolean;canOpen:boolean;packageName?:string;epoch?:string;occurrenceId?:string};
 type DeviceEvent = Notice & {source:'external';packageName:string;sourceKey:string;autoCancel:boolean;secret:boolean};
 type Selection={packageName:string;preview:boolean};
 type Identity = {id:string;revision:string;source?:string};
@@ -26,7 +26,7 @@ function record(state:State,row:Notice,event:string){trim(state);if(state.histor
 /** Synthetic device events persist; Alpha observations and redacted history remain separate. */
 export class BrowserNotifications extends WebPlugin {
  private session=revision();
- constructor(private daily:BrowserDaily,private calendar=new BrowserCalendar()){super();window.addEventListener('alpha:notifications-document-changed',()=>this.changed());const retire=()=>{this.session=revision();};window.addEventListener('alpha:device-state',retire);window.addEventListener('blur',retire);window.addEventListener('pagehide',retire);window.addEventListener('pageshow',retire);document.addEventListener('visibilitychange',retire);}
+ constructor(private daily:BrowserDaily,private calendar=new BrowserCalendar()){super();for(const name of ['alpha:notifications-document-changed','alpha:reminders-document-changed'])window.addEventListener(name,()=>this.changed());const retire=()=>{this.session=revision();};window.addEventListener('alpha:device-state',retire);window.addEventListener('blur',retire);window.addEventListener('pagehide',retire);window.addEventListener('pageshow',retire);document.addEventListener('visibilitychange',retire);}
  private async state(){const state=await notificationState(),before=JSON.stringify(state);trim(state);if(JSON.stringify(state)===before)return state;return notificationDocument.edit(state=>{trim(state);return state;});}
  private allowed(state:State,row:Notice){return state.enabled&&!state.paused&&state.accessGranted&&apps.some(app=>app.packageName===row.packageName)&&state.apps.some(app=>app.packageName===row.packageName);}
  private observe(state:State,row:DeviceEvent):Notice {
@@ -69,7 +69,7 @@ export class BrowserNotifications extends WebPlugin {
  async focusSnapshot(){return this.readNotices(false);}
  private async readNotices(applyFocus:boolean){
   const {reminders}=await this.daily.listReminders(),state=await this.state(),hidden=locked();
-  const own:Notice[]=state.appEnabled&&state.channels.reminders?reminders.filter(row=>!row.pendingDeletion&&row.status==='posted'&&!state.dismissed.includes(row.occurrenceId!)).map(row=>({id:row.id,revision:row.occurrenceId!,source:'own',appLabel:'Alpha Phone',title:hidden?'Alpha Phone':row.title,text:hidden?'':row.body||'',at:row.postedAt||row.at,clearable:true,canOpen:!hidden})):[];
+  const own:Notice[]=state.appEnabled&&state.channels.reminders?reminders.filter(row=>!!row.occurrenceId&&!row.pendingDeletion&&row.status==='posted'&&row.noticeDismissedOccurrence!==row.occurrenceId&&!state.dismissed.includes(row.occurrenceId)).map(row=>({id:row.id,revision:reminderNoticeRevision(row.target),occurrenceId:row.occurrenceId,source:'own',appLabel:'Alpha Phone',title:hidden?'Alpha Phone':row.title,text:hidden?'':row.body||'',at:row.postedAt||row.at,clearable:true,canOpen:!hidden})):[];
   let calendar:Notice[]=[],calendarStatus:'ready'|'unavailable'|'disabled'='disabled';
   if(state.appEnabled&&state.channels.calendar){try{calendar=(await this.calendar.listAlerts()).items.map(row=>({id:row.id,revision:row.revision,source:'own',appLabel:'Calendar',title:hidden?'Calendar':row.title,text:hidden?'':row.text,at:row.at,clearable:true,canOpen:!hidden}));calendarStatus='ready';}catch{calendarStatus='unavailable';}}
 
@@ -93,8 +93,23 @@ export class BrowserNotifications extends WebPlugin {
   if(opening&&!action.signal.aborted&&!locked())window.dispatchEvent(new CustomEvent('alpha:browser-open-view',{detail:view}));this.changed();
   }finally{action.dispose();}
  }
- async open(input:Identity){if(input.id.startsWith('focus:'))return this.focusAction(input,true);if(input.source==='own'&&input.id.startsWith('workflow:')){if(!(await this.state()).appEnabled)throw Error('Notifications are disabled.');return actOnWorkflowNotice(input,true);}if(input.source==='hosted')return browserHostedResults.action(input,true);if(input.source==='external')return this.external(input,true);if(locked())throw Error('Unlock to open this notification.');const {items}=await this.list();if(!items.some(row=>row.source==='own'&&row.id===input.id&&row.revision===input.revision))throw Error('Notification changed.');if(input.id.startsWith('calendar:')){await this.calendar.alertAction({...input,open:true});this.changed();return;}window.dispatchEvent(new CustomEvent('alpha:browser-open-view',{detail:'calendar'}));await this.daily.notifyReminder(input.id,input.revision);}
- async dismiss(input:Identity){if(input.id.startsWith('focus:'))return this.focusAction(input,false);if(input.source==='own'&&input.id.startsWith('workflow:')){if(!(await this.state()).appEnabled)throw Error('Notifications are disabled.');return actOnWorkflowNotice(input,false);}if(input.source==='hosted')return browserHostedResults.action(input,false);if(input.source==='external')return this.external(input,false);if(locked())throw Error('Unlock to dismiss this notification.');const {items}=await this.list();if(!items.some(row=>row.source==='own'&&row.id===input.id&&row.revision===input.revision))throw Error('Notification changed.');if(input.id.startsWith('calendar:')){await this.calendar.alertAction({...input,open:false});this.changed();return;}await notificationDocument.edit(state=>{state.dismissed.push(input.revision);trim(state);});this.changed();}
+ async open(input:Identity){if(input.id.startsWith('focus:'))return this.focusAction(input,true);if(input.source==='own'&&input.id.startsWith('workflow:')){if(!(await this.state()).appEnabled)throw Error('Notifications are disabled.');return actOnWorkflowNotice(input,true);}if(input.source==='hosted')return browserHostedResults.action(input,true);if(input.source==='external')return this.external(input,true);if(locked())throw Error('Unlock to open this notification.');const {items}=await this.list(),selected=items.find(row=>row.source==='own'&&row.id===input.id&&row.revision===input.revision);if(!selected||locked())throw Error('Notification changed.');if(input.id.startsWith('calendar:')){await this.calendar.alertAction({...input,open:true});this.changed();return;}if(!selected.occurrenceId)throw Error('Notification changed.');window.dispatchEvent(new CustomEvent('alpha:browser-open-view',{detail:'calendar'}));await this.daily.notifyReminder(input.id,selected.occurrenceId);}
+ async dismiss(input:Identity){
+  if(input.id.startsWith('focus:'))return this.focusAction(input,false);
+  if(input.source==='own'&&input.id.startsWith('workflow:')){if(!(await this.state()).appEnabled)throw Error('Notifications are disabled.');return actOnWorkflowNotice(input,false);}
+  if(input.source==='hosted')return browserHostedResults.action(input,false);
+  if(input.source==='external')return this.external(input,false);
+  const action=notificationAction(),session=this.session;
+  const current=()=>!action.signal.aborted&&session===this.session&&!locked();
+  try{
+   if(!current())throw Error('Unlock to dismiss this notification.');
+   const {items}=await this.list();
+   if(!current()||!items.some(row=>row.source==='own'&&row.id===input.id&&row.revision===input.revision))throw Error('Notification changed.');
+   if(input.id.startsWith('calendar:'))await this.calendar.alertAction({...input,open:false});
+   else await this.daily.dismissReminderNotice(input,action.signal,current);
+   this.changed();
+  }finally{action.dispose();}
+ }
  async focusAction(input:Identity,open:boolean){const action=notificationAction();try{if(locked()||!(await this.list()).items.some(row=>row.id===input.id&&row.revision===input.revision))throw Error('Notification changed.');action.signal.throwIfAborted();await notificationDocument.edit(state=>{if(locked())throw Error('Notification changed.');state.dismissed.push(input.id);trim(state);},action.signal);if(open&&!action.signal.aborted&&!locked())window.dispatchEvent(new CustomEvent('alpha:browser-open-view',{detail:'messages'}));this.changed();}finally{action.dispose();}}
  async clear(input:{items:Identity[]}){if(!Array.isArray(input.items)||input.items.length>100)throw Error('Refresh notifications.');const outcomes=[];for(const item of input.items){try{await this.dismiss(item);outcomes.push({id:item.id,status:'requested'});}catch{outcomes.push({id:item.id,status:'unavailable'});}}return {outcomes};}
  async deviceEvents(){const state=await this.state();return {items:state.deviceEvents!.map(row=>({id:row.id,revision:row.revision,appLabel:row.appLabel,packageName:row.packageName,notificationId:row.sourceKey.slice(row.packageName.length+1),title:row.title,text:row.text,clearable:row.clearable,autoCancel:row.autoCancel,secret:row.secret}))};}

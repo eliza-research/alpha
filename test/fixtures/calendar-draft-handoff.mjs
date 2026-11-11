@@ -25,9 +25,15 @@ export async function retainCalendarDraft(f) {
   return old.retained;
 }
 export async function discardCalendarDraft(f) {
-  const dialog = f.page.waitForEvent('dialog').then(async dialog => dialog.accept());
-  await Promise.all([f.button('Discard event draft').click(), dialog]);
+  await reviewCalendarDraftDiscard(f, true);
   await f.button('Resume event draft').waitFor({state: 'detached'});
+}
+export async function reviewCalendarDraftDiscard(f, accept) {
+  await f.button('Discard event draft').click();
+  const dialog = f.page.getByRole('dialog', {name: 'Discard draft?', exact: true});
+  await dialog.getByText('Saved events won’t change.', {exact: true}).waitFor();
+  await dialog.getByRole('button', {name: accept ? 'Discard draft' : 'Cancel', exact: true}).click();
+  await dialog.waitFor({state: 'detached'});
 }
 export async function openNote(f) {
   await f.button('Notes').click();

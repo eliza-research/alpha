@@ -1271,7 +1271,7 @@
     </sc-if>
 
     <sc-if value="{{browser.isNew}}">
-      <div style="padding: 110px 24px 140px; display: flex; flex-direction: column; align-items: center; gap: 30px">
+      <div data-alpha-browser-new style="padding: 110px 24px 140px; display: flex; flex-direction: column; align-items: center; gap: 30px">
         <span style="width: 72px; height: 72px; border-radius: 36px; background: var(--s2); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" style="width: 30px; height: 30px"><path d="{{ic.globe}}"></path></svg></span><h2 class="serif" style="font-size:28px;margin:0">New tab</h2>
         <sc-if value="{{browser.isPrivate}}"><p role="note" aria-label="Private tab notice" style="margin: -14px 0 0; text-align: center; font-size: 14.5px; line-height: 1.4; color: var(--mut)">{{browser.privateNotice}}</p></sc-if>
         <button onClick="{{browser.startEdit}}" aria-label="Search or type address" style="width: 100%; min-height: 56px; border-radius: 28px; background: var(--s2); display: flex; align-items: center; gap: 12px; padding: 0 20px; box-sizing: border-box; color: var(--mut); font-size: 16px">
@@ -1991,7 +1991,7 @@
 
 
 <sc-if value="{{is.maps}}">
-<div data-alpha-maps-root data-alpha-maps-guidance="{{maps.isNav}}" ref="{{maps.rootRef}}" style="display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden">
+<div data-alpha-maps-root data-alpha-maps-base="{{maps.isBase}}" data-alpha-maps-guidance="{{maps.isNav}}" ref="{{maps.rootRef}}" style="display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden">
   
   <!-- The full-screen canvas precedes its overlaid controls in reading order. Its bounds cover
        the screen even when tiles fail; reading it after the lower panel jumps back to the top. -->
@@ -2826,6 +2826,7 @@
           <sc-if value="{{files.pv.needsReselect}}"><button onClick="{{files.pv.reselect}}" aria-label="Select renamed file" style="padding: 10px 14px; border-radius: 20px; background: var(--acc); color: var(--alpha-white)">Select renamed file</button></sc-if>
         </div>
         <sc-if value="{{files.pv.canEmail}}"><button onClick="{{files.pv.email}}" style="display:block;min-height:44px;margin-top:12px;padding:0 16px;border-radius:22px;background:var(--s2);font-size:14px;font-weight:600">Use in email</button></sc-if>
+        <sc-if value="{{files.pv.canOpenElsewhere}}"><button onClick="{{files.pv.openElsewhere}}" style="display:block;min-height:44px;margin-top:12px;padding:0 16px;border-radius:22px;background:var(--s2);font-size:14px;font-weight:600">{{files.pv.openElsewhereLabel}}</button></sc-if>
         <sc-if value="{{files.pv.canForget}}"><button onClick="{{files.pv.forget}}" aria-label="Forget selected file" style="display: block; margin-top: 12px; color: var(--mut); font-size: 13px">Forget selected file</button></sc-if>
         <sc-if value="{{files.pv.canAsk}}">
           <button onClick="{{files.pv.ask}}" aria-label="{{name}}: summarize this file" style="display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px 0 14px; margin-top: 14px; border-radius: 18px; background: var(--s2); font-size: 14px; font-weight: 600"><span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;color:var(--acct)"><span class="alpha-compute-mark" aria-hidden="true" style="width:100%;height:100%"></span></span>{{files.pv.askLabel}}</button>
@@ -2839,6 +2840,10 @@
           </div>
         </sc-if>
 
+        <sc-if value="{{files.pv.previewStatus}}"><p role="status" style="margin:20px 0;color:var(--mut)">{{files.pv.previewStatus}}</p></sc-if>
+        <sc-if value="{{files.pv.mediaImage}}"><img src="{{files.pv.mediaUrl}}" alt="{{files.pv.name}}" decoding="async" onError="{{files.pv.mediaError}}" style="display:block;width:100%;max-height:55dvh;margin:20px auto 0;object-fit:contain"></sc-if>
+        <sc-if value="{{files.pv.mediaVideo}}"><video ref="{{files.pv.mediaRef}}" src="{{files.pv.mediaUrl}}" aria-label="{{files.pv.name}}" preload="metadata" onError="{{files.pv.mediaError}}" style="display:block;width:100%;max-height:55dvh;margin:20px auto 0"></video></sc-if>
+        <sc-if value="{{files.pv.mediaAudio}}"><audio ref="{{files.pv.mediaRef}}" src="{{files.pv.mediaUrl}}" aria-label="{{files.pv.name}}" preload="metadata" onError="{{files.pv.mediaError}}" style="display:block;width:100%;margin:20px auto 0"></audio></sc-if>
         <sc-if value="{{files.pv.isPages}}">
           <sc-if value="{{files.pv.isPdf}}">
             <div style="margin-top: 20px; border-radius: 8px; background: {{files.pv.paper}}; box-shadow: 0 0 0 1px var(--line), 0 8px 24px var(--shc); overflow: hidden">

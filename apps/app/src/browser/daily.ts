@@ -10,13 +10,17 @@ import { devSurfacesEnabled } from '../build-flags';
 import type { Reminder, ClockRequest } from '../daily';
 import { revision } from './revision';
 import {notificationState} from './notification-store';
+import {noticeActionBlocked} from './notice-action';
 import {reminderDocument} from './reminder-store';
 import {journalEntry,retireJournal,trimDeletionJournal,settleExpiredDeletions,writeJournalEntry} from './journal-retention';
 type State=ReminderDeletionState&{receipts?:Record<string,{binding:string;result:ReminderResult|ReminderCreateResult;at?:number}>};
 const initial=():State=>({sourceRevision:revision(),reminders:[]});
-async function notificationsAllowed(){const state=await notificationState();return state.appEnabled&&state.channels.reminders!==false;}
+async function notificationsAllowed(signal?:AbortSignal){const state=await notificationState(signal);return state.appEnabled&&state.channels.reminders!==false;}
 async function scheduledStatus():Promise<'scheduled'|'permission-denied'>{return await notificationsAllowed()?'scheduled':'permission-denied';}
 function target(data:State,row:DeletableReminder):ReminderTarget {return {...(row.alertMinutes!==undefined?{timingVersion:2 as const}:{}),sourceId:'browser-reminders',sourceRevision:data.sourceRevision,reminderId:row.id,occurrenceId:row.occurrenceId!,revision:row.revision};}
+export function reminderNoticeRevision(selected:ReminderTarget):string{
+  return JSON.stringify([selected.sourceRevision,selected.reminderId,selected.occurrenceId,selected.revision]);
+}
 function operationBinding(input:{operationId:string;bindingHash:string},operation:ReminderOperation|ReminderCreateOperation) {
   if(!/^[A-Za-z0-9_-]{1,128}$/.test(input.operationId)||!/^[a-f0-9]{64}$/.test(input.bindingHash))throw Error('Invalid reminder operation binding.');
   return JSON.stringify([input.bindingHash,operation]);
@@ -44,6 +48,17 @@ export class BrowserDaily extends WebPlugin {
   async dismissDeletion(id:string){return reminderDocument.edit(initial,data=>{const entry=journalEntry(data.deletions,id);if(!entry||!browserDeletionOwnerVisible(entry.owner)||!['unknown','dispatching'].includes(entry.phase))throw Error('Uncertain deletion is unavailable.');entry.acknowledged=true;return {status:'acknowledged'};});}
   async undoDeletion(id:string){return reminderDocument.edit(initial,data=>undoReminderDeletion(data,id,browserDeletionOwnerVisible));}
   async notifyReminder(id:string,occurrenceId:string){await this.notifyListeners('reminderOpened',{id,occurrenceId});}
+  async dismissReminderNotice(input:{id:string;revision:string},signal:AbortSignal,current:()=>boolean){
+    await reminderDocument.edit(initial,async data=>{
+      if(!current()||noticeActionBlocked()||!await notificationsAllowed(signal))throw Error('Notification changed.');
+      signal.throwIfAborted();
+      const row=data.reminders.find(row=>row.id===input.id);
+      if(!current()||noticeActionBlocked()||!row?.occurrenceId||row.pendingDeletion||row.status!=='posted'||
+        row.noticeDismissedOccurrence===row.occurrenceId||reminderNoticeRevision(target(data,row))!==input.revision)throw Error('Notification changed.');
+      // The notice receipt lives beside its exact occurrence, so a reminder edit cannot race it.
+      row.noticeDismissedOccurrence=row.occurrenceId;
+    },signal);
+  }
   async surfaceInfo(){return {developmentBuild:devSurfacesEnabled,assistant:false,reminderCreationVersion:1 as const,reminderTimingVersion:2 as const,topInset:0,bottomInset:0};}
   async closeAssistant(){window.dispatchEvent(new Event('alpha-back',{cancelable:true}));return {closed:true};}
   async scheduleReminder(input:{id:string;title:string;body?:string;at:number;recurrence?:Reminder['recurrence'];dueAt?:number;alertMinutes?:number|null}) {

@@ -82,36 +82,43 @@ function alphaAgentPathLiterals() {
   return found;
 }
 
-/** Review the sole read-only literal newly covered by an upstream write gate.
- * Keep every declaration and use accounted for; a new caller is not exempted.
- */
+const calendarResolveExample = '/api/approvals/11111111-1111-4111-8111-111111111111/resolve';
+const calendarApprovalClient = 'apps/app/src/runtime/calendar-approval-client.ts';
+const calendarApprovalContract = 'apps/app/src/runtime/calendar-approval.ts';
+const ownerTableFile = 'apps/app/src/product/owner-route-table.ts';
+
+/** Review each declaration and use of the two canonical Calendar routes. */
 function literalMethods(literal, files) {
+  if (literal === '/api/approvals/') {
+    assert.deepEqual([...files], [calendarApprovalContract]);
+    assert.match(fs.readFileSync(calendarApprovalContract, 'utf8'),
+      /return `\/api\/approvals\/\$\{id\}\/resolve`/);
+    const source = fs.readFileSync(calendarApprovalClient, 'utf8');
+    assert.match(source, /read\.connection\.request\(calendarApprovalResolvePath\(read\.id\),\{decision,revision:read\.revision\},signal,\{\},'POST'\)/);
+    return ['POST'];
+  }
   if (literal !== '/api/approvals') return ['POST'];
-  assert.deepEqual([...files].sort(), [
-    'apps/app/src/product/owner-route-table.ts',
-    'apps/app/src/runtime/calendar-approval.ts',
-  ]);
-  for (const [file, expected] of [
-    ['apps/app/src/product/owner-route-table.ts', 2],
-    ['apps/app/src/runtime/calendar-approval.ts', 1],
-  ]) assert.equal([...fs.readFileSync(file, 'utf8').matchAll(/["'`](\/api\/approvals)(?=[?"'`])/g)].length,
-    expected, 'A new approval path occurrence needs its own method review: '+file);
+  assert.deepEqual([...files].sort(), [ownerTableFile, calendarApprovalContract]);
+  for (const [file, expected] of [[ownerTableFile, 2], [calendarApprovalContract, 1]]) {
+    assert.equal([...fs.readFileSync(file, 'utf8').matchAll(/["'`](\/api\/approvals)(?=[?"'`])/g)].length,
+      expected, 'A new approval path occurrence needs its own method review: ' + file);
+  }
   assert.deepEqual(OWNER_ROUTE_TABLE.groups.approvals, {
     prefixes: ['/api/approvals'],
-    routes: [{methods: ['GET'], paths: ['/api/approvals?state=all&limit=500']}],
-  }, 'The renderer/native admission table must permit only this exact GET');
+    id: '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$',
+    routes: [
+      {methods: ['GET'], paths: ['/api/approvals?state=all&limit=500']},
+      {methods: ['POST'], paths: ['/api/approvals/{id}/resolve'], query: []},
+    ],
+  }, 'Only the exact Calendar read and owner decision may pass the local admission table');
   const constant = 'CALENDAR_APPROVAL_READ_PATH';
   const uses = walk('apps/app/src', /\.(?:ts|tsx|js|mjs)$/).flatMap(file =>
-    [...fs.readFileSync(file, 'utf8').matchAll(new RegExp('\\b'+constant+'\\b', 'g'))].map(() => file));
-  assert.deepEqual(uses.sort(), [
-    'apps/app/src/runtime/calendar-approval.ts',
-    'apps/app/src/runtime/connection-ui.tsx',
-    'apps/app/src/runtime/connection-ui.tsx',
-  ]);
-  assert.match(fs.readFileSync('apps/app/src/runtime/calendar-approval.ts', 'utf8'),
+    [...fs.readFileSync(file, 'utf8').matchAll(new RegExp('\\b' + constant + '\\b', 'g'))].map(() => file));
+  assert.deepEqual(uses.sort(), [calendarApprovalClient, calendarApprovalClient, calendarApprovalContract]);
+  assert.match(fs.readFileSync(calendarApprovalContract, 'utf8'),
     /export const CALENDAR_APPROVAL_READ_PATH='\/api\/approvals\?state=all&limit=500';/);
-  assert.match(fs.readFileSync('apps/app/src/runtime/connection-ui.tsx', 'utf8'),
-    /selected\.remote\.request\(CALENDAR_APPROVAL_READ_PATH,undefined,signal\)/);
+  assert.match(fs.readFileSync(calendarApprovalClient, 'utf8'),
+    /connection\.request\(CALENDAR_APPROVAL_READ_PATH,undefined,signal\)/);
   assert.match(fs.readFileSync('apps/app/src/runtime/local-agent.ts', 'utf8'),
     /method:LocalAgentMethod = body===undefined\?'GET':'POST'/);
   return ['GET'];
@@ -122,7 +129,7 @@ function ownerRouteTable() {
   for (const group of Object.values(OWNER_ROUTE_TABLE.groups))
     for (const route of group.routes)
       for (const method of route.methods)
-        for (const raw of route.paths) routes.push([method, raw.split('?')[0].replaceAll('{id}', 'id-1')]);
+        for (const raw of route.paths) routes.push([method, raw.split('?')[0].replaceAll('{id}', '11111111-1111-4111-8111-111111111111')]);
   return routes;
 }
 
@@ -143,7 +150,7 @@ test('the gate model reads the clauses Alpha was reviewed against', () => {
     ['GET', '/api/voice/profiles'], ['GET', '/v1/voice/speaker-profiles/x'], ['GET', '/api/character/experiences'],
     ['GET', '/api/database/tables'], ['GET', '/api/workbench/overview'], ['POST', '/api/views/events/broadcast'],
     ['GET', '/api/memories/browse'], ['POST', '/api/config'], ['POST', '/api/agent/restart'], ['POST', '/api/agent/reset'],
-    ['POST', '/api/approvals'], ['PATCH', '/api/approvals/id-1'], ['DELETE', '/api/approvals/id-1'],
+    ['POST', '/api/approvals'], ['POST', calendarResolveExample], ['PATCH', '/api/approvals/id-1'], ['DELETE', '/api/approvals/id-1'],
   ]) assert.ok(ownerOnly(model, method, pathname), `${method} ${pathname} should be owner-only at the pin`);
   // Reads the gate leaves open, and routes Alpha depends on.
   for (const [method, pathname] of [
@@ -154,18 +161,22 @@ test('the gate model reads the clauses Alpha was reviewed against', () => {
   ]) assert.ok(!ownerOnly(model, method, pathname), `${method} ${pathname} should stay open to the session gate`);
 });
 
-test('no route Alpha issues to its agent is behind the owner-only gate', () => {
+test('Alpha uses the owner-only gate only for a reviewed Calendar decision', () => {
   const model = gateModel(gateSource());
   const refused = [];
   for (const [method, pathname] of ownerRouteTable())
-    if (ownerOnly(model, method, pathname)) refused.push(`${method} ${pathname} (apps/app/src/product/owner-route-table.ts)`);
+    if (ownerOnly(model, method, pathname) && !(method === 'POST' && pathname === calendarResolveExample)) refused.push(`${method} ${pathname} (apps/app/src/product/owner-route-table.ts)`);
   const literals = alphaAgentPathLiterals();
   assert.ok(literals.size > 20, 'Alpha agent path literals were not found');
   // Unclassified literals are conservatively checked as writes. A reviewed read
   // must prove all its declarations/callers and the exact request method above.
   for (const [literal, files] of literals)
-    for (const method of literalMethods(literal, files))
-      if (ownerOnly(model, method, literal.replace(/[{}]/g, ''))) refused.push(`${method} ${literal} (${[...files].join(', ')})`);
+    for (const method of literalMethods(literal, files)) {
+      // The reviewed UUID route is represented by its prefix in the source scan.
+      const path = literal === '/api/approvals/' || literal === '/api/approvals/{id}/resolve'
+        ? calendarResolveExample : literal.replace(/[{}]/g, '');
+      if (ownerOnly(model, method, path) && !(method === 'POST' && path === calendarResolveExample)) refused.push(`${method} ${literal} (${[...files].join(', ')})`);
+    }
   assert.deepEqual(refused, []);
 });
 

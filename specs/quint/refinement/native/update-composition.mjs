@@ -7,7 +7,7 @@ import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.t
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 import {captureInputs, checkTraces, qset} from '../check-traces.mjs';
 import {app, directory, javaTraceCampaign, root} from './java.mjs';
-import {exactUpdateMembers} from './update-barrier.mjs';
+import {exactUpdateMembers, updateConfirmationSources} from './update-barrier.mjs';
 
 const model = 'NativeUpdateComposition';
 const product = app + 'AlphaDevicePlugin.java';
@@ -23,7 +23,7 @@ const setFields = ['registered', 'seen', 'waiting', 'acknowledged', 'eligible', 
 
 export async function checkNativeUpdateComposition(extraSources = []) {
   const harness = 'UpdateCompositionHarness.java';
-  const compiled = [app + 'PluginWorkers.java', 'vendor/eliza/' + journal, 'vendor/eliza/' + lease,
+  const compiled = [app + 'PluginWorkers.java', ...updateConfirmationSources, 'vendor/eliza/' + journal, 'vendor/eliza/' + lease,
     'test/fixtures/UpdateFlowTest.java', ...fixtures, join(directory, 'UpdateCompositionResidentPort.java')];
   const sources = [fileURLToPath(import.meta.url), product, ...compiled, join(directory, harness),
     join(directory, 'Trace.java'), join(directory, 'java.mjs'), join(directory, 'update-barrier.mjs'),

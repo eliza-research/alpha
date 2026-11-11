@@ -1284,7 +1284,8 @@
       "staleDenialKeepsCurrentListingTest",
       "staleGrantCannotReviveAccessTest",
       "retiredListingCannotPublishTest",
-      "staleAgentReadDoesNotShareTest"
+      "staleAgentReadDoesNotShareTest",
+      "retiredAgentReadDoesNotShareTest"
     ],
     "sources": [
       "apps/app/src/prototype/selection-adapter.ts",
@@ -1296,7 +1297,7 @@
     ],
     "abstractions": [
       "Installed folder reader, current access/volume readback and registered agent share admission over deferred storage ports. Two folders, three entries, two volumes and six state-read identities.",
-      "Category/Trash aggregation, filters, selection, preview, mutation dialogs, native watch ownership and durable provider effects remain explicit extensions."
+      "Direct open and late selection release use the shared FilesDirectAdmission model and the Alpha cold-start browser flows. Category/Trash aggregation, filters, mutation dialogs, native watch ownership and durable provider effects remain explicit extensions."
     ]
   },
   {
@@ -3432,15 +3433,17 @@
     "tests": [
       "monthAheadAndTodayTest",
       "nearMidnightTest",
+      "durationAndDirectInputsTest",
       "monthRowsTest"
     ],
     "sources": [
       "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/calendar-form-inputs.ts",
       "apps/app/src/prototype/template.html"
     ],
     "abstractions": [
-      "Quarter-hour draft times and real month facts; no provider mutation or canonical Calendar authority.",
-      "Concrete day/time/month source blocks are checked in calendar-form-controls.mjs; installed behavior remains separate."
+      "Civil minute draft values and real month facts. Provider mutation, DST admission and canonical Calendar authority are separate.",
+      "Representative direct edits and step controls execute the retained form handlers in calendar-form-controls.mjs. Installed behavior is separate."
     ]
   },
   {

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {startMountedCalendar} from './fixtures/calendar-mounted-editor.mjs';
+import {reviewCalendarDraftDiscard} from './fixtures/calendar-draft-handoff.mjs';
 
 test('mounted Calendar Edit keeps the retained draft until explicit Resume or Discard', {timeout: 240_000}, async t => {
   const browser = await startMountedCalendar();
@@ -44,8 +45,7 @@ test('mounted Calendar Edit keeps the retained draft until explicit Resume or Di
           assert.equal(await title.inputValue(), 'Retained edit A');
           assert.equal((await f.snapshot()).form.id, old.form.id);
           await f.button('Back to calendar').click();
-          f.page.once('dialog', dialog => dialog.accept());
-          await f.button('Discard event draft').click();
+          await reviewCalendarDraftDiscard(f, true);
           await f.button('Resume event draft').waitFor({state: 'detached'});
           await open(nextTitle);
           await edit();

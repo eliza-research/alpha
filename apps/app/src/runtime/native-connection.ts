@@ -45,8 +45,7 @@ export interface ConnectionPort {
   openExternal(input:{url:string;requestId:string}):Promise<void>;
 }
 /** Secret storage for the web build's connection slots only. Values are AES-GCM encrypted with a
- * non-extractable key held in IndexedDB; without IndexedDB they live in memory for this page only.
- * This is not Android Keystore: any script running on this origin can use the key. */
+ * non-extractable key held in IndexedDB. Any script running on this origin can use the key. */
 export interface BrowserSecretBackend {
   read(slot:string):Promise<string|null>;
   /** Atomic within this origin: replaces only when the current value equals expected. */
@@ -58,13 +57,6 @@ export const browserConnectionSlot=(slot:unknown):string=>{
   if(typeof slot!=='string'||!slot||slot.length>1024||!/^(remote|cloud|device|cloud-runtime):[^\s]+$/.test(slot))throw new Error('This secure slot is unavailable in the browser.');
   return slot;
 };
-export function memorySecretBackend():BrowserSecretBackend{
-  const values=new Map<string,string>();
-  return {
-    async read(slot){return values.get(slot)??null;},
-    async compareExchange(slot,expected,value){if(expected!==undefined&&(values.get(slot)??null)!==expected)return false;if(value===null)values.delete(slot);else values.set(slot,value);return true;},
-  };
-}
 const SECRET_DATABASE='alpha-connection-secrets.v1';
 function idb<T>(request:IDBRequest<T>):Promise<T>{return new Promise((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
 /** IndexedDB values are {iv,data}; the CryptoKey is structured-cloned and never exported. */
@@ -74,6 +66,8 @@ export function indexedDbSecretBackend(factory:IDBFactory=indexedDB,subtle:Subtl
     const request=factory.open(SECRET_DATABASE,1);
     request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains('keys'))db.createObjectStore('keys');if(!db.objectStoreNames.contains('slots'))db.createObjectStore('slots');};
     const db=await idb(request);
+    db.onclose=()=>{opened=null;};
+    db.onversionchange=()=>{db.close();opened=null;};
     let key=await idb(db.transaction('keys','readonly').objectStore('keys').get('aes')) as CryptoKey|undefined;
     if(!key){
       const generated=await subtle.generateKey({name:'AES-GCM',length:256},false,['encrypt','decrypt']);
@@ -121,12 +115,20 @@ export function indexedDbSecretBackend(factory:IDBFactory=indexedDB,subtle:Subtl
   };
 }
 function webSecrets():BrowserSecretBackend{
-  if(typeof indexedDB==='undefined'||typeof crypto==='undefined'||!crypto.subtle)return memorySecretBackend();
-  const durable=indexedDbSecretBackend(),fallback=memorySecretBackend();
-  let degraded=false;
-  // Private windows can refuse IndexedDB. Keep this page usable without claiming persistence.
-  const use=async<T>(work:(backend:BrowserSecretBackend)=>Promise<T>)=>{if(degraded)return work(fallback);try{return await work(durable);}catch(error){if(error instanceof DOMException&&['InvalidStateError','UnknownError','SecurityError','NotSupportedError'].includes(error.name)){degraded=true;return work(fallback);}throw error;}};
-  return {read:slot=>use(backend=>backend.read(cloudStorageSlot(slot))),compareExchange:(slot,expected,value)=>use(backend=>backend.compareExchange(cloudStorageSlot(slot),expected,value))};
+  let durable:BrowserSecretBackend|undefined;
+  const use=async<T>(work:(backend:BrowserSecretBackend)=>Promise<T>):Promise<T>=>{
+    try {
+      if(typeof indexedDB==='undefined'||typeof crypto==='undefined'||!crypto.subtle)throw new Error('Secure browser storage is unavailable');
+      return await work(durable??=indexedDbSecretBackend());
+    } catch(error) {
+      // A temporary store failure must never acknowledge a write against a different store.
+      throw new Error('Saved sign-in storage could not be accessed. Try again when browser storage is available.',{cause:error});
+    }
+  };
+  return {
+    read:slot=>use(backend=>backend.read(cloudStorageSlot(slot))),
+    compareExchange:(slot,expected,value)=>use(backend=>backend.compareExchange(cloudStorageSlot(slot),expected,value)),
+  };
 }
 /** Plain-HTTP loopback agents are a test-mocks surface; flag-off bundles accept HTTPS only. */
 const webDevelopmentHttp:boolean=import.meta.env!==undefined&&import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS==='1';

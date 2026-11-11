@@ -184,8 +184,12 @@ public class AlphaFilesPlugin extends Plugin {
  /** Opens a file in this app's document preview (a selection like a picked document). */
  @PluginMethod public void storageSelect(PluginCall call){storage(call,b->{
   java.io.File f=b.resolve(call.getString("path",""),false);if(!f.isFile())throw new java.io.FileNotFoundException();
-  String id=SelectedDocumentAccess.authorize(getContext(),contentUri(f),0);
-  JSObject out=result("selected","");out.put("action","files");out.put("selectionId",id);out.put("name",f.getName());out.put("mimeType",StorageBrowser.mime(f.getName()));out.put("canRename",false);return out;
+  Uri uri=contentUri(f);
+  String id=SelectedDocumentAccess.authorize(getContext(),uri,0);
+  String mime=StorageBrowser.mime(f.getName());
+  JSObject out=result("selected","");out.put("action","files");out.put("selectionId",id);out.put("name",f.getName());out.put("mimeType",mime);out.put("canRename",false);
+  if(mime.startsWith("image/")||mime.startsWith("audio/")||mime.startsWith("video/"))out.put("uri",uri.toString());
+  return out;
  });}
  /** Opens a file in the Android app that handles its type. */
  @PluginMethod public void storageOpen(PluginCall call){storage(call,b->{

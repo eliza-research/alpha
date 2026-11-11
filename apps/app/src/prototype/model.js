@@ -1660,7 +1660,7 @@ function brStartPoints(api) {
   step(1200, function () { api.set({ ag: null }); brSaveNote(api, pg.title + " · key points", pg.points); });
 }
 
-registerView("browser", {
+if (testMocksEnabled) registerView("browser", {
   title: "Browser", icon: "globe", aliases: ["web", "internet", "chrome"],
   chat: "input", placeholder: "Ask about this page",
   state: {
@@ -1853,6 +1853,14 @@ registerView("browser", {
       cfNo: function () { set({ confirm: null, ag: null }); api.toast("Not booked. The form is yours."); }
     };
   }
+});
+
+else registerView("browser", {
+  title: "Browser", icon: "globe", aliases: ["web", "internet", "chrome"],
+  chat: "input", placeholder: "Ask about this page",
+  state: { tabs: [], cur: null, marks: [], visits: [], editing: false, addr: "", tabsOpen: false, menu: false, lib: null, share: false },
+  persist: ["tabs", "cur", "marks", "visits"],
+  render: function () { return {}; }
 });
 
 /* ===== module: camera ===== */
@@ -5253,12 +5261,12 @@ class Component extends DCLogic {
 
   /* ---- per-app state ---- */
   vget(k) { var S = this.S(); return Object.assign({}, (VIEWS[k] && VIEWS[k].state) || {}, (S.vs || {})[k] || {}); }
-  vset(k, p) {
+  vset(k, p, options) {
     this.setState(function (prev) {
       var vs = Object.assign({}, (prev && prev.vs) || {});
       vs[k] = Object.assign({}, (VIEWS[k] && VIEWS[k].state) || {}, vs[k] || {}, p);
       return { vs: vs };
-    });
+    }, options?.afterCommit);
   }
   vreset(k, p) {
     this.setState(function (prev) {

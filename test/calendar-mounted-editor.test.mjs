@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {startMountedCalendar} from './fixtures/calendar-mounted-editor.mjs';
+import {reviewCalendarDraftDiscard} from './fixtures/calendar-draft-handoff.mjs';
 
 const back = page => page.evaluate(() => window.dispatchEvent(new Event('alpha-back', {cancelable: true})));
 
@@ -12,7 +13,7 @@ test('mounted Calendar Back and Discard clear the validation latch after the ret
       const title = f.page.getByRole('textbox', {name: 'Title', exact: true});
       const picker = f.page.getByRole('textbox', {name: 'Name or email', exact: true});
       const status = f.page.getByRole('status', {name: 'Calendar form draft status'}).filter({hasText: 'Check this draft.'});
-      const resume = f.button('Resume event draft'), discard = f.button('Discard event draft');
+      const resume = f.button('Resume event draft');
       await f.button('Calendar').click();
       await f.button('New event').click();
       await title.fill('Last valid draft');
@@ -38,14 +39,12 @@ test('mounted Calendar Back and Discard clear the validation latch after the ret
       await title.fill('x'.repeat(2049));
       await status.waitFor();
       await f.button('Back to calendar').click();
-      f.page.once('dialog', dialog => dialog.dismiss());
-      await discard.click();
+      await reviewCalendarDraftDiscard(f, false);
       assert.ok(await resume.isVisible());
       assert.equal((await f.snapshot()).retained, first.retained);
       assert.equal(await f.invoke('scope'), false);
 
-      f.page.once('dialog', dialog => dialog.accept());
-      await discard.click();
+      await reviewCalendarDraftDiscard(f, true);
       await resume.waitFor({state: 'detached'});
       const afterDiscard = await f.snapshot();
       const available = await f.invoke('scope');

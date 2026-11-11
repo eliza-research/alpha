@@ -38,7 +38,7 @@ export const DENYLIST = Object.freeze([
   'Kitchen Speaker', '4000 1234 5678 9017', 'Card scanned', 'Simulated payment',
   'Memory wiped', 'Logs saved to Downloads', 'Up to date',
   'This page is a visual prototype', 'Pixel 11 Pro', 'Powered by elizaOS ·',
-  'data-alpha-development-lock-screen',
+  'data-alpha-development-lock-screen', 'Booked · ', 'Agent booking',
   'Development vault secret', 'synthetic-dev-',
   // The simulated password provider (browser/password-provider.ts) reaches a bundle only if
   // browserDevProfile stops constant-folding to false; these catch that regression.

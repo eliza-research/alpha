@@ -923,7 +923,28 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         const files=this.filesAgent as FilesAgentRunner|undefined;
         if(!files||!filesContextAllowed(operation,expectedContext)||document.hidden)return {status:'failed',summary:'Open Files on the unlocked phone. Nothing was changed.'};
         signal.throwIfAborted();
-        return await files.run(operation,signal);
+        const session=connectionController.getSnapshot().session;
+        const ownerCurrent=()=>activeShell===this&&this.live&&!document.hidden&&connectionController.getSnapshot().session===session;
+        const openFiles=()=>new Promise<boolean>((resolve,reject)=>{
+          const abort=()=>reject(signal.reason);
+          try{
+            signal.throwIfAborted();
+            context(this);
+            if(!ownerCurrent()||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext)){resolve(false);return;}
+            const chat=this.S().chat;
+            if(!openInternalView(this,'files',chat==='sheet'||chat==='full'?chat:undefined)){resolve(false);return;}
+            signal.addEventListener('abort',abort,{once:true});
+            this.setState({},()=>{
+              signal.removeEventListener('abort',abort);
+              try{
+                signal.throwIfAborted();context(this);
+                const opened=alphaClient.getState().context;
+                resolve(ownerCurrent()&&opened.view==='files'&&!opened.sensitive);
+              }catch(error){reject(error);}
+            });
+          }catch(error){signal.removeEventListener('abort',abort);reject(error);}
+        });
+        return await files.run(operation,signal,openFiles);
       }
       // Until the pin carries photos-view-agent.patch the shared operation union does not name these.
       const photosView:unknown=operation;
@@ -1190,9 +1211,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     this.live = false; alphaClient.disconnect(); window.removeEventListener('alpha-back', this.backHandler); window.removeEventListener('launcher-home', this.homeHandler); window.removeEventListener('alpha-selected-context', this.selectionHandler);
     void this.assistListener?.then((l: Shell) => l?.remove()); originalUnmount.call(this);
   };
-  p.vset = function (key: string, patch: Shell, options?: {exact?: boolean;keepSelection?: boolean}) {
+  p.vset = function (key: string, patch: Shell, options?: {exact?: boolean;keepSelection?: boolean;afterCommit?: () => void}) {
     if(key==='notes'&&Object.hasOwn(patch,'list')&&this.notesSourceMode!=='legacy'){originalSet.call(this,key,{compose:false,record:false});this.toast('That note change could not be saved. Your draft is still open.');return false;}
-    if (key !== 'notes' || !patch.list) { originalSet.call(this,key,patch);return true; }
+    if (key !== 'notes' || !patch.list) { originalSet.call(this,key,patch,options);return true; }
     if(this.notesLegacyAbsent){this.toast('There are no previous notes on this phone.');return false;}
     if(this.notesAgentBusy||!!this.notesAgentRaw&&this.notesAgentRaw===this.notesStore?.raw&&this.notesRaw!==this.notesStore?.raw){this.toast('Your agent is updating Notes. Try again in a moment.');return false;}
     if (this.notesStorageFailed||!this.notesStore) {
