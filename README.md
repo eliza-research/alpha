@@ -122,12 +122,17 @@ product build configuration. Dependency checksums remain in
 ```sh
 npm run test:android:instrumentation -- --owned-emulator --avd <avd> --serial emulator-NNNN
 npm run aosp:stage -- --apk artifacts/launcher-debug.apk --development
+node scripts/verify-aosp-listener.ts --serial <serial> --user 0
 ```
 
 Instrumentation uses an owned disposable emulator. Image staging emits an AOSP
 vendor add-on under `artifacts/aosp/`. APK builds, emulator HOME-role behavior,
 full AOSP boot, real integrations, physical-device testing and user acceptance
 are independent results.
+
+The listener verifier reads the installed package grants, privapp enforcement,
+and the running listener's SELinux domain. Pass `--launcher-descriptor` with
+the reviewed launcher descriptor when the image provisions a privileged launcher.
 
 `scripts/deliver-app-update.ts` publishes an admitted signed launcher APK and
 checks anonymous readback. Merging source does not publish an application update.

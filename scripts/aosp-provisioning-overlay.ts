@@ -13,8 +13,8 @@ export function requestsAllFilesAccess(xmltree: string) {
   return /E: uses-permission[^\n]*\n(?:\s+A: [^\n]*\n)*?\s+A: android:name\([^)]*\)="android\.permission\.MANAGE_EXTERNAL_STORAGE"/.test(xmltree + '\n');
 }
 
-export function provisioningComponents(xmltree: string, packageName: string) {
-  const components = sharedComponents(xmltree, packageName);
+export function provisioningComponents(xmltree: string, packageName: string, options?: {assistant: boolean}) {
+  const components = sharedComponents(xmltree, packageName, options);
   if (!components.autofill) throw new Error('The Alpha APK must declare exactly one BIND_AUTOFILL_SERVICE AutofillService');
   if (!requestsAllFilesAccess(xmltree)) throw new Error('The Alpha APK must request android.permission.MANAGE_EXTERNAL_STORAGE for Files');
   return components;
