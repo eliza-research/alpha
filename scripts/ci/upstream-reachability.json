@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "cbdfbbca0d5cebdd729f4404c4517cd78f7b516a",
-  "head": "e871f0ca87e941556fc50e48f255e943d6b0eb4f",
+  "head": "15317284561239eaedbb4b9d9af1d3c535c380b7",
   "recordedAt": "2026-11-11",
-  "command": "Prior recorded comparison, extended by git rev-list 2570d39b5e36c856adfeccd8c5e9de39fa21768e..e871f0ca87e941556fc50e48f255e943d6b0eb4f",
+  "command": "Prior recorded comparison, extended by git rev-list e871f0ca87e941556fc50e48f255e943d6b0eb4f..15317284561239eaedbb4b9d9af1d3c535c380b7",
   "status": "diverged",
-  "aheadBy": 18,
+  "aheadBy": 19,
   "behindBy": 380,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -82,6 +82,10 @@
     {
       "sha": "e871f0ca87e941556fc50e48f255e943d6b0eb4f",
       "subject": "test(reminders): bind progress fairness to model state"
+    },
+    {
+      "sha": "15317284561239eaedbb4b9d9af1d3c535c380b7",
+      "subject": "fix(reminders): validate legacy create routes against owner intent"
     }
   ],
   "pullRequests": [
