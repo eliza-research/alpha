@@ -1199,7 +1199,7 @@
     <sc-if value="{{browser.isNew}}">
       <div style="padding: 110px 24px 140px; display: flex; flex-direction: column; align-items: center; gap: 30px">
         <span style="width: 72px; height: 72px; border-radius: 36px; background: var(--s2); display: flex; align-items: center; justify-content: center"><svg class="i" viewBox="0 0 24 24" style="width: 30px; height: 30px"><path d="{{ic.globe}}"></path></svg></span><h2 class="serif" style="font-size:28px;margin:0">New tab</h2>
-        <sc-if value="{{browser.isPrivate}}"><div role="img" aria-label="Private tab" style="display:flex;justify-content:center;padding:20px"><svg class="i" viewBox="0 0 24 24" style="width:40px;height:40px"><path d="{{ic.private}}"></path></svg></div></sc-if>
+        <sc-if value="{{browser.isPrivate}}"><div role="img" aria-label="Private tab" style="display:flex;justify-content:center;padding:20px"><svg class="i" viewBox="0 0 24 24" style="width:40px;height:40px"><path d="{{ic.shield}}"></path></svg></div></sc-if>
         <button onClick="{{browser.startEdit}}" aria-label="Search or type address" style="width: 100%; min-height: 56px; border-radius: 28px; background: var(--s2); display: flex; align-items: center; gap: 12px; padding: 0 20px; box-sizing: border-box; color: var(--mut); font-size: 16px">
           <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.search}}"></path></svg><span>Search or type address</span>
         </button>
@@ -1291,7 +1291,7 @@
     <div class="scr" style="position: absolute; top: 100px; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--bg); overflow-y: auto; padding: 6px 0 140px">
       <sc-if value="{{browser.profileUnsupportedEditing}}"><p role="status" aria-label="In-app browsing unavailable" data-alpha-browser-unsupported style="margin:16px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--s2);color:var(--fg);font-size:15px;line-height:1.5">{{browser.profileUnsupportedMessage}}</p></sc-if>
       <!-- The suggestions cover the page and its toolbar badge, so a private tab discloses itself here too (the covered page is inert). -->
-      <sc-if value="{{browser.isPrivate}}"><div role="img" aria-label="Private tab" style="display:flex;justify-content:center;padding:20px"><svg class="i" viewBox="0 0 24 24" style="width:40px;height:40px"><path d="{{ic.private}}"></path></svg></div></sc-if>
+      <sc-if value="{{browser.isPrivate}}"><div role="img" aria-label="Private tab" style="display:flex;justify-content:center;padding:20px"><svg class="i" viewBox="0 0 24 24" style="width:40px;height:40px"><path d="{{ic.shield}}"></path></svg></div></sc-if>
       <sc-for list="{{browser.sugg}}" as="s">
         <button class="tap" onClick="{{s.go}}" style="width: 100%; display: flex; align-items: center; gap: 16px; padding: 0 22px; min-height: 60px; box-sizing: border-box; text-align: left">
           <svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px; color: var(--mut)"><path d="{{s.d}}"></path></svg>
