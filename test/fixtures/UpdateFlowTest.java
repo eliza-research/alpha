@@ -35,8 +35,8 @@ import javax.net.ssl.HttpsURLConnection;
 /**
  * Host-JVM run of AlphaDevicePlugin's update members, compiled from the plugin source by
  * test/app-update.test.mjs against the stubs in test/fixtures/app-update-jvm: one Context is one process whose
- * bridges all hear each broadcast. Most HTTPS responses are served in memory, with the plugin's deadline
- * shortened to three seconds (300 ms in the one scenario that waits it out). Not Android, PackageInstaller or network evidence: the stubs transcribe what AOSP's source
+ * bridges all hear each broadcast. Most HTTPS responses are served in memory, with the download deadline
+ * shortened only in the trickle scenario. Not Android, PackageInstaller or network evidence: the stubs transcribe what AOSP's source
  * does, they do not prove it. One separate cache-retry scenario uses owned loopback TLS and real files;
  * its APK bytes and Android archive/installer ports are still synthetic.
  */
@@ -475,16 +475,17 @@ public final class UpdateFlowTest {
  private static void theDeadlineEndsATrickleNotADownloadThatFinishesInTime(File cache)throws Exception{
   Context context=installing(cache);
   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
-  deadline(TimeUnit.MILLISECONDS.toNanos(300));
-  body=trickle(40);connections.clear();
-  PluginCall late;
-  try{late=tap(owner);}finally{deadline(TimeUnit.SECONDS.toNanos(3));}
-  check(late.rejected.get()==1&&late.resolved.get()==0,"a download still trickling at the deadline fails quietly");
-  check(connections.get(0).closed.getCount()==0&&context.packages.installer.sessions.isEmpty(),"its connection closes and nothing is staged");
-  deadline(TimeUnit.MILLISECONDS.toNanos(300));
-  body=trickle(2);
-  try{check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"a slow download inside the deadline installs, and nothing held the failed attempt");}
-  finally{deadline(TimeUnit.SECONDS.toNanos(3));body=IN_MEMORY;}
+  long defaultDeadline=AlphaDevicePlugin.UPDATE_DEADLINE_NANOS;
+  try{
+   deadline(TimeUnit.MILLISECONDS.toNanos(300));
+   body=trickle(40);connections.clear();
+   PluginCall late=tap(owner);
+   check(late.rejected.get()==1&&late.resolved.get()==0,"a download still trickling at the deadline fails quietly");
+   check(connections.get(0).closed.getCount()==0&&context.packages.installer.sessions.isEmpty(),"its connection closes and nothing is staged");
+   deadline(defaultDeadline);
+   body=trickle(2);
+   check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"a slow download inside the deadline installs, and nothing held the failed attempt");
+  }finally{deadline(defaultDeadline);body=IN_MEMORY;}
  }
  private static void destroyClosesADownloadInFlight(File cache)throws Exception{
   Context context=installing(cache);
@@ -2191,7 +2192,8 @@ public final class UpdateFlowTest {
   context.packages.archiveRead=()->owner.activity.focused=false;
   PluginCall first=tlsApk(8);
   owner.installUpdate(fixtureAutomatic(first));first.awaitAnswer();
-  check(first.rejected.get()==1&&cacheTlsRequests.get()==1&&java.util.Arrays.equals(Files.readAllBytes(download(context).toPath()),APK),"owned TLS delivers exact bytes retained on foreground loss");
+  check(first.rejected.get()==1&&cacheTlsRequests.get()==1&&!owner.activity.focused,"owned TLS reaches archive admission before foreground deferral");
+  check(download(context).exists()&&java.util.Arrays.equals(Files.readAllBytes(download(context).toPath()),APK),"foreground deferral retains the exact TLS download");
   check(context.packages.installer.committed.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null,"TLS deferral grants no session/pause authority");
   context.packages.archiveRead=()->{};owner.activity.focused=true;
   PluginCall next=fixtureAutomatic(tlsApk(8));owner.installUpdate(next);next.awaitAnswer();

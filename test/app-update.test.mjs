@@ -34,14 +34,14 @@ test('the update flow runs one attempt per process, fences a session Android sti
  assert.ok(plugin.includes(offerDeadline),'the production final offer deadline exists');
  const dir=mkdtempSync(join(tmpdir(),'alpha-update-flow-'));
  try{
-  // The plugin's own members with shortened deadlines; the stubs state what Android and Capacitor do.
+  // Let the trickle scenario set a short download deadline without timing other HTTPS transfers.
   const members=join(dir,'AlphaDevicePlugin.java');
   const keyStore=join(dir,'cache-tls.p12');
   execFileSync(javaBinary('keytool'),['-genkeypair','-alias','fixture','-keyalg','RSA','-storetype','PKCS12',
    '-keystore',keyStore,'-storepass','fixture-pass','-keypass','fixture-pass','-dname','CN=localhost',
    '-ext','SAN=dns:localhost,ip:127.0.0.1','-validity','2','-noprompt'],{stdio:'pipe',timeout:jvmTimeout});
   writeFileSync(members,exactUpdateMembers(plugin)
-   .replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)')
+   .replace(deadline,deadline.replace('static final long','static long'))
    .replace(offerDeadline,'private static final int UPDATE_MANIFEST_RECHECK_MILLIS=1200'));
   const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),nativeSource('AlphaUpdateStatusReceiver.java'),nativeSource('UpdateConfirmationReceipt.java'),...javaFiles(fixture('app-update-jvm')).filter(file=>!file.endsWith('/ConnectionTransport.java')),upstreamConnection('ConnectionTransport.java'),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{json:true,timeout:240000,args:[keyStore]});
   assert.match(result,/PASS verified cache retry over owned TLS: one request, exact retained bytes, one synthetic installer commit/);
