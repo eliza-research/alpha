@@ -8,7 +8,7 @@ import {root} from './shell-model-traces.mjs';
 /*
  * The shell's own state methods from prototype/model.js, compiled as a class without React or a
  * DOM: state reads (S), timer groups, toasts, per-view state, navigation, Back, the shade entry
- * points, the pull context, scripted voice and the lock-screen camera entry. Timers are held, not run, so a driver
+ * points, the pull context and scripted voice. Timers are held, not run, so a driver
  * fires exactly the one a model step stands for. The shared navigation reducer is the pinned one.
  */
 const model = readFileSync(join(root, 'apps/app/src/prototype/model.js'), 'utf8');
@@ -20,7 +20,6 @@ function between(from, to) {
 const methods = between('\n  S() {', '\n  /* ---- gestures ---- */');
 const voice = between('\n  startVoice() {', '\n  showHeads() {');
 const pullContext = between('\n  pullContext() {', '\n  sw(fn, opts) {');
-const lockCamera = between('      lockCamera: function () {', '\n      msgs: msgs,').replace(/^\s*lockCamera: function \(\) \{/, '').replace(/\},\s*$/, '');
 const base = between('\nvar BASE = {', '\n};') + '\n};';
 const {navigateMobileShell} = await tsImport(join(root, '.eliza/client-features/packages/ui/src/mobile-shell/navigation.ts'), import.meta.url);
 
@@ -52,7 +51,6 @@ class Shell {
   }
   reply() { return { text: 'ok' }; }
   showHeads() {}
-  lockCamera() { var P = this.props, self = this; ${lockCamera} }
 ${methods}
 ${voice}
 ${pullContext}

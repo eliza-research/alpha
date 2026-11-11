@@ -1,5 +1,5 @@
-/// The reference shell's screen (boot, lock, off, home), the secure camera opened from the lock
-/// screen, scripted voice and the timer groups each of them owns.
+/// The reference shell's screen (boot, lock, off, home), its P-23 refusal to expose Camera on
+/// the lock frame, scripted voice and the timer groups each of them owns. Android owns Keyguard.
 module ShellScreen {
   type State = {
     screen: str, bootPending: bool,
@@ -26,8 +26,9 @@ module ShellScreen {
     s' = if (s.screen == "off") { ...s, screen: "lock", voiceTimers: false }
       else if (s.screen == "lock") { ...s, screen: "off", voice: "off", voiceTimers: false }
       else { ...s, screen: "lock", voice: "off", voiceTimers: false } }
-  action lockCamera = all { s.screen == "lock",
-    s' = { ...left(s, "camera"), screen: "home", secure: true, view: "camera", kept: false } }
+  /// There is no Alpha Camera control on the lock frame; an attempted activation cannot
+  /// dispatch openView or change the locked state. The user first activates Unlock.
+  action tryLockedCamera = all { s.screen == "lock", s' = s }
   /// A secure session opens only its own views; anything else returns to the lock screen.
   action openView(view: str): bool = all { view.in(Views),
     s' = if (s.secure and not(view.in(SecureViews)))
@@ -53,7 +54,7 @@ module ShellScreen {
   action stopVoice = all { s.voice != "off", s' = { ...s, voice: "off", voiceTimers: false } }
   action step = {
     nondet view = Views.oneOf()
-    any { bootTick, unlock, power, lockCamera, openView(view), openKept(view), goHome, armViewTimer,
+    any { bootTick, unlock, power, tryLockedCamera, openView(view), openKept(view), goHome, armViewTimer,
       startVoice, voiceAdvance, stopVoice, s' = s }
   }
 
@@ -62,29 +63,30 @@ module ShellScreen {
   val ViewTimersOwned = s.viewTimers != "" implies s.viewTimers == s.view
   /// A secure session shows only its own views, by every route into a view.
   val SecureConfinement = s.secure implies s.view.in(SecureViews)
+  /// Alpha has no secure-camera entry: none of its user controls creates a secure session.
+  val NoAlphaSecureSession = not(s.secure)
   /// A kept reopen always leaves a view open, and nothing returns the screen to boot under it.
   val KeptShowsView = s.kept implies s.view != "" and s.screen != "boot"
   val safety = VoiceNeedsLitScreen and VoiceTimersOwned and ViewTimersOwned and
-    SecureConfinement and KeptShowsView
+    SecureConfinement and NoAlphaSecureSession and KeptShowsView
 
-  val SecureKeptReopenWitness = s.secure and s.kept and s.view == "camera"
+  val UnlockedKeptCameraWitness = not(s.secure) and s.kept and s.screen == "home" and s.view == "camera"
   val LockedViewWitness = s.screen == "lock" and s.view != "" and not(s.secure)
   val VoiceOnLockWitness = s.voice == "speaking" and s.screen == "lock"
   val LateBootLockWitness = not(s.bootPending) and s.screen == "lock" and s.view == "notes" and s.viewTimers == "notes"
 
-  run secureCameraBouncesTest = init.then(bootTick).then(lockCamera)
-    .expect(s.secure and s.view == "camera" and s.screen == "home")
-    .then(openView("notes")).expect(s.screen == "lock" and not(s.secure) and s.view == "" and safety)
-  run secureHomeLocksTest = init.then(bootTick).then(lockCamera).then(goHome)
-    .expect(s.screen == "lock" and not(s.secure) and s.view == "" and safety)
-  // A kept reopen of another view while the secure camera is up locks instead of showing it.
-  run keptReopenOverSecureCameraTest = init.then(bootTick).then(lockCamera).then(openKept("notes"))
-    .expect(s.screen == "lock" and not(s.secure) and s.view == "" and not(s.kept) and safety)
-    .then(unlock).then(openKept("notes")).expect(s.view == "notes" and s.kept and not(s.secure) and safety)
-  // Back from the session's photos returns to its camera and stays in the session.
-  run secureBackToCameraTest = init.then(bootTick).then(lockCamera).then(openView("photos"))
-    .expect(s.secure and s.view == "photos" and not(s.kept))
-    .then(openKept("camera")).expect(s.secure and s.view == "camera" and s.kept and s.screen == "home" and safety)
+  run lockedCameraRefusedTest = init.then(bootTick).then(tryLockedCamera)
+    .expect(s.screen == "lock" and s.view == "" and not(s.secure) and safety)
+  run unlockThenCameraTest = init.then(bootTick).then(tryLockedCamera).then(unlock).then(openView("camera"))
+    .expect(s.screen == "home" and s.view == "camera" and not(s.secure) and safety)
+    .then(goHome).expect(s.screen == "home" and s.view == "" and safety)
+  // After Unlock, kept state and Back's stack pop remain ordinary app navigation.
+  run keptReopenAfterUnlockTest = init.then(bootTick).then(tryLockedCamera).then(unlock)
+    .then(openView("camera")).then(openKept("notes"))
+    .expect(s.screen == "home" and s.view == "notes" and s.kept and not(s.secure) and safety)
+  run backToCameraAfterUnlockTest = init.then(bootTick).then(unlock).then(openView("camera")).then(openView("photos"))
+    .expect(not(s.secure) and s.view == "photos" and not(s.kept))
+    .then(openKept("camera")).expect(not(s.secure) and s.view == "camera" and s.kept and s.screen == "home" and safety)
   run powerStopsVoiceTest = init.then(bootTick).then(unlock).then(startVoice).then(voiceAdvance).then(power)
     .expect(s.screen == "lock" and s.voice == "off" and not(s.voiceTimers) and safety)
     .then(voiceAdvance.fail())
