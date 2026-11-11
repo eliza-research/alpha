@@ -8,13 +8,14 @@ on:
   workflow_dispatch:
     inputs:
       suite:
-        description: Emulator evidence to produce (each suite is its own job; all runs the three)
+        description: Emulator evidence to produce (browser-controls runs only when selected)
         type: choice
         required: true
         default: instrumentation
         options:
           - instrumentation
           - browser-reading
+          - browser-controls
           - fused-speech
           - all
 permissions:
@@ -81,12 +82,12 @@ jobs:
           ELIZA_DEV_ALLOW_TEST_MOCKS: ""
           VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""
         run: npm run android:build -- --allow-unpackaged-runtime
-      # Only the reading classes that use a loopback speech route need this second build.
+      # The browser suites use loopback fixtures that require the separate test-mocks build.
       - name: Build the separate test-mocks APKs
-        if: inputs.suite == 'browser-reading' || inputs.suite == 'all'
+        if: inputs.suite == 'browser-reading' || inputs.suite == 'browser-controls' || inputs.suite == 'all'
         run: |
           before=$(sha256sum artifacts/*.apk artifacts/instrumentation/*.apk)
-          npm run android:build -- --test-mocks
+          npm run android:build -- --test-mocks --allow-unpackaged-runtime
           test "$before" = "$(sha256sum artifacts/*.apk artifacts/instrumentation/*.apk)"
       - name: Anchor the exact manifests
         id: freeze
@@ -101,7 +102,7 @@ jobs:
         id: apks
         with:
           name: android-emulator-apks-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          # Paths keep their place under the workspace, so the emulator jobs download them in place.
+          # The upload roots this archive at artifacts/. Restore it there in each emulator job.
           path: |
             artifacts/apk-manifest.json
             artifacts/standalone-debug.apk
@@ -155,7 +156,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.artifact_id }}
-          path: .
+          path: artifacts
           merge-multiple: true
       - name: Require the build job's exact APK manifest, capacity and KVM
         run: |
@@ -188,14 +189,15 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  # (b) The reading and page-question classes, on the pinned Chromium 157 WebView.
+  # (b) The selected browser suite, on the pinned Chromium 157 WebView.
   browser-reading:
-    name: Browser reading on WebView 157
+    name: ${{ inputs.suite == 'browser-controls' && 'Browser controls on WebView 157' || 'Browser reading on WebView 157' }}
     needs: build
-    if: inputs.suite == 'browser-reading' || inputs.suite == 'all'
+    if: inputs.suite == 'browser-reading' || inputs.suite == 'browser-controls' || inputs.suite == 'all'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
+      BROWSER_SUITE: ${{ inputs.suite == 'browser-controls' && 'browser-controls' || 'browser-reading' }}
       SOURCE_SHA: ${{ needs.build.outputs.source_sha }}
       EXPECTED_MANIFEST_SHA256: ${{ needs.build.outputs.manifest_sha256 }}
       EXPECTED_TEST_MOCKS_MANIFEST_SHA256: ${{ needs.build.outputs.test_mocks_manifest_sha256 }}
@@ -218,7 +220,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.artifact_id }}
-          path: .
+          path: artifacts
           merge-multiple: true
       - name: Require the build job's exact APK manifests, capacity and KVM
         run: |
@@ -244,11 +246,11 @@ jobs:
           # provisioner reads back.
           emulator-options: -no-window -gpu swiftshader -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -writable-system -append-userspace-opt 'androidboot.boot_devices=pci0000:00/0000:00:03.0 pci0000:00/0000:00:05.0 pci0000:00/0000:00:06.0'
           disable-animations: true
-          script: node scripts/ci/emulator-suite.ts browser-reading
+          script: node scripts/ci/emulator-suite.ts ${{ env.BROWSER_SUITE }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: android-emulator-browser-reading-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          name: android-emulator-${{ env.BROWSER_SUITE }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           # The pinned URL and hashes reproduce the provider archive; it is not uploaded again.
           path: |
             test-results/android-instrumentation/
@@ -292,7 +294,7 @@ jobs:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           artifact-ids: ${{ needs.build.outputs.artifact_id }}
-          path: .
+          path: artifacts
           merge-multiple: true
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
