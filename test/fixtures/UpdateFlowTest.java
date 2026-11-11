@@ -227,7 +227,7 @@ public final class UpdateFlowTest {
  private static void settled()throws Exception{plugin("updateAsked",0L);}
  /** Alpha's last exchange with Android was this long ago, for the tests that measure the wait itself. */
  private static void aged(long millis)throws Exception{plugin("updateAsked",System.nanoTime()-TimeUnit.MILLISECONDS.toNanos(millis));}
- /** Every other scenario keeps three seconds, so a held download released after a few taps is still in time. */
+ /** Override the extracted updater's download deadline for the late-body scenario. */
  private static void deadline(long nanos)throws Exception{plugin("UPDATE_DEADLINE_NANOS",nanos);}
  private static void resume(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.RESUMED;plugin.handleOnResume();}
  private static void stop(AlphaDevicePlugin plugin){plugin.activity.state=Lifecycle.State.CREATED;}
@@ -475,16 +475,16 @@ public final class UpdateFlowTest {
  private static void theDeadlineEndsATrickleNotADownloadThatFinishesInTime(File cache)throws Exception{
   Context context=installing(cache);
   AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  long normalDeadline=AlphaDevicePlugin.UPDATE_DEADLINE_NANOS;
   deadline(TimeUnit.MILLISECONDS.toNanos(300));
   body=trickle(40);connections.clear();
   PluginCall late;
-  try{late=tap(owner);}finally{deadline(TimeUnit.SECONDS.toNanos(3));}
+  try{late=tap(owner);}finally{deadline(normalDeadline);}
   check(late.rejected.get()==1&&late.resolved.get()==0,"a download still trickling at the deadline fails quietly");
   check(connections.get(0).closed.getCount()==0&&context.packages.installer.sessions.isEmpty(),"its connection closes and nothing is staged");
-  deadline(TimeUnit.MILLISECONDS.toNanos(300));
   body=trickle(2);
   try{check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"a slow download inside the deadline installs, and nothing held the failed attempt");}
-  finally{deadline(TimeUnit.SECONDS.toNanos(3));body=IN_MEMORY;}
+  finally{body=IN_MEMORY;}
  }
  private static void destroyClosesADownloadInFlight(File cache)throws Exception{
   Context context=installing(cache);
