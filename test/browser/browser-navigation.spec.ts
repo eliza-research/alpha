@@ -47,7 +47,17 @@ test('rendered browser supports address navigation, Back, Forward, Reload and St
  const navigate=async(path:string)=>{await page.getByRole('button',{name:'Edit address',exact:true}).click();await page.getByRole('textbox',{name:'Address',exact:true}).fill('https://navigation.example/'+path);await page.getByRole('textbox',{name:'Address',exact:true}).press('Enter');};
  const menu=async(name:string)=>{await page.getByRole('button',{name:'Menu',exact:true}).click();await page.getByRole('button',{name,exact:true}).click();};
  const heading=(name:string)=>page.frameLocator('iframe[title=Website]').getByRole('heading',{name,exact:true});
- await navigate('first');await expect(heading('first')).toBeVisible();await expect(page.getByRole('img',{name:'Secure connection',exact:true})).toHaveCount(0);await navigate('second');await expect(heading('second')).toBeVisible();
+ await navigate('first');await expect(heading('first')).toBeVisible();await expect(page.getByRole('img',{name:'Secure connection',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Menu',exact:true}).click();
+ const options=page.getByRole('dialog',{name:'Browser menu',exact:true});
+ await expect(heading('first')).toBeVisible();
+ await expect(options.getByRole('button',{name:'Downloads',exact:true})).toHaveCount(0);
+ await expect(options.getByRole('button',{name:'Read aloud',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('link',{name:'Open in browser',exact:true})).toHaveCount(0);
+ const layout=await options.evaluate(element=>{const box=element.getBoundingClientRect();const last=element.querySelector('button:last-of-type')!.getBoundingClientRect();return {excess:box.bottom-last.bottom,icons:[...element.querySelectorAll('button')].every(button=>button.querySelector('.i'))};});
+ expect(layout.excess).toBeLessThan(20);expect(layout.icons).toBe(true);
+ await page.getByRole('button',{name:'Close menu',exact:true}).click({position:{x:4,y:4}});
+ await navigate('second');await expect(heading('second')).toBeVisible();
  await page.getByRole('button',{name:'Previous page',exact:true}).click();await expect(heading('first')).toBeVisible();await page.getByRole('button',{name:'Next page',exact:true}).click();await expect(heading('second')).toBeVisible();
  const before=second;await menu('Reload page');await expect.poll(()=>second).toBe(before+1);await expect(heading('second')).toBeVisible();
  await navigate('slow');await expect.poll(()=>slow).toBe(1);await menu('Stop loading');await expect(page.getByText('Loading stopped. Reload to open this page.',{exact:true})).toBeVisible();await expect(page.getByRole('img',{name:'Secure connection',exact:true})).toHaveCount(0);

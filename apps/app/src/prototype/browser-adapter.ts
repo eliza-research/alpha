@@ -455,7 +455,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     // transmitted merely by opening the agent. Navigation changes the revision
     // so a proposal for an earlier document cannot retain current authority.
     this.browserSelection = () => tabs.selection(state()?.cur);
-    const S=this.S();const b=this.vget('browser');if(S.view!=='browser'||b.menu||b.editing||b.tabsOpen||b.lib||S.shade)hide();else {blockPageInput();schedulePresentation();}return oldRender.call(this);};
+    const S=this.S();const b=this.vget('browser');if(S.view!=='browser'||b.editing||b.tabsOpen||b.lib||S.shade)hide();else {blockPageInput();schedulePresentation();}return oldRender.call(this);};
   let listener: any, resumeListener: any, openedListener: any, closedListener: any, noticeListener: any, findListener: any, fullscreenListener: any;
   void Browser.addListener('findResult',(event:BrowserFindResult)=>{
     const s=state(),found=s&&!disposed?tabs.findResult(event,s.findTab):undefined;if(!found)return;
@@ -509,7 +509,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   }
   const browserChromeSelector='[data-alpha-layer="composer"],[data-alpha-layer="pill"] > *,[data-alpha-layer="conversation"],.alpha-plan-notice,[data-alpha-toast] > *,[data-screen] > button[aria-label="Home"],[role="search"][aria-label="Find in page"]';
   function browserHostRects(page:Bag){
-    if(nativeUnderAssistant())return [{x:page.x,y:page.y,width:page.width,height:page.height,cornerRadius:0}];
+    if(nativeUnderAssistant()||state()?.menu)return [{x:page.x,y:page.y,width:page.width,height:page.height,cornerRadius:0}];
     return [...document.querySelectorAll<HTMLElement>(browserChromeSelector)].flatMap(element=>{
       const style=getComputedStyle(element),rect=element.getBoundingClientRect();
       if(element.closest('[inert],[aria-hidden="true"]')||style.display==='none'||style.visibility==='hidden'||style.pointerEvents==='none'||Number(style.opacity)===0||rect.width<=0||rect.height<=0)return [];
@@ -549,7 +549,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     if(document.hidden){if(reading)stopReading();return;}
     const s=state(), S=shell?.S();
     const element=document.querySelector('[data-native-browser-viewport]') as HTMLElement|null;
-    const hidden=questionReview || confirming || hostModalOpen(document, Capacitor.isNativePlatform()) || !s || !element || !element.isConnected || !element.getClientRects().length || S?.view!=='browser' || s.editing || s.tabsOpen || s.menu || s.lib || s.share || s.ag || s.confirm || S?.shade || S?.screen !== 'home' || (!nativeUnderlay()&&nativeUnderAssistant());
+    const hidden=questionReview || confirming || hostModalOpen(document, Capacitor.isNativePlatform()) || !s || !element || !element.isConnected || !element.getClientRects().length || S?.view!=='browser' || s.editing || s.tabsOpen || s.lib || s.share || s.ag || s.confirm || S?.shade || S?.screen !== 'home' || (!nativeUnderlay()&&nativeUnderAssistant());
     if(reading && (disposed || document.documentElement.hasAttribute('data-dev-background') || S?.screen!=='home' || S?.view!=='browser' || s?.tabsOpen || s?.editing || S?.shade || ['sheet','full'].includes(S?.chat)))stopReading();
     const rect=element?.getBoundingClientRect();
     // Measure the full page beneath the overlays. Chat movement must not resize the website.

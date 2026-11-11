@@ -164,6 +164,21 @@ export class AutomationsProtocol {
   }
   throw new AutomationOutcomeError('This item cannot be changed here.');
  }
+ async eraseRemoved(row:AutomationRow,signal:AbortSignal):Promise<void> {
+  if(!removedAutomation(row))throw new AutomationOutcomeError('Only recently deleted items can be deleted permanently.');
+  if(row.kind==='prompt'&&row.triggerId){
+   const current=await this.prompt(row.triggerId,signal);
+   if(current.revision!==row.record.trigger?.revision||typeof current.removedAt!=='number')throw new AutomationOutcomeError('This automation changed. Open it again before deleting.');
+   await this.deletePrompt(row.triggerId,signal);
+  }else if(row.kind==='reminder'||row.kind==='routine'){
+   const current=object(await this.request('/api/lifeops/definitions/'+automationId(row.id),'GET',undefined,signal));
+   const definition=object(current.definition??current);
+   if(definition.status!=='archived'||definition.updatedAt!==row.record.definition?.updatedAt)throw new AutomationOutcomeError('This item changed. Open it again before deleting.');
+   await this.deleteDefinition(row.id,signal);
+  }else throw new AutomationOutcomeError('Permanent deletion is unavailable for this item.');
+  const remaining=await this.removed(signal);
+  if(remaining.issues.length||remaining.rows.some(value=>value.key===row.key))throw Error('Permanent deletion could not be confirmed.');
+ }
  async list(signal:AbortSignal,includeRemoved=false):Promise<AutomationSnapshot>{
   const sources=[['automations','/api/automations','automations',automation],['schedules','/api/lifeops/scheduled-tasks?ownerVisibleOnly=1','tasks',scheduled],['reminders','/api/lifeops/reminders','reminders',reminder],['definitions','/api/lifeops/definitions','definitions',definition]] as const;
   const results=await Promise.allSettled(sources.map(async([source,path,key,parse])=>{const data=object(await this.request(path,'GET',undefined,signal));return {rows:list(data[key]).flatMap(item=>{const row=parse(item);return row?[row]:[];}),issue:source==='automations'&&(text(data.workflowFetchError)||(Array.isArray(data.executionFetchErrors)&&data.executionFetchErrors.length))?{source:'automations' as const,unavailable:false,message:'Some workflow data or execution history could not refresh. Open the workflow to check it before running.'}:null};}));

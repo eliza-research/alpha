@@ -946,3 +946,6 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
 .mail-selection-status{font-size:14px;line-height:1.5;margin:0 20px 12px;color:var(--mut)}
 
 .mail-star{display:block;flex-shrink:0;width:16px;height:16px;background:var(--fg);mask-position:center;mask-size:contain;mask-repeat:no-repeat;-webkit-mask-position:center;-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat}
+
+/* Browser options are a compact menu above the still-visible page. */
+[data-alpha-popup] [data-alpha-browser-menu][role="dialog"]{bottom:auto!important;height:auto}

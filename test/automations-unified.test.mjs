@@ -422,3 +422,27 @@ test('an unknown selection result stops later workflow deletions without replayi
   assert.equal(app.render().cards[0].name,'B second');
  }finally{app.close();await f.close();}
 });
+
+test('Recently deleted selections confirm permanent deletion and read back removal',async()=>{
+ let erased=false;
+ const trigger={id:'prompt',displayName:'Disposable automation',instructions:'Never run',revision:'a'.repeat(64),removedAt:1,enabled:false,triggerType:'once'};
+ const f=await fixture(call=>{
+  if(call.path==='/api/automations')return {automations:[]};
+  if(call.path==='/api/triggers?removed=1')return {recovery:true,triggers:erased?[]:[trigger]};
+  if(call.path==='/api/workflow/status')return {body:{engine:'smthrs',status:'ready',lifecycleMutationProtocol:1}};
+  if(call.path==='/api/workflow/removed-workflows')return {workflows:[]};
+  if(call.path==='/api/triggers/prompt'&&call.method==='DELETE'){erased=true;return {ok:true};}
+  if(call.path==='/api/triggers/prompt')return {trigger};
+  return call.path.includes('scheduled-tasks')?{tasks:[]}:call.path.includes('reminders')?{reminders:[]}:{definitions:[]};
+ });
+ const app=adapterFixture(f.request,{}, {deviceReminders:[]});
+ try{
+  app.render().openDeleted();await wait(()=>app.render().cards.length===1&&!app.render().automation.loading);
+  app.render().startSelection();app.render().selectAll();assert.equal(app.render().eraseDisabled,false);
+  app.render().prepareErase();assert.equal(app.render().recoveryReview.title,'Permanently delete 1 item?');
+  app.render().recoveryReview.close();assert.equal(erased,false);
+  app.render().prepareErase();app.render().recoveryReview.confirm();
+  await wait(()=>erased&&!app.render().batchBusy&&!app.render().automation.loading);
+  assert.equal(app.render().cards.length,0);assert.equal(f.calls.filter(call=>call.method==='DELETE').length,1);
+ }finally{app.close();await f.close();}
+});

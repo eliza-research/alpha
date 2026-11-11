@@ -638,29 +638,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     for (const page of out.stack) {
       if (page.isTop) {
         page.groups = page.groups.map((group: Bag) => ({ ...group, rows: settingsNavigationRows(group.rows, developerTools) }));
-        const native=Capacitor.isNativePlatform(), provider=facts.passwordProvider||{};
-        const installation:Bag={installed:'Installed · publisher verified',disabled:'Installed but disabled',absent:'Not installed','unrecognized-publisher':'Installed · publisher not recognized',unknown:'Not checked'};
-        const selection:Bag={proton:provider.installation==='installed'?'Proton Pass selected':provider.installation==='disabled'?'Proton Pass selected · app disabled':'Provider package selected · publisher not verified',other:'Another provider selected',none:'No provider selected',unknown:'Selection unavailable'};
-        const passwordAction=(label:string,kind:string):Bag=>({kNav:true,label,lbl:passwordOpening?'Opening…':label,chev:true,noAB:true,go:async()=>{
-          if(passwordOpening)return;passwordOpening=true;const instance=owner;changed();
-          try{const result=await device.openPasswordProvider({action:kind});if(result?.status!=='opened')throw Error('Unconfirmed provider handoff');}
-          catch{if(owner===instance)api.toast('Password provider setup is unavailable.');}
-          finally{passwordOpening=false;if(owner===instance){changed();void refresh();}}
-        }});
-        const passwordGroup=group(browserDevProfile?[
-          info('Provider',provider.installation==='installed'?'Development provider installed':'Not installed'),
-          info('Selection',provider.selection==='proton'?'Development provider selected':'No provider selected'),
-          info('Autofill','Sample sign-in in the development vault'),
-          passwordAction('Choose password provider','settings'),
-          provider.installation==='installed'?passwordAction('Open development vault','open'):passwordAction('Add development provider','install'),
-        ]:[
-          native?info('Proton Pass',installation[provider.installation]||'Status unavailable'):note('Proton Pass','Managed by your browser and operating system'),
-          native?info('Selection',selection[provider.selection]||'Selection unavailable'):note('Selection','Native provider status is unavailable here'),
-          native?info('Autofill',provider.support==='available'?'Available on this device':provider.support==='unavailable'?'Unavailable for this device or user':'Availability not checked'):note('Autofill','Use your browser’s password settings'),
-          note('Vault','Confirm unlock, saved passwords and filling in your provider.'),
-          note('Compatibility','Proton may show a browser warning. Check the website address before filling.'),
-          ...(native?[{...passwordAction('Choose password provider in Android','settings'),hasSub:true,sub:'In Android, search for passwords or autofill'},...(provider.installation==='installed'?[passwordAction('Open Proton Pass','open')]:provider.installation==='absent'?[passwordAction('Get Proton Pass from Proton','install')]:[]),{kNav:true,label:'Refresh password provider status',lbl:'Refresh password provider status',chev:true,noAB:true,go:()=>void refresh()}]:[]),
-        ]);
+        const native=Capacitor.isNativePlatform();
         if(native){
           const photoAction=(label:string,go:()=>void):Bag=>({kNav:true,label,lbl:label,chev:true,noAB:true,go});
           page.groups.push(group([photoAction('Photos',()=>{api.set({page:'photos'});void refresh();})]));
@@ -723,7 +701,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         if(PASSWORD_PAGES.includes(state.page)){
           const helpers={info,group,toast:(message:string)=>api.toast(message),set:(patch:Bag)=>api.set(patch),ic:api.ic||{}};
           // Alpha's own vault first; Proton Pass stays available as another provider.
-          out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Password manager',hasTitle:true,backLabel:'Back to Settings',back:()=>{leavePasswordManager();api.set({page:null});},hero:{},groups:[...passwordManagerGroups(helpers),{...passwordGroup,cap:'Other password providers',hasCap:true}]});
+          out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Password manager',hasTitle:true,backLabel:'Back to Settings',back:()=>{leavePasswordManager();api.set({page:null});},hero:{},groups:passwordManagerGroups(helpers)});
           const entry=state.page==='password-entry'?passwordEntryPage(helpers,()=>api.set({page:'password-provider'})):null;
           if(entry)out.stack.push(entry);else if(state.page==='password-entry')queueMicrotask(()=>api.set({page:'password-provider'}));
         }else leavePasswordManager();
