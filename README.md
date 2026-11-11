@@ -330,11 +330,13 @@ Complete it in this order:
    The staging phone flow ends at plan admission. For production Cloud acceptance
    on the Pixel, use the admitted release APK. Android requires a separate device
    or fresh installation when the installed copy uses an incompatible signer.
-3. Qualify the exact signed APK bytes, publish the admitted launcher and
-   manifest, and verify anonymous full-byte readback. Then install the initial
-   baseline with the new package ID on each distribution form and run #889 on
-   the machine with the phone. Verify the manifest and APK on
-   `app-stable-alphacompute` before testing wireless delivery.
+3. Qualify the exact signed baseline and establish it on both distribution
+   paths before exposing the phones to a newer offer. If using
+   `scripts/provision-unit.ts`, provision before recording the baseline's version
+   as the release floor. Qualify and publish the first advancing launcher
+   on `app-stable-alphacompute`, verify anonymous full-byte readback, and run
+   #889 on the machine with the phone. Complete both captures before publishing
+   the next advancing release for the follow-up.
    The update itself must use the phone's channel; `scripts/pilot-update.ts` uses
    `adb install -r` and supplies separate in-place replacement evidence.
 4. Before distributing the batch, verify wireless replacement, retained data and
