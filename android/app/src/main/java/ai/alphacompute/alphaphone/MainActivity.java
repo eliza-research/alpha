@@ -361,7 +361,7 @@ public class MainActivity extends BridgeActivity {
    catch (ClassNotFoundException ignored) { /* Optional development transfer module is not attached. */ }
   }
   // The native image gate is checked again by every telephony operation.
-  // Dialer-role components follow the verified image; Android's role dialog stays the owner's choice.
+  // Reconcile the role components with the verified image before registering telephony.
   AlphaTelephonyRoles.sync(this);
   if (AlphaImageCapability.verified(this)) registerPlugin(AlphaTelephonyPlugin.class);
   captureNavigationOpen(getIntent());

@@ -14,7 +14,7 @@ import { clockProductRequirement } from "./aosp-clock-contract.ts";
 import { provisioningComponents, writeProvisioningOverlay } from "./aosp-provisioning-overlay.ts";
 import { writeImageCapability } from "./aosp-image-capability.ts";
 import { releaseBlockers } from "./release-blockers.ts";
-import {parseXmlTree, signerDigest} from "./apk.ts";
+import {parseXmlTree, signerDigest, telephonySetupReceiverProblems} from "./apk.ts";
 import {apkUpdateChannelOrLegacy, assertProvisioningUpdateChannel, recordedProvisioningUpdateChannel} from "./update-channel.ts";
 import {updateArtifactDigest} from "./update-artifact.ts";
 import { aaptManifestTree, admitImageApk, reviewedSourceOverrides as sharedReviewedSourceOverrides } from "../vendor/eliza/packages/os/scripts/android/image-apk-admission.mjs";
@@ -48,6 +48,14 @@ interface ImageApkOptions {
   platformCertificateSha256?: string;
 }
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
+
+/** Require the first-run contract from the APK itself, including when reusing an old admission receipt. */
+export function assertImageLauncherManifest(tree: string, production: boolean) {
+  assertNoAlphaLockScreenSurface(tree);
+  if (!production) return;
+  const problems = telephonySetupReceiverProblems(parseXmlTree(tree));
+  if (problems.length) throw Error(`Production launcher cannot be staged: ${problems.join("; ")}`);
+}
 
 
 /**
@@ -226,7 +234,7 @@ const cameraSource = source || !development
   : { sourceVerified: false, imageVerified: false, lockedCaptureVerified: false, deviceAcceptanceVerified: false, reason: "Development staging without reviewed AOSP source" };
 const env = androidEnv();
 const tree = execFileSync(tool("aapt"), ["dump", "xmltree", apk, "AndroidManifest.xml"], { encoding: "utf8", env, maxBuffer: 64 << 20 });
-assertNoAlphaLockScreenSurface(tree);
+assertImageLauncherManifest(tree, production);
 if (senseImage) assertSenseLauncher(tree, identity.appId);
 if (!descriptor) {
   if (!development)
@@ -311,14 +319,14 @@ const stagedLauncher = path.join(output, 'Launcher.apk');
 if (updateArtifactDigest(stagedLauncher).sha256 !== hash)
   throw Error("Staged launcher differs from the admitted APK");
 const provisioningTree = aaptManifestTree(stagedLauncher, {aapt: tool("aapt"), env});
-assertNoAlphaLockScreenSurface(provisioningTree);
+assertImageLauncherManifest(provisioningTree, production);
 if (!development || senseImage)
   assertProvisioningUpdateChannel(apkUpdateChannelOrLegacy(parseXmlTree(provisioningTree)), reviewedUpdateChannel);
 fs.appendFileSync(path.join(output, "product.mk"), clockProductRequirement);
 // The image system feature Alpha Phone requires, with a system-partition install, before it offers
 // Phone, Contacts or SMS (P-36). Every image declares it, but the app also requires a release
-// launcher and the provisioning overlay written below only for production, so a development image
-// never passes the capability. Test-mocks APKs were refused above, and a sideloaded APK never has the
+// launcher and the provisioning overlay written below for production and admitted Sense qualification
+// images. Test-mocks APKs were refused above, and a sideloaded APK never has the
 // system-partition install. The shared Pixel 10a composition declares it for every brand, so only
 // the other products write it here.
 if (!physical) {
@@ -353,7 +361,7 @@ if (listenerApk) {
 }
 if (production || senseActivation) {
   const components = provisioningComponents(provisioningTree, identity.appId, {assistant: senseActivation !== null});
-  writeProvisioningOverlay(output, identity.appId, components);
+  writeProvisioningOverlay(output, identity.appId, components, {freshTelephony: production});
   // Pixel production adds its launcher overlay inside shared composition. A Sense qualification
   // image also needs the same capability to exercise the guarded source on its userdebug build.
   if (!physical || !production) writeAospCapabilityOverlay(output, identity.appId);

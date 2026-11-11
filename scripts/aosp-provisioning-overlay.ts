@@ -20,18 +20,25 @@ export function provisioningComponents(xmltree: string, packageName: string, opt
   return components;
 }
 
-export function renderProvisioningOverlay(packageName: string, components: ReturnType<typeof sharedComponents>) {
+export function renderProvisioningOverlay(packageName: string, components: ReturnType<typeof sharedComponents>, {freshTelephony}: {freshTelephony: boolean}) {
   const files = sharedRender(packageName, components);
   const readme = files['provisioning/README.md'], tail = '\nThe stock launcher is not removed.';
   if (!readme.includes(tail)) throw new Error('Unexpected shared provisioning README');
+  const telephonyNote = freshTelephony
+    ? '- Fresh telephony setup: stage the matching Provision source packet with `scripts/stage-alpha-os-branding.py --apply` before building. Its feature XML is a production build input.\n'
+    : '';
   files['provisioning/README.md'] = readme.replace(tail, `- All files access: \`MANAGE_EXTERNAL_STORAGE\` (signature|appop|preinstalled) is granted to the
   preinstalled launcher; the app-op stays at its default, which reads that grant.
-${tail}`);
+${telephonyNote}${tail}`);
+  if (freshTelephony) {
+    const telephonyFeature = `${packageName}.fresh_telephony_setup`;
+    files.productMakefile += `PRODUCT_COPY_FILES += $(dir $(launcher_provisioning_dir))branding/provision/fresh-telephony.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/${telephonyFeature}.xml\n`;
+  }
   return files;
 }
 
-export function writeProvisioningOverlay(output: string, packageName: string, components: ReturnType<typeof sharedComponents>) {
-  const files = renderProvisioningOverlay(packageName, components);
+export function writeProvisioningOverlay(output: string, packageName: string, components: ReturnType<typeof sharedComponents>, options: {freshTelephony: boolean}) {
+  const files = renderProvisioningOverlay(packageName, components, options);
   for (const [name, content] of Object.entries(files)) {
     if (name === 'productMakefile') continue;
     const file = path.join(output, name);
