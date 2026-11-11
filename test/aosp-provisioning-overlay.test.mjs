@@ -76,5 +76,5 @@ test("stage-aosp gates the overlay behind --production, never with --development
   const source = fs.readFileSync("scripts/stage-aosp.ts", "utf8");
   assert.match(source, /if \(production && development\) throw/);
   assert.match(source, /const tree = execFileSync\(tool\("aapt"\), \["dump", "xmltree", apk, "AndroidManifest\.xml"\]/);
-  assert.match(source, /if \(production\) \{\n  const components = provisioningComponents\(tree, identity\.appId, \{assistant: false\}\);/);
+  assert.match(source, /if \(production \|\| senseActivation\) \{\n  const components = provisioningComponents\(provisioningTree, identity\.appId, \{assistant: senseActivation !== null\}\);/);
 });

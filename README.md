@@ -134,6 +134,18 @@ The listener verifier reads the installed package grants, privapp enforcement,
 and the running listener's SELinux domain. Pass `--launcher-descriptor` with
 the reviewed launcher descriptor when the image provisions a privileged launcher.
 
+Pixel 10a Sense images take `--listener-apk`, `--listener-descriptor` and
+`--listener-qualification`. Enroll the reviewed qualification file's SHA-256 as
+`listenerQualificationSha256` in `android/aosp/pixel10a-product.json`. The record
+binds the exact signed APKs, staging descriptors, signer, SDK, source inventory,
+applied patches and SELinux policy. Apply and name the `chip`, `ops`, `alpha-protected-power` and
+`alpha-sense-policy` patches in addition to `soong-app-native`.
+
+An enrolled record with `qualified: false` stages only with `--development`,
+using the signed inputs and the Pixel 10a `userdebug` target. Production staging
+requires `qualified: true` and passing evidence digests for G1–G7. Keep the
+candidate, signed release and physical acceptance receipts with their exact builds.
+
 `scripts/deliver-app-update.ts` publishes an admitted signed launcher APK and
 checks anonymous readback. Merging source does not publish an application update.
 New builds read the `app-stable-alphacompute` release. The previous package

@@ -1,5 +1,5 @@
 import { cuttlefishOptions, writeCuttlefishNatives } from './aosp-cuttlefish.ts';
-import { verifyPixel10aSource, defaultLockPath, listenerSystemuiPatch, aospBuildPatch } from './pixel10a-source-contract.ts';
+import { verifyPixel10aSource, defaultLockPath, listenerSystemuiPatch, alphaProtectedPowerPatch, aospBuildPatch, type ReviewedSourcePatch } from './pixel10a-source-contract.ts';
 import { pixel10aOptions, pixel10aProductProblems, pixel10aSourceLayout, pixel10aVendorApi, writePixel10aProduct, PIXEL10A_PRODUCT } from './aosp-pixel10a.ts';
 import { readReleaseSigner } from './build-android.ts';
 import fs from "node:fs";
@@ -17,6 +17,8 @@ import { releaseBlockers } from "./release-blockers.ts";
 import {signerDigest} from "./apk.ts";
 import { aaptManifestTree, admitImageApk, reviewedSourceOverrides as sharedReviewedSourceOverrides } from "../vendor/eliza/packages/os/scripts/android/image-apk-admission.mjs";
 import { CUTTLEFISH_TARGETS, cuttlefishProductProblems } from "../vendor/eliza/packages/os/scripts/android/cuttlefish-product.mjs";
+import { assertSenseLauncher, assertSenseQualification, readSenseQualification, senseLauncherDigest, writeSenseImageActivation, type SenseImageActivation } from './aosp-sense-image.ts';
+import { verifyPinnedUpstream } from './pinned-upstream-source.ts';
 
 export const PRODUCT_DESCRIPTOR = "android/aosp/product.json";
 /**
@@ -27,7 +29,6 @@ export const PRODUCT_DESCRIPTOR = "android/aosp/product.json";
 export const LAUNCHER_PRIVILEGED_PERMISSIONS = ["android.permission.READ_PRIVILEGED_PHONE_STATE"];
 export const SHARED_CUTTLEFISH_LOCK = "vendor/eliza/packages/os/android/aosp.lock.json";
 export const AOSP_TARGETS = CUTTLEFISH_TARGETS;
-type ReviewedSourcePatch = ReturnType<typeof listenerSystemuiPatch>;
 type PhysicalSource = Awaited<ReturnType<typeof verifyPixel10aSource>> & {hardwareLayout?: ReturnType<typeof pixel10aSourceLayout>};
 interface SourceOverrideOptions {
   physicalSource?: PhysicalSource | null;
@@ -110,11 +111,13 @@ export function reviewedSourceOverrides({physicalSource = null, cuttlefish = fal
   return reviewed({physicalSource, imageTarget: cuttlefish, lockPath, source, appliedPatches});
 }
 
-export function stagingSystemuiPatches(names: string[], imageTarget: boolean) {
+export function stagingSystemuiPatches(names: string[], imageTarget: boolean): ReviewedSourcePatch[] {
   if (!names.length) return [];
   if (!imageTarget) throw Error('--applied-systemui-patch requires --target pixel10a or cuttlefish');
   if (new Set(names).size !== names.length) throw Error('Duplicate applied SystemUI patch');
-  return names.map(listenerSystemuiPatch);
+  if (names.includes('alpha-protected-power') && names.includes('assist'))
+    throw Error('The protected Power patch and the generic assist patch change the same SystemUI source');
+  return names.map(name => name === 'alpha-protected-power' ? alphaProtectedPowerPatch() : listenerSystemuiPatch(name));
 }
 
 export function stagingBuildPatches(names: string[], imageTarget: boolean) {
@@ -134,12 +137,12 @@ const get = (key: string) => {
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--development" || args[i] === "--production") continue;
   if (
-    !["--apk", "--output", "--descriptor", "--apk-manifest", "--aosp-source", "--listener-apk", "--listener-descriptor", "--target", "--factory-image", "--applied-systemui-patch", "--applied-build-patch", "--boot-animation"].includes(args[i]) ||
+    !["--apk", "--output", "--descriptor", "--apk-manifest", "--aosp-source", "--listener-apk", "--listener-descriptor", "--listener-qualification", "--target", "--factory-image", "--applied-systemui-patch", "--applied-build-patch", "--boot-animation"].includes(args[i]) ||
     !args[i + 1] ||
     args[i + 1].startsWith("--")
   )
     throw new Error(
-      "Use --apk FILE --output NEW_DIR [--descriptor FILE [--production] | --development] [--apk-manifest FILE] [--aosp-source PATH] [--target cuttlefish | --target pixel10a --factory-image FILE (--development | --production --descriptor FILE)] [--listener-apk FILE [--listener-descriptor FILE]] [--applied-systemui-patch chip|ops|assist ...] [--applied-build-patch soong-memory|soong-app-native ...] [--boot-animation ZIP (pixel10a, when the composition pins one)]",
+      "Use --apk FILE --output NEW_DIR [--descriptor FILE [--production] | --development] [--apk-manifest FILE] [--aosp-source PATH] [--target cuttlefish | --target pixel10a --factory-image FILE (--development | --production --descriptor FILE)] [--listener-apk FILE [--listener-descriptor FILE] [--listener-qualification FILE]] [--applied-systemui-patch chip|ops|assist|alpha-protected-power ...] [--applied-build-patch soong-memory|soong-app-native|alpha-sense-policy ...] [--boot-animation ZIP (pixel10a, when the composition pins one)]",
     );
   if (args[i] === '--applied-systemui-patch') appliedPatchNames.push(args[i + 1]);
   if (args[i] === '--applied-build-patch') appliedBuildNames.push(args[i + 1]);
@@ -156,19 +159,29 @@ const cuttlefish = cuttlefishOptions({target:get('--target'), source, factory});
 const physical = pixel10aOptions({target:cuttlefish ? null : get('--target'), development, production, source, factory});
 if (get('--boot-animation') && !physical) throw new Error('--boot-animation belongs to --target pixel10a');
 if (production && development) throw new Error("--production and --development are exclusive");
-// P-78 defers wake listening, and AlphaSense's tile and consent would open a microphone whose wake
-// lands on the disabled AlphaAssistActivity, so no production image carries it while P-78 stands.
-// Development staging still takes it so the listener can be tested.
-if (production && (get("--listener-apk") || get("--listener-descriptor")))
-  throw new Error("Refusing --listener-apk for --production: wake listening is deferred (P-78), so production images leave AlphaSense out. Stage the listener with --development.");
+const listenerApk = get('--listener-apk');
+const listenerDescriptor = get('--listener-descriptor');
+const qualificationFile = get('--listener-qualification');
+if (listenerDescriptor && !listenerApk) throw Error('--listener-descriptor needs --listener-apk');
+const senseImage = Boolean(qualificationFile || (production && listenerApk));
+if (senseImage && (!physical || !listenerApk || !listenerDescriptor || !qualificationFile))
+  throw Error('An activated Sense image requires Pixel 10a, --listener-apk, --listener-descriptor and --listener-qualification');
+if (senseImage && (!['chip', 'ops', 'alpha-protected-power'].every(name => appliedPatchNames.includes(name)) ||
+    !appliedBuildNames.includes('alpha-sense-policy')))
+  throw Error('An activated Sense image requires chip, ops, alpha-protected-power and alpha-sense-policy source patches');
+if (!senseImage && appliedBuildNames.includes('alpha-sense-policy'))
+  throw Error('The alpha-sense-policy patch requires an activated Sense image');
 // The product lock is checked before any source or APK is read: production never stages into an
 // unset product. Pixel 10a has its own production descriptor; the Cuttlefish product its own lock.
-if (production) {
+if (production || senseImage) {
   const problems = physical ? pixel10aProductProblems(process.cwd()) : aospProductLockProblems(process.cwd());
   const name = physical ? `Pixel 10a production product (${PIXEL10A_PRODUCT})` : "Alpha AOSP product lock";
   if (problems.length) throw new Error(`Refusing production staging: the ${name} is incomplete.\n${problems.map(item => `  - ${item}`).join("\n")}`);
 }
-const platformCertificateSha256 = production ? JSON.parse(fs.readFileSync(physical ? PIXEL10A_PRODUCT : PRODUCT_DESCRIPTOR, "utf8")).signer?.platformCertificateSha256 : undefined;
+const product = production || senseImage ? JSON.parse(fs.readFileSync(physical ? PIXEL10A_PRODUCT : PRODUCT_DESCRIPTOR, 'utf8')) : null;
+const platformCertificateSha256 = product?.signer?.platformCertificateSha256;
+const qualification = qualificationFile ? readSenseQualification(qualificationFile, product?.listenerQualificationSha256, production) : null;
+const senseSdk = qualification ? verifyPinnedUpstream(process.cwd()) : null;
 const appliedPatches = [...stagingSystemuiPatches(appliedPatchNames, physical || cuttlefish), ...stagingBuildPatches(appliedBuildNames, physical || cuttlefish)];
 if ((physical || cuttlefish) && !appliedBuildNames.includes('soong-app-native'))
   throw Error('Image staging requires --applied-build-patch soong-app-native for Soong-only APK and JNI installation.');
@@ -176,14 +189,10 @@ const physicalSource: PhysicalSource | null = physical ? await verifyPixel10aSou
 if (physicalSource) physicalSource.hardwareLayout = pixel10aSourceLayout({source:source!});
 // The verified tree must also lunch a release carrying the stock stallion vendor API (shared check).
 const vendorApi = physical && source ? pixel10aVendorApi({root:process.cwd(), source}) : null;
-if (physicalSource && production && physicalSource.sourceLockSha256 !== JSON.parse(fs.readFileSync(PIXEL10A_PRODUCT, "utf8")).sourceLock?.sha256)
+if (physicalSource && (production || senseImage) && physicalSource.sourceLockSha256 !== product.sourceLock?.sha256)
   throw new Error(`Refusing production staging: the verified source lock is not the one pinned in ${PIXEL10A_PRODUCT}.`);
-// The always-on listener is development-only while P-78 stands (refused for production above).
-const listenerApk = get("--listener-apk");
-const listenerDescriptor = get("--listener-descriptor");
-if (listenerDescriptor && !listenerApk) throw new Error("--listener-descriptor needs --listener-apk");
 let descriptor = get("--descriptor");
-if (production && !descriptor)
+if ((production || senseImage) && !descriptor)
   throw new Error("--production requires --descriptor FILE: an independently reviewed descriptor with pinned hash and signer.");
 const apk = get("--apk");
 if (!apk)
@@ -192,11 +201,12 @@ if (!apk)
     : "Production staging: supply --apk PATH to the signed launcher release APK that verify-apks recorded as distributable.");
 const identity = JSON.parse(fs.readFileSync("app.config.json", "utf8"));
 const hash = createHash("sha256").update(fs.readFileSync(apk)).digest("hex");
+const manifestFile = get('--apk-manifest') || 'artifacts/apk-manifest.json';
 admitApk({
   apk,
   hash,
-  development,
-  manifestFile: get("--apk-manifest") || "artifacts/apk-manifest.json",
+  development: development && !senseImage,
+  manifestFile,
   platformCertificateSha256,
 });
 if (descriptor) {
@@ -211,6 +221,7 @@ const cameraSource = source || !development
 const env = androidEnv();
 const tree = execFileSync(tool("aapt"), ["dump", "xmltree", apk, "AndroidManifest.xml"], { encoding: "utf8", env, maxBuffer: 64 << 20 });
 assertNoAlphaLockScreenSurface(tree);
+if (senseImage) assertSenseLauncher(tree, identity.appId);
 if (!descriptor) {
   if (!development)
     throw new Error(
@@ -236,7 +247,10 @@ if (!descriptor) {
     ) + "\n",
   );
 }
-const reviewed = JSON.parse(fs.readFileSync(descriptor, "utf8"));
+const reviewedBytes = fs.readFileSync(descriptor);
+const reviewed = JSON.parse(reviewedBytes.toString('utf8'));
+if (senseImage && reviewed.apkSha256 !== hash)
+  throw Error('Sense launcher descriptor differs from the admitted release APK');
 // Identifier access is all or nothing and never wider: a reviewed descriptor either names exactly
 // the one permission below (the launcher is then staged as a privileged app with an allow-list for
 // it alone) or none, in which case Settings → Phone shows no IMEI and links to Android's status screen.
@@ -255,12 +269,26 @@ fs.mkdirSync(path.dirname(destination), {recursive:true});
 const temporary = fs.mkdtempSync(path.join(path.dirname(destination), `.${physical ? 'pixel10a' : cuttlefish ? 'cuttlefish' : identity.slug}-stage-`));
 const output = path.join(temporary, 'overlay');
 try {
+let admittedLauncherDescriptor = path.resolve(descriptor);
+let admittedListenerDescriptor = listenerDescriptor;
+let descriptorDigests: {launcherDescriptorSha256: string; listenerDescriptorSha256: string} | null = null;
+if (qualification && listenerDescriptor) {
+  admittedLauncherDescriptor = path.join(temporary, 'launcher-descriptor.json');
+  admittedListenerDescriptor = path.join(temporary, 'listener-descriptor.json');
+  const listenerDescriptorBytes = fs.readFileSync(listenerDescriptor);
+  fs.writeFileSync(admittedLauncherDescriptor, reviewedBytes, {flag:'wx', mode:0o600});
+  fs.writeFileSync(admittedListenerDescriptor, listenerDescriptorBytes, {flag:'wx', mode:0o600});
+  descriptorDigests = {
+    launcherDescriptorSha256: createHash('sha256').update(reviewedBytes).digest('hex'),
+    listenerDescriptorSha256: createHash('sha256').update(listenerDescriptorBytes).digest('hex'),
+  };
+}
 execFileSync(
   "node",
   [
     "vendor/eliza/packages/os/scripts/android/stage-launcher-overlay.ts",
     "--descriptor",
-    path.resolve(descriptor),
+    admittedLauncherDescriptor,
     "--apk",
     path.resolve(apk),
     "--output",
@@ -269,7 +297,7 @@ execFileSync(
     tool("aapt"),
     "--apksigner",
     tool("apksigner"),
-    ...(development ? ["--development"] : []),
+    ...(development && !senseImage ? ["--development"] : []),
   ],
   { stdio: "inherit", env },
 );
@@ -288,21 +316,44 @@ if (!physical) {
     : `Image capability: ${feature} declared; Phone, Contacts and SMS need a production-staged release launcher.`);
 }
 writeSecureCameraOverlay(output, cameraSource);
-if (production) {
-  const components = provisioningComponents(tree, identity.appId, {assistant: false});
-  writeProvisioningOverlay(output, identity.appId, components);
-  // The shared Pixel 10a composition writes the same overlay from android/aosp/pixel10a-composition.json.
-  if (!physical) writeAospCapabilityOverlay(output, identity.appId);
-  console.log(`Provisioning overlay: HOME ${components.home}, Autofill ${components.autofill}.`);
-}
+const stagedLauncher = path.join(output, 'Launcher.apk');
+let senseActivation: SenseImageActivation | null = null;
+let provisioningTree = tree;
 if (listenerApk) {
-  const listener = stageListener({ root: process.cwd(), output, apk: listenerApk, launcherSigner: String(reviewed.certificateSha256 ?? "").toLowerCase(), appId: identity.appId, descriptorFile: listenerDescriptor, production: !development, aapt: tool("aapt"), apksigner: tool("apksigner"), env });
+  const certificateSha256 = String(reviewed.certificateSha256 ?? '').toLowerCase();
+  const listener = stageListener({ root: process.cwd(), output, apk: listenerApk, launcherSigner: certificateSha256, appId: identity.appId, descriptorFile: admittedListenerDescriptor, production: !development || senseImage, aapt: tool("aapt"), apksigner: tool("apksigner"), env });
+  if (qualification) {
+    if (!senseSdk || !physicalSource || !descriptorDigests) throw Error('Sense activation requires the verified Pixel source, SDK and private descriptors');
+    const {stageAlphaSensePolicy} = await import(new URL('./aosp-sense-policy.ts', import.meta.url).href);
+    const sepolicySha256 = stageAlphaSensePolicy({root: process.cwd(), output, appId: identity.appId, certificateSha256});
+    const launcherSha256 = senseLauncherDigest(stagedLauncher, hash);
+    admitApk({apk:stagedLauncher, hash:launcherSha256, development:false, manifestFile, platformCertificateSha256});
+    const listenerSha256 = createHash('sha256').update(fs.readFileSync(path.join(output, 'listener', `${listener.moduleName}.apk`))).digest('hex');
+    assertSenseQualification(qualification, {appId: identity.appId, launcherSha256, listenerSha256,
+      ...descriptorDigests, certificateSha256, sourceLockSha256: physicalSource.sourceLockSha256,
+      sdkCommit:senseSdk.commit, sepolicySha256, patches: appliedPatches});
+    provisioningTree = aaptManifestTree(stagedLauncher, {aapt: tool('aapt'), env});
+    assertNoAlphaLockScreenSurface(provisioningTree);
+    senseActivation = {
+      ...writeSenseImageActivation(output, identity.appId, provisioningTree),
+      qualificationSha256: product.listenerQualificationSha256,
+      qualificationPassed: qualification.qualified,
+    };
+  }
   if (!listener.speechIncluded) console.warn("Development listener will report SPEECH_UNAVAILABLE on the image.");
   console.log(`Always-on listener staged: ${identity.appId}.sense (privileged, no network). Grants, indicator and invocation are image-boot evidence, not staging evidence.`);
 }
+if (production || senseActivation) {
+  const components = provisioningComponents(provisioningTree, identity.appId, {assistant: senseActivation !== null});
+  writeProvisioningOverlay(output, identity.appId, components);
+  // Pixel production adds its launcher overlay inside shared composition. A Sense qualification
+  // image also needs the same capability to exercise the guarded source on its userdebug build.
+  if (!physical || !production) writeAospCapabilityOverlay(output, identity.appId);
+  console.log(`Provisioning overlay: HOME ${components.home}, Autofill ${components.autofill}${components.assistant ? `, assistant ${components.assistant}` : ''}.`);
+}
 if (cuttlefish) writeCuttlefishNatives({root:process.cwd(), output, apk, module:identity.moduleName});
 if (physical) {
-  writePixel10aProduct({root:process.cwd(), output, apk, identity, launcher:reviewed, sourceEvidence:physicalSource, production, bootAnimation:get('--boot-animation'), vendorApi});
+  writePixel10aProduct({root:process.cwd(), output, apk:senseActivation ? stagedLauncher : apk, identity, launcher:reviewed, sourceEvidence:physicalSource, production, bootAnimation:get('--boot-animation'), vendorApi, senseActivation});
 }
 if (fs.existsSync(destination)) throw Error('Output appeared during staging: ' + destination);
 fs.renameSync(output, destination);

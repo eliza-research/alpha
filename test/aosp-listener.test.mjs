@@ -8,6 +8,7 @@ import {execFileSync} from 'node:child_process';
 import {loadListenerSystemuiTests} from '../scripts/aosp-listener-systemui.ts';
 import {stageListener} from '../scripts/aosp-listener.ts';
 import {verifyListenerBoot} from '../scripts/verify-aosp-listener.ts';
+import {assertSenseLauncher, assertSenseQualification, readSenseQualification, senseLauncherDigest, writeSenseImageActivation} from '../scripts/aosp-sense-image.ts';
 
 await loadListenerSystemuiTests();
 
@@ -83,4 +84,86 @@ test('listener boot readback gives no domain evidence for a missing or mixed pro
   assert.equal(result.dedicatedDomainObserved, false);
  }
  assert.throws(() => verifyListenerBoot(bootReads({uidList:`package:${listener} uid:10145,110145`}), '0', appId), /exact UID/);
+});
+
+test('the Pixel product enrolls exact listener qualification and rejects candidate-only or drifting inputs', t => {
+ const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-sense-qualification-'));
+ t.after(() => fs.rmSync(temp, {recursive:true, force:true}));
+ const file = path.join(temp, 'qualified-listener.json');
+ const {patches, ...exact} = {
+  appId, launcherSha256:'1'.repeat(64), listenerSha256:'2'.repeat(64), certificateSha256:'3'.repeat(64),
+  launcherDescriptorSha256:'a'.repeat(64), listenerDescriptorSha256:'b'.repeat(64),
+  sourceLockSha256:'4'.repeat(64), sdkCommit:'5'.repeat(40), sepolicySha256:'6'.repeat(64),
+  patches:[{name:'alpha-protected-power', manifest:{}, manifestSha256:'7'.repeat(64)}],
+ };
+ const {appId: ignored, ...inputs} = exact;
+ const record = {schemaVersion:1, target:'pixel10a', qualified:true, packageName:listener, ...inputs,
+  patchManifests:{'alpha-protected-power':'7'.repeat(64)},
+  gates:Object.fromEntries(Array.from({length:7}, (_, i) => [`G${i + 1}`, {status:'passed', evidenceSha256:'8'.repeat(64)}])),
+ };
+ const enroll = value => {
+  const bytes = JSON.stringify(value);
+  fs.writeFileSync(file, bytes);
+  return createHash('sha256').update(bytes).digest('hex');
+ };
+ const reviewed = enroll(record);
+ assert.throws(() => readSenseQualification(file, undefined, true), /no reviewed/);
+ assert.throws(() => readSenseQualification(file, '9'.repeat(64), true), /bytes differ/);
+ const accepted = readSenseQualification(file, reviewed, true);
+ assert.doesNotThrow(() => assertSenseQualification(accepted, {...exact, patches}));
+ for (const field of Object.keys(inputs)) {
+  assert.throws(() => assertSenseQualification(accepted, {...exact, patches, [field]:'0'.repeat(inputs[field].length)}), new RegExp(field));
+ }
+ assert.throws(() => assertSenseQualification(accepted, {...exact, patches:[]}), /patch manifests differ/);
+ const g7Open = enroll({...record, gates:{...record.gates, G7:{status:'open'}}});
+ assert.throws(() => readSenseQualification(file, g7Open, true), /G7/);
+ const candidate = enroll({...record, qualified:false, gates:{}});
+ assert.throws(() => readSenseQualification(file, candidate, true), /passing Pixel 10a qualification/);
+ assert.doesNotThrow(() => assertSenseQualification(readSenseQualification(file, candidate, false), {...exact, patches}));
+});
+
+const launcherTree = [
+ '    E: activity (line=1)',
+ '      A: android:name(0x01010003)=".AlphaAssistActivity"',
+ '      A: android:enabled(0x0101000e)=(type 0x12)0x0',
+ '      A: android:exported(0x01010010)=(type 0x12)0xffffffff',
+ '      E: intent-filter (line=2)',
+ '        E: action (line=3)',
+ '          A: android:name(0x01010003)="android.intent.action.ASSIST"',
+ '        E: category (line=4)',
+ '          A: android:name(0x01010003)="android.intent.category.DEFAULT"',
+ '    E: activity (line=5)',
+ '      A: android:name(0x01010003)=".AlphaPowerVoiceActivity"',
+ '      A: android:enabled(0x0101000e)=(type 0x12)0x0',
+ '      A: android:exported(0x01010010)=(type 0x12)0xffffffff',
+ '      A: android:permission(0x01010006)="android.permission.STATUS_BAR_SERVICE"',
+].join('\n');
+
+test('the qualified image overrides only the two dormant presigned launcher activities', t => {
+ const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-sense-activation-'));
+ t.after(() => fs.rmSync(temp, {recursive:true, force:true}));
+ const dir = path.join(temp, 'listener');
+ fs.mkdirSync(dir);
+ fs.writeFileSync(path.join(dir, 'listener.mk'), 'sense_listener_dir := listener\n');
+ assert.throws(() => assertSenseLauncher(launcherTree.replace('STATUS_BAR_SERVICE', 'RECORD_AUDIO'), appId), /protected explicit Power/);
+ assert.throws(() => assertSenseLauncher(launcherTree.replace('E: activity (line=5)', 'E: activity-alias (line=5)'), appId), /disabled by default/);
+ assert.throws(() => assertSenseLauncher(launcherTree.replace('enabled(0x0101000e)=(type 0x12)0x0', 'enabled(0x0101000e)=(type 0x12)0xffffffff'), appId), /disabled by default/);
+ const {feature, assistant, power} = writeSenseImageActivation(temp, appId, launcherTree);
+ assert.equal(feature, `${appId}.feature.SENSE`);
+ const xml = fs.readFileSync(path.join(dir, 'alpha-sense-image.xml'), 'utf8');
+ assert.match(xml, new RegExp(`<feature name="${feature}" version="1" />`));
+ assert.deepEqual([...xml.matchAll(/<component class="([^"]+)" enabled="true"/g)].map(match => match[1]), [assistant, power]);
+ assert.match(fs.readFileSync(path.join(dir, 'listener.mk'), 'utf8'), /TARGET_COPY_OUT_SYSTEM_EXT\)\/etc\/sysconfig/);
+ assert.throws(() => writeSenseImageActivation(temp, appId, launcherTree), /EEXIST/);
+});
+
+test('the privately staged launcher cannot differ from the initial release admission', t => {
+ const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-sense-launcher-'));
+ t.after(() => fs.rmSync(temp, {recursive:true, force:true}));
+ const staged = path.join(temp, 'Launcher.apk');
+ const admitted = createHash('sha256').update('approved release').digest('hex');
+ fs.writeFileSync(staged, 'approved release');
+ assert.equal(senseLauncherDigest(staged, admitted), admitted);
+ fs.writeFileSync(staged, 'different reviewed image bytes');
+ assert.throws(() => senseLauncherDigest(staged, admitted), /differs from the admitted release APK/);
 });
