@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync,readdirSync} from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
+import {stopSenseListenerForChatOnly} from '../.eliza/client-features/plugins/plugin-native-system/src/sense.ts';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
 test('holding the side key never opens the microphone while the chat mic still works',()=>{
@@ -31,37 +32,65 @@ test('holding the side key never opens the microphone while the chat mic still w
  const talk=[...surfaces.matchAll(/aria-label="Talk to/g)],gated=[...surfaces.matchAll(/<sc-if value="\{\{externalVoiceInvocation\}\}"><button aria-label="Talk to/g)];
  assert.ok(gated.length>0&&gated.length===talk.length,'every talk button stays behind the external voice gate');
  assert.match(read('apps/app/src/prototype/template-source.ts'),/'<!-- alpha-development-system-surfaces -->', testMocksEnabled \? developmentSystemSurfaces : ''/);
- assert.match(read('apps/app/src/main.tsx'),/if \(externalVoiceInvocationEnabled && isAndroid && assistantSurface\) installListenerInvocation/);
- assert.match(read('apps/app/src/runtime/always-on-listener.ts'),/if\(!externalVoiceInvocationEnabled \|\| !nativeListener\(\)\)return/);
+ assert.match(read('apps/app/src/main.tsx'),/if \(imageSenseAvailable\(\) && assistantSurface\) installListenerInvocation/);
+ assert.match(read('apps/app/src/runtime/always-on-listener.ts'),/if\(!imageSenseAvailable\(\)\)return/);
  for(const name of ['AlphaAssistActivity','AlphaPowerVoiceActivity'])assert.match(read('android/app/src/main/AndroidManifest.xml'),new RegExp('<activity android:name="\\.'+name+'" android:enabled="false" android:exported="false"'));
 });
 
 
-test('in-chat-only startup requests the canonical native listener stop and reports uncertainty',async()=>{
+test('image Sense requires exact native Android and qualified image capability',()=>{
+ const source=read('apps/app/src/runtime/always-on-listener.ts');
+ const start=source.indexOf('const nativeListener'),end=source.indexOf('async function ask',start);
+ assert.ok(start>=0&&end>start);
+ const code=stripTypeScriptTypes(source.slice(start,end).replaceAll('export ',''));
+ const qualified={aospImage:true,sense:true};
+ for(const [platform,native,plugin,capability,expected] of [
+  ['android',true,true,qualified,true],
+  ['android',true,true,{aospImage:false,sense:true},false],
+  ['android',true,true,{aospImage:true},false],
+  ['android',true,true,{aospImage:true,sense:'true'},false],
+  ['android',true,true,null,false],
+  ['android',true,false,qualified,false],
+  ['android',false,true,qualified,false],
+  ['web',false,true,qualified,false],
+  ['ios',true,true,qualified,false],
+ ]){
+  const context=vm.createContext({Capacitor:{getPlatform:()=>platform,isNativePlatform:()=>native,isPluginAvailable:name=>plugin&&name==='ElizaSense'},capability});
+  assert.equal(vm.runInContext(code+'\nadmitImageSense(capability); imageSenseAvailable();',context),expected);
+ }
+});
+
+test('unqualified Android startup asks for an exact native microphone stop receipt',async()=>{
  const source=read('apps/app/src/runtime/always-on-listener.ts');
  const start=source.indexOf('export async function stopWakeListenerForChatOnly()');
  const end=source.indexOf('\n}\n',start)+2;
  assert.ok(start>=0&&end>start);
  const code=stripTypeScriptTypes(source.slice(start,end).replace('export ',''));
- for(const result of [{available:true,state:'OFF',listening:false,microphoneOpen:false},{available:true,state:'LISTENING',listening:true,microphoneOpen:true},{available:false},new Error('unavailable')]){
+ for(const [result,expected] of [
+  [{available:true,state:'OFF',listening:false,microphoneOpen:false},true],
+  [{available:true,state:'OFF',listening:true,microphoneOpen:false},false],
+  [{available:true,state:'OFF',listening:false,microphoneOpen:true},false],
+  [{available:true,state:'OFF',listening:false},false],
+  [{available:true,state:'LISTENING',listening:true,microphoneOpen:true},false],
+  [{available:false},false],
+  [new Error('unavailable'),false],
+ ]){
   let stops=0;
-  const context=vm.createContext({Capacitor:{isNativePlatform:()=>true},externalVoiceInvocationEnabled:false,nativeListener:()=>true,parseListenerStatus:value=>value,listener:{turnOff:async()=>{stops++;if(result instanceof Error)throw result;return result;}},wakeStopUnconfirmed:false,Promise,Error,setTimeout,clearTimeout});
+  const context=vm.createContext({Capacitor:{getPlatform:()=> 'android',isNativePlatform:()=>true},imageSenseAvailable:()=>false,nativeListener:()=>true,stopSenseListenerForChatOnly,listener:{turnOff:async()=>{stops++;if(result instanceof Error)throw result;return result;}},wakeStopUnconfirmed:false});
   const stop=vm.runInContext(code+'\nstopWakeListenerForChatOnly;',context);
-  const confirmed=await stop();
-  assert.equal(stops,1,'startup must request turnOff, not only hide the controls');
-  const expected=!(result instanceof Error)&&result.available===true&&result.state==='OFF';
-  assert.equal(confirmed,expected);
+  assert.equal(await stop(),expected);
+  assert.equal(stops,1,'startup must request turnOff');
   assert.equal(context.wakeStopUnconfirmed,!expected);
  }
- for(const native of [true,false]){
+ for(const [platform,admitted,expected] of [['android',false,false],['web',false,true],['android',true,true]]){
   let stops=0;
-  const context=vm.createContext({Capacitor:{isNativePlatform:()=>native},externalVoiceInvocationEnabled:false,nativeListener:()=>false,parseListenerStatus:value=>value,listener:{turnOff:async()=>{stops++;throw Error('must not call missing bridge');}},wakeStopUnconfirmed:false,Promise,Error,setTimeout,clearTimeout});
+  const context=vm.createContext({Capacitor:{getPlatform:()=>platform,isNativePlatform:()=>platform==='android'},imageSenseAvailable:()=>admitted,nativeListener:()=>false,stopSenseListenerForChatOnly,listener:{turnOff:async()=>{stops++;throw Error('must not call missing bridge');}},wakeStopUnconfirmed:false});
   const stop=vm.runInContext(code+'\nstopWakeListenerForChatOnly;',context);
-  assert.equal(await stop(),!native,'missing Android bridge cannot confirm the companion stopped');
-  assert.equal(context.wakeStopUnconfirmed,native);
+  assert.equal(await stop(),expected);
+  assert.equal(context.wakeStopUnconfirmed,!expected);
   assert.equal(stops,0);
  }
- assert.match(read('apps/app/src/main.tsx'),/if \(isAndroid && !externalVoiceInvocationEnabled\) void stopWakeListenerForChatOnly\(\)/);
+ assert.match(read('apps/app/src/main.tsx'),/if \(isAndroid && !imageSenseAvailable\(\)\) void stopWakeListenerForChatOnly\(\)/);
  assert.match(read('apps/app/src/prototype/settings-adapter.ts'),/wakeListeningStopUnconfirmed\(\)/);
 });
 

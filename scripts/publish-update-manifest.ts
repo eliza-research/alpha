@@ -85,7 +85,7 @@ export function main(argv: readonly string[], { root = process.cwd(), log = cons
   try {
     const versionCode = admitted.versionCode;
     if (versionCode === null) throw Error('Verified APK versionCode is missing');
-    ({ signerRootSha256 } = inspectApk({file: apk, sha256: admitted.sha256, build: 'release', variant: options.variant, versionCode}, { descriptor }));
+    ({ signerRootSha256 } = inspectApk({...admitted, file: apk, versionCode}, { descriptor }));
     if (!/^[0-9a-f]{64}$/.test(signerRootSha256 || '')) throw Error('Verified signing-family root is missing');
   }
   catch (failed) { fs.rmSync(apk,{force:true}); error(`Refusing to publish ${options.variant}: ${failed instanceof Error ? failed.message : String(failed)}`); return 1; }

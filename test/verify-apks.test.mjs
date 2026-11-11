@@ -163,6 +163,15 @@ test("AOSP staging refuses --production without a descriptor, with --development
     fs.writeFileSync(path.join(dir, "artifacts/apk-manifest.json"), JSON.stringify({ testMocks: false, results: [{ file: "artifacts/launcher-release.apk", mode: "release", sha256,
       testMocks: false, bundleAudit: "passed", signed: true, signerSha256: "d".repeat(64), runtime: "PACKAGED", runtimeNotices: true, distributable: true, licenceBlockers: [],
       releaseAdmission: { failures: [], blockers: [], signerMatches: true }, voiceHost: { packaged: true, asr: true, differences: [], qualified: true } }] }));
+    const manifestFile = path.join(dir, "artifacts/apk-manifest.json");
+    const original = fs.readFileSync(manifestFile, "utf8");
+    const privateRecord = JSON.parse(original);
+    privateRecord.results[0].updateChannel = {kind: "private-qa", manifestUrlSha256: "a".repeat(64)};
+    fs.writeFileSync(manifestFile, JSON.stringify(privateRecord));
+    out = stage(["--apk", release, "--descriptor", "reviewed.json", "--production"]);
+    assert.notEqual(out.status, 0);
+    assert.match(out.stderr, /Private QA update channels are refused for production provisioning/);
+    fs.writeFileSync(manifestFile, original);
     const identity = JSON.parse(fs.readFileSync(path.join(root, "app.config.json"), "utf8"));
     for (const [name, foreign] of [["package", { packageName: "ai.elizaos.app", moduleName: identity.moduleName }], ["module", { packageName: identity.appId, moduleName: "Eliza" }]]) {
       fs.writeFileSync(path.join(dir, "foreign.json"), JSON.stringify({ schemaVersion: 1, apkSha256: sha256, certificateSha256: "d".repeat(64), ...foreign }));
