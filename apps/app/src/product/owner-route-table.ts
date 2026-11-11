@@ -38,8 +38,10 @@ export const OWNER_ROUTE_TABLE = {
     },
     approvals: {
       prefixes: ["/api/approvals"],
+      id: "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$",
       routes: [
-        {methods: ["GET"], paths: ["/api/approvals?state=all&limit=500"]}
+        {methods: ["GET"], paths: ["/api/approvals?state=all&limit=500"]},
+        {methods: ["POST"], paths: ["/api/approvals/{id}/resolve"], query: []}
       ]
     }
   }

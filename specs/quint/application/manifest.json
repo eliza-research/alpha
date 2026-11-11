@@ -3500,7 +3500,10 @@
       "apps/app/src/runtime/connection-ui.tsx",
       "apps/app/src/prototype/calendar-approval-adapter.ts",
       "apps/app/src/prototype/calendar-approval-review.ts",
-      "test/calendar-approval-ui.test.mjs"
+      "test/calendar-approval-ui.test.mjs",
+      "apps/app/src/product/owner-route-table.ts",
+      "test/owner-route-parity.test.mjs",
+      "test/owner-route-native-import.test.mjs"
     ],
     "abstractions": [
       "One event, two owners and provider revisions; confirmed/cancelled UI actions and receipt-backed stale-row suppression.",
