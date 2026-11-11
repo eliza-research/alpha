@@ -7,14 +7,14 @@ import {call, checkpoint, trace} from './support.mjs';
 const model = 'ScheduledTaskControls';
 const taskPrefix = '/api/lifeops/scheduled-tasks/weekly/';
 const controls = {'Run now': 'fire', 'Edit schedule': 'edit', 'Save schedule': 'edit',
-  'Snooze 10 minutes': 'snooze', Acknowledge: 'acknowledge', Complete: 'complete', Dismiss: 'dismiss', Reopen: 'reopen'};
+  '10 min': 'snooze', Acknowledge: 'acknowledge', Complete: 'complete', Dismiss: 'dismiss', Reopen: 'reopen'};
 const buttons = Object.fromEntries(Object.entries(controls).filter(([label]) => label !== 'Save schedule')
   .map(([label, verb]) => [verb, label]));
 const messages = {
-  '': '', 'Run started.': 'started', 'Saved on this agent.': 'saved',
+  '': '', 'Run started.': 'started', Saved: 'saved',
   'Another run was already in progress.': 'raced', 'Choose a valid time.': 'invalid-time', 'Choose a time and at least one day.': 'invalid-time',
   'This item did not run. Read its current status before trying again.': 'not-run',
-  'Outcome unknown. Check the current record and history before repeating this action.': 'unknown',
+  Unknown: 'unknown', 'Pick a time and day': 'invalid-time',
   'Scheduled items could not refresh. Retry to check the current records.': 'source-unavailable',
 };
 function payload(path, body) {
