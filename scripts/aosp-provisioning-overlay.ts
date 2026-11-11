@@ -27,18 +27,10 @@ export function renderProvisioningOverlay(packageName: string, components: Retur
   const telephonyFeature = `${packageName}.fresh_telephony_setup`;
   files['provisioning/README.md'] = readme.replace(tail, `- All files access: \`MANAGE_EXTERNAL_STORAGE\` (signature|appop|preinstalled) is granted to the
   preinstalled launcher; the app-op stays at its default, which reads that grant.
-- Fresh telephony setup: \`${telephonyFeature}\` requires Provision to assign and verify Phone and Messages on hardware that advertises telephony.
+- Fresh telephony setup: stage the matching Provision source packet with \`scripts/stage-alpha-os-branding.py --apply\` before building. Its feature XML is a production build input.
 ${tail}`);
-  return {
-    ...files,
-    [`provisioning/${telephonyFeature}.xml`]: `<?xml version="1.0" encoding="utf-8"?>
-<permissions>
-    <feature name="${telephonyFeature}" />
-</permissions>
-`,
-    productMakefile: files.productMakefile
-      + `PRODUCT_COPY_FILES += $(launcher_provisioning_dir)/${telephonyFeature}.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/${telephonyFeature}.xml\n`,
-  };
+  files.productMakefile += `PRODUCT_COPY_FILES += $(dir $(launcher_provisioning_dir))branding/provision/fresh-telephony.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/${telephonyFeature}.xml\n`;
+  return files;
 }
 
 export function writeProvisioningOverlay(output: string, packageName: string, components: ReturnType<typeof sharedComponents>) {
