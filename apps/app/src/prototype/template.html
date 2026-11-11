@@ -1154,7 +1154,7 @@
         <button class="ib" aria-label="Back to calendar" onClick="{{calendar.ev.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <span style="flex-grow: 1"></span>
         <sc-if value="{{calendar.ev.canModify}}">
-        <details class="photo-import-menu"><summary aria-label="Event actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div><button aria-label="Edit event" disabled="{{calendar.ev.busy}}" onClick="{{calendar.ev.edit}}">Edit</button><sc-if value="{{calendar.ev.del}}"><button aria-label="{{calendar.ev.deleteLabel}}" disabled="{{calendar.ev.busy}}" onClick="{{calendar.ev.del}}">{{calendar.ev.deleteText}}</button></sc-if></div></details>
+        <details class="photo-import-menu"><summary aria-label="Event actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div><button aria-label="Edit event" disabled="{{calendar.ev.busy}}" onClick="{{calendar.ev.edit}}">Edit</button><sc-if value="{{calendar.ev.singleDelete}}"><sc-if value="{{calendar.ev.del}}"><button aria-label="{{calendar.ev.deleteLabel}}" disabled="{{calendar.ev.busy}}" onClick="{{calendar.ev.del}}">{{calendar.ev.deleteText}}</button></sc-if></sc-if><sc-if value="{{calendar.ev.scopedDelete}}"><sc-for list="{{calendar.ev.recurrenceScopes}}" as="scope"><button aria-label="{{scope.deleteLabel}}" disabled="{{calendar.ev.busy}}" onClick="{{scope.del}}">{{scope.deleteText}}</button></sc-for></sc-if></div></details>
         </sc-if>
       </div>
 
@@ -1227,7 +1227,6 @@
           <div style="font-size: 15.5px; white-space: pre-wrap; line-height: 1.55; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line)">{{calendar.ev.notes}}</div>
         </sc-if>
 
-        <sc-if value="{{calendar.ev.recurrenceScopes}}"><div aria-label="Repeating event action scope"><sc-for list="{{calendar.ev.recurrenceScopes}}" as="scope"><button onClick="{{scope.pick}}" aria-pressed="{{scope.selected}}" style="min-height:44px;padding:10px">{{scope.label}}</button></sc-for></div></sc-if>
         <sc-if value="{{calendar.ev.browserSeries}}"><div style="display:flex;gap:12px;margin-top:20px"><button class="ib" aria-label="Edit series" onClick="{{calendar.ev.editSeries}}" style="position:relative;border-radius:16px;background:var(--s2)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.edit}}"></path></svg><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="position:absolute;right:4px;bottom:4px;width:12px;height:12px"><path d="{{ic.calRepeat}}"></path></svg></button><button class="ib" aria-label="Delete series" onClick="{{calendar.ev.deleteSeries}}" style="position:relative;border-radius:16px;background:var(--s2)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.trash}}"></path></svg><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="position:absolute;right:4px;bottom:4px;width:12px;height:12px"><path d="{{ic.calRepeat}}"></path></svg></button></div></sc-if>
       </div>
     </div>
@@ -1241,7 +1240,7 @@
         <button aria-label="Save event" aria-disabled="{{calendar.f.saveOff}}" onClick="{{calendar.f.save}}" style="padding: 0 18px; border-radius: 18px; font-weight: 600; font-size: 15px; transition: background .2s; {{calendar.f.saveCss}}">Save</button>
       </div>
       <div class="scr calendar-draft-fields" role="region" aria-label="Event details" tabindex="0" style="flex-grow: 1; overflow-y: auto; padding: 4px 0 130px; touch-action: pan-y">
-        <sc-if value="{{calendar.f.recurrenceScopes}}"><div style="margin:4px 24px"><sc-for list="{{calendar.f.recurrenceScopes}}" as="scope"><button onClick="{{scope.pick}}" aria-pressed="{{scope.selected}}" style="min-height:44px;padding:10px">{{scope.label}}</button></sc-for></div></sc-if>
+        <sc-if value="{{calendar.f.hasRecurrenceScopes}}"><div role="group" aria-label="Save changes to" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 24px"><span style="font-size:13px;color:var(--mut)">Save changes to</span><sc-for list="{{calendar.f.recurrenceScopes}}" as="scope"><button onClick="{{scope.pick}}" aria-pressed="{{scope.selected}}" style="min-height:44px;padding:10px 14px;border-radius:22px;{{scope.css}}">{{scope.label}}</button></sc-for></div></sc-if>
         <p role="status" aria-label="Calendar form draft status" style="margin:4px 24px;font-size:13px;color:var(--mut)">{{calendar.formDraftStatus}}</p>
         <sc-if value="{{calendar.canDiscardFormDraft}}"><button class="ib" aria-label="Discard calendar draft" onClick="{{calendar.discardFormDraft}}" style="margin:0 12px;color:var(--mut)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.trash}}"></path></svg></button></sc-if>
         <sc-if value="{{calendar.editDraftStatus}}"><p role="status" aria-label="Calendar edit draft status" style="margin:4px 24px;font-size:13px;color:var(--mut)">{{calendar.editDraftStatus}}</p></sc-if>
