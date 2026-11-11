@@ -32,13 +32,13 @@ test('the update flow runs one attempt per process, fences a session Android sti
  assert.ok(plugin.includes(deadline),'the production download deadline exists');
  const dir=mkdtempSync(join(tmpdir(),'alpha-update-flow-'));
  try{
-  // The plugin's own members in a class of its name, with only the deadline shortened to seconds and settable by the scenario that waits it out; the stubs state what Android and Capacitor do.
+  // Keep the production deadline for real TLS. The expiry scenario can set a shorter deadline in the generated fixture.
   const members=join(dir,'AlphaDevicePlugin.java');
   const keyStore=join(dir,'cache-tls.p12');
   execFileSync(javaBinary('keytool'),['-genkeypair','-alias','fixture','-keyalg','RSA','-storetype','PKCS12',
    '-keystore',keyStore,'-storepass','fixture-pass','-keypass','fixture-pass','-dname','CN=localhost',
    '-ext','SAN=dns:localhost,ip:127.0.0.1','-validity','2','-noprompt'],{stdio:'pipe',timeout:jvmTimeout});
-  writeFileSync(members,exactUpdateMembers(plugin).replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)'));
+  writeFileSync(members,exactUpdateMembers(plugin).replace(deadline,deadline.replace('static final','static')));
   const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),nativeSource('AlphaUpdateStatusReceiver.java'),nativeSource('UpdateConfirmationReceipt.java'),...javaFiles(fixture('app-update-jvm')).filter(file=>!file.endsWith('/ConnectionTransport.java')),upstreamConnection('ConnectionTransport.java'),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{json:true,timeout:240000,args:[keyStore]});
   assert.match(result,/PASS verified cache retry over owned TLS: one request, exact retained bytes, one synthetic installer commit/);
   assert.match(result,/PASS fresh HTTPS offer rejects cached withdrawal, change and transport failure before one current commit/);
