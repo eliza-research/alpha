@@ -246,7 +246,7 @@ public final class AlphaNavigationService extends Service {
   NotificationManager manager = getSystemService(NotificationManager.class);
   if (manager.getNotificationChannel(CHANNEL) == null) {
    NotificationChannel channel = new NotificationChannel(CHANNEL, "Maps navigation", NotificationManager.IMPORTANCE_LOW);
-   channel.setDescription("Shows the next instruction while Maps navigation runs with the screen off");
+   channel.setDescription("Shows the next turn while Maps navigation is running");
    channel.setShowBadge(false);
    channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
    manager.createNotificationChannel(channel);

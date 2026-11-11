@@ -1658,6 +1658,8 @@
       "dirtyReadFailureRetainedTest",
       "uncertainReadbackKeepsReviewTest",
       "explicitDiscardReclassifiesReadFailureTest",
+      "retryReadbackClearsUncertaintyTest",
+      "retryRefusalKeepsReviewTest",
       "ownedCommitClearsUncertaintyTest"
     ],
     "sources": [
@@ -1668,6 +1670,7 @@
     ],
     "abstractions": [
       "Finite UI feedback event machine for phase, review reason and failure origin, with an interaction-failure history monitor. Actual controller/editor callbacks drive source traces.",
+      "Retry confirmation requires the draft's exact existing saved record ID. A refused unconfirmed-new-create retry preserves review even when another record has matching content; record identity admission is outside this four-field projection.",
       "Collection rendering, navigation waits, dictation/recording and Calendar handoffs remain separate state machines."
     ]
   },
@@ -2111,7 +2114,7 @@
       "started/pending": "Observed native read calls and unresolved replies",
       "held/timerDelay": "Focus hold on the visible toast and the delay of its single owned expiry timer",
       "scale/latest": "Last known timeout percentage and exact current native read token",
-      "message/undo/duration": "Shell message identity, retained Undo and its scheduled timeout"
+      "message/undo/duration": "Shell message identity, retained Undo and its scheduled timeout (an Undo offer stays 10 s before scaling, matching the reviewed-deletion notice; a failure changes only how the toast is announced, not its lifetime)"
     },
     "step": "step",
     "symbols": [
@@ -4126,23 +4129,386 @@
       "staleCardTest",
       "directRequestTest",
       "askFirstTest",
+      "unreadablePreferenceTest",
       "foreignRequestTest",
-      "changedJournalIdentityTest"
+      "reviewedTypeNeverDirectTest",
+      "changedJournalIdentityTest",
+      "unknownWithoutDispatchTest",
+      "fifthDirectWaitsTest",
+      "failureEndsPassTest",
+      "workflowStepTest",
+      "secondBrowserOpenTest",
+      "ungroundedBrowserTest",
+      "settingsNavigationTest",
+      "expiredTest"
     ],
     "sources": [
       "apps/app/src/runtime/device-actions.ts",
       "apps/app/src/runtime/alpha-client.ts",
-      "apps/app/src/browser/device-preferences.ts"
+      "apps/app/src/browser/device-preferences.ts",
+      "apps/app/src/runtime/connection-ui.tsx",
+      "apps/app/src/prototype/agent-adapter.ts"
     ],
     "sharedSources": [
       "plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts",
       "packages/contracts/src/device-action-execution.ts"
     ],
     "abstractions": [
-      "One opaque proposal and effect; actual coordinator source replay observes controlled journal/transport/executor ports.",
-      "Context equality, reservation identity, server decision/claim, durable applying/terminal and no-replay are distinct observation boundaries.",
-      "Direct mode still requires enumerated operation/current request/preference admission. Domain-specific ports, multi-proposal batch, browser request proofs and physical durability are separate contracts."
+      "One focused proposal at a time; `propose` moves the focus, so a direct pass over several proposals of one message is a sequence sharing the pass counters, the Browser attempt and the Review-first preference. The actual coordinator source replay observes controlled journal/transport/executor ports.",
+      "Operation classes are representatives: direct (open_view, open_view to Settings, create_note, browser_navigate, camera_capture_photo, files_open), reviewed (create_reminder, notes_read) and workflow (any step carrying a workflow binding). `settings_write` stands for an operation outside the contract. The other direct types of the pinned coordinator (photo_library_select, sms_reply_selected, Notes organise, Files filter, Photos view) share the direct class and are not driven individually.",
+      "Review-first is sampled immediately before each direct approval (`allowed`); `unreadable` is a failed preference read and admits nothing. A change during an in-flight approval is not modeled. AtMostFourDirectPerMessage bounds one `performRequested` pass; the Camera continuation and the voice path are separate passes restricted by the same admission.",
+      "Context equality, reservation identity, server decision/claim, durable applying/terminal and no-replay are distinct observation boundaries. Dispatch-time expiry, context, sensitivity, preference and request binding are frozen in `at`.",
+      "KNOWN DIVERGENCE (app review AGENT-06): UnknownOnlyAfterDispatch is the intended rule and is false of the pinned coordinator, whose public call answers `unknown` when reservation, decision or claim fails before any dispatch. It is excluded from `safety`, registered under expectedViolations, and its counterexample UnknownWithoutDispatch is a required witness; the refinement adapter reproduces it against the real coordinator. The journal-level rule UnknownJournalOnlyAfterDispatch holds. A product executor that throws for a pre-effect guard after entry is recorded as `unknown` by the same coordinator; that executor behaviour is outside this model's ports.",
+      "Workflow-run review (`reviewWorkflow`), the navigation-only review-destination card, domain-specific result validation, Files identities, capability negotiation, native journal durability, recovery and view commands (Browser back/forward/reload, which are not proposals) are separate contracts."
+    ],
+    "invariants": [
+      "DirectOnlyAllowlisted",
+      "DirectRunNeedsCurrentRequest",
+      "AtMostFourDirectPerMessage",
+      "ReviewFirstBlocksAllDirect",
+      "EffectNeedsReservationAndClaim",
+      "NoSecondEffectPerProposal",
+      "ExpiredNeverDispatches",
+      "ContextChangeRetiresProposal",
+      "SensitiveNeverDispatches",
+      "SettingsIsNavigationOnly",
+      "WorkflowStepsNeverDirect",
+      "OneAutoOpenPerMessage",
+      "AuthorizedEffect",
+      "ConsumedBeforeAwait",
+      "ReceiptAfterTerminalJournal",
+      "UnknownJournalOnlyAfterDispatch",
+      "FiniteOutcome"
+    ],
+    "witnesses": [
+      "UnknownWithoutDispatch"
+    ],
+    "expectedViolations": [
+      {
+        "init": "init",
+        "step": "step",
+        "invariant": "UnknownOnlyAfterDispatch",
+        "expected": "violation"
+      }
     ]
+  },
+  {
+    "path": "specs/quint/application/BrowserAgentOpen.qnt",
+    "module": "BrowserAgentOpen",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "typedAddressOpensOnceTest",
+      "untypedAddressNeedsReviewTest",
+      "insecureAddressHasNoCardTest",
+      "reviewFirstKeepsCardTest",
+      "presentationWaitsForReceiptTest",
+      "openedButNotShownTest",
+      "commandRefusedUnderReviewFirstTest",
+      "commandBoundToTabTest",
+      "commandSentOnceTest",
+      "browserBuildHasNoCommandTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/browser-adapter.ts",
+      "apps/app/src/runtime/view-navigation.ts",
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/runtime/action-message-presentation.ts"
+    ],
+    "sharedSources": [
+      "plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts",
+      "packages/contracts/src/browser-request-grounding.ts"
+    ],
+    "abstractions": [
+      "One proposal at a time with a destination class (HTTPS, plain HTTP, credentials in the address) and whether the owner's message typed that address; one view command (back, forward or reload are not distinguished) bound to one tab's navigation revision, at most three claims.",
+      "The direct open and its one-per-message rule are also replayed against the real coordinator by DeviceActionReview; this module adds the scheme rule, presentation after the journal and receipt attempt, and the unjournaled view-command path with its review-first refusal (an unreadable choice counts as on).",
+      "KNOWN DIVERGENCE (app review AGENT-10): the receipt text says the address was opened once the tab exists, whether or not Browser is then shown. OpenedClaimMeansShown is registered under expectedViolations with the required witness OpenedButNotShown, not weakened.",
+      "Model-only: no refinement adapter drives the source. The rules were read from the listed source at the pinned revision; model safety checks do not establish implementation refinement or device acceptance. Proposal admission, journal reservation, claim and receipt are DeviceActionReview."
+    ],
+    "invariants": [
+      "HttpsNoUserinfo",
+      "AutoOpenMatchesTypedAddress",
+      "OneAutoOpenPerMessage",
+      "PresentationAfterReceiptAttempt",
+      "ViewCommandNeedsToggleOff",
+      "ViewCommandBoundToExactTabRevision",
+      "ViewCommandNativeForegroundOnly",
+      "ViewCommandNeverRepeated"
+    ],
+    "witnesses": [
+      "OpenedButNotShown"
+    ],
+    "expectedViolations": [
+      {
+        "init": "init",
+        "step": "step",
+        "invariant": "OpenedClaimMeansShown",
+        "expected": "violation"
+      }
+    ],
+    "bounds": {
+      "maxSamples": 400,
+      "maxSteps": 40
+    }
+  },
+  {
+    "path": "specs/quint/application/CameraAgentCapture.qnt",
+    "module": "CameraAgentCapture",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "readyCaptureTest",
+      "queuedCaptureSettlesTest",
+      "startFailureSettlesTest",
+      "cameraNotOpenTest",
+      "recordingRefusesTest",
+      "leaveWhileQueuedTest",
+      "unconfirmedSaveTest",
+      "reopenedChatCoversShutterTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/camera-adapter.ts",
+      "apps/app/src/prototype/agent-adapter.ts"
+    ],
+    "sharedSources": [
+      "plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts"
+    ],
+    "abstractions": [
+      "One agent capture request over a preview that is off, starting, ready or failed; chat hidden, sheet or full; one shutter. `takeRequestedPhoto` is the modeled function: admission closes the chat and holds the preview, a starting preview is awaited, and the context is checked again right before the shutter.",
+      "Current-source successor of the agent actions in the historical legacy CameraSession design model. Settlement after the preview settles is checked by scenarios (queued capture, start failure, leave while queued), not as a temporal property; no fairness assumption is made.",
+      "RESIDUAL GAP: the request closes the chat once. If the owner opens it again while the preview is still starting, the preview hold keeps the camera active and the shutter fires behind the chat. ShutterNeverCovered is registered under expectedViolations with the required witness CoveredShutter. Found by reading the source; not reproduced on a device.",
+      "A recording that starts while a request is queued, lens, flash, zoom, video and scan are outside this model. A context change that the phone executor detects before it reaches the camera adapter is journaled as unknown by the coordinator (see DeviceActionReview).",
+      "Model-only: no refinement adapter drives the source. The rules were read from the listed source at the pinned revision; model safety checks do not establish implementation refinement or device acceptance. Proposal admission, journal reservation, claim and receipt are DeviceActionReview."
+    ],
+    "invariants": [
+      "CaptureNeedsVisibleCamera",
+      "RequestUncoversViewfinder",
+      "ShutterUncoveredUnlessOwnerReopened",
+      "AtMostOneShutter",
+      "UncertainCaptureNeverRepeats",
+      "UnknownOnlyAfterShutter",
+      "FailedMeansNoShutter",
+      "SuccessMeansSavedPhoto",
+      "HoldReleased",
+      "NoCaptureWhileRecording"
+    ],
+    "witnesses": [
+      "CoveredShutter"
+    ],
+    "expectedViolations": [
+      {
+        "init": "init",
+        "step": "step",
+        "invariant": "ShutterNeverCovered",
+        "expected": "violation"
+      }
+    ],
+    "bounds": {
+      "maxSamples": 400,
+      "maxSteps": 40
+    }
+  },
+  {
+    "path": "specs/quint/application/FilesAgentActions.qnt",
+    "module": "FilesAgentActions",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "directFilterOpensFilesTest",
+      "directOpenPreviewTest",
+      "changedListingOpensNothingTest",
+      "moveNeedsIdentitiesTest",
+      "movedAwayFileIsLeftAloneTest",
+      "reviewedOpOutsideFilesRefusedTest",
+      "shareOpensSheetOnlyTest",
+      "protectedScreenTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-adapter.ts"
+    ],
+    "sharedSources": [
+      "plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      "plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts",
+      "plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts"
+    ],
+    "abstractions": [
+      "One Files operation at a time over one representative file; filter and open are the direct types, share, new folder, move and trash need the owner's card. Identity is one boolean: the file is still where the card's identity was read.",
+      "Android build with the Files capability negotiated; the browser build has no Files agent path. Current-source successor of the agent actions in the historical legacy FilesBrowser design model.",
+      "A share succeeds when the system sheet opens; the owner's choice there is a separate owner action. Storage access state, external volumes beyond the primary-storage rule, and the listing reload are abstracted.",
+      "Model-only: no refinement adapter drives the source. The rules were read from the listed source at the pinned revision; model safety checks do not establish implementation refinement or device acceptance. Proposal admission, journal reservation, claim and receipt are DeviceActionReview."
+    ],
+    "invariants": [
+      "DirectOnlyFilterAndOpen",
+      "FilterAndOpenAreReadOnly",
+      "OnlyFilterAndOpenBringFilesForward",
+      "ProtectedScreenBlocksFiles",
+      "MoveAndTrashNeedReviewedIdentity",
+      "ShareNeedsOwnerReviewThenSystemSheet",
+      "ReviewOpenedIsNotCompletion"
+    ],
+    "bounds": {
+      "maxSamples": 400,
+      "maxSteps": 40
+    }
+  },
+  {
+    "path": "specs/quint/application/NotesAgentSource.qnt",
+    "module": "NotesAgentSource",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "defaultSourceRefusesTest",
+      "previousNotesCreateTest",
+      "readThenUpdateTest",
+      "updateWithoutSnapshotTest",
+      "changedNoteTest",
+      "deleteMovesToTrashTest",
+      "fullTrashTest",
+      "canonicalWriteUnderReviewFirstTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/prototype/settings-adapter.ts"
+    ],
+    "sharedSources": [
+      "plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts"
+    ],
+    "abstractions": [
+      "One phone-side Notes operation at a time over one representative note, with the Notes source (the agent's Notes by default, or Previous notes). Phone-side operations act only on Previous notes; on the default source they refuse.",
+      "KNOWN GAP (app review AGENT-09), stated as an explicit assumption: the agent's own canonical Notes action writes with no phone card and does not read the Review-first preference. ReviewFirstCoversCanonicalNotes is registered under expectedViolations with the required witness CanonicalWriteIgnoresToggle. The server action's own gating was not read.",
+      "An update following a shared snapshot is the server tool contract; the phone executor does not re-check it and the model marks it as an assumption. Notes organise, search and named-target operations are not negotiated and are not modeled.",
+      "Model-only: no refinement adapter drives the source. The rules were read from the listed source at the pinned revision; model safety checks do not establish implementation refinement or device acceptance. Proposal admission, journal reservation, claim and receipt are DeviceActionReview."
+    ],
+    "invariants": [
+      "DeviceNotesOpsOnlyOnPreviousNotes",
+      "OnlyCreateRunsWithoutCard",
+      "SelectedNoteBinding",
+      "DeleteWritesTrashBeforeTombstone",
+      "FullTrashDeletesNothing",
+      "ReadsNeedReview",
+      "ProtectedScreenSharesNothing"
+    ],
+    "witnesses": [
+      "CanonicalWriteIgnoresToggle"
+    ],
+    "expectedViolations": [
+      {
+        "init": "init",
+        "step": "step",
+        "invariant": "ReviewFirstCoversCanonicalNotes",
+        "expected": "violation"
+      }
+    ],
+    "bounds": {
+      "maxSamples": 400,
+      "maxSteps": 40
+    }
+  },
+  {
+    "path": "specs/quint/application/CalendarAgentWrites.qnt",
+    "module": "CalendarAgentWrites",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "createNeedsBothReviewsTest",
+      "nativeCancelTest",
+      "updateNeedsSelectionTest",
+      "changedEventTest",
+      "queuedDeleteTest",
+      "undoneDeleteTest",
+      "deniedAccessTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-adapter.ts"
+    ],
+    "sharedSources": [
+      "plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts"
+    ],
+    "abstractions": [
+      "One phone-side Calendar operation at a time over one representative event: create on the phone, read next, and create/read/update/delete bound to the selected Calendar record. The native calendar's own review and its target check are one step each.",
+      "A delete is queued with an Undo window and reported as unknown until the window settles; the deletion journal itself is DeletionJournal and NativeCalendarScopedReview. Free/busy, named reads and the browser-only agenda read are not modeled.",
+      "KNOWN DIVERGENCE (app review AGENT-06, phone side): denied Calendar access or a changed screen throws in the executor before the native calendar is called and is journaled as unknown. UnknownOnlyAfterNativeCall is registered under expectedViolations with the required witness UnknownWithoutNativeCall.",
+      "The native Java executor was not read; its statuses are taken from the TypeScript call site.",
+      "Model-only: no refinement adapter drives the source. The rules were read from the listed source at the pinned revision; model safety checks do not establish implementation refinement or device acceptance. Proposal admission, journal reservation, claim and receipt are DeviceActionReview."
+    ],
+    "invariants": [
+      "NoCalendarOperationIsDirect",
+      "CreateNeedsNativeConfirm",
+      "UpdateBoundToSelectedRevision",
+      "QueuedDeleteIsUnknownUntilSettled",
+      "UndoneDeleteDeletesNothing",
+      "CancelledReviewChangesNothing",
+      "ProtectedScreenBlocksCalendar"
+    ],
+    "witnesses": [
+      "UnknownWithoutNativeCall"
+    ],
+    "expectedViolations": [
+      {
+        "init": "init",
+        "step": "step",
+        "invariant": "UnknownOnlyAfterNativeCall",
+        "expected": "violation"
+      }
+    ],
+    "bounds": {
+      "maxSamples": 400,
+      "maxSteps": 40
+    }
+  },
+  {
+    "path": "specs/quint/application/MapsSelectedRead.qnt",
+    "module": "MapsSelectedRead",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "approvedReadTest",
+      "searchResultTest",
+      "movedBeforeApprovalTest",
+      "movedBeforeReceiptTest",
+      "movedBeforeReadTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/maps/agent-context.ts"
+    ],
+    "sharedSources": [
+      "plugins/plugin-maps/src/client/agent-context.ts",
+      "plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts"
+    ],
+    "abstractions": [
+      "One selected Maps object (place, route or search result list) with one revision counter for the card and one for the live selection registry; one approval, one read, one receipt upload.",
+      "The selection is checked on the card, by the executor before and after its read, and by the coordinator before the receipt upload. Navigation is a separate tier (MapsRerouteOwnership, services MapsNavigation) and has no state here.",
+      "KNOWN DIVERGENCE (app review AGENT-06, phone side): a selection that changes between approval and the read makes the executor throw; nothing is read, yet the action is journaled as unknown. UnknownOnlyAfterRead is registered under expectedViolations with the required witness UnknownWithoutRead.",
+      "Model-only: no refinement adapter drives the source. The rules were read from the listed source at the pinned revision; model safety checks do not establish implementation refinement or device acceptance. Proposal admission, journal reservation, claim and receipt are DeviceActionReview."
+    ],
+    "invariants": [
+      "NoCoordinatesWithoutApproval",
+      "ReadBoundToLiveRegistrySelection",
+      "ReceiptReassertsSelection",
+      "SearchResultsAreNotReadable"
+    ],
+    "witnesses": [
+      "UnknownWithoutRead"
+    ],
+    "expectedViolations": [
+      {
+        "init": "init",
+        "step": "step",
+        "invariant": "UnknownOnlyAfterRead",
+        "expected": "violation"
+      }
+    ],
+    "bounds": {
+      "maxSamples": 400,
+      "maxSteps": 40
+    }
   },
   {
     "path": "specs/quint/application/CalendarApprovalReview.qnt",

@@ -68,11 +68,14 @@ export function projectActionMessages(rendered: Message[], source: Message[]): M
     if (stored.card?.proposalId && stored.card.done) {
       const displayText = destination && stored.card.title === 'Completed' ? browserNavigationSummary(destination) : stored.card.sub;
       if (typeof displayText !== 'string' || !displayText.trim()) return message;
-      return {...message, cGeneric:false, cDigest:false, displayText, hasCalendarText:true};
+      return {...message, cGeneric:false, cDigest:false, displayText, hasCalendarText:true, deviceReceipt:true};
     }
+    // A result reported by the phone itself is marked (`deviceReceipt`) so the chat can show it
+    // apart from the assistant's own words.
     if (stored.deviceReceipt && stored.browserDestination) {
-      try { return {...message, displayText:browserNavigationSummary(stored.browserDestination), hasCalendarText:true}; } catch { return message; }
+      try { return {...message, displayText:browserNavigationSummary(stored.browserDestination), hasCalendarText:true, deviceReceipt:true}; } catch { return {...message, deviceReceipt:true}; }
     }
+    if (stored.deviceReceipt === true && !stored.card) return {...message, deviceReceipt:true};
     if (destination && message.cDigest && message.rows?.length) {
       return {...message,hasCalendarText:false,rows:message.rows.map((row:Message,index:number)=>index===0?{...row,who:new URL(destination).host,text:'Open'}:row)};
     }

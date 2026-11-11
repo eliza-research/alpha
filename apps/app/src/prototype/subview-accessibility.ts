@@ -13,7 +13,7 @@ type Popup=[key:string,open:(out:Bag)=>boolean,close:(out:Bag)=>void];
 const POPUPS:Record<string,Popup[]>={
  browser:[['menuModal',out=>!!out.menu,out=>out.closeMenu?.()],['shareModal',out=>!!out.share,out=>out.closeShare?.()]],
  photos:[['infoModal',out=>!!out.infoOpen,out=>out.closeSheet?.()],['shareModal',out=>!!out.shareOpen,out=>out.closeSheet?.()]],
- notes:[['shareModal',out=>!!out.shareSheet,out=>out.closeSheet?.()],['askModal',out=>!!out.trashAskOpen,out=>out.trashAskClose?.()],['folderModal',out=>!!out.folderSheetOpen,out=>out.closeFolderSheet?.()],['noteMenu',out=>!!(out.ed?.menuShown||out.vo?.menuShown||out.lk?.menuShown),out=>(out.ed||out.vo||out.lk)?.closeMenu?.()]],
+ notes:[['shareModal',out=>!!out.shareSheet,out=>out.closeSheet?.()],['askModal',out=>!!out.trashAskOpen,out=>out.trashAskClose?.()],['noteMenu',out=>!!(out.ed?.menuShown||out.vo?.menuShown||out.lk?.menuShown),out=>(out.ed||out.vo||out.lk)?.closeMenu?.()]],
  files:[['menuModal',out=>!!out.menuOpen,out=>out.closeMenu?.()],['moveModal',out=>!!out.moveSheet,out=>out.closeSheet?.()],['shareModal',out=>!!out.shareSheet,out=>out.closeSheet?.()]],
  workflows:[['stepModal',out=>!!out.b?.sheetOn,out=>out.b?.closeSheet?.()]],
  settings:[['sheetModal',out=>!!out.hasSheet,out=>out.sheet?.close?.()]],

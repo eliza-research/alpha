@@ -67,7 +67,7 @@ test('journey C: agent-proposed alarm is reviewed, saved once, survives reload, 
  // 3. Review: the exact request is shown, with no claim about the result, and nothing has run.
  await expect(conversation.getByText('Ask Clock to set 07:15 in UTC named “Journey alarm”. Review the alarm in Clock; Alpha cannot confirm creation or ringing.',{exact:true}).first()).toBeVisible();
  await expect(approve(page)).toHaveCount(1);
- await expect(page.getByRole('button',{name:'Cancel Keep things as they are.',exact:true})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:'Decline Keep things as they are.',exact:true})).toHaveCount(1);
  expect(await alarms(page)).toEqual([]);
  let state=await actions(page);
  expect(state.proposals.map((p:any)=>p.state)).toEqual(['pending']);expect(state.journal).toEqual([]);
@@ -163,7 +163,7 @@ test('journey C: a declined alarm proposal hands nothing to Clock, before or aft
  await queue(page,{type:'clock_handoff',action:'set',hour:7,minute:15,label:LABEL,timeZone:'UTC'});
  await ask.fill('Set an alarm for 07:15');await ask.press('Enter');
  await expect(conversation.getByText('Ask Clock to set 07:15 in UTC named “Journey alarm”. Review the alarm in Clock; Alpha cannot confirm creation or ringing.',{exact:true}).first()).toBeVisible();
- const decline=page.getByRole('button',{name:'Cancel Keep things as they are.',exact:true});
+ const decline=page.getByRole('button',{name:'Decline Keep things as they are.',exact:true});
  await expect(approve(page)).toHaveCount(1);
  // A double press is one rejection.
  await decline.dblclick();
