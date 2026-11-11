@@ -296,8 +296,15 @@ test('the layout hooks the sweep depends on stay in the template', () => {
   // Notes sharing uses the common native dialog (share-panel.test.mjs), not a scrim popup.
   assert.ok(scrims >= 12, `the template still marks its remaining scrim popups (${scrims})`);
   const access = read('apps/app/src/prototype/subview-accessibility.ts');
-  for (const ref of [...template.matchAll(/<div ref="\{\{([a-z]+)\.([a-zA-Z]+)\}\}" data-alpha-popup/g)])
-    assert.match(access, new RegExp(`${ref[1]}:\\[[^\\n]*\\['${ref[2]}'`), `${ref[1]}.${ref[2]} is provided by subview-accessibility.ts`);
+  for (const [, view, ref] of template.matchAll(/<div ref="\{\{([a-z]+)\.([a-zA-Z]+)\}\}" data-alpha-popup/g)) {
+    if (view === 'notes' && ref === 'emptyModal') {
+      assert.match(access, /name==='notes'\?reviewFocus\(\(\)=>output\.trashCancel\?\.\(\)\)/);
+      assert.match(access, /deleteModal\?\.render\(!!\(out\.emptyOpen\|\|out\.trashConfirmOpen\)\)/);
+      assert.match(access, /emptyModal:deleteModal\?\.ref/);
+    } else {
+      assert.match(access, new RegExp(`${view}:\\[[^\\n]*\\['${ref}'`), `${view}.${ref} is provided by subview-accessibility.ts`);
+    }
+  }
   // Settings re-releases its top page on every render; it must not release one a sheet holds.
   assert.match(read('apps/app/src/prototype/model.js'), /if \(!root\.querySelector\("\[data-alpha-popup\]"\)\) \{\s*current\.inert = false;/);
   // Toasts are announced: the live region is always present and its text arrives inside it,
