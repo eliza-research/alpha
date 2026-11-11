@@ -1,14 +1,23 @@
 # Fresh Alpha device presets
 
-The first-run provisioner completes only after Alpha is confirmed as Home and eligible
-presets have been checked. A rejected grant, timeout, unavailable role service, or failed
-readback leaves retry and failure-specific native Settings recovery:
-Home settings for a Home failure, input-method settings for a
-keyboard failure, and ordinary Settings for appearance or eligibility failures. The latter
-recovery buttons say “Open settings.” Callbacks and timers are bound
-to an attempt generation. The existing enterprise workflow and upstream setup completion
-methods remain unchanged. Completed, managed, profile and secondary-user installations
-do not receive first-run setting writes.
+The first-run provisioner confirms Alpha as Home before completing setup. Images
+that declare version 1 of the system feature
+`ai.alphacompute.alphaphone.feature.INITIAL_TELEPHONY_ROLES` also confirm Alpha
+as Phone and SMS. It uses Android's role service for the current user. An
+interrupted setup rechecks the current holders and requests only assignments
+that remain missing. An explicit successful grant and readback of Alpha as the
+sole holder are required for a requested role. Before setup completes, every
+required role is checked again.
+
+A rejected grant, timeout, unavailable role service or failed readback leaves
+retry and a link to the relevant Settings screen. Home uses Home settings.
+Phone and SMS use Default apps. Keyboard uses input-method settings. Appearance
+and eligibility use ordinary Settings. Late callbacks and timers are scoped to
+their own request. Completed, managed, profile and secondary-user installations
+do not receive first-run writes. Android continues to own role choices after setup.
+The upstream completion and enterprise paths still own the provisioning bits.
+The production image must stage this feature together with the components
+that qualify Alpha for Phone and SMS.
 
 `AlphaFreshSetupPolicy` is the decision engine used by privileged `AlphaFreshPresets`.
 Keyboard selection is explicit only when the selected-IME setting is empty: resolve the

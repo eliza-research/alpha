@@ -12,6 +12,7 @@ import { androidEnv, tool } from "./toolchain.ts";
 import { verifySecureCameraSource, writeSecureCameraOverlay, assertNoAlphaLockScreenSurface } from "./aosp-secure-camera-contract.ts";
 import { clockProductRequirement } from "./aosp-clock-contract.ts";
 import { provisioningComponents, writeProvisioningOverlay } from "./aosp-provisioning-overlay.ts";
+import { writeAospTelephonyRoles } from "./aosp-telephony-roles.ts";
 import { writeImageCapability } from "./aosp-image-capability.ts";
 import { releaseBlockers } from "./release-blockers.ts";
 import {signerDigest} from "./apk.ts";
@@ -335,6 +336,8 @@ writeSecureCameraOverlay(output, cameraSource);
 if (production) {
   const components = provisioningComponents(tree, identity.appId);
   writeProvisioningOverlay(output, identity.appId, components);
+  const stagedTree = aaptManifestTree(path.join(output, "Launcher.apk"), { aapt: tool("aapt"), env });
+  writeAospTelephonyRoles(output, stagedTree, identity.appId);
   // The shared Pixel 10a composition writes the same overlay from android/aosp/pixel10a-composition.json.
   if (!physical) writeAospCapabilityOverlay(output, identity.appId);
   console.log(`Provisioning overlay: HOME ${components.home}, assistant ${components.assistant ? identity.appId : "none (P-78)"}, Autofill ${components.autofill}.`);

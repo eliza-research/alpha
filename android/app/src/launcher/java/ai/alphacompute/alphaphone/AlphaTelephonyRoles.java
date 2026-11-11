@@ -6,10 +6,11 @@ import android.content.pm.PackageManager;
 
 /**
  * The dialer- and SMS-role components (and the MMS file provider) exist in the launcher manifest
- * disabled. They are enabled only while
+ * disabled. Production image staging makes them available before first-run role assignment.
+ * This runtime check enables them only while
  * {@link AlphaImageCapability} verifies the Alpha AOSP image, so a sideloaded launcher APK can never
  * be offered the dialer role, and an install that stops verifying (for example an image update that
- * drops the overlay) disables them again. The owner still chooses the role in Android's own dialog.
+ * drops the overlay) disables them again. After initial setup Android owns any role changes.
  */
 final class AlphaTelephonyRoles {
  private AlphaTelephonyRoles() {}
@@ -18,7 +19,18 @@ final class AlphaTelephonyRoles {
  static void sync(Context context) {
   boolean image = AlphaImageCapability.verified(context);
   PackageManager packages = context.getPackageManager();
-  int wanted = image ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DEFAULT;
+  int wanted = PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
+  if (!image) {
+   // On a staged image SystemConfig changes the parsed component default itself.
+   // Resetting to DEFAULT there would keep the components enabled.
+   wanted = PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+   try {
+    if (!packages.hasSystemFeature(context.getPackageName() + ".feature.INITIAL_TELEPHONY_ROLES", 1))
+     wanted = PackageManager.COMPONENT_ENABLED_STATE_DEFAULT;
+   } catch (RuntimeException unavailable) {
+    android.util.Log.w("AlphaTelephonyRoles", "Image role defaults unavailable");
+   }
+  }
   java.util.List<Class<?>> components = new java.util.ArrayList<>(java.util.Arrays.asList(DIALER));
   components.addAll(java.util.Arrays.asList(SMS));
   for (Class<?> component : components) {
