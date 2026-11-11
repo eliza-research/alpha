@@ -94,7 +94,7 @@ test('retained edits are written once per task with the latest copy, and read ba
     unsaved.edit(value('kept')); const clearing = unsaved.clear(); unsaved.edit(value('typed during the clear'));
     await assert.rejects(clearing); await until(() => readInboxUnsaved(stored() || JSON.stringify(value('')), owner).draft.body === 'typed during the clear', 'the edit made during the clear');
     // A copy the record refuses is reported once it is written, and the stored copy stays.
-    unsaved.edit({...value('refused'), draft: {...value('refused').draft, body: 'x'.repeat(64001)}}); await until(() => /too large to retain/.test(unsaved.status), 'the refusal');
+    unsaved.edit({...value('refused'), draft: {...value('refused').draft, body: 'x'.repeat(64001)}}); await until(() => unsaved.status === 'Too large to keep', 'the refusal');
     assert.equal(readInboxUnsaved(stored(), owner).draft.body, 'typed during the clear');
     // An app update waits for the waiting edit to be stored.
     unsaved.edit(value('before update')); await unsaved.flushForAppUpdate(() => true);
