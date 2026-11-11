@@ -40,3 +40,23 @@ test('retained-data availability hides the previous-notes entry without removing
  assert.equal(out.olderNotesAction,null);assert.equal(out.listActions,false);
  assert.equal(sources.find(source=>source.id==='legacy').choose,f.choose);
 });
+
+test('bulk Notes moves survive collection revision changes and finish with selection closed',async()=>{
+ const f=fixture([{id:'a',kind:'text',title:'A',body:'a',canonicalRevision:1},{id:'b',kind:'text',title:'B',body:'b',canonicalRevision:1}]);
+ Object.assign(f.state,{selectingNotes:true,selectedNotes:['a','b'],folderSheet:{kind:'move-selection'}});
+ const moved=[];
+ f.api.set=patch=>{Object.assign(f.state,patch);};
+ f.api.canonicalNotes={current:true,update:async(id,patch)=>{moved.push(id);f.state.list=f.state.list.map(note=>({...note,...(note.id===id?patch:{}),canonicalRevision:note.canonicalRevision+1}));return true;},leave:async()=>true};
+ const out=f.view.render(f.state,f.api);
+ await out.folderChoices[0].pick();
+ assert.deepEqual(moved,['a','b']);assert.equal(f.state.selectionBusy,false);assert.equal(f.state.selectingNotes,false);assert.equal(f.state.selectedNotes.length,0);
+});
+
+test('bulk Notes deletion stops when another selected note changes',async()=>{
+ const f=fixture([{id:'a',kind:'text',title:'A',body:'a',canonicalRevision:1},{id:'b',kind:'text',title:'B',body:'b',canonicalRevision:1}]);
+ Object.assign(f.state,{selectingNotes:true,selectedNotes:['a','b']});
+ const removed=[];f.api.set=patch=>{Object.assign(f.state,patch);};
+ f.api.canonicalNotes={current:true,remove:async id=>{removed.push(id);f.state.list=[{id:'b',kind:'text',title:'Changed elsewhere',body:'b',canonicalRevision:2}];return true;}};
+ await f.view.render(f.state,f.api).deleteSelected();
+ assert.deepEqual(removed,['a']);assert.deepEqual(Array.from(f.state.selectedNotes),['b']);assert.equal(f.state.selectionBusy,false);
+});

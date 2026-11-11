@@ -64,7 +64,7 @@ module CanonicalNotesView {
     open: 0, blank: 0, trash: List(), draft: EmptyDraft, waiters: List()}
   action step = any {loseOwner, retired, {nondet current = Bool.oneOf(); drained(current)},
     {nondet id = 1.to(8).oneOf(); wait(id)}, painted(EmptyDraft),
-    {nondet kind = Kinds.oneOf(); nondet title = 0.to(5).oneOf(); nondet body = 0.to(5).oneOf();
+    {nondet kind = Kinds.oneOf(); nondet title = 0.to(6).oneOf(); nondet body = 0.to(6).oneOf();
       nondet id = 0.to(2).oneOf(); nondet token = 1.to(5).oneOf(); nondet base = 0.to(4).oneOf();
       painted({present: true, id: id, token: token, base: base, data: {...EmptyData, kind: kind, title: title, body: body}})},
     {nondet kind = Kinds.oneOf(); nondet revision = 0.to(4).oneOf();

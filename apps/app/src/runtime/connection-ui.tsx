@@ -2479,7 +2479,22 @@ export const connectionController = {
     const remote=selected.remote,sessionId=state.session.sessionId;
     return {sessionId,subscribe:listener=>remote.subscribeVoiceEvents(listener),request:(path,body,signal)=>remote.request(path,body,signal,{},body===undefined?'GET':'POST')};
   },
-  async refreshDeveloperVoiceHistory(binding:VoiceConversationBinding,signal:AbortSignal){if(!browserLocalAgentEnabled||active?.kind!=='resident'||!this.voiceConversationCurrent(binding))throw Error('Developer voice conversation changed');await restoreConversationHistory(binding.conversationId,signal,true);if(!this.voiceConversationCurrent(binding))throw Error('Developer voice conversation changed');},
+  async refreshDeveloperVoiceHistory(binding:VoiceConversationBinding,signal:AbortSignal){
+    signal.throwIfAborted();
+    const selected=active,session=state.session,generation=epoch;
+    if(!browserLocalAgentEnabled||selected?.kind!=='resident'||!session||!this.voiceConversationCurrent(binding))throw Error('Developer voice conversation changed');
+    if(state.history?.conversationId!==binding.conversationId||state.history.sessionId!==session.sessionId){
+      await restoreConversationHistory(binding.conversationId,signal,true);
+      if(!this.voiceConversationCurrent(binding))throw Error('Developer voice conversation changed');
+      return;
+    }
+    // Merge the current page into the open conversation. Its earlier messages and
+    // receipts stay in place, and a voice update does not reconnect the renderer.
+    const result=await selected.remote.messages(binding.conversationId,signal);
+    signal.throwIfAborted();
+    if(selected!==active||session!==state.session||generation!==epoch||!this.voiceConversationCurrent(binding))throw Error('Developer voice conversation changed');
+    deliverConversationMessages(selected,session,binding.conversationId,result.messages);
+  },
   getPairedVoiceBinding(): { origin: string; ownerId: string; expiresAt: number; sessionId: string } | null {
     // Paired voice belongs to development and hosted agents; the resident agent has its own speech path.
     if (!testMocksEnabled) return null;
