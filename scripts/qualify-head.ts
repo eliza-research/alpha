@@ -190,7 +190,6 @@ interface CiArchive {
 export const CAMPAIGNS: readonly Campaign[] = Object.freeze([
   { id: "emulator-suite:instrumentation", kind: "emulator-suite", file: "test-results/emulator-suite/instrumentation.json" },
   { id: "emulator-suite:browser-reading", kind: "emulator-suite", file: "test-results/emulator-suite/browser-reading.json" },
-  { id: "emulator-suite:fused-speech", kind: "emulator-suite", file: "test-results/emulator-suite/fused-speech.json" },
   // android-resident-instrumentation.ts output, which records the installed app APK's hash (apkSha256).
   { id: "resident-instrumentation", kind: "record-dir", dir: "test-results/resident-instrumentation" },
   // resident-android.yml artifacts: the archive's apk-manifest.json (file name -> SHA-256) and the native proofs.
