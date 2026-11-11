@@ -135,9 +135,11 @@ test('a lost selection response still reads its generation once and never repeat
   assert.equal(restarts.length, 0);
 });
 
-test('superseded status cannot schedule a resident rebind, while a current unbound read still can', async () => {
+test('a superseded failed-turn check can be retried and only a current unbound read schedules a rebind', async () => {
   const {controller, reads, state, rebinds} = fixture();
   const check = controller.recheckResidentProvider('failed-turn');
+  await controller.recheckResidentProvider('failed-turn');
+  assert.equal(reads.length, 1, 'a repeat click shares the in-flight check');
   const refresh = controller.refreshProviderStatus();
   reads[1].resolve(latest);
   await refresh;
@@ -145,12 +147,13 @@ test('superseded status cannot schedule a resident rebind, while a current unbou
   await check;
   assert.deepEqual({status: state.providerStatus, inference: state.residentInference, rebinds: rebinds()},
     {status: latest, inference: 'cloud', rebinds: 0});
-  const current = controller.recheckResidentProvider('later-failed-turn');
+  const current = controller.recheckResidentProvider('failed-turn');
+  assert.equal(reads.length, 3, 'the same card can retry a superseded check');
   reads[2].resolve(unbound);
   await current;
   assert.equal(state.residentInference, 'unavailable');
   assert.equal(rebinds(), 1);
-  await controller.recheckResidentProvider('later-failed-turn');
+  await controller.recheckResidentProvider('failed-turn');
   assert.equal(reads.length, 3);
   assert.equal(rebinds(), 1);
 });

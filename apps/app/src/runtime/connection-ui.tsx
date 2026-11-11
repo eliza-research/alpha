@@ -3224,13 +3224,18 @@ export const connectionController = {
   /**
    * The card under a reply the agent gave without AI while Alpha believed Cloud AI was bound. Reads
    * what native has bound and shows that; with no Cloud provider there, one rebind is queued (it
-   * never interrupts a reply). Once per failed turn.
+   * never interrupts a reply). Once a check is confirmed, it cannot be repeated for that turn.
    */
   async recheckResidentProvider(turnId:string){
     if(!residentCloudFlow()||active?.kind!=='resident'||providerRechecks.has(turnId))return;
     providerRechecks.add(turnId);
     const selected=active,generation=providerStatusGeneration,status=await connectionController.refreshProviderStatus(generation);
-    if(!status||active!==selected||generation!==providerStatusGeneration||state.providerStatus!==status||state.providerStatusError||ownProviderSelected())return;
+    if(active!==selected||generation!==providerStatusGeneration)return;
+    if(!status||state.providerStatus!==status||state.providerStatusError){
+      providerRechecks.delete(turnId);
+      return;
+    }
+    if(ownProviderSelected())return;
     const bound=status.configured&&status.provider==='elizacloud';
     update({residentInference:bound?'cloud':'unavailable'});
     if(!bound){residentBinding='unbound';queueResidentRebind();}
