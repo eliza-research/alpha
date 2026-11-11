@@ -28,6 +28,15 @@ import org.json.JSONObject;
 @CapacitorPlugin(name="AlphaVoiceCloud", permissions={@Permission(alias="microphone",strings={android.Manifest.permission.RECORD_AUDIO})})
 public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  public AlphaVoiceCloudPlugin(){super("alpha-cloud-voice-","alpha-cloud-tts-");}
+ /**
+  * On-device transcription of one window of audio the app already holds (a decoded voicemail): a
+  * complete mono 16 kHz PCM16 WAV of at most sixty seconds, base64. It runs under the same request
+  * gate, foreground fence and cancellation as a recording and never leaves the phone.
+  */
+ @PluginMethod public void transcribeLocalAudio(PluginCall call){transcribeSuppliedWav(call,cancelled->{
+  String data=call.getString("wav");if(data==null||data.isEmpty()||data.length()>2_700_000)throw new IOException("Invalid audio");
+  try{return Base64.getDecoder().decode(data);}catch(IllegalArgumentException invalid){throw new IOException("Invalid audio");}
+ });}
  private static final Set<AlphaVoiceCloudPlugin> activeVoices=new java.util.concurrent.CopyOnWriteArraySet<>();
  private static final Set<Streaming> activeStreams=new java.util.concurrent.CopyOnWriteArraySet<>();
  private final ai.eliza.plugins.passwords.PasswordSurfaces.Listener secretSurface=visible->{if(visible)retireSpeechAuthority();};

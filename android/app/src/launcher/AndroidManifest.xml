@@ -1,10 +1,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
  <!-- Alpha AOSP image only (P-36). The image stages this launcher build. AlphaTelephonyPlugin, which
       MainActivity registers only after AlphaImageCapability verifies the image, requests both;
-      AlphaContactsPlugin requests READ_CONTACTS only under the image provisioning admission
+      AlphaContactsPlugin requests Contacts permissions only under the image provisioning admission
       (AlphaImageCapabilities.aospImage). A sideloaded launcher APK declares them but never asks for them. -->
  <uses-permission android:name="android.permission.READ_CONTACTS" />
+ <!-- In-app contact saves and deletes on the verified image (AP-08): the owner's own edit, or an
+      agent-proposed change the owner confirmed on the phone. Each write names the version of the
+      contact that was shown. Requested with READ_CONTACTS only under the image provisioning admission;
+      the standalone manifest removes it. -->
+ <uses-permission android:name="android.permission.WRITE_CONTACTS" />
  <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+ <!-- The line's own number for Settings → Phone. Same runtime group as phone state; launcher only. -->
+ <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+ <!-- IMEI and SIM serial for Settings → Phone. Android grants this only to a privileged system app
+      named in an allow-list, which the Alpha image stages for exactly this permission
+      (scripts/stage-aosp.ts). A sideloaded launcher never holds it and shows no identifiers. -->
+ <uses-permission android:name="android.permission.READ_PRIVILEGED_PHONE_STATE" tools:ignore="ProtectedPermissions" />
  <!-- SMS/MMS provider reads and reviewed native sends (#421), on the verified image only. Both are
       hard-restricted: Android grants them to the preinstalled image app or the SMS role holder, never
       to a sideloaded launcher APK. AlphaTelephonyPlugin requests them only on the verified image. -->

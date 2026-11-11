@@ -244,6 +244,8 @@ export function installPrototypeHomeBindings(Component: any) {
       conversationHidden: out.panelPE !== 'auto' || out.shadeY === '0' || !!out.voiceOn,
       shadeHidden: out.shadeY !== '0' || !!out.voiceOn,
       dockHidden: out.shadeY === '0' || !!out.voiceOn,
+      // An open conversation has one bottom bar: its own text field, with Alpha's orb in it.
+      ...(out.is?.messages && out.messages?.ownsDock ? { showPill: false, showComposer: false } : {}),
     };
   };
 }

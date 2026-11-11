@@ -28,6 +28,8 @@ public abstract class TelephonyPlugin extends Plugin {
  ${member(plugin,/^ @Override protected void handleOnDestroy\(\)[^\n]+/m)}
  private void stopObserving(){}
  private void resumeObserving(){}
+ private void stopObservingVoicemail(){}
+ private void resumeObservingVoicemail(){}
  protected interface ReadTask {JSObject run(android.os.CancellationSignal signal)throws Exception;}
  protected final void fencedRead(PluginCall call,String alias,String name,ReadTask work){throw new AssertionError("Unrelated Contacts read");}
 }`,

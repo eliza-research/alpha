@@ -23,8 +23,8 @@ test('ordinary APK presentation never admits Contacts or prompts permission',asy
  await setup(page,false);await expect(page.getByRole('button',{name:'Contacts',exact:true})).toHaveCount(0);expect(await page.evaluate(()=>(window as any).contactRequests)).toBe(0);
 });
 test('admitted Contacts reads only after explicit access and edits the selected provider identity',async({page})=>{
- await setup(page,true);await page.getByRole('button',{name:'Contacts',exact:true}).click();await expect(page.getByRole('button',{name:'Allow Contacts access'})).toBeVisible();expect(await page.evaluate(()=>(window as any).contactRequests)).toBe(0);
- await page.getByRole('button',{name:'Allow Contacts access'}).click();await page.getByRole('button',{name:'S Synthetic Contacts Person',exact:true}).click();await expect(page.getByText('+15550100200',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Delete contact',exact:true})).toHaveCount(0);
+ await setup(page,true);await page.getByRole('button',{name:'Contacts',exact:true}).click();await expect(page.locator('[data-alpha-contacts-allow]')).toBeVisible();expect(await page.evaluate(()=>(window as any).contactRequests)).toBe(0);
+ await page.locator('[data-alpha-contacts-allow]').click();await page.getByRole('button',{name:'SP Synthetic Contacts Person',exact:true}).click();await expect(page.getByText('(555) 010-0200',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Delete contact',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Edit contact',exact:true}).click();expect(await page.evaluate(()=>(window as any).contactEdits)).toEqual([{method:'edit',input:{id:'123',lookup:'synthetic-lookup',revision:'7'}}]);
  await page.evaluate(()=>{(window as any).contactAccess=false;window.dispatchEvent(new Event('focus'));});await expect(page.getByText('Synthetic Contacts Person',{exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>JSON.stringify({...localStorage}).includes('Synthetic Contacts Person'))).toBe(false);
@@ -38,6 +38,6 @@ test('already granted Contacts stays unread on Home and retires a pending read w
  await returnToApps(page);
  await page.evaluate(()=>{(window as any).holdContacts=false;(window as any).releaseContacts();});
  await page.getByRole('button',{name:'Contacts',exact:true}).click();
- await expect(page.getByRole('button',{name:'S Synthetic Contacts Person',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'SP Synthetic Contacts Person',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).contactReads)).toBe(2);
 });

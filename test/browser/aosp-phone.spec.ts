@@ -6,7 +6,7 @@ async function setup(page:any,image:boolean){
  await page.addInitScript((image:boolean)=>{
   localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));const w=window as any;w.androidBridge={};w.telephonyCalls=[];w.callLogAccess='prompt';
   const names=['AlphaContacts','DailyApps','AlphaBrowser','AlphaConnection','AlphaDevice','AlphaLocalAgent','AlphaHostedResults','AlphaVoiceCloud','AlphaNotifications','ElizaSystem','AlphaCalendar','AlphaNoteDocuments','AlphaNoteAudio','AlphaFiles','AlphaPhotos','DeviceApps','ElizaLocation','AlphaActionJournal',...(image?['AlphaTelephony']:[])];
-  const methods=['addListener','removeListener','surfaceInfo','readPending','readPendingResult','readDelegationCallback','readSecret','secureRead','secureWrite','secureRemove','get','status','getStatus','getState','state','permissionState','permissions','list','listCalendars','listEvents','listReminders','listBookmarks','getBookmarks','bookmarks','settings','getSettings','buildInfo','platformCapabilities','capabilities','query','read','readJournal','getPending','readSelection','requestPermissions','create','edit','imageCapability','requestAccess','listRecentCalls','dial','listThreads','observeMessages','smsSendHistory'];
+  const methods=['addListener','removeListener','surfaceInfo','readPending','readPendingResult','readDelegationCallback','readSecret','secureRead','secureWrite','secureRemove','get','status','getStatus','getState','state','permissionState','permissions','list','listCalendars','listEvents','listReminders','listBookmarks','getBookmarks','bookmarks','settings','getSettings','buildInfo','platformCapabilities','capabilities','query','read','readJournal','getPending','readSelection','requestPermissions','create','edit','imageCapability','requestAccess','listRecentCalls','dial','listThreads','observeMessages','smsSendHistory','placeCall','listVoicemail','searchContacts'];
   const status=()=>({version:2,voiceCapable:true,smsCapable:true,permissions:{contacts:'prompt',phoneState:'prompt',sms:'prompt',sendSms:'prompt',callLog:w.callLogAccess},sendMode:'handoff',mmsSend:false,roles:{dialer:{available:true,held:false,eligible:true},sms:{available:true,held:false,eligible:true}},defaultDialer:'com.android.dialer',defaultSms:null,subscriptions:null,defaultSmsSubscriptionId:null});
   /* Telephony attempts are recorded at the Capacitor boundary: a call through the bridge and a direct
    * plugin call both count, so the standalone shape cannot reach AlphaTelephony unnoticed. */
@@ -20,6 +20,9 @@ async function setup(page:any,image:boolean){
     if(method==='status')return status();
     if(method==='requestAccess'){if(input.access==='callLog')w.callLogAccess='granted';return status();}
     if(method==='listRecentCalls')return {calls:[{id:'9',number:'+15550100200',cachedName:'Synthetic Caller',date:1700000000000,durationSeconds:65,type:'missed',isNew:true}]};
+    if(method==='placeCall')return Promise.reject(Object.assign(Error('Alpha is not the phone app'),{code:'role-required'}));
+    if(method==='listVoicemail')return {state:'unsupported',voicemails:[]};
+    if(method==='searchContacts')return {contacts:[]};
     if(method==='dial')return {status:'handed-off',target:'dialer',handler:'com.android.dialer',message:'Your phone app is open with the number. Place the call there; this app does not know whether it connects.'};
     return {threads:[],messages:[],records:[]};
    }
@@ -35,17 +38,18 @@ test('standalone exposes no Phone route, call prompt or telephony request',async
  await expect(page.getByRole('button',{name:'Phone',exact:true})).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).telephonyCalls)).toEqual([]);
 });
-test('the image shows recents only after explicit access and dials by handoff',async({page})=>{
+test('the image shows recents only after explicit access; without the dialer role a tap opens the system dial screen',async({page})=>{
  await setup(page,true);
  await page.getByRole('button',{name:'Phone',exact:true}).click();
- await expect(page.getByRole('button',{name:'Allow call history'})).toBeVisible();
+ await expect(page.locator('[data-alpha-phone-allow]')).toBeVisible();
  expect(await page.evaluate(()=>(window as any).telephonyCalls)).not.toContain('listRecentCalls');
- await page.getByRole('button',{name:'Allow call history'}).click();
- const row=page.getByRole('button',{name:'Call Synthetic Caller'});
+ await page.locator('[data-alpha-phone-allow]').click();
+ const row=page.getByRole('button',{name:/^Call Synthetic Caller, missed/});
  await expect(row).toBeVisible();
  await row.click();
- await expect(page.getByText(/Place the call there/).first()).toBeVisible();
+ // This stub's phone does not hold the dialer role: placing is refused and the number is handed over.
+ await expect(page.locator('[data-alpha-phone-notice]')).toContainText('Place the call there');
  const calls=await page.evaluate(()=>(window as any).telephonyCalls);
- expect(calls).toContain('dial');expect(calls).not.toContain('placeCall');
+ expect(calls.indexOf('placeCall')).toBeGreaterThan(-1);expect(calls.indexOf('dial')).toBeGreaterThan(calls.indexOf('placeCall'));
  expect(await page.evaluate(()=>JSON.stringify({...localStorage}).includes('Synthetic Caller'))).toBe(false);
 });

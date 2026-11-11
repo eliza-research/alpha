@@ -19,6 +19,13 @@ import {smsSubscriptionRevision} from '../runtime/sms-subscription-revision';
 import {createAospTelephony,type AlphaTelephonyPlugin} from '../runtime/aosp-telephony';
 import {isSmsSend,validateSmsResult,smsAgentHash,smsDeviceStatus} from '../runtime/sms-agent-contract';
 import {isPhoneDial,dialDeviceStatus,phoneDialResultText,type PhoneDialResult} from '../runtime/phone-dial-contract';
+import {isTelephonyAction} from '../runtime/telephony-actions-contract';
+import {executeTelephonyAction,type TelephonyPorts} from '../runtime/telephony-executor';
+import {normalizePhoneNumber,reviewSms} from '../runtime/aosp-telephony';
+import {parseContactDetail,parseContactRemove,parseContactSave} from '../../../../.eliza/client-features/packages/contracts/src/native-address-book.ts';
+import {askTelephonyReview} from './telephony-review';
+import {openSmsThread,openSmsThreadSelection,placeAskedSmsDraft} from './sms-adapter';
+import {deleteOpenVoicemail,openVoicemailRead,openVoicemailSelection} from './phone-adapter';
 import {receiptLabel} from '../runtime/image-sms';
 import {deletions,refreshDeletionViews,reminderDeletionRefusal} from '../runtime/deletions';
 import {BrowserReviews} from '../browser/review';
@@ -677,6 +684,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(s.shade&&shell.notificationSelection?.())providerSelection=shell.notificationSelection();
     // The owning Calendar hook checks readiness/privacy; a chat overlay does not replace its underlying view.
     const calendarDay=view==='calendar'?shell.calendarDayObservation?.():undefined;
+    const telephonySelection=view==='messages'?openSmsThreadSelection():view==='phone'?openVoicemailSelection():null;
     alphaClient.setViewContext({
       timeZone:currentClockTimeZone(),
       ...(calendarDay?{calendarDay}:{}),
@@ -686,7 +694,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       // Password manager pages pause observation entirely: no view, selection or revision.
       sensitive: view === 'wallet' || (view === 'settings' && passwordSurfaceOpen(shell.vget('settings'))) || s.secure === true || s.screen === 'lock' || s.screen === 'off' || document.hidden || shell.pageSuspended === true || connectionController.getSnapshot().open,
       ...(view==='notes'&&shell.notesSelection ? { selectedObject: shell.notesSelection } : previousNotesScope ? { selectedObject:previousNotesScope } : providerSelection ? { selectedObject: providerSelection } : ['files','photos'].includes(view) && shell.vget(view).open === '__native_selected_document' && shell.selectedContext ? { selectedObject: shell.selectedContext } : {}),
-    });
+    },telephonySelection);
     if(alphaClient.getState().context.sensitive||[...(shell.readReplyLeases?.values()||[])].some((lease:any)=>lease.phase!=='cancelled'&&lease.phase!=='done'&&!connectionController.readReplyCurrent(lease.binding)))shell.cancelReadReplyCompletions?.();
     updateBackAvailability(shell);
     recoverPendingActions(shell);
@@ -898,6 +906,39 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         const handoff=await client.dial(operation.target.number);
         const dialResult:PhoneDialResult={kind:'phone-dial',status:handoff.status,handler:handoff.status==='handed-off'?handoff.handler:null,contact:false};
         return {status:dialDeviceStatus(dialResult),summary:phoneDialResultText(dialResult),dialResult};
+      }
+      if(isTelephonyAction(operation)){
+        // Owner-approved telephony on the verified image only. A contact is resolved here, on the
+        // phone; the owner confirms the exact number or the before and after before anything
+        // calls, sends or writes, and the agent receives only the outcome.
+        if(!aospImage||expectedContext.sensitive||document.hidden)throw Error('Open Alpha on the Alpha image to continue');
+        const plugin=registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),client=createAospTelephony(plugin,true),book=registerPlugin<any>('AlphaContacts');
+        const ownerSession=connectionController.getSnapshot().session,ownerTarget=JSON.stringify(connectionController.getWorkflowDeviceTarget());
+        const current=()=>{signal.throwIfAborted();context(this);if(!ownerSession||connectionController.getSnapshot().session!==ownerSession||JSON.stringify(connectionController.getWorkflowDeviceTarget())!==ownerTarget||!this.live||document.hidden||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Phone context changed');};
+        const ports:TelephonyPorts={
+          current,ask:askTelephonyReview,normalize:normalizePhoneNumber,
+          searchContacts:(query,limit)=>client.searchContacts(query,limit),
+          placeCall:number=>client.placeCall(number),
+          getContact:async id=>parseContactDetail(await book.get({id}),id),
+          saveContact:async(draft,target)=>{const saved=parseContactSave(await book.save(target?{id:target.id,version:target.version,...draft}:draft),target?.id);return {status:saved.status};},
+          removeContact:async(id,version)=>parseContactRemove(await book.remove({id,version})),
+          // The same native review and journalled send as a text to a number; the review shows the resolved number and the text.
+          sendSms:async(number,body,id,sendSignal)=>{
+            const status=await client.status();current();
+            const sim=expectedContext.view==='messages'&&expectedContext.selectedObject?.kind==='sms-subscription'?expectedContext.selectedObject:null;
+            const selected=sim&&status.subscriptions?.find(row=>String(row.id)===sim.id&&smsSubscriptionRevision(row)===sim.revision);
+            if(sim&&!selected)return 'unavailable';
+            const checked=reviewSms({recipients:[number],body,subscriptionId:selected?.id},status,'direct');
+            if('problem' in checked)return 'unavailable';
+            const cancel=()=>{void plugin.cancelSmsReview({operationId:id}).catch(()=>{});};sendSignal.addEventListener('abort',cancel,{once:true});
+            try{const native=await client.sendSms(checked.review,id);return native.status==='denied'?'cancelled':native.status;}
+            finally{sendSignal.removeEventListener('abort',cancel);}
+          },
+          openThread:openSmsThread,openVoicemail:openVoicemailRead,deleteOpenVoicemail,
+          // A placed draft is the answer: the conversation comes back in front so the owner sees it in the field.
+          draftInOpenThread:(body,number)=>{const placed=placeAskedSmsDraft(body,number);if(placed==='drafted'&&this.S().chat!=='hidden')this.setState({chat:'hidden'});return placed;},
+        };
+        return executeTelephonyAction(operation,operationId,ports,signal);
       }
       if(isSmsSend(operation)){
         if(!aospImage||expectedContext.sensitive||document.hidden||expectedContext.view!=='messages'||expectedContext.selectedObject?.kind!=='sms-subscription'||expectedContext.selectedObject.id!==String(operation.subscriptionId))throw Error('Open Messages on the Alpha image and select the approved SIM');
