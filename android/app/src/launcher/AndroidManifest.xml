@@ -12,6 +12,10 @@
  <uses-permission android:name="android.permission.READ_PHONE_STATE" />
  <!-- The line's own number for Settings → Phone. Same runtime group as phone state; launcher only. -->
  <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+ <!-- IMEI and SIM serial for Settings → Phone. Android grants this only to a privileged system app
+      named in an allow-list, which the Alpha image stages for exactly this permission
+      (scripts/stage-aosp.ts). A sideloaded launcher never holds it and shows no identifiers. -->
+ <uses-permission android:name="android.permission.READ_PRIVILEGED_PHONE_STATE" tools:ignore="ProtectedPermissions" />
  <!-- SMS/MMS provider reads and reviewed native sends (#421), on the verified image only. Both are
       hard-restricted: Android grants them to the preinstalled image app or the SMS role holder, never
       to a sideloaded launcher APK. AlphaTelephonyPlugin requests them only on the verified image. -->

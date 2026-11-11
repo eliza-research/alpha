@@ -20,6 +20,12 @@ import { aaptManifestTree, admitImageApk, manifestTreeIsDebuggable, reviewedSour
 import { CUTTLEFISH_TARGETS, cuttlefishProductProblems } from "../vendor/eliza/packages/os/scripts/android/cuttlefish-product.mjs";
 
 export const PRODUCT_DESCRIPTOR = "android/aosp/product.json";
+/**
+ * The one privileged permission the Alpha launcher may hold on the image: the phone's own IMEI and
+ * SIM serial for Settings → Phone. The shared overlay stager installs the launcher under priv-app
+ * with an allow-list naming exactly this; every other privileged permission stays refused.
+ */
+export const LAUNCHER_PRIVILEGED_PERMISSIONS = ["android.permission.READ_PRIVILEGED_PHONE_STATE"];
 export const SHARED_CUTTLEFISH_LOCK = "vendor/eliza/packages/os/android/aosp.lock.json";
 export const AOSP_TARGETS = CUTTLEFISH_TARGETS;
 type ReviewedSourcePatch = ReturnType<typeof listenerSystemuiPatch>;
@@ -265,6 +271,7 @@ if (!descriptor) {
         packageName: identity.appId,
         apkSha256: hash,
         certificateSha256: signer,
+        privilegedPermissions: LAUNCHER_PRIVILEGED_PERMISSIONS,
       },
       null,
       2,
@@ -272,6 +279,11 @@ if (!descriptor) {
   );
 }
 const reviewed = JSON.parse(fs.readFileSync(descriptor, "utf8"));
+// Identifier access is all or nothing and never wider: a reviewed descriptor either names exactly
+// the one permission below (the launcher is then staged as a privileged app with an allow-list for
+// it alone) or none, in which case Settings → Phone shows no IMEI and links to Android's status screen.
+if (reviewed.privilegedPermissions !== undefined && JSON.stringify(reviewed.privilegedPermissions) !== JSON.stringify(LAUNCHER_PRIVILEGED_PERMISSIONS))
+  throw new Error(`Descriptor privilegedPermissions must be exactly ${JSON.stringify(LAUNCHER_PRIVILEGED_PERMISSIONS)} or absent.`);
 if (
   reviewed.packageName !== identity.appId ||
   reviewed.moduleName !== identity.moduleName

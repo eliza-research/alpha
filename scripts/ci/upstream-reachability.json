@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "4c961d022ea97da4662bfb4d52cf30a797c67d7c",
-  "head": "43fbe30e4b8d356bba8e7b21a988401d61206c67",
+  "head": "3def803f19b51563eab199e8c069b28c9ef48153",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...43fbe30e4b8d356bba8e7b21a988401d61206c67",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...3def803f19b51563eab199e8c069b28c9ef48153",
   "status": "diverged",
-  "aheadBy": 10,
+  "aheadBy": 11,
   "behindBy": 161,
   "mergeBase": "ede068b56ab07df42e3038de9a108bc7daa6ae0c",
   "pinOnlyCommits": [
@@ -50,6 +50,10 @@
     {
       "sha": "43fbe30e4b8d356bba8e7b21a988401d61206c67",
       "subject": "Add phoneInfo: a bounded foreground read of the phone's SIM lines for Settings"
+    },
+    {
+      "sha": "3def803f19b51563eab199e8c069b28c9ef48153",
+      "subject": "Let a reviewed launcher descriptor opt in to READ_PRIVILEGED_PHONE_STATE"
     }
   ],
   "pullRequests": []
