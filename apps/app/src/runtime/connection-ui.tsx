@@ -231,7 +231,7 @@ export const NO_AGENT_VOICE = testMocksEnabled ? 'Connect your remote agent in S
 /** One wording for every surface that needs the agent and has no session yet. */
 export function residentPendingText(snapshot: Pick<ConnectionSnapshot, 'kind'|'residentRecoveryReason'> = state): string {
   if(snapshot.residentRecoveryReason)return residentRecoveryMessage(snapshot.residentRecoveryReason);
-  return snapshot.kind === 'recovering' ? 'Your agent stopped. Retry in Settings › Agent connection.' : 'Your agent is starting…';
+  return snapshot.kind === 'recovering' ? 'Your agent stopped. Retry in Settings › About › Status.' : 'Your agent is starting…';
 }
 /** Every surface that needs an agent and has no session: the resident state where the resident is
  * always present, otherwise the production web preview's on-phone wording (test mocks: the remote
@@ -1001,7 +1001,7 @@ async function ensureResident() {
   update({ open: open || state.open, message: message || (state.session ? '' : state.message), ...(message ? { previousSignInUnconfirmed: !!previousSignInUnconfirmed } : {}), error: shownError, errorKind: shownError === error ? errorKind ?? null : state.errorKind ?? null });
 }
 /** Retires the running agent and restarts it after a provider change. A failure recovers with
- * Retry; when the change came from Settings › AI provider (closed as soon as the change was
+ * Retry; when the change came from Settings › Account › AI connection (closed as soon as the change was
  * saved), its reason is shown back in that dialog: an agent sheet never opens on its own in
  * production. */
 async function restartAfterProviderChange(signal: AbortSignal, fromSettings: boolean) {
@@ -2565,7 +2565,7 @@ export const connectionController = {
     // "Retry saved connection". A local keystore read; no Cloud request and nothing is restored.
     if(residentCloudFlow()&&!state.cloudAccount)void cloudCredentialStore.read(residentEnvironment()).then(credential=>{if(state.open&&state.purpose==='cloud-account'&&!state.cloudAccount)update({residentSavedCredential:!!credential?.credentialId});}).catch(()=>{/* Sign-in stays available. */});
   },
-  /** Settings › Eliza Cloud account & plan: the plan panel with Redeem code, Manage plan and Sign out. */
+  /** Settings › Account: the plan panel with Redeem code, Manage plan and Sign out. */
   openPlan({codeEntry=false}:{codeEntry?:boolean}={}){ update({open:true,automaticRestore:false,purpose:'plan',membershipDismissed:false,membershipCodeEntry:codeEntry,message:'',error:'',redeemError:'',redeemNotice:''});if(state.cloudAccount)void refreshMembershipBalance(); },
   refreshMembershipBalance,
   async refreshAccount():Promise<void>{
@@ -3849,14 +3849,14 @@ export function ConnectionChooser() {
       <div className="alpha-plan-notice-actions">
         <button aria-label="Redeem code" disabled={snapshot.busy} onClick={()=>connectionController.openPlan({codeEntry:true})}><span aria-hidden="true" data-alpha-icon="/icons/lucide/ticket.svg" style={iconStyle('ticket')}/>Code</button>
         <button disabled={snapshot.busy} onClick={()=>void connectionController.residentManagePlan()}>{CHOOSE_PLAN_LABEL}</button>
-        <button aria-label="Dismiss plan notice" onClick={()=>setDismissedNotice(notice)}>×</button>
+        <button aria-label="Dismiss plan notice" onClick={()=>setDismissedNotice(notice)}><span aria-hidden="true" data-alpha-icon="/icons/lucide/x.svg" style={iconStyle("x")}/></button>
       </div>
     </aside>}
     {keyNotice!==null&&<aside className="alpha-plan-notice" role="region" aria-label={`${serviceName} sign-in notice`}>
       <p role="status"><span aria-hidden="true" data-alpha-icon="/icons/lucide/clock.svg" style={iconStyle('clock')}/> <StatusDot tone="warn">Expires {new Date(keyNotice).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'})}</StatusDot></p>
       <div className="alpha-plan-notice-actions">
         <button disabled={snapshot.busy} onClick={()=>void connectionController.residentCloudLogin()}><span aria-hidden="true" data-alpha-icon="/icons/lucide/rotate-cw.svg" style={iconStyle('rotate-cw')}/>Renew</button>
-        <button aria-label="Dismiss sign-in notice" onClick={()=>setDismissedKeyExpiry(keyNotice)}>×</button>
+        <button aria-label="Dismiss sign-in notice" onClick={()=>setDismissedKeyExpiry(keyNotice)}><span aria-hidden="true" data-alpha-icon="/icons/lucide/x.svg" style={iconStyle("x")}/></button>
       </div>
     </aside>}</div>;
   }
@@ -3895,7 +3895,7 @@ export function ConnectionChooser() {
   const actionReview=snapshot.session&&snapshot.phoneActionsAvailable&&<details open={snapshot.actionHistory.some(item=>item.state==='reconciliation_required')}><summary>Actions</summary><button aria-label="Refresh actions" disabled={snapshot.busy} onClick={() => void connectionController.actionHistory()}><span aria-hidden="true" data-alpha-icon="/icons/lucide/rotate-cw.svg" style={iconStyle('rotate-cw')}/></button><button disabled={snapshot.busy} onClick={() => void connectionController.actionHistory(true)}>Verify</button>{snapshot.actionHistory.map(item => <section key={item.id} className="alpha-connection-agent"><strong>{item.title}</strong>{item.detail&&<span>{item.detail}</span>}<span>{item.outcome}{item.timestamp&&` · ${item.timestamp}`}</span>{item.state === 'pending' && <button disabled={snapshot.busy} onClick={() => void connectionController.rejectAction(item.id)}>Decline</button>}{['executing','reconciliation_required'].includes(item.state) && <><p>Did this happen?</p><button disabled={snapshot.busy} onClick={() => void connectionController.reconcileAction(item.id, 'applied')}><span aria-hidden="true" data-alpha-icon="/icons/lucide/check.svg" style={iconStyle('check')}/>Yes</button><button disabled={snapshot.busy} onClick={() => void connectionController.reconcileAction(item.id, 'not_applied')}><span aria-hidden="true" data-alpha-icon="/icons/lucide/x.svg" style={iconStyle('x')}/>No</button></>}</section>)}</details>;
   const conversations=snapshot.session&&<details><summary>History</summary><button aria-label="New conversation" disabled={snapshot.busy} onClick={() => void connectionController.newConversation()}><span aria-hidden="true" data-alpha-icon="/icons/lucide/plus.svg" style={iconStyle('plus')}/>New</button><button aria-label="Load conversations" disabled={snapshot.busy} onClick={() => void connectionController.listHistory()}><span aria-hidden="true" data-alpha-icon="/icons/lucide/download.svg" style={iconStyle('download')}/>Load</button>{snapshot.conversations.map(item => <section key={item.id} className="alpha-connection-agent"><strong>{item.title}</strong><button aria-label="Restore conversation" disabled={snapshot.busy} onClick={() => void connectionController.restoreHistory(item.id)}><span aria-hidden="true" data-alpha-icon="/icons/lucide/undo-2.svg" style={iconStyle('undo-2')}/>Restore</button></section>)}</details>;
   // The account panel Inbox opens ("Connect Eliza Cloud"). On production Android a sign-in kept on
-  // this phone is offered here exactly as Settings › Agent connection offers it: "Retry saved
+  // this phone is offered here exactly as Settings › About › Status offers it: "Retry saved
   // connection" starts the on-device agent with that sign-in (connectResident, never a remote or
   // Cloud-hosted agent), only when the owner asks. Until that succeeds nothing says the phone is
   // signed in or connected, a failure is shown as the error it was, and a sign-in Cloud rejected
@@ -3954,7 +3954,7 @@ export function ConnectionChooser() {
   if(residentCloudFlow())return <div className="alpha-connection-scrim"><div className="alpha-connection alpha-connection-native alpha-connection-resume" role="dialog" aria-modal="true" aria-labelledby="connection-title" aria-busy={snapshot.residentStarting||undefined} tabIndex={-1} ref={panel}>
     <header><h1 id="connection-title" className="serif">{planPanel&&snapshot.cloudAccount?'Plan':'Status'}</h1>{!residentMustSignIn&&<button aria-label="Close connection settings" disabled={snapshot.busy&&!snapshot.residentStarting} onClick={()=>connectionController.close()}><span aria-hidden="true" data-alpha-icon="/icons/lucide/x.svg" style={iconStyle("x")}/></button>}</header>
     {/* Owner decision (2026-10-30): the plan sheet shows only account, plan and billing. Agent
-        status, recovery, conversation history and phone-action receipts stay in Settings › Agent connection. */}
+        status, recovery, conversation history and phone-action receipts stay in Settings › About › Status. */}
     {!planPanel&&<section aria-label="Agent status"><ul className="alpha-status-rows"><li><span aria-hidden="true" data-alpha-icon="/icons/lucide/phone.svg" style={iconStyle('phone')}/><span className="alpha-row-name">Agent</span><span role="status"><StatusDot tone={residentStatusTone}>{residentStatus}</StatusDot></span></li></ul>
       {snapshot.kind==='recovering'&&!snapshot.session&&!snapshot.residentRecoveryReason&&<div className="alpha-connection-actions"><button disabled={snapshot.busy} onClick={()=>void connectionController.startLocal()}>Retry</button></div>}
       <ResidentRecoveryPanel snapshot={snapshot}/>
@@ -4007,7 +4007,7 @@ export function ConnectionChooser() {
     </form></details>}
   </>:null;
   if(privateLocalPreviewEnabled)return <div className="alpha-connection-scrim"><div className="alpha-connection alpha-connection-native alpha-connection-resume" role="dialog" aria-modal="true" aria-labelledby="private-connection-title" aria-busy={snapshot.busy||undefined} tabIndex={-1} ref={panel}>
-    <header><h1 id="private-connection-title" className="serif">Alpha connection</h1><button aria-label="Close connection settings" disabled={snapshot.busy} onClick={()=>connectionController.close()}>×</button></header>
+    <header><h1 id="private-connection-title" className="serif">Alpha connection</h1><button aria-label="Close connection settings" disabled={snapshot.busy} onClick={()=>connectionController.close()}><span aria-hidden="true" data-alpha-icon="/icons/lucide/x.svg" style={iconStyle("x")}/></button></header>
     <p role="status">{snapshot.session?<StatusDot tone="ok">Connected</StatusDot>:snapshot.busy?<Busy label="Connecting"/>:<StatusDot tone="err">Not connected</StatusDot>}</p>
     {snapshot.error&&<p role="alert" className="alpha-connection-error">{snapshot.error}</p>}
     <div className="alpha-connection-actions"><button disabled={snapshot.busy} onClick={()=>void connectionController.startLocal()}>{snapshot.session?'Reconnect':'Try again'}</button></div>

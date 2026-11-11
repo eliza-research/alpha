@@ -20,13 +20,11 @@ import { Capacitor } from '@capacitor/core';
 import { DailyApps } from '../daily';
 import { agentPendingText, connectionController } from '../runtime/connection-ui';
 import {googleConnectionController} from '../runtime/google-connection-ui';
-import {GOOGLE_ACCOUNTS_CHANGED,googleDisconnectConfirmation,googleDisconnectMessage} from '../runtime/google-accounts';
+import {GOOGLE_ACCOUNTS_CHANGED} from '../runtime/google-accounts';
 import { browserLocalAgentEnabled, modelLabel } from '../runtime/local-agent';
 import {developmentCartesiaVoiceEnabled} from '../runtime/development-cartesia-conversation';
 import type { GmailAccount } from '../runtime/cloud-protocol';
-import { disconnectGmailAccount, disconnectMessage, GMAIL_ACCOUNTS_CHANGED } from '../runtime/gmail-mailbox';
-import { retireGmailBackground } from '../runtime/gmail-background';
-import { gmailGrantLabel, googleAccountAccessLabel } from '../runtime/gmail-grants';
+import { gmailGrantLabel } from '../runtime/gmail-grants';
 import { clearCrashLog, describeCrashEntry, readCrashLog, recordCloudInferenceFailure, type CrashLog } from '../runtime/crash-log';
 import { buildDiagnostics, diagnosticsFileName, diagnosticsText } from '../runtime/diagnostics-export';
 import {planAdmission} from '../runtime/subscription-entitlement';
@@ -42,6 +40,8 @@ import { leavePasswordEntry, leavePasswordManager, passwordEntryPage, passwordMa
 type Bag = Record<string, any>;
 type PhotoAccess = {scope:'full'|'partial'|'selected'|'denied';images:string;videos:string};
 const photoLibrary = registerPlugin<{libraryAccess():Promise<PhotoAccess>;requestLibraryAccess():Promise<PhotoAccess>;openLibrarySettings():Promise<void>}>('AlphaPhotos');
+/** Shared-storage access as Android reports it; `settings` opens Android's page without a prompt. */
+const fileStorage = registerPlugin<{storageState():Promise<{access?:unknown}>;storageRequestAccess(options?:{settings?:boolean}):Promise<unknown>}>('AlphaFiles');
 // The prover (specs/lemma) cannot read a constant without a value; no proved function uses it.
 //@ skip
 declare const __APP_VERSION__: string;
@@ -252,6 +252,19 @@ export function settingsNavigationRows<T extends NavigationRow>(rows: T[], devel
   //@ ensures !developerSurfaces ==> forall(k, 0 <= k && k < \result.length ==> \result[k].label !== 'Developer' && \result[k].lbl !== 'Developer')
   return developerSurfaces ? rows : rows.filter(row => row.label !== 'Developer' && row.lbl !== 'Developer');
 }
+/** Sections another surface may open directly (alpha:settings-page), with the category whose page
+ * Back returns to. Developer, password and credential pages are never addressable this way. */
+const SETTINGS_SECTIONS: Record<string, string | null> = {
+  display: 'settings-general', sound: 'settings-general', notifications: 'settings-general', battery: 'settings-general', 'settings-general': 'settings-general',
+  privacy: 'settings-privacy', 'settings-permissions': 'settings-privacy', 'settings-privacy': 'settings-privacy',
+  'settings-account': 'settings-account',
+  'settings-apps': 'settings-apps', calendar: 'settings-apps', 'app-settings-workflows': 'settings-apps', 'app-settings-inbox': 'settings-apps',
+  about: null,
+};
+/** The view-state patch that opens a section, or null for anything outside the allowlist. */
+export function settingsSectionPatch(section: unknown): { page: string; settingsCategory: string | null } | null {
+  return typeof section === 'string' && Object.hasOwn(SETTINGS_SECTIONS, section) ? { page: section, settingsCategory: SETTINGS_SECTIONS[section] } : null;
+}
 // settings-facts:end
 /** Saved appearance choice. 'system' follows prefers-color-scheme, which Android WebView also reports. */
 export type AppearanceChoice = 'system' | 'light' | 'dark';
@@ -358,10 +371,11 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   let owner: any, facts: Bag = {}, controls: Bag = {}, delivery: Bag = {}, generation = 0,scaleGeneration=0,scaleVersion=0,scalePending=false,scaleResults=textScaleSettlement(), cross:Bag={}, choices:Bag[]|null=null, history:Bag[]|null=null, notificationBusy=false;
   let passwordOpening=false,photoAccessBusy=false,protonOpen=false;
   let photoAccess:PhotoAccess|null=null;
+  let fileAccess:'granted'|'denied'|null=null;
   let recovery: RecoveryDomain[] = [];
   let capabilityAbort: AbortController | null = null;
   let inferenceAbort:AbortController|null=null;
-  let gmailAccounts: GmailAccount[] = [], gmailBusy = '', settingsApi: Bag | undefined;
+  let gmailAccounts: GmailAccount[] = [];
   let roles: Record<string, RoleRow> | null = null, launcher: boolean | null = null, roleBusy = false;
   let crashLog: CrashLog | null = null, crashBusy = false, diagnosticsBusy = false;
   let updateBusy: '' | 'check' | 'install' = '', updateResult='';
@@ -476,25 +490,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       ]);
     } finally { clearTimeout(timeout); if (owner === instance && capabilityAbort === abort) changed(); }
   }
-  /** Explicit, confirmed disconnect followed by a read-back; never retried automatically. */
-  async function disconnectGmail(account: GmailAccount) {
-    const cloud = connectionController.getCloudClient(), instance = owner;
-    if (!cloud || !account.connectionId || gmailBusy) return;
-    if (!await review('disconnect-google:'+account.connectionId,'Disconnect?',googleDisconnectConfirmation(account.label,cloudServiceName(cloud.client.environment)),'Disconnect')||gmailBusy||connectionController.getCloudClient()?.sessionId!==cloud.sessionId) return;
-    gmailBusy = account.connectionId; changed();
-    // Native background state is retired alongside the revoke; it never gates it.
-    const retirement = retireGmailBackground(account.connectionId);
-    try {
-      const result = await disconnectGmailAccount(cloud.client, account.connectionId, new AbortController().signal);
-      if (owner !== instance || connectionController.getCloudClient()?.sessionId !== cloud.sessionId) return;
-      if (result.accounts) { gmailAccounts = result.accounts; gmail = gmailGrantLabel(result.accounts); }
-      else gmail = 'Authorization not verified';
-      settingsApi?.toast(googleDisconnectMessage(result.outcome, account.label));
-      window.dispatchEvent(new CustomEvent(GMAIL_ACCOUNTS_CHANGED, { detail: { source: 'settings' } }));
-      window.dispatchEvent(new Event(GOOGLE_ACCOUNTS_CHANGED));
-    } catch { if (owner === instance) { settingsApi?.toast(disconnectMessage('unconfirmed', account.label)); gmail = 'Authorization not verified'; } }
-    finally { await retirement.settled(); gmailBusy = ''; if (owner === instance) changed(); }
-  }
   /** Android shows its own role dialog; the result is read back from getStatus, never assumed. */
   async function requestHome(api: Bag) {
     if (roleBusy) return;
@@ -581,14 +576,15 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (!instance) return;
     resumedUnread = false;
     const native = Capacitor.isNativePlatform();
-    const [state, settings, noticeState, crossState, metadata, roleState, build, problems, photos] = await Promise.allSettled([device.snapshot(), system.getDeviceSettings(), notifications.status(), notifications.crossAppStatus(), history===null?Promise.resolve(null):notifications.notificationHistory(),
+    const [state, settings, noticeState, crossState, metadata, roleState, build, problems, photos, storage] = await Promise.allSettled([device.snapshot(), system.getDeviceSettings(), notifications.status(), notifications.crossAppStatus(), history===null?Promise.resolve(null):notifications.notificationHistory(),
       // Browsers have no Android roles: the web plugin rejects, so nothing is shown there.
-      native ? system.getStatus() : Promise.reject(Error('No device roles')), native && launcher === null ? system.getBuildInfo() : Promise.resolve(null), readCrashLog(), native ? photoLibrary.libraryAccess() : Promise.resolve(null), native ? connectionController.refreshProviderStatus() : Promise.resolve()]);
+      native ? system.getStatus() : Promise.reject(Error('No device roles')), native && launcher === null ? system.getBuildInfo() : Promise.resolve(null), readCrashLog(), native ? photoLibrary.libraryAccess() : Promise.resolve(null), native ? fileStorage.storageState() : Promise.resolve(null), native ? connectionController.refreshProviderStatus() : Promise.resolve()]);
     if (owner !== instance || generation !== token) return;
     roles = roleState.status === 'fulfilled' ? readRoles(roleState.value) : null;
     if (build.status === 'fulfilled' && build.value) launcher = build.value.launcher === true;
     crashLog = problems.status === 'fulfilled' ? problems.value : null;
     photoAccess = photos.status === 'fulfilled' ? photos.value : null;
+    fileAccess = storage.status === 'fulfilled' && (storage.value?.access === 'granted' || storage.value?.access === 'denied') ? storage.value.access : null;
     const previousFacts = facts;
     facts = state.status === 'fulfilled' ? {...state.value} : {};
     // A device snapshot can predate a text-size write. Keep that write's fields,
@@ -629,7 +625,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   p.componentDidMount = function () {
     mount.call(this); owner = this;
     this.mailImagePreferenceChanged=changed;
-    this.settingsNavigation=(event:Event)=>{const page=(event as CustomEvent).detail?.page;if(typeof page!=='string'||!new Set(['display','sound','notifications','privacy','settings-account','settings-apps','settings-general','calendar','app-settings-workflows']).has(page))return;event.preventDefault();const settingsCategory=page==='privacy'?'settings-privacy':page==='settings-account'?'settings-account':['settings-apps','calendar','app-settings-workflows'].includes(page)?'settings-apps':'settings-general';this.openView('settings');this.vset('settings',{page,settingsCategory});};
+    this.settingsNavigation=(event:Event)=>{const patch=settingsSectionPatch((event as CustomEvent).detail?.page);if(!patch)return;event.preventDefault();this.openView('settings');this.vset('settings',patch);};
     window.addEventListener('alpha:settings-page',this.settingsNavigation);
     window.addEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
     initializeDevicePreferences(); void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed);
@@ -691,7 +687,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     document.removeEventListener('visibilitychange',this.phoneInfoVisibility);
     automaticUpdates?.dispose(); automaticUpdates = undefined;
     document.removeEventListener('visibilitychange',automaticUpdateActive);
-    if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; ++scaleGeneration; ++scaleVersion; scalePending=false; scaleResults=textScaleSettlement(); updateBusy=''; updateResult=''; facts = {}; controls = {}; delivery = {}; cross={}; choices=null; history=null; roles=null; crashLog=null; }
+    if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; ++scaleGeneration; ++scaleVersion; scalePending=false; scaleResults=textScaleSettlement(); updateBusy=''; updateResult=''; facts = {}; controls = {}; delivery = {}; cross={}; choices=null; history=null; roles=null; crashLog=null; photoAccess=null; fileAccess=null; }
     window.removeEventListener('alpha:settings-page',this.settingsNavigation);
     window.removeEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
     window.removeEventListener('storage',this.appearanceStorageListener);
@@ -719,7 +715,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   let phoneInfo:ReturnType<typeof createPhoneInfoLoader>|null=null;
   const phoneLoader=()=>{const client=aospImage?telephonyProfile():null;return client?phoneInfo??=createPhoneInfoLoader(client,changed):null;};
   const settingsBack = definition.back;
-  const settingsParents: Record<string,string> = {history:'agent-connection','agent-connection':'about',problems:'about',licenses:'about','password-entry':'password-provider','settings-permissions':'settings-privacy','license-detail':'licenses','phone-info':'settings-general'};
+  const settingsParents: Record<string,string> = {'agent-connection':'about',problems:'developer',licenses:'about','password-entry':'password-provider','settings-permissions':'settings-privacy','license-detail':'licenses','phone-info':'settings-general'};
   definition.back = (state:Bag,api:Bag) => {
     if(!state.sheet&&((typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page))||(!state.page&&state.settingsCategory))){api.set({page:null,settingsCategory:null});return true;}
     if(!state.sheet&&settingsParents[state.page]){if(state.page==='password-entry')leavePasswordEntry();api.set({page:settingsParents[state.page]});return true;}
@@ -727,7 +723,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     return settingsBack ? settingsBack(state,api) : false;
   };
   definition.render = (state: Bag, api: Bag) => {
-    settingsApi = api;
     const activeSettingsCategory=typeof state.settingsCategory==='string'&&Object.hasOwn(categoryNames,state.settingsCategory)?state.settingsCategory:null;
     const permissionsPage=state.page==='settings-permissions'||state.page==='privacy';
     const appSettingsPage=typeof state.page==='string'&&state.page.startsWith('app-settings-')?state.page.slice(13):null;
@@ -886,7 +881,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         const preferences=devicePreferencesStatus();
         page.groups.push(group([{
           // Scope as chips; unreadable preferences stay locked on (Alpha asks before every action).
-          kTog:true,label:'Review phone actions first',aria:'Review phone actions first',hasSub:false,
+          kTog:true,label:'Ask before Alpha acts',aria:'Ask before Alpha acts',hasSub:false,
           hasTags:preferences==='ready',tags:[{label:'Web'},{label:'Camera'},{label:'Photos'}],
           hasIcon:preferences==='unavailable',d:api.ic?.lock,
           on:preferences!=='ready'||cachedDevicePreferences()?.askBeforeAgentActions!==false,
@@ -909,7 +904,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           page.groups.push(group([role('Home app',home),role('Assistant app',roles?.assistant),
             ...(canRequestHome?[{kNav:true,label:'Set as Home',lbl:'Make Alpha your Home app',busy:roleBusy,hasSpin:roleBusy,chev:!roleBusy,noAB:true,go:()=>void requestHome(api)}]:[]),
             nav('Default apps','default-apps','Default apps in Android')]));
-          // Install update only for the version the last manifest offers this install, and an explicit check. No error or "up to date" claim.
+          // Install update only for the version the last manifest offers this install, and an explicit check whose answer stays below it.
           const update=parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner});
           page.groups.push(group([
             ...(update?[{...action('Update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,sizeBytes:update.sizeBytes,versionCode:update.versionCode}).catch(()=>{/* Quiet: the row stays and the next tap retries. */}))),lbl:updateBusy==='install'?'Downloading update':'Install update',lucide:'download',val:update.versionName?versionLabel(update.versionName,update.versionCode):String(update.versionCode),hasVal:true,busy:!!updateBusy,hasSpin:updateBusy==='install',chev:false,id:'update-install'}]:[]),
@@ -1167,12 +1162,11 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         'AI provider': 'AI',
         'Agent connection': 'Agent',
         'Set up Alpha access': 'Permissions',
-        'Review phone actions first': 'Ask before Alpha acts',
       };
       const sections = [
         ['Account', ['Accounts', 'Connections', 'AI provider']],
         ['Preferences', ['Display', 'Notifications']],
-        ['Privacy', ['Set up Alpha access', 'Review phone actions first']],
+        ['Privacy', ['Set up Alpha access', 'Ask before Alpha acts']],
         ['Apps', ['Calendar', 'Password manager', 'Photos']],
         ['Help', ['About', 'Agent connection']],
       ] as const;
@@ -1192,7 +1186,11 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         });
         return {...group(selected), cap:caption, hasCap:true};
       }).filter(section => section.rows.length);
-      if (rows.size) settingsTop.groups.splice(2, 0, {...group([...rows.values()]), cap:'Device', hasCap:true});
+      // General: network hand-offs, the device, updates, then the destructive reset alone and last.
+      const take = (names: string[]) => names.flatMap(name => { const row = rows.get(name); rows.delete(name); return row ? [row] : []; });
+      const network = take(['Wi-Fi', 'Bluetooth', 'Mobile data']), updates = take(['Update', 'Check', 'Update check']), reset = take(['Erase all data']);
+      settingsTop.groups.splice(2, 0, ...[['Network', network], ['Device', [...rows.values()]], ['Updates', updates], ['Reset', reset]]
+        .filter(([, list]) => (list as Bag[]).length).map(([cap, list]) => ({...group(list as Bag[]), cap, hasCap:true})));
       for (const page of out.stack) {
         if (page.title === 'Accounts') page.title = 'Account & plan';
         if (page.title === 'Connections') page.title = 'Google & email';
@@ -1200,7 +1198,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     }
     if(settingsTop){
       const detailGroups=settingsTop.groups;
-      const categories=[['settings-account','Account',['Account']],['settings-general','General',['Preferences','Device']],['settings-privacy','Privacy',['Privacy']],['settings-apps','Apps',['Apps']],['settings-help','About',['Help']]] as const;
+      const categories=[['settings-account','Account',['Account']],['settings-general','General',['Preferences','Network','Device','Updates','Reset']],['settings-privacy','Privacy',['Privacy']],['settings-apps','Apps',['Apps']],['settings-help','About',['Help']]] as const;
       settingsTop.groups=categories.filter(([key])=>key!=='settings-account').map(([key,title])=>group([{kNav:true,label:title,lbl:title,chev:true,noAB:true,go:()=>{api.set({page:key==='settings-help'?'about':key,settingsCategory:key==='settings-help'?null:key});}}]));
       if(wakeListeningStopUnconfirmed())settingsTop.groups.unshift(group([micMayBeOn()],'wake-stop-unconfirmed'));
       const appSettingsRows=detailGroups.filter((section:Bag)=>section.cap==='Apps').flatMap((section:Bag)=>section.rows);
@@ -1230,7 +1228,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       }
       if(appSettingsPage==='workflows'){const channel=(delivery.channels||[]).find((c:Bag)=>c.id==='reminders');if(channel&&!Capacitor.isNativePlatform())rows.push({kTog:true,label:'Alerts',aria:'Show alerts',on:!channel.blocked,track:!channel.blocked?'background:var(--acc)':'background:var(--line)',kx:!channel.blocked?20:0,toggle:()=>void run(async()=>{await notifications.setAlertPreferences({channelId:channel.id,enabled:!!channel.blocked});})});}
       const permissions:Record<string,string[]>={camera:['Camera','Microphone'],maps:['Location'],notes:['Microphone']};
-      for(const label of permissions[appSettingsPage]||[])rows.push(permissionInfo(label,typeof facts.permissions?.[label]==='boolean'?(facts.permissions[label]?'Allowed':'Off'):'—'));
+      for(const label of permissions[appSettingsPage]||[]){const val=typeof facts.permissions?.[label]==='boolean'?(facts.permissions[label]?'Allowed':'Off'):'—';rows.push(Capacitor.isNativePlatform()?{...action(label,manage('privacy')),val,hasVal:true,hasDot:val!=='—',dot:permissionDot(val),hasExt:true,chev:false}:permissionInfo(label,val));}
       out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:names[appSettingsPage]||'App settings',hasTitle:true,backLabel:'Back to Apps',back:()=>{api.set({page:'settings-apps',settingsCategory:'settings-apps'});},hero:{},groups:rows.length?[group(rows)]:[]});
     }
     if(phonePage){
@@ -1253,12 +1251,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const rows=['Camera','Microphone','Location',...(native?['Calendar']:[])].map(label=>native?valued(action(label,manage('privacy')),status(label)):permissionInfo(label,status(label)));
       const photos=native?(photoAccess?.scope==='full'?'All':photoAccess?.scope==='selected'?'Selected':photoAccess?.scope==='partial'?'Limited':photoAccess?.scope==='denied'?'Alpha only':'—'):'Selected';
       rows.push(native?valued(action('Photos',()=>void photoLibrary.openLibrarySettings().catch(()=>api.toast('Unavailable'))),photos):permissionInfo('Photos',photos));
-      rows.push(permissionInfo('Files','Chosen files'));
+      // Shared storage as Android reports it now (all-files access on Android 11+); the row opens Android's page.
+      rows.push(native?valued(action('Files',()=>void fileStorage.storageRequestAccess({settings:true}).then(()=>refresh(),()=>api.toast('Unavailable'))),fileAccess==='granted'?'All':fileAccess==='denied'?'Off':'—'):permissionInfo('Files','Chosen files'));
       rows.push(valued(action('Notifications',()=>api.set({page:'notifications'})),typeof delivery.appEnabled==='boolean'?(delivery.appEnabled&&delivery.permissionGranted?'Allowed':'Off'):'—'));
       out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'App permissions',backLabel:'Back to Privacy',back:()=>api.set({page:'settings-privacy'}),hero:{},groups:[group(rows)]});
     }
     if(activeSettingsCategory&&!categoryPage)for(const page of out.stack)if(!page.isTop&&page.backLabel==='Back to Settings')page.backLabel='Back to '+categoryNames[activeSettingsCategory];
-    const nestedParents:Record<string,[string,string]>={'agent-connection':['about','About'],licenses:['about','About'],problems:['developer','Developer'],history:['agent-connection','Connection help'],'license-detail':['licenses','licenses']};
+    const nestedParents:Record<string,[string,string]>={'agent-connection':['about','About'],licenses:['about','About'],problems:['developer','Developer'],'license-detail':['licenses','licenses']};
     if(nestedParents[state.page]){const [parent,label]=nestedParents[state.page];const page=out.stack[out.stack.length-1];if(page&&!page.isTop){page.backLabel='Back to '+label;page.back=()=>api.set({page:parent});}}
     const settingsIcons:Record<string,string>={General:'settings',Phone:'phone',IMEI:'info','Mobile network':'signal',Privacy:'shield',Apps:'layout-grid',Help:'info',About:'info',Browser:'globe',Calendar:'calendar-days',Camera:'camera',Files:'folder',Inbox:'mail',Maps:'map-pin',Notes:'notebook-text',Passwords:'lock-keyhole',Photos:'images',Workflows:'workflow','Account & plan':'user-round','Google & email':'link','AI connection':'cpu',Display:'sun',Notifications:'bell','Privacy & data':'shield','App permissions':'fingerprint-pattern','Redeem code':'gift','Manage plan':'credit-card','Sign out':'log-out'};
     for(const page of out.stack)for(const section of page.groups||[])for(const row of section.rows||[]){if(row.kBtn)row.btnAria=row.aria||row.label;if(row.kNav){row.lucideIcon='/icons/lucide/'+(row.licenseComponent?'file-text':row.lucide||settingsIcons[row.label]||'sliders-horizontal')+'.svg';row.hasLucideIcon=!row.isTextSize;row.hasIcon=false;row.hasTile=false;}}
