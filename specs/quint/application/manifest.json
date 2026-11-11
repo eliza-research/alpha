@@ -1284,7 +1284,8 @@
       "staleDenialKeepsCurrentListingTest",
       "staleGrantCannotReviveAccessTest",
       "retiredListingCannotPublishTest",
-      "staleAgentReadDoesNotShareTest"
+      "staleAgentReadDoesNotShareTest",
+      "retiredAgentReadDoesNotShareTest"
     ],
     "sources": [
       "apps/app/src/prototype/selection-adapter.ts",
@@ -1296,7 +1297,7 @@
     ],
     "abstractions": [
       "Installed folder reader, current access/volume readback and registered agent share admission over deferred storage ports. Two folders, three entries, two volumes and six state-read identities.",
-      "Category/Trash aggregation, filters, selection, preview, mutation dialogs, native watch ownership and durable provider effects remain explicit extensions."
+      "Direct open and late selection release use the shared FilesDirectAdmission model and the Alpha cold-start browser flows. Category/Trash aggregation, filters, mutation dialogs, native watch ownership and durable provider effects remain explicit extensions."
     ]
   },
   {

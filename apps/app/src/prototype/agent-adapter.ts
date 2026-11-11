@@ -923,7 +923,28 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         const files=this.filesAgent as FilesAgentRunner|undefined;
         if(!files||!filesContextAllowed(operation,expectedContext)||document.hidden)return {status:'failed',summary:'Open Files on the unlocked phone. Nothing was changed.'};
         signal.throwIfAborted();
-        return await files.run(operation,signal);
+        const session=connectionController.getSnapshot().session;
+        const ownerCurrent=()=>activeShell===this&&this.live&&!document.hidden&&connectionController.getSnapshot().session===session;
+        const openFiles=()=>new Promise<boolean>((resolve,reject)=>{
+          const abort=()=>reject(signal.reason);
+          try{
+            signal.throwIfAborted();
+            context(this);
+            if(!ownerCurrent()||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext)){resolve(false);return;}
+            const chat=this.S().chat;
+            if(!openInternalView(this,'files',chat==='sheet'||chat==='full'?chat:undefined)){resolve(false);return;}
+            signal.addEventListener('abort',abort,{once:true});
+            this.setState({},()=>{
+              signal.removeEventListener('abort',abort);
+              try{
+                signal.throwIfAborted();context(this);
+                const opened=alphaClient.getState().context;
+                resolve(ownerCurrent()&&opened.view==='files'&&!opened.sensitive);
+              }catch(error){reject(error);}
+            });
+          }catch(error){signal.removeEventListener('abort',abort);reject(error);}
+        });
+        return await files.run(operation,signal,openFiles);
       }
       // Until the pin carries photos-view-agent.patch the shared operation union does not name these.
       const photosView:unknown=operation;

@@ -8,5 +8,5 @@ test('Files readback and listings retain the current request across late native 
   assert.equal(receipt.passed, true);
   assert.equal(receipt.inputsUnchanged, true);
   assert.equal(receipt.driverInputsBound, true);
-  assert.equal(receipt.traces, 13);
+  assert.equal(receipt.traces, 14);
 });
