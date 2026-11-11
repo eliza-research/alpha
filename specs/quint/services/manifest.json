@@ -3263,6 +3263,7 @@
         "viewOpen/admitted/hidden/active": "available(): the shell view, isMvpView(\"contacts\"), document.hidden and the adapter copy kept by sync()",
         "epoch/reads/loading": "refresh() token, reads in flight and the loading flag cleared only by the current read or by clear()",
         "readable/rows/more/limit": "access answer, in-memory rows and the 50-row page steps up to 200",
+        "query/rowsQuery": "the normalized shell search and the exact query that owns the visible rows",
         "editorOpen": "the system contact editor opened by editor() and the re-read on return"
       },
       "abstractions": [
