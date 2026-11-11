@@ -2,7 +2,6 @@
 module CoreApprovalServiceTemplate {
   const Selectors: Set[int]
   const CanFail: bool
-  const RejectUnownedCallbacks: bool
   type State = {inMap: bool, timer: str, taskExists: bool, result: str, selRuns: int, toRuns: int,
     tpc: str, tHas: bool, spc: int -> str, sHas: int -> bool, cpc: str, stopped: bool}
   var s: State
@@ -28,13 +27,9 @@ module CoreApprovalServiceTemplate {
   action TResolve = all {s.tpc == "resolve", Move({...s, result: Settle("timedOut"), tpc: "deleteTask"})}
   action TDelete = all {s.tpc == "deleteTask", Move({...s, taskExists: false, tpc: "done"})}
   action Deliver(selector: int): bool = all {Selectors.contains(selector), s.spc.get(selector) == "idle", s.taskExists,
-    not(RejectUnownedCallbacks and s.stopped),
     Move({...s, spc: s.spc.set(selector, "getTask")})}
   action SGetTask(selector: int): bool = all {Selectors.contains(selector), s.spc.get(selector) == "getTask",
-    if (not(s.taskExists) or (RejectUnownedCallbacks and s.stopped))
-      Move({...s, spc: s.spc.set(selector, "deleteTask")})
-    else if (RejectUnownedCallbacks and not(s.inMap))
-      Move({...s, spc: s.spc.set(selector, "done")})
+    if (not(s.taskExists)) Move({...s, spc: s.spc.set(selector, "deleteTask")})
     else Move({...s, sHas: s.sHas.set(selector, s.inMap), inMap: false,
       timer: if (s.inMap and s.timer == "armed") "cleared" else s.timer,
       spc: s.spc.set(selector, if (s.inMap) "onSelect" else "deleteTask"),
@@ -80,7 +75,7 @@ module CoreApprovalServiceTemplate {
   temporal CallerSettles = eventually(s.result != "none")
 }
 module CoreApprovalService {
-  import CoreApprovalServiceTemplate(Selectors = Set(1, 2), CanFail = true, RejectUnownedCallbacks = false) as Model
+  import CoreApprovalServiceTemplate(Selectors = Set(1, 2), CanFail = true) as Model
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
@@ -110,7 +105,7 @@ module CoreApprovalService {
     .expect(Model::s.result == "rejected" and Model::s.toRuns == 1 and safety)
 }
 module CoreApprovalServiceRace {
-  import CoreApprovalServiceTemplate(Selectors = Set(1, 2), CanFail = false, RejectUnownedCallbacks = false) as Model
+  import CoreApprovalServiceTemplate(Selectors = Set(1, 2), CanFail = false) as Model
   action init = Model::Init
   action step = Model::Step
   action rawStep = Model::Next
