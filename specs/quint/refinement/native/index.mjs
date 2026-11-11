@@ -50,6 +50,7 @@ import {checkNativeHostedResultNotices} from './hosted-result-notices.mjs';
 import {checkNativeHostedInbox} from './hosted-inbox.mjs';
 import {checkNativeReminderDelivery} from './reminder-delivery.mjs';
 import {checkNativeClockReview} from './clock-review.mjs';
+import {checkNativeDeletionReviewAdmission} from './deletion-review-admission.mjs';
 import {checkNativeSmsDispatch} from './sms-dispatch.mjs';
 import {checkNativeMmsDispatch} from './mms-dispatch.mjs';
 import {checkNativeTextScaleLifecycle} from './text-scale-lifecycle.mjs';
@@ -173,7 +174,7 @@ export async function runNativeRefinement(onProgress) {
       const failed = reset.results.filter(result => result.status !== 'passed');
       if (failed.length) throw new Error(`Reset coordinator refinement failed: ${failed.map(result => `${result.name} (${result.status})`).join(', ')}`);
     }],
-    ...[checkDeletionCoordinator, checkResidentCoordinator, checkCredentialCoordinator, checkNativeNoteRecording,
+    ...[checkDeletionCoordinator, checkNativeDeletionReviewAdmission, checkResidentCoordinator, checkCredentialCoordinator, checkNativeNoteRecording,
       checkKeyboardDictation, checkNoteRecordingService, checkVoiceDraft, checkNotePermission, checkCredentialLeasePolicies,
       checkRendererCoordinator, checkSharedRecording, checkLiveCapture].map(withInputs(earlyInputs)),
     ...[checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore,
