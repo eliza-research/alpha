@@ -388,16 +388,17 @@
         "apps/app/src/runtime/workflow-local-time.ts"
       ],
       "stateMapping": {
-        "version/reviewedVersion/phase": "normalized authoring, validation and exact-version save/run",
-        "queued/sourceCurrent/enabled/mocks": "development trigger cursor queue and source hash revalidation",
-        "intentSaved/submission/admittedSubmission/executions": "durable submission identity and idempotent reconciliation",
-        "approval/requestDigest/reviewedDigest/effects": "reviewed supported approval and effect execution",
-        "cancelRequested/outcome": "cancellation request versus terminal receipt"
+        "version/reviewedVersion/phase": "Exact modern manual submission protocol. Unknown result, missing run, resend review, confirmed reread and version refusal are separate transitions.",
+        "queued/sourceCurrent/enabled/mocks": "The development queue can retain disabled or superseded jobs until a foreground tick. Dispatch requires matching enabled definition and source.",
+        "intentSaved/submission/admittedSubmission/executions": "Durable original identity and at most one server admission. A missing lookup may race late acceptance of the original request.",
+        "runOwner/runEpoch/receiptVisible": "Current owner and view lifetime gate publication and cancellation. Switching owners retires UI observation without canceling the server run.",
+        "approval/requestDigest/reviewedDigest/effects": "One reviewed supported approval and effect.",
+        "cancelRequested/outcome": "Receipt-bound explicit cancellation and independent remote termination."
       },
       "abstractions": [
-        "One workflow and one submission with two editable versions. Execution count includes reconciliation of an already admitted submission.",
-        "Production supports manual triggers here. Browser event/time/location trigger activity is explicitly marked development-only.",
-        "The upstream workflow engine and multiple action graph steps are composed through receipt/approval contracts rather than reimplemented."
+        "One reviewed submission and one effect, with up to two version changes. The manual path assumes manualSubmissionProtocol=1; legacy unfenced server admission and activation are outside this contract.",
+        "The browser fixture queue is distinct from production scheduled workflow execution. WorkflowEngineAdmission and WorkflowScheduleTasks own production engine and schedule boundaries.",
+        "Model observations abstract one current owner/epoch and one durable identity. A receipt is visible only to its current owner. The retained identity monitor represents prior durable admission even after a normal source acknowledgement."
       ],
       "path": "specs/quint/services/WorkflowExecution.qnt",
       "module": "WorkflowExecution",
@@ -407,15 +408,22 @@
       "tests": [
         "reviewedExecutionTest",
         "unknownSubmissionTest",
+        "lateAdmissionWinsResendTest",
+        "changedVersionAbandonsUnknownRequestTest",
+        "changedVersionRefusesInFlightRequestTest",
+        "ownerSwitchDoesNotCancelRunTest",
         "denialAndCancelTest",
-        "triggerDisableTest"
+        "triggerDisableTest",
+        "changedDefinitionCannotDispatchQueuedJobTest"
       ],
       "invariants": [
         "AtMostOneExecution",
         "DurableSubmission",
         "ReviewedEffect",
-        "DisabledTriggersEmpty",
-        "ProductionTriggerGate",
+        "CancellationNeedsExecution",
+        "ReceiptBelongsToCurrentOwner",
+        "AbandonedWasNeverAdmitted",
+        "FixtureQueueRequiresMocks",
         "TypeOK"
       ],
       "bounds": {

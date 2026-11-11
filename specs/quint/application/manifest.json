@@ -3433,15 +3433,17 @@
     "tests": [
       "monthAheadAndTodayTest",
       "nearMidnightTest",
+      "durationAndDirectInputsTest",
       "monthRowsTest"
     ],
     "sources": [
       "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/calendar-form-inputs.ts",
       "apps/app/src/prototype/template.html"
     ],
     "abstractions": [
-      "Quarter-hour draft times and real month facts; no provider mutation or canonical Calendar authority.",
-      "Concrete day/time/month source blocks are checked in calendar-form-controls.mjs; installed behavior remains separate."
+      "Civil minute draft values and real month facts. Provider mutation, DST admission and canonical Calendar authority are separate.",
+      "Representative direct edits and step controls execute the retained form handlers in calendar-form-controls.mjs. Installed behavior is separate."
     ]
   },
   {
