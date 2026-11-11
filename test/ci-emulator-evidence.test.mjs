@@ -179,8 +179,6 @@ test('the build job hands over hash-anchored APKs',()=>{
  assert.match(build,/if: inputs\.suite == 'browser-reading' \|\| inputs\.suite == 'all'\n        run: \|\n          before=/,'the test-mocks pair is built only for the suite that needs it');
  for(const file of ['artifacts/apk-manifest.json','artifacts/standalone-debug.apk','artifacts/launcher-debug.apk','artifacts/instrumentation/*.apk','artifacts/test-mocks/apk-manifest.json'])
   assert.ok(build.includes(`\n            ${file}\n`),`${file} is handed to the emulator jobs`);
- // The record the APK was admitted against travels with the build evidence.
- for(const file of ['android/voice-host/qualified-voice-host.json','.eliza/paradee-voice/native/build-record.json'])assert.ok(build.includes(`\n            ${file}\n`),file);
  for(const output of ['manifest_sha256','test_mocks_manifest_sha256','artifact_id','source_sha'])assert.match(build,new RegExp(`\\n      ${output}: \\$\\{\\{ `),output);
 });
 

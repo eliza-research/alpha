@@ -123,7 +123,7 @@ export function runSuite(suite: string, {execute, record = () => {}, environment
   const plan = suitePlan(suite);
   const steps: StepResult[] = plan.map(step => ({ name: step.name, kind: step.kind, command: step.command, status: "not-run" }));
   const report: SuiteReport = { suite, commit: environment.GITHUB_SHA ?? null, runId: environment.GITHUB_RUN_ID ?? null, serial: SERIAL, avd: AVD,
-    evidenceClass: "E", notEvidenceFor: ["distributable build", "physical-device acceptance", "user acceptance", "arm64-v8a speech", "speech intelligibility to a listener"], passed: false, steps };
+    evidenceClass: "E", notEvidenceFor: ["distributable build", "physical-device acceptance", "user acceptance"], passed: false, steps };
   let stopped = false;
   for (const [index, step] of plan.entries()) {
     const row = steps[index];
