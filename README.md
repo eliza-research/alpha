@@ -286,9 +286,16 @@ python3 -B scripts/ci/admit-cloud-signing-input.py prepare-candidate \
   --delivery-id "$delivery_id" > signing-plan.json
 ```
 
-Review the plan and retain its exact bytes. The release operator dispatches
-protected signing on `main` with the exact reviewed `workflow_commit` and
-`signing-plan.json` as the `signing_plan` input. Preflight checks the official
+Review the plan and retain its exact bytes. Set `signing_commit` to the exact
+reviewed signing workflow commit on `main`. The release operator dispatches
+protected signing using the file input, which preserves the final newline.
+
+```sh
+gh workflow run release-cloud-app-signing.yml -R eliza-research/alpha --ref main \
+  -f "workflow_commit=$signing_commit" -F signing_plan=@signing-plan.json
+```
+
+Preflight checks the official
 Actions ZIP. The protected job checks the same run attempt and artifact again,
 then stages the pinned private generation before accessing the signing key.
 [Protected signing workflow](.github/workflows/release-cloud-app-signing.yml)
@@ -331,9 +338,14 @@ python3 -B scripts/ci/qualified-app-update.py prepare-qualification \
   > qualification.json
 ```
 
-Review `qualification.json` and supply it as the protected workflow's
-`qualification` input with the reviewed `workflow_commit`. Complete both
-admissions before the one-day signing delivery receipt expires. The protected
+Review `qualification.json` and dispatch the reviewed publication workflow.
+
+```sh
+gh workflow run publish-qualified-app-update.yml -R eliza-research/alpha --ref main \
+  -f "workflow_commit=$publication_commit" -F qualification=@qualification.json
+```
+
+Complete both admissions before the one-day signing delivery receipt expires. The protected
 job restores the same private mirror and exact signed output before publication.
 [Qualified publication workflow](.github/workflows/publish-qualified-app-update.yml)
 
