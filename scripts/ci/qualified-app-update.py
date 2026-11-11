@@ -20,7 +20,10 @@ from urllib.parse import quote, urlencode
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[2]
-REPOSITORY = "eliza-research/alphaphone"
+REPOSITORY = "eliza-research/alpha"
+REPOSITORY_ID = 1396333361
+REPOSITORY_OWNER_ID = 314117943
+SIGNING_WORKFLOW_ID = 411388003
 HEX = re.compile(r"[0-9a-f]{64}")
 COMMIT = re.compile(r"[0-9a-f]{40}")
 NUMBER = re.compile(r"[1-9][0-9]{0,15}")
@@ -158,16 +161,22 @@ def preflight(record, workflow_commit, work, api=gh_json, download=gh_download):
             plan, decode((ROOT / "android/release-signer.json").read_bytes()))
         require(on_main or reviewed_producer,
                 "Producer or signing workflow is not on reviewed main history")
-    run = api(f"repos/{REPOSITORY}/actions/runs/{record['signingRunId']}")
+    run = api(f"repos/{REPOSITORY}/actions/runs/{record['signingRunId']}/attempts/{record['signingRunAttempt']}")
+    repos = [run.get(key) or {} for key in ("repository", "head_repository")]
     require(run.get("status") == "completed" and run.get("conclusion") == "success" and
+            run.get("id") == int(record["signingRunId"]) and run.get("workflow_id") == SIGNING_WORKFLOW_ID and
             run.get("event") == "workflow_dispatch" and run.get("head_branch") == "main" and
             run.get("head_sha") == record["signingWorkflowCommit"] and
-            run.get("head_repository", {}).get("full_name") == REPOSITORY and
+            all(repo.get("id") == REPOSITORY_ID and repo.get("full_name") == REPOSITORY and
+                (repo.get("owner") or {}).get("id") == REPOSITORY_OWNER_ID for repo in repos) and
             run.get("path") == ".github/workflows/release-cloud-app-signing.yml" and
             run.get("run_attempt") == record["signingRunAttempt"], "Signing run identity differs")
     artifact = api(f"repos/{REPOSITORY}/actions/artifacts/{record['deliveryArtifactId']}")
-    require(artifact.get("expired") is False and str(artifact.get("workflow_run", {}).get("id")) == record["signingRunId"] and
-            artifact.get("workflow_run", {}).get("head_sha") == record["signingWorkflowCommit"] and
+    provenance = artifact.get("workflow_run") or {}
+    require(artifact.get("id") == int(record["deliveryArtifactId"]) and artifact.get("expired") is False and
+            str(provenance.get("id")) == record["signingRunId"] and provenance.get("head_branch") == "main" and
+            provenance.get("repository_id") == provenance.get("head_repository_id") == REPOSITORY_ID and
+            provenance.get("head_sha") == record["signingWorkflowCommit"] and
             artifact.get("name") == f"private-cloud-apk-delivery-{record['signingRunId']}-{record['signingRunAttempt']}" and
             artifact.get("size_in_bytes") == record["deliveryArtifactBytes"] and
             artifact.get("digest") == "sha256:" + record["deliveryArtifactSHA256"], "Signing delivery artifact identity differs")
@@ -311,7 +320,10 @@ def main():
     require(args.record.is_file() and not args.record.is_symlink() and args.record.stat().st_size <= 131072, "Bounded regular qualification record required")
     record_bytes = args.record.read_bytes()
     record = decode(record_bytes)
-    require(os.environ.get("GITHUB_REPOSITORY") == REPOSITORY and os.environ.get("GITHUB_REF") == "refs/heads/main" and
+    require(os.environ.get("GITHUB_REPOSITORY") == REPOSITORY and
+            os.environ.get("GITHUB_REPOSITORY_ID") == str(REPOSITORY_ID) and
+            os.environ.get("GITHUB_REPOSITORY_OWNER_ID") == str(REPOSITORY_OWNER_ID) and
+            os.environ.get("GITHUB_REF") == "refs/heads/main" and
             os.environ.get("GITHUB_SHA") == args.workflow_commit, "Publication runs only on exact reviewed Alpha main")
     plan = preflight(record, args.workflow_commit, args.work)
     if args.product:

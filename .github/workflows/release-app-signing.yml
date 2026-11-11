@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   sign-apps:
-    if: github.repository == 'eliza-research/alphaphone' && github.ref == 'refs/heads/main'
+    if: github.repository_id == '1396333361' && github.repository_owner_id == '314117943' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: release

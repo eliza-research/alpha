@@ -10,12 +10,17 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {publicObject} from './deliver-app-update.ts';
 import {updateArtifactDigest} from './update-artifact.ts';
-import {APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY as REPOSITORY, APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG, appUpdateManifestUrl} from './update-channel.ts';
+import {
+  APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY as REPOSITORY, APP_UPDATE_REPOSITORY_ID as REPOSITORY_ID,
+  APP_UPDATE_REPOSITORY_OWNER_ID as OWNER_ID, APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG,
+  appUpdateManifestUrl, isPublishedUpdateApkUrl,
+} from './update-channel.ts';
 
 type CandidateOptions = {root?: string; env?: NodeJS.ProcessEnv; api?: InventoryApi; read?: typeof publicObject};
 type InventoryApi = (args: string[], options?: {missing?: boolean}) => unknown;
 interface ProductConfig {appId: string; versionCode: number; updateManifestUrl: string}
-interface CandidateRun {id: number; workflow_id: number; path: string; event: string; head_branch: string; head_sha: string; head_repository?: {full_name: string}; run_number: number; run_attempt: number}
+interface RepositoryIdentity {id: number; full_name: string; owner?: {id: number}}
+interface CandidateRun {id: number; workflow_id: number; path: string; event: string; head_branch: string; head_sha: string; repository?: RepositoryIdentity; head_repository?: RepositoryIdentity; run_number: number; run_attempt: number}
 interface StableRelease {id: number; draft: boolean}
 interface StableAsset {name: string}
 interface UpdateOffer {schema: string; variant: string; signerSha256: string; sha256: string; sizeBytes: number; apkUrl: string; versionCode: number}
@@ -32,7 +37,7 @@ interface NativeInputAdmission {
 interface NativeInputPlan {artifacts: Record<string, {id: string; sha256: string}>}
 interface UploadedCandidate {
   id: number; name: string; digest: string; expired: boolean; size_in_bytes: number;
-  workflow_run?: {id: number; head_sha: string};
+  workflow_run?: {id: number; head_sha: string; head_branch: string; repository_id: number; head_repository_id: number};
 }
 type VersionAdmission = Awaited<ReturnType<typeof candidateVersion>>;
 type ApkDigest = {file: string; bytes: number; sha256: string};
@@ -58,6 +63,8 @@ function code(value: number) {
 }
 function identity(root: string, env: NodeJS.ProcessEnv) {
   assert.equal(env.GITHUB_REPOSITORY, REPOSITORY, 'Candidates require the product repository');
+  assert.equal(env.GITHUB_REPOSITORY_ID, String(REPOSITORY_ID), 'Candidate repository ID differs');
+  assert.equal(env.GITHUB_REPOSITORY_OWNER_ID, String(OWNER_ID), 'Candidate repository owner ID differs');
   assert.equal(env.GITHUB_EVENT_NAME, 'push', 'Candidates require a main push');
   assert.equal(env.GITHUB_REF, 'refs/heads/main', 'Candidates require main');
   assert.equal(env.GITHUB_WORKFLOW_REF, `${REPOSITORY}/${WORKFLOW}@refs/heads/main`, 'Candidate workflow changed; review its version epoch');
@@ -102,7 +109,8 @@ export async function candidateVersion({root = process.cwd(), env = process.env,
   const run = api([`repos/${REPOSITORY}/actions/runs/${context.runId}`]) as CandidateRun;
   assert.ok(run.id === Number(context.runId) && run.workflow_id === WORKFLOW_ID &&
     run.path === WORKFLOW && run.event === 'push' && run.head_branch === 'main' &&
-    run.head_sha === context.sourceCommit && run.head_repository?.full_name === REPOSITORY &&
+    run.head_sha === context.sourceCommit && [run.repository, run.head_repository].every(repository =>
+      repository?.id === REPOSITORY_ID && repository.full_name === REPOSITORY && repository.owner?.id === OWNER_ID) &&
     run.run_number === context.versionCode && run.run_attempt === Number(context.runAttempt),
   'Candidate run identity or workflow version epoch changed');
   const config = readJson<ProductConfig>(path.join(root, 'app.config.json'));
@@ -110,8 +118,9 @@ export async function candidateVersion({root = process.cwd(), env = process.env,
   const descriptor = readJson<{lastRelease?: {versionCode: number | null}}>(path.join(root, 'android/release-signer.json'));
   const floors = [code(config.versionCode)];
   if (descriptor.lastRelease?.versionCode !== null) floors.push(code(descriptor.lastRelease?.versionCode as number));
-  const repository = api([`repos/${REPOSITORY}`]) as {private: boolean};
-  assert.equal(repository.private, false, 'Candidate inventory must be publicly readable');
+  const repository = api([`repos/${REPOSITORY}`]) as RepositoryIdentity & {private: boolean};
+  assert.ok(repository.id === REPOSITORY_ID && repository.full_name === REPOSITORY &&
+    repository.owner?.id === OWNER_ID && repository.private === false, 'Candidate inventory must be the public product repository');
   let manifestSha256: string | null = null;
   for (const tag of [LEGACY_APP_UPDATE_TAG, APP_UPDATE_TAG] as const) {
     const url = appUpdateManifestUrl(tag);
@@ -137,7 +146,7 @@ export async function candidateVersion({root = process.cwd(), env = process.env,
       assert.ok(offer.schema === 'alpha-update/v1' && offer.variant === 'launcher' &&
         /^[0-9a-f]{64}$/.test(offer.signerSha256 || '') && /^[0-9a-f]{64}$/.test(offer.sha256 || '') &&
         Number.isSafeInteger(offer.sizeBytes) && offer.sizeBytes > 0 && offer.sizeBytes <= 2**31 &&
-        offer.apkUrl === new URL(`alpha-phone-${code(offer.versionCode)}.apk`, url).href, 'Malformed stable pointer');
+        isPublishedUpdateApkUrl(offer.apkUrl, tag, code(offer.versionCode)), 'Malformed stable pointer');
       floors.push(offer.versionCode);
       if (tag === APP_UPDATE_TAG) manifestSha256 = pointer.sha256;
     } else {
@@ -265,6 +274,8 @@ export function candidateArchiveSize({root = process.cwd(), env = process.env, a
   const name = `app-native-candidate-${context.runNumber}-${context.sourceCommit}-${context.runId}-${context.runAttempt}`;
   assert.ok(metadata.id === Number(id) && metadata.name === name && metadata.digest === 'sha256:' + digest && metadata.expired === false &&
     metadata.workflow_run?.id === Number(context.runId) && metadata.workflow_run.head_sha === context.sourceCommit &&
+    metadata.workflow_run.head_branch === 'main' && metadata.workflow_run.repository_id === REPOSITORY_ID &&
+    metadata.workflow_run.head_repository_id === REPOSITORY_ID &&
     Number.isSafeInteger(metadata.size_in_bytes) && metadata.size_in_bytes > 0, 'Uploaded candidate artifact identity or size differs');
   let expandedBytes = 0, files = 0;
   function count(directory: string) {
