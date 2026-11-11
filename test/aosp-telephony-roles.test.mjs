@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import {execFileSync} from 'node:child_process';
 import {aospTelephonyRoleComponents, writeAospTelephonyRoles} from '../scripts/aosp-telephony-roles.ts';
 
 const pkg = 'ai.alphacompute.alphaphone';
@@ -101,6 +102,73 @@ test('requires the private MMS provider to serve the application authority and g
   const noGrant = apkTree.replace(`grantUriPermissions(0x01010003)=${enabled}`, `grantUriPermissions(0x01010003)=${disabled}`);
   for (const manifest of [badAuthority, noGrant])
     assert.throws(() => aospTelephonyRoleComponents(manifest, pkg), /MmsFileProvider/);
+});
+
+test('the launcher disables staged components if runtime image admission is lost', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-role-admission-'));
+  t.after(() => fs.rmSync(directory, {recursive: true, force: true}));
+  const fixtures = {
+    'PackageManager.java': `package android.content.pm;
+import android.content.ComponentName;
+import java.util.ArrayList;
+import java.util.List;
+public class PackageManager {
+ public static final int COMPONENT_ENABLED_STATE_DEFAULT = 0, COMPONENT_ENABLED_STATE_ENABLED = 1,
+     COMPONENT_ENABLED_STATE_DISABLED = 2, DONT_KILL_APP = 1;
+ public boolean image, staged, unreadable;
+ public final List<Integer> writes = new ArrayList<>();
+ public boolean hasSystemFeature(String name, int version) {
+  if (!name.equals("${pkg}.feature.INITIAL_TELEPHONY_ROLES") || version != 1) throw new AssertionError(name);
+  if (unreadable) throw new IllegalStateException("feature unavailable");
+  return staged;
+ }
+ public int getComponentEnabledSetting(ComponentName name) { return -1; }
+ public void setComponentEnabledSetting(ComponentName name, int wanted, int flags) { writes.add(wanted); }
+}`,
+    'Context.java': `package android.content;
+import android.content.pm.PackageManager;
+public class Context {
+ public final PackageManager packages = new PackageManager();
+ public PackageManager getPackageManager() { return packages; }
+ public String getPackageName() { return "${pkg}"; }
+}`,
+    'ComponentName.java': 'package android.content; public record ComponentName(Context context, Class<?> component) {}',
+    'Log.java': 'package android.util; public class Log { public static int w(String tag, String message) { return 0; } }',
+    'MmsFileProvider.java': 'package ai.eliza.plugins.messages; public class MmsFileProvider {}',
+    'RoleAdmissionFixture.java': `package ${pkg};
+import android.content.Context;
+import java.util.Collections;
+class AlphaImageCapability { static boolean verified(Context context) { return context.packages.image; } }
+class AlphaInCallService {} class AlphaCallActivity {} class AlphaDialPadActivity {}
+class AlphaSmsDeliverReceiver {} class AlphaMmsWapPushReceiver {} class AlphaMmsResultReceiver {}
+class AlphaRespondViaMessageService {} class AlphaSmsComposeActivity {}
+public class RoleAdmissionFixture {
+ private static void check(boolean image, boolean staged, boolean unreadable, int expected) {
+  Context context = new Context();
+  context.packages.image = image;
+  context.packages.staged = staged;
+  context.packages.unreadable = unreadable;
+  AlphaTelephonyRoles.sync(context);
+  if (!context.packages.writes.equals(Collections.nCopies(9, expected)))
+   throw new AssertionError("component state was " + context.packages.writes + ", expected " + expected);
+ }
+ public static void main(String[] args) {
+  check(true, true, false, 1);
+  check(false, false, false, 0);
+  check(false, true, false, 2);
+  check(false, false, true, 2);
+ }
+}`,
+  };
+  const sources = Object.entries(fixtures).map(([name, source]) => {
+    const filename = path.join(directory, name);
+    fs.writeFileSync(filename, source);
+    return filename;
+  });
+  const roles = 'android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaTelephonyRoles.java';
+  const jdk = name => process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME, 'bin', name) : name;
+  execFileSync(jdk('javac'), ['-d', directory, ...sources, roles], {encoding: 'utf8'});
+  execFileSync(jdk('java'), ['-cp', directory, `${pkg}.RoleAdmissionFixture`], {encoding: 'utf8'});
 });
 
 test('production image staging reads role declarations from the privately staged launcher', () => {

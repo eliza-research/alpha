@@ -19,7 +19,18 @@ final class AlphaTelephonyRoles {
  static void sync(Context context) {
   boolean image = AlphaImageCapability.verified(context);
   PackageManager packages = context.getPackageManager();
-  int wanted = image ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DEFAULT;
+  int wanted = PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
+  if (!image) {
+   // On a staged image SystemConfig changes the parsed component default itself.
+   // Resetting to DEFAULT there would keep the components enabled.
+   wanted = PackageManager.COMPONENT_ENABLED_STATE_DISABLED;
+   try {
+    if (!packages.hasSystemFeature(context.getPackageName() + ".feature.INITIAL_TELEPHONY_ROLES", 1))
+     wanted = PackageManager.COMPONENT_ENABLED_STATE_DEFAULT;
+   } catch (RuntimeException unavailable) {
+    android.util.Log.w("AlphaTelephonyRoles", "Image role defaults unavailable");
+   }
+  }
   java.util.List<Class<?>> components = new java.util.ArrayList<>(java.util.Arrays.asList(DIALER));
   components.addAll(java.util.Arrays.asList(SMS));
   for (Class<?> component : components) {
