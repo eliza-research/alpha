@@ -5876,11 +5876,13 @@
       "CredentialsNeverSearched",
       "ExplicitAddressNeverSearched",
       "TimeNeverOpens",
-      "ApprovedNotReread"
+      "ApprovedNotReread",
+      "UnsafeAtNeverSearched",
+      "ApprovedSearchRefused"
     ],
     "witnesses": [
       "SchemeLikeWordSearchedWitness",
-      "EmailSearchedWitness",
+      "SimpleAtSearchedWitness",
       "DecimalSearchedWitness",
       "ApprovedRefusedWitness"
     ],
@@ -5895,6 +5897,10 @@
       {
         "path": "apps/app/src/prototype/browser-adapter.ts",
         "name": "approvedSignal"
+      },
+      {
+        "path": "apps/app/src/prototype/browser-adapter.ts",
+        "name": "simpleAtSearch"
       },
       {
         "path": "apps/app/src/prototype/browser-adapter.ts",
