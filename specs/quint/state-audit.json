@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "f6eba5637cd2c2e38c9abc159939a6c47502170a2db14e04f9691f0263632780",
+  "ledgerSha256": "fa8a190f3a20ba73d12004561fff29f74b0e6f3cc790b38854f305e9aea9313c",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -40378,7 +40378,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "c5c752953087fd020e0d6b77eed590f085f6b16d19f10f31d1a237cae684867a",
+      "sha256": "defb98217f1782d1a209ff094a0b7698b45c75c470e0eeb2ccf197061a039105",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -221465,6 +221465,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "0f32621c10608a3283f699dc44af8169fc4ea9c1a436a09e974d962ffa92c7fe"
+    "sha256": "63bbfc2c582dee18fb04cc64817910dd88a693d2ab480bed161a401c31760a10"
   }
 }

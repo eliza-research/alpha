@@ -1749,7 +1749,10 @@
             <sc-if value="{{photos.v.canEmail}}"><button onClick="{{photos.v.email}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.mail}}"></path></svg>Email</button></sc-if>
             <sc-if value="{{photos.v.notSecure}}"><button onClick="{{photos.v.share}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.share}}"></path></svg>Share</button></sc-if>
             <sc-if value="{{photos.v.notDeleted}}"><button aria-label="{{photos.v.deleteLabel}}" onClick="{{photos.v.del}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.trash}}"></path></svg>Delete</button></sc-if>
-            <sc-if value="{{photos.v.isDeleted}}"><button onClick="{{photos.v.recover}}">Recover</button><sc-if value="{{photos.v.canDeleteForever}}"><button aria-label="Delete this item forever" onClick="{{photos.v.deleteForever}}">Delete permanently</button></sc-if></sc-if>
+            <sc-if value="{{photos.v.isDeleted}}">
+              <button onClick="{{photos.v.recover}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.stUndo}}"></path></svg>Recover</button>
+              <sc-if value="{{photos.v.canDeleteForever}}"><button aria-label="Delete this item forever" onClick="{{photos.v.deleteForever}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.trash}}"></path></svg>Delete permanently</button></sc-if>
+            </sc-if>
           </div></details>
         </div>
       </div>
