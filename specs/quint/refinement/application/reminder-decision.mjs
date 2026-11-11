@@ -13,7 +13,7 @@ const model = {path: 'specs/quint/application/ReminderDecision.qnt', module: 'Re
   }};
 const actions = 'reminder-deletions:v1:device', open = 'reminder:d1';
 const kinds = {reminder_complete: 'done', reminder_snooze: 'snooze', reminder_cancel: 'cancel'};
-const unconfirmed = 'Not confirmed. Check its status in Calendar.';
+const unconfirmed = 'Unconfirmed';
 
 async function replay(compiled, trace) {
   const f = reminderAdapterFixture(compiled);
@@ -86,7 +86,7 @@ async function replay(compiled, trace) {
       else if (journaled === 'none' && decision !== 'cancel') f.hold('selectedReminder', 1);
       await f.settle('secureRead');
       if (journaled === decision) { assert.equal(f.waiting('reminderOperationReceipt'), 1); stage = 'receipt'; }
-      else if (journaled !== 'none') finish('conflict', /^Not confirmed/);
+      else if (journaled !== 'none') finish('conflict', /^Unconfirmed$/);
       else if (decision === 'cancel') { assert.equal(f.calls.at(-2).name, 'reviewReminder'); finish('review'); assert.equal(f.toasts.length, said); }
       else { assert.equal(f.waiting('selectedReminder'), 1); stage = 'select'; }
       assert.equal(f.count('operateReminder'), sent, 'reading the journal sends nothing');
@@ -95,7 +95,7 @@ async function replay(compiled, trace) {
       // The write pauses once its record is confirmed written.
       if (current && selected) f.hold('secureRead', 1, 1);
       await f.settle('selectedReminder');
-      if (!current) finish('changed', /^This reminder changed/);
+      if (!current) finish('changed', /^Changed$/);
       else if (!selected) { finish('left'); assert.equal(f.toasts.length, said); }
       else { assert.equal(f.waiting('secureRead'), 1); stage = 'retained'; }
     } else if (action === 'afterRetain') {
@@ -108,13 +108,13 @@ async function replay(compiled, trace) {
       result = picks.result;
       if (result !== 'succeeded') f.hold('reminderOperationReceipt', 1);
       await f.settle('operateReminder');
-      if (result === 'succeeded') finish('done', /^(Completed|Snoozed)/);
+      if (result === 'succeeded') finish('done', /^(Done|Snoozed)/);
       else { assert.equal(f.waiting('reminderOperationReceipt'), 1); stage = 'receipt'; }
     } else if (action === 'receipt') {
       const sent = f.count('operateReminder'), confirmed = picks.ok && receipts.has(record().operationId);
       await f.settle('reminderOperationReceipt', input => { if (!picks.ok) throw Error('The answer was lost'); return f.handlers.reminderOperationReceipt(input); });
       assert.equal(f.count('operateReminder'), sent, 'a journaled decision is only read back');
-      finish(confirmed ? 'done' : 'unconfirmed', confirmed ? /^(Completed|Snoozed)/ : /^Not confirmed/);
+      finish(confirmed ? 'done' : 'unconfirmed', confirmed ? /^(Done|Snoozed)/ : /^Unconfirmed$/);
     } else if (action === 'leave') f.calendar.open = null;
     else if (action === 'reopen') f.calendar.open = open;
     else if (action === 'changedElsewhere') native.revision++;

@@ -13,6 +13,7 @@ const ports = [
   [/connection-ui$/, 'connection'], [/^@capacitor\/core$/, 'capacitor'], [/(^|\/)daily$/, 'daily'],
   [/note-origin-adapter$/, 'origin'], [/native-connection$/, 'secure'],
   [/reminder-creation-document$/, 'document'], [/reminder-action-document$/, 'document'],
+  [/browser\/review$/, 'reviews'],
 ];
 
 /** `mutate` rewrites the bundled adapter, for checks that a replay notices a changed implementation. */
@@ -89,7 +90,13 @@ export function reminderAdapterFixture(compiled, {native = true, platform = 'and
     deletions: {deletions: {reviewReminder: args => invoke('reviewReminder', args)}, refreshDeletionViews() {},
       reminderDeletionRefusal: status => ({stale: 'This reminder changed. Review it again before deleting.',
         unavailable: 'This reminder is unavailable.'})[status]},
-    client: {alphaClient: {getState: () => ({context: {sensitive: state.sensitive}})}},
+    client: {alphaClient: {getState: () => ({context: {sensitive: state.sensitive}}),
+      subscribe(listener) { subscribers.add(listener); return () => subscribers.delete(listener); }}},
+    reviews: {BrowserReviews: class {
+      async confirm(_id, _title, _details, _label, guard) {
+        return state.confirm && !guard?.signal?.aborted && (!guard?.current || guard.current());
+      }
+    }},
     connection: {connectionController: {getSnapshot: () => ({open: state.chooser, session: 'session'}),
       getWorkflowDeviceTarget: () => ({device: 'fixture'}),
       subscribe(listener) { subscribers.add(listener); return () => subscribers.delete(listener); }}},

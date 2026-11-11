@@ -22,6 +22,8 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
 
 async function load() {
   const stubs = {
+    // This model holds route choice on the controlled app speaker branch.
+    '../runtime/voice-selection': 'export const speechRoute=()=>"cloud";',
     '../runtime/local-voice': 'export const createOnDeviceVoice=()=>null;',
     '../runtime/app-speech': 'export const speakAppText=(text,signal)=>globalThis.mapsVoiceProbe.speak(text,signal);',
     '../runtime/connection-ui': 'export const connectionController={getSnapshot:()=>globalThis.mapsVoiceProbe.snapshot(),getCloudClient:()=>globalThis.mapsVoiceProbe.client(),getCloudEnvironment:()=>"fixture"};',

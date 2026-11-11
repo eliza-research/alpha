@@ -169,8 +169,10 @@ async function fixture(component, options = {}) {
     assert.equal(refs.length,12,'Component ref-hook layout changed');
     const panel=document.querySelector('dialog'),primary=panel?.querySelector('button');
     const stored=localStorage.getItem(progressKey),memory=localStorage.getItem(memoryKey);
+    const stepName=panel?.querySelector('[aria-current=step] .alpha-permission-name');
+    const heading=stepName?[...stepName.childNodes].filter(node=>node.nodeType===3).map(node=>node.textContent).join('').trim():panel?.querySelector('h2')?.textContent??null;
     return {
-      ui:{visible:!!panel?.open,heading:panel?.querySelector('h2')?.textContent??null,
+      ui:{visible:!!panel?.open,heading,
         primary:primary?.textContent??null,disabled:primary?.disabled??false,
         status:[...document.querySelectorAll('[role="status"],[role="alert"]')].map(node=>node.textContent)},
       component:{reopened:states[0],ready:states[1],progress:states[4],active:states[5],target:states[6],
@@ -283,7 +285,7 @@ function modelObservation(value) {
     's.flowTickets':qmap(value.flowTickets.map((ticket,index)=>[index,ticket])),
     's.progressError':value.component.progressError,
     's.canSkip':value.component.canSkip,
-    's.checkNotice':!value.component.checkNotice?'':value.component.checkNotice.startsWith('Access is still off')?'off':'unconfirmed',
+    's.checkNotice':!value.component.checkNotice?'':value.component.checkNotice.startsWith('Still off')?'off':'unconfirmed',
     's.pendingChoice':capture?(capture.state==='ready'?'continued':'allowed'):'',
     's.dismissed':!!value.durable.memory?.dismissed,
     's.homeRequests':value.homes,
@@ -331,7 +333,7 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
     for(const key of permissionKeys){assert.equal(f.snapshot().ui.heading,key[0].toUpperCase()+key.slice(1));
       await f.click('Continue');record(`continued ${key}`,advance);}
     assert.equal(f.snapshot().durable.effectiveProgress.status,'completed');
-    await f.click('Go to Alpha');record('completed session',action('finish'));
+    await f.click('Done');record('completed session',action('finish'));
     await f.remount();record('completed installation remount',restart);
   });
   await scenario('partial-remount-does-not-reopen-earlier-reviewed-steps',{},async(f,record)=>{
@@ -343,7 +345,7 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
   });
   await scenario('held-request-duplicate-resume-and-completion',{permissions:{notifications:false}},async(f,record)=>{
     f.hold('notifications');await f.click('Allow');record('request held',[action('begin'),action('request')]);
-    await f.click('Checking…');await f.resume();record('duplicate and resume remain inert');
+    await f.click('Checking');await f.resume();record('duplicate and resume remain inert');
     f.state.notifications=true;await f.release('notifications');record('request completed',action('result',true));
   });
   for(const rejects of [false,true])await scenario(`credential-change-held-${rejects?'rejection':'completion'}`,{permissions:{notifications:false}},async(f,record)=>{
@@ -413,8 +415,8 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
   await scenario('denied-request-remount-settings-and-grant',{permissions:{notifications:false}},async(f,record)=>{
     await f.click('Allow');record('denied',[action('begin'),action('request'),action('result',false)]);
     await f.remount();record('denied remount',restart);
-    await f.click('Open Android settings');record('settings readback',[action('begin'),action('result',false)]);
-    f.state.notifications=true;await f.click('Open Android settings');record('granted readback',advance);
+    await f.click('Settings');record('settings readback',[action('begin'),action('result',false)]);
+    f.state.notifications=true;await f.click('Settings');record('granted readback',advance);
   });
   await scenario('required-flow-dismissal-is-blocked',{},async(f,record)=>{
     await f.dismiss();record('cancel and back',action('blockedDismiss'));
@@ -430,31 +432,31 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
   });
   await scenario('new-account-completion-and-remount', {progress:{version:4,status:'completed',step:7}},async(f,record)=>{
     await f.auth(true);record('new account ready',action('authSetup',true));
-    await f.click('Go to Alpha');record('new account acknowledged',action('finish'));
+    await f.click('Done');record('new account acknowledged',action('finish'));
     await f.remount();record('account-created status on remount',restart);
   });
   await scenario('last-step-write-failure-remains-usable',{},async(f,record)=>{
     for(const key of permissionKeys.slice(0,-1)){await f.click('Continue');record(`continued ${key}`,advance);}
     f.failStorage();record('storage fails before final step',action('storageFails'));
     await f.click('Continue');record('ready with failed completion write',advance);
-    await f.click('Go to Alpha');record('session finishes',action('finish'));
+    await f.click('Done');record('session finishes',action('finish'));
     await f.remount();record('durable last step is resumed',restart);
   });
   await scenario('skip-retires-held-request',{permissions:{notifications:false}},async(f,record)=>{
     f.hold('notifications');await f.click('Allow');record('held request',[action('begin'),action('request')]);
     await f.expireSkip();record('twenty-second skip available',action('skipAvailable'));
-    await f.click('Skip for now');record('skip advances session',action('skip'));
+    await f.click('Skip');record('skip advances session',action('skip'));
     f.state.notifications=true;await f.release('notifications');record('late permission answer',action('staleResult',0));
   });
   await scenario('completed-review-skip-preserves-marker',{progress:{version:4,status:'completed',step:7}},async(f,record)=>{
     await f.reopen();record('review opened',action('reopen'));
     await f.expireSkip();record('skip available',action('skipAvailable'));
-    await f.click('Skip for now');record('review step skipped',action('skip'));
+    await f.click('Skip');record('review step skipped',action('skip'));
     await f.click('Close');record('review closed',action('closeReview'));
   });
   await scenario('completed-targeted-review',{progress:{version:4,status:'completed',step:7}},async(f,record)=>{
     await f.target('files');record('files target opened',action('openTarget',6));
-    await f.click('Open Android settings');record('files settings readback',[action('begin'),action('result',true)]);
+    await f.click('Settings');record('files settings readback',[action('begin'),action('result',true)]);
     await f.click('Done');record('target closed',action('closeTarget'));
   });
   await scenario('connection-panel-hides-without-fabricating-permission-change',{},async(f,record)=>{
@@ -465,11 +467,11 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
   await scenario('cancelled-flow-can-recheck-before-old-native-return',{permissions:{notifications:false}},async(f,record)=>{
     f.hold('notifications');await f.click('Allow');record('original native request',[action('begin'),action('request')]);
     await f.expireSkip();record('skip available',action('skipAvailable'));
-    await f.click('Skip for now');record('flow cancelled',action('skip'));
+    await f.click('Skip');record('flow cancelled',action('skip'));
     await f.target('notifications');record('same permission reopened',observation=>[action('openTarget',0),...statuses(observation)]);
-    await f.click('Open Android settings');record('new flow checks while old native request remains',[action('begin'),action('result',false)]);
+    await f.click('Settings');record('new flow checks while old native request remains',[action('begin'),action('result',false)]);
     f.state.notifications=true;await f.release('notifications');record('old native return',action('staleResult',0));
-    await f.click('Open Android settings');record('current flow sees grant',[action('begin'),action('result',true)]);
+    await f.click('Settings');record('current flow sees grant',[action('begin'),action('result',true)]);
     await f.click('Done');record('target done',action('closeTarget'));
   });
   await scenario('closing-review-retires-held-request',{progress:{version:4,status:'completed',step:7},permissions:{notifications:false}},async(f,record)=>{
@@ -486,9 +488,9 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
   });
   await scenario('native-location-and-photo-disclosures',{},async(f,record)=>{
     await f.target('location');record('location review',observation=>[action('openTarget',3),...statuses(observation)]);
-    assert(f.snapshot().ui.status.includes('Approximate location allowed'));
+    assert(f.snapshot().ui.status.includes('Approximate'));
     f.state.locationAccuracy='precise';await f.resume();record('precise readback',statuses);
-    assert(f.snapshot().ui.status.includes('Precise location allowed'));
+    assert(f.snapshot().ui.status.includes('Precise'));
     await f.target('photos');record('photo review',observation=>[action('openTarget',5),...statuses(observation)]);
     for(const scope of ['partial','full','denied']){f.state.photos=scope;await f.resume();record(`photo scope ${scope}`,statuses);}
   });
@@ -510,19 +512,19 @@ export async function runPermissionChoicesRefinement({scenarioFilter,checkModel=
   await scenario('browser-four-ready-completion-and-remount',{native:false},async(f,record)=>{
     for(const key of permissionKeys.slice(0,4)){assert.equal(f.snapshot().ui.heading,key[0].toUpperCase()+key.slice(1));
       await f.click('Continue');record(`continued ${key}`,advance);}
-    await f.click('Go to Alpha');record('browser setup complete',action('finish'));
+    await f.click('Done');record('browser setup complete',action('finish'));
     await f.remount();record('browser completed remount',restart);
   });
   await scenario('browser-denial-check-and-grant',{native:false,permissions:{notifications:false}},async(f,record)=>{
     await f.click('Allow');record('browser denied',[action('begin'),action('request'),action('result',false)]);
-    await f.click('Check access');record('browser still denied',[action('begin'),action('result',false)]);
-    f.state.notifications=true;await f.click('Check access');record('browser granted on readback',advance);
+    await f.click('Check');record('browser still denied',[action('begin'),action('result',false)]);
+    f.state.notifications=true;await f.click('Check');record('browser granted on readback',advance);
   });
   await scenario('browser-skipped-media-callback-stops-tracks',{native:false,permissions:{microphone:'prompt'}},async(f,record)=>{
     await f.click('Continue');record('microphone step',advance);
     f.hold('microphone');await f.click('Allow');record('media request held',[action('begin'),action('request')]);
     await f.expireSkip();record('skip timer',action('skipAvailable'));
-    await f.click('Skip for now');record('media request skipped',action('skip'));
+    await f.click('Skip');record('media request skipped',action('skip'));
     f.state.microphone='granted';await f.release('microphone');record('late media callback',action('staleResult',1));
     assert.equal(f.calls.filter(call=>call.kind==='stop'&&call.key==='microphone').length,1);
   });

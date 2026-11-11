@@ -110,7 +110,7 @@ async function replay(compiled, trace) {
         f.release('secureRead');
         while (f.waiting('secureRead')) await f.settle('secureRead');
         assert.equal(f.journal(creations)[created], undefined);
-        assert.equal(f.toasts.at(-1), 'Not confirmed. Check its status in Calendar.');
+        assert.equal(f.toasts.at(-1), 'Unconfirmed');
         assert.equal(f.toasts.length, sent + 1);
         createRefusedFull = true;
       }

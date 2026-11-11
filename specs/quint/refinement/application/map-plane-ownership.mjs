@@ -17,6 +17,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import vm from 'node:vm';
+import {createMapsNotificationOpen} from '../../../../apps/app/src/runtime/maps-notification-open.ts';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {modelTraces, replayTraces, repositoryRoot} from '../services/maps-model-traces.mjs';
 
@@ -32,7 +33,9 @@ function compile() {
   const source = read(adapterPath);
   assert.equal(source.split(marker).length, 2, 'one map plane state declaration to observe');
   const observed = source.replace(marker, marker + '\n  globalThis.inspectMapPlane = () => ({generation: mapGeneration, plane, planeElement, planeBasemap, mapCopyright});');
-  const code = [read(helperPath), observed].map(text => stripTypeScriptTypes(text, {mode: 'strip'})
+  // Use the actual product policy helpers without the unrelated upstream provider exports.
+  const policy = read('apps/app/src/maps/cloud-provider.ts').replace(/^export \*.*;\n/gm,'');
+  const code = [read(helperPath), policy, observed].map(text => stripTypeScriptTypes(text, {mode: 'strip'})
     .replace(/^import .*;\n/gm, '').replace(/^export /gm, '')).join('\n');
   return new vm.Script(code + '\nglobalThis.install = installPrototypeMapsAdapter;');
 }
@@ -45,12 +48,13 @@ function driver(compiled) {
   const planes = new Map(), destroyed = new Set(), reports = [];
   const probe = {host: null, mapState: 'loading', retries: 0, calls: 0, failNext: false, source: 0};
   let basemap = 1, active = true, disposed = false, lastEvent = 'none', newest = null, events = 0;
-  const context = vm.createContext({window, document, AbortController, queueMicrotask, setTimeout,
+  const context = vm.createContext({window, document, AbortController, queueMicrotask, setTimeout, createMapsNotificationOpen,
+    googleMapsLogo: 'fixture-google-logo.svg',
     registerPlugin: () => ({}), NavigationVoice: class {}, BackgroundNavigation: class {}, NativeMapsLocation: class {},
     Capacitor: {isNativePlatform: () => false}, isAndroid: false,
     MapsScreenController: class {
       constructor(host) { probe.host = host; }
-      view() { return {status: {text: '', visible: false}, saved: [], results: [], mode: 'base', showSearch: true, map: {}, diagnostics: {}}; }
+      view() { return {status: {text: '', visible: false}, saved: [], results: [], mode: 'base', showSearch: true, map: {overlay:{}}, diagnostics: {}}; }
       surface() { return {snapshot() {}}; }
       isNavigating() { return false; }
       setMapState(state) { probe.calls++; probe.mapState = state; reports.push({source: probe.source, generation: context.inspectMapPlane().generation}); }

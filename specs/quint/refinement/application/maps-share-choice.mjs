@@ -21,7 +21,7 @@ const model = {path: 'specs/quint/application/MapsShareChoice.qnt', module: 'Map
 const adapterPath = 'apps/app/src/prototype/maps-adapter.ts';
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const none = {message: 0, session: 0, conversation: 0, revision: 0};
-const NOTICES = new Map([['Keep or send your chat draft before answering.', 'draft'], ['Finish or cancel the message you are editing first.', 'editing'], ['The chat refused the answer.', 'failed'], ['The answer was not sent.', 'failed']]);
+const NOTICES = new Map([['Chat draft open', 'draft'], ['Editing message', 'editing'], ['The chat refused the answer.', 'failed'], ['Not sent', 'failed']]);
 
 async function load() {
   const parser = await build({absWorkingDir: repositoryRoot, entryPoints: ['apps/app/src/runtime/action-message-presentation.ts'], bundle: true, platform: 'node', format: 'esm', write: false, logLevel: 'silent'});

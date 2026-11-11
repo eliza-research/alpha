@@ -236,7 +236,7 @@ async function collect(page) {
   assert.equal(inset.insets, 'native');
 
   await tile(page, 'Workflows').click();
-  await expect(page.getByText('No workflows yet', {exact: true}).filter({visible: true})).toBeVisible();
+  await expect(page.getByText('No automations', {exact: true}).filter({visible: true})).toBeVisible();
   await back(page);
   await expect(card(page, 'workflows')).toHaveCount(0);
   await installHomeCalendar(page);
@@ -253,7 +253,7 @@ async function collect(page) {
   const settings = page.locator('[data-settings-page]:not([inert])').last();
   await settings.getByRole('button', {name: 'Account', exact: true}).click();
   const account = page.getByRole('dialog', {name: 'Account', exact: true});
-  await expect(account.getByRole('button', {name: 'Google & email', exact: true})).toBeVisible();
+  await expect(account.getByRole('button', {name: 'Google', exact: true})).toBeVisible();
   await account.getByRole('button', {name: 'Close Account', exact: true}).click();
   await expect(account).toHaveCount(0);
   await expect(settings).toHaveAttribute('data-settings-page', 'Settings');
