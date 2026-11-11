@@ -43,7 +43,7 @@ module GoogleConsentAdmission {
       dispatches: value.dispatches.append({owner: value.owner, read: value.verified, held: value.tier, floor: floor, tier: tier})}
   }
   action connectSettings = all {s.mode == "settings", not(busy), s.dispatches.length() < 4,
-    s' = if (s.verified == 0) {...s, unverified: true} else dispatch(s, 2)}
+    s' = if (s.verified == 0) {...s, unverified: true} else dispatch(s, 3)}
   action connectCalendar = all {s.mode == "calendar", not(busy), s.permission == NoPermission, s.dispatches.length() < 4,
     s' = if (s.verified == 0) {...s, unverified: true}
       else {...s, permission: {owner: s.owner, read: s.verified, panel: s.panel}}}
@@ -71,7 +71,7 @@ module GoogleConsentAdmission {
   val DispatchKeepsGrant = s.dispatches.indices().forall(i => {
     val request = s.dispatches.nth(i)
     ReadIds.contains(request.read) and s.reads.get(request.read).owner == request.owner
-      and Tiers.contains(request.held) and Tiers.contains(request.tier) and request.floor.in(1.to(2))
+      and Tiers.contains(request.held) and Tiers.contains(request.tier) and request.floor.in(1.to(3))
       and request.tier >= request.floor and request.tier >= request.held
   })
   val ChoiceOwnsVerification = not(s.choice) or (s.mode == "calendar" and s.verified != 0)
@@ -85,7 +85,7 @@ module GoogleConsentAdmission {
   run unknownRevokeReadbackBlocksConsentTest = init.then(open("settings")).then(reply(1, 3)).then(beginRevoke)
     .then(reply(2, 0)).then(connectSettings).expect(s.unverified and s.dispatches == List() and safety)
   run staleOwnerCannotRestoreReadTest = init.then(open("settings")).then(replaceOwner).then(reply(2, 1)).then(reply(1, 3))
-    .then(connectSettings).expect(s.dispatches.nth(0).owner == 2 and s.dispatches.nth(0).tier == 2 and safety)
+    .then(connectSettings).expect(s.dispatches.nth(0).owner == 2 and s.dispatches.nth(0).tier == 3 and safety)
   run explicitAllowOpensCurrentTierTest = initWith(false).then(open("calendar")).then(reply(1, 3)).then(connectCalendar)
     .then(permissionReply).then(allow).expect(s.savedOn and not(s.choice) and s.dispatches.nth(0).tier == 3 and safety)
   run newerReadWithdrawsSavedOffChoiceTest = initWith(false).then(open("calendar")).then(reply(1, 2)).then(connectCalendar)

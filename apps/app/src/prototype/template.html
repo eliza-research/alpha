@@ -558,9 +558,9 @@
     <div data-alpha-app-header="main" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px 0 20px; gap: 2px; flex-shrink: 0">
     <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
       <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">{{inbox.folderTitle}}</h1>
-      <sc-if value="{{inbox.canRefresh}}"><button class="ib" aria-label="Refresh inbox" disabled="{{inbox.refreshDisabled}}" onClick="{{inbox.refresh}}"><span aria-hidden="true" style="display:block;width:20px;height:20px;background:currentColor;mask:url('/icons/lucide/rotate-cw.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/rotate-cw.svg') center/contain no-repeat"></span></button></sc-if>
       <button class="ib" aria-label="Search email" onClick="{{inbox.openSearch}}"><span aria-hidden="true" style="display:block;width:20px;height:20px;background:currentColor;mask:url('/icons/lucide/search.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/search.svg') center/contain no-repeat"></span></button>
       <button class="ib" aria-label="Compose" disabled="{{inbox.composeDisabled}}" onClick="{{inbox.compose}}"><span aria-hidden="true" style="display:block;width:20px;height:20px;background:currentColor;mask:url('/icons/lucide/plus.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/plus.svg') center/contain no-repeat"></span></button>
+      <details class="mail-selection-menu"><summary class="ib" aria-label="Mail options"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></summary><div role="menu"><sc-for list="{{inbox.mailOptions}}" as="option"><button role="menuitem" disabled="{{option.disabled}}" onClick="{{option.pick}}"><span class="mail-toolbar-icon" style="mask-image:url('{{option.icon}}');-webkit-mask-image:url('{{option.icon}}')"></span>{{option.label}}</button></sc-for></div></details>
     </div>
   </sc-if>
   <sc-if value="{{inbox.searching}}">
@@ -582,18 +582,21 @@
 
   <sc-if value="{{inbox.hasActionChips}}"><div class="scr" style="display:flex;gap:8px;padding:0 20px 8px;overflow-x:auto;flex-shrink:0"><sc-for list="{{inbox.actionChips}}" as="action"><button aria-label="{{action.label}}" onClick="{{action.pick}}" style="min-height:36px;padding:0 12px;border-radius:18px;background:var(--s2);color:var(--fg);font-size:13px;white-space:nowrap;flex-shrink:0">{{action.label}}</button></sc-for></div></sc-if>
   <div class="scr" data-alpha-app-scroll="inbox" data-mail-cached="{{inbox.cachedListShown}}" style="flex-grow: 1; overflow-y: auto; padding-bottom: 120px; touch-action: pan-y">
+    <sc-if value="{{inbox.mailBatchStatus}}"><p class="mail-selection-status" role="status">{{inbox.mailBatchStatus}}</p></sc-if>
     <sc-for list="{{inbox.rows}}" as="it">
       <div onPointerDown="{{it.down}}" onPointerUp="{{it.up}}" style="position: relative; overflow: hidden; touch-action: pan-y">
         <div style="position: absolute; inset: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; background: var(--s2); color: var(--mut)">
           <svg class="i" viewBox="0 0 24 24" style="color: var(--acct)"><path d="{{ic.reply}}"></path></svg>
           <svg class="i" viewBox="0 0 24 24"><path d="{{ic.archive}}"></path></svg>
         </div>
-        <button aria-label="{{it.label}}" aria-current="{{it.current}}" onClick="{{it.open}}" style="position: relative; width: 100%; display: flex; gap: 14px; padding: 13px 20px; align-items: flex-start; background: var(--bg); transform: translateX({{it.tx}}px); transition: transform .28s cubic-bezier(.19,1,.22,1); box-sizing: border-box">
-          <span class="mail-sender-avatar"><span>{{it.ini}}</span><sc-if value="{{it.senderImage}}"><img src="{{it.senderImage}}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onError="{{it.hideSenderImage}}"></sc-if></span>
+        <button role="{{it.rowRole}}" aria-checked="{{it.selected}}" aria-label="{{it.label}}" aria-current="{{it.current}}" onClick="{{it.open}}" style="position: relative; width: 100%; display: flex; gap: 14px; padding: 13px 20px; align-items: flex-start; background: var(--bg); transform: translateX({{it.tx}}px); transition: transform .28s cubic-bezier(.19,1,.22,1); box-sizing: border-box">
+          <sc-if value="{{it.selecting}}"><span class="mail-selection-check" aria-hidden="true" data-checked="{{it.selected}}"><sc-if value="{{it.selected}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.check}}"></path></svg></sc-if></span></sc-if>
+          <sc-if value="{{it.notSelecting}}"><span class="mail-sender-avatar"><span>{{it.ini}}</span><sc-if value="{{it.senderImage}}"><img src="{{it.senderImage}}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onError="{{it.hideSenderImage}}"></sc-if></span></sc-if>
           <div style="flex-grow: 1; min-width: 0">
             <div style="display: flex; align-items: center; gap: 6px">
               <span style="font-weight: {{it.nameW}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{it.name}}</span>
               <span style="flex-grow: 1"></span>
+              <sc-if value="{{it.starred}}"><span class="mail-star" aria-label="Starred" style="mask-image:url('/icons/lucide/star.svg');-webkit-mask-image:url('/icons/lucide/star.svg')"></span></sc-if>
               <sc-if value="{{it.clip}}"><svg class="i" viewBox="0 0 24 24" style="width: 14px; height: 14px; color: var(--mut)"><path d="{{ic.inboxClip}}"></path></svg></sc-if>
               <span style="font-size: 12px; color: var(--mut); white-space: nowrap">{{it.time}}</span>
             </div>
@@ -754,6 +757,9 @@
   </sc-if>
 
 
+  <sc-if value="{{inbox.mailReview}}">
+    <div ref="{{inbox.mailSelectionModal}}" class="inbox-confirm-overlay" role="dialog" aria-modal="true" aria-label="{{inbox.mailReview.title}}"><section class="inbox-confirm-card"><h2>{{inbox.mailReview.title}}</h2><div class="inbox-confirm-actions"><button onClick="{{inbox.mailReview.close}}">No</button><button class="inbox-confirm-yes" onClick="{{inbox.mailReview.confirm}}">Yes</button></div></section></div>
+  </sc-if>
   <sc-if value="{{inbox.c.confirm}}">
     <div ref="{{inbox.discardModal}}" class="inbox-confirm-overlay" role="dialog" aria-modal="true" aria-label="Discard this draft?">
       <section class="inbox-confirm-card">
@@ -788,7 +794,7 @@
         </section>
       </div>
     </sc-if>
-    <sc-if value="{{!inbox.provider.simpleSend}}">
+    <sc-if value="{{inbox.provider.fullReview}}">
     <div ref="{{inbox.providerModal}}" class="enter scr inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review mail operation" style="position:absolute;inset:0;background:var(--bg);z-index:8;overflow:auto;padding:44px 20px 32px;box-sizing:border-box">
       <button class="ib" aria-label="Close mail review" onClick="{{inbox.provider.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
       <h2 class="serif" style="font-size:30px;font-weight:400">{{inbox.provider.title}}</h2>

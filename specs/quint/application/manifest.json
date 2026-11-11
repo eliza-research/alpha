@@ -3592,5 +3592,31 @@
       "Two clicks and three views represent one current selected link. Late completion cannot replace a changed view.",
       "The Browser adapter retains tab/session identity checks and URL admission. This UI model does not establish network availability, platform rendering or authentication."
     ]
+  },
+  {
+    "path": "specs/quint/application/MailSelection.qnt",
+    "module": "MailSelection",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "distinctMessagesApplyOnce",
+      "unknownStopsLaterMessages",
+      "receiptRecoveryDoesNotResend",
+      "refusalStopsLaterMessages"
+    ],
+    "sources": [
+      "apps/app/src/runtime/mail-selection.ts",
+      "apps/app/src/prototype/inbox-cloud-adapter.ts",
+      "apps/app/src/prototype/template.html",
+      "patches/eliza/inbox-star-client.patch",
+      "patches/eliza/inbox-star-client-manifest.json",
+      "patches/eliza/inbox-star-types-client.patch",
+      "patches/eliza/inbox-star-types-client-manifest.json"
+    ],
+    "abstractions": [
+      "Two selected message identities and one provider receipt in flight. Rejection or unknown outcome stops the remaining selection.",
+      "Actual account binding, storage compare-and-exchange and review digest checks remain owned by InboxOperation and InboxCoordinator. Model progress assumes an explicit approval, stable owner and successful provider replies."
+    ]
   }
 ]

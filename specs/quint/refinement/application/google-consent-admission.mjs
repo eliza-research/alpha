@@ -75,7 +75,7 @@ async function fixture(compiled, savedOn) {
     assert.ok(tier > 0);
     assert.equal(calendarPermission, 'write');
     dispatches.push({owner: ownerId(binding), read: request.id, held: request.tier,
-      floor: mode() === 'calendar' ? 1 : 2, tier});
+      floor: mode() === 'calendar' ? 1 : 3, tier});
   };
   const rows = tier => {
     const {GMAIL_READ_CAPABILITY, GMAIL_MODIFY_CAPABILITIES} = compiled.dependencies.gmailGrants;
@@ -128,7 +128,7 @@ async function fixture(compiled, savedOn) {
         else request.task.reject(Error('Injected account list failure'));
       });
     },
-    connectSettings() {return click(verified() ? 'Add Google account' : 'Connect Google account');},
+    connectSettings() {return click(verified() ? verified().tier===3 ? 'Add Google account' : 'Allow Gmail changes' : 'Connect Google account');},
     async connectCalendar() {
       holdCapture = true;
       try {await click('Connect Google Calendar');} finally {holdCapture = false;}

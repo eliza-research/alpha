@@ -920,3 +920,16 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
 
 .alpha-message-link{color:var(--acct);text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
 .alpha-user-message .alpha-message-link{color:inherit}
+
+.mail-selection-menu{position:relative;flex-shrink:0}
+.mail-selection-menu summary{list-style:none;cursor:pointer}
+.mail-selection-menu summary::-webkit-details-marker{display:none}
+.mail-selection-menu>div{position:absolute;right:0;top:48px;z-index:25;min-width:210px;max-width:calc(var(--phone-width,412px) - 40px);padding:8px;background:var(--bg);border:1px solid var(--line);border-radius:20px;box-shadow:0 8px 28px rgba(0,0,0,.14)}
+.mail-selection-menu>div button{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:12px;border-radius:12px;text-align:left;font:inherit;font-size:15px}
+.mail-selection-menu>div button:disabled{opacity:.45}
+.mail-selection-check{display:grid;place-items:center;flex-shrink:0;width:24px;height:24px;margin:10px;border:1.5px solid var(--mut);border-radius:50%;box-sizing:border-box}
+.mail-selection-check[data-checked=true]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.mail-selection-check .i{width:16px;height:16px}
+.mail-selection-status{font-size:14px;line-height:1.5;margin:0 20px 12px;color:var(--mut)}
+
+.mail-star{display:block;flex-shrink:0;width:16px;height:16px;background:var(--fg);mask-position:center;mask-size:contain;mask-repeat:no-repeat;-webkit-mask-position:center;-webkit-mask-size:contain;-webkit-mask-repeat:no-repeat}

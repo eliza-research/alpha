@@ -15,6 +15,6 @@ export function inboxProviderControls(publish:()=>void,toast:(message:string)=>v
  const render=controller.render;
  return Object.assign(controller,{render(){
   const view=render(),review=view.provider;
-  return {...view,provider:{...review,simpleSend:review.kind==='send',sendStatus:review.canConfirm?'':review.busy?'Please wait…':review.status}};
+  return {...view,provider:{...review,simpleSend:review.kind==='send',fullReview:review.kind!=='send',sendStatus:review.canConfirm?'':review.busy?'Please wait…':review.status}};
  }});
 }

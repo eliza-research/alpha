@@ -22861,13 +22861,14 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "80a1f01ce2255823a0c134b1129db629898e836e52bd6ae5f4f6389acca2e06b",
+      "sha256": "b43bda799e2f384335bf5e802529c8064110b05fd6b90feb9c31ff75dbf1c416",
       "models": [
         "InboxDelivery",
         "InboxCoordinator",
         "InboxProviderDrafts",
         "SavedServiceRead",
-        "ContentLinks"
+        "ContentLinks",
+        "MailSelection"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -23960,7 +23961,7 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-provider-controls.ts",
-      "sha256": "282bb480d77160bf89798eef9b1926f75472c885e0deebb8e1a28f09be7b54d9",
+      "sha256": "b8267ff844006355ac6c3f93e2c177637e712c0fc8c71cf94c9f4ccdefaba49e",
       "models": [
         "InboxDelivery",
         "InboxCoordinator",
@@ -32532,7 +32533,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "88342deaa1bf38c78b40ef92d1f6bd2c29ff115059ae848bfa758aed4d9bb164",
+      "sha256": "eb2faa574453752201e86b41def1f03c41d4c9e9aa5f9805329310b970fe03d1",
       "stateAnchors": [],
       "integrationReview": "2026-11-11 Home entry resets carousel position without resetting manual swipes. Shared bottom-sheet marker keeps sheet surface at the phone bottom and leaves dock clearance inside its padding. Anchored menus keep their original positioning. Full native acceptance remains separate."
     },
@@ -34408,7 +34409,7 @@
     },
     {
       "path": "apps/app/src/prototype/subview-accessibility.ts",
-      "sha256": "299cac5e1979705088b36c6b4508f9d2339eef37e547398000e9aa88d4a04873",
+      "sha256": "7e33f1f555f2aef86e3a9f8b60a0e179e9b41c9c733327616b7ce56fff02c28b",
       "models": [
         "ShellNavigation",
         "ListFocus",
@@ -34848,12 +34849,13 @@
         "CalendarActionReview",
         "NotesStartupCache",
         "MailComposerPresentation",
-        "ContentLinks"
+        "ContentLinks",
+        "MailSelection"
       ],
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "c9ff606b183973b54b432817f58ac53560bd7c2b3ec43346ab5417a4c0feebac",
+      "sha256": "c5c752953087fd020e0d6b77eed590f085f6b16d19f10f31d1a237cae684867a",
       "stateAnchors": [
         {
           "line": 3358,
@@ -41162,7 +41164,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "fbb8844271a43a64c8686380d7d0d7046f1c3be5f4332eb4e71bff0c95844d84",
+      "sha256": "ee524cfcb68997d6348f643d0e0e3971826750b6e3b12dabba054e10ac682daa",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
     },
@@ -42062,7 +42064,7 @@
     },
     {
       "path": "apps/app/src/runtime/inbox-operation.ts",
-      "sha256": "6a0dbeee22c86ce8ea5a68b4789ba5f8b9fd825138dcb48053bba453803c8b13",
+      "sha256": "528194dd0b530d06238e26f3234ca58a3eb6a45f85270817da67d6529d437bbc",
       "models": [
         "ApplicationComposition",
         "InboxDelivery",
@@ -48044,7 +48046,7 @@
       "scope": "development-runtime",
       "treatment": "runtime-preparation-and-admission",
       "reviewStatus": "state-audit-required",
-      "sha256": "8696bb25e057080cac3832e733abeb5a7cd76af794407ab9f51fc034cae11737",
+      "sha256": "6b271c69a98b4a2ed1b66b96d0afd656f7b939d9691d3dab12849ff07bb9ec40",
       "stateAnchors": [],
       "integrationReview": "2026-11-10: retained brief opens existing Workflows view without schedule execution; shared brief does not impose dialog semantics. Home source guards and legacy navigation tests follow latest owner UI choices."
     },
@@ -618519,6 +618521,16 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "stateAnchors": []
+    },
+    {
+      "path": "apps/app/src/runtime/mail-selection.ts",
+      "sha256": "4b90d269f47fabc479ab1b194f3f33be0a99153076a7834f2f94b1c3fcceea25",
+      "models": [
+        "MailSelection"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": []
     }
   ],
   "configurationInputs": [
@@ -619372,7 +619384,7 @@
         "InboxProviderDrafts",
         "NativeGoogleHostArtifact"
       ],
-      "sha256": "8696bb25e057080cac3832e733abeb5a7cd76af794407ab9f51fc034cae11737",
+      "sha256": "6b271c69a98b4a2ed1b66b96d0afd656f7b939d9691d3dab12849ff07bb9ec40",
       "integrationReview": "Retains the reviewed source boundary and authenticated patch catalog; integration also admits installed dependency ranges and bounded source-copy helpers. Configuration identity alone is not runtime/refinement evidence."
     },
     {
@@ -619590,6 +619602,42 @@
       ],
       "sha256": "f5a919d4d9ba3ee8047df65886220ab02e44b889b94e0056ec889997a824ae99",
       "integrationReview": "specs/quint/pixel-native-review-20261109.md"
+    },
+    {
+      "path": "patches/eliza/inbox-star-client.patch",
+      "models": [
+        "InboxCoordinator",
+        "InboxDelivery",
+        "MailSelection"
+      ],
+      "sha256": "91284c41910ed1132da2b1a494907386b283c09fff7fbcfb045d08df9ac97e1d"
+    },
+    {
+      "path": "patches/eliza/inbox-star-client-manifest.json",
+      "models": [
+        "InboxCoordinator",
+        "InboxDelivery",
+        "MailSelection"
+      ],
+      "sha256": "499bc634a403cd64e153226e0c81d023c13964e63bd9d6fb7efaca12009601dd"
+    },
+    {
+      "path": "patches/eliza/inbox-star-types-client.patch",
+      "models": [
+        "InboxCoordinator",
+        "InboxDelivery",
+        "MailSelection"
+      ],
+      "sha256": "ae664816a1c3bb28d1a97ef9ae077be85766ba6692519f6739c23db11910b541"
+    },
+    {
+      "path": "patches/eliza/inbox-star-types-client-manifest.json",
+      "models": [
+        "InboxCoordinator",
+        "InboxDelivery",
+        "MailSelection"
+      ],
+      "sha256": "9bab5ef342d737193b1c122b8f659e5729b8a099d59b052c12aba0416cd4820c"
     }
   ],
   "runtimeAssets": [

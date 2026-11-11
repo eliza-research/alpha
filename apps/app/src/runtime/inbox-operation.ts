@@ -12,6 +12,8 @@ export {
   reviewBindingRefusal,
   type ComposerEmail,
   type InboxOperationRecord,
+  type InboxOperationClient,
+  type InboxOperationStore,
   type ReviewBinding,
 } from '../../../../.eliza/client-features/plugins/plugin-inbox/src/mailbox/operation-journal.ts';
 export {
