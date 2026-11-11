@@ -4,11 +4,15 @@ import {flagOffAndroid,residentHome,fenceNetwork,button} from './flag-off-androi
 // Deferred listener and hardware entry cannot claim an invocation or start capture,
 // and startup asks the native companion to stop. Synthetic native ports only;
 // this is not image, listener, microphone or physical-device evidence.
-type Options={assistant?:boolean;invocation?:'listener'|'system'|'assist';locked?:boolean;listener?:Record<string,unknown>|null};
+type Options={assistant?:boolean;invocation?:'listener'|'system'|'assist';locked?:boolean;listener?:Record<string,unknown>|null;localSpeech?:boolean};
 async function setup(page:Page,options:Options={}){
  const foreign=await fenceNetwork(page);await flagOffAndroid(page);
  await page.addInitScript((options:Options)=>{
   const w=window as any,c=w.Capacitor,prior=c.nativePromise;
+  // On-device speech is the route without a Cloud account (or with a Text key and no Cartesia key),
+  // as in voice-assistant-fixture.ts: the Cloud slot is absent at the native storage boundary.
+  const provider={mode:'own',revision:'synthetic-local-voice-provider-r1',persistence:'native-secure-store',keys:{text:{configured:true},voice:{configured:false}},provider:'cerebras',configured:true,selected:true,model:'qwen-3.8-27b',voiceConfigured:false};
+  if(options.localSpeech){delete w.flagOff.slots['cloud:production'];w.flagOff.persist();}
   const f=w.live={captures:[] as any[],stops:[] as string[],active:null as string|null,routes:[] as any[],invocations:0,binding:null as any,bindings:[] as any[],claims:[] as any[],listenerCalls:[] as string[],power:[] as string[],listener:options.listener??null,forbidden:[] as string[]};
   const events:Array<{event:string;callback:(value:any)=>void}>=[];
   const header=(name:string)=>c.PluginHeaders.find((p:any)=>p.name===name);
@@ -17,6 +21,7 @@ async function setup(page:Page,options:Options={}){
   c.PluginHeaders.push({name:'ElizaSense',methods:['status','pause','turnOff','openSettings','turnOn','resume','start','bindInvocationSession','takeInvocation','claimProtectedPowerLaunch','discardProtectedPowerLaunch','discardProtectedPowerInvocation'].map(name=>({name,rtype:'promise'}))});
   const callback=c.nativeCallback;c.nativeCallback=(plugin:string,method:string,input:any,fn:any)=>{if(plugin==='AlphaVoiceCloud'&&method==='addListener'){events.push({event:input.eventName,callback:fn});return String(events.length);}return callback(plugin,method,input,fn);};
   c.nativePromise=async(plugin:string,method:string,input:any)=>{
+   if(options.localSpeech&&plugin==='Agent'&&method==='providerStatus')return provider;
    if(plugin==='DailyApps'&&method==='surfaceInfo')return {developmentBuild:false,assistant:options.assistant===true};
    if(plugin==='ElizaSense'){
     if(method==='bindInvocationSession'){
@@ -84,7 +89,7 @@ for(const [name,options] of [
 });
 
 test('in-chat Talk still starts local voice after a deferred hardware entry',async({page})=>{
- const foreign=await setup(page,{assistant:true,invocation:'system'});await openSurface(page);
+ const foreign=await setup(page,{assistant:true,invocation:'system',localSpeech:true});await openSurface(page);
  await expect(voice(page)).toHaveCount(0);expect(await live(page,f=>f.captures)).toEqual([]);
  await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  expect(await live(page,f=>f.captures)).toEqual([{echoCancel:true}]);
