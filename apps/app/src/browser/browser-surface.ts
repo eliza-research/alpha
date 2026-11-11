@@ -1,9 +1,8 @@
-import {iconStyle} from '../icon-style';
 import { WebPlugin } from '@capacitor/core';
 import {bookmarkDocument,browsingSessionDocument} from './preference-documents';
 import {normalizeBrowsing as normalize,type SavedBrowsing as Saved} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/browsing-session.ts';
 
-type Tab = { session: string; id: string; private: boolean; frame: HTMLIFrameElement; container: HTMLDivElement; link: HTMLAnchorElement; status:HTMLParagraphElement; history: string[]; position: number; sequence: number; navigation: number; loading: boolean; committed:boolean; error:string };
+type Tab = { session: string; id: string; private: boolean; frame: HTMLIFrameElement; container: HTMLDivElement; status:HTMLParagraphElement; history: string[]; position: number; sequence: number; navigation: number; loading: boolean; committed:boolean; error:string };
 /** Unprivileged web surfaces. Remote documents never receive the host bridge. */
 export class BrowserSurface extends WebPlugin {
   private tabs = new Map<string, Tab>();
@@ -13,7 +12,7 @@ export class BrowserSurface extends WebPlugin {
   private emit(tab:Tab) { tab.status.textContent=tab.error;tab.status.hidden=!tab.error;void this.notifyListeners('stateChanged',{session:tab.session,id:tab.id,private:tab.private,sequence:++tab.sequence,navigation:tab.navigation,url:tab.history[tab.position],title:tab.history[tab.position],loading:tab.loading,committed:tab.committed,error:tab.error,canBack:tab.position>0,canForward:tab.position<tab.history.length-1}); }
   async create(input:{session:string;id:string;private?:boolean}) {
     if(this.tabs.has(this.key(input)))return;
-    const container=document.createElement('div'),frame=document.createElement('iframe'),link=document.createElement('a'),status=document.createElement('p');
+    const container=document.createElement('div'),frame=document.createElement('iframe'),status=document.createElement('p');
     container.dataset.browserSurface=input.id;
     // The phone canvas keeps one layer for web pages under its assistant layers (template.html),
     // so the composer and the chat sheet are composited over the page without moving or resizing
@@ -24,14 +23,13 @@ export class BrowserSurface extends WebPlugin {
     // Opaque origin also isolates a same-origin development page from local state.
     frame.setAttribute('sandbox','allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads');
     frame.style.cssText='width:100%;flex:1;min-height:0;border:0;background:white';
-    link.textContent='Open in browser';const external=document.createElement('span');external.setAttribute('aria-hidden','true');external.dataset.alphaIcon='/icons/lucide/external-link.svg';Object.assign(external.style,iconStyle('external-link'),{width:'14px',height:'14px'});link.append(external);link.target='_blank';link.rel='noopener noreferrer';link.style.cssText='padding:8px 12px;color:var(--fg,#111);font:12px system-ui;text-align:right;display:flex;justify-content:flex-end;align-items:center;gap:6px';
     status.setAttribute('role','status');status.style.cssText='margin:0;padding:12px;font:14px/1.4 system-ui';status.hidden=true;
-    container.append(link,status,frame);(host??document.body).append(container);
-    const tab:Tab={session:input.session,id:input.id,private:!!input.private,frame,container,link,status,history:[],position:-1,sequence:0,navigation:0,loading:false,committed:false,error:''};
+    container.append(status,frame);(host??document.body).append(container);
+    const tab:Tab={session:input.session,id:input.id,private:!!input.private,frame,container,status,history:[],position:-1,sequence:0,navigation:0,loading:false,committed:false,error:''};
     this.tabs.set(this.key(input),tab);
   }
   private load(tab:Tab) {
-    const url=tab.history[tab.position];tab.navigation++;tab.loading=true;tab.committed=false;tab.error='';tab.link.href=url;
+    const url=tab.history[tab.position];tab.navigation++;tab.loading=true;tab.committed=false;tab.error='';
     // A fresh surface binds callbacks to this host-requested navigation. A late
     // load from a retired frame must not commit the new address or a stopped tab.
     const frame=tab.frame.cloneNode(false) as HTMLIFrameElement;frame.src=url;

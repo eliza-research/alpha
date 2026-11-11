@@ -48,7 +48,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  let promptMore=false,newMore=false;
  let listMenu=false,selecting=false,recentlyDeleted=false,batchBusy=false;
  const selection=new Set<string>();
- let recoveryReview:{keys:string[];operation:'archive'|'restore';sessionId:string}|null=null;
+ let recoveryReview:{keys:string[];operation:'archive'|'restore'|'erase';sessionId:string}|null=null;
  const confirmationModal=createInlineModal(()=>{recoveryReview=null;review=null;publish();},()=>null,{coverAssistant:true});
  let closeFilters:(()=>void)|undefined;
  const dismissFilters=()=>{closeFilters?.();closeFilters=undefined;};
@@ -179,10 +179,10 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  const displayed=()=>rows.filter(row=>removedAutomation(row)===recentlyDeleted&&(recentlyDeleted||rowPasses(row,typeFilter)&&rowPasses(row,statusFilter)));
  const selectionAllowed=(row:AutomationRow)=>recoverableAutomation(row)&&!locked(row);
  const openDeleted=()=>{if(controller||batchBusy)return;listMenu=false;selecting=false;selection.clear();recentlyDeleted=true;rows=[];issues=[];message='';state='idle';publish();};
- const prepareRecovery=()=>{
+ const prepareRecovery=(operation:'archive'|'restore'|'erase'=recentlyDeleted?'restore':'archive')=>{
   const keys=displayed().filter(row=>selection.has(row.key)&&selectionAllowed(row)).map(row=>row.key),sessionId=binding()?.sessionId;
   if(!keys.length||controller||batchBusy||!sessionId)return;
-  recoveryReview={keys,operation:recentlyDeleted?'restore':'archive',sessionId};publish();
+  recoveryReview={keys,operation,sessionId};publish();
  };
  async function confirmRecovery(){
   const chosen=recoveryReview;if(!chosen||controller||batchBusy)return;
@@ -191,8 +191,8 @@ export function installAutomationsAdapter(Component:any,views:Bag){
    for(const id of chosen.keys){
     if(!visible()||binding()?.sessionId!==chosen.sessionId)break;
     const row=rows.find(value=>value.key===id);
-    if(!row||!selectionAllowed(row)||removedAutomation(row)!==(chosen.operation==='restore'))break;
-    if(!await work((client,signal)=>client.changeRecovery(row,chosen.operation,signal),key(row)))break;
+    if(!row||!selectionAllowed(row)||removedAutomation(row)!==(chosen.operation!=='archive'))break;
+    if(!await work((client,signal)=>chosen.operation==='erase'?client.eraseRemoved(row,signal):client.changeRecovery(row,chosen.operation,signal),key(row)))break;
     selection.delete(id);
    }
   }finally{batchBusy=false;publish();}
@@ -291,8 +291,8 @@ export function installAutomationsAdapter(Component:any,views:Bag){
    recoveryIcon:recentlyDeleted?current.ic.stUndo:current.ic.trash,
    recoveryLabel:recentlyDeleted?'Recover selected workflows':'Delete selected workflows',
    recoveryReview:recoveryReview?{
-    title:`${recoveryReview.operation==='restore'?'Recover':'Delete'} ${recoveryReview.keys.length} ${recoveryReview.keys.length===1?'item':'items'}?`,
-    message:recoveryReview.operation==='restore'&&recoveryReview.keys.some(id=>rows.find(row=>row.key===id)?.kind==='schedule')?'Recovered schedules resume. Other items stay inactive.':'',
+    title:`${recoveryReview.operation==='restore'?'Recover':recoveryReview.operation==='erase'?'Permanently delete':'Delete'} ${recoveryReview.keys.length} ${recoveryReview.keys.length===1?'item':'items'}?`,
+    message:recoveryReview.operation==='erase'?'This cannot be undone.':recoveryReview.operation==='restore'&&recoveryReview.keys.some(id=>rows.find(row=>row.key===id)?.kind==='schedule')?'Recovered schedules resume. Other items stay inactive.':'',
     confirm:()=>void confirmRecovery(),
     close:()=>{recoveryReview=null;publish();},
     modal:confirmationModal.ref,
@@ -309,7 +309,8 @@ export function installAutomationsAdapter(Component:any,views:Bag){
     for(const row of displayed())if(selectionAllowed(row))selection.add(row.key);
     publish();
    },
-   prepareRecovery,openDeleted,
+   prepareRecovery:()=>prepareRecovery(),prepareErase:()=>prepareRecovery('erase'),openDeleted,
+   eraseDisabled:batchBusy||!!controller||!selection.size||displayed().some(row=>selection.has(row.key)&&!['prompt','reminder','routine'].includes(row.kind)),
    newFlow:()=>{listMenu=false;newMore=false;creating=true;detail=null;editor=null;publish();},
    listToggles:false,
    automation:{

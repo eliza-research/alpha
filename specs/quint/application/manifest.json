@@ -3800,7 +3800,9 @@
       "cancelHasNoEffect",
       "unknownStopsBatch",
       "rejectionStopsBatch",
-      "ownerChangeStopsBatch"
+      "ownerChangeStopsBatch",
+      "permanentDeletion",
+      "cancelPermanent"
     ],
     "sources": [
       "apps/app/src/runtime/automations-protocol.ts",
@@ -3810,7 +3812,7 @@
       "apps/app/src/prototype/automations.css"
     ],
     "abstractions": [
-      "Two selected records and one journaled request in flight. Unknown or rejected responses stop the batch. Records remain in canonical stores.",
+      "Two selected records and one journaled request in flight. Unknown or rejected responses stop the batch. Archive preserves records; confirmed permanent deletion removes only selected records.",
       "Restore-inactive scenario represents prompts, workflows and definitions. Scheduled-task reopen uses existing resume semantics, disclosed in its review. Native device-reminder recovery is not covered. Progress assumes explicit approval, stable owner and successful replies."
     ]
   }
