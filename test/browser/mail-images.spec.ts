@@ -20,13 +20,15 @@ test('HTML email loads images across reloads and retains isolated inline links',
  await expect(frame.getByRole('img',{name:'Product'})).toBeVisible();await expect.poll(()=>imageRequests).toBeGreaterThan(0);
  await expect(page.getByRole('group',{name:'Links in this email'})).toHaveCount(0);
  await expect(frame.getByRole('link',{name:'Read more'})).toBeVisible();
- const review=page.waitForEvent('dialog').then(async dialog=>{expect(dialog.message()).toContain('Site: example.invalid');await dialog.dismiss();});await frame.getByRole('link',{name:'Read more'}).click();await review;
  await expect(page.locator('iframe[title="Formatted email"]')).toHaveAttribute('sandbox','allow-same-origin');
  expect(await page.evaluate(()=>(window as any).mailInjected)).toBeUndefined();
  await page.evaluate(async()=>{await (await import('/src/browser/device-preferences.ts')).editDevicePreferences(value=>{value.autoLoadMailImages=false;});});
  await page.reload();await setup(page);await openMail(page);
  await expect(frame.getByRole('img',{name:'Product'})).toBeVisible();
  await expect(page.getByRole('button',{name:'Show images',exact:true})).toHaveCount(0);
+ await frame.getByRole('link',{name:'Read more'}).click();
+ await expect(page.getByRole('region',{name:'Browser',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Edit address',exact:true})).toContainText('example.invalid');
  const toggle=await imageSetting(page);await expect(toggle).toHaveCount(0);
 
 });
