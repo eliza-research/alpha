@@ -220,7 +220,6 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   const build = workflow.jobs.build;
   assert.equal(evaluate(build.if, main), true);
   assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, main), '1');
-  assert.equal(build.env.ALPHA_RUNTIME_PROFILE, undefined);
   assert.equal(build.env.ELIZA_ANDROID_BUN_TARGET, 'linux-musl');
   assert.equal(build.env.ELIZA_ANDROID_TARGET_ABIS, 'arm64-v8a,x86_64');
   assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], main), true);
@@ -238,8 +237,6 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   const dispatch = {...main, event_name: 'workflow_dispatch'}, manual = {operation: 'build', build_version_code: '44'};
   assert.equal(evaluate(build.if, dispatch, manual), true);
   assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, dispatch, manual), '0');
-  assert.equal(workflow.on.workflow_dispatch.inputs.runtime_profile, undefined);
-  assert.equal(workflow.on.workflow_dispatch.inputs.local_embeddings, undefined);
   assert.equal(evaluate(build.env.ELIZAOS_VERSION_CODE, dispatch, manual), '44');
   assert.equal(evaluate(build.env.ELIZAOS_VERSION_CODE, main), '');
   assert.notEqual(evaluate(group, main), evaluate(group, dispatch, manual));

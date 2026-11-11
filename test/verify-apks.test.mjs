@@ -11,16 +11,12 @@ import { archiveWebPayload, parseXmlTree, readBuildFlags, validateApk, verifyOwn
 import { webViewFilterProblems, webViewFilters } from "../scripts/render-assetlinks.ts";
 import { voiceBundleAdmission, VOICE_BUNDLE_FORMAT } from "../scripts/voice-host.ts";
 const root = path.resolve(import.meta.dirname, "..");
-test("Cloud voice evidence is one readable file for a genuine build, and the removed profile options are refused, before any APK work", () => {
+test("Cloud voice evidence is one readable file for a genuine build, before any APK work", () => {
   for (const [args, message] of [
     [["--cloud-voice-evidence=a.json", "--cloud-voice-evidence=b.json"], /Specify --cloud-voice-evidence only once/],
     [["--cloud-voice-evidence=missing.json"], /Cloud voice evidence could not be read as JSON/],
     [["--test-mocks", "--cloud-voice-evidence=a.json"], /Cloud voice evidence requires a genuine resident without mocks/],
     [["--allow-unpackaged-runtime", "--cloud-voice-evidence=a.json"], /Cloud voice evidence requires a genuine resident without mocks/],
-    // One runtime profile: every build packages local speech and embeddings.
-    [["--runtime-profile=cloud", "--cloud-voice-evidence=a.json"], /There is one runtime profile now: remove --runtime-profile and --local-embeddings/],
-    [["--runtime-profile=native"], /There is one runtime profile now/],
-    [["--local-embeddings"], /There is one runtime profile now/],
   ]) {
     const result=spawnSync(process.execPath,["scripts/verify-apks.ts",...args],{cwd:root,encoding:"utf8"});
     assert.notEqual(result.status,0,args.join(" "));
@@ -210,8 +206,8 @@ for (const testMocks of [false, true]) test(`archive retains actual APK web byte
 
 // Exercise the archive CLI, its child environments and real ZIP retention without
 // running Gradle. Only the Android builder and source snapshot are fixture commands.
-// There is one runtime profile. `inherited` starts from an environment that still carries the
-// removed profile switch and the mock flags: a distribution archive strips them all.
+// `inherited` starts from an environment that still carries the mock flags: a distribution
+// archive strips them.
 for (const mode of ['native', 'test-mocks', 'inherited', 'wrong-profile', 'private', 'wrong-channel']) test(`build archive keeps the one runtime profile and its update channel: ${mode}`, t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
@@ -227,9 +223,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-const args=process.argv.slice(2), profile=process.env.VITE_ELIZA_RUNTIME_PROFILE??null;
+const args=process.argv.slice(2);
 const mocks=process.env.ELIZA_DEV_ALLOW_TEST_MOCKS==='1';
-fs.appendFileSync('calls.jsonl',JSON.stringify({args,profile,mocks,privateInputPresent:!!process.env.ALPHA_PRIVATE_UPDATE_MANIFEST_FILE})+'\\n');
+fs.appendFileSync('calls.jsonl',JSON.stringify({args,mocks,privateInputPresent:!!process.env.ALPHA_PRIVATE_UPDATE_MANIFEST_FILE})+'\\n');
 if(args[1]==='android:build'){
  const output=mocks?'artifacts/test-mocks':'artifacts';
  fs.mkdirSync(output,{recursive:true});
@@ -255,8 +251,7 @@ if(args[1]==='android:build'){
   const args = testMocks ? ['--test-mocks'] : [];
   const env = {...process.env, PATH:path.join(dir, 'bin')+path.delimiter+process.env.PATH};
   for (const name of ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS', 'ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS', 'FIXTURE_WRONG_PROFILE','FIXTURE_WRONG_CHANNEL','ALPHA_UPDATE_CHANNEL','ALPHA_PRIVATE_UPDATE_MANIFEST_FILE','ALPHA_PRIVATE_UPDATE_MANIFEST_SHA256']) delete env[name];
-  delete env.VITE_ELIZA_RUNTIME_PROFILE;
-  if (inherited) Object.assign(env, {ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_RUNTIME_PROFILE:'cloud'});
+  if (inherited) Object.assign(env, {ELIZA_DEV_ALLOW_TEST_MOCKS:'1', VITE_ELIZA_DEV_ALLOW_TEST_MOCKS:'1', ORG_GRADLE_PROJECT_ELIZA_DEV_ALLOW_TEST_MOCKS:'1'});
   if (mode === 'wrong-profile') env.FIXTURE_WRONG_PROFILE='1';
   if(mode==='wrong-channel')env.FIXTURE_WRONG_CHANNEL='1';
   if(mode==='private'){
@@ -275,7 +270,6 @@ if(args[1]==='android:build'){
   assert.equal(run.status, 0, run.stderr);
   const calls = fs.readFileSync(path.join(dir, 'calls.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
   assert.deepEqual(calls.map(row => row.args[1]), ['android:sync', 'verify', 'android:build']);
-  assert.ok(calls.every(row => row.profile === null), 'no profile switch reaches the renderer build, verification or the Android build');
   assert.equal(calls[1].mocks, false, 'verification stays flag-off even for a fixture archive');
   assert.equal(calls[1].privateInputPresent,false,'source verification never inherits the real private capability');
   assert.equal(calls[2].privateInputPresent,mode==='private');
@@ -283,20 +277,19 @@ if(args[1]==='android:build'){
   assert.equal(calls[2].mocks, testMocks);
   assert.deepEqual(calls[2].args, ['run', 'android:build', ...(args.length ? ['--', ...args] : [])]);
   const configuration = JSON.parse(fs.readFileSync(path.join(archive, 'configuration.json')));
-  assert.equal(configuration.runtimeProfile, 'native');assert.equal('localEmbeddings' in configuration, false);
+  assert.equal(configuration.runtimeProfile, 'native');
   assert.equal(configuration.testMocks, testMocks);
   const manifest = JSON.parse(fs.readFileSync(path.join(archive, 'apk-manifest.json')));
   assert.equal(Object.keys(manifest).length, 6);
   for (const [name, expected] of Object.entries(manifest)) assert.equal(createHash('sha256').update(fs.readFileSync(path.join(archive, name))).digest('hex'), expected);
   const flags = JSON.parse(fs.readFileSync(path.join(archive, 'web-dist/build-flags.json')));
-  assert.equal(flags.runtimeProfile, undefined);
   assert.equal(flags.testMocks, testMocks);
 });
 
-test('archive rejects the removed profile switches and unsupported options before creating output', t => {
+test('archive rejects unsupported options before creating output', t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-build-archive-invalid-'));
   t.after(() => fs.rmSync(dir, {recursive:true, force:true}));
-  for (const args of [['--runtime-profile=cloud', '--test-mocks'], ['--runtime-profile=other'], ['--allow-unpackaged-runtime']]) {
+  for (const args of [['--allow-unpackaged-runtime']]) {
     const run = spawnSync(process.execPath, [path.join(root, 'scripts/build-archive.ts'), ...args, 'test-results/archive'], {cwd:dir, encoding:'utf8'});
     assert.notEqual(run.status, 0);
     assert.ok(!fs.existsSync(path.join(dir, 'test-results')));

@@ -241,10 +241,6 @@ NOT_DISTRIBUTABLE = 3
 
 
 def main(argv):
-    if any(arg == '--local-embeddings' or arg == '--runtime-profile' or arg.startswith('--runtime-profile=') for arg in argv):
-        print('There is one runtime profile now: remove --runtime-profile and --local-embeddings '
-              '(local speech and embeddings always ship; speech is routed at run time).', file=sys.stderr)
-        return 2
     parser = argparse.ArgumentParser(description='Verify packaged runtime bytes in APKs.')
     parser.add_argument('--release', action='append', default=[], metavar='APK', help='distribution release APK; requires a packaged runtime')
     parser.add_argument('--allow-unpackaged-runtime', action='store_true', help='developer option: report unpackaged releases as distributable=false instead of failing')
