@@ -275,14 +275,15 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   const stateWord=(k:PermissionKey)=>{const value=states[k];return value==='checking'?<Busy label="Checking"/>:value==='ready'?<StatusDot tone="ok">{native&&k==='location'?describe(locationDescription.current):native&&k==='photos'?describe(photoDescription.current):'Allowed'}</StatusDot>:value==='settings'?<StatusDot tone="off">Off</StatusDot>:value==='unavailable'?<StatusDot tone="warn">Couldn’t check</StatusDot>:<StatusDot tone="off">Ask</StatusDot>;};
   const chip = target && native && (state === 'ready' || state === 'settings') ? 'Settings' : state === 'ready' ? '' : state === 'settings' ? native ? 'Settings' : 'Check' : state === 'unavailable' ? 'Try again' : 'Allow';
   const continueReady = target ? !busy : state === 'ready' && !busy;
-  const proceed = () => {if (target) {if (!busy) advance('continued'); return;} if (state === 'ready') void allow(); else setCheckNotice('Allow first');};
+  const proceed = () => {if (target) {if (!native && state === 'ready') void allow(); else if (!busy) advance('continued'); return;} if (state === 'ready') void allow(); else setCheckNotice('Allow first');};
   return <dialog ref={dialog} className="alpha-startup-permissions" aria-labelledby="alpha-permission-title" onCancel={event => {event.preventDefault(); close();}}>
     <div className="alpha-permission-content alpha-permission-checklist">
       <h2 id="alpha-permission-title" className="serif" tabIndex={-1}>Access</h2>
       <ul className="alpha-permission-rows">{keys.map(k => <li key={k} className="alpha-permission-row" aria-current={k === key ? 'step' : undefined} data-state={states[k]}>
         <span className="alpha-permission-row-icon" aria-hidden="true"><span style={iconStyle(details[k].icon)}/></span>
-        <span className="alpha-permission-name">{details[k].title}{k === key && <span className="alpha-permission-rationale" style={{display: 'block', fontSize: 13, color: 'var(--connection-mut,#6b6b6b)'}}>{details[k].reason}</span>}</span>
-        {k === key && (chip || busy || state === 'checking') ? <button className="alpha-permission-chip" type="button" disabled={busy || state === 'checking'} onClick={() => void allow()}>{busy || state === 'checking' ? <Busy label="Checking"/> : chip}</button> : <span className="alpha-permission-state">{stateWord(k)}</span>}
+        <span className="alpha-permission-label"><span className="alpha-permission-name">{details[k].title}</span>{k === key && <span className="alpha-permission-rationale">{details[k].reason}</span>}</span>
+        {k === key && state === 'ready' && <span className="alpha-permission-state" role="status">{stateWord(k)}</span>}
+        {k === key && (chip || busy || state === 'checking') ? <button className="alpha-permission-chip" type="button" disabled={busy || state === 'checking'} onClick={() => void allow()}>{busy || state === 'checking' ? <Busy label="Checking"/> : chip}</button> : !(k === key && state === 'ready') && <span className="alpha-permission-state">{stateWord(k)}</span>}
       </li>)}</ul>
       {progressError && <p className="alpha-permission-status" role="alert"><StatusDot tone="warn">Not saved</StatusDot></p>}
       {checkNotice && <p className="alpha-permission-status" role="status">{checkNotice}</p>}

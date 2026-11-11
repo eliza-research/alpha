@@ -71,12 +71,12 @@ function fixture(){
  const f=fixture();const consumption=Promise.withResolvers<void>();f.options.consume=()=>consumption.promise;const abort=f.open();assert.ok(abort);f.modal().closed(false);f.modal().compose('Spent tap');await tick();abort();consumption.resolve();await tick();assert.deepEqual(f.state().drafts,['Spent tap']);assert.deepEqual(f.state().reports,[]);assert.equal(f.state().closed,1);
 }
 {
- const f=fixture();const consumption=Promise.withResolvers<void>();f.options.consume=()=>consumption.promise;f.open();f.modal().closed(false);f.modal().compose('Lost question');await tick();f.change();consumption.resolve();await tick();assert.deepEqual(f.state().drafts,[]);assert.deepEqual(f.state().reports,['The question could not be kept. Open the notification again.']);
+ const f=fixture();const consumption=Promise.withResolvers<void>();f.options.consume=()=>consumption.promise;f.open();f.modal().closed(false);f.modal().compose('Lost question');await tick();f.change();consumption.resolve();await tick();assert.deepEqual(f.state().drafts,[]);assert.deepEqual(f.state().reports,['Couldn’t keep']);
 }
 {
  const f=fixture();const check=Promise.withResolvers<boolean>();f.options.recheck=()=>check.promise;const abort=f.open();assert.ok(abort);f.modal().closed(false);f.modal().compose('Canceled during recheck');await tick();abort();check.resolve(true);await tick();assert.equal(f.state().consumed,0);assert.deepEqual(f.state().drafts,[]);assert.equal(f.state().closed,1);
 }
 {
- const f=fixture();f.options.notice.source='third-party';assert.equal(f.open(),undefined);assert.equal(f.hasModal(),false);assert.deepEqual(f.state().reports,['This notification is unavailable for review.']);
+ const f=fixture();f.options.notice.source='third-party';assert.equal(f.open(),undefined);assert.equal(f.hasModal(),false);assert.deepEqual(f.state().reports,['Unavailable']);
 }
 console.log('PASS own-notice question review, reusable cancellation, source and owner fences');

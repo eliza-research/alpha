@@ -14,7 +14,7 @@ const inputs = ['test/fixtures/calendar-draft-handoff.mjs', 'test/fixtures/camer
   'apps/app/src/runtime/assistant-draft-store.ts', 'apps/app/src/browser/documents.ts', 'scripts/local-ocr-assets.ts'];
 const titles = new Map([['', ''], [earlierTitle, 'earlier'], [noteTitle, 'note'], [scanTitle, 'scan']]);
 // The fixture records toast events; successful routing preserves the previous Note event.
-const noteNotices = new Map([[noteRefusal, 'note-refused']]);
+const noteNotices = new Map([[noteRefusal, 'note-refused'], ['Check time', 'review-time']]);
 
 export async function checkCanonicalCalendarDraftHandoff(extraSources = []) {
   const sources = new Set([driver, ...mountedCalendarFixtureSources, ...inputs, ...extraSources]);

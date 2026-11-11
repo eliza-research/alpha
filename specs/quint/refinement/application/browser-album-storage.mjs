@@ -300,7 +300,7 @@ async function runBrowserAlbumStorage(browser, extraSources) {
             timer = setTimeout(() => reject(Error('Closed Photos batch did not settle')), 30_000);
           })]);
           await tick();
-          assert.ok(fixture.toasts.some(value => String(value).includes('Added 2 to “Album” · 1 not added')),
+          assert.ok(fixture.toasts.some(value => String(value).includes('Album ✓ · 1 not added')),
             JSON.stringify(fixture.toasts));
         } finally {clearTimeout(timer); await fixture.close();}
       };

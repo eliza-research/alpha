@@ -64,20 +64,23 @@ async function setup(page, google, googleInFeed, mailOnly) {
   }, {authorization, mailOnly});
 }
 
+// The unlinked Inbox status line, distinct from the same-named Connect Gmail action button.
+const connectStatus = page => page.getByText('Connect Gmail', {exact: true}).and(page.locator(':not(button):not(button *)'));
+
 async function openInbox(page, connected) {
   await button(page, 'Inbox').click();
   await active(page, 'inbox');
   if (connected) {
     await expect(button(page, 'Refresh inbox')).toBeVisible();
-    await expect(page.getByText('Connect Gmail to read your inbox', {exact: true})).toHaveCount(0);
+    await expect(connectStatus(page)).toHaveCount(0);
     await expect.poll(async () => (await fixture(page)).searches.length).toBeGreaterThan(0);
   } else {
-    await expect(page.getByText('Connect Gmail to read your inbox', {exact: true})).toBeVisible();
+    await expect(connectStatus(page)).toBeVisible();
     assert.deepEqual((await fixture(page)).searches, [], 'The unlinked inbox makes no mailbox request');
   }
   const result = await fixture(page);
   assert.ok(result.reads.length > 0);
-  return {'s.screen': 'Inbox', 's.inboxView': await page.getByText('Connect Gmail to read your inbox', {exact: true}).isVisible() ? 'connect' : 'mail',
+  return {'s.screen': 'Inbox', 's.inboxView': await connectStatus(page).isVisible() ? 'connect' : 'mail',
     's.scopes': mailbox(result.reads.at(-1))};
 }
 
@@ -149,7 +152,7 @@ async function revokedInbox(page) {
     window.dispatchEvent(new Event('alpha:google-accounts-changed'));
   });
   await expect(button(page, 'Connect Gmail')).toBeVisible();
-  await expect(page.getByText('Connect Gmail to read your inbox', {exact: true})).toBeVisible();
+  await expect(connectStatus(page)).toBeVisible();
   const retired = await fixture(page);
   t.record('Canonical empty grant readback retires the mailbox without a manual refresh', action('Revoke'),
     {'s.screen': 'Inbox', 's.inboxView': 'connect', 's.scopes': mailbox(retired.reads.at(-1))});

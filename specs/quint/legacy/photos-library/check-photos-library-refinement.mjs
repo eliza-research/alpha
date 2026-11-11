@@ -162,7 +162,7 @@ async function batch(page, rows) {
   const cap = divergence(t.trace, 'mounted_selection_accepts_the_second_item', 'AsBuilt_Cap');
   await button(page, 'Unfavorite selected').click();
   await expect(page.locator('summary[aria-label="Photos tools"]')).toBeVisible();
-  await expect(page.getByText('Removed 2 from Favorites', {exact: true})).toBeVisible();
+  await expect(page.getByText('2 unfavorited', {exact: true})).toBeVisible();
   await t.point('All-favorite selection toggles both exact rows off', action('BatchFavorite'));
   const favorites = divergence(t.trace, 'favorite_is_reversible_for_a_selected_batch', 'AsBuilt_FavToggle');
 
@@ -300,7 +300,7 @@ async function reviewAndViewer(page, rows) {
     action('StoreFavorite', 3));
   await review(page).getByRole('button', {name: 'Share', exact: true}).click();
   await expect(review(page)).toHaveCount(0);
-  await expect(page.getByText('An item changed. Nothing was shared; ask again.', {exact: true})).toBeVisible();
+  await expect(page.getByText('Item changed', {exact: true})).toBeVisible();
   assert.deepEqual(await shares(), accepted);
   await t.point('Confirming the stale review refuses without another chooser call',
     [{...action('AgentApply'), reject: true}, action('AgentReject')]);

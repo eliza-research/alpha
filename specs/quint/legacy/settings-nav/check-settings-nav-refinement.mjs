@@ -83,7 +83,7 @@ function projection(state, profile) {
     Apps: [['settings-apps', 'top'], ['top']],
     Account: ['settings-account', ['top']],
     About: ['about', ['top', 'about']],
-    'Open source licenses': ['licenses', ['top', 'about', 'licenses']],
+    Licenses: ['licenses', ['top', 'about', 'licenses']],
     'License details': ['license-detail', ['top', 'about', 'licenses', 'license-detail']],
     Calendar: ['calendar', ['top', 'calendar']],
     'Password manager': ['password-provider', ['top', 'passwords']],
@@ -126,18 +126,18 @@ async function collect(page, notice) {
   const about = schedule(page, top);
   await button(page, 'About').click();
   await about.point('About opens from the visible Settings row', 'About', open('About', 'about'));
-  await button(page, 'Open source licenses').click();
-  await about.point('Open source licenses opens from About', 'Open source licenses', open('Open source licenses', 'licenses'));
+  await button(page, 'Licenses').click();
+  await about.point('Open source licenses opens from About', 'Licenses', open('Open source licenses', 'licenses'));
   const search = current(page).getByRole('searchbox', {name: 'Search components', exact: true});
   const component = button(page, notice.name+' '+notice.version);
   await expect(component).toBeVisible();
   await search.fill('no-component-matches-quint-settings');
   await expect(component).toHaveCount(0);
-  await expect(current(page).getByText('No matching components', {exact: true})).toBeVisible();
-  await about.point('Unmatched search changes results and keeps licenses selected', 'Open source licenses');
+  await expect(current(page).getByText('No matches', {exact: true})).toBeVisible();
+  await about.point('Unmatched search changes results and keeps licenses selected', 'Licenses');
   await search.fill(notice.name);
   await expect(component).toBeVisible();
-  await about.point('Matching search displays the actual packaged React notice', 'Open source licenses');
+  await about.point('Matching search displays the actual packaged React notice', 'Licenses');
   await component.click();
   const detail = await snapshot(page, 'License details');
   await expect(current(page).getByText(notice.name, {exact: true})).toBeVisible();
@@ -148,7 +148,7 @@ async function collect(page, notice) {
   await nativeBack(page);
   await expect(search).toHaveValue(notice.name);
   await expect(component).toBeVisible();
-  await about.point('Delivered Back returns from the unmapped detail excursion and retains the search', 'Open source licenses');
+  await about.point('Delivered Back returns from the unmapped detail excursion and retains the search', 'Licenses');
   await nativeBack(page);
   await about.point('Delivered Back returns to About', 'About', action('Back'));
   await nativeBack(page);
@@ -174,8 +174,8 @@ async function collect(page, notice) {
   const plan = await account.point('The signed-in Account sheet opens from Settings', 'Account & plan',
     open('Eliza Cloud', 'account'), open('Eliza Cloud account & plan', 'cloudplan'));
   const sheet = page.getByRole('dialog', {name: 'Account', exact: true});
-  const infoLabel = 'AI connection';
-  await expect(sheet.getByRole('button', {name: /^AI connection/})).toBeVisible();
+  const infoLabel = 'AI';
+  await expect(sheet.getByRole('button', {name: /^AI\b/})).toBeVisible();
   const noInfoRows = !(await sheet.getByText(infoLabel, {exact: true}).isVisible());
   const accountSlot = () => page.evaluate(() => window.flagOff.slots['cloud:production']);
   const before = await accountSlot();

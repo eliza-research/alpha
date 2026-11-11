@@ -91,7 +91,7 @@ async function scenario(name, drive) {
     assert.deepEqual(Array.from(notices, notice => ids.find(id => rowId(id) === notice.id)).sort(), cards);
     for (const notice of notices) {
       assert.equal(notice.title, 'Scheduled digest');
-      assert.equal(notice.text, locked ? '' : 'A saved result is ready to review.');
+      assert.equal(notice.text, locked ? '' : 'Ready');
       assert.equal(notice.canOpen, !locked);
     }
     assert.equal(status.enabled, saved.enabled);

@@ -94,7 +94,7 @@ handoff.resolve({action:'set',status:'opened',message:'Clock request sent. Check
 // Without native EXTRA_DAYS support (no clockRepeatDaysVersion) the chips are hidden and a repeat is never sent.
 // days is null, not []: the template renders its Repeat group for any array.
 {repeatVersion=0;const plain=await fixture();assert.equal(plain.clock().repeatAvailable,false);assert.equal(plain.clock().days,null);
- const before=writes.length;plain.clock().prepare();assert.equal(plain.review().text.includes('repeating'),false);plain.shell.componentWillUnmount();assert.equal(writes.length,before);repeatVersion=1;}
+ const before=writes.length;plain.clock().prepare();assert.equal(/Mon|Tue|Wed|Thu|Fri|Sat|Sun/.test(plain.review().text),false);plain.shell.componentWillUnmount();assert.equal(writes.length,before);repeatVersion=1;}
 // All other standard intents require a fresh review; no broad alarm identity is inferred.
 for(const [name,action] of [['Show alarms','show'],['Snooze','snooze'],['Dismiss','dismiss']]){
  required(f.clock().actions.find(a=>a.label===name)).pick();f.clock().prepare();const review=f.review();

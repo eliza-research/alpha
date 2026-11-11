@@ -5,6 +5,7 @@ import {isCalendarReadFailureCode} from '../.eliza/client-features/packages/cont
 import {FILES_CAPABILITY} from '../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts';
 import * as residentRecovery from '../apps/app/src/runtime/resident-recovery.ts';
 import {resolveCloudEnvironment} from '../apps/app/src/runtime/cloud-environment-selection.ts';
+import {CalendarApprovalClient} from '../apps/app/src/runtime/calendar-approval-client.ts';
 // Non-product development controller + shared Cloud protocol over synthetic loopback HTTP. No live account.
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -193,7 +194,7 @@ assert.ok(selectionSandbox.selectionApi, 'Conversation selection fixture exports
 Object.assign(bindings, selectionSandbox.selectionApi);
 // The real escalation-notice projection restoredMessages() uses.
 const {systemNoticeKind,systemNoticeDisplayText,collapseSystemNotices}=await import('../apps/app/src/runtime/action-message-presentation.ts');
-Object.assign(bindings,{systemNoticeKind,systemNoticeDisplayText,collapseSystemNotices});
+Object.assign(bindings,{CalendarApprovalClient,systemNoticeKind,systemNoticeDisplayText,collapseSystemNotices});
 let source = (await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx', import.meta.url), 'utf8')).split('export function ConnectionChooser()')[0].replace(/\nfunction ResidentRecoveryPanel\([\s\S]*?\n}\n(?=export function productionCloudSignInRequired)/, '\n');
 source = source.replace(/^import .*;\n/gm, '').replace(/export /g, '').replaceAll('import.meta.env','fixtureViteEnv');
 source += '\nglobalThis.controller = connectionController;';

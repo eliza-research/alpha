@@ -32,7 +32,7 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
 /* Settings status: a dot always sits beside one word (never colour alone). */
 .settings-dot{display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:6px;flex-shrink:0;vertical-align:middle;background:var(--mut)}
 .settings-dot[data-dot="ok"]{background:var(--alpha-status-ok)}
-.settings-dot[data-dot="warn"]{background:var(--alpha-status-warn)}
+.settings-dot[data-dot="warn"]{background:var(--alpha-status-amber)}
 .settings-dot[data-dot="err"]{background:var(--alpha-status-error)}
 .settings-dot[data-dot=""]{display:none}
 .settings-sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
@@ -42,7 +42,7 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
 .settings-badge{flex-shrink:0;padding:3px 10px;border-radius:12px;background:var(--bg);color:var(--mut);font-size:12.5px;font-variant-numeric:tabular-nums}
 .settings-app-chips{display:flex;flex-wrap:wrap;gap:8px;padding:6px 16px 14px 18px}
 .settings-app-chip{display:inline-flex;align-items:center;gap:2px;min-height:44px;padding:0 4px 0 14px;border-radius:22px;background:var(--bg);font-size:14px}
-.settings-app-chip[data-warn="true"]{box-shadow:inset 0 0 0 1.5px var(--alpha-status-warn)}
+.settings-app-chip[data-warn="true"]{box-shadow:inset 0 0 0 1.5px var(--alpha-status-amber)}
 .settings-chip-btn{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;border-radius:20px;color:var(--mut)}
 .settings-chip-btn[aria-pressed="true"]{color:var(--acct)}
 .settings-chip-icon{display:block;width:18px;height:18px;background:currentColor;-webkit-mask:var(--chip-icon) center/contain no-repeat;mask:var(--chip-icon) center/contain no-repeat}

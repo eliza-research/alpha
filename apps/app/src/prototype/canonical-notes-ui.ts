@@ -262,6 +262,7 @@ export class CanonicalNotesUi {
   const {draft}=result,shared={id:null,title:draft.title,off:1,t:9,d:1,where:'',video:false,who:[],repeat:'none',notes:draft.notes,origin:draft.origin};
   if(kind==='event'){if(!api.reviewCalendarDraft?.({...shared,creationId:crypto.randomUUID(),separateCreation:false,cal:'native:local',alert:null})){api.toast('Calendar busy');return;}}
   else api.open('calendar',{calendarAuthority:api.get('calendar').calendarAuthority,form:{...shared,cal:'alpha-reminders',alert:0},open:null,month:null,day:1},'hidden');
+  api.toast('Check time');
  }
  /** Speech recognition through the platform port; the transcript lands at the caret of the note it was started from. */
  private async dictate(id:string,api:Bag):Promise<void>{

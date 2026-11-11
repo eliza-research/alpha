@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
+import {CalendarApprovalClient} from '../apps/app/src/runtime/calendar-approval-client.ts';
 const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
 const section=(a,b)=>{const start=source.indexOf(a),end=source.indexOf(b,start+a.length);assert.ok(start>=0&&end>start);return source.slice(start,end);};
 const initialize=section('  async initialize() {','  /** Test mocks and the flag-off web preview only:');

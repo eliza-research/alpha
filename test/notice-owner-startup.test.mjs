@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
+import {CalendarApprovalClient} from '../apps/app/src/runtime/calendar-approval-client.ts';
 import {EntitlementError} from '../apps/app/src/runtime/subscription-entitlement.ts';
 import * as cloudSignInModule from '../apps/app/src/runtime/cloud-sign-in.ts';
 // The shared upstream coordinator (@elizaos/contracts/notice-routes), as the renderer imports it.

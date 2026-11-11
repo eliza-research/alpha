@@ -16,7 +16,7 @@ const messages = new Map([
   ['Fixture clock could not be opened. Disabled.', 'launch-disabled'],
   ['Retired app is no longer installed.', 'stale-app'],
   ['Favorites could not be saved. Nothing changed.', 'favorites'],
-  ["Apps couldn't load. Open Apps to try again.", 'inventory'],
+  ['Couldn’t load', 'inventory'],
 ]);
 const errorKind = value => {
   const label = messages.get(value ?? '');
