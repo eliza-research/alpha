@@ -247,24 +247,23 @@
 +}
 --- a/services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java
 +++ b/services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java
-@@ -359,6 +359,16 @@
-             }
-         };
-         mServiceInternal = LocalServices.getService(PackageManagerInternal.class);
-+        // Covers OS updates that do not rerun runtime-permission upgrades.
-+        // The bounded policy preserves existing owner and enterprise decisions.
-+        mContext.registerReceiverAsUser(new android.content.BroadcastReceiver() {
-+            @Override public void onReceive(Context context, Intent intent) {
-+                if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-+                    grantAlphaSharedStorageDefault(NO_PM_CACHE, UserHandle.USER_SYSTEM);
-+                }
-+            }
-+        }, UserHandle.SYSTEM, new android.content.IntentFilter(Intent.ACTION_BOOT_COMPLETED),
-+                null, mHandler, Context.RECEIVER_NOT_EXPORTED);
+@@ -273,6 +273,7 @@
+     private final Context mContext;
+     private final Object mLock = new Object();
+     private final PackageManagerInternal mServiceInternal;
++    private boolean mAlphaStorageReceiverRegistered;
+
+     /** Directly interact with the PackageManger */
+     private final PackageManagerWrapper NO_PM_CACHE = new PackageManagerWrapper() {
+@@ -411,6 +412,7 @@
      }
 
-     public void setLocationPackagesProvider(PackagesProvider provider) {
-@@ -420,6 +430,37 @@
+     public void grantDefaultPermissions(int userId) {
++        registerAlphaStorageBootReceiver();
+         DelayingPackageManagerCache pm = new DelayingPackageManagerCache();
+
+         grantPermissionsToSysComponentsAndPrivApps(pm, userId);
+@@ -420,6 +422,37 @@
 
          // Apply delayed state
          pm.apply();
@@ -302,3 +301,26 @@
      }
 
      private void grantSignatureAppsNotificationPermissions(PackageManagerWrapper pm, int userId) {
+@@ -464,7 +497,22 @@
+     }
+
+     public void scheduleReadDefaultPermissionExceptions() {
++        registerAlphaStorageBootReceiver();
+         mHandler.sendEmptyMessage(MSG_READ_DEFAULT_PERMISSION_EXCEPTIONS);
++    }
++
++    /** Both callers run from PackageManagerService.systemReady, after Activity Manager exists. */
++    private synchronized void registerAlphaStorageBootReceiver() {
++        if (mAlphaStorageReceiverRegistered) return;
++        mContext.registerReceiverAsUser(new android.content.BroadcastReceiver() {
++            @Override public void onReceive(Context context, Intent intent) {
++                if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
++                    grantAlphaSharedStorageDefault(NO_PM_CACHE, UserHandle.USER_SYSTEM);
++                }
++            }
++        }, UserHandle.SYSTEM, new android.content.IntentFilter(Intent.ACTION_BOOT_COMPLETED),
++                null, mHandler, Context.RECEIVER_NOT_EXPORTED);
++        mAlphaStorageReceiverRegistered = true;
+     }
+
+     private void grantPermissionsToSysComponentsAndPrivApps(DelayingPackageManagerCache pm,
