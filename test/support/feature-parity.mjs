@@ -25,6 +25,9 @@ export const featureParityAllowlist = {
     "capability:sms.send.v1:only-a": "apps/app/src/runtime/connection-ui.tsx deviceCapabilities and apps/app/src/runtime/device-actions.ts"
   },
   reviewedHelpers: {
+    "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaUpdateStatusReceiver.java": {"owner": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java", "reason": "Receives and binds the system installer result to Alpha’s existing update session.", "tests": ["test/app-update.test.mjs"]},
+    "android/app/src/main/java/ai/alphacompute/alphaphone/UpdateConfirmationReceipt.java": {"owner": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java", "reason": "Persists the exact unopened Android installer confirmation across process replacement.", "tests": ["test/app-update.test.mjs"]},
+    "apps/app/src/prototype/system-bar-appearance.ts": {"owner": "apps/app/src/main.tsx", "reason": "Keeps native status and navigation bar contrast aligned with the active Alpha theme.", "tests": ["test/system-bar-appearance.test.mjs"]},
     "android/app/src/main/java/ai/alphacompute/alphaphone/DeletionReviewAdmission.java": {"owner": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDeletionsPlugin.java", "reason": "Keeps native deletion confirmation bound to the current reviewed selection and owner.", "tests": ["test/quint-native-deletion-review-admission.test.mjs"]},
     "apps/app/src/prototype/calendar-approval-fields.ts": {"owner": "apps/app/src/prototype/calendar-approval-adapter.ts", "reason": "Presents the fields from the admitted Calendar approval row.", "tests": ["test/calendar-mounted-edit-admission.test.mjs"]},
     "apps/app/src/prototype/calendar-confirmation.ts": {"owner": "apps/app/src/prototype/calendar-adapter.ts", "reason": "Holds a single scoped Calendar confirmation and resolves it when the owning view retires.", "tests": ["test/calendar-mounted-editor.test.mjs"]},
@@ -83,6 +86,7 @@ export const featureParityAllowlist = {
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSystemPlugin.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephonyPlugin.java",
+    "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaUpdateStatusReceiver.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaVoiceCloudPlugin.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarAvailabilityJournalResult.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/CalendarCreationStore.java",
@@ -160,6 +164,7 @@ export const featureParityAllowlist = {
     "android/app/src/main/java/ai/alphacompute/alphaphone/SmsActionJournalResult.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/SourceRenewalHost.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/SourceRenewalNotices.java",
+    "android/app/src/main/java/ai/alphacompute/alphaphone/UpdateConfirmationReceipt.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/VoiceEventAdmission.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticeDelivery.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticePoster.java",
@@ -416,6 +421,7 @@ export const featureParityAllowlist = {
     "apps/app/src/prototype/subview-accessibility.ts",
     "apps/app/src/prototype/summary-note-review.ts",
     "apps/app/src/prototype/summary-source.ts",
+    "apps/app/src/prototype/system-bar-appearance.ts",
     "apps/app/src/prototype/system-shade.ts",
     "apps/app/src/prototype/template-source.ts",
     "apps/app/src/prototype/use-in-email-review.ts",

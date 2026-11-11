@@ -274,9 +274,6 @@ test('the CSP admits Home, Notes, Maps, Scan and PDF without violations', async 
   const imagePdf = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download document PDF', exact: true }).click();
   expect((await imagePdf).suggestedFilename()).toMatch(/\.pdf$/);
-  await page.getByRole('button', { name: 'Close scan', exact: true }).or(page.getByRole('button', { name: /^Close/ }).last()).click();
-  await page.getByRole('button', { name: 'Cancel scan', exact: true }).click();
-  await scan();
   await page.getByRole('button', { name: 'Download searchable PDF', exact: true }).click();
   const review = page.getByRole('dialog', { name: 'Review searchable PDF' });
   // Local OCR runs in a worker with WebAssembly: the policy must admit both.
