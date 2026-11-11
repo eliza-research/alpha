@@ -7,7 +7,7 @@ import {checkOSSourceStaging} from '../specs/quint/refinement/application/os-sou
 import {verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
 
 for(const [model,check,count,actions] of [
- ['OSDefaults',checkOSDefaults,7,['load','storeLayout','storeVersion','restart','ownerLayout','context','ownerAppop','defaultAppop']],
+ ['OSDefaults',checkOSDefaults,13,['load','storeLayout','storeVersion','restart','ownerLayout','context','ownerAppop','defaultAppop']],
  ['OSProvisioning',checkOSProvisioning,12,['begin','callback','timeout','destroy','authorityLost','ownerKeyboard','keyboardDefault','finish','requestAppearance','applyAppearance']],
  ['OSSourceStaging',checkOSSourceStaging,7,['badAssets','drift','admit','backup','write','failure','verify']],
 ])test(model+' executes OS source with independently retained harness inputs',{timeout:240000},async()=>{
