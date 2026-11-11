@@ -149,13 +149,34 @@ def read_json(path):
     return json.loads(path.read_text())
 
 
+def validate_input_inventory(rows, reviewed, digest_fields):
+    message = 'Complete producer/native inputs required'
+    expected = {row['path'] for row in reviewed}
+    require(len(expected) == len(reviewed) and bool(expected), message)
+    require(isinstance(rows, list) and len(rows) == len(expected), message)
+    observed = set()
+    for row in rows:
+        require(isinstance(row, dict) and set(row) == {'path', *digest_fields}, message)
+        path = row['path']
+        require(isinstance(path, str) and path in expected and path not in observed, message)
+        for field in digest_fields:
+            value = row[field]
+            require(isinstance(value, str) and re.fullmatch(r'[0-9a-f]{64}', value), message)
+        observed.add(path)
+
+
 def validate_receipts(component, intent, qualification, semantic, semantic_bytes, component_dir):
     require(component.get('built') is True and component.get('abi') == 'arm64-v8a', 'Component is not a built ARM64 input')
     for key in ('pin', 'forkPin', 'identity', 'abi', 'inputs', 'producerInputs', 'jniBinding', 'built'):
         require(qualification.get(key) == component.get(key), 'Qualification changes compiled field: ' + key)
     require(component.get('pin') == intent.get('SDK') and component.get('forkPin') == intent.get('native'), 'Component source intent differs')
     require(re.fullmatch(r'[0-9a-f]{40}', intent.get('source', '')), 'Compiled Alpha identity missing')
-    require(len(component.get('inputs', [])) == 6 and len(component.get('producerInputs', [])) == 13, 'Complete producer/native inputs required')
+    # This checkout owns the path inventory. The carrier binds the supplied digests
+    # to the original compiled receipt; canonical staging checks current source bytes.
+    record = Path(__file__).resolve().parents[2] / 'android/embedding-host/qualified-host.json'
+    reviewed = read_json(record)
+    validate_input_inventory(component.get('inputs'), reviewed['inputs'], ('sourceSha256', 'generatedSha256'))
+    validate_input_inventory(component.get('producerInputs'), reviewed['producerInputs'], ('sha256',))
     require(qualification.get('semanticReceiptSha256') == hashlib.sha256(semantic_bytes).hexdigest(), 'Semantic receipt not bound to qualification')
     require(isinstance(qualification.get('qualifiedAt'), str), 'Reviewed semantic qualification timestamp missing')
     try:
