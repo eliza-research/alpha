@@ -3826,8 +3826,10 @@
       "readyCannotDisposeTest",
       "readyDispatchCompletesTest",
       "unboundOfferBacksOffBeforeDispatchTest",
-      "unavailableOfferClearsExactCacheTest",
-      "unavailableOfferKeepsConcurrentRefreshTest"
+      "retiredOfferClearsExactCacheTest",
+      "unavailableOfferKeepsConcurrentRefreshTest",
+      "retiredOfferKeepsConcurrentRefreshTest",
+      "unavailableOfferPreservesManualTest"
     ],
     "sources": [
       "apps/app/src/prototype/settings-adapter.ts",
@@ -3840,6 +3842,7 @@
       "poll.phase": "Actual product poll awaiting manifest, native facts or native install promise; completion is observed from the shared scheduler",
       "poll.capability/pending/candidate": "Controlled native fact classes, actual pending-session result and actual source parser result",
       "poll.cachedOffer/attemptedOffer": "Identity of the digest-bound cached object observed at renderer admission and of the object that authorized the latest native request; zero is absent or unbound",
+      "poll.cachedManual": "Actual cached offer admissible for the controlled installed variant and signer, independent of the automatic digest",
       "poll.requests/lastCapability/lastPending/lastCandidate/lastCurrent/lastIdle": "Actual install bridge call count and capability, pending, candidate, owner and idle observations at dispatch"
     },
     "abstractions": [
@@ -3847,7 +3850,7 @@
       "Four native capability classes; native SDK, consent and monotonic uptime/reboot ownership remain native admission obligations. The renderer does not own a second boot clock.",
       "At most three native bridge requests in the finite model, at most two in source scenarios. A bridge request is not PackageInstaller session creation, installation or physical-device proof.",
       "The original generic scheduler schedules remain. Product scenarios execute the actual poll and authenticated scheduler through controlled promise cutpoints, including pending precedence, exact signer admission, cold deferral and lifecycle invalidation.",
-      "Cache identities are equality tokens. Native owns feed byte and offered APK validation. A late offer-unavailable reply retires only the exact object that was used at dispatch.",
+      "Cache identities are equality tokens. A late final refusal revokes only the exact dispatched cache object's automatic digest. A confirmed withdrawal or complete changed manifest also removes its manual row.",
       "Progress requires foreground timer delivery, eligible idle Home, suitable native capability and settling calls. OS acceptance, network availability and background delivery remain external.",
       "The ready microstep is unobservable: actual facts admission, pure parsing and native dispatch share one synchronous JavaScript continuation. Lifecycle transitions are disabled only during that microstep; they remain enabled at real awaited ports."
     ],
