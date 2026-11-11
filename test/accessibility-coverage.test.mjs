@@ -176,11 +176,11 @@ test('TalkBack reading order is checked in every lane, as Android checks it, acr
   assert.deepEqual([...lifecycle.matchAll(/'([A-Za-z]+)'/g)].map(match => match[1]).sort(), titles);
   for (const name of ['AccessibilityLifecycleInstrumentedTest', 'AccessibilityHomeRoleInstrumentedTest'])
     assert.match(read(`android/app/src/androidTest/java/ai/alphacompute/alphaphone/${name}.java`), /AccessibilityViewsInstrumentedTest\.VIEWS/, `${name} visits every view`);
-  // What the order check found stays fixed. Maps reads the full-screen canvas before its overlaid controls,
-  // credits and Recenter; the browser page leaves the order while address suggestions cover it.
+  // Maps reads upper search/navigation context before its interactive canvas, then attribution and
+  // Recenter. The browser page leaves the order while address suggestions cover it.
   const template = read('apps/app/src/prototype/template.html');
   const maps = template.slice(template.indexOf('data-alpha-maps-root'), template.indexOf('data-alpha-maps-sheet="results"'));
-  const stack = ['data-alpha-map-plane', 'maps.showSearch', 'maps.eventReturnFloating', '<sc-if value="{{maps.isBase}}">', 'maps.nativeStatusVisible', 'data-alpha-maps-directions', 'maps.dr.nav.hasThen', 'alpha-map-credits', 'aria-label="Recenter"'].map(hook => [hook, maps.indexOf(hook)]);
+  const stack = ['maps.showSearch', 'maps.eventReturnFloating', '<sc-if value="{{maps.isBase}}">', 'maps.nativeStatusVisible', 'data-alpha-maps-directions', 'maps.dr.nav.hasThen', 'data-alpha-map-plane', 'alpha-map-credits', 'aria-label="Recenter"'].map(hook => [hook, maps.indexOf(hook)]);
   for (const [hook, at] of stack) assert.ok(at > 0, `${hook} is in the Maps layer stack`);
   for (let index = 1; index < stack.length; index++) assert.ok(stack[index - 1][1] < stack[index][1], `Maps reads ${stack[index - 1][0]} before ${stack[index][0]}`);
   assert.match(template, /<div inert="\{\{browser\.pageCovered\}\}" aria-hidden="\{\{browser\.pageCovered\}\}"/);

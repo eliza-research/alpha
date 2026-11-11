@@ -9,6 +9,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {OWNER_ROUTE_TABLE} from '../apps/app/src/product/owner-route-table.ts';
+import {ownerRouteAllowed} from '../apps/app/src/runtime/owner-route-policy.ts';
+import {calendarApprovalResolvePath} from '../apps/app/src/runtime/calendar-approval.ts';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 
@@ -83,6 +85,7 @@ function alphaAgentPathLiterals() {
 }
 
 const calendarResolveExample = '/api/approvals/11111111-1111-4111-8111-111111111111/resolve';
+const calendarApprovalIdExample = '11111111-1111-4111-8111-111111111111';
 const calendarApprovalClient = 'apps/app/src/runtime/calendar-approval-client.ts';
 const calendarApprovalContract = 'apps/app/src/runtime/calendar-approval.ts';
 const ownerTableFile = 'apps/app/src/product/owner-route-table.ts';
@@ -150,6 +153,9 @@ function reviewedApprovalResolution() {
   const client = fs.readFileSync('apps/app/src/runtime/calendar-approval-client.ts', 'utf8');
   assert.match(client, /!\['approve','reject'\]\.includes\(decision\)\)throw Error/);
   assert.match(client, /read\.connection\.request\(calendarApprovalResolvePath\(read\.id\),\{decision,revision:read\.revision\},signal,\{\},'POST'\)/);
+  const connection = fs.readFileSync('apps/app/src/runtime/connection-ui.tsx', 'utf8');
+  assert.match(connection, /if\(selected\?\.kind!=='resident'\|\|!session/);
+  assert.match(connection, /return \{ownerId:session\.ownerId,current,request:selected\.remote\.request\.bind\(selected\.remote\)\};/);
 }
 
 function ownerRouteTable() {
@@ -212,6 +218,19 @@ test('Alpha uses the owner-only gate only for a reviewed Calendar decision', () 
       if (ownerOnly(model, method, path) && !(method === 'POST' && path === calendarResolveExample)) refused.push(`${method} ${literal} (${[...files].join(', ')})`);
     }
   assert.deepEqual(refused, []);
+});
+
+test('Calendar resolution admits an exact UUID POST while the upstream owner gate remains required', () => {
+  const model = gateModel(gateSource());
+  assert.equal(calendarApprovalResolvePath(calendarApprovalIdExample), calendarResolveExample);
+  assert.ok(ownerRouteAllowed('approvals', calendarResolveExample, 'POST'));
+  assert.ok(ownerOnly(model, 'POST', calendarResolveExample));
+  for (const method of ['GET', 'HEAD', 'PUT', 'PATCH', 'DELETE'])
+    assert.equal(ownerRouteAllowed('approvals', calendarResolveExample, method), false, method);
+  for (const suffix of ['?decision=approve', '/', '/execute'])
+    assert.equal(ownerRouteAllowed('approvals', calendarResolveExample+suffix, 'POST'), false, suffix);
+  for (const id of ['id-1', calendarApprovalIdExample+'/other', calendarApprovalIdExample+'?decision=approve', '%2F'])
+    assert.throws(() => calendarApprovalResolvePath(id), /Invalid Calendar request/);
 });
 
 test('native enrollment pairs as the owner, never through a guest invitation', () => {
