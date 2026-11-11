@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "cbdfbbca0d5cebdd729f4404c4517cd78f7b516a",
-  "head": "cd337bd1abeaa07b252a628187cbd589f04105f9",
+  "head": "2570d39b5e36c856adfeccd8c5e9de39fa21768e",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...cd337bd1abeaa07b252a628187cbd589f04105f9",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...2570d39b5e36c856adfeccd8c5e9de39fa21768e",
   "status": "diverged",
-  "aheadBy": 15,
+  "aheadBy": 16,
   "behindBy": 380,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -70,6 +70,10 @@
     {
       "sha": "cd337bd1abeaa07b252a628187cbd589f04105f9",
       "subject": "fix(calendar): use the current client clock for event creation"
+    },
+    {
+      "sha": "2570d39b5e36c856adfeccd8c5e9de39fa21768e",
+      "subject": "fix(calendar): return empty extraction to planner repair"
     }
   ],
   "pullRequests": [
