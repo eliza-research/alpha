@@ -17,6 +17,7 @@ PRIVATE_RUNNER = "root-reviewed-private-runner"
 HOSTED_DISPATCH = "github-dispatch"
 MAX_ARCHIVE_BYTES = 1_500_000_000
 LEGACY_APK_MEMBER_BYTES = 400_000_000
+PRIVATE_APK_BUCKET = "alpha-aosp-lab-20261024-private-apks"
 SHA = re.compile(r"[0-9a-f]{64}")
 COMMIT = re.compile(r"[0-9a-f]{40}")
 NUMBER = re.compile(r"[1-9][0-9]{0,15}")
@@ -66,6 +67,22 @@ def producer_kind(plan):
 def archive_pins(plan):
     require(type(plan.get("archiveBytes")) is int and 0 < plan["archiveBytes"] <= MAX_ARCHIVE_BYTES and
             matches(SHA, plan.get("archiveSHA256")), "Invalid exact producer archive pins")
+
+
+def validate_private_storage(plan):
+    storage = plan["privateStorage"]
+    require(storage["bucket"] == PRIVATE_APK_BUCKET, "Unexpected private bucket")
+    sha = plan["archiveSHA256"]
+    require(isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{64}", sha), "Invalid archive digest")
+    require(storage["inputObject"] == f"unsigned/{sha}.zip", "Input object must bind the archive digest")
+    require(isinstance(storage["inputGeneration"], str) and
+            re.fullmatch(r"[1-9][0-9]{0,24}", storage["inputGeneration"]), "Exact input generation required")
+    require(re.fullmatch(r"signed/" + sha + r"/[0-9a-f]{32}/signed-apks.tar",
+                         storage["outputObject"]), "Invalid exclusive delivery object")
+    require(type(plan["archiveBytes"]) is int and 0 < plan["archiveBytes"] <= MAX_ARCHIVE_BYTES,
+            "Invalid archive byte bound")
+    require(producer_kind(plan) in (PRIVATE_RUNNER, CANDIDATE), "Unreviewed private producer kind")
+    return storage
 
 
 def apk_member_limit(kind):
