@@ -17,7 +17,7 @@ const timerPorts = {name: 'approval-service-timer-ports', setup(builder) {
 async function fixture(bundle) {
   const context = new AsyncLocalStorage();
   const reads = new Map(), callbacks = new Map(), deletions = new Map(), completed = new Set();
-  let worker, task, timer, result, stopped = false, stable = true;
+  let worker, task, timer, result, stopPromise, stopped = false, stable = true;
   const errors = [], workerErrors = [];
   const {ApprovalService} = bundle.instantiate({
     setTimeout(callback, delay) {
@@ -121,11 +121,12 @@ async function fixture(bundle) {
       if (owner === 'timeout') completed.add(owner);
     },
     cancel() {execute('cancel', () => service.cancelApproval(taskId));},
-    async stop() {await service.stop(); stopped = true;},
+    stop() {stopPromise = service.stop(); stopped = true;},
     async outcome() {
       assert.ok(result, 'The original request settles');
       await outcome;
-      for (const error of workerErrors) assert.match(error.message, /Injected approval callback failure/);
+      await stopPromise;
+      for (const error of workerErrors) assert.match(error.message, /Injected approval callback failure|Approval callback is no longer available/);
       for (const {scope, error} of errors) {
         assert.equal(scope, 'ApprovalService.timeout');
         assert.match(error.message, /Injected approval callback failure/);
@@ -142,7 +143,7 @@ export async function checkApprovalServiceRefinement(vendorPath, extraSources = 
   const selectionWins = (owner, fails = false) => {
     const other = 3 - owner;
     return [
-      ['deliver', owner], ['deliver', other], ['read', owner], ['read', other], ['delete', other],
+      ['deliver', owner], ['deliver', other], ['read', owner], ['read', other],
       ['callback', owner, fails], ...(fails ? [] : [['delete', owner]]),
     ];
   };
@@ -152,7 +153,7 @@ export async function checkApprovalServiceRefinement(vendorPath, extraSources = 
     ['typed-selection-denial', [['deliver', 1, 'decline'], ['read', 1], ['callback', 1], ['delete', 1]]],
     ['timeout-default', [['fire'], ['read', 'timeout'], ['callback', 'timeout'], ['delete', 'timeout']]],
     ['timeout-callback-rejects', [['fire'], ['read', 'timeout'], ['callback', 'timeout', true]]],
-    ['timeout-beats-delivered-selector', [['deliver', 1], ['fire'], ['read', 'timeout'], ['read', 1], ['delete', 1], ['callback', 'timeout'], ['delete', 'timeout']]],
+    ['timeout-beats-delivered-selector', [['deliver', 1], ['fire'], ['read', 'timeout'], ['read', 1], ['callback', 'timeout'], ['delete', 'timeout']]],
     ['expired-task-read-skips-callback', [['fire'], ['cancel'], ['delete', 'cancel'], ['read', 'timeout'], ['delete', 'timeout']]],
     ['cancel-owns-settlement', [['deliver', 1], ['cancel'], ['delete', 'cancel'], ['read', 1], ['delete', 1]]],
     ['stop-owns-settlement', [['deliver', 1], ['stop'], ['read', 1], ['delete', 1]]],
@@ -175,7 +176,7 @@ export async function checkApprovalServiceRefinement(vendorPath, extraSources = 
         case 'stop': action = call('stop'); break;
         case 'read':
           action = owner === 'timeout' ? [call('timeoutTask'), ...(before['state.taskExists'] ? [] : [call('timeoutResolve')])]
-            : call('selectionTask', owner);
+            : call(!before['state.inMap'] && before['state.taskExists'] && !before['state.stopped'] ? 'selectionUnavailable' : 'selectionTask', owner);
           break;
         case 'callback':
           action = owner === 'timeout' ? option ? call('timeoutCallbackFails') : [call('timeoutCallbackDone'), call('timeoutResolve')]

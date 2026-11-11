@@ -126,12 +126,12 @@ async function remove(page, title) {
   await page.getByRole('dialog', {name: 'Note actions'}).getByRole('button', {name: 'Delete', exact: true}).click();
   await expect(editor(page)).toHaveCount(0);
   await expect(button(page, 'Open '+title)).toHaveCount(0);
-  await expect(button(page, 'Recently deleted')).toBeVisible();
   await expect(toast(page)).toContainText('Moved to Recently deleted');
 }
 
 async function recover(page, title, legacy = false) {
   await expect(toast(page)).toHaveCount(0);
+  await button(page, 'Notes options').click();
   await button(page, 'Recently deleted').click();
   await expect(trash(page)).toBeVisible();
   if (!legacy) await expect(button(page, 'Empty Recently deleted')).toHaveCount(0);
@@ -139,6 +139,8 @@ async function recover(page, title, legacy = false) {
   const review = page.getByRole('dialog', {name: title, exact: true});
   if (!legacy) await expect(review.getByRole('button', {name: 'Delete now', exact: true})).toHaveCount(0);
   await review.getByRole('button', {name: 'Recover', exact: true}).click();
+  await expect(review).toHaveCount(0);
+  if (!legacy) await button(page, 'Back to notes').click();
   await expect(trash(page)).toHaveCount(0);
   await expect(button(page, 'Open '+title)).toBeVisible();
 }

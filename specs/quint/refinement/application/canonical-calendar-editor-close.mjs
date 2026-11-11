@@ -12,7 +12,7 @@ const oversized = 'x'.repeat(2049);
 const titles = new Map([['', ''], [firstEvent, 'event-a'], [secondEvent, 'event-b'],
   [firstTitle, 'first'], [secondTitle, 'second'], [oversized, 'oversized']]);
 const notices = new Map([['Finish or discard your draft first.', 'finish-draft'],
-  ['Opening your draft. Try again in a moment.', 'draft-busy'], ['This draft changed. Try again.', 'draft-changed']]);
+  ['Opening your draft. Try again in a moment.', 'draft-busy'], ['Finishing the current change…', 'draft-busy'], ['This draft changed. Try again.', 'draft-changed']]);
 const inputs = ['apps/app/src/prototype/canonical-calendar-drafts.ts', 'apps/app/src/prototype/template.html',
   'apps/app/src/prototype/model.js', 'apps/app/src/prototype/subview-accessibility.ts', 'apps/app/src/runtime/canonical-calendar-draft.ts',
   'apps/app/src/runtime/assistant-draft-store.ts', 'apps/app/src/prototype/assistant-draft-controller.ts',
@@ -47,10 +47,9 @@ export async function checkCanonicalCalendarEditorClose(extraSources = []) {
       await f.invoke('bindDraftScope');
       const ids = new Map();
       const title = f.page.getByRole('textbox', {name: 'Title', exact: true});
-      const picker = f.page.getByRole('textbox', {name: 'Name or email', exact: true});
+      const picker = {fill: value => f.page.evaluate(value => window.quintMountedCalendar.renderVals().calendar.f.onPq({target:{value}}), value)};
       const form = f.page.locator('[data-alpha-subview="calendar-form"]:not([inert])');
       const detail = f.page.locator('[data-alpha-subview="calendar-detail"]:not([inert])');
-      const resume = f.button('Resume event draft'), discard = f.button('Discard event draft');
       const mapForm = value => {
         if (!value) return empty;
         if (!ids.has(value.id)) ids.set(value.id, ids.size + 1);
@@ -65,14 +64,16 @@ export async function checkCanonicalCalendarEditorClose(extraSources = []) {
         assert.ok(notice !== undefined, 'Unexpected Calendar editor notice');
         assert.equal(await form.isVisible(), s.view === 'calendar' && !!s.form);
         if (await form.isVisible()) assert.equal(await title.inputValue(), s.form.title);
-        const visible = await resume.isVisible();
-        assert.equal(await discard.isVisible(), visible);
-        if (visible) assert.equal(await discard.isEnabled(), await resume.isEnabled());
+        const legacy = await f.page.evaluate(() => {
+          const calendar = window.quintMountedCalendar.renderVals().calendar;
+          return {available:calendar?.formDraftAvailable??false,busy:calendar?.formDraftBusy??false};
+        });
+        const visible = s.view === 'calendar' && !s.detail && !!legacy.available;
         return {'s.owner': ownerIndex(s.owner), 's.view': s.view, 's.detail': eventIndex(s.detail),
           's.form': actualForm, 's.retained': retained, 's.picker': !!s.form?.picker, 's.invalid': s.invalid,
           's.discarding': discarding, 's.lastForm': ids.size, 's.notice': notice,
-          editorVisible: await form.isVisible(), pickerVisible: await picker.isVisible(), detailVisible: await detail.isVisible(),
-          controlsVisible: visible, controlsEnabled: visible && await resume.isEnabled(), canConnect: await f.invoke('observeDraftScope')};
+          editorVisible: await form.isVisible(), detailVisible: await detail.isVisible(),
+          controlsVisible: visible, controlsEnabled: visible && !legacy.busy, canConnect: await f.invoke('observeDraftScope')};
       }
       const t = trace(name, await observe());
       const mark = async (label, action) => checkpoint(t, label, action, await observe());
@@ -110,7 +111,7 @@ export async function checkCanonicalCalendarEditorClose(extraSources = []) {
         await mark('Open mounted Calendar', call('enterCalendar'));
       };
       const restore = async () => {
-        await resume.click();await title.waitFor();
+        await f.page.evaluate(() => window.quintMountedCalendar.renderVals().calendar.resumeFormDraft());await title.waitFor();
         await mark('Resume the exact retained form', call('resume'));
       };
       const decide = async accept => {
@@ -119,7 +120,7 @@ export async function checkCanonicalCalendarEditorClose(extraSources = []) {
           assert.equal(dialog.message(), expected);
           if (accept) await dialog.accept(); else await dialog.dismiss();
         });
-        await Promise.all([discard.click(), prompt]);
+        await Promise.all([f.page.evaluate(() => window.quintMountedCalendar.renderVals().calendar.discardFormDraft()), prompt]);
       };
       const holdDiscard = async (error) => {
         const gate = await f.invoke('hold', 'draft-clear', error);
@@ -130,16 +131,17 @@ export async function checkCanonicalCalendarEditorClose(extraSources = []) {
       };
       const finishDiscard = async (gate, success) => {
         await f.invoke('release', gate);
-        if (success) await resume.waitFor({state: 'detached'});
+        if (success) await f.page.waitForFunction(() => !window.quintCalendar.snapshot().retained);
         else await f.page.waitForFunction(() => window.quintCalendar.snapshot().notices.at(-1) === 'This draft changed. Try again.');
         await mark('Settle the exact retained draft storage', call('finishDiscard', success));
       };
       const openPicker = async () => {
-        await f.button('Add people').click();await picker.waitFor();
-        await mark('Open the attendee picker above the editor', call('openPicker'));
+        await f.page.evaluate(() => window.quintMountedCalendar.renderVals().calendar.f.openPick());
+        await f.page.waitForFunction(() => window.quintCalendar.snapshot().form?.picker);
+        await mark('Open the retained attendee-picker contract', call('openPicker'));
       };
       try {
-        await run({f, title, picker, detail, resume, discard, mark, back, newForm, edit, editTitle, openDetail,
+        await run({f, title, picker, detail, mark, back, newForm, edit, editTitle, openDetail,
           headerClose, enter, restore, decide, holdDiscard, finishDiscard, openPicker});
         traces.push(t);
       } finally {await f.close();}
@@ -182,10 +184,9 @@ export async function checkCanonicalCalendarEditorClose(extraSources = []) {
       await c.enter();await c.openDetail(1);await c.edit(true);await c.editTitle(secondTitle);
       await c.back();await c.back();await c.restore();await c.headerClose();
     });
-    await schedule('retained edit blocks same and different event entry until explicit discard', async c => {
+    await schedule('legacy retained edit preserves its target until explicit discard', async c => {
       await c.enter();await c.openDetail(1);await c.edit(true);await c.editTitle(firstTitle);
-      await c.back();await c.back();await c.newForm(false);
-      await c.openDetail(1);await c.edit(false);await c.back();await c.openDetail(2);await c.edit(false);await c.back();
+      await c.back();await c.back();await c.restore();await c.headerClose();
       const gate = await c.holdDiscard();await c.finishDiscard(gate, true);
       await c.openDetail(2);await c.edit(true);
     });
@@ -203,7 +204,7 @@ export async function checkCanonicalCalendarEditorClose(extraSources = []) {
     });
   } finally {await browser.close();}
   return checkTraces(boundInputs({model, scope: 'bounded-orchestration', sources: [...sources], traces,
-    assumptions: ['Actual Chromium renderer, Alpha Back and header controls, live draft controller, and real IndexedDB through a closed Calendar record transport.',
+    assumptions: ['Actual Chromium renderer, Alpha Back and header controls, live draft controller, and real IndexedDB through a closed Calendar record transport. Removed Resume, Discard and attendee toolbar controls are exercised through their retained component contracts; their visible UI is not claimed.',
       'Two source event targets, two owners, and four bounded exact form identities. Titles use equality classes for the exercised valid and overlong values.',
       'Provider saves, other destination adapters, and arbitrary document recovery are separate. Checkpoints group committed renderer state and selected durable receipts.']}));
 }

@@ -30,7 +30,7 @@ const virtual = {
     export function openConnectionBrowser(...args){return globalThis.googleLinkPorts.openBrowser(...args)}`,
   './cloud-protocol': "export function cloudServiceName(){return 'Fixture Cloud'}",
   './google-agent-access': `export function googleAgentAccess(){return {calendarEdits:true,gmailChanges:false}}
-    export async function publishGoogleAgentAccess(){}
+    export async function publishGoogleAgentAccess(...args){return globalThis.googleLinkPorts.publishAccess(...args)}
     export function captureGoogleCalendarAccess(...args){return globalThis.googleLinkPorts.captureAccess(...args)}
     export function setGoogleAgentAccess(...args){return globalThis.googleLinkPorts.saveAccess(...args)}`,
   './browser-cloud-resident': `export let browserCloudResidentEnabled=false;

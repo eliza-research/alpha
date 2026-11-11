@@ -7,7 +7,7 @@ import { detectedCounterexample, loadModels, readJson, repositoryRoot, runQuintC
 const args = process.argv.slice(2);
 const command = args.shift() || 'check';
 const value = (name, fallback) => args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
-const allowedOptions = ['models', 'samples', 'steps', 'seed', 'out', 'backend', 'server-endpoint', 'timeout'];
+const allowedOptions = ['models', 'samples', 'steps', 'seed', 'out', 'backend', 'server-endpoint', 'timeout', 'jobs'];
 for (const arg of args) if (!allowedOptions.some(name => arg.startsWith(`--${name}=`))) throw Error(`Unknown option ${arg}`);
 if (!['check', 'typecheck', 'test', 'simulate', 'verify', 'temporal', 'compare'].includes(command)) throw Error(`Unknown Quint command ${command}`);
 const checking = ['verify', 'temporal', 'compare'].includes(command);
@@ -17,6 +17,7 @@ const positiveInteger = (name, fallback) => {
   return result;
 };
 const samples = positiveInteger('samples', 80);
+const jobs = positiveInteger('jobs', process.env.ALPHA_QUINT_JOBS ?? 1);
 const steps = positiveInteger('steps', command === 'compare' ? 20 : checking ? 6 : 40);
 const timeoutSeconds = positiveInteger('timeout', checking ? 1800 : 120);
 const seed = value('seed', '20261107');
@@ -41,11 +42,18 @@ const receipt = { schemaVersion: 1, startedAt: new Date().toISOString(), command
     check: 'typecheck, scenarios and sampled simulation',
     typecheck: 'typechecking', test: 'scenario execution', simulate: 'sampled simulation',
   }[command],
-  inputHashes, samples, steps, seed, backend, timeoutSeconds, results: [] };
+  inputHashes, samples, steps, seed, backend, timeoutSeconds, jobs, results: [] };
 const receiptPath = resolve(repositoryRoot, value('out', `test-results/quint/${command}.json`));
 mkdirSync(dirname(receiptPath), { recursive: true });
 writeFileSync(receiptPath, `${JSON.stringify({ ...receipt, status: 'running', passed: false }, null, 2)}\n`);
 let failed = false;
+const activeCheckers = new Set();
+const interrupt = () => {
+  for (const stop of activeCheckers) stop('SIGKILL');
+  process.exit(130);
+};
+process.once('SIGINT', interrupt);
+process.once('SIGTERM', interrupt);
 
 function runCommand(argv) {
   return new Promise(resolveResult => {
@@ -60,9 +68,7 @@ function runCommand(argv) {
         else process.kill(-child.pid, signal);
       } catch (failure) { if (failure.code !== 'ESRCH') error ??= failure; }
     };
-    const interrupt = () => { stop('SIGKILL'); process.exit(130); };
-    process.once('SIGINT', interrupt);
-    process.once('SIGTERM', interrupt);
+    activeCheckers.add(stop);
     const timer = setTimeout(() => {
       error = Error(`Checker exceeded ${timeoutSeconds} seconds`);
       stop('SIGTERM');
@@ -81,8 +87,7 @@ function runCommand(argv) {
     child.on('close', (status, signal) => {
       clearTimeout(timer);
       clearTimeout(hardStop);
-      process.removeListener('SIGINT', interrupt);
-      process.removeListener('SIGTERM', interrupt);
+      activeCheckers.delete(stop);
       stop('SIGKILL');
       resolveResult({ status, signal, error, stdout, stderr });
     });
@@ -114,32 +119,43 @@ async function run(model, phase, options, expected = 'pass') {
   return passed;
 }
 
-try {
-  for (const model of models) {
-    if (['check', 'typecheck'].includes(command) && !await run(model, 'typecheck', ['typecheck', model.path])) continue;
-    if (['check', 'test'].includes(command) && !await run(model, 'scenarios', ['test', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, '--max-samples=1'])) continue;
-    if (['check', 'simulate'].includes(command)) {
-      await run(model, 'simulation', ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, `--max-samples=${samples}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+async function checkModel(model) {
+  if (['check', 'typecheck'].includes(command) && !await run(model, 'typecheck', ['typecheck', model.path])) return;
+  if (['check', 'test'].includes(command) && !await run(model, 'scenarios', ['test', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, '--max-samples=1'])) return;
+  if (['check', 'simulate'].includes(command)) {
+    await run(model, 'simulation', ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, `--max-samples=${samples}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+  }
+  if (command === 'verify') {
+    await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+  }
+  if (command === 'temporal' && model.temporal?.length) {
+    await run(model, `${backend}-temporal`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--temporal=${model.temporal.join(',')}`, '--verbosity=1']);
+  }
+  if (command === 'compare') {
+    for (const property of model.currentChecks || []) {
+      await run(model, `current-${property.invariant}`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${property.init}`, `--step=${property.step}`, `--invariant=${property.invariant}`, '--verbosity=1'], property.expected);
     }
-    if (command === 'verify') {
-      await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+    for (const property of model.currentTemporalChecks || []) {
+      await run(model, `current-temporal-${property.property}`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${property.init}`, `--step=${property.step}`, `--temporal=${property.property}`, '--verbosity=1'], property.expected);
     }
-    if (command === 'temporal' && model.temporal?.length) {
-      await run(model, `${backend}-temporal`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--temporal=${model.temporal.join(',')}`, '--verbosity=1']);
-    }
-    if (command === 'compare') {
-      for (const property of model.currentChecks || []) {
-        await run(model, `current-${property.invariant}`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${property.init}`, `--step=${property.step}`, `--invariant=${property.invariant}`, '--verbosity=1'], property.expected);
-      }
-      for (const property of model.currentTemporalChecks || []) {
-        await run(model, `current-temporal-${property.property}`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${property.init}`, `--step=${property.step}`, `--temporal=${property.property}`, '--verbosity=1'], property.expected);
-      }
-      for (const property of model.expectedViolations || []) {
-        const invariant = property.invariant || property.property;
-        await run(model, `known-${invariant}`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${invariant}`, '--verbosity=1'], 'violation');
-      }
+    for (const property of model.expectedViolations || []) {
+      const invariant = property.invariant || property.property;
+      await run(model, `known-${invariant}`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${invariant}`, '--verbosity=1'], 'violation');
     }
   }
+}
+
+try {
+  let nextModel = 0;
+  const workers = Array.from({length: Math.min(jobs, models.length)}, async () => {
+    while (nextModel < models.length) {
+      const model = models[nextModel++];
+      await checkModel(model);
+    }
+  });
+  const completed = await Promise.allSettled(workers);
+  const rejected = completed.find(result => result.status === 'rejected');
+  if (rejected) throw rejected.reason;
   if (command === 'check') {
     const temporary = mkdtempSync(join(tmpdir(), 'alpha-quint-canary-'));
     try {
@@ -167,6 +183,10 @@ try {
     receipt.finalInputErrors = [`Final input check failed: ${error instanceof Error ? error.message : String(error)}`];
   }
   if (receipt.finalInputErrors.length) { failed = true; console.error(receipt.finalInputErrors.join('\n')); }
+  process.removeListener('SIGINT', interrupt);
+  process.removeListener('SIGTERM', interrupt);
+  const order = new Map(models.map((model, index) => [model.module, index]));
+  receipt.results.sort((left, right) => order.get(left.model) - order.get(right.model) || left.startedAt.localeCompare(right.startedAt));
   receipt.finishedAt = new Date().toISOString();
   receipt.passed = !failed;
   receipt.status = failed ? 'failed' : 'passed';

@@ -64,7 +64,19 @@ export function GoogleConnectionsPanel(){
  const identity=JSON.stringify([connection.cloudAccount,cloud?.sessionId,cloud?.credentialId]);
  const binding:GoogleConnectionReturnBinding|null=cloud&&key?{client:cloud.client,...key,sessionId:cloud.sessionId,credentialId:cloud.credentialId}:null;
  const accessTarget=()=>browserCloudResidentEnabled&&cloud&&binding?{credentialId:cloud.credentialId,current:()=>sameGoogleConnectionReturnBinding(binding,currentGoogleConnectionReturnBinding())}:undefined;
- useEffect(()=>{let live=true;const target=accessTarget();const sync=()=>{setAccess(googleAgentAccess());void publishGoogleAgentAccess(target?{...target,current:()=>live&&target.current()}:undefined).catch(()=>{if(live&&open)setNotice('Calendar access could not be confirmed. Try again.');});};sync();window.addEventListener('alpha:device-settings',sync);return()=>{live=false;window.removeEventListener('alpha:device-settings',sync);};},[identity,open,connection.session?.sessionId]);
+ useEffect(()=>{
+  let live=true;
+  const target=accessTarget();
+  const sync=()=>{
+   const calendar=googleConnectionController.calendar();
+   setAccess(googleAgentAccess());
+   void publishGoogleAgentAccess(target?{...target,current:()=>live&&target.current()}:undefined).catch(()=>{
+    if(live&&open&&googleConnectionController.calendar()===calendar)setNotice('Calendar access could not be confirmed. Try again.');
+   });
+  };
+  sync();window.addEventListener('alpha:device-settings',sync);
+  return()=>{live=false;window.removeEventListener('alpha:device-settings',sync);};
+ },[identity,open,connection.session?.sessionId]);
  const calendarIntent=useSyncExternalStore(googleConnectionController.subscribe,googleConnectionController.calendar),linking=useRef<AbortController|null>(null);
  useEffect(()=>()=>{
   const previous=linking.current;

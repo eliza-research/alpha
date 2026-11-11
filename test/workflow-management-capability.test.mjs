@@ -21,11 +21,11 @@ function fixture(){
  const render=()=>views.workflows.render({},{isActive:()=>true,track:()=>'',kx:()=>'',ic:{clock:'clock',check:'check'},toast:()=>{}});
  return {probe:views.workflows.refreshManagement,removed:()=>render().managementCards.some(card=>card.name==='Removed workflows'),answer:value=>answer=value,replaceOwner:()=>{session={...session,ownerId:'replacement'};},get publications(){return publications;},get statusReads(){return statusReads;},get listReads(){return listReads;},close:()=>shell.componentWillUnmount()};
 }
-test('management probes only capability and withdraws unsupported or unavailable removal history',async()=>{
+test('management probes capability without restoring removed history navigation',async()=>{
  const f=fixture();try{
-  await f.probe(new AbortController().signal,()=>true);assert.equal(f.removed(),true);
+  await f.probe(new AbortController().signal,()=>true);assert.equal(f.removed(),false);
   f.answer(async()=>false);await f.probe(new AbortController().signal,()=>true);assert.equal(f.removed(),false);
-  f.answer(async()=>true);await f.probe(new AbortController().signal,()=>true);assert.equal(f.removed(),true);
+  f.answer(async()=>true);await f.probe(new AbortController().signal,()=>true);assert.equal(f.removed(),false);
   f.answer(async()=>{throw Error('Unavailable');});await assert.rejects(f.probe(new AbortController().signal,()=>true),/Unavailable/);assert.equal(f.removed(),false);
   assert.equal(f.statusReads,4);assert.equal(f.listReads,0);
  }finally{f.close();}

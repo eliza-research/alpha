@@ -14,7 +14,7 @@ test('historical Maps compares against the current mounted browser and Cloud pro
   assert.ok(receipt.passed && receipt.inputsUnchanged && receipt.driverInputsBound);
   assert.deepEqual(mismatches.map(row => row.id), [
     'MapsHistoricalPassiveOfflineNotice', 'MapsHistoricalOfflinePrompt', 'MapsHistoricalDirectionsBeforeOrigin', 'MapsHistoricalChatInterruption',
-    'MapsHistoricalArrivalClearsRoute', 'MapsHistoricalFailedRerouteKeepsRoute',
+    'MapsHistoricalArrivalClearsRoute', 'MapsHistoricalFailedRerouteLosesRoute',
   ]);
   assert.ok(mismatches.every(row => row.driverInputsBound && row.results[0].kind === 'observation-mismatch'));
 });

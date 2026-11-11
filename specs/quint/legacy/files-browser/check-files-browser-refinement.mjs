@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, readFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
@@ -12,7 +13,6 @@ import {captureInputs, checkTraces, qmap, qset} from '../../refinement/check-tra
 
 const model = 'FilesBrowserReplay';
 const modelPath = 'test/fixtures/quint/FilesBrowserComparison.qnt';
-const cacheDir = resolve(root, 'test-results/quint-refinement/legacy-files-vite-cache');
 const expect = baseExpect.configure({timeout: 15000});
 const files = page => page.getByRole('region', {name: 'Files', exact: true});
 const detail = page => page.locator('[data-alpha-subview="files-folder"]');
@@ -96,7 +96,7 @@ async function observe(page) {
     rows.map(row => row.getAttribute('aria-label').slice('Deselect '.length)));
   // The selected folder still owns its paths while the modal makes it inert.
   const breadcrumbs = await detail(page).locator('nav[aria-label="Folder path"]').evaluateAll(rows =>
-    rows.map(row => [...row.querySelectorAll('button,[aria-current="location"]')].map(node => node.textContent.trim()).slice(1).join('/')));
+    rows.map(row => [...row.querySelectorAll('button,[aria-current="location"]')].map(node => node.textContent.trim()).filter(label => label !== 'Internal storage').join('/')));
   const observation = {
     's.loc': qmap([['scan', 'gone'], ...Object.entries(state.current).map(([file, row]) => [file, row.place])]),
     's.sel': qset(pressed.map(name => {
@@ -323,6 +323,7 @@ async function mounted(extraSources) {
   const driverHashes = captureInputs(sources);
   const loaded = new Set();
   const previousMocks = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
+  const cacheDir = mkdtempSync(resolve(tmpdir(), 'alpha-refinement-vite-'));
   let server, browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
@@ -376,7 +377,7 @@ async function mounted(extraSources) {
   } finally {
     if (previousMocks === undefined) delete process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
     else process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = previousMocks;
-    try {await browser?.close();} finally {await server?.close();}
+    try {await browser?.close();} finally {try {await server?.close();} finally {rmSync(cacheDir,{recursive:true,force:true});}}
   }
 }
 

@@ -2325,7 +2325,7 @@
     "invariant": "safety",
     "tests": [
       "samePublicIdCanBeNewRouteTest",
-      "exactLiveRefusalTest",
+      "exactLiveRefusalKeepsGuidanceTest",
       "lateSuccessCannotReturnReplacementTest",
       "lateRefusalCannotReturnReplacementTest",
       "endKeepsAdmittedReviewRouteTest"

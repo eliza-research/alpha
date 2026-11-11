@@ -33,7 +33,7 @@ test('stop while the public task read is held fences later worker admission', as
   const f = fixture(await taskService), read = deferred(), entered = deferred();
   f.runtime.getTask = async () => { entered.resolve(); await read.promise; return f.task; };
   const execution = f.service.executeTaskById(f.task.id).then(() => null, error => error);
-  await entered.promise; await f.service.stop(); read.resolve(); const error = await execution;
+  await entered.promise; const stop = f.service.stop(); read.resolve(); const error = await execution; await stop;
   assert.equal(f.state.calls, 0);
   assert.equal(error?.code, 'TASK_SERVICE_STOPPED');
 });
@@ -46,7 +46,7 @@ test('stop drains already-admitted work and suppresses a queued due-task read', 
   await Promise.resolve(); assert.equal(stopped, false); assert.equal(f.intervals.size, 0);
   f.released.resolve(); await Promise.all([first, queued, stop]);
   assert.equal(stopped, true); assert.equal(f.state.calls, 1); assert.equal(f.state.queries, 1);
-  assert.equal(f.service.executingTasks.size, 0); assert.equal(f.service.executingTaskPromises.size, 0);
+  assert.equal(f.service.executingTasks.size, 0); assert.equal(f.service.pendingOperations.size, 0);
 });
 
 test('every concurrent manual owner retains the blocking marker until its own completion', async () => {

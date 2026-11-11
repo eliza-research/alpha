@@ -9,5 +9,5 @@ test('the current approval service follows the translated settlement protocol', 
   assert.equal(receipt.inputsUnchanged, true);
   assert.equal(receipt.driverInputsBound, true);
   assert.equal(receipt.traces, 13);
-  assert.equal(receipt.checkpoints, 81);
+  assert.equal(receipt.checkpoints, 77);
 });

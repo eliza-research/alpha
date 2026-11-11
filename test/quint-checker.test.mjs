@@ -68,6 +68,40 @@ test('runner records unexpected exceptions as failures and retains unfinished re
     assert.match(failure.error, /TypeError/);
     assert.deepEqual(failure.finalInputErrors, []);
 
+    const other = {...model, module: 'Other', path: 'specs/quint/application/Other.qnt'};
+    write(other.path, 'module Other { run exampleTest = true }');
+    write('specs/quint/application/manifest.json', JSON.stringify([model, other]));
+    write('node_modules/@informalsystems/quint/dist/src/cli.js', `
+      const fs = require('node:fs');
+      fs.appendFileSync('checker-events.log', 'start\\n');
+      setTimeout(() => {
+        fs.appendFileSync('checker-events.log', 'end\\n');
+        process.exit(process.env.ALPHA_QUINT_FIXTURE_FAIL && process.argv[3].endsWith('Other.qnt') ? 2 : 0);
+      }, 500);
+    `);
+    const parallel = spawnSync(process.execPath, ['scripts/check-quint.mjs', 'typecheck', '--jobs=2', '--out=parallel.json'],
+      {cwd: root, encoding: 'utf8', timeout: 10000});
+    assert.equal(parallel.status, 0, parallel.stderr);
+    const passed = readJson(join(root, 'parallel.json'));
+    assert.equal(passed.passed, true);
+    assert.deepEqual(passed.results.map(result => result.model), ['Fixture', 'Other']);
+    let active = 0, maximum = 0;
+    for (const event of readFileSync(join(root, 'checker-events.log'), 'utf8').trim().split('\n')) {
+      active += event === 'start' ? 1 : -1;
+      maximum = Math.max(maximum, active);
+    }
+    assert.equal(maximum, 2);
+    assert.equal(active, 0);
+    const rejected = spawnSync(process.execPath, ['scripts/check-quint.mjs', 'typecheck', '--jobs=2', '--out=rejected.json'],
+      {cwd: root, encoding: 'utf8', timeout: 10000, env: {...process.env, ALPHA_QUINT_FIXTURE_FAIL: '1'}});
+    assert.equal(rejected.status, 1, rejected.stderr);
+    const refused = readJson(join(root, 'rejected.json'));
+    assert.equal(refused.passed, false);
+    assert.equal(refused.results.length, 2, 'All workers settle before the failed receipt is written');
+    assert.equal(refused.results.filter(result => !result.passed).length, 1);
+
+    write('specs/quint/application/manifest.json', JSON.stringify([model]));
+    rmSync(join(root, other.path));
     write('node_modules/@informalsystems/quint/dist/src/cli.js', 'setTimeout(() => {}, 60000);');
     const interrupted = spawnSync(process.execPath, ['scripts/check-quint.mjs', 'typecheck', '--out=interrupted.json'], { cwd: root, encoding: 'utf8', timeout: 2000 });
     assert.equal(interrupted.error?.code, 'ETIMEDOUT');

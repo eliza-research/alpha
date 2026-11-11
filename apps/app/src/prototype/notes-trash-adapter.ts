@@ -223,7 +223,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   if(!state.trashChecked){queueMicrotask(()=>{api.set({trashChecked:true});void trash.maintain();});}
   const rows:NotesTrashEntry[]=state.trash||[],now=Date.now(),disabled=!!state.trashBusy;
   // Recently deleted is the last folder of the list (state.folder 'deleted'), shown while it has notes.
-  view.openTrash=()=>{trash.forget();api.set({folder:'deleted',open:null,sheet:null,q:null,trashConfirm:null,trashFull:null});void trash.maintain();};
+  view.openTrash=()=>{trash.forget();api.set({folder:'deleted',open:null,menu:null,sheet:null,q:null,trashConfirm:null,trashFull:null});void trash.maintain();};
   view.closeTrash=()=>api.set({folder:null,trashConfirm:null,trashAsk:null});
   view.trashOpen=state.folder==='deleted';
   if(view.trashOpen&&Array.isArray(state.trash)&&!rows.length&&!disabled&&!state.trashFull)queueMicrotask(()=>{const latest=api.get('notes');if(latest.folder==='deleted'&&Array.isArray(latest.trash)&&!latest.trash.length)api.set({folder:null,trashConfirm:null});});
