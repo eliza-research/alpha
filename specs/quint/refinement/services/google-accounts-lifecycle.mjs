@@ -24,22 +24,47 @@ export async function googleAccountsLifecycleRefinement(extraSources = []) {
   const connectionReturn = await sourceModule('apps/app/src/runtime/google-connection-return.ts', {}, capture);
   const helpers = await sourceModule('apps/app/src/runtime/google-accounts.ts', {'./gmail-background': 'export const retireGmailBackground=()=>({settled:async()=>{}});'}, capture);
   const traces = [];
-  for (const outcome of ['disconnected', 'still-connected', 'unconfirmed', 'lost-reply']) {
+  for (const [name, requestLost, readback, outcome] of [
+    ['disconnected', false, [], 'disconnected'],
+    ['still-connected', false, [account], 'still-connected'],
+    ['unreadable account list', false, null, 'unconfirmed'],
+    ['lost request reply and verified absence', true, [], 'disconnected'],
+    ['lost request reply and account still present', true, [account], 'unconfirmed'],
+    ['selected account disconnected with other account rows', false, [
+      {...account, connected: false},
+      {...account, connectionId: '22222222-2222-4222-8222-222222222222'},
+    ], 'disconnected'],
+  ]) {
     const gate = deferred(); let disconnectCalls = 0;
     const client = {
       async initiateGoogle() { return 'https://accounts.example.invalid/authorize'; },
-      async gmailAccounts() { if (disconnectCalls) {await gate.promise;if (outcome === 'unconfirmed') throw Error('offline readback');} return disconnectCalls && ['disconnected', 'lost-reply'].includes(outcome) ? [] : [account]; },
-      async disconnectGmail() { disconnectCalls++; if (outcome === 'lost-reply') throw Error('response lost'); },
+      async gmailAccounts() {
+        if (!disconnectCalls) return [account];
+        await gate.promise;
+        if (readback === null) throw Error('offline readback');
+        return readback;
+      },
+      async disconnectGmail() { disconnectCalls++; if (requestLost) throw Error('response lost'); },
     };
     const binding = {client, sessionId: 'session-A', credentialId: 'credential-A'};
     const facade = helpers.createGoogleAccounts(binding, () => binding, () => {});
     const rows = await facade.list(new AbortController().signal);
-    const trace = {name: `current account disconnect ${outcome}`, expect: {'s.revokeCalls': 0}, steps: [{label: 'canonical current account readback', action: [action('refreshAccounts'), action('readback', 1, true, true, true)], expect: {'s.account': rows.length}}]};
+    const trace = {name: `current account disconnect ${name}`, expect: {'s.revokeCalls': 0}, steps: [{label: 'canonical current account readback', action: [action('refreshAccounts'), action('readback', 1, true, true, true)], expect: {'s.account': rows.length}}]};
     const disconnecting = facade.disconnect(grant, new AbortController().signal);
     await until(() => disconnectCalls === 1, 'one remote revocation');
     trace.steps.push({label: 'one request starts before optional cleanup', action: action('disconnect'), expect: {'s.disconnectSent': true, 's.revokeCalls': disconnectCalls}});
     gate.resolve(); const result = await disconnecting;
-    trace.steps.push({label: 'only account readback confirms revocation', action: [action('cleanupReply', false, true), action('disconnectReadback', result.outcome === 'disconnected')], expect: {'s.revoked': result.outcome === 'disconnected', 's.account': result.outcome === 'disconnected' ? 0 : rows.length, 's.callbackRetirement': result.calendarLifecycle.callbackRetirement}});
+    assert.equal(result.outcome, outcome);
+    assert.deepEqual(result.accounts, readback);
+    const known = result.accounts !== null;
+    const selected = (result.accounts ?? rows).some(row => row.connectionId === grant && row.connected);
+    trace.steps.push({
+      label: 'preserve the exact outcome and whether account rows were read',
+      action: [action('cleanupReply', false, true), action('disconnectReadback', result.outcome, known)],
+      expect: {'s.disconnectOutcome': result.outcome, 's.disconnectRowsKnown': known,
+        's.revoked': result.outcome === 'disconnected', 's.account': selected ? 1 : 0,
+        's.callbackRetirement': result.calendarLifecycle.callbackRetirement},
+    });
     traces.push(trace);
   }
   for (const mode of ['normal', 'stale', 'queued']) {
@@ -88,13 +113,14 @@ export async function googleAccountsLifecycleRefinement(extraSources = []) {
     const result=await helpers.disconnectGoogleWithCalendar({review,connectionId:grant,pauseKey:'operation',signal:new AbortController().signal,ports,pauseObservationMs:1,retirementObservationMs:1});
     const mapped=mode!=='unmapped', actions=[action('refreshAccounts'),action('readback',1,true,true,true),action('calendarReview',mapped),action('disconnect')];
     if(mode==='changed-source')actions.push(action('calendarChanged'));
-    actions.push(action('cleanupReply',result.calendarPause==='confirmed',result.callbackRetirement==='confirmed'),action('disconnectReadback',true));
+    actions.push(action('cleanupReply',result.calendarPause==='confirmed',result.callbackRetirement==='confirmed'),action('disconnectReadback','disconnected',true));
     traces.push({name:`canonical optional cleanup ${mode}`,expect: {'s.revokeCalls': 0},steps:[{label:'privacy revoke progresses independently of bounded optional cleanup',action:actions,expect:{'s.revokeCalls':requests,'s.calendarPause':result.calendarPause,'s.callbackRetirement':result.callbackRetirement,'s.revoked':result.privacy==='confirmed'}}]});
     assert.equal(pauses,mapped?1:0);assert.equal(result.providerDrain,'unavailable');
   }
   return checkTraces({model:'GoogleAccounts',sources,driverHashes,traces,scope:'bounded-orchestration',assumptions:[
     'Actual account facade, native return preparer/drainer and canonical Calendar-aware disconnect execute. Native storage, OAuth delivery and Calendar service are controlled ports.',
     'A connected return only requests canonical readback. Distinct credential/session identities invalidate late native results.',
-    'Optional cleanup uses real bounded timers and never proves provider drain. Full Calendar select/resume linking and UI account selection remain separate obligations.'
+    'Optional cleanup uses real bounded timers and never proves provider drain. Full Calendar select/resume linking and UI account selection remain separate obligations.',
+    'Disconnect outcome and account-list availability are observed separately. A lost write response can leave present account rows unconfirmed, and an unreadable list is never evidence of absence.'
   ]});
 }
