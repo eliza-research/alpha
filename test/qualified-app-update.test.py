@@ -5,8 +5,10 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -143,6 +145,8 @@ class QualifiedUpdateTest(unittest.TestCase):
                 self.stage_fixture(self.directory / "cloud-large")
 
     def api(self, endpoint):
+        if endpoint == f"repos/{BRIDGE.REPOSITORY}/git/ref/heads/main":
+            return {"ref": "refs/heads/main", "object": {"type": "commit", "sha": "f" * 40}}
         if "/compare/" in endpoint:
             source = endpoint.split("/compare/")[1].split("...")[0]
             return {"status": "ahead", "merge_base_commit": {"sha": source}}
@@ -167,6 +171,128 @@ class QualifiedUpdateTest(unittest.TestCase):
         self.assertEqual(size, self.receipt_zip.stat().st_size)
         self.assertEqual(digest, BRIDGE.file_sha(self.receipt_zip))
         shutil.copyfile(self.receipt_zip, destination)
+
+    def prepare_fixture(self, *, api=None, workflow_commit="f" * 40, voice_bytes=None):
+        plan = self.directory / "reviewed-plan.json"
+        voice = self.directory / "reviewed-voice.json"
+        plan.write_bytes(base64.b64decode(self.record["signingPlanBase64"]))
+        voice.write_bytes(voice_bytes if voice_bytes is not None else
+                          base64.b64decode(self.record["cloudVoiceEvidenceBase64"]))
+        before = set(self.directory.iterdir())
+        result = BRIDGE.prepare_qualification(plan, voice, self.signed_tar, self.receipt_zip, "200",
+                                              workflow_commit, api=api if api is not None else self.api)
+        self.assertEqual(set(self.directory.iterdir()), before)
+        return result
+
+    def test_prepare_qualification_reuses_native_admission_and_preserves_reviewed_bytes(self):
+        self.use_main_candidate()
+        # Retain formatting from the submitted plan and from the owner's receipt.
+        plan_bytes = (json.dumps(self.plan, indent=2) + "\n").encode()
+        self.signed_entries["signing-plan.json"] = plan_bytes
+        self.record["signingPlanBase64"] = base64.b64encode(plan_bytes).decode("ascii")
+        self.record["signingPlanSHA256"] = BRIDGE.sha(plan_bytes)
+        voice = BRIDGE.decode(base64.b64decode(self.record["cloudVoiceEvidenceBase64"]))
+        voice_bytes = (json.dumps(voice, indent=2) + "\n").encode()
+        self.write_signed()
+        self.write_delivery_receipt()
+        with patch.object(BRIDGE.STORAGE, "connection", side_effect=AssertionError("private API accessed")):
+            actual = self.prepare_fixture(voice_bytes=voice_bytes)
+        plan, reviewed_plan, reviewed_voice = BRIDGE.validate(actual)
+        self.assertEqual((plan, reviewed_plan, reviewed_voice), (self.plan, plan_bytes, voice_bytes))
+        self.assertEqual(actual["signedApkSHA256"], self.record["signedApkSHA256"])
+        self.assertEqual(actual["signedBundle"], self.record["signedBundle"])
+        self.assertEqual(BRIDGE.preflight(actual, "f" * 40, self.directory / "prepared", self.api, self.download),
+                         self.plan)
+
+    def test_prepare_qualification_cli_emits_only_the_reviewable_record(self):
+        self.use_main_candidate()
+        expected = self.prepare_fixture()
+        commit = "f" * 40
+        endpoints = (
+            "git/ref/heads/main", "actions/artifacts/200", "actions/runs/100/attempts/1",
+            f"compare/{self.plan['alphaCommit']}...{commit}",
+            f"compare/{self.record['signingWorkflowCommit']}...{commit}",
+        )
+        responses = {f"repos/{BRIDGE.REPOSITORY}/{path}": self.api(f"repos/{BRIDGE.REPOSITORY}/{path}")
+                     for path in endpoints}
+        cli = self.directory / "gh"
+        cli.write_text("#!/usr/bin/env python3\nimport json, sys\n"
+                       f"responses = {responses!r}\n"
+                       "assert sys.argv[1] == 'api'\nprint(json.dumps(responses[sys.argv[2]]))\n")
+        cli.chmod(0o700)
+        env = {**os.environ, "PATH": str(self.directory) + os.pathsep + os.environ["PATH"]}
+        result = subprocess.run([
+            sys.executable, "-B", str(ROOT / "scripts/ci/qualified-app-update.py"), "prepare-qualification",
+            "--signing-plan", str(self.directory / "reviewed-plan.json"),
+            "--voice-evidence", str(self.directory / "reviewed-voice.json"),
+            "--signed-tar", str(self.signed_tar), "--delivery-zip", str(self.receipt_zip),
+            "--delivery-artifact-id", "200", "--workflow-commit", commit,
+        ], env=env, capture_output=True, timeout=15, check=True)
+        self.assertEqual(BRIDGE.decode(result.stdout), expected)
+        self.assertEqual(result.stderr, b"")
+
+    def test_prepared_qualification_must_fit_workflow_dispatch(self):
+        self.use_main_candidate()
+        plan_bytes = base64.b64decode(self.record["signingPlanBase64"]).ljust(BRIDGE.PLAN_LIMIT)
+        voice_bytes = base64.b64decode(self.record["cloudVoiceEvidenceBase64"]).ljust(BRIDGE.VOICE_LIMIT)
+        self.record["signingPlanBase64"] = base64.b64encode(plan_bytes).decode("ascii")
+        self.signed_entries["signing-plan.json"] = plan_bytes
+        self.write_signed()
+        self.write_delivery_receipt()
+        record = self.prepare_fixture(voice_bytes=voice_bytes)
+        with self.assertRaisesRegex(ValueError, "exceeds GitHub Actions input size"):
+            BRIDGE.qualification_input(record, "f" * 40)
+
+    def test_prepare_qualification_refuses_stale_main_or_wrong_signing_origin(self):
+        self.use_main_candidate()
+        with self.assertRaisesRegex(ValueError, "not current Alpha main"):
+            self.prepare_fixture(workflow_commit="0" * 40)
+        for endpoint_suffix, changes in (
+            ("/actions/artifacts/200", {"expired": True}),
+            ("/actions/artifacts/200", {"name": "private-cloud-apk-delivery-101-1"}),
+            ("/actions/runs/100/attempts/1", {"run_attempt": 2}),
+            ("/actions/runs/100/attempts/1", {"conclusion": "failure"}),
+        ):
+            def wrong(endpoint):
+                record = self.api(endpoint)
+                if endpoint.endswith(endpoint_suffix):
+                    record.update(changes)
+                return record
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                self.prepare_fixture(api=wrong)
+
+    def test_prepare_qualification_refuses_substituted_zip_tar_apk_plan_or_voice(self):
+        self.use_main_candidate()
+        original_zip = self.receipt_zip.read_bytes()
+        self.receipt_zip.write_bytes(original_zip[:-1] + bytes([original_zip[-1] ^ 1]))
+        with self.assertRaisesRegex(ValueError, "Delivery ZIP differs"):
+            self.prepare_fixture()
+        self.receipt_zip.write_bytes(original_zip)
+
+        original_tar = self.signed_tar.read_bytes()
+        self.signed_tar.write_bytes(original_tar[:-1] + bytes([original_tar[-1] ^ 1]))
+        with self.assertRaisesRegex(ValueError, "Signed bundle bytes differ"):
+            self.prepare_fixture()
+
+        for change, error in (
+            ({"signing-plan.json": b"{}"}, "Signed bundle plan differs"),
+            ({"launcher-release.apk": b"changed"}, "Signed APK bytes differ"),
+        ):
+            self.write_signed(change)
+            self.write_delivery_receipt()
+            with self.assertRaisesRegex(ValueError, error):
+                self.prepare_fixture()
+
+        self.write_signed()
+        self.write_delivery_receipt()
+        voice = BRIDGE.decode(base64.b64decode(self.record["cloudVoiceEvidenceBase64"]))
+        voice["results"][0]["checks"]["mute"] = False
+        with self.assertRaisesRegex(ValueError, "Voice qualification incomplete"):
+            self.prepare_fixture(voice_bytes=json.dumps(voice).encode())
+        voice["results"][0]["checks"]["mute"] = True
+        voice["results"][0]["apkSha256"] = "0" * 64
+        with self.assertRaisesRegex(ValueError, "does not name exact signed APKs"):
+            self.prepare_fixture(voice_bytes=json.dumps(voice).encode())
 
     def test_exact_reviewed_record_restores_inputs_and_signed_bytes(self):
         work, product = self.directory / "admitted", self.directory / "product"
