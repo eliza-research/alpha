@@ -250,12 +250,19 @@ node scripts/verify-wireless-launcher-update.ts after --serial <serial> \
   --before <before.json> --apk-manifest <update>/apk-manifest.json --out <new-after.json>
 ```
 
-Repeat with `--distribution image-preinstalled` on the signed image. The
-readback uses the primary user and records the actual APK digest, update
+Repeat with `--distribution image-preinstalled` on the signed image while
+the launcher baked into the image is still active. The first replacement must
+move the active APK to Android's app data while retaining its system-app
+provenance. For the next advancing release, use `before --previous <after.json>`
+with the same distribution and the previous release's APK manifest. This
+binds the next drill to the exact phone, image, HOME and APK of the previous
+replacement.
+
+The readback uses the primary user and records the actual APK digest, update
 initiator, install identity, HOME, signing family, boot state and SDK revision.
-Include the release provenance and operator observations of the disconnected
-update, confirmation, retained data, Keystore, resident, voice and recovery in
-the acceptance evidence.
+Include the reviewed image provenance and operator observations of the
+disconnected update, confirmation, retained data, Keystore, resident, voice
+and recovery in the acceptance evidence.
 
 The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alphaphone/issues/888)
 and [wireless launcher acceptance #889](https://github.com/eliza-research/alphaphone/issues/889).
