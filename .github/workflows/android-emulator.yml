@@ -108,8 +108,6 @@ jobs:
             artifacts/*.json
             artifacts/test-mocks/*.json
             android/app/build/reports/
-            android/voice-host/qualified-voice-host.json
-            .eliza/paradee-voice/native/build-record.json
           retention-days: 3
 
   # (c) The default instrumentation run on both distributions.
