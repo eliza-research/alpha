@@ -2143,10 +2143,10 @@
     }
   ],
   "currentUpstream": {
-    "revision": "89aca92fb77867262635836f8077f705cab17cee",
+    "revision": "3f5b829185e2ffc26657ca98afe290478bc28c36",
     "classification": "current-upstream-formal-specifications",
     "models": [],
-    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The selected source-owned Quint sidecars below retain DeletionOwnerAdmission, CloudSpeechSuccessor, MapsTileCache and ViewportCopyright at the current pin. Their independent model and transport checks do not establish complete downstream refinement, native release, provider, image or device qualification. Any future TLA/TLC source requires separate allocation. The retained Maps sidecars include their implementation checkers; live provider and device acceptance remain separate. StorageWatch and PhotoCopyRecovery model and case sidecars are catalogued as source bytes only; this inventory records no new model verdict or device acceptance.",
+    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The selected source-owned Quint sidecars below retain DeletionOwnerAdmission, CloudSpeechSuccessor, MapsTileCache and ViewportCopyright at the current pin. Their independent model and transport checks do not establish complete downstream refinement, native release, provider, image or device qualification. Any future TLA/TLC source requires separate allocation. The retained Maps sidecars include their implementation checkers; live provider and device acceptance remain separate. StorageWatch and PhotoCopyRecovery model and case sidecars are catalogued as source bytes only; this inventory records no new model verdict or device acceptance. FilesDirectAdmission belongs to the pinned Files package; its reviewed upstream model covers direct-action admission, separate from Alpha mounting and Android acceptance.",
     "quintSidecars": [
       {
         "path": "plugins/plugin-native-action-journal/quint/DeletionOwnerAdmission.cases.json",
@@ -2227,6 +2227,16 @@
         "path": "plugins/plugin-native-media/quint/PhotoCopyRecovery.qnt",
         "gitObject": "28c5ec6fc5ce3045fc96d40603b841a96e8c11a6",
         "sha256": "3697d40623e7b45464ddbb09bc9e6ac35c66c77336b0609e7ceec3b768e92076"
+      },
+      {
+        "path": "plugins/plugin-files/quint/FilesDirectAdmission.cases.json",
+        "gitObject": "f91e46c392368a108adffb00761ac3a50ae54058",
+        "sha256": "5904bd2a2f1aa345dc7d4c84438d274ef35c9dd029bce9d3cddcbe8e6cd2f175"
+      },
+      {
+        "path": "plugins/plugin-files/quint/FilesDirectAdmission.qnt",
+        "gitObject": "3e4c924a8ee05bb391404a4021dde95185402919",
+        "sha256": "82bc3cee3af4ac091dbfa91554023253238e6f71eb3be7227b192d2996a4c499"
       }
     ]
   }

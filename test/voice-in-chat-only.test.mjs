@@ -24,7 +24,13 @@ test('holding the side key never opens the microphone while the chat mic still w
  assert.equal(microphones,1,'the in-chat microphone remains callable');
  const template=read('apps/app/src/prototype/template.html');
  assert.doesNotMatch(template,/hold to talk/);
- assert.match(read('apps/app/src/prototype/development-system-surfaces.html'),/<sc-if value="\{\{externalVoiceInvocation\}\}"><button aria-label="Talk to/);
+ // The lock-screen talk button now lives in the development-only system surfaces, which flag-off
+ // bundles drop; the product template has none, and every remaining one stays behind the gate.
+ assert.doesNotMatch(template,/aria-label="Talk to/);
+ const surfaces=read('apps/app/src/prototype/development-system-surfaces.html')+read('apps/app/src/prototype/development-rail.html');
+ const talk=[...surfaces.matchAll(/aria-label="Talk to/g)],gated=[...surfaces.matchAll(/<sc-if value="\{\{externalVoiceInvocation\}\}"><button aria-label="Talk to/g)];
+ assert.ok(gated.length>0&&gated.length===talk.length,'every talk button stays behind the external voice gate');
+ assert.match(read('apps/app/src/prototype/template-source.ts'),/'<!-- alpha-development-system-surfaces -->', testMocksEnabled \? developmentSystemSurfaces : ''/);
  assert.match(read('apps/app/src/main.tsx'),/if \(externalVoiceInvocationEnabled && isAndroid && assistantSurface\) installListenerInvocation/);
  assert.match(read('apps/app/src/runtime/always-on-listener.ts'),/if\(!externalVoiceInvocationEnabled \|\| !nativeListener\(\)\)return/);
  for(const name of ['AlphaAssistActivity','AlphaPowerVoiceActivity'])assert.match(read('android/app/src/main/AndroidManifest.xml'),new RegExp('<activity android:name="\\.'+name+'" android:enabled="false" android:exported="false"'));

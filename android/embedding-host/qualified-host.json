@@ -1,5 +1,5 @@
 {
-  "pin": "ede068b56ab07df42e3038de9a108bc7daa6ae0c",
+  "pin": "3f5b829185e2ffc26657ca98afe290478bc28c36",
   "forkPin": "6337fd4c4bd071c17235986344d552d4036e177b",
   "identity": "ai.alphacompute.alphaphone",
   "abi": "arm64-v8a",
@@ -64,7 +64,7 @@
   "producerInputs": [
     {
       "path": "package.json",
-      "sha256": "8f38e383982532c2248278a9fe8b1961c3c7511c60b3f394ad9939c8627f6962"
+      "sha256": "29ff6a61cff220234cbe72a58b6047733996362ac7182298f3609115290d52d4"
     },
     {
       "path": "packages/agent/package.json",
