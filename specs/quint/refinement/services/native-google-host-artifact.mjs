@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../timeouts.mjs';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {mkdirSync, mkdtempSync, realpathSync, rmSync} from 'node:fs';
@@ -18,7 +19,7 @@ function runProbe(args = []) {
     mkdirSync(home, {mode: 0o700});
     const identity = {NAME: 'Fixture', EMAIL: 'fixture@example.invalid'};
     const result = spawnSync(process.execPath, [probe, scratch, ...args], {
-      cwd: scratch, encoding: 'utf8', maxBuffer: 2*1024*1024, timeout: 90000,
+      cwd: scratch, encoding: 'utf8', maxBuffer: 2*1024*1024, timeout: scaledTimeout(90000),
       env: {PATH: '/usr/bin:/bin', HOME: home, TMPDIR: scratch, GIT_CONFIG_NOSYSTEM: '1',
         GIT_CONFIG_GLOBAL: '/dev/null', GIT_ALLOW_PROTOCOL: 'file',
         GIT_AUTHOR_NAME: identity.NAME, GIT_AUTHOR_EMAIL: identity.EMAIL,
@@ -37,7 +38,7 @@ export function checkNativeGoogleHostLoaderCompatibility(bun) {
 export async function checkNativeGoogleHostArtifact(extraSources = []) {
   const core = coreStateReceipt(repository);
   const sources = [
-    fileURLToPath(import.meta.url), probe, 'test/fixtures/native-google-host-builder-port.mjs', 'test/fixtures/core-state-root.mjs',
+    fileURLToPath(import.meta.url), probe, 'specs/quint/refinement/timeouts.mjs', 'test/fixtures/native-google-host-builder-port.mjs', 'test/fixtures/core-state-root.mjs',
     'scripts/native-google-host-artifact.ts', 'scripts/build-native-google-host.ts', 'scripts/workflow-worker-artifact.ts',
     'scripts/local-agent-source.ts', 'scripts/copy-file-clone.ts', 'scripts/prepare-client-features.ts',
     'scripts/upstream-native-source.ts', 'vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts',
