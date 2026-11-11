@@ -1511,7 +1511,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         const now=connectionController.getSnapshot();
         if(this.S().typing||alphaClient.getState().pending){this.toast('Wait for the current reply before starting a new chat.');return;}
         if(now.busy||this.pendingActionApproval||this.decliningProposal){this.toast('Wait for the current step to finish, then try again.');return;}
-        void connectionController.newConversation();
+        const before=now.history?.conversationId;
+        // Product Android shows no connection panel for this step, so a failure is reported here.
+        void connectionController.newConversation().then(()=>{const after=connectionController.getSnapshot();if(after.error&&!after.open&&after.history?.conversationId===before)this.toast('Couldn’t start a new chat. Try again.');});
       },
       openHistory:()=>{
         // Android lists saved chats in Settings; elsewhere the connection panel holds them.

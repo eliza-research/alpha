@@ -24,6 +24,7 @@ final class AlphaNotificationChannels {
   {"eliza_updates",null,"Routine notices from Alpha."},
   {"eliza_quiet",null,"Low-priority notices from Alpha. Shown without sound."},
   // The shared reminder store names this channel after the older one plus " (due)"; it is the one in use.
+  {AlphaReminders.CONFIGURATION.channelId,"Reminders (not used)","Kept so your earlier sound and alert choices carry over. Reminder alerts use Reminders."},
   {AlphaReminders.CONFIGURATION.dueChannelId(),"Reminders","Reminders you set on this phone. Android may delay them."},
  };
  /** Safe to repeat: a channel whose name and description already match is left alone. */

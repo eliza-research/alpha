@@ -11,9 +11,9 @@ public final class AlphaReminders {
  public static final ReminderConfiguration CONFIGURATION = new ReminderConfiguration(
   "alpha-reminder-envelope-v1", "alpha-local-reminders-v1", "reminder-taps:v1",
   // The shared store keeps this older channel so earlier sound and alert choices carry over, and
-  // posts on its "-due" channel. AlphaNotificationChannels names that one "Reminders"; the ID is unchanged.
-  "alpha-local-reminders", "Reminders (not used)",
-  "Kept so your earlier sound and alert choices carry over. Reminder alerts use Reminders.",
+  // posts on its "-due" channel. AlphaNotificationChannels renames both; the IDs are unchanged.
+  "alpha-local-reminders", "Reminders",
+  "Reminders you set on this phone. Android may delay them.",
   "Alpha Phone reminder", "ai.alphacompute.alphaphone.REMIND",
   "ai.alphacompute.alphaphone.REMINDER_DECISION", "ai.alphacompute.alphaphone.OPEN_REMINDER",
   "alpha-reminder:", "alpha-reminder-decision:", "alpha-reminder-tap:",

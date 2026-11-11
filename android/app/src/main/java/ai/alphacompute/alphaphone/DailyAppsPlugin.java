@@ -57,7 +57,7 @@ public class DailyAppsPlugin extends ai.eliza.plugins.reminders.ReminderPlugin {
  /** Capacitor's own permission request launches through the activity; see {@link LateLaunch}. */
  @Override @PluginMethod public void requestPermissions(PluginCall call){LateLaunch.ask(call,()->super.requestPermissions(call));}
  /** The shared reminder plugin asks for the notification permission inside this method; see {@link LateLaunch}. */
- @Override @PluginMethod public void scheduleReminder(PluginCall call){LateLaunch.ask(call,()->super.scheduleReminder(call));}
+ @Override @PluginMethod public void scheduleReminder(PluginCall call){LateLaunch.ask(call,()->{super.scheduleReminder(call);AlphaNotificationChannels.describe(getContext());});}
  @PluginMethod public void surfaceInfo(PluginCall call) {
   JSObject value = new JSObject(); value.put("assistant", getActivity() instanceof AlphaAssistActivity); value.put("developmentBuild", BuildConfig.ELIZA_DEV_ALLOW_TEST_MOCKS);
   addReminderCapabilities(value);
