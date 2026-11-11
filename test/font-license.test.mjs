@@ -17,6 +17,7 @@ import {FONT_BLOCKER, FONT_FLAG, FONT_HELD_FLAG, RESOLVED_BY_OWNER_STATEMENT, fo
 import {UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, classifyLicence} from '../scripts/licence-policy.ts';
 import {releaseBlockers} from '../scripts/release-blockers.ts';
 import {releaseDistributable} from '../scripts/release-distributable.ts';
+import {cloudVoiceAdmission, CLOUD_VOICE_CHECKS} from '../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs';
 
 const DENTON = 'apps/app/public/denton-300.woff2';
 const dentonBytes = fs.readFileSync(path.join(ROOT, DENTON));
@@ -178,14 +179,21 @@ test('verify-apks records licence flags and keeps font blockers and private QA o
   // Flags are recorded per APK and printed; they are not part of the distributable expression or of any failure.
   assert.match(source, /licenceFlags = licenceFlagRecords\(entries\);/);
   assert.match(source, /for \(const line of flagLines\) console\.warn\(line\);/);
-  const distributable = /const releaseReady = [\s\S]*?row\.distributable = [^;]+;/.exec(source)[0];
-  const admits = new Function('cloudEvidence', 'testMocks', 'row', 'runtime', 'cloudVoiceBlockers', 'updateChannel', 'releaseDistributable',
-    `${distributable}\nreturn row.distributable;`);
-  const row = {signed: true, releaseAdmission: {signerMatches: true, blockers: [], failures: []},
+  const distributable = /const cartesia = [\s\S]*?row\.distributable = [^;]+;/.exec(source)[0];
+  const admits = new Function('cloudEvidence', 'cloudEvidenceSha256', 'testMocks', 'row', 'runtime',
+    'cloudVoiceAdmission', 'updateChannel', 'releaseDistributable', `${distributable}\nreturn row.distributable;`);
+  const apkSha256 = 'a'.repeat(64);
+  const row = {sha256: apkSha256, signed: true, releaseAdmission: {signerMatches: true, blockers: [], failures: []},
     runtimeNotices: true, voiceHost: {packaged: true, asr: true, qualified: true}, licenceBlockers: []};
+  const checks = Object.fromEntries(CLOUD_VOICE_CHECKS.map(name => [name, true]));
   // One runtime profile. Optional Cloud voice evidence, when supplied, must also pass.
-  for (const [evidence, blockers, admitted] of [[undefined, ['unused'], true], [{supplied: true}, [], true], [{supplied: true}, ['Cloud voice qualification did not pass'], false]]) {
-    const check = (facts, kind) => admits(evidence, false, {...facts}, {distributable: true}, () => blockers, {kind}, releaseDistributable);
+  for (const outcome of [undefined, 'passed', 'failed']) {
+    const evidence = outcome && {format: 'cloud-voice-qualification-v1',
+      results: [{apkSha256, outcome, provider: 'cartesia', checks}]};
+    const evidenceSha256 = evidence && 'b'.repeat(64);
+    const check = (facts, kind) => admits(evidence, evidenceSha256, false, {...facts}, {distributable: true},
+      cloudVoiceAdmission, {kind}, releaseDistributable);
+    const admitted = outcome !== 'failed';
     assert.equal(check(row, 'public'), admitted);
     assert.equal(check(row, 'private-qa'), false, 'private QA is never distributable');
     assert.equal(check({...row, licenceBlockers: ['unresolved-font-licence']}, 'public'), false);
