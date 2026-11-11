@@ -45,7 +45,7 @@ jobs:
           bun-version: "1.4.2"
       - run: npm ci
       - name: Install browser for source-refinement checks
-        run: npx playwright install --with-deps chromium
+        run: bash scripts/ci/install-playwright-browser.sh chromium
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -167,7 +167,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: bash scripts/ci/install-playwright-browser.sh chromium
       - name: Browser MVP on the flag-on development server
         env:
           # Development shards opt into test mocks, fixtures and device controls explicitly.
@@ -207,7 +207,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: bash scripts/ci/install-playwright-browser.sh chromium
       - name: Check composed source transitions against Quint
         run: |
           npm run upstream:prepare-client
@@ -282,7 +282,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: bash scripts/ci/install-playwright-browser.sh ${{ matrix.browser }}
       - name: Provide an audio server for Firefox recording
         if: matrix.browser == 'firefox'
         run: |
