@@ -114,7 +114,7 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
  assert.equal(pins.get('google-github-actions/auth'),'7c6bc770dae815cd3e89ee6cdf493a5fab2cc093');
  assert.deepEqual([...pins.keys()].filter(name=>!name.startsWith('actions/')).sort(),['android-actions/setup-android','google-github-actions/auth','gradle/actions/setup-gradle','oven-sh/setup-bun','reactivecircus/android-emulator-runner'],'a new third-party action needs its own review');
  // Only the manually admitted, release-environment publisher can write release assets.
- // It and protected Cloud signing can request OIDC identity. All other jobs stay read-only.
+ // It and protected Cloud/OS signing can request OIDC identity. All other jobs stay read-only.
  // Image references remain prohibited.
  for(const file of files){
   const text=read(path.join('.github/workflows',file));assert.doesNotMatch(text,/\bdocker:\/\//,file);
@@ -133,6 +133,20 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
    assert.equal(sign.needs,'admit');
    assert.equal(sign.if,"needs.admit.result == 'success' && needs.admit.outputs.plan_sha256 != '' && inputs.workflow_commit == github.sha");
    assert.deepEqual(signing.concurrency,{group:'release-signing','cancel-in-progress':false});
+   continue;
+  }
+  if(file==='release-os-ota-signing.yml'){
+   const signing=parseYaml(text);
+   assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['id-token'],
+     'OS signing may request identity, never write repository contents');
+   assert.deepEqual(signing.permissions,{});
+   assert.deepEqual(Object.keys(signing.on),['workflow_dispatch']);
+   assert.deepEqual(Object.keys(signing.jobs),['sign']);
+   const sign=signing.jobs.sign;
+   assert.deepEqual(sign.permissions,{contents:'read','id-token':'write'});
+   assert.equal(sign.environment,'release');
+   assert.equal(sign.if,"github.repository == 'eliza-research/alphaphone' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+   assert.deepEqual(signing.concurrency,{group:'preserving-os-ota-signing','cancel-in-progress':false});
    continue;
   }
   if(file!=='publish-qualified-app-update.yml'){assert.doesNotMatch(text,/^\s+[a-z-]+: write\s*$/m,`${file} grants a write permission`);continue;}

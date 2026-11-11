@@ -117,8 +117,8 @@ test("the renderer asks on Android only, says so before any speech route or exce
     const disclosure = note.querySelector('.settings-sr-only');
     assert.equal(disclosure?.textContent, '{{browser.readingNote}}', 'the full shared refusal remains available to assistive technology');
     assert.equal(disclosure.closest('[aria-hidden="true"]'), null);
-    assert.equal(note.querySelector('svg')?.getAttribute('aria-hidden'), 'true');
-    assert.equal(note.querySelector('span[aria-hidden="true"]')?.textContent, 'Read aloud');
+    assert.equal(note.querySelector('svg')?.closest('[aria-hidden="true"]')?.getAttribute('aria-hidden'), 'true', 'the decorative mark stays outside the accessibility tree');
+    assert.equal([...note.querySelectorAll(':scope > span[aria-hidden="true"]')].find(span => !span.querySelector('svg'))?.textContent, 'Read aloud', 'the separate visual label retains its exact copy and stays hidden from assistive technology');
   } finally { dom.window.close(); }
 });
 
