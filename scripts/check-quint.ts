@@ -2,7 +2,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, readJson, repositoryRoot, runQuintChecker, sha256, type CheckerResult, type QuintModel } from './quint-lib.ts';
+import { detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, sha256, type CheckerResult, type QuintModel } from './quint-lib.ts';
 
 const args = process.argv.slice(2);
 const commands = ['check', 'typecheck', 'test', 'simulate', 'verify', 'temporal', 'compare'] as const;
@@ -26,13 +26,15 @@ const timeoutSeconds = positiveInteger('timeout', checking ? 1800 : 120);
 const seed = value('seed', '20261107');
 const overrides = Object.fromEntries(['samples', 'steps', 'seed'].filter(name => value(name) !== undefined)
   .map(name => [name, name === 'seed' ? value(name) : positiveInteger(name)]));
-const backend = value('backend', ['compare', 'temporal'].includes(command) ? 'tlc' : 'apalache');
+const backendOption = value('backend');
 const serverEndpoint = value('server-endpoint', '127.0.0.1:8845');
-if (!['apalache', 'tlc'].includes(backend)) throw Error('Verification backend must be apalache or tlc');
+if (backendOption !== undefined && backendOption !== 'apalache' && backendOption !== 'tlc') throw Error('Verification backend must be apalache or tlc');
 const allModels = loadModels();
 const requested = value('models', '').split(',').filter(Boolean);
 for (const name of requested) if (!allModels.some(model => model.module === name)) throw Error(`Unknown model ${name}`);
 const models = requested.length ? allModels.filter(model => requested.includes(model.module)) : allModels;
+const backends = new Set(models.map(model => quintProofBackend(model, command, backendOption)));
+const receiptBackend = backends.size > 1 ? 'mixed' : backends.values().next().value ?? quintProofBackend({}, command, backendOption);
 if (command === 'temporal' && !models.some(model => model.temporal?.length)) throw Error('Selected models declare no temporal checks');
 if (command === 'compare' && !models.some(model => model.currentChecks?.length || model.currentTemporalChecks?.length || model.expectedViolations?.length)) throw Error('Selected models declare no current-design comparisons');
 const cli = join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js');
@@ -45,6 +47,7 @@ const inputHashes = Object.fromEntries(inputPaths.map(path => [path, sha256(read
 type CheckEvidence = {
   model: string;
   phase: string;
+  backend?: string;
   expected: string;
   passed: boolean;
   exitCode: number | null;
@@ -80,14 +83,18 @@ type Receipt = {
   passed?: boolean;
   status?: string;
 };
+const proofEvidence = {
+  tlc: 'finite-state model checking', apalache: 'bounded symbolic model checking',
+  mixed: 'finite-state and bounded symbolic model checking',
+};
 const receipt: Receipt = { schemaVersion: 1, startedAt: new Date().toISOString(), command, quintVersion: version,
-  evidence: checking ? (backend === 'tlc' ? 'finite-state model checking' : 'bounded symbolic model checking') : {
+  evidence: checking ? proofEvidence[receiptBackend] : {
     verify: undefined, temporal: undefined, compare: undefined,
     check: 'typecheck, scenarios and sampled simulation',
     typecheck: 'typechecking', test: 'scenario execution', simulate: 'sampled simulation',
   }[command],
   inputHashes, samples, steps, seed, modelOptions: Object.fromEntries(models.map(model => [model.module, quintModelOptions(model, command, overrides)])),
-  backend, timeoutSeconds, results: [] };
+  backend: receiptBackend, timeoutSeconds, results: [] };
 const receiptPath = resolve(repositoryRoot, value('out', `test-results/quint/${command}.json`));
 mkdirSync(dirname(receiptPath), { recursive: true });
 writeFileSync(receiptPath, `${JSON.stringify({ ...receipt, status: 'running', passed: false }, null, 2)}\n`);
@@ -152,7 +159,8 @@ async function run(model: QuintModel, phase: string, options: string[], expected
   const completed = Number.isInteger(result.status) && !result.signal && !result.error;
   const missingScenarios = phase === 'scenarios' ? missingQuintScenarios(model.tests, output) : [];
   const passed = !modelChanged && completed && !missingScenarios.length && (expected === 'violation' ? result.status !== 0 && violation : result.status === 0);
-  receipt.results.push({ model: model.module, phase, expected, passed, exitCode: result.status,
+  const backend = options[0] === 'verify' ? options.find(option => option.startsWith('--backend='))?.slice('--backend='.length) : undefined;
+  receipt.results.push({ model: model.module, phase, backend, expected, passed, exitCode: result.status,
     startedAt, finishedAt: new Date().toISOString(), signal: result.signal, interruptedAttempt,
     error: modelChanged ? 'Model changed while its checker was running' : result.error?.message,
     argv: options, modelSha256, missingScenarios, output });
@@ -170,6 +178,7 @@ async function run(model: QuintModel, phase: string, options: string[], expected
 try {
   for (const model of models) {
     const {samples, steps, seed} = quintModelOptions(model, command, overrides);
+    const backend = quintProofBackend(model, command, backendOption);
     if (command === 'typecheck' && !await run(model, 'typecheck', ['typecheck', model.path])) continue;
     if (['check', 'test'].includes(command) && !await run(model, 'scenarios', ['test', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, '--max-samples=1', `--match=^(${model.tests.join('|')})$`])) continue;
     if (['check', 'simulate'].includes(command)) {
@@ -181,7 +190,7 @@ try {
       }
     }
     if (command === 'verify') {
-      await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+      await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, backend === 'tlc' ? '--verbosity=5' : '--verbosity=1']);
       if (model.additionalProofInit) await run(model, `${backend}-additional-init`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, '--max-steps=1', `--init=${model.additionalProofInit}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
     }
     if (command === 'temporal' && model.temporal?.length) {

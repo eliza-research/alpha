@@ -43,6 +43,7 @@ const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', 
 const modelFamilies = ['application', 'services', 'native', 'legacy'] as const;
 type ModelFamily = (typeof modelFamilies)[number];
 type ExpectedCheck = 'pass' | 'violation';
+export type QuintProofBackend = 'apalache' | 'tlc';
 interface ModelCheck {
   init: string;
   step: string;
@@ -61,6 +62,7 @@ interface ModelDefinition {
   init: string;
   step: string;
   invariant: string;
+  verifyBackend?: QuintProofBackend;
   tests: string[];
   sources?: string[];
   sharedSources?: string[];
@@ -186,7 +188,16 @@ export function quintModelOptions(model: ModelDefinition, command: string = 'che
   };
 }
 
+export function quintProofBackend(model: Pick<ModelDefinition, 'verifyBackend'>, command: string, override?: QuintProofBackend): QuintProofBackend {
+  if (override) return override;
+  if (command === 'temporal' || command === 'compare') return 'tlc';
+  return command === 'verify' ? model.verifyBackend ?? 'apalache' : 'apalache';
+}
+
 export function validateQuintModelMetadata(model: ModelDefinition, text: string) {
+  if (model.verifyBackend !== undefined && model.verifyBackend !== 'apalache' && model.verifyBackend !== 'tlc') {
+    throw Error(`Invalid verifyBackend in ${model.module}`);
+  }
   for (const test of model.tests) if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(test)) throw Error(`Invalid scenario ${model.module}.${test}`);
   if (new Set(model.tests).size !== model.tests.length) throw Error(`Duplicate scenarios in ${model.module}`);
   for (const key of ['maxSamples', 'maxSteps', 'maxVerifyDepth'] as const) {

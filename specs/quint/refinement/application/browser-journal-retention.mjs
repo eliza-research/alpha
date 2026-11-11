@@ -19,6 +19,10 @@ const phases = ['queued', 'paused', 'dispatching', 'unknown', 'permission-requir
 const list = count => Array.from({length: count}, (_, index) => index);
 const row = (definite, at) => ({acknowledged: definite, ...(at === undefined ? {} : {at})});
 const deletion = (id, phase, createdElapsed) => ({id, phase, deadline: {createdElapsed}});
+const timestamp = millis => {
+  const days = Math.floor(millis / day);
+  return {day: days, millis: millis - days * day};
+};
 
 function recorder(name, initial, {creation = false} = {}) {
   const ids = new Map();
@@ -28,13 +32,13 @@ function recorder(name, initial, {creation = false} = {}) {
   };
   const observe = (data, now = wall) => {
     const receipts = Object.entries((creation ? data.creations : data.receipts) ?? {}).map(([key, value]) => ({
-      id: id(key), at: value.at ?? 0, dated: value.at !== undefined, definite: creation ? value.acknowledged : true,
+      id: id(key), at: timestamp(value.at ?? 0), dated: value.at !== undefined, definite: creation ? value.acknowledged : true,
     }));
     const deletions = Object.entries(data.deletions ?? {}).map(([key, value]) => {
       assert.equal(key, value.id);
       return {id: id(key), elapsed: value.deadline.createdElapsed, phase: value.phase};
     });
-    return {'s.receipts': receipts, 's.deletions': deletions, 's.claims': qset(Object.keys(data.deleteClaims ?? {}).map(id)), 's.now': now};
+    return {'s.receipts': receipts, 's.deletions': deletions, 's.claims': qset(Object.keys(data.deleteClaims ?? {}).map(id)), 's.now': timestamp(now)};
   };
   const expect = observe(initial);
   const trace = {name, init: action('initFor', expect['s.receipts'], expect['s.deletions'], expect['s.claims']), expect, steps: []};
@@ -265,7 +269,7 @@ export async function checkBrowserJournalRetention(extraSources = []) {
     }
   }
   const receipt = await checkTraces({model, traces, sources: inputs, driverHashes, batchSize: 3, scope: 'bounded-orchestration', assumptions: [
-    'Exact receipt and terminal cutoff neighborhoods use ordered concrete entries. Opaque IDs preserve Object.entries identity and enumeration order; explicit clock values preserve age and elapsed comparisons.',
+    'Exact receipt and terminal cutoff neighborhoods use ordered concrete entries. Opaque IDs preserve Object.entries identity and enumeration order. UTC day plus within-day milliseconds preserves exact wall time, and elapsed clocks are unchanged.',
     'Real retain/trim functions execute directly. Real BrowserCalendar, BrowserDaily and BrowserDomainDocument also execute over a controlled document/review/notification port; source binding covers the journal owner files, selected contracts and fixture.',
     'The write checkpoints combine trim and append where the caller commits them together. Deletion settlement, polling, actual providers, malformed documents and arbitrary browser transaction schedules are separate obligations.',
   ]});
