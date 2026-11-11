@@ -22,8 +22,10 @@ module StoppedReplyReconciliation {
   // the "look later" notice in place of the check it cancelled.
   pure def settled(st: State, dispatched: bool): State = { ...st, sending: false, retiredPending: false,
     notice: if (not(dispatched) and st.retiredPending) LoadLater else st.notice }
-  action sendStart = all { not(s.sending),
+  action sendStart = all { not(s.sending), not(s.operation),
     s' = { ...retired(s), sending: true, retiredPending: s.notice.in(Set("pending", "cancelled-pending")) } }
+  // The connection operation refuses the new send before it can retire the old check.
+  action busySendRefused = all { s.operation, s' = s }
   action sendSettled(dispatched: bool): bool = all { s.sending, s' = settled(s, dispatched) }
   // Stop after the message was dispatched. Resident agents are also asked to abort the turn.
   action sendStopped(dispatched: bool, withCancel: bool): bool = all { s.sending, s.schedules < 3,
@@ -55,7 +57,7 @@ module StoppedReplyReconciliation {
     nondet flag = Set(false, true).oneOf()
     nondet other = Set(false, true).oneOf()
     nondet kind = Set("error", "unrecorded", "unfinished", "finished").oneOf()
-    any { sendStart, sendSettled(flag), sendStopped(flag, other), restoredAfterConnect, cancelOutcome(flag), timerFires,
+    any { sendStart, busySendRefused, sendSettled(flag), sendStopped(flag, other), restoredAfterConnect, cancelOutcome(flag), timerFires,
       readSettles(kind), operationStart, operationEnd, explicitReload, agentChanged, s' = s }
   }
 
@@ -86,17 +88,25 @@ module StoppedReplyReconciliation {
   run newSendRetiresCheckTest = stoppedSetup.then(sendStart)
     .expect(s.check == "none" and s.notice == "none" and s.sending and safety)
     .then(sendSettled(true)).expect(s.reads == 0 and s.historyRevision == 0 and s.cancelAttempt == "none" and s.notice == "none" and safety)
+  run newSendRetiresReadTest = stoppedSetup.then(cancelOutcome(true)).then(timerFires).then(sendStart)
+    .expect(s.sending and s.reads == 1 and s.check == "none" and s.notice == "none" and safety)
+    .then(sendSettled(true)).expect(s.historyRevision == 0 and s.notice == "none" and safety)
   // The new message never reached the agent, so nothing replaces the check it retired: the notice
   // says the stopped reply was not checked.
   run refusedSendAfterStopSaysUncheckedTest = stoppedSetup.then(cancelOutcome(true)).then(sendStart)
     .expect(s.notice == "none" and s.retiredPending).then(sendSettled(false))
     .expect(s.notice == LoadLater and s.check == "none" and s.reads == 0 and safety)
-  run busyAtTimerSkipsReadTest = stoppedSetup.then(cancelOutcome(false)).then(operationStart).then(timerFires)
+  run busyAtTimerSkipsReadTest = stoppedSetup.then(cancelOutcome(false)).then(operationStart).then(busySendRefused)
+    .expect(s.check == "scheduled" and s.notice == "pending" and safety).then(timerFires)
     .expect(s.notice == LoadLater and s.reads == 0 and s.check == "none" and safety)
   run operationDuringReadKeepsChatTest = stoppedSetup.then(cancelOutcome(true)).then(timerFires).then(operationStart)
     .then(readSettles("finished")).expect(s.notice == LoadLater and s.historyRevision == 0 and safety)
   run laterStopClearsEarlierConfirmationTest = stoppedSetup.then(cancelOutcome(true)).then(timerFires)
-    .then(readSettles("unfinished")).then(sendStart).then(sendStopped(true, false))
+    .then(readSettles("unfinished")).then(restoredAfterConnect)
     .expect(s.message == "none" and s.notice == "pending" and not(s.cancelled) and safety)
     .then(timerFires).then(readSettles("unfinished")).expect(s.notice == LoadLater and s.message == "none" and safety)
+  run historyReadFailureTest = stoppedSetup.then(cancelOutcome(true)).then(timerFires).then(readSettles("error"))
+    .expect(s.notice == LoadLater and s.message == "none" and s.reads == 1 and safety)
+  run unrecordedTurnTest = stoppedSetup.then(cancelOutcome(true)).then(timerFires).then(readSettles("unrecorded"))
+    .expect(s.notice == "not-recorded" and s.message == "none" and s.reads == 1 and safety)
 }

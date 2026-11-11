@@ -1,5 +1,6 @@
 package ai.alphacompute.alphaphone;
 
+import android.os.Build;
 import android.os.Bundle;
 import ai.eliza.plugins.system.SenseListenerClient;
 
@@ -9,7 +10,8 @@ public final class AlphaPowerVoiceActivity extends AlphaAssistActivity {
  @Override public void onCreate(Bundle state) {
   // Mint before the first bridge loads, only for this fresh protected Activity. A restored
   // instance never inherits approval. Missing admission or microphone permission is surface-only.
-  if(state==null){
+  if(state==null && Build.VERSION.SDK_INT>=Build.VERSION_CODES.UPSIDE_DOWN_CAKE
+    && AlphaSenseAdmission.protectedPowerCaller(this,getLaunchedFromPackage(),getLaunchedFromUid())){
    AlphaLocalAgentPlugin.PowerLaunchPin pin=AlphaLocalAgentPlugin.capturePowerLaunchPin(this);
    if(pin!=null)new SenseListenerClient(this).beginProtectedPowerLaunch(pin);
   }

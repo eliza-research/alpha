@@ -50,9 +50,15 @@ test('production RRO targets the prebuilt app overlayable and cannot be a develo
  assert.match(fs.readFileSync(path.join(dir,'product.mk'),'utf8'),/PRODUCT_PACKAGES \+= AlphaImageCapabilityOverlay\n/);
  const defaults=fs.readFileSync('android/app/src/main/res/values/aosp-capabilities.xml','utf8');assert.equal(assertAlphaProvisioningDefault(defaults),true);
  assert.throws(()=>assertAlphaProvisioningDefault(defaults.replace('>false<','>true<')),/default to false/);
- const stage=fs.readFileSync('scripts/stage-aosp.ts','utf8');assert.ok(stage.indexOf('if (!physical) writeAospCapabilityOverlay(output')>stage.indexOf('if (production) {'));
+ const stage=fs.readFileSync('scripts/stage-aosp.ts','utf8');
+ assert.match(stage, /if \(production \|\| senseActivation\) \{[\s\S]+?if \(!physical \|\| !production\) writeAospCapabilityOverlay\(output, identity\.appId\)/);
  // The shared Pixel 10a composition writes the same overlay from Alpha's product, with Alpha's installed identifiers.
  const product=JSON.parse(fs.readFileSync('android/aosp/pixel10a-composition.json','utf8'));
  assert.deepEqual(product.launcher.imageProvisioning,{...ALPHA_IMAGE_PROVISIONING});
  assert.throws(()=>writeAospCapabilityOverlay(dir,'bad"target'),/Invalid/);
+});
+
+test('the renderer capability uses the owning native Sense admission decision',()=>{
+ const adapter=fs.readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDeviceAppsPlugin.java','utf8');
+ assert.match(adapter,/platformCapabilities\(PluginCall call\)\{[\s\S]+?result\.put\("sense",AlphaSenseAdmission\.available\(getContext\(\)\)\)/);
 });

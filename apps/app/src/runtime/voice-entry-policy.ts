@@ -1,2 +1,2 @@
-/** P-78: voice capture is entered from the conversation only. Keep deferred entry code dormant. */
+/** Prototype side-key and development entries stay disabled. Android image entry uses native Sense. */
 export const externalVoiceInvocationEnabled = false;
