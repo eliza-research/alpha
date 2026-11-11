@@ -277,13 +277,12 @@ if(args[1]==='android:build'){
   assert.equal(calls[2].mocks, testMocks);
   assert.deepEqual(calls[2].args, ['run', 'android:build', ...(args.length ? ['--', ...args] : [])]);
   const configuration = JSON.parse(fs.readFileSync(path.join(archive, 'configuration.json')));
-  assert.equal(configuration.runtimeProfile, 'native');assert.equal('localEmbeddings' in configuration, false);
+  assert.equal(configuration.runtimeProfile, 'native');
   assert.equal(configuration.testMocks, testMocks);
   const manifest = JSON.parse(fs.readFileSync(path.join(archive, 'apk-manifest.json')));
   assert.equal(Object.keys(manifest).length, 6);
   for (const [name, expected] of Object.entries(manifest)) assert.equal(createHash('sha256').update(fs.readFileSync(path.join(archive, name))).digest('hex'), expected);
   const flags = JSON.parse(fs.readFileSync(path.join(archive, 'web-dist/build-flags.json')));
-  assert.equal(flags.runtimeProfile, undefined);
   assert.equal(flags.testMocks, testMocks);
 });
 

@@ -146,7 +146,7 @@ const buildRecord: BuildRecord = JSON.parse(fs.readFileSync(buildRecordFile, "ut
 const updateChannel=validateUpdateChannel(buildRecord?.updateChannel);
 if(updateChannel.kind==='public'&&updateChannel.manifestUrlSha256!==createHash('sha256').update(identity.updateManifestUrl).digest('hex'))throw Error('Public update channel differs from source configuration');
 if(updateChannel.kind==='private-qa'&&(testMocks||allowUnpackaged))throw Error('Private update QA requires a complete packaged build with test mocks off');
-if((buildRecord?.runtimeProfile||"native")!==runtimeProfile||buildRecord?.localEmbeddings!==undefined)throw Error("Build record names a removed runtime profile; rebuild (there is one profile now)");
+if((buildRecord?.runtimeProfile||"native")!==runtimeProfile||buildRecord?.localEmbeddings!==undefined)throw Error("Build record is not a native-profile build record; rebuild");
 if (buildRecord && buildRecord.testMocks !== testMocks)
   throw new Error(`${buildRecordFile} records testMocks=${buildRecord.testMocks}; refusing to verify it as testMocks=${testMocks}`);
 
