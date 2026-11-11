@@ -12,6 +12,8 @@ module UpdateActivationComponent {
   export NativeUpdateActivation.requestStop
   export NativeUpdateActivation.handOff
   export NativeUpdateActivation.failPreparation
+  export NativeUpdateActivation.clearActive
+  export NativeUpdateActivation.clearReceipt
   export NativeUpdateActivation.settle
   export NativeUpdateActivation.continueConfirmation
 }
@@ -124,10 +126,33 @@ module NativeUpdateComposition {
     Pause::s.evidence.confirmed,
     Activation::requestStop, Pause::requestStop, keepAdmission
   }
+  // Automatic consent is sampled again at the durable commit boundary.
   action markCommitting = all {
     Activation::s.stopRequested,
     not(Pause::s.record.committing),
+    not(admission.automatic) or admission.platform.consent,
     Pause::committing(Activation::s.active), keepActivation, keepAdmission
+  }
+  // This checkpoint represents an observed abandonment and confirmed journal/lease release.
+  // The pause model separately covers uncertain or interrupted recovery.
+  action cancelRevokedAutomatic = {
+    val active = Activation::s.active
+    val owner = Activation::s.preparedOwner
+    val eligible = Activation::s.prepared == active and
+      Activation::s.preparedEligible.contains(owner) and Activation::s.registered.contains(owner)
+    val released = Pause::settle({...Pause::s, liveOwner: 0,
+      evidence: {...Pause::s.evidence, session: "absent"}})
+    all {
+      admission.automatic, not(admission.platform.consent),
+      Activation::s.stopRequested, active != 0,
+      Pause::s.record.id == active, Pause::s.liveOwner == active,
+      not(Pause::s.record.committing),
+      released.outcome == "released",
+      Pause::s' = released,
+      Activation::s' = {...Activation::clearReceipt(Activation::clearActive(Activation::s), active),
+        terminal: active, outcome: "canceled", resumeBridge: if (eligible) owner else 0},
+      keepAdmission
+    }
   }
   action handOff = all {
     Pause::s.record.committing,
@@ -193,7 +218,7 @@ module NativeUpdateComposition {
     nondet vote = Set("yes", "no").oneOf()
     nondet eligibility = Set("absent", "eligible").oneOf()
     acknowledge(bridge, Activation::s.active, bridge, vote, eligibility),
-    observeAbandonedStage, refuse, sealAcquire, requestConfirmedStop, markCommitting, handOff,
+    observeAbandonedStage, refuse, sealAcquire, requestConfirmedStop, markCommitting, cancelRevokedAutomatic, handOff,
     observeSession("sealed", false), observeSession("absent", false),
     denySync(true), denySync(false), reconcileHeld,
     all {keepActivation, keepPause, keepAdmission}
@@ -233,6 +258,19 @@ module NativeUpdateComposition {
   run manualColdBootStillUsesExactBarrierTest = init.then(reboot(31, true)).then(register(1)).then(begin(1))
     .then(acknowledge(1, 1, 1, "yes", "absent")).then(sealAcquire)
     .expect(safety and not(admission.automatic) and automaticCapability == "starting")
+  action stoppedWithRevokedConsent = register(1).then(beginAutomatic(1))
+    .then(acknowledge(1, 1, 1, "yes", "eligible")).then(sealAcquire).then(requestConfirmedStop)
+    .then(consent(false))
+  run revokedAutomaticCannotMarkCommittingTest = init.then(stoppedWithRevokedConsent)
+    .then(markCommitting.fail())
+  run revokedAutomaticConsentAbandonsBeforeCommitTest = init.then(stoppedWithRevokedConsent)
+    .then(cancelRevokedAutomatic)
+    .expect(safety and Pause::s.file == "empty" and Pause::s.releases == 1 and not(Pause::LeaseRetained)
+      and Activation::s.commits == 0 and Activation::s.outcome == "canceled" and resumeAudience == 1)
+  run lateConsentChangeDoesNotGateExplicitManualCommitTest = init.then(register(1)).then(begin(1))
+    .then(acknowledge(1, 1, 1, "yes", "eligible")).then(sealAcquire).then(requestConfirmedStop)
+    .then(consent(false)).then(markCommitting).then(handOff)
+    .expect(safety and not(admission.automatic) and Activation::s.commits == 1)
   run processReplacementPreservesWarmBootTest = init.then(processRestart).then(register(1)).then(beginAutomatic(1))
     .expect(safety and admission.platform.process == 2 and admission.platform.uptime == 35000
       and admission.automatic and Activation::s.active == 1)

@@ -7,7 +7,7 @@ import {checkNativeUpdateComposition} from '../specs/quint/refinement/native/upd
 test('native readiness, durable pause and resident lease compose through exact update settlement', {timeout: 900000}, async () => {
   const {receipt, skipped} = await checkNativeUpdateComposition([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.passed, true);
-  assert.equal(receipt.traces + skipped.length, 7);
-  assert.ok(receipt.traces >= 6);
+  assert.equal(receipt.traces + skipped.length, 8);
+  assert.ok(receipt.traces >= 7);
   if (skipped.length) assert.equal(skipped[0].mode, 'ambiguous-terminal-sync');
 });
