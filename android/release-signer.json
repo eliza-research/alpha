@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Reviewed version 55 restores the retained-history entry under General and preserves the existing app identity, stored data and signature-protected receiver permission.",
+  "description": "Reviewed version 56 restores keyboard Start after reopening while preserving the existing app identity, retained data and approved signing lineage.",
   "signerSha256": "edbfcacb1da689008bf4e7d675176c302decf83161a877eb8b1de4ffae0445ed",
   "lastRelease": {
     "versionCode": null,
@@ -11,33 +11,33 @@
     "schema": 1,
     "approval": "approved",
     "fromVersionCode": 49,
-    "versionCode": 55,
+    "versionCode": 56,
     "previousSignerSha256": "0438dccb2d5e83fc2ad1ab11cbb882f837d97c4aee7cba72af9229c39b149b80",
     "lineageSha256": "bca212509a83e8f2e60d2b9b744b1e0a4a014b780be058dcf81ff88a5d593759",
     "apksignerSha256": "b47549e373b895ce6ca620d0c7887e674d9615ffa837a86ac601dcfd04adb0f0",
     "verifierJarSha256": "3716d9311e55d2b0918a2fd9d54ba9e406c5f6abeea700b287f11259bc163dec",
     "unsignedApkSHA256": {
-      "standalone": "90f1d987e42b9aae4b19eaa163b3bb2b8ea6d12f50a113e67a3ce932ec2ba7a5",
-      "launcher": "5b4e1b78221628607279ecd02d5009ad7bdedc9ffe22ba092071c0d3a70fa5c8"
+      "standalone": "0a5ddb0d5d9754da700d05e330fa657154207665eb67e429c1d97d2ab76ab548",
+      "launcher": "333db9fb42250d4ac2a85c04d5377b3c7eb175d8484ed0c8634a5a50fa5f75e2"
     },
     "preserveSignaturePermissions": true
   },
   "privateProducerApproval": {
     "approval": "approved",
-    "alphaCommit": "f01991c7528698b38349900e6e5d0c416ad8e3e8",
+    "alphaCommit": "b7995a6ec2fb0e2c33e0a0718df8bc4a15319b85",
     "sdkCommit": "30ee5ba3445237d6ae6e82d698794521f169d267",
-    "versionCode": 55,
+    "versionCode": 56,
     "updateChannel": {
       "kind": "public",
       "manifestUrlSha256": "8e54b15a945c0fe1fd18bca9b4f4389249c5260bd72c912bccb6cd98e10308db"
     },
-    "archiveBytes": 633668272,
-    "archiveSHA256": "d3d5a7243739cc7d81633c20f5842f79cea5d6c7d2101e7c4d3122979d3eaf19",
-    "producerManifestSHA256": "f2076a1386dcee1c42396ec2fa8189d86ca40fb4436b89b92f2228859651a81d",
-    "privateProducerReceiptSHA256": "350e86c3f5233a1b2f4aebfec56fc6f91b0e0a3bb829fb42c2f98e899081ad94",
+    "archiveBytes": 633668096,
+    "archiveSHA256": "ed2889b43c1bb8e2f0ce34617cc16963168ea588681a5003c698e8fef77de7ea",
+    "producerManifestSHA256": "f5985916644e048d92e54f8f09de6f8b3718942628cd96edead0727ed716dbbb",
+    "privateProducerReceiptSHA256": "b2241f01ced59b679b6134f3a6a88cacfa59bd380aa8ce40f721cee11b3b1d24",
     "unsignedApkSHA256": {
-      "standalone": "90f1d987e42b9aae4b19eaa163b3bb2b8ea6d12f50a113e67a3ce932ec2ba7a5",
-      "launcher": "5b4e1b78221628607279ecd02d5009ad7bdedc9ffe22ba092071c0d3a70fa5c8"
+      "standalone": "0a5ddb0d5d9754da700d05e330fa657154207665eb67e429c1d97d2ab76ab548",
+      "launcher": "333db9fb42250d4ac2a85c04d5377b3c7eb175d8484ed0c8634a5a50fa5f75e2"
     }
   }
 }
