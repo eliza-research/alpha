@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Committed release-signer descriptor. scripts/verify-apks.ts marks a release distributable only when it is signed by this certificate (apksigner SHA-256 digest) and its versionCode is greater than lastRelease.versionCode. 'unset' until the release keys exist; no key material or password belongs here. The version 45 rotation is pending independent review of its producer artifacts. Its retained hashes do not authorize rotation signing.",
+  "description": "Reviewed release signer for the retained Alpha Phone package. Version 51 admits the exact private Cloud producer and the installed-data signing lineage from the existing version 49 pilot.",
   "signerSha256": "edbfcacb1da689008bf4e7d675176c302decf83161a877eb8b1de4ffae0445ed",
   "lastRelease": {
     "versionCode": null,
@@ -9,16 +9,34 @@
   },
   "apkSigningRotation": {
     "schema": 1,
-    "approval": "pending",
-    "fromVersionCode": 44,
-    "versionCode": 45,
+    "approval": "approved",
+    "fromVersionCode": 49,
+    "versionCode": 51,
     "previousSignerSha256": "0438dccb2d5e83fc2ad1ab11cbb882f837d97c4aee7cba72af9229c39b149b80",
     "lineageSha256": "08dd573a8ca1f02e5f714a2d30ed6285be36e8a4af83d973f7dd75b939891146",
     "apksignerSha256": "b47549e373b895ce6ca620d0c7887e674d9615ffa837a86ac601dcfd04adb0f0",
     "verifierJarSha256": "3716d9311e55d2b0918a2fd9d54ba9e406c5f6abeea700b287f11259bc163dec",
     "unsignedApkSHA256": {
-      "standalone": "918664b0a08c6b7fd5cd54067c5cb1de60d79718fd6029dda25844101b980692",
-      "launcher": "a2a7baaa2a8bf535dc1f3d62d48077ee077dd2f7aa86497072839bc723d6fd99"
+      "standalone": "039ad2e6998786e00381dc7210532db70a2cf57fe7736631ccefbbf5401dc1fe",
+      "launcher": "249a1843278d6d65a9aef22194de690761d837a161cb34eabd6332001dafbe8b"
+    }
+  },
+  "privateProducerApproval": {
+    "approval": "approved",
+    "alphaCommit": "09275166dca2de838ba06b1e921fb0b304762238",
+    "sdkCommit": "b89f0e711bb93fbd8414a034985ebbbda73b618c",
+    "versionCode": 51,
+    "updateChannel": {
+      "kind": "public",
+      "manifestUrlSha256": "8e54b15a945c0fe1fd18bca9b4f4389249c5260bd72c912bccb6cd98e10308db"
+    },
+    "archiveBytes": 633639252,
+    "archiveSHA256": "ce1c46d6f9cdb8f3a94b298d480a00c09a625427729ffcf14edea97c07326893",
+    "producerManifestSHA256": "2634aac585de16219577f232e12b5e1f1625dc5af6ece3ecb3ad56284254c89a",
+    "privateProducerReceiptSHA256": "bf694032c6a29c108b5cae29c5ffe08446cf046d0b2403f1efe758892c31af23",
+    "unsignedApkSHA256": {
+      "standalone": "039ad2e6998786e00381dc7210532db70a2cf57fe7736631ccefbbf5401dc1fe",
+      "launcher": "249a1843278d6d65a9aef22194de690761d837a161cb34eabd6332001dafbe8b"
     }
   }
 }
