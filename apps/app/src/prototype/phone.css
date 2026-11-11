@@ -505,8 +505,13 @@ html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > [data-alpha-maps-
 .alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif { font-size:24px!important; overflow-wrap:anywhere; }
 .alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits:has(details[open]) { z-index:6; }
 .alpha-landscape [data-alpha-maps-guidance="true"] .alpha-map-info {
-  top:calc(100% + 8px); left:0; bottom:auto; width:min(300px,calc(100vw - 92px)); max-height:160px;
+  top:auto; left:0; bottom:calc(100% + 8px); width:min(300px,calc(100vw - 92px)); max-height:160px;
   box-sizing:border-box; overflow:auto;
+}
+/* Wrapped non-Google credits fill the space above guidance; open below that
+   row so the request disclosure cannot slide behind the global Back control. */
+.alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits:not([data-google-maps="true"]) .alpha-map-info {
+  top:calc(100% + 8px); bottom:auto;
 }
 
 /* Keep portrait capture controls above the assistant on short windows. */
