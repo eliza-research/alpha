@@ -103,10 +103,11 @@ async function fixture(compiled, saved) {
     button.click();
   }
   async function drive(action) {
-    const previous = p.accessChanges.length;
+    const previous = p.accessWrites.length;
     await p.act(action);
-    for (const change of p.accessChanges.slice(previous)) {
-      assert.deepEqual({...change}, {calendarEdits: true});
+    for (const change of p.accessWrites.slice(previous)) {
+      assert.equal(change.agentCalendarEdits, true);
+      assert.equal(change.agentGmailChanges, true);
       const read = readOf(observe().read);
       assert.ok(read, 'Each observed native access save belongs to a current verified read');
       saves.push(read);

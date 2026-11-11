@@ -104,6 +104,13 @@ async function reset(browser) {
       hostCalls.push(job.id);
       return job.host.promise;
     },
+    async publishAccess(target) {
+      if (!browser || !inspect().linking) return;
+      demand(target?.credentialId === cloud.credentialId && target.current(),
+        'Publication is bound to the current Cloud credential');
+      const result = await this.browserCall('residentGoogleCalendarAccess', target.credentialId, true);
+      if (result.calendarEdits !== true) throw Error('Fixture host refused Calendar access');
+    },
     link(scope, rows, signal) {
       demand(scope.current() && scope.calendar === identity().calendar, 'Link helper needs the exact current intent');
       const verified = inspect().read?.rows;
@@ -118,7 +125,6 @@ async function reset(browser) {
       demand(change.calendarEdits && guard.current() && guard.expectedCalendarEdits && guard.receipt.revision === accessRevision,
         'Current fixture permission receipt authorizes the exact requested edit flag');
       accessRevision++;
-      window.dispatchEvent(new Event('alpha:device-settings'));
     },
   };
 

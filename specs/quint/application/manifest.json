@@ -2790,17 +2790,17 @@
     "step": "step",
     "invariant": "safety",
     "tests": [
-      "pickerBackThenFormBackKeepsDraftTest",
-      "closeInvalidFormKeepsTheLastValidCopyTest",
-      "declinedDiscardThenConsumedDraftUnblocksSettingsTest",
-      "editBackKeepsItsEventDetailTest",
-      "exactRetainedEditBlocksSameOrDifferentEventTest",
-      "replacedOwnerCannotResumeOldVisibleDraftTest"
+      "closeAndReopenKeepsDraftTest",
+      "invalidInputKeepsLastValidCopyTest",
+      "eventDraftsRemainIndependentTest",
+      "newAndExistingDraftsRemainSeparateTest",
+      "returningToCalendarResumesDraftTest",
+      "ownerReplacementKeepsSeparateDraftTest"
     ],
     "invariants": [
       "ExactDraftOwner",
-      "NoClosedValidationLatch",
-      "PickerBelongsToEditor"
+      "SavedDraftOwner",
+      "NoClosedValidationLatch"
     ],
     "sources": [
       "apps/app/src/prototype/canonical-calendar-drafts.ts",
@@ -2812,8 +2812,8 @@
       "apps/app/src/runtime/assistant-draft-store.ts"
     ],
     "abstractions": [
-      "Mounted Calendar picker and editor Back, exact detail and draft identity, deliberate discard and owner retirement, and Settings scope after discard.",
-      "Two owners, two synthetic service event targets and four form identities. Actual IndexedDB over a closed Calendar record transport. Provider saves and other draft destinations are separate."
+      "Mounted Calendar Back and header close, automatic per-event draft restoration, separate new-event edits and owner retirement. Removed picker and manual draft controls are absent.",
+      "Two owners, two synthetic service event targets plus the new-event slot, and up to six form identities. Actual IndexedDB over a closed Calendar read transport. Provider saves, deletion and conflict recovery are separate."
     ]
   },
   {

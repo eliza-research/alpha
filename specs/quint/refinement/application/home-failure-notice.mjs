@@ -44,8 +44,9 @@ async function compile(extraSources) {
 async function fixture(compiled, pinNative) {
   const document = Object.assign(new EventTarget(), {hidden: false, querySelector: () => null});
   const module = {exports: {}}, port = {};
-  new Function('require', 'module', 'exports', '__port', 'document', 'window', compiled.code)(
-    createRequire(import.meta.url), module, module.exports, port, document, new EventTarget());
+  new Function('require', 'module', 'exports', '__port', 'document', 'window', 'requestAnimationFrame', compiled.code)(
+    createRequire(import.meta.url), module, module.exports, port, document, new EventTarget(),
+    callback => {queueMicrotask(callback);return 0;});
   const {installHomeShell} = module.exports;
   const ids = new WeakMap(), notices = [], events = [];
   let listId = 0, recording = false, listFails = false, launchFailure, holdLaunch, saveFails = false;

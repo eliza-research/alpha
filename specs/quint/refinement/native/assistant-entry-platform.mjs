@@ -34,7 +34,15 @@ export function assistantEntryPlatform() {
     for(const name of ['android/app/KeyguardManager.java','android/os/SystemClock.java','android/os/Bundle.java',
       'android/net/Uri.java','android/content/pm/ApplicationInfo.java','android/content/pm/ActivityInfo.java'])
       put(name,sense[name]);
-    put('android/content/ComponentName.java',sense['android/content/ComponentName.java'].replace('public ComponentName(String','public ComponentName(){this("","");}public ComponentName(String'));
+    put('android/content/ComponentName.java',sense['android/content/ComponentName.java'].replace('public ComponentName(String',
+      'public ComponentName(){this("","");}public ComponentName(Context context,Class<?> type){this(context.getPackageName(),type.getName());}public static ComponentName unflattenFromString(String value){throw new AssertionError("No selected keyboard in assistant entry fixture");}public ComponentName(String'));
+    put('android/provider/Settings.java',`package android.provider;
+public final class Settings {public static final class Secure {
+ public static final String DEFAULT_INPUT_METHOD="default_input_method";
+ public static String getString(android.content.ContentResolver resolver,String key){return null;}
+}}`);
+    put('ai/elizaresearch/alphaphone/AlphaKeyboardDictationService.java',
+      'package ai.elizaresearch.alphaphone; public final class AlphaKeyboardDictationService {}');
     put('android/content/ContentResolver.java',`package android.content;
 public final class ContentResolver {
  public android.os.Bundle call(android.net.Uri uri,String name,String arg,android.os.Bundle extras){throw new AssertionError("Provider is outside assistant entry");}
@@ -115,6 +123,7 @@ public record Icon(int id) {public static Icon createWithResource(android.conten
   public boolean copyLoadIntent;
   public String getLaunchedFromPackage(){return launchedFrom;}
   public void onPause(){}
+  public void onStop(){}
   public void onNewIntent(android.content.Intent intent,android.app.ComponentCaller caller){onNewIntent(intent);}`);
     edit(activity,'    onNewIntent(getIntent());',`    ai.elizaresearch.alphaphone.AssistantEntryTraces.beforeBridgeReentry(this);
     onNewIntent(copyLoadIntent ? new android.content.Intent(getIntent()) : getIntent());`);

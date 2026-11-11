@@ -30,7 +30,7 @@ const virtual = {
     export function openConnectionBrowser(...args){return globalThis.googleLinkPorts.openBrowser(...args)}`,
   './cloud-protocol': "export function cloudServiceName(){return 'Fixture Cloud'}",
   './google-agent-access': `export function googleAgentAccess(){return {calendarEdits:true,gmailChanges:false}}
-    export async function publishGoogleAgentAccess(){}
+    export async function publishGoogleAgentAccess(target){return globalThis.googleLinkPorts.publishAccess(target)}
     export function captureGoogleCalendarAccess(...args){return globalThis.googleLinkPorts.captureAccess(...args)}
     export function setGoogleAgentAccess(...args){return globalThis.googleLinkPorts.saveAccess(...args)}`,
   './browser-cloud-resident': `export let browserCloudResidentEnabled=false;
@@ -129,6 +129,6 @@ export async function checkGoogleCalendarLinkPublication(extraSources = []) {
     scope: 'bounded-orchestration', batchSize: 15, assumptions: [
       'Mounts the actual GoogleConnectionsPanel and return watcher in Chromium. Exact account-read, browser-host and link ports hold independent synthetic replies.',
       'Three Cloud bindings, four intents, six account reads and five link attempts. One current and retired attempt can settle in either order. The driver observes actual refs, intent review, busy flags, notice and real inert state.',
-      'The mounted campaign uses a known-on Calendar access receipt and controlled OAuth/browser and provider ports. Access persistence, actual Calendar control, provider effects and disconnect remain separate.',
+      'The mounted campaign uses a known-on Calendar access receipt and controlled OAuth/browser and provider ports. The settings port does not emit cross-view change events. Access persistence and its serialized background publication, actual Calendar control, provider effects and disconnect remain separate.',
     ]}));
 }
