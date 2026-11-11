@@ -196,6 +196,15 @@ public class StorageProbe {
             self.assertIn('mode == android.app.AppOpsManager.MODE_DEFAULT',permission)
             self.assertIn('Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())',permission)
             self.assertIn('UserHandle.SYSTEM, new android.content.IntentFilter',permission)
+            constructor=permission.split('DefaultPermissionGrantPolicy(@NonNull Context context) {',1)[1].split('public void setLocationPackagesProvider',1)[0]
+            self.assertNotIn('registerReceiverAsUser',constructor)
+            self.assertNotIn('registerAlphaStorageBootReceiver',constructor)
+            ready=permission.split('public void scheduleReadDefaultPermissionExceptions() {',1)[1].split('private void grantPermissionsToSysComponentsAndPrivApps',1)[0]
+            self.assertIn('registerAlphaStorageBootReceiver();',ready)
+            grants=permission.split('public void grantDefaultPermissions(int userId) {',1)[1].split('private synchronized void registerAlphaStorageBootReceiver',1)[0]
+            self.assertIn('registerAlphaStorageBootReceiver();',grants)
+            self.assertIn('if (mAlphaStorageReceiverRegistered) return;',permission)
+            self.assertIn('mHandler.sendEmptyMessage(MSG_READ_DEFAULT_PERMISSION_EXCEPTIONS)',ready)
             self.assertNotIn('MANAGE_APP_OPS_MODES',permission)
             with self.assertRaises(subprocess.CalledProcessError):
                 subprocess.run(['git','apply','--check',str(patch)],cwd=d,check=True,capture_output=True)
