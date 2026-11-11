@@ -420,7 +420,7 @@ registerView("phone", {
     var lines = sc.lines.slice(0, st.aiN || 0).map(function (l) { return { who: l[0] === "you" ? "You" : themName, text: l[1], css: l[0] === "you" ? "color:var(--alpha-gray-8f)" : "color:var(--alpha-white)" }; }).slice(-5);
     var ctrl = function (key, d, label, on, extra) {
       return { d: d, label: label, on: !!on, css: on ? (key === "ai" ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--alpha-white);color:var(--alpha-black)") : "background:rgba(255,255,255,.12);color:var(--alpha-white)", glyph: key === "ai", icon: key !== "ai",
-        toggle: function () { var s = api.get("phone"); var p = {}; p[key] = !s[key]; if (key === "ai" && p.ai) p.kp = false; api.set(p); if (key === "ai" && p.ai) api.toast(api.name + " is taking notes"); } };
+        toggle: function () { var s = api.get("phone"); var p = {}; p[key] = !s[key]; if (key === "ai" && p.ai) p.kp = false; api.set(p); if (testMocksEnabled && key === "ai" && p.ai) api.toast(api.name + " is taking notes"); } };
     };
     var controls = inCall ? [
       ctrl("mute", IC.phoneMute, st.mute ? "Unmute" : "Mute", st.mute),
@@ -1929,8 +1929,10 @@ function camStopRec(api) {
 function camRecLabel(st) { var sec = Math.max(0, Math.floor((Date.now() - st.recAt) / 1000)); return Math.floor(sec / 60) + ":" + pad2(sec % 60); }
 function camDescribe(st) {
   var cc = copy("camera");
-  if (st.front) return cc.describeFront || "Scene description is not connected.";
-  return cc.describeBack || "Scene description is not connected.";
+  // Scripted fixture answer only; the product camera question goes through the reviewed capture flow.
+  var none = testMocksEnabled ? "Scene description is not connected." : "";
+  if (st.front) return cc.describeFront || none;
+  return cc.describeBack || none;
 }
 
 registerView("camera", {
@@ -3172,7 +3174,7 @@ registerView("notes", {
       NT.pend = true;
       // The Notes recorder is installed by the voice adapter, which consumes `record` first; only a
       // fixture preview without it gets here.
-      setTimeout(function () { NT.pend = false; var s = api.get("notes"); if (s.record) { api.set({ record: false }); api.toast("Recording isn’t available in this preview."); } else if (s.compose) notesNew(api, "text"); }, 0);
+      setTimeout(function () { NT.pend = false; var s = api.get("notes"); if (s.record) { api.set({ record: false }); if (testMocksEnabled) api.toast("Recording isn’t available in this preview."); } else if (s.compose) notesNew(api, "text"); }, 0);
     }
     var list = st.list || [];
     /* One-column list (PLAN.md section 3, decision N3): the selected folder chip, then the agent's
@@ -4908,7 +4910,7 @@ registerView("settings", {
       }) }] });
       } else p1 = page("Connections", { groups: [] });
     } else if (P === "privacy") {
-      var logN = ST_LOG.length + (api.get("browser").booked && BR_LINKS.venue ? 1 : 0);
+      var logN = ST_LOG.length + (testMocksEnabled && api.get("browser").booked && BR_LINKS.venue ? 1 : 0);
       p1 = page("Privacy & data", {
         hero: { kBig: true, hasIcon: true, d: IC.shield, iconCss: "background:var(--acc);color:var(--alpha-white)", big: "Redaction on", sub: "Identifiers replaced before hosted requests" },
         groups: [
@@ -5098,7 +5100,7 @@ registerView("settings", {
         return stTog({ d: IC[ap[2]] || IC.grid, label: ap[1], aria: ap[1] + " " + pm[1].toLowerCase() }, on, function () { var ps = Object.assign({}, api.get("settings").perms); var one = Object.assign({}, ps[pm[0]]); one[ap[0]] = !on; ps[pm[0]] = one; set({ perms: ps }); });
       }) }] });
     } else if (P === "privacy" && st.log) {
-      var lg = ST_LOG.slice(); if (api.get("browser").booked && BR_LINKS.venue) lg.unshift(["now", "Booked " + BR_LINKS.venue + " for you (confirmed)", "globe"]);
+      var lg = ST_LOG.slice(); if (testMocksEnabled && api.get("browser").booked && BR_LINKS.venue) lg.unshift(["now", "Booked " + BR_LINKS.venue + " for you (confirmed)", "globe"]);
       p2 = page("Activity", { back: function () { set({ log: false }); }, groups: [
         { rows: lg.map(function (l) { return stNav({ d: IC[l[2]] || IC.check, label: l[1], val: l[0], noChev: true, go: function () {} }); }) }
       ] });
@@ -5691,7 +5693,7 @@ class Component extends DCLogic {
     if (S.q.mic === false) return this.toast("Listening is off in quick settings");
     // The typed-out phrase and spoken answer are a scripted demo (VOICE); without
     // it there is no simulated listening. Live voice adapters replace this method.
-    if (!VOICE) return this.toast("Voice input is not connected");
+    if (!VOICE) { if (testMocksEnabled) this.toast("Voice input is not connected"); return; }
     this.clear("v"); clearInterval(this.vI);
     var locked = S.screen === "off" || S.screen === "lock";
     var m = S.view ? this.mod(S.view) : null;

@@ -1229,6 +1229,8 @@
         "pausedNotificationCanResumeTest",
         "staleToggleCannotChangeNewRecordingTest",
         "staleStartPreservesCurrentOwnerTest",
+        "notificationStopKeepsRecordingForNotesTest",
+        "staleNotificationStopCannotStopNewRecordingTest",
         "pendingStartRejectsFallbackStopTest",
         "resumedRecordingRejectsLateCloseTest"
       ],

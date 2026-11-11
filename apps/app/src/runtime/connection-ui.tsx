@@ -2341,7 +2341,7 @@ export const connectionController = {
   },
   async syncWorkflowPhoneReceipts(review:WorkflowPhoneReview,signal:AbortSignal){
     const selected=active,generation=epoch;
-    if(!selected||!selected.actions||state.open||document.hidden)throw new Error('Open this workflow to reconcile its phone receipts');
+    if(!selected||!selected.actions||state.open||document.hidden)throw new Error('Open this workflow to finish updating its history');
     await selected.actions.syncReceipts(signal,{runId:review.runId,versionId:review.versionId,specDigest:review.specDigest});signal.throwIfAborted();if(generation!==epoch||state.open||document.hidden)throw new Error('Workflow agent changed');
   },
   async actionReceipt(proposalId: string, sessionId: string | undefined): Promise<OperationReceipt | null> {

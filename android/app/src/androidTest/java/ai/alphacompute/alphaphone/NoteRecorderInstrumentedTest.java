@@ -43,12 +43,12 @@ public class NoteRecorderInstrumentedTest {
   JSObject paused=new JSObject();paused.put("state","paused");paused.put("recordingId",UUID.randomUUID().toString());paused.put("durationMs",90_000);
   android.app.Notification p=AlphaNoteRecordingService.notification(context(),paused);
   assertEquals("Paused",p.extras.getCharSequence(android.app.Notification.EXTRA_TITLE).toString());
-  assertEquals("Resume",p.actions[0].title.toString());
+  assertEquals("Resume",p.actions[0].title.toString());assertEquals("Stop",p.actions[1].title.toString());
   assertFalse("no running chronometer while paused",p.extras.getBoolean(android.app.Notification.EXTRA_SHOW_CHRONOMETER));
   JSObject recording=new JSObject();recording.put("state","recording");recording.put("recordingId",paused.getString("recordingId"));recording.put("durationMs",90_000);
   long now=System.currentTimeMillis();android.app.Notification r=AlphaNoteRecordingService.notification(context(),recording);
   assertEquals("Recording",r.extras.getCharSequence(android.app.Notification.EXTRA_TITLE).toString());
-  assertEquals("Pause",r.actions[0].title.toString());
+  assertEquals("Pause",r.actions[0].title.toString());assertEquals("Stop",r.actions[1].title.toString());
   assertTrue(r.extras.getBoolean(android.app.Notification.EXTRA_SHOW_CHRONOMETER));
   assertEquals("the chronometer counts the recording's length, not the time since resume",now-90_000,r.when,2000);
  }

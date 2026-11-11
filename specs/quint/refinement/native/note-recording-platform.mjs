@@ -174,7 +174,8 @@ public class Service extends android.content.Context {
     'android/app/Notification.java':`package android.app;
 public class Notification {
   public static final String CATEGORY_SERVICE="service";
-  public String title,toggle;
+  public static final int VISIBILITY_PUBLIC=1;
+  public String title,toggle,stop,text;
   public long when;
   public boolean chronometer;
   public static final class Action {
@@ -194,7 +195,9 @@ public class Notification {
     public Builder setOngoing(boolean enabled){return this;}
     public Builder setOnlyAlertOnce(boolean enabled){return this;}
     public Builder setCategory(String category){return this;}
-    public Builder addAction(Action action){value.toggle=action.title;return this;}
+    public Builder setContentText(String text){value.text=text;return this;}
+    public Builder setVisibility(int visibility){return this;}
+    public Builder addAction(Action action){if(value.toggle==null)value.toggle=action.title;else value.stop=action.title;return this;}
     public Builder setShowWhen(boolean enabled){return this;}
     public Builder setUsesChronometer(boolean enabled){value.chronometer=enabled;return this;}
     public Builder setWhen(long when){value.when=when;return this;}
@@ -202,7 +205,7 @@ public class Notification {
   }
 }`,
     'android/app/NotificationChannel.java':`package android.app;
-public class NotificationChannel {public final String id;public NotificationChannel(String id,String title,int importance){this.id=id;}public void setShowBadge(boolean enabled){}}`,
+public class NotificationChannel {public final String id;public NotificationChannel(String id,String title,int importance){this.id=id;}public void setShowBadge(boolean enabled){}public void setDescription(String text){}}`,
     'android/app/NotificationManager.java':`package android.app;
 public class NotificationManager {
   public static final int IMPORTANCE_LOW=2;
@@ -219,6 +222,7 @@ public class PendingIntent {
   public static PendingIntent getService(android.content.Context context,int request,android.content.Intent intent,int flags){return new PendingIntent();}
 }`,
     'android/R.java':'package android;public class R {public static class drawable {public static final int ic_btn_speak_now=1;}}',
+    'ai/alphacompute/alphaphone/R.java':'package ai.alphacompute.alphaphone;public class R {public static class drawable {public static final int ic_note_recording=1;}}',
     'ai/alphacompute/alphaphone/MainActivity.java':'package ai.alphacompute.alphaphone;public class MainActivity {}',
   };
   for(const [name,body] of Object.entries(files)){const file=join(directory,name);mkdirSync(dirname(file),{recursive:true});writeFileSync(file,body);}

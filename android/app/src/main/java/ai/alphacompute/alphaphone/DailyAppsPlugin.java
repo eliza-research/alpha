@@ -42,8 +42,11 @@ public class DailyAppsPlugin extends ai.eliza.plugins.reminders.ReminderPlugin {
  @Override public void load() {
   SelectedDocumentAccess.initialize(getContext());
   super.load();
+  AlphaNotificationChannels.describe(getContext());
   openAssistant();
  }
+ /** A channel the shared code created since the last look gets its description on the next return to the app. */
+ @Override protected void handleOnResume(){super.handleOnResume();AlphaNotificationChannels.describe(getContext());}
  @Override protected void handleOnDestroy(){worker.shutdownNow();super.handleOnDestroy();}
  @Override protected void handleOnNewIntent(Intent intent) { super.handleOnNewIntent(intent); openAssistant(); }
  private void openAssistant() {
