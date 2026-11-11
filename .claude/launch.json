@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "alphaphone-production",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "bun",
       "runtimeArgs": [
         "exec",
         "vite",
@@ -19,7 +19,7 @@
     },
     {
       "name": "alphaphone-dev-agent",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "bun",
       "runtimeArgs": [
         "run",
         "dev",
@@ -31,7 +31,7 @@
     },
     {
       "name": "alphaphone-dev-ui",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "bun",
       "runtimeArgs": [
         "run",
         "dev:ui",

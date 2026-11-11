@@ -29,17 +29,25 @@ const binding = {credentialId: '33333333-3333-4333-8333-333333333333', userId, o
   accountRef: JSON.stringify(['cloud', 'production', userId, organizationId]), sessionGeneration: 'synthetic',
   token: 'synthetic-native-cloud-credential'};
 const action = (name, ...args) => ({name, args});
+const liveFs = 'live-node-fs';
+const accessReader = '/packages/app/src/runtime/managed-google-agent/native-google-agent-host.ts';
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 
 async function loadHost(extraSources) {
   const initial = [entry, bridge, writer, fixture, fileURLToPath(import.meta.url),
     'test/fixtures/jvm-tools.mjs', 'specs/quint/refinement/services/support.mjs',
-    'package-lock.json', 'upstream.lock.json', ...extraSources];
+    'bun.lock', 'upstream.lock.json', ...extraSources];
   const initialHashes = captureInputs(initial), compiled = new Map();
   const bundled = await build({absWorkingDir: root, entryPoints: [entry], bundle: true, write: false,
     format: 'esm', platform: 'node', metafile: true,
     define: {'import.meta.env': '{"VITE_ELIZA_DEV_ALLOW_TEST_MOCKS":"0"}'},
     plugins: [{name: 'native-google-host-source', setup(builder) {
+      // Bun binds a named node:fs import once (syncBuiltinESMExports does nothing there), so the host's
+      // openSync is bound through the mutable node:fs object that the overlap schedule instruments.
+      builder.onResolve({filter: /^node:fs$/}, args => args.importer.endsWith(accessReader)
+        ? {path: 'node:fs', namespace: liveFs} : undefined);
+      builder.onLoad({filter: /.*/, namespace: liveFs}, () => ({loader: 'js', resolveDir: root, contents:
+        "import fs from 'node:fs'; export * from 'node:fs'; export const openSync = (...args) => fs.openSync(...args);"}));
       builder.onLoad({filter: /\.(?:[cm]?[jt]sx?|json)$/, namespace: 'file'}, args => {
         const contents = fs.readFileSync(args.path);
         compiled.set(args.path, hash(contents));
@@ -50,7 +58,7 @@ async function loadHost(extraSources) {
     }}],
   });
   for (const path of Object.keys(bundled.metafile.inputs)) {
-    if (path === '<define:import.meta.env>') continue; // Bound by this driver.
+    if (path === '<define:import.meta.env>' || path === liveFs+':node:fs') continue; // Bound by this driver.
     assert.ok(compiled.has(resolve(root, path)), 'Unbound native host module: '+path);
   }
   const sources = [...new Set([...initial, ...compiled.keys()])];

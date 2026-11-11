@@ -1,9 +1,20 @@
-import {phoneWorkflowLocalDay,zoneOffsetMinutes} from '../../../../.eliza/client-features/packages/contracts/src/phone-workflow.ts';
+import {PHONE_SCHEDULE_ADMISSION_WINDOW_MS,phoneWorkflowLocalDay,zoneOffsetMinutes} from '../../../../.eliza/client-features/packages/contracts/src/phone-workflow.ts';
 import {formatSchedule} from '../../../../.eliza/client-features/packages/ui/src/utils/cron-format.ts';
 import {formatDateTime,formatTime,formatMonthDay} from '../prototype/locale-time';
 // Upstream plugin-scheduling/src/scheduled-task/trigger-tz.ts. The prepared
 // browser SDK does not export this scheduling sentinel.
 const OWNER_LOCAL_TZ='owner_local';
+
+export const androidScheduleDelay = 'Keep this phone on. Android may delay scheduled runs.';
+const workflowWindowMinutes = PHONE_SCHEDULE_ADMISSION_WINDOW_MS / 60_000;
+export const phoneScheduleTiming =
+ `${androidScheduleDelay} Runs more than ${workflowWindowMinutes} minutes late are marked missed.`;
+
+/** The pinned agent uses the same window for prompts, with an additional process-start check. */
+export function promptScheduleTiming(timed: boolean): string {
+ if (!timed) return 'Runs while this phone and its agent are on.';
+ return `${androidScheduleDelay} If the agent was stopped at the scheduled time, runs more than ${workflowWindowMinutes} minutes late are marked missed.`;
+}
 
 /** Daily/weekly clock schedules only; never reinterpret monthly or interval cron. */
 export function workflowClockSchedule(expression:string):{time:string;days:number[]}|null{

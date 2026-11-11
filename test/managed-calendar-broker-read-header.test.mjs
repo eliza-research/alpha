@@ -4,11 +4,6 @@ import {spawnSync} from 'node:child_process';
 import {Readable} from 'node:stream';
 import {EventEmitter} from 'node:events';
 
-if(!process.versions.bun&&!process.execArgv.includes('tsx')){
- const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});
- if(child.error)throw child.error;
- process.exit(child.status??1);
-}
 
 const feature='../.eliza/client-features/';
 const managed=feature+'packages/app/src/runtime/managed-google-agent/';

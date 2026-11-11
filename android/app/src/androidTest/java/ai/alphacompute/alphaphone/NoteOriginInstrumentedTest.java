@@ -22,7 +22,7 @@ import static org.junit.Assert.*;
  * AlphaConnectionPlugin (the WP1 allowlist fix); until then the write step fails. Synthetic
  * identifiers only; emulator evidence of the native store, not of the renderer flow.
  *
- *   npm run test:android:instrumentation -- --owned-emulator --avd NAME --serial emulator-NNNN --classes NoteOrigin
+ *   bun run test:android:instrumentation -- --owned-emulator --avd NAME --serial emulator-NNNN --classes NoteOrigin
  */
 @RunWith(AndroidJUnit4.class)
 public class NoteOriginInstrumentedTest {

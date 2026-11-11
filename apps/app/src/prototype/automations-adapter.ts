@@ -1,4 +1,4 @@
-import {workflowClockSchedule,workflowClockExpression,workflowClockContext,workflowSnoozeTime} from '../runtime/workflow-local-time';
+import {workflowClockSchedule,workflowClockExpression,workflowClockContext,workflowSnoozeTime,promptScheduleTiming} from '../runtime/workflow-local-time';
 import {CRON_PRESETS,formatSchedule} from '../../../../.eliza/client-features/packages/ui/src/utils/cron-format.ts';
 import {canSnoozeReminder,reminderDue} from '../../../../.eliza/client-features/packages/ui/src/utils/reminder-presentation';
 import {AUTOMATIONS_COMMITTED_EVENT} from '../runtime/automation-completion';
@@ -34,9 +34,9 @@ const filters=[...FEED_FILTERS.slice(0,4),'schedules',...FEED_FILTERS.slice(4)] 
 type Filter=FeedFilter|'schedules';
 const filterNames:Record<Filter,string>={all:'All',reminders:'Reminders',prompts:'Prompts',workflows:'Workflows',schedules:'Schedules',active:'Active',inactive:'Inactive'};
 const SCHEDULE_INVALID='Pick a time and day';
-/** The same rule typed workflows state. It holds while the agent that runs a schedule is the one on this phone; a
- * connection to an agent elsewhere makes no such claim. */
-const scheduleRule=()=>Capacitor.isNativePlatform()&&(connectionController.getSnapshot() as {kind?:string}).kind==='resident'?'Phone must be on.':'';
+/** This disclosure applies only to the agent that runs on this Android phone. */
+const scheduleRule=(timed:boolean)=>Capacitor.isNativePlatform()&&connectionController.getSnapshot().kind==='resident'?promptScheduleTiming(timed):'';
+const timedPrompt=(row:AutomationRow)=>row.record.schedules.some((entry:Bag)=>['once','cron','interval'].includes(entry.triggerType??entry.kind));
 /** A new automation is saved off; said before saving and again once it is saved. */
 const PROMPT_SAVES_PAUSED='Saves paused. Open it and tap Enable to turn it on.',PROMPT_SAVED_PAUSED='Saved paused. Open it and tap Enable to turn it on.';
 const rowStatus=(row:AutomationRow)=>row.kind==='schedule'&&row.status==='snoozed'?'':(row.kind==='reminder'?({blocked:'Delivery blocked',duplicate:'Duplicate skipped',unknown:'Unknown',unscheduled:'—'} as Record<string,string>)[row.status]:undefined)||(row.status?row.status.charAt(0).toUpperCase()+row.status.slice(1).replaceAll('-',' '):(row.enabled?'Active':'Inactive'));
@@ -142,12 +142,32 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  }
  /** The owner's informed release of an unconfirmed request, after checking the record. Never retries it. */
  async function allowAnother(id:string){
-  if(controller||!id)return;
-  if(!await (releaseReviews??=new BrowserReviews()).confirm('allow-another-automation','Allow another try?','The last request may already have gone through. Trying again could run it twice.','Allow another try',{current:()=>!controller&&!!visible()})||controller)return;
-  const ownerContext=connectionController.getSnapshot().session;if(!ownerContext)return;
-  const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();message='';publish();
-  try{const raw=await intents.read(id,abort.signal);if(raw!==null)await intents.acknowledge(id,raw,abort.signal);if(ticket===epoch)uncertain.delete(id);}
-  catch{if(ticket===epoch)message='Couldn’t release';}
+  const ownerContext=connectionController.getSnapshot().session, boundSessionId=binding()?.sessionId;
+  const selectedEditor=editor,selectedDetail=detail,selected=selectedEditor?.row||selectedDetail;
+  const selectedId=selected?key(selected):selectedEditor?requestKey('new:'+selectedEditor.kind):'';
+  if(!ownerContext||!boundSessionId||!id||id!==selectedId)return;
+  const selectedEpoch=epoch, ownerSessionId=ownerContext.sessionId;
+  const current=()=>!controller&&visible()&&epoch===selectedEpoch&&editor===selectedEditor&&detail===selectedDetail&&
+   connectionController.getSnapshot().session?.sessionId===ownerSessionId&&binding()?.sessionId===boundSessionId;
+  if(!current())return;
+
+  // Read the retained bytes before showing the review. Another surface can replace
+  // this slot while the dialog is open, even when its automation and owner match.
+  const intents=new WorkflowIntentStore(ownerContext);
+  let retained:string|null;
+  try{retained=await intents.read(id);}
+  catch{if(current()){message='Couldn’t release';publish();}return;}
+  if(!current())return;
+  if(!await (releaseReviews??=new BrowserReviews()).confirm('allow-another-automation','Allow another try?',
+   'The last request may already have gone through. Trying again could run it twice.',
+   'Allow another try',{current})||!current())return;
+
+  const ticket=++epoch,abort=controller=new AbortController();message='';publish();
+  try{
+   if(retained!==null)await intents.acknowledge(id,retained,abort.signal);
+   else if(await intents.read(id,abort.signal)!==null)throw Error('Automation request changed');
+   if(ticket===epoch)uncertain.delete(id);
+  }catch{if(ticket===epoch)message='Couldn’t release';}
   finally{if(ticket===epoch){intentStore=intents;controller=null;publish();}}
  }
  function show(row:AutomationRow){
@@ -228,7 +248,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
   return {...workflow,cards,newFlow:()=>{newMore=false;creating=true;detail=null;editor=null;publish();},listToggles:false,automation:{
    filters:filters.map(name=>({name:filterNames[name],selected:name===typeFilter||name===statusFilter&&name!=='all',pick:()=>{if(name==='active'||name==='inactive')statusFilter=name;else typeFilter=name;publish();}})),filterLabel:workflowFilterLabel(typeFilter,statusFilter),itemCount:state==='ready'?`${cards.length} ${cards.length===1?'item':'items'}`:'',openFilters:()=>{dismissFilters();const selectedSession=binding()?.sessionId||'offline';closeFilters=openWorkflowFilters({type:typeFilter,status:statusFilter,current:()=>visible()&&(binding()?.sessionId||'offline')===selectedSession,apply:(type,status)=>{typeFilter=type;statusFilter=status;publish();},refresh:()=>void refresh(),busy:!!controller,closed:()=>{closeFilters=undefined;}});},loading:state==='loading',stale:loadedSession!==null&&loadedSession!==currentSession,empty,emptyLabel:typeFilter==='all'&&statusFilter==='all'?'No workflows yet':'No matches',failed:state==='failed',message,issues,shownIssues,refresh:()=>void refresh(),busy:!!controller,managementCards,history,
    detail:!!(detail||editor||creating),title:creating?'Add to Workflows':editor?editor.kind==='prompt'?(editor.row?'Edit automation':'New automation'):(editor.row?'Edit reminder':'New reminder'):detail?.title||'',close,creating,agentUnavailable:!!controller||!!automationBlock(),newMore,newMoreLabel:newMore?'Fewer options':'More options',toggleNewMore:()=>{newMore=!newMore;publish();},workflowDescription:automationBlock(),promptDescription:automationBlock(),agentReminderUnavailable:!!controller||!!reminderBlock(),agentReminderDescription:reminderBlock(),saveDisabled:!!controller||!!editor&&!!(editor.kind==='reminder'?reminderBlock():automationBlock()),createWorkflow:()=>{if(controller)return;const blocked=automationBlock();if(blocked){message=blocked;publish();return;}creating=false;render(value,current).newFlow();publish();},createPrompt:()=>create('prompt'),createReminder:()=>create('reminder'),createDeviceReminder:newDeviceReminder,
-   editing:!!editor,fields,moreFields,whenFields,promptSaveNote:editor?.row?(editor.row.enabled?'':'Paused'):PROMPT_SAVES_PAUSED,scheduleRule:editor?.kind==='prompt'?scheduleRule():'',promptMore,promptMoreLabel:promptMore?'Fewer options':'More options',togglePromptMore:()=>{promptMore=!promptMore;publish();},whenLabel:editor?.kind==='prompt'?(editor.draft.triggerType==='once'?'Once':editor.draft.triggerType==='cron'?formatSchedule(editor.draft.cron)===editor.draft.cron?'Custom schedule':formatSchedule(editor.draft.cron)||'Schedule':'On an event'):'',scheduleOptions:editor?.kind==='prompt'?[{label:'Once',selected:editor.draft.triggerType==='once',pick:()=>{if(editor?.kind==='prompt'&&!controller){editor.draft.triggerType='once';publish();}}},...CRON_PRESETS.slice(1,4).map(preset=>({label:formatSchedule(editor?.kind==='prompt'&&recurringClock(editor.draft.cron)?presetAt(preset,recurringClock(editor.draft.cron)!.time):preset.expression),selected:editor?.kind==='prompt'&&editor.draft.triggerType==='cron'&&recurringClock(editor.draft.cron)?.preset.expression===preset.expression,pick:()=>{if(editor?.kind==='prompt'&&!controller){const clock=recurringClock(editor.draft.cron);editor.draft.triggerType='cron';editor.draft.cron=clock?presetAt(preset,clock.time):preset.expression;publish();}}}))]:[],save,saveLabel:'Save',prompt:editor?.kind==='prompt',scheduleKinds:['once','cron','event'].map(kind=>({label:kind==='once'?'Once':kind==='cron'?'Recurring':'On event',selected:editor?.kind==='prompt'&&editor.draft.triggerType===kind,pick:()=>{if(editor?.kind==='prompt'&&!controller){editor.draft.triggerType=kind as PromptDraft['triggerType'];if(kind==='cron'&&!editor.draft.cron)editor.draft.cron=CRON_PRESETS[1].expression;publish();}}})),
+   editing:!!editor,fields,moreFields,whenFields,promptSaveNote:editor?.row?(editor.row.enabled?'':'Paused'):PROMPT_SAVES_PAUSED,scheduleRule:editor?.kind==='prompt'?scheduleRule(editor.draft.triggerType!=='event'):'',promptMore,promptMoreLabel:promptMore?'Fewer options':'More options',togglePromptMore:()=>{promptMore=!promptMore;publish();},whenLabel:editor?.kind==='prompt'?(editor.draft.triggerType==='once'?'Once':editor.draft.triggerType==='cron'?formatSchedule(editor.draft.cron)===editor.draft.cron?'Custom schedule':formatSchedule(editor.draft.cron)||'Schedule':'On an event'):'',scheduleOptions:editor?.kind==='prompt'?[{label:'Once',selected:editor.draft.triggerType==='once',pick:()=>{if(editor?.kind==='prompt'&&!controller){editor.draft.triggerType='once';publish();}}},...CRON_PRESETS.slice(1,4).map(preset=>({label:formatSchedule(editor?.kind==='prompt'&&recurringClock(editor.draft.cron)?presetAt(preset,recurringClock(editor.draft.cron)!.time):preset.expression),selected:editor?.kind==='prompt'&&editor.draft.triggerType==='cron'&&recurringClock(editor.draft.cron)?.preset.expression===preset.expression,pick:()=>{if(editor?.kind==='prompt'&&!controller){const clock=recurringClock(editor.draft.cron);editor.draft.triggerType='cron';editor.draft.cron=clock?presetAt(preset,clock.time):preset.expression;publish();}}}))]:[],save,saveLabel:'Save',prompt:editor?.kind==='prompt',scheduleKinds:['once','cron','event'].map(kind=>({label:kind==='once'?'Once':kind==='cron'?'Recurring':'On event',selected:editor?.kind==='prompt'&&editor.draft.triggerType===kind,pick:()=>{if(editor?.kind==='prompt'&&!controller){editor.draft.triggerType=kind as PromptDraft['triggerType'];if(kind==='cron'&&!editor.draft.cron)editor.draft.cron=CRON_PRESETS[1].expression;publish();}}})),
    description:scheduleDraft!==null?'':detail?.description||'',source:scheduled?'':detail?.source||'',schedule:scheduleDraft!==null?'':detail?.kind==='reminder'?(()=>{const due=reminderDue(detail.record as Parameters<typeof reminderDue>[0]);return due?new Date(due).toLocaleString(undefined,{dateStyle:'full',timeStyle:'short'}):'—';})():detail?.schedule||'',status:detail?rowStatus(detail):'',actions:scheduled?[]:shownActions,
    schedulePrimary:scheduled?shownActions.slice(0,1):[],scheduleMore:scheduled&&shownActions.length>1?shownActions.slice(1):null,scheduleInvalid:message===SCHEDULE_INVALID,scheduleInvalidCss:message===SCHEDULE_INVALID?'outline:2px solid var(--alpha-call-red);outline-offset:4px;border-radius:12px':'',
    clockContext:scheduleDraft!==null&&scheduled?workflowClockContext(String(scheduled.record.trigger?.tz||'')):editor?.kind==='prompt'&&editor.draft.triggerType==='cron'?workflowClockContext(editor.draft.timezone):'',
@@ -248,7 +268,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
     const trigger=scheduleClock&&expression!==workflowClockExpression(scheduleClock.time,scheduleClock.days)?{kind:'cron' as const,expression,tz:String(scheduled.record.trigger.tz)}:undefined;
     ask('Save schedule',scheduled,(client,signal)=>client.editSchedule(scheduled.id,instructions,trigger,signal));scheduleDraft=null;publish();},
    locked:selectedLocked||formLocked,allowAnother:()=>void allowAnother(lockId),
-   review:!!review,reviewLabel:review?.label||'',reviewPrompt:`${review?.label||''}?`,reviewDetails:detail?.kind==='reminder'?[detail.title,detail.description,detail.schedule].filter(Boolean).join('\n'):detail?.kind==='prompt'&&review?.label==='Enable'?[detail.schedule,scheduleRule()].filter(Boolean).join('\n'):'',reviewConfirmLabel:review?.label.startsWith('Snooze until ')?'Snooze':`Confirm ${review?.label||''}`,confirm:()=>{const selected=review;if(selected){review=null;void work(selected.run,selected.key);}},cancelReview:()=>{review=null;publish();},
+   review:!!review,reviewLabel:review?.label||'',reviewPrompt:`${review?.label||''}?`,reviewDetails:detail?.kind==='reminder'?[detail.title,detail.description,detail.schedule].filter(Boolean).join('\n'):detail?.kind==='prompt'&&review?.label==='Enable'?[detail.schedule,scheduleRule(timedPrompt(detail))].filter(Boolean).join('\n'):'',reviewConfirmLabel:review?.label.startsWith('Snooze until ')?'Snooze':`Confirm ${review?.label||''}`,confirm:()=>{const selected=review;if(selected){review=null;void work(selected.run,selected.key);}},cancelReview:()=>{review=null;publish();},
   }};
  };
  const mount=p.componentDidMount,unmount=p.componentWillUnmount;

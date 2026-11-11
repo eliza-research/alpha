@@ -7,7 +7,6 @@ import {createServer,request as pageRequest} from 'node:http';
 import {duplexPair} from 'node:stream';
 import {randomUUID} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
-if(!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:30000});process.exit(child.status??1);}
 const {createLocalAgentDevHandler}=await import('../scripts/local-agent-dev-bridge.ts');
 const owner=randomUUID(),root='1'.repeat(64),paired='fixture-private-owner',encoder=new TextEncoder(),decoder=new TextDecoder();
 const event=value=>`data: ${JSON.stringify(value)}\n\n`;

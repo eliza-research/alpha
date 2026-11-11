@@ -36,7 +36,8 @@ test.describe('camera in landscape', () => {
       // The viewfinder keeps the space the controls do not use, and no control sits on another.
       const finder = (await page.locator('[data-alpha-camera="viewfinder"]').boundingBox())!, capture = (await page.locator('[data-alpha-camera="capture"]').boundingBox())!;
       expect(finder.x + finder.width).toBeLessThanOrEqual(capture.x + 1);
-      expect(finder.height).toBeGreaterThan(300);
+      // Mock mode shows the same assistant pill as a live connection, above its extra zoom control.
+      expect(finder.height).toBeGreaterThan(mode === 'mock' ? 290 : 300);
       await page.screenshot({ path: info.outputPath('camera-landscape.png') });
       // Keyboard: the mode switch is reachable and operable without a pointer.
       const video = page.getByRole('button', { name: 'Video mode', exact: true });

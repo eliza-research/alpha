@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 const {browserStartupPermission}=await tsImport(new URL('../apps/app/src/startup-browser-permissions.ts',import.meta.url).href,{parentURL:import.meta.url});
 const {createStartupPermissionFlow}=await tsImport(new URL('../apps/app/src/startup-permission-flow.ts',import.meta.url).href,{parentURL:import.meta.url});
 test('denied browser access never retries a blocked OS prompt',async()=>{

@@ -122,7 +122,7 @@ test('the check rejects a missing pin, a weaker checksum, a trust exception, an 
   assert.match(mutated(t, {[generator]: `${read(generator)}\n// ${MIRROR_PROPERTY}=https://mirror.example/maven2\n`}).join('\n'), /consumer-host\.mjs mentions mavenCentralMirrorUrl/);
   const missing = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-gradle-none-'));
   t.after(() => fs.rmSync(missing, {recursive: true, force: true}));
-  assert.match(checkVerification(missing).problems[0], /verification is off\. Run: npm run android:deps:write-verification/);
+  assert.match(checkVerification(missing).problems[0], /verification is off\. Run: bun run android:deps:write-verification/);
 });
 
 test('every Gradle script of the build declares only reviewed repositories and every reviewed group is in use', () => {
@@ -162,9 +162,9 @@ test('the write command covers every Gradle task the scripts run and is the only
   for (const variant of ['Standalone', 'Launcher'])
     for (const suffix of ['Debug', 'Release', 'DebugAndroidTest']) assert.ok(VERIFIED_TASKS.includes(`:app:assemble${variant}${suffix}`));
   const scripts = JSON.parse(read('package.json')).scripts;
-  assert.equal(scripts['android:deps:check'], 'node scripts/gradle-verification.ts --check');
-  assert.equal(scripts['android:deps:write-verification'], 'node scripts/gradle-verification.ts --write');
-  // verify and the push workflows never write metadata; they only read it (npm test) or let Gradle enforce it.
+  assert.equal(scripts['android:deps:check'], 'bun scripts/gradle-verification.ts --check');
+  assert.equal(scripts['android:deps:write-verification'], 'bun scripts/gradle-verification.ts --write');
+  // verify and the push workflows never write metadata; they only read it (bun run test) or let Gradle enforce it.
   assert.doesNotMatch(scripts.verify + scripts.test, /write-verification|--write/);
   for (const workflow of fs.readdirSync(path.join(ROOT, '.github/workflows'))) assert.doesNotMatch(read(`.github/workflows/${workflow}`), /write-verification|gradle-verification\.ts --write/, workflow);
 });
@@ -185,12 +185,10 @@ test('staged Java-only native patches retain their authenticated dependency desc
 });
 
 
-test('dependency verification has one runtime profile and refuses the removed options', () => {
+test('dependency verification takes one mode and the unpackaged-runtime option', () => {
   assert.deepEqual(parseVerificationArgs(['--write']), {mode:'--write',allowUnpackagedRuntime:false});
   assert.deepEqual(parseVerificationArgs(['--write','--allow-unpackaged-runtime']), {mode:'--write',allowUnpackagedRuntime:true});
   assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check',allowUnpackagedRuntime:false});
-  for (const removed of [['--write','--runtime-profile=cloud'], ['--write','--runtime-profile=other'], ['--write','--local-embeddings'], ['--check','--runtime-profile=native']])
-    assert.throws(() => parseVerificationArgs(removed), /There is one runtime profile now: remove --runtime-profile and --local-embeddings/);
   assert.throws(() => parseVerificationArgs(['--write','--other']), /Usage/);
 });
 

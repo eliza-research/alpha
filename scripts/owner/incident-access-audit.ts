@@ -1,8 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Issue #658 step 2 evidence: who and what can still write to the affected repositories.
  *
- *   node scripts/owner/incident-access-audit.ts [--repo owner/name ...] [--all] [--actor login] [--json]
+ *   bun scripts/owner/incident-access-audit.ts [--repo owner/name ...] [--all] [--actor login] [--json]
  *
  * Per repository: outside collaborators, pending invitations, the actor's effective permission,
  * deploy keys (id, title, read-only flag, dates; never the key material) and webhooks (id,
@@ -141,7 +141,7 @@ function print(repos: readonly RepoAudit[], orgs: readonly OrgAudit[], actor: st
 function main(argv: readonly string[]) {
   let args;
   try { args = parseArgs(argv, {flags: ['--all', '--json'], options: ['--actor'], multi: ['--repo']}); }
-  catch (error) { console.error(`${error instanceof Error ? error.message : String(error)}\nUsage: node scripts/owner/incident-access-audit.ts [--repo owner/name ...] [--all] [--actor login] [--json]`); return 2; }
+  catch (error) { console.error(`${error instanceof Error ? error.message : String(error)}\nUsage: bun scripts/owner/incident-access-audit.ts [--repo owner/name ...] [--all] [--actor login] [--json]`); return 2; }
   const iocs = loadIocs();
   const actor = args.actor ?? iocs.actor;
   const repoNames = args.repo?.length && !args.all ? args.repo : iocs.repositories.map(repo => fullName(iocs, repo));

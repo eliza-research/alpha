@@ -1,10 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-// npm test starts each .mjs without a TypeScript loader; mirror owning runtime tests.
-if(!process.versions.bun&&!process.execArgv.some(value=>value==='tsx'||value==='--import=tsx')){
- const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});
- if(child.error)throw child.error;process.exit(child.status??1);
-}
 const {executionFixture}=await import('./fixtures/workflow-execution-fixture.mjs');
 const settle=async predicate=>{for(let i=0;i<100;i++){if(predicate())return;await new Promise(resolve=>setImmediate(resolve));}throw Error('Bounded fixture did not settle');};
 test('finished manual text result has no device controls and Done closes without a new run',async()=>{const f=await executionFixture();try{const r=await f.openRun();assert.equal(r.phoneAvailable,false);assert.equal(r.phoneSyncAvailable,false);assert.equal(r.showRefresh,false);assert.equal(r.notice,'');assert.equal(r.out,f.run.output);assert.ok(r.log.some(x=>x.t===f.run.id));assert.equal(r.againLabel,'Done');r.again();assert.equal(f.render().runOpen,false);assert.equal(f.requests.filter(x=>x.body!==undefined).length,0);}finally{f.close();}});
@@ -20,5 +15,142 @@ test('actual execution template keeps result visible and technical IDs/history i
  const details=doc.querySelector('details[aria-label="Workflow execution details"]');assert.ok(details);assert.equal(details.hasAttribute('open'),false);assert.match(details.textContent,new RegExp(f.run.id));assert.match(details.textContent,/typed-steps/);assert.match(details.textContent,/Status\s*Finished/);
  assert.equal(doc.querySelector('[aria-label="Workflow phone steps"]'),null);assert.equal(doc.querySelector('[aria-label="Refresh"]'),null);assert.ok(doc.querySelector('button[aria-label="Back to workflow"]'));
  for(const node of doc.querySelectorAll('dd'))assert.equal(node.closest('details'),details);
+ }finally{f.close();}
+});
+
+function receiptTimers(){
+ const timers=new Map();
+ let next=0;
+ return {
+  setTimeout(callback,delay){const id=++next;timers.set(id,{callback,delay});return id;},
+  clearTimeout(id){timers.delete(id);},
+  get delay(){return timers.values().next().value?.delay;},
+  fire(){
+   assert.equal(timers.size,1,'only one receipt refresh may be scheduled');
+   const [id,{callback}]=timers.entries().next().value;
+   timers.delete(id);
+   callback();
+  },
+ };
+}
+
+test('an open receipt backs off unchanged reads and shows exact engine approval and completion without dispatching',async()=>{
+ const timers=receiptTimers();
+ let f,approvalStatus='pending',approveReceiptAvailable=true,overriddenVersion,readFailure=false;
+ const request=(path)=>{
+  if(path.endsWith('/status'))return {engine:'smthrs',status:'ready',approvalReceiptProtocol:1};
+  if(path.endsWith('/approvals')){
+   if(!approveReceiptAvailable)return Promise.reject(Error('Temporary read failure'));
+   const {id:runId,workflowId,workflowVersionId,finished}=f.run;
+   return {runId,workflowId,workflowVersionId,finished,cancellationRequested:false,approvals:[{
+    runId,workflowId,workflowVersionId,nodeId:'review',iteration:0,requestDigest:'a'.repeat(64),
+    status:approvalStatus,title:'Review fixture',summary:'Synthetic arithmetic',operation:'Calculate',
+    target:'Fixture result',account:'Fixture account',supported:true,
+   }]};
+  }
+  if(f&&path.endsWith('/executions/'+f.run.id)){
+   if(readFailure)return Promise.reject(Error('Temporary read failure'));
+   if(overriddenVersion)return {execution:{...f.run,workflowVersionId:overriddenVersion,status:'foreign'}};
+  }
+ };
+ f=await executionFixture({status:'waiting-approval',finished:false,poll:{timers,request}});
+ try{
+  const initial=await f.openRun();
+  assert.equal(timers.delay,2000);
+  initial.approvals[0].approve();
+  assert.equal(f.render().r.approvals[0].approveLabel,'Confirm approve');
+  timers.fire();
+  await settle(()=>timers.delay===4000);
+  assert.equal(f.render().r.approvals[0].approveLabel,'Confirm approve','unchanged approval retains explicit review');
+  overriddenVersion='other-version';
+  timers.fire();
+  await settle(()=>timers.delay===5000);
+  assert.equal(f.render().r.status,'waiting-approval');
+  assert.equal(f.render().r.approvals[0].approveLabel,'Confirm approve');
+  overriddenVersion=undefined;
+  readFailure=true;
+  timers.fire();
+  await settle(()=>timers.delay===5000);
+  assert.equal(f.render().r.status,'waiting-approval');
+  readFailure=false;
+  approvalStatus='denied';
+  timers.fire();
+  await settle(()=>timers.delay===2000);
+  assert.equal(f.render().r.approvals[0].status,'denied');
+  initial.approvals[0].approve();
+  assert.equal(f.render().r.approvals[0].canDecide,false);
+  approveReceiptAvailable=false;
+  Object.assign(f.run,{status:'succeeded',finished:true,output:'Fresh final output'});
+  timers.fire();
+  await settle(()=>f.render().r.status==='succeeded');
+  assert.equal(f.render().r.out,'Fresh final output');
+  assert.equal(f.render().r.againLabel,'Done');
+  assert.equal(f.render().r.approvals[0].status,'denied');
+  assert.equal(timers.delay,undefined);
+  assert.equal(f.requests.filter(row=>row.body!==undefined).length,0);
+  assert.deepEqual(f.storage,{});
+ }finally{f.close();}
+});
+
+test('a manual refresh and owner retirement fence an in-flight automatic read',async()=>{
+ const timers=receiptTimers();
+ let f,held,release,holdNext=false;
+ const request=(path,signal)=>{
+  if(!f||!path.endsWith('/executions/'+f.run.id)||!holdNext)return;
+  holdNext=false;
+  held=signal;
+  return new Promise(resolve=>{release=()=>resolve({execution:{...f.run,status:'old response'}});});
+ };
+ f=await executionFixture({status:'running',finished:false,poll:{timers,request}});
+ try{
+  await f.openRun();
+  holdNext=true;
+  timers.fire();
+  assert.equal(timers.delay,undefined);
+  assert.equal(held.aborted,false);
+  f.render().r.ask();
+  assert.equal(held.aborted,true);
+  await settle(()=>!f.render().r.againDisabled);
+  assert.equal(timers.delay,undefined,'no replacement timer while an aborted read is still settling');
+  release();
+  await settle(()=>timers.delay===2000);
+  assert.equal(f.render().r.status,'running');
+  holdNext=true;
+  timers.fire();
+  f.changeSession();
+  assert.equal(held.aborted,true);
+  release();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.render().runOpen,false);
+  assert.equal(timers.delay,undefined);
+  assert.equal(f.requests.filter(row=>row.body!==undefined).length,0);
+ }finally{f.close();}
+});
+
+test('automatic completion leaves a retained approval intent for explicit receipt reconciliation',async()=>{
+ const timers=receiptTimers();
+ let f;
+ const request=(path)=>{
+  if(path.endsWith('/status'))return {engine:'smthrs',status:'ready',approvalReceiptProtocol:1};
+  if(path.endsWith('/approvals')){
+   const {id:runId,workflowId,workflowVersionId,finished}=f.run;
+   return {runId,workflowId,workflowVersionId,finished,cancellationRequested:false,approvals:[]};
+  }
+ };
+ f=await executionFixture({status:'waiting-approval',finished:false,poll:{timers,request}});
+ const key='alpha.workflow.pending.v1:'+JSON.stringify(['https://agent.invalid','owner','agent',f.run.workflowId])+':approval:'+f.run.id;
+ const retained=JSON.stringify({versionId:f.run.workflowVersionId,nodeId:'review',iteration:0,requestDigest:'a'.repeat(64),approved:true});
+ f.storage[key]=retained;
+ try{
+  await f.openRun();
+  Object.assign(f.run,{status:'succeeded',finished:true});
+  timers.fire();
+  await settle(()=>f.render().r.status==='succeeded');
+  assert.equal(f.storage[key],retained);
+  assert.equal(f.render().r.showRefresh,true);
+  f.render().r.ask();
+  await settle(()=>!f.render().r.againDisabled&&f.storage[key]===undefined);
+  assert.equal(f.render().r.showRefresh,false);
+  assert.equal(f.requests.filter(row=>row.body!==undefined).length,0);
  }finally{f.close();}
 });

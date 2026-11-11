@@ -28,7 +28,7 @@ final class HostedInbox {
 }
 final class HostedResultNotices {static String hash(String value){return value;}}
 `);
-  const session=process.env.ALPHA_RESIDENT_SESSION_SOURCE||nativeSource('ResidentResultSession.java');
+  const session=nativeSource('ResidentResultSession.java');
   execFileSync(javaBinary('javac'),['--release','11','-cp',androidJar,'-sourcepath',dir,'-d',dir,declarations,nativeSource('ResidentResultTransport.java'),session],{stdio:'pipe',timeout:30000});
   assert.ok(fs.existsSync(path.join(dir,'ai/alphacompute/alphaphone/ResidentResultSession.class')));
  }finally{fs.rmSync(dir,{recursive:true,force:true});}

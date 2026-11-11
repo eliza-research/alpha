@@ -9,7 +9,7 @@
  * before every bounded request and before its single save. It never retries a paid request or
  * deletes recording bytes. Only Stop, Discard, low storage or a microphone error end a recording.
  *
- * This module has no imports so its logic runs under `node --test`.
+ * This module has no imports so its logic runs under `bun test`.
  */
 export type NoteSegment = { segmentId: string; durationMs: number; text?: string };
 export type NoteRecordingBinding = { ownerDigest: string; folderId: string | null };

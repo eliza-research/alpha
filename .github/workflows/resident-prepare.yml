@@ -16,42 +16,42 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 70
     env:
-      NODE_OPTIONS: --max-old-space-size=4096
       RUN_TURBO_CONCURRENCY: 1
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
+      # The pinned upstream SDK retains Node-based build tooling.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version-file: .nvmrc
+          node-version: "26.13.0"
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.2
+          bun-version: "1.4.2"
       - run: python3 scripts/ci/test-resident-phase.py
-      - run: python3 scripts/ci/resident-phase.py --name prepare --seconds 3600 npm run agent:prepare
+      - run: python3 scripts/ci/resident-phase.py --name prepare --seconds 3600 bun run agent:prepare
       - name: Verify actual Cloud recording signature classifier
-        run: python3 scripts/ci/resident-phase.py --name cloud-recording-signature --seconds 60 node scripts/check-cloud-recording-signature.ts
+        run: python3 scripts/ci/resident-phase.py --name cloud-recording-signature --seconds 60 bun scripts/check-cloud-recording-signature.ts
       # The rejection test bundles with the product's own esbuild and imports the projected client
-      # features (npm test gets them from its pretest hook), so install the locked product dependencies
+      # features (bun run test gets them from its pretest hook), so install the locked product dependencies
       # as resident-android does and project the client before running the test file directly.
-      - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 npm ci
-      - run: python3 scripts/ci/resident-phase.py --name client-projection --seconds 300 npm run upstream:prepare-client
+      - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 bun install --frozen-lockfile
+      - run: python3 scripts/ci/resident-phase.py --name client-projection --seconds 300 bun run upstream:prepare-client
       - name: Verify managed Calendar rejection against the prepared SDK graph
         env:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
-        run: python3 scripts/ci/resident-phase.py --name calendar-managed-rejection --seconds 120 node --test test/calendar-managed-rejection.test.mjs
+        run: python3 scripts/ci/resident-phase.py --name calendar-managed-rejection --seconds 120 bun test test/calendar-managed-rejection.test.mjs
       - name: Verify digest recovery across independent runtime processes
         env:
           TMPDIR: ${{ github.workspace }}/test-results/digest-restart
         run: |
           mkdir -p "$TMPDIR"
-          python3 scripts/ci/resident-phase.py --name digest-restart --seconds 480 npm run agent:test-digest-restart
+          python3 scripts/ci/resident-phase.py --name digest-restart --seconds 480 bun run agent:test-digest-restart
       # Reuses this job's prepared SDK graph; no Android/Gradle/native build.
       - name: Build the portable worker dependency proof
         run: |
-          python3 scripts/ci/resident-phase.py --name browser-proof-worker --seconds 600 npm run agent:build-workflow-worker
-          node scripts/ci/export-browser-proof.ts worker
+          python3 scripts/ci/resident-phase.py --name browser-proof-worker --seconds 600 bun run agent:build-workflow-worker
+          bun scripts/ci/export-browser-proof.ts worker
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: browser-proof-worker-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}

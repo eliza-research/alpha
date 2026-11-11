@@ -8,7 +8,6 @@ import {createServer,request as pageRequest} from 'node:http';
 import {duplexPair} from 'node:stream';
 import {randomUUID} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
-if(!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:30000});process.exit(child.status??1);}
 const {createLocalAgentDevHandler}=await import('../scripts/local-agent-dev-bridge.ts');
 const owner=randomUUID(),root='1'.repeat(64),paired='fixture-private-owner';
 async function fixture(enabled=true,moderation,direct=false){
@@ -34,7 +33,9 @@ async function fixture(enabled=true,moderation,direct=false){
   // body ignores the request signal, so only the bridge's own cancel (recorded) releases it. A late request answers with a
   // stalled body only after its signal has aborted, as a custom request may.
   const streamed=mode==='stream'||mode==='stall'||mode==='late'?new ReadableStream({start(controller){upstream=controller;if(mode==='stream')signal.addEventListener('abort',()=>controller.error(signal.reason),{once:true});},cancel(reason){cancelled=reason;}}):undefined;
-  return receipt(new Response(streamed??(mode==='large'?new Uint8Array(8*1024*1024+1):direct?wav:new Uint8Array([73,68,51,1])),{headers}));
+  // The oversized clip arrives as one chunk on every runtime (Bun splits a byte-array body), so it is refused before any audio is committed.
+  const oversized=()=>new ReadableStream({start(controller){controller.enqueue(new Uint8Array(8*1024*1024+1));controller.close();}});
+  return receipt(new Response(streamed??(mode==='large'?oversized():direct?wav:new Uint8Array([73,68,51,1])),{headers}));
  };
  const handler=createLocalAgentDevHandler({origin:'http://127.0.0.1:9',tokenFile,request,cloudVoiceEnabled:enabled&&!direct,cartesiaEnabled:enabled&&direct});
  // Each page request keeps the bridge handler's promise, which settles only when the handler returns.

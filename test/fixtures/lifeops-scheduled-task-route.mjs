@@ -25,7 +25,7 @@ const compiled = new Map();
 
 async function compile(configured) {
   const metadata = [fileURLToPath(import.meta.url), join(root, 'upstream.lock.json'),
-    join(root, 'package-lock.json'), join(sdk, 'bun.lock'), join(sdk, 'plugins/plugin-scheduling/package.json')];
+    join(root, 'bun.lock'), join(sdk, 'bun.lock'), join(sdk, 'plugins/plugin-scheduling/package.json')];
   const hashes = Object.fromEntries(metadata.map(path => [path, digest(readFileSync(path))]));
   const pin = JSON.parse(readFileSync(metadata[1], 'utf8')).commit;
   assert.equal(execFileSync('git', ['-C', sdk, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim(), pin);

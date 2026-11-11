@@ -25,7 +25,7 @@ await attempt(()=>p.sources(signal));await attempt(()=>p.loops(signal));
 for(const path of ['sources','loops','sources/revoke','dossier'])await attempt(()=>p.mutate(path,{},signal));
 await attempt(()=>p.results('client',signal));await attempt(()=>p.ack('client',{cursor:1,runId:'run'},signal));
 console.log(JSON.stringify([...new Set(calls)]));`;
-const appCalls=()=>JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
+const appCalls=()=>JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
 
 test('the protocol under test is the whole set of hosted paths the app source names', () => {
   // The app's protocol is the shared upstream client, staged from the pin (scripts/prepare-client-features.ts).

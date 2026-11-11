@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 
 const {checkSignInRefinement} = await tsImport('../specs/quint/legacy/sign-in/check-sign-in-refinement.mjs', import.meta.url);
 

@@ -1,8 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Provision one pilot unit from a verified APK build and write its per-unit record.
  *
- *   node scripts/provision-unit.ts --serial <adb serial> --alias <unit-name> \
+ *   bun scripts/provision-unit.ts --serial <adb serial> --alias <unit-name> \
  *     --apk-manifest artifacts/apk-manifest.json [--variant launcher|standalone] \
  *     [--build release|debug] [--output test-results/pilot-units] [--home-wait-ms 0]
  *

@@ -94,7 +94,7 @@ public static void beforeNotify(String tag,Notification notice){
   check(tag.startsWith(prefix),"Exact redacted renewal tag");
   String key=tag.substring(prefix.length());int id=f.idOf(key);
   check(f.disk().getJSONObject(key).getString("phase").equals("dispatching"),"Notification attempt follows durable dispatch reservation");
-  check(notice.channel.equals("alpha-hosted-results")&&notice.title.equals("Access for your daily brief expires soon")&&
+  check(notice.channel.equals("alpha-hosted-results")&&notice.title.equals("A brief source expires soon")&&
    notice.text.equals("Renew it to keep your brief updated.")&&notice.category.equals("reminder")&&
    notice.visibility==Notification.VISIBILITY_PRIVATE&&notice.icon==1&&notice.onlyOnce&&notice.autoCancel&&notice.timeout==EXPIRY-now&&
    notice.publicNotice.title.equals("Alpha Phone")&&notice.publicNotice.text.equals("Tap to open."),"Redacted notice, timeout and lifecycle flags");

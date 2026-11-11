@@ -1,12 +1,9 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {pathToFileURL} from 'node:url';
-import path from 'node:path';
-const fixtureRoot=process.env.ALPHA_ACK_HOST_ROOT?pathToFileURL(path.resolve(process.env.ALPHA_ACK_HOST_ROOT)+path.sep):new URL('../',import.meta.url);
-const {cloudVoiceViewFixture}=await import(new URL('test/fixtures/cloud-voice-view.mjs',fixtureRoot));
-const {voiceFakeClock}=await import(new URL('test/fixtures/shared-batch-voice.mjs',fixtureRoot));
-const adapter=readFileSync(process.env.ALPHA_ACK_VIEW_SOURCE||new URL('../apps/app/src/prototype/voice-adapter.ts',import.meta.url),'utf8');
+import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
+import {voiceFakeClock} from './fixtures/shared-batch-voice.mjs';
+const adapter=readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts',import.meta.url),'utf8');
 // The browser and the Pixel batch fallback speak the same model ACK through the Cloud driver.
 const platforms=[{native:false,platform:'web'},{native:true,platform:'android'}];
 async function startedCue({failCleanup=false,platform}){

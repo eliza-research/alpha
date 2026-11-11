@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-if(!process.versions.bun&&!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const c=spawnSync(process.execPath,['--conditions=eliza-source','--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(c.error)throw c.error;process.exit(c.status??1);}
 const {createCalendarReadTiming}=await import('../.eliza/client-features/packages/app/src/runtime/managed-google-agent/calendar-read-timing.ts');
 const {createManagedGoogleAgentHost}=await import('./support/managed-google-agent.mjs');
 const {createNativeGoogleCloudPort}=await import('./support/managed-google-agent.mjs');

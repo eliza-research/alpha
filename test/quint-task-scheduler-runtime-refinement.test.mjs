@@ -1,10 +1,11 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import {runTaskSchedulerRuntimeRefinement} from '../specs/quint/refinement/services/task-scheduler/runtime.mjs';
 
 // Four bounded checker batches can each use up to 120 seconds; allow source setup and cleanup too.
-test('actual scheduler refines batched scope and independent process ownership', {timeout: 600000}, async () => {
+test('actual scheduler refines batched scope and independent process ownership', {timeout: scaledTimeout(600000)}, async () => {
   const result = await runTaskSchedulerRuntimeRefinement([fileURLToPath(import.meta.url)]);
   assert.equal(result.receipts.length, 1);
   const [receipt] = result.receipts;
