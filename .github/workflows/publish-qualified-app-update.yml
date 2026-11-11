@@ -127,8 +127,10 @@ jobs:
           python3 - <<'PY'
           import json, os
           from pathlib import Path
-          summary = json.loads((Path(os.environ['RUNNER_TEMP']) / 'qualified-stage/qualification-summary.json').read_text())
-          manifest = json.loads(Path('qualified-product/artifacts/apk-manifest.json').read_text())
+          evidence = Path(os.environ['RUNNER_TEMP']) / 'qualified-stage'
+          summary = json.loads((evidence / 'qualification-summary.json').read_text())
+          manifest_bytes = Path('qualified-product/artifacts/apk-manifest.json').read_bytes()
+          manifest = json.loads(manifest_bytes)
           assert manifest['testMocks'] is False and manifest['runtimeProfile'] == summary['runtimeProfile'] and 'localEmbeddings' not in manifest
           assert manifest['updateChannel']['kind'] == 'public'
           rows = [row for row in manifest['results'] if row['mode'] == 'release']
@@ -137,6 +139,9 @@ jobs:
               assert row['distributable'] is True and row['versionCode'] == summary['versionCode']
               assert row['sha256'] == summary['signedApkSHA256'][row['variant']]
               assert row['cloudVoice']['evidenceSha256'] == summary['voiceEvidenceSHA256']
+          if summary['runtimeProfile'] == 'native' and all(row['packageName'] == 'ai.alphacompute.alphaphone' for row in rows):
+              with (evidence / 'apk-manifest.json').open('xb') as receipt:
+                  receipt.write(manifest_bytes)
           PY
       - name: Publish launcher APK first and anonymously verify the stable pointer
         env:
@@ -156,4 +161,5 @@ jobs:
           if-no-files-found: warn
           path: |
             ${{ runner.temp }}/qualified-stage/qualification-summary.json
+            ${{ runner.temp }}/qualified-stage/apk-manifest.json
             qualified-product/artifacts/app-update-delivery.json

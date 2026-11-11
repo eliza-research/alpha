@@ -345,7 +345,14 @@ reviewed archives and verifies the APK digests when streaming the bytes.
 Release approval, signed-byte voice tests, publication and both sideload and
 image-preinstalled phone drills remain required for this batch.
 
-On the machine with the phone, record each [wireless drill](https://github.com/eliza-research/alpha/issues/889)
+Keep `apk-manifest.json` from the `qualified-launcher-publication-<run>-<attempt>`
+artifact for each qualified Alpha Compute launcher version. On the machine
+with the phone, keep each manifest in its own directory beside the exact
+`launcher-release.apk` from the signed delivery. If using the public APK
+asset, save it under that same filename. For an image baseline, use the
+post-signing verification manifest for the exact APK baked into the image.
+
+Record each [wireless drill](https://github.com/eliza-research/alpha/issues/889)
 with the release APK and its verification manifest available locally. Both captures
 admit the APK against the reviewed `android/release-signer.json` policy. This capture
 requires Android 14 or later for package installer provenance. Keep Alpha in
