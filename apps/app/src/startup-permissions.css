@@ -25,7 +25,7 @@
 .alpha-permission-row[aria-current=step]{font-weight:500}
 .alpha-permission-row-icon{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:var(--connection-s2,#f3f3f3);flex:none}
 .alpha-permission-row-icon>span{width:20px!important;height:20px!important}
-.alpha-permission-name{flex:1;min-width:0}
+.alpha-permission-label{flex:1;min-width:0}.alpha-permission-name{display:block}.alpha-permission-rationale{display:block;font-size:13px;font-weight:400;color:var(--connection-mut,#6b6b6b)}
 .alpha-permission-state{font-size:14px;color:var(--connection-mut,#6b6b6b)}
 .alpha-permission-chip{font:inherit;font-size:14px;min-height:36px;padding:6px 16px;border:0;border-radius:18px;background:var(--connection-acc,#0000ff);color:var(--connection-bg,#fff);cursor:pointer}
 .alpha-permission-chip:disabled{opacity:.6;cursor:default}
@@ -35,4 +35,4 @@
 .alpha-permission-chips{display:flex;flex-direction:column;align-items:center;gap:8px}
 .alpha-permission-chips .alpha-permission-status{display:inline-flex;align-items:center;gap:6px;margin-top:8px}
 .alpha-permission-icon{position:relative}
-.alpha-permission-attention{position:absolute;top:6px;right:6px;width:14px!important;height:14px!important;border-radius:50%;background:#d08a00;border:2px solid var(--connection-bg,#fff)}
+.alpha-permission-attention{position:absolute;top:6px;right:6px;width:14px!important;height:14px!important;border-radius:50%;background:var(--alpha-status-amber,#d08a00);border:2px solid var(--connection-bg,#fff)}

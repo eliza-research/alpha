@@ -51,7 +51,7 @@ async function fixture(extraSources) {
     'passwordManagerGroups','passwordEntryPage','leavePasswordManager','refreshPasswordManager','passwordManagerLifecycle',
     'observe: () => ({active,generation,locked:status?.locked ?? true,entries:entries!==null,damaged,resetReviewed:confirmReset!==null,secret:!!draft?.password,draft:!!draft,busy,noticePresent:!!notice})',
   ], {
-    ...sharedExports,...bindingExports,document,window,
+    ...sharedExports,...bindingExports,document,window,queueMicrotask,
     Capacitor:{isNativePlatform:()=>true,isPluginAvailable:()=>false},
     testMocksEnabled:false,devSurfacesEnabled:false,browserDevProfile:false,
     createDevelopmentVault:()=>{throw Error('Unexpected development vault');},
@@ -79,7 +79,7 @@ export async function generateVaultCoordinatorTraces(extraSources=[]) {
     try {
       f.observe('initial');f.rows();await f.settle();f.observe('open locked vault');
       if(name.startsWith('typed')) {
-        f.invoke('Unlock passwords');await f.settle();f.observe('unlock metadata');
+        f.invoke('Unlock');await f.settle();f.observe('unlock metadata');
         f.invoke('Add password');
         const page=f.api.passwordEntryPage(f.helpers,()=>{});
         const password=page.groups.flatMap(group=>group.rows).find(row=>row.label==='Password');
@@ -91,9 +91,9 @@ export async function generateVaultCoordinatorTraces(extraSources=[]) {
         assert.equal(f.records.at(-1).state.active,false);
       } else {
         f.native.damaged=true;f.api.refreshPasswordManager();await f.settle();f.observe('native reports invalidated key');
-        f.invoke('Delete saved passwords and start over');f.observe('review reset');
+        f.invoke('Reset vault');f.observe('review reset');
         if(name==='pending-reset-leave') {
-          f.native.pending=deferred();f.invoke('Tap again to delete all saved passwords');
+          f.native.pending=deferred();f.invoke('Confirm reset');
           await f.settle();f.observe('native authentication pending');
         }
         f.api.leavePasswordManager();await f.settle();f.observe('leave retires review');
@@ -112,17 +112,17 @@ export async function generateVaultCoordinatorTraces(extraSources=[]) {
     try {
       f.observe('initial');f.rows();await f.settle();f.observe('open locked vault');
       if(name.startsWith('metadata')) {
-        f.invoke('Unlock passwords');await f.settle();f.observe('unlock metadata');
+        f.invoke('Unlock');await f.settle();f.observe('unlock metadata');
         const held=f.hold('list');f.api.refreshPasswordManager();await held.entered;f.observe('metadata read pending');
-        if(name==='metadata-lock'){f.invoke('Lock passwords');await f.settle();f.observe('metadata lock');}
+        if(name==='metadata-lock'){f.invoke('Lock');await f.settle();f.observe('metadata lock');}
         else if(name==='metadata-expiry'){f.expire();await f.settle();f.observe('metadata expires');}
         else {f.api.leavePasswordManager();await f.settle();f.observe('leave retires review');}
         held.release();await f.settle();f.observe('retired metadata completes');
         assert.equal(f.records.at(-1).state.entries,false);
       } else {
         f.native.damaged=true;f.api.refreshPasswordManager();await f.settle();f.observe('native reports invalidated key');
-        f.invoke('Delete saved passwords and start over');f.observe('review reset');
-        if(name==='reset-auth-refresh'){f.native.pending=deferred();f.invoke('Tap again to delete all saved passwords');await f.settle();f.observe('native authentication pending');}
+        f.invoke('Reset vault');f.observe('review reset');
+        if(name==='reset-auth-refresh'){f.native.pending=deferred();f.invoke('Confirm reset');await f.settle();f.observe('native authentication pending');}
         f.api.refreshPasswordManager();await f.settle();f.observe('refresh retires reset review');
         if(f.native.pending){f.native.pending.resolve();await f.settle();f.observe('retired reset authentication completes');}
         assert.equal(f.native.resetCount,0);assert.equal(f.records.at(-1).state.resetReviewed,false);

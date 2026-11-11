@@ -13,7 +13,7 @@ for (const result of ['wrong-id', 'missing-id', 'wrong-skipped-id']) {
     await fixture.answer(result);
     const state = fixture.observe();
     assert.equal(state.locked, true);
-    assert.match(state.message, /Outcome unknown/);
+    assert.equal(state.message, 'Unknown');
     assert.equal(state.intents.length, 1);
     assert.equal(state.sends.length, 1);
   });

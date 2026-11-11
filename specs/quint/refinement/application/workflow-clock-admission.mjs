@@ -53,10 +53,10 @@ export async function checkWorkflowClockAdmission(extraSources = []) {
   });
   await scenario('an admitted result settles its exact receipt after departure without a replay', async c => {
     await c.save();await c.opening();await c.navigate('home');await c.finish('unknown');
-    await c.navigate('workflows');await c.open();c.f.assertMessage(/Previous Clock result is unknown/);await c.close();
+    await c.navigate('workflows');await c.open();c.f.assertMessage(/^Unknown$/);await c.close();
   });
   for (const mocks of [false, true]) await scenario(`mock request retires a held write with the flag ${mocks ? 'on' : 'off'}`, async c => {
-    await c.save();await c.mock(true);await c.opening();c.f.assertMessage(/Clock request was not sent/);await c.close();
+    await c.save();await c.mock(true);await c.opening();c.f.assertMessage(/^Not sent$/);await c.close();
   }, {mocks});
   await scenario('visibility loss retires a held write even after resuming', async c => {
     await c.save();await c.visibility(true);await c.visibility(false);await c.opening();await c.close();
@@ -67,7 +67,7 @@ export async function checkWorkflowClockAdmission(extraSources = []) {
   }, {browser: true});
   await scenario('browser flag-off mock request stays in a closed review', async c => {
     await c.mock(true);await c.open();await c.review();await c.approve();
-    c.f.assertMessage(/Clock is unavailable without a live connection/);await c.close();
+    c.f.assertMessage(/^Offline$/);await c.close();
   }, {browser: true});
   return checkTraces({model: 'WorkflowClockAdmission', scope: 'bounded-orchestration', sources, driverHashes, traces,
     assumptions: ['Bindings are read from the actual Workflows template. Its actions invoke the real Clock renderer, shell leave method, agent context projection and authenticated shared receipt code. A closed shell supplies committed routes and a synthetic current Workflow selection.',

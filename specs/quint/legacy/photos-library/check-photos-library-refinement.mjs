@@ -162,7 +162,7 @@ async function batch(page, rows) {
   const cap = divergence(t.trace, 'mounted_selection_accepts_the_second_item', 'AsBuilt_Cap');
   await button(page, 'Unfavorite selected').click();
   await expect(page.locator('summary[aria-label="Photos tools"]')).toBeVisible();
-  await expect(page.getByText('Removed 2 from Favorites', {exact: true})).toBeVisible();
+  await expect(page.getByText('2 unfavorited', {exact: true})).toBeVisible();
   await t.point('All-favorite selection toggles both exact rows off', action('BatchFavorite'));
   const favorites = divergence(t.trace, 'favorite_is_reversible_for_a_selected_batch', 'AsBuilt_FavToggle');
 
@@ -300,7 +300,7 @@ async function reviewAndViewer(page, rows) {
     action('StoreFavorite', 3));
   await review(page).getByRole('button', {name: 'Share', exact: true}).click();
   await expect(review(page)).toHaveCount(0);
-  await expect(page.getByText('An item changed. Nothing was shared; ask again.', {exact: true})).toBeVisible();
+  await expect(page.getByText('Item changed', {exact: true})).toBeVisible();
   assert.deepEqual(await shares(), accepted);
   await t.point('Confirming the stale review refuses without another chooser call',
     [{...action('AgentApply'), reject: true}, action('AgentReject')]);
@@ -314,11 +314,15 @@ async function editPhoto(page, rows, replace) {
   await expect(view(page, 'viewer')).toBeVisible();
   await t.point('Original photo opens in the actual viewer', action('OpenViewer', 3));
   await button(page, 'Edit photo').click();
-  await expect(button(page, 'Save copy')).toBeEnabled();
-  await expect(button(page, 'Replace original')).toBeEnabled();
+  // An unchanged edit has nothing to save; Rotate below enables both commits.
+  await expect(button(page, 'Save copy')).toBeDisabled();
+  await expect(button(page, 'Replace original')).toBeDisabled();
   await button(page, 'Rotate').click();
   await expect(button(page, 'Save copy')).toBeEnabled();
+  await expect(button(page, 'Replace original')).toBeEnabled();
   await button(page, replace ? 'Replace original' : 'Save copy').click();
+  if (replace) await page.getByRole('dialog', {name: 'Replace original photo?', exact: true})
+    .getByRole('button', {name: 'Replace original', exact: true}).click();
   await expect(toast(page)).toContainText(replace ? 'Saved' : 'Copy saved');
   const result = await readRows(page);
   const original = result.find(row => row.id === rows[2].id);

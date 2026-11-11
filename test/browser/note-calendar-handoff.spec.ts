@@ -284,7 +284,7 @@ test('Notes scheduling contract: a canonical note opens a reminder draft whose s
  const before=await page.evaluate(()=>structuredClone((window as any).canonicalNotesFixture.state.notes));
  await reviewNoteScheduleContract(page,'reminder');
  await expect(page.getByRole('textbox',{name:'Notes',exact:true})).toHaveValue('Book the venue');
- await expect(page.getByText('Review the time, then Save.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Check time',{exact:true})).toBeVisible();
  expect(await reminders(page)).toEqual([]);expect(await stored(page)).toEqual({});
  await button(page,'Save event').click();
  await expect.poll(async()=>(await reminders(page)).length).toBe(1);

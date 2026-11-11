@@ -37,7 +37,7 @@ let expiry: ReturnType<typeof setTimeout> | undefined;
 let browserFill: { available: boolean } | null = null;
 let notify: () => void = () => {};
 // Outcome notices surface once as a toast, not as a row.
-let toast: (message: string) => void = () => {};
+let toast: (message: string) => void = () => {}, toasted = '';
 
 /** Native vault on Android; the flag-only development vault in the browser dev profile; else none. */
 function resolveClient(): Promise<PasswordsClient | null> {
@@ -143,7 +143,7 @@ export function leavePasswordEntry() { clearSecrets(); }
 /** Leaving the password pages, unmounting or backgrounding locks and forgets everything. */
 export function leavePasswordManager() {
   if (!active) return;
-  active = false; ++lifetime; ++operation; busy = ''; query = ''; notice = ''; damaged = false; locked();
+  active = false; ++lifetime; ++operation; busy = ''; query = ''; notice = toasted = ''; damaged = false; locked();
   void resolveClient().then(vault => vault?.lock()).catch(() => {});
 }
 
@@ -234,8 +234,9 @@ export function passwordManagerGroups(helpers: Helpers): Bag[] {
     head.push(iconInfo(helpers, `Locks in ${status.unlockSeconds || 60}s`, '', 'lock'));
     head.push(nav('Lock', () => void run('lock', async (v, current) => { await v.lock(); if (current()) locked(); }), { aria: 'Lock passwords', lucide: 'lock-keyhole' }));
   }
-  // Outcome notices show once as a toast; a notice while the vault status is unknown stays in the row above.
-  if (notice && status) { const message = notice; notice = ''; queueMicrotask(() => toast(message)); }
+  // Outcome notices show once as a toast (the notice itself stays until its owner clears it); a notice while the vault status is unknown stays in the row above.
+  if (!notice) toasted = '';
+  else if (status && notice !== toasted) { const message = toasted = notice; queueMicrotask(() => toast(message)); }
   groups.push(helpers.group(head));
   if (status && !status.locked && entries) {
     groups.push(captioned(helpers, '', [input(helpers.ic, 'Search passwords', 'Search passwords', 'search', query, value => { query = value; notify(); }, 'search'), button('Add password', () => openEntry(helpers, null), true)], true));

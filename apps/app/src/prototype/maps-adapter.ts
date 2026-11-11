@@ -248,7 +248,8 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       googleMapMissing:googleMaps && !basemap,
       mapLabel:googleMaps ? 'Google Maps' : globalMap ? 'World map' : basemap === region && region ? 'Regional map' : basemap ? 'Cloud map' : 'Map',
       mapAttribution:region && basemap === region ? region.attribution : raster && basemap === raster ? (planeBasemap === raster && mapCopyright || raster.attribution) : '',
-      attributionBottom:recBottom,
+      // Navigation guidance owns the bottom sheet, so the ⓘ sits above it.
+      attributionBottom:isNav?sheetHeight+14:recBottom,
       mapRef:(element:HTMLElement)=>{
         if (!element) return;
         if (!basemap) {

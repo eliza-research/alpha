@@ -16,12 +16,12 @@ const selection = selected => {
   return {id, revision, source: source ?? 'own'};
 };
 const diagnostics = new Map([
-  ['The notification changed or could not be updated.', 'action-error'],
-  ['Some notifications changed. Review the refreshed list.', 'some-changed'],
-  ['This notification has no available action.', 'no-action'],
-  ['This is an ongoing notification.', 'ongoing'],
-  ['Calendar alerts could not load. Open Calendar to review the problem.', 'calendar-error'],
-  ['Alpha Phone notifications are unavailable.', 'list-error'],
+  ['Changed', 'action-error'],
+  ['Updated', 'some-changed'],
+  ['No action', 'no-action'],
+  ['Ongoing', 'ongoing'],
+  ['Alerts didn’t load', 'calendar-error'],
+  ['Unavailable', 'list-error'],
 ]);
 const fields = ({toasts, ...state}) => {
   const adapted = {...state, selection: selection(state.selection), renderedSelection: selection(state.renderedSelection),

@@ -97,6 +97,7 @@ export const ALPHA_PRODUCT_REGISTRATION = {
       "--alpha-gray-f3": "#F3F3F3",
       "--alpha-highlight-amber": "#FFE2A8",
       "--alpha-link-blue": "#258CFF",
+      "--alpha-status-amber": "#D08A00",
       "--alpha-map-dark-done": "#3A3A3A",
       "--alpha-map-dark-fwy": "#333333",
       "--alpha-map-dark-fwye": "#1A1A1A",

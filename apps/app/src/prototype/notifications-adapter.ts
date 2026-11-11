@@ -200,7 +200,7 @@ export function installNotificationsAdapter(Component: any) {
    return {canAsk:noticeReviewable(n),ask,askLabel:'Ask Alpha about this '+(n.appLabel||'Alpha Phone')+' notification',id:n.id,d:out.ic.bell,who:n.source==='external'?n.appLabel:n.title||'Alpha Phone',text:n.source==='external'&&n.title!==n.appLabel?[n.title,n.text].filter(Boolean).join(' · '):n.text,time:formatTime(new Date(n.at)),tx:0,op:1,down:(event:unknown)=>{if(!current())return;select();return swipe.down(event);},up:(event:unknown)=>{if(currentVisit())window.setTimeout(()=>{if(currentVisit())self.publishAlphaNoticeSelection();},0);return swipe.up(event);},open:()=>{
     const row=current();
     if(this.swallowed()||!row)return;
-    if(!row.canOpen)return;
+    if(!row.canOpen){this.toast('No action');return;}
     void action(()=>native.open(target));
    }};
   });

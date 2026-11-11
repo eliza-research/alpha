@@ -13,7 +13,7 @@ const inputs = ['test/fixtures/calendar-draft-handoff.mjs', 'test/fixtures/camer
   'apps/app/src/prototype/scan-review.ts', 'apps/app/src/prototype/scan-event-review.ts', 'apps/app/src/runtime/agent-calendar.ts',
   'apps/app/src/runtime/assistant-draft-store.ts', 'apps/app/src/browser/documents.ts', 'scripts/local-ocr-assets.ts'];
 const titles = new Map([['', ''], [earlierTitle, 'earlier'], [noteTitle, 'note'], [scanTitle, 'scan']]);
-const noteNotices = new Map([[noteRefusal, 'note-refused'], ['Review the time, then Save.', 'review-time']]);
+const noteNotices = new Map([[noteRefusal, 'note-refused'], ['Check time', 'review-time']]);
 
 export async function checkCanonicalCalendarDraftHandoff(extraSources = []) {
   const sources = new Set([driver, ...mountedCalendarFixtureSources, ...inputs, ...extraSources]);
@@ -87,8 +87,9 @@ export async function checkCanonicalCalendarDraftHandoff(extraSources = []) {
       };
       const beginDiscard = async () => {
         const gate = await f.invoke('hold', 'draft-clear');
-        const accepted = f.page.waitForEvent('dialog').then(dialog => dialog.accept());
-        await Promise.all([f.button('Discard event draft').click(), accepted]);
+        // The discard confirm is the in-app operation review dialog, not a native window.confirm.
+        await f.button('Discard event draft').click();
+        await f.page.getByRole('dialog', {name: 'Discard draft?', exact: true}).getByRole('button', {name: 'Discard draft', exact: true}).click();
         await f.page.waitForFunction(id => window.quintCalendar.held(id), gate);
         await mark('Confirm discard while the actual storage clear is held', call('beginDiscard'));
         return gate;

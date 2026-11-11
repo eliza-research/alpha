@@ -127,7 +127,7 @@ async function remove(page, title) {
   await expect(editor(page)).toHaveCount(0);
   await expect(button(page, 'Open '+title)).toHaveCount(0);
   await expect(button(page, 'Recently deleted')).toBeVisible();
-  await expect(toast(page)).toContainText('Moved to Recently deleted');
+  await expect(toast(page)).toContainText('Deleted');
 }
 
 async function recover(page, title, legacy = false) {

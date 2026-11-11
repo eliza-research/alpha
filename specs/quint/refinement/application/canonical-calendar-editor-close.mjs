@@ -11,8 +11,7 @@ const firstTitle = 'First retained edit', secondTitle = 'Second retained edit';
 const oversized = 'x'.repeat(2049);
 const titles = new Map([['', ''], [firstEvent, 'event-a'], [secondEvent, 'event-b'],
   [firstTitle, 'first'], [secondTitle, 'second'], [oversized, 'oversized']]);
-const notices = new Map([['Finish or discard your draft first.', 'finish-draft'],
-  ['Opening your draft. Try again in a moment.', 'draft-busy'], ['This draft changed. Try again.', 'draft-changed']]);
+const notices = new Map([['Draft open', 'finish-draft'], ['Opening draft', 'draft-busy'], ['Changed', 'draft-changed']]);
 const inputs = ['apps/app/src/prototype/canonical-calendar-drafts.ts', 'apps/app/src/prototype/template.html',
   'apps/app/src/prototype/model.js', 'apps/app/src/prototype/subview-accessibility.ts', 'apps/app/src/runtime/canonical-calendar-draft.ts',
   'apps/app/src/runtime/assistant-draft-store.ts', 'apps/app/src/prototype/assistant-draft-controller.ts',
@@ -114,12 +113,12 @@ export async function checkCanonicalCalendarEditorClose(extraSources = []) {
         await mark('Resume the exact retained form', call('resume'));
       };
       const decide = async accept => {
-        const expected = 'Discard this draft? Saved events won’t change.';
-        const prompt = f.page.waitForEvent('dialog').then(async dialog => {
-          assert.equal(dialog.message(), expected);
-          if (accept) await dialog.accept(); else await dialog.dismiss();
-        });
-        await Promise.all([discard.click(), prompt]);
+        // The discard confirm is the in-app operation review dialog, not a native window.confirm.
+        const prompt = f.page.getByRole('dialog', {name: 'Discard draft?', exact: true});
+        await discard.click();
+        await prompt.getByRole('heading', {name: 'Discard draft?', exact: true}).waitFor();
+        await prompt.getByRole('button', {name: accept ? 'Discard draft' : 'Cancel', exact: true}).click();
+        await prompt.waitFor({state: 'detached'});
       };
       const holdDiscard = async (error) => {
         const gate = await f.invoke('hold', 'draft-clear', error);
@@ -131,7 +130,7 @@ export async function checkCanonicalCalendarEditorClose(extraSources = []) {
       const finishDiscard = async (gate, success) => {
         await f.invoke('release', gate);
         if (success) await resume.waitFor({state: 'detached'});
-        else await f.page.waitForFunction(() => window.quintCalendar.snapshot().notices.at(-1) === 'This draft changed. Try again.');
+        else await f.page.waitForFunction(() => window.quintCalendar.snapshot().notices.at(-1) === 'Changed');
         await mark('Settle the exact retained draft storage', call('finishDiscard', success));
       };
       const openPicker = async () => {

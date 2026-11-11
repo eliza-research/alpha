@@ -41,7 +41,7 @@ export async function filesAndSharing() {
     input.checked = true; input.dispatchEvent(new page.window.Event('change'));
     checkpoint(t, 'explicit checkbox', call('check'), {'s.checked': input.checked});
     if (changed) checkpoint(t, 'source bytes changed before second read', call('changeSource'), {'s.inserted': !!inserted});
-    [...document.querySelectorAll('button')].find(button => button.textContent === 'Insert attachment into draft').click();
+    [...document.querySelectorAll('button')].find(button => button.textContent === 'Attach').click();
     await tick(); await lastReview; await tick();
     checkpoint(t, 'source rereads bytes before insertion', changed ? {...call('insert'), reject: true} : call('insert'), {'s.inserted': !!inserted});
     close(); page.window.close(); traces.push(t);
