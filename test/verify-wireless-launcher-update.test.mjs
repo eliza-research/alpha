@@ -9,6 +9,7 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 import {build} from 'esbuild';
 import {
   captureLauncher, checkFollowup, checkReplacement, readPublicLauncherOffer, verifyPublicLauncherBytes,
+  verifyWirelessLauncherMatrix,
 } from '../scripts/verify-wireless-launcher-update.ts';
 import {appUpdateManifestUrl} from '../scripts/update-channel.ts';
 
@@ -276,6 +277,7 @@ test('the CLI binds installed releases, the production image and unattended hist
       lastRelease: {versionCode: globalThis.wirelessOffer.versionCode}};
     globalThis.wirelessBytes = Buffer.from(process.env.FIXTURE_FOLLOWUP==='1' ? ${JSON.stringify([...secondApk])} : ${JSON.stringify([...apk])});
     globalThis.fetch = async (url, options) => {
+      if (process.argv[2] === 'matrix') throw Error('Matrix must use saved receipts');
       if (options.redirect !== 'manual' || options.headers.authorization) throw Error('Unexpected public transport');
       if (url === ${JSON.stringify(publicUrl)}) return new Response(JSON.stringify(globalThis.wirelessOffer));
       if (url === globalThis.wirelessOffer.apkUrl) return new Response(globalThis.wirelessBytes);
@@ -326,7 +328,7 @@ test('the CLI binds installed releases, the production image and unattended hist
     `,
   };
   await build({entryPoints: [entry], outfile: output, bundle: true, format: 'esm', platform: 'node',
-    banner: {js: prelude}, footer: {js: "if(process.exitCode!==1&&JSON.stringify(globalThis.wirelessCalls)!==JSON.stringify(['signer','manifest','inspection']))throw Error('Signer policy was not read once and shared by both admissions');"},
+    banner: {js: prelude}, footer: {js: "if(process.exitCode!==1&&JSON.stringify(globalThis.wirelessCalls)!==JSON.stringify(process.argv[2]==='matrix'?[]:['signer','manifest','inspection']))throw Error('Unexpected signer policy or APK admission calls');"},
     plugins: [{name: 'closed-readback-ports', setup(builder) {
       builder.onResolve({filter: /.*/}, args => {
         if (args.kind === 'entry-point') return;
@@ -336,6 +338,7 @@ test('the CLI binds installed releases, the production image and unattended hist
       });
       builder.onLoad({filter: /.*/, namespace: 'closed'}, args => ({contents: ports[args.path], loader: 'js'}));
     }}]});
+  const chains = new Map();
   for (const distribution of ['sideload', 'image-preinstalled']) {
     const before = path.join(directory, distribution + '-before.json'), after = path.join(directory, distribution + '-after.json');
     const run = (phase, receipt, extra, followup = false, manualApproval = false) => {
@@ -397,5 +400,60 @@ test('the CLI binds installed releases, the production image and unattended hist
     assert.equal(followingUpdate.observation.installed.versionCode, secondManifest.versionCode);
     assert.equal(followingUpdate.observation.installed.sha256, secondManifest.sha256);
     assert.equal(followingUpdate.observation.installed.firstInstallTime, initial.observation.installed.firstInstallTime);
+    chains.set(distribution, [before, after, nextBefore, nextAfter]);
+  }
+
+  const sideload = chains.get('sideload'), image = chains.get('image-preinstalled');
+  const read = file => JSON.parse(readFileSync(file));
+  const digest = file => hash(readFileSync(file));
+  const expected = {
+    schema: 'alpha-wireless-launcher-matrix/v1', packageName,
+    releases: [sideload[1], sideload[3]].map(file => {
+      const {offer, sdkCommit} = read(file);
+      return {offer, sdkCommit};
+    }),
+    receipts: {sideload: sideload.map(digest), imagePreinstalled: image.map(digest)},
+  };
+  const runMatrix = (stock, signed, report) => execFileSync(process.execPath,
+    [realpathSync(output), 'matrix', '--out', report,
+      ...stock.flatMap(file => ['--sideload', file]), ...signed.flatMap(file => ['--image-preinstalled', file])],
+    {encoding: 'utf8', timeout: 30_000, stdio: 'pipe'});
+  const report = path.join(directory, 'matrix.json');
+  assert.deepEqual(verifyWirelessLauncherMatrix(sideload, image), expected);
+  runMatrix(sideload, image, report);
+  assert.deepEqual(read(report), expected);
+
+  const wrongLink = path.join(directory, 'wrong-after-link.json');
+  writeFileSync(wrongLink, JSON.stringify({...read(sideload[3]), beforeReceiptSha256: digest(sideload[0])}));
+  const broken = [...sideload.slice(0, 3), wrongLink];
+  assert.throws(() => verifyWirelessLauncherMatrix(broken, image), /does not link to its before receipt/);
+
+  function withDifferentManifest(chain, label) {
+    const linked = [];
+    for (const [index, file] of chain.entries()) {
+      const receipt = read(file);
+      if (index < 2) receipt.offer.manifestSha256 = hash('same APK, different manifest bytes');
+      if (index === 1 || index === 3) receipt.beforeReceiptSha256 = digest(linked[index - 1]);
+      if (index === 2) receipt.previousReceiptSha256 = digest(linked[1]);
+      const copy = path.join(directory, `${label}-${index}.json`);
+      writeFileSync(copy, JSON.stringify(receipt));
+      linked.push(copy);
+    }
+    return linked;
+  }
+  const otherImage = withDifferentManifest(image, 'other-image');
+  const otherSideload = withDifferentManifest(sideload, 'other-sideload');
+  assert.doesNotThrow(() => verifyWirelessLauncherMatrix(otherSideload, otherImage), 'both alternate chains are internally valid');
+  assert.throws(() => verifyWirelessLauncherMatrix(sideload, otherImage), /same two published releases/);
+
+  for (const [label, stock, signed, problem] of [
+    ['wrong-link', broken, image, /does not link to its before receipt/],
+    ['different-manifest', sideload, otherImage, /same two published releases/],
+    ['swapped', image, sideload, /Expected only sideload receipts/],
+    ['short', sideload.slice(0, 3), image, /Expected four sideload receipts/],
+  ]) {
+    const rejected = path.join(directory, `matrix-${label}.json`);
+    assert.throws(() => runMatrix(stock, signed, rejected), error => problem.test(error.stderr));
+    assert.equal(existsSync(rejected), false, label);
   }
 });

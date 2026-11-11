@@ -408,6 +408,23 @@ signed-in follow-up, seed the account and data before the next offer goes live, 
 offline again for baseline capture. Keep each public offer stable until both
 distribution paths have saved their `after` receipts.
 
+After both rounds, verify the eight saved receipts together. For each
+distribution, pass the first before and after receipts followed by the
+second before and after receipts.
+
+```sh
+node scripts/verify-wireless-launcher-update.ts matrix \
+  --sideload stock-1-before.json --sideload stock-1-after.json \
+  --sideload stock-2-before.json --sideload stock-2-after.json \
+  --image-preinstalled image-1-before.json --image-preinstalled image-1-after.json \
+  --image-preinstalled image-2-before.json --image-preinstalled image-2-after.json \
+  --out wireless-launcher-matrix.json
+```
+
+The matrix checks the links, signing family, installed SDK revision and
+the exact same two offers across both distributions. It reads saved
+evidence offline, so the public channel may already have advanced.
+
 The readback uses the primary user and records the actual APK digest, update
 initiator, install identity, HOME, signing family, boot state and SDK revision.
 Retain the protected `qualification-summary.json` and
