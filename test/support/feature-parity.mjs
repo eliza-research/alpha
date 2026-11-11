@@ -25,6 +25,8 @@ export const featureParityAllowlist = {
     "capability:sms.send.v1:only-a": "apps/app/src/runtime/connection-ui.tsx deviceCapabilities and apps/app/src/runtime/device-actions.ts"
   },
   reviewedHelpers: {
+    "apps/app/src/runtime/error-notice.ts": {"owner": "apps/app/src/prototype/model.js", "reason": "Filters caught error values into plain owner-facing fallback text for the existing toast surface and marks failure feedback without changing the owning action.", "tests": ["test/error-notice.test.mjs"]},
+    "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationChannels.java": {"owner": "android/app/src/main/java/ai/alphacompute/alphaphone/DailyAppsPlugin.java", "reason": "Supplies names and descriptions for the existing reminder and notice channels when the owning plugin loads, resumes or schedules a reminder; channel IDs and installed alert choices remain owned by Android.", "tests": ["test/native-plugin-teardown.test.mjs", "android/app/src/androidTest/java/ai/alphacompute/alphaphone/NotificationChannelsInstrumentedTest.java"]},
     "apps/app/src/runtime/native-network.ts": {"owner": "apps/app/src/runtime/connection-ui.tsx", "reason": "Bounds the existing resident send and lifecycle connectivity reads to native Android facts while preserving cancellation and observation order.", "tests": ["test/native-network.test.mjs", "test/native-network-lifecycle.test.mjs", "test/connection-presentation-state.test.mjs"]},
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaUpdateStatusReceiver.java": {"owner": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java", "reason": "Receives and binds the system installer result to Alpha’s existing update session.", "tests": ["test/app-update.test.mjs"]},
     "android/app/src/main/java/ai/alphacompute/alphaphone/UpdateConfirmationReceipt.java": {"owner": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaDevicePlugin.java", "reason": "Persists the exact unopened Android installer confirmation across process replacement.", "tests": ["test/app-update.test.mjs"]},
@@ -75,6 +77,7 @@ export const featureParityAllowlist = {
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteDocumentsPlugin.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecorder.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNoteRecordingService.java",
+    "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationChannels.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationListener.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNotificationsPlugin.java",
     "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaPhotoLibraryPlugin.java",
@@ -507,6 +510,7 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/digest-inbox.ts",
     "apps/app/src/runtime/dock-clearance.ts",
     "apps/app/src/runtime/error-boundary.tsx",
+    "apps/app/src/runtime/error-notice.ts",
     "apps/app/src/runtime/gmail-account-selection.ts",
     "apps/app/src/runtime/gmail-background.ts",
     "apps/app/src/runtime/gmail-grants.ts",
