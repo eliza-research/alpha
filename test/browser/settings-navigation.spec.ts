@@ -16,3 +16,15 @@ test('Back from Open source licenses returns to About, then to Settings, then Ho
  await back(page);
  await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
 });
+
+test('General keeps the agent recovery entry while About stays focused on app information',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto('/');
+ await page.getByRole('button',{name:'Settings',exact:true}).click();
+ await current(page).getByRole('button',{name:'General',exact:true}).click();
+ await expect(current(page).getByRole('button',{name:'Agent connection',exact:true})).toBeVisible();
+ await back(page);
+ await current(page).getByRole('button',{name:'About',exact:true}).click();
+ await expect(current(page).getByRole('button',{name:'Connection help',exact:true})).toHaveCount(0);
+ await expect(current(page).getByRole('button',{name:'Agent connection',exact:true})).toHaveCount(0);
+});

@@ -102,15 +102,18 @@ test('a composer mounted while the native keyboard is already up still releases 
  }finally{dom.window.close();}
 });
 
-test('About omits Connection help and preserves the retained recovery Back target',()=>{
+test('General retains agent and history recovery while About omits Connection help',()=>{
  const s=read('prototype/settings-adapter.ts'),body=between(s,'    const connectionHelpRow =','    const licensesRow =');
  const calls=[],api={set:patch=>calls.push(patch.page)},connectionController={open:()=>calls.push('connection')};
  const row=native=>vm.runInNewContext(ts(body)+';connectionHelpRow()',{connection:{name:'Alpha'},Capacitor:{isNativePlatform:()=>native},testMocksEnabled:false,api,connectionController});
  assert.equal(row(true).label,'Connection help');row(true).go();assert.deepEqual(calls,['agent-connection']);
  row(false).go();assert.deepEqual(calls,['agent-connection','connection']);
  assert.match(s,/group\(\[licensesRow\(\)\]\)/);
+ assert.match(s,/\['Help', \['About'\]\]/);
+ assert.doesNotMatch(s,/'Agent connection': 'Connection help'/);
+ assert.match(s,/\['settings-general','General',\['Preferences','Device'\]\]/);
  const back=between(s,'  const categoryNames:','  definition.render ='),definition={back:()=>false};
  vm.runInNewContext(ts(back),{definition,PASSWORD_PAGES:[],leavePasswordManager(){},leavePasswordEntry(){}});
  assert.equal(definition.back({page:'agent-connection'},{set:patch=>calls.push(patch.page)}),true);
- assert.equal(calls.at(-1),'about');
+ assert.equal(calls.at(-1),'settings-general');
 });
