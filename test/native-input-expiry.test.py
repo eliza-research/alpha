@@ -18,9 +18,8 @@ spec.loader.exec_module(expiry)
 NOW = datetime(2026, 11, 11, 13, 47, tzinfo=timezone.utc)
 REPO = expiry.native.embedding.REPOSITORY
 REPO_ID = expiry.native.embedding.REPOSITORY_ID
-OWNER_ID = expiry.native.embedding.REPOSITORY_OWNER_ID
 ENV = {'GITHUB_REPOSITORY': REPO, 'GITHUB_REPOSITORY_ID': str(REPO_ID),
-       'GITHUB_REPOSITORY_OWNER_ID': str(OWNER_ID), 'GH_TOKEN': 'inert-fixture-token'}
+       'GH_TOKEN': 'inert-fixture-token'}
 SOURCE = 'a' * 40
 DIGEST = 'b' * 64
 VOICE_BYTES = 256 * 1024 * 1024

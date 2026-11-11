@@ -8,7 +8,7 @@ import {fileURLToPath} from 'node:url';
 import YAML from 'yaml';
 import {deliver} from '../../../../scripts/deliver-app-update.ts';
 import {
-  APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY, APP_UPDATE_REPOSITORY_ID, APP_UPDATE_REPOSITORY_OWNER_ID,
+  APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY, APP_UPDATE_REPOSITORY_ID,
   APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG, appUpdateManifestUrl,
 } from '../../../../scripts/update-channel.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
@@ -127,9 +127,9 @@ function publicFixture(directory, launcherBytes, version) {
           wait: async () => {},
           run(args) {
             if (args[0] === 'api') {
-              assert.deepEqual(args, ['api', 'repos/eliza-research/alpha']);
-              return JSON.stringify({id: 1396333361, owner: {id: 314117943},
-                full_name: 'eliza-research/alpha', private: false});
+              assert.deepEqual(args, ['api', 'repos/alphacompute/alpha']);
+              return JSON.stringify({id: 1396333361,
+                full_name: 'alphacompute/alpha', private: false});
             }
             if (args[0] !== 'release') assert.fail('Unexpected command: ' + args.join(' '));
             if (args[1] === 'view' && args[2] === LEGACY_APP_UPDATE_TAG) {

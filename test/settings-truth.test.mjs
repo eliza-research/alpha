@@ -27,7 +27,7 @@ test('recorded install-time formatting stays truthful and About never claims the
 // Software update (settings-adapter.ts, AlphaDevicePlugin): the renderer's manifest policy and check cadence.
 // The rendered rows, the check wiring and the install payload are in test/browser/settings-device-facts.spec.ts.
 const installed={versionCode:7,launcher:true,signerSha256:'5c'.repeat(32)};
-const manifest={schema:'alpha-update/v1',versionCode:8,versionName:'0.1.1',variant:'launcher',signerSha256:'5c'.repeat(32),apkUrl:'https://github.com/eliza-research/alphaphone/releases/download/app-8/alpha-phone-8.apk',sha256:'0a'.repeat(32),sizeBytes:400_000_000,notes:'Faster Home'};
+const manifest={schema:'alpha-update/v1',versionCode:8,versionName:'0.1.1',variant:'launcher',signerSha256:'5c'.repeat(32),apkUrl:'https://github.com/alphacompute/alphaphone/releases/download/app-8/alpha-phone-8.apk',sha256:'0a'.repeat(32),sizeBytes:400_000_000,notes:'Faster Home'};
 test('Software update offers only a complete, newer manifest for this flavor and signer, with an HTTPS APK, a SHA-256 and a bounded size',()=>{
  assert.equal(m.UPDATE_SCHEMA,'alpha-update/v1');
  const {schema,variant,signerSha256,...offered}=manifest;

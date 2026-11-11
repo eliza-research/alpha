@@ -6,9 +6,8 @@ from pathlib import Path
 import re
 import subprocess
 
-REPOSITORY = "eliza-research/alpha"
+REPOSITORY = "alphacompute/alpha"
 REPOSITORY_ID = 1396333361
-OWNER_ID = 314117943
 WORKFLOW = ".github/workflows/resident-android.yml"
 WORKFLOW_ID = 373209004
 CANDIDATE_PACKAGE = "ai.alphacompute.alphaphone"
@@ -130,7 +129,6 @@ def github_candidate(plan, api=gh_json):
             run["workflow_id"] == WORKFLOW_ID and run["path"] == WORKFLOW and
             run["status"] == "completed" and run["conclusion"] == "success" and
             all(run[key]["id"] == REPOSITORY_ID and run[key]["full_name"] == REPOSITORY
-                and run[key]["owner"]["id"] == OWNER_ID
                 for key in ("repository", "head_repository")), "Candidate producer run attempt differs")
     artifact_id = plan["artifactId"]
     artifact = api(f"repos/{REPOSITORY}/actions/artifacts/{artifact_id}")

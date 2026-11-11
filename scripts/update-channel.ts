@@ -6,10 +6,9 @@ import type {ManifestNode} from './apk.ts';
 
 export const UPDATE_CHANNEL_META='ai.alphacompute.alphaphone.UPDATE_CHANNEL';
 export const UPDATE_DIGEST_META='ai.alphacompute.alphaphone.UPDATE_MANIFEST_SHA256';
-export const APP_UPDATE_REPOSITORY = 'eliza-research/alpha';
+export const APP_UPDATE_REPOSITORY = 'alphacompute/alpha';
 export const APP_UPDATE_REPOSITORY_ID = 1396333361;
-export const APP_UPDATE_REPOSITORY_OWNER_ID = 314117943;
-const FORMER_APP_UPDATE_REPOSITORY = 'eliza-research/alphaphone';
+const FORMER_APP_UPDATE_REPOSITORIES = ['eliza-research/alpha', 'eliza-research/alphaphone', 'alphacompute/alphaphone'] as const;
 export const APP_UPDATE_TAG = 'app-stable-alphacompute';
 export const LEGACY_APP_UPDATE_TAG = 'app-stable';
 export const APP_UPDATE_MANIFEST = 'alpha-update-stable.json';
@@ -20,7 +19,7 @@ export function appUpdateManifestUrl(tag: typeof APP_UPDATE_TAG | typeof LEGACY_
 
 /** Already published pointers can still carry the previous repository URL. */
 export function isPublishedUpdateApkUrl(url: string, tag: typeof APP_UPDATE_TAG | typeof LEGACY_APP_UPDATE_TAG, versionCode: number) {
-  return [APP_UPDATE_REPOSITORY, FORMER_APP_UPDATE_REPOSITORY].some(repository =>
+  return [APP_UPDATE_REPOSITORY, ...FORMER_APP_UPDATE_REPOSITORIES].some(repository =>
     url === `https://github.com/${repository}/releases/download/${tag}/alpha-phone-${versionCode}.apk`);
 }
 

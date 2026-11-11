@@ -355,7 +355,6 @@ class HostedNativeInputsTest(unittest.TestCase):
         _, archives = fixture(root, **options)
         env = {'GITHUB_REPOSITORY': native.embedding.REPOSITORY, 'GH_TOKEN': 'inert-fixture-token',
                'GITHUB_REPOSITORY_ID': str(native.embedding.REPOSITORY_ID),
-               'GITHUB_REPOSITORY_OWNER_ID': str(native.embedding.REPOSITORY_OWNER_ID),
                'GITHUB_SHA': SOURCE, 'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '2'}
         def committed(args, **kwargs):
             return native.subprocess.CompletedProcess(args, 0, (root / args[-1].removeprefix('HEAD:')).read_bytes())
@@ -384,7 +383,6 @@ class HostedNativeInputsTest(unittest.TestCase):
             fixture(root)
             env = {'GITHUB_REPOSITORY': native.embedding.REPOSITORY, 'GH_TOKEN': 'inert-fixture-token',
                    'GITHUB_REPOSITORY_ID': str(native.embedding.REPOSITORY_ID),
-                   'GITHUB_REPOSITORY_OWNER_ID': str(native.embedding.REPOSITORY_OWNER_ID),
                    'GITHUB_SHA': SOURCE, 'GITHUB_RUN_ID': '123', 'GITHUB_RUN_ATTEMPT': '2'}
             changed = native.subprocess.CompletedProcess([], 0, b'other committed input pins')
             with patch.object(native.subprocess, 'check_output', return_value=SOURCE + '\n'), \

@@ -19,7 +19,7 @@ Native builds need Android SDK platform 36 and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
 
 ```sh
-git clone --recurse-submodules https://github.com/eliza-research/alpha.git
+git clone --recurse-submodules https://github.com/alphacompute/alpha.git
 cd alpha
 bun install --frozen-lockfile
 bun run verify
@@ -139,7 +139,7 @@ checks anonymous readback. Merging source does not publish an application update
 New builds read the `app-stable-alphacompute` release. The previous package
 reads `app-stable`. Publication keeps each package on its own release and
 checks retained versions on both. Android may require installation confirmation.
-New builds use the canonical `eliza-research/alpha` URL. Previously issued
+New builds use the canonical `alphacompute/alpha` URL. Previously issued
 GitHub release URLs rely on the redirect from the former repository name.
 Protected release jobs check the immutable repository and owner IDs. The
 release owner applies the reviewed workflow reference allowlist in
@@ -342,7 +342,7 @@ reviewed archives and verifies the APK digests when streaming the bytes.
 Release approval, signed-byte voice tests, publication and both sideload and
 image-preinstalled phone drills remain required for this batch.
 
-On the machine with the phone, record each [wireless drill](https://github.com/eliza-research/alpha/issues/889)
+On the machine with the phone, record each [wireless drill](https://github.com/alphacompute/alphaphone/issues/889)
 with the release APK and its verification manifest available locally. Both captures
 admit the APK against the reviewed `android/release-signer.json` policy. This capture
 requires Android 14 or later for package installer provenance. Keep Alpha in
@@ -372,8 +372,8 @@ Include the reviewed image provenance and operator observations of the
 disconnected update, confirmation, retained data, Keystore, resident, voice
 and recovery in the acceptance evidence.
 
-The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alpha/issues/888)
-and [wireless launcher acceptance #889](https://github.com/eliza-research/alpha/issues/889).
+The remaining release work is tracked in [native promotion #888](https://github.com/alphacompute/alphaphone/issues/888)
+and [wireless launcher acceptance #889](https://github.com/alphacompute/alphaphone/issues/889).
 Complete it in this order:
 
 1. Admit native voice inputs for the exact SDK, then build and sign both
@@ -412,8 +412,8 @@ Complete it in this order:
      callback page, run `bun scripts/cloud-readiness.ts probe --environment <environment>`,
      then complete sign-in on the intended APK. Test with the new package
      selected to open its supported links if the old package is also installed.
-     [Cloud registration #666](https://github.com/eliza-research/alpha/issues/666),
-     [App Links #670](https://github.com/eliza-research/alpha/issues/670).
+     [Cloud registration #666](https://github.com/alphacompute/alphaphone/issues/666),
+     [App Links #670](https://github.com/alphacompute/alphaphone/issues/670).
 
    For a debug-signed Pixel, use an explicit `--test-mocks` APK on an owned
    test device and select **Staging** in **Subscription gate QA**. The staging
@@ -440,9 +440,9 @@ Complete it in this order:
 OS OTA is a separate A/B image path. The shared updater is staged disabled;
 keep `os_update_enabled` false until signed image, channel, trust, SELinux,
 engine and physical recovery gates pass. Resolve
-[cache retention #890](https://github.com/eliza-research/alpha/issues/890)
-and [applied-candidate recovery #891](https://github.com/eliza-research/alpha/issues/891)
-before enrollment. [#400](https://github.com/eliza-research/alpha/issues/400)
+[cache retention #890](https://github.com/alphacompute/alphaphone/issues/890)
+and [applied-candidate recovery #891](https://github.com/alphacompute/alphaphone/issues/891)
+before enrollment. [#400](https://github.com/alphacompute/alphaphone/issues/400)
 tracks the overall release gate. A successful host test or model does not close
 these release and device gates. Alpha consumes the reviewed rejected-download
 retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) and the

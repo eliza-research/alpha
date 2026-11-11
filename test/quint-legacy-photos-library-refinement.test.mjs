@@ -1,9 +1,10 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {checkPhotosLibraryRefinement} from '../specs/quint/legacy/photos-library/check-photos-library-refinement.mjs';
 
-test('historical Photos profiles compare against mounted browser Photos', {timeout: 240000}, async () => {
+test('historical Photos profiles compare against mounted browser Photos', {timeout: scaledTimeout(240000)}, async () => {
   const {receipts: [receipt], mismatches} = await checkPhotosLibraryRefinement([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.model, 'PhotosLibraryReplay');
   assert.equal(receipt.traces, 4);

@@ -144,7 +144,7 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
    assert.deepEqual(Object.keys(signing.on),['workflow_dispatch']);
    assert.deepEqual(Object.keys(signing.jobs).sort(),['admit','sign']);
    assert.deepEqual(signing.jobs.admit.permissions,{actions:'read',contents:'read'});
-   assert.equal(signing.jobs.admit.if,"github.repository_id == '1396333361' && github.repository_owner_id == '314117943' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+   assert.equal(signing.jobs.admit.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
    const sign=signing.jobs.sign;
    assert.deepEqual(sign.permissions,{actions:'read',contents:'read','id-token':'write'});
    assert.equal(sign.environment,'release');
@@ -163,7 +163,7 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
    const sign=signing.jobs.sign;
    assert.deepEqual(sign.permissions,{contents:'read','id-token':'write'});
    assert.equal(sign.environment,'release');
-   assert.equal(sign.if,"github.repository_id == '1396333361' && github.repository_owner_id == '314117943' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+   assert.equal(sign.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
    assert.deepEqual(signing.concurrency,{group:'preserving-os-ota-signing','cancel-in-progress':false});
    continue;
   }
@@ -175,7 +175,7 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
   assert.deepEqual(Object.keys(publication.on),['workflow_dispatch']);
   assert.deepEqual(Object.keys(publication.jobs).sort(),['admit','publish']);
   assert.deepEqual(publication.jobs.admit.permissions,{contents:'read',actions:'read'});
-  assert.equal(publication.jobs.admit.if,"github.repository_id == '1396333361' && github.repository_owner_id == '314117943' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+  assert.equal(publication.jobs.admit.if,"github.repository_id == '1396333361' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
   const publish=publication.jobs.publish;
   assert.deepEqual(publish.permissions,{actions:'read',contents:'write','id-token':'write'});
   assert.equal(publish.environment,'release');

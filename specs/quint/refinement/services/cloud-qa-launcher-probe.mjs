@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../timeouts.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as promises from 'node:fs/promises';
@@ -59,7 +60,7 @@ json(join(source, 'package.json'), {workspaces: []});
 json(join(source, 'turbo.json'), {tasks: {}});
 if (scenario !== 'missing-entry') write(entry, 'throw Error("The synthetic entry must never run");\n');
 const git = (...arguments_) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null', ...arguments_], {
-  cwd: source, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 5000,
+  cwd: source, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: scaledTimeout(5000),
 }).trim();
 git('init', '-q'); git('add', '.');
 git('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-qm', 'Synthetic SDK');
@@ -108,7 +109,7 @@ else if (kind !== 'fresh') {
     if (kind === 'linkedLog') fs.symlinkSync(otherLog, log);
     else fs.linkSync(otherLog, log);
   } else if (kind === 'fifoLog') {
-    execFileSync('mkfifo', [log], {cwd: scratch, timeout: 5000, stdio: 'pipe'});
+    execFileSync('mkfifo', [log], {cwd: scratch, timeout: scaledTimeout(5000), stdio: 'pipe'});
   } else if (scenario === 'saved-profile') write(log, 'prior log bytes', 0o644);
 }
 const baseListeners = process.listenerCount('SIGTERM');

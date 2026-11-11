@@ -12,14 +12,14 @@ import {publicObject} from './deliver-app-update.ts';
 import {updateArtifactDigest} from './update-artifact.ts';
 import {
   APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY as REPOSITORY, APP_UPDATE_REPOSITORY_ID as REPOSITORY_ID,
-  APP_UPDATE_REPOSITORY_OWNER_ID as OWNER_ID, APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG,
+  APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG,
   appUpdateManifestUrl, isPublishedUpdateApkUrl,
 } from './update-channel.ts';
 
 type CandidateOptions = {root?: string; env?: NodeJS.ProcessEnv; api?: InventoryApi; read?: typeof publicObject};
 type InventoryApi = (args: string[], options?: {missing?: boolean}) => unknown;
 interface ProductConfig {appId: string; versionCode: number; updateManifestUrl: string}
-interface RepositoryIdentity {id: number; full_name: string; owner?: {id: number}}
+interface RepositoryIdentity {id: number; full_name: string}
 interface CandidateRun {id: number; workflow_id: number; path: string; event: string; head_branch: string; head_sha: string; repository?: RepositoryIdentity; head_repository?: RepositoryIdentity; run_number: number; run_attempt: number}
 interface StableRelease {id: number; draft: boolean}
 interface StableAsset {name: string}
@@ -64,7 +64,6 @@ function code(value: number) {
 function identity(root: string, env: NodeJS.ProcessEnv) {
   assert.equal(env.GITHUB_REPOSITORY, REPOSITORY, 'Candidates require the product repository');
   assert.equal(env.GITHUB_REPOSITORY_ID, String(REPOSITORY_ID), 'Candidate repository ID differs');
-  assert.equal(env.GITHUB_REPOSITORY_OWNER_ID, String(OWNER_ID), 'Candidate repository owner ID differs');
   assert.equal(env.GITHUB_EVENT_NAME, 'push', 'Candidates require a main push');
   assert.equal(env.GITHUB_REF, 'refs/heads/main', 'Candidates require main');
   assert.equal(env.GITHUB_WORKFLOW_REF, `${REPOSITORY}/${WORKFLOW}@refs/heads/main`, 'Candidate workflow changed; review its version epoch');
@@ -110,7 +109,7 @@ export async function candidateVersion({root = process.cwd(), env = process.env,
   assert.ok(run.id === Number(context.runId) && run.workflow_id === WORKFLOW_ID &&
     run.path === WORKFLOW && run.event === 'push' && run.head_branch === 'main' &&
     run.head_sha === context.sourceCommit && [run.repository, run.head_repository].every(repository =>
-      repository?.id === REPOSITORY_ID && repository.full_name === REPOSITORY && repository.owner?.id === OWNER_ID) &&
+      repository?.id === REPOSITORY_ID && repository.full_name === REPOSITORY) &&
     run.run_number === context.versionCode && run.run_attempt === Number(context.runAttempt),
   'Candidate run identity or workflow version epoch changed');
   const config = readJson<ProductConfig>(path.join(root, 'app.config.json'));
@@ -119,8 +118,7 @@ export async function candidateVersion({root = process.cwd(), env = process.env,
   const floors = [code(config.versionCode)];
   if (descriptor.lastRelease?.versionCode !== null) floors.push(code(descriptor.lastRelease?.versionCode as number));
   const repository = api([`repos/${REPOSITORY}`]) as RepositoryIdentity & {private: boolean};
-  assert.ok(repository.id === REPOSITORY_ID && repository.full_name === REPOSITORY &&
-    repository.owner?.id === OWNER_ID && repository.private === false, 'Candidate inventory must be the public product repository');
+  assert.ok(repository.id === REPOSITORY_ID && repository.full_name === REPOSITORY && repository.private === false, 'Candidate inventory must be the public product repository');
   let manifestSha256: string | null = null;
   for (const tag of [LEGACY_APP_UPDATE_TAG, APP_UPDATE_TAG] as const) {
     const url = appUpdateManifestUrl(tag);

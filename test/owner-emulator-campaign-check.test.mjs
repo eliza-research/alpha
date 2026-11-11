@@ -58,7 +58,7 @@ test("the dispatch plan pins an exact SHA to a non-main ref and runs nothing", (
   assert.equal(plan.ref, "ci/h31-0123456789ab");
   assert.ok(plan.pin.some(line => line.startsWith(`git push origin ${sha}:refs/heads/ci/h31-`)));
   assert.deepEqual(plan.dispatch.map(run => run.workflow), ["resident-android.yml", "android-emulator.yml", "android-emulator.yml"]);
-  assert.ok(plan.dispatch.every(run => run.command.includes(`--ref ${plan.ref}`) && run.command.includes("-R eliza-research/alphaphone")));
+  assert.ok(plan.dispatch.every(run => run.command.includes(`--ref ${plan.ref}`) && run.command.includes("-R alphacompute/alphaphone")));
   assert.ok(!plan.dispatch.some(run => /suite=(browser-controls|fused-speech|all)/.test(run.command)));
   assert.ok(plan.verify.some(line => line.includes(sha)));
 });
