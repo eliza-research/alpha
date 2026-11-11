@@ -2929,7 +2929,12 @@
           <div style="min-width: 0; flex-grow: 1"><div style="font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</div><div style="font-size: 13px; color: var(--mut); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.sub}}</div></div>
         </button>
       </sc-for>
-      <sc-if value="{{files.filterEmpty}}"><div style="display: flex; justify-content: center; padding-top: 96px; color: var(--mut)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 40px; height: 40px"><path d="{{ic.search}}"></path></svg></div></sc-if>
+      <sc-if value="{{files.filterEmpty}}">
+        <div class="files-empty-state" role="status">
+          <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 40px; height: 40px"><path d="{{ic.search}}"></path></svg>
+          <span>No results to show</span>
+        </div>
+      </sc-if>
     </sc-if>
     <sc-if value="{{files.browse.denied}}">
       <div role="alert" style="display: flex; align-items: center; gap: 12px; margin: 8px; padding: 14px 16px; border-radius: 20px; background: var(--s2)">
@@ -2993,7 +2998,10 @@
       <sc-if value="{{files.nativeTreeStatus}}"><div role="status" style="padding: 8px 24px; color: var(--mut); font-size: 14px">{{files.nativeTreeStatus}}</div></sc-if>
       <div class="scr" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 0 8px 150px; box-sizing: border-box">
         <sc-if value="{{files.fd.empty}}">
-          <div style="display: flex; justify-content: center; padding: 96px 16px; color: var(--mut)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 44px; height: 44px"><path d="{{files.fd.emptyD}}"></path></svg></div>
+          <div class="files-empty-state" role="status">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 44px; height: 44px"><path d="{{files.fd.emptyD}}"></path></svg>
+            <span>No files here</span>
+          </div>
         </sc-if>
         <sc-if value="{{files.isList}}">
           <sc-for list="{{files.fd.items}}" as="r" key="{{r.id}}">

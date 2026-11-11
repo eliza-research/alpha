@@ -17,6 +17,27 @@ test('Files renderer confirms folder creation and closes its mutation dialog',as
  await page.getByRole('button',{name:'Files options',exact:true}).click();await page.getByRole('button',{name:'New folder',exact:true}).click();
  await page.getByRole('textbox',{name:'Name'}).fill('UI folder');await page.getByRole('button',{name:'Create',exact:true}).click();await expect(page.getByRole('button',{name:'Open UI folder',exact:true})).toBeVisible();
 });
+test('Files explains empty folders, categories and Trash in the mounted list',async({page})=>{
+ await page.evaluate(async()=>{
+  const {registerPlugin}=await import('/src/platform-plugins.ts');
+  await registerPlugin<any>('AlphaFiles').storageCreateFolder({parent:'',name:'Empty folder'});
+ });
+ await page.getByRole('button',{name:'Files',exact:true}).click();
+ const detail=page.locator('[data-alpha-subview="files-folder"]');
+ const empty=detail.getByRole('status').filter({hasText:'No files here'});
+ const back=detail.getByRole('button',{name:'Back',exact:true});
+ await page.getByRole('button',{name:'Internal storage',exact:true}).click();
+ await page.getByRole('button',{name:'Open Empty folder',exact:true}).click();
+ await expect(empty).toBeVisible();
+ await back.click();
+ await back.click();
+ for(const name of ['Documents','Trash']){
+  await page.getByRole('button',{name,exact:true}).click();
+  await expect(detail.getByRole('heading',{name,exact:true})).toBeVisible();
+  await expect(empty).toBeVisible();
+  await back.click();
+ }
+});
 test('mail attachment bridge preserves exact bytes and validates reviewed hashes',async({page})=>{
  const attachment=await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const files=registerPlugin<any>('AlphaFiles'),mail=registerPlugin<any>('AlphaMailAttachments');const selection=await files.importFile(new File(['Café\r\nExact bytes'],'letter.txt',{type:'text/plain'}));const result=await mail.readSelected(selection);let rejected=false;try{await mail.openReviewed({...result,reviewed:true,sha256:'0'.repeat(64)});}catch{rejected=true;}await mail.openReviewed({...result,reviewed:true});return {...result,rejected};});
  expect(attachment.rejected).toBe(true);expect(Buffer.from(attachment.dataBase64,'base64').toString('utf8')).toBe('Café\r\nExact bytes');const dialog=page.getByRole('dialog',{name:'Reviewed attachment'});await expect(dialog.getByText('Café Exact bytes')).toBeVisible();await dialog.getByRole('button',{name:'Done',exact:true}).click();await expect(dialog).toHaveCount(0);
