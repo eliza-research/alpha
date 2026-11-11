@@ -48,6 +48,7 @@ test('the update flow runs one attempt per process, fences a session Android sti
   assert.match(result,/PASS fresh HTTPS offer rejects cached withdrawal, change and transport failure before one current commit/);
   assert.match(result,/PASS final offer deadline bounds held network stages and leaves manual recovery available/);
   assert.match(result,/PASS exact pending installer callback survives process replacement once/);
+  assert.match(result,/PASS explicit update permission opens only Alpha Android settings before an offer/);
   assert.match(result,/^PASS update flow/m);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
