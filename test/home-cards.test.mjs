@@ -267,7 +267,10 @@ test('workflow freshness: a load time only after a list was actually loaded', ()
 });
 test('Home template renders source, freshness and the brief card only from live values', () => {
   const template = readFileSync(new URL('../apps/app/src/prototype/template.html', import.meta.url), 'utf8');
-  const home = template.slice(template.indexOf('<sc-element value="{{homeShell}}">'), template.indexOf('</sc-element>'));
+  const start = template.indexOf('<sc-element value="{{homeShell}}">');
+  const end = template.indexOf('</sc-element>', start);
+  assert.ok(start >= 0 && end > start, 'Home shared shell boundaries exist');
+  const home = template.slice(start, end);
   assert.ok(home.includes('<sc-slot name="cards">'), 'Home cards fill the shared shell\'s card slot');
   // The agenda, mail and brief cards are the shared upstream cards (home-overview-cards.ts); the
   // template only places them, in this order around the workflows card. Their DOM is asserted in
