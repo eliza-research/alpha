@@ -19,8 +19,13 @@ import tempfile
 from urllib.parse import quote, urlencode
 import zipfile
 
+from app_update_producer import CANDIDATE, HOSTED_DISPATCH, apk_member_limit, copy_verified, producer_kind
+
 ROOT = Path(__file__).resolve().parents[2]
-REPOSITORY = "eliza-research/alphaphone"
+REPOSITORY = "eliza-research/alpha"
+REPOSITORY_ID = 1396333361
+REPOSITORY_OWNER_ID = 314117943
+SIGNING_WORKFLOW_ID = 411388003
 HEX = re.compile(r"[0-9a-f]{64}")
 COMMIT = re.compile(r"[0-9a-f]{40}")
 NUMBER = re.compile(r"[1-9][0-9]{0,15}")
@@ -158,16 +163,22 @@ def preflight(record, workflow_commit, work, api=gh_json, download=gh_download):
             plan, decode((ROOT / "android/release-signer.json").read_bytes()))
         require(on_main or reviewed_producer,
                 "Producer or signing workflow is not on reviewed main history")
-    run = api(f"repos/{REPOSITORY}/actions/runs/{record['signingRunId']}")
+    run = api(f"repos/{REPOSITORY}/actions/runs/{record['signingRunId']}/attempts/{record['signingRunAttempt']}")
+    repos = [run.get(key) or {} for key in ("repository", "head_repository")]
     require(run.get("status") == "completed" and run.get("conclusion") == "success" and
+            run.get("id") == int(record["signingRunId"]) and run.get("workflow_id") == SIGNING_WORKFLOW_ID and
             run.get("event") == "workflow_dispatch" and run.get("head_branch") == "main" and
             run.get("head_sha") == record["signingWorkflowCommit"] and
-            run.get("head_repository", {}).get("full_name") == REPOSITORY and
+            all(repo.get("id") == REPOSITORY_ID and repo.get("full_name") == REPOSITORY and
+                (repo.get("owner") or {}).get("id") == REPOSITORY_OWNER_ID for repo in repos) and
             run.get("path") == ".github/workflows/release-cloud-app-signing.yml" and
             run.get("run_attempt") == record["signingRunAttempt"], "Signing run identity differs")
     artifact = api(f"repos/{REPOSITORY}/actions/artifacts/{record['deliveryArtifactId']}")
-    require(artifact.get("expired") is False and str(artifact.get("workflow_run", {}).get("id")) == record["signingRunId"] and
-            artifact.get("workflow_run", {}).get("head_sha") == record["signingWorkflowCommit"] and
+    provenance = artifact.get("workflow_run") or {}
+    require(artifact.get("id") == int(record["deliveryArtifactId"]) and artifact.get("expired") is False and
+            str(provenance.get("id")) == record["signingRunId"] and provenance.get("head_branch") == "main" and
+            provenance.get("repository_id") == provenance.get("head_repository_id") == REPOSITORY_ID and
+            provenance.get("head_sha") == record["signingWorkflowCommit"] and
             artifact.get("name") == f"private-cloud-apk-delivery-{record['signingRunId']}-{record['signingRunAttempt']}" and
             artifact.get("size_in_bytes") == record["deliveryArtifactBytes"] and
             artifact.get("digest") == "sha256:" + record["deliveryArtifactSHA256"], "Signing delivery artifact identity differs")
@@ -211,18 +222,6 @@ def signed_download(plan, receipt, destination):
         conn.close()
 
 
-def copy_verified(source, size, expected_digest, failure, destination=None):
-    digest = hashlib.sha256()
-    remaining = size
-    while chunk := source.read(min(1024 * 1024, remaining + 1)):
-        remaining -= len(chunk)
-        require(remaining >= 0, failure)
-        digest.update(chunk)
-        if destination is not None:
-            destination.write(chunk)
-    require(remaining == 0 and digest.hexdigest() == expected_digest, failure)
-
-
 def restore_file(root, name, source, size, digest, failure):
     relative = PurePosixPath(name)
     require(not relative.is_absolute() and all(part not in ("..", ".git") for part in relative.parts), "Unsafe evidence path")
@@ -243,6 +242,7 @@ def restore_file(root, name, source, size, digest, failure):
 
 
 def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_signed=signed_download):
+    kind = producer_kind(plan)
     unsigned, signed = work / "producer.zip", work / "signed.tar"
     fetch_unsigned(plan, unsigned)
     PRODUCER.admit(unsigned, plan)
@@ -250,6 +250,8 @@ def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_si
     require(signed.stat().st_size == record["signedBundle"]["bytes"] and
             file_sha(signed) == record["signedBundle"]["sha256"], "Signed bundle bytes differ")
     with zipfile.ZipFile(unsigned) as archive:
+        verified = decode(archive.read("apk-verification.json"))
+        debug = PRODUCER.debug_apk_members(archive, verified, kind)
         producer = decode(archive.read("producer-evidence/manifest.json"))
         inventory = producer["files"]
         require(isinstance(inventory, dict) and len(inventory) <= 4096, "Invalid producer inventory")
@@ -269,23 +271,23 @@ def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_si
                 else:
                     target = "android/app/build/generated/local-agent/source-manifest.json" if name == "native-source-manifest.json" else name
                     restore_file(product, target, content, fact["bytes"], fact["sha256"], failure)
-        verified = decode(archive.read("apk-verification.json"))
-        for variant in VARIANTS:
-            name = variant + "-debug.apk"
-            rows = [row for row in verified["results"] if row.get("mode") == "debug" and row.get("variant") == variant]
-            require(len(rows) == 1, "Producer debug APK is required for full verification")
-            entry = archive.getinfo(name)
-            require(0 < entry.file_size <= 400_000_000 and stat.S_IFMT(entry.external_attr >> 16) in (0, stat.S_IFREG) and not entry.flag_bits & 1, "Invalid debug archive member")
+        for name, (entry, digest) in debug.items():
             with archive.open(entry) as content:
-                restore_file(product, "artifacts/" + name, content, entry.file_size,
-                             rows[0]["sha256"], "Producer debug APK bytes differ")
-    expected = {v + "-release.apk" for v in VARIANTS} | {"signed.sha256", "signing-plan.json", "production-signer.sha256"}
+                restore_file(product, "artifacts/" + name, content, entry.file_size, digest,
+                             "Producer debug APK bytes differ")
+    signed_apks = {v + "-release.apk" for v in VARIANTS}
+    expected = signed_apks | {"signed.sha256", "signing-plan.json", "production-signer.sha256"}
     if plan.get("rotation") is not None:
         expected.add("rotation.lineage")
     with tarfile.open(signed, "r:") as archive:
         members = archive.getmembers()
+        # The exact uncompressed TAR receipt authenticates its member sizes.
+        # APKs may fill that envelope. Metadata keeps the historical ceiling.
+        signed_limit = min(record["signedBundle"]["bytes"], apk_member_limit(kind))
+        metadata_limit = apk_member_limit(HOSTED_DISPATCH)
         require(len(members) == len(expected) and {item.name for item in members} == expected and
-                all(item.isfile() and 0 < item.size <= 400_000_000 for item in members), "Unexpected signed bundle members")
+                all(item.isfile() and 0 < item.size <= (signed_limit if item.name in signed_apks else metadata_limit)
+                    for item in members), "Unexpected signed bundle members")
         with archive.extractfile("signing-plan.json") as source:
             require(source.read(32769) == (work / "signing-plan.json").read_bytes(), "Signed bundle plan differs")
         expected_lines = {f"{record['signedApkSHA256'][v]}  {v}-release.apk" for v in VARIANTS}
@@ -311,7 +313,10 @@ def main():
     require(args.record.is_file() and not args.record.is_symlink() and args.record.stat().st_size <= 131072, "Bounded regular qualification record required")
     record_bytes = args.record.read_bytes()
     record = decode(record_bytes)
-    require(os.environ.get("GITHUB_REPOSITORY") == REPOSITORY and os.environ.get("GITHUB_REF") == "refs/heads/main" and
+    require(os.environ.get("GITHUB_REPOSITORY") == REPOSITORY and
+            os.environ.get("GITHUB_REPOSITORY_ID") == str(REPOSITORY_ID) and
+            os.environ.get("GITHUB_REPOSITORY_OWNER_ID") == str(REPOSITORY_OWNER_ID) and
+            os.environ.get("GITHUB_REF") == "refs/heads/main" and
             os.environ.get("GITHUB_SHA") == args.workflow_commit, "Publication runs only on exact reviewed Alpha main")
     plan = preflight(record, args.workflow_commit, args.work)
     if args.product:
@@ -321,6 +326,7 @@ def main():
         stage(record, plan, args.work, product)
     output = {"qualificationSHA256": sha(record_bytes), "sourceCommit": plan["alphaCommit"],
               "sdkCommit": plan["sdkCommit"], "versionCode": plan["versionCode"],
+              "runtimeProfile": "native" if producer_kind(plan) == CANDIDATE else "cloud",
               "signedApkSHA256": record["signedApkSHA256"], "voiceEvidenceSHA256": record["cloudVoiceEvidenceSHA256"],
               "voiceAuthority": "reviewed-external-receipt", "published": False}
     (args.work / "qualification-summary.json").write_text(json.dumps(output, indent=2) + "\n")

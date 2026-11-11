@@ -6,7 +6,6 @@ import io
 import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import tempfile
 from unittest.mock import patch
@@ -18,6 +17,7 @@ fixtures = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fixtures)
 bridge = fixtures.BRIDGE
 storage = bridge.STORAGE
+producer = fixtures.FIXTURES.PRODUCER
 
 # Every gh invocation is constrained to one synthetic endpoint table.
 GH = """#!/usr/bin/env python3
@@ -92,16 +92,22 @@ def actions(label, *args):
 
 def blank():
     return {"lane": "none", "plan": False, "unsigned": False, "object": False,
-            "privateReceipt": False, "review": False, "restored": False}
+            "candidateAttempt": 0, "protectedAttempt": 0, "privateReceipt": False, "review": False, "restored": False}
 
 
 def campaign(scratch, signing_commit, name, schedule):
     fixture = fixtures.QualifiedUpdateTest()
     fixture.setUp()
+    if schedule[0][0] == "admitCandidate":
+        fixture.use_main_candidate()
+    elif schedule[0][1][0] == "dispatch":
+        fixture.producer.write_archive()
+        fixture.plan["archiveBytes"] = fixture.producer.archive.stat().st_size
     state = blank()
     trace = {"name": name, "expect": {"s": blank()}, "steps": []}
     plan = copy.deepcopy(fixture.plan)
-    repo = bridge.REPOSITORY
+    repo = producer.REPOSITORY
+    identity = {"id": producer.REPOSITORY_ID, "full_name": repo, "owner": {"id": producer.OWNER_ID}}
     prefix = f"repos/{repo}"
     number, artifact = "171", "202"
     stage = fixture.directory / "unsigned"
@@ -112,10 +118,34 @@ def campaign(scratch, signing_commit, name, schedule):
     private_port = media_port(plan["privateStorage"]["outputObject"], "456", signed)
     source_summaries = []
 
+    def candidate_metadata(fault):
+        source = plan["alphaCommit"]
+        attempt = 1 if fault == "attempt" else plan["producerRunAttempt"]
+        return {
+            f"{prefix}/actions/runs/{number}/attempts/{plan['producerRunAttempt']}": {
+                "id": int(number), "run_attempt": attempt, "run_number": plan["versionCode"],
+                "event": "push", "head_branch": "main", "head_sha": source,
+                "workflow_id": producer.WORKFLOW_ID, "path": producer.WORKFLOW,
+                "status": "completed", "conclusion": "cancelled" if fault == "cancelled" else "success",
+                "repository": identity,
+                "head_repository": {**identity, "id": 1} if fault == "repo" else
+                    {**identity, "owner": {"id": 1}} if fault == "owner" else identity,
+            },
+            f"{prefix}/actions/artifacts/{artifact}": {
+                "id": int(artifact), "expired": fault == "expired",
+                "workflow_run": {"id": int(number), "head_sha": source, "head_branch": "main",
+                                 "repository_id": producer.REPOSITORY_ID, "head_repository_id": producer.REPOSITORY_ID},
+                "digest": "sha256:" + plan["archiveSHA256"], "size_in_bytes": len(unsigned),
+                "name": f"app-native-candidate-{plan['versionCode']}-{source}-{number}-{plan['producerRunAttempt']}",
+            },
+        }
+
     def signing_command(lane, fault, output, stage_path=None):
         dispatch_plan = copy.deepcopy(plan)
-        if lane != "private":
+        if lane == "dispatch":
             dispatch_plan.pop("privateStorage")
+            dispatch_plan.pop("producerKind")
+            dispatch_plan.pop("privateProducerReceiptSHA256")
             dispatch_plan.update(producerRunId=number, artifactId=artifact)
         endpoints = {
             f"{prefix}/compare/{plan['alphaCommit']}...{signing_commit}": {
@@ -124,18 +154,28 @@ def campaign(scratch, signing_commit, name, schedule):
             },
             f"{prefix}/actions/runs/{number}": {
                 "status": "completed", "conclusion": "cancelled" if fault == "cancelled" else "success",
-                "head_sha": plan["alphaCommit"], "head_repository": {"full_name": repo},
+                "id": int(number), "head_sha": plan["alphaCommit"], "head_branch": "main",
+                "repository": identity, "head_repository": identity,
                 "path": ".github/workflows/resident-android.yml",
-                "event": "push" if lane == "push" else "workflow_dispatch",
+                "event": "workflow_dispatch",
                 "run_attempt": 2 if fault == "attempt" else 1,
             },
             f"{prefix}/actions/artifacts/{artifact}": {
-                "expired": fault == "expired", "workflow_run": {"id": int(number), "head_sha": plan["alphaCommit"]},
+                "id": int(artifact), "expired": fault == "expired", "workflow_run": {
+                    "id": int(number), "head_sha": plan["alphaCommit"], "head_branch": "main",
+                    "repository_id": producer.REPOSITORY_ID, "head_repository_id": producer.REPOSITORY_ID},
                 "digest": "sha256:" + plan["archiveSHA256"], "size_in_bytes": len(unsigned),
                 "name": f"resident-distribution-archive-{plan['alphaCommit']}-{number}",
             },
             f"{prefix}/actions/artifacts/{artifact}/zip": str(fixture.producer.archive),
         }
+        if lane == "push":
+            endpoints.update(candidate_metadata(fault))
+            if fault in ("download-bytes", "download-overflow"):
+                changed = fixture.directory / "changed-download.zip"
+                changed.write_bytes(unsigned[:-1] + bytes([unsigned[-1] ^ 1]) if fault == "download-bytes"
+                                    else unsigned + b"x")
+                endpoints[f"{prefix}/actions/artifacts/{artifact}/zip"] = str(changed)
         if fault == "plan":
             dispatch_plan["privateStorage"]["inputGeneration"] = "latest"
         endpoints_path = fixture.directory / "github.json"
@@ -147,6 +187,7 @@ def campaign(scratch, signing_commit, name, schedule):
         result = subprocess.run(args, cwd=scratch, capture_output=True, timeout=30, env={
             "PATH": str(scratch / "closed-bin") + os.pathsep + os.environ["PATH"],
             "GITHUB_SHA": signing_commit, "GITHUB_REPOSITORY": repo, "GITHUB_REF": "refs/heads/main",
+            "GITHUB_REPOSITORY_ID": str(producer.REPOSITORY_ID), "GITHUB_REPOSITORY_OWNER_ID": str(producer.OWNER_ID),
             "RUNNER_TEMP": str(fixture.directory), "GITHUB_OUTPUT": str(output),
             "SIGNING_PLAN": plan_bytes.decode(), "GH_FIXTURE": str(endpoints_path),
         })
@@ -162,13 +203,15 @@ def campaign(scratch, signing_commit, name, schedule):
     try:
         for index, (action, args, fault) in enumerate(schedule):
             observation = {}
-            if action == "admit":
-                lane, _ = args
+            if action in ("admit", "admitCandidate"):
+                lane = "push" if action == "admitCandidate" else args[0]
                 state["lane"] = lane
                 state["plan"] = signing_command(lane, fault, fixture.directory / "preflight-output")
+                if lane == "push" and state["plan"]:
+                    state["candidateAttempt"] = plan["producerRunAttempt"]
                 if fault == "attempt":
                     observation["producerRunAttempt"] = 2
-            elif action == "restoreUnsigned":
+            elif action in ("restoreUnsigned", "restoreCandidate"):
                 if state["lane"] == "dispatch":
                     state["unsigned"] = signing_command("dispatch", fault, fixture.directory / "stage-output", stage)
                 else:
@@ -177,6 +220,8 @@ def campaign(scratch, signing_commit, name, schedule):
                                       unsigned if fault != "bytes" else unsigned[:-1] + bytes([unsigned[-1] ^ 1]))
                     archive = fixture.directory / f"unsigned-{index}.zip"
                     try:
+                        if action == "restoreCandidate":
+                            producer.github_candidate(plan, candidate_metadata(fault).__getitem__)
                         with patch.object(storage, "connection", return_value=(port, {})):
                             storage.download(plan, archive)
                         bridge.PRODUCER.admit(archive, plan, stage)
@@ -185,6 +230,8 @@ def campaign(scratch, signing_commit, name, schedule):
                 staged = {variant: bridge.file_sha(stage / f"{variant}-release-unsigned.apk")
                           for variant in bridge.VARIANTS if (stage / f"{variant}-release-unsigned.apk").is_file()}
                 state["unsigned"] = staged == plan["unsignedApkSHA256"]
+                if action == "restoreCandidate" and state["unsigned"]:
+                    state["protectedAttempt"] = plan["producerRunAttempt"]
                 observation["stagedUnsignedSHA256"] = staged
             elif action == "uploadPrivate":
                 assert state["unsigned"]
@@ -205,7 +252,7 @@ def campaign(scratch, signing_commit, name, schedule):
                     record["cloudVoiceEvidenceSHA256"] = "0" * 64
                 def api(endpoint):
                     response = fixture.api(endpoint)
-                    if fault == "attempt" and endpoint.endswith("/actions/runs/100"):
+                    if fault == "attempt" and endpoint.endswith("/actions/runs/100/attempts/1"):
                         response["run_attempt"] = 2
                     if fault == "artifact" and endpoint.endswith("/actions/artifacts/200"):
                         response["expired"] = True
@@ -228,9 +275,14 @@ def campaign(scratch, signing_commit, name, schedule):
                         port.content = signed[:-1] + bytes([signed[-1] ^ 1])
                     with patch.object(storage, "connection", return_value=(port, {})):
                         bridge.signed_download(pins, receipt, target)
+                def fetch_unsigned(pins, target):
+                    transport = pins["privateStorage"]
+                    data = unsigned if fault != "mirror" else unsigned[:-1] + bytes([unsigned[-1] ^ 1])
+                    port = media_port(transport["inputObject"], transport["inputGeneration"], data)
+                    with patch.object(storage, "connection", return_value=(port, {})):
+                        storage.download(pins, target)
                 try:
-                    bridge.stage(record, reviewed_plan, work, product,
-                                 lambda _plan, target: shutil.copyfile(fixture.producer.archive, target), fetch_signed)
+                    bridge.stage(record, reviewed_plan, work, product, fetch_unsigned, fetch_signed)
                 except ValueError as error:
                     observation["refusal"] = str(error)
                 staged = {variant: bridge.file_sha(product / f"artifacts/{variant}-release.apk")
@@ -271,14 +323,23 @@ def main():
         restore = ("restoreSigned", [True], "ok")
         schedules = [
             ("protected private plan, exact receipt and restored pair", [plan, stage, upload, review, restore]),
-            ("main-push candidate has no signer route", [("admit", ["push", True], "ok")]),
-            ("dispatch archive stages exact native APKs", [("admit", ["dispatch", True], "ok"), stage]),
+            ("dispatch archive stages exact Cloud APKs", [("admit", ["dispatch", True], "ok"), stage]),
             ("dispatch archive admission currently has no attempt pin", [("admit", ["dispatch", True], "attempt")]),
             ("private plan never stages changed downloaded bytes", [plan, ("restoreUnsigned", [False], "bytes")]),
             ("partial upload and lost response leave no exact receipt", [plan, stage,
                 ("uploadPrivate", ["before"], "before"), ("uploadPrivate", ["partial"], "partial"),
                 ("uploadPrivate", ["after"], "after"), upload]),
         ]
+        candidate = ("admitCandidate", [2, True], "ok")
+        protected = ("restoreCandidate", [2, True], "ok")
+        schedules.append(("exact main candidate and repeated protected attempt",
+                          [candidate, ("restoreCandidate", [1, True], "attempt"),
+                           ("restoreCandidate", [2, False], "bytes"), protected, upload, review, restore]))
+        for failure in ("attempt", "repo", "owner", "cancelled", "expired", "source", "download-bytes", "download-overflow"):
+            schedules.append((f"{failure} refuses a main candidate",
+                              [("admitCandidate", [1, True] if failure == "attempt" else [2, False], failure)]))
+        schedules.append(("qualified candidate rejects changed private mirror",
+                          [candidate, protected, upload, review, ("restoreSigned", [False], "mirror")]))
         for failure in ("source", "cancelled", "expired", "plan"):
             lane = "private" if failure == "plan" else "dispatch"
             schedules.append((f"{failure} refuses signing admission", [("admit", [lane, False], failure)]))
@@ -289,7 +350,10 @@ def main():
             schedules.append((f"{failure} refuses exact signed restore",
                               [plan, stage, upload, review, ("restoreSigned", [False], failure)]))
         results = [campaign(scratch, commit, name, schedule) for name, schedule in schedules]
+        candidate_index = next(i for i, (trace, _) in enumerate(results)
+                               if trace["name"] == "exact main candidate and repeated protected attempt")
         print(json.dumps({"traces": [trace for trace, _ in results], "launcherBytes": results[0][1],
+                          "mainCandidate": {"index": candidate_index, "launcherBytes": results[candidate_index][1]},
                           "versionCode": 44}))
 
 

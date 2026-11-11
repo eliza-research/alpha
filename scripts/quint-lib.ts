@@ -35,7 +35,8 @@ export const runtimeScriptPaths = ['scripts/stage-alpha-os-branding.py', 'script
   'scripts/apk.ts', 'scripts/source-snapshot.ts', 'scripts/verify-apks.ts', 'scripts/verify-packaged-runtime.py',
   'scripts/provision-unit.ts', 'scripts/publish-update-manifest.ts', 'scripts/deliver-app-update.ts',
   'scripts/update-apk-admission.ts', 'scripts/update-artifact.ts', 'scripts/owner/InspectUpdateApk.java',
-  'scripts/ci/qualified-app-update.py', 'scripts/ci/admit-cloud-signing-input.py', 'scripts/ci/private-apk-storage.py'];
+  'scripts/ci/qualified-app-update.py', 'scripts/ci/admit-cloud-signing-input.py', 'scripts/ci/app_update_producer.py',
+  'scripts/ci/private-apk-storage.py'];
 export const runtimeAssetPaths = ['apps/app/index.html'];
 const omittedDirectories = new Set(['.cache', 'node_modules', 'build', '.generated', '.gradle', '.cxx', '.kotlin', 'assets', 'jniLibs', 'capacitor-cordova-android-plugins']);
 const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', '.h', '.c', '.html', '.mjs', '.jsx', '.cc', '.hpp', '.rs', '.swift']);
@@ -43,6 +44,7 @@ const sourceExtensions = new Set(['.ts', '.tsx', '.js', '.java', '.kt', '.cpp', 
 const modelFamilies = ['application', 'services', 'native', 'legacy'] as const;
 type ModelFamily = (typeof modelFamilies)[number];
 type ExpectedCheck = 'pass' | 'violation';
+export type QuintProofBackend = 'apalache' | 'tlc';
 interface ModelCheck {
   init: string;
   step: string;
@@ -61,6 +63,7 @@ interface ModelDefinition {
   init: string;
   step: string;
   invariant: string;
+  verifyBackend?: QuintProofBackend;
   tests: string[];
   sources?: string[];
   sharedSources?: string[];
@@ -186,7 +189,16 @@ export function quintModelOptions(model: ModelDefinition, command: string = 'che
   };
 }
 
+export function quintProofBackend(model: Pick<ModelDefinition, 'verifyBackend'>, command: string, override?: QuintProofBackend): QuintProofBackend {
+  if (override) return override;
+  if (command === 'temporal' || command === 'compare') return 'tlc';
+  return command === 'verify' ? model.verifyBackend ?? 'apalache' : 'apalache';
+}
+
 export function validateQuintModelMetadata(model: ModelDefinition, text: string) {
+  if (model.verifyBackend !== undefined && model.verifyBackend !== 'apalache' && model.verifyBackend !== 'tlc') {
+    throw Error(`Invalid verifyBackend in ${model.module}`);
+  }
   for (const test of model.tests) if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(test)) throw Error(`Invalid scenario ${model.module}.${test}`);
   if (new Set(model.tests).size !== model.tests.length) throw Error(`Duplicate scenarios in ${model.module}`);
   for (const key of ['maxSamples', 'maxSteps', 'maxVerifyDepth'] as const) {

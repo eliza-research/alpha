@@ -3,14 +3,18 @@ import {returnToApps} from './app-navigation';
 import {test,expect,type Page} from '@playwright/test';
 import {cloudNotesVoiceFixture,noPhysicalOrLocalVoice} from './cloud-notes-voice-fixture';
 const voice=(page:Page)=>page.getByRole('region',{name:'Voice conversation',exact:true});
-async function restartVoice(page:Page){
+// surface: where Talk from the hidden chat lands. Cloud speech opens the voice sheet; once a refused
+// Cloud request has held this account on on-device speech, the Home pill holds the conversation.
+async function restartVoice(page:Page,surface:'sheet'|'pill'){
  await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();
  await expect(voice(page)).toHaveCount(0);
  // The composer keeps its unsent draft and shows Send. Talk is available from
  // the pill, a pull down from the bar, without editing the draft.
  await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
  await page.evaluate(()=>(window as any).ownedVoiceNavigation.shell.setState({chat:'hidden'}));
+ expect(await page.evaluate(async()=>(await import('/src/runtime/voice-selection.ts')).speechRoute())).toBe(surface==='sheet'?'cloud':'device');
  await page.getByRole('button',{name:'Talk',exact:true}).click({timeout:5000});
+ if(surface==='sheet'){await expect(voice(page)).toBeVisible();await expect(page.locator('[data-alpha-pill-voice]')).toHaveCount(0);return;}
  await expect.poll(()=>page.evaluate(()=>(window as any).ownedVoiceNavigation.shell.swallowed())).toBe(false);
  await page.locator('[data-alpha-pill-voice]').getByRole('button',{name:'Open conversation',exact:true}).press('Enter',{timeout:5000});
 }
@@ -59,7 +63,7 @@ test('empty ASR stops without a turn and explicit restart sends the next spoken 
  await utterance(page);await expect(voice(page)).toHaveAttribute('data-voice-state','error');
  expect(await page.evaluate(()=>(window as any).cloudNotesVoice.active)).toBe(null);
  expect(await page.evaluate(()=>{const f=(window as any).ownedVoiceNavigation,c=(window as any).cloudNotesVoice;return {inputs:f.inputs.length,claims:f.claims,acks:f.acks,speech:c.syntheses,uploads:c.uploads};})).toEqual({inputs:0,claims:0,acks:0,speech:0,uploads:1});
- await page.evaluate(()=>(window as any).cloudNotesVoice.empty=false);await restartVoice(page);
+ await page.evaluate(()=>(window as any).cloudNotesVoice.empty=false);await restartVoice(page,'sheet');
  await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  expect(await page.evaluate(()=>(window as any).ownedVoiceNavigation.inputs.length)).toBe(0);
  await utterance(page,'calendar');
@@ -74,11 +78,14 @@ test('billing failure requires explicit restart and does not replay the failed u
  await expect(voice(page)).not.toContainText('billing');await expect(voice(page).getByRole('button',{name:'Stop voice conversation',exact:true})).toBeEnabled();
  await page.waitForTimeout(1000);
  expect(await page.evaluate(()=>{const f=(window as any).ownedVoiceNavigation,c=(window as any).cloudNotesVoice;return {inputs:f.inputs.length,starts:c.starts,speech:c.syntheses,uploads:c.uploads,active:c.active};})).toEqual({inputs:0,starts:1,speech:0,uploads:1,active:null});
- await page.evaluate(()=>(window as any).cloudNotesVoice.billing=false);await restartVoice(page);await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
+ await page.evaluate(()=>(window as any).cloudNotesVoice.billing=false);await restartVoice(page,'pill');await expect(voice(page)).toHaveAttribute('data-voice-state','listening');
  expect(await page.evaluate(()=>(window as any).ownedVoiceNavigation.inputs.length)).toBe(0);
  await utterance(page,'notes');await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  expect(await page.evaluate(()=>{const f=(window as any).ownedVoiceNavigation,c=(window as any).cloudNotesVoice;return {inputs:f.inputs.length,claims:f.claims,acks:f.acks,speech:c.syntheses,uploads:c.uploads};})).toEqual({inputs:1,claims:1,acks:1,speech:1,uploads:2});
- await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();await noPhysicalOrLocalVoice(page);
+ await voice(page).getByRole('button',{name:'Stop voice conversation',exact:true}).click();
+ // A refused Cloud request first checks on-device speech (refused here), never synthesizes on it,
+ // and only then shows the Cloud failure: exactly one readiness probe and no other local or physical media.
+ expect(await page.evaluate(()=>{const f=(window as any).cloudNotesVoice;return {mic:f.mic,plays:f.plays,local:f.local,localProbes:f.localProbes,paired:f.paired};})).toEqual({mic:0,plays:0,local:1,localProbes:1,paired:0});
 });
 
 for(const retirement of ['stop','account'])test(`late held ASR after ${retirement} admits no navigation, send or media rearm`,async({page})=>{

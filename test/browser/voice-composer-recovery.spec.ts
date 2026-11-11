@@ -3,7 +3,9 @@ import {preloadPageModules} from './helpers/page-modules';
 
 // A synthetic voice delegate exercises the real adapter/template without capturing audio,
 // opening a speech connection or submitting a provider/model request.
-async function setup(page:Page){
+// cloud=false: no Cloud account, so speech takes the on-device route and a hidden chat keeps the
+// Home pill (Cloud speech opens the voice sheet). The synthetic voice delegate is the same either way.
+async function setup(page:Page,cloud=true){
  await page.route('https://**/*',route=>route.abort());
  await page.route('**/src/runtime/development-cartesia-conversation.ts*',route=>route.fulfill({contentType:'application/javascript',body:`
  export const developmentCartesiaVoiceEnabled=true;
@@ -20,18 +22,19 @@ async function setup(page:Page){
  });
  await page.goto('/');await expect(page.locator('textarea[data-alpha-composer]')).toBeEnabled();
  await preloadPageModules(page,['/src/runtime/connection-ui.tsx','/src/prototype/model.js']);
- await page.evaluate(async()=>{
+ await page.evaluate(async cloud=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx'),{Component}=await import('/src/prototype/model.js');
   const f=(window as any).voicePresentationFixture;
   const snapshot={...c.getSnapshot(),open:false,busy:false,session:{origin:'https://owned.invalid',ownerId:'owner',agentId:'agent',sessionId:'synthetic-agent'}};
-  c.getSnapshot=()=>snapshot as any;c.getCloudEnvironment=()=>'production';c.getCloudClient=()=>({sessionId:'synthetic-cloud',credentialId:'synthetic-credential',client:{}} as any);
+  c.getSnapshot=()=>snapshot as any;c.getCloudEnvironment=()=>cloud?'production':null;c.getCloudClient=()=>cloud?({sessionId:'synthetic-cloud',credentialId:'synthetic-credential',client:{}} as any):null;
   Component.prototype.prepareVoiceConversation=async function(signal:any){signal.throwIfAborted();return {binding:{conversationId:'synthetic-room',session:{sessionId:'synthetic-agent'},connectionEpoch:1},context:{view:this.S().view||'home',revision:1,sensitive:false}};};
   c.voiceConversationCurrent=()=>true;
   Component.prototype.voiceConversationCurrent=()=>true;
   Component.prototype.sendVoiceTurn=async()=>{f.sends++;throw Error('Synthetic presentation must not send');};
   const render=Component.prototype.renderVals;Component.prototype.renderVals=function(){f.shell=this;return render.call(this);};c.close();
- });
+ },cloud);
  await expect.poll(()=>page.evaluate(()=>!!(window as any).voicePresentationFixture.shell)).toBe(true);
+ expect(await page.evaluate(async()=>(await import('/src/runtime/voice-selection.ts')).speechRoute())).toBe(cloud?'cloud':'device');
 }
 async function noMediaOrSends(page:Page){expect(await page.evaluate(()=>{const f=(window as any).voicePresentationFixture;return {media:f.media,sends:f.sends};})).toEqual({media:0,sends:0});}
 
@@ -53,7 +56,7 @@ test('synthetic voice: one idle mic, full-width synth, mute and Stop preserve vi
 });
 
 test('synthetic pill voice keeps five-bar synth, mute and Stop compact without opening chat',async({page},info)=>{
- await setup(page);await page.evaluate(()=>{(window as any).voicePresentationFixture.shell.setState({chat:'hidden'});});
+ await setup(page,false);await page.evaluate(()=>{(window as any).voicePresentationFixture.shell.setState({chat:'hidden'});});
  await expect.poll(()=>page.evaluate(()=>(window as any).voicePresentationFixture.shell.S().chat)).toBe('hidden');
  await page.getByRole('button',{name:'Talk',exact:true}).click();
  const pill=page.locator('[data-alpha-pill-voice]');await expect(pill).toBeVisible();await expect(pill.locator('[data-alpha-voice-bar]')).toHaveCount(5);
@@ -65,7 +68,7 @@ test('synthetic pill voice keeps five-bar synth, mute and Stop compact without o
 });
 
 for(const detent of ['sheet','full','hidden'])test(`synthetic voice error keeps a square Stop and truthful disabled mic: ${detent}`,async({page},info)=>{
- await setup(page);await page.evaluate(detent=>new Promise<void>(resolve=>(window as any).voicePresentationFixture.shell.setState({chat:detent},resolve)),detent);
+ await setup(page,detent!=='hidden');await page.evaluate(detent=>new Promise<void>(resolve=>(window as any).voicePresentationFixture.shell.setState({chat:detent},resolve)),detent);
  await page.getByRole('button',{name:'Talk',exact:true}).click();
  const controls=page.locator(detent==='hidden'?'[data-alpha-pill-voice]':'.alpha-voice-composer');await expect(controls.getByRole('button',{name:'Mute microphone',exact:true})).toBeEnabled();
  await page.evaluate(()=>(window as any).voicePresentationFixture.fail());

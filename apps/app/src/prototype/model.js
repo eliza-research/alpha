@@ -2,6 +2,7 @@ import { testMocksEnabled } from '../build-flags';
 import { externalVoiceInvocationEnabled } from '../runtime/voice-entry-policy';
 import { nextDefaultNoteTitle } from '../runtime/note-default-title';
 import { accessibilityTimeoutScale } from '../runtime/accessibility-timeout';
+import { recordRendererFailure } from '../runtime/crash-log';
 import iconCatalog from '../icon-catalog.json';
 /* Seeds, scripted replies and fixture images. Production builds resolve this
    specifier to ./fixtures.empty.js (same names, empty values). */
@@ -2411,7 +2412,7 @@ registerView("photos", {
         prevItem: function () { go(-1); }, nextItem: function () { go(1); },
         askLabel: "Ask Alpha about this " + (cur.kind === "video" ? "video" : "photo"),
         editLabel: cur.kind === "video" ? "Edit video" : "Edit photo", shareLabel: cur.kind === "video" ? "Share video" : "Share photo", infoLabel: cur.kind === "video" ? "Video info" : "Photo info", deleteLabel: cur.kind === "video" ? "Delete video" : "Delete photo",
-        vid: cur.kind === "video", playBtn: cur.kind === "video" && !st.playing, playing: !!st.playing,
+        vid: cur.kind === "video", playBtn: cur.kind === "video" && !st.playing, playing: !!st.playing, playLabel: "Play video", muteLabel: "Mute video", videoUnavailable: true,
         prog: "width: " + (st.ppos || 0) + "%; transition: " + (st.ppos ? "width " + phSecs(cur.dur) + "s linear" : "none"),
         dur: cur.dur,
         down: function (e) { try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} sw.down(e); },
@@ -5059,6 +5060,11 @@ registerView("settings", {
   }
 });
 
+function RecoverFailedView({ recover }) {
+  React.useLayoutEffect(recover, [recover]);
+  return null;
+}
+
 var BASE = {
   screen: "boot", bootStep: 0, view: null, shade: false, chat: "input",
   voice: "off", vtext: "", vcap: "", draft: "", editCard: null, typing: false, heads: false, toast: "", hint: false,
@@ -5319,20 +5325,6 @@ class Component extends DCLogic {
   mod(k) { return VIEWS[k] || {}; }
   defaultChat(k) { return this.mod(k).chat === "input" ? "input" : "hidden"; }
   rest() { var v = this.S().view; return v ? this.defaultChat(v) : "input"; }
-  /* A view whose render threw is left after the current render pass. Its own onLeave may fail the
-     same way, so the view is then dropped directly: the launcher never loops on a broken view. */
-  closeFailedView(v, error) {
-    if (this.failedView === v) return;
-    this.failedView = v; var self = this;
-    if (typeof console !== "undefined") console.error("View render failed: " + v, error);
-    this.later(function () {
-      self.failedView = null;
-      if (self.S().view !== v) return;
-      try { self.goHome(); } catch (ignored) { /* dropped below */ }
-      self.setState(function (previous) { return previous && previous.view === v ? { view: null, stack: [] } : null; });
-      self.toast(((VIEWS[v] && VIEWS[v].title) || "This app") + " had a problem and was closed.");
-    }, 0, "viewFailure");
-  }
   leave() {
     var v = this.S().view;
     if (v) { this.clear("m_" + v); this.stopEvery("m_" + v); var m = this.mod(v); if (m.onLeave) m.onLeave(this.api(v)); }
@@ -5666,15 +5658,26 @@ class Component extends DCLogic {
     var imm = (mod && mod.immersive) ? (mod.immersive(st, this.api(v)) || {}) : {};
 
     var out = {};
+    if (isView && mod && mod.render) {
+      try {
+        out[v] = mod.render(st, this.api(v));
+      } catch (error) {
+        isView = false;
+        imm = {};
+        mod = null;
+        // Retire the view only after React commits this fallback.
+        out.viewRenderRecovery = React.createElement(RecoverFailedView, { recover: () => {
+          var current = this.S();
+          if (current.screen !== "home" || current.view !== v) return;
+          void recordRendererFailure("render", error);
+          this.goHome(current.chat);
+          this.toast(VIEWS[v].title + " had a problem and was closed.");
+        } });
+      }
+    }
     var is = {};
     ORDER.forEach(function (k) { is[k] = isView && v === k; });
     out.is = is;
-    // One view's render failure closes that view only: Home, the conversation and every other app
-    // keep running instead of the whole launcher falling to the reload screen.
-    if (isView && mod && mod.render) {
-      try { out[v] = mod.render(st, this.api(v)); }
-      catch (error) { is[v] = false; this.closeFailedView(v, error); }
-    }
     if (v === "inbox" && out.inbox && !out.inbox.folderTitle) out.inbox.folderTitle = "Inbox";
     // Compose attach copy follows the provider adapter's attachment limit (c.attachLabel); one
     // reviewed file until an adapter reports more.

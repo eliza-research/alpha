@@ -7,6 +7,7 @@ import io
 import json
 from pathlib import Path
 import shutil
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -14,6 +15,7 @@ from unittest.mock import patch
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts/ci"))
 
 
 def load(name, file):
@@ -76,10 +78,19 @@ class QualifiedUpdateTest(unittest.TestCase):
         self.signed_tar = self.directory / "signed-original.tar"
         self.write_signed()
         self.receipt_zip = self.directory / "delivery-original.zip"
+        self.write_delivery_receipt()
+
+    def write_delivery_receipt(self):
         with zipfile.ZipFile(self.receipt_zip, "w") as archive:
             archive.writestr("private-storage-receipt.json", json.dumps(self.record["signedBundle"]))
         self.record["deliveryArtifactBytes"] = self.receipt_zip.stat().st_size
         self.record["deliveryArtifactSHA256"] = BRIDGE.file_sha(self.receipt_zip)
+
+    def use_main_candidate(self, debug=None):
+        self.producer.write_candidate(debug)
+        self.signed_entries["signing-plan.json"] = encoded(self.record, "signingPlan", self.plan)
+        self.write_signed()
+        self.write_delivery_receipt()
 
     def write_signed(self, extra=None):
         entries = {**self.signed_entries, **(extra or {})}
@@ -92,16 +103,61 @@ class QualifiedUpdateTest(unittest.TestCase):
                                        "object": self.plan["privateStorage"]["outputObject"], "generation": "456",
                                        "bytes": self.signed_tar.stat().st_size, "sha256": BRIDGE.file_sha(self.signed_tar), "public": False}
 
+    def set_signed_launcher(self, payload):
+        self.signed_apks["launcher"] = self.signed_entries["launcher-release.apk"] = payload
+        self.record["signedApkSHA256"]["launcher"] = BRIDGE.sha(payload)
+        self.signed_entries["signed.sha256"] = "".join(
+            f"{digest}  {variant}-release.apk\n" for variant, digest in self.record["signedApkSHA256"].items()).encode()
+        voice = BRIDGE.decode(base64.b64decode(self.record["cloudVoiceEvidenceBase64"]))
+        for row, digest in zip(voice["results"], self.record["signedApkSHA256"].values()):
+            row["apkSha256"] = digest
+        encoded(self.record, "cloudVoiceEvidence", voice)
+        self.write_signed()
+        self.write_delivery_receipt()
+
+    def stage_fixture(self, product):
+        product.mkdir()
+        work = self.directory / "size-stage"
+        plan = BRIDGE.preflight(self.record, "f" * 40, work, self.api, self.download)
+        BRIDGE.stage(self.record, plan, work, product,
+                     lambda _plan, target: shutil.copyfile(self.producer.archive, target),
+                     lambda _plan, _receipt, target: shutil.copyfile(self.signed_tar, target))
+
+    def test_native_exact_debug_and_signed_members_can_exceed_the_cloud_limit(self):
+        payload = bytes(4097)
+        self.use_main_candidate({"launcher-debug.apk": payload})
+        self.set_signed_launcher(payload)
+        product = self.directory / "native-large"
+        with patch.object(FIXTURES.PRODUCER, "LEGACY_APK_MEMBER_BYTES", 4096):
+            with zipfile.ZipFile(self.producer.archive) as archive:
+                with self.assertRaisesRegex(ValueError, "Invalid debug archive member"):
+                    BRIDGE.PRODUCER.debug_apk_members(archive, self.producer.verification, FIXTURES.PRODUCER.PRIVATE_RUNNER)
+            self.stage_fixture(product)
+        for mode in ("debug", "release"):
+            self.assertEqual((product / f"artifacts/launcher-{mode}.apk").read_bytes(), payload)
+
+    def test_legacy_cloud_signed_member_keeps_its_ceiling(self):
+        self.set_signed_launcher(bytes(4097))
+        with patch.object(FIXTURES.PRODUCER, "LEGACY_APK_MEMBER_BYTES", 4096):
+            with self.assertRaisesRegex(ValueError, "Unexpected signed bundle members"):
+                self.stage_fixture(self.directory / "cloud-large")
+
     def api(self, endpoint):
         if "/compare/" in endpoint:
             source = endpoint.split("/compare/")[1].split("...")[0]
             return {"status": "ahead", "merge_base_commit": {"sha": source}}
-        if endpoint.endswith("/actions/runs/100"):
-            return {"status": "completed", "conclusion": "success", "event": "workflow_dispatch",
+        if endpoint.endswith("/actions/runs/100/attempts/1"):
+            repository = {"id": BRIDGE.REPOSITORY_ID, "full_name": BRIDGE.REPOSITORY,
+                          "owner": {"id": BRIDGE.REPOSITORY_OWNER_ID}}
+            return {"id": 100, "workflow_id": BRIDGE.SIGNING_WORKFLOW_ID, "status": "completed",
+                    "conclusion": "success", "event": "workflow_dispatch",
                     "head_sha": self.record["signingWorkflowCommit"], "head_branch": "main", "run_attempt": 1,
-                    "head_repository": {"full_name": BRIDGE.REPOSITORY}, "path": ".github/workflows/release-cloud-app-signing.yml"}
+                    "repository": repository, "head_repository": repository,
+                    "path": ".github/workflows/release-cloud-app-signing.yml"}
         if endpoint.endswith("/actions/artifacts/200"):
-            return {"expired": False, "workflow_run": {"id": 100, "head_sha": self.record["signingWorkflowCommit"]},
+            return {"id": 200, "expired": False, "workflow_run": {
+                        "id": 100, "head_sha": self.record["signingWorkflowCommit"], "head_branch": "main",
+                        "repository_id": BRIDGE.REPOSITORY_ID, "head_repository_id": BRIDGE.REPOSITORY_ID},
                     "name": "private-cloud-apk-delivery-100-1", "size_in_bytes": self.record["deliveryArtifactBytes"],
                     "digest": "sha256:" + self.record["deliveryArtifactSHA256"]}
         self.fail("Unexpected endpoint")
@@ -170,13 +226,15 @@ class QualifiedUpdateTest(unittest.TestCase):
 
     def test_wrong_workflow_fork_attempt_artifact_and_main_history_fail_before_private_access(self):
         mutations = [lambda value: value.update(path=".github/workflows/other.yml"),
+                     lambda value: value.update(workflow_id=BRIDGE.SIGNING_WORKFLOW_ID + 1),
                      lambda value: value.update(run_attempt=2), lambda value: value.update(event="pull_request"),
                      lambda value: value.update(head_branch="feature"),
-                     lambda value: value.update(head_repository={"full_name": "other/repository"})]
+                     lambda value: value.update(head_repository={**value["head_repository"], "id": 42}),
+                     lambda value: value.update(repository={**value["repository"], "owner": {"id": 42}})]
         for index, mutate in enumerate(mutations):
             def api(endpoint):
                 value = self.api(endpoint)
-                if endpoint.endswith("/actions/runs/100"):
+                if endpoint.endswith("/actions/runs/100/attempts/1"):
                     mutate(value)
                 return value
             with self.assertRaises(ValueError):

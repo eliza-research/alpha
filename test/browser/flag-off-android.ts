@@ -253,7 +253,7 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
     w.Capacitor = {
       PluginHeaders: [
         { name: 'AlphaDeletions', methods: promise(['pending']) },
-        { name: 'ElizaSystem', methods: promise(['getBuildInfo']) },
+        { name: 'ElizaSystem', methods: promise(['getBuildInfo', 'getNetworkStatus']) },
         { name: 'ElizaSense', methods: promise(['status', 'turnOff']) },
         { name: 'DailyApps', methods: withListeners(['surfaceInfo', 'listReminders', 'pendingReminderTap', ...(options.document ? ['perform', 'readSelected', 'forgetSelected', 'describeSelected'] : [])]) },
         ...(options.document ? [{ name: 'AlphaMailAttachments', methods: promise(['readSelected', 'retainSourceReference', 'openSourceReference', 'cancel']) }] : []),
@@ -271,6 +271,9 @@ export async function flagOffAndroid(page: Page, options: FlagOffOptions = {}) {
       nativeCallback: (plugin: string, method: string, input: any, callback: (value: unknown) => void) => { if (method === 'addListener') listeners.push({ plugin, event: input?.eventName, callback }); return String(listeners.length); },
       nativePromise: async (plugin: string, method: string, input: any) => {
         if (plugin === 'AlphaDeletions' && method === 'pending') return { deletions: [] };
+        // Android's own network check (AlphaSystemPlugin.getNetworkStatus) follows the simulated
+        // network, so offline sends are refused the way the phone refuses them.
+        if (plugin === 'ElizaSystem' && method === 'getNetworkStatus') return { connected: navigator.onLine, internetValidated: navigator.onLine };
         f.calls.push(plugin + '.' + method);
         if (plugin === 'ElizaSystem' && method === 'getBuildInfo') return { launcher: true, version: 'flag-off-harness' };
         // The fixture's image listener is stopped through its real readback contract.

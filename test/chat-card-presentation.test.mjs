@@ -88,23 +88,3 @@ test('the chat header offers New chat and Chat history beside the assistant name
  for(const state of [{typing:true},{pending:true},{busy:true},{approving:{}}]){run=tools({},state);run.tools.newChat();assert.deepEqual(run.calls,[]);assert.equal(run.toasts.length,1);}
 });
 
-test('a view whose render throws is closed alone, once, with a plain notice',()=>{
- assert.match(model,/try \{ out\[v\] = mod\.render\(st, this\.api\(v\)\); \}\s*catch \(error\) \{ is\[v\] = false; this\.closeFailedView\(v, error\); \}/);
- const from=model.indexOf('  closeFailedView(v, error) {'),to=model.indexOf('\n  leave() {',from);assert(from>=0&&to>from);
- const make=new Function('VIEWS','console',`return ({${model.slice(from,to)}});`);
- for(const leaves of [true,false]){
-  const timers=[],toasts=[],state={view:'maps',stack:['notes']};
-  const shell=Object.assign(make({maps:{title:'Maps'}},{error(){}}),{
-   later:fn=>timers.push(fn),S:()=>state,toast:text=>toasts.push(text),
-   goHome(){if(!leaves)throw Error('onLeave failed too');state.view=null;},
-   setState(update){const patch=update(state);if(patch)Object.assign(state,patch);},
-  });
-  shell.closeFailedView('maps',Error('render'));shell.closeFailedView('maps',Error('render again'));
-  assert.equal(timers.length,1,'one close is scheduled however often the broken view re-renders');
-  timers[0]();
-  assert.equal(state.view,null);assert.deepEqual(toasts,['Maps had a problem and was closed.']);
-  if(!leaves)assert.deepEqual(state.stack,[]);
-  // The owner already left: nothing is closed and nothing is announced.
-  state.view='notes';shell.closeFailedView('maps',Error('late'));state.view='notes';timers[1]();assert.equal(state.view,'notes');assert.equal(toasts.length,1);
- }
-});

@@ -9,7 +9,7 @@ test('Notes event handoff requires Calendar admission and preserves the exact or
   const Subject=make(),ui=new Subject(),opened=[],reviewed=[],toasts=[];ui.editor={draft:{}};ui.controller={current:true,viewNote:()=>({id:'owned-note'})};ui.open='owned-note';
   const api={isActive:()=>true,get:()=>({calendarAuthority:'canonical'}),open:(...x)=>opened.push(x),toast:t=>toasts.push(t),reviewCalendarDraft:d=>{reviewed.push(d);return accepted;}};
   await ui.scheduleDraft('owned-note','event',api);
-  assert.equal(reviewed.length,1);assert.deepEqual(reviewed[0].origin,origin);assert.equal(opened.length,0,'no direct form bypass');assert.deepEqual(toasts,accepted?[]:['Calendar busy']);
+  assert.equal(reviewed.length,1);assert.deepEqual(reviewed[0].origin,origin);assert.equal(opened.length,0,'no direct form bypass');assert.deepEqual(toasts,accepted?['Check time']:['Calendar busy']);
  }
 });
 test('Notes reminder handoff keeps its separate review and a changed owner starts neither handoff',async()=>{

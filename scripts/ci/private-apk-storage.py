@@ -9,8 +9,10 @@ import re
 import stat
 from urllib.parse import quote, urlencode
 
+from app_update_producer import CANDIDATE, MAX_ARCHIVE_BYTES, PRIVATE_RUNNER, producer_kind
+
 BUCKET = "alpha-aosp-lab-20261024-private-apks"
-MAX_BYTES = 1_500_000_000
+MAX_BYTES = MAX_ARCHIVE_BYTES
 
 
 def require(value, message):
@@ -30,9 +32,7 @@ def validate(plan):
                          storage["outputObject"]), "Invalid exclusive delivery object")
     require(type(plan["archiveBytes"]) is int and 0 < plan["archiveBytes"] <= MAX_BYTES,
             "Invalid archive byte bound")
-    require(plan["producerKind"] == "root-reviewed-private-runner", "Unreviewed producer kind")
-    require(re.fullmatch(r"[0-9a-f]{64}", plan["privateProducerReceiptSHA256"]),
-            "Reviewed private producer receipt required")
+    require(producer_kind(plan) in (PRIVATE_RUNNER, CANDIDATE), "Unreviewed private producer kind")
     return storage
 
 

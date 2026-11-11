@@ -2001,6 +2001,7 @@
     "init": "init",
     "step": "step",
     "invariant": "safety",
+    "verifyBackend": "tlc",
     "sources": [
       "apps/app/src/browser/journal-retention.ts",
       "apps/app/src/browser/calendar.ts",
@@ -2008,7 +2009,8 @@
       "apps/app/src/browser/calendar-store.ts",
       "apps/app/src/browser/reminder-store.ts",
       "apps/app/src/browser/calendar-deletions.ts",
-      "apps/app/src/browser/reminder-deletions.ts"
+      "apps/app/src/browser/reminder-deletions.ts",
+      "specs/quint/refinement/application/browser-journal-retention.mjs"
     ],
     "tests": [
       "receiptsAtCountKeepStableLegacyOrderTest",
@@ -2027,7 +2029,8 @@
       "SettledBoundAndClaims"
     ],
     "abstractions": [
-      "Exact production bounds use up to 205 initial receipts, 136 deletion rows and 140 claims, finite wall/elapsed timestamps, one clock advance and ordered record identities.",
+      "Exact production cutoffs are 200 definite receipts and 127 settled deletions. Replay admits up to 205 initial receipts, 136 deletion rows and 140 claims. UTC day and within-day milliseconds preserve the admitted wall times exactly.",
+      "TLC explores the full finite graph from four concrete seeds, including interleavings of receipt and deletion actions.",
       "Missing timestamp is age-exempt and sorts at zero. Pending rows and post-trim append are modeled separately from the bounded definite/settled cohort.",
       "Valid current and legacy rows, including dangling claims, are modeled. Deleted row recovery, polling, malformed data and physical browser transaction scheduling are separate."
     ],

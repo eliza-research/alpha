@@ -188,9 +188,14 @@ test('journey C: a declined alarm proposal hands nothing to Clock, before or aft
  await expect(page.getByRole('region',{name:'Home'})).toBeVisible();
  await expect(clock(page)).toHaveCount(0);
  expect(await alarms(page)).toEqual([]);
+ // The restored conversation keeps the declined exchange; wait for it before sending so the reply count is exact.
+ const replies=page.getByRole('button',{name:/^Message actions: Development reply/,includeHidden:true});
+ await expect(page.getByRole('button',{name:'Message actions: Set an alarm for 07:15',exact:true,includeHidden:true})).toHaveCount(1);
+ await expect(replies).toHaveCount(1);
  // A later message does not bring the declined proposal back for approval.
  await ask.fill('Anything pending?');await ask.press('Enter');
- await expect(page.getByRole('button',{name:/^Message actions: Development reply/})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:'Message actions: Anything pending?',exact:true})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:/^Message actions: Development reply/})).toHaveCount(2);
  await expect(approve(page)).toHaveCount(0);
  state=await actions(page);
  expect(state.proposals.map((p:any)=>p.state)).toEqual(['rejected']);

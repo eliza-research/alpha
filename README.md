@@ -17,8 +17,8 @@ Native builds need Android SDK platform 36 and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
 
 ```sh
-git clone --recurse-submodules https://github.com/eliza-research/alphaphone.git
-cd alphaphone
+git clone --recurse-submodules https://github.com/eliza-research/alpha.git
+cd alpha
 npm ci
 npm run verify
 npm run dev
@@ -134,6 +134,13 @@ checks anonymous readback. Merging source does not publish an application update
 New builds read the `app-stable-alphacompute` release. The previous package
 reads `app-stable`. Publication keeps each package on its own release and
 checks retained versions on both. Android may require installation confirmation.
+New builds use the canonical `eliza-research/alpha` URL. Previously issued
+GitHub release URLs rely on the redirect from the former repository name.
+Protected release jobs check the immutable repository and owner IDs. The
+release owner applies the reviewed workflow reference allowlist in
+[`scripts/ci/private-artifact-identity.json`](scripts/ci/private-artifact-identity.json)
+to the existing Workload Identity Federation provider before protected signing
+or publication uses private artifact storage.
 
 An automatic attempt that loses idle HOME after verifying its APK can retain
 that one file for a later attempt in the same process. Reuse checks the complete
@@ -191,18 +198,41 @@ The candidate receipt binds its digest to the exact source, SDK and run attempt.
 The build evidence records the uploaded candidate's ID and compressed size
 from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
 Refresh the reviewed pins before an artifact expires or a bound source record
-changes. Manual diagnostics and protected signing keep their existing input
-and producer-evidence policy.
+changes. The candidate archive retains the distribution producer evidence
+before the test-mocks build can replace it.
 
 The existing workflow run number is the candidate versionCode, checked against
 both releases' retained APKs and public pointers, and the committed version floors.
 Failed or canceled runs consume their number. A manual release or workflow
 migration that exceeds this number stops candidate creation and needs a reviewed
 version migration. Manual builds keep their explicit version input.
-Candidates are unsigned build evidence. Native application signing/voice
-admission, protected release review, exact signed APK voice tests, publication
-and both sideload/image phone drills remain required before automatic delivery
-to users; the current protected application promotion bridge supports Cloud only.
+Candidates are unsigned build evidence. To promote a native candidate, use
+the existing protected signing workflow with a reviewed plan whose
+`producerKind` is `github-main-candidate`. Pin the exact successful
+main-push run ID, numeric run attempt, artifact ID, source and SDK commits,
+version, public channel, outer archive bytes and SHA-256, candidate receipt
+and producer manifest SHA-256, and both unsigned APK SHA-256 values.
+Use the artifact's original ZIP bytes and the existing private storage path
+`unsigned/<archiveSHA256>.zip`. Pin its generation and a fresh exclusive
+`signed/<archiveSHA256>/<32-hex-id>/signed-apks.tar` destination in
+`privateStorage`. Keep the Actions artifact available through both signing
+admissions.
+
+The preflight checks the official Actions ZIP. The protected job checks the
+same run attempt and artifact again, then stages the byte-identical private
+generation before accessing the signing key. The qualified publication workflow
+restores the same private mirror and exact signed output. Complete the reviewed
+voice checks for both signed APK digests before dispatching publication.
+The existing reviewed Cloud producer routes remain available for their
+approved package and profile.
+
+The native route keeps the 1.5 GB limit on the producer ZIP and signed TAR.
+The two unsigned APKs and the two debug APKs each have a separate 1.5 GB
+expanded pair limit. Admission checks exact member lengths against the
+reviewed archives and verifies the APK digests when streaming the bytes.
+
+Release approval, signed-byte voice tests, publication and both sideload and
+image-preinstalled phone drills remain required for this batch.
 
 The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alphaphone/issues/888)
 and [wireless launcher acceptance #889](https://github.com/eliza-research/alphaphone/issues/889).

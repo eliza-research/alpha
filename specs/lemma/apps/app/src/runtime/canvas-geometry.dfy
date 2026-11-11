@@ -37,13 +37,18 @@ lemma canvasScale_ensures(input: CanvasInput, freeHeight: real)
   ensures (!((input.fluid && !(input.launcher))) ==> canvasScale(input, freeHeight).landscape ==> (canvasScale(input, freeHeight).scale >= 0.1))
   ensures (canvasScale(input, freeHeight).wide <==> (!(input.desktop) && (input.width >= ((WIDE_CANVAS as real) * canvasScale(input, freeHeight).scale))))
 {
-  // Hand-written: dividing by a positive scale and comparing is comparing the products.
-  var scale := canvasScale(input, freeHeight).scale;
-  var canvas := input.width / scale;
-  var wide := WIDE_CANVAS as real;
-  assert canvas * scale == input.width;
-  ScaleKeepsOrder(canvas, wide, scale);
-  assert canvas >= wide <==> input.width >= wide * scale;
+  DivisionKeepsOrder(input.width, WIDE_CANVAS as real, canvasScale(input, freeHeight).scale);
+}
+
+// Hand-written: relate the threshold to the real width through positive scale.
+lemma DivisionKeepsOrder(width: real, threshold: real, scale: real)
+  requires scale > 0.0
+  ensures width / scale >= threshold <==> width >= threshold * scale
+{
+  var canvas := width / scale;
+  assert canvas * scale == width;
+  ScaleKeepsOrder(canvas, threshold, scale);
+  assert (canvas * scale >= threshold * scale) <==> (width >= threshold * scale);
 }
 
 // Hand-written: multiplying both sides by a positive scale keeps their order.
