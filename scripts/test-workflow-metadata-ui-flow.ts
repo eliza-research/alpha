@@ -23,6 +23,7 @@ const storage = new Map<string, string>();const session={sessionId:'session',own
 const listeners = new Set<() => void>();
 const setup = () => mountWorkflowRenderer(serverOrigin, session, storage, listeners);
 const wait = waitForWorkflow;
+// Metadata requests can still be settling when no workflow execution is running.
 let app=setup();
 try{
  const settled = () => {
