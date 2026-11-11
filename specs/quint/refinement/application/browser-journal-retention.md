@@ -33,3 +33,23 @@ with `pendingDeletion` set but no durable deletion when the identity was `__prot
 Those orphaned markers still need a reviewed recovery protocol.
 
 Run the witness with `bun test test/quint-browser-journal-retention-refinement.test.mjs`.
+
+The model represents wall timestamps as a UTC day and milliseconds within that
+day. TLC accepts both integers, and comparing the pair with the same time of
+day 30 days earlier preserves the exact expiry boundary. Missing dates and
+dated zero sort together, while only dated zero is subject to age retirement.
+
+The default TLC proof explores the full finite graph from the four initial
+states, including interleavings of receipt and deletion actions. Count checks
+use sets of row positions. The model reuses an ordered list when retention
+keeps every row, and sorts the original definite or settled cohort when the
+count limit requires eviction. Acknowledgement replaces the selected row at
+its original position. These operations preserve the modeled transitions.
+
+The source witness separately exercises concrete cutoff neighborhoods and
+stable order. Both checks retain the limits described above for input histories
+and installed browser scheduling.
+
+```sh
+bun scripts/check-quint.ts verify --models=BrowserJournalRetention
+```

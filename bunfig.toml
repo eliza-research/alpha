@@ -10,7 +10,7 @@ exact = true
 "import.meta.env" = "undefined"
 
 [run]
-# Package scripts and their `#!/usr/bin/env node` tools (vite, tsc, cap, playwright) run on Bun.
+# Package scripts and their `#!/usr/bin/env bun` tools (vite, tsc, cap, playwright) run on Bun.
 bun = true
 
 [test]

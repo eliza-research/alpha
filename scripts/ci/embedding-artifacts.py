@@ -14,11 +14,18 @@ import urllib.parse
 import urllib.request
 import zipfile
 
-REPOSITORY = 'eliza-research/alphaphone'
+REPOSITORY = 'eliza-research/alpha'
 REPOSITORY_ID = 1396333361
+REPOSITORY_OWNER_ID = 314117943
 LIBRARIES = ('libelizainference.so', 'libelizavoicejni.so', 'libc++_shared.so')
 MAX_ARCHIVE = 128 * 1024 * 1024
 MAX_EXPANDED = 192 * 1024 * 1024
+
+
+def canonical_repository(env):
+    return (env.get('GITHUB_REPOSITORY') == REPOSITORY and
+            env.get('GITHUB_REPOSITORY_ID') == str(REPOSITORY_ID) and
+            env.get('GITHUB_REPOSITORY_OWNER_ID') == str(REPOSITORY_OWNER_ID))
 
 
 def require(value, message):
@@ -275,7 +282,7 @@ def read_carrier_bytes(root, name, expected):
 def prepare_carrier(env):
     env = carrier_environment(env)
     identity, digest = carrier_settings(env)
-    require(env.get('GITHUB_REPOSITORY') == REPOSITORY and env.get('GH_TOKEN'), 'Canonical artifact access required')
+    require(canonical_repository(env) and env.get('GH_TOKEN'), 'Canonical artifact access required')
     work = Path('test-results/embedding-carrier-inputs')
     work.mkdir(mode=0o700, parents=True, exist_ok=False)
     opener = urllib.request.build_opener(NoRedirect())
@@ -314,7 +321,7 @@ def main(args, env=os.environ):
     require(args == [], 'Unknown embedding artifact option')
     if not inputs:
         return
-    require(env.get('GITHUB_REPOSITORY') == REPOSITORY, 'Canonical repository required')
+    require(canonical_repository(env), 'Canonical repository required')
     token = env.get('GH_TOKEN')
     require(token, 'Artifact access token unavailable')
     output = Path('test-results/resident-ci/embedding-inputs')

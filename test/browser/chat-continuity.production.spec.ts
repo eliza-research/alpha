@@ -303,7 +303,7 @@ test('the transcript keeps its reading position through a keyboard resize, Back 
 });
 
 const MAY_FINISH = 'May still finish';
-const LOAD_TO_SEE = 'Stopped';
+const LOAD_TO_SEE = 'Outcome unknown';
 /** Past the single stop check's 15 s timer (STOPPED_REPLY_CHECK_MS in connection-ui.tsx). */
 const pastStopCheck = (page: Page) => page.clock.runFor(16_000);
 /** Sends a message whose reply the resident holds until `release()`. */

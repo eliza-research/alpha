@@ -9,7 +9,8 @@ import path from 'node:path';
 export const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 export const json = (file, value) => fs.writeFileSync(file, JSON.stringify(value));
 export const read = file => JSON.parse(fs.readFileSync(file, 'utf8'));
-export const legacyManifestUrl = 'https://github.com/eliza-research/alphaphone/releases/download/app-stable/alpha-update-stable.json';
+export const legacyManifestUrl = 'https://github.com/eliza-research/alpha/releases/download/app-stable/alpha-update-stable.json';
+const repository = {id: 1396333361, full_name: 'eliza-research/alpha', owner: {id: 314117943}};
 export function candidateFixture(t) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-app-candidate-'));
   t.after(() => fs.rmSync(directory, {recursive: true, force: true}));
@@ -20,7 +21,7 @@ export function candidateFixture(t) {
   const sdkCommit = git(sdk, ['rev-parse', 'HEAD']);
   fs.mkdirSync(path.join(directory, 'android'));
   const config = {appId: 'ai.alphacompute.alphaphone', versionCode: 1,
-    updateManifestUrl: 'https://github.com/eliza-research/alphaphone/releases/download/app-stable-alphacompute/alpha-update-stable.json'};
+    updateManifestUrl: 'https://github.com/eliza-research/alpha/releases/download/app-stable-alphacompute/alpha-update-stable.json'};
   json(path.join(directory, 'app.config.json'), config);
   json(path.join(directory, 'upstream.lock.json'), {commit: sdkCommit});
   json(path.join(directory, 'android/release-signer.json'), {lastRelease: {versionCode: null}});
@@ -31,8 +32,9 @@ export function candidateFixture(t) {
     .map((name, index) => [name, {id: String(11 + index), sha256: hash('synthetic artifact ' + name)}]))};
   json(path.join(directory, 'android/hosted-native-inputs.json'), nativePlan);
   git(directory, ['init', '-q']); git(directory, ['add', 'app.config.json', 'upstream.lock.json', 'android']); commit(directory);
-  const env = {...process.env, GITHUB_REPOSITORY: 'eliza-research/alphaphone', GITHUB_EVENT_NAME: 'push',
-    GITHUB_REF: 'refs/heads/main', GITHUB_WORKFLOW_REF: 'eliza-research/alphaphone/.github/workflows/resident-android.yml@refs/heads/main',
+  const env = {...process.env, GITHUB_REPOSITORY: repository.full_name, GITHUB_EVENT_NAME: 'push',
+    GITHUB_REPOSITORY_ID: String(repository.id), GITHUB_REPOSITORY_OWNER_ID: String(repository.owner.id),
+    GITHUB_REF: 'refs/heads/main', GITHUB_WORKFLOW_REF: 'eliza-research/alpha/.github/workflows/resident-android.yml@refs/heads/main',
     GITHUB_SHA: git(directory, ['rev-parse', 'HEAD']), GITHUB_RUN_ID: '42885443022', GITHUB_RUN_NUMBER: '705', GITHUB_RUN_ATTEMPT: '1'};
   const state = {
     pages: [[{name: 'alpha-phone-24.apk'}]], pointer: null, missing: false,
@@ -42,16 +44,16 @@ export function candidateFixture(t) {
     state.calls.push(args);
     if (args[0].includes('/actions/runs/')) return {id: Number(env.GITHUB_RUN_ID), workflow_id: 373209004,
       path: '.github/workflows/resident-android.yml', event: 'push', head_branch: 'main', head_sha: env.GITHUB_SHA,
-      head_repository: {full_name: env.GITHUB_REPOSITORY}, run_number: Number(env.GITHUB_RUN_NUMBER),
+      repository, head_repository: repository, run_number: Number(env.GITHUB_RUN_NUMBER),
       run_attempt: Number(env.GITHUB_RUN_ATTEMPT), ...state.runChanges};
-    if (args[0] === 'repos/eliza-research/alphaphone') return {private: false};
+    if (args[0] === 'repos/eliza-research/alpha') return {...repository, private: false};
     if (args[0].endsWith('/tags/app-stable')) return state.legacyMissing ? null : {id: 15, draft: false};
     if (args[0].endsWith('/tags/app-stable-alphacompute')) return state.missing ? null : {id: 16, draft: false};
-    if (args[2] === 'repos/eliza-research/alphaphone/releases/15/assets?per_page=100') {
+    if (args[2] === 'repos/eliza-research/alpha/releases/15/assets?per_page=100') {
       assert.deepEqual(args.slice(0, 2), ['--paginate', '--slurp']);
       return state.legacyPages;
     }
-    assert.deepEqual(args, ['--paginate', '--slurp', 'repos/eliza-research/alphaphone/releases/16/assets?per_page=100']);
+    assert.deepEqual(args, ['--paginate', '--slurp', 'repos/eliza-research/alpha/releases/16/assets?per_page=100']);
     return state.pages;
   };
   const options = {root: directory, env, api, read: async url => {

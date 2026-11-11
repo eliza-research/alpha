@@ -25,7 +25,7 @@ export async function cloudNotesVoiceFixture(page:Page,signed=true,development=f
  await page.evaluate(async signed=>{
   const {BrowserVoice}=await import('/src/browser/voice.ts'),{connectionController:c}=await import('/src/runtime/connection-ui.tsx');const f=(window as any).cloudNotesVoice;
   c.getCloudEnvironment=()=>signed?'production':null;c.getCloudClient=()=>signed?{sessionId:'fixture-account-'+f.owner,credentialId:'fixture-credential-'+f.owner,client:{}} as any:null;
-  BrowserVoice.prototype.localSpeechStatus=async()=>{f.local++;throw Error('Local preparation forbidden');};
+  BrowserVoice.prototype.localSpeechStatus=async()=>{f.local++;f.localProbes=(f.localProbes||0)+1;throw Error('Local preparation forbidden');};
   BrowserVoice.prototype.synthesizeLocal=async()=>{f.local++;throw Error('Local synthesis forbidden');};
   BrowserVoice.prototype.startRecording=async function(){f.starts++;if(f.denied)throw new DOMException('Denied','NotAllowedError');const recordingId=crypto.randomUUID();f.clip=recordingId;f.active=recordingId;(this as any).capture.clips.set(recordingId,{blob:new Blob(['closed-fixture'],{type:'audio/webm'}),durationMs:1000});return {recordingId,maxDurationMs:59000};};
   BrowserVoice.prototype.stopRecording=async()=>{f.stops++;f.active=null;return {recordingId:f.clip,durationMs:1000};};

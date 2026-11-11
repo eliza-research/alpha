@@ -20,3 +20,36 @@ test('a render failure shows recovery without user content', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
 });
+
+for (const surface of ['standalone', 'launcher'] as const) {
+  test(`a view render failure returns to usable ${surface} Home`, async ({ page }) => {
+    await page.addInitScript(offline);
+    await page.goto(surface === 'launcher' ? '/?shell=launcher' : '/');
+    const notes = page.getByRole('button', { name: 'Notes', exact: true });
+    await expect(notes).toBeVisible();
+
+    const restoreRender = await page.evaluateHandle(async () => {
+      const { VIEWS } = await import('/src/prototype/model.js');
+      const render = VIEWS.notes.render;
+      VIEWS.notes.render = () => {
+        throw new TypeError('Private view error message');
+      };
+      return () => { VIEWS.notes.render = render; };
+    });
+
+    await notes.click();
+    await expect(page.locator('[data-alpha-toast]')).toContainText('Notes had a problem and was closed.');
+    await expect(page.locator('html')).toHaveAttribute('data-active-view', 'home');
+    await expect(page.getByRole('alertdialog', { name: 'Something went wrong' })).toHaveCount(0);
+    await expect(page.getByRole('textbox', { name: 'Ask Alpha', exact: true })).toBeVisible();
+
+    if (surface === 'standalone') {
+      const log = await page.evaluate(() => localStorage.getItem('alpha.crash-log.v1'));
+      expect(log).toContain('TypeError');
+      expect(log).not.toContain('Private view error message');
+    }
+    await restoreRender.evaluate(restore => restore());
+    await notes.click();
+    await expect(page.locator('html')).toHaveAttribute('data-active-view', 'notes');
+  });
+}

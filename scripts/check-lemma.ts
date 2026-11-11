@@ -19,7 +19,7 @@ interface LemmaReceipt {
   files?: LemmaSource[]; verifiedConditions?: number; error?: string; finalInputs?: Record<string, string>;
   changedInputs?: string[]; finalInputError?: string; finishedAt?: string;
 }
-let files: string[] = [], inputs: string[] = [];
+let inputs: string[] = [];
 const proofsWithin = (directory: string): string[] => readdirSync(directory, {withFileTypes: true}).flatMap(entry =>
   entry.isDirectory() ? proofsWithin(join(directory, entry.name)) : entry.name.endsWith('.dfy') || entry.name.endsWith('.dfy.gen') ? [join(directory, entry.name)] : []);
 const hashes = () => Object.fromEntries(inputs.map(file => [file, sha256(readFileSync(join(root, file)))]));
@@ -29,7 +29,7 @@ writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
 let exitCode = 1;
 let lastOutput = "";
 function run(command: string, args: string[]) {
-  const result = spawnSync(command, args, {cwd: root, encoding: 'utf8', timeout: 120000});
+  const result = spawnSync(command, args, {cwd: root, encoding: 'utf8', timeout: 120_000});
   const output = `${result.stdout || ''}${result.stderr || ''}`;
   lastOutput = output;
   process.stdout.write(output);
@@ -37,8 +37,13 @@ function run(command: string, args: string[]) {
   return Number.isInteger(result.status) && result.status === 0 && !result.error && !result.signal;
 }
 try {
-  files = readFileSync(join(root, 'LemmaScript-files.txt'), 'utf8').split(/\r?\n/)
-    .map(line => line.trim()).filter(line => line && !line.startsWith('#')).map(line => line.split(/\s+/)[0]);
+  const entries = readFileSync(join(root, 'LemmaScript-files.txt'), 'utf8').split(/\r?\n/)
+    .map(line => line.trim()).filter(line => line && !line.startsWith('#')).map(line => {
+      const [file, ...options] = line.split(/\s+/);
+      const timeLimit = /^[1-9]\d*$/.test(options[0] ?? '') ? options.shift() : undefined;
+      return {file, timeLimit, flags: options.join(' ')};
+    });
+  const files = entries.map(({file}) => file);
   if (!files.length || files.some(file => !/^apps\/app\/src\/[A-Za-z0-9_./-]+\.ts$/.test(file) || file.split('/').includes('..'))) throw Error('Invalid or empty LemmaScript source inventory');
   for (const file of files) if (!/^\s*\/\/@ verify\s*$/m.test(readFileSync(join(root, file), 'utf8'))) throw Error(`No verified function registered in ${file}`);
   const config = JSON.parse(readFileSync(join(root, 'lemmascript.json'), 'utf8'));
@@ -78,7 +83,7 @@ try {
     if ((!functions.length && !model.classes?.length) || unread.length) throw Error(`Unread or empty verified contract in ${file}`);
     receipt.files.push({file, functions, trust});
   }
-  const generatedOK = run(process.execPath, [cli, 'gen-check', '--backend=dafny']);
+  const generatedOK = files.every(file => run(process.execPath, [cli, 'gen-check', '--backend=dafny', file]));
   const generated = hashes();
   const changed = inputs.filter(file => generated[file] !== receipt.inputs[file]);
   if (changed.length) {
@@ -96,10 +101,19 @@ try {
     console.warn(receipt.reason);
     exitCode = process.env.LEMMA_REQUIRE_BACKEND === '1' ? 2 : 0;
   } else {
-    if (!run(process.execPath, [cli, 'check', '--backend=dafny'])) throw Error('Dafny verification failed');
-    const proofs = [...receipt.results.at(-1)!.output.matchAll(/Dafny program verifier finished with ([1-9][0-9]*) verified, 0 errors/g)];
-    if (proofs.length !== files.length) throw Error('Dafny did not report a nonempty successful proof for every source');
-    receipt.verifiedConditions = proofs.reduce((count, match) => count + Number(match[1]), 0);
+    let verifiedConditions = 0;
+    for (const {file, timeLimit, flags} of entries) {
+      // LemmaScript batch check skips proofs with a timeout above 60 seconds.
+      if (timeLimit && Number(timeLimit) > 60) throw Error(`Dafny did not report a nonempty successful proof for every source: ${file} exceeds the batch proof limit`);
+      const args = [cli, 'check', '--backend=dafny'];
+      if (timeLimit) args.push(`--time-limit=${timeLimit}`);
+      if (flags) args.push(`--extra-flags=${flags}`);
+      if (!run(process.execPath, [...args, file])) throw Error(`Dafny verification failed: ${file}`);
+      const proofs = [...lastOutput.matchAll(/Dafny program verifier finished with ([1-9][0-9]*) verified, 0 errors/g)];
+      if (proofs.length !== 1) throw Error(`Dafny did not report a nonempty successful proof for every source: ${file}`);
+      verifiedConditions += Number(proofs[0][1]);
+    }
+    receipt.verifiedConditions = verifiedConditions;
     receipt.status = 'passed'; receipt.passed = true; exitCode = 0;
   }
 } catch (error) {

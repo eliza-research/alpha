@@ -31,7 +31,8 @@ if (!fs.readFileSync(base + '.dfy', 'utf8').startsWith(generated)) { console.err
 if (command === 'gen-check') process.exit(0);
 if (command !== 'check') process.exit(64);
 const errors = Number(process.env.STUB_ERRORS || 0);
-console.log('Dafny program verifier finished with 2 verified, ' + errors + ' errors');
+const verified = file === process.env.STUB_EMPTY_PROOF ? 0 : 2;
+console.log('Dafny program verifier finished with ' + verified + ' verified, ' + errors + ' errors');
 process.exit(errors ? 1 : 0);
 `;
 
@@ -160,6 +161,48 @@ test('with Dafny 4.11.0 the verifier result decides: zero errors pass, any error
   assert.equal(result.receipt.status, 'failed');
   assert.equal(result.receipt.passed, false);
   assert.match(result.receipt.error, /Dafny verification failed/);
+});
+
+test('every source owns a generation check, verifier result, and manifest options', t => {
+  const {root, run, write, dafny, generated} = fixture(t);
+  const other = 'apps/app/src/other.ts';
+  const otherGenerated = 'specs/lemma/apps/app/src/other.dfy.gen';
+  write(other, fs.readFileSync(path.join(root, SOURCE), 'utf8'));
+  write(otherGenerated, generated);
+  write('specs/lemma/apps/app/src/other.dfy', `${generated}// proof additions\n`);
+  write('LemmaScript-files.txt', `${SOURCE} 30\n${other} --verification-time-limit 20\n`);
+  const backend = dafny('4.11.0');
+  const commands = (result, command) => result.receipt.results
+    .filter(({args}) => args[1] === command).map(({args}) => args.slice(2));
+
+  let result = run({DAFNY: backend});
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.receipt.verifiedConditions, 4);
+  assert.deepEqual(commands(result, 'gen-check'), [['--backend=dafny', SOURCE], ['--backend=dafny', other]]);
+  assert.deepEqual(commands(result, 'check'), [
+    ['--backend=dafny', '--time-limit=30', SOURCE],
+    ['--backend=dafny', '--extra-flags=--verification-time-limit 20', other],
+  ]);
+
+  result = run({DAFNY: backend, STUB_EMPTY_PROOF: other});
+  assert.equal(result.status, 1, result.stderr);
+  assert.equal(result.receipt.error, `Dafny did not report a nonempty successful proof for every source: ${other}`);
+
+  write(otherGenerated, '// stale generation\n');
+  result = run({DAFNY: backend});
+  assert.equal(result.status, 1, result.stderr);
+  assert.deepEqual(result.receipt.changedInputs, [otherGenerated]);
+  assert.equal(fs.readFileSync(path.join(root, otherGenerated), 'utf8'), '// stale generation\n');
+  assert.deepEqual(commands(result, 'check'), []);
+});
+
+test('a manifest timeout that batch verification would skip still fails the full proof gate', t => {
+  const {run, write, dafny} = fixture(t);
+  write('LemmaScript-files.txt', `${SOURCE} 61\n`);
+  const result = run({DAFNY: dafny('4.11.0')});
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.receipt.error, /exceeds the batch proof limit/);
+  assert.ok(!result.commands.includes('check'));
 });
 
 test('without lsc the check fails instead of skipping', t => {

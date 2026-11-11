@@ -6,7 +6,7 @@ public final class HostedNoticeWithdrawTest {
  public static void main(String[] args)throws Exception {
   Map<String,String> slots=new HashMap<>();List<String> cancelled=new ArrayList<>();Map<String,Boolean> posted=new HashMap<>();Set<String> active=new HashSet<>();
   HostedResultNotices.Storage storage=new HostedResultNotices.Storage(){public String read(String slot){return slots.get(slot);}public void write(String slot,String value){slots.put(slot,value);}};
-  HostedResultNotices.Poster poster=new HostedResultNotices.Poster(){public boolean allowed(){return true;}public boolean active(String key){return active.contains(key);}public void post(String key){post(key,false);}public void post(String key,boolean silent){posted.put(key,silent);active.add(key);}public void cancel(String key){cancelled.add(key);active.remove(key);}};
+  HostedResultNotices.Poster poster=new HostedResultNotices.Poster(){public boolean allowed(){return true;}public boolean active(String key,String dispatchId){return active.contains(key);}public void post(String key,String dispatchId,String title,boolean silent){posted.put(key,silent);active.add(key);}public void cancel(String key){cancelled.add(key);active.remove(key);}};
   HostedResultNotices notices=new HostedResultNotices(storage,poster);
   String origin="https://agent.invalid",owner="owner",agent="agent",scope=HostedResultNotices.hash(new JSONArray().put(origin).put(owner).put(agent).toString()),slot="hosted-digests:v1:"+scope;
   JSONArray ids=new JSONArray();

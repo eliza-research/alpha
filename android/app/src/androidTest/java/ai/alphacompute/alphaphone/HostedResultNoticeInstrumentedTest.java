@@ -78,9 +78,16 @@ public final class HostedResultNoticeInstrumentedTest {
  @Test public void resultAndRenewalBuildersExpireAndStayRedacted()throws Exception {
   android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();HostedNoticePoster poster=new HostedNoticePoster(context);
   android.app.PendingIntent tap=android.app.PendingIntent.getActivity(context,0,new android.content.Intent(context,MainActivity.class),android.app.PendingIntent.FLAG_IMMUTABLE);
-  android.app.Notification result=poster.result(tap,new android.app.Notification.Builder(context,AlphaHostedResultsPlugin.CHANNEL).setSmallIcon(android.R.drawable.ic_popup_reminder).build()).build();
+  android.app.Notification redacted=new android.app.Notification.Builder(context,AlphaHostedResultsPlugin.CHANNEL).setSmallIcon(android.R.drawable.ic_popup_reminder).setContentTitle("Alpha Phone").build();
+  String resultDispatch=UUID.randomUUID().toString(),failureDispatch=UUID.randomUUID().toString();
+  android.app.Notification result=poster.result(tap,redacted,null,resultDispatch,HostedResultNotices.resultTitle("finished"),false).build();
   assertEquals(HostedResultNotices.SUPERSEDE_AFTER_MS,result.getTimeoutAfter());assertEquals(AlphaHostedResultsPlugin.CHANNEL,result.getChannelId());assertEquals(android.app.Notification.VISIBILITY_PRIVATE,result.visibility);
-  android.app.Notification silent=poster.result(tap,result.publicVersion,null,true).build();
+  android.app.Notification silent=poster.result(tap,redacted,null,failureDispatch,HostedResultNotices.resultTitle("failed"),true).build();
+  assertEquals("Your brief is ready",result.extras.getCharSequence(android.app.Notification.EXTRA_TITLE));
+  assertEquals("Your brief failed",silent.extras.getCharSequence(android.app.Notification.EXTRA_TITLE));
+  assertEquals("Alpha Phone",silent.publicVersion.extras.getCharSequence(android.app.Notification.EXTRA_TITLE));
+  assertEquals(failureDispatch,silent.extras.getString(HostedNoticePoster.DISPATCH_ID_EXTRA));
+  assertNull(silent.publicVersion.extras.getString(HostedNoticePoster.DISPATCH_ID_EXTRA));
   assertEquals("alpha-hosted-results-visible",silent.getGroup());
   assertEquals(android.app.Notification.GROUP_ALERT_SUMMARY,silent.getGroupAlertBehavior());
   assertEquals("Silencing does not move the notice to another channel",result.getChannelId(),silent.getChannelId());

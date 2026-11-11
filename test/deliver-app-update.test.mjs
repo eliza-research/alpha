@@ -9,11 +9,11 @@ import {deliver, publicObject} from '../scripts/deliver-app-update.ts';
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const stableTag = 'app-stable-alphacompute';
 const legacyTag = 'app-stable';
-const manifestUrl = `https://github.com/eliza-research/alphaphone/releases/download/${stableTag}/alpha-update-stable.json`;
-const legacyManifestUrl = `https://github.com/eliza-research/alphaphone/releases/download/${legacyTag}/alpha-update-stable.json`;
+const manifestUrl = `https://github.com/eliza-research/alpha/releases/download/${stableTag}/alpha-update-stable.json`;
+const legacyManifestUrl = `https://github.com/eliza-research/alpha/releases/download/${legacyTag}/alpha-update-stable.json`;
 const source = '1'.repeat(40);
 const object = bytes => ({bytes: Buffer.from(bytes), size: Buffer.byteLength(bytes), sha256: sha(bytes)});
-function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], isPrivate = false, releaseMissing = false, apkWrong = false, pointerRace = false, manifestInvisible = false} = {}) {
+function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], isPrivate = false, repoId = 1396333361, releaseMissing = false, apkWrong = false, pointerRace = false, manifestInvisible = false} = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-delivery-test-'));
   t.after(() => fs.rmSync(directory,{recursive:true,force:true}));
   const apkBytes = Buffer.from('synthetic qualified release bytes');
@@ -35,7 +35,10 @@ function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], 
     wait: async () => {},
     run(args) {
       events.push(args.slice(0,2).join(' '));
-      if (args[0] === 'repo') return JSON.stringify({isPrivate});
+      if (args[0] === 'api') {
+        assert.deepEqual(args,['api','repos/eliza-research/alpha']);
+        return JSON.stringify({id:repoId,full_name:'eliza-research/alpha',owner:{id:314117943},private:isPrivate});
+      }
       if (args[1] === 'view') {
         if (args[2] === legacyTag) return legacyPointer || legacyAssets.length ? JSON.stringify({isDraft:false,assets:legacyAssets}) : null;
         assert.equal(args[2],stableTag);
@@ -80,7 +83,8 @@ function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], 
 }
 
 test('delivery proves anonymous APK bytes before moving and reading back the stable manifest',async t => {
-  const f = fixture(t,{legacyPrevious:{},releaseMissing:true});
+  const formerLegacyApk = new URL('alpha-phone-7.apk',legacyManifestUrl.replace('/alpha/','/alphaphone/')).href;
+  const f = fixture(t,{legacyPrevious:{apkUrl:formerLegacyApk},releaseMissing:true});
   const receipt = await deliver(f,f.ports);
   assert.deepEqual(f.uploads,['alpha-phone-8.apk','alpha-update-stable.json']);
   assert.ok(f.events.indexOf('release create') < f.events.indexOf('release upload'));
@@ -103,11 +107,11 @@ test('retired-channel versions remain reserved and its pointer cannot be publish
 });
 
 test('bad anonymous APK readback, private repository and changed pointer cannot advertise a candidate',async t => {
-  for (const options of [{apkWrong:true},{isPrivate:true},{pointerRace:true}]) {
+  for (const options of [{apkWrong:true},{isPrivate:true},{repoId:42},{pointerRace:true}]) {
     const f = fixture(t,options);
     await assert.rejects(deliver(f,f.ports));
     assert.equal(f.uploads.includes('alpha-update-stable.json'),false,JSON.stringify(options));
-    if (options.isPrivate) assert.equal(f.uploads.length,0);
+    if (options.isPrivate || options.repoId) assert.equal(f.uploads.length,0);
   }
 });
 

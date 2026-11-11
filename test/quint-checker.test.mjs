@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.ts';
+import { detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.ts';
 
 test('all registered scenarios need an actual successful execution record', () => {
   assert.deepEqual(missingQuintScenarios(['reviewTest', 'setup'], '\u001b[32m    ok reviewTest passed 1 test(s)\u001b[0m\n    ok setup passed 3 test(s)\n'), []);
@@ -25,6 +25,18 @@ test('manifest budgets and extra proof initializers cannot silently disappear', 
   assert.deepEqual(quintModelOptions(model, 'check'), {samples: 1000, steps: 60, seed: '123'});
   assert.deepEqual(quintModelOptions(model, 'verify'), {samples: 1000, steps: 8, seed: '123'});
   assert.deepEqual(quintModelOptions(model, 'check', {samples: 3, steps: 2, seed: '1'}), {samples: 3, steps: 2, seed: '1'});
+});
+
+test('verification backend honors explicit overrides and preserves other proof defaults', () => {
+  assert.equal(quintProofBackend({}, 'verify'), 'apalache');
+  assert.equal(quintProofBackend({verifyBackend: 'tlc'}, 'verify'), 'tlc');
+  assert.equal(quintProofBackend({verifyBackend: 'tlc'}, 'verify', 'apalache'), 'apalache');
+  for (const phase of ['compare', 'temporal']) {
+    assert.equal(quintProofBackend({verifyBackend: 'apalache'}, phase), 'tlc');
+    assert.equal(quintProofBackend({verifyBackend: 'tlc'}, phase, 'apalache'), 'apalache');
+  }
+  assert.throws(() => validateQuintModelMetadata({module: 'Fixture', tests: ['exampleTest'], verifyBackend: 'unknown'}, ''),
+    /Invalid verifyBackend/);
 });
 
 test('the admitted model registry retains the audited families and scenarios', () => {
@@ -65,7 +77,7 @@ test('only a silent native checker fault gets one retained retry', async () => {
   }
 });
 
-test('runner records unexpected exceptions as failures and retains unfinished results', () => {
+test('runner records backend routing, unexpected exceptions and unfinished results', () => {
   const root = mkdtempSync(join(tmpdir(), 'alpha-quint-runner-'));
   const write = (path, contents) => {
     const target = join(root, path);
@@ -95,6 +107,21 @@ test('runner records unexpected exceptions as failures and retains unfinished re
     assert.equal(failure.status, 'failed');
     assert.match(failure.error, /TypeError/);
     assert.deepEqual(failure.finalInputErrors, []);
+
+    const routed = {...model, module: 'Routed', path: 'specs/quint/application/Routed.qnt', verifyBackend: 'tlc'};
+    write(routed.path, 'module Routed { run exampleTest = true }');
+    write('specs/quint/application/manifest.json', JSON.stringify([model, routed]));
+    write('node_modules/@informalsystems/quint/dist/src/cli.js', 'console.log(process.argv.find(arg => arg.startsWith("--backend=")));');
+    for (const override of [[], ['--backend=apalache']]) {
+      const result = spawnSync(process.execPath, ['scripts/check-quint.ts', 'verify', '--out=verify.json', ...override],
+        {cwd: root, encoding: 'utf8', timeout: 10000});
+      assert.equal(result.status, 0, result.stderr);
+      const proof = readJson(join(root, 'verify.json'));
+      assert.equal(proof.passed, true);
+      assert.equal(proof.backend, override.length ? 'apalache' : 'mixed');
+      assert.deepEqual(proof.results.map(row => [row.model, row.backend, row.output.trim()]),
+        [['Fixture', 'apalache', '--backend=apalache'], ['Routed', override.length ? 'apalache' : 'tlc', override[0] ?? '--backend=tlc']]);
+    }
 
     write('node_modules/@informalsystems/quint/dist/src/cli.js', 'setTimeout(() => {}, 60000);');
     const interrupted = spawnSync(process.execPath, ['scripts/check-quint.ts', 'typecheck', '--out=interrupted.json'], { cwd: root, encoding: 'utf8', timeout: 2000 });

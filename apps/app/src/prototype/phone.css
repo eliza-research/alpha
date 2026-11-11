@@ -32,7 +32,7 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
 /* Settings status: a dot always sits beside one word (never colour alone). */
 .settings-dot{display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:6px;flex-shrink:0;vertical-align:middle;background:var(--mut)}
 .settings-dot[data-dot="ok"]{background:var(--alpha-status-ok)}
-.settings-dot[data-dot="warn"]{background:var(--alpha-status-amber)}
+.settings-dot[data-dot="warn"]{background:var(--alpha-status-warn)}
 .settings-dot[data-dot="err"]{background:var(--alpha-status-error)}
 .settings-dot[data-dot=""]{display:none}
 .settings-sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
@@ -42,7 +42,7 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
 .settings-badge{flex-shrink:0;padding:3px 10px;border-radius:12px;background:var(--bg);color:var(--mut);font-size:12.5px;font-variant-numeric:tabular-nums}
 .settings-app-chips{display:flex;flex-wrap:wrap;gap:8px;padding:6px 16px 14px 18px}
 .settings-app-chip{display:inline-flex;align-items:center;gap:2px;min-height:44px;padding:0 4px 0 14px;border-radius:22px;background:var(--bg);font-size:14px}
-.settings-app-chip[data-warn="true"]{box-shadow:inset 0 0 0 1.5px var(--alpha-status-amber)}
+.settings-app-chip[data-warn="true"]{box-shadow:inset 0 0 0 1.5px var(--alpha-status-warn)}
 .settings-chip-btn{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;border-radius:20px;color:var(--mut)}
 .settings-chip-btn[aria-pressed="true"]{color:var(--acct)}
 .settings-chip-icon{display:block;width:18px;height:18px;background:currentColor;-webkit-mask:var(--chip-icon) center/contain no-repeat;mask:var(--chip-icon) center/contain no-repeat}
@@ -701,6 +701,15 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .alpha-map-privacy { flex:none; order:-1; width:50px; height:50px; border-radius:25px; background:var(--bg); box-shadow:0 6px 20px var(--shc), 0 0 0 1px var(--line); }
 .alpha-map-privacy > summary { width:100%; height:100%; }
 .alpha-map-privacy > summary { display:flex; align-items:center; justify-content:center; border-radius:inherit; cursor:pointer; list-style:none; }
+/* At 300% the disclosure control and credits need separate rows. Leave the
+   map's Recenter control beside the stack and keep the links first in reading order. */
+html.alpha-text-xl:not(.alpha-landscape) .alpha-map-credits:not([data-google-maps="true"]) {
+  flex-direction:column; align-items:flex-start;
+}
+html.alpha-text-xl:not(.alpha-landscape) .alpha-map-credits:not([data-google-maps="true"]) > .alpha-map-credit-links {
+  flex:none; max-width:100%; box-sizing:border-box;
+}
+html.alpha-text-xl:not(.alpha-landscape) .alpha-map-credits:not([data-google-maps="true"]) > .alpha-map-privacy { order:0; }
 [data-alpha-map-plane][data-imagery-unavailable="true"] { background:var(--s2); }
 .alpha-map-credits[data-google-maps="true"] {
   container:alpha-map-credit / inline-size; right:76px; width:auto; height:auto; display:flex; align-items:center; gap:4px; padding:0; border-radius:0; background:transparent; box-shadow:none;
@@ -733,10 +742,13 @@ html.alpha-large-text .alpha-google-sources { display:block; }
 .alpha-map-info { position:absolute; left:0; bottom:calc(100% + 10px); width:min(300px,calc(100vw - 32px)); box-sizing:border-box; display:grid; gap:10px; max-height:240px; overflow-y:auto; overflow-wrap:anywhere; padding:14px 16px; border-radius:20px; background:var(--bg); color:var(--fg); box-shadow:0 6px 24px var(--shc), 0 0 0 1px var(--line); font-size:14px; line-height:1.35; }
 .alpha-map-info p { margin:0; display:flex; align-items:center; gap:8px; }
 .alpha-map-info p svg { width:16px; height:16px; flex-shrink:0; }
-.alpha-map-info .alpha-map-credit-links { display:block; font-size:12px; color:var(--mut); }
+.alpha-map-info .alpha-map-credit-links { display:block; padding:0; border-radius:0; background:none; box-shadow:none; font-size:12px; color:var(--mut); }
 .alpha-map-info .alpha-map-credit-links a { color:inherit; text-decoration:underline; }
 .alpha-map-info > button { justify-self:start; min-height:40px; padding:0 14px; border-radius:20px; background:var(--s2); color:var(--fg); font:inherit; font-weight:600; }
 .alpha-landscape .alpha-map-credits { bottom:12px!important; }
+.alpha-landscape [data-alpha-maps-root]:not([data-alpha-maps-guidance="true"]) > .alpha-map-credits {
+  right:calc(var(--alpha-dock-width,min(440px,50%)) + 12px);
+}
 
 .alpha-chat-composer { display:flex; align-items:center; gap:6px; flex-shrink:0; min-height:68px; box-sizing:border-box; margin:0 12px max(30px,var(--alpha-bottom-clearance)); padding:6px 6px 6px 20px; border-radius:28px; background:var(--s2); color:var(--fg); }
 .alpha-wide:not(.alpha-landscape) .alpha-chat-composer { width:calc(100% - 24px); max-width:560px; margin-inline:auto; }

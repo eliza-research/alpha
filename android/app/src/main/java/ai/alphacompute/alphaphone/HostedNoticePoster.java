@@ -6,6 +6,7 @@ import android.content.*;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.provider.Settings;
 import com.getcapacitor.*;
 import com.getcapacitor.annotation.*;
@@ -15,26 +16,32 @@ import org.json.JSONObject;
 final class HostedNoticePoster implements HostedResultNotices.Poster {
  private final Context context;
  private static final String CHANNEL=AlphaHostedResultsPlugin.CHANNEL,ACTION=AlphaHostedResultsPlugin.ACTION,PREFIX=AlphaHostedResultsPlugin.PREFIX;
+ static final String DISPATCH_ID_EXTRA="ai.alphacompute.alphaphone.HOSTED_NOTICE_DISPATCH";
  HostedNoticePoster(Context context){this.context=context.getApplicationContext();channel();}
- public boolean active(String key){for(android.service.notification.StatusBarNotification item:manager().getActiveNotifications())if(key.equals(item.getTag()))return true;return false;}
+ public boolean active(String key,String dispatchId){
+  for(android.service.notification.StatusBarNotification item:manager().getActiveNotifications()){
+   if(!key.equals(item.getTag())||item.getId()!=0)continue;
+   Bundle extras=item.getNotification().extras;
+   if(extras!=null&&dispatchId.equals(extras.getString(DISPATCH_ID_EXTRA)))return true;
+  }
+  return false;
+ }
  public void cancel(String key){manager().cancel(key,0);Intent open=new Intent(context,MainActivity.class).setAction(ACTION).setData(Uri.parse(PREFIX+key)).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);PendingIntent tap=PendingIntent.getActivity(context,0,open,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_NO_CREATE);if(tap!=null)tap.cancel();Intent ask=new Intent(open).setAction(AlphaHostedResultsPlugin.ASK_ACTION);PendingIntent question=PendingIntent.getActivity(context,0,ask,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_NO_CREATE);if(question!=null)question.cancel();}
  private NotificationManager manager(){return context.getSystemService(NotificationManager.class);}
- void channel(){NotificationChannel c=new NotificationChannel(CHANNEL,"Daily briefs",NotificationManager.IMPORTANCE_DEFAULT);c.setDescription("When a scheduled brief is ready");c.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);manager().createNotificationChannel(c);}
+ void channel(){NotificationChannel c=new NotificationChannel(CHANNEL,"Daily briefs",NotificationManager.IMPORTANCE_DEFAULT);c.setDescription("Updates from your scheduled briefs");c.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);manager().createNotificationChannel(c);}
  public boolean allowed(){if(Build.VERSION.SDK_INT>=33&&context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED)return false;NotificationChannel c=manager().getNotificationChannel(CHANNEL);return manager().areNotificationsEnabled()&&c!=null&&c.getImportance()!=NotificationManager.IMPORTANCE_NONE;}
- public void post(String key){post(key,false);}
  /** Silent while the results panel for this scope is on screen: the notice still appears, without sound or vibration. */
- public void post(String key,boolean silent){
+ public void post(String key,String dispatchId,String title,boolean silent){
   Intent open=new Intent(context,MainActivity.class).setAction(ACTION).setData(Uri.parse(PREFIX+key)).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP);
   PendingIntent tap=PendingIntent.getActivity(context,0,open,PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
   Notification redacted=new Notification.Builder(context,CHANNEL).setSmallIcon(R.drawable.notification_icon).setContentTitle("Alpha Phone").setContentText("Tap to open.").build();
   PendingIntent ask=PendingIntent.getActivity(context,0,new Intent(open).setAction(AlphaHostedResultsPlugin.ASK_ACTION),PendingIntent.FLAG_IMMUTABLE|PendingIntent.FLAG_UPDATE_CURRENT);
-  Notification.Builder builder=result(tap,redacted,ask,silent);
+  Notification.Builder builder=result(tap,redacted,ask,dispatchId,title,silent);
   manager().notify(key,0,builder.build());
  }
  /** Visible for builder tests. Superseded by the next daily brief; withdrawn after a day or when opened. */
- Notification.Builder result(PendingIntent tap,Notification redacted){return result(tap,redacted,null);}
- Notification.Builder result(PendingIntent tap,Notification redacted,PendingIntent ask){return result(tap,redacted,ask,false);}
- Notification.Builder result(PendingIntent tap,Notification redacted,PendingIntent ask,boolean silent){Notification.Builder builder=new Notification.Builder(context,CHANNEL).setSmallIcon(R.drawable.notification_icon).setContentTitle("Your brief is ready").setContentText("Tap to open.").setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(redacted).setContentIntent(tap).setOnlyAlertOnce(true).setAutoCancel(true).setTimeoutAfter(HostedResultNotices.SUPERSEDE_AFTER_MS).setCategory(Notification.CATEGORY_STATUS);if(ask!=null){Notification.Action.Builder action=new Notification.Action.Builder(null,"Ask Alpha",ask);if(Build.VERSION.SDK_INT>=31)action.setAuthenticationRequired(true);builder.addAction(action.build());}
+ Notification.Builder result(PendingIntent tap,Notification redacted,PendingIntent ask,String dispatchId,String title,boolean silent){Notification.Builder builder=new Notification.Builder(context,CHANNEL).setSmallIcon(R.drawable.notification_icon).setContentTitle(title).setContentText("Tap to open.").setVisibility(Notification.VISIBILITY_PRIVATE).setPublicVersion(redacted).setContentIntent(tap).setOnlyAlertOnce(true).setAutoCancel(true).setTimeoutAfter(HostedResultNotices.SUPERSEDE_AFTER_MS).setCategory(Notification.CATEGORY_STATUS);if(ask!=null){Notification.Action.Builder action=new Notification.Action.Builder(null,"Ask Alpha",ask);if(Build.VERSION.SDK_INT>=31)action.setAuthenticationRequired(true);builder.addAction(action.build());}
+  Bundle extras=new Bundle();extras.putString(DISPATCH_ID_EXTRA,dispatchId);builder.addExtras(extras);
   // Suppress the child alert on the existing channel. No summary is posted for this group,
   // so a visible result stays silent without changing the owner's channel preferences.
   if(silent)builder.setGroup("alpha-hosted-results-visible").setGroupAlertBehavior(Notification.GROUP_ALERT_SUMMARY);

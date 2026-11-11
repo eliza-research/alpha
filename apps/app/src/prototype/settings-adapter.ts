@@ -116,9 +116,10 @@ const device = registerPlugin<{
   setTextScale(input:{percent:number}):Promise<{textScalePercent:number;effectiveTextZoom:number}>;
   diagnosticsFacts(): Promise<Bag>;
   shareDiagnostics(input: { text: string }): Promise<{ status: string }>;
-  checkForUpdate(): Promise<{ manifest?: string }>;
+  checkForUpdate(): Promise<{manifest?: string; manifestSha256?: string}>;
   updateState(): Promise<{pending?: boolean}>;
-  installUpdate(input: Pick<AppUpdate, 'apkUrl' | 'sha256' | 'sizeBytes' | 'versionCode'> & {automatic?: true}): Promise<{status?: string}>;
+  installUpdate(input: Pick<AppUpdate, 'apkUrl' | 'sha256' | 'sizeBytes' | 'versionCode'> &
+    ({automatic: true; manifestSha256: string} | {automatic?: never; manifestSha256?: never})): Promise<{status?: string}>;
 }>('AlphaDevice');
 const notifications = registerPlugin<{status():Promise<Bag>;setAlertPreferences(input:{appEnabled?:boolean;channelId?:string;enabled?:boolean}):Promise<Bag>;openAppSettings():Promise<Bag>;openChannelSettings(input:{id:string}):Promise<{status:string}>;crossAppStatus():Promise<Bag>;notificationApps():Promise<{apps:Bag[]}>;setNotificationPolicy(input:Bag):Promise<Bag>;resumeCrossApp(input:{expectedRevision:string}):Promise<Bag>;openNotificationAccess():Promise<Bag>;notificationHistory():Promise<{items:Bag[]}>;clearNotificationHistory():Promise<void>}>('AlphaNotifications');
 const system = registerPlugin<{ getDeviceSettings(): Promise<Bag>; getStatus(): Promise<{ roles?: Bag[] }>; requestRole(input: { role: string }): Promise<{ role: string; held: boolean; resultCode: number }>; getBuildInfo(): Promise<{ launcher?: boolean; version?: string }> }>('ElizaSystem');
@@ -270,28 +271,60 @@ export function resolveAppearance(choice: AppearanceChoice): 'light' | 'dark' {
 }
 
 const UPDATE_KEY = 'alpha.app-update.v1';
-/** The last manifest a check was answered with, and when, so a restart offers it without checking again; and the check in flight. */
-let lastUpdate: {checkedAt: number; manifest: unknown} | undefined, updateCheck: Promise<boolean> | undefined;
-function savedUpdate() {
+type SavedUpdate = {checkedAt: number; manifest: unknown; manifestSha256?: string};
+let lastUpdate: SavedUpdate | undefined, updateCheck: Promise<boolean> | undefined;
+function isManifestSha256(value: unknown): value is string {
+  return typeof value === 'string' && value.length === 64 && /^[0-9a-f]{64}$/.test(value);
+}
+function savedUpdate(): SavedUpdate {
   if (lastUpdate) return lastUpdate;
   try {
     const value = JSON.parse(localStorage.getItem(UPDATE_KEY) ?? 'null');
-    if (value && typeof value === 'object' && Number.isFinite(value.checkedAt)) return lastUpdate = {checkedAt: value.checkedAt, manifest: value.manifest};
+    if (value && typeof value === 'object' && Number.isFinite(value.checkedAt)) {
+      return lastUpdate = {checkedAt: value.checkedAt, manifest: value.manifest,
+        manifestSha256: isManifestSha256(value.manifestSha256) ? value.manifestSha256 : undefined};
+    }
   } catch { /* Unreadable storage only means the next check is due. */ }
   return lastUpdate = {checkedAt: Number.NaN, manifest: null};
 }
+function retainUpdate(value: SavedUpdate) {
+  lastUpdate = value;
+  try { localStorage.setItem(UPDATE_KEY, JSON.stringify(value)); } catch { /* Kept for this session. */ }
+}
+function invalidateUpdate(used: SavedUpdate): boolean {
+  if (lastUpdate !== used) return false;
+  lastUpdate = {checkedAt: Number.NaN, manifest: null};
+  try {
+    if (localStorage.getItem(UPDATE_KEY) === JSON.stringify(used)) localStorage.removeItem(UPDATE_KEY);
+  } catch { /* Invalidated for this session. */ }
+  return true;
+}
 /**
- * At most one answered automatic check per interval and one at a time; `force` is the owner's
- * Check for updates. Only an answer is kept: a 404 withdraws the offer, and a failed check is quiet and
- * leaves the next start or resume due. Undefined when no check runs.
+ * At most one check at a time. An automatic poll refreshes an offer saved by an older
+ * renderer, and a 404 withdraws it. A failed read keeps the manual row and retires
+ * its automatic authority until the next successful check.
  */
-function checkForUpdate(force: boolean): Promise<boolean> | undefined {
-  if (!updateCheck && Capacitor.isNativePlatform() && (force || updateCheckDue(savedUpdate().checkedAt, Date.now())))
-    updateCheck = device.checkForUpdate().then(({ manifest }) => {
-      lastUpdate = { checkedAt: Date.now(), manifest: typeof manifest === 'string' ? JSON.parse(manifest) : null };
-      try { localStorage.setItem(UPDATE_KEY, JSON.stringify(lastUpdate)); } catch { /* Kept for this session. */ }
+function checkForUpdate(force: boolean, automatic = false): Promise<boolean> | undefined {
+  if (updateCheck || !Capacitor.isNativePlatform()) return updateCheck;
+  const saved = savedUpdate();
+  const needsDigest = automatic && saved.manifest != null && !saved.manifestSha256;
+  if (!force && !needsDigest && !updateCheckDue(saved.checkedAt, Date.now())) return;
+  updateCheck = device.checkForUpdate().then(({manifest, manifestSha256}) => {
+    if (manifest === undefined && manifestSha256 === undefined) {
+      retainUpdate({checkedAt: Date.now(), manifest: null});
       return true;
-    }).catch(() => false).finally(() => { updateCheck = undefined; });
+    }
+    if (typeof manifest !== 'string' || (manifestSha256 !== undefined && !isManifestSha256(manifestSha256)))
+      throw Error('Malformed update check reply');
+    const parsed: unknown = JSON.parse(manifest);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw Error('Malformed update manifest');
+    retainUpdate({checkedAt: Date.now(), manifest: parsed, manifestSha256});
+    return true;
+  }).catch(() => {
+    const cached = savedUpdate();
+    if (cached.manifestSha256) retainUpdate({checkedAt: cached.checkedAt, manifest: cached.manifest});
+    return false;
+  }).finally(() => { updateCheck = undefined; });
   return updateCheck;
 }
 
@@ -374,7 +407,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   let automaticUpdates: ReturnType<typeof createAppUpdateScheduler> | undefined;
   const automaticUpdateActive = () => automaticUpdates?.setActive(!document.hidden);
   async function pollAutomaticUpdate(current: () => boolean) {
-    if (await checkForUpdate(false) === false) throw Error('Update check unavailable');
+    if (await checkForUpdate(false, true) === false) throw Error('Update check unavailable');
     if (!current()) return;
     changed();
     const idle = () => automaticUpdateIdle(owner?.S?.() ?? {},connectionController.getSnapshot(),
@@ -388,13 +421,19 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (pending.pending) return;
     if (installed.appAutomaticUpdates === 'starting') throw Error('Android is still starting');
     if (installed.appAutomaticUpdates !== 'supported') return;
-    const update = parseUpdateManifest(savedUpdate().manifest, {versionCode: installed.appVersionCode,
+    const saved = savedUpdate();
+    const update = parseUpdateManifest(saved.manifest, {versionCode: installed.appVersionCode,
       launcher: build.launcher, signerSha256: installed.appSigner});
     if (!update) return;
+    if (!saved.manifestSha256) throw Error('Update offer requires a fresh check');
     // Native admission repeats the package/signer/version checks and requires every
     // renderer's saved-draft receipt before stopping the resident or committing.
     const result = await device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,
-      sizeBytes:update.sizeBytes,versionCode:update.versionCode,automatic:true});
+      sizeBytes:update.sizeBytes,versionCode:update.versionCode,automatic:true,manifestSha256:saved.manifestSha256});
+    if (result?.status === 'offer-unavailable') {
+      if (invalidateUpdate(saved) && current()) changed();
+      throw Error('Update offer unavailable');
+    }
     if (result?.status === 'starting') throw Error('Android is still starting');
     if (result?.status === 'permission-required' || result?.status === 'unsupported') return;
   }

@@ -273,17 +273,22 @@ jobs:
           RUN_TURBO_CONCURRENCY: "1"
         run: |
           python3 scripts/ci/resident-phase.py --name prepare --seconds 3600 bun run agent:prepare
+      - name: Capture the hydrated SDK lock and graph
+        if: github.event_name == 'workflow_dispatch' || env.ALPHA_APP_UPDATE_CANDIDATE == '1'
+        run: |
+          source="$ALPHA_LOCAL_AGENT_SOURCE_DIR"
+          mkdir -p test-results/resident-ci
+          sha256sum "$source/bun.lock" > test-results/resident-ci/sdk-lock.sha256
+          (cd "$source" && bun --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-before.txt
+          python3 -c 'from pathlib import Path; assert Path("test-results/resident-ci/sdk-graph-before.txt").stat().st_size <= 16*1024**2'
       - name: Verify the hydrated SDK graph with OS-network-denied frozen install
         if: github.event_name == 'workflow_dispatch'
         run: |
           source="$ALPHA_LOCAL_AGENT_SOURCE_DIR"
           bun_executable="$(command -v bun)"
-          mkdir -p test-results/resident-ci
-          sha256sum "$source/bun.lock" > test-results/resident-ci/sdk-lock.sha256
-          (cd "$source" && "$bun_executable" --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-before.txt
-          python3 -c 'from pathlib import Path; assert Path("test-results/resident-ci/sdk-graph-before.txt").stat().st_size <= 16*1024**2'
           # sudo only creates the fresh network namespace. unshare drops to the
           # runner UID/GID BEFORE the pinned Bun process; no token is forwarded.
+          # shellcheck disable=SC2016
           python3 scripts/ci/resident-phase.py --name sdk-offline-install --seconds 600 \
             sudo unshare --net --setgid "$(id -g)" --setuid "$(id -u)" -- \
             env -i HOME="$HOME" PATH="$PATH" TMPDIR="$RUNNER_TEMP" NO_COLOR=1 \
@@ -322,11 +327,8 @@ jobs:
           python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 bun scripts/generate-licenses.ts --packaged-runtime
           # Flag-off distribution: release verification requires the PACKAGED runtime.
           python3 scripts/ci/resident-phase.py --name distribution-archive --seconds 3000 bun scripts/build-archive.ts test-results/resident-ci-distribution
-          # The native suites need the private peer fixture, a debug-only test hook
-          # that exists only in the separate, never-distributable test-mocks build.
-          python3 scripts/ci/resident-phase.py --name archive --seconds 3000 bun scripts/build-archive.ts --test-mocks test-results/resident-ci-archive
-      - name: Retain bounded distribution producer evidence for local QA signing
-        if: github.event_name == 'workflow_dispatch'
+      - name: Retain bounded distribution producer evidence
+        if: github.event_name == 'workflow_dispatch' || env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         run: |
           bun scripts/runtime-profile.ts --verify-native
           bun scripts/prepare-local-agent.ts --source-only
@@ -338,6 +340,39 @@ jobs:
           from pathlib import Path
           root = Path.cwd().resolve()
           out = root / 'test-results/resident-ci-distribution/producer-evidence'
+          archive = out.parent
+          generated_manifest = 'android/app/build/generated/local-agent/source-manifest.json'
+          version = int(os.environ['ELIZAOS_VERSION_CODE'])
+          build_config = (root / 'artifacts/build-config.json').read_bytes()
+          build = json.loads(build_config)
+          channel = build['updateChannel']
+          assert channel['kind'] == 'public', 'Private QA artifacts require private delivery, not this hosted archive'
+          assert (
+              build['testMocks'] is False
+              and build['runtimeProfile'] == 'native'
+              and build['signingRequested'] is False
+              and build['versionOverride']['code'] == str(version)
+          ), 'Producer configuration differs from the unsigned distribution build'
+          verification = (archive / 'apk-verification.json').read_bytes()
+          verified = json.loads(verification)
+          for record in (json.loads((archive / 'configuration.json').read_text()), verified):
+              assert (
+                  record['testMocks'] is False
+                  and record['runtimeProfile'] == 'native'
+                  and record['updateChannel'] == channel
+              ), 'Producer configuration differs from the distribution archive'
+          releases = [row for row in verified['results'] if row['mode'] == 'release']
+          assert len(releases) == 2 and {row['variant'] for row in releases} == {'launcher', 'standalone'}, 'Distribution archive must contain both release variants'
+          archived_apks = json.loads((archive / 'apk-manifest.json').read_text())
+          for row in releases:
+              name = f"{row['variant']}-release-unsigned.apk"
+              assert (
+                  row['signed'] is False
+                  and row['versionCode'] == version
+                  and row['file'] == f'artifacts/{name}'
+                  and row['sha256'] == archived_apks[name]
+              ), 'Producer version or APK differs from the unsigned distribution archive'
+          snapshot = json.loads((archive / 'inputs-after.json').read_text())
           out.mkdir(mode=0o700, exist_ok=False)
           inputs = [
               ('artifacts/build-config.json', 'artifacts/build-config.json'),
@@ -347,7 +382,7 @@ jobs:
               ('licenses', 'licenses'),
               ('android/app/src/main/assets/agent', 'android/app/src/main/assets/agent'),
               ('android/app/src/main/jniLibs', 'android/app/src/main/jniLibs'),
-              ('android/app/build/generated/local-agent/source-manifest.json', 'native-source-manifest.json'),
+              (generated_manifest, 'native-source-manifest.json'),
               (str(Path(os.environ['ALPHA_LOCAL_AGENT_SOURCE_DIR']) / '.alpha-runtime-source.json'), 'prepared-source-stamp.json'),
               (str(Path(os.environ['ALPHA_WORKFLOW_WORKER_OUTPUT']) / 'manifest.json'), 'worker-manifest.json'),
           ]
@@ -370,13 +405,24 @@ jobs:
                   target.parent.mkdir(parents=True, exist_ok=True)
                   with file.open('rb') as src, target.open('xb') as dst:
                       shutil.copyfileobj(src, dst)
-                  digest = hashlib.sha256(target.read_bytes()).hexdigest()
-                  assert digest == hashlib.sha256(file.read_bytes()).hexdigest(), 'Evidence changed during retention'
+                  with target.open('rb') as copy, file.open('rb') as original:
+                      digest = hashlib.file_digest(copy, 'sha256').hexdigest()
+                      assert digest == hashlib.file_digest(original, 'sha256').hexdigest(), 'Evidence changed during retention'
+                  frozen = snapshot['files'].get(file.resolve().relative_to(root).as_posix())
+                  assert frozen is None or digest == frozen, 'Evidence differs from frozen build input'
                   files[str(relative)] = {'bytes': info.st_size, 'sha256': digest}
-          channel = json.loads((out / 'artifacts/build-config.json').read_text())['updateChannel']
-          assert channel['kind'] == 'public', 'Private QA artifacts require private delivery, not this hosted archive'
-          (out / 'manifest.json').write_text(json.dumps({'source': os.environ['GITHUB_SHA'], 'runtimeProfile': 'native', 'updateChannel': channel, 'versionCode': int(os.environ['ELIZAOS_VERSION_CODE']), 'bytes': total, 'files': files}, indent=2) + '\n')
+          assert files['artifacts/apk-manifest.json']['sha256'] == hashlib.sha256(verification).hexdigest(), 'Captured APK verification differs from the distribution archive'
+          assert files['artifacts/build-config.json']['sha256'] == hashlib.sha256(build_config).hexdigest(), 'Producer configuration changed during retention'
+          assert files['native-source-manifest.json']['sha256'] == snapshot['files'][generated_manifest], 'Captured native source manifest differs from the distribution inputs'
+          (out / 'manifest.json').write_text(json.dumps({'source': os.environ['GITHUB_SHA'], 'runtimeProfile': 'native', 'updateChannel': channel, 'versionCode': version, 'bytes': total, 'files': files}, indent=2) + '\n')
           PYCODE
+      - name: Archive the isolated test-mocks build
+        env:
+          RUN_TURBO_CONCURRENCY: "1"
+        run: |
+          # The native suites need the private peer fixture, a debug-only test hook
+          # that exists only in the separate, never-distributable test-mocks build.
+          python3 scripts/ci/resident-phase.py --name archive --seconds 3000 bun scripts/build-archive.ts --test-mocks test-results/resident-ci-archive
       - name: Bind the unsigned native candidate to the genuine distribution archive
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:
@@ -416,8 +462,7 @@ jobs:
           path: test-results/resident-ci-archive/
           retention-days: 3
           if-no-files-found: error
-      # The flag-off distribution archive with its producer evidence: the only input the protected
-      # signing workflow admits (scripts/ci/verify-cloud-signing-input.sh checks this name).
+      # Preserve the dispatched artifact name for existing reviewed signing plans.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name == 'workflow_dispatch'
         with:
