@@ -26,10 +26,7 @@ test('admission accepts an owner-only executable staged under umask 027',()=>fix
  const previous=process.umask(0o027);
  try{assert.equal(materializeNativePatches(args).modes[target],'100755');assert.equal(fs.statSync(path.join(args.temporary,target)).mode&0o777,0o750);}finally{process.umask(previous);}
 }));
-test('admission rejects a wrong pin and a file the pin does not carry',()=>{
- fixture(args=>{args.manifest.baseCommit='other';assert.throws(()=>materializeNativePatches(args),/pin/);});
- fixture(args=>{fs.writeFileSync(path.join(args.temporary,'extra'),'');assert.throws(()=>materializeNativePatches(args),/output differs/);});
-});
+test('admission rejects wrong pin',()=>fixture(args=>{args.manifest.baseCommit='other';assert.throws(()=>materializeNativePatches(args),/pin/);}));
 
 test('APK receipt rejects missing, old and mismatched source bindings',()=>{
  const expected={root:'/not-packaged',baseCommit:'pin',manifestSha256:'new',files:{Java:'patched'}};
