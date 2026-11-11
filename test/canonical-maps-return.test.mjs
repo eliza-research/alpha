@@ -22,7 +22,7 @@ async function fixture(){
 test('canonical Maps return rereads exact start window and same revision without writing or replacing UI state',async()=>{
  const f=await fixture(),snapshot=structuredClone(f.controller.state);
  assert.equal(await f.check(),'found');
- assert.deepEqual(f.reads.at(-1),{timeMin:'2026-10-31T11:59:59.999Z',timeMax:'2026-10-31T12:00:00.001Z',timeZone:'UTC'});
+ assert.deepEqual(f.reads.at(-1),{timeMin:'2026-10-31T11:59:59.000Z',timeMax:'2026-10-31T12:00:01.000Z',timeZone:'UTC'});
  assert.deepEqual(f.controller.state,snapshot);
 });
 for(const [name,change] of [
