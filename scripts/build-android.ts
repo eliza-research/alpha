@@ -36,7 +36,6 @@ export interface AndroidBuildOptions {
   testMocks: boolean;
   allowUnpackagedRuntime?: boolean;
   skipInstrumentation?: boolean;
-  allowOlderUpstreamPin?: boolean;
 }
 
 type BuildCommand = (command: string, args: string[], extra?: ExecFileSyncOptionsWithBufferEncoding) => unknown;
@@ -58,7 +57,7 @@ export const SIGNING_ENV = (() => {
     throw new Error("android/consumer-host.json must name four release-signing environment variables");
   return Object.freeze(names);
 })();
-const USAGE = "Usage: npm run android:build -- [--test-mocks] [--allow-unpackaged-runtime] [--skip-instrumentation] [--allow-older-upstream-pin]";
+const USAGE = "Usage: npm run android:build -- [--test-mocks] [--allow-unpackaged-runtime] [--skip-instrumentation]";
 
 export function parseBuildArgs(argv: readonly string[]): AndroidBuildOptions {
   const options: AndroidBuildOptions = { testMocks: false, allowUnpackagedRuntime: false, skipInstrumentation: false };
@@ -66,8 +65,6 @@ export function parseBuildArgs(argv: readonly string[]): AndroidBuildOptions {
     if (arg === "--test-mocks") options.testMocks = true;
     else if (arg === "--skip-instrumentation") options.skipInstrumentation = true;
     else if (arg === "--allow-unpackaged-runtime") options.allowUnpackagedRuntime = true;
-    // Checked by the preflight only (it receives the same arguments): a reviewed upstream rollback.
-    else if (arg === "--allow-older-upstream-pin") options.allowOlderUpstreamPin = true;
     else throw new Error(`Unknown option ${arg}. ${USAGE}`);
   }
   if (options.testMocks && options.skipInstrumentation) throw new Error("Test-mocks builds require instrumentation APKs");
