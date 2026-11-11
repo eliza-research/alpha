@@ -6,16 +6,16 @@ import {expect,type Page} from '@playwright/test';
  * Setting `canonicalNotesFixture.dictation` to a list of transcripts answers the platform speech
  * recognition (DailyApps voice) with them in order, counted in `heard`; unset, the browser build's
  * own answer (no recognition) stands. */
-export async function canonicalNotesFixture(page:Page,{path='/',notes=[],failReads=false}:{path?:string;notes?:unknown[];failReads?:boolean}={}){
+export async function canonicalNotesFixture(page:Page,{path='/',notes=[],trash=[],failReads=false}:{path?:string;notes?:unknown[];trash?:unknown[];failReads?:boolean}={}){
  const foreign:string[]=[],errors:string[]=[];
  page.on('pageerror',error=>errors.push(error.message));
  await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/,async route=>{foreign.push(route.request().url());await route.abort();});
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto(path);
  await preloadPageModules(page,['/src/runtime/connection-ui.tsx','/src/prototype/canonical-notes-controller.ts','/src/browser/daily.ts']);
- await page.evaluate(async({notes,failReads})=>{
+ await page.evaluate(async({notes,trash,failReads})=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
-  const f=(window as any).canonicalNotesFixture={state:{notes,trash:[],revision:notes.length?1:0},requests:[],otherRequests:[],fail:false,failReads,failAfterApplied:false};
+  const f=(window as any).canonicalNotesFixture={state:{notes,trash,revision:notes.length||trash.length?1:0},requests:[],otherRequests:[],fail:false,failReads,failAfterApplied:false};
   f.acceptedReads=[];
   // Observe the SAME canonical class used by the real UI; never replace its controller.
   const {CanonicalNotesController}=await import('/src/prototype/canonical-notes-controller.ts');
@@ -52,7 +52,7 @@ export async function canonicalNotesFixture(page:Page,{path='/',notes=[],failRea
    f.state.revision++;if(f.failAfterApplied)throw Error('Closed canonical fixture accepted write response loss');return {requestId:crypto.randomUUID(),success:true,result:{success:true,text:'Completed',state:structuredClone(f.state),data:{note:structuredClone(note)}}};
   }} as any);
   await c.offline();
- },{notes:structuredClone(notes),failReads});
+ },{notes:structuredClone(notes),trash:structuredClone(trash),failReads});
  return {foreign,errors};
 }
 export async function openCanonicalNotes(page:Page){

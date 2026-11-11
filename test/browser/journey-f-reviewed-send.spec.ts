@@ -314,7 +314,7 @@ test('F-10: a saved older version of a sent email is kept, labelled as such, and
   test.setTimeout(180_000);
   await openInbox(page);
   await compose(page, 'Versioned plan', 'Saved first text');
-  await button(page, 'Save draft locally').click();
+  await button(page, 'Save draft').click();
   await expect(page.getByText('Saved locally on this device').first()).toBeVisible();
   // Edited after saving and sent without saving again: the saved copy is an earlier version.
   await page.getByRole('textbox', {name: 'Message', exact: true}).fill('Sent final text');
@@ -429,9 +429,10 @@ test('F-10: a review made under one From account cannot be sent after the email 
   await expect(review.getByRole('button', {name: 'Send this email', exact: true})).toBeVisible();
   await review.getByRole('button', {name: 'Close mail review', exact: true}).click();
   // The From switcher moves the email to the second account, where it is reviewed and sent once.
-  await expect(button(page, 'From account')).toHaveText('From Fixture mailbox');
-  await button(page, 'From account').click();
-  await expect(button(page, 'From account')).toHaveText('From Second mailbox');
+  const from = page.getByRole('combobox', {name: 'From account', exact: true});
+  await expect(from).toHaveValue('fixture-grant');
+  await from.selectOption({label: 'Second mailbox'});
+  await expect(from).toHaveValue('second-grant');
   await expect(page.getByRole('textbox', {name: 'Message', exact: true})).toHaveValue('One body');
   await button(page, 'Send email').click();
   await expect(review.getByText('One body', {exact: true})).toBeVisible();

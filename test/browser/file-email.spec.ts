@@ -40,7 +40,7 @@ test('selected Files require explicit attachment review, retain exact bytes and 
  await review.getByRole('button',{name:'Cancel',exact:true}).click();await expect(review).toHaveCount(0);
  await page.getByRole('button',{name:'Use in email',exact:true}).click();await review.getByRole('checkbox').check();await insert.click();
  await expect(review).toHaveCount(0);await expect(page.getByRole('textbox',{name:'Message',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Save draft locally',exact:true}).click();
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
  await expect(page.getByText('Saved locally on this device',{exact:true}).first()).toBeVisible();
  expect(await page.evaluate(()=>(window as any).fileEmail.writes)).toBe(0);
  const saved=()=>page.evaluate(async()=>{const {inboxLocalStore}=await import('/src/runtime/inbox-local-store.ts');return await inboxLocalStore.read<any>('inbox-drafts:v1:'+JSON.stringify(['production','file-owner','','file-grant']));});

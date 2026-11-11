@@ -1062,8 +1062,9 @@ registerView("inbox", {
         hasAtts: ((c0.atts || []).length + (c0.attach || []).length) > 0,
         onSubj: function (e) { upd({ subject: e.target.value }); },
         onBody: function (e) { upd({ body: e.target.value }); },
-        multi: multi, from: fa.address,
-        cycleFrom: function () { var i = accts.indexOf(fa); upd({ acct: accts[(i + 1) % accts.length].id }); },
+        multi: multi, singleFrom: !multi, from: fa.address, fromId: fa.id,
+        fromAccounts: accts.map(function (account) { return {id: account.id, label: account.address || inboxAcctLabel(account)}; }),
+        onFrom: function (event) { var id = event.currentTarget.value; if (accts.some(function (account) { return account.id === id; })) upd({ acct: id }); },
         close: function () { var loc = st.composeLocal; api.set({ compose: null, toQ: "" }); inboxUndo(api, inboxDraftLabel(api, st.compose), { compose: st.compose, composeLocal: true }); },
         send: function () {
           var cc = api.get("inbox").compose; cc = cc === true ? {} : cc;

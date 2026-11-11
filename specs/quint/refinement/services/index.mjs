@@ -43,6 +43,7 @@ import {checkNativeGoogleHostArtifact} from './native-google-host-artifact.mjs';
 import {checkPreparedSourceStamp} from './prepared-source-stamp.mjs';
 import {checkClientFeaturePublication} from './client-feature-publication.mjs';
 import {checkAppUpdateCandidate} from './app-update-candidate.mjs';
+import {checkProtectedAppUpdatePromotion} from './protected-app-update-promotion.mjs';
 import {checkCloudQaLauncher} from './cloud-qa-launcher.mjs';
 import {checkBrowserCloudRequestCustody} from './browser-cloud-request-custody.mjs';
 import {checkGmailAgentMailboxRecovery} from './gmail-agent-mailbox-recovery.mjs';
@@ -67,7 +68,7 @@ export async function runServicesRefinement(onProgress) {
       runTurnControllerRefinement].map(direct),
     ...[checkBrowserGoogleReturn, checkCombinedAgentLauncher, checkReviewedWorkflowLauncher,
       checkCoreConnectorCustody, checkMobileBundleAdmission, checkWorkflowWorkerStaging, checkNativeGoogleHostArtifact,
-      checkPreparedSourceStamp, checkClientFeaturePublication, checkAppUpdateCandidate, checkCloudQaLauncher, checkBrowserCloudRequestCustody, checkGmailAgentMailboxRecovery,
+      checkPreparedSourceStamp, checkClientFeaturePublication, checkAppUpdateCandidate, checkProtectedAppUpdatePromotion, checkCloudQaLauncher, checkBrowserCloudRequestCustody, checkGmailAgentMailboxRecovery,
       checkDevelopmentDigestPending, checkAndroidGzipAssetStage, checkResidentJavaSourceStage,
       checkAndroidBrowserModuleStage, checkAndroidBuildInputReadiness, checkLifeOpsScheduledTaskRoute,
       checkPersonalAssistantScheduledTaskCustody, checkPreparedWorkflowWorker].map(withDriver),
@@ -95,6 +96,8 @@ export async function runServicesRefinement(onProgress) {
       reason: 'Three actual publishers cover one vanished-winner collision. Model scenarios cover selected refusal/failure branches; abrupt process loss, arbitrary generations, orphan recovery and a stable path lease for independent readers remain separate.'},
     {model: 'AppUpdateCandidate', obligation: 'Real candidate builds, hosted inventory and protected promotion',
       reason: 'The source calls use real private files and byte hashing with closed metadata and synthetic archives. GitHub run-number custody, actual APK/voice admission, concurrent IO, signing, publication and installed updates retain separate evidence.'},
+    {model: 'ProtectedAppUpdatePromotion', obligation: 'Protected production effects and release qualification',
+      reason: 'Workflow ordering and command failures use reviewed source with closed ports and synthetic bytes. Main-push signing admission, released native input bounds, exact signed voice, actual keys, live transport and installed-device delivery remain separate.'},
     {model: 'CloudQaLauncher', obligation: 'Concurrent launcher, kernel signal and live readiness behavior',
       reason: 'Private files and receipts use the real implementation in scratch, with closed child events. Concurrent profile writers, kernel delivery and a running Cloud session retain separate evidence.'},
     {model: 'BrowserCloudRequestCustody', obligation: 'Authenticated requests, real HTTP and process restart',

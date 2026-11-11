@@ -148,14 +148,19 @@ test('without the read-state capability opening a message changes nothing',async
  expect((await gm(page)).prepares).toEqual([]);
 });
 
-test('swipe left opens the reviewed archive flow and dispatches only after confirmation',async({page})=>{
+test('only a left swipe opens the reviewed archive flow and dispatches after confirmation',async({page})=>{
  await setup(page);
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  const row=page.getByRole('button',{name:'Sender in-0-b, Subject in-0-b',exact:true});
  const box=(await row.boundingBox())!;
+ const review=page.getByRole('dialog',{name:'Review mail operation',exact:true});
+ await page.mouse.move(box.x+80,box.y+box.height/2);await page.mouse.down();
+ await page.mouse.move(box.x+box.width-80,box.y+box.height/2,{steps:6});await page.mouse.up();
+ await expect(review).toHaveCount(0);
+ await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveCount(0);
+ expect((await gm(page)).prepares).toEqual([]);
  await page.mouse.move(box.x+box.width-80,box.y+box.height/2);await page.mouse.down();
  await page.mouse.move(box.x+80,box.y+box.height/2,{steps:6});await page.mouse.up();
- const review=page.getByRole('dialog',{name:'Review mail operation',exact:true});
  await expect(review).toContainText('Archive message');
  await expect(page.getByText('Body of in-0-b',{exact:true})).toHaveCount(0);
  expect((await gm(page)).prepares).toEqual([{kind:'archive',messageId:'in-0-b',expectedHistoryId:'h-in-0-b'}]);
@@ -232,19 +237,21 @@ test('Share by email from Notes opens a prefilled local draft without sending',a
  expect((await gm(page)).prepares).toEqual([]);
 });
 
-test('compose From switcher moves a new email to another connected account',async({page})=>{
- await setup(page,{accounts:['first@example.test','second@example.test']});
+test('compose From picker moves a new email directly to a chosen connected account',async({page})=>{
+ await setup(page,{accounts:['first@example.test','second@example.test','third@example.test']});
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Compose',exact:true}).click();
- await expect(page.getByRole('button',{name:'From account',exact:true})).toContainText('From first@example.test');
+ const from=page.getByRole('combobox',{name:'From account',exact:true});
+ await expect(from).toHaveValue('grant-0');
+ await expect(from.locator('option')).toHaveText(['first@example.test','second@example.test','third@example.test']);
  await page.getByRole('textbox',{name:'Subject',exact:true}).fill('Moving subject');
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Moving body');
- await page.getByRole('button',{name:'From account',exact:true}).click();
- await expect(page.getByRole('button',{name:'From account',exact:true})).toContainText('From second@example.test');
+ await from.selectOption({label:'third@example.test'});
+ await expect(from).toHaveValue('grant-2');
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Moving subject');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Moving body');
- await expect(page.getByRole('status').filter({hasText:'From changed to second@example.test'})).toBeVisible();
+ await expect(page.getByRole('status').filter({hasText:'From changed to third@example.test'})).toBeVisible();
  expect((await gm(page)).prepares).toEqual([]);
 });
 
@@ -254,7 +261,7 @@ test('single-account compose has no From switcher',async({page})=>{
  await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Compose',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'From account',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('combobox',{name:'From account',exact:true})).toHaveCount(0);
 });
 
 test('re-opening Inbox reuses its verified cached list instead of showing an empty mailbox',async({page})=>{
@@ -313,9 +320,9 @@ test('From switcher returns the email to its account when the other account alre
  await page.getByRole('button',{name:'Compose',exact:true}).click();
  await page.getByRole('textbox',{name:'Subject',exact:true}).fill('Stays subject');
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Stays body');
- await page.getByRole('button',{name:'From account',exact:true}).click();
+ await page.getByRole('combobox',{name:'From account',exact:true}).selectOption({label:'second@example.test'});
  await expect(page.getByText(/already has a draft\. This email stays with first@example\.test/).first()).toBeVisible();
- await expect(page.getByRole('button',{name:'From account',exact:true})).toContainText('From first@example.test');
+ await expect(page.getByRole('combobox',{name:'From account',exact:true})).toHaveValue('grant-0');
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Stays subject');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Stays body');
  const f=await gm(page);expect(f.prepares).toEqual([]);
@@ -328,7 +335,7 @@ for(const saved of [false,true])test(`Share to email opens a new populated draft
  await page.getByRole('button',{name:'Compose',exact:true}).click();
  await page.getByRole('textbox',{name:'Subject',exact:true}).fill('Earlier email');
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Earlier exact body');
- if(saved){await page.getByRole('button',{name:'Save draft locally',exact:true}).click();await expect(page.getByText('Saved locally on this device',{exact:true}).first()).toBeVisible();}
+ if(saved){await page.getByRole('button',{name:'Save draft',exact:true}).click();await expect(page.getByText('Saved locally on this device',{exact:true}).first()).toBeVisible();}
  await page.getByRole('button',{name:'Back from draft',exact:true}).click();await returnToApps(page);
  await openLegacyNotes(page);await page.getByRole('button',{name:'New note',exact:true}).click();
  await page.getByRole('textbox',{name:'Title',exact:true}).fill('Shared selected note');

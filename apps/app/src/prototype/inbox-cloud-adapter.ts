@@ -121,6 +121,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   // A moved email (From switcher) names its target account and how to return it to the source.
   type PendingCompose = ComposePrefill & { account?: string; returnTo?: GmailAccount; restore?: () => void };
   let pendingCompose: PendingCompose | null = null, lastCompose: unknown = null, resumeDraftFor = '', composeAttempt = 0;
+  let switchingFrom: object | null = null;
   // Shared read-state guard (@elizaos/plugin-inbox/mailbox), keyed by account and message: one change may
   // be in flight per message, and an automatic mark-read whose outcome was not confirmed is never sent again.
   const readState = new MailReadStateGuard();
@@ -352,7 +353,11 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     if(loadedQuery==='in:inbox')setAttention(inboxAttentionFor(messages,more,accountLabel(),restoredReadAt!==undefined?new Date(restoredReadAt).toISOString():(revision||new Date().toISOString())));
     hasUnread=!!inboxPreview?.messages.some(m=>m.unread);
   };
-  drafts.setFromSwitch({ count: () => readable().length, cycle: () => void switchFrom() });
+  drafts.setFromSwitch({ count: () => readable().length, cycle: () => {
+    const eligible = readable(), index = eligible.findIndex(account => account.connectionId === selected);
+    const next = eligible[(index + 1) % eligible.length]?.connectionId;
+    if (next) void switchFrom(next);
+  } });
   provider.setObservers({
     // A provider-confirmed send removes the local copies of exactly the draft it was sent from.
     sent: (source, proposal, grant) => void drafts.settleSent(source.draftId, proposal, grant, (source as { savedRevision?: string }).savedRevision), sentNote: source => drafts.sentNote(source.draftId),
@@ -370,7 +375,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   });
   provider.onRestored(() => { if (selected && !draftsView()) void load(); });
   function clear(preserveOffline=false) {
-    composeAttempt++; noticeAttempt++;retireHomeLoad();
+    composeAttempt++; noticeAttempt++; switchingFrom = null; retireHomeLoad();
     invalidateList(!preserveOffline);spamTrashSearch=false;
     providerDrafts = [];
     setAttention({ state: connectionController.getCloudClient() ? 'loading' : 'not-connected', unread: undefined, unreadMore: false, source: null, updatedAt: null });
@@ -466,21 +471,43 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     publish({ open: null, nativeMailSelection: null });
     if (selected) void load();
   }
-  /** Continues an open new email under the next connected account. Nothing is sent or saved remotely. */
-  async function switchFrom() {
-    const eligible = readable(); if (operation || eligible.length < 2) return;
-    const index = eligible.findIndex(a => a.connectionId === selected), previous = eligible[index], next = eligible[(index + 1) % eligible.length];
-    if (!previous || next.connectionId === previous.connectionId) return;
-    const content = await drafts.transfer(); if (!content) return;
-    const { savedRemains, restore, ...moved } = content;
-    // The account changed while the draft was being moved: keep it with the account it came from.
-    if (selected !== previous.connectionId) { restore(); resumeDraftFor = previous.connectionId!; selectAccount(previous, true); return; }
-    // A read that started meanwhile must not keep the composer on the previous account.
-    selectAccount(next, true);
-    returnPending();
-    pendingCompose = { ...moved, moved: true, account: next.connectionId!, returnTo: previous, restore,
-      status: `From changed to ${next.label}.${savedRemains ? ` A saved local copy remains with ${previous.label}.` : ''}` };
+  /** Continues a new local draft under the account the owner actually chose. */
+  async function switchFrom(connectionId: string) {
+    const eligible = readable(), binding = connectionController.getCloudClient(), owner = shell, attempt = composeAttempt;
+    const previous = eligible.find(account => account.connectionId === selected);
+    const next = eligible.find(account => account.connectionId === connectionId);
+    if (operation || switchingFrom || !binding || !previous || !next || next === previous || !api?.isActive() || document.hidden) return;
+    const transfer = switchingFrom = {};
     publish();
+    try {
+      const content = await drafts.transfer();
+      if (!content) return;
+      const { savedRemains, restore, ...moved } = content;
+      const current = connectionController.getCloudClient();
+      const sameOwner = owner === shell && current?.client === binding.client &&
+        current.sessionId === binding.sessionId && current.credentialId === binding.credentialId;
+      const active = sameOwner && attempt === composeAttempt && api?.isActive() && !document.hidden;
+      const destination = readable().find(account => account.connectionId === connectionId);
+      if (!active || selected !== previous.connectionId || !destination) {
+        if (sameOwner) {
+          restore();
+          // The transfer consumed the retained copy. Rebind the source to
+          // persist its restored edits when the mailbox did not change.
+          if (selected === previous.connectionId && readable().some(account => account.connectionId === selected)) {
+            if (active) resumeDraftFor = selected;
+            void drafts.bind('', '');
+            void drafts.bind(selected, previous.label);
+          }
+        }
+        return;
+      }
+      selectAccount(destination, true);
+      returnPending();
+      pendingCompose = { ...moved, moved: true, account: connectionId, returnTo: previous, restore,
+        status: `From changed to ${destination.label}.${savedRemains ? ` A saved draft remains with ${previous.label}.` : ''}` };
+    } finally {
+      if (switchingFrom === transfer) { switchingFrom = null; publish(); }
+    }
   }
   const draftsView = () => folder === 'drafts' && !String(api?.get('inbox')?.q || '').trim();
   /** Provider drafts list: metadata only until one is opened for editing. */
@@ -854,7 +881,13 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
         api?.toast(`${target} already has a draft. This email stays with ${prefill.returnTo!.label}.`);
       });
     }
-    if (resumeDraftFor && resumeDraftFor === selected && drafts.ready) { resumeDraftFor = ''; queueMicrotask(() => { if (drafts.hasDraft) drafts.begin(); }); }
+    if (resumeDraftFor && resumeDraftFor === selected && drafts.ready) {
+      const account = selected, attempt = composeAttempt;
+      resumeDraftFor = '';
+      queueMicrotask(() => {
+        if (attempt === composeAttempt && account === selected && api?.isActive() && !document.hidden && drafts.hasDraft) drafts.begin();
+      });
+    }
     const sentView = loadedQuery === 'in:sent';
     const chips: Bag[] = binding ? [
       ...(failure?.kind === 'revoked' ? [chip('Reconnect Gmail', () => googleConnectionController.open())] : []),
@@ -914,13 +947,22 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     };
 
     const needsGmailConnection=!!binding&&accountsChecked&&accountsSession===binding.sessionId&&!selected&&!operation&&phase!=='scheduled'&&!failure;
+    const draftView = drafts.render(), composer = draftView.c;
+    const fromAccounts = readable().map(account => ({id: account.connectionId, label: account.label}));
+    const compose = composer ? {...composer, busy: composer.busy || !!switchingFrom, sendDisabled: composer.sendDisabled || !!switchingFrom,
+      fromId: selected, fromAccounts, onFrom: (event: Event) => {
+        const control = event.currentTarget as HTMLSelectElement;
+        const target = control.value;
+        control.value = selected;
+        void switchFrom(target);
+      }} : null;
     return {folderTitle:folder==='inbox'?'Inbox':folder==='sent'?'Sent':folder==='archive'?'Archive':extraFolders.find(row=>row.value===folder)?.label||'Inbox',folderChips:chips.filter(row=>['Inbox','Sent','Archive'].includes(row.label)),actionChips:chips.filter(row=>!['Inbox','Sent','Archive'].includes(row.label)),hasActionChips:chips.some(row=>!['Inbox','Sent','Archive'].includes(row.label)),extraFolders,hasExtraFolders:!!extraFolders.length,extraFolderCss:extraFolders.some(row=>row.on)?'width:112px;background:var(--fg);color:var(--bg)':'',extraFolderLabel:extraFolders.find(row=>row.on)?.label||'More',folderPicker:extraFolders.length?React.createElement(MailFolderPicker,{folders:extraFolders,menuId:'alpha-mail-folders',themeTokens:MAIL_MENU_TOKENS,selectedStyle:MAIL_MENU_SELECTED}):null, attachmentOpen:!!attachmentView,attachment:attachmentView?{...attachmentView,close:()=>{void attachmentNative.cancel().catch(()=>{});attachmentView=null;publish();}}:null,chips, rows, searching: st.q != null, notSearching: st.q == null, q: st.q || '', hasQ: false,
       openSearch: () => changeQuery(''), closeSearch: () => changeQuery(null), clearSearch:()=>{changeQuery('');queueMicrotask(()=>document.querySelector<HTMLInputElement>('.mail-search-input')?.focus());}, onQ: (e: Bag) => changeQuery(e.target.value), submitSearch:(event:Event)=>{event.preventDefault();const input=(event.currentTarget as HTMLFormElement).querySelector<HTMLInputElement>('input');if(!input?.value.trim())return;input.blur();void load();},
       compose: () => void drafts.newEmail(), empty: rows.length === 0, emptyIcon: 'M4 6h16v12H4zM4 6l8 6 8-6', emptyText: restoringCloud ? 'Loading Inbox…' : pendingCompose && !selected && binding && !failure ? needsGmailConnection ? 'Shared content is ready for a new email. Connect Gmail to continue.' : 'Checking Gmail connection…' : status,
       hasMore: rows.length > 0 && (!!nextPageToken || (!!operation && loadingMore)), loadingMore: !!operation && loadingMore, loadMoreDisabled: !!operation, loadMoreLabel: operation && loadingMore ? 'Loading more…' : 'Load more', loadMore: () => void load(true),
       canRefresh: !!binding, refreshDisabled: !!operation, refresh: () => { if(failure){failure.retry();return;}if(!selected){void refreshAccounts();return;}const shown=cachedListShown; invalidateList(false); cachedListShown=shown; void provider.bind(selected); void load(); },
       cachedListShown,
-      emptyAdd: needsGmailConnection, addAccountLabel: 'Connect Gmail', addAcct: () => googleConnectionController.open(), detail: !!activeBody, ...drafts.render(), ...provider.render(),
+      emptyAdd: needsGmailConnection, addAccountLabel: 'Connect Gmail', addAcct: () => googleConnectionController.open(), detail: !!activeBody, ...draftView, c: compose, ...provider.render(),
       d: activeBody ? { closeMenu:(event:Event)=>{(event.currentTarget as HTMLElement).closest('details')?.removeAttribute('open');},menuKey:(event:KeyboardEvent)=>{if(event.key==='Escape'){const menu=event.currentTarget as HTMLDetailsElement;menu.open=false;menu.querySelector<HTMLElement>('summary')?.focus();event.stopPropagation();}},hasThread:!!thread&&thread.total>1,threadRows:thread?thread.messages.filter(row=>row.message.id!==activeBody.message.id).map(row=>({name:row.message.from,date:date(row.message.receivedAt),preview:row.message.snippet,pick:()=>{body=row;remoteImagesShown=false;publish({open:row.message.id,nativeMailSelection:mailSelection(row.message.id)});}})):[], hasPreviousThread:!!thread&&thread.previousOffsets.length>0,previousThread:()=>void nextThreadPage(true),hasNextThread:thread?.nextOffset!=null, nextThread:()=>void nextThreadPage(), subj: activeBody.message.subject || '(no subject)', name: activeBody.message.from,
         fullFrom:activeBody.message.fromEmail?`${activeBody.message.from} <${activeBody.message.fromEmail}>`:'Sender address unavailable',fullTo:activeBody.message.to.join(', ')||'Undisclosed recipients',fullCc:(activeBody.message.cc||[]).join(', '),hasCc:!!activeBody.message.cc?.length,fullReplyTo:activeBody.message.replyTo||'',hasReplyTo:!!activeBody.message.replyTo&&activeBody.message.replyTo!==activeBody.message.fromEmail,fullDate:formatFullDateTime(new Date(activeBody.message.receivedAt)),ini: activeBody.message.from.slice(0, 1).toUpperCase(), senderImage:mailSenderImage(activeBody.message.fromEmail,true),hideSenderImage:(event:Event)=>{(event.currentTarget as HTMLImageElement).style.display='none';}, meta: `To ${activeBody.message.to.join(', ')} · ${date(activeBody.message.receivedAt)}`,
         hasHtml:!!formatted,noHtml:!formatted,htmlDocument:formatted?.document||'',htmlLoaded,hasRemoteImages:!!formatted?.remoteImages&&!showRemoteImages,showImages:()=>{if(body!==activeBody)return;remoteImagesShown=true;publish();},failed:!!activeBody.failed,retry:()=>void open(activeBody.message),

@@ -49,7 +49,10 @@ public class CameraScanInstrumentedTest {
  private String dialog(String label){return "document.querySelector('dialog[aria-label="+JSONObject.quote(label).replace("\"","\\\"")+"]')";}
  private Set<Long> ownedImages(){
   Set<Long> ids=new HashSet<>();
-  try(Cursor c=context().getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,new String[]{MediaStore.Images.Media._ID},MediaStore.MediaColumns.OWNER_PACKAGE_NAME+"=?",new String[]{context().getPackageName()},null)){if(c!=null)while(c.moveToNext())ids.add(c.getLong(0));}
+  try(Cursor c=context().getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,new String[]{MediaStore.Images.Media._ID},MediaStore.MediaColumns.OWNER_PACKAGE_NAME+"=?",new String[]{context().getPackageName()},null)){
+   assertNotNull("MediaStore returned a Photos cursor",c);
+   while(c.moveToNext())ids.add(c.getLong(0));
+  }
   return ids;
  }
  private byte[] page(String text)throws Exception{
@@ -134,8 +137,13 @@ public class CameraScanInstrumentedTest {
  /** Fresh owned emulator user. The capture and PDF paths use CameraX and SAF end to end. */
  @Test public void directDocumentCameraRetakeDraftAndPdf()throws Exception{
   Assume.assumeTrue("Owned camera document campaign: -e cameraDocument 1","1".equals(InstrumentationRegistry.getArguments().getString("cameraDocument")));
+  assertTrue("Disposable secondary user required",android.os.Process.myUid()/100000>0);
   AppNavigation.assumeNoRequiredSignIn("Camera document capture");
-  InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context().getPackageName(),Manifest.permission.CAMERA);
+  assertEquals("Fixture Photos read permission",android.content.pm.PackageManager.PERMISSION_GRANTED,context().checkSelfPermission(Manifest.permission.READ_MEDIA_IMAGES));
+  ContentResolver resolver=context().getContentResolver();
+  Uri probe=new SelectedDocumentInstrumentedTest().fixtureBytes(resolver,"alpha-camera-photos-probe-"+UUID.randomUUID()+".png","image/png",page("PHOTOS PROBE"));
+  assertTrue("Observer sees a real app-owned image",ownedImages().contains(ContentUris.parseId(probe)));
+  assertEquals("Remove the positive control before scanning",1,resolver.delete(probe,null,null));
   Set<Long> before=ownedImages();
   String builder=dialog("Review scan document"),capture=dialog("Capture document page");
   String filename="alpha-document-test-"+UUID.randomUUID()+".pdf";
@@ -170,11 +178,9 @@ public class CameraScanInstrumentedTest {
     assertEquals("Actual SAF PDF has the two reviewed pages",2,pdf.getPageCount());
    }
    assertEquals("Export publishes no Photos rows",before,ownedImages());
-  }finally{
-   if(exported.exists())assertTrue("Remove test PDF",exported.delete());
-   Set<Long> created=ownedImages();created.removeAll(before);
-   for(long id:created)context().getContentResolver().delete(ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,id),null,null);
   }
+  // The runner removes the disposable user and its files. Cleanup outside the
+  // test process preserves the first failing assertion if MediaStore is unavailable.
  }
 
  @Test public void scanCaptureNeverPublishesToPhotosUnlessKept()throws Exception{

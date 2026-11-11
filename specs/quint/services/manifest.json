@@ -2590,6 +2590,57 @@
       }
     },
     {
+      "path": "specs/quint/services/ProtectedAppUpdatePromotion.qnt",
+      "module": "ProtectedAppUpdatePromotion",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "currentMainPushCannotSignTest",
+        "lostPrivateResponseCannotOverwriteObjectTest",
+        "staleSigningReviewAndWrongGenerationTest",
+        "raisedFloorRefusesPublicWritesTest",
+        "legacyFloorMustBeExceededTest",
+        "partialApkCannotBeOverwrittenTest",
+        "pointerRepairReusesExactApkTest",
+        "lostPointerResponseCanBeReconciledTest"
+      ],
+      "invariants": [
+        "MainPushHasNoSigningRoute",
+        "PrivateReceiptRequiresStagedPair",
+        "RestoredRequiresReviewedReceipt",
+        "PointerWriteRequiresExactAnonymousApk",
+        "ReceiptRequiresReadbacks"
+      ],
+      "sources": [
+        ".github/workflows/resident-android.yml",
+        ".github/workflows/release-cloud-app-signing.yml",
+        ".github/workflows/verify-cloud-signing-input.yml",
+        ".github/workflows/publish-qualified-app-update.yml",
+        "scripts/app-update-candidate.ts",
+        "scripts/ci/verify-cloud-signing-input.sh",
+        "scripts/ci/admit-cloud-signing-input.py",
+        "scripts/ci/private-apk-storage.py",
+        "scripts/ci/qualified-app-update.py",
+        "scripts/sign-release-apks.ts",
+        "scripts/verify-apks.ts",
+        "scripts/deliver-app-update.ts",
+        "scripts/update-artifact.ts",
+        "scripts/update-channel.ts",
+        "scripts/publish-update-manifest.ts"
+      ],
+      "abstractions": [
+        "One candidate, a bounded signing/qualification lane and a public release with three version-floor classes. The current main-push receipt has no signing route.",
+        "Actual shell, Python and TypeScript helpers execute over controlled endpoint, filesystem and transport fixtures. Protected workflow stage order is checked separately against the parsed YAML.",
+        "Private object durability and public partial effects are selected port outcomes. Production keys, platform protections, signer/APK qualification, live public transport and phone acceptance remain separate."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "maxVerifyDepth": 12
+      }
+    },
+    {
       "path": "specs/quint/services/PreparedWorkflowWorker.qnt",
       "module": "PreparedWorkflowWorker",
       "init": "init",

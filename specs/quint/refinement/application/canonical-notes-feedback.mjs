@@ -96,7 +96,10 @@ export async function createCanonicalNotesUiFixture(compiled, onViewObservation 
   const originalDiscard = ui.discardDraftAndReload.bind(ui);
   ui.discardDraftAndReload = () => {prefix.push(actionCall('discard')); return originalDiscard();};
   return {ui, projectNoteForModel: module.exports.projectNoteForModel, observe, feedback, initial, feedbackSteps, run, resolveRequest, api, requests,
-    restore() {const output = ui.decorate({none: false}, api, viewState); output.trashRows[0].restore();},
+    restore() {
+      ui.decorate({none: false}, api, viewState).trashRows[0].ask();
+      ui.decorate({none: false}, api, viewState).trashAskRecover();
+    },
     loseOwner() {current = false;}, async close() {
       ui.retire(); for (const request of requests) if (!request.settled) {request.settled = true; request.task.reject(Error('Fixture teardown'));}
       await tick(); if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow); else delete globalThis.window;
