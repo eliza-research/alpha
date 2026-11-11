@@ -95,7 +95,7 @@ test("the renderer and the native side say the same words", () => {
   assert.match(message, /Update Android System WebView\.$/);
 });
 
-test("the renderer asks on Android only, says so before any speech route or excerpt is prepared, and shows it in the menu", () => {
+test("the renderer checks Android reading support before preparing speech or a page excerpt", () => {
   assert.match(adapter, /const readingSupport = Capacitor\.isNativePlatform\(\) \? createReadingSupport\(\(\) => Browser\.readingSupport\(\), \(\) => refresh\(\)\) : undefined;/);
   assert.match(adapter, /if \(browserActive && !browserWasActive\) void readingSupport\?\.check\(\);/, "asked when the browser opens, so the menu already knows");
   const read = adapter.slice(adapter.indexOf("async function readPage()"), adapter.indexOf("async function askPage()"));
@@ -104,7 +104,7 @@ test("the renderer asks on Android only, says so before any speech route or exce
   assert.ok(ask.indexOf("if(await readingUnsupported())return;") > 0 && ask.indexOf("if(await readingUnsupported())return;") < ask.indexOf("Browser.reviewQuestion"), "Ask about page refuses before preparing an excerpt");
   assert.match(adapter, /report\(new Error\(READING_UNSUPPORTED_MESSAGE\)\)/);
   assert.match(adapter, /readingUnavailable:readingSupport\?\.state==='unavailable',readingNote:READING_UNSUPPORTED_MESSAGE,/);
-  assert.match(template, /<sc-if value="\{\{browser\.readingUnavailable\}\}"><p role="note" aria-label="Page reading unavailable" data-alpha-reading-unavailable [^>]*>\{\{browser\.readingNote\}\}<\/p><\/sc-if>/);
+  assert.match(template, /<sc-if value="\{\{browser\.pageContentAvailable\}\}"><button[^>]+aria-label="Ask about page"/);
 });
 
 test("each refusal carries its own reject code, so the renderer never parses message text", () => {
@@ -121,7 +121,7 @@ test("each refusal carries its own reject code, so the renderer never parses mes
 });
 
 
-test('Cloud native Browser hides local-only reading without disabling page questions',()=>{
+test('Browser keeps guarded page questions while Read aloud is absent from its menu',()=>{
  const match=/readAloudAvailable:([^,]+),/.exec(adapter);assert.ok(match);
  for(const native of [true,false])for(const cloud of [true,false]){
   const available=new Function('Capacitor','cloudRuntimeEnabled','return '+match[1])({isNativePlatform:()=>native},cloud);
@@ -130,7 +130,8 @@ test('Cloud native Browser hides local-only reading without disabling page quest
  // Render the real menu guards through dc-lite: a source-shape assertion alone
  // previously accepted an unsupported compound expression that hid the control.
  const menuRows=template.split('\n').filter(row=>row.includes('aria-label="Read aloud"')||row.includes('aria-label="Ask about page"'));
- assert.equal(menuRows.length,2,'both actual Browser menu controls are captured');
+ assert.equal(menuRows.length,1,'the actual page-question menu control is captured');
+ assert.doesNotMatch(menuRows[0],/aria-label="Read aloud"/);
  const dom=new JSDOM(menuRows.join('\n'));
  try{
   const guarded=label=>{
@@ -138,7 +139,7 @@ test('Cloud native Browser hides local-only reading without disabling page quest
    let node=button;while(node.parentElement?.localName==='sc-if')node=node.parentElement;
    return node.outerHTML;
   };
-  const menu='<main class="os"><section data-screen>'+guarded('Read aloud')+guarded('Ask about page')+'</section></main>';
+  const menu='<main class="os"><section data-screen>'+guarded('Ask about page')+'</section></main>';
   const renderer=fs.readFileSync('apps/app/src/prototype/dc-lite.js','utf8')
    .replace("import {iconStyle} from '../icon-style';",'const iconStyle=()=>({});')
    .replace('import templateHtml from "./template.html?raw";',`const templateHtml=${JSON.stringify(menu)};`);
@@ -148,7 +149,7 @@ test('Cloud native Browser hides local-only reading without disabling page quest
   for(const readAloudAvailable of [false,true])for(const pageContentAvailable of [false,true]){
    const rendered=new JSDOM(renderToStaticMarkup(React.createElement(Menu,{browser:{readAloudAvailable,pageContentAvailable}})));
    try{
-    assert.equal(!!rendered.window.document.querySelector('button[aria-label="Read aloud"]'),readAloudAvailable&&pageContentAvailable);
+    assert.equal(!!rendered.window.document.querySelector('button[aria-label="Read aloud"]'),false);
     assert.equal(!!rendered.window.document.querySelector('button[aria-label="Ask about page"]'),pageContentAvailable);
    }finally{rendered.window.close();}
   }
