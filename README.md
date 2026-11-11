@@ -13,9 +13,10 @@ changes upstream and consume a reviewed commit; never edit the vendor checkout.
 ## Setup
 
 Use Bun 1.4.2 (`packageManager` in `package.json`) and JDK 21. Bun runs the
-developer tooling and is the agent runtime on the device. CI also runs
-`bun run test:node` with Node.js 26.13.0 for jsdom script execution and Web Locks.
-The combined-agent diagnostic also requires an explicit Node.js 26.13.0 binary.
+developer tooling and is the agent runtime on the device. Full verification
+uses Node.js 26.13.0 for the Files Trash Web Locks proof. CI also runs
+`bun run test:node` on that version for the standalone jsdom and Web Locks cases.
+The combined-agent diagnostic requires an explicit Node.js 26.13.0 binary.
 Native builds need Android SDK platform 36 and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
 

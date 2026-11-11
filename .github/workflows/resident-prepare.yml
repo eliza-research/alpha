@@ -36,7 +36,7 @@ jobs:
       - name: Verify managed Calendar rejection against the prepared SDK graph
         env:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
-        run: python3 scripts/ci/resident-phase.py --name calendar-managed-rejection --seconds 120 bun test test/calendar-managed-rejection.test.mjs
+        run: python3 scripts/ci/resident-phase.py --name calendar-managed-rejection --seconds 120 bun test --timeout=120000 test/calendar-managed-rejection.test.mjs
       - name: Verify digest recovery across independent runtime processes
         env:
           TMPDIR: ${{ github.workspace }}/test-results/digest-restart

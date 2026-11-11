@@ -3,8 +3,10 @@ import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
 import {nodeOnly} from './support/node-only.mjs';
 import {checkBrowserFilesTrash} from '../specs/quint/refinement/application/browser-files-trash.mjs';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
-test('Files Trash lock, exact marker custody and recovery compare with the prepared source', {timeout: 120000, ...nodeOnly('the Files Trash source takes a Web Lock and Bun has no navigator.locks')}, async () => {
+// Leave time for source preparation and receipt verification around the 120-second checker.
+test('Files Trash lock, exact marker custody and recovery compare with the prepared source', {timeout: scaledTimeout(180000), ...nodeOnly('the Files Trash source takes a Web Lock and Bun has no navigator.locks')}, async () => {
   const receipt = await checkBrowserFilesTrash([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.model, 'BrowserFilesTrash');
   assert.equal(receipt.traces, 12);

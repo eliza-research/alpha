@@ -63,6 +63,10 @@ jobs:
           prepared_source=$(bun -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
           echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
           echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
+      # The Files Trash refinement delegates its Web Locks proof to Node.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26.13.0"
       - run: bun run verify
         env:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
@@ -102,11 +106,7 @@ jobs:
       # Recorded develop compare; warns (never networks) when develop cannot reach the pin.
       - name: Report upstream develop reachability
         run: bun scripts/verify-upstream.ts --reachability-only
-      # Two host tests need platform features Bun lacks (scripts/run-node-only-tests.ts).
-      # Run them after Bun verification with an explicit Node version.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: "26.13.0"
+      # Exercise the standalone jsdom and Web Locks host cases on Node.
       - run: bun run test:node
   formal:
     name: Changed-model proofs

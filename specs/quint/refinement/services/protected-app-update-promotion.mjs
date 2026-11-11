@@ -218,7 +218,8 @@ export async function checkProtectedAppUpdatePromotion(extraSources = []) {
   ];
   const driverHashes = captureInputs(sources);
   checkWorkflows();
-  const {traces, launcherBytes, mainCandidate, versionCode} = JSON.parse(execFileSync('python3', ['-B', python], {
+  const pythonArgs = ['-B', python, '--signing-timeout-ms', String(scaledTimeout(30_000))];
+  const {traces, launcherBytes, mainCandidate, versionCode} = JSON.parse(execFileSync('python3', pythonArgs, {
     encoding: 'utf8', timeout: scaledTimeout(120000),
   }));
   for (const trace of traces) {

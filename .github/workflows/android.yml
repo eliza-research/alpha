@@ -67,12 +67,17 @@ jobs:
           prepared_source=$(bun -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
           echo "ALPHA_BUN=$ALPHA_BUN" >> "$GITHUB_ENV"
           echo "ALPHA_CLOUD_COLLECTOR_SOURCE=$prepared_source" >> "$GITHUB_ENV"
+      # The manual verification includes the Files Trash Web Locks proof.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          node-version: "26.13.0"
       - name: Verify standalone manual qualification
         if: github.event_name == 'workflow_dispatch'
         env:
           ALPHA_REQUIRE_PREPARED_SDK: '1'
         run: bun run verify
-      - run: bun test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
+      - run: bun test --timeout=600000 vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # On-device speech is the shared paradee-voice library on libelizainference (llama.cpp/ggml):
       # Paradee-8M TTS with misaki G2P and the bundle's ASR slot. This lane stages no native voice
       # outputs, so Gradle compiles the real Java API unpackaged and the APKs report speech unavailable.

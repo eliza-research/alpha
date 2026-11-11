@@ -3,6 +3,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { delimiter, join } from 'node:path';
+import { scaledTimeout } from '../specs/quint/refinement/timeouts.mjs';
 
 /** Each file holds at least one case that states why with nodeOnly(reason). */
 export const NODE_ONLY_TESTS = [
@@ -14,11 +15,11 @@ export const NODE_ONLY_TESTS = [
 const MINIMUM_MAJOR = 24;
 
 /** `bun run` puts a `node` that is Bun first on PATH; find one that is Node. */
-function realNode(): string | undefined {
+export function realNode(): string | undefined {
   const candidates = [process.env.ALPHA_NODE, ...(process.env.PATH ?? '').split(delimiter).map(directory => join(directory, 'node'))];
   for (const candidate of candidates) {
     if (!candidate || !existsSync(candidate)) continue;
-    const probe = spawnSync(candidate, ['-p', 'process.versions.bun ? "" : process.versions.node'], { encoding: 'utf8' });
+    const probe = spawnSync(candidate, ['-p', 'process.versions.bun ? "" : process.versions.node'], { encoding: 'utf8', timeout: scaledTimeout(5000) });
     const version = probe.status === 0 ? probe.stdout.trim() : '';
     if (version && Number(version.split('.')[0]) >= MINIMUM_MAJOR) return candidate;
   }
@@ -31,7 +32,7 @@ if (import.meta.main) {
     console.error(`No Node.js ${MINIMUM_MAJOR}+ on PATH (or ALPHA_NODE). These tests need it; nothing was run:\n  ${NODE_ONLY_TESTS.join('\n  ')}`);
     process.exit(1);
   }
-  const result = spawnSync(node, ['--test', '--test-timeout=600000', ...process.argv.slice(2), ...NODE_ONLY_TESTS],
+  const result = spawnSync(node, ['--test', `--test-timeout=${scaledTimeout(600000)}`, ...process.argv.slice(2), ...NODE_ONLY_TESTS],
     { stdio: 'inherit', cwd: new URL('..', import.meta.url) });
   process.exit(result.status ?? 1);
 }
