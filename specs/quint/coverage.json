@@ -32162,7 +32162,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "61482de078a799503ffa56f4675ea121484863b064797d72efb6e5a6f5816a31",
+      "sha256": "5584e9d26b91cecb1ba1bc66a96ae9e5ed7a5ad12fa56839c5a5f44c83fb5da1",
       "stateAnchors": [
         {
           "line": 16,
@@ -32344,7 +32344,8 @@
           "line": 267,
           "text": "if(full.voice){const hook=api.deleteVoiceNoteForever;if(typeof hook==='function')void hook(full.id);else api.toast('Permanent voice deletion is unavailable. Nothing was deleted.');}"
         }
-      ]
+      ],
+      "integrationReview": "2026-11-11 reviewed: opening retained Notes Trash also closes the list menu. Existing NotesLifecycle/NotesTrashReadPublication boundaries are unchanged. The mounted retained and canonical Notes recovery replay passes; no provider action was added."
     },
     {
       "path": "apps/app/src/prototype/notifications-adapter.ts",
@@ -41230,78 +41231,78 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "7d9847072af0a8d9b743fa5d46046270fd88ca5cdd498b11e218b5603ae6b566",
+      "sha256": "20f9552ec16fa09e19809f7aaca029d6cd64d6b177d646fe277892d849d8a320",
       "stateAnchors": [
         {
           "line": 14,
           "text": "const quiet = { event: null, verified: false, emptyLabel: \"Calendar\" };"
         },
         {
-          "line": 23,
+          "line": 24,
           "text": "const p = getZonedDateParts(now, timeZone),"
         },
         {
-          "line": 29,
+          "line": 30,
           "text": "const day = (value: string, allDay = false) => {"
         },
         {
-          "line": 30,
+          "line": 31,
           "text": "const date = new Date(value);"
         },
         {
-          "line": 32,
+          "line": 33,
           "text": "const x = getZonedDateParts(date, allDay ? \"UTC\" : timeZone);"
         },
         {
-          "line": 35,
+          "line": 36,
           "text": "const matchesSourceIdentity = ("
         },
         {
-          "line": 45,
+          "line": 46,
           "text": "const visible = state.feed.events.filter("
         },
         {
-          "line": 58,
+          "line": 59,
           "text": "const bounds = (event: (typeof visible)[number]) => {"
         },
         {
-          "line": 59,
+          "line": 60,
           "text": "const allDay = !!event.isAllDay;"
         },
         {
-          "line": 61,
+          "line": 62,
           "text": "const endParts = getZonedDateParts(new Date(event.endAt), allDay ? \"UTC\" : timeZone);"
         },
         {
-          "line": 68,
+          "line": 69,
           "text": "const rank = (event: (typeof visible)[number]) => {"
         },
         {
-          "line": 69,
+          "line": 70,
           "text": "const { start, end } = bounds(event);"
         },
         {
-          "line": 73,
+          "line": 74,
           "text": "const upcoming = (event: (typeof visible)[number]) => event.isAllDay"
         },
         {
-          "line": 78,
+          "line": 79,
           "text": "const aUpcoming = upcoming(a), bUpcoming = upcoming(b);"
         },
         {
-          "line": 94,
+          "line": 96,
           "text": "const { start, end } = bounds(event);"
         },
         {
-          "line": 106,
+          "line": 108,
           "text": "const begin = Date.parse(state.feed.timeMin),"
         },
         {
-          "line": 114,
+          "line": 116,
           "text": "const x = getZonedDateParts(new Date(state.feed.timeMin), timeZone);"
         }
       ],
-      "integrationReview": "2026-11-09 UI and browser-return delta reviewed against existing domain models and new ChatAttachments/BrowserGoogleReturn contracts; see ui-return-review-20261109.md. Source-model refinement and device acceptance remain separate."
+      "integrationReview": "2026-11-11 reviewed: the current owner's retained upcoming event stays visible on a failed refresh, unverified. Disconnected/withdrawn sources, mutations, expired events and unverified empty results remain gated. All21 selector cases and mounted HomeLayoutCurrentReplay pass. CalendarPresentation provider effects are unchanged."
     },
     {
       "path": "apps/app/src/runtime/hosted-background.ts",
