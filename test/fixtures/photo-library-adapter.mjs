@@ -88,11 +88,11 @@ function fakeHost(){
  const rejection=(message,code)=>()=>{throw Object.assign(Error(message),{code});};
  for(const [name,change,expected,undo] of [
   ['complete',()=>({status:'complete',outcomes:[{id:'lib:i:3:30',status:'trashed'}]}),/^$/,['lib:i:3:30']],
-  ['partial',()=>({status:'partial',outcomes:[{id:'lib:i:3:30',status:'stale'}]}),/^0 of 1 changes verified; 1 changed elsewhere and was skipped\.$/,[]],
-  ['unverified',()=>({status:'partial',outcomes:[{id:'lib:i:3:30',status:'unverified'}]}),/^0 of 1 changes verified\.$/,[]],
+  ['partial',()=>({status:'partial',outcomes:[{id:'lib:i:3:30',status:'stale'}]}),/^0\/1 ✓ · 1 skipped$/,[]],
+  ['unverified',()=>({status:'partial',outcomes:[{id:'lib:i:3:30',status:'unverified'}]}),/^0\/1 ✓$/,[]],
   ['declined',rejection('Photo change cancelled. No change was dispatched.','LIBRARY_DECLINED'),/^Nothing changed\.$/,[]],
-  ['stale',rejection('Selected media changed or is unavailable. Refresh Photos.','LIBRARY_STALE'),/^An item changed\. Nothing changed; review again\.$/,[]],
-  ['other',rejection('Finish the current photo review first.','LIBRARY_BUSY'),/^The action could not be completed\.$/,[]],
+  ['stale',rejection('Selected media changed or is unavailable. Refresh Photos.','LIBRARY_STALE'),/^Item changed$/,[]],
+  ['other',rejection('Finish the current photo review first.','LIBRARY_BUSY'),/^Failed$/,[]],
  ]){
   const {state,port}=fakePort(),host=fakeHost(),library=createDeviceLibrary(port,()=>true);
   const signal=new AbortController().signal,search=await library.agent.run({type:'photo_library_search',limit:1},signal);

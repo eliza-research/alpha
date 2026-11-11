@@ -144,7 +144,7 @@ assert.deepEqual(local(render().rows.map(r=>r.subj)),['Fixture mail-1','Fixture 
 assert.equal(render().hasMore,false,'last page has no Load more');
 const beforeWarm=searches.length;views.inbox.onLeave();render();await tick();assert.equal(render().rows.length,3,'warm reopen restores only the same account list');assert.equal(render().cachedListShown,true);assert.equal(searches.length,beforeWarm,'warm reopen spends zero account or page requests');
 assert.equal(homeValues(shell).homeInboxCount,'1 unread','complete paging removes the lower-bound qualifier');const homeSearches=searches.length;for(let i=0;i<5;i++)homeValues(shell);assert.equal(searches.length,homeSearches,'Home rerenders never fetch mail');
-render();last([...swipes.values()])(-120,4);await tick();assert.match(last(toasts),/doesn’t allow archiving\. See Settings → Connections → Manage Google accounts\.$/,'swipe without the grant changes nothing');
+render();last([...swipes.values()])(-120,4);await tick();assert.equal(last(toasts),'Archive off for this account','swipe without the grant changes nothing');
 const refreshed=clock(19);
 chip('Refresh').pick();await tick();assert.deepEqual(searches.filter(s=>!s.pageToken).at(-1),{query:'in:inbox',size:25,pageToken:null},'Refresh restarts from the first page');
 assert.match(homeValues(shell).homeInboxStatus,new RegExp(`Updated ${refreshed.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}$`),'a completed refresh moves the read time');
@@ -190,7 +190,7 @@ views.inbox.back(shell.st,api);composer(composed).discard();composer().confirmDi
 assert.deepEqual(local(views.inbox.suggestions(shell.st)),['Help me write an email'],'no unwired inbox automation chips (organize-inbox removed)');
 assert.equal(render().composing,false,'discarded shared draft is gone');
 shell.st.compose={subject:'Photo',body:'',attach:['photo-1']};render();await tick();render();await tick();
-assert.equal(composer().subject,'Photo');assert.deepEqual(local(composer().atts),[],'prototype item ids are never turned into attachments');assert.match(composer().status,/Shared items aren't attached/);
+assert.equal(composer().subject,'Photo');assert.deepEqual(local(composer().atts),[],'prototype item ids are never turned into attachments');assert.equal(composer().status,'Not attached');
 views.inbox.back(shell.st,api);composer().discard();composer().confirmDiscard();await tick();
 shell.st.compose={to:'second@example.invalid',subject:'Second share',body:'Earlier shared text'};render();await tick();render();await tick();assert.equal(composer().subject,'Second share');
 const secondShare=local(latestDraftEdit as InboxUnsaved | null);assert.ok(secondShare);assert.deepEqual(secondShare.draft.to,['second@example.invalid']);assert.equal(secondShare.draft.body,'Earlier shared text');
@@ -436,7 +436,7 @@ await test('read state with an expired Cloud key rejects the captured session an
    reader(inbox()).toggleRead();await tick();
    assert.equal(prepares.at(-1),'mark-unread','one explicit change was sent');
    assert.deepEqual(rejected.slice(rejectedBefore).map(([id,e])=>[id,e===error]),[[session,true]],'the captured session is rejected with the request error');
-   assert.deepEqual(toasts.slice(toastsBefore),['Cloud sign-in expired. Sign in again to update read state.'],'the sign-in message replaces the generic receipt message');
+   assert.deepEqual(toasts.slice(toastsBefore),['Sign-in expired'],'the sign-in message replaces the generic receipt message');
   }
   expire=new CloudProtocolError('http',503);const toastsBefore=toasts.length;
   reader(inbox()).toggleRead();await tick();

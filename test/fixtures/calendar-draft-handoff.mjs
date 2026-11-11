@@ -25,8 +25,9 @@ export async function retainCalendarDraft(f) {
   return old.retained;
 }
 export async function discardCalendarDraft(f) {
-  const dialog = f.page.waitForEvent('dialog').then(async dialog => dialog.accept());
-  await Promise.all([f.button('Discard event draft').click(), dialog]);
+  // The discard confirm is the in-app operation review dialog, not a native window.confirm.
+  await f.button('Discard event draft').click();
+  await f.page.getByRole('dialog', {name: 'Discard draft?'}).getByRole('button', {name: 'Discard draft', exact: true}).click();
   await f.button('Resume event draft').waitFor({state: 'detached'});
 }
 export async function openNote(f) {

@@ -38,14 +38,15 @@ test('mounted Calendar Back and Discard clear the validation latch after the ret
       await title.fill('x'.repeat(2049));
       await status.waitFor();
       await f.button('Back to calendar').click();
-      f.page.once('dialog', dialog => dialog.dismiss());
+      // Discard confirms through the in-app operation review dialog.
       await discard.click();
+      await f.page.getByRole('dialog', {name: 'Discard draft?'}).getByRole('button', {name: 'Cancel', exact: true}).click();
       assert.ok(await resume.isVisible());
       assert.equal((await f.snapshot()).retained, first.retained);
       assert.equal(await f.invoke('scope'), false);
 
-      f.page.once('dialog', dialog => dialog.accept());
       await discard.click();
+      await f.page.getByRole('dialog', {name: 'Discard draft?'}).getByRole('button', {name: 'Discard draft', exact: true}).click();
       await resume.waitFor({state: 'detached'});
       const afterDiscard = await f.snapshot();
       const available = await f.invoke('scope');

@@ -55,7 +55,7 @@ function installCapacitorPort() {
 
 function notice(message) {
   if (!message) return {app:0, message:''};
-  const match = /^(Clock|Mail) info could not be opened\. (.+)$/.exec(message);
+  const match = /^Couldn’t open (Clock|Mail) info\. (.+)$/.exec(message);
   assert.ok(match, `Actual Home toast identifies the selected app and reason: ${message}`);
   return {app:match[1] === 'Clock' ? 1 : 2, message:match[2]};
 }

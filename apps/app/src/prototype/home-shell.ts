@@ -280,8 +280,8 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
         const target: {packageName: string; activityName?: string; user?: string} = {packageName: app.packageName};
         if (app.activityName) target.activityName = app.activityName;
         if (app.user) target.user = app.user;
-        appInfo(target).catch(() => {
-          self.toast?.('Couldn’t open');
+        appInfo(target).catch((error: unknown) => {
+          self.toast?.(`Couldn’t open ${app.label} info. ${error instanceof Error && error.message ? error.message : 'Unavailable'}`);
           void launcher.refresh();
         });
       } : undefined,

@@ -25,7 +25,7 @@ test('place, search and route cards become readable cards with their attribution
 
 test('a locate card says the phone does not send location; a handoff link is text only',()=>{
  const locate=mapsChatText(appendMapsCard('Where are you starting from?',{kind:'locate',intent:'route-origin',prompt:'Where are you starting from?'}));
- assert.equal(locate.cards[0].title,'Location needed');assert.match(locate.cards[0].lines[0],/does not send your location/);
+ assert.equal(locate.cards[0].title,'Location needed');assert.match(locate.cards[0].lines[0],/Location not shared/);
  const handoff=mapsChatText(appendMapsCard('Shared.',{kind:'handoff',handoffKind:'share',place,geoUri:'geo:37.7955,-122.3937',appleMapsUri:'https://maps.apple.com/?ll=37.7955,-122.3937',webUri:'https://www.openstreetmap.org/?mlat=37.7955&mlon=-122.3937'}));
  assert.deepEqual(handoff.cards[0].lines,['1 Ferry Building, San Francisco','https://www.openstreetmap.org/?mlat=37.7955&mlon=-122.3937']);
 });
@@ -82,7 +82,7 @@ test('an older question, a draft, an open edit or a busy connection never sends 
  const draft=fixture([{id:'a1',from:'agent',text:shareText}]);
  try{draft.shell.st.draft='Keep my words';draft.shell.renderVals().msgs[0].mapsChoices[0].choose();await tick();assert.equal(draft.f.sent.length,0);assert.equal(draft.f.toasts.length,1);assert.equal(draft.shell.st.draft,'Keep my words');}finally{delete globalThis.mapsChatFixture;}
  const editing=fixture([{id:'a1',from:'agent',text:shareText}]);
- try{editing.shell.messageEditTarget={messageId:'m'};editing.shell.renderVals().msgs[0].mapsChoices[0].choose();await tick();assert.equal(editing.f.sent.length,0);assert.deepEqual(editing.f.toasts,['Finish or cancel the message you are editing first.']);assert.equal(editing.shell.renderVals().msgs[0].hasMapsChoice,true,'the question can still be answered');}finally{delete globalThis.mapsChatFixture;}
+ try{editing.shell.messageEditTarget={messageId:'m'};editing.shell.renderVals().msgs[0].mapsChoices[0].choose();await tick();assert.equal(editing.f.sent.length,0);assert.deepEqual(editing.f.toasts,['Editing message']);assert.equal(editing.shell.renderVals().msgs[0].hasMapsChoice,true,'the question can still be answered');}finally{delete globalThis.mapsChatFixture;}
  const busy=fixture([{id:'a1',from:'agent',text:shareText}]);
  try{busy.f.snapshot.busy=true;busy.shell.renderVals().msgs[0].mapsChoices[1].choose();await tick();assert.equal(busy.f.sent.length,0);}finally{delete globalThis.mapsChatFixture;}
 });

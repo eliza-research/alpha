@@ -104,7 +104,7 @@ test("the renderer asks on Android only, says so before any speech route or exce
   assert.ok(ask.indexOf("if(await readingUnsupported())return;") > 0 && ask.indexOf("if(await readingUnsupported())return;") < ask.indexOf("Browser.reviewQuestion"), "Ask about page refuses before preparing an excerpt");
   assert.match(adapter, /report\(new Error\(READING_UNSUPPORTED_MESSAGE\)\)/);
   assert.match(adapter, /readingUnavailable:readingSupport\?\.state==='unavailable',readingNote:READING_UNSUPPORTED_MESSAGE,/);
-  assert.match(template, /<sc-if value="\{\{browser\.readingUnavailable\}\}"><p role="note" aria-label="Page reading unavailable" data-alpha-reading-unavailable [^>]*>\{\{browser\.readingNote\}\}<\/p><\/sc-if>/);
+  assert.match(template, /<sc-if value="\{\{browser\.readingUnavailable\}\}"><p role="note" aria-label="Page reading unavailable" data-alpha-reading-unavailable [^>]*><svg [^>]*>(?:<path [^>]*><\/path>)+<\/svg><span class="settings-sr-only">\{\{browser\.readingNote\}\}<\/span><span aria-hidden="true"[^>]*>Read aloud<\/span><\/p><\/sc-if>/, "the full reason stays readable to screen readers beside the struck-out Read aloud");
 });
 
 test("each refusal carries its own reject code, so the renderer never parses message text", () => {

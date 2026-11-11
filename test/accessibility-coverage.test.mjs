@@ -83,7 +83,7 @@ test('every subview of a retained view is opened by a state that asserts it is t
   for (const steps of [
     ['Settings', 'General'], ['Settings', 'General', 'Display'],
     ['Settings', 'General', 'Notifications'], ['Settings', 'Privacy'],
-    ['Settings', 'Privacy', 'App permissions'], ['Settings', 'About'],
+    ['Settings', 'Privacy', 'Permissions'], ['Settings', 'About'],
     ['Settings', 'Apps'], ['Settings', 'Apps', 'Calendar'],
     ['Settings', 'Apps', 'Passwords'],
     ['Workflows', 'New automation', 'Clock alarms'],
@@ -176,12 +176,13 @@ test('TalkBack reading order is checked in every lane, as Android checks it, acr
   assert.deepEqual([...lifecycle.matchAll(/'([A-Za-z]+)'/g)].map(match => match[1]).sort(), titles);
   for (const name of ['AccessibilityLifecycleInstrumentedTest', 'AccessibilityHomeRoleInstrumentedTest'])
     assert.match(read(`android/app/src/androidTest/java/ai/alphacompute/alphaphone/${name}.java`), /AccessibilityViewsInstrumentedTest\.VIEWS/, `${name} visits every view`);
-  // What the order check found stays fixed. Maps reads what is drawn over the top of the map
-  // (search, Back to event, chips, status, the route card, the turn banner) before the map, its
-  // credits and Recenter; the browser page leaves the order while address suggestions cover it.
+  // What the order check found stays fixed. Maps reads its full-screen canvas first (its bounds
+  // start at the top, so reading it after the overlays jumps back up on Android), then what is drawn
+  // over it (search, Back to event, chips, status, the route card, the turn banner), its credits and
+  // Recenter; the browser page leaves the order while address suggestions cover it.
   const template = read('apps/app/src/prototype/template.html');
   const maps = template.slice(template.indexOf('data-alpha-maps-root'), template.indexOf('data-alpha-maps-sheet="results"'));
-  const stack = ['maps.showSearch', 'maps.eventReturnFloating', 'maps.isBase', 'maps.nativeStatusVisible', 'data-alpha-maps-directions', 'maps.dr.nav.hasThen', 'data-alpha-map-plane', 'alpha-map-credits', 'aria-label="Recenter"'].map(hook => [hook, maps.indexOf(hook)]);
+  const stack = ['data-alpha-map-plane', 'maps.showSearch', 'maps.eventReturnFloating', 'maps.isBase', 'maps.nativeStatusVisible', 'data-alpha-maps-directions', 'maps.dr.nav.hasThen', 'alpha-map-credits', 'aria-label="Recenter"'].map(hook => [hook, maps.indexOf(hook)]);
   for (const [hook, at] of stack) assert.ok(at > 0, `${hook} is in the Maps layer stack`);
   for (let index = 1; index < stack.length; index++) assert.ok(stack[index - 1][1] < stack[index][1], `Maps reads ${stack[index - 1][0]} before ${stack[index][0]}`);
   assert.match(template, /<div inert="\{\{browser\.pageCovered\}\}" aria-hidden="\{\{browser\.pageCovered\}\}"/);

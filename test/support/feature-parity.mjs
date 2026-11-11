@@ -582,6 +582,7 @@ export const featureParityAllowlist = {
     "apps/app/src/runtime/sms-agent-contract.ts",
     "apps/app/src/runtime/sms-subscription-revision.ts",
     "apps/app/src/runtime/source-renewal-question.ts",
+    "apps/app/src/runtime/status-ui.tsx",
     "apps/app/src/runtime/subscription-entitlement.ts",
     "apps/app/src/runtime/text-scale.ts",
     "apps/app/src/runtime/text-share.ts",

@@ -436,5 +436,5 @@ test('a favorites save that fails in Home edit mode shows its error in the edit 
     assert.equal(home.renderVals().homeEdit.error,'');
   } finally { home.componentWillUnmount(); globalThis.requestAnimationFrame=previousFrame; if(previous===undefined)delete globalThis.document;else globalThis.document=previous; }
   const {readFileSync}=await import('node:fs');
-  assert.match(readFileSync(new URL('../apps/app/src/prototype/template.html',import.meta.url),'utf8'),/<sc-if value="\{\{homeEdit\.error\}\}"><p role="alert"[^>]*>\{\{homeEdit\.error\}\}<\/p><\/sc-if>/);
+  assert.match(readFileSync(new URL('../apps/app/src/prototype/template.html',import.meta.url),'utf8'),/<sc-if value="\{\{homeEdit\.error\}\}"><p role="alert"[^>]*><span class="settings-dot" data-dot="err" aria-hidden="true"><\/span>Couldn’t save<span class="settings-sr-only">\{\{homeEdit\.error\}\}<\/span><\/p><\/sc-if>/);
 });

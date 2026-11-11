@@ -4,6 +4,7 @@ import {isCalendarReadFailureCode} from '../.eliza/client-features/packages/cont
 import {FILES_CAPABILITY} from '../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/files-browser-contract.ts';
 import * as residentRecovery from '../apps/app/src/runtime/resident-recovery.ts';
 import {resolveCloudEnvironment} from '../apps/app/src/runtime/cloud-environment-selection.ts';
+import {CalendarApprovalClient} from '../apps/app/src/runtime/calendar-approval-client.ts';
 // Non-product development controller + shared Cloud protocol over synthetic loopback HTTP. No live account.
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -192,7 +193,7 @@ assert.ok(selectionSandbox.selectionApi, 'Conversation selection fixture exports
 Object.assign(bindings, selectionSandbox.selectionApi);
 // The real escalation-notice projection restoredMessages() uses.
 const {systemNoticeKind,systemNoticeDisplayText,collapseSystemNotices}=await import('../apps/app/src/runtime/action-message-presentation.ts');
-Object.assign(bindings,{systemNoticeKind,systemNoticeDisplayText,collapseSystemNotices});
+Object.assign(bindings,{CalendarApprovalClient,systemNoticeKind,systemNoticeDisplayText,collapseSystemNotices});
 let source = (await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx', import.meta.url), 'utf8')).split('export function ConnectionChooser()')[0].replace(/\nfunction ResidentRecoveryPanel\([\s\S]*?\n}\n(?=export function productionCloudSignInRequired)/, '\n');
 source = source.replace(/^import .*;\n/gm, '').replace(/export /g, '').replaceAll('import.meta.env','fixtureViteEnv');
 source += '\nglobalThis.controller = connectionController;';
@@ -312,7 +313,7 @@ try {
   await controller.disconnect();
   assert.equal(remote.deviceRevokes,1,'disconnect revokes the device enrollment');
   assert.equal(remote.logouts,1,'disconnect revokes the owner session');
-  assert.equal(controller.getSnapshot().message,'Agent disconnected.');
+  assert.equal(controller.getSnapshot().message,'Agent disconnected');
   assert.equal(remoteSaved.size,0,'local remote credential removed after revocation');
   assert.equal([...deviceSlots.keys()].filter(key=>key.startsWith('device:')).length,0,'device installation key deleted');
   const replay=await nativeRemoteRequest({url:'https://agent.example/api/auth/me',method:'GET',headers:{Authorization:`Bearer ${firstToken}`}});
@@ -342,10 +343,10 @@ try {
   const until=(check: () => unknown,label: string)=>new Promise<void>((resolve,reject)=>{const deadline=Date.now()+10_000;const wait=()=>check()?resolve():Date.now()>deadline?reject(Error('Timed out: '+label)):setTimeout(wait,10);wait();});
   await until(()=>remote.held,'held send');
   stop.abort();await assert.rejects(stopped);
-  assert.match(controller.getSnapshot().replyNotice ?? '',/may still finish/);
+  assert.match(controller.getSnapshot().replyNotice ?? '',/may still finish/i);
   assert.ok(remote.held, 'Expected the held remote turn');
   remote.held.finish();
-  await until(()=>!/may still finish/.test(controller.getSnapshot().replyNotice ?? ''),'stopped reply check');
+  await until(()=>!/may still finish/i.test(controller.getSnapshot().replyNotice ?? ''),'stopped reply check');
   assert.equal(controller.getSnapshot().replyNotice,'','the single check found the finished reply');
   history=currentHistory();
   assert.equal(last(history.messages).text,'Finished after Stop','the finished reply appears once');
@@ -375,10 +376,10 @@ try {
   assert.equal(remote.failedPosts,1,'the refused post is not repeated');assert.equal(remote.sends,sendsBefore);
   // Cloud refusals in the pinned upstream reply shape reach the owner as specific, non-retrying copy.
   const failures: [FixtureFailure, RegExp][] = [
-    [{kind:'insufficient_credits',message:'Synthetic upstream text',transient:false},/^Eliza Cloud declined this AI request for your account's billing\. Alpha Phone did not retry your message\. Local apps keep working\.$/],
+    [{kind:'insufficient_credits',message:'Synthetic upstream text',transient:false},/^Billing declined$/],
     [{kind:'rate_limited',message:'Synthetic upstream text',transient:true},/^The AI request rate limit was reached\. Wait a moment before sending again\. Alpha Phone did not retry your message\.$/],
     [{kind:'rate_limited',message:'Synthetic upstream text',transient:true,rateLimit:{kind:'rate_limited',retryAfterMs:2400,planId:'synthetic',scope:'burst'}},/^The AI request rate limit was reached\. Try again in about 3 seconds\. Alpha Phone did not retry your message\.$/],
-    [{kind:'provider_issue',message:'Synthetic upstream text',transient:true},/^Alpha’s AI service couldn’t finish this reply\.$/],
+    [{kind:'provider_issue',message:'Synthetic upstream text',transient:true},/^Reply failed$/],
   ];
   for(const [failure, expected] of failures){
     const before=remote.failureReplies||0;remote.failureReply=failure;
@@ -411,7 +412,7 @@ try {
     assert.ok(refused instanceof AlphaClientError,'unknown/transient/empty Calendar failures still reject, never return a successful answer');
     assert.equal(refused.code,'transport-failed');
     // Every known failure kind has its own owner copy and kind (replyFailure is total).
-    assert.equal(refused.message,'Your agent couldn’t write a reply this time. Nothing was resent.');
+    assert.equal(refused.message,'No reply');
     assert.ok('failureKind' in refused);
     assert.equal(refused.failureKind,'reply_generation_error');
     assert.doesNotMatch(refused.message,/UNKNOWN_CODE|CALENDAR_READ_RECEIPT_MISMATCH|Synthetic upstream text/,'failure copy does not expose upstream diagnostics');

@@ -17,8 +17,8 @@ try{
  app.detail().toggle();await wait(()=>!app.detail().on);assert.equal(cancels,0,'disable does not cancel execution');
  app.detail().run();assert.equal(starts,0,'first run click reviews only');app.detail().run();await wait(()=>app.render().runOpen&&!app.receipt().againDisabled);
  assert.ok(app.receipt().log.some(row=>row.t==='run-1'));assert.ok(app.receipt().log.some(row=>row.t==='v1'));
- app.receipt().again();assert.equal(cancels,0);assert.equal(app.receipt().againLabel,'Confirm cancellation');app.receipt().again();await wait(()=>app.receipt().status==='cancelled'&&!app.receipt().againDisabled);assert.equal(cancels,1);
- app.receipt().close();drop=true;app.detail().run();app.detail().run();await wait(()=>starts===2);await wait(()=>!app.detail().isRunning);assert.match(app.detail().last,/outcome unknown/);
+ app.receipt().again();assert.equal(cancels,0);assert.equal(app.receipt().againLabel,'Confirm cancel');app.receipt().again();await wait(()=>app.receipt().status==='cancelled'&&!app.receipt().againDisabled);assert.equal(cancels,1);
+ app.receipt().close();drop=true;app.detail().run();app.detail().run();await wait(()=>starts===2);await wait(()=>!app.detail().isRunning);assert.equal(app.detail().last,'Check before running again');
  app.close();app=setup();await app.openCard('Held arithmetic fixture');await wait(()=>app.render().detail&&!app.detail().isRunning);app.detail().run();app.detail().run();await new Promise(r=>setTimeout(r,50));assert.equal(starts,2,'unknown accepted submission remains blocked across renderer recreation');
  // New server advertises the atomic contract; exact key resolves a lost response without another POST.
  app.close();storage.clear();reviewed=true;drop=true;app=setup();await app.openCard('Held arithmetic fixture');await wait(()=>app.render().detail&&!app.detail().isRunning);app.detail().run();app.detail().run();await wait(()=>starts===3);await wait(()=>!app.detail().isRunning);assert.equal(storage.size,1);
@@ -29,10 +29,10 @@ try{
  }
  // A manual typed workflow has no schedule: its switch explains Run now and never sends /activate (the agent refuses it).
  app.close();storage.clear();refusal=null;manualTyped=true;active=false;app=setup();await app.openCard('Held arithmetic fixture');await wait(()=>app.render().detail&&!app.detail().isRunning);
- app.detail().toggle();app.detail().toggle();await new Promise(r=>setTimeout(r,50));assert.equal(activations,0,'manual typed toggle sends no /activate');assert.equal(app.detail().on,false);assert.equal(app.detail().last,'This workflow has no schedule. Use Run now.');
+ app.detail().toggle();app.detail().toggle();await new Promise(r=>setTimeout(r,50));assert.equal(activations,0,'manual typed toggle sends no /activate');assert.equal(app.detail().on,false);assert.equal(app.detail().last,'Manual');
  // A hosted digest runs only from Scheduled digests: Run now is hidden and an old lost run request is cleared, since the agent refuses every run of it.
  app.close();storage.clear();manualTyped=false;reviewed=false;drop=true;app=setup();await app.openCard('Held arithmetic fixture');await wait(()=>app.render().detail&&!app.detail().isRunning);const beforeHosted=posts;app.detail().run();app.detail().run();await wait(()=>posts===beforeHosted+1);await wait(()=>!app.detail().isRunning);assert.equal(storage.size,1);
  app.close();drop=false;hosted=true;app=setup();await app.openCard('Held arithmetic fixture');await wait(()=>app.render().detail&&!app.detail().isRunning);
- assert.equal(storage.size,0,'a hosted digest run request is never left as an unknown outcome');assert.equal(app.detail().notRunning,false);assert.equal(app.detail().last,'Run this from Scheduled digests.');app.detail().run();app.detail().run();await new Promise(r=>setTimeout(r,50));assert.equal(posts,beforeHosted+1,'a hosted digest is never started from Run now');
+ assert.equal(storage.size,0,'a hosted digest run request is never left as an unknown outcome');assert.equal(app.detail().notRunning,false);assert.equal(app.detail().last,'In Digests');app.detail().run();app.detail().run();await new Promise(r=>setTimeout(r,50));assert.equal(posts,beforeHosted+1,'a hosted digest is never started from Run now');
  console.log('PASS actual workflow adapter/HTTP: hosted digest hides Run now and clears its old lock; manual typed switch sends no /activate; separate disable/cancel, explicit confirmation, identity/version/events receipt and persistent no-retry after ambiguous accepted run.');
 }finally{app.close();server.closeAllConnections();await stopLoopback(server);}
