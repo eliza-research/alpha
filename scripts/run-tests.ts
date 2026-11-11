@@ -13,10 +13,13 @@ if (!/^[1-9]\d*$/.test(concurrency)) {
 const root = new URL('..', import.meta.url);
 const options = { stdio: 'inherit' as const, cwd: root };
 const forwarded = process.argv.slice(2);
+// Optional Bun test values (--bail=2, --changed=HEAD, --parallel=2) use the equals form.
 const flagsWithValue = new Set([
   '--timeout', '--rerun-each', '--retry', '--seed', '--coverage-reporter', '--coverage-dir',
   '-t', '--test-name-pattern', '--reporter', '--reporter-outfile', '--max-concurrency',
   '--path-ignore-patterns', '--parallel-delay', '--shard', '--timings',
+  '-r', '--preload', '--require', '--import', '--conditions', '--env-file',
+  '-c', '--config', '--tsconfig-override', '-d', '--define', '-l', '--loader',
 ]);
 // Keep test discovery within the host suite unless the caller supplied a path filter.
 const hasPathFilter = forwarded.some((argument, index) =>
