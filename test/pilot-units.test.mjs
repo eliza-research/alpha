@@ -265,8 +265,6 @@ test("campaign records are read from emulator-suite, resident proofs and residen
   write("test-results/emulator-suite/instrumentation.json", { suite: "instrumentation", passed: true,
     steps: [{ name: "prepare-emulator" }, { name: "ci-default", results: "test-results/android-instrumentation/ci-default/results.json" }] });
   write("test-results/android-instrumentation/ci-default/results.json", { passed: true, apks: [{ variant: "launcher", role: "app", sha256: app }, { variant: "launcher", role: "test", sha256: test }] });
-  write("test-results/emulator-suite/browser-reading.json", { suite: "browser-reading", passed: true, steps: [{ name: "ci-reading", results: "test-results/android-instrumentation/ci-reading/results.json" }] });
-  write("test-results/android-instrumentation/ci-reading/results.json", { passed: true, apks: [{ variant: "launcher", role: "app", sha256: "8".repeat(64) }] });
   write("test-results/resident-instrumentation/redaction.json", { passed: true, apkSha256: app });
   write("test-results/resident-ci-archive/apk-manifest.json", { "launcher-debug.apk": app, "launcher-androidTest.apk": test, "private-peer-debug.apk": "4".repeat(64) });
   write("test-results/resident-ci-native/launcher-recovery.json", { passed: true, cleanupComplete: true });
@@ -274,15 +272,17 @@ test("campaign records are read from emulator-suite, resident proofs and residen
   const byId = Object.fromEntries(campaigns.map(row => [row.id, row]));
   assert.deepEqual(byId["emulator-suite:instrumentation"].apkSha256, [app], "test APKs are not the candidate");
   assert.deepEqual(byId["resident-android"].apkSha256, [app], "helper and test APKs are not the candidate");
-  assert.equal(byId["emulator-suite:fused-speech"].present, false);
   const result = recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root);
   assert.deepEqual(Object.fromEntries(result.candidate.campaigns.map(row => [row.id, row.status])), {
-    "emulator-suite:instrumentation": "passed", "emulator-suite:browser-reading": "mismatched", "emulator-suite:fused-speech": "missing",
+    "emulator-suite:instrumentation": "passed", "emulator-suite:browser-reading": "missing",
     "resident-instrumentation": "passed", "resident-android": "passed" });
   // A missing campaign leaves the candidate unqualified, even though the head itself qualified.
   assert.equal(result.qualified, true);
   assert.equal(result.candidateQualified, false);
-  write("test-results/emulator-suite/fused-speech.json", { suite: "fused-speech", passed: true, steps: [{ name: "speech", results: "test-results/android-instrumentation/ci-default/results.json" }] });
+  // A campaign that ran a different APK is foreign to the candidate.
+  write("test-results/emulator-suite/browser-reading.json", { suite: "browser-reading", passed: true, steps: [{ name: "ci-reading", results: "test-results/android-instrumentation/ci-reading/results.json" }] });
+  write("test-results/android-instrumentation/ci-reading/results.json", { passed: true, apks: [{ variant: "launcher", role: "app", sha256: "8".repeat(64) }] });
+  assert.equal(recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root).candidate.campaigns.find(row => row.id === "emulator-suite:browser-reading").status, "mismatched");
   write("test-results/android-instrumentation/ci-reading/results.json", { passed: true, apks: [{ variant: "launcher", role: "app", sha256: app }] });
   assert.equal(recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root).candidateQualified, true);
   // A test-mocks step in the suite is recorded but binds nothing; it does not make the campaign foreign.
