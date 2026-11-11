@@ -242,6 +242,7 @@ export function installSmsAdapter(Component:any,views:Bag){
    pictures:attachments.map((item,index)=>({label:item.name,remove:()=>{if(busy)return;attachments.splice(index,1);draftRevision++;operationId='';resetMms(false);receipt=null;notice='';changed();}})),hasPictures:attachments.length>0,
    hasNotice:!!notice};
  }
+ const simLabel=(id:number)=>{const row=session.state.status?.subscriptions?.find(value=>value.id===id);return row?`SIM ${row.slot+1}`:'SIM';};
  views.messages.render=(st:Bag,viewApi:Bag)=>{api=viewApi;
  /* A number handed over from Contacts fills the recipients once. */
  if(typeof st?.prefill==='string'&&st.prefill){const value=st.prefill.slice(0,230);queueMicrotask(()=>{if(inFront()&&!busy){viewApi.set?.({prefill:null});compose(value);}});}

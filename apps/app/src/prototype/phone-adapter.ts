@@ -64,17 +64,36 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
  if(!client)return;
  const p=Component.prototype,mount=p.componentDidMount,update=p.componentDidUpdate,unmount=p.componentWillUnmount;
  let owner:any,api:Bag|null=null,calls:TelephonyCallLogEntry[]=[],number='',status='',notice='',reading=false,dialing=false,session=0,needsAccess=false,retryRecents=false,active=false,epoch=0,tab:'recents'|'keypad'|'voicemail'='recents';
- let voicemails:Voicemail[]=[],carrier:'ready'|'unconfigured'|'unsupported'|null=null,vm:OpenVoicemail=closedVoicemail(),stopObserving:(()=>Promise<void>)|null=null;
+ let voicemails:Voicemail[]=[],carrier:'ready'|'unconfigured'|'unsupported'|null=null,vm:OpenVoicemail=closedVoicemail();
+ type Observation={session:number;stop:(()=>Promise<void>)|null;ready:Promise<void>};
+ let observation:Observation|null=null,observationTail:Promise<void>=Promise.resolve();
  let audio:HTMLAudioElement|null=null,audioUrl='',wav:Uint8Array|null=null,position=0,work:AbortController|null=null,inCall=false;
  let pendingDelete:{current:()=>void;answer:(result:DeleteResult)=>void;detach:()=>void}|null=null,deleting=false;
  const names=new Map<string,string>(),people:{name:string;number:string}[]=[];
  const busy=()=>reading||dialing;
  const changed=()=>owner?.setState({phoneNativeRevision:Date.now()});
  const available=()=>!!owner&&owner.S().view==='phone'&&!document.hidden;
+ // The native observer is one switch. Its replacement waits until the prior lease retires.
+ const retireObservation=()=>{
+  const lease=observation;if(!lease)return;observation=null;
+  observationTail=observationTail.then(async()=>{const stop=lease.stop;lease.stop=null;if(stop)await stop();});
+  // A failed retirement keeps the chain refused; it must not enable a second observer.
+  void observationTail.catch(()=>{});
+ };
+ const ensureObservation=()=>{
+  if(observation?.session===session)return observation.ready;
+  retireObservation();
+  const lease:Observation={session,stop:null,ready:Promise.resolve()};observation=lease;
+  const start=observationTail.then(async()=>{
+   if(observation!==lease||lease.session!==session||!available())return;
+   lease.stop=await client!.observeVoicemail(()=>{if(observation===lease&&active&&available())void loadVoicemail(epoch);});
+  });
+  lease.ready=start;observationTail=start;return start;
+ };
  const releaseAudio=()=>{work?.abort();work=null;if(audio){audio.pause();audio.removeAttribute('src');audio=null;}if(audioUrl){URL.revokeObjectURL(audioUrl);audioUrl='';}wav?.fill(0);wav=null;position=0;};
  const cancelDelete=()=>{const pending=pendingDelete;pendingDelete=null;pending?.detach();pending?.answer('cancelled');vm=deleteCancelled(vm);};
  const closeVoicemail=()=>{cancelDelete();releaseAudio();vm=closed(vm);};
- const clear=()=>{epoch++;session++;calls=[];voicemails=[];carrier=null;number='';status='';notice='';reading=false;dialing=false;needsAccess=false;retryRecents=false;names.clear();people.length=0;closeVoicemail();void stopObserving?.().catch(()=>{});stopObserving=null;changed();};
+ const clear=()=>{epoch++;session++;calls=[];voicemails=[];carrier=null;number='';status='';notice='';reading=false;dialing=false;needsAccess=false;retryRecents=false;names.clear();people.length=0;closeVoicemail();retireObservation();changed();};
  const sync=()=>{const next=available();if(next===active)return;active=next;if(next)void refresh();else clear();};
  async function refresh(request=false){
   const token=++epoch;if(!available())return;reading=true;retryRecents=false;changed();
@@ -99,7 +118,7 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
    carrier=page.state;voicemails=page.state==='ready'?page.voicemails:[];
    if(vm.id&&!voicemails.some(row=>row.id===vm.id))closeVoicemail();
    if(carrier!=='ready'&&tab==='voicemail')tab='recents';
-   if(carrier==='ready'&&!stopObserving){const stop=await client!.observeVoicemail(()=>{if(active)void loadVoicemail(epoch);});if(token!==epoch||!active){void stop().catch(()=>{});return;}stopObserving=stop;}
+   if(carrier==='ready')await ensureObservation();else retireObservation();
   }catch{if(token===epoch){carrier=null;voicemails=[];if(tab==='voicemail')tab='recents';closeVoicemail();}}
   finally{if(token===epoch)changed();}
  }

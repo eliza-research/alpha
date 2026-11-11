@@ -9,7 +9,7 @@ const {createAospTelephony}=await import('../apps/app/src/runtime/aosp-telephony
 globalThis.document={hidden:false,addEventListener(){},removeEventListener(){}};
 const status=callLog=>({version:2,voiceCapable:true,smsCapable:true,permissions:{contacts:'granted',phoneState:'denied',sms:'denied',sendSms:'denied',...(callLog?{callLog}:{})},sendMode:'handoff',roles:{dialer:{available:true,held:false,eligible:true},sms:{available:true,held:false,eligible:true}},defaultDialer:'com.android.dialer',defaultSms:null,subscriptions:null,defaultSmsSubscriptionId:null});
 const call={id:'4',number:'+15555550100',cachedName:'Ada',date:1700000000000,durationSeconds:75,type:'missed',isNew:true};
-function mount(answers){const calls=[];const plugin=new Proxy({},{get:(_,method)=>method==='then'?undefined:async options=>{calls.push([method,options]);const a=answers[method];return typeof a==='function'?a(options):a;}});
+function mount(answers){const calls=[];const plugin=new Proxy({},{get:(_,method)=>method==='then'?undefined:async (options,...rest)=>{calls.push([method,options]);const a=answers[method];return typeof a==='function'?a(options,...rest):a;}});
  const views={phone:{render:()=>({nativePrototype:true}),reply:()=>({text:'Calling'}),suggestions:()=>['call Ada']}};
  class Shell{constructor(){this.view='phone';}S(){return {view:this.view};}setState(){}}
  installPhoneAdapter(Shell,views,createAospTelephony(plugin,true));const shell=new Shell();shell.componentDidMount();return {views,shell,calls};}
@@ -135,3 +135,31 @@ test('Contacts opens only where Contacts is admitted',async()=>{
 });
 test('rows without a dialable number cannot dial',()=>{const rows=phoneRows([{...call,number:'',cachedName:null}],()=>{throw Error('dialed');});assert.equal(rows[0].noDial,true);rows[0].dial();assert.match(rows[0].label,/Unknown caller/);});
 test('the template wraps the prototype Phone behind nativePrototype',()=>{const html=readFileSync('apps/app/src/prototype/template.html','utf8');const start=html.indexOf('<sc-if value="{{is.phone}}">');assert.ok(html.indexOf('<sc-if value="{{phone.nativeManaged}}">',start)>start);assert.ok(html.indexOf('<sc-if value="{{phone.nativePrototype}}">',start)<html.indexOf('{{phone.title}}',start));});
+
+test('voicemail observer replacement waits for old cleanup and shares one parallel start',async()=>{
+ let removeOld,enableFirst;
+ const removal=new Promise(resolve=>removeOld=resolve),enable=new Promise(resolve=>enableFirst=resolve);
+ let listeners=0;const callbacks=[];
+ const {views,shell,calls}=mount({status:status('granted'),listRecentCalls:{calls:[]},listVoicemail:{state:'ready',voicemails:[]},
+  addListener:(_event,callback)=>{callbacks.push(callback);const index=++listeners;return {remove:async()=>{if(index===1)await removal;}};},
+  observeVoicemail:options=>options.enabled&&listeners===1?enable:{}});
+ await settle();views.phone.render({},{}).nativeRefresh();await settle();
+ assert.equal(listeners,1,'parallel list reads share the in-flight observer start');
+ enableFirst();await settle();
+ shell.view='home';shell.componentDidUpdate();shell.view='phone';shell.componentDidUpdate();await settle();
+ assert.deepEqual(calls.filter(([m])=>m==='observeVoicemail').map(([,o])=>o.enabled),[true],'a replacement waits for old listener retirement');
+ const reads=calls.filter(([m])=>m==='listVoicemail').length;callbacks[0]();await settle();assert.equal(calls.filter(([m])=>m==='listVoicemail').length,reads,'a retired listener admits no replacement-visit read');
+ removeOld();await settle();await settle();
+ assert.deepEqual(calls.filter(([m])=>m==='observeVoicemail').map(([,o])=>o.enabled),[true,false,true]);
+ assert.equal(listeners,2,'one observer for each visit');
+ shell.view='home';shell.componentDidUpdate();shell.componentDidUpdate();await settle();
+ assert.deepEqual(calls.filter(([m])=>m==='observeVoicemail').map(([,o])=>o.enabled),[true,false,true,false],'one cleanup per lease');
+});
+
+test('an unconfirmed voicemail observer retirement refuses a replacement enable',async()=>{
+ const {shell,calls}=mount({status:status('granted'),listRecentCalls:{calls:[]},listVoicemail:{state:'ready',voicemails:[]},
+  addListener:()=>({remove:async()=>{throw Error('Listener retirement unconfirmed');}}),observeVoicemail:{}});
+ await settle();shell.view='home';shell.componentDidUpdate();shell.view='phone';shell.componentDidUpdate();await settle();await settle();
+ assert.deepEqual(calls.filter(([m])=>m==='observeVoicemail').map(([,o])=>o.enabled),[true],'unconfirmed cleanup never enables a second listener');
+ shell.componentWillUnmount();
+});
