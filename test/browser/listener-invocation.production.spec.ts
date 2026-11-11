@@ -190,3 +190,18 @@ test('an inconsistent stop receipt keeps Android recovery available without open
  await expect(button(page,'Listening settings')).toHaveCount(0);
  expect(foreign).toEqual([]);
 });
+
+test('qualified Privacy still reports a microphone held after turning listening off',async({page})=>{
+ const listener={available:true,state:'LISTENING',label:'Listening',consented:true,listening:true,microphoneOpen:true};
+ const foreign=await setup(page,{image:true,sense:true,listener,stopReceipt:{...listener,state:'OFF',listening:false}});
+ await residentHome(page);
+ await button(page,'Settings').click();
+ await button(page,'Privacy').click();
+ const listening=page.getByRole('switch',{name:'Listening',exact:true});
+ await listening.click();
+ await expect(page.getByText('Microphone still open',{exact:true})).toBeVisible();
+ await expect(listening).toHaveAttribute('aria-checked','true');
+ await expect(button(page,'Pause listening')).toBeVisible();
+ expect(await live(page,f=>f.captures)).toEqual([]);
+ expect(foreign).toEqual([]);
+});

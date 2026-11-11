@@ -9,6 +9,7 @@ import {loadListenerSystemuiTests} from '../scripts/aosp-listener-systemui.ts';
 import {stageListener} from '../scripts/aosp-listener.ts';
 import {verifyListenerBoot} from '../scripts/verify-aosp-listener.ts';
 import {assertSenseLauncher, assertSenseQualification, readSenseQualification, senseLauncherDigest, writeSenseImageActivation} from '../scripts/aosp-sense-image.ts';
+import {stageAlphaSensePolicy} from '../scripts/aosp-sense-policy.ts';
 
 await loadListenerSystemuiTests();
 
@@ -20,7 +21,8 @@ test('Alpha stages the same reviewed listener bytes its tools inspected', t => {
  t.after(() => fs.rmSync(temp, {recursive:true, force:true}));
  const apk = path.join(temp, 'input.apk');
  execFileSync('python3', ['vendor/eliza/packages/app/test/android/sense-fixtures/write-listener-apk.py', apk]);
- const original = fs.readFileSync(apk), signer = 'a'.repeat(64);
+ const original = fs.readFileSync(apk);
+ const signer = JSON.parse(fs.readFileSync('android/release-signer.json', 'utf8')).signerSha256;
  const descriptorFile = path.join(temp, 'listener.json');
  fs.writeFileSync(descriptorFile, JSON.stringify({packageName:listener, apkSha256:createHash('sha256').update(original).digest('hex'), certificateSha256:signer}));
  fs.writeFileSync(path.join(temp, 'product.mk'), '');
@@ -33,6 +35,9 @@ test('Alpha stages the same reviewed listener bytes its tools inspected', t => {
  assert.deepEqual(fs.readFileSync(path.join(temp, 'listener/AlphaSense.apk')), original);
  assert.equal(result.speechIncluded, false);
  assert.equal(result.releaseQualified, false);
+ const policy = stageAlphaSensePolicy({root:process.cwd(), output:temp, appId, certificateSha256:signer});
+ assert.match(policy, /^[a-f0-9]{64}$/);
+ assert.ok(fs.existsSync(path.join(temp, 'listener/sepolicy/mac_permissions.xml')));
 });
 
 function bootReads({processes = '', uidList = `package:${listener} uid:10145`, enforcement = '', selinux = ''} = {}) {
@@ -166,4 +171,14 @@ test('the privately staged launcher cannot differ from the initial release admis
  assert.equal(senseLauncherDigest(staged, admitted), admitted);
  fs.writeFileSync(staged, 'different reviewed image bytes');
  assert.throws(() => senseLauncherDigest(staged, admitted), /differs from the admitted release APK/);
+});
+
+test('the staging CLI refuses a production listener before reading unqualified inputs', () => {
+ const target = ['--target', 'pixel10a', '--aosp-source', 'missing-source', '--factory-image', 'missing-factory'];
+ const stage = (...args) => execFileSync(process.execPath, ['scripts/stage-aosp.ts', '--production', ...target, ...args],
+  {stdio:'pipe', encoding:'utf8', timeout:30000});
+ assert.throws(() => stage('--listener-apk', 'missing-listener.apk'), /requires Pixel 10a, --listener-apk, --listener-descriptor and --listener-qualification/);
+ assert.throws(() => stage('--listener-apk', 'missing-listener.apk', '--listener-descriptor', 'missing.json',
+  '--listener-qualification', 'missing-qualification.json'), /requires chip, ops, alpha-protected-power and alpha-sense-policy/);
+ assert.throws(() => stage('--applied-build-patch', 'alpha-sense-policy'), /requires an activated Sense image/);
 });

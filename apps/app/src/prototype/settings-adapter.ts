@@ -469,6 +469,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if (owner !== instance) return;
       listener = next;
       if (!next.available) api.toast('Not responding · Use notification');
+      else if (next.microphoneOpen) api.toast('Microphone is still open · Use notification');
       else if (next.listening) api.toast('Still listening · Use notification');
     } finally { listenerReads.endAction(); if (owner === instance) changed(); }
   }
@@ -813,10 +814,12 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const settings = () => void openListenerSettings().then(opened => { if (!opened) api.toast('Unavailable'); });
       const settingsRow = {...action('Listening settings', settings), hasExt:true, chev:false};
       if (!listener.available) return [settingsRow];
-      const status = listener, on = !!status.consented && status.state !== 'OFF';
+      const status = listener;
+      const on = status.microphoneOpen || status.listening || (!!status.consented && status.state !== 'OFF');
+      const label = status.state === 'OFF' && (status.microphoneOpen || status.listening) ? 'Microphone still open' : status.label;
       // One Listening switch: off goes through the listener; on (and resume) only in its own consent screen.
       return [
-        {kTog:true, label:'Listening', aria:'Listening', hasSub:true, sub:listenerReads.busy()?'':status.label, on, track:on?'background:var(--acc)':'background:var(--line)', kx:on?20:0, dis:listenerReads.busy(), toggle:()=>on?void listenerAction(api, 'turnOff'):settings()},
+        {kTog:true, label:'Listening', aria:'Listening', hasSub:true, sub:listenerReads.busy()?'':label, on, track:on?'background:var(--acc)':'background:var(--line)', kx:on?20:0, dis:listenerReads.busy(), toggle:()=>on?void listenerAction(api, 'turnOff'):settings()},
         ...(status.listening || status.microphoneOpen ? [{...action('Pause', () => void listenerAction(api, 'pause')), lbl:'Pause listening', busy:listenerReads.busy(), hasSpin:listenerReads.busy()}] : []),
         settingsRow,
       ];

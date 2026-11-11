@@ -18,6 +18,7 @@ import {signerDigest} from "./apk.ts";
 import { aaptManifestTree, admitImageApk, reviewedSourceOverrides as sharedReviewedSourceOverrides } from "../vendor/eliza/packages/os/scripts/android/image-apk-admission.mjs";
 import { CUTTLEFISH_TARGETS, cuttlefishProductProblems } from "../vendor/eliza/packages/os/scripts/android/cuttlefish-product.mjs";
 import { assertSenseLauncher, assertSenseQualification, readSenseQualification, senseLauncherDigest, writeSenseImageActivation, type SenseImageActivation } from './aosp-sense-image.ts';
+import { stageAlphaSensePolicy } from './aosp-sense-policy.ts';
 import { verifyPinnedUpstream } from './pinned-upstream-source.ts';
 
 export const PRODUCT_DESCRIPTOR = "android/aosp/product.json";
@@ -324,7 +325,6 @@ if (listenerApk) {
   const listener = stageListener({ root: process.cwd(), output, apk: listenerApk, launcherSigner: certificateSha256, appId: identity.appId, descriptorFile: admittedListenerDescriptor, production: !development || senseImage, aapt: tool("aapt"), apksigner: tool("apksigner"), env });
   if (qualification) {
     if (!senseSdk || !physicalSource || !descriptorDigests) throw Error('Sense activation requires the verified Pixel source, SDK and private descriptors');
-    const {stageAlphaSensePolicy} = await import(new URL('./aosp-sense-policy.ts', import.meta.url).href);
     const sepolicySha256 = stageAlphaSensePolicy({root: process.cwd(), output, appId: identity.appId, certificateSha256});
     const launcherSha256 = senseLauncherDigest(stagedLauncher, hash);
     admitApk({apk:stagedLauncher, hash:launcherSha256, development:false, manifestFile, platformCertificateSha256});
