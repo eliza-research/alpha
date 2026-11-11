@@ -17275,12 +17275,13 @@
         "WorkflowRequestRecoveryAdmission",
         "ScheduledTaskControls",
         "HomeAutomationsRead",
-        "WorkflowRecoverySelection"
+        "WorkflowRecoverySelection",
+        "SavedServiceRead"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "11b5cc3b2e411a7c11d7ef41445e07011e8b64d6d681121e764b702ec4eb6930",
+      "sha256": "6c87f7beb71656a3cc2fe0c00849ab4b9b8663de46f15cdd616b360811fd9a6d",
       "stateAnchors": [
         {
           "line": 35,
@@ -32361,7 +32362,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "eb2faa574453752201e86b41def1f03c41d4c9e9aa5f9805329310b970fe03d1",
+      "sha256": "2291a64b3e59032d4f8d68aacc631af7071caf4a84da9f3daecb14ccc96b5bfd",
       "stateAnchors": [],
       "integrationReview": "2026-11-11 Home entry resets carousel position without resetting manual swipes. Shared bottom-sheet marker keeps sheet surface at the phone bottom and leaves dock clearance inside its padding. Anchored menus keep their original positioning. Full native acceptance remains separate."
     },
@@ -34684,7 +34685,7 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "b0137e4ff22cfa6491d7f2f7348c293ded0cfac44b0bb62e30a694a27a8181ad",
+      "sha256": "483ab79a669ddb04f0eaa29f6c87bcb15b0203a19c54d69d691641d5712761b7",
       "stateAnchors": [
         {
           "line": 3358,

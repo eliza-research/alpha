@@ -10,6 +10,7 @@ module SavedServiceRead {
   val sameSaved = s.owner == s.savedOwner and s.credential == s.savedCredential and s.query == s.savedQuery
   val liveRead = s.reading and s.readEpoch == s.epoch
   val canMutate = s.shown == "fresh"
+  val canConfirmEmpty = s.agentReady and s.shown == "fresh" and s.settled
   action start = all {s.epoch < 8,s' = {...s,epoch:s.epoch+1,readEpoch:s.epoch+1,reading:true,settled:false,shown:"none"}}
   action restore = s' = if (s.credentialPresent and liveRead and not(s.settled) and sameSaved and s.savedAt > s.refusedAt)
     {...s,shown:"saved"} else s
@@ -34,4 +35,6 @@ module SavedServiceRead {
   run changedCredentialStaysHiddenTest = init.then(otherCredential).then(start).then(restore).expect(s.shown == "none" and safety)
   run cachedBeforeAgentTest = init.then(delayAgent).then(start).then(restore).expect(s.shown == "saved" and not(canMutate) and safety)
   run removedCredentialHidesCacheTest = init.then(start).then(restore).then(loseCredential).then(restore).expect(s.shown == "none" and safety)
+  run unboundReadCannotConfirmEmptyTest = init.then(delayAgent).then(start).expect(not(canConfirmEmpty) and safety)
+  run settledReadCanConfirmEmptyTest = init.then(start).then(fresh).expect(canConfirmEmpty and safety)
 }
