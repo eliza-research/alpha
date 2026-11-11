@@ -10,7 +10,6 @@ other positional APKs keep the original semantics: NOT_PACKAGED is reported,
 not rejected. Byte mismatches always raise (exit 1).
 """
 import argparse
-import os
 import subprocess
 import hashlib
 import json
@@ -195,7 +194,7 @@ def verify(apk, release=False):
                 not isinstance(bundle_dependencies.get('packages'), list) or not bundle_dependencies['packages']):
             raise ValueError('Packaged agent dependency inventory does not match bundle')
         declarations = subprocess.check_output(
-            [os.environ.get('ALPHA_BUN', 'bun'), ROOT / 'scripts/native-view-policy.ts'], timeout=30)
+            ['bun', ROOT / 'scripts/native-view-policy.ts'], timeout=30)
         check('assets/agent/native-view-declarations.json', staged / 'native-view-declarations.json',
               hashlib.sha256(declarations).hexdigest())
         worker_manifest = json.loads((staged / 'workflow-worker/manifest.json').read_text())
