@@ -2438,7 +2438,7 @@
         <sc-if value="{{notes.trashError}}"><div role="status" style="margin: 0 8px 12px; font-size: 13px; color: var(--mut)">{{notes.trashError}}</div></sc-if>
         <ul aria-label="Recently deleted notes" style="list-style: none; margin: 0; padding: 0">
           <sc-for list="{{notes.trashRows}}" key="{{t.id}}" as="t">
-            <li><button class="tap" data-agent-id="notes-restore-{{t.id}}" aria-label="{{t.label}}" disabled="{{t.disabled}}" onClick="{{t.ask}}" style="display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 12px 8px; border-bottom: 1px solid var(--line); box-sizing: border-box; text-align: left">
+            <li><button class="tap" data-agent-id="notes-restore-{{t.id}}" aria-label="{{t.label}}" aria-description="{{t.previewDescription}}" disabled="{{t.disabled}}" onClick="{{t.ask}}" style="display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 12px 8px; border-bottom: 1px solid var(--line); box-sizing: border-box; text-align: left">
               <span style="display: block; flex: 1 1 auto; min-width: 0">
                 <span style="display: block; font-weight: 600; font-size: 16px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{t.title}}</span>
                 <span style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14px; line-height: 1.4; color: var(--mut); margin-top: 2px; white-space: pre-line">{{t.preview}}</span>
@@ -2456,6 +2456,7 @@
     <div role="dialog" aria-modal="true" aria-label="{{notes.trashAskTitle}}" class="enter" style="position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; max-height:calc(100% - 44px);overflow:auto;box-sizing:border-box; background: var(--s1); color: var(--fg); border-radius: 28px 28px 0 0; padding: 12px 24px 44px">
       <div style="display: flex; justify-content: center; padding-bottom: 14px"><span style="width: 40px; height: 4px; border-radius: 2px; background: var(--mut); opacity: .45"></span></div>
       <div class="serif" style="font-size: 26px; line-height: 1.15; overflow-wrap: anywhere">{{notes.trashAskTitle}}</div>
+      <sc-if value="{{notes.trashAskDescription}}"><p style="margin:8px 0 0;color:var(--mut)">{{notes.trashAskDescription}}</p></sc-if>
       <div style="display: flex; gap: 10px; margin-top: 24px">
         <sc-if value="{{notes.trashCanErase}}"><button disabled="{{notes.trashBusy}}" onClick="{{notes.trashAskDelete}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--s2); color: var(--fg)">Delete now</button></sc-if>
         <button disabled="{{notes.trashBusy}}" onClick="{{notes.trashAskRecover}}" style="flex: 1; height: 52px; border-radius: 26px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; background: var(--fg); color: var(--bg)">Recover</button>

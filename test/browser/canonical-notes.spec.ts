@@ -1,6 +1,46 @@
-import {test,expect} from '@playwright/test';
+import {test,expect,type Page} from '@playwright/test';
 import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-notes';
 const snapshot=(page:import('@playwright/test').Page)=>page.evaluate(()=>(window as any).canonicalNotesFixture.state);
+
+const trashedNote={id:'trash-item',title:'A trashed note',body:'\nRetained text.',color:'yellow',createdAt:'2026-11-01T12:00:00Z',updatedAt:'2026-11-02T12:00:00Z'};
+async function replaceTrashEntry(page:Page,deletedAt:string){
+ const revision=await page.evaluate(deletedAt=>{
+  const fixture=(window as any).canonicalNotesFixture;
+  fixture.state.trash[0].deletedAt=deletedAt;
+  const revision=++fixture.state.revision;
+  window.dispatchEvent(new CustomEvent('alpha:canonical-notes-invalidated',{detail:{sessionId:'canonical-fixture-session',revision}}));
+  return revision;
+ },deletedAt);
+ await expect.poll(()=>page.evaluate(revision=>(window as any).canonicalNotesFixture.acceptedReads.some((read:any)=>read.revision===revision),revision)).toBe(true);
+ return revision;
+}
+
+test('canonical Trash dates the deletion and requires a fresh review after its selected entry changes',async({page})=>{
+ await canonicalNotesFixture(page,{trash:[{note:trashedNote,deletedAt:'2026-11-08T12:00:00Z'}]});await openCanonicalNotes(page);
+ await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ const trash=page.locator('[data-alpha-subview="notes-trash"]'),row=trash.getByRole('button',{name:'A trashed note',exact:true});
+ await row.click();const review=page.getByRole('dialog',{name:'A trashed note',exact:true});await expect(review).toBeVisible();
+ const revision=await replaceTrashEntry(page,'2026-11-09T12:00:00Z');
+ await expect(review).toHaveCount(0);
+ await expect(row).toContainText('Deleted Nov 9, 2026');
+ await row.click();await expect(review).toContainText('Deleted Nov 9, 2026');
+ await review.getByRole('button',{name:'Recover',exact:true}).click();
+ await expect.poll(()=>snapshot(page).then(state=>state.notes.map((note:any)=>note.id))).toEqual([trashedNote.id]);
+ const restores=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((request:any)=>request.body?.capability==='restore-note'));
+ expect(restores.map((request:any)=>request.body.params)).toEqual([{id:trashedNote.id,expectedRevision:revision}]);
+});
+
+test('Undo for a canonical deletion cannot restore a replacement trash entry',async({page})=>{
+ await canonicalNotesFixture(page,{notes:[trashedNote]});await openCanonicalNotes(page);
+ await page.getByRole('button',{name:'Open A trashed note',exact:true}).click();
+ await page.getByRole('button',{name:'More',exact:true}).click();
+ await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
+ const undo=page.getByRole('button',{name:'Undo',exact:true});await expect(undo).toBeVisible();
+ await replaceTrashEntry(page,'2026-11-09T12:00:00Z');await undo.click();
+ await expect(page.getByText('This deletion changed. Review it in Recently deleted.',{exact:true})).toBeVisible();
+ expect((await snapshot(page)).trash).toHaveLength(1);
+ expect(await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((request:any)=>request.body?.capability==='restore-note').length)).toBe(0);
+});
 
 test('canonical Notes use last-edit order and local date labels without writing view timestamps into content',async({page})=>{
  await page.clock.setFixedTime(new Date('2026-11-10T17:00:00Z'));
