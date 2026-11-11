@@ -12,7 +12,7 @@ const element = (indent, tag, attrs = {}) => [`${" ".repeat(indent)}E: ${tag} (l
   ...Object.entries(attrs).map(([key, value]) => `${" ".repeat(indent + 2)}A: android:${key}(0x01010003)=${value.startsWith("(") ? value : str(value)}`)];
 const filter = (indent, action, categories = []) => [...element(indent, "intent-filter"), ...element(indent + 2, "action", { name: action }),
   ...categories.flatMap(name => element(indent + 2, "category", { name }))];
-function tree({ homes = 1, autofillPermission = "android.permission.BIND_AUTOFILL_SERVICE", allFiles = true } = {}) {
+function tree({ homes = 1, autofillPermission = "android.permission.BIND_AUTOFILL_SERVICE", allFiles = true, assistant = {} } = {}) {
   return ["N: android=http://schemas.android.com/apk/res/android", "  E: manifest (line=2)",
     ...element(4, "uses-permission", { name: "android.permission.RECORD_AUDIO" }),
     ...(allFiles ? element(4, "uses-permission", { name: "android.permission.MANAGE_EXTERNAL_STORAGE" }) : []),
@@ -20,7 +20,7 @@ function tree({ homes = 1, autofillPermission = "android.permission.BIND_AUTOFIL
     ...Array.from({ length: homes }, (_, i) => [...element(6, "activity", { name: `${PKG}.${i ? "Other" : "Main"}Activity`, exported: "(type 0x12)0xffffffff" }),
       ...filter(8, "android.intent.action.MAIN", ["android.intent.category.LAUNCHER"]),
       ...filter(8, "android.intent.action.MAIN", ["android.intent.category.HOME", "android.intent.category.DEFAULT"])]).flat(),
-    ...element(6, "activity", { name: `${PKG}.AlphaAssistActivity`, exported: "(type 0x12)0xffffffff" }), ...filter(8, "android.intent.action.ASSIST", ["android.intent.category.DEFAULT"]),
+    ...element(6, "activity", { name: `${PKG}.AlphaAssistActivity`, exported: "(type 0x12)0xffffffff", ...assistant }), ...filter(8, "android.intent.action.ASSIST", ["android.intent.category.DEFAULT"]),
     ...element(6, "service", { name: "ai.eliza.plugins.passwords.ElizaPasswordAutofillService", permission: autofillPermission, exported: "(type 0x12)0xffffffff" }), ...filter(8, "android.service.autofill.AutofillService"),
     ...element(6, "service", { name: `${PKG}.ElizaAgentService` }),
   ].join("\n");
@@ -33,6 +33,17 @@ test("components come from the APK manifest and must be unique", () => {
   assert.throws(() => provisioningComponents(tree({ homes: 0 }), PKG), /HOME/);
   assert.throws(() => provisioningComponents(tree({ homes: 2 }), PKG), /exactly one/);
   assert.throws(() => provisioningComponents(tree({ autofillPermission: "none" }), PKG), /AUTOFILL/);
+});
+
+test("listener-free production admits the disabled assistant and keeps HOME and Autofill", () => {
+  const assistant = {enabled: "(type 0x12)0x0", exported: "(type 0x12)0x0"};
+  const components = provisioningComponents(tree({assistant}), PKG, {assistant: false});
+  assert.deepEqual(components, {
+    home: `${PKG}.MainActivity`, assistant: null, autofill: "ai.eliza.plugins.passwords.ElizaPasswordAutofillService",
+  });
+  const files = renderProvisioningOverlay(PKG, components);
+  assert.doesNotMatch(files["provisioning/overlay/frameworks/base/core/res/res/values/config.xml"], /config_defaultAssistant/);
+  assert.throws(() => provisioningComponents(tree(), PKG, {assistant: false}), /must not ship an enabled ACTION_ASSIST/);
 });
 
 test("Files all-files access: the launcher must request MANAGE_EXTERNAL_STORAGE (granted as preinstalled)", () => {
@@ -65,5 +76,5 @@ test("stage-aosp gates the overlay behind --production, never with --development
   const source = fs.readFileSync("scripts/stage-aosp.ts", "utf8");
   assert.match(source, /if \(production && development\) throw/);
   assert.match(source, /const tree = execFileSync\(tool\("aapt"\), \["dump", "xmltree", apk, "AndroidManifest\.xml"\]/);
-  assert.match(source, /if \(production\) \{\n  const components = provisioningComponents\(tree, identity\.appId\);/);
+  assert.match(source, /if \(production\) \{\n  const components = provisioningComponents\(tree, identity\.appId, \{assistant: false\}\);/);
 });

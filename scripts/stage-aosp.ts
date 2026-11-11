@@ -146,8 +146,8 @@ for (let i = 0; i < args.length; i++) {
   i++;
 }
 const development = args.includes("--development");
-// --production adds the provisioning overlay (default HOME, assistant role, Autofill
-// offer). It needs a reviewed descriptor and a distributable release, so it is
+// --production adds the provisioning overlay (default HOME and Autofill offer).
+// It needs a reviewed descriptor and a distributable release, so it is
 // refused until a signed, PACKAGED, qualified release APK exists.
 const production = args.includes("--production");
 const source = get('--aosp-source');
@@ -289,11 +289,11 @@ if (!physical) {
 }
 writeSecureCameraOverlay(output, cameraSource);
 if (production) {
-  const components = provisioningComponents(tree, identity.appId);
+  const components = provisioningComponents(tree, identity.appId, {assistant: false});
   writeProvisioningOverlay(output, identity.appId, components);
   // The shared Pixel 10a composition writes the same overlay from android/aosp/pixel10a-composition.json.
   if (!physical) writeAospCapabilityOverlay(output, identity.appId);
-  console.log(`Provisioning overlay: HOME ${components.home}, assistant ${components.assistant ? identity.appId : "none (P-78)"}, Autofill ${components.autofill}.`);
+  console.log(`Provisioning overlay: HOME ${components.home}, Autofill ${components.autofill}.`);
 }
 if (listenerApk) {
   const listener = stageListener({ root: process.cwd(), output, apk: listenerApk, launcherSigner: String(reviewed.certificateSha256 ?? "").toLowerCase(), appId: identity.appId, descriptorFile: listenerDescriptor, production: !development, aapt: tool("aapt"), apksigner: tool("apksigner"), env });
