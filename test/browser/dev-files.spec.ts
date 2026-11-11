@@ -24,7 +24,7 @@ test('Files explains empty folders, categories and Trash in the mounted list',as
  });
  await page.getByRole('button',{name:'Files',exact:true}).click();
  const detail=page.locator('[data-alpha-subview="files-folder"]');
- const empty=detail.getByRole('status').filter({hasText:'No files here'});
+ const empty=detail.getByRole('status').filter({hasText:'No files to show'});
  const back=detail.getByRole('button',{name:'Back',exact:true});
  await page.getByRole('button',{name:'Internal storage',exact:true}).click();
  await page.getByRole('button',{name:'Open Empty folder',exact:true}).click();
@@ -37,6 +37,17 @@ test('Files explains empty folders, categories and Trash in the mounted list',as
   await expect(empty).toBeVisible();
   await back.click();
  }
+});
+test('Files does not report an empty folder after a failed read',async({page})=>{
+ await page.evaluate(async()=>{
+  const {BrowserFiles}=await import('/src/browser/files.ts');
+  BrowserFiles.prototype.storageList=async()=>({status:'unavailable'});
+ });
+ await page.getByRole('button',{name:'Files',exact:true}).click();
+ await page.getByRole('button',{name:'Internal storage',exact:true}).click();
+ const detail=page.locator('[data-alpha-subview="files-folder"]');
+ await expect(detail.getByRole('status').filter({hasText:'Files could not be read.'})).toBeVisible();
+ await expect(detail.getByRole('status').filter({hasText:'No files to show'})).toHaveCount(0);
 });
 test('mail attachment bridge preserves exact bytes and validates reviewed hashes',async({page})=>{
  const attachment=await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const files=registerPlugin<any>('AlphaFiles'),mail=registerPlugin<any>('AlphaMailAttachments');const selection=await files.importFile(new File(['Café\r\nExact bytes'],'letter.txt',{type:'text/plain'}));const result=await mail.readSelected(selection);let rejected=false;try{await mail.openReviewed({...result,reviewed:true,sha256:'0'.repeat(64)});}catch{rejected=true;}await mail.openReviewed({...result,reviewed:true});return {...result,rejected};});
