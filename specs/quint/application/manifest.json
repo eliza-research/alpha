@@ -3454,6 +3454,9 @@
       "versionFailureRetriesStoredLayoutTest",
       "completedMigrationPreservesLaterStockChoiceTest",
       "customLayoutRemainsCustomTest",
+      "reviewedStockSurvivesIdentityMigrationTest",
+      "reviewedCustomTileMigratesInPlaceTest",
+      "currentVersionLeavesRetainedLayoutTest",
       "existingPermissionDenialRemainsTest",
       "ineligiblePermissionDoesNotGrantTest",
       "coreLauncherScopeTest"
@@ -3464,7 +3467,7 @@
       "android/aosp/branding/core-launcher/AlphaSharedStoragePolicy.java"
     ],
     "abstractions": [
-      "Two layout classes plus Alpha defaults; settings collector writes are serialized. Real multi-user services, arbitrary tile arrays and process-death injection require Android qualification. Pure Java policy matrices separately cover package/Home/system and permission predicates."
+      "Stock, custom and Alpha layout classes; retained version 2 or 3 settings can seed a replay. Serialized writes commit the migration version only after storing the chosen layout. Actual token replacement, order and deduplication are checked in the Kotlin fixture. Real multi-user services, arbitrary tile arrays and process-death injection require Android qualification. Pure Java policy matrices separately cover package/Home/system and permission predicates."
     ]
   },
   {
