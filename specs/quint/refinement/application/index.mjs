@@ -20,6 +20,7 @@ import {checkNotesCoordinator} from './notes-coordinator.mjs';
 import {listFocus} from './list-focus.mjs';
 import {checkRecoveryUI} from './recovery-ui.mjs';
 import {checkShellCoordinator} from './shell-coordinator.mjs';
+import {checkCompletedViewDelivery} from './completed-view-delivery.mjs';
 import {checkNativeViewSubscription} from './native-view-subscription.mjs';
 import {filesPreview} from './files-preview.mjs';
 import {runPermissionChoicesRefinement} from './permission-choices.mjs';
@@ -113,7 +114,7 @@ import {checkOSDefaults} from './os-defaults.mjs';
 import {checkOSProvisioning} from './os-provisioning.mjs';
 import {checkOSSourceStaging} from './os-source-staging.mjs';
 
-const adapters = [checkCalendarApprovalReview, checkDeviceActionReview, checkCalendarFormControls, checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
+const adapters = [checkCalendarApprovalReview, checkDeviceActionReview, checkCalendarFormControls, checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, checkCompletedViewDelivery, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
