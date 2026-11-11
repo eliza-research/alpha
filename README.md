@@ -148,6 +148,52 @@ in the qualification archive. Primary main-push attempts share a canceling group
 reruns use their own run ID group and do not cancel running work. GitHub does not
 guarantee commit order. Completion needs a quiet main, build capacity and admitted
 native inputs.
+
+Before enabling a successful automatic build, a maintainer supplies
+`android/hosted-native-inputs.json` in the reviewed checkout. Use these exact
+fields and replace every placeholder with the reviewed value.
+
+```json
+{
+  "schema": "alpha-hosted-native-inputs/v1",
+  "packageName": "ai.alphacompute.alphaphone",
+  "sdkCommit": "<upstream.lock.json commit>",
+  "voiceRecordSha256": "<SHA-256 of android/voice-host/qualified-voice-host.json>",
+  "embeddingRecordSha256": "<SHA-256 of android/embedding-host/qualified-host.json>",
+  "artifacts": {
+    "voice": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"},
+    "embeddingComponent": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"},
+    "embeddingQualification": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"}
+  }
+}
+```
+
+Use three distinct, unexpired GitHub Actions artifact IDs from successful runs
+in this repository. Use the artifact metadata's digest without its `sha256:`
+prefix. The voice artifact contains the reviewed model, data and notice files at
+`assets/paradee-voice/v1/<path>` and the two recorded libraries per ABI at
+`jniLibs/<abi>/<name>`. Upload those files with their relative paths and omit
+generated manifests, APKs and logs. The embedding component contains
+`component-output/INTENT.json`, `component-output/export/PREPARATION.json` and
+the three reviewed ARM64 libraries alongside the preparation receipt. The
+qualification artifact contains `QUALIFICATION.json` and
+`embedding-qualification.json` at its root. These receipts must describe those
+same reviewed component bytes. The two hosts share the exact ARM64 engine and
+C++ runtime. Obtain the recorded bytes from the provisioned host or review and
+admit a reproducible replacement before updating the records and artifact IDs.
+
+Run `python3 -B scripts/ci/hosted-native-inputs.py --check` to validate the
+manifest against the checkout without downloading. Automatic runs fail early
+when input pins are missing, stale or expired. They download through the
+workflow's read-only token, stage with the existing voice and embedding tools,
+and retain the input IDs, hashes and sizes in `native-input-admission.json`.
+The candidate receipt binds its digest to the exact source, SDK and run attempt.
+The build evidence records the uploaded candidate's ID and compressed size
+from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
+Refresh the reviewed pins before an artifact expires or a bound source record
+changes. Manual diagnostics and protected signing keep their existing input
+and producer-evidence policy.
+
 The existing workflow run number is the candidate versionCode, checked against
 both releases' retained APKs and public pointers, and the committed version floors.
 Failed or canceled runs consume their number. A manual release or workflow

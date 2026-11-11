@@ -2,6 +2,7 @@
 /**
  * Reproduce and stage the ARM64 embedding host from pinned source.
  * --status reports staged inputs; --candidate builds without staging; --offline forbids fetching.
+ * --from <directory> stages the exact reviewed libraries supplied by a host.
  * Staging requires exact native library hashes and matching source/JNI inputs.
  */
 import {execFileSync, spawnSync} from 'node:child_process';
@@ -10,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import type { EmbeddingManifest, PreparedEmbeddingLibrary } from "./stage-embedding-host.ts";
-import {verifyEmbeddingInputs} from './stage-embedding-host.ts';
+import {embeddingLibrarySource,verifyEmbeddingEngine,verifyEmbeddingInputs} from './stage-embedding-host.ts';
 
 export const QUALIFIED_HOST = 'android/embedding-host/qualified-host.json';
 export const BUILD_TOOLCHAIN = 'android/embedding-host/build-toolchain.json';
@@ -70,6 +71,17 @@ export function describeDifference(comparison: Comparison[]) {
   return comparison.filter(row => !row.reproduced).map(row => row.actual
     ? `${row.name}: built ${row.actual.bytes} bytes sha256 ${row.actual.sha256}, reviewed ${row.expected.bytes} bytes sha256 ${row.expected.sha256}`
     : `${row.name}: ${row.reason}, reviewed ${row.expected.bytes} bytes sha256 ${row.expected.sha256}`);
+}
+
+/** Admit reviewed producer bytes without modifying the committed record. */
+function stageFrom(root: string, directory: string) {
+  const manifest = readJson<EmbeddingManifest>(path.join(root, QUALIFIED_HOST));
+  verifyEmbeddingInputs(root, manifest, {requireProducerInputs:true});
+  verifyEmbeddingEngine(root, manifest);
+  const libraries = Object.fromEntries(manifest.libraries.map(row =>
+    [row.name, embeddingLibrarySource({path:row.name},directory)]));
+  stageReproduced(root, manifest, compareWithQualified(manifest, libraries));
+  console.log('Reviewed ARM64 embedding host libraries staged; committed admission record preserved.');
 }
 
 /** Whether every expected library is staged. Missing libraries are reproducible build inputs. */
@@ -160,7 +172,13 @@ function compile(root: string, manifest: EmbeddingManifest, toolchain: Toolchain
 }
 
 /** `build` is the compile step; tests replace it, the command line never does. */
-export function run(root: string, {status = false, offline = false, candidate = false, build = compile} = {}) {
+export function run(root: string, {status = false, offline = false, candidate = false, from, build = compile}: {
+  status?: boolean; offline?: boolean; candidate?: boolean; from?: string; build?: typeof compile;
+} = {}) {
+  if (from !== undefined) {
+    stageFrom(root, path.resolve(from));
+    return 0;
+  }
   const manifest = readJson<EmbeddingManifest>(path.join(root, QUALIFIED_HOST));
   const toolchain = readJson<Toolchain>(path.join(root, BUILD_TOOLCHAIN));
   const workspace = path.join(root, WORKSPACE);
@@ -197,10 +215,14 @@ export function run(root: string, {status = false, offline = false, candidate = 
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
-  const unknown = args.filter(arg => !['--status', '--offline', '--candidate'].includes(arg));
-  if (unknown.length) { console.error('Usage: node scripts/build-embedding-host.ts [--status | --candidate] [--offline]'); process.exit(2); }
+  const root = path.resolve(import.meta.dirname, '..');
+  const from = args.length === 2 && args[0] === '--from' && !args[1].startsWith('--') ? args[1] : undefined;
+  if (from === undefined && args.some(arg => !['--status', '--offline', '--candidate'].includes(arg))) {
+    console.error('Usage: node scripts/build-embedding-host.ts [--status | --candidate] [--offline] | --from <directory>');
+    process.exit(2);
+  }
   try {
-    process.exitCode = run(path.resolve(import.meta.dirname, '..'), {status: args.includes('--status'), offline: args.includes('--offline'), candidate: args.includes('--candidate')});
+    process.exitCode = run(root, {status: args.includes('--status'), offline: args.includes('--offline'), candidate: args.includes('--candidate'), from});
   } catch (error) {
     if (!(error instanceof Stop)) throw error;
     console.error(error.message);

@@ -23,7 +23,8 @@ roots.push('android/app/src/launcher','android/app/src/standalone','android/app/
  'scripts/pinned-upstream-source.ts','scripts/verify-apks.ts','scripts/verify-packaged-runtime.py','scripts/apk.ts','scripts/source-snapshot.ts');
 // The on-device voice record and its staging/verification code are APK inputs. The staged voice
 // outputs are identified by their build record (every file's SHA-256), not re-hashed (about 1 GB).
-roots.push('android/voice-host','android/embedding-host','android/paradee-voice','android/local-speech/build.gradle',
+roots.push('android/hosted-native-inputs.json','android/voice-host','android/embedding-host','android/paradee-voice','android/local-speech/build.gradle',
+ 'test-results/resident-ci-native-inputs/admission.json',
  '.eliza/paradee-voice/native/build-record.json',
  'scripts/stage-embedding-host.ts','scripts/prepare-embedding-host.ts',
  'scripts/android-stage-voice-models.ts','scripts/voice-host.ts','scripts/paradee-runtime.ts');
