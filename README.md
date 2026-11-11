@@ -228,11 +228,25 @@ python3 -B scripts/ci/export-native-inputs.py \
 The exporter creates `alpha-native-inputs.zip` after verifying the copied
 files against the committed records and existing embedding qualification.
 The component receipts preserve their original build provenance and paths.
-Extract the packet, then upload the contents of `voice/`,
-`embedding-component/` and `embedding-qualification/` as three separate
-artifacts through the approved path. Keep `packet.json` with the handoff.
-Use the resulting GitHub artifact IDs and archive digests in the hosted
-manifest.
+Record the packet SHA-256 on the provisioned host. On the receiving host, use
+the reviewed Alpha checkout and the digest supplied by the producer.
+
+```sh
+python3 -B scripts/ci/stage-native-input-packet.py \
+  --packet /absolute/alpha-native-inputs.zip --sha256 "$packet_sha256" \
+  --out /absolute/new-staging-directory
+```
+
+The command verifies the packet against the committed package, SDK, voice
+and embedding records before creating the output directory. Keep its original
+`packet.json` with the handoff. Once the owner approves the transfer and
+redistribution, upload the contents of `voice/`, `embedding-component/` and
+`embedding-qualification/` as three separate artifacts through the approved
+path. Use the resulting GitHub artifact IDs and archive digests in the hosted
+manifest. Signed-in readers can download Actions artifacts from the public
+Alpha repository.
+[GitHub artifact access](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts)
+· [Artifact custody #978](https://github.com/eliza-research/alpha/issues/978)
 
 Run `python3 -B scripts/ci/hosted-native-inputs.py --check` to validate the
 manifest against the checkout without downloading. Automatic runs check the
