@@ -87,9 +87,11 @@ public class ResetStartupTest {
   // time the process stops. Every launch must stop without clearing or initializing, must show the
   // recovery surface, and automatic listener attempts must be bounded rather than repeated forever.
   java.io.File failures=new java.io.File(android.content.Context.data,"reset-alpha.failures");check(failures.delete()||true);
-  android.content.Context.recoveries=0;SenseListenerClient.calls=0;int clears=android.app.ActivityManager.calls;
+  android.content.Context.recoveries=0;SenseListenerClient.calls=0;int clears=android.app.ActivityManager.calls,revocations=ai.eliza.auth.cloud.CloudKeyRevocation.calls;
   for(int relaunch=0;relaunch<25;relaunch++){try{new AlphaApplication().attachBaseContext(app);throw new AssertionError("Unacknowledged reset resumed on relaunch "+relaunch);}catch(android.os.Process.Exit stopped){}}
   check(android.content.Context.recoveries==25);check(SenseListenerClient.calls==0);
+  // Key revocation waits on the network: it runs only with an automatic attempt, never once per relaunch.
+  check(ai.eliza.auth.cloud.CloudKeyRevocation.calls-revocations<=DataReset.AUTOMATIC_ATTEMPTS);
   check(android.app.ActivityManager.calls==clears);check(AlphaDataReset.RESET.pending(app));check(NativeSourceHost.started==0);
   // The recovery process neither stops itself nor starts Alpha's runtime.
   android.app.Application.process="fixture.alpha:reset_recovery";AlphaApplication recovery=new AlphaApplication();recovery.attachBaseContext(app);recovery.onCreate();

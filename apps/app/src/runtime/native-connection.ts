@@ -57,6 +57,14 @@ export const browserConnectionSlot=(slot:unknown):string=>{
   if(typeof slot!=='string'||!slot||slot.length>1024||!/^(remote|cloud|device|cloud-runtime):[^\s]+$/.test(slot))throw new Error('This secure slot is unavailable in the browser.');
   return slot;
 };
+/** Explicit ephemeral port for isolated previews and tests; production webSecrets stays durable-only. */
+export function memorySecretBackend():BrowserSecretBackend{
+  const values=new Map<string,string>();
+  return {
+    async read(slot){return values.get(slot)??null;},
+    async compareExchange(slot,expected,value){if(expected!==undefined&&(values.get(slot)??null)!==expected)return false;if(value===null)values.delete(slot);else values.set(slot,value);return true;},
+  };
+}
 const SECRET_DATABASE='alpha-connection-secrets.v1';
 function idb<T>(request:IDBRequest<T>):Promise<T>{return new Promise((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
 /** IndexedDB values are {iv,data}; the CryptoKey is structured-cloned and never exported. */
@@ -113,6 +121,20 @@ export function indexedDbSecretBackend(factory:IDBFactory=indexedDB,subtle:Subtl
       }
     });},
   };
+}
+/** Private windows can refuse IndexedDB: a durable store that has never answered is replaced by
+ * `fallback` for this page, without claiming persistence. Once the durable store has answered, a
+ * later failure is reported instead: moving to the fallback then would leave the stored secret in
+ * place while a removal (sign-out) or a replacement appeared to succeed, and it would return after
+ * a reload. */
+export function durableSecretsWithFallback(durable:BrowserSecretBackend,fallback:BrowserSecretBackend,slotName:(slot:string)=>string=slot=>slot):BrowserSecretBackend{
+  let degraded=false,answered=false;
+  const use=async<T>(work:(backend:BrowserSecretBackend)=>Promise<T>)=>{
+    if(degraded)return work(fallback);
+    try{const result=await work(durable);answered=true;return result;}
+    catch(error){if(!answered&&error instanceof DOMException&&['InvalidStateError','UnknownError','SecurityError','NotSupportedError'].includes(error.name)){degraded=true;return work(fallback);}throw error;}
+  };
+  return {read:slot=>use(backend=>backend.read(slotName(slot))),compareExchange:(slot,expected,value)=>use(backend=>backend.compareExchange(slotName(slot),expected,value))};
 }
 function webSecrets():BrowserSecretBackend{
   let durable:BrowserSecretBackend|undefined;

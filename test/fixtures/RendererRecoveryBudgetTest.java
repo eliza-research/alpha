@@ -56,6 +56,35 @@ public final class RendererRecoveryBudgetTest {
   check(RendererRecoveryBudget.currentHome(null,null,"alpha",true)&&!RendererRecoveryBudget.currentHome(null,null,"alpha",false),"neither: how the task started");
   // Saturation is retained from the reviewed release: a long crash loop cannot wrap.
   try{RendererRecoveryBudget saturated=new RendererRecoveryBudget();saturated.onLoss(1,true,true,true);java.lang.reflect.Field losses=RendererRecoveryBudget.class.getDeclaredField("lossesInWindow");losses.setAccessible(true);losses.setInt(saturated,Integer.MAX_VALUE);check(saturated.onLoss(2,true,true,true)==ESCAPE,"count overflow reopened crash loop");}catch(Exception failure){throw new AssertionError(failure);}
+  // The launcher surface (HOME) and the assistant surface share the renderer: both report each death.
+  RendererRecoveryBudget shared=new RendererRecoveryBudget();
+  for(int death=1;death<=3;death++){
+   long launcher=shared.deaths(),assistant=shared.deaths();
+   check(shared.onLoss(10_000L+death,true,true,true,launcher)==NOW&&shared.deaths()==death,"the first report counts death "+death);
+   check(shared.onLoss(10_000L+death,false,true,false,assistant)==REBUILD&&shared.deaths()==death,"the hidden assistant's report of death "+death+" spends nothing");
+  }
+  // Only the fourth death in the window is past the budget; counted per activity, the second was.
+  long launcherAt=shared.deaths(),assistantAt=shared.deaths();
+  check(shared.onLoss(10_004L,false,true,true,assistantAt)==LATER,"the fourth death backs the assistant off");
+  check(shared.onLoss(10_004L,true,true,true,launcherAt)==ESCAPE,"and the same death shows the launcher's escape view from its own HOME flag");
+  check(shared.deaths()==4,"four deaths, four counts");
+  // Reports arrive in either order, also after the first activity was already recreated.
+  RendererRecoveryBudget order=new RendererRecoveryBudget();
+  long first=order.deaths(),second=order.deaths();
+  check(order.onLoss(1,false,true,true,second)==NOW&&order.deaths()==1,"the assistant may report first");
+  long recreated=order.deaths();
+  check(order.onLoss(2,true,true,true,first)==NOW&&order.deaths()==1,"the launcher's late report of that death spends nothing");
+  check(order.onLoss(3,false,true,true,recreated)==NOW&&order.deaths()==2,"a WebView created after the death counts its own loss");
+  // A background reclaim is no death: the visible surface's report of the same loss is the one counted.
+  RendererRecoveryBudget reclaim=new RendererRecoveryBudget();
+  long hiddenAt=reclaim.deaths(),shownAt=reclaim.deaths();
+  check(reclaim.onLoss(1,false,false,false,hiddenAt)==REBUILD&&reclaim.deaths()==0,"a hidden reclaim is not counted");
+  check(reclaim.onLoss(1,true,false,true,shownAt)==NOW&&reclaim.deaths()==1,"the visible surface counts it once");
+  check(reclaim.onLoss(2,false,false,false,hiddenAt)==REBUILD&&reclaim.deaths()==1,"a stale hidden reclaim still waits for the next start");
+  // A lone activity: every loss is its own death, exactly as without a creation count.
+  RendererRecoveryBudget alone=new RendererRecoveryBudget();
+  for(int loss=1;loss<=3;loss++)check(alone.onLoss(loss,true,true,true,alone.deaths())==NOW,"a lone activity recovers three times");
+  check(alone.onLoss(4,true,true,true,alone.deaths())==ESCAPE,"then reaches the escape view");
   // Buttons resolve to stock Settings activities, with the documented fallbacks.
   Set<String> all=Set.of("android.settings.SETTINGS","android.settings.HOME_SETTINGS","android.settings.MANAGE_DEFAULT_APPS_SETTINGS");
   check("android.settings.SETTINGS".equals(RendererRecoveryBudget.settingsAction(all::contains)),"Open Android Settings uses ACTION_SETTINGS");

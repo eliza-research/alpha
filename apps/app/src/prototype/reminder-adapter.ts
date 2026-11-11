@@ -131,7 +131,8 @@ export function installReminderAdapter(Component: Bag, views: Bag) {
       }
     } catch {
       if (!this.live || generation !== this.reminderRefreshGeneration) return;
-      this.vset('calendar', {reminderStale:true});
+      // Device calendar rows never wait on the reminder store: they show with the reminders last read.
+      this.vset('calendar', {events:[...(this.nativeCalendarRows || []), ...events(this.reminderRows || [])], reminderStale:true});
       if (this.pendingReminderOpen) {this.pendingReminderOpen = undefined;this.toast("Couldn't open that reminder. Open Calendar to find it.");}
       else if (!this.reminderRefreshFailed) this.toast('Reminders could not refresh. Previously loaded reminders may be out of date.');
       this.reminderRefreshFailed = true;

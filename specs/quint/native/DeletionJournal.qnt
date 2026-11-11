@@ -31,12 +31,14 @@ module DeletionJournal {
   action sourceChanges = s' = s.with("currentRevision", 1 - s.currentRevision)
   action storageFailure = s' = s.with("storageWorks", false)
   action storageRecovers = s' = s.with("storageWorks", true)
+  // Undo of a row that is already undone returns that row again.
   action undo = all {
     s.phase.in(Set("queued", "paused", "undone")), s.owner == s.currentOwner,
     s.phase != "queued" or s.window != "expired", s.storageWorks,
     s' = {phase: "undone", lastUndo: true, ...s}
   }
-  // Admission and durable dispatch intent precede the provider call.
+  // Admission and durable dispatch intent precede the provider call. A changed owner or source
+  // pauses the row before any dispatch; conflict is only ever a provider outcome.
   action claim = all {
     s.phase == "queued", s.window == "expired", s.storageWorks,
     s' = if (s.owner != s.currentOwner or s.targetRevision != s.currentRevision)
@@ -71,7 +73,12 @@ module DeletionJournal {
   val DurableIntentBeforeEffect = s.providerApplied implies s.dispatches == 1
   val ReceiptNeedsDispatch = s.phase.in(Set("deleted", "conflict", "unknown", "dispatching")) implies s.dispatches == 1
   val UnknownNeverRequeued = s.acknowledged implies s.phase.in(Set("unknown", "dispatching"))
-  val safety = SingleDispatch and UndoKeepsSource and DurableIntentBeforeEffect and ReceiptNeedsDispatch and UnknownNeverRequeued
+  val PausedKeepsUndo = (s.phase == "paused" and s.dispatches == 0) implies not(s.providerApplied) and not(s.providerReturned)
+  val PausedBeforeDispatchWitness = s.phase == "paused" and s.dispatches == 0 and s.targetRevision != s.currentRevision
+  val ProviderConflictWitness = s.phase == "conflict"
+  val UndoneWitness = s.lastUndo and s.window == "clock-changed"
+  val AcknowledgedUnknownWitness = s.acknowledged and s.providerApplied
+  val safety = PausedKeepsUndo and SingleDispatch and UndoKeepsSource and DurableIntentBeforeEffect and ReceiptNeedsDispatch and UnknownNeverRequeued
 
   run undoBeforeExpiryTest = init.then(stage).then(undo).then(repeatStage(0, 0))
     .then(check(safety and s.phase == "undone" and s.dispatches == 0))
@@ -82,6 +89,14 @@ module DeletionJournal {
     .then(claim).then(check(safety and s.phase == "paused" and s.dispatches == 0))
   run changedClockKeepsUndoTest = init.then(stage).then(reboot).then(undo)
     .then(check(safety and s.phase == "undone"))
+  run repeatedUndoReturnsUndoneRowTest = init.then(stage).then(undo).then(undo)
+    .then(check(safety and s.phase == "undone" and s.dispatches == 0 and s.lastUndo))
+  // A source that changed during the Undo window is never marked conflict without a dispatch.
+  run changedSourcePausesBeforeDispatchTest = init.then(stage).then(sourceChanges).then(expireWindow)
+    .then(claim).then(check(safety and s.phase == "paused" and s.dispatches == 0))
+    .then(undo).then(check(safety and s.phase == "undone" and not(s.providerApplied)))
+  run providerConflictAfterDispatchTest = init.then(stage).then(expireWindow).then(claim)
+    .then(providerResult("conflict", true)).then(check(safety and s.phase == "conflict" and s.dispatches == 1))
   run permissionFailureKeepsUndoTest = init.then(stage).then(expireWindow).then(claim)
     .then(providerResult("permission-required", true)).then(undo)
     .then(check(safety and s.phase == "undone" and s.dispatches == 1))

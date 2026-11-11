@@ -1,4 +1,6 @@
-// Exact finite probability partition and counters of LiveVadGate.
+// Exact finite probability partition and counters of LiveVadGate. The capture loop calls only
+// accept and speaking; close is the gate's own contract for ending an open segment. A stopped
+// capture drops its gate and a new capture starts with a new one.
 module VadSegmentation {
   type Gate = {
     speaking: bool, above: int, below: int, edge: str,
@@ -59,6 +61,11 @@ module VadSegmentation {
   val safety = CounterBounds and InactiveCounterCleared and OpeningNeedsTwoWindows and
     ClosingNeedsSixteenWindows and CloseReportsPriorState and MidProbabilityResetsSilence
 
+  val OpeningRunWitness = not(s.speaking) and s.above == 1
+  val SpeakingWitness = s.speaking and s.edge == "NONE"
+  val TrailingSilenceWitness = s.speaking and s.below >= 2
+  val ClosedOpenSegmentWitness = s.operation == "close" and s.closeReturned
+
   run exactOpeningThresholdTest = init.then(accept(499)).then(accept(500))
     .then(check(not(s.speaking) and s.above == 1)).then(accept(500))
     .then(check(safety and s.speaking and s.edge == "SPEECH_START"))
@@ -77,4 +84,12 @@ module VadSegmentation {
     .then(check(safety and s.closeReturned)).then(close).then(check(safety and not(s.closeReturned)))
   run closeResetsPartialOpeningTest = init.then(accept(500)).then(close).then(accept(500))
     .then(check(safety and not(s.speaking) and s.above == 1))
+  // The capture stops mid-segment: no gate edge is produced, and a new capture starts closed.
+  run stoppedCaptureStartsClosedTest = init.then(accept(500)).then(accept(500))
+    .then(check(s.speaking)).then(init).then(accept(349))
+    .then(check(safety and not(s.speaking) and s.edge == "NONE")).then(accept(500))
+    .then(check(safety and not(s.speaking) and s.above == 1))
+  run midProbabilityKeepsSegmentOpenTest = init.then(accept(1000)).then(accept(1000))
+    .then(16.reps(_ => accept(350))).then(check(safety and s.speaking and s.below == 0))
+    .then(accept(499)).then(check(safety and s.speaking and s.edge == "NONE"))
 }

@@ -25,6 +25,20 @@ type Pending = {
 	phase: "waiting" | "finishing";
 	code?: string;
 };
+/**
+ * Cancel for a pending authorization. Before the return was received nothing can have completed, so
+ * it is cancelled directly. After it (`finishing`) Cloud's state is read first: a grant Cloud already
+ * holds is adopted, an ended one is cleared, one Cloud is still finishing is left alone, and only
+ * one still waiting (completion never arrived) is cancelled.
+ */
+export function delegationCancelStep(
+	phase: "waiting" | "finishing",
+	status: "settled" | "finishing" | "waiting" | null,
+): "cancel" | "read-status" | "done" {
+	if (phase === "waiting") return "cancel";
+	if (status === null) return "read-status";
+	return status === "waiting" ? "cancel" : "done";
+}
 export function CloudDelegationPanel({
 	client,
 	scope,
@@ -49,11 +63,17 @@ export function CloudDelegationPanel({
 	const [email, setEmail] = useState(true),
 		[calendar, setCalendar] = useState(false),
 		[grantId, setGrantId] = useState("");
+	// Each async continuation belongs to the scope, client and cancellation lifetime of its render.
+	const authority = useRef({ scope, client, signal });
+	if (authority.current.scope !== scope || authority.current.client !== client || authority.current.signal !== signal)
+		authority.current = { scope, client, signal };
+	const owner = authority.current;
+	const lockOwner = useRef(owner);
 	const locked = useRef(false),
 		// A return that arrives while another step holds the lock is read once that step ends.
 		pendingCallback = useRef(false),
 		slot = "cloud-delegation:v1:" + scope;
-	const valid = () => current() && !signal.aborted;
+	const valid = () => authority.current === owner && current() && !signal.aborted;
 	async function clear(expected: Pending) {
 		if (!valid()) throw Error("The connection changed. Reopen this screen.");
 		const result = await secureConnectionStore.compareExchange(
@@ -65,9 +85,10 @@ export function CloudDelegationPanel({
 			throw Error("The connection changed. Reopen this screen.");
 		if (valid()) setPending(null);
 	}
-	async function run(work: () => Promise<void>) {
-		if (locked.current || !valid()) return;
+	async function run(work: () => Promise<unknown>) {
+		if ((locked.current && lockOwner.current === owner) || !valid()) return;
 		locked.current = true;
+		lockOwner.current = owner;
 		setBusy(true);
 		try {
 			await work();
@@ -77,54 +98,60 @@ export function CloudDelegationPanel({
 					"The connection is not confirmed. Check its status before starting another grant.",
 				);
 		} finally {
-			locked.current = false;
-			if (valid()) setBusy(false);
-			if (pendingCallback.current && valid()) {
-				pendingCallback.current = false;
-				void callback();
+			if (lockOwner.current === owner) {
+				locked.current = false;
+				if (valid()) setBusy(false);
+				if (pendingCallback.current && valid()) {
+					pendingCallback.current = false;
+					void callback();
+				}
 			}
 		}
 	}
 	// The native slot keeps the return for this process; drop it once its record is finished.
 	const releaseCallback = (state: string) =>
 		delegationNative.clearDelegationCallback({ state }).catch(() => {});
-	async function recover(record: Pending, allowCompletion = true) {
+	/** Reads Cloud's state for the authorization and applies it. `settled`: it ended (connected, or
+	 * failed and cleared). `finishing` and `waiting` are Cloud's own words for one still pending. */
+	async function recover(
+		record: Pending,
+		allowCompletion = true,
+	): Promise<"settled" | "finishing" | "waiting" | null> {
 		const status = await client.delegation(
 			"status",
 			{ state: record.state },
 			signal,
 		);
-		if (!valid()) return;
+		if (!valid()) return null;
 		if (status.status === "complete" && typeof status.grantId === "string") {
 			await clear(record);
 			await releaseCallback(record.state);
-			if (!valid()) return;
+			if (!valid()) return "settled";
 			setGrantId(status.grantId);
 			setMessage(
 				"Cloud read access is connected. Choose the Google account and source below.",
 			);
 			onConnected();
-			return;
+			return "settled";
 		}
 		if (status.status === "failed") {
 			await clear(record);
 			await releaseCallback(record.state);
-			if (!valid()) return;
+			if (!valid()) return "settled";
 			setMessage(
 				"This authorization expired or was cancelled. Start a new review.",
 			);
-			return;
+			return "settled";
 		}
 		if (status.status === "waiting" && record.code && allowCompletion) {
 			const currentRecord = await secureConnectionStore.read<Pending>(slot);
-			if (!valid() || JSON.stringify(currentRecord) !== JSON.stringify(record)) return;
+			if (!valid() || JSON.stringify(currentRecord) !== JSON.stringify(record)) return null;
 			await client.delegation(
 				"complete",
 				{ state: record.state, code: record.code },
 				signal,
 			);
-			if (valid()) await recover(record, false);
-			return;
+			return valid() ? recover(record, false) : null;
 		}
 		setMessage(
 			status.status === "finishing"
@@ -133,9 +160,27 @@ export function CloudDelegationPanel({
 					? "Authorization completion is not confirmed. Check status again; it will not be retried automatically."
 					: "Finish authorization in the browser, then return here.",
 		);
+		return status.status === "waiting" ? "waiting" : "finishing";
+	}
+	async function cancelPending(record: Pending) {
+		let status: Awaited<ReturnType<typeof recover>> = null;
+		if (delegationCancelStep(record.phase, null) === "read-status") {
+			status = await recover(record, false);
+			if (!valid() || status === null) return;
+		}
+		if (delegationCancelStep(record.phase, status) !== "cancel") return;
+		await client.delegation(
+			"cancel",
+			{ state: record.state, confirmed: true },
+			signal,
+		);
+		await clear(record);
+		await releaseCallback(record.state);
+		if (valid()) setMessage("Authorization cancelled.");
 	}
 	async function callback() {
-		if (locked.current) {
+		if (!valid()) return;
+		if (locked.current && lockOwner.current === owner) {
 			pendingCallback.current = true;
 			return;
 		}
@@ -183,6 +228,14 @@ export function CloudDelegationPanel({
 			if (valid()) await recover(next);
 		});
 	}
+	// A grant, a pending authorization and unfinished revocations belong to the account they were
+	// read for; the effect below reads the new account's own.
+	useEffect(() => {
+		setGrantId("");
+		setPending(null);
+		setRevocations([]);
+		setBusy(false);
+	}, [scope, client, signal]);
 	useEffect(() => {
 		let disposed = false;
         void refreshRevocations().catch(()=>{});
@@ -311,25 +364,14 @@ export function CloudDelegationPanel({
 						Return to authorization
 					</button>
 					<button
-						disabled={busy || pending.phase === "finishing"}
-						onClick={() =>
-							void run(async () => {
-								await client.delegation(
-									"cancel",
-									{ state: pending.state, confirmed: true },
-									signal,
-								);
-								await clear(pending);
-								await releaseCallback(pending.state);
-								if (valid()) setMessage("Authorization cancelled.");
-							})
-						}
+						disabled={busy}
+						onClick={() => void run(() => cancelPending(pending))}
 					>
 						Cancel authorization
 					</button>
 				</>
 			)}
-            {revocations.filter(g=>g.grantId!==grantId).map(g=><div key={g.grantId}><p>Reads are disabled. Cloud disconnect still needs confirmation.</p><button disabled={busy} onClick={()=>void run(async()=>{const result=await client.delegation("revoke",{grantId:g.grantId,confirmed:true},signal);if(!valid())return;await refreshRevocations();if(valid())setMessage(result.remoteRevocation==="confirmed"?"Cloud read access revoked.":"Reads disabled. Retry revocation to finish disconnecting in Cloud.");})}>Retry Cloud disconnect</button></div>)}
+            {revocations.filter(g=>g.grantId!==grantId).map(g=><div key={g.grantId}><p>Reads are disabled. Cloud disconnect still needs confirmation.</p><button disabled={busy} onClick={()=>void run(async()=>{const result=await client.delegation("revoke",{grantId:g.grantId,confirmed:true},signal);if(!valid())return;setMessage(result.remoteRevocation==="confirmed"?"Cloud read access revoked.":"Reads disabled. Retry revocation to finish disconnecting in Cloud.");await refreshRevocations().catch(()=>{/* The revoke outcome above stands; the list is read again on the next open. */});})}>Retry Cloud disconnect</button></div>)}
 			{grantId && (
 				<button
 					disabled={busy}
@@ -347,7 +389,8 @@ export function CloudDelegationPanel({
 									: "Reads disabled. Retry revocation to finish disconnecting in Cloud.",
 							);
 							if (result.remoteRevocation === "confirmed") setGrantId("");
-                            await refreshRevocations();
+							// The revoke outcome above stands when the list cannot be read again.
+							await refreshRevocations().catch(() => {});
 							if (valid()) onConnected();
 						})
 					}

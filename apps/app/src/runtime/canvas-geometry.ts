@@ -45,20 +45,59 @@ export const WIDE_CANVAS = 760;
  */
 export { keyboardFreeHeight };
 
-export function canvasGeometry(input: CanvasInput, freeHeight: number, banner = 0): CanvasGeometry {
+export type CanvasScale = { landscape: boolean; wide: boolean; scale: number };
+// The proof (specs/lemma) reads lengths and the scale as reals, not integers.
+//@ declare-type CanvasInput { width: real, layoutHeight: real, available: real, desktop: boolean, fluid: boolean, launcher: boolean, screenShort: real, editing: boolean }
+//@ declare-type CanvasScale { landscape: boolean, wide: boolean, scale: real }
+
+/**
+ * The numeric decision of canvasGeometry: the arrangement and the scale. Proved for positive
+ * lengths in specs/lemma. Minimum and maximum are written as comparisons because the prover has
+ * no real-valued Math.min/Math.max; they select the same value for every input, NaN included.
+ */
+export function canvasScale(input: CanvasInput, freeHeight: number): CanvasScale {
+  //@ verify
+  //@ type freeHeight real
+  //@ requires input.width > 0 && input.available > 0 && input.screenShort > 0
+  //@ ensures \result.scale > 0
+  //@ ensures \result.landscape <==> !input.desktop && input.width > freeHeight
+  //@ ensures input.desktop ==> !\result.landscape && !\result.wide && \result.scale <= 1
+  //@ ensures input.fluid && !input.launcher ==> \result.scale <= 1
+  //@ ensures input.fluid && !input.launcher && \result.landscape ==> \result.scale === 1
+  //@ ensures !(input.fluid && !input.launcher) && \result.landscape ==> \result.scale >= 0.1
+  //@ ensures \result.wide <==> !input.desktop && input.width >= WIDE_CANVAS * \result.scale
   const { width, available, desktop, fluid, launcher } = input;
   const landscape = !desktop && width > freeHeight;
-  let scale: number;
-  if (desktop) scale = Math.min(1, available / REFERENCE_HEIGHT);
-  else if (fluid && !launcher) scale = landscape ? 1 : Math.min(1, width / REFERENCE_WIDTH);
-  else scale = landscape ? Math.max(0.1, Math.min(width, input.screenShort) / REFERENCE_WIDTH) : width / REFERENCE_WIDTH;
-  const canvasWidth = landscape ? `calc(100vw / ${scale})` : `${fluid && !launcher ? width / scale : REFERENCE_WIDTH}px`;
+  // 1 as a quotient, so the prover types every branch of the scale as a real.
+  const unscaled = REFERENCE_WIDTH / REFERENCE_WIDTH;
+  const fitted = width / REFERENCE_WIDTH, tall = available / REFERENCE_HEIGHT;
+  const short = (width <= input.screenShort ? width : input.screenShort) / REFERENCE_WIDTH;
+  const scale = desktop ? (unscaled <= tall ? unscaled : tall)
+    : fluid && !launcher ? (landscape ? unscaled : unscaled <= fitted ? unscaled : fitted)
+    : landscape ? (0.1 >= short ? 0.1 : short) : fitted;
   const wide = !desktop && width / scale >= WIDE_CANVAS;
+  return { landscape, wide, scale };
+}
+
+/** Space above the canvas: the banner, and the desktop preview's 24px margin. */
+export function canvasTop(banner: number, desktop: boolean): number {
+  //@ verify
+  //@ type banner real
+  //@ type \result real
+  //@ ensures \result >= banner
+  //@ ensures !desktop ==> \result === banner
+  return banner + (desktop ? 24 : 0);
+}
+
+export function canvasGeometry(input: CanvasInput, freeHeight: number, banner = 0): CanvasGeometry {
+  const { width, available, desktop, fluid, launcher } = input;
+  const { landscape, wide, scale } = canvasScale(input, freeHeight);
+  const canvasWidth = landscape ? `calc(100vw / ${scale})` : `${fluid && !launcher ? width / scale : REFERENCE_WIDTH}px`;
   return {
     landscape, wide, scale, width: canvasWidth,
     height: desktop ? REFERENCE_HEIGHT : available / scale,
     left: desktop ? (width - REFERENCE_WIDTH * scale) / 2 : 0,
-    top: banner + (desktop ? 24 : 0),
+    top: canvasTop(banner, desktop),
   };
 }
 

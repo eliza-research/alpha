@@ -259,3 +259,8 @@ new writes by one active PGlite adapter. Existing named rows, independent
 database processes and physical BGE execution have separate evidence
 requirements. `EmbeddingStoreIdentity` retains the unlabelled probe model and
 `CoreEmbeddingDimension` retains the historical translation and counterexamples.
+
+
+## Complementary audit models
+
+The integrated registry also retains the November audit models, witnesses and source symbols. Distinct admission/readback state shapes are registered separately from the current source-correspondence models. Manifest entries state their partial scope; new model execution is not Android, service or device acceptance. The manifests and new run receipts, rather than earlier registry totals, define current coverage.

@@ -101,4 +101,14 @@ module AccessibleToastLifetime {
     .expect(safety and state.message == 1 and state.queued.length() == 2)
     .then(expire).expect(safety and state.message == 2 and state.undo)
     .then(expire).expect(safety and state.message == 3 and not(state.undo))
+
+  val QueuedBehindUndoWitness = state.queued.length() > 0 and state.undo and not(state.held)
+  val QueuedWhileHeldWitness = state.queued.length() > 0 and state.held
+  val ScaledQueuedBehindUndoWitness = state.queued.length() > 0 and state.queued.head().message == 3 and state.scale == 600 and state.duration == 5000
+  run heldUndoOfferStillQueuesTest = init.then(show(1, true)).then(hold).then(show(2, false))
+    .expect(safety and state.held and state.undo and state.queued == [{message: 2, undo: false}] and state.timerDelay == 0)
+    .then(resume).then(expire).expect(safety and state.message == 2 and not(state.undo))
+  run heldUndoOfferRetainsNextUndoTest = init.then(show(1, true)).then(hold).then(show(2, true))
+    .expect(safety and state.message == 1 and state.undo and state.queued == [{message: 2, undo: true}])
+    .then(resume).then(expire).expect(safety and state.message == 2 and state.undo)
 }

@@ -51,6 +51,25 @@ test('a failed handoff says the phone app did not open',async()=>{
  const {views}=mount({status:status('granted'),listRecentCalls:{calls:[call]},dial:()=>{throw Error('no activity');}});await settle();
  views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(views.phone.render({},{}).nativeNotice,'Couldn\'t open the phone app.');
 });
+test('a refresh during a dial handoff keeps the handoff notice and admits no second dial',async()=>{
+ let release;const pending=new Promise(r=>{release=r;});
+ const {views,calls}=mount({status:status('granted'),listRecentCalls:{calls:[call]},dial:()=>pending.then(()=>({status:'handed-off',target:'dialer',handler:null,message:'Your phone app is open with the number.'}))});await settle();
+ views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(views.phone.render({},{}).nativeBusy,true);
+ views.phone.render({},{}).nativeRefresh();await settle();
+ assert.equal(views.phone.render({},{}).nativeBusy,true,'the settled read does not release the handoff latch');
+ views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(calls.filter(([m])=>m==='dial').length,1,'one handoff at a time');
+ release();await settle();const model=views.phone.render({},{});
+ assert.match(model.nativeNotice,/phone app is open/);assert.equal(model.nativeBusy,false);assert.equal(model.nativeRows.length,1);
+});
+test('a handoff result from a showing of Phone that ended is dropped and leaves a later dial alone',async()=>{
+ const releases=[];
+ const {views,shell,calls}=mount({status:status('granted'),listRecentCalls:{calls:[call]},dial:()=>new Promise(r=>releases.push(()=>r({status:'handed-off',target:'dialer',handler:null,message:'Your phone app is open with the number.'})))});await settle();
+ views.phone.render({},{}).nativeRows[0].dial();await settle();
+ shell.view='home';shell.componentDidUpdate();shell.view='phone';shell.componentDidUpdate();await settle();
+ views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(calls.filter(([m])=>m==='dial').length,2);
+ releases[0]();await settle();let model=views.phone.render({},{});assert.equal(model.nativeNotice,'');assert.equal(model.nativeBusy,true,'the earlier result does not release the later handoff');
+ releases[1]();await settle();model=views.phone.render({},{});assert.match(model.nativeNotice,/phone app is open/);assert.equal(model.nativeBusy,false);
+});
 test('Contacts opens only where Contacts is admitted',async()=>{
  const {views}=mount({status:status()});await settle();const opened=[],toasts=[];const api={open:view=>opened.push(view),toast:text=>toasts.push(text)};
  globalThis.mvpViews=[];views.phone.render({},api).nativeContacts();assert.deepEqual(opened,[]);assert.deepEqual(toasts,['Contacts isn\'t available on this phone.']);

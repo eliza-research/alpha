@@ -170,11 +170,15 @@ async function run(model: QuintModel, phase: string, options: string[], expected
 try {
   for (const model of models) {
     const {samples, steps, seed} = quintModelOptions(model, command, overrides);
-    if (['check', 'typecheck'].includes(command) && !await run(model, 'typecheck', ['typecheck', model.path])) continue;
+    if (command === 'typecheck' && !await run(model, 'typecheck', ['typecheck', model.path])) continue;
     if (['check', 'test'].includes(command) && !await run(model, 'scenarios', ['test', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, '--max-samples=1', `--match=^(${model.tests.join('|')})$`])) continue;
     if (['check', 'simulate'].includes(command)) {
       await run(model, 'simulation', ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, `--max-samples=${samples}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
       if (model.additionalProofInit) await run(model, 'additional-init-simulation', ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, `--max-samples=${samples}`, '--max-steps=1', `--init=${model.additionalProofInit}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+      // Every declared witness must be reachable; an unreachable guarded property is not coverage.
+      for (const witness of model.witnesses || []) {
+        await run(model, `witness-${witness}`, ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, `--max-samples=${Math.max(samples, 2000)}`, `--max-steps=${Math.max(steps, 60)}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=not(${witness})`, '--verbosity=1'], 'violation');
+      }
     }
     if (command === 'verify') {
       await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);

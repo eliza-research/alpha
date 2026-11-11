@@ -39,6 +39,8 @@ import { leavePasswordEntry, leavePasswordManager, passwordEntryPage, passwordMa
 type Bag = Record<string, any>;
 type PhotoAccess = {scope:'full'|'partial'|'selected'|'denied';images:string;videos:string};
 const photoLibrary = registerPlugin<{libraryAccess():Promise<PhotoAccess>;requestLibraryAccess():Promise<PhotoAccess>;openLibrarySettings():Promise<void>}>('AlphaPhotos');
+// The prover (specs/lemma) cannot read a constant without a value; no proved function uses it.
+//@ skip
 declare const __APP_VERSION__: string;
 const browserDevProfile = devSurfacesEnabled && devProfileQuery;
 /** Build version injected at build time from app.config.json or ELIZAOS_VERSION_NAME. */
@@ -185,14 +187,41 @@ export function parseUpdateManifest(value: unknown, installed: {versionCode: unk
 }
 /** Fifteen minutes after the last answer, or at once for an unknown/future clock. */
 export function updateCheckDue(checkedAt: number, now: number): boolean {
+  //@ verify
+  //@ ensures \result <==> now < checkedAt || now - checkedAt >= UPDATE_CHECK_INTERVAL_MS
+  //@ ensures now < checkedAt ==> \result
+  //@ ensures !\result ==> 0 <= now - checkedAt && now - checkedAt < UPDATE_CHECK_INTERVAL_MS
   return !(now >= checkedAt && now - checkedAt < UPDATE_CHECK_INTERVAL_MS);
+}
+/** What automaticUpdateIdle reads from the shell, the connection and the page, as plain facts. */
+export type UpdateIdleFacts = {
+  voiceInactive: boolean; home: boolean; view: boolean; voiceOff: boolean; typing: boolean; chatResting: boolean;
+  drawer: boolean; shade: boolean; homeEdit: boolean; homeAdd: boolean; drawerMenu: boolean;
+  busy: boolean; open: boolean; editor: boolean;
+};
+/** The idle decision on plain facts (proved in specs/lemma): any one foreground activity blocks an update. */
+export function updateIdle(facts: UpdateIdleFacts): boolean {
+  //@ verify
+  //@ ensures \result ==> facts.voiceInactive && facts.voiceOff
+  //@ ensures \result ==> facts.home && !facts.view
+  //@ ensures \result ==> !facts.typing && facts.chatResting && !facts.editor
+  //@ ensures \result ==> !facts.drawer && !facts.shade && !facts.drawerMenu
+  //@ ensures \result ==> !facts.homeEdit && !facts.homeAdd
+  //@ ensures \result ==> !facts.busy && !facts.open
+  //@ ensures facts.voiceInactive && facts.voiceOff && facts.home && !facts.view && !facts.typing && facts.chatResting && !facts.editor && !facts.drawer && !facts.shade && !facts.drawerMenu && !facts.homeEdit && !facts.homeAdd && !facts.busy && !facts.open ==> \result
+  return facts.voiceInactive && facts.home && !facts.view && facts.voiceOff && !facts.typing &&
+    facts.chatResting && !facts.drawer && !facts.shade &&
+    !facts.homeEdit && !facts.homeAdd && !facts.drawerMenu &&
+    !facts.busy && !facts.open && !facts.editor;
 }
 /** Field updates wait for Home, outside voice, edits and foreground reviews. */
 export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unknown;drawerMenu?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean, voiceActive: boolean): boolean {
-  return voiceActive === false && shell.screen === 'home' && !shell.view && shell.voice === 'off' && !shell.typing &&
-    (shell.chat === 'input' || shell.chat === 'hidden') && !shell.drawer && !shell.shade &&
-    !shell.homeEdit && !shell.homeAdd && !shell.drawerMenu &&
-    !connection.busy && !connection.open && !editor;
+  return updateIdle({
+    voiceInactive: voiceActive === false, home: shell.screen === 'home', view: !!shell.view, voiceOff: shell.voice === 'off',
+    typing: !!shell.typing, chatResting: shell.chat === 'input' || shell.chat === 'hidden', drawer: !!shell.drawer, shade: !!shell.shade,
+    homeEdit: !!shell.homeEdit, homeAdd: !!shell.homeAdd, drawerMenu: !!shell.drawerMenu,
+    busy: !!connection.busy, open: !!connection.open, editor: !!editor,
+  });
 }
 /** The Privacy page's voice fact: the speech route in use now (voice-selection.ts) and what it sends.
  * It replaces the prototype's on-device model row; device settings links are untouched. */
@@ -204,10 +233,20 @@ export function voicePrivacyRow(label: string, route: SpeechRoute, serviceName =
 }
 /** A stale or direct Developer selection cannot open the page in a product build. */
 export function settingsPage(page: string | null | undefined, developerSurfaces: boolean): string | null | undefined {
+  //@ verify
+  //@ ensures !developerSurfaces ==> \result !== 'developer' && \result !== 'character'
+  //@ ensures developerSurfaces ==> \result === page
+  //@ ensures page !== 'developer' && page !== 'character' ==> \result === page
+  //@ ensures !developerSurfaces && (page === 'developer' || page === 'character') ==> \result === null
   return (page === 'developer' || page === 'character') && !developerSurfaces ? null : page;
 }
+/** The two label fields a Settings navigation row can carry. */
+export type NavigationRow = { label?: string; lbl?: string };
 /** Support diagnostics remain in About; Developer navigation is an explicit development surface. */
-export function settingsNavigationRows<T extends { label?: string; lbl?: string }>(rows: T[], developerSurfaces: boolean): T[] {
+export function settingsNavigationRows<T extends NavigationRow>(rows: T[], developerSurfaces: boolean): T[] {
+  //@ verify
+  //@ ensures developerSurfaces ==> \result === rows
+  //@ ensures !developerSurfaces ==> forall(k, 0 <= k && k < \result.length ==> \result[k].label !== 'Developer' && \result[k].lbl !== 'Developer')
   return developerSurfaces ? rows : rows.filter(row => row.label !== 'Developer' && row.lbl !== 'Developer');
 }
 // settings-facts:end
@@ -253,6 +292,55 @@ function checkForUpdate(force: boolean): Promise<boolean> | undefined {
   return updateCheck;
 }
 
+// settings-reads:begin (dependency-free; exercised by test/comms-settings.test.mjs)
+/** Orders listener status reads against Pause and Turn off. No read starts while an action runs, a read
+ * already in flight is dropped once an action starts, and the action's own result is always applied. */
+export function listenerReadGate() {
+  let busy = false, sequence = 0;
+  return {
+    busy: () => busy,
+    beginAction(): boolean { if (busy) return false; busy = true; sequence++; return true; },
+    endAction() { busy = false; },
+    beginRead(): number | null { return busy ? null : ++sequence; },
+    readApplies(token: number): boolean { return !busy && token === sequence; },
+  };
+}
+/** What a return to the app does to Settings: read the device now when Settings is in front, otherwise
+ * remember that its facts are stale so they are read when Settings is next shown. */
+export function settingsResumeRead(view: unknown): 'now' | 'on-show' { return view === 'settings' ? 'now' : 'on-show'; }
+// settings-reads:end
+/** Which text-size result the page shows. The device applies requests in the order they were issued and
+ * their results arrive in any order. The newest request's result is shown. An older request's result is
+ * held while a newer one is in flight and shown once the newest fails, because it is then the size the
+ * device holds. */
+export function textScaleSettlement() {
+  let held: Record<string, any> | null = null, latest = 0, failed = 0;
+  return {
+    /** The result to show for a request that succeeded, or null to keep what is shown. */
+    applied(token: number, newest: number, result: Record<string, any>): Record<string, any> | null {
+      if (token <= latest) return null;
+      latest = token;
+      if (token === newest || failed === newest) { held = null; return result; }
+      held = result;
+      return null;
+    },
+    /** A request that failed: whether it was the newest, and the held result to show in its place. */
+    rejected(token: number, newest: number): { newest: boolean; show: Record<string, any> | null } {
+      if (token !== newest) return { newest: false, show: null };
+      const show = held;
+      failed = token; held = null;
+      return { newest: true, show };
+    },
+  };
+}
+/** Device facts after a read. A read that overlapped a text-size change may predate it, so the
+ * text size already shown is kept; every other fact comes from the read. */
+export function mergeDeviceFacts(read: Record<string, any>, shown: Record<string, any>, textScaleChanged: boolean): Record<string, any> {
+  if (!textScaleChanged) return read;
+  const next = { ...read };
+  for (const key of ['textScalePercent', 'effectiveTextZoom']) if (key in shown) next[key] = shown[key];
+  return next;
+}
 /** Keep the reference settings components; never present fixture device facts. */
 export function installSettingsAdapter(Component: any, views: Bag) {
   const definition = views.settings, render = definition.render, p = Component.prototype;
@@ -264,7 +352,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if (st.page === 'password-entry' && !st.sheet) { leavePasswordEntry(); api.set({ page: 'password-provider' }); return true; }
     return back?.(st, api) ?? false;
   };
-  let owner: any, facts: Bag = {}, controls: Bag = {}, delivery: Bag = {}, generation = 0,scaleGeneration=0,scaleVersion=0,scalePending=false, cross:Bag={}, choices:Bag[]|null=null, history:Bag[]|null=null, notificationBusy=false;
+  let owner: any, facts: Bag = {}, controls: Bag = {}, delivery: Bag = {}, generation = 0,scaleGeneration=0,scaleVersion=0,scalePending=false,scaleResults=textScaleSettlement(), cross:Bag={}, choices:Bag[]|null=null, history:Bag[]|null=null, notificationBusy=false;
   let passwordOpening=false,photoAccessBusy=false;
   let photoAccess:PhotoAccess|null=null;
   let recovery: RecoveryDomain[] = [];
@@ -311,18 +399,21 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   let inferenceProvider = 'Not reported';
   // The AOSP image's always-on listener (#424): status, Pause and Turn off only. Turning listening on
   // or resuming happens in the listener's own consent screen, never here.
-  let listener: ListenerStatus = { available: false }, listenerBusy = false, listenerSequence = 0;
+  let listener: ListenerStatus = { available: false };
+  const listenerReads = listenerReadGate();
+  // Set when the app resumed behind another view; Settings reads the device when it is next shown.
+  let resumedUnread = false;
   async function listenerAction(api: Bag, action: 'pause' | 'turnOff') {
-    if (listenerBusy) return;
-    listenerBusy = true; changed();
-    const instance = owner, sequence = ++listenerSequence;
+    if (!listenerReads.beginAction()) return;
+    changed();
+    const instance = owner;
     try {
       const next = await (action === 'pause' ? pauseListener() : turnOffListener());
-      if (owner !== instance || sequence !== listenerSequence) return;
+      if (owner !== instance) return;
       listener = next;
       if (!next.available) api.toast('The listener did not respond. Use its notification or Quick Settings tile to stop listening.');
       else if (next.listening) api.toast('Listening has not stopped. Use the listener notification to stop it.');
-    } finally { listenerBusy = false; if (owner === instance) changed(); }
+    } finally { listenerReads.endAction(); if (owner === instance) changed(); }
   }
   const changed = () => owner?.vset('settings', { capabilityReadAt: Date.now() });
   /** Only the existing authenticated local status; no provider/capability refresh. */
@@ -352,10 +443,12 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     try {
       await Promise.allSettled([
         (async () => {
-          // A status read older than a Pause or Turn off never replaces that action's result.
+          // A status read never replaces a Pause or Turn off result: none starts during the action, and an older one is dropped.
           if (!externalVoiceInvocationEnabled) return;
-          const sequence = ++listenerSequence, status = await listenerStatus();
-          if (owner === instance && capabilityAbort === abort && sequence === listenerSequence) listener = status;
+          const read = listenerReads.beginRead();
+          if (read === null) return;
+          const status = await listenerStatus();
+          if (owner === instance && capabilityAbort === abort && listenerReads.readApplies(read)) listener = status;
         })(),
         (async () => {
           if (!browserLocalAgentEnabled) return;
@@ -478,9 +571,12 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if(owner===instance&&busy==='check')updateResult=answered===false?'Couldn’t check for updates. Try again.':parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner})?'A compatible update is ready below.':'No compatible update was offered.';
     } finally { if(owner===instance){updateBusy = ''; changed();} }
   }
+  // Show a text-size result on the instance that requested it.
+  const showTextScale=(instance:any,result:Bag|null)=>{if(result&&owner===instance){facts={...facts,...result};instance?.vset('settings',{nativeReadAt:Date.now()});}};
   async function refresh() {
     const instance = owner, token = ++generation, scaleAtRead = scaleVersion;
     if (!instance) return;
+    resumedUnread = false;
     const native = Capacitor.isNativePlatform();
     const [state, settings, noticeState, crossState, metadata, roleState, build, problems, photos] = await Promise.allSettled([device.snapshot(), system.getDeviceSettings(), notifications.status(), notifications.crossAppStatus(), history===null?Promise.resolve(null):notifications.notificationHistory(),
       // Browsers have no Android roles: the web plugin rejects, so nothing is shown there.
@@ -513,12 +609,16 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     scalePending=true;
     try {
       const result=await device.setTextScale({percent});
-      if(owner!==instance||token!==scaleGeneration)return;
-      scalePending=false;++scaleVersion;facts={...facts,...result};
-      instance.vset('settings',{nativeReadAt:Date.now()});
+      if(owner!==instance)return;
+      if(token===scaleGeneration){scalePending=false;++scaleVersion;}
+      const shown=scaleResults.applied(token,scaleGeneration,result);
+      if(shown){if(token!==scaleGeneration)++scaleVersion;showTextScale(instance,shown);}
     } catch {
-      if(owner!==instance||token!==scaleGeneration)return;
+      if(owner!==instance)return;
+      const failure=scaleResults.rejected(token,scaleGeneration);
+      if(!failure.newest)return;
       scalePending=false;++scaleVersion;
+      showTextScale(instance,failure.show);
       api.toast('Text size could not be saved.');
       void refresh();
     }
@@ -559,7 +659,13 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     });
     this.googleAccountsChanged=()=>void refreshCapabilities();
     window.addEventListener(GOOGLE_ACCOUNTS_CHANGED,this.googleAccountsChanged);
-    this.deviceResume = DailyApps.addListener('appResumed', () => { void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed); automaticUpdateActive(); }).catch(() => null);
+    this.deviceResume = DailyApps.addListener('appResumed', () => {
+      void checkForUpdate(false)?.then(changed); automaticUpdateActive();
+      if (settingsResumeRead(this.S?.().view) === 'now') { void refresh(); void refreshCapabilities(); return; }
+      // Behind another view only the provider status is read; the device facts wait until Settings is shown.
+      resumedUnread = true; void refreshCapabilities();
+      if (Capacitor.isNativePlatform()) void connectionController.refreshProviderStatus();
+    }).catch(() => null);
   };
   p.componentDidUpdate = function (previousProps: Bag, previousState: Bag) {
     update?.call(this, previousProps, previousState);
@@ -578,7 +684,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     reviews.cancelAll();
     automaticUpdates?.dispose(); automaticUpdates = undefined;
     document.removeEventListener('visibilitychange',automaticUpdateActive);
-    if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; ++scaleGeneration; ++scaleVersion; scalePending=false; updateBusy=''; updateResult=''; facts = {}; controls = {}; delivery = {}; cross={}; choices=null; history=null; roles=null; crashLog=null; }
+    if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; ++scaleGeneration; ++scaleVersion; scalePending=false; scaleResults=textScaleSettlement(); updateBusy=''; updateResult=''; facts = {}; controls = {}; delivery = {}; cross={}; choices=null; history=null; roles=null; crashLog=null; }
     window.removeEventListener('alpha:settings-page',this.settingsNavigation);
     window.removeEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
     window.removeEventListener('storage',this.appearanceStorageListener);
@@ -589,7 +695,14 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     this.passwordLifecycle?.();
     void this.deviceResume?.then((listener: any) => listener?.remove()); unmount.call(this);
   };
+  // Settings shown again after a resume behind another view reads the device facts it skipped.
+  const appearanceUpdate = p.componentDidUpdate;
+  p.componentDidUpdate = function (...args: any[]) {
+    appearanceUpdate.apply(this, args);
+    if (resumedUnread && owner === this && this.S?.().view === 'settings') { void refresh(); void refreshCapabilities(); }
+  };
   p.openView = function (key: string, ...args: any[]) {
+    if (key === 'settings') resumedUnread = false;
     const result = openView.call(this, key, ...args);
     if (key === 'settings') { void refresh(); void refreshCapabilities(true); }
     return result;
@@ -648,7 +761,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if (!listener.available) return [info('Wake word', 'Not available')];
       const status = listener;
       return [
-        info('Always-on listening', listenerBusy ? 'Updating…' : status.label),
+        info('Always-on listening', listenerReads.busy() ? 'Updating…' : status.label),
         ...(status.listening || status.microphoneOpen ? [action('Pause listening', () => void listenerAction(api, 'pause'))] : []),
         ...(status.consented && status.state !== 'OFF' ? [action('Turn off listening', () => void listenerAction(api, 'turnOff'))] : []),
         action('Listening settings', () => void openListenerSettings().then(opened => { if (!opened) api.toast('The listener settings are unavailable.'); })),

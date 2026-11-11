@@ -4,7 +4,7 @@ import {HOME_DEFAULTS} from './model.js';
 import {browserStorageUsage} from '../browser/storage-usage';
 import {browserDevProfile} from '../browser/dev-profile';
 import {formatFullDate} from './locale-time';
-import {homeCalendarEmptyTitle, homeCalendarName, homeCalendarValues, homeReadIsStale, presentHomeAgendaCard, presentHomeAttention, presentHomeBrief, presentHomeBriefCard, presentHomeCalendarSource, selectHomeAgenda, type HomeAgendaCardInput, type HomeAttentionSummary, type HomeBriefSummary} from './home-cards';
+import {createHomeAgenda, createStorageAccessCheck, homeCalendarEmptyTitle, homeCalendarName, homeCalendarValues, homeReadIsStale, presentHomeAgendaCard, presentHomeAttention, presentHomeBrief, presentHomeBriefCard, presentHomeCalendarSource, type HomeAgendaCardInput, type HomeAttentionSummary, type HomeBriefSummary} from './home-cards';
 type Bag = Record<string, any>;
 const installed = new WeakSet<object>();
 
@@ -86,20 +86,11 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
     // The app calendar can be hidden in Calendar's display settings; Calendar then leaves its events
     // out, and so does Home. Device calendars have no in-app toggle. Reminders are not affected.
     const calendarHidden = !!calendarSource && !calendarSource.native && (calendarSource.sources || []).some((source: Bag) => source.id === 'local' && source.on === false);
-    const candidates = (calendarState.events || [])
-      .filter((event: Bag) => event.reminderStatus !== 'completed')
-      .filter((event: Bag) => !event.alphaCalendarId || (calendarSource?.ready && !calendarHidden))
-      .map((event: Bag) => {
-        const instant=(value:number)=>{const date=new Date(value);return event.nativeEvent?.allDay?new Date(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate()).getTime():Number(value);};
-        return {item:event,begin:instant(event.nativeEvent?.begin??event.reminderAt),end:instant(event.nativeEvent?.end??event.reminderAt),allDay:!!event.nativeEvent?.allDay};
-      })
-      // Overdue reminders (reminder adapter's overdueReminders()) stay on Home until handled.
-      .concat(overdueRows.map((row: Bag) => ({item: {id: row.id, title: row.title, off: row.off, overdue: true} as Bag, begin: Number(row.at), end: Infinity, allDay: false, overdue: true})));
-    // Shared agenda selection: an overdue reminder is first even when an event already in progress
-    // began before it was due, and the next item that is not overdue still shows on its own line.
-    const selection = selectHomeAgenda<Bag>(candidates, now);
-    const agenda = selection.agenda ? {...selection.agenda, event: selection.agenda.item} : undefined;
-    const following = selection.following ? {...selection.following, event: selection.following.item} : undefined;
+    // Shared agenda selection: overdue reminders (reminder adapter's overdueReminders()) stay on Home
+    // until handled, first even when an event already in progress began before one was due, and the
+    // next item that is not overdue still shows on its own line. This runs on every shell render, so
+    // the candidates are built once per event list and chosen again only when an item ends.
+    const {agenda, following} = homeAgenda({events: calendarState.events || NO_EVENTS, overdue: overdueRows, calendarShown: !!calendarSource?.ready && !calendarHidden, now});
     const cardState = calendarSource?.loading ? 'loading' : calendarSource?.ready ? 'ready' : 'error';
     // The calendar adapter may report its read time; otherwise the first render that sees the
     // loaded rows stands in for it (both are reads from this device, never a sync claim).
@@ -187,6 +178,9 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
   };
 }
 let calendarReadRows: unknown, calendarReadAt: number | null = null;
+const NO_EVENTS: Bag[] = [], homeAgenda = createHomeAgenda();
+// Whether saving works in this browser; the synchronous storage read is not repeated on every render.
+const storageAccessible = createStorageAccessCheck(() => { if (!window.indexedDB) throw Error(); window.localStorage.getItem('alpha.appearance.v1'); });
 let reminderReadRows: unknown, reminderReadAt: number | null = null;
 
 export const HOME_SOURCES_CHANGED = 'alpha:home-sources-changed';
@@ -231,7 +225,7 @@ export function installPrototypeHomeBindings(Component: any) {
   p.renderVals = function () {
     const out = render.call(this);
     let storageAccessWarning='';
-    if(!Capacitor.isNativePlatform())try{if(!window.indexedDB)throw Error();window.localStorage.getItem('alpha.appearance.v1');}catch{storageAccessWarning='Saving is unavailable. Changes may not be saved. Check your browser’s storage settings and reload.';}
+    if(!Capacitor.isNativePlatform()&&!storageAccessible()){storageAccessWarning='Saving is unavailable. Changes may not be saved. Check your browser’s storage settings and reload.';}
     const activeView=this.S().view||'home';
     const chatModal=out.panelPE==='auto'&&this.S().chat==='full';
     const attention = mockAttentionRows();

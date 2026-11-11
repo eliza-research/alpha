@@ -5,8 +5,8 @@ test.beforeEach(async({page})=>{
  await page.goto('/?mode=dev');
 });
 
-for(const change of ['lock','same-occurrence edit','new occurrence','source reset','alerts disabled'])test(`a held reminder dismissal rejects after ${change}`,async({page})=>{
- const result=await page.evaluate(async change=>{
+for(const mode of ['single','batch'])for(const change of ['lock','same-occurrence edit','new occurrence','source reset','alerts disabled'])test(`a held ${mode} reminder dismissal rejects after ${change}`,async({page})=>{
+ const result=await page.evaluate(async({change,mode})=>{
   const {BrowserDaily}=await import('/src/browser/daily.ts');
   const {BrowserNotifications}=await import('/src/browser/notifications.ts');
   const {reminderDocument}=await import('/src/browser/reminder-store.ts');
@@ -16,15 +16,16 @@ for(const change of ['lock','same-occurrence edit','new occurrence','source rese
   const old=(await notices.list()).items[0];
   let release!:()=>void,entered!:()=>void;
   const waiting=new Promise<void>(resolve=>{entered=resolve;}),gate=new Promise<void>(resolve=>{release=resolve;});
-  const original=daily.dismissReminderNotice?.bind(daily);
+  const method=mode==='batch'?'dismissReminderNotices':'dismissReminderNotice';
+  const original=daily[method]?.bind(daily);
   // Pause after the exact list check, before admission to the authoritative reminder transaction.
-  if(original)daily.dismissReminderNotice=async(...args)=>{entered();await gate;return original(...args);};
+  if(original)(daily as any)[method]=async(...args:any[])=>{entered();await gate;return (original as any)(...args);};
   else{
    const {notificationDocument}=await import('/src/browser/notification-store.ts');
    const edit=notificationDocument.edit.bind(notificationDocument);
    notificationDocument.edit=async(...args)=>{notificationDocument.edit=edit;entered();await gate;return edit(...args);};
   }
-  const dismiss=notices.dismiss(old).then(()=>true,()=>false);
+  const dismiss=mode==='batch'?notices.clear({items:[old]}).then(result=>result.outcomes[0].status==='requested',()=>false):notices.dismiss(old).then(()=>true,()=>false);
   // Old source never reaches the guard. Race its settlement so the regression fails promptly there.
   const held=await Promise.race([waiting.then(()=>true),dismiss.then(()=>false)]);
   if(!held)return {held,accepted:await dismiss};
@@ -49,7 +50,7 @@ for(const change of ['lock','same-occurrence edit','new occurrence','source rese
   await notices.dismiss(current);
   const stored=await reminderDocument.read(initial);
   return {held,accepted,hadMarker:!!(after.reminders[0] as any).noticeDismissedOccurrence,stillVisible:!!current,visibleAfter:(await notices.list()).items.length,retainedStatus:stored.reminders[0].status};
- },change);
+ },{change,mode});
  expect(result).toEqual({held:true,accepted:false,hadMarker:false,stillVisible:true,visibleAfter:0,retainedStatus:'posted'});
 });
 

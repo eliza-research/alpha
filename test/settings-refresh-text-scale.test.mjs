@@ -16,7 +16,7 @@ function fixture(){
   const owner={vset:(view,value)=>publications.push({view,value})};
   const context=vm.createContext({
     owner,facts:{},controls:{},delivery:{},cross:{},roles:null,launcher:null,crashLog:null,photoAccess:null,
-    history:null,generation:0,scaleGeneration:0,scaleVersion:0,scalePending:false,
+    history:null,generation:0,scaleGeneration:0,scaleVersion:0,scalePending:false,scaleResults:null,
     Capacitor:{isNativePlatform:()=>true},developerTools:false,
     device:{snapshot:()=>{const read=deferred();reads.push(read);return read.promise;},setTextScale:({percent})=>{const write=deferred();writes.push({...write,percent});return write.promise;}},
     system:{getDeviceSettings:async()=>({volumes:[{stream:'music',value:6}]}),getStatus:async()=>({home:{held:true}}),getBuildInfo:async()=>({launcher:true})},
@@ -25,7 +25,9 @@ function fixture(){
     connectionController:{refreshProviderStatus:async()=>({configured:true})},
     readRoles:value=>value,refreshPasswordManager(){},Date,
   });
-  vm.runInContext(actual+';globalThis.current={refresh,changeTextScale};',context);
+  const helper=source.slice(source.indexOf('export function textScaleSettlement('),source.indexOf('/** Device facts after a read.'));
+  const show=source.slice(source.indexOf('  const showTextScale='),source.indexOf('  async function refresh() {'));
+  vm.runInContext(stripTypeScriptTypes(helper).replace('export function','function')+';scaleResults=textScaleSettlement();'+stripTypeScriptTypes(show)+actual+';globalThis.current={refresh,changeTextScale};',context);
   const api={toast:message=>notices.push(message)};
   return {context,reads,writes,notices,publications,refresh:()=>context.current.refresh(),scale:percent=>context.current.changeTextScale(percent,api)};
 }
@@ -72,4 +74,26 @@ test('a failed write rereads native facts instead of leaving initial facts retir
   assert.equal(f.context.facts.model,'Current read');
   assert.equal(f.context.facts.textScalePercent,100);
   assert.deepEqual(plain(f.context.roles),{home:{held:true}});
+});
+
+
+test('a late successful older write is shown after the newest write fails without losing fresh device facts',async()=>{
+  const f=fixture(),first=f.scale(115),second=f.scale(130);
+  f.writes[1].reject(Error('Newest write refused'));await second;
+  assert.equal(f.reads.length,1);
+  f.writes[0].resolve({textScalePercent:115,effectiveTextZoom:115});await first;
+  f.reads[0].resolve({textScalePercent:100,effectiveTextZoom:100,batteryPercent:63});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(plain(f.context.facts),{textScalePercent:115,effectiveTextZoom:115,batteryPercent:63});
+  assert.deepEqual(f.notices,['Text size could not be saved.']);
+});
+
+test('an older successful write held during a newer request is recovered when that request fails',async()=>{
+  const f=fixture(),first=f.scale(115),second=f.scale(130);
+  f.writes[0].resolve({textScalePercent:115,effectiveTextZoom:115});await first;
+  assert.equal(f.publications.length,0);
+  f.writes[1].reject(Error('Newest write refused'));await second;
+  assert.equal(f.context.facts.textScalePercent,115);
+  assert.equal(f.context.scalePending,false);
+  assert.equal(f.publications.length,1);
 });

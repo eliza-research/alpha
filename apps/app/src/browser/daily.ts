@@ -49,14 +49,24 @@ export class BrowserDaily extends WebPlugin {
   async undoDeletion(id:string){return reminderDocument.edit(initial,data=>undoReminderDeletion(data,id,browserDeletionOwnerVisible));}
   async notifyReminder(id:string,occurrenceId:string){await this.notifyListeners('reminderOpened',{id,occurrenceId});}
   async dismissReminderNotice(input:{id:string;revision:string},signal:AbortSignal,current:()=>boolean){
-    await reminderDocument.edit(initial,async data=>{
+    const dismissed=await this.dismissReminderNotices([input],signal,current);
+    if(dismissed.length!==1)throw Error('Notification changed.');
+  }
+  /** Validate and dismiss exact reminder occurrences in one source-owned edit. */
+  async dismissReminderNotices(inputs:readonly {id:string;revision:string}[],signal:AbortSignal,current:()=>boolean){
+    return reminderDocument.edit(initial,async data=>{
       if(!current()||noticeActionBlocked()||!await notificationsAllowed(signal))throw Error('Notification changed.');
       signal.throwIfAborted();
-      const row=data.reminders.find(row=>row.id===input.id);
-      if(!current()||noticeActionBlocked()||!row?.occurrenceId||row.pendingDeletion||row.status!=='posted'||
-        row.noticeDismissedOccurrence===row.occurrenceId||reminderNoticeRevision(target(data,row))!==input.revision)throw Error('Notification changed.');
-      // The notice receipt lives beside its exact occurrence, so a reminder edit cannot race it.
-      row.noticeDismissedOccurrence=row.occurrenceId;
+      if(!current()||noticeActionBlocked())throw Error('Notification changed.');
+      const dismissed:{id:string;revision:string}[]=[],claimed=new Set<string>();
+      for(const input of inputs){
+        const row=data.reminders.find(row=>row.id===input.id);
+        if(claimed.has(input.id)||!row?.occurrenceId||row.pendingDeletion||row.status!=='posted'||
+          row.noticeDismissedOccurrence===row.occurrenceId||reminderNoticeRevision(target(data,row))!==input.revision)continue;
+        row.noticeDismissedOccurrence=row.occurrenceId;
+        claimed.add(input.id);dismissed.push(input);
+      }
+      return dismissed;
     },signal);
   }
   async surfaceInfo(){return {developmentBuild:devSurfacesEnabled,assistant:false,reminderCreationVersion:1 as const,reminderTimingVersion:2 as const,topInset:0,bottomInset:0};}

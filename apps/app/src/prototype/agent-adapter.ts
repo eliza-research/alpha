@@ -252,6 +252,11 @@ export async function declineProposal(id:string):Promise<{ok:boolean;message:str
   if(after.error)return {ok:false,message:after.error};
   return {ok:true,message:'Declined. No phone action was performed.'};
 }
+/**
+ * The composer is measured again only when its text or width changed since it was last sized, or
+ * when a render put back a height other than the one sizing set.
+ */
+export function composerNeedsSizing(sized:{value:string;width:number;height:string}|undefined,value:string,width:number,height:string){return !sized||sized.value!==value||sized.width!==width||sized.height!==height;}
 export function installAgentAdapter(Component: Shell, views: Shell) {
   const p = Component.prototype;
   let activeShell:Shell|null=null,notesRecovery:AbortController|null=null;
@@ -277,9 +282,15 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   // Navigation resets transient view state, but must retain the actual storage receipt.
   views.notes.persist = [...new Set([...(views.notes.persist || []), 'storageStatus'])];
 
+  // Sizing writes a height and reads scrollHeight, which lays the page out twice. Every update of
+  // the shell runs this (each streamed reply chunk included), so an unchanged composer is skipped.
+  const sizedComposers=new WeakMap<HTMLTextAreaElement,{value:string;width:number;height:string}>();
   function sizeComposer(){
     for(const input of document.querySelectorAll<HTMLTextAreaElement>('textarea[data-alpha-composer]')){
+      const value=input.value,width=input.clientWidth;
+      if(!composerNeedsSizing(sizedComposers.get(input),value,width,input.style.height))continue;
       input.style.height='44px';input.style.height=`${Math.max(44,input.scrollHeight)}px`;
+      sizedComposers.set(input,{value,width,height:input.style.height});
     }
   }
   const notesDataset=(name:'notesStorageState'|'notesDraftState',value:string)=>{document.documentElement.dataset[name]=value;};
@@ -728,7 +739,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           })}));
         }).catch(()=>this.toast('Saved attachments could not load. Try reopening this conversation.'));
 
-        alphaClient.disconnect();
+        // Same agent session: approvals already dispatched stay consumed across the reload.
+        alphaClient.disconnect({keepConsumed:true});
         if (this.live) this.setState((previous:Shell)=>{
           if(!this.live||connectionController.getSnapshot().history!==history)return null;
           const messages=history.messages.map(message => ({ ...message, messageBinding:message.deviceReceipt?undefined:{conversationId:history.conversationId,session:connectionController.getSnapshot().session}, card:null }));
@@ -1641,7 +1653,10 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const sendBinding=()=>JSON.stringify([connectionController.getSnapshot().session,connectionController.getSnapshot().history?.conversationId,connectionController.getCloudEnvironment?.(),connectionController.getCloudClient()?.sessionId,connectionController.getCloudClient()?.credentialId]);
     if(this.stopVoiceConversation)context(this);const expectedContext=JSON.stringify(alphaClient.getState().context);
     const binding=this.stopVoiceConversation?sendBinding():undefined,draft=String(before.draft||''),view=before.view;
-    const retiring=this.stopVoiceConversation?.();if(retiring){await retiring;context(this);const now=this.S();if(JSON.stringify(alphaClient.getState().context)!==expectedContext||!this.live||document.hidden||connectionController.getSnapshot().open||sendBinding()!==binding||now.view!==view||String(now.draft||'')!==draft||this.messageReplyTarget!==reply||this.messageEditTarget!==edit)return;}
+    // A typed message first stops the voice surface and waits for its media to stop. Text needs
+    // no microphone: a stop that could not be confirmed keeps voice closed (the voice surface says so)
+    // but never withholds the message.
+    const retiring=this.stopVoiceConversation?.();if(retiring){try{await retiring;}catch{}context(this);const now=this.S();if(JSON.stringify(alphaClient.getState().context)!==expectedContext||!this.live||document.hidden||connectionController.getSnapshot().open||sendBinding()!==binding||now.view!==view||String(now.draft||'')!==draft||this.messageReplyTarget!==reply||this.messageEditTarget!==edit)return;}
     let s = this.S(); const text = String(argument ?? s.draft);
     if (!text.trim() || s.typing || this.draftSendPending || this.composerDraft?.holding) return;
     // A prompt sent from elsewhere (a suggestion, a Calendar decision, a reviewed email) is not the
@@ -1860,7 +1875,11 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         }
       }
     }
-    finally { if(this.sendAttempt===attempt){this.sendAttempt=null;if(this.live)this.setState({typing:false,turnStatus:''});} }
+    finally { if(this.sendAttempt===attempt)this.sendAttempt=null;
+      // A session change or history reload cancels this send and lets the next one start while this
+      // one is still settling: the indicator then belongs to that newer send or voice turn.
+      if (this.live&&!this.sendAttempt&&this.voiceSendTurnId===undefined) this.setState({ typing: false, turnStatus: '' });
+    }
   };
   p.agentSay = function (text: string, card?: Shell, identity?:{id?:string;messageBinding?:{conversationId:string;session:unknown};deviceReceipt?:true},current?:()=>boolean) {
     this.setState((previous: Shell) => {

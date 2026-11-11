@@ -17,6 +17,7 @@ import {inboxAdapterBindings, InboxFixtureShell, installInboxFixture, last, load
 type Action = () => void;
 type SearchCall = {query: string; size: number; pageToken: string | null};
 type Mail = ReturnType<typeof mail>;
+let accountReads=0;
 let session='account-a', agent='remote-a', delayAccounts=true, delay=false, connected=true, readGrant=true, inboxActive=true;
 const pending: {search?: Action; accounts?: Action} = {};
 const release = (kind: keyof typeof pending) => {
@@ -33,7 +34,7 @@ const revisions: Record<string, string[] | undefined> = {};
 const pages: Record<string, Mail[][]> = {'in:inbox':[[fixtureMail('mail-1',{unread:true}),fixtureMail('mail-2')],[fixtureMail('mail-2'),fixtureMail('mail-3')]],'in:sent':[[fixtureMail('sent-1',{to:['friend@example.invalid']})]],'from:fixture':[[fixtureMail('mail-1')]]};
 let providerBody='Fixture body';
 const client={
- gmailAccounts:async()=>{if(delayAccounts)await new Promise<void>(resolve=>{pending.accounts=resolve;});return [{connectionId:'grant-a',label:'Fixture account',connected,grantedCapabilities:connected&&readGrant?['google.gmail.triage']:[]}];},
+ gmailAccounts:async()=>{accountReads++;if(delayAccounts)await new Promise<void>(resolve=>{pending.accounts=resolve;});return [{connectionId:'grant-a',label:'Fixture account',connected,grantedCapabilities:connected&&readGrant?['google.gmail.triage']:[]}];},
  gmailSearch:async(_grant: string,query: string,_signal: AbortSignal,size: number,pageToken?: string)=>{searches.push({query,size,pageToken:pageToken??null});if(failNext){const error=failNext;failNext=null;throw error;}
   const list=pages[query]||[[]],index=pageToken?Number(pageToken.slice(5)):0,result={messages:list[index]||[],syncedAt:'revision',nextPageToken:index+1<list.length?'page-'+(index+1):null,...(revisions[query]?.[index]?{mailboxHistoryId:revisions[query][index]}:{})};
   if(delay)return new Promise(resolve=>{pending.search=()=>resolve(result);});return result;},
@@ -263,7 +264,7 @@ const priorSnapshot=controller.getSnapshot;controller.getSnapshot=()=>{
 };
 const {shell: reloaded, render: reloadInbox} = inboxFixture();
 reloaded.componentDidMount();
-const searchesBeforeRestore=searches.length;
+const searchesBeforeRestore=searches.length,accountReadsBeforeRestore=accountReads;
 const priorRestoreClock=Date.now;Date.now=()=>restoreNow;
 reloadInbox();await tick();
 assert.equal(reloadInbox().rows.length,1,'cached Inbox renders after reload');
@@ -273,7 +274,8 @@ assert.equal(homeValues(reloaded).homeInboxStatus,`Fixture account · Updated ${
 assert.equal(sandbox.inboxAttention().updatedAt,new Date(cachedAt).toISOString(),'restore preserves the exact original read timestamp');
 Date.now=priorRestoreClock;
 assert.equal(searches.length,searchesBeforeRestore,'fresh retained snapshot needs no provider read to populate Home');
-assert.equal(backgroundSelections.length,selectionsBeforeReload,'cold-start hydration neither withdraws nor reconfigures native background checks');
+assert.ok(accountReads>accountReadsBeforeRestore,'a saved mailbox is revalidated against current account grants');
+assert.deepEqual(backgroundSelections.slice(selectionsBeforeReload).map(selection=>selection?.grantId),['grant-a'],'grant revalidation keeps the same native background account');
 reloaded.componentWillUnmount();
 console.log('PASS: Reloaded Inbox cache also restores Home subjects/count/time without a provider read.');
 

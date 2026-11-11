@@ -147,7 +147,7 @@ export function leavePasswordManager() {
 
 export function passwordManagerLifecycle(changed: () => void) {
   notify = changed;
-  const hidden = () => { if (document.hidden) { leavePasswordManager(); notify(); } };
+  const hidden = () => { if (document.hidden) leavePasswordManager(); notify(); };
   document.addEventListener('visibilitychange', hidden);
   window.addEventListener('pagehide', leavePasswordManager);
   return () => { document.removeEventListener('visibilitychange', hidden); window.removeEventListener('pagehide', leavePasswordManager); leavePasswordManager(); };
@@ -217,7 +217,7 @@ export function passwordManagerGroups(helpers: Helpers): Bag[] {
       void run('reset', async (v, current) => {
         const reviewedNow = () => current() && damaged && confirmReset === reviewed && generation === reviewed;
         if (!reviewedNow()) return;
-        await v.unlock(); if (!reviewedNow()) return;
+        await v.unlock(); if (!reviewedNow()) { if (confirmReset === reviewed) confirmReset = null; await v.lock().catch(() => {}); return; }
         await v.reset(); if (!current()) return;
         damaged = false; confirmReset = null; notice = 'Saved passwords were deleted. You can add new ones.'; await refresh();
       });

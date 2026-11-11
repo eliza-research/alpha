@@ -321,7 +321,9 @@ function writePlanAdmission(record: PlanAdmissionRecord | null) { try { if (reco
  * an outage or a response Alpha did not understand. */
 function signInRefused(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
-  const { status, code } = error as { status?: unknown; code?: unknown };
+  const { status, code, source } = error as { status?: unknown; code?: unknown; source?: unknown };
+  // The on-device agent's own 401 (LocalAgentProtocol marks its source) is its owner session, never the Cloud sign-in.
+  if (source === 'local-agent') return false;
   return status === 401 || code === 'expired' || (error instanceof CloudProtocolError && error.code === 'http' && error.status === 403);
 }
 /** A newer sign-in replaced the one a step was for; not a refusal of either. */
@@ -893,7 +895,7 @@ function errorMessage(error: unknown): string {
   if (error instanceof DOMException && error.name === 'AbortError') return 'Connection cancelled.';
   if (error instanceof EntitlementError && error.code === 'account-mismatch') return `${cloudServiceName(cloud.environment)} returned plan status for a different account. Sign in again.`;
   // Production phones have no pairing to fall back on: an expired session is a Cloud sign-in.
-  if (error && typeof error === 'object' && 'status' in error && error.status === 401) return !testMocksEnabled ? residentSignInExpired() : 'Your session has expired. Sign in or pair again.';
+  if (error && typeof error === 'object' && 'status' in error && error.status === 401 && (error as { source?: unknown }).source !== 'local-agent') return !testMocksEnabled ? residentSignInExpired() : 'Your session has expired. Sign in or pair again.';
   if (error && typeof error === 'object' && 'status' in error && error.status === 503) return 'The agent is starting or temporarily unavailable. Try again shortly.';
   // Cloud's own protocol codes never reach the owner as "Cloud http (403)".
   if (error instanceof CloudProtocolError) {
@@ -1018,7 +1020,11 @@ async function manageProviderKey(action:'edit'|'remove'|'reveal',key:LocalProvid
   if(action!=='reveal')try{changed=await localProviderStatus();}catch{}
   throw Error(action==='reveal'?'Couldn’t show this key. Try again.':'Couldn’t confirm this change. Check your keys before trying again.');
  }finally{
-  if(operation===controller){operation=null;update({busy:false,backgroundWork:false,message:'',...(changed?{providerStatus:changed,providerStatusError:false}:{})});}
+  // Releasing the slot services a rebind or sign-in return that arrived behind this request.
+  if(operation===controller){
+   operation=null;update({busy:false,backgroundWork:false,message:'',...(changed?{providerStatus:changed,providerStatusError:false}:{})});
+   runQueuedResidentRebind();runQueuedSignInReturn();scheduleResidentAutoRetry();
+  }
  }
 }
 /** P-43: a startup path that ended without any agent (a Cloud account check that returned early, or
@@ -1043,7 +1049,10 @@ function activate(next: Active, session: VerifiedSession, name: string) {
   conversationMemory.clear();
   cancelStoppedReply();
   for(const request of appRequests)request.abort(new DOMException('The connection changed','AbortError'));
-  epoch++; sending?.abort(new DOMException('The connection changed.', 'AbortError')); sending = null; active = next;
+  epoch++; sending?.abort(new DOMException('The connection changed.', 'AbortError')); sending = null;
+  // A resident client this connection replaces closes its event subscriptions and streams.
+  if (active?.kind === 'resident' && !(next.kind === 'resident' && next.remote === active.remote)) void active.remote?.disconnect().catch(() => {});
+  active = next;
   update({ residentRecoveryReason:undefined,residentRecovery:undefined,phoneActionsAvailable:!!next.actions, conversations: [], history: null, conversationDelivery:undefined,conversationEvents:'unavailable', historyError: '', historyPartial:false, replyNotice:'', actionHistory: [], kind: next.kind, name, session, open: state.open && !state.signIn && (state.purpose==='plan'||state.purpose==='cloud-account'||state.purpose==='provider'), message: next.kind === 'resident' && state.inferenceOffline ? '' : 'Connected', error: '' });
   // Canonical app Calendar records currently belong to this resident transport only.
   // Read the existing allowed authenticated status route, never a native auth/status expansion.
@@ -1223,10 +1232,15 @@ async function admitCloudResident(signal:AbortSignal):Promise<ResidentAdmission>
   const expected={userId:identity.userId,organizationId:identity.organizationId};
   entitlementRefresher=new EntitlementRefresher({entitlement:result.entitlement,fallbackActive:result.view.kind==='credits'||result.view.kind==='active'&&result.view.source==='billing-limits',retry:result.view.kind==='unavailable'&&result.view.reason!=='not-published',
     check:refreshSignal=>checkEntitlement(client.entitlementSource(),expected,refreshSignal),
-    onView:next=>{if(service!==admitted)return;update({residentSubscription:next,...(next.kind==='active'&&next.planEndsAt!==undefined?{planEndsAt:next.planEndsAt}:next.kind==='active'&&next.source==='billing-limits'&&next.expiresAt>0?{planEndsAt:next.expiresAt}:next.kind==='credits'?{planEndsAt:null}:{})});
+    onView:next=>{if(service!==admitted)return;
+      // The end Cloud reports with the view, else the last known one. An active plan outlives an end
+      // date already past: that date is stale, and is neither shown nor stored with the offline grace.
+      const known=state.planEndsAt??null;
+      const nextEnd=next.kind==='credits'?null:next.kind==='active'&&next.planEndsAt!==undefined?next.planEndsAt:next.kind==='active'&&next.source==='billing-limits'&&next.expiresAt>0?next.expiresAt:next.kind==='active'&&known!==null&&known<=Date.now()?null:known;
+      update({residentSubscription:next,...(nextEnd!==known?{planEndsAt:nextEnd}:{})});
       const nextDecision=planAdmission(next);
       if(next.kind==='credits')binding.recordAdmission(identity,{status:'credit-funded',planName:`${cloudServiceName(environment)} credits`},null);
-      else if(next.kind==='active'&&!next.refreshFailed)binding.recordAdmission(identity,{status:next.status,planName:next.planName},state.planEndsAt??null);
+      else if(next.kind==='active'&&!next.refreshFailed)binding.recordAdmission(identity,{status:next.status,planName:next.planName},nextEnd);
       if(nextDecision==='needs-plan')residentPlanEnded(admitted,next);},
     onAuthFailure:error=>{if(service===admitted)residentRefreshRefused(admitted,error);}});
   return {binding:'cloud',credentialId:identity.credentialId,account:admitted};

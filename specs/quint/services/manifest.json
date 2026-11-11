@@ -101,12 +101,12 @@
         "plan/validFor/refresh/failures": "EntitlementRefresher cached signed entitlement, expiry and background retry",
         "signedRefusal/credits": "signed refusal versus authenticated organization-credit fallback",
         "owner/epoch/requestOwner/requestEpoch": "captured Cloud binding",
-        "request/dispatched": "managedServiceRequest and private Google broker admission",
+        "request/dispatched/refusedRequests": "managedServiceRequest and private Google broker admission, with requests the route table or Cloud refused",
         "source/fallback": "signed entitlement, absent-token billing snapshot and signed-no-plan credit supplementation"
       },
       "abstractions": [
-        "Opaque exact-route categories summarize URL/method/body validation. The parser remains covered by runtime tests.",
-        "Server authorization is explicit input to dispatch, separate from cached UI entitlement. Local readiness remains independent of Cloud billing.",
+        "Opaque exact-route categories summarize URL/method/body validation: identity, maps, gmail, calendar, self-revoke, billing, entitlement, redeem and Google account routes. The parser remains covered by runtime tests.",
+        "Server authorization is explicit input to dispatch, separate from cached UI entitlement. A refused request is recorded and never dispatched.",
         "Two expiry ticks apply only to signed entitlements. Unsigned active snapshots may have no period end and use periodic refresh. Failed snapshot/credit refresh produces an unavailable view while background retry continues; unexpired signed entitlements retain the active view."
       ],
       "path": "specs/quint/services/ServiceAuthorization.qnt",
@@ -122,23 +122,40 @@
         "snapshotWithoutExpiryTest",
         "creditRefreshFailureTest",
         "signedNoPlanCreditOnlyTest",
-        "signedOutageKeepsUnexpiredTest"
+        "signedOutageKeepsUnexpiredTest",
+        "refusedRouteReplacesDispatchTest"
       ],
       "invariants": [
+        "TypeOK",
         "RefusalNotUpgraded",
         "ExpiryHonest",
         "SnapshotHasNoSignedLifetime",
         "CanonicalCreditView",
-        "LocalIndependent",
+        "UndispatchedRequestWasRefused",
         "ExactManagedRoute",
-        "CurrentDispatch",
-        "TypeOK"
+        "CurrentDispatch"
       ],
       "bounds": {
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "witnesses": [
+        "RefusedRouteWitness",
+        "ServerRefusalWitness",
+        "SignedOutageKeepsPlanWitness",
+        "CreditAdmissionWitness"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/runtime/managed-service-routes.ts",
+          "name": "managedServiceRequest"
+        },
+        {
+          "path": "apps/app/src/runtime/managed-service-routes.ts",
+          "name": "mapsTilePath"
+        }
+      ]
     },
     {
       "sources": [
@@ -377,6 +394,83 @@
     },
     {
       "sources": [
+        "apps/app/src/maps/device-navigation.ts",
+        "apps/app/src/maps/agent-navigation.ts",
+        "apps/app/src/maps/cloud-provider.ts",
+        "apps/app/src/maps/cloud-maps.ts",
+        "apps/app/src/maps/guidance.ts",
+        "apps/app/src/prototype/maps-adapter.ts",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaMapsTransportPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaNavigationService.java",
+        "apps/app/src/maps/cloud-session.ts",
+        "apps/app/src/maps/background-navigation.ts",
+        "apps/app/src/maps/resident-relay.ts",
+        "apps/app/src/maps/state.ts",
+        "apps/app/src/maps/screen.ts"
+      ],
+      "stateMapping": {
+        "generation/requestGeneration": "MapsController.routeRequest identity and the DeviceMapsNavigation run that issued it",
+        "epoch/requestEpoch/owner/routeOwner": "captureMapsSession owner and DeviceMapsNavigation.retire for a changed account",
+        "locationGranted/fixFresh/located": "permission, bounded navigation fix freshness and the guidance watch's usable fix",
+        "route/previousRoute/guidance/rerouting": "active guidance, the route it follows while a reroute is pending, and the end of guidance when the reroute fails",
+        "screenOff/foreground": "BackgroundNavigation.active and page visibility: a hidden page keeps guidance only with its screen-off session",
+        "assistant": "assistant overlay, independent of guidance"
+      },
+      "abstractions": [
+        "Complementary manual-origin, guidance watch and screen-off readback scope. Failed reroutes follow the reviewed current repair and keep prior guidance. No complete implementation refinement or device acceptance is implied.",
+        "Three route generations, two owners and boolean fix freshness summarize coordinate geometry and timestamps.",
+        "Travel modes, polylines, route-distance calculations and detailed maneuver rendering remain stateless/runtime-tested transformations.",
+        "A route callback must retain its request generation and account epoch. Direct agent start requires separate opt-in.",
+        "The screen's Start needs a ready route only; guidance then waits for its first fix. A location-permission prompt that keeps a hidden Maps screen, arrival and the off-route notice are in NavigationProgress.",
+        "Events that end guidance are drawn one time in four so sampled traces reach reroutes."
+      ],
+      "path": "specs/quint/services/MapsNavigationGuidanceReadback.qnt",
+      "module": "MapsNavigationGuidanceReadback",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "waitingForLocationTest",
+        "staleReplyTest",
+        "assistantAndRerouteTest",
+        "accountRetirementTest",
+        "userStartNeedsNoLocationTest",
+        "leavingMapsEndsGuidanceTest",
+        "hiddenGuidanceNeedsScreenOffSessionTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "GuidanceHasRoute",
+        "RerouteKeepsRoute",
+        "RetiredRouteHidden",
+        "FailedRerouteKept",
+        "GuidancePhase",
+        "GuidanceFixNeedsPermission",
+        "ScreenOffNeedsGuidance",
+        "HiddenKeepsOnlyScreenOffGuidance"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      },
+      "sharedSources": [
+        "plugins/plugin-maps/src/client/navigation-fix.ts",
+        "plugins/plugin-maps/src/client/device-navigation.ts",
+        "plugins/plugin-maps/src/client/state.ts",
+        "plugins/plugin-maps/src/client/maps-screen.ts",
+        "plugins/plugin-maps/src/client/cloud-session.ts",
+        "plugins/plugin-maps/src/client/background-navigation.ts"
+      ],
+      "witnesses": [
+        "GuidanceWithoutFixWitness",
+        "HiddenGuidanceWitness",
+        "ReroutingWitness",
+        "FailedRerouteWitness"
+      ]
+    },
+    {
+      "sources": [
         "apps/app/src/runtime/phone-workflow-authoring.ts",
         "apps/app/src/runtime/workflow-protocol.ts",
         "apps/app/src/runtime/workflow-intents.ts",
@@ -431,6 +525,145 @@
         "maxSteps": 60,
         "seed": "123"
       }
+    },
+    {
+      "sources": [
+        "apps/app/src/runtime/phone-workflow-authoring.ts",
+        "apps/app/src/runtime/workflow-protocol.ts",
+        "apps/app/src/runtime/workflow-intents.ts",
+        "apps/app/src/runtime/workflow-device-contract.ts",
+        "apps/app/src/browser/workflow-trigger-runtime.ts",
+        "apps/app/src/browser/workflow-triggers.ts",
+        "apps/app/src/prototype/workflow-authoring.ts",
+        "apps/app/src/prototype/workflow-adapter.ts",
+        "apps/app/src/runtime/workflow-local-time.ts"
+      ],
+      "stateMapping": {
+        "version/reviewedVersion/phase": "normalized authoring, validation and exact-version save/run",
+        "queued/queuedVersion/sourceCurrent/enabled/mocks/triggerDispatchEnabled": "development trigger queue, its filter on a foreground check, source hash revalidation and the gate at dispatch",
+        "legacy/intentSaved/submission/submittedVersion/admitted/subExecutions/ranVersion": "durable submission identity, the agent's single admission, and agents without submission identities",
+        "abandoned/ownerReview": "a request cleared as a known non-run, and the confirmation before a resend or a clear",
+        "approval/requestDigest/reviewedDigest/effectDigest/effects": "reviewed supported approval bound to the request digest, and effect execution",
+        "cancelRequested/outcome": "cancellation of an accepted run versus terminal receipt"
+      },
+      "abstractions": [
+        "Complementary current-source audit scope. The canonical model and its existing source-observation driver remain separate; this state model does not claim complete implementation refinement.",
+        "One workflow, two submissions, three versions and three request digests.",
+        "Production supports manual triggers here. Browser event/time/location trigger activity is explicitly marked development-only.",
+        "The upstream workflow engine and multiple action graph steps are composed through receipt/approval contracts rather than reimplemented.",
+        "An account change stops this phone acting on the run through the owner and epoch fences. The agent's run is not cancelled and reports its own outcome.",
+        "A legacy agent has no version fence: the phone reads the workflow first and compares the version of the run it gets back. activate has the same read-then-act gap and is not modeled.",
+        "A request cleared by its owner on a legacy agent may still have run; the model counts executions per submission.",
+        "Disabling a workflow leaves its queued occurrence in the saved queue, where the badge reads it, until a foreground check filters it. It is never dispatched."
+      ],
+      "path": "specs/quint/services/WorkflowExecutionAuditAdmission.qnt",
+      "module": "WorkflowExecutionAuditAdmission",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "reviewedExecutionTest",
+        "unknownSubmissionTest",
+        "lostReplyReconcilesTest",
+        "changedVersionAbandonsTest",
+        "versionRaceRefusedTest",
+        "legacyVersionRaceReportedTest",
+        "legacyCannotReconcileTest",
+        "changedRequestNeedsNewDecisionTest",
+        "ownerSwitchDoesNotCancelTest",
+        "denialAndCancelTest",
+        "cancelNeedsReceiptTest",
+        "triggerDisableTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "AtMostOneExecution",
+        "DurableSubmission",
+        "AcceptedRunIsReviewedVersion",
+        "ProtocolAdmitsReviewedVersion",
+        "AbandonedNeverRan",
+        "OwnerConfirmsRepeat",
+        "ReviewedEffect",
+        "CancelNeedsReceipt",
+        "TriggerDispatchEnabled",
+        "ProductionTriggerGate"
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "123"
+      },
+      "witnesses": [
+        "UnadmittedWitness",
+        "AbandonedWitness",
+        "LegacyUncertainRanWitness",
+        "LegacyOtherVersionWitness",
+        "StaleApprovalWitness",
+        "DisabledQueuedWitness",
+        "OtherOwnerRunningWitness"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/runtime/workflow-protocol.ts",
+          "name": "WorkflowProtocol"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-protocol.ts",
+          "name": "WorkflowAdmissionRejected"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-protocol.ts",
+          "name": "versionId"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-intents.ts",
+          "name": "runIntentReconcilable"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-intents.ts",
+          "name": "WorkflowIntentStore"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "unadmitted"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "unverifiable"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "reviewResend"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "reviewClear"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "clearRunRequest"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "reviewCancel"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "supportsSubmissionReconciliation"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "approvalReview"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-trigger-runtime.ts",
+          "name": "triggerState"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-trigger-runtime.ts",
+          "name": "workflowNeedsReview"
+        }
+      ]
     },
     {
       "sources": [
@@ -492,17 +725,17 @@
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaBrowserPlugin.java"
       ],
       "stateMapping": {
-        "privateTab/thirdParty/passkeys/phase": "Isolated-profile admission and cookie policy readback; passkeys remain disabled in app state and rely on the fresh WebView default",
-        "decisions/prompt/permissionChoice/androidAllowed": "native site review then OS runtime permission, selected top-origin gate",
-        "authAttempts/passwordPresent/passwordSubmitted": "bounded manual HTTP authentication and clearing values",
-        "autofillExposed/authSave": "current STANDARD_WEBVIEW cannot attest challenge origin and exposes neither"
+        "privateTab/thirdParty/phase": "Isolated-profile admission and cookie policy readback",
+        "decisions/prompt/permissionChoice/androidAllowed": "native site review then OS runtime permission; the site review needs the selected, shown tab, and the OS dialog's answer is fenced by tab, navigation and origin only",
+        "authAttempts/passwordPresent/passwordSubmitted": "bounded manual HTTP authentication and clearing values"
       },
       "abstractions": [
         "One tab, two exact origin classes and one representative sensor kind; sealed 200-origin record bounds remain covered by source tests.",
-        "Cookie/profile mismatches refuse tab creation. Private tabs do not persist site decisions. The current host leaves a fresh WebView at its default WebAuthn NONE; it does not perform the removed passkey setter/readback check.",
-        "The current STANDARD_WEBVIEW engine cannot authenticate a challenge origin, so HTTP autofill remains disabled while manual input works. Shared hypothetical attested-engine behavior is excluded.",
-        "permissionResult records a completed permission callback rather than a claim that an active sensor keeps running.",
-        "PasskeysDisabled is the app capability policy. This model assumes the documented fresh-WebView WebAuthn default and does not verify the platform implementation or an explicit WebAuthn readback."
+        "Cookie/profile mismatches refuse tab creation. Private tabs do not persist site decisions.",
+        "Android's runtime permission dialog pauses the app; pausing or showing another tab cancels a site or sign-in prompt and leaves that dialog to answer. A grant can therefore complete for a tab that is no longer shown, for the same page and origin.",
+        "The current STANDARD_WEBVIEW engine cannot authenticate a challenge origin, so HTTP autofill and Save stay off and only manual input is modeled. The attested-engine path is excluded.",
+        "The passkey capability is not modeled: the host leaves a fresh WebView at its default WebAuthn setting and performs no setter or readback, so no modeled action can change it.",
+        "permissionResult records a completed permission callback rather than a claim that an active sensor keeps running."
       ],
       "path": "specs/quint/services/BrowserSiteState.qnt",
       "module": "BrowserSiteState",
@@ -515,16 +748,18 @@
         "providerAdmissionTest",
         "manualAuthTest",
         "switchedTabCancelsPromptTest",
-        "unavailableEngineRefusesTabTest"
+        "unavailableEngineRefusesTabTest",
+        "runtimeDialogSurvivesPauseTest",
+        "runtimeDialogStaleAfterNavigationTest",
+        "pausedSitePromptIsCancelledTest"
       ],
       "invariants": [
+        "TypeOK",
         "PrivateCookiePolicy",
         "PrivatePermissionPolicy",
         "CurrentPermission",
-        "PasskeysDisabled",
-        "StandardHttpAuthManual",
-        "PasswordLifetime",
-        "TypeOK"
+        "PromptNeedsShownTab",
+        "PasswordLifetime"
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -537,6 +772,11 @@
         "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserHttpAuthAutofill.java",
         "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserSessionStore.java",
         "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserTabHostPlugin.java"
+      ],
+      "witnesses": [
+        "RuntimePromptWhilePausedWitness",
+        "RuntimePromptAfterDeselectWitness",
+        "EngineRefusedWitness"
       ]
     },
     {
@@ -545,14 +785,16 @@
         "apps/app/src/browser/content-question.ts"
       ],
       "stateMapping": {
-        "phase/isolated/ready/sensitive": "isolated-world readiness handshake, native extraction and sensitive-page refusal",
+        "phase/isolated/ready/sensitive": "isolated-world readiness handshake, native extraction and per-page sensitive refusal",
         "token/approved/reviewedExcerpt/consumed": "expiring, single-use review bound to exact extracted bytes",
         "owner/epoch/navigation/capturedEpoch/capturedNavigation": "current account and page lifetime at consumption",
-        "draft/sent": "question review inserts a draft, preserving separate chat Send"
+        "draft/userText": "question review inserts a draft; with an empty excerpt only user-supplied text that passes the sensitive check can be approved"
       },
       "abstractions": [
         "One excerpt represented by identity, two navigation changes and owner changes, and two abstract expiration ticks. Native reading/token and local playback have different wall-clock durations.",
-        "Sensitivity heuristics and extraction traversal/byte limits are external predicates with source tests. The model has no fallback from a sensitive/unsupported native document.",
+        "Sensitivity heuristics and extraction traversal/byte limits are external predicates with source tests. Sensitivity is decided per page.",
+        "Ask about page has an empty-excerpt fallback when the page cannot be read in isolation; Read aloud has none. A sensitive page opens no review on either path.",
+        "The web build's reading review has no token or expiry and is modeled in WebReadingReview; the token fields describe the native path.",
         "Question approval releases reviewed text into the local composer. Sending and agent-response lifecycle remain in AssistantConversation."
       ],
       "path": "specs/quint/services/BrowserReadingState.qnt",
@@ -566,15 +808,18 @@
         "sensitiveDocumentTest",
         "expiredReviewTest",
         "pageNavigationCancelsTest",
-        "questionDraftTest"
+        "questionDraftTest",
+        "sensitiveThenNextPageTest",
+        "fallbackNeedsUserTextTest"
       ],
       "invariants": [
+        "TypeOK",
         "ReviewedSpeech",
         "CurrentReading",
         "SingleUseToken",
         "SensitiveRefused",
-        "QuestionDoesNotSend",
-        "TypeOK"
+        "DraftHasReviewedContent",
+        "FallbackNeverSpeaks"
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -586,6 +831,11 @@
         "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserReadingWorld.java",
         "plugins/plugin-native-browser-surface/src/page-reading.ts",
         "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserPageReading.java"
+      ],
+      "witnesses": [
+        "FallbackDraftWitness",
+        "ReadableAfterSensitivePageWitness",
+        "SensitivePasteHeldWitness"
       ]
     },
     {
@@ -601,6 +851,7 @@
       "abstractions": [
         "One transfer, two origin classes, at most two modeled redirects/chunks. Source enforces 10 redirects and 64 MiB capture limits.",
         "Public OS-owned transfer may outlive the tab. Closing a private tab stops its active signed fetch and clears only browser history, preserving files already published.",
+        "Removing a signed-in entry stops its fetch at the next check; a removal that lands after the last byte was copied leaves the saved file in Downloads with no entry (cancelAfterCopy).",
         "Byte parsing, HTTP response bodies, MediaStore operations and OS transfer completion are abstract external observations, not live side effects."
       ],
       "path": "specs/quint/services/BrowserDownloads.qnt",
@@ -615,16 +866,20 @@
         "capturedChunkTest",
         "outOfOrderChunkTest",
         "emptyBlobTest",
-        "publicTransferOutlivesTabTest"
+        "publicTransferOutlivesTabTest",
+        "cancelAfterCopyTest",
+        "cancelBeforeCopyTest"
       ],
       "invariants": [
+        "TypeOK",
         "CookieOrigin",
         "PrivateListNeverPersisted",
         "ReviewedPublication",
         "CompletedFromEvidence",
         "CapturedBytesOrdered",
         "CancelledCaptureCleaned",
-        "TypeOK"
+        "CancelledLeavesNoEntry",
+        "OrphanFileWasReviewed"
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -633,6 +888,11 @@
       },
       "sharedSources": [
         "plugins/plugin-native-browser-surface/android/src/main/java/ai/eliza/plugins/browsersurface/BrowserDownloads.java"
+      ],
+      "witnesses": [
+        "CancelledButPublishedWitness",
+        "PrivateFetchStoppedWitness",
+        "CrossOriginHopWitness"
       ]
     },
     {
@@ -705,21 +965,24 @@
         "android/app/src/main/java/ai/alphacompute/alphaphone/LocalAgentProviderAdmission.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentCredentialShutdownRetry.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaConnectionPlugin.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/SerialStorageTasks.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/SerialStorageTasks.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/GmailBackground.java"
       ],
       "stateMapping": {
         "operation/phase/before/capturedProvider": "mutateSlotOnce classification and slot/provider snapshot reread",
         "requestedStop/acknowledgedStop/stopped": "exact strict resident shutdown before critical write",
         "ownerEpoch/capturedEpoch": "credential intent and lifecycle ownership recheck",
         "oldSize/newSize/admissionInvalidated": "retained slot-cap shrink versus rejected growth after admission invalidation",
-        "committed/phase": "source selected-slot commit observation, followed by public success or failure reply"
+        "committed/phase": "source selected-slot commit observation, followed by public success or failure reply",
+        "productionSlot/observerNotified": "the cloud:production slot test and the Cloud-change observer called in commit() before the slot write"
       },
       "abstractions": [
         "Opaque credential contents and provider configurations are equality classes; providerRevision captures the full stored provider comparison.",
         "Current versus retained byte caps are scaled to two and three units, with four representing preflight overflow.",
         "The running resident is stopped only for matching bound critical changes. No-provider Cloud sign-in and ordinary slots may commit without stopping it.",
         "Rollback restores only its captured provider revision. A newer provider revision makes it fail without overwriting it.",
-        "A same-generation rebind preserves runtime admission and avoids shutdown. Committed writes and later reported outcomes are separate transitions; provider removal updates presence for subsequent operations."
+        "A same-generation rebind preserves runtime admission and avoids shutdown. Committed writes and later reported outcomes are separate transitions; provider removal updates presence for subsequent operations.",
+        "The Cloud-change observer runs for a replaced or removed production Cloud key only, after the recheck and before the write; a provider change or a staging key (test mocks) does not reach it."
       ],
       "path": "specs/quint/services/NativeCredentialMutation.qnt",
       "module": "NativeCredentialMutation",
@@ -745,16 +1008,22 @@
         "acknowledgementKeepsStartFencedTest",
         "lateLeaseAckCannotReleaseSuccessorTest",
         "providerCancellationRetiresIntentTest",
-        "unknownProviderCancellationPreservesLeaseTest"
+        "unknownProviderCancellationPreservesLeaseTest",
+        "cloudChangeObservedTest",
+        "observerPrecedesFailedWriteTest",
+        "stagingSlotUnobservedTest",
+        "providerChangeUnobservedTest"
       ],
       "invariants": [
+        "LeaseBounds",
+        "BegunRequestIsKnown",
         "ShutdownBeforeCriticalWrite",
         "AdmissionInvalidated",
         "CurrentMutation",
         "RejectedWriteRetainsBytes",
         "Bounded",
-        "LeaseBounds",
-        "BegunRequestIsKnown"
+        "CloudChangeObserved",
+        "ObserverOnlyForReplacedCloudKey"
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -767,8 +1036,34 @@
         "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialRequestFence.java",
         "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialIntentFence.java",
         "plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java",
-        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialShutdownLease.java",
-        "plugins/plugin-native-secure-store/android-nativeonly/src/main/java/ai/eliza/plugins/securestore/nativeonly/CredentialIntentFence.java"
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/runtime/CredentialShutdownLease.java"
+      ],
+      "witnesses": [
+        "ObserverBeforeFailedWriteWitness",
+        "StagingWriteUnobservedWitness",
+        "ProviderChangeUnobservedWitness"
+      ],
+      "symbols": [
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
+          "name": "mutateSlotOnce"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
+          "name": "observeCloudChanges"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
+          "name": "cloudChange"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
+          "name": "sameCloudCredential"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/GmailBackground.java",
+          "name": "observeCloudChanges"
+        }
       ]
     },
     {
@@ -812,7 +1107,12 @@
         "maxSamples": 1000,
         "maxSteps": 60,
         "seed": "123"
-      }
+      },
+      "witnesses": [
+        "MappedOutputWitness",
+        "WatchdogKilledWitness",
+        "BusyRefusalWitness"
+      ]
     },
     {
       "path": "specs/quint/services/InboxCoordinator.qnt",
@@ -994,13 +1294,15 @@
         "unchangedEtagCannotRecoverTest",
         "discoveredProviderBecomesLinkedTest",
         "pausedInFlightPreservesPendingTest",
+        "reviewRetiredByOwnerSwitchTest",
         "freshReviewRequiredTest"
       ],
       "invariants": [
+        "TypeOK",
+        "Bounded",
         "DurableMutation",
         "SettledCheckpoint",
-        "Bounded",
-        "TypeOK"
+        "ReviewOwnerBound"
       ],
       "stateMapping": {
         "state/pending/common/checkpointRevision/checkpointEtag": "Actual LinkedCalendarEventRecord persisted by CalendarLinkedStore",
@@ -1016,7 +1318,12 @@
         "maxSamples": 1000,
         "maxSteps": 80,
         "seed": "123"
-      }
+      },
+      "witnesses": [
+        "QuarantinedWriteWitness",
+        "StaleReviewWitness",
+        "RecoveredWitness"
+      ]
     },
     {
       "path": "specs/quint/services/WorkflowEngineAdmission.qnt",
@@ -2667,6 +2974,2196 @@
       ],
       "abstractions": [
         "One sequential caller, two source-stamp and lock identities, at most three producer calls. The actual verifier classifies complete manifested output, and independent whole-tree fingerprints check existing and retained interrupted bytes. Generic SDK bundling, concurrent producers and Android installation require separate evidence."
+      ]
+    },
+    {
+      "path": "specs/quint/services/WebReadingReview.qnt",
+      "module": "WebReadingReview",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "staleSpeechEndTest",
+        "sensitiveExcerptRefusedTest",
+        "typedTextKeptTest",
+        "readWaitsForSourceTest",
+        "changedPageClosesReviewTest",
+        "closeStopsSpeechTest",
+        "sensitiveAddressTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "SpeechNeedsOpenReview",
+        "ReadWaitsForSource",
+        "SensitiveNeverSpoken",
+        "BlockedHoldsNoText",
+        "ClosedIsInert",
+        "TypedTextKept",
+        "OnlyCurrentSpeechEnds"
+      ],
+      "witnesses": [
+        "EarlierSpeechUnsettledWitness",
+        "RefusedOpenReviewWitness",
+        "UserTextSpokenWitness"
+      ],
+      "sources": [
+        "apps/app/src/browser/reading-review.ts",
+        "apps/app/src/prototype/browser-adapter.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/browser/reading-review.ts",
+          "name": "reviewBrowserReading"
+        },
+        {
+          "path": "apps/app/src/browser/reading-review.ts",
+          "name": "sourcePending"
+        },
+        {
+          "path": "apps/app/src/browser/reading-review.ts",
+          "name": "blocked"
+        },
+        {
+          "path": "apps/app/src/browser/reading-review.ts",
+          "name": "generation"
+        },
+        {
+          "path": "apps/app/src/browser/reading-review.ts",
+          "name": "stopSpeech"
+        },
+        {
+          "path": "apps/app/src/browser/reading-review.ts",
+          "name": "edited"
+        },
+        {
+          "path": "apps/app/src/browser/reading-review.ts",
+          "name": "sourceAbort"
+        },
+        {
+          "path": "apps/app/src/browser/reading-review.ts",
+          "name": "finish"
+        },
+        {
+          "path": "apps/app/src/prototype/browser-adapter.ts",
+          "name": "readPage"
+        },
+        {
+          "path": "apps/app/src/prototype/browser-adapter.ts",
+          "name": "reviewBrowserReading"
+        },
+        {
+          "path": "apps/app/src/prototype/browser-adapter.ts",
+          "name": "stopReading"
+        }
+      ],
+      "stateMapping": {
+        "open/blocked": "the excerpt dialog and its permanent refusal for a sensitive address, page text or excerpt",
+        "sourcePending/sourceLive/edited/text/typed": "the public page text request, which fills the field only when the user has not typed",
+        "generation/speaking/unsettled": "one local speech at a time; a speech applies its end only while it is the current one"
+      },
+      "abstractions": [
+        "Excerpt contents are four kinds (empty, page, user, sensitive). Sensitivity heuristics and the 5,000 character bound are external predicates with source tests.",
+        "The adapter's validity check (selected tab, document revision, visibility, view, connection panel) is one input at each use. Local speech playback is an external effect.",
+        "RefusedOpenReviewWitness records current behavior: a page that stopped being current while its text was fetched leaves the dialog open and refused rather than closing it.",
+        "test/quint-web-reading-review.test.mjs replays this model's scenario, witness and random traces against the real reviewBrowserReading dialog in a jsdom document with controlled page-text and speech ports and compares the observed state after every step; that is bounded evidence within the stated ports and does not establish device acceptance."
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-browser-surface/src/page-reading.ts",
+        "plugins/plugin-native-browser-surface/src/page-source.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/SmsSend.qnt",
+      "module": "SmsSend",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "retryAfterCancelledAndDeniedTest",
+        "repeatedIdNeverDispatchesTwiceTest",
+        "staleAnswerDroppedTest",
+        "editResetsOperationTest",
+        "deliveryEvidenceTest",
+        "readBackKeepsIdUntilSendAnswersTest",
+        "refusedBeforeJournalTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "AtMostOneDispatchPerOperation",
+        "DispatchJournaled",
+        "ClosedAnswerReleasesId",
+        "HeldIdWasMinted",
+        "StaleResultNeverShown",
+        "InactiveHoldsNothing",
+        "BusyHasCall"
+      ],
+      "witnesses": [
+        "RetryAfterClosedRecordWitness",
+        "RepeatedIdAnsweredFromJournalWitness",
+        "StaleAnswerDroppedWitness",
+        "SentEvidenceWitness",
+        "RefusedBeforeJournalWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/sms-adapter.ts",
+        "apps/app/src/runtime/image-sms.ts",
+        "apps/app/src/runtime/aosp-telephony.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "installSmsAdapter"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "operationId"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "draftRevision"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "lifecycle"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "reconcile"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "SMS_NOT_SENT"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "smsReview"
+        },
+        {
+          "path": "apps/app/src/runtime/image-sms.ts",
+          "name": "receiptLabel"
+        },
+        {
+          "path": "apps/app/src/runtime/image-sms.ts",
+          "name": "createSmsSession"
+        },
+        {
+          "path": "apps/app/src/runtime/aosp-telephony.ts",
+          "name": "createAospTelephony"
+        }
+      ],
+      "stateMapping": {
+        "active/lifecycle/draftRevision/busy": "installSmsAdapter sync(), the visit token and the draft revision every edit, SIM pick, picture change and closed answer advances",
+        "operationId/minted": "crypto.randomUUID() minted only when the draft holds no ID and reviewed text",
+        "call/callLifecycle/callDraft/reply": "client.sendSms in flight with the token and draft it captured, and the native answer not yet received",
+        "journal/dispatches": "native send journal status per operation ID and the single platform dispatch behind it (NativeSmsDispatch)",
+        "shown/shownFrom/shownLifecycle/shownDraft": "receipt and notice from a send answer or from reconcile()"
+      },
+      "abstractions": [
+        "Three operation IDs, four visits and bounded draft revisions. Recipients, text, SIM and pictures are one draft whose every change is an edit; the MMS composer and picture chooser are MmsCompose, and the messaging-app handoff shares the busy flag and is not modeled.",
+        "One native call is in flight at a time. The journal is one status per ID; the reviewed binding, multipart evidence, tombstones and provider rows are NativeSmsDispatch and DeviceActions.",
+        "The foreground provider session (rows, threads, paging) is the shared telephony session and is a controlled port.",
+        "Replayed against installSmsAdapter with a held telephony client whose journal follows the shared send contract (test/quint-sms-send.test.mjs); no SIM, radio or installed-image claim."
+      ],
+      "sharedSources": [
+        "packages/contracts/src/native-telephony.ts",
+        "packages/contracts/src/native-telephony-session.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/ContactsSession.qnt",
+      "module": "ContactsSession",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "readRowsTest",
+        "answerAfterLeaveTest",
+        "supersededReadTest",
+        "revokedWhileOpenTest",
+        "editorReturnRereadsTest",
+        "noAccessTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "ActiveMatchesAvailability",
+        "InactiveHoldsNoRows",
+        "RowsNeedAccess",
+        "MoreNeedsRows",
+        "LoadingHasCurrentWork",
+        "DeferredViewNotOpen"
+      ],
+      "witnesses": [
+        "RowsKeptWhileLoadingWitness",
+        "SupersededReadWitness",
+        "RevokedWhileOpenWitness",
+        "EditorOverLoadedListWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/contacts-adapter.ts",
+        "apps/app/src/runtime/image-contacts.ts",
+        "apps/app/src/prototype/mvp-features.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/contacts-adapter.ts",
+          "name": "installContactsAdapter"
+        },
+        {
+          "path": "apps/app/src/prototype/contacts-adapter.ts",
+          "name": "epoch"
+        },
+        {
+          "path": "apps/app/src/prototype/contacts-adapter.ts",
+          "name": "loading"
+        },
+        {
+          "path": "apps/app/src/prototype/contacts-adapter.ts",
+          "name": "readable"
+        },
+        {
+          "path": "apps/app/src/prototype/contacts-adapter.ts",
+          "name": "available"
+        },
+        {
+          "path": "apps/app/src/prototype/contacts-adapter.ts",
+          "name": "editor"
+        },
+        {
+          "path": "apps/app/src/prototype/contacts-adapter.ts",
+          "name": "clear"
+        },
+        {
+          "path": "apps/app/src/runtime/image-contacts.ts",
+          "name": "applyImageContacts"
+        },
+        {
+          "path": "apps/app/src/prototype/mvp-features.ts",
+          "name": "isMvpView"
+        },
+        {
+          "path": "apps/app/src/prototype/mvp-features.ts",
+          "name": "admitImageContacts"
+        }
+      ],
+      "stateMapping": {
+        "viewOpen/admitted/hidden/active": "available(): the shell view, isMvpView(\"contacts\"), document.hidden and the adapter copy kept by sync()",
+        "epoch/reads/loading": "refresh() token, reads in flight and the loading flag cleared only by the current read or by clear()",
+        "readable/rows/more/limit": "access answer, in-memory rows and the 50-row page steps up to 200",
+        "editorOpen": "the system contact editor opened by editor() and the re-read on return"
+      },
+      "abstractions": [
+        "Six epochs, four page sizes and one row class. Search text and row contents are opaque.",
+        "Admission withdrawal closes an open view before the view is deferred (applyImageContacts). The native bounded read, permission dialog and editor are controlled ports.",
+        "Replayed against installContactsAdapter, admitImageContacts and applyImageContacts with a held Contacts plugin (test/quint-contacts-session.test.mjs); no address-book or installed-image claim."
+      ]
+    },
+    {
+      "path": "specs/quint/services/PhoneSession.qnt",
+      "module": "PhoneSession",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "recentCallsTest",
+        "refreshDuringDialTest",
+        "leaveDuringDialTest",
+        "staleHandoffLeavesLaterDialTest",
+        "dialRefusedWhileReadingTest",
+        "dialRefusedDuringHandoffTest",
+        "accessNeededTest",
+        "supersededReadTest",
+        "typedNumberClearsNoticeTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "ActiveMatchesAvailability",
+        "InactiveHoldsNothing",
+        "ReadingHasCurrentRead",
+        "DialingTracksHandoff",
+        "RowsNeedAccess",
+        "HandoffsCounted",
+        "SessionWithinEpoch"
+      ],
+      "witnesses": [
+        "ReadDuringHandoffWitness",
+        "AccessNeededWitness",
+        "DialNoticeWitness",
+        "RowsKeptWhileReadingWitness",
+        "StaleHandoffBesideLaterDialWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/phone-adapter.ts",
+        "apps/app/src/runtime/aosp-telephony.ts",
+        "apps/app/src/runtime/aosp-image.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/phone-adapter.ts",
+          "name": "installPhoneAdapter"
+        },
+        {
+          "path": "apps/app/src/prototype/phone-adapter.ts",
+          "name": "phoneRows"
+        },
+        {
+          "path": "apps/app/src/prototype/phone-adapter.ts",
+          "name": "epoch"
+        },
+        {
+          "path": "apps/app/src/prototype/phone-adapter.ts",
+          "name": "session"
+        },
+        {
+          "path": "apps/app/src/prototype/phone-adapter.ts",
+          "name": "reading"
+        },
+        {
+          "path": "apps/app/src/prototype/phone-adapter.ts",
+          "name": "dialing"
+        },
+        {
+          "path": "apps/app/src/prototype/phone-adapter.ts",
+          "name": "needsAccess"
+        },
+        {
+          "path": "apps/app/src/prototype/phone-adapter.ts",
+          "name": "available"
+        },
+        {
+          "path": "apps/app/src/prototype/phone-adapter.ts",
+          "name": "async function dial"
+        },
+        {
+          "path": "apps/app/src/prototype/phone-adapter.ts",
+          "name": "clear"
+        },
+        {
+          "path": "apps/app/src/runtime/aosp-telephony.ts",
+          "name": "normalizePhoneNumber"
+        },
+        {
+          "path": "apps/app/src/runtime/aosp-image.ts",
+          "name": "ADMITTED_AOSP_VIEW_ADAPTERS"
+        }
+      ],
+      "stateMapping": {
+        "viewOpen/hidden/active": "available() and the adapter copy kept by sync()",
+        "epoch/reads/reading": "refresh() token, recent-call reads in flight and the read latch",
+        "session/dials/dialing/handoffs": "the per-showing dial session, handoffs still in flight tagged with the session they started in, the dial latch and dial-screen handoffs issued",
+        "calls/needsAccess": "recent-call rows and the call-log access request state",
+        "notice": "the dial notice"
+      },
+      "abstractions": [
+        "Six epochs, three handoffs and one row class. busy() is the disjunction of the read and dial latches; a typed number clears the notice, a recent-call row does not.",
+        "The shared telephony profile (status, requestAccess, recentCalls, dial) is a controlled port. No call is placed, simulated or reported by the view.",
+        "Replayed against installPhoneAdapter with a held telephony plugin (test/quint-phone-session.test.mjs); no installed-image, Telecom or call-log claim."
+      ],
+      "sharedSources": [
+        "packages/contracts/src/native-telephony.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/PlanAdmissionGrace.qnt",
+      "module": "PlanAdmissionGrace",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "renewalAfterPastEndTest",
+        "offlineGraceTest",
+        "otherAccountRecordIgnoredTest",
+        "billingOutageAdmitsFromRecordTest",
+        "planEndedRemovesGraceTest",
+        "pastEndGivesNoGraceTest",
+        "rejectedSignInForgetsGraceTest",
+        "redeemedEndPrecedesRecordTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "EndsAtNotPast",
+        "GraceBoundToCredential",
+        "KeptOnlyOffline",
+        "CloudBindingHasBasis",
+        "PlanEndedRemovesRecord",
+        "SignedOutUnbound",
+        "RedeemedEndBelongsToSignIn"
+      ],
+      "witnesses": [
+        "KeptOfflineWitness",
+        "PastEndInMemoryWitness",
+        "OtherAccountRecordWitness",
+        "OldRecordUnbindsWitness",
+        "BillingOutageAdmitsWitness",
+        "RedeemedEndPastWitness"
+      ],
+      "sources": [
+        "apps/app/src/runtime/connection-ui.tsx",
+        "apps/app/src/runtime/subscription-entitlement.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/runtime/connection-ui.tsx",
+          "name": "PLAN_ADMISSION"
+        },
+        {
+          "path": "apps/app/src/runtime/connection-ui.tsx",
+          "name": "readPlanAdmission"
+        },
+        {
+          "path": "apps/app/src/runtime/connection-ui.tsx",
+          "name": "writePlanAdmission"
+        },
+        {
+          "path": "apps/app/src/runtime/connection-ui.tsx",
+          "name": "redeemedPlanEnd"
+        },
+        {
+          "path": "apps/app/src/runtime/connection-ui.tsx",
+          "name": "residentPlanEnded"
+        },
+        {
+          "path": "apps/app/src/runtime/connection-ui.tsx",
+          "name": "residentRefreshRefused"
+        },
+        {
+          "path": "apps/app/src/runtime/connection-ui.tsx",
+          "name": "residentBindingController"
+        },
+        {
+          "path": "apps/app/src/runtime/connection-ui.tsx",
+          "name": "recentResidentPlanAdmission"
+        },
+        {
+          "path": "apps/app/src/runtime/subscription-entitlement.ts",
+          "name": "residentAdmissionOutcome"
+        },
+        {
+          "path": "apps/app/src/runtime/subscription-entitlement.ts",
+          "name": "forgetPlan"
+        }
+      ],
+      "stateMapping": {
+        "credential/record": "the saved Cloud sign-in and the stored plan admission record with its credential, age class and plan end",
+        "memoryEndsAt/redeemedEnd": "state.planEndsAt and redeemedPlanEnd for the signed-in credential",
+        "binding/admittedBy/notice": "residentAdmissionOutcome binding and plan notice, and whether Cloud or the record admitted",
+        "lastWrittenEnd/writes": "the plan end passed to recordAdmission or written by a redeemed code"
+      },
+      "abstractions": [
+        "Two credentials; record age is fresh or old and a plan end is none, ahead or past. The seven-day window and the record parser are the shared controller.",
+        "Admission reasons follow the shared CloudResidentBindingController; Alpha owns the plan-end choice, the record store, forgetting the record on a refused sign-in or ended plan, and the outcome mapping.",
+        "Entitlement verification, the background refresher timers and provider binding are separate. Scenario and simulation evidence only."
+      ],
+      "sharedSources": [
+        "packages/auth/src/auth/cloud-resident-binding.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/InboxListPaging.qnt",
+      "module": "InboxListPaging",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "staleReplyDroppedTest",
+        "replyForOtherAccountDroppedTest",
+        "repeatedCursorEndsPagingTest",
+        "failedPageKeepsListTest",
+        "singleFlightTest",
+        "savedListRestoredTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "ShownBelongsToSelection",
+        "SingleFlight",
+        "CursorUsedOnce",
+        "CursorNeedsList",
+        "SavedListMarked"
+      ],
+      "witnesses": [
+        "StaleFlightWitness",
+        "SavedListShownWitness",
+        "ChangedMailboxWitness",
+        "RepeatedCursorWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/inbox-cloud-adapter.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
+          "name": "nextPageToken"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
+          "name": "seenCursors"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
+          "name": "generation"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
+          "name": "loadingMore"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
+          "name": "rememberList"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
+          "name": "restoreList"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
+          "name": "cachedListShown"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
+          "name": "invalidateList"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
+          "name": "firstPageRevision"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
+          "name": "loadedQuery"
+        }
+      ],
+      "stateMapping": {
+        "generation/busy/flights": "the work generation, the single operation and every request still on the network",
+        "pages/shownAccount/shownQuery/loadedQuery": "the messages on screen and the account and query they were read for",
+        "cursor/seenCursors/usedCursors": "nextPageToken, the cursors already offered, and those already requested",
+        "newerMail/failure/cachedShown": "the changed-mailbox notice, a failed page, and a list shown from the saved copy",
+        "saved": "the folder list kept by rememberList"
+      },
+      "abstractions": [
+        "Two accounts, two folders, three pages, two provider cursors and five requests.",
+        "Message identities, duplicate removal and the unread count are not modeled; a page is a count.",
+        "Read-ahead, body caching and the provider drafts list use the same generation fence and are not modeled separately.",
+        "A search typed over a loaded folder is modeled as a folder change."
+      ]
+    },
+    {
+      "path": "specs/quint/services/ServiceReadCache.qnt",
+      "module": "ServiceReadCache",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "calendarClearKeepsMailTest",
+        "clearFencesPutTest",
+        "ownerSwitchIsolatesTest",
+        "lateWriteLandsInOwnDocumentTest",
+        "restartEndsWritesTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "ShownOwnerIsolation",
+        "ShownHasEntry",
+        "ClearIsolated",
+        "ClearFencesPut"
+      ],
+      "witnesses": [
+        "ClearedBesideOtherWitness",
+        "StalePutWitness",
+        "OtherOwnerPutWitness",
+        "BothOwnersCachedWitness"
+      ],
+      "sources": [
+        "apps/app/src/runtime/service-read-cache.ts",
+        "apps/app/src/runtime/service-read-cache-store.ts",
+        "apps/app/src/prototype/inbox-cloud-adapter.ts",
+        "apps/app/src/prototype/agent-calendar-adapter.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/runtime/service-read-cache.ts",
+          "name": "ServiceReadCache"
+        },
+        {
+          "path": "apps/app/src/runtime/service-read-cache.ts",
+          "name": "epoch"
+        },
+        {
+          "path": "apps/app/src/runtime/service-read-cache.ts",
+          "name": "clear"
+        },
+        {
+          "path": "apps/app/src/runtime/service-read-cache.ts",
+          "name": "put"
+        },
+        {
+          "path": "apps/app/src/runtime/service-read-cache.ts",
+          "name": "MAX_ENTRIES"
+        },
+        {
+          "path": "apps/app/src/runtime/service-read-cache-store.ts",
+          "name": "readCacheIdentity"
+        },
+        {
+          "path": "apps/app/src/runtime/service-read-cache-store.ts",
+          "name": "serviceReadCache"
+        },
+        {
+          "path": "apps/app/src/runtime/service-read-cache-store.ts",
+          "name": "ReadCacheService"
+        },
+        {
+          "path": "apps/app/src/runtime/service-read-cache-store.ts",
+          "name": "retireSharedMail"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
+          "name": "offlineStore"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
+          "name": "invalidateList"
+        },
+        {
+          "path": "apps/app/src/prototype/agent-calendar-adapter.ts",
+          "name": "serviceReadCache"
+        }
+      ],
+      "stateMapping": {
+        "owner/docs": "one document per verified account identity and service (readCacheIdentity)",
+        "epochs/pending": "the per-instance clear counter captured by each queued put",
+        "clears": "the number of clears of a document since it was created, kept across restarts for the check only",
+        "shown": "snapshots an adapter is showing",
+        "lastClearKey/othersBefore/othersAfter": "entries of every other document around the latest clear"
+      },
+      "abstractions": [
+        "Two account identities and two documents per identity: mail's own document and the account document that Calendar uses. A document holds at most two entries and ages in two steps (24 entries, 4 MiB and 30 days in the code).",
+        "Eviction by entry count and by size is the same step: the oldest entry of the same document makes room.",
+        "Mail snapshots left in the account document are erased once per account and app start without migration and are never read; they have no state here.",
+        "Hiding snapshots when the account changes is the adapters' duty; the model applies it at switchOwner.",
+        "Store read failures and compare-exchange retries are not modeled.",
+        "An entry is stamped when its write is requested. An age step is fifteen days, so no age step falls between the request and the store exchange.",
+        "A write requested before a clear is answered, without storing, by the time the clear returns; the model keeps its record until commitPut."
+      ]
+    },
+    {
+      "path": "specs/quint/services/ApprovalDecision.qnt",
+      "module": "ApprovalDecision",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "lostDecisionReplyReconciledTest",
+        "retainedDecisionBlocksAnotherTest",
+        "unrecordedDecisionReleasedAtFinishTest",
+        "changedRequestNeedsItsOwnDecisionTest",
+        "staleDecisionRefusedTest",
+        "unreadChangeCannotBeDecidedTest",
+        "restartNeedsReceiptTest",
+        "closedReceiptCannotDecideTest",
+        "lateDecisionForReplacedRequestDroppedTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "AtMostOneDecisionPerRequest",
+        "RecordedNeedsDecision",
+        "RetainedBlocksReview",
+        "BusyMeansRetained",
+        "WireNeedsDecision",
+        "ReviewIsOfKnownRequest",
+        "KnownNotAhead"
+      ],
+      "witnesses": [
+        "RetainedUnrecordedWitness",
+        "RetainedForReplacedRequestWitness",
+        "ReviewedNotSentWitness",
+        "StaleReviewWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/workflow-adapter.ts",
+        "apps/app/src/runtime/workflow-protocol.ts",
+        "apps/app/src/runtime/workflow-intents.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "approvalKey"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "approvalLocked"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "approvalReview"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "decideApproval"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "beforeDispatch"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "cancellationRequested"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "requestDigest"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-protocol.ts",
+          "name": "WorkflowApprovalReceipt"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-intents.ts",
+          "name": "WorkflowIntentStore"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-intents.ts",
+          "name": "workflowIntentKey"
+        }
+      ],
+      "stateMapping": {
+        "digest/status/finished/cancelRequested": "the engine's approval request and run state",
+        "opened/knownDigest/knownStatus/knownClosed": "the open execution receipt and the request, its status and the run state as the phone last read them (approvalReceipt)",
+        "intent/intentDigest/busy": "the retained decision and the operation sending it",
+        "reviewDigest/reviewApproved": "the first tap of a decision, on the request as last read",
+        "wire/wireDigest/wireApproved": "the decision on the network",
+        "sent/recorded": "decisions sent and recorded per request digest"
+      },
+      "abstractions": [
+        "One approval node with two request digests.",
+        "The phone decides on the request it last read; the engine alone decides whether that decision still counts.",
+        "A retained decision for a request the engine no longer lists stays retained until the run finishes or is cancelled.",
+        "A reply to a recorded decision that arrives after the request changed is taken as lost.",
+        "Unsupported approvals, which can only be denied, are not distinguished."
+      ],
+      "sharedSources": [
+        "packages/contracts/src/workflow-client.ts",
+        "packages/contracts/src/workflow-intents.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/WorkflowAuthoring.qnt",
+      "module": "WorkflowAuthoring",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "lostReplyDoesNotDuplicateTest",
+        "unreceiptedExactResendTest",
+        "slowRequestAndResendApplyOnceTest",
+        "refusedSaveUnlocksDraftTest",
+        "pendingBlocksEditTest",
+        "pendingBlocksDiscardTest",
+        "changedCompilerBlocksResendTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "OneSavePerDraft",
+        "PendingNeverEdited",
+        "AppliedNeverAbandoned",
+        "ResendNeedsNoRecord",
+        "UnreceiptedMeansPending",
+        "CommittedClearsDraft",
+        "WireNeedsIdentity"
+      ],
+      "witnesses": [
+        "UnreceiptedWitness",
+        "ResendConfirmWitness",
+        "RepeatOnWireWitness",
+        "AppliedUnknownWitness",
+        "RefusedThenEditedWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/workflow-authoring.ts",
+        "apps/app/src/runtime/workflow-protocol.ts",
+        "apps/app/src/runtime/phone-workflow-authoring.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/workflow-authoring.ts",
+          "name": "unreceipted"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-authoring.ts",
+          "name": "resendReview"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-authoring.ts",
+          "name": "refused"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-authoring.ts",
+          "name": "committed"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-authoring.ts",
+          "name": "recover"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-authoring.ts",
+          "name": "resend"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-authoring.ts",
+          "name": "discardDraft"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-authoring.ts",
+          "name": "locked"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-authoring.ts",
+          "name": "mutationId"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-authoring.ts",
+          "name": "phoneSaveReceipt"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-protocol.ts",
+          "name": "savePhone"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-protocol.ts",
+          "name": "WorkflowTypedRejected"
+        },
+        {
+          "path": "apps/app/src/runtime/phone-workflow-authoring.ts",
+          "name": "normalizePhoneSpec"
+        }
+      ],
+      "stateMapping": {
+        "draft/spec/review": "the local typed draft, its content and the specification shown for review",
+        "pending/pendingSpec/minted": "the stored mutation identity, the content it was minted for, and identities minted",
+        "busy/unreceipted/resendReview/discardAsk/storageFailed": "the request in progress, the no-record receipt answer, the two confirmations and the draft storage latch",
+        "wire/applied/saves": "requests on the network and saves the agent applied",
+        "agentChanged/compilerChanged": "a workflow changed on the agent and a changed compiler revision"
+      },
+      "abstractions": [
+        "One draft, three content values, three mutation identities and two requests on the network.",
+        "Step editing, calendar and note pickers and generated drafts change only the draft content; they are the edit action.",
+        "A workflow changed on the agent stays changed, so a refused edit can never be applied later.",
+        "Local cleanup after a confirmed save is atomic here; its failure is reported by the code and leaves the save applied."
+      ],
+      "sharedSources": [
+        "packages/contracts/src/workflow-client.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/TriggerCursor.qnt",
+      "module": "TriggerCursor",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "leaveAcrossBackgroundTest",
+        "brokenFlowDoesNotStopOthersTest",
+        "fullQueueStillDispatchesTest",
+        "heldDispatchWaitsForWakeTest",
+        "movedPlaceRestartsCursorTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "LatchNeedsRuntimeFault",
+        "LeaveFiredOncePerObservation",
+        "CursorKeepsLastKnownSide",
+        "SeenBounded",
+        "QueueBounded",
+        "ReportMeansBroken"
+      ],
+      "witnesses": [
+        "GapKeepsSideWitness",
+        "BlockedWithQueueWitness",
+        "BrokenFlowBesideFiringWitness",
+        "HeldDispatchWitness",
+        "EdgeFixWitness"
+      ],
+      "sources": [
+        "apps/app/src/browser/workflow-trigger-runtime.ts",
+        "apps/app/src/browser/workflow-triggers.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/browser/workflow-trigger-runtime.ts",
+          "name": "WorkflowTriggerRuntime"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-trigger-runtime.ts",
+          "name": "blocked"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-trigger-runtime.ts",
+          "name": "held"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-trigger-runtime.ts",
+          "name": "wake"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-trigger-runtime.ts",
+          "name": "position"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-trigger-runtime.ts",
+          "name": "watching"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-triggers.ts",
+          "name": "placeChanged"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-triggers.ts",
+          "name": "triggerTickPlan"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-triggers.ts",
+          "name": "detectWorkflowTriggers"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-triggers.ts",
+          "name": "TriggerCursor"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-triggers.ts",
+          "name": "placeKey"
+        },
+        {
+          "path": "apps/app/src/browser/workflow-triggers.ts",
+          "name": "TriggerError"
+        }
+      ],
+      "stateMapping": {
+        "foreground/blocked/held/faulted": "the foreground gate, the scan latch, the dispatch latch and the whole-check failure that set the scan latch",
+        "actual/pos/placeVersion": "where the phone is, the fix the runtime holds, and the saved place identity",
+        "cursor/cursorInside/cursorPlace": "the location cursor with its last known side and place key",
+        "lastKnown/observedLeaves/fired": "the side last observed by a check and the leave occurrences owed and produced",
+        "brokenB/reportB/cursorB/liveB/seenB/firedB": "a second workflow that can fail to be checked, its report, and its message cursor",
+        "queue": "queued trigger jobs"
+      },
+      "abstractions": [
+        "Development surface only: the runtime is installed with the browser development profile behind ELIZA_DEV_ALLOW_TEST_MOCKS.",
+        "Two workflows, three message identities, a queue of three (100 in the code) and three moves.",
+        "Time, calendar and email triggers, source hashing and the per-second timer are not modeled; a check and a dispatch are separate steps.",
+        "A full queue stands for every failure of the whole check (invalid history, an incomplete calendar read, a full document).",
+        "The workflow that cannot be checked has an unreadable source, with its definition unchanged. An edited trigger is another definition and starts its cursor over.",
+        "reportB is the per-workflow report of the latest completed check; a failed whole check shows its own message until the next completed one."
+      ]
+    },
+    {
+      "path": "specs/quint/services/WorkflowNoticeTaps.qnt",
+      "module": "WorkflowNoticeTaps",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "refreshDuringTapReadTest",
+        "tapDuringOperationDeferredTest",
+        "failedConsumeDoesNotReopenTest",
+        "canceledQuestionStaysUsableTest",
+        "interruptedQuestionKeepsTapTest",
+        "secondEventWhileReadingTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "OpenedOncePerTap",
+        "ConsumedWasHandled",
+        "RememberedTapIsPending",
+        "QuestionReviewHasTap",
+        "ComposeNeedsConsume",
+        "StaleCheckRepeats"
+      ],
+      "witnesses": [
+        "StaleReadWitness",
+        "OpenedUnconsumedWitness",
+        "DeferredWithoutOperationWitness",
+        "ReleasedQuestionWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/workflow-adapter.ts",
+        "apps/app/src/runtime/workflow-device-contract.ts",
+        "apps/app/src/prototype/workflow-notice-question.ts",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticeTaps.java"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "checkNotice"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "tapBusy"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "tapRequested"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "tapDeferred"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "openedTap"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "noticeQuestion"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-device-contract.ts",
+          "name": "resolveWorkflowTap"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-device-contract.ts",
+          "name": "readyTapStep"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-device-contract.ts",
+          "name": "tapRecheck"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-device-contract.ts",
+          "name": "consumeWorkflowTap"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-device-contract.ts",
+          "name": "pendingWorkflowTap"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-notice-question.ts",
+          "name": "reviewWorkflowNoticeQuestion"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-notice-question.ts",
+          "name": "discard"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticeTaps.java",
+          "name": "NoticeRoutes"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/WorkflowNoticeTaps.java",
+          "name": "ASK_ACTION"
+        }
+      ],
+      "stateMapping": {
+        "ledger/question": "the tap row of the shared notice route ledger (new, pending, consumed) and its Ask flag",
+        "tapBusy/tapRequested/tapDeferred/recheck": "the read in progress and the three ways another check is owed",
+        "operation/generation/epoch/staleDrop": "the workflow operation, the view generation, the generation a read began under, and a read that ended under another one",
+        "noticeQuestion/asked/composed": "the open question review and its outcome",
+        "openedTap/runOpen/opens": "the token of a run opened before its consume, the open run, and how often it was opened"
+      },
+      "abstractions": [
+        "One notification and one tap token; four view generations.",
+        "Taps for another account, unavailable executions and a failed native lookup leave the tap pending without a new check; they are not modeled.",
+        "The authenticated receipt and workflow reads are one step. Their failure reports the tap as retained.",
+        "A view reset drops the running operation without its completion step, so a deferred check then waits for the next operation or event. The model keeps that behavior.",
+        "The native ledger is the shared notice route contract; here it is one row that a tap makes pending, a canceled question returns to new, and a consume ends."
+      ],
+      "sharedSources": [
+        "plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/NoticeRoutes.java",
+        "packages/contracts/src/notice-routes.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/InboxEditCoalescer.qnt",
+      "module": "InboxEditCoalescer",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "burstWritesLatestOnceTest",
+        "continuousTypingIsBoundedTest",
+        "slowStoreHoldsNextWriteTest",
+        "leavingWritesAtOnceTest",
+        "oversizedEditReportedTest",
+        "retireWritesWaitingEditTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "WaitingIsLatest",
+        "NoSilentLoss",
+        "WaitingHasDriver",
+        "BurstBounded",
+        "HeldBlocksDueWrite",
+        "OneWritePerBurst",
+        "StoredWasPushed"
+      ],
+      "witnesses": [
+        "CoalescedBurstWitness",
+        "HeldPastDueWitness",
+        "NotRetainedWitness",
+        "BurstLimitWitness"
+      ],
+      "sources": [
+        "apps/app/src/runtime/inbox-edit-coalescer.ts",
+        "apps/app/src/prototype/inbox-unsaved.ts",
+        "apps/app/src/runtime/inbox-unsaved-record.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/runtime/inbox-edit-coalescer.ts",
+          "name": "editCoalescer"
+        },
+        {
+          "path": "apps/app/src/runtime/inbox-edit-coalescer.ts",
+          "name": "push"
+        },
+        {
+          "path": "apps/app/src/runtime/inbox-edit-coalescer.ts",
+          "name": "flush"
+        },
+        {
+          "path": "apps/app/src/runtime/inbox-edit-coalescer.ts",
+          "name": "hold"
+        },
+        {
+          "path": "apps/app/src/runtime/inbox-edit-coalescer.ts",
+          "name": "release"
+        },
+        {
+          "path": "apps/app/src/runtime/inbox-edit-coalescer.ts",
+          "name": "discard"
+        },
+        {
+          "path": "apps/app/src/runtime/inbox-edit-coalescer.ts",
+          "name": "maximumWait"
+        },
+        {
+          "path": "apps/app/src/runtime/inbox-edit-coalescer.ts",
+          "name": "EditCoalescerTimers"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-unsaved.ts",
+          "name": "inboxUnsaved"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-unsaved.ts",
+          "name": "editCoalescer"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-unsaved.ts",
+          "name": "invalid"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-unsaved.ts",
+          "name": "peek"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-unsaved.ts",
+          "name": "retire"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-unsaved.ts",
+          "name": "tooLarge"
+        },
+        {
+          "path": "apps/app/src/prototype/inbox-unsaved.ts",
+          "name": "visibilitychange"
+        },
+        {
+          "path": "apps/app/src/runtime/inbox-unsaved-record.ts",
+          "name": "encodeInboxUnsaved"
+        }
+      ],
+      "stateMapping": {
+        "latest/latestBig": "the composer content of the last edit and whether it is too large to encode",
+        "waiting/waitingBig/timer/remaining/age": "the one copy waiting to be written, its timer, and the ticks since the first edit of the burst",
+        "held/heldWrite": "store writes in flight holding the coalescer, and a due write that happened while held",
+        "stored/invalid": "the encoded copy handed to the recovery store controller and the not-retained status",
+        "dropped/alive": "a waiting copy dropped without a write, and the account binding that accepts edits",
+        "pushes/writes": "edits made and copies written"
+      },
+      "abstractions": [
+        "Five edits; delay and burst limit are two and four ticks (300 ms and 1500 ms in the code). A timer fires exactly when it is due.",
+        "The store's own save, conflict and error states belong to DraftDispatch; here a write hands the encoded copy to that controller.",
+        "Whether a copy can be encoded is a property of the edit (its size); the stored copy is unchanged by a refused encode.",
+        "The readback that follows an account change and the app-update flush are not modeled.",
+        "The model waits two ticks with a burst limit of four. The retained-edit store runs the coalescer with no delay, so a write is due in the task after the edit; the hold, flush, discard and retire rules are the same."
+      ]
+    },
+    {
+      "path": "specs/quint/services/WorkflowLifecycleChange.qnt",
+      "module": "WorkflowLifecycleChange",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "reviewedRemovalTest",
+        "lostReplyStaysRetainedTest",
+        "neverSentIsResentTest",
+        "delayedCopyAndResendApplyOnceTest",
+        "refusedResendStaysRetainedTest",
+        "resendAfterEditReleasesTest",
+        "abandonedResendKeepsEntryTest",
+        "changedVersionReleasesTest",
+        "refusedChangeReleasesTest",
+        "interruptedRunsAreCancelledFirstTest",
+        "unreadRetainedCannotResendTest",
+        "retainedBlocksAnotherChangeTest",
+        "appliedCopyCannotApplyAgainTest",
+        "ongoingRunBlocksRemovalTest",
+        "abortBeforeDispatchReleasesTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "EverySendIsFirstOrReviewed",
+        "AppliedOncePerIntent",
+        "ReleasedRequestCannotApply",
+        "UnseenChangeStaysRetained",
+        "CheckedRetainedIsOffered",
+        "OfferIsForRetainedVersion",
+        "ResendNeedsOffer",
+        "ReviewNeedsUnlocked",
+        "UnknownReviewIsReview",
+        "BusyStage"
+      ],
+      "witnesses": [
+        "AppliedUnconfirmedWitness",
+        "LateRequestReleasedWitness",
+        "NeverSentRetainedWitness",
+        "NeverSentResentAppliedWitness",
+        "RefusedResendRetainedWitness",
+        "InterruptedReviewWitness",
+        "RemovedThenRestoredWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/workflow-adapter.ts",
+        "apps/app/src/runtime/workflow-protocol.ts",
+        "apps/app/src/runtime/workflow-intents.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "lifecycleReview"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "unknownReview"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "lifecycleLocked"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "lifecycleKey"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "reconcileLifecycle"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "WorkflowLifecycleRejected"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "beforeDispatch"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "runOutcomeUnknown"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "lifecycleAvailable"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-protocol.ts",
+          "name": "WorkflowLifecycleRejected"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-protocol.ts",
+          "name": "WorkflowLifecycleReceipt"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-intents.ts",
+          "name": "WorkflowIntentStore"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-intents.ts",
+          "name": "workflowIntentKey"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "unsentLifecycle"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "reviewLifecycleResend"
+        },
+        {
+          "path": "apps/app/src/prototype/workflow-adapter.ts",
+          "name": "resendLifecycle"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-protocol.ts",
+          "name": "resendLifecycle"
+        }
+      ],
+      "stateMapping": {
+        "removed/version": "the agent's workflow: removed or present, and its version",
+        "knownRemoved/knownVersion": "the workflow detail this phone last read",
+        "ongoing/interrupted": "runs in the history: one still running, one interrupted with an unknown outcome; the agent refuses a change while either exists",
+        "review/unknownReview": "the first tap of a removal or restore, and of cancelling interrupted runs",
+        "intent/intentVersion/intentRemove": "the retained lifecycle request with the version and operation it names",
+        "offer/resendReview/checked": "the agent's answer that it holds no receipt for the retained request on the version still current (unsentLifecycle), the first tap of sending it again (reviewLifecycleResend), and whether the receipt was read since the app started or the request was last sent",
+        "busy/stage/reply": "the workflow operation in progress, how far it got (first send or resend), and the answer waiting for it",
+        "wire/wireId/wireVersion/wireRemove": "copies of the newest request on the network, with the request, version and operation they name",
+        "receipts": "the requests the agent applied and keeps a receipt for, by mutation identity",
+        "seen/sent/resends/admissions/applications": "whether this phone learned of the applied change, sends and reviewed resends per request (two stands for more), and totals"
+      },
+      "abstractions": [
+        "One workflow, three versions and three lifecycle requests. Name and description edits follow the same record, reconcile and release steps under their own key, without a resend, and are not modeled separately.",
+        "The agent applies a request once per mutation identity and only for the version it names, and refuses it while a run is unfinished; a change from elsewhere moves the version on. Whether an applied removal moves the version is not assumed, so a repeat is answered from the receipt alone.",
+        "At most two copies of one request are in flight; a third send stands for the loss of one. Requests of an earlier change still in flight when a new one is sent are dropped: they name an older version or already have a receipt.",
+        "The resend reads the receipt before posting and again after a refusal; both reads are folded into the resend and refusal steps.",
+        "Pending trigger cleanup, which blocks a restore, and agents without reviewed removal are not modeled.",
+        "An account change resets the view; the retained request belongs to its account and is not modeled across accounts."
+      ],
+      "sharedSources": [
+        "packages/contracts/src/workflow-client.ts",
+        "packages/contracts/src/workflow-intents.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/MapsConnection.qnt",
+      "module": "MapsConnection",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "coverageReadBeforeMapsOpensTest",
+        "readKeepsGuidanceTest",
+        "accountChangeRetiresProviderTest",
+        "supersededReadCannotInstallTest",
+        "signedOutReadIsRefusedTest",
+        "failedReadWaitsForSearchTest",
+        "rebuiltClientKeepsRequestsWorkingTest",
+        "readInFlightSurvivesRebuiltClientTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "InstalledIsHealthy",
+        "InstalledForSignedInAccount",
+        "CurrentReadHasNoProvider",
+        "ReadsAreIssuedInOrder",
+        "GuidanceNeedsProvider",
+        "ReadKeepsGuidance",
+        "CoverageReaderSeesBinding",
+        "CoverageWaitsForResident",
+        "RequestOutcomeNeedsProvider",
+        "RebuiltClientKeepsProviderWorking",
+        "RequestServedByBoundClient"
+      ],
+      "witnesses": [
+        "CoverageBeforeMapsOpenedWitness",
+        "SupersededReadWitness",
+        "AccountEndedGuidanceWitness",
+        "RebuiltClientServesRequestWitness",
+        "FailedReadWitness",
+        "GuidanceOutlivesClientWitness"
+      ],
+      "sources": [
+        "apps/app/src/maps/cloud-maps.ts",
+        "apps/app/src/maps/agent-navigation.ts",
+        "apps/app/src/prototype/maps-adapter.ts",
+        "apps/app/src/maps/cloud-provider.ts",
+        "apps/app/src/maps/cloud-session.ts",
+        "apps/app/src/maps/runtime.ts",
+        "apps/app/src/runtime/connection-ui.tsx"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/maps/cloud-maps.ts",
+          "name": "retireCloudMaps"
+        },
+        {
+          "path": "apps/app/src/maps/cloud-maps.ts",
+          "name": "initializeCloudMaps"
+        },
+        {
+          "path": "apps/app/src/maps/cloud-maps.ts",
+          "name": "captureMapsSession"
+        },
+        {
+          "path": "apps/app/src/maps/cloud-maps.ts",
+          "name": "previous"
+        },
+        {
+          "path": "apps/app/src/maps/agent-navigation.ts",
+          "name": "keepCloudMapsCoverage"
+        },
+        {
+          "path": "apps/app/src/maps/agent-navigation.ts",
+          "name": "pending"
+        },
+        {
+          "path": "apps/app/src/maps/agent-navigation.ts",
+          "name": "seen"
+        },
+        {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "readCloudMaps"
+        },
+        {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "onMapsConnectionChange"
+        },
+        {
+          "path": "apps/app/src/runtime/connection-ui.tsx",
+          "name": "getCloudClient"
+        },
+        {
+          "path": "apps/app/src/maps/cloud-maps.ts",
+          "name": "mapsSession"
+        },
+        {
+          "path": "apps/app/src/maps/cloud-maps.ts",
+          "name": "accountClient"
+        },
+        {
+          "path": "apps/app/src/maps/cloud-maps.ts",
+          "name": "sameAccount"
+        }
+      ],
+      "stateMapping": {
+        "account/client": "connectionController.getCloudClient sessionId and credentialId (the account) and the client object bound to it",
+        "seenAccount/seenClient/coveragePending/residentReady": "keepCloudMapsCoverage seen, pending and ready()",
+        "generation/inflight/configured/error/installed": "createCloudMaps generation, attempts in flight, diagnostic.configured, diagnostic.error and installed",
+        "ownerAccount/ownerClient": "captureMapsSession owner session and credential over mapsSession, and the client object bound when the provider was installed (bookkeeping: the provider holds accountClient, not that object)",
+        "opened/guidance/guidanceEnd/lastRequest": "MapsScreenController initialized, navigating, the cause of its release and the outcome of one provider request",
+        "servedClient": "the client accountClient.mapsRequest and the tileRequest closure resolve from getCloudClient for one request"
+      },
+      "abstractions": [
+        "Two accounts, six read generations and five client objects; account changes, reconnects and reads are disabled at the bounds rather than dropped.",
+        "Failure codes are two classes: unauthorized (signed out or a changed binding) and transient (every other refused read). No timer retries a failed read; an explicit search or map retry does.",
+        "The account-change retirement in cloud-maps.ts and the coverage reader's microtask are one step, in that order. The resident stays ready once it is ready. The regional test gateway, the assistant window and map tiles are not modeled.",
+        "Guidance is one flag owned by the Maps screen: retiring the installed provider releases the screen and ends it.",
+        "unguardedRead is outside step. It replays a read issued over a working provider, which ends guidance; readKeepsGuidanceTest shows the guarded read keeping it.",
+        "pinnedClientRequest is outside step. It replays a provider that keeps the client object its coverage was read with, whose requests are refused after the same account is bound with a rebuilt client; rebuiltClientKeepsRequestsWorkingTest shows it breaking RebuiltClientKeepsProviderWorking and the per-request client serving the same request.",
+        "Search, route and tile requests are one request action: all three compare session and credential only and use the client bound at the time of the call. A reply landing after an account change is covered by retirement, not by a separate late-reply step."
+      ],
+      "sharedSources": [
+        "plugins/plugin-maps/src/client/cloud-provider.ts",
+        "plugins/plugin-maps/src/client/cloud-session.ts",
+        "plugins/plugin-maps/src/client/runtime.ts",
+        "plugins/plugin-maps/src/client/maps-screen.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/MapsScreenModes.qnt",
+      "module": "MapsScreenModes",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "modesInOrderTest",
+        "backUnwindsOneLayerTest",
+        "handoffDiscardedByNewerActionTest",
+        "handoffAppliedOnceTest",
+        "hiddenGuidanceNeedsScreenOffSessionTest",
+        "pendingFixEndsGuidanceTest",
+        "chosenOriginLeavesLocationBusyTest",
+        "lateFixReplacesSearchAndTypedOriginTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "NavigationNeedsRouteSheet",
+        "DirectionsNeedDestination",
+        "OriginPickNeedsRouteSheet",
+        "ReadyRouteNeedsOrigin",
+        "ScreenOffNeedsGuidance",
+        "HiddenGuidanceHasScreenOffSession",
+        "HandoffNeedsQuery",
+        "HandoffAppliedOncePerRequest"
+      ],
+      "witnesses": [
+        "GuidanceModeWitness",
+        "OriginPickWitness",
+        "HiddenGuidanceWitness",
+        "HandoffAppliedWitness",
+        "CurrentLocationPlaceWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/maps-adapter.ts",
+        "apps/app/src/maps/screen.ts",
+        "apps/app/src/maps/state.ts",
+        "apps/app/src/maps/device-navigation.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "pendingHandoff"
+        },
+        {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "discardHandoff"
+        },
+        {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "screen.handoff"
+        },
+        {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "screen.hidden"
+        },
+        {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "screen.release"
+        },
+        {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "screen.back"
+        },
+        {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "view.mode"
+        },
+        {
+          "path": "apps/app/src/maps/state.ts",
+          "name": "MapsController"
+        }
+      ],
+      "stateMapping": {
+        "searching/hasQuery/selected/directions/originMode/navigating": "MapsScreenController flags behind MapsScreenView.mode, mapped to the template's base, results, place, dir, origin and nav",
+        "locating/watch": "MapsScreenController.locating and the controller's one-fix NativeMapsLocation watch",
+        "originText/origin/routeReady": "MapsScreenController.originText, MapsController origin and a ready route",
+        "screenOff/hidden": "BackgroundNavigation.active and document visibility as seen by screen.hidden",
+        "handoffQuery/handoffPending/requests/handoffs": "the Maps view's one-use query, the adapter's pendingHandoff and the searches screen.handoff ran"
+      },
+      "abstractions": [
+        "One destination and one origin candidate. Search results, saved places, place detail, travel modes, route choices, sharing and the map plane are not modeled.",
+        "Typed origin coordinates and a chosen origin candidate are one action: both set the controller's origin and stop its location watch.",
+        "A location-permission prompt that keeps a hidden Maps screen is not modeled; guidance ends by End, Back, leaving, hiding without the screen-off session, or a new controller origin.",
+        "The hand-off microtask is an action that can be delayed. Every newer explicit action discards the pending hand-off, so a delayed one finds nothing to run.",
+        "LocatingHasWatchDesired, LateFixKeepsSearchDesired and LateFixKeepsTypedOriginDesired are outside safety: the screen clears its busy flag only on a settled fix, an agent request or release. chosenOriginLeavesLocationBusyTest and lateFixReplacesSearchAndTypedOriginTest replay them."
+      ],
+      "sharedSources": [
+        "plugins/plugin-maps/src/client/maps-screen.ts",
+        "plugins/plugin-maps/src/client/state.ts",
+        "plugins/plugin-maps/src/client/device-navigation.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/SystemPickerVisibility.qnt",
+      "module": "SystemPickerVisibility",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "exportPickerKeepsDialogsTest",
+        "correctionAlwaysClosesTest",
+        "realBackgroundUnderPickerTest",
+        "lateFilePickerResultTest",
+        "closedReviewClosesNestedDialogsTest",
+        "cancelledFilePickerTest"
+      ],
+      "invariants": [
+        "CounterBalanced",
+        "UnexemptDialogsCloseWhenHidden",
+        "HiddenDialogStartedUnderPicker",
+        "NestedDialogsNeedDocument",
+        "RetiredPickerNeverDelivers",
+        "OneFilePickerConsumer"
+      ],
+      "witnesses": [
+        "DialogKeptUnderPickerWitness",
+        "DialogHiddenAfterPickerEndedWitness",
+        "LateResultDroppedWitness",
+        "TwoPickersWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/scan-pdf.ts",
+        "apps/app/src/browser/file-picker.ts",
+        "apps/app/src/prototype/scan-review.ts",
+        "apps/app/src/prototype/scan-document.ts",
+        "apps/app/src/prototype/scan-searchable-review.ts",
+        "apps/app/src/prototype/scan-correction-review.ts",
+        "apps/app/src/prototype/scan-page-camera.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/scan-pdf.ts",
+          "name": "systemPickerActive"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-pdf.ts",
+          "name": "duringSystemPicker"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-pdf.ts",
+          "name": "systemPickers"
+        },
+        {
+          "path": "apps/app/src/browser/file-picker.ts",
+          "name": "runFilePicker"
+        },
+        {
+          "path": "apps/app/src/browser/file-picker.ts",
+          "name": "inputFiles"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-review.ts",
+          "name": "systemPickerActive"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-review.ts",
+          "name": "visibilitychange"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-document.ts",
+          "name": "systemPickerActive"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-document.ts",
+          "name": "duringSystemPicker"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-searchable-review.ts",
+          "name": "systemPickerActive"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-correction-review.ts",
+          "name": "visibilitychange"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-page-camera.ts",
+          "name": "visibilitychange"
+        }
+      ],
+      "stateMapping": {
+        "pickers/started/ended": "The systemPickers counter around each picker or export call",
+        "hidden/hiddenUnderPicker": "document.hidden and whether a picker was in flight when the page became hidden",
+        "review/document/searchable/correction/capture": "The five scan dialogs; the first three are exempt from the hidden-page close while a picker is open",
+        "generation/live/pending/retired/delivered": "The owned browser file picker controller, operating-system results still outstanding, and results delivered to a consumer"
+      },
+      "abstractions": [
+        "Three picker calls and three browser file pickers. pagehide closes every dialog and cancels the owned file picker.",
+        "A picker that settles while the page stays hidden produces no further hidden event; the dialog then stays until the page is shown or unloaded.",
+        "Trace replay: test/quint-system-picker-visibility.test.mjs replays simulator traces step by step against duringSystemPicker, systemPickerActive and runFilePicker; the five scan dialogs are not mounted, so the hidden-page close rules are checked by the model only and compares the observed state after every step. It is bounded evidence for the sampled traces, not a refinement proof or device acceptance."
+      ],
+      "bounds": {
+        "pickers": 3,
+        "filePickers": 3
+      }
+    },
+    {
+      "path": "specs/quint/services/ScanReviewDialogs.qnt",
+      "module": "ScanReviewDialogs",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "unconfirmedNotesSaveStaysLatchedTest",
+        "unconfirmedKeepStaysOffTest",
+        "retryablePdfUnlocksTest",
+        "searchableCloseOutcomesTest",
+        "searchableCloseAfterRequestTest",
+        "cornerChangeDiscardsPreviewTest",
+        "stoppedCameraKeepsCaptureTest",
+        "backClosesDocumentFirstTest"
+      ],
+      "invariants": [
+        "NotesSavedOnce",
+        "KeepRetryNeedsRetryableFailure",
+        "PdfRetryNeedsNonWrite",
+        "DocumentNeedsOpenReview",
+        "UnconfirmedNeedsProviderRequest",
+        "SearchableResultNeedsReadyText",
+        "PreviewMatchesCorners",
+        "AppliedCorrectionWasPreviewed",
+        "UsedPageWasReviewed",
+        "StoppedCameraKeepsCapture"
+      ],
+      "witnesses": [
+        "UnconfirmedNotesSaveWitness",
+        "PdfRetriedWitness",
+        "KeepRetriedWitness",
+        "ClosedWhilePreparingWitness",
+        "StalePreviewDiscardedWitness",
+        "CaptureAfterCameraStoppedWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/scan-review.ts",
+        "apps/app/src/prototype/scan-searchable-review.ts",
+        "apps/app/src/prototype/scan-correction-review.ts",
+        "apps/app/src/prototype/scan-page-camera.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/scan-review.ts",
+          "name": "openScanReview"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-review.ts",
+          "name": "ScanKeepError"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-review.ts",
+          "name": "pdfAttempted"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-review.ts",
+          "name": "attempted"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-review.ts",
+          "name": "keeping"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-review.ts",
+          "name": "closeDocument"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-searchable-review.ts",
+          "name": "reviewSearchableScan"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-searchable-review.ts",
+          "name": "requested"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-searchable-review.ts",
+          "name": "busy"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-correction-review.ts",
+          "name": "clearPreview"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-correction-review.ts",
+          "name": "corrected"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-correction-review.ts",
+          "name": "busy"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-page-camera.ts",
+          "name": "captureScanPage"
+        },
+        {
+          "path": "apps/app/src/prototype/scan-page-camera.ts",
+          "name": "retake"
+        }
+      ],
+      "stateMapping": {
+        "text": "OCR state, the one-shot Notes save latch, photo PDF attempt and lock, Keep photo state and retries, and the nested document dialog",
+        "searchable": "ready, busy and requested flags and the result the review resolves with",
+        "correction": "busy work, corner edits, the preview and the corners it was made from",
+        "capture": "Camera stream state, frame encoding, the reviewed capture and the returned page"
+      },
+      "abstractions": [
+        "The four dialogs are independent machines in one module; their hidden-page rules are in SystemPickerVisibility and document drafts are in ScanDocument.",
+        "Corner positions are an edit counter. Keep photo outcomes are saved, retryable and unconfirmed as the host reports them.",
+        "Retake needs a live camera, so a capture reviewed before the camera stopped is kept.",
+        "Model safety checks do not establish implementation refinement or device acceptance."
+      ],
+      "bounds": {
+        "pdfExports": 3,
+        "keepAttempts": 3,
+        "cornerEdits": 3
+      }
+    },
+    {
+      "path": "specs/quint/services/MmsCompose.qnt",
+      "module": "MmsCompose",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "pictureChooserKeepsVisitTest",
+        "hideWithoutChooserEndsVisitTest",
+        "retryAfterCancelledAndDeniedTest",
+        "repeatedIdNeverDispatchesTwiceTest",
+        "pickedPicturesResetIdTest",
+        "pageHideEndsPickTest",
+        "sixthPictureRefusedTest",
+        "carrierAnswerReadBackTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "ActiveMatchesAvailability",
+        "HiddenVisitOnlyWhilePicking",
+        "PicturesWithinLimit",
+        "AtMostOneDispatchPerOperation",
+        "DispatchJournaled",
+        "ClosedAnswerReleasesId",
+        "HeldIdWasMinted",
+        "InactiveHoldsNothing",
+        "NoticeIsCurrentVisit",
+        "BusyHasCall"
+      ],
+      "witnesses": [
+        "VisitKeptBehindChooserWitness",
+        "PicturesAddedWhileHiddenWitness",
+        "RetryAfterCancelledWitness",
+        "RepeatedIdAnsweredFromJournalWitness",
+        "LatePicturesDroppedWitness",
+        "PickedPicturesResetIdWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/sms-adapter.ts",
+        "apps/app/src/runtime/image-sms.ts",
+        "apps/app/src/runtime/aosp-telephony.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "installSmsAdapter"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "picking"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "attach"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "sendMms"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "reconcileMms"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "mmsOperationId"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "mmsReview"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "resetMms"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "attachments"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "pagehide"
+        },
+        {
+          "path": "apps/app/src/prototype/sms-adapter.ts",
+          "name": "smsHide"
+        },
+        {
+          "path": "apps/app/src/runtime/image-sms.ts",
+          "name": "mmsReceiptLabel"
+        },
+        {
+          "path": "apps/app/src/runtime/image-sms.ts",
+          "name": "createSmsSession"
+        },
+        {
+          "path": "apps/app/src/runtime/aosp-telephony.ts",
+          "name": "reviewMms"
+        },
+        {
+          "path": "apps/app/src/runtime/aosp-telephony.ts",
+          "name": "MMS_MAX_ATTACHMENTS"
+        }
+      ],
+      "stateMapping": {
+        "viewOpen/hidden/picking/active/lifecycle": "installSmsAdapter sync(): Messages in front, or hidden only while the picture chooser it opened is up; the visit token",
+        "chooser/chooserLifecycle/chooserDraft": "the file input attach() opened, with the visit and draft revision it captured; done() ends the pick on a visible page or on pagehide",
+        "pictures/draftRevision/edits": "attachments (at most MMS_MAX_ATTACHMENTS) and the draft revision every edit, removal, pick and closed answer advances",
+        "operationId/minted": "mmsOperationId, minted by crypto.randomUUID() only when the draft holds none; resetMms clears it",
+        "call/callLifecycle/callDraft/reply": "client.sendMms in flight with the token and draft it captured, and the native answer not yet received",
+        "journal/dispatches": "the native MMS send record per operation ID and the single platform dispatch behind it (NativeMmsDispatch)",
+        "shown/shownFrom/shownLifecycle": "the notice from the draft, a send answer or reconcileMms()"
+      },
+      "abstractions": [
+        "Three operation IDs, six visits, bounded draft revisions and picks of one or three pictures. Recipients, text and SIM are one draft; review refusals before the native call (no SIM, too large, MMS unavailable) are not modeled.",
+        "Owner controls need the visible page; the adapter itself only checks active and busy. One chooser is open at a time. The SMS operation ID, which the same edits reset, is SmsSend.",
+        "The journal is one status per ID; the reviewed binding, PDU custody and carrier evidence are NativeMmsDispatch. The foreground provider session is the shared telephony session.",
+        "Replayed against installSmsAdapter with a held telephony client and a held file input (test/quint-mms-compose.test.mjs); no SIM, carrier, chooser activity or installed-image claim."
+      ],
+      "sharedSources": [
+        "packages/contracts/src/native-telephony.ts",
+        "packages/contracts/src/native-telephony-session.ts",
+        "packages/contracts/src/mms-send.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/AutomationRequestSettlement.qnt",
+      "module": "AutomationRequestSettlement",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "lostReplyRemovalSettledByListTest",
+        "partialListSettlesNothingTest",
+        "runRequestNeedsOwnerTest",
+        "refusedChangeReleasedTest",
+        "unreadConnectionBlocksChangeTest",
+        "lateEnableOverridesTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "BusyMeansRetained",
+        "UnknownStaysLocked",
+        "RunNeverSettledByList",
+        "PartialListSettlesNothing",
+        "RemovedOnce",
+        "OneRetainedAtATime"
+      ],
+      "witnesses": [
+        "ListSettledRemovalWitness",
+        "RunStaysLockedWitness",
+        "PartialListKeepsLockWitness",
+        "LateEnableOverridesWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/automations-adapter.ts",
+        "apps/app/src/runtime/automations-protocol.ts",
+        "apps/app/src/runtime/workflow-intents.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/automations-adapter.ts",
+          "name": "settled"
+        },
+        {
+          "path": "apps/app/src/prototype/automations-adapter.ts",
+          "name": "uncertain"
+        },
+        {
+          "path": "apps/app/src/prototype/automations-adapter.ts",
+          "name": "allowAnother"
+        },
+        {
+          "path": "apps/app/src/prototype/automations-adapter.ts",
+          "name": "automationBlock"
+        },
+        {
+          "path": "apps/app/src/prototype/automations-adapter.ts",
+          "name": "reminderBlock"
+        },
+        {
+          "path": "apps/app/src/prototype/automations-adapter.ts",
+          "name": "loadedSession"
+        },
+        {
+          "path": "apps/app/src/prototype/automations-adapter.ts",
+          "name": "locked"
+        },
+        {
+          "path": "apps/app/src/prototype/automations-adapter.ts",
+          "name": "complete"
+        },
+        {
+          "path": "apps/app/src/runtime/automations-protocol.ts",
+          "name": "AutomationOutcomeError"
+        },
+        {
+          "path": "apps/app/src/runtime/automations-protocol.ts",
+          "name": "mergeAutomationRows"
+        },
+        {
+          "path": "apps/app/src/runtime/workflow-intents.ts",
+          "name": "WorkflowIntentStore"
+        }
+      ],
+      "stateMapping": {
+        "exists/enabled/runs": "one prompt automation on the agent and the runs it started",
+        "loaded/complete/knownExists/knownEnabled": "the list read for the current connection, whether every source answered, and the row as read",
+        "retained/busy/unknown": "the journal entry of the change, the operation sending it, and the unknown-outcome lock on the row",
+        "flight/reply": "requests on the network, including one that outlived its journal entry, and the answer to the newest",
+        "admissions/deletes": "changes recorded and removals applied",
+        "lastRelease/releasedKind/releasedOn/lateApplied": "why the latest entry was released, of what kind, on what list, and whether a released enable request later changed the row"
+      },
+      "abstractions": [
+        "One prompt automation and three changes. Reminder edits settle by the same rule (every requested field matches a complete reminders source) and are not distinguished.",
+        "A definite refusal stands for the status codes the adapter treats as a known non-change and for a block raised before dispatch.",
+        "New items, snooze and fire share the run request: a list never settles them.",
+        "The scheduled-task verbs of the same list are modeled in ScheduledTaskControls.",
+        "A list that shows the requested enabled value releases the entry although its request may still be in flight; LateEnableOverridesWitness records that such a request can later undo a newer choice."
+      ],
+      "sharedSources": [
+        "packages/contracts/src/workflow-intents.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/MapsGuidanceVoice.qnt",
+      "module": "MapsGuidanceVoice",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "hiddenInstructionIsOwedTest",
+        "cutOffSpeechResumesTest",
+        "changedAccountIsNotResumedTest",
+        "openSheetIsNotResumedTest",
+        "providerFailureMutesUntilRetryTest",
+        "unchangedStepIsNotRepeatedTest",
+        "muteAndPauseDropOwedTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "SpeechStartsInFront",
+        "ResumedSpeechIsCurrent",
+        "SpeakingIsNewest",
+        "OwedWaitsForFront",
+        "ListeningNeedsOwed",
+        "MutedIsSilent",
+        "HeldStepIsNewest"
+      ],
+      "witnesses": [
+        "OwedWhileHiddenWitness",
+        "ResumedSpeechWitness",
+        "OwedDroppedAfterContextChangeWitness",
+        "InterruptionFailedWitness",
+        "RetryAfterFailureWitness",
+        "StaleOwedWitness"
+      ],
+      "sources": [
+        "apps/app/src/maps/navigation-voice.ts",
+        "apps/app/src/prototype/maps-adapter.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/maps/navigation-voice.ts",
+          "name": "NavigationVoice"
+        },
+        {
+          "path": "apps/app/src/maps/navigation-voice.ts",
+          "name": "latest"
+        },
+        {
+          "path": "apps/app/src/maps/navigation-voice.ts",
+          "name": "owed"
+        },
+        {
+          "path": "apps/app/src/maps/navigation-voice.ts",
+          "name": "resume"
+        },
+        {
+          "path": "apps/app/src/maps/navigation-voice.ts",
+          "name": "owe"
+        },
+        {
+          "path": "apps/app/src/maps/navigation-voice.ts",
+          "name": "hiddenDuringSpeech"
+        },
+        {
+          "path": "apps/app/src/maps/navigation-voice.ts",
+          "name": "speakAppText"
+        },
+        {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "navigationVoice"
+        }
+      ],
+      "stateMapping": {
+        "enabled/held/spoken/speaking": "the shared speaker's enabled, current, spoken and the speech its owner controller has in flight",
+        "hidden/speechHidden": "document.hidden and the hiddenDuringSpeech flag of one speech call",
+        "epoch/sheetOpen": "the session, resident inference, provider revision, Cloud environment, Cloud session and credential and connection mode an instruction captured, and the snapshot's open",
+        "latest/minted": "NavigationVoice.latest and the instruction objects created",
+        "owed/listening": "NavigationVoice.owed and the resume handler registered for visibilitychange",
+        "starts/failures": "speech requests that reached app speech or the on-device voice, and failed() calls"
+      },
+      "abstractions": [
+        "Three guidance steps, six instruction objects and three context changes. A step's key and text change together.",
+        "Speech outcomes are three classes: finished, a provider failure, and an abort the caller did not ask for. An abort through the speech's own signal is ignored by the speaker and is not an event.",
+        "An unconfirmed speech cleanup counts as a provider failure. Cloud and on-device speech are one port.",
+        "The microtask that resumes an instruction owed on a visible page is part of the step that owed it.",
+        "A newer instruction issued on a hidden page under a changed context does not replace the owed one; the return to the front then speaks neither.",
+        "Changes that end guidance or its context are drawn one time in four so sampled traces reach resumed speech."
+      ],
+      "sharedSources": [
+        "plugins/plugin-maps/src/client/navigation-voice.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/services/ResidentMapsRelayOffer.qnt",
+      "module": "ResidentMapsRelayOffer",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "turnOwnsFlagTest",
+        "nothingOfferedWithoutNavigationTest",
+        "refusedOfferSendsPlainTest",
+        "olderTurnEndKeepsNewerFlagTest",
+        "unlatchedEndWouldClearNewerFlagTest",
+        "newerTurnEndLeavesOlderWithoutFlagTest",
+        "failedReceiveKeepsFlagUntilEndTest",
+        "replacedBindingHoldsFlagWithoutReceivingTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "FlagMatchesOffer",
+        "OfferOwnerIsConnected",
+        "LastAcceptedOwnsFlag",
+        "TurnsBeginInOrder",
+        "OfferNeedsNavigation",
+        "ReceivingNeedsConnection"
+      ],
+      "witnesses": [
+        "OverlappingOffersWitness",
+        "OlderTurnOutlivesFlagWitness",
+        "StaleEndKeptFlagWitness",
+        "FlagOutlivesReceivingWitness",
+        "FlagWithoutReceivingBindingWitness",
+        "RefusedOfferWitness"
+      ],
+      "sources": [
+        "apps/app/src/maps/resident-relay.ts",
+        "apps/app/src/maps/agent-navigation.ts",
+        "apps/app/src/runtime/connection-ui.tsx"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/maps/resident-relay.ts",
+          "name": "activeOffer"
+        },
+        {
+          "path": "apps/app/src/maps/resident-relay.ts",
+          "name": "withResidentMapsNavigation"
+        },
+        {
+          "path": "apps/app/src/maps/resident-relay.ts",
+          "name": "connected"
+        },
+        {
+          "path": "apps/app/src/maps/resident-relay.ts",
+          "name": "withMapsNavigationRelay"
+        },
+        {
+          "path": "apps/app/src/maps/agent-navigation.ts",
+          "name": "residentMapsNavigationPort"
+        },
+        {
+          "path": "apps/app/src/runtime/connection-ui.tsx",
+          "name": "withResidentMapsNavigation"
+        }
+      ],
+      "stateMapping": {
+        "navigation/registrations": "residentMapsNavigationPort.current and the bindings registered on it",
+        "turns": "one withResidentMapsNavigation call: its opening request, whether its offer is open while the message is sent, its poll in flight, and the binding it began with",
+        "activeOffer/lastAccepted/relay": "the module's activeOffer and residentMapsNavigationPort.relay"
+      },
+      "abstractions": [
+        "Three turns and three navigation bindings. A turn without a resident request or without a registered binding sends its message with nothing offered.",
+        "A refused offer and a failed opening request are one outcome; both retire the offer before the message is sent.",
+        "Navigation requests served during a turn (select, start, reroute, stop) and their results are in MapsNavigation; here a connected turn only receives or not.",
+        "Turn cancellation and the best-effort retirement request are not modeled.",
+        "unlatchedEnd is outside step: an end that clears the flag whichever turn owns it.",
+        "ConnectedTurnShowsFlagDesired is outside safety: when two turns overlap and the one accepted last ends first, the other stays connected with the flag cleared. The flag is diagnostic output only."
+      ],
+      "sharedSources": [
+        "plugins/plugin-maps/src/client/navigation-relay.ts",
+        "plugins/plugin-maps/src/client/agent-navigation.ts"
       ]
     }
   ]

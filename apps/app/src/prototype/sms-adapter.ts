@@ -59,7 +59,9 @@ export function installSmsAdapter(Component:any,views:Bag){
   const checked=reviewMms({recipients:draftRecipients(),body,attachments,subscriptionId:sim?Number(sim):undefined},status);
   if('problem' in checked)throw Error(mmsProblemLabel(checked.problem));
   if(!mmsOperationId){mmsOperationId=crypto.randomUUID();mmsReview=checked.review;}
-  dispatched=true;const result=await client.sendMms(mmsReview??checked.review,mmsOperationId);if(!active||token!==lifecycle||draft!==draftRevision)return;receipt=null;notice=mmsReceiptLabel(result.status);await session.refresh();
+  dispatched=true;const result=await client.sendMms(mmsReview??checked.review,mmsOperationId);if(!active||token!==lifecycle||draft!==draftRevision)return;receipt=null;notice=mmsReceiptLabel(result.status);
+  /* Cancelled and denied prove nothing was sent: the next Send MMS opens a new review. */
+  if(result.status==='cancelled'||result.status==='denied'){resetMms(false);draftRevision++;}await session.refresh();
  }catch(error){if(active&&token===lifecycle&&draft===draftRevision)notice=dispatched?'This MMS may have sent. Check the conversation before sending again.':error instanceof Error?error.message:'MMS review could not open.';}finally{if(token===lifecycle){busy=false;changed();}}}
  /** Picking pictures only changes the draft; nothing is read beyond the files the owner chose. */
  function attach(){if(!active||busy)return;if(attachments.length>=MMS_MAX_ATTACHMENTS){notice='An MMS can carry at most five pictures.';changed();return;}const token=lifecycle,draft=draftRevision,input=document.createElement('input');input.type='file';input.accept=Object.keys(MMS_PICTURES).join(',');input.multiple=true;

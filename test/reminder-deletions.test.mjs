@@ -30,3 +30,11 @@ test('new renderer clock never dispatches persisted intent and exact revision dr
  const drift=structuredClone(data);drift.reminders[0].revision='changed';assert.throws(()=>undoReminderDeletion(drift,'delete',()=>true));
  undoReminderDeletion(data,'delete',()=>true);assert.equal(data.reminders[0].pendingDeletion,undefined);
 });
+test('a second Undo of an undone deletion returns the same receipt and leaves the reminder as it was',t=>{
+ let now=100;t.mock.method(performance,'now',()=>now);const data=state(),original=structuredClone(data.reminders[0]);
+ stageReminderDeletion(data,data.reminders[0],'owner','delete');
+ const first=undoReminderDeletion(data,'delete',()=>true);now=999999;const again=undoReminderDeletion(data,'delete',()=>true);
+ assert.equal(first.phase,'undone');assert.deepEqual(again,first);assert.deepEqual(data.reminders[0],original);
+ assert.throws(()=>undoReminderDeletion(data,'delete',()=>false),/owner changed/);
+ settleReminderDeletions(data,()=>true);assert.deepEqual(data.reminders[0],original);
+});

@@ -105,8 +105,19 @@ function startFailure(error: unknown): string {
   if (code === 'media-unconfirmed') return 'media';
   return 'capture';
 }
-export function formatRecordingClock(ms: number): string {
+/** Whole elapsed seconds of a recording split into hours, minutes and seconds. A negative time reads as zero. */
+export function recordingClockParts(ms: number): { total: number; h: number; m: number; s: number } {
+  //@ verify
+  //@ ensures \result.total >= 0
+  //@ ensures 0 <= \result.m && \result.m < 60 && 0 <= \result.s && \result.s < 60 && \result.h >= 0
+  //@ ensures \result.h * 3600 + \result.m * 60 + \result.s === \result.total
+  //@ ensures ms >= 0 ==> \result.total * 1000 <= ms && ms < \result.total * 1000 + 1000
+  //@ ensures ms < 0 ==> \result.total === 0 && \result.h === 0 && \result.m === 0 && \result.s === 0
   const total = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(total / 3600), m = Math.floor(total / 60) % 60, s = total % 60;
+  return { total, h, m, s };
+}
+export function formatRecordingClock(ms: number): string {
+  const { h, m, s } = recordingClockParts(ms);
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
 }
 

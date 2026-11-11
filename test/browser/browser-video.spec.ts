@@ -24,7 +24,7 @@ for(const clearedMime of [false,true])test(`video records microphone audio, save
  });expect(result.first).toEqual(result.second);expect(result.count).toBe(1);expect(result.first.fileSize).toBeGreaterThan(0);expect(result.ended.isRecording).toBe(false);expect(result.ended.fileSize).toBeGreaterThan(0);expect(result.ended.duration).toBeLessThan(1);expect(result.audioCalls).toBe(1);expect(result.audioEnded).toBe(true);
  await page.reload();
  const decoded=await page.evaluate(async()=>{
-  const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');const row=(await browserPhotoLibrary.list()).items[0];
+  const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');const row=await browserPhotoLibrary.read({id:(await browserPhotoLibrary.list()).items[0].id});
   const blob=await(await fetch(row.path!)).blob(),url=URL.createObjectURL(blob),video=document.createElement('video'),ac=new AudioContext();
   video.src=url;video.loop=true;document.body.append(video);
   const source=ac.createMediaElementSource(video),analyser=ac.createAnalyser(),silent=ac.createGain();silent.gain.value=0;source.connect(analyser);analyser.connect(silent);silent.connect(ac.destination);

@@ -17,14 +17,58 @@ export const calendarDayCount = (): number => currentSurfaceLayout().calendarDay
 /** Large text lists the selected day as an agenda instead of a timeline. */
 export const calendarAgenda = (): boolean => currentSurfaceLayout().agenda;
 /** The first visible column: the previous day leads once there are three or more columns. */
-export const firstCalendarDay = (day: number, count = calendarDayCount()): number => count >= 3 ? day - 1 : day;
-export const visibleCalendarDays = (day: number, count = calendarDayCount()): number[] => Array.from({ length: count }, (_, index) => firstCalendarDay(day, count) + index);
+export function firstCalendarDayOf(day: number, count: number): number {
+  //@ verify
+  //@ ensures count >= 3 ==> \result === day - 1
+  //@ ensures count < 3 ==> \result === day
+  //@ ensures day - 1 <= \result && \result <= day
+  return count >= 3 ? day - 1 : day;
+}
+export const firstCalendarDay = (day: number, count = calendarDayCount()): number => firstCalendarDayOf(day, count);
+/** The visible columns: `count` consecutive days from the first one; the selected day is one of them. */
+export function visibleCalendarDaysOf(day: number, count: number): number[] {
+  //@ verify
+  //@ requires count >= 1
+  //@ ensures \result.length === count
+  //@ ensures forall(k, 0 <= k && k < \result.length ==> \result[k] === firstCalendarDayOf(day, count) + k)
+  //@ ensures forall(k, 0 <= k && k + 1 < \result.length ==> \result[k] < \result[k + 1])
+  //@ ensures \result[day - firstCalendarDayOf(day, count)] === day
+  const first = firstCalendarDayOf(day, count);
+  const days: number[] = [];
+  let index = 0;
+  while (index < count) {
+    //@ invariant 0 <= index && index <= count
+    //@ invariant days.length === index
+    //@ invariant forall(k, 0 <= k && k < index ==> days[k] === first + k)
+    //@ decreases count - index
+    days.push(first + index);
+    index = index + 1;
+  }
+  return days;
+}
+export const visibleCalendarDays = (day: number, count = calendarDayCount()): number[] => visibleCalendarDaysOf(day, count);
 /**
  * The selected day after an event closes. Closing returns to the event's day, but while that day is
  * already one of the visible columns the selection stays, so an event opened from another column
  * does not move the days on screen.
  */
-export const calendarReturnDay = (day: number, eventDay: number, count = calendarDayCount()): number => { const first = firstCalendarDay(day, count); return eventDay >= first && eventDay < first + count ? day : eventDay; };
+export function calendarReturnDayOf(day: number, eventDay: number, count: number): number {
+  //@ verify
+  //@ requires count >= 1
+  //@ ensures \result === day || \result === eventDay
+  //@ ensures \result === day <==> (eventDay === day || (firstCalendarDayOf(day, count) <= eventDay && eventDay < firstCalendarDayOf(day, count) + count))
+  //@ ensures firstCalendarDayOf(\result, count) <= eventDay && eventDay < firstCalendarDayOf(\result, count) + count
+  //@ ensures calendarReturnDayOf(\result, eventDay, count) === \result
+  const first = firstCalendarDayOf(day, count);
+  return eventDay >= first && eventDay < first + count ? day : eventDay;
+}
+export const calendarReturnDay = (day: number, eventDay: number, count = calendarDayCount()): number => calendarReturnDayOf(day, eventDay, count);
+
+/** Milliseconds until the next local midnight, when the day offsets of loaded rows stop being true. */
+export function msToLocalMidnight(now: Date | number = Date.now()): number {
+  const date = new Date(now);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime() - date.getTime();
+}
 
 export function calendarDayLabel(now: Date | number, off: number): string {
   const date = new Date(now); date.setDate(date.getDate() + off);
@@ -40,11 +84,20 @@ export function calendarDayColumns(columns: Array<{ off: number; events: Bag[] }
   }));
 }
 
+/** Whether the week strip marks day `off`: a visible column that is neither the selected day nor today. */
+export function weekDayMarked(off: number, day: number, first: number, count: number): boolean {
+  //@ verify
+  //@ ensures \result ==> off !== day && off !== 0
+  //@ ensures \result ==> first <= off && off < first + count
+  //@ ensures \result <==> (off !== day && off !== 0 && first <= off && off < first + count)
+  //@ ensures count < 2 && first === firstCalendarDayOf(day, count) ==> !\result
+  return off !== day && off >= first && off < first + count && off !== 0;
+}
 /** The week strip shows which of its days are on screen as columns. */
 export function markVisibleWeek(week: Bag[], weekStart: number, day: number, count: number): Bag[] {
   if (count < 2) return week;
   const first = firstCalendarDay(day, count);
-  return week.map((item, index) => { const off = weekStart + index; return off !== day && off >= first && off < first + count && off !== 0 ? { ...item, cs: `${item.cs || ''};background:var(--s2)` } : item; });
+  return week.map((item, index) => weekDayMarked(weekStart + index, day, first, count) ? { ...item, cs: `${item.cs || ''};background:var(--s2)` } : item);
 }
 
 /**

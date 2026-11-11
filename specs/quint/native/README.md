@@ -860,3 +860,8 @@ check could leave `describe` returning the captured metadata. The host
 now rechecks the durable grant and current clock after verification. It
 reuses the completed Calendar check. Content reads retain their separate
 final consent check before returning projected events and reminders.
+
+
+## Complementary audit models
+
+The integrated registry also retains the November audit models, witnesses and source symbols. Distinct admission/readback state shapes are registered separately from the current source-correspondence models. Manifest entries state their partial scope; new model execution is not Android, service or device acceptance. The manifests and new run receipts, rather than earlier registry totals, define current coverage.

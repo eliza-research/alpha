@@ -71,6 +71,8 @@ interface ModelDefinition {
   bounds?: {maxSamples?: number; maxSteps?: number; maxVerifyDepth?: number; seed?: string | number};
   invariants?: string[];
   additionalProofInit?: string;
+  witnesses?: string[];
+  symbols?: Array<{path: string; name: string}>;
 }
 export interface QuintModel extends ModelDefinition {
   family: ModelFamily;
@@ -229,6 +231,17 @@ export function loadModels(): QuintModel[] {
     validateQuintModelMetadata(model, text);
     for (const test of model.tests) if (!new RegExp(`\\brun\\s+${test}\\s*=`).test(text)) throw Error(`Missing scenario ${model.module}.${test}`);
     for (const source of model.sources || []) readFileSync(join(repositoryRoot, source));
+    for (const name of model.witnesses || []) {
+      if (!/^[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)*$/.test(name)) throw Error(`Invalid witness ${model.module}.${name}`);
+      if (!name.includes('::') && !new RegExp(`\\b(?:val|def|pure val|pure def|temporal)\\s+${name}\\b`).test(text)) throw Error(`Manifest names an undefined property ${model.module}.${name}`);
+    }
+    for (const symbol of model.symbols || []) {
+      if (!symbol.path || symbol.path.startsWith('/') || symbol.path.split(/[\\/]/).includes('..') || !symbol.name) throw Error(`Invalid source symbol in ${model.module}`);
+      const source = readFileSync(join(repositoryRoot, symbol.path), 'utf8');
+      const escaped = symbol.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (!new RegExp(`(?<![A-Za-z0-9_$])${escaped}(?![A-Za-z0-9_$])`).test(source)) throw Error(`Source symbol is missing ${model.module}: ${symbol.path} ${symbol.name}`);
+      if (!model.sources.includes(symbol.path)) model.sources.push(symbol.path);
+    }
     names.add(model.module);
     paths.add(model.path);
   }
