@@ -32,6 +32,7 @@ import { MapsScreenController, type MapsScreenView } from '../maps/screen';
 import { connectionController } from '../runtime/connection-ui';
 import { cloudServiceName } from '../runtime/cloud-protocol';
 import type { Coordinate, TravelMode } from '../maps/contracts';
+import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 
 type Bag = Record<string, any>;
 const VOICE_ON = 'M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11';
@@ -109,7 +110,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       return shareMap(data, signal);
     },
     openWebsite: url => {
-      if (Capacitor.isNativePlatform()) void DailyApps.perform({ action: 'browser', url: url.href }).then(result => { if (result.status !== 'opened') api?.toast(result.message || 'Couldn’t open'); }, () => api?.toast('Couldn’t open'));
+      if (Capacitor.isNativePlatform()) void DailyApps.perform({ action: 'browser', url: url.href }).then(result => { if (result.status !== 'opened') api?.toast(errorNotice(result.message, 'Couldn’t open'), ERROR_TOAST); }, () => api?.toast('Couldn’t open', ERROR_TOAST));
       else window.open(url.href, '_blank', 'noopener,noreferrer');
     },
     active,
@@ -425,7 +426,7 @@ export function installMapsChatAdapter(Component:Bag){
   // send() refuses a prompt while a message edit is open; do not mark the answer as sent.
   if(shell.messageEditTarget){shell.toast('Editing message');return;}
   done.add(id);if(shell.live)shell.setState({});
-  try{if(!current()){done.delete(id);return;}await shell.send(value);}catch(error){done.delete(id);if(shell.live){shell.setState({});shell.toast(error instanceof Error?error.message:'Not sent');}}
+  try{if(!current()){done.delete(id);return;}await shell.send(value);}catch(error){done.delete(id);if(shell.live){shell.setState({});shell.toast(errorNotice(error,'Not sent'),ERROR_TOAST);}}
  }
  // Each shell keeps the parse of every agent message on screen, keyed by message id. A render
  // parses only new or changed text, and a message that left the conversation is forgotten.

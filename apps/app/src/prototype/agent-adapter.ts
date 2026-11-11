@@ -80,6 +80,7 @@ import { registerPlugin } from '../platform-plugins';
 import { SystemBars, SystemBarsStyle } from '@capacitor/core';
 import {mergeConversationDelivery, connectionController, STOPPED_REPLY_NOTICE, STOPPED_CANCELLED_NOTICE, STOPPED_CONFIRMED_NOTICE, STOPPED_UNCHECKED_NOTICE, RESIDENT_STARTING_NOTICE, RESIDENT_RECOVERING_NOTICE, NO_AGENT_SEND, NO_AGENT_VOICE, residentAlwaysPresent, agentPendingText, agentAvailabilityNotice } from '../runtime/connection-ui';
 import { broaderPageNotice, honestTiles, handoffGate, watchReturnToApp, tileFactsFromSnapshot, tileSettingsPages, type TileFacts, type TileKey } from './native-adapter';
+import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 const alphaDevice = registerPlugin<{ snapshot(): Promise<Record<string, unknown>>; openSettings(input: { page: string }): Promise<{ status: string; specific?: boolean }> }>('AlphaDevice');
 const elizaSystem = registerPlugin<{ setFlashlight(input: { enabled: boolean }): Promise<{ available: boolean; enabled: boolean }> }>('ElizaSystem');
 
@@ -1744,7 +1745,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         if(!this.live||document.hidden||String(this.S().draft)!==text||!connectionController.messageTargetCurrent(editTarget))throw Error('The draft or conversation changed. Nothing was replaced.');
         await connectionController.truncateMessage(editTarget);this.messageEditTarget=undefined;s=this.S();
         if(!this.live||document.hidden||s.view!==editView||String(s.draft)!==text)throw Error('History was replaced. Your draft changed, so nothing was resent.');
-      } catch(error){if(error&&typeof error==='object'&&'historyChanged' in error)this.messageEditTarget=undefined;this.toast(error instanceof Error?error.message:'Message replacement failed.');return;}
+      } catch(error){if(error&&typeof error==='object'&&'historyChanged' in error)this.messageEditTarget=undefined;this.toast(errorNotice(error,'Couldn’t replace the message. Nothing was sent.'),ERROR_TOAST);return;}
       finally{this.draftSendPending=false;}
     }
     let sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;
@@ -1752,7 +1753,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const transcript=fromComposer?this.transcriptAttachment:null;
     const mail=fromComposer?(this.mailAttachment??null):null;
     let mailText='';
-    try{if(mail)mailText=await mail.validate();}catch(error){this.toast(error instanceof Error?error.message:'Reopen the email before sending.');return;}
+    try{if(mail)mailText=await mail.validate();}catch(error){this.toast(errorNotice(error,'Reopen the email before sending.'),ERROR_TOAST);return;}
     if(mail&&(this.mailAttachment??null)!==mail)return;
     const requestText=mail?mailText+'\n\nQuestion: '+text:transcript?'Use the transcript of the selected voice note to answer this question.\n\n'+text:text;
     const transcriptCurrent=()=>!transcript||(this.S().view==='notes'&&JSON.stringify(this.notesSelection)===transcript.selection&&this.transcriptAttachment===transcript);
@@ -1773,7 +1774,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(fromComposer){
       this.draftSendPending=true;
       // The durable draft keeps this text until the message is known to have been dispatched.
-      try{await this.draftBindingTask;heldKey=this.composerDraft.binding;await this.composerDraft.hold(heldText,current);}catch(error){this.toast(error instanceof Error?error.message:'Draft could not be prepared. Nothing was sent.');return;}finally{this.draftSendPending=false;}
+      try{await this.draftBindingTask;heldKey=this.composerDraft.binding;await this.composerDraft.hold(heldText,current);}catch(error){this.toast(errorNotice(error,'Draft could not be prepared. Nothing was sent.'),ERROR_TOAST);return;}finally{this.draftSendPending=false;}
     }
     const reviewedSource=fromComposer?this.reviewedSourceDraft:null;if(fromComposer)this.reviewedSourceDraft=null;
     // Everything this send later shows belongs to the agent connection it was sent on.
@@ -1870,7 +1871,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           cameraReceipts=results.length;
           for(const result of results)if(this.live)this.agentSay(result.summary,undefined,{id:`device-receipt:${result.proposalId}`,deviceReceipt:true});
         }
-      }catch(error){if(this.live)this.toast(error instanceof Error?error.message:'Could not confirm the screen change. Check your screen.');}
+      }catch(error){if(this.live)this.toast(errorNotice(error,'Could not confirm the screen change. Check your screen.'),ERROR_TOAST);}
       // The camera notice is dropped only when the photo was taken (a receipt) or its review card is shown on Camera.
       const cameraReview=cameraOpened&&alphaClient.getState().context.view==='camera'&&this.S().msgs.some((m:Shell)=>m.card?.proposalId&&!m.card.done);
       for(const notice of replyNotices(reply)){
@@ -2103,7 +2104,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     try {
       const result = await DailyApps.perform({ action: 'voice' });
       if (result.status === 'selected' && result.transcript) this.setState({ chat: 'sheet', draft: result.transcript });
-      else this.toast(result.message || 'Speech recognition is unavailable on this device.');
+      else this.toast(errorNotice(result.message, 'Speech recognition is unavailable on this device.'), ERROR_TOAST);
     } catch { this.toast('Speech recognition is unavailable on this device.'); }
   };
   p.stopVoice = function () { this.pendingActionApproval?.abort();this.cancelReadReplyCompletions?.();alphaClient.cancel(); this.setState({ voice: 'off', typing: false }); };

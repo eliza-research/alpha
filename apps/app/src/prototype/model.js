@@ -5218,7 +5218,7 @@ class Component extends DCLogic {
     // a provider or deletion deadline. Consecutive passive notices share the next slot.
     if (this.toastActive && this.undoFn) {
       var queue = this.toastQueue || (this.toastQueue = []), last = queue[queue.length - 1];
-      var next = { msg: msg, undo: opts.undo || null };
+      var next = { msg: msg, undo: opts.undo || null, kind: opts.kind };
       if (last && !last.undo && !next.undo) queue[queue.length - 1] = next;
       else queue.push(next);
       return;
@@ -5232,8 +5232,10 @@ class Component extends DCLogic {
     if (!inside) this.toastOrigin = active;
     this.toastHeld = inside; this.toastActive = true;
     this.toastSequence = (this.toastSequence || 0) + 1;
-    this.toastDuration = Math.max(opts.undo ? 5000 : 1900, Math.min(12000, String(msg).length * 50 + 500)) * accessibilityTimeoutScale();
+    // Undo stays as long as the reviewed-deletion notice (10 s) so the two restore offers match.
+    this.toastDuration = Math.max(opts.undo ? 10000 : 1900, Math.min(12000, String(msg).length * 50 + 500)) * accessibilityTimeoutScale();
     this.undoFn = opts.undo || null;
+    this.toastKind = opts.kind === "error" ? "error" : "";
     this.setState({ toast: msg, toastUndo: !!opts.undo }); this.scheduleToast();
   }
   scheduleToast() {
@@ -5248,7 +5250,7 @@ class Component extends DCLogic {
     var heldFocus = !!doc?.activeElement?.closest?.("[data-alpha-toast]");
     this.toastActive = false; this.toastHeld = false; this.toastSequence = (this.toastSequence || 0) + 1;
     var closingSequence = this.toastSequence;
-    this.undoFn = null; this.clear("t");
+    this.undoFn = null; this.toastKind = ""; this.clear("t");
     this.setState({ toast: "", toastUndo: false }, function () {
       // Another offer can arrive before React commits this close (including a failed Undo retry).
       // It owns its focus and timer; its later close will drain the retained queue.
@@ -5256,7 +5258,7 @@ class Component extends DCLogic {
       if (heldFocus && doc?.activeElement === doc.body && origin?.isConnected && !origin.closest("[inert],[hidden]")) origin.focus({ preventScroll: true });
       var next = self.toastQueue?.shift();
       if (next) {
-        self.showToast(next.msg, { undo: next.undo });
+        self.showToast(next.msg, { undo: next.undo, kind: next.kind });
         if (heldFocus) { self.toastHeld = false; self.scheduleToast(); }
       }
     });
@@ -5773,6 +5775,8 @@ class Component extends DCLogic {
       showStatus: !P.nativeSystemChrome && S.screen !== "boot" && S.screen !== "off" && !imm.noStatus, micLive: S.voice === "listening",
       showIndicator: !P.nativeSystemChrome && (isOn || S.screen === "lock") && !(isOn && !S.view && !S.drawer && !S.shade && S.chat !== "sheet" && S.chat !== "full"),
       toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18,
+      // A failure interrupts the screen reader (assertive); routine notices stay polite.
+      toastLive: S.toast && self.toastKind === "error" ? "assertive" : "polite",
       toastFocus: function () { self.holdToast(); },
       toastBlur: function (event) { if (!event.currentTarget.contains(event.relatedTarget)) self.resumeToast(); },
       toastRole: S.toastUndo ? undefined : "button", toastTabIndex: S.toastUndo ? undefined : 0,

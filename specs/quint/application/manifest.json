@@ -2110,7 +2110,7 @@
       "started/pending": "Observed native read calls and unresolved replies",
       "held/timerDelay": "Focus hold on the visible toast and the delay of its single owned expiry timer",
       "scale/latest": "Last known timeout percentage and exact current native read token",
-      "message/undo/duration": "Shell message identity, retained Undo and its scheduled timeout"
+      "message/undo/duration": "Shell message identity, retained Undo and its scheduled timeout (an Undo offer stays 10 s before scaling, matching the reviewed-deletion notice; a failure changes only how the toast is announced, not its lifetime)"
     },
     "step": "step",
     "symbols": [
