@@ -18,17 +18,18 @@ const {installContactsAdapter, admitImageContacts, applyImageContacts, isMvpView
   });
 
 /** What the page shows of the model state. Load more is offered up to four pages of fifty. */
-const project = s => ({loading: s.loading, readable: s.readable, rows: s.rows, more: s.more && s.limit < 4,
+const project = s => ({loading: s.loading, readable: s.readable, rows: s.rows && s.query === s.rowsQuery,
+  more: s.more && s.query === s.rowsQuery && s.limit < 4,
   reads: s.reads.length, editorOpen: s.editorOpen, admitted: s.admitted, viewOpen: s.viewOpen});
 
 function create() {
-  const reads = [], editors = [], order = ['notes', 'contacts'];
+  const reads = [], editors = [], order = ['notes', 'contacts'], viewState = {q: ''};
   let answer = null;
   const hold = list => () => new Promise((resolve, reject) => list.push({resolve, reject}));
   // This legacy session models the supported read-only host and Android editor handoff. The
   // current adapter probes write access first; this host deterministically remains read-only.
   globalThis.__contactsPort = {status: hold(reads), requestPermissions: async () => ({available: true, readable: true, writable: false}), create: hold(editors), edit: hold(editors),
-    list: async options => { assert.ok(answer, 'the list is read only after access is granted'); assert.equal(options.limit, answer.limit); return {contacts: [{id: '1', name: 'Ada'}], more: answer.more}; }};
+    list: async options => { assert.ok(answer, 'the list is read only after access is granted'); assert.equal(options.limit, answer.limit); assert.equal(options.query, answer.query); return {contacts: [{id: '1', name: 'Ada'}], more: answer.more}; }};
   globalThis.document = {hidden: false, addEventListener() {}, removeEventListener() {}};
   admitImageContacts(true);
   const views = {contacts: {render: state => ({list: state.list})}};
@@ -36,13 +37,13 @@ function create() {
   class Shell {
     view = 'home';
     S() { return {view: DEFERRED_MVP_VIEWS.has(this.view) ? null : this.view}; }
-    setState() {} vget() { return {q: ''}; } toast() {}
+    setState() {} vget() { return viewState; } toast() {}
     goHome() { this.view = 'home'; this.componentDidUpdate(); }
   }
   installContactsAdapter(Shell, views);
   const shell = new Shell();
   shell.componentDidMount();
-  const page = () => views.contacts.render({}, {set() {}});
+  const page = () => views.contacts.render(viewState, {set: patch => Object.assign(viewState, patch)});
   const visibility = async hidden => { globalThis.document.hidden = hidden; shell.contactsHide(); await settle(); };
   const view = async name => { shell.view = name; shell.componentDidUpdate(); await settle(); };
   return {
@@ -50,10 +51,10 @@ function create() {
     async admission(admitted) { applyImageContacts(admitted, order, shell, admitImageContacts); await settle(); },
     async refresh() { page().nativeRefresh(); await settle(); },
     async loadMore() { page().nativeLoadMore(); await settle(); },
-    async search() { page().onQ({target: {value: 'a'}}); await settle(); },
+    async search() { page().onQ({target: {value: viewState.q ? '' : 'a'}}); await settle(); },
     async readCompletes(token, outcome, more, {before}) {
       const [read] = reads.splice(before.reads.indexOf(token), 1);
-      answer = outcome === 'rows' && token === before.epoch ? {more, limit: 50 * before.limit} : null;
+      answer = outcome === 'rows' && token === before.epoch ? {more, limit: 50 * before.limit, query: before.query ? 'a' : ''} : null;
       if (outcome === 'error') read.reject(Error('unavailable')); else read.resolve({available: true, readable: outcome === 'rows'});
       await settle();
       answer = null;
@@ -77,7 +78,7 @@ export async function runContactsSessionCase1(t, {canaries=true}={}) {
   assert.equal(receipt.traces, SCENARIOS.length + WITNESSES.length + 60);
   if(canaries){
   // The comparison is live: a model that blanked the rows when a refresh starts is refused.
-  const blanked = state => ({...project(state), rows: state.rows && !state.loading});
+  const blanked = state => ({...project(state), rows: project(state).rows && !state.loading});
   await assert.rejects(replayTraces(traces.filter(trace => trace.name === 'readRowsTest'), create, {project: blanked}), /readRowsTest step/);
   }
   for (const action of ['openView', 'closeView', 'hide', 'show', 'admission', 'refresh', 'loadMore', 'search', 'readCompletes', 'openEditor', 'editorReturned']) assert.ok(receipt.actions[action] > 0, action);

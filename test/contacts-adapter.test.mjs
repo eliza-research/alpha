@@ -1,17 +1,80 @@
 // Image Contacts view adapter against a recording AlphaContacts stub. No device address book, Phone
 // or Messages is involved: this proves the detail actions only open a prefilled view and the 200 cap.
-import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';import {pathToFileURL} from 'node:url';
+import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';import {mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join,resolve} from 'node:path';import {pathToFileURL} from 'node:url';import {runInNewContext} from 'node:vm';
 const dir=mkdtempSync(join(tmpdir(),'contacts-adapter-'));
 const output=await build({entryPoints:[resolve('apps/app/src/prototype/contacts-adapter.ts')],bundle:true,format:'esm',platform:'node',write:false,plugins:[{name:'stubs',setup(b){b.onResolve({filter:/^(\.\/native-adapter|\.\/mvp-features|\.\.\/platform-plugins)$/},a=>({path:a.path,namespace:'stub'}));b.onLoad({filter:/.*/,namespace:'stub'},a=>({contents:a.path.includes('native-adapter')?'export function watchReturnToApp(){return ()=>{};}':a.path.includes('mvp-features')?'export function isMvpView(view){return (globalThis.mvpViews||[]).includes(view);}':'export function registerPlugin(){return new Proxy({},{get:(_,method)=>method==="then"?undefined:options=>globalThis.contactsPlugin(method,options)});}',loader:'js'}));}}]});
 writeFileSync(join(dir,'adapter.mjs'),output.outputFiles[0].text);process.on('exit',()=>rmSync(dir,{recursive:true,force:true}));
 const {installContactsAdapter}=await import(pathToFileURL(join(dir,'adapter.mjs')));
 globalThis.document={hidden:false,addEventListener(){},removeEventListener(){}};
 const settle=()=>new Promise(r=>setTimeout(r,5));
-function mount(list,editor=async()=>({})){const calls=[],notices=[];globalThis.contactsPlugin=async(method,options)=>{calls.push([method,options]);if(method==='status')return {available:true,readable:true};if(method==='list')return list(options);if(method==='edit'||method==='create')return editor(method,options);return {};};
- const views={contacts:{render:st=>({contactsRows:st.list,d:st.open?{}:null})}};
+function mount(list,editor=async()=>({}),base={render:st=>({contactsRows:st.list,d:st.open?{}:null})}){const calls=[],notices=[];globalThis.contactsPlugin=async(method,options)=>{calls.push([method,options]);if(method==='status')return {available:true,readable:true};if(method==='list')return list(options);if(method==='edit'||method==='create')return editor(method,options);return {};};
+ const views={contacts:{...base}};
  class Shell{view='contacts';S(){return {view:this.view};}vget(){return {q:''};}setState(){}toast(message){notices.push(message);}}
  installContactsAdapter(Shell,views);const shell=new Shell();shell.componentDidMount();return {views,calls,shell,Shell,notices};}
 const ada={id:'1',name:'Ada',phones:['+15555550100','+15555550101'],emails:['ada@example.com']};
+
+function baseContactsView(){
+ const source=readFileSync('apps/app/src/prototype/model.js','utf8');
+ const grouping=source.slice(source.indexOf('function ctLetter('),source.indexOf('function ctSave('));
+ const view=source.slice(source.indexOf('registerView("contacts",'),source.indexOf('/* ===== module: files ===== */'));
+ return runInNewContext(grouping+view,{CT_SEED:[],copy:()=>({}),registerView:(_name,definition)=>definition});
+}
+
+test('native Contacts uses exactly the current provider query and retains provider-only matches',async()=>{
+ globalThis.mvpViews=['contacts'];
+ const bob={id:'2',name:'Bob',phones:['+15555550200'],emails:['bob@example.com']};
+ const older=Promise.withResolvers(),newer=Promise.withResolvers();
+ let nameReads=0;
+ const base=baseContactsView();
+ const state={q:'',open:null};
+ const api={now:new Date(),set:patch=>Object.assign(state,patch)};
+ const fixture=mount(({query:rawQuery})=>{
+  const query=rawQuery.trim();
+  if(query==='ada@example.com')return {contacts:[ada],more:true};
+  if(query==='555-0200')return {contacts:[bob],more:false};
+  if(query==='Zoe')return ++nameReads===1?older.promise:newer.promise;
+  return {contacts:[ada,bob],more:true};
+ },undefined,base);
+ fixture.shell.vget=()=>state;
+ const model=()=>fixture.views.contacts.render(state,api);
+ const names=()=>Array.from(model().groups).flatMap(group=>Array.from(group.rows,row=>row.name));
+ const enter=value=>model().onQ({target:{value}});
+ const lastList=()=>fixture.calls.filter(([method])=>method==='list').at(-1)[1];
+ try{
+  await settle();
+  assert.deepEqual(names(),['Ada','Bob']);
+  enter('  ada@example.com  ');await settle();
+  assert.deepEqual(names(),['Ada'],'the renderer shows an email match even when the display name differs');
+  assert.deepEqual(lastList(),{query:'ada@example.com',limit:50});
+  assert.equal(model().q,'  ada@example.com  ','the displayed input keeps what the owner typed');
+  assert.equal(model().nativeMore,true);
+  model().nativeLoadMore();await settle();
+  assert.deepEqual(lastList(),{query:'ada@example.com',limit:100});
+
+  enter('Zoe');await settle();
+  assert.deepEqual(names(),[],'a different query has no rows before the provider answers');
+  assert.equal(model().nativeMore,false);
+  enter('555-0200');await settle();
+  assert.deepEqual(names(),['Bob'],'the renderer shows a phone match');
+  enter('Zoe');await settle();
+  older.resolve({contacts:[{id:'old',name:'Old query result'}],more:true});await settle();
+  assert.deepEqual(names(),[],'returning to the same query cannot revive an older answer');
+  newer.resolve({contacts:[{id:'3',name:'Zoë'}],more:false});await settle();
+  assert.deepEqual(names(),['Zoë']);
+  assert.equal(fixture.views.contacts.back(state,api),true);
+  await settle();
+  assert.equal(model().q,'');
+  assert.deepEqual(lastList(),{query:'',limit:50});
+  assert.deepEqual(names(),['Ada','Bob']);
+  assert.equal(base.render({q:'missing',list:[ada]},api).groups.length,0,'the separate fixture renderer keeps its own filter');
+  const native=globalThis.contactsPlugin,priorList=lastList();
+  globalThis.contactsPlugin=(method,options)=>method==='status'?{available:true,readable:false}:native(method,options);
+  model().nativeRefresh();await settle();
+  assert.deepEqual(names(),[],'a revoked permission drops the last accepted rows');
+  assert.equal(model().nativeAccess,true);
+  assert.equal(lastList(),priorList,'a revoked permission issues no new query');
+ }finally{older.resolve({contacts:[]});newer.resolve({contacts:[]});fixture.shell.componentWillUnmount();}
+});
 
 test('detail rows open Phone or Messages with the number and never dial or send',async()=>{
  globalThis.mvpViews=['contacts','phone','messages'];const {views,calls}=mount(()=>({contacts:[ada],more:false}));await settle();
