@@ -30,6 +30,19 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def pairs(rows):
+    value = {}
+    for key, item in rows:
+        require(key not in value, "Duplicate JSON field")
+        value[key] = item
+    return value
+
+
+def decode(data):
+    return json.loads(data.decode("utf-8", errors="strict"), object_pairs_hook=pairs,
+                      parse_constant=lambda _: (_ for _ in ()).throw(ValueError("Non-JSON number")))
+
+
 def matches(pattern, value):
     return isinstance(value, str) and pattern.fullmatch(value) is not None
 
