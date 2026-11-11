@@ -77,13 +77,12 @@ test('the same selected bytes cannot be attached twice',async({page})=>{
 });
 test('Files before Inbox asks to open Inbox once when a Gmail account was chosen',async({page})=>{
  await setup(page,false,false);
- await expect.poll(()=>page.evaluate(()=>!!(window as any).fileEmail.shell)).toBe(true);
  await page.evaluate(async()=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
   const {saveGmailAccountChoice}=await import('/src/runtime/gmail-account-selection.ts');
   saveGmailAccountChoice(c.getSnapshot().cloudAccount,'file-grant');
-  (window as any).fileEmail.shell.openView('files',{});
  });
+ await page.getByRole('button',{name:'Files',exact:true}).click();
  await page.getByRole('button',{name:'Internal storage',exact:true}).click();
  await page.getByRole('button',{name:'Open selected.txt',exact:true}).click();
  await page.getByRole('button',{name:'Use in email',exact:true}).click();

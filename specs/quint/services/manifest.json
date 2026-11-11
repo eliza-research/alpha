@@ -2601,6 +2601,7 @@
         "staleSigningReviewAndWrongGenerationTest",
         "raisedFloorRefusesPublicWritesTest",
         "legacyFloorMustBeExceededTest",
+        "finalInventoryCanRefuseVerifiedApkTest",
         "partialApkCannotBeOverwrittenTest",
         "pointerRepairReusesExactApkTest",
         "lostPointerResponseCanBeReconciledTest"

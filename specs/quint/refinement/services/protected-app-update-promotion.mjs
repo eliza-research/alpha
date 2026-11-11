@@ -107,7 +107,7 @@ function publicFixture(directory, launcherBytes, version) {
       apkVerified = false;
       pointerWrite = false;
       receipt = null;
-      let manifestReads = 0;
+      let manifestReads = 0, legacyChecks = 0, stableChecks = 0;
       const effects = [];
       function fail(at) {
         if (fault === at) throw Error('Closed publication port ' + at);
@@ -119,12 +119,17 @@ function publicFixture(directory, launcherBytes, version) {
             if (args[0] === 'repo' && args[1] === 'view') return '{"isPrivate":false}';
             if (args[0] !== 'release') assert.fail('Unexpected command: ' + args.join(' '));
             if (args[1] === 'view' && args[2] === LEGACY_APP_UPDATE_TAG) {
+              legacyChecks++;
+              if (apkVerified && fault === 'late-legacy-floor') floor = 2;
               return floor === 2
                 ? JSON.stringify({isDraft: false, assets: [{name: apkName}]})
                 : null;
             }
             assert.equal(args[2], APP_UPDATE_TAG);
             if (args[1] === 'view') {
+              stableChecks++;
+              if (apkVerified && fault === 'late-stable-floor') floor = 3;
+              if (apkVerified && fault === 'lost-apk') apk = null;
               const names = [apk && apkName, pointer && manifestName, floor === 3 && ('alpha-phone-' + (version + 1) + '.apk')];
               return release ? JSON.stringify({isDraft: false, assets: names.filter(Boolean).map(name => ({name}))}) : null;
             }
@@ -144,6 +149,8 @@ function publicFixture(directory, launcherBytes, version) {
               assert.equal(path.basename(args[3]), manifestName);
               assert.equal(args.includes('--clobber'), true);
               assert.equal(apkVerified, true, 'Pointer write requires exact anonymous APK readback');
+              assert.ok(legacyChecks >= 2 && stableChecks >= 2, 'Pointer write requires both final floor checks');
+              assert.equal(apk?.sha256, offer.sha256, 'Final inventory must still contain the verified APK');
               pointerWrite = true;
               fail('manifest-before');
               pointer = fault === 'manifest-partial' ? null : object(fs.readFileSync(args[3]));
@@ -160,6 +167,7 @@ function publicFixture(directory, launcherBytes, version) {
                 pointer = otherPointer(version + 1);
                 floor = 3;
               }
+              if (manifestReads === 2 && fault === 'hidden-pointer') return null;
               if (manifestReads >= 3 && fault === 'manifest-readback') return null;
               return pointer;
             }
@@ -211,6 +219,10 @@ export async function checkProtectedAppUpdatePromotion(extraSources = []) {
     ['equal retained legacy floor blocks the current channel write', ['advanceLegacyFloor', 'ok']],
     ['changed stable pointer prevents moving it after APK readback', ['pointer-race', 'ok']],
     ['complete delivery and idempotent retry', ['ok', 'ok']],
+    ['legacy inventory changes during APK readback', ['late-legacy-floor', 'ok']],
+    ['current inventory changes during APK readback', ['late-stable-floor', 'ok']],
+    ['verified APK disappears from the final inventory', ['lost-apk', 'ok']],
+    ['final inventory has a temporarily unreadable pointer', ['existingRelease', 'hidden-pointer', 'ok']],
     ...faults.map(fault => ['before/after public effect: ' + fault,
       [...(fault.startsWith('manifest-') ? ['existingRelease'] : []), fault, 'ok']]),
   ];
