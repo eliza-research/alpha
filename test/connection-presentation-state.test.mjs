@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {readNativeNetwork} from '../apps/app/src/runtime/native-network.ts';
-const source=await readFile(process.env.ALPHA_PRESENTATION_SOURCE||new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
+const source=await readFile(new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 function section(start,end){const a=source.indexOf(start),b=source.indexOf(end,a+start.length);assert.ok(a>=0&&b>a);return source.slice(a,b).replace(/^export /gm,'');}
 const functions=[
  section('function ownProviderSelected(', '\n'),
@@ -121,7 +121,7 @@ function preflightFixture(balance, options = {}) {
     NO_AGENT_SEND: 'No selected session', NO_AGENT_VOICE: 'No selected session',
     noSessionError: () => Error('No selected session'),
     phoneContextMessage: (text, context) => ({text, context}),
-    boundNavigation: () => undefined, cancelStoppedReply: () => {}, conversationMemory: new Map(),
+    cancelStoppedReply: () => {}, conversationMemory: new Map(),
     readNativeNetwork, System: {getNetworkStatus: async () => ({connected: true})},
     planCheckScope: () => 'current-account', retractReadiness: () => {},
     clearPersonalSetup: () => {},
@@ -132,6 +132,9 @@ function preflightFixture(balance, options = {}) {
   f.context.state = {...f.snapshot(), open: false, membershipBalance: balance,
     membershipDismissed: false, session: {sessionId: 'session-1'}};
   f.context.active = {kind: 'remote', remote: {session: {expiresAt: Date.now() + 60000}}};
+  // boundNavigation is a function the fixture source declared. It is replaced from inside the
+  // context: Bun's vm does not let a sandbox assignment replace a binding a script declared.
+  vm.runInContext('boundNavigation = () => undefined;', f.context);
   vm.runInContext(preflightCode, f.context);
   f.context.connectionController = f.context.preflightController;
   return {...f, get bindings() {return bindings;},
@@ -687,7 +690,9 @@ test('a plan check that cannot reach Cloud admits nothing and reports no plan as
       ownProviderSelected: () => false, residentBindable: () => true, residentEnvironment: () => 'production', makeCloud: () => client, stopEntitlementRefresh() {}, update: patch => { Object.assign(box.state, patch); },
       detachService: () => calls.push('detach'), queueResidentRebind: () => calls.push('rebind'), residentRebinds: () => ({queue: () => calls.push('rebind')}), runQueuedResidentRebind() {}};
     vm.createContext(box); vm.runInContext(recheckCode, box);
-    const admit = box.admitCloudResident; box.admitCloudResident = async signal => { const admission = await admit(signal); admitted.push(admission.binding); return admission; };
+    // Wrapped from inside the context: Bun's vm does not let a sandbox assignment replace a function the script declared.
+    box.observeAdmission = admit => async signal => { const admission = await admit(signal); admitted.push(admission.binding); return admission; };
+    vm.runInContext('admitCloudResident = observeAdmission(admitCloudResident);', box);
     await box.recheckResidentPlan();
     assert.equal(box.lastPlanRecheck, 0, `${name}: server failure preserves the retry clock`);
     assert.equal(box.networkLostUnder, null, `${name}: server failure is not a new network transition`);
@@ -852,6 +857,9 @@ async function offlineRestoreFixture({kind='offline',recent=false,newer=null}={}
  class CloudProtocolError extends Error {constructor(code,status){super(code);this.code=code;this.status=status;}}
  const client={environment:'production',async identity(){identityReads++;if(kind==='expired')throw new CloudProtocolError('expired');if(kind==='revoked')throw new CloudProtocolError('http',401);if(kind==='changed')throw new residentBinding.CloudResidentBindingError('account-changed');if(kind==='forbidden')throw new CloudProtocolError('http',403);if(kind==='closed')throw new Error('Connection closed');throw new Error('Connection request failed');}};
  Object.assign(f.context,{Error,DOMException,CloudProtocolError,EntitlementError:class extends Error{},residentAdmissionOutcome:admissionRules.residentAdmissionOutcome,cloudUnreachable:admissionRules.cloudUnreachable,CloudIdentityUnreachable:admissionRules.CloudIdentityUnreachable,identityReadRefused:admissionRules.identityReadRefused,cloud:client,service:null,RESIDENT_UNBIND_UNCONFIRMED:'Unbind not confirmed',residentCloudFlow:()=>true,residentBindable:()=>true,residentEnvironment:()=> 'production',stopEntitlementRefresh:()=>{},CloudResidentBindingController:residentBinding.CloudResidentBindingController,CloudResidentBindingError:residentBinding.CloudResidentBindingError,recentResidentPlanAdmission:residentBinding.recentResidentPlanAdmission,readPlanAdmission:()=>recent?{version:1,environment:'production',credentialId:'synthetic-retained-credential',userId:'synthetic-user',organizationId:null,status:'active',planName:'Synthetic plan',verifiedAt:Date.now()-1000,endsAt:null}:null,writePlanAdmission:()=>{},isEntitlementSignInFailure:()=>false,LocalCloudProviderStopUnconfirmed:class extends Error{},cloudCredentialStore:{read:async()=>kind==='missing'?null:{credentialId:'synthetic-retained-credential'},write:async()=>{credentialWrites++;}},detachService:()=>{f.context.service=null;f.update({cloudAccount:null});},clearLocalProvider:async()=>{unbinds++;},restoreSavedHistory:async()=>{historyReads++;f.update({history:{messages:Array.from({length:15},(_,id)=>({id:'synthetic-'+id,text:'Fixture'}))}});},refreshActionReview:async()=>{},browserLocalAgentEnabled:false,residentBinding:null});
+ // refreshActionReview is a function the fixture source declared: Bun's vm keeps the declared binding
+ // when only the sandbox property is assigned, so the stub is also installed from inside the context.
+ vm.runInContext('refreshActionReview = async()=>{};',f.context);
  if(newer)f.context.service=newer;
  vm.runInContext(savedAdmissionCode+';globalThis.admit=admitCloudResident;globalThis.bind=applyResidentBinding;',f.context);
  f.update({startupResolved:false,automaticRestore:true});

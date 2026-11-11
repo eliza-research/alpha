@@ -7,9 +7,9 @@ import {spawnSync} from 'node:child_process';
 import {createCloudResidentHost} from './fixtures/product-character-host.mjs';
 import {CLOUD_MODEL} from '../scripts/cloud-resident-host.ts';
 
-// npm test runs without the prepared SDK and skips. browser.yml's verify job prepares it, exports
+// bun run test runs without the prepared SDK and skips. browser.yml's verify job prepares it, exports
 // ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN, and sets ALPHA_REQUIRE_PREPARED_SDK=1 so a missing SDK fails there.
-const skipUnprepared=!(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE&&process.env.ALPHA_BUN)&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK unavailable; run npm run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN (browser.yml verify)':false;
+const skipUnprepared=!(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE&&process.env.ALPHA_BUN)&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK unavailable; run bun run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN (browser.yml verify)':false;
 
 function recordingLauncher(launches) {
  return async options=>{launches.push(options);let finish;return {completion:new Promise(done=>{finish=done;}),async stop(){finish({code:0});}};};
@@ -35,9 +35,9 @@ function selectEmbeddingRoute(config,env) {
  return JSON.parse(line.slice('EMBEDDING_ROUTE='.length));
 }
 
-for(const profileMode of ['lean','full'])test(`fresh ${profileMode} host explicitly enables canonical Cloud embeddings without persisting credentials`,{skip:skipUnprepared},async()=>{
+test(`fresh host explicitly enables canonical Cloud embeddings without persisting credentials`,{skip:skipUnprepared},async()=>{
  const profile=await fs.mkdtemp(join(tmpdir(),'alpha-cloud-embedding-fresh-')),launches=[];
- const host=await createCloudResidentHost({source:resolve('vendor/eliza'),profile,port:47869,profileMode,launch:recordingLauncher(launches),inherited:{PATH:process.env.PATH}});
+ const host=await createCloudResidentHost({source:resolve('vendor/eliza'),profile,port:47869,launch:recordingLauncher(launches),inherited:{PATH:process.env.PATH}});
  try {
   const file=join(profile,'eliza.json'),before=await fs.readFile(file,'utf8');
   await host.bind({token:'synthetic-route-token',credentialId:'synthetic-owner-binding',reference:'synthetic-reference'});
@@ -54,12 +54,12 @@ for(const profileMode of ['lean','full'])test(`fresh ${profileMode} host explici
  } finally {await host.close();await fs.rm(profile,{recursive:true,force:true});}
 });
 
-for(const choice of ['omitted','disabled','explicit'])for(const profileMode of ['lean','full'])test(`saved ${profileMode} ${choice} embedding route remains byte-for-byte owner configuration`,{skip:skipUnprepared},async()=>{
+for(const choice of ['omitted','disabled','explicit'])test(`saved ${choice} embedding route remains byte-for-byte owner configuration`,{skip:skipUnprepared},async()=>{
  const profile=await fs.mkdtemp(join(tmpdir(),'alpha-cloud-embedding-saved-')),launches=[],file=join(profile,'eliza.json');
  const embeddings=choice==='omitted'?{}:{embeddings:choice==='disabled'?null:{backend:'elizacloud',transport:'cloud-proxy'}};
- const saved=' \n'+JSON.stringify({cloud:{enabled:true},serviceRouting:{llmText:{backend:'elizacloud',transport:'cloud-proxy',smallModel:CLOUD_MODEL,largeModel:CLOUD_MODEL},...embeddings},plugins:{entries:{'personal-assistant':{enabled:profileMode==='full'}}}},null,3)+'\n';
+ const saved=' \n'+JSON.stringify({cloud:{enabled:true},serviceRouting:{llmText:{backend:'elizacloud',transport:'cloud-proxy',smallModel:CLOUD_MODEL,largeModel:CLOUD_MODEL},...embeddings},plugins:{entries:{'personal-assistant':{enabled:false}}}},null,3)+'\n';
  await fs.writeFile(file,saved,{mode:0o600});await fs.writeFile(join(profile,'owner-token'),'1'.repeat(64),{mode:0o600});
- const host=await createCloudResidentHost({source:resolve('vendor/eliza'),profile,port:47869,profileMode,launch:recordingLauncher(launches),inherited:{PATH:process.env.PATH}});
+ const host=await createCloudResidentHost({source:resolve('vendor/eliza'),profile,port:47869,launch:recordingLauncher(launches),inherited:{PATH:process.env.PATH}});
  try {
   await host.bind({token:'synthetic-route-token',credentialId:'synthetic-owner-binding',reference:'synthetic-reference'});
   const route=selectEmbeddingRoute(JSON.parse(saved),launches[0].env);

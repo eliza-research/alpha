@@ -38,4 +38,4 @@ changes, Android MediaStore and system permissions, remote agent transport,
 external recipients, and temporal fairness as separate obligations.
 
 With authenticated client features and Playwright Chromium prepared, run
-`node --import=tsx --test test/quint-legacy-photos-library-refinement.test.mjs`.
+`bun test ./test/quint-legacy-photos-library-refinement.test.mjs`.

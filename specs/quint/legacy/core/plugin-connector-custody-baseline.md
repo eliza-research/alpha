@@ -26,5 +26,5 @@ The patch is applied by the existing core-state manifest, with an exact required
 Run with Node 26 from the repository root.
 
 ```sh
-node --test test/quint-plugin-connector-custody.test.mjs
+bun test test/quint-plugin-connector-custody.test.mjs
 ```

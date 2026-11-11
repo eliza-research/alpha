@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-const source=readFileSync(process.env.ALPHA_CONNECTION_SOURCE||'apps/app/src/runtime/connection-ui.tsx','utf8');
+const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
 // Run the callbacks from the current Account sheet. Cancellation stays inside
 // the sheet; confirmation compares the entire account binding before sign-out.
 const confirm=source.match(/onClick=\{(\(\)=>\{const expected=signOutAccount;[^\n]*?connectionController\.cloudSignOut\(\);\})\}>Sign out/)[1];

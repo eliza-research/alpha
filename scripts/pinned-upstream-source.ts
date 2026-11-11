@@ -78,7 +78,7 @@ export function assessDevelopReachability(value: unknown, pin: string) {
 	if (head !== pin)
 		return {
 			ok: false, reachable: false, reason: "stale",
-			message: `Recorded ${base} compare is for ${head.slice(0, 12)}, not the pin ${pin.slice(0, 12)}; rerun node scripts/verify-upstream.ts --record-reachability.`,
+			message: `Recorded ${base} compare is for ${head.slice(0, 12)}, not the pin ${pin.slice(0, 12)}; rerun bun scripts/verify-upstream.ts --record-reachability.`,
 		};
 	if (aheadBy === 0)
 		return { ok: true, reachable: true, reason: "reachable", message: `${base} reaches the pin ${pin.slice(0, 12)} (${status}, recorded ${recordedAt ?? "unknown date"}).` };

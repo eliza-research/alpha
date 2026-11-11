@@ -24,6 +24,7 @@ function compile() {
   const ports = new Map([
     ['../runtime/connection-ui', 'export const connectionController=ports.connection;export const agentPendingText=()=>"No agent";export const agentAvailabilityNotice=()=>"No agent";'],
     ['../daily', 'export const DailyApps=ports.daily;'],
+    ['../browser/review', 'export class BrowserReviews{confirm(id,title,details,label,choice){return Promise.resolve(ports.reviewAccepted()&&choice?.current?.()!==false);}cancel(){}cancelAll(){}}'],
     ['./workflow-filters', 'export const openWorkflowFilters=()=>{};export const workflowFilterLabel=()=>"";'],
     ['./workflow-authoring', 'export const showAgentStatus=()=>{};'],
     ['./home-cards', 'export const homeReadIsStale=()=>false;export const presentHomeWorkflowFreshness=()=>({});'],
@@ -116,11 +117,10 @@ export async function scheduledTaskControlsFixture({kind = 'preset', status = 's
     getAutomationsClient: () => ({sessionId: owner.sessionId, request}),
     subscribe(listener) {subscribers.add(listener);return () => subscribers.delete(listener);},
   };
-  window.confirm = () => dialogAccepted;
   const context = vm.createContext({exports: module.exports, module, document, window, localStorage: storage,
     Intl:Object.assign(Object.create(Intl),{DateTimeFormat:function(locales,options){return new Intl.DateTimeFormat(locales,{...options,timeZone:options?.timeZone||'UTC'});}}),
     Event, AbortController, TextEncoder, TextDecoder, queueMicrotask, crypto: {randomUUID},
-    ports: {connection, daily: {listReminders: async () => ({reminders: []})}}});
+    ports: {connection, reviewAccepted: () => dialogAccepted, daily: {listReminders: async () => ({reminders: []})}}});
   vm.runInContext(code, context);
   class Shell {
     live = true;

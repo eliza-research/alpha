@@ -21,7 +21,7 @@ function observe(state) {
   const held = kind => qset(state.requests.filter(row => row.kind === kind && !row.done).map(row => row.id));
   const effects = discard => qset(state.settlements.filter(([, value]) => value === discard).map(([id]) => id));
   const drafts = state.compositions.map(({draft, session}) => {
-    assert.equal(draft, 'Help me understand this source renewal.\n\nSource: Scheduled source renewal notification\n\nA brief source expires soon. Renew it to keep your brief updated.');
+    assert.equal(draft, 'Help me understand this source renewal.\n\nSource: Scheduled source renewal notification\n\nAccess for your daily brief expires soon. Renew it to keep your brief updated.');
     return idOf(session, 'session-');
   });
   assert.ok(messages.has(state.message), 'Unexpected renewal status '+state.message);

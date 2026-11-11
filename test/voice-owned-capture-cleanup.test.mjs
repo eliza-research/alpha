@@ -1,12 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 
-const adapterSourceTransform=process.env.ALPHA_VOICE_ADAPTER_SOURCE
-  ?()=>readFileSync(process.env.ALPHA_VOICE_ADAPTER_SOURCE,'utf8'):undefined;
 async function direct({failure,hold=false}={}) {
-  const f=cloudVoiceViewFixture({cloudProfile:true,platform:'web',native:false,adapterSourceTransform});
+  const f=cloudVoiceViewFixture({cloudProfile:true,platform:'web',native:false});
   f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
   const snapshot=f.box.connectionController.getSnapshot;
   f.box.connectionController.getSnapshot=()=>({...snapshot(),residentInference:'direct',providerStatus:{voiceConfigured:true}});
@@ -51,7 +48,7 @@ for(const reason of ['SDK microphone stop rejected','Developer voice retirement 
     }finally{f.close();}
   });
 for(const fails of [false,true])test(`ordinary dictation preserves owned recorder cleanup${fails?' failure':''}`,async()=>{
-  const f=cloudVoiceViewFixture({cloudProfile:true,adapterSourceTransform});
+  const f=cloudVoiceViewFixture({cloudProfile:true});
   f.box.React={createElement:()=>null};f.box.VoiceActivity=()=>null;
   f.box.HTMLElement=class{};
   f.box.nativeLiveVoiceReady=async()=>false;

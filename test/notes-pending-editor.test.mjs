@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {fileURLToPath} from 'node:url';
-const sdk=process.env.ALPHA_NOTES_TEST_SDK??fileURLToPath(new URL('../.eliza/client-features/plugins/plugin-notes/src/client',import.meta.url));
+const sdk=fileURLToPath(new URL('../.eliza/client-features/plugins/plugin-notes/src/client',import.meta.url));
 // Use Node's normal test entry without a TS loader; transform the exact prepared modules.
 const moduleUrl=code=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
 const contract=moduleUrl(stripTypeScriptTypes(readFileSync(sdk+'/notes-contract.ts','utf8'),{mode:'strip'}));
@@ -111,7 +111,7 @@ const twoNotes=()=>[{id:'first-note',kind:'text',title:'First',body:'First body'
 test('an approved agent update during an in-flight editor save is refused and the editor write lands',async()=>{
  const f=await fixture(),target=await f.shell.notesStore.target('fixture-note');
  f.hold();const save=f.edit({body:'Owner body'});await f.started;
- assert.deepEqual(await f.agent({type:'notes_update',target,fields:{title:'Initial',body:'Agent body'}}),{status:'failed',summary:'Select Previous notes before reviewing a device-record change'});
+ assert.deepEqual(await f.agent({type:'notes_update',target,fields:{title:'Initial',body:'Agent body'}}),{status:'failed',summary:'Previous notes isn’t ready. Nothing was changed.'});
  assert.equal(f.shell.notesAgentBusy,false);
  f.release();
  assert.equal(await save,true);

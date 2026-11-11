@@ -10,7 +10,6 @@ other positional APKs keep the original semantics: NOT_PACKAGED is reported,
 not rejected. Byte mismatches always raise (exit 1).
 """
 import argparse
-import os
 import subprocess
 import hashlib
 import json
@@ -98,7 +97,7 @@ def verify(apk, release=False):
                 if bun.get('architectures') != ['arm64-v8a']:
                     raise ValueError('Invalid Android Bun ABI admission')
                 runtime_abis = {'arm64-v8a'}
-        restage = 'npm run agent:stage-android'
+        restage = 'bun run agent:stage-android'
         if provenance is None:
             raise ValueError('Runtime provenance missing. Run: ' + restage)
         # There is one runtime profile. The staged marker names it; a payload staged for
@@ -195,7 +194,7 @@ def verify(apk, release=False):
                 not isinstance(bundle_dependencies.get('packages'), list) or not bundle_dependencies['packages']):
             raise ValueError('Packaged agent dependency inventory does not match bundle')
         declarations = subprocess.check_output(
-            [os.environ.get('ALPHA_NODE', 'node'), ROOT / 'scripts/native-view-policy.ts'], timeout=30)
+            ['bun', ROOT / 'scripts/native-view-policy.ts'], timeout=30)
         check('assets/agent/native-view-declarations.json', staged / 'native-view-declarations.json',
               hashlib.sha256(declarations).hexdigest())
         worker_manifest = json.loads((staged / 'workflow-worker/manifest.json').read_text())
@@ -241,10 +240,6 @@ NOT_DISTRIBUTABLE = 3
 
 
 def main(argv):
-    if any(arg == '--local-embeddings' or arg == '--runtime-profile' or arg.startswith('--runtime-profile=') for arg in argv):
-        print('There is one runtime profile now: remove --runtime-profile and --local-embeddings '
-              '(local speech and embeddings always ship; speech is routed at run time).', file=sys.stderr)
-        return 2
     parser = argparse.ArgumentParser(description='Verify packaged runtime bytes in APKs.')
     parser.add_argument('--release', action='append', default=[], metavar='APK', help='distribution release APK; requires a packaged runtime')
     parser.add_argument('--allow-unpackaged-runtime', action='store_true', help='developer option: report unpackaged releases as distributable=false instead of failing')
@@ -265,7 +260,7 @@ def main(argv):
     print(json.dumps(results, indent=2))
     if refused and not args.allow_unpackaged_runtime:
         print('Release APKs without a packaged resident runtime are not distributable: ' + ', '.join(refused)
-              + '. Stage it with npm run android:build:local, or pass --allow-unpackaged-runtime for a non-distributable developer build.', file=sys.stderr)
+              + '. Stage it with bun run android:build:local, or pass --allow-unpackaged-runtime for a non-distributable developer build.', file=sys.stderr)
         return NOT_DISTRIBUTABLE
     return 0
 

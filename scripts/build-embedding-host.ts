@@ -1,7 +1,6 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Reproduce and stage the ARM64 embedding host from pinned source.
- * --status reports staged inputs; --candidate builds without staging; --offline forbids fetching.
  * --from <directory> stages the exact reviewed libraries supplied by a host.
  * Staging requires exact native library hashes and matching source/JNI inputs.
  */
@@ -19,7 +18,7 @@ export const WORKSPACE = '.eliza/embedding-host';
 
 type LibraryManifest = Pick<EmbeddingManifest, 'abi' | 'libraries'>;
 type Toolchain = { ndk: string; cmake: string; engineRepository: string; remapBuildPath: boolean; remapBuildPathEvidence: string };
-type BuildOptions = { offline: boolean; remap: boolean };
+type BuildOptions = { remap: boolean };
 type LibraryDigest = { sha256: string; bytes: number };
 type Comparison = { name: string; expected: LibraryDigest } & (
   { reproduced: false; reason: string; actual?: undefined; file?: undefined }
@@ -123,10 +122,9 @@ function checkNdk(ndk: string, manifest: LibraryManifest, scratch: string) {
     throw new Stop(2, `NDK at ${ndk} does not produce the reviewed libc++_shared.so (${actual} instead of ${row.sha256}).`);
 }
 
-function fetchEngine(engine: string, toolchain: Toolchain, forkPin: string, {offline}: { offline: boolean }) {
+function fetchEngine(engine: string, toolchain: Toolchain, forkPin: string) {
   const git = (...args: string[]) => execFileSync('git', ['-C', engine, ...args], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit']}).trim();
   if (!fs.existsSync(path.join(engine, '.git'))) {
-    if (offline) throw new Stop(2, `Engine source ${engine} is not present and --offline forbids fetching ${toolchain.engineRepository} at ${forkPin}.`);
     fs.mkdirSync(engine, {recursive: true});
     console.log(`Fetching engine source ${toolchain.engineRepository} at ${forkPin}`);
     git('init', '--quiet');
@@ -138,7 +136,7 @@ function fetchEngine(engine: string, toolchain: Toolchain, forkPin: string, {off
     throw new Stop(2, `Engine source ${engine} is not a clean checkout of ${forkPin}; remove it and rerun.`);
 }
 
-function compile(root: string, manifest: EmbeddingManifest, toolchain: Toolchain, output: string, {offline, remap}: BuildOptions) {
+function compile(root: string, manifest: EmbeddingManifest, toolchain: Toolchain, output: string, {remap}: BuildOptions) {
   // Source admission: the pinned checkout still carries exactly the reviewed native inputs.
   try { verifyEmbeddingInputs(root, manifest); }
   catch (error) { throw new Stop(3, `The pinned checkout does not carry the reviewed embedding host inputs (${error instanceof Error ? error.message : String(error)}).`); }
@@ -154,7 +152,7 @@ function compile(root: string, manifest: EmbeddingManifest, toolchain: Toolchain
   const workspace = path.join(root, WORKSPACE);
   checkNdk(ndk, manifest, workspace);
   const engine = path.join(workspace, `engine-${manifest.forkPin}`);
-  fetchEngine(engine, toolchain, manifest.forkPin, {offline});
+  fetchEngine(engine, toolchain, manifest.forkPin);
   const receiptFile = path.join(output, 'PREPARATION.json');
   const existingReceipt = fs.existsSync(receiptFile) ? readJson<{ built: boolean; buildPathRemapped: boolean }>(receiptFile) : null;
   if (fs.existsSync(output) && !(existingReceipt?.built === true && existingReceipt.buildPathRemapped === remap))
@@ -172,9 +170,7 @@ function compile(root: string, manifest: EmbeddingManifest, toolchain: Toolchain
 }
 
 /** `build` is the compile step; tests replace it, the command line never does. */
-export function run(root: string, {status = false, offline = false, candidate = false, from, build = compile}: {
-  status?: boolean; offline?: boolean; candidate?: boolean; from?: string; build?: typeof compile;
-} = {}) {
+export function run(root: string, {from, build = compile}: {from?: string; build?: typeof compile} = {}) {
   if (from !== undefined) {
     stageFrom(root, path.resolve(from));
     return 0;
@@ -182,12 +178,6 @@ export function run(root: string, {status = false, offline = false, candidate = 
   const manifest = readJson<EmbeddingManifest>(path.join(root, QUALIFIED_HOST));
   const toolchain = readJson<Toolchain>(path.join(root, BUILD_TOOLCHAIN));
   const workspace = path.join(root, WORKSPACE);
-  if (candidate) {
-    const output = path.join(workspace, `candidate-${manifest.forkPin}`);
-    const {receiptFile, reproduced} = build(root, manifest, toolchain, output, {offline, remap: true});
-    console.log(`Candidate built with a remapped build path: ${path.relative(root, receiptFile)}. ${reproduced ? 'It is byte-identical to the reviewed libraries.' : 'It differs from the expected hashes and is not staged.'}`);
-    return 0;
-  }
   const staged = stagedLibraries(root, manifest);
   const host = embeddingHostState(manifest, toolchain, staged);
   if (host.ready) {
@@ -197,14 +187,9 @@ export function run(root: string, {status = false, offline = false, candidate = 
   const different = staged.filter(row => row.state === 'different');
   if (different.length)
     throw new Stop(2, `Staged ${different.map(row => row.name).join(', ')} in android/app/src/main/jniLibs/${manifest.abi} is not the reviewed bytes. Review where it came from and remove it; this step never replaces a staged library.`);
-  const missing = `Embedding host not staged: ${staged.filter(row => row.state === 'missing').map(row => row.name).join(', ')} missing from android/app/src/main/jniLibs/${manifest.abi}.`;
-  if (status) {
-    console.log(`${missing} Run: npm run agent:build-embedding-host`);
-    return 3;
-  }
   const output = path.join(workspace, `build-${manifest.forkPin}`);
   // The reviewed bytes of a reproducible manifest were built with the remap, so the rebuild is too.
-  const {comparison, reproduced} = build(root, manifest, toolchain, output, {offline, remap: true});
+  const {comparison, reproduced} = build(root, manifest, toolchain, output, {remap: true});
   if (!reproduced)
     throw new Stop(3, `The rebuilt embedding host is not the reviewed bytes and was not staged:\n${describeDifference(comparison).map(line => `  - ${line}`).join('\n')}\nRebuilt files and COMPARISON.json are in ${path.relative(root, output)}.`);
   stageReproduced(root, manifest, comparison);
@@ -217,12 +202,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const args = process.argv.slice(2);
   const root = path.resolve(import.meta.dirname, '..');
   const from = args.length === 2 && args[0] === '--from' && !args[1].startsWith('--') ? args[1] : undefined;
-  if (from === undefined && args.some(arg => !['--status', '--offline', '--candidate'].includes(arg))) {
-    console.error('Usage: node scripts/build-embedding-host.ts [--status | --candidate] [--offline] | --from <directory>');
+  if (from === undefined && args.length) {
+    console.error('Usage: bun scripts/build-embedding-host.ts [--from <directory>]');
     process.exit(2);
   }
   try {
-    process.exitCode = run(root, {status: args.includes('--status'), offline: args.includes('--offline'), candidate: args.includes('--candidate'), from});
+    process.exitCode = run(root, {from});
   } catch (error) {
     if (!(error instanceof Stop)) throw error;
     console.error(error.message);

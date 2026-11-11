@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import {coreRuntimeArguments} from './core-state-patch.ts';
 /** Isolated development-only Cloud inference QA. Never used by the phone build or 5209. */
 import fs from 'node:fs';

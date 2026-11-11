@@ -3,7 +3,33 @@ import {parseBrowserAddressInput} from '../.eliza/client-features/plugins/plugin
 // The adapter's native tabs are the shared session model; the harnesses run the real one.
 import {BrowserTabSession} from '../.eliza/client-features/plugins/plugin-native-browser-surface/src/tab-host.ts';
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';import vm from 'node:vm';
-const source=readFileSync(process.env.ALPHA_BROWSER_ADAPTER_SOURCE||'apps/app/src/prototype/browser-adapter.ts','utf8');
+const source=readFileSync('apps/app/src/prototype/browser-adapter.ts','utf8');
+test('removing a history row removes its cached title unless a bookmark still retains it',()=>{
+ const from=source.indexOf('libRows:['),to=source.indexOf(',libEmpty:',from);
+ assert(from>=0&&to>from,'actual history-row projection is present');
+ const address='https://example.com/private-title';
+ for(const bookmarked of [false,true]){
+  const state={lib:'history',visits:[address],marks:bookmarked?[address]:[],titles:{[address]:'Private title'}};
+  const helpers=source.slice(source.indexOf('  function retainedTitles('),source.indexOf('  let reading:'));
+  const rows=vm.runInNewContext(stripTypeScriptTypes(helpers+'\n'+source.slice(from+'libRows:'.length,to),{mode:'strip'}),{s:state,state:()=>state,URL,bookmarkRecovery:false,historyOpen:true,titleOf:url=>state.titles[url],navigate(){},openBookmarkRecovery(){},saveBookmark(){assert.fail('history removal must not change bookmarks');},api:{set:patch=>Object.assign(state,patch)}});
+  rows[0].remove();
+  assert.deepEqual(state.visits,[]);
+  assert.equal(Object.hasOwn(state.titles,address),bookmarked);
+ }
+});
+test('bookmark removal releases cached titles only when history no longer retains the address',async()=>{
+ const from=source.indexOf('  function saveBookmark('),to=source.indexOf('  const state =',from);
+ const helpers=source.slice(source.indexOf('  function retainedTitles('),source.indexOf('  let reading:'));
+ const address='https://example.com/private-title';
+ for(const visited of [false,true]){
+  const current={visits:visited?[address]:[],marks:[address],titles:{[address]:'Private title'}};
+  const context={bookmarkQueue:Promise.resolve(),bookmarkHydrated:true,disposed:false,session:'session',state:()=>current,loadBookmarks:()=>assert.fail('already hydrated'),report:error=>{throw error;},Browser:{setBookmark:async()=>({urls:[]})},shell:{vset:(_view,patch)=>Object.assign(current,patch)}};
+  vm.runInNewContext(stripTypeScriptTypes(helpers+'\n'+source.slice(from,to)+`\nsaveBookmark(${JSON.stringify(address)},false);`,{mode:'strip'}),context);
+  await context.bookmarkQueue;
+  assert.equal(current.marks.length,0);
+  assert.equal(Object.hasOwn(current.titles,address),visited);
+ }
+});
 const region=stripTypeScriptTypes(source.slice(source.indexOf('  async function navigate('),source.indexOf('  async function command(')),{mode:'strip'});
 function harness(){let release;const pending=new Promise(resolve=>release=resolve),state={cur:'owned',tabs:[{id:'owned'},{id:'other'}],editing:true,tabsOpen:true,menu:true},navigations=[],patches=[],closed=[],reports=[];const tabs=new BrowserTabSession({session:'owned-session'});void tabs.ensure('owned',false,()=>pending);
  const context={URL,Error,MAX_TABS:8,parseBrowserAddressInput,session:"owned-session",disposed:false,state:()=>state,isPrivate:()=>false,newTabId:()=> 'owned',restored:new Map(),tabs,restoreAttempts:new Map(),ensure:id=>tabs.creation(id)??tabs.ensure(id,false,()=>pending),shell:{vset(_key,patch){patches.push(patch);Object.assign(state,patch);}},Browser:{async navigate(input){navigations.push(input);},async close(input){closed.push(input);}},refresh(){},report(error){reports.push(error.message);}};
@@ -45,12 +71,14 @@ test('agent history commands refuse known empty history before dispatch, while r
 
 const stateChangedStart="  void Browser.addListener('stateChanged',";
 const stateChangedSource=stripTypeScriptTypes(source.slice(source.indexOf(stateChangedStart)+stateChangedStart.length,source.indexOf(').then((value:any)=>{listener=value;})',source.indexOf(stateChangedStart))),{mode:'strip'});
+// The adapter's own address and page-name helpers, as the state listener uses them.
+const pageHelpers=stripTypeScriptTypes(source.slice(source.indexOf('  const loopbackHost ='),source.indexOf('  let reading:')),{mode:'strip'});
 function committedPageHarness({native=false,privateTab=false}={}){
- const current={cur:'owned',visits:[]},tabs=new BrowserTabSession({session:'session'});void tabs.ensure('owned',privateTab,async()=>undefined);
- const context={session:'session',tabs,reading:false,stopReading(){},lastGeometry:'',MAX_HISTORY:100,Capacitor:{isNativePlatform:()=>native},state:()=>current,isPrivate:()=>privateTab,shell:{vset(_key,patch){Object.assign(current,patch);}},refresh(){}};
- const receive=vm.runInNewContext('const receive = '+stateChangedSource+';receive',context);
+ const toasts=[],current={cur:'owned',visits:[],marks:[],titles:{}},tabs=new BrowserTabSession({session:'session'});void tabs.ensure('owned',privateTab,async()=>undefined);
+ const context={URL,session:'session',tabs,reading:false,stopReading(){},lastGeometry:'',MAX_HISTORY:100,Capacitor:{isNativePlatform:()=>native},state:()=>current,isPrivate:()=>privateTab,shell:{vset(_key,patch){Object.assign(current,patch);},toast(text){toasts.push(text);}},refresh(){}};
+ const receive=vm.runInNewContext(pageHelpers+';const receive = '+stateChangedSource+';receive',context);
  const event={session:'session',id:'owned',sequence:1,navigation:1,url:'http://127.0.0.1/article',committed:true,loading:false,error:''};
- return {current,metadata:{get:id=>tabs.info(id)},receive,event};
+ return {current,toasts,metadata:{get:id=>tabs.info(id)},receive,event};
 }
 test('confirmed embedded and native pages retain normal tabs and bounded history',()=>{
  for(const native of [false,true]){
@@ -58,6 +86,35 @@ test('confirmed embedded and native pages retain normal tabs and bounded history
   assert.equal(h.metadata.get('owned').savedUrl,h.event.url);
   assert.deepEqual(Array.from(h.current.visits),[h.event.url]);
  }
+});
+test('a committed page keeps its name only while its address stays in history or bookmarks',()=>{
+ const h=committedPageHarness(),other='https://names.example/other';
+ h.receive({...h.event,title:'First\u0000 article '});
+ assert.deepEqual({...h.current.titles},{[h.event.url]:'First  article'});
+ // A page that reports its address as its title has no name, and a name whose address was dropped goes with it.
+ h.current.visits=[];h.receive({...h.event,sequence:2,url:other,title:other});
+ assert.deepEqual({...h.current.titles},{});
+ const privatePage=committedPageHarness({privateTab:true});privatePage.receive({...privatePage.event,title:'Private page'});
+ assert.deepEqual({...privatePage.current.titles},{});
+});
+test('Android says why a page without HTTPS did not open, once, and never for loopback or other failures',()=>{
+ const failed={committed:false,error:'Page could not load. Check the address and connection, then reload.'},message='This site has no secure (HTTPS) connection, so it cannot be opened.';
+ const blocked=committedPageHarness({native:true});
+ blocked.receive({...blocked.event,...failed,url:'http://plain.example/'});blocked.receive({...blocked.event,...failed,url:'http://plain.example/',sequence:2});
+ assert.deepEqual(blocked.toasts,[message]);
+ for(const [native,url] of [[true,'http://127.0.0.1/article'],[true,'http://localhost:8080/'],[true,'https://secure.example/'],[false,'http://plain.example/']]){
+  const h=committedPageHarness({native});h.receive({...h.event,...failed,url});assert.deepEqual(h.toasts,[],url);
+ }
+ const background=committedPageHarness({native:true});background.current.cur='other';background.receive({...background.event,...failed,url:'http://plain.example/'});
+ assert.deepEqual(background.toasts,[]);
+});
+test('a typed http address is tried over HTTPS on Android only, keeping loopback hosts, ports and credentials as typed',()=>{
+ const typed=native=>vm.runInNewContext(pageHelpers+';secureTypedAddress',{Capacitor:{isNativePlatform:()=>native}});
+ const android=typed(true);
+ assert.equal(android('http://example.com'),'https://example.com');
+ assert.equal(android(' HTTP://Example.com/a?b=http://c '),' https://Example.com/a?b=http://c ');
+ for(const kept of ['http://127.0.0.1:8080/slow','http://127.0.0.1/x','http://localhost/x','http://app.localhost/','http://[::1]/','http://example.com:8080/','http://user@example.com/x','http://user:password@example.com','https://example.com','example.com','how does http://example.com work','http://'])assert.equal(android(kept),kept,kept);
+ assert.equal(typed(false)('http://example.com'),'http://example.com');
 });
 test('private and unconfirmed page events never add browsing history',()=>{
  const privatePage=committedPageHarness({privateTab:true});privatePage.receive(privatePage.event);assert.equal(privatePage.current.visits.length,0);

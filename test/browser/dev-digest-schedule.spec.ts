@@ -146,8 +146,8 @@ test('reopening after a missed time shows one honest missed record and one notic
  await expect(panel.getByRole('switch',{name:'Result checks',exact:true})).toBeVisible();
  await panel.getByText('Share a snapshot',{exact:true}).click();await panel.getByLabel('Label',{exact:true}).fill('Daily source');await panel.getByLabel('Snapshot text',{exact:true}).fill('Reviewed snapshot content');await panel.getByRole('button',{name:'Review snapshot',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();
  await panel.getByRole('combobox',{name:'Reviewed source',exact:true}).selectOption({index:1});await panel.getByLabel('Time zone',{exact:true}).fill('UTC');await panel.getByLabel('Morning',{exact:true}).fill('12:05');
- await expect(panel).toContainText('Missed times don’t run later. Only these digests run on a schedule.');
- await panel.getByRole('button',{name:'Review morning schedule',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();await expect(panel.getByRole('region',{name:'Digest schedules',exact:true})).toContainText('Morning at 12:05 (UTC)');
+ await expect(panel).toContainText('Runs more than 30 minutes late are marked missed.');
+ await panel.getByRole('button',{name:'Review morning schedule',exact:true}).click();await expect(panel.getByRole('note')).toHaveText('Runs more than 30 minutes late are marked missed.');await panel.getByRole('button',{name:'Confirm',exact:true}).click();await expect(panel.getByRole('region',{name:'Digest schedules',exact:true})).toContainText('Morning at 12:05 (UTC)');
  // The app is closed across two scheduled days, then reopened 40 minutes after the latest one.
  await page.goto('about:blank');await page.clock.setFixedTime(new Date('2026-10-05T12:45:00Z'));await page.goto('/?mode=dev');await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));
  const records=panel.locator('article');await expect(records).toHaveCount(1);await expect(records).toContainText('Missed — not run');await expect(records).toContainText('The scheduled time was missed. No backlog was executed.');

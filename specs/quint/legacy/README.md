@@ -166,11 +166,11 @@ need distinct server endpoints. A persistent, independently started Apalache
 server avoids the pinned CLI's automatic server shutdown/startup race.
 
 ```sh
-node specs/quint/legacy/check-view-refresh.mjs --phase=check
-node specs/quint/legacy/check-view-refresh.mjs --phase=symbolic --steps=4
-node specs/quint/legacy/check-view-refresh.mjs --phase=compare
-node specs/quint/legacy/check-view-refresh.mjs --phase=properties
-node specs/quint/legacy/check-view-refresh.mjs --phase=temporal --models=NotesView --configurations=AsBuilt_Hidden
+bun specs/quint/legacy/check-view-refresh.mjs --phase=check
+bun specs/quint/legacy/check-view-refresh.mjs --phase=symbolic --steps=4
+bun specs/quint/legacy/check-view-refresh.mjs --phase=compare
+bun specs/quint/legacy/check-view-refresh.mjs --phase=properties
+bun specs/quint/legacy/check-view-refresh.mjs --phase=temporal --models=NotesView --configurations=AsBuilt_Hidden
 ```
 
 `compare` preserves each original configuration's combined verdict. `properties`

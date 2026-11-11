@@ -9,7 +9,7 @@ import {featureParity} from '../scripts/feature-manifest.ts';
 import {featureParityAllowlist as allowlist} from './support/feature-parity.mjs';
 
 const parity = await featureParity();
-const regenerate = 'Run node scripts/feature-manifest.ts --parity to see the current lists.';
+const regenerate = 'Run bun scripts/feature-manifest.ts --parity to see the current lists.';
 
 test('Alpha and Eliza differ functionally only where the allowlist says so', () => {
   const allowed = Object.keys(allowlist.differences);

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import {coreRuntimeArguments} from './core-state-patch.ts';
 import {sourceDirectory, verifySource} from './local-agent-source.ts';
 // Runs the pinned Eliza app host with authenticated runtime transforms with an isolated private profile.

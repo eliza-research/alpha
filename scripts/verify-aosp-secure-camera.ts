@@ -11,5 +11,5 @@ if (args.length === 2 && args[0] === "--aosp-source") {
   const { androidEnv } = await import("./toolchain.ts");
   const env = androidEnv();
   const run = (...command: string[]) => execFileSync(path.join(env.ANDROID_HOME, "platform-tools/adb"), ["-s", serial, ...command], { encoding: "utf8", env, timeout: 10_000, maxBuffer: 128 << 10 });
-  console.log(JSON.stringify(verifySecureCameraImage(run, process.env.ALPHA_ANDROID_USER, process.env.ALPHA_EXPECTED_FINGERPRINT), null, 2));
+  console.log(JSON.stringify(verifySecureCameraImage(run, process.env.ALPHA_ANDROID_USER, process.env.ALPHA_EXPECTED_IMAGE_FINGERPRINT), null, 2));
 }

@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildSync} from 'esbuild';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 const {AgentCalendar}=await tsImport(new URL('../apps/app/src/runtime/agent-calendar.ts',import.meta.url).href,{parentURL:import.meta.url});
 const {assertAppRecordRequestAllowed}=await tsImport(new URL('../apps/app/src/runtime/app-record-route-policy.ts',import.meta.url).href,{parentURL:import.meta.url});
 const bundle=buildSync({entryPoints:[new URL('../apps/app/src/runtime/google-accounts.ts',import.meta.url).pathname],bundle:true,write:false,platform:'node',format:'esm',define:{'import.meta.env':'{}'}}).outputFiles[0].text;

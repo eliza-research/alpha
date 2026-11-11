@@ -38,7 +38,6 @@ test('staged embedding bytes reject conflicts and accept matching libraries', t 
   // The reviewed bytes, however they were supplied, pass without building.
   for (const name of f.names) f.stage(name);
   assert.equal(run(f.root), 0);
-  assert.equal(run(f.root, {status: true}), 0);
 });
 
 test('a rebuild is staged only when every library is byte-identical to the reviewed manifest', t => {
@@ -78,30 +77,19 @@ test('once the reviewed bytes are reproducible the step rebuilds with the remap 
     f.write(path.relative(root, path.join(output, 'COMPARISON.json')), JSON.stringify({reproduced, staged: false, libraries: comparison}, null, 2) + '\n');
     return {receiptFile: path.join(output, 'PREPARATION.json'), comparison, reproduced};
   };
-  // --status never builds.
-  assert.equal(run(f.root, {status: true, build: builder({})}), 3);
-  assert.deepEqual(calls, []);
-
   // A rebuild that differs in one library stages nothing.
   assert.throws(() => run(f.root, {build: builder({'libelizavoicejni.so': 'built on another host'})}), error => error instanceof Stop && error.code === 3
     && /The rebuilt embedding host is not the reviewed bytes and was not staged:\n  - libelizavoicejni\.so: built 21 bytes/.test(error.message));
   assert.deepEqual(stagedLibraries(f.root).map(row => row.state), ['missing', 'missing', 'missing']);
-  assert.deepEqual(calls, [{output: `.eliza/embedding-host/build-${'a'.repeat(40)}`, options: {offline: false, remap: true}}], 'the chain build uses the path remap the reviewed bytes were built with');
+  assert.deepEqual(calls, [{output: `.eliza/embedding-host/build-${'a'.repeat(40)}`, options: {remap: true}}], 'the chain build uses the path remap the reviewed bytes were built with');
 
   // An exact reproduction is staged and recorded.
   fs.rmSync(path.join(f.root, '.eliza'), {recursive: true});
-  assert.equal(run(f.root, {offline: true, build: builder({})}), 0);
-  assert.deepEqual(calls[1].options, {offline: true, remap: true});
+  assert.equal(run(f.root, {build: builder({})}), 0);
   assert.deepEqual(stagedLibraries(f.root).map(row => row.state), ['staged', 'staged', 'staged']);
   assert.equal(JSON.parse(fs.readFileSync(path.join(f.root, calls[1].output, 'COMPARISON.json'), 'utf8')).staged, true);
   // Staged now: a later run passes without building.
   assert.equal(run(f.root, {build: () => assert.fail('must not build')}), 0);
-
-  // A candidate build is never staged, whatever it produced, and uses its own directory.
-  const g = fixture(t);
-  assert.equal(run(g.root, {candidate: true, build: (root, manifest, toolchain, output, options) => { calls.push({output: path.relative(root, output), options}); return {receiptFile: path.join(output, 'PREPARATION.json'), reproduced: true}; }}), 0);
-  assert.deepEqual(calls[2], {output: `.eliza/embedding-host/candidate-${'a'.repeat(40)}`, options: {offline: false, remap: true}});
-  assert.equal(fs.existsSync(path.join(g.root, 'android/app/src/main/jniLibs')), false);
 });
 
 test('path remapping is opt-in, recorded in the receipt and leaves the default build unchanged', () => {
@@ -132,12 +120,12 @@ test('the input report separates what a script produces from what needs a person
   assert.ok(rows.every(item => item.state === 'missing' && item.action), 'an empty checkout has nothing ready and an action for every input');
   assert.match(row('pinned upstream checkout').action, /git submodule update --init vendor\/eliza/);
   assert.match(row('on-device voice outputs').detail, /are not admitted by .*Voice bundle file missing or changed: asr\.gguf/);
-  assert.match(row('on-device voice outputs').action, /^Needs a person to supply the recorded voice outputs and models: node scripts\/android-stage-voice-models\.ts --from /);
-  assert.equal(row('embedding host libraries').action, 'npm run agent:build-embedding-host');
+  assert.match(row('on-device voice outputs').action, /^Needs a person to supply the recorded voice outputs and models: bun scripts\/android-stage-voice-models\.ts --from /);
+  assert.equal(row('embedding host libraries').action, 'bun run agent:build-embedding-host');
   assert.match(row('release signer').action, /^Needs a person: Alpha Compute controls signing and Shaw owns release/);
   assert.match(row('release signer').detail, /says unset; not set in this environment: ELIZAOS_KEYSTORE_PATH, ELIZAOS_KEYSTORE_PASSWORD, ELIZAOS_KEY_ALIAS, ELIZAOS_KEY_PASSWORD/);
   for (const name of ['prepared resident runtime source', 'workflow worker artifact', 'staged resident runtime payload', 'embedding model', 'Gradle dependency verification metadata'])
-    assert.match(row(name).action, /^npm run /, name);
+    assert.match(row(name).action, /^bun run /, name);
   let report = formatReport(rows);
   assert.match(report, /2 input\(s\) only a person can supply: on-device voice outputs, release signer\./);
   assert.match(report, /An unset release signer does not stop the build: verify-apks records its releases distributable:false/);
@@ -164,15 +152,14 @@ test('the input report separates what a script produces from what needs a person
   for (const file of ['upstream.lock.json', 'android/release-signer.json'])
     g.write(file, fs.readFileSync(path.join(f.root, file), 'utf8'));
   const host = strictBuildInputs(g.root, null, {env: {}, voiceHost: () => ({status: 'not-packaged'})}).find(item => item.input === 'embedding host libraries');
-  assert.deepEqual([host.suppliedBy, host.action], ['script', 'npm run agent:build-embedding-host']);
+  assert.deepEqual([host.suppliedBy, host.action], ['script', 'bun run agent:build-embedding-host']);
 });
 
-test('the real checkout reports its inputs without failing and without building', () => {
+test('the real checkout reports its inputs without failing and without building', async () => {
   // Signing values, if this machine has any, are not this test's input.
   const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => !/^ELIZAOS_(KEYSTORE_PATH|KEYSTORE_PASSWORD|KEY_ALIAS|KEY_PASSWORD)$/.test(name)));
-  const result = spawnSync(process.execPath, ['scripts/android-build-preflight.ts', '--report', '--json'], {cwd: ROOT, encoding: 'utf8', env});
-  assert.equal(result.status, 0, result.stderr);
-  const rows = JSON.parse(result.stdout);
+  const source = await import('../scripts/local-agent-source.ts');
+  const rows = strictBuildInputs(ROOT, source.sourceDirectory(ROOT), {env, workerDirectory: source.workerArtifactDirectory(ROOT)});
   const row = name => rows.find(item => item.input === name);
   assert.deepEqual(rows.map(item => item.input), ['pinned upstream checkout', 'on-device voice outputs', 'embedding host libraries',
     'prepared resident runtime source', 'workflow worker artifact', 'staged resident runtime payload', 'embedding model', 'Gradle dependency verification metadata', 'release signer']);

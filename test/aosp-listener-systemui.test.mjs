@@ -42,22 +42,6 @@ test('reviewed SystemUI patch binds the baseline and adds both recording ops to 
   } finally { fs.rmSync(temp, {recursive: true, force: true}); }
 });
 
-test('exact pinned source produces a verified overlay and rejects postimage mutation', {skip: process.env.ALPHA_SYSTEMUI_TEST_SOURCE ? false : 'Set ALPHA_SYSTEMUI_TEST_SOURCE to a pinned SystemUI checkout; no CI lane checks one out, so the local AOSP image build owns this test'}, () => {
-  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'systemui-exact-'));
-  try {
-    const output = path.join(temp, 'overlay');
-    const receipt = prepareListenerSystemui(process.env.ALPHA_SYSTEMUI_TEST_SOURCE, output);
-    assert.equal(receipt.state, 'after');
-    assert.equal(receipt.fullTreeVerified, false);
-    assert.throws(() => prepareListenerSystemui(process.env.ALPHA_SYSTEMUI_TEST_SOURCE, output), /must not exist/);
-    assert.throws(() => prepareListenerSystemui(output, path.join(output, 'nested')), /outside the supplied/);
-    assert.throws(() => verifyListenerSystemui(output, 'before'), /image mismatch/);
-    fs.appendFileSync(path.join(output, 'frameworks/base', manifest.files[0].path), '\n// mutation\n');
-    assert.throws(() => verifyListenerSystemui(output, 'after'), /image mismatch/);
-  } finally { fs.rmSync(temp, {recursive: true, force: true}); }
-});
-
-
 test('Alpha SystemUI CLI applies the reviewed copy fix and preserves existing destinations', t => {
   const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-systemui-cli-'));
   t.after(()=>fs.rmSync(temporary,{recursive:true,force:true}));

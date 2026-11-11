@@ -27,7 +27,7 @@ test('recorded install-time formatting stays truthful and About never claims the
 // Software update (settings-adapter.ts, AlphaDevicePlugin): the renderer's manifest policy and check cadence.
 // The rendered rows, the check wiring and the install payload are in test/browser/settings-device-facts.spec.ts.
 const installed={versionCode:7,launcher:true,signerSha256:'5c'.repeat(32)};
-const manifest={schema:'alpha-update/v1',versionCode:8,versionName:'0.1.1',variant:'launcher',signerSha256:'5c'.repeat(32),apkUrl:'https://github.com/eliza-research/alphaphone/releases/download/app-8/alpha-phone-8.apk',sha256:'0a'.repeat(32),sizeBytes:400_000_000,notes:'Faster Home'};
+const manifest={schema:'alpha-update/v1',versionCode:8,versionName:'0.1.1',variant:'launcher',signerSha256:'5c'.repeat(32),apkUrl:'https://github.com/alphacompute/alphaphone/releases/download/app-8/alpha-phone-8.apk',sha256:'0a'.repeat(32),sizeBytes:400_000_000,notes:'Faster Home'};
 test('Software update offers only a complete, newer manifest for this flavor and signer, with an HTTPS APK, a SHA-256 and a bounded size',()=>{
  assert.equal(m.UPDATE_SCHEMA,'alpha-update/v1');
  const {schema,variant,signerSha256,...offered}=manifest;
@@ -117,7 +117,7 @@ test('native system facts are read without new permissions and are omitted when 
 });
 
 test('the grouped Privacy page retains permission review and action-review controls',()=>{
- assert.match(source,/\['Privacy', \['Set up Alpha access', 'Review phone actions first'\]\]/);
+ assert.match(source,/\['Privacy', \['Set up Alpha access', 'Ask before Alpha acts'\]\]/);
  assert.match(source,/'Set up Alpha access': 'Permissions'/);
  assert.match(source,/name === 'Set up Alpha access'[^\n]+api\.set\(\{page:'settings-permissions',settingsCategory:'settings-privacy'\}\)/);
  assert.match(source,/title:'App permissions',backLabel:'Back to Privacy'/);
@@ -220,6 +220,26 @@ test('Android Back from a password entry forgets its draft',()=>{
 });
 
 // Problem log is opened from the gated Developer page. Back returns to that owner.
+test('Android Back from the Problem log agrees with the on-screen Back',()=>{
+ assert.match(source,/const settingsParents: Record<string,string> = \{[^}]*problems:'developer'/);
+ assert.doesNotMatch(source,/history:'agent-connection'|history:\['agent-connection'/);
+});
+test('only allowlisted sections open directly, each with the category Back returns to',()=>{
+ assert.deepEqual(m.settingsSectionPatch('notifications'),{page:'notifications',settingsCategory:'settings-general'});
+ assert.deepEqual(m.settingsSectionPatch('privacy'),{page:'privacy',settingsCategory:'settings-privacy'});
+ assert.deepEqual(m.settingsSectionPatch('settings-permissions'),{page:'settings-permissions',settingsCategory:'settings-privacy'});
+ assert.deepEqual(m.settingsSectionPatch('calendar'),{page:'calendar',settingsCategory:'settings-apps'});
+ assert.deepEqual(m.settingsSectionPatch('about'),{page:'about',settingsCategory:null});
+ for(const section of ['developer','character','problems','password-provider','password-entry','agent-connection','toString','__proto__','',null,undefined,7,{}])assert.equal(m.settingsSectionPatch(section),null,String(section));
+ assert.match(source,/const patch=settingsSectionPatch\(\(event as CustomEvent\)\.detail\?\.page\);if\(!patch\)return;event\.preventDefault\(\);/);
+});
+test('Reset is its own last card in General and Files access is read from Android',()=>{
+ assert.match(source,/\['settings-general','General',\['Preferences','Network','Device','Updates','Reset'\]\]/);
+ assert.match(source,/reset = take\(\['Erase all data'\]\)/);
+ assert.match(source,/label:'Erase all data',lbl:'Reset Alpha data',labCss:'color:#d93025'/);
+ assert.match(source,/fileAccess==='granted'\?'All':fileAccess==='denied'\?'Off':'—'/);
+ assert.doesNotMatch(source,/rows\.push\(permissionInfo\('Files','Chosen files'\)\);/);
+});
 test('Problem log returns to its Developer parent',()=>{
  assert.match(source,/problems:\['developer','Developer'\]/);
 });

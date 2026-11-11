@@ -267,7 +267,9 @@ test('native batch: an ack whose Cloud speech request fails is silence; the repl
  t.f.driver.synthesize=async input=>{if(input.text!==ACK)return synthesize(input);(t.f.speechInputs??=[]).push(input);throw Object.assign(Error('Cloud speech failed'),{code:'voice-http-502'});};
  try{
   progress(t.input);await t.clock.flush();assert.deepEqual(t.texts(),[ACK]);
-  t.f.releaseReply();await t.clock.flush();
+  // Two drains: on Bun each fixture source is its own VM realm, and a promise crossing realms
+  // settles two microtasks later, so the failed cue and the reply outlast one drain. No timer runs.
+  t.f.releaseReply();await t.clock.flush();await t.clock.flush();
   assert.deepEqual(t.texts(),[ACK,REPLY],'no canned line in its place, and the reply plays');
   assert.notEqual(t.f.renderChat()?.state,'error');
  }finally{await closeBatch(t);}
@@ -836,7 +838,8 @@ test(`native batch: the ack's playback failing for '${code}' is silence and hold
   try{
    progress(t.input,{label});await t.clock.flush();const spoken=t.texts().length;
    const during=outcome(t.f,t.input,seen);
-   t.f.releaseReply();await t.clock.flush();
+   // Two drains, as for the failed Cloud speech request above (cross-realm promises on Bun).
+   t.f.releaseReply();await t.clock.flush();await t.clock.flush();
    return {spoken,during,after:outcome(t.f,t.input,seen),texts:t.texts().filter(text=>text!==ACK)};
   }finally{await closeBatch(t);}
  };

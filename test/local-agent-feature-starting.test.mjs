@@ -6,7 +6,7 @@ import {ownerRouteGroup,ownerRouteAllowed} from '../apps/app/src/runtime/owner-r
 import {anyAbortSignal} from '../apps/app/src/runtime/abort-signal.ts';
 // The actual protocol class, with only platform/transport/time collaborators injected.
 // No app import, SDK runtime, real HTTP, profile or provider is started.
-const source=readFileSync(process.env.ALPHA_FEATURE_STARTING_SOURCE||'apps/app/src/runtime/local-agent.ts','utf8');
+const source=readFileSync('apps/app/src/runtime/local-agent.ts','utf8');
 const begin=source.indexOf('export class LocalAgentProtocol {'),end=source.indexOf('export const LOCAL_PROVIDER_MODEL=',begin);
 assert.ok(begin>=0&&end>begin);
 const classCode=stripTypeScriptTypes(source.slice(begin,end).replace(/^export /gm,''),{mode:'strip'});

@@ -23,10 +23,12 @@ export async function bookmarksHydrationDriver() {
   const adapter = readFileSync(join(repositoryRoot, 'apps/app/src/prototype/browser-adapter.ts'), 'utf8');
   const start = adapter.indexOf('  let bookmarkRead:'), end = adapter.indexOf('  const state = () =>', start);
   assert.ok(start >= 0 && end > start, 'the adapter no longer has the bookmark region');
+  const titleStart = adapter.indexOf('  function retainedTitles('), titleEnd = adapter.indexOf('  let reading:', titleStart);
+  assert.ok(titleStart >= 0 && titleEnd > titleStart, 'include the actual bookmark title-retention helper');
   // The region's one dynamic import (the web build's bookmark document) is given as a port,
   // because a script run in a separate context cannot import modules.
   const documentImport = "await import('../browser/preference-documents')";
-  const source = adapter.slice(start, end);
+  const source = [adapter.slice(start, end), adapter.slice(titleStart, titleEnd)].join('\n');
   assert.equal(source.split(documentImport).length, 2, 'the bookmark region imports the bookmark document once');
   const script = new vm.Script(stripTypeScriptTypes(source.replace(documentImport, 'await bookmarkDocuments()')));
   return trace => {

@@ -26,7 +26,8 @@ test('de-DE renders German names and 24-hour times, and the live name tables fol
   assert.equal(L.formatTime(afternoon), '15:04');
   assert.equal(L.formatClock(afternoon), '15:04');
   assert.equal(L.weekdayName(afternoon), 'Mittwoch');
-  assert.equal(L.formatShortDate(afternoon), 'Mi., 7. Okt.');
+  // The comma after the weekday depends on the runtime's CLDR revision (Bun uses the system ICU).
+  assert.match(L.formatShortDate(afternoon), /^Mi\.,? 7\. Okt\.$/);
   assert.equal(L.formatMonthTitle(afternoon), 'Oktober');
   assert.equal(L.WEEKDAYS[0], 'Sonntag');
   assert.equal(L.MONTHS[2], 'März');
@@ -56,11 +57,12 @@ test('time ranges share a trailing day period only when both ends have the same 
 });
 test('formatDateTime keeps the date and follows the device hour cycle without seconds', () => {
   L.setLocalePreferences({locale: 'en-US', hourCycle: 'h23'});
-  assert.equal(L.formatDateTime(afternoon), 'Oct 7, 2026, 15:04');
+  // CLDR revisions join an en-US date and time with either ", " or " at ".
+  assert.match(L.formatDateTime(afternoon), /^Oct 7, 2026(?:,| at) 15:04$/);
   L.setLocalePreferences({locale: 'en-US', hourCycle: 'h12'});
-  assert.equal(L.formatDateTime(afternoon), 'Oct 7, 2026, 3:04 PM');
+  assert.match(L.formatDateTime(afternoon), /^Oct 7, 2026(?:,| at) 3:04 PM$/);
   L.setLocalePreferences({locale: 'en-GB', hourCycle: 'h12'});
-  assert.match(L.formatDateTime(afternoon), /^7 Oct 2026,? 3:04 pm$/i);
+  assert.match(L.formatDateTime(afternoon), /^7 Oct 2026(?:,| at)? 3:04 pm$/i);
   L.setLocalePreferences({});
 });
 test('model.js has no hard-coded weekday, month or 12-hour clock code paths', () => {

@@ -21,7 +21,7 @@ import static org.junit.Assert.*;
  * detached, the activity is recreated, and the page comes back in exactly one resumed MainActivity
  * with a new renderer. Runs on both variants; LauncherHomeInstrumentedTest repeats the kill while
  * Alpha holds HOME and returns through the HOME key.
- *   npm run test:android:instrumentation -- --owned-emulator --avd NAME --classes RendererRecovery
+ *   bun run test:android:instrumentation -- --owned-emulator --avd NAME --classes RendererRecovery
  * The renderer is ended through androidx WebViewRenderProcess.terminate() where the provider
  * supports it, otherwise by loading chrome://crash into the host WebView of a debuggable build
  * (a Chromium debug URL; release builds are never driven this way). Emulator evidence only. */

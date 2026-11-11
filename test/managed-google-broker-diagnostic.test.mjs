@@ -1,6 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {Readable} from 'node:stream';import {EventEmitter} from 'node:events';
 import {spawnSync} from 'node:child_process';
-if(!process.versions.bun&&!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx')){const child=spawnSync(process.execPath,['--conditions=eliza-source','--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
 const {createManagedGoogleAgentBroker}=await import('../.eliza/client-features/packages/app/src/runtime/managed-google-agent/managed-google-agent-broker.ts');
 const {createManagedGoogleAgentHost}=await import('./support/managed-google-agent.mjs');
 const secret='NEVER_LOG_TOKEN_ACCOUNT_QUERY';

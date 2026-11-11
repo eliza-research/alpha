@@ -14,23 +14,23 @@ import {sourceDirectory,verifySource} from '../scripts/local-agent-source.ts';
 // synthetic HTTP responses, in an isolated copy; the pinned source stays unchanged.
 // The transport, its managed Calendar reader, their contracts and the reader's zod all come from ONE
 // normal prepared and installed SDK graph: the admitted runtime source at the pinned commit
-// (npm run agent:prepare: the exact commit, then bun install --frozen-lockfile), verified before and
+// (bun run agent:prepare: the exact commit, then bun install --frozen-lockfile), verified before and
 // after. vendor/eliza is source only, with no dependency install, so it cannot qualify this transport.
-// npm test runs without a prepared graph and skips, as the Cloud signature classifier does; the
+// bun run test runs without a prepared graph and skips, as the Cloud signature classifier does; the
 // resident-prepare job runs this file after agent:prepare with ALPHA_REQUIRE_PREPARED_SDK=1, where a
 // missing graph fails instead of skipping.
 const preparedGraph=sourceDirectory(resolve('.'));
-const skipUnprepared=!existsSync(preparedGraph)&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK graph unavailable; run npm run agent:prepare':false;
+const skipUnprepared=!existsSync(preparedGraph)&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK graph unavailable; run bun run agent:prepare':false;
 test('explicit Calendar rejection survives the private transport; uncertain replies stay blocked',{skip:skipUnprepared},async()=>{
  const commit=JSON.parse(readFileSync('upstream.lock.json','utf8')).commit,upstream=preparedGraph;
- assert.ok(existsSync(upstream),`The pinned SDK graph is not prepared at ${upstream}; run npm run agent:prepare`);
+ assert.ok(existsSync(upstream),`The pinned SDK graph is not prepared at ${upstream}; run bun run agent:prepare`);
  verifySource(upstream,commit);
  const relative='plugins/plugin-calendar/src/mutations/managed.ts',original=join(upstream,relative);
  // zod as the reader itself resolves it: that graph's own install, at the version its lockfile resolves.
  const reader=join(upstream,'plugins/plugin-calendar/src/service/managed-calendar-read.ts');
  let zodManifest;
  try{zodManifest=realpathSync(createRequire(reader).resolve('zod/package.json'));}
- catch(error){assert.fail(`The prepared SDK graph has no zod for its managed Calendar reader (${error.code}); run npm run agent:prepare`);}
+ catch(error){assert.fail(`The prepared SDK graph has no zod for its managed Calendar reader (${error.code}); run bun run agent:prepare`);}
  assert.ok(zodManifest.startsWith(realpathSync(upstream)+sep),'zod is the prepared SDK graph\'s own dependency, not an Alpha or outside install');
  const sdkLock=readFileSync(join(upstream,'bun.lock'),'utf8');
  const lockedZod=(/"@elizaos\/plugin-calendar\/zod": \["zod@([^"]+)"/.exec(sdkLock)??/\n {4}"zod": \["zod@([^"]+)"/.exec(sdkLock))?.[1];

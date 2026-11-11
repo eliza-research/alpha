@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 import vm from 'node:vm';
 import * as reminderJournal from '../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/reminder-journal.ts';
@@ -15,11 +15,20 @@ const presentation=native=>{
   sharedOverdue:reminderJournal.overdueReminders,sharedTodos:reminderJournal.undatedTodos,sharedRefusalMessage:reminderJournal.reminderRefusalMessage,
   reminderDueAt:reminderJournal.reminderDueAt,isUndatedReminder:reminderJournal.isUndatedReminder};
  vm.createContext(context);
- vm.runInContext(code+'\nthis.api={overdueReminders,undatedTodos,reminderEvents,reminderRefusalMessage};',context);
+ vm.runInContext(code+'\nthis.api={overdueReminders,undatedTodos,reminderEvents,reminderRefusalMessage,reminderUnsavedFields};',context);
  return context.api;
 };
-const {overdueReminders,undatedTodos,reminderEvents,reminderRefusalMessage}=presentation(true);
+const {overdueReminders,undatedTodos,reminderEvents,reminderRefusalMessage,reminderUnsavedFields}=presentation(true);
 
+test('switching an event draft to a reminder names the fields a reminder cannot keep',()=>{
+ for(const form of [null,{},{where:'  ',who:[],allDay:false},{title:'Call',notes:'Bring notes'}])assert.equal(reminderUnsavedFields(form),'');
+ assert.equal(reminderUnsavedFields({where:'Cafe'}),'Reminders don’t keep the location.');
+ assert.equal(reminderUnsavedFields({where:'Cafe',who:['ada@example.invalid']}),'Reminders don’t keep the location or guests.');
+ assert.equal(reminderUnsavedFields({where:'Cafe',who:['ada@example.invalid'],allDay:true}),'Reminders don’t keep the location, guests or all-day setting.');
+ const adapter=readFileSync('apps/app/src/prototype/reminder-adapter.ts','utf8');
+ assert.match(adapter,/cal:'alpha-reminders',repeat:'none',alert:0,allDay:false\}/,'a reminder draft is always timed, so its time input stays visible');
+ assert.match(adapter,/const dropped=reminderUnsavedFields\(original\);if\(dropped\)api\.toast\(dropped\);/);
+});
 test('each refusal shows a specific reason',()=>{
  const messages=['past','permission-denied','storage-full','failed'].map(status=>reminderRefusalMessage(status,true));
  assert.equal(new Set(messages).size,4);

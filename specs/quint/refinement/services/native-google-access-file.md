@@ -33,4 +33,4 @@ JVM write at a time, synthetic verification and host recreation. Android
 device behavior, power loss, renderer acknowledgement and already admitted
 provider effects need separate evidence.
 
-Run `node --test test/quint-native-google-access-file.test.mjs`.
+Run `bun test test/quint-native-google-access-file.test.mjs`.

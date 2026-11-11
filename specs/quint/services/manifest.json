@@ -414,6 +414,7 @@
         "locationGranted/fixFresh/located": "permission, bounded navigation fix freshness and the guidance watch's usable fix",
         "route/previousRoute/guidance/rerouting": "active guidance, the route it follows while a reroute is pending, and the end of guidance when the reroute fails",
         "screenOff/foreground": "BackgroundNavigation.active and page visibility: a hidden page keeps guidance only with its screen-off session",
+        "inMaps": "whether Maps is the launcher view on screen (MapsScreenController.leaveView on a view switch): active guidance continues away from Maps, a pending route request does not",
         "assistant": "assistant overlay, independent of guidance"
       },
       "abstractions": [
@@ -435,7 +436,9 @@
         "assistantAndRerouteTest",
         "accountRetirementTest",
         "userStartNeedsNoLocationTest",
-        "leavingMapsEndsGuidanceTest",
+        "leavingMapsKeepsGuidanceTest",
+        "leavingMapsRetiresPendingRequestTest",
+        "lostSessionAwayFromMapsReleasesTest",
         "hiddenGuidanceNeedsScreenOffSessionTest"
       ],
       "invariants": [
@@ -447,7 +450,8 @@
         "GuidancePhase",
         "GuidanceFixNeedsPermission",
         "ScreenOffNeedsGuidance",
-        "HiddenKeepsOnlyScreenOffGuidance"
+        "HiddenKeepsOnlyScreenOffGuidance",
+        "LeftMapsHoldsNoRequest"
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -465,6 +469,7 @@
       "witnesses": [
         "GuidanceWithoutFixWitness",
         "HiddenGuidanceWitness",
+        "LeftMapsGuidanceWitness",
         "ReroutingWitness",
         "FailedRerouteWitness"
       ]
@@ -2412,16 +2417,11 @@
       "step": "step",
       "invariant": "safety",
       "tests": [
-        "exactThenOrdinaryReuseTest",
-        "staleAndDefaultRequireCurrentTest",
-        "dirtyOrWrongCommitRefusesTest",
-        "ownedLockAndOccupiedBackupAreKeptTest",
-        "occupiedCandidateFailsSourceAdmissionTest",
-        "refusedCandidateWriteLeavesPreservedPriorTest",
-        "invalidLocationsRefuseTest"
+        "currentStampReuseTest",
+        "movedLockRefusesStaleStampTest",
+        "dirtyOrWrongCommitRefusesTest"
       ],
       "invariants": [
-        "CurrentHasPriorStamp",
         "SuccessRequiresCurrentVerifiedSource"
       ],
       "sources": [
@@ -2432,13 +2432,13 @@
         "vendor/eliza/packages/app/scripts/lib/committed-source.mjs"
       ],
       "stateMapping": {
-        "source": "Checked-out commit, tracked bytes and selected untracked sidecars",
-        "stamp/backup": "Exact source-only live stamp and external preserved or preexisting peer bytes",
+        "source": "Checked-out commit and tracked bytes",
+        "stamp": "Whether the live source-only stamp names the pinned lock",
         "outcome": "Actual preparer process result after final source verification"
       },
       "abstractions": [
-        "An existing local prepared source, two synthetic Git revisions, one backup slot and settled source-only operations. Existing sidecars are observed without modeling the independent process that created them.",
-        "The selected candidate open can fail after preserving the prior stamp. Source checkout creation, concurrent producers, full dependency installation and interruption remain separate."
+        "An existing local prepared source, two synthetic Git revisions and settled source-only operations.",
+        "Source checkout creation, concurrent producers, full dependency installation and interruption remain separate."
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -3263,6 +3263,7 @@
         "viewOpen/admitted/hidden/active": "available(): the shell view, isMvpView(\"contacts\"), document.hidden and the adapter copy kept by sync()",
         "epoch/reads/loading": "refresh() token, reads in flight and the loading flag cleared only by the current read or by clear()",
         "readable/rows/more/limit": "access answer, in-memory rows and the 50-row page steps up to 200",
+        "query/rowsQuery": "the normalized shell search and the exact query that owns the visible rows",
         "editorOpen": "the system contact editor opened by editor() and the re-read on return"
       },
       "abstractions": [

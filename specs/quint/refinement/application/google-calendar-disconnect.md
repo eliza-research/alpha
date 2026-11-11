@@ -19,5 +19,5 @@ native access state, persistence and installed provider effects have
 separate scope.
 
 ```sh
-node --test test/quint-google-calendar-disconnect.test.mjs
+bun test test/quint-google-calendar-disconnect.test.mjs
 ```

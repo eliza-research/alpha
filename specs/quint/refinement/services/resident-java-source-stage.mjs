@@ -7,14 +7,16 @@ import {residentJavaStageFixture, residentJavaStageInputs} from '../../../../tes
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 
 const action = (name, ...args) => ({name, args});
+// Bun reports an uncaught plain Error as 'error: message' and a named one as 'Name: message'.
+// It also lists an AggregateError's members as top-level errors, so the stranded report is matched first.
 const refused = [
-  ['sourceRefused', /^(?:Error: (?:Unexpected native runtime source pin|Prepared runtime source .* is missing)|ConsumerSourceError: Unexpected runtime source change)/m],
-  ['rewriteRefused', /^ResidentHostSourceError: Review changed runtime notification presentation/m],
-  ['manifestRefused', /^Error: fixture manifest refused$/m],
-  ['outputRefused', /^Error: Unexpected resident Java staging directory contents$/m],
-  ['moveRefused', /^Error: fixture move refused$/m],
-  ['publishRefused', /^Error: fixture publish refused$/m],
   ['stranded', /^AggregateError: Resident Java publication and restore failed\. Previous output retained at /m],
+  ['sourceRefused', /^(?:error: (?:Unexpected native runtime source pin|Prepared runtime source .* is missing)|ConsumerSourceError: Unexpected runtime source change)/m],
+  ['rewriteRefused', /^ResidentHostSourceError: Review changed runtime notification presentation/m],
+  ['manifestRefused', /^error: fixture manifest refused$/m],
+  ['outputRefused', /^error: Unexpected resident Java staging directory contents$/m],
+  ['moveRefused', /^error: fixture move refused$/m],
+  ['publishRefused', /^error: fixture publish refused$/m],
 ];
 
 function trace(name, initial, operations) {

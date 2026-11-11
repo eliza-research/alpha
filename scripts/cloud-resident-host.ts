@@ -45,7 +45,6 @@ interface CloudResidentOptions {
  profile: string;
  port: number;
  environment?: CloudEnvironment;
- profileMode?: 'lean'|'full';
  cloudRealtimeVoice?: boolean;
  launch?: ResidentLaunch;
  inherited?: NodeJS.ProcessEnv;
@@ -67,9 +66,8 @@ interface ProviderKeySession {
 
 export const CLOUD_MODEL='cerebras/qwen-3.8-27b';
 /** Host-owned process. No provider key is written to configuration or returned to the renderer. */
-export async function createCloudResidentHost({source,profile,port,environment='production',profileMode='lean',launch=startPrivateRuntimeProcess,inherited=process.env,request=fetch,startGoogleHost,cloudRealtimeVoice=false}: CloudResidentOptions): Promise<CloudResidentHost> {
+export async function createCloudResidentHost({source,profile,port,environment='production',launch=startPrivateRuntimeProcess,inherited=process.env,request=fetch,startGoogleHost,cloudRealtimeVoice=false}: CloudResidentOptions): Promise<CloudResidentHost> {
  if(!['production','staging'].includes(environment))throw Error('Invalid Cloud environment');
- if(profileMode!=='lean'&&profileMode!=='full')throw Error('Invalid Cloud resident profile mode');
  const root=path.resolve(import.meta.dirname,'..');
  const commit=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json'),'utf8')).commit;
  verifySource(source,commit);
@@ -83,11 +81,9 @@ export async function createCloudResidentHost({source,profile,port,environment='
  fs.mkdirSync(profile,{recursive:true,mode:0o700});
  const st=fs.lstatSync(profile);if(!st.isDirectory()||st.isSymbolicLink()||(st.mode&0o077)||st.uid!==process.getuid?.())throw Error('Private resident directory required');
  const tokenPath=path.join(profile,'owner-token'),configPath=path.join(profile,'eliza.json');
- const privateProfile=await preparePrivateRuntimeProfile({tokenPath,configPath,createToken:()=>randomBytes(32).toString('hex'),initialConfig:{cloud:{enabled:true},serviceRouting:{llmText:{backend:'elizacloud',transport:'cloud-proxy',smallModel:CLOUD_MODEL,largeModel:CLOUD_MODEL},embeddings:{backend:'elizacloud',transport:'cloud-proxy'}},plugins:{entries:{'personal-assistant':{enabled:profileMode==='full'}}}}});
+ const privateProfile=await preparePrivateRuntimeProfile({tokenPath,configPath,createToken:()=>randomBytes(32).toString('hex'),initialConfig:{cloud:{enabled:true},serviceRouting:{llmText:{backend:'elizacloud',transport:'cloud-proxy',smallModel:CLOUD_MODEL,largeModel:CLOUD_MODEL},embeddings:{backend:'elizacloud',transport:'cloud-proxy'}},plugins:{entries:{'personal-assistant':{enabled:false}}}}});
  const route=privateProfile.config.serviceRouting?.llmText;
  if(route?.backend!=='elizacloud'||route?.transport!=='cloud-proxy'||privateProfile.config.cloud?.enabled!==true||privateProfile.config.cloud?.apiKey)throw Error('Select a separate Cloud-only resident profile');
- // A full host must not silently reverse a saved assistant opt-out.
- if(profileMode==='full'&&privateProfile.config.plugins?.entries?.['personal-assistant']?.enabled!==true)throw Error('Full Cloud profile requires personal-assistant explicitly enabled');
  // Headless Linux has no OS keychain. Keep its supported vault passphrase in this private host profile.
  const vaultPath=path.join(profile,'vault-passphrase');
  try{const fd=fs.openSync(vaultPath,'wx',0o600);try{fs.writeFileSync(fd,randomBytes(32).toString('hex'));}finally{fs.closeSync(fd);}}catch(error){if(!(typeof error==='object' && error!==null && 'code' in error && error.code==='EEXIST'))throw error;}
@@ -135,7 +131,7 @@ export async function createCloudResidentHost({source,profile,port,environment='
   let log;
   try{
   if(googleHost&&(!Number.isInteger(googleHost.port)||googleHost.port<1024||googleHost.port>65535||typeof googleHost.close!=='function'))throw Error('Invalid private Google host');
-  const env=runtimeEnvironment({inherited:preparedSourceEnv(inherited),allow:['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME'],settings,owned:{...nativeHostEnvironment,ELIZA_MANAGED_CALENDAR_READ_BROKER:googleHost?`http://127.0.0.1:${googleHost.port}/__alpha-owner-gmail`:'',ELIZA_MANAGED_GMAIL_READ_BROKER:googleHost?`http://127.0.0.1:${googleHost.port}/__alpha-owner-gmail`:'',ELIZA_HEADLESS:'1',ELIZA_DISTRIBUTION_PROFILE:'store',...(profileMode==='lean'?{ELIZA_PLUGIN_SET:'lean-chat',ELIZA_LEAN_CHAT_WORKFLOWS:'1'}:{}),ELIZA_REQUIRE_LOCAL_AUTH:'1',ELIZA_API_BIND:'127.0.0.1',ELIZA_API_PORT:String(port),ELIZA_API_EXPOSE_PORT:'1',ELIZA_STATE_DIR:profile,ELIZA_CONFIG_PATH:launchConfigPath,ELIZA_API_TOKEN:privateProfile.token,ELIZA_HOST_CONTEXT_REVISION:'cloud:'+randomUUID(),ELIZA_NATIVE_VIEW_DECLARATIONS:nativeViewDeclarationsJson,ELIZA_NATIVE_BROWSER_COMMANDS:'back,forward,reload',ELIZA_BROWSER_NATIVE_TARGET:'off'}});
+  const env=runtimeEnvironment({inherited:preparedSourceEnv(inherited),allow:['PATH','TMPDIR','LANG','SHELL','USER','LOGNAME','HOME'],settings,owned:{...nativeHostEnvironment,ELIZA_MANAGED_CALENDAR_READ_BROKER:googleHost?`http://127.0.0.1:${googleHost.port}/__alpha-owner-gmail`:'',ELIZA_MANAGED_GMAIL_READ_BROKER:googleHost?`http://127.0.0.1:${googleHost.port}/__alpha-owner-gmail`:'',ELIZA_HEADLESS:'1',ELIZA_DISTRIBUTION_PROFILE:'store',ELIZA_PLUGIN_SET:'lean-chat',ELIZA_LEAN_CHAT_WORKFLOWS:'1',ELIZA_REQUIRE_LOCAL_AUTH:'1',ELIZA_API_BIND:'127.0.0.1',ELIZA_API_PORT:String(port),ELIZA_API_EXPOSE_PORT:'1',ELIZA_STATE_DIR:profile,ELIZA_CONFIG_PATH:launchConfigPath,ELIZA_API_TOKEN:privateProfile.token,ELIZA_HOST_CONTEXT_REVISION:'cloud:'+randomUUID(),ELIZA_NATIVE_VIEW_DECLARATIONS:nativeViewDeclarationsJson,ELIZA_NATIVE_BROWSER_COMMANDS:'back,forward,reload',ELIZA_BROWSER_NATIVE_TARGET:'off'}});
   log=fs.openSync(path.join(profile,'server.log'),fs.constants.O_WRONLY|fs.constants.O_APPEND|fs.constants.O_CREAT|fs.constants.O_NOFOLLOW,0o600);fs.fchmodSync(log,0o600);
   running=await launch({command:inherited.ALPHA_BUN||'bun',args:coreRuntimeArguments(root,source,['--no-install','--conditions=eliza-source',path.join(source,'packages/app/src/runtime/dev-server.ts')]),cwd:profile,env:{...env,ALPHA_CORE_STATE_SOURCE:source},stdio:['ignore',log,log]});
   }catch(error){const failedGoogle=googleHost;if(failedGoogle){try{await failedGoogle.close();if(googleHost===failedGoogle)googleHost=null;}catch(cleanup){retiring=true;throw new AggregateError([error,cleanup],'Resident startup and private Google cleanup failed');}}throw error;}finally{if(log!==undefined)fs.closeSync(log);}

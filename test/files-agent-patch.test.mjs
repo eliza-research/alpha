@@ -3,7 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 
 const root=path.resolve(import.meta.dirname,'..');
 import {upstreamNativeSource} from '../scripts/upstream-native-source.ts';

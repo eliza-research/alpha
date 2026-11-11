@@ -36,7 +36,7 @@ async function emptyHome(page:Page){
   c.close();
  });
  await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).emptyHomeFixture.mailReads)).toBeGreaterThan(0);await returnToApps(page);
- await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.locator('[data-alpha-subview="workflows-list"]').getByText('No automations',{exact:true})).toBeVisible();await returnToApps(page);
+ await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.locator('[data-alpha-subview="workflows-list"]').getByText('No workflows yet',{exact:true})).toBeVisible();await returnToApps(page);
  for(const kind of ['calendar','inbox','workflows'])await expect(page.locator(`[data-alpha-home-${kind}]`)).toHaveCount(0);
  await expect(page.locator('[data-mobile-shell-cards]')).toBeHidden();await expect(page.getByRole('button',{name:'Calendar',exact:true})).toBeVisible();expect(await page.evaluate(()=>(window as any).emptyHomeFixture.writes)).toBe(0);
 }

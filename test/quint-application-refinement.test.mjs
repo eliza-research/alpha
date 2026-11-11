@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -5,7 +6,7 @@ import {collectApplicationCampaigns, runApplicationRefinement} from '../specs/qu
 
 // The complete aggregate exceeded 20 minutes on the measured two-worker run.
 // Keep all component checks and their own bounds; allow the aggregate to finish.
-test('application source observations match bounded Quint component traces', {timeout: 2400000}, async () => {
+test('application source observations match bounded Quint component traces', {timeout: scaledTimeout(2400000)}, async () => {
   const result = await runApplicationRefinement();
   assert.deepEqual(result.failures, [], result.failures.map(({campaign, error}) => `${campaign}: ${error}`).join('\n'));
   const manifest = JSON.parse(readFileSync(new URL('../specs/quint/application/manifest.json', import.meta.url)));

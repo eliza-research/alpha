@@ -23,7 +23,8 @@ async function bundle() {
     "mail-html": "export const prepareMailHtml=()=>{throw Error('HTML body rendering is outside this fixture');};",
     "own-notice-question": "export const reviewOwnNoticeQuestion=()=>{throw Error('Notice question is outside this fixture');};",
     "google-connection-ui": "export const googleConnectionController={getSnapshot:()=>({}),subscribe:()=>()=>{},open:()=>{throw Error(\"Google connection UI is outside this fixture\");}};",
-    "alpha-client": "export const alphaClient={getState:()=>({context:{sensitive:false}})};"
+    "alpha-client": "export const alphaClient={getState:()=>({context:{sensitive:false}})};",
+    "review": "export class BrowserReviews{confirm(){throw Error('Link review is outside this fixture');}cancel(){}cancelAll(){}}"
   };
   const result = await build({
     stdin: { contents: `export {installInboxCloudAdapter,inboxAttention} from './apps/app/src/prototype/inbox-cloud-adapter.ts';

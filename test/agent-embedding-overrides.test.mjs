@@ -7,7 +7,7 @@ import {spawnSync,execFileSync} from 'node:child_process';
 import {localEmbeddingEnvironment} from '../scripts/agent-embeddings.ts';
 
 const root=path.resolve(import.meta.dirname,'..');
-const scratch=process.env.ALPHA_EMBEDDING_TEST_ROOT||os.tmpdir();
+const scratch=os.tmpdir();
 const sharedModels=path.join(os.homedir(),'.local/state/eliza/models');
 const sharedLibrary=path.join(os.homedir(),'.local/state/eliza/local-inference/lib');
 
