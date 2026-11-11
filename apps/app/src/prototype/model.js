@@ -1826,7 +1826,7 @@ if (testMocksEnabled) registerView("browser", {
     /* library */
     var libRows = Array.from(new Set(st.lib === "history" ? st.visits : st.marks)).map(function (u) {
       var p = brPage(u);
-      return { id: u, title: p.title, host: p.host + p.path, ini: (p.host || "?").charAt(0).toUpperCase(), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:var(--alpha-white)" : "var(--s3)"), go: link(u),
+      return { id: u, title: p.title, name: p.title, host: p.host + p.path, ini: (p.host || "?").charAt(0).toUpperCase(), css: "background:" + (p.tile && p.tile.indexOf("var") < 0 ? p.tile + ";color:var(--alpha-white)" : "var(--s3)"), go: link(u),
         canRemove: st.lib !== "history", removeAria: "Remove bookmark " + p.title, remove: function () { var s = api.get("browser"); set({ marks: s.marks.filter(function (x) { return x !== u; }) }); } };
     });
 
@@ -1889,7 +1889,7 @@ if (testMocksEnabled) registerView("browser", {
 
 else registerView("browser", {
   title: "Browser", icon: "globe", aliases: ["web", "internet", "chrome"],
-  chat: "input", placeholder: "Ask about this page",
+  chat: "input",
   state: { tabs: [], cur: null, marks: [], visits: [], editing: false, addr: "", tabsOpen: false, menu: false, lib: null, share: false },
   persist: ["tabs", "cur", "marks", "visits"],
   render: function () { return {}; }
