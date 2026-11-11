@@ -268,8 +268,7 @@ export function installPrototypeNativeAdapters(
       if (['play', 'del', 'saveRn', 'selDel', 'move', 'selMove', 'transcribe'].includes(key)) return native('files');
       if (['shareMsg', 'shareMail', 'selShare'].includes(key)) return unavailable(api, 'Use Files app');
     }
-    // Wallet is registered only in test-mocks builds (model.js); its stand-ins fold out of product bundles.
-    if (testMocksEnabled && module === 'wallet') {
+    if (module === 'wallet') {
       if (key === 'addCal') return native('calendar');
       if (['onNum', 'onCvv', 'onExp', 'onCode', 'onName'].includes(key)) return unavailable(api, 'Not connected');
       if (['pay', 'auth', 'verify', 'next', 'scan', 'reload', 'remove', 'setDef', 'startPay'].includes(key)) return unavailable(api, 'Not connected');
