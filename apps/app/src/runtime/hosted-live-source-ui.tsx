@@ -39,7 +39,9 @@ export function HostedLiveSourcePicker({
 		),
 		[windowHours, setWindowHours] = useState(24),
 		[expiresHours, setExpiresHours] = useState(24),
-		[maxItems, setMaxItems] = useState(10);
+		[maxItems, setMaxItems] = useState(10),
+		// Removing Google access ends every source that uses the account, so it is reviewed here first.
+		[removing, setRemoving] = useState(false);
 	const account = accounts.find((a) => a.accountId === accountId),
 		calendar = calendars.find((c) => c.calendarId === calendarId);
 	const range = (value: number, max: number) =>
@@ -135,7 +137,13 @@ export function HostedLiveSourcePicker({
 				Refresh connected accounts
 			</button>
 			{account?.expiresAt && <p>Cloud access expires {new Date(account.expiresAt).toLocaleString()}.</p>}
-            {account?.accountId.startsWith("cloud:") && <button disabled={busy||pending} onClick={()=>void (async()=>{setPending(true);try{const result=await client.delegation("revoke",{grantId:account.accountId.split(":")[1],confirmed:true},signal);if(current()){setMessage(result.remoteRevocation==="confirmed"?"Removed":"Off · retry");if(result.remoteRevocation==="confirmed"){setAccounts([]);setAccountId("");}}}catch{if(current())setMessage("Revocation is not confirmed. Try again.");}finally{if(current())setPending(false);}})()}>Remove Google access for every source that uses it</button>}
+            {account?.accountId.startsWith("cloud:") && !removing && <button disabled={busy||pending} onClick={()=>setRemoving(true)}>Remove Google access for every source that uses it</button>}
+            {account?.accountId.startsWith("cloud:") && removing && <section role="group" aria-label="Review removing Google access">
+                <p><strong>Remove Google access?</strong></p>
+                <p>Every source that uses {account.label} stops reading it. You can connect it again later.</p>
+                <button disabled={busy||pending} onClick={()=>void (async()=>{setPending(true);try{const result=await client.delegation("revoke",{grantId:account.accountId.split(":")[1],confirmed:true},signal);if(current()){setMessage(result.remoteRevocation==="confirmed"?"Removed":"Off · retry");if(result.remoteRevocation==="confirmed"){setAccounts([]);setAccountId("");}}}catch{if(current())setMessage("Revocation is not confirmed. Try again.");}finally{if(current()){setPending(false);setRemoving(false);}}})()}>Remove access</button>
+                <button disabled={pending} onClick={()=>setRemoving(false)}>Keep access</button>
+            </section>}
             {accounts.length > 0 && (
 				<>
 					<label>
@@ -148,7 +156,7 @@ export function HostedLiveSourcePicker({
 								const chosen = accounts.find(
 									(a) => a.accountId === e.target.value,
 								);
-								setAccountId(e.target.value);
+								setRemoving(false);setAccountId(e.target.value);
 								setKind(chosen?.kinds.includes("email") ? "email" : "calendar");
 								setCalendars([]);
 								setCalendarId("");

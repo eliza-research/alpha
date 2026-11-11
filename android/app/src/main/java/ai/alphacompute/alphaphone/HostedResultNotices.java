@@ -12,7 +12,15 @@ import java.util.UUID;
 /** Durable, redacted notice projection; it never schedules or executes a workflow. */
 final class HostedResultNotices {
  interface Storage { String read(String slot)throws Exception; void write(String slot,String value)throws Exception; }
- interface Poster { boolean allowed(); boolean active(String key); void post(String key); void cancel(String key); default void post(String key,boolean silent){post(key);} }
+ interface Poster { boolean allowed(); boolean active(String key); void post(String key); void cancel(String key); default void post(String key,boolean silent){post(key);}
+  /** The retained record's status picks the wording: a missed, skipped or failed occurrence is never announced as ready. */
+  default void post(String key,boolean silent,String status){post(key,silent);} }
+ /** What the notice of a retained record says. Only an occurrence that ran to completion is a brief that is ready. */
+ static String title(String status){
+  if("missed".equals(status)||"overlap".equals(status)||"unavailable".equals(status))return "Your brief didn’t run";
+  if("failed".equals(status)||"cancelled".equals(status))return "Your brief didn’t finish";
+  return "Your brief is ready";
+ }
  /** A daily brief supersedes the previous one; an unopened result notice withdraws itself after a day. History stays in the inbox. */
  static final long SUPERSEDE_AFTER_MS=24L*3600000;
  /** Source renewal notices appear within the final 24 hours of a reviewed source and withdraw themselves at expiry. */
@@ -69,7 +77,7 @@ final class HostedResultNotices {
   for(String other:keys){JSONObject prior=ledger.optJSONObject(other);if(prior==null||other.equals(key)||other.equals(pendingKey)||!"posted".equals(prior.optString("phase"))||!record.getString("scope").equals(prior.optString("scope"))||!record.getString("workflowId").equals(prior.optString("workflowId")))continue;prior.put("phase","superseded");poster.cancel(other);}
   write(LEDGER,ledger); // Exact route and uncertain dispatch state precede any OS effect.
   if(record.getString("phase").equals("denied"))return "denied";
-  try {poster.post(key,record.getString("scope").equals(showing));record.put("phase","posted");write(LEDGER,ledger);return "posted";}
+  try {poster.post(key,record.getString("scope").equals(showing),result.optString("status"));record.put("phase","posted");write(LEDGER,ledger);return "posted";}
   catch(SecurityException denied){record.put("phase","denied");write(LEDGER,ledger);return "denied";}
  }
  synchronized void capture(String key)throws Exception {

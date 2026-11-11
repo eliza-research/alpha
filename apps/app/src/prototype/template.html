@@ -3556,15 +3556,15 @@
   </sc-if>
   <div class="scr" data-alpha-app-scroll="workflows" style="flex-grow: 1; overflow-y: auto; padding: 0 24px 120px; display: flex; flex-direction: column; gap: 0; touch-action: pan-y">
     <sc-if value="{{workflows.automation}}">
-      <sc-if value="{{workflows.automation.loading}}"><p class="automation-status" role="status"><span aria-hidden="true" style="display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--fg);border-radius:50%;animation:alpha-spin .8s linear infinite"></span><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">Refreshing automations…</span></p></sc-if>
-      <sc-if value="{{workflows.automation.message}}"><p class="automation-status" role="status" style="display:flex;align-items:center;gap:8px"><svg class="i" aria-hidden="true" viewBox="0 0 24 24" style="width:16px;height:16px;flex-shrink:0"><path d="{{ic.info}}"></path></svg><span>{{workflows.automation.message}}</span><sc-if value="{{workflows.automation.failed}}"><button class="ib" aria-label="Retry automations" onClick="{{workflows.automation.refresh}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.calRepeat}}"></path></svg></button></sc-if></p></sc-if>
-      <sc-for list="{{workflows.automation.issues}}" as="issue"><p class="automation-status" role="alert">{{issue.message}}</p></sc-for>
+      <sc-if value="{{workflows.automation.loading}}"><p class="automation-status" role="status"><span aria-hidden="true" style="display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--fg);border-radius:50%;animation:alpha-spin .8s linear infinite"></span><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">Refreshing workflows…</span></p></sc-if>
+      <sc-if value="{{workflows.automation.message}}"><p class="automation-status" role="status" style="display:flex;align-items:center;gap:8px"><svg class="i" aria-hidden="true" viewBox="0 0 24 24" style="width:16px;height:16px;flex-shrink:0"><path d="{{ic.info}}"></path></svg><span>{{workflows.automation.message}}</span><sc-if value="{{workflows.automation.failed}}"><button class="ib" aria-label="Retry workflows" onClick="{{workflows.automation.refresh}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.calRepeat}}"></path></svg></button></sc-if></p></sc-if>
+      <sc-for list="{{workflows.automation.shownIssues}}" as="issue"><p class="automation-status" role="alert">{{issue.message}}</p></sc-for>
       <sc-if value="{{workflows.automation.empty}}"><p class="automation-status" style="display:flex;align-items:center;gap:8px"><svg class="i" aria-hidden="true" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.calRepeat}}"></path></svg><span>{{workflows.automation.emptyLabel}}</span></p></sc-if>
 
     </sc-if>
     <sc-for list="{{workflows.cards}}" as="f">
       <div class="workflow-row">
-        <button class="workflow-row-open" onClick="{{f.open}}" style="{{f.dim}}">
+        <button class="workflow-row-open" aria-disabled="{{f.busy}}" onClick="{{f.open}}" style="{{f.dim}}">
           <sc-if value="{{f.icon}}"><svg class="i workflow-kind-icon" viewBox="0 0 24 24"><path d="{{f.icon}}"></path></svg></sc-if>
           <span class="workflow-row-content"><span class="workflow-row-title">{{f.name}}</span>
           <span class="workflow-row-summary">
@@ -3583,14 +3583,14 @@
       </div>
     </sc-for>
     <sc-if value="{{workflows.listToggles}}"><button class="workflow-row-open" aria-label="Clock alarms" onClick="{{workflows.openClock}}"><span class="workflow-row-title">Alarms</span></button></sc-if>
-    <sc-for list="{{workflows.automation.managementCards}}" as="control"><button class="automation-management" onClick="{{control.open}}"><span>{{control.name}}</span><span>{{control.short}}</span><svg class="i" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></sc-for>
+    <sc-for list="{{workflows.automation.managementCards}}" as="control"><button class="automation-management" aria-disabled="{{control.busy}}" onClick="{{control.open}}"><span>{{control.name}}</span><span>{{control.short}}</span><svg class="i" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></sc-for>
   </div>
 
   
   </div>
   <sc-if value="{{workflows.automation.detail}}">
     <section ref="{{workflows.detailFocus}}" data-alpha-subview="automations-detail" class="automation-detail" aria-label="{{workflows.automation.title}}">
-      <div data-alpha-app-header="detail" class="automation-detail-header"><button class="ib" aria-label="Back to automations" disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><h2 data-alpha-app-title>{{workflows.automation.title}}</h2></div>
+      <div data-alpha-app-header="detail" class="automation-detail-header"><button class="ib" aria-label="Back to workflows" disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><h2 data-alpha-app-title>{{workflows.automation.title}}</h2></div>
       <div data-alpha-app-scroll="automation-detail" class="automation-detail-body scr">
         <sc-if value="{{workflows.automation.clockContext}}"><p role="note">{{workflows.automation.clockContext}}</p></sc-if>
         <sc-if value="{{workflows.automation.creating}}"><div class="automation-new">
@@ -3610,7 +3610,7 @@
 
           <div class="automation-fields"><sc-for list="{{workflows.automation.fields}}" as="field"><label><span>{{field.label}}</span><sc-if value="{{field.singleLine}}"><input type="{{field.type}}" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}" /></sc-if><sc-if value="{{field.multiline}}"><textarea rows="5" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}"></textarea></sc-if></label></sc-for></div>
           <sc-if value="{{workflows.automation.prompt}}">
-            <section class="automation-when" aria-label="When"><h3>When</h3><div class="automation-schedule-options"><sc-for list="{{workflows.automation.scheduleOptions}}" as="option"><button aria-pressed="{{option.selected}}" disabled="{{workflows.automation.busy}}" onClick="{{option.pick}}">{{option.label}}</button></sc-for></div><div class="automation-fields"><sc-for list="{{workflows.automation.whenFields}}" as="field"><label><span>{{field.label}}</span><input type="{{field.type}}" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}" /></label></sc-for></div><p class="automation-status">{{workflows.automation.whenLabel}}</p></section>
+            <section class="automation-when" aria-label="When"><h3>When</h3><div class="automation-schedule-options"><sc-for list="{{workflows.automation.scheduleOptions}}" as="option"><button aria-pressed="{{option.selected}}" disabled="{{workflows.automation.busy}}" onClick="{{option.pick}}">{{option.label}}</button></sc-for></div><div class="automation-fields"><sc-for list="{{workflows.automation.whenFields}}" as="field"><label><span>{{field.label}}</span><input type="{{field.type}}" value="{{field.value}}" disabled="{{workflows.automation.busy}}" onChange="{{field.change}}" /></label></sc-for></div><p class="automation-status">{{workflows.automation.whenLabel}}</p><sc-if value="{{workflows.automation.scheduleRule}}"><p class="automation-status" role="note">{{workflows.automation.scheduleRule}}</p></sc-if></section>
             <button class="automation-more" aria-expanded="{{workflows.automation.promptMore}}" disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.togglePromptMore}}">{{workflows.automation.promptMoreLabel}}</button>
             <sc-if value="{{workflows.automation.promptMore}}"><div class="automation-options">
               <div class="automation-filters" style="padding:0" aria-label="Custom schedule type"><sc-for list="{{workflows.automation.scheduleKinds}}" as="kind"><button aria-pressed="{{kind.selected}}" disabled="{{workflows.automation.busy}}" onClick="{{kind.pick}}">{{kind.label}}</button></sc-for></div>
@@ -3629,7 +3629,7 @@
           <sc-if value="{{workflows.automation.scheduleMore}}"><details><summary aria-label="More schedule actions"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.more}}"></path></svg></summary><div><sc-for list="{{workflows.automation.scheduleMore}}" as="scheduleAction"><button aria-label="{{scheduleAction.aria}}" disabled="{{scheduleAction.disabled}}" onClick="{{scheduleAction.run}}"><span>{{scheduleAction.text}}</span></button></sc-for></div></details></sc-if></div>
 
         <div class="automation-actions"><sc-for list="{{workflows.automation.actions}}" as="scheduleAction"><button aria-label="{{scheduleAction.aria}}" disabled="{{scheduleAction.disabled}}" onClick="{{scheduleAction.run}}"><sc-if value="{{scheduleAction.icon}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{scheduleAction.icon}}"></path></svg></sc-if><sc-if value="{{scheduleAction.text}}"><span>{{scheduleAction.text}}</span></sc-if></button></sc-for></div>
-        <sc-if value="{{workflows.automation.review}}"><div class="automation-review" role="group" aria-label="Review automation action"><p style="font-weight:600">{{workflows.automation.reviewPrompt}}</p><sc-if value="{{workflows.automation.reviewDetails}}"><p style="white-space:pre-line;font-size:13px;color:var(--mut)">{{workflows.automation.reviewDetails}}</p></sc-if><div class="automation-actions"><button class="primary" onClick="{{workflows.automation.confirm}}">{{workflows.automation.reviewConfirmLabel}}</button><button onClick="{{workflows.automation.cancelReview}}">Cancel</button></div></div></sc-if>
+        <sc-if value="{{workflows.automation.review}}"><div class="automation-review" role="group" aria-label="Review workflow action"><p style="font-weight:600">{{workflows.automation.reviewPrompt}}</p><sc-if value="{{workflows.automation.reviewDetails}}"><p style="white-space:pre-line;font-size:13px;color:var(--mut)">{{workflows.automation.reviewDetails}}</p></sc-if><div class="automation-actions"><button class="primary" onClick="{{workflows.automation.confirm}}">{{workflows.automation.reviewConfirmLabel}}</button><button onClick="{{workflows.automation.cancelReview}}">Cancel</button></div></div></sc-if>
         <sc-if value="{{workflows.automation.message}}"><p role="status">{{workflows.automation.message}}</p></sc-if>
         <sc-for list="{{workflows.automation.history}}" as="entry"><p class="automation-status">{{entry}}</p></sc-for>
       </div>
@@ -3683,6 +3683,9 @@
           <button disabled="{{workflows.fd.busy}}" onClick="{{workflows.fd.edit}}" style="height: 44px; padding: 0 18px; border-radius: 22px; background: var(--s2); font-weight: 600; font-size: 14px">Change</button>
           <sc-if value="{{workflows.fd.notRunning}}">
             <button aria-label="{{workflows.fd.runAria}}" disabled="{{workflows.fd.busy}}" onClick="{{workflows.fd.run}}" style="height: 44px; padding: 0 18px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px"><svg class="i" viewBox="0 0 24 24" style="width: 14px; height: 14px; fill: currentColor"><path d="{{ic.play}}"></path></svg>{{workflows.fd.runLabel}}</button>
+          </sc-if>
+          <sc-if value="{{workflows.fd.digestLink}}">
+            <button onClick="{{workflows.fd.digestLink}}" style="min-height: 44px; padding: 0 18px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); font-weight: 600; font-size: 14px">Scheduled digests</button>
           </sc-if>
           <sc-if value="{{workflows.fd.isRunning}}">
             <span role="status" aria-label="Workflow running" style="height: 44px; width: 44px; border-radius: 22px; background: var(--acc); display: flex; align-items: center; justify-content: center"><span class="dot" style="width: 8px; height: 8px; border-radius: 4px; background: var(--alpha-white)"></span></span>
@@ -3769,7 +3772,7 @@
         </details>
 
         <div class="workflow-run-actions" style="display: flex; align-items: center; gap: 8px; margin-top: 4px">
-          <sc-if value="{{workflows.r.showRefresh}}">          <button onClick="{{workflows.r.ask}}" aria-label="{{workflows.r.askAria}}" style="height: 36px; padding: 0 16px 0 14px; border-radius: 18px; background: var(--s2); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px"><span style="font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 19px; line-height: 1; color: var(--acct)"><span class="alpha-compute-mark" aria-hidden="true"></span></span>{{workflows.r.askLabel}}</button></sc-if>
+          <sc-if value="{{workflows.r.showRefresh}}">          <button onClick="{{workflows.r.ask}}" aria-label="{{workflows.r.askAria}}" style="min-height: 48px; padding: 0 18px 0 14px; border-radius: 24px; background: var(--s2); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px"><svg class="i" aria-hidden="true" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.calRepeat}}"></path></svg>{{workflows.r.askLabel}}</button></sc-if>
           <span style="flex-grow: 1"></span>
           <button aria-label="{{workflows.r.againAria}}" disabled="{{workflows.r.againDisabled}}" onClick="{{workflows.r.again}}" style="min-height: 44px; padding: 0 18px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px">{{workflows.r.againLabel}}</button>
         </div>
@@ -3783,7 +3786,7 @@
       <div data-alpha-app-header="detail" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 16px 0 8px; gap: 2px; flex-shrink: 0">
         <button class="ib" aria-label="Back to workflows" onClick="{{workflows.b.cancel}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button>
         <span style="flex-grow: 1"></span>
-        <button aria-label="Save workflow" aria-disabled="{{workflows.b.saveOff}}" onClick="{{workflows.b.save}}" style="height: 36px; padding: 0 18px; border-radius: 18px; font-weight: 600; font-size: 15px; {{workflows.b.saveCss}}">Save</button>
+        <button aria-label="Save workflow" aria-disabled="{{workflows.b.saveOff}}" onClick="{{workflows.b.save}}" style="min-height: 48px; padding: 0 20px; border-radius: 24px; font-weight: 600; font-size: 15px; {{workflows.b.saveCss}}">Save</button>
       </div>
       <div class="scr" style="flex-grow: 1; overflow-y: auto; padding: 4px 24px 130px; touch-action: pan-y">
         <input value="{{workflows.b.name}}" onChange="{{workflows.b.onName}}" placeholder="Workflow name" aria-label="Workflow name" class="workflow-builder-name">
@@ -3807,7 +3810,7 @@
                 <section aria-label="Generated draft" style="margin-top:20px">
                   <h3 style="font-size:20px;overflow-wrap:anywhere">{{workflows.b.generatedName}}</h3>
                   <p style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{workflows.b.generatedDescription}}</p>
-                  <p style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mut);padding:4px 10px;border-radius:12px;background:var(--bg)"><svg class="i" aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="{{ic.play}}"></path></svg>Manual</p>
+                  <p style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mut);padding:4px 10px;border-radius:12px;background:var(--bg)"><svg class="i" aria-hidden="true" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="{{ic.play}}"></path></svg>{{workflows.b.generatedWhen}}</p>
                   <sc-for list="{{workflows.b.generatedSteps}}" as="step">
                     <div style="padding:12px 0;border-top:1px solid var(--line)"><strong>{{step.title}}</strong><p style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;margin-bottom:0">{{step.text}}</p></div>
                   </sc-for>
@@ -3860,7 +3863,7 @@
           </div>
         </sc-if>
         <sc-if value="{{workflows.b.empty}}">
-          <button onClick="{{workflows.b.describe}}" aria-label="Describe it to {{name}}" aria-disabled="{{workflows.b.describeOff}}" style="display: flex; align-items: center; gap: 8px; margin-top: 26px; height: 36px; padding: 0 16px 0 14px; border-radius: 18px; background: var(--s2); font-size: 14px; font-weight: 600">
+          <button onClick="{{workflows.b.describe}}" aria-label="Describe it to {{name}}" aria-disabled="{{workflows.b.describeOff}}" style="display: flex; align-items: center; gap: 8px; margin-top: 26px; min-height: 48px; padding: 0 18px 0 14px; border-radius: 24px; background: var(--s2); font-size: 14px; font-weight: 600">
             <span style="font-family: Denton, Fraunces, Georgia, serif; font-style: italic; font-size: 19px; line-height: 1; color: var(--acct)"><span class="alpha-compute-mark" aria-hidden="true"></span></span>Describe it
           </button>
         </sc-if>
@@ -3889,12 +3892,12 @@
             <sc-if value="{{workflows.b.tr.isTime}}">
               <div style="display: flex; flex-wrap: wrap; gap: 8px">
                 <sc-for list="{{workflows.b.tr.days}}" as="c">
-                  <button onClick="{{c.pick}}" aria-pressed="{{c.pressed}}" style="height: 38px; padding: 0 14px; border-radius: 19px; font-size: 13.5px; font-weight: 600; {{c.css}}">{{c.label}}</button>
+                  <button onClick="{{c.pick}}" aria-pressed="{{c.pressed}}" style="min-height: 48px; min-width: 48px; padding: 0 14px; border-radius: 24px; font-size: 13.5px; font-weight: 600; {{c.css}}">{{c.label}}</button>
                 </sc-for>
               </div>
               <div style="display: flex; align-items: center; gap: 12px; margin-top: 14px">
                 <svg class="i" viewBox="0 0 24 24" style="color: var(--mut)"><path d="{{ic.clock}}"></path></svg>
-                <span style="flex-grow: 1; font-size: 19px; font-weight: 600">{{workflows.b.tr.time}}</span>
+                <sc-if value="{{workflows.b.tr.onTime}}"><input type="time" aria-label="Time" value="{{workflows.b.tr.clock}}" onChange="{{workflows.b.tr.onTime}}" style="flex-grow: 1; min-width: 0; min-height: 48px; padding: 0 12px; border: 0; border-radius: 16px; background: var(--s2); color: var(--fg); font: inherit; font-size: 19px; font-weight: 600"></sc-if><span class="workflow-trigger-time" style="flex-grow: 1; font-size: 19px; font-weight: 600">{{workflows.b.tr.time}}</span>
                 <button class="ib" aria-label="Earlier" onClick="{{workflows.b.tr.tMinus}}" style="background: var(--s2)"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.minus}}"></path></svg></button>
                 <button class="ib" aria-label="Later" onClick="{{workflows.b.tr.tPlus}}" style="background: var(--s2)"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.plus}}"></path></svg></button>
               </div>
