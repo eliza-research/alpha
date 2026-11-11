@@ -1044,7 +1044,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         return {status:result.status==='unknown'?'unknown':'failed',summary:result.status==='unknown'?'Calendar outcome is unconfirmed. Inspect action history before another action.':result.status==='cancelled'?'Calendar review cancelled. Nothing was changed.':'Calendar target changed, access was denied, or the operation is unsupported. Nothing was changed.'};
       }
       if(isNativeNotesQuery(operation)){
-        if(this.notesSourceMode!=='legacy'||this.notesStorageFailed||this.notesPending||!this.notesStore)return {status:'failed',summary:'Select Previous notes to review this device-record request. Nothing was shared.'};
+        if(this.notesSourceMode!=='legacy'||this.notesStorageFailed||this.notesPending||!this.notesStore)return {status:'failed',summary:this.notesSourceMode==='legacy'?'Previous notes isn’t ready. Nothing was shared.':(this.previousNotesAvailability==='present'||this.previousNotesAvailability==='unavailable')?'Open Notes, choose Older, then ask again. Nothing was shared.':'There are no earlier notes on this phone. Nothing was shared.'};
         const ownerSession=connectionController.getSnapshot().session,ownerTarget=JSON.stringify(connectionController.getWorkflowDeviceTarget());
         const current=()=>{signal.throwIfAborted();context(this);if(!ownerSession||connectionController.getSnapshot().session!==ownerSession||JSON.stringify(connectionController.getWorkflowDeviceTarget())!==ownerTarget||!this.live||this.notesPending||this.notesStorageFailed||document.hidden||expectedContext.sensitive||!['home','notes'].includes(expectedContext.view)||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Notes query or connection changed');};
         try{return await executeNotesQuery(this.notesStore,operation,operationId,signal,current);
@@ -1060,7 +1060,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       if(isNotesOperation(operation)){
         try{
-          if(this.notesSourceMode!=='legacy'||this.notesStorageFailed||this.notesPending||!this.notesStore)throw Error('Select Previous notes before reviewing a device-record change');
+          if(this.notesSourceMode!=='legacy'||this.notesStorageFailed||this.notesPending||!this.notesStore)throw Error(this.notesSourceMode==='legacy'?'Previous notes isn’t ready. Nothing was changed.':(this.previousNotesAvailability==='present'||this.previousNotesAvailability==='unavailable')?'Open Notes, choose Older, then ask again. Nothing was changed.':'There are no earlier notes on this phone. Nothing was changed.');
           this.notesAgentBusy=true;
           const current=()=>{signal.throwIfAborted();context(this);if(!this.live||document.hidden||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext)||expectedContext.sensitive||expectedContext.view!=='notes')throw Error('Selected Notes context changed');};
           const execute=()=>this.notesStore.execute(operation,operationId,signal,current);
@@ -1151,7 +1151,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       if (operation.type === 'create_note') {
         if(this.notesSourceMode==='canonical'&&expectedContext.selectedObject?.kind==='workflow-run')return {status:'failed',summary:'Saving a note from a workflow isn’t available yet.'};
-        if (this.notesSourceMode!=='legacy'||this.notesStorageFailed) return { status: 'failed', summary: 'Select Previous notes to review this device-record creation. Nothing saved.' };
+        if (this.notesSourceMode!=='legacy'||this.notesStorageFailed) return { status: 'failed', summary: this.notesSourceMode==='legacy'?'Previous notes isn’t ready. Nothing was saved.':(this.previousNotesAvailability==='present'||this.previousNotesAvailability==='unavailable')?'Open Notes, choose Older, then ask again. Nothing was saved.':'There are no earlier notes on this phone. Nothing was saved.' };
         const existing = this.vget('notes').list.find((note: Shell) => note.id === operationId);
         if (existing) return { status: 'unknown', summary: 'A note already has this action identifier; review it before resolving.' };
         const note = { id: operationId, kind: 'text', title: operation.title, body: operation.body, pinned: false, when: 'Now', createdAt:Date.now(), modifiedAt:Date.now() };

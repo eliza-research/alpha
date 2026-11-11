@@ -1658,6 +1658,8 @@
       "dirtyReadFailureRetainedTest",
       "uncertainReadbackKeepsReviewTest",
       "explicitDiscardReclassifiesReadFailureTest",
+      "retryReadbackClearsUncertaintyTest",
+      "retryRefusalKeepsReviewTest",
       "ownedCommitClearsUncertaintyTest"
     ],
     "sources": [
