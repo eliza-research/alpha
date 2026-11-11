@@ -136,6 +136,9 @@ def build_plan(root, assets, report_hash, source_inputs, prior=None, product_mk_
     assert digest((REPO / LOCK['productIcon']['logoSource']).read_bytes()) == LOCK['productIcon']['logoSourceSHA256'], 'Product icon identity source drift'
     put(project+'/res/drawable/alpha_mark.xml',icon)
     put(project+'/res/drawable-nodpi/alpha_wallpaper.png',(assets/'default_wallpaper.png').read_bytes())
+    # The production product copies this feature only after the matching Provision sources are staged.
+    put('vendor/alphaphone/branding/provision/fresh-telephony.xml',
+        (BRAND/'provision/fresh-telephony.xml').read_bytes())
     product = safe(root,'vendor/alphaphone/product.mk'); current = product.read_bytes()
     include = '$(call inherit-product, vendor/alphaphone/branding/branding.mk)'
     assert current.decode().count(include) <= 1, 'Duplicate branding inclusion'
