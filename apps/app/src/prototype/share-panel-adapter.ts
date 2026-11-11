@@ -29,7 +29,7 @@ export function installSharePanelAdapter(Component:any,views:Record<string,Bag>)
   if(values.files){const view=values.files;if(view.pv)bind('files',view.pv,'share',{title:view.pv.name||'Selected file',email:view.pv.canEmail?view.pv.email:undefined,emailUnavailable:null});bind('files',view,'selShare',{title:'Selected files',save:view.selSaveLocally,emailUnavailable:null});}
   if(values.calendar?.ev){const event=values.calendar.ev;const text=[event.title,event.day,event.when,event.where,event.notes].filter(value=>typeof value==='string'&&value).join('\n\n');calendarText=text;
    event.share=()=>{const api=shell.api('calendar'),same=unchangedSince(()=>shell.S().vs?.calendar,()=>shareContent(shell.vget('calendar'))),current=()=>shell.S().view==='calendar'&&calendarText===text&&same();
-    const snapshot=selectedText({title:String(event.title||'Calendar event'),text});void openSharePanel({title:snapshot.title,current,external:()=>shareSelectedText(snapshot).catch(()=>api.toast('Android sharing is unavailable.')),email:views.inbox?()=>api.open('inbox',{compose:{subject:snapshot.title,body:snapshot.text}}):undefined,copy:()=>copySelectedText(snapshot.text).then(()=>api.toast('Event text copied.'))});};
+    const snapshot=selectedText({title:String(event.title||'Calendar event'),text});void openSharePanel({title:snapshot.title,current,external:()=>shareSelectedText(snapshot).catch(()=>api.toast('Share unavailable')),email:views.inbox?()=>api.open('inbox',{compose:{subject:snapshot.title,body:snapshot.text}}):undefined,copy:()=>copySelectedText(snapshot.text).then(()=>api.toast('Event text copied.'))});};
   }
   return values;
  };

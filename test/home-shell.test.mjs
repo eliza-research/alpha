@@ -306,7 +306,7 @@ test('with the drawer closed, Home toasts a failed launch and a failed app read 
     listing='fail';
     await shell.launcher.refresh();await shell.launcher.refresh();
     assert.equal(shell.launcher.snapshot().status,'failed');
-    assert.deepEqual(toasts.slice(1),["Apps couldn't load. Open Apps to try again."]);
+    assert.deepEqual(toasts.slice(1),['Couldn’t load']);
     // A failed launch whose follow-up read also fails reports only the launch.
     listing='ok';await shell.launcher.refresh();toasts.length=0;listing='fail';
     await shell.launcher.launch(shell.launcher.snapshot().apps.find(app=>app.packageName==='com.android.settings'));

@@ -9,18 +9,18 @@ const ROOT = ['Inbox', 'Calendar', 'Browser', 'Camera', 'Photos', 'Maps', 'Notes
 type View = typeof ROOT[number] | 'Reminders' | 'Notifications';
 const VIEWS: View[] = [...ROOT, 'Reminders', 'Notifications'];
 const EMPTY: Record<View, RegExp> = {
-  Inbox: /Connect Eliza Cloud to use Gmail/,
-  Calendar: /Connect to view Agent Calendar\./,
+  Inbox: /Connect Eliza Cloud/,
+  Calendar: /Connect/,
   Browser: /No open pages|New tab/,
   Camera: /^Camera unavailable$/,
   Photos: /^No photos$/,
   Maps: /Add a location/,
   // Agent Notes waiting for a connection (canonical-notes-ui.ts), as in production-surface.spec.ts.
-  Notes: /Notes is unavailable for this agent connection\. Check Settings › Agent connection\./,
-  Files: /Internal storage|Storage is unavailable/,
-  Workflows: /Connect your remote agent in Settings\. Reminders on this phone stay available/,
+  Notes: /Notes unavailable/,
+  Files: /Internal storage|Storage Unavailable/,
+  Workflows: /Connect your remote agent in Settings\./,
   Settings: /^General$/,
-  Reminders: /Connect to view Agent Calendar\./,
+  Reminders: /Connect/,
   Notifications: /No notifications/,
 };
 // Fixture identities from the reference prototype must never appear in a live profile.

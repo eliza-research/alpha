@@ -105,5 +105,5 @@ export function lateReadyNotice(input: LateReadyInput): boolean {
   //@ ensures (input.silent && input.message !== undefined && input.message.includes('did not confirm revoking')) ==> \result
   //@ ensures (input.error === undefined && input.message === undefined) ==> !\result
   //@ ensures (input.error !== undefined && input.error.length === 0 && input.message === undefined) ==> !\result
-  return input.silent && (!!input.error || !!input.message?.includes('did not confirm revoking'));
+  return input.silent && (!!input.error || !!input.message?.includes('did not confirm revoking') || !!input.message?.includes('check devices'));
 }

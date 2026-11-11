@@ -13,7 +13,7 @@ export function contactActs(phones:readonly string[],api:Bag){
 /** Native address-book rows stay in memory, never in prototype persistence or agent context. */
 export function installContactsAdapter(Component:any,views:Bag){
  const render=views.contacts.render,p=Component.prototype,mount=p.componentDidMount,update=p.componentDidUpdate,unmount=p.componentWillUnmount;
- let owner:any,rows:Bag[]=[],status='Choose Contacts access to see this profile’s address book.',readable=false,loading=false,more=false,limit=50,epoch=0,active=false;
+ let owner:any,rows:Bag[]=[],status='Off',readable=false,loading=false,more=false,limit=50,epoch=0,active=false;
  const changed=()=>owner?.setState({contactsNativeRevision:Date.now()});
  const clear=()=>{epoch++;rows=[];readable=false;more=false;loading=false;changed();};
  const available=()=>!!owner&&owner.S().view==='contacts'&&isMvpView('contacts')&&!document.hidden;
@@ -26,18 +26,18 @@ export function installContactsAdapter(Component:any,views:Bag){
    const access=request?await contacts.requestPermissions():await contacts.status();
    if(token!==epoch||target!==owner||!available())return;
    readable=access.available===true&&access.readable===true;
-   if(!readable){rows=[];more=false;status='Choose Contacts access to see this profile’s address book.';return;}
+   if(!readable){rows=[];more=false;status='Off';return;}
    const value=await contacts.list({query:queryOverride??String(target.vget('contacts').q||''),limit});
    if(token!==epoch||target!==owner||!available())return;
    if(!Array.isArray(value.contacts))throw Error();rows=value.contacts;more=value.more===true;
    status=more&&limit>=200?'200 shown. Search to find other contacts.':rows.length?`${rows.length} contacts${more?' · more available':''}`:'No contacts found.';
-  }catch{if(token===epoch){rows=[];more=false;status='Contacts could not be read. Check access and refresh.';}}
+  }catch{if(token===epoch){rows=[];more=false;status='Couldn’t load';}}
   finally{if(token===epoch){loading=false;changed();}}
  }
  async function editor(selected?:Bag){
   if(loading||!available())return;loading=true;changed();
   try{if(selected)await contacts.edit({id:selected.id,lookup:selected.lookup,revision:selected.revision});else await contacts.create();}
-  catch{owner?.toast('Android Contacts could not open. Refresh and try again.');}
+  catch{owner?.toast('Couldn’t open');}
   finally{loading=false;void refresh();}
  }
  views.contacts.reply=()=>null;
@@ -45,7 +45,7 @@ export function installContactsAdapter(Component:any,views:Bag){
  views.contacts.render=function(st:Bag,api:Bag){
   const list=rows.map(row=>({id:row.id,name:row.name||'Unnamed contact',first:row.name||'Unnamed contact',ini:(row.name||'#').slice(0,1).toUpperCase(),phone:'',email:'',fav:false}));
   const model=render({...st,list,edit:null,add:null,form:null},api);
-  model.nativeManaged=true;model.nativePrototype=false;model.nativeStatus=status;model.nativeBusy=loading;model.nativeAccess=!readable;model.nativeMore=more&&limit<200;
+  model.nativeManaged=true;model.nativePrototype=false;model.nativeStatus=status;model.nativeStatusDot=!status?'':!readable?'warn':'';model.nativeBusy=loading;model.nativeAccess=!readable;model.nativeMore=more&&limit<200;
   model.nativeRefresh=()=>void refresh();model.nativeRequest=()=>void refresh(true);model.nativeLoadMore=()=>{limit=Math.min(200,limit+50);void refresh();};
   model.hasQ=false;model.noHits=false;model.addNew=()=>void editor();
   model.onQ=(event:Event)=>{api.set({q:(event.target as HTMLInputElement).value,open:null});limit=50;void refresh(false,(event.target as HTMLInputElement).value);};

@@ -16,7 +16,7 @@ for(const mode of ['compose','cancel','source-changed','owner-changed'] as const
   if(mode==='compose'){await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue(/Reviewable reminder/);expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed)).toBe(1);}
   else{
    if(mode==='source-changed')await expect(page.getByText('This notification changed.',{exact:true})).toBeVisible();
-   else{await expect(review.getByRole('status')).toHaveText('Selection changed. Close this review and select the content again.');await expect(review.getByRole('button',{name:'Use in conversation',exact:true})).toBeDisabled();}
+   else{await expect(review.getByRole('status')).toHaveText('Selection changed');await expect(review.getByRole('button',{name:'Use in conversation',exact:true})).toBeDisabled();}
    expect(await page.evaluate(()=>{const f=(window as any).deliveryFixture;return {consumed:f.consumed||0,released:f.released||0,pending:f.reminderTap.token};})).toEqual({consumed:0,released:0,pending:'ask-token'});
   }
  }

@@ -266,12 +266,12 @@ test('denied notification access stays pending after account restoration without
  await restoreAccount();
  await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeVisible();await panel.getByRole('button',{name:'Allow',exact:true}).click();
  await expect.poll(()=>calls(page,'DailyApps','requestPermissions')).toEqual([{permissions:['notifications']}]);
- await expect(panel.getByRole('button',{name:'Open Android settings',exact:true})).toBeVisible();
+ await expect(panel.getByRole('button',{name:'Settings',exact:true})).toBeVisible();
  // Walkthrough choices do not grant OS permission. A denied prompt is not requested again.
  await expect(panel.getByRole('button',{name:/Skip|Not now|Back/})).toHaveCount(0);
  await page.keyboard.press('Escape');await expect(panel).toBeVisible();
  await page.reload();await restoreAccount();
- await expect(panel.getByRole('button',{name:'Open Android settings',exact:true})).toBeVisible();
+ await expect(panel.getByRole('button',{name:'Settings',exact:true})).toBeVisible();
  expect(await calls(page,'DailyApps','requestPermissions')).toEqual([]);
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')!))).toEqual({version:4,status:'pending',step:0});
 });

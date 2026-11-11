@@ -17,7 +17,7 @@ test('production damaged-data notice preserves bytes and has no backup or per-st
  await page.getByRole('button',{name:'Menu',exact:true}).click();await page.getByRole('button',{name:'Bookmarks and history',exact:true}).click();
  await page.getByRole('button',{name:'Recover saved bookmarks',exact:true}).click();
  const dialog=page.getByRole('dialog',{name:'Browser bookmark recovery'});await expect(dialog).toBeVisible();
- await expect(dialog.getByText(/Your data and drafts are kept\..*This can't be undone\./)).toBeVisible();
+ await expect(dialog.getByText('Data kept',{exact:true})).toBeVisible();
  await expect(dialog.getByRole('button')).toHaveText(['Close']);
  await expect(dialog.locator('input[type=file],a[download]')).toHaveCount(0);
  await dialog.getByRole('button',{name:'Close',exact:true}).click();

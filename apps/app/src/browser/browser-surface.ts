@@ -37,7 +37,7 @@ export class BrowserSurface extends WebPlugin {
     const frame=tab.frame.cloneNode(false) as HTMLIFrameElement;frame.src=url;
     frame.addEventListener('load',()=>{
       if(this.tabs.get(this.key(tab))!==tab||tab.frame!==frame)return;
-      if(!tab.loading){tab.navigation++;tab.committed=false;tab.error='The website navigated inside its isolated frame. Use the address bar to choose a page, or open it in your browser.';}
+      if(!tab.loading){tab.navigation++;tab.committed=false;tab.error='Page blocked';}
       else{tab.loading=false;tab.committed=true;}
       this.emit(tab);
     });
@@ -49,7 +49,7 @@ export class BrowserSurface extends WebPlugin {
     if(input.command==='back'&&tab.position>0){tab.position--;this.load(tab);}
     else if(input.command==='forward'&&tab.position<tab.history.length-1){tab.position++;this.load(tab);}
     else if(input.command==='reload'&&tab.position>=0)this.load(tab);
-    else if(input.command==='stop'&&tab.loading){const previous=tab.frame,blank=previous.cloneNode(false) as HTMLIFrameElement;blank.src='about:blank';tab.frame=blank;previous.replaceWith(blank);tab.navigation++;tab.loading=false;tab.committed=false;tab.error='Loading stopped. Reload to open this page.';this.emit(tab);}
+    else if(input.command==='stop'&&tab.loading){const previous=tab.frame,blank=previous.cloneNode(false) as HTMLIFrameElement;blank.src='about:blank';tab.frame=blank;previous.replaceWith(blank);tab.navigation++;tab.loading=false;tab.committed=false;tab.error='Stopped';this.emit(tab);}
   }
   /** Geometry is in viewport pixels, as for the native surface. Inside the scaled phone canvas the
    * page is placed in its host's pixels and drawn back at viewport size, so it lays out exactly as wide

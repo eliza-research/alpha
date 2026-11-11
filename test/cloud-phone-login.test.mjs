@@ -17,17 +17,17 @@ test('phone sign-in and code entry stay in the app and are absent without native
  const panel=module.exports.CloudSignInPanel;
  const props={view:{step:'choose',environment:'production'},busy:false,google:false,message:'',error:'',actions:{}};
  const render=extra=>renderToStaticMarkup(React.createElement(panel,{...props,...extra}));
- assert.doesNotMatch(render({phone:false}),/Text me a code/);
+ assert.doesNotMatch(render({phone:false}),/type="tel"|Email or phone/);
  assert.doesNotMatch(render({phone:false}),/Sign in to verify your account|review access before authorizing|Your agent runs on this device/);
  assert.doesNotMatch(render({phone:false}),/By continuing, you allow/);
- // Email and text message share one entry: the phone field is one explicit switch away.
- assert.match(render({phone:true}),/Use phone number instead/);assert.doesNotMatch(render({phone:true}),/type="tel"/);
- assert.match(render({phone:true,emailEnabled:false}),/<label>Phone number<input/);
+ // Email and text message share one field; the method follows what is typed.
+ assert.match(render({phone:true}),/<label>Email or phone<input/);assert.doesNotMatch(render({phone:true}),/type="tel"/);
+ assert.match(render({phone:true,emailEnabled:false}),/<label>Phone<input/);
  assert.match(render({phone:true,emailEnabled:false}),/type="tel"/);
- assert.match(render({phone:true,view:{step:'choose',environment:'production',phone:'+14155550100'}}),/type="tel"[^>]*value="\+14155550100"/,'a failed text-message attempt returns to the phone entry with its number');
- assert.doesNotMatch(render({phone:true,emailEnabled:false}),/Email me a code/);
+ assert.match(render({phone:true,view:{step:'choose',environment:'production',phone:'+14155550100'}}),/value="\+14155550100"/,'a failed text-message attempt returns to the phone entry with its number');
+ assert.doesNotMatch(render({phone:true,emailEnabled:false}),/type="email"/);
  const entered=render({phone:true,view:{step:'code',environment:'production',phone:'+14155550100',email:'',attemptId:'synthetic',expiresAt:Date.now()+60000,resendAt:Date.now()+60000}});
- assert.match(entered,/Enter your phone code/);assert.match(entered,/\+14155550100/);assert.match(entered,/Resend code in/);
+ assert.match(entered,/Enter your phone code/);assert.match(entered,/\+14155550100/);assert.match(entered,/Resend · \d+s/);
  assert.doesNotMatch(entered,/href=|iframe|type="email"/);
 });
 

@@ -75,6 +75,6 @@ test('Back dismisses failed retirement without claiming cleanup or allowing anot
   await assert.rejects(f.shell.stopVoiceConversation(),/Retirement unconfirmed/);await f.tick();
   assert.equal(f.renderChat().state,'error');f.shell.back();assert.equal(f.renderChat(),null);
   await f.shell.startVoice();assert.equal(f.getStopCalls(),1);assert.deepEqual(f.recordingCancels,[]);
-  assert.ok(f.shell.messages.some(message=>message.includes('Close the app before starting voice again')));
+  assert.ok(f.shell.messages.some(message=>message.includes('Voice unconfirmed · restart app')));
  }finally{f.close();}
 });

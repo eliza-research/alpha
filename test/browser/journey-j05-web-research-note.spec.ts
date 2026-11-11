@@ -72,7 +72,7 @@ async function sendAndOpenSummary(page: Page, question: string, excerpt: string)
   // An answer alone saves nothing.
   expect(await notes(page)).toEqual([]);
   await page.getByRole('button', {name: /^Review summary note/}).click();
-  return page.getByRole('dialog', {name: 'Save reviewed summary note'});
+  return page.getByRole('dialog', {name: 'Save summary'});
 }
 async function expectOneLinkedNoteAfterReload(page: Page, title: string, body: string) {
   await page.reload();
@@ -106,7 +106,7 @@ test('reviewed page excerpt, development agent answer and explicit Save leave ex
   const excerpt = review.getByRole('textbox', {name: 'Content excerpt'});
   await expect(excerpt).toHaveValue(/The ferry leaves at nine from pier four\./);
   await expect(excerpt).toHaveValue(/OMIT THIS/);
-  await expect(review.getByRole('checkbox', {name: 'Link this source when saving the answer to Notes'})).toBeChecked();
+  await expect(review.getByRole('checkbox', {name: 'Link source'})).toBeChecked();
   // The user bounds what is shared: the edited excerpt and question are the only page text sent.
   await excerpt.fill('The ferry leaves at nine from pier four.');
   await review.getByRole('textbox', {name: 'Question about content'}).fill('When does the ferry leave?');

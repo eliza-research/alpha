@@ -191,10 +191,10 @@ test('Cloud Notes exposes only read while idle, only Stop while live, and cancel
  try {
   f.box.pendingAudioDeletions=async()=>({});
   f.shell.notes={open:'qa-note',list:[{id:'qa-note',title:'QA note',body:'Reviewed text.',updatedAt:1}]};
-  let view=f.render().ed;assert.equal(view.stopReading,undefined);assert.equal(typeof view.readAloud,'function');assert.equal(view.cloudSpeechDisclosure,'Read with Eliza Cloud uploads this note’s text to your selected Cloud account for Cartesia speech and uses your plan allowance.');
+  let view=f.render().ed;assert.equal(view.stopReading,undefined);assert.equal(typeof view.readAloud,'function');assert.equal(view.cloudSpeechDisclosure,'Text → Eliza Cloud');
   // Read-aloud sends only the note's text, on either route; own keys bill the owner's Cartesia account.
   const snapshot=f.box.connectionController.getSnapshot;f.box.connectionController.getSnapshot=()=>({...snapshot(),residentInference:'direct',providerStatus:{voiceConfigured:true,revision:'r1'}});
-  assert.equal(f.render().ed.cloudSpeechDisclosure,'Cartesia speech sends this note’s text using your own API key and provider allowance.');assert.equal(f.render().ed.readLabel,'Read aloud');
+  assert.equal(f.render().ed.cloudSpeechDisclosure,'Text → Cartesia');assert.equal(f.render().ed.readLabel,'Read aloud');
   // Own keys without a Cartesia key read on this phone: nothing is sent, so nothing is disclosed.
   f.box.connectionController.getSnapshot=()=>({...snapshot(),residentInference:'direct',providerStatus:{voiceConfigured:false}});
   assert.equal(f.render().ed.cloudSpeechDisclosure,'');assert.equal(f.render().ed.readLabel,'Read aloud');

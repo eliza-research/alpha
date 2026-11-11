@@ -42,14 +42,14 @@ test('a Cloud failure before audio is read on this phone; without on-device spee
     assert.equal(f.box.speechRoute(), 'cloud', 'a different account is not held');
     f.box.createOnDeviceVoice = () => null;
     const refused = await f.box.readNoteAloud('Groceries. Milk and eggs.', {noteId: 'a'});
-    assert.deepEqual({...refused}, {outcome: 'failed', message: 'Couldn’t start reading. Eliza Cloud sign-in expired. Sign in again in Settings, then retry voice.'});
+    assert.deepEqual({...refused}, {outcome: 'failed', message: 'Couldn’t start reading · Eliza Cloud sign-in expired. Sign in again in Settings, then retry voice.'});
     f.error = null; f.credential = 'third-credential';
     const synthesize = f.driver.synthesize;
     let calls = 0;
     f.driver.synthesize = async input => { if (++calls > 1) f.error = Object.assign(Error('PRIVATE_HTTP_SENTINEL'), {code: 'voice-http-402'}); return synthesize(input); };
     const partial = await f.box.readNoteAloud(note, {noteId: 'b'});
     assert.equal(partial.outcome, 'failed');
-    assert.match(partial.message, /^Reading stopped before the end\. Eliza Cloud declined voice for billing\./);
+    assert.match(partial.message, /^Stopped · Eliza Cloud declined voice for billing\./);
     assert.doesNotMatch(refused.message + partial.message, /PRIVATE_HTTP_SENTINEL/);
   } finally { f.close(); await f.tick(); }
 });

@@ -604,7 +604,7 @@ test('F-12: a cursor the provider refuses after the mailbox changed keeps the lo
   await expect.poll(() => rows(page)).toEqual(['m1', 'm2']);
   await page.waitForFunction(()=>!!(window as any).releaseMailPage);await setProvider(page, {inbox: ['m1', 'm3', 'm4'], revision: 2});await page.evaluate(()=>(window as any).releaseMailPage());
   await button(page, 'Load more').click();
-  await expect(page.getByText('Invalid Gmail page token. The messages already shown were kept. Retry reloads the list from the start.', {exact: true}).first()).toBeVisible();
+  await expect(page.getByText('Invalid Gmail page token.', {exact: true}).first()).toBeVisible();
   // The loaded page stays (it is not silently mixed with a page from the new mailbox) and the
   // refused cursor is not offered again.
   expect(await rows(page)).toEqual(['m1', 'm2']);

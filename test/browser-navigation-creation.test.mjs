@@ -84,7 +84,7 @@ function approvedHarness({native=false,deferred=false,failNavigate=false,private
 }
 test('an approved open at the tab cap, counting restored tabs, refuses without creating a tab',async()=>{
  const h=approvedHarness();h.state.tabs=Array.from({length:8},(_,i)=>({id:'t'+i,hist:['newtab'],pos:0}));h.state.cur='t0';
- await assert.rejects(h.approved('https://example.com/',new AbortController().signal),{message:'Close a tab before opening another.'});
+ await assert.rejects(h.approved('https://example.com/',new AbortController().signal),{message:'Tab limit'});
  assert.equal(h.creations,0);assert.equal(h.calls.length,0);assert.equal(h.state.tabs.length,8);assert.equal(h.opened.length,0);
 });
 test('an approved open from a private page keeps the private profile and original selection until presentation',async()=>{

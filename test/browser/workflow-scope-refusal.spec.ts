@@ -32,7 +32,7 @@ test('unsupported scope is refused before generation',async({page})=>{
 test('a 422 clarification is shown and the draft and request are kept; a supported prompt still generates',async({page})=>{
  await setup(page);const prompt=page.getByRole('textbox',{name:'Workflow request',exact:true});
  await page.evaluate(()=>(window as any).scopeFixture.mode='clarify');await prompt.fill('Make a digest from my calendar');await page.getByRole('button',{name:'Generate workflow draft',exact:true}).click();
- await expect(page.locator('[role=status]').filter({hasText:'Workflow needs clarification: Which calendar range should the digest read?'})).toBeVisible();expect(await calls(page)).toBe(1);
+ await expect(page.locator('[role=status]').filter({hasText:'Which calendar range should the digest read?'})).toBeVisible();expect(await calls(page)).toBe(1);
  await expect(page.getByRole('region',{name:'Generated draft',exact:true})).toHaveCount(0);await expect(prompt).toHaveValue('Make a digest from my calendar');await expect(page.getByRole('textbox',{name:'Workflow name',exact:true})).toHaveValue('Retained original draft');
  await page.evaluate(()=>(window as any).scopeFixture.mode='normal');await prompt.fill('Read my calendar for today and draft an agenda note');await page.getByRole('button',{name:'Generate workflow draft',exact:true}).click();
  await expect(page.getByRole('region',{name:'Generated draft',exact:true})).toContainText('Synthetic agenda text');expect(await calls(page)).toBe(2);

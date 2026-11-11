@@ -131,8 +131,8 @@ export function installNotificationsAdapter(Component: any) {
   this.alphaNoticesBusy=true;
   const visit=this.alphaNoticeVisit;
   const current=()=>active(this)&&this.alphaNoticeVisit===visit;
-  try{const result=await native.list();if(!current())return;if(result.calendarStatus==='unavailable'){if(!this.alphaCalendarAlertError)this.toast('Calendar alerts could not load. Open Calendar to review the problem.');this.alphaCalendarAlertError=true;}else this.alphaCalendarAlertError=false;const next=result.items;const chosen=this.alphaNoticeSelection;if(chosen&&!next.some((n:Notice)=>n.id===chosen.id&&n.revision===chosen.revision&&n.source==='own'))this.alphaNoticeSelection=undefined;if(JSON.stringify(next)!==JSON.stringify(this.alphaNotices)){this.alphaNotices=next;this.setState({nativeNoticeRevision:Date.now()});}this.alphaNoticeError=false;}
-  catch{if(current()&&!this.alphaNoticeError){this.alphaNoticeError=true;this.alphaNotices=[];this.alphaNoticeSelection=undefined;this.setState({nativeNoticeRevision:Date.now()});this.toast('Alpha Phone notifications are unavailable.');}}
+  try{const result=await native.list();if(!current())return;if(result.calendarStatus==='unavailable'){if(!this.alphaCalendarAlertError)this.toast('Alerts didn’t load');this.alphaCalendarAlertError=true;}else this.alphaCalendarAlertError=false;const next=result.items;const chosen=this.alphaNoticeSelection;if(chosen&&!next.some((n:Notice)=>n.id===chosen.id&&n.revision===chosen.revision&&n.source==='own'))this.alphaNoticeSelection=undefined;if(JSON.stringify(next)!==JSON.stringify(this.alphaNotices)){this.alphaNotices=next;this.setState({nativeNoticeRevision:Date.now()});}this.alphaNoticeError=false;}
+  catch{if(current()&&!this.alphaNoticeError){this.alphaNoticeError=true;this.alphaNotices=[];this.alphaNoticeSelection=undefined;this.setState({nativeNoticeRevision:Date.now()});this.toast('Unavailable');}}
   finally{this.alphaNoticesBusy=false;}
  };
  /** A press records the selection without rendering, so a swipe or tap in progress is never
@@ -151,8 +151,8 @@ export function installNotificationsAdapter(Component: any) {
   const action=async(task:()=>Promise<void|boolean>)=>{
    try{
     const unavailable=await task();
-    if(currentVisit()&&unavailable===true)self.toast('Some notifications changed. Review the refreshed list.');
-   }catch{if(currentVisit())self.toast('The notification changed or could not be updated.');}
+    if(currentVisit()&&unavailable===true)self.toast('Updated');
+   }catch{if(currentVisit())self.toast('Changed');}
    if(currentVisit())await self.refreshAlphaNotices();
   };
   const rows:Notice[]=this.alphaNotices||[];
@@ -164,7 +164,7 @@ export function installNotificationsAdapter(Component: any) {
     const row=current();
     if(!row)return;
     if(row.clearable)void action(()=>native.dismiss(target));
-    else this.toast('This is an ongoing notification.');
+    else this.toast('Ongoing');
    },{axis:'x'});
    const select=()=>{this.alphaNoticeSelection=ownNotificationSelection(n);};
    /** Review scope: this one Alpha Phone notification's shown title and text, editable before
@@ -178,7 +178,7 @@ export function installNotificationsAdapter(Component: any) {
     const reviewed={id:n.id,revision:n.revision,source:n.source},excerpt=noticeExcerpt(n);
     const owned=()=>self.alphaNoticeQuestionLease===lease;
     const live=()=>owned()&&self.alphaNoticesLive&&!document.hidden&&shadeActive(self)&&noticeCurrent(reviewed,self.alphaNotices);
-    const refused=()=>{self.toast('This notification changed or is no longer shown. Nothing was added to your conversation.');void self.refreshAlphaNotices();};
+    const refused=()=>{self.toast('Gone');void self.refreshAlphaNotices();};
     self.alphaNoticeQuestion=reviewContentQuestion({name:(n.appLabel||'Alpha Phone')+' notification',text:excerpt,question:'Help me with this notification.',current:live,validate:text=>!sensitiveReadingText(text),closed:dismissed=>{
      if(!owned())return;
      self.alphaNoticeQuestion=undefined;
@@ -193,14 +193,14 @@ export function installNotificationsAdapter(Component: any) {
       if(!owned())return;
       if(epoch!==self.alphaNoticeEpoch||!live()||!noticeCurrent(reviewed,fresh)||!same||noticeExcerpt(same)!==excerpt){refused();return;}
       self.api(self.S().view).composeContentQuestion(draft);
-     }catch{if(owned()&&self.alphaNoticesLive)self.toast('This notification could not be checked. Nothing was added to your conversation.');}
+     }catch{if(owned()&&self.alphaNoticesLive)self.toast('Couldn’t check');}
      finally{if(owned())retireQuestion(self);}
     })();}});
    };
    return {canAsk:noticeReviewable(n),ask,askLabel:'Ask Alpha about this '+(n.appLabel||'Alpha Phone')+' notification',id:n.id,d:out.ic.bell,who:n.source==='external'?n.appLabel:n.title||'Alpha Phone',text:n.source==='external'&&n.title!==n.appLabel?[n.title,n.text].filter(Boolean).join(' · '):n.text,time:formatTime(new Date(n.at)),tx:0,op:1,down:(event:unknown)=>{if(!current())return;select();return swipe.down(event);},up:(event:unknown)=>{if(currentVisit())window.setTimeout(()=>{if(currentVisit())self.publishAlphaNoticeSelection();},0);return swipe.up(event);},open:()=>{
     const row=current();
     if(this.swallowed()||!row)return;
-    if(!row.canOpen){this.toast('This notification has no available action.');return;}
+    if(!row.canOpen)return;
     void action(()=>native.open(target));
    }};
   });

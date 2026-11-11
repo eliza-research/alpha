@@ -7,7 +7,7 @@ import { recordStartupFrames, expectNoHomeBeforePrompt, startupLoading } from '.
 
 const id = '9f1dc45a-4011-4e44-947a-30d999d24fa5';
 const account: StubAccount = { token: 'first-run-key', userId: id, email: 'new-owner@example.invalid', balance: 5 };
-const WAITING = 'Checking code…';
+const WAITING = 'Checking code';
 const starts = (page: Page) => stub(page, s => s.order.filter((entry: string) => entry === 'Agent.start').length) as Promise<number>;
 
 async function firstRun(page: Page, overrides: Partial<StubAccount> = {}, ownedLifecycle = false) {
@@ -79,7 +79,7 @@ async function firstRun(page: Page, overrides: Partial<StubAccount> = {}, ownedL
   await expect(welcome.getByRole('button',{name:'Reconnect agent',exact:true})).toHaveCount(0);
   await expect(welcome.getByText('Your agent runs with AI off until you sign in to Eliza Cloud.',{exact:true})).toHaveCount(0);
   await expect(welcome.getByText('Phone action history',{exact:true})).toHaveCount(0);
-  await expect(welcome.getByText('Conversation history',{exact:true})).toHaveCount(0);
+  await expect(welcome.getByRole('button',{name:'New conversation',exact:true})).toHaveCount(0);
   return { foreign, welcome };
 }
 /** No key was kept or bound, and the resident is running without AI (P-43). `untouched`: the sign-in
@@ -88,7 +88,7 @@ async function nothingLeft(page: Page, welcome: ReturnType<Page['getByRole']>, u
   await expect.poll(()=>harness(page,f=>f.calls.filter((call:string)=>call==='Agent.start').length)).toBeGreaterThan(0);
   await expect(welcome).toBeVisible();
   // An expired code keeps the address on screen with a new code one tap away.
-  await expect(welcome.getByRole('button', { name: codeKept ? 'Resend code' : 'Email me a code', exact: true })).toBeEnabled();
+  await expect(welcome.getByRole('button', { name: codeKept ? 'Resend code' : 'Send code', exact: true })).toBeEnabled();
   expect(await harness(page, f => f.slots['cloud:production'] ?? null)).toBeNull();
   expect(await stub(page, s => s.order.some((entry: string) => entry.startsWith('configureCloudProvider')))).toBe(false);
   if (untouched) {
@@ -138,9 +138,9 @@ test('first run: native email sign-in, credits, provider binding, then the resid
     await expect(access.getByRole('button',{name:/Skip|Not now|Back/})).toHaveCount(0);
     await access.getByRole('button',{name:'Allow',exact:true}).click();
   }
-  await expect(access.getByRole('heading',{name:/^(You’re all set|Setup finished)$/})).toBeVisible();
+  await expect(access.getByRole('heading',{name:/^(All set|All set)$/})).toBeVisible();
   expect(await page.evaluate(()=>(window as any).firstRunAccess.requests)).toEqual(['notifications','microphone','camera','location','calendar','photos','files']);
-  await access.getByRole('button',{name:'Go to Alpha',exact:true}).click();
+  await access.getByRole('button',{name:'Done',exact:true}).click();
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 30_000 });
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await expect(button(page, 'Notes')).toBeVisible();
@@ -172,7 +172,7 @@ test('first run: native email sign-in, credits, provider binding, then the resid
   expect(await harness(page, f => f.streams)).toBe(1);
   const settings=await openYourAgent(page);
   await expect(settings.getByRole('button',{name:'Reconnect agent',exact:true})).toBeVisible();
-  await expect(settings.getByText('Conversation history',{exact:true})).toBeVisible();
+  await expect(settings.getByRole('button',{name:'New conversation',exact:true})).toBeVisible();
   expect(await page.locator('body').innerText()).not.toContain(account.token);
   await expectNoDevelopmentSurface(page);
   const lifecycle=await page.evaluate(()=>(window as any).firstRunLifecycle) as Array<{path:string;method:string;ownerId:string;credentialId:string|null}>;
@@ -217,7 +217,7 @@ test('first run: Cloud refusing the new key (401 on the account read) removes it
   await nothingLeft(page, welcome);
   await expect(welcome.getByRole('alert')).toHaveText('Eliza Cloud refused this sign-in. Your agent keeps running; sign in again to turn AI on.');
   await expect(welcome.getByRole('button',{name:'Reconnect agent',exact:true})).toHaveCount(0);
-  await expect(welcome.getByText('Conversation history',{exact:true})).toHaveCount(0);
+  await expect(welcome.getByRole('button',{name:'New conversation',exact:true})).toHaveCount(0);
 });
 
 // An account Cloud reports unable to use AI no longer blocks the resident agent: billing state never

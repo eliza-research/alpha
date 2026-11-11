@@ -127,8 +127,8 @@ export const LIVE_STATES: State[] = [
   live('Settings privacy', ['Settings', 'Privacy']),
   live('Settings about', ['Settings', 'About']),
   // About exposes the existing connection recovery controls in the grouped layout.
-  live('Settings licenses', ['Settings', 'About', 'Open source licenses']),
-  live('Settings app permissions', ['Settings', 'Privacy', 'App permissions']),
+  live('Settings licenses', ['Settings', 'About', 'Licenses']),
+  live('Settings app permissions', ['Settings', 'Privacy', 'Permissions']),
   // The remaining Settings pages, and each app's open menu, search field and editor.
   live('Settings apps', ['Settings', 'Apps']),
   live('Settings accounts', ['Settings', 'Account']),
@@ -485,8 +485,8 @@ const googleCalendar = (name: string, review: boolean): State => ({
     const dialog = await calendarSyncFixture(page, false, theme);
     await expect(dialog).toBeVisible();
     if (review) {
-      await dialog.getByRole('button', { name: 'Review sync', exact: true }).click();
-      await expect(dialog.getByText(/owner@example.invalid.*Personal.*1 Alpha events/)).toBeVisible();
+      await dialog.getByRole('switch', { name: 'Sync', exact: true }).click();
+      await expect(dialog.getByText(/owner@example.invalid.*Personal.*1 event/)).toBeVisible();
     }
     await settle(page);
     expect(await page.evaluate(() => (window as any).calendarSyncFixture.writes)).toBe(0);

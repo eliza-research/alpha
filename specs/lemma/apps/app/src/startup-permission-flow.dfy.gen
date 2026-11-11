@@ -51,7 +51,7 @@ lemma startupPermissionsActiveCore_ensures(facts: StartupConnectionFacts)
 
 function lateReadyNotice(input: LateReadyInput): bool
 {
-  (input.silent && (!((match input.error { case Some(i_value) => !((|i_value| > 0)) case None => true })) || !((match (match input.message { case Some(i_oc0_val) => Option.Some((StringIndexOf(i_oc0_val, "did not confirm revoking") >= 0)) case None => Option.None }) { case Some(i_value) => !(i_value) case None => true }))))
+  (input.silent && ((!((match input.error { case Some(i_value) => !((|i_value| > 0)) case None => true })) || !((match (match input.message { case Some(i_oc0_val) => Option.Some((StringIndexOf(i_oc0_val, "did not confirm revoking") >= 0)) case None => Option.None }) { case Some(i_value) => !(i_value) case None => true }))) || !((match (match input.message { case Some(i_oc1_val) => Option.Some((StringIndexOf(i_oc1_val, "check devices") >= 0)) case None => Option.None }) { case Some(i_value) => !(i_value) case None => true }))))
 }
 
 lemma lateReadyNotice_ensures(input: LateReadyInput)

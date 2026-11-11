@@ -3,6 +3,7 @@ import {browserDevProfile} from '../browser/dev-profile';
 import { CloudDelegationPanel } from "./cloud-delegation-ui";
 import { isAndroid } from '../native';
 import { useState } from "react";
+import { iconStyle } from "../icon-style";
 import type {
 	HostedDigestProtocol,
 	HostedLiveAccount,
@@ -34,7 +35,7 @@ export function HostedLiveSourcePicker({
 		[calendarId, setCalendarId] = useState(""),
 		[pending, setPending] = useState(false),
 		[message, setMessage] = useState(
-			"Choose a Google account connected to this agent. Your Google sign-in stays on this phone.",
+			"Sign-in stays on phone",
 		),
 		[windowHours, setWindowHours] = useState(24),
 		[expiresHours, setExpiresHours] = useState(24),
@@ -55,15 +56,13 @@ export function HostedLiveSourcePicker({
 			setAccounts(result.accounts);
 			setMessage(
 				result.accounts.length
-					? "Choose an account and read scope. Access remains limited to its reviewed grant."
-					: "No eligible account. Connect Cloud for scheduled reads or connect Google directly to this agent.",
+					? ""
+					: "No account",
 			);
 		} catch {
 			if (current()) {
 				setAccounts([]);
-				setMessage(
-					"This agent cannot provide live Google sources. Shared snapshots are still available.",
-				);
+				setMessage("");
 			}
 		} finally {
 			if (current()) setPending(false);
@@ -78,16 +77,10 @@ export function HostedLiveSourcePicker({
 			const result = await client.liveCalendars(account, signal);
 			if (!current()) return;
 			setCalendars(result.calendars);
-			setMessage(
-				result.truncated
-					? "Showing the first 50 calendars. Choose one listed calendar; no other calendar will be read."
-					: "Choose the calendar to include.",
-			);
+			setMessage("");
 		} catch {
 			if (current())
-				setMessage(
-					"Calendar access changed or is unavailable. Refresh accounts before trying again.",
-				);
+				setMessage("Unavailable");
 		} finally {
 			if (current()) setPending(false);
 		}
@@ -130,19 +123,19 @@ export function HostedLiveSourcePicker({
 					...(kind === "calendar" ? { calendarId: calendar!.calendarId } : {}),
 				},
 			},
-			summary: `Allow this agent to read ${label} until ${new Date(expiresAt).toLocaleString()}: up to ${maxItems} ${kind === "email" ? "inbox subjects and snippets from the last" : "events from the next"} ${windowHours} hours per run. ${kind === "email" ? "Message bodies and attachments are excluded." : "Only this calendar is read."} Reads run only while your agent is running. It can't send mail or change events. Turning on a schedule is a separate review.`,
+			summary: `Read ${label} · ${maxItems} items/${windowHours}h · until ${new Date(expiresAt).toLocaleString()}`,
 		});
 	}
 	return (
 		<details>
-			<summary>Use live Google data</summary>
-            {scope && (browserDevProfile&&JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null')?.kind==='development'?<BrowserDigestDelegation client={client} scope={scope} signal={signal} current={current} onConnected={()=>void loadAccounts()}/>:isAndroid?<CloudDelegationPanel client={client} scope={scope} signal={signal} current={current} onConnected={()=>void loadAccounts()}/>:<p>Cloud read access for scheduled reads is connected from the Android app.</p>) }
-			<p>{message}</p>
+			<summary><span aria-hidden="true" className="alpha-google-icon" style={{ display: "inline-block", width: 18, height: 18, marginRight: 6, verticalAlign: "middle" }} />Live Google</summary>
+            {scope && (browserDevProfile&&JSON.parse(localStorage.getItem('alpha.connection.selection.v1')||'null')?.kind==='development'?<BrowserDigestDelegation client={client} scope={scope} signal={signal} current={current} onConnected={()=>void loadAccounts()}/>:isAndroid?<CloudDelegationPanel client={client} scope={scope} signal={signal} current={current} onConnected={()=>void loadAccounts()}/>:null) }
+			{message && <p>{message === "Sign-in stays on phone" && <span aria-hidden="true" style={{ ...iconStyle("lock-keyhole"), width: "16px", height: "16px", marginRight: 6, verticalAlign: "middle" }} />}{message}</p>}
 			<button disabled={busy || pending} onClick={() => void loadAccounts()}>
 				Refresh connected accounts
 			</button>
 			{account?.expiresAt && <p>Cloud access expires {new Date(account.expiresAt).toLocaleString()}.</p>}
-            {account?.accountId.startsWith("cloud:") && <button disabled={busy||pending} onClick={()=>void (async()=>{setPending(true);try{const result=await client.delegation("revoke",{grantId:account.accountId.split(":")[1],confirmed:true},signal);if(current()){setMessage(result.remoteRevocation==="confirmed"?"Google access removed. Every source that used it is turned off.":"Reads are off. Try again to finish removing access in Cloud.");if(result.remoteRevocation==="confirmed"){setAccounts([]);setAccountId("");}}}catch{if(current())setMessage("Revocation is not confirmed. Try again.");}finally{if(current())setPending(false);}})()}>Remove Google access for every source that uses it</button>}
+            {account?.accountId.startsWith("cloud:") && <button disabled={busy||pending} onClick={()=>void (async()=>{setPending(true);try{const result=await client.delegation("revoke",{grantId:account.accountId.split(":")[1],confirmed:true},signal);if(current()){setMessage(result.remoteRevocation==="confirmed"?"Removed":"Off · retry");if(result.remoteRevocation==="confirmed"){setAccounts([]);setAccountId("");}}}catch{if(current())setMessage("Revocation is not confirmed. Try again.");}finally{if(current())setPending(false);}})()}>Remove Google access for every source that uses it</button>}
             {accounts.length > 0 && (
 				<>
 					<label>
@@ -218,7 +211,7 @@ export function HostedLiveSourcePicker({
 								</>
 							)}
 							<label>
-								{kind === "email" ? "Look back hours" : "Look ahead hours"}
+								{kind === "email" ? "Back (h)" : "Ahead (h)"}
 								<input
 									aria-label="Source window hours"
 									type="number"
@@ -229,7 +222,7 @@ export function HostedLiveSourcePicker({
 								/>
 							</label>
 							<label>
-								Maximum items per run
+								Max items
 								<input
 									aria-label="Maximum source items"
 									type="number"
@@ -240,7 +233,7 @@ export function HostedLiveSourcePicker({
 								/>
 							</label>
 							<label>
-								Access expires after hours
+								Expires (h)
 								<input
 									aria-label="Source access hours"
 									type="number"
@@ -251,6 +244,7 @@ export function HostedLiveSourcePicker({
 								/>
 							</label>
 							<button
+								aria-label="Review live source"
 								disabled={
 									busy ||
 									pending ||
@@ -261,7 +255,7 @@ export function HostedLiveSourcePicker({
 								}
 								onClick={prepare}
 							>
-								Review live source
+								Review
 							</button>
 						</>
 					)}

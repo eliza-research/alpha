@@ -159,8 +159,8 @@ globalThis.hostedDigestRefresh = {
   history: (id, row = 0, refuse = false) => perform(() => reply('history', id, row ? [payload(row)] : [], refuse)),
   sync: (id, row = 0, refuse = false) => perform(() => reply('sync', id, row ? [payload(row)] : [], refuse)),
   seed: (id, phase = 'dispatched') => perform(() => {stored.set(id, pendingValue(id, phase));}),
-  retry: () => perform(() => press('Retry exact saved request')),
-  discard: () => perform(() => press('Discard this request')),
+  retry: () => perform(() => press('Retry')),
+  discard: () => perform(() => press('Discard')),
   mutate: (id, outcome = 'ok') => perform(() => reply('mutation', id, {}, outcome === 'rejected' ? new HostedSourceRejected() : outcome === 'refused')),
   remove: (id, refuse = false) => perform(() => reply('remove', id, undefined, refuse)),
   status: (id, backgroundEnabled = true) => perform(() => {

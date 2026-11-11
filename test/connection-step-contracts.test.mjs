@@ -52,7 +52,7 @@ test('retiring the connection disconnects the resident client',async()=>{
  let disconnects=0;const box=retireFixture({kind:'resident',remote:{disconnect:async()=>{disconnects++;}}});
  await box.retire();assert.equal(disconnects,1);assert.equal(box.active,null);
  // A failed disconnect keeps the current error-aware retirement outcome and blocks dependent work.
- const failing=retireFixture({kind:'resident',remote:{disconnect:async()=>{throw Error('closed');}}});await assert.rejects(failing.retire(),/closed/);await tick();assert.equal(failing.active,null);assert.match(failing.state.error,/Couldn’t stop background delivery/);
+ const failing=retireFixture({kind:'resident',remote:{disconnect:async()=>{throw Error('closed');}}});await assert.rejects(failing.retire(),/closed/);await tick();assert.equal(failing.active,null);assert.match(failing.state.error,/Reconnect needed/);
  const remote=retireFixture({kind:'remote',remote:{disconnect:async()=>{disconnects++;}}});await remote.retire();assert.equal(disconnects,1);
  // A connection that replaces a still-active resident closes it too, unless it is the same client.
  const replace=(previous,next)=>{const box=load(between(ui,'\nfunction activate(','\n  update({ residentRecoveryReason')+'\n}',{active:previous,epoch:0,sending:null,actionReceipts:new Map(),conversationMemory:new Map(),appRequests:new Set(),
@@ -130,9 +130,9 @@ test('waiting for shutdown tolerates a failed status read and polls with backoff
  const recovered=await run([Error('bridge busy'),{state:'stopping',serviceActive:true,socketListening:true},stopped]);
  assert.equal(recovered.result,'stopped');assert.deepEqual(recovered.sleeps,[200,400]);
  const stuck=await run([{state:'stopping',serviceActive:true,socketListening:true}]);
- assert.match(stuck.result,/Shutdown is still pending/);
+ assert.match(stuck.result,/Not confirmed/);
  assert.ok(stuck.reads<=40,`a 30 s wait costs ${stuck.reads} status reads`);assert.equal(Math.max(...stuck.sleeps),1000);
- const failing=await run([Error('bridge gone')]);assert.match(failing.result,/Shutdown is still pending/);
+ const failing=await run([Error('bridge gone')]);assert.match(failing.result,/Not confirmed/);
 });
 
 // ---- Cloud read authorization ----

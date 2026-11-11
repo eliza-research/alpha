@@ -44,12 +44,12 @@ test('a return that arrives while a status request runs is consumed after it',as
  await mount(f,async text=>{
   assert.equal(f.calls.filter(c=>c[0]==='status').length,0);
   const release=f.hold();
-  const check=[...document.querySelectorAll('button')].find(b=>b.textContent==='Check authorization status');
+  const check=[...document.querySelectorAll('button')].find(b=>b.textContent==='Refresh');
   await act(async()=>check.click());
   await act(async()=>f.deliver({state,code:'c1'}));
   release();await settle();
   assert.deepEqual(f.calls.filter(c=>c[0]==='complete'),[['complete',state]]);
-  assert.match(text(),/Cloud read access is connected/);
+  assert.match(text(),/Connected/);
   assert.equal(f.native,null);assert.equal(f.slots.size,0);
  });
 });
@@ -57,7 +57,7 @@ test('an expired record clears the native return',async()=>{
  const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:new Date(Date.now()-1000).toISOString(),phase:'waiting'};
  const f=fixture({record,callback:{state,code:'c1'},status:()=>({status:'waiting'})});
  await mount(f,async text=>{
-  assert.match(text(),/Authorization expired/);
+  assert.match(text(),/Expired/);
   assert.deepEqual(f.calls.filter(c=>c[0]==='clearNative'),[['clearNative',state]]);
   assert.equal(f.calls.filter(c=>c[0]==='complete').length,0);
  });
@@ -65,8 +65,8 @@ test('an expired record clears the native return',async()=>{
 test('a return with no pending record here says nothing about another account and stays in the slot',async()=>{
  const f=fixture({callback:{state:other,code:'c2'},status:()=>({status:'waiting'})});
  await mount(f,async text=>{
-  assert.doesNotMatch(text(),/another account/);
-  assert.match(text(),/Allow this agent to read selected Google data/);
+  assert.doesNotMatch(text(),/Wrong account/);
+  assert.match(text(),/Expires in 7 days/);
   assert.deepEqual(f.native,{state:other,code:'c2'});
   assert.equal(f.calls.filter(c=>c[0]==='clearNative').length,0);
  });
@@ -75,9 +75,9 @@ test('a finished status releases the native return for that state',async()=>{
  const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'waiting'};
  const f=fixture({record,status:()=>({status:'failed'})});
  await mount(f,async text=>{
-  const check=[...document.querySelectorAll('button')].find(b=>b.textContent==='Check authorization status');
+  const check=[...document.querySelectorAll('button')].find(b=>b.textContent==='Refresh');
   await act(async()=>check.click());await settle();
-  assert.match(text(),/expired or was cancelled/);
+  assert.match(text(),/Ended/);
   assert.deepEqual(f.calls.filter(c=>c[0]==='clearNative'),[['clearNative',state]]);
  });
 });
@@ -98,7 +98,7 @@ test('status lookup cannot complete a replaced same-scope authorization',async()
  const f=fixture({record,status:()=>({status:'waiting'})});
  await mount(f,async()=>{
   const release=f.hold();
-  const check=[...document.querySelectorAll('button')].find(b=>b.textContent==='Check authorization status');
+  const check=[...document.querySelectorAll('button')].find(b=>b.textContent==='Refresh');
   await act(async()=>check.click());
   const replacement={...record,state:other,phase:'waiting',code:undefined};
   f.slots.set('cloud-delegation:v1:email',replacement);
@@ -113,10 +113,10 @@ test('an authorization whose completion never arrived can still be cancelled',as
  const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'finishing',code:'c1'};
  const f=fixture({record,status:()=>({status:'waiting'})});
  await mount(f,async text=>{
-  const cancel=button('Cancel authorization');
+  const cancel=button('Cancel');
   assert.equal(cancel.disabled,false);
   await act(async()=>cancel.click());await settle();
-  assert.match(text(),/Authorization cancelled/);
+  assert.match(text(),/Cancelled/);
   // Cloud's state is read first; the code is not sent again by Cancel.
   assert.deepEqual(f.calls.filter(c=>c[0]==='status'||c[0]==='cancel'||c[0]==='complete').map(c=>c[0]),['status','cancel']);
   assert.equal(f.slots.size,0);
@@ -126,8 +126,8 @@ test('cancelling an authorization Cloud already completed adopts the grant inste
  const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'finishing',code:'c1'};
  const f=fixture({record,status:()=>({status:'complete',grantId:'g1'})});
  await mount(f,async text=>{
-  await act(async()=>button('Cancel authorization').click());await settle();
-  assert.match(text(),/Cloud read access is connected/);
+  await act(async()=>button('Cancel').click());await settle();
+  assert.match(text(),/Connected/);
   assert.equal(f.calls.filter(c=>c[0]==='cancel').length,0);
   assert.equal(f.slots.size,0);
  });
@@ -136,8 +136,8 @@ test('cancelling while Cloud is still finishing leaves the authorization pending
  const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'finishing',code:'c1'};
  const f=fixture({record,status:()=>({status:'finishing'})});
  await mount(f,async text=>{
-  await act(async()=>button('Cancel authorization').click());await settle();
-  assert.match(text(),/Cloud is finishing authorization/);
+  await act(async()=>button('Cancel').click());await settle();
+  assert.match(text(),/Finishing/);
   assert.equal(f.calls.filter(c=>c[0]==='cancel').length,0);
   assert.equal(f.slots.size,1);
  });
@@ -146,19 +146,19 @@ test('a revoke outcome survives a failed list read, and a grant is not shown for
  const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'waiting'};
  const f=fixture({record,status:()=>({status:'complete',grantId:'g1'})});
  await mount(f,async(text,rescope)=>{
-  await act(async()=>button('Check authorization status').click());await settle();
-  assert.ok(button('Revoke this Cloud read grant'));
+  await act(async()=>button('Refresh').click());await settle();
+  assert.ok(button('Revoke'));
   await rescope('calendar');await settle();
-  assert.equal(button('Revoke this Cloud read grant'),undefined);
+  assert.equal(button('Revoke'),undefined);
  });
  const g=fixture({record,status:()=>({status:'complete',grantId:'g1'})});
  await mount(g,async text=>{
-  await act(async()=>button('Check authorization status').click());await settle();
+  await act(async()=>button('Refresh').click());await settle();
   const base=g.client.delegation;
   g.client.delegation=async(kind,input)=>{if(kind==='revocations')throw Error('offline');if(kind==='revoke')return{remoteRevocation:'confirmed'};return base(kind,input);};
-  await act(async()=>button('Revoke this Cloud read grant').click());await settle();
-  assert.match(text(),/Cloud read access revoked/);
-  assert.doesNotMatch(text(),/not confirmed/);
+  await act(async()=>button('Revoke').click());await settle();
+  assert.match(text(),/Revoked/);
+  assert.doesNotMatch(text(),/Unconfirmed/);
  });
 });
 
@@ -167,10 +167,10 @@ test('a status answer retained across a scope change cannot adopt the previous s
  const f=fixture({record,status:()=>({status:'complete',grantId:'old-scope-grant'})});
  await mount(f,async(text,rescope)=>{
   const release=f.hold();
-  await act(async()=>button('Check authorization status').click());
+  await act(async()=>button('Refresh').click());
   await rescope('calendar');await settle();
   release();await settle();
-  assert.equal(button('Revoke this Cloud read grant'),undefined);
+  assert.equal(button('Revoke'),undefined);
   assert.deepEqual(f.slots.get('cloud-delegation:v1:email'),record);
  });
 });
@@ -180,10 +180,10 @@ test('a status answer retained across a client replacement cannot adopt the reti
  const f=fixture({record,status:()=>({status:'complete',grantId:'old-client-grant'})});
  await mount(f,async(text,rescope)=>{
   const release=f.hold();
-  await act(async()=>button('Check authorization status').click());
+  await act(async()=>button('Refresh').click());
   await rescope('email',{...f.client});await settle();
   release();await settle();
-  assert.equal(button('Revoke this Cloud read grant'),undefined);
+  assert.equal(button('Revoke'),undefined);
   assert.deepEqual(f.slots.get('cloud-delegation:v1:email'),record);
  });
 });

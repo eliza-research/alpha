@@ -18,10 +18,9 @@ export class ScanPdfExportError extends Error {}
  * shown and retry stays available. Only a failed or unknown export call is
  * uncertain: a document may already exist, so retry stays locked. */
 export function scanPdfFailure(error:unknown):{message:string;retry:boolean}{
- if(error instanceof ScanPdfExportError)return {message:'PDF export unconfirmed. Inspect the destination before trying again.',retry:false};
- if(error instanceof DOMException&&error.name==='AbortError')return {message:'PDF export cancelled. Nothing was saved.',retry:true};
- const reason=error instanceof Error&&error.message.trim()?error.message.trim().slice(0,300):'The PDF could not be prepared.';
- return {message:reason+(/[.!?]$/.test(reason)?'':'.')+' Nothing was saved. Try again.',retry:true};
+ if(error instanceof ScanPdfExportError)return {message:'Export unconfirmed',retry:false};
+ if(error instanceof DOMException&&error.name==='AbortError')return {message:'Cancelled',retry:true};
+ return {message:error instanceof Error&&error.message.trim()?error.message.trim().slice(0,300):'PDF failed',retry:true};
 }
 /** Resolved provider outcomes that wrote nothing confirmed: the user may retry.
  * 'unverified', 'exported' and 'requested' keep retry locked. */

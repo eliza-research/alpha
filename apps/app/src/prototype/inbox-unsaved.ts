@@ -9,12 +9,12 @@ import {openDomainRecovery} from '../browser/domain-recovery';
 import {browserDevProfile} from '../browser/dev-profile';
 /** Status copy for retained email edits; the shared defaults are written for chat messages. */
 const retainedMessages={
- unsettled:'This email may already have been sent. Check Sent before sending it again.',
- reviewUnsettled:'This email may already have been sent. Check Sent before sending another.',
- storageUnavailable:'Local draft storage is unavailable. Check it before sending.',
- tooLarge:'Current email edits are too large to retain. Shorten them before closing.',
- clearFailed:'Email sent, but its retained edits could not be cleared. Review them before sending again.',
- preparing:'Clearing retained edits…',
+ unsettled:'May have sent',
+ reviewUnsettled:'May have sent',
+ storageUnavailable:'Storage unavailable',
+ tooLarge:'Too large to keep',
+ clearFailed:'Sent · Couldn’t clear edits',
+ preparing:'Clearing…',
 };
 /** Account-scoped recovery copies remain separate from the explicitly saved local draft. */
 export function inboxUnsaved(owner:string,publish:()=>void,restore:(value:InboxUnsaved)=>void){
@@ -73,7 +73,7 @@ export function inboxUnsaved(owner:string,publish:()=>void,restore:(value:InboxU
   replace(){controller.keepCurrent();},
   retry(){return controller.retry();},
   async clear(){queue.flush();const expected=text;if(expected)await controller.consume(expected,()=>alive&&!queue.pending);},
-  recover(current:unknown){const recovery=controller.recovery();if(!recovery)return;recoveryAbort?.abort();recoveryAbort=new AbortController();openDomainRecovery({capture:async signal=>{const captured=await recovery.capture(signal);return {...captured,raw:JSON.stringify({saved:captured.raw,current})};},reset:recovery.reset},'email edits','Email edit recovery','Back up retained edits before resetting this recovery copy. Explicitly saved drafts and provider mail will not change.',recoveryAbort.signal,undefined,Capacitor.getPlatform()==='android'?'device':'browser');},
+  recover(current:unknown){const recovery=controller.recovery();if(!recovery)return;recoveryAbort?.abort();recoveryAbort=new AbortController();openDomainRecovery({capture:async signal=>{const captured=await recovery.capture(signal);return {...captured,raw:JSON.stringify({saved:captured.raw,current})};},reset:recovery.reset},'email edits','Email edit recovery','Resets recovery copy only.',recoveryAbort.signal,undefined,Capacitor.getPlatform()==='android'?'device':'browser');},
   retire(){
    if(!alive)return;
    // The waiting edit is written before the account changes, without publishing to the view that

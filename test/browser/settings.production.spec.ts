@@ -43,7 +43,7 @@ test('production Settings excludes developer and removed rows for every requeste
   for(const category of ['General','Privacy','Apps','About'])await expect(current(page).getByRole('button',{name:category,exact:true})).toBeVisible();
   await current(page).getByRole('button',{name:'About',exact:true}).click();
   for(const label of ['Problem log','Export diagnostics','Developer'])await expect(current(page).getByRole('button',{name:label,exact:true})).toHaveCount(0);
-  await expect(current(page).getByRole('button',{name:'Open source licenses',exact:true})).toBeVisible();
+  await expect(current(page).getByRole('button',{name:'Licenses',exact:true})).toBeVisible();
  }
 });
 
@@ -65,8 +65,8 @@ test('production About exposes licenses without fabricated device facts or diagn
  await openSettings(page,'About');
  const about=(await current(page).innerText()).replace(/\s+/g,' ');
  expect(about).not.toMatch(/\bNPU\b|Uptime|Inference model|Not reported by agent|Problem log|Export diagnostics|Security patch/);
- await current(page).getByRole('button',{name:'Open source licenses',exact:true}).click();
- await expect(current(page).getByRole('heading',{name:'Open source licenses',exact:true})).toBeVisible();
+ await current(page).getByRole('button',{name:'Licenses',exact:true}).click();
+ await expect(current(page).getByRole('heading',{name:'Licenses',exact:true})).toBeVisible();
  await expect(current(page).getByRole('button',{name:'Back to About',exact:true})).toBeVisible();
  // A missing native role plugin is not a successful refusal.
  for(const method of ['getStatus','requestRole'])expect(await page.evaluate(async method=>{

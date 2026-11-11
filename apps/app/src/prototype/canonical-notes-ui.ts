@@ -12,7 +12,7 @@ import type {CanonicalNoteSaveIntent} from './note-recorder';
 import {formatDateTime} from './locale-time';
 type Bag=Record<string,any>;
 type CanonicalTrashEntry={id:string;title:string;deletedAt:string;revision:number};
-const UNAVAILABLE='Your agent is not ready for Notes. Check the connection and try again.';
+const UNAVAILABLE='Agent offline';
 /** Device-local handles (a recording, a picked document, a web source) belong to Older notes adapters, never to an agent record's view. */
 const LOCAL_HANDLES=['audio','documentSource','webSource'];
 /** View identity and presentation fields, never authored rich metadata. */
@@ -110,7 +110,7 @@ export class CanonicalNotesUi {
  notes():StickyNote[]{return this.controller.current?this.controller.snapshot?.notes??[]:[];}
  selection(){return this.editor.selection();}
  private status():string{
-  if(this.phase==='review')return this.editor.draft?.version?'Your draft is shown here until you reload or the connection changes. Reload the current notes to discard it.':this.failure==='read'&&this.reviewPending==='read'?'Notes could not be opened. Check the agent connection, then reload.':'That change could not be confirmed. Reload Notes to see what was saved.';
+  if(this.phase==='review')return this.editor.draft?.version?'Unsaved':this.failure==='read'&&this.reviewPending==='read'?'Couldn’t open':'Unconfirmed';
   return this.controller.revision===null?'Opening Notes…':'';
  }
  renderState(previous:Bag):Bag{return {...previous,...DEVICE_ONLY_STATE,list:this.list,open:this.open,storageStatus:this.status(),blankCreationId:this.blankCreationValue};}
@@ -170,7 +170,7 @@ export class CanonicalNotesUi {
   const removed=await this.editor.remove(id);
   if(removed&&this.controller.current){
    const entry=this.trashValue.find(row=>row.id===id);
-   api.toast('Moved to Recently deleted',entry?{undo:()=>void this.undoRemove(entry,api)}:undefined);
+   api.toast('Deleted',entry?{undo:()=>void this.undoRemove(entry,api)}:undefined);
   }
   return removed;
  }
@@ -181,8 +181,8 @@ export class CanonicalNotesUi {
  private async undoRemove(entry:CanonicalTrashEntry,api:Bag):Promise<void>{
   await this.settle();
   if(!this.controller.current)return;
-  if(this.controller.pending){api.toast('Wait for the current save, then restore it from Trash.');return;}
-  if(!this.trashEntry(entry,false)){api.toast('This deletion changed. Review it in Recently deleted.');return;}
+  if(this.controller.pending){api.toast('Still saving');return;}
+  if(!this.trashEntry(entry,false)){api.toast('Review deletion again');return;}
   await this.editor.restore(entry.id);
  }
  /**
@@ -227,7 +227,7 @@ export class CanonicalNotesUi {
  }
  async saveCard(content:string,api:Bag):Promise<boolean>{
   try{const result=await this.controller.interact('create-note',{content});if(!this.controller.current||!result.target)return false;this.hooks.committed?.(result.target.id);return true;}
-  catch{if(this.controller.current){api.toast('Could not confirm the save. Check Notes before trying again.');this.needsReview();}return false;}
+  catch{if(this.controller.current){api.toast('Save unconfirmed');this.needsReview();}return false;}
  }
  async discardDraftAndReload():Promise<void>{
   const id=this.editor.draft?.id;this.reviewPending=false;this.failure=null;this.editor.close();
@@ -242,25 +242,24 @@ export class CanonicalNotesUi {
   if(!this.controller.current||!api.isActive()||this.open!==id)return;
   if(result.status!=='ready'){api.toast(result.message);return;}
   const {draft}=result,shared={id:null,title:draft.title,off:1,t:9,d:1,where:'',video:false,who:[],repeat:'none',notes:draft.notes,origin:draft.origin};
-  if(kind==='event'){if(!api.reviewCalendarDraft?.({...shared,creationId:crypto.randomUUID(),separateCreation:false,cal:'native:local',alert:null})){api.toast("Calendar can't open this event yet. Finish any open Calendar draft and try again.");return;}}
+  if(kind==='event'){if(!api.reviewCalendarDraft?.({...shared,creationId:crypto.randomUUID(),separateCreation:false,cal:'native:local',alert:null})){api.toast('Calendar busy');return;}}
   else api.open('calendar',{calendarAuthority:api.get('calendar').calendarAuthority,form:{...shared,cal:'alpha-reminders',alert:0},open:null,month:null,day:1},'hidden');
-  api.toast('Review the time, then Save.');
  }
  /** Speech recognition through the platform port; the transcript lands at the caret of the note it was started from. */
  private async dictate(id:string,api:Bag):Promise<void>{
   const before=this.list.find(row=>row.id===id);if(!before)return;
-  if(before.kind==='list'){api.toast('Convert this checklist to text before dictating.');return;}
+  if(before.kind==='list'){api.toast('Text notes only');return;}
   const editor=document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Note"]'),caret=editor&&editor.value===before.body?editor:null,start=caret?caret.selectionStart:before.body.length,end=caret?caret.selectionEnd:before.body.length;
   try{
    const result=await DailyApps.perform({action:'voice'});
    // A new note's first save (a title typed while listening) names its record by now.
    id=this.resolve(id);
    if(!this.controller.current||this.open!==id)return;
-   if(typeof result.transcript!=='string'||!result.transcript){api.toast(result.message||'Speech recognition is unavailable.');return;}
+   if(typeof result.transcript!=='string'||!result.transcript){api.toast(result.message||'No speech input');return;}
    const current=this.list.find(row=>row.id===id);if(!current)return;
    const body=current.body===before.body?current.body.slice(0,start)+result.transcript+current.body.slice(end):[current.body,result.transcript].filter(Boolean).join('\n');
    await this.update(id,{body});
-  }catch{api.toast('Speech recognition is unavailable.');}
+  }catch{api.toast('No speech input');}
  }
  /** Canonical behaviour on top of Alpha's Notes view: the restore-only Trash as the Recently deleted
   * folder, review and reload, and the Notes recorder saving one voice record with an owned opaque audio attachment. */
@@ -274,11 +273,11 @@ export class CanonicalNotesUi {
   const restore=(entry:CanonicalTrashEntry)=>{
    if(!api.isActive()||this.controller.pending)return;
    api.set({trashAsk:null});
-   if(!this.trashEntry(entry,true)){api.toast('This deletion changed. Review it in Recently deleted.');return;}
+   if(!this.trashEntry(entry,true)){api.toast('Review deletion again');return;}
    void this.editor.restore(entry.id);
   };
   const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:true,canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,
-   canonicalReview:this.phase==='review',canonicalReviewLabel:this.editor.draft?.version?'Discard draft and reload':'Reload Notes',canonicalReviewAction:()=>void this.discardDraftAndReload(),
+   canonicalReview:this.phase==='review',canonicalReviewLabel:this.editor.draft?.version?'Discard':'Reload Notes',canonicalReviewAction:()=>void this.discardDraftAndReload(),
    trashAvailable:false,hasDeleted:rows.length>0,trashOpen,trashCanErase:false,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
    trashRows:rows.map(row=>{const deleted=deletionDate(row);return {id:row.id,title:row.title,label:row.title,preview:deleted,previewDescription:deleted,left:'',disabled:busy,ask:()=>api.set({trashAsk:row})};}),
    trashAskOpen:!!asked,trashAskTitle:asked?.title||'',trashAskDescription:asked?deletionDate(asked):'',trashAskClose:()=>api.set({trashAsk:null}),trashAskRecover:()=>{if(asked)restore(asked);},trashAskDelete:()=>{},
@@ -290,9 +289,9 @@ export class CanonicalNotesUi {
    saveStatus:this.phase==='review'?'Not saved':''};}
   if(out.vo&&open){const note=this.controller.viewNote(open),audio=note?.format?.kind==='voice'?voiceAudio(note.format.data):undefined;
    const owned=!!audio&&out.vo.playbackAudioId===audio.audioId&&out.vo.hasPlayback===true;
-   out.vo={...out.vo,...(owned?{}:{hasPlayback:false,play:()=>api.toast('No audio is available for this note.')}),
+   out.vo={...out.vo,...(owned?{}:{hasPlayback:false,play:()=>api.toast('No audio')}),
    toCal:()=>{out.vo.closeMenu?.();void this.scheduleDraft(open,'reminder',api);},calLabel:'Review reminder draft',calText:'Review reminder',calIcon:api.ic?.cal??out.vo.calIcon,
-   toEvent:()=>{out.vo.closeMenu?.();void this.scheduleDraft(open,'event',api);},eventLabel:'Review calendar event draft',eventText:'Review event'};}
+   toEvent:()=>{out.vo.closeMenu?.();void this.scheduleDraft(open,'event',api);},eventLabel:'Review event',eventText:'Review event'};}
   return out;
  }
  /** Decorate this view's API only. No global client or shared NotesStore swap. */
@@ -300,7 +299,7 @@ export class CanonicalNotesUi {
   return {...original,canonicalNotes:this,notesSourceMode:'canonical',notesTrash:undefined,moveNoteToTrash:undefined,storageReady:()=>this.controller.current&&this.controller.revision!==null&&!this.controller.pending,
    set:(patch:Bag)=>{
     // `record` opens the Notes recorder (voice-adapter.ts); the old simulated recorder state is refused.
-    if(patch.rec){original.toast('Recording is not available in agent Notes. Nothing was recorded.');return false;}
+    if(patch.rec){original.toast('Not in agent Notes');return false;}
     const rest={...patch};
     if(Object.hasOwn(rest,'open')){this.select(rest.open??null);delete rest.open;}
     if(rest.compose){void this.create('text');rest.compose=false;}

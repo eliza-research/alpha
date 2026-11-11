@@ -28,8 +28,8 @@ async function noSecretOutsideDialogs(page: Page) {
 test('development vault: unlock, search, add, generate, edit and delete without exposing secrets', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await devVault(page);
-  await expect(page.getByText('Locked', { exact: true })).toBeVisible();
-  await expect(page.getByText('Other password providers', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Unlock passwords', exact: true })).toBeVisible();
+  await expect(page.getByText('Other', { exact: true }).first()).toBeVisible();
   // The agent observation is paused for the whole password surface.
   expect((await agentContext(page)).sensitive).toBe(true);
   await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();
@@ -52,9 +52,9 @@ test('development vault: unlock, search, add, generate, edit and delete without 
   // A rejected save clears nothing the user still needs except the password, which is re-entered.
   await page.locator('input[aria-label="Password"]').fill('typed-synthetic-Z9q');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByText('Password saved.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
   const shop = page.getByRole('button', { name: 'Open Shop', exact: true });
-  await expect(shop).toContainText('buyer@example.test · shop.example.test');
+  await expect(shop).toContainText('buyer@example.test');
   await noSecretOutsideDialogs(page);
 
   await shop.click();
@@ -62,9 +62,9 @@ test('development vault: unlock, search, add, generate, edit and delete without 
   await expect(page.getByRole('button', { name: 'Remove shop.example.test', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Generate a strong password', exact: true }).click();
   await page.getByRole('button', { name: 'Length: 32', exact: true }).click();
-  await expect(page.getByText(/^32 characters, generated (on this phone|in this app) when you save$/)).toBeVisible();
+  await expect(page.getByText('32 chars', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByText('Saved with a new 32-character password.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
   await noSecretOutsideDialogs(page);
 
   // Reveal is a separate, dismissible surface; the value never enters the page itself.
@@ -76,8 +76,9 @@ test('development vault: unlock, search, add, generate, edit and delete without 
   await expect(reveal).toHaveCount(0);
   await noSecretOutsideDialogs(page);
 
-  await page.getByRole('button', { name: 'Delete password', exact: true }).click();
-  await page.getByRole('button', { name: 'Tap again to delete', exact: true }).click();
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByText('Can’t be undone.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm delete', exact: true }).click();
   await expect(page.getByText('Password deleted.', { exact: true })).toBeVisible();
   await expect(shop).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -85,20 +86,20 @@ test('development vault: unlock, search, add, generate, edit and delete without 
 
 test('development vault locks when leaving and reports autofill selection only after readback', async ({ page }) => {
   await devVault(page);
-  await expect(page.getByText('None selected', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Set as autofill service', exact: true }).click();
+  await expect(page.getByText('None', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Use for autofill', exact: true }).click();
   // The development picker selects its synthetic provider; the action's status readback confirms it.
-  await expect(page.getByText('Alpha Phone passwords', { exact: true }).last()).toBeVisible();
+  await expect(page.getByText('Alpha', { exact: true }).last()).toBeVisible();
   await expect(page.getByText('Confirm Alpha Phone passwords in Android, then return here.', { exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Refresh autofill status', exact: true }).click();
-  await expect(page.getByText('Alpha Phone passwords', { exact: true }).last()).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Set as autofill service', exact: true })).toHaveCount(0);
+  await expect(page.getByText('Alpha', { exact: true }).last()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Use for autofill', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open Example sign-in', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Back to Apps', exact: true }).click();
   await expect.poll(async () => (await agentContext(page)).sensitive).toBe(false);
   await page.getByRole('button', { name: 'Passwords', exact: true }).click();
-  await expect(page.getByText('Locked', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Unlock passwords', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open Example sign-in', exact: true })).toHaveCount(0);
 });
 
@@ -189,33 +190,34 @@ test('native vault: Android unlock, app bindings, copy and autofill picker with 
   await nativeVault(page, { transfer: true });
   await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();
   const bank = page.getByRole('button', { name: 'Open Bank app', exact: true });
-  await expect(bank).toContainText('holder@example.test · Bank (com.example.bank)');
+  await expect(bank).toContainText('holder@example.test');
   await bank.click();
-  await expect(page.getByText('App · verified publisher', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remove Bank (com.example.bank)', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Copy password', exact: true }).click();
-  await expect(page.getByText('Copied. Alpha tries to clear it in 45 s.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Copied', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Back to Password manager', exact: true }).click();
-  await page.getByRole('button', { name: 'Set as autofill service', exact: true }).click();
+  await page.getByRole('button', { name: 'Use for autofill', exact: true }).click();
   // Opening Android's confirmation is not a selection; only the readback changes the status.
-  await expect(page.getByText('None selected', { exact: true })).toBeVisible();
+  await expect(page.getByText('None', { exact: true })).toBeVisible();
   await page.evaluate(() => { const f = (window as any).vaultFixture; f.selected = 'this-app'; for (const callback of f.listeners.appResumed || []) callback({}); });
-  await expect(page.getByText('Alpha Phone passwords', { exact: true }).last()).toBeVisible();
+  await expect(page.getByText('Alpha', { exact: true }).last()).toBeVisible();
   const calls = await page.evaluate(() => (window as any).vaultFixture.calls.map((c: any) => c.method));
   expect(calls).toEqual(expect.arrayContaining(['status', 'unlock', 'list', 'copy', 'openAutofillSettings']));
   // Proton Pass remains an alternative provider on the same page.
-  await expect(page.getByText('Other password providers', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Get Proton Pass from Proton', exact: true })).toBeVisible();
+  await expect(page.getByText('Other', { exact: true }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Proton Pass', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Get Proton Pass', exact: true })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Export passwords', exact: true }).click();
-  await expect(page.getByText('Export did not complete. The selected file may contain passwords; delete it if you do not need it.', { exact: true })).toBeVisible();
-  await expect(page.getByText('Locked', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Export passwords, unencrypted file', exact: true }).click();
+  await expect(page.getByText('Export failed · delete file', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Unlock passwords', exact: true })).toBeVisible();
   await expect(bank).toHaveCount(0);
   await noSecretOutsideDialogs(page);
   await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();
   await page.evaluate(() => { (window as any).vaultFixture.transferCode = 'cancelled'; });
   await page.getByRole('button', { name: 'Import passwords', exact: true }).click();
-  await expect(page.getByText('Import did not complete. Check saved passwords before trying again.', { exact: true })).toBeVisible();
-  await expect(page.getByText('Locked', { exact: true })).toBeVisible();
+  await expect(page.getByText('Import failed', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Unlock passwords', exact: true })).toBeVisible();
   await expect(bank).toHaveCount(0);
   await noSecretOutsideDialogs(page);
 });
@@ -223,14 +225,15 @@ test('native vault: Android unlock, app bindings, copy and autofill picker with 
 test('native vault whose key was lost can only be deleted after confirmation and a fresh unlock', async ({ page }) => {
   await nativeVault(page, { damaged: true });
   await page.getByRole('button', { name: 'Unlock passwords', exact: true }).click();
-  await expect(page.getByText('Cannot be decrypted on this phone', { exact: true })).toBeVisible();
+  await expect(page.getByText('Damaged', { exact: true })).toBeVisible();
   await expect(page.getByText('Saved passwords can no longer be decrypted on this device.', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add password', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Delete saved passwords and start over', exact: true }).click();
+  await page.getByRole('button', { name: 'Reset vault', exact: true }).click();
   // The first tap only arms the action; nothing is deleted yet.
   expect(await page.evaluate(() => (window as any).vaultFixture.calls.filter((c: any) => c.method === 'reset').length)).toBe(0);
-  await page.getByRole('button', { name: 'Tap again to delete all saved passwords', exact: true }).click();
-  await expect(page.getByText('Saved passwords were deleted. You can add new ones.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Can’t be undone.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm reset vault', exact: true }).click();
+  await expect(page.getByText('Vault reset', { exact: true })).toBeVisible();
   const calls: string[] = await page.evaluate(() => (window as any).vaultFixture.calls.map((c: any) => c.method));
   // Reset follows its own unlock, never the earlier one that discovered the damage.
   expect(calls.slice(calls.lastIndexOf('reset') - 1, calls.lastIndexOf('reset') + 1)).toEqual(['unlock', 'reset']);
@@ -263,7 +266,7 @@ test('outbound capture: vault work sends no request containing typed or stored v
   await page.getByRole('textbox', { name: 'Add website', exact: true }).fill('probe.example.test');
   await page.locator('input[aria-label="Password"]').fill('typed-synthetic-Z9q');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
-  await expect(page.getByText('Password saved.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible();
   // The open vault marks the agent context sensitive. That AlphaClient then refuses every turn is
   // tested in test/alpha-client-sensitive.test.mjs.
   const sensitive = await page.evaluate(async () => {
@@ -293,5 +296,5 @@ test('leaving Settings for another view locks the development vault', async ({ p
   // A fresh Settings visit starts at its root and never retains an unlocked vault.
   await page.getByRole('button', { name: 'Apps', exact: true }).click();
   await page.getByRole('button', { name: 'Passwords', exact: true }).click();
-  await expect(page.getByText('Locked', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Unlock passwords', exact: true })).toBeVisible();
 });

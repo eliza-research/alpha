@@ -20,10 +20,10 @@ for(const reason of ['disconnected','scope-revoked'] as const)test(`Gmail same-I
  await page.evaluate(reason=>{const f=(window as any).gmailGrantFixture;if(reason==='disconnected')f.connected=false;else f.triage=false;},reason);
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha:google-accounts-changed')));
  await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
- await expect(page.getByText('Connect Gmail to read your inbox',{exact:true})).toBeVisible();
+ await expect(page.getByText('Connect Gmail',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Fixture mailbox',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
- await expect(page.getByText('Connect Gmail to read your inbox',{exact:true})).toBeVisible();
+ await expect(page.getByText('Connect Gmail',{exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).gmailGrantFixture)).toMatchObject({reads:1,oauth:0});
  await page.evaluate(()=>{const f=(window as any).gmailGrantFixture;f.connected=true;f.triage=true;});
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha:google-accounts-changed')));
@@ -67,7 +67,7 @@ test('Reconnect Gmail opens Google accounts; each authorization hands off once a
  },AUTH);
  const f=()=>page.evaluate(()=>(window as any).handoffFixture);
  const panel=page.getByRole('dialog',{name:'Google accounts',exact:true});
- const next=panel.getByText('After authorizing Google, return here and check connections.',{exact:true});
+ const next=panel.getByText('Waiting for Google…',{exact:true});
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  // The first read finds the grant revoked; Reconnect is offered and nothing retries on its own.
  const reconnect=page.getByRole('button',{name:'Reconnect Gmail',exact:true});
@@ -75,14 +75,14 @@ test('Reconnect Gmail opens Google accounts; each authorization hands off once a
  expect((await f()).reads).toBe(1);
  await reconnect.click();
  await expect(panel).toBeVisible();
- await expect(panel.getByText(/Connected · Gmail: Read and send access/)).toBeVisible();
+ await expect(panel.getByRole('img',{name:/Gmail: Read and send access/})).toBeVisible();
  // Opening the panel lists connections only: nothing was authorized, opened or read.
  let state=await f();
  expect(state.initiates).toEqual([]);expect(state.opened).toEqual([]);expect(state.reads).toBe(1);
  // Since 10e15eff9 Add Google account asks once for Gmail send and Calendar edit, and the old
  // "Gmail permissions / Enable Gmail changes" upgrade is the Calendar edits switch: this grant
  // lacks Calendar write, so turning it on starts the same consent.
- for(const [label,role] of [['Add Google account','button'],['Calendar edits','switch']] as const){
+ for(const [label,role] of [['Add account','button'],['Edit events','switch']] as const){
   const before=await f();
   await panel.getByRole(role,{name:label,exact:true}).click();
   // The previous handoff's notice is still shown, so wait for this handoff's own open first.
@@ -100,7 +100,7 @@ test('Reconnect Gmail opens Google accounts; each authorization hands off once a
  await expect.poll(async()=>(await f()).reads).toBe(2);
  // A handoff abandoned while the browser is open (Escape closes the panel) reports nothing as pending.
  await page.evaluate(()=>{const f=(window as any).handoffFixture;f.hold=new Promise<void>(resolve=>{f.release=resolve;});});
- await panel.getByRole('button',{name:'Add Google account',exact:true}).click();
+ await panel.getByRole('button',{name:'Add account',exact:true}).click();
  await expect.poll(async()=>(await f()).opened.length).toBe(3);
  await page.keyboard.press('Escape');
  await expect(panel).toHaveCount(0);

@@ -194,7 +194,7 @@ function installBrowserCapabilityTiles(Component:any){
   p.renderVals=function(){
     const out=render.call(this);
     const tiles=(out.tiles||[]).map((tile:any)=>managed.has(tile.label)?{...tile,on:false,pressed:undefined,disabled:true,css:'background:var(--s2);color:var(--fg);opacity:.55',toggle:()=>{}}:tile);
-    return {...out,tiles,deviceSettingsPending:true,deviceSettingsMessage:'Network, radio and sensor settings are managed by your browser and operating system.',sbWifi:navigator.onLine,sbPlane:false};
+    return {...out,tiles,deviceSettingsPending:true,sbWifi:navigator.onLine,sbPlane:false};
   };
 }
 /** Use the last native bar geometry before Home's first paint; storage is only a layout cache. */

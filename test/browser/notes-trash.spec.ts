@@ -92,7 +92,7 @@ test('Delete now and Empty ask first, and checklists use the same Recently delet
  await expect(trash.getByText('First',{exact:true})).toHaveCount(0);
  expect((await trashEntries(page)).map((e:any)=>e.note.title).sort()).toEqual(['Second','Third']);
  await trash.getByRole('button',{name:'Empty Recently deleted',exact:true}).click();
- await page.getByRole('dialog',{name:'Delete all recently deleted notes?'}).getByRole('button',{name:'Delete all',exact:true}).click();
+ await page.getByRole('dialog',{name:'Delete all?'}).getByRole('button',{name:'Delete all',exact:true}).click();
  await expect(page.getByText('Recently deleted emptied',{exact:true})).toBeVisible();
  await expect(trash).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Recently deleted',exact:true})).toHaveCount(0);

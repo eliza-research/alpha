@@ -64,7 +64,7 @@ test('Undo waits for the current save and never restores over it into review',as
  f.ui.controller.pending=true;const undone=f.toasts[0].undo();
  for(let i=0;i<20;i++){f.ui.controller.hooks.phase('ready');await new Promise(resolve=>setTimeout(resolve,0));}
  await undone;
- assert.deepEqual(f.calls,['remove:n']);assert.equal(f.toasts.at(-1).text,'Wait for the current save, then restore it from Trash.');
+ assert.deepEqual(f.calls,['remove:n']);assert.equal(f.toasts.at(-1).text,'Still saving');
  // An unrelated newer snapshot keeps this exact deletion available for Undo.
  f.ui.controller.hooks.snapshot({notes:[],trash,revision:3},'read');
  f.ui.controller.pending=false;f.toasts[0].undo();await new Promise(resolve=>setTimeout(resolve,0));

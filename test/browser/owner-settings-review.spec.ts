@@ -44,7 +44,7 @@ for(const size of [{width:390,height:844},{width:1280,height:900}]){
   await review.focus();await review.press('Space');await expect(review).toHaveAttribute('aria-checked','true');
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await page.getByRole('button',{name:'Account',exact:true}).filter({visible:true}).click();
-  const account=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
+  const account=page.getByRole('dialog',{name:'Alpha',exact:true});
   await expect(account).toBeVisible();
   await expect(settings.getByRole('button',{name:'Account & plan',exact:true})).toHaveCount(0);
   const box=(await account.boundingBox())!;
@@ -55,7 +55,7 @@ for(const size of [{width:390,height:844},{width:1280,height:900}]){
   await account.getByRole('button',{name:'Back',exact:true}).click();
   await expect(account).toHaveCount(0);
   await settings.getByRole('button',{name:'About',exact:true}).click();
-  await expect(current().getByRole('button',{name:'Open source licenses',exact:true})).toBeVisible();
+  await expect(current().getByRole('button',{name:'Licenses',exact:true})).toBeVisible();
   await expect(page.getByText('Agent execution',{exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await expect(settings).toBeVisible();

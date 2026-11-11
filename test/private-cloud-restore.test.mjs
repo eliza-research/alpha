@@ -32,7 +32,7 @@ test('an empty optional Cloud store does not reopen sign-in or disturb the priva
  const f=fixture({values:[null]});await f.initialize();assert.deepEqual(f.calls,['attach','read']);assert.equal(f.state.open,false);assert.equal(f.state.cloudAccount,null);assert.equal(f.context.active.kind,'resident');assert.equal(f.state.history,f.history);
 });
 test('a replaced reference with the same credential ID cannot publish the old Cloud account',async()=>{
- const f=fixture({values:[credential,{...credential,credentialReference:'browser-cloud-reference:replacement'}]});await f.initialize();assert.deepEqual(f.calls,['attach','read','read']);assert.match(f.state.error,/Cloud account changed/);assert.equal(f.state.cloudAccount,null);assert.equal(f.context.active.kind,'resident');assert.equal(f.state.history,f.history);
+ const f=fixture({values:[credential,{...credential,credentialReference:'browser-cloud-reference:replacement'}]});await f.initialize();assert.deepEqual(f.calls,['attach','read','read']);assert.match(f.state.error,/Account changed/);assert.equal(f.state.cloudAccount,null);assert.equal(f.context.active.kind,'resident');assert.equal(f.state.history,f.history);
 });
 // `npm run dev` sets the preview flag with test mocks on (scripts/dev-local.ts): a page loaded while the
 // agent restarts attaches in the background, so the failed attach (a 503) leaves the sheet closed.
@@ -47,7 +47,7 @@ for(const [name,options]of [['offline',{choice:{kind:'offline'}}],['native',{and
  const f=fixture(options);await f.initialize();assert.deepEqual(f.calls,['attach']);assert.equal(f.state.cloudAccount,null);
 });
 test('a changed credential ID on the second read cannot be adopted',async()=>{
- const f=fixture({values:[credential,{...credential,credentialId:'replacement'}]});await f.initialize();assert.deepEqual(f.calls,['attach','read','read']);assert.match(f.state.error,/Cloud account changed/);assert.equal(f.state.cloudAccount,null);
+ const f=fixture({values:[credential,{...credential,credentialId:'replacement'}]});await f.initialize();assert.deepEqual(f.calls,['attach','read','read']);assert.match(f.state.error,/Account changed/);assert.equal(f.state.cloudAccount,null);
 });
 test('an owner epoch change on the second read stops verification',async()=>{
  let reads=0;const f=fixture({readChoice:context=>{if(++reads===2)context.epoch++;}});await f.initialize();assert.deepEqual(f.calls,['attach','read','read']);assert.equal(f.state.cloudAccount,null);assert.equal(f.context.active.kind,'resident');

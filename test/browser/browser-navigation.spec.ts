@@ -11,18 +11,18 @@ test('stopped loads and retired frame callbacks cannot commit or share an old ad
  await page.route('https://navigation.example/ready',route=>route.fulfill({contentType:'text/html',body:'<h1>Current response</h1>'}));
  await setup(page);
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const b=registerPlugin<any>('AlphaBrowser');await b.navigate({session:'navigation-test',id:'nav',url:'https://navigation.example/slow'});(window as any).retiredFrame=document.querySelector('[data-browser-surface=nav] iframe');await b.command({session:'navigation-test',id:'nav',command:'stop'});});
- await expect(page.getByText('Loading stopped. Reload to open this page.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Stopped',{exact:true})).toBeVisible();
  release();
  const stopped=await page.evaluate(async()=>{
   (window as any).retiredFrame.dispatchEvent(new Event('load'));const events=(window as any).navEvents,last=events.at(-1);
   const {registerPlugin}=await import('/src/platform-plugins.ts');let rejected=false;try{await registerPlugin<any>('AlphaBrowser').share({...last,url:'https://navigation.example/slow'});}catch{rejected=true;}
   return {last,rejected};
- });expect(stopped.last).toMatchObject({loading:false,committed:false,error:'Loading stopped. Reload to open this page.'});expect(stopped.rejected).toBe(true);
+ });expect(stopped.last).toMatchObject({loading:false,committed:false,error:'Stopped'});expect(stopped.rejected).toBe(true);
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaBrowser').navigate({session:'navigation-test',id:'nav',url:'https://navigation.example/ready'});(window as any).retiredFrame.dispatchEvent(new Event('load'));});
  await expect(page.frameLocator('[data-browser-surface=nav] iframe').getByRole('heading',{name:'Current response'})).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>(window as any).navEvents.at(-1).committed)).toBe(true);
  expect(await page.evaluate(()=>(window as any).navEvents.at(-1).url)).toBe('https://navigation.example/ready');
- await expect(page.getByText('Loading stopped. Reload to open this page.',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Stopped',{exact:true})).toHaveCount(0);
 });
 test('navigation within a sandboxed frame invalidates the host address and share authority',async({page})=>{
  await page.route('https://navigation.example/**',route=>route.fulfill({contentType:'text/html',body:route.request().url().endsWith('/first')?'<a href="https://navigation.example/second">Next page</a>':'<h1>Inner navigation</h1>'}));await setup(page);
@@ -50,8 +50,8 @@ test('rendered browser supports address navigation, Back, Forward, Reload and St
  await navigate('first');await expect(heading('first')).toBeVisible();await expect(page.getByRole('img',{name:'Secure connection',exact:true})).toHaveCount(0);await navigate('second');await expect(heading('second')).toBeVisible();
  await page.getByRole('button',{name:'Previous page',exact:true}).click();await expect(heading('first')).toBeVisible();await page.getByRole('button',{name:'Next page',exact:true}).click();await expect(heading('second')).toBeVisible();
  const before=second;await menu('Reload page');await expect.poll(()=>second).toBe(before+1);await expect(heading('second')).toBeVisible();
- await navigate('slow');await expect.poll(()=>slow).toBe(1);await menu('Stop loading');await expect(page.getByText('Loading stopped. Reload to open this page.',{exact:true})).toBeVisible();await expect(page.getByRole('img',{name:'Secure connection',exact:true})).toHaveCount(0);
- release();await menu('Reload page');await expect(heading('slow')).toBeVisible();await expect(page.getByText('Loading stopped. Reload to open this page.',{exact:true})).toHaveCount(0);
+ await navigate('slow');await expect.poll(()=>slow).toBe(1);await menu('Stop loading');await expect(page.getByText('Stopped',{exact:true})).toBeVisible();await expect(page.getByRole('img',{name:'Secure connection',exact:true})).toHaveCount(0);
+ release();await menu('Reload page');await expect(heading('slow')).toBeVisible();await expect(page.getByText('Stopped',{exact:true})).toHaveCount(0);
 });
 test('a file chosen in a framed page reaches that page only, never the host document, the network or the agent',async({page})=>{
  // Test-owned fixture page and a synthetic file; nothing is uploaded anywhere.

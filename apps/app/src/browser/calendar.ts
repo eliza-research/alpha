@@ -57,7 +57,7 @@ export class BrowserCalendar extends WebPlugin {
       if(identity&&(identity.sourceId!=='local'||identity.sourceRevision!==data.sourceRevision)||operation.type!=='calendar_create'&&operation.type!=='calendar_create_local'&&(!row||row.revision!==operation.target.revision))return {status:'conflict'};
       if(operation.type==='calendar_update'&&row!.allDay&&!wholeUtcDates(operation.fields))return {status:'unsupported'};
       const reviewed='fields' in operation?operation.fields:fields(row!);
-      const approved=await this.reviews.confirm(input.operationId,operation.type==='calendar_read_selected'?'Share calendar event with agent?':'Review calendar change',calendarAgentReviewText(operation.type==='calendar_create_local'?'calendar_create':operation.type,reviewed,source,row));
+      const approved=await this.reviews.confirm(input.operationId,operation.type==='calendar_read_selected'?'Share event?':'Review calendar change',calendarAgentReviewText(operation.type==='calendar_create_local'?'calendar_create':operation.type,reviewed,source,row));
       if(!approved||ticket.cancelled)return {status:'cancelled'};
       return await calendarDocument.edit(initial,current=>{
         if(ticket.cancelled||document.hidden)return {status:'cancelled'};
@@ -112,7 +112,7 @@ export class BrowserCalendar extends WebPlugin {
       const at=(row:EventRow)=>row.allDay?calendarInstant(new Date(row.begin).toISOString().slice(0,10)+'T00:00:00.000',timeZone,Number.NaN,'forward'):row.begin;
       candidates.sort((a,b)=>Math.max(now,at(a))-Math.max(now,at(b))||a.id.localeCompare(b.id));
       const row=candidates[0],result=validateCalendarResult(operation,{version:1,kind:operation.type,window,event:row?{title:row.title,start:new Date(row.begin).toISOString(),end:new Date(row.end).toISOString(),allDay:!!row.allDay,timing:row.allDay&&at(row)<now?'ongoing':'upcoming',timeZone}:null});
-      const approved=await this.reviews.confirm(input.operationId,'Share next Calendar event?',`Read ${source.name} from ${formatDeviceRecordDateTime(window.start,timeZone)} to ${formatDeviceRecordDateTime(window.end,timeZone)} (end excluded). Share only the next event title and times, or a complete no-events result for this thirty-local-day window. Other calendars, descriptions, locations and attendees are excluded.`);
+      const approved=await this.reviews.confirm(input.operationId,'Share next event?',`${source.name} · next 30 days\nShares next event only`);
       if(!approved||ticket.cancelled||document.hidden)return {status:'cancelled'};
       // A read has no outcome to recover, so it is not journaled and never writes the document.
       if(Intl.DateTimeFormat().resolvedOptions().timeZone!==timeZone||await calendarDocument.readRaw(ticket.controller.signal)!==raw)return {status:'conflict'};
@@ -145,14 +145,14 @@ export class BrowserCalendar extends WebPlugin {
     const data=await this.presentationState();if(!data)return {status:'cancelled'};
     const occurrence=calendarRecord(data.events,input.id),series=data.events.find(row=>row.id===occurrence?.seriesId);
     if(!occurrence||occurrence.revision!==input.revision||!series)throw Error('This series changed. Reopen it before editing.');
-    if(!await this.reviews.confirm('edit-series-'+series.id,'Edit repeating series',`${series.title}\nChanges apply to the repeating schedule. Existing occurrence edits are kept.`))return {status:'cancelled'};
+    if(!await this.reviews.confirm('edit-series-'+series.id,'Edit repeating series',`${series.title} · all repeats`))return {status:'cancelled'};
     return this.edit({id:series.id,revision:series.revision,people:input.people});
   }
   async removeSeries(input:{id:string;revision:string}){
     const data=await this.presentationState();if(!data)return {status:'cancelled'};
     const occurrence=calendarRecord(data.events,input.id),series=data.events.find(row=>row.id===occurrence?.seriesId);
     if(!occurrence||occurrence.revision!==input.revision||!series)return {status:'conflict'};
-    if(!await this.reviews.confirm('delete-series-'+series.id,'Delete repeating series',`${series.title}\nDelete every occurrence, including edited dates, after 10 seconds? You can Undo during that time.`))return {status:'cancelled'};
+    if(!await this.reviews.confirm('delete-series-'+series.id,'Delete series?',`${series.title}`))return {status:'cancelled'};
     return calendarDocument.edit(initial,current=>{const row=current.events.find(row=>row.id===series.id),selected=calendarRecord(current.events,input.id);if(!row||row.revision!==series.revision||selected?.revision!==input.revision)return {status:'conflict'};const deletion=stageCalendarDeletion(current,row,'series','manual:'+current.sourceRevision);return {status:'queued',deletion};});
   }
   async editResponse(input:{id:string;revision:string;person:string;name:string}){
@@ -217,7 +217,7 @@ export class BrowserCalendar extends WebPlugin {
     const selected=calendarSource(input.source),op=parseWorkflowRead(input.operation);if(op.type!=='read_calendar_range'||op.calendarIds.length!==1||op.calendarIds[0]!==source.id||selected.sourceId!==source.id)throw Error('Calendar range source changed');
     const raw=await calendarDocument.readRaw(),data:State=raw===null?initial():JSON.parse(raw);
     if(selected.sourceRevision!==data.sourceRevision)return {status:'changed',events:[]};
-    const approved=await this.reviews.confirm(input.operationId,'Share Calendar agenda?',`Read ${source.name} from ${formatDeviceRecordDateTime(op.start,op.timeZone)} to ${formatDeviceRecordDateTime(op.end,op.timeZone)} (end excluded). Share titles and times for this range only. Other calendars, event descriptions, locations and attendees are excluded.`);
+    const approved=await this.reviews.confirm(input.operationId,'Share Calendar agenda?',`${source.name} · ${formatDeviceRecordDateTime(op.start,op.timeZone)}–${formatDeviceRecordDateTime(op.end,op.timeZone)}\nShares titles and times`);
     if(!approved||document.hidden)return {status:'cancelled',events:[]};
     if(await calendarDocument.readRaw()!==raw)return {status:'changed',events:[]};
     const result=await this.readWorkflowRange({calendarIds:op.calendarIds,start:op.start,end:op.end,timeZone:op.timeZone,maximumEvents:op.maximumEvents});
@@ -269,7 +269,7 @@ export class BrowserCalendar extends WebPlugin {
     const reviewed=calendarRecord(state.events,input.id);
     if(!reviewed||reviewed.calendarId!==input.calendarId||reviewed.revision!==input.revision||!matches(reviewed,input.expected))return {status:'conflict'};
     const when=reviewed.allDay?new Date(reviewed.begin).toLocaleDateString(undefined,{timeZone:'UTC',weekday:'short',year:'numeric',month:'short',day:'numeric'})+' · All day':`${new Date(reviewed.begin).toLocaleString(undefined,{weekday:'short',year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})} – ${new Date(reviewed.end).toLocaleString(undefined,{weekday:'short',year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}`;
-    if(!await this.reviews.confirm('delete-event','Delete calendar event?',`${reviewed.title||'Untitled event'}\n${source.name}\n${when}\n\n${reviewed.seriesId?'Delete this one occurrence? Other dates in the series stay.':'Delete this one event?'} Deletion waits 10 seconds. You can Undo during that time.`,'Delete event'))return {status:'cancelled'};
+    if(!await this.reviews.confirm('delete-event','Delete calendar event?',`${reviewed.title||'Untitled event'}\n${source.name}\n${when}${reviewed.seriesId?'\nThis occurrence only':''}`,'Delete event'))return {status:'cancelled'};
     return calendarDocument.edit(initial,data=>{const row=calendarRecord(data.events,input.id);if(!row||row.calendarId!==input.calendarId||row.revision!==input.revision||!matches(row,input.expected))return {status:'conflict'};const deletion=stageCalendarDeletion(data,row,'event','manual:'+data.sourceRevision);return {status:'queued',deletion};});}
   async deletionReceipt(id:string){const data=await calendarDocument.read(initial);return journalEntry(data.deletions,id)||null;}
   async pendingDeletions(){const data=await calendarDocument.read(initial),clock=rendererDeletionClock();return Object.values(data.deletions||{}).filter(e=>!e.acknowledged&&['queued','paused','unknown','dispatching'].includes(e.phase)&&browserDeletionOwnerVisible(e.owner)).map(e=>({...e,kind:'calendar',window:e.phase==='queued'?deletionWindow(e.deadline,clock):undefined}));}

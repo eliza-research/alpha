@@ -83,16 +83,16 @@ const aborted = (error: unknown) => (error as { name?: string })?.name === 'Abor
 /** One short line, only for errors the user can act on. */
 export function noteRecorderError(reason: string | undefined): string {
   if (reason === 'storage') return 'Storage is full.';
-  if (reason === 'recovery') return 'Recording recovery is unavailable. Your audio is kept.';
-  if (reason === 'permission') return 'Allow the microphone in Settings.';
-  if (reason === 'call') return 'Paused for a call.';
-  if (reason === 'transcription') return 'Transcription stopped. The audio is kept.';
-  if (reason === 'unavailable') return 'No transcription is available. The audio is kept.';
-  if (reason === 'sign-in') return 'Sign in to transcribe. The audio is kept.';
-  if (reason === 'save') return 'Couldn’t save. Try again.';
-  if (reason === 'owner') return 'Return to the original Notes account. Your recording is kept.';
-  if (reason === 'media') return 'Audio couldn’t stop. Restart Alpha before recording.';
-  if (reason === 'capture') return 'The microphone isn’t available.';
+  if (reason === 'recovery') return 'Recovery unavailable';
+  if (reason === 'permission') return 'Mic off';
+  if (reason === 'call') return 'Paused';
+  if (reason === 'transcription') return 'Transcript stopped';
+  if (reason === 'unavailable') return 'No transcript';
+  if (reason === 'sign-in') return 'Sign in to transcribe';
+  if (reason === 'save') return 'Not saved';
+  if (reason === 'owner') return 'Wrong account';
+  if (reason === 'media') return 'Restart needed';
+  if (reason === 'capture') return 'Mic unavailable';
   return 'The microphone stopped.';
 }
 /** Why the microphone did not start or resume, as a noteRecorderError reason. */

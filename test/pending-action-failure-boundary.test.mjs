@@ -104,7 +104,7 @@ function visibleFailureAndNotice(r){
 for(const kind of ['handler_error','fatal_error','unknown_failure'])test(`${kind}: failure remains interrupted while unsupported notice is visible once`,async()=>{
  const r=await finish({kind});noEffects(r);const view=visibleFailureAndNotice(r);
  // A known kind says what happened (handler_error: part may be done); an unknown kind stays generic.
- assert.match(view.failures()[0].text,kind==='handler_error'?/Part of it may already be done/:/Sorry, I couldn’t finish that reply/);
+ assert.match(view.failures()[0].text,kind==='handler_error'?/Partly done/:/Sorry, I couldn’t finish that reply/);
  assert.doesNotMatch(view.failures()[0].text,/Pending phone actions are available|succeeded|created/i);
  assert.equal(r.error.planAction,undefined);assert.equal(r.error.userMessageId,userMessageId);
  assert.equal(r.state.lastServiceLimit.kind,'prior-limit','failure never clears existing limit');
@@ -135,7 +135,7 @@ test('provider-less resident keeps its provider check card and notice without se
 });
 for(const kind of ['handler_error','provider_issue','insufficient_credits'])test(`${kind}: applied-effect failure and notice never claim nothing happened`,async()=>{
  const r=await finish({kind,effectApplied:true,account:true,limit:kind==='insufficient_credits'?{kind:'billing-refused'}:null});noEffects(r);
- const view=visibleFailureAndNotice(r);assert.match(view.failures()[0].text,/That went through/);
+ const view=visibleFailureAndNotice(r);assert.match(view.failures()[0].text,/^Done/);
  assert.doesNotMatch(JSON.stringify(view.state),/Nothing has been approved or performed automatically/);
  if(kind==='insufficient_credits'){assert.equal(r.error.planAction,'funding');assert.equal(r.state.fundingRefused,true);}
 });

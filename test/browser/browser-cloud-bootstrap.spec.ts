@@ -39,7 +39,7 @@ test('a changed credential during optional restore cannot verify or publish the 
   operations.push(data.operation);expect(data.operation).toBe('secureRead');const suffix=++reads===1?'11111111-1111-4111-8111-111111111111':'22222222-2222-4222-8222-222222222222';await route.fulfill({json:{value:JSON.stringify({credentialReference:'browser-cloud-reference:'+suffix,credentialId:suffix})}});});
  await page.goto('/');const snapshot=await page.evaluate(async()=>{const c=(await import('/src/runtime/connection-ui.tsx')).connectionController;await c.initialize();return {account:!!c.getSnapshot().cloudAccount,error:c.getSnapshot().error};});
  expect(snapshot.account).toBe(false);expect(snapshot.error).toContain('Cloud account changed');
- const signIn=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});await expect(signIn).toBeVisible();await expect(signIn.getByRole('alert')).toContainText('Cloud account changed');
+ const signIn=page.getByRole('dialog',{name:'Alpha',exact:true});await expect(signIn).toBeVisible();await expect(signIn.getByRole('alert')).toContainText('Cloud account changed');
  expect(await page.evaluate(async()=>!!(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().cloudAccount)).toBe(false);
  expect(operations).toEqual(['secureRead','secureRead']);expect(readiness.length).toBeLessThanOrEqual(1);
 });

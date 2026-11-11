@@ -52,7 +52,7 @@ const off=(Date.UTC(year,2,secondSunday)-Date.UTC(today.getFullYear(),today.getM
 const form=(time: number)=>({title:'Disposable DST flow',notes:'',off,t:time,cal:'alpha-reminders',repeat:'none',alert:0});
 state.form=form(2.5);await save();
 assert.equal(writes.length,0,'Nonexistent local time must not reach native scheduling or its permission request');
-assert.ok(toasts.some(t=>t.includes('Nothing was saved')));
+assert.ok(toasts.includes('Time skipped (DST)'));
 state.form=form(3.5);await save();
 assert.equal(writes.length,1);const saved=new Date(writes[0].at);assert.equal(saved.getHours(),3);assert.equal(saved.getMinutes(),30);assert.equal(saved.getDate(),secondSunday);
 owner.componentWillUnmount();assert.equal(subscriptions,1);assert.equal(unsubscriptions,1,'Native chooser retry subscription must be released on teardown');

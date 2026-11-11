@@ -42,7 +42,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
   };
   const marker = '__native_selected_document';
   let closeQuestion:(()=>void)|undefined;
-  const release = (id: string) => { void DailyApps.forgetSelected({ selectionId: id }).catch(() => selectedApi?.toast("Can't release this file. Reopen Files.")); };
+  const release = (id: string) => { void DailyApps.forgetSelected({ selectionId: id }).catch(() => selectedApi?.toast('Reopen Files')); };
   /** Closing keeps a Recent selection's grant so Recent can reopen it; Forget
    * (or eviction from Recent) is what releases it. */
   const clear = (forget = false) => {
@@ -66,8 +66,8 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     if (!selectionId||!active()) return;
     try {
       const result=await (download?DailyApps.shareSelected({selectionId}):DailyApps.openSelected({selectionId}));
-      if(active()&&result.status!=='opened')api.toast(result.message||'This file could not be opened.');
-    } catch { if(active())api.toast('Document unavailable. Select it again.'); }
+      if(active()&&result.status!=='opened')api.toast(result.message||'Unavailable');
+    } catch { if(active())api.toast('Unavailable'); }
   };
   let sharing = false;
   const share = async (api: Bag) => {
@@ -76,8 +76,8 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     sharing = true;
     try {
       const result = await DailyApps.shareSelected({ selectionId: id });
-      if (result.status !== 'opened') api.toast(result.message || 'This item could not be shared. Select it again.');
-    } catch { api.toast('Sharing could not open. Select this item again.'); }
+      if (result.status !== 'opened') api.toast(result.message || 'Share failed');
+    } catch { api.toast('Share failed'); }
     finally { sharing = false; }
   };
   const pdfPage = async (page: number, api: Bag) => {
@@ -91,14 +91,14 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
         current = {...selected, text:response.text, pdf: {page:response.page!, count:response.pageCount!, image:response.imageUri!.startsWith('blob:') ? response.imageUri! : Capacitor.convertFileSrc(response.imageUri!) + '?page=' + page + '&v=' + Date.now()}, status: response.message || 'PDF loaded'};
       } else { current = {...selected, pdf: undefined, status: response.message || 'PDF preview unavailable'}; }
       refresh();
-    } catch { if(current === selected){current={...selected,pdf:undefined,status:'PDF preview unavailable. Select this document again.'};refresh();} }
+    } catch { if(current === selected){current={...selected,pdf:undefined,status:'No preview'};refresh();} }
     finally { if(pdfRequest === request)pdfBusySelection = undefined; }
   };
   const rename = async (api: Bag) => {
     const selected = current; if(!selected || renameBusy)return;
-    if(pdfBusySelection === selected.result.selectionId)return api.toast('Wait for the PDF to load.');
+    if(pdfBusySelection === selected.result.selectionId)return api.toast('Still loading');
     const name = String(api.get('files').rn || '').trim();
-    if(!name)return api.toast('Enter a file name.');
+    if(!name)return api.toast('Name required');
     renameBusy = true;
     try {
       const response = await DailyApps.renameSelected({selectionId:selected.result.selectionId!,name});
@@ -107,7 +107,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
         window.dispatchEvent(new CustomEvent('alpha-selected-context', {detail:null}));
         // Native already forgot the old grant: drop its Recent row and restore marker without releasing it again.
         const old=filesIndex.list().find(row=>row.selectionId===selected.result.selectionId);if(old)filesIndex.remove(old.key);filesIndex.setOpen(null);
-        current={result:response,status:response.message || 'Select the renamed file to continue.',epoch:++epoch};
+        current={result:response,status:response.message || 'Reselect file',epoch:++epoch};
         api.set({renaming:false});refresh();return;
       }
       if(response.status !== 'selected'){api.toast(response.message || 'Rename unavailable');return;}
@@ -119,7 +119,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       if(response.selectionId)filesIndex.setOpen(response.selectionId);
       current={...selected,result:response,pdf:undefined,renames:(selected.renames||0)+1};api.set({renaming:false});publish();refresh();
       if(response.mimeType==='application/pdf')await pdfPage(selected.pdf?.page || 0,api);
-    } catch {if(current === selected)api.toast('Rename not confirmed. Refresh first.');}
+    } catch {if(current === selected)api.toast('Unconfirmed');}
     finally {renameBusy=false;}
   };
   for (const module of ['files', 'photos']) {
@@ -162,7 +162,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
         for (let i = 0; i < rows.length; i += 8) pages.push({ first: true, rest: false, heading: i ? name + ' (continued)' : name, rows: rows.slice(i, i + 8), lines: [], num: '' });
         data.isPreview = true;
         data.pv = {
-          needsReselect:selected.result.status === 'renamed-reselect', reselect:async()=>{try{const result=await DailyApps.perform({action:'files'});if(current===selected&&result.status==='selected')await accept('files',result,api);}catch{api.toast('File picker unavailable. Try again.');}},
+          needsReselect:selected.result.status === 'renamed-reselect', reselect:async()=>{try{const result=await DailyApps.perform({action:'files'});if(current===selected&&result.status==='selected')await accept('files',result,api);}catch{api.toast('Picker failed');}},
           canEmail:typeof views.inbox.fileEmailTarget==='function'&&selected.result.status==='selected'&&['text/plain','application/pdf','image/png','image/jpeg','image/webp'].includes(mime),email,
           name, nativeSelectionId:selected.result.selectionId, base: name, ext: '', canForget:true, forget, meta: mime + ' · selected on this device', d: '',
           isPages: !!selected.pdf||rows.length>0, pages: selected.pdf ? [] : pages, isPdf: !!selected.pdf, pdfImage: selected.pdf?.image || '', pdfLabel: selected.pdf ? 'Page ' + (selected.pdf.page+1) + ' of ' + selected.pdf.count : '', pdfPrevious: () => selected.pdf && selected.pdf.page > 0 ? pdfPage(selected.pdf.page-1,api) : undefined, pdfNext: () => selected.pdf && selected.pdf.page+1 < selected.pdf.count ? pdfPage(selected.pdf.page+1,api) : undefined, pdfHasPrevious: !!selected.pdf && selected.pdf.page > 0, pdfHasNext: !!selected.pdf && selected.pdf.page+1 < selected.pdf.count, paper: '#FFFFFF', isPhoto: false,
@@ -175,13 +175,13 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
           isReceipt: false, isAudio: false, isArchive: false, receipt: null, contents: [],
           renaming: !!st.renaming, notRenaming: !st.renaming, rn: typeof st.rn === 'string' ? st.rn : name, onRn: (event: Event) => api.set({rn:(event.target as HTMLInputElement).value}), saveRn: () => rename(api), rnKey: (event: KeyboardEvent) => {if(event.key === 'Enter'){event.preventDefault();void rename(api);}if(event.key === 'Escape')api.set({renaming:false});}, asking: false, asked: false, canAsk: true,
           askLabel: 'Ask Alpha', ask, close,
-          startRename: () => selected.result.status === 'renamed-reselect' ? api.toast('Select the renamed file before making another change.') : api.set({renaming:true,rn:name}),
-          share: () => share(api), move: () => api.toast("This file can't be moved here."), del: () => api.toast('Delete in the Android document app.'),
+          startRename: () => selected.result.status === 'renamed-reselect' ? api.toast('Reselect file') : api.set({renaming:true,rn:name}),
+          share: () => share(api), move: () => api.toast('Can’t move here'), del: () => api.toast('Delete in Android'),
         };
       } else if (image) {
         data.viewing = true; data.viewEmpty = false; data.editing = false;
-        data.v = { bg: `url(${JSON.stringify(image)}) center / contain no-repeat`, tf: '', flt: '', slide: '', day: name, sub: 'Selected on this device', chromeOp: 1, chromePE: 'auto', favIcon: '', favLabel: 'Open in Android', vid: false, playBtn: false, playing: false, notSecure: true,
-          tap: () => {}, down: () => {}, up: () => {}, share: () => share(api), fav: () => open(api,selected), edit: () => open(api,selected), del: () => api.toast('Delete in the Android photo app.'), info: () => api.toast(name + ' · ' + mime), ask, close };
+        data.v = { bg: `url(${JSON.stringify(image)}) center / contain no-repeat`, tf: '', flt: '', slide: '', day: name, sub: '', chromeOp: 1, chromePE: 'auto', favIcon: '', favLabel: 'Open in Android', vid: false, playBtn: false, playing: false, notSecure: true,
+          tap: () => {}, down: () => {}, up: () => {}, share: () => share(api), fav: () => open(api,selected), edit: () => open(api,selected), del: () => api.toast('Delete in Android'), info: () => api.toast(name + ' · ' + mime), ask, close };
       }
       return data;
     };
@@ -206,12 +206,12 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     try {
       const response = await DailyApps.readSelected({ selectionId: result.selectionId });
       if (epoch !== requestEpoch || current?.result.selectionId !== result.selectionId) return;
-      current = { ...current, text: response.status === 'read' ? response.text : undefined, status: response.message || (response.text !== undefined ? 'Loaded' : 'Preview unsupported. Open in Android to view this document.') };
+      current = { ...current, text: response.status === 'read' ? response.text : undefined, status: response.message || (response.text !== undefined ? 'Loaded' : 'No preview') };
       // Native currently returns status "read"; use only a successful text result.
       refresh();
     } catch {
       if (epoch !== requestEpoch || !current) return;
-      current = { ...current, text: undefined, status: 'Could not read this document. Select it again or open in Android.' }; refresh();
+      current = { ...current, text: undefined, status: 'Unreadable' }; refresh();
     }
   }
   Component.prototype.filesAgent=installFilesBrowserAdapter(views.files as Parameters<typeof installFilesBrowserAdapter>[0],accept,clear,{

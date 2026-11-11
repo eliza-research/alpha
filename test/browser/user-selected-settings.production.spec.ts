@@ -19,13 +19,13 @@ for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
   for(const label of ['Account','General','Privacy','Apps','About'])await expect(root.getByRole('button',{name:label,exact:true})).toBeVisible();
   await expect(root.getByText('Voice & personality',{exact:true})).toHaveCount(0);
   await root.getByRole('button',{name:'Account',exact:true}).click();
-  const signIn=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
+  const signIn=page.getByRole('dialog',{name:'Alpha',exact:true});
   await expect(signIn).toBeVisible();
   await expect(signIn.getByRole('textbox')).toHaveCount(0);
   await signIn.getByRole('button',{name:'Back',exact:true}).click();
   const progress=await page.evaluate(()=>localStorage.getItem('alpha:startup-permission-walkthrough:v1'));
   await root.getByRole('button',{name:'Privacy',exact:true}).click();
-  await panel('Privacy').getByRole('button',{name:'App permissions',exact:true}).click();
+  await panel('Privacy').getByRole('button',{name:'Permissions',exact:true}).click();
   await expect(panel('App permissions')).toBeVisible();
   await expect(page.locator('.alpha-startup-permissions')).toHaveCount(0);
   await expect(panel('App permissions').getByText('Camera',{exact:true})).toBeVisible();
@@ -34,7 +34,7 @@ for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
   await page.getByRole('button',{name:'Back to Privacy',exact:true}).click();
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await root.getByRole('button',{name:'About',exact:true}).click();
-  await panel('About').getByRole('button',{name:'Open source licenses',exact:true}).click();
+  await panel('About').getByRole('button',{name:'Licenses',exact:true}).click();
   const notices=await (await page.request.get('/licenses/third-party-notices.json')).json();
   const notice=notices.find((item:{name:string})=>item.name==='lucide-react');
   expect(typeof notice?.text).toBe('string');expect(notice.text.length).toBeGreaterThan(100);

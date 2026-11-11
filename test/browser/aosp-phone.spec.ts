@@ -41,7 +41,7 @@ test('the image shows recents only after explicit access and dials by handoff',a
  await expect(page.getByRole('button',{name:'Allow call history'})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).telephonyCalls)).not.toContain('listRecentCalls');
  await page.getByRole('button',{name:'Allow call history'}).click();
- const row=page.getByRole('button',{name:'Open Synthetic Caller in phone app'});
+ const row=page.getByRole('button',{name:'Call Synthetic Caller'});
  await expect(row).toBeVisible();
  await row.click();
  await expect(page.getByText(/Place the call there/).first()).toBeVisible();

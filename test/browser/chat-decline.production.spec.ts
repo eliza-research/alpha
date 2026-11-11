@@ -156,7 +156,7 @@ test('Activity reconciles a reconciliation-required entry as not applied', async
   // when the owner asks, before any reconciliation decision is available.
   await app.getByRole('button', { name: 'Refresh actions', exact: true }).click();
   await expect(app.getByRole('button', { name: 'Refresh actions', exact: true })).toBeVisible();
-  await expect(app.getByText('Needs your review · not dispatched by this phone', { exact: true })).toBeVisible();
+  await expect(app.getByText('Review', { exact: true })).toBeVisible();
   await expect(app.getByRole('button', { name: 'I verified it happened', exact: true })).toBeVisible();
   await app.getByRole('button', { name: 'I verified it did not happen', exact: true }).click();
   await expect.poll(async () => (await fixture(page)).states).toEqual([['fixture-reconcile', 'not_applied']]);

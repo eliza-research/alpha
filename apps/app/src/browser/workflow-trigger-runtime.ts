@@ -82,7 +82,7 @@ export class WorkflowTriggerRuntime {
    }
    // One flow that cannot be checked is reported without stopping the others.
    const failure=detected.errors[0]?.message||'';if(failure!==this.report){this.report=failure;api.setView('workflows',{localTriggerError:failure});}
-  }catch(error){this.blocked=true;const message=error instanceof Error?error.message:'Workflow triggers could not be checked.';if(message!==this.report){this.report=message;api.setView('workflows',{localTriggerError:message});}}
+  }catch(error){this.blocked=true;const message=error instanceof Error?error.message:'Couldn’t check triggers';if(message!==this.report){this.report=message;api.setView('workflows',{localTriggerError:message});}}
   finally{this.scanning=false;}}
   if(!this.stopped&&triggerTickPlan({foreground:foreground(),scanBlocked:this.blocked,dispatchHeld:this.held}).dispatch&&this.stored(api,'workflows').triggerState?.queue?.length){
    const state=app(api,'workflows'),job=(state.triggerState?.queue||[]).find((job:TriggerJob)=>{const flow=state.flows.find((flow:Bag)=>flow.on&&String(flow.id)===job.flowId&&triggerDefinition(flow)===job.definition);return flow&&!this.busy(job.flowId)&&!(workflowUsesAgent(flow)&&api.localWorkflowBusy?.())&&(!workflowNeedsReview(flow,api.localWorkflowReady?.())||api.isActive()&&String(state.open)===job.flowId&&!document.querySelector('dialog[open]'));});

@@ -112,7 +112,7 @@ public class AllViewAgentContextInstrumentedTest {
    assertEquals("Alpha context fixture "+config.getString("marker"),config.getString("conversationTitle"));
    WebViewTestDriver.evaluate(AppNavigation.request("Settings"));until(AppNavigation.selected("Settings"),30000);until("window.__alphaTestNavigation?.status==='complete'",15000);label("Agent connection");
    until("document.querySelector('.alpha-connection-scrim')",15000);
-   String history="[...document.querySelectorAll('.alpha-connection summary')].find(e=>e.textContent==='Conversation history')";
+   String history="[...document.querySelectorAll('.alpha-connection summary')].find(e=>e.textContent==='History')";
    until(history,15000);WebViewTestDriver.evaluate("("+history+").click()");click("Load conversations");
    String restore="[...document.querySelectorAll('.alpha-connection-agent')].find(e=>e.querySelector('strong')?.textContent==="+JSONObject.quote(config.getString("conversationTitle"))+")?.querySelector('button')";
    until(restore+" && !("+restore+").disabled",30000);WebViewTestDriver.evaluate("("+restore+").click()");

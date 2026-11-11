@@ -48,7 +48,7 @@ test('a destination that changed after the review opened is refused and shown ag
   t.row('reply-1').useInEmail(); t.inbox.revision = 2;
   t.render().emailUse.confirm();
   assert.equal(t.inserted.length, 0); assert.equal(t.render().emailUseOpen, true);
-  assert.match(t.render().emailUse.notice, /changed since you opened this review.*Nothing was added/);
+  assert.match(t.render().emailUse.notice, /^Changed$/);
   // The refreshed review can be confirmed against the current destination.
   t.render().emailUse.confirm();
   assert.deepEqual(plain(t.inserted), [{ text: t.reply.text, append: false }]);
@@ -58,7 +58,7 @@ test('after a Cloud account change, confirming again inserts into the refreshed 
   const t = await boot();
   t.row('reply-1').useInEmail(); t.world.cloud = 'cloud-2'; t.inbox.revision = 2;
   t.render().emailUse.confirm();
-  assert.equal(t.inserted.length, 0); assert.match(t.render().emailUse.notice, /Cloud account changed.*Nothing was added/);
+  assert.equal(t.inserted.length, 0); assert.match(t.render().emailUse.notice, /^Account changed$/);
   t.render().emailUse.confirm();
   assert.deepEqual(plain(t.inserted), [{ text: t.reply.text, append: false }]);
   assert.equal(t.render().emailUseOpen, false);
@@ -86,7 +86,7 @@ test('a repeated callback cannot confirm a refreshed destination before it is re
   retired.confirm();
   retired.confirm();
   assert.equal(t.inserted.length, 0);
-  assert.match(t.render().emailUse.notice, /changed since you opened this review/);
+  assert.match(t.render().emailUse.notice, /^Changed$/);
   t.render().emailUse.confirm();
   assert.equal(t.inserted.length, 1);
 });
@@ -143,7 +143,7 @@ test('a changed agent, edited reply, Cloud account, chooser or hidden app insert
     review.confirm();
     assert.equal(t.inserted.length, 0, 'nothing inserted after: ' + change);
     assert.equal(t.render().emailUseOpen, expectOpen);
-    if (expectOpen) assert.match(t.render().emailUse.notice, /Nothing was added/);
+    if (expectOpen) assert.match(t.render().emailUse.notice, /^(Inbox closed|Account changed|Changed)$/);
   }
 });
 
@@ -208,7 +208,7 @@ test('destination wording covers a new email and an open draft', async () => {
     { account: 'From me@example.invalid', destination: 'A new email. You add the recipients and subject.', effect: 'A local draft opens with this text for you to edit.', confirmLabel: 'Insert into draft', blocked: false });
   assert.equal(describe({ ready: true, kind: 'draft', append: false, reply: false, subject: '', to: [], account: 'me@example.invalid', token: 't' }).destination, 'Your open email draft · (no subject) · to no recipients yet');
   assert.equal(describe({ ready: true, kind: 'draft', append: true, reply: true, subject: 'Re: Plan', to: ['a@example.invalid', 'b@example.invalid'], account: 'me@example.invalid', token: 't' }).destination, 'Your open reply draft · Re: Plan · to a@example.invalid, b@example.invalid');
-  assert.equal(describe({ ready: false, reason: 'Connect a Gmail account in Inbox first.', token: '' }).blocked, true);
+  assert.equal(describe({ ready: false, reason: 'Connect Gmail', token: '' }).blocked, true);
   // A draft that was set aside is named as off screen; over another message the review says it is not a reply to it.
   const aside = { ready: true, kind: 'draft', append: true, aside: true, elsewhere: false, reply: true, subject: 'Re: Plan', to: ['a@example.invalid'], account: 'me@example.invalid', token: 't' };
   assert.equal(describe(aside).destination, 'Your unfinished reply draft (not on screen) · Re: Plan · to a@example.invalid');

@@ -278,7 +278,7 @@ test('loop A on Android: the resident agent answers, the conversation follows ac
   await expect(stop).toBeVisible();
   await stop.click();
   await expect(stop).toHaveCount(0);
-  await expect(page.locator('[data-alpha-layer="conversation"]').getByText('This reply may still finish. It will appear here if it does.', { exact: true })).toHaveCount(1);
+  await expect(page.locator('[data-alpha-layer="conversation"]').getByText('May still finish', { exact: true })).toHaveCount(1);
   await expect(message).toHaveValue('');
   await expect.poll(() => native(page, f => f.cancelled)).toBeGreaterThan(0);
   expect(await native(page, f => f.posts)).toEqual(['Flag-off first request', 'Flag-off notes request', 'Flag-off browser request', 'Flag-off stopped request']);
@@ -305,7 +305,7 @@ test('loop A on Android: the resident agent answers, the conversation follows ac
   // The connection names the agent and where it runs, and no credential is rendered anywhere.
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   const account = await openYourAgent(page);
-  await expect(account).toContainText('Running on this device');
+  await expect(account).toContainText('Running');
   await expect(account.getByText('Eliza Cloud',{exact:true})).toBeVisible();
   await account.getByRole('button',{name:'Back to About',exact:true}).click();
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
@@ -326,18 +326,18 @@ for (const outcome of ['opened', 'unavailable'] as const) {
     await button(page, 'Workflows').click();
     await button(page, 'New automation').click(); await button(page, 'Clock alarms').click();
     const clock = page.getByRole('dialog', { name: 'Clock alarms', exact: true });
-    await expect(clock).toContainText('Alarms are set in your Clock app. Check there to confirm.');
+    await expect(clock).toContainText('Alarms');
     // The browser build's own alarm list (Saved alarms, Save alarm, Ringing) does not exist on Android.
     await expect(clock.getByText('Saved alarms', { exact: true })).toHaveCount(0);
     await expect(clock.getByRole('button', { name: 'Save alarm', exact: true })).toHaveCount(0);
     await clock.getByLabel('Alarm time', { exact: true }).fill('07:15');
     await clock.getByRole('textbox', { name: 'Alarm label' }).fill('Flag-off alarm');
     await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
-    await expect(clock).toContainText('Ask Clock to set an alarm at 07:15 named “Flag-off alarm”, using the phone’s local time. Review the alarm in Clock.');
+    await expect(clock).toContainText('07:15 · Flag-off alarm');
     // Review alone sends nothing.
     expect(await native(page, f => f.clock)).toEqual([]);
     const confirm = clock.getByRole('button', { name: 'Confirm Clock request', exact: true });
-    await expect(confirm).toHaveText('Continue to Clock');
+    await expect(confirm).toHaveText('Open Clock');
     await confirm.click();
     await expect(clock).toContainText(outcome === 'opened' ? 'Approved Clock handoff sent. Check Clock; Alpha cannot confirm an alarm was changed.' : 'No Clock app can handle this request.');
     const sent = await native(page, f => f.clock) as Array<Record<string, unknown>>;
@@ -363,7 +363,7 @@ test('loop C on Android: snooze and dismiss are reviewed Clock requests, one han
   await expect(clock.getByLabel('Alarm time', { exact: true })).toHaveCount(0);
   await clock.getByLabel('Snooze minutes', { exact: true }).fill('7');
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
-  await expect(clock).toContainText('Ask Clock to snooze ringing alarms, requesting 7 minutes. Clock may use its default duration and snooze all ringing alarms. If nothing is ringing, Clock may do nothing.');
+  await expect(clock).toContainText('Snooze 7 min');
   expect(await native(page, f => f.clock)).toEqual([]);
   await confirm.dblclick();
   await expect(clock).toContainText('Approved Clock handoff sent. Check Clock; Alpha cannot confirm an alarm was changed.');
@@ -374,7 +374,7 @@ test('loop C on Android: snooze and dismiss are reviewed Clock requests, one han
   await expect(confirm).toHaveCount(0);
   await expect(clock.getByLabel('Snooze minutes', { exact: true })).toHaveCount(0);
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
-  await expect(clock).toContainText('Ask Clock to dismiss the active alarm. If there is more than one, Clock may ask you to choose. A one-time alarm is disabled; a repeated alarm skips its upcoming occurrence.');
+  await expect(clock).toContainText('Dismiss alarm');
   expect(await native(page, f => f.clock.length)).toBe(1);
   await confirm.click();
   await expect.poll(() => native(page, f => f.clock.length)).toBe(2);
@@ -404,7 +404,7 @@ test('loop C on Android: a cancelled review sends nothing, and an unknown result
   await expect.poll(() => native(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 30_000 });
   clock = await openClock();
-  await expect(clock).toContainText('Previous Clock result is unknown. Check Clock before repeating a request.');
+  await expect(clock).toContainText('Unknown');
   expect(await native(page, f => f.clock)).toEqual([]);
 });
 
@@ -424,7 +424,7 @@ test('loop C on Android: a phone time zone that changes after review retires the
   await (await context.newCDPSession(page)).send('Emulation.setTimezoneOverride', { timezoneId: before === 'Asia/Tokyo' ? 'Europe/Paris' : 'Asia/Tokyo' });
   expect(await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone)).not.toBe(before);
   await confirm.click();
-  await expect(clock).toContainText('Phone time zone changed. Review the Clock request again.');
+  await expect(clock).toContainText('Time zone changed');
   await expect(confirm).toHaveCount(0);
   expect(await native(page, f => f.clock)).toEqual([]);
 });
@@ -435,7 +435,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   await page.addInitScript(offline);
   await page.goto('/');
   await button(page, 'Calendar').click();
-  await expect(page.getByRole('region', {name: 'Calendar', exact: true})).toContainText('Connect to view Agent Calendar.');
+  await expect(page.getByRole('region', {name: 'Calendar', exact: true})).toContainText('Connect');
   await button(page, 'New event').click();
   await expect(page.getByRole('textbox', {name: 'Title', exact: true})).toHaveCount(0);
   await expect(button(page, 'Save event')).toHaveCount(0);
@@ -474,7 +474,7 @@ test('loops D and F in the web build: digests and mail name the missing account 
   await openRetainedDigests(page);
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   await expect(digests).not.toContainText('Choose where your agent runs');
-  await expect(digests).toContainText('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.');
+  await expect(digests).toContainText('Use on phone');
   await expect(digests).not.toContainText(/remote agent/i);
   // None of the development scheduler exists: no snapshot, no schedule review, no "runs while open".
   await expect(digests.getByText('Share a snapshot', { exact: true })).toHaveCount(0);
@@ -484,7 +484,7 @@ test('loops D and F in the web build: digests and mail name the missing account 
   await button(page, 'Close scheduled digests').click();
   await page.goto('/');
   await button(page, 'Inbox').click();
-  await expect(page.locator('[data-screen]')).toContainText('Connect Eliza Cloud to use Gmail');
+  await expect(page.locator('[data-screen]')).toContainText('Connect Eliza Cloud');
   // No development mailbox: no fixture message, and Compose does not open a local "Sent locally" path.
   await expect(page.getByText('Dinner Friday?', { exact: true })).toHaveCount(0);
   await expect(button(page, 'Compose')).toBeDisabled();
@@ -559,7 +559,7 @@ test('loop J01 in the web build: a scanned event remains in review without an au
   // No agent Calendar source exists in this web session. Keep both the OCR
   // text and the user's edited fields instead of opening an unusable form.
   await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText('Calendar could not open. Your draft remains here.');
+  await expect(dialog).toContainText('Calendar unavailable');
   await expect(text).toHaveValue(recognized);
   await expect(dialog.getByLabel('Event title', { exact: true })).toHaveValue('Reviewed studio visit');
   await expect(button(page, 'Save event')).toHaveCount(0);
@@ -588,7 +588,7 @@ test('loop J03 in the web build: a chosen document can be reviewed for a questio
   await expect(question.getByRole('textbox', { name: 'Content excerpt' })).toHaveValue('Public fact: twelve raised beds.');
   await question.getByRole('button', { name: 'Use in conversation', exact: true }).click();
   await button(page, 'Send').click();
-  await expect(page.locator('.alpha-connection').getByText('Your agent runs locally in the Android app. Remote agents and pairing are unavailable.', { exact: true })).toBeVisible();
+  await expect(page.locator('.alpha-connection').getByText('Android only', { exact: true })).toBeVisible();
   // The refused send gets its text back with no line under the composer (owner, 2026-11-03).
   await expect.poll(() => page.locator('textarea[data-alpha-composer]').evaluateAll(fields => fields.some(field => (field as HTMLTextAreaElement).value.includes('Public fact: twelve raised beds.')))).toBe(true);
   await expect(page.getByRole('status', { name: 'Assistant draft status' })).toHaveCount(0);
@@ -598,7 +598,7 @@ test('loop J03 in the web build: a chosen document can be reviewed for a questio
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await page.goto('/');
   await button(page, 'Notes').click();
-  await expect(page.locator('[data-screen]')).toContainText('Notes is unavailable for this agent connection. Check Settings › Agent connection.');
+  await expect(page.locator('[data-screen]')).toContainText('Notes unavailable');
   await expect(button(page, 'New note')).toHaveCount(0);
   await expect(page.getByRole('textbox', {name:'Note', exact:true})).toHaveCount(0);
   // The development Inbox simulator that feeds journey J03 does not exist here.
@@ -670,7 +670,7 @@ test('loop J05 on Android: a reviewed native page excerpt, a resident answer and
   const card = page.getByRole('button', { name: /^Review summary note/ });
   await expect(card).toHaveCount(1);
   await card.click();
-  const summary = page.getByRole('dialog', { name: 'Save reviewed summary note' });
+  const summary = page.getByRole('dialog', { name: 'Save summary' });
   await expect(summary).toContainText('The note will link to Harbour report.');
   await expect(summary.getByRole('textbox', { name: 'Summary note text' })).toHaveValue('The ferry leaves at nine.');
   await summary.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -782,7 +782,7 @@ test('loop J05 on Android: a page navigation closes the open review, and an agen
   await expect(bubble(page, 'The ferry leaves at nine.')).toHaveCount(1, { timeout: 30_000 });
   await expect(card).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Summary note saved/ })).toHaveCount(0);
-  await expect(page.getByRole('dialog', { name: 'Save reviewed summary note' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Save summary' })).toHaveCount(0);
   expect(await savedNotes(page)).toEqual([]);
   await expectNoDevelopmentSurface(page);
   expect(await native(page, f => f.unexpected)).toEqual([]);
@@ -840,9 +840,9 @@ test('loop B / J02 on Android: explicit recording and transcript summary survive
   expect(submitted.metadata.clientDevice.context.selectedObject).toMatchObject({kind:'note',id:recorded.id});
   expect(submitted.metadata.clientDevice.context.selectedObject.revision).toMatch(/^[a-f0-9]{64}$/);
   await card.click();
-  const summary = page.getByRole('dialog', { name: 'Save reviewed summary note' });
+  const summary = page.getByRole('dialog', { name: 'Save summary' });
   await expect(summary.getByRole('textbox', { name: 'Summary note text' })).toHaveValue(SUMMARY);
-  await expect(summary.getByRole('textbox', { name: 'Action items, one per line' })).toHaveValue(ACTIONS);
+  await expect(summary.getByRole('textbox', { name: 'Action items' })).toHaveValue(ACTIONS);
   expect((await savedNotes(page))[0]).toEqual(recorded);
   await summary.getByRole('button', { name: 'Save recording summary', exact: true }).click();
   await expect(summary).toHaveCount(0);
@@ -873,7 +873,7 @@ test('loop B / J02 on Android signed out: the Eliza Cloud sign-in comes first an
   await page.goto('/');
   // P-43 with #410: the resident starts signed out and the sign-in dialog, which every Alpha Phone
   // needs, opens by itself and cannot be dismissed; no "without AI" choice is offered.
-  const dialog = page.getByRole('main', { name: 'Welcome to Alpha.', exact: true });
+  const dialog = page.getByRole('main', { name: 'Alpha', exact: true });
   await expect(dialog).toBeVisible({ timeout: 30_000 });
   // No native sign-in here: the reason and one retry, not disabled forms.
   await expect(dialog.getByRole('button', { name: 'Try again', exact: true })).toBeEnabled();
@@ -898,11 +898,10 @@ test('loops D and F on Android: schedules are stated as phone-bound, and mail wi
   await openRetainedDigests(page);
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   // The resident agent schedules on the phone and the panel says what that cannot do (decision A-09 is open).
-  await expect(digests).toContainText('Your agent runs schedules on this phone. It cannot run while the phone is off.');
-  await expect(digests).toContainText('Missed times don’t run later.');
+  await expect(digests.getByRole('img', { name: 'Runs on this phone', exact: true })).toBeVisible();
   await expect(digests.getByText(/Schedules run while this app is open/)).toHaveCount(0);
   // This stub has no result store: the panel reports that instead of showing results.
-  await expect(digests).toContainText('Result storage could not be connected. Reconnect the agent to try again.');
+  await expect(digests).toContainText('Storage unavailable');
   await expect(digests.getByRole('article')).toHaveCount(0);
   await button(page, 'Close scheduled digests').click();
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));

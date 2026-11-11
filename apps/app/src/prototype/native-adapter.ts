@@ -33,35 +33,33 @@ type EgressConnection = Pick<ConnectionSnapshot, 'kind' | 'session' | 'cloudAcco
  * Names a provider, never a key. Null when the agent is not a native resident session. */
 export function residentRecipients(connection: EgressConnection, native = Capacitor.isNativePlatform()): { big: string; sub: string; leaves: string } | null {
   if (!connection.session || connection.kind !== 'resident' || !native) return null;
-  const swap = 'Keys and contact details are masked first. Names and message text are not.';
   if (connection.residentInference === 'cloud') {
     const service = cloudServiceName(connection.cloudAccount?.environment ?? 'production');
-    return { big: `Uses ${service}`, sub: `Messages and selected content go to ${service} for AI. ${swap}`, leaves: `To ${service}` };
+    return { big: `Uses ${service}`, sub: `To ${service}`, leaves: `To ${service}` };
   }
   if (connection.residentInference === 'direct') {
     const provider = connection.providerStatus?.provider === 'cerebras' ? 'Cerebras' : 'your provider';
     const voice = connection.providerStatus?.voiceConfigured === true;
-    return { big: provider === 'Cerebras' ? 'Uses your Cerebras key' : 'Uses your own key', sub: `Messages and selected content go to ${provider} with your key. ${swap}${voice ? ' Voice recordings and reply text go to Cartesia with your key, without masking.' : ''}`,
+    return { big: provider === 'Cerebras' ? 'Uses your Cerebras key' : 'Uses your own key', sub: `To ${provider}${voice ? ' + Cartesia' : ''}`,
       leaves: `To ${provider}${voice ? ' and Cartesia' : ''}` };
   }
-  const swapOnly = 'Keys and contact details are masked before AI requests. Names and message text are not.';
   // An unconfirmed binding may still reach a provider, so only a known-unbound agent says nothing leaves.
-  if (connection.residentInference === 'unknown') return { big: 'Partly masked', sub: swapOnly, leaves: 'Depends on active services' };
-  return { big: 'Partly masked', sub: `${swapOnly} No AI requests until AI is set up.`, leaves: 'Nothing until AI is set up' };
+  if (connection.residentInference === 'unknown') return { big: 'Partly masked', sub: 'Varies', leaves: 'Varies' };
+  return { big: 'Partly masked', sub: 'AI not set up', leaves: 'Nothing until AI is set up' };
 }
 /** Per-connection wording. Only the packaged Android resident runtime is known to enable
  * the upstream secret and PII swaps; every other agent decides for itself and does not report it. */
 export function egressPrivacy(connection: EgressConnection, native = Capacitor.isNativePlatform(), speech: SpeechRoute = speechRoute()): EgressPrivacy {
   const resident = residentRecipients(connection, native);
   // Cloud speech is in use now (voice-selection.ts): say what it sends. Own-key speech is named with its provider above.
-  const cloudSpeech = speech === 'cloud' ? ` Voice recordings and text for playback go to ${cloudServiceName(connection.cloudAccount?.environment ?? 'production')} while it is available; otherwise speech runs on this phone.` : '';
+  const cloudSpeech = speech === 'cloud' ? ` · Voice → ${cloudServiceName(connection.cloudAccount?.environment ?? 'production')}` : '';
   if (resident) return { big: resident.big, sub: resident.sub + cloudSpeech };
   if (connection.session || connection.cloudAccount) return { big: 'Not reported', sub: 'Depends on your agent' };
   // P-43: no session means the resident is starting or recovering, never "no agent".
-  if (connection.kind === 'recovering') return { big: 'Agent not running', sub: 'No AI requests until your agent is running and AI is set up' };
-  if (connection.kind === 'starting') return { big: 'Agent starting', sub: 'No AI requests until your agent is running and AI is set up' };
+  if (connection.kind === 'recovering') return { big: 'Agent not running', sub: 'AI off' };
+  if (connection.kind === 'starting') return { big: 'Agent starting', sub: 'AI off' };
   // Only a build without the resident (the production web preview, test mocks) gets here.
-  return { big: 'Offline', sub: testMocksEnabled ? 'No remote agent connected; no hosted inference requests' : 'Your agent runs on your phone. No AI requests from here.' };
+  return { big: 'Offline', sub: 'AI off' };
 }
 /** Only a verified resident session on Android reports its configured hosted model.
  * Exported for the Settings rows that show it (About and Models). */
@@ -141,7 +139,7 @@ export function installPrototypeNativeAdapters(
   const restore: Array<() => void> = [];
   const busy = new Set<string>();
   const notify = (api: Bag, message: string) => api.toast(message);
-  const unavailable = (api: Bag, message = 'This isn’t available on this phone.') => () => notify(api, message);
+  const unavailable = (api: Bag, message = 'Unavailable') => () => notify(api, message);
   async function perform(module: string, api: Bag, action: Action, payload: Bag = {}) {
     if (busy.has(module)) return;
     busy.add(module);
@@ -150,10 +148,10 @@ export function installPrototypeNativeAdapters(
       if (result.status === 'selected') {
         options.onSelection?.(module, result, api);
       } else if (result.status !== 'opened' && result.status !== 'cancelled') {
-        notify(api, result.message || 'No installed app can complete this action.');
+        notify(api, result.message || 'No app');
       }
     } catch {
-      notify(api, 'This isn’t available here.');
+      notify(api, 'Unavailable');
     } finally { busy.delete(module); }
   }
   function browser(module: string, api: Bag, value: unknown) {
@@ -165,9 +163,9 @@ export function installPrototypeNativeAdapters(
       url = new URL(/^[a-z][a-z\d+.-]*:/i.test(raw) ? raw : 'https://' + raw);
       if (!['http:', 'https:'].includes(url.protocol) || !url.hostname || url.username || url.password) throw new Error();
       if (url.hostname === 'example.com' || url.hostname.endsWith('.example') || url.hostname === 'search.example') {
-        notify(api, 'This is a prototype address. Enter a real website to open it.'); return;
+        notify(api, 'Not a real site'); return;
       }
-    } catch { notify(api, 'Enter a valid HTTP or HTTPS website without credentials.'); return; }
+    } catch { notify(api, 'Invalid address'); return; }
     return perform(module, api, 'browser', { url: url.href });
   }
   const smsPayload = (st: Bag) => ({
@@ -197,19 +195,19 @@ export function installPrototypeNativeAdapters(
     // live frame, or the one saved item that is open. A typed library search names no
     // capture: product builds hide that chip (walk below), and a stale one never reaches a capture review.
     const capture = captureQuestion(module, key, path, st);
-    if (capture?.kind === 'frame') return () => { if (!askAboutCapture()) notify(api, 'Start the camera or finish the capture, then ask again.'); };
+    if (capture?.kind === 'frame') return () => { if (!askAboutCapture()) notify(api, 'Camera busy'); };
     if (capture?.kind === 'item') return () => {
       // Read the open item when pressed: the render that built this control may be stale.
       const open = api.get(module).open;
-      if (open !== capture.id || !askAboutCapture({ id: capture.id })) notify(api, 'Open a saved photo or video, then ask again.');
+      if (open !== capture.id || !askAboutCapture({ id: capture.id })) notify(api, 'Open a photo first');
     };
     if (['camera', 'photos', 'files'].includes(module) && ['ask', 'askQ', 'askSearch'].includes(key)) return unavailable(api);
-    if (module === 'workflows' && ['run', 'again', 'toggle', 'save'].includes(key)) return unavailable(api, 'Workflow execution is not connected.');
+    if (module === 'workflows' && ['run', 'again', 'toggle', 'save'].includes(key)) return unavailable(api, 'Not connected');
     const native = (action: Action, payload: Bag = {}) => () => perform(module, api, action, payload);
     if (module === 'phone') {
       if (key === 'dialCall') return () => perform(module, api, 'phone', { query: text(api.get('phone').dial) });
       if (key === 'call' || key === 'play') return native('phone');
-      if (['accept', 'decline', 'endCall', 'endScreen', 'alphaAnswer', 'del'].includes(key) || path.includes('controls.') || path.includes('dkeys.')) return unavailable(api, 'Manage calls and voicemail in the Android phone app.');
+      if (['accept', 'decline', 'endCall', 'endScreen', 'alphaAnswer', 'del'].includes(key) || path.includes('controls.') || path.includes('dkeys.')) return unavailable(api, 'Use Phone app');
       if (key === 'send') return native('messages', { body: text(row.text) });
     }
     if (module === 'messages') {
@@ -225,16 +223,16 @@ export function installPrototypeNativeAdapters(
       if (key === 'addAcct') return native('settings');
     }
     if (module === 'calendar') {
-      if (key === 'save') return () => { if (api.get(module).form?.id) { void perform(module, api, 'calendar'); return; } const payload = calendarPayload(api.get(module)); if (payload) void perform(module, api, 'calendar-create', payload); else notify(api, 'Enter a title and valid event time.'); };
+      if (key === 'save') return () => { if (api.get(module).form?.id) { void perform(module, api, 'calendar'); return; } const payload = calendarPayload(api.get(module)); if (payload) void perform(module, api, 'calendar-create', payload); else notify(api, 'Title and time needed'); };
       if (key === 'del' || (key === 'go' && /rsvp|responses|invite/i.test(path))) return native('calendar');
-      if (key === 'join') return unavailable(api, 'Open a real meeting link in your calendar app.');
+      if (key === 'join') return unavailable(api, 'Open in Calendar');
     }
     if (module === 'browser') {
       if (key === 'onAddrKey') return (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); void browser(module, api, (e.target as HTMLInputElement)?.value); } else original(e); };
       if (key === 'go' && !path.startsWith('people.')) return () => browser(module, api, row.url || row.host);
-      if (['openNews', 'openEnc', 'openBook'].includes(key)) return unavailable(api, 'This page is not available. Enter a website in the address field.');
-      if (['bookNow', 'cfOk'].includes(key)) return unavailable(api, 'Booking is not connected. No reservation or payment has been made.');
-      if (key === 'readAloud') return unavailable(api, 'Read-aloud is not connected.');
+      if (['openNews', 'openEnc', 'openBook'].includes(key)) return unavailable(api);
+      if (['bookNow', 'cfOk'].includes(key)) return unavailable(api, 'Not connected');
+      if (key === 'readAloud') return unavailable(api, 'Not connected');
     }
     if (module === 'camera') {
       if (key === 'vfUp') return () => {}; // The camera adapter supplies real tap-to-focus.
@@ -245,13 +243,13 @@ export function installPrototypeNativeAdapters(
     if (module === 'photos') {
       if (key === 'selStart') return native('photos');
       if (['save', 'del', 'selDel', 'emptyNow', 'play', 'rotate', 'crop', 'fav', 'selFav'].includes(key)) return native('photos');
-      if (key === 'send' || key === 'selShare') return unavailable(api, 'Choose and share the real photo in your Android photo app.');
+      if (key === 'send' || key === 'selShare') return unavailable(api, 'Use Photos app');
     }
     if (module === 'maps') {
       // Search, Start and Directions belong to maps-adapter; its 'Open in maps app' is the only Maps handoff.
       if (key === 'call') return native('phone');
-      if (key === 'web') return unavailable(api, 'Open the real place website from the Android map app.');
-      if (['shareEta', 'voice', 'end'].includes(key)) return unavailable(api, 'Live navigation and ETA are managed by the Android map app.');
+      if (key === 'web') return unavailable(api, 'Use Maps app');
+      if (['shareEta', 'voice', 'end'].includes(key)) return unavailable(api, 'Use Maps app');
     }
     if (module === 'contacts') {
       if (key === 'go' && path.startsWith('d.acts.')) {
@@ -268,12 +266,12 @@ export function installPrototypeNativeAdapters(
       if (key === 'rnKey') return (e: KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); void perform(module, api, 'files'); } };
       if (key === 'go' && path.startsWith('moveTo.')) return native('files');
       if (['play', 'del', 'saveRn', 'selDel', 'move', 'selMove', 'transcribe'].includes(key)) return native('files');
-      if (['shareMsg', 'shareMail', 'selShare'].includes(key)) return unavailable(api, 'Choose and share the real file in the Android Files app.');
+      if (['shareMsg', 'shareMail', 'selShare'].includes(key)) return unavailable(api, 'Use Files app');
     }
     if (module === 'wallet') {
       if (key === 'addCal') return native('calendar');
-      if (['onNum', 'onCvv', 'onExp', 'onCode', 'onName'].includes(key)) return unavailable(api, 'Payment credentials are not collected by this app.');
-      if (['pay', 'auth', 'verify', 'next', 'scan', 'reload', 'remove', 'setDef', 'startPay'].includes(key)) return unavailable(api, 'Wallet payments and verification are not connected. Nothing has been charged or verified.');
+      if (['onNum', 'onCvv', 'onExp', 'onCode', 'onName'].includes(key)) return unavailable(api, 'Not connected');
+      if (['pay', 'auth', 'verify', 'next', 'scan', 'reload', 'remove', 'setDef', 'startPay'].includes(key)) return unavailable(api, 'Not connected');
     }
     if (module === 'settings') {
       // Opening Activity only shows what is already known; reading history is a separate explicit step.
@@ -310,8 +308,8 @@ export function installPrototypeNativeAdapters(
       if (result.label === 'Leaves this device') {
         const connection=connectionController.getSnapshot();
         result.val=connection.session&&connection.kind==='resident'&&!Capacitor.isNativePlatform()
-          ? 'Prompts and selected context go to the development host and its configured inference provider'
-          : residentRecipients(connection)?.leaves||'Depends on active services';
+          ? 'Dev host'
+          : residentRecipients(connection)?.leaves||'Varies';
       }
       // Nothing here reads on-device model or speech readiness; say so instead of guessing.
       if (result.label === 'On-device model') result.val = 'Not reported';
@@ -334,7 +332,7 @@ export function installPrototypeNativeAdapters(
     if (!out || !Array.isArray(out.stack)) return out;
     const connection = connectionController.getSnapshot();
     const info = (label: string, val: string): Bag => ({ kInfo: true, label, val, hasVal: !!val, noAB: true });
-    const nav = (label: string, go: () => void): Bag => ({ kNav: true, label, lbl: label, chev: true, noAB: true, go });
+    const nav = (label: string, go: () => void, aria = label, lucide = ''): Bag => ({ kNav: true, label, lbl: aria, chev: true, noAB: true, go, ...(lucide ? { lucide } : {}) });
     const model = residentModelLabel(connection, () => { try { api.set({ providerReadAt: Date.now() }); } catch { /* view closed */ } });
     for (const page of out.stack) {
       if (!page || !Array.isArray(page.groups)) continue;
@@ -344,36 +342,32 @@ export function installPrototypeNativeAdapters(
         const sessionId = connection.session?.sessionId ?? null;
         // Reading history is an explicit step; its progress and errors appear in the connection panel.
         // Decline and reconcile controls are rendered here, beside each entry, and report their own failures.
-        const load = (label: string) => nav(label, () => {
+        const load = (aria: string) => nav(aria.split(' ')[0], () => {
           const before = connectionController.getSnapshot().actionHistory;
           void connectionController.actionHistory().then(() => {
             const after = connectionController.getSnapshot();
             if (sessionId && after.session?.sessionId === sessionId && !after.error && after.actionHistory !== before) actionHistoryRead = sessionId;
             try { api.set({ actionHistoryReadAt: Date.now() }); } catch { /* view closed */ }
           });
-        });
+        }, aria, 'rotate-cw');
         // A decision clears the read history; show it as unread rather than as empty.
         // One decision per entry at a time; a failed one says so instead of leaving the row unchanged.
-        const decide = (id: string, label: string, run: () => Promise<unknown>) => nav(label, () => {
+        const decide = (id: string, label: string, run: () => Promise<unknown>, lucide = '') => nav(label, () => {
           const busyKey = 'activity:' + id;
           if (busy.has(busyKey)) return;
           busy.add(busyKey);
-          void run().catch(error => {
-            const reason = error instanceof Error ? error.message.trim() : '';
-            notify(api, reason ? 'Not recorded. ' + reason + (/[.!?]$/.test(reason) ? '' : '.') : 'Not recorded. Nothing was repeated.');
-          }).finally(() => { busy.delete(busyKey); actionHistoryRead = null; try { api.set({ actionHistoryReadAt: Date.now() }); } catch { /* view closed */ } });
-        });
+          void run().catch(() => notify(api, 'Not recorded')).finally(() => { busy.delete(busyKey); actionHistoryRead = null; try { api.set({ actionHistoryReadAt: Date.now() }); } catch { /* view closed */ } });
+        }, label, lucide);
         const entryRows = (entry: ConnectionSnapshot['actionHistory'][number]): Bag[] => [
           info(entry.description, activityState(entry.state)),
           ...(entry.state === 'pending' ? [decide(entry.id, 'Decline', () => connectionController.rejectProposal(entry.id))]
             : ['executing', 'reconciliation_required'].includes(entry.state) ? [
-              info('Check your phone, then confirm whether this happened.', ''),
-              decide(entry.id, 'It happened', () => connectionController.reconcile(entry.id, true)),
-              decide(entry.id, 'It did not happen', () => connectionController.reconcile(entry.id, false)),
+              decide(entry.id, 'It happened', () => connectionController.reconcile(entry.id, true), 'check'),
+              decide(entry.id, 'It did not happen', () => connectionController.reconcile(entry.id, false), 'x'),
             ] : []),
         ];
         const groups: Bag[] = !connection.session
-          ? [{ rows: [...(connection.kind==='starting'?[]:[info(connection.kind === 'recovering' ? agentAvailabilityNotice(connection) : (testMocksEnabled ? 'Connect your remote agent to see activity' : 'Activity appears on the phone that runs your agent'), '')]), nav('Your agent', () => connectionController.open())] }]
+          ? [{ rows: [...(connection.kind==='recovering'?[info(agentAvailabilityNotice(connection), '')]:[]), nav('Your agent', () => connectionController.open())] }]
           : !connection.phoneActionsAvailable
             ? [{ rows: [info('Phone action history', 'Not reported')] }]
             : connection.actionHistory.length
@@ -398,7 +392,7 @@ export function installPrototypeNativeAdapters(
         ? { ...api, later: () => {}, laterBg: () => {}, every: () => {}, everyBg: () => {} } : api;
       return walk(render(state, renderingApi), module, state, api);
     };
-    if (actions) definition.actions = Object.fromEntries(Object.keys(actions).map(key => [key, (_card: Bag, api: Bag) => notify(api, 'Use the visible app controls to review and complete this action.')]));
+    if (actions) definition.actions = Object.fromEntries(Object.keys(actions).map(key => [key, (_card: Bag, api: Bag) => notify(api, 'Unavailable')]));
     if (['phone', 'camera', 'maps', 'workflows'].includes(module)) definition.ongoing = () => null;
     if (leave && ['phone', 'camera', 'maps'].includes(module)) definition.onLeave = () => {};
     restore.push(() => { definition.render = render; definition.actions = actions; definition.onLeave = leave; definition.ongoing = ongoing; });

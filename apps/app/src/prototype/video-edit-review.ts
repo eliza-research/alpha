@@ -51,7 +51,7 @@ export function openVideoEditReview(source:{path:string;duration:number;stream?:
  timeline.append(track,handles.start,handles.end);
  const rotate=button('Rotate video',()=>{edit.rotation=(edit.rotation+90)%360;update();});
  const crop=button('Crop video',()=>{edit.crop=!edit.crop;crop.setAttribute('aria-pressed',String(edit.crop));update();});
- const play=button('Preview trim',()=>{try{validateVideoEdit(edit,source.duration);if(video.currentTime<edit.start||video.currentTime>=edit.end)video.currentTime=edit.start;void video.play().catch(()=>{status.textContent='Press play to preview.';});}catch(error){status.textContent=(error as Error).message;}});
+ const play=button('Preview trim',()=>{try{validateVideoEdit(edit,source.duration);if(video.currentTime<edit.start||video.currentTime>=edit.end)video.currentTime=edit.start;void video.play().catch(()=>{status.textContent='';});}catch(error){status.textContent=(error as Error).message;}});
  const pause=button('Pause preview',()=>video.pause());
  for(const [b,icon] of [[rotate,'rotate-cw'],[crop,'crop'],[play,'play'],[pause,'pause']] as const)mediaToolIcon(b,icon);
  crop.setAttribute('aria-pressed','false');crop.title='Center crop';pause.hidden=true;
@@ -60,10 +60,10 @@ export function openVideoEditReview(source:{path:string;duration:number;stream?:
  video.onloadeddata=()=>{if(closed)return;loaded=true;updateControls();status.textContent='';update();};video.onseeked=()=>update();
  // A media error does not pause the element: without the pause the frame loop keeps running
  // and the pause control stays up over a source that can no longer play.
- video.onerror=()=>{if(closed)return;loaded=false;video.pause();updateControls();status.textContent='Video could not load. Close and reopen the editor to try again.';};
+ video.onerror=()=>{if(closed)return;loaded=false;video.pause();updateControls();status.textContent='Couldn’t load';};
  const dispose=()=>{if(closed)return;closed=true;stopFrames();controller.abort();video.pause();video.removeAttribute('src');video.load();if(sourceUrl)URL.revokeObjectURL(sourceUrl);dialog.remove();if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();onClose();window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',dispose);document.removeEventListener('visibilitychange',visibility);};
  const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();dispose();},visibility=()=>{if(document.hidden)dispose();};
- const commit=button('Save video copy',()=>{if(busy||!loaded)return;try{validateVideoEdit(edit,source.duration);}catch(error){status.textContent=(error as Error).message;return;}busy=true;video.pause();updateControls();status.textContent='Saving video copy…';void save({...edit},controller.signal).then(saved=>{if(closed)return;if(saved)dispose();else status.textContent='Copy was not saved. Close and reopen the editor to try again.';},()=>{if(!closed)status.textContent='Save outcome could not be confirmed. Reopen Photos to check the existing operation.';});});
+ const commit=button('Save video copy',()=>{if(busy||!loaded)return;try{validateVideoEdit(edit,source.duration);}catch(error){status.textContent=(error as Error).message;return;}busy=true;video.pause();updateControls();status.textContent='Saving video copy…';void save({...edit},controller.signal).then(saved=>{if(closed)return;if(saved)dispose();else status.textContent='Not saved';},()=>{if(!closed)status.textContent='Save unconfirmed';});});
  commit.className='primary';commit.setAttribute('aria-label','Save video copy');commit.textContent='Save copy';
  const close=button('Close video editor',dispose);controls.pop();mediaToolIcon(close,'chevron-left');
  const heading=document.createElement('h2');heading.textContent='Edit video';const header=document.createElement('header');header.className='video-editor-header';header.append(close,heading,commit);
@@ -75,5 +75,5 @@ export function openVideoEditReview(source:{path:string;duration:number;stream?:
  // Native playback is an already-admitted, same-origin range capability. Let
  // the decoder stream it instead of duplicating the complete video in a Blob.
  if(source.stream)video.src=source.path;
- else void fetch(source.path,{signal:controller.signal}).then(response=>{if(!response.ok)throw Error('Video unavailable');return response.blob();}).then(blob=>{if(closed)return;sourceUrl=URL.createObjectURL(blob);video.src=sourceUrl;}).catch(()=>{if(!closed)status.textContent='Video could not load. Close and reopen the editor to try again.';});return dispose;
+ else void fetch(source.path,{signal:controller.signal}).then(response=>{if(!response.ok)throw Error('Video unavailable');return response.blob();}).then(blob=>{if(closed)return;sourceUrl=URL.createObjectURL(blob);video.src=sourceUrl;}).catch(()=>{if(!closed)status.textContent='Couldn’t load';});return dispose;
 }

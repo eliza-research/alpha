@@ -1,6 +1,6 @@
 import {localDraftRow} from './inbox-draft-navigation';
 import {test,expect,type Page} from '@playwright/test';
-const dialog=(page:Page)=>page.getByRole('dialog',{name:'Use selected file in email',exact:true});
+const dialog=(page:Page)=>page.getByRole('dialog',{name:'Attach to email',exact:true});
 async function setup(page:Page,reviewFile=true,openInbox=true){
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');
@@ -32,7 +32,7 @@ async function setup(page:Page,reviewFile=true,openInbox=true){
  await expect(dialog(page)).toContainText('selected.txt · text/plain · 17 bytes');
 }
 test('selected Files require explicit attachment review, retain exact bytes and never send',async({page})=>{
- await setup(page);const review=dialog(page),insert=review.getByRole('button',{name:'Insert attachment into draft'});
+ await setup(page);const review=dialog(page),insert=review.getByRole('button',{name:'Attach',exact:true});
  await expect(insert).toBeDisabled();await expect(review).toContainText('owner@example.invalid');
  await page.screenshot({path:test.info().outputPath('file-email-review.png')});
  await review.getByRole('checkbox',{name:'Attach this file'}).check();await expect(insert).toBeEnabled();
@@ -61,17 +61,17 @@ for(const change of ['account','bytes','revoke'])test(`file attachment review re
    const tx=db.transaction('entries','readwrite'),store=tx.objectStore('entries'),request=store.get(row.id);request.onsuccess=()=>{const changed=new TextEncoder().encode('changed');store.put({...request.result,bytes:changed.buffer,size:changed.length});};await new Promise<void>((resolve,reject)=>{tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});db.close();
   }else await files.delete({id:row.id,expectedRevision:row.revision,confirmPermanent:true});
  },change);
- await dialog(page).getByRole('button',{name:'Insert attachment into draft'}).click();
+ await dialog(page).getByRole('button',{name:'Attach',exact:true}).click();
  await expect(dialog(page).getByRole('status')).toContainText(/changed|unavailable|Select (a valid|this file)/);
  expect(await page.evaluate(()=>(window as any).fileEmail.writes)).toBe(0);
 });
 test('the same selected bytes cannot be attached twice',async({page})=>{
- await setup(page);await dialog(page).getByRole('checkbox').check();await dialog(page).getByRole('button',{name:'Insert attachment into draft'}).click();
+ await setup(page);await dialog(page).getByRole('checkbox').check();await dialog(page).getByRole('button',{name:'Attach',exact:true}).click();
  await expect(page.getByRole('button',{name:'Remove selected.txt',exact:true})).toBeVisible();
  await page.evaluate(()=>(window as any).fileEmail.shell.openView('files',{}));
  await page.getByRole('button',{name:'Open selected.txt',exact:true}).click();
  await page.getByRole('button',{name:'Use in email',exact:true}).click();await dialog(page).getByRole('checkbox').check();
- await dialog(page).getByRole('button',{name:'Insert attachment into draft'}).click();
+ await dialog(page).getByRole('button',{name:'Attach',exact:true}).click();
  await expect(dialog(page).getByRole('status')).toContainText('already attached');
  expect(await page.evaluate(()=>(window as any).fileEmail.writes)).toBe(0);
 });
@@ -86,7 +86,7 @@ test('Files before Inbox asks to open Inbox once when a Gmail account was chosen
  await page.getByRole('button',{name:'Internal storage',exact:true}).click();
  await page.getByRole('button',{name:'Open selected.txt',exact:true}).click();
  await page.getByRole('button',{name:'Use in email',exact:true}).click();
- await expect(dialog(page).getByRole('status')).toHaveText('Open Inbox once to load your Gmail account.');
+ await expect(dialog(page).getByRole('status')).toHaveText('Open Inbox first');
  await expect(dialog(page).getByRole('checkbox')).toBeDisabled();
  expect(await page.evaluate(()=>(window as any).fileEmail.writes)).toBe(0);
 });

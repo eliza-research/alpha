@@ -90,9 +90,9 @@ test('a verified email code goes straight to access setup while the agent restar
  // Settled browser guests go straight to the approved Cloud sign-in: the same full page Android
  // shows while signed out, with no Back, never a dialog over Home (owner report 2026-11-01).
  const agentSheet=page.getByRole('dialog',{name:'Connection help',exact:true});
- const signIn=page.getByRole('main',{name:'Welcome to Alpha.',exact:true});
+ const signIn=page.getByRole('main',{name:'Alpha',exact:true});
  await expect(signIn).toBeVisible({timeout:60_000});
- await expect(signIn.getByRole('button',{name:'Email me a code',exact:true})).toBeEnabled();
+ await expect(signIn.getByRole('button',{name:'Send code',exact:true})).toBeEnabled();
  await expect(page.locator('.alpha-auth-page')).toHaveCount(1);await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  await expect(signIn.getByRole('button',{name:'Back',exact:true})).toHaveCount(0);
  await page.keyboard.press('Escape');await expect(signIn).toBeVisible();
@@ -100,19 +100,19 @@ test('a verified email code goes straight to access setup while the agent restar
  expect(host.starts).toBe(1);
  await shot(page,info,'01-signed-out');
  await signIn.getByRole('textbox',{name:'Email',exact:true}).fill('new-owner@example.invalid');
- await signIn.getByRole('button',{name:'Email me a code',exact:true}).click();
+ await signIn.getByRole('button',{name:'Send code',exact:true}).click();
  const code=page.getByRole('form',{name:'Enter your email code'});
  await expect(code).toBeVisible();
  // A wrong code reports inside the same page; the error never turns it into a dismissible dialog
  // (its Back returns to the email form on the same page).
- await code.getByLabel('Six-digit code').fill('000000');await code.getByRole('button',{name:'Verify',exact:true}).click();
- const codePage=page.getByRole('main',{name:'Check your code.',exact:true});
+ await code.getByLabel('Code',{exact:true}).fill('000000');await code.getByRole('button',{name:'Verify',exact:true}).click();
+ const codePage=page.getByRole('main',{name:'Enter code',exact:true});
  await expect(codePage.getByRole('alert')).toBeVisible();
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);await expect(page.locator('.alpha-auth-page')).toHaveCount(1);
  // The agent's restart with the new key takes as long as a first boot; hold it there. The account
  // admission (identity and plan reads) is held too, to show what the verified step says meanwhile.
  host.hold=true;host.holdAdmission=true;
- await code.getByLabel('Six-digit code').fill('123456');await code.getByRole('button',{name:'Verify',exact:true}).click();
+ await code.getByLabel('Code',{exact:true}).fill('123456');await code.getByRole('button',{name:'Verify',exact:true}).click();
  // The code is verified: the code check has ended while the account is admitted.
  await expect.poll(()=>!!host.admit,{timeout:15_000}).toBe(true);
  await expect(code.getByRole('button',{name:'Signing in…',exact:true})).toBeDisabled();
@@ -132,16 +132,16 @@ test('a verified email code goes straight to access setup while the agent restar
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  expect(await snapshot(page)).toMatchObject({session:false,kind:'starting',inference:null,account:USER});
  for(const name of ['Notifications','Microphone','Camera','Location']){await expect(setup.getByRole('heading',{name,exact:true})).toBeVisible();await setup.getByRole('button',{name:'Allow',exact:true}).click();}
- await expect(setup.getByRole('heading',{name:'Setup finished',exact:true})).toBeVisible();
+ await expect(setup.getByRole('heading',{name:'All set',exact:true})).toBeVisible();
  await expect(setup.getByText('Account created: new-owner@example.invalid.',{exact:true})).toBeVisible();
  await shot(page,info,'04-all-set-agent-starting');
  for(const text of STARTING_SLOP)expect(await setup.innerText()).not.toContain(text);
- await setup.getByRole('button',{name:'Go to Alpha',exact:true}).click();
+ await setup.getByRole('button',{name:'Done',exact:true}).click();
  await expect(setup).toHaveCount(0);
  // The owner may open the agent panel while it starts: a calm starting state, no AI or billing claim.
  await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.open());
  await expect(agentSheet.getByText('Starting…',{exact:true})).toBeVisible();
- await expect(agentSheet.getByText('Waiting for your agent to start.',{exact:true})).toBeVisible();
+ await expect(agentSheet.getByText('Starting',{exact:true})).toBeVisible();
  await shot(page,info,'05-your-agent-while-starting');
  for(const text of STARTING_SLOP)expect(await agentSheet.innerText()).not.toContain(text);
  host.release!();
@@ -151,7 +151,7 @@ test('a verified email code goes straight to access setup while the agent restar
  await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.open());
  await expect(agentSheet.getByRole('region',{name:'Agent status',exact:true}).getByText('Connected',{exact:true})).toBeVisible();
  await expect(agentSheet.getByText('Your agent uses Eliza Cloud for AI.',{exact:true})).toBeVisible();
- await expect(agentSheet.getByText('No active subscription',{exact:true})).toBeVisible();
+ await expect(agentSheet.getByText('No plan',{exact:true})).toBeVisible();
  await shot(page,info,'06-your-agent-running');
  expect(host.bound).toBe(true);expect(host.starts).toBe(2);
  expect(await snapshot(page)).toMatchObject({session:true,inference:'cloud',account:USER});
@@ -167,7 +167,7 @@ test('a first start shows a neutral loading screen, never Home, until the sign-i
  await expect(page.locator('[data-alpha-startup-shell]')).toHaveAttribute('inert','');
  await expect(page.locator('[data-alpha-startup-shell]')).toHaveCSS('opacity','0');
  host.release!();
- await expect(page.getByRole('main',{name:'Welcome to Alpha.',exact:true})).toBeVisible({timeout:30_000});
+ await expect(page.getByRole('main',{name:'Alpha',exact:true})).toBeVisible({timeout:30_000});
  await expect(startupLoading(page)).toHaveCount(0);await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(1);
  await expectNoHomeBeforePrompt(page);
 });
@@ -197,7 +197,7 @@ test('a start that has not decided in 60 s shows Home as before, and the sign-in
  await expect(page.getByRole('region',{name:'Home',exact:true})).toBeVisible();
  await expect(startupLoading(page)).toHaveCount(0);await expect(page.locator('.alpha-connection')).toHaveCount(0);
  host.release!();
- await expect(page.getByRole('main',{name:'Welcome to Alpha.',exact:true})).toBeVisible({timeout:30_000});
+ await expect(page.getByRole('main',{name:'Alpha',exact:true})).toBeVisible({timeout:30_000});
 });
 
 test('own keys taken over from a held readiness check and rejected keep the welcome page, with the rejection inside the own-key form',async({page},info)=>{
@@ -206,18 +206,18 @@ test('own keys taken over from a held readiness check and rejected keep the welc
  const host=await hosts(page);host.holdStatus=true;
  const logs:string[]=[];page.on('console',message=>logs.push(message.text()));
  await page.goto(origin+'/');
- const welcome=page.getByRole('main',{name:'Welcome to Alpha.',exact:true});
+ const welcome=page.getByRole('main',{name:'Alpha',exact:true});
  await expect(welcome).toBeVisible({timeout:60_000});
  // The readiness check is held. It is not an attempt the owner started: own keys stay available
  // and saving them ends the check first.
- await expect(welcome.getByRole('button',{name:'Use my own API keys',exact:true})).toBeEnabled({timeout:10_000});
- await welcome.getByRole('button',{name:'Use my own API keys',exact:true}).click();
+ await expect(welcome.getByRole('button',{name:'Use my own keys',exact:true})).toBeEnabled({timeout:10_000});
+ await welcome.getByRole('button',{name:'Use my own keys',exact:true}).click();
  const own=welcome.getByRole('form',{name:'Own API keys'});
- await own.getByLabel('Text API key',{exact:true}).fill(AI_KEY);
- await own.getByLabel('Voice API key (optional)',{exact:true}).fill(VOICE_KEY);
- await own.getByRole('button',{name:'Save and use own keys',exact:true}).click();
+ await own.getByLabel('Text key',{exact:true}).fill(AI_KEY);
+ await own.getByLabel('Voice key',{exact:true}).fill(VOICE_KEY);
+ await own.getByRole('button',{name:'Save',exact:true}).click();
  // The rejection says what failed, inside the own-key form on the same page, as on Android.
- await expect(own.getByRole('alert')).toHaveText('Own API keys could not be set up. Check the keys and try again.');
+ await expect(own.getByRole('alert')).toHaveText('Keys rejected');
  expect(host.operations.filter(operation=>operation==='residentOwn')).toHaveLength(1);
  await expect(page.locator('.alpha-auth-page')).toHaveCount(1);await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  await expect(page.getByRole('dialog',{name:'Connection help',exact:true})).toHaveCount(0);
@@ -225,7 +225,7 @@ test('own keys taken over from a held readiness check and rejected keep the welc
  // Cloud sign-in never shows the key rejection as its own.
  await own.getByRole('button',{name:'Back',exact:true}).click();
  await expect(own).toHaveCount(0);
- await expect(welcome.getByRole('button',{name:'Use my own API keys',exact:true})).toBeVisible();
+ await expect(welcome.getByRole('button',{name:'Use my own keys',exact:true})).toBeVisible();
  await expect(welcome.getByRole('alert')).toHaveCount(0);await expect(welcome).not.toContainText('could not be set up');
  const seen=await page.evaluate(()=>[...Object.values(localStorage),...Object.values(sessionStorage),document.body.innerText].join('\n'));
  for(const key of [AI_KEY,VOICE_KEY]){expect(seen).not.toContain(key);expect(logs.join('\n')).not.toContain(key);}

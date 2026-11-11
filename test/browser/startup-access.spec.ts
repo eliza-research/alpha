@@ -50,15 +50,15 @@ test('required native access keeps focused, reachable controls at narrow widths 
   if(name==='Photos')await expect(panel.getByText('Selected photos and videos only',{exact:true})).toBeVisible();
   await panel.getByRole('button',{name:'Continue',exact:true}).click();
  }
- await expect(panel.getByRole('heading',{name:'Setup finished',exact:true})).toBeFocused();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();await expect(panel).toHaveCount(0);
+ await expect(panel.getByRole('heading',{name:'All set',exact:true})).toBeFocused();await panel.getByRole('button',{name:'Done',exact:true}).click();await expect(panel).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).access.calls.filter((c:any)=>['requestPermissions','requestAccess','openSettings','list','sync'].includes(c.method)))).toEqual([]);
  await page.reload();await expect.poll(()=>page.evaluate(()=>typeof(window as any).access.reopen)).toBe('function');await page.evaluate(()=>(window as any).access.signin());await expect(panel).toHaveCount(0);
 });
 test('explicit Settings review starts at the original heading and targeted Done preserves completion',async({page})=>{
  const panel=await accessFixture(page);
- for(let i=0;i<7;i++)await panel.getByRole('button',{name:'Continue',exact:true}).click();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
+ for(let i=0;i<7;i++)await panel.getByRole('button',{name:'Continue',exact:true}).click();await panel.getByRole('button',{name:'Done',exact:true}).click();
  await page.evaluate(()=>(window as any).access.reopen());await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeFocused();expect(await panel.evaluate(el=>el.scrollTop)).toBe(0);
- for(let i=0;i<7;i++)await panel.getByRole('button',{name:'Continue',exact:true}).click();await panel.getByRole('button',{name:'Go to Alpha',exact:true}).click();
+ for(let i=0;i<7;i++)await panel.getByRole('button',{name:'Continue',exact:true}).click();await panel.getByRole('button',{name:'Done',exact:true}).click();
  const before=await page.evaluate(()=>localStorage.getItem('alpha:startup-permission-walkthrough:v1'));
  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('alpha:startup-permissions-reopen',{detail:{permission:'camera'}})));
  await expect(panel.getByRole('heading',{name:'Camera',exact:true})).toBeVisible();await panel.getByRole('button',{name:'Done',exact:true}).click();await expect(panel).toHaveCount(0);

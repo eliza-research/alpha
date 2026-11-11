@@ -47,7 +47,7 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
   let storageUsage={storageW:'0%',storageText:'App storage',storageBarStyle:'display:none'},storageActive=false,storagePending=false,storageEpoch=0;
   const browserStorage=!Capacitor.isNativePlatform(),filesLeave=views.files?.onLeave;
   if(browserStorage&&views.files)views.files.onLeave=(...args:any[])=>{storageActive=false;storagePending=false;storageEpoch++;return filesLeave?.(...args);};
-  const refreshStorage=async(api:Bag)=>{if(storagePending||!api.isActive()||document.hidden)return;storagePending=true;const epoch=storageEpoch;try{const usage=await browserStorageUsage();if(epoch===storageEpoch&&api.isActive()){storageUsage=usage;api.set({browserStorageRevision:Date.now()});}}catch{if(epoch===storageEpoch&&api.isActive()){storageUsage={storageW:'0%',storageText:'App storage could not be read',storageBarStyle:'display:none'};api.set({browserStorageRevision:Date.now()});}}finally{if(epoch===storageEpoch)storagePending=false;}};
+  const refreshStorage=async(api:Bag)=>{if(storagePending||!api.isActive()||document.hidden)return;storagePending=true;const epoch=storageEpoch;try{const usage=await browserStorageUsage();if(epoch===storageEpoch&&api.isActive()){storageUsage=usage;api.set({browserStorageRevision:Date.now()});}}catch{if(epoch===storageEpoch&&api.isActive()){storageUsage={storageW:'0%',storageText:'Storage unavailable',storageBarStyle:'display:none'};api.set({browserStorageRevision:Date.now()});}}finally{if(epoch===storageEpoch)storagePending=false;}};
   wrap('files', (out,_state,api) => {
     // Refresh on arrival and after returning from a folder or preview, not on a polling timer.
     const storageVisible=browserStorage&&api.isActive()&&!_state.folder&&!_state.open;
@@ -60,12 +60,12 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
     ...(browserStorage?storageUsage:{storageW:'0%',storageText:'Storage usage unavailable',storageBarStyle:'display:none'}),
   });});
   wrap('phone', out => ({ ...out, favs: [], hasFavs: false }));
-  wrap('messages', out => ({ ...out, ...(out.empty ? { emptyText: 'Messages are not connected' } : {}) }));
-  wrap('inbox', out => ({ ...out, emptyText: 'Inbox is not connected' }));
+  wrap('messages', out => ({ ...out, ...(out.empty ? { emptyText: 'Not connected' } : {}) }));
+  wrap('inbox', out => ({ ...out, emptyText: 'Not connected' }));
   wrap('wallet', (out, _state, api) => ({
     ...out, passes: [], ps: null, isPass: false,
-    startAdd: () => api.toast('Wallet is not connected. No card details are collected.'),
-    startPay: () => api.toast('Wallet is not connected. Nothing has been charged.'),
+    startAdd: () => api.toast('Not connected'),
+    startPay: () => api.toast('Not connected'),
   }));
   const p = Component.prototype;
   const renderVals = p.renderVals;
@@ -77,7 +77,7 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
     const first = view === 'camera' ? 'Open Photos' : view === 'photos' ? 'Open Camera'
       : view === 'files' || view === 'browser' || view === 'inbox' ? 'Open Notes'
       : view === 'phone' || view === 'messages' ? 'Open Contacts' : 'Open Calendar';
-    const suggestions = view==='camera' ? ['Scan this', 'What am I looking at?', 'Take a photo'] : ['Create a note', 'Set a reminder', first];
+    const suggestions = view==='camera' ? ['Scan this', 'What’s this?', 'Take a photo'] : ['Create a note', 'Set a reminder', first];
     const now = Date.now();
     const calendarSource = views.calendar.displaySources?.();
     const calendarState = this.vget('calendar');
@@ -225,14 +225,14 @@ export function installPrototypeHomeBindings(Component: any) {
   p.renderVals = function () {
     const out = render.call(this);
     let storageAccessWarning='';
-    if(!Capacitor.isNativePlatform()&&!storageAccessible()){storageAccessWarning='Saving is unavailable. Changes may not be saved. Check your browser’s storage settings and reload.';}
+    if(!Capacitor.isNativePlatform()&&!storageAccessible()){storageAccessWarning='Saving off';}
     const activeView=this.S().view||'home';
     const chatModal=out.panelPE==='auto'&&this.S().chat==='full';
     const attention = mockAttentionRows();
     return {
       ...NEUTRAL_HOME,
       ...(HOME_DEFAULTS || {}),
-      homeAttentionLabel: attention.length ? `${attention.length} ${attention.length === 1 ? 'item needs' : 'items need'} your attention` : 'Nothing needs your attention', homeAttentionPeople: attention,
+      homeAttentionLabel: attention.length ? `${attention.length} ${attention.length === 1 ? 'item needs' : 'items need'} your attention` : 'All clear', homeAttentionPeople: attention,
       homeAttentionPeopleVisibility: attention.length ? 'visible' : 'hidden',
       ...out,
       activeViewLabel: activeView[0].toUpperCase()+activeView.slice(1), storageAccessWarning,

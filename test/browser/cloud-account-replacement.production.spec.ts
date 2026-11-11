@@ -47,7 +47,7 @@ test('signing out of account A and into account B stops the resident before A is
   dialog = await cloudPlan(page);
   await dialog.getByRole('button', { name: 'Sign out', exact: true }).click();await confirmCloudSignOut(page);
   dialog=page.locator('[role="main"].alpha-cloud-sign-in');
-  await expect(dialog.getByRole('button', { name: 'Email me a code', exact: true })).toBeEnabled({ timeout: 30_000 });
+  await expect(dialog.getByRole('button', { name: 'Send code', exact: true })).toBeEnabled({ timeout: 30_000 });
   const signOut = await stub(page, s => s.order.length) as number;
   // Sign in as B.
   await setStub(page, { nextToken: B.token });

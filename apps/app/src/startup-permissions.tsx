@@ -5,6 +5,7 @@ import {connectionController} from './runtime/connection-ui';
 import {googleConnectionController} from './runtime/google-connection-ui';
 import {startupPhotoAccess,startupLocationAccess,startupFilesAccess,lateReadyNotice,STARTUP_PERMISSIONS_REOPEN} from './startup-permission-flow';
 import {iconStyle} from './icon-style';
+import {Busy,StatusDot} from './runtime/status-ui';
 import {browserStartupPermission} from './startup-browser-permissions';
 import {createStartupPermissionFlow, startupPermissionKeys, nativeStartupPermissionKeys, type NativeStartupPermissionKey as PermissionKey, type StartupPermissionState} from './startup-permission-flow';
 import {readStartupPermissionProgress, writeStartupPermissionProgress, startupPermissionProgressKey} from './startup-permission-progress';
@@ -24,13 +25,13 @@ const calendar = registerPlugin<{checkPermissions(): Promise<{calendar: string}>
 const device = registerPlugin<{openSettings(options: {page: 'notifications' | 'privacy'}): Promise<unknown>}>('AlphaDevice');
 const files = registerPlugin<{storageState(): Promise<{access?: string}>; storageRequestAccess(options?: {settings?: boolean}): Promise<{access?: string}>}>('AlphaFiles');
 const details = {
-  notifications: {title: 'Notifications', icon: 'bell', reason: 'See reminders and updates from Alpha.'},
-  microphone: {title: 'Microphone', icon: 'mic', reason: 'Record voice notes and speak with Alpha.'},
-  camera: {title: 'Camera', icon: 'camera', reason: 'Take photos and scan text when you choose.'},
-  photos: {title: 'Photos', icon: 'images', reason: 'Browse the photos and videos you allow.'},
-  calendar: {title: 'Calendar', icon: 'calendar', reason: 'Read your calendars and add events after review.'},
-  location: {title: 'Location', icon: 'map-pin', reason: 'Use your location for nearby places and directions when you choose.'},
-  files: {title: 'Files', icon: 'folder', reason: 'Browse files on this device. Android grants access to shared storage; you choose what to open or share.'},
+  notifications: {title: 'Notifications', icon: 'bell', reason: 'Reminders and updates'},
+  microphone: {title: 'Microphone', icon: 'mic', reason: 'Voice notes and talk'},
+  camera: {title: 'Camera', icon: 'camera', reason: 'Photos and text scans'},
+  photos: {title: 'Photos', icon: 'images', reason: 'Photos you allow'},
+  calendar: {title: 'Calendar', icon: 'calendar', reason: 'Read; add after review'},
+  location: {title: 'Location', icon: 'map-pin', reason: 'Nearby places, directions'},
+  files: {title: 'Files', icon: 'folder', reason: 'Shared storage files'},
 };
 const progressKey = 'alpha:startup-permission-progress:v1';
 type Progress = {version: 3; step: number; choices: ('allowed' | 'continued' | 'skipped')[]};
@@ -236,7 +237,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
       if (contextCurrent(ticket, credentialId) && value !== null) {
         setStates(previous => ({...previous, [key]: value}));
         if (value === 'ready' && !target) advance(state === 'ready' ? 'continued' : 'allowed');
-        else if (!native && value !== 'ready') setCheckNotice(value === 'settings' ? 'Access is still off. Change it using the site controls.' : 'This browser could not confirm access.');
+        else if (!native && value !== 'ready') setCheckNotice(value === 'settings' ? 'Still off' : 'Couldn’t confirm');
       }
     } catch {if (contextCurrent(ticket, credentialId)) setStates(previous => ({...previous, [key]: 'unavailable'}));}
     finally {if (id === action.current) {actionPending.current = false; if (alive.current) setBusy(false);}}
@@ -253,31 +254,39 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
   if (!visible) return null;
   if(ready){
     // A missing plan is known at admission. Setup does not wait for the agent to start, so this notice does not either.
-    const aiNotice=connection.residentPlanNotice==='needs-plan'?'AI needs an active Cloud plan. Manage it in Settings.':connection.residentInference==='unknown'?'AI connection isn’t confirmed yet.':connection.residentInference==='unavailable'?'AI is off. Sign in or choose a plan in Settings.':'';
-    const revokeNotice=connection.previousSignInUnconfirmed&&connection.message?connection.message:'';
-    const title=(connection.residentInference==='cloud'||connection.residentInference==='direct')&&!aiNotice&&!connection.error&&!revokeNotice&&!progressError?'You’re all set':'Setup finished';
-    return <dialog ref={dialog} className="alpha-startup-permissions" aria-label={title} onCancel={event=>{event.preventDefault();if(reviewRef.current)close();else finish();}}><div className="alpha-permission-content">
-    <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle('check')}/></span><h2 className="serif" tabIndex={-1}>{title}</h2>
-    {aiNotice&&<p role="status" className="alpha-permission-status">{aiNotice}</p>}
+    const aiNotice=connection.residentPlanNotice==='needs-plan'?'No plan':connection.residentInference==='unknown'?'AI · checking':connection.residentInference==='unavailable'?'AI off':'';
+    const revokeNotice=connection.previousSignInUnconfirmed&&connection.message?'Check sign-in':'';
+    const attention=!!(aiNotice||connection.error||revokeNotice||progressError);
+    const title='All set';
+    return <dialog ref={dialog} className="alpha-startup-permissions" aria-label={title} data-attention={attention||undefined} onCancel={event=>{event.preventDefault();if(reviewRef.current)close();else finish();}}><div className="alpha-permission-content">
+    <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle('check')}/>{attention&&<span className="alpha-permission-attention"/>}</span><h2 className="serif" tabIndex={-1}>{title}</h2>
+    <div className="alpha-permission-chips">
+    {aiNotice&&<p role="status" className="alpha-permission-status"><StatusDot tone={aiNotice==='AI · checking'?'busy':aiNotice==='No plan'?'warn':'off'}>{aiNotice}</StatusDot></p>}
     {connection.error&&<p role="alert" className="alpha-permission-status">{connection.error}</p>}
-    {revokeNotice&&<p role="status" className="alpha-permission-status">{revokeNotice}</p>}
-    {connection.accountCreated&&<p role="status" className="alpha-permission-status">Account created{connection.cloudAccount?.email?`: ${connection.cloudAccount.email}`:''}.</p>}
-    {progressError&&<p role="alert" className="alpha-permission-status">Could not save setup. Go to Alpha to try again.</p>}
-    <div className="alpha-permission-actions"><button type="button" className="alpha-permission-primary" disabled={busy} onClick={()=>void finish()}>{busy?'Checking…':'Go to Alpha'}</button></div>
+    {revokeNotice&&<p role="status" className="alpha-permission-status"><StatusDot tone="warn">{revokeNotice}</StatusDot></p>}
+    {connection.accountCreated&&<p role="status" className="alpha-permission-status"><span aria-hidden="true" style={iconStyle('user-round-plus')}/><span className="alpha-sr">New account </span>{connection.cloudAccount?.email||'New account'}</p>}
+    {progressError&&<p role="alert" className="alpha-permission-status"><StatusDot tone="warn">Not saved</StatusDot></p>}
+    </div>
+    <div className="alpha-permission-actions"><button type="button" className="alpha-permission-primary" disabled={busy} onClick={()=>void finish()}>{busy?<Busy label="Checking"/>:'Done'}</button></div>
   </div></dialog>;}
-  const info = details[key];
-  const primary = busy ? 'Checking…' : target && native && (state === 'ready' || state === 'settings') ? 'Open Android settings' : target && !native && state === 'ready' ? 'Done' : state === 'ready' ? 'Continue' : state === 'settings' ? native ? 'Open Android settings' : 'Check access' : state === 'unavailable' ? 'Try again' : 'Allow';
+  // One "Access" checklist. The flow still asks one permission at a time, in order: the current row
+  // carries its action and each system prompt still appears when that row is tapped.
+  const describe=(value:string)=>/^Precise/.test(value)?'Precise':/^Approximate/.test(value)?'Approximate':/^All photos/.test(value)?'All':/^Selected/.test(value)?'Selected':/^Limited/.test(value)?'Limited':'Allowed';
+  const stateWord=(k:PermissionKey)=>{const value=states[k];return value==='checking'?<Busy label="Checking"/>:value==='ready'?<StatusDot tone="ok">{native&&k==='location'?describe(locationDescription.current):native&&k==='photos'?describe(photoDescription.current):'Allowed'}</StatusDot>:value==='settings'?<StatusDot tone="off">Off</StatusDot>:value==='unavailable'?<StatusDot tone="warn">Couldn’t check</StatusDot>:<StatusDot tone="off">Ask</StatusDot>;};
+  const chip = target && native && (state === 'ready' || state === 'settings') ? 'Settings' : state === 'ready' ? '' : state === 'settings' ? native ? 'Settings' : 'Check' : state === 'unavailable' ? 'Try again' : 'Allow';
+  const continueReady = target ? !busy : state === 'ready' && !busy;
+  const proceed = () => {if (target) {if (!busy) advance('continued'); return;} if (state === 'ready') void allow(); else setCheckNotice('Allow first');};
   return <dialog ref={dialog} className="alpha-startup-permissions" aria-labelledby="alpha-permission-title" onCancel={event => {event.preventDefault(); close();}}>
-    <div className="alpha-permission-content" key={key}>
-      <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle(info.icon)}/></span>
-      <h2 id="alpha-permission-title" className="serif" tabIndex={-1}>{info.title}</h2>
-      <p className="alpha-permission-rationale">{info.reason}</p>
-      {state === 'ready' && <p className="alpha-permission-status" role="status">{native&&key==='location'?locationDescription.current:native&&key==='photos'?photoDescription.current:'Allowed.'}</p>}
-      {state === 'settings' && !checkNotice && <p className="alpha-permission-status" role="status">{native ? 'Off.' : 'Off. Turn it on in your browser’s site settings.'}</p>}
-      {state === 'unavailable' && !checkNotice && <p className="alpha-permission-status" role="status">{native ? 'Could not check. Open Android app settings.' : 'Could not check. Open your browser’s site settings.'}</p>}
-      {progressError && <p className="alpha-permission-status" role="alert">Setup progress could not be saved.</p>}
+    <div className="alpha-permission-content alpha-permission-checklist">
+      <h2 id="alpha-permission-title" className="serif" tabIndex={-1}>Access</h2>
+      <ul className="alpha-permission-rows">{keys.map(k => <li key={k} className="alpha-permission-row" aria-current={k === key ? 'step' : undefined} data-state={states[k]}>
+        <span className="alpha-permission-row-icon" aria-hidden="true"><span style={iconStyle(details[k].icon)}/></span>
+        <span className="alpha-permission-name">{details[k].title}{k === key && <span className="alpha-permission-rationale" style={{display: 'block', fontSize: 13, color: 'var(--connection-mut,#6b6b6b)'}}>{details[k].reason}</span>}</span>
+        {k === key && (chip || busy || state === 'checking') ? <button className="alpha-permission-chip" type="button" disabled={busy || state === 'checking'} onClick={() => void allow()}>{busy || state === 'checking' ? <Busy label="Checking"/> : chip}</button> : <span className="alpha-permission-state">{stateWord(k)}</span>}
+      </li>)}</ul>
+      {progressError && <p className="alpha-permission-status" role="alert"><StatusDot tone="warn">Not saved</StatusDot></p>}
       {checkNotice && <p className="alpha-permission-status" role="status">{checkNotice}</p>}
-      <div className="alpha-permission-actions"><button className="alpha-permission-primary" type="button" disabled={busy || state === 'checking'} onClick={() => void allow()}>{state === 'checking' ? 'Checking…' : primary}</button>{canSkip && (!target || busy) && <button className="alpha-permission-skip" type="button" onClick={skip}>Skip for now</button>}{target && !( !native && state === 'ready') && <button className="alpha-permission-skip" type="button" disabled={busy} onClick={() => advance('continued')}>Done</button>}{review && !target && <button className="alpha-permission-skip" type="button" onClick={close}>Close</button>}</div>
+      <div className="alpha-permission-actions"><button className="alpha-permission-primary" type="button" aria-disabled={!continueReady || undefined} onClick={proceed}>{target ? 'Done' : 'Continue'}</button>{canSkip && (!target || busy) && <button className="alpha-permission-skip" type="button" onClick={skip}>Skip</button>}{review && !target && <button className="alpha-permission-skip" type="button" onClick={close}>Close</button>}</div>
     </div>
   </dialog>;
 }

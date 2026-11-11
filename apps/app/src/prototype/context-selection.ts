@@ -94,11 +94,11 @@ export function folderScopeCurrent(reviewed: FolderScope, fresh: Listed & { stat
 export function folderExcerpt(scope: FolderScope, typeLabel: (mimeType: string, directory: boolean) => string): string {
   const shown = scope.entries.slice(0, FOLDER_EXCERPT_LIMIT), hidden = scope.entries.length - shown.length;
   const lines = ['Folder: ' + scope.folder.name];
-  if (!shown.length) lines.push(scope.more ? 'No entries are loaded.' : 'This folder is empty.');
+  if (!shown.length) lines.push(scope.more ? 'Not loaded' : 'Empty');
   else lines.push(shown.length + (shown.length === 1 ? ' entry' : ' entries') + ' listed by name and type. File contents and subfolder contents are not included.');
   for (const entry of shown) lines.push('- ' + entry.name + ' (' + typeLabel(entry.mimeType, entry.directory) + ')');
   if (hidden > 0) lines.push(hidden + ' more loaded ' + (hidden === 1 ? 'entry is' : 'entries are') + ' not listed here.');
-  if (scope.more) lines.push('The folder has more entries that are not loaded' + (scope.total !== undefined ? ' (' + scope.total + ' in total).' : '.'));
+  if (scope.more) lines.push('More…' + (scope.total !== undefined ? ' (' + scope.total + ' total)' : ''));
   return lines.join('\n');
 }
 

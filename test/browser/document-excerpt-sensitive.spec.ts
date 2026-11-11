@@ -12,7 +12,7 @@ test('a document excerpt with a verification code is refused until it is edited'
  await expect(excerpt).toHaveValue('Pick up the bikes on Friday.\nYour verification code is 482913');
  const composer=page.getByRole('textbox',{name:'Message Alpha',exact:true});
  await review.getByRole('button',{name:'Use in conversation'}).click();
- await expect(review.getByRole('status')).toHaveText('This excerpt may contain credentials or verification codes. Remove them before continuing.');
+ await expect(review.getByRole('status')).toHaveText('Remove secrets first');
  // The review stays open and nothing reached the draft; the composer is inert under the dialog.
  await expect(review).toBeVisible();
  await excerpt.fill('Pick up the bikes on Friday.');

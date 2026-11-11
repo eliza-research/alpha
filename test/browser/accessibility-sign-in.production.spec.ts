@@ -43,7 +43,7 @@ async function signedOut(page: Page) {
   await flagOffAndroid(page, { freshAccess: true });
   await residentStub(page, { nativeSignIn: true, emptyKeystore: true, accounts: [account] });
   await page.goto('/');
-  const welcome = page.getByRole('main', { name: 'Welcome to Alpha.', exact: true });
+  const welcome = page.getByRole('main', { name: 'Alpha', exact: true });
   await expect(welcome).toBeVisible({ timeout: 30_000 });
   await expectNoDevelopmentSurface(page);
   await page.evaluate(() => document.fonts.ready);
@@ -56,9 +56,9 @@ test('the signed-out Cloud chooser stays usable after the resident fails to star
   await flagOffAndroid(page, {freshAccess: true});
   await residentStub(page, {nativeSignIn: true, emptyKeystore: true, rejectStart: true, accounts: [account]});
   await page.goto('/');
-  await expect(page.getByRole('main', {name:'Welcome to Alpha.', exact:true})).toBeVisible();
+  await expect(page.getByRole('main', {name:'Alpha', exact:true})).toBeVisible();
   await expect.poll(() => page.evaluate(() => (window as any).residentStub.order.includes('Agent.start'))).toBe(true);
-  await expect(page.getByRole('button', {name:'Email me a code', exact:true})).toBeEnabled();
+  await expect(page.getByRole('button', {name:'Send code', exact:true})).toBeEnabled();
   await expect(page.getByText('Local agent failed to start.', {exact:true})).toHaveCount(0);
   expect(foreign).toEqual([]);
 });

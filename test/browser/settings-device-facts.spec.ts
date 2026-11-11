@@ -116,7 +116,7 @@ test('permission handoffs and developer navigation retain their boundaries while
  await expect(app(page).getByRole('button',{name:'Developer',exact:true})).toHaveCount(0);
  await settings(page,'?tools=1');
  await app(page).getByRole('button',{name:'Privacy',exact:true}).click();
- await app(page).getByRole('button',{name:'App permissions',exact:true}).click();
+ await app(page).getByRole('button',{name:'Permissions',exact:true}).click();
  await app(page).getByRole('button',{name:'Location',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).settingsFixture.calls.some((c:any)=>c.method==='openSettings'&&c.input.page==='privacy'))).toBe(true);
  await expect(app(page).getByText('Contacts',{exact:true})).toHaveCount(0);

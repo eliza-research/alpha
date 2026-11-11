@@ -59,9 +59,8 @@ export function shadeNoticeQuestionFixture() {
       toasts.push(message);
       if (!settling) return;
       observeEffect();
-      assert.ok(['This notification changed or is no longer shown. Nothing was added to your conversation.',
-        'This notification could not be checked. Nothing was added to your conversation.'].includes(message));
-      reported.push({id: settling, result: message.includes('could not be checked') ? 'unavailable' : 'changed'});
+      assert.ok(['Gone','Couldn’t check'].includes(message));
+      reported.push({id: settling, result: message === 'Couldn’t check' ? 'unavailable' : 'changed'});
     }
     api() {return {composeContentQuestion: text => {
       drafts.push(text);

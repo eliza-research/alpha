@@ -34,10 +34,10 @@ test('a fresh Workflows visit reaches the sole removed workflow and restores it 
 
  await page.reload();await installWorkflowListFixture(page);
  await page.getByRole('button',{name:'Workflows',exact:true}).click();
- await expect(page.getByText('No workflows yet',{exact:true})).toBeVisible();
+ await expect(page.getByText('No automations',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:/^Removed workflows\b/}).click();
  await workflowCard(page,'Sole removed workflow').click();
- await expect(page.getByText('Removed; execution history retained. Restore returns it paused',{exact:true})).toBeVisible();
+ await expect(page.getByRole('status',{name:'Workflow run status',exact:true})).toHaveText('Removed');
  await expect(page.getByRole('button',{name:'succeeded execution',exact:true})).toBeVisible();
  expect(await savedState(page)).toEqual(before);
 

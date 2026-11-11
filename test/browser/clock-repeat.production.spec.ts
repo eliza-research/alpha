@@ -62,7 +62,7 @@ for (const version of [1, 2]) test(`clockRepeatDaysVersion ${version}: Mon to Fr
   await clock.getByRole('button',{name:'Set alarm',exact:true}).click();
   await expect(repeat).toContainText('Repeats weekdays');
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
-  await expect(clock).toContainText('Ask Clock to set a repeating alarm (weekdays) at 06:30 named “Weekday wake”, using the phone’s local time. Review the alarm in Clock.');
+  await expect(clock).toContainText('06:30 · weekdays · Weekday wake');
   expect(await handoffs(page)).toEqual([]);
   // Deliver duplicate activation to the same reviewed control before its asynchronous
   // handoff settles. A physical dblclick can retarget the newly exposed Review button.
@@ -89,7 +89,7 @@ test('without clockRepeatDaysVersion there are no day chips and a set request ca
   for (const day of [...weekdays, 'Sat', 'Sun']) await expect(clock.getByRole('button', { name: `Repeat on ${day}`, exact: true })).toHaveCount(0);
   await clock.getByLabel('Alarm time', { exact: true }).fill('06:30');
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
-  await expect(clock).toContainText('Ask Clock to set an alarm at 06:30, using the phone’s local time.');
+  await expect(clock).toContainText('06:30');
   await expect(clock).not.toContainText('repeating');
   await clock.getByRole('button', { name: 'Confirm Clock request', exact: true }).click();
   await expect.poll(() => handoffs(page).then(rows => rows.length)).toBe(1);
@@ -99,7 +99,7 @@ test('without clockRepeatDaysVersion there are no day chips and a set request ca
   // Show alarms is its own reviewed handoff.
   await clock.getByRole('button', { name: 'Show alarms', exact: true }).click();
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
-  await expect(clock).toContainText('Open the installed Clock app’s alarms page.');
+  await expect(clock.getByRole('button', { name: 'Confirm Clock request', exact: true })).toBeVisible();
   await clock.getByRole('button', { name: 'Confirm Clock request', exact: true }).click();
   await expect.poll(() => handoffs(page).then(rows => rows.length)).toBe(2);
   expect((await handoffs(page))[1]).toEqual({ action: 'show', reviewed: true });

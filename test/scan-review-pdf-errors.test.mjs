@@ -14,15 +14,15 @@ test('conversion failures show the real reason and keep retry available',async()
  let exported=0;globalThis.scanPdfTest={create:async()=>{throw Error('Page 2 is larger than 32 million pixels');},exportPdf:async()=>{exported++;return {status:'exported',message:'saved'};}};
  const error=await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan').then(()=>null,value=>value);
  assert.ok(error instanceof Error);assert.ok(!(error instanceof ScanPdfExportError),'conversion is not export uncertainty');assert.equal(exported,0,'nothing reached the provider');
- const failure=scanPdfFailure(error);assert.equal(failure.retry,true);assert.match(failure.message,/^Page 2 is larger than 32 million pixels\. Nothing was saved\. Try again\.$/);
- assert.equal(scanPdfFailure('opaque').retry,true);assert.match(scanPdfFailure('opaque').message,/could not be prepared/);
+ const failure=scanPdfFailure(error);assert.equal(failure.retry,true);assert.match(failure.message,/^Page 2 is larger than 32 million pixels$/);
+ assert.equal(scanPdfFailure('opaque').retry,true);assert.equal(scanPdfFailure('opaque').message,'PDF failed');
  assert.equal(scanPdfFailure(new DOMException('stop','AbortError')).retry,true);
 });
 test('only a failed or unknown export call is unconfirmed and locks retry',async()=>{
  let picker=false;globalThis.scanPdfTest={create:async()=>bytes,exportPdf:async input=>{picker=systemPickerActive();assert.equal(atob(input.dataBase64),'%PDF-1.7 test');throw Error('bridge lost');}};
  const error=await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan').then(()=>null,value=>value);
  assert.ok(error instanceof ScanPdfExportError);assert.equal(picker,true,'review dialogs stay open while the system picker covers the page');assert.equal(systemPickerActive(),false);
- const failure=scanPdfFailure(error);assert.equal(failure.retry,false);assert.match(failure.message,/unconfirmed/);
+ const failure=scanPdfFailure(error);assert.equal(failure.retry,false);assert.match(failure.message,/[Uu]nconfirmed/);
 });
 test('an export that pushes a picked document out of Recent releases that document\'s grant',async()=>{
  const forgotten=[];globalThis.scanPdfTest={create:async()=>bytes,exportPdf:async()=>({status:'exported',message:'saved'}),forget:async input=>{forgotten.push(input.selectionId);}};
@@ -84,7 +84,7 @@ test('Back while the PDF is still being prepared is a cancel; after the request 
  let release;const early=await review({create:()=>new Promise(resolve=>release=resolve),exportPdf:async()=>({status:'exported',message:'saved'})});
  early.download.click();await settle();early.back();release(bytes);await settle();
  assert.equal(await early.result,undefined);assert.deepEqual(early.calls,[],'no export request was made');
- for(const [native,where] of [[false,/Check Downloads/],[true,/Check the place you chose/]]){
+ for(const [native,where] of [[false,/^Export unconfirmed$/],[true,/^Export unconfirmed$/]]){
   const late=await review({native,exportPdf:()=>new Promise(()=>{})});
   late.download.click();await settle();assert.equal(late.calls.length,1);late.back();
   const value=await late.result;assert.equal(value.status,'unconfirmed');assert.match(value.message,where);

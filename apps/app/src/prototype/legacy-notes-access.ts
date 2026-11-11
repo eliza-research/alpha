@@ -4,14 +4,14 @@ import {DocumentNotesStore,type NotesDocumentPort} from '../../../../.eliza/clie
 import {SecureNotesStore,SECURE_NOTES_SLOT,SECURE_NOTES_DRAFT_SLOT,LEGACY_NOTES_SOURCE_KEYS} from '../runtime/notes-secure-store';
 import type {NotesVault} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/notes-secure-store.ts';
 export class LegacyNotesReviewRequired extends Error {
- constructor(){super('Previous notes need a recovery review. Nothing was moved or changed.');}
+ constructor(){super('Needs review');}
 }
 /** Nothing was ever saved as previous notes on this phone: no store and no older keys to migrate. */
 export class LegacyNotesAbsent extends Error {
- constructor(){super('There are no previous notes on this phone.');}
+ constructor(){super('None');}
 }
 export class LegacyNotesDraftOnly extends Error {
- constructor(){super('An unsaved draft from an earlier session is kept on this phone.');}
+ constructor(){super('Unsaved draft');}
 }
 export type LegacyNotesAvailability = 'present'|'absent'|'unavailable';
 const noLegacyKeys=(storage:Pick<Storage,'getItem'>)=>LEGACY_NOTES_SOURCE_KEYS.every(key=>storage.getItem(key)===null);

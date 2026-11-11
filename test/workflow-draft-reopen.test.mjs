@@ -47,12 +47,12 @@ test('reopening under another owner never carries the earlier owner’s pending 
 
 test('a second reopen after cancellation still waits for the original held commit',async()=>{const h=await harness();await h.editHeld('Newest held name');h.authoring.close();const first=h.authoring.open();for(let i=0;i<5;i++)await Promise.resolve();h.authoring.close();const second=h.authoring.open();for(let i=0;i<5;i++)await Promise.resolve();h.release();await Promise.all([first,second]);assert.equal(h.render().name,'Newest held name');h.authoring.close();});
 
-test('failed pending persistence preserves latest unsent draft instead of restoring older bytes',async()=>{const h=await harness();await h.editHeld('Latest unsaved name');h.authoring.close();const opening=h.authoring.open();h.failWrite();h.release();await opening;assert.equal(h.render().name,'Latest unsaved name');assert.match(h.render().typedStatus,/failed|retained|unavailable/);h.authoring.close();});
+test('failed pending persistence preserves latest unsent draft instead of restoring older bytes',async()=>{const h=await harness();await h.editHeld('Latest unsaved name');h.authoring.close();const opening=h.authoring.open();h.failWrite();h.release();await opening;assert.equal(h.render().name,'Latest unsaved name');assert.match(h.render().typedStatus,/failed|retained|unavailable|Retrying|not saved/);h.authoring.close();});
 
 test('closing and reopening after a conflicting save loads the newer stored draft instead of the retained failed one',async()=>{
  const h=await harness();await h.edit('Stored first');h.writeElsewhere('Window A newer name');await h.edit('Window B conflicting name');
  assert.match(h.render().typedStatus,/another window/i);
- await h.reopen();assert.equal(h.render().name,'Window A newer name');assert.match(h.render().typedStatus,/Another window changed this draft/);
+ await h.reopen();assert.equal(h.render().name,'Window A newer name');assert.equal(h.render().typedStatus,'Newer draft restored');
  await h.edit('Edited after recovery');assert.equal(h.stored(),'Edited after recovery','storage is writable again after the reopen');h.authoring.close();
 });
 test('a transient write error is retried with the retained edits on reopen and never sticks',async()=>{
@@ -76,18 +76,18 @@ test('a retained draft for another workflow is named, and Discard opens the work
  const h=await harness();await h.reopen(flow('x','Workflow X'));await h.edit('Workflow X edited');
  await h.reopen(flow('y','Workflow Y'));
  assert.equal(h.render().name,'Workflow X edited','the retained draft is shown, never replaced silently');
- assert.equal(h.render().typedStatus,'You have an unsaved draft for Workflow X edited. Finish it, or discard it to open Workflow Y.');
+ assert.equal(h.render().typedStatus,'Unsaved draft: Workflow X edited');
  await h.render().discard();await h.render().discard();for(let i=0;i<20;i++)await Promise.resolve();
  assert.equal(h.authoring.active,true);assert.equal(h.render().name,'Workflow Y');assert.equal([...h.records.values()][0],null);h.authoring.close();
 });
 test('the save review names where the draft saves and keeps the full specification under Technical details',async()=>{
  const h=await harness();await h.reopen(flow('x','Workflow X'));await h.edit('Workflow X edited');await h.render().save();
- assert.equal(h.render().typedReview,'Replaces Workflow X. It will be paused and its schedule turned off.\nRuns only when you tap Run now.\n1. Read supplied text');
+ assert.equal(h.render().typedReview,'Replaces Workflow X\nManual\n1. Read supplied text');
  assert.equal(JSON.parse(h.render().typedSpecification).name,'Workflow X edited');
  assert.match(h.render().typedStatus,/^Review the steps, then tap Save again\./);
  await h.render().discard();await h.render().discard();for(let i=0;i<20;i++)await Promise.resolve();
  await h.reopen();await h.edit('Brand new');h.render().onDescription({target:{value:''}});await h.render().save();
- assert.match(h.render().typedReview,/^Creates a new workflow\. It saves paused\./);h.authoring.close();
+ assert.match(h.render().typedReview,/^Manual(\n|$)/);h.authoring.close();
 });
 test('Describe stays available while the draft has steps',async()=>{
  const h=await harness();await h.reopen(flow('x','Workflow X'));assert.equal(h.render().empty,true);h.authoring.close();

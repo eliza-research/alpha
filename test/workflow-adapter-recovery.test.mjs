@@ -59,7 +59,7 @@ test('a run request without a submission identity is cleared only by its owner, 
  const app=adapterFixture({storage,view:'workflows'});
  try{
   app.render().openWorkflow('flow');await wait(()=>app.render().detail);
-  assert.match(app.render().fd.last,/Earlier run request unconfirmed/);
+  assert.match(app.render().fd.last,/Check runs · Clear request/);
   app.render().fd.run();
   assert.match(app.toasts.at(-1),/can’t check whether your earlier run started/);
   assert.equal(Object.keys(storage).length,1);assert.match(app.render().fd.last,/Tap Run now again to clear/);
@@ -76,7 +76,7 @@ test('a request the agent can match is never offered for clearing',async()=>{
  const app=adapterFixture({storage,view:'workflows',reconciliation:true});
  try{
   app.render().openWorkflow('flow');await wait(()=>app.render().detail);
-  assert.match(app.render().fd.last,/agent has no run for your earlier request/);
+  assert.match(app.render().fd.last,/Not received/);
   assert.equal(Object.keys(storage).length,1);
  }finally{app.close();}
 });
@@ -99,7 +99,7 @@ test('a tapped run opens with its pending requests loaded instead of reading as 
   await wait(()=>app.render().runOpen,'The tapped run did not open.');
   assert.equal(app.view,'workflows');assert.equal(app.pendingTap,null);
   await wait(()=>!/outcome unknown/i.test(app.render().fd.last),'The opened workflow still reads as an unknown outcome.');
-  assert.match(app.render().fd.last,/Enabled on this agent/);
+  assert.match(app.render().fd.last,/On/);
  }finally{app.close();}
 });
 

@@ -53,7 +53,7 @@ test('the renderer accepts shared transport codes and refuses unknown codes with
   const error=CloudSignInError.from({code,message:'private details'});
   assert.equal(error.code,code);
   const message=signInFailureMessage(error.code,'Eliza Cloud');
-  assert.ok(message.includes('Eliza Cloud'));
+  assert.ok(code==='unavailable'?message==='Unavailable':message.includes('Eliza Cloud'));
   assert.ok(!message.includes('private details'));
   messages.push(message);
  }

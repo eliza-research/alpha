@@ -27,8 +27,8 @@ const CHANGED_OUTCOMES = ['favorited', 'unfavorited', 'trashed', 'restored', 'un
 export function describeLibraryChange(result: { status: string; outcomes?: { id: string; status: string }[] }, requested: number) {
   const outcomes = Array.isArray(result.outcomes) ? result.outcomes : [];
   const verified = outcomes.filter(row => CHANGED_OUTCOMES.includes(row.status)).length, stale = outcomes.filter(row => row.status === 'stale').length;
-  if (result.status === 'complete' && verified === requested) return `${verified} ${verified === 1 ? 'item' : 'items'} changed and verified.`;
-  return `${verified} of ${requested} changes verified${stale ? `; ${stale} changed elsewhere and ${stale === 1 ? 'was' : 'were'} skipped` : ''}.`;
+  if (result.status === 'complete' && verified === requested) return `${verified} ✓`;
+  return `${verified}/${requested} ✓${stale ? ` · ${stale} skipped` : ''}`;
 }
 export const deviceLibraryAvailable = () => Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('AlphaPhotoLibrary');
 const revisionSession = () => { try { return Array.from(crypto.getRandomValues(new Uint8Array(6)), byte => byte.toString(36).padStart(2, '0')).join('').slice(0, 12); } catch { return Date.now().toString(36).slice(-8); } };
@@ -93,12 +93,12 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
     let current = false;
     try { current = await validCurrent(pending.items); } catch { current = false; }
     if (review !== pending) return;
-    if (!current) { review = undefined; status = 'The reviewed items changed. Review them again.'; changed(); return; }
+    if (!current) { review = undefined; status = 'Items changed'; changed(); return; }
     acting = true; review = undefined; changed();
     try {
       if (pending.action === 'share') {
         const result = await port.share({ items: pending.items });
-        status = result.status === 'opened' ? '' : 'Sharing did not open.';
+        status = result.status === 'opened' ? '' : 'Share failed';
       } else {
         // Native (PermittedMediaReview) resolves only after Android approved: {status:'complete'|'partial',
         // outcomes:[{status:'favorited'|'unfavorited'|'trashed'|'restored'|'unchanged'|'stale'|'unverified'}]}.
@@ -112,8 +112,8 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
     } catch (failure) {
       const code = (failure as { code?: string })?.code;
       if (code === 'LIBRARY_DECLINED') status = 'Nothing changed.';
-      else if (code === 'LIBRARY_STALE') status = 'An item changed. Nothing changed; review again.';
-      else status = 'The action could not be completed.';
+      else if (code === 'LIBRARY_STALE') status = 'Item changed';
+      else status = 'Failed';
     } finally { acting = false; changed(); }
   }
 

@@ -93,8 +93,8 @@ export async function localAgentStopped():Promise<boolean> {
   }catch{return false;}
 }
 const unavailableBridge: LocalAgentBridge = {
-  async start() { throw new Error('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.'); },
-  async request() { throw new Error('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.'); },
+  async start() { throw new Error('Use on phone'); },
+  async request() { throw new Error('Use on phone'); },
 };
 const browserBridge: LocalAgentBridge | null = developmentBridgeAllowed ? {
   subscribeConversationEvents(ownerId,listener,onState){return subscribeBrowserConversationEvents(this,ownerId,listener,onState);},
@@ -522,11 +522,11 @@ export function modelLabel(providerLabel:string,model:string):string {
   return providerLabel+' · '+name+' ('+(modelVendors[vendor.toLowerCase()]??vendor)+')';
 }
 export function providerStatusLabel(status:LocalProviderStatus|null|undefined):string {
-  if(!status)return 'Provider status unavailable';
-  if(!status.configured)return status.provider==='elizacloud'?'Not configured · Cloud sign-in required':'Not configured';
+  if(!status)return 'Unknown';
+  if(!status.configured)return 'Not set';
   // Eliza Cloud serves the same Qwen model through Cerebras.
   const model=status.model||(status.provider==='elizacloud'?'cerebras/'+LOCAL_PROVIDER_MODEL:LOCAL_PROVIDER_MODEL);
-  return 'Configured · '+modelLabel(status.provider==='elizacloud'?'Cloud':'Cerebras',model);
+  return modelLabel(status.provider==='elizacloud'?'Cloud':'Cerebras',model);
 }
 function parseProviderStatus(value:unknown):LocalProviderStatus {
   const row=record(value);
@@ -552,11 +552,11 @@ export async function configureLocalProvider(apiKey:string,model:string=LOCAL_PR
   // Explicit owner configuration: native vault or the private browser host's memory only.
   signal.throwIfAborted();
   if(browserCloudResidentEnabled)return browserResidentCall('residentOwn',undefined,undefined,{apiKey,...(cartesiaKey?{cartesiaKey}:{})},signal);
-  if(!Capacitor.isNativePlatform())throw Error('Own API keys require the Android secure credential store. This browser cannot save them.');
-  if(!await localAgentPackaged())throw Error('On-device agent is unavailable in this version.');
+  if(!Capacitor.isNativePlatform())throw Error('Android only');
+  if(!await localAgentPackaged())throw Error('Agent unavailable');
   signal.throwIfAborted();
-  if(!native.prepareProviderConfiguration||!native.configureProvider||!native.cancelProviderConfiguration)throw Error('Cancellable model provider setup is unavailable.');
-  if(model!==LOCAL_PROVIDER_MODEL)throw Error(`Alpha Phone uses ${LOCAL_PROVIDER_MODEL} on Cerebras.`);
+  if(!native.prepareProviderConfiguration||!native.configureProvider||!native.cancelProviderConfiguration)throw Error('Update Alpha');
+  if(model!==LOCAL_PROVIDER_MODEL)throw Error(`${LOCAL_PROVIDER_MODEL} · Cerebras`);
   return runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.configureProvider!({apiKey,model,requestId,...(cartesiaKey?{cartesiaKey}:{})}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
 }
 /** Publish the saved owner switches to the on-device Google host. */
@@ -577,10 +577,10 @@ function managedProviderStatus(value:unknown):ManagedLocalProviderStatus {
 }
 async function currentProviderManager(expectedRevision:string,signal:AbortSignal):Promise<ManagedLocalProviderStatus>{
   signal.throwIfAborted();
-  if(typeof expectedRevision!=='string'||!expectedRevision||expectedRevision.length>256)throw Error('Reload provider Settings before making changes.');
+  if(typeof expectedRevision!=='string'||!expectedRevision||expectedRevision.length>256)throw Error('Refresh');
   const status=managedProviderStatus(await localProviderStatus());signal.throwIfAborted();
-  if(status.revision!==expectedRevision)throw Error('Provider changed. Reload Settings before making changes.');
-  if(status.persistence!==(browserCloudResidentEnabled?'host-session':'native-secure-store'))throw Error('Provider storage could not be confirmed.');
+  if(status.revision!==expectedRevision)throw Error('Refresh');
+  if(status.persistence!==(browserCloudResidentEnabled?'host-session':'native-secure-store'))throw Error('Not confirmed');
   return status;
 }
 function providerKeyName(key:LocalProviderKey):LocalProviderKey {
@@ -596,30 +596,30 @@ export async function selectLocalProvider(input:{mode:LocalProviderMode;expected
   let response:unknown;
   if(browserCloudResidentEnabled)response=await browserProviderCall('residentProviderSelect',{mode,expectedRevision},signal);
   else{
-    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.selectProvider||!native.cancelProviderConfiguration)throw Error('Provider selection is unavailable in this version.');
+    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.selectProvider||!native.cancelProviderConfiguration)throw Error('Update Alpha');
     response=await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.selectProvider!({mode,expectedRevision,requestId}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
   }
   signal.throwIfAborted();const status=managedProviderStatus(response);
-  if(status.mode!==mode||status.keys.text.configured!==before.keys.text.configured||status.keys.voice.configured!==before.keys.voice.configured)throw Error('Provider selection and retained keys could not be confirmed.');
+  if(status.mode!==mode||status.keys.text.configured!==before.keys.text.configured||status.keys.voice.configured!==before.keys.voice.configured)throw Error('Not confirmed');
   return status;
 }
 /** Omitted fields remain untouched. Empty values never mean Remove. Edits do not select a route. */
 export async function editLocalProviderKeys(input:{textKey?:string;voiceKey?:string;expectedRevision:string},signal:AbortSignal=new AbortController().signal):Promise<ManagedLocalProviderStatus>{
   const {textKey,voiceKey,expectedRevision}=input;
-  for(const value of [textKey,voiceKey])if(value!==undefined&&(typeof value!=='string'||value.length<8||value.length>1024||/[^\x21-\x7e]/.test(value)))throw Error('Enter a valid key or leave the field unchanged.');
+  for(const value of [textKey,voiceKey])if(value!==undefined&&(typeof value!=='string'||value.length<8||value.length>1024||/[^\x21-\x7e]/.test(value)))throw Error('Invalid key');
   if(textKey===undefined&&voiceKey===undefined)throw Error('Choose a key to edit.');
   const before=await currentProviderManager(expectedRevision,signal);
   const fields={expectedRevision,...(textKey!==undefined?{textKey}:{}),...(voiceKey!==undefined?{voiceKey}:{})};
   let response:unknown;
   if(browserCloudResidentEnabled)response=await browserProviderCall('residentProviderEdit',fields,signal);
   else{
-    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.editProviderKeys||!native.cancelProviderConfiguration)throw Error('Provider editing is unavailable in this version.');
+    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.editProviderKeys||!native.cancelProviderConfiguration)throw Error('Update Alpha');
     response=await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.editProviderKeys!({...fields,requestId}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
   }
   signal.throwIfAborted();const status=managedProviderStatus(response);
   if(status.mode!==before.mode||textKey!==undefined&&!status.keys.text.configured||voiceKey!==undefined&&!status.keys.voice.configured
     ||textKey===undefined&&status.keys.text.configured!==before.keys.text.configured||voiceKey===undefined&&status.keys.voice.configured!==before.keys.voice.configured)
-    throw Error('Saved keys could not be confirmed. Reload Settings.');
+    throw Error('Refresh');
   return status;
 }
 export async function removeLocalProviderKey(input:{key:LocalProviderKey;expectedRevision:string},signal:AbortSignal=new AbortController().signal):Promise<ManagedLocalProviderStatus>{
@@ -627,12 +627,12 @@ export async function removeLocalProviderKey(input:{key:LocalProviderKey;expecte
   const before=await currentProviderManager(expectedRevision,signal);let response:unknown;
   if(browserCloudResidentEnabled)response=await browserProviderCall('residentProviderRemove',{key,expectedRevision},signal);
   else{
-    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.removeProviderKey||!native.cancelProviderConfiguration)throw Error('Per-key removal is unavailable in this version.');
+    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.removeProviderKey||!native.cancelProviderConfiguration)throw Error('Update Alpha');
     response=await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.removeProviderKey!({key,expectedRevision,requestId}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
   }
   signal.throwIfAborted();const status=managedProviderStatus(response);
   if(status.mode!==before.mode||status.keys[key].configured||status.keys[other].configured!==before.keys[other].configured)
-    throw Error('Key removal could not be confirmed. Reload Settings.');
+    throw Error('Refresh');
   return status;
 }
 /** Native opens a secure dialog; only the browser host can return its explicit RAM-only reveal. */
@@ -643,13 +643,13 @@ export async function revealLocalProviderKey(input:{key:LocalProviderKey;expecte
   let response:unknown;
   if(browserCloudResidentEnabled)response=await browserProviderCall('residentProviderReveal',{key,expectedRevision},signal);
   else{
-    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.revealProviderKey||!native.cancelProviderConfiguration)throw Error('Provider reveal is unavailable in this version.');
+    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.revealProviderKey||!native.cancelProviderConfiguration)throw Error('Update Alpha');
     response=await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.revealProviderKey!({key,expectedRevision,requestId}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
   }
   signal.throwIfAborted();const result=record(response);
   if(result.key!==key||result.revision!==expectedRevision)throw Error('Provider changed before reveal.');
   if(browserCloudResidentEnabled){
-    if(typeof result.value!=='string'||result.value.length<8||result.value.length>1024||/[^\x21-\x7e]/.test(result.value))throw Error('Provider reveal could not be confirmed.');
+    if(typeof result.value!=='string'||result.value.length<8||result.value.length>1024||/[^\x21-\x7e]/.test(result.value))throw Error('Not confirmed');
     return {key,revision:expectedRevision,value:result.value};
   }
   if(result.shown!==true||typeof result.hidesAfterMs!=='number'||result.hidesAfterMs<=0||result.hidesAfterMs>30000||result.value!==undefined)throw Error('Secure provider reveal could not be confirmed.');
@@ -708,7 +708,7 @@ export async function clearLocalProviderIfCurrent(bindingGuard:string,signal:Abo
  * Keep the saved slot; native ownership must be resolved before another start. */
 export class LocalCloudProviderStopUnconfirmed extends Error {
   constructor(cause:unknown) {
-    super('Local agent shutdown could not be confirmed. Your saved AI connection was kept. Check local agent status before reconnecting.',{cause});
+    super('Stop unconfirmed',{cause});
     this.name='LocalCloudProviderStopUnconfirmed';
   }
 }
@@ -742,15 +742,15 @@ export async function awaitLocalAgentStopped(getStatus:()=>Promise<{state?:strin
     await clock.sleep(delay);
     delay=Math.min(delay*2,1000);
   }
-  throw Error('Shutdown is still pending. Check local agent status before starting again.');
+  throw Error('Not confirmed');
 }
 
 /** Recovery keeps opaque native review tokens in memory; the service owns inventory and archival. */
 export async function reviewLocalRecovery(){
- if(!Capacitor.isNativePlatform())throw Error('Recovery is unavailable here. Your records were kept.');
- try{return parseRecoveryReview(await native.reviewRecovery?.());}catch{throw Error('Recovery could not be checked. Your records were kept.');}
+ if(!Capacitor.isNativePlatform())throw Error('Unavailable');
+ try{return parseRecoveryReview(await native.reviewRecovery?.());}catch{throw Error('Couldn’t check');}
 }
 export async function archiveLocalRecovery(reviewToken:string){
- if(!Capacitor.isNativePlatform())throw Error('Recovery is unavailable here. Your records were kept.');
- try{return parseRecoveryArchive(await native.archiveRecovery?.({reviewToken}));}catch{throw Error('Recovery could not be confirmed. Review again before restarting your agent.');}
+ if(!Capacitor.isNativePlatform())throw Error('Unavailable');
+ try{return parseRecoveryArchive(await native.archiveRecovery?.({reviewToken}));}catch{throw Error('Not confirmed');}
 }

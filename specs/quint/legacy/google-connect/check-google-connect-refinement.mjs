@@ -111,7 +111,7 @@ async function panelFlow(page) {
   await button(page, 'Connect Gmail').click();
   await expect(panel.getByRole('status')).toHaveText('No Google account connected.');
   await panel.getByRole('button', {name: 'Connect Google account', exact: true}).click();
-  await expect(panel.getByRole('status')).toHaveText('After authorizing Google, return here and check connections.');
+  await expect(panel.getByRole('status')).toHaveText('Waiting for Google…');
   const handedOff = await fixture(page);
   assert.deepEqual(handedOff.launches, [authorization]);
   assert.deepEqual(handedOff.initiations, [['write', 'send']]);

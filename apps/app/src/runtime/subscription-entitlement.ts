@@ -33,10 +33,10 @@ export function alphaSubscriptionCopy(serviceName = 'Cloud'): SubscriptionCopy {
 }
 export function describeSubscription(view: SubscriptionView | null | undefined, serviceName = 'Cloud'): SubscriptionDescription {
   if (view?.kind === 'credits') return {
-    headline: 'No active subscription',
-    detail: 'Choose a monthly plan or enter a membership code.',
+    headline: 'No plan',
+    detail: '',
     manage: true,
-    manageLabel: 'Choose a monthly plan',
+    manageLabel: 'Choose plan',
   };
   return sharedDescribeSubscription(view, alphaSubscriptionCopy(serviceName));
 }
@@ -61,15 +61,12 @@ export function serviceLimitMessage(limit: ServiceLimit | null, now: number = Da
   const copy = alphaSubscriptionCopy(serviceName);
   if (limit?.kind === 'allowance-exhausted') {
     const reset = limit.resetsAt != null && limit.resetsAt > now
-      ? ` It resets ${clock(limit.resetsAt)}.`
-      : limit.retryAfterMs != null ? ` It resets in ${retryDuration(limit.retryAfterMs)}.` : '';
-    return `Your plan's AI allowance for this period is used up.${reset} Local apps keep working.`;
+      ? ` · resets ${clock(limit.resetsAt)}`
+      : limit.retryAfterMs != null ? ` · resets in ${retryDuration(limit.retryAfterMs)}` : '';
+    return `Limit reached${reset}`;
   }
-  if (limit?.kind === 'subscription-required') return `AI needs an active ${serviceName} plan. Local apps keep working.`;
-  if (limit?.kind === 'billing-refused') {
-    const reset = limit.resetsAt != null && limit.resetsAt > now ? ` ${serviceName} reports your plan allowance resets ${clock(limit.resetsAt)}.` : '';
-    return `${serviceName} declined this AI request for your account's billing.${reset} ${copy.productName} did not retry your message. Local apps keep working.`;
-  }
+  if (limit?.kind === 'subscription-required') return 'Plan needed';
+  if (limit?.kind === 'billing-refused') { void copy; return 'Billing declined'; }
   return sharedServiceLimitMessage(limit, now, copy);
 }
 export function redeemFailureMessage(error: unknown, serviceName = 'Cloud'): string {

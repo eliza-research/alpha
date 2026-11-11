@@ -10,7 +10,7 @@ export type MapsShareChoice={id:string;options:{label:string;value:string}[]};
 const MODES:Record<string,string>={drive:'Driving',walk:'Walking',bicycle:'Cycling',transit:'Transit'};
 const placeLine=(place:MapsCardPlace)=>place.formattedAddress?`${place.name}, ${place.formattedAddress}`:place.name;
 // Alpha's agent context carries no device position, so the locate card cannot be answered here.
-const LOCATE_LINE='Alpha does not send your location to the agent. Name a starting place or address instead.';
+const LOCATE_LINE='Name a start · Location not shared';
 
 function present(card:MapsCardSpec):MapsChatCard{
  switch(card.kind){
@@ -62,11 +62,11 @@ export function installMapsChatAdapter(Component:Shell){
  async function answer(shell:Shell,id:string,value:string){
   const snapshot=connectionController.getSnapshot(),done=answers(shell);
   if(done.has(id)||!shell.live||snapshot.open||snapshot.busy||shell.S().typing)return;
-  if(String(shell.S().draft||'').trim()){shell.toast('Keep or send your chat draft before answering.');return;}
+  if(String(shell.S().draft||'').trim()){shell.toast('Chat draft open');return;}
   // send() refuses a prompt while a message edit is open; do not mark the answer as sent.
-  if(shell.messageEditTarget){shell.toast('Finish or cancel the message you are editing first.');return;}
+  if(shell.messageEditTarget){shell.toast('Editing message');return;}
   done.add(id);if(shell.live)shell.setState({});
-  try{await shell.send(value);}catch(error){done.delete(id);if(shell.live){shell.setState({});shell.toast(error instanceof Error?error.message:'The answer was not sent.');}}
+  try{await shell.send(value);}catch(error){done.delete(id);if(shell.live){shell.setState({});shell.toast(error instanceof Error?error.message:'Not sent');}}
  }
  p.renderVals=function(){
   const out=render.call(this),msgs=out.msgs||[],done=answers(this);

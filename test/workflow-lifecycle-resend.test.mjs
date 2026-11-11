@@ -69,19 +69,19 @@ test('a removal the agent never received is sent again under its original identi
  const app=adapterFixture({storage:retained()});
  try{
   await opened(app);
-  assert.match(app.toasts.at(-1),/no record of your earlier removal or restore/);
-  assert.match(app.render().fd.last,/The workflow action sends that same request again/);
+  assert.match(app.toasts.at(-1),/Not received · Resend available/);
+  assert.match(app.render().fd.last,/Not received/);
   assert.equal(Object.keys(app.storage).length,1);
   // The first tap only reviews: nothing is sent and the request stays retained.
   app.render().fd.del();
   assert.match(app.toasts.at(-1),/Tap the workflow action again to send that same request once more/);
-  assert.match(app.render().fd.last,/It can only apply once/);
+  assert.match(app.render().fd.last,/Confirm resend/);
   assert.deepEqual(app.sent,[]);assert.equal(Object.keys(app.storage).length,1);
   app.render().fd.del();await wait(()=>Object.keys(app.storage).length===0&&!app.render().fd.isRunning);
   assert.deepEqual(app.sent,[{id:'flow',version:'v1',mutation:mutationId,operation:'remove'}]);
   assert.equal(app.agent.applications,1);assert.equal(app.agent.removed,true);
   assert.equal(app.render().fd.deleteLabel,'Restore workflow');
-  assert.match(app.toasts.at(-1),/removed under your original request/);
+  assert.match(app.toasts.at(-1),/Removed · History kept/);
  }finally{app.close();}
 });
 
@@ -89,8 +89,8 @@ test('leaving the resend review sends nothing and keeps the request retained',as
  const app=adapterFixture({storage:retained()});
  try{
   await opened(app);
-  app.render().fd.del();assert.match(app.render().fd.last,/It can only apply once/);
-  assert.equal(app.back(),true);assert.match(app.render().fd.last,/The workflow action sends that same request again/);assert.equal(app.render().detail,true);
+  app.render().fd.del();assert.match(app.render().fd.last,/Confirm resend/);
+  assert.equal(app.back(),true);assert.match(app.render().fd.last,/Not received/);assert.equal(app.render().detail,true);
   assert.deepEqual(app.sent,[]);assert.equal(Object.keys(app.storage).length,1);
  }finally{app.close();}
 });
@@ -104,7 +104,7 @@ test('a resend refused while the workflow keeps its version stays retained and c
   assert.equal(app.agent.applications,0);assert.match(app.toasts.at(-1),/was not applied/);
   // An earlier copy of the request could still arrive, so the change stays blocked and the same request is offered again.
   assert.equal(Object.keys(app.storage).length,1);
-  assert.match(app.render().fd.last,/The workflow action sends that same request again/);
+  assert.match(app.render().fd.last,/Not received/);
   app.agent.ongoing=false;
   app.render().fd.del();app.render().fd.del();
   await wait(()=>Object.keys(app.storage).length===0&&!app.render().fd.isRunning);
@@ -122,7 +122,7 @@ test('a resend refused because the workflow changed is released as a known non-c
   assert.equal(app.sent.length,1);assert.equal(app.agent.applications,0);assert.equal(app.agent.removed,false);
   assert.match(app.toasts.at(-1),/was not applied/);
   assert.equal(app.render().fd.deleteLabel,'Remove workflow');
-  assert.match(app.render().fd.last,/Paused on this agent/);
+  assert.match(app.render().fd.last,/Paused/);
  }finally{app.close();}
 });
 
@@ -133,7 +133,7 @@ test('a refused resend whose earlier copy was applied meanwhile is released as a
   app.render().fd.del();app.render().fd.del();
   await wait(()=>Object.keys(app.storage).length===0&&!app.render().fd.isRunning);
   assert.equal(app.agent.applications,1);assert.equal(app.render().fd.deleteLabel,'Restore workflow');
-  assert.match(app.toasts.at(-1),/removed under your original request/);
+  assert.match(app.toasts.at(-1),/Removed · History kept/);
  }finally{app.close();}
 });
 
@@ -144,7 +144,7 @@ test('a resend with no answer stays retained and is offered again only after the
   app.render().fd.del();app.render().fd.del();
   await wait(()=>app.sent.length===1&&!app.render().fd.isRunning);
   assert.equal(Object.keys(app.storage).length,1);assert.equal(app.agent.applications,0);
-  assert.match(app.render().fd.last,/outcome unknown — tap the workflow action to refresh its receipt/);
+  assert.match(app.render().fd.last,/Unknown/);
   // The next tap reads the receipt; it does not send.
   app.render().fd.del();await wait(()=>/sends that same request again/.test(app.render().fd.last));
   assert.equal(app.sent.length,1);

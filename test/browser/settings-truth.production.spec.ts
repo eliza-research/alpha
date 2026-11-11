@@ -188,14 +188,14 @@ test('launcher Home asks Android for its own shade and draws no Alpha shade, til
 
 test('Android permission and notification handoffs use their displayed controls and report refusal',async({page})=>{
  await nativeStub(page);
- await openSettings(page,'Privacy','App permissions');
- await expect(current(page).getByRole('button',{name:'Location',exact:true})).toContainText('Not allowed');
- await expect(current(page).getByRole('button',{name:'Camera',exact:true})).toContainText('Not allowed');
+ await openSettings(page,'Privacy','Permissions');
+ await expect(current(page).getByRole('button',{name:'Location',exact:true})).toContainText('Off');
+ await expect(current(page).getByRole('button',{name:'Camera',exact:true})).toContainText('Off');
  const privacy=(await opened(page)).length;
  await current(page).getByRole('button',{name:'Location',exact:true}).click();
  await expect.poll(async()=>(await opened(page)).slice(privacy)).toEqual(['privacy']);
  await set(page,{unavailable:['privacy']});await current(page).getByRole('button',{name:'Location',exact:true}).click();
- await expect(page.getByText('This Android settings page is unavailable.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Unavailable',{exact:true})).toBeVisible();
  await openSettings(page,'General','Notifications');
  await current(page).getByRole('button',{name:'Manage Alpha notifications',exact:true}).click();
  await expect.poll(()=>opened(page)).toEqual(['notifications']);
@@ -211,7 +211,7 @@ test('every Settings row is a control backed by real state, with no fixture valu
   await expect(current(page).getByRole('button',{name:'Developer',exact:true})).toHaveCount(0);
  }
  await openSettings(page,'Privacy');
- const review=()=>current(page).getByRole('switch',{name:'Ask before taking actions',exact:true});
+ const review=()=>current(page).getByRole('switch',{name:'Ask before Alpha acts',exact:true});
  await expect(review()).toHaveAttribute('aria-checked','false');
  await review().click();await expect(review()).toHaveAttribute('aria-checked','true');
  await openSettings(page,'Privacy');await expect(review()).toHaveAttribute('aria-checked','true');
@@ -227,9 +227,8 @@ test('an unreadable action preference keeps review enabled and offers recovery w
  await nativeStub(page);
  await page.addInitScript(()=>localStorage.setItem('alpha.browser.device.v1','{damaged settings'));
  await openSettings(page,'Privacy');
- const review=current(page).getByRole('switch',{name:'Ask before taking actions',exact:true});
+ const review=current(page).getByRole('switch',{name:'Ask before Alpha acts',exact:true});
  await expect(review).toHaveAttribute('aria-checked','true');await expect(review).toBeDisabled();
- await expect(current(page)).toContainText('Unavailable. Alpha asks before every action.');
  await openSettings(page,'General');
  await current(page).getByRole('button',{name:'Recover device settings',exact:true}).click();
  await expect(page.getByRole('dialog',{name:'Device settings recovery'})).toBeVisible();
@@ -243,9 +242,9 @@ test('notification state is read back from Android, and local history stays avai
  const state=current(page).getByText('Alpha notifications',{exact:true}).locator('..');
  await expect(state).toContainText('On');
  await page.evaluate(()=>{(window as any).truth.state.status.channels[0].blocked=true;(window as any).truth.state.status.channels[0].importance=0;});
- await expect(state).not.toContainText('Some channels blocked');await resume(page);
- await expect(state).toContainText('Some channels blocked');
- await set(page,{status:{appEnabled:false}});await resume(page);await expect(state).toContainText('App notifications off');
+ await expect(state).not.toContainText('Some off');await resume(page);
+ await expect(state).toContainText('Some off');
+ await set(page,{status:{appEnabled:false}});await resume(page);await expect(state).toContainText('Off');
  await current(page).getByRole('button',{name:'View local metadata history',exact:true}).click();
  await expect(current(page)).toContainText(/Stub Mail\s*posted/);
  await page.evaluate(()=>{const truth=(window as any).truth,original=(window as any).Capacitor.nativePromise;(window as any).Capacitor.nativePromise=async(plugin:string,method:string,input:unknown)=>{if(plugin==='AlphaNotifications'&&method==='status'){truth.calls.push({plugin,method,input});throw Error('Notification delivery status unavailable');}return original(plugin,method,input);};});
@@ -263,7 +262,7 @@ test('the browser build of Settings shows no fixture value and no radio or senso
  await expect(allow).toHaveAttribute('aria-checked','true');await allow.click();await expect(allow).toHaveAttribute('aria-checked','false');
  await openSettings(page,'About');
  for(const name of ['Problem log','Export diagnostics'])await expect(current(page).getByRole('button',{name,exact:true})).toHaveCount(0);
- await expect(current(page).getByRole('button',{name:'Open source licenses',exact:true})).toBeVisible();
+ await expect(current(page).getByRole('button',{name:'Licenses',exact:true})).toBeVisible();
  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).waitFor({state:'visible'});
  await expect(alphaShade(page)).toHaveCount(0);await expect(page.locator('[data-alpha-shade-handle]')).toHaveCount(0);
  await drag(page,{x:206,y:420},240);await expect(alphaShade(page)).toHaveCount(0);
@@ -279,7 +278,7 @@ test('Settings › Eliza Cloud reports the verified plan without automatically o
  await expect(plan.getByRole('button',{name:'Use code',exact:true})).toBeVisible();
  await expect(page.getByLabel('Membership code',{exact:true})).toHaveCount(0);
  await expect(plan.getByRole('button',{name:/^(Manage plan|Choose a plan)$/,exact:true})).toBeVisible();
- const iconPaths=await Promise.all(['Use code','Manage plan','Add balance'].map(name=>plan.getByRole('button',{name,exact:true}).locator('span[aria-hidden="true"]').first().evaluate(icon=>getComputedStyle(icon).getPropertyValue('--account-icon'))));
+ const iconPaths=await Promise.all(['Use code','Manage plan','Add funds'].map(name=>plan.getByRole('button',{name,exact:true}).locator('span[aria-hidden="true"]').first().evaluate(icon=>getComputedStyle(icon).getPropertyValue('--account-icon'))));
  expect(new Set(iconPaths).size).toBe(3);
  await plan.getByRole('button',{name:'Sign out',exact:true}).click();
  const signOut=page.getByRole('dialog',{name:'Sign out?',exact:true});await expect(signOut).toBeVisible();
@@ -299,7 +298,7 @@ for(const subscription of ['credits','active','canceled'] as const)test(`Setting
  if(subscription==='canceled')await expect(notice).toBeVisible();
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  const plan=await openCloudPlanFromSettings(page),redeem=plan.getByRole('button',{name:'Use code',exact:true});
- if(subscription==='credits')await expect(plan).toContainText('No active subscription');
+ if(subscription==='credits')await expect(plan).toContainText('No plan');
  await expect(plan.getByRole('button',{name:/^(Manage plan|Choose a plan)$/,exact:true})).toBeVisible();
  await expect(page.getByLabel('Membership code',{exact:true})).toHaveCount(0);
  // A signed-in owner may open code entry without changing current plan admission.
@@ -323,11 +322,11 @@ for(const scenario of ['unbound','recovering','connected'] as const)test(`Agent 
  await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await current(page).getByRole('button',{name:'About',exact:true}).click();
- await current(page).getByRole('button',{name:'Connection help',exact:true}).click();
- const account=current(page);await expect(account.getByRole('heading',{name:'Connection help',exact:true})).toBeVisible();
+ await current(page).getByRole('button',{name:'Status',exact:true}).click();
+ const account=current(page);await expect(account.getByRole('heading',{name:'Status',exact:true})).toBeVisible();
  await expect(account).not.toContainText('On this computer');
  await expect(account).not.toContainText('Running on this phone');
- if(scenario==='recovering')await expect(account).not.toContainText('Running on this device');
+ if(scenario==='recovering')await expect(account).not.toContainText('Running');
  if(scenario==='connected')await expect(account).toContainText('Eliza Cloud');
 });
 
