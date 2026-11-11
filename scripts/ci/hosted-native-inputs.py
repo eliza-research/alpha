@@ -29,6 +29,12 @@ spec = importlib.util.spec_from_file_location('embedding_artifacts', Path(__file
 embedding = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(embedding)
 require = embedding.require
+COMPONENT_MEMBERS = {
+    'component-output/export/PREPARATION.json': 'PREPARATION.json',
+    'component-output/INTENT.json': 'INTENT.json',
+    **{'component-output/export/' + lib: lib for lib in embedding.LIBRARIES},
+}
+QUALIFICATION_MEMBERS = ('QUALIFICATION.json', 'embedding-qualification.json')
 
 
 def matches(pattern, value):
@@ -68,26 +74,14 @@ def voice_inventory(voice):
     return inventory
 
 
-def load_plan(root):
-    plan, digest = record(root, MANIFEST)
-    require(set(plan) == {'schema', 'packageName', 'sdkCommit', 'voiceRecordSha256', 'embeddingRecordSha256', 'artifacts'}
-            and plan['schema'] == 'alpha-hosted-native-inputs/v1', f'Invalid {MANIFEST} schema')
-    package = record(root, 'app.config.json')[0]['appId']
-    sdk = record(root, 'upstream.lock.json')[0]['commit']
-    voice, voice_digest = record(root, VOICE_RECORD)
-    reviewed, embedding_digest = record(root, EMBEDDING_RECORD)
-    require(plan['packageName'] == package == voice['identity'] == reviewed['identity'], 'Hosted native input package differs')
-    require(matches(COMMIT, sdk) and plan['sdkCommit'] == sdk == voice['pin'], 'Hosted native input SDK is stale')
-    require(plan['voiceRecordSha256'] == voice_digest and plan['embeddingRecordSha256'] == embedding_digest,
-            'Hosted native input record digests are stale')
+def reviewed_inputs(root, read=record):
+    package = read(root, 'app.config.json')[0]['appId']
+    sdk = read(root, 'upstream.lock.json')[0]['commit']
+    voice, voice_digest = read(root, VOICE_RECORD)
+    reviewed, embedding_digest = read(root, EMBEDDING_RECORD)
+    require(package == voice['identity'] == reviewed['identity'], 'Hosted native input package differs')
+    require(matches(COMMIT, sdk) and sdk == voice['pin'], 'Hosted native input SDK is stale')
     require(matches(COMMIT, voice['forkPin']) and voice['forkPin'] == reviewed['forkPin'], 'Reviewed native engine source differs')
-    artifacts = plan['artifacts']
-    require(isinstance(artifacts, dict) and set(artifacts) == set(ARTIFACTS), 'Three reviewed native artifacts required')
-    for name, entry in artifacts.items():
-        require(isinstance(entry, dict) and set(entry) == {'id', 'sha256'} and
-                matches(ID, entry['id']) and int(entry['id']) <= 9007199254740991 and
-                matches(SHA256, entry['sha256']), f'Invalid {name} artifact pin')
-    require(len({row['id'] for row in artifacts.values()}) == len(ARTIFACTS), 'Native artifacts must be distinct')
     inventory = voice_inventory(voice)
     require(reviewed['abi'] == 'arm64-v8a' and len(reviewed['libraries']) == len(embedding.LIBRARIES)
             and {row['name'] for row in reviewed['libraries']} == set(embedding.LIBRARIES)
@@ -98,6 +92,27 @@ def load_plan(root):
     for name in VOICE_LIBRARIES:
         shared = inventory[f'jniLibs/arm64-v8a/{name}']
         require(reviewed_libraries.get(name) == (shared['bytes'], shared['sha256']), f'Voice and embedding {name} differ')
+    identity = {'packageName': package, 'sdkCommit': sdk, 'voiceRecordSha256': voice_digest,
+                'embeddingRecordSha256': embedding_digest}
+    return identity, reviewed, inventory
+
+
+def load_plan(root):
+    plan, digest = record(root, MANIFEST)
+    require(set(plan) == {'schema', 'packageName', 'sdkCommit', 'voiceRecordSha256', 'embeddingRecordSha256', 'artifacts'}
+            and plan['schema'] == 'alpha-hosted-native-inputs/v1', f'Invalid {MANIFEST} schema')
+    identity, reviewed, inventory = reviewed_inputs(root)
+    require(plan['packageName'] == identity['packageName'], 'Hosted native input package differs')
+    require(plan['sdkCommit'] == identity['sdkCommit'], 'Hosted native input SDK is stale')
+    require(all(plan[key] == identity[key] for key in ('voiceRecordSha256', 'embeddingRecordSha256')),
+            'Hosted native input record digests are stale')
+    artifacts = plan['artifacts']
+    require(isinstance(artifacts, dict) and set(artifacts) == set(ARTIFACTS), 'Three reviewed native artifacts required')
+    for name, entry in artifacts.items():
+        require(isinstance(entry, dict) and set(entry) == {'id', 'sha256'} and
+                matches(ID, entry['id']) and int(entry['id']) <= 9007199254740991 and
+                matches(SHA256, entry['sha256']), f'Invalid {name} artifact pin')
+    require(len({row['id'] for row in artifacts.values()}) == len(ARTIFACTS), 'Native artifacts must be distinct')
     return plan, digest, reviewed, inventory
 
 
@@ -165,14 +180,9 @@ def acquire(root, env, plan, plan_digest, reviewed, inventory):
             if name == 'voice':
                 extract_voice(archive, pending / 'voice', inventory)
             elif name == 'embeddingComponent':
-                embedding.extract_selected(archive, pending / 'embedding', {
-                    'component-output/export/PREPARATION.json': 'PREPARATION.json',
-                    'component-output/INTENT.json': 'INTENT.json',
-                    **{'component-output/export/' + lib: lib for lib in embedding.LIBRARIES}})
+                embedding.extract_selected(archive, pending / 'embedding', COMPONENT_MEMBERS)
             else:
-                embedding.extract_selected(archive, pending / 'qualification', {
-                    'QUALIFICATION.json': 'QUALIFICATION.json',
-                    'embedding-qualification.json': 'embedding-qualification.json'})
+                embedding.extract_selected(archive, pending / 'qualification', {name: name for name in QUALIFICATION_MEMBERS})
             with zipfile.ZipFile(archive) as z:
                 receipts[name] = {**receipt, 'archiveBytes': archive.stat().st_size,
                                   'expandedBytes': sum(entry.file_size for entry in z.infolist())}
