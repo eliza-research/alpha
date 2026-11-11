@@ -784,6 +784,15 @@ settlement can commit separately, including a storage error reported after
 either commit. Missing, conflicting, pending and exact retained evidence
 are observed alongside legacy unknown rows and retired bridges.
 
+The model also names the journaled operation classes that have no native
+receipt reader: `note-write`, `calendar-write`, `files-write`,
+`camera-capture`, `browser-navigate` and `view-only`.
+`NoNativeProofNeverSettles` and `ViewOnlyNeverRecoversToSuccess` state that
+no notice, reminder or deletion recovery call settles such a row. These
+kinds are model-only: the host-JVM replay does not drive them, and the
+shared coordinator's saved-receipt reconciliation for camera, Calendar and
+Notes results is a separate, unmodeled contract.
+
 The as-built replay in commit `00a4872aea` observed a synthetic reminder
 receipt settling an applying row under a different owner and proposal
 binding when the caller supplied that binding and the operation matched.

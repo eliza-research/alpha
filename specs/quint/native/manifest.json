@@ -2896,7 +2896,9 @@
         "settledLegacyReminderStillReadableTest",
         "legacyReminderWithoutBindingCannotSettleTest",
         "passiveNoteDoesNotMutateExactReadTest",
-        "retiredBridgeCannotRecoverTest"
+        "retiredBridgeCannotRecoverTest",
+        "unprovenKindsStayUnsettledTest",
+        "viewOnlyNeverRecoversTest"
       ],
       "invariants": [
         "SuccessRequiresAdmission",
@@ -2904,7 +2906,9 @@
         "PassiveReadOnly",
         "IndependentCommitBoundaries",
         "RedactedPassiveReads",
-        "ReminderLookupUsesSelectedBinding"
+        "ReminderLookupUsesSelectedBinding",
+        "NoNativeProofNeverSettles",
+        "ViewOnlyNeverRecoversToSuccess"
       ],
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaActionJournal.java",
@@ -2926,7 +2930,8 @@
       "abstractions": [
         "One selected row, absent/foreign request addresses, exact known operation and bounded receipt equality classes.",
         "The selected binding fences unresolved reminder receipt lookup. Passive selected-reminder reads retain a marker and summary, with the full result preserved for exact get.",
-        "Native worker and journal run on the host JVM. Deletion provider, notification manager and ReminderEnvelope are closed synthetic inputs, with pre- and post-commit store failure."
+        "Native worker and journal run on the host JVM. Deletion provider, notification manager and ReminderEnvelope are closed synthetic inputs, with pre- and post-commit store failure.",
+        "The kinds note-write, calendar-write, files-write, camera-capture, browser-navigate and view-only are journaled operation classes with no native receipt reader: NoNativeProofNeverSettles and ViewOnlyNeverRecoversToSuccess state that no notice, reminder or deletion recovery call settles them. These kinds are model-only; the host-JVM replay does not drive them, and the shared coordinator's own saved-receipt reconciliation for camera, Calendar and Notes results is not modeled here."
       ],
       "bounds": {
         "maxSamples": 1000,
