@@ -8,24 +8,30 @@ import {CapacitorException, ExceptionCode} from '@capacitor/core';
 const source = readFileSync(process.env.ALPHA_BROWSER_ADAPTER_SOURCE || 'apps/app/src/prototype/browser-adapter.ts', 'utf8');
 const start = source.indexOf('  let bookmarkRead:');
 const end = source.indexOf('  function saveBookmark(', start);
-assert.ok(start >= 0 && end > start, 'execute the actual bookmark read and coalescing paths');
-const stateStart = source.indexOf('  const state = () =>');
-const stateEnd = source.indexOf('\n', stateStart);
-const titleStart = source.indexOf('  function retainedTitles(');
-const titleEnd = source.indexOf('  let reading:', titleStart);
-assert.ok(stateStart >= 0 && stateEnd > stateStart && titleStart >= 0 && titleEnd > titleStart, 'execute the actual browser state and retained-title helpers');
-const bookmarkSource = stripTypeScriptTypes(source.slice(start, end) + source.slice(stateStart, stateEnd) + source.slice(titleStart, titleEnd), {mode: 'strip'});
+const stateStart = source.indexOf('  const state = ', end);
+const stateEnd = source.indexOf('  const refresh = ', stateStart);
+const titlesStart = source.indexOf('  function retainedTitles(', stateEnd);
+const titlesEnd = source.indexOf('  let reading:', titlesStart);
+assert.ok(start >= 0 && end > start && stateStart > end && stateEnd > stateStart &&
+  titlesStart > stateEnd && titlesEnd > titlesStart, 'execute bookmark reads with their actual Browser state and title helper');
+const bookmarkSource = stripTypeScriptTypes([
+  source.slice(start, end), source.slice(stateStart, stateEnd), source.slice(titlesStart, titlesEnd),
+].join('\n'), {mode: 'strip'});
 const unsupported = () => new CapacitorException('Browser unavailable on this host', ExceptionCode.Unimplemented);
 
 function fixture() {
   const state = {view: 'settings'}, errors = [], writes = [];
-  const browserState = {titles: {'https://example.com': 'Example', 'https://retired.invalid': 'Retired'}, visits: []};
+  const browser = {marks: [], visits: [], titles: {}};
   let reads = 0, rejectRead, resolveRead;
   const context = {
     Promise, CapacitorException, ExceptionCode,
     Capacitor: {isNativePlatform: () => true},
     disposed: false, session: 'test-session', refresh() {},
-    shell: {S: () => state, vget: () => browserState, vset: (...args) => writes.push(args)},
+    shell: {
+      S: () => state,
+      vget: view => {assert.equal(view, 'browser'); return browser;},
+      vset: (view, patch) => {assert.equal(view, 'browser'); writes.push(patch); Object.assign(browser, patch);},
+    },
     report: error => {if (!context.disposed) errors.push(error);},
     Browser: {bookmarks: () => {
       reads++;
@@ -34,7 +40,7 @@ function fixture() {
   };
   const api = vm.runInNewContext(bookmarkSource + ';({refreshBookmarks, settled: () => bookmarkQueue})', context);
   return {
-    state, errors, writes, context, api,
+    state, browser, errors, writes, context, api,
     get reads() {return reads;},
     async start(background = true) {api.refreshBookmarks(background); await Promise.resolve();},
     async fail(error = unsupported()) {rejectRead(error); await api.settled();},
@@ -85,10 +91,14 @@ test('a later foreground request retries after a quiet unsupported startup read'
 });
 
 test('successful coalesced reads still publish bookmarks once', async () => {
-  const h = fixture(); await h.start(); h.api.refreshBookmarks(false);
-  await h.succeed(['https://example.com']);
+  const h = fixture();
+  const bookmark = 'https://example.com', visit = 'https://example.org', removed = 'https://example.net';
+  h.browser.visits = [visit];
+  h.browser.titles = {[bookmark]: 'Bookmark', [visit]: 'Visited', [removed]: 'Removed'};
+  await h.start(); h.api.refreshBookmarks(false);
+  await h.succeed([bookmark]);
   assert.equal(h.reads, 1); assert.equal(h.errors.length, 0);
   assert.equal(h.writes.length, 1);
-  assert.deepEqual(Array.from(h.writes[0][1].marks), ['https://example.com']);
-  assert.deepEqual(JSON.parse(JSON.stringify(h.writes[0][1].titles)), {'https://example.com': 'Example'}, 'only the retained bookmark keeps display metadata');
+  assert.deepEqual(h.browser.marks, [bookmark]);
+  assert.deepEqual({...h.browser.titles}, {[bookmark]: 'Bookmark', [visit]: 'Visited'});
 });
