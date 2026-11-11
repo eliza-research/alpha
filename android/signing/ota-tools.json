@@ -1,9 +1,9 @@
 {
   "schema": 1,
   "sha256": "31cff3950bac199924fbe729fbbe8a4a9105abbbb535b683a8223cbfb056cef3",
-  "sdkCommit": "00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
+  "sdkCommit": "c307f57cf163e8d4e2cec4ea4b551b3c257ae56e",
   "allowedProducerCommits": [
-    "d529d4432426d34920836a7ca308b741c17c02c8"
+    "82316a19f6c572b67d6bcab2b43b152197a01c27"
   ],
   "apkSignerMappingsSha256": "e5534e2830ad94343ee11cbc08857cf2435522fe1f3d0e560ec4f5610f80223e",
   "avbKeyConfigurationSha256": "f8ed78f8705d63a011a82a2655f7875a1d86033ee601a190f53aa9f6dacfdd5d",
