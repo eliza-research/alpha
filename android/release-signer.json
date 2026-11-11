@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Reviewed app51 migration preserves installed data and the existing signature-protected receiver permission across the lab-to-production signing key rotation. Rollback, shared UID and authentication capabilities remain disabled.",
+  "description": "Reviewed app52 release inputs preserve the existing Alpha application identity, installed data and signature-protected receiver permission through the production signing-key rotation.",
   "signerSha256": "edbfcacb1da689008bf4e7d675176c302decf83161a877eb8b1de4ffae0445ed",
   "lastRelease": {
     "versionCode": null,
@@ -11,33 +11,33 @@
     "schema": 1,
     "approval": "approved",
     "fromVersionCode": 49,
-    "versionCode": 51,
+    "versionCode": 52,
     "previousSignerSha256": "0438dccb2d5e83fc2ad1ab11cbb882f837d97c4aee7cba72af9229c39b149b80",
     "lineageSha256": "bca212509a83e8f2e60d2b9b744b1e0a4a014b780be058dcf81ff88a5d593759",
     "apksignerSha256": "b47549e373b895ce6ca620d0c7887e674d9615ffa837a86ac601dcfd04adb0f0",
     "verifierJarSha256": "3716d9311e55d2b0918a2fd9d54ba9e406c5f6abeea700b287f11259bc163dec",
     "unsignedApkSHA256": {
-      "standalone": "039ad2e6998786e00381dc7210532db70a2cf57fe7736631ccefbbf5401dc1fe",
-      "launcher": "249a1843278d6d65a9aef22194de690761d837a161cb34eabd6332001dafbe8b"
+      "standalone": "ff4d6a6e5300f478837677e14e94d93ee997c2a28cb0162f5d7c8f18fe6593cb",
+      "launcher": "65b04d60312c2962016ad2ea1dabc8828b8fe29dd113a13ac711a8cc81142eb5"
     },
     "preserveSignaturePermissions": true
   },
   "privateProducerApproval": {
     "approval": "approved",
-    "alphaCommit": "09275166dca2de838ba06b1e921fb0b304762238",
-    "sdkCommit": "b89f0e711bb93fbd8414a034985ebbbda73b618c",
-    "versionCode": 51,
+    "alphaCommit": "fef6cfcf3f53cdebe3e98fdc4dace51f3d6d5b11",
+    "sdkCommit": "30ee5ba3445237d6ae6e82d698794521f169d267",
+    "versionCode": 52,
     "updateChannel": {
       "kind": "public",
       "manifestUrlSha256": "8e54b15a945c0fe1fd18bca9b4f4389249c5260bd72c912bccb6cd98e10308db"
     },
-    "archiveBytes": 633639252,
-    "archiveSHA256": "ce1c46d6f9cdb8f3a94b298d480a00c09a625427729ffcf14edea97c07326893",
-    "producerManifestSHA256": "2634aac585de16219577f232e12b5e1f1625dc5af6ece3ecb3ad56284254c89a",
-    "privateProducerReceiptSHA256": "bf694032c6a29c108b5cae29c5ffe08446cf046d0b2403f1efe758892c31af23",
+    "archiveBytes": 633835439,
+    "archiveSHA256": "87fc43ac6d760be42bc79bd0dc5e5f25d3abbf0197aa165ac229674ef044b638",
+    "producerManifestSHA256": "3765980e7ef7fe2259e068a387a5d37ca25827bd1dd1491a2c4d84ad3e8bec9e",
+    "privateProducerReceiptSHA256": "511ad3177e2eab23557605207ba1154e509bfb5f45e9cc07799d0edc6070acc7",
     "unsignedApkSHA256": {
-      "standalone": "039ad2e6998786e00381dc7210532db70a2cf57fe7736631ccefbbf5401dc1fe",
-      "launcher": "249a1843278d6d65a9aef22194de690761d837a161cb34eabd6332001dafbe8b"
+      "standalone": "ff4d6a6e5300f478837677e14e94d93ee997c2a28cb0162f5d7c8f18fe6593cb",
+      "launcher": "65b04d60312c2962016ad2ea1dabc8828b8fe29dd113a13ac711a8cc81142eb5"
     }
   }
 }
