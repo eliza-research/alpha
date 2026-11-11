@@ -125,8 +125,8 @@ def campaign(scratch, signing_commit, name, schedule):
             f"{prefix}/actions/runs/{number}": {
                 "status": "completed", "conclusion": "cancelled" if fault == "cancelled" else "success",
                 "id": int(number), "head_sha": plan["alphaCommit"], "head_branch": "main",
-                "repository": {"id": 1396333361, "full_name": repo, "owner": {"id": 314117943}},
-                "head_repository": {"id": 1396333361, "full_name": repo, "owner": {"id": 314117943}},
+                "repository": {"id": 1396333361, "full_name": repo},
+                "head_repository": {"id": 1396333361, "full_name": repo},
                 "path": ".github/workflows/resident-android.yml",
                 "event": "push" if lane == "push" else "workflow_dispatch",
                 "run_attempt": 2 if fault == "attempt" else 1,

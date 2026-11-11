@@ -43,7 +43,7 @@ class CloudSigningInputTest(unittest.TestCase):
                 "variant": variant,
                 "mode": "release",
                 "file": f"artifacts/{variant}-release-unsigned.apk",
-                "packageName": "ai.elizaresearch.alphaphone",
+                "packageName": "ai.alphacompute.alphaphone",
                 "versionCode": 44,
                 "sha256": ADMISSION.digest(payload),
                 "signed": False,
@@ -274,7 +274,7 @@ class PrivateProducerSourceReviewTest(unittest.TestCase):
                 path.chmod(0o700)
             env = {**os.environ, "PATH": str(root / "bin") + os.pathsep + os.environ["PATH"],
                    "GITHUB_REF": "refs/heads/main", "GITHUB_SHA": "5" * 40,
-                   "GITHUB_REPOSITORY": "eliza-research/alphaphone", "RUNNER_TEMP": directory,
+                   "GITHUB_REPOSITORY": "alphacompute/alphaphone", "RUNNER_TEMP": directory,
                    "GITHUB_OUTPUT": str(root / "output"), "SIGNING_PLAN": json.dumps(plan),
                    "TEST_COMPARISON": json.dumps(comparison)}
             for field in (None, "approval", *fields):

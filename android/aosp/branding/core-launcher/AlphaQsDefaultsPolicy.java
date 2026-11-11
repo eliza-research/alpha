@@ -7,34 +7,19 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/** Update known stock layouts and carry the Alpha tile into the renamed package. */
+/** Update known stock layouts once; owner layouts are kept. */
 public final class AlphaQsDefaultsPolicy {
     public static final String ALPHA = tile(AlphaCoreLauncherPolicy.PACKAGE);
     public static final int VERSION = 3;
     public static final String VERSION_SETTING = "alpha_qs_layout_migration_version";
     private static final int STOCK_LAYOUT_VERSION = 2;
-    // Match saved settings from the retained pre-rename image.
-    private static final String LEGACY_ALPHA = tile(String.join(".", "ai", "elizaresearch", "alphaphone"));
     private AlphaQsDefaultsPolicy() {}
 
     private static String tile(String packageName) {
         return "custom(" + packageName + "/.AlphaQuickSettingsTile)";
     }
     public static List<String> migrate(List<String> saved, List<String> defaults, int reviewedVersion) {
-        if (shouldMigrate(saved, defaults, reviewedVersion)) return defaults;
-        if (reviewedVersion >= VERSION || !defaults.contains(ALPHA) || !saved.contains(LEGACY_ALPHA)) return saved;
-
-        List<String> migrated = new ArrayList<>();
-        boolean hasCurrentTile = saved.contains(ALPHA);
-        for (String tile : saved) {
-            if (!tile.equals(LEGACY_ALPHA)) {
-                migrated.add(tile);
-            } else if (!hasCurrentTile) {
-                migrated.add(ALPHA);
-                hasCurrentTile = true;
-            }
-        }
-        return migrated;
+        return shouldMigrate(saved, defaults, reviewedVersion) ? defaults : saved;
     }
 
     public static boolean shouldMigrate(List<String> saved, List<String> defaults, int reviewedVersion) {
@@ -48,8 +33,6 @@ public final class AlphaQsDefaultsPolicy {
             List<String> branded = new ArrayList<>();
             branded.add(ALPHA);
             branded.addAll(old);
-            if (saved.equals(branded)) return true;
-            branded.set(0, LEGACY_ALPHA);
             if (saved.equals(branded)) return true;
         }
         return false;

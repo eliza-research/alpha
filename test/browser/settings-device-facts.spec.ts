@@ -136,7 +136,7 @@ test('permission handoffs and developer navigation retain their boundaries while
 });
 
 // Software update: what the app start, resume and owner taps send to AlphaDevice, and the rows they leave.
-const update={schema:'alpha-update/v1',versionCode:8,versionName:'0.1.1',variant:'launcher',signerSha256:'5c'.repeat(32),apkUrl:'https://github.com/eliza-research/alphaphone/releases/download/app-8/alpha-phone-8.apk',sha256:'0a'.repeat(32),sizeBytes:400_000_000,notes:'Faster Home'};
+const update={schema:'alpha-update/v1',versionCode:8,versionName:'0.1.1',variant:'launcher',signerSha256:'5c'.repeat(32),apkUrl:'https://github.com/alphacompute/alphaphone/releases/download/app-8/alpha-phone-8.apk',sha256:'0a'.repeat(32),sizeBytes:400_000_000,notes:'Faster Home'};
 const saved=(page:Page)=>page.evaluate(()=>localStorage.getItem('alpha.app-update.v1'));
 
 test('manual update checks retain truthful no-offer, failure and offered-update results',async({page})=>{
