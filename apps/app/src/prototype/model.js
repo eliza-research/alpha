@@ -1470,7 +1470,7 @@ registerView("calendar", {
       var repeatLabel = ev.repeat && ev.repeat !== "none" ? CAL_REPEAT.filter(function (r) { return r[0] === ev.repeat; })[0][1] : "";
       var alertLabel = ev.alert == null ? "" : (ev.alert === 0 ? "Alert at start" : (ev.alert >= 60 ? ev.alert / 60 + " hour before" : ev.alert + " min before"));
       D = {
-        title: ev.title, deleteLabel:'Delete event',deleteText:'Delete',when: calRange(ev.t, ev.d), day: calDayName(api, evDay) + (repeatLabel ? " · " + repeatLabel : ""),
+        title: ev.title, deleteLabel:'Delete event',deleteText:'Delete',singleDelete:true,when: calRange(ev.t, ev.d), day: calDayName(api, evDay) + (repeatLabel ? " · " + repeatLabel : ""),
         dot: CAL_COLORS[c.color], calName: c.name, canModify: true,
         recurringReminder: false, reminderPolicy: "", reminderHistory: [], reminderDone: function () {}, reminderSnooze: function () {},
         hasWhere: !!ev.where, where: isPhone ? ((ev.who || [])[0] ? "Call " + calPerson(api, ev.who[0]).name.split(" ")[0] : "Phone call") : ev.where, whereIcon: isPhone ? IC.phone : IC.pin,
@@ -1526,7 +1526,7 @@ registerView("calendar", {
         eMinus: function () { fp({ d: Math.max(1/60, f.d - 0.25) }); }, ePlus: function () { fp({ d: f.d + 0.25 }); },
         video: f.video, vTrack: api.track(f.video), vKx: api.kx(f.video), toggleVideo: function () { fp({ video: !f.video }); },
         chosen: chosen, hasChosen: chosen.length > 0,
-        picking: f.pq != null, notPicking: f.pq == null, pq: f.pq || "", sugg: sugg, noSugg: f.pq != null && sugg.length === 0,
+        picking: f.pq != null, notPicking: f.pq == null, pq: f.pq || "", sugg: sugg, noSugg: !!q && sugg.length === 0 && !canAddEmail,
         openPick: function () { fp({ pq: "" }); }, closePick: function () { fp({ pq: null }); },
         canAddEmail:canAddEmail,typedEmail:typedEmail||'',addEmail:function(){if(canAddEmail)guestPatch(f.who.concat([typedEmail]));},
         onPq: function (e) { fp({ pq: e.target.value }); },
