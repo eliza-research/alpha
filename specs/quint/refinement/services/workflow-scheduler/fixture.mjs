@@ -22,8 +22,9 @@ export async function createSchedulerFixture() {
       await until(() => !engine.service.running.has(pending.input.runId), 'persisted worker return');
     },
     async close() {
-      try { await engine.close(); }
-      finally { Object.assign(globalThis, platform); }
+      // Real SQL cleanup must be able to advance its own timers.
+      Object.assign(globalThis, platform);
+      await engine.close();
     },
   };
 }
