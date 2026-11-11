@@ -12,6 +12,9 @@ import {notificationDocument} from '../browser/notification-store';
 import {alertSoundDocument,deviceRolesDocument} from '../browser/preference-documents';
 import {cachedDevicePreferences,devicePreferencesStatus,initializeDevicePreferences,editDevicePreferences,readDevicePreferences} from '../browser/device-preferences';
 import { registerPlugin } from '../platform-plugins';
+import {aospImage} from '../runtime/aosp-image';
+import {telephonyProfile} from '../../../../.eliza/client-features/packages/contracts/src/native-telephony.ts';
+import {createPhoneInfoLoader,identifiersElsewhere,phoneDefaultRows,phoneLineSections} from './phone-info-page';
 import { broaderPageNotice, switchValue } from './native-adapter';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps } from '../daily';
@@ -564,7 +567,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   p.componentDidUpdate = function (previousProps: Bag, previousState: Bag) {
     update?.call(this, previousProps, previousState);
     // Switching away from Settings (Home, another view) locks and forgets the password manager.
-    if (typeof this.S === 'function' && this.S().view !== 'settings') { leavePasswordManager(); reviews.cancelAll(); }
+    if (typeof this.S === 'function' && this.S().view !== 'settings') { leavePasswordManager(); reviews.cancelAll(); phoneInfo?.sync(false); }
     const theme = this.state?.theme;
     // The marker travels with React state, so queued external reads cannot echo an older theme.
     const external=this.state?.appearanceStorageRead;
@@ -595,8 +598,11 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     return result;
   };
   const categoryNames:Record<string,string>={'settings-account':'Account','settings-general':'General','settings-privacy':'Privacy','settings-help':'About','settings-apps':'Apps'};
+  /* Settings → General → Phone exists only on the verified Alpha image, through the shared telephony profile. */
+  let phoneInfo:ReturnType<typeof createPhoneInfoLoader>|null=null;
+  const phoneLoader=()=>{const client=aospImage?telephonyProfile():null;return client?phoneInfo??=createPhoneInfoLoader(client,changed):null;};
   const settingsBack = definition.back;
-  const settingsParents: Record<string,string> = {history:'agent-connection','agent-connection':'about',problems:'about',licenses:'about','password-entry':'password-provider','settings-permissions':'settings-privacy','license-detail':'licenses'};
+  const settingsParents: Record<string,string> = {history:'agent-connection','agent-connection':'about',problems:'about',licenses:'about','password-entry':'password-provider','settings-permissions':'settings-privacy','license-detail':'licenses','phone-info':'settings-general'};
   definition.back = (state:Bag,api:Bag) => {
     if(!state.sheet&&((typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page))||(!state.page&&state.settingsCategory))){api.set({page:null,settingsCategory:null});return true;}
     if(!state.sheet&&settingsParents[state.page]){if(state.page==='password-entry')leavePasswordEntry();api.set({page:settingsParents[state.page]});return true;}
@@ -609,7 +615,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const permissionsPage=state.page==='settings-permissions'||state.page==='privacy';
     const appSettingsPage=typeof state.page==='string'&&state.page.startsWith('app-settings-')?state.page.slice(13):null;
     const categoryPage=typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page)?state.page:!state.page?activeSettingsCategory:null;
-    const out = render({ ...state, page: categoryPage||appSettingsPage||permissionsPage?null:settingsPage(state.page, developerTools), acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
+    const phonePage=state.page==='phone-info'&&!!phoneLoader();
+    phoneInfo?.sync(phonePage&&!document.hidden);
+    const out = render({ ...state, page: categoryPage||appSettingsPage||permissionsPage||phonePage?null:settingsPage(state.page, developerTools), acct: null, adding: false, sheet: ['conn', 'voice', 'wipe', 'wifiPw', 'forget'].includes(state.sheet?.kind) ? null : state.sheet }, api);
     // Prototype personality values are mock-only until the agent reports them.
     out.persona = 'Voice & personality';
     const connection = connectionController.getSnapshot();
@@ -1055,6 +1063,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         const [key,title,captions]=selected;
         let groups=detailGroups.filter((section:Bag)=>(captions as readonly string[]).includes(section.cap)).map((section:Bag)=>({...section,hasCap:false,cap:undefined}));
         if(key==='settings-apps')groups=[group(appCatalog.map(([label,id])=>({kNav:true,label,lbl:label,chev:true,noAB:true,go:()=>{const existing=existingAppRow(id);if(existing&&id!=='workflows'){api.set({settingsCategory:'settings-apps'});existing.go();}else api.set({page:'app-settings-'+id,settingsCategory:'settings-apps'});}})))];
+        if(key==='settings-general'&&phoneLoader())groups.push(group([{kNav:true,label:'Phone',lbl:'Phone',chev:true,noAB:true,go:()=>api.set({page:'phone-info',settingsCategory:'settings-general'})}]));
         out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title,hasTitle:true,backLabel:'Back to Settings',back:()=>{api.set({page:null,settingsCategory:null});},hero:{},groups});
       }
     }
@@ -1078,6 +1087,19 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       if(appSettingsPage==='browser')rows.push(info('Website permissions','Managed per website'));
       out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:names[appSettingsPage]||'App settings',hasTitle:true,backLabel:'Back to Apps',back:()=>{api.set({page:'settings-apps',settingsCategory:'settings-apps'});},hero:{},groups:rows.length?[group(rows)]:[group([info('Settings','No additional options')])]});
     }
+    if(phonePage){
+      const loader=phoneInfo!,value=loader.state,groups:Bag[]=[];
+      if(value.phase==='ready'){
+        // Without phone-state access the SIM list is unread, which is never shown as "no SIM".
+        if(!value.info.access.phoneState)groups.push(group([action('Allow',()=>loader.allow(),'phone-allow')]));
+        else if(!value.info.lines.length)groups.push(group([info('SIM','None')]));
+        for(const section of phoneLineSections(value.info))groups.push({...group(section.rows.map(row=>info(row.label,row.value))),...(section.caption?{cap:section.caption,hasCap:true}:{})});
+        groups.push(group(phoneDefaultRows(value.status,value.voicemail).map(row=>info(row.label,row.value))));
+        // The nonprivileged launcher cannot read the IMEI; Android's own status screen shows it.
+        groups.push(group([...(identifiersElsewhere(value.info)?[nav('IMEI','about')]:[]),nav('Mobile network','mobile')]));
+      }else if(value.phase==='failed')groups.push(group([action('Try again',()=>loader.refresh(),'phone-retry')]));
+      out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Phone',hasTitle:true,backLabel:'Back to General',back:()=>api.set({page:'settings-general',settingsCategory:'settings-general'}),hero:{},groups});
+    }
     if(permissionsPage){
       const native=Capacitor.isNativePlatform();
       const status=(label:string)=>native?(typeof facts.permissions?.[label]==='boolean'?(facts.permissions[label]?'Allowed':'Not allowed'):'Not checked'):({granted:'Allowed',prompt:'Ask when used',denied:'Blocked',unknown:'Managed by your browser'} as Bag)[facts.permissionStates?.[label]]||'Managed by your browser';
@@ -1091,7 +1113,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     if(activeSettingsCategory&&!categoryPage)for(const page of out.stack)if(!page.isTop&&page.backLabel==='Back to Settings')page.backLabel='Back to '+categoryNames[activeSettingsCategory];
     const nestedParents:Record<string,[string,string]>={'agent-connection':['about','About'],licenses:['about','About'],problems:['developer','Developer'],history:['agent-connection','Connection help'],'license-detail':['licenses','licenses']};
     if(nestedParents[state.page]){const [parent,label]=nestedParents[state.page];const page=out.stack[out.stack.length-1];if(page&&!page.isTop){page.backLabel='Back to '+label;page.back=()=>api.set({page:parent});}}
-    const settingsIcons:Record<string,string>={General:'settings',Privacy:'shield',Apps:'layout-grid',Help:'info',About:'info',Browser:'globe',Calendar:'calendar-days',Camera:'camera',Files:'folder',Inbox:'mail',Maps:'map-pin',Notes:'notebook-text',Passwords:'lock-keyhole',Photos:'images',Workflows:'workflow','Account & plan':'user-round','Google & email':'link','AI connection':'cpu',Display:'sun',Notifications:'bell','Privacy & data':'shield','App permissions':'fingerprint-pattern','Redeem code':'gift','Manage plan':'credit-card','Sign out':'log-out'};
+    const settingsIcons:Record<string,string>={General:'settings',Phone:'phone',IMEI:'info','Mobile network':'signal',Privacy:'shield',Apps:'layout-grid',Help:'info',About:'info',Browser:'globe',Calendar:'calendar-days',Camera:'camera',Files:'folder',Inbox:'mail',Maps:'map-pin',Notes:'notebook-text',Passwords:'lock-keyhole',Photos:'images',Workflows:'workflow','Account & plan':'user-round','Google & email':'link','AI connection':'cpu',Display:'sun',Notifications:'bell','Privacy & data':'shield','App permissions':'fingerprint-pattern','Redeem code':'gift','Manage plan':'credit-card','Sign out':'log-out'};
     for(const page of out.stack)for(const section of page.groups||[])for(const row of section.rows||[])if(row.kNav){row.lucideIcon='/icons/lucide/'+(row.licenseComponent?'file-text':settingsIcons[row.label]||'sliders-horizontal')+'.svg';row.hasLucideIcon=!row.isTextSize;row.hasIcon=false;row.hasTile=false;}
     // Stable identities keep focused controls attached while async groups change.
     for(const page of out.stack){
