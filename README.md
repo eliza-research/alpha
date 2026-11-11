@@ -223,14 +223,20 @@ three pins against GitHub metadata before setting up the Android toolchain.
 The check names each unavailable input and reports the expiry of admitted pins
 so the maintainer can renew them before a build fails. Acquisition checks the
 metadata again and verifies the exact archive bytes through the workflow's
-read-only token. The build stages with the existing voice and embedding tools,
-and retain the input IDs, hashes and sizes in `native-input-admission.json`.
+read-only token. The build stages with the existing voice and embedding tools
+and retains the input IDs, hashes and sizes in `native-input-admission.json`.
 The candidate receipt binds its digest to the exact source, SDK and run attempt.
 The build evidence records the uploaded candidate's ID and compressed size
 from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
-Refresh the reviewed pins before an artifact expires or a bound source record
-changes. The candidate archive retains the distribution producer evidence
-before the test-mocks build can replace it.
+The Launcher OTA native input expiry workflow checks the reviewed pins daily
+and on manual dispatch. Its job summary names each pin that expires within four
+days. Renew through the approved supplier while the old artifacts are available.
+Keep the original qualification receipts for unchanged native bytes and review
+the new artifact IDs and archive digests before updating the manifest. A changed
+native file or source record requires a new admission. Confirm a successful
+automatic candidate at the replacement pins before recording the rollover.
+The candidate archive retains the distribution producer evidence before the
+test-mocks build can replace it.
 
 The existing workflow run number is the candidate versionCode, checked against
 both releases' retained APKs and public pointers, and the committed version floors.
