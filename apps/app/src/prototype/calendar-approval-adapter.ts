@@ -20,8 +20,8 @@ export function installCalendarApprovalAdapter(Component:Shell){
   const current=()=>{controller.signal.throwIfAborted();const now=connectionController.getSnapshot();if(!shell.live||document.hidden||binding()!==key||now.open||now.busy||JSON.stringify(alphaClient.getState().context)!==context||String(shell.S().draft||'').trim())throw Error('The agent, conversation or draft changed. Review the request again.');};
   try{
    const result=await reviewCalendarApproval(signal=>connectionController.readCalendarApproval(id,signal),controller.signal,current,row=>{value.statuses.set(key+id,calendarApprovalStatus(row));if(shell.live)shell.setState({});});
-   if(!result)return;current();const outcome=await connectionController.resolveCalendarApproval(result.request,result.decision,controller.signal);value.statuses.set(key+id,outcome.text);if(shell.live)shell.setState({});
-  }catch(error){if(shell.live&&!controller.signal.aborted)shell.toast(error instanceof Error?error.message:'Calendar review is unavailable.');}
+   if(!result)return;current();value.statuses.set(key+id,'Applying change…');if(shell.live)shell.setState({});const outcome=await connectionController.resolveCalendarApproval(result.request,result.decision,controller.signal);value.statuses.set(key+id,outcome.text);if(shell.live)shell.setState({});
+  }catch(error){if(shell.live&&!controller.signal.aborted){value.statuses.set(key+id,error instanceof Error?error.message:'Calendar review is unavailable.');shell.setState({});}}
   finally{if(value.abort===controller)value.abort=undefined;controller.abort();}
  }
  p.renderVals=function(){
