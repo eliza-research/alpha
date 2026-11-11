@@ -126,7 +126,9 @@ test('the grouped Privacy page retains permission review and action-review contr
 
 test('the privacy hero names Cloud speech only while it is the route in use, and retains native and offline/startup truth',async()=>{
  const nativeSource=readFileSync('apps/app/src/prototype/native-adapter.ts','utf8');
- const wording=nativeSource.slice(nativeSource.indexOf('type EgressConnection ='),nativeSource.indexOf('/** Only a verified resident session'));
+ const start=nativeSource.indexOf('type EgressConnection ='),end=nativeSource.indexOf('const externalModules =',start);
+ assert.ok(start>=0&&end>start,'the native privacy projection is present');
+ const wording=nativeSource.slice(start,end);
  // The speech route is read at run time (voice-selection.ts speechRoute); no build profile is involved.
  assert.doesNotMatch(nativeSource,/cloudRuntimeEnabled/);
  const load=async route=>import('data:text/javascript;base64,'+Buffer.from(`const speechRoute=()=>${JSON.stringify(route)};const testMocksEnabled=false;const Capacitor={isNativePlatform:()=>true};const cloudServiceName=environment=>environment==='staging'?'Nebula':'Cloud Test';`+stripTypeScriptTypes(wording,{mode:'strip'})).toString('base64'));

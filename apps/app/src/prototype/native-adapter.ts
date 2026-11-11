@@ -4,9 +4,7 @@ import { testMocksEnabled } from '../build-flags';
 import { speechRoute, type SpeechRoute } from '../runtime/voice-selection';
 import { Capacitor } from '@capacitor/core';
 import { DailyApps, type Action, type NativeResult } from '../daily';
-import { registerPlugin } from '../platform-plugins';
 import { connectionController, agentAvailabilityNotice, agentPendingText, type ConnectionSnapshot } from '../runtime/connection-ui';
-import { modelLabel } from '../runtime/local-agent';
 import { askAboutCapture } from './camera-adapter';
 import { broaderPageNotice, handoffGate, switchValue, SYSTEM_TILE_SETTINGS_PAGES, tileAccessibleName, tileFactsFromSystemFacts, tileStateText, type SystemTileFacts, type SystemTileKey } from '@elizaos/capacitor-system/settings';
 import { captureQuestion, locationMimeTypes } from './context-selection';
@@ -19,11 +17,6 @@ export type PrototypeNativeOptions = {
 };
 const installed = new WeakSet<object>();
 const systemPages = new Set(['wifi', 'bluetooth', 'mobile', 'sound', 'notifications', 'battery', 'models', 'developer', 'privacy']);
-/** Non-secret resident provider identity. The native method never returns the stored key. */
-const residentProvider = registerPlugin<{ providerStatus(): Promise<Record<string, unknown>> }>('Agent');
-const providerModelPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
-type ProviderStatus = { sessionId: string; label: string | null };
-let providerStatus: ProviderStatus | null = null, providerReading: string | null = null;
 /** Session whose phone action history this view read successfully; an unread history is never shown as empty. */
 let actionHistoryRead: string | null = null;
 
@@ -60,25 +53,6 @@ export function egressPrivacy(connection: EgressConnection, native = Capacitor.i
   if (connection.kind === 'starting') return { big: 'Agent starting', sub: 'AI off' };
   // Only a build without the resident (the production web preview, test mocks) gets here.
   return { big: 'Offline', sub: 'AI off' };
-}
-/** Only a verified resident session on Android reports its configured hosted model.
- * Exported for the Settings rows that show it (About and Models). */
-export function residentModelLabel(connection: ConnectionSnapshot, refresh: () => void): string | null {
-  const sessionId = connection.session?.sessionId;
-  if (!sessionId || connection.kind !== 'resident' || !Capacitor.isNativePlatform()) return null;
-  if (providerStatus?.sessionId === sessionId) return providerStatus.label;
-  if (providerReading !== sessionId) {
-    providerReading = sessionId;
-    void residentProvider.providerStatus().then(status => {
-      const provider = status?.provider, model = status?.model;
-      // Copy only the two identity fields; ignore anything else a bridge might return.
-      const providerLabel = provider === 'elizacloud' ? cloudServiceName(connection.cloudAccount?.environment ?? 'production') : provider === 'cerebras' ? 'Cerebras' : null;
-      const label = status?.configured === true && providerLabel && typeof model === 'string' && providerModelPattern.test(model) ? modelLabel(providerLabel, model) : null;
-      if (providerReading === sessionId) providerStatus = { sessionId, label };
-    }).catch(() => { if (providerReading === sessionId) providerStatus = { sessionId, label: null }; })
-      .finally(() => { if (providerReading === sessionId) { providerReading = null; refresh(); } });
-  }
-  return null;
 }
 const externalModules = new Set(['phone', 'messages', 'inbox', 'browser', 'camera', 'photos', 'maps', 'calendar', 'contacts', 'files', 'settings', 'wallet', 'workflows']);
 const text = (value: unknown) => typeof value === 'string' ? value : '';
@@ -333,11 +307,8 @@ export function installPrototypeNativeAdapters(
     const connection = connectionController.getSnapshot();
     const info = (label: string, val: string): Bag => ({ kInfo: true, label, val, hasVal: !!val, noAB: true });
     const nav = (label: string, go: () => void, aria = label, lucide = ''): Bag => ({ kNav: true, label, lbl: aria, chev: true, noAB: true, go, ...(lucide ? { lucide } : {}) });
-    const model = residentModelLabel(connection, () => { try { api.set({ providerReadAt: Date.now() }); } catch { /* view closed */ } });
     for (const page of out.stack) {
       if (!page || !Array.isArray(page.groups)) continue;
-      if ((page.title === 'Models' || page.title === 'About') && model)
-        for (const group of page.groups) for (const row of group.rows || []) if (row.label === 'Inference model' || row.label === 'AI model') { row.val = model; row.hasVal = true; }
       if (st.page === 'privacy' && st.log && page.title === 'Activity') {
         const sessionId = connection.session?.sessionId ?? null;
         // Reading history is an explicit step; its progress and errors appear in the connection panel.
