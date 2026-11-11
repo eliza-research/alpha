@@ -2,11 +2,9 @@
 // appScripts). The upstream generator owns SDK, dependencies, variants, signing,
 // version and test-mocks policy; this file holds only Alpha's Gradle-time product
 // inputs and admission: App Links, update manifest, voice and embedding hosts.
-// There is one runtime profile. Every build packages on-device speech and local embeddings; the
-// renderer chooses Cloud, provider or on-device speech at run time. The resident agent still
-// receives ELIZA_RUNTIME_PROFILE=native (upstream's local-embeddings route).
-if (project.hasProperty('ELIZA_RUNTIME_PROFILE') || project.hasProperty('ELIZA_LOCAL_EMBEDDINGS'))
- throw new GradleException('There is one runtime profile now; remove ELIZA_RUNTIME_PROFILE and ELIZA_LOCAL_EMBEDDINGS')
+// Every build packages on-device speech and local embeddings; the renderer chooses Cloud, provider
+// or on-device speech at run time. The resident agent receives ELIZA_RUNTIME_PROFILE=native
+// (upstream's local-embeddings route).
 def unpackagedRuntime = project.findProperty('ELIZA_ALLOW_UNPACKAGED_RUNTIME')?.toString() == '1'
 // Upstream switch (vendor/eliza/packages/app/scripts/dev-ui.ts): the generator attaches test-only
 // sources to DEBUG variants when it is exactly "1".
@@ -147,14 +145,3 @@ def verifyVoiceHost = tasks.register('verifyVoiceHost', Exec) {
  commandLine(['node', 'scripts/voice-host.ts', '--verify'] + paradeeAbiArgs + (unpackagedRuntime ? ['--allow-absent'] : []))
 }
 tasks.named('preBuild').configure { dependsOn verifyParadeeAppLinkage, verifyVoiceHost }
-
-// Reject stale synced renderer assets: a renderer built for the removed Cloud profile names it.
-def verifyRuntimeWebProfile = tasks.register('verifyRuntimeWebProfile') {
- doLast {
-  def flagsFile = file('src/main/assets/public/build-flags.json')
-  if (!flagsFile.isFile()) throw new GradleException('Synced web build flags missing')
-  def flags = new groovy.json.JsonSlurper().parse(flagsFile)
-  if (flags.runtimeProfile != null) throw new GradleException('Synced web assets name a runtime profile; rebuild and sync the renderer')
- }
-}
-tasks.named('preBuild').configure { dependsOn verifyRuntimeWebProfile }

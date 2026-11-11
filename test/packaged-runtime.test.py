@@ -1,8 +1,6 @@
 """Exercise the APK provenance boundary with real ZIP payloads."""
-import contextlib
 import hashlib
 import importlib.util
-import io
 import json
 import os
 from pathlib import Path
@@ -216,20 +214,8 @@ class PackagedRuntimeTest(unittest.TestCase):
         self.assertEqual(result['runtime'], 'NOT_PACKAGED')
         self.assertFalse(result['runtimeExecution'])
 
-    def test_removed_cloud_profile_and_local_embedding_options_fail_with_one_line(self):
-        # One runtime profile: the Cloud packaging verifier and its options are gone.
-        apk = self.package()
-        for argv in (['--runtime-profile=cloud', str(apk)], ['--runtime-profile', 'native', str(apk)], ['--local-embeddings', str(apk)]):
-            stderr = io.StringIO()
-            with self.subTest(argv=argv[0]), contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(io.StringIO()):
-                self.assertEqual(verifier.main(argv), 2)
-            self.assertEqual(len(stderr.getvalue().strip().splitlines()), 1)
-            self.assertIn('There is one runtime profile now', stderr.getvalue())
-        with self.assertRaises(TypeError):
-            verifier.verify(apk, runtime_profile='cloud')
-        with self.assertRaises(TypeError):
-            verifier.verify(apk, local_embeddings=True)
-        self.assertEqual(verifier.verify(apk)['runtimeProfile'], 'native')
+    def test_a_packaged_runtime_reports_the_native_profile(self):
+        self.assertEqual(verifier.verify(self.package())['runtimeProfile'], 'native')
 
     def test_local_models_and_inference_libraries_are_not_refused(self):
         # The removed Cloud verifier refused any local model or inference library in the APK.

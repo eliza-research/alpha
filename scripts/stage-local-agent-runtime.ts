@@ -10,7 +10,6 @@ import {nativeViewDeclarationsJson} from './native-view-policy.ts';
 import {verifyNativeGoogleHostArtifact} from './native-google-host-artifact.ts';
 import {stageAgentBundleDependencies} from './agent-bundle-dependencies.ts';
 import {MOBILE_BUILD_RECEIPT,verifyMobileBuildReceipt} from './mobile-uuid-adapter.ts';
-import {refuseRemovedProfileFlags} from './removed-profile-flags.ts';
 const root=path.resolve(import.meta.dirname,'..');
 
 /** Explicit producer inputs; native Android never falls back to a musl archive or another ABI. */
@@ -37,7 +36,6 @@ export function runtimeStagingSelection(source: string,parentEnv=process.env){
 
 /** Staging takes no options: one profile, with local speech and embeddings always packaged. */
 export function stagingArguments(args: readonly string[]){
- refuseRemovedProfileFlags(args);
  if(args.length)throw Error('Unknown option '+args[0]);
 }
 

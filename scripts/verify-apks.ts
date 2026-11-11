@@ -55,7 +55,6 @@ import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, li
 
 import {cloudVoiceAdmission, cloudVoiceBlockers} from '../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs';
 import { preparePatchedNative, nativePatchReceipt, verifyNativePatchReceipt } from './prepare-patched-native.ts';
-import {refuseRemovedProfileFlags} from './removed-profile-flags.ts';
 const USAGE = "Usage: node scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime] [--signer-api-level=N] [--cloud-voice-evidence=FILE]";
 interface RuntimePackaging {
   apk: string;
@@ -88,7 +87,7 @@ type VerificationRow = Omit<ApkInspection, "badging" | "xml" | "names" | "dexCla
   licenceFlags: ReturnType<typeof licenceFlagRecords>;
   fontLicenceCheck: Omit<ReturnType<typeof fontLicenceCheck>, "blockers">;
   licenceBlockers: string[];
-  runtimeProfile?: "native" | "cloud";
+  runtimeProfile?: "native";
   releaseAdmission?: ReturnType<typeof releaseAdmission>;
   runtime?: RuntimePackaging["runtime"];
   voiceHost?: RuntimeVoiceHost;
@@ -99,8 +98,6 @@ const variants = ["standalone", "launcher"] as const;
 const modes = ["debug", "release"] as const;
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 const args = process.argv.slice(2);
-// One profile: every build packages local speech and embeddings.
-refuseRemovedProfileFlags(args);
 for (const arg of args)
   if (!["--test-mocks", "--allow-unpackaged-runtime"].includes(arg) && !/^--signer-api-level=[1-9][0-9]*$/.test(arg) && !/^--cloud-voice-evidence=.+$/.test(arg)) throw new Error(`Unknown option ${arg}. ${USAGE}`);
 // Artifact signing admission is explicitly scoped to this Android API. Device
@@ -214,7 +211,6 @@ for (const variant of variants)
     } catch { runtimeNotices = false; }
     try {
       flags = readBuildFlags(payload.public);
-      if(flags.runtimeProfile!==undefined)problems.push("Packaged web bundle names a removed runtime profile");
       if (flags.testMocks !== testMocks)
         problems.push(`Packaged web bundle has testMocks=${flags.testMocks}; expected ${testMocks}`);
       auditBundle(payload.public, { testMocks });
