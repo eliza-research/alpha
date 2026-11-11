@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, readFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
@@ -22,7 +23,6 @@ const syntheticWorkflow = 'Synthetic Home routine';
 const syntheticMail = 'Synthetic unread Home subject';
 const syntheticBrief = 'Synthetic retained Home brief';
 const syntheticEvent = 'Synthetic Home event';
-const cacheDir = resolve(root, 'test-results/quint-refinement/legacy-home-vite-cache');
 
 async function attachFixture(page, launcher) {
   const initializers = [];
@@ -371,6 +371,7 @@ async function mounted(extraSources) {
   const driverHashes = captureInputs(sources);
   const loaded = new Set();
   const previousMocks = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
+  const cacheDir = mkdtempSync(resolve(tmpdir(), 'alpha-refinement-vite-'));
   let server, browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
@@ -413,7 +414,7 @@ async function mounted(extraSources) {
   } finally {
     if (previousMocks === undefined) delete process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
     else process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = previousMocks;
-    try {await browser?.close();} finally {await server?.close();}
+    try {await browser?.close();} finally {try {await server?.close();} finally {rmSync(cacheDir,{recursive:true,force:true});}}
   }
 }
 

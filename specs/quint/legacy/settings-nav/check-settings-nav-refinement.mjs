@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, readFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
@@ -16,7 +17,6 @@ const settings = resolve(root, 'apps/app/src/prototype/settings-adapter.ts');
 const adapter = resolve(root, 'apps/app/src/prototype/agent-adapter.ts');
 const shell = resolve(root, 'apps/app/src/prototype/model.js');
 const licenses = resolve(root, 'apps/app/public/licenses/third-party-notices.json');
-const cacheDir = resolve(root, 'test-results/quint-refinement/legacy-settings-vite-cache');
 const expect = baseExpect.configure({timeout: 15000});
 const current = page => page.locator('[data-settings-page]:not([inert])').last();
 const button = (page, name) => current(page).getByRole('button', {name, exact: true});
@@ -238,6 +238,7 @@ async function mounted(extraSources) {
   const watched = new Set([main, settings, adapter, shell]);
   const loaded = new Set();
   const previousMocks = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
+  const cacheDir = mkdtempSync(resolve(tmpdir(), 'alpha-refinement-vite-'));
   let server, browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
@@ -279,7 +280,7 @@ async function mounted(extraSources) {
   } finally {
     if (previousMocks === undefined) delete process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
     else process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = previousMocks;
-    try {await browser?.close();} finally {await server?.close();}
+    try {await browser?.close();} finally {try {await server?.close();} finally {rmSync(cacheDir,{recursive:true,force:true});}}
   }
 }
 

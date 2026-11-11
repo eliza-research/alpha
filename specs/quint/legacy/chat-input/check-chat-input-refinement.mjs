@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, readFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
@@ -21,7 +22,6 @@ const input = '[data-alpha-layer="composer"] textarea[data-alpha-composer]';
 const message = '[data-alpha-layer="conversation"] textarea[data-alpha-composer]';
 const scrim = '[data-alpha-chat-scrim]';
 const expect = baseExpect.configure({timeout: 15000});
-const cacheDir = resolve(root, 'test-results/quint-refinement/legacy-chat-vite-cache');
 const action = (name, ...args) => ({name, args});
 const draft = 'Synthetic retained draft';
 
@@ -127,6 +127,7 @@ async function mounted(extraSources, run) {
   const watched = new Set([main, motion, adapter, shell]);
   const loaded = new Set();
   const previousMocks = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
+  const cacheDir = mkdtempSync(resolve(tmpdir(), 'alpha-refinement-vite-'));
   let server, browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
@@ -176,7 +177,7 @@ async function mounted(extraSources, run) {
   } finally {
     if (previousMocks === undefined) delete process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
     else process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = previousMocks;
-    try {await browser?.close();} finally {await server?.close();}
+    try {await browser?.close();} finally {try {await server?.close();} finally {rmSync(cacheDir,{recursive:true,force:true});}}
   }
 }
 
