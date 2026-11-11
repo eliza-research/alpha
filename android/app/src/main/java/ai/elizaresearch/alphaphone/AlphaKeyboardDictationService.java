@@ -131,26 +131,46 @@ public final class AlphaKeyboardDictationService extends InputMethodService {
     fail("Stop the current recording before starting voice typing."); return;
    }
    target = getCurrentInputConnection();
-   ExtractedText selection = target.getExtractedText(new ExtractedTextRequest(), 0);
-   if (selection != null) { selectionStart = selection.startOffset + selection.selectionStart; selectionEnd = selection.startOffset + selection.selectionEnd; }
-   before = text(target.getTextBeforeCursor(64, 0)); after = text(target.getTextAfterCursor(64, 0)); selected = text(target.getSelectedText(0));
+   final InputConnection input = target;
    cloud = new KeyboardDictationCloud(this); authority = AlphaLocalAgentPlugin.credentialAuthorityEpoch();
    ticket = policy.start();
-   String recordingId = capture.start(LocalVoiceRecording.LONG_LIMIT_MS).getString("recordingId");
-   if (!policy.bindRecording(ticket, recordingId)) throw new IllegalStateException("Capture changed");
-   status.setText("Listening…"); action.setText("Stop"); main.post(monitor);
+   final long owned = ticket;
+   status.setText("Starting…"); action.setEnabled(false);
+   // The editor can share this main looper. Read it from the existing worker.
+   worker.execute(() -> {
+    try {
+     ExtractedText selection = input.getExtractedText(new ExtractedTextRequest(), 0);
+     String preceding = text(input.getTextBeforeCursor(64, 0));
+     String following = text(input.getTextAfterCursor(64, 0));
+     String highlighted = text(input.getSelectedText(0));
+     main.post(() -> {
+      if (!policy.is(owned, KeyboardDictationPolicy.State.RECORDING)) return;
+      if (!sameEditor() || target != input || authority != AlphaLocalAgentPlugin.credentialAuthorityEpoch()
+          || (selection != null && (selectionStart != selection.startOffset + selection.selectionStart
+              || selectionEnd != selection.startOffset + selection.selectionEnd))) {
+       fail("The text field changed. Please dictate again."); return;
+      }
+      try {
+       before = preceding; after = following; selected = highlighted;
+       String recordingId = capture.start(LocalVoiceRecording.LONG_LIMIT_MS).getString("recordingId");
+       if (!policy.bindRecording(owned, recordingId)) throw new IllegalStateException("Capture changed");
+       status.setText("Listening…"); action.setText("Stop"); action.setEnabled(true); main.post(monitor);
+      } catch (Exception error) { fail("Configure voice in Alpha and allow microphone access to use voice typing."); }
+     });
+    } catch (Exception error) {
+     main.post(() -> { if (policy.is(owned, KeyboardDictationPolicy.State.RECORDING)) fail("Could not read the text field. Please try again."); });
+    }
+   });
   } catch (Exception error) { fail("Configure voice in Alpha and allow microphone access to use voice typing."); }
  }
- private boolean sameField() {
-  InputConnection current = getCurrentInputConnection();
-  return target != null && current == target && editor == getCurrentInputEditorInfo() && allowedNow()
-   && Objects.equals(before, text(current.getTextBeforeCursor(64, 0)))
-   && Objects.equals(after, text(current.getTextAfterCursor(64, 0)))
-   && Objects.equals(selected, text(current.getSelectedText(0)));
+ private boolean sameEditor() {
+  return target != null && getCurrentInputConnection() == target && editor == getCurrentInputEditorInfo() && allowedNow();
  }
  private void transcribe(String recordingId) {
   if (!policy.stop(ticket)) return;
   final long owned = ticket; final KeyboardDictationCloud request = cloud;
+  final InputConnection input = target;
+  final String preceding = before, following = after, highlighted = selected;
   final File audio = capture.selected(recordingId);
   if (audio == null || request == null) { fail("Nothing was recorded. Tap Start to try again."); return; }
   status.setText("Transcribing…"); action.setEnabled(false);
@@ -159,11 +179,14 @@ public final class AlphaKeyboardDictationService extends InputMethodService {
   try { worker.execute(() -> {
    try {
     String result = request.transcribe(audio);
+    boolean sameText = Objects.equals(preceding, text(input.getTextBeforeCursor(64, 0)))
+      && Objects.equals(following, text(input.getTextAfterCursor(64, 0)))
+      && Objects.equals(highlighted, text(input.getSelectedText(0)));
     main.post(() -> {
      if (!policy.is(owned, KeyboardDictationPolicy.State.TRANSCRIBING)) return;
      try {
       request.check();
-      if (!sameField()) { fail("The text field changed. Please dictate again."); return; }
+      if (!sameEditor() || target != input || !sameText) { fail("The text field changed. Please dictate again."); return; }
       if (result.isBlank()) { fail("No speech was heard. Tap Start to try again."); return; }
       if (!policy.finish(owned, true, authority == AlphaLocalAgentPlugin.credentialAuthorityEpoch())) {
        fail("Your voice provider changed. Please start again."); return;

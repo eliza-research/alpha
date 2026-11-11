@@ -1,4 +1,6 @@
 /// Explicit keyboard dictation gate. Same-field/account facts are external observations.
+/// Recording owns asynchronous editor preparation and capture. Cancellation retires both.
+/// The worker reads editor text; only the main-thread completion can start or insert.
 module KeyboardDictation {
  var phase: str
  var generation: int

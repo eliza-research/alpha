@@ -9,9 +9,14 @@ import {nativeSource,fixture,runJvm,javaBinary,sharedSpeechSource,jsonJar} from 
 test('keyboard dictation fences duplicate, cancelled, replaced and changed-field/account results',()=>{
  assert.match(runJvm([nativeSource('KeyboardDictationPolicy.java'),fixture('KeyboardDictationPolicyTest.java')],'ai.elizaresearch.alphaphone.KeyboardDictationPolicyTest'),/PASS keyboard dictation/);
  const source=readFileSync(nativeSource('AlphaKeyboardDictationService.java'),'utf8');
- const reopened=source.slice(source.indexOf('private void start()'),source.indexOf('private boolean sameField()'));
+ const reopened=source.slice(source.indexOf('private void start()'),source.indexOf('private boolean sameEditor()'));
  assert.match(reopened,/if \(policy\.state\(\) == KeyboardDictationPolicy\.State\.CLOSED\) policy\.open\(\);/);
  assert(reopened.indexOf('policy.open();')<reopened.indexOf('!allowedNow()'));
+ assert(reopened.indexOf('worker.execute(')<reopened.indexOf('input.getExtractedText('));
+ const completion=source.slice(source.indexOf('private void transcribe('));
+ assert(completion.indexOf('worker.execute(')<completion.indexOf('input.getTextBeforeCursor('));
+ assert(completion.indexOf('input.getSelectedText(')<completion.indexOf('main.post(() -> {'));
+ assert.match(completion,/!sameEditor\(\) \|\| target != input \|\| !sameText/);
 });
 test('auxiliary voice entry is launcher-only and protected by Android binding permission',()=>{
  const manifest=readFileSync('android/app/src/launcher/AndroidManifest.xml','utf8');
