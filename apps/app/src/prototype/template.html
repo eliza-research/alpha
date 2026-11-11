@@ -1993,9 +1993,6 @@
 <sc-if value="{{is.maps}}">
 <div data-alpha-maps-root data-alpha-maps-guidance="{{maps.isNav}}" ref="{{maps.rootRef}}" style="display: flex; flex-direction: column; height: 100%; position: relative; overflow: hidden">
   
-  <!-- The full-screen canvas precedes its overlaid controls in reading order. Its bounds cover
-       the screen even when tiles fail; reading it after the lower panel jumps back to the top. -->
-  <sc-if value="{{maps.hasNativeMap}}"><div ref="{{maps.mapRef}}" data-alpha-map-plane data-imagery-unavailable="{{maps.googleMapMissing}}" aria-label="{{maps.mapLabel}}" style="position:absolute;inset:0;z-index:1"></div></sc-if>
   <sc-if value="{{maps.showSearch}}">
     <div data-alpha-app-header="main" data-alpha-app-header-overlay style="position: absolute; left: 12px; right: 12px; top: 52px; height: 54px; border-radius: 27px; background: var(--bg); box-shadow: 0 6px 22px var(--shc), 0 0 0 1px var(--line); display: flex; align-items: center; padding: 0 5px; z-index: 3">
     <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
@@ -2062,6 +2059,7 @@
     </sc-if>
   </sc-if>
   </div>
+  <sc-if value="{{maps.hasNativeMap}}"><div ref="{{maps.mapRef}}" data-alpha-map-plane data-imagery-unavailable="{{maps.googleMapMissing}}" aria-label="{{maps.mapLabel}}" style="position:absolute;inset:0;z-index:1"></div></sc-if>
   <sc-if value="{{maps.hasNativeMap}}">
     <div class="alpha-map-credits" data-google-maps="{{maps.googleMaps}}" style="bottom:{{maps.attributionBottom}}px">
       <sc-if value="{{maps.globalBasemap}}">
