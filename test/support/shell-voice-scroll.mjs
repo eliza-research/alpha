@@ -5,8 +5,8 @@ import {runInNewContext} from 'node:vm';
 export const shellVoiceScrollSource = new URL('../../apps/app/src/prototype/model.js', import.meta.url);
 
 /** Supply the actual shell hooks when a focused fixture replaces the rest of the shell. */
-export function copyVoiceScrollHooks(target, context = {}) {
-  const source = readFileSync(shellVoiceScrollSource, 'utf8');
+export function copyVoiceScrollHooks(target, context = {}, sourceFile = shellVoiceScrollSource) {
+  const source = readFileSync(sourceFile, 'utf8');
   const start = source.indexOf('  beginVoiceScrollFollow() {');
   const end = source.indexOf('  getSnapshotBeforeUpdate(', start);
   assert.ok(start >= 0 && end > start, 'The shell voice-scroll hooks must be present');

@@ -28,13 +28,14 @@ function sourceRows(profile) {
   return profile === 'ambiguous-source' ? [first, {...first, includeInFeed: false}] : [first];
 }
 
-function publication(profile, owner, window) {
+function publication(profile, owner, window, syncedAt) {
   const row = event(owner, ['loose', 'loose-alt'].includes(profile) ? null : 'primary');
   if (profile === 'updated') row.metadata.etag = 'v2';
   if (profile === 'padded') row.metadata.etag = ' v1 ';
   if (profile === 'no-etag') row.metadata = {};
   if (profile === 'no-grant') row.grantId = '';
-  return {...window, state: 'complete', events: profile === 'none' ? [] : [row]};
+  return {...window, calendarId: source.calendarId, source: 'synced', sources: [], syncedAt,
+    state: 'complete', events: profile === 'none' ? [] : [row]};
 }
 
 function readError(error) {
@@ -57,9 +58,9 @@ async function fixture(actual, initialProfile) {
   }
   const projectRef = reference => reference ? {key: reference.eventKey ? keyOf.get(reference.eventKey) ?? 'other' : '',
     version: reference.revision || '', source: digests.get(reference.sourceRevision) ?? (reference.sourceRevision ? 'other' : '')} : noRef;
-  const attempts = new Map(), feedProfiles = new WeakMap(), refreshTasks = new Map();
+  const attempts = new Map(), feedProfiles = new Map(), refreshTasks = new Map();
   let owner = 'A', session = 1, scope = 1, current = true, profile = initialProfile;
-  let origin, lastId = 0, launching, holdingRefresh = false, reread, mutation, mutationCapture, publications = 0;
+  let origin, lastId = 0, launching, holdingRefresh = false, reread, mutation, mutationCapture, publications = 0, feedId = 0;
 
   const port = () => {
     if (!owner) return null;
@@ -94,8 +95,8 @@ async function fixture(actual, initialProfile) {
           return task.promise;
         }
         if (kind === 'calendars') return {calendars: sourceRows(profile)};
-        const feed = publication(profile, capturedOwner, Object.fromEntries(url.searchParams));
-        feedProfiles.set(feed, profile);
+        const feed = publication(profile, capturedOwner, Object.fromEntries(url.searchParams), new Date(begin + ++feedId).toISOString());
+        feedProfiles.set(feed.syncedAt, profile);
         return feed;
       },
     };
@@ -168,7 +169,7 @@ async function fixture(actual, initialProfile) {
       return {'s.portOwner': owner, 's.portSession': session, 's.portScope': scope, 's.portCurrent': current,
         's.owner': boundOwner ? JSON.parse(boundOwner)[1].slice('owner-'.length) : '',
         's.session': Number(boundSession.slice('session-'.length)), 's.scope': Number(boundScope.slice('scope-'.length)),
-        's.epoch': calendar.epoch, 's.profile': feedProfiles.get(calendar.state.feed) ?? 'absent',
+        's.epoch': calendar.epoch, 's.profile': feedProfiles.get(calendar.state.feed?.syncedAt) ?? 'absent',
         's.selection': projectRef(selection && {...selection, eventKey: key}), 's.origin': projectRef(origin),
         's.refreshing': calendar.refreshing, 's.mutating': calendar.state.mutating, 's.lastId': lastId,
         's.attempts': qmap(Array.from({length: 4}, (_, index) => {
@@ -193,8 +194,8 @@ async function fixture(actual, initialProfile) {
     },
     async finishReread(nextProfile) {
       const feedTask = refreshTasks.get('feed');
-      const feed = publication(nextProfile, feedTask.capturedOwner, feedTask.window);
-      feedProfiles.set(feed, nextProfile);
+      const feed = publication(nextProfile, feedTask.capturedOwner, feedTask.window, new Date(begin + ++feedId).toISOString());
+      feedProfiles.set(feed.syncedAt, nextProfile);
       feedTask.resolve(feed);
       refreshTasks.get('calendars').resolve({calendars: sourceRows(nextProfile)});
       await reread;

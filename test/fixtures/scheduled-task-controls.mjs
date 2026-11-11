@@ -31,6 +31,10 @@ function compile() {
     ['../browser/domain-recovery', 'export function openDomainRecovery(){throw Error("Browser dialog outside installed-slot fixture");}'],
     ['../browser/domain-document', 'export class BrowserDomainDocument {constructor(){throw Error("Browser document outside fixture");}}'],
     ['../browser/documents', 'export const browserDocuments=null;'],
+    ['../runtime/native-connection', 'export const cloudCredentialStore={read:async()=>null};'],
+    ['../runtime/browser-cloud-resident', 'export const browserCloudResidentEnabled=false;export const browserCloudResidentEnvironment="production";'],
+    ['../runtime/service-read-cache-store', 'export const serviceReadCache=()=>{throw Error("Account cache outside installed-slot fixture");};'],
+    ['../build-flags', 'export const testMocksEnabled=false;'],
     ['@capacitor/core', 'export const Capacitor={getPlatform:()=>"android",isNativePlatform:()=>true};'],
     ['./automations.css', ''],
   ]);

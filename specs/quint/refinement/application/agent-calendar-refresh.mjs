@@ -54,7 +54,7 @@ function fixture(compiled) {
   };
   const preservation = {
     capture(signal) {
-      const id = calendar.epoch, job = {...emptyJob, ...binding(), phase: 'legacy', query: queryId(calendar.nextQuery),
+      const id = calendar.epoch, job = {...emptyJob, ...binding(), id, phase: 'legacy', query: queryId(calendar.nextQuery),
         revalidating: ['ready', 'partial'].includes(calendar.state.status), signal, capture: deferred()};
       assert.ok(!jobs.has(id));
       jobs.set(id, job);
@@ -111,7 +111,8 @@ function fixture(compiled) {
   });
   const valueOf = {
     feed(job, result) {
-      return {...windows[result === 'wrong-window' ? 3 - job.query : job.query],
+      return {calendarId: calendarSource.calendarId, source: 'synced', sources: [],
+        syncedAt: new Date(baseline + job.id).toISOString(), ...windows[result === 'wrong-window' ? 3 - job.query : job.query],
         state: ['foreign', 'wrong-window'].includes(result) ? 'complete' : result,
         events: result === 'foreign' ? [event(job, false, true)] : []};
     },
@@ -156,7 +157,7 @@ function fixture(compiled) {
             revalidating: job.revalidating, aborted: job.signal.aborted, feed: job.feed, sources: job.sources, next: job.next} : emptyJob];
         })),
         's.status': s.status, 's.owner': ownerId(s.ownerKey), 's.legacy': s.legacy?.fingerprint ?? '',
-        's.feed': s.feed?.state ?? '', 's.feedEpoch': s.feed ? responseIds.get(s.feed) : 0, 's.sources': s.calendars.length ? !s.calendars[0].includeInFeed ? 'hidden'
+        's.feed': s.feed?.state ?? '', 's.feedEpoch': s.feed ? Date.parse(s.feed.syncedAt) - baseline : 0, 's.sources': s.calendars.length ? !s.calendars[0].includeInFeed ? 'hidden'
           : s.calendars[0].accessRole === 'freeBusyReader' ? 'blocked' : 'readable' : '',
         's.next': s.next ? s.next.event ? 'event' : 'empty' : '', 's.nextEpoch': s.next ? responseIds.get(s.next) : 0, 's.nextFresh': s.nextFresh,
         's.error': err, 's.hasHandle': !!calendar.sourceHandle(calendarSourceKey(calendarSource)), 's.clockAdvanced': now > baseline};

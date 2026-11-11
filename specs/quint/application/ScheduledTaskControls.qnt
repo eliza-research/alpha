@@ -101,7 +101,7 @@ module ScheduledTaskControls {
     val stored = if (success and verb == "edit") {...s, storedText: request.text,
       storedCron: if (request.cron == "") s.storedCron else request.cron}
       else if (success and verb == "reopen") {...s, storedStatus: "scheduled"} else s
-    val message = if (success) (if (verb == "fire") "started" else "saved")
+    val message = if (success) (if (verb == "fire") "started" else "")
       else if (result == "raced") "raced" else if (KnownFire.contains(result)) "not-run" else "unknown"
     all {
       verb == "fire" or not(KnownFire.contains(result)),
