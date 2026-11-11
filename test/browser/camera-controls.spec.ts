@@ -53,11 +53,14 @@ test('rendered zoom selection captures cropped pixels and switching resets the c
 });
 
 test('a zoomed recording stops when its camera source ends',async({page})=>{
- await page.evaluate(()=>{const original=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);navigator.mediaDevices.getUserMedia=async constraints=>{if(constraints?.audio)throw new DOMException('Synthetic microphone denial','NotAllowedError');return original(constraints);};});
+ await page.evaluate(()=>{const original=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);(window as any).videoAudioDenials=0;navigator.mediaDevices.getUserMedia=async constraints=>{if(constraints?.audio){(window as any).videoAudioDenials++;throw new DOMException('Synthetic microphone denial','NotAllowedError');}return original(constraints);};});
  await page.getByRole('button',{name:'Zoom 2x',exact:true}).click();await expect(page.getByRole('button',{name:'Zoom 2x',exact:true})).toHaveCSS('width','40px');
  await page.getByRole('button',{name:'Video mode',exact:true}).click();
  await page.getByRole('button',{name:'Start recording',exact:true}).click();
+ await expect(page.getByRole('alert',{name:'Mic off',exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>(window as any).videoAudioDenials)).toBe(1);
  await page.getByRole('button',{name:'Record without sound',exact:true}).click();await expect(page.getByRole('button',{name:'Stop recording',exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>(window as any).videoAudioDenials)).toBe(1);
  await expect.poll(()=>page.evaluate(async()=>{const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');return (await c.getRecordingState()).fileSize;})).toBeGreaterThan(0);
  await page.evaluate(()=>{const video=document.querySelector('[data-alpha-camera="viewfinder"] video') as HTMLVideoElement;(video.srcObject as MediaStream).getVideoTracks()[0].dispatchEvent(new Event('ended'));});
  await expect.poll(()=>page.evaluate(async()=>{const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');return (await c.getRecordingState()).isRecording;})).toBe(false);
