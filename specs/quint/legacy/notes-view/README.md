@@ -33,4 +33,4 @@ arbitrary folder data, installed device acceptance and actual provider behavior
 outside its bounds.
 
 With authenticated client features and Playwright Chromium prepared, run
-`node --import=tsx --test test/quint-legacy-notes-view-refinement.test.mjs`.
+`bun test ./test/quint-legacy-notes-view-refinement.test.mjs`.

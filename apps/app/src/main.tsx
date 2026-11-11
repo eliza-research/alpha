@@ -343,7 +343,7 @@ async function prepareMountedUpdate(activationCurrent: () => boolean, automatic 
   const owner = shell;
   const voiceActive = () => owner?.voiceConversationActive?.() !== false;
   const idle = () => automaticUpdateIdle(owner.S(),connectionController.getSnapshot(),
-    !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus,[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'),voiceActive());
+    !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus,[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'),voiceActive(),document);
   const current = () => activationCurrent() && shell === owner && owner?.live === true && !voiceActive() && (!automatic || !editingAtFreeze && idle());
   if (!current()) throw Error('App is still opening');
   if (connectionController.getSnapshot().busy || document.querySelector('[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'))

@@ -137,7 +137,7 @@ test('a PACKAGED runtime lists Bun with its LGPL notice and every bundled agent 
   assert.match(bun.text, /relink/);
   assert.match(bun.text, /complete corresponding source of these LGPL components is available/);
   assert.match(bun.text, /https:\/\/github\.com\/oven-sh\/WebKit/);
-  assert.doesNotMatch(bun.text, /distributor must|npm run|node scripts/);
+  assert.doesNotMatch(bun.text, /distributor must|bun run|bun scripts/);
   assert.equal(bun.license, UNVERIFIED);
   assert.deepEqual(finishEntry(bun).flags, ['copyleft-weak', 'unverified'], 'statically linked LGPL JavaScriptCore is flagged');
   assert.match(finishEntry(bun).obligations[0].note, /user must be able to replace the library.*Corresponding source: https:\/\/github\.com\/oven-sh\/bun\/tree\/b{40}/);
@@ -280,7 +280,7 @@ test('runtime enumeration follows explicit modes independently of current checko
   assert.equal(committed.entries.some(isBun), false);
   assert.ok(committed.entries.some(entry => entry.name === 'On-device elizaOS agent runtime payload'));
   // Settings shows these entries to the phone owner: no release to-dos or build commands.
-  for (const entry of committed.entries) assert.doesNotMatch(entry.text, /distributor must|npm run|node scripts\//, entry.name);
+  for (const entry of committed.entries) assert.doesNotMatch(entry.text, /distributor must|bun run|bun scripts\//, entry.name);
   const packaged = collectNotices(ROOT, { packagedRuntime: true });
   if (packagedRuntimePresent(ROOT)) assert.ok(packaged.entries.some(isBun));
   else assert.ok(packaged.errors.some(error => /--packaged-runtime needs a staged runtime/.test(error)), 'refuses without a staged runtime');

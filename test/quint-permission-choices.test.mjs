@@ -1,8 +1,9 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {runPermissionChoicesRefinement} from '../specs/quint/refinement/application/permission-choices.mjs';
 
-test('actual permission coordinator traces refine the bounded walkthrough model', {timeout:180000}, async () => {
+test('actual permission coordinator traces refine the bounded walkthrough model', {timeout:scaledTimeout(180000)}, async () => {
   const result = await runPermissionChoicesRefinement();
   assert.equal(result.receipt.passed, true);
   assert.equal(result.receipt.inputsUnchanged, true);

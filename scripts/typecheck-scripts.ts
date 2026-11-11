@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
@@ -15,7 +15,7 @@ if (result.error) throw result.error;
 if (result.stderr) process.stderr.write(result.stderr);
 
 // Check repository tooling without making its optional, pinned dependencies a
-// second build target. npm run typecheck separately checks the application.
+// second build target. bun run typecheck separately checks the application.
 const diagnostics: string[] = [];
 let inScope = true;
 for (const line of result.stdout.split(/\r?\n/)) {

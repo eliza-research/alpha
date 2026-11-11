@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import JSON5 from 'json5';
 import {
   ROOT, ALLOWLIST, NO_FONT_LICENCE, UNKNOWN, UNVERIFIED, generate, collectNotices, detectLicenceFromText, loadTemplates, packageNotice,
 } from '../scripts/generate-licenses.ts';
@@ -10,7 +11,8 @@ import {FLAGS, classifyLicence, licenceFlagLines, licenceFlagRecords, obligation
 import {releaseBlockers} from '../scripts/release-blockers.ts';
 
 const fresh = generate(ROOT, {packagedRuntime: false});
-const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
+// bun.lock is JSON with trailing commas.
+const lock = JSON5.parse(fs.readFileSync(path.join(ROOT, 'bun.lock'), 'utf8'));
 
 // Policy P-09: a licence never fails generation. Copyleft, unknown, unverified and text-less
 // entries are flagged; only broken input is an error. These checks are source evidence, not legal review.
@@ -169,13 +171,16 @@ test('an item with no recorded reason is still listed and flagged; reason files 
 });
 
 test('a production dependency with a copyleft or unknown licence is listed and flagged, never an error', t => {
-  const dir = scratchRoot(t);
+  const dir = scratchRoot(t, {ownNodeModules: true});
   const before = collectNotices(dir, {packagedRuntime: false}).entries.length;
-  const altered = structuredClone(lock);
-  altered.packages['node_modules/react'].license = 'SSPL-1.0';
-  altered.packages['node_modules/react-dom'].license = 'AGPL-3.0-or-later';
-  altered.packages['node_modules/scheduler'].license = 'LGPL-3.0-only';
-  fs.writeFileSync(path.join(dir, 'package-lock.json'), JSON.stringify(altered));
+  // bun.lock records no licence: the inventory reads the one each installed package declares.
+  for (const [name, license] of [['react', 'SSPL-1.0'], ['react-dom', 'AGPL-3.0-or-later'], ['scheduler', 'LGPL-3.0-only']]) {
+    const installed = path.join(dir, 'node_modules', name), source = fs.realpathSync(installed);
+    fs.rmSync(installed);
+    fs.cpSync(source, installed, {recursive: true});
+    const manifest = JSON.parse(fs.readFileSync(path.join(installed, 'package.json'), 'utf8'));
+    fs.writeFileSync(path.join(installed, 'package.json'), JSON.stringify({...manifest, license}));
+  }
   const result = collectNotices(dir, {packagedRuntime: false});
   assert.deepEqual(result.errors, []);
   assert.equal(result.entries.length, before, 'no entry is dropped');
@@ -204,15 +209,18 @@ test('a production dependency with a copyleft or unknown licence is listed and f
 test('broken input still fails: a corrupted or missing package manifest is an error, not a flag', t => {
   const dir = scratchRoot(t, {ownNodeModules: true});
   const altered = structuredClone(lock);
-  altered.packages['node_modules/broken-manifest'] = {version: '1.0.0', license: 'MIT'};
-  altered.packages['node_modules/not-installed'] = {version: '2.0.0', license: 'MIT'};
-  fs.writeFileSync(path.join(dir, 'package-lock.json'), JSON.stringify(altered));
+  // Locked production dependencies of the root manifest: [name@version, registry, manifest, integrity].
+  for (const [name, version] of [['broken-manifest', '1.0.0'], ['not-installed', '2.0.0']]) {
+    altered.workspaces[''].dependencies[name] = version;
+    altered.packages[name] = [`${name}@${version}`, '', {}, 'sha512-fixture'];
+  }
+  fs.writeFileSync(path.join(dir, 'bun.lock'), JSON.stringify(altered));
   fs.mkdirSync(path.join(dir, 'node_modules/broken-manifest'));
   fs.writeFileSync(path.join(dir, 'node_modules/broken-manifest/package.json'), '{"name": "broken-manifest", "version": ');
   fs.writeFileSync(path.join(dir, 'node_modules/broken-manifest/index.js'), 'module.exports = 1;');
   const result = collectNotices(dir, {packagedRuntime: false});
   assert.ok(result.errors.some(error => /^broken-manifest@1\.0\.0: unreadable or corrupted package\.json/.test(error)), result.errors.join('\n'));
-  assert.ok(result.errors.some(error => error === 'not-installed@2.0.0: not installed at node_modules/not-installed; run npm ci'));
+  assert.ok(result.errors.some(error => error === 'not-installed@2.0.0: not installed at node_modules/not-installed; run bun install --frozen-lockfile'));
   assert.equal(result.errors.length, 2);
 });
 
@@ -241,7 +249,7 @@ function scratchRoot(t, {ownNodeModules = false} = {}) {
   } else fs.symlinkSync(path.join(ROOT, 'node_modules'), path.join(dir, 'node_modules'));
   fs.mkdirSync(path.join(dir, 'apps/app'), {recursive: true});
   fs.symlinkSync(path.join(ROOT, 'apps/app/public'), path.join(dir, 'apps/app/public'));
-  for (const name of ['package.json', 'package-lock.json', 'upstream.lock.json']) fs.copyFileSync(path.join(ROOT, name), path.join(dir, name));
+  for (const name of ['package.json', 'bun.lock', 'upstream.lock.json']) fs.copyFileSync(path.join(ROOT, name), path.join(dir, name));
   fs.cpSync(path.join(ROOT, 'licenses'), path.join(dir, 'licenses'), {recursive: true});
   return dir;
 }

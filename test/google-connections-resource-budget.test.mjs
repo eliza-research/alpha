@@ -5,7 +5,7 @@ import {createRequire} from 'node:module';
 import vm from 'node:vm';
 import {transformSync} from 'esbuild';
 import {JSDOM} from 'jsdom';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 const {cloudServiceName}=await tsImport(new URL('../apps/app/src/runtime/cloud-protocol.ts',import.meta.url).href,{parentURL:import.meta.url});
 const connectionReturn=await tsImport(new URL('../apps/app/src/runtime/google-connection-return.ts',import.meta.url).href,{parentURL:import.meta.url});
 const workspaceReturn=await tsImport(new URL('../apps/app/src/runtime/google-workspace-return.ts',import.meta.url).href,{parentURL:import.meta.url});

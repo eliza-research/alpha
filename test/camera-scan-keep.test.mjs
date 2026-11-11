@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {resolve} from 'node:path';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 const {createScanCapture}=await tsImport(new URL('../.eliza/client-features/plugins/plugin-native-camera/src/scan-document.ts',import.meta.url).href,{parentURL:import.meta.url});
 const {changeBatches,runBatches,favoriteTarget,patchRows,insertRows}=await tsImport(new URL('../.eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts',import.meta.url).href,{parentURL:import.meta.url});
 const source=readFileSync(resolve(import.meta.dirname,'../apps/app/src/prototype/camera-adapter.ts'),'utf8');

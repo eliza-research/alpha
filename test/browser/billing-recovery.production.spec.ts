@@ -7,7 +7,6 @@
 // deployed shapes (billing snapshot v2, subscription redeem, the agent's `done` frame for a Cloud
 // 402). It is not the native Agent plugin, the resident runtime, Eliza Cloud or a device.
 import { test, expect, type Page, type TestInfo } from '@playwright/test';
-import { join } from 'node:path';
 import { flagOffAndroid, harness, button, fenceNetwork, expectNoDevelopmentSurface, residentHome, seedCompletedAccessSetup } from './flag-off-android';
 import { residentStub, stub, setStub, type StubAccount } from './resident-stub';
 
@@ -23,10 +22,9 @@ const bubble = (page: Page, text: string) => page.getByRole('button', { name: 'M
 const sheet = (page: Page) => page.getByRole('dialog', { name: 'Account', exact: true });
 const controls = (page: Page) => sheet(page).getByRole('region', { name: 'Balance and membership', exact: true });
 async function send(page: Page, text: string) { await composer(page).fill(text); await composer(page).press('Enter'); }
-/** Screenshots go to ALPHA_BILLING_SHOTS when set (the QA folder), otherwise beside the test result. */
 async function shot(page: Page, info: TestInfo, name: string) {
   await page.evaluate(() => document.fonts.ready);
-  await page.screenshot({ path: process.env.ALPHA_BILLING_SHOTS ? join(process.env.ALPHA_BILLING_SHOTS, name) : info.outputPath(name), animations: 'disabled' });
+  await page.screenshot({ path: info.outputPath(name), animations: 'disabled' });
 }
 async function boot(page: Page, account: Partial<StubAccount>) {
   const foreign = await fenceNetwork(page);

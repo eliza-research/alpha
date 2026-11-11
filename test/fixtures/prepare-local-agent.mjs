@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {createHash} from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -48,26 +47,17 @@ export function prepareLocalAgentFixture(temp) {
     fs.copyFileSync(path.join(root, file), target);
   }
   const lock = path.join(product, 'upstream.lock.json');
-  fs.writeFileSync(lock, JSON.stringify({url: sdk, commit: before}));
+  const pin = commit => fs.writeFileSync(lock, JSON.stringify({url: sdk, commit}));
+  pin(before);
   // Fixture source/cache must remain local inside a real preparation environment.
   const runtime = path.join(product, 'artifacts', 'runtime');
   const childEnv = {...env, ALPHA_LOCAL_AGENT_SOURCE_DIR: runtime, ALPHA_RUNTIME_GIT_CACHE: sdk};
-  function prepare(args = [], overrides = {}, preload) {
-    return spawnSync(process.execPath, [
-      ...(preload ? ['--import', preload] : []),
-      path.join(product, 'scripts/prepare-local-agent.ts'), '--source-only', ...args,
-    ], {cwd: product, env: {...childEnv, ...overrides}, encoding: 'utf8', timeout: 60000});
-  }
+  const prepare = () => spawnSync(process.execPath, [path.join(product, 'scripts/prepare-local-agent.ts'), '--source-only'],
+    {cwd: product, env: childEnv, encoding: 'utf8', timeout: 60000});
   const initial = prepare();
   assert.ifError(initial.error);
   assert.equal(initial.status, 0, initial.stderr);
   const stamp = path.join(runtime, '.alpha-runtime-source.json');
-  const old = fs.readFileSync(stamp);
-  const backup = path.join(temp, 'prior-stamp.json');
   git(['fetch', '--quiet', sdk, after], runtime);
-  git(['checkout', '--quiet', '--detach', after], runtime);
-  fs.writeFileSync(lock, JSON.stringify({url: sdk, commit: after}));
-  const digest = createHash('sha256').update(old).digest('hex');
-  return {product, runtime, stamp, old, backup, before, after, lock, git, prepare,
-    args: ['--requalify-from', digest, '--preserve-stamp', backup]};
+  return {runtime, stamp, prepared: fs.readFileSync(stamp), before, after, lock, pin, git, prepare};
 }

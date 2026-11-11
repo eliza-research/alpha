@@ -25,7 +25,7 @@ const definitions = [
   ['NativeMapsLocation', () => replayNativeMapsLocation(modelNames('specs/quint/native/NativeMapsLocation.qnt')), 'locationProjection',
     'The existing project function normalizes repeated delivered fix identities and observes the real native location owner over closed permission, callback and watch ports.'],
   ['VideoRecorder', () => replayVideoRecorder({traces: 400, maxSteps: 20}), 'recorderProjection',
-    'The existing recorder-session projection observes BrowserVideoCapture with synthetic media, timers and capture tracks; DOM camera-view state remains outside this projection.'],
+    'The existing recorder-session projection observes BrowserVideoCapture with synthetic media, the retained-prefix read port, timers and capture tracks; DOM camera-view state remains outside this projection.'],
   ['VideoEditReview', () => replayVideoEditReview({traces: 600, maxSteps: 16}), 'editorProjection',
     'The existing DOM editor projection observes its actual controls, media calls, save callback and disposal; decoding and real filesystem writes remain external.'],
   ['ResidentStartCancel', checkResidentStartCancel, 's',
@@ -51,7 +51,7 @@ function owningAssertions(model, result) {
     RendererSpeechChunk: ['begin', 'listenerRegistered', 'abort', 'prepareResult', 'latePrepare', 'waitElapsed', 'playResult', 'terminalEvent', 'observeFinished', 'disposeSettled'],
     NativeStreamBridge: ['listenerAttached', 'requestStream', 'requestRejected', 'responseEvent', 'chunkEvent', 'completeEvent', 'abort', 'finish'],
     NativeMapsLocation: ['start', 'stop', 'cleanupSettles', 'permissionChecked', 'permissionAnswered', 'hide', 'show', 'listenersAdded', 'watchSettles', 'nativeFix', 'nativeError'],
-    VideoRecorder: ['startResolved', 'chunk', 'limitOrTrackEnded', 'recorderStopped', 'recorderError', 'stopDeadline', 'finish', 'finalized', 'stopPreview'],
+    VideoRecorder: ['startResolved', 'chunk', 'limitOrTrackEnded', 'recorderStopped', 'prefixRead', 'recorderError', 'stopDeadline', 'finish', 'finalized', 'stopPreview'],
     VideoEditReview: ['sourceLoaded', 'sourceError', 'trim', 'rotate', 'toggleCrop', 'play', 'pause', 'commit', 'saveSettled', 'close', 'hide', 'show'],
     HomeInstanceHandoff: ['frontStartArrives'],
   };

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {parseNativeHistoryCommand} from '../.eliza/client-features/plugins/plugin-browser/src/native-client-command.ts';
 import {BROWSER_DISPATCH_FAILURE_KINDS} from '../vendor/eliza/plugins/plugin-browser/src/dispatch-types.ts';
 

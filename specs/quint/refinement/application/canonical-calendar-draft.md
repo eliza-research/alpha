@@ -21,5 +21,5 @@ Provider dispatch, reminder destination conversion, arbitrary invalid
 fields and persistence across device failure require separate evidence.
 
 ```sh
-node --test test/quint-canonical-calendar-draft.test.mjs
+bun test test/quint-canonical-calendar-draft.test.mjs
 ```

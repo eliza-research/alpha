@@ -24,6 +24,6 @@ export function serviceInputs(entries) {
       found.add(original);
     }
   }
-  for (const entry of ['specs/quint/refinement/services/source-inputs.mjs', 'package-lock.json', 'upstream.lock.json', staged + '.source.json', 'scripts/prepare-client-features.ts', 'scripts/upstream-native-source.ts']) found.add(entry);
+  for (const entry of ['specs/quint/refinement/services/source-inputs.mjs', 'bun.lock', 'upstream.lock.json', staged + '.source.json', 'scripts/prepare-client-features.ts', 'scripts/upstream-native-source.ts']) found.add(entry);
   return [...found].sort();
 }

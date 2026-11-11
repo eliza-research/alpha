@@ -12,7 +12,7 @@ test('client publication conformance runs from a nested test-runner process', {t
       checkpoints: result.checkpoints, inputsUnchanged: result.inputsUnchanged,
       driverInputsBound: result.driverInputsBound}));
   `;
-  const result = spawnSync(process.execPath, ['--import=tsx', '--input-type=module', '-e', script], {
+  const result = spawnSync(process.execPath, ['-e', script], {
     cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 170000,
   });
   assert.equal(result.error, undefined, result.error?.message);

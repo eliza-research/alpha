@@ -4,7 +4,7 @@ import {mkdtempSync, cpSync, rmSync, readFileSync, readdirSync, existsSync} from
 import {join, resolve, relative} from 'node:path';
 import {createHash} from 'node:crypto';
 import {tmpdir} from 'node:os';
-import {execFileSync} from 'node:child_process';
+import {spawnSync} from 'node:child_process';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 
 // Run the shared browser, callback and credential-ownership regressions against
@@ -39,11 +39,19 @@ test('packaged shared Google browser sign-in preserves lifecycle and credential 
       cpSync(join(root,'vendor/eliza',source),join(temporary,source),{recursive:true});
     const env={...process.env};
     delete env.NODE_TEST_CONTEXT;
+    // A nested Bun test run, read through its JUnit report (Bun has no TAP reporter).
     const runSuite=(label,minimumTests)=>{
-      const output=execFileSync(process.execPath, ['--test', '--test-reporter=tap', join(module, 'test/native-sign-in.test.mjs')], {timeout:170000, env, encoding:'utf8'});
-      assert.ok(Number(/# tests (\d+)/.exec(output)?.[1]) >= minimumTests, `${label} suite actually ran`);
-      assert.match(output, /# fail 0\b/);
-      assert.match(output, /# skipped 0\b/);
+      const report=join(temporary, 'junit.xml');
+      rmSync(report, {force:true});
+      const run=spawnSync(process.execPath, ['test', '--reporter=junit', `--reporter-outfile=${report}`, join(module, 'test/native-sign-in.test.mjs')], {timeout:170000, env, encoding:'utf8'});
+      const detail=`${label}:\n${run.stdout}\n${run.stderr}`;
+      assert.equal(run.error, undefined, run.error?.message);
+      assert.equal(run.status, 0, detail);
+      const suites=/<testsuites\b[^>]*>/.exec(readFileSync(report, 'utf8'))?.[0] ?? '';
+      const count=(name)=>Number(new RegExp(` ${name}="(\\d+)"`).exec(suites)?.[1] ?? NaN);
+      assert.ok(count('tests') >= minimumTests, `${label} suite actually ran: ${suites}`);
+      assert.equal(count('failures'), 0, detail);
+      assert.equal(count('skipped'), 0, detail);
     };
     // Keep the pin's own recovery coverage, including retry/receipt failures,
     // before exercising Alpha's additional browser and credential-owner cases.

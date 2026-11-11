@@ -1,8 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Read-only review aid for a merge commit (issue #659: post-merge review of #657, merge 91c83b3c).
  *
- *   node scripts/owner/merge-review.ts [MERGE_SHA] [--json]
+ *   bun scripts/owner/merge-review.ts [MERGE_SHA] [--json]
  *
  * Reads only local git objects: it never fetches, checks out, runs package scripts or contacts a
  * service. The forged SHAs and marker patterns come from scripts/owner/incident-2026-10-27-iocs.json,
@@ -212,7 +212,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
  const json = args.includes('--json');
  const positional = args.filter(arg => !arg.startsWith('--'));
  if (positional.length > 1 || args.some(arg => arg.startsWith('--') && arg !== '--json')) {
-  console.error('Usage: node scripts/owner/merge-review.ts [MERGE_SHA] [--json]');
+  console.error('Usage: bun scripts/owner/merge-review.ts [MERGE_SHA] [--json]');
   process.exit(2);
  }
  const root = fileURLToPath(new URL('../../', import.meta.url));

@@ -28,7 +28,7 @@ test('the renderer leases each step and every row it shows, and lease lengths ag
  // The lease helpers and their unit cases are the shared plugin-notes recording-deletion module
  // (plugins/plugin-notes/test/notes-recording-deletion.test.mjs). The shared store needs the
  // TypeScript transform, so the bound constant is read in a child process.
- const leaseMs=Number(execFileSync(process.execPath,['--import=tsx','--no-warnings','--input-type=module','-e',"const m=await import('./apps/app/src/runtime/permanent-voice-deletion.ts');console.log(m.PERMANENT_DELETION_LEASE_MS);"],{cwd:root,encoding:'utf8'}).trim());
+ const leaseMs=Number(execFileSync(process.execPath,['--no-warnings','-e',"const m=await import('./apps/app/src/runtime/permanent-voice-deletion.ts');console.log(m.PERMANENT_DELETION_LEASE_MS);"],{cwd:root,encoding:'utf8'}).trim());
  const java=readFileSync(nativeSource('NotesDeletionLease.java'),'utf8');
  assert.equal(leaseMs,20*60*1000);
  assert.match(java,/static final long LEASE_MS=20L\*60\*1000;/);

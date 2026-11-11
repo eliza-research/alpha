@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {fileURLToPath} from 'node:url';
+import {nodeOnly} from './support/node-only.mjs';
 import {checkBrowserFilesTrash} from '../specs/quint/refinement/application/browser-files-trash.mjs';
 
-test('Files Trash lock, exact marker custody and recovery compare with the prepared source', {timeout: 120000}, async () => {
+test('Files Trash lock, exact marker custody and recovery compare with the prepared source', {timeout: 120000, ...nodeOnly('the Files Trash source takes a Web Lock and Bun has no navigator.locks')}, async () => {
   const receipt = await checkBrowserFilesTrash([fileURLToPath(import.meta.url)]);
   assert.equal(receipt.model, 'BrowserFilesTrash');
   assert.equal(receipt.traces, 12);

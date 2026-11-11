@@ -1,7 +1,7 @@
 import {existsSync, mkdirSync, readFileSync, renameSync, writeFileSync} from 'node:fs';
 import {dirname, join, resolve, basename} from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from '../test/support/ts-import.mjs';
 import {repositoryRoot, loadModels, sha256} from './quint-lib.ts';
 import {verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
 import {modelStateInventory, traceActionCoverage, unobservedStateFields} from '../specs/quint/refinement/model-state.mjs';
@@ -77,7 +77,7 @@ const requested = requestedNames.map(family => {
 });
 const familyModule = (family: Family) => `specs/quint/refinement/${family}/index.mjs`;
 const reportingInputs = ['scripts/check-quint-refinement.ts', 'specs/quint/refinement/model-state.mjs',
-  'specs/quint/refinement/check-traces.mjs', 'specs/quint/refinement/campaigns.mjs', 'package-lock.json',
+  'specs/quint/refinement/check-traces.mjs', 'specs/quint/refinement/campaigns.mjs', 'bun.lock',
   'scripts/quint-lib.ts',
   ...['application', 'services', 'native', 'legacy'].map(family => `specs/quint/${family}/manifest.json`),
   ...families.map(familyModule).filter(path => existsSync(join(repositoryRoot, path)))];

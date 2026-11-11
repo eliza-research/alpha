@@ -11,7 +11,7 @@ const identity=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf
 if(!/^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)+$/.test(identity))throw Error('Invalid application identity');
 // All shared native code comes directly from the same reviewed upstream commit.
 const runtimeSource=sourceDirectory(root);
-if(!fs.existsSync(path.join(runtimeSource,'.alpha-runtime-source.json')))throw Error(`Prepared runtime source ${path.relative(root,runtimeSource)} is missing. Run npm run android:build:local (distributable APKs) or npm run agent:prepare first.`);
+if(!fs.existsSync(path.join(runtimeSource,'.alpha-runtime-source.json')))throw Error(`Prepared runtime source ${path.relative(root,runtimeSource)} is missing. Run bun run android:build:local (distributable APKs) or bun run agent:prepare first.`);
 verifySource(runtimeSource,pin);
 // Upstream owns the rewrite anchors; android/consumer-host.json supplies Alpha's installed
 // identities (sockets, secure-store route, notification resources, environment and lifecycle
@@ -62,7 +62,10 @@ try{
     fs.renameSync(previous,published);
     preservePrevious=false;
    }catch(restoreError){
-    throw new AggregateError([error,restoreError],`Resident Java publication and restore failed. Previous output retained at ${previous}`);
+    const stranded=new AggregateError([error,restoreError],`Resident Java publication and restore failed. Previous output retained at ${previous}`);
+    // Bun reports an uncaught AggregateError by its members only; the retained path must reach the operator.
+    console.error(`${stranded.name}: ${stranded.message}`);
+    throw stranded;
    }
   }
   throw error;

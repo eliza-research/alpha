@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildSync} from 'esbuild';
 import {mountGoogleAccountPanel} from './fixtures/google-account-panel.mjs';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 const load=path=>tsImport(new URL(path,import.meta.url).href,{parentURL:import.meta.url});
 const {AgentCalendar}=await load('../apps/app/src/runtime/agent-calendar.ts');
 const {assertAppRecordRequestAllowed}=await load('../apps/app/src/runtime/app-record-route-policy.ts');

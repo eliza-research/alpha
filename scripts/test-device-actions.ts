@@ -7,9 +7,6 @@ import http from 'node:http';
 import {exitFromChild, runChild} from './child-command.ts';
 import type { ContextEnvelope } from '../apps/app/src/runtime/alpha-client.ts';
 import type { ActionJournal, ForegroundReviewExecutor, JournalEntry } from '../apps/app/src/runtime/device-actions.ts';
-if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
-  exitFromChild(await runChild(process.execPath, ['--import=tsx', process.argv[1]], {stdio: 'inherit'}));
-}
 const { DeviceActions, FOREGROUND_OPERATION_TYPES } = await import('../apps/app/src/runtime/device-actions.ts');
 const { DEVICE_REVIEW_TYPES: FOREGROUND_REVIEW_TYPES, calendarAvailability } = await import('../.eliza/client-features/packages/contracts/src/device-reviews.ts');
 const session = { ownerId: 'owner', agentId: 'agent', origin: 'https://agent.example', sessionId: 'session' };

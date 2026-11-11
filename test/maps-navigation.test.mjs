@@ -6,12 +6,12 @@ import { execFileSync } from 'node:child_process';
 import { checkClientFeatures } from '../scripts/prepare-client-features.ts';
 
 test('upstream plugin-maps navigation tests pass on the pinned source', () => {
-  // Check only: the shared tree is prepared by npm run upstream:prepare-client, never by a test.
+  // Check only: the shared tree is prepared by bun run upstream:prepare-client, never by a test.
   const root = checkClientFeatures();
   const directory = path.join(root, 'plugins/plugin-maps/test');
   const tests = ['navigation-client.test.mjs'].map(name => path.join(directory, name));
   for (const file of tests) assert.ok(fs.existsSync(file), file);
-  execFileSync(process.execPath, ['--import=tsx', '--test', ...tests], { stdio: 'pipe', timeout: 60_000 });
+  execFileSync(process.execPath, ['test', ...tests], { stdio: 'pipe', timeout: 60_000 });
 });
 
 test('guidance presents the next maneuver, the following step and the remaining trip', async () => {
@@ -212,5 +212,5 @@ assert.equal(agent.registered(), false);
 assert.equal(requests.length, 2, 'signing out reads nothing');
 stop(); agent.dispose();
 `;
-  execFileSync(process.execPath, ['--import', 'tsx', '--no-warnings', '--input-type=module', '-e', script], { cwd: path.resolve(import.meta.dirname, '..'), stdio: 'pipe', timeout: 60_000 });
+  execFileSync(process.execPath, ['--no-warnings', '-e', script], { cwd: path.resolve(import.meta.dirname, '..'), stdio: 'pipe', timeout: 60_000 });
 });

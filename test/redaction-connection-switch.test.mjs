@@ -4,7 +4,7 @@
 // model is called. Synthetic values only; this is source evidence, not device or provider evidence.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 
 const {AlphaClient,AlphaClientError}=await tsImport('../apps/app/src/runtime/alpha-client.ts',import.meta.url);
 

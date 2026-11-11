@@ -96,6 +96,15 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Check the automatic native input manifest and artifact availability
+        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
+        timeout-minutes: 3
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -B scripts/ci/hosted-native-inputs.py --check-remote
       # Install the selected toolchain before capacity provisioning authenticates it.
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -105,12 +114,6 @@ jobs:
         with:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.12"
-      - name: Check the automatic native input manifest
-        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
-        run: python3 -B scripts/ci/hosted-native-inputs.py --check
       - name: Install pinned Android native toolchain
         run: |
           python3 scripts/ci/resident-phase.py --name android-toolchain --seconds 1200 sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'build-tools;36.0.0' 'ndk;28.2.13676358'
@@ -185,10 +188,10 @@ jobs:
           grep -Eq '^Pkg.Revision *= *28\.2\.13676358[[:space:]]*$' "$ANDROID_NDK_HOME/source.properties"
           python3 -c 'import shutil; free=shutil.disk_usage(".").free; print("freshCapacityAfterBytes="+str(free)); assert free >= 32*1024**3, "Fresh runner needs at least 32GiB for resident archive headroom"'
           df -h "$GITHUB_WORKSPACE"
+      # The pinned upstream SDK retains Node-based build tooling.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version-file: .nvmrc
-          cache: npm
+          node-version: "26.13.0"
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.2"
@@ -210,7 +213,7 @@ jobs:
       - name: Admit exact tools and fresh source paths
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$(node --version)" = "v26.13.0"
+          test "$(bun --version)" = "1.4.2"
           test "$(bun --version)" = "1.4.2"
           python3 -c 'import shutil; assert shutil.disk_usage(".").free >= 10*1024**3'
           mkdir -p test-results/resident-ci
@@ -235,51 +238,48 @@ jobs:
       - name: Stage the admitted voice and embedding inputs
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         run: |
-          node scripts/android-stage-voice-models.ts --from test-results/resident-ci-native-inputs/voice
-          node scripts/build-embedding-host.ts --from test-results/resident-ci-native-inputs/embedding
-          node scripts/voice-host.ts --verify
+          bun scripts/android-stage-voice-models.ts --from test-results/resident-ci-native-inputs/voice
+          bun scripts/build-embedding-host.ts --from test-results/resident-ci-native-inputs/embedding
+          bun scripts/voice-host.ts --verify
       - name: Qualify supervisor on real Linux processes
         timeout-minutes: 10
         run: |
           python3 scripts/ci/test-resident-phase.py
           python3 test/resident-crash-diagnostic.test.py
-      - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 npm ci
+      - run: python3 scripts/ci/resident-phase.py --name product-install --seconds 600 bun install --frozen-lockfile
       - name: Admit the automatic candidate version against the public inventory
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          node scripts/app-update-candidate.ts version test-results/resident-ci-candidate/version.json
-          echo "ELIZAOS_VERSION_CODE=$(node -p 'require("./test-results/resident-ci-candidate/version.json").versionCode')" >> "$GITHUB_ENV"
+          bun scripts/app-update-candidate.ts version test-results/resident-ci-candidate/version.json
+          echo "ELIZAOS_VERSION_CODE=$(bun -p 'require("./test-results/resident-ci-candidate/version.json").versionCode')" >> "$GITHUB_ENV"
       - name: Prepare pinned JSON dependency for host contract tests
         shell: bash
         run: bash scripts/ci/prepare-host-test-json.sh
       - name: Verify source metadata and voice contracts before resident preparation
         timeout-minutes: 5
-        env:
-          NODE_OPTIONS: --max-old-space-size=4096
         run: |
           python3 scripts/ci/resident-phase.py --name source-metadata --seconds 240 \
             bash -e -c '
-              npm run upstream:prepare-client
-              exec node --test --test-concurrency=1 \
+              bun run upstream:prepare-client
+              exec bun test \
                 test/embedding-host-admission.test.mjs \
                 test/upstream-reachability.test.mjs \
                 test/voice-host-record.test.mjs \
                 test/cloud-voice-profile.test.mjs \
                 test/private-preview-cartesia-route.test.mjs
             '
-      - run: node --test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
+      - run: bun test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
       # Noncandidate diagnostics retain their existing absent-input check.
       - name: Verify the diagnostic on-device voice host record
         if: env.ALPHA_APP_UPDATE_CANDIDATE != '1'
-        run: node scripts/voice-host.ts --verify --allow-absent
+        run: bun scripts/voice-host.ts --verify --allow-absent
       - name: Prepare and qualify fresh resident source with normal hooks
         env:
-          NODE_OPTIONS: --max-old-space-size=4096
           RUN_TURBO_CONCURRENCY: "1"
         run: |
-          python3 scripts/ci/resident-phase.py --name prepare --seconds 3600 npm run agent:prepare
+          python3 scripts/ci/resident-phase.py --name prepare --seconds 3600 bun run agent:prepare
       - name: Capture the hydrated SDK lock and graph
         if: github.event_name == 'workflow_dispatch' || env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         run: |
@@ -306,17 +306,16 @@ jobs:
           sha256sum --check test-results/resident-ci/sdk-lock.sha256
           (cd "$source" && "$bun_executable" --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-after.txt
           cmp test-results/resident-ci/sdk-graph-before.txt test-results/resident-ci/sdk-graph-after.txt
-          node scripts/prepare-local-agent.ts --source-only
+          bun scripts/prepare-local-agent.ts --source-only
       - name: Qualify the prepared resident source
         env:
-          NODE_OPTIONS: --max-old-space-size=4096
           RUN_TURBO_CONCURRENCY: "1"
         run: |
-          python3 scripts/ci/resident-phase.py --name device-timing-flow --seconds 600 npm run agent:test-device-timing
-          python3 scripts/ci/resident-phase.py --name worker-build --seconds 900 npm run agent:build-workflow-worker
-          python3 scripts/ci/resident-phase.py --name native-cloud-routing --seconds 300 node scripts/test-native-cloud-runtime-config.ts
-          python3 scripts/ci/resident-phase.py --name compiler-flow --seconds 600 npm run agent:test-workflow-compiler
-          python3 scripts/ci/resident-phase.py --name worker-flow --seconds 600 npm run agent:test-workflow-worker
+          python3 scripts/ci/resident-phase.py --name device-timing-flow --seconds 600 bun run agent:test-device-timing
+          python3 scripts/ci/resident-phase.py --name worker-build --seconds 900 bun run agent:build-workflow-worker
+          python3 scripts/ci/resident-phase.py --name native-cloud-routing --seconds 300 bun scripts/test-native-cloud-runtime-config.ts
+          python3 scripts/ci/resident-phase.py --name compiler-flow --seconds 600 bun run agent:test-workflow-compiler
+          python3 scripts/ci/resident-phase.py --name worker-flow --seconds 600 bun run agent:test-workflow-worker
       - name: Acquire hash-pinned Android Bun with step-only authentication
         timeout-minutes: 12
         env:
@@ -324,23 +323,22 @@ jobs:
         run: python3 scripts/ci/resident-phase.py --name bun-downloads --seconds 600 python3 scripts/ci/acquire-resident-bun.py
       - name: Stage and archive qualified resident runtime
         env:
-          NODE_OPTIONS: --max-old-space-size=4096
           RUN_TURBO_CONCURRENCY: "1"
         run: |
-          python3 scripts/ci/resident-phase.py --name runtime-stage --seconds 1800 npm run agent:stage-android
+          python3 scripts/ci/resident-phase.py --name runtime-stage --seconds 1800 bun run agent:stage-android
           if [ "$ALPHA_APP_UPDATE_CANDIDATE" = "1" ]; then
-            node scripts/stage-embedding-host.ts --verify
+            bun scripts/stage-embedding-host.ts --verify
           fi
-          python3 scripts/ci/resident-phase.py --name mobile-bundle --seconds 300 npm run agent:test-mobile-workflow-bundle
+          python3 scripts/ci/resident-phase.py --name mobile-bundle --seconds 300 bun run agent:test-mobile-workflow-bundle
           # Fresh native artifacts and the runtime pin are inputs to shipped notices.
-          python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 node scripts/generate-licenses.ts --packaged-runtime
+          python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 bun scripts/generate-licenses.ts --packaged-runtime
           # Flag-off distribution: release verification requires the PACKAGED runtime.
-          python3 scripts/ci/resident-phase.py --name distribution-archive --seconds 3000 node scripts/build-archive.ts test-results/resident-ci-distribution
+          python3 scripts/ci/resident-phase.py --name distribution-archive --seconds 3000 bun scripts/build-archive.ts test-results/resident-ci-distribution
       - name: Retain bounded distribution producer evidence
         if: github.event_name == 'workflow_dispatch' || env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         run: |
-          node scripts/runtime-profile.ts --verify-native
-          node scripts/prepare-local-agent.ts --source-only
+          bun scripts/runtime-profile.ts --verify-native
+          bun scripts/prepare-local-agent.ts --source-only
           sha256sum --check test-results/resident-ci/sdk-lock.sha256
           (cd "$ALPHA_LOCAL_AGENT_SOURCE_DIR" && bun --no-env-file pm ls --all) > test-results/resident-ci/sdk-graph-final.txt
           cmp test-results/resident-ci/sdk-graph-before.txt test-results/resident-ci/sdk-graph-final.txt
@@ -427,19 +425,18 @@ jobs:
           PYCODE
       - name: Archive the isolated test-mocks build
         env:
-          NODE_OPTIONS: --max-old-space-size=4096
           RUN_TURBO_CONCURRENCY: "1"
         run: |
           # The native suites need the private peer fixture, a debug-only test hook
           # that exists only in the separate, never-distributable test-mocks build.
-          python3 scripts/ci/resident-phase.py --name archive --seconds 3000 node scripts/build-archive.ts --test-mocks test-results/resident-ci-archive
+          python3 scripts/ci/resident-phase.py --name archive --seconds 3000 bun scripts/build-archive.ts --test-mocks test-results/resident-ci-archive
       - name: Bind the unsigned native candidate to the genuine distribution archive
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp test-results/resident-ci-native-inputs/admission.json test-results/resident-ci-distribution/native-input-admission.json
-          node scripts/app-update-candidate.ts receipt test-results/resident-ci-candidate/version.json test-results/resident-ci-distribution
+          bun scripts/app-update-candidate.ts receipt test-results/resident-ci-candidate/version.json test-results/resident-ci-distribution
       - name: Retain the unsigned native update candidate separately from test mocks
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -455,7 +452,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ALPHA_CANDIDATE_ARTIFACT_ID: ${{ steps.native-candidate.outputs.artifact-id }}
           ALPHA_CANDIDATE_ARTIFACT_SHA256: ${{ steps.native-candidate.outputs.artifact-digest }}
-        run: node scripts/app-update-candidate.ts archive-size test-results/resident-ci/native-candidate-artifact.json test-results/resident-ci-distribution
+        run: bun scripts/app-update-candidate.ts archive-size test-results/resident-ci/native-candidate-artifact.json test-results/resident-ci-distribution
       - name: Build and anchor private endpoint helper
         run: python3 scripts/ci/build-private-peer.py
       - name: Preserve native generated provenance
@@ -526,9 +523,9 @@ jobs:
           done
           python3 -c 'import shutil; free=shutil.disk_usage(".").free; print("nativeFreshCapacityAfterBytes="+str(free)); assert free >= 24*1024**3, "Fresh native runner needs 24GiB before SDK, archive and AVD provisioning"'
           # Existing 10GiB admission and 4GiB runtime floor remain unchanged.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          node-version-file: .nvmrc
+          bun-version: "1.4.2"
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -561,7 +558,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.ts
+            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 bun scripts/prepare-ci-emulator.ts
             ANDROID_SERIAL=emulator-5554 ALPHA_RESIDENT_DISPOSABLE_CI=1 python3 scripts/ci/resident-phase.py --name native --seconds 5400 python3 scripts/ci/resident-native.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -614,9 +611,9 @@ jobs:
         run: |
           python3 scripts/ci/test-recovery-ui-guard.py
           python3 scripts/ci/test-pending-recovery-phases.py
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          node-version-file: .nvmrc
+          bun-version: "1.4.2"
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -648,7 +645,7 @@ jobs:
           emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 node scripts/prepare-ci-emulator.ts
+            ANDROID_SERIAL=emulator-5554 python3 scripts/ci/resident-phase.py --name prepare-phone --seconds 300 bun scripts/prepare-ci-emulator.ts
             ANDROID_SERIAL=emulator-5554 ALPHA_RESIDENT_DISPOSABLE_CI=1 python3 scripts/ci/resident-phase.py --name pending-recovery-ui --seconds 2400 python3 scripts/ci/pending-recovery-ui.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

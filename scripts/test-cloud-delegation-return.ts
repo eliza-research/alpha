@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {playwright} from './fixtures/playwright.ts';
 
 const {chromium} = playwright(import.meta.url);
-const root = process.env.ALPHA_HOSTED_SOURCE_ROOT || process.cwd();
+const root = process.cwd();
 const html = await readFile(path.join(root, 'apps/app/public/delegation-return.html'), 'utf8');
 const browser = await chromium.launch({headless: true});
 try {

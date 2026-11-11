@@ -433,7 +433,7 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     } catch (error) { if (errorCode(error) === 'ENOENT') return false; throw error; }
   };
   if (current()) return destination;
-  if (check) throw Error('Client feature source is missing or stale: run npm run upstream:prepare-client');
+  if (check) throw Error('Client feature source is missing or stale: run bun run upstream:prepare-client');
   fs.mkdirSync(parent, { recursive: true });
   const temporary = fs.mkdtempSync(path.join(parent, 'client-features-stage-'));
   try {

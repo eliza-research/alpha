@@ -1,5 +1,5 @@
 // Production bundle audit (scripts/audit-production-bundle.ts) on fixture bundles. The flag-off
-// web-dist audit runs separately as npm run audit:bundle. LOOP-E, J04: the simulated password
+// web-dist audit runs separately as bun run audit:bundle. LOOP-E, J04: the simulated password
 // provider and the Maps emulator gateway are denylisted in case their flags stop folding away.
 import test from 'node:test';
 import assert from 'node:assert/strict';

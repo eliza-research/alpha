@@ -12,8 +12,8 @@ and shared checker before source execution. The receipt also binds the model
 and imported `InboxDelivery` bytes. Run it with
 
 ```sh
-node specs/quint/refinement/services/inbox-coordinator.mjs
-node --test test/quint-inbox-coordinator.test.mjs
+bun specs/quint/refinement/services/inbox-coordinator.mjs
+bun test test/quint-inbox-coordinator.test.mjs
 ```
 
 ## Source and abstraction map
@@ -130,7 +130,7 @@ draft. Arbitrary shelf collections, simultaneous independent cleanups, forwarded
 source parts and provider-draft editing remain additional obligations.
 
 ```sh
-node --test test/quint-inbox-cleanup.test.mjs
+bun test test/quint-inbox-cleanup.test.mjs
 ```
 
 The cleanup follow-up passes all 19 current model scenarios, 1,000 sampled runs

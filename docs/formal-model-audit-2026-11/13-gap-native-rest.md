@@ -2,7 +2,7 @@
 
 Single-pass findings from a second auditor covering files the first pass read only in part. Not adversarially verified; each is re-verified before a fix.
 
-Paths: `J/` = `android/app/src/main/java/ai/elizaresearch/alphaphone/`, `Q/` = `specs/quint/`. Everything below was read, not run. Quint line numbers are given only where I had them; otherwise the action or invariant is named.
+Paths: `J/` = `android/app/src/main/java/ai/alphacompute/alphaphone/`, `Q/` = `specs/quint/`. Everything below was read, not run. Quint line numbers are given only where I had them; otherwise the action or invariant is named.
 
 **Coverage limits**
 - Not audited: the notification-listener and password-vault implementations (`ai.eliza.plugins.notifications.NotificationMirror*`, `ai.eliza.plugins.passwords.*`, `JsonCredentialSlots`, `KeystoreTextFrame`). They are upstream and not tracked outside `vendor/`. Only the Alpha wrappers were read (`AlphaNotificationListener`, `NotificationAccess`, `AlphaNotificationsPlugin`, `PasswordProviderSupport`, `AlphaCredentialStore`, `BrowserSessionStore`).

@@ -1,5 +1,5 @@
 // Input admission of the resident digest restart check. The check itself needs the prepared
-// upstream source with dependencies (about 6 GB) and is not part of `npm test`.
+// upstream source with dependencies (about 6 GB) and is not part of `bun run test`.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -19,7 +19,7 @@ test('digest restart check stops before any process work and names the exact pre
    assert.equal(result.status,2,result.stderr);
    assert.equal(result.stdout,'');
    assert.match(result.stderr,reason);
-   assert.ok(result.stderr.includes('ALPHA_RUNTIME_GIT_CACHE="$PWD/vendor/eliza" npm run agent:prepare'),'names the preparation command');
+   assert.ok(result.stderr.includes('ALPHA_RUNTIME_GIT_CACHE="$PWD/vendor/eliza" bun run agent:prepare'),'names the preparation command');
    assert.ok(result.stderr.includes(`artifacts/local-agent-resident-${commit}`),'names the directory preparation creates for the current pin');
    assert.ok(!/\n\s+at /.test(result.stderr),'an instruction, not a stack trace');
   }
@@ -27,6 +27,6 @@ test('digest restart check stops before any process work and names the exact pre
 });
 
 test('the package command runs the digest restart check',()=>{
- assert.equal(JSON.parse(fs.readFileSync('package.json','utf8')).scripts['agent:test-digest-restart'],'node scripts/test-local-digest-restart.ts');
+ assert.equal(JSON.parse(fs.readFileSync('package.json','utf8')).scripts['agent:test-digest-restart'],'bun scripts/test-local-digest-restart.ts');
 
 });

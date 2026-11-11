@@ -13,7 +13,7 @@ import {browsingSnapshot, restoreBrowsing, DEFAULT_BROWSING_LIMITS} from '../.el
 import {BrowserTabSession} from '../.eliza/client-features/plugins/plugin-native-browser-surface/src/tab-host.ts';
 
 
-const source=readFileSync(process.env.ALPHA_BROWSER_ADAPTER_SOURCE||'apps/app/src/prototype/browser-adapter.ts','utf8');
+const source=readFileSync('apps/app/src/prototype/browser-adapter.ts','utf8');
 const declarations=source.slice(source.indexOf('  // Saving waits'),source.indexOf('  const tabOf ='));
 const saving=source.slice(source.indexOf('  function savedSnapshot()'),source.indexOf('  async function restoreSession()'));
 const clearing=source.slice(source.indexOf('  async function clearBrowsingData()'),source.indexOf('  async function clearSiteData()'));

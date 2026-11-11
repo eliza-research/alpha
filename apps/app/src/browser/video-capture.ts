@@ -1,7 +1,8 @@
 import {BrowserMicrophone} from './sensor-policy';
 import {drawCameraFrame,type CameraTransform} from './camera-frame';
+import {measureVideoPrefix} from './video-capture-prefix';
 type Capture={blob:Blob;duration:number;width:number;height:number;image:string};
-type Session={generation:number;stream:MediaStream;recorder:MediaRecorder;started:number;ended?:number;bytes:number;done:Promise<Capture>;reject:(error:Error)=>void;settled:boolean;cleanup:()=>void;timer?:ReturnType<typeof setTimeout>;deadline?:ReturnType<typeof setTimeout>;stopping?:Promise<Capture>};
+type Session={generation:number;stream:MediaStream;recorder:MediaRecorder;started:number;ended?:number;bytes:number;done:Promise<Capture>;reject:(error:Error)=>void;settled:boolean;cleanup:()=>void;prefixRead?:AbortController;timer?:ReturnType<typeof setTimeout>;deadline?:ReturnType<typeof setTimeout>;stopping?:Promise<Capture>};
 const cancelled=()=>new DOMException('Video recording cancelled.','AbortError');
 /** Size accounting for one recorded chunk. A chunk that would pass the limit is left out and
  * recording stops with the chunks already collected, so reaching the limit shortens the video
@@ -26,7 +27,8 @@ export class BrowserVideoCapture {
  cancel(){
   this.microphone?.close();this.microphone=undefined;
   this.generation++;const session=this.current;this.current=undefined;if(!session)return;
-  session.settled=true;session.cleanup();clearTimeout(session.timer);clearTimeout(session.deadline);session.reject(cancelled());
+  session.settled=true;session.cleanup();clearTimeout(session.timer);clearTimeout(session.deadline);
+  const cancellation=cancelled();session.prefixRead?.abort(cancellation);session.reject(cancellation);
   try{if(session.recorder.state!=='inactive')session.recorder.stop();}catch{}
   session.stream.getTracks().forEach(track=>track.stop());
  }
@@ -62,7 +64,7 @@ export class BrowserVideoCapture {
    const session:Session={generation,stream:owned,recorder,started:performance.now(),bytes:0,done,reject,settled:false,cleanup:()=>cleanup()};this.current=session;
    const chunks:Blob[]=[];
    // Once the limit stops the recording every later chunk is left out too: the saved video never has a gap.
-   let full=false;
+   let full=false,truncated=false;
    const finish=(error?:Error)=>{
     if(session.settled)return;session.settled=true;microphoneOwner?.close();session.cleanup();session.ended??=performance.now();clearTimeout(session.timer);clearTimeout(session.deadline);
     session.stream.getTracks().forEach(t=>t.stop());
@@ -75,11 +77,27 @@ export class BrowserVideoCapture {
      // Some recorders clear mimeType when they stop; emitted chunks retain it.
      const mime=(recorder.mimeType||chunks.find(chunk=>chunk.type)?.type||'').split(';')[0].trim().toLowerCase();
      if(!['video/webm','video/mp4'].includes(mime))throw Error('Video format could not be confirmed. Try recording again.');
-     resolve({blob:new Blob(chunks,{type:mime}),duration:Math.max(.001,(session.ended-session.started)/1000),width,height,image:canvas.toDataURL('image/jpeg',.85)});chunks.length=0;
+     const blob=new Blob(chunks,{type:mime}),image=canvas.toDataURL('image/jpeg',.85);
+     if(truncated){
+      const reader=session.prefixRead=new AbortController();
+      void measureVideoPrefix(blob,reader.signal).then(duration=>resolve({blob,duration,width,height,image}),reject)
+       .finally(()=>{session.prefixRead=undefined;});
+     }else{
+      resolve({blob,duration:Math.max(.001,(session.ended-session.started)/1000),width,height,image});
+     }
     }catch(e){reject(e instanceof Error?e:Error('Video could not finish.'));}
+    finally{chunks.length=0;}
    };
    const stop=()=>{if(session.settled)return;session.ended??=performance.now();clearTimeout(session.timer);session.deadline??=setTimeout(()=>finish(Error('Video did not finish. Try again.')),5000);try{if(recorder.state!=='inactive')recorder.stop();}catch(e){finish(e instanceof Error?e:Error('Video could not stop.'));}};
-   recorder.ondataavailable=event=>{if(session.settled||full)return;const admitted=admitVideoChunk(session.bytes,event.data.size,input.maxFileSize);session.bytes=admitted.bytes;if(admitted.keep)chunks.push(event.data);if(admitted.stop){full=true;stop();}};
+   recorder.ondataavailable=event=>{
+    if(session.settled)return;
+    if(full){truncated||=event.data.size>0;return;}
+    const admitted=admitVideoChunk(session.bytes,event.data.size,input.maxFileSize);
+    session.bytes=admitted.bytes;
+    if(admitted.keep)chunks.push(event.data);
+    else truncated=true;
+    if(admitted.stop){full=true;stop();}
+   };
    recorder.onstop=()=>finish();recorder.onerror=()=>{finish(Error('Video recording interrupted.'));try{recorder.stop();}catch{}};
    let frameTimer:ReturnType<typeof setInterval>|undefined;cleanup=()=>{microphoneOwner?.close();clearInterval(frameTimer);track.removeEventListener('ended',stop);};track.addEventListener('ended',stop,{once:true});
    if(transformed){const canvas=transformed;frameTimer=setInterval(()=>{try{drawCameraFrame(video,transform,canvas);}catch(e){finish(e instanceof Error?e:Error('Camera frame failed.'));try{recorder.stop();}catch{}}},33);}

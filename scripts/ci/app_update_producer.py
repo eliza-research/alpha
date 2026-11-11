@@ -6,9 +6,8 @@ from pathlib import Path
 import re
 import subprocess
 
-REPOSITORY = "eliza-research/alpha"
+REPOSITORY = "alphacompute/alpha"
 REPOSITORY_ID = 1396333361
-OWNER_ID = 314117943
 WORKFLOW = ".github/workflows/resident-android.yml"
 WORKFLOW_ID = 373209004
 CANDIDATE_PACKAGE = "ai.alphacompute.alphaphone"
@@ -17,6 +16,7 @@ PRIVATE_RUNNER = "root-reviewed-private-runner"
 HOSTED_DISPATCH = "github-dispatch"
 MAX_ARCHIVE_BYTES = 1_500_000_000
 LEGACY_APK_MEMBER_BYTES = 400_000_000
+PRIVATE_APK_BUCKET = "alpha-aosp-lab-20261024-private-apks"
 SHA = re.compile(r"[0-9a-f]{64}")
 COMMIT = re.compile(r"[0-9a-f]{40}")
 NUMBER = re.compile(r"[1-9][0-9]{0,15}")
@@ -27,6 +27,19 @@ GITHUB_FIELDS = CANDIDATE_FIELDS | {"producerRunId", "artifactId"}
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def pairs(rows):
+    value = {}
+    for key, item in rows:
+        require(key not in value, "Duplicate JSON field")
+        value[key] = item
+    return value
+
+
+def decode(data):
+    return json.loads(data.decode("utf-8", errors="strict"), object_pairs_hook=pairs,
+                      parse_constant=lambda _: (_ for _ in ()).throw(ValueError("Non-JSON number")))
 
 
 def matches(pattern, value):
@@ -68,6 +81,22 @@ def archive_pins(plan):
             matches(SHA, plan.get("archiveSHA256")), "Invalid exact producer archive pins")
 
 
+def validate_private_storage(plan):
+    storage = plan["privateStorage"]
+    require(storage["bucket"] == PRIVATE_APK_BUCKET, "Unexpected private bucket")
+    sha = plan["archiveSHA256"]
+    require(isinstance(sha, str) and re.fullmatch(r"[0-9a-f]{64}", sha), "Invalid archive digest")
+    require(storage["inputObject"] == f"unsigned/{sha}.zip", "Input object must bind the archive digest")
+    require(isinstance(storage["inputGeneration"], str) and
+            re.fullmatch(r"[1-9][0-9]{0,24}", storage["inputGeneration"]), "Exact input generation required")
+    require(re.fullmatch(r"signed/" + sha + r"/[0-9a-f]{32}/signed-apks.tar",
+                         storage["outputObject"]), "Invalid exclusive delivery object")
+    require(type(plan["archiveBytes"]) is int and 0 < plan["archiveBytes"] <= MAX_ARCHIVE_BYTES,
+            "Invalid archive byte bound")
+    require(producer_kind(plan) in (PRIVATE_RUNNER, CANDIDATE), "Unreviewed private producer kind")
+    return storage
+
+
 def apk_member_limit(kind):
     return MAX_ARCHIVE_BYTES if kind == CANDIDATE else LEGACY_APK_MEMBER_BYTES
 
@@ -100,7 +129,6 @@ def github_candidate(plan, api=gh_json):
             run["workflow_id"] == WORKFLOW_ID and run["path"] == WORKFLOW and
             run["status"] == "completed" and run["conclusion"] == "success" and
             all(run[key]["id"] == REPOSITORY_ID and run[key]["full_name"] == REPOSITORY
-                and run[key]["owner"]["id"] == OWNER_ID
                 for key in ("repository", "head_repository")), "Candidate producer run attempt differs")
     artifact_id = plan["artifactId"]
     artifact = api(f"repos/{REPOSITORY}/actions/artifacts/{artifact_id}")

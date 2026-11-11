@@ -11,5 +11,5 @@ The model bounds a single service and retired continuation per runtime, one repl
 Run the source replay with Node 26 from the repository root.
 
 ```sh
-node --test test/quint-plugin-connector-custody.test.mjs
+bun test test/quint-plugin-connector-custody.test.mjs
 ```

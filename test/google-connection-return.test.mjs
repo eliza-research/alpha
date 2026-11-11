@@ -7,7 +7,7 @@ import {prepareGoogleWorkspaceReturn,watchGoogleWorkspaceReturn,sameGoogleWorksp
 import {watchGoogleConnectionReturn,sameGoogleConnectionReturnBinding} from '../apps/app/src/runtime/google-connection-return.ts';
 import {GMAIL_MODIFY_CAPABILITIES,GMAIL_READ_CAPABILITY,gmailGrantTier} from '../apps/app/src/runtime/gmail-grants.ts';
 
-const ui=readFileSync(process.env.ALPHA_GOOGLE_RETURN_UI_SOURCE||'apps/app/src/runtime/google-connection-ui.tsx','utf8');
+const ui=readFileSync('apps/app/src/runtime/google-connection-ui.tsx','utf8');
 const accountsSource=stripTypeScriptTypes(readFileSync('apps/app/src/runtime/google-accounts.ts','utf8'),{mode:'strip'}).replace(/^import[^;]+;\n/gm,'').replace(/^export /gm,'');
 const createGoogleAccounts=vm.runInNewContext(accountsSource+';createGoogleAccounts',{DOMException,Event});
 const admissionCode=stripTypeScriptTypes(ui.slice(ui.indexOf('const unverifiedAccounts='),ui.indexOf('/** Browser Cloud stage only:')),{mode:'strip'});

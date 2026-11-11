@@ -106,4 +106,3 @@ test('the chat header offers New chat and Chat history beside the assistant name
  // A reply or an approval in flight is never cut off by starting a new chat.
  for(const state of [{typing:true},{pending:true},{busy:true},{approving:{}}]){run=tools({},state);run.tools.newChat();assert.deepEqual(run.calls,[]);assert.equal(run.toasts.length,1);}
 });
-

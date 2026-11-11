@@ -1,8 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Record a distributed release as android/release-signer.json lastRelease.
  *
- *   node scripts/record-release.ts --apk-manifest DIR/apk-manifest.json [--date YYYY-MM-DD] [--write]
+ *   bun scripts/record-release.ts --apk-manifest DIR/apk-manifest.json [--date YYYY-MM-DD] [--write]
  *
  * verify-apks admits a release only when its versionCode is greater than lastRelease.versionCode, so
  * recording a release makes every later build advance. Record it once the release has gone out
@@ -24,7 +24,7 @@ import { admitUnitApk, readUnitApkManifest } from "./provision-unit.ts";
 import type {ReleaseSigner} from "./build-android.ts";
 
 export const VARIANTS = Object.freeze(["standalone", "launcher"] as const);
-const USAGE = "Usage: node scripts/record-release.ts --apk-manifest FILE [--date YYYY-MM-DD] [--write]";
+const USAGE = "Usage: bun scripts/record-release.ts --apk-manifest FILE [--date YYYY-MM-DD] [--write]";
 
 /** A real YYYY-MM-DD day: Date.parse alone rolls 2026-02-30 over to March 2. */
 export function isCalendarDate(value: string) {

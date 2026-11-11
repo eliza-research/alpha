@@ -5811,6 +5811,8 @@ class Component extends DCLogic {
       draft: S.draft, hasDraft: !!S.draft, noDraft: !S.draft,
       // The composer template binds these; the agent adapter refines them for a live turn.
       sendVisible: !!S.draft && !S.typing, talkVisible: !S.draft && !S.typing, replyIdle: !S.typing,
+      // The voice adapter replaces this while a voice conversation owns the pill; without it (mock mode) the pill keeps its controls.
+      pillVoiceInactive: true,
       onDraft: function (e) { self.setState(e.target.value ? { draft: e.target.value } : { draft: "", editCard: null }); },
       onKey: function (e) { if (e.key === "Enter") { e.preventDefault(); self.send(); } },
       sendNow: function () { self.send(); },

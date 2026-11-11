@@ -30,10 +30,10 @@ type UpgradeReceipt = {
 };
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 
-/** Usage: node scripts/test-installed-upgrade.ts <calendar|reminder> [--bridge | --baseline-process-runner]
+/** Usage: bun scripts/test-installed-upgrade.ts <calendar|reminder> [--bridge | --baseline-process-runner]
  * Alpha's fixture policy and scenarios; shared upstream code owns APK lifecycle.
  * The candidate app and instrumentation APK are admitted as one verified pair
- * (artifacts/apk-manifest.json from `npm run android:build`), and every companion class runs
+ * (artifacts/apk-manifest.json from `bun run android:build`), and every companion class runs
  * only against that exact installed pair. Reminder upgrades also run
  * WorkflowLegacyReminderUpgradeInstrumentedTest after the candidate verify phase. Any failed,
  * skipped or missing phase is recorded with its name and fails the process.
@@ -136,6 +136,6 @@ export async function testInstalledUpgrade(kind: string,options=process.argv.sli
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
  const kind=process.argv[2];
- if(kind!=='calendar'&&kind!=='reminder'){console.error('Usage: node scripts/test-installed-upgrade.ts <calendar|reminder> [--bridge | --baseline-process-runner]');process.exit(2);}
+ if(kind!=='calendar'&&kind!=='reminder'){console.error('Usage: bun scripts/test-installed-upgrade.ts <calendar|reminder> [--bridge | --baseline-process-runner]');process.exit(2);}
  await testInstalledUpgrade(kind);
 }
