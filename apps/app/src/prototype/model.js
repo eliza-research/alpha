@@ -2975,6 +2975,33 @@ async function notesDeleteFolder(api, id) {
   var cur = api.get("notes");
   api.set({ folderSheet: null, folder: cur.folder === id ? null : cur.folder });
 }
+async function notesApplySelection(api, folderId) {
+  var state = api.get("notes");
+  if (state.selectionBusy) return;
+  var selected = state.selectedNotes || [];
+  var reviewed = (state.list || []).filter(function (note) { return selected.indexOf(note.id) >= 0; });
+  var binding = api.canonicalNotes;
+  var remaining = selected.slice();
+  api.set({ selectionBusy: true, menu: null, folderSheet: null });
+  try {
+    for (var note of reviewed) {
+      if (api.canonicalNotes !== binding || binding && !binding.current) break;
+      var current = (api.get("notes").list || []).find(function (row) { return row.id === note.id; });
+      if (!current || JSON.stringify(Object.assign({}, current, { canonicalRevision: 0 })) !== JSON.stringify(Object.assign({}, note, { canonicalRevision: 0 }))) { api.toast("Notes changed. Select them again."); break; }
+      if (folderId === undefined) {
+        if (binding) { if (!await binding.remove(note.id, api)) break; }
+        else await notesDelete(api, note.id);
+      } else {
+        if (binding) { if (!await binding.update(note.id, { folderId: folderId }) || !await binding.leave(null)) break; }
+        else await notesMove(api, note.id, folderId, "folder");
+      }
+      remaining = remaining.filter(function (id) { return id !== note.id; });
+      api.set({ selectedNotes: remaining });
+    }
+  } finally {
+    api.set({ selectionBusy: false, selectedNotes: remaining, selectingNotes: remaining.length > 0 });
+  }
+}
 function notesNew(api, kind) {
   var id = "n" + Date.now(), st0 = api.get("notes");
   var inFolder = notesFolderOf({ folderId: st0.folder }, st0.folders);
@@ -3004,7 +3031,7 @@ function notesShare(api, n, via) {
 registerView("notes", {
   title: "Notes", icon: "notes", aliases: ["note", "recorder", "memos"],
   chat: "hidden",
-  state: { list: NOTES_SEED, open: null, blankCreationId: null, folders: [], folder: null, filter: null, menu: null, folderSheet: null, record: false, compose: false, proc: null, sheet: null, pos: 0, playing: false, newItem: "" },
+  state: { list: NOTES_SEED, open: null, blankCreationId: null, folders: [], folder: null, filter: null, menu: null, folderSheet: null, record: false, compose: false, proc: null, sheet: null, pos: 0, playing: false, newItem: "", selectedNotes: [], selectingNotes: false, selectionBusy: false },
   persist: ["list"],
   jumps: [[null, "Notes"], ["editor", "Note editor"], ["voice", "Voice note"]],
   preset: function (sub) {
@@ -3018,6 +3045,7 @@ registerView("notes", {
   back: function (st, api) {
     if (st.sheet) { api.set({ sheet: null }); return true; }
     if (st.menu) { api.set({ menu: null }); return true; }
+    if (st.selectingNotes) { api.set({ selectingNotes: false, selectedNotes: [] }); return true; }
     if (st.open) { notesClose(api); return true; }
     if (st.folderSheet) { api.set({ folderSheet: null }); return true; }
     if (st.filter) { api.set({ filter: null }); return true; }
@@ -3112,6 +3140,7 @@ registerView("notes", {
     var filter = st.filter && typeof st.filter === "object" ? st.filter : null;
     var shown = sortNotes(filterNotes(filterNotes(list, folder ? { folder: folder } : null, folders), filter, folders));
     var now = Date.now();
+    var selectedNotes = st.selectedNotes || [];
     var rows = shown.map(function (n) {
       var voiceDur = n.kind === "voice" ? (typeof n.dur === "number" ? n.dur : n.audio && typeof n.audio.durationMs === "number" ? n.audio.durationMs / 1000 : null) : null;
       var preview = notePreview(n) || (n.audio && typeof n.audio.transcript === "string" ? n.audio.transcript.trim().slice(0, 240) : "");
@@ -3119,7 +3148,15 @@ registerView("notes", {
         id: n.id, title: n.title || "Untitled", date: noteDateLabel(n, now) || (typeof n.when === "string" ? n.when : ""),
         preview: (voiceDur != null ? notesFmt(voiceDur) + (preview ? " · " : "") : "") + preview,
         isVoice: n.kind === "voice", isLink: n.kind === "link", pinned: !!n.pinned,
-        current: st.open === n.id ? "true" : "false", open: function () { api.set(Object.assign(notesLeave(api, n.id), { pos: 0, menu: null })); }
+        current: st.open === n.id ? "true" : "false", selecting: !!st.selectingNotes, selected: selectedNotes.indexOf(n.id) >= 0,
+        rowLabel: st.selectingNotes ? "Select " + (n.title || "Untitled") : "Open " + (n.title || "Untitled"),
+        open: function () {
+          if (api.get("notes").selectionBusy) return;
+          if (api.get("notes").selectingNotes) {
+            var ids = api.get("notes").selectedNotes || [];
+            api.set({ selectedNotes: ids.indexOf(n.id) >= 0 ? ids.filter(function (id) { return id !== n.id; }) : ids.concat(n.id) });
+          } else api.set(Object.assign(notesLeave(api, n.id), { pos: 0, menu: null }));
+        }
       };
     });
     var pinnedRows = rows.filter(function (r) { return r.pinned; }), otherRows = rows.filter(function (r) { return !r.pinned; });
@@ -3136,9 +3173,10 @@ registerView("notes", {
     var sheet = st.folderSheet && typeof st.folderSheet === "object" ? st.folderSheet : null;
     var sheetFolder = sheet && (sheet.kind === "options" || sheet.kind === "rename") ? folders.filter(function (f) { return f.id === sheet.id; })[0] || null : null;
     var renaming = !!sheetFolder && sheet.kind === "rename";
+    var choosingFolder = !!sheet && sheet.kind === "folders", movingSelection = !!sheet && sheet.kind === "move-selection";
 
     /* open note */
-    var n = st.open ? notesFind(list, st.open) : null;
+    var n = st.open && !st.selectionBusy ? notesFind(list, st.open) : null;
     var isEdit = !!n && (n.kind === "text" || n.kind === "list");
     var ed = null, vo = null, lk = null;
     var common = n ? {
@@ -3239,20 +3277,34 @@ registerView("notes", {
 
     var shareSheet = st.sheet === "share" && !!n;
     return {
-      notesTitle: "Notes", primaryNotes: true, canRecord: true, canCreate: true,
+      notesTitle: folder ? folders.find(function (f) { return f.id === folder; }).name : "Notes", primaryNotes: true, canRecord: true, canCreate: true,
+      listMenuOpen: st.menu === "list", listMenu: function () { api.set({ menu: st.menu === "list" ? null : "list" }); }, closeListMenu: function () { api.set({ menu: null }); },
+      selectingNotes: !!st.selectingNotes, selectionBusy: !!st.selectionBusy, selectedCount: selectedNotes.length, hasSelection: selectedNotes.length > 0, selectionDisabled: !selectedNotes.length || !!st.selectionBusy,
+      startSelection: function () { api.set({ menu: null, selectingNotes: true, selectedNotes: [] }); },
+      endSelection: function () { api.set({ selectingNotes: false, selectedNotes: [] }); },
+      selectEveryNote: function () { api.set({ selectedNotes: shown.map(function (n) { return n.id; }) }); },
+      deleteSelected: function () { return notesApplySelection(api); },
+      moveSelected: function () { api.set({ folderSheet: { kind: "move-selection" }, menu: null }); },
+      showFolders: function () { api.set({ folderSheet: { kind: "folders" }, menu: null }); },
+      folderChoices: [{ id: null, name: "All notes" }].concat(folders).map(function (f) { return { id: f.id, name: movingSelection && f.id === null ? "No folder" : f.name, pick: function () {
+        if (movingSelection) return notesApplySelection(api, f.id);
+        api.set({ folder: f.id, filter: null, folderSheet: null, selectingNotes: false, selectedNotes: [] });
+      }, manage: function () { if (f.id) api.set({ folderSheet: { kind: "options", id: f.id } }); }, canManage: !!f.id }; }),
+      choosingFolder: choosingFolder || movingSelection,
+
       newNote: function () { notesNew(api, "text"); },
       // The Notes recorder (voice-adapter, note-recorder.ts) handles Record; `record` is its deep-link flag.
       record: function () { api.set({ record: true }); },
       pinnedRows: pinnedRows, otherRows: otherRows, hasPinned: pinnedRows.length > 0, notesHead: pinnedRows.length > 0 && otherRows.length > 0,
       allPressed: folder ? "false" : "true", selectAll: function () { api.set({ folder: null, filter: null, folderSheet: null }); },
       folderChips: folderChips,
-      newFolder: function () { api.set({ folderSheet: { kind: "new", name: "" } }); },
+      newFolder: function () { api.set({ folderSheet: { kind: "new", name: "" }, menu: null }); },
       filterOn: !!filter, filterLabel: filter ? notesFilterLabel(filter, folders) + " · " + shown.length : "",
       clearFilter: function () { api.set({ filter: null }); },
-      folderSheetOpen: !!sheet && (sheet.kind === "new" || !!sheetFolder),
+      folderSheetOpen: !!sheet && (sheet.kind === "new" || !!sheetFolder || choosingFolder || movingSelection),
       folderNew: !!sheet && sheet.kind === "new" || renaming, folderOptions: !!sheetFolder && !renaming,
       folderName: sheet && (sheet.kind === "new" || renaming) ? String(sheet.name || "") : "", folderOptionsTitle: sheetFolder ? sheetFolder.name : "",
-      folderSheetTitle: sheet && sheet.kind === "new" ? "New folder" : renaming ? "Rename folder" : sheetFolder ? sheetFolder.name : "",
+      folderSheetTitle: movingSelection ? "Move to folder" : choosingFolder ? "Folders" : sheet && sheet.kind === "new" ? "New folder" : renaming ? "Rename folder" : sheetFolder ? sheetFolder.name : "",
       folderSubmitLabel: renaming ? "Save" : "Create",
       onFolderName: function (e) { var cur = api.get("notes").folderSheet; if (cur && (cur.kind === "new" || cur.kind === "rename")) api.set({ folderSheet: Object.assign({}, cur, { name: e.target.value }) }); },
       folderNameKey: function (e) { if (e.key === "Enter") { e.preventDefault(); var cur = api.get("notes").folderSheet; if (cur && cur.kind === "rename") notesRenameFolder(api, cur.id); else notesCreateFolder(api); } },

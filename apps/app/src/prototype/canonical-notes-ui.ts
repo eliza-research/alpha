@@ -258,8 +258,7 @@ export class CanonicalNotesUi {
   * folder, review and reload, and the Notes recorder saving one voice record with an owned opaque audio attachment. */
  decorate(view:Bag,api:Bag,state:Bag):Bag{
   const rows=this.controller.current?this.trashValue:[],ready=this.controller.revision!==null,busy=this.controller.pending,open=this.open,saved=!!open&&this.controller.hasViewNote(open);
-  const trashOpen=state.folder==='deleted'&&rows.length>0;
-  if(state.folder==='deleted'&&!rows.length&&ready)queueMicrotask(()=>{if(api.get('notes').folder==='deleted')api.set({folder:null,trashAsk:null});});
+  const trashOpen=state.folder==='deleted';
   const ask=state.trashAsk as Bag|null,asked=ask&&trashOpen?rows.find(row=>row.id===ask.id):undefined;
   const restore=(id:string)=>{api.set({trashAsk:null});void this.editor.restore(id);};
   const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:true,canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,
@@ -267,7 +266,7 @@ export class CanonicalNotesUi {
    trashAvailable:false,hasDeleted:rows.length>0,trashOpen,trashCanErase:false,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
    trashRows:rows.map(row=>{const title=row.title||'Untitled';return {id:row.id,title,label:title,preview:'',left:'',disabled:busy,restore:()=>restore(row.id),ask:()=>api.set({trashAsk:{id:row.id,title}})};}),
    trashAskOpen:!!asked,trashAskTitle:asked?ask!.title:'',trashAskClose:()=>api.set({trashAsk:null}),trashAskRecover:()=>{if(asked)restore(asked.id);},trashAskDelete:()=>{},
-   openTrash:()=>{void this.leave(null).then(left=>{if(left&&this.controller.current){api.set({folder:'deleted',filter:null,folderSheet:null,sheet:null,q:null});void this.controller.refresh().catch(()=>{});}});},
+   openTrash:()=>{void this.leave(null).then(left=>{if(left&&this.controller.current){api.set({folder:'deleted',filter:null,folderSheet:null,sheet:null,q:null,menu:null,selectingNotes:false,selectedNotes:[]});void this.controller.refresh().catch(()=>{});}});},
    closeTrash:()=>api.set({folder:null,trashAsk:null}),emptyTrash:()=>{},trashConfirmGo:()=>{},trashCancel:()=>api.set({trashConfirm:null,trashFull:null})};
   if(out.ed&&open){out.ed={...out.ed,dictate:()=>void this.dictate(open,api),
    toCal:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'reminder',api);}:undefined,
