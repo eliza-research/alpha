@@ -268,7 +268,7 @@ export async function checkBrowserJournalRetention(extraSources = []) {
       else delete globalThis[name];
     }
   }
-  const receipt = await checkTraces({model, traces, sources: inputs, driverHashes, batchSize: 3, scope: 'bounded-orchestration', assumptions: [
+  const receipt = await checkTraces({model, traces, sources: inputs, driverHashes, batchSize: 3, definitionBatchSize: 1, scope: 'bounded-orchestration', assumptions: [
     'Exact receipt and terminal cutoff neighborhoods use ordered concrete entries. Opaque IDs preserve Object.entries identity and enumeration order. UTC day plus within-day milliseconds preserves exact wall time, and elapsed clocks are unchanged.',
     'Real retain/trim functions execute directly. Real BrowserCalendar, BrowserDaily and BrowserDomainDocument also execute over a controlled document/review/notification port; source binding covers the journal owner files, selected contracts and fixture.',
     'The write checkpoints combine trim and append where the caller commits them together. Deletion settlement, polling, actual providers, malformed documents and arbitrary browser transaction schedules are separate obligations.',
