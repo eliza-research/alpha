@@ -176,7 +176,7 @@ Alpha is in **early pilot**.
 | `apps/app`     | The Alpha interface: Home, the built-in apps and Ask Alpha.         |
 | `android`      | Android packaging, native code and the Alpha OS image pieces.       |
 | `scripts`      | Build, test and release tooling.                                    |
-| `specs`        | Formal models of the trickiest behaviour, checked on every verify.  |
+| `specs`        | Formal models of the trickiest behaviour, checked before merging.  |
 | `vendor/eliza` | The pinned [elizaOS](https://github.com/elizaOS/eliza) runtime. Read-only here. |
 
 ## Contributing

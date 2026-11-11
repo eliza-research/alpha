@@ -425,7 +425,6 @@ jobs:
           PYCODE
       - name: Archive the isolated test-mocks build
         env:
-          NODE_OPTIONS: --max-old-space-size=4096
           RUN_TURBO_CONCURRENCY: "1"
         run: |
           # The native suites need the private peer fixture, a debug-only test hook
