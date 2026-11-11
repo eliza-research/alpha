@@ -62,17 +62,21 @@ def json_api(path, token, opener):
         with opener.open(request, timeout=20) as response:
             body = response.read(65537)
     except Exception:
-        raise ValueError('Embedding artifact metadata unavailable') from None
+        raise ValueError('GitHub artifact metadata unavailable') from None
     require(len(body) <= 65536, 'Artifact metadata exceeds bound')
-    return json.loads(body)
+    value = json.loads(body)
+    require(isinstance(value, dict), 'Expected an artifact or run metadata object')
+    return value
 
 
 def validate_metadata(value, identity, digest, *, max_archive=MAX_ARCHIVE):
-    require(value.get('id') == int(identity) and value.get('expired') is False, 'Artifact identity or expiry mismatch')
+    require(value.get('id') == int(identity), 'Artifact identity differs from requested input')
+    require(value.get('expired') is False, 'Artifact is expired or has unknown expiry status')
     require(value.get('digest') == 'sha256:' + digest, 'Artifact digest differs from requested input')
     size = value.get('size_in_bytes')
     require(type(size) is int and 0 < size <= max_archive, 'Artifact size exceeds bound')
-    run = value.get('workflow_run', {})
+    run = value.get('workflow_run')
+    require(isinstance(run, dict), 'Artifact run metadata is unavailable')
     require(run.get('repository_id') == REPOSITORY_ID and run.get('head_repository_id') == REPOSITORY_ID,
             'Artifact must originate in the canonical repository')
     require(type(run.get('id')) is int and run['id'] > 0, 'Artifact run identity missing')
@@ -90,11 +94,16 @@ def safe_redirect(url):
     return url
 
 
-def download(identity, digest, target, token, opener, *, max_archive=MAX_ARCHIVE):
+def admit_artifact_metadata(identity, digest, token, opener, *, max_archive=MAX_ARCHIVE):
     metadata = json_api('actions/artifacts/' + identity, token, opener)
     run = validate_metadata(metadata, identity, digest, max_archive=max_archive)
     status = json_api('actions/runs/' + str(run['id']), token, opener)
     require(status.get('conclusion') == 'success' and status.get('head_sha') == run['head_sha'], 'Artifact run did not succeed')
+    return metadata, run
+
+
+def download(identity, digest, target, token, opener, *, max_archive=MAX_ARCHIVE):
+    metadata, run = admit_artifact_metadata(identity, digest, token, opener, max_archive=max_archive)
     url = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + identity + '/zip'
     for attempt in range(5):
         headers = {'User-Agent': 'alpha-qualified-embedding-inputs'}

@@ -197,9 +197,12 @@ C++ runtime. Obtain the recorded bytes from the provisioned host or review and
 admit a reproducible replacement before updating the records and artifact IDs.
 
 Run `python3 -B scripts/ci/hosted-native-inputs.py --check` to validate the
-manifest against the checkout without downloading. Automatic runs fail early
-when input pins are missing, stale or expired. They download through the
-workflow's read-only token, stage with the existing voice and embedding tools,
+manifest against the checkout without downloading. Automatic runs check the
+three pins against GitHub metadata before setting up the Android toolchain.
+The check names each unavailable input and reports the expiry of admitted pins
+so the maintainer can renew them before a build fails. Acquisition checks the
+metadata again and verifies the exact archive bytes through the workflow's
+read-only token. The build stages with the existing voice and embedding tools,
 and retain the input IDs, hashes and sizes in `native-input-admission.json`.
 The candidate receipt binds its digest to the exact source, SDK and run attempt.
 The build evidence records the uploaded candidate's ID and compressed size
