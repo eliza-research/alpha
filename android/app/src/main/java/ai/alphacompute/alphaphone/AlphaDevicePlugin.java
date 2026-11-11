@@ -262,6 +262,22 @@ public final class AlphaDevicePlugin extends Plugin {
   // Android's default silent-update policy also throttles a first attempt during early boot.
   return android.os.SystemClock.uptimeMillis()<=30_000L?"starting":"supported";
  }
+ /** Opens the permission page on an explicit request. Android owns consent and a later snapshot reads it. */
+ @PluginMethod public void openUpdatePermissionSettings(PluginCall call){
+  if(Build.VERSION.SDK_INT<31){call.resolve(new JSObject().put("status","unsupported"));return;}
+  openInstallSourceSettings(call,new JSObject().put("status","opened"));
+ }
+ private void openInstallSourceSettings(PluginCall call,JSObject result){
+  android.app.Activity activity=getActivity();
+  if(activity==null){call.reject("Update unavailable");return;}
+  activity.runOnUiThread(()->{
+   if(activity.isFinishing()||activity.isDestroyed()){call.reject("Update unavailable");return;}
+   try{
+    activity.startActivity(handOff(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,android.net.Uri.parse("package:"+getContext().getPackageName()))));
+   }catch(RuntimeException unavailable){call.reject("Update unavailable");return;}
+   if(result==null)call.resolve();else call.resolve(result);
+  });
+ }
  /** A downloaded automatic update may only replace idle, unlocked Home. The image also hosts calls. */
  private boolean automaticUpdateReady(){
   android.app.Activity activity=getActivity();
@@ -812,12 +828,8 @@ public final class AlphaDevicePlugin extends Plugin {
   }
   if(!getContext().getPackageManager().canRequestPackageInstalls()){
    // Consent can be revoked between the automatic capability read and this read.
-   // Only an explicit manual request may open Android's settings page.
    if(automatic){call.resolve(new JSObject().put("status","permission-required"));return;}
-   getActivity().runOnUiThread(()->{
-    try{getActivity().startActivity(handOff(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,android.net.Uri.parse("package:"+getContext().getPackageName()))));call.resolve();}
-    catch(RuntimeException unavailable){call.reject("Update unavailable");}
-   });
+   openInstallSourceSettings(call,null);
    return;
   }
   final String manifestSha256=call.getString("manifestSha256");

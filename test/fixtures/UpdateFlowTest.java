@@ -1714,6 +1714,59 @@ public final class UpdateFlowTest {
   check(plugin.activity.started.size()==1&&plugin.activity.started.get(0).action.equals("android.settings.MANAGE_UNKNOWN_APP_SOURCES"),"Android's page opens");
   check(context.packages.installer.sessions.isEmpty(),"and nothing is downloaded or staged");
  }
+ private static void assertInstallSourcePage(AlphaDevicePlugin plugin){
+  check(plugin.activity.started.size()==1,"exactly one Android activity opens");
+  Intent intent=plugin.activity.started.get(0);
+  check(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES.equals(intent.getAction()),"the Android install-source page opens");
+  check(("package:"+plugin.getContext().getPackageName()).equals(intent.getDataString()),"only Alpha's package is selected");
+  check(intent.getFlags()==(BuildConfig.IS_LAUNCHER?Intent.FLAG_ACTIVITY_NEW_TASK:0),"the shared launcher handoff preserves its task behavior");
+ }
+ private static void explicitUpdatePermissionOpensBeforeAnyOffer(File cache)throws Exception{
+  boolean originalLauncher=BuildConfig.IS_LAUNCHER;
+  try{
+   for(boolean launcher:new boolean[]{true,false}){
+    BuildConfig.IS_LAUNCHER=launcher;
+    Context context=installing(cache);
+    Build.VERSION.SDK_INT=31;
+    context.packages.installsAllowed=false;
+    AlphaDevicePlugin plugin=bridge(context,Lifecycle.State.RESUMED);
+    connections.clear();AlphaLocalAgentPlugin.stops=0;
+    int manifestReads=syntheticManifestRequests.get();
+    PluginCall request=new PluginCall(new JSObject());
+    plugin.openUpdatePermissionSettings(request);request.awaitAnswer();
+    check(request.resolved.get()==1&&request.rejected.get()==0&&"opened".equals(request.result.optString("status")),"the handoff reports only that Android Settings opened");
+    assertInstallSourcePage(plugin);
+    check("permission-required".equals(AlphaDevicePlugin.automaticUpdateStatus(context)),"opening the page does not grant consent");
+    check(syntheticManifestRequests.get()==manifestReads&&connections.isEmpty()&&!download(context).exists(),"permission setup never checks the feed or downloads an APK");
+    check(context.packages.installer.internals.isEmpty()&&plugin.events.isEmpty()&&AlphaLocalAgentPlugin.stops==0&&AlphaDevicePlugin.UpdatePause.store().read()==null,"permission setup never stages an install or pauses the resident");
+   }
+   Context older=installing(cache);
+   Build.VERSION.SDK_INT=30;
+   older.packages.installsAllowed=false;
+   AlphaDevicePlugin olderBridge=bridge(older,Lifecycle.State.RESUMED);
+   PluginCall unsupported=new PluginCall(new JSObject());
+   olderBridge.openUpdatePermissionSettings(unsupported);unsupported.awaitAnswer();
+   check(unsupported.resolved.get()==1&&"unsupported".equals(unsupported.result.optString("status"))&&olderBridge.activity.started.isEmpty(),"API 30 does not open automatic update setup");
+   PluginCall manual=tap(olderBridge);
+   check(manual.resolved.get()==1&&manual.result==null,"the manual handoff still resolves without a setup result");
+   assertInstallSourcePage(olderBridge);
+
+   Context unavailable=installing(cache);
+   AlphaDevicePlugin plugin=bridge(unavailable,Lifecycle.State.RESUMED);
+   plugin.activity.refuseStart=new SecurityException("settings unavailable");
+   PluginCall refused=new PluginCall(new JSObject());
+   plugin.openUpdatePermissionSettings(refused);refused.awaitAnswer();
+   check(refused.resolved.get()==0&&refused.rejected.get()==1&&plugin.activity.started.isEmpty(),"Android's refusal is reported as a rejection");
+
+   plugin.activity.deferUiWork=true;
+   PluginCall retired=new PluginCall(new JSObject());
+   plugin.openUpdatePermissionSettings(retired);
+   plugin.activity.destroyed=true;
+   plugin.activity.queuedUiWork.remove().run();retired.awaitAnswer();
+   check(retired.resolved.get()==0&&retired.rejected.get()==1&&plugin.activity.started.isEmpty(),"a retired activity cannot open Settings from queued work");
+  }finally{BuildConfig.IS_LAUNCHER=originalLauncher;}
+  System.out.println("PASS explicit update permission opens only Alpha Android settings before an offer");
+ }
  private static void appSignerIsTheOriginalCertificateOfOneSigner(File cache)throws Exception{
   Signature original=new Signature(new byte[]{1,2,3}),rotated=new Signature(new byte[]{4,5,6});
   Context context=new Context(cache);
@@ -2325,6 +2378,7 @@ public final class UpdateFlowTest {
     automaticConsentRecheckedAfterTls(cache);
    }
    automaticUpdatesRequireSupportedAndroidAndExistingConsent(cache);
+   explicitUpdatePermissionOpensBeforeAnyOffer(cache);
    manualUpdateDoesNotWaitForAutomaticColdBootReadiness(cache);
    automaticPendingActionWaitsForAnExplicitContinue(cache);
    aReceivedConfirmationSurvivesOnlyUntilFirstLaunch(cache);

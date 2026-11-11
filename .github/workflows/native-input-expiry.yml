@@ -1,0 +1,36 @@
+name: Launcher OTA native input expiry
+
+on:
+  schedule:
+    - cron: '47 13 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check:
+    if: >-
+      github.repository_id == '1396333361' && github.repository_owner_id == '314117943' &&
+      (github.event_name == 'schedule' ||
+       (github.event_name == 'workflow_dispatch' &&
+        (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.ref == 'refs/heads/main' && github.sha || 'refs/heads/main' }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Report expiry for the reviewed artifact pins
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          source=$(git rev-parse --verify HEAD)
+          printf 'Reviewed main checkout %s.\n\n' "$source" >> "$GITHUB_STEP_SUMMARY"
+          GITHUB_SHA="$source" python3 -B scripts/ci/check-native-input-expiry.py

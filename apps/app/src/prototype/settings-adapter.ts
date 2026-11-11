@@ -118,6 +118,7 @@ const device = registerPlugin<{
   diagnosticsFacts(): Promise<Bag>;
   shareDiagnostics(input: { text: string }): Promise<{ status: string }>;
   checkForUpdate(): Promise<{manifest?: string; manifestSha256?: string}>;
+  openUpdatePermissionSettings(): Promise<{status: 'opened' | 'unsupported'}>;
   updateState(): Promise<{pending?: boolean}>;
   installUpdate(input: Pick<AppUpdate, 'apkUrl' | 'sha256' | 'sizeBytes' | 'versionCode'> &
     ({automatic: true; manifestSha256: string} | {automatic?: never; manifestSha256?: never})): Promise<{status?: string; manifest?: string}>;
@@ -194,14 +195,16 @@ export function parseUpdateManifest(value: unknown, installed: {versionCode: unk
   try { const url = new URL(apkUrl); if (url.protocol !== 'https:' || url.username || url.password) return null; } catch { return null; }
   return {versionCode: versionCode as number, versionName: typeof versionName === 'string' && /^[^\u0000-\u001f\u007f]{1,64}$/.test(versionName) ? versionName : '', apkUrl, sha256, sizeBytes: sizeBytes as number, notes: typeof notes === 'string' && notes.length <= 500 ? notes : ''};
 }
-/** A changed response evicts the saved manual offer only if it describes a complete feed. */
-function isCompleteUpdateManifest(manifest: unknown): boolean {
-  if (typeof manifest !== 'string') return false;
+/** Only a complete feed can replace or evict the saved manual offer. */
+function parseCompleteUpdateManifest(manifest: unknown): unknown {
+  if (typeof manifest !== 'string') return null;
   try {
-    const rows = updateManifestRows(JSON.parse(manifest));
-    return !!rows?.every(row => parseUpdateManifest(row, {versionCode: 0,
-      launcher: row.variant === 'launcher', signerSha256: row.signerSha256}));
-  } catch { return false; }
+    const value: unknown = JSON.parse(manifest);
+    const rows = updateManifestRows(value);
+    if (rows?.every(row => parseUpdateManifest(row, {versionCode: 0,
+      launcher: row.variant === 'launcher', signerSha256: row.signerSha256}))) return value;
+  } catch { /* Invalid JSON cannot replace a saved offer. */ }
+  return null;
 }
 /** Fifteen minutes after the last answer, or at once for an unknown/future clock. */
 export function updateCheckDue(checkedAt: number, now: number): boolean {
@@ -346,8 +349,8 @@ function checkForUpdate(force: boolean, automatic = false): Promise<boolean> | u
     }
     if (typeof manifest !== 'string' || (manifestSha256 !== undefined && !isManifestSha256(manifestSha256)))
       throw Error('Malformed update check reply');
-    const parsed: unknown = JSON.parse(manifest);
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw Error('Malformed update manifest');
+    const parsed = parseCompleteUpdateManifest(manifest);
+    if (!parsed) throw Error('Malformed update manifest');
     retainUpdate({checkedAt: Date.now(), manifest: parsed, manifestSha256});
     return true;
   }).catch(() => {
@@ -463,7 +466,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       sizeBytes:update.sizeBytes,versionCode:update.versionCode,automatic:true,manifestSha256:saved.manifestSha256});
     if (result?.status === 'offer-unavailable' || result?.status === 'offer-withdrawn' || result?.status === 'offer-response-changed') {
       const withdrawn = result.status === 'offer-withdrawn' ||
-        (result.status === 'offer-response-changed' && isCompleteUpdateManifest(result.manifest));
+        (result.status === 'offer-response-changed' && Boolean(parseCompleteUpdateManifest(result.manifest)));
       if (retireUpdate(saved, withdrawn) && current()) changed();
       throw Error('Update offer unavailable');
     }
@@ -962,9 +965,17 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           page.groups.push(group([role('Home app',home),role('Assistant app',roles?.assistant),
             ...(canRequestHome?[{kNav:true,label:'Set as Home',lbl:'Make Alpha your Home app',busy:roleBusy,hasSpin:roleBusy,chev:!roleBusy,noAB:true,go:()=>void requestHome(api)}]:[]),
             nav('Default apps','default-apps','Default apps in Android')]));
+          const updatePermission = facts.appAutomaticUpdates;
           // Install update only for the version the last manifest offers this install, and an explicit check whose answer stays below it.
           const update=parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner});
           page.groups.push(group([
+            ...(updatePermission === 'permission-required' ? [{
+              ...action('Allow automatic updates', () => void device.openUpdatePermissionSettings()
+                .then(result => { if (result.status !== 'opened') api.toast('Couldn’t open Android settings'); },
+                  () => api.toast('Couldn’t open Android settings')), 'update-permission'),
+              lucide: 'shield',
+            }] : updatePermission === 'supported' ? [info('Automatic updates', 'Allowed')]
+              : updatePermission === 'starting' ? [info('Automatic updates', 'Starting')] : []),
             ...(update?[{...action('Update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,sizeBytes:update.sizeBytes,versionCode:update.versionCode}).catch(()=>{/* Quiet: the row stays and the next tap retries. */}))),lbl:updateBusy==='install'?'Downloading update':'Install update',lucide:'download',val:update.versionName?versionLabel(update.versionName,update.versionCode):String(update.versionCode),hasVal:true,busy:!!updateBusy,hasSpin:updateBusy==='install',chev:false,id:'update-install'}]:[]),
             {...action('Check',()=>void updateAction('check',()=>checkForUpdate(true)),'update-check'),lbl:updateBusy==='check'?'Checking for updates':'Check for updates',lucide:'rotate-cw',busy:!!updateBusy,hasSpin:updateBusy==='check',chev:false},
             ...(updateResult?[{...info('Update check',updateResult),role:'status',live:'polite'}]:[])]));
@@ -1246,7 +1257,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       }).filter(section => section.rows.length);
       // General: network hand-offs, the device, updates, then the destructive reset alone and last.
       const take = (names: string[]) => names.flatMap(name => { const row = rows.get(name); rows.delete(name); return row ? [row] : []; });
-      const network = take(['Wi-Fi', 'Bluetooth', 'Mobile data']), updates = take(['Update', 'Check', 'Update check']), reset = take(['Erase all data']);
+      const network = take(['Wi-Fi', 'Bluetooth', 'Mobile data']);
+      const updates = take(['Allow automatic updates', 'Automatic updates', 'Update', 'Check', 'Update check']);
+      const reset = take(['Erase all data']);
       settingsTop.groups.splice(2, 0, ...[['Network', network], ['Device', [...rows.values()]], ['Updates', updates], ['Reset', reset]]
         .filter(([, list]) => (list as Bag[]).length).map(([cap, list]) => ({...group(list as Bag[]), cap, hasCap:true})));
       for (const page of out.stack) {
