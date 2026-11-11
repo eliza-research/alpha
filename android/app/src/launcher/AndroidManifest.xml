@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
  <!-- Alpha AOSP image only (P-36). The image stages this launcher build. AlphaTelephonyPlugin, which
       MainActivity registers only after AlphaImageCapability verifies the image, requests both;
-      AlphaContactsPlugin requests READ_CONTACTS only under the image provisioning admission
+      AlphaContactsPlugin requests Contacts permissions only under the image provisioning admission
       (AlphaImageCapabilities.aospImage). A sideloaded launcher APK declares them but never asks for them. -->
  <uses-permission android:name="android.permission.READ_CONTACTS" />
  <!-- In-app contact saves and deletes on the verified image (AP-08): the owner's own edit, or an
@@ -30,12 +30,6 @@
       the shared TelephonyPlugin, requested only from the owner's "Allow call history" control and
       only after AlphaImageCapability verifies the image. The standalone manifest removes it. -->
  <uses-permission android:name="android.permission.READ_CALL_LOG" />
- <!-- Carrier visual voicemail (AP-08): Alpha is the voicemail source while it holds the dialer role on
-      the verified image. ADD_VOICEMAIL lets it write its own rows to Android's voicemail store; the
-      network permissions let the sync use the mobile network when the carrier requires it. -->
- <uses-permission android:name="com.android.voicemail.permission.ADD_VOICEMAIL" />
- <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
- <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
  <uses-permission android:name="android.permission.WRITE_CALL_LOG" tools:node="remove" />
  <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" tools:node="remove" />
  <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" tools:node="remove" />
@@ -83,16 +77,6 @@
    <intent-filter><action android:name="android.telecom.InCallService" /></intent-filter>
   </service>
   <activity android:name=".AlphaCallActivity" android:enabled="false" android:exported="false" android:launchMode="singleTop" android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
-  <!-- Carrier visual voicemail (shared plugin-native-messages vvm client). Android binds the service
-       only for the default dialer. Declared disabled and enabled only on the verified image, like the
-       dialer-role surfaces above. The receiver takes fetch and sync requests for Alpha's own rows. -->
-  <service android:name=".AlphaVoicemailService" android:enabled="false" android:exported="true" android:permission="android.permission.BIND_VISUAL_VOICEMAIL_SERVICE">
-   <intent-filter><action android:name="android.telephony.VisualVoicemailService" /></intent-filter>
-  </service>
-  <receiver android:name=".AlphaVoicemailReceiver" android:enabled="false" android:exported="false">
-   <intent-filter><action android:name="android.intent.action.FETCH_VOICEMAIL" /><data android:scheme="content" android:host="com.android.voicemail" android:mimeType="vnd.android.cursor.item/voicemail" /></intent-filter>
-   <intent-filter><action android:name="android.provider.action.SYNC_VOICEMAIL" /></intent-filter>
-  </receiver>
   <!-- SMS role surfaces (shared plugin-native-messages), declared disabled and enabled only on the
        verified image. Incoming texts and MMS are stored before their notice; quick replies and SENDTO
        open the compose review, whose Send press is the only send. -->

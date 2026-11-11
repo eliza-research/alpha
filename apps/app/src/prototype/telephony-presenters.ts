@@ -26,10 +26,11 @@ export function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(word => /^\p{L}/u.test(word));
   return words.length ? (words[0][0] + (words.length > 1 ? words[words.length - 1][0] : '')).toUpperCase() : '#';
 }
-/** The digits a number is compared by: its last ten, so +1 415 555 0132 and (415) 555-0132 agree. */
+/** Compare the full number, treating the NANP country code and local form as equivalent. */
 export function numberKey(number: string): string {
-  const digits = number.replace(/\D/g, '');
-  return digits.length > 10 ? digits.slice(-10) : digits;
+  const normalized = number.trim().replace(/[\s().-]/g, '');
+  if (!/^\+?\d{2,20}$/.test(normalized)) return '';
+  return /^\+?1[2-9]\d{9}$/.test(normalized) ? normalized.replace(/^\+?1/, '') : normalized;
 }
 /** "(415) 555-0132" for ten or eleven (leading 1) digits; anything else unchanged. */
 export function displayNumber(number: string): string {

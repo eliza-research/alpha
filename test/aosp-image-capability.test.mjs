@@ -160,7 +160,7 @@ test("no Alpha Java lists or launches apps: installed apps and default hand-offs
   }
 });
 
-test("permissions: standalone has none; the launcher declares contacts and voicemail access; no call-log write or self-managed call", () => {
+test("telephony permissions are launcher-only and neither flavor registers as a carrier voicemail source", () => {
   const main = read("android/app/src/main/AndroidManifest.xml");
   const launcher = read("android/app/src/launcher/AndroidManifest.xml");
   const standalone = read("android/app/src/standalone/AndroidManifest.xml");
@@ -176,7 +176,11 @@ test("permissions: standalone has none; the launcher declares contacts and voice
   assert.ok(!declared(main).includes("android.permission.WRITE_CONTACTS"), "main does not declare contact writes");
   assert.ok(declared(launcher).includes("android.permission.WRITE_CONTACTS"), "the launcher declares contact writes");
   assert.ok(removed(standalone).includes("android.permission.WRITE_CONTACTS"), "standalone removes contact writes");
-  assert.ok(declared(launcher).includes("com.android.voicemail.permission.ADD_VOICEMAIL") && removed(standalone).includes("com.android.voicemail.permission.ADD_VOICEMAIL") && !declared(main).includes("com.android.voicemail.permission.ADD_VOICEMAIL"), "the voicemail source is launcher-only");
+  assert.ok(removed(main).includes("com.android.voicemail.permission.ADD_VOICEMAIL"));
+  for (const xml of [main, launcher, standalone]) {
+    assert.ok(!declared(xml).includes("com.android.voicemail.permission.ADD_VOICEMAIL"));
+    assert.doesNotMatch(xml, /android\.telephony\.VisualVoicemailService|BIND_VISUAL_VOICEMAIL_SERVICE/);
+  }
   for (const xml of [main, launcher, standalone])
     for (const permission of ["WRITE_CALL_LOG", "ANSWER_PHONE_CALLS", "MANAGE_OWN_CALLS"])
       assert.ok(!declared(xml).includes(`android.permission.${permission}`), `${permission} is not declared`);

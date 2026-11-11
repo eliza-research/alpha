@@ -606,6 +606,8 @@ private static final class ResidentAttachDiagnostic {
  }
  static void configureEnvironment(Context context,java.util.Map<String,String> env) throws java.io.IOException {
   env.put("ELIZA_RUNTIME_PROFILE",BuildConfig.ELIZA_RUNTIME_PROFILE);
+  if(AlphaImageCapability.verified(context))env.put("ELIZA_MOBILE_SMS_REPLY_DRAFT","1");
+  else env.remove("ELIZA_MOBILE_SMS_REPLY_DRAFT");
   final long epoch;
   synchronized(lifecycleLock){launchedGeneration=null;if(!accepting||stopping||credentialMutationEpoch>=0)throw new java.io.IOException("Local provider is retiring");epoch=lifecycleEpoch;}
   configureNativeViews(context.getAssets().open("agent/native-view-declarations.json"),env);
@@ -1206,6 +1208,10 @@ private static final class ResidentAttachDiagnostic {
    String token=enroll(epoch);
    synchronized(lifecycleLock){requireCurrent(epoch);if(expectedOwner!=null&&!expectedOwner.equals(ownerIdentity)){logRequestFailure(group==null?"other":group,method,409,"owner-mismatch");resolveCurrent(call,epoch,new JSObject().put("status",409).put("body","{\"error\":\"Local owner changed; reconnect before continuing\"}"));return;}}
    requireOwned(call,epoch);
+   if("telephony".equals(group)){
+    if(!AlphaImageCapability.verified(getContext()))throw new SecurityException("Reply drafting requires the Alpha image");
+    requireProviderOwner(true);
+   }
    JSONObject result=raw(path,method,body,token,headers,120000);
    if(result.getInt("status")>=400)logRequestFailure(group==null?"other":group,method,result.getInt("status"),"http");
    requireCurrent(epoch);

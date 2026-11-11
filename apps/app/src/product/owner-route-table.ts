@@ -36,6 +36,10 @@ export const OWNER_ROUTE_TABLE = {
         {methods: ["DELETE"], paths: ["/api/lifeops/definitions/{id}", "/api/triggers/{id}"]}
       ]
     },
+    telephony: {
+      prefixes: ["/api/messages/reply-draft"],
+      routes: [{methods: ["POST"], paths: ["/api/messages/reply-draft"]}]
+    },
     approvals: {
       prefixes: ["/api/approvals"],
       id: "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$",

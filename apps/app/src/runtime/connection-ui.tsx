@@ -2253,8 +2253,9 @@ export const connectionController = {
    */
   async draftSmsReply(thread:{participant:string|null;messages:{direction:'in'|'out';date:number;body:string}[];truncated:boolean},signal:AbortSignal):Promise<string|null>{
     const selected=active,session=state.session,generation=epoch;
-    if(selected?.kind!=='resident'||!session||state.open||document.hidden)return null;
-    const current=()=>{signal.throwIfAborted();if(generation!==epoch||active!==selected||state.session!==session||document.hidden)throw Error('The agent changed.');};
+    const open=()=>{const view=navigationContext?.();return view?.view==='messages'&&!view.sensitive&&!state.open&&!document.hidden;};
+    if(selected?.kind!=='resident'||!session||!open())return null;
+    const current=()=>{signal.throwIfAborted();if(generation!==epoch||active!==selected||state.session!==session||!open())throw Error('The agent or Messages view changed.');};
     current();const result=await selected.remote.request('/api/messages/reply-draft',thread,signal);current();
     const draft=(result as {draft?:unknown})?.draft;
     return typeof draft==='string'&&draft.trim()&&draft.length<=320?draft.trim():null;

@@ -25,6 +25,9 @@ test('initials, number keys and display numbers', () => {
   assert.equal(P.initials('(510) 555-0164'), '#');
   assert.equal(P.initials(''), '#');
   assert.equal(P.numberKey('+1 (415) 555-0132'), P.numberKey('4155550132'));
+  assert.notEqual(P.numberKey('+44 415 555 0132'), P.numberKey('4155550132'));
+  assert.notEqual(P.numberKey('+442079460000'), P.numberKey('2079460000'));
+  assert.equal(P.numberKey('Bank123'), '');
   assert.equal(P.displayNumber('+14155550132'), '(415) 555-0132');
   assert.equal(P.displayNumber('4155550132'), '(415) 555-0132');
   assert.equal(P.displayNumber('+442079460000'), '+442079460000');
