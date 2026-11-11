@@ -69,7 +69,13 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     locationGranted: locationPermissionGranted,
     voice: navigationVoice,
     background,
-    share: shareMap,
+    share: async (data, signal) => {
+      try { return await shareMap(data, signal); }
+      catch (error) {
+        if (!signal.aborted && active()) api?.toast(error instanceof Error ? error.message : 'Sharing is unavailable.');
+        return 'closed';
+      }
+    },
     openWebsite: url => {
       if (Capacitor.isNativePlatform()) void DailyApps.perform({ action: 'browser', url: url.href }).then(result => { if (result.status !== 'opened') api?.toast(result.message || 'The browser could not open.'); }, () => api?.toast('The browser could not open.'));
       else window.open(url.href, '_blank', 'noopener,noreferrer');

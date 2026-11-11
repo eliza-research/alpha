@@ -1,15 +1,33 @@
 import {test,expect,type Page} from '@playwright/test';
-async function pin(page:Page){await page.goto('/?mode=dev');await page.getByRole('button',{name:'Maps',exact:true}).click();const q=page.getByRole('textbox',{name:'Search places',exact:true});await q.fill('43.7384, 7.4246');await q.press('Enter');}
-test.beforeEach(async({page})=>{await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));Object.defineProperty(navigator,'share',{configurable:true,value:undefined});Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{(window as any).copied=text;}}});});});
-test('Maps uses the common panel and copies its exact link only on explicit choice',async({page})=>{
- await pin(page);await page.getByRole('button',{name:'Share',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Share',exact:true});await expect(dialog.getByRole('button',{name:'Share to email',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Share externally',exact:true})).toBeVisible();expect(await page.evaluate(()=>(window as any).copied)).toBeUndefined();await dialog.getByRole('button',{name:'Copy link',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).copied)).toBe('https://www.openstreetmap.org/?mlat=43.7384&mlon=7.4246#map=17/43.7384/7.4246');
+async function pin(page:Page){
+ await page.goto('/?mode=dev');await page.getByRole('button',{name:'Maps',exact:true}).click();
+ const q=page.getByRole('textbox',{name:'Search places',exact:true});await q.fill('43.7384, 7.4246');await q.press('Enter');
+}
+test.beforeEach(async({page})=>{
+ await page.addInitScript(()=>{
+  localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));
+  Object.defineProperty(document,'permissionsPolicy',{configurable:true,value:{allowsFeature:()=>true}});
+  Object.defineProperty(navigator,'share',{configurable:true,value:async(data:unknown)=>{(window as any).shared=data;}});
+  Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{(window as any).copied=text;}}});
+ });
 });
-test('external share cancellation never writes the clipboard',async({page})=>{
- await pin(page);await page.evaluate(()=>Object.defineProperty(navigator,'share',{value:async(data:any)=>{(window as any).shared=data;throw new DOMException('Cancelled','AbortError');}}));await page.getByRole('button',{name:'Share',exact:true}).click();await page.getByRole('button',{name:'Share externally',exact:true}).click();await expect.poll(()=>page.evaluate(()=>(window as any).shared?.title)).toBe('Dropped pin');expect(await page.evaluate(()=>(window as any).copied)).toBeUndefined();await expect(page.getByRole('dialog',{name:'Share',exact:true})).toHaveCount(0);
+test('Maps sends its selected location directly to the platform chooser',async({page})=>{
+ await pin(page);await page.getByRole('button',{name:'Share',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).shared?.title)).toBe('Dropped pin');
+ expect(await page.evaluate(()=>(window as any).shared?.text)).toContain('43.7384');
+ expect(await page.evaluate(()=>(window as any).copied)).toBeUndefined();
+ await expect(page.getByRole('dialog',{name:'Share',exact:true})).toHaveCount(0);
 });
-test('external share failure stays truthful and never copies as fallback',async({page})=>{
- await pin(page);await page.getByRole('button',{name:'Share',exact:true}).click();await page.getByRole('button',{name:'Share externally',exact:true}).click();await expect(page.getByRole('alert').getByText('Sharing is unavailable. No completed handoff is confirmed.')).toBeVisible();expect(await page.evaluate(()=>(window as any).copied)).toBeUndefined();
+test('canceling platform share keeps the selected place and never copies',async({page})=>{
+ await pin(page);await page.evaluate(()=>Object.defineProperty(navigator,'share',{value:async(data:unknown)=>{(window as any).shared=data;throw new DOMException('Cancelled','AbortError');}}));
+ await page.getByRole('button',{name:'Share',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>(window as any).shared?.title)).toBe('Dropped pin');
+ expect(await page.evaluate(()=>(window as any).copied)).toBeUndefined();
+ await expect(page.getByRole('dialog',{name:'Share',exact:true})).toHaveCount(0);
 });
-for(const event of ['pagehide','launcher-home','alpha:device-state','alpha:dev-incoming-call'])test(`common panel retires on ${event} without sharing`,async({page})=>{
- await pin(page);await page.getByRole('button',{name:'Share',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Share',exact:true});await expect(dialog).toBeVisible();await page.evaluate(event=>window.dispatchEvent(new Event(event)),event);await expect(dialog).toHaveCount(0);expect(await page.evaluate(()=>(window as any).copied)).toBeUndefined();
+test('platform sharing failure is reported without another destination',async({page})=>{
+ await pin(page);await page.evaluate(()=>Object.defineProperty(navigator,'share',{value:async()=>{throw Error('Sharing is unavailable.');}}));
+ await page.getByRole('button',{name:'Share',exact:true}).click();
+ await expect(page.getByText('Sharing is unavailable.',{exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>(window as any).copied)).toBeUndefined();
 });
