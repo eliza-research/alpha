@@ -2067,8 +2067,10 @@ public final class UpdateFlowTest {
   check(manual.resolved.get()==1&&context.packages.installer.internals.get(session).requireUserAction==0,"explicit false keeps the manual Android session policy");
   check(owner.activity.started.equals(List.of(confirm)),"a manual attempt still opens Android's requested confirmation");
  }
- private static void automaticUpdatesRequireForegroundUnlockedMainAndKnownImageCallState(File cache)throws Exception{
-  for(String condition:List.of("non-main","assistant","background","focus","locked","user-locked","image-call","image-call-unknown","image-call-missing")){
+ private static void automaticUpdatesRequireForegroundUnlockedMainAndIdleCallState(File cache)throws Exception{
+  for(String condition:List.of("non-main","assistant","background","focus","locked","user-locked","stock-ringing","stock-call","stock-voip","audio-missing",
+    "image-call","image-call-unknown","image-call-missing","image-call-unauthorized",
+    "image-call-op-denied","image-call-op-default")){
    Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);AlphaLocalAgentPlugin.stops=0;connections.clear();
    switch(condition){
     case "non-main":owner.activity=new Activity();break;
@@ -2077,29 +2079,72 @@ public final class UpdateFlowTest {
     case "focus":owner.activity.focused=false;break;
     case "locked":owner.activity.keyguard.locked=true;break;
     case "user-locked":owner.activity.users.unlocked=false;break;
+    case "stock-ringing":context.audio.mode=android.media.AudioManager.MODE_RINGTONE;break;
+    case "stock-call":context.audio.mode=android.media.AudioManager.MODE_IN_CALL;break;
+    case "stock-voip":context.audio.mode=android.media.AudioManager.MODE_IN_COMMUNICATION;break;
+    case "audio-missing":context.audio=null;break;
     case "image-call":context.imageAdmitted=true;context.calls.active=true;break;
     case "image-call-unknown":context.imageAdmitted=true;context.calls.unavailable=true;break;
     case "image-call-missing":context.imageAdmitted=true;context.calls=null;break;
+    case "image-call-unauthorized":
+     context.imageAdmitted=true;context.calls.defaultDialer=null;break;
+    case "image-call-op-denied":
+    case "image-call-op-default":
+     context.imageAdmitted=true;context.calls.defaultDialer=null;context.phoneStateGranted=true;
+     context.appOps.phoneStateMode=condition.equals("image-call-op-denied")
+      ?android.app.AppOpsManager.MODE_IGNORED:android.app.AppOpsManager.MODE_DEFAULT;
+     break;
    }
    if(condition.equals("assistant"))check(owner.activity instanceof MainActivity&&owner.activity.hasWindowFocus()&&owner.activity.getLifecycle().getCurrentState()==Lifecycle.State.RESUMED,"the assistant fixture is a focused, resumed MainActivity subclass, as the installed assistant surfaces are");
    check(automatic(owner).rejected.get()==1,"automatic admission defers active or unknown use: "+condition);
    check(connections.isEmpty()&&context.packages.installer.sessions.isEmpty()&&AlphaLocalAgentPlugin.stops==0&&AlphaDevicePlugin.UpdatePause.store().read()==null,"deferred automatic work cannot download, stage, pause or commit: "+condition);
    if(condition.equals("image-call"))check(tap(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,"the explicit manual path retains its existing behavior");
   }
-  for(boolean image:new boolean[]{false,true}){
-   Context context=installing(cache);context.imageAdmitted=image;if(!image)context.calls=null;
+  for(String authority:List.of("stock","default-dialer","privileged","allowed-app-op")){
+   Context context=installing(cache);
+   context.imageAdmitted=!authority.equals("stock");
+   if(!context.imageAdmitted)context.calls=null;
+   else if(!authority.equals("default-dialer")){
+    context.calls.defaultDialer=null;
+    context.privilegedPhoneStateGranted=authority.equals("privileged");
+    context.phoneStateGranted=authority.equals("allowed-app-op");
+   }
    AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
-   check(automatic(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,image?"a known idle image call state admits automatic replacement":"sideloaded apps need no telephony permission or service");
+   check(automatic(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,
+    "idle audio and the applicable call-state authority admit one automatic replacement: "+authority);
   }
  }
+ private static void automaticCallReadRequiresAuthorityBeforeAndAfter(File cache)throws Exception{
+  var ready=AlphaDevicePlugin.class.getDeclaredMethod("automaticUpdateReady");
+  ready.setAccessible(true);
+  Context context=installing(cache);context.imageAdmitted=true;context.calls.defaultDialer=null;
+  context.phoneStateGranted=true;context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_IGNORED;
+  context.calls.active=true;context.calls.readDenied=true;
+  context.calls.afterRead=()->context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_ALLOWED;
+  AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  check(!(Boolean)ready.invoke(owner),"a call-state grant observed only after a denied read cannot prove idle");
+  check(context.calls.reads==0,"an unauthorized call-state observation is skipped");
+
+  context.calls.active=false;context.calls.readDenied=false;
+  context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_ALLOWED;
+  context.calls.afterRead=()->context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_IGNORED;
+  check(!(Boolean)ready.invoke(owner),"losing the call-state grant during an idle read defers");
+  check(context.calls.reads==1,"the in-flight authorized read cannot outlive its grant");
+
+  context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_ALLOWED;
+  context.calls.afterRead=()->{};
+  check(automatic(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,
+   "the next idle check with a stable call-state grant admits one automatic replacement");
+ }
  private static void automaticUpdatesRecheckUseAfterDownloadAndBeforeCommit(File cache)throws Exception{
-  for(String cut:List.of("download-focus","staging-background","stop-focus","stop-call","stop-call-unknown")){
+  for(String cut:List.of("download-focus","staging-background","stop-focus","stop-stock-call","stop-call","stop-call-unknown")){
    Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);AlphaLocalAgentPlugin.stops=0;
    if(cut.equals("download-focus"))context.packages.archiveRead=()->owner.activity.focused=false;
    if(cut.equals("staging-background"))context.packages.installer.staging=()->owner.activity.state=Lifecycle.State.STARTED;
    if(cut.startsWith("stop-call"))context.imageAdmitted=true;
    if(cut.startsWith("stop-"))AlphaLocalAgentPlugin.pauseObserver=()->{
     if(cut.equals("stop-focus"))owner.activity.focused=false;
+    else if(cut.equals("stop-stock-call"))context.audio.mode=android.media.AudioManager.MODE_IN_CALL;
     else{context.calls.active=cut.equals("stop-call");context.calls.unavailable=cut.equals("stop-call-unknown");}
    };
    try{
@@ -2110,6 +2155,7 @@ public final class UpdateFlowTest {
     check(java.util.Arrays.equals(Files.readAllBytes(download(context).toPath()),APK),"each known postverification lifecycle deferral keeps exact bytes: "+cut);
     int requests=connections.size();context.packages.archiveRead=()->{};context.packages.installer.staging=()->{};AlphaLocalAgentPlugin.pauseObserver=()->{};
     owner.activity.focused=true;owner.activity.state=Lifecycle.State.RESUMED;context.calls.active=false;context.calls.unavailable=false;
+    context.audio.mode=android.media.AudioManager.MODE_NORMAL;
     check(automatic(owner).resolved.get()==1&&connections.size()==requests&&context.packages.installer.committed.size()==1&&!download(context).exists(),"a later idle retry reuses admitted bytes without another controlled transport call: "+cut);
    }finally{AlphaLocalAgentPlugin.pauseObserver=()->{};}
   }
@@ -2386,8 +2432,10 @@ public final class UpdateFlowTest {
    automaticSuccessReconcilesTheExactInstalledSuccessor(cache);
    automaticDraftRefusalNeverStopsOrCommits(cache);
    automaticModeIsStrictAndExplicitFalseKeepsManualBehavior(cache);
-   automaticUpdatesRequireForegroundUnlockedMainAndKnownImageCallState(cache);
+   automaticUpdatesRequireForegroundUnlockedMainAndIdleCallState(cache);
+   automaticCallReadRequiresAuthorityBeforeAndAfter(cache);
    automaticUpdatesRecheckUseAfterDownloadAndBeforeCommit(cache);
+   System.out.println("PASS automatic call deferral protects stock and image installs before download and commit");
    verifiedAutomaticCacheAvoidsRedownloadButNeverBypassesAdmission(cache);
    applicationAttachBeforePublicationDoesNotFenceOrdinaryStartup(cache);
    onlyTheInstalledFlavorAndLineageReachAndroid(cache);
