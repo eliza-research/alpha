@@ -26,6 +26,11 @@ export async function checkCalendarActionReview(extraSources = []) {
 	const sources = [
 		fileURLToPath(import.meta.url),
 		...Object.keys(built.metafile.inputs),
+    "apps/app/src/runtime/calendar-approval.ts",
+    "apps/app/src/runtime/connection-ui.tsx",
+    "apps/app/src/prototype/calendar-approval-adapter.ts",
+    "apps/app/src/prototype/calendar-approval-review.ts",
+    "test/calendar-approval-ui.test.mjs",
 		...extraSources,
 	];
 	captureSources(sources);

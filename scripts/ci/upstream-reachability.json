@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "cbdfbbca0d5cebdd729f4404c4517cd78f7b516a",
-  "head": "a44ecebb5f7708c45d9b166c3c7205ee2264722a",
+  "head": "fd860a0a600e63eeee44c19b6af1e85c4a5ff641",
   "recordedAt": "2026-11-11",
-  "command": "Prior recorded comparison, extended by git rev-list 15317284561239eaedbb4b9d9af1d3c535c380b7..a44ecebb5f7708c45d9b166c3c7205ee2264722a",
+  "command": "Prior recorded comparison, extended by git rev-list a44ecebb5f7708c45d9b166c3c7205ee2264722a..fd860a0a600e63eeee44c19b6af1e85c4a5ff641",
   "status": "diverged",
-  "aheadBy": 20,
+  "aheadBy": 21,
   "behindBy": 380,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -90,6 +90,10 @@
     {
       "sha": "a44ecebb5f7708c45d9b166c3c7205ee2264722a",
       "subject": "fix(reminders): preserve resolved clock across intent verification"
+    },
+    {
+      "sha": "fd860a0a600e63eeee44c19b6af1e85c4a5ff641",
+      "subject": "fix(calendar): preserve client clock and native extraction refusal"
     }
   ],
   "pullRequests": [

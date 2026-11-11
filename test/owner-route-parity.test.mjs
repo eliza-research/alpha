@@ -14,6 +14,7 @@ import {serializeOwnerRouteTable} from '../apps/app/src/product/owner-route-tabl
 const [{ownerRouteGroup,ownerRouteAllowed}]=await loadBrowserModule(['apps/app/src/runtime/owner-route-policy.ts'],{testMocks:true});
 
 const C='/api/lifeops/calendar',E=C+'/events/',F=C+'/feed?',T='/api/lifeops/scheduled-tasks',A='/api/approvals?state=all&limit=500';
+const approvalResolve='/api/approvals/11111111-2222-4333-8444-555555555555/resolve';
 const paths=[
  // Notes
  '/api/notes/state','/api/notes/state?','/api/notes/state?&','/api/notes/state?x=1','/api/notes/state/','/api/notes/state/x','/api/notes/state#','/api/notes','/api/notes/stat','/api/notes/state\n',
@@ -40,6 +41,7 @@ const paths=[
  ...['a..b','a.b','a:b','a%62','%74r1','a@b','a+b','-a','x'.repeat(200),'x'.repeat(201),'.','..','a b','a ','a\u001c','a ','a\u0085','é','x?','x#','x\\y','/x','./x','x/../y','x/./runs'].map(id=>'/api/triggers/'+id),
  '/api/%74riggers/x','/api/TRIGGERS/x','/api/triggers/x\n','/api/lifeops/definitions/a..b',
  // Approvals
+ approvalResolve,approvalResolve+'?unexpected=1','/api/approvals/not-a-uuid/resolve',approvalResolve+'/extra',approvalResolve.replace('/resolve','/%2e%2e/resolve'),
  A,'/api/approvals','/api/approvals?',A+'&x=1','/api/approvals?limit=500&state=all',A.replace('500','501'),'/api/approvals/execute','/api/approvals/x?state=all&limit=500','https://example.invalid'+A,A+'#',
  // Unclaimed routes the generic gate decides
  '/api/conversations','/api/conversations/c1/messages?before=1','/api/conversations/c1/messages/truncate','/api/status','/api/auth/me','/api/unknown','','api/notes/state','//api/notes/state',
@@ -142,6 +144,7 @@ const settledDrift=[
 // Admitted since the snapshot: Google recurring-occurrence ids, '<baseId>_<YYYYMMDDTHHMMSSZ>', in the records id
 // pattern. A leading '_' and any '/' or '..' segment stay refused.
 const widenedSince=new Map([
+ [approvalResolve,['POST','POST flipped body']],
  [E+'abc123_20261110T150000Z',['PATCH','PATCH flipped body','DELETE']],
  [E+'a%5Fb',['PATCH','PATCH flipped body','DELETE']],
  [E+'abc123_20261110T150000Z?recurrenceScope=instance',['DELETE']],

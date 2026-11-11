@@ -47,7 +47,9 @@ export function calendarApprovalStatus(row:CalendarApproval|null,now=Date.now())
  if(row.state==='done')return 'Review closed';
  return 'Change not confirmed';
 }
-export function calendarApprovalCommand(row:CalendarApproval,decision:'approve'|'reject'){
+export type CalendarApprovalDecision = 'approve' | 'reject';
+export type CalendarApprovalResolution = {requestId:string;decision:CalendarApprovalDecision;kind:'succeeded'|'rejected'|'invalidated'|'retryable'|'blocked';text:string};
+export function calendarApprovalBody(row:CalendarApproval,decision:CalendarApprovalDecision){
  if(!calendarApprovalPending(row)||!['approve','reject'].includes(decision))throw Error('This Calendar request is no longer pending.');
- return `${decision==='approve'?'Approve':'Reject'} Calendar request ${row.id} exactly as reviewed. Use CALENDAR_REVIEW with requestId ${row.id} and decision ${decision}; do not create another request.`;
+ return {decision,revision:row.revision};
 }
