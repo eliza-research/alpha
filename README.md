@@ -221,9 +221,12 @@ and retains the input IDs, hashes and sizes in `native-input-admission.json`.
 The candidate receipt binds its digest to the exact source, SDK and run attempt.
 The build evidence records the uploaded candidate's ID and compressed size
 from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
-The Launcher OTA native input expiry workflow checks the reviewed pins daily
-and on manual dispatch. Its job summary names each pin that expires within four
-days. Renew through the approved supplier while the old artifacts are available.
+Install the Launcher OTA native input expiry workflow on the repository's
+default branch, currently `develop`, after the expiry checker lands on `main`.
+Scheduled runs read the reviewed pins on `main`. Manual dispatch from
+`main` checks the commit selected at dispatch. Each run records the exact
+`main` commit checked and names each pin that expires within four days.
+Renew through the approved supplier while the old artifacts are available.
 Keep the original qualification receipts for unchanged native bytes and review
 the new artifact IDs and archive digests before updating the manifest. A changed
 native file or source record requires a new admission. Confirm a successful
