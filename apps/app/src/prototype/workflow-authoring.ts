@@ -1,4 +1,4 @@
-import {workflowDeviceTimeZone,workflowLocalInstant,workflowClockContext} from '../runtime/workflow-local-time';
+import {workflowDeviceTimeZone,workflowLocalInstant} from '../runtime/workflow-local-time';
 import {automationLocalDateInput,localDate} from '../runtime/workflow-local-time';
 import {Capacitor} from '@capacitor/core';
 import {testMocksEnabled} from '../build-flags';
@@ -191,7 +191,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
  function toggleDay(day:number){editTime(trigger=>{const days=trigger.days.includes(day)?trigger.days.filter(d=>d!==day):[...trigger.days,day].sort((a,b)=>a-b);if(!days.length){toast('Choose at least one day');return null;}return {...trigger,days};});}
  function triggerSheet(api:Bag){const trigger=draft?.spec.trigger??{kind:'manual' as const};const time=trigger.kind==='time'?trigger:null;
   return {kinds:(catalog?.triggers??[]).filter(t=>t.available).map(t=>{const on=trigger.kind===t.kind;return {label:TRIGGER_LABELS[t.kind]??t.kind,d:t.kind==='time'?api.ic.clock:api.ic.play,pressed:on,css:on?'background:var(--acc);color:#fff':'background:var(--s2)',pick:()=>t.kind==='manual'&&on?toast('This workflow runs only when you explicitly start it'):chooseTrigger(t.kind)};}),
-   text:time?[workflowClockContext(time.timeZone),describePhoneTrigger(time)+'.',(note=>note?note+' ':'')(phoneTriggerClockChangeNote(time))+SCHEDULE_POLICY].filter(Boolean).join(' '):'Run manually after reviewing the workflow',isTime:!!time,isEvent:false,isPlace:false,isMsg:false,isEmail:false,
+   text:time?[describePhoneTrigger(time)+'.',(note=>note?note+' ':'')(phoneTriggerClockChangeNote(time))+SCHEDULE_POLICY].filter(Boolean).join(' '):'Run manually after reviewing the workflow',isTime:!!time,isEvent:false,isPlace:false,isMsg:false,isEmail:false,
    days:time?WEEKDAYS.map(([day,label])=>{const on=time.days.includes(day);return {label,pressed:on,css:on?'background:var(--fg);color:var(--bg)':'background:var(--s2)',pick:()=>toggleDay(day)};}):[],
    time:time?.localTime??'',tMinus:()=>editTime(t=>({...t,localTime:shiftLocalTime(t.localTime,-15)})),tPlus:()=>editTime(t=>({...t,localTime:shiftLocalTime(t.localTime,15)}))};}
  function field(label:string,value:string,onChange:(value:string)=>void,type='text',multiline=false){return {label,value,type,multiline,single:!multiline,change:(event:Bag)=>(()=>{try{change(()=>onChange(String(event.target.value)));}catch(error){toast(error instanceof Error?error.message:'Choose a valid time.');}})()};}

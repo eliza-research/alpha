@@ -70,10 +70,10 @@ test('discard is still possible after a failed local save',async()=>{
 });
 
 const flow=(id,name)=>({id,name,versionId:id+'-v1',phoneSpec:{version:1,name,description:'',trigger:{kind:'manual'},steps:[{id:'s1',kind:'Read',operation:'supplied_text',text:'input'}]}});
-test('an editable scheduled draft uses the current device zone without writing or enabling the workflow',async()=>{
+test('editing an existing scheduled draft preserves its stored zone without enabling the workflow',async()=>{
  const h=await harness(),original=flow('local','Local workflow');original.phoneSpec.trigger={kind:'time',localTime:'08:00',timeZone:'UTC',days:[0,1,2,3,4,5,6]};
  await h.reopen(original);assert.equal(h.records.size,0);await h.edit('Local workflow');
- const draft=JSON.parse([...h.records.values()][0]);assert.equal(draft.spec.trigger.timeZone,workflowDeviceTimeZone());assert.equal(draft.spec.trigger.localTime,'08:00');assert.equal(original.phoneSpec.trigger.timeZone,'UTC');h.authoring.close();
+ const draft=JSON.parse([...h.records.values()][0]);assert.equal(draft.spec.trigger.timeZone,'UTC');assert.equal(draft.spec.trigger.localTime,'08:00');assert.equal(original.phoneSpec.trigger.timeZone,'UTC');h.authoring.close();
 });
 test('opening and leaving without an edit stores nothing',async()=>{
  const h=await harness();h.authoring.close();await h.reopen(flow('x','Workflow X'));h.authoring.close();for(let i=0;i<10;i++)await Promise.resolve();
