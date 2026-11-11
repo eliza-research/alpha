@@ -4,6 +4,5 @@
     <bool name="custom_lockscreen_shortcuts_enabled">true</bool>
     <string-array name="config_keyguardQuickAffordanceDefaults" translatable="false">
         <item>bottom_start:alpha_assistant</item>
-        <item>bottom_end:camera</item>
     </string-array>
 </resources>

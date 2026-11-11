@@ -85,7 +85,7 @@ class NativePlanTest(unittest.TestCase):
         arrays = ET.fromstring(overlay.read_text()).findall('string-array')
         self.assertEqual(len(arrays), 1)
         self.assertEqual(arrays[0].attrib['name'], 'config_keyguardQuickAffordanceDefaults')
-        self.assertEqual([n.text for n in arrays[0]], ['bottom_start:alpha_assistant','bottom_end:camera'])
+        self.assertEqual([n.text for n in arrays[0]], ['bottom_start:alpha_assistant'])
         # Prove the overlay uses existing fallback semantics, without a duplicate selection writer.
         manager = read(STAGED, PREFIX + 'src/com/android/systemui/keyguard/data/quickaffordance/KeyguardQuickAffordanceLocalUserSelectionManager.kt')
         self.assertEqual(manager, read(BASE, PREFIX + 'src/com/android/systemui/keyguard/data/quickaffordance/KeyguardQuickAffordanceLocalUserSelectionManager.kt'))

@@ -15,7 +15,8 @@
     "Explicit no-newline markers preserve valid patch boundaries",
     "Text-only header avoids compound drawable rendering outside the checked END-aligned text bounds",
     "Enable the independent existing Android custom-lockscreen-shortcuts feature bool through the next-image Alpha product overlay; OS17 factory default was false",
-    "Preset Alpha Start and Camera End via the existing unset-slot fallback array; stored choices and explicit None remain authoritative"
+    "Preset Alpha Start and Camera End via the existing unset-slot fallback array; stored choices and explicit None remain authoritative",
+    "Owner removed the default Camera End shortcut; new presets assign only Alpha Start"
   ],
   "localEvidenceScope": [
     "Source packet regenerated for the existing installed namespace; current source checks must pass before image qualification."
@@ -38,8 +39,7 @@
     "devicePolicyGateRetained": true,
     "savedSelectionsChanged": false,
     "config_keyguardQuickAffordanceDefaults": [
-      "bottom_start:alpha_assistant",
-      "bottom_end:camera"
+      "bottom_start:alpha_assistant"
     ]
   },
   "OS17RuntimeOverride": {
@@ -50,7 +50,7 @@
     "replayedDuringSourceCorrection": false
   },
   "freshPresetSemantics": {
-    "freshOrPreviouslyUnsetSlot": "Alpha Start, Camera End",
+    "freshOrPreviouslyUnsetSlot": "Alpha Start, End empty",
     "storedChoiceOrExplicitNone": "Preserved by unchanged pinned selection manager",
     "selectionWritesOrMigrationAdded": false,
     "OS17FactoryContainsNewFlagsOrDefaults": false

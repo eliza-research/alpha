@@ -6,7 +6,7 @@ recorded in `manifest.json`. This package does not claim a completed SystemUI bu
 image boot, or physical acceptance; those belong to separate build and device receipts.
 
 The Alpha shortcut adds an entry in Android's existing lockscreen picker and is preset
-at Start for an unset slot on a fresh device, with Camera preset at End.
+at Start for an unset slot on a fresh device.
 It resolves the installed system Alpha assistant for the current user, rejects disabled
 or suspended targets and user-switch transitions, and requests the existing unlock-gated
 assist activity path. The defaults use Android's existing fallback: any stored slot choice,
