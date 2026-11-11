@@ -234,6 +234,28 @@ reviewed archives and verifies the APK digests when streaming the bytes.
 Release approval, signed-byte voice tests, publication and both sideload and
 image-preinstalled phone drills remain required for this batch.
 
+On the machine with the phone, record each [wireless drill](https://github.com/eliza-research/alpha/issues/889)
+with the release APK and its verification manifest available locally. This capture
+requires Android 14 or later for package installer provenance. Keep the phone
+out of idle HOME while taking the baseline so it cannot update before the
+capture. The baseline command verifies the anonymous offer and its APK.
+
+```sh
+node scripts/verify-wireless-launcher-update.ts before --serial <serial> \
+  --distribution sideload --apk-manifest <baseline>/apk-manifest.json --out <new-before.json>
+# Disconnect ADB. Let the launcher discover and install at idle HOME.
+# Reconnect ADB after the observed result.
+node scripts/verify-wireless-launcher-update.ts after --serial <serial> \
+  --before <before.json> --apk-manifest <update>/apk-manifest.json --out <new-after.json>
+```
+
+Repeat with `--distribution image-preinstalled` on the signed image. The
+readback uses the primary user and records the actual APK digest, update
+initiator, install identity, HOME, signing family, boot state and SDK revision.
+Include the release provenance and operator observations of the disconnected
+update, confirmation, retained data, Keystore, resident, voice and recovery in
+the acceptance evidence.
+
 The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alphaphone/issues/888)
 and [wireless launcher acceptance #889](https://github.com/eliza-research/alphaphone/issues/889).
 Complete it in this order:
