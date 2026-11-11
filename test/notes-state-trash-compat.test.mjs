@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {register} from 'node:module';
-import {tsImport} from 'tsx/esm/api';
+import {registerHooks} from './support/module-hooks.mjs';
+import {tsImport} from './support/ts-import.mjs';
 // The resident's Notes service reads files/.eliza/notes/agents/<agent>/state.json at every start.
 // Pixel builds from an older upstream (ff9c826455, schema 2) rejected state a newer build had
 // written (schema 3, with "trash") as NOTES_VALIDATION_FAILED on every boot, which escalated into
@@ -10,7 +10,7 @@ import {tsImport} from 'tsx/esm/api';
 const core=`export class ElizaError extends Error{constructor(message,options={}){super(message);Object.assign(this,options);}}
 export const toWellFormedUnicode=value=>String(value).toWellFormed();
 export const truncateWellFormed=(value,length)=>String(value).slice(0,length).toWellFormed();`;
-register('data:text/javascript,'+encodeURIComponent(`export async function resolve(specifier,context,next){if(specifier==='@elizaos/core')return {url:'data:text/javascript,'+${JSON.stringify(encodeURIComponent(core))},shortCircuit:true};return next(specifier,context);}`));
+registerHooks({resolve(specifier,context,next){if(specifier==='@elizaos/core')return {url:'data:text/javascript,'+encodeURIComponent(core),shortCircuit:true};return next(specifier,context);}});
 const {parseNotesDocument}=await tsImport('../vendor/eliza/plugins/plugin-notes/src/validation.ts',import.meta.url);
 const {NOTES_SCHEMA_VERSION}=await tsImport('../vendor/eliza/plugins/plugin-notes/src/types.ts',import.meta.url);
 const ids={n1:'0e4c5c8e-6a0f-4f7e-9a51-3c1d2b4a5e61',n2:'7b2d9f14-1c3e-4a8b-b6d5-9e0f1a2b3c4d'};

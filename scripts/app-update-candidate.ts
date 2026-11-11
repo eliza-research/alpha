@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Read-only version admission and receipts for unsigned main-push candidates.
  * This does not sign, reserve release versions, or publish an update.
  */

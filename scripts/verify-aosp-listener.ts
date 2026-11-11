@@ -1,5 +1,5 @@
 // Read-only check of the always-on listener on a booted Alpha image (issue #424).
-// Usage: node scripts/verify-aosp-listener.ts --serial SERIAL --user USER_ID
+// Usage: bun scripts/verify-aosp-listener.ts --serial SERIAL --user USER_ID
 // Reports package-manager facts only; the indicator, invocation and lock-screen behaviour are
 // manual device acceptance.
 import fs from "node:fs";

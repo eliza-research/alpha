@@ -15,7 +15,7 @@ const accounts = [
 ];
 
 async function runIdentityCompositionRefinement(extraSources = []) {
-  const sources = [...sourcePaths(), 'vite.config.ts', 'package.json', 'package-lock.json',
+  const sources = [...sourcePaths(), 'vite.config.ts', 'package.json', 'bun.lock',
     'scripts/quint-lib.ts', 'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts', 'test/browser/helpers/native-navigation-protocol.ts', 'upstream.lock.json',
     ...filesWithin(resolve(root, '.eliza/client-features'), path => /\.(?:ts|tsx|js|json|css|html)$/.test(path)).map(relativePath),
     'upstream.lock.json', 'scripts/prepare-client-features.ts',

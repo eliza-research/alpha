@@ -1,7 +1,7 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Keep gzip web assets intact in the APK.
 //
-//   node scripts/android-gzip-assets.ts protect   wrap every *.gz in the synced Android web payload
+//   bun scripts/android-gzip-assets.ts protect   wrap every *.gz in the synced Android web payload
 //
 // The Android Gradle plugin's asset merger treats a file named *.gz as a compressed asset: it
 // gunzips it and drops the suffix, so `ocr/eng.traineddata.gz` was packaged as
@@ -54,7 +54,7 @@ export function packagedGzipProblems(apkPublic: string, webDist = path.join(ROOT
       if (entry.isDirectory()) { walk(file); continue; }
       if (!entry.name.endsWith('.gz')) continue;
       const relative = path.relative(webDist, file), packaged = path.join(apkPublic, relative);
-      if (!fs.existsSync(packaged)) problems.push(`${relative} is missing from the APK web payload (the asset merger unpacks *.gz; run npm run android:sync before Gradle)`);
+      if (!fs.existsSync(packaged)) problems.push(`${relative} is missing from the APK web payload (the asset merger unpacks *.gz; run bun run android:sync before Gradle)`);
       else if (!fs.readFileSync(packaged).equals(fs.readFileSync(file))) problems.push(`${relative} in the APK differs from the web build`);
     }
   };
@@ -63,7 +63,7 @@ export function packagedGzipProblems(apkPublic: string, webDist = path.join(ROOT
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv[2] !== 'protect') { console.error('Usage: node scripts/android-gzip-assets.ts protect'); process.exit(2); }
+  if (process.argv[2] !== 'protect') { console.error('Usage: bun scripts/android-gzip-assets.ts protect'); process.exit(2); }
   const wrapped = protectGzipAssets();
   console.log(wrapped.length ? `Wrapped gzip assets for the Android asset merger: ${wrapped.join(', ')}` : 'Android web payload has no gzip assets to wrap.');
 }

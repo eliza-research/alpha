@@ -161,7 +161,7 @@ point also reproduces the same sequence with in-memory draft storage and a
 synthetic successful export receipt.
 
 ```sh
-node specs/quint/services/scan-source-conformance.mjs
+bun specs/quint/services/scan-source-conformance.mjs
 ```
 
 The script succeeds when it observes the documented discrepancy. It creates no

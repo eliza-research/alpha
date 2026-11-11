@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -7,7 +7,7 @@ import {runNativeFixture} from './native-test-fixture.ts';
 import {requireInstrumentationSuccess} from './instrumentation-result.ts';
 
 // Requires explicit owned emulator/AVD/ABI environment variables accepted by runNativeFixture.
-// Usage: node scripts/test-native-calendar-deletion-restart.ts ARCHIVE OUTPUT VARIANT undo|expiry
+// Usage: bun scripts/test-native-calendar-deletion-restart.ts ARCHIVE OUTPUT VARIANT undo|expiry
 const [archive,output,variant,mode,...extra]=process.argv.slice(2);
 assert(archive&&output&&!extra.length);assert(['standalone','launcher'].includes(variant));assert(['undo','expiry'].includes(mode));
 const runId=crypto.randomBytes(16).toString('hex'),pkg='ai.alphacompute.alphaphone',testClass='CalendarDeletionRestartInstrumentedTest';

@@ -34,4 +34,4 @@ The campaign covers one bridge and selected actor and foreground schedules.
 Installed Android ingress, projector receipt provenance, resident read
 effects, executor behavior and renderer navigation have separate owners.
 
-Run `node --test test/quint-canonical-notification-tap-refinement.test.mjs`.
+Run `bun test test/quint-canonical-notification-tap-refinement.test.mjs`.

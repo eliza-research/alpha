@@ -51,9 +51,9 @@ jobs:
           submodules: true
           path: qualified-producer
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          node-version-file: .nvmrc
+          bun-version: "1.4.2"
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -106,7 +106,7 @@ jobs:
           done
           test "$(git -C qualified-producer rev-parse HEAD)" = "$(jq -r .alphaCommit "$work/pins.json")"
           unset ALPHA_PRIVATE_STORAGE_TOKEN GH_TOKEN RECIPIENT_PUBLIC_CERTIFICATE
-          ALPHA_ADMITTED_APK_DIR="$work/unsigned" node --input-type=module <<'NODE'
+          ALPHA_ADMITTED_APK_DIR="$work/unsigned" bun - <<'NODE'
           import fs from 'node:fs';
           import path from 'node:path';
           import { execFileSync } from 'node:child_process';
@@ -140,7 +140,7 @@ jobs:
             ' "$work/pins.json" >/dev/null
             jq -r .rotation.lineageBase64 "$work/pins.json" | base64 --decode > "$work/rotation.lineage"
             export ALPHA_ROTATION_WORK="$work"
-            node --input-type=module <<'NODE'
+            bun - <<'NODE'
           import fs from 'node:fs';
           import path from 'node:path';
           import { createHash } from 'node:crypto';
@@ -190,7 +190,7 @@ jobs:
           keystore="$key_directory/app.p12"
           printf '%s' "$ALPHA_APP_RELEASE_KEYSTORE_B64" | base64 --decode > "$keystore"
           unset ALPHA_APP_RELEASE_KEYSTORE_B64
-          expected=$(node -p 'require("./android/release-signer.json").signerSha256')
+          expected=$(bun -p 'require("./android/release-signer.json").signerSha256')
           actual=$(keytool -exportcert -storetype PKCS12 -keystore "$keystore" -alias alpha-release             -storepass:env ALPHA_APP_RELEASE_KEYSTORE_PASSWORD | sha256sum | cut -d ' ' -f 1)
           test "$actual" = "$expected"
           mkdir -m 700 "$ALPHA_PROTECTED_WORK/signed"
@@ -199,7 +199,7 @@ jobs:
             rotation=(--rotation-lineage "$ALPHA_PROTECTED_WORK/rotation.lineage")
           fi
           for variant in standalone launcher; do
-            node scripts/sign-release-apks.ts --keystore "$keystore" --key-label alpha-release "${rotation[@]}" --apk "$ALPHA_PROTECTED_WORK/unsigned/$variant-release-unsigned.apk"               --out "$ALPHA_PROTECTED_WORK/signed/$variant-release.apk"
+            bun scripts/sign-release-apks.ts --keystore "$keystore" --key-label alpha-release "${rotation[@]}" --apk "$ALPHA_PROTECTED_WORK/unsigned/$variant-release-unsigned.apk"               --out "$ALPHA_PROTECTED_WORK/signed/$variant-release.apk"
           done
       - name: Verify signed outputs and deliver privately
         env:
@@ -208,7 +208,7 @@ jobs:
           set -euo pipefail
           umask 077
           work="$ALPHA_PROTECTED_WORK"
-          expected=$(node -p 'require("./android/release-signer.json").signerSha256')
+          expected=$(bun -p 'require("./android/release-signer.json").signerSha256')
           for variant in standalone launcher; do
             apk="$work/signed/$variant-release.apk"
             "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$apk"

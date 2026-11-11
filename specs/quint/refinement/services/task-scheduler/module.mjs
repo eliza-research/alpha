@@ -53,7 +53,7 @@ export async function loadSchedulerSource(extraSources = []) {
   for (const input of Object.keys(built.metafile.inputs)) {
     if (input !== 'scheduler-refinement-entry.ts') assert.ok(compiled.has(path.resolve(root, input)), `Unobserved compiled input: ${input}`);
   }
-  const sources = [...compiled.keys(), fileURLToPath(import.meta.url), 'package-lock.json', 'upstream.lock.json', ...CORE_STATE_INPUTS, ...extraSources];
+  const sources = [...compiled.keys(), fileURLToPath(import.meta.url), 'bun.lock', 'upstream.lock.json', ...CORE_STATE_INPUTS, ...extraSources];
   const driverHashes = captureInputs(sources);
   for (const [file, digest] of compiled) assert.equal(driverHashes[path.resolve(file)], digest, 'Scheduler source changed during compilation');
   for (const [file, digest] of Object.entries(core.receipt.inputHashes)) {
@@ -61,6 +61,7 @@ export async function loadSchedulerSource(extraSources = []) {
   }
   const coreState = coreStateBuildRecord(root, transforms, coreStateRequiredTargets([...compiled.keys()]));
   assert.ok(coreState.transforms.some(entry => entry.path === task), 'Actual TaskService must receive its runtime repair');
-  const encoded = Buffer.from(built.outputFiles[0].text).toString('base64');
-  return {sources, driverHashes, coreState, newInstance: () => import(`data:text/javascript;base64,${encoded}#scheduler-${++instances}`)};
+  // Bun rejects a fragment after base64 data, so a trailing comment makes each instance a distinct module.
+  const text = built.outputFiles[0].text;
+  return {sources, driverHashes, coreState, newInstance: () => import(`data:text/javascript;base64,${Buffer.from(`${text}\n// scheduler-${++instances}`).toString('base64')}`)};
 }

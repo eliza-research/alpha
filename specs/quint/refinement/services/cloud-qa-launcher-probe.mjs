@@ -3,9 +3,9 @@ import fs from 'node:fs';
 import * as promises from 'node:fs/promises';
 import {EventEmitter} from 'node:events';
 import {execFileSync} from 'node:child_process';
-import {registerHooks} from 'node:module';
+import {registerHooks} from '../../../../test/support/module-hooks.mjs';
 import {basename, dirname, join, resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 import {CORE_STATE_MANIFEST} from '../../../../scripts/core-state-patch.ts';
 import {parseBuildPolicy} from '../../../../scripts/build-policy-source.ts';
 import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
@@ -135,7 +135,7 @@ const trace = {name: scenario, init: action('startState', kind, priorReceipt), e
 const point = (label, transition) => trace.steps.push({label, action: transition, expect: observe()});
 const initialToken = file(token) ? fs.readFileSync(token, 'utf8') : null;
 const initialConfig = file(config) ? fs.readFileSync(config, 'utf8') : null;
-let logFd, child, runPreload, observedParentRevision, childGitHead, childObservedHead;
+let logFd, child, runPreload, preloadUrl, observedParentRevision, childGitHead, childObservedHead;
 const originalError = console.error, originalLog = console.log;
 const errors = [];
 console.error = message => errors.push(String(message));
@@ -320,10 +320,12 @@ globalThis.cloudQaPorts = {
     const noPid = scenario === 'no-pid';
     runPreload = async observed => {
       childGitHead = observed;
-      const originalBun = globalThis.Bun, originalSource = process.env.ALPHA_CORE_STATE_SOURCE;
+      const originalSource = process.env.ALPHA_CORE_STATE_SOURCE;
       process.env.ALPHA_CORE_STATE_SOURCE = env.ALPHA_CORE_STATE_SOURCE;
       let pluginInstalled = false;
-      globalThis.Bun = {plugin(value) {
+      // The Bun global is read-only, so the load hook below binds the preload's Bun to this port.
+      preloadUrl = pathToFileURL(argv[1]).href;
+      globalThis.cloudQaPreloadBun = {plugin(value) {
         assert.equal(value.name, 'authenticated-core-state');
         pluginInstalled = true;
       }};
@@ -339,8 +341,7 @@ globalThis.cloudQaPorts = {
         assert.equal(pluginInstalled, false);
         state.preloadOutcome = 'rejected';
       } finally {
-        if (originalBun === undefined) delete globalThis.Bun;
-        else globalThis.Bun = originalBun;
+        delete globalThis.cloudQaPreloadBun;
         if (originalSource === undefined) delete process.env.ALPHA_CORE_STATE_SOURCE;
         else process.env.ALPHA_CORE_STATE_SOURCE = originalSource;
       }
@@ -392,6 +393,10 @@ registerHooks({resolve(specifier, context, next) {
   const corePort = context.parentURL === coreUrl && specifier === 'node:fs';
   if (launcherPort || sharedPort || corePort) return {url: pathToFileURL(portModule).href, shortCircuit: true};
   return next(specifier, context);
+}, load(url, context, next) {
+  if (url !== preloadUrl) return next(url, context);
+  assert.ok(globalThis.cloudQaPreloadBun, 'The preload runs only against its closed plugin port');
+  return {source: 'const Bun = globalThis.cloudQaPreloadBun;\n'+fs.readFileSync(fileURLToPath(url), 'utf8'), shortCircuit: true};
 }});
 
 process.once('exit', code => {

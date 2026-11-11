@@ -179,7 +179,7 @@ export async function runInboxCleanupRefinement(extraSources = []) {
   const discovered = await inboxDriverSources();
   const sources = [...discovered, ...extraSources, fileURLToPath(import.meta.url),
     'specs/quint/refinement/services/inbox-coordinator-ports.mjs',
-    'specs/quint/refinement/services/inbox-coordinator.mjs', 'package-lock.json'];
+    'specs/quint/refinement/services/inbox-coordinator.mjs', 'bun.lock'];
   const driverHashes = captureInputs(sources);
   rebuildInboxDriver(discovered);
   const traces = [];

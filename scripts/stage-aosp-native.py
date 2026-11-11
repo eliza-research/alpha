@@ -61,7 +61,7 @@ def admission(root, apk):
     if not isinstance(pins.get(channel), dict):
         raise ValueError('No pinned ' + bun_target + ' Bun for channel: ' + str(channel))
     declarations = subprocess.check_output(
-        [os.environ.get('ALPHA_NODE', 'node'), root / 'scripts/native-view-policy.ts'], timeout=30)
+        [os.environ.get('ALPHA_BUN', 'bun'), root / 'scripts/native-view-policy.ts'], timeout=30)
     return {
         'schemaVersion': 1,
         'bunTarget': bun_target,

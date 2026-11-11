@@ -1,9 +1,9 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Alpha Phone's Eliza Cloud registration values and a credential-free readiness probe.
  *
- *   node scripts/cloud-readiness.ts registration [--environment production|staging] [--json]
- *   node scripts/cloud-readiness.ts probe [--environment production|staging] [--signer SHA256] [--json]
+ *   bun scripts/cloud-readiness.ts registration [--environment production|staging] [--json]
+ *   bun scripts/cloud-readiness.ts probe [--environment production|staging] [--signer SHA256] [--json]
  *
  * `registration` prints the values an Eliza Cloud operator enters for Alpha
  * derived from committed product configuration:
@@ -46,7 +46,7 @@ import { assetLinksGrants, publishedAssetLinksCheck, readAssetLinksSource } from
 export const CALLBACK_PATH = CLOUD_SIGN_IN_REGISTRATION.callbackPath;
 export const STEWARD_APP_CLIENT = "alpha-phone";
 const TIMEOUT_MS = 15_000;
-const USAGE = "Usage: node scripts/cloud-readiness.ts registration [--environment production|staging] [--json]\n       node scripts/cloud-readiness.ts probe [--environment production|staging] [--signer SHA256] [--json]";
+const USAGE = "Usage: bun scripts/cloud-readiness.ts registration [--environment production|staging] [--json]\n       bun scripts/cloud-readiness.ts probe [--environment production|staging] [--signer SHA256] [--json]";
 const readJson = <T>(root: string, file: string): T => JSON.parse(fs.readFileSync(path.join(root, file), "utf8"));
 type Environment = keyof ReturnType<typeof validateCloudDeployment>;
 interface ProbeRow { gate: string; step: string; passed: boolean | null; detail: string }
@@ -90,8 +90,8 @@ export function registrationValues(registration: Registration) {
       value: { [stewardAppClient]: [`<Android OAuth client ID for package ${packageName} and the release certificate SHA-1>`] },
       then: `Keep the other app clients' entries. The tenant app client ${stewardAppClient} must allow Google. Create the Android OAuth client in the project that owns Steward's Google web audience. Use apksigner verify --print-certs on the admitted signed APK to read its certificate SHA-1.` },
     { step: "H-13", where: "ELIZA_ANDROID_ASSET_LINKS_JSON (GitHub variable of the Cloud environment)",
-      value: `node scripts/render-assetlinks.ts --cloud-config --published ${web}/.well-known/assetlinks.json`,
-      then: `Set the printed value, deploy, then node scripts/render-assetlinks.ts --check ${web}/.well-known/assetlinks.json.` },
+      value: `bun scripts/render-assetlinks.ts --cloud-config --published ${web}/.well-known/assetlinks.json`,
+      then: `Set the printed value, deploy, then bun scripts/render-assetlinks.ts --check ${web}/.well-known/assetlinks.json.` },
     { step: "H-13", where: `ELIZA_NATIVE_AUTH_CALLBACKS_JSON (Cloud release GitHub Environment variable "${environment}" for ${new URL(web).host}), Alpha's entry`,
       value: { redirectUri: callback, androidPackage: packageName, appName, browserSignIn },
       then: "Update the existing entry for this callback URI in the protected Cloud release environment. Preserve the other app entries and deploy the Pages configuration." },

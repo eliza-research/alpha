@@ -8,7 +8,7 @@ const model = 'GoogleAccessPublication';
 const source = 'apps/app/src/runtime/google-agent-access.ts';
 const inputs = [fileURLToPath(import.meta.url), source, 'apps/app/src/browser/device-preferences.ts',
   'apps/app/src/browser/preference-documents.ts', 'apps/app/src/browser/domain-document.ts',
-  'apps/app/src/runtime/local-agent.ts', 'specs/quint/legacy/core/source-support.mjs', 'package-lock.json'];
+  'apps/app/src/runtime/local-agent.ts', 'specs/quint/legacy/core/source-support.mjs', 'bun.lock'];
 const key = 'alpha.browser.device.v1';
 const ids = [1, 2];
 const bits = value => ({gmail: value.gmailChanges, calendar: value.calendarEdits});

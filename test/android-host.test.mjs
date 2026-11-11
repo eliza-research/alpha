@@ -92,10 +92,10 @@ test('test mocks reach debug variants only and product admission runs before eve
  assert.deepEqual(Object.keys(profile.testMocks.debug), ['java', 'res', 'manifest']);
  assert.equal(profile.testMocks.debug.manifest, fs.realpathSync(path.join(root, 'android/app/src/testMocks/AndroidManifest.xml')));
  assert.deepEqual(profile.admission.map(step => [step.name, step.command, step.directory]), [
-  ['stageLocalAgentSources', ['node', 'scripts/stage-local-agent-sources.ts'], fs.realpathSync(root)],
-  ['verifyCloudDeployment', ['node', 'scripts/cloud-deployment.ts', '--check'], fs.realpathSync(root)],
+  ['stageLocalAgentSources', ['bun', 'scripts/stage-local-agent-sources.ts'], fs.realpathSync(root)],
+  ['verifyCloudDeployment', ['bun', 'scripts/cloud-deployment.ts', '--check'], fs.realpathSync(root)],
  ]);
- assert.deepEqual(profile.settingsAdmission.map(step => step.command), [['node', 'scripts/prepare-patched-native.ts']]);
+ assert.deepEqual(profile.settingsAdmission.map(step => step.command), [['bun', 'scripts/prepare-patched-native.ts']]);
  assert.deepEqual(profile.assetFiles, [
   {source: fs.realpathSync(path.join(staging, '.source.json')), name: 'native-patches.json'},
   {source: fs.realpathSync(path.join(root, '.eliza/generated-android/owner-routes.json')), name: 'owner-routes.json'},

@@ -37,7 +37,7 @@ function build(t, argv, {environment = {}, signed = false} = {}) {
     write(`mapping/${variant}Release/mapping.txt`, `${variant}:mapping`);
    }
   }
-  if (command === 'node' && args[0] === 'scripts/verify-apks.ts') {
+  if (command === 'bun' && args[0] === 'scripts/verify-apks.ts') {
    // verify-apks reads the build record beside the APKs it verifies.
    const directory = path.join(opts.cwd, consumer.output);
    seen.push({record: JSON.parse(fs.readFileSync(path.join(directory, 'build-config.json'), 'utf8')), apks: fs.readdirSync(directory).filter(name => name.endsWith('.apk')).sort()});
@@ -65,7 +65,7 @@ test('a distribution build assembles the four APKs and instrumentation, lints an
  assert.deepEqual(fs.readdirSync(path.join(f.output, 'instrumentation')).sort(), ['launcher-androidTest.apk', 'standalone-androidTest.apk']);
  assert.deepEqual(fs.readdirSync(path.join(f.output, 'mapping')).sort(), ['launcher-release-mapping.txt', 'standalone-release-mapping.txt']);
  // The verifier ran once, after this build's four APKs and its record were in place.
- assert.deepEqual(f.calls.filter(call => call.command === 'node').map(call => call.args), [['scripts/verify-apks.ts']]);
+ assert.deepEqual(f.calls.filter(call => call.command === 'bun').map(call => call.args), [['scripts/verify-apks.ts']]);
  assert.equal(f.seen.length, 1);
  assert.deepEqual(f.seen[0].apks, ['launcher-debug.apk', 'launcher-release-unsigned.apk', 'standalone-debug.apk', 'standalone-release-unsigned.apk']);
  const {createdAt, ...record} = f.seen[0].record;
@@ -84,7 +84,7 @@ test('a test-mocks build keeps its instrumentation beside its APKs, skips lint a
  assert.equal(f.output, path.join(f.root, 'artifacts/test-mocks'));
  assert.deepEqual(fs.readdirSync(f.output).filter(name => name.endsWith('-androidTest.apk')).sort(), ['launcher-androidTest.apk', 'standalone-androidTest.apk']);
  assert.equal(fs.existsSync(path.join(f.output, 'instrumentation')), false);
- assert.deepEqual(f.calls.filter(call => call.command === 'node').map(call => call.args), [['scripts/verify-apks.ts', '--test-mocks']]);
+ assert.deepEqual(f.calls.filter(call => call.command === 'bun').map(call => call.args), [['scripts/verify-apks.ts', '--test-mocks']]);
  assert.equal(f.seen[0].record.testMocks, true);
  assert.equal(f.seen[0].record.mapsProvider, 'cloud');
  const regional = build(t, ['--test-mocks'], {environment: {VITE_MAPS_BASE_URL: 'http://127.0.0.1:8787'}});
@@ -98,7 +98,7 @@ test('the one-profile distribution, unpackaged and skipped-instrumentation build
  const cloud = build(t, [], {environment: {VITE_MAPS_BASE_URL: 'https://maps.example.test', ELIZAOS_VERSION_CODE: '41', ELIZAOS_VERSION_NAME: '1.4.1', VITE_ELIZA_RUNTIME_PROFILE: 'cloud', ORG_GRADLE_PROJECT_ELIZA_RUNTIME_PROFILE: 'cloud', ORG_GRADLE_PROJECT_ELIZA_LOCAL_EMBEDDINGS: '1'}});
  assert.deepEqual(gradleCalls(cloud.calls)[0].args.slice(0, 3), ['--no-daemon', '-PELIZA_DEV_ALLOW_TEST_MOCKS=0', '-PELIZA_ALLOW_UNPACKAGED_RUNTIME=0']);
  assert.equal(gradleCalls(cloud.calls)[0].args.some(arg => /RUNTIME_PROFILE|LOCAL_EMBEDDINGS/.test(arg)), false);
- assert.deepEqual(cloud.calls.filter(call => call.command === 'node').map(call => call.args), [['scripts/verify-apks.ts']]);
+ assert.deepEqual(cloud.calls.filter(call => call.command === 'bun').map(call => call.args), [['scripts/verify-apks.ts']]);
  assert.equal(cloud.seen[0].record.runtimeProfile, 'native');assert.equal('localEmbeddings' in cloud.seen[0].record, false);
  // An inherited profile switch never reaches the renderer build or Gradle.
  const cleaned = buildEnv({VITE_ELIZA_RUNTIME_PROFILE: 'cloud', ORG_GRADLE_PROJECT_ELIZA_RUNTIME_PROFILE: 'cloud', ELIZA_LOCAL_EMBEDDINGS: '1', ORG_GRADLE_PROJECT_ELIZA_LOCAL_EMBEDDINGS: '1', KEEP: 'yes'}, {testMocks: false});
@@ -111,7 +111,7 @@ test('the one-profile distribution, unpackaged and skipped-instrumentation build
  assert.ok(args.includes('-PELIZA_ALLOW_UNPACKAGED_RUNTIME=1'));
  assert.equal(args.some(task => task.endsWith('AndroidTest')), false);
  assert.equal(fs.existsSync(path.join(developer.output, 'instrumentation')), false);
- assert.deepEqual(developer.calls.filter(call => call.command === 'node').map(call => call.args), [['scripts/verify-apks.ts', '--allow-unpackaged-runtime']]);
+ assert.deepEqual(developer.calls.filter(call => call.command === 'bun').map(call => call.args), [['scripts/verify-apks.ts', '--allow-unpackaged-runtime']]);
 });
 
 test('release signing names come from the host descriptor: a signed release keeps its name, an unsigned one with every name set fails', t => {

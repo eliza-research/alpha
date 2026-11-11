@@ -1,8 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Record the public identities from Alpha's release key ceremony in its release records.
  *
- *   node scripts/enroll-release-keys.ts --fingerprints CEREMONY_DIR/fingerprints.json
+ *   bun scripts/enroll-release-keys.ts --fingerprints CEREMONY_DIR/fingerprints.json
  *     [--certificates CEREMONY_DIR] [--debug-fingerprint HEX ...] [--replace] [--write]
  *
  * The ceremony is the pinned upstream offline generator run with Alpha's key list:
@@ -46,7 +46,7 @@ export const APPLICATION_KEY = "alphaphone_app";
 export const IMAGE_CERTIFICATES = Object.freeze(["shared", "media", "networkstack", "sdk_sandbox", "bluetooth", "nfc", "apex"]);
 const HEX64 = /^[0-9a-f]{64}$/;
 const UNSET = new Set(["unset", "UNSET"]);
-const USAGE = "Usage: node scripts/enroll-release-keys.ts --fingerprints FILE [--certificates DIR] [--debug-fingerprint HEX ...] [--replace] [--write]";
+const USAGE = "Usage: bun scripts/enroll-release-keys.ts --fingerprints FILE [--certificates DIR] [--debug-fingerprint HEX ...] [--replace] [--write]";
 
 /** Each recorded field: the file, the path inside it and the fingerprints.json key and digest that fill it. */
 type DigestField = "certificateSha256" | "avbPublicKeySha256";

@@ -32,4 +32,4 @@ loss remain separate verification obligations. Older builds could leave a Remind
 with `pendingDeletion` set but no durable deletion when the identity was `__proto__`.
 Those orphaned markers still need a reviewed recovery protocol.
 
-Run the witness with `node --test test/quint-browser-journal-retention-refinement.test.mjs`.
+Run the witness with `bun test test/quint-browser-journal-retention-refinement.test.mjs`.

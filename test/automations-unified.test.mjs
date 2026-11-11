@@ -21,8 +21,11 @@ const reminder={definition:{id:'definition',title:'Check the draft',description:
 const future=()=>protocol.automationLocalDateInput(Date.now()+24*3600000);
 async function fixture(handler){
  const calls=[];
+ // Connection: close keeps every request on its own connection. Bun's fetch, like a browser, resends
+ // an idempotent request once when a reused keep-alive connection drops; the write counts below are
+ // per request the adapter made.
  const server=http.createServer(async(req,res)=>{let raw='';for await(const chunk of req)raw+=chunk;const call={path:req.url,method:req.method,body:raw?JSON.parse(raw):undefined};calls.push(call);assert.equal(req.headers.authorization,'Bearer synthetic-owner');
-  try{const result=await handler(call,req,res);if(res.destroyed)return;res.writeHead(result?.status||200,{'Content-Type':'application/json'});res.end(JSON.stringify(result?.body??result??{}));}catch(error){res.writeHead(500);res.end(JSON.stringify({error:error.message}));}
+  try{const result=await handler(call,req,res);if(res.destroyed)return;res.writeHead(result?.status||200,{'Content-Type':'application/json','Connection':'close'});res.end(JSON.stringify(result?.body??result??{}));}catch(error){res.writeHead(500);res.end(JSON.stringify({error:error.message}));}
  });await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const request=async(path,method,body,signal)=>{const response=await fetch(`http://127.0.0.1:${server.address().port}`+path,{method,body:body===undefined?undefined:JSON.stringify(body),headers:{Authorization:'Bearer synthetic-owner','Content-Type':'application/json'},signal});const result=await response.json();if(!response.ok)throw Object.assign(Error('Fixture request refused'),{status:response.status,code:result.code});return result;};
  return {calls,request,client:new AutomationsProtocol(request),close:async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}};

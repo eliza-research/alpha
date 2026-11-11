@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import {spawnSync} from 'node:child_process';
 // The protocol module uses extensionless imports, which need the tsx loader.
-if(!process.execArgv.some(arg=>arg==='--import=tsx'||arg==='tsx'))process.exit(spawnSync(process.execPath,['--import=tsx',process.argv[1]],{stdio:'inherit'}).status??1);
 const {WorkflowProtocol}=await import('../apps/app/src/runtime/workflow-protocol.ts');
 let version='v1',active=true,starts=0,status='queued',cancels=0,drop=false,missed: boolean | 'bare' | 'forged'=false,manualTyped=false;let journal=false;
 const workflow=()=>({id:'fixture',name:'Fixture',description:'No effects',versionId:version,active,steps:[],...(manualTyped?{metadata:{elizaPhoneWorkflowSpec:JSON.stringify({trigger:{kind:'manual'},steps:[]})}}:{})});

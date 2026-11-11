@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import {coreRuntimeArguments} from './core-state-patch.ts';
 import {superviseLauncherChild} from './launcher-child.ts';
 // Runs the pinned Eliza app host (the prepared tree of the vendor/eliza pin by default) with an
@@ -17,13 +17,13 @@ import {AGENT_MODEL,agentModelEnvironment} from './agent-model.ts';
 import {AGENT_CHARACTER_ENVIRONMENT,freshAgentProfile,prepareAgentIdentityConfig} from './agent-identity.ts';
 import {LOCAL_EMBEDDING_ROUTE,localEmbeddingEnvironment,reportMissingEmbeddingRoute} from './agent-embeddings.ts';
 import {sourceDirectory} from './local-agent-source.ts';
-// The default is artifacts/local-agent-resident-<commit> from `npm run agent:prepare`; --source selects
+// The default is artifacts/local-agent-resident-<commit> from `bun run agent:prepare`; --source selects
 // another prepared tree of the pinned commit.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const {values:options} = parseArgs({options:{source:{type:'string'}, profile:{type:'string'}, port:{type:'string'}, bun:{type:'string'}}, strict:true});
 const source = path.resolve(options.source || sourceDirectory(root));
 if (!fs.existsSync(path.join(source,'node_modules'))) {
-  console.error(`No installed runtime source at ${source}. Run \`npm run agent:prepare\` (creates artifacts/local-agent-resident-<commit> from the pinned commit), or pass --source with another prepared checkout of it. Never install into vendor/eliza.`);
+  console.error(`No installed runtime source at ${source}. Run \`bun run agent:prepare\` (creates artifacts/local-agent-resident-<commit> from the pinned commit), or pass --source with another prepared checkout of it. Never install into vendor/eliza.`);
   process.exit(2);
 }
 const profile = path.resolve(options.profile || path.join(os.homedir(), '.local/share/alphaphone/local-reviewed-workflows'));

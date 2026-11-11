@@ -19,7 +19,7 @@ interface ChangedModelsReceipt {
 }
 const families=['application','services','native','legacy'] as const;
 const manifests=families.map(family=>`specs/quint/${family}/manifest.json`);
-const checkerInputs=new Set(['scripts/check-quint.ts','scripts/quint-lib.ts','scripts/ci/check-changed-models.ts','specs/quint/tlc.json','package-lock.json']);
+const checkerInputs=new Set(['scripts/check-quint.ts','scripts/quint-lib.ts','scripts/ci/check-changed-models.ts','specs/quint/tlc.json','bun.lock']);
 
 /** Manifest changes select their changed entries; shared checker changes select every model. */
 export function selectChangedModels(models: QuintModel[], paths: string[], previous: ReadonlyMap<string, QuintModel> = new Map(), dependencies: ReadonlyMap<string, string[]> = new Map()){

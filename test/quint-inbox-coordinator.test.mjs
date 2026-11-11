@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 
 test('Inbox source coordination refines grant, confirmation, attachment and recovery transitions', {timeout: 180000}, () => {
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
+  const result = spawnSync(process.execPath, ['-e', `
     import assert from 'node:assert/strict';
     import {runInboxCoordinatorRefinement} from './specs/quint/refinement/services/inbox-coordinator.mjs';
     const {receipts, obligations} = await runInboxCoordinatorRefinement();

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Explicit owned-emulator OS self-update probe. No product APK, network, account or physical-device qualification. */
 import assert from 'node:assert/strict';
 import {execFileSync, type ExecFileSyncOptionsWithStringEncoding, type SpawnSyncReturns} from 'node:child_process';

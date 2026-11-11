@@ -44,7 +44,7 @@ try {
   const config = JSON.parse(readFileSync(join(root, 'lemmascript.json'), 'utf8'));
   if (config['proof-dir'] !== 'specs/lemma') throw Error('The reviewed proof directory must be specs/lemma');
   const expectedProofs = files.flatMap(file => [file.replace(/\.ts$/, '.dfy'), file.replace(/\.ts$/, '.dfy.gen')].map(path => `specs/lemma/${path}`));
-  inputs = [...new Set(['package-lock.json', 'lemmascript.json', 'LemmaScript-files.txt', 'scripts/check-lemma.ts',
+  inputs = [...new Set(['bun.lock', 'lemmascript.json', 'LemmaScript-files.txt', 'scripts/check-lemma.ts',
     ...files, ...expectedProofs, ...proofsWithin(join(root, 'specs/lemma')).map(path => path.slice(root.length + 1))])];
   receipt.inputs = hashes();
   const frozenProofs = new Map(expectedProofs.map(file => [file, readFileSync(join(root, file))]));

@@ -21,7 +21,7 @@ ${body}`;
 test('the single lane stages once and archives the distribution and test-mocks builds, with no profile or capability option',()=>{
  for(const inherited of [{},{ALPHA_RUNTIME_PROFILE:'cloud',ALPHA_LOCAL_EMBEDDINGS:'1'}]){
   const rows=calls(inherited),stage=rows.filter(row=>row.includes('runtime-stage'));
-  assert.equal(stage.length,1);assert.deepEqual(stage[0].slice(stage[0].indexOf('npm')),['npm','run','agent:stage-android','GRADLE_OPTS=']);
+  assert.equal(stage.length,1);assert.deepEqual(stage[0].slice(stage[0].indexOf('bun')),['bun','run','agent:stage-android','GRADLE_OPTS=']);
   const archives=rows.filter(row=>row.includes('scripts/build-archive.ts'));
   assert.deepEqual(archives.map(row=>row.slice(row.indexOf('scripts/build-archive.ts')+1,-1)),[['test-results/resident-ci-distribution'],['--test-mocks','test-results/resident-ci-archive']]);
   assert.ok(!rows.some(row=>row.some(cell=>/--runtime-profile|--local-embeddings|embedding-stage|cloud-archive|resident-ci-cloud/.test(cell))));
@@ -35,7 +35,7 @@ test('the workflow offers no runtime profile or local-embeddings input and no Cl
  assert.match(fs.readFileSync(new URL('../scripts/ci/verify-cloud-signing-input.sh',import.meta.url),'utf8'),/\.name == \("resident-distribution-archive-" \+ \$source \+ "-" \+ \$run\)/);
  assert.match(workflow,/out = root \/ 'test-results\/resident-ci-distribution\/producer-evidence'/);
  assert.match(workflow,/'runtimeProfile': 'native', 'updateChannel': channel, 'versionCode'/);
- assert.match(workflow,/node scripts\/runtime-profile\.ts --verify-native\n/);
+ assert.match(workflow,/bun scripts\/runtime-profile\.ts --verify-native\n/);
 });
 
 function jobCondition(name,event,operation,mode='off'){

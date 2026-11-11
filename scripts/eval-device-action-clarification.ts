@@ -1,8 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Measures how often the resident agent asks a clarifying question instead of proposing a
 // device action for deliberately ambiguous phone requests, plus unambiguous controls.
 //
-// Live mode talks to a loopback resident runtime (for example `npm run dev`, which starts
+// Live mode talks to a loopback resident runtime (for example `bun run dev`, which starts
 // the local agent with hosted qwen-3.8-27b on Cerebras when CEREBRAS_API_KEY is set for
 // that agent). It enrolls one fresh synthetic device, sends each case in its own
 // conversation with the same device headers and current-turn context the phone uses, and
@@ -12,9 +12,9 @@
 // The result records the script's expected model (scripts/agent-model.ts); it does not
 // prove which model the runtime used. Check the runtime's own configuration for that.
 //
-//   node scripts/eval-device-action-clarification.ts --origin http://127.0.0.1:47849 \
+//   bun scripts/eval-device-action-clarification.ts --origin http://127.0.0.1:47849 \
 //     --token-file /path/to/paired-machine-token --output test-results/clarification.json
-//   node scripts/eval-device-action-clarification.ts --self-test
+//   bun scripts/eval-device-action-clarification.ts --self-test
 //
 // --self-test exercises classification, cleanup and the result format against an
 // in-process synthetic agent. Its output is harness evidence only, never a model result.

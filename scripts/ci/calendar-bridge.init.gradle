@@ -37,7 +37,7 @@ gradle.projectsEvaluated {
     if (gradle.rootProject.projectDir.canonicalFile != new File(root, 'android'))
         throw new GradleException('Unexpected normal production project')
     def readRoots = cfg.readRoots.collect { new File(it).toPath().toRealPath() }
-    // CI run 42418923481 needed 1,610,673,552 bytes for its complete Node 26 readback.
+    // CI run 42418923481 needed 1,610,673,552 bytes for its complete readback when the driver ran on Node 26; Bun is smaller.
     final long maxHashBytes = 1600L * 1024 * 1024
     long readBytes = 0
     int entries = 0
@@ -233,7 +233,7 @@ gradle.projectsEvaluated {
             def selected = appJava.get()
             def cp = selected.classpath.files.toList()
             if (selected.options.bootstrapClasspath != null) cp.addAll(selected.options.bootstrapClasspath.files)
-            def command = [cfg.node,cfg.driver,'--classes',selected.destinationDirectory.get().asFile.canonicalPath,
+            def command = [cfg.bun,cfg.driver,'--classes',selected.destinationDirectory.get().asFile.canonicalPath,
                 '--classpath',cp.collect { it.canonicalPath }.join(File.pathSeparator),'--json',cfg.json,
                 '--host','ai.alphacompute.alphaphone.AlphaCalendarPlugin',
                 '--journal','alpha-calendar-creations-v1','--prefix','alphaphone://calendar-creation/']

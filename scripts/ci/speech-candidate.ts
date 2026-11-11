@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Hosted half of on-device speech qualification (.github/workflows/android-emulator.yml, job
  * `fused-speech`). The engine is libelizainference with the shared paradee-voice library (Paradee
@@ -6,8 +6,8 @@
  * android/voice-host/qualified-voice-host.json; this script checks the APK before the run and
  * packages what the run produced afterwards.
  *
- *   node scripts/ci/speech-candidate.ts check <app.apk>
- *   node scripts/ci/speech-candidate.ts package <results-directory> <new-output-directory>
+ *   bun scripts/ci/speech-candidate.ts check <app.apk>
+ *   bun scripts/ci/speech-candidate.ts package <results-directory> <new-output-directory>
  *
  * `check` refuses an APK whose voice bundle (assets/paradee-voice/v1) or x86_64 engine libraries are
  * not the exact recorded bytes, that lacks a recorded non-ASR file, or that carries no voice bundle
@@ -158,7 +158,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const result = packageSpeechRun({ results: first, output: second, asr });
     console.log(JSON.stringify({ abi: result.abi, passed: result.passed, asrPackaged: result.asrPackaged, classes: result.classes, missing: result.missing }, null, 2));
   } else {
-    console.error("Use: node scripts/ci/speech-candidate.ts check <app.apk> | package <results-directory> <new-output-directory>");
+    console.error("Use: bun scripts/ci/speech-candidate.ts check <app.apk> | package <results-directory> <new-output-directory>");
     process.exit(2);
   }
 }

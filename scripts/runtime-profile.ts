@@ -10,7 +10,7 @@ const json=(file: string)=>JSON.parse(fs.readFileSync(file,'utf8'));
 export function verifyNativeGoogleHost(root: string){
  const artifact=workerArtifactDirectory(root),host=verifyNativeGoogleHostArtifact(root,artifact);
  const staged=path.join(root,'android/app/src/main/assets/agent/workflow-worker',host.module);
- if(!fs.existsSync(staged)||digest(staged)!==json(path.join(artifact,'manifest.json')).files[host.module])throw Error('Staged native Google host differs from the built host artifact; run npm run agent:stage-android');
+ if(!fs.existsSync(staged)||digest(staged)!==json(path.join(artifact,'manifest.json')).files[host.module])throw Error('Staged native Google host differs from the built host artifact; run bun run agent:stage-android');
  return {runtimeProfile:'native',nativeGoogleHost:host.module,inputs:Object.keys(host.inputs).length};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){

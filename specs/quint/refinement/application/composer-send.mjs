@@ -14,7 +14,7 @@
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {randomUUID} from 'node:crypto';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from '../../../../test/support/ts-import.mjs';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {systemNoticeKind, systemNoticeDisplayText, collapseSystemNotices} from '../../../../apps/app/src/runtime/action-message-presentation.ts';
 import {modelTraces, replayTraces, repositoryRoot} from '../assistant-model-traces.mjs';
@@ -88,10 +88,13 @@ export async function createDriver({code, subscription, DurableDraftController, 
     retainReadReply() {}, completeReadReply: async () => {}, proposalCard: () => undefined, publishCommittedDeviceChanges() {},
     cameraScanRequested: () => false, cameraFrameQuestionRequested: () => false,
   };
-  vm.runInNewContext(code, box);
-  // The shell's own decision, recorded as it is made.
+  vm.createContext(box);
+  vm.runInContext(code, box);
+  // The shell's own decision, recorded as it is made. The binding is replaced from inside the context: on Bun an
+  // assignment on the sandbox object does not replace a function the script itself declared.
   const decide = box.dispatched;
-  box.dispatched = (attempt, error) => { const result = decide(attempt, error); decisions.set(attempt, result); return result; };
+  box.recordDispatched = (attempt, error) => { const result = decide(attempt, error); decisions.set(attempt, result); return result; };
+  vm.runInContext('dispatched = recordDispatched', box);
   Object.assign(shell, box.methods);
   const attach = () => alphaClient.attachVerifiedTransport({
     session: snapshot.session,

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Read-only Alpha Cuttlefish image checks through the shared launcher image verifier
  * (vendor/eliza/packages/os/scripts/android/verify-launcher-image.mjs). No install, role

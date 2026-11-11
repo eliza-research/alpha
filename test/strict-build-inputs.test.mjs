@@ -132,12 +132,12 @@ test('the input report separates what a script produces from what needs a person
   assert.ok(rows.every(item => item.state === 'missing' && item.action), 'an empty checkout has nothing ready and an action for every input');
   assert.match(row('pinned upstream checkout').action, /git submodule update --init vendor\/eliza/);
   assert.match(row('on-device voice outputs').detail, /are not admitted by .*Voice bundle file missing or changed: asr\.gguf/);
-  assert.match(row('on-device voice outputs').action, /^Needs a person to supply the recorded voice outputs and models: node scripts\/android-stage-voice-models\.ts --from /);
-  assert.equal(row('embedding host libraries').action, 'npm run agent:build-embedding-host');
+  assert.match(row('on-device voice outputs').action, /^Needs a person to supply the recorded voice outputs and models: bun scripts\/android-stage-voice-models\.ts --from /);
+  assert.equal(row('embedding host libraries').action, 'bun run agent:build-embedding-host');
   assert.match(row('release signer').action, /^Needs a person: Alpha Compute controls signing and Shaw owns release/);
   assert.match(row('release signer').detail, /says unset; not set in this environment: ELIZAOS_KEYSTORE_PATH, ELIZAOS_KEYSTORE_PASSWORD, ELIZAOS_KEY_ALIAS, ELIZAOS_KEY_PASSWORD/);
   for (const name of ['prepared resident runtime source', 'workflow worker artifact', 'staged resident runtime payload', 'embedding model', 'Gradle dependency verification metadata'])
-    assert.match(row(name).action, /^npm run /, name);
+    assert.match(row(name).action, /^bun run /, name);
   let report = formatReport(rows);
   assert.match(report, /2 input\(s\) only a person can supply: on-device voice outputs, release signer\./);
   assert.match(report, /An unset release signer does not stop the build: verify-apks records its releases distributable:false/);
@@ -164,7 +164,7 @@ test('the input report separates what a script produces from what needs a person
   for (const file of ['upstream.lock.json', 'android/release-signer.json'])
     g.write(file, fs.readFileSync(path.join(f.root, file), 'utf8'));
   const host = strictBuildInputs(g.root, null, {env: {}, voiceHost: () => ({status: 'not-packaged'})}).find(item => item.input === 'embedding host libraries');
-  assert.deepEqual([host.suppliedBy, host.action], ['script', 'npm run agent:build-embedding-host']);
+  assert.deepEqual([host.suppliedBy, host.action], ['script', 'bun run agent:build-embedding-host']);
 });
 
 test('the real checkout reports its inputs without failing and without building', () => {

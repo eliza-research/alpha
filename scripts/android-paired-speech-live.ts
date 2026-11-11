@@ -9,7 +9,7 @@ import { androidEnv } from './toolchain.ts';
 
 const mode = process.argv[2];
 if (process.argv.length !== 3 || (mode !== 'asr' && mode !== 'voice'))
-  throw Error('Usage: node scripts/android-paired-speech-live.ts asr|voice');
+  throw Error('Usage: bun scripts/android-paired-speech-live.ts asr|voice');
 
 const { ANDROID_SERIAL: serial, ALPHA_BUILD_ARCHIVE: archive, ALPHA_ASR_PROFILE: asrProfile } = process.env;
 if (!serial || !/^emulator-\d+$/.test(serial) || !archive)

@@ -6,11 +6,11 @@
 the web bundle and in every APK's `assets/public`.
 
 ```sh
-node scripts/generate-licenses.ts                    # regenerate
-node scripts/generate-licenses.ts --check            # fail if stale or an input is broken
-node scripts/generate-licenses.ts --packaged-runtime # also list the staged resident runtime (after agent:stage-android)
-node scripts/generate-licenses.ts --refresh-android  # re-resolve the Gradle runtime classpath (needs SDK/JDK)
-node --test test/licenses.test.mjs test/runtime-licenses.test.mjs test/font-license.test.mjs
+bun scripts/generate-licenses.ts                    # regenerate
+bun scripts/generate-licenses.ts --check            # fail if stale or an input is broken
+bun scripts/generate-licenses.ts --packaged-runtime # also list the staged resident runtime (after agent:stage-android)
+bun scripts/generate-licenses.ts --refresh-android  # re-resolve the Gradle runtime classpath (needs SDK/JDK)
+bun test test/licenses.test.mjs test/runtime-licenses.test.mjs test/font-license.test.mjs
 ```
 
 ## Policy: licences are included and flagged, never blocking
@@ -40,7 +40,7 @@ in `font-licenses.json` on the owner's statement and stays flagged; see below.
 
 Inputs:
 
-- `package-lock.json` production packages (not dev, not optional platform binaries), with the license
+- `bun.lock` production packages (not dev, not optional platform binaries), with the license
   files from `node_modules`.
 - Every font file under `apps/app/public`, identified from its OpenType name table, plus the
   declared `@fontsource/*` packages.

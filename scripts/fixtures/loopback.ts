@@ -14,7 +14,11 @@ export async function startLoopback(server: Server): Promise<string> {
 }
 
 export function stopLoopback(server: Server): Promise<void> {
+  // Bun's closeAllConnections() also stops the listener, so a following close() reports a server
+  // that is no longer running; that is the state this asks for.
+  const stopped = (error: unknown) => (error as NodeJS.ErrnoException | undefined)?.code === 'ERR_SERVER_NOT_RUNNING';
   return new Promise((resolve, reject) => {
-    server.close(error => error ? reject(error) : resolve());
+    try { server.close(error => error && !stopped(error) ? reject(error) : resolve()); }
+    catch (error) { if (stopped(error)) resolve(); else reject(error); }
   });
 }

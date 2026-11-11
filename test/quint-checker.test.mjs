@@ -84,7 +84,7 @@ test('runner records unexpected exceptions as failures and retains unfinished re
       write(`specs/quint/${family}/manifest.json`, JSON.stringify(family === 'application' ? [model] : []));
     }
     write('upstream.lock.json', JSON.stringify({ commit: 'fixture' }));
-    write('package-lock.json', '{}');
+    write('bun.lock', '{}');
     write('specs/quint/tlc.json', '{}');
     write('node_modules/@informalsystems/quint/package.json', JSON.stringify({ version: '0.33.1' }));
 

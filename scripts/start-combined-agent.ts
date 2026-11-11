@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Prepared launcher only: explicit frozen source + private profile; no automatic migration/cutover. */
 import {combinedCoreRuntime} from './core-state-patch.ts';
 import {superviseLauncherChild} from './launcher-child.ts';

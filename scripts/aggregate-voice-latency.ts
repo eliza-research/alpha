@@ -1,7 +1,7 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Aggregate exported per-turn voice timing records (apps/app/src/runtime/voice-timing.ts).
 //
-//   node scripts/aggregate-voice-latency.ts export-1.json [export-2.json ...] [--warm N>=20] [--cold N>=5] [--entry conversation|notes] [--out summary.json]
+//   bun scripts/aggregate-voice-latency.ts export-1.json [export-2.json ...] [--warm N>=20] [--cold N>=5] [--entry conversation|notes] [--out summary.json]
 //
 // Phases are measured from marks on one device clock, in milliseconds:
 //   recognition         transcript-ready - recording-end

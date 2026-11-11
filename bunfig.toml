@@ -1,0 +1,18 @@
+[install]
+# The lockfile is the reviewed dependency input; installs never rewrite it implicitly in CI
+# (`bun install --frozen-lockfile`).
+exact = true
+
+# Bun aliases import.meta.env to process.env. The app source treats an undefined import.meta.env
+# as "loaded without Vite" (host contract tests), so host scripts and tests keep it undefined.
+# Vite defines it itself in the bundles it builds.
+[define]
+"import.meta.env" = "undefined"
+
+[run]
+# Package scripts and their `#!/usr/bin/env node` tools (vite, tsc, cap, playwright) run on Bun.
+bun = true
+
+[test]
+# Raises Bun's five-second default per-test limit (see the file).
+preload = ["./test/support/bun-test-setup.ts"]

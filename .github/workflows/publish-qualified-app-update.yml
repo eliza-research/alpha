@@ -69,9 +69,9 @@ jobs:
           submodules: true
           path: qualified-product
           persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          node-version-file: .nvmrc
+          bun-version: "1.4.2"
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -112,16 +112,16 @@ jobs:
           # It can postdate the unsigned producer when an installed app rotates keys.
           cp android/release-signer.json qualified-product/android/release-signer.json
       - name: Install locked verifier dependencies without lifecycle scripts
-        run: npm ci --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Install locked product verifier dependencies without lifecycle scripts
         working-directory: qualified-product
-        run: npm ci --ignore-scripts
+        run: bun install --frozen-lockfile --ignore-scripts
       - name: Project the exact product's reviewed client sources
         working-directory: qualified-product
-        run: npm run upstream:prepare-client
+        run: bun run upstream:prepare-client
       - name: Reverify all signed bytes and exact reviewed Cloud voice evidence
         working-directory: qualified-product
-        run: npm run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
+        run: bun run android:verify -- --cloud-voice-evidence="$RUNNER_TEMP/qualified-stage/cloud-voice.json"
       - name: Require both qualified release rows before publication
         run: |
           python3 - <<'PY'
@@ -144,9 +144,9 @@ jobs:
         working-directory: qualified-product
         run: |
           if test -f scripts/deliver-app-update.mjs; then
-            node scripts/deliver-app-update.mjs --variant launcher --apk-manifest artifacts/apk-manifest.json
+            bun scripts/deliver-app-update.mjs --variant launcher --apk-manifest artifacts/apk-manifest.json
           else
-            node scripts/deliver-app-update.ts --variant launcher --apk-manifest artifacts/apk-manifest.json
+            bun scripts/deliver-app-update.ts --variant launcher --apk-manifest artifacts/apk-manifest.json
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

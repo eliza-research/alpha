@@ -4,7 +4,7 @@ import {mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileS
 import {tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {fileURLToPath, pathToFileURL} from 'node:url';
+import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces, literal, qmap, qset, verifyRefinementReceiptInputs} from '../specs/quint/refinement/check-traces.mjs';
 
 test('refinement literals preserve collection identity and reject unsupported values', () => {
@@ -93,10 +93,11 @@ test('checker exit preserves the tool failure separately from a model mismatch',
   const directory = mkdtempSync(join(tmpdir(), 'alpha-refinement-checker-exit-'));
   const preload = join(directory, 'exit.mjs');
   const output = join(directory, 'result.json');
-  const prior = process.env.NODE_OPTIONS;
+  const prior = process.env.BUN_OPTIONS;
   try {
     writeFileSync(preload, 'process.exit(27);\n');
-    process.env.NODE_OPTIONS = `--import=${pathToFileURL(preload).href}`;
+    // Bun reads BUN_OPTIONS (not NODE_OPTIONS); its preload flag takes a path.
+    process.env.BUN_OPTIONS = `--preload=${preload}`;
     await assert.rejects(checkTraces({model: 'DevelopmentHost', sources: [fileURLToPath(import.meta.url)],
       scope: 'bounded-component', out: output,
       traces: [{name: 'tool-exit', expect: {'s.active': qset([])}}]}), /Quint checker failed.*exit 27/);
@@ -105,8 +106,8 @@ test('checker exit preserves the tool failure separately from a model mismatch',
     assert.equal(result.exitCode, 27);
     assert.equal(result.signal, null);
   } finally {
-    if (prior === undefined) delete process.env.NODE_OPTIONS;
-    else process.env.NODE_OPTIONS = prior;
+    if (prior === undefined) delete process.env.BUN_OPTIONS;
+    else process.env.BUN_OPTIONS = prior;
     rmSync(directory, {recursive: true, force: true});
   }
 });

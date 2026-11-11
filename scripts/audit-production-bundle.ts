@@ -1,7 +1,7 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Audits a built web bundle (web-dist or an APK's extracted assets/public) for mock,
 // fixture and developer surfaces. Usage:
-//   node scripts/audit-production-bundle.ts <dir> [--expect-test-mocks]
+//   bun scripts/audit-production-bundle.ts <dir> [--expect-test-mocks]
 // The denylist is skipped only when the bundle's build-flags.json records testMocks:true.
 import {readFileSync,statSync,existsSync} from 'node:fs';
 import path from 'node:path';
@@ -160,7 +160,7 @@ function main(argv: string[]) {
   const flags = argv.filter(arg => arg.startsWith('--'));
   const unknown = flags.filter(flag => flag !== '--expect-test-mocks');
   if (args.length !== 1 || unknown.length) {
-    console.error('Usage: node scripts/audit-production-bundle.ts <dir> [--expect-test-mocks]');
+    console.error('Usage: bun scripts/audit-production-bundle.ts <dir> [--expect-test-mocks]');
     return 2;
   }
   const dir = path.resolve(args[0]);
