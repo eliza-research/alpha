@@ -39,7 +39,6 @@ import { leavePasswordEntry, leavePasswordManager, passwordEntryPage, passwordMa
 import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 
 type Bag = Record<string, any>;
-const providerModelPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
 type PhotoAccess = {scope:'full'|'partial'|'selected'|'denied';images:string;videos:string};
 const photoLibrary = registerPlugin<{libraryAccess():Promise<PhotoAccess>;requestLibraryAccess():Promise<PhotoAccess>;openLibrarySettings():Promise<void>}>('AlphaPhotos');
 /** Shared-storage access as Android reports it; `settings` opens Android's page without a prompt. */
@@ -787,6 +786,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     // confirmation can retain a previous selection without verifying its model.
     const residentProvider=connection.kind==='resident'&&connection.session&&!connection.providerStatusError?connection.providerStatus:null;
     const providerName=residentProvider?.provider==='elizacloud'?serviceName:'Cerebras';
+    const providerModelPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
     const inferenceModel=residentProvider?.configured===true&&typeof residentProvider.model==='string'&&providerModelPattern.test(residentProvider.model)
       ?modelLabel(providerName,residentProvider.model):'Not reported';
     const cloudLabel = account ? account.email||`Account ${account.userId.slice(0, 8)}` : 'Not signed in';
