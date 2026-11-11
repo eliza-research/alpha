@@ -14,13 +14,22 @@ async function openMail(page:Page){await page.getByRole('button',{name:'Inbox',e
 async function imageSetting(page:Page){await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));await page.getByRole('button',{name:'Settings',exact:true}).click();const current=()=>page.locator('[data-settings-page]:not([inert])').last();await current().getByRole('button',{name:'Apps',exact:true}).click();await current().getByRole('button',{name:'Inbox',exact:true}).click();return current().getByRole('switch',{name:'Load images in email',exact:true});}
 test('HTML email loads images by default, keeps inline links isolated, and saved opt-out survives reload',async({page})=>{
  let imageRequests=0;
+ const browserDialogs:string[]=[],unapprovedRequests:string[]=[];
+ page.on('dialog',async dialog=>{browserDialogs.push(dialog.message());await dialog.dismiss();});
+ await page.route('https://example.invalid/**',route=>{unapprovedRequests.push(route.request().url());return route.abort();});
  await page.route('https://images.invalid/**',route=>{imageRequests++;return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP4/x8AAwAB/2+Bq7YAAAAASUVORK5CYII=','base64')});});
  await setup(page);await openMail(page);
  const frame=page.frameLocator('iframe[title="Formatted email"]');
  await expect(frame.getByRole('img',{name:'Product'})).toBeVisible();await expect.poll(()=>imageRequests).toBeGreaterThan(0);
  await expect(page.getByRole('group',{name:'Links in this email'})).toHaveCount(0);
  await expect(frame.getByRole('link',{name:'Read more'})).toBeVisible();
- const review=page.waitForEvent('dialog').then(async dialog=>{expect(dialog.message()).toContain('Open example.invalid?');await dialog.dismiss();});await frame.getByRole('link',{name:'Read more'}).click();await review;
+ await frame.getByRole('link',{name:'Read more'}).click();
+ const review=page.getByRole('dialog',{name:'Open this link in Browser?',exact:true});
+ await expect(review).toContainText('https://example.invalid/read');
+ await expect(review.getByRole('button',{name:'Cancel',exact:true})).toBeFocused();
+ await review.getByRole('button',{name:'Cancel',exact:true}).click();await expect(review).toHaveCount(0);
+ await expect(frame.getByRole('link',{name:'Read more'})).toBeVisible();
+ expect(browserDialogs).toEqual([]);expect(unapprovedRequests).toEqual([]);
  await expect(page.locator('iframe[title="Formatted email"]')).toHaveAttribute('sandbox','allow-same-origin');
  expect(await page.evaluate(()=>(window as any).mailInjected)).toBeUndefined();
  const toggle=await imageSetting(page);await expect(toggle).toBeChecked();await toggle.click();await expect(toggle).not.toBeChecked();
