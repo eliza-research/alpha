@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { tsImport } from 'tsx/esm/api';
+import {tsImport} from '../../test/support/ts-import.mjs';
 import type { RemoteCredential, RemoteRequest, RemoteResponse } from '../../apps/app/src/runtime/remote-protocol.ts';
 import type { RemoteWorkflow, WorkflowApproval, WorkflowApprovalReceipt, WorkflowLifecycleReceipt, WorkflowMetadataReceipt, WorkflowRun } from '../../apps/app/src/runtime/workflow-protocol.ts';
 

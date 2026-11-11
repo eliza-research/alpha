@@ -149,7 +149,7 @@ export async function checkCloudConnectionNotices(extraSources = []) {
   checkClientFeatures();
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    'apps/app/index.html', 'vite.config.ts', 'upstream.lock.json', 'package-lock.json',
+    'apps/app/index.html', 'vite.config.ts', 'upstream.lock.json', 'bun.lock',
     'scripts/prepare-client-features.ts', modelPath, fileURLToPath(import.meta.url),
     'test/browser/flag-off-android.ts', 'test/browser/helpers/cloud-connection-notices.ts',
     'test/browser/helpers/native-cloud-plan-fixture.ts', 'test/browser/helpers/resident-agent-plugin.ts',

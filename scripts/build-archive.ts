@@ -1,7 +1,7 @@
 /**
  * Verify, build both distributions and retain immutable matching app/test artifacts.
  *
- *   node scripts/build-archive.ts [--test-mocks] test-results/<new-archive>
+ *   bun scripts/build-archive.ts [--test-mocks] test-results/<new-archive>
  *
  * Default archives the flag-off distribution build from artifacts/. --test-mocks
  * archives the separate, never-distributable test-mocks build from
@@ -21,7 +21,7 @@ const buildArgs=cli.filter(arg=>arg==='--test-mocks'||arg.startsWith('--runtime-
 const options=parseBuildArgs(buildArgs);
 const {testMocks}=options,runtimeProfile='native';
 const positional=cli.filter(arg=>!buildArgs.includes(arg));
-assert.ok(positional.length===1&&!positional[0].startsWith('--'),'Use: node scripts/build-archive.ts [--test-mocks] test-results/<new-archive>');
+assert.ok(positional.length===1&&!positional[0].startsWith('--'),'Use: bun scripts/build-archive.ts [--test-mocks] test-results/<new-archive>');
 const [destination]=positional;
 // Full verification compiles Calendar host tests which run real SQLite queries.
 // Check this before preparation or model verification starts.
@@ -53,7 +53,7 @@ finally{fs.closeSync(nativeStageLog);}
 // Complete normal sync before freezing; the build repeats sync and equality
 // below still rejects drift in this file or any other captured input.
 const capacitorStageLog=fs.openSync(path.join(destination,'capacitor-prestage.log'),'wx');
-try{execFileSync('npm',['run','android:sync'],{stdio:['ignore',capacitorStageLog,capacitorStageLog],timeout:600000,env:buildEnv});}
+try{execFileSync('bun',['run','android:sync'],{stdio:['ignore',capacitorStageLog,capacitorStageLog],timeout:600000,env:buildEnv});}
 finally{fs.closeSync(capacitorStageLog);}
 const before=snapshot();
 fs.writeFileSync(path.join(destination,'inputs-before.json'),JSON.stringify(before,null,2));
@@ -63,7 +63,7 @@ for(const command of ['verify','android:build']){
  const extra=command==='android:build'&&buildArgs.length?['--',...buildArgs]:[];
  // Full verification includes the real staged JVM/runtime campaigns. Retain a
  // finite two-hour verification budget and the existing twenty-minute APK budget.
- try{execFileSync('npm',['run',command,...extra],{stdio:['ignore',log,log],timeout:command==='verify'?7200000:1200000,env:command==='verify'?verifyEnv:buildEnv});}
+ try{execFileSync('bun',['run',command,...extra],{stdio:['ignore',log,log],timeout:command==='verify'?7200000:1200000,env:command==='verify'?verifyEnv:buildEnv});}
  finally{fs.closeSync(log);}
  console.log(command+': passed');
 }

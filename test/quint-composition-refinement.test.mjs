@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 
 test('current renderer, Calendar and voice composition refines source checkpoints', {timeout: 600000}, () => {
-  const result=spawnSync(process.execPath,['--import=tsx','--input-type=module','-e',`
+  const result=spawnSync(process.execPath,['-e',`
     import assert from 'node:assert/strict';
     import {runCompositionRefinement} from './specs/quint/refinement/composition/index.mjs';
     const result=await runCompositionRefinement(['test/quint-composition-refinement.test.mjs']);

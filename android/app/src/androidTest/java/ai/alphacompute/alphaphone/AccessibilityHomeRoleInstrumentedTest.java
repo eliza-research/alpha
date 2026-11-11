@@ -20,7 +20,7 @@ import org.junit.runner.RunWith;
  * nothing), Home in TalkBack order with the assistant controls read last, and the measured text
  * scale unchanged. Runs only where Alpha already holds the HOME role; on an owned emulator the
  * runner selects and restores it:
- *   npm run test:android:instrumentation -- --owned-emulator --avd NAME --serial emulator-NNNN \
+ *   bun run test:android:instrumentation -- --owned-emulator --avd NAME --serial emulator-NNNN \
  *     --variants launcher --home-role --classes AccessibilityHomeRole
  * Emulator evidence, not boot-time HOME, TalkBack itself or device acceptance.
  */

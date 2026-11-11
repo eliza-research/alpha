@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {EventEmitter} from 'node:events';
-import {registerHooks} from 'node:module';
+import {registerHooks} from '../../../../test/support/module-hooks.mjs';
 import {Readable} from 'node:stream';
 
 const bridge = new URL('../../../../scripts/browser-cloud-dev-bridge.ts', import.meta.url).href;

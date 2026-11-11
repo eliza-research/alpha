@@ -12,28 +12,29 @@ changes upstream and consume a reviewed commit; never edit the vendor checkout.
 
 ## Setup
 
-Use Node 26.13.0 (`.nvmrc`), Bun 1.4.2 for resident-agent preparation, and JDK 21.
+Use Bun 1.4.2 (`packageManager` in `package.json`) and JDK 21. Bun installs dependencies, runs every
+script and test, and is the agent runtime on the device; Node.js is not required.
 Native builds need Android SDK platform 36 and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
 
 ```sh
 git clone --recurse-submodules https://github.com/eliza-research/alpha.git
 cd alpha
-npm ci
-npm run verify
-npm run dev
+bun install --frozen-lockfile
+bun run verify
+bun run dev
 ```
 
-`npm run verify` runs deployment-output checks, source preparation, executable
+`bun run verify` runs deployment-output checks, source preparation, executable
 Quint models, LemmaScript function proofs, TypeScript, host tests, the production web build and its bundle audit.
-Host scripts use native TypeScript. `npm run typecheck:scripts` checks their interfaces.
+Host scripts use native TypeScript. `bun run typecheck:scripts` checks their interfaces.
 Host contract tests need a JDK and the `sqlite3` command-line tool on `PATH`
 for native Calendar queries. Archive builds check SQLite before verification.
 Tests that load the real SDK require the pinned Bun and a prepared SDK; set
 `ALPHA_REQUIRE_PREPARED_SDK=1` to fail instead of skipping when preparation is missing.
 Function proofs require Dafny 4.11.0 on `PATH`; `LEMMA_REQUIRE_BACKEND=1` makes a
 missing backend fail. A generation-only run records a skipped proof. CI installs the
-hash-pinned backend and requires proofs. `npm run quint:changed -- --base=<commit>`
+hash-pinned backend and requires proofs. `bun run quint:changed -- --base=<commit>`
 also model-checks changed models and their importing compositions, including their
 declared temporal checks and required historical counterexamples.
 On a heavily loaded machine, `ALPHA_TIMEOUT_SCALE=3` (1–10) lengthens refinement
@@ -42,21 +43,21 @@ subprocess deadlines so slow but live checkers are not reported as failures; CI 
 ## Development
 
 ```sh
-npm run dev                       # local agent and renderer
-npm run dev:ui                    # renderer only
-npm run dev:cloud                 # genuine account-bound Cloud development
-npm run test:browser              # Chromium, development surfaces enabled
-npm run test:browser:production   # production bundle
+bun run dev                       # local agent and renderer
+bun run dev:ui                    # renderer only
+bun run dev:cloud                 # genuine account-bound Cloud development
+bun run test:browser              # Chromium, development surfaces enabled
+bun run test:browser:production   # production bundle
 ```
 
 The web build is a development preview and the payload packaged into the APKs.
 Production builds start with live, empty or unconnected states. Mock data,
 fixtures and developer controls require exactly `ELIZA_DEV_ALLOW_TEST_MOCKS=1`.
-`npm run dev`, Playwright and explicit test-mocks builds enable this switch.
+`bun run dev`, Playwright and explicit test-mocks builds enable this switch.
 Add `?tools=1` to an enabled development server to show developer controls;
 the query cannot enable them in production or on Android.
 
-`npm run dev:cloud` uses a local resident with real Cloud sign-in and service
+`bun run dev:cloud` uses a local resident with real Cloud sign-in and service
 requests. Its default URL is `http://127.0.0.1:5318`.
 `ALPHA_CLOUD_ENVIRONMENT=staging` explicitly selects staging. Private account and
 resident profiles live under `~/.local/share/alphaphone/`. Existing accounts,
@@ -65,9 +66,9 @@ credentials and histories are not copied or reset.
 ## Android builds
 
 ```sh
-npm run android:build:inputs       # report missing build inputs
-npm run android:build:local        # prepare, build worker, stage runtime and build
-npm run android:verify            # inspect APK contents and signatures
+bun run android:build:inputs       # report missing build inputs
+bun run android:build:local        # prepare, build worker, stage runtime and build
+bun run android:verify            # inspect APK contents and signatures
 ```
 
 The build produces standalone and launcher, debug and release APKs under
@@ -84,7 +85,7 @@ Qualify the native libraries and APKs for the exact product and SDK revisions.
 
 There is one runtime profile. Every build packages libelizainference with the
 on-device speech models and local embeddings. Stage on-device voice inputs with
-`node scripts/android-stage-voice-models.ts --from <directory>`.
+`bun scripts/android-stage-voice-models.ts --from <directory>`.
 The resident source and workflow worker are prepared from the locked upstream
 revision. Build inputs must agree with the staged runtime and native libraries.
 
@@ -98,9 +99,9 @@ refuse them with a one-line message.
 Developer APKs may explicitly omit the runtime:
 
 ```sh
-npm run agent:prepare -- --source-only
-npm run android:build -- --allow-unpackaged-runtime
-npm run android:build -- --test-mocks
+bun run agent:prepare -- --source-only
+bun run android:build -- --allow-unpackaged-runtime
+bun run android:build -- --test-mocks
 ```
 
 Test-mocks APKs go to `artifacts/test-mocks/`. Production Android builds remove
@@ -113,17 +114,17 @@ outputs are unsigned. `ELIZAOS_VERSION_CODE` and `ELIZAOS_VERSION_NAME` override
 versions from `app.config.json`. Keep signing secrets outside the repository.
 
 The upstream consumer-host generator creates the ignored Gradle host from
-`android/consumer-host.json`. Run `npm run android:host` before direct Gradle or
+`android/consumer-host.json`. Run `bun run android:host` before direct Gradle or
 Android Studio use. Edit the descriptor and `android/app/product.gradle` for
 product build configuration. Dependency checksums remain in
 `android/gradle/verification-metadata.xml`; regenerate and review them with
-`npm run android:deps:write-verification` after dependency changes.
+`bun run android:deps:write-verification` after dependency changes.
 
 ## Device and image tooling
 
 ```sh
-npm run test:android:instrumentation -- --owned-emulator --avd <avd> --serial emulator-NNNN
-npm run aosp:stage -- --apk artifacts/launcher-debug.apk --development
+bun run test:android:instrumentation -- --owned-emulator --avd <avd> --serial emulator-NNNN
+bun run aosp:stage -- --apk artifacts/launcher-debug.apk --development
 ```
 
 Instrumentation uses an owned disposable emulator. Image staging emits an AOSP
@@ -348,7 +349,7 @@ Complete it in this order:
    exports the verified public certificates and fingerprints under
    `artifacts/release-public-identities/` for enrollment.
 2. Register `ai.alphacompute.alphaphone` in production and staging. Run
-   `node scripts/cloud-readiness.ts registration --environment <environment>`
+   `bun scripts/cloud-readiness.ts registration --environment <environment>`
    to print each environment's operator inputs. Keep the existing
    `/alphaphone/auth/callback` URLs and entitlement audience.
 
@@ -367,15 +368,15 @@ Complete it in this order:
      `STEWARD_GOOGLE_NATIVE_CLIENT_IDS`. Keep any active Android client IDs.
    - Add the new package and its release certificate SHA-256 to the production
      `ELIZA_ANDROID_ASSET_LINKS_JSON`. Generate the merged value with
-     `node scripts/render-assetlinks.ts --cloud-config --published https://eliza.app/.well-known/assetlinks.json`.
+     `bun scripts/render-assetlinks.ts --cloud-config --published https://eliza.app/.well-known/assetlinks.json`.
      Preserve existing grants and other products' entries. Deploy and verify
-     the published file with `node scripts/render-assetlinks.ts --check <web-origin>/.well-known/assetlinks.json`.
-   - Use `node scripts/cloud-deployment.ts --pages-registration` to update
+     the published file with `bun scripts/render-assetlinks.ts --check <web-origin>/.well-known/assetlinks.json`.
+   - Use `bun scripts/cloud-deployment.ts --pages-registration` to update
      Alpha's entry in the protected Cloud release Environment variable
      `ELIZA_NATIVE_AUTH_CALLBACKS_JSON` for production and staging. Keep one
      entry per callback URI and preserve the other products' entries. Verify
      the new Android target in the deployed Pages
-     callback page, run `node scripts/cloud-readiness.ts probe --environment <environment>`,
+     callback page, run `bun scripts/cloud-readiness.ts probe --environment <environment>`,
      then complete sign-in on the intended APK. Test with the new package
      selected to open its supported links if the old package is also installed.
      [Cloud registration #666](https://github.com/eliza-research/alphaphone/issues/666),
@@ -388,7 +389,7 @@ Complete it in this order:
    `--keep-fingerprint <debug-SHA256>` to the asset-link config generator.
    For native Google sign-in, add the package and that signer's SHA-1 in
    the staging Steward project. After deploying, run
-   `node scripts/cloud-readiness.ts probe --environment staging --signer <debug-SHA256>`.
+   `bun scripts/cloud-readiness.ts probe --environment staging --signer <debug-SHA256>`.
    The staging phone flow ends at plan admission. For production Cloud acceptance
    on the Pixel, use the admitted release APK. Android requires a separate device
    or fresh installation when the installed copy uses an incompatible signer.
@@ -438,6 +439,6 @@ operator does not enable OS enrollment or establish device acceptance.
 Build output belongs in ignored `web-dist/`, `artifacts/`, `test-results/` and
 `.eliza/` directories. Android host and Capacitor sync output are ignored too.
 Cloud deployment source is `scripts/cloud-deployment-policy.ts`; regenerate its
-renderer and Android bindings with `node scripts/cloud-deployment.ts`.
-`node scripts/cloud-deployment.ts --pages-registration` prints the public Pages
+renderer and Android bindings with `bun scripts/cloud-deployment.ts`.
+`bun scripts/cloud-deployment.ts --pages-registration` prints the public Pages
 callback registration for an operator without creating a `config/` directory.

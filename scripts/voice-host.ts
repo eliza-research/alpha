@@ -256,7 +256,7 @@ export function verifyVoiceHost(root: string, {allowAbsentRuntime = false, runti
   const record = readVoiceHost(root);
   const native = path.join(root, PARADEE_NATIVE);
   if (staging === 'absent') {
-    throw Error(`On-device voice outputs are not staged in ${PARADEE_NATIVE}; run node scripts/android-stage-voice-models.ts`);
+    throw Error(`On-device voice outputs are not staged in ${PARADEE_NATIVE}; run bun scripts/android-stage-voice-models.ts`);
   }
   runtime(root, {abis: selected});
   const build: ParadeeBuildRecord = JSON.parse(fs.readFileSync(path.join(native, 'build-record.json'), 'utf8'));
@@ -275,7 +275,7 @@ export function verifyVoiceHost(root: string, {allowAbsentRuntime = false, runti
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const {rest: args, abis} = abiArguments(process.argv.slice(2));
-  if (args[0] !== '--verify' || args.slice(1).some(arg => arg !== '--allow-absent')) throw Error('Usage: node scripts/voice-host.ts --verify [--allow-absent]');
+  if (args[0] !== '--verify' || args.slice(1).some(arg => arg !== '--allow-absent')) throw Error('Usage: bun scripts/voice-host.ts --verify [--allow-absent]');
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   console.log(JSON.stringify(verifyVoiceHost(root, {allowAbsentRuntime: args.includes('--allow-absent'), abis})));
 }

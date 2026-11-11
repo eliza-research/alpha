@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 
 test('historical Google Connect replays mounted Inbox and Calendar consent boundaries', {timeout: 360000}, async () => {
   const entry = new URL('../specs/quint/legacy/google-connect/check-google-connect-refinement.mjs', import.meta.url);

@@ -121,7 +121,7 @@ function preflightFixture(balance, options = {}) {
     NO_AGENT_SEND: 'No selected session', NO_AGENT_VOICE: 'No selected session',
     noSessionError: () => Error('No selected session'),
     phoneContextMessage: (text, context) => ({text, context}),
-    boundNavigation: () => undefined, cancelStoppedReply: () => {}, conversationMemory: new Map(),
+    cancelStoppedReply: () => {}, conversationMemory: new Map(),
     readNativeNetwork, System: {getNetworkStatus: async () => ({connected: true})},
     planCheckScope: () => 'current-account', retractReadiness: () => {},
     clearPersonalSetup: () => {},
@@ -132,6 +132,9 @@ function preflightFixture(balance, options = {}) {
   f.context.state = {...f.snapshot(), open: false, membershipBalance: balance,
     membershipDismissed: false, session: {sessionId: 'session-1'}};
   f.context.active = {kind: 'remote', remote: {session: {expiresAt: Date.now() + 60000}}};
+  // boundNavigation is a function the fixture source declared. It is replaced from inside the
+  // context: Bun's vm does not let a sandbox assignment replace a binding a script declared.
+  vm.runInContext('boundNavigation = () => undefined;', f.context);
   vm.runInContext(preflightCode, f.context);
   f.context.connectionController = f.context.preflightController;
   return {...f, get bindings() {return bindings;},
@@ -687,7 +690,9 @@ test('a plan check that cannot reach Cloud admits nothing and reports no plan as
       ownProviderSelected: () => false, residentBindable: () => true, residentEnvironment: () => 'production', makeCloud: () => client, stopEntitlementRefresh() {}, update: patch => { Object.assign(box.state, patch); },
       detachService: () => calls.push('detach'), queueResidentRebind: () => calls.push('rebind'), residentRebinds: () => ({queue: () => calls.push('rebind')}), runQueuedResidentRebind() {}};
     vm.createContext(box); vm.runInContext(recheckCode, box);
-    const admit = box.admitCloudResident; box.admitCloudResident = async signal => { const admission = await admit(signal); admitted.push(admission.binding); return admission; };
+    // Wrapped from inside the context: Bun's vm does not let a sandbox assignment replace a function the script declared.
+    box.observeAdmission = admit => async signal => { const admission = await admit(signal); admitted.push(admission.binding); return admission; };
+    vm.runInContext('admitCloudResident = observeAdmission(admitCloudResident);', box);
     await box.recheckResidentPlan();
     assert.equal(box.lastPlanRecheck, 0, `${name}: server failure preserves the retry clock`);
     assert.equal(box.networkLostUnder, null, `${name}: server failure is not a new network transition`);

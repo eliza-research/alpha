@@ -1,8 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Update a provisioned pilot unit in place with a higher-versionCode signed APK.
  *
- *   node scripts/pilot-update.ts --serial <adb serial> --alias <unit-name> \
+ *   bun scripts/pilot-update.ts --serial <adb serial> --alias <unit-name> \
  *     --apk-manifest <new build>/apk-manifest.json [--variant launcher|standalone] \
  *     [--build release|debug] [--units test-results/pilot-units] [--stock-home <package/activity>]
  *

@@ -44,7 +44,7 @@ out.badId=offers([result(1,'missed',{runId:'../x'})]).length;
 out.sameId=d.missedRunNowMutationId('run-2')===d.missedRunNowMutationId('run-2');
 console.log(JSON.stringify(out));`;
 test('Run now is offered only for the newest missed morning digest over a current reviewed phone source',()=>{
- const out=JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
+ const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
  assert.deepEqual(out.missed,[{runId:'run-2',sourceId:'s',sourceRevision:'r',sourceLabel:'Phone sources',scheduledAt:'2026-10-14T08:00:00Z',mutationId:'missed-run-now-run-2'}]);
  assert.equal(out.olderMissed.length,0,'a later result supersedes the missed one');
  assert.deepEqual(out.twoMissed,['run-2'],'only the newest missed occurrence, never a backlog');

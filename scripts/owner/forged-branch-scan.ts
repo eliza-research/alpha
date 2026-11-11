@@ -1,9 +1,9 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Issue #658: scan every current branch and tag of a remote for the 2026-10-27 forged-commit
  * markers WITHOUT checking anything out.
  *
- *   node scripts/owner/forged-branch-scan.ts [--git-dir path] [--remote origin] [--repo alphaphone] [--json]
+ *   bun scripts/owner/forged-branch-scan.ts [--git-dir path] [--remote origin] [--repo alphaphone] [--json]
  *
  * Reads the current heads with `git ls-remote` (a read of the remote; nothing is pushed), then for
  * each head whose objects exist locally (run `git fetch <remote>` first) it uses only `git
@@ -98,7 +98,7 @@ export const scanExitCode = (results: readonly ScanResult[]) => results.some(row
 function main(argv: readonly string[]) {
   let args;
   try { args = parseArgs(argv, {flags: ['--json'], options: ['--git-dir', '--remote', '--repo']}); }
-  catch (error) { console.error(`${error instanceof Error ? error.message : String(error)}\nUsage: node scripts/owner/forged-branch-scan.ts [--git-dir path] [--remote origin] [--repo alphaphone] [--json]`); return 2; }
+  catch (error) { console.error(`${error instanceof Error ? error.message : String(error)}\nUsage: bun scripts/owner/forged-branch-scan.ts [--git-dir path] [--remote origin] [--repo alphaphone] [--json]`); return 2; }
   const gitDir = path.resolve(args['git-dir'] ?? ROOT);
   const remote = args.remote ?? 'origin';
   const iocs = loadIocs();

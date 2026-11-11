@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import {coreRuntimeArguments} from './core-state-patch.ts';
 // Runs the patched upstream host with explicit local voice assets in an isolated profile.
 import {admitSpeech} from './host-speech-admission.ts';
@@ -20,7 +20,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const {values:options} = parseArgs({options:{source:{type:'string'}, profile:{type:'string'}, port:{type:'string'}, bun:{type:'string'}}, strict:true});
 const source = path.resolve(options.source || sourceDirectory(root));
 if (!fs.existsSync(path.join(source,'node_modules'))) {
-  console.error(`No installed runtime source at ${source}. Run \`npm run agent:prepare\` (creates artifacts/local-agent-resident-<commit> from the pinned commit), or pass --source with another prepared checkout of it. Never install into vendor/eliza.`);
+  console.error(`No installed runtime source at ${source}. Run \`bun run agent:prepare\` (creates artifacts/local-agent-resident-<commit> from the pinned commit), or pass --source with another prepared checkout of it. Never install into vendor/eliza.`);
   process.exit(2);
 }
 const profile = path.resolve(options.profile || path.join(os.homedir(), '.local/share/alphaphone/local-voice'));

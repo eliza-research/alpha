@@ -4,11 +4,6 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {spawnSync} from 'node:child_process';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
-// npm test starts each .mjs without a TypeScript loader; mirror owning runtime tests.
-if(!process.versions.bun&&!process.execArgv.some(value=>value==='tsx'||value==='--import=tsx')){
- const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});
- if(child.error)throw child.error;process.exit(child.status??1);
-}
 const {workflowRendererFixture}=await import('../scripts/workflow-renderer-fixture.ts');
 const {WorkflowProtocol,WorkflowHttpError,WorkflowAdmissionRejected,WorkflowMetadataRejected,WorkflowLifecycleRejected}=await import('../apps/app/src/runtime/workflow-protocol.ts');
 const {resolveWorkflowTap,readyTapStep,tapRecheck}=await import('../apps/app/src/runtime/workflow-device-contract.ts');

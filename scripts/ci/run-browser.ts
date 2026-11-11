@@ -13,7 +13,7 @@ export function browserArguments(raw = '[]', extra: readonly string[] = [], exis
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = browserArguments(process.env.ALPHA_CI_BROWSER_SPECS, process.argv.slice(2));
-  const result = spawnSync('npm', args, { stdio: 'inherit', env: process.env });
+  const result = spawnSync('bun', args, { stdio: 'inherit', env: process.env });
   if (result.error) throw result.error;
   process.exit(result.status ?? 1);
 }

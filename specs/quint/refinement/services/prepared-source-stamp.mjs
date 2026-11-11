@@ -75,8 +75,9 @@ fs.openSync = (file, ...args) => {
     } else {
       assert.equal(child.status, 1, child.stderr);
       assert.ok(refusal, child.stderr);
-      // The code excerpt in Node's error output can contain all branch messages.
-      // Match the actual error line to avoid admitting the wrong failure path.
+      // The code excerpt in Bun's error output can contain all branch messages.
+      // Match the actual error line ('error: message' for a plain Error, the bare
+      // message for a system error) to avoid admitting the wrong failure path.
       assert.match(child.stderr, refusal);
       result = 'refused';
     }
@@ -105,22 +106,22 @@ fs.openSync = (file, ...args) => {
 export async function checkPreparedSourceStamp(extraSources = []) {
   const sources = [...preparedSourceFixtureInputs, 'test/fixtures/prepare-local-agent.mjs', fileURLToPath(import.meta.url), ...extraSources];
   const driverHashes = captureInputs(sources);
-  const stampMismatch = /^Error: Prepared runtime differs or preparation was interrupted\./m;
+  const stampMismatch = /^error: Prepared runtime differs or preparation was interrupted\./m;
   const untracked = /^ConsumerSourceError: Unexpected untracked runtime source: /m;
   const cases = [
     ['requalify-and-reuse', [['prepare', 'exact'], ['prepare', 'ordinary'], ['prepare', 'stale']]],
     ['missing-or-stale-explicit-stamp', [['prepare', 'ordinary', stampMismatch], ['prepare', 'stale', stampMismatch]]],
-    ['unselected-and-linked-paths', [['prepare', 'noSelection', /^Error: Requalification requires an exact prior stamp /m],
-      ['prepare', 'linkedBackup', /^Error: Preserved stamp parent must contain no symlinks/m]]],
+    ['unselected-and-linked-paths', [['prepare', 'noSelection', /^error: Requalification requires an exact prior stamp /m],
+      ['prepare', 'linkedBackup', /^error: Preserved stamp parent must contain no symlinks/m]]],
     ['dirty-tracked-bytes', [['sourceStatus', 'dirty'], ['prepare', 'exact', /^ConsumerSourceError: Unexpected runtime source change: README\.md/m],
       ['sourceStatus', 'verified'], ['prepare', 'exact']]],
     ['wrong-base-revision', [['sourceStatus', 'wrongCommit'], ['prepare', 'exact', /^ConsumerSourceError: Prepared runtime base commit changed/m]]],
     ['preexisting-lock-refuses-source', [['placeSidecar', 'lock'], ['prepare', 'exact', untracked], ['clearSidecar', 'lock'], ['prepare', 'exact']]],
     ['preexisting-candidate-refuses-source', [['placeSidecar', 'candidate'], ['prepare', 'exact', untracked], ['clearSidecar', 'candidate'], ['prepare', 'exact']]],
-    ['occupied-backup-remains-owned', [['placeSidecar', 'backup'], ['prepare', 'exact', /^Error: EEXIST: .*prior-stamp\.json/m],
+    ['occupied-backup-remains-owned', [['placeSidecar', 'backup'], ['prepare', 'exact', /^EEXIST: .*prior-stamp\.json/m],
       ['clearSidecar', 'backup'], ['prepare', 'exact']]],
-    ['refused-candidate-leaves-prior-and-no-new-stamp', [['prepare', 'candidateRefusal', /^Error: fixture candidate open refused/m],
-      ['prepare', 'exact', /^Error: EEXIST: .*prior-stamp\.json/m], ['prepare', 'ordinary', stampMismatch]]],
+    ['refused-candidate-leaves-prior-and-no-new-stamp', [['prepare', 'candidateRefusal', /^error: fixture candidate open refused/m],
+      ['prepare', 'exact', /^EEXIST: .*prior-stamp\.json/m], ['prepare', 'ordinary', stampMismatch]]],
     ['reuse-still-authenticates-tracked-bytes', [['prepare', 'exact'], ['sourceStatus', 'dirty'],
       ['prepare', 'ordinary', /^ConsumerSourceError: Unexpected runtime source change: README\.md/m], ['sourceStatus', 'verified'], ['prepare', 'ordinary']]],
   ];

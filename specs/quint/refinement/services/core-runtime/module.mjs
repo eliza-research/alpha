@@ -47,7 +47,7 @@ async function loadCoreSource(contents, extraSources) {
     assert.ok(compiled.has(resolve(root, input)), `Unobserved bundled input ${input}`);
   }
   const history = materializeHistoricalFormalSources(root,extraSources);
-  const sources = [...compiled.keys(), fileURLToPath(import.meta.url), 'package-lock.json', 'upstream.lock.json', ...CORE_STATE_INPUTS, ...history.sources];
+  const sources = [...compiled.keys(), fileURLToPath(import.meta.url), 'bun.lock', 'upstream.lock.json', ...CORE_STATE_INPUTS, ...history.sources];
   const driverHashes = captureInputs(sources);
   for (const [path, digest] of compiled) assert.equal(driverHashes[resolve(path)], digest, 'Core source changed during compilation');
   for (const [path, digest] of Object.entries(prepared.receipt.inputHashes)) assert.equal(driverHashes[resolve(path)], digest, 'Core source input changed before capture');

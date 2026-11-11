@@ -18,5 +18,5 @@ request epochs. Mutations and their deferred refresh, provider replay,
 Maps return, linked selection and real provider transport remain separate.
 
 ```sh
-node --test test/quint-agent-calendar-refresh.test.mjs
+bun test test/quint-agent-calendar-refresh.test.mjs
 ```

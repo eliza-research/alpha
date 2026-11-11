@@ -29,7 +29,7 @@ export async function checkPlanAdmissionGrace(extraSources=[]){
  const temporary=mkdtempSync(join(tmpdir(),'quint-plan-admission-'));
  try{
   const implementation=await planAdmissionImplementation(),compiled=join(temporary,'plan-admission.cjs');writeFileSync(compiled,implementation.code);
-  const sources=[...implementation.sources,'package-lock.json',fileURLToPath(import.meta.url),'specs/quint/refinement/services/plan-admission-ports.mjs','specs/quint/refinement/services/support.mjs',compiled,...extraSources];
+  const sources=[...implementation.sources,'bun.lock',fileURLToPath(import.meta.url),'specs/quint/refinement/services/plan-admission-ports.mjs','specs/quint/refinement/services/support.mjs',compiled,...extraSources];
   const driverHashes=captureInputs(sources),traces=[],observations=[];
   const rebuilt=await planAdmissionImplementation();assert.equal(rebuilt.code,implementation.code,'Exact executable closure after capture');
   async function execute(f,trace,command){

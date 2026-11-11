@@ -44,12 +44,13 @@ test('CLI writes a failing report on an unlocked (orange) device',t=>{
  fs.writeFileSync(adb,`#!${process.execPath}\n${respond}\ntry{process.stdout.write(respond(process.argv.slice(4).join(' '),${JSON.stringify(expected)},process.env.FAKE_VERIFIED_BOOT_STATE))}catch(e){console.error(e.message);process.exit(1)}\n`,{mode:0o700});
  const {fingerprint,apkPath,...descriptorBody}=expected;fs.writeFileSync(descriptor,JSON.stringify(descriptorBody));
  const cli=(state,out)=>{
-  process.env.FAKE_VERIFIED_BOOT_STATE=state;const exit=process.exitCode;process.exitCode=undefined;
+  process.env.FAKE_VERIFIED_BOOT_STATE=state;// Bun ignores `process.exitCode=undefined`, so the neutral value is an explicit 0.
+  const exit=process.exitCode??0;process.exitCode=0;
   try{main(['--serial','ABC12345','--user','0','--descriptor',descriptor,'--fingerprint',fingerprint,'--apk-path',apkPath,'--out',out,'--adb',adb]);return [process.exitCode,JSON.parse(fs.readFileSync(out,'utf8'))];}
   finally{process.exitCode=exit;delete process.env.FAKE_VERIFIED_BOOT_STATE;}
  };
  const [okExit,ok]=cli('yellow',path.join(dir,'yellow.json'));
- assert.equal(okExit,undefined);assert.equal(ok.passed,true);assert.equal(ok.verifiedBoot.state,'yellow');
+ assert.equal(okExit,0);assert.equal(ok.passed,true);assert.equal(ok.verifiedBoot.state,'yellow');
  const [badExit,bad]=cli('orange',path.join(dir,'orange.json'));
  assert.equal(badExit,1);assert.equal(bad.passed,false);assert.match(bad.error,/"orange" is not green or yellow/);
 });

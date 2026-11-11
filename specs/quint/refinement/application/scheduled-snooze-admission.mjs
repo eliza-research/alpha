@@ -21,7 +21,7 @@ export async function checkScheduledSnoozeAdmission(extraSources = []) {
     resolveDir: root, loader: 'ts'}, bundle: true, write: false, format: 'cjs', platform: 'node', metafile: true};
   const graph = Object.keys(buildSync(buildOptions).metafile.inputs);
   const sources = [...new Set([modelPath, source, clockSource, 'upstream.lock.json',
-    '.eliza/client-features/.source.json', 'package-lock.json', fileURLToPath(import.meta.url),
+    '.eliza/client-features/.source.json', 'bun.lock', fileURLToPath(import.meta.url),
     ...graph.filter(path => !path.startsWith('<')), ...extraSources])];
   const driverHashes = captureInputs(sources);
   const built = buildSync(buildOptions);

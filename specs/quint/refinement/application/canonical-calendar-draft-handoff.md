@@ -21,5 +21,5 @@ Physical capture, OCR quality, general provider behavior, and installed
 process death are separate.
 
 ```sh
-node --test test/quint-canonical-calendar-draft-handoff.test.mjs
+bun test test/quint-canonical-calendar-draft-handoff.test.mjs
 ```

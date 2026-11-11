@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Real loopback resident + production Cloud services, with simulated surfaces disabled. */
 import {spawn,execFileSync} from 'node:child_process';
 import {existsSync} from 'node:fs';

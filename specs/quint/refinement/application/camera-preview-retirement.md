@@ -20,5 +20,5 @@ resume and physical media capture remain separate. The historical
 CameraSession model is unchanged.
 
 ```sh
-node --test test/camera-rapid-leave.test.mjs test/quint-camera-preview-retirement.test.mjs
+bun test test/camera-rapid-leave.test.mjs test/quint-camera-preview-retirement.test.mjs
 ```

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 
 test('native sign-in preserves cancellation ownership and bounds email, SMS and MFA attempts', {timeout: 360000}, () => {
-  const result = spawnSync(process.execPath, ['--import=tsx', '--input-type=module', '-e', `
+  const result = spawnSync(process.execPath, ['-e', `
     import {runSignInCoordinatorRefinement} from './specs/quint/refinement/services/sign-in-coordinator.mjs';
     const receipt = await runSignInCoordinatorRefinement(undefined, ['test/quint-signin-refinement.test.mjs']);
     if (!receipt.passed || !receipt.inputsUnchanged || !receipt.driverInputsBound || receipt.traces !== 21) throw Error('Incomplete sign-in refinement');

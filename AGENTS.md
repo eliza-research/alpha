@@ -6,9 +6,9 @@ This is one independent product. Do not import the other product's UI or identit
 make shared changes upstream and advance to a reviewed commit.
 `upstream.lock.json` records the shared source revision.
 `apps/app` owns this product's renderer; `android` owns its Android packaging.
-Run `npm run verify` and the Android build: `npm run android:build:local` (input check,
+Run `bun run verify` and the Android build: `bun run android:build:local` (input check,
 `agent:prepare`, `agent:build-workflow-worker`, `agent:stage-android`, `android:build`; staged
-on-device voice outputs first, see README); verify both distribution variants. Plain `npm run android:build` exits 2
+on-device voice outputs first, see README); verify both distribution variants. Plain `bun run android:build` exits 2
 before Gradle with the command to run when an input is missing; `-- --allow-unpackaged-runtime`
 builds non-distributable developer APKs. Mocks, fixtures and developer surfaces exist only with
 `ELIZA_DEV_ALLOW_TEST_MOCKS=1`; production builds must pass `scripts/audit-production-bundle.ts`.

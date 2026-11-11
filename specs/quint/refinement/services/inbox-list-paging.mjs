@@ -29,7 +29,7 @@ export function assertPagingEffects(fixture){
 export async function checkInboxListPaging(extraSources=[]){
  const temporary=mkdtempSync(join(tmpdir(),'quint-inbox-paging-'));
  try{
-  const implementation=await inboxPagingImplementation(temporary),sources=[...implementation.sources,'package-lock.json',...implementation.generated,fileURLToPath(import.meta.url),'specs/quint/refinement/services/inbox-list-paging-ports.mjs','specs/quint/refinement/services/support.mjs',...extraSources];
+  const implementation=await inboxPagingImplementation(temporary),sources=[...implementation.sources,'bun.lock',...implementation.generated,fileURLToPath(import.meta.url),'specs/quint/refinement/services/inbox-list-paging-ports.mjs','specs/quint/refinement/services/support.mjs',...extraSources];
   const driverHashes=captureInputs(sources);implementation.rebuildInboxDriver(await implementation.inboxDriverSources());
   assert.equal(await implementation.pagingArtifact(),readFileSync(implementation.generated[1],'utf8'),'Exact executable source after capture');
   const traces=[],states=[],counts=[];

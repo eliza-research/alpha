@@ -3,7 +3,7 @@
 `index.mjs` executes source adapters for the 22 application models and returns
 their checker receipts together with unobserved fields, unexercised actions and
 remaining environmental obligations. Run the source checks with
-`node --test test/quint-application-refinement.test.mjs` from the repository root.
+`bun test test/quint-application-refinement.test.mjs` from the repository root.
 
 These are bounded source-to-model comparisons. Each observation is taken from
 executed product code or its environmental port, then checked at the associated

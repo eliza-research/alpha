@@ -39,7 +39,7 @@ if (command === 'temporal' && !models.some(model => model.temporal?.length)) thr
 if (command === 'compare' && !models.some(model => model.currentChecks?.length || model.currentTemporalChecks?.length || model.expectedViolations?.length)) throw Error('Selected models declare no current-design comparisons');
 const cli = join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js');
 const version = readJson<{version: string}>(join(repositoryRoot, 'node_modules/@informalsystems/quint/package.json')).version;
-const inputPaths = [...new Set(['package-lock.json', 'scripts/check-quint.ts', 'scripts/quint-lib.ts', 'specs/quint/tlc.json',
+const inputPaths = [...new Set(['bun.lock', 'scripts/check-quint.ts', 'scripts/quint-lib.ts', 'specs/quint/tlc.json',
   ...allModels.map(model => model.path),
   ...['application', 'services', 'native', 'legacy'].map(family => `specs/quint/${family}/manifest.json`),
   ...allModels.flatMap(model => model.sources || [])])];

@@ -31,7 +31,7 @@ async function compile(extraSources){
   const inputs=output=>Object.keys(output.metafile.inputs).filter(path=>!path.startsWith('ports:'));
   const discovered=inputs(await build(buildOptions));
   const sources=[...new Set([...discovered, 'apps/app/src/build-flags.ts',
-    'apps/app/src/platform-plugins.ts','package-lock.json','upstream.lock.json',
+    'apps/app/src/platform-plugins.ts','bun.lock','upstream.lock.json',
     'scripts/prepare-client-features.ts',fileURLToPath(import.meta.url),...extraSources,
     '.eliza/client-features/.source.json'])];
   const driverHashes=captureInputs(sources);

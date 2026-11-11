@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Opt-in real-provider qualification. Owns only a new synthetic profile. */
 import fs from 'node:fs';
 import os from 'node:os';

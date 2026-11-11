@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 
 test('Inbox cleanup checks each durable write, lost reply, stale binding and peer save', {timeout: 180000}, () => {
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
+  const result = spawnSync(process.execPath, ['-e', `
     import assert from 'node:assert/strict';
     import {runInboxCleanupRefinement} from './specs/quint/refinement/services/inbox-cleanup.mjs';
     const {receipts} = await runInboxCleanupRefinement();

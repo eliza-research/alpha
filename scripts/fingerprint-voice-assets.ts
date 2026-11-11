@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Read-only hashes of explicitly configured local voice assets and discoverable dylib closure. macOS only. */
 import {admitSpeech} from './host-speech-admission.ts';
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {execFileSync} from 'node:child_process';

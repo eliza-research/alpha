@@ -6,6 +6,7 @@ import {chromium, expect as baseExpect} from '@playwright/test';
 import {createServer} from 'vite';
 import {checkClientFeatures} from '../../../../scripts/prepare-client-features.ts';
 import {filesWithin, sha256, repositoryRoot as root} from '../../../../scripts/quint-lib.ts';
+import {readBunLock} from '../../../../scripts/bun-lock.ts';
 import {flagOffAndroid, fenceNetwork} from '../../../../test/browser/flag-off-android.ts';
 import {residentStub} from '../../../../test/browser/resident-stub.ts';
 import {captureInputs, checkTraces} from '../../refinement/check-traces.mjs';
@@ -225,7 +226,7 @@ async function mounted(extraSources) {
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
     'upstream.lock.json',
-    'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json', 'upstream.lock.json',
+    'apps/app/index.html', 'vite.config.ts', 'package.json', 'bun.lock', 'upstream.lock.json',
     'scripts/prepare-client-features.ts', 'scripts/quint-lib.ts', licenses, comparison,
     'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts',
     'test/browser/helpers/native-navigation-protocol.ts',
@@ -234,8 +235,7 @@ async function mounted(extraSources) {
   const driverHashes = captureInputs(sources);
   const noticeBytes = readFileSync(licenses);
   assert.equal(sha256(noticeBytes), driverHashes[licenses]);
-  const rendererReactVersion = JSON.parse(readFileSync(resolve(root, 'package-lock.json'), 'utf8'))
-    .packages['node_modules/react'].version;
+  const rendererReactVersion = readBunLock(root).packages['node_modules/react'].version;
   const notices = JSON.parse(noticeBytes).filter(item => item.name === 'react' && item.version === rendererReactVersion);
   assert.equal(notices.length, 1, 'Packaged licenses identify the renderer React component');
   const watched = new Set([main, settings, adapter, shell]);

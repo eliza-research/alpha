@@ -17,5 +17,5 @@ Inventory loading and native launch have separate models. A rejected remove
 leaves the OS-level listener outcome unresolved.
 
 ```sh
-node --test test/quint-launcher-observer.test.mjs
+bun test test/quint-launcher-observer.test.mjs
 ```

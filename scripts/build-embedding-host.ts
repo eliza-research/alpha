@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Reproduce and stage the ARM64 embedding host from pinned source.
  * --status reports staged inputs; --candidate builds without staging; --offline forbids fetching.
@@ -199,7 +199,7 @@ export function run(root: string, {status = false, offline = false, candidate = 
     throw new Stop(2, `Staged ${different.map(row => row.name).join(', ')} in android/app/src/main/jniLibs/${manifest.abi} is not the reviewed bytes. Review where it came from and remove it; this step never replaces a staged library.`);
   const missing = `Embedding host not staged: ${staged.filter(row => row.state === 'missing').map(row => row.name).join(', ')} missing from android/app/src/main/jniLibs/${manifest.abi}.`;
   if (status) {
-    console.log(`${missing} Run: npm run agent:build-embedding-host`);
+    console.log(`${missing} Run: bun run agent:build-embedding-host`);
     return 3;
   }
   const output = path.join(workspace, `build-${manifest.forkPin}`);
@@ -218,7 +218,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const root = path.resolve(import.meta.dirname, '..');
   const from = args.length === 2 && args[0] === '--from' && !args[1].startsWith('--') ? args[1] : undefined;
   if (from === undefined && args.some(arg => !['--status', '--offline', '--candidate'].includes(arg))) {
-    console.error('Usage: node scripts/build-embedding-host.ts [--status | --candidate] [--offline] | --from <directory>');
+    console.error('Usage: bun scripts/build-embedding-host.ts [--status | --candidate] [--offline] | --from <directory>');
     process.exit(2);
   }
   try {

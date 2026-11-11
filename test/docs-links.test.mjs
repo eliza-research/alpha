@@ -1,4 +1,4 @@
-// Every product script path and npm script named in README.md and the PRD must exist.
+// Every product script path and package script named in README.md and the PRD must exist.
 // Paths that are relative to the pinned upstream checkout (for example
 // `packages/os/browser/scripts/...` written as `scripts/...` beside a vendor path)
 // are accepted only when that file really exists under vendor/eliza and the same
@@ -47,13 +47,13 @@ export function scriptReferences(text) {
 }
 
 export function npmScriptReferences(text) {
-  return [...text.matchAll(/\bnpm run ([A-Za-z0-9][A-Za-z0-9:_.-]*[A-Za-z0-9_])/g)].map(match => ({ name: match[1], index: match.index }));
+  return [...text.matchAll(/\bbun run ([A-Za-z0-9][A-Za-z0-9:_.-]*[A-Za-z0-9_])/g)].map(match => ({ name: match[1], index: match.index }));
 }
 
 test('reference extraction ignores longer vendor paths and keeps product paths', () => {
   const found = scriptReferences('Use `scripts/qualify-head.ts`, [speech](../scripts/local-speech/README.md) and `packages/app/scripts/mobile/context.ts`.').map(item => item.reference);
   assert.deepEqual(found, ['scripts/qualify-head.ts', 'scripts/local-speech/README.md']);
-  assert.deepEqual(npmScriptReferences('Run `npm run verify` then npm run android:build -- --x.').map(item => item.name), ['verify', 'android:build']);
+  assert.deepEqual(npmScriptReferences('Run `bun run verify` then bun run android:build -- --x.').map(item => item.name), ['verify', 'android:build']);
 });
 
 test('an upstream-relative script path needs its upstream directory named in the same document', () => {
@@ -79,12 +79,12 @@ test('every scripts/... path in README.md and the PRD exists in this repository 
   assert.deepEqual(failures, [], 'Replace or remove references to scripts that no longer exist');
 });
 
-test('every `npm run X` in README.md and the PRD names a root package.json script', () => {
+test('every `bun run X` in README.md and the PRD names a root package.json script', () => {
   const scripts = JSON.parse(read('package.json')).scripts;
   const failures = [];
   for (const file of docs) {
     const text = read(file);
-    for (const { name, index } of npmScriptReferences(text)) if (!Object.hasOwn(scripts, name)) failures.push(`${file}:${lineOf(text, index)}: npm run ${name}`);
+    for (const { name, index } of npmScriptReferences(text)) if (!Object.hasOwn(scripts, name)) failures.push(`${file}:${lineOf(text, index)}: bun run ${name}`);
   }
   assert.deepEqual(failures, []);
 });
@@ -93,7 +93,7 @@ test('every `npm run X` in README.md and the PRD names a root package.json scrip
 // of the aggregate smoke runners. Historical records describe those events in prose.
 const retired = [
   [/[\w-]+-smoke\.mjs/, 'removed smoke runner'],
-  [/\bandroid:smoke\b/, 'removed npm script'],
+  [/\bandroid:smoke\b/, 'removed package script'],
   [/smoke lane/i, 'removed CI lane'],
   [/qualify-stock-video/, 'removed CI qualification step'],
   [/Cloud-only execution/i, 'superseded by the Android-resident agent'],
