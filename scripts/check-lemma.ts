@@ -2,6 +2,7 @@ import {spawnSync} from 'node:child_process';
 import {mkdirSync, readFileSync, readdirSync, writeFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {repositoryRoot, sha256} from './quint-lib.ts';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 
 if (process.argv.length > 2) {console.error('check-lemma takes no options; the root inventory defines the complete proof gate'); process.exit(2);}
 const root = repositoryRoot;
@@ -29,7 +30,7 @@ writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
 let exitCode = 1;
 let lastOutput = "";
 function run(command: string, args: string[]) {
-  const result = spawnSync(command, args, {cwd: root, encoding: 'utf8', timeout: 120_000});
+  const result = spawnSync(command, args, {cwd: root, encoding: 'utf8', timeout: scaledTimeout(120_000)});
   const output = `${result.stdout || ''}${result.stderr || ''}`;
   lastOutput = output;
   process.stdout.write(output);
@@ -50,6 +51,7 @@ try {
   if (config['proof-dir'] !== 'specs/lemma') throw Error('The reviewed proof directory must be specs/lemma');
   const expectedProofs = files.flatMap(file => [file.replace(/\.ts$/, '.dfy'), file.replace(/\.ts$/, '.dfy.gen')].map(path => `specs/lemma/${path}`));
   inputs = [...new Set(['bun.lock', 'lemmascript.json', 'LemmaScript-files.txt', 'scripts/check-lemma.ts',
+    'specs/quint/refinement/timeouts.mjs',
     ...files, ...expectedProofs, ...proofsWithin(join(root, 'specs/lemma')).map(path => path.slice(root.length + 1))])];
   receipt.inputs = hashes();
   const frozenProofs = new Map(expectedProofs.map(file => [file, readFileSync(join(root, file))]));
@@ -92,7 +94,7 @@ try {
     throw Error(`Stale LemmaScript generated inputs: ${changed.join(', ')}. Review and commit regenerated artifacts.`);
   }
   if (!generatedOK) throw Error('LemmaScript generation or additions-only check failed');
-  const backend = spawnSync('dafny', ['--version'], {encoding: 'utf8', timeout: 10000});
+  const backend = spawnSync('dafny', ['--version'], {encoding: 'utf8', timeout: scaledTimeout(10_000)});
   receipt.dafnyVersion = backend.status === 0 ? backend.stdout.trim() : null;
   // Official archives may include the release's Git commit as SemVer build metadata.
   if (!/^4\.11\.0(?:\+[0-9a-f]{40})?$/.test(receipt.dafnyVersion ?? '')) {
