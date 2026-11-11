@@ -1,12 +1,16 @@
-// Foreground timer and bridge-call ownership. Android/package trust and actual
-// eventual network availability remain independent environmental obligations.
+// Foreground timer, cached offer ownership and bridge-call admission. Android
+// verifies the actual digest and offered APK at the install boundary.
 module AutomaticAppUpdateSchedule {
   type State = {active: bool, disposed: bool, busy: bool, failures: int, wakeAt: int, valid: bool}
+  // Zero is absent or unbound. Positive values identify distinct cached offer
+  // objects with a native digest, including a newer read of the same bytes.
   type Poll = {phase: str, capability: str, pending: bool, candidate: bool, requests: int,
+    cachedOffer: int, attemptedOffer: int,
     lastCapability: str, lastPending: bool, lastCandidate: bool, lastCurrent: bool, lastIdle: bool}
   var state: State
   var poll: Poll
   val emptyPoll = {phase:"idle", capability:"unread", pending:false, candidate:false, requests:0,
+    cachedOffer:0, attemptedOffer:0,
     lastCapability:"unread", lastPending:false, lastCandidate:false, lastCurrent:false, lastIdle:false}
   var now: int
   action init = all {
@@ -47,31 +51,43 @@ module AutomaticAppUpdateSchedule {
   }
   action readCheck(available: bool, idle: bool): bool = all {
     state.busy, poll.phase == "check", now' = now, state' = state,
-    poll' = {...poll, phase: if (not(available)) "retry"
-      else if (not(state.valid)) "canceled" else if (not(idle)) "retry" else "facts"}
+    poll' = {...poll, cachedOffer:if (available) poll.cachedOffer else 0,
+      phase: if (not(available)) "retry"
+        else if (not(state.valid)) "canceled" else if (not(idle)) "retry" else "facts"}
   }
-  action readFacts(capability: str, pending: bool, candidate: bool, idle: bool): bool = all {
+  action readFacts(capability: str, pending: bool, candidate: bool, idle: bool, offer: int): bool = all {
     state.busy, poll.phase == "facts",
     Set("starting", "supported", "permission-required", "unsupported").contains(capability),
+    offer >= 0 and offer <= 3,
     now' = now, state' = state,
-    poll' = {...poll, capability:capability, pending:pending, candidate:candidate,
+    poll' = {...poll, capability:capability, pending:pending, candidate:candidate, cachedOffer:offer,
       phase: if (not(state.valid)) "canceled" else if (not(idle)) "retry"
         else if (pending) "answered" else if (capability == "starting") "retry"
-        else if (capability != "supported" or not(candidate)) "answered" else "ready"}
+        else if (capability != "supported" or not(candidate)) "answered"
+        else if (offer == 0) "retry" else "ready"}
   }
   action dispatch = all {
     state.busy, state.active, state.valid, not(state.disposed), poll.phase == "ready",
     poll.capability == "supported", not(poll.pending), poll.candidate, poll.requests < 3,
+    poll.cachedOffer > 0,
     now' = now, state' = state,
-    poll' = {...poll, phase:"install", requests:poll.requests + 1,
+    poll' = {...poll, phase:"install", requests:poll.requests + 1, attemptedOffer:poll.cachedOffer,
       lastCapability:poll.capability, lastPending:poll.pending,
       lastCandidate:poll.candidate, lastCurrent:state.valid, lastIdle:true}
   }
+  action replaceOffer(offer: int): bool = all {
+    state.busy, poll.phase == "install",
+    offer > 0 and offer <= 3 and offer != poll.cachedOffer and offer != poll.attemptedOffer,
+    now' = now, state' = state, poll' = {...poll, cachedOffer:offer}
+  }
   action installReply(status: str): bool = all {
     state.busy, poll.phase == "install",
-    Set("starting", "permission-required", "unsupported", "answered").contains(status),
+    Set("starting", "permission-required", "unsupported", "offer-unavailable", "answered").contains(status),
     now' = now, state' = state,
-    poll' = {...poll, phase:if (status == "starting") "retry" else "answered"}
+    poll' = {...poll,
+      cachedOffer: if (status == "offer-unavailable" and poll.cachedOffer == poll.attemptedOffer) 0
+        else poll.cachedOffer,
+      phase: if (Set("starting", "offer-unavailable").contains(status)) "retry" else "answered"}
   }
   action finishPoll(failed: bool): bool = all {
     state.busy,
@@ -85,7 +101,7 @@ module AutomaticAppUpdateSchedule {
   }
   val NativeRequestWasAdmitted = poll.requests == 0 or
     (poll.lastCapability == "supported" and not(poll.lastPending) and poll.lastCandidate
-      and poll.lastCurrent and poll.lastIdle)
+      and poll.lastCurrent and poll.lastIdle and poll.attemptedOffer > 0)
   val PollHasOneOwner = poll.phase == "idle" or state.busy
   val safety = NativeRequestWasAdmitted and PollHasOneOwner and
     poll.requests >= 0 and poll.requests <= 3 and state.failures >= 0 and state.failures <= 20 and
@@ -100,9 +116,11 @@ module AutomaticAppUpdateSchedule {
     nondet pending = Set(false, true).oneOf()
     nondet candidate = Set(false, true).oneOf()
     nondet idle = Set(false, true).oneOf()
-    readFacts(capability, pending, candidate, idle),
+    nondet offer = 0.to(3).oneOf()
+    readFacts(capability, pending, candidate, idle, offer),
     dispatch,
-    nondet status = Set("starting", "permission-required", "unsupported", "answered").oneOf()
+    nondet offer = 1.to(3).oneOf(); replaceOffer(offer),
+    nondet status = Set("starting", "permission-required", "unsupported", "offer-unavailable", "answered").oneOf()
     installReply(status),
     finishPoll(true), finishPoll(false),
     nondet time = 0.to(20).oneOf(); advance(time),
@@ -123,38 +141,55 @@ module AutomaticAppUpdateSchedule {
     .then(dispose).expect(not(state.valid)).then(finish(true)).then(active(true))
     .expect(safety and state.disposed and not(state.active))
   run coldSnapshotRetriesBeforeAnyNativeRequestTest = init.then(active(true)).then(beginPoll)
-    .then(readCheck(true, true)).then(readFacts("starting", false, true, true)).then(finishPoll(true))
+    .then(readCheck(true, true)).then(readFacts("starting", false, true, true, 1)).then(finishPoll(true))
     .expect(safety and poll.requests == 0 and state.wakeAt == 1)
     .then(advance(1)).then(beginPoll).then(readCheck(true, true))
-    .then(readFacts("supported", false, true, true)).then(dispatch)
+    .then(readFacts("supported", false, true, true, 1)).then(dispatch)
     .then(installReply("answered")).then(finishPoll(false))
     .expect(safety and poll.requests == 1 and state.failures == 0 and state.wakeAt == 5)
   run coldInstallReplyRetriesWithoutOverlappingTest = init.then(active(true)).then(beginPoll)
-    .then(readCheck(true, true)).then(readFacts("supported", false, true, true)).then(dispatch)
+    .then(readCheck(true, true)).then(readFacts("supported", false, true, true, 1)).then(dispatch)
     .then(installReply("starting")).then(finishPoll(true))
     .expect(safety and poll.requests == 1 and state.wakeAt == 1)
     .then(advance(1)).then(beginPoll).then(readCheck(true, true))
-    .then(readFacts("supported", false, true, true)).then(dispatch)
+    .then(readFacts("supported", false, true, true, 1)).then(dispatch)
     .then(installReply("answered")).then(finishPoll(false))
     .expect(safety and poll.requests == 2 and state.failures == 0)
   run pendingPrecedesColdCapabilityAndDoesNotDispatchTest = init.then(active(true)).then(beginPoll)
-    .then(readCheck(true, true)).then(readFacts("starting", true, true, true)).then(finishPoll(false))
+    .then(readCheck(true, true)).then(readFacts("starting", true, true, true, 1)).then(finishPoll(false))
     .expect(safety and poll.requests == 0 and state.failures == 0 and state.wakeAt == 4)
   run lateColdFactsAfterResumeLoseAuthorityTest = init.then(active(true)).then(beginPoll)
     .then(readCheck(true, true)).then(active(false)).then(active(true))
-    .then(readFacts("starting", false, true, true)).then(finishPoll(false))
+    .then(readFacts("starting", false, true, true, 1)).then(finishPoll(false))
     .expect(safety and poll.requests == 0 and state.wakeAt == 0)
   run disposedColdReplyNeverRearmsTest = init.then(active(true)).then(beginPoll)
-    .then(readCheck(true, true)).then(readFacts("supported", false, true, true)).then(dispatch)
+    .then(readCheck(true, true)).then(readFacts("supported", false, true, true, 1)).then(dispatch)
     .then(dispose).then(installReply("starting")).then(finishPoll(true)).then(active(true))
     .expect(safety and state.disposed and not(state.active) and poll.requests == 1)
-  action readyPoll = init.then(active(true)).then(beginPoll)
-    .then(readCheck(true, true)).then(readFacts("supported", false, true, true))
-  run readyCannotBackgroundTest = readyPoll.then(active(false).fail())
-  run readyCannotDisposeTest = readyPoll.then(dispose.fail())
-  run readyDispatchCompletesTest = readyPoll
+  action readyPoll = active(true).then(beginPoll)
+    .then(readCheck(true, true)).then(readFacts("supported", false, true, true, 1))
+  run readyCannotBackgroundTest = init.then(readyPoll).then(active(false).fail())
+  run readyCannotDisposeTest = init.then(readyPoll).then(dispose.fail())
+  run readyDispatchCompletesTest = init.then(readyPoll)
     .expect(poll.phase == "ready" and state.valid and state.active)
     .then(dispatch).then(installReply("answered")).then(finishPoll(false))
     .expect(safety and poll.requests == 1 and not(state.busy))
+  run unboundOfferBacksOffBeforeDispatchTest = init.then(active(true)).then(beginPoll)
+    .then(readCheck(true, true)).then(readFacts("supported", false, true, true, 0)).then(finishPoll(true))
+    .expect(safety and poll.requests == 0 and state.wakeAt == 1)
+    .then(advance(1)).then(beginPoll).then(readCheck(true, true))
+    .then(readFacts("supported", false, true, true, 1)).then(dispatch)
+    .then(installReply("answered")).then(finishPoll(false))
+    .expect(safety and poll.attemptedOffer == 1 and poll.requests == 1)
+  run unavailableOfferClearsExactCacheTest = init.then(readyPoll).then(dispatch)
+    .then(installReply("offer-unavailable")).then(finishPoll(true))
+    .expect(safety and poll.cachedOffer == 0 and state.wakeAt == 1)
+    .then(advance(1)).then(beginPoll).then(readCheck(true, true))
+    .then(readFacts("supported", false, true, true, 2)).then(dispatch)
+    .then(installReply("answered")).then(finishPoll(false))
+    .expect(safety and poll.attemptedOffer == 2 and poll.requests == 2)
+  run unavailableOfferKeepsConcurrentRefreshTest = init.then(readyPoll).then(dispatch).then(replaceOffer(2))
+    .then(installReply("offer-unavailable")).then(finishPoll(true))
+    .expect(safety and poll.cachedOffer == 2 and poll.attemptedOffer == 1 and state.wakeAt == 1)
 
 }

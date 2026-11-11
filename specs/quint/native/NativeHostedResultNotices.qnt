@@ -64,17 +64,18 @@ module NativeHostedResultNotices {
     } else all {
       mode != "repair-write",
       val removed = superseded(key)
+      val priorPosted = s.posted.exclude(removed.union(Set(key)))
       val phase = if (Set("permission", "security").contains(mode)) "denied"
         else if (mode == "complete") "posted" else "dispatching"
       val effect = Set("complete", "after-post").contains(mode)
       s' = if (mode == "before-write")
-        { ...s, posted: s.posted.exclude(removed), outcome: "rejected" }
+        { ...s, posted: priorPosted, outcome: "rejected" }
       else {
         ...s,
         phases: removed.fold(s.phases.set(key, phase), (rows, prior) => rows.set(prior, "superseded")),
         dispatchGenerations: s.dispatchGenerations.set(key, s.dispatchGenerations.get(key) + 1),
         digests: s.digests.set(key, s.retained.get(key)),
-        posted: s.posted.exclude(removed).union(if (effect) Set(key) else Set()),
+        posted: priorPosted.union(if (effect) Set(key) else Set()),
         postCount: if (effect) s.postCount.set(key, s.postCount.get(key) + 1) else s.postCount,
         outcome: if (Set("before-post", "after-post").contains(mode)) "rejected" else phase
       }
@@ -190,6 +191,12 @@ module NativeHostedResultNotices {
 
   run lostPostedReplyRepairsExactRowTest = init.then(retain(1, 1)).then(publish(1, "after-post"))
     .then(publish(1, "complete")).expect(s.outcome == "posted" and s.postCount.get(1) == 1)
+
+  run interruptedReplacementCannotAdoptOlderPostTest = posted.then(capture(1, true, true))
+    .then(retain(1, 2)).then(publish(1, "before-write"))
+    .expect(not(s.posted.contains(1)) and not(readRetained))
+    .then(publish(1, "before-post")).then(publish(1, "complete"))
+    .expect(s.outcome == "uncertain" and s.postCount.get(1) == 1 and readRetained and readToken == 1)
 
   run pendingProtectedFromSupersessionTest = posted.then(capture(1, false, true))
     .then(retain(2, 1)).then(publish(2, "complete"))

@@ -1999,6 +1999,7 @@
     "init": "init",
     "step": "step",
     "invariant": "safety",
+    "verifyBackend": "tlc",
     "sources": [
       "apps/app/src/browser/journal-retention.ts",
       "apps/app/src/browser/calendar.ts",
@@ -2006,7 +2007,8 @@
       "apps/app/src/browser/calendar-store.ts",
       "apps/app/src/browser/reminder-store.ts",
       "apps/app/src/browser/calendar-deletions.ts",
-      "apps/app/src/browser/reminder-deletions.ts"
+      "apps/app/src/browser/reminder-deletions.ts",
+      "specs/quint/refinement/application/browser-journal-retention.mjs"
     ],
     "tests": [
       "receiptsAtCountKeepStableLegacyOrderTest",
@@ -2025,7 +2027,8 @@
       "SettledBoundAndClaims"
     ],
     "abstractions": [
-      "Exact production bounds use up to 205 initial receipts, 136 deletion rows and 140 claims, finite wall/elapsed timestamps, one clock advance and ordered record identities.",
+      "Exact production cutoffs are 200 definite receipts and 127 settled deletions. Replay admits up to 205 initial receipts, 136 deletion rows and 140 claims. UTC day and within-day milliseconds preserve the admitted wall times exactly.",
+      "TLC explores the full finite graph from four concrete seeds, including interleavings of receipt and deletion actions.",
       "Missing timestamp is age-exempt and sorts at zero. Pending rows and post-trim append are modeled separately from the bounded definite/settled cohort.",
       "Valid current and legacy rows, including dangling claims, are modeled. Deleted row recovery, polling, malformed data and physical browser transaction scheduling are separate."
     ],
@@ -3821,7 +3824,10 @@
       "disposedColdReplyNeverRearmsTest",
       "readyCannotBackgroundTest",
       "readyCannotDisposeTest",
-      "readyDispatchCompletesTest"
+      "readyDispatchCompletesTest",
+      "unboundOfferBacksOffBeforeDispatchTest",
+      "unavailableOfferClearsExactCacheTest",
+      "unavailableOfferKeepsConcurrentRefreshTest"
     ],
     "sources": [
       "apps/app/src/prototype/settings-adapter.ts",
@@ -3833,6 +3839,7 @@
       "now": "Controlled clock supplied to the scheduler",
       "poll.phase": "Actual product poll awaiting manifest, native facts or native install promise; completion is observed from the shared scheduler",
       "poll.capability/pending/candidate": "Controlled native fact classes, actual pending-session result and actual source parser result",
+      "poll.cachedOffer/attemptedOffer": "Identity of the digest-bound cached object observed at renderer admission and of the object that authorized the latest native request; zero is absent or unbound",
       "poll.requests/lastCapability/lastPending/lastCandidate/lastCurrent/lastIdle": "Actual install bridge call count and capability, pending, candidate, owner and idle observations at dispatch"
     },
     "abstractions": [
@@ -3840,6 +3847,7 @@
       "Four native capability classes; native SDK, consent and monotonic uptime/reboot ownership remain native admission obligations. The renderer does not own a second boot clock.",
       "At most three native bridge requests in the finite model, at most two in source scenarios. A bridge request is not PackageInstaller session creation, installation or physical-device proof.",
       "The original generic scheduler schedules remain. Product scenarios execute the actual poll and authenticated scheduler through controlled promise cutpoints, including pending precedence, exact signer admission, cold deferral and lifecycle invalidation.",
+      "Cache identities are equality tokens. Native owns feed byte and offered APK validation. A late offer-unavailable reply retires only the exact object that was used at dispatch.",
       "Progress requires foreground timer delivery, eligible idle Home, suitable native capability and settling calls. OS acceptance, network availability and background delivery remain external.",
       "The ready microstep is unobservable: actual facts admission, pure parsing and native dispatch share one synchronous JavaScript continuation. Lifecycle transitions are disabled only during that microstep; they remain enabled at real awaited ports."
     ],

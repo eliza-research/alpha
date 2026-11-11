@@ -4,7 +4,7 @@ import {playwright} from './fixtures/playwright.ts';
 import {setTimeout as wait} from 'node:timers/promises';
 import react from '@vitejs/plugin-react';
 import {build} from 'vite';
-const sourceRoot=path.resolve(process.env.ALPHA_HOSTED_SOURCE_ROOT||process.cwd()),root=path.resolve(process.env.ALPHA_HOSTED_TEST_OUTPUT||path.join(sourceRoot,'test-results/hosted-live-source-browser'));await mkdir(root,{recursive:true});const {chromium}=playwright(import.meta.url,process.env.ALPHA_BROWSER_MODULES||path.join(sourceRoot,'node_modules'));
+const sourceRoot=process.cwd(),root=path.resolve(process.env.ALPHA_HOSTED_TEST_OUTPUT||path.join(sourceRoot,'test-results/hosted-live-source-browser'));await mkdir(root,{recursive:true});const {chromium}=playwright(import.meta.url,process.env.ALPHA_BROWSER_MODULES||path.join(sourceRoot,'node_modules'));
 await build({configFile:false,plugins:[react()],root:path.join(sourceRoot,'scripts/fixtures/hosted-live-source'),resolve:{alias:{react:path.join(sourceRoot,'node_modules/react'),'react-dom':path.join(sourceRoot,'node_modules/react-dom')}},build:{outDir:path.join(root,'browser-dist'),emptyOutDir:true},logLevel:'warn'});
 let posts=0,revokeStatus: number | null=null,hold=false;
 const accountRequest = {entered: Promise.withResolvers<void>(), reply: Promise.withResolvers<void>()};

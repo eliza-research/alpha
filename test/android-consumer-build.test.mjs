@@ -92,17 +92,10 @@ test('a test-mocks build keeps its instrumentation beside its APKs, skips lint a
 });
 
 test('the one-profile distribution, unpackaged and skipped-instrumentation builds carry their selection to Gradle, the record and the verifier', t => {
- // One runtime profile: no profile property reaches Gradle or the verifier, and the removed options are refused.
- for (const removed of [['--runtime-profile=cloud'], ['--runtime-profile=native'], ['--local-embeddings'], ['--runtime-profile=cloud', '--local-embeddings']])
-  assert.throws(() => parseBuildArgs(removed), /There is one runtime profile now: remove --runtime-profile and --local-embeddings/);
- const cloud = build(t, [], {environment: {VITE_MAPS_BASE_URL: 'https://maps.example.test', ELIZAOS_VERSION_CODE: '41', ELIZAOS_VERSION_NAME: '1.4.1', VITE_ELIZA_RUNTIME_PROFILE: 'cloud', ORG_GRADLE_PROJECT_ELIZA_RUNTIME_PROFILE: 'cloud', ORG_GRADLE_PROJECT_ELIZA_LOCAL_EMBEDDINGS: '1'}});
+ const cloud = build(t, [], {environment: {VITE_MAPS_BASE_URL: 'https://maps.example.test', ELIZAOS_VERSION_CODE: '41', ELIZAOS_VERSION_NAME: '1.4.1'}});
  assert.deepEqual(gradleCalls(cloud.calls)[0].args.slice(0, 3), ['--no-daemon', '-PELIZA_DEV_ALLOW_TEST_MOCKS=0', '-PELIZA_ALLOW_UNPACKAGED_RUNTIME=0']);
- assert.equal(gradleCalls(cloud.calls)[0].args.some(arg => /RUNTIME_PROFILE|LOCAL_EMBEDDINGS/.test(arg)), false);
  assert.deepEqual(cloud.calls.filter(call => call.command === 'node').map(call => call.args), [['scripts/verify-apks.ts']]);
  assert.equal(cloud.seen[0].record.runtimeProfile, 'native');assert.equal('localEmbeddings' in cloud.seen[0].record, false);
- // An inherited profile switch never reaches the renderer build or Gradle.
- const cleaned = buildEnv({VITE_ELIZA_RUNTIME_PROFILE: 'cloud', ORG_GRADLE_PROJECT_ELIZA_RUNTIME_PROFILE: 'cloud', ELIZA_LOCAL_EMBEDDINGS: '1', ORG_GRADLE_PROJECT_ELIZA_LOCAL_EMBEDDINGS: '1', KEEP: 'yes'}, {testMocks: false});
- assert.deepEqual(cleaned, {KEEP: 'yes'});
  // The regional gateway variable is read only by test-mocks renderers.
  assert.equal(cloud.seen[0].record.mapsProvider, 'cloud');
  assert.deepEqual(cloud.seen[0].record.versionOverride, {code: '41', name: '1.4.1'});
@@ -123,12 +116,4 @@ test('release signing names come from the host descriptor: a signed release keep
  assert.equal(JSON.stringify(signed.seen[0].record).includes('value-of-'), false);
  assert.equal(gradleCalls(signed.calls)[0].args.some(arg => arg.includes('value-of-')), false);
  assert.throws(() => build(t, [], {environment: SIGNING, signed: false}), new RegExp(`${SIGNING_ENV.join(', ')} are set but Gradle produced an unsigned standalone release`));
-});
-
-test('the low-disk mode builds one variant and mode at a time', t => {
- const f = build(t, [], {environment: {ALPHA_ANDROID_LOW_DISK: '1'}});
- assert.deepEqual(gradleCalls(f.calls).map(call => call.args.slice(3)), [
-  [':app:assembleStandaloneDebug', ':app:assembleStandaloneDebugAndroidTest'], [':app:assembleStandaloneRelease'],
-  [':app:assembleLauncherDebug', ':app:assembleLauncherDebugAndroidTest'], [':app:assembleLauncherRelease'], [':app:lint']]);
- assert.equal(f.seen.length, 1);
 });

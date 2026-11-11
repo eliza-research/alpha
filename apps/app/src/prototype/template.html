@@ -9,6 +9,7 @@
 <div style="position: absolute; right: -5px; top: 316px; width: 6px; height: 118px; border-radius: 0 4px 4px 0; background: var(--alpha-gray-26)"></div>
 
 <div data-screen="1" data-alpha-chat-half="{{nonblockingChat}}" onPointerDown="{{gDown}}" onPointerUp="{{gUp}}" onPointerCancel="{{gCancel}}" style="position: absolute; top: 12px; left: 14px; width: 412px; height: 915px; border-radius: 48px; overflow: hidden; background: var(--bg); color: var(--fg); user-select: none; -webkit-user-select: none; touch-action: none; font-size: 15px; --alpha-chat-clearance:{{panelH}}px">
+<sc-element value="{{viewRenderRecovery}}"></sc-element>
 <sc-if value="{{chatImagePreview}}">
   <div ref="{{chatImagePreviewRef}}" class="chat-image-preview">
     <div role="dialog" aria-modal="true" aria-label="Image preview" tabindex="-1">
@@ -2274,10 +2275,10 @@
           <sc-if value="{{maps.googleMapMissing}}"><span class="alpha-google-map-missing">No imagery</span></sc-if>
         </div>
       </sc-if>
-      <sc-if value="{{maps.creditsInline}}">
-        <sc-if value="{{maps.globalBasemap}}"><span class="alpha-map-credit-links"><a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a><sc-if value="{{maps.cloudCredit}}"><span data-maps-cloud-credit> · {{maps.cloudCredit}}</span></sc-if></span></sc-if>
-        <sc-if value="{{maps.regionalBasemap}}"><span class="alpha-map-credit-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{{maps.mapAttribution}}</a></span></sc-if>
+      <sc-if value="{{maps.globalBasemap}}">
+        <span class="alpha-map-credit-links"><a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a><sc-if value="{{maps.cloudCredit}}"><span data-maps-cloud-credit> · {{maps.cloudCredit}}</span></sc-if></span>
       </sc-if>
+      <sc-if value="{{maps.regionalBasemap}}"><span class="alpha-map-credit-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{{maps.mapAttribution}}</a></span></sc-if>
       <sc-if value="{{maps.cloudBasemap}}"><span class="alpha-map-credit-links">{{maps.mapAttribution}}</span></sc-if>
       <details class="alpha-map-privacy" name="alpha-map-info"><summary aria-label="Map information and credits"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.info}}"></path></svg></summary>
         <div class="alpha-map-info">
@@ -2285,10 +2286,6 @@
           <sc-if value="{{maps.globalBasemap}}"><p>Map tiles: OpenFreeMap</p></sc-if>
           <sc-if value="{{maps.providerDisclosure}}"><p data-maps-disclosure>{{maps.providerDisclosure}}</p></sc-if>
           <button class="tap" aria-label="Enter coordinates" onClick="{{maps.nativeManualLocation}}">Coordinates</button>
-          <sc-if value="{{maps.creditsCollapsed}}">
-            <sc-if value="{{maps.globalBasemap}}"><span class="alpha-map-credit-links"><a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a><sc-if value="{{maps.cloudCredit}}"><span data-maps-cloud-credit> · {{maps.cloudCredit}}</span></sc-if></span></sc-if>
-            <sc-if value="{{maps.regionalBasemap}}"><span class="alpha-map-credit-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{{maps.mapAttribution}}</a></span></sc-if>
-          </sc-if>
 
         </div>
       </details>

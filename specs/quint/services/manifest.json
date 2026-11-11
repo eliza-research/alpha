@@ -2412,16 +2412,11 @@
       "step": "step",
       "invariant": "safety",
       "tests": [
-        "exactThenOrdinaryReuseTest",
-        "staleAndDefaultRequireCurrentTest",
-        "dirtyOrWrongCommitRefusesTest",
-        "ownedLockAndOccupiedBackupAreKeptTest",
-        "occupiedCandidateFailsSourceAdmissionTest",
-        "refusedCandidateWriteLeavesPreservedPriorTest",
-        "invalidLocationsRefuseTest"
+        "currentStampReuseTest",
+        "movedLockRefusesStaleStampTest",
+        "dirtyOrWrongCommitRefusesTest"
       ],
       "invariants": [
-        "CurrentHasPriorStamp",
         "SuccessRequiresCurrentVerifiedSource"
       ],
       "sources": [
@@ -2432,13 +2427,13 @@
         "vendor/eliza/packages/app/scripts/lib/committed-source.mjs"
       ],
       "stateMapping": {
-        "source": "Checked-out commit, tracked bytes and selected untracked sidecars",
-        "stamp/backup": "Exact source-only live stamp and external preserved or preexisting peer bytes",
+        "source": "Checked-out commit and tracked bytes",
+        "stamp": "Whether the live source-only stamp names the pinned lock",
         "outcome": "Actual preparer process result after final source verification"
       },
       "abstractions": [
-        "An existing local prepared source, two synthetic Git revisions, one backup slot and settled source-only operations. Existing sidecars are observed without modeling the independent process that created them.",
-        "The selected candidate open can fail after preserving the prior stamp. Source checkout creation, concurrent producers, full dependency installation and interruption remain separate."
+        "An existing local prepared source, two synthetic Git revisions and settled source-only operations.",
+        "Source checkout creation, concurrent producers, full dependency installation and interruption remain separate."
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -2903,7 +2898,8 @@
       "step": "step",
       "invariant": "safety",
       "tests": [
-        "currentMainPushCannotSignTest",
+        "mainPushWithoutExactEvidenceCannotSignTest",
+        "exactMainCandidateNeedsFreshProtectedAdmissionTest",
         "lostPrivateResponseCannotOverwriteObjectTest",
         "staleSigningReviewAndWrongGenerationTest",
         "raisedFloorRefusesPublicWritesTest",
@@ -2914,7 +2910,8 @@
         "lostPointerResponseCanBeReconciledTest"
       ],
       "invariants": [
-        "MainPushHasNoSigningRoute",
+        "StagedPairRequiresReviewedPlan",
+        "MainCandidateRequiresSameAttempt",
         "PrivateReceiptRequiresStagedPair",
         "RestoredRequiresReviewedReceipt",
         "PointerWriteRequiresExactAnonymousApk",
@@ -2927,6 +2924,7 @@
         ".github/workflows/publish-qualified-app-update.yml",
         "scripts/app-update-candidate.ts",
         "scripts/ci/verify-cloud-signing-input.sh",
+        "scripts/ci/app_update_producer.py",
         "scripts/ci/admit-cloud-signing-input.py",
         "scripts/ci/private-apk-storage.py",
         "scripts/ci/qualified-app-update.py",
@@ -2938,7 +2936,7 @@
         "scripts/publish-update-manifest.ts"
       ],
       "abstractions": [
-        "One candidate, a bounded signing/qualification lane and a public release with three version-floor classes. The current main-push receipt has no signing route.",
+        "One candidate, two exact producer attempts, and a public release with three version-floor classes. The main-push candidate route requires an exact native receipt and reviewed private mirror.",
         "Actual shell, Python and TypeScript helpers execute over controlled endpoint, filesystem and transport fixtures. Protected workflow stage order is checked separately against the parsed YAML.",
         "Private object durability and public partial effects are selected port outcomes. Production keys, platform protections, signer/APK qualification, live public transport and phone acceptance remain separate."
       ],

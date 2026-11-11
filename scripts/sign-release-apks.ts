@@ -290,7 +290,7 @@ export async function main(argv: readonly string[], { root = process.cwd(), env 
   let targets: SigningTarget[] = [];
   const artifacts = path.join(root, "artifacts");
   const build: {runtimeProfile?: string; localEmbeddings?: boolean; testMocks?: boolean} = !options.apk && fs.existsSync(path.join(artifacts, "build-config.json")) ? JSON.parse(fs.readFileSync(path.join(artifacts, "build-config.json"), "utf8")) : {};
-  if ((build.runtimeProfile ?? "native") !== "native" || build.localEmbeddings !== undefined) problems.push("artifacts/build-config.json names a removed runtime profile; rebuild (there is one profile now)");
+  if ((build.runtimeProfile ?? "native") !== "native" || build.localEmbeddings !== undefined) problems.push("artifacts/build-config.json is not a native-profile build record; rebuild");
   if (build.testMocks === true) problems.push("artifacts/build-config.json records a test-mocks build, which is never distributable");
   try { targets = signingTargets({ artifacts, apk: options.apk && path.resolve(root, options.apk), out: options.out && path.resolve(root, options.out) }); }
   catch (problem) { problems.push(message(problem)); }

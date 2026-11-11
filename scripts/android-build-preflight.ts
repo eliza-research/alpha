@@ -2,8 +2,8 @@
 /**
  * Fail fast, before web sync and Gradle, when an Android build input is missing.
  *
- *   node scripts/android-build-preflight.ts [--before-prepare] [--allow-unpackaged-runtime] [--test-mocks] [--allow-older-upstream-pin]
- *   node scripts/android-build-preflight.ts --report [--json]     (npm run android:build:inputs)
+ *   node scripts/android-build-preflight.ts [--before-prepare] [--allow-unpackaged-runtime] [--test-mocks]
+ *   node scripts/android-build-preflight.ts --report     (npm run android:build:inputs)
  *
  * build-android.ts runs the full check. `--before-prepare` checks only inputs that
  * android:build:local does not produce (the pinned checkout and the on-device voice outputs), so
@@ -19,7 +19,6 @@ import {verifyEmbeddingHost} from './stage-embedding-host.ts';
 import {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST, verifyVoiceHost} from './voice-host.ts';
 import {BUILD_TOOLCHAIN, QUALIFIED_HOST, embeddingHostState, stagedLibraries} from './build-embedding-host.ts';
 import {verifyMobileBuildReceipt,MOBILE_UUID_POLICY} from './mobile-uuid-adapter.ts';
-import {refuseRemovedProfileFlags} from './removed-profile-flags.ts';
 
 export {VOICE_ASSET_ROOT, VOICE_HOST_MANIFEST};
 export const GRADLE_VERIFICATION = 'android/gradle/verification-metadata.xml';
@@ -30,7 +29,6 @@ const message = (error: unknown) => error instanceof Error ? error.message : Str
 type VoiceHostVerifier = (root: string, options: {allowAbsentRuntime: boolean}) => {qualified: boolean};
 type EmbeddingHostVerifier = (root: string, options: {allowAbsentRuntime: boolean}) => unknown;
 interface PinOptions {
-  allowOlderUpstreamPin?: boolean;
   notes?: string[];
 }
 interface VoiceOptions {
@@ -65,7 +63,6 @@ function readHead(directory: string) {
 }
 
 const MAIN_REFS = ['refs/remotes/origin/main', 'origin/main'];
-export const ALLOW_OLDER_PIN = '--allow-older-upstream-pin';
 
 const git = (directory: string, args: string[]) => execFileSync('git', ['-C', directory, ...args], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']});
 
@@ -100,42 +97,33 @@ export function mainPinStatus(root: string, pin: string) {
 }
 
 /** The problem a non-descendant pin reports, or null. `notes` receives what was not checked. */
-export function mainPinProblem(root: string, pin: string, {allowOlderUpstreamPin = false, notes = []}: PinOptions = {}) {
+export function mainPinProblem(root: string, pin: string, {notes = []}: PinOptions = {}) {
   const status = mainPinStatus(root, pin);
-  const override = `Only a deliberate, reviewed upstream rollback may pass ${ALLOW_OLDER_PIN}.`;
   switch (status.state) {
     case 'unavailable':
       notes.push(`No origin/main ref in this clone, so the upstream pin ${pin} was not compared with main's (git fetch origin main to check it).`);
       return null;
     case 'older':
     case 'shallow':
-      if (allowOlderUpstreamPin) {
-        notes.push(`${ALLOW_OLDER_PIN}: building upstream pin ${pin}, which does not descend from ${status.ref}'s pin ${status.mainPin}.`);
-        return null;
-      }
       return status.state === 'older'
-        ? `upstream.lock.json pins ${pin}, which is older than or diverged from the pin ${status.mainPin} on ${status.ref}; an APK from it can reject state written by the newer agent on a device. Run: git fetch origin && git rebase origin/main (or merge it), then git submodule update --init vendor/eliza. ${override}`
-        : `vendor/eliza is a shallow clone, so it cannot show that the pin ${pin} descends from the pin ${status.mainPin} on ${status.ref}. Run: git -C vendor/eliza fetch --unshallow origin. ${override}`;
+        ? `upstream.lock.json pins ${pin}, which is older than or diverged from the pin ${status.mainPin} on ${status.ref}; an APK from it can reject state written by the newer agent on a device. Run: git fetch origin && git rebase origin/main (or merge it), then git submodule update --init vendor/eliza.`
+        : `vendor/eliza is a shallow clone, so it cannot show that the pin ${pin} descends from the pin ${status.mainPin} on ${status.ref}. Run: git -C vendor/eliza fetch --unshallow origin.`;
     case 'unknown':
-      if (allowOlderUpstreamPin) {
-        notes.push(`${ALLOW_OLDER_PIN}: ${status.ref}'s pin ${status.mainPin} is not in vendor/eliza; not compared.`);
-        return null;
-      }
-      return `The upstream pin ${status.mainPin} on ${status.ref} is not in vendor/eliza, so the pin ${pin} cannot be shown to descend from it. Run: git -C vendor/eliza fetch origin. ${override}`;
+      return `The upstream pin ${status.mainPin} on ${status.ref} is not in vendor/eliza, so the pin ${pin} cannot be shown to descend from it. Run: git -C vendor/eliza fetch origin.`;
     default:
       return null;
   }
 }
 
 /** Inputs no preparation step produces: the pinned checkout and the on-device voice outputs. */
-export function checkoutProblems(root: string, {voiceHost = verifyVoiceHost, allowUnpackagedRuntime = false, allowOlderUpstreamPin = false, notes = []}: VoiceOptions & PinOptions = {}) {
+export function checkoutProblems(root: string, {voiceHost = verifyVoiceHost, allowUnpackagedRuntime = false, notes = []}: VoiceOptions & PinOptions = {}) {
   const problems: string[] = [];
   const pin = JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit;
   const head = readHead(path.join(root, 'vendor/eliza'));
   if (head !== pin)
     problems.push(`vendor/eliza is ${head ? `at ${head}` : 'not checked out'}; upstream.lock.json pins ${pin}. Run: git submodule update --init vendor/eliza`);
   else {
-    const older = mainPinProblem(root, pin, {allowOlderUpstreamPin, notes});
+    const older = mainPinProblem(root, pin, {notes});
     if (older) problems.push(older);
   }
   problems.push(...voiceHostProblems(root, {voiceHost, allowUnpackagedRuntime}));
@@ -304,20 +292,18 @@ export function formatReport(rows: readonly InputReportRow[]) {
 
 async function main() {
   const args = process.argv.slice(2);
-  refuseRemovedProfileFlags(args);
   for (const arg of args)
-    if (!['--before-prepare', '--allow-unpackaged-runtime', '--test-mocks', '--report', '--json', ALLOW_OLDER_PIN].includes(arg)) throw new Error(`Unknown option ${arg}`);
+    if (!['--before-prepare', '--allow-unpackaged-runtime', '--test-mocks', '--report'].includes(arg)) throw new Error(`Unknown option ${arg}`);
   const root = path.resolve(import.meta.dirname, '..');
   if (args.includes('--report')) {
     // The source guard imports the pinned checkout; without it the prepared path is unknown.
     let prepared: string | null = null, workerDirectory: string | undefined;
     try { const source = await import('./local-agent-source.ts'); prepared = source.sourceDirectory(root); workerDirectory = source.workerArtifactDirectory(root); } catch { /* reported as the missing checkout */ }
-    const rows = strictBuildInputs(root, prepared, {workerDirectory});
-    console.log(args.includes('--json') ? JSON.stringify(rows, null, 2) : formatReport(rows));
+    console.log(formatReport(strictBuildInputs(root, prepared, {workerDirectory})));
     return;
   }
   const notes: string[] = [];
-  let problems = checkoutProblems(root,{allowUnpackagedRuntime:args.includes('--allow-unpackaged-runtime'),allowOlderUpstreamPin:args.includes(ALLOW_OLDER_PIN),notes});
+  let problems = checkoutProblems(root,{allowUnpackagedRuntime:args.includes('--allow-unpackaged-runtime'),notes});
   for (const note of notes) console.error(`Note: ${note}`);
   if (!problems.length && !args.includes('--before-prepare')) {
     // The source guard imports the pinned checkout, so load it only once that is verified.

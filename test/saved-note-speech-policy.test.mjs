@@ -34,7 +34,7 @@ test('actual saved-note native selector fences ownership, clips windows and remo
   metadata(50020);MediaExtractor.duration=50000000;try(RecordingWindow s=open(context,call(50000,50020),()->false)){if(!s.empty||s.file.length()!=0)throw new AssertionError("Trailing frame uploaded");}
   if(cache.list().length!=0||!original.isFile()||original.length()!=1)throw new AssertionError("Original changed");System.out.println("PASS actual native selector policy; media APIs are test doubles");
  }} `),
- path.resolve(process.env.ALPHA_RECORDING_WINDOW_SOURCE||'vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/RecordingWindow.java')];
+ path.resolve('vendor/eliza/plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/RecordingWindow.java')];
  execFileSync(javaBinary('javac'),['--release','11','-d',dir,...sources],{timeout:30000});
  const out=execFileSync(javaBinary('java'),['-cp',dir,'ai.alphacompute.alphaphone.SavedNoteSpeechPolicyTest',dir],{encoding:'utf8',timeout:30000});assert.match(out,/PASS actual native selector policy/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}

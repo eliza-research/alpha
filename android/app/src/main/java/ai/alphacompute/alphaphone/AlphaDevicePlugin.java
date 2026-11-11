@@ -663,24 +663,87 @@ public final class AlphaDevicePlugin extends Plugin {
   updateActive=connection;
   return connection;
  }
- /**
-  * Software update (Settings; policy in settings-adapter.ts): the one configured manifest, app.config.json
-  * updateManifestUrl as BuildConfig. Resolves {manifest} for 200 and {} for 404, which means nothing is
-  * published or the release was withdrawn. Anything else rejects; the next start, resume or tap checks again.
-  */
+ private static final int UPDATE_MANIFEST_LIMIT=64*1024;
+ /** Final reads take place while the resident is paused, with short socket timeouts and a soft body deadline. */
+ private static final int UPDATE_MANIFEST_RECHECK_MILLIS=10000;
+ private static String manifestDigest(byte[] manifest)throws Exception{
+  return hex(java.security.MessageDigest.getInstance("SHA-256").digest(manifest));
+ }
+ /** Both discovery and automatic commit read the configured feed. A 404 withdraws the offer. */
+ private byte[] readUpdateManifest(boolean recheck)throws Exception{
+  javax.net.ssl.HttpsURLConnection connection=updateConnection(BuildConfig.ALPHA_UPDATE_MANIFEST_URL);
+  connection.setRequestProperty("Cache-Control","no-cache");
+  long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(UPDATE_MANIFEST_RECHECK_MILLIS);
+  if(recheck){
+   connection.setConnectTimeout(UPDATE_MANIFEST_RECHECK_MILLIS);
+   connection.setReadTimeout(UPDATE_MANIFEST_RECHECK_MILLIS);
+  }
+  try{
+   int status=connection.getResponseCode();
+   if(status==404)return null;
+   if(status!=200)throw new java.io.IOException("Update unavailable");
+   try(java.io.InputStream in=connection.getInputStream()){
+    java.io.InputStream bounded=recheck?new java.io.FilterInputStream(in){
+     @Override public int read(byte[] buffer,int offset,int length)throws java.io.IOException{
+      if(System.nanoTime()>=deadline)throw new java.io.IOException("Update offer timed out");
+      int count=super.read(buffer,offset,length);
+      if(System.nanoTime()>=deadline)throw new java.io.IOException("Update offer timed out");
+      return count;
+     }
+    }:in;
+    return ai.eliza.plugins.agent.connection.ConnectionTransport.readBounded(bounded,UPDATE_MANIFEST_LIMIT);
+   }
+  }finally{connection.disconnect();}
+ }
+ /** Resolves the exact received manifest and its raw byte digest, or an empty result for a withdrawal. */
  @PluginMethod public void checkForUpdate(PluginCall call){
   PluginWorkers.submit(updateWorker,()->{
    try{
     reconcileUpdate();
-    javax.net.ssl.HttpsURLConnection connection=updateConnection(BuildConfig.ALPHA_UPDATE_MANIFEST_URL);
-    try{
-     int status=connection.getResponseCode();
-     if(status==404){call.resolve(new JSObject());return;}
-     if(status!=200)throw new java.io.IOException("Update unavailable");
-     try(java.io.InputStream in=connection.getInputStream()){call.resolve(new JSObject().put("manifest",new String(ai.eliza.plugins.agent.connection.ConnectionTransport.readBounded(in,64*1024),java.nio.charset.StandardCharsets.UTF_8)));}
-    }finally{connection.disconnect();}
+    byte[] manifest=readUpdateManifest(false);
+    call.resolve(manifest==null?new JSObject():new JSObject()
+      .put("manifest",new String(manifest,java.nio.charset.StandardCharsets.UTF_8))
+      .put("manifestSha256",manifestDigest(manifest)));
    }catch(Exception unavailable){call.reject("Update unavailable");}
   },()->call.reject("Update unavailable"));
+ }
+ private static final class UpdateOfferUnavailable extends java.io.IOException {}
+ private static boolean manifestNumberEquals(Object value,long expected){
+  return value instanceof Number&&((Number)value).doubleValue()==expected;
+ }
+ private static org.json.JSONObject selectUpdateOffer(org.json.JSONObject document,String variant,String signer)throws Exception{
+  if("alpha-update/v1".equals(document.opt("schema")))return document;
+  org.json.JSONArray releases=document.optJSONArray("releases");
+  if(!"alpha-update/index-v1".equals(document.opt("schema"))||releases==null||releases.length()<1||releases.length()>16)return null;
+  java.util.Set<String> pairs=new java.util.HashSet<>();
+  org.json.JSONObject selected=null;
+  for(int i=0;i<releases.length();i++){
+   org.json.JSONObject row=releases.getJSONObject(i);
+   String flavor=row.optString("variant"),root=row.optString("signerSha256");
+   if(!"alpha-update/v1".equals(row.opt("schema"))||
+      !("launcher".equals(flavor)||"standalone".equals(flavor))||
+      !root.matches("[0-9a-f]{64}")||!pairs.add(flavor+":"+root))return null;
+   if(variant.equals(flavor)&&signer.equals(root))selected=row;
+  }
+  return selected;
+ }
+ /** The fresh bytes must still be the discovery response and offer this exact update. */
+ private void requireCurrentUpdateOffer(String manifestSha256,String apkUrl,String sha256,long size,long versionCode,String signer)throws UpdateOfferUnavailable{
+  try{
+   byte[] manifest=readUpdateManifest(true);
+   if(manifest!=null&&manifestSha256.equals(manifestDigest(manifest))){
+    org.json.JSONTokener parser=new org.json.JSONTokener(new String(manifest,java.nio.charset.StandardCharsets.UTF_8));
+    Object document=parser.nextValue();
+    if(document instanceof org.json.JSONObject&&parser.nextClean()==0){
+     String variant=BuildConfig.IS_LAUNCHER?"launcher":"standalone";
+     org.json.JSONObject offer=selectUpdateOffer((org.json.JSONObject)document,variant,signer);
+     if(offer!=null&&variant.equals(offer.opt("variant"))&&signer.equals(offer.opt("signerSha256"))&&
+        apkUrl.equals(offer.opt("apkUrl"))&&sha256.equals(offer.opt("sha256"))&&
+        manifestNumberEquals(offer.opt("sizeBytes"),size)&&manifestNumberEquals(offer.opt("versionCode"),versionCode))return;
+    }
+   }
+  }catch(Exception unavailable){/* Network and malformed responses both leave the offer unconfirmed. */}
+  throw new UpdateOfferUnavailable();
  }
  /**
   * Manual Install update or an automatic idle-Home attempt. An automatic attempt requires API 31+ and existing
@@ -715,6 +778,10 @@ public final class AlphaDevicePlugin extends Plugin {
     catch(RuntimeException unavailable){call.reject("Update unavailable");}
    });
    return;
+  }
+  final String manifestSha256=call.getString("manifestSha256");
+  if(automatic&&(manifestSha256==null||!manifestSha256.matches("[0-9a-f]{64}"))){
+   call.resolve(new JSObject().put("status","offer-unavailable"));return;
   }
   final String apkUrl=call.getString("apkUrl"),sha256=call.getString("sha256");final long size=call.getData().optLong("sizeBytes"),versionCode=call.getData().optLong("versionCode");
   final int seen=updatesCommitted.get();
@@ -805,7 +872,12 @@ public final class AlphaDevicePlugin extends Plugin {
        pauseOwned=true;UpdatePause.acquire(preparation.id,id,versionCode,sha256,updateBoot());
        UpdatePause.stop();
        throwIfDestroyed();
-       if(automatic&&!automaticUpdateReady()){keepApk=true;throw new java.io.IOException("Automatic update deferred");}
+       if(automatic){
+        if(!automaticUpdateReady()){keepApk=true;throw new java.io.IOException("Automatic update deferred");}
+        requireCurrentUpdateOffer(manifestSha256,apkUrl,sha256,size,versionCode,signer);
+        throwIfDestroyed();
+        if(!automaticUpdateReady()){keepApk=true;throw new java.io.IOException("Automatic update deferred");}
+       }
        UpdatePause.committing(preparation.id);
        android.content.IntentSender status=AlphaUpdateStatusReceiver.sender(getContext(),preparation.id,id);
        // The commit intent. Android holds this before the call returns, so on a level that orders a later read after it (above), a
@@ -838,7 +910,8 @@ public final class AlphaDevicePlugin extends Plugin {
      if(!keepApk){updateVerified=null;apk.delete();}updating.set(false);
     }
     call.resolve();
-   }catch(Exception unavailable){call.reject("Update unavailable");}
+   }catch(UpdateOfferUnavailable unavailable){call.resolve(new JSObject().put("status","offer-unavailable"));}
+   catch(Exception unavailable){call.reject("Update unavailable");}
   },()->call.reject("Update unavailable"));
  }
  /** Stops an update download too: disconnect only closes the raw socket, which Android allows on this main thread. A session outlives its owner, for a later tap on any bridge. */

@@ -3,7 +3,7 @@
  * One dispatch-only emulator suite of .github/workflows/android-emulator.yml, run inside the
  * hosted runner's disposable emulator:
  *
- *   node scripts/ci/emulator-suite.ts instrumentation | browser-reading | fused-speech
+ *   node scripts/ci/emulator-suite.ts instrumentation | browser-reading
  *
  * instrumentation   `npm run test:android:instrumentation` with its default classes on both
  *                   distributions of the flag-off developer APKs.
@@ -12,10 +12,6 @@
  *                   BrowserPageQuestion on the flag-off pair, then BrowserReading,
  *                   BrowserSensitiveReading and BrowserIsolatedReading on the test-mocks pair,
  *                   which is the only build that admits their loopback speech route.
- * fused-speech      the on-device speech classes (fused libelizainference ASR, Paradee TTS and VAD)
- *                   with networking off, on developer APKs that carry the voice bundle and the
- *                   x86_64 voice-qualified engine (scripts/ci/speech-candidate.ts check). It is
- *                   the x86_64 half only; arm64-v8a hardware and a named reviewer are still needed.
  *
  * A preparation step that fails stops the suite. Evidence steps are independent: each runs, and
  * the suite fails when any of them did not pass (a failed, skipped or missing class fails the
@@ -31,23 +27,15 @@ import { fileURLToPath } from "node:url";
 
 export const SERIAL = "emulator-5554";
 export const AVD = "test";
-/** On-device speech classes; each needs the packaged voice bundle and engine (see LocalSpeechInstrumentedTest). */
-export const FUSED_SPEECH_CLASSES = ["LocalSpeech", "LocalSpeechBridge", "SpeechSentenceCancellation", "VoiceNoteReadAloud", "LiveVoiceVad"];
 /** Flag-off classes that need isolated-world injection, and the ones that also need the test-mocks build. */
 export const READING_CLASSES = ["BrowserReadingNavigation", "BrowserPageQuestion"];
 export const READING_TEST_MOCKS_CLASSES = ["BrowserReading", "BrowserSensitiveReading", "BrowserIsolatedReading"];
 
 type Command = string[];
-type SuiteStep = {name: string} & (
-  {kind: 'preparation'; action: 'network-off'; command?: never; env?: never; results?: never}
-  | {kind: 'preparation'; command: Command; env?: NodeJS.ProcessEnv; action?: never; results?: never}
-  | {kind: 'evidence'; command: Command; env?: NodeJS.ProcessEnv; action?: never; results: string}
+type SuiteStep = {name: string; command: Command; env?: NodeJS.ProcessEnv} & (
+  {kind: 'preparation'; results?: never}
+  | {kind: 'evidence'; results: string}
 );
-interface NetworkOptions {
-  attempts?: number;
-  sleep?: (milliseconds: number) => unknown;
-}
-type Adb = (args: string[]) => string;
 type Execute = (command: Command, env: NodeJS.ProcessEnv) => number;
 interface ClassEvidence {
   variant?: string;
@@ -62,11 +50,9 @@ interface Evidence {
 interface StepResult {
   name: string;
   kind: SuiteStep['kind'];
-  command?: Command;
-  action?: 'network-off';
+  command: Command;
   status: 'not-run' | 'passed' | 'failed';
   exitCode?: number;
-  observed?: {airplaneMode: string; activeDefaultNetwork: string};
   error?: string;
   results?: string;
   evidence?: Evidence;
@@ -84,10 +70,8 @@ interface SuiteReport {
 }
 interface SuiteOptions {
   execute: Execute;
-  adb: Adb;
   record?: (report: SuiteReport) => void;
   environment?: NodeJS.ProcessEnv;
-  network?: NetworkOptions;
 }
 
 const node = (...args: string[]) => [process.execPath, ...args];
@@ -108,27 +92,7 @@ export function suitePlan(suite: string): SuiteStep[] {
     runner("ci-reading", "--classes", READING_CLASSES.join(",")),
     runner("ci-reading-test-mocks", "--test-mocks", "--classes", READING_TEST_MOCKS_CLASSES.join(",")),
   ];
-  if (suite === "fused-speech") return [
-    prepareEmulator,
-    // The speech classes assert that the device has no active network.
-    { name: "network-off", kind: "preparation", action: "network-off" },
-    runner("ci-fused-speech", "--variants", "standalone", "--classes", FUSED_SPEECH_CLASSES.join(",")),
-  ];
-  throw new Error(`Unknown suite ${JSON.stringify(suite)}; use instrumentation, browser-reading or fused-speech`);
-}
-
-/** Airplane mode, then proof that Android reports no default network. `adb` returns stdout. */
-export function disableEmulatorNetwork(adb: Adb, {attempts = 60, sleep = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)}: NetworkOptions = {}) {
-  adb(["shell", "cmd", "connectivity", "airplane-mode", "enable"]);
-  adb(["shell", "svc", "wifi", "disable"]);
-  adb(["shell", "svc", "data", "disable"]);
-  let state = "";
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    state = /^\s*Active default network: (.*)$/m.exec(adb(["shell", "dumpsys", "connectivity"]))?.[1]?.trim() ?? "not reported";
-    if (state === "none") return { airplaneMode: adb(["shell", "cmd", "connectivity", "airplane-mode"]).trim(), activeDefaultNetwork: state };
-    sleep(1000);
-  }
-  throw new Error(`The emulator still has a default network (${state}); the on-device speech tests would refuse to run`);
+  throw new Error(`Unknown suite ${JSON.stringify(suite)}; use instrumentation or browser-reading`);
 }
 
 /** Outside a hosted runner emulator-5554 may be someone's emulator; nothing is touched or written. */
@@ -151,24 +115,22 @@ export function readInstrumentationEvidence(file: string): Evidence | null {
 }
 
 /**
- * Runs a plan. `execute(command, env)` returns an exit status; `adb(args)` returns stdout;
- * `network` only shortens the wait for the network to go down in tests.
+ * Runs a plan. `execute(command, env)` returns an exit status.
  * Never throws for a failed step: the record says what ran, and `passed` is the verdict.
  */
-export function runSuite(suite: string, {execute, adb, record = () => {}, environment = process.env, network = {}}: SuiteOptions) {
+export function runSuite(suite: string, {execute, record = () => {}, environment = process.env}: SuiteOptions) {
   requireHostedRunner(environment);
   const plan = suitePlan(suite);
-  const steps: StepResult[] = plan.map(step => ({ name: step.name, kind: step.kind, ...(step.command ? { command: step.command } : { action: step.action }), status: "not-run" }));
+  const steps: StepResult[] = plan.map(step => ({ name: step.name, kind: step.kind, command: step.command, status: "not-run" }));
   const report: SuiteReport = { suite, commit: environment.GITHUB_SHA ?? null, runId: environment.GITHUB_RUN_ID ?? null, serial: SERIAL, avd: AVD,
-    evidenceClass: "E", notEvidenceFor: ["distributable build", "physical-device acceptance", "user acceptance", "arm64-v8a speech", "speech intelligibility to a listener"], passed: false, steps };
+    evidenceClass: "E", notEvidenceFor: ["distributable build", "physical-device acceptance", "user acceptance"], passed: false, steps };
   let stopped = false;
   for (const [index, step] of plan.entries()) {
     const row = steps[index];
     if (stopped) continue;
     try {
-      if (step.action === "network-off") row.observed = disableEmulatorNetwork(adb, network);
-      else row.exitCode = execute(step.command, step.env ?? {});
-      row.status = step.action || row.exitCode === 0 ? "passed" : "failed";
+      row.exitCode = execute(step.command, step.env ?? {});
+      row.status = row.exitCode === 0 ? "passed" : "failed";
     } catch (error) { row.status = "failed"; row.error = error instanceof Error ? error.message : String(error); }
     if (step.results) { const evidence = readInstrumentationEvidence(step.results); row.results = step.results; if (evidence) row.evidence = evidence; else if (row.status === "passed") { row.status = "failed"; row.error = `${step.results} was not written`; } }
     // An evidence step passes only when its own record says so, whatever its exit status was.
@@ -195,7 +157,7 @@ export function summarize(report: SuiteReport) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const suite = process.argv[2];
-  if (process.argv.length !== 3) throw new Error("Use: node scripts/ci/emulator-suite.ts instrumentation|browser-reading|fused-speech");
+  if (process.argv.length !== 3) throw new Error("Use: node scripts/ci/emulator-suite.ts instrumentation|browser-reading");
   suitePlan(suite); // Refuse an unknown suite before anything is written.
   requireHostedRunner();
   const output = path.resolve("test-results/emulator-suite", `${suite}.json`);
@@ -208,12 +170,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     if (result.error) throw result.error;
     return result.status ?? 1;
   };
-  const adb: Adb = args => {
-    const result = spawnSync("adb", ["-s", SERIAL, ...args], { encoding: "utf8", timeout: 60_000 });
-    if (result.error || result.status !== 0) throw new Error(`adb ${args.slice(0, 4).join(" ")} failed: ${result.error?.message ?? result.stderr}`);
-    return result.stdout;
-  };
-  const report = runSuite(suite, { execute, adb, record: value => fs.writeFileSync(output, `${JSON.stringify(value, null, 2)}\n`) });
+  const report = runSuite(suite, { execute, record: value => fs.writeFileSync(output, `${JSON.stringify(value, null, 2)}\n`) });
   const summary = summarize(report);
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
   console.log(summary);

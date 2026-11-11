@@ -185,12 +185,10 @@ test('staged Java-only native patches retain their authenticated dependency desc
 });
 
 
-test('dependency verification has one runtime profile and refuses the removed options', () => {
+test('dependency verification takes one mode and the unpackaged-runtime option', () => {
   assert.deepEqual(parseVerificationArgs(['--write']), {mode:'--write',allowUnpackagedRuntime:false});
   assert.deepEqual(parseVerificationArgs(['--write','--allow-unpackaged-runtime']), {mode:'--write',allowUnpackagedRuntime:true});
   assert.deepEqual(parseVerificationArgs(['--check']), {mode:'--check',allowUnpackagedRuntime:false});
-  for (const removed of [['--write','--runtime-profile=cloud'], ['--write','--runtime-profile=other'], ['--write','--local-embeddings'], ['--check','--runtime-profile=native']])
-    assert.throws(() => parseVerificationArgs(removed), /There is one runtime profile now: remove --runtime-profile and --local-embeddings/);
   assert.throws(() => parseVerificationArgs(['--write','--other']), /Usage/);
 });
 

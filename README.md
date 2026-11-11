@@ -38,9 +38,9 @@ your mail, calendar, maps, notes, photos and files. It asks before it does
 anything that matters.
 
 **Your agent stays with you.** The agent, its memory and its database run on your
-device, not on someone else's server. Speech is recognised and spoken on the
-phone by default. A cloud account is only for the services that need one, such as
-model inference and Gmail.
+device, not on someone else's server. Speech uses your configured provider or
+eligible Eliza Cloud access, with local speech otherwise and as a fallback. A
+cloud account supplies services such as model inference, speech and Gmail.
 
 ## Quickstart
 
@@ -82,7 +82,7 @@ Alpha's Home screen. Narrow the window to phone width for the best view.
 <table>
 <tr><td><b>An agent that lives on your phone</b></td><td>The agent, its tools and its history stay on the device. There is no hosted copy of your agent to pair with or provision.</td></tr>
 <tr><td><b>Ask Alpha, anywhere</b></td><td>One bar at the bottom of every screen. Type, dictate into an editable draft, or hold a spoken conversation you can interrupt at any time.</td></tr>
-<tr><td><b>On-device voice</b></td><td>Speech-to-text and text-to-speech run locally by default. Cloud speech is an explicit choice in Settings, never a silent fallback.</td></tr>
+<tr><td><b>On-device voice</b></td><td>Local speech is always available. Speech uses the owner's configured provider or eligible Eliza Cloud access; network speech that fails before playback falls back to local speech.</td></tr>
 <tr><td><b>Everyday apps, built in</b></td><td>Inbox (Gmail), Calendar, Browser, Camera, Photos, Maps, Notes and Files, all designed around the agent.</td></tr>
 <tr><td><b>Workflows</b></td><td>Scheduled briefs and routines that run while the phone is on, with approvals and a run history you can inspect.</td></tr>
 <tr><td><b>You approve what matters</b></td><td>The agent shows you what it is about to do and waits for your go-ahead. Full photo access stays a local permission, not a bulk upload.</td></tr>
@@ -135,11 +135,12 @@ The first command lists anything that is missing. The second prepares the agent
 and builds the APKs into `artifacts/`. The third checks their contents and
 signatures.
 
-On-device voice needs model files that the build does not download for you.
-Stage them first with
-`node scripts/android-stage-voice-models.ts --from <directory>`, or skip local
-models by building the Cloud profile. Both paths, signing and emulator testing
-are covered in the [developer guide](docs/development.md#android-builds).
+On-device voice needs recorded model files and native outputs that the build
+does not download for you. Stage the reviewed inputs first with
+`node scripts/android-stage-voice-models.ts --from <directory>`. Developer APKs
+can explicitly omit the runtime; those builds are not distributable. Setup,
+signing and emulator testing are covered in the
+[developer guide](docs/development.md#android-builds).
 
 | Variant        | What it is                                                        |
 | -------------- | ----------------------------------------------------------------- |

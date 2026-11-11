@@ -52,7 +52,6 @@ def voice_inventory(voice):
     require([row['abi'] for row in voice['abis']] == list(ABIS), 'Reviewed voice ABI inventory differs')
     rows = [(f'{VOICE_ASSETS}/{row["path"]}', row) for row in voice['models']]
     for abi in voice['abis']:
-        require('engineAdmission' not in abi, 'Unreviewed voice engine cannot supply a candidate')
         require([row['name'] for row in abi['libraries']] == list(VOICE_LIBRARIES), 'Reviewed voice library inventory differs')
         rows.extend((f'jniLibs/{abi["abi"]}/{row["name"]}', row) for row in abi['libraries'])
     inventory = {}

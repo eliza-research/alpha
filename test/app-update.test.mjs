@@ -4,7 +4,7 @@ import {mkdtempSync,readdirSync,readFileSync,rmSync,writeFileSync} from 'node:fs
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {nativeSource,fixture,runJvm,root,javaBinary,jvmTimeout} from './fixtures/jvm-tools.mjs';
+import {nativeSource,fixture,runJvm,root,javaBinary,jvmTimeout,upstreamConnection} from './fixtures/jvm-tools.mjs';
 import {exactUpdateMembers} from '../specs/quint/refinement/native/update-barrier.mjs';
 
 // One-tap app update, native side (AlphaDevicePlugin). The download admission and the update flow run on the
@@ -39,8 +39,9 @@ test('the update flow runs one attempt per process, fences a session Android sti
    '-keystore',keyStore,'-storepass','fixture-pass','-keypass','fixture-pass','-dname','CN=localhost',
    '-ext','SAN=dns:localhost,ip:127.0.0.1','-validity','2','-noprompt'],{stdio:'pipe',timeout:jvmTimeout});
   writeFileSync(members,exactUpdateMembers(plugin).replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)'));
-  const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),nativeSource('AlphaUpdateStatusReceiver.java'),nativeSource('UpdateConfirmationReceipt.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{timeout:240000,args:[keyStore]});
+  const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),nativeSource('AlphaUpdateStatusReceiver.java'),nativeSource('UpdateConfirmationReceipt.java'),...javaFiles(fixture('app-update-jvm')).filter(file=>!file.endsWith('/ConnectionTransport.java')),upstreamConnection('ConnectionTransport.java'),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{json:true,timeout:240000,args:[keyStore]});
   assert.match(result,/PASS verified cache retry over owned TLS: one request, exact retained bytes, one synthetic installer commit/);
+  assert.match(result,/PASS fresh HTTPS offer rejects cached withdrawal, change and transport failure before one current commit/);
   assert.match(result,/PASS exact pending installer callback survives process replacement once/);
   assert.match(result,/^PASS update flow/m);
  }finally{rmSync(dir,{recursive:true,force:true});}
@@ -73,7 +74,8 @@ test('Android installs only the offered newer build of this package, and only wh
  // The file goes while the flag is held: a delete after it would hit the next attempt's download.
  assert.match(install,/if\(!keepApk\)\{updateVerified=null;apk\.delete\(\);\}updating\.set\(false\);\s*\}/);
  // A check of 404 is an answer, not a failure.
- assert.match(plugin,/if\(status==404\)\{call\.resolve\(new JSObject\(\)\);return;\}\s*if\(status!=200\)throw/);
+ assert.match(plugin,/if\(status==404\)return null;\s*if\(status!=200\)throw/);
+ assert.match(plugin,/call\.resolve\(manifest==null\?new JSObject\(\)/);
  assert.match(plugin,/updateConnection\(BuildConfig\.ALPHA_UPDATE_MANIFEST_URL\)/);
  assert.match(plugin,/handleOnDestroy\(\)\{[^}]*updateWorker\.shutdownNow\(\);[^}]*getContext\(\)\.unregisterReceiver\(updateStatus\);[^}]*if\(updateOwner==this\)/);
  assert.doesNotMatch(plugin,/INSTALL_PACKAGES"|toast|Toast/);
