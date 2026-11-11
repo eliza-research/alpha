@@ -2719,7 +2719,7 @@ export const connectionController = {
     await work('Removing key', async () => {
       if (active?.kind === 'resident') { await stopLocalAgent(); await retire(); save({ kind: 'resident' }); }
       const status = await clearLocalProvider();
-      update({ providerStatus: status, message: 'Key removed' });
+      update({ providerStatus: status, message: 'Key removed · ' + aiOffMessage() });
     });
     // P-43: the resident restarts at once without inference (native start no longer needs a key).
     if (residentAlwaysPresent) await ensureResident(); else if (wasResident && !active && !state.error) await connectionController.startLocal();
@@ -3252,7 +3252,7 @@ export const connectionController = {
       // Own API keys keep AI on after sign-out: no AI-off notice and no dialog, only a receipt.
       const own = ownProviderSelected();
       // An unconfirmed revocation is reported either way: the token may still be valid on the service.
-      const message = revoked ? 'Signed out' : 'Signed out here only';
+      const message = (revoked ? 'Signed out' : 'Signed out here only')+(!own&&isAndroid&&!testMocksEnabled?' · '+aiOffMessage():'');
       update({ agents: [], residentSavedCredential:false, ...(residentCloudFlow()?{purpose:'agent' as const}:{}), ...(own?{message:''}:{message, signOutNotice:message}) });
       if (own) connectionToast(message);
       // The agent keeps running: reconnected (or restarted) without Cloud inference, and the

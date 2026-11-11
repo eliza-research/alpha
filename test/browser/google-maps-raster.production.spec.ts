@@ -54,7 +54,7 @@ for(const tiles of ['valid','malformed','copyright-unavailable','unavailable'] a
  await expect(attribution.getByRole('img',{name:'Google Maps',exact:true})).toBeVisible();
  await expect(page.locator('.alpha-map-credits').getByText('OpenFreeMap',{exact:true})).toHaveCount(0);
  if(tiles==='unavailable'){
-  await expect(attribution.getByText('Map imagery unavailable')).toBeVisible();
+  await expect(attribution.getByText('No imagery',{exact:true})).toBeVisible();
   await expect(plane.locator('canvas')).toHaveCount(0);
   await expect(page.getByText('Loading map…',{exact:true})).toHaveCount(0);
   await expect(page.getByRole('button',{name:/^Synthetic harbour/})).toBeVisible();

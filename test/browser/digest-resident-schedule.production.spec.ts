@@ -56,10 +56,10 @@ test('loop D on Android: a reviewed snapshot, morning and evening schedules, a l
   await digests.getByRole('combobox', { name: 'Reviewed source', exact: true }).selectOption(source.id);
   await digests.getByLabel('Morning', { exact: true }).fill('07:30');
   await button(page, 'Review morning schedule').click();
-  await confirmReview(page, `Runs daily at 07:30 (${zone}) and reads the Errands snapshot.`);
+  await confirmReview(page, /Turn on morning digest at 07:30\?\s*Sends Errands to agent AI/);
   await expect(digests.getByRole('status')).toHaveText('Save not confirmed. Retry.');
   const pendingSection = digests.locator('section', { has: page.getByRole('heading', { name: 'Not saved', exact: true }) });
-  await expect(pendingSection).toContainText('Runs daily at 07:30');
+  await expect(pendingSection).toContainText('Turn on morning digest at 07:30?');
   const morning = (await posts(page))[1];
   expect(morning).toEqual({ path: 'loops', body: { spec: { version: 1, template: 'morning', sourceId: source.id, sourceRevision: source.revision, timeZone: zone, localTime: '07:30', enabled: true }, mutationId: expect.stringMatching(/^[0-9a-f-]{36}$/), confirmed: true } });
   expect(await harness(page, f => [f.digests.dropped, f.digests.loops.length])).toEqual([['loops'], 1]);
@@ -77,7 +77,7 @@ test('loop D on Android: a reviewed snapshot, morning and evening schedules, a l
   // 3. Evening schedule on the same source.
   await digests.getByLabel('Evening', { exact: true }).fill('19:15');
   await button(page, 'Review evening schedule').click();
-  await confirmReview(page, `Runs daily at 19:15 (${zone}) and reads the Errands snapshot.`);
+  await confirmReview(page, /Turn on evening digest at 19:15\?\s*Sends Errands to agent AI/);
   await expect(schedules(page)).toHaveText([`Morning at 07:30 (${zone}) · Errands · On`, `Evening at 19:15 (${zone}) · Errands · On`]);
   expect((await posts(page))[3].body).toEqual({ spec: { version: 1, template: 'evening', sourceId: source.id, sourceRevision: source.revision, timeZone: zone, localTime: '19:15', enabled: true }, mutationId: expect.stringMatching(/^[0-9a-f-]{36}$/), confirmed: true });
 
@@ -120,7 +120,7 @@ test('loop D on Android: a schedule edit made against an older version is refuse
   const source = await harness(page, f => f.digests.sources[0].id) as string;
   await digests.getByRole('combobox', { name: 'Reviewed source', exact: true }).selectOption(source);
   await button(page, 'Review morning schedule').click();
-  await confirmReview(page, 'Runs daily at 08:00');
+  await confirmReview(page, "Turn on morning digest at 08:00?");
   await expect(schedules(page)).toHaveCount(1);
   // The agent's loop changes after the panel read it (another device edited it).
   await button(page, 'Pause').click();

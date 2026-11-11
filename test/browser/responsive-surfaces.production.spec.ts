@@ -134,7 +134,7 @@ test('the Calendar month picker is a bounded sheet on a wide screen and scrolls 
 
 test('Workflows and Files lists keep a readable column instead of stretching', async ({ page }) => {
   await open(page, 'Workflows');
-  const status = page.locator('[data-alpha-app-scroll="workflows"]').getByText(/Your agent runs on your phone, not here/);
+  const status = page.locator('[data-alpha-app-scroll="workflows"]').getByRole('status').filter({ hasText: /^Use on phone$/ });
   await expect(status).toBeVisible();
   for (const viewport of [TABLET_LANDSCAPE, LANDSCAPE, PORTRAIT]) {
     await resize(page, viewport);

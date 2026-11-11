@@ -114,9 +114,9 @@ async function start(page: Page) {
   await expect(list(page).getByText('Agenda digest', { exact: true })).toBeVisible({ timeout: 20_000 });
   return foreign;
 }
-async function openFlow(page: Page, name: string) {
+async function openFlow(page: Page, name: string, run = 'Run now') {
   await list(page).getByText(name, { exact: true }).first().click();
-  await expect(button(page, 'Run now')).toBeVisible();
+  await expect(button(page, run)).toBeVisible();
 }
 
 test('the list shows only the agent’s workflows; detail, Run with its receipt, pause and enable', async ({ page }) => {
@@ -226,7 +226,8 @@ test('a lost Run request stays outcome unknown until the owner sends the same su
   // After a reload the retained request is checked against the agent: it has no run for it.
   await page.reload();
   await button(page, 'Workflows').click();
-  await openFlow(page, 'Agenda digest');
+  // The run button itself offers the resend while that request is unaccounted for.
+  await openFlow(page, 'Agenda digest', 'Resend');
   const [lost] = await posts(page, '/run');
   expect(await agent(page, s => s.gets)).toContain(`/api/workflow/workflows/agenda/submissions/${lost.body.submissionId}`);
   await expect(runStatus(page)).toHaveText('Not received');

@@ -74,7 +74,7 @@ test('J03 on Android: a picked document, a trimmed question and the resident ans
   await card.click();
   const review = page.getByRole('dialog', { name: 'Save summary' });
   await expect(review.getByRole('textbox', { name: 'Summary note text' })).toHaveValue(answer);
-  await expect(review).toContainText('The note will link to garden-report.txt.');
+  await expect(review).toContainText('garden-report.txt');
   await review.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(review).toHaveCount(0);
   expect(await savedNotes(page)).toEqual([]);

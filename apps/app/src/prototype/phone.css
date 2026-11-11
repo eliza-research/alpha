@@ -491,6 +491,9 @@ html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > 
 }
 .alpha-landscape [data-alpha-maps-guidance-controls] > button { width:48px!important; height:48px!important; }
 .alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif { font-size:24px!important; overflow-wrap:anywhere; }
+/* The Google credit bar keeps the full row: its sources panel opens from the bar's right edge. */
+.alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits[data-google-maps="true"],
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > .alpha-map-credits[data-google-maps="true"] { align-self:stretch; }
 .alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits:has(details[open]) { z-index:6; }
 .alpha-landscape [data-alpha-maps-guidance="true"] .alpha-map-info {
   top:0; left:60px; bottom:auto; width:min(300px,calc(100vw - 92px)); max-height:160px;

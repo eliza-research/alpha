@@ -43,11 +43,11 @@ async function sendRefused(page: Page, text: string) {
 
 const KINDS = {
   // Cloud's billing refusal of a signed-in account: one answer naming both ways back (cloud-membership-ui.tsx).
-  insufficient_credits: 'Eliza Cloud declined this request for billing. Check your subscription or enter a membership code, then send again.',
+  insufficient_credits: 'Billing declined',
   provider_issue: 'Reply failed',
   generation_timeout: 'Reply failed',
   // Bound to an admitted plan, yet the agent ran without a provider: a check of what native bound is offered.
-  no_provider: 'AI offline Check Eliza Cloud again.',
+  no_provider: 'AI offline',
 } as const;
 
 for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', 'error'] as const) {
@@ -101,7 +101,7 @@ for (const [kind, text] of Object.entries(KINDS)) for (const frame of ['done', '
       await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
       await button(page, 'Settings').click();
       await button(page, 'Account').click();
-      await page.getByRole('button', {name:/^AI connection/}).click();
+      await page.getByRole('button', {name:/^AI (Cloud|Own keys)$/}).click();
       const connection = page.getByRole('dialog',{name:'AI connection',exact:true});
       await expect(connection).toBeVisible();
       await expect(connection).not.toContainText('Connected');
@@ -136,7 +136,7 @@ for (const frame of ['done', 'error'] as const) test(`a provider-less turn witho
   expect(await stub(page, s => s.order.filter((entry: string) => entry.startsWith('configureCloudProvider')))).toEqual([]);
   await setStub(page, { stream: { failure: 'no_provider', frame } });
   await send(page, 'Asked without a plan');
-  await expect(conversation(page).getByText(/^(I'm running on this device, but AI replies need an Eliza Cloud plan|Eliza Cloud couldn't confirm your plan right now)\./)).toHaveCount(1);
+  await expect(conversation(page).getByText(/^(Plan needed|Plan unconfirmed)$/)).toHaveCount(1);
   await expect(page.getByText(/Set up AI/)).toHaveCount(0);
   await expect(page.getByText(/PRIVATE_PROVIDER_ERROR_CANARY/)).toHaveCount(0);
   const plan = page.getByRole('button', { name: /^Choose plan/ });
@@ -179,7 +179,7 @@ test('without a network the composer stays silent, sends nothing, keeps the draf
   // Readiness is retracted while offline.
   await button(page, 'Settings').click();
   await button(page, 'Account').click();
-  await page.getByRole('button', {name:/^AI connection/}).click();
+  await page.getByRole('button', {name:/^AI (Cloud|Own keys)$/}).click();
   const connection = page.getByRole('dialog',{name:'AI connection',exact:true});
   await expect(connection).not.toContainText('Connected');
   await connection.getByRole('button', {name:'Close Account',exact:true}).click();

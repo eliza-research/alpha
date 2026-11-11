@@ -671,7 +671,7 @@ test('loop J05 on Android: a reviewed native page excerpt, a resident answer and
   await expect(card).toHaveCount(1);
   await card.click();
   const summary = page.getByRole('dialog', { name: 'Save summary' });
-  await expect(summary).toContainText('The note will link to Harbour report.');
+  await expect(summary).toContainText('Harbour report');
   await expect(summary.getByRole('textbox', { name: 'Summary note text' })).toHaveValue('The ferry leaves at nine.');
   await summary.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(summary).toHaveCount(0);
@@ -878,7 +878,7 @@ test('loop B / J02 on Android signed out: the Eliza Cloud sign-in comes first an
   // No native sign-in here: the reason and one retry, not disabled forms.
   await expect(dialog.getByRole('button', { name: 'Try again', exact: true })).toBeEnabled();
   await expect(dialog.getByRole('textbox', { name: 'Email', exact: true })).toHaveCount(0);
-  await expect(dialog.getByRole('alert')).toHaveText('Eliza Cloud sign-in is unavailable.');
+  await expect(dialog.getByRole('alert')).toHaveText('Unavailable');
   await expect(dialog.getByRole('button', { name: 'Close connection settings', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Use local apps without AI', exact: true })).toHaveCount(0);
   await expect(button(page, 'Start recording')).toHaveCount(0);
