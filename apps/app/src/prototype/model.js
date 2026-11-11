@@ -3254,7 +3254,7 @@ registerView("notes", {
       // The Notes recorder (voice-adapter, note-recorder.ts) handles Record; `record` is its deep-link flag.
       record: function () { api.set({ record: true }); },
       pinnedRows: pinnedRows, otherRows: otherRows, hasPinned: pinnedRows.length > 0, notesHead: pinnedRows.length > 0 && otherRows.length > 0,
-      none: rows.length === 0, emptyTitle: filter ? "No matching notes" : "No notes yet", emptyMessage: filter ? "Clear the filter to see all your notes." : "Create a note or record a voice note to get started.",
+      none: rows.length === 0, emptyTitle: filter ? "No matches" : "No notes", emptyMessage: "",
       allPressed: folder ? "false" : "true", selectAll: function () { api.set({ folder: null, filter: null, folderSheet: null }); },
       folderChips: folderChips,
       newFolder: function () { api.set({ folderSheet: { kind: "new", name: "" } }); },

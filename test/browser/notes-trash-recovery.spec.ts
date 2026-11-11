@@ -387,7 +387,7 @@ test('process death between the write-ahead Trash row and the deletion commit ke
  // 2. A voice entry expires; the recording was erased but the process died before its row was removed.
  await page.getByRole('button',{name:'Open Dead memo',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
- await expect(page.getByText('Moved to Recently deleted',{exact:true})).toBeVisible();
+ await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
  const entry=(await trashEntries(page))[0];
  expect(entry.audio).toEqual({audioId:'dead-audio'});
  await page.evaluate(async id=>{const {purgeAudio}=await import('/src/browser/note-audio-store.ts');await purgeAudio('dead-audio','dead-voice',id);},entry.id);

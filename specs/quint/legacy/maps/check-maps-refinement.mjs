@@ -288,7 +288,7 @@ async function guidanceTargets(page, viewports) {
             owned: points(node, [0.2, 0.5, 0.8]),
           }));
           // The circular ⓘ summary: sample inside its rounded hit area.
-          const information = root.querySelector('summary[aria-label="Map information and credits"]');
+          const information = root.querySelector('summary[aria-label="Map information"]');
           const notice = root.querySelector('[data-alpha-maps-status] [role="status"]');
           const pill = root.closest('[data-screen]').querySelector('[data-alpha-layer="pill"]');
           const rail = pill?.getBoundingClientRect(), app = root.getBoundingClientRect();
@@ -305,10 +305,10 @@ async function guidanceTargets(page, viewports) {
         }, width > height);
         assert.equal(targets.length, 6, 'Four guidance controls, Map information and status');
         // Attribution lives in the ⓘ disclosure: open it and hit-test its three credit links.
-        const information = page.locator('[data-alpha-maps-root] summary[aria-label="Map information and credits"]');
+        const information = page.locator('[data-alpha-maps-root] summary[aria-label="Map information"]');
         await information.tap();
         await expect(information.locator('..')).toHaveAttribute('open', '');
-        const coordinates = information.locator('..').getByRole('button', {name:'Coordinates', exact:true});
+        const coordinates = information.locator('..').getByRole('button', {name:'Enter coordinates', exact:true});
         await coordinates.scrollIntoViewIfNeeded();
         assert.ok(await coordinates.evaluate(node => {
           const box = node.getBoundingClientRect();

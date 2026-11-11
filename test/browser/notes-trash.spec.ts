@@ -171,7 +171,7 @@ test('voice notes share Recently deleted: the recording restores with its note a
  const remove=async()=>{
   await page.getByRole('button',{name:'Open Voice memo',exact:true}).click();
   await deleteOpenNote(page);
-  await expect(page.getByText('Moved to Recently deleted',{exact:true}).last()).toBeVisible();
+  await expect(page.getByText('Deleted',{exact:true}).last()).toBeVisible();
   await expect.poll(async()=>(await describe()).deletedAt).toBeGreaterThan(0);
  };
  await remove();
@@ -214,7 +214,7 @@ test('an expired voice entry never erases a recording that a saved note still re
  await page.reload();await openNotes(page);
  await page.getByRole('button',{name:'Open Shared memo',exact:true}).click();
  await deleteOpenNote(page);
- await expect(page.getByText('Moved to Recently deleted',{exact:true}).last()).toBeVisible();
+ await expect(page.getByText('Deleted',{exact:true}).last()).toBeVisible();
  await expect.poll(async()=>(await describe()).deletedAt).toBeGreaterThan(0);
  const entry=(await trashEntries(page))[0];
  // Another saved note now references the same recording (for example, re-associated by a later edit).

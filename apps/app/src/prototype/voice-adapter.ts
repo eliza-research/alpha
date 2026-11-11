@@ -1085,7 +1085,7 @@ export function installPrototypeVoiceAdapter(Component: any, views: Record<strin
           if(active())current.set({open:null});
           window.dispatchEvent(new Event('alpha:notes-trash-changed'));
           if(permanent)current.toast(`${reviewed.title||'Voice note'} and its recording deleted forever`);
-          else current.toast('Moved to Recently deleted', {undo:()=>void restoreDeletion(row!,current,index)});
+          else current.toast('Deleted', {undo:()=>void restoreDeletion(row!,current,index)});
         });} catch {current.toast(refusedFull?'Could not show the Trash choices. Nothing was deleted.':'Deletion is unconfirmed. Check deletion status; no deletion will be repeated.');}
         finally{
           deletionBusy=false;

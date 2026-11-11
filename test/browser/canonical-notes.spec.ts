@@ -15,7 +15,7 @@ test('canonical Notes use last-edit order and local date labels without writing 
 });
 
 test('empty canonical Notes explains the first action',async({page})=>{
- await canonicalNotesFixture(page);await openCanonicalNotes(page);await expect(page.getByRole('heading',{name:'No notes yet',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();
+ await canonicalNotesFixture(page);await openCanonicalNotes(page);await expect(page.getByRole('heading',{name:'No notes',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();
 });
 
 test('a lost canonical recording save reply is reconciled without another create',async({page})=>{
