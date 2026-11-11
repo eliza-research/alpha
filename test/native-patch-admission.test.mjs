@@ -6,8 +6,8 @@ import path from 'node:path';
 import {materializeNativePatches,verifyNativePatchReceipt,preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 import {sha} from '../scripts/upstream-native-source.ts';
 const module='plugins/plugin-native-test/android',target=module+'/src/main/java/Test.java';
-function fixture(run,sourceModule=module,sourceTarget=sourceModule+'/src/main/java/Test.java'){const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-patch-test-'));try{const before=Buffer.from('old\n'),after=Buffer.from('new\n'),patch=`--- a/${sourceTarget}\n+++ b/${sourceTarget}\n@@ -1 +1 @@\n-old\n+new\n`,patchRoot=path.join(root,'patches'),temporary=path.join(root,'stage');fs.mkdirSync(patchRoot);fs.mkdirSync(temporary);fs.writeFileSync(path.join(patchRoot,'test.patch'),patch);const manifest={schema:1,baseCommit:'pin',patches:[{module:sourceModule,file:'test.patch',sha256:sha(patch),targets:[{path:sourceTarget,beforeSha256:sha(before),afterSha256:sha(after)}]}]};const source={pin:'pin',read:()=>new Map([[sourceTarget,{bytes:before,mode:'100644',sha256:sha(before)}]])};run({root,manifest,source,patchRoot,temporary});}finally{fs.rmSync(root,{recursive:true,force:true});}}
-test('admission materializes only authenticated declared source',()=>fixture(args=>{const result=materializeNativePatches(args);assert.equal(result.files[target],sha('new\n'));assert.equal(fs.readFileSync(path.join(args.temporary,target),'utf8'),'new\n');}));
+function fixture(run,sourceModule=module,sourceTarget=sourceModule+'/src/main/java/Test.java'){const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-patch-test-'));try{const bytes=Buffer.from('reviewed\n'),temporary=path.join(root,'stage');fs.mkdirSync(temporary);const manifest={schema:1,baseCommit:'pin',modules:[sourceModule]};const source={pin:'pin',read:()=>new Map([[sourceTarget,{bytes,mode:'100644',sha256:sha(bytes)}]])};run({root,manifest,source,temporary});}finally{fs.rmSync(root,{recursive:true,force:true});}}
+test('admission materializes only authenticated declared source',()=>fixture(args=>{const result=materializeNativePatches(args);assert.deepEqual(result.files,{[target]:sha('reviewed\n')});assert.equal(fs.readFileSync(path.join(args.temporary,target),'utf8'),'reviewed\n');}));
 test('production native staging refuses a reintroduced patch catalog before writing a cache',()=>{
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-retired-'));
  try{
@@ -26,15 +26,10 @@ test('admission accepts an owner-only executable staged under umask 027',()=>fix
  const previous=process.umask(0o027);
  try{assert.equal(materializeNativePatches(args).modes[target],'100755');assert.equal(fs.statSync(path.join(args.temporary,target)).mode&0o777,0o750);}finally{process.umask(previous);}
 }));
-for(const [name,mutate,error] of [
- ['wrong pin',a=>a.manifest.baseCommit='other',/pin/],
- ['patch drift',a=>fs.appendFileSync(path.join(a.patchRoot,'test.patch'),'x'),/digest/],
- ['wrong source',a=>a.manifest.patches[0].targets[0].beforeSha256='0'.repeat(64),/source/],
- ['wrong output',a=>a.manifest.patches[0].targets[0].afterSha256='0'.repeat(64),/output/],
- ['unsafe patch path',a=>a.manifest.patches[0].file='../test.patch',/descriptor/],
- ['undeclared patch target',a=>{const p=a.manifest.patches[0];const text=fs.readFileSync(path.join(a.patchRoot,p.file),'utf8').replaceAll(target,module+'/src/main/java/Other.java');fs.writeFileSync(path.join(a.patchRoot,p.file),text);p.sha256=sha(text);},/headers/],
- ['symlink patch',a=>{fs.renameSync(path.join(a.patchRoot,'test.patch'),path.join(a.root,'real.patch'));fs.symlinkSync(path.join(a.root,'real.patch'),path.join(a.patchRoot,'test.patch'));},/Nonregular/]
-])test(`admission rejects ${name}`,()=>fixture(a=>{mutate(a);assert.throws(()=>materializeNativePatches(a),error);}));
+test('admission rejects a wrong pin and a file the pin does not carry',()=>{
+ fixture(args=>{args.manifest.baseCommit='other';assert.throws(()=>materializeNativePatches(args),/pin/);});
+ fixture(args=>{fs.writeFileSync(path.join(args.temporary,'extra'),'');assert.throws(()=>materializeNativePatches(args),/output differs/);});
+});
 
 test('APK receipt rejects missing, old and mismatched source bindings',()=>{
  const expected={root:'/not-packaged',baseCommit:'pin',manifestSha256:'new',files:{Java:'patched'}};
@@ -46,114 +41,19 @@ test('APK receipt rejects missing, old and mismatched source bindings',()=>{
  assert.throws(()=>verifyNativePatchReceipt(valid.replace('new','old'),expected),/mismatch/);
 });
 
-for(const extension of ['kt','xml'])test(`admission ${extension==='kt'?'accepts Kotlin':'rejects non-code'} targets`,()=>fixture(args=>{
- const renamed=target.replace(/java$/,'')+extension,patch=args.manifest.patches[0];
- const bytes=fs.readFileSync(path.join(args.patchRoot,patch.file),'utf8').replaceAll(target,renamed);fs.writeFileSync(path.join(args.patchRoot,patch.file),bytes);patch.sha256=sha(bytes);patch.targets[0].path=renamed;
- const read=args.source.read;args.source.read=()=>new Map([[renamed,read().get(target)]]);
- if(extension==='kt'){const output=materializeNativePatches(args);assert.equal(output.files[renamed],sha('new\n'));}
- else assert.throws(()=>materializeNativePatches(args),/target\/source mismatch/);
-}));
-
-test('plugin patch admission refuses resident service modules now owned by upstream',()=>fixture(args=>{
- args.manifest.patches[0].module='packages/app/platforms/android/app';
- assert.throws(()=>materializeNativePatches(args),/Invalid native patch module/);
-}));
-
 const nativeOnlyModule='plugins/plugin-native-secure-store/android-nativeonly';
-test('native-only custody modules retain authenticated source and output hashes',()=>fixture(args=>{
- const result=materializeNativePatches(args);
- const target=nativeOnlyModule+'/src/main/java/Test.java';
- assert.deepEqual(result.modules,[nativeOnlyModule]);
- assert.equal(result.files[target],sha('new\n'));
- assert.equal(fs.readFileSync(path.join(args.temporary,target),'utf8'),'new\n');
-},nativeOnlyModule));
-for(const module of [nativeOnlyModule+'-other',nativeOnlyModule+'/../android'])
- test(`native-only custody admission rejects ${module}`,()=>fixture(args=>{
-  args.manifest.patches[0].module=module;
+const authModule='packages/auth/android';
+for(const admitted of [nativeOnlyModule,authModule,'packages/app/platforms/android/app/src/main/elizavoice-jni'])
+ test(`${admitted} is staged byte-exact with source hashes`,()=>fixture(args=>{
+  args.source.read=(read=>prefix=>{assert.equal(prefix,admitted);return read();})(args.source.read);
+  const result=materializeNativePatches(args),name=admitted+'/src/main/java/Test.java';
+  assert.deepEqual(result.modules,[admitted]);
+  assert.equal(result.files[name],sha('reviewed\n'));
+  assert.equal(fs.readFileSync(path.join(args.temporary,name),'utf8'),'reviewed\n');
+ },admitted));
+for(const invalidModule of ['packages/app/platforms/android/app',nativeOnlyModule+'-other',nativeOnlyModule+'/../android',
+ 'packages/auth','packages/auth/android-extra','packages/auth/android/src','packages/auth/android/../other','packages/other/android','/packages/auth/android','packages\\auth\\android'])
+ test(`admission rejects module ${invalidModule}`,()=>fixture(args=>{
   args.source.read=()=>assert.fail('an unadmitted module must not be read');
   assert.throws(()=>materializeNativePatches(args),/Invalid native patch module/);
- },nativeOnlyModule));
-
-const authModule='packages/auth/android';
-const browserModule='plugins/plugin-native-browser-surface/android';
-test('shared browser descriptor is hash-bound without admitting other descriptors',()=>fixture(args=>{
- const output=materializeNativePatches(args);
- assert.equal(output.files[browserModule+'/build.gradle'],sha('new\n'));
- assert.equal(fs.readFileSync(path.join(args.temporary,browserModule+'/build.gradle'),'utf8'),'new\n');
-},browserModule,browserModule+'/build.gradle'));
-for(const authTarget of [authModule+'/src/main/java/CloudSignInPlugin.java',authModule+'/build.gradle'])test(`shared auth admission authenticates ${authTarget}`,()=>fixture(args=>{
- const descriptor=authModule+'/settings.gradle',unchanged=Buffer.from('unchanged descriptor\n'),read=args.source.read;
- args.source.read=prefix=>{assert.equal(prefix,authModule);return new Map([...read(),[descriptor,{bytes:unchanged,mode:'100644',sha256:sha(unchanged)}]]);};
- const output=materializeNativePatches(args);
- assert.deepEqual(output.modules,[authModule]);
- assert.equal(output.files[authTarget],sha('new\n'));
- assert.equal(fs.readFileSync(path.join(args.temporary,authTarget),'utf8'),'new\n');
- assert.equal(output.files[descriptor],sha(unchanged));
- assert.deepEqual(fs.readFileSync(path.join(args.temporary,descriptor)),unchanged);
-},authModule,authTarget));
-
-for(const invalidModule of ['packages/auth','packages/auth/android-extra','packages/auth/android/src','packages/auth/android/../other','packages/other/android','/packages/auth/android','packages\\auth\\android'])test(`shared auth admission rejects module ${invalidModule}`,()=>fixture(args=>{
- args.manifest.patches[0].module=invalidModule;
- args.source.read=()=>{assert.fail('an unadmitted module must not be read');};
- assert.throws(()=>materializeNativePatches(args),/Invalid native patch module/);
-},authModule));
-
-for(const [sourceModule,invalidTarget] of [
- [module,module+'/build.gradle'],
- [authModule,authModule+'/settings.gradle'],
- [authModule,authModule+'/build.gradle.kts'],
- [authModule,authModule+'/src/main/java/../build.gradle'],
- [authModule,authModule+'/../android/build.gradle'],
- [authModule,'packages/other/android/build.gradle'],
-])test(`shared auth descriptor exception rejects ${invalidTarget}`,()=>fixture(args=>{
- assert.throws(()=>materializeNativePatches(args),/target\/source mismatch/);
-},sourceModule,invalidTarget));
-
-test('shared auth descriptor patch still rejects unauthenticated output',()=>fixture(args=>{
- args.manifest.patches[0].targets[0].afterSha256='0'.repeat(64);
- assert.throws(()=>materializeNativePatches(args),/output differs/);
-},authModule,authModule+'/build.gradle'));
-
-const speechModule='plugins/plugin-local-inference/native/android';
-const speechTarget=speechModule+'/speech-bridge/src/main/java/ai/eliza/voice/SharedRelay.java';
-function speechAddition(run){fixture(args=>{
- const base=speechModule+'/src/main/java/ai/eliza/voice/Existing.java',body='package ai.eliza.voice; class SharedRelay {}\n';
- const original=Buffer.from('package ai.eliza.voice; class Existing {}\n');
- args.source.read=()=>new Map([[base,{bytes:original,mode:'100644',sha256:sha(original)}]]);
- const patch=`--- /dev/null\n+++ b/${speechTarget}\n@@ -0,0 +1 @@\n+${body}`;
- fs.writeFileSync(path.join(args.patchRoot,'test.patch'),patch);
- args.manifest.patches=[{module:speechModule,file:'test.patch',sha256:sha(patch),targets:[{path:speechTarget,beforeSha256:null,afterSha256:sha(body)}]}];
- run(args,body);
-},speechModule);}
-test('shared speech additions are hash-bound and retain exact source/mode inventory',()=>speechAddition((args,body)=>{
- const result=materializeNativePatches(args);
- assert.equal(result.files[speechTarget],sha(body));assert.equal(result.modes[speechTarget],'100644');
- assert.equal(fs.readFileSync(path.join(args.temporary,speechTarget),'utf8'),body);
-}));
-for(const scenario of ['existing','namespace','module','output'])test(`shared speech addition rejects ${scenario}`,()=>speechAddition((args,body)=>{
- const patch=args.manifest.patches[0];
- if(scenario==='existing'){const read=args.source.read;args.source.read=()=>new Map([...read(),[speechTarget,{bytes:Buffer.from(body),mode:'100644',sha256:sha(body)}]]);}
- if(scenario==='namespace')patch.targets[0].path=speechTarget.replace('/ai/eliza/voice/','/unreviewed/');
- if(scenario==='module')patch.module=module;
- if(scenario==='output')patch.targets[0].afterSha256='0'.repeat(64);
- assert.throws(()=>materializeNativePatches(args),/mismatch|output differs/);
-}));
-
-
-const speechJniSource='packages/app/platforms/android/app/src/main/elizavoice-jni';
-test('shared speech JNI companion inputs are copied byte-exact with source hashes',()=>fixture(args=>{
- const entries=new Map(['CMakeLists.txt','elizavoice-jni.cpp'].map(name=>{
-  const bytes=Buffer.from('reviewed '+name+'\n');
-  return [speechJniSource+'/'+name,{bytes,mode:'100644',sha256:sha(bytes)}];
- }));
- args.manifest.modules=[speechJniSource];args.manifest.patches=[];
- args.source.read=prefix=>{assert.equal(prefix,speechJniSource);return entries;};
- const result=materializeNativePatches(args);
- for(const [name,file] of entries){
-  assert.equal(result.files[name],file.sha256);
-  assert.deepEqual(fs.readFileSync(path.join(args.temporary,name)),file.bytes);
- }
-}));
-test('shared speech JNI companion admission does not authorize source patches',()=>fixture(args=>{
- assert.throws(()=>materializeNativePatches(args),/companion source is read-only/);
-},speechJniSource));
+ },invalidModule));
