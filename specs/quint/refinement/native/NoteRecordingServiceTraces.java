@@ -92,6 +92,17 @@ public final class NoteRecordingServiceTraces {
    service.onDestroy();trace.step("destroy",observe());service=new AlphaNoteRecordingService();start(first,true);
    command(AlphaNoteRecordingService.ACTION_PAUSE,first);trace.step("toggle",observe(),1,true);
    command(AlphaNoteRecordingService.ACTION_RESUME,first);trace.step("toggle",observe(),1,false);
+  }else if(mode.equals("notification-stop")||mode.equals("paused-notification-stop")){
+   if(mode.startsWith("paused-")){command(AlphaNoteRecordingService.ACTION_PAUSE,first);trace.step("toggle",observe(),1,true);}
+   command(AlphaNoteRecordingService.ACTION_FINISH,first);trace.step("finish",observe(),1);
+   if(service.shown||!recorder.owns(first)||!"stopped".equals(recorder.status().getString("state")))throw new AssertionError("Notification Stop did not keep the stopped recording for Notes");
+  }else if(mode.equals("old-notification-stop")){
+   close();String second=begin(2);start(second,true);
+   command(AlphaNoteRecordingService.ACTION_FINISH,first);trace.step("finish",observe(),1);
+   if(!service.shown||!recorder.owns(second)||!"recording".equals(recorder.status().getString("state")))throw new AssertionError("Retired notification Stop reached the successor recording");
+  }else if(mode.equals("blank-notification-stop")){
+   command(AlphaNoteRecordingService.ACTION_FINISH,"");trace.step("finish",observe(),0);
+   if(!service.shown||!"recording".equals(recorder.status().getString("state")))throw new AssertionError("Blank notification Stop reached the live recording");
   }else if(mode.equals("pause-resume")){
    command(AlphaNoteRecordingService.ACTION_PAUSE,first);trace.step("toggle",observe(),1,true);
    NoteRecordingPorts.advance(5000);
