@@ -2,20 +2,26 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "4a51bce4b89c000f2a7627f6cc3329ae3429b5ff",
-  "head": "ede068b56ab07df42e3038de9a108bc7daa6ae0c",
-  "recordedAt": "2026-11-10",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...ede068b56ab07df42e3038de9a108bc7daa6ae0c",
-  "status": "behind",
-  "aheadBy": 0,
-  "behindBy": 78,
+  "baseCommit": "489fdf6ac3532ba5fbfeb7464ec509a44f5a66d1",
+  "head": "89aca92fb77867262635836f8077f705cab17cee",
+  "recordedAt": "2026-11-11",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...89aca92fb77867262635836f8077f705cab17cee",
+  "status": "diverged",
+  "aheadBy": 1,
+  "behindBy": 141,
   "mergeBase": "ede068b56ab07df42e3038de9a108bc7daa6ae0c",
-  "pinOnlyCommits": [],
+  "pinOnlyCommits": [
+    {
+      "sha": "89aca92fb77867262635836f8077f705cab17cee",
+      "subject": "Open Files from a cold view before selecting a file"
+    }
+  ],
   "pullRequests": [
     "https://github.com/elizaOS/eliza/pull/39247",
     "https://github.com/elizaOS/eliza/pull/39244",
     "https://github.com/elizaOS/eliza/pull/39231",
     "https://github.com/elizaOS/eliza/pull/39233",
-    "https://github.com/elizaOS/eliza/pull/39234"
+    "https://github.com/elizaOS/eliza/pull/39234",
+    "https://github.com/elizaOS/eliza/pull/39266"
   ]
 }
