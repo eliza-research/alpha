@@ -134,9 +134,12 @@ test('uncertain final responses retain manual recovery and require a fresh autom
       assert.equal(f.manualOffer()?.versionCode,8);
       assert.deepEqual(f.installs,[request()]);
       assert.deepEqual(s.times(),[60_000]);
-      f.offline();await s.tick(60_000);
+      if(reply.manifest===undefined)f.offline();
+      else f.offer({manifest:reply.manifest,manifestSha256:'3d'.repeat(32)});
+      await s.tick(60_000);
       assert.equal(f.checks(),2);
       assert.equal(f.manualOffer()?.versionCode,8);
+      assert.deepEqual(f.saved(),{checkedAt:0,manifest});
       assert.deepEqual(f.installs,[request()]);
       const digest='3d'.repeat(32);
       f.offer({manifest:JSON.stringify(nextOffer),manifestSha256:digest});
