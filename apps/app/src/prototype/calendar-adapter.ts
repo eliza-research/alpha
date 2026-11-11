@@ -90,7 +90,7 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
       title:event.title||'Untitled event',notes:event.body||'',where:event.location||'',
       cal:'personal',who:event.who||[],video:event.video?'Room':false,repeat:'none',alert:event.alert??null,allDay};
   };
-  async function refresh(request=false, force=false) {
+  async function refresh(request=false, force=false, {waitForRecovery=true}={}) {
     if(!owner||!active(owner)||(loading&&!force))return;
     if (Capacitor.getPlatform() === 'web' && !Capacitor.isPluginAvailable('AlphaCalendar')) {
       desired=rangeFor(owner.vget('calendar'));attemptedKey=desired.key;
@@ -142,7 +142,8 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
       catch{if(ownsRecovery()){creationPending=null;creationRecoveryFailed=true;}}
       finally{if(ownsRecovery())currentOwner.vset('calendar',{});}
     };
-    await Promise.all([refreshReminders(),readAt===null?undefined:refreshCreations()]);
+    const recovery=Promise.all([refreshReminders(),readAt===null?undefined:refreshCreations()]);
+    if(waitForRecovery)await recovery;
   }
   // One presentation seam over the existing display sources/preferences. These
   // controls never create native agent read grants or change source identities.
@@ -166,7 +167,7 @@ export function installCalendarAdapter(Component: any, views: Bag, options:{acti
       const day=(civilDay(new Date(request.begin),request.allDay)-civilDay(new Date()))/DAY;
       // Cover the day list until the event opens, so a deep link never flashes the full calendar.
       currentOwner.vset('calendar',{day,month:null,open:null,openDay:null,form:null,deepOpening:request.id});desired=rangeFor({day});
-      await refresh(false,true);
+      await refresh(false,true,{waitForRecovery:false});
       if(owner!==currentOwner||epoch!==navigationEpoch||document.hidden||currentOwner.S().view!=='calendar'||currentOwner.vget('calendar').day!==day)return;
       const row=currentOwner.nativeCalendarRows?.find((row:Bag)=>row.alphaCalendarId===request.id);
       if(!row)return;
