@@ -165,6 +165,7 @@ jobs:
           execFileSync(path.join(process.env.JAVA_HOME, 'bin/java'), [
             '-cp', jar, 'scripts/owner/VerifyApkRotation.java', '--reviewed-lineage', lineage,
             approval.lineageSha256, approval.previousSignerSha256, descriptor.signerSha256,
+            ...(approval.preserveSignaturePermissions ? ["--preserve-signature-permissions"] : []),
           ], { stdio: 'inherit', env: { PATH: process.env.PATH, JAVA_HOME: process.env.JAVA_HOME } });
           NODE
           fi

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "description": "Reviewed release signer for the retained Alpha Phone package. Version 51 admits the exact private Cloud producer and the installed-data signing lineage from the existing version 49 pilot.",
+  "description": "Reviewed app51 migration preserves installed data and the existing signature-protected receiver permission across the lab-to-production signing key rotation. Rollback, shared UID and authentication capabilities remain disabled.",
   "signerSha256": "edbfcacb1da689008bf4e7d675176c302decf83161a877eb8b1de4ffae0445ed",
   "lastRelease": {
     "versionCode": null,
@@ -13,13 +13,14 @@
     "fromVersionCode": 49,
     "versionCode": 51,
     "previousSignerSha256": "0438dccb2d5e83fc2ad1ab11cbb882f837d97c4aee7cba72af9229c39b149b80",
-    "lineageSha256": "08dd573a8ca1f02e5f714a2d30ed6285be36e8a4af83d973f7dd75b939891146",
+    "lineageSha256": "bca212509a83e8f2e60d2b9b744b1e0a4a014b780be058dcf81ff88a5d593759",
     "apksignerSha256": "b47549e373b895ce6ca620d0c7887e674d9615ffa837a86ac601dcfd04adb0f0",
     "verifierJarSha256": "3716d9311e55d2b0918a2fd9d54ba9e406c5f6abeea700b287f11259bc163dec",
     "unsignedApkSHA256": {
       "standalone": "039ad2e6998786e00381dc7210532db70a2cf57fe7736631ccefbbf5401dc1fe",
       "launcher": "249a1843278d6d65a9aef22194de690761d837a161cb34eabd6332001dafbe8b"
-    }
+    },
+    "preserveSignaturePermissions": true
   },
   "privateProducerApproval": {
     "approval": "approved",
