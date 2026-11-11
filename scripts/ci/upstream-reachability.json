@@ -2,18 +2,30 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "87d6776178822a2d168c25ba733efb8eb70fa8a3",
-  "head": "e488e54bd13d685e7e40e1619f6dd9231ddbecbe",
+  "baseCommit": "0f86cbc4e7a3adfd30a6585b5bd31a9520b5846d",
+  "head": "cd3cf0ae5c63719c1b0e1e0d29753f19751ec282",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...e488e54bd13d685e7e40e1619f6dd9231ddbecbe",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...cd3cf0ae5c63719c1b0e1e0d29753f19751ec282",
   "status": "diverged",
-  "aheadBy": 1,
-  "behindBy": 71,
+  "aheadBy": 4,
+  "behindBy": 177,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
       "sha": "e488e54bd13d685e7e40e1619f6dd9231ddbecbe",
       "subject": "fix(calendar): preserve selected reads across provider precision"
+    },
+    {
+      "sha": "cec351e67372cc7483669642701b57dcbb84416a",
+      "subject": "Cache managed Google Calendar events for selected reads"
+    },
+    {
+      "sha": "5341b439cc4f02a5309ff8c5d8fabb7bb693bb9b",
+      "subject": "Ground selected Calendar replies in computed local dates"
+    },
+    {
+      "sha": "cd3cf0ae5c63719c1b0e1e0d29753f19751ec282",
+      "subject": "Format Calendar conformance sources"
     }
   ],
   "pullRequests": [
