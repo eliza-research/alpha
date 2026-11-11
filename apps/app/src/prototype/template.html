@@ -2826,6 +2826,7 @@
           <sc-if value="{{files.pv.needsReselect}}"><button onClick="{{files.pv.reselect}}" aria-label="Select renamed file" style="padding: 10px 14px; border-radius: 20px; background: var(--acc); color: var(--alpha-white)">Select renamed file</button></sc-if>
         </div>
         <sc-if value="{{files.pv.canEmail}}"><button onClick="{{files.pv.email}}" style="display:block;min-height:44px;margin-top:12px;padding:0 16px;border-radius:22px;background:var(--s2);font-size:14px;font-weight:600">Use in email</button></sc-if>
+        <sc-if value="{{files.pv.canOpenElsewhere}}"><button onClick="{{files.pv.openElsewhere}}" style="display:block;min-height:44px;margin-top:12px;padding:0 16px;border-radius:22px;background:var(--s2);font-size:14px;font-weight:600">{{files.pv.openElsewhereLabel}}</button></sc-if>
         <sc-if value="{{files.pv.canForget}}"><button onClick="{{files.pv.forget}}" aria-label="Forget selected file" style="display: block; margin-top: 12px; color: var(--mut); font-size: 13px">Forget selected file</button></sc-if>
         <sc-if value="{{files.pv.canAsk}}">
           <button onClick="{{files.pv.ask}}" aria-label="{{name}}: summarize this file" style="display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 16px 0 14px; margin-top: 14px; border-radius: 18px; background: var(--s2); font-size: 14px; font-weight: 600"><span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;color:var(--acct)"><span class="alpha-compute-mark" aria-hidden="true" style="width:100%;height:100%"></span></span>{{files.pv.askLabel}}</button>
@@ -2839,6 +2840,10 @@
           </div>
         </sc-if>
 
+        <sc-if value="{{files.pv.previewStatus}}"><p role="status" style="margin:20px 0;color:var(--mut)">{{files.pv.previewStatus}}</p></sc-if>
+        <sc-if value="{{files.pv.mediaImage}}"><img src="{{files.pv.mediaUrl}}" alt="{{files.pv.name}}" decoding="async" onError="{{files.pv.mediaError}}" style="display:block;width:100%;max-height:55dvh;margin:20px auto 0;object-fit:contain"></sc-if>
+        <sc-if value="{{files.pv.mediaVideo}}"><video ref="{{files.pv.mediaRef}}" src="{{files.pv.mediaUrl}}" aria-label="{{files.pv.name}}" preload="metadata" onError="{{files.pv.mediaError}}" style="display:block;width:100%;max-height:55dvh;margin:20px auto 0"></video></sc-if>
+        <sc-if value="{{files.pv.mediaAudio}}"><audio ref="{{files.pv.mediaRef}}" src="{{files.pv.mediaUrl}}" aria-label="{{files.pv.name}}" preload="metadata" onError="{{files.pv.mediaError}}" style="display:block;width:100%;margin:20px auto 0"></audio></sc-if>
         <sc-if value="{{files.pv.isPages}}">
           <sc-if value="{{files.pv.isPdf}}">
             <div style="margin-top: 20px; border-radius: 8px; background: {{files.pv.paper}}; box-shadow: 0 0 0 1px var(--line), 0 8px 24px var(--shc); overflow: hidden">

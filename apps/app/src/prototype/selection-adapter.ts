@@ -12,7 +12,15 @@ import { filesIndex } from './files-index';
 import { createInlineModal } from '../runtime/inline-modal';
 
 type Bag = Record<string, any>;
-type Selection = { result: NativeResult; status: string; text?: string; pdf?: {page:number;count:number;image:string}; epoch: number; renames?: number };
+type Selection = { result: NativeResult; status: string; text?: string; pdf?: {page:number;count:number;image:string}; epoch: number; renames?: number; mediaFailed?:boolean };
+
+function previewMedia(result:NativeResult) {
+  const native=Capacitor.isNativePlatform(),uri=result.uri,mime=result.mimeType||'';
+  if(!uri||!(native?uri.startsWith('content://'):uri.startsWith('blob:')))return undefined;
+  const kind=mime.split('/')[0];
+  if(!['image','video','audio'].includes(kind)||mime==='image/svg+xml')return undefined;
+  return {kind,url:native?Capacitor.convertFileSrc(uri):uri};
+}
 
 /** Install after installPrototypeNativeAdapters so real previews override fixture
  * action guards. Forward its returned callback through the onSelection option. Selections are restored only from native picker grants, never renderer-supplied URIs.
@@ -26,6 +34,12 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
   let pdfBusySelection: string | undefined;
   let pdfRequest = 0;
   let renameBusy = false;
+  let playingPreview:HTMLMediaElement|null=null;
+  const mediaRef=(element:HTMLMediaElement|null)=>{
+    if(playingPreview===element)return;
+    playingPreview?.pause();playingPreview=element;
+    if(element){element.controls=true;if(element instanceof HTMLVideoElement)element.playsInline=true;}
+  };
   const marker = '__native_selected_document';
   let closeQuestion:(()=>void)|undefined;
   const release = (id: string) => { void DailyApps.forgetSelected({ selectionId: id }).catch(() => selectedApi?.toast("Can't release this file. Reopen Files.")); };
@@ -33,6 +47,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
    * (or eviction from Recent) is what releases it. */
   const clear = (forget = false) => {
     closeQuestion?.();closeQuestion=undefined;
+    mediaRef(null);
     epoch++;
     const id = current?.result.selectionId;
     current = undefined;
@@ -45,11 +60,14 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
   const refresh = () => selectedApi?.setView('files', { nativeSelectionEpoch: epoch });
   /** The open selection's exact identity: its picker capability, the epoch it was accepted at and its rename count. */
   const publish = () => window.dispatchEvent(new CustomEvent('alpha-selected-context', { detail: current?.result.selectionId && current.result.status === 'selected' ? { kind: 'document', id: current.result.selectionId, revision: String(current.epoch) + (current.renames ? '.' + current.renames : '') } : null }));
-  const open = async (api: Bag) => {
-    const selectionId = current?.result.selectionId;
-    if (!selectionId) return;
-    try { const r = await DailyApps.openSelected({ selectionId }); api.toast(r.message || (r.status === 'opened' ? 'Opened in the Android document app' : 'Document unavailable')); }
-    catch { api.toast('Document unavailable. Select it again.'); }
+  const open = async (api: Bag, selection:Selection, download=false) => {
+    const selectionId = selection.result.selectionId;
+    const active=()=>current===selection&&api.isActive()&&!document.hidden;
+    if (!selectionId||!active()) return;
+    try {
+      const result=await (download?DailyApps.shareSelected({selectionId}):DailyApps.openSelected({selectionId}));
+      if(active()&&result.status!=='opened')api.toast(result.message||'This file could not be opened.');
+    } catch { if(active())api.toast('Document unavailable. Select it again.'); }
   };
   let sharing = false;
   const share = async (api: Bag) => {
@@ -136,9 +154,8 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
         });
       };
       if (module === 'files') {
-        const rows = selected.text === undefined
-          ? [{ k: 'Status', v: selected.status }]
-          : selected.text.split('\n').map((v, i) => ({ k: String(i + 1), v }));
+        const media=selected.mediaFailed?undefined:previewMedia(selected.result);
+        const rows = selected.text?.split('\n').map((v, i) => ({ k: String(i + 1), v })) || [];
         // Fixed prototype page geometry: chunk rows into successive pages so long
         // text is scrollable rather than silently clipped to the first page.
         const pages = [];
@@ -148,7 +165,12 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
           needsReselect:selected.result.status === 'renamed-reselect', reselect:async()=>{try{const result=await DailyApps.perform({action:'files'});if(current===selected&&result.status==='selected')await accept('files',result,api);}catch{api.toast('File picker unavailable. Try again.');}},
           canEmail:typeof views.inbox.fileEmailTarget==='function'&&selected.result.status==='selected'&&['text/plain','application/pdf','image/png','image/jpeg','image/webp'].includes(mime),email,
           name, nativeSelectionId:selected.result.selectionId, base: name, ext: '', canForget:true, forget, meta: mime + ' · selected on this device', d: '',
-          isPages: !image, pages: selected.pdf ? [] : pages, isPdf: !!selected.pdf, pdfImage: selected.pdf?.image || '', pdfLabel: selected.pdf ? 'Page ' + (selected.pdf.page+1) + ' of ' + selected.pdf.count : '', pdfPrevious: () => selected.pdf && selected.pdf.page > 0 ? pdfPage(selected.pdf.page-1,api) : undefined, pdfNext: () => selected.pdf && selected.pdf.page+1 < selected.pdf.count ? pdfPage(selected.pdf.page+1,api) : undefined, pdfHasPrevious: !!selected.pdf && selected.pdf.page > 0, pdfHasNext: !!selected.pdf && selected.pdf.page+1 < selected.pdf.count, paper: '#FFFFFF', isPhoto: !!image,
+          isPages: !!selected.pdf||rows.length>0, pages: selected.pdf ? [] : pages, isPdf: !!selected.pdf, pdfImage: selected.pdf?.image || '', pdfLabel: selected.pdf ? 'Page ' + (selected.pdf.page+1) + ' of ' + selected.pdf.count : '', pdfPrevious: () => selected.pdf && selected.pdf.page > 0 ? pdfPage(selected.pdf.page-1,api) : undefined, pdfNext: () => selected.pdf && selected.pdf.page+1 < selected.pdf.count ? pdfPage(selected.pdf.page+1,api) : undefined, pdfHasPrevious: !!selected.pdf && selected.pdf.page > 0, pdfHasNext: !!selected.pdf && selected.pdf.page+1 < selected.pdf.count, paper: '#FFFFFF', isPhoto: false,
+          mediaImage:media?.kind==='image',mediaVideo:media?.kind==='video',mediaAudio:media?.kind==='audio',mediaUrl:media?.url,mediaRef,
+          mediaError:()=>{if(current!==selected)return;current={...selected,mediaFailed:true,status:'Preview unavailable for this file.'};refresh();},
+          previewStatus:!media&&!selected.pdf&&selected.text===undefined?selected.status:'',
+          canOpenElsewhere:selected.result.status==='selected'&&!!selected.result.selectionId,
+          openElsewhereLabel:Capacitor.isNativePlatform()?'Open in Android':'Download file',openElsewhere:()=>void open(api,selected,!Capacitor.isNativePlatform()),
           photoBg: image ? `url(${JSON.stringify(image)}) center / contain no-repeat` : '', photoSun: 'none',
           isReceipt: false, isAudio: false, isArchive: false, receipt: null, contents: [],
           renaming: !!st.renaming, notRenaming: !st.renaming, rn: typeof st.rn === 'string' ? st.rn : name, onRn: (event: Event) => api.set({rn:(event.target as HTMLInputElement).value}), saveRn: () => rename(api), rnKey: (event: KeyboardEvent) => {if(event.key === 'Enter'){event.preventDefault();void rename(api);}if(event.key === 'Escape')api.set({renaming:false});}, asking: false, asked: false, canAsk: true,
@@ -159,7 +181,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       } else if (image) {
         data.viewing = true; data.viewEmpty = false; data.editing = false;
         data.v = { bg: `url(${JSON.stringify(image)}) center / contain no-repeat`, tf: '', flt: '', slide: '', day: name, sub: 'Selected on this device', chromeOp: 1, chromePE: 'auto', favIcon: '', favLabel: 'Open in Android', vid: false, playBtn: false, playing: false, notSecure: true,
-          tap: () => {}, down: () => {}, up: () => {}, share: () => share(api), fav: () => open(api), edit: () => open(api), del: () => api.toast('Delete in the Android photo app.'), info: () => api.toast(name + ' · ' + mime), ask, close };
+          tap: () => {}, down: () => {}, up: () => {}, share: () => share(api), fav: () => open(api,selected), edit: () => open(api,selected), del: () => api.toast('Delete in the Android photo app.'), info: () => api.toast(name + ' · ' + mime), ask, close };
       }
       return data;
     };
@@ -180,6 +202,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     api.open(target, { open: marker });
     if (target === 'photos') return;
     if (result.mimeType === 'application/pdf') {await pdfPage(0,api);return;}
+    if (previewMedia(result)) return;
     try {
       const response = await DailyApps.readSelected({ selectionId: result.selectionId });
       if (epoch !== requestEpoch || current?.result.selectionId !== result.selectionId) return;
