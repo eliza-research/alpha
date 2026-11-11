@@ -35,31 +35,25 @@ test('a new session or credential retires Cloud Maps',async()=>{
  update(undefined);assert.equal(state.retired,3);
 });
 
-async function share(copy){
- globalThis.mapShareTest={copy};
+async function share(run){
+ globalThis.mapShareTest={run};
  const {shareMap}=await load('apps/app/src/maps/share.ts',{
-  '../runtime/share-panel':'export const sharedTextEmailAvailable=()=>false,composeSharedText=()=>{};export function openSharePanel(options){globalThis.mapShareTest.options=options;return Promise.resolve();}',
-  '../runtime/text-share':'export const shareSelectedText=()=>{};export const copySelectedText=text=>globalThis.mapShareTest.copy(text);',
+  '../runtime/text-share':'export const shareSelectedText=(text,signal)=>globalThis.mapShareTest.run(text,signal);',
  });
  return shareMap;
 }
 
-test('Copy link resolves copied only after the copy settles',async()=>{
- let finish;const copied=[];
- const shareMap=await share(text=>{copied.push(text);return new Promise(resolve=>finish=resolve);});
+test('Maps share waits for the platform chooser and passes its exact selected content',async()=>{
+ let finish;const shared=[];
+ const shareMap=await share(text=>{shared.push(text);return new Promise(resolve=>finish=resolve);});
  const result=shareMap({title:'Cafe',text:'Cafe',url:'https://example.com/place'},new AbortController().signal);
- const {options}=globalThis.mapShareTest;assert.equal(options.copyLabel,'Copy link');
- void options.copy();
  let settled=false;void result.then(()=>settled=true);
  await new Promise(resolve=>setTimeout(resolve,0));assert.equal(settled,false);
- finish();assert.equal(await result,'copied');assert.deepEqual(copied,['https://example.com/place']);
+ finish('opened');assert.equal(await result,'shared');
+ assert.deepEqual(shared,[{title:'Cafe',text:'Cafe\nhttps://example.com/place'}]);
 });
 
-test('a failed copy or a closed panel resolves closed',async()=>{
- const failing=await share(()=>Promise.reject(Error('Clipboard unavailable')));
- const result=failing({title:'Cafe',text:'Cafe',url:'https://example.com/place'},new AbortController().signal);
- void globalThis.mapShareTest.options.copy().catch(()=>{});
- assert.equal(await result,'closed');
- const shareMap=await share(()=>Promise.resolve());
+test('Maps share cancellation returns closed without another destination',async()=>{
+ const shareMap=await share(()=>Promise.resolve('closed'));
  assert.equal(await shareMap({title:'Cafe',text:'Cafe'},new AbortController().signal),'closed');
 });

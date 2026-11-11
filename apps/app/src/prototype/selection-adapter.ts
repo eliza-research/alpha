@@ -1,3 +1,4 @@
+import {platformSharingAvailable} from '../runtime/text-share';
 import {reviewFileEmail} from './file-email-review';
 import {registerPlugin} from '../platform-plugins';
 import {reviewMailAttachment,type MailAttachment} from '../runtime/inbox-attachment';
@@ -210,7 +211,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       }),...out.fd.menuRows.filter((row:Bag)=>!row.id.startsWith('sort:')&&row.id!=='reverse-order')];
     }
     if(Array.isArray(out.fd?.crumbs)){out.fd.crumbs=out.fd.crumbs.slice(1);out.fd.hasCrumbs=out.fd.crumbs.length>0;}
-    out.shareAvailable=Capacitor.isNativePlatform()||(typeof navigator.share==='function'&&typeof navigator.canShare==='function');
+    out.shareAvailable=platformSharingAvailable()&&(Capacitor.isNativePlatform()||typeof navigator.canShare==='function');
     if(!Capacitor.isNativePlatform()&&Array.isArray(items)&&items.length&&items.every((row:Bag)=>{try{return /^Photos\/(Images|Videos)\//.test(JSON.parse(row.id)[1]);}catch{return false;}})){
       out.mediaCollection=true;out.filePlacement=false;out.canRename=false;
       out.selSaveLocally=()=>registerPlugin<{storageSaveMedia(input:{paths:string[]}):Promise<unknown>}>('AlphaFiles').storageSaveMedia({paths:items.filter((row:Bag)=>row.selOn).map((row:Bag)=>JSON.parse(row.id)[1])});

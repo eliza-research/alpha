@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewDate": "2026-11-09",
+  "reviewDate": "2026-11-11",
   "coverageMeaning": "Reviewed domain allocation and source-drift ledger for authored code and declared consumed shared module dependencies. State-audit-required dependencies retain unproved field/transition obligations. File allocation and source hashes do not establish implementation refinement or exhaustive variable coverage.",
   "sourceRoots": [
     "apps/app/src",
@@ -15227,7 +15227,7 @@
     },
     {
       "path": "apps/app/src/maps/share.ts",
-      "sha256": "7a67f30f316ed8feaa7129d777ebc305613c8a9eef87ad5efe437cbb0e6e5e37",
+      "sha256": "30abb6a02e7e837682dc38f880451bce0b8c5dd4cfa788d76da2e6a269f0660f",
       "models": [
         "MapsNavigation"
       ],
@@ -19618,7 +19618,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "8859d1729e24525037a73ca50a30dc76f583a423d46b977cfc4ef6a6adb4dc8d",
+      "sha256": "c9785afe5f67131bd38f6838d611431bb6567e267ca57cc3f3cccf314fd9a55e",
       "stateAnchors": [
         {
           "line": 31,
@@ -20115,7 +20115,7 @@
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "6e63cb7205727eb977319c3c8f03f12092a2ea13de329b1f55ebdd3ebf4de157",
+      "sha256": "2b2b0813e79eacbc48b8c138ec27312d3d71ac566a6bd6f05223b841aff7a4ee",
       "stateAnchors": [
         {
           "line": 11,
@@ -25068,7 +25068,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "b974b26073ca87c165e79956c3700281f0b31ff2585153d6a8ee3cded22d28a0",
+      "sha256": "63ceba232f2b1054adcf1e2c43f10585ffff35947e99a993536c7c03a3cea794",
       "stateAnchors": [
         {
           "line": 26,
@@ -32083,7 +32083,7 @@
     },
     {
       "path": "apps/app/src/prototype/notes-share-adapter.ts",
-      "sha256": "7cf9d211373385036d1de0005b30bdd75b9c042a849aa6c7419f710c4231cf89",
+      "sha256": "cdaf8585b12fa19ffd723c18681322827ec0691c0796baca2e71b6ecd94b0b62",
       "models": [
         "NotesLifecycle"
       ],
@@ -32511,7 +32511,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "f0e89c821448558095613325a3102caa53a329c0b9b77efa1b5df5fa338fb52a",
+      "sha256": "246145cd2ac9f2a3e7d29dd6f31e864664388a974a0a9378b8fdbc0957da97e7",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 mail reader: automatic same-account thread read preserves the fresher selected body and all operation receipts. Compact menu changes presentation only. Email chat attachment reuses message persistence, validates the exact selected source and destination before sending, and leaves provider text untrusted. Existing models remain projections; complete mail rendering and revision/expiry checks are tested separately."
     },
@@ -33814,7 +33814,7 @@
     },
     {
       "path": "apps/app/src/prototype/selection-adapter.ts",
-      "sha256": "7e8ab17d735afa4300cbb6275101154373e6af5c830184a53f324be1e9d7349a",
+      "sha256": "dcfebcae20020be35004beba6cdbb3ba241cd9898233dff077e45b3a730936c3",
       "models": [
         "ShellNavigation",
         "FilesTree",
@@ -34158,7 +34158,7 @@
     },
     {
       "path": "apps/app/src/prototype/share-panel-adapter.ts",
-      "sha256": "78cd92628c18316667fec89715a9207f3c171468ebf4fdbb9ba83ea6b2aa4f74",
+      "sha256": "323dddcca5fe9d19e9ec482f2b496ae5d4d73ef4adddd553afcfc147414af567",
       "models": [
         "FilesAndSharing"
       ],
@@ -34387,7 +34387,7 @@
     },
     {
       "path": "apps/app/src/prototype/subview-accessibility.ts",
-      "sha256": "1c2c1f6caab770dd6cdadc43b263a797654c66fe4c59c56e39dca658422728a1",
+      "sha256": "9a6a109b71e51d48ddf53ba5dc72294a5ecd1f0adba576e4384df137f1408978",
       "models": [
         "ShellNavigation",
         "ListFocus",
@@ -34828,7 +34828,7 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "ad27b11fe9a30db8f7aca40b7a1cd5109326729795c320d704df2cca59e99f34",
+      "sha256": "5e20276a9d17255b9f3048f2670c9d4b158f0f3aa20d31bcb9b0a6c9431e7c57",
       "stateAnchors": [
         {
           "line": 3358,
@@ -35012,7 +35012,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "2951ea2f23bbe17c30bef0dcdf04bdb0b5b4887e00c7a7d520d4f14defc10215",
+      "sha256": "5849a322dcb3a77b54445d158f95201a91fc98ec46767b64365a299bcdce0af1",
       "stateAnchors": [
         {
           "line": 1105,
@@ -39104,7 +39104,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "eb9c61a5cd7c715ea44c2952872f37ee65f26aef1d574a27b91739536f4a7acf",
+      "sha256": "09790834261b1fca4cc5debdb1950c867114a506bb5055b097fe9d1e48d98430",
       "stateAnchors": [],
       "integrationReview": "2026-11-09 preview review: saved Inbox before background refresh with owner/epoch invalidation; optional Cloud restore pending presentation; provider pending-vs-failed presentation; existing Cloud-preview storage eligibility; About removal; dedicated embedding authority separated from own text/voice. Existing domain allocations retained; actual browser and owning tests recorded separately. Semantic refinement and device acceptance remain open."
     },
@@ -44978,7 +44978,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "06973ee563e28941efc6f3a616ae43f08353cd14d68a1d2f77e7b250d1f9788c",
+      "sha256": "04c2cdbe58d136ed46b302d57ab433702c92bb5732bded3acd66ca0f253b937e",
       "stateAnchors": [
         {
           "line": 4,
@@ -45218,7 +45218,7 @@
     },
     {
       "path": "apps/app/src/runtime/text-share.ts",
-      "sha256": "cf1d098344f095c62a93f06333da2c9aea7d26e4c8cd26d38606e3e2f987b495",
+      "sha256": "476e90487466627f0f08ea335a32908e32a77a94cf4c32cc8675e8c9fae0b774",
       "models": [
         "FilesAndSharing"
       ],

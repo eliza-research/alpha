@@ -88,3 +88,15 @@ test('opening a Notes folder shows its notes with a return to the main list',()=
  assert.deepEqual(Array.from(inside.otherRows,n=>n.id),['a']);
  inside.returnToNotesAction();assert.equal(f.view.render(f.state,f.api).hasFolders,true);
 });
+
+
+test('the note menu moves one note without leaving its editor',async()=>{
+ const f=fixture([{id:'a',kind:'text',title:'A',body:'a',folderId:'f-1'}]);
+ Object.assign(f.state,{open:'a',folders:[{id:'f-1',name:'Work',createdAt:1}]});
+ f.api.set=patch=>Object.assign(f.state,patch);
+ const changes=[];f.api.canonicalNotes={current:true,update:async(id,patch)=>{changes.push({id,folderId:patch.folderId});return true;}};
+ f.view.render(f.state,f.api).ed.moveTo();
+ assert.equal(f.state.folderSheet.kind,'move-note');
+ await f.view.render(f.state,f.api).removeSelectedFromFolder();
+ assert.deepEqual(changes,[{id:'a',folderId:null}]);assert.equal(f.state.open,'a');assert.equal(f.state.folderSheet,null);
+});

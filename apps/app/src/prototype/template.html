@@ -2232,7 +2232,9 @@
       <sc-if value="{{notes.ed.menuShown}}"><div ref="{{notes.noteMenu}}" data-alpha-popup style="display: contents">
       <sc-if value="{{notes.ed.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.ed.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.ed.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
-        <button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.ed.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button>
+        <sc-if value="{{notes.ed.shareAvailable}}"><button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.ed.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button></sc-if><sc-if value="{{notes.ed.shareUnavailable}}"><button onClick="{{notes.ed.copyText}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.copy}}"></path></svg>Copy text</button></sc-if>
+        <button onClick="{{notes.ed.edit}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.edit}}"></path></svg>Edit</button>
+        <button onClick="{{notes.ed.moveTo}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg>Add to folder</button>
         <button onClick="{{notes.ed.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.ed.pinLabel}}</button>
         <hr>
         <button onClick="{{notes.ed.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
@@ -2321,7 +2323,8 @@
       <sc-if value="{{notes.vo.menuShown}}"><div ref="{{notes.noteMenu}}" data-alpha-popup style="display: contents">
       <sc-if value="{{notes.vo.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.vo.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.vo.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
-        <button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.vo.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button>
+        <sc-if value="{{notes.vo.shareAvailable}}"><button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.vo.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button></sc-if><sc-if value="{{notes.vo.shareUnavailable}}"><button onClick="{{notes.vo.copyText}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.copy}}"></path></svg>Copy text</button></sc-if>
+        <button onClick="{{notes.vo.moveTo}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg>Add to folder</button>
         <button onClick="{{notes.vo.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.vo.pinLabel}}</button>
         <hr>
         <button onClick="{{notes.vo.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
@@ -2350,7 +2353,8 @@
       <sc-if value="{{notes.lk.menuShown}}"><div ref="{{notes.noteMenu}}" data-alpha-popup style="display: contents">
       <sc-if value="{{notes.lk.menuShown}}"><button aria-hidden="true" tabindex="-1" onClick="{{notes.lk.closeMenu}}" style="position: absolute; inset: 0; z-index: 11; background: transparent"></button></sc-if>
       <sc-if value="{{notes.lk.menuOpen}}"><div class="notes-menu" role="dialog" aria-label="Note actions">
-        <button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.lk.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button>
+        <sc-if value="{{notes.lk.shareAvailable}}"><button data-agent-id="notes-share" aria-label="Share note" onClick="{{notes.lk.share}}"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><path d="{{ic.share}}"></path></svg>Share</button></sc-if><sc-if value="{{notes.lk.shareUnavailable}}"><button onClick="{{notes.lk.copyText}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.copy}}"></path></svg>Copy text</button></sc-if>
+        <button onClick="{{notes.lk.moveTo}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg>Add to folder</button>
         <button onClick="{{notes.lk.pin}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.notesPin}}"></path></svg>{{notes.lk.pinLabel}}</button>
         <hr>
         <button onClick="{{notes.lk.del}}"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.trash}}"></path></svg>Delete</button>
