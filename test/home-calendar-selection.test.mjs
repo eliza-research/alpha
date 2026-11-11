@@ -284,10 +284,10 @@ test("unknown-source events with malformed or reversed bounds cannot prove an em
 });
 
 
-test("a failed reread never verifies a retained empty or populated feed on Home",()=>{
- for(const rows of [[],[event('retained','2026-10-29')]]){
+test("a failed reread keeps an upcoming retained event without verifying it or claiming empty",()=>{
+ for(const rows of [[],[event('ended','2026-10-29')],[event('retained','2026-10-30')]]){
   const state=model(rows),feed=state.feed;state.error='Calendar could not load. Try again.';
-  const selected=select(state,'UTC',new Set(),now);assert.equal(selected.verified,false);assert.equal(selected.event,null);assert.notEqual(selected.emptyLabel,'Nothing planned');assert.equal(state.feed,feed);assert.deepEqual(state.feed.events,rows);
+  const selected=select(state,'UTC',new Set(),now);assert.equal(selected.verified,false);assert.equal(selected.event?.id??null,rows[0]?.id==='retained'?'retained':null);assert.notEqual(selected.emptyLabel,'Nothing planned');assert.equal(state.feed,feed);assert.deepEqual(state.feed.events,rows);
  }
 });
 

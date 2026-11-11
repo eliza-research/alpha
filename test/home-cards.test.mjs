@@ -221,9 +221,13 @@ test('Agent Calendar freshness: an unverified next event is never fresh or an em
   let home=render();assert.doesNotMatch(home.homeCalendarTitle,/Verified today|Nothing planned/,'next-only cache is unverified');
   state={...state,feed:{state:'complete',events:[event],timeMin:'2026-09-28T00:00:00Z',timeMax:'2026-11-09T00:00:00Z'}};
   home=render();assert.equal(home.homeCalendarTitle,'Verified today');savedPrefs={fixture:{on:false,color:'mut'}};const retainedPrefs=structuredClone(savedPrefs);assert.equal(render().homeCalendarTitle,'Verified today','canonical Home follows authoritative feed despite obsolete hidden preference');assert.deepEqual(savedPrefs,retainedPrefs,'display policy never deletes old preferences');home.goCalendar();assert.equal(opened.at(-1)[0],'calendar');assert.equal(opened.at(-1)[1].calendarAuthority,'canonical','one merged Calendar route');
-  for(const update of [{mutating:true},{status:'loading'},{ownerKey:'retired'},{feed:{...state.feed,state:'partial'}}]){
+  for(const update of [{mutating:true},{ownerKey:'retired'},{feed:{...state.feed,state:'partial'}}]){
     const saved=state;state={...state,...update};assert.doesNotMatch(render().homeCalendarTitle,/Verified today|Nothing planned/,'unverified feed or owner never authorizes agenda');state=saved;
   }
+  const beforeRefresh=state;state={...state,status:'loading'};
+  assert.equal(render().homeCalendarTitle,'Verified today','a current-owner retained event stays visible during refresh');
+  assert.equal(render().homeCalendarSource,'','a retained event does not claim a fresh source read');
+  state=beforeRefresh;
   assert.equal(reads,0,'rendering and verified navigation never read');
   for(const status of ['error','unavailable','partial']){
     const saved=state;state={...state,status,error:'Calendar service unavailable',feed:status==='partial'?{...state.feed,state:'partial'}:null};

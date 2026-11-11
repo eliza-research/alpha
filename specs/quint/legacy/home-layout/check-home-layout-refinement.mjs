@@ -322,8 +322,8 @@ async function collect(page) {
   assert.equal((await point('Restored viewport returns to the bar')).dock, 'bar');
 
   await refreshHomeCalendar(page, {fail: true});
-  await expect(card(page, 'calendar')).toHaveCount(0);
-  await point('Failed Calendar read removes the unverified Home event', {cal: 'error'});
+  await expect(card(page, 'calendar')).toContainText(syntheticEvent);
+  await point('A failed refresh retains the cached Calendar event', {cal: 'error'});
   const effects = await page.evaluate(() => ({
     bodies: window.flagOff.mail.reads, sends: window.flagOff.mail.dispatches,
     runs: window.flagOff.digests.runs, posts: window.flagOff.posts,
@@ -341,7 +341,7 @@ async function collect(page) {
   ];
   const emptyEvents = events.slice(0, emptyIndex+1);
   const differences = [
-    ['HomeLayoutCurrentEmptyShells', 'HomeLayoutCurrentReplay', 'historical_current_keeps_empty_card_shells',
+    ['HomeLayoutOriginalEmptyShells', 'HomeLayout', 'historical_current_keeps_empty_card_shells',
       observation => ({Shown: qset(observation.shown)})],
     ['HomeLayoutProposedDateLine', 'HomeLayout', 'historical_proposed_shows_date_when_no_content',
       observation => ({DateLine: observation.date})],

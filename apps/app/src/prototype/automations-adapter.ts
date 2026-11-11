@@ -106,7 +106,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  const preloadHome=async(force=false)=>{
   void restoreHome();
   const shell=owner,selected=binding(),snapshot=connectionController.getSnapshot();
-  if(!shell?.live||shell.S().view||suspended||document.hidden||snapshot.open||controller||!selected)return;
+  if(!shell?.live||shell.S().view||suspended||document.hidden||snapshot.open||controller||!selected){homeRead?.abort();homeRead=null;homeVisit=null;return;}
   if(homeRead||!force&&homeVisit===selected.sessionId)return;
   homeVisit=selected.sessionId;const abort=homeRead=new AbortController(),ticket=epoch;
   const valid=()=>owner===shell&&shell.live&&!shell.S().view&&!suspended&&!document.hidden&&!connectionController.getSnapshot().open&&homeRead===abort&&!abort.signal.aborted&&epoch===ticket&&binding()?.sessionId===selected.sessionId;

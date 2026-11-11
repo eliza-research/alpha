@@ -87,7 +87,7 @@ export async function checkHistoricalCalendarNavigation(extraSources = []) {
       await c.title.fill('Historical comparison dirty creation');
       await c.mark('Current retained draft bytes are outside the historical state', null);
       await c.back();
-      await c.f.page.waitForFunction(() => !!window.quintCalendar.snapshot().retainedForm);
+      assert.equal(await c.resume.isVisible(), false, 'Drafts reopen through New event');
     });
     await schedule('mounted edit Back returns the exact existing event', async c => {
       await c.open(1);
@@ -99,7 +99,7 @@ export async function checkHistoricalCalendarNavigation(extraSources = []) {
       await c.backToCalendar.click();await c.detail.waitFor();
       await c.mark('Header Back restores the same event detail', call('Back'));
       await c.back();
-      await c.f.page.waitForFunction(() => !!window.quintCalendar.snapshot().retainedForm);
+      assert.equal(await c.resume.isVisible(), false, 'Event drafts reopen through Edit');
     });
     await schedule('current Calendar can open and close the second loaded event', async c => {
       await c.open(2);await c.back();

@@ -1,23 +1,74 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import vm from 'node:vm';
-const source=readFileSync(process.env.ALPHA_CONNECTION_SOURCE||'apps/app/src/runtime/connection-ui.tsx','utf8');
-// Run the callbacks from the current Account sheet. Cancellation stays inside
-// the sheet; confirmation compares the entire account binding before sign-out.
-const confirm=source.match(/onClick=\{(\(\)=>\{const expected=signOutAccount;[^\n]*?connectionController\.cloudSignOut\(\);\})\}>Sign out/)[1];
-const cancel=source.match(/onClick=\{(\(\)=>\{if\(signOutAccount\)setSignOutAccount\(null\);else dismiss\(\);\})\}/)[1];
-const identity=()=>({environment:'production',userId:'owner',organizationId:'org',sessionId:'owner-session',credentialId:'owner-credential'});
-for(const accepted of [false,true])test(`Settings sign-out ${accepted?'confirms once':'cancels without changing the account'}`,async()=>{
- const calls=[],account=identity();let pending=account;
- const box={get signOutAccount(){return pending;},setSignOutAccount:value=>{pending=value;},dismiss:()=>calls.push('dismiss'),connectionController:{getSnapshot:()=>({cloudAccount:account}),cloudSignOut:async()=>calls.push('sign-out')}};
- await vm.runInNewContext('('+ (accepted?confirm:cancel) +')',box)();
- assert.equal(pending,null);assert.deepEqual(calls,accepted?['sign-out']:[]);
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import vm from "node:vm";
+
+const source = readFileSync(process.env.ALPHA_CONNECTION_SOURCE || "apps/app/src/runtime/connection-ui.tsx", "utf8");
+const confirm = source.match(
+	/className="alpha-account-confirm"[^>]*onClick=\{(\(\)=>\{[^\n]+?\})\}>Sign out<\/button>/,
+)?.[1];
+const close = source.match(
+	/aria-label="Close Account" onClick=\{(\(\)=>\{[^\n]+?\})\}>/,
+)?.[1];
+assert.ok(confirm, "Account sheet sign-out confirmation handler");
+assert.ok(close, "Account sheet close handler");
+
+const account = {
+	environment: "production",
+	userId: "owner",
+	organizationId: "org",
+	credentialId: "credential",
+	sessionId: "session",
+};
+function fixture(current = account) {
+	const calls = [];
+	const state = {
+		signOutAccount: account,
+		setSignOutAccount(value) {
+			state.signOutAccount = value;
+		},
+		dismiss() {
+			calls.push("dismiss");
+		},
+		connectionController: {
+			getSnapshot: () => ({ cloudAccount: current }),
+			cloudSignOut: () => {
+				calls.push("sign-out");
+			},
+		},
+	};
+	return {
+		calls,
+		state,
+		run: (callback) => vm.runInNewContext(`(${callback})`, state)(),
+	};
+}
+
+test("closing sign-out confirmation keeps the account", () => {
+	const f = fixture();
+	f.run(close);
+	assert.equal(f.state.signOutAccount, null);
+	assert.deepEqual(f.calls, []);
 });
-test('a changed account during the sign-out confirmation is preserved',async()=>{
- for(const field of ['environment','userId','organizationId','credentialId','sessionId']){
-  const calls=[],account=identity();const current={...account,[field]:'changed'};
-  const box={signOutAccount:account,setSignOutAccount:()=>{},connectionController:{getSnapshot:()=>({cloudAccount:current}),cloudSignOut:async()=>calls.push('sign-out')}};
-  await vm.runInNewContext('('+confirm+')',box)();assert.deepEqual(calls,[],field);
- }
+
+test("confirmation signs out the reviewed account once", () => {
+	const f = fixture();
+	f.run(confirm);
+	f.run(confirm);
+	assert.equal(f.state.signOutAccount, null);
+	assert.deepEqual(f.calls, ["sign-out"]);
+});
+
+for (const field of Object.keys(account)) {
+	test(`a changed ${field} preserves the current account`, () => {
+		const f = fixture({ ...account, [field]: "replacement" });
+		f.run(confirm);
+		assert.deepEqual(f.calls, []);
+	});
+}
+
+test("an absent current account is not signed out again", () => {
+	const f = fixture(null);
+	f.run(confirm);
+	assert.deepEqual(f.calls, []);
 });

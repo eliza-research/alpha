@@ -13,7 +13,7 @@ export async function mountGoogleAccountPanel(rows,{calendarEdits=true,gmailChan
  const saved={window:globalThis.window,document:globalThis.document,HTMLElement:globalThis.HTMLElement,IS_REACT_ACT_ENVIRONMENT:globalThis.IS_REACT_ACT_ENVIRONMENT};
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const require=createRequire(import.meta.url),React=require('react'),{createRoot}=require('react-dom/client');
- const access={gmailChanges,calendarEdits},p={rows,access,unreadable,revision:0,consents:[],opens:0,lists:0,accessChanges:[],policy:[],onPolicy:null,disconnects:[],onDisconnect:null};
+ const access={gmailChanges,calendarEdits},p={rows,access,unreadable,revision:0,consents:[],opens:0,lists:0,accessChanges:[],accessWrites:[],policy:[],onPolicy:null,disconnects:[],onDisconnect:null};
  let cloud={client:{},sessionId:'cloud-session',credentialId:'cloud-credential'};
  let snapshot={cloudAccount:{environment:'production',userId:'22222222-2222-4222-8222-222222222222',organizationId:'33333333-3333-4333-8333-333333333333'}};
  const connectionListeners=new Set();
@@ -47,7 +47,7 @@ export async function mountGoogleAccountPanel(rows,{calendarEdits=true,gmailChan
   '../browser/device-preferences':{
    cachedDevicePreferences:()=>p.unreadable?undefined:preferences(),initializeDevicePreferences:()=>{},readDevicePreferences:async()=>preferences(),
    captureDevicePreferences:async()=>{await p.onCapture?.();if(p.unreadable)throw Error('Settings unavailable');return{state:preferences(),receipt:{revision:p.revision}};},
-   editDevicePreferences:async(edit,_unused,receipt)=>{if(saveFails)throw Error('Settings could not be saved');if(receipt&&receipt.revision!==p.revision)throw Error('Calendar choice changed. Review it again.');const next=preferences();edit(next);const change={};if(next.agentGmailChanges!==access.gmailChanges)change.gmailChanges=next.agentGmailChanges;if(next.agentCalendarEdits!==access.calendarEdits)change.calendarEdits=next.agentCalendarEdits;if(Object.keys(change).length)p.accessChanges.push(change);Object.assign(access,{gmailChanges:next.agentGmailChanges,calendarEdits:next.agentCalendarEdits});p.revision++;p.unreadable=false;dom.window.dispatchEvent(new dom.window.Event('alpha:device-settings'));},
+   editDevicePreferences:async(edit,_unused,receipt)=>{if(saveFails)throw Error('Settings could not be saved');if(receipt&&receipt.revision!==p.revision)throw Error('Calendar choice changed. Review it again.');const next=preferences();edit(next);p.accessWrites.push({...next});const change={};if(next.agentGmailChanges!==access.gmailChanges)change.gmailChanges=next.agentGmailChanges;if(next.agentCalendarEdits!==access.calendarEdits)change.calendarEdits=next.agentCalendarEdits;if(Object.keys(change).length)p.accessChanges.push(change);Object.assign(access,{gmailChanges:next.agentGmailChanges,calendarEdits:next.agentCalendarEdits});p.revision++;p.unreadable=false;dom.window.dispatchEvent(new dom.window.Event('alpha:device-settings'));},
   },
  };
  const publication={exports:{}};
