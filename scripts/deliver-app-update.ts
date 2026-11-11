@@ -81,7 +81,7 @@ export async function publicObject(url: string, {maxBytes, missing = false, fetc
   } finally {clearTimeout(timeout);}
 }
 
-function parseOffer(bytes: Buffer): UpdateOffer {
+export function parseOffer(bytes: Buffer): UpdateOffer {
   const value: UpdateOffer = JSON.parse(bytes.toString('utf8'));
   if (value?.schema !== 'alpha-update/v1' || !['launcher','standalone'].includes(value.variant) ||
       !Number.isSafeInteger(value.versionCode) || value.versionCode < 1 || !/^[0-9a-f]{64}$/.test(value.signerSha256 || '') ||
