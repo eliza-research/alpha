@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "c5eb8cda8caf5e4cfcc81e01fe6eb62f97ded615",
-  "head": "f3ee08d1a9e5e025ab7760312526790f1f189232",
+  "head": "30ee5ba3445237d6ae6e82d698794521f169d267",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...f3ee08d1a9e5e025ab7760312526790f1f189232",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...30ee5ba3445237d6ae6e82d698794521f169d267",
   "status": "diverged",
-  "aheadBy": 8,
+  "aheadBy": 10,
   "behindBy": 194,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -42,6 +42,14 @@
     {
       "sha": "f3ee08d1a9e5e025ab7760312526790f1f189232",
       "subject": "Compose cold-consent deadline and trigger fixture fixes for Alpha"
+    },
+    {
+      "sha": "7a0e431cf24b61d30806fc1adb992b15b3d013fe",
+      "subject": "Include merged prompt recovery in the combined SDK"
+    },
+    {
+      "sha": "30ee5ba3445237d6ae6e82d698794521f169d267",
+      "subject": "Format the restored recovery model with the current config"
     }
   ],
   "pullRequests": [
