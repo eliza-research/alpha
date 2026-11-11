@@ -21,6 +21,7 @@ PRIVATE_APK_BUCKET = "alpha-aosp-lab-20261024-private-apks"
 SHA = re.compile(r"[0-9a-f]{64}")
 COMMIT = re.compile(r"[0-9a-f]{40}")
 NUMBER = re.compile(r"[1-9][0-9]{0,15}")
+CANDIDATE_NAME = re.compile(r"app-native-candidate-([1-9][0-9]{0,9})-([0-9a-f]{40})-([1-9][0-9]{0,15})-([1-9][0-9]{0,15})")
 CANDIDATE_FIELDS = {"producerRunAttempt", "candidateReceiptSHA256"}
 GITHUB_FIELDS = CANDIDATE_FIELDS | {"producerRunId", "artifactId"}
 
@@ -63,23 +64,28 @@ def producer_kind(plan):
         return kind
     require(kind == CANDIDATE, "Unknown producer kind")
     require("privateProducerReceiptSHA256" not in plan, "Candidate cannot claim a private runner receipt")
-    require(positive_id(plan.get("producerRunId")) and positive_id(plan.get("artifactId")) and
-            type(plan.get("producerRunAttempt")) is int and 0 < plan["producerRunAttempt"] <= 2**53 - 1 and
-            type(plan.get("versionCode")) is int and 0 < plan["versionCode"] <= 2_100_000_000 and
-            matches(COMMIT, plan.get("alphaCommit")) and matches(COMMIT, plan.get("sdkCommit")) and
+    candidate_transport_pins(plan)
+    require(matches(COMMIT, plan.get("sdkCommit")) and
             matches(SHA, plan.get("candidateReceiptSHA256")), "Invalid exact candidate producer pins")
     require(isinstance(plan.get("updateChannel"), dict) and plan["updateChannel"].get("kind") == "public" and
             plan.get("purpose") != "private-update-qa-baseline", "Candidate requires public update channel")
     require(isinstance(plan.get("privateStorage"), dict) and
             "recipientCertificateSHA256" not in plan and "encryptedArtifactApproved" not in plan,
             "Candidate requires an exact private mirror and private signed delivery")
-    archive_pins(plan)
     return kind
 
 
 def archive_pins(plan):
     require(type(plan.get("archiveBytes")) is int and 0 < plan["archiveBytes"] <= MAX_ARCHIVE_BYTES and
             matches(SHA, plan.get("archiveSHA256")), "Invalid exact producer archive pins")
+
+
+def candidate_transport_pins(plan):
+    require(positive_id(plan.get("producerRunId")) and positive_id(plan.get("artifactId")) and
+            type(plan.get("producerRunAttempt")) is int and 0 < plan["producerRunAttempt"] <= 2**53 - 1 and
+            type(plan.get("versionCode")) is int and 0 < plan["versionCode"] <= 2_100_000_000 and
+            matches(COMMIT, plan.get("alphaCommit")), "Invalid exact candidate producer pins")
+    archive_pins(plan)
 
 
 def validate_private_storage(plan):
@@ -120,8 +126,8 @@ def gh_json(endpoint):
     return json.loads(result.stdout)
 
 
-def github_candidate(plan, api=gh_json):
-    require(producer_kind(plan) == CANDIDATE, "Expected a main-push candidate plan")
+def verify_github_candidate(plan, api, artifact=None):
+    candidate_transport_pins(plan)
     run_id, attempt = plan["producerRunId"], plan["producerRunAttempt"]
     source, version = plan["alphaCommit"], plan["versionCode"]
     run = api(f"repos/{REPOSITORY}/actions/runs/{run_id}/attempts/{attempt}")
@@ -133,7 +139,8 @@ def github_candidate(plan, api=gh_json):
                 and run[key]["owner"]["id"] == OWNER_ID
                 for key in ("repository", "head_repository")), "Candidate producer run attempt differs")
     artifact_id = plan["artifactId"]
-    artifact = api(f"repos/{REPOSITORY}/actions/artifacts/{artifact_id}")
+    if artifact is None:
+        artifact = api(f"repos/{REPOSITORY}/actions/artifacts/{artifact_id}")
     provenance = artifact["workflow_run"]
     # Artifacts expose the run ID, not its attempt. The trusted workflow names
     # each attempt separately and the admitted archive contains its own receipt.
@@ -145,6 +152,30 @@ def github_candidate(plan, api=gh_json):
             provenance["head_branch"] == "main" and
             provenance["repository_id"] == provenance["head_repository_id"] == REPOSITORY_ID,
             "Candidate GitHub artifact differs from the reviewed archive")
+
+
+def github_candidate(plan, api=gh_json):
+    require(producer_kind(plan) == CANDIDATE, "Expected a main-push candidate plan")
+    verify_github_candidate(plan, api)
+
+
+def github_candidate_download_pins(artifact_id, api=gh_json):
+    require(positive_id(artifact_id), "Exact candidate artifact ID required")
+    artifact = api(f"repos/{REPOSITORY}/actions/artifacts/{artifact_id}")
+    require(isinstance(artifact, dict) and artifact.get("id") == int(artifact_id) and
+            artifact.get("expired") is False, "Candidate artifact identity or expiry differs")
+    name = artifact.get("name")
+    identity = CANDIDATE_NAME.fullmatch(name) if isinstance(name, str) else None
+    require(identity is not None, "Expected a main-push candidate artifact name")
+    version, source, run_id, attempt = identity.groups()
+    remote_digest = artifact.get("digest")
+    require(isinstance(remote_digest, str) and remote_digest.startswith("sha256:"),
+            "Candidate artifact has no SHA-256")
+    pins = {"artifactId": artifact_id, "archiveBytes": artifact.get("size_in_bytes"),
+            "archiveSHA256": remote_digest.removeprefix("sha256:"), "alphaCommit": source,
+            "versionCode": int(version), "producerRunId": run_id, "producerRunAttempt": int(attempt)}
+    verify_github_candidate(pins, api, artifact)
+    return pins
 
 
 def download_github_archive(plan, destination):

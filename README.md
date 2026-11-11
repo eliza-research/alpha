@@ -209,14 +209,13 @@ version migration. Manual builds keep their explicit version input.
 
 To prepare a candidate for protected signing, set `artifact_id` to the numeric
 ID of the `app-native-candidate-*` artifact from a successful main-push run.
-Download the original ZIP and inspect it using the reviewed checkout. The
-inspector compares the ZIP and unsigned APKs to the exact producer run and
-evidence. The candidate artifact is retained for three days and must remain
-available through both signing admissions. [Actions artifact archive endpoint](https://docs.github.com/en/rest/actions/artifacts#download-an-artifact)
+Use the reviewed checkout to check the exact producer attempt, archive size,
+and digest before downloading. The command verifies the ZIP and its producer
+evidence before making it available at the requested path. The candidate is
+retained for three days and must remain available through signing admission.
 
 ```sh
-gh api "repos/eliza-research/alpha/actions/artifacts/$artifact_id/zip" > candidate.zip &&
-python3 -B scripts/ci/admit-cloud-signing-input.py prepare-candidate \
+python3 -B scripts/ci/admit-cloud-signing-input.py fetch-candidate \
   candidate.zip "$artifact_id" > mirror-request.json
 ```
 
