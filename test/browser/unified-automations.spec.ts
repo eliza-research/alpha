@@ -60,7 +60,7 @@ test('Alpha unified list, filters, paused authoring and explicit owner review us
  await page.screenshot({path:testInfo.outputPath('prompt-editor.png')});await page.getByRole('button',{name:'Save',exact:true}).click();await expect(page.locator('[data-alpha-layer=app]').getByText('Paused source review',{exact:true})).toBeVisible();
  const created=calls.find(call=>call.path==='/api/triggers'&&call.method==='POST');expect(created?.body.enabled).toBe(false);expect(calls.filter(call=>call.path.endsWith('/execute')||call.path.endsWith('/fire'))).toHaveLength(0);
  await page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true}).click();await page.getByRole('button',{name:'Enable',exact:true}).click();expect(calls.filter(call=>call.method==='PUT')).toHaveLength(0);await page.getByRole('button',{name:'Confirm Enable',exact:true}).click();await expect(page.locator('[data-alpha-subview=automations-detail]').getByText('Saved',{exact:true})).toBeVisible();await expect(page.locator('[data-alpha-subview=workflows-list]')).toHaveAttribute('inert','');expect(calls.filter(call=>call.path==='/api/triggers/prompt'&&call.method==='PUT')).toHaveLength(1);
- await page.getByRole('button',{name:'Back to automations',exact:true}).click();await page.locator('[data-alpha-subview=workflows-list]').getByText('Reviewed workflow',{exact:true}).click();await expect(page.getByRole('heading',{name:'Reviewed workflow',exact:true})).toBeVisible();await page.getByRole('button',{name:'Back to workflows',exact:true}).click();
+ await page.getByRole('button',{name:'Back to workflows',exact:true}).click();await page.locator('[data-alpha-subview=workflows-list]').getByText('Reviewed workflow',{exact:true}).click();await expect(page.getByRole('heading',{name:'Reviewed workflow',exact:true})).toBeVisible();await page.getByRole('button',{name:'Back to workflows',exact:true}).click();
  await page.getByRole('button',{name:'New automation',exact:true}).click();await page.getByRole('button',{name:'More options',exact:true}).click();await page.getByRole('button',{name:'Phone reminder',exact:false}).click();await expect(page.getByRole('button',{name:'Reminders',exact:true})).toBeVisible();expect(calls.filter(call=>call.path==='/api/lifeops/definitions'&&call.method!=='GET')).toHaveLength(0);
  expect(errors).toEqual([]);
 });
@@ -133,7 +133,7 @@ test('workflow choices collapse and a confirmed schedule run fires once',async({
  await page.getByRole('button',{name:'More options',exact:true}).click();
  await page.getByRole('button',{name:'Fewer options',exact:true}).click();
  await expect(page.getByRole('button',{name:/^Steps/})).toHaveCount(0);
- await page.getByLabel('Back to automations').click();
+ await page.getByLabel('Back to workflows').click();
  await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Weekly review',{exact:true}).click();
  await page.getByRole('button',{name:'Run now',exact:true}).click();
  expect(calls.filter(c=>c.path.endsWith('/fire'))).toHaveLength(0);

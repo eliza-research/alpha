@@ -5,6 +5,10 @@ public final class HostedResultNoticesTest {
  static void require(boolean value,String message){if(!value)throw new AssertionError(message);}
  static void rejects(Runnable work,String message){try{work.run();}catch(IllegalArgumentException expected){return;}throw new AssertionError(message);}
  public static void main(String[] args)throws Exception {
+  // Only a brief that ran is announced as ready; a missed, skipped or failed occurrence says so.
+  for(String status:new String[]{"missed","overlap","unavailable"})require(HostedResultNotices.title(status).equals("Your brief didn’t run"),status+" is not announced as ready");
+  for(String status:new String[]{"failed","cancelled"})require(HostedResultNotices.title(status).equals("Your brief didn’t finish"),status+" is not announced as ready");
+  require(HostedResultNotices.title("completed").equals("Your brief is ready"),"a completed brief is ready");
   Map<String,String> slots=new HashMap<>();List<String> posted=new ArrayList<>(),cancelled=new ArrayList<>();Set<String> active=new HashSet<>();
   HostedResultNotices.Storage storage=new HostedResultNotices.Storage(){public String read(String slot){return slots.get(slot);}public void write(String slot,String value){slots.put(slot,value);}};
   HostedResultNotices.Poster poster=new HostedResultNotices.Poster(){public boolean allowed(){return true;}public boolean active(String key){return active.contains(key);}public void post(String key){posted.add(key);active.add(key);}public void cancel(String key){cancelled.add(key);active.remove(key);}};
