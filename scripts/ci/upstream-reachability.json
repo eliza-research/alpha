@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "c5eb8cda8caf5e4cfcc81e01fe6eb62f97ded615",
-  "head": "30ee5ba3445237d6ae6e82d698794521f169d267",
+  "baseCommit": "45088c2c6ee993be0e6e2fbc31dc94efc40c4ca3",
+  "head": "8d06f92118e9b9b7358c56247345fd7afbed8ee5",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...30ee5ba3445237d6ae6e82d698794521f169d267",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...8d06f92118e9b9b7358c56247345fd7afbed8ee5",
   "status": "diverged",
-  "aheadBy": 10,
-  "behindBy": 194,
+  "aheadBy": 12,
+  "behindBy": 351,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -50,6 +50,14 @@
     {
       "sha": "30ee5ba3445237d6ae6e82d698794521f169d267",
       "subject": "Format the restored recovery model with the current config"
+    },
+    {
+      "sha": "4b8a7a2c32d698843570fe67cab47e9cdc58163d",
+      "subject": "fix(host): allow cold Cloud speech websocket upgrades to finish"
+    },
+    {
+      "sha": "8d06f92118e9b9b7358c56247345fd7afbed8ee5",
+      "subject": "fix(automations): fence permanent deletion to the archived revision"
     }
   ],
   "pullRequests": [

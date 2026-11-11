@@ -2143,7 +2143,7 @@
     }
   ],
   "currentUpstream": {
-    "revision": "30ee5ba3445237d6ae6e82d698794521f169d267",
+    "revision": "8d06f92118e9b9b7358c56247345fd7afbed8ee5",
     "classification": "current-upstream-formal-specifications",
     "models": [],
     "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The four DeletionOwnerAdmission Quint sidecars below catalogue the upstream partial owner-admission model and checker at this current revision; downstream model allocations, generated-trace equivalence, full coordinator refinement and Android/device qualification remain separate. Any future TLA/TLC source requires separate allocation. CloudSpeechSuccessor is retained as an upstream source-owned model; its separate semantic, scenario and transport tests do not constitute device or live-provider proof.",
@@ -2180,28 +2180,28 @@
       },
       {
         "path": "packages/host/quint/CloudSpeechConsentDeadline.qnt",
-        "gitObject": "3095c29665e2f85c64830434913ef33a6a97880b",
-        "sha256": "b9a8c7aa7ca20836944c2ee45f46af06542dbfd33adf3dba32fb78541f1cdc05"
+        "gitObject": "a5a304c61fb45361d54b16c1abb7bb1104ef7a11",
+        "sha256": "6c3b2963c3cc9e2cf671c0c87aa8ff65ab75762adfb8da1918e92934026fc302"
       },
       {
         "path": "packages/host/quint/CloudSpeechConsentDeadline.cases.json",
-        "gitObject": "065afa4f4c773f18eb492b1cab4ba49eb2337530",
-        "sha256": "0cfae507ef3a75751ad5b8a96cbafa898456c3e33d78f9d66eddebd6b8e8aa5b"
+        "gitObject": "6ae2d4c0470bb735849d07e3be068cae642d0b0c",
+        "sha256": "9a08234647201df9629802310eea11bd525ba3a46ed70734a306983d210f9b57"
       },
       {
         "path": "packages/agent/quint/TriggerRecovery.qnt",
-        "gitObject": "eb39354eecca914b93aafd89a6af1ea9ba22b00a",
-        "sha256": "8f755716385ff1d43f702c86a9069a657ba800616f569cce7188da233442c087"
+        "gitObject": "f1de8f0d513d75b73f8e41b4769fc5f08c9cf683",
+        "sha256": "c1b343f8cbc4691c359e4f5e7d9d5b50a4eaeb6a4cfbb853ce3bd459f9c3fd2e"
       },
       {
         "path": "packages/agent/quint/TriggerRecovery.cases.json",
-        "gitObject": "34a5fa01c83781ccb4e70987b9c89c610fd9014f",
-        "sha256": "dc4cf54ca516f53c1a23d724fb3b9a53e70350e68ac1f865839d06adf9551c52"
+        "gitObject": "4cb5429206868433ce1c79f910b3a7314e98003f",
+        "sha256": "fe094a29b5b77036ed28ee236f434bc8cb547743a7ebc32c76f572d217954d49"
       },
       {
         "path": "packages/agent/quint/check-trigger-recovery.mjs",
-        "gitObject": "5dbe8d7433073092eee6d41da7c39e798a607c1f",
-        "sha256": "d802c473c425d229aea3a2e6e2e5f0cc60c0bb5711eb586dd73ebf78399a7587"
+        "gitObject": "a60b801b18b6ce9f70bf25715369cd6b4b54685b",
+        "sha256": "8688f870d4fdb48e7293e0350227119260dcf64fbf924537ca20e2d58aaa2e9f"
       }
     ]
   }
