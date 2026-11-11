@@ -8,7 +8,7 @@ import vm from 'node:vm';
 import {tsImport} from 'tsx/esm/api';
 const {navigateMobileShell}=await tsImport('../.eliza/client-features/packages/ui/src/mobile-shell/navigation.ts',import.meta.url);
 
-const model=readFileSync(process.env.ALPHA_SHELL_MODEL_SOURCE||'apps/app/src/prototype/model.js','utf8');
+const model=readFileSync('apps/app/src/prototype/model.js','utf8');
 const start=model.indexOf('  goHome(chat) {'),end=model.indexOf('\n  }\n',model.indexOf('  back() {'))+4;
 const methods=model.slice(start,end);
 assert.ok(methods.includes('shellNavigate(action)')&&methods.trim().endsWith('}'));
