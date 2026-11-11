@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {dirname, isAbsolute, join, relative, resolve, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {runQuintChecker} from '../../../scripts/quint-lib.ts';
+import {scaledTimeout} from './timeouts.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const identifier = /^[A-Za-z][A-Za-z0-9_]*$/;
@@ -232,7 +233,7 @@ export async function checkTraces({model, modelPath, sources, traces, assumption
         const args = [join(root, 'node_modules/@informalsystems/quint/dist/src/cli.js'), 'test', wrapper,
           `--main=${module}`, '--backend=typescript', '--max-samples=1', '--seed=20261107', '--match=^trace[0-9]+(Reject[0-9]+)?Test$'];
         const {result, interruptedAttempt} = await runQuintChecker(() => spawnSync(process.execPath, args,
-          {cwd: root, encoding: 'utf8', timeout: 120000, maxBuffer: 16 * 1024 * 1024}));
+          {cwd: root, encoding: 'utf8', timeout: scaledTimeout(120000), maxBuffer: 16 * 1024 * 1024}));
         const output = `${result.stdout || ''}${result.stderr || ''}`;
         const checked = Number(output.match(/(\d+) passing/)?.[1] || 0);
         const passed = !result.error && !result.signal && result.status === 0 && checked === group.length;

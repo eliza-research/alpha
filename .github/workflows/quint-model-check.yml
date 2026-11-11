@@ -68,7 +68,7 @@ jobs:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile
       - name: Install browser for source-refinement checks
-        run: bunx playwright install --with-deps chromium
+        run: bash scripts/ci/install-playwright-browser.sh chromium
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin

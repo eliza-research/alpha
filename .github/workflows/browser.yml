@@ -45,7 +45,7 @@ jobs:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile
       - name: Install browser for host tests that drive a page
-        run: bunx playwright install --with-deps chromium
+        run: bash scripts/ci/install-playwright-browser.sh chromium
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -117,7 +117,7 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile
-      - run: bunx playwright install --with-deps chromium
+      - run: bash scripts/ci/install-playwright-browser.sh chromium
       - name: Browser MVP on the flag-on development server
         env:
           # Development shards opt into test mocks, fixtures and device controls explicitly.
@@ -156,7 +156,7 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile
-      - run: bunx playwright install --with-deps chromium
+      - run: bash scripts/ci/install-playwright-browser.sh chromium
       - run: bun run upstream:prepare-client
       - name: Test-mocks bundle records its flag
         run: |
@@ -222,7 +222,7 @@ jobs:
         with:
           bun-version: "1.4.2"
       - run: bun install --frozen-lockfile
-      - run: bunx playwright install --with-deps ${{ matrix.browser }}
+      - run: bash scripts/ci/install-playwright-browser.sh ${{ matrix.browser }}
       - name: Provide an audio server for Firefox recording
         if: matrix.browser == 'firefox'
         run: |

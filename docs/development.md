@@ -41,6 +41,9 @@ Function proofs require Dafny 4.11.0 on `PATH`; `LEMMA_REQUIRE_BACKEND=1` makes 
 missing backend fail. A generation-only run records a skipped proof. Promotion CI installs the
 hash-pinned backend and requires proofs.
 
+On a heavily loaded machine, `ALPHA_TIMEOUT_SCALE=3` (1–10) lengthens refinement
+subprocess deadlines so slow but live checkers are not reported as failures; CI uses 1.
+
 ## Development
 
 ```sh

@@ -2,7 +2,7 @@
 set -euo pipefail
 dafny_directory="${RUNNER_TEMP:?}/alpha-dafny-4.11.0"
 archive_path="$dafny_directory.zip"
-curl --fail --location --silent --show-error \
+curl --fail --location --silent --show-error --retry 5 --retry-delay 10 --retry-all-errors \
   https://github.com/dafny-lang/dafny/releases/download/v4.11.0/dafny-4.11.0-x64-ubuntu-22.04.zip \
   --output "$archive_path"
 printf '%s  %s\n' a46a9ff7cdd720f7955854c78e95df13f4cfe6b80691b05f8654fe19e8267179 "$archive_path" | sha256sum --check --status

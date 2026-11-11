@@ -20,6 +20,7 @@ import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {parseBrowserAddressInput} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/address-input.ts';
 import {BrowserTabSession} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/tab-host.ts';
 import {modelTraces, plain, repositoryRoot} from './browser-model-traces.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 const model = {path: 'specs/quint/application/AddressInput.qnt', module: 'AddressInput'};
 const witnesses = ['SchemeLikeWordSearchedWitness', 'EmailSearchedWitness', 'DecimalSearchedWitness', 'ApprovedRefusedWitness'];
@@ -85,7 +86,7 @@ function modelOutcomes(submissions) {
     const source = readFileSync(join(repositoryRoot, model.path), 'utf8'), last = source.lastIndexOf('}');
     writeFileSync(join(directory, 'AddressInput.qnt'), `${source.slice(0, last)}  run corpusTest = init\n    ${chain}\n}\n`);
     const result = spawnSync(process.execPath, [join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js'), 'test', join(directory, 'AddressInput.qnt'),
-      '--main=AddressInput', '--backend=typescript', '--max-samples=1', '--match=^corpusTest$', `--out-itf=${join(directory, 'trace-{test}-{seq}.json')}`], {cwd: repositoryRoot, encoding: 'utf8', timeout: 120000});
+      '--main=AddressInput', '--backend=typescript', '--max-samples=1', '--match=^corpusTest$', `--out-itf=${join(directory, 'trace-{test}-{seq}.json')}`], {cwd: repositoryRoot, encoding: 'utf8', timeout: scaledTimeout(120000)});
     assert.equal(result.status, 0, `the model refuses a text that exists: ${result.stdout}\n${result.stderr}`);
     const trace = JSON.parse(readFileSync(join(directory, 'trace-corpusTest-0.json'), 'utf8'));
     assert.equal(trace.states.length, submissions.length + 1);

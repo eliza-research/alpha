@@ -188,6 +188,10 @@ jobs:
           grep -Eq '^Pkg.Revision *= *28\.2\.13676358[[:space:]]*$' "$ANDROID_NDK_HOME/source.properties"
           python3 -c 'import shutil; free=shutil.disk_usage(".").free; print("freshCapacityAfterBytes="+str(free)); assert free >= 32*1024**3, "Fresh runner needs at least 32GiB for resident archive headroom"'
           df -h "$GITHUB_WORKSPACE"
+      # The pinned upstream SDK retains Node-based build tooling.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26.13.0"
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: "1.4.2"
@@ -426,7 +430,7 @@ jobs:
         run: |
           # The native suites need the private peer fixture, a debug-only test hook
           # that exists only in the separate, never-distributable test-mocks build.
-          python3 scripts/ci/resident-phase.py --name archive --seconds 3000 node scripts/build-archive.ts --test-mocks test-results/resident-ci-archive
+          python3 scripts/ci/resident-phase.py --name archive --seconds 3000 bun scripts/build-archive.ts --test-mocks test-results/resident-ci-archive
       - name: Bind the unsigned native candidate to the genuine distribution archive
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:

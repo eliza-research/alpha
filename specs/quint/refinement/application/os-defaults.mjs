@@ -9,6 +9,7 @@ import {javaBinary,jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 import {compileKotlin,kotlinJars} from '../../../../test/fixtures/kotlin-tools.mjs';
 import {captureInputs,checkTraces} from '../check-traces.mjs';
 import {androidPorts,compileJava,javaJson,materialize,root} from './os-host-support.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 const driver=fileURLToPath(import.meta.url),folder='android/aosp/branding/core-launcher/';
 const tilePath='packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/UserTileSpecRepository.kt';
@@ -175,7 +176,7 @@ export async function checkOSDefaults(extraSources=[]){
   const classes=join(temporary,'classes');mkdirSync(classes);
   compileJava([...generated.filter(path=>path.endsWith('.java')),...['AlphaCoreLauncherPolicy.java','AlphaQsDefaultsPolicy.java','AlphaSharedStoragePolicy.java'].map(name=>resolve(root,folder+name))],classes);
   const runtime=compileKotlin([join(temporary,'Probe.kt')],join(temporary,'kotlin-classes'));
-  const traces=JSON.parse(execFileSync(javaBinary('java'),['-cp',classes+':'+runtime,'ProbeKt'],{encoding:'utf8',timeout:120000}));
+  const traces=JSON.parse(execFileSync(javaBinary('java'),['-cp',classes+':'+runtime,'ProbeKt'],{encoding:'utf8',timeout:scaledTimeout(120000)}));
   traces.push(...javaJson(classes,'com.android.server.pm.permission.AppopProbe'));assert.equal(traces.length,13);
   return await checkTraces({model:'OSDefaults',sources:[...sources,...generated],driverHashes,generatedSources:generated,traces,scope:'bounded-orchestration',assumptions:[
    'The pinned AOSP Kotlin source is reconstructed by the actual reviewed patch and checked against both manifest hashes. Exact load/store methods execute with the actual Java migration policy. The exact patched shared-storage grant method and both Java identity policies execute on the host JVM.',

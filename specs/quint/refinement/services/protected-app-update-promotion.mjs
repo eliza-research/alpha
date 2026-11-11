@@ -12,6 +12,7 @@ import {
   APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG, appUpdateManifestUrl,
 } from '../../../../scripts/update-channel.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 const workflow = name => '.github/workflows/' + name + '.yml';
 const signer = workflow('release-cloud-app-signing');
@@ -217,7 +218,7 @@ export async function checkProtectedAppUpdatePromotion(extraSources = []) {
   const driverHashes = captureInputs(sources);
   checkWorkflows();
   const {traces, launcherBytes, mainCandidate, versionCode} = JSON.parse(execFileSync('python3', ['-B', python], {
-    encoding: 'utf8', timeout: 120_000,
+    encoding: 'utf8', timeout: scaledTimeout(120000),
   }));
   for (const trace of traces) {
     trace.expect.s.public = initial;

@@ -4,6 +4,7 @@ import {mkdtempSync, readdirSync, readFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {scaledTimeout} from '../timeouts.mjs';
 
 /*
  * Model-originated traces for the shell models. The pinned Quint simulator writes ITF traces with
@@ -36,7 +37,7 @@ export function modelTraces({family = 'application', module, traces = 40, steps 
     const result = spawnSync(process.execPath, [cli, 'run', `specs/quint/${family}/${module}.qnt`, `--main=${module}`,
       '--backend=typescript', `--seed=${seed}`, `--max-samples=${traces}`, `--n-traces=${traces}`,
       `--max-steps=${steps}`, '--invariant=safety', '--mbt', `--out-itf=${join(directory, 'trace-{seq}.itf.json')}`],
-    {cwd: root, encoding: 'utf8', timeout: 120000});
+    {cwd: root, encoding: 'utf8', timeout: scaledTimeout(120000)});
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const files = readdirSync(directory).sort((a, b) => a.localeCompare(b, 'en', {numeric: true}));
     assert.ok(files.length > 0, 'the simulator wrote no trace');
