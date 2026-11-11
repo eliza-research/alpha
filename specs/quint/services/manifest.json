@@ -414,6 +414,7 @@
         "locationGranted/fixFresh/located": "permission, bounded navigation fix freshness and the guidance watch's usable fix",
         "route/previousRoute/guidance/rerouting": "active guidance, the route it follows while a reroute is pending, and the end of guidance when the reroute fails",
         "screenOff/foreground": "BackgroundNavigation.active and page visibility: a hidden page keeps guidance only with its screen-off session",
+        "inMaps": "whether Maps is the launcher view on screen (MapsScreenController.leaveView on a view switch): active guidance continues away from Maps, a pending route request does not",
         "assistant": "assistant overlay, independent of guidance"
       },
       "abstractions": [
@@ -435,7 +436,9 @@
         "assistantAndRerouteTest",
         "accountRetirementTest",
         "userStartNeedsNoLocationTest",
-        "leavingMapsEndsGuidanceTest",
+        "leavingMapsKeepsGuidanceTest",
+        "leavingMapsRetiresPendingRequestTest",
+        "lostSessionAwayFromMapsReleasesTest",
         "hiddenGuidanceNeedsScreenOffSessionTest"
       ],
       "invariants": [
@@ -447,7 +450,8 @@
         "GuidancePhase",
         "GuidanceFixNeedsPermission",
         "ScreenOffNeedsGuidance",
-        "HiddenKeepsOnlyScreenOffGuidance"
+        "HiddenKeepsOnlyScreenOffGuidance",
+        "LeftMapsHoldsNoRequest"
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -465,6 +469,7 @@
       "witnesses": [
         "GuidanceWithoutFixWitness",
         "HiddenGuidanceWitness",
+        "LeftMapsGuidanceWitness",
         "ReroutingWitness",
         "FailedRerouteWitness"
       ]

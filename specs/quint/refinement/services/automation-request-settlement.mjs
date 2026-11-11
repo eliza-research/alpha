@@ -39,7 +39,7 @@ async function factory(capture, rewrite) {
   vm.runInNewContext(fixture + '\nglobalThis.create=adapterFixture;', context);
   return (request, storage) => {
     const app = context.create(request, storage, {deviceReminders: []});
-    app.window.confirm = () => true;
+    app.reviews.answer = true;
     return app;
   };
 }

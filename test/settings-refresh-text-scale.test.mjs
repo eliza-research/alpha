@@ -15,13 +15,13 @@ function fixture(){
   const reads=[],writes=[],notices=[],publications=[];
   const owner={vset:(view,value)=>publications.push({view,value})};
   const context=vm.createContext({
-    owner,facts:{},controls:{},delivery:{},cross:{},roles:null,launcher:null,crashLog:null,photoAccess:null,
+    owner,facts:{},controls:{},delivery:{},cross:{},roles:null,launcher:null,crashLog:null,photoAccess:null,fileAccess:null,
     history:null,generation:0,scaleGeneration:0,scaleVersion:0,scalePending:false,scaleResults:null,
     Capacitor:{isNativePlatform:()=>true},developerTools:false,
     device:{snapshot:()=>{const read=deferred();reads.push(read);return read.promise;},setTextScale:({percent})=>{const write=deferred();writes.push({...write,percent});return write.promise;}},
     system:{getDeviceSettings:async()=>({volumes:[{stream:'music',value:6}]}),getStatus:async()=>({home:{held:true}}),getBuildInfo:async()=>({launcher:true})},
     notifications:{status:async()=>({appEnabled:true}),crossAppStatus:async()=>({access:'granted'})},
-    readCrashLog:async()=>({entries:[]}),photoLibrary:{libraryAccess:async()=>({scope:'full'})},
+    readCrashLog:async()=>({entries:[]}),photoLibrary:{libraryAccess:async()=>({scope:'full'})},fileStorage:{storageState:async()=>({access:'granted'})},
     connectionController:{refreshProviderStatus:async()=>({configured:true})},
     readRoles:value=>value,refreshPasswordManager(){},Date,
   });

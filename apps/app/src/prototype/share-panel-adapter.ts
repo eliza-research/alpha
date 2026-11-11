@@ -13,17 +13,17 @@ export function installSharePanelAdapter(Component:any,views:Record<string,Bag>)
  prototype.componentWillUnmount=function(){if(owner===this){owner=undefined;setShareEmailComposer(undefined);}unmount.call(this);};
  prototype.renderVals=function(){
   const values=render.call(this),shell=this;
-  const bind=(module:string,target:Bag,key:string,options:{title:string;email?:()=>unknown;copy?:()=>unknown;save?:()=>unknown;emailUnavailable?:null})=>{
+  const bind=(module:string,target:Bag,key:string,options:{title:string;email?:()=>unknown;copy?:()=>unknown;copyLabel?:string;save?:()=>unknown;emailUnavailable?:null})=>{
    const external=target?.[key];if(typeof external!=='function')return;
    target[key]=()=>{
     // The shell replaces a view's state object on every write, so its identity stands in for the content between writes.
     const same=[unchangedSince(()=>shell.S().vs?.[module],()=>shareContent(shell.vget(module))),...(module==='browser'?[unchangedSince(()=>shell.browserSelection?.())]:[])];
     const current=()=>!document.hidden&&shell.S().view===module&&same.every(check=>check());
     const api=shell.api(module),safe=(run:()=>unknown)=>async()=>{try{if(!current())throw Error('The selection changed. Choose it again.');await run();}catch(error){if(!(error instanceof DOMException&&error.name==='AbortError'))api.toast(error instanceof Error?error.message:'Sharing is unavailable.');}};
-    void openSharePanel({title:options.title,current,external:target.shareAvailable===false?undefined:safe(()=>external()),email:options.email?safe(options.email):undefined,emailUnavailable:null,copy:options.copy?safe(options.copy):undefined,save:options.save?safe(options.save):undefined});
+    void openSharePanel({title:options.title,current,external:target.shareAvailable===false?undefined:safe(()=>external()),email:options.email?safe(options.email):undefined,emailUnavailable:null,copy:options.copy?safe(options.copy):undefined,copyLabel:options.copyLabel,save:options.save?safe(options.save):undefined});
    };
   };
-  if(values.browser){const view=values.browser;bind('browser',view,'openShare',{title:'Current page',email:typeof view.shareEmail==='function'?view.shareEmail:undefined,copy:typeof view.copyLink==='function'?view.copyLink:undefined});}
+  if(values.browser){const view=values.browser;bind('browser',view,'openShare',{title:'Current page',email:typeof view.shareEmail==='function'?view.shareEmail:undefined,copy:typeof view.copyLink==='function'?view.copyLink:undefined,copyLabel:'Copy link'});}
   if(values.photos){const view=values.photos;if(view.v)bind('photos',view.v,'share',{title:view.v.shareLabel||'Selected photo',email:view.v.canEmail?view.v.email:undefined,save:view.v.saveLocally});bind('photos',view,'selShare',{title:'Selected photos',save:view.selSaveLocally});}
   // Files shows no unavailable-email row: the Android share sheet reaches mail apps.
   if(values.files){const view=values.files;if(view.pv)bind('files',view.pv,'share',{title:view.pv.name||'Selected file',email:view.pv.canEmail?view.pv.email:undefined,emailUnavailable:null});bind('files',view,'selShare',{title:'Selected files',save:view.selSaveLocally,emailUnavailable:null});}
