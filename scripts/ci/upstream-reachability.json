@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "45088c2c6ee993be0e6e2fbc31dc94efc40c4ca3",
-  "head": "8d06f92118e9b9b7358c56247345fd7afbed8ee5",
+  "baseCommit": "c9119dc5c5eb088bba94f3b58aab2ef2df4f88a2",
+  "head": "83c2334554b8562d16340f1433d4200bc1287c1f",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...8d06f92118e9b9b7358c56247345fd7afbed8ee5",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...83c2334554b8562d16340f1433d4200bc1287c1f",
   "status": "diverged",
-  "aheadBy": 12,
-  "behindBy": 351,
+  "aheadBy": 14,
+  "behindBy": 375,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
     {
@@ -58,6 +58,14 @@
     {
       "sha": "8d06f92118e9b9b7358c56247345fd7afbed8ee5",
       "subject": "fix(automations): fence permanent deletion to the archived revision"
+    },
+    {
+      "sha": "3aff22199772c233dfc63f03f8c68d61d774a473",
+      "subject": "fix(calendar): bind absent-effect extraction to original request"
+    },
+    {
+      "sha": "83c2334554b8562d16340f1433d4200bc1287c1f",
+      "subject": "test(calendar): resolve approval mocks against current source"
     }
   ],
   "pullRequests": [
