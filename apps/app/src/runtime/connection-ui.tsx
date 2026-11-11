@@ -3407,7 +3407,7 @@ export const connectionController = {
       if (selected.kind === 'resident' && isAndroid) {
         const observed = await observeNativeNetwork(requestSignal, assertCurrent);
         assertCurrent();
-        if (observed?.connected === false) throw new Error('Phone offline');
+        if (observed?.connected === false || (!observed && state.inferenceOffline)) throw new Error('Phone offline');
       }
       if (selected.kind === 'remote' || selected.kind === 'local') {
         if (!selected.remote.session || selected.remote.session.expiresAt <= Date.now()) throw Object.assign(new Error('Your session has expired. Pair again.'), { code: 'session_expired' });

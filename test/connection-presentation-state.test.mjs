@@ -225,6 +225,34 @@ for (const [name, read] of [
   assert.equal(f.bindings, 1);
   assert.equal(f.context.state.inferenceOffline, false);
 });
+for (const newerConnected of [false, true]) test(`a superseded resident send follows the newer native connected=${newerConnected} result`, async () => {
+  const f = preflightFixture('funded'), reads = [];
+  f.context.active = {kind: 'resident'};
+  f.context.state.inferenceOffline = newerConnected;
+  f.context.System.getNetworkStatus = () => new Promise(resolve => reads.push(resolve));
+  const pending = f.send(); void pending.catch(() => {});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(reads.length, 1);
+  const newer = f.context.observeNativeNetwork(new AbortController().signal);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(reads.length, 2);
+  reads[1]({connected: newerConnected});
+  assert.equal((await newer).connected, newerConnected);
+  assert.equal(f.snapshot().inferenceOffline, !newerConnected);
+  reads[0]({connected: !newerConnected});
+  if (newerConnected) {
+    assert.equal(await pending, 'conversation-1');
+    assert.equal(f.bindings, 1);
+  } else {
+    await assert.rejects(pending, error => {
+      assert.equal(error.notDispatched, true);
+      return true;
+    });
+    assert.equal(f.bindings, 0);
+  }
+  assert.equal(f.snapshot().inferenceOffline, !newerConnected);
+  assert.equal(f.context.sending, null);
+});
 test('a cancelled native network read cannot bind a conversation or publish connectivity', async () => {
   const f = preflightFixture('funded'), controller = new AbortController();
   f.context.active = {kind: 'resident'};
