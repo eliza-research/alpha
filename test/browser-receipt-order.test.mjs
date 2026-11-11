@@ -16,7 +16,7 @@ const ts=s=>stripTypeScriptTypes(s,{mode:'strip'});
 const presentation=await build({entryPoints:[root+'/apps/app/src/runtime/action-message-presentation.ts'],bundle:true,platform:'node',format:'esm',write:false});
 const {browserNavigationSummary,projectActionMessages,succeededBrowserDestination}=await import('data:text/javascript;base64,'+Buffer.from(presentation.outputFiles[0].text).toString('base64'));
 const navigateCode=ts(browser.slice(browser.indexOf('  async function navigate('),browser.indexOf('  async function command(')));
-const browserCode=ts(browser.slice(browser.indexOf('    this.browserNavigateApproved ='),browser.indexOf('    // Identity only:')));
+const browserCode=ts(browser.slice(browser.indexOf('    const openContentTab ='),browser.indexOf('    // Identity only:')));
 const executorCode=agent.slice(agent.indexOf("      if (!this.browserNavigateApproved) return"),agent.indexOf('\n    });\n    context(this);',agent.indexOf("      if (!this.browserNavigateApproved) return")));
 import {DeviceActions,deviceJournalContext} from './fixtures/device-action-policy.mjs';
 const cancelCode=ts(agent.slice(agent.indexOf('    if(shell.pendingActionApproval&&'),agent.indexOf('\n    const blocked=',agent.indexOf('    if(shell.pendingActionApproval&&'))));

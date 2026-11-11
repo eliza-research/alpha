@@ -35,6 +35,9 @@ for (const transition of ['session', 'history']) test(`the shell retires the old
     setState: (patch, callback) => updates.push({patch, callback}),
     refreshDraftBinding() { openings.push(controller.open('new')); },
   };
+  const model=readFileSync('apps/app/src/prototype/model.js','utf8');
+  const scroll=model.slice(model.indexOf('  cancelVoiceScrollFollow()'),model.indexOf('  getSnapshotBeforeUpdate('));
+  shell.cancelVoiceScrollFollow=new Function('return ({'+scroll+'}).cancelVoiceScrollFollow;')();
   shell.refreshDraftBinding = shell.refreshDraftBinding.bind(shell);
   const session = {sessionId: transition === 'session' ? 'new-session' : 'old-session'};
   const snapshot = {session, startupResolved: true, history: transition === 'history'

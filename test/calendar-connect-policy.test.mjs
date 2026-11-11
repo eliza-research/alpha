@@ -9,7 +9,7 @@ test('Calendar Connect binds its canonical revision and rejects stale Allow ABA 
  const domain=js(read('browser/domain-document.ts')),documents=js(read('browser/preference-documents.ts')),preferences=js(read('browser/device-preferences.ts')),access=js(read('runtime/google-agent-access.ts'));
  const ui=read('runtime/google-connection-ui.tsx'),readBegin=ui.indexOf(' function accountRead(){'),readEnd=ui.indexOf(' async function load(){',readBegin);
  const begin=ui.indexOf(' function calendarScopeCurrent('),end=ui.indexOf(' /** Calendar intent:',begin);
- assert(readBegin>=0&&readEnd>readBegin&&begin>=0&&end>begin);const handlers=js(ui.slice(readBegin,readEnd)+ui.slice(begin,end));
+ assert(readBegin>=0&&readEnd>readBegin&&begin>=0&&end>begin);const accessTarget=ui.split('\n').find(line=>line.trim().startsWith('const accessTarget='));assert.ok(accessTarget);const handlers=js(accessTarget+'\n'+ui.slice(readBegin,readEnd)+ui.slice(begin,end));
  async function fixture(initial,{legacy=null}={}){
   let snapshot,revision=0,edits=0,beforeEdit,conflict,attempts=0;const notices=[],choices=[],links=[];const key='alpha.browser.device.v1';
   const write=value=>{snapshot={revision:String(++revision),raw:JSON.stringify({version:1,legacy,value:JSON.stringify(value)})};};
@@ -21,7 +21,7 @@ test('Calendar Connect binds its canonical revision and rejects stale Allow ABA 
   const api=vm.runInNewContext('(function(){'+domain+'\n'+documents+'\n'+preferences+'\n'+access+';return{captureGoogleCalendarAccess,setGoogleAgentAccess};})()',env);
   const calendar={current:()=>true,canChange:()=>true};let selected=calendar;const binding={session:'one'};
   const read={binding,rows:[]},verifiedAccounts={current:read};
-  const context={...api,verifiedAccounts,googleConnectionController:{calendar:()=>selected,getSnapshot:()=>true},sameGoogleConnectionReturnBinding:(a,b)=>a===b,binding,currentGoogleConnectionReturnBinding:()=>binding,setNotice:n=>notices.push(n),setChoice:c=>choices.push(c),unverifiedAccounts:'Unverified accounts',linkCalendar:async()=>links.push('link'),connectCalendar:async()=>links.push('connect')};
+  const context={...api,browserCloudResidentEnabled:false,cloud:null,verifiedAccounts,googleConnectionController:{calendar:()=>selected,getSnapshot:()=>true},sameGoogleConnectionReturnBinding:(a,b)=>a===b,binding,currentGoogleConnectionReturnBinding:()=>binding,setNotice:n=>notices.push(n),setChoice:c=>choices.push(c),unverifiedAccounts:'Unverified accounts',linkCalendar:async()=>links.push('link'),connectCalendar:async()=>links.push('connect')};
   const uiApi=vm.runInNewContext('(function(){'+handlers+';return{calendarChangesAllowed,allowCalendarChanges};})()',context);
   return{calendarChangesAllowed:(calendar,rows)=>uiApi.calendarChangesAllowed(calendar,rows,read),
    allowCalendarChanges:choice=>uiApi.allowCalendarChanges({...choice,read}),

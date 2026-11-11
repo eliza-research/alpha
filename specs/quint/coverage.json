@@ -17605,7 +17605,7 @@
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "158001326677a65ad70df46e4c4bbe94f8506c455d0d744d2b14b4280f5bb663",
+      "sha256": "da431904501590ba9732a532c35ffd66be071e838d845e7e0a8097c9f7f14394",
       "stateAnchors": [
         {
           "line": 19,
@@ -18011,7 +18011,8 @@
           "line": 562,
           "text": "const timer=window.setInterval(update,100);"
         }
-      ]
+      ],
+      "integrationReview": "2026-11-11 preserve asynchronous rejection from approved browser navigation and content-link entry points. Existing owner, destination and cancellation checks are retained. Browser receipt and creation tests execute the shared openContentTab closure."
     },
     {
       "path": "apps/app/src/prototype/browser-camera.ts",

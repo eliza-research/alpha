@@ -54,7 +54,7 @@ test('private and unconfirmed page events never add browsing history',()=>{
 
 // Both the manual and approved paths execute the adapter's existing navigate().
 // The bridge is deterministic here; no website, model or device is contacted.
-const approvedSource=stripTypeScriptTypes(source.slice(source.indexOf('    this.browserNavigateApproved ='),source.indexOf('    // Identity only:')),{mode:'strip'});
+const approvedSource=stripTypeScriptTypes(source.slice(source.indexOf('    const openContentTab ='),source.indexOf('    // Identity only:')),{mode:'strip'});
 function approvedHarness({native=false,deferred=false,failNavigate=false}={}){
  let release,disposed=false,creations=0;
  const pending=deferred?new Promise(resolve=>{release=resolve;}):Promise.resolve();

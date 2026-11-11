@@ -438,12 +438,12 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       if (deferPresentation) return present;
       present();
     };
-    this.browserNavigateApproved = (raw: string, signal: AbortSignal, deferPresentation = false) => {
+    this.browserNavigateApproved = async (raw: string, signal: AbortSignal, deferPresentation = false) => {
       const url = new URL(raw);
       if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Only HTTPS destinations may be approved');
       return openContentTab(url, signal, deferPresentation);
     };
-    this.browserOpenContentLink = (raw: string, signal: AbortSignal) => {
+    this.browserOpenContentLink = async (raw: string, signal: AbortSignal) => {
       const url = new URL(raw);
       if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid web link');
       return openContentTab(url, signal, true);

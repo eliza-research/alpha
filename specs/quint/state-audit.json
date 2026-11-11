@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "6a35da9c606f11933f0f6508a8ce0a4ce99b957764b4966ad9c2bd13a4b924c6",
+  "ledgerSha256": "9ed0be5de532d453390b3520b85a6c79ad9ec32da8a29f778cfcd94651b02730",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -33783,7 +33783,7 @@
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
-      "sha256": "158001326677a65ad70df46e4c4bbe94f8506c455d0d744d2b14b4280f5bb663",
+      "sha256": "da431904501590ba9732a532c35ffd66be071e838d845e7e0a8097c9f7f14394",
       "allocatedModels": [
         "BrowserSession",
         "BrowserUnderlay",
@@ -221476,6 +221476,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "310c8cfa69554a3401bb339ff1922e83e1612ad0481fdae7f719f96137e1f048"
+    "sha256": "84f405bc8b7e8fc34d20c73cc3983c699f7470e126e2065215b6f6368aa5d07d"
   }
 }
