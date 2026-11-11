@@ -18,7 +18,7 @@ Native builds need Android SDK platform 36 and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
 
 ```sh
-git clone --recurse-submodules https://github.com/alphacompute/alpha.git
+git clone --recurse-submodules https://github.com/eliza-research/alpha.git
 cd alpha
 npm ci
 npm run verify
@@ -139,7 +139,7 @@ New builds use the canonical `eliza-research/alpha` URL. Previously issued
 GitHub release URLs rely on the redirect from the former repository name.
 Protected release jobs check the immutable repository and owner IDs. The
 release owner applies the reviewed workflow reference allowlist in
-[`scripts/ci/private-artifact-identity.json`](scripts/ci/private-artifact-identity.json)
+[`scripts/ci/private-artifact-identity.json`](../scripts/ci/private-artifact-identity.json)
 to the existing Workload Identity Federation provider before protected signing
 or publication uses private artifact storage.
 
@@ -199,18 +199,41 @@ The candidate receipt binds its digest to the exact source, SDK and run attempt.
 The build evidence records the uploaded candidate's ID and compressed size
 from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
 Refresh the reviewed pins before an artifact expires or a bound source record
-changes. Manual diagnostics and protected signing keep their existing input
-and producer-evidence policy.
+changes. The candidate archive retains the distribution producer evidence
+before the test-mocks build can replace it.
 
 The existing workflow run number is the candidate versionCode, checked against
 both releases' retained APKs and public pointers, and the committed version floors.
 Failed or canceled runs consume their number. A manual release or workflow
 migration that exceeds this number stops candidate creation and needs a reviewed
 version migration. Manual builds keep their explicit version input.
-Candidates are unsigned build evidence. Native application signing/voice
-admission, protected release review, exact signed APK voice tests, publication
-and both sideload/image phone drills remain required before automatic delivery
-to users; the current protected application promotion bridge supports Cloud only.
+Candidates are unsigned build evidence. To promote a native candidate, use
+the existing protected signing workflow with a reviewed plan whose
+`producerKind` is `github-main-candidate`. Pin the exact successful
+main-push run ID, numeric run attempt, artifact ID, source and SDK commits,
+version, public channel, outer archive bytes and SHA-256, candidate receipt
+and producer manifest SHA-256, and both unsigned APK SHA-256 values.
+Use the artifact's original ZIP bytes and the existing private storage path
+`unsigned/<archiveSHA256>.zip`. Pin its generation and a fresh exclusive
+`signed/<archiveSHA256>/<32-hex-id>/signed-apks.tar` destination in
+`privateStorage`. Keep the Actions artifact available through both signing
+admissions.
+
+The preflight checks the official Actions ZIP. The protected job checks the
+same run attempt and artifact again, then stages the byte-identical private
+generation before accessing the signing key. The qualified publication workflow
+restores the same private mirror and exact signed output. Complete the reviewed
+voice checks for both signed APK digests before dispatching publication.
+The existing reviewed Cloud producer routes remain available for their
+approved package and profile.
+
+The native route keeps the 1.5 GB limit on the producer ZIP and signed TAR.
+The two unsigned APKs and the two debug APKs each have a separate 1.5 GB
+expanded pair limit. Admission checks exact member lengths against the
+reviewed archives and verifies the APK digests when streaming the bytes.
+
+Release approval, signed-byte voice tests, publication and both sideload and
+image-preinstalled phone drills remain required for this batch.
 
 The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alphaphone/issues/888)
 and [wireless launcher acceptance #889](https://github.com/eliza-research/alphaphone/issues/889).
@@ -218,7 +241,7 @@ Complete it in this order:
 
 1. Admit native voice inputs for the exact SDK, then build and sign both
    distribution variants. Preserve advancing versions and the enrolled signer.
-   The protected [release custody workflow](.github/workflows/release-custody-proof.yml)
+   The protected [release custody workflow](../.github/workflows/release-custody-proof.yml)
    exports the verified public certificates and fingerprints under
    `artifacts/release-public-identities/` for enrollment.
 2. Register `ai.alphacompute.alphaphone` in production and staging. Run
@@ -295,7 +318,7 @@ reachable from upstream develop through [eliza#39298](https://github.com/elizaOS
 Earlier APK, voice and device evidence does not qualify this pin; rebuild and
 qualify the exact product inputs before OS enrollment.
 
-The protected [preserving OS OTA signing workflow](.github/workflows/release-os-ota-signing.yml)
+The protected [preserving OS OTA signing workflow](../.github/workflows/release-os-ota-signing.yml)
 signs only an admitted OTA package with the existing release key. Its committed
 `android/signing/ota-tools.json` currently has `reviewedTargets: []`: validation,
 private input downloads and signing remain disabled before signing keys are read.

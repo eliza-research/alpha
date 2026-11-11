@@ -2298,6 +2298,7 @@
       "tests": [
         "uncertainNeverRepostsTest",
         "lostPostedReplyRepairsExactRowTest",
+        "interruptedReplacementCannotAdoptOlderPostTest",
         "pendingProtectedFromSupersessionTest",
         "replacementAndStaleTokenTest",
         "foreignTapCannotSettleAfterPartialWithdrawalTest",

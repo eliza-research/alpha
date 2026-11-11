@@ -129,7 +129,7 @@ jobs:
           from pathlib import Path
           summary = json.loads((Path(os.environ['RUNNER_TEMP']) / 'qualified-stage/qualification-summary.json').read_text())
           manifest = json.loads(Path('qualified-product/artifacts/apk-manifest.json').read_text())
-          assert manifest['testMocks'] is False and manifest['runtimeProfile'] == 'cloud' and 'localEmbeddings' not in manifest
+          assert manifest['testMocks'] is False and manifest['runtimeProfile'] == summary['runtimeProfile'] and 'localEmbeddings' not in manifest
           assert manifest['updateChannel']['kind'] == 'public'
           rows = [row for row in manifest['results'] if row['mode'] == 'release']
           assert len(rows) == 2 and {row['variant'] for row in rows} == {'launcher', 'standalone'}

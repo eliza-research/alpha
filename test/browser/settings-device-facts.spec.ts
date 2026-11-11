@@ -1,4 +1,5 @@
 import {test,expect,type Page} from '@playwright/test';
+import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 const upstreamPin=JSON.parse(readFileSync(new URL('../../upstream.lock.json',import.meta.url),'utf8')).commit;
 
@@ -7,6 +8,11 @@ const upstreamPin=JSON.parse(readFileSync(new URL('../../upstream.lock.json',imp
 // updates: AlphaDevice.checkForUpdate's answers in order: a manifest, null for a 404 (nothing published), or 'fail'.
 type Options={launcher?:boolean;decline?:number;updates?:Array<object|null|'fail'>;holdSnapshot?:boolean};
 async function nativeStub(page:Page,options:Options={}){
+ const updates=(options.updates??[]).map(offer=>{
+  if(offer===null||offer==='fail')return offer;
+  const manifest=JSON.stringify(offer);
+  return {manifest,manifestSha256:createHash('sha256').update(manifest).digest('hex')};
+ });
  await page.addInitScript(({launcher,decline,updates,upstreamPin,holdSnapshot})=>{
   const w=window as any;w.androidBridge={};
   try{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));}catch{/* covered elsewhere */}
@@ -52,7 +58,7 @@ async function nativeStub(page:Page,options:Options={}){
      if(method==='snapshot'){const snapshot={readAt:now,model:'Fixture phone',manufacturer:'Fixture',appVersion:'0.1.0',androidRelease:'16',build:'fixture',securityPatch:'2026-09-05',permissions:{Microphone:true,Location:false,Camera:false,Calendar:true},locationAccess:'denied',batteryPercent:64,charging:false,powerSave:false,wifiActive:true,cellularActive:false,textScalePercent,...(updates.length?{appVersionCode:7,appSigner:'5c'.repeat(32)}:{})};if(holdSnapshot&&!snapshotWaited){snapshotWaited=true;await snapshotGate;}return snapshot;}
      if(method==='setTextScale'){textScalePercent=input.percent;return {textScalePercent,effectiveTextZoom:textScalePercent};}
      // Each check settles after 300 ms, so a second start or resume can arrive while it runs.
-     if(method==='checkForUpdate'){const next=answers.shift();await new Promise(settle=>setTimeout(settle,300));if(next===undefined||next==='fail')throw Error('Update unavailable');return next===null?{}:{manifest:JSON.stringify(next)};}
+     if(method==='checkForUpdate'){const next=answers.shift();await new Promise(settle=>setTimeout(settle,300));if(next===undefined||next==='fail')throw Error('Update unavailable');return next===null?{}:next;}
      if(method==='installUpdate')return undefined;
      if(method==='crashLog')return {exitHistory:true,entries:[{at:now-60_000,source:'uncaught',errorClass:'java.lang.IllegalStateException',thread:'main',process:'main'},{at:now-30_000,source:'exit',reason:'anr',process:'main'},{at:now-10_000,source:'exit',reason:'crash',process:'main',description:'Fixture note text should not appear'}]};
      if(method==='diagnosticsFacts')return {appVersion:'0.1.0',versionCode:1,variant:launcher?'launcher':'standalone',buildType:'release',testMocks:false,sdkInt:36,androidRelease:'16',securityPatch:'2026-09-05',upstreamPin,runtimeHashes:{'agent/alpha-source.json':'c'.repeat(64)},apiKey:'csk-synthetic-provider-key'};
@@ -63,7 +69,7 @@ async function nativeStub(page:Page,options:Options={}){
     throw Error('Unexpected native operation '+plugin+'.'+method);
    },
   };
- },{launcher:options.launcher??true,decline:options.decline??0,updates:options.updates??[],upstreamPin,holdSnapshot:options.holdSnapshot??false});
+ },{launcher:options.launcher??true,decline:options.decline??0,updates,upstreamPin,holdSnapshot:options.holdSnapshot??false});
 }
 const settings=async(page:Page,query='')=>{await page.goto(`/${query}`);await page.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-active-view','settings');};
 const general=async(page:Page)=>{await app(page).getByRole('button',{name:'General',exact:true}).click();};

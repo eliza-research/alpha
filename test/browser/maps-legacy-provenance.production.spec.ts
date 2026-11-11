@@ -56,7 +56,7 @@ for(const coverage of ['unavailable','non-google'] as const)test(`legacy Maps co
  await expect(page.getByRole('button',{name:'Share',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Rename place',exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Remove from saved',exact:true})).toBeVisible();
- // Tile credits are shown with the Map information disclosure.
+ // Tile credits stay visible alongside the Map information disclosure.
  await credits.getByLabel('Map information and credits',{exact:true}).click();
  await expect(credits.getByText('OpenFreeMap',{exact:true})).toBeVisible();
 });

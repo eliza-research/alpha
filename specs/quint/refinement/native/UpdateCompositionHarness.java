@@ -218,7 +218,7 @@ public final class UpdateCompositionHarness {
  private void begin() throws Exception {begin(false);}
  private void begin(boolean automatic) throws Exception {
   install = UpdateFlowTest.offered();
-  if(automatic)install.getData().put("automatic",true);
+  if(automatic)UpdateFlowTest.fixtureAutomatic(install);
   bridges.get(1).installUpdate(install);
   long deadline = System.nanoTime()+TimeUnit.SECONDS.toNanos(10);
   while (requests.size() < bridges.size() && System.nanoTime() < deadline) Thread.sleep(1);
@@ -242,7 +242,7 @@ public final class UpdateCompositionHarness {
  }
  private void deferred(String status)throws Exception{
   var bridge=bridges.get(1);
-  var call=UpdateFlowTest.offered();call.getData().put("automatic",true);bridge.installUpdate(call);call.awaitAnswer();
+  var call=UpdateFlowTest.fixtureAutomatic(UpdateFlowTest.offered());bridge.installUpdate(call);call.awaitAnswer();
   require(call.resolved.get()==1&&call.rejected.get()==0&&status.equals(call.result.optString("status")),"early call resolves exact deferred status");
   require(requests.isEmpty()&&installer.internals.isEmpty()&&installer.committed.isEmpty()
    &&AlphaLocalAgentPlugin.stops==0&&AlphaLocalAgentPlugin.releases==0&&bridge.activity.started.isEmpty()
