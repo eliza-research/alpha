@@ -26,6 +26,7 @@ public class ResidentRequestDeadlineTest {
  int enrollCount;
  String enroll(long epoch){enrollCount++;SystemClock.now+=enrollMs;return "owner-token";}
  Context getContext(){return new Context();}
+ void requireProviderOwner(boolean foreground){throw new AssertionError("Telephony provider ownership is outside this closed fixture");}
  void clearEnrollment(){throw new AssertionError("Successful request cleared enrollment");}
  private static final class Superseded extends Exception {}
  // Production request methods.
@@ -142,6 +143,7 @@ class PluginCall {
  void reject(String message,String reason){replies++;error=message;code=reason;}
 }
 class Context {Assets getAssets(){return new Assets();}}
+class AlphaImageCapability {static boolean verified(Context context){throw new AssertionError("Telephony image admission is outside this closed fixture");}}
 class Assets {InputStream open(String name){throw new AssertionError(name);}}
 class OwnerRoutes {
  interface ReadAsset {InputStream open(String name);}

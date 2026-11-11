@@ -113,7 +113,7 @@ export function appearancePreferenceFixture({testMocksEnabled = false, native = 
     failWrites() {blocked = true;},
     observe() {
       const readMarker = shell.state.appearanceStorageRead;
-      assert.ok(messages.every(message => message === 'Theme changed for this session, but could not be saved.'));
+      assert.ok(messages.every(message => message === 'Theme not saved'));
       return {testMocks: testMocksEnabled, native, query: queryTheme, phase, boot: actual.initialTheme,
         system: scheme.matches ? 'dark' : 'light', stored, blocked,
         theme: shell.state.theme || '', marker: marker(readMarker), markerTheme: readMarker?.theme || '', serial,

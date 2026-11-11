@@ -1,5 +1,7 @@
 // Current canonical Calendar receiver shared by mounted Note and scan review.
 module CanonicalCalendarDraftHandoff {
+  // noteNotice is the last captured Note toast event; its on-screen timeout is separate.
+  // Successful draft routing emits no new toast, so it preserves that event.
   type State = {owner: int, view: str, ready: bool, editor: str, retained: str,
     busy: str, scanOpen: bool, scanNotice: str, noteNotice: str}
   var s: State
@@ -23,7 +25,7 @@ module CanonicalCalendarDraftHandoff {
   action closeScan = all {s.scanOpen, s' = {...s, scanOpen: false, scanNotice: ""}}
   action requestNote = all {
     s.view == "notes",
-    s' = if (admissionOpen) {...s, view: "calendar", editor: "note", retained: "note", noteNotice: "review-time"}
+    s' = if (admissionOpen) {...s, view: "calendar", editor: "note", retained: "note"}
       else {...s, noteNotice: "note-refused"},
   }
   action requestScan = all {
@@ -33,7 +35,7 @@ module CanonicalCalendarDraftHandoff {
   }
   action requestReminder = all {
     s.view == "notes",
-    s' = {...s, view: "calendar", editor: "reminder", noteNotice: "review-time"},
+    s' = {...s, view: "calendar", editor: "reminder"},
   }
   action closeForm = all {
     s.view == "calendar", s.editor != "",

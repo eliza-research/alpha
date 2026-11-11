@@ -12,8 +12,8 @@ const firstTitle = 'First retained edit', secondTitle = 'Second retained edit';
 const oversized = 'x'.repeat(2049);
 const titles = new Map([['', ''], [firstEvent, 'event-a'], [secondEvent, 'event-b'],
   [firstTitle, 'first'], [secondTitle, 'second'], [oversized, 'oversized']]);
-const notices = new Map([['Finish or discard your draft first.', 'finish-draft'],
-  ['Opening your draft. Try again in a moment.', 'draft-busy'], ['This draft changed. Try again.', 'draft-changed']]);
+const notices = new Map([['Draft open', 'finish-draft'],
+  ['Opening draft', 'draft-busy'], ['Changed', 'draft-changed']]);
 const inputs = ['test/fixtures/calendar-draft-handoff.mjs', 'apps/app/src/prototype/canonical-calendar-drafts.ts', 'apps/app/src/prototype/template.html',
   'apps/app/src/prototype/model.js', 'apps/app/src/prototype/subview-accessibility.ts', 'apps/app/src/runtime/canonical-calendar-draft.ts',
   'apps/app/src/runtime/assistant-draft-store.ts', 'apps/app/src/prototype/assistant-draft-controller.ts',
@@ -125,7 +125,7 @@ export async function checkCanonicalCalendarEditorClose(extraSources = []) {
       const finishDiscard = async (gate, success) => {
         await f.invoke('release', gate);
         if (success) await resume.waitFor({state: 'detached'});
-        else await f.page.waitForFunction(() => window.quintCalendar.snapshot().notices.at(-1) === 'This draft changed. Try again.');
+        else await f.page.waitForFunction(() => window.quintCalendar.snapshot().notices.at(-1) === 'Changed');
         await mark('Settle the exact retained draft storage', call('finishDiscard', success));
       };
       const openPicker = async () => {

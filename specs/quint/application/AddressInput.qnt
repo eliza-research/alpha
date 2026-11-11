@@ -11,7 +11,7 @@ module AddressInput {
     // Begins with http: or https:.
     webScheme: bool,
     hasAt: bool,
-    // name@host with no slash, colon or space.
+    // Plain name@host with no URL delimiters, percent escapes or whitespace.
     emailShaped: bool,
     // One to three groups of digits separated by dots (3.14).
     shortDecimal: bool,

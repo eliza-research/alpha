@@ -67,11 +67,14 @@ test('native never dispatches a withdrawn request that is still queued or enroll
 import java.util.*;import java.util.concurrent.*;import org.json.*;
 @interface PluginMethod {}
 class JSObject extends JSONObject {JSObject(){}JSObject(String json){super(json);}public JSObject put(String k,Object v){super.put(k,v);return this;}public JSObject put(String k,boolean v){super.put(k,v);return this;}public JSObject put(String k,int v){super.put(k,v);return this;}}
+class AlphaImageCapability {static boolean verified(Object context){throw new AssertionError("Telephony image admission is outside this closed fixture");}}
 class PluginCall {Map<String,String> values=new HashMap<>();int resolves,rejects;String code;JSObject result;String getString(String k){return values.get(k);}String getString(String k,String d){return values.getOrDefault(k,d);}JSONObject getObject(String k){return null;}JSONObject getData(){return new JSONObject(values);}void resolve(JSObject value){resolves++;result=value;}void reject(String why){rejects++;}void reject(String why,String reason){rejects++;code=reason;}}
 public class RequestCancelTest {
  static final Object lifecycleLock=new Object();final Set<PluginCall> pending=new HashSet<>();final Map<String,PluginCall> withdrawable=new HashMap<>();
  final List<Runnable> queued=new ArrayList<>();final Executor workers=queued::add;String ownerIdentity="owner";int dispatched,enrollments;Runnable duringEnroll=()->{};
  static class Superseded extends Exception {}
+ Object getContext(){throw new AssertionError("Telephony context is outside this closed fixture");}
+ void requireProviderOwner(boolean foreground){throw new AssertionError("Telephony provider ownership is outside this closed fixture");}
  long admittedEpoch(){return 1;}void requireCurrent(long epoch){}void clearEnrollment(){}
  String enroll(long epoch){enrollments++;duringEnroll.run();return "fixture";}
  JSONObject raw(String path,String method,String body,String token,JSONObject supplied,int timeoutMs){dispatched++;return new JSONObject().put("status",200).put("body","{}");}

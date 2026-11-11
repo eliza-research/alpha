@@ -28,7 +28,7 @@ import {modelTraces, replayTraces, repositoryRoot, settle} from './browser-model
 const model = {path: 'specs/quint/application/BrowserTabLifecycle.qnt', module: 'BrowserTabLifecycle'};
 const scenarios = ['restoredTabsCountTowardLimitTest', 'limitRecheckedAfterCreateTest', 'restoreRetryThenReportTest', 'typingKeepsOpenTabTest', 'closeDuringCreateTest', 'loadedRestoreClearsAttemptsTest'];
 const witnesses = ['RetryPendingWitness', 'RendererFullNativeEmptyWitness', 'GaveUpWitness', 'TypedTabKeptWitness', 'LimitRefusedPopupWitness'];
-const Cap = 3, Ids = Array.from({length: 10}, (_, index) => index + 1), limitMessage = 'Close a tab before opening another.';
+const Cap = 3, Ids = Array.from({length: 10}, (_, index) => index + 1), limitMessage = 'Tab limit';
 const name = id => `t${id}`, number = id => Number(String(id).slice(1)), sorted = ids => [...ids].map(number).sort((a, b) => a - b);
 
 export async function browserTabLifecycleDriver() {
@@ -46,6 +46,8 @@ export async function browserTabLifecycleDriver() {
     const call = (kind, id) => { const item = {kind, id}; item.promise = new Promise((resolve, reject) => { item.resolve = resolve; item.reject = reject; }); calls.push(item); return item.promise; };
     const context = {URL, MAX_TABS: Cap, parseBrowserAddressInput, browsingSnapshot, restoreBrowsing, createSessionSaver, tabs, session, restored: new Map(), restoreAttempts: new Map(),
       disposed: false, sessionRead: false, sessionHydrated: false, clearingData: false, profileUnsupportedTab: undefined, PROFILE_UNSUPPORTED_NATIVE_MESSAGE: 'unsupported',
+      // This component never calls Clear; BrowserSessionPersistence exercises epoch changes.
+      saveEpoch: 0, lastSaved: '', snapshotRevision: 0, snapshotInputs: undefined, snapshotValue: null, snapshotJson: '',
       Capacitor: {isNativePlatform: () => true}, state: () => state, tabInfo: id => tabs.info(id), isPrivate: () => false, unimplemented: () => false, refresh() {},
       newTabId: () => { assert.ok(fresh, 'a fresh tab identity is asked for only when the model supplies one'); const id = fresh; fresh = undefined; return id; },
       report: error => messages.push(error.message),

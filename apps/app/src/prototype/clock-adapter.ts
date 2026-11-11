@@ -53,7 +53,7 @@ export function installClockAdapter(Component:any,views:Bag,options:{simulated:b
   return buildClockRequest({action,time,label,snooze,days},action==='set'?currentClockTimeZone():'');
  };
  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
- const description=(request:ClockRequest)=>request.action==='set'?[`${String(request.hour).padStart(2,'0')}:${String(request.minute).padStart(2,'0')}`,request.days?describeClockDays(request.days):'',request.label||''].filter(Boolean).join(' · '):request.action==='show'?'':request.action==='snooze'?`Snooze ${request.snoozeMinutes} min`:'Dismiss alarm';
+ const description=(request:ClockRequest)=>request.action==='set'?[`${String(request.hour).padStart(2,'0')}:${String(request.minute).padStart(2,'0')}`,request.days?describeClockDays(request.days):'',request.label||''].filter(Boolean).join(' · '):request.action==='show'?'':request.action==='snooze'?`Snooze: ${request.snoozeMinutes} min requested. Clock may use its default duration and affect all ringing alarms.`:'Dismiss alarm. Clock may ask which one. A one-time alarm is disabled; a repeating alarm skips its next occurrence.';
  const dispatch=async(request:ClockRequest)=>{
   if(busy||review!==request)return;
   if(document.hidden){message='Review again';review=null;publish();return;}

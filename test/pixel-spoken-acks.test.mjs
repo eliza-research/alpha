@@ -514,7 +514,7 @@ test('speech socket: Cloud completes the ack without audio: the socket-wide fail
   n.complete();const abortedAtOnce=input.signal.aborted;await f.clock.flush();
   assert.equal(abortedAtOnce,true,'the request is cancelled with the capture end itself, not attributed to the ack');
   assert.equal(f.renderChat()?.state,'error');assert.ok(n.stops>=1,'the failed socket is stopped');
-  assert.match(f.renderChat()?.lines?.[0]?.t,/^Voice stopped\./,'the existing stopped notice');
+  assert.equal(f.renderChat()?.lines?.[0]?.t,'Voice stopped','the current stopped notice');
   f.releaseReply();await f.clock.flush();
   assert.equal(seen.reply,undefined,'the cancelled request never completes');assert.equal(f.renderChat()?.state,'error');
   assert.deepEqual(n.spoken,[ACK],'nothing is spoken on the retired socket, and no canned line');
@@ -707,7 +707,7 @@ test(`speech socket: ${fault} (reported as 'protocol') while the ack ${audible?'
   }finally{await closeSocket(f);}
  });
  assert.deepEqual(atEnd,{aborted:true,state:'error',line:atEnd.line,replied:false,abortedAtOnce:true,socketStopped:true,heardAfter:0});
- assert.match(atEnd.line,/^Voice stopped\./);
+ assert.equal(atEnd.line,'Voice stopped');
 });
 
 // The renderer bridge's own owner/session check (native-cloud-speech.ts check()) failing on an event

@@ -31,7 +31,8 @@ export async function discardCalendarDraft(f) {
 export async function reviewCalendarDraftDiscard(f, accept) {
   await f.button('Discard event draft').click();
   const dialog = f.page.getByRole('dialog', {name: 'Discard draft?', exact: true});
-  await dialog.getByText('Saved events won’t change.', {exact: true}).waitFor();
+  await dialog.waitFor();
+  await dialog.getByRole('button', {name: 'Discard draft', exact: true}).waitFor();
   await dialog.getByRole('button', {name: accept ? 'Discard draft' : 'Cancel', exact: true}).click();
   await dialog.waitFor({state: 'detached'});
 }

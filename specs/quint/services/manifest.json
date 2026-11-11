@@ -762,7 +762,7 @@
         "PasswordLifetime"
       ],
       "bounds": {
-        "maxSamples": 1000,
+        "maxSamples": 5000,
         "maxSteps": 60,
         "seed": "123"
       },

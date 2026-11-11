@@ -68,7 +68,7 @@ test('a failed key request still services the work queued behind it',async()=>{
   const {box,manage,release}=harness({fail:true}),value={status:'signed-in'};
   const pending=manage('reveal');
   await box.connectionController.signInReturned(value);
-  release();await assert.rejects(pending,/Couldn’t show this key/);
+  release();await assert.rejects(pending,/Couldn’t show$/);
   assert.deepEqual(box.returned,[value]);
 });
 

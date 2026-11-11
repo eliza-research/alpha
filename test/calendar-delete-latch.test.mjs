@@ -45,7 +45,7 @@ async function unconfirmedDelete(h){
   h.detail().del();await settle();
   assert.deepEqual(h.calls.filter(name=>name==='removeScoped'),['removeScoped']);
   assert.equal(h.detail().uncertain,true);assert.equal(h.detail().busy,true);
-  assert.equal(h.toasts.at(-1),'Deletion could not be confirmed. Refresh and check before another change.');
+  assert.equal(h.toasts.at(-1),'Unconfirmed');
 }
 
 test('an unconfirmed delete that did not happen is released by a refresh that still lists the event',async()=>{

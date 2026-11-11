@@ -27,7 +27,10 @@ export const corpus = ['example.com', 'example.com/path?x=1', 'cats and dogs', '
   'nas:8080', '127.0.0.1:8080', '192.168.1.1', '[::1]:8080', 'site:example.com cats', 'define:serendipity', 'javascript:alert(1)', 'ftp://example.com/file',
   'file:///etc/hosts', 'user@example.com', 'user@host', 'user:password@example.com', 'mailto:someone@example.com', 'https://user@example.com',
   'https://user:password@example.com', 'http://user@example.com/x', '3.14', '1.2.3', '42', '1.2.3.4.5', 'https://example.com', 'http://example.com/x', 'HTTPS://EXAMPLE.COM/',
-  'https://', 'http:', 'https:example.com', 'name@example.com/inbox', 'what is user@example.com', 'a b@c', '', '   ', 'x'.repeat(4097), 'https://example.com/' + 'y'.repeat(4096)];
+  'https://', 'http:', 'https:example.com', 'name@example.com/inbox', 'what is user@example.com', 'a b@c',
+  'name+tag@example.com', 'name@example.com?token=private', 'name@example.com#private-fragment',
+  'name@example.com/path?token=private#fragment', 'user%3Apassword@example.com',
+  '', '   ', 'x'.repeat(4097), 'https://example.com/' + 'y'.repeat(4096)];
 
 /** The properties of a text that the model's `Input` records. */
 export function describe(raw) {
@@ -39,7 +42,7 @@ export function describe(raw) {
   if (verdict === 'url') { try { hostEmpty = !new URL(input.href).hostname; } catch { hostEmpty = true; } }
   return {tooLong: false, verdict, reason,
     timeLike: verdict === 'url' && /^\d+:\d+(?:[/?#]|$)/.test(typed),
-    webScheme: /^https?:/i.test(typed), hasAt: typed.includes('@'), emailShaped: /^[^\s/:@]+@[^\s/:@]+$/.test(typed),
+    webScheme: /^https?:/i.test(typed), hasAt: typed.includes('@'), emailShaped: /^[^\s/:@?#%]+@[^\s/:@?#%]+$/.test(typed),
     shortDecimal: /^\d+(?:\.\d+){0,2}$/.test(typed), hostEmpty,
     localhostAlias: verdict === 'search' && /^localhost(?:[/?#]\S*)?$/i.test(input.query)};
 }

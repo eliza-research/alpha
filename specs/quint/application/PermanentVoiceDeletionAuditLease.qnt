@@ -14,6 +14,12 @@ module PermanentVoiceDeletionAuditLease {
       else if (receipt == "removed") { if (inTrash) "restore-recording" else "review" }
       else if (inTrash) "review" else "retire"
     }
+  /// Shared exhaustive table for the registered scenario and the isolated contract view.
+  pure val decisionRows = tuples(Set("original", "deleted", "changed"), Set(false, true),
+    Set(false, true), Set(false, true), Set("unknown", "removed", "restored", "purged", "unreadable"), Set(false, true))
+    .map(((note, known, owned, inTrash, receipt, referenced)) => { note: note, known: known,
+      owned: owned, inTrash: inTrash, receipt: receipt, referenced: referenced,
+      plan: recoveryPlan(note, known, owned, inTrash, receipt, referenced) })
   type State = { note: str, recordingKnown: bool, owned: bool, inTrash: bool,
     receipt: str, referenced: bool, row: bool, previousProcess: bool,
     claimedElsewhere: bool, lease: int, locked: bool, revision: int,
@@ -101,18 +107,17 @@ module PermanentVoiceDeletionAuditLease {
     .then(processGone).then(acquire).expect(s.locked and s.planned == "trash-then-erase" and safety)
   run lostOwnershipReviewTest = initial("deleted", "unknown", false).then(acquire).then(apply).then(loseOwnership).then(acquire).then(apply)
     .expect(s.row and s.erasures == 0 and s.lease == 2 and s.receipt == "removed" and safety)
+  run decisionTableTest = init.expect(decisionRows.size() == 240
+    and decisionRows.forall(row => row.plan == "erase" implies (row.note == "deleted" and row.known and row.owned and row.inTrash and not(row.referenced)))
+    and decisionRows.forall(row => (row.note == "changed" or not(row.known) or not(row.owned) or row.receipt == "unreadable") implies row.plan == "review"))
 }
 
 /// Exhaustive finite decision table, kept separate from mutable recovery state.
 module PermanentVoiceDeletionAuditLeaseContract {
-  import PermanentVoiceDeletionAuditLease.recoveryPlan
+  import PermanentVoiceDeletionAuditLease.decisionRows
   type Row = { note: str, known: bool, owned: bool, inTrash: bool, receipt: str, referenced: bool, plan: str }
   var rows: Set[Row]
-  action init = rows' = tuples(Set("original", "deleted", "changed"), Set(false, true),
-    Set(false, true), Set(false, true), Set("unknown", "removed", "restored", "purged", "unreadable"), Set(false, true))
-    .map(((note, known, owned, inTrash, receipt, referenced)) => { note: note, known: known,
-      owned: owned, inTrash: inTrash, receipt: receipt, referenced: referenced,
-      plan: recoveryPlan(note, known, owned, inTrash, receipt, referenced) })
+  action init = rows' = decisionRows
   run decisionTableTest = init.expect(rows.size() == 240
     and rows.forall(row => row.plan == "erase" implies (row.note == "deleted" and row.known and row.owned and row.inTrash and not(row.referenced)))
     and rows.forall(row => (row.note == "changed" or not(row.known) or not(row.owned) or row.receipt == "unreadable") implies row.plan == "review"))

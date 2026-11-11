@@ -186,7 +186,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       // Typed search operators, bare email text and short decimals stay searches.
       // Explicit web schemes and user-info inputs stay refused; never search a password.
       const typed = raw.trim();
-      if (!approvedSignal && !/^https?:/i.test(typed) && (input.kind === 'rejected' ? (input.reason === 'unsupported-protocol' && !typed.includes('@')) || (input.reason === 'credentials' && !typed.includes(':') && !typed.includes('//')) : input.kind === 'url' && /^\d+(?:\.\d+){0,2}$/.test(typed))) input = {kind:'search',query:typed};
+      if (!approvedSignal && !/^https?:/i.test(typed) && (input.kind === 'rejected' ? (input.reason === 'unsupported-protocol' && !typed.includes('@')) || (input.reason === 'credentials' && /^[^\s/:@?#%]+@[^\s/:@?#%]+$/.test(typed)) : input.kind === 'url' && /^\d+(?:\.\d+){0,2}$/.test(typed))) input = {kind:'search',query:typed};
       if (input.kind === 'rejected') throw new Error();
       if (input.kind === 'url') { url = new URL(input.href); if (!url.hostname) throw new Error(); }
       // Alpha's alias: a bare localhost (with an optional path) stays an address, as it was before the shared parser.

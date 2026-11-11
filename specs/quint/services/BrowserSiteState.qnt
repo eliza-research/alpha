@@ -126,7 +126,7 @@ module BrowserSiteState {
   /// The Android dialog pauses the app. Its answer still counts for the same page and origin.
   run runtimeDialogSurvivesPauseTest = initFor(false).then(build(true)).then(navigate(1))
     .then(commit).then(permissionRequest(1)).then(permissionDecision(true)).then(hide)
-    .expect(s.prompt == "runtime").then(androidResult(true)).expect(s.permissionResult and safety)
+    .expect(RuntimePromptWhilePausedWitness and safety).then(androidResult(true)).expect(s.permissionResult and safety)
   run runtimeDialogStaleAfterNavigationTest = initFor(false).then(build(true)).then(navigate(1))
     .then(commit).then(permissionRequest(1)).then(permissionDecision(true)).then(deselect)
     .expect(s.prompt == "runtime").then(androidResult(true)).expect(s.permissionResult)

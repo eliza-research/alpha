@@ -40,7 +40,7 @@ test('explicit theme preview stays fixed when another tab changes appearance',as
 });
 test('failed preference write keeps the chosen session theme',async({page})=>{
  await page.goto('/');await page.evaluate(()=>{const set=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key==='alpha.appearance.v1')throw new DOMException('Full','QuotaExceededError');return set.call(this,key,value);};});
- await choose(page,'Dark');await expect.poll(()=>theme(page)).toBe('#000000');await expect(page.getByText('Theme changed for this session, but could not be saved.',{exact:true})).toBeVisible();expect(await page.evaluate(key=>localStorage.getItem(key),key)).toBeNull();
+ await choose(page,'Dark');await expect.poll(()=>theme(page)).toBe('#000000');await expect(page.getByText('Theme not saved',{exact:true})).toBeVisible();expect(await page.evaluate(key=>localStorage.getItem(key),key)).toBeNull();
 });
 test('System follows the color scheme until an explicit theme is chosen',async({page})=>{
  await page.emulateMedia({colorScheme:'dark'});await page.goto('/');await choose(page,'System');

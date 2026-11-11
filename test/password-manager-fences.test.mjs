@@ -54,9 +54,9 @@ async function open(overrides = {}) {
   const helpers = {info: (label, val) => ({label, val}), group: rows => ({rows}), toast: message => toasts.push(message), set: patch => sets.push(patch), ic: {}};
   const stop = manager.passwordManagerLifecycle(() => {});
   const rows = () => manager.passwordManagerGroups(helpers).flatMap(group => group.rows);
-  const row = label => { const found = rows().find(item => item.label === label); assert.ok(found, `row "${label}" in ${rows().map(item => item.label).join(' | ')}`); return found; };
+  const row = label => { const found = rows().find(item => item.label === label || item.lbl === label); assert.ok(found, `row "${label}" in ${rows().map(item => item.label).join(' | ')}`); return found; };
   rows(); await settle();
-  return {manager, vault, calls, helpers, sets, rows, row, stop};
+  return {manager, vault, calls, helpers, sets, toasts, rows, row, stop};
 }
 
 test('locking retires a listing that is still being read', async () => {
@@ -71,7 +71,7 @@ test('locking retires a listing that is still being read', async () => {
     assert.equal(h.manager.passwordManagerHoldsEntries(), false);
     pending.resolve([entry]); await settle();
     assert.equal(h.manager.passwordManagerHoldsEntries(), false, 'the late listing is dropped');
-    assert.ok(h.rows().some(item => item.label === 'Vault' && item.val === 'Locked'));
+    assert.equal(h.row('Unlock passwords').label, 'Unlock');
   } finally { h.stop(); }
 });
 
@@ -86,7 +86,7 @@ test('the end of the unlock time retires a listing that is still being read', as
     assert.equal(h.manager.passwordManagerHoldsEntries(), false);
     pending.resolve([entry]); await settle();
     assert.equal(h.manager.passwordManagerHoldsEntries(), false, 'the late listing is dropped');
-    assert.ok(h.rows().some(item => item.label === 'Vault' && item.val === 'Locked'));
+    assert.equal(h.row('Unlock passwords').label, 'Unlock');
   } finally { h.stop(); }
 });
 
@@ -114,8 +114,8 @@ test('a delete that completes after leaving does not move Settings or read the v
     h.row('Example').go();
     assert.deepEqual(h.sets, [{page: 'password-entry'}]);
     const button = label => h.manager.passwordEntryPage(h.helpers, () => {}).groups.flatMap(group => group.rows).find(item => item.label === label);
-    button('Delete password').go();
-    button('Tap again to delete').go(); await settle();
+    button('Delete').go();
+    button('Confirm delete').go(); await settle();
     assert.equal(h.calls.remove, 1);
     h.manager.leavePasswordManager(); await settle();
     const before = {...h.calls}, moved = h.sets.length;
@@ -126,7 +126,7 @@ test('a delete that completes after leaving does not move Settings or read the v
   } finally { h.stop(); }
 });
 
-const ARM = 'Delete saved passwords and start over', ARMED = 'Tap again to delete all saved passwords';
+const ARM = 'Reset vault', ARMED = 'Confirm reset';
 const damagedVault = () => ({list: async () => { throw Object.assign(new Error('Saved passwords can no longer be decrypted on this device.'), {code: 'key-invalidated'}); }});
 
 test('the delete-everything confirmation does not survive a refresh or a failed attempt', async () => {
@@ -176,7 +176,8 @@ test('a confirmed delete-everything in the foreground still resets once', async 
     h.row(ARMED).go(); await settle();
     assert.equal(h.calls.unlock, 1);
     assert.equal(h.calls.reset, 1);
-    assert.ok(h.rows().some(item => item.label === 'Status' && /were deleted/.test(item.val)));
+    h.rows(); await settle();
+    assert.equal(h.toasts.at(-1), 'Vault reset');
     assert.equal(h.manager.passwordManagerHoldsEntries(), true);
   } finally { h.stop(); }
 });
