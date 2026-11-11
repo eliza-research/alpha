@@ -86,6 +86,16 @@ function alphaAgentPathLiterals() {
  * Keep every declaration and use accounted for; a new caller is not exempted.
  */
 function literalMethods(literal, files) {
+  // The two spellings of the reviewed owner-paired resolution POST (REVIEWED_OWNER_PAIRED_ROUTES):
+  // the route table entry and the path builder's template prefix. Each only in its reviewed file.
+  const resolution = {
+    '/api/approvals/{id}/resolve': ['apps/app/src/product/owner-route-table.ts'],
+    '/api/approvals/': ['apps/app/src/runtime/calendar-approval.ts'],
+  }[literal];
+  if (resolution) {
+    assert.deepEqual([...files].sort(), resolution, 'A new approval resolution spelling needs its own owner review: '+literal);
+    return [];
+  }
   if (literal !== '/api/approvals') return ['POST'];
   assert.deepEqual([...files].sort(), [
     'apps/app/src/product/owner-route-table.ts',
@@ -98,23 +108,52 @@ function literalMethods(literal, files) {
     expected, 'A new approval path occurrence needs its own method review: '+file);
   assert.deepEqual(OWNER_ROUTE_TABLE.groups.approvals, {
     prefixes: ['/api/approvals'],
-    routes: [{methods: ['GET'], paths: ['/api/approvals?state=all&limit=500']}],
-  }, 'The renderer/native admission table must permit only this exact GET');
+    id: '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$',
+    routes: [
+      {methods: ['GET'], paths: ['/api/approvals?state=all&limit=500']},
+      {methods: ['POST'], paths: ['/api/approvals/{id}/resolve'], query: []},
+    ],
+  }, 'The renderer/native admission table must permit only this exact GET and the reviewed resolution POST');
   const constant = 'CALENDAR_APPROVAL_READ_PATH';
   const uses = walk('apps/app/src', /\.(?:ts|tsx|js|mjs)$/).flatMap(file =>
     [...fs.readFileSync(file, 'utf8').matchAll(new RegExp('\\b'+constant+'\\b', 'g'))].map(() => file));
   assert.deepEqual(uses.sort(), [
+    'apps/app/src/runtime/calendar-approval-client.ts',
+    'apps/app/src/runtime/calendar-approval-client.ts',
     'apps/app/src/runtime/calendar-approval.ts',
-    'apps/app/src/runtime/connection-ui.tsx',
-    'apps/app/src/runtime/connection-ui.tsx',
   ]);
   assert.match(fs.readFileSync('apps/app/src/runtime/calendar-approval.ts', 'utf8'),
     /export const CALENDAR_APPROVAL_READ_PATH='\/api\/approvals\?state=all&limit=500';/);
-  assert.match(fs.readFileSync('apps/app/src/runtime/connection-ui.tsx', 'utf8'),
-    /selected\.remote\.request\(CALENDAR_APPROVAL_READ_PATH,undefined,signal\)/);
+  // The read moved into the approval client: still a request with no body, which is a GET.
+  assert.match(fs.readFileSync('apps/app/src/runtime/calendar-approval-client.ts', 'utf8'),
+    /connection\.request\(CALENDAR_APPROVAL_READ_PATH,undefined,signal\)/);
   assert.match(fs.readFileSync('apps/app/src/runtime/local-agent.ts', 'utf8'),
     /method:LocalAgentMethod = body===undefined\?'GET':'POST'/);
   return ['GET'];
+}
+
+/**
+ * Owner-only writes Alpha issues on purpose (owner decision, 2026-11-11). Resolving a Calendar
+ * approval is the owner's own choice, so the upstream gate is the right one: the route is served
+ * to the owner-paired native session (Bearer from /api/auth/pair, checked below) and refused with
+ * 403 to any other session, as the trigger and automation routes are. A new entry needs its own review.
+ */
+const REVIEWED_OWNER_PAIRED_ROUTES = new Set(['POST /api/approvals/id-1/resolve']);
+/** The resolution has one path builder and one caller, sends an explicit POST and only approve or reject. */
+function reviewedApprovalResolution() {
+  const builder = 'calendarApprovalResolvePath';
+  const uses = walk('apps/app/src', /\.(?:ts|tsx|js|mjs)$/).flatMap(file =>
+    [...fs.readFileSync(file, 'utf8').matchAll(new RegExp('\\b'+builder+'\\b', 'g'))].map(() => file));
+  assert.deepEqual(uses.sort(), [
+    'apps/app/src/runtime/calendar-approval-client.ts',
+    'apps/app/src/runtime/calendar-approval-client.ts',
+    'apps/app/src/runtime/calendar-approval.ts',
+  ], 'A new caller of the approval resolution path needs its own owner review');
+  assert.match(fs.readFileSync('apps/app/src/runtime/calendar-approval.ts', 'utf8'),
+    /export function calendarApprovalResolvePath\(id:string\)\{if\(!calendarApprovalId\(id\)\)throw Error\('Invalid Calendar request\.'\);return `\/api\/approvals\/\$\{id\}\/resolve`;\}/);
+  const client = fs.readFileSync('apps/app/src/runtime/calendar-approval-client.ts', 'utf8');
+  assert.match(client, /!\['approve','reject'\]\.includes\(decision\)\)throw Error/);
+  assert.match(client, /read\.connection\.request\(calendarApprovalResolvePath\(read\.id\),\{decision,revision:read\.revision\},signal,\{\},'POST'\)/);
 }
 
 function ownerRouteTable() {
@@ -157,8 +196,14 @@ test('the gate model reads the clauses Alpha was reviewed against', () => {
 test('no route Alpha issues to its agent is behind the owner-only gate', () => {
   const model = gateModel(gateSource());
   const refused = [];
+  const ownerPaired = [];
   for (const [method, pathname] of ownerRouteTable())
-    if (ownerOnly(model, method, pathname)) refused.push(`${method} ${pathname} (apps/app/src/product/owner-route-table.ts)`);
+    if (ownerOnly(model, method, pathname))
+      (REVIEWED_OWNER_PAIRED_ROUTES.has(`${method} ${pathname}`) ? ownerPaired : refused)
+        .push(`${method} ${pathname} (apps/app/src/product/owner-route-table.ts)`);
+  // Exactly the reviewed owner-paired write, and only while its single caller stays as reviewed.
+  assert.deepEqual(ownerPaired, ['POST /api/approvals/id-1/resolve (apps/app/src/product/owner-route-table.ts)']);
+  reviewedApprovalResolution();
   const literals = alphaAgentPathLiterals();
   assert.ok(literals.size > 20, 'Alpha agent path literals were not found');
   // Unclassified literals are conservatively checked as writes. A reviewed read
