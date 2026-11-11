@@ -19,7 +19,14 @@ import templateHtml from "./template.html?raw";
   function interp(str, scope) { return str.replace(HOLE, function (_, p) { var v = lookup(p, scope); return v == null ? "" : String(v); }); }
   function camel(k) { if (k.indexOf("--") === 0) return k; return k.replace(/^-(webkit|moz|ms)-/, function (_, v) { return v.charAt(0).toUpperCase() + v.slice(1) + "-"; }).replace(/-([a-z])/g, function (_, c) { return c.toUpperCase(); }); }
   const boxStyle = document.createElement("span").style;
+  // The template repeats the same style strings on every render, so each distinct string is parsed
+  // once and its frozen result shared. Interpolated values (heights, offsets) keep producing new
+  // strings, so the cache is emptied when it reaches its limit.
+  const STYLE_CACHE_LIMIT = 4096;
+  const styleCache = new Map();
   function parseStyle(s) {
+    var cached = styleCache.get(s);
+    if (cached) return cached;
     var o = {};
     // Native captures use data URLs, whose semicolon belongs inside url(...).
     // Split declarations only outside CSS strings and function arguments.
@@ -50,6 +57,8 @@ import templateHtml from "./template.html?raw";
         o[camel(k)] = v;
       }
     });
+    if (styleCache.size >= STYLE_CACHE_LIMIT) styleCache.clear();
+    styleCache.set(s, Object.freeze(o));
     return o;
   }
   function props(el, scope, key) {

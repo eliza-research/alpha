@@ -59,12 +59,12 @@ for(const scenario of ['recent','expired','owner-change-during-restore'] as cons
  await fixture(page);await load(page);
  await expect.poll(()=>page.evaluate(async()=>{
   const {serviceReadCache}=await import('/src/runtime/service-read-cache-store.ts');
-  const cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'});
+  const cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'},'gmail');
   return !!(await cache.get('gmail:mailbox'));
  })).toBe(true);
  if(scenario==='expired')await page.evaluate(async()=>{
   const {serviceReadCache}=await import('/src/runtime/service-read-cache-store.ts');
-  const cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'});
+  const cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'},'gmail');
   const saved=await cache.get<any>('gmail:mailbox');
   for(const row of saved!.value.lists)row.at=Date.now()-31*86400000;
   await cache.put('gmail:mailbox',saved!.value);
@@ -72,7 +72,7 @@ for(const scenario of ['recent','expired','owner-change-during-restore'] as cons
  await fixture(page);
  await page.evaluate(async hold=>{
   const {serviceReadCache}=await import('/src/runtime/service-read-cache-store.ts');
-  const cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'}),read=cache.get.bind(cache),f=(window as any).homeInboxFixture;
+  const cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'},'gmail'),read=cache.get.bind(cache),f=(window as any).homeInboxFixture;
   f.cacheReads=0;f.hold=true;
   cache.get=async function<T>(key:string){const saved=await read<T>(key);if(key==='gmail:mailbox'){f.cacheReads++;if(hold)await new Promise<void>(resolve=>f.releaseCache=resolve);}return saved;};
   (await import('/src/runtime/connection-ui.tsx')).connectionController.close();
@@ -142,7 +142,7 @@ test('opening Inbox shows saved mail while the same-owner Home refresh is pendin
  await fixture(page);await load(page);
  await expect.poll(()=>page.evaluate(async()=>{
   const {serviceReadCache}=await import('/src/runtime/service-read-cache-store.ts');
-  const cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'});
+  const cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'},'gmail');
   return !!(await cache.get('gmail:mailbox'));
  })).toBe(true);
  await fixture(page);
@@ -187,7 +187,7 @@ for(const policy of ['ambiguous','revoked-choice','no-read-grant'] as const)test
 test('Home header warmup preserves existing saved body and folder bytes',async({page})=>{
  await fixture(page);await load(page);
  const before=await page.evaluate(async()=>{
-  const {serviceReadCache}=await import('/src/runtime/service-read-cache-store.ts'),cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'});
+  const {serviceReadCache}=await import('/src/runtime/service-read-cache-store.ts'),cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'},'gmail');
   const saved=await cache.get<any>('gmail:mailbox'),value=saved!.value;
   value.bodies=[{key:'retained-offline-body',at:Date.now(),body:{message:value.lists[0].messages[0],bodyText:'Exact retained offline body'}}];
   value.lists.push({...structuredClone(value.lists[0]),key:'retained-sent-folder',query:'in:sent'});
@@ -195,7 +195,7 @@ test('Home header warmup preserves existing saved body and folder bytes',async({
  });
  await fixture(page);await page.evaluate(()=>{const f=(window as any).homeInboxFixture;f.rows=f.rows.map((m:any)=>({...m,subject:'Fresh headers after retained cache'}));});
  await notifyHomeOwner(page);await expect(tile(page)).toContainText('Fresh headers after retained cache');
- expect(await page.evaluate(async()=>{const {serviceReadCache}=await import('/src/runtime/service-read-cache-store.ts'),cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'});return JSON.stringify((await cache.get('gmail:mailbox'))!.value);})).toBe(before);
+ expect(await page.evaluate(async()=>{const {serviceReadCache}=await import('/src/runtime/service-read-cache-store.ts'),cache=await serviceReadCache({environment:'production',userId:'fixture-a',organizationId:'fixture-org',credentialId:'fixture-only'},'gmail');return JSON.stringify((await cache.get('gmail:mailbox'))!.value);})).toBe(before);
  expect(await page.evaluate(()=>(window as any).homeInboxFixture.bodyReads??0)).toBe(0);
 });
 

@@ -12,7 +12,7 @@ async function compilePhotosWindow(extraSources = []) {
   const ports = /* @__PURE__ */ new Map([
     ["../platform-plugins", "export const registerPlugin=name=>__ports.plugin(name);"],
     ["@capacitor/core", "export const Capacitor={isNativePlatform:()=>true,isPluginAvailable:name=>name==='AlphaPhotos'};"],
-    ["./browser-camera", `export const browserCamera={},browserLibrary={},browserPhotoLibrary={};export const mountBrowserCamera=${unused("browser camera")},importBrowserPhoto=${unused("import")},openCameraImageImport=${unused("camera image import")},saveBrowserMedia=${unused("export")};`],
+    ["./browser-camera", `export const browserCamera={},browserLibrary={},browserPhotoLibrary={};export const mountBrowserCamera=${unused("browser camera")},importBrowserPhoto=${unused("import")},openCameraImageImport=${unused("camera image import")},saveBrowserMedia=${unused("export")},onBrowserPreviewEnded=${unused("browser preview")};`],
     ["../daily", "export const DailyApps={async addListener(){return {async remove(){}}}};"],
     ["../runtime/connection-ui", `export const connectionController={getSnapshot:${unused("connection")}};`],
     ["../runtime/media-copy-intent", `export const readMediaCopyIntent=async()=>null;export const admitMediaCopyIntent=${unused("copy")},acknowledgeMediaCopyIntent=${unused("copy")},mediaCopyIntentDocument=${unused("copy")};`],

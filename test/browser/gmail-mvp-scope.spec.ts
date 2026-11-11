@@ -71,7 +71,7 @@ for(const scenario of ['connected','empty','error','restored'] as const)test(`Sh
   if(scenario==='restored'){
    const {connectionController:c}=await import('/src/runtime/connection-ui.tsx'),{serviceReadCache}=await import('/src/runtime/service-read-cache-store.ts');
    const snapshot={...c.getSnapshot(),cloudAccount:{...c.getSnapshot().cloudAccount!,organizationId:'fixture-org'}};c.getSnapshot=()=>snapshot as any;
-   const cache=await serviceReadCache({environment:'production',userId:'fixture-owner',organizationId:'fixture-org',credentialId:'fixture'});
+   const cache=await serviceReadCache({environment:'production',userId:'fixture-owner',organizationId:'fixture-org',credentialId:'fixture'},'gmail');
    await cache.put('gmail:mailbox',{accounts:f.accounts,selected:'grant-0',spamTrashSearch:false,lists:[{at:Date.now(),messages:[],query:'in:inbox',cursor:null,revision:'saved',cursors:[],newerMail:false,status:'Your Inbox is empty'}],bodies:[]});
    const read=cache.get.bind(cache);f.restoreReads=0;f.restoreGate=new Promise<void>(resolve=>f.releaseAccounts=resolve);
    cache.get=async function<T>(key:string){const row=await read<T>(key);if(key==='gmail:mailbox'){f.restoreReads++;await f.restoreGate;}return row;};

@@ -20,7 +20,9 @@ export function installCalendarEditDraftAdapter(Component:any,views:Bag,options:
  };
  p.componentDidUpdate=function(previous:Bag){
   update.call(this,previous);if(!enabled(this))return;if(!this.calendarEditDraftBound){this.calendarEditDraftBound=true;void this.calendarEditDraft.open(JSON.stringify(['calendar-inline-edit-form',browserDevProfile?'development':'app']));}const form=this.vget('calendar').form;
-  if(!form?.id||!form.alphaCalendarId&&!form.alphaReminderId)return;
+  // A closed editor keeps no anchor: the same unchanged item opened again on a later day is a
+  // fresh form whose day already counts from today.
+  if(!form?.id||!form.alphaCalendarId&&!form.alphaReminderId){this.calendarEditDraftIdentity=undefined;return;}
   if(this.calendarEditDraftIdentity!==calendarEditIdentity(form)){this.calendarEditDraftIdentity=calendarEditIdentity(form);this.calendarEditDraftAnchor=new Date();}
   const today=new Date(),anchor=this.calendarEditDraftAnchor as Date;
   const civil=(date:Date)=>Date.UTC(date.getFullYear(),date.getMonth(),date.getDate());

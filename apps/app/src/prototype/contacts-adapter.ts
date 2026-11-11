@@ -19,17 +19,19 @@ export function installContactsAdapter(Component:any,views:Bag){
  const available=()=>!!owner&&owner.S().view==='contacts'&&isMvpView('contacts')&&!document.hidden;
  const sync=()=>{const next=available();if(next===active)return;active=next;if(next)void refresh();else clear();};
  async function refresh(request=false,queryOverride?:string){
-  const target=owner,token=++epoch;if(!available()){return;}loading=true;rows=[];changed();
+  const target=owner,token=++epoch;if(!available()){return;}
+  // Rows already shown stay until this read answers; leaving the view or losing access clears them.
+  loading=true;changed();
   try{
    const access=request?await contacts.requestPermissions():await contacts.status();
    if(token!==epoch||target!==owner||!available())return;
    readable=access.available===true&&access.readable===true;
-   if(!readable){status='Choose Contacts access to see this profile’s address book.';return;}
+   if(!readable){rows=[];more=false;status='Choose Contacts access to see this profile’s address book.';return;}
    const value=await contacts.list({query:queryOverride??String(target.vget('contacts').q||''),limit});
    if(token!==epoch||target!==owner||!available())return;
    if(!Array.isArray(value.contacts))throw Error();rows=value.contacts;more=value.more===true;
    status=more&&limit>=200?'200 shown. Search to find other contacts.':rows.length?`${rows.length} contacts${more?' · more available':''}`:'No contacts found.';
-  }catch{if(token===epoch){rows=[];status='Contacts could not be read. Check access and refresh.';}}
+  }catch{if(token===epoch){rows=[];more=false;status='Contacts could not be read. Check access and refresh.';}}
   finally{if(token===epoch){loading=false;changed();}}
  }
  async function editor(selected?:Bag){

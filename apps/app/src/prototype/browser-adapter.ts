@@ -16,6 +16,7 @@ import { connectionController, agentPendingText } from '../runtime/connection-ui
 import { BrowserReviews } from '../browser/review';
 import { createExternalBrowserHandoff } from './browser-external-handoff';
 import { browserErrorMessage } from '../browser/browser-errors';
+import { createSessionSaver, surfacePollIdle } from '../browser/browser-poll';
 const {tabs: MAX_TABS, history: MAX_HISTORY} = DEFAULT_BROWSING_LIMITS;
 type Bag = Record<string, any>;
 // The shared native tab host (BrowserTabHostPlugin) under Alpha's Capacitor name; the web build
@@ -33,6 +34,7 @@ const PROFILE_UNSUPPORTED_MESSAGE='In-app browsing is unavailable with this Andr
 export function installPrototypeBrowserAdapter(Component: any, views: Record<string, Bag>) {
   const tabs = new BrowserTabSession({maxTabs: MAX_TABS});
   const session = tabs.session;
+  const hiddenGeometry = JSON.stringify({session,id:null});
   const tabInfo = (id: string | undefined | null): Bag | undefined => tabs.info(id);
   // Cold-start tabs that have not been loaded yet: id -> last committed page.
   const restored = new Map<string, {url: string; title: string}>();
@@ -42,7 +44,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   let shell: any, lastGeometry = '', disposed = false, sharing = false, confirming = false, clearingData = false;
   let lastPresented:Bag|undefined,presentationFrame:number|undefined,presentationFailed=false;
   // Saving waits for a successful read so a damaged saved record is never overwritten implicitly.
-  let sessionRead = false, sessionHydrated = false, lastSaved = '', saveQueue = Promise.resolve();
+  let sessionRead = false, sessionHydrated = false;
   const tabOf = (id: string) => state()?.tabs?.find((tab: Bag) => tab.id === id);
   const isPrivate = (id: string) => !!tabOf(id)?.priv;
   let bookmarkRead: Promise<void> | undefined, bookmarkQueue = Promise.resolve();
@@ -160,12 +162,13 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
         const result=await browserReadingSource(source.url,controller.signal);if(result?.blocked)throw Error('This page may contain credentials or verification codes. Open a different page.');text=result?.text||'';
       }
       if(!current())return;questionReview=true;lastGeometry='';await update();
-      reviewContentQuestion({name:source.name,text,signal:controller.signal,current,validate:text=>!sensitiveReadingText(text),source:async()=>{if(!current())throw Error('Page changed');return source;},compose:(draft,source)=>shell.api('browser').composeContentQuestion(draft,source),closed:()=>{questionReview=false;lastGeometry='';if(reading===controller)reading=undefined;}});
+      // A review that fails to open must not leave the page hidden behind a dialog that is not there.
+      try{reviewContentQuestion({name:source.name,text,signal:controller.signal,current,validate:text=>!sensitiveReadingText(text),source:async()=>{if(!current())throw Error('Page changed');return source;},compose:(draft,source)=>shell.api('browser').composeContentQuestion(draft,source),closed:()=>{questionReview=false;lastGeometry='';if(reading===controller)reading=undefined;}});}
+      catch(error){questionReview=false;lastGeometry='';throw error;}
     }catch(error){if(!controller.signal.aborted)report(error);}finally{if(!questionReview&&reading===controller)reading=undefined;}
   }
   function hide() {
-    const next = JSON.stringify({session,id:null});
-    if (lastGeometry === next) return;
+    if (lastGeometry === hiddenGeometry) return;
     void presentBrowser({session,id:null});
   }
   function ensure(id: string, priv = isPrivate(id)) {
@@ -179,6 +182,11 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       let input = parseBrowserAddressInput(raw, {defaultProtocol: 'https:'});
       // The shared parser reads any word:digits as host:port; an all-digit, dotless host (10:30, 3:16) is a search, not 0.0.0.10:30.
       if (input.kind === 'url' && /^\d+:\d+(?:[/?#]|$)/.test(raw.trim())) input = {kind: 'search', query: raw.trim()};
+      // Typed text that only looks like an address is a search and is never opened: a word:body that is not a
+      // web address (site:example.com cats, define:x), an email address, and a short decimal (3.14).
+      // Text that may carry credentials (a web scheme, or name:secret@host) is never searched and stays refused.
+      const typed = raw.trim();
+      if (!approvedSignal && !/^https?:/i.test(typed) && (input.kind === 'rejected' ? (input.reason === 'unsupported-protocol' && !typed.includes('@')) || (input.reason === 'credentials' && /^[^\s/:@]+@[^\s/:@]+$/.test(typed)) : input.kind === 'url' && /^\d+(?:\.\d+){0,2}$/.test(typed))) input = {kind: 'search', query: typed};
       if (input.kind === 'rejected') throw new Error();
       if (input.kind === 'url') { url = new URL(input.href); if (!url.hostname) throw new Error(); }
       // Alpha's alias: a bare localhost (with an optional path) stays an address, as it was before the shared parser.
@@ -208,6 +216,8 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       const current=state();
       if(tabs.creation(id)!==creation||!current||(!newTab&&!current.tabs.some((tab:Bag)=>tab.id===id))){void Browser.close({session,id}).catch(report);if(approvedSignal)throw new Error('Browser tab closed');return;}
       if((!background||approvedSignal)&&current.cur!==selectedTab){if(newTab){tabs.forget([id]);void Browser.close({session,id}).catch(report);}if(approvedSignal)throw new Error('Browser tab changed');return;}
+      // A tab that opened while this one was being created can have filled the last place.
+      if (newTab && current.tabs.length >= MAX_TABS) { tabs.forget([id]); void Browser.close({session,id}).catch(report); const full = new Error('Close a tab before opening another.'); if (approvedSignal) throw full; report(full); return; }
       if (newTab) shell.vset('browser', { tabs: [...state().tabs, { id, hist: ['newtab'], pos: 0, ...(priv ? {priv: true} : {}) }], ...(!background ? {cur: id} : {}) });
       tabs.beginNavigation(id, url.href);
       // A background (restored-tab) load must not close a menu or switcher the
@@ -298,28 +308,35 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     const s = state(); if (!s) return null;
     return browsingSnapshot(s, id => { const info = tabInfo(id), saved = restored.get(id); return { url: (!Capacitor.isNativePlatform()&&info?.externalOnly?info.url:info?.savedUrl) || saved?.url, title: info?.title || saved?.title }; });
   }
-  function saveSession() {
-    if (!sessionHydrated || clearingData || disposed) return;
-    const snapshot = savedSnapshot(); if (!snapshot) return;
-    const next = JSON.stringify(snapshot); if (next === lastSaved) return;
-    lastSaved = next;
-    saveQueue = saveQueue.then(() => disposed || clearingData ? undefined : Browser.saveBrowsingState({ session, ...snapshot })).catch(() => { if (lastSaved === next) lastSaved = ''; });
-  }
+  // The poll calls this ten times a second. A snapshot is built only after the tabs, history, the
+  // selected tab or a tab's page changed: the view state and the tab session replace these values
+  // rather than changing them in place. A rejected write backs off instead of repeating each tick.
+  const saver = createSessionSaver({
+    inputs: () => { const s = state(); return s ? [s.tabs, s.visits, s.cur, ...s.tabs.flatMap((tab: Bag) => [tabInfo(tab.id), restored.get(tab.id)])] : []; },
+    snapshot: savedSnapshot,
+    enabled: () => sessionHydrated && !clearingData && !disposed,
+    write: snapshot => Browser.saveBrowsingState({ session, ...snapshot }),
+  });
+  const saveSession = () => saver.save();
   async function restoreSession() {
     if (sessionRead) return; sessionRead = true;
     try {
       const saved = await Browser.browsingState({ session });
       if (disposed) return;
       const s = state(); if (!s) return;
-      // Never replace a tab the user is already typing into.
-      const next = restoreBrowsing(saved, s, tabs.ids().length === 0 && s.tabs.length === 1 && !tabs.info(s.tabs[0].id) && !s.editing);
+      // Never replace a tab the user is already typing into: the open tabs then stay, still selected,
+      // and the saved tabs that fit under the tab limit follow them, so the first save keeps them.
+      const pristine = tabs.ids().length === 0 && s.tabs.length === 1 && !tabs.info(s.tabs[0].id) && !s.editing;
+      const next = restoreBrowsing(saved, s, true);
+      const added = pristine ? next.restored : next.restored.filter(tab => !s.tabs.some((open: Bag) => open.id === tab.id)).slice(0, Math.max(0, MAX_TABS - s.tabs.length));
       // Restored tabs load (an ordinary GET of the last committed address)
       // only when the tab is shown; nothing is resubmitted.
-      for (const tab of next.restored) restored.set(tab.id, { url: tab.url, title: tab.title });
-      if (next.restored.length) shell.vset('browser', { tabs: next.restored.map(tab => ({ id: tab.id, hist: ['newtab'], pos: 0 })), cur: next.cur, visits: next.visits });
+      for (const tab of added) restored.set(tab.id, { url: tab.url, title: tab.title });
+      const rows = added.map(tab => ({ id: tab.id, hist: ['newtab'], pos: 0 }));
+      if (added.length) shell.vset('browser', pristine ? { tabs: rows, cur: next.cur, visits: next.visits } : { tabs: [...s.tabs, ...rows], visits: next.visits });
       else if (next.visits.length !== s.visits.length) shell.vset('browser', { visits: next.visits });
       sessionHydrated = true;
-      lastSaved = JSON.stringify(savedSnapshot());
+      saver.prime();
     } catch (error) {
       // Restore runs at startup, over any screen: a host without the Browser plugin has no saved tabs to report.
       if (unimplemented(error)) return;
@@ -343,7 +360,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       const normal = state().tabs.filter((tab: Bag) => !tab.priv).map((tab: Bag) => tab.id);
       forgetTabs([...new Set([...normal, ...(Array.isArray(result?.closed) ? result.closed : [])])]);
       shell.vset('browser', { visits: [] });
-      sessionHydrated = true; lastSaved = JSON.stringify(savedSnapshot());
+      sessionHydrated = true; saver.prime();
       shell.toast(Capacitor.isNativePlatform() ? 'Browsing data cleared' : 'Alpha tabs and history cleared');
     } catch (error) { report(error); } finally { clearingData = false; }
   }
@@ -540,6 +557,8 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     // would cancel the autofill session retained for a password provider's unlock screen.
     if(document.hidden){if(reading)stopReading();return;}
     const s=state(), S=shell?.S();
+    // Off the Browser view with the page already withdrawn there is nothing to measure or send.
+    if(surfacePollIdle(S?.view,lastGeometry,hiddenGeometry)){if(reading)stopReading();return;}
     const element=document.querySelector('[data-native-browser-viewport]') as HTMLElement|null;
     const hidden=questionReview || confirming || hostModalOpen(document, Capacitor.isNativePlatform()) || !s || !element || !element.isConnected || !element.getClientRects().length || S?.view!=='browser' || s.editing || s.tabsOpen || s.menu || s.lib || s.share || s.ag || s.confirm || S?.shade || S?.screen !== 'home' || (!nativeUnderlay()&&nativeUnderAssistant());
     if(reading && (disposed || document.documentElement.hasAttribute('data-dev-background') || S?.screen!=='home' || S?.view!=='browser' || s?.tabsOpen || s?.editing || S?.shade || ['sheet','full'].includes(S?.chat)))stopReading();

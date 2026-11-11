@@ -22,6 +22,7 @@ import { installSmsAdapter } from './prototype/sms-adapter';
 import { installContactsAdapter } from './prototype/contacts-adapter';
 import { installPhoneAdapter } from './prototype/phone-adapter';
 import { admitImageContacts } from './prototype/mvp-features';
+import { applyImageContacts } from './runtime/image-contacts';
 import {DeletionUndo} from './runtime/deletion-undo';
 import {bindBrowserSpeechConnection} from './browser/agent-speech';
 import { testMocksEnabled, devSurfacesEnabled } from './build-flags';
@@ -369,7 +370,7 @@ async function mountPhone() {
     await nativeAppUpdateGate;
   }
   if (isAndroid) {
-    const refreshImage=async()=>{const image=await DeviceApps.platformCapabilities().catch(()=>({aospImage:false,contacts:false}));const admitted=image.aospImage===true&&image.contacts===true;admitImageContacts(admitted);const index=ORDER.indexOf('contacts');if(admitted&&index<0)ORDER.push('contacts');else if(!admitted&&index>=0)ORDER.splice(index,1);if(!admitted&&shell?.S().view==='contacts')shell.goHome();};
+    const refreshImage=async()=>{const image=await DeviceApps.platformCapabilities().catch(()=>({aospImage:false,contacts:false}));const admitted=image.aospImage===true&&image.contacts===true;applyImageContacts(admitted,ORDER,shell,admitImageContacts);};
     // One round of independent host reads before the first render. The assistant surface is
     // AlphaAssistActivity only (surfaceInfo is class-gated natively), never a launch extra.
     [launcherPresentation, assistantSurface] = await Promise.all([

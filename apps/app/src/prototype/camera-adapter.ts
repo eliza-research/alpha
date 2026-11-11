@@ -22,7 +22,7 @@ import {openScanReview,ScanKeepError} from './scan-review';
 import {openScanDocument,pickNativeScanImage} from './scan-document';
 import {systemPickerActive} from './scan-pdf';
 import {DailyApps} from '../daily';
-import {browserCamera,browserLibrary,browserPhotoLibrary,mountBrowserCamera,importBrowserPhoto,openCameraImageImport,saveBrowserMedia} from './browser-camera';
+import {browserCamera,browserLibrary,browserPhotoLibrary,mountBrowserCamera,importBrowserPhoto,openCameraImageImport,saveBrowserMedia,onBrowserPreviewEnded} from './browser-camera';
 import { registerPlugin } from '../platform-plugins';
 import { Capacitor } from '@capacitor/core';
 import {cameraFocusTarget} from '../browser/camera-focus';
@@ -120,7 +120,7 @@ export function askAboutCameraFrame(question:string):boolean{return frameQuestio
 const browserMode=!Capacitor.isNativePlatform();
 const camera:typeof nativeCamera=browserMode?browserCamera:nativeCamera;
 // Check every implemented browser method against the native port contract.
-browserPhotoLibrary satisfies Pick<typeof nativeLibrary,Exclude<keyof typeof browserPhotoLibrary,'saveVideoCopy'|'share'|'shareMany'>>;
+browserPhotoLibrary satisfies Pick<typeof nativeLibrary,Exclude<keyof typeof browserPhotoLibrary,'saveVideoCopy'|'forgetEdit'|'share'|'shareMany'>>;
 const library=browserMode?browserLibrary as unknown as typeof nativeLibrary:nativeLibrary;
 const libraryAvailable=()=>browserMode||Capacitor.isPluginAvailable('AlphaPhotos');
 /** canReplace: the native edit pipeline can overwrite this original (owned, or Android allows a write request). */
@@ -286,6 +286,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if(value.operationId!==ticket.token||!ticket.intent)throw Error('Saved-copy receipt identity changed');
     const terminal=(value.status==='saved'&&!!value.id)||['failed','unchanged','not-started','stale'].includes(value.status);if(!terminal)return false;
     await acknowledgeMediaCopyIntent(ticket.intent);
+    // Nothing reads an acknowledged outcome again; the browser library drops its receipt.
+    if(browserMode)void browserPhotoLibrary.forgetEdit({operationId:ticket.token}).catch(()=>{});
     // A library notification can arrive while acknowledgement yields too.
     const pendingCopy=pendingNativeVideoCopy;
     if(pendingCopy?.epoch===ticket.epoch&&pendingCopy.source.id===ticket.source)await pendingCopy.checking;
@@ -857,12 +859,24 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     else if(outcome.status==='denied'){mask(false);showAccess('camera');}
     else if(outcome.status==='unavailable'){mask(false);showAccess('unavailable');}
   }
-  async function control<T>(task: () => Promise<T>, completed: (value:T) => void) {
+  /** `replacesPreview` marks a control that ends the running preview before starting another
+   * (switching cameras in the browser). When it fails no preview is left, so the view offers a
+   * restart instead of staying ready with nothing to capture. */
+  async function control<T>(task: () => Promise<T>, completed: (value:T) => void, replacesPreview = false) {
     let value:T|undefined;
     const outcome=await session.control(async()=>{value=await task();});
     if(outcome==='done')completed(value as T);
-    else if(outcome==='failed')message('Not supported on this camera.');
+    else if(outcome==='failed'){if(replacesPreview)await previewGone();else message('Not supported on this camera.');}
   }
+  /** No preview is left although the session was ready: release it and offer a restart. A
+   * recording in progress is finished by the release. */
+  async function previewGone(){
+    previewReleased=true;await stop();
+    if(cameraViewVisible()&&session.phase==='off')showAccess('unavailable');
+  }
+  /** The browser camera track ended on its own (unplugged, access revoked, taken by another page). */
+  function previewLost(){if(!disposed&&session.phase==='ready')void previewGone();}
+  if(browserMode)onBrowserPreviewEnded(previewLost);
   /** Tap to focus runs alongside everything else: it never holds a lock the shutter waits on. */
   function focusAt(x:number,y:number){
     if(session.phase!=='ready'||session.recordingStarting||session.finalizing)return;
@@ -924,7 +938,7 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
       direction = next;
       adoptLens(receipt);
       owner.set({ front: next === 'front', flash });
-    });
+    }, browserMode);
   }
   const finishVideo=()=>session.finishRecording();
   async function record() {
@@ -1561,7 +1575,8 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
     if (selected.kind !== 'video') return;
     try {
       // Read verifies published MediaStore ownership before returning its local URI.
-      const row = preview?.id === selected.id ? preview : normalize(await library.read({ id: nativeId(selected.id) }));
+      // List rows carry no video bytes; only a row that was read for this item can be played.
+      const row = preview?.id === selected.id && preview.path ? preview : normalize(await library.read({ id: nativeId(selected.id) }));
       if (!row.path || owner.get('photos').open !== selected.id || !owner.isActive()) return;
       if (videoId !== selected.id) {
         closeVideo(); video = document.createElement('video'); videoId = selected.id;
@@ -1648,6 +1663,6 @@ export function installPrototypeCameraAdapter(_Component: unknown, views: Record
   const resumed=()=>{void restartAfterResume(()=>({denied:session.denied,phase:session.phase,disposed}),()=>cameraAccess.checkPermissions()).then(restart=>{if(restart){session.rearm();schedule();}});};
   let resumeHandle:{remove():Promise<void>}|undefined;
   void DailyApps.addListener('appResumed',resumed).then(handle=>{if(disposed)void handle.remove();else resumeHandle=handle;}).catch(()=>{});
-  return () => { releaseHost();if(requestedPhoto===takeRequestedPhoto)requestedPhoto=undefined;window.clearTimeout(noticeTimer);window.clearTimeout(thumbTimer);noticeGeneration++;watchLibrary(false);deviceLibrary.dispose();captureQuestion=undefined;frameQuestion=undefined;void libraryChangeHandle?.remove();hideAccess();void resumeHandle?.remove();window.removeEventListener('alpha:albums-document-changed',albumsChanged);if(scanApi&&prototype.api===scanApi)prototype.api=originalApi;disposed = true;cancelEdit();endHold();selection=undefined; clearInterval(timer); window.clearTimeout(chatTimer); closeVideo(); removePresence(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pageHide); window.removeEventListener('resize', resize); void stop(); style.remove(); captures = []; module.render = render; module.onLeave = leave; module.back = cameraBack; module.actions = cameraActions; if (scanRequest) scanRequest = undefined; if (views.photos) { views.photos.render = photosRender; views.photos.back = photosBack; views.photos.onLeave = photosLeave; } };
+  return () => { releaseHost();if(requestedPhoto===takeRequestedPhoto)requestedPhoto=undefined;if(browserMode)onBrowserPreviewEnded(undefined);window.clearTimeout(noticeTimer);window.clearTimeout(thumbTimer);noticeGeneration++;watchLibrary(false);deviceLibrary.dispose();captureQuestion=undefined;frameQuestion=undefined;void libraryChangeHandle?.remove();hideAccess();void resumeHandle?.remove();window.removeEventListener('alpha:albums-document-changed',albumsChanged);if(scanApi&&prototype.api===scanApi)prototype.api=originalApi;disposed = true;cancelEdit();endHold();selection=undefined; clearInterval(timer); window.clearTimeout(chatTimer); closeVideo(); removePresence(); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('pagehide', pageHide); window.removeEventListener('resize', resize); void stop(); style.remove(); captures = []; module.render = render; module.onLeave = leave; module.back = cameraBack; module.actions = cameraActions; if (scanRequest) scanRequest = undefined; if (views.photos) { views.photos.render = photosRender; views.photos.back = photosBack; views.photos.onLeave = photosLeave; } };
 
 }

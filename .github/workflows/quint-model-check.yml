@@ -1,0 +1,59 @@
+name: Quint model checking
+# Bounded symbolic checking, the historical current-design comparisons and the legacy temporal properties.
+# `npm run verify` runs scenarios and sampled simulation only; this job is the gate for model-checker evidence.
+on:
+  pull_request:
+    paths:
+      - specs/quint/**
+      - scripts/check-quint.mjs
+      - scripts/quint-lib.mjs
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      models:
+        description: Comma-separated module names (empty checks every model)
+        type: string
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: quint-model-check-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    name: Bounded symbolic safety
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm run upstream:prepare-client
+      - name: Bounded symbolic safety and additional proof inits
+        env:
+          MODELS: ${{ inputs.models }}
+        run: npm run quint:verify -- --steps=6 ${MODELS:+--models=$MODELS}
+      # Each module named below must declare currentChecks or currentTemporalChecks in specs/quint/legacy/manifest.json;
+      # the runner rejects an unknown module and a selection without comparisons.
+      - name: Expected counterexamples and current-design comparisons
+        if: ${{ !inputs.models }}
+        run: npm run quint:compare -- --backend=tlc --models=ChatInput,SettingsNav,HomeLayout,GoogleConnect
+      # Each module named below must declare temporal properties in specs/quint/legacy/manifest.json.
+      - name: Fairness-guarded temporal properties
+        if: ${{ !inputs.models }}
+        run: npm run quint:temporal -- --backend=tlc --models=SignIn,GoogleConnect,Maps
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: quint-model-check
+          path: test-results/quint/

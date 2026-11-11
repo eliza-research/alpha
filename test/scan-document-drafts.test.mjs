@@ -9,7 +9,7 @@ const stubs={
  '../runtime/browser-note-documents':'export class BrowserNoteDocuments{}',
  '../platform-plugins':'export const registerPlugin=()=>({exportPdf:async()=>{throw Error("not used");}});',
  '../daily':'export const DailyApps={};','./local-ocr':'export const recognizeLocalText=async()=>({lines:[]});','./scan-page-camera':'export const captureScanPage=async()=>undefined;',
- './scan-correction-review':'export const reviewScanCorrection=async()=>undefined;','../browser/file-picker':'export const inputFiles=async()=>[],runFilePicker=async()=>[];','./files-index':'export const filesIndex={record(){}};',
+ './scan-correction-review':'export const reviewScanCorrection=async()=>undefined;','../browser/file-picker':'export const inputFiles=async()=>[],runFilePicker=async()=>[];','./files-index':'export const filesIndex={record(){return [];},open(){return null;}};',
 };
 const bundle=(await build({entryPoints:[path.join(root,'apps/app/src/prototype/scan-document.ts')],bundle:true,platform:'neutral',format:'esm',write:false,plugins:[{name:'stubs',setup(b){
  b.onResolve({filter:/.*/},args=>args.path in stubs||args.path.endsWith('.css')?{path:args.path,namespace:'stub'}:undefined);

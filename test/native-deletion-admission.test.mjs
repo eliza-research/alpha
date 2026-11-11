@@ -32,9 +32,9 @@ test('owner network reads happen before the coordinator lock, never while holdin
 });
 
 test('a deterministic stage refusal never leaves a permanent agent claim',()=>{
- const deletions=java('AlphaDeletionsPlugin'),positive=body(deletions,'DeferredDeletionCoordinator coordinator=NativeDeletionCoordinator.get(getContext());String operationId;','}).create();');
+ const deletions=java('AlphaDeletionsPlugin'),positive=body(deletions,'DeferredDeletionCoordinator coordinator=NativeDeletionCoordinator.get(getContext());String operationId;',' private static void resolveOutcome(');
  assert.ok(positive.indexOf('coordinator.stageAdmissible(owner)')<positive.indexOf('DeletionDispatchClaim.check('),'owner and selection are checked before the claim');
- assert.match(positive,/\}catch\(Exception failure\)\{outcome\[0\]=unstaged\(coordinator,operationId\);\}/);
+ assert.match(positive,/\}catch\(Exception failure\)\{return unstaged\(coordinator,operationId\);\}/);
  assert.match(deletions,/return staged==null\?new JSONObject\(\)\.put\("status","not-staged"\):new JSONObject\(\)\.put\("status","queued"\)/,'not-staged only without a receipt for the exact operation');
  assert.match(deletions,/if\(retired\|\|review!=null\|\|!foreground\(\)\)\{resolveStatus\(call,"unavailable"\);return;\}/);
  assert.match(deletions,/resolveStatus\(call,"stale"\);return;/);
@@ -52,6 +52,24 @@ test('a deterministic stage refusal never leaves a permanent agent claim',()=>{
  const contract=readFileSync('.eliza/client-features/packages/contracts/src/deletion-window.ts','utf8');
  for(const status of ['stale','unavailable','not-staged'])assert.match(contract,new RegExp(`case "${status}":`));
  assert.doesNotMatch(contract,/case "unknown":/,'unknown remains an uncertain outcome');
+});
+
+test('reminder deletion staging runs on the plugin worker, never in the dialog click on the UI thread',()=>{
+ const plugin=java('AlphaDeletionsPlugin');
+ const click=body(plugin,'.setPositiveButton("Delete reminder",(d,w)->{','}).create();');
+ assert.match(click,/if\(retired\|\|review!=own\[0\]\|\|[^\n]*isDeviceLocked\(\)\|\|![^\n]*Lifecycle\.State\.RESUMED\)\)return;/,'the owner decision is still checked on the UI thread');
+ assert.match(click,/try\{worker\.execute\(\(\)->resolveOutcome\(call,stageReviewed\(id,target,agentOwner,binding,identity\)\)\);\}/);
+ assert.match(click,/catch\(java\.util\.concurrent\.RejectedExecutionException stopped\)\{resolveStatus\(call,"not-staged"\);\}/,'a retired worker stages nothing and says so');
+ assert.doesNotMatch(click,/manualOwner\(|stageAdmissible\(|stageReminder\(|DeletionDispatchClaim\.|AlphaReminders\.engine|AlphaActionJournal\./,'no slot, journal or coordinator-lock work in the click handler');
+ assert.ok(click.indexOf('staging[0]=true;')>0&&click.indexOf('staging[0]=true;')<click.indexOf('worker.execute('));
+ assert.match(plugin,/setOnDismissListener\(d->\{if\(review==own\[0\]\)review=null;if\(!staging\[0\]\)resolveStatus\(call,"cancelled"\);\}\)/,'the call is answered once: by the dismissal or by the worker');
+ const staged=body(plugin,' private JSONObject stageReviewed(',' private static void resolveOutcome(');
+ assert.match(staged,/if\(retired\)return new JSONObject\(\)\.put\("status","not-staged"\);/);
+ assert.ok(staged.indexOf('if(retired)')<staged.indexOf('coordinator.manualOwner()'),'a closed view is refused before any slot is read');
+ assert.equal((plugin.match(/stageReviewed\(/g)||[]).length,2,'staging is reached only from the worker task');
+ // The shared coordinator takes its own monitor for these, which a reconcile holds across provider writes.
+ assert.match(shared,/ public synchronized JSONObject manualOwner\(\) throws Exception \{/);
+ assert.match(shared,/ public synchronized JSONObject stageReminder\(/);
 });
 
 test('both notice owner fences are written even when workflow cancellation fails',()=>{

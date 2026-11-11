@@ -97,7 +97,12 @@ module CalendarLinkedSync {
   val Bounded = s.writes.in(0.to(2)) and s.epoch.in(0.to(2)) and s.local.in(0.to(3)) and s.remote.in(0.to(3))
   val TypeOK = s.state.in(Set("clean","dirty","paused","local_only","conflicted","quarantined")) and
     s.phase.in(Set("idle","read","push","staged","dispatch","pull","pull-delete","recover")) and s.pending.in(Set("none","create","update","delete"))
-  val safety = TypeOK and Bounded and DurableMutation and SettledCheckpoint
+  /// A standing review belongs to the current owner and never to a later local revision.
+  val ReviewOwnerBound = s.reviewed implies s.reviewedEpoch == s.epoch and s.reviewedRevision <= s.revision
+  val safety = TypeOK and Bounded and DurableMutation and SettledCheckpoint and ReviewOwnerBound
+  val QuarantinedWriteWitness = s.state == "quarantined" and s.writes == 1 and s.remote == s.local
+  val StaleReviewWitness = s.reviewed and s.reviewedRevision < s.revision and not(s.enabled)
+  val RecoveredWitness = s.recovery and s.state == "clean"
   run createTest = init.then(begin).then(analyzed).then(stage).then(dispatch).then(providerResult("succeeded",true)).expect(s.state=="clean" and safety)
   run unknownCreateRecoveryTest = init.then(begin).then(analyzed).then(stage).then(dispatch).then(providerResult("unknown",true))
     .then(blocked).expect(s.writes==1).then(beginRecovery).then(recoveryReply).expect(s.recovery and s.state=="clean" and safety)
@@ -116,5 +121,8 @@ module CalendarLinkedSync {
   run pausedInFlightPreservesPendingTest = init.then(begin).then(analyzed).then(stage).then(dispatch).then(pause).then(abandonedWrite(true))
     .expect(s.state=="dirty" and s.pending=="create" and not(s.knownProvider)).then(reviewSync).then(enable).then(begin).then(analyzed)
     .expect(s.state=="clean" and s.writes==1 and safety)
+  /// A review made for one owner cannot enable sync for the next.
+  run reviewRetiredByOwnerSwitchTest = init.then(pause).then(reviewSync).then(switchOwner).expect(not(s.reviewed) and safety)
+    .then(enable.fail())
   run freshReviewRequiredTest = init.then(pause).then(reviewSync).then(localEdit).expect(not(s.enabled)).then(reviewSync).then(enable).expect(s.enabled and safety)
 }

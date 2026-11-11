@@ -154,4 +154,25 @@ function fakeHost(){
  await assert.rejects(library.agent.runView({type:'photos_filter'},signal),/Open Photos/);
  library.dispose();
 }
+// Hiding the app ends an open review; a confirmed change that is already running is not interrupted.
+{
+ const page=new EventTarget();page.hidden=false;globalThis.document=page;
+ const hide=value=>{page.hidden=value;page.dispatchEvent(new Event('visibilitychange'));};
+ try{
+  const {state,port}=fakePort(),host=fakeHost(),library=createDeviceLibrary(port,()=>true),signal=new AbortController().signal;
+  const search=await library.agent.run({type:'photo_library_search',limit:3},signal);
+  const review=lib.validateLibraryOperation({type:'photo_library_review',action:'trash',items:[{id:'lib:i:3:30',revision:search.items[0].revision}]});
+  await library.agent.run(review,signal);assert.ok(library.reviewCard());
+  hide(false);assert.ok(library.reviewCard(),'a visible page keeps the review');
+  const before=host.changes;hide(true);
+  assert.equal(library.reviewCard(),undefined,'the review ends when the app is hidden');assert.equal(host.changes,before+1,'the host re-renders without the card');
+  hide(false);assert.equal(library.reviewCard(),undefined,'and does not return');
+  library.reviewCard()?.confirm();await tick(10);assert.equal(state.changes.requested,undefined,'nothing was requested from Android');
+  let finish;state.change=options=>new Promise(resolve=>{finish=()=>resolve({status:'complete',outcomes:options.items.map(row=>({id:row.id,status:'trashed'}))});});
+  await library.agent.run(review,signal);library.reviewCard().confirm();await tick(10);
+  hide(true);finish();await tick(10);
+  assert.deepEqual(host.trashed,['lib:i:3:30'],'Android\'s own dialog hides the page; the confirmed change still completes');
+  library.dispose();host.release();
+ }finally{delete globalThis.document;}
+}
 console.log('PASS photo library adapter');

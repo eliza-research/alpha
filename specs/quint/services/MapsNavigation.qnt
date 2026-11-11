@@ -4,27 +4,46 @@ module MapsNavigation {
     owner: int, epoch: int, requestEpoch: int, generation: int, requestGeneration: int,
     phase: str, route: int, previousRoute: int, routeOwner: int,
     locationGranted: bool, fixFresh: bool, guidance: bool, assistant: bool,
-    foreground: bool, directStart: bool, failure: str, rerouting: bool
+    foreground: bool, directStart: bool, failure: str, rerouting: bool,
+    // Guidance: whether its own watch holds a usable fix, and whether the native
+    // screen-off session is running for it.
+    located: bool, screenOff: bool
   }
   var s: Navigation
+  pure val MaxGeneration = 3
+  /// Guidance over: its watch and screen-off session go with it.
+  pure def ended(n: Navigation): Navigation =
+    { ...n, guidance: false, rerouting: false, located: false, screenOff: false }
+  /// Maps released: the selection and its route are gone as well.
+  pure def released(n: Navigation): Navigation =
+    { ...ended(n), phase: "idle", route: 0, routeOwner: 0 }
+  pure def started(n: Navigation): Navigation =
+    { ...n, guidance: true, phase: "navigating", located: false, screenOff: false }
   action init = s' = {
     owner: 1, epoch: 0, requestEpoch: 0, generation: 0, requestGeneration: 0,
     phase: "idle", route: 0, previousRoute: 0, routeOwner: 0,
     locationGranted: false, fixFresh: false, guidance: false, assistant: false,
-    foreground: true, directStart: false, failure: "none", rerouting: false }
+    foreground: true, directStart: false, failure: "none", rerouting: false,
+    located: false, screenOff: false }
   action grantLocation = s' = { ...s, locationGranted: true }
   action receiveFix(fresh: bool): bool = all {
-    s.locationGranted, s' = { ...s, fixFresh: fresh }
+    s.locationGranted, s' = { ...s, fixFresh: fresh, located: s.guidance and fresh }
   }
   action requestRoute = all {
-    s.foreground, not(s.guidance), s.generation < 2,
+    s.foreground, not(s.guidance), s.generation < MaxGeneration,
     s' = { ...s, phase: if (s.locationGranted and s.fixFresh) "planning" else "awaiting-location",
       generation: s.generation + 1, requestGeneration: s.generation + 1,
       requestEpoch: s.epoch, previousRoute: s.route, failure: "none" }
   }
+  /// The user's "Use current location": the route is planned once the fix arrives. An agent
+  /// request that reported awaiting-location has ended; its retry is a new requestRoute.
   action resumeWithFix = all {
     s.phase == "awaiting-location", s.locationGranted, s.fixFresh,
     s' = { ...s, phase: "planning" }
+  }
+  /// A starting point the user typed or chose plans the route without the device's location.
+  action chooseOrigin = all {
+    s.phase == "awaiting-location", s.foreground, s' = { ...s, phase: "planning" }
   }
   action routeReply(generation: int, epoch: int, success: bool): bool = all {
     s.phase == "planning",
@@ -35,60 +54,116 @@ module MapsNavigation {
         failure: if (success) "none" else "network" }
     else s' = s
   }
+  /// The screen's Start needs a ready route only; guidance then waits for its first fix.
   action start = all {
-    s.phase == "ready", s.route != 0, s.locationGranted, s.fixFresh,
-    s' = { ...s, guidance: true, phase: "navigating" }
+    s.phase == "ready", s.route != 0, s.foreground, s' = started(s)
   }
   /// Agent direct start uses a separately read owner preference, defaulting to false.
   action allowDirectStart = s' = { ...s, directStart: true }
   action agentStart = all {
-    s.directStart, s.phase == "ready", s.route != 0, s.locationGranted, s.fixFresh,
-    s' = { ...s, guidance: true, phase: "navigating" }
+    s.directStart, s.phase == "ready", s.route != 0, s.foreground, s.locationGranted, s.fixFresh,
+    s' = started(s)
+  }
+  /// The guidance watch could not start or failed: permission refused, location off.
+  action locationFails = all {
+    s.guidance, s' = { ...ended(s), phase: "stopped", failure: "location", fixFresh: false }
+  }
+  /// The native session that keeps guidance alive with the screen off reports it is running.
+  action screenOffStarted = all { s.guidance, not(s.screenOff), s' = { ...s, screenOff: true } }
+  /// The native session ends by itself: guidance goes on in front and is released when hidden.
+  action screenOffLost = all {
+    s.screenOff, s' = if (s.foreground) { ...s, screenOff: false } else released(s)
   }
   action beginReroute = all {
-    s.guidance, not(s.rerouting), s.fixFresh, s.generation < 2,
+    s.guidance, not(s.rerouting), s.located, s.generation < MaxGeneration,
     s' = { ...s, rerouting: true, previousRoute: s.route,
       generation: s.generation + 1, requestGeneration: s.generation + 1, requestEpoch: s.epoch }
   }
+  /// A reroute that fails ends guidance; the route it replaced is not put back.
   action rerouteReply(success: bool): bool = all {
     s.rerouting, s.requestEpoch == s.epoch, s.requestGeneration == s.generation,
-    s' = { ...s, rerouting: false, route: if (success) s.generation else s.previousRoute,
-      failure: if (success) "none" else "network" }
+    s' = if (success) { ...s, rerouting: false, route: s.generation, failure: "none" }
+      else { ...ended(s), phase: "error", route: 0, routeOwner: 0, failure: "network" }
   }
   action showAssistant = s' = { ...s, assistant: true }
   action dismissAssistant = s' = { ...s, assistant: false }
-  action background = s' = { ...s, foreground: false }
+  /// The page is hidden: guidance survives only with its screen-off session.
+  action background = s' =
+    if (s.guidance and s.screenOff) { ...s, foreground: false }
+    else { ...released(s), foreground: false }
   action foreground = s' = { ...s, foreground: true }
-  action staleFix = s' = { ...s, fixFresh: false }
-  action stop = s' = { ...s, phase: "stopped", guidance: false, rerouting: false }
+  /// Leaving Maps inside the launcher releases it, guidance included.
+  action leaveMaps = all { s.foreground, s' = released(s) }
+  action staleFix = s' = { ...s, fixFresh: false, located: false }
+  action stop = s' = { ...ended(s), phase: "stopped" }
   action switchOwner = all {
     s.epoch < 2,
-    s' = { ...s, owner: if (s.owner == 1) 2 else 1, epoch: s.epoch + 1,
-      phase: "idle", route: 0, routeOwner: 0, guidance: false, rerouting: false }
+    s' = { ...released(s), owner: if (s.owner == 1) 2 else 1, epoch: s.epoch + 1 }
   }
-  action step = any {
-    grantLocation, receiveFix(true), receiveFix(false), requestRoute, resumeWithFix,
-    routeReply(s.generation, s.epoch, true), routeReply(s.generation, s.epoch, false),
-    routeReply(0, s.epoch, true), routeReply(s.generation, 3, true), start,
-    allowDirectStart, agentStart, beginReroute, rerouteReply(true), rerouteReply(false),
-    showAssistant, dismissAssistant, background, foreground, staleFix, stop, switchOwner, s' = s
+  action step = {
+    // Events that end guidance are drawn less often, so sampled traces reach reroutes.
+    nondet draw = 0.to(3).oneOf()
+    any {
+      grantLocation, receiveFix(true), receiveFix(false), requestRoute, resumeWithFix, chooseOrigin,
+      routeReply(s.generation, s.epoch, true), routeReply(s.generation, s.epoch, false),
+      routeReply(0, s.epoch, true), routeReply(s.generation, 3, true), start,
+      allowDirectStart, agentStart, screenOffStarted, screenOffLost,
+      beginReroute, rerouteReply(true), rerouteReply(false),
+      showAssistant, dismissAssistant, background, foreground,
+      all { draw == 0, any { locationFails, leaveMaps, staleFix, stop, switchOwner } },
+      s' = s
+    }
   }
   val GuidanceHasRoute = s.guidance implies s.route > 0 and s.routeOwner == s.owner
   val RerouteKeepsRoute = s.rerouting implies s.guidance and s.route == s.previousRoute
   val RetiredRouteHidden = s.route > 0 implies s.routeOwner == s.owner
-  val FailedRerouteKept = s.guidance and s.failure == "network" implies s.route == s.previousRoute
-  val TypeOK = s.phase.in(Set("idle", "awaiting-location", "planning", "ready", "error", "navigating", "stopped")) and s.generation.in(0.to(2)) and s.route.in(0.to(2)) and s.epoch.in(0.to(2))
-  val safety = TypeOK and GuidanceHasRoute and RerouteKeepsRoute and RetiredRouteHidden and FailedRerouteKept
+  val FailedRerouteEndsGuidance = s.failure == "network" implies not(s.guidance)
+  val GuidancePhase = s.guidance == (s.phase == "navigating")
+  val GuidanceFixNeedsPermission = s.located implies s.guidance and s.locationGranted and s.fixFresh
+  val ScreenOffNeedsGuidance = s.screenOff implies s.guidance
+  /// A hidden page holds no route request or route sheet: only screen-off guidance outlives it.
+  val HiddenKeepsOnlyScreenOffGuidance = not(s.foreground) implies
+    (s.guidance and s.screenOff) or s.phase.in(Set("idle", "stopped", "error"))
+  val TypeOK = s.phase.in(Set("idle", "awaiting-location", "planning", "ready", "error", "navigating", "stopped")) and
+    s.generation.in(0.to(MaxGeneration)) and s.route.in(0.to(MaxGeneration)) and s.epoch.in(0.to(2)) and
+    s.failure.in(Set("none", "network", "location"))
+  val safety = TypeOK and GuidanceHasRoute and RerouteKeepsRoute and RetiredRouteHidden and
+    FailedRerouteEndsGuidance and GuidancePhase and GuidanceFixNeedsPermission and
+    ScreenOffNeedsGuidance and HiddenKeepsOnlyScreenOffGuidance
+
+  val GuidanceWithoutFixWitness = s.guidance and not(s.locationGranted)
+  val HiddenGuidanceWitness = s.guidance and not(s.foreground)
+  val ReroutingWitness = s.rerouting and s.route == s.previousRoute
+  val FailedRerouteWitness = s.failure == "network" and s.phase == "error" and s.previousRoute > 0 and s.route == 0
+
   run waitingForLocationTest = init.then(requestRoute).expect(s.phase == "awaiting-location")
     .then(grantLocation).then(receiveFix(true)).then(resumeWithFix)
-    .then(routeReply(1, 0, true)).then(start).expect(s.guidance and safety)
+    .then(routeReply(1, 0, true)).then(start).expect(s.guidance and not(s.located) and safety)
+    .then(receiveFix(true)).expect(s.located and safety)
   run staleReplyTest = init.then(grantLocation).then(receiveFix(true)).then(requestRoute)
     .then(routeReply(0, 0, true)).expect(s.route == 0)
     .then(routeReply(1, 0, true)).expect(s.route == 1 and safety)
   run assistantAndRerouteTest = init.then(grantLocation).then(receiveFix(true)).then(requestRoute)
-    .then(routeReply(1, 0, true)).then(start).then(showAssistant).then(beginReroute)
-    .then(rerouteReply(false)).expect(s.guidance and s.assistant and s.route == 1 and safety)
+    .then(routeReply(1, 0, true)).then(start).then(receiveFix(true)).then(showAssistant)
+    .expect(s.guidance and s.assistant and safety)
+    .then(beginReroute).expect(s.rerouting and s.route == 1 and safety)
+    .then(rerouteReply(false))
+    .expect(not(s.guidance) and s.assistant and s.route == 0 and s.phase == "error" and safety)
   run accountRetirementTest = init.then(grantLocation).then(receiveFix(true)).then(requestRoute)
-    .then(routeReply(1, 0, true)).then(start).then(switchOwner)
-    .expect(s.route == 0 and not(s.guidance) and safety)
+    .then(routeReply(1, 0, true)).then(start).then(screenOffStarted).then(switchOwner)
+    .expect(s.route == 0 and not(s.guidance) and not(s.screenOff) and safety)
+  run userStartNeedsNoLocationTest = init.then(requestRoute).then(chooseOrigin)
+    .then(routeReply(1, 0, true)).then(start)
+    .expect(s.guidance and not(s.locationGranted) and not(s.located) and safety)
+    .then(locationFails)
+    .expect(not(s.guidance) and s.failure == "location" and s.phase == "stopped" and s.route == 1 and safety)
+  run leavingMapsEndsGuidanceTest = init.then(requestRoute).then(chooseOrigin).then(routeReply(1, 0, true))
+    .then(start).then(screenOffStarted).then(leaveMaps)
+    .expect(not(s.guidance) and s.route == 0 and not(s.screenOff) and safety)
+  run hiddenGuidanceNeedsScreenOffSessionTest = init.then(requestRoute).then(chooseOrigin)
+    .then(routeReply(1, 0, true)).then(start).then(screenOffStarted).then(background)
+    .expect(s.guidance and not(s.foreground) and safety)
+    .then(screenOffLost).expect(not(s.guidance) and s.route == 0 and safety)
+    .then(foreground).then(requestRoute).then(chooseOrigin).then(routeReply(2, 0, true)).then(start)
+    .then(background).expect(not(s.guidance) and s.phase == "idle" and safety)
 }

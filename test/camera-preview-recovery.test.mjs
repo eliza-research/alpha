@@ -18,7 +18,7 @@ const shared=stripTypeScriptTypes((hostPorts+sessionSource).replace(/^import[^;]
 const focusUI=stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/browser/camera-focus.ts',import.meta.url),'utf8').split('/** Owns')[0].replace(/^export /gm,''));
 const settle=async()=>{for(let i=0;i<16;i++)await Promise.resolve();};
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
-function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt={width:1280,height:720,deviceId:'0',minZoom:0.5,maxZoom:10,hasFlash:true,zoom:1,flash:'off'}}={}){
+function fixture({permission=false,failing=true,navigateAfterPhoto=false,browser=false,receipt={width:1280,height:720,deviceId:'0',minZoom:0.5,maxZoom:10,hasFlash:true,zoom:1,flash:'off'}}={}){
  const env=new JSDOM('<div data-alpha-camera-root data-alpha-layer><button data-alpha-camera="viewfinder"></button></div>',{pretendToBeVisual:true});const timers=new Map();let timerId=0;
  env.window.setTimeout=(fn,ms)=>{timers.set(++timerId,{fn,ms});return timerId;};env.window.clearTimeout=id=>timers.delete(id);
  const calls={starts:0,stops:0,masked:false,captures:[],focus:0,switches:[],recordings:0,list:[],scans:0,questions:[],views:[],modes:[],native:{flash:"on",zoom:0.5}};let failed=failing;
@@ -38,10 +38,10 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
  let view={chat:'hidden',active:true};
  context=vm.createContext({window:env.window,document:env.window.document,console,camera,library,Date:{now:()=>clock.now},Uint8Array,atob,Blob:env.window.Blob,
   mask:enable=>calls.masked=enable,Capacitor:{isPluginAvailable:()=>true},validateCameraCaptureResult:value=>value,systemPickerActive:()=>false,device:{openSettings:async()=>({status:'opened'})},
-  openScanReview:()=>{calls.scans++;return ()=>{};},reviewContentQuestion:input=>{calls.questions.push(input);return ()=>{};},createScanCapture:()=>({keep:async()=>undefined,close(){}}),ScanKeepError:Error,importBrowserPhoto:async()=>({}),browserCamera:{flashAvailable:()=>false},view:()=>view,calls,navigateAfterPhoto});
+  openScanReview:()=>{calls.scans++;return ()=>{};},reviewContentQuestion:input=>{calls.questions.push(input);return ()=>{};},createScanCapture:()=>({keep:async()=>undefined,close(){}}),ScanKeepError:Error,importBrowserPhoto:async()=>({}),browserCamera:{flashAvailable:()=>false},onBrowserPreviewEnded:listener=>{calls.previewEnded=listener;},view:()=>view,calls,navigateAfterPhoto});
  const prelude=`let accessPanel,disposed=false,direction='back',flash=false,duration=0,loaded=true,captures=[],closeQuestion,closeScan,scanRequest,frameQuestion;
   let lens={minZoom:1,maxZoom:1,hasFlash:false,zoom:1,flash:false},zoomRatio=1;let requestedPhoto;
-  const browserMode=false,libraryAvailable=()=>true,normalize=row=>({...row,id:'native-camera-'+row.id}),nativeId=id=>id.replace(/^native-camera-/,''),cancelScan=()=>{};function schedule(){}
+  const browserMode=${browser},libraryAvailable=()=>true,normalize=row=>({...row,id:'native-camera-'+row.id}),nativeId=id=>id.replace(/^native-camera-/,''),cancelScan=()=>{};function schedule(){}
   const finder='[data-alpha-camera="viewfinder"]';let state={said:'',mode:'photo'};
   const api={S:{get chat(){return view().chat;}},isActive:()=>view().active,set:patch=>Object.assign(state,patch),get:()=>state,setView:name=>{calls.views.push(name);if(navigateAfterPhoto&&name==='photos')view().active=false;},shell:patch=>{view().chat=patch.chat;}};`;
  vm.runInContext(shared+focusUI+stripTypeScriptTypes(prelude+helpers+scanWords+lastTile+session+frameAsk+syncCamera+`;globalThis.testCamera={cameraFrameQuestionRequested,askAboutCameraFrame,recordingOptions:()=>RECORDING,bindMode,modeSettled:()=>modeChange,start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
@@ -189,6 +189,27 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
  assert.deepEqual({...f.calls.native},{flash:'off',zoom:1});
  assert.equal(f.api.state().flash,false);assert.equal(f.api.state().zoomRatio,1);
  assert.equal(f.api.state().said,'Not supported on this camera.');f.env.window.close();
+}
+// The browser ends the running preview before it starts the other camera: a failed switch leaves
+// none, so the preview is released and the view offers a restart instead of a dead shutter.
+{
+ const f=fixture({failing:false,browser:true});await f.api.start();assert.equal(f.api.state().phase,'ready');
+ f.gates.switchError=Error('No second camera');await f.api.flip();await settle();
+ assert.equal(f.api.state().phase,'off');assert.equal(f.calls.stops,1,'the dead preview is released');
+ const panel=f.env.window.document.querySelector('[role="alert"]');assert.equal(panel?.getAttribute('aria-label'),'Camera unavailable');
+ f.api.syncCamera();await settle();assert.equal(f.calls.starts,1,'no restart without the person asking');
+ f.gates.switchError=undefined;[...panel.querySelectorAll('button')].find(button=>button.textContent==='Try again').click();await settle();
+ assert.equal(f.calls.starts,2);assert.equal(f.api.state().phase,'ready');assert.equal(f.env.window.document.querySelector('[role="alert"]'),null);f.env.window.close();
+}
+// A browser camera track that ends on its own while ready does the same; one that ends after the
+// view already stopped changes nothing.
+{
+ const f=fixture({failing:false,browser:true});assert.equal(typeof f.calls.previewEnded,'function','the view listens for the track ending');
+ f.calls.previewEnded();await settle();assert.equal(f.calls.stops,0,'nothing to release before a preview is ready');
+ await f.api.start();f.calls.previewEnded();await settle();
+ assert.equal(f.api.state().phase,'off');assert.equal(f.calls.stops,1);
+ assert.equal(f.env.window.document.querySelector('[role="alert"]')?.getAttribute('aria-label'),'Camera unavailable');
+ f.calls.previewEnded();await settle();assert.equal(f.calls.stops,1,'a second report releases nothing more');f.env.window.close();
 }
 // FixFocus: a focus that never settles does not block the shutter.
 {

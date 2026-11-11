@@ -120,13 +120,23 @@ export function indexedDbSecretBackend(factory:IDBFactory=indexedDB,subtle:Subtl
     });},
   };
 }
+/** Private windows can refuse IndexedDB: a durable store that has never answered is replaced by
+ * `fallback` for this page, without claiming persistence. Once the durable store has answered, a
+ * later failure is reported instead: moving to the fallback then would leave the stored secret in
+ * place while a removal (sign-out) or a replacement appeared to succeed, and it would return after
+ * a reload. */
+export function durableSecretsWithFallback(durable:BrowserSecretBackend,fallback:BrowserSecretBackend,slotName:(slot:string)=>string=slot=>slot):BrowserSecretBackend{
+  let degraded=false,answered=false;
+  const use=async<T>(work:(backend:BrowserSecretBackend)=>Promise<T>)=>{
+    if(degraded)return work(fallback);
+    try{const result=await work(durable);answered=true;return result;}
+    catch(error){if(!answered&&error instanceof DOMException&&['InvalidStateError','UnknownError','SecurityError','NotSupportedError'].includes(error.name)){degraded=true;return work(fallback);}throw error;}
+  };
+  return {read:slot=>use(backend=>backend.read(slotName(slot))),compareExchange:(slot,expected,value)=>use(backend=>backend.compareExchange(slotName(slot),expected,value))};
+}
 function webSecrets():BrowserSecretBackend{
   if(typeof indexedDB==='undefined'||typeof crypto==='undefined'||!crypto.subtle)return memorySecretBackend();
-  const durable=indexedDbSecretBackend(),fallback=memorySecretBackend();
-  let degraded=false;
-  // Private windows can refuse IndexedDB. Keep this page usable without claiming persistence.
-  const use=async<T>(work:(backend:BrowserSecretBackend)=>Promise<T>)=>{if(degraded)return work(fallback);try{return await work(durable);}catch(error){if(error instanceof DOMException&&['InvalidStateError','UnknownError','SecurityError','NotSupportedError'].includes(error.name)){degraded=true;return work(fallback);}throw error;}};
-  return {read:slot=>use(backend=>backend.read(cloudStorageSlot(slot))),compareExchange:(slot,expected,value)=>use(backend=>backend.compareExchange(cloudStorageSlot(slot),expected,value))};
+  return durableSecretsWithFallback(indexedDbSecretBackend(),memorySecretBackend(),cloudStorageSlot);
 }
 /** Plain-HTTP loopback agents are a test-mocks surface; flag-off bundles accept HTTPS only. */
 const webDevelopmentHttp:boolean=import.meta.env!==undefined&&import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS==='1';

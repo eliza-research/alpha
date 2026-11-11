@@ -16,6 +16,7 @@ const positiveInteger = (name, fallback) => {
   if (!Number.isSafeInteger(result) || result < 1) throw Error(`Invalid --${name}`);
   return result;
 };
+const explicit = name => args.some(arg => arg.startsWith(`--${name}=`));
 const samples = positiveInteger('samples', 80);
 const steps = positiveInteger('steps', command === 'compare' ? 20 : checking ? 6 : 40);
 const timeoutSeconds = positiveInteger('timeout', checking ? 1800 : 120);
@@ -116,13 +117,28 @@ async function run(model, phase, options, expected = 'pass') {
 
 try {
   for (const model of models) {
-    if (['check', 'typecheck'].includes(command) && !await run(model, 'typecheck', ['typecheck', model.path])) continue;
+    // `quint test` parses and typechecks before running, so the default gate does not pay for a separate typecheck process.
+    if (command === 'typecheck' && !await run(model, 'typecheck', ['typecheck', model.path])) continue;
     if (['check', 'test'].includes(command) && !await run(model, 'scenarios', ['test', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, '--max-samples=1'])) continue;
     if (['check', 'simulate'].includes(command)) {
-      await run(model, 'simulation', ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, `--max-samples=${samples}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+      // The standalone simulate command honours each model's declared bounds unless the caller overrides them.
+      const declared = command === 'simulate' ? model.bounds || {} : {};
+      const bound = { samples: explicit('samples') ? samples : declared.maxSamples ?? samples,
+        steps: explicit('steps') ? steps : declared.maxSteps ?? steps, seed: explicit('seed') ? seed : declared.seed ?? seed };
+      await run(model, 'simulation', ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${bound.seed}`, `--max-samples=${bound.samples}`, `--max-steps=${bound.steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+      // A witness is a state predicate that must be reachable. Its negation is checked as an invariant and a
+      // counterexample is required, so an invariant guarding an unreachable state cannot pass silently.
+      for (const witness of model.witnesses || []) {
+        await run(model, `witness-${witness}`, ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${bound.seed}`, `--max-samples=${Math.max(bound.samples, 2000)}`, `--max-steps=${Math.max(bound.steps, 60)}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=not(${witness})`, '--verbosity=1'], 'violation');
+      }
     }
     if (command === 'verify') {
       await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+      // An additional proof init starts from every finite shape of a counter, so one transition reaches boundaries
+      // that the bounded search from the ordinary init cannot.
+      if (model.additionalProofInit) {
+        await run(model, `${backend}-proof-init`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, '--max-steps=1', `--init=${model.additionalProofInit}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+      }
     }
     if (command === 'temporal' && model.temporal?.length) {
       await run(model, `${backend}-temporal`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--temporal=${model.temporal.join(',')}`, '--verbosity=1']);
@@ -153,6 +169,13 @@ try {
       receipt.canary = { detected, exitCode: result.status, signal: result.signal, interruptedAttempt };
       if (!detected) { failed = true; console.error('FAIL counterexample detection canary'); }
       else console.log('PASS counterexample detection canary');
+      const scenario = join(temporary, 'ScenarioCanary.qnt');
+      writeFileSync(scenario, 'module ScenarioCanary { var n: int action init = n\' = 0 run failingTest = init.then(all { assert(n == 1), n\' = n }) }\n');
+      const failing = spawnSync(process.execPath, [cli, 'test', scenario, '--main=ScenarioCanary', '--backend=typescript', '--seed=1', '--max-samples=1'], { cwd: repositoryRoot, encoding: 'utf8', timeout: 30000 });
+      const scenarioDetected = failing.status !== 0 && !failing.error && /failingTest[\s\S]*Assertion failed/.test(`${failing.stdout}${failing.stderr}`);
+      receipt.scenarioCanary = { detected: scenarioDetected, exitCode: failing.status };
+      if (!scenarioDetected) { failed = true; console.error('FAIL failing-scenario detection canary'); }
+      else console.log('PASS failing-scenario detection canary');
     } finally { rmSync(temporary, { recursive: true, force: true }); }
   }
 } catch (error) {

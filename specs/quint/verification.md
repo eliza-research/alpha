@@ -183,3 +183,24 @@ scenario setup was corrected, all 27 composition cases passed, and the complete
 The PR carries prerequisite product source in commit `875f5a8550935c5ca1797cea4ea38e7c7759ca54`.
 Current verification writes fresh results under `test-results/quint/`.
 Implementation refinement follows in subsequent commits.
+
+## Registry change, 2026-11-10
+
+The sections above are the record of the 2026-11-07 migration and are unchanged.
+The registry has since grown and the runner has changed, so none of the counts or
+receipts above describe the present manifests.
+
+The four manifests now register 335 models and 2,439 scenarios: 165 application,
+68 service, 75 native and 27 legacy modules. 104 models declare 419 reachability
+witnesses and 86 models declare 827 source symbols. The default gate now also
+requires a counterexample for the negation of every witness and a detected
+failing-scenario canary, checks source symbols when the manifests load, and no
+longer runs a separate typecheck phase. `quint:verify` runs an additional
+one-transition pass for models that declare `additionalProofInit`.
+
+No aggregate result for this registry is recorded here. A fresh full
+`npm run quint:check` receipt and fresh model-checking receipts
+(`quint:verify`, and `quint:compare` and `quint:temporal` for the legacy modules
+that declare those checks) are required for the 335-model total before any pass
+is claimed for it. Earlier receipts remain evidence only for the model and source
+hashes they recorded.

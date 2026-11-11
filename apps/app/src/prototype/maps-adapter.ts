@@ -340,11 +340,16 @@ export function installMapsChatAdapter(Component:Bag){
   done.add(id);if(shell.live)shell.setState({});
   try{if(!current()){done.delete(id);return;}await shell.send(value);}catch(error){done.delete(id);if(shell.live){shell.setState({});shell.toast(error instanceof Error?error.message:'The answer was not sent.');}}
  }
+ // Each shell keeps the parse of every agent message on screen, keyed by message id. A render
+ // parses only new or changed text, and a message that left the conversation is forgotten.
+ const parses=new WeakMap<object,Map<string,{source:string;parsed:ReturnType<typeof mapsChatText>}>>();
  p.renderVals=function(){
   const out=render.call(this),msgs=out.msgs||[],done=answers(this);
+  const known=parses.get(this),kept:NonNullable<typeof known>=new Map();parses.set(this,kept);
   out.msgs=msgs.map((message:Bag,index:number)=>{
    if(!message.isAgent)return message;
-   const source=String(message.displayText??message.text??''),parsed=mapsChatText(source);
+   const source=String(message.displayText??message.text??''),key=String(message.id),hit=known?.get(key);
+   const parsed=hit&&hit.source===source?hit.parsed:mapsChatText(source);kept.set(key,{source,parsed});
    if(!parsed.cards.length&&!parsed.choice&&parsed.displayText===source)return message;
    // Only the newest reply can still be answered; an old question is history.
    const choice=parsed.choice,id=choice?String(message.id)+':'+choice.id:'',snapshot=connectionController.getSnapshot(),session=snapshot.session,conversation=connectionController.getSelectedConversationId();

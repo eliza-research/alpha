@@ -2,22 +2,20 @@
 module BrowserSiteState {
   type Site = {
     privateTab: bool, phase: str, foreground: bool, selected: bool,
-    navigation: int, origin: int, thirdParty: bool, passkeys: bool,
+    navigation: int, origin: int, thirdParty: bool,
     normalCookie: bool, privateCookie: bool, decisions: int -> str,
     prompt: str, requestedOrigin: int, requestedNavigation: int,
     permissionChoice: str, androidAllowed: bool, permissionResult: bool,
-    authAttempts: int, passwordPresent: bool, passwordSubmitted: bool,
-    autofillExposed: bool, authSave: bool
+    authAttempts: int, passwordPresent: bool, passwordSubmitted: bool
   }
   var s: Site
   action initFor(privateTab: bool): bool = s' = {
     privateTab: privateTab, phase: "new", foreground: true, selected: true,
-    navigation: 0, origin: 1, thirdParty: false, passkeys: false,
+    navigation: 0, origin: 1, thirdParty: false,
     normalCookie: false, privateCookie: false, decisions: Map(1 -> "unset", 2 -> "unset"),
     prompt: "none", requestedOrigin: 0, requestedNavigation: 0,
     permissionChoice: "unset", androidAllowed: false, permissionResult: false,
-    authAttempts: 0, passwordPresent: false, passwordSubmitted: false,
-    autofillExposed: false, authSave: false }
+    authAttempts: 0, passwordPresent: false, passwordSubmitted: false }
   action init = {
     nondet privateTab = Set(false, true).oneOf()
     initFor(privateTab)
@@ -33,7 +31,7 @@ module BrowserSiteState {
     s.phase.in(Set("ready", "committed")), s.navigation < 2, origin.in(Set(1, 2)),
     s' = { ...s, phase: "loading", origin: origin, navigation: s.navigation + 1,
       prompt: "none", permissionResult: false, passwordPresent: false,
-      passwordSubmitted: false, autofillExposed: false, authSave: false }
+      passwordSubmitted: false }
   }
   action commit = all { s.phase == "loading", s' = { ...s, phase: "committed" } }
   action cookie = all {
@@ -69,25 +67,28 @@ module BrowserSiteState {
     s.authAttempts < 3,
     s' = { ...s, prompt: if (secureSameHost) "auth" else "none",
       authAttempts: if (secureSameHost) s.authAttempts + 1 else s.authAttempts,
-      passwordPresent: false, passwordSubmitted: false,
-      autofillExposed: false, authSave: false }
+      passwordPresent: false, passwordSubmitted: false }
   }
   action typePassword = all { s.prompt == "auth", s' = { ...s, passwordPresent: true } }
   action submitPassword = all {
     s.prompt == "auth", s.passwordPresent,
     s' = { ...s, prompt: "none", passwordPresent: false, passwordSubmitted: true }
   }
-  action dismiss = s' = { ...s, prompt: "none", passwordPresent: false, autofillExposed: false }
-  action hide = s' = { ...s, foreground: false, prompt: "none", passwordPresent: false }
+  action dismiss = s' = { ...s, prompt: "none", passwordPresent: false }
+  /// Android's own permission dialog pauses the app and is not a site prompt: pausing or
+  /// showing another tab cancels a site or sign-in prompt and leaves that dialog to answer.
+  action hide = s' = { ...s, foreground: false,
+    prompt: if (s.prompt == "runtime") "runtime" else "none", passwordPresent: false }
   action resume = s' = { ...s, foreground: true }
-  action deselect = s' = { ...s, selected: false, prompt: "none", passwordPresent: false }
+  action deselect = s' = { ...s, selected: false,
+    prompt: if (s.prompt == "runtime") "runtime" else "none", passwordPresent: false }
   action selectTab = s' = { ...s, selected: true }
   action clearSite = s' = { ...s, normalCookie: if (s.privateTab) s.normalCookie else false,
     privateCookie: if (s.privateTab) false else s.privateCookie,
     decisions: if (s.privateTab) s.decisions else s.decisions.set(s.origin, "unset"),
     permissionResult: false, prompt: "none", passwordPresent: false }
   action close = s' = { ...s, phase: "closed", privateCookie: false,
-    prompt: "none", passwordPresent: false, autofillExposed: false, permissionResult: false }
+    prompt: "none", passwordPresent: false, permissionResult: false }
   action step = any {
     build(true), build(false), buildWithEngine(true, false), navigate(1), navigate(2), commit,
     cookie, permissionRequest(1), permissionRequest(2), permissionDecision(true),
@@ -99,12 +100,14 @@ module BrowserSiteState {
   val PrivatePermissionPolicy = s.privateTab implies s.decisions == Map(1 -> "unset", 2 -> "unset")
   val CurrentPermission = s.permissionResult implies s.androidAllowed and
     s.permissionChoice == "allow" and s.requestedOrigin == s.origin and s.requestedNavigation == s.navigation
-  val PasskeysDisabled = not(s.passkeys)
-  val StandardHttpAuthManual = not(s.autofillExposed or s.authSave)
+  val PromptNeedsShownTab = s.prompt.in(Set("site", "auth")) implies (s.foreground and s.selected)
   val PasswordLifetime = s.passwordPresent implies s.prompt == "auth"
   val TypeOK = s.phase.in(Set("new", "ready", "failed", "loading", "committed", "closed")) and s.prompt.in(Set("none", "site", "runtime", "auth")) and s.navigation.in(0.to(2)) and s.authAttempts.in(0.to(3))
   val safety = TypeOK and PrivateCookiePolicy and PrivatePermissionPolicy and CurrentPermission and
-    PasskeysDisabled and StandardHttpAuthManual and PasswordLifetime and s.authAttempts <= 3
+    PromptNeedsShownTab and PasswordLifetime
+  val RuntimePromptWhilePausedWitness = s.prompt == "runtime" and not(s.foreground)
+  val RuntimePromptAfterDeselectWitness = s.prompt == "runtime" and not(s.selected)
+  val EngineRefusedWitness = s.phase == "failed" and not(s.privateTab)
   run privateGrantTest = initFor(true).then(build(true)).then(navigate(1)).then(commit)
     .then(cookie).then(permissionRequest(1)).then(permissionDecision(true)).then(androidResult(true))
     .expect(s.permissionResult and s.privateCookie and safety).then(close)
@@ -116,9 +119,18 @@ module BrowserSiteState {
   run providerAdmissionTest = initFor(true).then(build(false)).expect(s.phase == "failed" and safety)
   run manualAuthTest = initFor(false).then(build(true)).then(navigate(1))
     .then(authChallenge(true)).then(typePassword).then(submitPassword)
-    .expect(s.passwordSubmitted and not(s.passwordPresent or s.authSave) and safety)
+    .expect(s.passwordSubmitted and not(s.passwordPresent) and s.prompt == "none" and safety)
   run switchedTabCancelsPromptTest = initFor(false).then(build(true)).then(navigate(1))
     .then(commit).then(permissionRequest(1)).then(deselect).expect(s.prompt == "none" and safety)
   run unavailableEngineRefusesTabTest = initFor(false).then(buildWithEngine(true, false)).expect(s.phase == "failed" and safety)
-
+  /// The Android dialog pauses the app. Its answer still counts for the same page and origin.
+  run runtimeDialogSurvivesPauseTest = initFor(false).then(build(true)).then(navigate(1))
+    .then(commit).then(permissionRequest(1)).then(permissionDecision(true)).then(hide)
+    .expect(s.prompt == "runtime").then(androidResult(true)).expect(s.permissionResult and safety)
+  run runtimeDialogStaleAfterNavigationTest = initFor(false).then(build(true)).then(navigate(1))
+    .then(commit).then(permissionRequest(1)).then(permissionDecision(true)).then(deselect)
+    .expect(s.prompt == "runtime").then(androidResult(true)).expect(s.permissionResult)
+    .then(navigate(2)).expect(not(s.permissionResult) and safety)
+  run pausedSitePromptIsCancelledTest = initFor(false).then(build(true)).then(navigate(1))
+    .then(commit).then(permissionRequest(1)).then(hide).expect(s.prompt == "none" and safety)
 }

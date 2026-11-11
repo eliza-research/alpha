@@ -42,7 +42,12 @@ export function parseRecoveryArchive(value:unknown):RecoveryArchive {
 export type ResidentBootStatus = {state?:string;reason?:string};
 /** Boot states where the resident this renderer was bound to is gone. Listening (busy or idle) and an owner's stop are not. */
 export function residentBootLost(status:ResidentBootStatus|undefined):boolean {
- return !!status&&(status.state==='dead'||status.state==='restarting'||status.state==='booting');
+ //@ verify
+ //@ ensures status === undefined ==> !\result
+ //@ ensures status !== undefined ==> (\result <==> (status.state === 'dead' || status.state === 'restarting' || status.state === 'booting'))
+ //@ ensures (status !== undefined && (status.state === 'listening' || status.state === 'stopped')) ==> !\result
+ if(!status)return false;
+ return status.state==='dead'||status.state==='restarting'||status.state==='booting';
 }
 /** One plain line for a native boot reason; raw codes never reach the owner. */
 export function residentBootMessage(reason:unknown):string {

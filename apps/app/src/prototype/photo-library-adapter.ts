@@ -81,6 +81,10 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
     return true;
   }
   const changed = () => { if (!disposed) mainHost?.reviewChanged(); };
+  /** A review is confirmed only by the owner looking at it: hiding the app (which also covers a lock
+   * or an access change made in Android Settings) ends it. A change already confirmed continues. */
+  const hidden = () => { if (document.hidden && review) { review = undefined; status = ''; changed(); } };
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', hidden);
 
   /** Runs only from the owner's in-app confirmation, then Android's own dialog or chooser. */
   async function confirmReview() {
@@ -178,6 +182,6 @@ export function createDeviceLibrary(port: PhotoLibraryPort = nativePort, availab
     takeStatus() { const value = status; status = ''; return value; },
     agent,
     leave() { review = undefined; status = ''; epoch++; },
-    dispose() { disposed = true; epoch++; if (mountedAgent === agent) mountedAgent = undefined; },
+    dispose() { disposed = true; epoch++; if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', hidden); if (mountedAgent === agent) mountedAgent = undefined; },
   };
 }

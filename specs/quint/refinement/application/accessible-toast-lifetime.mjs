@@ -49,6 +49,7 @@ function fixture(name, code) {
     'state.duration': shell.state.toast ? shell.toastDuration : 0,
     'state.held': !!shell.toastHeld,
     'state.timerDelay': timers.values().next().value?.delay ?? 0,
+    'state.queued': shell.toastQueued ? Number(shell.toastQueued[0]) : 0,
   });
   const result = trace(name, observe());
   const save = (label, ...action) => {
@@ -106,7 +107,7 @@ function fixture(name, code) {
       const [id, timer] = timers.entries().next().value;
       timers.delete(id);
       timer.callback();
-      save('the shell expiry clears message and undo', 'expire');
+      save('the shell expiry clears message and undo, then shows a waiting message', 'expire');
     },
     hold() {shell.holdToast(); save('focus cancels the owned expiry', 'hold');},
     resume() {shell.resumeToast(); save('leaving focus reuses the captured duration', 'resume');},
@@ -142,11 +143,11 @@ globalThis.api = {refresh: refreshAccessibilityTimeout, start: startAccessibilit
   });
   await run('latest_reply_changes_future_toasts_only', async f => {
     f.show(1, true); f.request(1); await f.reply(1, 15000, 3);
-    f.show(2, false); f.expire();
+    f.show(2, false); f.expire(); f.expire();
   });
   await run('valid_replies_never_shorten_base', async f => {
     f.request(1); await f.reply(1, 10000, 2); f.show(1, true);
-    f.request(2); await f.reply(2, 1000, 1); f.show(2, false); f.expire();
+    f.request(2); await f.reply(2, 1000, 1); f.show(2, false); f.show(3, false); f.expire(); f.expire();
   });
   await run('newest_rejection_still_retires_older_reply', async f => {
     f.request(1); await f.reply(1, 10000, 2);

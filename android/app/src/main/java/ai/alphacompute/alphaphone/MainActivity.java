@@ -45,6 +45,9 @@ public class MainActivity extends BridgeActivity {
  private boolean recoveringRenderer = false;
  /** The renderer died while the activity was in the background; rebuild when it is next started. */
  private boolean pendingRebuild = false;
+ // Deaths the budget had counted when this activity's WebView was created; a later count means the
+ // shared renderer's death was already reported by another activity.
+ private long rendererDeathsAtCreate;
  /**
   * Alpha is the HOME app now, whichever way this task started: a renderer crash loop must not leave
   * a blank, inescapable HOME, and root Back stays on Home. startedAsHome still routes hand-offs.
@@ -125,7 +128,7 @@ public class MainActivity extends BridgeActivity {
    recoveringRenderer = true;
    if (view.getParent() instanceof ViewGroup) ((ViewGroup) view.getParent()).removeView(view);
    view.destroy();
-   RendererRecoveryBudget.Action action = recoveryBudget.onLoss(SystemClock.elapsedRealtime(), showsHome(), detail.didCrash(), visible);
+   RendererRecoveryBudget.Action action = recoveryBudget.onLoss(SystemClock.elapsedRealtime(), showsHome(), detail.didCrash(), visible, rendererDeathsAtCreate);
    if (action == RendererRecoveryBudget.Action.SHOW_ESCAPE) { showRendererEscape(); return true; }
    if (action == RendererRecoveryBudget.Action.REBUILD_ON_START) { pendingRebuild = true; return true; }
    getWindow().getDecorView().postDelayed(() -> { if (!isFinishing() && !isDestroyed()) recreate(); }, RendererRecoveryBudget.delay(action));
@@ -342,6 +345,7 @@ public class MainActivity extends BridgeActivity {
   AlphaTelephonyRoles.sync(this);
   if (AlphaImageCapability.verified(this)) registerPlugin(AlphaTelephonyPlugin.class);
   AlphaCanonicalNotifications.captureTap(this,getIntent());
+  rendererDeathsAtCreate = recoveryBudget.deaths();
   super.onCreate(state);
   // Capacitor displays its no-WebView fallback without creating a bridge when
   // the system provider cannot initialize. Preserve that screen and lifecycle, except while Alpha is

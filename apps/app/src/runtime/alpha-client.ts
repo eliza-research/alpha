@@ -197,6 +197,8 @@ export class AlphaClient {
   private activeWorkflow = false;
   private proposals = new Map<string, ActionProposal>();
   private consumed = new Set<string>();
+  /** The session whose approvals `consumed` records. */
+  private consumedSession = "";
   private listeners = new Set<() => void>();
   getState(): AlphaClientState {
     return {
@@ -234,11 +236,19 @@ export class AlphaClient {
     ) {
       throw new Error("Invalid verified session metadata");
     }
-    this.disconnect();
+    // Approvals already dispatched to this same session stay consumed across a reattach.
+    const identity = JSON.stringify([session.origin, session.ownerId, session.agentId, session.sessionId]);
+    this.disconnect({ keepConsumed: identity === this.consumedSession });
+    this.consumedSession = identity;
     this.transport = transport;
     this.emit();
   }
-  disconnect(): void {
+  /**
+   * Drops the transport, the request in flight and every proposal. `keepConsumed` is for a
+   * reattach to the same session (a conversation history reload): a proposal approved before it
+   * can never be approved again afterwards. Any other disconnect forgets the consumed ids.
+   */
+  disconnect(options: { keepConsumed?: boolean } = {}): void {
     this.epoch++;
     this.active?.abort();
     this.active = null;
@@ -246,7 +256,10 @@ export class AlphaClient {
     const old = this.transport;
     this.transport = null;
     this.proposals.clear();
-    this.consumed.clear();
+    if (options.keepConsumed !== true) {
+      this.consumed.clear();
+      this.consumedSession = "";
+    }
     try {
       old?.close?.();
     } finally {

@@ -102,6 +102,59 @@ export function homeCalendarValues(card: OverviewAgendaCardModel) {
     homeCalendarVideo: card.video, homeCalendarPeople: card.people.map(ini => ({ini})), homePeopleVisibility: card.people.length ? 'visible' : 'hidden',
   };
 }
+/** One candidate for the Home agenda card, as the shared selection takes it, with the host record also as `event`. */
+export interface HomeAgendaItem { item: Record<string, any>; event: Record<string, any>; begin: number; end: number; allDay: boolean; overdue?: boolean }
+/** Every candidate for the Home agenda card, whatever the time. Completed reminders are left out,
+ * and so are app-calendar events while `calendarShown` is false (the calendar is not read, or is
+ * hidden in Calendar's display settings). All-day events are placed at local midnight of their UTC
+ * date. Overdue reminders (the reminder adapter's overdueReminders()) stay until handled. */
+export function homeAgendaCandidates(events: readonly Record<string, any>[], overdue: readonly Record<string, any>[], calendarShown: boolean): HomeAgendaItem[] {
+  return events
+    .filter(event => event.reminderStatus !== 'completed')
+    .filter(event => !event.alphaCalendarId || calendarShown)
+    .map((event): HomeAgendaItem => {
+      const allDay = !!event.nativeEvent?.allDay;
+      const instant = (value: number) => { const date = new Date(value); return allDay ? new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()).getTime() : Number(value); };
+      return {item: event, event, begin: instant(event.nativeEvent?.begin ?? event.reminderAt), end: instant(event.nativeEvent?.end ?? event.reminderAt), allDay};
+    })
+    .concat(overdue.map((row): HomeAgendaItem => { const event = {id: row.id, title: row.title, off: row.off, overdue: true}; return {item: event, event, begin: Number(row.at), end: Infinity, allDay: false, overdue: true}; }));
+}
+/** The Home agenda card's item and, under an overdue reminder, the next item that is not overdue,
+ * chosen by selectHomeAgenda. The shell renders many times a second (clock, voice and call ticks):
+ * the candidates are rebuilt only when the event list (by identity), the overdue reminders or
+ * `calendarShown` change, and the choice is made again only then or when the clock reaches the
+ * next candidate end (or goes back), the only times it can differ. */
+export function createHomeAgenda() {
+  let events: unknown, shown = false, overdueKey = '', candidates: HomeAgendaItem[] = [], at = NaN, until = -Infinity;
+  let chosen: {agenda: HomeAgendaItem | undefined; following: HomeAgendaItem | undefined} = {agenda: undefined, following: undefined};
+  return (input: {events: readonly Record<string, any>[]; overdue: readonly Record<string, any>[]; calendarShown: boolean; now: number}) => {
+    const key = input.overdue.map(row => `${row.id}\u0000${row.at}\u0000${row.off}\u0000${row.title}`).join('\u0001');
+    const changed = input.events !== events || input.calendarShown !== shown || key !== overdueKey;
+    if (changed) {
+      candidates = homeAgendaCandidates(input.events, input.overdue, input.calendarShown);
+      events = input.events; shown = input.calendarShown; overdueKey = key;
+    }
+    if (changed || !(input.now >= at && input.now < until)) {
+      const selection = selectOverviewAgenda(candidates, input.now);
+      // The selection returns the candidates it was given, so each result is one of this function's own items.
+      chosen = {agenda: (selection.agenda ?? undefined) as HomeAgendaItem | undefined, following: (selection.following ?? undefined) as HomeAgendaItem | undefined};
+      at = input.now;
+      until = candidates.reduce((next, candidate) => candidate.end >= input.now && candidate.end < next ? candidate.end : next, Infinity);
+    }
+    return chosen;
+  };
+}
+/** Whether saving works in this browser. `probe` throws when it does not. The shell asks on every
+ * render, and the answer changes only when the owner changes the browser's storage settings, so the
+ * probe (a synchronous storage read) runs at most once per `ttl` milliseconds. */
+export function createStorageAccessCheck(probe: () => void, ttl = 5000, clock: () => number = Date.now) {
+  let at = -Infinity, available = true;
+  return () => {
+    const now = clock();
+    if (now - at >= ttl || now < at) { at = now; try { probe(); available = true; } catch { available = false; } }
+    return available;
+  };
+}
 export const calendarCardState = overviewCalendarState;
 export const homeCalendarEmptyTitle = overviewAgendaEmptyTitle;
 export const presentHomeCalendar = (input: Parameters<typeof presentOverviewCalendar>[0]) => presentOverviewCalendar(input, format);

@@ -1,29 +1,77 @@
 # Service and data state models
 
-These fourteen modules model product-owned service boundaries in the current working
-tree. The source-to-state map, exact source paths and finite-domain choices are
-listed in `manifest.json`. All transitions are local specification execution.
+These modules model product-owned service boundaries in the current working
+tree. `manifest.json` registers every module of the family with its source-to-state
+map, exact source paths, checked source symbols and finite-domain choices; the
+table below covers the domain, adapter, controller and dialog models described in
+this guide. All transitions are local specification execution.
 
 ## Domain coverage
 
 | Module | Main state | Safety properties |
 | --- | --- | --- |
 | [IdentitySession](IdentitySession.qnt) | phase/method/pending/consumed, receipt/key/acknowledged/ackTries, epoch/attemptOwner/owner | `KeyBeforeAck`, `DurableReceiptBeforeKey`, `SingleUseGoogleReturn`, `MatchedReturnBurned`, `BoundedAttempts`, `AuthenticatedKey` |
-| [ServiceAuthorization](ServiceAuthorization.qnt) | plan/validFor/refresh/failures, signedRefusal/credits, owner/epoch/requestOwner/requestEpoch, request/dispatched | `RefusalNotUpgraded`, `ExpiryHonest`, `LocalIndependent`, `ExactManagedRoute`, `CurrentDispatch` |
+| [ServiceAuthorization](ServiceAuthorization.qnt) | plan/validFor/refresh/failures, signedRefusal/credits, owner/epoch/requestOwner/requestEpoch, request/dispatched/refusedRequests | `RefusalNotUpgraded`, `ExpiryHonest`, `SnapshotHasNoSignedLifetime`, `CanonicalCreditView`, `UndispatchedRequestWasRefused`, `ExactManagedRoute`, `CurrentDispatch` |
 | [GoogleAccounts](GoogleAccounts.qnt) | attempt/pendingEpoch/phase/returnMatched, account/readGrant/modifyGrant/calendarGrant, cacheVisible/review, disconnectSent/revoked | `ReviewNeedsCurrentModify`, `CacheNeedsRead`, `ModifyIncludesRead`, `RevokedAccountEmpty` |
 | [CalendarSync](CalendarSync.qnt) | phase/kind/holder/instance, undoOpen/clockKnown, baseRevision/remoteRevision/checked, retryAuthorized/applied/sends, consent/localRevision/consentReview | `NoAutomaticUnknownWrite`, `UndoBeforeDispatch`, `PausedNeedsDecision`, `DurableClaim`, `VisibleOwnerBound` |
 | [InboxDelivery](InboxDelivery.qnt) | phase/durable/opOwner/opGrant, reviewedRevision/reviewedAttachments/exactReview, outcome/providerConfirmed/draftExists, dispatches | `AtMostOneDispatch`, `PersistBeforeDispatch`, `CacheBound`, `SuccessfulCleanup`, `UnknownCannotRearm` |
-| [MapsNavigation](MapsNavigation.qnt) | generation/requestGeneration/requestEpoch, locationGranted/fixFresh, route/previousRoute/guidance/rerouting, assistant/foreground | `GuidanceHasRoute`, `RerouteKeepsRoute`, `RetiredRouteHidden`, `FailedRerouteKept` |
-| [WorkflowExecution](WorkflowExecution.qnt) | version/reviewedVersion/phase, queued/sourceCurrent/enabled/mocks, intentSaved/submission/admittedSubmission/executions, approval/requestDigest/reviewedDigest/effects, cancelRequested/outcome | `AtMostOneExecution`, `DurableSubmission`, `ReviewedEffect`, `DisabledTriggersEmpty`, `ProductionTriggerGate` |
+| [MapsNavigation](MapsNavigation.qnt) | generation/requestGeneration/requestEpoch, locationGranted/fixFresh/located, route/previousRoute/guidance/rerouting, screenOff/foreground, assistant | `GuidanceHasRoute`, `RerouteKeepsRoute`, `RetiredRouteHidden`, `FailedRerouteEndsGuidance`, `GuidancePhase`, `GuidanceFixNeedsPermission`, `ScreenOffNeedsGuidance`, `HiddenKeepsOnlyScreenOffGuidance` |
+| [WorkflowExecution](WorkflowExecution.qnt) | Reviewed submission with one admission per identity, owner-confirmed resend, a known non-run, legacy agents, approval bound to the request digest, and the development trigger queue | `AtMostOneExecution`, `DurableSubmission`, `AcceptedRunIsReviewedVersion`, `ProtocolAdmitsReviewedVersion`, `AbandonedNeverRan`, `OwnerConfirmsRepeat`, `ReviewedEffect`, `CancelNeedsReceipt`, `TriggerDispatchEnabled`, `ProductionTriggerGate` |
 | [NoticesAndCaches](NoticesAndCaches.qnt) | epoch/phase/retry, notice/claim/posted/consumed/acknowledgements, cacheOwner/cacheEpoch/cacheAge/cacheWritePending | `CacheOwnerIsolation`, `PostedOwnerIsolation`, `OneAcknowledgement`, `ClaimExclusive`, `NoPostAfterConsume` |
-
-| [BrowserSiteState](BrowserSiteState.qnt) | privateTab/thirdParty/passkeys/phase, decisions/prompt/permissionChoice/androidAllowed, authAttempts/passwordPresent/passwordSubmitted, autofillExposed/authSave | `PrivateCookiePolicy`, `PrivatePermissionPolicy`, `CurrentPermission`, `PasskeysDisabled`, `StandardHttpAuthManual`, `PasswordLifetime` |
-| [BrowserReadingState](BrowserReadingState.qnt) | phase/isolated/ready/sensitive, token/approved/reviewedExcerpt/consumed, owner/epoch/navigation/capturedEpoch/capturedNavigation, draft/sent | `ReviewedSpeech`, `CurrentReading`, `SingleUseToken`, `SensitiveRefused`, `QuestionDoesNotSend` |
-| [BrowserDownloads](BrowserDownloads.qnt) | phase/kind/reviewed/reviewedNavigation, cookieSent/targetOrigin/sourceOrigin/redirects, captureToken/nextChunk/chunks/pendingFile, published/completed/entry/persisted | `CookieOrigin`, `PrivateListNeverPersisted`, `ReviewedPublication`, `CompletedFromEvidence`, `CapturedBytesOrdered`, `CancelledCaptureCleaned` |
+| [BrowserSiteState](BrowserSiteState.qnt) | privateTab/thirdParty/phase, decisions/prompt/permissionChoice/androidAllowed, authAttempts/passwordPresent/passwordSubmitted. A runtime permission dialog survives pause and tab deselection; site and sign-in prompts need the shown tab | `PrivateCookiePolicy`, `PrivatePermissionPolicy`, `CurrentPermission`, `PromptNeedsShownTab`, `PasswordLifetime` |
+| [BrowserReadingState](BrowserReadingState.qnt) | phase/isolated/ready/sensitive (per page), token/approved/reviewedExcerpt/consumed, owner/epoch/navigation/capturedEpoch/capturedNavigation, draft/userText with the empty-excerpt Ask fallback | `ReviewedSpeech`, `CurrentReading`, `SingleUseToken`, `SensitiveRefused`, `DraftHasReviewedContent`, `FallbackNeverSpeaks` |
+| [BrowserDownloads](BrowserDownloads.qnt) | phase/kind/reviewed/reviewedNavigation, cookieSent/targetOrigin/sourceOrigin/redirects, captureToken/nextChunk/chunks/pendingFile, published/completed/entry/persisted, including a removal that lands after the copy finished | `CookieOrigin`, `PrivateListNeverPersisted`, `ReviewedPublication`, `CompletedFromEvidence`, `CapturedBytesOrdered`, `CancelledCaptureCleaned`, `CancelledLeavesNoEntry`, `OrphanFileWasReviewed` |
 | [ScanDocument](ScanDocument.qnt) | ordered pages/text layers, serialized CAS saves, visibility, export retry lock | `TextStaysWithPage`, `WriterSerialized`, `ImmutableExport`, `UnknownExportLocked`, `ClosedNoWriter` |
-
-| [NativeCredentialMutation](NativeCredentialMutation.qnt) | operation/phase/before/capturedProvider, requestedStop/acknowledgedStop/stopped, ownerEpoch/capturedEpoch, oldSize/newSize/admissionInvalidated | `ShutdownBeforeCriticalWrite`, `AdmissionInvalidated`, `CurrentMutation`, `RejectedWriteRetainsBytes`, `Bounded` |
+| [NativeCredentialMutation](NativeCredentialMutation.qnt) | operation/phase/before/capturedProvider, requestedStop/acknowledgedStop/stopped, ownerEpoch/capturedEpoch, oldSize/newSize/admissionInvalidated, productionSlot/observerNotified | `LeaseBounds`, `BegunRequestIsKnown`, `ShutdownBeforeCriticalWrite`, `AdmissionInvalidated`, `CurrentMutation`, `RejectedWriteRetainsBytes`, `Bounded`, `CloudChangeObserved`, `ObserverOnlyForReplacedCloudKey` |
 | [PdfWorker](PdfWorker.qnt) | isolated/busy/request, descriptor/bitmap/shared/mapped/readOnly, elapsed/phase, recipientHandle/publishedReadOnly | `IsolatedAdmission`, `ActiveRequestOwned`, `MappingHasStorage`, `ReadyResourcesClosed`, `PublishedReadOnly`, `ReadOnlyNotMapped` |
+| [WebReadingReview](WebReadingReview.qnt) | Web read-aloud excerpt dialog: sensitive refusal, page text that never replaces typed text, Read only after the text settled and while the page is current, one generation-fenced local speech, closing stops everything | `SpeechNeedsOpenReview`, `ReadWaitsForSource`, `SensitiveNeverSpoken`, `BlockedHoldsNoText`, `ClosedIsInert`, `TypedTextKept`, `OnlyCurrentSpeechEnds` |
+| [SmsSend](SmsSend.qnt) | Visit and draft tokens, one operation ID per reviewed draft, the native answer for a repeated ID, release of the ID after cancelled, denied or pre-journal refusals, and stale answers dropped | `AtMostOneDispatchPerOperation`, `DispatchJournaled`, `ClosedAnswerReleasesId`, `HeldIdWasMinted`, `StaleResultNeverShown`, `InactiveHoldsNothing`, `BusyHasCall` |
+| [ContactsSession](ContactsSession.qnt) | Availability, epoch-fenced reads, rows kept until the current read answers, loading always owned by a current read or the open editor, and rows cleared on leave or withdrawn admission | `ActiveMatchesAvailability`, `InactiveHoldsNoRows`, `RowsNeedAccess`, `MoreNeedsRows`, `LoadingHasCurrentWork`, `DeferredViewNotOpen` |
+| [PhoneSession](PhoneSession.qnt) | Foreground-only recent-calls read with an epoch fence, the busy flag shared by the read and the dial handoff, access request state, and dial answers dropped after a re-read or a left visit | `ActiveMatchesAvailability`, `InactiveHoldsNothing`, `BusyHasCurrentWork`, `RowsNeedAccess`, `DialNoticeIsCurrentVisit`, `OneDialInFlight` |
+| [PlanAdmissionGrace](PlanAdmissionGrace.qnt) | Stored plan admission record bound to one sign-in, offline and billing-outage admission from a recent record, the plan-end choice (redeemed, recent record, memory; never a past end for an active plan), and record removal on a refused sign-in or ended plan | `EndsAtNotPast`, `GraceBoundToCredential`, `KeptOnlyOffline`, `CloudBindingHasBasis`, `PlanEndedRemovesRecord`, `SignedOutUnbound`, `RedeemedEndBelongsToSignIn` |
+| [InboxListPaging](InboxListPaging.qnt) | Single-flight list reads fenced by generation, account and query, cursors used once, a repeated cursor ending the list, and the saved folder list | `ShownBelongsToSelection`, `SingleFlight`, `CursorUsedOnce`, `CursorNeedsList`, `SavedListMarked` |
+| [ServiceReadCache](ServiceReadCache.qnt) | One document per account identity and service, the clear fence on queued writes, bounded entries and snapshots shown per account | `ShownOwnerIsolation`, `ShownHasEntry`, `ClearIsolated`, `ClearFencesPut` |
+| [WorkflowAuthoring](WorkflowAuthoring.qnt) | Typed draft review, one stored mutation identity, receipt recovery, confirmed exact resend and a refused edit | `OneSavePerDraft`, `PendingNeverEdited`, `AppliedNeverAbandoned`, `ResendNeedsNoRecord`, `UnreceiptedMeansPending`, `CommittedClearsDraft`, `WireNeedsIdentity` |
+| [ApprovalDecision](ApprovalDecision.qnt) | One retained decision per approval request digest, released by the receipt or when the run no longer accepts decisions | `AtMostOneDecisionPerRequest`, `RecordedNeedsDecision`, `RetainedBlocksReview`, `BusyMeansRetained`, `WireNeedsDecision` |
+| [TriggerCursor](TriggerCursor.qnt) | Development trigger runtime: scan and dispatch latches, per-workflow error isolation, the location cursor across position gaps and the pruned seen set | `LatchNeedsRuntimeFault`, `LeaveFiredOncePerObservation`, `CursorKeepsLastKnownSide`, `SeenBounded`, `QueueBounded`, `ReportMeansBroken` |
+| [WorkflowNoticeTaps](WorkflowNoticeTaps.qnt) | A pending tap read against the view generation, deferred behind operations, opened once, and released or consumed by an Ask review | `OpenedOncePerTap`, `ConsumedWasHandled`, `RememberedTapIsPending`, `QuestionReviewHasTap`, `ComposeNeedsConsume`, `StaleCheckRepeats` |
+| [InboxEditCoalescer](InboxEditCoalescer.qnt) | One waiting copy of the retained email edits, written once per pause and within the burst limit, held behind a store write in flight, with the not-retained status for a copy too large to encode | `WaitingIsLatest`, `NoSilentLoss`, `WaitingHasDriver`, `BurstBounded`, `HeldBlocksDueWrite`, `OneWritePerBurst`, `StoredWasPushed` |
+| [WorkflowLifecycleChange](WorkflowLifecycleChange.qnt) | Reviewed removal and restore: interrupted runs cancelled first, one retained request per change, release by reply, receipt or a moved version, and a late request that can no longer apply | `OneSendPerIntent`, `AppliedOncePerIntent`, `ReleasedRequestCannotApply`, `UnseenChangeStaysRetained`, `ReviewNeedsUnlocked`, `UnknownReviewIsReview`, `BusyStage` |
+| [MapsConnection](MapsConnection.qnt) | bound account and client, the launch coverage reader's owed read, read generations in flight, diagnostics, the installed provider and its owner, guidance and why it ended | `InstalledIsHealthy`, `InstalledForSignedInAccount`, `CurrentReadHasNoProvider`, `ReadsAreIssuedInOrder`, `GuidanceNeedsProvider`, `ReadKeepsGuidance`, `CoverageReaderSeesBinding`, `CoverageWaitsForResident`, `RequestOutcomeNeedsProvider` |
+| [MapsScreenModes](MapsScreenModes.qnt) | the six screen modes from searching/selected/directions/originMode/navigating, Back unwinding, the location busy flag and watch, origin text and route, screen-off guidance when hidden, the one-use cross-app search | `NavigationNeedsRouteSheet`, `DirectionsNeedDestination`, `OriginPickNeedsRouteSheet`, `ReadyRouteNeedsOrigin`, `ScreenOffNeedsGuidance`, `HiddenGuidanceHasScreenOffSession`, `HandoffNeedsQuery`, `HandoffAppliedOncePerRequest` |
+| [SystemPickerVisibility](SystemPickerVisibility.qnt) | Picker counter against hidden-page dialog closure for exempt and non-exempt scan dialogs, nested dialog closure, and one owned browser file picker whose retired results are never delivered | `CounterBalanced`, `UnexemptDialogsCloseWhenHidden`, `HiddenDialogStartedUnderPicker`, `NestedDialogsNeedDocument`, `RetiredPickerNeverDelivers`, `OneFilePickerConsumer` |
+| [ScanReviewDialogs](ScanReviewDialogs.qnt) | One-shot Notes save, retryable photo PDF and Keep photo, searchable review outcomes before and after the provider request, preview bound to current corners, and a capture kept when the camera stops | `NotesSavedOnce`, `KeepRetryNeedsRetryableFailure`, `PdfRetryNeedsNonWrite`, `DocumentNeedsOpenReview`, `UnconfirmedNeedsProviderRequest`, `SearchableResultNeedsReadyText`, `PreviewMatchesCorners`, `AppliedCorrectionWasPreviewed`, `UsedPageWasReviewed`, `StoppedCameraKeepsCapture` |
+
+The adapter, controller and dialog models, and the domain models revised with
+them, follow these source symbols. Each module's manifest entry holds the exact
+paths and the checked `symbols`.
+
+| Module | Source symbols |
+| --- | --- |
+| [WebReadingReview](WebReadingReview.qnt) | `reviewBrowserReading`, adapter `readPage`, `stopReading` |
+| [BrowserSiteState](BrowserSiteState.qnt) | shared `BrowserTabHostPlugin` site permission, runtime permission and HTTP auth prompts, `BrowserSitePermissionRecord` |
+| [BrowserReadingState](BrowserReadingState.qnt) | adapter `readPage`, `askPage`, `reviewContentQuestion`, shared `pageQuestionExcerpt`, native reviewed reading |
+| [BrowserDownloads](BrowserDownloads.qnt) | shared `BrowserDownloads`, `BrowserDownloadPolicy` |
+| [SmsSend](SmsSend.qnt) | `installSmsAdapter` (`send`, `reconcile`, `sync`, `edit`), `SMS_NOT_SENT`, `createSmsSession`, `receiptLabel` |
+| [ContactsSession](ContactsSession.qnt) | `installContactsAdapter` (`refresh`, `sync`, `clear`, `editor`), `applyImageContacts`, `isMvpView` |
+| [PhoneSession](PhoneSession.qnt) | `installPhoneAdapter` (`refresh`, `dial`, `sync`, `clear`), `phoneRows`, `normalizePhoneNumber` |
+| [PlanAdmissionGrace](PlanAdmissionGrace.qnt) | `residentAdmissionOutcome`, `residentBindingController` (`checkPlan`), `readPlanAdmission`, `writePlanAdmission`, `redeemedPlanEnd`, `residentPlanEnded`, `residentRefreshRefused` |
+| [ServiceAuthorization](ServiceAuthorization.qnt) | `EntitlementRefresher`, `checkEntitlement`, `planAdmission`, `managedServiceRequest` |
+| [NativeCredentialMutation](NativeCredentialMutation.qnt) | `AlphaCredentialStore.mutateSlotOnce`, `commit`, `observeCloudChanges`, `LocalAgentProviderAdmission.sameCloudCredential` |
+| [InboxListPaging](InboxListPaging.qnt) | `load`, `loadDrafts`, `nextPageToken`, `seenCursors`, `rememberList`, `restoreList` |
+| [ServiceReadCache](ServiceReadCache.qnt) | `ServiceReadCache.put`, `clear`, `get`, `readCacheIdentity`, `serviceReadCache`, `retireSharedMail` |
+| [WorkflowExecution](WorkflowExecution.qnt) | `WorkflowProtocol.run`, `runIntentReconcilable`, `unadmitted`, `unverifiable`, `clearRunRequest`, `reviewResend`, `decideApproval` |
+| [WorkflowAuthoring](WorkflowAuthoring.qnt) | `createWorkflowAuthoring`: `save`, `recover`, `resend`, `refused`, `committed`, `discardDraft` |
+| [ApprovalDecision](ApprovalDecision.qnt) | `decide`, `read`, `approvalKey`, `approvalLocked`, `decideApproval` |
+| [TriggerCursor](TriggerCursor.qnt) | `WorkflowTriggerRuntime.tick`, `wake`, `triggerTickPlan`, `detectWorkflowTriggers`, `placeChanged` |
+| [WorkflowNoticeTaps](WorkflowNoticeTaps.qnt) | `checkNotice`, `resolveWorkflowTap`, `readyTapStep`, `tapRecheck`, `reviewWorkflowNoticeQuestion`, `consumeWorkflowTap` |
+| [InboxEditCoalescer](InboxEditCoalescer.qnt) | `editCoalescer`: `push`, `flush`, `hold`, `release`, `discard`; `inboxUnsaved.edit`, `peek`, `retire` |
+| [WorkflowLifecycleChange](WorkflowLifecycleChange.qnt) | `lifecycle`, `open`, `lifecycleLocked`, `lifecycleKey`, `reconcileLifecycle`, `beforeDispatch`, `WorkflowLifecycleRejected` |
+| [MapsConnection](MapsConnection.qnt) | `keepCloudMapsCoverage`, `readCloudMaps`, `retireCloudMaps`, `initializeCloudMaps`, `captureMapsSession` |
+| [MapsScreenModes](MapsScreenModes.qnt) | `MapsScreenController`, `view.mode`, `pendingHandoff`, `discardHandoff`, `screen.handoff`, `screen.back`, `screen.hidden` |
+| [MapsNavigation](MapsNavigation.qnt) | `DeviceMapsNavigation`, `MapsController`, `MapsScreenController`, `captureMapsSession`, `BackgroundNavigation` |
+| [SystemPickerVisibility](SystemPickerVisibility.qnt) | `systemPickerActive`, `duringSystemPicker`, `runFilePicker`, scan dialog visibility handlers |
+| [ScanReviewDialogs](ScanReviewDialogs.qnt) | `openScanReview`, `reviewSearchableScan`, scan correction review, `captureScanPage` |
 
 ## Model boundaries
 
@@ -51,8 +99,8 @@ authoring path has manual triggers. Automatic browser triggers belong to an
 explicit test-mocks configuration. The shared engine still owns graph execution
 and provider-level idempotency.
 
-`MapsNavigation` preserves a navigation route while assistant UI changes or a
-reroute fails. Geometry, detailed maneuver selection and map rendering are
+`MapsNavigation` keeps the navigation route while assistant UI changes and while
+a reroute is in flight. A failed reroute ends guidance with a network error. Geometry, detailed maneuver selection and map rendering are
 outside this state abstraction.
 
 `NoticesAndCaches` models delivery ownership, consumption and cache invalidation.
@@ -97,13 +145,16 @@ by this service-model validation.
 `BrowserSiteState` checks policy readback before a native isolated tab can load,
 normal/private cookie separation, selected top-origin permission review followed
 by Android permission, and the current engine's manual-only HTTP authentication.
-Passkeys remain disabled in app capability state. The host relies on the fresh
-WebView default WebAuthn NONE; this model does not establish a platform readback. Two origins and one
-sensor kind represent the per-origin permission record.
+A runtime permission dialog survives pause and tab deselection, while site and
+sign-in prompts need the shown tab. Passkey state is not part of this model: the
+host relies on the fresh WebView default WebAuthn NONE, and no platform readback
+is established here. Two origins and one sensor kind represent the per-origin
+permission record.
 
 `BrowserReadingState` models isolated extraction, sensitive-page refusal, an
 expiring one-use token, owner/navigation fences and cancellation. Question review
-releases a local draft and keeps Send separate. Browser DOM heuristic correctness
+releases a local draft that keeps the user's typed text, with an Ask fallback when
+the excerpt is empty; sending is outside this model. Browser DOM heuristic correctness
 and extraction limits retain their source tests.
 
 `BrowserDownloads` separates OS public transfers, signed in-app fetches, and local

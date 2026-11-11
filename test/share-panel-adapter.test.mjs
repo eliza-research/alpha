@@ -1,14 +1,15 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
-// The adapter with its two runtime imports replaced by a panel that records what it was given.
+// The adapter with its two runtime imports replaced by a panel that records what it was given; the selection check is the real one.
 const source=readFileSync(new URL('../apps/app/src/prototype/share-panel-adapter.ts',import.meta.url),'utf8').replace(/^import .*\n/gm,'');
-const code=`const panels=[];export {panels};const openSharePanel=options=>{panels.push(options);};const setShareEmailComposer=()=>{};const shareSelectedText=async()=>{};const copySelectedText=async()=>{};const selectedText=value=>value;\n${stripTypeScriptTypes(source,{mode:'strip'})}`;
+const panel=stripTypeScriptTypes(readFileSync(new URL('../apps/app/src/runtime/share-panel.ts',import.meta.url),'utf8'),{mode:'strip'}).match(/^export function unchangedSince[\s\S]*?^}$/m)[0].replace('export ','');
+const code=`const panels=[];${panel}\nexport {panels};const openSharePanel=options=>{panels.push(options);};const setShareEmailComposer=()=>{};const shareSelectedText=async()=>{};const copySelectedText=async()=>{};const selectedText=value=>value;\n${stripTypeScriptTypes(source,{mode:'strip'})}`;
 const {installSharePanelAdapter,panels}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 globalThis.document??={hidden:false};
 
 function shell(view,state,values){
  class Shell{renderVals(){return values();}componentDidMount(){}componentWillUnmount(){}}
  installSharePanelAdapter(Shell,{});
- const instance=new Shell();Object.assign(instance,{S:()=>({view}),vget:module=>state[module],api:()=>({toast(){}})});
+ const instance=new Shell();Object.assign(instance,{S:()=>({view,vs:state}),vget:module=>state[module],api:()=>({toast(){}})});
  return instance;
 }
 

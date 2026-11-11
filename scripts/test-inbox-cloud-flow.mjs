@@ -29,6 +29,7 @@ import { whenLabel } from '../apps/app/src/prototype/home-cards.ts';
 import {createMailReviewController} from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/review-controller.ts';
 import {createMailDraftsController} from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/drafts-controller.ts';
 import * as mailboxList from '../.eliza/client-features/plugins/plugin-inbox/src/mailbox/mailbox-list.ts';
+let accountReads=0;
 let session='account-a',agent='remote-a',releaseSearch,releaseAccounts,delayAccounts=true,delay=false,failNext=null,connected=true,readGrant=true,confirmAnswer=true;
 const slots=new Map(),reads=[],searches=[],disconnects=[],toasts=[],events=[],initiates=[],handoffs=[];
 // Authorization handoff stays off in this flow: Gmail consent moved to Settings › Google (google-connection-ui).
@@ -39,7 +40,7 @@ const revisions={};
 const pages={'in:inbox':[[mail('mail-1',{unread:true}),mail('mail-2')],[mail('mail-2'),mail('mail-3')]],'in:sent':[[mail('sent-1',{to:['friend@example.invalid']})]],'from:fixture':[[mail('mail-1')]]};
 let providerBody='Fixture body';
 const client={
- gmailAccounts:async()=>{if(delayAccounts)await new Promise(resolve=>{releaseAccounts=resolve;});return [{connectionId:'grant-a',label:'Fixture account',connected,grantedCapabilities:connected&&readGrant?['google.gmail.triage']:[]}];},
+ gmailAccounts:async()=>{accountReads++;if(delayAccounts)await new Promise(resolve=>{releaseAccounts=resolve;});return [{connectionId:'grant-a',label:'Fixture account',connected,grantedCapabilities:connected&&readGrant?['google.gmail.triage']:[]}];},
  gmailSearch:async(_grant,query,_signal,size,pageToken)=>{searches.push({query,size,pageToken:pageToken??null});if(failNext){const error=failNext;failNext=null;throw error;}
   const list=pages[query]||[[]],index=pageToken?Number(pageToken.slice(5)):0,result={messages:list[index]||[],syncedAt:'revision',nextPageToken:index+1<list.length?'page-'+(index+1):null,...(revisions[query]?.[index]?{mailboxHistoryId:revisions[query][index]}:{})};
   if(delay)return new Promise(resolve=>{releaseSearch=()=>resolve(result);});return result;},
@@ -202,7 +203,7 @@ assert.equal(backgroundSelections.filter(selection=>selection===null).length,1,'
 const priorSnapshot=controller.getSnapshot;controller.getSnapshot=()=>({...priorSnapshot(),cloudAccount:{...priorSnapshot().cloudAccount,organizationId:'fixture-org'}});
 class ReloadShell {constructor(){this.st={q:null,compose:null};}renderVals(){return {};}componentDidMount(){}componentWillUnmount(){}vset(_,patch){Object.assign(this.st,patch);}}
 const reloadViews={inbox:{state:{}}};sandbox.installInboxCloudAdapter(ReloadShell,reloadViews);const reloaded=new ReloadShell();reloaded.componentDidMount();
-const reloadApi={...api,get:()=>reloaded.st,set:patch=>reloaded.vset('inbox',patch)};const searchesBeforeRestore=searches.length;
+const reloadApi={...api,get:()=>reloaded.st,set:patch=>reloaded.vset('inbox',patch)};const searchesBeforeRestore=searches.length,accountReadsBeforeRestore=accountReads;
 const priorRestoreClock=Date.now;Date.now=()=>restoreNow;
 reloadViews.inbox.render(reloaded.st,reloadApi);await tick();
 assert.equal(reloadViews.inbox.render(reloaded.st,reloadApi).rows.length,1,'cached Inbox renders after reload');
@@ -212,7 +213,8 @@ assert.equal(reloaded.renderVals().homeInboxStatus,`Fixture account · Updated $
 assert.equal(sandbox.inboxAttention().updatedAt,new Date(cachedAt).toISOString(),'restore preserves the exact original read timestamp');
 Date.now=priorRestoreClock;
 assert.equal(searches.length,searchesBeforeRestore,'fresh retained snapshot needs no provider read to populate Home');
-assert.equal(backgroundSelections.length,selectionsBeforeReload,'cold-start hydration neither withdraws nor reconfigures native background checks');
+assert.ok(accountReads>accountReadsBeforeRestore,'a saved mailbox, however recent, is shown only until the account grants are read again');
+assert.deepEqual(backgroundSelections.slice(selectionsBeforeReload).map(selection=>selection?.grantId),['grant-a'],'cold-start hydration never withdraws native background checks; the grant read that follows it keeps the same account');
 reloaded.componentWillUnmount();
 console.log('PASS: Reloaded Inbox cache also restores Home subjects/count/time without a provider read.');
 

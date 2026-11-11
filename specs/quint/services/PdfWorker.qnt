@@ -78,6 +78,9 @@ module PdfWorker {
   val ReadyResourcesClosed = s.phase.in(Set("reply-ready", "idle", "dead")) implies not(s.descriptor or s.bitmap or s.mapped)
   val PublishedReadOnly = s.recipientHandle implies s.publishedReadOnly
   val ReadOnlyNotMapped = s.readOnly implies not(s.mapped)
+  val MappedOutputWitness = s.mapped and s.shared and s.busy
+  val WatchdogKilledWitness = s.phase == "dead" and s.elapsed == 2
+  val BusyRefusalWitness = s.busy and s.rejected > 0
   val safety = IsolatedAdmission and ActiveRequestOwned and MappingHasStorage and ReadyResourcesClosed and PublishedReadOnly and ReadOnlyNotMapped
   run renderAndReplyTest = initFor(true).then(receive(1, true)).then(openPage(true)).then(render)
     .then(unmap).then(protect(true)).then(cleanup).then(reply(true))

@@ -30,7 +30,7 @@ async function mount(f,run){
  for(const k of keys){saved[k]=Object.getOwnPropertyDescriptor(globalThis,k);Object.defineProperty(globalThis,k,{configurable:true,writable:true,value:k==='IS_REACT_ACT_ENVIRONMENT'?true:dom.window[k]});}
  const {CloudDelegationPanel}=await import(pathToFileURL(file).href),{createRoot}=await import('react-dom/client');
  const container=document.getElementById('root'),r=createRoot(container),signal=new AbortController().signal;
- try{await act(async()=>r.render(React.createElement(CloudDelegationPanel,{client:f.client,scope:'email',signal,current:()=>true,onConnected(){}})));await settle();await run(()=>container.textContent);}
+ try{await act(async()=>r.render(React.createElement(CloudDelegationPanel,{client:f.client,scope:'email',signal,current:()=>true,onConnected(){}})));await settle();await run(()=>container.textContent,scope=>act(async()=>r.render(React.createElement(CloudDelegationPanel,{client:f.client,scope,signal,current:()=>true,onConnected(){}}))));}
  finally{await act(async()=>r.unmount());dom.window.close();for(const [k,v] of Object.entries(saved)){if(v)Object.defineProperty(globalThis,k,v);else delete globalThis[k];}}
 }
 const settle=()=>act(async()=>{for(let i=0;i<20;i++)await new Promise(r=>setTimeout(r,0));});
@@ -77,5 +77,58 @@ test('a finished status releases the native return for that state',async()=>{
   await act(async()=>check.click());await settle();
   assert.match(text(),/expired or was cancelled/);
   assert.deepEqual(f.calls.filter(c=>c[0]==='clearNative'),[['clearNative',state]]);
+ });
+});
+const button=label=>[...document.querySelectorAll('button')].find(b=>b.textContent===label);
+test('an authorization whose completion never arrived can still be cancelled',async()=>{
+ const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'finishing',code:'c1'};
+ const f=fixture({record,status:()=>({status:'waiting'})});
+ await mount(f,async text=>{
+  const cancel=button('Cancel authorization');
+  assert.equal(cancel.disabled,false);
+  await act(async()=>cancel.click());await settle();
+  assert.match(text(),/Authorization cancelled/);
+  // Cloud's state is read first; the code is not sent again by Cancel.
+  assert.deepEqual(f.calls.filter(c=>c[0]==='status'||c[0]==='cancel'||c[0]==='complete').map(c=>c[0]),['status','cancel']);
+  assert.equal(f.slots.size,0);
+ });
+});
+test('cancelling an authorization Cloud already completed adopts the grant instead',async()=>{
+ const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'finishing',code:'c1'};
+ const f=fixture({record,status:()=>({status:'complete',grantId:'g1'})});
+ await mount(f,async text=>{
+  await act(async()=>button('Cancel authorization').click());await settle();
+  assert.match(text(),/Cloud read access is connected/);
+  assert.equal(f.calls.filter(c=>c[0]==='cancel').length,0);
+  assert.equal(f.slots.size,0);
+ });
+});
+test('cancelling while Cloud is still finishing leaves the authorization pending',async()=>{
+ const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'finishing',code:'c1'};
+ const f=fixture({record,status:()=>({status:'finishing'})});
+ await mount(f,async text=>{
+  await act(async()=>button('Cancel authorization').click());await settle();
+  assert.match(text(),/Cloud is finishing authorization/);
+  assert.equal(f.calls.filter(c=>c[0]==='cancel').length,0);
+  assert.equal(f.slots.size,1);
+ });
+});
+test('a revoke outcome survives a failed list read, and a grant is not shown for another account',async()=>{
+ const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'waiting'};
+ const f=fixture({record,status:()=>({status:'complete',grantId:'g1'})});
+ await mount(f,async(text,rescope)=>{
+  await act(async()=>button('Check authorization status').click());await settle();
+  assert.ok(button('Revoke this Cloud read grant'));
+  await rescope('calendar');await settle();
+  assert.equal(button('Revoke this Cloud read grant'),undefined);
+ });
+ const g=fixture({record,status:()=>({status:'complete',grantId:'g1'})});
+ await mount(g,async text=>{
+  await act(async()=>button('Check authorization status').click());await settle();
+  const base=g.client.delegation;
+  g.client.delegation=async(kind,input)=>{if(kind==='revocations')throw Error('offline');if(kind==='revoke')return{remoteRevocation:'confirmed'};return base(kind,input);};
+  await act(async()=>button('Revoke this Cloud read grant').click());await settle();
+  assert.match(text(),/Cloud read access revoked/);
+  assert.doesNotMatch(text(),/not confirmed/);
  });
 });

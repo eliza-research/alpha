@@ -21,17 +21,28 @@ refinement remains an additional obligation.
 | Model | Source symbols inspected | State represented |
 | --- | --- | --- |
 | `ResidentRuntime` | `LocalAgentProviderAdmission.bindCloudProvider`, `applyProviderEnvironment`, `providerStatus`, `ResidentCredentialShutdownRetry.await`, `ResidentScheduleRearm.decide`, renderer `residentRecoveryReason` | Local resident lifecycle, source admission, exact credential generation, uncertain unbind, retained recovery records, reset fence |
-| `VoiceSession` | `VoiceAssistantSession.start`, `stop`, `setMuted`, `speechStarted`, `schedule`, `submit`, `respond`, `resume`, `playSentence`, `createNativeLiveDictation`, `createCloudVoice` | Session/turn/utterance generations, semantic and long-gap endpointing, busy capture hold, mute, explicit speech interruption, completed-sentence accounting, separately reviewed read response and local dictation |
-| `SpeechResources` | `LiveCaptureAdmission.begin`, `attach`, `stop`, `cancelAll`, `SpeechAudioFocusPolicy.changed`, `stopsCapture`, `SpeechPcmQueue.offer`, `take`, `close` | Capture reservation and late startup, one capture owner, transient focus/duck/loss, bounded PCM queue and canceled stream |
-| `AlwaysOnListener` | `ListenerPolicy.decide`, `holdsMicrophone`, `processesAudio`, `latchesIndicatorLoss`, `IndicatorLease.renew`, `verdict`, `ListeningEpoch.current`, `ListenerStore` consent generation | Consent, visibility, unlock, call/privacy, SystemUI lease, explained pause, sticky indicator loss and queued recognition invalidation |
+| `VoiceSession` | `VoiceAssistantSession.start`, `stop`, `setMuted`, `interruptSpeech`, `resume`, `respond`, `createNativeLiveDictation`, `createCloudVoice` | Session, turn and utterance generations; starting and capture opening; the input-close barrier and busy hold; playback streamed before the confirmed reply; owner-input pause and resume; a reply that ends the session; Stop speaking; heard accounting |
+| `SpeechResources` | `LiveCaptureAdmission.begin`, `attach`, `stop`, `cancelAll`, `SpeechAudioFocusPolicy.changed`, `granted`, `released`, `stopsCapture`, `SpeechAudioFocus.watchCalls`, `SpeechPcmQueue.offer`, `take`, `close` | Capture reservation, replacement and late startup, only the current reservation open, transient focus/duck/loss with the request abandoned, call handling with and without the audio-mode listener, bounded PCM queue and canceled stream |
+| `AlwaysOnListener` | `ListenerPolicy.decide`, `holdsMicrophone`, `processesAudio`, `latchesIndicatorLoss`, `IndicatorLease.verdict`, `sleepLapse`, `pauseFor`, `Listener.observeIndicatorLease`, `ListeningEpoch.current`, `ListenerStore` per-process consent | Consent per process, visibility, unlock, call/privacy, each lease verdict with its per-reason pause, the latch while capturing or paused, the display-off lapse that does not latch, and queued recognition |
 | `ResetRecovery` | `ResetAuthorization.begin`, `confirm`, `authenticate`, `retire`, shared `DataReset.record`, `attempt`, `automaticAttemptAllowed`, `recordFailure`, `admitAndExit` | Activity-bound approval, durable pending marker, listener-first reset, bounded automatic retry, recovery surface, accepted dispatch and externally observed erasure |
 | `DeletionJournal` | `DeferredDeletionJournal.stage`, `undo`, `expire`, `list`, `acknowledge`, shared `DeferredDeletionCoordinator.reconcile`, `stageOwnerCurrent` | Durable intent, monotonic Undo window, changed boot, exact owner/source admission, dispatch uncertainty and retained no-replay receipt |
 | `MediaLifecycle` | `NativeReadEpoch.current`, `PermittedMediaCatalog`, `SelectedPhotoCopy.read`, browser `beginPhotoEdit`, `savePhotoEdit`, `cancelPhotoEdit`, `resultPhotoEdit` | Per-item permission, lifecycle/source revision, selected read, reviewed output, canceled temporary capture and active playback |
 | `DeviceActions` | `SmsSendJournal.beginDispatch`, `endDispatch`, `sentResult`, `status`, `existing`, telephony read epoch checks, `retainReminderCreation`, `checkReminderCreation`, `reconcileReminderCreations`, shared `ClockHandoff` | Image/permission/SIM gates, exact reviewed SMS binding, durable dispatch, multipart evidence, retired operation id, stale contacts, reminder creation recovery and revision-bound notification |
-| `RendererRecovery` | `RendererRecoveryBudget.onLoss`, `MainActivity.onRenderProcessGone`, delayed recreation and stock Settings actions | Three immediate losses, exact 60-second window, five-second backoff, HOME escape, duplicate callbacks and activity ownership |
-| `VadSegmentation` | `LiveVadGate.accept`, `close` | Two high windows to open, sixteen low windows to close, hysteresis thresholds, nonfinite values and counter reset |
+| `RendererRecovery` | `RendererRecoveryBudget.onLoss`, `deaths`, `MainActivity.onRenderProcessGone`, `rendererDeathsAtCreate`, delayed recreation and stock Settings actions | Three immediate losses, exact 60-second window, five-second backoff, HOME escape, duplicate callbacks, activity ownership, and one loss per death of the renderer shared by the launcher and assistant surfaces |
+| `VadSegmentation` | `LiveVadGate.accept`, `speaking`, `close` | Two high windows to open, sixteen low windows to close, hysteresis thresholds, nonfinite values, counter reset and a new gate per capture |
 | `VoiceIpcAssembly` | `BufferedStreamExchange.exchange` | Handle ownership, deadline, response/chunk assembly, size limit, completion validation, first failure and cleanup |
 | `ListenerLeaseProducer` | SystemUI `SenseListeningController`, `SenseListeningLease` | Measured eligible surfaces, queued acknowledgements, target validation, client generation and lease retirement |
+| `SpeechCleanupLatch` | `mediaUnconfirmed`, `speechRetirement`, app-speech `retirement`, `appSpeechRetirement`, `confirmSpeechRetirement` | Four owned-speech retirement chains: successor waits for cleanup, unconfirmed cleanup closes the chain, one native stop reopens app speech, voice and read aloud stay closed until restart |
+| `RendererSpeechChunk` | `speakChunk`, `dispose`, `playOwnedSpeech` | Listeners, prepare and play with busy retry, terminal events, abort, late preparation, strict versus bounded cleanup and one terminal outcome |
+| `NativeStreamBridge` | `streamNativeAgent` | Listener, request, response, chunks, completion, abort and cleanup of one native reply stream; provable not-dispatched refusals |
+| `ResidentScheduling` | `ResidentScheduleRearm.decide`, `admitAndStart`, `ResidentScheduleReceiver.onReceive`, `AlphaLocalAgentPlugin.startResidentIfAdmissible` | Ordered admission decision, lifecycle lock that stays closed after a confirmed stop until the plugin start or a new process, starts, and an admitted start the service refuses and defers |
+| `SavedSignInRecovery` | `AlphaCloudSignInPlugin.restoreSavedSignIn`, `supersedeRecovery`, `endRecovery`, `reserveCredentialCommit`, `AlphaCredentialStore.restoreLegacyCloudCredential` | Single-flight owner-initiated restore fenced by the recovery epoch and credential intent: a newer sign-in step, cancel, commit or teardown wins, and a superseded or failed restore keeps the saved credential |
+| `NativeMapsLocation` | `NativeMapsLocation`, `SharedLocation`, `ElizaLocation` | serial admission, the generation ticket across every await of start, permission prompt and wait for the front, listeners before the watch, native cleanup confirmation, deliveries to the session in place |
+| `VideoRecorder` | `BrowserVideoCapture` recorder session, camera view recording flags | Chunk admission at the size limit, stop and settle exactly once, cancellation without a row, finalisation before the preview stops |
+| `VideoEditReview` | `openVideoEditReview`, `validateVideoEdit` | Clamped trim range, one save per editor, frozen submitted edit, hidden-page disposal dropping a late result, trim clock rounding |
+| `CopyReceipt` | `savePhotoEdit`, `resultPhotoEdit`, `cancelPhotoEdit` | One owning attempt and mode per receipt, write and saved receipt committed together, read retiring an uncommitted outcome, changed or trashed source failing, copy never writing the original |
+| `HomeInstanceHandoff` | `MainActivity.handOff`, `moveLiveTaskToFront`, `liveInstance`, `unackedFrontStarts`, `handOffUnreliable`, `taskKinds` | One page-owning launcher instance, second-start hand-off, bounded unanswered front starts, the two-instance fallback, task kind fixed across relaunch and each start intent delivered once |
+| `ResidentStartCancel` | `AlphaLocalAgentPlugin.start`, `cancelStart`, `startAfterShutdown`, `shutdownRetryRequired`, `ResidentCredentialShutdownRetry.await` | Start, attach, remembered and owned cancellation, stop, credential mutation commit after a confirmed stop, and the explicit shutdown retry that continues into start |
 
 The reviewed source paths are listed as repository-relative paths in the
 manifest. Every callback accepting an identity has matching and stale scenarios.
@@ -74,19 +85,24 @@ actions at their bound. They never wrap and accidentally accept a stale ticket.
 `ResidentRuntime` retains one history marker through crash/recovery and abstracts
 source provenance and credential parsing to admitted/refused inputs. `VoiceSession`
 uses up to two spoken sentences, four submitted turn generations and a separate
-utterance generation. The successful start action summarizes the awaited capture
-opening. `SpeechResources` models the pending native reservation separately and
+utterance generation. The `start` action summarizes the awaited capture opening;
+`beginStart`, `captureOpened` and `captureOpenFailed` take the same opening as
+separate steps. `SpeechResources` models the pending native reservation separately and
 checks that a late opening cannot resurrect canceled capture. Voice errors retire
 the session through Stop. Submitted turns keep capture closed until playback
 settles. Explicit speech interruption and its playback drain are separate model
 transitions. Dictation produces an editable draft.
 
-`AlwaysOnListener` merges explained display-off, fullscreen, shade and transition
-pauses into one state. Lease freshness summarizes the monotonic deadline,
-SystemUI attribution and boot checks. A silenced recording can remain open to
-observe its release, while its frames stay unprocessed. An unexplained lease loss
-while recording is sticky until explicit resume. Its `decision`, `microphone` and
-`analyzing` fields are projections computed by Quint for implementation replay.
+`AlwaysOnListener` keeps explained display-off, fullscreen, shade and transition
+pauses as separate states and applies each lease verdict as one step. Lease
+freshness summarizes the monotonic deadline, SystemUI attribution and boot
+checks. A silenced recording can remain open to observe its release, while its
+frames stay unprocessed. An unexplained lease loss while recording, or during an
+explained pause, is sticky until explicit resume; a lease that lapses or restarts
+pending during a display-off pause with the microphone released is not. Consent
+is per process: a restart needs a new opt-in, which clears a tripped breaker. Its
+`decision`, `microphone` and `analyzing` fields and the last verdict's inputs are
+projections computed by Quint for implementation replay.
 
 `ResetRecovery` keeps accepted Android dispatch and observed erasure separate.
 The three-attempt budget represents one retry window. The model includes unreadable
@@ -188,6 +204,8 @@ cleanup action, so a canceled opening and an interrupted writer remain observabl
 transition, while provider mutation and stop use the competing lifecycle lock.
 A running resident receives no duplicate Start, locked/unpackaged/disabled builds
 stay stopped, and process-local Stop can be followed by rearm after process death.
+A finished stop or provider change does not reopen broadcast admission: only the
+plugin's own start or a new process does. A start the service refuses is deferred.
 Its canary deliberately separates admission from Start and detects the resulting
 lifecycle race.
 

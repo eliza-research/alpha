@@ -129,6 +129,15 @@ export function loadModels() {
     const text = readFileSync(join(repositoryRoot, model.path), 'utf8');
     for (const test of model.tests) if (!new RegExp(`\\brun\\s+${test}\\s*=`).test(text)) throw Error(`Missing scenario ${model.module}.${test}`);
     for (const source of model.sources || []) readFileSync(join(repositoryRoot, source));
+    // Declared witness names must be definitions in the model, and declared source symbols must
+    // still occur in their file, so a rename cannot leave the manifest describing something that is gone.
+    for (const name of (model.witnesses || []).filter(name => !name.includes("::"))) {
+      if (!new RegExp(`\\b(?:val|def|pure val|pure def|temporal)\\s+${name}\\b`).test(text)) throw Error(`Manifest names an undefined property ${model.module}.${name}`);
+    }
+    for (const symbol of model.symbols || []) {
+      const source = readFileSync(join(repositoryRoot, symbol.path), 'utf8');
+      if (!new RegExp(`(?<![A-Za-z0-9_$])${symbol.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z0-9_$])`).test(source)) throw Error(`Source symbol is missing ${model.module}: ${symbol.path} ${symbol.name}`);
+    }
     names.add(model.module);
     paths.add(model.path);
   }

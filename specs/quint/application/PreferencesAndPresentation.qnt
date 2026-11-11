@@ -22,16 +22,30 @@ module PreferencesAndPresentation {
   action saveTheme = s' = { ...s, theme: "dark", savedTheme: "dark" }
   action failedSave = s' = s
   action restart = s' = { ...s, theme: s.savedTheme, editing: false, visibleHeight: s.freeHeight }
+  /// Android's shade is the only one on a phone; a browser development build has none and
+  /// draws a stand-in instead.
+  action browserBuild = all { not(s.webShade), s' = { ...s, nativeShade: false } }
+  action androidBuild = all { not(s.webShade), s' = { ...s, nativeShade: true } }
   action webShade = all { not(s.nativeShade), s' = { ...s, webShade: true } }
+  action closeWebShade = all { s.webShade, s' = { ...s, webShade: false } }
+  action typeDraft = s' = { ...s, draft: "edited", selection: 2 }
   action step = any { keyboard, closeKeyboard, rotate, largeText, normalText, wide,
-    saveTheme, failedSave, restart, webShade, s' = s }
+    saveTheme, failedSave, restart, browserBuild, androidBuild, webShade, closeWebShade, typeDraft, s' = s }
   val OneShade = not(s.nativeShade and s.webShade)
   val ReadableCalendar = calendarDays >= 1 and calendarDays <= 7 and (agenda implies calendarDays == 1)
   val LargeTextSinglePane = s.textScale >= 150 implies not(split)
-  val StatePreserved = s.draft == "text" and s.selection == 1
+  /// Layout changes leave the text being edited and its selection as they were typed.
+  val StatePreserved = (s.draft == "text" and s.selection == 1) or (s.draft == "edited" and s.selection == 2)
   val safety = OneShade and ReadableCalendar and LargeTextSinglePane and StatePreserved
+  val WebShadeWitness = s.webShade
+  val EditedLandscapeWitness = s.draft == "edited" and landscape and s.editing
   run keyboardNotRotationTest = init.then(keyboard).expect(not(landscape) and safety)
   run rotationPreservesDraftTest = init.then(keyboard).then(rotate).expect(landscape and safety)
+  run typedTextSurvivesLayoutChangesTest = init.then(typeDraft).then(keyboard).then(rotate).then(largeText).then(wide)
+    .expect(s.draft == "edited" and s.selection == 2 and safety)
+  run oneShadePerBuildTest = init.then(webShade.fail())
+  run browserStandInTest = init.then(browserBuild).then(webShade).expect(s.webShade and not(s.nativeShade) and safety)
+    .then(closeWebShade).then(androidBuild).expect(s.nativeShade and not(s.webShade) and safety)
   run largeTextTest = init.then(wide).then(largeText).expect(agenda and not(split) and safety)
   run preferenceReadbackTest = init.then(saveTheme).then(failedSave).then(restart).expect(s.theme == "dark" and safety)
 }

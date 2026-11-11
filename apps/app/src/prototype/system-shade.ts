@@ -6,6 +6,7 @@ import {
   readPullStart,
   requestNotificationShade,
   shadeFallback as sharedShadeFallback,
+  type NotificationShadePort,
   type PullContext,
   type PullStart,
 } from '@elizaos/capacitor-system/shade';
@@ -35,6 +36,25 @@ const HOME = { home: '[data-alpha-layer="home"]', screen: '[data-screen]' };
 
 /** The fallback a person sees when Android did not open its shade. It never claims the shade opened. */
 export function shadeFallback(outcome: unknown): string { return sharedShadeFallback(outcome, ALPHA_SHADE_COPY); }
+
+/** Longest a pull waits for Android's answer before the fallback is shown. */
+export const SHADE_REQUEST_TIMEOUT = 5000;
+
+/**
+ * The same port with a bounded wait: a request Android has not answered in time reads as
+ * 'unsupported'. Only the wait is bounded: Android still owns the request, and a late answer is ignored.
+ */
+export function shadePortWithin(port: NotificationShadePort, ms = SHADE_REQUEST_TIMEOUT): NotificationShadePort {
+  return {
+    openNotificationShade: () => new Promise((resolve, reject) => {
+      const timer = setTimeout(() => resolve({ status: 'unsupported' }), ms);
+      Promise.resolve().then(() => port.openNotificationShade()).then(
+        answer => { clearTimeout(timer); resolve(answer); },
+        error => { clearTimeout(timer); reject(error); },
+      );
+    }),
+  };
+}
 
 /** Reads what a pull started on. Pure DOM reads; safe to call from pointerdown. */
 export function pullStart(target: EventTarget | null): PullStart | null { return readPullStart(target, HOME); }
@@ -104,8 +124,10 @@ export function installSystemShade(Component: any, options: { native: boolean })
     if (this.alphaShadeAsking) return;
     this.alphaShadeAsking = true;
     let message: string;
-    try { message = await requestNotificationShade(device, ALPHA_SHADE_COPY); }
+    // A request Android never answers must not leave every later pull ignored.
+    try { message = await requestNotificationShade(shadePortWithin(device), ALPHA_SHADE_COPY); }
     finally { this.alphaShadeAsking = false; }
-    if (message) this.toast(message);
+    // An answer that arrives after the shell unmounted has no screen to report on.
+    if (message && this.live !== false) this.toast(message);
   };
 }

@@ -14,13 +14,43 @@ export function writeJournalEntry<T>(rows:Record<string,T>,id:string,row:T){
 export function retireJournal<T extends {at?:number}>(rows:Record<string,T>|undefined,definite:(row:T)=>boolean,now=Date.now()){
  if(!rows)return;
  const done=Object.entries(rows).filter(([,row])=>definite(row)).sort(([,a],[,b])=>(a.at??0)-(b.at??0));
- done.forEach(([id,row],index)=>{if(index<done.length-KEEP||row.at!==undefined&&now-row.at>AGE)delete rows[id];});
+ done.forEach(([id,row],index)=>{if(journalRowRetires(index,done.length,row.at,now))delete rows[id];});
+}
+/** Whether the definite row at `index` of `doneCount` (oldest first) retires: by count when more
+ * than 200 rows are newer or equal, by age when its time is more than 30 days before `now`. */
+export function journalRowRetires(index:number,doneCount:number,at:number|undefined,now:number):boolean{
+ //@ verify
+ //@ ensures at !== undefined ==> (\result <==> index < doneCount - KEEP || now - at > AGE)
+ //@ ensures at === undefined ==> (\result <==> index < doneCount - KEEP)
+ //@ ensures index < doneCount - KEEP ==> \result
+ //@ ensures !\result ==> index >= doneCount - KEEP
+ //@ ensures !\result && at !== undefined ==> now - at <= AGE
+ if(index<doneCount-KEEP)return true;
+ if(at===undefined)return false;
+ return now-at>AGE;
+}
+/** A deletion that reached an outcome. A queued or paused deletion is still undoable and is never trimmed. */
+export function deletionSettled(phase:string):boolean{
+ //@ verify
+ //@ ensures \result <==> phase === 'deleted' || phase === 'undone' || phase === 'conflict'
+ //@ ensures phase === 'queued' || phase === 'paused' ==> !\result
+ return ['deleted','undone','conflict'].includes(phase);
+}
+/** How many of `terminal` settled deletions, oldest first, are trimmed so that at most 127 stay. */
+export function settledDeletionsToTrim(terminal:number):number{
+ //@ verify
+ //@ requires terminal >= 0
+ //@ ensures 0 <= \result && \result <= terminal
+ //@ ensures terminal - \result <= SETTLED
+ //@ ensures terminal <= SETTLED ==> \result === 0
+ //@ ensures terminal > SETTLED ==> terminal - \result === SETTLED
+ return Math.max(0,terminal-SETTLED);
 }
 type Deletion={id:string;phase:string;deadline:DeletionDeadline};
 /** Keep the newest settled deletions, and each agent replay claim only while its deletion is kept. */
 export function trimDeletionJournal(data:{deletions?:Record<string,Deletion>;deleteClaims?:Record<string,string>}){
- const terminal=Object.values(data.deletions||{}).filter(e=>['deleted','undone','conflict'].includes(e.phase)).sort((a,b)=>a.deadline.createdElapsed-b.deadline.createdElapsed);
- for(const entry of terminal.slice(0,Math.max(0,terminal.length-SETTLED)))delete data.deletions![entry.id];
+ const terminal=Object.values(data.deletions||{}).filter(e=>deletionSettled(e.phase)).sort((a,b)=>a.deadline.createdElapsed-b.deadline.createdElapsed);
+ for(const entry of terminal.slice(0,settledDeletionsToTrim(terminal.length)))delete data.deletions![entry.id];
  for(const id of Object.keys(data.deleteClaims||{}))if(!data.deletions||!Object.hasOwn(data.deletions,id))delete data.deleteClaims![id];
 }
 /** Undo polling runs every 500ms. Only an expired queued deletion may change the document;

@@ -25,14 +25,17 @@ export class BrowserClock {
  private ringing='';
  private soundTimer?:ReturnType<typeof setInterval>;
  private audio=new BrowserAlertAudio();
+ private timer?:ReturnType<typeof setInterval>;
  constructor(private daily:BrowserDaily,private notifications:BrowserNotifications){
   window.addEventListener('alpha:clock-open',()=>this.open());window.addEventListener('alpha:alarms-changed',()=>void this.poll());window.addEventListener('alpha:reminders-document-changed',()=>void this.poll());
   window.addEventListener('pagehide',()=>this.retire());
   // HOME (AP-15) closes alarm settings left open in the app it leaves; a ringing alarm stays until it is stopped or snoozed.
   window.addEventListener('launcher-home',()=>{if(!this.ringing)this.dialog?.close();});
-  window.addEventListener('alpha:device-state',()=>{this.retire();});document.addEventListener('visibilitychange',()=>{if(document.hidden)this.retire();else void this.poll();});
-  window.addEventListener('storage',event=>{if(event.key==='alpha.browser.reminders.v1')void this.poll();});setInterval(()=>void this.poll(),1000);
+  window.addEventListener('alpha:device-state',()=>{this.retire();});document.addEventListener('visibilitychange',()=>{this.watch();if(document.hidden)this.retire();else void this.poll();});
+  window.addEventListener('storage',event=>{if(event.key==='alpha.browser.reminders.v1')void this.poll();});this.watch();
  }
+ /** The one-second poll runs only while the page is visible; a hidden page neither rings nor reads. */
+ private watch(){if(document.hidden){clearInterval(this.timer);this.timer=undefined;}else this.timer??=setInterval(()=>void this.poll(),1000);}
  private allowed(){return !document.hidden&&document.documentElement.dataset.devBackground!=='true'&&!(testMocksEnabled&&document.documentElement.dataset.connectionMode==='mock')&&!browserScreenLocked();}
  private stopSound(){clearInterval(this.soundTimer);this.soundTimer=undefined;this.audio.stop();}
  private retire(){this.stopSound();this.dialog?.close();this.owns=false;this.ringing='';this.release?.();this.release=undefined;}

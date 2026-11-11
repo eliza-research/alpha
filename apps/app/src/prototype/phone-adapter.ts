@@ -19,17 +19,22 @@ export function phoneRows(calls:readonly TelephonyCallLogEntry[],dial:(number:st
  * places (or not) the call and keeps emergency numbers. Nothing here starts, simulates or reports a
  * call. Rows stay in memory, never in prototype persistence or agent context. Off the image this
  * adapter returns before registering anything, and the Phone view is not admitted.
+ *
+ * A read and a dial handoff hold separate latches. A newer read supersedes an older one (`epoch`),
+ * but a dial belongs to the showing of Phone it started in (`session`): a refresh while the handoff
+ * is in flight neither drops its notice nor lets a second dial start before it settles.
  */
 export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony|null=aospImage?createAospTelephony(registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),true):null){
  if(!client)return;
  const p=Component.prototype,mount=p.componentDidMount,update=p.componentDidUpdate,unmount=p.componentWillUnmount;
- let owner:any,calls:TelephonyCallLogEntry[]=[],number='',status='Open Phone to load recent calls.',notice='',busy=false,needsAccess=false,active=false,epoch=0;
+ let owner:any,calls:TelephonyCallLogEntry[]=[],number='',status='Open Phone to load recent calls.',notice='',reading=false,dialing=false,needsAccess=false,active=false,epoch=0,session=0;
+ const busy=()=>reading||dialing;
  const changed=()=>owner?.setState({phoneNativeRevision:Date.now()});
  const available=()=>!!owner&&owner.S().view==='phone'&&!document.hidden;
- const clear=()=>{epoch++;calls=[];number='';notice='';busy=false;needsAccess=false;changed();};
+ const clear=()=>{epoch++;session++;calls=[];number='';notice='';reading=false;dialing=false;needsAccess=false;changed();};
  const sync=()=>{const next=available();if(next===active)return;active=next;if(next)void refresh();else clear();};
  async function refresh(request=false){
-  const token=++epoch;if(!available())return;busy=true;changed();
+  const token=++epoch;if(!available())return;reading=true;changed();
   try{
    let state=await client!.status();
    if(token!==epoch||!available())return;
@@ -40,25 +45,25 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
    if(token!==epoch||!available())return;
    calls=rows;status=rows.length?`${rows.length} recent calls`:'No recent calls.';
   }catch{if(token===epoch){calls=[];status='Recent calls could not be read. Unlock the phone and refresh.';}}
-  finally{if(token===epoch){busy=false;changed();}}
+  finally{if(token===epoch){reading=false;changed();}}
  }
  async function dial(raw:string){
-  if(busy||!available())return;const target=normalizePhoneNumber(raw);
+  if(busy()||!available())return;const target=normalizePhoneNumber(raw);
   if(!target){notice='Enter a valid phone number.';changed();return;}
-  const token=epoch;busy=true;changed();
-  try{const result=await client!.dial(target);if(token===epoch)notice=result.message;}
-  catch{if(token===epoch)notice='Couldn\'t open the phone app.';}
-  finally{if(token===epoch){busy=false;changed();}}
+  const token=session;dialing=true;changed();
+  try{const result=await client!.dial(target);if(token===session)notice=result.message;}
+  catch{if(token===session)notice='Couldn\'t open the phone app.';}
+  finally{if(token===session){dialing=false;changed();}}
  }
  views.phone.reply=()=>null;
  views.phone.suggestions=()=>[];
  views.phone.status=()=>undefined;
  views.phone.render=(st:Bag,api:Bag)=>{
  /* A number handed over from Contacts fills the field once; only the owner's Dial tap opens the dial screen. */
- if(typeof st?.prefill==='string'&&st.prefill){if(!busy){number=st.prefill.slice(0,40);notice='';}queueMicrotask(()=>api.set?.({prefill:null}));}
- return {nativeManaged:true,nativePrototype:false,nativeStatus:status,nativeBusy:busy,nativeAccess:needsAccess,nativeNumber:number,nativeNotice:notice,
+ if(typeof st?.prefill==='string'&&st.prefill){if(!busy()){number=st.prefill.slice(0,40);notice='';}queueMicrotask(()=>api.set?.({prefill:null}));}
+ return {nativeManaged:true,nativePrototype:false,nativeStatus:status,nativeBusy:busy(),nativeAccess:needsAccess,nativeNumber:number,nativeNotice:notice,
   nativeRows:phoneRows(calls,value=>void dial(value)),
-  nativeOnNumber:(event:Event)=>{if(busy)return;number=(event.target as HTMLInputElement).value;notice='';changed();},
+  nativeOnNumber:(event:Event)=>{if(busy())return;number=(event.target as HTMLInputElement).value;notice='';changed();},
   nativeDial:()=>void dial(number),nativeRefresh:()=>void refresh(),nativeRequest:()=>void refresh(true),
   nativeContacts:()=>isMvpView('contacts')?api.open?.('contacts'):api.toast?.('Contacts isn\'t available on this phone.')};};
  p.componentDidMount=function(){mount?.call(this);owner=this;this.phoneReturn=watchReturnToApp(()=>{if(active)void refresh();});this.phoneHide=()=>sync();document.addEventListener('visibilitychange',this.phoneHide);sync();};

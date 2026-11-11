@@ -92,20 +92,49 @@ const FLICK_HOLD_MS = 80;
 /** A remembered sheet never rests shorter than this: the keyboard can shrink its screen. */
 const SHEET_MIN_HEIGHT = 200;
 
+/**
+ * The end of a drag that counts toward its release speed: how far the finger rose, in pixels, over
+ * how many milliseconds. The run is zero when the finger had stopped or nothing older was sampled.
+ */
+export function flickSpan(track: Sample[], time: number): { rise: number; run: number } {
+	//@ verify
+	//@ ensures \result.run >= 0
+	//@ ensures \result.run === 0 ==> \result.rise === 0
+	//@ ensures track.length === 0 ==> \result.run === 0
+	//@ ensures track.length > 0 && time - track[track.length - 1].t > 80 ==> \result.run === 0
+	//@ ensures track.length > 0 && forall(k, 0 <= k && k < track.length ==> track[k].t >= track[track.length - 1].t) ==> \result.run === 0
+	//@ ensures \result.run > 0 ==> \result.run <= 100
+	//@ ensures \result.run > 0 ==> exists(k, 0 <= k && k < track.length && \result.run === track[track.length - 1].t - track[k].t && \result.rise === track[k].y - track[track.length - 1].y)
+	const last: Sample | undefined = track[track.length - 1];
+	if (!last || time - last.t > FLICK_HOLD_MS) return { rise: 0, run: 0 };
+	const end = last.t;
+	const first = track.find((sample) => end - sample.t <= FLICK_WINDOW_MS);
+	return first && end > first.t ? { rise: first.y - last.y, run: end - first.t } : { rise: 0, run: 0 };
+}
+
 /** Upward speed at release in pixels per millisecond; zero when the finger had stopped. */
 export function releaseVelocity(track: Sample[], time: number): number {
-	const last = track[track.length - 1];
-	if (!last || time - last.t > FLICK_HOLD_MS) return 0;
-	const first = track.find((sample) => last.t - sample.t <= FLICK_WINDOW_MS);
-	return first && last.t > first.t
-		? (first.y - last.y) / (last.t - first.t)
-		: 0;
+	const { rise, run } = flickSpan(track, time);
+	return run > 0 ? rise / run : 0;
 }
 
 /** The open sheet's resting height: the share of the screen it was left at, else the default. */
 export function restingHeight(share: number | undefined, full: number, half: number): number {
 	if (!share) return half;
-	return Math.min(full, Math.max(Math.round(share * full), Math.min(SHEET_MIN_HEIGHT, half)));
+	return clampSheetHeight(Math.round(share * full), full, half);
+}
+
+/** A remembered height held between the shortest usable sheet and the full screen. */
+export function clampSheetHeight(rounded: number, full: number, half: number): number {
+	//@ verify
+	//@ requires 0 < half && half <= full
+	//@ ensures \result <= full
+	//@ ensures \result >= 200 || \result >= half
+	//@ ensures half <= 200 ==> \result >= half
+	//@ ensures half >= 200 ==> \result >= 200
+	//@ ensures rounded >= 200 && rounded <= full ==> \result === rounded
+	//@ ensures rounded > full ==> \result === full
+	return Math.min(full, Math.max(rounded, Math.min(SHEET_MIN_HEIGHT, half)));
 }
 
 /**
@@ -113,18 +142,34 @@ export function restingHeight(share: number | undefined, full: number, half: num
  * collapsed form or the top; a flick jumps. From the collapsed form a pull down dismisses, and a
  * pull up opens at the released height, or at the remembered one (no height) if it is still low.
  */
-export function chatRelease(options: {
+type ReleaseOptions = {
 	mode: Mode;
 	direction: "up" | "down";
 	height: number;
 	floor: number;
 	full: number;
 	flick: boolean;
-}): { chat: "hidden" | "sheet" | "full"; height?: number } {
+};
+export function chatRelease(options: ReleaseOptions): { chat: "hidden" | "sheet" | "full"; height?: number } {
+	//@ verify
+	//@ requires options.floor <= options.full
+	//@ ensures \result.chat === "hidden" || \result.chat === "sheet" || \result.chat === "full"
+	//@ ensures (options.mode === "input" || options.mode === "hidden") && options.direction === "down" ==> \result.chat === "hidden"
+	//@ ensures (options.mode === "input" || options.mode === "hidden") && options.direction === "up" ==> \result.chat !== "hidden"
+	//@ ensures (options.mode === "sheet" || options.mode === "full") && options.flick && options.direction === "up" ==> \result.chat === "full"
+	//@ ensures (options.mode === "sheet" || options.mode === "full") && options.flick && options.direction === "down" ==> \result.chat === "hidden"
+	//@ ensures \result.height !== undefined ==> \result.chat === "sheet" && \result.height === options.height
+	//@ ensures \result.height !== undefined ==> options.floor < options.height && options.height < options.full
+	//@ ensures \result.height !== undefined ==> options.height > options.floor + 120 || options.height > options.floor + (options.full - options.floor) / 3
+	//@ ensures \result.height !== undefined ==> options.height < options.full - 120 || options.height < options.full - (options.full - options.floor) / 3
+	//@ ensures (options.mode === "sheet" || options.mode === "full") && !options.flick && options.height > options.floor + 120 && options.height < options.full - 120 ==> \result.chat === "sheet" && \result.height !== undefined
+	//@ ensures (options.mode === "input" || options.mode === "hidden") && options.direction === "up" && !options.flick && options.height > options.floor + 120 && options.height < options.full - 120 ==> \result.chat === "sheet" && \result.height !== undefined
 	const { mode, direction, height, floor, full, flick } = options;
-	const zone = Math.min(CHAT_SNAP_ZONE, (full - floor) / 3);
-	const nearTop = height >= full - zone,
-		nearFloor = height <= floor + zone;
+	// The snap zone is the smaller of CHAT_SNAP_ZONE and a third of the travel.
+	const third = (full - floor) / 3,
+		roomy = CHAT_SNAP_ZONE < third;
+	const nearTop = roomy ? height >= full - CHAT_SNAP_ZONE : height >= full - third,
+		nearFloor = roomy ? height <= floor + CHAT_SNAP_ZONE : height <= floor + third;
 	if (mode === "sheet" || mode === "full") {
 		if (flick) return { chat: direction === "up" ? "full" : "hidden" };
 		if (nearFloor) return { chat: "hidden" };

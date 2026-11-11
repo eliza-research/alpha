@@ -91,29 +91,44 @@
         "stopRejectsLateCaptureTest",
         "inputCloseBarrierTest",
         "stoppingPendingCloseNeverSendsTest",
-        "failedInputCloseKeepsRequestUnsentTest"
+        "failedInputCloseKeepsRequestUnsentTest",
+        "startingOpensCaptureTest",
+        "failedOpenEndsSessionTest",
+        "streamedPlaybackBeforeReplyTest",
+        "pauseAfterStreamedSpeechSpeaksNothingTest",
+        "proposalReplyEndsSessionTest",
+        "staleStreamedSentenceIsDroppedTest"
       ],
       "invariants": [
+        "SendWaitsForClose",
+        "BusyCaptureHeld",
+        "MutedMicrophoneOff",
         "TypeOK",
         "CloudConsent",
         "StopReleasesCapture",
         "PlaybackCurrent",
         "HeardIsCompleted",
-        "VoiceNeverApproves",
-        "DictationNeverSubmits",
-        "MutedMicrophoneOff",
-        "BusyCaptureHeld",
-        "SendWaitsForClose"
+        "PauseSpeaksNothing",
+        "EarlySpeechKeepsInputClosed",
+        "DictationNeverSubmits"
       ],
       "abstractions": [
         "At most three session identities, five turn identities and five utterance identities.",
-        "Two complete sentences represent streamed playback and heard-content accounting.",
-        "Errors retire the session; disclosure and exact owner binding are represented as admission predicates.",
-        "The current controller closes capture for a submitted turn through response playback. An explicit speech interruption and its completed playback drain are separate transitions; stale audio callbacks cannot interrupt the busy turn."
+        "Up to two sentences represent playback and heard-content accounting. A sentence streamed from a reply proven direct may play before the reply is confirmed; the confirmed reply then holds two sentences.",
+        "Errors retire the session; disclosure and exact owner binding are represented as admission predicates. A reply that is not confirmed for the turn, or that carries action proposals, is such an error.",
+        "`start` is a start whose capture opened within the step; `beginStart`, `captureOpened` and `captureOpenFailed` expose the opening window.",
+        "The current controller closes capture for a submitted turn through response playback. An explicit speech interruption and its completed playback drain are separate transitions; stale audio callbacks cannot interrupt the busy turn.",
+        "An owner-input pause stops and drops sentences that already played from the stream; the resumed reply is another message and is accounted on its own. Provisional or rewritten stream frames, which end early speech, are not modeled."
       ],
       "sharedSources": [
         "packages/voice/src/native-live-voice.ts",
         "packages/voice/src/voice-assistant-session.ts"
+      ],
+      "witnesses": [
+        "StartingWitness",
+        "EarlySpeechWitness",
+        "MutedBusyWitness",
+        "InputCloseBarrierWitness"
       ]
     },
     {
@@ -139,7 +154,13 @@
         "callCancelsSpeechAndMicTest",
         "duckPreservesQueueTest",
         "cancelledOpeningIsDiscardedTest",
-        "staleStreamRejectedTest"
+        "staleStreamRejectedTest",
+        "replacedReservationCannotOpenTest",
+        "lostFocusAbandonsRequestTest",
+        "heldOnlyAbandonCanaryTest",
+        "deniedFocusLeavesNoRequestTest",
+        "callWithoutModeListenerKeepsOpenCaptureTest",
+        "focusLossForCallStopsLegacyCaptureTest"
       ],
       "invariants": [
         "QueueBound",
@@ -147,13 +168,16 @@
         "PermissionRequired",
         "PlaybackHasFocus",
         "ClosedQueueEmpty",
-        "CaptureCallbackCurrent"
+        "CaptureCallbackCurrent",
+        "FocusAbandonedWithSpeech"
       ],
       "abstractions": [
         "A two-chunk queue represents bounded PCM sample storage and backpressure.",
         "Three capture and synthesis generations, one native capture reservation, one playback writer.",
         "Native cleanup calls are atomic completion steps; PCM buffer contents and wall-clock latency are omitted.",
-        "Silent output warmup is an independent, bounded output holder supplied by the authenticated local-speech-streaming patch. Its close/play serialization, timeout and first-audio retirement have separate JVM coverage in test/speech-output-warmup.test.mjs; this model represents capture and audible reply playback only."
+        "Silent output warmup is an independent, bounded output holder supplied by the authenticated local-speech-streaming patch. Its close/play serialization, timeout and first-audio retirement have separate JVM coverage in test/speech-output-warmup.test.mjs; this model represents capture and audible reply playback only.",
+        "Exclusivity is stated for the live reservation only: a recording draft and a live capture are admitted by separate owners (SharedRecordingAdmission, NativeLiveCapture).",
+        "A focus loss, the stop of speech and the release that abandons the request are one step."
       ],
       "sharedSources": [
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechAudioFocusPolicy.java",
@@ -167,7 +191,19 @@
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalSpeechEngine.java",
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SessionSpeech.java",
         "plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java"
-      ]
+      ],
+      "witnesses": [
+        "ReplacedReservationWitness",
+        "DuckedPlaybackWitness",
+        "CaptureDuringCallWitness",
+        "QueuedSpeechWitness"
+      ],
+      "stateMapping": {
+        "captureOwner/captureEpoch/opening/captureOpen/openTicket": "LiveCaptureAdmission active ticket, begin replacing the previous reservation, attach/run of a late startup and the ticket whose capture is open",
+        "focus/focusRequested": "SpeechAudioFocusPolicy state and its requested flag; released abandons a granted request even after a loss",
+        "callActive/modeWatcher": "SpeechAudioFocusPolicy.callActive and SpeechAudioFocus.watchCalls, which registers the audio-mode listener only on Android 12 and later",
+        "stream/queued/playing/generation/cleared/zeroedChunks": "SpeechPcmQueue offer/take/close and the playback writer generation"
+      }
     },
     {
       "path": "specs/quint/native/AlwaysOnListener.qnt",
@@ -187,27 +223,48 @@
         "lostLeaseNeedsResumeTest",
         "resetInvalidatesQueuedRecognitionTest",
         "silencedCaptureDropsFramesTest",
-        "explainedPauseCanResumeTest"
+        "explainedPauseCanResumeTest",
+        "lossDuringExplainedPauseLatchesTest",
+        "sleepLapseDoesNotLatchTest",
+        "restartRequiresNewConsentTest"
       ],
       "invariants": [
         "CaptureRequiresAuthority",
         "SilencedFramesDiscarded",
         "LostIndicatorLatches",
+        "LatchMatchesVerdict",
+        "ExplainedPauseNeverCaptures",
         "InvocationCurrent",
+        "CrashTripNeedsFreshConsent",
         "DecisionProjection"
       ],
       "abstractions": [
         "Nine generation identities and three reset generations; epoch counters stop advancing at the bound.",
-        "Display-off, fullscreen, shade and transition explanations share the paused-indicator abstraction.",
-        "Lease freshness summarizes monotonic TTL, process-death and SystemUI attribution checks."
+        "Each lease verdict is one step. REVOKED and UNATTRIBUTED stand for every unexplained loss that is neither pending nor expired.",
+        "Lease freshness summarizes monotonic TTL, process-death and SystemUI attribution checks.",
+        "Consent is per process: a restart clears it together with the in-memory lease and latch, so a stored breaker trip is only seen without consent and the next opt-in clears it."
       ],
       "sharedSources": [
         "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java",
         "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningEpoch.java",
         "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
         "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
+        "packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/Listener.java",
         "plugins/plugin-native-system/src/sense.ts"
-      ]
+      ],
+      "witnesses": [
+        "LatchedDuringPauseWitness",
+        "SleepLapseWitness",
+        "RestartNeedsConsentWitness",
+        "ListeningWitness"
+      ],
+      "stateMapping": {
+        "consent/enabled/crashLoop/resetGeneration": "ListenerStore per-process consent, enabled flag, stored breaker trip and consent generation",
+        "lease/indicatorPause/indicatorLost": "IndicatorLease.verdict, Listener.indicatorPause and the Listener.indicatorLost latch as observeIndicatorLease leaves them",
+        "obsHeld/obsBefore/obsLoss/obsInteractive/obsValid/obsLatched": "inputs and result of the last lease verdict, replayed by conformance.mjs through IndicatorLease.sleepLapse, pauseFor and ListenerPolicy.latchesIndicatorLoss",
+        "decision/microphone/analyzing": "ListenerPolicy.decide, holdsMicrophone and processesAudio",
+        "epoch/ticket/invoked/processed": "ListeningEpoch tickets for captured utterances and recognition results"
+      }
     },
     {
       "path": "specs/quint/native/ResetRecovery.qnt",
@@ -298,9 +355,13 @@
         "lostOutcomeNeverReplaysTest",
         "staleOwnerPausesTest",
         "changedClockKeepsUndoTest",
+        "repeatedUndoReturnsUndoneRowTest",
+        "changedSourcePausesBeforeDispatchTest",
+        "providerConflictAfterDispatchTest",
         "permissionFailureKeepsUndoTest"
       ],
       "invariants": [
+        "PausedKeepsUndo",
         "SingleDispatch",
         "UndoKeepsSource",
         "DurableIntentBeforeEffect",
@@ -319,6 +380,12 @@
         "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeletionDeadline.java",
         "packages/contracts/src/deletion-window.ts",
         "plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java"
+      ],
+      "witnesses": [
+        "PausedBeforeDispatchWitness",
+        "ProviderConflictWitness",
+        "UndoneWitness",
+        "AcknowledgedUnknownWitness"
       ]
     },
     {
@@ -701,17 +768,24 @@
       "stateMapping": {
         "unlocked/packaged/enabled/lifecycle/lastDecision": "ResidentScheduleRearm.decide full ordered decision table",
         "running/epoch/starts": "admitAndStart synchronized decision/start and surrounding lifecycle ownership",
-        "replayedOccurrences": "rearm starts the resident only; upstream schedules own occurrence recovery"
+        "deferred/failedStarts": "an admitted start the service refuses (RuntimeException caught in ResidentScheduleReceiver), deferred to a later broadcast or foreground launch",
+        "confirmed": "the stop was acknowledged or the provider change ended; accepting stays false until the plugin's own start or a new process"
       },
       "abstractions": [
-        "Five broadcast classes, three lifecycle generations and three actual process starts.",
+        "Five broadcast classes, three lifecycle generations, three actual process starts and two refused starts.",
         "Decision and start are atomic under the same lock, matching admitAndStart. A canary shows the forbidden split-admission interleaving.",
-        "First-unlock state differs from screen lock. Occurrence execution remains in the shared runtime rather than the rearm policy."
+        "First-unlock state differs from screen lock. Occurrence execution and occurrence recovery belong to the shared runtime and are not modeled here.",
+        "foregroundLaunch stands for the app starting an admissible resident when it is next opened; explicitStart for the plugin start that reopens admission after a confirmed stop or provider change."
       ],
       "tests": [
+        "refusedStartDeferredTest",
+        "refusedStartThenLaunchTest",
+        "refusalNeedsAdmissionTest",
         "allRearmBroadcastsTest",
         "lockedBootWaitsForUnlockTest",
         "providerMutationWinsBeforeBroadcastTest",
+        "confirmedStopStaysClosedUntilRestartTest",
+        "unconfirmedStopCannotStartTest",
         "broadcastBeforeStopIsRetiredTest",
         "processDeathCanRearmTest",
         "unavailableBuildAndOwnerTest",
@@ -721,8 +795,78 @@
       "invariants": [
         "NoStartDuringLifecycle",
         "ActiveResidentAdmitted",
-        "NoOccurrenceReplay",
-        "BoundedStarts"
+        "RefusedStartNotRunning",
+        "RunningWasStarted",
+        "BoundedStarts",
+        "ConfirmationBelongsToLifecycle"
+      ],
+      "witnesses": [
+        "DeferredStartWitness",
+        "RunningResidentWitness",
+        "BusyLifecycleWitness",
+        "RefusedAfterConfirmedStopWitness"
+      ],
+      "symbols": [
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java",
+          "name": "admitAndStart"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java",
+          "name": "decide"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java",
+          "name": "handles"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java",
+          "name": "LIFECYCLE_BUSY"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java",
+          "name": "NOT_PACKAGED"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java",
+          "name": "NOT_ENABLED"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java",
+          "name": "LOCKED"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleReceiver.java",
+          "name": "startResidentIfAdmissible"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleReceiver.java",
+          "name": "RuntimeException"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleReceiver.java",
+          "name": "deferred"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "startResidentIfAdmissible"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "runtimePackaged"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "accepting"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "stopping"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "credentialShutdownRequest"
+        }
       ]
     },
     {
@@ -733,18 +877,24 @@
       "invariant": "safety",
       "sources": [
         "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
-        "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java"
+        "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaAssistActivity.java"
       ],
       "stateMapping": {
         "started/windowStart/losses": "RendererRecoveryBudget private started,windowStart,lossesInWindow; count4 denotes4or more",
         "decision/delay/home": "RendererRecoveryBudget.onLoss, delay; MainActivity.showsHome",
         "recovering/rendererAlive/pending/activity/finishing/destroyed/escape": "MainActivity.onRenderProcessGone, postDelayed callback, showRendererEscape and explicit Reload",
-        "availableSettings/externalTarget": "settingsAction,homeChoiceAction stock handler preference and failed launch"
+        "availableSettings/externalTarget": "settingsAction,homeChoiceAction stock handler preference and failed launch",
+        "deaths/createdAt/assistCreatedAt": "RendererRecoveryBudget.deaths and each activity's rendererDeathsAtCreate, read before its WebView is created",
+        "assistOpen/assistAlive/assistRecovering/assistDecision": "AlphaAssistActivity, a second MainActivity with its own WebView and recoveringRenderer; showsHome is false for it",
+        "actualDeaths/reportDue/assistReportDue": "deaths of the shared WebView renderer process and the surfaces whose onRenderProcessGone for that death is still to arrive",
+        "lossHome/lossCreatedAt/lossDecision": "arguments and result of the last onLoss call, replayed by recovery-vad-conformance.mjs"
       },
       "abstractions": [
         "Loss count saturates at four because every further loss has the same within-window policy.",
         "The exact 60,000 ms boundary and backwards-time cases use finite timestamps. Six activity generations cover queued callback and manual reload races.",
-        "Additional budgetInit check admits all finite counter states to exercise every budget decision without requiring long reset/recreate prefixes."
+        "Additional budgetInit check admits all finite counter states to exercise every budget decision without requiring long reset/recreate prefixes.",
+        "One launcher surface and one assistant surface share one renderer process (Android's default for an app's WebViews; not device-verified). Every loss is a crash seen by a started activity; a renderer lost in the background (REBUILD_ON_START, pendingRebuild) is RendererBackgroundRebuild."
       ],
       "invariants": [
         "TypeOK",
@@ -755,7 +905,10 @@
         "StockSettingsOnly",
         "HandoffBounded",
         "NoLiveViewWithoutBridge",
-        "TaskKindsBounded"
+        "TaskKindsBounded",
+        "OneLossPerRendererDeath",
+        "AssistantNeverEscapes",
+        "SharedReportSpendsNothing"
       ],
       "tests": [
         "threeImmediateThenBackoffTest",
@@ -773,9 +926,68 @@
         "failedFrontStartStopsHandoffTest",
         "resumedOwnerAcknowledgesHandoffTest",
         "homeTaskSurvivesIndependentPageTest",
-        "finishedTaskIdReuseStartsFreshTest"
+        "finishedTaskIdReuseStartsFreshTest",
+        "sharedRendererDeathCountsOnceTest",
+        "lateSharedReportGetsCurrentDecisionTest",
+        "doubleCountCanaryTest"
       ],
-      "additionalProofInit": "budgetInit"
+      "additionalProofInit": "budgetInit",
+      "witnesses": [
+        "SharedDeathWitness",
+        "AssistantReportsFirstWitness",
+        "BackoffWitness",
+        "EscapeWitness"
+      ],
+      "symbols": [
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+          "name": "onLoss"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+          "name": "deaths"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+          "name": "decision"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+          "name": "delay"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+          "name": "homeChoiceAction"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+          "name": "settingsAction"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "onRenderProcessGone"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "rendererDeathsAtCreate"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "recoveringRenderer"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "showsHome"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "showRendererEscape"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaAssistActivity.java",
+          "name": "isAssistantSurface"
+        }
+      ]
     },
     {
       "path": "specs/quint/native/VadSegmentation.qnt",
@@ -792,7 +1004,8 @@
       "abstractions": [
         "Finite probability classes cover below 0.35, exactly 0.35, between thresholds, exactly 0.5, higher values and NaN/positive infinity/negative infinity.",
         "Every real gate counter value is represented. PCM and model probability generation stay external inputs.",
-        "The additional counterInit check starts from every reachable counter shape, including fifteen low windows, to check closing transitions. Downstream PCM pre-roll is a distinct capture-buffer concern."
+        "The additional counterInit check starts from every reachable counter shape, including fifteen low windows, to check closing transitions. Downstream PCM pre-roll is a distinct capture-buffer concern.",
+        "LiveVoiceCapture calls only accept and speaking; close is the gate's own contract and has no caller in the capture loop. A stopped capture drops its gate, modeled as a new init."
       ],
       "invariants": [
         "CounterBounds",
@@ -809,12 +1022,20 @@
         "exactClosingThresholdResetsRunTest",
         "nonFiniteProbabilityIsSilenceTest",
         "closeEndsOpenSegmentOnceTest",
-        "closeResetsPartialOpeningTest"
+        "closeResetsPartialOpeningTest",
+        "stoppedCaptureStartsClosedTest",
+        "midProbabilityKeepsSegmentOpenTest"
       ],
       "additionalProofInit": "counterInit",
       "sharedSources": [
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVadGate.java",
         "plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java"
+      ],
+      "witnesses": [
+        "OpeningRunWitness",
+        "SpeakingWitness",
+        "TrailingSilenceWitness",
+        "ClosedOpenSegmentWitness"
       ]
     },
     {
@@ -2910,6 +3131,1100 @@
         "One current editor and account; eligibility and same-editor/account checks are input facts. Exact Android InputConnection behavior and physical Cartesia output remain device gates.",
         "Six bounded generation advances; every emitted Quint transition is compared with the actual Java gate in test/keyboard-dictation.test.mjs. The recording-id fence and sensitive field admission have separate host Java scenarios.",
         "Network transport, Android media capture and framework voice IME selection are not established by this gate model."
+      ]
+    },
+    {
+      "path": "specs/quint/native/SpeechCleanupLatch.qnt",
+      "module": "SpeechCleanupLatch",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "replacementWaitsForCleanupTest",
+        "unconfirmedCleanupLatchesTest",
+        "confirmedStopReopensAppSpeechTest",
+        "refusedStopAsksForRestartTest",
+        "latchedEntryNamesCleanupTest",
+        "busyRecorderMessageTest",
+        "waitingSuccessorRejectedTest",
+        "waitingAppSuccessorStopsOnceTest",
+        "restartOpensChainsTest"
+      ],
+      "invariants": [
+        "StagesKnown",
+        "SuccessorWaitsForCleanup",
+        "LatchHoldsUntilConfirmedStop",
+        "OnlyRecoverableChainsReopen",
+        "RefusedOnlyOnClosedChain",
+        "LatchedEntryNamesCleanup",
+        "BusyRecorderMessageOnlyWhenOpen"
+      ],
+      "witnesses": [
+        "LatchedVoiceWitness",
+        "RefusedSuccessorWitness",
+        "WaitingSuccessorWitness",
+        "LatchedEntryWitness",
+        "RecoveredChainWitness",
+        "RestartNeededWitness",
+        "RestartedWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/voice-adapter.ts",
+        "apps/app/src/prototype/local-speech-playback.ts",
+        "apps/app/src/runtime/app-speech.ts",
+        "apps/app/src/runtime/cloud-voice.ts",
+        "apps/app/src/local-speech-playback.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/voice-adapter.ts",
+          "name": "mediaUnconfirmed"
+        },
+        {
+          "path": "apps/app/src/prototype/voice-adapter.ts",
+          "name": "stopVoiceConversation"
+        },
+        {
+          "path": "apps/app/src/prototype/voice-adapter.ts",
+          "name": "MEDIA_UNCONFIRMED_NOTICE"
+        },
+        {
+          "path": "apps/app/src/prototype/local-speech-playback.ts",
+          "name": "speechRetirement"
+        },
+        {
+          "path": "apps/app/src/prototype/local-speech-playback.ts",
+          "name": "retainSpeechRetirement"
+        },
+        {
+          "path": "apps/app/src/prototype/local-speech-playback.ts",
+          "name": "stopLocalSpeechPlayback"
+        },
+        {
+          "path": "apps/app/src/runtime/app-speech.ts",
+          "name": "retirement"
+        },
+        {
+          "path": "apps/app/src/runtime/app-speech.ts",
+          "name": "speakAppText"
+        },
+        {
+          "path": "apps/app/src/runtime/app-speech.ts",
+          "name": "confirmSpeechRetirement"
+        },
+        {
+          "path": "apps/app/src/runtime/cloud-voice.ts",
+          "name": "appSpeechRetirement"
+        },
+        {
+          "path": "apps/app/src/runtime/cloud-voice.ts",
+          "name": "speakCloudText"
+        },
+        {
+          "path": "apps/app/src/runtime/cloud-voice.ts",
+          "name": "confirmSpeechRetirement"
+        },
+        {
+          "path": "apps/app/src/local-speech-playback.ts",
+          "name": "confirmSpeechRetirement"
+        },
+        {
+          "path": "apps/app/src/local-speech-playback.ts",
+          "name": "speech-cleanup-unconfirmed"
+        }
+      ],
+      "stateMapping": {
+        "stage[voice]": "The voice-adapter stopping chain and mediaUnconfirmed",
+        "stage[reading]": "speechRetirement of read aloud",
+        "stage[app]": "The app-speech retirement chain",
+        "stage[cloud]": "appSpeechRetirement",
+        "waiting/refused/refusal": "A successor awaiting the previous retirement, and the coded refusal it receives",
+        "stopConfirmed": "A confirmed native stopPlayback made by confirmSpeechRetirement",
+        "recorderOpen/entryLatched/entryMessage": "startTranscription: the open recorder and the message an entry is refused with",
+        "epoch": "The app process"
+      },
+      "abstractions": [
+        "Four independent chains, each idle, playing, retiring, recovering or closed; at most six requests and one restart.",
+        "A request made while speech plays on its chain retires that speech and waits; who cancels the predecessor is not distinguished.",
+        "The voice surface and read aloud stay closed until the app process restarts. App speech and Cloud app speech ask native to stop playback once per request on a closed chain: a confirmed stop admits the request, a refused one keeps the chain closed with the restart message.",
+        "Native cancel and stop are one confirmed-or-unconfirmed settle step (see RendererSpeechChunk). Starting a voice conversation on a closed voice chain is refused the same way as Transcribe."
+      ]
+    },
+    {
+      "path": "specs/quint/native/RendererSpeechChunk.qnt",
+      "module": "RendererSpeechChunk",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "playsToEndTest",
+        "busySpeakerRetryTest",
+        "abortDuringPrepareStopsLatePlaybackTest",
+        "strictCleanupFailureTest",
+        "boundedCleanupKeepsOutcomeTest",
+        "finishedWhileWaitingForSpeakerTest",
+        "unqueuedBusyFailsTest"
+      ],
+      "invariants": [
+        "OneTerminalOutcome",
+        "NoListenerOutlivesChunk",
+        "DisposeAlwaysRuns",
+        "LatePlaybackIsStopped",
+        "StartedOnceWithPlayback",
+        "EndedMeansStarted",
+        "StrictReportsUnconfirmedCleanup",
+        "CleanupAwaitsPreparation"
+      ],
+      "witnesses": [
+        "StrictFailureWitness",
+        "LatePlaybackWitness",
+        "BusyRetryWitness",
+        "InterruptedWitness",
+        "BoundedCleanupWitness"
+      ],
+      "sources": [
+        "apps/app/src/local-speech-playback.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/local-speech-playback.ts",
+          "name": "speakChunk"
+        },
+        {
+          "path": "apps/app/src/local-speech-playback.ts",
+          "name": "dispose"
+        },
+        {
+          "path": "apps/app/src/local-speech-playback.ts",
+          "name": "playOwnedSpeech"
+        },
+        {
+          "path": "apps/app/src/local-speech-playback.ts",
+          "name": "speakLocalText"
+        },
+        {
+          "path": "apps/app/src/local-speech-playback.ts",
+          "name": "strictDrain"
+        },
+        {
+          "path": "apps/app/src/local-speech-playback.ts",
+          "name": "preparation"
+        },
+        {
+          "path": "apps/app/src/local-speech-playback.ts",
+          "name": "playback-busy"
+        }
+      ],
+      "stateMapping": {
+        "phase": "speakChunk from listener registration to the settled dispose",
+        "listeners": "The three terminal-event listener handles",
+        "preparePending/playback/nativePlayback": "The preparation promise, the adopted playbackId and a playback native produced",
+        "finishedSignal/pendingOutcome/result": "The finished promise, the reason the chunk ended and what speakChunk resolves or rejects with",
+        "cancelRequested/stopRequested/cleanupFailed": "voice.cancel, voice.stopPlayback and their confirmation",
+        "strict/queue/retries": "strictDrain, queue and the busy-speaker retries"
+      },
+      "abstractions": [
+        "One chunk; three listeners. The source retries a busy speaker without a count limit until aborted; here the speaker is busy at most twice per chunk.",
+        "Listener registration is one step per listener. The 100 ms retry wait and the 500 ms bounded cleanup are nondeterministic ticks.",
+        "A terminal event seen while playing or waiting for the speaker retires the chunk in the same task: no abort or retry timer comes between the event and its retirement.",
+        "Synthesis text, playback identity checks and the execution requirement are folded into the prepare result classes ok, busy and error.",
+        "The 20-minute passage limit and multi-chunk passages of speakLocalText are outside this model."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeStreamBridge.qnt",
+      "module": "NativeStreamBridge",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "completedReplyTest",
+        "busyRefusalIsNotDispatchedTest",
+        "busyAfterResponseIsUnknownTest",
+        "interruptedAfterResponseTest",
+        "abortCancelsStartedStreamTest",
+        "abortBeforeListenerRemovesLateListenerTest"
+      ],
+      "invariants": [
+        "OneTerminalOutcome",
+        "CompletedNeedsResponse",
+        "NotDispatchedIsProvable",
+        "ChunksNeedResponse",
+        "ReadyRevokedOnlyOnFailure",
+        "SettledCleansUp"
+      ],
+      "witnesses": [
+        "RefusedBeforeDispatchWitness",
+        "InterruptedReplyWitness",
+        "CompletedWitness",
+        "LateListenerWitness"
+      ],
+      "sources": [
+        "apps/app/src/runtime/local-agent-native-stream.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/runtime/local-agent-native-stream.ts",
+          "name": "streamNativeAgent"
+        },
+        {
+          "path": "apps/app/src/runtime/local-agent-native-stream.ts",
+          "name": "requestStream"
+        },
+        {
+          "path": "apps/app/src/runtime/local-agent-native-stream.ts",
+          "name": "cancelStream"
+        },
+        {
+          "path": "apps/app/src/runtime/local-agent-native-stream.ts",
+          "name": "beforeDispatch"
+        },
+        {
+          "path": "apps/app/src/runtime/local-agent-native-stream.ts",
+          "name": "alphaAgentStream"
+        },
+        {
+          "path": "apps/app/src/runtime/local-agent-native-stream.ts",
+          "name": "STREAM_IDLE_MS"
+        },
+        {
+          "path": "apps/app/src/runtime/local-agent-native-stream.ts",
+          "name": "STREAM_TURN_MS"
+        }
+      ],
+      "stateMapping": {
+        "active/started/responded/terminal": "The variables of the same names in streamNativeAgent",
+        "listener": "The alphaAgentStream listener handle",
+        "outcome/failure": "The completed promise and whether a failure carries beforeDispatch",
+        "chunks": "Body chunks enqueued after the response",
+        "cancelRequested": "port.cancelStream",
+        "readyRevoked": "onReplyReady(undefined)",
+        "settled": "The finally block ran"
+      },
+      "abstractions": [
+        "One stream; response status classes 200, 401, 429 and other; at most three chunks.",
+        "Frame validation, the 2 MB limit and content-type checks are one valid/invalid class. The turn limit, the idle limit and the caller signal are one abort action.",
+        "Assumption: native rejects requestStream only before it sent anything to the runtime.",
+        "Parsing of the event stream body (readLocalAgentStream) is outside this model."
+      ]
+    },
+    {
+      "path": "specs/quint/native/SavedSignInRecovery.qnt",
+      "module": "SavedSignInRecovery",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "restoreTest",
+        "newerSignInWinsTest",
+        "cancelSupersedesUnreadRestoreTest",
+        "singleFlightTest",
+        "destroyedActivityRestoresNothingTest",
+        "expiredSavedSignInTest",
+        "expiresDuringRestoreTest",
+        "refusedKeyIsMarkedTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "NewerSignInWins",
+        "SingleFlight",
+        "OwnerNeverAhead",
+        "SavedDataKept",
+        "RestoredConsumesSaved",
+        "RejectedIsMarked"
+      ],
+      "witnesses": [
+        "RestoredWitness",
+        "SupersededKeepsSavedWitness",
+        "BusyRefusalWitness",
+        "RejectedWitness",
+        "ExpiredDuringRestoreWitness"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java"
+      ],
+      "symbols": [
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java",
+          "name": "restoreSavedSignIn"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java",
+          "name": "savedSignInRecoveryStatus"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java",
+          "name": "supersedeRecovery"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java",
+          "name": "recoveryEpoch"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java",
+          "name": "recoveringLegacy"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java",
+          "name": "endRecovery"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCloudSignInPlugin.java",
+          "name": "reserveCredentialCommit"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
+          "name": "restoreLegacyCloudCredential"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
+          "name": "legacyCloudRecoveryEligible"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaCredentialStore.java",
+          "name": "RecoveryRefused"
+        }
+      ],
+      "stateMapping": {
+        "epoch/owner/recovering/closed": "recoveryEpoch, the restore owner epoch, recoveringLegacy and the destroyed plugin",
+        "stage": "accepted, snapshot taken, and the Cloud identity read outside every lock",
+        "intentCurrent": "the credential intent reserved by AlphaLocalAgentPlugin.reserveCredentialIntent",
+        "legacy/legacyAtRequest": "the retained legacy production credential and its state when the restore was accepted",
+        "slot/commitsSinceRequest": "the Cloud credential slot writer and shared sign-in commits since the request",
+        "answer/refusals": "the plugin call result and login-active refusals"
+      },
+      "abstractions": [
+        "Six epochs and one saved credential. The legacy journal, exact-byte recheck and encrypted storage are AlphaCredentialStore primitives covered by existing tests.",
+        "The shared sign-in client is a controlled port: only its entry points, cancel, matching return and commit reservation are represented. The client reserves the credential intent when a Google attempt is accepted or a code is sent and stores the key later under that guard; the model joins the two into signInCommits.",
+        "An already expired saved credential is not offered and answers that nothing was restored; the expired refusal is only the expiry passing between the snapshot and the token check.",
+        "The replay in specs/quint/refinement/native/saved-sign-in-recovery.mjs runs the real AlphaCloudSignInPlugin with the credential store and the shared client as ports, so legacy, slot and stage are port state there. Scenario and simulation evidence otherwise; no Keystore, installed-upgrade or Cloud claim."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeMapsLocation.qnt",
+      "module": "NativeMapsLocation",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "secondStartWhileAdmittingIsRefusedTest",
+        "unavailableBuildRefusesTest",
+        "hiddenGrantWaitsForFrontTest",
+        "leavingDuringWatchSetupClearsItTest",
+        "deniedPermissionReportsOnceTest",
+        "staleListenerHearsNothingTest",
+        "unconfirmedCleanupRejectsNextStartTest",
+        "restartWaitsForCleanupTest",
+        "stopDuringRestartSupersedesTest",
+        "failedWatchHoldsAdmissionTest",
+        "ownStopReportsUnconfirmedCleanupTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "AdmissionOwnsRun",
+        "PermissionPromptWithinAdmission",
+        "SessionMatchesGeneration",
+        "DeliveriesCurrent",
+        "ErrorReportedOncePerSession",
+        "CleanupErrorIsOwnStop",
+        "WaitedCleanupInFlight",
+        "OneShotIsMintedSession",
+        "ListenersPrecedeWatch",
+        "WatchNeedsGrant",
+        "OrphanWatchReported",
+        "QuietStartWasSuperseded",
+        "WatchingStartHasWatch"
+      ],
+      "witnesses": [
+        "RefusedWhileAdmittingWitness",
+        "WaitingForFrontWitness",
+        "SupersededStartWitness",
+        "WatchingWitness",
+        "UnconfirmedCleanupWitness",
+        "FixDeliveredWitness",
+        "FailedWatchWaitsWitness",
+        "CleanupErrorHeardWitness"
+      ],
+      "sources": [
+        "apps/app/src/maps/native-location.ts",
+        "apps/app/src/prototype/maps-adapter.ts",
+        "apps/app/src/maps/state.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/maps/native-location.ts",
+          "name": "NativeMapsLocation"
+        },
+        {
+          "path": "apps/app/src/maps/native-location.ts",
+          "name": "SharedLocation"
+        },
+        {
+          "path": "apps/app/src/maps/native-location.ts",
+          "name": "ElizaLocation"
+        },
+        {
+          "path": "apps/app/src/prototype/maps-adapter.ts",
+          "name": "navigationLocation"
+        },
+        {
+          "path": "apps/app/src/maps/state.ts",
+          "name": "NativeMapsLocation"
+        }
+      ],
+      "stateMapping": {
+        "admitting/generation/session/requestingPermission": "NativeMapsLocation admitting, generation, session and requestingPermission",
+        "admission": "the single start() in flight: its ticket, its session, whether it is one-shot and the await it is parked on, including the cleanup of the session it replaced or of its own failed watch",
+        "listeners/watches/cleanup/failedCleanups": "ElizaLocation listener handles, native watch ids and the removals stop() awaits",
+        "lastStart/deliveries/errors": "how start() settled for its caller, and the onFix and onError calls made per session",
+        "selfStopped/cleanupErrors": "stops made by report() and by a one-shot fix, and the onError call such a stop makes when its cleanup is unconfirmed"
+      },
+      "abstractions": [
+        "Three sessions and eight generations. One owner object; the Maps screen holds three (route origin, guidance, agent), each an instance of this model.",
+        "Fix validation is one boolean: a stale, future or malformed fix is reported as an error and stops the session.",
+        "The browser permission-request cancel and heading or speed fields are not modeled. The native plugin's own permission and provider state is external.",
+        "The native event carries no watch identity, so every registered listener hears every fix; only the session in place delivers it.",
+        "A session that registered no listener has nothing to clean up: its stop settles at once and a start that replaces it puts the new session in place in the same step. A stop between start() and that step is not modeled.",
+        "Both listener registrations of one start are one step.",
+        "A start rejected because the cleanup it waited on was unconfirmed has one outcome, whether that cleanup belonged to the replaced session or to its own failed watch.",
+        "A stop is drawn one time in four so sampled traces reach a delivered fix."
+      ],
+      "sharedSources": [
+        "plugins/plugin-maps/src/client/native-location.ts",
+        "plugins/plugin-maps/src/client/location.ts"
+      ]
+    },
+    {
+      "path": "specs/quint/native/VideoRecorder.qnt",
+      "module": "VideoRecorder",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "limitReachedStillSavesTest",
+        "exactLimitKeepsChunkTest",
+        "emptyRecordingFailsTest",
+        "leaveFinalisesFirstTest",
+        "recorderErrorDiscardsTest"
+      ],
+      "invariants": [
+        "LimitTruncatesNotDiscards",
+        "WithinSizeLimit",
+        "SettledExactlyOnce",
+        "CancelledSessionNeverWritesRow",
+        "LeaveFinalisesBeforePreviewStop",
+        "OneFinalisation"
+      ],
+      "witnesses": [
+        "LimitReachedWithVideoWitness",
+        "OverflowChunkDroppedWitness",
+        "SavedRowWitness",
+        "LeavingWhileRecordingWitness",
+        "FailedFinalisationWitness"
+      ],
+      "sources": [
+        "apps/app/src/browser/video-capture.ts",
+        "apps/app/src/prototype/camera-adapter.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/browser/video-capture.ts",
+          "name": "BrowserVideoCapture"
+        },
+        {
+          "path": "apps/app/src/browser/video-capture.ts",
+          "name": "maxFileSize"
+        },
+        {
+          "path": "apps/app/src/browser/video-capture.ts",
+          "name": "settled"
+        },
+        {
+          "path": "apps/app/src/browser/video-capture.ts",
+          "name": "ondataavailable"
+        },
+        {
+          "path": "apps/app/src/prototype/camera-adapter.ts",
+          "name": "finalizing"
+        },
+        {
+          "path": "apps/app/src/prototype/camera-adapter.ts",
+          "name": "recordingStarting"
+        },
+        {
+          "path": "apps/app/src/prototype/camera-adapter.ts",
+          "name": "stopRecording"
+        }
+      ],
+      "stateMapping": {
+        "session/generation/settles/cause": "One recorder Session, its settled latch and the error it settled with",
+        "bytes/chunks/full": "Bytes admitted against maxFileSize, chunks kept, and the limit having stopped the recording",
+        "adapter/finalizing/leaving/previewStopped": "The camera view recording flags and the order of finalisation and preview stop on leave",
+        "rows/resolved/savedGeneration/failures": "Saved video rows, resolved recordings and finalisation failures"
+      },
+      "abstractions": [
+        "Sizes are units with a limit of two; three recordings. The duration limit and an ended camera track are one stop event.",
+        "A chunk that would pass the size limit is left out and the recording stops with what it has. Microphone loss and frame-draw failures are the recorder error.",
+        "No reachable state has a recorder session cancelled by the stopped preview: leaving finalises first, so the cancelled branch of stopPreview is unreachable.",
+        "Trace replay: test/quint-video-recorder.test.mjs replays simulator traces step by step against BrowserVideoCapture with MediaRecorder, the camera track and timers as ports; the Camera view half (shutter, leaving, preview) is supplied by the driver as the calls the camera adapter makes and compares the observed state after every step. It is bounded evidence for the sampled traces, not a refinement proof or device acceptance."
+      ],
+      "bounds": {
+        "recordings": 3,
+        "sizeUnits": 2
+      }
+    },
+    {
+      "path": "specs/quint/native/VideoEditReview.qnt",
+      "module": "VideoEditReview",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "trimClampedTest",
+        "clockRoundsIntoMinutesTest",
+        "saveOnceThenCloseTest",
+        "failedSaveNeedsReopenTest",
+        "hiddenPageDropsResultTest"
+      ],
+      "invariants": [
+        "TrimValid",
+        "SubmittedEditFrozen",
+        "OneSavePerEditor",
+        "HiddenEditorClosed",
+        "ClosedAbortsSave",
+        "SavedOutcomeCloses"
+      ],
+      "witnesses": [
+        "TightestTrimWitness",
+        "UnsavedCopyWitness",
+        "LateResultDroppedWitness",
+        "SavedCopyWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/video-edit-review.ts",
+        "apps/app/src/browser/video-edit.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/video-edit-review.ts",
+          "name": "openVideoEditReview"
+        },
+        {
+          "path": "apps/app/src/prototype/video-edit-review.ts",
+          "name": "trim"
+        },
+        {
+          "path": "apps/app/src/prototype/video-edit-review.ts",
+          "name": "commit"
+        },
+        {
+          "path": "apps/app/src/prototype/video-edit-review.ts",
+          "name": "dispose"
+        },
+        {
+          "path": "apps/app/src/browser/video-edit.ts",
+          "name": "validateVideoEdit"
+        },
+        {
+          "path": "apps/app/src/browser/video-edit.ts",
+          "name": "drawEditedVideo"
+        }
+      ],
+      "stateMapping": {
+        "loaded/busy/closed/hidden/playing": "Editor flags and the hidden-page disposal",
+        "edit/submitted": "The live edit and the copy handed to save",
+        "saves/outcome/aborted": "Save calls, the settled result and the abort signal"
+      },
+      "abstractions": [
+        "Trim positions are tenths of a second over a four-tenths source. Rotation and centre crop are opaque values.",
+        "The trim clock is a pure function checked over boundary values.",
+        "Trace replay: test/quint-video-edit-review.test.mjs replays simulator traces step by step against openVideoEditReview mounted in a DOM with the media element and the save callback as ports and compares the observed state after every step. It is bounded evidence for the sampled traces, not a refinement proof or device acceptance."
+      ],
+      "bounds": {
+        "durationTenths": 4
+      }
+    },
+    {
+      "path": "specs/quint/native/CopyReceipt.qnt",
+      "module": "CopyReceipt",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "copyAndReceiptCommitTogetherTest",
+        "readRetiresSuspendedSaveTest",
+        "changedSourceFailsTest",
+        "retryCannotTurnCopyIntoReplaceTest",
+        "replaceOverwritesReviewedRevisionTest",
+        "identityEditMakesNoCopyTest",
+        "otherParametersRefusedTest"
+      ],
+      "invariants": [
+        "AtMostOneWritePerOperation",
+        "WriteIffSavedReceipt",
+        "ReadRetiresUncommitted",
+        "CopyNeverWritesSource",
+        "ReplaceOnlyWhenChosen",
+        "SavingHasOneOwner"
+      ],
+      "witnesses": [
+        "SuspendedSaveRetiredWitness",
+        "SavedCopyWitness",
+        "ReplacedOriginalWitness",
+        "ChangedSourceFailedWitness",
+        "SecondSaveRefusedWitness"
+      ],
+      "sources": [
+        "apps/app/src/prototype/browser-camera.ts"
+      ],
+      "symbols": [
+        {
+          "path": "apps/app/src/prototype/browser-camera.ts",
+          "name": "savePhotoEdit"
+        },
+        {
+          "path": "apps/app/src/prototype/browser-camera.ts",
+          "name": "resultPhotoEdit"
+        },
+        {
+          "path": "apps/app/src/prototype/browser-camera.ts",
+          "name": "cancelPhotoEdit"
+        },
+        {
+          "path": "apps/app/src/prototype/browser-camera.ts",
+          "name": "EditRecord"
+        },
+        {
+          "path": "apps/app/src/prototype/browser-camera.ts",
+          "name": "editKey"
+        },
+        {
+          "path": "apps/app/src/prototype/browser-camera.ts",
+          "name": "replace"
+        }
+      ],
+      "stateMapping": {
+        "status/parameters/replace/attempt": "The stored edit receipt: status, encoded parameters with mode, and the owning attempt",
+        "inflight": "Save attempts suspended between claim and commit",
+        "sessionActive/recordedRevision/sourceRevision/sourceTrashed": "The editor session and the source row against the revision the receipt recorded",
+        "copies/replaces/reportedNoCopy": "Committed copy rows, committed in-place replacements, and a recovery read that reported no write"
+      },
+      "abstractions": [
+        "One receipt, three save attempts, two non-identity parameter sets and two modes. Rendering is an opaque suspended step.",
+        "Session expiry is a single flag. Receipts are never deleted in the source and are not aged here.",
+        "Model safety checks do not establish implementation refinement or device acceptance."
+      ],
+      "bounds": {
+        "attempts": 3
+      }
+    },
+    {
+      "path": "specs/quint/native/HomeInstanceHandoff.qnt",
+      "tests": [
+        "roleGrantHandsOffToRunningStandardTest",
+        "homeLiveNeedsMarkedStartTest",
+        "unansweredHandOffStopsLoopingTest",
+        "frontStartThatMakesAnInstanceEndsHandOffTest",
+        "failedFrontStartIsUnreliableTest",
+        "relaunchKeepsHomeKindTest",
+        "frontStartAfterOwnerDiedOwnsPageTest",
+        "destroyedOwnerIsReplacedTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "OnePageOwnerWhileReliable",
+        "LiveOwnsPage",
+        "HandOffBounded",
+        "NoHandOffAfterUnreliable",
+        "TaskKindFixed",
+        "IntentDeliveredOnce"
+      ],
+      "witnesses": [
+        "FallbackWitness",
+        "UnacknowledgedHandOffWitness",
+        "FrontStartMadeInstanceWitness",
+        "HomeRelaunchWitness"
+      ],
+      "module": "HomeInstanceHandoff",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java"
+      ],
+      "symbols": [
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "handOff"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "moveLiveTaskToFront"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "liveInstance"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "unackedFrontStarts"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "MAX_UNACKED_FRONT_STARTS"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "handOffUnreliable"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "hasFrontMarker"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "isHomeTypeStart"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "taskKinds"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "handedOff"
+        }
+      ],
+      "stateMapping": {
+        "liveTask/pages": "MainActivity.liveInstance and the instances that loaded a bridge and page; a handed-off instance never loads one",
+        "liveTaskId/liveTaskHome": "taskKinds entry of the live task and startedAsHome, read from the first start intent of a task and kept across relaunch",
+        "unacked/unreliable/frontInFlight": "unackedFrontStarts (cleared when the page owner resumes or receives a marked start, including the one that created it), handOffUnreliable and marked bring-to-front starts (EXTRA_FRONT_START) not yet delivered",
+        "starts/delivered/handOffs": "external starts, the intents delivered to a page owner (own onCreate/onNewIntent or live.onNewIntent) and handOff calls"
+      },
+      "abstractions": [
+        "One home task and one standard task; four external starts. Android resolves a home-type intent to the home task and every other start to the standard task.",
+        "A hand-off from an instance that shares the live task, the assistant surface and non-launcher builds are outside this model.",
+        "Moving a standard task by id and the marked front start are single outcomes; the activity-type rule is AOSP behaviour measured on an emulator, not a public contract.",
+        "The replay in specs/quint/refinement/native/home-instance-handoff.mjs plays Android's task resolution and delivery order against the real MainActivity; which task a real start reaches is not established by it."
+      ]
+    },
+    {
+      "path": "specs/quint/native/ResidentStartCancel.qnt",
+      "tests": [
+        "cancelBeforeStartRefusesItTest",
+        "cancelStopsOnlyTheLaunchItOwnsTest",
+        "cancelOfAttachedStartKeepsResidentTest",
+        "restartOfRunningResidentOwnsNoLaunchTest",
+        "credentialChangeCommitsAfterConfirmedStopTest",
+        "unconfirmedShutdownNeedsRetryTest",
+        "cancelDuringShutdownRetryPreventsStartTest",
+        "rearmWaitsForExplicitStartAfterStopTest",
+        "startBeforeStatusRechecksShutdownTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "CancelRetiresOnlyItsOwnLaunch",
+        "NoLaunchDuringCredentialShutdown",
+        "CommitNeedsConfirmedStop",
+        "CancelledStartNeverLaunches",
+        "MutationClosesAdmission",
+        "RetryHoldsLifecycle",
+        "OwnedLaunchIsCurrent"
+      ],
+      "witnesses": [
+        "AttachedWitness",
+        "RememberedCancellationWitness",
+        "OwnedLaunchStoppedWitness",
+        "RetryInProgressWitness",
+        "CommittedWitness",
+        "RecheckAfterOrdinaryStopWitness",
+        "StatusReleasedStopWitness"
+      ],
+      "module": "ResidentStartCancel",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentCredentialShutdownRetry.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java"
+      ],
+      "symbols": [
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "cancelStart"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "cancelledStarts"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "attachedStarts"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "startOwnsLaunch"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "startRequestEpoch"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "startAfterShutdown"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "shutdownRetryRequired"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "reissueCredentialShutdownLocked"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "credentialShutdownRetryEpoch"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "credentialMutationEpoch"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "credentialShutdownRequest"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "startResidentIfAdmissible"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentCredentialShutdownRetry.java",
+          "name": "await"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java",
+          "name": "admitAndStart"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "getStatus"
+        }
+      ],
+      "stateMapping": {
+        "epoch/accepting/stopping": "lifecycleEpoch, accepting and stopping under lifecycleLock; getStatus releases stopping once the service is seen stopped with no unacknowledged credential stop",
+        "mutationEpoch/retryEpoch/shutdown": "credentialMutationEpoch, credentialShutdownRetryEpoch and credentialShutdownRequest with the service acknowledgement of that exact request",
+        "startRequest/startRequestEpoch/startOwnsLaunch": "startRequestId, startRequestEpoch and startOwnsLaunch (true only when the start found the service stopped)",
+        "cancelledStarts/attachedStarts": "request ids cancelled before their start arrived, and starts that attached to an admitted running resident",
+        "native/launchedBy/launches/commits": "ElizaAgentService process state, the request whose start launched it, and committed credential mutations"
+      },
+      "abstractions": [
+        "Two start requests, six lifecycle generations and three launches. Attach admission (root token, provider generation, owner) is one boolean.",
+        "A start request while a stop is latched or a credential stop is unacknowledged is the strict recheck (shutdownRetryRequired): it reissues the stop under a new request and is modeled as reissuing in the same step it is admitted, although the plugin does that on its worker.",
+        "Enrollment, pending bridge calls and the 128-entry cancellation bound are not modeled. The 15 s acknowledgement wait ends in one step; an uncertain commit is treated as an unconfirmed shutdown.",
+        "The replay in specs/quint/refinement/native/resident-start-cancel.mjs covers lifecycleStep, the machine without a credential mutation, on the whole plugin over service and Android ports; beginMutation and finishMutation are exercised only by the NativeCredentialMutation adapters."
+      ]
+    },
+    {
+      "path": "specs/quint/native/RendererBackgroundRebuild.qnt",
+      "module": "RendererBackgroundRebuild",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "backgroundReclaimWaitsForStartTest",
+        "reclaimsLeaveTheBudgetTest",
+        "sharedCrashIsSpentOnceTest",
+        "hiddenCrashPastBudgetTest",
+        "spentBudgetShowsEscapeToHiddenHomeTest",
+        "visibleReclaimCountsAndWindowRestartsTest",
+        "overtakenSurfaceMissesItsCrashTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "NoStrandedSurface",
+        "RebuildWaitsForStart",
+        "HiddenLossNeverRecreatesAtOnce",
+        "EscapeOnlyWhileHome",
+        "DeathCountedAtMostOnce",
+        "ReclaimNeverSpendsBudget",
+        "LiveSurfaceIsIdle"
+      ],
+      "witnesses": [
+        "BackgroundRebuildWitness",
+        "UncountedReclaimWitness",
+        "HiddenEscapeWitness",
+        "SharedDeathSpentOnceWitness",
+        "OvertakenSurfaceWitness"
+      ],
+      "sources": [
+        "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaAssistActivity.java"
+      ],
+      "symbols": [
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+          "name": "onLoss"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+          "name": "REBUILD_ON_START"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+          "name": "deaths"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+          "name": "decision"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+          "name": "lossesInWindow"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/RendererRecoveryBudget.java",
+          "name": "WINDOW_MS"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "onRenderProcessGone"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "pendingRebuild"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "rendererDeathsAtCreate"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "recoveringRenderer"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "onStart"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "showRendererEscape"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/MainActivity.java",
+          "name": "showsHome"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaAssistActivity.java",
+          "name": "isAssistantSurface"
+        }
+      ],
+      "stateMapping": {
+        "home/losses/deaths/stale": "MainActivity.showsHome of the launcher surface; RendererRecoveryBudget lossesInWindow and deaths; started with more than WINDOW_MS since windowStart",
+        "surfaces.alive/owed/owedCrash": "whether the surface's WebView has a renderer, and a death of the shared renderer process (RenderProcessGoneDetail.didCrash) not yet delivered to its onRenderProcessGone",
+        "surfaces.createdAt/started/reportVisible": "rendererDeathsAtCreate; the activity lifecycle being at least STARTED now and when onRenderProcessGone ran",
+        "surfaces.recovering/pendingRebuild/escape/scheduled/recreateRequested": "recoveringRenderer, pendingRebuild, the native escape view, the recreation posted on the decor view (0 ms or BACKOFF_MS) and a requested recreate()",
+        "rendererDeaths/reclaimSpent": "ghosts: renderer process deaths, and a hidden reclaim that changed the counted deaths"
+      },
+      "abstractions": [
+        "One launcher surface and one assistant surface share one renderer process and budget; six renderer deaths. Up to three earlier counted crashes of the launcher's page stand for a partly spent budget.",
+        "The 60 s window is one flag: it has passed or it has not. A recreation is requested and completed as separate steps; a finishing activity and a missing System WebView are outside this model.",
+        "Reports of one death reach the surfaces in any order and any time apart. A report delayed past another surface's rebuild can leave that rebuilt WebView with a stale creation count, so its next death spends nothing (OvertakenSurfaceWitness); no device evidence says how far apart Android delivers them.",
+        "The replay in specs/quint/refinement/native/renderer-background-rebuild.mjs drives two real MainActivity instances over Android and Capacitor ports. WebView process death, activity recreation and what the user sees remain platform and device obligations."
+      ]
+    },
+    {
+      "path": "specs/quint/native/NativeRequestWithdrawal.qnt",
+      "tests": [
+        "abortedQueuedRequestIsNeverSentTest",
+        "abortDuringEnrollmentStopsBeforeDispatchTest",
+        "abortAfterDispatchAnswersCallButKeepsWorkerTest",
+        "completedRequestIsNotWithdrawnTest",
+        "supersededCallIsNotAnsweredAgainTest"
+      ],
+      "invariants": [
+        "TypeOK",
+        "WithdrawnBeforeDispatchNeverSent",
+        "SentWasOwned",
+        "AnsweredAtMostOnce",
+        "DeliveredCancellationAnswersCall",
+        "RegistryHoldsLiveWorkOnly",
+        "WorkersBounded"
+      ],
+      "witnesses": [
+        "WithdrawnWhileQueuedWitness",
+        "WithdrawnWhileEnrollingWitness",
+        "WithdrawnAfterDispatchHoldsWorkerWitness",
+        "LateCancellationFindsNothingWitness",
+        "QueuedBehindBusyWorkersWitness"
+      ],
+      "module": "NativeRequestWithdrawal",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "sources": [
+        "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+        "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",
+        "apps/app/src/runtime/local-agent.ts"
+      ],
+      "symbols": [
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "cancelRequest"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "withdrawable"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "forgetWithdrawable"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "requireOwned"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "resolveCurrent"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "rejectSuperseded"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java",
+          "name": "invalidateOwnCalls"
+        },
+        {
+          "path": "android/app/src/main/java/ai/alphacompute/alphaphone/PluginWorkers.java",
+          "name": "submit"
+        },
+        {
+          "path": "apps/app/src/runtime/local-agent.ts",
+          "name": "requestNativeAgent"
+        },
+        {
+          "path": "apps/app/src/runtime/local-agent.ts",
+          "name": "NativeRequestPort"
+        }
+      ],
+      "stateMapping": {
+        "phase": "where the request worker submitted by request() is: waiting for one of the two workers, between its first requireOwned and the one before raw(), blocked in raw() on the transport, or returned",
+        "call": "the request PluginCall: member of pending (open), resolved by resolveCurrent, rejected by cancelRequest (withdrawn) or rejected by invalidateOwnCalls / rejectSuperseded (superseded)",
+        "renderer": "the caller of LocalAgentProtocol.request: waiting on the bridge promise, its signal aborted (requestNativeAgent has queued cancelRequest), cancelRequest delivered, or settled",
+        "withdrawable": "the withdrawable map from cancelId to the request call under lifecycleLock",
+        "sent/withdrawnAt/answers": "ghosts: requests that reached raw(), the worker phase at which cancelRequest withdrew the call, and how many times the bridge call was resolved or rejected"
+      },
+      "abstractions": [
+        "Three requests and two workers; other bridge methods that share the same two workers are not modeled.",
+        "Enrollment is one step with no failure; owner mismatch, 401 handling and transport errors are folded into the transport answering.",
+        "A lifecycle change is one step that answers every pending call; the epoch that also stops their workers is represented by the call no longer being pending.",
+        "A request already on the transport is not recalled: ElizaAgentService.requestLocalAgent offers no cancellation handle, so the worker is held until the answer or the timeout and the server effect may complete."
+      ],
+      "sharedSources": [
+        "packages/app/platforms/android/app/src/main/java/ai/elizaos/app/ElizaAgentService.java"
       ]
     }
   ]
