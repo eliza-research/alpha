@@ -29,6 +29,13 @@ def single_profile(record):
     return record["runtimeProfile"] == "cloud" and "localEmbeddings" not in record
 
 
+def reviewed_private_producer(plan, descriptor):
+    fields = ("alphaCommit", "sdkCommit", "versionCode", "updateChannel", "archiveBytes",
+              "archiveSHA256", "producerManifestSHA256", "privateProducerReceiptSHA256", "unsignedApkSHA256")
+    approval = {"approval": "approved", **{key: plan.get(key) for key in fields}}
+    return isinstance(plan.get("privateStorage"), dict) and descriptor.get("privateProducerApproval") == approval
+
+
 def admit(archive, pin, stage=None):
     for field in ("alphaCommit", "sdkCommit"):
         require(isinstance(pin.get(field), str) and COMMIT.fullmatch(pin[field]), f"Invalid {field} pin")

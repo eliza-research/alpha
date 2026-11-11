@@ -13,12 +13,15 @@ if ! jq -e --arg source "$source" '
     .merge_base_commit.sha == $source' "$directory/source-comparison.json" >/dev/null; then
   # A qualified private release can be pinned independently of the moving main branch.
   # The reviewed main commit must authorize these exact source and artifact bytes.
-  jq -e '.privateStorage != null' "$directory/pins.json" >/dev/null
-  approval=$(jq -c '{approval:"approved",alphaCommit,sdkCommit,versionCode,
-    updateChannel,archiveBytes,archiveSHA256,producerManifestSHA256,
-    privateProducerReceiptSHA256,unsignedApkSHA256}' "$directory/pins.json")
-  jq -e --argjson approval "$approval" '.privateProducerApproval == $approval' \
-    android/release-signer.json >/dev/null
+  python3 -B - "$directory/pins.json" <<'PY'
+import json, runpy, sys
+from pathlib import Path
+admission = runpy.run_path('scripts/ci/admit-cloud-signing-input.py')
+plan = json.loads(Path(sys.argv[1]).read_text())
+descriptor = json.loads(Path('android/release-signer.json').read_text())
+admission['require'](admission['reviewed_private_producer'](plan, descriptor),
+                     'Unreviewed private producer source')
+PY
 fi
 if jq -e '.privateStorage != null' "$directory/pins.json" >/dev/null; then
   python3 -B scripts/ci/private-apk-storage.py validate "$directory/pins.json"
