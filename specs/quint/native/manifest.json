@@ -187,7 +187,8 @@
         "lostLeaseNeedsResumeTest",
         "resetInvalidatesQueuedRecognitionTest",
         "silencedCaptureDropsFramesTest",
-        "explainedPauseCanResumeTest"
+        "explainedPauseCanResumeTest",
+        "unexplainedLossAfterPauseLatchesTest"
       ],
       "invariants": [
         "CaptureRequiresAuthority",
@@ -381,7 +382,6 @@
         "apps/app/src/runtime/sms-subscription-revision.ts",
         "apps/app/src/runtime/reminder-creations.ts",
         "apps/app/src/runtime/reminder-deletions.ts",
-        "apps/app/src/runtime/clock-contract.ts",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaImageCapabilities.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephonyPlugin.java",
         "android/app/src/main/java/ai/alphacompute/alphaphone/AlphaReminders.java",
@@ -395,8 +395,7 @@
         "staleReminderTicketTest",
         "staleContactsReplyAfterPauseTest",
         "unknownReminderCreationDoesNotRepeatTest",
-        "silentTodoCompletesWithoutAlertTest",
-        "clockHandoffDoesNotClaimRingTest"
+        "silentTodoCompletesWithoutAlertTest"
       ],
       "invariants": [
         "SingleSmsDispatch",
@@ -404,7 +403,6 @@
         "SentRequiresAllCallbacks",
         "DeliveryNeedsProviderEvidence",
         "RetiredIdNeverForgotten",
-        "HandoffIsHonest",
         "ReminderCurrent",
         "ContactReadCurrent",
         "ReminderCreationDoesNotReplay"
@@ -412,16 +410,15 @@
       "abstractions": [
         "One SMS id, one or two message parts, two SIM/text identities and permanent retired-id membership.",
         "Carrier and provider evidence are distinct inputs; multipart never claims delivered.",
-        "One reminder creation and three reminder revisions; notification delivery is posted rather than evidence of Clock execution."
+        "One reminder creation and three reminder revisions; notification delivery is posted rather than evidence of Clock execution.",
+        "Clock admission and evidence belong to NativeClockReview; the former unconditional handoff string was retired as unbound."
       ],
       "sharedSources": [
         "packages/contracts/src/native-telephony.ts",
         "plugins/plugin-native-contacts/android/src/main/java/ai/eliza/plugins/contacts/ContactsCatalog.java",
         "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsSendJournal.java",
         "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsRecords.java",
-        "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsPageCursor.java",
-        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockDays.java",
-        "plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/clock/ClockHandoff.java"
+        "plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsPageCursor.java"
       ]
     },
     {

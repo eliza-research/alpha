@@ -49,7 +49,7 @@ async function fixture(extraSources) {
   const window = new EventTarget();
   const api = sourceContext(['apps/app/src/passwords/password-manager.ts'], [
     'passwordManagerGroups','passwordEntryPage','leavePasswordManager','refreshPasswordManager','passwordManagerLifecycle',
-    'observe: () => ({active,generation,locked:status?.locked ?? true,entries:entries!==null,damaged,resetReviewed:confirmReset,secret:!!draft?.password,draft:!!draft,busy,noticePresent:!!notice})',
+    'observe: () => ({active,generation,locked:status?.locked ?? true,entries:entries!==null,damaged,resetReviewed:confirmReset!==null,secret:!!draft?.password,draft:!!draft,busy,noticePresent:!!notice})',
   ], {
     ...sharedExports,...bindingExports,document,window,
     Capacitor:{isNativePlatform:()=>true,isPluginAvailable:()=>false},
@@ -67,7 +67,9 @@ async function fixture(extraSources) {
   const rows = () => api.passwordManagerGroups(helpers).flatMap(group=>group.rows);
   const invoke = label => {const row=rows().find(row=>row.label===label);assert.ok(row,label);row.go();};
   const settle = async () => {for(let i=0;i<4;i++)await tick();};
-  return {api,helpers,port,native,document,window,records,rows,invoke,observe,settle,dispose,sources,driverHashes};
+  const hold=method=>{const original=port[method],pending=deferred(),entered=deferred();port[method]=async(...args)=>{port[method]=original;const result=await original(...args);entered.resolve();await pending.promise;return result;};return {entered:entered.promise,release:()=>pending.resolve()};};
+  const expire=()=>{const [id,timer]=[...timers].find(([,timer])=>timer.delay===60000)||[];assert.ok(timer,'unlock expiry');timers.delete(id);timer.callback();};
+  return {api,helpers,port,native,document,window,records,rows,invoke,observe,settle,dispose,sources,driverHashes,hold,expire};
 }
 
 export async function generateVaultCoordinatorTraces(extraSources=[]) {
@@ -105,6 +107,29 @@ export async function generateVaultCoordinatorTraces(extraSources=[]) {
       scenarios.push({name,observations:f.records,sources:f.sources,driverHashes:f.driverHashes});
     } finally {f.dispose();await f.settle();}
   }
+  for(const name of ['metadata-lock','metadata-expiry','metadata-leave','reset-review-refresh','reset-auth-refresh']) {
+    const f=await fixture(extraSources);
+    try {
+      f.observe('initial');f.rows();await f.settle();f.observe('open locked vault');
+      if(name.startsWith('metadata')) {
+        f.invoke('Unlock passwords');await f.settle();f.observe('unlock metadata');
+        const held=f.hold('list');f.api.refreshPasswordManager();await held.entered;f.observe('metadata read pending');
+        if(name==='metadata-lock'){f.invoke('Lock passwords');await f.settle();f.observe('metadata lock');}
+        else if(name==='metadata-expiry'){f.expire();await f.settle();f.observe('metadata expires');}
+        else {f.api.leavePasswordManager();await f.settle();f.observe('leave retires review');}
+        held.release();await f.settle();f.observe('retired metadata completes');
+        assert.equal(f.records.at(-1).state.entries,false);
+      } else {
+        f.native.damaged=true;f.api.refreshPasswordManager();await f.settle();f.observe('native reports invalidated key');
+        f.invoke('Delete saved passwords and start over');f.observe('review reset');
+        if(name==='reset-auth-refresh'){f.native.pending=deferred();f.invoke('Tap again to delete all saved passwords');await f.settle();f.observe('native authentication pending');}
+        f.api.refreshPasswordManager();await f.settle();f.observe('refresh retires reset review');
+        if(f.native.pending){f.native.pending.resolve();await f.settle();f.observe('retired reset authentication completes');}
+        assert.equal(f.native.resetCount,0);assert.equal(f.records.at(-1).state.resetReviewed,false);
+      }
+      scenarios.push({name,observations:f.records,sources:f.sources,driverHashes:f.driverHashes});
+    } finally {f.dispose();await f.settle();}
+  }
   return scenarios;
 }
 
@@ -129,6 +154,12 @@ export async function checkVaultCoordinator(extraSources=[]) {
       if(label==='leave retires review')return call('leave');
       if(label==='retired native authentication completes')return call('authenticationRefused');
       if(label==='reopen needs current status')return [call('open'),call('refresh'),call('keyInvalidated')];
+      if(label==='metadata read pending')return call('refresh');
+      if(label==='metadata lock')return call('lock');
+      if(label==='metadata expires')return call('expiry');
+      if(label==='retired metadata completes')return call('refreshResult');
+      if(label==='refresh retires reset review')return [call('refresh'),call('keyInvalidated')];
+      if(label==='retired reset authentication completes')return call('resetAuthenticationRetired');
       throw Error(`Unknown source observation ${label}`);
     };
     return {name:scenario.name,init:{name:'init'},expect:project(scenario.observations[0].state),
@@ -145,7 +176,7 @@ export async function checkVaultCoordinator(extraSources=[]) {
       'The actual password-manager coordinator and pinned shared PasswordsClient validation execute with controlled native ports.',
       'Only secret presence is observed. Typed bytes remain in the synthetic local input and are never serialized in receipts.',
       'The native port models lock cancelling a pending credential challenge, matching CredentialAccessSession ownership. No real authentication, Keystore mutation or reset executes.',
-      'Four schedules cover draft clearing, background retirement, reset-review retirement and a cancelled native unlock. Save/remove/transfer, fill-origin behavior and all native platform schedules remain separate obligations.',
+      'Nine schedules cover draft clearing, lock/expiry/leave during metadata reads, reset-review invalidation by refresh, background retirement and late native unlock. Save/remove/transfer, fill-origin behavior and all native platform schedules remain separate obligations.',
     ]});
 }
 

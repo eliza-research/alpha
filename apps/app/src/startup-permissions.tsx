@@ -24,13 +24,13 @@ const calendar = registerPlugin<{checkPermissions(): Promise<{calendar: string}>
 const device = registerPlugin<{openSettings(options: {page: 'notifications' | 'privacy'}): Promise<unknown>}>('AlphaDevice');
 const files = registerPlugin<{storageState(): Promise<{access?: string}>; storageRequestAccess(options?: {settings?: boolean}): Promise<{access?: string}>}>('AlphaFiles');
 const details = {
-  notifications: {title: 'Notifications', icon: 'bell'},
-  microphone: {title: 'Microphone', icon: 'mic'},
-  camera: {title: 'Camera', icon: 'camera'},
-  photos: {title: 'Photos', icon: 'images'},
-  calendar: {title: 'Calendar', icon: 'calendar'},
-  location: {title: 'Location', icon: 'map-pin'},
-  files: {title: 'Files', icon: 'folder'},
+  notifications: {title: 'Notifications', icon: 'bell', reason: 'See reminders and updates from Alpha.'},
+  microphone: {title: 'Microphone', icon: 'mic', reason: 'Record voice notes and speak with Alpha.'},
+  camera: {title: 'Camera', icon: 'camera', reason: 'Take photos and scan text when you choose.'},
+  photos: {title: 'Photos', icon: 'images', reason: 'Browse the photos and videos you allow.'},
+  calendar: {title: 'Calendar', icon: 'calendar', reason: 'Read your calendars and add events after review.'},
+  location: {title: 'Location', icon: 'map-pin', reason: 'Use your location for nearby places and directions when you choose.'},
+  files: {title: 'Files', icon: 'folder', reason: 'Browse files on this device. Android grants access to shared storage; you choose what to open or share.'},
 };
 const progressKey = 'alpha:startup-permission-progress:v1';
 type Progress = {version: 3; step: number; choices: ('allowed' | 'continued' | 'skipped')[]};
@@ -271,6 +271,7 @@ export function StartupPermissions({active:enabled = true}: {active?: boolean} =
     <div className="alpha-permission-content" key={key}>
       <span className="alpha-permission-icon" aria-hidden="true"><span style={iconStyle(info.icon)}/></span>
       <h2 id="alpha-permission-title" className="serif" tabIndex={-1}>{info.title}</h2>
+      <p className="alpha-permission-rationale">{info.reason}</p>
       {state === 'ready' && <p className="alpha-permission-status" role="status">{native&&key==='location'?locationDescription.current:native&&key==='photos'?photoDescription.current:'Allowed.'}</p>}
       {state === 'settings' && !checkNotice && <p className="alpha-permission-status" role="status">{native ? 'Off.' : 'Off. Turn it on in your browser’s site settings.'}</p>}
       {state === 'unavailable' && !checkNotice && <p className="alpha-permission-status" role="status">{native ? 'Could not check. Open Android app settings.' : 'Could not check. Open your browser’s site settings.'}</p>}

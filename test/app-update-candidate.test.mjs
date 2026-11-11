@@ -6,7 +6,7 @@ import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import YAML from 'yaml';
 import {candidateVersion, candidateReceipt, main} from '../scripts/app-update-candidate.ts';
-import {candidateFixture as fixture, hash, json, read} from './fixtures/app-update-candidate.mjs';
+import {candidateFixture as fixture, hash, json, legacyManifestUrl, read} from './fixtures/app-update-candidate.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -30,6 +30,29 @@ test('candidate versions use fixed run numbers above every page of retained asse
   json(path.join(f.root, 'android/release-signer.json'), {lastRelease: {versionCode: null}});
   json(path.join(f.root, 'app.config.json'), {...f.config, versionCode: 705});
   await assert.rejects(candidateVersion(f), /version floor/);
+});
+
+test('retired-channel inventory sets a version floor while the receipt binds only the active pointer', async t => {
+  const f = fixture(t);
+  const pointer = (url, versionCode) => {
+    const bytes = Buffer.from(JSON.stringify({schema: 'alpha-update/v1', variant: 'launcher', versionCode,
+      signerSha256: 'a'.repeat(64), sha256: 'b'.repeat(64), sizeBytes: 100,
+      apkUrl: new URL(`alpha-phone-${versionCode}.apk`, url).href}));
+    return {bytes, sha256: hash(bytes)};
+  };
+  f.state.legacyMissing = false;
+  f.state.legacyPages = [[{name: 'alpha-phone-703.apk'}]];
+  f.state.legacyPointer = pointer(legacyManifestUrl, 704);
+  const initial = await candidateVersion(f);
+  assert.equal(initial.observedFloor, 704);
+  assert.equal(initial.manifestSha256, null);
+  f.state.pointer = pointer(f.config.updateManifestUrl, 702);
+  assert.equal((await candidateVersion(f)).manifestSha256, f.state.pointer.sha256);
+  f.state.legacyPages.push([{name: 'alpha-phone-705.apk'}]);
+  await assert.rejects(candidateVersion(f), /version floor/);
+  f.state.legacyPages = [[{name: 'alpha-update-stable.json'}]];
+  f.state.legacyPointer = null;
+  await assert.rejects(candidateVersion(f), /not anonymously readable/);
 });
 
 test('missing or malformed inventories, hidden pointers and wrong source/workflow epochs fail before writing a candidate', async t => {
@@ -153,7 +176,14 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   assert.equal(evaluate(build.if, develop), false);
   assert.equal(evaluate(build.if, develop, {}, {ELIZA_RESIDENT_QUALIFICATION: 'push'}), true);
   assert.equal(evaluate(build.env.ALPHA_APP_UPDATE_CANDIDATE, develop), '0');
-  assert.equal(evaluate(build.if, {...main, event_name: 'schedule'}, {}, {ELIZA_RESIDENT_QUALIFICATION: 'nightly'}), true);
+  const nightly = {...main, event_name: 'schedule'};
+  assert.equal(evaluate(build.if, nightly, {}, {ELIZA_RESIDENT_QUALIFICATION: 'nightly'}), true);
+  assert.notEqual(evaluate(group, develop), evaluate(group, {...develop, sha: newer.sha}));
+  assert.notEqual(evaluate(group, develop), evaluate(group, nightly));
+  for (const context of [develop, nightly]) {
+    assert.notEqual(evaluate(group, context), evaluate(group, main));
+    assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], context), false);
+  }
   assert.deepEqual(workflow.permissions, {contents: 'read'});
   assert.deepEqual(build.permissions, {contents: 'read', actions: 'read'});
   const candidate = build.steps.find(step => step.name === 'Retain the unsigned native update candidate separately from test mocks');

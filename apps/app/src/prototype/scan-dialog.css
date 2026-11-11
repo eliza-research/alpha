@@ -67,6 +67,17 @@
 
 .scan-dialog .scan-icon-button[aria-pressed="true"]{background:var(--acc);color:var(--alpha-white)}
 
+/* Native scans borrow Camera's live viewfinder; the existing Camera owner keeps
+   its preview and mask. Only the scan controls paint over it until capture. */
+.scan-dialog.scan-native-capture{position:fixed;margin:0;max-width:none;max-height:none;padding:0;border-radius:0;background:transparent;color:var(--fg);gap:0}
+.scan-native-capture::backdrop{background:transparent}
+.scan-native-capture-panel{position:absolute;bottom:0;left:0;right:0;padding:16px;padding-bottom:max(16px,var(--native-bottom-inset,0px));box-sizing:border-box;background:var(--bg);max-height:65%;overflow:auto}
+.scan-native-capture-panel h2{font-size:1.5em;margin:0 0 8px}
+.scan-native-capture-panel p{font-size:.875em;margin:0 0 12px}
+.scan-native-capture>img{width:100%;height:100%;object-fit:contain;box-sizing:border-box;padding-bottom:260px;background:var(--alpha-black)}
+.scan-native-captured{background:var(--alpha-black)!important}
+@media(max-height:480px){.scan-native-capture-panel{left:auto;width:45%;max-height:100%;height:100%;padding:12px}.scan-native-capture>img{width:55%;padding-bottom:0}.scan-native-capture-panel h2{font-size:1.25em}.scan-native-capture-panel .scan-dialog-actions{padding-top:8px}}
+
 /* The media being edited owns the screen; controls stay in two fixed bands. */
 .scan-dialog.video-edit-review{width:min(100vw,var(--phone-width,100vw));height:min(100dvh,var(--phone-height,100dvh));max-height:min(100dvh,var(--phone-height,100dvh));max-width:none;border-radius:0;padding:0;background:var(--alpha-gray-11);color:var(--alpha-white);gap:0}
 .video-editor-header{display:flex;align-items:center;gap:8px;flex-shrink:0;padding:12px 12px 8px;padding-top:max(12px,var(--native-top-inset,0px))}

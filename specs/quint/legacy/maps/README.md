@@ -32,8 +32,8 @@ The separate mismatch receipts capture these differences.
   current profile leaves navigation.
 - Arrival releases location and retains the accepted route in its arrival state.
   The historical action clears the route at arrival.
-- A failed explicit reroute clears the accepted route and ends guidance.
-  The historical proposed fault and off-route sequence retains the route.
+- A failed explicit reroute retains the accepted route and guidance, matching
+  the historical proposed fault and off-route sequence for this projection.
   A refusal of one current route request can occur with the provider still
   installed, unlike the original fault's service-session transition.
 
