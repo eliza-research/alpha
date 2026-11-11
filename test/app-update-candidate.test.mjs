@@ -223,14 +223,16 @@ test('real workflow keeps main candidates unsigned and isolated while preserving
   assert.equal(build.env.ALPHA_RUNTIME_PROFILE, undefined);
   assert.equal(build.env.ELIZA_ANDROID_BUN_TARGET, 'linux-musl');
   assert.equal(build.env.ELIZA_ANDROID_TARGET_ABIS, 'arm64-v8a,x86_64');
-  assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], main), true);
+  assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], main), false);
   // Literal expression checks, not execution of GitHub's concurrency backend.
   // One template string holds two GHA substitutions; inspect its group key.
   const group = workflow.concurrency.group.match(/\$\{\{([\s\S]*?)\}\}/)[1];
   const newer = {...main, sha: 'b'.repeat(40), run_id: '102'};
   const oldRerun = {...main, run_attempt: '2'};
-  assert.equal(evaluate(group, main), evaluate(group, newer));
-  assert.notEqual(evaluate(group, oldRerun), evaluate(group, newer), 'rerunning an old push cannot enter the primary group');
+  assert.notEqual(evaluate(group, main), evaluate(group, newer), 'an older push queued later cannot displace the latest push');
+  assert.equal(evaluate(group, main), evaluate(group, oldRerun), 'an attempt keeps the group of its own run');
+  assert.notEqual(evaluate(group, oldRerun), evaluate(group, newer), 'an older rerun cannot displace the latest push');
+  assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], newer), false);
   assert.equal(evaluate(workflow.concurrency['cancel-in-progress'], oldRerun), false);
   assert.equal(evaluate(group, oldRerun), evaluate(group, {...oldRerun, run_attempt: '3'}), 'reruns keep their own run-ID group');
   assert.notEqual(evaluate(group, oldRerun), evaluate(group, {...newer, run_attempt: '2'}));

@@ -158,10 +158,10 @@ Main pushes automatically build unsigned native candidates in the existing
 Resident Android workflow. The separate `app-native-candidate-*` artifact holds
 the genuine distribution archive and `app-update-candidate.json`, which binds
 source, SDK, run/attempt, profile, channel and actual APK hashes. Test-mocks stay
-in the qualification archive. Primary main-push attempts share a canceling group;
-reruns use their own run ID group and do not cancel running work. GitHub does not
-guarantee commit order. Completion needs a quiet main, build capacity and admitted
-native inputs.
+in the qualification archive. Each main-push run has its own concurrency group,
+including its reruns, so an older push queued later cannot cancel a newer one.
+GitHub can complete builds out of order. Select the successful candidate for the
+reviewed source commit. Each build needs runner capacity and admitted native inputs.
 
 Before enabling a successful automatic build, a maintainer supplies
 `android/hosted-native-inputs.json` in the reviewed checkout. Use these exact
@@ -253,6 +253,9 @@ Use the reviewed checkout to check the exact producer attempt, archive size,
 and digest before downloading. The command verifies the ZIP and its producer
 evidence before making it available at the requested path. The candidate is
 retained for three days and must remain available through signing admission.
+If a downstream job failed after the candidate uploaded, rerun all jobs to
+produce a candidate for the new attempt. A failed-jobs-only rerun can reuse the
+earlier build output, which remains bound to the earlier attempt.
 
 ```sh
 python3 -B scripts/ci/admit-cloud-signing-input.py fetch-candidate \
