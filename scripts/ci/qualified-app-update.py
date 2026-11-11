@@ -6,14 +6,18 @@ receipt is an explicit human-reviewed assertion, not authenticated acoustic QA.
 """
 import argparse
 import base64
+from contextlib import contextmanager
 import hashlib
 import importlib.util
+import io
+from itertools import islice
 import json
 import os
 from pathlib import Path, PurePosixPath
 import re
 import stat
 import subprocess
+import sys
 import tarfile
 import tempfile
 from urllib.parse import quote, urlencode
@@ -29,6 +33,11 @@ SIGNING_WORKFLOW_ID = 411388003
 HEX = re.compile(r"[0-9a-f]{64}")
 COMMIT = re.compile(r"[0-9a-f]{40}")
 NUMBER = re.compile(r"[1-9][0-9]{0,15}")
+DELIVERY_NAME = re.compile(r"private-cloud-apk-delivery-([1-9][0-9]{0,15})-([1-9][0-9]{0,3})")
+DELIVERY_ZIP_LIMIT = 131072
+PLAN_LIMIT = 32768
+VOICE_LIMIT = 16384
+DISPATCH_INPUT_LIMIT = 65535
 VARIANTS = ("standalone", "launcher")
 CHECKS = {"consent", "session", "acousticInput", "blueBar", "transcript",
           "audibleSpeakerReply", "mute", "unmute", "stopReleased"}
@@ -63,6 +72,23 @@ def file_sha(file):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+@contextmanager
+def open_bounded(file, limit):
+    # Open once so type, size, hash and archive parsing all refer to the same file.
+    fd = os.open(file, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    with os.fdopen(fd, "rb") as stream:
+        details = os.fstat(stream.fileno())
+        require(stat.S_ISREG(details.st_mode) and 0 < details.st_size <= limit, "Bounded regular evidence file required")
+        yield stream, details.st_size
+
+
+def read_bounded(file, limit):
+    with open_bounded(file, limit) as (stream, size):
+        value = stream.read(limit + 1)
+        require(len(value) == size, "Evidence file length changed")
+        return value
+
+
 def pairs(rows):
     value = {}
     for key, item in rows:
@@ -85,6 +111,28 @@ def encoded(record, field, limit):
     return value
 
 
+def public_private_plan(raw):
+    plan = decode(raw)
+    # CMS delivery needs an operator's private key and is deliberately unsupported.
+    require(isinstance(plan, dict) and plan.get("privateStorage") is not None,
+            "Only existing privateStorage delivery is supported; CMS is not admitted")
+    storage = STORAGE.validate(plan)
+    require(plan.get("updateChannel", {}).get("kind") == "public" and
+            plan.get("purpose") != "private-update-qa-baseline", "Public channel qualification required")
+    require(COMMIT.fullmatch(plan["alphaCommit"]) and COMMIT.fullmatch(plan["sdkCommit"]), "Invalid producer source")
+    return plan, storage
+
+
+def check_signed_receipt(bundle, storage):
+    require(isinstance(bundle, dict) and set(bundle) == {"bucket", "object", "generation", "bytes", "sha256", "public"},
+            "Exact private signing receipt required")
+    require(bundle["bucket"] == STORAGE.BUCKET and bundle["object"] == storage["outputObject"] and
+            isinstance(bundle["generation"], str) and re.fullmatch(r"[1-9][0-9]{0,24}", bundle["generation"]) and
+            type(bundle["bytes"]) is int and 0 < bundle["bytes"] <= STORAGE.MAX_BYTES and
+            isinstance(bundle["sha256"], str) and HEX.fullmatch(bundle["sha256"]) and bundle["public"] is False,
+            "Signed output differs from the reviewed private delivery")
+
+
 def validate(record):
     require(isinstance(record, dict) and set(record) == FIELDS and
             record["schema"] == "alpha-qualified-app-update/v1", "Invalid qualification record")
@@ -93,32 +141,18 @@ def validate(record):
         require(isinstance(record[field], str) and NUMBER.fullmatch(record[field]), "Invalid run or artifact ID")
     require(type(record["signingRunAttempt"]) is int and 0 < record["signingRunAttempt"] < 10000,
             "Exact signing run attempt required")
-    require(type(record["deliveryArtifactBytes"]) is int and 0 < record["deliveryArtifactBytes"] <= 131072,
+    require(type(record["deliveryArtifactBytes"]) is int and 0 < record["deliveryArtifactBytes"] <= DELIVERY_ZIP_LIMIT,
             "Delivery receipt artifact exceeds bound")
     require(isinstance(record["deliveryArtifactSHA256"], str) and HEX.fullmatch(record["deliveryArtifactSHA256"]),
             "Invalid delivery artifact digest")
-    plan_bytes = encoded(record, "signingPlan", 32768)
-    plan = decode(plan_bytes)
-    # CMS delivery needs an operator's private key and is deliberately unsupported.
-    require(isinstance(plan, dict) and plan.get("privateStorage") is not None,
-            "Only existing privateStorage delivery is supported; CMS is not admitted")
-    storage = STORAGE.validate(plan)
-    require(plan.get("updateChannel", {}).get("kind") == "public" and
-            plan.get("purpose") != "private-update-qa-baseline", "Public channel qualification required")
-    require(COMMIT.fullmatch(plan["alphaCommit"]) and COMMIT.fullmatch(plan["sdkCommit"]), "Invalid producer source")
-    bundle = record["signedBundle"]
-    require(isinstance(bundle, dict) and set(bundle) == {"bucket", "object", "generation", "bytes", "sha256", "public"},
-            "Exact private signing receipt required")
-    require(bundle["bucket"] == STORAGE.BUCKET and bundle["object"] == storage["outputObject"] and
-            isinstance(bundle["generation"], str) and re.fullmatch(r"[1-9][0-9]{0,24}", bundle["generation"]) and
-            type(bundle["bytes"]) is int and 0 < bundle["bytes"] <= STORAGE.MAX_BYTES and
-            isinstance(bundle["sha256"], str) and HEX.fullmatch(bundle["sha256"]) and bundle["public"] is False,
-            "Signed output differs from the reviewed private delivery")
+    plan_bytes = encoded(record, "signingPlan", PLAN_LIMIT)
+    plan, storage = public_private_plan(plan_bytes)
+    check_signed_receipt(record["signedBundle"], storage)
     apks = record["signedApkSHA256"]
     require(isinstance(apks, dict) and set(apks) == set(VARIANTS) and
             all(isinstance(value, str) and HEX.fullmatch(value) for value in apks.values()) and
             len(set(apks.values())) == 2, "Exactly two distinct signed APK hashes required")
-    voice_bytes = encoded(record, "cloudVoiceEvidence", 16384)
+    voice_bytes = encoded(record, "cloudVoiceEvidence", VOICE_LIMIT)
     voice = decode(voice_bytes)
     require(isinstance(voice, dict) and set(voice) == {"format", "results"} and
             voice["format"] == "alpha-cloud-voice-qualification-v1" and
@@ -157,8 +191,7 @@ def gh_download(endpoint, destination, size, digest):
             "Downloaded delivery artifact differs from reviewed bytes")
 
 
-def preflight(record, workflow_commit, work, api=gh_json, download=gh_download):
-    plan, plan_bytes, voice_bytes = validate(record)
+def check_signing_run(record, plan, workflow_commit, api):
     require(COMMIT.fullmatch(workflow_commit), "Exact publication workflow commit required")
     for source, producer in ((plan["alphaCommit"], True), (record["signingWorkflowCommit"], False)):
         compared = api(f"repos/{REPOSITORY}/compare/{source}...{workflow_commit}")
@@ -177,25 +210,45 @@ def preflight(record, workflow_commit, work, api=gh_json, download=gh_download):
                 (repo.get("owner") or {}).get("id") == REPOSITORY_OWNER_ID for repo in repos) and
             run.get("path") == ".github/workflows/release-cloud-app-signing.yml" and
             run.get("run_attempt") == record["signingRunAttempt"], "Signing run identity differs")
-    artifact = api(f"repos/{REPOSITORY}/actions/artifacts/{record['deliveryArtifactId']}")
-    provenance = artifact.get("workflow_run") or {}
-    require(artifact.get("id") == int(record["deliveryArtifactId"]) and artifact.get("expired") is False and
-            str(provenance.get("id")) == record["signingRunId"] and provenance.get("head_branch") == "main" and
-            provenance.get("repository_id") == provenance.get("head_repository_id") == REPOSITORY_ID and
-            provenance.get("head_sha") == record["signingWorkflowCommit"] and
-            artifact.get("name") == f"private-cloud-apk-delivery-{record['signingRunId']}-{record['signingRunAttempt']}" and
-            artifact.get("size_in_bytes") == record["deliveryArtifactBytes"] and
-            artifact.get("digest") == "sha256:" + record["deliveryArtifactSHA256"], "Signing delivery artifact identity differs")
-    work.mkdir(mode=0o700, parents=True, exist_ok=False)
-    receipt_zip = work / "delivery.zip"
-    download(f"repos/{REPOSITORY}/actions/artifacts/{record['deliveryArtifactId']}/zip", receipt_zip,
-             record["deliveryArtifactBytes"], record["deliveryArtifactSHA256"])
-    with zipfile.ZipFile(receipt_zip) as archive:
+
+
+def delivery_identity(artifact_id, api):
+    require(isinstance(artifact_id, str) and NUMBER.fullmatch(artifact_id), "Exact delivery artifact ID required")
+    artifact = api(f"repos/{REPOSITORY}/actions/artifacts/{artifact_id}")
+    provenance = artifact["workflow_run"]
+    name = DELIVERY_NAME.fullmatch(artifact["name"])
+    source, size, digest = provenance["head_sha"], artifact["size_in_bytes"], artifact["digest"]
+    require(name and artifact.get("id") == int(artifact_id) and artifact.get("expired") is False and
+            provenance["id"] == int(name[1]) and provenance["head_branch"] == "main" and
+            provenance["repository_id"] == provenance["head_repository_id"] == REPOSITORY_ID and
+            COMMIT.fullmatch(source) and type(size) is int and 0 < size <= DELIVERY_ZIP_LIMIT and
+            re.fullmatch(r"sha256:[0-9a-f]{64}", digest), "Signing delivery artifact identity differs")
+    return {"signingWorkflowCommit": source, "signingRunId": name[1], "signingRunAttempt": int(name[2]),
+            "deliveryArtifactId": artifact_id, "deliveryArtifactBytes": size, "deliveryArtifactSHA256": digest[7:]}
+
+
+def delivery_receipt(file, identity):
+    raw = read_bounded(file, DELIVERY_ZIP_LIMIT)
+    require(len(raw) == identity["deliveryArtifactBytes"] and sha(raw) == identity["deliveryArtifactSHA256"],
+            "Delivery ZIP differs from the official archive")
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
         entries = [entry for entry in archive.infolist() if not entry.is_dir()]
         require(len(entries) == 1 and entries[0].filename == "private-storage-receipt.json" and
                 entries[0].file_size <= 65536 and not entries[0].flag_bits & 1 and
                 stat.S_IFMT(entries[0].external_attr >> 16) in (0, stat.S_IFREG), "Unexpected signing artifact members; CMS is unsupported")
-        require(decode(archive.read(entries[0])) == record["signedBundle"], "Signing run receipt differs from reviewed output")
+        return decode(archive.read(entries[0]))
+
+
+def preflight(record, workflow_commit, work, api=gh_json, download=gh_download):
+    plan, plan_bytes, voice_bytes = validate(record)
+    check_signing_run(record, plan, workflow_commit, api)
+    identity = delivery_identity(record["deliveryArtifactId"], api)
+    require(all(record[field] == value for field, value in identity.items()), "Signing delivery artifact identity differs")
+    work.mkdir(mode=0o700, parents=True, exist_ok=False)
+    receipt_zip = work / "delivery.zip"
+    download(f"repos/{REPOSITORY}/actions/artifacts/{record['deliveryArtifactId']}/zip", receipt_zip,
+             record["deliveryArtifactBytes"], record["deliveryArtifactSHA256"])
+    require(delivery_receipt(receipt_zip, identity) == record["signedBundle"], "Signing run receipt differs from reviewed output")
     (work / "signing-plan.json").write_bytes(plan_bytes)
     (work / "cloud-voice.json").write_bytes(voice_bytes)
     return plan
@@ -245,14 +298,7 @@ def restore_file(root, name, source, size, digest, failure):
             temporary.unlink(missing_ok=True)
 
 
-def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_signed=signed_download):
-    kind = producer_kind(plan)
-    unsigned, signed = work / "producer.zip", work / "signed.tar"
-    fetch_unsigned(plan, unsigned)
-    PRODUCER.admit(unsigned, plan)
-    fetch_signed(plan, record["signedBundle"], signed)
-    require(signed.stat().st_size == record["signedBundle"]["bytes"] and
-            file_sha(signed) == record["signedBundle"]["sha256"], "Signed bundle bytes differ")
+def restore_producer_evidence(unsigned, product, kind):
     with zipfile.ZipFile(unsigned) as archive:
         verified = decode(archive.read("apk-verification.json"))
         debug = PRODUCER.debug_apk_members(archive, verified, kind)
@@ -279,32 +325,104 @@ def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_si
             with archive.open(entry) as content:
                 restore_file(product, "artifacts/" + name, content, entry.file_size, digest,
                              "Producer debug APK bytes differ")
-    signed_apks = {v + "-release.apk" for v in VARIANTS}
+
+
+@contextmanager
+def signed_bundle(signed, receipt, plan, plan_bytes):
+    signed_apks = {variant + "-release.apk" for variant in VARIANTS}
     expected = signed_apks | {"signed.sha256", "signing-plan.json", "production-signer.sha256"}
     if plan.get("rotation") is not None:
         expected.add("rotation.lineage")
-    with tarfile.open(signed, "r:") as archive:
-        members = archive.getmembers()
-        # The exact uncompressed TAR receipt authenticates its member sizes.
-        # APKs may fill that envelope. Metadata keeps the historical ceiling.
-        signed_limit = min(record["signedBundle"]["bytes"], apk_member_limit(kind))
-        metadata_limit = apk_member_limit(HOSTED_DISPATCH)
-        require(len(members) == len(expected) and {item.name for item in members} == expected and
-                all(item.isfile() and 0 < item.size <= (signed_limit if item.name in signed_apks else metadata_limit)
-                    for item in members), "Unexpected signed bundle members")
-        with archive.extractfile("signing-plan.json") as source:
-            require(source.read(32769) == (work / "signing-plan.json").read_bytes(), "Signed bundle plan differs")
-        expected_lines = {f"{record['signedApkSHA256'][v]}  {v}-release.apk" for v in VARIANTS}
-        with archive.extractfile("signed.sha256") as source:
-            checksum = source.read(257)
-        require(len(checksum) <= 256 and set(checksum.decode("ascii").strip().splitlines()) == expected_lines,
-                "Signed checksum receipt differs")
+    with open_bounded(signed, STORAGE.MAX_BYTES) as (stream, size):
+        require(size == receipt["bytes"] and hashlib.file_digest(stream, "sha256").hexdigest() == receipt["sha256"],
+                "Signed bundle bytes differ")
+        stream.seek(0)
+        with tarfile.open(fileobj=stream, mode="r:") as archive:
+            members = list(islice(archive, len(expected) + 1))
+            # The exact uncompressed TAR receipt authenticates its member sizes.
+            # APKs may fill that envelope. Metadata keeps the historical ceiling.
+            signed_limit = min(size, apk_member_limit(producer_kind(plan)))
+            metadata_limit = apk_member_limit(HOSTED_DISPATCH)
+            require(len(members) == len(expected) and {item.name for item in members} == expected and
+                    all(item.isfile() and 0 < item.size <= (signed_limit if item.name in signed_apks else metadata_limit)
+                        for item in members), "Unexpected signed bundle members")
+            entries = {member.name: member for member in members}
+            with archive.extractfile(entries["signing-plan.json"]) as source:
+                require(source.read(PLAN_LIMIT + 1) == plan_bytes, "Signed bundle plan differs")
+            with archive.extractfile(entries["signed.sha256"]) as source:
+                checksum = source.read(257)
+            require(len(checksum) <= 256, "Signed checksum receipt differs")
+            lines = checksum.decode("ascii").strip().splitlines()
+            matches = [re.fullmatch(r"([0-9a-f]{64})  (standalone|launcher)-release\.apk", line) for line in lines]
+            require(len(matches) == len(VARIANTS) and all(matches), "Signed checksum receipt differs")
+            apks = {match[2]: match[1] for match in matches}
+            require(set(apks) == set(VARIANTS), "Signed checksum receipt differs")
+            yield archive, entries, apks
+
+
+def stage(record, plan, work, product, fetch_unsigned=STORAGE.download, fetch_signed=signed_download):
+    unsigned, signed = work / "producer.zip", work / "signed.tar"
+    fetch_unsigned(plan, unsigned)
+    PRODUCER.admit(unsigned, plan)
+    fetch_signed(plan, record["signedBundle"], signed)
+    plan_bytes = read_bounded(work / "signing-plan.json", PLAN_LIMIT)
+    with signed_bundle(signed, record["signedBundle"], plan, plan_bytes) as (archive, entries, apks):
+        require(apks == record["signedApkSHA256"], "Signed checksum receipt differs")
+        restore_producer_evidence(unsigned, product, producer_kind(plan))
         for variant in VARIANTS:
             name = variant + "-release.apk"
-            member = archive.getmember(name)
+            member = entries[name]
             with archive.extractfile(member) as content:
-                restore_file(product, "artifacts/" + name, content, member.size,
-                             record["signedApkSHA256"][variant], "Signed APK bytes differ from qualification")
+                restore_file(product, "artifacts/" + name, content, member.size, apks[variant],
+                             "Signed APK bytes differ from qualification")
+
+
+def prepare_qualification(signing_plan, voice_evidence, signed_tar, delivery_zip, artifact_id, workflow_commit, *, api=gh_json):
+    plan_bytes = read_bounded(signing_plan, PLAN_LIMIT)
+    voice_bytes = read_bounded(voice_evidence, VOICE_LIMIT)
+    plan, storage = public_private_plan(plan_bytes)
+    require(COMMIT.fullmatch(workflow_commit), "Exact publication workflow commit required")
+    main = api(f"repos/{REPOSITORY}/git/ref/heads/main")
+    require(main["ref"] == "refs/heads/main" and main["object"]["type"] == "commit" and
+            main["object"]["sha"] == workflow_commit, "Publication workflow commit is not current Alpha main")
+    identity = delivery_identity(artifact_id, api)
+    check_signing_run(identity, plan, workflow_commit, api)
+    receipt = delivery_receipt(delivery_zip, identity)
+    check_signed_receipt(receipt, storage)
+    with signed_bundle(signed_tar, receipt, plan, plan_bytes) as (archive, entries, apks):
+        for variant in VARIANTS:
+            member = entries[variant + "-release.apk"]
+            with archive.extractfile(member) as content:
+                copy_verified(content, member.size, apks[variant], "Signed APK bytes differ from qualification")
+    record = {"schema": "alpha-qualified-app-update/v1", **identity, "signedBundle": receipt,
+              "signedApkSHA256": apks}
+    for field, raw in (("signingPlan", plan_bytes), ("cloudVoiceEvidence", voice_bytes)):
+        record[field + "Base64"] = base64.b64encode(raw).decode("ascii")
+        record[field + "SHA256"] = sha(raw)
+    validate(record)
+    return record
+
+
+def qualification_input(record, workflow_commit):
+    rendered = json.dumps(record, indent=2) + "\n"
+    inputs = json.dumps({"workflow_commit": workflow_commit, "qualification": rendered}, separators=(",", ":"))
+    require(len(inputs) <= DISPATCH_INPUT_LIMIT,
+            "Qualification exceeds GitHub Actions input size. Use a compact reviewed voice receipt.")
+    return rendered
+
+
+def prepare_cli(argv):
+    parser = argparse.ArgumentParser(description="Prepare an Alpha publication qualification from exact local release evidence")
+    parser.add_argument("--signing-plan", required=True, type=Path)
+    parser.add_argument("--voice-evidence", required=True, type=Path)
+    parser.add_argument("--signed-tar", required=True, type=Path)
+    parser.add_argument("--delivery-zip", required=True, type=Path)
+    parser.add_argument("--delivery-artifact-id", required=True)
+    parser.add_argument("--workflow-commit", required=True)
+    args = parser.parse_args(argv)
+    record = prepare_qualification(args.signing_plan, args.voice_evidence, args.signed_tar,
+                                   args.delivery_zip, args.delivery_artifact_id, args.workflow_commit)
+    sys.stdout.write(qualification_input(record, args.workflow_commit))
 
 
 def main():
@@ -342,6 +460,9 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        if sys.argv[1:2] == ["prepare-qualification"]:
+            prepare_cli(sys.argv[2:])
+        else:
+            main()
     except (ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError, zipfile.BadZipFile, tarfile.TarError):
         raise SystemExit("Qualified update refused; preserve exact input receipts for review. No publication was performed by admission.")
