@@ -31,6 +31,8 @@ Host contract tests need a JDK and the `sqlite3` command-line tool on `PATH`
 for native Calendar queries. Archive builds check SQLite before verification.
 Tests that load the real SDK require the pinned Bun and a prepared SDK; set
 `ALPHA_REQUIRE_PREPARED_SDK=1` to fail instead of skipping when preparation is missing.
+On a heavily loaded machine, `ALPHA_TIMEOUT_SCALE=3` (1–10) scales the SDK
+collector's 120-second test deadline.
 Function proofs require Dafny 4.11.0 on `PATH`; `LEMMA_REQUIRE_BACKEND=1` makes a
 missing backend fail. A generation-only run records a skipped proof. CI installs the
 hash-pinned backend and requires proofs. `npm run quint:changed -- --base=<commit>`
