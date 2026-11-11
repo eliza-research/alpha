@@ -345,8 +345,8 @@ image-preinstalled phone drills remain required for this batch.
 On the machine with the phone, record each [wireless drill](https://github.com/eliza-research/alpha/issues/889)
 with the release APK and its verification manifest available locally. Both captures
 admit the APK against the reviewed `android/release-signer.json` policy. This capture
-requires Android 14 or later for package installer provenance. Keep the phone
-out of idle HOME while taking the baseline so it cannot update before the
+requires Android 14 or later for package installer provenance. Keep Alpha in
+the background while taking the baseline so it cannot update before the
 capture. The baseline command verifies the anonymous offer and its APK.
 
 ```sh
