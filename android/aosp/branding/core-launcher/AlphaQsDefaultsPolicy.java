@@ -12,6 +12,7 @@ public final class AlphaQsDefaultsPolicy {
     public static final String ALPHA = tile(AlphaCoreLauncherPolicy.PACKAGE);
     public static final int VERSION = 3;
     public static final String VERSION_SETTING = "alpha_qs_layout_migration_version";
+    private static final int STOCK_LAYOUT_VERSION = 2;
     // Match saved settings from the retained pre-rename image.
     private static final String LEGACY_ALPHA = tile(String.join(".", "ai", "elizaresearch", "alphaphone"));
     private AlphaQsDefaultsPolicy() {}
@@ -37,7 +38,7 @@ public final class AlphaQsDefaultsPolicy {
     }
 
     public static boolean shouldMigrate(List<String> saved, List<String> defaults, int reviewedVersion) {
-        if (reviewedVersion >= VERSION || !defaults.contains(ALPHA)) return false;
+        if (reviewedVersion >= STOCK_LAYOUT_VERSION || !defaults.contains(ALPHA)) return false;
         for (String stock : Arrays.asList(
                 "internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery",
                 "wifi,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery",

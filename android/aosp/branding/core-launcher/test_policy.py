@@ -152,6 +152,9 @@ public class CoreProbe {
   check(!AlphaQsDefaultsPolicy.shouldMigrate(Collections.emptyList(),defaults,0));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),defaults,3));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy),defaults,3));
+  check(AlphaQsDefaultsPolicy.migrate(list(legacy),defaults,2).equals(list(legacy)));
+  check(AlphaQsDefaultsPolicy.migrate(list(a+","+legacy),defaults,2).equals(list(a+","+legacy)));
+  check(AlphaQsDefaultsPolicy.migrate(list(oldTile+","+legacy),defaults,2).equals(list(a+","+legacy)));
   check(AlphaQsDefaultsPolicy.migrate(list("bt,"+oldTile+",inversion"),defaults,2).equals(list("bt,"+a+",inversion")));
   check(AlphaQsDefaultsPolicy.migrate(list("bt,"+oldTile+","+a),defaults,2).equals(list("bt,"+a)));
   check(AlphaQsDefaultsPolicy.migrate(list("bt,"+oldTile),defaults,3).equals(list("bt,"+oldTile)));
@@ -161,7 +164,7 @@ public class CoreProbe {
 }''')
             subprocess.run([str(JDK/'bin/javac'), '-d', str(d), str(ROOT/'AlphaCoreLauncherPolicy.java'),
                 str(ROOT/'AlphaQsDefaultsPolicy.java'), str(probe)], check=True, capture_output=True)
-            self.assertIn('PASS core and QS policy 30', subprocess.check_output(
+            self.assertIn('PASS core and QS policy 33', subprocess.check_output(
                 [str(JDK/'bin/java'), '-cp', str(d), 'CoreProbe'], text=True))
 
     def test_storage_default_refuses_non_owner_sideloaded_and_existing_modes(self):
