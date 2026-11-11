@@ -39,7 +39,7 @@ class OSAdmission(unittest.TestCase):
                      "targetFingerprint": "Alpha/alpha_stallion_phone/stallion:17/CP2A/pilot:userdebug/test-keys", "buildTimestamp": 1000}
 
     def target(self, name, changes=None):
-        entries = {"META/misc_info.txt": "ab_update=true\navb_vbmeta_key_path=security/avb.pem\navb_vbmeta_algorithm=SHA256_RSA4096\n",
+        entries = {"META/misc_info.txt": "ab_update=true\ntool_extensions=vendor/google_devices/stallion/../common\navb_vbmeta_key_path=security/avb.pem\navb_vbmeta_algorithm=SHA256_RSA4096\n",
                    "META/ab_partitions.txt": "boot\nsystem\n",
                    "META/apkcerts.txt": 'name="Settings.apk" certificate="security/platform.x509.pem" private_key="security/platform.pk8"\n',
                    "SYSTEM/build.prop": "ro.system.build.fingerprint=Android/generic_system/generic:17/fixture\nro.system.build.date.utc=1000\n",
@@ -65,7 +65,7 @@ class OSAdmission(unittest.TestCase):
             with self.subTest(field=field), self.assertRaises(ValueError): ota.validate(plan)
 
     def test_data_partitions_hooks_signer_changes_and_wrong_build_are_refused(self):
-        changes = [{"META/ab_partitions.txt": "boot\nuserdata\n"}, {"META/releasetools.py": "raise RuntimeError('fixture hook')"},
+        changes = [{"META/misc_info.txt": "ab_update=false\n"}, {"META/ab_partitions.txt": "boot\nuserdata\n"}, {"META/releasetools.py": "raise RuntimeError('fixture hook')"},
                    {"META/apkcerts.txt": 'name="Settings.apk" certificate="foreign.x509.pem" private_key="foreign.pk8"\n'},
                    {"PRODUCT/etc/build.prop": "ro.product.build.fingerprint=foreign\nro.product.build.date.utc=1000\n"}]
         for i, change in enumerate(changes):
