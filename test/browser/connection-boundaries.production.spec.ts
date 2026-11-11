@@ -186,7 +186,7 @@ test('production Android without a packaged agent says so and does not advertise
   const alert = dialog.getByText('No on-device agent',{exact:true});
   await expect(alert).toHaveText('No on-device agent');
   await expect(alert).not.toContainText(/remote agent|pair/i);
-  await expect(dialog.getByText('Not running', { exact: true }).last()).toBeVisible();
+  await expect(dialog.getByText('Off', { exact: true }).last()).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Use local apps without AI', exact: true })).toHaveCount(0);
   expect((await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method)).not.toContain('start');
@@ -199,10 +199,10 @@ for (const [start, text] of [['reject', 'Local agent failed to start.'], ['start
     await page.goto('/');
     await completeAccessSetup(page);
     await expect.poll(async () => (await nativeCalls(page)).filter(call => call.plugin === 'Agent').map(call => call.method), {timeout:30_000}).toContain('start');
-    // P-43: a failed start opens no gate; Your agent shows Not running with Retry and the failure.
+    // P-43: a failed start opens no gate; Status shows Agent Off with Retry and the failure.
     await expect(page.getByRole('button', { name: 'Notes', exact: true })).toBeVisible();
     const dialog = await openYourAgent(page);
-    await expect(dialog.getByText('Not running', { exact: true }).last()).toBeVisible();
+    await expect(dialog.getByText('Off', { exact: true }).last()).toBeVisible();
     await expect(dialog.getByText(text,{exact:true})).toContainText(text);
     await expect(dialog.getByText(text,{exact:true})).not.toContainText(/pair/i);
     await expect(dialog.getByRole('button', { name: 'Retry', exact: true })).toBeEnabled();
@@ -246,9 +246,9 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     }
     // This bridge has no sign-in readiness service. Its automatic refusal must not erase
     // the completed sign-out receipt or turn an unconfirmed revocation into success.
-    await expect(page.getByRole('alert').filter({hasText:'Eliza Cloud sign-in is unavailable.'})).toBeVisible();
+    await expect(page.getByRole('alert').filter({hasText:/^Unavailable$/})).toBeVisible();
     const status = page.locator('.alpha-connection').getByRole('status').filter({ hasText: /Signed out|sign-in token was removed/ });
-    if (mode === 'revoked') await expect(status).toContainText('Signed out.');
+    if (mode === 'revoked') await expect(status).toHaveText('Signed out');
     else {
       await expect(status).toContainText('Signed out here only');
       await expect(page.getByText(/was revoked/)).toHaveCount(0);
@@ -267,9 +267,10 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     if (mode !== 'cancelled') expect(stop).toBeLessThan(calls.indexOf(revocations[0]));
     expect(await secureValues(page)).not.toHaveProperty('cloud:production');
     await expect(page.getByRole('main', { name: 'Alpha', exact: true }).getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
-    // P-43: sign-out unbinds inference only; the resident restarted and the outcome says so.
-    if (mode !== 'cancelled') await expect(status).toContainText('Your agent is running. Sign in to Eliza Cloud to turn AI back on.');
+    // P-43: sign-out unbinds inference only. Observe the actual new resident start
+    // and its subsequent owner handshake instead of the former explanatory copy.
     await expect.poll(async () => (await nativeCalls(page)).slice(before).filter(call => call.plugin === 'Agent' && call.method === 'start').length).toBeGreaterThan(0);
+    await expect.poll(async()=>{const current=await nativeCalls(page),lastStart=current.findLastIndex(call=>call.plugin==='Agent'&&call.method==='start');return lastStart>=before&&current.slice(lastStart+1).some(call=>call.plugin==='Agent'&&call.method==='request'&&call.path==='/api/auth/me');}).toBe(true);
     await page.reload();
     // Signed out after a restart: the sign-in dialog opens by itself while the resident runs.
     await expect(page.getByRole('main', { name: 'Alpha', exact: true })).toBeVisible();
@@ -487,7 +488,7 @@ test('passive deletion failures stay quiet; known pending failures preserve sett
     Object.assign(banner.style, { top: `${rect.top}px`, left: `${rect.left}px`, right: 'auto', bottom: 'auto', width: `${rect.width}px` });
   });
   await signout.click();await confirmCloudSignOut(page);
-  await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out.');
+  await expect(page.locator('.alpha-connection').getByRole('status')).toContainText('Signed out');
   await expect(notice).toHaveCount(0);
 });
 

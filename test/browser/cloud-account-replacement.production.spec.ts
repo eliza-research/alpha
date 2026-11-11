@@ -51,7 +51,7 @@ test('signing out of account A and into account B stops the resident before A is
   const signOut = await stub(page, s => s.order.length) as number;
   // Sign in as B.
   await setStub(page, { nextToken: B.token });
-  await enterNativeEmailCode(page);
+  await enterNativeEmailCode(page,undefined,{checkLayout:true});
   await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0, { timeout: 30_000 });
   await completeAccessSetup(page);
 
@@ -120,7 +120,7 @@ test('a second sign-in over a saved key uses the native replacement result witho
   // P-43: the resident starts signed out; sign-in is offered from Settings › Agent connection.
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   let welcome = await openYourAgent(page);
-  await enterNativeEmailCode(page);
+  await enterNativeEmailCode(page,undefined,{checkLayout:true});
   await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0, { timeout: 30_000 });
   await completeAccessSetup(page);
   expect(await stub(page, s => s.order.filter((entry: string) => entry.startsWith('revoke')))).toEqual([]);
@@ -130,9 +130,9 @@ test('a second sign-in over a saved key uses the native replacement result witho
   // The resident starts again with AI off; Your agent says the saved sign-in is no longer valid.
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   welcome = await openYourAgent(page);
-  await expect(welcome.getByText('Sign in to Eliza Cloud again to turn AI back on.', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(welcome.getByRole('alert')).toHaveText('Sign-in expired', { timeout: 30_000 });
   await expect(welcome).not.toContainText(/pair/i);
-  await enterNativeEmailCode(page);
+  await enterNativeEmailCode(page,undefined,{checkLayout:true});
   await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0, { timeout: 30_000 });
   await completeAccessSetup(page);
   const order = await stub(page, s => s.order) as string[];
