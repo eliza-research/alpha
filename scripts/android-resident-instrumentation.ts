@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Drives ResidentEgressRedactionInstrumentedTest on a disposable emulator in a fresh secondary user.
+// Drives ResidentServiceInstrumentedTest on a disposable emulator in a fresh secondary user.
 // Usage: ALPHA_RESIDENT_DISPOSABLE_EMULATOR=1 ANDROID_SERIAL=<fresh arm64 emulator, >=4 GB RAM> node scripts/android-resident-instrumentation.ts <app.apk> <androidTest.apk>
-// Removes the fixture user afterwards.
+// RESIDENT_TEST selects the class (default: the egress redaction test). Removes the fixture user afterwards.
 // Emulator evidence only; not physical-device or image acceptance.
 import {execFileSync} from 'node:child_process';
 import {createHash, randomUUID} from 'node:crypto';
@@ -20,8 +20,8 @@ admitResidentEmulator(process.env, adb);
 const sha = (buf: Buffer) => createHash('sha256').update(buf).digest('hex');
 const entry = (name: string) => execFileSync('unzip', ['-p', apk, name], {maxBuffer: 1 << 30});
 const runId = randomUUID();
-const test = `${pkg}.ResidentEgressRedactionInstrumentedTest`;
-const proofFile = 'files/resident-redaction-complete.json';
+const test = process.env.RESIDENT_TEST || `${pkg}.ResidentEgressRedactionInstrumentedTest`;
+const proofFile = test.includes('ResidentEgressRedaction') ? 'files/resident-redaction-complete.json' : 'files/resident-service-complete.json';
 const keyPath = path.join(os.homedir(), '.config/alphaphone/cerebras-key');
 if ((fs.statSync(keyPath).mode & 0o077) !== 0) throw Error('Provider key must be owner-only');
 const bun = sha(entry('lib/arm64-v8a/libeliza_bun.so'));
