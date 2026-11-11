@@ -28,7 +28,18 @@ public class Build {
   }
 }`,
     'android/content/ComponentName.java': `package android.content;
-public class ComponentName {}`,
+public class ComponentName {
+ public ComponentName() {}
+ public ComponentName(Object context,Class<?> type) {}
+ public static ComponentName unflattenFromString(String value){throw new AssertionError("No selected keyboard in this fixture");}
+}`,
+    'android/content/ContentResolver.java': `package android.content; public class ContentResolver {}`,
+    'android/provider/Settings.java': `package android.provider;
+public final class Settings {public static final class Secure {
+ public static final String DEFAULT_INPUT_METHOD="default_input_method";
+ public static String getString(Object resolver,String key){return null;}
+}}`,
+    'ai/elizaresearch/alphaphone/AlphaKeyboardDictationService.java': `package ai.elizaresearch.alphaphone; public final class AlphaKeyboardDictationService {}`,
     'android/content/Intent.java': `package android.content;
 public class Intent {
   public static final String ACTION_MAIN = "android.intent.action.MAIN",
@@ -472,6 +483,8 @@ public class BridgeActivity {
   public androidx.lifecycle.Lifecycle getLifecycle(){return new androidx.lifecycle.Lifecycle();}
   public void onStart() {}
   public void onResume() {}
+  public void onStop() {}
+  public android.content.ContentResolver getContentResolver(){return new android.content.ContentResolver();}
   public void onConfigurationChanged(android.content.res.Configuration value) {}
   public void onNewIntent(android.content.Intent value) {}
   public void onWindowFocusChanged(boolean value) {}

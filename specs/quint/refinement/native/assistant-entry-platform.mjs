@@ -123,7 +123,6 @@ public record Icon(int id) {public static Icon createWithResource(android.conten
   public boolean copyLoadIntent;
   public String getLaunchedFromPackage(){return launchedFrom;}
   public void onPause(){}
-  public void onStop(){}
   public void onNewIntent(android.content.Intent intent,android.app.ComponentCaller caller){onNewIntent(intent);}`);
     edit(activity,'    onNewIntent(getIntent());',`    ai.elizaresearch.alphaphone.AssistantEntryTraces.beforeBridgeReentry(this);
     onNewIntent(copyLoadIntent ? new android.content.Intent(getIntent()) : getIntent());`);

@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "b8ce8efae2fa3cf5fd4a302aa772d19b3d3e8c54a398378447f62e40ae40605f",
+  "ledgerSha256": "ef49f5fe1a177a96d80b18f4a6927d665211f3cab5c902174a6e321cab53b00f",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,8 +29,8 @@
     "languageReview": 90,
     "parseErrors": 0,
     "candidates": 67730,
-    "writeSites": 67501,
-    "writeAssociations": 60469,
+    "writeSites": 67504,
+    "writeAssociations": 60472,
     "asynchronous": 8409,
     "unassignedWrites": 10405
   },
@@ -33694,7 +33694,7 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "f7f5e46cf2d985fbd742492b3b4d3a6faff7142e65517e276990598d8f3fe06f",
+      "sha256": "11b5cc3b2e411a7c11d7ef41445e07011e8b64d6d681121e764b702ec4eb6930",
       "allocatedModels": [
         "WorkflowExecution",
         "ReminderOpenIntent",
@@ -33717,7 +33717,7 @@
           "owner": "installAutomationsAdapter",
           "line": 45,
           "bindings": 44,
-          "writes": 227
+          "writes": 230
         },
         {
           "owner": "installAutomationsAdapter.preloadHome",
@@ -39391,7 +39391,7 @@
     },
     {
       "path": "apps/app/src/prototype/notes-trash-adapter.ts",
-      "sha256": "61482de078a799503ffa56f4675ea121484863b064797d72efb6e5a6f5816a31",
+      "sha256": "5584e9d26b91cecb1ba1bc66a96ae9e5ed7a5ad12fa56839c5a5f44c83fb5da1",
       "allocatedModels": [
         "NotesLifecycle",
         "NotesTrashReadPublication"
@@ -43452,7 +43452,7 @@
     },
     {
       "path": "apps/app/src/runtime/home-calendar-selection.ts",
-      "sha256": "7d9847072af0a8d9b743fa5d46046270fd88ca5cdd498b11e218b5603ae6b566",
+      "sha256": "20f9552ec16fa09e19809f7aaca029d6cd64d6b177d646fe277892d849d8a320",
       "allocatedModels": [
         "CalendarPresentation"
       ],
@@ -43461,7 +43461,7 @@
       "owners": [
         {
           "owner": "homeCalendarSelection",
-          "line": 76,
+          "line": 77,
           "bindings": 1,
           "writes": 1
         }
@@ -221476,6 +221476,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "608d253b751d8b38bb6336389800a0f67fab7f84f29604f680a4e450800ecf46"
+    "sha256": "52c157c74911ba8bb38989d997d16d758146b8f2b1f6707d631196df99754381"
   }
 }

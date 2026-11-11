@@ -1,3 +1,14 @@
+import {checkCalendarActionReview} from './calendar-action-review.mjs';
+import {checkMailComposerPresentation} from './mail-composer-presentation.mjs';
+import {checkSavedServiceRead} from './saved-service-read.mjs';
+import {checkMailDraftSelection} from './mail-draft-selection.mjs';
+import {checkWorkflowRecoverySelection} from './workflow-recovery-selection.mjs';
+import {checkHomeAutomationsRead} from './home-automations-read.mjs';
+import {checkVoiceTranscriptFollow} from './voice-transcript-follow.mjs';
+import {checkAccountSheet} from './account-sheet.mjs';
+import {checkMailSelection} from './mail-selection.mjs';
+import {checkNotesStartupCache} from './notes-startup-cache.mjs';
+import {checkContentLinks} from './content-links.mjs';
 import {checkCalendarFormControls} from './calendar-form-controls.mjs';
 import {checkSettingsPageFocus} from './settings-page-focus.mjs';
 import {checkKeyboardFocus} from './keyboard-focus.mjs';
@@ -101,7 +112,7 @@ import {checkStartupUpdateAdmission} from './startup-update-admission.mjs';
 import {checkCanonicalNotificationTapAdmission} from './canonical-notification-tap-admission.mjs';
 import {checkResidentLiveness} from './resident-liveness.mjs';
 
-const adapters = [checkCalendarFormControls, checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
+const adapters = [checkCalendarActionReview, checkMailComposerPresentation, checkSavedServiceRead, checkMailDraftSelection, checkWorkflowRecoverySelection, checkHomeAutomationsRead, checkVoiceTranscriptFollow, checkAccountSheet, checkMailSelection, checkNotesStartupCache, checkContentLinks, checkCalendarFormControls, checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
