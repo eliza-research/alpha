@@ -81,7 +81,9 @@ test("the overlay sets default HOME, assistant and Autofill offer additively", t
 test("stage-aosp gates the overlay behind --production, never with --development", () => {
   const source = fs.readFileSync("scripts/stage-aosp.ts", "utf8");
   assert.match(source, /if \(production && development\) throw/);
-  assert.match(source, /const tree = execFileSync\(tool\("aapt"\), \["dump", "xmltree", apk, "AndroidManifest\.xml"\]/);
+  assert.match(source, /if \(reviewed\.apkSha256 !== hash\)/);
+  assert.match(source, /const stagedLauncher = path\.join\(output, "Launcher\.apk"\);/);
+  assert.match(source, /const tree = execFileSync\(tool\("aapt"\), \["dump", "xmltree", stagedLauncher, "AndroidManifest\.xml"\]/);
   assert.match(source, /assertImageLauncherManifest\(tree, production\);/);
   assert.match(source, /if \(production\) \{\n  const components = provisioningComponents\(tree, identity\.appId, \{assistant: false\}\);/);
 });

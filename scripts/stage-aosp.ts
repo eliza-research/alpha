@@ -217,8 +217,6 @@ const cameraSource = source || !development
   ? verifySecureCameraSource(source, undefined, cameraOverrides)
   : { sourceVerified: false, imageVerified: false, lockedCaptureVerified: false, deviceAcceptanceVerified: false, reason: "Development staging without reviewed AOSP source" };
 const env = androidEnv();
-const tree = execFileSync(tool("aapt"), ["dump", "xmltree", apk, "AndroidManifest.xml"], { encoding: "utf8", env, maxBuffer: 64 << 20 });
-assertImageLauncherManifest(tree, production);
 if (!descriptor) {
   if (!development)
     throw new Error(
@@ -255,6 +253,8 @@ if (
   reviewed.moduleName !== identity.moduleName
 )
   throw new Error("Descriptor does not belong to this product");
+if (reviewed.apkSha256 !== hash)
+  throw new Error("Launcher descriptor hash differs from the admitted APK");
 const destination = path.resolve(get("--output") || `artifacts/aosp/${identity.slug}-${hash.slice(0, 12)}`);
 // Every product is staged in a sibling temporary directory (same filesystem, so the rename is atomic)
 // and published only after the last check; a refusal leaves the destination absent.
@@ -263,12 +263,14 @@ fs.mkdirSync(path.dirname(destination), {recursive:true});
 const temporary = fs.mkdtempSync(path.join(path.dirname(destination), `.${physical ? 'pixel10a' : cuttlefish ? 'cuttlefish' : identity.slug}-stage-`));
 const output = path.join(temporary, 'overlay');
 try {
+const admittedDescriptor = path.join(temporary, 'launcher-descriptor.json');
+fs.writeFileSync(admittedDescriptor, JSON.stringify(reviewed));
 execFileSync(
   "node",
   [
     "vendor/eliza/packages/os/scripts/android/stage-launcher-overlay.ts",
     "--descriptor",
-    path.resolve(descriptor),
+    admittedDescriptor,
     "--apk",
     path.resolve(apk),
     "--output",
@@ -281,6 +283,9 @@ execFileSync(
   ],
   { stdio: "inherit", env },
 );
+const stagedLauncher = path.join(output, "Launcher.apk");
+const tree = execFileSync(tool("aapt"), ["dump", "xmltree", stagedLauncher, "AndroidManifest.xml"], { encoding: "utf8", env, maxBuffer: 64 << 20 });
+assertImageLauncherManifest(tree, production);
 fs.appendFileSync(path.join(output, "product.mk"), clockProductRequirement);
 // The image system feature Alpha Phone requires, with a system-partition install, before it offers
 // Phone, Contacts or SMS (P-36). Every image declares it, but the app also requires a release
@@ -308,9 +313,9 @@ if (listenerApk) {
   if (!listener.speechIncluded) console.warn("Development listener will report SPEECH_UNAVAILABLE on the image.");
   console.log(`Always-on listener staged: ${identity.appId}.sense (privileged, no network). Grants, indicator and invocation are image-boot evidence, not staging evidence.`);
 }
-if (cuttlefish) writeCuttlefishNatives({root:process.cwd(), output, apk, module:identity.moduleName});
+if (cuttlefish) writeCuttlefishNatives({root:process.cwd(), output, apk:stagedLauncher, module:identity.moduleName});
 if (physical) {
-  writePixel10aProduct({root:process.cwd(), output, apk, identity, launcher:reviewed, sourceEvidence:physicalSource, production, bootAnimation:get('--boot-animation'), vendorApi});
+  writePixel10aProduct({root:process.cwd(), output, apk:stagedLauncher, identity, launcher:reviewed, sourceEvidence:physicalSource, production, bootAnimation:get('--boot-animation'), vendorApi});
 }
 if (fs.existsSync(destination)) throw Error('Output appeared during staging: ' + destination);
 fs.renameSync(output, destination);
