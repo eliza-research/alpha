@@ -2051,6 +2051,28 @@ public final class UpdateFlowTest {
     "idle audio and the applicable call-state authority admit one automatic replacement: "+authority);
   }
  }
+ private static void automaticCallReadRequiresAuthorityBeforeAndAfter(File cache)throws Exception{
+  var ready=AlphaDevicePlugin.class.getDeclaredMethod("automaticUpdateReady");
+  ready.setAccessible(true);
+  Context context=installing(cache);context.imageAdmitted=true;context.calls.defaultDialer=null;
+  context.phoneStateGranted=true;context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_IGNORED;
+  context.calls.active=true;context.calls.readDenied=true;
+  context.calls.afterRead=()->context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_ALLOWED;
+  AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  check(!(Boolean)ready.invoke(owner),"a call-state grant observed only after a denied read cannot prove idle");
+  check(context.calls.reads==0,"an unauthorized call-state observation is skipped");
+
+  context.calls.active=false;context.calls.readDenied=false;
+  context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_ALLOWED;
+  context.calls.afterRead=()->context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_IGNORED;
+  check(!(Boolean)ready.invoke(owner),"losing the call-state grant during an idle read defers");
+  check(context.calls.reads==1,"the in-flight authorized read cannot outlive its grant");
+
+  context.appOps.phoneStateMode=android.app.AppOpsManager.MODE_ALLOWED;
+  context.calls.afterRead=()->{};
+  check(automatic(owner).resolved.get()==1&&context.packages.installer.committed.size()==1,
+   "the next idle check with a stable call-state grant admits one automatic replacement");
+ }
  private static void automaticUpdatesRecheckUseAfterDownloadAndBeforeCommit(File cache)throws Exception{
   for(String cut:List.of("download-focus","staging-background","stop-focus","stop-stock-call","stop-call","stop-call-unknown")){
    Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);AlphaLocalAgentPlugin.stops=0;
@@ -2254,6 +2276,7 @@ public final class UpdateFlowTest {
    automaticDraftRefusalNeverStopsOrCommits(cache);
    automaticModeIsStrictAndExplicitFalseKeepsManualBehavior(cache);
    automaticUpdatesRequireForegroundUnlockedMainAndIdleCallState(cache);
+   automaticCallReadRequiresAuthorityBeforeAndAfter(cache);
    automaticUpdatesRecheckUseAfterDownloadAndBeforeCommit(cache);
    System.out.println("PASS automatic call deferral protects stock and image installs before download and commit");
    verifiedAutomaticCacheAvoidsRedownloadButNeverBypassesAdmission(cache);

@@ -272,7 +272,9 @@ public final class AlphaDevicePlugin extends Plugin {
    if(audio==null||audio.getMode()!=android.media.AudioManager.MODE_NORMAL)return false;
    if(!AlphaImageCapability.verified(context))return true;
    android.telecom.TelecomManager calls=context.getSystemService(android.telecom.TelecomManager.class);
-   return calls!=null&&!calls.isInCall()&&canReadUpdateCallState(context,calls);
+   // A grant arriving after Telecom returned false cannot authenticate that read.
+   if(calls==null||!canReadUpdateCallState(context,calls)||calls.isInCall())return false;
+   return canReadUpdateCallState(context,calls);
   }catch(RuntimeException unknown){return false;}
  }
  /** Telecom can report false when phone-state access is denied. Only use a negative with known access. */
