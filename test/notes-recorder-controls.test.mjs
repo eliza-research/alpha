@@ -53,7 +53,7 @@ test('the recorder surface has a named Stop action and no provider-branded trans
  assert.ok(start>=0&&end>start);assert.match(view,/>Voice note<\/h2>/);assert.match(view,/notes\.noteRecorder\.doneLabel/);
  assert.doesNotMatch(view,/transcribe|Cartesia|Cerebras|notes\.noteRecorder\.transcript/i);
  assert.equal((view.match(/onClick="\{\{notes\.noteRecorder\.discard\}\}"/g)||[]).length,1);
- assert.match(template,/aria-label="Record voice note" onClick="\{\{notes\.record\}\}"/);
+ assert.match(template,/aria-label="Record voice note"[^>]*onClick="\{\{notes\.record\}\}"/);
 });
 
 test('Copy text preserves the full transcript and refuses a changed source note',async()=>{

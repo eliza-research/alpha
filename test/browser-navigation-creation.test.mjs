@@ -20,7 +20,7 @@ test('time-like digit:digit input searches while real host:port, IPv4 and IPv6 s
 
 test('cancelled approved new-tab creation closes its orphan and never navigates',async()=>{const h=harness(),abort=new AbortController();const task=h.navigate('https://example.com',true,abort.signal);abort.abort();h.release();await assert.rejects(task);assert.equal(h.navigations.length,0);assert.equal(h.closed.length,1);assert.equal(h.tabs.ids().length,0);});
 
-const commandSource=stripTypeScriptTypes(source.slice(source.indexOf('    this.browserCommand = async'),source.indexOf('    this.browserNavigateApproved =')),{mode:'strip'});
+const commandSource=stripTypeScriptTypes(source.slice(source.indexOf('    this.browserCommand = async'),source.indexOf('    const openContentTab =')),{mode:'strip'});
 function commandHarness(){let selected='owned',navigation='nav-1',activeView='browser',disposed=false;const calls=[];const info={navigation:'nav-1',committed:true,error:'',loading:false};const metadata=new Map([['owned',info]]);const state=()=>({cur:selected});
  const context={parseNativeHistoryCommand,Capacitor:{isNativePlatform:()=>true},document:{hidden:false},session:'native-session',get disposed(){return disposed;},shell:{S:()=>({view:activeView})},state,metadata,tabInfo:id=>metadata.get(id),tabs:{has:id=>id==='owned'},Browser:{async command(input){calls.push(input);return {session:'native-session',id:selected};}}};
  const execute=vm.runInNewContext('(function(){'+commandSource+';return this.browserCommand;}).call({})',context);return {execute,calls,metadata,tab:()=>selected='foreign',view:()=>activeView='notes',dispose:()=>disposed=true};}
@@ -54,7 +54,7 @@ test('private and unconfirmed page events never add browsing history',()=>{
 
 // Both the manual and approved paths execute the adapter's existing navigate().
 // The bridge is deterministic here; no website, model or device is contacted.
-const approvedSource=stripTypeScriptTypes(source.slice(source.indexOf('    this.browserNavigateApproved ='),source.indexOf('    // Identity only:')),{mode:'strip'});
+const approvedSource=stripTypeScriptTypes(source.slice(source.indexOf('    const openContentTab ='),source.indexOf('    // Identity only:')),{mode:'strip'});
 function approvedHarness({native=false,deferred=false,failNavigate=false}={}){
  let release,disposed=false,creations=0;
  const pending=deferred?new Promise(resolve=>{release=resolve;}):Promise.resolve();
