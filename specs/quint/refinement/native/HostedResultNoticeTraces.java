@@ -16,7 +16,7 @@ public final class HostedResultNoticeTraces {
  private static final String SECRET = "synthetic retained result contents";
  private static final Set<String> ROUTE_FIELDS = Set.of(
   "origin", "ownerId", "agentId", "scope", "runId", "workflowId", "workflowVersionId");
- private static final Set<String> DURABLE_FIELDS = union(ROUTE_FIELDS, "key", "digest", "createdAt", "phase");
+ private static final Set<String> DURABLE_FIELDS = union(ROUTE_FIELDS, "key", "digest", "dispatchId", "createdAt", "phase");
  private static final Set<String> READ_FIELDS = union(ROUTE_FIELDS, "key", "token", "retained", "question");
 
  private static Set<String> union(Set<String> fields, String... other) {
@@ -60,7 +60,7 @@ public final class HostedResultNoticeTraces {
   final Map<String, String> slots = new HashMap<>();
   final Map<String, Integer> tokens = new LinkedHashMap<>();
   final Map<String, Integer> postCount = new HashMap<>();
-  final Set<String> active = new LinkedHashSet<>();
+  final Map<String,String> active = new LinkedHashMap<>();
   final List<String> cancels = new ArrayList<>();
   final Map<Integer, JSONObject> routes = new LinkedHashMap<>();
   final Trace trace;
@@ -100,17 +100,19 @@ public final class HostedResultNoticeTraces {
   }
 
   @Override public boolean allowed() { return allowed; }
-  @Override public boolean active(String tag) { return active.contains(tag); }
+  @Override public boolean active(String tag,String dispatchId) { return dispatchId.equals(active.get(tag)); }
 
-  @Override public void post(String tag) {
+  @Override public void post(String tag,String dispatchId,String title,boolean silent) {
    JSONObject durable = readObject(HostedResultNotices.LEDGER).getJSONObject(tag);
    check(durable.keySet().equals(DURABLE_FIELDS), "Only redacted route metadata reaches durable dispatch");
    check(tag.equals(durable.getString("key")) && tag.matches("[a-f0-9]{64}"), "Opaque exact notification tag");
    check(durable.getString("phase").equals("dispatching"), "Durable dispatch marker precedes OS effect");
+   check(dispatchId.equals(durable.getString("dispatchId")) && !dispatchId.equals(durable.getString("digest")),
+    "OS readback binds an opaque marker rather than retained contents");
    if (stopBeforePost) throw new Fault();
    if (denyPost) throw new SecurityException("Synthetic Android denial");
    postCount.merge(tag, 1, Integer::sum);
-   active.add(tag);
+   active.put(tag,dispatchId);
   }
 
   @Override public void cancel(String tag) {
@@ -229,7 +231,7 @@ public final class HostedResultNoticeTraces {
     String key = key(route), stored = read("hosted-digests:v1:" + route.getString("scope") + ":" + route.getString("runId"));
     retained.put(new JSONArray().put(id).put(stored == null ? 0 : new JSONObject(stored).getInt("revision")));
     counts.put(new JSONArray().put(id).put(postCount.getOrDefault(key, 0)));
-    if (active.contains(key)) posted.put(id);
+    if (active.containsKey(key)) posted.put(id);
     JSONObject row = entries.optJSONObject(key);
     phases.put(new JSONArray().put(id).put(row == null ? "none" : row.getString("phase")));
     int digest = 0;
@@ -331,7 +333,7 @@ public final class HostedResultNoticeTraces {
    f.point("withdraw", nextOwner, "cancel");
    PluginCall hidden = bridgeCall(bridge, new JSONObject(), bridge::pendingResult);
    check(hidden.result.isEmpty(), "Prior owner's route hidden through product bridge");
-   check(f.active.contains(key(f.routes.get(1))), "Synthetic prior notification still visible after refused cancel");
+   check(f.active.containsKey(key(f.routes.get(1))), "Synthetic prior notification still visible after refused cancel");
    check(f.readObject(HostedResultNotices.PENDING).getString("token").equals(token), "Old pending token durable");
    f.stutter("unlocked bridge readback is empty even while old token and notification survive");
 
@@ -342,13 +344,13 @@ public final class HostedResultNoticeTraces {
    check(settle.rejected, "A foreign exact token cannot settle through an unlocked current bridge");
    check(beforeLedger.similar(f.readObject(HostedResultNotices.LEDGER)) &&
     beforePending.similar(f.readObject(HostedResultNotices.PENDING)) && beforeCancels.equals(f.cancels) &&
-    f.active.contains(key(f.routes.get(1))), "Foreign settlement changes neither durable state nor visible notice");
+    f.active.containsKey(key(f.routes.get(1))), "Foreign settlement changes neither durable state nor visible notice");
    f.outcome = "rejected";
    if (question) f.point("release", 1, true);
    else f.point("consume", 1, "complete");
 
    PluginCall retry = bridgeCall(bridge, new JSONObject().put("owner", requestedOwner), bridge::withdrawOtherOwnerApprovalNotices);
-   check(!retry.rejected && f.readObject(HostedResultNotices.PENDING).isEmpty() && !f.active.contains(key(f.routes.get(1))),
+   check(!retry.rejected && f.readObject(HostedResultNotices.PENDING).isEmpty() && !f.active.containsKey(key(f.routes.get(1))),
     "The existing withdrawal retry owns cleanup");
    f.outcome = "withdrawn";
    f.point("withdraw", nextOwner, "complete");
@@ -375,7 +377,7 @@ public final class HostedResultNoticeTraces {
    JSONObject row = new JSONObject(route.toString()).put("key", tag).put("createdAt", i).put("phase", "posted")
     .put("digest", HostedResultNotices.hash(result(route, 1).toString()));
    rows.put(tag, row);
-   f.active.add(tag);
+   f.active.put(tag,row.getString("digest"));
    if (i == 1) first = tag;
    if (i == 2) second = tag;
   }
@@ -387,7 +389,7 @@ public final class HostedResultNoticeTraces {
   JSONObject retained = f.readObject(HostedResultNotices.LEDGER);
   return new JSONObject().put("rows", retained.length())
    .put("pendingKept", retained.has(first) && first.equals(f.ledger.peek().getString("key")))
-   .put("oldestUnclaimedRemoved", !retained.has(second) && f.cancels.equals(List.of(second)) && !f.active.contains(second));
+   .put("oldestUnclaimedRemoved", !retained.has(second) && f.cancels.equals(List.of(second)) && !f.active.containsKey(second));
  }
 
  public static void main(String[] args) throws Exception {
@@ -439,6 +441,12 @@ public final class HostedResultNoticeTraces {
   uncertain.recreate(); uncertain.publish(2, "complete"); uncertain.retain(3, 1); uncertain.publish(3, "security");
   uncertain.publish(3, "complete"); uncertain.capture(3, false, true);
   traces.put(uncertain.trace.value);
+
+  Fixture replacement = new Fixture("interrupted-replacement-cannot-adopt-the-older-post");
+  replacement.postFirst(); replacement.capture(1, true, true); replacement.retain(1, 2);
+  replacement.publish(1, "before-write"); replacement.publish(1, "before-post");
+  replacement.recreate(); replacement.publish(1, "complete");
+  traces.put(replacement.trace.value);
 
   Fixture consume = new Fixture("consume-partial-writes-and-cancel-failure");
   consume.postFirst(); consume.capture(1, false, true); consume.consume(1, "ledger");
