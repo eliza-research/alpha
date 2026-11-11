@@ -226,7 +226,7 @@ export async function checkNativeUpdateStaging(extraSources = []) {
     rmSync(temporary,{recursive:true,force:true});
   }
 
-  const receipt = await checkTraces({model,traces,sources,driverHashes,scope:'bounded-orchestration',assumptions:[
+  const receipt = await checkTraces({model,traces,sources,driverHashes,batchSize:8,scope:'bounded-orchestration',assumptions:[
     'Actual native manifest transport and exact Settings review/cache functions execute through synthetic responses. The checked Settings tuple is passed to the JVM installer before the first activation event.',
     'Controlled HTTPS, fake archive metadata and an installer sink expose actual cache bytes, digest admission, file custody, precommit copy and cleanup. The fixture refuses each staged update before resident stop or commit.',
     'Direct copyVerified probes substitute only the download clock so the fixture can place a body chunk or EOF at the deadline. Late body bytes are rejected and late EOF can verify bytes already read. Full install traces use the real clock and production deadline.',
