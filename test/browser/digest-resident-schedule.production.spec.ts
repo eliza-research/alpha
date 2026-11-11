@@ -18,8 +18,9 @@ const SNAPSHOT = 'Pick up the parcel\nCall the plumber about the sink';
 const panel = (page: Page) => page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
 const posts = (page: Page) => harness(page, f => f.digests.posts) as Promise<{ path: string; body: any }[]>;
 const schedules = (page: Page) => panel(page).getByRole('region', { name: 'Digest schedules' }).getByRole('listitem');
+const reviewSection = (page: Page) => panel(page).locator('section', { has: page.getByRole('heading', { name: 'Review', exact: true }) });
 async function confirmReview(page: Page, summary: string | RegExp) {
-  const review = panel(page).locator('section', { has: page.getByRole('heading', { name: 'Review', exact: true }) });
+  const review = reviewSection(page);
   await expect(review).toContainText(summary);
   await review.getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(panel(page).getByRole('heading', { name: 'Review', exact: true })).toHaveCount(0);
@@ -56,6 +57,7 @@ test('loop D on Android: a reviewed snapshot, morning and evening schedules, a l
   await digests.getByRole('combobox', { name: 'Reviewed source', exact: true }).selectOption(source.id);
   await digests.getByLabel('Morning', { exact: true }).fill('07:30');
   await button(page, 'Review morning schedule').click();
+  await expect(reviewSection(page).getByRole('note')).toHaveText('Keep this phone on. Android may delay scheduled runs. Runs more than 30 minutes late are marked missed.');
   await confirmReview(page, /Turn on morning digest at 07:30\?\s*Sends Errands to agent AI/);
   await expect(digests.getByRole('status')).toHaveText('Save not confirmed. Retry.');
   const pendingSection = digests.locator('section', { has: page.getByRole('heading', { name: 'Not saved', exact: true }) });
