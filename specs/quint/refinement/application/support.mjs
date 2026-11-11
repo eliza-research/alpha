@@ -1,4 +1,4 @@
-import {readFileSync, readdirSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
@@ -16,7 +16,7 @@ export function captureSources(paths) {
 captureSources(['specs/quint/refinement/application/support.mjs', 'specs/quint/refinement/check-traces.mjs',
   'specs/quint/refinement/application/index.mjs', 'test/quint-application-refinement.test.mjs',
   'test/support/strip-types.mjs', 'upstream.lock.json', 'scripts/prepare-client-features.mjs',
-  ...readdirSync(resolve(root, 'patches/eliza')).filter(name => /\.(patch|json)$/.test(name)).map(name => 'patches/eliza/' + name)]);
+  '.eliza/client-features/.source.json']);
 export function boundInputs(options) {
   const sources = [...new Set([...options.sources, ...captured.keys(), 'specs/quint/refinement/application/index.mjs',
     'test/quint-application-refinement.test.mjs'])];

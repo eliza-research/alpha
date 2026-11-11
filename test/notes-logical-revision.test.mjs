@@ -88,19 +88,6 @@ test('logical order survives raw document copy and stale encrypted views cannot 
  }finally{await f.close();}
 });
 
-test('older managed-note readers reject new private metadata without rewriting it',async()=>{
- const m=await loaded,f=await notesFixture(m,{mode:'encrypted'});
- const old=await loadNotesSource([fileURLToPath(import.meta.url),fileURLToPath(new URL('../specs/quint/refinement/services/notes-store/fixture.mjs',import.meta.url))],{patched:false});
- let reader;
- try{
-  await f.open();await f.interact('create-note',{content:'Preserved'});const raw=await f.raw();
-  const file=path.join(f.directory,'older-state.json'),bytes=JSON.stringify(raw);await fs.writeFile(file,bytes);
-  reader=new old.NotesStore({filePath:file});
-  await assert.rejects(reader.initialize(),error=>error.code==='NOTES_VALIDATION_FAILED');
-  assert.equal(reader.getStatus().phase,'error');assert.equal(await fs.readFile(file,'utf8'),bytes);
- }finally{if(reader)await reader.stop();await f.close();}
-});
-
 test('invalid persisted note revision metadata fails closed',async()=>{
  const m=await loaded;
  for(const revisions of [{'note-a':-1},{'note-a':1.5},{'note-a':2},{'note-missing':0}]){

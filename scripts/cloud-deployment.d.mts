@@ -7,4 +7,6 @@ export interface CloudDeploymentCheckOptions {
 }
 export function validateCloudDeployment(input:unknown):CloudDeploymentConfig;
 export function deploymentOutputs(config:CloudDeploymentConfig):Record<string,string>;
+export interface NativeAuthCallbackRegistration {redirectUri:string;androidPackage:string;appName:string;browserSignIn:{startPath:string;returnPath:string;storageKey:string;apiOrigin:string;tenant:string}}
+export function nativeAuthCallbackRegistration(config:CloudDeploymentConfig,identity:{appId:string;appName:string},environment:'production'|'staging'):NativeAuthCallbackRegistration;
 export function checkCloudDeployment(directory?:string,options?:CloudDeploymentCheckOptions):void;

@@ -1,0 +1,175 @@
+--- a/services/core/java/com/android/server/search/SearchManagerService.java
++++ b/services/core/java/com/android/server/search/SearchManagerService.java
+@@ -31,6 +31,7 @@
+ import android.os.Binder;
+ import android.os.Bundle;
+ import android.os.Handler;
++import android.os.Process;
+ import android.os.UserHandle;
+ import android.os.UserManager;
+ import android.provider.Settings;
+@@ -39,6 +40,7 @@
+ import android.util.SparseArray;
+ 
+ import com.android.internal.annotations.GuardedBy;
++import com.android.internal.app.AssistUtils;
+ import com.android.internal.content.PackageMonitor;
+ import com.android.internal.os.BackgroundThread;
+ import com.android.internal.util.DumpUtils;
+@@ -340,6 +342,7 @@
+ 
+     @Override
+     public void launchAssist(int userHandle, Bundle args) {
++        final int callingUid = Binder.getCallingUid();
+         // Currently, visible background users are not allowed to launch assist.(b/332222893)
+         // TODO(b/368715893): Consider indirect calls from system service when checking the
+         // calling user.
+@@ -348,10 +351,28 @@
+             throw new SecurityException("Visible background user(u" + callingUserId
+                     + ") is not permitted to launch assist.");
+         }
++        // Power provenance belongs to the native system-server policy path. This public
++        // Binder entry also serves ordinary callers, whose Bundle must not claim that origin.
++        Bundle forwardedArgs = null;
++        if (args != null) {
++            try {
++                forwardedArgs = new Bundle(args);
++                if (callingUid != Process.SYSTEM_UID
++                        && forwardedArgs.getInt(AssistUtils.INVOCATION_TYPE_KEY,
++                                AssistUtils.INVOCATION_TYPE_UNKNOWN)
++                                == AssistUtils.INVOCATION_TYPE_POWER_BUTTON_LONG_PRESS) {
++                    forwardedArgs.remove(AssistUtils.INVOCATION_TYPE_KEY);
++                }
++            } catch (RuntimeException malformedArgs) {
++                // Malformed parcel data has no authenticated Power origin. Preserve ordinary
++                // surface invocation without forwarding caller-controlled assist payloads.
++                forwardedArgs = null;
++            }
++        }
+         StatusBarManagerInternal statusBarManager =
+                 LocalServices.getService(StatusBarManagerInternal.class);
+         if (statusBarManager != null) {
+-            statusBarManager.startAssist(args);
++            statusBarManager.startAssist(forwardedArgs);
+         }
+     }
+ 
+--- a/packages/SystemUI/src/com/android/systemui/assist/AssistManager.java
++++ b/packages/SystemUI/src/com/android/systemui/assist/AssistManager.java
+@@ -7,12 +7,15 @@
+ import android.annotation.Nullable;
+ import android.app.ActivityManager;
+ import android.app.ActivityOptions;
++import android.app.KeyguardManager;
+ import android.app.SearchManager;
+ import android.app.StatusBarManager;
+ import android.content.ActivityNotFoundException;
+ import android.content.ComponentName;
+ import android.content.Context;
+ import android.content.Intent;
++import android.content.pm.ActivityInfo;
++import android.content.pm.PackageManager;
+ import android.metrics.LogMaker;
+ import android.os.AsyncTask;
+ import android.os.Bundle;
+@@ -20,6 +23,7 @@
+ import android.os.RemoteException;
+ import android.os.SystemClock;
+ import android.os.UserHandle;
++import android.os.UserManager;
+ import android.provider.Settings;
+ import android.service.voice.VisualQueryAttentionResult;
+ import android.service.voice.VoiceInteractionSession;
+@@ -354,7 +358,92 @@
+                 legacyDeviceState);
+         logStartAssistLegacy(legacyInvocationType, legacyDeviceState);
+         mInteractor.onAssistantStarted(legacyInvocationType);
++        if (!isService && tryStartAlphaPowerVoice(context, args, assistComponent)) {
++            return;
++        }
+         startAssistInternal(context, args, assistComponent, isService);
++    }
++
++    private static final String ALPHA_PACKAGE = "ai.elizaresearch.alphaphone";
++    private static final ComponentName ALPHA_ASSIST =
++            new ComponentName(ALPHA_PACKAGE, ALPHA_PACKAGE + ".AlphaAssistActivity");
++    private static final ComponentName ALPHA_POWER_VOICE =
++            new ComponentName(ALPHA_PACKAGE, ALPHA_PACKAGE + ".AlphaPowerVoiceActivity");
++    private static final String ALPHA_POWER_PERMISSION = "android.permission.STATUS_BAR_SERVICE";
++
++    /** Only the authenticated native Power route can enter the protected one-shot voice child. */
++    private boolean tryStartAlphaPowerVoice(
++            Context context, Bundle args, ComponentName assistComponent) {
++        try {
++            if (args == null || args.getInt(INVOCATION_TYPE_KEY, INVOCATION_TYPE_UNKNOWN)
++                    != INVOCATION_TYPE_POWER_BUTTON_LONG_PRESS
++                    || !ALPHA_ASSIST.equals(assistComponent)
++                    || !context.getResources().getBoolean(R.bool.config_alpha_system_entry_enabled)
++                    || !mDeviceProvisionedController.isDeviceProvisioned()
++                    || !mDeviceProvisionedController.isCurrentUserSetup()
++                    || mSelectedUserInteractor.getSelectedUserId() != mUserTracker.getUserId()
++                    || context.checkSelfPermission(ALPHA_POWER_PERMISSION)
++                            != PackageManager.PERMISSION_GRANTED) {
++                return false;
++            }
++            final UserHandle user = mUserTracker.getUserHandle();
++            final Context userContext = context.createContextAsUser(user, 0);
++            final KeyguardManager keyguard = userContext.getSystemService(KeyguardManager.class);
++            final UserManager users = userContext.getSystemService(UserManager.class);
++            if (keyguard == null || users == null || keyguard.isKeyguardLocked()
++                    || keyguard.isDeviceLocked() || !users.isUserUnlocked()) {
++                return false;
++            }
++            final PackageManager pm = userContext.getPackageManager();
++            final ActivityInfo selected = pm.getActivityInfo(ALPHA_ASSIST, 0);
++            final ActivityInfo child = pm.getActivityInfo(ALPHA_POWER_VOICE, 0);
++            if (!alphaPowerComponentEnabled(pm, selected, ALPHA_ASSIST)
++                    || !alphaPowerComponentEnabled(pm, child, ALPHA_POWER_VOICE)
++                    || !ALPHA_POWER_PERMISSION.equals(child.permission)
++                    || selected.applicationInfo.uid != child.applicationInfo.uid
++                    || pm.checkSignatures(selected.packageName, child.packageName)
++                            != PackageManager.SIGNATURE_MATCH) {
++                return false;
++            }
++            // Drop all caller extras, URI, assist-context and origin hints. The explicit
++            // permission-protected component is the app's internally derived Power origin.
++            final Intent intent = new Intent(Intent.ACTION_ASSIST)
++                    .setComponent(ALPHA_POWER_VOICE)
++                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
++            final ActivityOptions options = ActivityOptions.makeCustomAnimation(context,
++                    R.anim.search_launch_enter, R.anim.search_launch_exit);
++            options.setLaunchDisplayId(context.getDisplayId());
++            if (!ALPHA_ASSIST.equals(getAssistInfo())
++                    || mSelectedUserInteractor.getSelectedUserId() != mUserTracker.getUserId()
++                    || keyguard.isKeyguardLocked() || keyguard.isDeviceLocked()
++                    || !users.isUserUnlocked()) {
++                return false;
++            }
++            mCommandQueue.animateCollapsePanels(
++                    CommandQueue.FLAG_EXCLUDE_SEARCH_PANEL | CommandQueue.FLAG_EXCLUDE_RECENTS_PANEL,
++                    false /* force */);
++            userContext.startActivityAsUser(intent, options.toBundle(), user);
++            return true;
++        } catch (PackageManager.NameNotFoundException | RuntimeException unavailable) {
++            Log.w(TAG, "Alpha Power voice entry unavailable; using ordinary assistant surface");
++            return false;
++        }
++    }
++
++    private static boolean alphaPowerComponentEnabled(
++            PackageManager pm, ActivityInfo activity, ComponentName expected) {
++        if (!expected.getPackageName().equals(activity.packageName)
++                || !expected.getClassName().equals(activity.name)
++                || activity.targetActivity != null || !activity.exported || !activity.enabled
++                || activity.applicationInfo == null || !activity.applicationInfo.enabled) {
++            return false;
++        }
++        final int componentState = pm.getComponentEnabledSetting(expected);
++        final int appState = pm.getApplicationEnabledSetting(expected.getPackageName());
++        return (componentState == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
++                || componentState == PackageManager.COMPONENT_ENABLED_STATE_ENABLED)
++                && (appState == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
++                || appState == PackageManager.COMPONENT_ENABLED_STATE_ENABLED);
+     }
+ 
+     private boolean shouldOverrideAssist(Bundle args) {

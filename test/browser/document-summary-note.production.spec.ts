@@ -61,8 +61,8 @@ test('J03 on Android: a picked document, a trimmed question and the resident ans
   const foreign = await fenceNetwork(page);
   await flagOffAndroid(page, { document: garden });
   await residentHome(page);
-  // Credential renewal is outside this document flow; dismiss the fixture's one-day warning.
-  await button(page, 'Dismiss sign-in notice').click();
+  // The retained 30-day fixture has no sign-in expiry warning.
+  await expect(page.getByRole('region',{name:'Eliza Cloud sign-in notice',exact:true})).toHaveCount(0);
   await openRetainedNativeNotes(page);
   await returnToApps(page);
   await askAboutDocument(page);
@@ -95,7 +95,7 @@ test('J03 on Android: a picked document, a trimmed question and the resident ans
   await page.reload();
   await expect.poll(() => harness(page, f => f.calls.includes('Agent.start')), { timeout: 30_000 }).toBe(true);
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 30_000 });
-  await button(page, 'Dismiss sign-in notice').click();
+  await expect(page.getByRole('region',{name:'Eliza Cloud sign-in notice',exact:true})).toHaveCount(0);
   await openRetainedNativeNotes(page);
   await expect(page.getByRole('region', { name: 'Notes' }).getByRole('button', { name: /^Open (?!Trash$)/ })).toHaveCount(1);
   await button(page, 'Open Garden summary').click();
@@ -119,8 +119,8 @@ test('J03 on Android: a resident session that changes before Save withdraws the 
   const foreign = await fenceNetwork(page);
   await flagOffAndroid(page, { document: garden });
   await residentHome(page);
-  // Credential renewal is outside this document flow; dismiss the fixture's one-day warning.
-  await button(page, 'Dismiss sign-in notice').click();
+  // The retained 30-day fixture has no sign-in expiry warning.
+  await expect(page.getByRole('region',{name:'Eliza Cloud sign-in notice',exact:true})).toHaveCount(0);
   await openRetainedNativeNotes(page);
   await returnToApps(page);
   await askAboutDocument(page);

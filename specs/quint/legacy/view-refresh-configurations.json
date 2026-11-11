@@ -4,52 +4,6 @@
     {
       "module": "CameraSession",
       "path": "specs/quint/legacy/CameraSession.qnt",
-      "legacySource": {
-        "path": "design/view-refresh-2026-11/tla/camera-session/Spec.tla",
-        "sha256": "2148834fd33729502e83782163483a093f3e43a381812f4e6cb9163fd765f183",
-        "definitions": [
-          "vars",
-          "TypeOK",
-          "Init",
-          "Room",
-          "Ready",
-          "Open",
-          "PermissionResult",
-          "FirstFrame",
-          "StartFail",
-          "Leave",
-          "Shutter",
-          "CaptureDone",
-          "RecStart",
-          "RecStop",
-          "Focus",
-          "FocusDone",
-          "Flip",
-          "SetFlash",
-          "SetZoom",
-          "AgentCapture",
-          "Release",
-          "ChatOpen",
-          "ChatGraceEnds",
-          "ChatClose",
-          "AgentRun",
-          "System",
-          "User",
-          "Next",
-          "Spec",
-          "NoLostShutter",
-          "NoStuckCapture",
-          "NoOrphanRecording",
-          "LensSettingsValid",
-          "FlipNeverRejected",
-          "SavedIsShown",
-          "AgentFailsOnlyForCause",
-          "ChatKeepsPreview",
-          "ChatGraceReleases",
-          "OpenReachesPreviewOrError",
-          "AgentCaptureSettles"
-        ]
-      },
       "configurations": [
         {
           "name": "AsBuilt_AgentQueue",
@@ -121,10 +75,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/camera-session/AsBuilt_AgentQueue.cfg",
-            "sha256": "775759b3d1440888e74e423e58db41ed466ee9021486f1530730262df7e7bd7a"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -199,10 +149,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/camera-session/AsBuilt_ChatGrace.cfg",
-            "sha256": "9301c7b942440ddccf85bc2aa3f600ac864365c4f81692ccf7d87086ae39058f"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -277,10 +223,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/camera-session/AsBuilt_Focus.cfg",
-            "sha256": "bbf9e5883c2b2be18697013a0fcd629cc34c196e9f9bd3da730a792523ee2a07"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -356,10 +298,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/camera-session/AsBuilt_Leave.cfg",
-            "sha256": "4587846ac8528ea78e6f9b853400c9d863e6f3749a1e96056fd731c7ac99b293"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -434,10 +372,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/camera-session/AsBuilt_Lens.cfg",
-            "sha256": "3c2836d60c54b1da245665223edd45377922c3791441f09a9f8f21df555347cb"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -512,10 +446,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/camera-session/Design.cfg",
-            "sha256": "fcfb3ff417f6e19d507ea9deb97157c3e3ee613124b3b5d5c91033d830eee35d"
-          },
           "expected": "pass",
           "specification": "Spec",
           "checkDeadlock": false
@@ -525,61 +455,6 @@
     {
       "module": "PhotosLibrary",
       "path": "specs/quint/legacy/PhotosLibrary.qnt",
-      "legacySource": {
-        "path": "design/view-refresh-2026-11/tla/photos-library/Spec.tla",
-        "sha256": "62c77138ce80da19027d6b2d62c586a8aba9b0adb025d06f7e981ffa8e6da0ab",
-        "definitions": [
-          "vars",
-          "MaxRev",
-          "NoReview",
-          "Live",
-          "InTrash",
-          "Matches",
-          "Pool",
-          "Take",
-          "Window",
-          "TypeOK",
-          "Init",
-          "Bump",
-          "Ghosts",
-          "SwitchTab",
-          "EnterSelect",
-          "Toggle",
-          "SelectAll",
-          "CancelSelect",
-          "BatchFavorite",
-          "BatchTrash",
-          "BatchRestore",
-          "DeleteForever",
-          "OpenViewer",
-          "Swipe",
-          "ViewerTrash",
-          "CloseViewer",
-          "Undo",
-          "StoreEvent",
-          "AgentFilter",
-          "AgentReview",
-          "ReviewCurrent",
-          "AgentShareReview",
-          "AgentApply",
-          "AgentOpen",
-          "EditReplace",
-          "AgentReject",
-          "Next",
-          "Spec",
-          "NewestNeverDropped",
-          "SelectionSubsetOfVisible",
-          "ViewerShowsExistingItem",
-          "NoSpuriousClear",
-          "FavoriteReversible",
-          "NoSelectionCap",
-          "DeleteForeverOnlyFromTrash",
-          "NoActionOnStaleRev",
-          "FilterIsReadOnly",
-          "ShareChangesNothing",
-          "ReviewSettles"
-        ]
-      },
       "configurations": [
         {
           "name": "AsBuilt_Cap",
@@ -655,10 +530,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/photos-library/AsBuilt_Cap.cfg",
-            "sha256": "21d35c4138d5e14456dd6da33635ee44fe473978731c4c6fcd7e92f3aefa70b1"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -737,10 +608,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/photos-library/AsBuilt_FavToggle.cfg",
-            "sha256": "af487fce79643e194d96f308ab662db8bf6cd56fcb8e1d03c42a134fc760aaa8"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -819,10 +686,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/photos-library/AsBuilt_Patch.cfg",
-            "sha256": "52e0b225de7d725ca347689568bb1b2d4191b1b688706dc89e040f3683a720b6"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -901,10 +764,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/photos-library/AsBuilt_Window.cfg",
-            "sha256": "b171f76e480ea49c05bb029afaee9c26b1efa5f9f7b757622b32e9ddf7a22e0a"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -983,10 +842,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/photos-library/Design.cfg",
-            "sha256": "80451422b405e9355cb1dc8d555521c3b7fe2fc6bcd097325168183b07279a2d"
-          },
           "expected": "pass",
           "specification": "Spec",
           "checkDeadlock": false
@@ -996,53 +851,6 @@
     {
       "module": "NotesView",
       "path": "specs/quint/legacy/NotesView.qnt",
-      "legacySource": {
-        "path": "design/view-refresh-2026-11/tla/notes-view/Spec.tla",
-        "sha256": "e716d3cc9899d8665de6e7f50e1069a8d9fdc9c7c6893d4d666d602355d7c459",
-        "definitions": [
-          "vars",
-          "MaxRev",
-          "NoReview",
-          "TypeOK",
-          "Init",
-          "NoteVars",
-          "RecVars",
-          "Bump",
-          "Record",
-          "Segment",
-          "Pause",
-          "Resume",
-          "Stop",
-          "StorageFull",
-          "ProcessDeath",
-          "AsrSegment",
-          "Hide",
-          "Show",
-          "MoveToFolder",
-          "DeleteFolder",
-          "RenameFolder",
-          "TrashNote",
-          "Restore",
-          "Expire",
-          "AgentProposeMove",
-          "ReviewCurrent",
-          "AgentApply",
-          "AgentReject",
-          "Next",
-          "Spec",
-          "NoLengthLimit",
-          "CrashKeepsAudio",
-          "TranscriptPrefixOfAudio",
-          "TranscriptKeepsUp",
-          "TranscriptKeepsUpHidden",
-          "FolderNamesUnique",
-          "RenameKeepsMembership",
-          "FolderRefsValid",
-          "AgentMoveOnlyReviewed",
-          "AsrSettles",
-          "ReviewSettles"
-        ]
-      },
       "configurations": [
         {
           "name": "Ablate_RestoreFolder",
@@ -1116,10 +924,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/notes-view/Ablate_RestoreFolder.cfg",
-            "sha256": "cc2a73bea88952e22ad14258948057c9f3bed0b2165972bf5a5ca9c743af3b83"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -1196,10 +1000,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/notes-view/AsBuilt_Cap.cfg",
-            "sha256": "9bf79e40d385f05810b099bf76abd9c1a2c71cded210820e99ee47c1833ba67c"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -1285,10 +1085,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/notes-view/AsBuilt_Hidden.cfg",
-            "sha256": "496bc31f0bb4cd993bddf27a222ea38c1c7fd3cca1753b637478ea8241c11fb0"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -1365,10 +1161,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/notes-view/AsBuilt_Segments.cfg",
-            "sha256": "cf6802325b374db1320080f8ab27ed0880926adc0a90c7bdf1cc2790190fa3be"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -1445,10 +1237,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/notes-view/AsBuilt_StreamAsr.cfg",
-            "sha256": "6c5cf8ddec47f1093c20e3c3266d98bd8fddb67424ab57c27fa9dd0d88fa9ca7"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -1534,10 +1322,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/notes-view/Design.cfg",
-            "sha256": "4dfe8965b2f805288ab99cc889fa975c1435c0f1d256073844fac3c45f9be618"
-          },
           "expected": "pass",
           "specification": "Spec",
           "checkDeadlock": false
@@ -1624,10 +1408,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/notes-view/Rename.cfg",
-            "sha256": "9e97eebdbd4be0915a610e23a607c5b0add9658a7ccd75d4f6dd4e9f0454e899"
-          },
           "expected": "pass",
           "specification": "Spec",
           "checkDeadlock": false
@@ -1637,54 +1417,6 @@
     {
       "module": "FilesBrowser",
       "path": "specs/quint/legacy/FilesBrowser.qnt",
-      "legacySource": {
-        "path": "design/view-refresh-2026-11/tla/files-browser/Spec.tla",
-        "sha256": "bdb5535f587a1f9fb918d69bc7d8c57f745d3e4b2f2ec3b1acf44d1b5431467a",
-        "definitions": [
-          "FilesSet",
-          "Dirs",
-          "Gone",
-          "Trash",
-          "Kind",
-          "Home0",
-          "Names",
-          "vars",
-          "NoReview",
-          "Present",
-          "NamesUniquePerDir",
-          "Category",
-          "Categories",
-          "Listing",
-          "TypeOK",
-          "Init",
-          "Navigate",
-          "Toggle",
-          "Clash",
-          "FreeName",
-          "MoveOne",
-          "MoveSel",
-          "TrashSel",
-          "Restore",
-          "EmptyTrash",
-          "External",
-          "Refresh",
-          "AgentPropose",
-          "Reviewed",
-          "AgentApply",
-          "AgentRefused",
-          "AgentReject",
-          "Next",
-          "Spec",
-          "CategoryIsQuery",
-          "NoOverwriteWithoutConfirm",
-          "SelectionExists",
-          "SelectionActsOnlyOnPresent",
-          "TrashReversible",
-          "AgentMoveOnlyReviewed",
-          "ListingsConverge",
-          "ReviewSettles"
-        ]
-      },
       "configurations": [
         {
           "name": "Ablate_Conflict",
@@ -1745,10 +1477,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/files-browser/Ablate_Conflict.cfg",
-            "sha256": "598c915eb49cbbcce85e48457a4f96c541a0d529d1269deda10a7301eb7da2dd"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -1811,10 +1539,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/files-browser/AsBuilt_Categories.cfg",
-            "sha256": "f4fa0f1c6687364dc0387d3dd4b9f02fa4fd7fb3572711cf3af85825d4ee6aab"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -1877,10 +1601,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/files-browser/AsBuilt_Identity.cfg",
-            "sha256": "81d0267c00e707b04593602f8c3dab4520845d9100352eaa2cf1b29fd27e83a3"
-          },
           "expected": "violation",
           "specification": "Spec",
           "checkDeadlock": false
@@ -1943,10 +1663,6 @@
               "expected": "pass"
             }
           ],
-          "legacyConfiguration": {
-            "path": "design/view-refresh-2026-11/tla/files-browser/Design.cfg",
-            "sha256": "0328e62ccdd2d115197f91f0354eb729ff448db9fbb9751dd75f589d132bb9ad"
-          },
           "expected": "pass",
           "specification": "Spec",
           "checkDeadlock": false

@@ -9,7 +9,7 @@ const sources=['apps/app/src/prototype/keyed-list-focus.ts','apps/app/src/protot
  'apps/app/src/prototype/browser-camera.ts','apps/app/src/prototype/photo-library-adapter.ts',
  'apps/app/src/prototype/voice-adapter.ts','apps/app/src/runtime/browser-notes-document.ts',
  'apps/app/src/prototype/canonical-notes-ui.ts','apps/app/src/prototype/canonical-notes-controller.ts','apps/app/src/prototype/canonical-notes-editor.ts','test/browser/helpers/canonical-notes.ts','apps/app/src/runtime/notes-store.ts','test/browser/notes-photos-list-focus.spec.ts'];
-const note=(id:string,ts:number)=>({id,title:id,body:'\n'+id+' body',color:'yellow',createdAt:new Date(ts*1000).toISOString(),updatedAt:new Date(ts*1000).toISOString(),format:{kind:'text',data:{}}});
+const note=(id:string,ts:number)=>({id:id.toLowerCase(),title:id,body:'\n'+id+' body',color:'yellow',createdAt:new Date(ts*1000).toISOString(),updatedAt:new Date(ts*1000).toISOString(),format:{kind:'text',data:{}}});
 async function shell(page:Page,operation:string,payload:any){
  return page.evaluate(async({operation,payload})=>{
   const screen=document.querySelector('[data-screen]') as any;
@@ -53,7 +53,7 @@ async function openNotes(page:Page){
  await expect(page.getByRole('button',{name:'Open Two',exact:true})).toBeVisible();
 }
 
-test('a saved Notes pin change retains the focused note across lists and opens that note',async({page},info)=>{
+test('a saved Notes pin change retains focus in the single list and opens that note',async({page},info)=>{
  const hashes=captureInputs(sources),checkpoints:any[]=[];
  await openNotes(page);const target=page.getByRole('button',{name:'Open Two',exact:true});await target.focus();
  const intended=(await observe(page,'data-alpha-note-id')).currentRow;expect(intended).not.toBeNull();
@@ -63,7 +63,7 @@ test('a saved Notes pin change retains the focused note across lists and opens t
  await expect(target).toBeFocused();
  expect(await target.evaluate(element=>element===(window as any).oldNote)).toBe(false);
  await expect(page.getByText('Pinned',{exact:true})).toBeVisible();
- expect(await target.evaluate(element=>!!(element.compareDocumentPosition(document.querySelector('[data-alpha-note-id="One"]')!)&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+ expect(await target.evaluate(element=>!!(element.compareDocumentPosition(document.querySelector('[data-alpha-note-id="one"]')!)&Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
  checkpoints.push({label:'commit pin change between logical lists',...await observe(page,'data-alpha-note-id',intended)});
  await page.keyboard.press('Enter');await expect(page.getByRole('textbox',{name:'Title',exact:true})).toHaveValue('Two');
  checkpoints.push({label:'activate retained note',...await observe(page,'data-alpha-note-id',intended),...await shell(page,'state',null)});

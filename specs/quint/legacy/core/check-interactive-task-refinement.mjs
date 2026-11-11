@@ -7,6 +7,7 @@ import {resolve} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {stripTypeScriptTypes} from 'node:module';
 import {build} from 'esbuild';
+import {materializeHistoricalFormalSources} from './formal-source-inventory.mjs';
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
 const args = new Map(process.argv.slice(2).map(argument => {
@@ -23,12 +24,16 @@ const digest = data => createHash('sha256').update(data).digest('hex');
 const hash = path => digest(readFileSync(path));
 const graphRelative = 'packages/core/tla/InteractiveTask.reducer.graph.json';
 const coreTest = resolve(vendor, 'packages/core/test/interactive-task-conformance.test.ts');
-const parser = resolve(vendor, 'packages/core/scripts/tla-graph.ts');
+const parserRelative = 'packages/core/scripts/tla-graph.ts';
+const currentGraph = resolve(vendor, 'packages/core/quint/InteractiveTask.reducer.graph.json');
 const model = resolve(root, 'specs/quint/legacy/CoreInteractiveTask.qnt');
 const inventoryPath = resolve(root, 'specs/quint/legacy/core/source-inventory.json');
 const inventory = JSON.parse(readFileSync(inventoryPath, 'utf8'));
 const vendorRevision = execFileSync('git', ['-C', vendor, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
-const upstreamGraph = readFileSync(resolve(vendor, graphRelative));
+const history = materializeHistoricalFormalSources(root,['vendor/eliza/'+graphRelative,'vendor/eliza/'+parserRelative]);
+const graphSource = resolve(root,history.resolveSource('vendor/eliza/'+graphRelative));
+const parser = resolve(root,history.resolveSource('vendor/eliza/'+parserRelative));
+const upstreamGraph = readFileSync(graphSource);
 const historical = inventory.historicalArtifacts.find(artifact => artifact.path === graphRelative);
 assert.equal(digest(upstreamGraph), historical.sha256, 'Vendor reducer graph matches the pinned conversion evidence');
 const receiptPath = resolve(temporal, 'receipt.json');
@@ -57,14 +62,14 @@ const testBundle = await build({absWorkingDir: vendor, entryPoints: [coreTest], 
     `}));
   }}], footer: {js: 'export { registered };'}});
 const sources = [...new Set(Object.keys(testBundle.metafile.inputs).filter(path => !path.startsWith('harness:') && !path.startsWith('<')).map(path => resolve(vendor, path)))];
-const provenance = Object.fromEntries([...sources, parser, model, inventoryPath, receiptPath, tla, cfg, tlcJar, fileURLToPath(import.meta.url)]
+const provenance = Object.fromEntries([...sources, ...history.sources, currentGraph, parser, model, inventoryPath, receiptPath, tla, cfg, tlcJar, fileURLToPath(import.meta.url)]
   .map(path => [path, hash(path)]));
-for (const path of [...sources, parser]) {
+for (const path of [...sources, currentGraph]) {
   const relative = path.slice(vendor.length + 1);
   const committed = execFileSync('git', ['-C', vendor, 'cat-file', 'blob', `${vendorRevision}:${relative}`]);
   assert.equal(provenance[path], digest(committed), `${relative} matches the exact vendor revision`);
 }
-const result = {format: 'alpha-interactive-task-refinement-v1', vendorRevision, inputs: provenance, startedAt: new Date().toISOString(), passed: false};
+const result = {format: 'alpha-interactive-task-refinement-v1', vendorRevision, historicalSpecificationRevision:history.revision, inputs: provenance, startedAt: new Date().toISOString(), passed: false};
 const save = () => writeFileSync(resolve(out, 'receipt.json'), JSON.stringify(result, null, 2) + '\n');
 save();
 try {
@@ -104,7 +109,7 @@ try {
   }
   for (const [path, before] of Object.entries(provenance)) assert.equal(hash(path), before, `${path} changed during conformance`);
   assert.equal(execFileSync('git', ['-C', vendor, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim(), vendorRevision);
-  assert.equal(digest(readFileSync(resolve(vendor, graphRelative))), historical.sha256);
+  assert.equal(digest(readFileSync(graphSource)), historical.sha256);
   result.passed = true;
   console.log(`PASS InteractiveTask exact graph ${result.graph.states} states and ${result.graph.edges} edges, ${result.sourceChecks.length} source checks`);
 } catch (error) {

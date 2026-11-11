@@ -31,6 +31,7 @@ import { readNativeCloudStreamTiming } from '../runtime/cloud-voice';
 import { listenerStatus, openListenerSettings, pauseListener, turnOffListener, wakeListeningStopUnconfirmed, type ListenerStatus } from '../runtime/always-on-listener';
 import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system/reset';
 import { androidRoleLabel, parseRoleStatuses } from '@elizaos/capacitor-system/settings';
+import {createAppUpdateScheduler} from '../../../../.eliza/client-features/packages/ui/src/state/app-update-gate';
 import { leavePasswordEntry, leavePasswordManager, passwordEntryPage, passwordManagerGroups, passwordManagerLifecycle, refreshPasswordManager, PASSWORD_PAGES } from '../passwords/password-manager';
 
 type Bag = Record<string, any>;
@@ -109,7 +110,8 @@ const device = registerPlugin<{
   diagnosticsFacts(): Promise<Bag>;
   shareDiagnostics(input: { text: string }): Promise<{ status: string }>;
   checkForUpdate(): Promise<{ manifest?: string }>;
-  installUpdate(input: Pick<AppUpdate, 'apkUrl' | 'sha256' | 'sizeBytes' | 'versionCode'>): Promise<void>;
+  updateState(): Promise<{pending?: boolean}>;
+  installUpdate(input: Pick<AppUpdate, 'apkUrl' | 'sha256' | 'sizeBytes' | 'versionCode'> & {automatic?: true}): Promise<{status?: string}>;
 }>('AlphaDevice');
 const notifications = registerPlugin<{status():Promise<Bag>;setAlertPreferences(input:{appEnabled?:boolean;channelId?:string;enabled?:boolean}):Promise<Bag>;openAppSettings():Promise<Bag>;openChannelSettings(input:{id:string}):Promise<{status:string}>;crossAppStatus():Promise<Bag>;notificationApps():Promise<{apps:Bag[]}>;setNotificationPolicy(input:Bag):Promise<Bag>;resumeCrossApp(input:{expectedRevision:string}):Promise<Bag>;openNotificationAccess():Promise<Bag>;notificationHistory():Promise<{items:Bag[]}>;clearNotificationHistory():Promise<void>}>('AlphaNotifications');
 const system = registerPlugin<{ getDeviceSettings(): Promise<Bag>; getStatus(): Promise<{ roles?: Bag[] }>; requestRole(input: { role: string }): Promise<{ role: string; held: boolean; resultCode: number }>; getBuildInfo(): Promise<{ launcher?: boolean; version?: string }> }>('ElizaSystem');
@@ -143,8 +145,8 @@ export function installedRows(updatedAt: unknown, format: (at: number) => string
  */
 export const UPDATE_SCHEMA = 'alpha-update/v1';
 /** AlphaDevicePlugin.UPDATE_MAX_BYTES, which the native download enforces, is the same bound. */
-export const UPDATE_MAX_BYTES = 1024 * 1024 * 1024;
-export const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+export const UPDATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
+export const UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
 type AppUpdate = {versionCode: number; versionName: string; apkUrl: string; sha256: string; sizeBytes: number; notes: string};
 /**
  * The update a manifest offers this install, or null unless it is complete and HTTPS, newer than the
@@ -179,9 +181,16 @@ export function parseUpdateManifest(value: unknown, installed: {versionCode: unk
   try { const url = new URL(apkUrl); if (url.protocol !== 'https:' || url.username || url.password) return null; } catch { return null; }
   return {versionCode: versionCode as number, versionName: typeof versionName === 'string' && /^[^\u0000-\u001f\u007f]{1,64}$/.test(versionName) ? versionName : '', apkUrl, sha256, sizeBytes: sizeBytes as number, notes: typeof notes === 'string' && notes.length <= 500 ? notes : ''};
 }
-/** A day after the last answered check, or at once when that time is unknown or in the future. */
+/** Fifteen minutes after the last answer, or at once for an unknown/future clock. */
 export function updateCheckDue(checkedAt: number, now: number): boolean {
   return !(now >= checkedAt && now - checkedAt < UPDATE_CHECK_INTERVAL_MS);
+}
+/** Field updates wait for Home, outside voice, edits and foreground reviews. */
+export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unknown;drawerMenu?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean, voiceActive: boolean): boolean {
+  return voiceActive === false && shell.screen === 'home' && !shell.view && shell.voice === 'off' && !shell.typing &&
+    (shell.chat === 'input' || shell.chat === 'hidden') && !shell.drawer && !shell.shade &&
+    !shell.homeEdit && !shell.homeAdd && !shell.drawerMenu &&
+    !connection.busy && !connection.open && !editor;
 }
 /** Cloud QA profile facts replace prototype navigation, not device settings links. */
 export function cloudPrivacyRow(label: string): [string, string] | null {
@@ -216,7 +225,7 @@ export function resolveAppearance(choice: AppearanceChoice): 'light' | 'dark' {
 
 const UPDATE_KEY = 'alpha.app-update.v1';
 /** The last manifest a check was answered with, and when, so a restart offers it without checking again; and the check in flight. */
-let lastUpdate: {checkedAt: number; manifest: unknown} | undefined, updateCheck: Promise<void> | undefined;
+let lastUpdate: {checkedAt: number; manifest: unknown} | undefined, updateCheck: Promise<boolean> | undefined;
 function savedUpdate() {
   if (lastUpdate) return lastUpdate;
   try {
@@ -226,16 +235,17 @@ function savedUpdate() {
   return lastUpdate = {checkedAt: Number.NaN, manifest: null};
 }
 /**
- * At most one automatic check a day (app start and resume) and one at a time; `force` is the owner's
+ * At most one answered automatic check per interval and one at a time; `force` is the owner's
  * Check for updates. Only an answer is kept: a 404 withdraws the offer, and a failed check is quiet and
  * leaves the next start or resume due. Undefined when no check runs.
  */
-function checkForUpdate(force: boolean): Promise<void> | undefined {
+function checkForUpdate(force: boolean): Promise<boolean> | undefined {
   if (!updateCheck && Capacitor.isNativePlatform() && (force || updateCheckDue(savedUpdate().checkedAt, Date.now())))
     updateCheck = device.checkForUpdate().then(({ manifest }) => {
       lastUpdate = { checkedAt: Date.now(), manifest: typeof manifest === 'string' ? JSON.parse(manifest) : null };
       try { localStorage.setItem(UPDATE_KEY, JSON.stringify(lastUpdate)); } catch { /* Kept for this session. */ }
-    }).catch(() => { /* Quiet: the next start, resume or tap checks again. */ }).finally(() => { updateCheck = undefined; });
+      return true;
+    }).catch(() => false).finally(() => { updateCheck = undefined; });
   return updateCheck;
 }
 
@@ -259,6 +269,33 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   let roles: Record<string, RoleRow> | null = null, launcher: boolean | null = null, roleBusy = false;
   let crashLog: CrashLog | null = null, crashBusy = false, diagnosticsBusy = false;
   let updateBusy: '' | 'check' | 'install' = '';
+  let automaticUpdates: ReturnType<typeof createAppUpdateScheduler> | undefined;
+  const automaticUpdateActive = () => automaticUpdates?.setActive(!document.hidden);
+  async function pollAutomaticUpdate(current: () => boolean) {
+    if (await checkForUpdate(false) === false) throw Error('Update check unavailable');
+    if (!current()) return;
+    changed();
+    const idle = () => automaticUpdateIdle(owner?.S?.() ?? {},connectionController.getSnapshot(),
+      !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus,[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'),
+      owner?.voiceConversationActive?.() !== false);
+    if (updateBusy || !idle())
+      throw Error('Current activity must finish');
+    const [installed, build, pending] = await Promise.all([device.snapshot(), system.getBuildInfo(), device.updateState()]);
+    if (!current()) return;
+    if (updateBusy || !idle()) throw Error('Current activity must finish');
+    if (pending.pending) return;
+    if (installed.appAutomaticUpdates === 'starting') throw Error('Android is still starting');
+    if (installed.appAutomaticUpdates !== 'supported') return;
+    const update = parseUpdateManifest(savedUpdate().manifest, {versionCode: installed.appVersionCode,
+      launcher: build.launcher, signerSha256: installed.appSigner});
+    if (!update) return;
+    // Native admission repeats the package/signer/version checks and requires every
+    // renderer's saved-draft receipt before stopping the resident or committing.
+    const result = await device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,
+      sizeBytes:update.sizeBytes,versionCode:update.versionCode,automatic:true});
+    if (result?.status === 'starting') throw Error('Android is still starting');
+    if (result?.status === 'permission-required' || result?.status === 'unsupported') return;
+  }
   let gmail = 'Not checked';
   let inferenceProvider = 'Not reported';
   // The AOSP image's always-on listener (#424): status, Pause and Turn off only. Turning listening on
@@ -421,7 +458,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     finally { crashBusy = false; if (owner === instance) changed(); }
   }
   /** Software update is quiet: only the busy label changes while a check or install runs. */
-  async function updateAction(busy: 'check' | 'install', run: () => Promise<void> | undefined) {
+  async function updateAction(busy: 'check' | 'install', run: () => Promise<unknown> | undefined) {
     if (updateBusy) return;
     updateBusy = busy; changed();
     try { await run(); } finally { updateBusy = ''; changed(); }
@@ -455,6 +492,11 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     window.addEventListener('alpha:settings-page',this.settingsNavigation);
     window.addEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
     initializeDevicePreferences(); void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed);
+    if (Capacitor.isNativePlatform() && !testMocksEnabled) {
+      automaticUpdates = createAppUpdateScheduler({run:pollAutomaticUpdate,intervalMs:UPDATE_CHECK_INTERVAL_MS});
+      document.addEventListener('visibilitychange',automaticUpdateActive);
+      automaticUpdateActive();
+    }
     this.passwordLifecycle = passwordManagerLifecycle(changed);
     if(!hasAppearancePreview(new URLSearchParams(location.search))){
       // A read from storage or the system scheme carries a marker, so componentDidUpdate never writes it back.
@@ -479,7 +521,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     });
     this.googleAccountsChanged=()=>void refreshCapabilities();
     window.addEventListener(GOOGLE_ACCOUNTS_CHANGED,this.googleAccountsChanged);
-    this.deviceResume = DailyApps.addListener('appResumed', () => { void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed); }).catch(() => null);
+    this.deviceResume = DailyApps.addListener('appResumed', () => { void refresh(); void refreshCapabilities(); void checkForUpdate(false)?.then(changed); automaticUpdateActive(); }).catch(() => null);
   };
   p.componentDidUpdate = function (previousProps: Bag, previousState: Bag) {
     update?.call(this, previousProps, previousState);
@@ -495,6 +537,8 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     }
   };
   p.componentWillUnmount = function () {
+    automaticUpdates?.dispose(); automaticUpdates = undefined;
+    document.removeEventListener('visibilitychange',automaticUpdateActive);
     if (owner === this) { capabilityAbort?.abort(); capabilityAbort = null; inferenceAbort?.abort();inferenceAbort=null; owner = null; ++generation; facts = {}; controls = {}; delivery = {}; cross={}; choices=null; history=null; roles=null; crashLog=null; }
     window.removeEventListener('alpha:settings-page',this.settingsNavigation);
     window.removeEventListener('alpha:device-settings',this.mailImagePreferenceChanged);
@@ -664,7 +708,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         }
         // calendar-settings:end
         // Only performRequested reads this preference: canonical Notes writes and in-app navigation are
-        // not reviewed (docs/decisions.md, November 6). Unreadable preferences never draw as Off.
+        // not reviewed (owner decision, November 6). Unreadable preferences never draw as Off.
         const preferences=devicePreferencesStatus();
         page.groups.push(group([{
           kTog:true,label:'Review phone actions first',aria:'Review phone actions first',hasSub:true,
@@ -810,7 +854,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       } else if (page.title === 'About') {
         const native=Capacitor.isNativePlatform();
         page.hero={kAlpha:true,version:native?versionLabel(facts.appVersion||buildVersion,facts.appVersionCode):buildVersion==='Unavailable'?'Development preview':'Version '+buildVersion};
-        page.groups=[...(native&&facts.androidRelease?[group([info('Android version',facts.androidRelease)])]:[]),group([licensesRow()])];
+        page.groups=[...(native&&facts.androidRelease?[group([info('Android version',facts.androidRelease)])]:[]),group([connectionHelpRow(),licensesRow()])];
       } else if (page.title === 'Wi-Fi') {
         page.hasHdrTog = false; page.hdrTog = null;
         page.hero = { ...page.hero, big: wifiValue, sub: 'Manage networks in Android' };
@@ -959,6 +1003,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const detailGroups=settingsTop.groups;
       const categories=[['settings-account','Account',['Account']],['settings-general','General',['Preferences','Device']],['settings-privacy','Privacy',['Privacy']],['settings-apps','Apps',['Apps']],['settings-help','About',['Help']]] as const;
       settingsTop.groups=categories.filter(([key])=>key!=='settings-account').map(([key,title])=>group([{kNav:true,label:title,lbl:title,chev:true,noAB:true,go:()=>{activeSettingsCategory=key==='settings-help'?null:key;api.set({page:key==='settings-help'?'about':key});}}]));
+      if(wakeListeningStopUnconfirmed())settingsTop.groups.push(group([note('Microphone status','Could not confirm listening is off. Turn it off in Android settings.')],'wake-stop-unconfirmed'));
       const appSettingsRows=detailGroups.filter((section:Bag)=>section.cap==='Apps').flatMap((section:Bag)=>section.rows);
       const appCatalog=[['Browser','browser'],['Calendar','calendar'],['Camera','camera'],['Files','files'],['Inbox','inbox'],['Maps','maps'],['Notes','notes'],['Passwords','passwords'],['Photos','photos'],['Workflows','workflows']] as const;
       const existingAppRow=(id:string)=>appSettingsRows.find((row:Bag)=>row.label===(id==='calendar'?'Calendar':id==='photos'?'Photos':id==='passwords'?'Password manager':''));
@@ -974,11 +1019,19 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const names:Record<string,string>={browser:'Browser',calendar:'Calendar',camera:'Camera',files:'Files',inbox:'Inbox',maps:'Maps',notes:'Notes',passwords:'Passwords',photos:'Photos',workflows:'Workflows'};
       const rows:Bag[]=[];
       if(appSettingsPage==='inbox')rows.push({kNav:true,label:'Google & email',lbl:'Google & email',chev:true,noAB:true,go:()=>googleConnectionController.open()});
+      if(appSettingsPage==='inbox'){
+        const preferences=devicePreferencesStatus(),images=cachedDevicePreferences()?.autoLoadMailImages===true;
+        rows.push({kTog:true,label:'Load images in email',aria:'Load images in email',hasSub:true,
+          sub:preferences==='loading'?'Loading…':preferences==='unavailable'?'Unavailable. Images stay hidden until you choose Show images.':'Automatically load remote images in formatted email.',
+          on:images,track:images?'background:var(--acc)':'background:var(--line)',kx:images?20:0,dis:preferences!=='ready',
+          toggle:async()=>{if(devicePreferencesStatus()!=='ready')return;try{await editDevicePreferences(value=>{value.autoLoadMailImages=!value.autoLoadMailImages;});changed();}catch{api.toast('Could not save email image preference. Try again.');}}});
+        if(preferences==='unavailable')rows.push({kNav:true,label:'Recover device settings',lbl:'Recover device settings',hasSub:true,sub:'Back up before resetting',chev:true,noAB:true,go:()=>openDevicePreferencesRecovery()});
+      }
       if(appSettingsPage==='workflows'){const channel=(delivery.channels||[]).find((c:Bag)=>c.id==='reminders');if(channel&&!Capacitor.isNativePlatform())rows.push({kTog:true,label:'Show alerts',aria:'Show alerts',on:!channel.blocked,track:!channel.blocked?'background:var(--acc)':'background:var(--line)',kx:!channel.blocked?20:0,toggle:()=>void run(async()=>{await notifications.setAlertPreferences({channelId:channel.id,enabled:!!channel.blocked});})});}
       const permissions:Record<string,string[]>={camera:['Camera','Microphone'],maps:['Location'],notes:['Microphone']};
       for(const label of permissions[appSettingsPage]||[])rows.push(info(label,typeof facts.permissions?.[label]==='boolean'?(facts.permissions[label]?'Allowed for Alpha':'Not allowed'):'Managed by your system'));
       if(appSettingsPage==='photos')rows.push(info('Photo access','Photos you choose'));
-      if(appSettingsPage==='files')rows.push(info('File access','Files and folders you choose'));
+      if(appSettingsPage==='files')rows.push(info('File access','All files on this phone when you allow it; otherwise only files you choose'));
       if(appSettingsPage==='browser')rows.push(info('Website permissions','Managed per website'));
       out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:names[appSettingsPage]||'App settings',hasTitle:true,backLabel:'Back to Apps',back:()=>{activeSettingsCategory='settings-apps';api.set({page:'settings-apps'});},hero:{},groups:rows.length?[group(rows)]:[group([info('Settings','No additional options')])]});
     }
@@ -988,7 +1041,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       const rows=['Camera','Microphone','Location',...(native?['Calendar']:[])].map(label=>native?{...action(label,manage('privacy')),val:status(label),hasVal:true}:info(label,status(label)));
       const photos=native?(photoAccess?.scope==='full'?'All photos and videos':photoAccess?.scope==='selected'?'Selected photos and videos':photoAccess?.scope==='partial'?'Limited access':photoAccess?.scope==='denied'?'Saved by Alpha only':'Not checked'):'Photos you choose';
       rows.push(native?{...action('Photos',()=>void photoLibrary.openLibrarySettings().catch(()=>api.toast('Photo settings could not open.'))),val:photos,hasVal:true}:info('Photos',photos));
-      rows.push(info('Files','Files and folders you choose'));
+      rows.push(info('Files','All files on this phone when you allow it; otherwise only files you choose'));
       rows.push({...action('Notifications',()=>api.set({page:'notifications'})),val:typeof delivery.appEnabled==='boolean'?(delivery.appEnabled&&delivery.permissionGranted?'Allowed':'Off'):'Not checked',hasVal:true});
       out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'App permissions',backLabel:'Back to Privacy',back:()=>api.set({page:'settings-privacy'}),hero:{},groups:[group(rows)]});
     }

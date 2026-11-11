@@ -1,6 +1,8 @@
 import {test,expect,type Page} from '@playwright/test';
 import {button} from './flag-off-android';
 import {setupLiveAssistant as setup} from './voice-assistant-fixture';
+import {attachVoiceFailureMetadata} from './voice-fixture-failure-metadata';
+test.afterEach(async({page},info)=>{await attachVoiceFailureMetadata(page,info);});
 const voice=(page:Page)=>page.getByRole('region',{name:'Voice conversation',exact:true});
 const transcription=(page:Page)=>page.getByRole('region',{name:'Voice transcription',exact:true});
 const live=<T,>(page:Page,read:(f:any)=>T)=>page.evaluate(`(${read.toString()})(window.live)`) as Promise<T>;
@@ -74,7 +76,7 @@ test('explicit Stop drains playback, keeps only the played sentence and a restar
  await clean(page,foreign);
 });
 
-test('Mute controls capture, Stop speaking shows while speaking and Stop retires playback',async({page})=>{
+test('Mute controls capture and Stop retires playback',async({page})=>{
  const foreign=await setup(page);
  await page.evaluate(()=>{(window as any).flagOff.replies.push('Here is a long answer about the weather this week.');});
  await button(page,'Talk').click();
@@ -84,18 +86,19 @@ test('Mute controls capture, Stop speaking shows while speaking and Stop retires
  await mute.click();
  await expect(voice(page).getByRole('button',{name:'Unmute microphone',exact:true})).toHaveAttribute('aria-pressed','true');
  await expect.poll(()=>live(page,f=>f.stops.length)).toBe(1);
- await expect(voice(page)).toContainText('Microphone off');
+ await expect(voice(page).getByRole('status',{name:'Voice conversation status',exact:true})).toHaveText('Muted');
  await voice(page).getByRole('button',{name:'Unmute microphone',exact:true}).click();
  await expect.poll(()=>live(page,f=>f.captures.length)).toBe(2);
  await say(page,'How is the weather');
  await expect(voice(page)).toHaveAttribute('data-voice-state','speaking');
  await expect(button(page,'Stop speaking')).toBeVisible();
+ await expect(button(page,'Stop voice conversation')).toBeVisible();
  await button(page,'Stop voice conversation').click();
  await expect(voice(page)).toHaveCount(0);
  await expect.poll(()=>live(page,f=>f.stopped)).toBeGreaterThan(0);
  await expect(page.getByText('(Interrupted before this reply was played.)')).toBeVisible();
  expect(await posts(page)).toEqual(['How is the weather']);
- // Nothing was heard: the agent is told so explicitly ({ nothingHeard: true }, docs/fused-speech.md), never sent an empty prefix.
+ // Nothing was heard: the agent is told so explicitly ({ nothingHeard: true }), never sent an empty prefix.
  const heard=await live(page,f=>f.heard);
  expect(heard.map((row:any)=>[row.path.split('/')[5],row.nothingHeard,row.heardText])).toEqual([['11111111-1111-4111-8111-111111111111',true,undefined]]);
  expect(heard[0].ownerId).toBeTruthy();

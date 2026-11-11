@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
+import {parse as parseYaml} from 'yaml';
 import {AVD,FUSED_SPEECH_CLASSES,READING_CLASSES,READING_TEST_MOCKS_CLASSES,SERIAL,disableEmulatorNetwork,runSuite,suitePlan,summarize} from '../scripts/ci/emulator-suite.mjs';
 import {CANONICAL_TEST,asrPackaged,candidateProblems,packageSpeechRun} from '../scripts/ci/speech-candidate.mjs';
 import {CLASS_REGISTRY,DEFAULT_CLASSES,parseInstrumentationArgs} from '../scripts/android-instrumentation.mjs';
@@ -108,16 +109,53 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
    const [name,commit]=target.split('@');assert.equal(pins.get(name)??commit,commit,`${name} is pinned to two different commits (${file})`);pins.set(name,commit);
   }
  }
- assert.deepEqual([...pins.keys()].filter(name=>!name.startsWith('actions/')).sort(),['android-actions/setup-android','gradle/actions/setup-gradle','oven-sh/setup-bun','reactivecircus/android-emulator-runner'],'a new third-party action needs its own review');
- // No step runs from a container image reference (which a commit pin does not cover), and no workflow grants a write permission.
- for(const file of files){const text=read(path.join('.github/workflows',file));assert.doesNotMatch(text,/\bdocker:\/\//,file);assert.doesNotMatch(text,/^\s+[a-z-]+: write\s*$/m,`${file} grants a write permission`);}
+ // Reviewed Google auth v3.0.0: https://github.com/google-github-actions/auth/releases/tag/v3.0.0
+ // Its WIF/IAM flow masks the token; these jobs disable credential files and environment exports.
+ assert.equal(pins.get('google-github-actions/auth'),'7c6bc770dae815cd3e89ee6cdf493a5fab2cc093');
+ assert.deepEqual([...pins.keys()].filter(name=>!name.startsWith('actions/')).sort(),['android-actions/setup-android','google-github-actions/auth','gradle/actions/setup-gradle','oven-sh/setup-bun','reactivecircus/android-emulator-runner'],'a new third-party action needs its own review');
+ // Only the manually admitted, release-environment publisher can write release assets.
+ // It and protected Cloud signing can request OIDC identity. All other jobs stay read-only.
+ // Image references remain prohibited.
+ for(const file of files){
+  const text=read(path.join('.github/workflows',file));assert.doesNotMatch(text,/\bdocker:\/\//,file);
+  if(file==='release-cloud-app-signing.yml'){
+   const signing=parseYaml(text);
+   assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['id-token'],
+     'Cloud signing may request identity, never write repository contents');
+   assert.deepEqual(signing.permissions,{});
+   assert.deepEqual(Object.keys(signing.on),['workflow_dispatch']);
+   assert.deepEqual(Object.keys(signing.jobs).sort(),['admit','sign']);
+   assert.deepEqual(signing.jobs.admit.permissions,{actions:'read',contents:'read'});
+   assert.equal(signing.jobs.admit.if,"github.repository == 'eliza-research/alphaphone' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+   const sign=signing.jobs.sign;
+   assert.deepEqual(sign.permissions,{actions:'read',contents:'read','id-token':'write'});
+   assert.equal(sign.environment,'release');
+   assert.equal(sign.needs,'admit');
+   assert.equal(sign.if,"needs.admit.result == 'success' && needs.admit.outputs.plan_sha256 != '' && inputs.workflow_commit == github.sha");
+   assert.deepEqual(signing.concurrency,{group:'release-signing','cancel-in-progress':false});
+   continue;
+  }
+  if(file!=='publish-qualified-app-update.yml'){assert.doesNotMatch(text,/^\s+[a-z-]+: write\s*$/m,`${file} grants a write permission`);continue;}
+  const publication=parseYaml(text);
+  assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['contents','id-token'],
+    'only publication contents and private artifact identity may be writable');
+  assert.deepEqual(publication.permissions,{});
+  assert.deepEqual(Object.keys(publication.on),['workflow_dispatch']);
+  assert.deepEqual(Object.keys(publication.jobs).sort(),['admit','publish']);
+  assert.deepEqual(publication.jobs.admit.permissions,{contents:'read',actions:'read'});
+  assert.equal(publication.jobs.admit.if,"github.repository == 'eliza-research/alphaphone' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+  const publish=publication.jobs.publish;
+  assert.deepEqual(publish.permissions,{actions:'read',contents:'write','id-token':'write'});
+  assert.equal(publish.environment,'release');
+  assert.equal(publish.needs,'admit');
+  assert.equal(publish.if,"needs.admit.result == 'success' && needs.admit.outputs.qualification_sha256 != '' && inputs.workflow_commit == github.sha");
+  assert.deepEqual(publication.concurrency,{group:'alpha-app-stable-publication','cancel-in-progress':false});
+ }
 });
 
 test('a change to the emulator evidence workflow selects no automatic lane of its own',()=>{
  assert.deepEqual(affected([WORKFLOW]),{verify:true,browser:false,android:false,prepare:false});
- const policy=read('docs/ci-cost-policy.md');
- assert.match(policy,/android-emulator\.yml/);
- for(const suite of [...emulatorJobs,'all'])assert.ok(policy.includes(`gh workflow run android-emulator.yml --ref <branch> -f suite=${suite}`),suite);
+
 });
 
 test('the build job refuses the speech suite until hosted Paradee staging exists and hands over hash-anchored APKs',()=>{

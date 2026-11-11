@@ -1,4 +1,4 @@
-// Recording a distributed release as lastRelease (docs/human-actions.md H-32) on synthetic
+// Recording a distributed release as lastRelease  on synthetic
 // manifests and copies of android/release-signer.json. Not a build, signature or distribution.
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -14,7 +14,7 @@ const SIGNER = "a".repeat(64);
 const sha = text => createHash("sha256").update(text).digest("hex");
 // Everything verify-apks records for a distributable release (as in test/pilot-units.test.mjs).
 const DISTRIBUTABLE = { mode: "release", signed: true, signerSha256: SIGNER, distributable: true, runtime: "PACKAGED", runtimeNotices: true, testMocks: false, bundleAudit: "passed",
-  voiceHost: { packaged: true, asr: true, differences: [], qualified: true }, licenceBlockers: [] };
+  voiceHost: { packaged: true, asr: true, differences: [], qualified: false }, licenceBlockers: [] };
 
 /**
  * A checkout with the committed release-signer record (signer set to SIGNER, no release recorded
@@ -65,7 +65,7 @@ test("a release that is not distributable, differs between variants or does not 
   const cases = [
     [{ rows: { launcher: { signed: false } } }, /launcher: .*unsigned release/s],
     [{ rows: { standalone: { signerSha256: "b".repeat(64) } } }, /standalone: .*does not match/s],
-    [{ rows: { launcher: { voiceHost: { packaged: true, asr: true, differences: [], qualified: false } } } }, /device qualification pending/],
+    [{ rows: { launcher: { voiceHost: { packaged: true, asr: true, differences: ["changed voice bytes"], qualified: false } } } }, /bytes differ from the voice-host record/],
     [{ rows: { launcher: { versionCode: 13 } } }, /different versions/],
     [{ rows: { standalone: { sha256: "c".repeat(64) } } }, /does not match its verified manifest row/],
     [{ last: { versionCode: 12, versionName: "1.0.0", recordedAt: "2026-11-01" } }, /not greater than the last recorded release 12/],

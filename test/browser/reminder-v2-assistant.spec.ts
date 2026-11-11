@@ -104,7 +104,7 @@ for (const { target: version, mode } of cases) {
     if(mode==='older-peer'||mode.startsWith('create-')){
       // Browser reminders use the runtime scheduler, not a second phone-creation
       // lifecycle. The saved unsupported proposal is explained, never approved.
-      await expect(page.getByText(/An agent action could not be shown on this phone/).first()).toBeVisible();
+      await expect(page.getByText("This action isn't available on this phone.",{exact:true}).first()).toBeVisible();
       await expect(page.getByText(/Review the action below\./)).toHaveCount(0);
       const fixture=await page.evaluate(()=>(window as any).recoveryFixture);
       expect(fixture.lists).toBeGreaterThan(0);
@@ -113,6 +113,7 @@ for (const { target: version, mode } of cases) {
       expect(fixture.posts).toBe(1);
       expect(fixture.decisions).toBe(0);
       expect(fixture.claims).toBe(0);
+      expect(fixture.effects).toBe(0);
       expect(fixture.receipts).toBe(0);
       expect(fixture.journal).toEqual([]);
       const rows=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders);
@@ -147,9 +148,11 @@ for (const { target: version, mode } of cases) {
     await expect.poll(()=>page.evaluate(()=>(window as any).recoveryFixture.receipts),{timeout:mode==='cancel'?20_000:5_000}).toBe(1);
     if(mode==='cancel')await expect.poll(()=>page.evaluate(async()=>JSON.parse((await(await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders[0].status),{timeout:20_000}).toBe('cancelled');
     // A no-alert reminder cannot be snoozed: the approved v2 snooze is refused and changes nothing.
+    // The refusal follows the claimed boundary: retain conservative uncertainty,
+    // prove the exact browser record stayed unchanged, and never report success.
     const refused=v2&&mode==='snooze';
     const rows=await page.evaluate(async ()=>JSON.parse((await (await import('/src/browser/reminder-store.ts')).reminderDocument.readRaw())!).reminders);expect(rows).toHaveLength(mode==='create'||mode.startsWith('create-')?2:1);
-    const receipt=await page.evaluate(()=>(window as any).calendarRetained);expect(receipt.summary).not.toContain('Android');expect(receipt.status).toBe(mode==='stale'||refused?'failed':mode==='cancel'?'unknown':'succeeded');
+    const receipt=await page.evaluate(()=>(window as any).calendarRetained);expect(receipt.summary).not.toContain('Android');expect(receipt.status).toBe(mode==='stale'?'failed':mode==='cancel'||refused?'unknown':'succeeded');
     if(mode==='cancel'){
       const recovered=await page.evaluate(async()=>{const {deletions}=await import('/src/runtime/deletions.ts');return deletions.receipt({entry:(window as any).calendarEntry});});
       expect(recovered.recovery).toMatchObject({status:'succeeded',result:{reminderResult:{kind:'reminder_cancel',status:'cancelled'}}});

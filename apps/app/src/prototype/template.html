@@ -952,6 +952,7 @@
         <h1 class="serif" style="margin: 0; font-size: 38px; line-height: 1.05; letter-spacing: -.01em">{{calendar.ev.title}}</h1>
         <div style="font-size: 17px; margin-top: 14px">{{calendar.ev.when}}</div>
         <div style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--mut); margin-top: 4px"><span style="width: 8px; height: 8px; border-radius: 4px; background: {{calendar.ev.dot}}"></span>{{calendar.ev.day}}</div>
+        <div style="font-size: 14px; color: var(--mut); margin-top: 8px">{{calendar.ev.sourceLabel}}</div>
         <sc-if value="{{calendar.ev.uncertain}}"><div role="status" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--s2); font-size: 13px"><span style="flex: 1 1 160px">Couldn’t confirm the last change. Refresh to check.</span><button class="tap" onClick="{{calendar.ev.checkUncertain}}" style="min-height: 44px; padding: 0 14px; border-radius: 18px; background: var(--bg)">Refresh</button></div></sc-if>
         <sc-if value="{{calendar.ev.hasOrigin}}"><div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 14px; color: var(--mut); margin-top: 8px"><span>{{calendar.ev.originLabel}}</span><button class="tap" aria-label="{{calendar.ev.originOpenLabel}}" onClick="{{calendar.ev.openOrigin}}" style="min-height: 44px; padding: 0 14px; border-radius: 18px; background: var(--s2); color: var(--fg); font-weight: 600">Open note</button></div></sc-if>
 
@@ -965,7 +966,7 @@
           </sc-if>
           <sc-for list="{{calendar.ev.reminderHistory}}" as="h"><div style="font-size: 13px; color: var(--mut); margin-top: 8px">{{h.text}}</div></sc-for>
         </sc-if>
-        <sc-if value="{{calendar.ev.reminderReopen}}"><button class="tap" aria-label="Reopen reminder" onClick="{{calendar.ev.reminderReopen}}" style="min-height: 52px; margin-top: 12px; padding: 12px 16px; border-radius: 16px; background: var(--s2)">Reopen</button></sc-if>
+        <sc-if value="{{calendar.ev.reminderReopenable}}"><button class="tap" aria-label="Reopen reminder" onClick="{{calendar.ev.reminderReopen}}" style="min-height: 52px; margin-top: 12px; padding: 12px 16px; border-radius: 16px; background: var(--s2)">Reopen</button></sc-if>
 
         <sc-if value="{{calendar.ev.isInvite}}">
           <div style="display: flex; align-items: center; gap: 8px; margin-top: 22px">
@@ -1346,7 +1347,7 @@
       <sc-if value="{{browser.pageShareAvailable}}"><button class="tap" aria-label="Share" onClick="{{browser.openShare}}" style="min-height:50px; border-radius: 18px; display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 15px; text-align: left; line-height: 1.25"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0"><path d="{{ic.share}}"></path></svg>Share</button></sc-if>
       <sc-if value="{{browser.openFind}}"><button class="tap" aria-label="Find in page" onClick="{{browser.openFind}}" style="min-height:50px;border-radius:18px;display:flex;align-items:center;gap:14px;padding:0 14px;text-align:left;font-size:15px"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0"><path d="{{ic.search}}"></path></svg>Find in page</button></sc-if>
       <sc-if value="{{browser.pageContentAvailable}}"><button class="tap" aria-label="Ask about page" onClick="{{browser.askPage}}" style="min-height:50px;border-radius:18px;padding:0 14px;text-align:left;font-size:15px">Ask about page</button></sc-if>
-      <sc-if value="{{browser.readAloudAvailable && browser.pageContentAvailable}}"><button class="tap" aria-label="Read aloud" onClick="{{browser.readAloud}}" style="min-height:50px; border-radius: 18px; display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 15px; text-align: left; line-height: 1.25"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0"><path d="{{ic.wave}}"></path></svg>Read aloud</button></sc-if>
+      <sc-if value="{{browser.readAloudAvailable}}"><sc-if value="{{browser.pageContentAvailable}}"><button class="tap" aria-label="Read aloud" onClick="{{browser.readAloud}}" style="min-height:50px; border-radius: 18px; display: flex; align-items: center; gap: 14px; padding: 0 14px; font-size: 15px; text-align: left; line-height: 1.25"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px; flex-shrink: 0"><path d="{{ic.wave}}"></path></svg>Read aloud</button></sc-if></sc-if>
       <sc-if value="{{browser.readAloudNote}}"><p role="note" aria-label="Page reading not included" style="margin: 0; padding: 6px 14px 12px; font-size: 13px; line-height: 1.4; color: var(--mut)">{{browser.readAloudNote}}</p></sc-if>
       <sc-if value="{{browser.readingUnavailable}}"><p role="note" aria-label="Page reading unavailable" data-alpha-reading-unavailable style="margin: 0; padding: 6px 14px 12px; font-size: 13px; line-height: 1.4; color: var(--mut)">{{browser.readingNote}}</p></sc-if>
     </div>
@@ -2167,6 +2168,7 @@
           </button>
     </sc-for>
     <sc-if value="{{notes.canImportText}}"><button class="tap" aria-label="Import text note" disabled="{{notes.documentBusy}}" onClick="{{notes.importText}}" style="display: flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 16px; padding: 0 14px; border-radius: 22px; background: var(--s2); color: var(--fg); font-size: 14px"><svg class="i" viewBox="0 0 24 24" style="width: 18px; height: 18px"><path d="{{ic.filesDown}}"></path></svg>Import text note</button></sc-if>
+    <sc-if value="{{notes.olderNotesAction}}"><button class="tap" onClick="{{notes.olderNotesAction}}" style="min-height:44px;margin-top:16px;padding:0 8px;color:var(--mut);font-size:14px">Previous notes</button></sc-if>
   </div>
 
   
@@ -2589,7 +2591,7 @@
     </sc-if>
     <sc-if value="{{files.browse.denied}}">
       <div role="alert" style="display: flex; align-items: center; gap: 12px; margin: 8px; padding: 14px 16px; border-radius: 20px; background: var(--s2)">
-        <span style="flex-grow: 1; font-size: 15px">Allow all files access</span>
+        <span style="flex-grow: 1; font-size: 15px">{{files.browse.deniedLabel}}</span>
         <button onClick="{{files.browse.grant}}" style="min-height: 40px; padding: 0 16px; border-radius: 20px; background: var(--acc); color: var(--alpha-white); font-weight: 600">Allow</button>
       </div>
     </sc-if>
@@ -3190,7 +3192,7 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px"><sc-for list="{{workflows.clock.actions}}" as="item"><button class="tap" onClick="{{item.pick}}" style="padding:14px;border-radius:18px;font-size:15px;font-weight:600;{{item.css}}">{{item.label}}</button></sc-for></div>
       <sc-if value="{{workflows.clock.isSet}}"><label style="font-size:14px;display:flex;flex-direction:column;gap:8px;margin-bottom:18px">Alarm time<input aria-label="Alarm time" type="time" value="{{workflows.clock.time}}" onChange="{{workflows.clock.onTime}}" style="font:inherit;font-size:28px;color:var(--fg);background:var(--s2);border:0;border-radius:16px;padding:14px"></label><label style="font-size:14px;display:flex;flex-direction:column;gap:8px;margin-bottom:14px">Label<input aria-label="Alarm label" maxlength="200" value="{{workflows.clock.label}}" onChange="{{workflows.clock.onLabel}}" style="font:inherit;color:var(--fg);background:var(--s2);border:0;border-radius:16px;padding:14px"></label></sc-if>
       <sc-if value="{{workflows.clock.isSnooze}}"><label style="font-size:14px;display:flex;flex-direction:column;gap:8px;margin-bottom:18px">Requested snooze minutes<input aria-label="Snooze minutes" type="number" min="1" max="60" value="{{workflows.clock.snooze}}" onChange="{{workflows.clock.onSnooze}}" style="font:inherit;color:var(--fg);background:var(--s2);border:0;border-radius:16px;padding:14px"></label></sc-if>
-      <sc-if value="{{workflows.clock.days}}"><fieldset style="border:0;margin:0 0 18px;padding:0"><legend style="font-size:14px;margin-bottom:8px">Repeat</legend><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{workflows.clock.days}}" as="day"><button class="tap" aria-label="{{day.label}}" aria-pressed="{{day.on}}" onClick="{{day.toggle}}" style="min-width:44px;min-height:44px;padding:0 10px;border-radius:22px;{{day.css}}">{{day.short}}</button></sc-for></div></fieldset></sc-if>
+      <sc-if value="{{workflows.clock.days}}"><fieldset style="border:0;margin:0 0 18px;padding:0"><legend style="font-size:14px;margin-bottom:8px">Repeat</legend><div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{workflows.clock.days}}" as="day"><button class="tap" aria-label="{{day.aria}}" aria-pressed="{{day.on}}" onClick="{{day.toggle}}" style="min-width:44px;min-height:44px;padding:0 10px;border-radius:22px;{{day.css}}">{{day.short}}</button></sc-for></div></fieldset></sc-if>
       <button class="tap" aria-label="Review Clock request" aria-disabled="{{workflows.clock.busy}}" onClick="{{workflows.clock.prepare}}" style="padding:16px;border-radius:24px;background:var(--acc);color:var(--alpha-white);font-weight:600;margin-top:12px">Review request</button>
       <sc-if value="{{workflows.clock.review}}"><div style="margin-top:18px;padding:18px;border-radius:20px;background:var(--s2)"><p style="font-size:15px;line-height:1.5;margin:0 0 16px">{{workflows.clock.review.text}}</p><button class="tap" aria-label="Confirm Clock request" onClick="{{workflows.clock.review.confirm}}" style="padding:14px 18px;border-radius:20px;background:var(--fg);color:var(--bg);font-weight:600">{{workflows.clock.review.label}}</button><button class="tap" aria-label="Cancel Clock review" onClick="{{workflows.clock.review.cancel}}" style="padding:14px;color:var(--mut)">Cancel</button></div></sc-if>
       <p role="status" aria-live="polite" style="font-size:14px;line-height:1.5;margin-top:18px">{{workflows.clock.message}}</p>
@@ -3247,6 +3249,7 @@
     <section ref="{{workflows.detailFocus}}" data-alpha-subview="automations-detail" class="automation-detail" aria-label="{{workflows.automation.title}}">
       <div data-alpha-app-header="detail" class="automation-detail-header"><button class="ib" aria-label="Back to automations" disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><h2 data-alpha-app-title>{{workflows.automation.title}}</h2><sc-if value="{{workflows.automation.editing}}"><button class="automation-header-save" disabled="{{workflows.automation.saveDisabled}}" onClick="{{workflows.automation.save}}">Save</button></sc-if></div>
       <div data-alpha-app-scroll="automation-detail" class="automation-detail-body scr">
+        <sc-if value="{{workflows.automation.clockContext}}"><p role="note">{{workflows.automation.clockContext}}</p></sc-if>
         <sc-if value="{{workflows.automation.creating}}"><div class="automation-new">
           <button class="workflow-choice" disabled="{{workflows.automation.agentUnavailable}}" onClick="{{workflows.automation.createPrompt}}"><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.calRepeat}}"></path></svg><span><strong>Automation</strong><small>{{workflows.automation.promptDescription}}</small></span><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button>
           <button class="workflow-choice" disabled="{{workflows.automation.agentReminderUnavailable}}" onClick="{{workflows.automation.createReminder}}"><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.bell}}"></path></svg><span><strong>Reminder</strong><small>{{workflows.automation.agentReminderDescription}}</small></span><svg class="i" aria-hidden="true" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button>
@@ -4238,7 +4241,7 @@
 
 <div data-alpha-toast aria-live="polite" aria-atomic="true">
 <sc-if value="{{toastOn}}">
-  <div class="drop" style="pointer-events: auto; min-height: 48px; max-width: 100%; box-sizing: border-box; padding: 0 {{toastPadR}}px 0 18px; border-radius: 24px; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 600; display: flex; gap: 14px; align-items: center; box-shadow: 0 8px 24px var(--shc)">
+  <div class="drop" role="{{toastRole}}" tabindex="{{toastTabIndex}}" onFocus="{{toastFocus}}" onBlur="{{toastBlur}}" onClick="{{toastTap}}" onKeyDown="{{toastKey}}" style="pointer-events: auto; min-height: 48px; max-width: 100%; box-sizing: border-box; padding: 0 {{toastPadR}}px 0 18px; border-radius: 24px; background: var(--fg); color: var(--bg); font-size: 14px; font-weight: 600; display: flex; gap: 14px; align-items: center; box-shadow: 0 8px 24px var(--shc)">
     <span style="flex-grow: 1; min-width: 0; padding: 8px 0; overflow-wrap: anywhere">{{toast}}</span>
     <sc-if value="{{toastUndo}}"><button onClick="{{doUndo}}" style="flex-shrink: 0; min-height: 40px; padding: 0 14px; border-radius: 20px; color: var(--bg); background: rgba(127,127,127,.28); font-weight: 700; font-size: 14px">Undo</button></sc-if>
   </div>

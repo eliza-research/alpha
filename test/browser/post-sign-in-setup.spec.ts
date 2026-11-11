@@ -89,7 +89,7 @@ test('a verified email code goes straight to access setup while the agent restar
  await page.goto(origin+'/');
  // Settled browser guests go straight to the approved Cloud sign-in: the same full page Android
  // shows while signed out, with no Back, never a dialog over Home (owner report 2026-11-01).
- const agentSheet=page.getByRole('dialog',{name:'Your agent',exact:true});
+ const agentSheet=page.getByRole('dialog',{name:'Connection help',exact:true});
  const signIn=page.getByRole('main',{name:'Welcome to Alpha.',exact:true});
  await expect(signIn).toBeVisible({timeout:60_000});
  await expect(signIn.getByRole('button',{name:'Email me a code',exact:true})).toBeEnabled();
@@ -149,7 +149,7 @@ test('a verified email code goes straight to access setup while the agent restar
  await expect.poll(async()=>(await snapshot(page)).session,{timeout:30_000}).toBe(true);
  await expect(agentSheet).toHaveCount(0);
  await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.open());
- await expect(agentSheet.getByText('Running on this device',{exact:true})).toBeVisible();
+ await expect(agentSheet.getByRole('region',{name:'Agent status',exact:true}).getByText('Connected',{exact:true})).toBeVisible();
  await expect(agentSheet.getByText('Your agent uses Eliza Cloud for AI.',{exact:true})).toBeVisible();
  await expect(agentSheet.getByText('No active subscription',{exact:true})).toBeVisible();
  await shot(page,info,'06-your-agent-running');
@@ -163,7 +163,9 @@ test('a first start shows a neutral loading screen, never Home, until the sign-i
  // However long the agent takes to start, nothing usable is shown before the sign-in.
  await expect.poll(()=>!!host.release,{timeout:60_000}).toBe(true);
  await expect(startupLoading(page)).toBeVisible();await page.waitForTimeout(500);
- await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(0);
+ await expect(page.getByRole('region',{name:'Home',exact:true})).toHaveCount(0);
+ await expect(page.locator('[data-alpha-startup-shell]')).toHaveAttribute('inert','');
+ await expect(page.locator('[data-alpha-startup-shell]')).toHaveCSS('opacity','0');
  host.release!();
  await expect(page.getByRole('main',{name:'Welcome to Alpha.',exact:true})).toBeVisible({timeout:30_000});
  await expect(startupLoading(page)).toHaveCount(0);await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(1);
@@ -176,7 +178,9 @@ test('a signed-in start opens access setup directly, with no Home while the acco
  await page.goto(origin+'/');
  await expect.poll(()=>!!host.admit,{timeout:60_000}).toBe(true);
  await expect(startupLoading(page)).toBeVisible();await page.waitForTimeout(500);
- await expect(page.locator('[data-alpha-layer="home"]')).toHaveCount(0);
+ await expect(page.getByRole('region',{name:'Home',exact:true})).toHaveCount(0);
+ await expect(page.locator('[data-alpha-startup-shell]')).toHaveAttribute('inert','');
+ await expect(page.locator('[data-alpha-startup-shell]')).toHaveCSS('opacity','0');
  host.admit!();
  await expect(page.locator('dialog.alpha-startup-permissions').getByRole('heading',{name:'Notifications',exact:true})).toBeFocused({timeout:30_000});
  await expect(startupLoading(page)).toHaveCount(0);
@@ -209,14 +213,14 @@ test('own keys taken over from a held readiness check and rejected keep the welc
  await expect(welcome.getByRole('button',{name:'Use my own API keys',exact:true})).toBeEnabled({timeout:10_000});
  await welcome.getByRole('button',{name:'Use my own API keys',exact:true}).click();
  const own=welcome.getByRole('form',{name:'Own API keys'});
- await own.getByLabel('Cerebras API key',{exact:true}).fill(AI_KEY);
- await own.getByLabel('Cartesia API key (optional)',{exact:true}).fill(VOICE_KEY);
+ await own.getByLabel('Text API key',{exact:true}).fill(AI_KEY);
+ await own.getByLabel('Voice API key (optional)',{exact:true}).fill(VOICE_KEY);
  await own.getByRole('button',{name:'Save and use own keys',exact:true}).click();
  // The rejection says what failed, inside the own-key form on the same page, as on Android.
  await expect(own.getByRole('alert')).toHaveText('Own API keys could not be set up. Check the keys and try again.');
  expect(host.operations.filter(operation=>operation==='residentOwn')).toHaveLength(1);
  await expect(page.locator('.alpha-auth-page')).toHaveCount(1);await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
- await expect(page.getByRole('dialog',{name:'Your agent',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('dialog',{name:'Connection help',exact:true})).toHaveCount(0);
  await shot(page,info,'own-key-rejected-after-cancelled-check');
  // Cloud sign-in never shows the key rejection as its own.
  await own.getByRole('button',{name:'Back',exact:true}).click();

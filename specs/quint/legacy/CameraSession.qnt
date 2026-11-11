@@ -1,4 +1,4 @@
-// Literal state/action translation of design/view-refresh-2026-11/tla/camera-session/Spec.tla.
+// Historical design translation; the executable Quint model is retained here.
 // The immutable configuration is the former TLC .cfg selection. History only
 // observes transitions and does not restrict the original transition relation.
 module CameraSession {

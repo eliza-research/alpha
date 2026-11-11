@@ -36,7 +36,7 @@ for(const scenario of [{name:'repeated clock time runs once at the earlier offse
 });
 
 
-// Missed-occurrence policy (docs/decisions.md A-09 option under the current documentation): nothing runs
+// Missed-occurrence policy: nothing runs
 // while the host is down. Development schedules run only while this app is open, so "down" here is a
 // closed or sleeping app. The resident agent's own overdue path is scripts/test-local-digest-restart.mjs.
 const digestState=(page:import('@playwright/test').Page)=>page.evaluate(async()=>{const state=await (await import('/src/browser/development-digest-document.ts')).readDevelopmentDigests((await import('/src/browser/development-identity.ts')).developmentIdentity('local'));return {results:state.results,loops:state.loops};});

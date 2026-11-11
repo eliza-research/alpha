@@ -3,7 +3,7 @@ import {test,expect,type Page} from '@playwright/test';
 
 // The Resize chat grabber moves the open sheet: it rests where released, snaps only near the
 // collapsed form or the top, and a flick jumps. Full screen has no grabber, so nothing of Alpha's
-// competes with the top edge, where a pull is Android's shade (docs/gesture-zones.md).
+// competes with the top edge, where a pull is Android's shade.
 const panel=(page:Page)=>page.locator('[data-alpha-layer="conversation"]');
 const grabber=(page:Page)=>page.getByRole('button',{name:'Resize chat',exact:true});
 const height=(page:Page)=>panel(page).evaluate(element=>parseFloat(getComputedStyle(element).height));
@@ -102,7 +102,7 @@ for(const inset of [0,52])test(`full chat header clears the status bar with no g
 
 // Outside the open sheet the first touch only collapses the chat; the next one is ordinary.
 const activeView=(page:Page)=>page.locator('html').getAttribute('data-active-view');
-// Home draws its calendar card only with an event (docs/ui-refresh-2026-11), so one is saved first;
+// Home draws its calendar card only with an event, so one is saved first;
 // the card is the control above the sheet.
 const card=(page:Page)=>page.getByRole('button',{name:/^Open calendar event: Synthetic outside target/});
 async function eventSheet(page:Page){
@@ -212,7 +212,7 @@ test.describe('landscape',()=>{
  });
 });
 
-// One rule for every raised dock (docs/ui-refresh-2026-11, tla/ChatInput.tla).
+// One rule for every raised dock.
 test.describe('raised dock',()=>{
  const open=async(page:Page)=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?shell=launcher&tools=1');};
  for(const lateClick of [true,false])test(lateClick?'a delayed Android click stays on the raised scrim':'a released scrim press without a click still lowers the dock',async({page})=>{

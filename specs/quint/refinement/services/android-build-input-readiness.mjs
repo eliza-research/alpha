@@ -14,7 +14,7 @@ const inputs = ['scripts/android-build-preflight.mjs', 'scripts/build-embedding-
   'scripts/mobile-uuid-adapter.mjs', 'scripts/stage-embedding-host.mjs', 'scripts/voice-host.mjs'];
 const labels = new Map([
   ['pinned upstream checkout', 'pin'], ['on-device voice outputs', 'voice'],
-  ['on-device voice qualified', 'qualification'], ['embedding host libraries', 'embedding'],
+  ['embedding host libraries', 'embedding'],
   ['prepared resident runtime source', 'prepared'], ['workflow worker artifact', 'worker'],
   ['staged resident runtime payload', 'payload'], ['embedding model', 'model'],
   ['Gradle dependency verification metadata', 'gradle'], ['release signer', 'signer'],
@@ -22,7 +22,6 @@ const labels = new Map([
 const notices = [
   [/Every strict-build input is present/, 'allInputs'],
   [/Missing or changed voice outputs stop Gradle/, 'voiceBlocker'],
-  [/The chain cannot pass Gradle :app:verifyEmbeddingHost/, 'embeddingBlocker'],
   [/An unset release signer does not stop the build/, 'unsigned'],
 ];
 const kinds = [
@@ -93,29 +92,25 @@ function fixture(root) {
   const abi = 'arm64-v8a';
   const libraries = ['libelizainference.so', 'libelizavoicejni.so', 'libc++_shared.so']
     .map(name => ({name, content: 'synthetic byte record for ' + name + '\n'}));
-  const qualification = {abi, model: {path: 'android/app/src/main/assets/agent/models/fixture.gguf'},
+  const hostRecord = {abi, model: {path: 'android/app/src/main/assets/agent/models/fixture.gguf'},
     libraries: libraries.map(({name, content}) => ({name, bytes: Buffer.byteLength(content),
       sha256: createHash('sha256').update(content).digest('hex')}))};
   let voice = 'missing', host = 'missing', google = true, env = {};
   const setHost = value => {
     host = value;
-    json(QUALIFIED_HOST, value === 'requalification' ? {...qualification, requalification: {
-      required: true, atPin: current, reason: 'synthetic qualification is stale',
-    }} : qualification);
+    json(QUALIFIED_HOST, hostRecord);
     for (const {name, content} of libraries) {
       const path = 'android/app/src/main/jniLibs/' + abi + '/' + name;
       if (value === 'missing') remove(path);
       else write(path, value === 'different' && name === libraries[0].name ? 'synthetic drift\n' : content);
     }
   };
-  const setRemap = remapBuildPath => json(BUILD_TOOLCHAIN, {remapBuildPath,
-    remapBuildPathEvidence: 'synthetic toolchain receipt'});
   const setSigner = value => {
     env = ['envOnly', 'ready'].includes(value) ? Object.fromEntries(signingNames.map(key => [key, marker])) : {};
     json('android/release-signer.json', {signerSha256: ['identityOnly', 'ready'].includes(value) ? 'e'.repeat(64) : 'unset'});
   };
   setHost('missing');
-  setRemap(true);
+  json(BUILD_TOOLCHAIN, {});
   setSigner('unset');
 
   const source = join(root, 'artifacts/prepared');
@@ -125,7 +120,7 @@ function fixture(root) {
   const sourceStamp = '{ "base": "synthetic pinned source", "id": "first" }\n';
   const voiceHost = () => {
     if (voice === 'missing') throw Error('synthetic voice input missing');
-    return {qualified: voice === 'qualified'};
+    return {};
   };
   const embeddingHost = () => {
     if (host !== 'ready') throw Error('synthetic host was not admitted');
@@ -162,7 +157,7 @@ function fixture(root) {
       's.googleChecked': googleChecked,
     };
   };
-  return {observe, selectPin, setHost, setRemap, setSigner,
+  return {observe, selectPin, setHost, setSigner,
     setVoice: value => {voice = value;},
     prepare: () => write('artifacts/prepared/.alpha-runtime-source.json', sourceStamp),
     setPayload: value => write(assets + '/alpha-source.json', value === 'exact' ? sourceStamp : sourceStamp.replace('first', 'second')),
@@ -174,7 +169,7 @@ function fixture(root) {
     demandMobileReceipt: () => json(MOBILE_UUID_POLICY, {}),
     setGoogleHost: value => {google = value;},
     stageSupport() {
-      write(qualification.model.path, 'synthetic model presence only');
+      write(hostRecord.model.path, 'synthetic model presence only');
       write('android/gradle/verification-metadata.xml', '<fixture/>');
     },
   };
@@ -211,12 +206,12 @@ export async function checkAndroidBuildInputReadiness(extraSources = []) {
       payload, ['setWorker', 'staged'], ['setProfile', 'cloud'], profile]],
     ['a missing mandatory build receipt refuses before the Google host port', [...ready,
       ['setGoogleHost', false], ['demandMobileReceipt']]],
-    ['embedding report reads staged bytes and separates toolchain production from human action', [voice,
-      ['setRemap', false], host, ['setRemap', true], ['setHost', 'different'], ['setHost', 'requalification']]],
+    ['embedding report and full admission reject changed or missing native library bytes', [voice, prep, payload, worker, profile,
+      host, ['setHost', 'different'], ['setHost', 'missing'], host]],
     ['signing report needs both identity and environment presence while disclosing no marker value', [
       ['setSigner', 'envOnly'], ['setSigner', 'identityOnly'], ['setSigner', 'ready']]],
     ['all reported inputs can be ready without running a build or an external provider', [
-      ['setVoice', 'qualified'], ...ready.slice(1), ['stageSupport'], ['setSigner', 'ready']]],
+      ...ready, ['stageSupport'], ['setSigner', 'ready']]],
   ];
   return checkTraces({model: 'AndroidBuildInputReadiness', scope: 'bounded-orchestration',
     sources, driverHashes, traces: cases.map(([name, actions]) => trace(name, actions)),

@@ -13,7 +13,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {ALLOWLIST, COMMERCIAL_FONT, FONT_LICENSES, HELD_OUTSIDE_REPOSITORY, NO_FONT_LICENCE, ROOT, UNVERIFIED, collectNotices, fontLicense, fontNames, sha256} from '../scripts/generate-licenses.mjs';
-import {FONT_BLOCKER, FONT_BLOCKER_REFERENCE, FONT_FLAG, FONT_HELD_FLAG, RESOLVED_BY_OWNER_STATEMENT, fontLicenceCheck, fontLicenceFindings, fontLicenceLine, fontLicenseBlockers, readOwnerStatedFontHashes, readUnverifiedFontHashes} from '../scripts/font-license-blockers.mjs';
+import {FONT_BLOCKER, FONT_FLAG, FONT_HELD_FLAG, RESOLVED_BY_OWNER_STATEMENT, fontLicenceCheck, fontLicenceFindings, fontLicenceLine, fontLicenseBlockers, readOwnerStatedFontHashes, readUnverifiedFontHashes} from '../scripts/font-license-blockers.mjs';
 import {UNRESOLVED_FONT_LICENCE_BLOCKS_DISTRIBUTION, classifyLicence} from '../scripts/licence-policy.mjs';
 import {releaseBlockers} from '../scripts/release-blockers.mjs';
 import {releaseDistributable} from '../scripts/release-distributable.mjs';
@@ -83,9 +83,7 @@ test('the shipped public directory reports Denton as resolved by owner statement
   assert.deepEqual([check.items, check.blockers], [[], []]);
   assert.deepEqual(check.resolved, ['unresolved-font-licence: resolved-by-owner-statement: Denton typeface (denton-300.woff2) is proprietary; the owner states the licence is held and its document is kept outside this repository (licenses/font-licenses.json, owner decision A-21)']);
   assert.deepEqual(fontLicenseBlockers(path.join(ROOT, 'apps/app/public')), []);
-  const [doc, anchor] = FONT_BLOCKER_REFERENCE.split('#');
-  const heading = fs.readFileSync(path.join(ROOT, doc), 'utf8').split('\n').find(line => line.startsWith('## ') && line.toLowerCase().replace(/[^a-z0-9 -]/g, '').trim().replace(/ /g, '-') === anchor);
-  assert.ok(heading, `${doc} has the section the check points at`);
+
 });
 
 test('the check follows the packaged bytes: recorded bytes are resolved, any other proprietary font is unresolved', t => {
@@ -205,8 +203,6 @@ function scratchRoot(t) {
   fs.symlinkSync(path.join(ROOT, 'apps/app/public'), path.join(dir, 'apps/app/public'));
   for (const name of ['package.json', 'package-lock.json', 'upstream.lock.json']) fs.copyFileSync(path.join(ROOT, name), path.join(dir, name));
   fs.cpSync(path.join(ROOT, 'licenses'), path.join(dir, 'licenses'), {recursive: true});
-  // Match the declared Android dependency inputs while keeping derived native staging inside this fixture.
-  fs.cpSync(path.join(ROOT, 'patches/eliza'), path.join(dir, 'patches/eliza'), {recursive: true});
   // The reviewed ASR model pins are listed in the notices, so their recorded reasons are not stale.
   fs.mkdirSync(path.join(dir, 'scripts'));
   fs.copyFileSync(path.join(ROOT, 'scripts/host-speech-assets.json'), path.join(dir, 'scripts/host-speech-assets.json'));
@@ -287,7 +283,7 @@ test('choice (b): Denton is loaded by one rule, and upright Fraunces is not bund
   sources.push('apps/app/index.html');
   const text = Object.fromEntries(sources.map(file => [file, fs.readFileSync(path.join(ROOT, file), 'utf8')]));
   const referencing = sources.filter(file => /denton/i.test(text[file])).sort();
-  assert.deepEqual(referencing, ['apps/app/src/product/alpha-product-registration.ts', 'apps/app/src/prototype/phone.css', 'apps/app/src/prototype/prototype.css', 'apps/app/src/prototype/scan-dialog.css', 'apps/app/src/prototype/template.html'], 'update docs/dependency-audit.md when Denton is referenced elsewhere');
+  assert.deepEqual(referencing, ['apps/app/src/product/alpha-product-registration.ts', 'apps/app/src/prototype/phone.css', 'apps/app/src/prototype/prototype.css', 'apps/app/src/prototype/scan-dialog.css', 'apps/app/src/prototype/template.html'], 'review font licensing when Denton is referenced elsewhere');
   const css = text['apps/app/src/prototype/prototype.css'];
   // The only rule that loads the file; removing it (and the file) drops every stack to its next family.
   assert.deepEqual(css.match(/@font-face\{[^}]*Denton[^}]*\}/g), ["@font-face{font-family:'Denton';src:url(/denton-300.woff2) format('woff2');font-weight:100 900;font-style:normal;font-display:swap}"]);

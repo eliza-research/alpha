@@ -1,9 +1,0 @@
-{
-  "capturedAt": "2026-11-06T22:20Z",
-  "device": "Pixel 10a (67091JEA313850), app v36, resident pin 912f972e58 (replies not streamed: first text is the whole reply)",
-  "cloud": "Eliza Cloud production a590c7a58f (elizaOS/eliza#38954 lean admission; Cloud CF deploy run 42300090162)",
-  "method": "Typed chat turns driven over WebView CDP (llm.mjs); firstTextMs = send click to first reply text in the DOM. settledMs adds a fixed 1.5 s stability wait. No Server-Timing: the stock bundle does not record it.",
-  "firstTextMs": [8054, 2006, 1835, 7259, 1992, 2005, 4260, 1976, 1812, 4547],
-  "summary": {"n": 10, "median": 2006, "min": 1812, "max": 8054, "under2_1s": 6},
-  "before": "Same phone against production before the change (cloud-model-http-timing.jsonl): 2.2 s, 6.2 s and 11.3 s turns; gateway_reserve 0.2-2.4 s, warming 503 retries up to 5 s."
-}

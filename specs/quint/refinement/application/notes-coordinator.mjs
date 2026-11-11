@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {buildSync} from 'esbuild';
 import {fileURLToPath} from 'node:url';
-import {mkdirSync,writeFileSync,readdirSync,readFileSync} from 'node:fs';
+import {mkdirSync,writeFileSync,readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {dirname,resolve} from 'node:path';
 import {sourceContext, memoryStore, deferred, tick} from './support.mjs';
@@ -22,7 +22,7 @@ async function fixture(extraSources) {
   const sources=[...Object.keys(built.metafile.inputs).filter(path=>!path.startsWith('<')),
     'apps/app/src/prototype/agent-adapter.ts','specs/quint/refinement/application/support.mjs',
     'test/support/strip-types.mjs','upstream.lock.json','scripts/prepare-client-features.mjs',
-    ...readdirSync(resolve(root,'patches/eliza')).filter(name=>/\.(patch|json)$/.test(name)).map(name=>'patches/eliza/'+name),driver,...extraSources];
+    '.eliza/client-features/.source.json',driver,...extraSources];
   const driverHashes=captureInputs(sources);
   const module={exports:{}};
   new Function('require','module','exports',built.outputFiles[0].text)(createRequire(import.meta.url),module,module.exports);

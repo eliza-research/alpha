@@ -3,10 +3,11 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {runInNewContext} from 'node:vm';
 import {stripTypeScriptTypes} from '../support/strip-types.mjs';
+import {recordingRevision,summarySourceOf} from '../../.eliza/client-features/plugins/plugin-files/src/documents/source-links.ts';
 
 const adapter = new URL('../../apps/app/src/prototype/agent-adapter.ts', import.meta.url);
 export const chatAttachmentComposerSources = [import.meta.url, adapter,
-  new URL('../support/strip-types.mjs', import.meta.url)].map(fileURLToPath);
+  new URL('../support/strip-types.mjs', import.meta.url),new URL('../../.eliza/client-features/plugins/plugin-files/src/documents/source-links.ts', import.meta.url)].map(fileURLToPath);
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const prompt = 'Summarize this for me';
 const title = 'Synthetic Notes transcript';
@@ -44,11 +45,12 @@ export function chatAttachmentComposerFixture() {
   let holdStorage = false, storageGate, attemptedWrites = 0, sendCalls = 0, acceptNext = false;
   const forbidden = () => assert.fail('Unexpected operation in the closed composer campaign');
   const shell = {
+    cancelVoiceScrollFollow() {},
     live: true, connectionSession: session.sessionId, restoredHistory: history,
     notesSelection: {id: 'synthetic-note', revision: 'fixture-v1'},
     state: {view: 'notes', screen: 'home', draft: '', msgs: [], typing: false, chat: 'sheet', shade: false},
     S() {return this.state;},
-    vget() {return {};},
+    vget(name) {return name==='notes'?{list:[{id:'synthetic-note',title,body:'Synthetic retained transcript',audio:'data:audio/webm;base64,AA=='}]}:{};},
     setState(update, callback) {
       const patch = typeof update === 'function' ? update(this.state) : update;
       if (patch) this.state = {...this.state, ...patch};
@@ -105,7 +107,7 @@ export function chatAttachmentComposerFixture() {
         return {ignored: true, userMessageId: id, messageBinding: {session, conversationId: history.conversationId}};
       },
     },
-    context() {}, sourceOf: () => undefined, cancelMessageContext() {}, clearMapsSelection() {},
+    context() {}, sourceOf: summarySourceOf, recordingRevision, cancelMessageContext() {}, clearMapsSelection() {},
     syncStoppedReplyNotice() {}, syncCanonicalNotes() {}, collapseSystemNotices: rows => rows,
     mergeConversationDelivery: rows => rows, settleFirstSendSlot: forbidden,
     NO_AGENT_SEND: 'No agent', RESIDENT_STARTING_NOTICE: 'Starting', RESIDENT_RECOVERING_NOTICE: 'Recovering',
@@ -131,7 +133,7 @@ export function chatAttachmentComposerFixture() {
       assert.equal(shell.state.draft, prompt);
     },
     remove() {actual.renderAttachments.call(shell).removeTranscript();},
-    async start() {task = actual.send.call(shell); task.catch(() => {}); await tick();},
+    async start() {let settled=false;task = actual.send.call(shell);task.then(()=>{settled=true;},()=>{settled=true;});const deadline=Date.now()+5000;while(!settled&&!connections.length&&!storageGate){assert.ok(Date.now()<deadline,'Send reaches its controlled wait');await tick();}},
     async refuse() {
       assert.equal(connections.length, 1, 'One closed connection attempt was admitted');
       connections.shift().reject(Error('Synthetic pre-dispatch refusal'));

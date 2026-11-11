@@ -8,7 +8,7 @@ test('historical Home layouts replay mounted content and preserve deliberate dif
   assert.deepEqual(receipts.map(row => [row.model, row.traces]), [['HomeLayoutCurrentReplay', 1], ['HomeLayout', 1]]);
   assert.ok(receipts.every(row => row.passed && row.driverInputsBound && row.inputsUnchanged));
   assert.deepEqual(mismatches.map(row => row.id), [
-    'HomeLayoutProposedEmptyShells', 'HomeLayoutProposedDateLine', 'HomeLayoutProposedSetupLink',
+    'HomeLayoutCurrentEmptyShells', 'HomeLayoutProposedDateLine', 'HomeLayoutProposedSetupLink',
   ]);
   assert.ok(mismatches.every(row => row.driverInputsBound && row.results[0].kind === 'observation-mismatch'));
 });

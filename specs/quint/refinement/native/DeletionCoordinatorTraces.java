@@ -286,7 +286,7 @@ public final class DeletionCoordinatorTraces {
   }
   static void reminder(String scenario) throws Exception {
     reminder = true;
-    JSONObject owner = owner(scenario.equals("reminder-retired"));
+    JSONObject owner = owner(scenario.equals("reminder-retired") || scenario.equals("reminder-session-retired"));
     JSONObject selected = new JSONObject().put("reminderId", "reminder0").put("occurrenceId", "occurrence0");
     JSONObject row = new JSONObject()
                          .put("id", "first")
@@ -319,9 +319,33 @@ public final class DeletionCoordinatorTraces {
       DeletionTestPorts.provider.put("sessionGeneration", "generation1");
       trace.step("ownerChanges", observe());
       DeletionTestPorts.reminderReply = new JSONObject(row.toString()).put("phase", "paused");
-      coordinator.reconcile();
-      check(DeletionTestPorts.reminderPauses == 1 && DeletionTestPorts.reminderSettles == 0,
-          "Retired reminder owner dispatched");
+      check(!coordinator.reconcile(), "Changed reminder owner requested retry instead of pausing");
+      check(DeletionTestPorts.reminderPauses == 1 && DeletionTestPorts.reminderSettles == 0
+              && DeletionTestPorts.deletes == 0,
+          "Changed reminder owner did not pause without dispatching effects");
+      check(row().similar(new JSONObject(row.toString()).put("phase", "paused")),
+          "Changed reminder owner changed the retained deletion identity or lease");
+      JSONObject paused = DeletionTestPorts.portEvents.getJSONObject(DeletionTestPorts.portEvents.length() - 1);
+      check(paused.getString("kind").equals("reminder-pause")
+              && paused.getString("reason").equals("owner-changed"),
+          "Changed reminder owner did not record the owner-changed pause reason");
+      trace.step("claim", observe());
+      check(!coordinator.reconcile() && DeletionTestPorts.reminderPauses == 1
+              && DeletionTestPorts.reminderSettles == 0 && DeletionTestPorts.deletes == 0,
+          "Repeated reconciliation replayed the retired reminder");
+      trace.stutter("changed owner remains paused without provider effects", observe());
+      return;
+    }
+    if (scenario.equals("reminder-session-retired")) {
+      DeletionTestPorts.session.put("token", "replacement-token");
+      trace.step("ownerChanges", observe());
+      DeletionTestPorts.reminderReply = new JSONObject(row.toString()).put("phase", "paused");
+      check(!coordinator.reconcile(), "Retired review fence failed instead of pausing");
+      check(DeletionTestPorts.reminderPauses == 1 && DeletionTestPorts.reminderSettles == 0
+              && DeletionTestPorts.deletes == 0,
+          "Retired reminder review dispatched");
+      check(row().similar(new JSONObject(row.toString()).put("phase", "paused")),
+          "Retired reminder review changed the deletion identity or lease");
       trace.step("claim", observe());
       return;
     }
@@ -405,6 +429,7 @@ public final class DeletionCoordinatorTraces {
       case "reminder-open":
       case "reminder-undo":
       case "reminder-retired":
+      case "reminder-session-retired":
       case "reminder-effects":
         reminder(args[0]);
         break;

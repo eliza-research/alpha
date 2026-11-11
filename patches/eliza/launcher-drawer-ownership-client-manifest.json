@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "baseCommit": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "path": "packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
-  "beforeSha256": "4a43964673288c6295254ad20c1d2e1b2285edf1444d5542c499c6e0ea87dda2",
-  "afterSha256": "6a6819944f5fc4711f7cd481f655919e38b234b25cb8ae030bb356c0125e3d29",
-  "patchSha256": "943d65727a7b61c94bf5b593688926161208cbf418a44741ce6dea9436f628dc"
-}

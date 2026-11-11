@@ -4,7 +4,7 @@
 // entitlement verification keys and the entitlement route without a key (401). It
 // measures the deployed network/edge path a phone sees, not authenticated admission,
 // plan-bucket exhaustion, expiry, revocation or billing outage; those need a real
-// signed-in account and are recorded as open in docs/eliza-cloud-subscription-entitlement-contract.md.
+// signed-in account and remain open until recorded deployment evidence exists.
 //
 //   node scripts/cloud-subscription-latency.mjs [--samples 30] [--origin https://api.eliza.app] [--out file.json]
 import { writeFileSync } from 'node:fs';

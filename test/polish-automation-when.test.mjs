@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {build} from 'esbuild';
 import {workflowCronLabel,workflowClockSchedule,workflowClockExpression} from '../apps/app/src/runtime/workflow-local-time.ts';
 
-const bundle=await build({entryPoints:['apps/app/src/runtime/automations-protocol.ts'],bundle:true,write:false,format:'esm',platform:'neutral',logLevel:'silent'});
-const {automationWhen,AutomationsProtocol}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
+const bundle=await build({stdin:{contents:"export * from './apps/app/src/runtime/automations-protocol.ts'; export {workflowLocalInstant} from './apps/app/src/runtime/workflow-local-time.ts'; export {setLocalePreferences} from './apps/app/src/prototype/locale-time.ts';",resolveDir:process.cwd(),loader:'ts'},bundle:true,write:false,format:'esm',platform:'neutral',logLevel:'silent'});
+const {automationWhen,AutomationsProtocol,workflowLocalInstant,workflowSnoozeTime,setLocalePreferences}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 
 test('automationWhen uses device-local time regardless of stored zone metadata',()=>{
  const before=process.env.TZ;process.env.TZ='America/Los_Angeles';

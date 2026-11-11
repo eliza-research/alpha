@@ -31,7 +31,7 @@ public class AlphaNoteAudioPlugin extends Plugin {
   * Both bounds keep the orphan-recording backstop (AUDIO_BACKSTOP_MS, twice Recently deleted
   * retention), so a recording a restorable note still uses is never erased first. Clips keep the
   * shared clip bounds; a Notes recording (AlphaNoteRecorder) has no length limit and its
-  * transcript fits the 512 KiB metadata slot. Requires patches/eliza/notes-recording-store.patch.
+  * transcript fits the 512 KiB metadata slot. Uses the pinned Eliza recording store.
   */
  static final RecordingStore.Limits CLIPS=new RecordingStore.Limits(RecordingStore.MAX_BYTES,RecordingStore.MAX_DURATION_MS,RecordingStore.MAX_TRANSCRIPT,AlphaNoteAudioPlugin.AUDIO_BACKSTOP_MS);
  static final RecordingStore.Limits NOTE_RECORDINGS=new RecordingStore.Limits(Long.MAX_VALUE,Long.MAX_VALUE,150_000,AlphaNoteAudioPlugin.AUDIO_BACKSTOP_MS);

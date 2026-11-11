@@ -1,5 +1,5 @@
 // Files on Android 10 (API 29, minSdk): legacy storage instead of all-files access, which API 29
-// does not have. design/view-refresh-2026-11/PLAN.md section 4 (decision F1).
+// does not have.  section 4 (decision F1).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';

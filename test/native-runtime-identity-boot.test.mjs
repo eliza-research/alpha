@@ -55,8 +55,10 @@ test("a rejected old-target listening peer stays unready and unattachable withou
       );
       assert.match(
         getter,
-        /return projectLocalAgentBootState\(status, socketListening,/,
+        /JSONObject result = projectLocalAgentBootState\(status, socketListening,/,
       );
+      assert.match(getter,/return result;\s*\}$/,'the getter returns the actual projection after adding diagnostic metadata');
+      assert.doesNotMatch(getter,/result\.put\("state"/,'terminal/update metadata cannot override projected readiness');
       assert.match(
         getter,
         /instance != null \|\| !serviceLifecycleCompletion\.isDone\(\)/,

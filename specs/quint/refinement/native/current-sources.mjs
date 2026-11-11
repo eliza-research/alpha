@@ -27,6 +27,6 @@ export function currentNativeSource(name) {
   throw Error(`Current native source is ambiguous or absent: ${name} (${matches.join(',')})`);
 }
 
-export const nativePatchInputs = ['patches/eliza/native-manifest.json', 'scripts/prepare-patched-native.mjs',
+export const nativePatchInputs = ['android/upstream-native-sources.json', 'scripts/prepare-patched-native.mjs',
   join(staged.root, '.source.json'),
-  ...JSON.parse(readFileSync(join(root, 'patches/eliza/native-manifest.json'), 'utf8')).patches.map(row => 'patches/eliza/' + row.file)];
+  ...JSON.parse(readFileSync(join(root, 'android/upstream-native-sources.json'), 'utf8')).patches.map(row => 'patches/eliza/' + row.file)];

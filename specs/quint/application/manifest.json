@@ -601,7 +601,7 @@
     },
     "abstractions": [
       "Three files, three folders and three names model the current volume browser, categories, Trash and reviewed agent transfers. The previous SAF-tree listing model is superseded.",
-      "The transition structure follows design/view-refresh-2026-11/tla/files-browser with category, name-conflict and reviewed-identity fixes enabled. Grant withdrawal is additionally modeled.",
+      "The transition structure follows the retained FilesBrowser design model with category, name-conflict and reviewed-identity fixes enabled. Grant withdrawal is additionally modeled.",
       "Multi-volume traversal, recursive byte copying, per-item batch failures, MIME parsing and the 30-day Trash timer remain covered by their implementation tests. This model does not represent document-picker or persistent SAF-tree access.",
       "Opaque identity revisions represent the native size/modified pair. Matching that pair is the current implementation guard, not a cryptographic assertion about file contents."
     ],
@@ -702,7 +702,8 @@
       "unavailableStorageRefusesHoldTest",
       "restartHeldSendRequiresReviewTest",
       "reopeningDoesNotOfferHeldTextTest",
-      "failedClearKeepsRecoveryTest"
+      "failedClearKeepsRecoveryTest",
+      "deferredComposerPaintBeforeDispatchTest"
     ],
     "sources": [
       "apps/app/src/prototype/assistant-draft-controller.ts",
@@ -1075,8 +1076,7 @@
       "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/files-agent-contract.ts",
-      "patches/eliza/files-list-identity-client-manifest.json",
-      "patches/eliza/files-list-identity-client.patch",
+      "upstream.lock.json",
       "scripts/prepare-client-features.mjs"
     ],
     "abstractions": [
@@ -1229,7 +1229,8 @@
       "apps/app/src/prototype/canonical-notes-editor.ts",
       ".eliza/client-features/plugins/plugin-notes/src/client/notes-editor.ts",
       ".eliza/client-features/plugins/plugin-notes/src/client/notes-controller.ts",
-      ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts"
+      ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts",
+      "apps/app/src/prototype/agent-adapter.ts"
     ],
     "abstractions": [
       "Two record identities, five editor tokens and four edit versions/revisions. One remove/restore continuation, rejected concurrent probes and independent save queue use settled promise macrosteps.",
@@ -1278,8 +1279,8 @@
       ".eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts",
-      "patches/eliza/files-list-identity-client.patch",
-      "patches/eliza/files-list-identity-client-manifest.json"
+      "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Installed folder reader, current access/volume readback and registered agent share admission over deferred storage ports. Two folders, three entries, two volumes and six state-read identities.",
@@ -1323,11 +1324,13 @@
     ],
     "sources": [
       "apps/app/src/prototype/camera-adapter.ts",
-      ".eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts"
+      ".eliza/client-features/packages/ui/src/mobile-shell/photos-view.ts",
+      "apps/app/src/browser/files.ts"
     ],
     "abstractions": [
       "Native Photos Trash read lifecycle with coalesced requests, current epochs, hidden loaded-marker invalidation and resume. Three media identities and four request identities.",
-      "Deletion/restore effects, selection, native retention and browser Trash are separate obligations."
+      "Deletion/restore effects, selection, native retention and browser Trash are separate obligations.",
+      "Files Photos collections reference the existing media rows; this model covers their media identity and lifecycle guards. Cross-store batch atomicity and native chooser outcomes remain outside the bounded projection."
     ]
   },
   {
@@ -1347,10 +1350,12 @@
       ".eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/storage-model.ts",
       ".eliza/client-features/plugins/plugin-files/src/browser/files-agent-contract.ts",
-      "patches/eliza/files-list-identity-client.patch",
-      "patches/eliza/files-list-identity-client-manifest.json"
+      "vendor/eliza/plugins/plugin-files/src/browser/files-browser-adapter.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
+      "Installed agent filters from a mounted Browse view, with separate reload and query generations, pending and displayed filter ownership, cancellation, filtered result ordering and no storage writes.",
+      "Three operation identities, two text classes and four unique row identities. The model covers reloads during an explicit filter. Other reload sequences, category and Trash transactions, and provider queries remain separate obligations.",
       "Installed agent filter operations from a mounted Browse view, with separate access and query generations, current filter ownership, cancellation and filtered result ordering.",
       "Three operation identities, two text classes and four unique row identities. Reload after mount, category/Trash list transactions, file mutations and provider query implementation remain separate obligations."
     ]
@@ -1519,8 +1524,8 @@
       ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
       ".eliza/client-features/packages/ui/src/mobile-shell/mobile-launcher.ts",
       "apps/app/src/prototype/home-shell.ts",
-      "patches/eliza/launcher-observer-client.patch",
-      "patches/eliza/launcher-observer-client-manifest.json"
+      "vendor/eliza/plugins/plugin-native-system/src/client/launcher.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Actual launcher package listener registration, document notifications, 120ms debounce and idempotent retirement with late or failed native removal.",
@@ -1628,8 +1633,8 @@
       ".eliza/client-features/packages/ui/src/mobile-shell/view-registry.ts",
       "apps/app/src/product/alpha-product.ts",
       "apps/app/src/product/alpha-product-registration.ts",
-      "patches/eliza/launcher-legacy-view-key-client.patch",
-      "patches/eliza/launcher-legacy-view-key-client-manifest.json"
+      "vendor/eliza/packages/ui/src/mobile-shell/view-registry.ts",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Actual ordered favorites storage, legacy view-ID and default-policy migration, unavailable storage, held-load external writes, profile identity and visible-only reorder.",
@@ -1646,7 +1651,8 @@
       "staleBootCannotReplaceResumeTest",
       "resetInvalidatesPendingNativeReadTest",
       "failedReadKeepsLastGoodScaleTest",
-      "refreshAffectsOnlyNewToastsTest"
+      "refreshAffectsOnlyNewToastsTest",
+      "longMessageAndFocusHoldKeepCapturedDurationTest"
     ],
     "invariants": [
       "requestOwnership",
@@ -1696,12 +1702,12 @@
     ],
     "stateMapping": {
       "installed/generation": "Exact installed observer cleanup and observed installation count",
-      "dialogs": "Fixture modal opening order, observed through the owner receiving visible feedback",
+      "dialogs": "Native or active ARIA modal opening order, observed through the owner receiving visible feedback",
       "sourceMessage/sourceUndo": "Actual page message and Undo availability",
       "regions/target/visible/undo/clicks": "Rendered live regions, visible feedback and forwarded click count"
     },
     "abstractions": [
-      "Two modal identities and two distinct toast messages. Observations follow observer/frame settlement.",
+      "Two native or ARIA modal identities and two distinct toast messages. Observations follow observer/frame settlement.",
       "Browser focus fallback for preexisting modal stacks and assistive technology behavior are separate."
     ],
     "bounds": {
@@ -1763,8 +1769,7 @@
       "apps/app/src/runtime/view-focus.ts",
       "apps/app/src/main.tsx",
       "vendor/eliza/packages/ui/src/accessibility/screen-focus.ts",
-      "patches/eliza/screen-focus-priority-client.patch",
-      "patches/eliza/screen-focus-priority-client-manifest.json"
+      "upstream.lock.json"
     ],
     "stateMapping": {
       "installed/generation": "Exact Alpha installer handle and replacement count",
@@ -1850,8 +1855,8 @@
       ".eliza/client-features/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
       ".eliza/client-features/packages/ui/src/mobile-shell/navigation.ts",
       ".eliza/client-features/plugins/plugin-native-system/src/client/launcher.ts",
-      "patches/eliza/launcher-drawer-ownership-client.patch",
-      "patches/eliza/launcher-drawer-ownership-client-manifest.json"
+      "vendor/eliza/packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx",
+      "upstream.lock.json"
     ],
     "abstractions": [
       "Mounted installed drawer long press, search, current menu, keyboard focus, home pin, and exact synthetic App Info handoff with late replies.",
@@ -1907,7 +1912,8 @@
       "staleReadAndPreparationCannotRetireSuccessorTest",
       "onlyExactCancelCanReconnectTest",
       "pauseCoalescesContinueTest",
-      "refusalExplainedOnlyAtExactFailureTest"
+      "refusalExplainedOnlyAtExactFailureTest",
+      "automaticRefusalStaysQuietTest"
     ],
     "invariants": [
       "owner",
@@ -1983,6 +1989,7 @@
       "oldReadCannotFillNextAccountTest",
       "queuedEditStaysWithCapturedOwnerTest",
       "lateClearKeepsOriginalAccountDraftTest",
+      "retiredClearRequiresSameOwnerReviewTest",
       "foreignStoredFrameCannotBeOfferedTest",
       "earlierLifetimeCannotDiscardNewDraftTest"
     ],
@@ -1990,7 +1997,8 @@
       "OwnsEditor",
       "CurrentLease",
       "ForeignUnavailable",
-      "OwnsWrites"
+      "OwnsWrites",
+      "ReviewBlocksConsume"
     ],
     "sources": [
       "apps/app/src/prototype/canonical-calendar-drafts.ts",
@@ -2016,6 +2024,7 @@
       "orphanCannotBeRestagedTest",
       "orphanCannotBeUndoneTest",
       "ordinaryChangesKeepOrphanUntilExplicitReplacementTest",
+      "completedOneOffCannotSnoozeTest",
       "aGenuinePairBlocksReplacementTest",
       "explicitClockCancelLeavesOrphanWithoutReceiptTest",
       "aPendingAlarmCannotAcquireSoundOnLockGrantTest"
@@ -2264,7 +2273,8 @@
       "sameTaskModalDoesNotRestoreOldPressTest",
       "nonmodalAndUninterruptedCompatibilityTest",
       "oldDeadlineCannotSettleANewPressTest",
-      "imagePreviewCoversComposerAndKeepsDraftTest"
+      "imagePreviewCoversComposerAndKeepsDraftTest",
+      "dialogContentsDoNotDismissReviewTest"
     ],
     "invariants": [
       "ExactPress",
@@ -2277,8 +2287,7 @@
       "apps/app/src/runtime/inline-modal.ts",
       "apps/app/src/runtime/modal-inert.ts",
       "apps/app/src/prototype/phone.css",
-      "apps/app/src/prototype/template.html",
-      "apps/app/src/runtime/image-preview.ts"
+      "apps/app/src/prototype/template.html"
     ],
     "abstractions": [
       "Raised input scrim with two press generations, bounded pointer identities, one inline or native modal and representative held, moved and released paths. A nonmodal dialog does not take modal ownership.",
@@ -2341,12 +2350,7 @@
       "vendor/eliza/plugins/plugin-maps/src/client/maps-screen.ts",
       "vendor/eliza/plugins/plugin-maps/src/client/device-navigation.ts",
       "vendor/eliza/plugins/plugin-maps/src/client/agent-navigation.ts",
-      "patches/eliza/maps-reroute-state-client.patch",
-      "patches/eliza/maps-reroute-state-client-manifest.json",
-      "patches/eliza/maps-reroute-maps-screen-client.patch",
-      "patches/eliza/maps-reroute-maps-screen-client-manifest.json",
-      "patches/eliza/maps-reroute-device-navigation-client.patch",
-      "patches/eliza/maps-reroute-device-navigation-client-manifest.json"
+      "upstream.lock.json"
     ],
     "stateMapping": {
       "session/guidanceSession/guidanceRoute/rerouting/fixReady": "Mounted MapsScreenController navigation lifecycle and active guidance",
@@ -2937,7 +2941,8 @@
       "apps/app/src/prototype/template.html",
       "apps/app/src/browser/voice.ts",
       "apps/app/src/browser/audio-capture.ts",
-      "apps/app/src/browser/note-audio-store.ts"
+      "apps/app/src/browser/note-audio-store.ts",
+      "apps/app/src/browser/note-recording-journal.ts"
     ],
     "stateMapping": {
       "view/owner/recorder": "Committed shell view, controlled canonical Notes identity and mounted recorder state",
@@ -2976,9 +2981,7 @@
       "apps/app/src/browser/files.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-volume.ts",
       "vendor/eliza/plugins/plugin-files/src/browser/storage-model.ts",
-      "vendor/eliza/plugins/plugin-files/src/browser/files.ts",
-      "patches/eliza/files-storage-query-client.patch",
-      "patches/eliza/files-storage-placement-client.patch"
+      "vendor/eliza/plugins/plugin-files/src/browser/files.ts"
     ],
     "stateMapping": {
       "mode/active/queued/prepared": "Actual Node exclusive lock and same-realm fallback with source requests held at library ports",
@@ -3516,6 +3519,146 @@
     "abstractions": [
       "One Home preload and account-scoped saved snapshot, two owners and zero to two rows. Neither restoration nor preloading can settle or execute an action.",
       "Visibility and owner retirement abort old reads. Real provider delivery and full scheduler effects remain in separate models."
+    ]
+  },
+  {
+    "path": "specs/quint/application/AutomaticAppUpdateSchedule.qnt",
+    "module": "AutomaticAppUpdateSchedule",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "staysForegroundAndFindsLaterReleaseTest",
+      "offlineRetriesAreBoundedAndRecoverTest",
+      "backgroundInvalidatesBeforeLaterEffectTest",
+      "disposedInFlightCannotAcquireAnotherAttemptTest",
+      "coldSnapshotRetriesBeforeAnyNativeRequestTest",
+      "coldInstallReplyRetriesWithoutOverlappingTest",
+      "pendingPrecedesColdCapabilityAndDoesNotDispatchTest",
+      "lateColdFactsAfterResumeLoseAuthorityTest",
+      "disposedColdReplyNeverRearmsTest",
+      "readyCannotBackgroundTest",
+      "readyCannotDisposeTest",
+      "readyDispatchCompletesTest"
+    ],
+    "sources": [
+      "apps/app/src/prototype/settings-adapter.ts",
+      "vendor/eliza/packages/ui/src/state/app-update-gate.ts"
+    ],
+    "stateMapping": {
+      "active/disposed/busy/failures/wakeAt": "Actual shared foreground scheduler snapshot",
+      "valid": "Authority of the actual in-flight scheduler callback",
+      "now": "Controlled clock supplied to the scheduler",
+      "poll.phase": "Actual product poll awaiting manifest, native facts or native install promise; completion is observed from the shared scheduler",
+      "poll.capability/pending/candidate": "Controlled native fact classes, actual pending-session result and actual source parser result",
+      "poll.requests/lastCapability/lastPending/lastCandidate/lastCurrent/lastIdle": "Actual install bridge call count and capability, pending, candidate, owner and idle observations at dispatch"
+    },
+    "abstractions": [
+      "One shared scheduler with interval4/retry1 controlled clock units; the default fifteen-minute/one-minute configuration is also tested by the owning renderer tests.",
+      "Four native capability classes; native SDK, consent and monotonic uptime/reboot ownership remain native admission obligations. The renderer does not own a second boot clock.",
+      "At most three native bridge requests in the finite model, at most two in source scenarios. A bridge request is not PackageInstaller session creation, installation or physical-device proof.",
+      "The original generic scheduler schedules remain. Product scenarios execute the actual poll and authenticated scheduler through controlled promise cutpoints, including pending precedence, exact signer admission, cold deferral and lifecycle invalidation.",
+      "Progress requires foreground timer delivery, eligible idle Home, suitable native capability and settling calls. OS acceptance, network availability and background delivery remain external.",
+      "The ready microstep is unobservable: actual facts admission, pure parsing and native dispatch share one synchronous JavaScript continuation. Lifecycle transitions are disabled only during that microstep; they remain enabled at real awaited ports."
+    ],
+    "bounds": {
+      "maxSamples": 1000,
+      "maxSteps": 80,
+      "maxVerifyDepth": 6
+    },
+    "invariants": [
+      "NativeRequestWasAdmitted",
+      "PollHasOneOwner"
+    ]
+  },
+  {
+    "path": "specs/quint/application/OSDefaults.qnt",
+    "module": "OSDefaults",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "layoutFailureCannotCommitVersionTest",
+      "versionFailureRetriesStoredLayoutTest",
+      "completedMigrationPreservesLaterStockChoiceTest",
+      "customLayoutRemainsCustomTest",
+      "existingPermissionDenialRemainsTest",
+      "ineligiblePermissionDoesNotGrantTest",
+      "coreLauncherScopeTest"
+    ],
+    "sources": [
+      "android/aosp/branding/core-launcher/AlphaCoreLauncherPolicy.java",
+      "android/aosp/branding/core-launcher/AlphaQsDefaultsPolicy.java",
+      "android/aosp/branding/core-launcher/AlphaSharedStoragePolicy.java"
+    ],
+    "abstractions": [
+      "Two layout classes plus Alpha defaults; settings collector writes are serialized. Real multi-user services, arbitrary tile arrays and process-death injection require Android qualification. Pure Java policy matrices separately cover package/Home/system and permission predicates."
+    ]
+  },
+  {
+    "path": "specs/quint/application/OSProvisioning.qnt",
+    "module": "OSProvisioning",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "expiredCallbackCannotCompleteTest",
+      "previousAttemptCannotCompleteTest",
+      "existingKeyboardPreservedTest",
+      "missingKeyboardCannotCompleteTest",
+      "authorityLossCannotCompleteTest",
+      "appearanceNeedsUserActionTest"
+    ],
+    "sources": [
+      "android/aosp/branding/provision/AlphaFreshSetupPolicy.java",
+      "android/aosp/branding/provision/AlphaFreshPresets.java",
+      "android/aosp/branding/provision/AlphaWelcome.java",
+      "android/aosp/branding/provision/AlphaAppearance.java"
+    ],
+    "abstractions": [
+      "Three attempt generations, one activity and binary authority/success facts. Android role callbacks, secure-settings compare/write and actual wallpaper partial failures remain platform qualification; the model does not establish hardware or provider acceptance."
+    ]
+  },
+  {
+    "path": "specs/quint/application/OSSourceStaging.qnt",
+    "module": "OSSourceStaging",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "driftCannotWriteTest",
+      "mismatchedAssetsCannotWriteTest",
+      "partialFailureRetainsBackupTest",
+      "completeNeedsReadbackTest"
+    ],
+    "sources": [
+      "scripts/stage-alpha-os-branding.py",
+      "scripts/generate-alpha-os-branding.mjs",
+      "scripts/fetch-alpha-os-preset-inputs.py"
+    ],
+    "abstractions": [
+      "Two representative staged files; exact paths, hashes, asset generation, all-file admission and per-file backup/write are exercised by the existing Python staging cases. Partial I/O failure leaves preserved inputs and must not claim a completed image.",
+      "Progress requires a stable admitted source and fair successful backup/write/readback operations. Permanent I/O failure does not promise completion. No image, signing, device operation or automatic rollback is proved."
+    ]
+  },
+  {
+    "path": "specs/quint/application/CloudPlanRecheck.qnt",
+    "module": "CloudPlanRecheck",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "serverOutageKeepsRetryClockTest",
+      "realNetworkReturnAllowsOneImmediateCheckTest",
+      "backgroundNetworkReturnWaitsForVisibilityTest",
+      "changedScopeCannotSpendOldNetworkPermitTest"
+    ],
+    "sources": [
+      "apps/app/src/runtime/connection-ui.tsx"
+    ],
+    "abstractions": [
+      "One minute is a clock step, two account/provider scope classes and four reads. Server success and failure share settlement because neither changes the retry clock. An explicit owner action may cancel and lift the limit.",
+      "Android connectivity/visibility events and real provider access remain external inputs. Existing controller and browser regressions cover actual request counts; no network performance or device acceptance is inferred."
     ]
   }
 ]

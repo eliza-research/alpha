@@ -1,8 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import os from 'node:os';
 import { upstreamNativeSource } from './upstream-native-source.mjs';
-import { clientSpeechPatch, clientManagedGooglePatch } from './client-speech-patch.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,7 +10,7 @@ function regularPath(filename, directory = false) {
   try {
     const stat = fs.lstatSync(filename);
     if (stat.isSymbolicLink() || !(directory ? stat.isDirectory() : stat.isFile())) throw Error('Nonregular client feature path: ' + filename);
-    return true;
+    return stat;
   } catch (error) { if (error.code === 'ENOENT') return false; throw error; }
 }
 function inventory(directory) {
@@ -35,6 +32,7 @@ function matches(actual, expected) {
     Object.entries(expected).every(([file, digest]) => actual[file] === digest);
 }
 export const CLIENT_FEATURE_PATHS = [
+  'packages/app/src/runtime/managed-google-agent',
   'packages/core/src/utils/type-guards.ts',
   'packages/cloud/sdk/native-host/subscription-grant.mjs',
   'packages/cloud/sdk/native-host/subscription-grant.d.mts',
@@ -214,6 +212,8 @@ export const CLIENT_FEATURE_PATHS = [
   'packages/voice/src/voice-assistant-session.ts',
   'packages/voice/src/live-voice-session.ts',
   'packages/voice/src/native-live-voice.ts',
+  'packages/voice/src/native-cloud-speech.ts',
+  'packages/voice/src/cloud-speech-chunks.ts',
   'packages/voice/src/native-speech-request.ts',
   'packages/voice/src/voice-turn-routes.ts',
   'packages/voice/src/voice-turn-timing.ts',
@@ -287,6 +287,7 @@ export const CLIENT_FEATURE_PATHS = [
   'plugins/plugin-assistant/src/services/device-actions/calendar-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/device-record-presentation.ts',
   'plugins/plugin-assistant/src/services/device-actions/notes-contract.ts',
+  'plugins/plugin-assistant/src/services/device-actions/notes-organize-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/reminder-create-contract.ts',
   'plugins/plugin-assistant/src/services/device-actions/reminder-contract.ts',
   'plugins/plugin-files',
@@ -307,140 +308,20 @@ export const CLIENT_FEATURE_PATHS = [
   // Framework-free resident Cloud binding controller (AP-04/P-22).
   'packages/auth/src/auth/cloud-resident-binding.ts',
 ];
-export const CLIENT_FEATURE_PATCHES = [
-  ['overviewBriefNavigationPatch', 'overview-brief-navigation-client', 'packages/ui/src/overview/OverviewCards.tsx'],
-  ['notesPendingAudioPatch', 'notes-pending-audio-client', 'plugins/plugin-notes/src/client/notes-audio-store.ts'],
-  ['appUpdateResumePatch', 'app-update-resume-client', 'packages/ui/src/state/app-update-gate.ts'],
-  ['filesListIdentityPatch', 'files-list-identity-client', 'plugins/plugin-files/src/browser/files-browser-adapter.ts'],
-  ['filesStorageQueryPatch', 'files-storage-query-client', 'plugins/plugin-files/src/browser/storage-volume.ts'],
-  ['filesStoragePlacementPatch', 'files-storage-placement-client', 'plugins/plugin-files/src/browser/files.ts'],
-  ['photosWindowPatch', 'photos-window-client', 'packages/ui/src/mobile-shell/photos-view.ts'],
-  ['photosLibraryPresentationPatch', 'photos-library-presentation-client', 'plugins/plugin-assistant/src/services/device-actions/photo-library-contract.ts'],
-  ['calendarSemanticPatch', 'calendar-semantic-client', 'packages/contracts/src/calendar-linked-sync.ts'],
-  ['inboxConfirmationPatch', 'inbox-confirmation-client', 'plugins/plugin-inbox/src/mailbox/review-controller.ts'],
-  ['inboxCleanupPatch', 'inbox-cleanup-client', 'plugins/plugin-inbox/src/mailbox/drafts-controller.ts'],
-  ['crashErrorClassPatch', 'crash-error-class-client', 'plugins/plugin-native-system/src/crash-log.ts'],
-  ['mapsHiddenFallbackPatch', 'maps-hidden-fallback-client', 'plugins/plugin-maps/src/client/maps-screen.ts'],
-  ['mapsRerouteStatePatch', 'maps-reroute-state-client', 'plugins/plugin-maps/src/client/state.ts'],
-  ['mapsRerouteScreenPatch', 'maps-reroute-maps-screen-client', 'plugins/plugin-maps/src/client/maps-screen.ts'],
-  ['mapsRerouteAgentPatch', 'maps-reroute-device-navigation-client', 'plugins/plugin-maps/src/client/device-navigation.ts'],
-  ['launcherObserverPatch', 'launcher-observer-client', 'plugins/plugin-native-system/src/client/launcher.ts'],
-  ['launcherLegacyViewKeyPatch', 'launcher-legacy-view-key-client', 'packages/ui/src/mobile-shell/view-registry.ts'],
-  ['screenFocusPriorityPatch', 'screen-focus-priority-client', 'packages/ui/src/accessibility/screen-focus.ts'],
-  ['launcherDrawerOwnershipPatch', 'launcher-drawer-ownership-client', 'packages/ui/src/mobile-shell/InstalledAppsGridDrawer.tsx'],
-];
-
-// Copied client source imports Alpha's installed runtime dependencies, so each copied package's
-// declared ranges must hold for them. Gaps are allowed only with a reviewed reason; an exception
-// that no longer matches the installed version or range fails so it is removed or reviewed again.
-const EXCEPTIONS_FILE = 'docs/client-feature-dependency-exceptions.json';
-function parseVersion(text) {
-  const match = /^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(text.trim());
-  if (!match) throw Error('Unsupported dependency version: ' + text);
-  return match.slice(1, 4).map(Number);
-}
-const compare = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
-function comparator(text, version) {
-  if (text === '*' || text === 'x' || text === '') return true;
-  const match = /^(\^|~|>=|<=|>|<|=)?v?(\d+|x|\*)(?:\.(\d+|x|\*))?(?:\.(\d+|x|\*))?$/.exec(text);
-  if (!match) throw Error('Unsupported dependency range: ' + text);
-  const [, operator = '', ...parts] = match, wild = part => part === undefined || part === 'x' || part === '*';
-  const given = parts.findIndex(wild), length = given < 0 ? 3 : given;
-  const base = [0, 1, 2].map(index => index < length ? Number(parts[index]) : 0);
-  const upper = places => { const next = base.slice(0, places); next[places - 1] += 1; return [...next, 0, 0].slice(0, 3); };
-  const below = top => compare(version, top) < 0;
-  if (operator === '^') {
-    const place = base[0] > 0 || length === 1 ? 1 : base[1] > 0 || length === 2 ? 2 : 3;
-    return compare(version, base) >= 0 && below(upper(place));
-  }
-  if (operator === '~') return compare(version, base) >= 0 && below(upper(length > 1 ? 2 : 1));
-  if (operator === '>=') return compare(version, base) >= 0;
-  if (operator === '>') return length < 3 ? !below(upper(length)) : compare(version, base) > 0;
-  if (operator === '<') return below(base);
-  if (operator === '<=') return length < 3 ? below(upper(length)) : compare(version, base) <= 0;
-  return compare(version, base) >= 0 && (length === 3 ? compare(version, base) === 0 : below(upper(length)));
-}
-export const satisfiesRange = (version, range) => range.split('||').some(set =>
-  set.trim().split(/\s+/).every(part => comparator(part, parseVersion(version))));
-function packageRoot(directory, name) {
-  for (let current = path.posix.dirname(name + '/x'); current !== '.'; current = path.posix.dirname(current))
-    if (fs.existsSync(path.join(directory, current, 'package.json'))) return current;
-  return undefined;
-}
-/** Throw for a copied package range that Alpha's installed runtime dependency does not satisfy
- * and that has no reviewed exception; return the excepted gaps. */
-export function checkClientFeatureDependencies(root, upstream, paths = CLIENT_FEATURE_PATHS) {
-  const manifest = path.join(root, 'package.json');
-  const runtime = fs.existsSync(manifest) ? JSON.parse(fs.readFileSync(manifest, 'utf8')).dependencies ?? {} : {};
-  const exceptionsFile = path.join(root, EXCEPTIONS_FILE);
-  const exceptions = fs.existsSync(exceptionsFile) ? JSON.parse(fs.readFileSync(exceptionsFile, 'utf8')).exceptions : [];
-  const used = new Set(), gaps = [], excepted = [];
-  for (const owner of [...new Set(paths.map(name => packageRoot(upstream.directory, name)).filter(Boolean))].sort()) {
-    const declared = JSON.parse(upstream.read(owner + '/package.json').get(owner + '/package.json').bytes.toString());
-    for (const field of ['dependencies', 'peerDependencies']) for (const [dependency, range] of Object.entries(declared[field] ?? {})) {
-      if (!Object.hasOwn(runtime, dependency)) continue;
-      const installedFile = path.join(root, 'node_modules', dependency, 'package.json');
-      if (!fs.existsSync(installedFile)) throw Error(`Client feature dependency is not installed: ${dependency}`);
-      const installed = JSON.parse(fs.readFileSync(installedFile, 'utf8')).version;
-      if (satisfiesRange(installed, range)) continue;
-      const gap = { package: owner, dependency, range, installed };
-      const exception = exceptions.find(entry => ['package', 'dependency', 'range', 'installed'].every(key => entry[key] === gap[key]));
-      if (!exception) { gaps.push(gap); continue; }
-      if (typeof exception.reason !== 'string' || !exception.reason.trim()) throw Error(`Client feature dependency exception has no reason: ${owner} ${dependency}`);
-      used.add(exception); excepted.push(exception);
-    }
-  }
-  if (gaps.length) throw Error('Copied client features need newer dependencies than Alpha installs (bump them or add a reviewed exception to ' + EXCEPTIONS_FILE + '):\n' +
-    gaps.map(gap => `  ${gap.package}: ${gap.dependency} ${gap.range}, installed ${gap.installed}`).join('\n'));
-  const stale = exceptions.filter(entry => !used.has(entry));
-  if (stale.length) throw Error('Stale client feature dependency exceptions in ' + EXCEPTIONS_FILE + ':\n' +
-    stale.map(entry => `  ${entry.package}: ${entry.dependency} ${entry.range}, installed ${entry.installed}`).join('\n'));
-  return excepted;
-}
+// Shared behavior is consumed from the reviewed upstream pin; there are no product patches.
+export const CLIENT_FEATURE_PATCHES = [];
 /** Copy authenticated upstream source outside the immutable vendor checkout. With check, only
  * confirm the prepared copy is current and throw instead of rebuilding it. */
-export function prepareClientFeatures({ root = projectRoot, projectVoice = true, check = false, log } = {}) {
+export function prepareClientFeatures({ root = projectRoot, projectVoice = true, check = false } = {}) {
+  for (const prefix of ['app-update-resume-client', 'managed-google-body-limit-client']) {
+    for (const suffix of ['.patch', '-manifest.json']) {
+      const retired = path.join(root, 'patches/eliza', prefix + suffix);
+      if (regularPath(retired)) throw Error('Retired client patch slot: ' + prefix);
+    }
+  }
   const upstream = upstreamNativeSource(root);
-  for (const exception of checkClientFeatureDependencies(root, upstream))
-    log?.(`Client feature dependency exception: ${exception.package} ${exception.dependency} ${exception.range}, installed ${exception.installed}: ${exception.reason}`);
   const source = new Map(CLIENT_FEATURE_PATHS.flatMap(prefix => [...upstream.read(prefix)]));
   const sourceFiles = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
-  const clientPatches = {};
-  for (const [key, patch] of [
-    ['speechPatch', clientSpeechPatch(root, upstream)],
-    ['managedGooglePatch', clientManagedGooglePatch(root, upstream)],
-  ]) {
-    for (const [name, file] of patch.files) source.set(name, file);
-    if (patch.receipt) clientPatches[key] = patch.receipt;
-  }
-  for (const [key, prefix, name] of CLIENT_FEATURE_PATCHES) {
-    const manifestFile = path.join(root, 'patches/eliza', prefix + '-manifest.json');
-    if (!regularPath(manifestFile)) continue;
-    const manifestBytes = fs.readFileSync(manifestFile), manifest = JSON.parse(manifestBytes);
-    const patchFile = path.join(root, 'patches/eliza', prefix + '.patch');
-    if (manifest.schema !== 1 || manifest.baseCommit !== upstream.pin || manifest.path !== name ||
-        !source.has(name) || manifest.beforeSha256 !== source.get(name).sha256 ||
-        !/^[a-f0-9]{64}$/.test(manifest.afterSha256) || !regularPath(patchFile))
-      throw Error(prefix + ' patch source mismatch');
-    const patchBytes = fs.readFileSync(patchFile);
-    const headers = patchBytes.toString().split('\n').filter(line => line.startsWith('--- ') || line.startsWith('+++ '));
-    if (hash(patchBytes) !== manifest.patchSha256 ||
-        JSON.stringify(headers) !== JSON.stringify(['--- a/' + name, '+++ b/' + name]))
-      throw Error(prefix + ' patch digest or target mismatch');
-    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-client-patch-'));
-    try {
-      const target = path.join(temporary, name);
-      fs.mkdirSync(path.dirname(target), {recursive:true});
-      fs.writeFileSync(target, source.get(name).bytes);
-      execFileSync('patch', ['--batch', '--fuzz=0', '--forward', '-p1', '--input', patchFile], {cwd:temporary, stdio:'pipe', timeout:30000});
-      const bytes = fs.readFileSync(target);
-      if (hash(bytes) !== manifest.afterSha256) throw Error(prefix + ' patch output mismatch');
-      source.set(name, {bytes, mode:source.get(name).mode, sha256:manifest.afterSha256});
-      clientPatches[key] = {...manifest, manifestSha256:hash(manifestBytes)};
-    } finally { fs.rmSync(temporary, {recursive:true, force:true}); }
-  }
-
-
   if(projectVoice){
   // Upstream publishes every renderer type as a leaf entry (@elizaos/core/schema-types,
   // @elizaos/ui/api/transport, plugin-calendar auto-join-types); copied files stay byte-exact.
@@ -457,6 +338,16 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     const content = text(name);
     if (content.split(before).length !== 2) throw Error('Review changed browser address re-export: ' + name);
     project(name, content.replace(before, 'from "../../../packages/contracts/src/browser-address-input.ts";'));
+  }
+  // The browser command parser reads the turn observation through the contracts
+  // package. Plain Node has no package alias, so bind that one reviewed value
+  // import to the exact authenticated leaf in this prepared tree.
+  {
+    const name = 'plugins/plugin-browser/src/native-client-command.ts';
+    const before = 'import { readClientTurnObservation } from "@elizaos/contracts/client-turn-observation";';
+    const content = text(name);
+    if (content.split(before).length !== 2) throw Error('Review changed browser observation import: ' + name);
+    project(name, content.replace(before, 'import { readClientTurnObservation } from "../../../packages/contracts/src/client-turn-observation.ts";'));
   }
   // Upstream voice sessions import the shared random-id helper by its emitted .js name. Plain
   // Node (tests and scripts that strip types) cannot map that to the copied .ts source, so the
@@ -502,25 +393,32 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
   project('alpha-voice-core-protocol.ts','export {ElizaError} from "./packages/core/src/errors";\nexport {redactTrailingArgs} from "./packages/core/src/security/log-redaction";\nexport {parseViewInteractionClientId, AGENT_SURFACE_CAPABILITY_IDS} from "./packages/core/src/views/view-interact-protocol";\nexport {findViewActionHandoff, type ViewActionHandoff} from "./packages/core/src/views/view-action-handoff";\nexport type {PermissionState} from "./packages/core/src/types/permissions";\n');
   }
   const files = Object.fromEntries([...source].map(([name, file]) => [name, file.sha256]));
-  const provenance = { baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?12:0, ...clientPatches, files };
+  const provenance = {
+    baseCommit: upstream.pin, sourceFiles, projectionVersion:projectVoice?14:0, files,
+  };
   const parent = path.join(root, '.eliza'), destination = path.join(parent, 'client-features');
   regularPath(parent, true);
   const stamp = path.join(destination, '.source.json');
-  // Whether the prepared tree is current. A concurrent preparer can move the tree aside while it
-  // is read, so a tree that vanishes mid-read is read again; one without a stamp is not ours.
+  // A peer can replace the directory during readback. Only a stable directory without a stamp
+  // is unrecognized; a vanished or replaced directory needs another authenticated read.
   const current = () => {
-    for (let attempt = 0; ; attempt++) {
-      try {
-        if (!regularPath(destination, true)) return false;
-        if (!regularPath(stamp)) {
-          if (attempt < 4) continue;
-          throw Error('Refusing to replace an unrecognized client feature directory.');
-        }
-        const previous = JSON.parse(fs.readFileSync(stamp));
-        const actual = inventory(destination); delete actual['.source.json'];
-        return previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion && Object.keys({...previous, ...clientPatches}).filter(key => key.endsWith('Patch')).every(key => JSON.stringify(previous[key] ?? null) === JSON.stringify(clientPatches[key] ?? null)) && matches(previous.files || {}, files) && matches(actual, files);
-      } catch (error) { if (error.code !== 'ENOENT' || attempt >= 4) throw error; }
-    }
+    try {
+      const observed = regularPath(destination, true);
+      if (!observed) return false;
+      const sameDirectory = () => {
+        const latest = regularPath(destination, true);
+        return latest && latest.dev === observed.dev && latest.ino === observed.ino;
+      };
+      if (!regularPath(stamp)) {
+        if (!sameDirectory()) return false;
+        throw Error('Refusing to replace an unrecognized client feature directory.');
+      }
+      const previous = JSON.parse(fs.readFileSync(stamp));
+      const actual = inventory(destination); delete actual['.source.json'];
+      return sameDirectory() && previous.baseCommit === upstream.pin && previous.projectionVersion === provenance.projectionVersion &&
+        JSON.stringify(Object.keys(previous).sort()) === JSON.stringify(Object.keys(provenance).sort()) &&
+        matches(previous.sourceFiles || {}, sourceFiles) && matches(previous.files || {}, files) && matches(actual, files);
+    } catch (error) { if (error.code === 'ENOENT') return false; throw error; }
   };
   if (current()) return destination;
   if (check) throw Error('Client feature source is missing or stale: run npm run upstream:prepare-client');
@@ -534,25 +432,26 @@ export function prepareClientFeatures({ root = projectRoot, projectVoice = true,
     }
     if (!matches(inventory(temporary), files)) throw Error('Client feature source copy failed authentication.');
     fs.writeFileSync(path.join(temporary, '.source.json'), JSON.stringify(provenance, null, 2));
-    // Move the old tree aside rather than deleting it in place, so no preparer deletes part of a
-    // tree another one just installed. A concurrent preparer may install first; accept it if current.
-    for (let attempt = 0; ; attempt++) {
-      const aside = path.join(parent, '.client-features-old-' + randomUUID());
-      try {
-        try { fs.renameSync(destination, aside); } catch (error) { if (error.code !== 'ENOENT') throw error; }
-        fs.renameSync(temporary, destination);
-        return destination;
-      } catch (error) {
-        if (!['EEXIST', 'ENOTEMPTY'].includes(error.code)) throw error;
-        if (current()) return destination;
-        if (attempt >= 4) throw Error('A concurrent client feature preparation installed a different tree.');
-      } finally { fs.rmSync(aside, { force: true, recursive: true }); }
-    }
+    // Retire at most one tree. A loser must only observe the peer's winner: retiring again can
+    // repeatedly remove authenticated winners and exhaust every contender's readback.
+    const aside = path.join(parent, '.client-features-old-' + randomUUID());
+    try {
+      try { fs.renameSync(destination, aside); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      try { fs.renameSync(temporary, destination); return destination; }
+      catch (error) { if (!['EEXIST', 'ENOTEMPTY'].includes(error.code)) throw error; }
+      const deadline = performance.now() + 30_000;
+      const wait = new Int32Array(new SharedArrayBuffer(4));
+      while (!current()) {
+        if (performance.now() >= deadline) throw Error('Timed out waiting for an authenticated concurrent client feature preparation.');
+        Atomics.wait(wait, 0, 0, 25);
+      }
+      return destination;
+    } finally { fs.rmSync(aside, { force: true, recursive: true }); }
   } finally { fs.rmSync(temporary, { force: true, recursive: true }); }
 }
 /** Check-only: the prepared copy's path when current; never writes the shared tree. */
 export const checkClientFeatures = (options = {}) => prepareClientFeatures({ ...options, check: true });
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  console.log(`Client feature source prepared: ${prepareClientFeatures({ log: console.warn })}`);
+  console.log(`Client feature source prepared: ${prepareClientFeatures()}`);
 }

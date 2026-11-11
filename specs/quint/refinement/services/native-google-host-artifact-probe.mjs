@@ -4,8 +4,9 @@ import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {registerHooks} from 'node:module';
 import {pathToFileURL} from 'node:url';
-import {writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
+import {policySource, writeCoreStateFixture} from '../../../../test/fixtures/core-state-root.mjs';
 import {workerHash, verifyWorkerArtifact} from '../../../../scripts/workflow-worker-artifact.mjs';
+import {parseBuildPolicy} from '../../../../scripts/build-policy-source.mjs';
 import {CORE_STATE_MANIFEST, PLUGIN_CONNECTOR_TARGET} from '../../../../scripts/core-state-patch.mjs';
 import {controlName, digest, eventsName, fixtureModule, fixtureSource, productInput}
   from '../../../../test/fixtures/native-google-host-builder-port.mjs';
@@ -34,11 +35,10 @@ const noAttempt = {projection: false, version: false, compile: false, moduleWrit
   previousHost: 0, previousReceipt: {bundle: 0, source: 0, connector: false}};
 const productFiles = [
   'scripts/build-native-google-host.ts', 'scripts/local-agent-source.mjs', 'scripts/native-google-host-artifact.mjs',
-  'scripts/prepare-client-features.mjs', 'scripts/client-speech-patch.mjs', 'package.json', 'tsconfig.json',
+  'scripts/prepare-client-features.mjs', 'package.json', 'tsconfig.json',
   'vendor/eliza/tsconfig.json',
+  'scripts/upstream-native-source.mjs', 'vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts',
 ];
-const optionalFiles = ['patches/eliza/cloud-speech-client-manifest.json', 'patches/eliza/cloud-speech-client.patch',
-    'patches/eliza/managed-google-agent-manifest.json', 'patches/eliza/managed-google-agent.patch'];
 const workerFiles = ['node_modules/smthrs/package.json', 'node_modules/zod/package.json',
   'node_modules/effect/package.json', 'node_modules/@smthrs/engine/package.json', 'dependencies.json', 'lib/worker.js'];
 
@@ -54,7 +54,6 @@ function setup(number, simpleCore = false) {
   const json = (file, value) => write(file, JSON.stringify(value));
   const copy = name => write(path.join(root, name), fs.readFileSync(path.join(repository, name)));
   for (const name of productFiles) copy(name);
-  for (const name of optionalFiles) if (fs.existsSync(path.join(repository, name))) copy(name);
   writeCoreStateFixture(root, sdk, '0'.repeat(40), simpleCore);
   const sdkConfigBytes = '{"compilerOptions":{}}';
   write(sdkConfig, sdkConfigBytes);
@@ -68,13 +67,19 @@ function setup(number, simpleCore = false) {
   git('commit', '-q', '-m', 'synthetic SDK');
   const pin = git('rev-parse', 'HEAD');
   const coreManifest = path.join(root, CORE_STATE_MANIFEST);
-  json(coreManifest, {...JSON.parse(fs.readFileSync(coreManifest)), baseCommit: pin});
+  const policy = parseBuildPolicy(fs.readFileSync(coreManifest));
+  write(coreManifest, policySource({...policy, baseCommit: pin}));
   json(path.join(root, 'upstream.lock.json'), {commit: pin});
+  const googleHost='packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts';
+  const googleBytes=fs.readFileSync(path.join(root,'vendor/eliza',googleHost)),googleHash=digest(googleBytes);
+  write(path.join(root,'.eliza/client-features',googleHost),googleBytes);
+  json(path.join(root,'.eliza/client-features/.source.json'),{baseCommit:pin,projectionVersion:14,
+    sourceFiles:{[googleHost]:googleHash},files:{[googleHost]:googleHash}});
   json(path.join(sdk, '.alpha-runtime-source.json'), {base: pin, patches: []});
   write(source, fixtureSource(1));
   write(path.join(root, 'linked-target.ts'), 'export const synthetic = true;');
   const transient = ['linked-input.ts', 'unavailable-input.ts'].map(name => path.join(root, name));
-  const fixedInput = path.join(root, 'scripts/client-speech-patch.mjs');
+  const fixedInput = path.join(root, 'scripts/prepare-client-features.mjs');
   const fixedInputBytes = fs.readFileSync(fixedInput);
   const readPair = () => ({
     host: fs.existsSync(modulePath) ? {bytes: fs.readFileSync(modulePath), mode: fs.statSync(modulePath).mode} : null,
@@ -106,13 +111,18 @@ function setup(number, simpleCore = false) {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     const host = manifest.nativeGoogleHost;
     if (host) assert.deepEqual(Object.keys(host).sort(), ['bunVersion','coreState','inputs','module','version']);
+    if (host) {
+      assert.equal(host.inputs['vendor/eliza/'+googleHost],googleHash,'receipt binds raw upstream Google host');
+      assert.equal(host.inputs['.eliza/client-features/'+googleHost],googleHash,'compiler host consumes exact upstream bytes');
+      assert.equal(host.inputs['.eliza/client-features/.source.json'],digest(fs.readFileSync(path.join(root,'.eliza/client-features/.source.json'))));
+    }
     const manifestBundle = classify(moduleHashes, manifest.files['google-host.mjs'] ?? null);
     const boundSource = classify(sourceHashes, host?.inputs[productInput] ?? null);
     const exactCore = host?.coreState.transforms.some(row => row.path === PLUGIN_CONNECTOR_TARGET) ?? false;
     for (const row of host?.coreState.transforms ?? []) {
       const name = path.relative(root, path.join(sdk, row.path));
-      assert.equal(host.inputs[name], row.sourceSha256, 'Public receipt binds the raw transform preimage');
-      assert.notEqual(row.sourceSha256, row.outputSha256);
+      assert.equal(host.inputs[name], row.sourceSha256, 'Public receipt binds the pinned source consumed by the compiler');
+      assert.equal(row.sourceSha256, row.outputSha256, 'Compiler consumes exact reviewed core bytes');
     }
     const module = fs.existsSync(modulePath) ? classify(moduleHashes, digest(fs.readFileSync(modulePath))) : 0;
     for (const [name, hash] of Object.entries(generic.files)) {
@@ -140,7 +150,7 @@ function setup(number, simpleCore = false) {
       [/Unexpected runtime source change/, 'sdk'],
       [/Native host compilation failed/, 'compiler'], [/did not produce its module and source graph/, 'output'],
       [/SDK dependency escaped/, 'resolver'], [/source graph escaped|source graph lacks exact input bytes|compiler input graph is incomplete/, 'graph'],
-      [/selected core transformation/, 'transform'], [/EISDIR.*meta\.json/, 'metadata'],
+      [/selected core source observation/, 'transform'], [/EISDIR.*meta\.json/, 'metadata'],
       [/ENOENT.*unavailable-input/, 'input'],
       [/Fixture manifest publication refused/, 'manifest'], [/Fixture module publication refused/, 'module'],
       [/fixed build input changed/, 'fixed'], [/candidate bytes differ from compiler output/, 'candidate'], [/worker artifact changed during build/, 'worker'], [/artifact is missing/, 'missing'],
@@ -263,11 +273,11 @@ function bunCompatibility(bun) {
     assert.equal(host.inputs[name], digest(fs.readFileSync(path.join(root, name))), name);
   const connector = host.coreState.transforms.find(row => row.path === PLUGIN_CONNECTOR_TARGET);
   assert.deepEqual(connector, {path: PLUGIN_CONNECTOR_TARGET,
-    sourceSha256: digest('export const value = "before";\n'),
-    outputSha256: digest('export const value = "after";\n')});
+    sourceSha256: digest('export const value = "reviewed";\n'),
+    outputSha256: digest('export const value = "reviewed";\n')});
   const observed = JSON.parse(execFileSync(bun, ['-e', 'import {observed} from "./artifacts/worker/google-host.mjs"; console.log(JSON.stringify(observed))'],
     {cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']}));
-  assert.deepEqual(observed, [1, 2, 3, 4, 5, 6, 7, 8, 8, 'synthetic fixture text', 'after']);
+  assert.deepEqual(observed, [1, 2, 3, 4, 5, 6, 7, 8, 8, 'synthetic fixture text', 'reviewed']);
   assert.ok(!fs.readdirSync(path.join(root, 'artifacts')).some(name => name.startsWith('.native-google-host-build-')));
   return {bun: execFileSync(bun, ['--version'], {encoding: 'utf8'}).trim(), inputs: Object.keys(inputFiles),
     graphInputsChecked: Object.keys(inputFiles).length+3, rawCoreInput: connector.sourceSha256,

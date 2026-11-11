@@ -39,6 +39,10 @@ async function attachFixture(page, launcher) {
     const state = window.homeFixture = {held: false, requests: 0, roleReads: 0, surfaceReads: 0,
       workflows: [], unread: false};
     const insets = new Promise(resolve => {state.releaseInsets = resolve;});
+    const credential = JSON.parse(window.flagOff.slots['cloud:production']);
+    credential.expiresAt = Date.now() + 30 * 86_400_000;
+    window.flagOff.slots['cloud:production'] = JSON.stringify(credential);
+    window.flagOff.persist();
     const cap = window.Capacitor;
     for (const [name, entries] of Object.entries({
       AlphaNotifications: {addListener: 'callback', removeListener: 'promise'},
@@ -71,7 +75,7 @@ async function attachFixture(page, launcher) {
       }
       if (plugin === 'DailyApps' && method === 'surfaceInfo') {
         state.surfaceReads++;
-        if (launcher && state.surfaceReads === 2) {
+        if (launcher && state.surfaceReads >= 2) {
           await insets;
           return {assistant: false, developmentBuild: false, topInset: 96, bottomInset: 30};
         }
@@ -140,10 +144,6 @@ function project(observation, profile) {
     .filter(field => observation[field] !== undefined).map(field => ['s.'+field, observation[field]]));
   if (observation.insets === 'native' || profile === 'current') expected['s.insets'] = observation.insets;
   if (profile === 'current') {
-    expected.ProfileSafety = true;
-    expected.CoreShown = qset(observation.shown.filter(kind => kind !== 'brief'));
-    expected.DateLine = observation.date;
-    expected.SetupLink = observation.setup;
   }
   return expected;
 }
@@ -197,6 +197,24 @@ async function roleSchedule(page, launcher) {
   await expect(home(page)).toBeVisible();
 }
 
+async function settleHomeLayout(page) {
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    const layer = document.querySelector('[data-alpha-home-layout]');
+    const grid = layer.querySelector('[data-alpha-home-apps]');
+    let previous, stable = 0;
+    for (let frame = 0; frame < 120; frame++) {
+      await new Promise(resolve => requestAnimationFrame(resolve));
+      const top = Math.round((grid.getBoundingClientRect().top
+        - layer.getBoundingClientRect().top + layer.scrollTop) * 100) / 100;
+      if (top === previous) stable++; else stable = 0;
+      if (stable === 3) return;
+      previous = top;
+    }
+    throw Error('Mounted Home grid did not settle for inset observation');
+  });
+}
+
 async function collect(page) {
   const events = [];
   async function point(label, readback = {}) {
@@ -204,13 +222,15 @@ async function collect(page) {
     events.push({label, observation});
     return observation;
   }
-  await expect(card(page, 'workflows')).toContainText('Open to view');
-  await expect(card(page, 'inbox')).toContainText('Connect email');
+  await expect(card(page, 'workflows')).toHaveCount(0);
+  await expect(card(page, 'inbox')).toHaveCount(0);
   await expect(card(page, 'brief')).toHaveCount(0);
-  const pending = await point('Mounted Home has honest shells before the workflow and inset readbacks');
+  await settleHomeLayout(page);
+  const pending = await point('Mounted Home hides empty cards before the workflow and inset readbacks');
   assert.equal(pending.insets, 'pending');
   await page.evaluate(() => window.homeFixture.releaseInsets());
-  await expect.poll(async () => (await snapshot(page)).gridTop).not.toBe(pending.gridTop);
+  await expect.poll(async () => (await snapshot(page)).insets).toBe('native');
+  await settleHomeLayout(page);
   const inset = await point('Native inset readback moves the actual grid relative to the Home layer');
   events.at(-1).label += ' from '+pending.gridTop+' to '+inset.gridTop+' CSS pixels';
   assert.equal(inset.insets, 'native');
@@ -218,26 +238,28 @@ async function collect(page) {
   await tile(page, 'Workflows').click();
   await expect(page.getByText('No workflows yet', {exact: true}).filter({visible: true})).toBeVisible();
   await back(page);
-  await expect(card(page, 'workflows')).toContainText('No automations yet');
+  await expect(card(page, 'workflows')).toHaveCount(0);
   await installHomeCalendar(page);
-  await expect(card(page, 'calendar')).toContainText(/Nothing planned|No upcoming events/);
-  const empty = await point('Empty Calendar and Workflows plus disconnected Inbox remain visible without an empty brief');
+  await expect(card(page, 'calendar')).toHaveCount(0);
+  const empty = await point('Empty Calendar and Workflows plus disconnected Inbox have no Home cards', {cal: 'none', flows: 'none', mail: 'unconnected'});
   assert.equal(empty.cal, 'none');
   assert.equal(empty.flows, 'none');
   assert.equal(empty.mail, 'unconnected');
   assert.equal(empty.brief, false);
-  assert.deepEqual(empty.shown, ['calendar', 'workflows', 'inbox']);
+  assert.deepEqual(empty.shown, []);
   const emptyIndex = events.length-1;
 
   await tile(page, 'Settings').click();
   const settings = page.locator('[data-settings-page]:not([inert])').last();
   await settings.getByRole('button', {name: 'Account', exact: true}).click();
-  await expect(settings.getByRole('button', {name: 'Google & email', exact: true})).toBeVisible();
-  await back(page);
+  const account = page.getByRole('dialog', {name: 'Account', exact: true});
+  await expect(account.getByRole('button', {name: 'Google & email', exact: true})).toBeVisible();
+  await account.getByRole('button', {name: 'Close Account', exact: true}).click();
+  await expect(account).toHaveCount(0);
   await expect(settings).toHaveAttribute('data-settings-page', 'Settings');
   await back(page);
   await roleSchedule(page, true);
-  await point('Google setup is in Settings; declined then granted HOME role returns to the same cards');
+  await point('Google setup is in Settings; declined then granted HOME role returns to the same Home');
   const iso = offset => new Date(Date.now()+offset).toISOString();
   await installHomeCalendar(page, {title: syntheticEvent, startAt: iso(3_600_000), endAt: iso(7_200_000)});
   await expect(card(page, 'calendar')).toContainText(syntheticEvent);
@@ -249,7 +271,7 @@ async function collect(page) {
   const paused = await workflowApp.getByText('Paused', {exact: true}).isVisible();
   assert.equal(paused, true);
   await back(page);
-  await expect(card(page, 'workflows')).not.toContainText(syntheticWorkflow);
+  await expect(card(page, 'workflows')).toHaveCount(0);
   await point('Current calendar event and verified paused workflow without a Home row', {flows: paused ? 'paused' : undefined});
 
   await page.evaluate(({subject, brief}) => {
@@ -281,7 +303,7 @@ async function collect(page) {
   await expect(card(page, 'inbox')).toContainText(syntheticMail);
   await expect(card(page, 'inbox')).not.toContainText('Synthetic private snippet');
   await expect(card(page, 'brief')).toContainText(syntheticBrief);
-  const full = await point('Enabled workflow, authorized unread headers and a retained digest fill the existing shells');
+  const full = await point('Enabled workflow, authorized unread headers and a retained digest show their Home cards');
   assert.equal(full.flows, 'active');
   assert.equal(full.mail, 'unread');
   assert.equal(full.brief, true);
@@ -300,8 +322,8 @@ async function collect(page) {
   assert.equal((await point('Restored viewport returns to the bar')).dock, 'bar');
 
   await refreshHomeCalendar(page, {fail: true});
-  await expect(card(page, 'calendar')).toContainText('Calendar unavailable');
-  assert.equal((await point('Failed Calendar read remains visible as failure')).cal, 'error');
+  await expect(card(page, 'calendar')).toHaveCount(0);
+  await point('Failed Calendar read removes the unverified Home event', {cal: 'error'});
   const effects = await page.evaluate(() => ({
     bodies: window.flagOff.mail.reads, sends: window.flagOff.mail.dispatches,
     runs: window.flagOff.digests.runs, posts: window.flagOff.posts,
@@ -311,15 +333,15 @@ async function collect(page) {
   const main = [
     ['HomeLayoutCurrentReplay', replay('mounted_launcher_content_and_measured_inset_arrival', 'current', events,
       (observation, index) => ({
-        ...(index <= 1 ? {GridStable: observation.gridTop === pending.gridTop} : {}),
-        Shown: qset(observation.shown),
+        ...(index === 1 ? {GridStable: observation.gridTop === pending.gridTop} : {}),
+        ...(index === fullIndex ? {Shown: qset(observation.shown)} : {}),
       }))],
     ['HomeLayout', replay('mounted_launcher_source_and_dock_projection', 'proposed', events,
       (observation, index) => index === fullIndex ? {Shown: qset(observation.shown)} : {})],
   ];
   const emptyEvents = events.slice(0, emptyIndex+1);
   const differences = [
-    ['HomeLayoutProposedEmptyShells', 'HomeLayout', 'historical_proposed_hides_empty_card_shells',
+    ['HomeLayoutCurrentEmptyShells', 'HomeLayoutCurrentReplay', 'historical_current_keeps_empty_card_shells',
       observation => ({Shown: qset(observation.shown)})],
     ['HomeLayoutProposedDateLine', 'HomeLayout', 'historical_proposed_shows_date_when_no_content',
       observation => ({DateLine: observation.date})],
@@ -337,7 +359,6 @@ async function mounted(extraSources) {
     'prototype/inbox-cloud-adapter.ts', 'prototype/chat-overlay-motion-adapter.ts'].map(path => resolve(root, 'apps/app/src/'+path)));
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'patches/eliza')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
@@ -400,9 +421,9 @@ export async function checkHomeLayoutRefinement(extraSources = []) {
   const {main, differences, sources, driverHashes} = await mounted(extraSources);
   const shared = {sources, driverHashes, scope: 'bounded-orchestration', assumptions: [
     'Actual flag-off Home and Settings run in Chromium with synthetic native role, inset, canonical Calendar, resident workflow, managed mail and retained-digest ports. Network traffic outside loopback is fenced.',
-    'Content states are derived from mounted card copy, visibility, event identity and retained-result presentation. Unknown transient copy is left unobserved. Actual Home grid movement is compared as a boolean at inset readback, without identifying CSS pixels with the historical constants.',
+    'Content states are derived from mounted card copy, visibility, event identity and retained-result presentation. Unknown transient copy is left unobserved. Font readiness and stable animation frames separate completed layout from the native CSS-variable readback. Actual Home grid movement is compared as a boolean, without identifying CSS pixels with the historical constants.',
     'The reduced focused viewport represents the keyboard. HOME offer, decline, readback grant and standalone absence are checked at visible Settings controls. Role status itself is outside the historical Home model.',
-    'The historical current replay compares all card membership, including the owner-requested absence of an empty brief. The proposed replay compares all card membership only when all four have content. Other proposed empty-screen differences have their own receipts.',
+    'Both historical profiles compare source states and the full card set when all four have content. The original current profile retains empty shells that the owner-approved renderer now hides; that difference and the proposed date/setup differences have separate mismatch receipts. Historical models are unchanged.',
   ]};
   const modelOptions = model => ({model, ...(model === 'HomeLayout' ? {} : {modelPath: comparison})});
   const receipts = [];

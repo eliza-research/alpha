@@ -12,7 +12,7 @@ async function createNote(page:Page,title:string,body:string){
  await page.getByRole('button',{name:'Back to notes',exact:true}).click();
  await expect(page.getByRole('button',{name:`Open ${title}`,exact:true})).toBeVisible();
 }
-/** Editor ⋯ menu → Delete (PLAN.md section 3). */
+/** Editor ⋯ menu → Delete. */
 async function deleteOpenNote(page:Page){
  await page.getByRole('button',{name:'More',exact:true}).click();
  await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();

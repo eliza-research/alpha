@@ -144,7 +144,7 @@ async function openDownload(page) {
 }
 
 async function select(page, name) {
-  await button(page, 'Sort files').click();
+  await button(page, 'Files options').click();
   await button(page, 'Select').click();
   await button(page, 'Select '+name).click();
   await expect(button(page, 'Deselect '+name)).toHaveAttribute('aria-pressed', 'true');
@@ -260,7 +260,7 @@ async function review(page) {
   await t.point('An external same-path rewrite changes the actual review token', action('Rewrite', 'photo'),
     {PhotoVersion: Number(fresh[0] !== reviewed[0])});
   assert.deepEqual(await execute(reviewed), {status: 'failed', summary: 'Moved 0 of 1.'});
-  await expect(button(page, 'Sort files')).toBeVisible();
+  await expect(button(page, 'Files options')).toBeVisible();
   await expect(button(page, 'Open shared.bin')).toBeVisible();
   await t.point('Dispatch with the old token refuses without moving the rewritten file',
     [action('AgentRefused'), action('Refresh')]);
@@ -312,7 +312,6 @@ async function mounted(extraSources) {
   ].map(path => resolve(root, path)));
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'patches/eliza')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',

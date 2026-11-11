@@ -11,46 +11,43 @@ const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const write=(root,name,bytes)=>{const target=path.join(root,name);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,bytes);};
 const snapshot=root=>JSON.parse(execFileSync(process.execPath,[script],{cwd:root,encoding:'utf8'}));
 
-test('source snapshot binds authored native patch manifests and patch bytes',t=>{
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-patch-snapshot-'));
+test('source snapshot binds the native source catalog and its upstream pin',t=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-source-snapshot-'));
  t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
- const manifest='patches/eliza/native-manifest.json',patch='patches/eliza/google-browser-sign-in.patch';
- const firstManifest='{"schema":1,"patches":[]}\n',firstPatch='--- a/source\n+++ b/source\n';
- write(root,manifest,firstManifest);write(root,patch,firstPatch);
+ const manifest='android/upstream-native-sources.json',lock='upstream.lock.json';
+ const firstManifest='{"schema":1,"modules":[]}\n',firstLock='{"commit":"initial"}\n';
+ write(root,manifest,firstManifest);write(root,lock,firstLock);
  const first=snapshot(root);
- assert.deepEqual(first.files,{[patch]:sha(firstPatch),[manifest]:sha(firstManifest)});
+ assert.deepEqual(first.files,{[manifest]:sha(firstManifest),[lock]:sha(firstLock)});
 
- const nextPatch=firstPatch+'@@ -1 +1 @@\n-before\n+after\n';
- write(root,patch,nextPatch);
- const changedPatch=snapshot(root);
- assert.notEqual(changedPatch.digest,first.digest);
- assert.equal(changedPatch.files[patch],sha(nextPatch));
- assert.equal(changedPatch.files[manifest],first.files[manifest]);
+ write(root,lock,'{"commit":"updated"}\n');
+ const repinned=snapshot(root);
+ assert.notEqual(repinned.digest,first.digest);
+ assert.equal(repinned.files[manifest],first.files[manifest]);
 
- write(root,manifest,'{"schema":1,"patches":[{"file":"google-browser-sign-in.patch"}]}\n');
- const changedManifest=snapshot(root);
- assert.notEqual(changedManifest.digest,changedPatch.digest);
- assert.notEqual(changedManifest.files[manifest],changedPatch.files[manifest]);
- assert.equal(changedManifest.files[patch],changedPatch.files[patch]);
+ write(root,manifest,'{"schema":1,"modules":["packages/auth/android"]}\n');
+ const updated=snapshot(root);
+ assert.notEqual(updated.digest,repinned.digest);
+ assert.equal(updated.files[lock],repinned.files[lock]);
 });
 
-test('source snapshot excludes generated patch staging and unrelated private state',t=>{
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-patch-snapshot-private-'));
+test('source snapshot excludes generated native staging and unrelated private state',t=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-native-source-snapshot-private-'));
  t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
- write(root,'patches/eliza/native-manifest.json','{"schema":1,"patches":[]}\n');
+ write(root,'android/upstream-native-sources.json','{"schema":1,"modules":[]}\n');
  const before=snapshot(root);
  write(root,'.eliza/patched-native/generated/packages/auth/android/build.gradle','generated output\n');
  write(root,'private-state/account.json','private fixture bytes\n');
  assert.deepEqual(snapshot(root),before);
 });
 
-test('source snapshot binds the shared client patch preparer and managed source receipt',t=>{
- const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-client-patch-snapshot-'));
+test('source snapshot binds the shared client source preparer and managed source receipt',t=>{
+ const root=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-client-source-snapshot-'));
  t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
- for(const name of ['scripts/client-speech-patch.mjs','scripts/prepare-client-features.mjs','.eliza/client-features/.source.json'])write(root,name,'first');
+ for(const name of ['scripts/prepare-client-features.mjs','.eliza/client-features/.source.json'])write(root,name,'first');
  const before=snapshot(root);
  for(const name of Object.keys(before.files))assert.equal(before.files[name],sha('first'));
- assert.equal(Object.keys(before.files).length,3);
- write(root,'scripts/client-speech-patch.mjs','changed helper');
+ assert.equal(Object.keys(before.files).length,2);
+ write(root,'scripts/prepare-client-features.mjs','changed helper');
  assert.notEqual(snapshot(root).digest,before.digest);
 });

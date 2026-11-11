@@ -312,8 +312,8 @@ class PackagedRuntimeTest(unittest.TestCase):
         with self.assertRaises(ValueError):verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
 
     def test_stale_native_qualification_rejected(self):
-        entries=self.local_entries();self.record['requalification']={'required':True};self.write('android/embedding-host/qualified-host.json',json.dumps(self.record).encode())
-        with self.assertRaisesRegex(ValueError,'current qualification'):verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
+        entries=self.local_entries();self.record['jniIdentityRelocated']=False;self.write('android/embedding-host/qualified-host.json',json.dumps(self.record).encode())
+        with self.assertRaisesRegex(ValueError,'ABI or JNI identity differs'):verifier.verify(self.package(entries),runtime_profile='cloud',local_embeddings=True)
 
     def test_speech_or_extra_model_rejected(self):
         entries=self.local_entries()

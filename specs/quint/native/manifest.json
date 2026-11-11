@@ -75,9 +75,9 @@
         "apps/app/src/runtime/app-speech.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeVoiceBinding.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/VoiceEventAdmission.java",
-        "patches/eliza/voice-assistant-streaming.patch",
-        "patches/eliza/cloud-speech-client-manifest.json",
-        "scripts/client-speech-patch.mjs"
+        "vendor/eliza/packages/voice/src/voice-assistant-session.ts",
+        "upstream.lock.json",
+        "scripts/prepare-client-features.mjs"
       ],
       "tests": [
         "longGapAndPlaybackTest",
@@ -124,9 +124,14 @@
       "invariant": "safety",
       "sources": [
         "apps/app/src/local-speech-playback.ts",
-        "patches/eliza/cloud-speech-native.patch",
-        "patches/eliza/local-speech-streaming.patch",
-        "patches/eliza/native-manifest.json"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java",
+        "android/upstream-native-sources.json"
       ],
       "tests": [
         "queueBackpressureTest",
@@ -216,8 +221,10 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaApplication.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaResetPlugin.java",
         "android/sense/src/main/java/ai/elizaresearch/alphaphone/sense/ListenerControlProvider.java",
-        "patches/eliza/reset-admission.patch",
-        "patches/eliza/native-manifest.json"
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataReset.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetRecoveryActivity.java",
+        "vendor/eliza/plugins/plugin-native-system/android/src/main/java/ai/eliza/plugins/system/reset/DataResetCopy.java",
+        "android/upstream-native-sources.json"
       ],
       "tests": [
         "prepared",
@@ -283,8 +290,8 @@
         "apps/app/src/runtime/deletions.ts",
         "apps/app/src/runtime/note-audio-deletions.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeOwnerReminderHost.java",
-        "patches/eliza/native-manifest.json",
-        "patches/eliza/deletion-owner-admission.patch"
+        "android/upstream-native-sources.json",
+        "vendor/eliza/plugins/plugin-native-action-journal/android/src/main/java/ai/eliza/plugins/actionjournal/deletion/DeferredDeletionCoordinator.java"
       ],
       "tests": [
         "undoBeforeExpiryTest",
@@ -327,7 +334,8 @@
         "apps/app/src/prototype/video-edit-review.ts",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/NativeReadEpoch.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/SelectedDocumentAccess.java",
-        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java"
+        "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaPhotoLibraryPlugin.java",
+        "apps/app/src/browser/files.ts"
       ],
       "tests": [
         "reviewedPublicationTest",
@@ -348,7 +356,8 @@
       "abstractions": [
         "One selected media item, two source revisions and four native read generations.",
         "Full/selected summarize permitted access; mixed/partial policies are represented by current per-item permission.",
-        "Exact content/hash equality is represented by matching revision identities; codecs and pixel transforms are omitted."
+        "Exact content/hash equality is represented by matching revision identities; codecs and pixel transforms are omitted.",
+        "Files Photos collections reference the existing media rows; this model covers their media identity and lifecycle guards. Cross-store batch atomicity and native chooser outcomes remain outside the bounded projection."
       ],
       "sharedSources": [
         "plugins/plugin-native-media/android/src/main/java/ai/eliza/plugins/media/PhotoLibraryAccess.java",
@@ -517,8 +526,8 @@
         "apps/app/src/maps/agent-navigation.ts",
         "apps/app/src/maps/screen.ts",
         "apps/app/src/maps/state.ts",
-        "patches/eliza/maps-hidden-fallback-client.patch",
-        "patches/eliza/maps-hidden-fallback-client-manifest.json"
+        "vendor/eliza/plugins/plugin-maps/src/client/maps-screen.ts",
+        "upstream.lock.json"
       ],
       "stateMapping": {
         "navStep/displayedStep/follow": "MapsScreenController.onFix, stopFollowing, recenter and view",
@@ -632,9 +641,14 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "patches/eliza/cloud-speech-native.patch",
-        "patches/eliza/local-speech-streaming.patch",
-        "patches/eliza/native-manifest.json"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/SpeechStreamBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechTimings.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/CloudSpeechWire.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java",
+        "android/upstream-native-sources.json"
       ],
       "stateMapping": {
         "started/terminal/stopped/writer/outputOpen": "StreamingSpeechPlayback.start, settle, stop, run/finally",
@@ -978,8 +992,7 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
-        "patches/eliza/notes-recording-segments.patch"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java"
       ],
       "tests": [
         "stoppedDraftSelectableTest",
@@ -1090,10 +1103,13 @@
         "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalVoiceRecording.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechRequestGate.java",
-        "patches/eliza/speech-recording-admission.patch",
-        "patches/eliza/native-manifest.json",
-        "patches/eliza/local-speech-streaming.patch",
-        "patches/eliza/notes-recording-segments.patch"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
+        "android/upstream-native-sources.json",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java"
       ],
       "tests": [
         "lateCallRejectsPermissionStartTest",
@@ -1132,9 +1148,10 @@
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureResource.java",
-        "patches/eliza/speech-recording-admission.patch",
-        "patches/eliza/native-manifest.json",
-        "patches/eliza/local-speech-streaming.patch"
+        "android/upstream-native-sources.json",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java"
       ],
       "tests": [
         "permissionDuringCallTest",
@@ -1142,13 +1159,21 @@
         "cancelledOpenReleasedTest",
         "replacementRejectsOldPermissionTest",
         "explicitStopKeepsTailTest",
-        "lifecycleDiscardsTailTest"
+        "lifecycleDiscardsTailTest",
+        "permissionPromptPauseRetainsOnlyReservationTest",
+        "backgroundPermissionCannotOpenBeforeResumeTest",
+        "activePauseReportsEndBeforeRetirementTest",
+        "callInterruptRetiresOpeningWithBoundCauseTest",
+        "replacementDoesNotInheritCallCauseTest",
+        "deniedPermissionWhilePausedCannotResumeTest"
       ],
       "invariants": [
         "CurrentStartupGate",
         "ReleasedIsStopped",
         "PointerOwnership",
         "DiscardIsCancelled",
+        "PausedMicrophoneStopped",
+        "ResumeIsOnlyPermissionReservation",
         "Bounded"
       ],
       "abstractions": [
@@ -1163,8 +1188,7 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveSegmentPipe.java",
-        "patches/eliza/speech-pipe-settlement.patch"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveSegmentPipe.java"
       ],
       "tests": [
         "warmThenConfirmedCloseTest",
@@ -1204,12 +1228,20 @@
         "callDuringOpenRefusesPublicationTest",
         "retiredWarmCannotOpenTest",
         "discardClosesWithoutRendererAudioTest",
-        "failedPipeRetainsControllerUntilStopTest"
+        "failedPipeRetainsControllerUntilStopTest",
+        "failedWarmHeldUntilOwnedCloseTest",
+        "retiredWarmFailsWithoutForeignErrorTest",
+        "failedWarmCannotStartNativeCaptureTest",
+        "unconfirmedFailedWarmStillDiscardsTest"
       ],
       "invariants": [
         "WarmBeforeCapture",
         "NoPcmToRenderer",
         "CompletedStartHasNoPendingOpen",
+        "FailedWarmNeverOpens",
+        "UnstartedFailureEventsPrivate",
+        "SettledFailedWarmDiscards",
+        "RefusedStartHasNoAdmission",
         "Bounded"
       ],
       "abstractions": [
@@ -1226,7 +1258,8 @@
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVoiceCapture.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveVadGate.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureResource.java",
-        "patches/eliza/speech-recording-admission.patch"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureController.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LiveCaptureAdmission.java"
       ],
       "tests": [
         "tenWindowPrerollTest",
@@ -1253,7 +1286,6 @@
       "sources": [
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLeaseProvider.java",
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
-        "patches/eliza/indicator-provider-generation.patch",
         "android/sense/build.gradle"
       ],
       "tests": [
@@ -1319,8 +1351,7 @@
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerStore.java",
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListeningEpoch.java",
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
-        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java",
-        "patches/eliza/listener-service-cleanup.patch"
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java"
       ],
       "tests": [
         "failedDurableMarkerCannotArmRecognitionTest",
@@ -1350,7 +1381,10 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "patches/eliza/local-speech-streaming.patch"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java"
       ],
       "tests": [
         "closeFencesLateOpenTest",
@@ -1404,8 +1438,7 @@
       "invariant": "safety",
       "sources": [
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/OnDeviceRecognizer.java",
-        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/RecognizerAvailability.java",
-        "patches/eliza/recognizer-retired-callback.patch"
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/RecognizerAvailability.java"
       ],
       "tests": [
         "retiredResultCannotDemoteTest",
@@ -1440,8 +1473,7 @@
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/IndicatorLease.java",
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/ListenerPolicy.java",
         "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/SpeechGate.java",
-        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/WakePhrase.java",
-        "patches/eliza/listener-service-cleanup.patch"
+        "vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense/WakePhrase.java"
       ],
       "tests": [
         "callInvalidatesHeldRecognitionTest",
@@ -1497,9 +1529,11 @@
       "step": "step",
       "invariant": "safety",
       "sources": [
-        "patches/eliza/local-speech-streaming.patch",
-        "patches/eliza/native-manifest.json",
         "vendor/eliza/plugins/plugin-local-inference/native/android/speech-bridge/src/main/java/ai/eliza/voice/LocalSpeechBridgePlugin.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechOutputWarmup.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/SpeechLeadTrim.java",
+        "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/FirstWriteSpeechOutput.java",
+        "android/upstream-native-sources.json",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/LocalSpeechEngine.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/VoiceLatencyProbe.java",
         "vendor/eliza/plugins/plugin-local-inference/native/android/src/main/java/ai/eliza/voice/StreamingSpeechPlayback.java",
@@ -1598,8 +1632,11 @@
         "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInPlugin.java",
         "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInFlow.java",
         "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudCredentialSlots.java",
-        "patches/eliza/google-browser-sign-in.patch",
-        "patches/eliza/native-manifest.json"
+        "vendor/eliza/packages/auth/android/build.gradle",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInConfig.java",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInReadiness.java",
+        "vendor/eliza/packages/auth/android/src/main/java/ai/eliza/auth/cloud/CloudSignInRoutes.java",
+        "android/upstream-native-sources.json"
       ],
       "tests": [
         "ownResultSurvivesResumeGraceTest",
@@ -1802,13 +1839,17 @@
       "tests": [
         "exactBarrierAndLeasePrecedeReconnectTest",
         "refusedPreparationLeavesNoPauseTest",
-        "unconfirmedTombstoneDoesNotAuthorizeReconnectTest"
+        "unconfirmedTombstoneDoesNotAuthorizeReconnectTest",
+        "coldAutomaticCannotAcquireBarrierPauseOrStopTest",
+        "manualColdBootStillUsesExactBarrierTest",
+        "processReplacementPreservesWarmBootTest"
       ],
       "invariants": [
         "DurablePauseHasExactBarrier",
         "StopRequiresOwnedPause",
         "CommitRequiresConfirmedStop",
-        "ResumeRequiresReleasedLease"
+        "ResumeRequiresReleasedLease",
+        "AutomaticAuthorityHadReadyBoot"
       ],
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaDevicePlugin.java",
@@ -1820,11 +1861,14 @@
         "state.activation/state.pause": "Imported activation and journal models share one exact observed UUID and installer session",
         "startupAdmitted": "Actual journal-plus-activation start gate and native renderer pending readback",
         "residentStartAdmitted": "Start gate combined with the actual service shutdown lease policy",
-        "resumeAudience": "Exact native terminal readback recipient while startup is admitted"
+        "resumeAudience": "Exact native terminal readback recipient while startup is admitted",
+        "admission.platform/admission.captured": "The shared staging boot-admission policy and captured automatic authority; cold deferral frames activation, durable pause, shutdown lease, stop and commit components"
       },
       "abstractions": [
         "One activation and one committed Android session with two synthetic renderer receipts. Source checkpoints use the actual updater, POSIX journal and exact shutdown lease under controlled Android and stop observation ports.",
-        "An observed confirmed stop is a macrostep. Session handoff retains the native reconnect receipt until exact settlement; a visible unconfirmed tombstone still retains the separate service lease. Independent journal and activation campaigns exercise additional branches."
+        "An observed confirmed stop is a macrostep. Session handoff retains the native reconnect receipt until exact settlement; a visible unconfirmed tombstone still retains the separate service lease. Independent journal and activation campaigns exercise additional branches.",
+        "The staging policy uses SDK classes 30/31 and monotonic uptime observations 0,26681,29999,30000,30001,35000. This composition permits one pre-attempt process boundary (same-boot replacement or new boot), at most two boots/processes, and leaves in-flight process-death/reboot recovery to the unchanged RuntimeUpdatePause model.",
+        "Actual extracted-Java traces exercise cold and unsupported automatic no-effect paths, later warm exact barrier/pause/stop/commit handoff, cold manual readiness and warm same-boot replacement. Bounded safety and selected traces do not prove uptime progress, Android acceptance, network availability or eventual installation."
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -1847,17 +1891,22 @@
       ],
       "tests": [
         "durableClaimPrecedesAcknowledgedPostTest",
-        "foregroundLossPreservesOnlyPreparedRouteTest",
+        "foregroundLossReleasesUnrecordedRouteTest",
         "uncertainClaimNeverRepostsTest",
         "lateExactActiveReadReconcilesWithoutRepostTest",
         "lostTerminalWriteCanBeRecoveredByExactReadTest",
         "explicitOwnerRejectsStaleQueuedRouteTest",
-        "withdrawalWriteFaultKeepsOwnerFenceTest"
+        "withdrawalWriteFaultKeepsOwnerFenceTest",
+        "beforeCommitRefusalReleasesRouteWithoutReceiptTest",
+        "unpublishedWithdrawalNeverAcknowledgesOrPostsTest",
+        "withdrawalTombstoneSurvivesOwnerReturnTest"
       ],
       "invariants": [
         "AtMostOneManagerPost",
         "PostedNoticeHasExactDurableClaim",
-        "ConfirmedReplyHasSucceededReceipt"
+        "ConfirmedReplyHasSucceededReceipt",
+        "NoRetainedFakeReceipt",
+        "UnpublishedWithdrawalNeverPosts"
       ],
       "abstractions": [
         "One ordinary workflow notice operation ID and route token, two owner and binding classes, three content classes, and a separate legacy ownerless mode.",
@@ -1893,13 +1942,22 @@
         "busyPeerCannotSweepOwnedFileTest",
         "retiredOwnerClosesAndCleansTest",
         "failedCacheDeleteLeavesUnownedFileTest",
-        "failedAbandonKeepsUncommittedCopyTest"
+        "failedAbandonKeepsUncommittedCopyTest",
+        "coldAutomaticDefersThroughInclusiveBoundaryTest",
+        "unsupportedPrecedesConsentAndBootTest",
+        "permissionPrecedesColdBootTest",
+        "processRestartCannotFabricateBootReadinessTest",
+        "downloadFailureAndRestartKeepWarmReadinessTest",
+        "newBootReturnsWarmProcessToStartingTest",
+        "manualColdAttemptKeepsItsExistingPathTest"
       ],
       "invariants": [
         "CacheCustody",
         "NoUnverifiedStaging",
         "CleanupBound",
-        "ConnectionCustody"
+        "ConnectionCustody",
+        "AutomaticAdmissionHadReadyBoot",
+        "MonotonicBootReadiness"
       ],
       "sources": [
         "apps/app/src/prototype/settings-adapter.ts",
@@ -1911,11 +1969,14 @@
         "clock/checkedAt/cached/storedAt/stored/checking": "Actual Settings clock, retained manifest and check promise",
         "owner/target/phase/file/bytes/connected": "Process guard, exact reviewed tuple, active bridge connection and real cache-file bytes",
         "session/stagedBytes/created/abandoned": "Synthetic PackageInstaller custody and actual staged output bytes",
-        "outcome/fetches": "Observed tap settlement class and controlled HTTPS opens"
+        "outcome/fetches": "Observed tap settlement class and controlled HTTPS opens",
+        "platform/automatic/admitted": "Actual SDK capability class, install consent, controlled Android SystemClock uptime, boot/process identities and automatic call captured before worker admission"
       },
       "abstractions": [
         "Two reviewed tuples and one installed identity, three bridge classes, four byte positions and up to two admitted attempts. Native source checks terminate at the activation boundary.",
-        "Actual renderer review and cache share the selected tuple with the JVM. Native response limits and soft expiry run through controlled inputs. Independent durable pause and install-session behavior remain separate."
+        "Actual renderer review and cache share the selected tuple with the JVM. Native response limits and soft expiry run through controlled inputs. Independent durable pause and install-session behavior remain separate.",
+        "SDK classes 30 and 31 represent below31 and at-least31 capability. Six boot-relative monotonic uptime observations are 0,26681,29999,30000,30001,35000. At most two boots and two process identities; same-boot process replacement preserves uptime and only reboot resets readiness.",
+        "Cold automatic refusals frame all network/cache/session custody fields and precede worker submission. Manual admission is unchanged. Selected actual-Java traces use a shut-down executor, exact boundary observations, failure cleanup and later warm admission. These between-attempt process cuts do not replace the separate durable journal model or establish clock/network/install progress."
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -2136,7 +2197,8 @@
         "callbackMemoryDoesNotImplyDurableEvidenceTest",
         "dispatchMarkerRefusalRecoversUnknownTest",
         "providerReadbackRequiresReportAndUniqueRowTest",
-        "multipartReportDoesNotProveDeliveryTest"
+        "multipartReportDoesNotProveDeliveryTest",
+        "emptyDivisionCannotReviveReviewedIdTest"
       ],
       "invariants": [
         "OneRadioCallPerRecipient",
@@ -2152,8 +2214,7 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapability.java",
         "android/app/src/launcher/AndroidManifest.xml",
         "android/consumer-host.json",
-        "patches/eliza/native-manifest.json",
-        "patches/eliza/sms-reviewed-binding.patch",
+        "android/upstream-native-sources.json",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephony.java",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephonyConfiguration.java",
@@ -2215,8 +2276,7 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaImageCapability.java",
         "android/app/src/launcher/AndroidManifest.xml",
         "android/consumer-host.json",
-        "patches/eliza/native-manifest.json",
-        "patches/eliza/sms-reviewed-binding.patch",
+        "android/upstream-native-sources.json",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephony.java",
         "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/SmsTelephonyConfiguration.java",
@@ -2619,7 +2679,9 @@
         "refusedEnqueueKeepsOldWorkerRetiredTest",
         "refusedEnqueueCannotRetireLaterSameGrantTest",
         "refusedEnqueueCannotRetireSettledSuccessorTest",
-        "uncertainNoticeNeverRepostsTest"
+        "uncertainNoticeNeverRepostsTest",
+        "historyRefusalBudgetResetsOnlyAfterAcceptedPageTest",
+        "unauthorizedHistoryStopsImmediatelyTest"
       ],
       "invariants": [
         "RetiredSelectionIsEmpty",
@@ -2630,7 +2692,8 @@
         "AdmissionEpoch",
         "PendingGrantOwnsAttempt",
         "HeldConsumeHasExactTap",
-        "HeldRefusalOwnsClosedBridge"
+        "HeldRefusalOwnsClosedBridge",
+        "HistoryAuthBudget"
       ],
       "sources": [
         "android/app/src/main/java/ai/elizaresearch/alphaphone/GmailBackground.java",
@@ -2641,12 +2704,11 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaCredentialStore.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/LocalAgentProviderAdmission.java",
         "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailBackgroundDelivery.java",
-        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailHistoryReconciliation.java",
-        "patches/eliza/gmail-background-retirement.patch"
+        "vendor/eliza/plugins/plugin-native-notifications/android/src/main/java/ai/eliza/plugins/notifications/MailHistoryReconciliation.java"
       ],
       "stateMapping": {
         "credential/remoteOwner/grants/reset": "Synthetic raw credential classes, remotely reported owner/grants and pending reset",
-        "generation/grant/owner/boundCredential/cursor/continuation/phase/incomplete/checked": "Selected encrypted row, exact owner and decimal history progress",
+        "generation/grant/owner/boundCredential/cursor/continuation/phase/incomplete/checked/authFailures": "Selected encrypted row, exact owner, decimal history progress and durable history-route refusal count",
         "latestGeneration/attempt/admitted/configuring/configOwner/configCredential/configAttempt/configGrantVerified/configQueued/pendingGrant": "Actual generation assignment and admitted epoch with one held account response",
         "periodic/catchup/schedules/cancels": "Closed WorkManager command names, generations and request counts",
         "workGeneration/workEpoch/workReply/historyReads/process/retiredBridge/refusalAttempt": "Exact worker snapshot and result, page reads and reconstruction",
@@ -2654,7 +2716,7 @@
       },
       "abstractions": [
         "Three grants, two remote owners, three credential equality classes, one retained notice and one held transport callback across two bridge instances.",
-        "Four-page Worker checkpoint, 20-digit decimal cursor examples, synthetic work commands, selected HTTP outcomes and pre/postcommit storage failures.",
+        "Four-page Worker checkpoint, 20-digit decimal cursor examples, synthetic work commands, selected HTTP outcomes and pre/postcommit storage failures. History-only403/409 completes after three durable refusals; an accepted page resets the counter.401 and verified account/grant revocation remain immediate. Further deliveries of an already completed failing job are outside this bounded schedule.",
         "Targeted retirement fences only matching saved or pending grants. Consume checks the exact still-current tap after remote admission. Releasing a question remains local cancellation. Executor refusal releases only its own unadmitted attempt, advances the settled epoch and preserves the durable selection.",
         "Android and provider effects are closed. WorkManager delivery, real durable storage and installed notification/Activity enforcement remain outside the campaign."
       ],

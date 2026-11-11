@@ -25,6 +25,8 @@ test.beforeAll(async()=>{
  const {StartupPermissions}=await import('/src/startup-permissions.tsx');
  const flags=await import('/src/build-flags.ts');window.planFlags={native:Capacitor.getPlatform(),mocks:flags.testMocksEnabled};
  window.planController=connectionController;
+ // The actual shell owns this attribute; the isolated composition supplies Home explicitly.
+ document.documentElement.dataset.activeView='home';
  document.body.insertAdjacentHTML('afterbegin','<div class="os" style="position:fixed;inset:0;background:var(--bg)" aria-hidden="true"></div>');
  function Composition(){const state=useSyncExternalStore(connectionController.subscribe,connectionController.getSnapshot);return React.createElement(React.Fragment,null,React.createElement(ConnectionChooser),!connectionChooserVisible(state)&&React.createElement(StartupPermissions));}
  createRoot(document.getElementById('root')).render(React.createElement(Composition));
@@ -45,7 +47,8 @@ async function boot(page:Page,initial:NativePlanFixture={}){
   const w=window as any;w.planController=(await import('/src/runtime/connection-ui.tsx')).connectionController;
   w.planFlags={native:(await import('/src/native.ts')).isAndroid?'android':'web',mocks:(await import('/src/build-flags.ts')).testMocksEnabled};
  });
- await expect.poll(()=>page.evaluate(()=>(window as any).planFlags)).toEqual({native:'android',mocks:false});
+ // A cold isolated Vite composition must finish its module graph before product assertions.
+ await expect.poll(()=>page.evaluate(()=>(window as any).planFlags),{timeout:90_000}).toEqual({native:'android',mocks:false});
 }
 type Call={plugin:string;method:string;path?:string;url?:string;httpMethod?:string};
 const calls=(page:Page)=>page.evaluate(()=>(window as any).planFixture.calls as Call[]);
@@ -121,7 +124,7 @@ test.describe('first run requires Eliza Cloud sign-in while the agent runs',()=>
  });
 
  test('an expired saved sign-in exposes the real sign-in action without a plan or permission bypass',async({page},info)=>{
-  await boot(page,{identity:'401'});await expect(signInPage(page)).toBeVisible();await started(page);await expect(signInPage(page).getByRole('button',{name:'Email me a code',exact:true})).toBeEnabled();await expect(page.getByRole('alert')).toContainText('sign-in has expired');
+  await boot(page,{identity:'401'});await expect(signInPage(page)).toBeVisible();await started(page);await expect(signInPage(page).getByRole('button',{name:'Email me a code',exact:true})).toBeEnabled();await expect(page.getByRole('alert')).toHaveText('Sign in to Eliza Cloud again to turn AI back on.');
   await expect(page.getByRole('button',{name:'Retry saved connection',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Choose a plan',exact:true})).toHaveCount(0);await expect(page.getByRole('dialog',{name:'Set up Alpha access'})).toHaveCount(0);
   expect((await calls(page)).some(c=>c.method==='configureCloudProvider'||c.method==='openExternal')).toBe(false);await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('expired-saved-sign-in.png'),animations:'disabled'});
  });
@@ -191,7 +194,7 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
   await expect(planDetails(page).getByText('Active',{exact:true})).toHaveCount(0);
   await expect(page.getByRole('textbox',{name:'Membership code'})).toBeVisible();
   await expect(page.getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Check plan again',exact:true})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Refresh account',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Use local apps without AI',exact:true})).toHaveCount(0);
   // The plan notice can be closed: it never withholds the agent (P-43).
   await expect(page.getByRole('button',{name:'Close Account',exact:true})).toBeVisible();
@@ -324,7 +327,7 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
   expect(await page.evaluate(()=>(window as any).planFixture.cashBalance)).toBe(0);
   expect(await page.evaluate(()=>(window as any).planController.getSnapshot().residentSubscription.kind)).toBe('active');
  });
- test('an active plan at zero credit balance shows one subscription and no cash or top-up controls',async({page})=>{
+ test('an active plan at zero credit balance shows its balance without requiring a top-up',async({page})=>{
   await boot(page,{...await entitlements(),plan:'active',limits:'active',credits:'0',holdProvider:false});
   await expect.poll(()=>configured(page)).toBe(1);await idle(page);
   await expect.poll(()=>page.evaluate(()=>(window as any).planController.getSnapshot().membershipCredits?.usd)).toBe('0');
@@ -352,7 +355,7 @@ test.describe('entitlement route unavailable: authenticated billing mode fallbac
   expect(await configured(page)).toBe(0);
   // Check plan again reads Cloud again and admits once a plan is reported.
   await fixture(page,{limits:'active'});
-  await page.getByRole('button',{name:'Check plan again',exact:true}).click();
+  await page.getByRole('button',{name:'Refresh account',exact:true}).click();
   await admitted(page);await release(page);
  });
 });
@@ -634,9 +637,10 @@ test('failed native provider binding reports unconfirmed inference and exposes t
  const pageErrors:string[]=[];page.on('pageerror',error=>pageErrors.push(error.message));
  await boot(page,{...await entitlements(),holdProvider:false,providerFailure:'Synthetic account verification failure',fullApp:true});await started(page);await idle(page);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
- await openConnectionDiagnostics(page);
+ await page.getByRole('button',{name:'About',exact:true}).click();
+ await page.getByRole('button',{name:/^Connection help/}).click();
  const settings=page.getByRole('region',{name:'Settings',exact:true});
- await expect(settings.getByText('AI status unconfirmed',{exact:true})).toBeVisible();
+ await expect(settings.getByText('Not available',{exact:true})).toBeVisible();
  const error=settings.getByText(/Synthetic account verification failure/);await expect(error).toBeVisible();
  await expect(error).toContainText('AI could not be confirmed off. Your agent is running; retry in Settings.');
  const history=settings.getByText('Conversation history',{exact:true});await expect(history).toBeVisible();

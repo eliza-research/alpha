@@ -1,6 +1,5 @@
 # Alpha application-state specifications
 
-The migration began with the [detailed report](../../docs/quint-migration-report.md).
 Quint specifications live here, separate from production renderer and Android
 code. All checks execute models or isolated test adapters.
 
@@ -14,11 +13,7 @@ code. All checks execute models or isolated test adapters.
 | [Legacy](legacy/README.md) | Eleven translated historical current/proposed design comparisons, original properties, fairness and expected counterexamples |
 
 Each family's `manifest.json` names its executable modules, initial and next
-actions, invariants, scenarios, exact source entry points and abstractions. The
-[source ledger](coverage.json) accounts for authored application code and declared
-consumed shared dependencies, with exact source hashes. Shared dependencies marked
-`state-audit-required` retain field and transition obligations beyond their domain
-allocation. It separates application, development and test-support files.
+actions, invariants, scenarios, exact source entry points and abstractions.
 
 ## Running checks
 
@@ -31,7 +26,6 @@ npm run quint:check
 npm run quint:typecheck
 npm run quint:test
 npm run quint:simulate -- --samples=1000 --steps=60 --seed=123
-npm run quint:coverage
 npm run quint:conformance
 ```
 
@@ -62,26 +56,17 @@ npm run quint:compare -- --backend=tlc --models=ChatInput
 
 `--models` selects comma-separated module names. `--out` selects the JSON
 evidence file. `--timeout` sets the per-check timeout in seconds, with 1800 for
-model checking and 120 for the default gate. The checker saves parameters, model hashes, the source-ledger
-hash, complete checker output, exit status and evidence class under
+model checking and 120 for the default gate. The checker saves parameters, model hashes, complete checker output, exit status and evidence class under
 `test-results/quint/` by default. Temporal/compare commands reject a selection
 that has no corresponding checks. TLC exploration ignores the symbolic
 transition bound and may take substantially longer on large finite models.
 
 ## Source changes and review
 
-Every new, deleted or changed source in the configured roots fails coverage
-admission until its allocation and abstraction are reviewed. After changing
-implementation behavior, update the corresponding model, scenarios and source
-hashes together. Record added source paths and explicit domain assignments in
-`coverage.json`. The gate never invents an assignment for an unknown file.
-
-The ledger's lexical change anchors help locate candidate mutable state. They
-also include locals and method declarations, so they are navigation aids.
-Per-domain manifests and models define the actual abstraction. A file appearing
-in the ledger does not prove that every implementation variable or behavior is
-formally covered. Shared behavior is represented at the imported contract
-boundary and pinned by `upstream.lock.json`. The vendor checkout is immutable.
+After changing implementation behavior, review the corresponding executable model,
+scenarios and source entry points in its family manifest. Conformance campaigns
+capture their actual model and implementation inputs for each invocation. Shared
+behavior stays pinned by `upstream.lock.json`; the vendor checkout is immutable.
 
 ## Interpretation of results
 

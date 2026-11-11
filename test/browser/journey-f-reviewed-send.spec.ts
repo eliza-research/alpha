@@ -11,7 +11,7 @@ import {localDraftRow} from './inbox-draft-navigation';
 // provider keeps its "server" state in localStorage under a test-owned key so it survives reloads
 // like a remote provider would, and it records the exact JSON text of every prepare and dispatch.
 //
-// Covered (audit step IDs, docs/core-loop-audit.md):
+// Covered (audit step IDs):
 //  F-5   Cc, Bcc and an attachment appear in the send review, and the dispatched request equals
 //        the reviewed one byte for byte.
 //  F-10  An email edited after its review gets a new review under a new request ID; the first
@@ -25,6 +25,10 @@ import {createHash} from 'node:crypto';
 import {test, expect, type Page} from '@playwright/test';
 
 const button = (page: Page, name: string) => page.getByRole('button', {name, exact: true});
+async function messageAction(page:Page,name:string){
+  await page.locator('summary[aria-label="Message actions"]').click();
+  await button(page,name).click();
+}
 const KEY = 'journey-f-review-provider';
 type Options = {inbox?: string[]; pageSize?: number; strictCursors?: boolean; forward?: boolean; accounts?: number; deferPaging?:boolean};
 
@@ -223,7 +227,7 @@ test('F-5: a forward lists the original attachments it will send, and removing o
   await openInbox(page, {forward: true});
   await button(page, 'Sender m1, Subject m1').click();
   await expect(page.getByRole('region', {name: 'Email message'})).toContainText('Body of m1');
-  await button(page, 'Forward').click();
+  await messageAction(page, 'Forward');
   await expect(button(page, 'Remove original-plan.pdf (original)')).toBeVisible();
   await page.getByRole('textbox', {name: 'To', exact: true}).fill('friend@example.invalid');
   await page.getByRole('textbox', {name: 'To', exact: true}).press('Enter');
@@ -462,7 +466,7 @@ test('F-13: Trash and its undo are reviewed operations and the restored message 
   await openInbox(page);
   await button(page, 'Sender m1, Subject m1').click();
   await expect(page.getByRole('region', {name: 'Email message'})).toContainText('Body of m1');
-  await button(page, 'Move to Trash').click();
+  await messageAction(page, 'Move to Trash');
   const review = page.getByRole('dialog', {name: 'Review mail operation'});
   await expect(review.getByRole('heading', {name: 'Move message to Trash', exact: true})).toBeVisible();
   await expect(review.getByRole('status')).toHaveText('Review this change before confirming. Nothing has been changed.');
@@ -506,7 +510,7 @@ test('F-13: a lost Trash reply is an unknown outcome, handled like an unknown se
   test.setTimeout(180_000);
   await openInbox(page);
   await button(page, 'Sender m2, Subject m2').click();
-  await button(page, 'Move to Trash').click();
+  await messageAction(page, 'Move to Trash');
   const review = page.getByRole('dialog', {name: 'Review mail operation'});
   await expect(review.getByRole('button', {name: 'Confirm this change', exact: true})).toBeVisible();
   await setProvider(page, {loseNextReply: true, unsure: true});
@@ -533,7 +537,7 @@ test('F-13: a lost Trash reply is an unknown outcome, handled like an unknown se
   await expect(review.getByRole('button', {name: 'Close receipt', exact: true})).toHaveCount(0);
   await review.getByRole('button', {name: 'Close mail review', exact: true}).click();
   await button(page, 'Sender m1, Subject m1').click();
-  await button(page, 'Move to Trash').click();
+  await messageAction(page, 'Move to Trash');
   await expect(review.getByRole('status')).toHaveText('Review the saved operation before starting another.');
   await expect(review).toContainText('Selected message/draft: m2');
   await expect(review.getByRole('button', {name: 'Confirm this change', exact: true})).toHaveCount(0);
@@ -565,7 +569,9 @@ test('F-12: new mail between pages never shows a message twice, and the list say
   // list states that newer mail is missing from it and how to load it.
   await expect.poll(() => rows(page)).toEqual(['m1', 'm2', 'm3']);
   await expect(page.getByText(mailboxChanged, {exact: true}).first()).toBeVisible();
-  // The notice passes; a control that loads the newer mail stays until the list is read again.
+  // Dismiss the readable notice through its real control. A later new notice must still fail
+  // the absence assertion below; the newer-mail control stays until the list is read again.
+  await page.locator('[data-alpha-toast]').filter({hasText:mailboxChanged}).click();
   await expect(button(page, 'Load newer mail')).toBeVisible();
   await button(page, 'Load more').click();
   await expect.poll(() => rows(page)).toEqual(['m1', 'm2', 'm3', 'm4', 'm5']);
@@ -597,13 +603,13 @@ test('F-12: a cursor the provider refuses after the mailbox changed keeps the lo
   await expect.poll(() => rows(page)).toEqual(['m1', 'm2']);
   await page.waitForFunction(()=>!!(window as any).releaseMailPage);await setProvider(page, {inbox: ['m1', 'm3', 'm4'], revision: 2});await page.evaluate(()=>(window as any).releaseMailPage());
   await button(page, 'Load more').click();
-  await expect(page.getByText('Gmail is unavailable right now. Retry, or check the connection. The messages already shown were kept. Retry reloads the list from the start.', {exact: true}).first()).toBeVisible();
+  await expect(page.getByText('Invalid Gmail page token. The messages already shown were kept. Retry reloads the list from the start.', {exact: true}).first()).toBeVisible();
   // The loaded page stays (it is not silently mixed with a page from the new mailbox) and the
   // refused cursor is not offered again.
   expect(await rows(page)).toEqual(['m1', 'm2']);
   await expect(button(page, 'Load more')).toHaveCount(0);
   expect((await provider(page)).searches).toEqual([['in:inbox', null], ['in:inbox', '1:2']]);
-  await button(page, 'Retry').click();
+  await button(page, 'Refresh inbox').click();
   await expect.poll(() => rows(page)).toEqual(['m1', 'm3']);
   await button(page, 'Load more').click();
   await expect.poll(() => rows(page)).toEqual(['m1', 'm3', 'm4']);
@@ -613,7 +619,7 @@ test('F-12: a cursor the provider refuses after the mailbox changed keeps the lo
 test('F-12: a message removed between pages is never duplicated, and Refresh shows the exact mailbox', async ({page}) => {
   // Recorded limit: the search contract carries no mailbox revision, so when a row is REMOVED
   // between pages a provider that keeps serving the old cursor skips one message and the
-  // renderer cannot tell (see docs/core-loop-audit.md F-12). This asserts what does hold.
+  // renderer cannot tell. This asserts what does hold.
   test.setTimeout(120_000);
   await openInbox(page, {inbox: ['m1', 'm2', 'm3', 'm4', 'm5'], pageSize: 2});
   await expect.poll(() => rows(page)).toEqual(['m1', 'm2']);

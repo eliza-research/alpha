@@ -28,7 +28,6 @@
       "alignment16KiB": true
     }
   ],
-  "qualificationReceiptSha256": "23a121b1eff8cbefde1b21ac8e30fc1959ed227c793f3d797aef6281685d7ba8",
   "jniIdentityRelocated": true,
   "inputs": [
     {

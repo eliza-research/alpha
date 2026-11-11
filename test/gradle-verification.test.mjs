@@ -1,12 +1,10 @@
 // Gradle refuses any dependency or plugin artifact whose SHA-256 is not in the committed metadata.
-// These checks read committed inputs and authenticate any patched descriptors: no Gradle run or network.
+// These checks read committed inputs and pinned descriptors without Gradle or network.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {execFileSync} from 'node:child_process';
-import {createHash} from 'node:crypto';
 import {ALLOWED_REPOSITORIES, ALLOWED_REPOSITORY_URLS, CLASSPATH, HOST_TEMPLATES, METADATA, MIRROR_PROPERTY, REVIEWED_GROUPS, VERIFIED_TASKS, addArtifact, buildScripts, checkVerification, coordinateChecksum, declaredRepositories, parseVerificationArgs, parseVerificationMetadata, referencePath, repositoryProblem} from '../scripts/gradle-verification.mjs';
 import {HOST_DESCRIPTOR} from '../scripts/android-host.mjs';
 
@@ -20,7 +18,7 @@ const CAPACITOR = 'node_modules/@capacitor/android/capacitor/build.gradle';
 const PRODUCT = 'android/app/product.gradle';
 
 /** A copy of the files --check reads, with some replaced (a null replacement leaves the file out). */
-function mutated(t, replacements, prepare = () => {}) {
+function mutated(t, replacements) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-gradle-verification-'));
   t.after(() => fs.rmSync(root, {recursive: true, force: true}));
   for (const rel of new Set([METADATA, CLASSPATH, REVIEWED_GROUPS, HOST_DESCRIPTOR, `${HOST_TEMPLATES}/toolchain.json`, ...buildScripts(ROOT), ...Object.keys(replacements)])) {
@@ -28,7 +26,6 @@ function mutated(t, replacements, prepare = () => {}) {
     fs.mkdirSync(path.dirname(path.join(root, rel)), {recursive: true});
     fs.writeFileSync(path.join(root, rel), replacements[rel] ?? read(rel));
   }
-  prepare(root);
   return checkVerification(root).problems;
 }
 
@@ -187,35 +184,11 @@ test('dependency verification selects Cloud explicitly and refuses unpackaged Cl
   assert.throws(() => parseVerificationArgs(['--write','--runtime-profile=other']), /Usage/);
 });
 
-/** A real Git-backed auth module: staging must authenticate both the source and patched bytes. */
-function patchedAuth(t, addition, alterManifest = () => {}) {
- const target = 'packages/auth/android/build.gradle';
- return mutated(t, {}, root => {
-  const upstream = path.join(root, 'vendor/eliza');
-  const git = args => execFileSync('git', ['-C', upstream, ...args], {encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe']}).trim();
-  git(['init', '-q']);
-  git(['add', '.']);
-  git(['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'core.hooksPath=/dev/null', 'commit', '-qm', 'fixture']);
-  const pin = git(['rev-parse', 'HEAD']);
-  fs.writeFileSync(path.join(root, 'upstream.lock.json'), JSON.stringify({commit: pin}));
-  const before = fs.readFileSync(path.join(upstream, target), 'utf8'), after = before + addition;
-  assert.ok(before.endsWith('\n') && after.endsWith('\n'));
-  const oldLines = before.slice(0, -1).split('\n'), newLines = after.slice(0, -1).split('\n');
-  const patch = `--- a/${target}\n+++ b/${target}\n@@ -1,${oldLines.length} +1,${newLines.length} @@\n${oldLines.map(line => '-'+line).join('\n')}\n${newLines.map(line => '+'+line).join('\n')}\n`;
-  const sha = bytes => createHash('sha256').update(bytes).digest('hex');
-  const manifest = {schema: 1, baseCommit: pin, patches: [{module: 'packages/auth/android', file: 'auth.patch', sha256: sha(patch), targets: [{path: target, beforeSha256: sha(before), afterSha256: sha(after)}]}]};
-  alterManifest(manifest);
-  const patches = path.join(root, 'patches/eliza');
-  fs.mkdirSync(patches, {recursive: true});
-  fs.writeFileSync(path.join(patches, 'auth.patch'), patch);
-  fs.writeFileSync(path.join(patches, 'native-manifest.json'), JSON.stringify(manifest));
- });
-}
-
-test('patched auth dependency descriptor is authenticated and scanned for unreviewed repositories', t => {
- assert.deepEqual(patchedAuth(t, "\ndependencies { implementation 'androidx.browser:browser:1.9.0' }\n"), []);
- assert.match(patchedAuth(t, '\nrepositories { mavenLocal() }\n').join('\n'), /\.eliza\/patched-native\/[^ ]+\/packages\/auth\/android\/build\.gradle declares repository mavenLocal\(\), which is not a reviewed form/);
- assert.match(patchedAuth(t, "\nrepositories { maven { url 'https://unreviewed.example/m2' } }\n").join('\n'), /packages\/auth\/android\/build\.gradle declares repository maven .*unreviewed\.example/);
- assert.match(patchedAuth(t, "\nrootProject.ext { mavenCentralMirrorUrl = 'https://unreviewed.example/m2' }\n").join('\n'), /packages\/auth\/android\/build\.gradle mentions mavenCentralMirrorUrl/);
- assert.throws(() => patchedAuth(t, '\nrepositories { google() }\n', manifest => {manifest.patches[0].sha256 = '0'.repeat(64);}), /Native patch digest mismatch/);
+test('pinned auth descriptor is scanned for unreviewed repositories', t => {
+ const file = 'vendor/eliza/packages/auth/android/build.gradle';
+ const withAuth = addition => mutated(t, {[file]: read(file) + addition});
+ assert.deepEqual(withAuth("\ndependencies { implementation 'androidx.browser:browser:1.9.0' }\n"), []);
+ assert.match(withAuth('\nrepositories { mavenLocal() }\n').join('\n'), /packages\/auth\/android\/build\.gradle declares repository mavenLocal\(\), which is not a reviewed form/);
+ assert.match(withAuth("\nrepositories { maven { url 'https://unreviewed.example/m2' } }\n").join('\n'), /packages\/auth\/android\/build\.gradle declares repository maven .*unreviewed\.example/);
+ assert.match(withAuth("\nrootProject.ext { mavenCentralMirrorUrl = 'https://unreviewed.example/m2' }\n").join('\n'), /packages\/auth\/android\/build\.gradle mentions mavenCentralMirrorUrl/);
 });

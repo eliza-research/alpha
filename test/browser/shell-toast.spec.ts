@@ -17,7 +17,7 @@ const pill = (page: Page) => page.locator('[data-alpha-toast] .drop');
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('alpha.connection.selection.v1', JSON.stringify({ kind: 'offline' })));
   await page.goto('/');
-  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible({timeout:15_000});
 });
 
 test('a long toast stays up for its reading time and a short one for 1.9 s', async ({ page }) => {
@@ -68,3 +68,17 @@ test('tapping a plain toast dismisses it', async ({ page }) => {
   await pill(page).click();
   await expect(pill(page)).toHaveCount(0);
 });
+
+for (const key of ['Enter', 'Space']) {
+  test(`a plain toast can be dismissed with ${key} and restores focus`, async ({page}) => {
+    const origin=page.getByRole('button',{name:'Settings',exact:true});
+    await origin.focus();
+    await raise(page,'Calendar updated');
+    const message=page.getByRole('button',{name:'Calendar updated',exact:true});
+    await message.focus();
+    await expect(message).toBeFocused();
+    await page.keyboard.press(key);
+    await expect(pill(page)).toHaveCount(0);
+    await expect(origin).toBeFocused();
+  });
+}

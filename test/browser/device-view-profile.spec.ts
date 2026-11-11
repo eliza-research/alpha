@@ -1,3 +1,4 @@
+import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {test,expect} from '@playwright/test';
 
 // Real chooser and IPC serializer; authenticated host responses are controlled.
@@ -14,7 +15,7 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
    w.Capacitor={PluginHeaders:[
     {name:'AlphaNotifications',methods:methods(['status','crossAppStatus','addListener','removeListener'])},
     {name:'AlphaVoiceCloud',methods:methods(['checkPermissions'])},
-    {name:'Agent',methods:methods(['getStatus','start','request','providerStatus','addListener','removeListener','subscribeViewEvents','unsubscribeViewEvents'])},
+    {name:'Agent',methods:methods(['getStatus','start','request','providerStatus','setGoogleAgentAccess','addListener','removeListener','subscribeViewEvents','unsubscribeViewEvents'])},
     {name:'AlphaConnection',methods:methods(['secureRead','secureWrite','secureCompareExchange','secureRemove','cancel','addListener','removeListener','pauseNotificationCollection'])},
     {name:'AlphaActionJournal',methods:methods(['list'])},
     {name:'ElizaSystem',methods:methods(['getBuildInfo'])},
@@ -27,7 +28,7 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
      if(method==='start')return {state:'ready'};
      // The real Agent plugin always exposes the Android resident renderer feed.
      if(method==='subscribeViewEvents')return {subscriptionId:input.subscriptionId};
-     if(method==='unsubscribeViewEvents'||method==='addListener'||method==='removeListener')return {};
+     if(method==='unsubscribeViewEvents'||method==='addListener'||method==='removeListener'||method==='setGoogleAgentAccess')return {};
      // Read before every resident start since e15f0b735; nothing is saved, so Cloud stays the default.
      if(method==='providerStatus')return {provider:'elizacloud',configured:false};
      const path=input.path;let body:any;
@@ -56,9 +57,9 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
     return {};
    }};
   },scenario);
-  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Agent',exact:true}).click();await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
+  await page.goto('/');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
 
-  await page.getByRole('button',{name:'Agent',exact:true}).click();
+  await openConnectionDiagnostics(page);
   const snapshot=await page.evaluate(async()=>{const {connectionController}=await import('/src/runtime/connection-ui.tsx');return connectionController.getSnapshot();});
   expect(snapshot.session?.ownerId).toBe('fixture-owner');
   const f=await page.evaluate(()=>(window as any).viewProfileFixture);

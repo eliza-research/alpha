@@ -183,8 +183,8 @@ function campaign(name, {seedRequest = 1, seedState = 'none', kind: seedKind = '
     }
   }
 
-  const client = createManagedGoogleClient({apiOrigin: productionCloud.api, request,
-    credential: {credentialReference: reference}, async current() {
+  const client = createManagedGoogleClient({apiOrigin: productionCloud.api,
+    credential: {credentialReference: reference}, request, async current() {
     if (invocation.options.abortBeforeDispatch && invocation.calls.at(-1) === 'accounts') {
       invocation.controller.abort();
       point('Abort before the reviewed transport dispatch is admitted', action('abortBeforeDispatch'));

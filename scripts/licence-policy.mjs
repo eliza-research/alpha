@@ -43,15 +43,11 @@ export const SOURCE_OFFER_MISSING = 'written source offer for Bun LGPL component
 
 /** The recorded offer text, null when none is recorded; a malformed record throws. */
 export function readSourceOffer(root) {
-  // Accept an offer already recorded by a release operator at the previous location.
-  for (const name of [SOURCE_OFFER_FILE, 'config/source-offer.json']) {
-    const file = path.join(root, name);
-    if (!fs.existsSync(file)) continue;
-    const offer = JSON.parse(fs.readFileSync(file, 'utf8'))?.offer;
-    if (typeof offer !== 'string' || !offer.trim()) throw new Error(`${name} has no "offer" text`);
-    return offer.trim();
-  }
-  return null;
+  const file = path.join(root, SOURCE_OFFER_FILE);
+  if (!fs.existsSync(file)) return null;
+  const offer = JSON.parse(fs.readFileSync(file, 'utf8'))?.offer;
+  if (typeof offer !== 'string' || !offer.trim()) throw new Error(`${SOURCE_OFFER_FILE} has no "offer" text`);
+  return offer.trim();
 }
 
 export const UNKNOWN = 'UNKNOWN';

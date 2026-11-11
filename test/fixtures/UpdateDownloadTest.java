@@ -49,7 +49,11 @@ public final class UpdateDownloadTest {
   // Refused before any byte is read: an undeclared or oversized APK is never downloaded.
   InputStream unread=new InputStream(){@Override public int read(){throw new AssertionError("read before admission");}};
   check(!admitted(unread,new byte[0],AlphaDevicePlugin.UPDATE_MAX_BYTES+1,digest)&&!admitted(unread,new byte[0],-1,digest),"sizes outside 1..UPDATE_MAX_BYTES are refused");
-  check(AlphaDevicePlugin.UPDATE_MAX_BYTES==1024L*1024*1024,"the bound is 1 GiB");
+  check(AlphaDevicePlugin.UPDATE_MAX_BYTES==2L*1024*1024*1024,"the bound is 2 GiB and exceeds signed int range");
+  // Exercise the inclusive long-valued boundary without allocating a multi-gigabyte APK.
+  java.util.concurrent.atomic.AtomicInteger boundaryReads=new java.util.concurrent.atomic.AtomicInteger();
+  InputStream boundary=new InputStream(){@Override public int read()throws IOException{boundaryReads.incrementAndGet();throw new IOException("fixture stream reached");}};
+  check(!admitted(boundary,new byte[0],AlphaDevicePlugin.UPDATE_MAX_BYTES,digest)&&boundaryReads.get()==1,"the 2 GiB declaration passes size admission before a bounded fixture stream fails");
   check(AlphaDevicePlugin.UPDATE_DEADLINE_NANOS==TimeUnit.HOURS.toNanos(6),"the deadline is six hours");
   byte[] small=Arrays.copyOf(apk,400);
   Trickle late=new Trickle(small,20);

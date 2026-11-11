@@ -50,8 +50,7 @@ export function mapReferences(value, map) {
 
 /**
  * The upstream profile with patched-native modules resolved. With `canonical`, staged
- * modules name their pinned upstream directories. The Gradle verifier supplements these
- * canonical descriptors with the authenticated shared auth descriptor when it is patched.
+ * modules name the pinned upstream directories from which staging copies them.
  */
 export function hostProfile(root = ROOT, {patchedNativeRoot, canonical = false} = {}) {
  const {profile} = readHostDescriptor(root);

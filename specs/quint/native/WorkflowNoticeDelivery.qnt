@@ -23,6 +23,7 @@ module WorkflowNoticeDelivery {
   val free = s.call.phase.in(Set("idle", "done"))
   val ReplyAcknowledged = s.call.phase == "done" and s.call.reply == "succeeded"
   val exactReceipt = s.receipt.binding == s.call.binding and s.receipt.content == s.call.content
+  val withdrawalTombstone = s.receipt == {binding: 0, content: 0, status: "withdrawn"}
   val routeOwnerMatches = s.owner == -1 or s.call.owner == s.owner
   val desiredRoute = {owner: s.call.owner, binding: s.call.binding, runId: s.call.runId, token: 1}
   pure def reply(state: State, status: str): State =
@@ -54,14 +55,14 @@ module WorkflowNoticeDelivery {
   }
   action refuseRouted = all {
     s.call.phase == "routed", not(onScreen),
-    s' = reply(s, "rejected")
+    s' = reply({...s, route: if (s.receipt == noReceipt) noRoute else s.route}, "rejected")
   }
   action claimDelivery(mode: str): bool = all {
     s.call.phase == "routed", onScreen, s.receipt == noReceipt, mode.in(writeModes),
     val initial = if (s.allowed) "applying" else "failed"
     val claimed = if (mode == "before") s else
       {...s, receipt: {binding: s.call.binding, content: s.call.content, status: initial}}
-    s' = if (mode != "ok") reply(claimed, "rejected")
+    s' = if (mode != "ok") reply({...claimed, route: if (mode == "before") noRoute else claimed.route}, "rejected")
       else if (initial == "failed") reply(claimed, "failed")
       else {...claimed, call: {...s.call, phase: "claimed"}}
   }
@@ -88,6 +89,7 @@ module WorkflowNoticeDelivery {
     val stored = if (write and mode != "before") {...s, receipt: {...s.receipt, status: reconciled}} else s
     s' = if (not(onScreen)) reply(s, "rejected")
       else if (status == "absent") reply(s, "unknown")
+      else if (withdrawalTombstone) reply(s, "withdrawn")
       else if (not(exactReceipt)) reply(s, "rejected")
       else reply(stored, if (write and mode != "ok") "rejected" else reconciled)
   }
@@ -97,7 +99,7 @@ module WorkflowNoticeDelivery {
   action withdrawTo(owner: int, mode: str): bool = all {
     free, owner.in(0.to(2)), mode.in(writeModes), s.cancels < 2,
     val withdraw = s.route != noRoute and s.route.owner != owner
-    val writesReceipt = withdraw and s.receipt != noReceipt
+    val writesReceipt = withdraw and s.receipt.status != "withdrawn"
     val cancel = withdraw and (not(writesReceipt) or mode == "ok")
     s' = {...s, owner: owner,
       receipt: if (writesReceipt and mode != "before") {...s.receipt, status: "withdrawn"} else s.receipt,
@@ -110,7 +112,11 @@ module WorkflowNoticeDelivery {
     (s.route != noRoute and s.receipt != noReceipt and s.route.binding == s.receipt.binding)
   val ConfirmedReplyHasSucceededReceipt = ReplyAcknowledged implies
     (exactReceipt and s.receipt.status.in(Set("succeeded", "withdrawn")))
+  val NoRetainedFakeReceipt = (s.receipt.binding == 0 or s.receipt.content == 0) implies
+    (s.receipt.binding == 0 and s.receipt.content == 0 and s.receipt.status.in(Set("absent", "withdrawn")) and not(ReplyAcknowledged))
+  val UnpublishedWithdrawalNeverPosts = withdrawalTombstone implies s.posts == 0
   val safety = AtMostOneManagerPost and PostedNoticeHasExactDurableClaim and ConfirmedReplyHasSucceededReceipt
+    and NoRetainedFakeReceipt and UnpublishedWithdrawalNeverPosts
     and s.receipt.status.in(receiptStates) and s.generation.in(1.to(2))
 
   action step = any {
@@ -137,13 +143,13 @@ module WorkflowNoticeDelivery {
   run durableClaimPrecedesAcknowledgedPostTest = init.then(queuePublish(1, 1, 1, 1)).then(claimRoute("ok"))
     .then(claimDelivery("ok")).expect(safety and s.receipt.status == "applying" and s.posts == 0)
     .then(notify("visible")).then(finish("ok")).expect(safety and ReplyAcknowledged and s.posts == 1)
-  run foregroundLossPreservesOnlyPreparedRouteTest = init.then(queuePublish(1, 1, 1, 1)).then(claimRoute("ok"))
+  run foregroundLossReleasesUnrecordedRouteTest = init.then(queuePublish(1, 1, 1, 1)).then(claimRoute("ok"))
     .then(foreground(false)).then(refuseRouted)
-    .expect(safety and s.route.token == 1 and s.receipt == noReceipt and s.posts == 0)
+    .expect(safety and s.route == noRoute and s.receipt == noReceipt and s.posts == 0 and not(ReplyAcknowledged))
   run uncertainClaimNeverRepostsTest = init.then(queuePublish(1, 1, 1, 1)).then(claimRoute("ok"))
     .then(claimDelivery("after")).then(reopen).then(queuePublish(1, 1, 1, 1))
     .then(claimRoute("ok")).then(retained("ok"))
-    .expect(safety and s.receipt.status == "unknown" and s.posts == 0)
+    .expect(safety and s.receipt.status == "unknown" and s.posts == 0 and s.route.token == 1 and s.route.binding == 1)
   run lateExactActiveReadReconcilesWithoutRepostTest = init.then(queuePublish(1, 1, 1, 1))
     .then(claimRoute("ok")).then(claimDelivery("ok")).then(notify("late")).then(finish("ok"))
     .then(reveal).then(queueReceipt(1, 1)).then(retained("ok"))
@@ -161,4 +167,12 @@ module WorkflowNoticeDelivery {
     .expect(safety and s.owner == 2 and s.receipt.status == "withdrawn" and s.cancels == 0)
     .then(queuePublish(1, 1, 1, 1)).then(claimRoute("ok")).expect(s.call.reply == "rejected")
     .then(withdrawTo(2, "ok")).expect(safety and s.cancels == 1 and s.manager == "none")
+  run beforeCommitRefusalReleasesRouteWithoutReceiptTest = init.then(queuePublish(1, 1, 1, 1)).then(claimRoute("ok"))
+    .then(claimDelivery("before")).expect(safety and s.route == noRoute and s.receipt == noReceipt and s.posts == 0 and not(ReplyAcknowledged))
+  run unpublishedWithdrawalNeverAcknowledgesOrPostsTest = init.then(queuePublish(1, 1, 1, 1)).then(claimRoute("after"))
+    .then(withdrawTo(2, "ok")).then(queueReceipt(2, 3)).then(retained("ok"))
+    .expect(safety and withdrawalTombstone and s.call.reply == "withdrawn" and s.posts == 0 and not(ReplyAcknowledged))
+  run withdrawalTombstoneSurvivesOwnerReturnTest = init.then(queuePublish(1, 1, 1, 1)).then(claimRoute("after"))
+    .then(withdrawTo(2, "ok")).then(owner(1)).then(queuePublish(1, 1, 1, 1)).then(claimRoute("ok")).then(retained("ok"))
+    .expect(safety and withdrawalTombstone and s.call.reply == "withdrawn" and s.posts == 0 and not(ReplyAcknowledged))
 }

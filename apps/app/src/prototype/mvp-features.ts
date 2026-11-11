@@ -1,6 +1,6 @@
 import { browserDevProfile } from '../browser/dev-profile';
 import { admittedAospViews, aospImage } from '../runtime/aosp-image';
-// Approved October 12 scope: docs/implementation-plan.md and issue #422.
+// Approved October 12 scope: issue #422.
 // Wallet is removed from MVP, including AOSP: no payment/provider activation.
 // Phone, Contacts and SMS: owner decision P-36 (issue #420). They exist only on the Alpha AOSP
 // image, never in a standalone APK or another non-image install; the launcher flavor alone is not

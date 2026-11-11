@@ -1,5 +1,5 @@
-// Eliza Cloud operator values and the credential-free readiness probe (docs/human-actions.md H-11 to
-// H-16). A stubbed fetch stands in for Cloud; nothing here contacts a network, signs in or sends a code.
+// Eliza Cloud operator values and the credential-free readiness probe. A stubbed fetch stands
+// in for Cloud; nothing here contacts a network, signs in or sends a code.
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -48,7 +48,9 @@ test("registration values come from the committed product configuration and matc
   assert.deepEqual(values[1].value.body, { url: "https://eliza.app/alphaphone/auth/callback" });
   assert.equal(values[1].value.url, `https://api.eliza.app/steward/tenants/${deployment.tenant}/redirect-urls`);
   assert.deepEqual(Object.keys(values[2].value), [STEWARD_APP_CLIENT]);
-  assert.deepEqual(values[4].value, { redirectUri: "https://eliza.app/alphaphone/auth/callback", androidPackage: identity.appId, appName: identity.appName });
+  assert.deepEqual(values[4].value, { redirectUri: "https://eliza.app/alphaphone/auth/callback", androidPackage: identity.appId, appName: identity.appName, browserSignIn: {
+    startPath: "/alphaphone/auth/browser-start", returnPath: "/__alpha-browser-cloud/signin-return", storageKey: "alpha-browser-sign-in:v1", apiOrigin: deployment.api, tenant: deployment.tenant,
+  } });
   // Operator-only facts are named, never invented: no UUID or Google client ID appears.
   const text = JSON.stringify(values);
   assert.doesNotMatch(text, /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
@@ -56,6 +58,8 @@ test("registration values come from the committed product configuration and matc
   const staging = productRegistration(root, "staging");
   assert.equal(staging.callback, "https://staging.eliza.app/alphaphone/auth/callback");
   assert.equal(staging.tenant, "elizacloud-staging");
+  assert.equal(staging.browserSignIn.apiOrigin, CLOUD_DEPLOYMENT.staging.api);
+  assert.equal(staging.browserSignIn.tenant, staging.tenant);
 });
 
 /** A Cloud stand-in. `overrides` replaces the answer for a path; every request is recorded. */
@@ -138,7 +142,7 @@ test("each observed deployment gap fails its own gate and names its step", async
   assert.match(byGate["email sign-in"].detail, /not offered \(or behind a captcha\)/);
   assert.match(byGate["native Google"].detail, /STEWARD_GOOGLE_NATIVE_CLIENT_IDS/);
   assert.match(byGate["browser return"].detail, /redirect_uri is not allowed for this tenant/);
-  assert.match(byGate["App Links"].detail, /H-09/);
+  assert.match(byGate["App Links"].detail, /release certificate is not recorded yet/);
   assert.match(byGate["service documents"].detail, /CLOUD_PUBLIC_SERVICE_JSON/);
   assert.match(byGate["entitlement keys"].detail, /ELIZA_ENTITLEMENT_/);
   assert.match(byGate["Maps route"].detail, /^needs an account: .*401 before routing/);

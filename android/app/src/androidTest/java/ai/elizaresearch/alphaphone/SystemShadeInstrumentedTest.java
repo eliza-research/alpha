@@ -24,8 +24,7 @@ import org.junit.runner.RunWith;
  * the standalone app is an ordinary app and never asks. Alpha draws no shade of its own.
  *
  * The Home method needs a test-mocks app build (it is skipped on any other): a production Android
- * build opens the Eliza Cloud sign-in gate over Home, which cannot be passed without an account. Emulator evidence only (see
- * docs/verification.md); not AOSP-image, Pixel 10a or TalkBack acceptance.
+ * build opens the Eliza Cloud sign-in gate over Home, which cannot be passed without an account. Emulator evidence only; not AOSP-image, Pixel 10a or TalkBack acceptance.
  */
 @RunWith(AndroidJUnit4.class)
 public class SystemShadeInstrumentedTest {

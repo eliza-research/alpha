@@ -18,7 +18,7 @@ const lockCommit=JSON.parse(fs.readFileSync(path.join(root,'upstream.lock.json')
 const appId=JSON.parse(fs.readFileSync(path.join(root,'app.config.json'),'utf8')).appId;
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const qualified=(()=>{
- const record=structuredClone(committed);delete record.requalification;delete record.producerInputs;
+ const record=structuredClone(committed);delete record.producerInputs;
  record.forkPin=git(path.join(root,'vendor/eliza'),'ls-tree',lockCommit,'plugins/plugin-local-inference/native/llama.cpp').match(/^160000 commit ([a-f0-9]{40})\t/)[1];
  // The build inputs come from the shared native contract at the pin (registered JNI: the Java class too).
  const show=file=>execFileSync('git',['-C',path.join(root,'vendor/eliza'),'show',lockCommit+':'+file]);
@@ -69,7 +69,11 @@ function fixture({currentOnly=false,producerInputs=false}={}){
  // Tiny content fixtures retain the production manifest shape; the known BGE hash is checked last.
  for(const row of qualified.libraries){const file=path.join(dir,'android/app/src/main/jniLibs/arm64-v8a',row.name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,'fixture-'+row.name);}
  const manifest=structuredClone(qualified);for(const row of manifest.libraries){row.sha256=createHash('sha256').update('fixture-'+row.name).digest('hex');row.bytes=Buffer.byteLength('fixture-'+row.name);}
- if(producerInputs)manifest.producerInputs=embeddingProducerInputPaths.map(name=>({path:name,sha256:sha(execFileSync('git',['-C',vendor,'show','HEAD:'+name]))}));
+ if(producerInputs){
+  // These generated digests describe a synthetic build, not the historical receipt's producer.
+  manifest.pin='1'.repeat(40);
+  manifest.producerInputs=embeddingProducerInputPaths.map(name=>({path:name,sha256:sha(execFileSync('git',['-C',vendor,'show','HEAD:'+name]))}));
+ }
  fs.writeFileSync(path.join(dir,'android/embedding-host/qualified-host.json'),JSON.stringify(manifest));
  // The voice host stages the same arm64 engine file, so its record names the same bytes.
  fs.mkdirSync(path.join(dir,'android/voice-host'),{recursive:true});
@@ -132,8 +136,8 @@ test('missing, incomplete or altered native qualification cannot admit a new sou
  for(const mutation of [
   m=>delete m.inputs,m=>m.inputs.pop(),m=>m.inputs.push(m.inputs[0]),
   m=>m.inputs[0].sourceSha256='0'.repeat(64),m=>m.inputs.at(-1).generatedSha256='0'.repeat(64),
-  m=>m.forkPin='0'.repeat(40),m=>delete m.qualificationReceiptSha256,m=>m.jniIdentityRelocated=false,
- ]){const f=fixture();try{mutation(f.manifest);f.write();assert.throws(()=>verifyEmbeddingHost(f.dir),/qualification missing or changed|admission changed|Native build input changed/);}finally{f.close();}}
+  m=>m.forkPin='0'.repeat(40),m=>m.jniIdentityRelocated=false,
+ ]){const f=fixture();try{mutation(f.manifest);f.write();assert.throws(()=>verifyEmbeddingHost(f.dir),/qualification missing or changed|admission changed|Native build input changed|JNI identity missing or changed/);}finally{f.close();}}
 });
 
 test('current-only shallow native inputs admit reviewed bytes without fetching the historical build pin',()=>{
@@ -155,23 +159,6 @@ test('explicit unpackaged builds admit absence, never a partial resident payload
   }
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
-
-test('the committed record is admissible at the pin, or names why it must be requalified and is refused',()=>{
- let admissible=true;try{verifyEmbeddingInputs(root,committed);}catch{admissible=false;}
- if(admissible){assert.equal(committed.requalification,undefined,'an admissible record carries no requalification note');return;}
- // A pin move that changes the engine gitlink or a native build input voids the reviewed bytes.
- const note=committed.requalification;
- assert.equal(note?.required,true,'an inadmissible record says that requalification is required');
- assert.equal(note.atPin,lockCommit,'for the current pin');
- assert.ok(typeof note.reason==='string'&&note.reason.length>20);
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-embed-requalify-'));
- try{
-  for(const name of ['upstream.lock.json','app.config.json','android/embedding-host/qualified-host.json']){fs.mkdirSync(path.dirname(path.join(dir,name)),{recursive:true});if(name==='android/embedding-host/qualified-host.json')fs.writeFileSync(path.join(dir,name),JSON.stringify(committed));else fs.copyFileSync(path.join(root,name),path.join(dir,name));}
-  assert.throws(()=>verifyEmbeddingHost(dir),/requalification required/,'distribution admission names the requalification first');
-  assert.deepEqual(verifyEmbeddingHost(dir,{allowAbsentRuntime:true}),{status:'not-packaged',distributable:false},'an unpackaged developer build is unaffected');
- }finally{fs.rmSync(dir,{recursive:true,force:true});}
-});
-
 
 test('complete producer closure is required for new embedding-capable admission and preserves the built pin',()=>{
  const legacy=fixture();try{assert.throws(()=>verifyEmbeddingInputs(legacy.dir,legacy.manifest,{requireProducerInputs:true}),/producer input qualification missing/);}finally{legacy.close();}

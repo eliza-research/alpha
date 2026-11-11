@@ -59,10 +59,10 @@ export async function calendarRefinement() {
       await recovered.reconcile(record);
       trace.steps.push({label: 'restart does not replay an ambiguous create', action: action('restart'), expect: {'s.phase': phase(record), 's.sends': f.calls.length}});
       f.observe({eventId: 'provider-1', etag: 'v1', event: {...event, title: 'Other event'}});
-      assert.equal(await recovered.recoverDispatch(record), false);
+      assert.equal(await recovered.recoverDispatch(record), 'unresolved');
       trace.steps.push({label: 'existence without exact semantic readback does not settle uncertainty', action: action('findCreated', false), expect: {'s.phase': phase((await reopened.list())[0]), 's.sends': f.calls.length}});
       f.observe({eventId: 'provider-1', etag: 'v1', event: structuredClone(event)});
-      assert.equal(await recovered.recoverDispatch(record), true);
+      assert.equal(await recovered.recoverDispatch(record), 'landed');
       trace.steps.push({label: 'matching source-bound readback settles without another write', action: action('findCreated', true), expect: {'s.phase': phase((await reopened.list())[0]), 's.sends': f.calls.length}});
     }
     if (outcome === 'not-accepted') {

@@ -35,15 +35,15 @@ for(const theme of ['light','dark'])test(`Home Inbox uses cached unread subjects
  await page.screenshot({path:info.outputPath('home-inbox-'+theme+'.png'),animations:'disabled'});
 });
 
-test('Home Inbox distinguishes complete empty results from partial loaded results',async({page})=>{
- await fixture(page);await page.evaluate(()=>{const f=(window as any).homeInboxFixture;f.rows=[];f.more=true;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toBeVisible();await expect(tile(page)).not.toContainText('No unread');
- await page.evaluate(()=>{(window as any).homeInboxFixture.more=false;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toBeVisible();await expect(tile(page)).toContainText('No unread email');await expect(page.getByRole('button',{name:'Inbox',exact:true})).toBeVisible();
+test('Home omits empty Inbox header pages without claiming a complete unread result',async({page})=>{
+ await fixture(page);await page.evaluate(()=>{const f=(window as any).homeInboxFixture;f.rows=[];f.more=true;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toHaveCount(0);
+ await page.evaluate(()=>{(window as any).homeInboxFixture.more=false;});await page.getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Refresh inbox',exact:true}).click();await expect(page.getByText('Your Inbox is empty',{exact:true})).toBeVisible();await returnToApps(page);await expect(tile(page)).toHaveCount(0);await expect(page.getByRole('button',{name:'Inbox',exact:true})).toBeVisible();
 });
 
-test('Home keeps an unconnected Inbox widget and Google setup in Settings',async({page})=>{
+test('Home omits an unconnected Inbox widget and keeps Google setup in app Settings',async({page})=>{
  await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));localStorage.setItem('alpha.startup-permissions.v1',JSON.stringify({dismissed:true,attempted:{}}));});await page.goto('/');
- await expect(tile(page)).toBeVisible();await expect(tile(page)).toContainText('Connect email');await expect(page.locator('[data-alpha-home-date]')).toHaveCount(0);
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Account',exact:true}).click();await expect(page.getByRole('button',{name:'Google & email',exact:true})).toBeVisible();
+ await expect(tile(page)).toHaveCount(0);await expect(page.locator('[data-alpha-home-date]')).toHaveCount(0);
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('region',{name:'Settings',exact:true}).getByRole('button',{name:'Inbox',exact:true}).click();await expect(page.getByRole('button',{name:'Google & email',exact:true})).toBeVisible();
 });
 
 test('Home Inbox retains failure and retires cached subjects on owner change',async({page})=>{
@@ -52,7 +52,7 @@ test('Home Inbox retains failure and retires cached subjects on owner change',as
 });
 
 test('Home Inbox does not publish a cancelled delayed load as empty or fetched',async({page})=>{
- await fixture(page);await page.evaluate(()=>(window as any).homeInboxFixture.hold=true);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect.poll(()=>page.evaluate(()=>typeof(window as any).homeInboxFixture.release)).toBe('function');await returnToApps(page);await expect(tile(page)).toBeVisible();await expect(tile(page)).not.toContainText('No unread');await page.evaluate(()=>(window as any).homeInboxFixture.release());await expect(tile(page).locator('[data-alpha-home-inbox-subjects]')).toHaveCount(0);expect(await page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBe(1);
+ await fixture(page);await page.evaluate(()=>(window as any).homeInboxFixture.hold=true);await page.getByRole('button',{name:'Inbox',exact:true}).click();await expect.poll(()=>page.evaluate(()=>typeof(window as any).homeInboxFixture.release)).toBe('function');await returnToApps(page);await expect(tile(page)).toHaveCount(0);await page.evaluate(()=>(window as any).homeInboxFixture.release());await expect(tile(page).locator('[data-alpha-home-inbox-subjects]')).toHaveCount(0);expect(await page.evaluate(()=>(window as any).homeInboxFixture.reads)).toBe(1);
 });
 
 for(const scenario of ['recent','expired','owner-change-during-restore'] as const)test(`Home restores only its own saved Inbox while one background header read is pending: ${scenario}`,async({page})=>{
@@ -111,7 +111,7 @@ const notifyHomeOwner=(page:Page)=>page.evaluate(()=>{(window as any).__alphaMod
 
 test('pending optional Cloud restoration does not offer a second sign-in',async({page})=>{
  await fixture(page);await page.evaluate(()=>(window as any).homeInboxFixture.restoringCloud=true);await notifyHomeOwner(page);
- await expect(tile(page)).not.toContainText('Connect email');
+ await expect(tile(page)).toHaveCount(0);
  await page.getByRole('button',{name:'Inbox',exact:true}).click();
  await expect(page.getByRole('button',{name:'Connect Eliza Cloud',exact:true})).toHaveCount(0);
  await expect(page.getByText('Connect Eliza Cloud to use Gmail',{exact:true})).toHaveCount(0);

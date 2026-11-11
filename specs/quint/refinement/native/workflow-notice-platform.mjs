@@ -29,6 +29,7 @@ abstract class FixtureNoticeHost {
  ${shared('requireNoticeForeground')}
  ${shared('poster')}
  ${shared('delivery')}
+ ${shared('coordinator')}
  protected abstract NoticeRoutes routes();
  protected abstract HostNoticePoster.Config posterConfig();
  protected abstract NoticeDelivery.Config deliveryConfig();

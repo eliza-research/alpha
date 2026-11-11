@@ -2,7 +2,7 @@ import {openCanonicalCalendar} from './helpers/canonical-calendar';
 import { openLegacyNotes } from './helpers/legacy-notes';
 import { test, expect, type Page, type Locator } from '@playwright/test';
 
-// Issue #411, responsive-surface matrix (docs/implementation-plan.md). Production renderer in a
+// Issue #411, responsive-surface matrix. Production renderer in a
 // touch viewport: synthetic storage/provider inputs, no shipped developer surfaces. Viewport changes stand in for rotation,
 // window resizing and the software keyboard; they do not qualify Android rotation, process
 // recreation, TalkBack or a device keyboard.
@@ -259,6 +259,8 @@ const inert = (locator: Locator) => locator.evaluate(element => !!element.closes
 
 test('the Settings Theme choice is a 44px target at every size', async ({ page }) => {
   await open(page, 'Settings');
+  await page.getByRole('button',{name:'General',exact:true}).click();
+  await page.getByRole('button',{name:'Display',exact:true}).click();
   for (const viewport of [PORTRAIT, SMALL_LANDSCAPE, TABLET_LANDSCAPE]) {
     await resize(page, viewport);
     for (const name of ['Theme: Light', 'Theme: Dark']) await expectTarget(page, page.getByRole('button', { name, exact: true }));
@@ -326,7 +328,7 @@ test('switching notes beside the list leaves the previous one as Back does', asy
   await expect(newItem).toHaveValue('');
   // An untouched new note is dropped when another note is opened beside the list, as Back drops it.
   await page.getByRole('button', { name: 'New note', exact: true }).click();
-  await expect(title).toHaveValue('');
+  await expect(title).toHaveValue('New note');
   await page.getByRole('button', { name: 'Open List A', exact: true }).click();
   await expect(title).toHaveValue('List A');
   await expect(page.getByRole('button', { name: 'Open Untitled', exact: true })).toHaveCount(0);

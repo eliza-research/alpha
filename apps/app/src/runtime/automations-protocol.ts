@@ -98,7 +98,7 @@ export function mergeAutomationRows(rows:AutomationRow[]):AutomationRow[] {
  return [...records.values()].sort((a,b)=>Number(b.enabled)-Number(a.enabled)||a.title.localeCompare(b.title));
 }
 export class AutomationsProtocol {
- constructor(private request:AutomationRequest){}
+ constructor(private request:AutomationRequest,private deliveryConversationId?:string){}
  async list(signal:AbortSignal):Promise<AutomationSnapshot>{
   const sources=[['automations','/api/automations','automations',automation],['schedules','/api/lifeops/scheduled-tasks?ownerVisibleOnly=1','tasks',scheduled],['reminders','/api/lifeops/reminders','reminders',reminder],['definitions','/api/lifeops/definitions','definitions',definition]] as const;
   const results=await Promise.allSettled(sources.map(async([source,path,key,parse])=>{const data=object(await this.request(path,'GET',undefined,signal));return {rows:list(data[key]).flatMap(item=>{const row=parse(item);return row?[row]:[];}),issue:source==='automations'&&(text(data.workflowFetchError)||(Array.isArray(data.executionFetchErrors)&&data.executionFetchErrors.length))?{source:'automations' as const,unavailable:false,message:'Some workflow data or execution history could not refresh. Open the workflow to check it before running.'}:null};}));
@@ -116,7 +116,7 @@ export class AutomationsProtocol {
   else {if(!draft.eventKind.trim())throw Error('Add an event name.');request.eventKind=draft.eventKind.trim();}
   if(!id)Object.assign(request,{wakeMode:'inject_now',enabled:false});
   const result=object(await this.request(id?'/api/triggers/'+automationId(id):'/api/triggers',id?'PUT':'POST',request,signal)),trigger=object(result.trigger);automationId(trigger.id);
-  if((id&&trigger.id!==id)||trigger.displayName!==title||trigger.instructions!==instructions||(!id&&trigger.enabled!==false))throw Error('Prompt save was not confirmed. Check this agent before saving again.');
+  if((this.deliveryConversationId&&result.deliveryConversationId!==this.deliveryConversationId)||(id&&trigger.id!==id)||trigger.displayName!==title||trigger.instructions!==instructions||(!id&&trigger.enabled!==false))throw Error('Prompt save was not confirmed. Check this agent before saving again.');
  }
  async setPromptEnabled(id:string,enabled:boolean,signal:AbortSignal){
   let response:unknown;

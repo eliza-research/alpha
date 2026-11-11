@@ -18,7 +18,7 @@ async function runIdentityCompositionRefinement(extraSources = []) {
   const sources = [...sourcePaths(), 'vite.config.ts', 'package.json', 'package-lock.json',
     'scripts/quint-lib.mjs', 'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts', 'test/browser/helpers/native-navigation-protocol.ts', 'upstream.lock.json',
     ...filesWithin(resolve(root, '.eliza/client-features'), path => /\.(?:ts|tsx|js|json|css|html)$/.test(path)).map(relativePath),
-    ...filesWithin(resolve(root, 'patches/eliza')).map(relativePath), 'scripts/prepare-client-features.mjs',
+    'upstream.lock.json', 'scripts/prepare-client-features.mjs',
     fileURLToPath(import.meta.url), ...extraSources];
   const driverHashes = captureInputs(sources);
   const prior = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;

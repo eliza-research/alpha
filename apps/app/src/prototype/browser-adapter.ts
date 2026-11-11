@@ -46,7 +46,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   const tabOf = (id: string) => state()?.tabs?.find((tab: Bag) => tab.id === id);
   const isPrivate = (id: string) => !!tabOf(id)?.priv;
   let bookmarkRead: Promise<void> | undefined, bookmarkQueue = Promise.resolve();
-  let bookmarkHydrated = false, bookmarkRefreshQueued = false, initialBookmarkRead = false, browserWasActive = false;
+  let bookmarkHydrated = false, bookmarkRefreshQueued = false, bookmarkRefreshBackground = false, initialBookmarkRead = false, browserWasActive = false;
   // Browser-owned bookmark storage reports damaged saved data by failing to
   // read. The product then offers its exact-byte recovery dialog in Bookmarks.
   let bookmarkRecovery = false;
@@ -79,9 +79,12 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
    * then says nothing over whatever screen is open (sign-in, setup, Settings); opening Browser
    * reads again and reports it there. */
   function refreshBookmarks(background = false) {
-    if (disposed || bookmarkRefreshQueued) return;
+    if (disposed) return;
+    // Browser opening owns an already-pending startup read too, so its failure must be visible.
+    if (bookmarkRefreshQueued) { if (!background) bookmarkRefreshBackground = false; return; }
+    bookmarkRefreshBackground = background;
     bookmarkRefreshQueued = true;
-    bookmarkQueue = bookmarkQueue.then(() => disposed ? undefined : loadBookmarks()).catch((error: unknown) => { if (!(background && unimplemented(error))) report(error); }).finally(() => { bookmarkRefreshQueued = false; });
+    bookmarkQueue = bookmarkQueue.then(() => disposed ? undefined : loadBookmarks()).catch((error: unknown) => { if (!(bookmarkRefreshBackground && shell?.S().view !== 'browser' && unimplemented(error))) report(error); }).finally(() => { bookmarkRefreshQueued = false; });
   }
   function saveBookmark(url: string, saved?: boolean) {
     bookmarkQueue = bookmarkQueue.then(async () => {
@@ -496,7 +499,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     html.style.setProperty('--alpha-browser-clear-bottom',`${Math.max(0,(rect.y+rect.height-(box?.top||0))/scale)}px`);
     html.setAttribute('data-alpha-browser-underlay',session);
   }
-  const browserChromeSelector='[data-alpha-layer="composer"],[data-alpha-layer="pill"] > *,[data-alpha-layer="conversation"],.alpha-plan-notice,[data-alpha-toast] > *,[data-screen] > button[aria-label="Home"]';
+  const browserChromeSelector='[data-alpha-layer="composer"],[data-alpha-layer="pill"] > *,[data-alpha-layer="conversation"],.alpha-plan-notice,[data-alpha-toast] > *,[data-screen] > button[aria-label="Home"],[role="search"][aria-label="Find in page"]';
   function browserHostRects(page:Bag){
     if(nativeUnderAssistant())return [{x:page.x,y:page.y,width:page.width,height:page.height,cornerRadius:0}];
     return [...document.querySelectorAll<HTMLElement>(browserChromeSelector)].flatMap(element=>{

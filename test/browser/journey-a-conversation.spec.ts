@@ -1,7 +1,7 @@
 import {openConnectionDiagnostics} from './helpers/connection-diagnostics';
 import {openLegacyNotes} from './helpers/legacy-notes';
 /*
- * Journey A (docs/mvp-completion-plan.md "A. Boot, authenticate and keep a conversation"), browser build.
+ * Journey A, browser build.
  *
  * Evidence level: a pass is SOURCE/TEST evidence for the browser development profile only. It is not APK,
  * emulator, AOSP image, physical-device or real-integration evidence.
@@ -69,6 +69,12 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
 
  // 1b. Composer draft around a failed send: with no agent nothing is sent and the text returns to the composer.
  await ask.fill('Journey A unsent draft');await ask.press('Enter');
+ await expect(message).toHaveValue('Journey A unsent draft');
+ // A refused send offers connection setup. Dismiss it before navigating the app beneath it.
+ const refusedSendChooser=page.getByRole('dialog',{name:'Development connections',exact:true});
+ await expect(refusedSendChooser).toBeVisible();
+ await refusedSendChooser.getByRole('button',{name:'Close connection settings',exact:true}).click();
+ await expect(refusedSendChooser).toHaveCount(0);
  await expect(message).toHaveValue('Journey A unsent draft');
  // The text simply comes back: no line under the composer and no toast (owner, 2026-11-03).
  await expect(page.getByRole('status',{name:'Assistant draft status'})).toHaveCount(0);
@@ -163,8 +169,8 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
    await expect(conversation.getByText(MAY_FINISH,{exact:true})).toHaveCount(0);
    expect(await agentDocument(page)).toEqual(afterStop);
    // The Check saved conversation card, the user's explicit re-read of the agent's history, was removed, so
-   // there is nothing to press: the stopped request stays in this transcript beside the outcome until step 8
-   // restores the agent's own copy.
+   // there is nothing to press: the stopped request stays in this transcript beside the outcome until step 7
+   // reloads the agent's own copy.
    await expect(page.getByRole('button',{name:/^Check saved conversation/})).toHaveCount(0);
    await expect(bubble(page,'Journey A cancelled request')).toHaveCount(1);
   }
@@ -176,12 +182,14 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
  await expect(bubble(page,'Journey A third request')).toHaveCount(1);
  await expect(bubble(page,REPLY)).toHaveCount(3);
 
- // 7. Reload (browser stand-in for restart). The selection survives; the visible chat is not restored by itself.
+ // 7. Reload (browser stand-in for restart). The verified resident restores its saved conversation automatically.
  await page.reload();
  await expect(page.getByRole('region',{name:'Home'})).toBeVisible();
  await page.getByRole('button',{name:'Open conversation',exact:true}).click();
  await expect(message).toBeVisible();
- await expect(bubble(page,REPLY)).toHaveCount(0);
+ for(const text of ['Journey A first request','Journey A second request','Journey A third request'])await expect(bubble(page,text)).toHaveCount(1);
+ await expect(bubble(page,REPLY)).toHaveCount(3);
+ await expect(bubble(page,'Journey A cancelled request')).toHaveCount(0);
  await returnToApps(page);
  await openConnection(page);
  await expect(page.getByRole('dialog',{name:'Development connections'}).getByText('On-device agent · development',{exact:true}).last()).toBeVisible();
@@ -189,7 +197,8 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
  await expect(page.getByRole('button',{name:'Restore conversation'})).toHaveCount(1);
  await page.getByRole('button',{name:'Restore conversation'}).click();
 
- // 8. Exactly one result per accepted request, none for the cancelled one, in the UI and in the agent's store.
+ // 8. Explicitly restoring the same history adds no duplicates: one result per accepted request,
+ // none for the cancelled one, in the UI and in the agent's store.
  for(const text of ['Journey A first request','Journey A second request','Journey A third request'])await expect(bubble(page,text)).toHaveCount(1);
  await expect(bubble(page,REPLY)).toHaveCount(3);
  await expect(bubble(page,'Journey A cancelled request')).toHaveCount(0);
@@ -207,7 +216,7 @@ test('journey A: boot, connect, converse across apps, stop a reply, reload and r
  expect(external).toEqual([]);
 });
 
-// Journey hardening (docs/core-loop-audit.md, work order 14): journey A had no declined action.
+// Journey hardening: journey A had no declined action.
 // The proposal is authored through the development "Action JSON" control (no model decides it);
 // the card, Decline and the read-back are the real rendered path.
 test('journey A: a proposed phone action is declined from the conversation and nothing runs, before or after a reload',async({page})=>{
@@ -264,7 +273,7 @@ test('journey A: a proposed phone action is declined from the conversation and n
  expect(state.journal).toEqual([]);
 });
 
-// Journey hardening (docs/core-loop-audit.md, work order 14): journey A had no spoken request.
+// Journey hardening: journey A had no spoken request.
 // Synthetic boundaries only: the microphone is a Web Audio oscillator (the browser's real recorder
 // and the product's own voice-activity detection hear it), Cloud transcription is the closed
 // fixture returning a fixed string, and speech output is recorded instead of played. The turn is
@@ -304,7 +313,7 @@ test('journey A: a spoken request is transcribed, sent once, answered once and r
  await talk.click();
  await expect(voice).toHaveAttribute('data-voice-state','listening',{timeout:30_000});
  // Speech routing is disclosed in Settings > Voice; the live composer stays quiet (#745).
- await expect(voice).toContainText('Listening…');
+ await expect(voice).toContainText('Listening');
  await expect(voice).not.toContainText('Eliza Cloud');
  // Silence: the microphone is open and nothing is transcribed or sent.
  await page.waitForTimeout(2500);

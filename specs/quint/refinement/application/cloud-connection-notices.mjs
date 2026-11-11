@@ -28,6 +28,7 @@ async function observe(page) {
     return {
       plan: !!snapshot.session && !!snapshot.cloudAccount && snapshot.residentPlanNotice === 'needs-plan',
       signIn: !!snapshot.session && c.residentPlanSettings().keyExpiring,
+      covered: (document.documentElement.dataset.activeView ?? 'home') !== 'home' || !!document.querySelector('[data-alpha-layer="conversation"][aria-hidden="false"]'),
       compact: innerWidth === 360 && innerHeight === 480,
       largeText: Number(getComputedStyle(document.documentElement).getPropertyValue('--alpha-text-scale')) >= 1.5,
     };
@@ -38,7 +39,7 @@ async function observe(page) {
   return {
     's.required': qset(kinds),
     's.dismissed': qset(kinds.filter(kind => !mounted.includes(kind))),
-    's.settings': view === 'settings',
+    's.covered': input.covered,
     's.compact': input.compact,
     's.largeText': input.largeText,
     mounted: qset(mounted), exposed: qset(order), order,
@@ -46,7 +47,14 @@ async function observe(page) {
 }
 
 async function proveHitTargets(page, {short = false} = {}) {
+  const overflow = await stack(page).evaluate(node => ({needed: node.scrollHeight > node.clientHeight + 1, enabled: node.dataset.scrollable === 'true'}));
+  assert.equal(overflow.enabled, overflow.needed, 'Only an overflowing notice stack owns body gestures');
   const {notices} = await observeCloudNotices(page);
+  // Back changes display before ResizeObserver measures the newly exposed stack.
+  await expect.poll(async()=>{
+    const home=await page.locator('[data-alpha-layer="home"]').boundingBox(),noticeBox=await stack(page).boundingBox();
+    return !!home&&!!noticeBox&&home.y>=noticeBox.y+noticeBox.height;
+  },{timeout:2000,message:'Home scroll area stays below the visible notice controls'}).toBe(true);
   for (const [index, notice] of notices.entries()) {
     assert.ok(notice.visible, notice.label+' is laid out');
     if (index > 0) assert.ok(notices[index - 1].bounds.bottom <= notice.bounds.top, 'Rendered notices occupy separate rows');
@@ -60,13 +68,14 @@ async function proveHitTargets(page, {short = false} = {}) {
 }
 
 async function settingsRoundTrip(page, t) {
-  await page.getByRole('button', {name:'Settings', exact:true}).click();
-  await expect(page.locator('[data-settings-page]:visible')).toHaveCount(1);
-  await expect(stack(page)).toBeHidden();
-  checkpoint(t, 'Actual Settings suppresses the notice stack without dismissing it', call('enterSettings'), await observe(page));
-  await page.evaluate(() => window.dispatchEvent(new Event('alpha-back', {cancelable:true})));
-  await expect(stack(page)).toBeVisible();
-  checkpoint(t, 'Actual Back returns to the unchanged owned notices', call('leaveSettings'), await observe(page));
+  for (const entry of ['Settings', 'Inbox', 'Open conversation']) {
+    await page.getByRole('button', {name:entry, exact:true}).click();
+    await expect(stack(page)).toBeHidden();
+    checkpoint(t, 'Actual '+entry+' suspends passive notices without dismissing them', call('coverScreen'), await observe(page));
+    await page.evaluate(() => window.dispatchEvent(new Event('alpha-back', {cancelable:true})));
+    await expect(stack(page)).toBeVisible();
+    checkpoint(t, 'Actual Back returns Home to the unchanged owned notices', call('returnHome'), await observe(page));
+  }
 }
 
 async function exercise(page, short) {
@@ -137,7 +146,6 @@ export async function checkCloudConnectionNotices(extraSources = []) {
   checkClientFeatures();
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'patches/eliza')),
     'apps/app/index.html', 'vite.config.ts', 'upstream.lock.json', 'package-lock.json',
     'scripts/prepare-client-features.mjs', modelPath, fileURLToPath(import.meta.url),
     'test/browser/flag-off-android.ts', 'test/browser/helpers/cloud-connection-notices.ts',
@@ -211,7 +219,7 @@ export async function checkCloudConnectionNotices(extraSources = []) {
     assert.deepEqual([...loaded].sort(), [...watched].sort());
     return await checkTraces({model, modelPath, sources, driverHashes, traces, scope:'bounded-orchestration', assumptions:[
       'The real flag-off Alpha, connection chooser, Settings shell and stylesheet run in Chromium with a synthetic signed plan and near-expiry credential. CSS hit owners and scrolling are checked in the actual viewport.',
-      'One stable account and key per trace. Dismissal projects from the exact mounted notice disappearing while its upstream requirement remains. Settings suppression retains the mounted notice.',
+      'One stable account and key per trace. Dismissal projects from the exact mounted notice disappearing while its upstream requirement remains. Foreground app or conversation suspension retains the mounted notice, and returning Home restores it.',
       'The short 360×480 viewport uses the actual browser text sizing adapter as a controlled 150% text input. Native WebView text zoom, billing, credential renewal and subscription transitions are separate.',
     ]});
   } finally {

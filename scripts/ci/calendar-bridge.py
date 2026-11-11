@@ -16,7 +16,7 @@ import sys
 
 SDK = json.loads((Path(__file__).resolve().parents[2] / 'upstream.lock.json').read_text(encoding='utf-8'))['commit']
 NODE = '26.13.0'
-HOST = '4ba9ec0cbbb773855838b3ba45a59b97476a15f1d07983a3b5a039fcb00c7845'
+HOST = 'af4104037cdca1a4b128e9821e36ab902eda57557bd53830364e8bb777e77b8a'
 JSON_SHA = '3ea61b2a06e31edf1c91134fe9106b0ebb16628be169f3db75bc7a2b06b45796'
 ENTRY_SECONDS = 180  # <240s GHA timeout, leaving >=60s platform margin.
 PREFLIGHT_SECONDS = 20
@@ -232,7 +232,7 @@ def main():
         java_home / 'release', root / 'scripts/ci/calendar-bridge.init.gradle',
         root / 'scripts/ci/calendar-bridge.py', root / '.nvmrc',
         root / 'android/.eliza-consumer-profile.json', root / 'android/consumer-host.json',
-        root / 'upstream.lock.json', root / 'patches/eliza/native-manifest.json']
+        root / 'upstream.lock.json', root / 'android/upstream-native-sources.json']
     fixture = driver.parent / 'bridge-runtime'
     for relative, expected in OWNING_SHA256.items():
         require(digest(root / 'vendor/eliza' / relative) == expected, 'Canonical owning source changed')

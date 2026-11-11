@@ -84,7 +84,7 @@ test('Files before Inbox asks to open Inbox once when a Gmail account was chosen
   saveGmailAccountChoice(c.getSnapshot().cloudAccount,'file-grant');
   (window as any).fileEmail.shell.openView('files',{});
  });
- await page.getByText('App files',{exact:true}).first().click();
+ await page.getByRole('button',{name:'Internal storage',exact:true}).click();
  await page.getByRole('button',{name:'Open selected.txt',exact:true}).click();
  await page.getByRole('button',{name:'Use in email',exact:true}).click();
  await expect(dialog(page).getByRole('status')).toHaveText('Open Inbox once to load your Gmail account.');

@@ -1,33 +1,7 @@
 {
   "schema": 1,
   "ndk": "28.2.13676358",
-  "ndkEvidence": "Current c95a component preparation receipts use NDK28.2.13676358. Full Alpha JNI/BGE execution passed on Pixel ARM64 and API35 x86_64; evidence under docs/evidence/native-c95a.",
   "cmake": "4.0.3",
   "engineRepository": "https://github.com/elizaOS/llama.cpp.git",
-  "engineRepositoryEvidence": "vendor/eliza .gitmodules, submodule plugins/plugin-local-inference/native/llama.cpp; the commit is the gitlink recorded as forkPin in qualified-host.json.",
-  "remapBuildPath": true,
-  "remapBuildPathEvidence": "Current c95a binaries were built with explicit path remapping. PREPARATION receipts retain exact compiler inputs and remap environment. Fresh-path reproduction of this engine revision has not been measured.",
-  "remapBuildPathMeaning": "Automatic rebuilding remains fenced by the exact admitted library hashes. A differing output cannot be staged; cross-host/OS reproduction is not established. Historical candidate measurements below are not current evidence.",
-  "unqualifiedCandidateMeasurement": {
-    "note": "NOT reviewed, NOT qualified and NOT staged by any script. Two --remap-build-path builds in different directories on one macOS arm64 host, 2026-10-11, were byte-identical to each other, and a third built by `node scripts/build-embedding-host.mjs --candidate` in another directory matched them. Recorded so a later candidate build can be compared with it.",
-    "pin": "13c98575987a121decc45b161b0c8a4ee698554e",
-    "libraries": [
-      {
-        "name": "libelizainference.so",
-        "bytes": 6187152,
-        "sha256": "4627f206c16c4a1c2bd1d4ad675c05790e713d333f0bfe528e03536f91e86cf2"
-      },
-      {
-        "name": "libelizavoicejni.so",
-        "bytes": 1009560,
-        "sha256": "ac03c024018fe16b41994ac62484ecdd20771667c7601fe16337596757199062"
-      },
-      {
-        "name": "libc++_shared.so",
-        "bytes": 1304848,
-        "sha256": "35e56d209d7f28a79bf1e263cbf1e4bafc5038448dea0a954cba0423a28f0f6b"
-      }
-    ]
-  },
-  "currentReproductionStatus": "Current libraries are admitted by fresh build receipts and exact component execution. Independent-directory byte reproduction is pending."
+  "remapBuildPath": true
 }

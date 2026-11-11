@@ -78,7 +78,7 @@ test('a locked row shows the recovery line and Allow another asks before releasi
  await expect(detail.getByRole('button',{name:'Run now',exact:true})).toBeEnabled();
 });
 
-test('schedule time and instructions change only after confirmation',async({page})=>{
+test('schedule time, days and instructions change only after confirmation',async({page})=>{
  const calls=await setup(page,true);
  await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Weekly review',{exact:true}).click();
  await expect(page.getByRole('button',{name:'Run now',exact:true})).toBeVisible();

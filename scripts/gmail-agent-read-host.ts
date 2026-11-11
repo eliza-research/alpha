@@ -4,5 +4,5 @@ import {createManagedGoogleAgentHost,type GoogleAgentAccess} from '../.eliza/cli
 import {productionCloud} from '../apps/app/src/runtime/cloud-deployment.generated.ts';
 
 export function createGmailAgentReadHost(profile:string,access:()=>GoogleAgentAccess){
- return createManagedGoogleAgentHost(createBrowserCloudDevHandler({profile}),{apiOrigin:productionCloud.api,access,calendarReadTiming:process.env.ALPHA_CALENDAR_READ_TIMING==='1'});
+ return createManagedGoogleAgentHost(createBrowserCloudDevHandler({profile}),{apiOrigin:productionCloud.api,access,gmailReadBodyMaxCharacters:32_000,calendarReadTiming:process.env.ALPHA_CALENDAR_READ_TIMING==='1'});
 }

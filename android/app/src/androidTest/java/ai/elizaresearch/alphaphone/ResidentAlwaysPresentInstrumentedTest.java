@@ -12,7 +12,7 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
 /**
- * Decision P-43 (owner, 2026-10-13, reconciled with #410/#478 in docs/decisions.md): the resident
+ * Decision P-43 (owner, 2026-10-13, reconciled with #410/#478): the resident
  * agent is always present. Emulator check, flag-off builds only: signed out with the network off
  * and an older build's "local apps without AI" selection stored, the app starts the resident
  * instead of offering a no-agent mode. Every Alpha Phone signs in to Eliza Cloud, so signed out the

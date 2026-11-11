@@ -71,7 +71,7 @@ test('every subview of a retained view is opened by a state that asserts it is t
     assert.ok(asserted.has(id), `a state opens and asserts the ${id} subview`);
   }
   // Menus, search fields, sheets and the Undo toast are states of their own.
-  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['Sort files']", "['Move file']", "['Delete file']"])
+  for (const step of ["['New automation', 'Edit When step']", "['Add Read step']", "['Browser', 'Menu']", "['New note', 'More']", "['Search email']", "['Menu', 'Share']", "['Share photo']", "['Files options']", "['Move file']", "['Delete file']"])
     assert.ok(states.includes(step), `${step} is swept`);
   // Previous notes recovers retained records; the current layout keeps its menu and Recently deleted.
   for (const state of ["name:'live Notes retained records'", "legacyNotes('Notes note menu', ['New note', 'More'])", "'notes-trash'", "'notes-recorder'"])
@@ -86,10 +86,10 @@ test('every subview of a retained view is opened by a state that asserts it is t
     ['Settings', 'Privacy', 'App permissions'], ['Settings', 'About'],
     ['Settings', 'Apps'], ['Settings', 'Apps', 'Calendar'],
     ['Settings', 'Apps', 'Passwords'],
-    ['Settings', 'Apps', 'Workflows', 'Scheduled summaries'],
-    ['Settings', 'Account', 'Account & plan'],
+    ['Workflows', 'New automation', 'Clock alarms'],
+    ['Settings', 'Account'],
     ['Settings', 'Account', 'Google & email'],
-  ]) assert.ok(states.includes(`[${steps.map(step => `'${step}'`).join(', ')}]`), `${steps.join(' > ')} is swept`);
+  ]) assert.ok((states+production).includes(`[${steps.map(step => `'${step}'`).join(', ')}]`), `${steps.join(' > ')} is swept`);
 });
 
 test('the sweep applies every dimension and cannot be narrowed silently', () => {
@@ -147,7 +147,7 @@ test('the sweep applies every dimension and cannot be narrowed silently', () => 
   assert.doesNotMatch(sweep, /test\.skip|test\.fixme|\.only\(/);
   assert.doesNotMatch(production, /test\.skip|test\.fixme|\.only\(/);
   assert.doesNotMatch(states, /fixme|largeTextOpen/);
-  assert.match(production, /const STATES = \[\.\.\.LIVE_STATES, PRODUCTION_APPS_STATE\];/);
+  assert.match(production, /const STATES = \[\.\.\.LIVE_STATES, PRODUCTION_APPS_STATE, PRODUCTION_CONNECTIONS_STATE\];/);
   assert.match(production, /for \(const state of STATES\)/);
   assert.match(production, /auditPage\(page, \{ contrast: true, targetSize: 24, clipping: true, overlap: true, dock: true \}\)/);
 });
@@ -231,7 +231,7 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="home"\] \{ bottom:0!important; scroll-padding-bottom:var\(--alpha-dock-reserve\)!important;/);
   assert.match(css, /html:not\(\.alpha-landscape\) \.alpha-phone \[data-alpha-layer="drawer"\] \{ padding-bottom:0!important; \}/);
   const homeLayout=css.split('\n').find(line=>line.includes('[data-alpha-home-layout] {')&&line.includes('padding-bottom:'));assert.ok(homeLayout);
-  assert.match(homeLayout,/--alpha-home-clearance/);assert.match(homeLayout,/--alpha-home-height/);
+  assert.match(homeLayout,/--alpha-home-clearance/);assert.match(homeLayout,/min-height:100%!important/);
   assert.doesNotMatch(homeLayout,/--alpha-dock-reserve|--alpha-dock-clearance/,'animated dock clearance must not resize the Home icon layout');
   assert.match(css, /:is\(\[data-alpha-app-scroll\],\.calendar-timeline,\.calendar-draft-fields\) \{ scroll-padding-bottom:calc\(var\(--alpha-dock-clearance,102px\) \+ 16px\); \}/);
   assert.match(css, /\.inbox-compose-fields \{[^}]*padding-bottom:max\(64px,calc\(var\(--alpha-dock-clearance,102px\) \+ 8px\)\)!important/);
@@ -252,7 +252,7 @@ test('the dock, title and toast fixes the sweep depends on stay in the source', 
   assert.match(main, /installToastLayer\(\)/);
   const toast = read('apps/app/src/runtime/toast-layer.ts');
   assert.match(toast, /region\.setAttribute\('aria-live', 'polite'\)/);
-  assert.match(toast, /dialog\.prepend\(region\)/);
+  assert.match(toast, /container\.prepend\(region\)/);
   assert.doesNotMatch(toast, /showPopover|position:fixed/);
   assert.match(toast, /dialog\.matches\('dialog\[open\]:modal'\)/);
 });

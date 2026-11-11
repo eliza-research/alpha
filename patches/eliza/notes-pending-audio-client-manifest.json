@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "baseCommit": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "path": "plugins/plugin-notes/src/client/notes-audio-store.ts",
-  "beforeSha256": "31daa18642b6c81ad925eef2d4e671251d44bc2debd4d1b4a293c617413d63ff",
-  "afterSha256": "ed8bf6ff5ab0547e53c6422f05cec074659f699f32dd4889382afc19f0f8343f",
-  "patchSha256": "3db7c51a8a1508b90e5862d29a9fc6fc8653fc792a9927cda9c2043bb55465ad"
-}

@@ -3,7 +3,7 @@ import { completeAccessSetup } from './flag-off-android';
 import { test, expect, type Page } from '@playwright/test';
 import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 
-// B-13 on the FLAG-OFF bundle with the Android bridge stubbed (docs/core-loop-audit.md).
+// B-13 on the FLAG-OFF bundle with the Android bridge stubbed.
 //
 // On Android an agent calendar proposal is reviewed twice: first as a card in the conversation,
 // rendered by this renderer, then in a native dialog owned by the pinned Calendar plugin
