@@ -60,7 +60,8 @@ import { registerPlugin } from '../platform-plugins';
 import { DailyApps } from '../daily';
 import { DeviceActions, actionScope, type DeviceCredential, type DeviceExecutor, type ForegroundReviewExecutor, type ActionJournal } from './device-actions';
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { isAndroid } from '../native';
+import { isAndroid, System } from '../native';
+import { readNativeNetwork } from './native-network';
 import type { AgentReply, ActionProposal, OperationReceipt, ContextEnvelope, VerifiedSession } from './alpha-client';
 import { CloudResidentBindingController, CloudResidentBindingError, ResidentRebindQueue, parseResidentPlanAdmission, recentResidentPlanAdmission, type ResidentPlanAdmissionRecord } from '../../../../.eliza/client-features/packages/auth/src/auth/cloud-resident-binding.ts';
 import { cloudServiceName, cloudSignInHandOffAvailable, CloudProtocol, CloudProtocolError, type CloudAgent, type CloudEnvironment } from './cloud-protocol';
@@ -357,7 +358,18 @@ export function inferenceUnavailableReply(notice: ConnectionSnapshot['residentPl
 }
 const listeners = new Set<() => void>();
 let developmentPageSuspended = false;
-let state: ConnectionSnapshot = { startupResolved:false, inferenceOffline: typeof navigator !== 'undefined' && navigator.onLine === false, phoneActionsAvailable:false, phoneCapabilityReason:'', actionHistory: [], conversations: [], history: null, cloudAccount: null, open: false, busy: false, message: '', error: '', kind: residentAlwaysPresent ? 'starting' : 'offline', name: residentAlwaysPresent ? RESIDENT_NAME : 'Offline', session: null, agents: [] };
+let nativeNetworkGeneration = 0;
+/** Sends and lifecycle events share one observation order: a slow older read cannot put the
+ * phone back offline after a fresher send or network event has already observed a connection. */
+async function observeNativeNetwork(signal: AbortSignal, current: () => void = () => {}): Promise<{connected?: boolean} | undefined> {
+  const generation = ++nativeNetworkGeneration;
+  const connected = await readNativeNetwork(() => System.getNetworkStatus(), signal);
+  signal.throwIfAborted();current();
+  if (generation !== nativeNetworkGeneration) return;
+  connectionController.networkChanged(connected !== false);
+  return {connected};
+}
+let state: ConnectionSnapshot = { startupResolved:false, inferenceOffline: !isAndroid && typeof navigator !== 'undefined' && navigator.onLine === false, phoneActionsAvailable:false, phoneCapabilityReason:'', actionHistory: [], conversations: [], history: null, cloudAccount: null, open: false, busy: false, message: '', error: '', kind: residentAlwaysPresent ? 'starting' : 'offline', name: residentAlwaysPresent ? RESIDENT_NAME : 'Offline', session: null, agents: [] };
 let active: Active | null = null, operation: AbortController | null = null;
 let startup: Promise<void> | null = null, epoch = 0;
 // Unsupported peers keep the ordinary context; optional fields require a current process handshake.
@@ -2533,7 +2545,8 @@ export const connectionController = {
   // A recovering resident keeps its start failure visible beside Retry.
   openProviderSettings(){update({open:true,automaticRestore:false,purpose:'provider',error:'',message:''});void connectionController.refreshProviderStatus();},
   open() { update({ open: true, automaticRestore:false, purpose:'agent', error: state.kind === 'recovering' ? state.error : '' }); },
-  /** Window online/offline events. Offline retracts readiness and refuses sends to the resident;
+  /** Observed connectivity. Android uses its native active network; browsers use window events.
+   * Offline retracts readiness and refuses sends to the resident;
    * local apps are untouched. Coming back online only allows sends again; the next return may check
    * the plan inside the once-a-minute limit (recheckPlanOnReturn). */
   networkChanged(online: boolean) {
@@ -3387,12 +3400,18 @@ export const connectionController = {
     cancelStoppedReply();
     try {
       requestSignal.throwIfAborted();
-      // Hosted inference needs the network. Nothing leaves the phone while it reports none.
-      if (selected.kind === 'resident' && isAndroid && (state.inferenceOffline || navigator.onLine === false)) throw new Error('Phone offline');
+      const assertCurrent=()=>{requestSignal.throwIfAborted();if(generation!==epoch||selected!==active||state.session?.sessionId!==session.sessionId||(expectedConversationId!==undefined&&conversationMemory.get(conversationKey(session))!==expectedConversationId))throw Error('The connection or conversation changed.');};
+      // WebView can keep navigator.onLine=false while this same app has a working network.
+      // Only Android confirming no active network refuses a turn; unknown status leaves the
+      // actual inference transport to report its outcome. This reads local facts, never Cloud.
+      if (selected.kind === 'resident' && isAndroid) {
+        const observed = await observeNativeNetwork(requestSignal, assertCurrent);
+        assertCurrent();
+        if (observed?.connected === false) throw new Error('Phone offline');
+      }
       if (selected.kind === 'remote' || selected.kind === 'local') {
         if (!selected.remote.session || selected.remote.session.expiresAt <= Date.now()) throw Object.assign(new Error('Your session has expired. Pair again.'), { code: 'session_expired' });
       }
-      const assertCurrent=()=>{requestSignal.throwIfAborted();if(generation!==epoch||selected!==active||state.session?.sessionId!==session.sessionId||(expectedConversationId!==undefined&&conversationMemory.get(conversationKey(session))!==expectedConversationId))throw Error('The connection or conversation changed.');};
       const observationSession=clientObservationSession;
       // Legacy text/alphaPhone projections remain day-free; plain-v1 alone never admits the field.
       if(context.calendarDay&&selected.userTextFormatVersion===1&&observationSession){
@@ -3687,12 +3706,26 @@ export function ConnectionChooser() {
   const localOrigin = useRef<HTMLInputElement>(null), localCode = useRef<HTMLInputElement>(null);
   const environment = useRef<HTMLSelectElement>(null);
   useEffect(() => { void connectionController.initialize(); }, []);
-  useEffect(()=>{const offline=()=>connectionController.networkChanged(false),online=()=>connectionController.networkChanged(true);window.addEventListener('offline',offline);window.addEventListener('online',online);return()=>{window.removeEventListener('offline',offline);window.removeEventListener('online',online);};},[]);
+  useEffect(()=>{const offline=()=>connectionController.networkChanged(false),online=()=>connectionController.networkChanged(true);if(isAndroid)return;window.addEventListener('offline',offline);window.addEventListener('online',online);return()=>{window.removeEventListener('offline',offline);window.removeEventListener('online',online);};},[]);
+  useEffect(()=>{
+    if(!isAndroid)return;
+    const lifecycle=new AbortController();
+    const refresh=async()=>{
+      const observed=await observeNativeNetwork(lifecycle.signal);
+      if(lifecycle.signal.aborted||!observed)return;
+      if(!document.hidden){if(service)void refreshMembershipBalance();if(residentCloudFlow())connectionController.recheckPlanOnReturn();}
+    };
+    const changed=()=>{void refresh().catch(()=>{/* A retired surface cannot publish a network read. */});};
+    const visible=()=>{if(!document.hidden)changed();};
+    window.addEventListener('online',changed);window.addEventListener('offline',changed);window.addEventListener('pageshow',visible);document.addEventListener('visibilitychange',visible);
+    changed();
+    return()=>{lifecycle.abort();window.removeEventListener('online',changed);window.removeEventListener('offline',changed);window.removeEventListener('pageshow',visible);document.removeEventListener('visibilitychange',visible);};
+  },[]);
   // Plan state is checked again when the owner returns (for example from Eliza Cloud's plan page).
   // The network coming back (networkChanged above runs first) lifts the once-a-minute limit for the
   // next check: at once while Alpha is shown, else when the owner comes back to it (Wi-Fi and
   // Airplane mode open Android Settings).
-  useEffect(()=>{const visible=()=>{if(!document.hidden){if(service)void refreshMembershipBalance();if(residentCloudFlow())connectionController.recheckPlanOnReturn();}};document.addEventListener('visibilitychange',visible);window.addEventListener('pageshow',visible);window.addEventListener('online',visible);return()=>{document.removeEventListener('visibilitychange',visible);window.removeEventListener('pageshow',visible);window.removeEventListener('online',visible);};},[]);
+  useEffect(()=>{const visible=()=>{if(!document.hidden){if(service)void refreshMembershipBalance();if(residentCloudFlow())connectionController.recheckPlanOnReturn();}};if(isAndroid)return;document.addEventListener('visibilitychange',visible);window.addEventListener('pageshow',visible);window.addEventListener('online',visible);return()=>{document.removeEventListener('visibilitychange',visible);window.removeEventListener('pageshow',visible);window.removeEventListener('online',visible);};},[]);
   useEffect(()=>{
     if(isAndroid)return;
     const changed=(event:StorageEvent)=>{

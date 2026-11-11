@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
+import {readNativeNetwork} from '../apps/app/src/runtime/native-network.ts';
 const source=await readFile(process.env.ALPHA_PRESENTATION_SOURCE||new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 function section(start,end){const a=source.indexOf(start),b=source.indexOf(end,a+start.length);assert.ok(a>=0&&b>a);return source.slice(a,b).replace(/^export /gm,'');}
 const functions=[
@@ -87,6 +88,7 @@ test('expired and rejected restored sessions still require authentication; valid
 // Execute the actual controller preflights. Stop send immediately after its
 // normal conversation binding, before preferences, transport or model work.
 const preflightSource = [
+  section('let nativeNetworkGeneration =', 'let state:'),
   section('function conversationKey(', '\n'),
   ...source.match(/^export const STOPPED_(?:REPLY|CANCELLED|UNCHECKED)_NOTICE = .*$/gm).map(line => line.replace(/^export /, '')),
   section('function residentSignInRequired()', '\n'),
@@ -94,6 +96,7 @@ const preflightSource = [
   section('function releaseOperation(', '/** Start (or restart) the resident.'),
   'const preflightController = {',
   section('  close() {', '  cancel() {'),
+  section('  networkChanged(', '  openCloudAccount('),
   section('  async prepareVoiceConversation(', '  async send('),
   section('  async send(', '      if(expectedConversationId!==undefined&&id!==expectedConversationId)'),
   '      return id;',
@@ -119,6 +122,8 @@ function preflightFixture(balance, options = {}) {
     noSessionError: () => Error('No selected session'),
     phoneContextMessage: (text, context) => ({text, context}),
     boundNavigation: () => undefined, cancelStoppedReply: () => {}, conversationMemory: new Map(),
+    readNativeNetwork, System: {getNetworkStatus: async () => ({connected: true})},
+    planCheckScope: () => 'current-account', retractReadiness: () => {},
     clearPersonalSetup: () => {},
     ensureSelectedConversation: async (_selected, session, _signal, current) => {
       current(); bindings++; f.context.conversationMemory.set(f.context.conversationKey(session), 'conversation-1'); return 'conversation-1';
@@ -131,7 +136,7 @@ function preflightFixture(balance, options = {}) {
   f.context.connectionController = f.context.preflightController;
   return {...f, get bindings() {return bindings;},
     voice: () => f.context.preflightController.prepareVoiceConversation(new AbortController().signal),
-    send: () => f.context.preflightController.send('Hello', {}, 'request-1', new AbortController().signal),
+    send: (signal = new AbortController().signal) => f.context.preflightController.send('Hello', {}, 'request-1', signal),
     close: () => f.context.preflightController.close()};
 }
 for (const balance of ['zero', 'checking', 'unavailable', undefined, 'funded', 'member']) {
@@ -180,26 +185,73 @@ test('an online composer keeps its empty status, draft status and recovery line'
   assert.equal(composerStatus({connection: residentRunning, draft: {message: 'Draft was not saved.'}}), 'Draft was not saved.');
   assert.equal(composerStatus({connection: {kind: 'recovering'}}), 'Your agent stopped.');
 });
-for (const [name, offline] of [['the connection state', {inferenceOffline: true}], ['the browser', {onLine: false}]]) {
-  test(`${name} reporting no network refuses a resident send before anything leaves the phone`, async () => {
+for (const onLine of [true, false]) {
+  test(`Android confirming no active network refuses a resident send with WebView online=${onLine}`, async () => {
     const f = preflightFixture('funded');
     f.context.active = {kind: 'resident'};
-    f.context.state.inferenceOffline = !!offline.inferenceOffline;
-    f.context.navigator = {onLine: offline.onLine !== false};
+    f.context.navigator = {onLine};
+    f.context.System.getNetworkStatus = async () => ({connected: false});
     await assert.rejects(f.send(), error => {
       // The composer keeps the text only for a refusal marked as never dispatched.
       assert.equal(error.notDispatched, true);
       return true;
     });
     assert.equal(f.bindings, 0);
+    assert.equal(f.context.state.inferenceOffline, true);
     assert.equal(f.context.sending, null);
   });
 }
-test('a resident send with a network binds its conversation as before', async () => {
+test('a native active network clears stale offline state and sends despite WebView reporting offline', async () => {
   const f = preflightFixture('funded');
   f.context.active = {kind: 'resident'};
+  f.context.state.inferenceOffline = true;
+  f.context.navigator = {onLine: false};
   assert.equal(await f.send(), 'conversation-1');
   assert.equal(f.bindings, 1);
+  assert.equal(f.context.state.inferenceOffline, false);
+  assert.equal(f.context.sending, null);
+});
+for (const [name, read] of [
+  ['unvalidated active network', async () => ({connected: true, internetValidated: false})],
+  ['unavailable network observation', async () => ({})],
+  ['failed native bridge', async () => {throw Error('Unavailable');}],
+]) test(`a resident send uses the real transport with ${name}`, async () => {
+  const f = preflightFixture('funded');
+  f.context.active = {kind: 'resident'};
+  f.context.state.inferenceOffline = true;
+  f.context.navigator = {onLine: false};
+  f.context.System.getNetworkStatus = read;
+  assert.equal(await f.send(), 'conversation-1');
+  assert.equal(f.bindings, 1);
+  assert.equal(f.context.state.inferenceOffline, false);
+});
+test('a cancelled native network read cannot bind a conversation or publish connectivity', async () => {
+  const f = preflightFixture('funded'), controller = new AbortController();
+  f.context.active = {kind: 'resident'};
+  f.context.state.inferenceOffline = true;
+  let resolve;
+  f.context.System.getNetworkStatus = () => new Promise(done => {resolve = done;});
+  const pending = f.send(controller.signal);
+  await Promise.resolve(); controller.abort(); resolve({connected: true});
+  await assert.rejects(pending);
+  assert.equal(f.bindings, 0);
+  assert.equal(f.context.state.inferenceOffline, true);
+  assert.equal(f.context.sending, null);
+});
+for (const change of ['epoch', 'session', 'active']) test(`a delayed native network read cannot send after ${change} changes`, async () => {
+  const f = preflightFixture('funded');
+  f.context.active = {kind: 'resident'};
+  f.context.state.inferenceOffline = true;
+  let resolve;
+  f.context.System.getNetworkStatus = () => new Promise(done => {resolve = done;});
+  const pending = f.send(); await Promise.resolve();
+  if(change === 'epoch') f.context.epoch++;
+  else if(change === 'session') f.context.state.session = {sessionId: 'replaced'};
+  else f.context.active = {kind: 'resident'};
+  resolve({connected: true});
+  await assert.rejects(pending);
+  assert.equal(f.bindings, 0);
+  assert.equal(f.context.state.inferenceOffline, true);
   assert.equal(f.context.sending, null);
 });
 // Owner, 2026-11-03: a refused composer send gets its text back with no toast; a refusal that
@@ -269,7 +321,7 @@ const returnCode = stripTypeScriptTypes([
 ].join('\n'), {mode: 'strip'});
 function returnFixture({offline = false} = {}) {
   const listeners = {}, target = {addEventListener: (type, listener) => { (listeners[type] ??= []).push(listener); }, removeEventListener() {}};
-  const box = {residentCloudFlow: () => true, operation: null, planRecheck: null, sending: null, state: {busy: false, session: {}, inferenceOffline: offline, cloudAccount: {credentialId: 'credential-1'}}, Date, planManagementReturn: false, lastPlanRecheck: -Infinity, PLAN_RECHECK_INTERVAL_MS: 60_000, environment: 'production', residentEnvironment: () => box.environment, ownCloudServiceRestore: null, residentBinding: 'kept', rechecks: 0, service: null, update: patch => { Object.assign(box.state, patch); }, retractReadiness() {}, useEffect: run => run(), document: {...target, hidden: false}, window: target};
+  const box = {isAndroid: false, residentCloudFlow: () => true, operation: null, planRecheck: null, sending: null, state: {busy: false, session: {}, inferenceOffline: offline, cloudAccount: {credentialId: 'credential-1'}}, Date, planManagementReturn: false, lastPlanRecheck: -Infinity, PLAN_RECHECK_INTERVAL_MS: 60_000, environment: 'production', residentEnvironment: () => box.environment, ownCloudServiceRestore: null, residentBinding: 'kept', rechecks: 0, service: null, update: patch => { Object.assign(box.state, patch); }, retractReadiness() {}, useEffect: run => run(), document: {...target, hidden: false}, window: target};
   box.recheckResidentPlan = box.restoreOwnProviderCloudServices = () => { box.rechecks++; };
   vm.createContext(box); vm.runInContext(returnCode, box);
   box.fire = (type, hidden = false) => { box.document.hidden = hidden; for (const listener of listeners[type]) listener({type}); };

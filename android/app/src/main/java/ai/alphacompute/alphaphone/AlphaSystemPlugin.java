@@ -19,6 +19,23 @@ import com.getcapacitor.annotation.Permission;
 /** Product policy stays in Alpha; shared System behavior is unchanged for other hosts. */
 @CapacitorPlugin(name="ElizaSystem",permissions={@Permission(alias="camera",strings={Manifest.permission.CAMERA})})
 public final class AlphaSystemPlugin extends ai.eliza.plugins.system.SystemPlugin {
+ /** The app's default network, rather than WebView's potentially stale navigator.onLine hint.
+  * Missing fields mean Android could not answer; an unvalidated network is still connected. */
+ @PluginMethod public void getNetworkStatus(PluginCall call){
+  com.getcapacitor.JSObject out=new com.getcapacitor.JSObject();
+  try{
+   android.net.ConnectivityManager connectivity=getContext().getSystemService(android.net.ConnectivityManager.class);
+   if(connectivity!=null){
+    android.net.Network network=connectivity.getActiveNetwork();
+    out.put("connected",network!=null);
+    if(network!=null){
+     android.net.NetworkCapabilities capabilities=connectivity.getNetworkCapabilities(network);
+     if(capabilities!=null)out.put("internetValidated",capabilities.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED));
+    }
+   }
+  }catch(RuntimeException unavailable){ /* Unknown connectivity must be decided by the real transport. */ }
+  call.resolve(out);
+ }
  @Override @PluginMethod public void requestPermissions(PluginCall call){LateLaunch.ask(call,()->super.requestPermissions(call));}
  @Override @PluginMethod public void requestRole(PluginCall call){LateLaunch.ask(call,()->super.requestRole(call));}
  @Override @PluginMethod public void setFlashlight(PluginCall call){LateLaunch.ask(call,()->super.setFlashlight(call));}
