@@ -3580,7 +3580,7 @@
 
       </div>
     </sc-for>
-    <sc-if value="{{workflows.listToggles}}"><button class="workflow-row-open" aria-label="Clock alarms" onClick="{{workflows.openClock}}"><span class="workflow-row-title">Alarms</span></button></sc-if>
+    <sc-if value="{{workflows.listToggles}}"><div class="workflow-row"><button class="workflow-row-open" aria-label="Clock alarms" onClick="{{workflows.openClock}}"><span class="workflow-row-content"><span class="workflow-row-title">Alarms</span></span><svg class="i workflow-row-chevron" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></div></sc-if>
     <sc-for list="{{workflows.automation.managementCards}}" as="control"><button class="automation-management" onClick="{{control.open}}"><span>{{control.name}}</span><span>{{control.short}}</span><svg class="i" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></sc-for>
   </div>
 
