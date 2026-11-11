@@ -39,6 +39,7 @@ import { leavePasswordEntry, leavePasswordManager, passwordEntryPage, passwordMa
 import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 
 type Bag = Record<string, any>;
+const providerModelPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/;
 type PhotoAccess = {scope:'full'|'partial'|'selected'|'denied';images:string;videos:string};
 const photoLibrary = registerPlugin<{libraryAccess():Promise<PhotoAccess>;requestLibraryAccess():Promise<PhotoAccess>;openLibrarySettings():Promise<void>}>('AlphaPhotos');
 /** Shared-storage access as Android reports it; `settings` opens Android's page without a prompt. */
@@ -782,9 +783,12 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const pending = agentPendingText(connection, 'Not connected');
     const target = connection.session ? connection.name : pending;
     const runtimeLocation=!connection.session?pending:connection.kind==='resident'?(Capacitor.isNativePlatform()?'This phone':'This computer · dev'):testMocksEnabled?'Remote':'Unsupported';
-    // About and Models read the model the resident reports the same way, so the two pages agree.
-    const residentProvider=connection.kind==='resident'&&connection.session?connection.providerStatus:null;
-    const inferenceModel=residentProvider?.configured&&residentProvider.model?modelLabel(residentProvider.provider==='elizacloud'?serviceName:'Cerebras',residentProvider.model):'Not reported';
+    // Use the current controller readback for both provider and model. Failed or pending
+    // confirmation can retain a previous selection without verifying its model.
+    const residentProvider=connection.kind==='resident'&&connection.session&&!connection.providerStatusError?connection.providerStatus:null;
+    const providerName=residentProvider?.provider==='elizacloud'?serviceName:'Cerebras';
+    const inferenceModel=residentProvider?.configured===true&&typeof residentProvider.model==='string'&&providerModelPattern.test(residentProvider.model)
+      ?modelLabel(providerName,residentProvider.model):'Not reported';
     const cloudLabel = account ? account.email||`Account ${account.userId.slice(0, 8)}` : 'Not signed in';
     const manage = (page: string) => () => void device.openSettings({ page }).then(opened => { const notice = broaderPageNotice(page, opened); if (notice) api.toast(notice); }, () => api.toast('Unavailable'));
     const info = (label: string, val: string, id = label): Bag => ({ id, kInfo: true, label, val, hasVal: true, noAB: true });
@@ -1090,7 +1094,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       } else if (page.title === 'Models') {
         const native=Capacitor.isNativePlatform();
         page.hero = { ...page.hero, big: target, sub: '' };
-        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?(residentProvider.provider==='elizacloud'?serviceName:'Cerebras'):'Off':'—')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia':testMocksEnabled&&connection.residentInference==='direct'?'Off':native&&voiceRoute==='cloud'?serviceName:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia':account ? serviceName : 'Sign in'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
+        page.groups = [group([info('Connection', runtimeLocation), ...(native?[info('Inference provider',residentProvider?residentProvider.configured?providerName:'Off':'—')]:browserLocalAgentEnabled ? [info('Inference provider', inferenceProvider)] : []), info('Inference model', inferenceModel), info('Voice', native&&voiceRoute==='direct'?'Cartesia':testMocksEnabled&&connection.residentInference==='direct'?'Off':native&&voiceRoute==='cloud'?serviceName:native?'On this device':developmentCartesiaVoiceEnabled?'Cartesia':account ? serviceName : 'Sign in'), { kNav:true, label:`${serviceName} account`, lbl:`${serviceName} account`, chev:true, noAB:true, go:()=>connectionController.openCloudAccount() }])];
       } else if (page.title === 'Developer') {
         page.groups = [group([info('App version', facts.appVersion || buildVersion), info('Agent memory', connection.session?'Not reported':pending)]), group([problemsRow(), diagnosticsRow()]), group([nav('Android developer settings', 'developer')])];
       } else if (page.title === 'Notifications') {
