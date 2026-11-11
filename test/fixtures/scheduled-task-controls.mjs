@@ -23,6 +23,10 @@ function compile() {
   const hashes = Object.fromEntries([fixture, prepare, pin].map(path => [path, digest(readFileSync(path))]));
   const ports = new Map([
     ['../runtime/connection-ui', 'export const connectionController=ports.connection;export const agentPendingText=()=>"No agent";export const agentAvailabilityNotice=()=>"No agent";'],
+    ['../runtime/service-read-cache-store', 'export const serviceReadCache=async()=>({get:async()=>null,put:async()=>{}});'],
+    ['../runtime/native-connection', 'export const cloudCredentialStore={read:async()=>null};'],
+    ['../runtime/browser-cloud-resident', 'export const browserCloudResidentEnabled=false,browserCloudResidentEnvironment="production";'],
+    ['../build-flags', 'export const testMocksEnabled=false;'],
     ['../daily', 'export const DailyApps=ports.daily;'],
     ['./workflow-filters', 'export const openWorkflowFilters=()=>{};export const workflowFilterLabel=()=>"";'],
     ['./workflow-authoring', 'export const showAgentStatus=()=>{};'],

@@ -25,13 +25,13 @@ export function localePreferences(): {locale: string; hourCycle: HourCycle} {
   const resolved = new Intl.DateTimeFormat(prefs.locale, {hour: 'numeric'}).resolvedOptions();
   return {locale: resolved.locale, hourCycle: prefs.hourCycle || (resolved.hourCycle === 'h11' || resolved.hourCycle === 'h12' ? 'h12' : 'h23')};
 }
-function format(options: Intl.DateTimeFormatOptions) {
-  const key = JSON.stringify(options);
+function format(options: Intl.DateTimeFormatOptions, locale = prefs.locale) {
+  const key = JSON.stringify([locale, options]);
   let value = cache.get(key);
   if (!value) {
     const full: Intl.DateTimeFormatOptions = {...options};
     if (prefs.hourCycle && full.hour) full.hourCycle = prefs.hourCycle;
-    value = new Intl.DateTimeFormat(prefs.locale, full);
+    value = new Intl.DateTimeFormat(locale, full);
     cache.set(key, value);
   }
   return value;
@@ -44,7 +44,7 @@ function at(hours: number) {
   return new Date(2000, 0, 1, h, m);
 }
 /** "3:04 PM" / "15:04". */
-export function formatTime(date: Date) { return clean(format({hour: 'numeric', minute: '2-digit'}).format(date)); }
+export function formatTime(date: Date, locale?: string) { return clean(format({hour: 'numeric', minute: '2-digit'}, locale).format(date)); }
 /** Clock face without a day period: "3:04" / "15:04". */
 export function formatClock(date: Date) {
   return clean(format({hour: 'numeric', minute: '2-digit'}).formatToParts(date)
@@ -77,7 +77,7 @@ export function formatFullDate(date: Date) { return clean(format({weekday: 'long
 /** "Oct 8" or "Oct 8, 2025". */
 export function formatMonthDay(date: Date, withYear = false) { return clean(format(withYear ? {month: 'short', day: 'numeric', year: 'numeric'} : {month: 'short', day: 'numeric'}).format(date)); }
 /** A dated time without weekday or seconds: "Oct 7, 2026, 3:04 PM" / "7 Oct 2026, 15:04". */
-export function formatDateTime(date: Date) { return clean(format({year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}).format(date)); }
+export function formatDateTime(date: Date, locale?: string) { return clean(format({year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}, locale).format(date)); }
 /** Full message date, seconds and time zone, using the device hour cycle. */
 export function formatFullDateTime(date: Date) {
   if (!Number.isFinite(date.getTime())) return 'Date unavailable';

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {startMountedCalendar} from './fixtures/calendar-mounted-editor.mjs';
 
-test('mounted Calendar Edit keeps the retained edit when opening another event and New event resumes it', {timeout: 240_000}, async t => {
+test('mounted Calendar keeps each event edit and opens a separate new-event draft', {timeout: 240_000}, async t => {
   const browser = await startMountedCalendar();
   try {
     for (const [kind, nextTitle] of [['same', 'Fixture Existing Event A'], ['different', 'Fixture Existing Event B']]) {
@@ -20,9 +20,9 @@ test('mounted Calendar Edit keeps the retained edit when opening another event a
           await title.fill('Retained edit A');
           await f.page.waitForFunction(() => window.quintCalendar.snapshot().retainedForm?.title === 'Retained edit A');
           const old = await f.snapshot();
-          await f.page.waitForFunction(async retained => await window.quintCalendar.saved('owner-a') === retained,
-            old.retained, {polling: 100});
-          const durable = await f.invoke('saved', 'owner-a');
+          await f.page.waitForFunction(async ({retained, target}) => await window.quintCalendar.saved('owner-a', target) === retained,
+            {retained: old.retained, target: old.form.target}, {polling: 100});
+          const durable = await f.invoke('saved', 'owner-a', old.form.target);
           assert.equal(durable, old.retained);
           await back();
           await detail.waitFor();
@@ -31,20 +31,18 @@ test('mounted Calendar Edit keeps the retained edit when opening another event a
 
           await open(nextTitle);
           await edit();
-          const blocked = await f.snapshot();
-          assert.equal(!!blocked.form, false, 'Edit must keep the existing durable draft until explicit action');
-          assert.equal(blocked.notices.at(-1), 'Finish or discard your draft first.');
-          assert.equal(blocked.retained, durable);
-          assert.equal(await f.invoke('saved', 'owner-a'), durable);
-          assert.ok(await detail.isVisible(), 'The current event remains open');
-          assert.ok((await detail.innerText()).includes(nextTitle));
-
+          await title.waitFor();
+          assert.equal(await title.inputValue(), kind === 'same' ? 'Retained edit A' : nextTitle);
+          assert.equal(await f.invoke('saved', 'owner-a', old.form.target), durable);
+          await back();
+          await detail.waitFor();
           await back();
           await f.button('New event').click();
-          assert.equal(await title.inputValue(), 'Retained edit A');
-          assert.equal((await f.snapshot()).form.id, old.form.id);
-          assert.equal(await f.invoke('saved', 'owner-a'), durable);
-          assert.equal(blocked.requests.filter(row => row.method !== 'GET').length,0);
+          await title.waitFor();
+          assert.equal(await title.inputValue(), '', 'New event has its own draft');
+          assert.equal(await f.invoke('saved', 'owner-a', old.form.target), durable);
+          assert.equal((await f.snapshot()).requests.filter(row => row.method !== 'GET').length, 0);
+
         } finally {await f.close();}
       });
     }
