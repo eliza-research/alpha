@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "fa8a190f3a20ba73d12004561fff29f74b0e6f3cc790b38854f305e9aea9313c",
+  "ledgerSha256": "6a35da9c606f11933f0f6508a8ce0a4ce99b957764b4966ad9c2bd13a4b924c6",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -28,11 +28,11 @@
     "parsedFiles": 5674,
     "languageReview": 90,
     "parseErrors": 0,
-    "candidates": 67721,
-    "writeSites": 67441,
-    "writeAssociations": 60410,
-    "asynchronous": 8408,
-    "unassignedWrites": 10404
+    "candidates": 67730,
+    "writeSites": 67500,
+    "writeAssociations": 60468,
+    "asynchronous": 8409,
+    "unassignedWrites": 10405
   },
   "files": [
     {
@@ -33353,13 +33353,14 @@
     },
     {
       "path": "apps/app/src/product/owner-route-table.ts",
-      "sha256": "0b4e1edd289b2fc124baa59be09ec815fa577aa4b8448794ac7ea4063c603e35",
+      "sha256": "65df08e5adb37142427c8eb2cc2fc8e00fd7eed7d249c5d8b014b3a0b03798e7",
       "allocatedModels": [
         "Application",
         "CalendarPresentation",
         "NotesLifecycle",
         "ServiceAuthorization",
-        "MobileBundleAdmission"
+        "MobileBundleAdmission",
+        "WorkflowRecoverySelection"
       ],
       "sourcePathClass": "other-source-path",
       "classification": "syntactic-candidates",
@@ -33693,13 +33694,14 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "21f154bf3c2c86ccffce7e0f150450cd0f187f6e435cfc90b9f9fd87eafb2e4c",
+      "sha256": "f7f5e46cf2d985fbd742492b3b4d3a6faff7142e65517e276990598d8f3fe06f",
       "allocatedModels": [
         "WorkflowExecution",
         "ReminderOpenIntent",
         "WorkflowRequestRecoveryAdmission",
         "ScheduledTaskControls",
-        "HomeAutomationsRead"
+        "HomeAutomationsRead",
+        "WorkflowRecoverySelection"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -33707,68 +33709,69 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 34,
+          "line": 35,
           "bindings": 2,
           "writes": 0
         },
         {
           "owner": "installAutomationsAdapter",
-          "line": 44,
-          "bindings": 38,
-          "writes": 177
+          "line": 45,
+          "bindings": 44,
+          "writes": 227
         },
         {
           "owner": "installAutomationsAdapter.preloadHome",
-          "line": 111,
+          "line": 116,
           "bindings": 2,
           "writes": 5
         },
         {
-          "owner": "installAutomationsAdapter.settled.ArrowFunction@119",
-          "line": 120,
+          "owner": "installAutomationsAdapter.settled.ArrowFunction@124",
+          "line": 125,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "installAutomationsAdapter.refresh",
-          "line": 136,
+          "line": 142,
           "bindings": 2,
           "writes": 6
         },
         {
           "owner": "installAutomationsAdapter.work",
-          "line": 162,
-          "bindings": 4,
-          "writes": 3
+          "line": 169,
+          "bindings": 5,
+          "writes": 4
         },
         {
           "owner": "installAutomationsAdapter.allowAnother",
-          "line": 174,
+          "line": 204,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "installAutomationsAdapter.save",
-          "line": 193,
+          "line": 223,
           "bindings": 1,
           "writes": 1
         },
         {
-          "owner": "installAutomationsAdapter.ArrowFunction@207",
-          "line": 218,
+          "owner": "installAutomationsAdapter.ArrowFunction@237",
+          "line": 248,
           "bindings": 4,
           "writes": 15
         }
       ],
       "parseErrors": [],
       "asynchronous": 17,
-      "unassignedWrites": 8
+      "unassignedWrites": 9
     },
     {
       "path": "apps/app/src/prototype/automations.css",
-      "sha256": "7bf015554ea4739088c6fe149dcc9d04680359e1e8f317c2eee49bdb0f7ef58c",
+      "sha256": "8b1527b422bae2a033052ada077813410f1ab35d6aa0ce4b32c41c0c877f1bcd",
       "allocatedModels": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowRecoverySelection"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -40378,7 +40381,7 @@
     },
     {
       "path": "apps/app/src/prototype/template.html",
-      "sha256": "defb98217f1782d1a209ff094a0b7698b45c75c470e0eeb2ccf197061a039105",
+      "sha256": "b0137e4ff22cfa6491d7f2f7348c293ded0cfac44b0bb62e30a694a27a8181ad",
       "allocatedModels": [
         "ShellNavigation",
         "PreferencesAndPresentation",
@@ -40402,7 +40405,8 @@
         "NotesStartupCache",
         "MailComposerPresentation",
         "ContentLinks",
-        "MailSelection"
+        "MailSelection",
+        "WorkflowRecoverySelection"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -41358,10 +41362,11 @@
     },
     {
       "path": "apps/app/src/runtime/automations-protocol.ts",
-      "sha256": "ddf5e6df521b097ebc99ecabba10ae5d998e00617a28bf4383b9081aaf53943e",
+      "sha256": "b0d8eca9f7b57f4324397eccb1675d8a94dd4d8857eabea6bc669f45a827e741",
       "allocatedModels": [
         "WorkflowExecution",
-        "ScheduledTaskControls"
+        "ScheduledTaskControls",
+        "WorkflowRecoverySelection"
       ],
       "sourceReview": "state-audit-required",
       "sourcePathClass": "other-source-path",
@@ -41369,55 +41374,61 @@
       "owners": [
         {
           "owner": "<module>",
-          "line": 10,
+          "line": 11,
           "bindings": 1,
           "writes": 0
         },
         {
           "owner": "scheduledSnoozeAt",
-          "line": 69,
+          "line": 83,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "mergeAutomationRows",
-          "line": 97,
+          "line": 111,
           "bindings": 1,
           "writes": 1
         },
         {
           "owner": "AutomationsProtocol",
-          "line": 101,
+          "line": 115,
           "bindings": 1,
           "writes": 0
         },
         {
+          "owner": "AutomationsProtocol.removed",
+          "line": 122,
+          "bindings": 2,
+          "writes": 7
+        },
+        {
           "owner": "AutomationsProtocol.list",
-          "line": 105,
+          "line": 170,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "AutomationsProtocol.savePrompt",
-          "line": 113,
+          "line": 194,
           "bindings": 1,
           "writes": 3
         },
         {
           "owner": "AutomationsProtocol.setPromptEnabled",
-          "line": 122,
+          "line": 203,
           "bindings": 2,
           "writes": 2
         },
         {
           "owner": "AutomationsProtocol.editReminder",
-          "line": 165,
+          "line": 246,
           "bindings": 1,
           "writes": 1
         }
       ],
       "parseErrors": [],
-      "asynchronous": 2,
+      "asynchronous": 3,
       "unassignedWrites": 1
     },
     {
@@ -221465,6 +221476,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "63bbfc2c582dee18fb04cc64817910dd88a693d2ab480bed161a401c31760a10"
+    "sha256": "310c8cfa69554a3401bb339ff1922e83e1612ad0481fdae7f719f96137e1f048"
   }
 }

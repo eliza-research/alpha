@@ -73,6 +73,7 @@ function adapterFixture(request,storage={},options={}){
   ['apps/app/src/prototype/workflow-filters.ts',['openWorkflowFilters','workflowFilterLabel']],
  ])vm.runInNewContext(transformed(file)+'\n'+names.map(name=>'globalThis.'+name+'='+name+';').join(''),context);
  context.AUTOMATIONS_COMMITTED_EVENT='alpha:automations-committed';
+ context.createInlineModal=()=>({ref:()=>{}});
  vm.runInNewContext(transformed('apps/app/src/runtime/workflow-request-recovery.ts')+'\nglobalThis.createWorkflowRequestRecovery=createWorkflowRequestRecovery;',context);
  vm.runInNewContext(transformed('apps/app/src/prototype/automations-adapter.ts')+'\nglobalThis.install=installAutomationsAdapter;',context);
  context.install(Shell,views);const shell=new Shell();shell.componentDidMount();
@@ -132,10 +133,9 @@ for(const status of [408,409,425,429])test(`a mutation followed by HTTP ${status
 });
 const openPrompt=async app=>{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Owner prompt').open();};
 const reviewed=(app,label)=>{app.render().automation.actions.find(action=>action.label===label).run();app.render().automation.confirm();};
-test('an unknown enable or delete settles when the refreshed row shows it applied',async()=>{
- let enabled=false,deleted=false;const f=await fixture((call,_req,res)=>{if(call.method==='PUT'){enabled=true;return {status:408,body:{}};}if(call.method==='DELETE'){deleted=true;res.destroy();return;}if(call.path==='/api/automations')return {automations:[workflow,...(deleted?[]:[{...prompt,enabled,status:enabled?'active':'paused'}])]};return read(call);});const app=adapterFixture(f.request);
- try{await openPrompt(app);reviewed(app,'Enable');await wait(()=>enabled&&!app.render().automation.busy&&!app.render().automation.loading);assert.equal(app.render().automation.locked,false);assert.equal(Object.keys(app.storage).length,0);
-  reviewed(app,'Delete prompt');await wait(()=>deleted&&!app.render().automation.busy&&!app.render().automation.loading);assert.equal(Object.keys(app.storage).length,0);assert.equal(app.render().cards.some(card=>card.name==='Owner prompt'),false);}finally{app.close();await f.close();}
+test('an unknown enable settles only when the refreshed row shows it applied',async()=>{
+ let enabled=false;const f=await fixture(call=>{if(call.method==='PUT'){enabled=true;return {status:408,body:{}};}if(call.path==='/api/automations')return {automations:[workflow,{...prompt,enabled,status:enabled?'active':'paused'}]};return read(call);});const app=adapterFixture(f.request);
+ try{await openPrompt(app);reviewed(app,'Enable');await wait(()=>enabled&&!app.render().automation.busy&&!app.render().automation.loading);assert.equal(app.render().automation.locked,false);assert.equal(Object.keys(app.storage).length,0);}finally{app.close();await f.close();}
 });
 test('an unknown Run now stays locked after refresh, and Allow another releases it only after the owner confirms',async()=>{
  let runs=0;const f=await fixture((call,_req,res)=>{if(call.method==='POST'){runs++;res.destroy();return;}return read(call);});const app=adapterFixture(f.request);
@@ -206,9 +206,9 @@ test('snoozed occurrence due is displayed and message-only edit preserves the or
  const f=await fixture(call=>call.path==='/api/lifeops/reminders'?{reminders:[snoozed]}:call.method==='PUT'?{definition:{...snoozed.definition,...call.body}}:read(call));const app=adapterFixture(f.request);
  try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Check the draft').open();assert.equal(app.render().automation.status,'Snoozed');assert.doesNotMatch(app.render().automation.schedule,/UTC|America\//);app.render().automation.actions.find(action=>action.label==='Edit reminder').run();const fields=app.render().automation.fields;assert.equal(fields.find(field=>field.name==='due').value,protocol.automationLocalDateInput(due));fields.find(field=>field.name==='message').change({target:{value:'Only the message changes'}});app.render().automation.save();await wait(()=>f.calls.some(call=>call.method==='PUT')&&!app.render().automation.busy);assert.deepEqual(f.calls.find(call=>call.method==='PUT').body,{title:'Only the message changes'});assert.equal(presentation.reminderDue(snoozed),due);}finally{app.close();await f.close();}
 });
-for(const status of ['archived','completed'])test(`canonical ${status} reminder has details but no edit/cancel/snooze controls`,async()=>{
+for(const status of ['archived','completed'])test(`canonical ${status} reminder stays out of active changes`,async()=>{
  const f=await fixture(call=>call.path==='/api/lifeops/reminders'?{reminders:[{...reminder,definition:{...reminder.definition,status}}]}:read(call));const app=adapterFixture(f.request);
- try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Check the draft').open();assert.equal(app.render().automation.status,status==='archived'?'Cancelled':'Completed');assert.equal(app.render().automation.actions.length,0);assert.equal(f.calls.some(call=>call.method!=='GET'),false);}finally{app.close();await f.close();}
+ try{app.render();await wait(()=>app.render().cards.length===(status==='archived'?4:5)&&!app.render().automation.loading);if(status==='completed'){app.render().cards.find(card=>card.name==='Check the draft').open();assert.equal(app.render().automation.status,'Completed');assert.equal(app.render().automation.actions.length,0);}else assert.equal(app.render().cards.some(card=>card.name==='Check the draft'),false);assert.equal(f.calls.some(call=>call.method!=='GET'),false);}finally{app.close();await f.close();}
 });
 test('acknowledged reminder keeps edit/cancel and disables snooze using canonical eligibility',async()=>{
  const f=await fixture(call=>call.path==='/api/lifeops/reminders'?{reminders:[{...reminder,occurrence:{id:'occurrence',state:'visible',metadata:{reminderAcknowledgedAt:'2026-10-25'}}}]}:read(call));const app=adapterFixture(f.request);
@@ -232,11 +232,10 @@ test('Alpha reminder status text follows current canonical English labels',async
  const cases=[['unscheduled',null,null],['blocked',{id:'occurrence',state:'visible'},{outcome:'blocked_channel'}],['duplicate',{id:'occurrence',state:'visible'},{outcome:'skipped_duplicate'}],['unknown',{id:'occurrence',state:'unrecognized'},null]];
  for(const [status,occurrence,latestAttempt] of cases){const f=await fixture(call=>call.path==='/api/lifeops/reminders'?{reminders:[{...reminder,occurrence,latestAttempt}]}:read(call)),app=adapterFixture(f.request);try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);assert.equal(app.render().cards.find(card=>card.name==='Check the draft').statusLabel,strings['automationsreminders.status.'+status]);}finally{app.close();await f.close();}}
 });
-test('a routine row offers Pause and Delete behind the owner review',async()=>{
- const f=await fixture(call=>call.method==='DELETE'?{deleted:true}:readDefinitions(call));const app=adapterFixture(f.request);
- try{app.render();await wait(()=>app.render().cards.length===7&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Stretch').open();assert.deepEqual(Array.from(app.render().automation.actions,action=>action.label),['Pause','Delete routine']);app.render().automation.actions.find(action=>action.label==='Delete routine').run();assert.equal(f.calls.some(call=>call.method!=='GET'),false);assert.equal(app.render().automation.review,true);app.render().automation.confirm();await wait(()=>f.calls.some(call=>call.method==='DELETE')&&!app.render().automation.busy);assert.deepEqual(f.calls.filter(call=>call.method!=='GET').map(call=>call.method+' '+call.path),['DELETE /api/lifeops/definitions/routine']);}finally{app.close();await f.close();}
+test('routine Delete archives its definition through the reviewed owner action',async()=>{
+ let archived=false;const f=await fixture(call=>{if(call.method==='PUT'){archived=true;return {definition:{...routine.definition,...call.body}};}if(call.path==='/api/lifeops/definitions'&&archived)return {definitions:[{definition:{...routine.definition,status:'archived'}}]};return readDefinitions(call);});const app=adapterFixture(f.request);
+ try{app.render();await wait(()=>app.render().cards.length===7&&!app.render().automation.loading);app.render().cards.find(card=>card.name==='Stretch').open();assert.deepEqual(Array.from(app.render().automation.actions,action=>action.label),['Pause','Delete routine']);app.render().automation.actions.find(action=>action.label==='Delete routine').run();assert.equal(f.calls.some(call=>call.method!=='GET'),false);app.render().automation.confirm();await wait(()=>archived&&!app.render().automation.busy);assert.deepEqual(f.calls.filter(call=>call.method!=='GET').map(call=>[call.method,call.path,call.body]),[['PUT','/api/lifeops/definitions/routine',{status:'archived'}]]);}finally{app.close();await f.close();}
 });
-
 
 test('Home hides only a fresh complete empty unified snapshot',async()=>{
  let now=new Date(2026,10,7,12).getTime();
@@ -307,5 +306,80 @@ test('Home restores the same owner snapshot while the provider is pending and re
   await wait(()=>app.home().homeWorkflowHasRows===true);assert.equal(app.home().homeWorkflowConfirmedEmpty,false);app.close();
   app=adapterFixture(pending,{}, {...options,cloudAccount:{...cloudAccount,userId:'another'}});
   await new Promise(resolve=>setTimeout(resolve,20));assert.notEqual(app.home().homeWorkflowHasRows,true);
+ }finally{app.close();await f.close();}
+});
+
+
+test('prompt recovery uses the retained task revision and validates the response',async()=>{
+ const revision='a'.repeat(64),trigger={id:'prompt',displayName:'Saved automation',instructions:'Keep me',triggerType:'cron',cronExpression:'0 8 * * *',enabled:false,removedAt:100,revision};
+ const f=await fixture(call=>call.method==='GET'?{recovery:true,triggers:[trigger]}:{ok:true,trigger:{...trigger,removedAt:undefined,revision:'b'.repeat(64)}});
+ try{
+  const rows=await f.client.removedPrompts(signal());assert.equal(rows.length,1);assert.equal(rows[0].triggerId,'prompt');
+  await f.client.changePromptRecovery(rows[0],'restore',signal());
+  assert.deepEqual(f.calls[1],{path:'/api/triggers/prompt/restore',method:'POST',body:{expectedRevision:revision}});
+  await assert.rejects(f.client.changePromptRecovery({...rows[0],record:{trigger:{}}},'archive',signal()),/Refresh/);
+  assert.equal(f.calls.length,2);
+ }finally{await f.close();}
+});
+test('an old agent cannot present an empty recovery result as supported',async()=>{
+ const f=await fixture(()=>({triggers:[]}));try{await assert.rejects(f.client.removedPrompts(signal()),/unavailable/);}finally{await f.close();}
+});
+test('the generic schedule snooze also uses ten minutes',async()=>{
+ const f=await fixture(()=>({task:schedule}));try{await f.client.scheduledVerb(schedule.taskId,'snooze',signal());assert.deepEqual(f.calls[0].body,{minutes:10});}finally{await f.close();}
+});
+
+test('Workflows selection confirms once, keeps deleted records, and recovers them inactive',async()=>{
+ let archived=false;
+ const revision='a'.repeat(64);
+ const trigger={id:'prompt',displayName:prompt.title,instructions:prompt.description,revision,enabled:false,triggerType:'cron',cronExpression:'0 9 * * 1'};
+ const f=await fixture(call=>{
+  if(call.path==='/api/automations')return {automations:archived?[]:[{...prompt,trigger}]};
+  if(call.path==='/api/triggers?removed=1')return {recovery:true,triggers:archived?[{...trigger,removedAt:1}]:[]};
+  if(call.path==='/api/workflow/status')return {body:{engine:'smthrs',status:'ready',lifecycleMutationProtocol:1}};
+  if(call.path==='/api/workflow/removed-workflows')return {workflows:[]};
+  if(call.path==='/api/triggers/prompt/archive'||call.path==='/api/triggers/prompt/restore'){
+   assert.equal(call.body.expectedRevision,revision);archived=call.path.endsWith('/archive');
+   return {ok:true,trigger:{...trigger,...(archived?{removedAt:1}:{})}};
+  }
+  return read(call);
+ });
+ const app=adapterFixture(f.request,{}, {deviceReminders:[]});
+ try{
+  app.render();await wait(()=>app.render().cards.length===3&&!app.render().automation.loading);
+  app.render().toggleListMenu();assert.equal(app.render().listMenu,true);app.render().startSelection();
+  app.render().cards.find(row=>row.name===prompt.title).open();assert.equal(app.render().selectedCount,1);
+  app.render().prepareRecovery();app.render().recoveryReview.close();assert.equal(f.calls.some(call=>call.method==='POST'),false);
+  app.render().prepareRecovery();app.render().recoveryReview.confirm();
+  await wait(()=>archived&&!app.render().batchBusy&&!app.render().automation.loading&&app.render().cards.length===2);
+  assert.equal(app.render().cards.some(row=>row.name===prompt.title),false);
+  assert.equal(f.calls.filter(call=>call.path.endsWith('/archive')).length,1);
+  app.render().openDeleted();app.render();await wait(()=>app.render().cards.length===1&&!app.render().automation.loading);
+  assert.equal(app.render().listTitle,'Recently deleted');app.render().cards[0].open();app.render().recoveryReview.confirm();
+  await wait(()=>!archived&&!app.render().automation.loading);
+  assert.equal(f.calls.filter(call=>call.path.endsWith('/restore')).length,1);
+  assert.equal(trigger.enabled,false);
+ }finally{app.close();await f.close();}
+});
+
+test('an unknown selection result stops later workflow deletions without replaying',async()=>{
+ let removed=false;
+ const first={...prompt,title:'A first',trigger:{id:'prompt',revision:'a'.repeat(64)}},second={...prompt,id:'trigger:second',triggerId:'second',title:'B second',trigger:{id:'second',revision:'b'.repeat(64)}};
+ const f=await fixture(call=>{
+  if(call.path==='/api/automations')return {automations:removed?[second]:[first,second]};
+  if(call.path==='/api/triggers/prompt/archive'){removed=true;return {status:500,body:{}};}
+  if(call.path==='/api/lifeops/scheduled-tasks?ownerVisibleOnly=1')return {tasks:[]};
+  if(call.path==='/api/lifeops/reminders')return {reminders:[]};
+  if(call.path==='/api/lifeops/definitions')return {definitions:[]};
+  throw Error('Unexpected later request '+call.path);
+ });
+ const app=adapterFixture(f.request,{}, {deviceReminders:[]});
+ try{
+  app.render();await wait(()=>app.render().cards.length===2&&!app.render().automation.loading);
+  app.render().startSelection();app.render().selectAll();app.render().prepareRecovery();app.render().recoveryReview.confirm();
+  await wait(()=>removed&&!app.render().batchBusy&&!app.render().automation.loading);
+  assert.deepEqual(f.calls.filter(call=>call.method!=='GET').map(call=>call.path),['/api/triggers/prompt/archive']);
+  assert.equal(Object.keys(app.storage).length,1);
+  assert.match(app.render().automation.message,/Outcome unknown/);
+  assert.equal(app.render().cards[0].name,'B second');
  }finally{app.close();await f.close();}
 });

@@ -15700,17 +15700,19 @@
     },
     {
       "path": "apps/app/src/product/owner-route-table.ts",
-      "sha256": "0b4e1edd289b2fc124baa59be09ec815fa577aa4b8448794ac7ea4063c603e35",
+      "sha256": "65df08e5adb37142427c8eb2cc2fc8e00fd7eed7d249c5d8b014b3a0b03798e7",
       "models": [
         "Application",
         "CalendarPresentation",
         "NotesLifecycle",
         "ServiceAuthorization",
-        "MobileBundleAdmission"
+        "MobileBundleAdmission",
+        "WorkflowRecoverySelection"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "stateAnchors": []
+      "stateAnchors": [],
+      "integrationReview": "2026-11-11 unified selection and recovery use canonical stores and existing per-item journal. No approval or unknown-result replay. Prompt revision and workflow version protocols retained. Device reminders remain outside recovery."
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
@@ -17272,12 +17274,13 @@
         "ReminderOpenIntent",
         "WorkflowRequestRecoveryAdmission",
         "ScheduledTaskControls",
-        "HomeAutomationsRead"
+        "HomeAutomationsRead",
+        "WorkflowRecoverySelection"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "21f154bf3c2c86ccffce7e0f150450cd0f187f6e435cfc90b9f9fd87eafb2e4c",
+      "sha256": "f7f5e46cf2d985fbd742492b3b4d3a6faff7142e65517e276990598d8f3fe06f",
       "stateAnchors": [
         {
           "line": 6,
@@ -17576,19 +17579,20 @@
           "text": "const mount=p.componentDidMount,unmount=p.componentWillUnmount;"
         }
       ],
-      "integrationReview": "2026-11-09 inline schedule editor: daily/weekly day selection, no-write draft cancellation, exact reviewed cron payload. ScheduledTaskControls covers bounded day sets and retained owner intent. Month/interval cron remains unmodified. CSS has no scheduling authority."
+      "integrationReview": "2026-11-11 unified selection and recovery use canonical stores and existing per-item journal. No approval or unknown-result replay. Prompt revision and workflow version protocols retained. Device reminders remain outside recovery."
     },
     {
       "path": "apps/app/src/prototype/automations.css",
       "models": [
-        "WorkflowExecution"
+        "WorkflowExecution",
+        "WorkflowRecoverySelection"
       ],
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "7bf015554ea4739088c6fe149dcc9d04680359e1e8f317c2eee49bdb0f7ef58c",
+      "sha256": "8b1527b422bae2a033052ada077813410f1ab35d6aa0ce4b32c41c0c877f1bcd",
       "stateAnchors": [],
-      "integrationReview": "2026-11-11 Home entry resets carousel position without resetting manual swipes. Shared bottom-sheet marker keeps sheet surface at the phone bottom and leaves dock clearance inside its padding. Anchored menus keep their original positioning. Full native acceptance remains separate."
+      "integrationReview": "2026-11-11 unified selection and recovery use canonical stores and existing per-item journal. No approval or unknown-result replay. Prompt revision and workflow version protocols retained. Device reminders remain outside recovery."
     },
     {
       "path": "apps/app/src/prototype/browser-adapter.ts",
@@ -34851,19 +34855,20 @@
         "NotesStartupCache",
         "MailComposerPresentation",
         "ContentLinks",
-        "MailSelection"
+        "MailSelection",
+        "WorkflowRecoverySelection"
       ],
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "defb98217f1782d1a209ff094a0b7698b45c75c470e0eeb2ccf197061a039105",
+      "sha256": "b0137e4ff22cfa6491d7f2f7348c293ded0cfac44b0bb62e30a694a27a8181ad",
       "stateAnchors": [
         {
           "line": 3358,
           "text": "<sc-if value=\"{{workflows.automation.editingSchedule}}\"><sc-if value=\"{{workflows.automation.scheduleClockEditable}}\"><label class=\"schedule-instructions\">Time ({{workflows.automation.e"
         }
       ],
-      "integrationReview": "2026-11-09 inline schedule editor: daily/weekly day selection, no-write draft cancellation, exact reviewed cron payload. ScheduledTaskControls covers bounded day sets and retained owner intent. Month/interval cron remains unmodified. CSS has no scheduling authority."
+      "integrationReview": "2026-11-11 unified selection and recovery use canonical stores and existing per-item journal. No approval or unknown-result replay. Prompt revision and workflow version protocols retained. Device reminders remain outside recovery."
     },
     {
       "path": "apps/app/src/prototype/use-in-email-review.ts",
@@ -37065,12 +37070,13 @@
       "path": "apps/app/src/runtime/automations-protocol.ts",
       "models": [
         "WorkflowExecution",
-        "ScheduledTaskControls"
+        "ScheduledTaskControls",
+        "WorkflowRecoverySelection"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "ddf5e6df521b097ebc99ecabba10ae5d998e00617a28bf4383b9081aaf53943e",
+      "sha256": "b0d8eca9f7b57f4324397eccb1675d8a94dd4d8857eabea6bc669f45a827e741",
       "stateAnchors": [
         {
           "line": 9,
@@ -37228,7 +37234,8 @@
           "line": 153,
           "text": "const title=draft.message.trim(),due=localDate(draft.due);if(!title||due.getTime()<=Date.now())throw Error('Add a reminder and a future time.');"
         }
-      ]
+      ],
+      "integrationReview": "2026-11-11 unified selection and recovery use canonical stores and existing per-item journal. No approval or unknown-result replay. Prompt revision and workflow version protocols retained. Device reminders remain outside recovery."
     },
     {
       "path": "apps/app/src/runtime/automations-route-policy.ts",
