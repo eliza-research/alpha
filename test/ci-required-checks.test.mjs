@@ -86,7 +86,7 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   assert.equal(concurrency['cancel-in-progress'], "${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1) }}");
 });
 
-test('Quint and Lemma run in CI only for promotion to main and on dispatch', () => {
+test('the Quint gate, its node tests and the Lemma proofs run in CI only for promotion to main and on dispatch', () => {
   const formal = /quint:|lemma:|prepare-dafny|LEMMA_|ALPHA_QUINT/;
   for (const file of fs.readdirSync('.github/workflows').filter(name => name !== 'quint-model-check.yml'))
     assert.doesNotMatch(read(`.github/workflows/${file}`), formal, file);

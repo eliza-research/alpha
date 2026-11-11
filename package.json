@@ -66,7 +66,7 @@
     "quint:verify": "node scripts/check-quint.ts verify",
     "quint:temporal": "node scripts/check-quint.ts temporal",
     "quint:compare": "node scripts/check-quint.ts compare",
-    "quint:tests": "node scripts/run-node-tests.ts 'test/quint-*.test.mjs'",
+    "quint:tests": "node scripts/run-node-tests.ts 'test/quint-*.test.mjs' 'test/quint-*.test.ts'",
     "quint:conformance": "node --test test/quint-conformance.test.mjs test/quint-native-conformance.test.mjs test/quint-scan-conformance.test.mjs test/quint-recovery-vad-conformance.test.mjs",
     "quint:refinement": "node scripts/check-quint-refinement.ts",
     "lemma:check": "node scripts/check-lemma.ts",
