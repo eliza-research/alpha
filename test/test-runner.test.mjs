@@ -9,6 +9,8 @@ for (const filter of ['selected', 'failure']) test(`bun run test forwards the na
  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-test-runner-'));
  t.after(() => fs.rmSync(root, {recursive: true, force: true}));
  fs.mkdirSync(path.join(root, 'scripts')); fs.mkdirSync(path.join(root, 'test'));
+ fs.mkdirSync(path.join(root, 'test', 'browser'));
+ fs.writeFileSync(path.join(root, 'test/browser/fixture.spec.ts'), 'throw Error("browser specs must not enter the host suite");');
  for (const file of ['run-tests.ts', 'child-command.ts']) fs.copyFileSync(new URL(`../scripts/${file}`, import.meta.url), path.join(root, 'scripts', file));
  fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module"}');
  fs.writeFileSync(path.join(root, 'test/fixture.test.mjs'), `
@@ -17,7 +19,8 @@ for (const filter of ['selected', 'failure']) test(`bun run test forwards the na
   test('failure', () => { fs.appendFileSync('ran.txt', 'failure'); throw Error('fixture failure'); });
  `);
  const env = {...process.env}; delete env.NODE_TEST_CONTEXT;
- const result = spawnSync(process.execPath, [path.join(root, 'scripts/run-tests.ts'), `--test-name-pattern=^${filter}$`],
+ const args = filter === 'selected' ? ['--test-name-pattern', '^selected$'] : ['--test-name-pattern=^failure$'];
+ const result = spawnSync(process.execPath, [path.join(root, 'scripts/run-tests.ts'), ...args],
    {env, encoding: 'utf8', timeout: 30000});
  assert.equal(result.status, filter === 'failure' ? 1 : 0, result.stdout + result.stderr);
  assert.equal(fs.readFileSync(path.join(root, 'ran.txt'), 'utf8'), filter);

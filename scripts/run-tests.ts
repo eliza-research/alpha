@@ -13,8 +13,15 @@ if (!/^[1-9]\d*$/.test(concurrency)) {
 const root = new URL('..', import.meta.url);
 const options = { stdio: 'inherit' as const, cwd: root };
 const forwarded = process.argv.slice(2);
-// Bun treats positional arguments as path filters; with none, run the whole host suite.
-const paths = forwarded.some(argument => !argument.startsWith('-'))
+const flagsWithValue = new Set([
+  '--timeout', '--rerun-each', '--retry', '--seed', '--coverage-reporter', '--coverage-dir',
+  '-t', '--test-name-pattern', '--reporter', '--reporter-outfile', '--max-concurrency',
+  '--path-ignore-patterns', '--parallel-delay', '--shard', '--timings',
+]);
+// Keep test discovery within the host suite unless the caller supplied a path filter.
+const hasPathFilter = forwarded.some((argument, index) =>
+  !argument.startsWith('-') && !flagsWithValue.has(forwarded[index - 1]));
+const paths = hasPathFilter
   ? []
   : readdirSync(new URL('test/', root)).filter(name => /\.test\.(?:mjs|ts)$/.test(name)).sort().map(name => `./test/${name}`);
 try {

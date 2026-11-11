@@ -46,14 +46,14 @@ export function scriptReferences(text) {
     .map(match => ({ reference: match[1].replace(/^(?:\.\.\/)+/, ''), index: match.index }));
 }
 
-export function npmScriptReferences(text) {
+export function bunScriptReferences(text) {
   return [...text.matchAll(/\bbun run ([A-Za-z0-9][A-Za-z0-9:_.-]*[A-Za-z0-9_])/g)].map(match => ({ name: match[1], index: match.index }));
 }
 
 test('reference extraction ignores longer vendor paths and keeps product paths', () => {
   const found = scriptReferences('Use `scripts/qualify-head.ts`, [speech](../scripts/local-speech/README.md) and `packages/app/scripts/mobile/context.ts`.').map(item => item.reference);
   assert.deepEqual(found, ['scripts/qualify-head.ts', 'scripts/local-speech/README.md']);
-  assert.deepEqual(npmScriptReferences('Run `bun run verify` then bun run android:build -- --x.').map(item => item.name), ['verify', 'android:build']);
+  assert.deepEqual(bunScriptReferences('Run `bun run verify` then bun run android:build -- --x.').map(item => item.name), ['verify', 'android:build']);
 });
 
 test('an upstream-relative script path needs its upstream directory named in the same document', () => {
@@ -84,7 +84,7 @@ test('every `bun run X` in README.md and the PRD names a root package.json scrip
   const failures = [];
   for (const file of docs) {
     const text = read(file);
-    for (const { name, index } of npmScriptReferences(text)) if (!Object.hasOwn(scripts, name)) failures.push(`${file}:${lineOf(text, index)}: bun run ${name}`);
+    for (const { name, index } of bunScriptReferences(text)) if (!Object.hasOwn(scripts, name)) failures.push(`${file}:${lineOf(text, index)}: bun run ${name}`);
   }
   assert.deepEqual(failures, []);
 });

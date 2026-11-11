@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
-// Runs the host tests that cannot run on Bun (test/support/node-only.mjs) on a real Node.js.
-// Everything else in this repository runs on Bun; Node is needed for this lane only.
+// Runs the host tests that need Node.js platform features (test/support/node-only.mjs).
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { delimiter, join } from 'node:path';

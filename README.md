@@ -12,10 +12,10 @@ changes upstream and consume a reviewed commit; never edit the vendor checkout.
 
 ## Setup
 
-Use Bun 1.4.2 (`packageManager` in `package.json`) and JDK 21. Bun installs dependencies, runs every
-script and test, and is the agent runtime on the device. Node.js is not required, with one exception:
-`bun run test:node` runs two host tests that need platform features Bun lacks (jsdom script
-execution and Web Locks) on Node.js 24 or newer; `bun run verify` skips them and says so. CI runs that lane.
+Use Bun 1.4.2 (`packageManager` in `package.json`) and JDK 21. Bun runs the
+developer tooling and is the agent runtime on the device. CI also runs
+`bun run test:node` with Node.js 26.13.0 for jsdom script execution and Web Locks.
+The combined-agent diagnostic also requires an explicit Node.js 26.13.0 binary.
 Native builds need Android SDK platform 36 and build-tools 36.0.0. Set
 `JAVA_HOME` and `ANDROID_HOME`; standard macOS SDK/JDK locations are also detected.
 
@@ -319,11 +319,11 @@ out of idle HOME while taking the baseline so it cannot update before the
 capture. The baseline command verifies the anonymous offer and its APK.
 
 ```sh
-node scripts/verify-wireless-launcher-update.ts before --serial <serial> \
+bun scripts/verify-wireless-launcher-update.ts before --serial <serial> \
   --distribution sideload --apk-manifest <baseline>/apk-manifest.json --out <new-before.json>
 # Disconnect ADB. Let the launcher discover and install at idle HOME.
 # Reconnect ADB after the observed result.
-node scripts/verify-wireless-launcher-update.ts after --serial <serial> \
+bun scripts/verify-wireless-launcher-update.ts after --serial <serial> \
   --before <before.json> --apk-manifest <update>/apk-manifest.json --out <new-after.json>
 ```
 

@@ -423,7 +423,7 @@ jobs:
         run: |
           # The native suites need the private peer fixture, a debug-only test hook
           # that exists only in the separate, never-distributable test-mocks build.
-          python3 scripts/ci/resident-phase.py --name archive --seconds 3000 node scripts/build-archive.ts --test-mocks test-results/resident-ci-archive
+          python3 scripts/ci/resident-phase.py --name archive --seconds 3000 bun scripts/build-archive.ts --test-mocks test-results/resident-ci-archive
       - name: Bind the unsigned native candidate to the genuine distribution archive
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:

@@ -300,7 +300,7 @@ const temporary = fs.mkdtempSync(path.join(path.dirname(destination), `.${physic
 const output = path.join(temporary, 'overlay');
 try {
 execFileSync(
-  "node",
+  process.execPath,
   [
     "vendor/eliza/packages/os/scripts/android/stage-launcher-overlay.ts",
     "--descriptor",
