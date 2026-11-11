@@ -19,6 +19,8 @@ export class BrowserReviews {
       const body = document.createElement('p'); body.textContent = details; body.style.whiteSpace = 'pre-wrap';
       const cancel = document.createElement('button'); cancel.textContent = 'Cancel';
       const approve = document.createElement('button'); approve.textContent = confirmLabel;
+      // An action that removes or overwrites something is set apart from Cancel (review.css).
+      if (/^(Delete|Discard|Erase|Remove|Replace|Clear|Reset|Sign out)\b/.test(confirmLabel)) approve.dataset.destructive = '';
 
       let settled = false;
       const finish = (confirmed: boolean) => {

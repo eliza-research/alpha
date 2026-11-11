@@ -12,6 +12,7 @@ import {WorkflowIntentStore,workflowIntentKey} from '../runtime/workflow-intents
 import {createWorkflowRequestRecovery} from '../runtime/workflow-request-recovery';
 import {Capacitor} from '@capacitor/core';
 import {homeReadIsStale,presentHomeWorkflowFreshness} from './home-cards';
+import {BrowserReviews} from '../browser/review';
 import './automations.css';
 type Bag=Record<string,any>;
 type Binding={sessionId:string;conversationId?:string;request:AutomationRequest};
@@ -56,6 +57,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  const repeatFor=(days:number[])=>days.length===7?'daily':days.join(',')==='1,2,3,4,5'?'weekdays':days.join(',')==='0,6'?'weekends':'custom';
  let completionDirty=false;
  const uncertain=new Set<string>();
+ let releaseReviews:BrowserReviews|undefined;
  let intentStore:WorkflowIntentStore|null=null,suspended=document.hidden;
  const recovery=createWorkflowRequestRecovery(async()=>(await import('../browser/domain-recovery')).openDomainRecovery);
  let homeCache:{sessionId:string;rows:Array<{name:string;status:string}>;total:number;complete:boolean;partial:boolean;stale:boolean;error:boolean;loadedAt:number}|null=null;
@@ -64,7 +66,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  const automationBlock=()=>!binding()?agentPendingText():loadedSession!==binding()?.sessionId||state!=='ready'?'Refresh first':issues.find(issue=>issue.source==='automations'&&issue.unavailable)?.message||'';
  const scheduleBlock=()=>!binding()?agentPendingText():loadedSession!==binding()?.sessionId||state!=='ready'?'Refresh first':issues.find(issue=>issue.source==='schedules')?.message||'';
  const publish=()=>{if(owner?.live&&!suspended&&!document.hidden)owner.vset('workflows',{automationTick:Date.now()});};
- const retire=(clear=false)=>{dismissFilters();recovery.retire();epoch++;controller?.abort();controller=null;detail=null;scheduleDraft=null;editor=null;creating=false;review=null;message='';if(clear){completionDirty=false;rows=[];issues=[];intentStore=null;state='idle';loadedSession=null;}publish();};
+ const retire=(clear=false)=>{releaseReviews?.cancelAll();dismissFilters();recovery.retire();epoch++;controller?.abort();controller=null;detail=null;scheduleDraft=null;editor=null;creating=false;review=null;message='';if(clear){completionDirty=false;rows=[];issues=[];intentStore=null;state='idle';loadedSession=null;}publish();};
  const requestKey=(id:string)=>{const owner=connectionController.getSnapshot().session;return owner?workflowIntentKey(owner,'automation:'+id):'offline:'+id;};
  const key=(row:AutomationRow)=>requestKey(row.key);
  const locked=(row:AutomationRow)=>uncertain.has(key(row))||(!!binding()&&(intentStore?.locked(key(row))??true));
@@ -135,7 +137,8 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  }
  /** The owner's informed release of an unconfirmed request, after checking the record. Never retries it. */
  async function allowAnother(id:string){
-  if(controller||!id||!window.confirm('May repeat. Continue?'))return;
+  if(controller||!id)return;
+  if(!await (releaseReviews??=new BrowserReviews()).confirm('allow-another-automation','Allow another try?','The last request may already have gone through. Trying again could run it twice.','Allow another try',{current:()=>!controller&&!!visible()})||controller)return;
   const ownerContext=connectionController.getSnapshot().session;if(!ownerContext)return;
   const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();message='';publish();
   try{const raw=await intents.read(id,abort.signal);if(raw!==null)await intents.acknowledge(id,raw,abort.signal);if(ticket===epoch)uncertain.delete(id);}

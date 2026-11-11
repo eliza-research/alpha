@@ -74,7 +74,7 @@ test('a locked row shows the recovery line and Allow another asks before releasi
  await setup(page);await page.route('**/__unified_api/api/triggers/prompt/execute',route=>route.abort());
  await page.locator('[data-alpha-layer=app]').getByText('Document review',{exact:true}).click();await page.getByRole('button',{name:'Run now',exact:true}).click();await page.getByRole('button',{name:'Confirm Run now',exact:true}).click();
  const detail=page.locator('[data-alpha-subview=automations-detail]');await expect(detail.getByRole('alert').filter({hasText:'Unconfirmed'})).toBeVisible();await expect(detail.getByRole('button',{name:'Run now',exact:true})).toBeDisabled();
- page.once('dialog',dialog=>{expect(dialog.message()).toBe('May repeat. Continue?');void dialog.accept();});await detail.getByRole('button',{name:'Continue',exact:true}).click();
+ await detail.getByRole('button',{name:'Continue',exact:true}).click();const review=page.getByRole('dialog',{name:'Allow another try?',exact:true});await expect(review).toContainText('Trying again could run it twice.');await review.getByRole('button',{name:'Allow another try',exact:true}).click();
  await expect(detail.getByRole('button',{name:'Run now',exact:true})).toBeEnabled();
 });
 

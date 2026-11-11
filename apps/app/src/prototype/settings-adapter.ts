@@ -38,6 +38,7 @@ import { reviewDataReset, type DataResetPlugin } from '@elizaos/capacitor-system
 import { androidRoleLabel, parseRoleStatuses } from '@elizaos/capacitor-system/settings';
 import {createAppUpdateScheduler} from '../../../../.eliza/client-features/packages/ui/src/state/app-update-gate';
 import { leavePasswordEntry, leavePasswordManager, passwordEntryPage, passwordManagerGroups, passwordManagerLifecycle, refreshPasswordManager, PASSWORD_PAGES } from '../passwords/password-manager';
+import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 
 type Bag = Record<string, any>;
 type PhotoAccess = {scope:'full'|'partial'|'selected'|'denied';images:string;videos:string};
@@ -984,7 +985,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           // Shared native review (@elizaos/capacitor-system/reset): only cancelled or unavailable reach here.
           // A plain cancel needs no toast; an expired review or missing authentication still says so.
           const result=await reviewDataReset(registerPlugin<DataResetPlugin>('AlphaReset'));
-          if(result.status!=='cancelled'||!RESET_CANCEL_TEXTS.has(result.message))api.toast(result.message);
+          if(result.status!=='cancelled'||!RESET_CANCEL_TEXTS.has(result.message))api.toast(errorNotice(result.message,'Reset isn’t available right now. Nothing was erased.'),ERROR_TOAST);
         }}]));
         if(developerTools)page.groups.push(group([{kNav:true,label:'Try mock mode',lbl:'Try mock mode',chev:true,noAB:true,go:()=>connectionController.mock()}]));
         if(developerTools&&recovery.length)page.groups.push(group([info('Saved data needs recovery','Back up before resetting'),...recovery.map(name=>({kNav:true,label:recoveryActions[name].label,lbl:recoveryActions[name].label,chev:true,noAB:true,go:()=>recoveryActions[name].open()}))]));
