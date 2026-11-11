@@ -22,7 +22,7 @@ export function checkRendererBackgroundRebuild({traces = 60, maxSteps = 40} = {}
     const surfaces = state => Object.values(state.surfaces);
     return replayJava({
       harness: 'RendererBackgroundRebuildReplay.java',
-      sources: [app + 'MainActivity.java', app + 'RendererRecoveryBudget.java', `${directory}/MainActivityPorts.java`, ...fixture.paths],
+      sources: [app + 'MainActivity.java', app + 'RendererRecoveryBudget.java', app + 'NavigationOpenRequest.java', `${directory}/MainActivityPorts.java`, ...fixture.paths],
       traces: generated,
       required: ['start', 'stop', 'rendererDies', 'report', 'repeatReport', 'timerFires', 'reload', 'recreated', 'windowPasses'],
       reached: {

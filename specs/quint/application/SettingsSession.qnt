@@ -7,7 +7,7 @@ module SettingsSession {
   type Op = { kind: str, token: int, instance: int, scaleToken: int, value: int, scale: int, other: int, failed: bool }
   type State = {
     // The mounted Settings instance (0 is none) and its counters.
-    owner: int, mounts: int, generation: int, scaleGeneration: int,
+    owner: int, mounts: int, generation: int, scaleGeneration: int, scaleVersion: int, scalePending: bool,
     // Requests the device has not handled yet, oldest first, and results on their way back.
     queue: List[Op], results: Set[Op],
     // The device's text size and one other fact that changes outside the page.
@@ -31,22 +31,23 @@ module SettingsSession {
   pure val MaxGeneration = 4
   pure val MaxScaleGeneration = 3
 
-  action init = s' = { owner: 0, mounts: 0, generation: 0, scaleGeneration: 0, queue: List(), results: Set(),
+  action init = s' = { owner: 0, mounts: 0, generation: 0, scaleGeneration: 0, scaleVersion: 0, scalePending: false, queue: List(), results: Set(),
     deviceScale: 100, deviceOther: 0, shownScale: Unknown, shownOther: Unknown, shownToken: 0,
     regressed: false, writeFailed: false, keptSize: false, held: Unknown, latest: 0, failedToken: 0, restored: 0 }
   action mount = all { s.owner == 0, s.mounts < MaxMounts, s' = { ...s, owner: s.mounts + 1, mounts: s.mounts + 1 } }
   /// Leaving Settings retires every read in flight and forgets the facts.
-  action unmount = all { s.owner != 0, s.generation < MaxGeneration,
-    s' = { ...s, owner: 0, generation: s.generation + 1, shownScale: Unknown, shownOther: Unknown,
+  action unmount = all { s.owner != 0,
+    s' = { ...s, owner: 0, generation: s.generation + 1, scaleGeneration: s.scaleGeneration + 1,
+      scaleVersion: s.scaleVersion + 1, scalePending: false, shownScale: Unknown, shownOther: Unknown,
       shownToken: 0, writeFailed: false, held: Unknown, latest: 0, failedToken: 0 } }
-  action refresh = all { s.owner != 0, s.generation < MaxGeneration,
-    s' = { ...s, generation: s.generation + 1,
-      queue: s.queue.append({ kind: "read", token: s.generation + 1, instance: s.owner,
-        scaleToken: s.scaleGeneration, value: 0, scale: 0, other: 0, failed: false }) } }
-  /// The size control exists once a read has shown a size.
-  action changeScale(value: int): bool = all { s.owner != 0, s.shownScale != Unknown, value.in(Sizes),
+  pure def refreshed(v: State): State = { ...v, generation: v.generation + 1,
+    queue: v.queue.append({ kind: "read", token: v.generation + 1, instance: v.owner,
+      scaleToken: v.scaleVersion, value: 0, scale: 0, other: 0, failed: false }) }
+  action refresh = all { s.owner != 0, s.generation < MaxGeneration, s' = refreshed(s) }
+  /// The mounted Aa samples are explicit owner choices, including before the first read.
+  action changeScale(value: int): bool = all { s.owner != 0, value.in(Sizes),
     s.scaleGeneration < MaxScaleGeneration,
-    s' = { ...s, scaleGeneration: s.scaleGeneration + 1, writeFailed: false,
+    s' = { ...s, scaleGeneration: s.scaleGeneration + 1, scalePending: true, writeFailed: false,
       queue: s.queue.append({ kind: "write", token: s.scaleGeneration + 1, instance: s.owner,
         scaleToken: 0, value: value, scale: 0, other: 0, failed: false }) } }
   action deviceHandles(fails: bool): bool = all { s.queue.length() > 0,
@@ -60,12 +61,12 @@ module SettingsSession {
   /// text-size change keeps the size already shown and takes every other fact.
   action settleRead(op: Op): bool = all { op.in(s.results), op.kind == "read",
     val current = s.owner == op.instance and s.generation == op.token
-    val overlapped = s.scaleGeneration != op.scaleToken and s.shownScale != Unknown
+    val overlapped = s.scalePending or s.scaleVersion != op.scaleToken
     s' = if (not(current)) { ...s, results: s.results.exclude(Set(op)) }
       else { ...s, results: s.results.exclude(Set(op)), shownOther: op.other,
         shownScale: if (overlapped) s.shownScale else op.scale, shownToken: op.token,
         regressed: s.regressed or op.token < s.shownToken,
-        writeFailed: s.writeFailed and overlapped, keptSize: s.keptSize or overlapped } }
+        keptSize: s.keptSize or overlapped } }
   /// A size request of the mounted instance that succeeded is shown when it is the newest, or when
   /// the newest has already failed; otherwise it is held. A result older than one already seen is
   /// dropped. The newest request's failure is reported and shows the held size.
@@ -75,13 +76,15 @@ module SettingsSession {
     s' = if (s.owner != op.instance) dropped
       else if (op.failed)
         if (not(newest)) dropped
-        else { ...dropped, writeFailed: true, failedToken: op.token, held: Unknown,
+        else refreshed({ ...dropped, writeFailed: true, failedToken: op.token, held: Unknown,
+          scalePending: false, scaleVersion: s.scaleVersion + 1,
           shownScale: if (s.held != Unknown) s.held else s.shownScale,
-          restored: if (s.held != Unknown) 1 else s.restored }
+          restored: if (s.held != Unknown) 1 else s.restored })
       else if (op.token <= s.latest) dropped
-      else if (newest) { ...dropped, latest: op.token, held: Unknown, shownScale: op.scale }
+      else if (newest) { ...dropped, latest: op.token, held: Unknown, shownScale: op.scale,
+        scalePending: false, scaleVersion: s.scaleVersion + 1 }
       else if (s.failedToken == s.scaleGeneration)
-        { ...dropped, latest: op.token, held: Unknown, shownScale: op.scale, restored: 2 }
+        { ...dropped, latest: op.token, held: Unknown, shownScale: op.scale, restored: 2, scaleVersion: s.scaleVersion + 1 }
       else { ...dropped, latest: op.token, held: op.scale } }
   action step = {
     nondet value = Sizes.oneOf()
@@ -100,15 +103,20 @@ module SettingsSession {
   val ReadsNeverRegress = not(s.regressed)
   val UnmountedShowsNothing = s.owner == 0 implies s.shownScale == Unknown and s.shownOther == Unknown
   val ShownReadIsOwn = s.shownToken <= s.generation and (s.shownOther != Unknown implies s.shownToken > 0)
-  val BoundedCounters = s.generation <= MaxGeneration and s.scaleGeneration <= MaxScaleGeneration and s.owner <= s.mounts
+  // Explicit reads remain bounded by MaxGeneration; terminal write failures add one read each,
+  // and each of the at most two mounted owners retires both counters once on unmount.
+  val BoundedCounters = s.generation <= MaxGeneration + MaxScaleGeneration + MaxMounts and
+    s.scaleGeneration <= MaxScaleGeneration + MaxMounts and s.owner <= s.mounts
   val safety = ShownSizeIsCurrent and HeldIsOlderRequest and ReadsNeverRegress and UnmountedShowsNothing and ShownReadIsOwn and BoundedCounters
 
   val OverlappedReadShownWitness = quiet and s.keptSize and s.shownScale == s.deviceScale and s.shownScale != 100
   val RetiredReadWitness = s.owner == 2 and s.shownOther == Unknown and s.generation >= 2 and s.results.size() == 0 and s.queue.length() == 0
   /// The newest request failed after an earlier one was applied: the applied size is shown.
-  val FailedNewestShowsAppliedWitness = quiet and s.writeFailed and s.restored == 1 and s.shownScale == s.deviceScale and s.shownScale != 100
+  // Failure now starts a facts refresh, so restoration can be visible while that read waits.
+  // The explicit refetch schedules below separately require the quiescent current-size result.
+  val FailedNewestShowsAppliedWitness = not(s.scalePending) and s.writeFailed and s.restored == 1 and s.shownScale == s.deviceScale and s.shownScale != 100
   /// The applied size arrived after the newest request's failure and is shown on arrival.
-  val LateAppliedShownWitness = quiet and s.writeFailed and s.restored == 2 and s.shownScale == s.deviceScale and s.shownScale != 100
+  val LateAppliedShownWitness = not(s.scalePending) and s.writeFailed and s.restored == 2 and s.shownScale == s.deviceScale and s.shownScale != 100
 
   pure def readOp(token: int, instance: int, scaleToken: int, scale: int, other: int): Op =
     { kind: "read", token: token, instance: instance, scaleToken: scaleToken, value: 0, scale: scale, other: other, failed: false }
@@ -126,7 +134,7 @@ module SettingsSession {
   run readAfterWriteSeesNewSizeTest = init.then(mount).then(refresh).then(deviceHandles(false))
     .then(settleRead(readOp(1, 1, 0, 100, 0))).then(changeScale(150)).then(refresh)
     .then(deviceHandles(false)).then(deviceHandles(false))
-    .then(settleRead(readOp(2, 1, 1, 150, 0))).then(settleWrite(writeOp(1, 1, 150)))
+    .then(settleRead(readOp(2, 1, 0, 150, 0))).then(settleWrite(writeOp(1, 1, 150)))
     .expect(s.shownScale == 150 and safety)
   run newestSizeRequestWinsTest = init.then(mount).then(refresh).then(deviceHandles(false))
     .then(settleRead(readOp(1, 1, 0, 100, 0))).then(changeScale(115)).then(changeScale(130))
@@ -156,5 +164,27 @@ module SettingsSession {
     .expect(s.shownScale == 100 and s.writeFailed)
     .then(settleWrite(writeOp(1, 1, 115)))
     .expect(s.shownScale == 115 and s.deviceScale == 115 and s.restored == 2 and safety)
-  run sizeControlNeedsReadTest = init.then(mount).then(changeScale(115).fail())
+  run sizeChoiceBeforeReadTest = init.then(mount).then(changeScale(115)).then(refresh)
+    .then(deviceHandles(false)).then(deviceHandles(false))
+    .then(settleRead(readOp(1, 1, 0, 115, 0)))
+    .expect(s.shownScale == Unknown and s.scalePending and safety)
+    .then(settleWrite(writeOp(1, 1, 115)))
+    .expect(s.shownScale == 115 and not(s.scalePending) and s.scaleVersion == 1 and safety)
+  run failedChoiceBeforeReadRefetchesTest = init.then(mount).then(changeScale(130)).then(deviceHandles(true))
+    .then(settleWrite({ ...writeOp(1, 1, 130), scale: 100, failed: true }))
+    .expect(s.generation == 1 and s.queue.length() == 1 and not(s.scalePending) and safety)
+    .then(deviceHandles(false)).then(settleRead(readOp(1, 1, 1, 100, 0)))
+    .expect(s.shownScale == 100 and s.shownOther == 0 and safety)
+  run failedNewestRefetchSettlesCurrentSizeTest = init.then(mount).then(refresh).then(deviceHandles(false))
+    .then(settleRead(readOp(1, 1, 0, 100, 0))).then(changeScale(115)).then(changeScale(130))
+    .then(deviceHandles(false)).then(deviceHandles(true)).then(settleWrite(writeOp(1, 1, 115)))
+    .then(settleWrite({ ...writeOp(2, 1, 130), scale: 115, failed: true }))
+    .then(deviceHandles(false)).then(settleRead(readOp(2, 1, 1, 115, 0)))
+    .expect(quiet and s.restored == 1 and s.shownScale == 115 and s.deviceScale == 115 and safety)
+  run lateAppliedRefetchSettlesCurrentSizeTest = init.then(mount).then(refresh).then(deviceHandles(false))
+    .then(settleRead(readOp(1, 1, 0, 100, 0))).then(changeScale(115)).then(changeScale(130))
+    .then(deviceHandles(false)).then(deviceHandles(true))
+    .then(settleWrite({ ...writeOp(2, 1, 130), scale: 115, failed: true })).then(settleWrite(writeOp(1, 1, 115)))
+    .then(deviceHandles(false)).then(settleRead(readOp(2, 1, 1, 115, 0)))
+    .expect(quiet and s.restored == 2 and s.shownScale == 115 and s.deviceScale == 115 and safety)
 }

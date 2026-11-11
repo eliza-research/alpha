@@ -8142,7 +8142,10 @@
       "unmountRetiresReadTest",
       "failedNewestShowsAppliedSizeTest",
       "appliedSizeAfterFailureIsShownTest",
-      "sizeControlNeedsReadTest"
+      "sizeChoiceBeforeReadTest",
+      "failedChoiceBeforeReadRefetchesTest",
+      "failedNewestRefetchSettlesCurrentSizeTest",
+      "lateAppliedRefetchSettlesCurrentSizeTest"
     ],
     "invariants": [
       "ShownSizeIsCurrent",
@@ -8206,13 +8209,16 @@
       "queue/results": "device.snapshot() reads and device.setTextScale() writes in flight, handled by the device in issue order",
       "shownScale/shownOther/shownToken": "facts.textScalePercent, every other device fact, and the refresh that supplied them",
       "held/latest/failedToken": "held, latest and failed in textScaleSettlement (scaleResults), reset when Settings unmounts",
-      "writeFailed/keptSize/regressed/restored": "ghosts: the newest size request failed; a read kept the shown size; an older read replaced a newer one; an older applied size replaced the one shown after the newest request failed"
+      "writeFailed/keptSize/regressed/restored": "ghosts: the newest size request failed; a read kept the shown size; an older read replaced a newer one; an older applied size replaced the one shown after the newest request failed",
+      "scaleVersion/scalePending": "Applied-size version and newest-write pending latch; device reads preserve size while pending or when the captured version changed."
     },
     "abstractions": [
       "One other device fact stands for roles, crash log, photo access, delivery and cross-app status, which a read publishes together.",
       "The device handles requests in the order the page issued them; results return in any order. A failed write leaves the device unchanged.",
       "Busy latches, the listener row (SettingsListenerReads), capability and inference aborts, and licences are not modeled here.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "Model safety checks do not establish implementation refinement or device acceptance.",
+      "The mounted Aa row accepts explicit choices before the first read. Unmount retires both generations; newest write failure starts a fresh facts read. Original settlement safety predicates remain, with counter bounds accounting for those finite automatic reads and retirements.",
+      "Failure-restoration witnesses observe confirmed size restoration while the automatic facts refresh may still wait; explicit refetch schedules additionally assert quiescent current-size agreement. No safety invariant is weakened."
     ]
   },
   {

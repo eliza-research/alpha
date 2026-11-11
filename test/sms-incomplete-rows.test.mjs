@@ -62,11 +62,11 @@ test('incomplete conversations show unavailable copy and cannot open, prefill or
   try{
     let model=fixture.model();
     const thread=model.nativeThreads.find(row=>row.id===incompleteThread.id);
-    assert.match(thread.label,/content unavailable/i);assert.equal(thread.snippet,'');
+    assert.match(thread.label,/content unavailable/i);assert.match(thread.snippet,/system messaging app/i);
     assert.equal(thread.addresses,undefined);assert.equal(thread.unread,undefined);
     thread.open();await tick();model=fixture.model();
     assert.equal(model.nativeInThread,false);assert.equal(model.nativeRecipients,'');
-    assert.equal(model.nativeNotice,'Unavailable');
+    assert.match(model.nativeNotice,/Content unavailable.*system messaging app/);
     assert.equal(fixture.calls.some(([method])=>method==='listMessages'),false);
     assert.deepEqual(effects(fixture.calls),[]);
     model.nativeOnRecipients({target:{value:'+15555550199'}});
@@ -82,7 +82,7 @@ test('an incomplete message renders an honest placeholder without invented metad
     const model=fixture.model(),row=model.nativeRows[0];
     assert.equal(model.nativeInThread,true);assert.equal(model.nativeRecipients,'+15555550100');
     assert.equal(row.id,incompleteMessage.id);assert.equal(row.address,'Content unavailable');
-    assert.equal(row.body,'','no content is invented');assert.equal(row.direction,'');assert.ok(row.when);
+    assert.equal(row.body,'');assert.equal(row.direction,'');assert.ok(row.when);
     for(const field of ['addresses','status','subscriptionId','read','attachments'])assert.equal(row[field],undefined,field+' is unknown');
     assert.deepEqual(effects(fixture.calls),[],'a content-free row is neither shown content nor a send');
   }finally{await fixture.close();}

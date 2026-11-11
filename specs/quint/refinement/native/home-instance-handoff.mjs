@@ -10,7 +10,7 @@ export function checkHomeInstanceHandoff({traces = 60, maxSteps = 30} = {}) {
   try {
     return replayJava({
       harness: 'HomeInstanceHandoffReplay.java',
-      sources: [app + 'MainActivity.java', app + 'RendererRecoveryBudget.java', `${directory}/MainActivityPorts.java`, ...fixture.paths],
+      sources: [app + 'MainActivity.java', app + 'RendererRecoveryBudget.java', app + 'NavigationOpenRequest.java', `${directory}/MainActivityPorts.java`, ...fixture.paths],
       traces: generated,
       required: ['externalStart', 'frontStartArrives', 'liveResumes', 'relaunch', 'destroyLive'],
       reached: {

@@ -11,7 +11,7 @@ const SCENARIOS = ['recentCallsTest', 'refreshDuringDialTest', 'leaveDuringDialT
   'dialRefusedWhileReadingTest', 'dialRefusedDuringHandoffTest', 'accessNeededTest', 'supersededReadTest', 'typedNumberClearsNoticeTest'];
 const WITNESSES = ['ReadDuringHandoffWitness', 'AccessNeededWitness', 'DialNoticeWitness', 'RowsKeptWhileReadingWitness', 'StaleHandoffBesideLaterDialWitness'];
 const OPENED = 'Your phone app is open with the number.';
-const NOTICES = {'': 'none', 'Enter a valid phone number.': 'invalid', [OPENED]: 'handed-off', 'Couldn\'t open the phone app.': 'failed'};
+const NOTICES = {'': 'none', 'Invalid number': 'invalid', [OPENED]: 'handed-off', 'Couldn’t open': 'failed'};
 const status = callLog => ({version: 2, voiceCapable: true, smsCapable: true,
   permissions: {contacts: 'granted', phoneState: 'denied', sms: 'denied', sendSms: 'denied', ...(callLog ? {callLog} : {})},
   sendMode: 'handoff', roles: {dialer: {available: true, held: false, eligible: true}, sms: {available: true, held: false, eligible: true}},
@@ -33,7 +33,11 @@ function create() {
   const reads = [], dials = [];
   let handoffs = 0;
   const hold = list => () => new Promise((resolve, reject) => list.push({resolve, reject}));
-  const plugin = {status: hold(reads), listRecentCalls: async () => ({calls: [call]}), dial: options => { handoffs++; assert.match(options.number, /^\+\d+$/); return hold(dials)(); }};
+  const plugin = {status: hold(reads), listRecentCalls: async () => ({calls: [call]}),
+    // PhoneSession is the legacy dialer-handoff branch. Direct Telecom and uncertain replies
+    // are covered by PhoneCalls; role refusal here reaches the adapter's actual fallback.
+    placeCall: async () => {throw Object.assign(Error('This host does not hold the dialer role'), {code: 'role-required'});},
+    dial: options => { handoffs++; assert.match(options.number, /^\+\d+$/); return hold(dials)(); }};
   const views = {phone: {render: () => ({nativePrototype: true})}};
   class Shell { view = 'home'; S() { return {view: this.view}; } setState() {} }
   installPhoneAdapter(Shell, views, createAospTelephony(plugin, true));

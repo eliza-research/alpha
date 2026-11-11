@@ -9,11 +9,11 @@ module MmsCompose {
     picking: bool, chooser: bool, chooserLifecycle: int, chooserDraft: int,
     pictures: int,
     // The MMS operation ID the draft holds (0: none) and the IDs minted so far.
-    operationId: int, minted: int,
+    operationId: int, minted: int, lastSent: int, draftReady: bool, started: bool, sendWasCurrent: bool,
     // The native call in flight and the answer native has resolved but the renderer has not received.
     call: int, callLifecycle: int, callDraft: int, reply: str,
     journal: int -> str, dispatches: int -> int,
-    shown: str, shownFrom: str, shownLifecycle: int, sendAccess: bool, edits: int
+    shown: str, shownFrom: str, shownLifecycle: int, sendAccess: bool, edits: int, retainedShown: str, retainedFrom: str
   }
   var s: State
   pure val IDS = Set(1, 2, 3)
@@ -21,21 +21,28 @@ module MmsCompose {
   action init = s' = {
     viewOpen: false, hidden: false, active: false, lifecycle: 0, draftRevision: 0, busy: false,
     picking: false, chooser: false, chooserLifecycle: 0, chooserDraft: 0, pictures: 0,
-    operationId: 0, minted: 0, call: 0, callLifecycle: 0, callDraft: 0, reply: "none",
+    operationId: 0, minted: 0, lastSent: 0, draftReady: false, started: false, sendWasCurrent: true, call: 0, callLifecycle: 0, callDraft: 0, reply: "none",
     journal: IDS.mapBy(_ => "none"), dispatches: IDS.mapBy(_ => 0),
-    shown: "none", shownFrom: "none", shownLifecycle: 0, sendAccess: true, edits: 0
+    shown: "none", shownFrom: "none", shownLifecycle: 0, sendAccess: true, edits: 0, retainedShown: "none", retainedFrom: "none"
   }
   /// Messages is in front, or hidden only behind the picture chooser it opened.
   pure def availableIn(v: State): bool = v.viewOpen and (not(v.hidden) or v.picking)
-  /// The adapter synchronises with the shell and the page: a visit that ends discards the draft,
-  /// its pictures, its ID and its notice.
+  /// A retired visit loses review/send/publication authority. Its unfinished owner draft and
+  /// uncertain ID remain private in memory; re-entry re-reads its journal without sending.
   def synced(target: State): State =
     if (availableIn(target) == s.active) target
-    else if (availableIn(target)) { ...target, active: true, lifecycle: s.lifecycle + 1 }
+    else if (availableIn(target)) {
+      val id = if (s.operationId != 0) s.operationId else s.lastSent
+      val readback = id != 0 and s.journal.get(id) != "none"
+      { ...target, active: true, lifecycle: s.lifecycle + 1,
+        shown: if (readback) s.journal.get(id) else s.retainedShown,
+        shownFrom: if (readback) "read-back" else if (s.retainedShown != "none") "retained" else "none", shownLifecycle: s.lifecycle + 1 }
+    }
     else { ...target, active: false, lifecycle: s.lifecycle + 1, draftRevision: s.draftRevision + 1, busy: false,
-      pictures: 0, operationId: 0, shown: "none", shownFrom: "none" }
+      retainedShown: s.shown, retainedFrom: s.shownFrom, shown: "none", shownFrom: "none" }
   pure def owner(v: State): bool = v.active and not(v.hidden) and not(v.busy)
-  action openView = all { not(s.viewOpen), s.lifecycle < 6, s' = synced({ ...s, viewOpen: true }) }
+  action openView = all { not(s.viewOpen), s.lifecycle < 6,
+    s' = synced({ ...s, viewOpen: true, started: true, draftReady: s.draftReady or not(s.started) }) }
   action closeView = all { s.viewOpen, s.lifecycle < 6, s.draftRevision < 8, s' = synced({ ...s, viewOpen: false }) }
   action hide = all { not(s.hidden), s.lifecycle < 6, s.draftRevision < 8, s' = synced({ ...s, hidden: true }) }
   /// The page shows again: the chooser no longer holds the visit.
@@ -72,19 +79,19 @@ module MmsCompose {
   action edit(removePicture: bool): bool = all {
     owner(s), s.draftRevision < 8, s.edits < 3, removePicture implies s.pictures > 0,
     s' = { ...s, draftRevision: s.draftRevision + 1, operationId: 0, shown: "none", shownFrom: "none",
-      pictures: if (removePicture) s.pictures - 1 else s.pictures, edits: s.edits + 1 }
+      pictures: if (removePicture) s.pictures - 1 else s.pictures, edits: s.edits + 1, draftReady: s.draftReady or not(removePicture) }
   }
   action clearDraft = all {
     owner(s), s.draftRevision < 8,
-    s' = { ...s, draftRevision: s.draftRevision + 1, operationId: 0, pictures: 0, shown: "none", shownFrom: "none" }
+    s' = { ...s, draftRevision: s.draftRevision + 1, operationId: 0, pictures: 0, shown: "none", shownFrom: "none", lastSent: 0, draftReady: true }
   }
   action accessChanged = s' = { ...s, sendAccess: not(s.sendAccess) }
   /// Send MMS mints an ID only when the draft holds none. One native review is open at a time.
   action send = all {
-    owner(s), s.call == 0, s.operationId != 0 or s.minted < 3,
+    owner(s), s.draftReady or s.pictures > 0, s.call == 0, s.operationId != 0 or s.minted < 3,
     val id = if (s.operationId != 0) s.operationId else s.minted + 1
     s' = { ...s, busy: true, operationId: id, minted: if (s.operationId != 0) s.minted else s.minted + 1,
-      call: id, callLifecycle: s.lifecycle, callDraft: s.draftRevision, reply: "none" }
+      call: id, callLifecycle: s.lifecycle, callDraft: s.draftRevision, reply: "none", sendWasCurrent: owner(s) }
   }
   /// Native answers a repeated ID with its existing record; a new one is refused without send
   /// access, declined in Android's review, or dispatched once.
@@ -103,12 +110,15 @@ module MmsCompose {
     s.call != 0, s.reply != "none", s.draftRevision < 8,
     val current = s.active and s.callLifecycle == s.lifecycle and s.callDraft == s.draftRevision
     val closed = current and s.reply.in(CLOSED)
+    val accepted = current and s.reply.in(Set("submitted", "sent"))
     s' = { ...s, call: 0, reply: "none",
       busy: if (s.callLifecycle == s.lifecycle) false else s.busy,
       shown: if (current) s.reply else s.shown, shownFrom: if (current) "send" else s.shownFrom,
       shownLifecycle: if (current) s.lifecycle else s.shownLifecycle,
-      draftRevision: if (closed) s.draftRevision + 1 else s.draftRevision,
-      operationId: if (closed) 0 else s.operationId }
+      draftRevision: if (closed or accepted) s.draftRevision + 1 else s.draftRevision,
+      operationId: if (closed or accepted) 0 else s.operationId,
+      lastSent: if (accepted) s.call else s.lastSent, draftReady: s.draftReady and not(accepted),
+      pictures: if (accepted) 0 else s.pictures }
   }
   /// The call rejects: the outcome is unknown, so the ID stays with the draft.
   action callRejected = all {
@@ -126,8 +136,11 @@ module MmsCompose {
   }
   /// A native MMS update re-reads the record for the ID the draft holds; it only replaces the notice.
   action reconcile = all {
-    s.active, s.operationId != 0, s.journal.get(s.operationId) != "none",
-    s' = { ...s, shown: s.journal.get(s.operationId), shownFrom: "read-back", shownLifecycle: s.lifecycle }
+    s.active, not(s.hidden),
+    val id = if (s.operationId != 0) s.operationId else s.lastSent
+    all { id != 0, s.journal.get(id) != "none",
+      s' = { ...s, shown: s.journal.get(id), shownFrom: "read-back", shownLifecycle: s.lifecycle }
+    }
   }
   action step = {
     nondet id = IDS.oneOf()
@@ -148,16 +161,22 @@ module MmsCompose {
   /// Once a send has answered that nothing was dispatched, the idle draft holds no ID.
   val ClosedAnswerReleasesId = (s.shownFrom == "send" and not(s.busy) and s.shown.in(CLOSED)) implies s.operationId == 0
   val HeldIdWasMinted = s.operationId <= s.minted and s.call <= s.minted
-  val InactiveHoldsNothing = not(s.active) implies s.operationId == 0 and not(s.busy) and s.shown == "none" and s.pictures == 0
+  val InactiveHasNoAuthority = not(s.active) implies not(s.busy) and s.shown == "none" and
+    (s.call == 0 or s.callLifecycle != s.lifecycle)
+  val EmptyDraftHasNoOperation = not(s.draftReady) and s.pictures == 0 implies s.operationId == 0
+  val BusyNeedsForegroundDraft = s.busy implies s.active and (s.draftReady or s.pictures > 0)
+  val CallHadForegroundAdmission = s.call != 0 implies s.sendWasCurrent
+  val LastReceiptHasDispatchEvidence = s.lastSent != 0 implies s.dispatches.get(s.lastSent) == 1
   val NoticeIsCurrentVisit = s.shown != "none" implies s.active and s.shownLifecycle == s.lifecycle
   val BusyHasCall = s.busy implies s.call != 0 and s.callLifecycle == s.lifecycle
-  val TypeOK = s.operationId.in(0.to(3)) and s.minted.in(0.to(3)) and s.call.in(0.to(3)) and s.lifecycle.in(0.to(6))
+  val TypeOK = s.operationId.in(0.to(3)) and s.lastSent.in(0.to(3)) and s.minted.in(0.to(3)) and s.call.in(0.to(3)) and s.lifecycle.in(0.to(6))
     and s.draftRevision.in(0.to(9)) and s.edits.in(0.to(3))
     and s.shown.in(Set("none", "limit", "picture-error", "cancelled", "denied", "submitted", "sent", "failed", "unknown", "outcome-unknown"))
-    and s.shownFrom.in(Set("none", "draft", "send", "read-back"))
+    and s.shownFrom.in(Set("none", "draft", "send", "read-back", "retained"))
   val safety = TypeOK and ActiveMatchesAvailability and HiddenVisitOnlyWhilePicking and PicturesWithinLimit and
     AtMostOneDispatchPerOperation and DispatchJournaled and ClosedAnswerReleasesId and HeldIdWasMinted and
-    InactiveHoldsNothing and NoticeIsCurrentVisit and BusyHasCall
+    InactiveHasNoAuthority and EmptyDraftHasNoOperation and BusyNeedsForegroundDraft and CallHadForegroundAdmission and
+    LastReceiptHasDispatchEvidence and NoticeIsCurrentVisit and BusyHasCall
 
   val VisitKeptBehindChooserWitness = s.active and s.hidden and s.chooser
   val PicturesAddedWhileHiddenWitness = s.hidden and s.active and s.pictures > 0 and not(s.chooser)
@@ -171,10 +190,11 @@ module MmsCompose {
     .expect(VisitKeptBehindChooserWitness and s.lifecycle == 1 and safety)
     .then(chooserAnswers(3, true)).expect(PicturesAddedWhileHiddenWitness and s.pictures == 3 and s.picking and safety)
     .then(show).expect(s.active and not(s.picking) and s.pictures == 3 and s.lifecycle == 1 and safety)
-  /// Hiding without a chooser ends the visit and discards the draft.
+  /// Hiding without a chooser retires authority while retaining the unfinished private draft.
   run hideWithoutChooserEndsVisitTest = init.then(openView).then(attach).then(chooserAnswers(1, true))
     .expect(s.pictures == 1 and not(s.picking)).then(hide)
-    .expect(not(s.active) and s.pictures == 0 and safety).then(show).expect(s.active and s.lifecycle == 3 and safety)
+    .expect(not(s.active) and s.pictures == 1 and not(s.busy) and s.dispatches.get(1) == 0 and safety)
+    .then(show).expect(s.active and s.pictures == 1 and s.lifecycle == 3 and safety)
   /// A declined review, then access refused, then a confirmed send: each retry of the unedited
   /// MMS gets a new ID, and only the confirmed one is dispatched.
   run retryAfterCancelledAndDeniedTest = init.then(openView).then(send).then(nativeDecide(false)).then(deliver)
@@ -182,7 +202,7 @@ module MmsCompose {
     .then(accessChanged).then(send).then(nativeDecide(true)).then(deliver)
     .expect(s.shown == "denied" and s.operationId == 0 and safety)
     .then(accessChanged).then(send).then(nativeDecide(true)).then(deliver)
-    .expect(s.shown == "submitted" and s.operationId == 3 and s.dispatches.get(3) == 1
+    .expect(s.shown == "submitted" and s.operationId == 0 and s.lastSent == 3 and not(s.draftReady) and s.dispatches.get(3) == 1
       and s.dispatches.get(1) == 0 and s.dispatches.get(2) == 0 and s.edits == 0 and safety)
   /// After an unknown outcome the same ID is sent again and native answers from its record.
   run repeatedIdNeverDispatchesTwiceTest = init.then(openView).then(send).then(nativeDecide(true)).then(callRejected)
@@ -203,5 +223,12 @@ module MmsCompose {
     .then(attach).then(chooserAnswers(1, false)).expect(s.shown == "picture-error" and s.pictures == 3 and safety)
   run carrierAnswerReadBackTest = init.then(openView).then(send).then(nativeDecide(true)).then(deliver)
     .then(journalAdvance(1, "sent")).then(reconcile)
-    .expect(s.shown == "sent" and s.shownFrom == "read-back" and s.operationId == 1 and safety)
+    .expect(s.shown == "sent" and s.shownFrom == "read-back" and s.operationId == 0 and s.lastSent == 1 and safety)
+  run acceptedDraftRetiredUntilOwnerEditsTest = init.then(openView).then(send).then(nativeDecide(true)).then(deliver)
+    .expect(not(s.draftReady) and s.pictures == 0 and s.operationId == 0 and s.lastSent == 1 and safety)
+    .then(edit(false)).then(send).expect(s.operationId == 2 and s.dispatches.get(1) == 1 and s.dispatches.get(2) == 0 and safety)
+  run retiredUncertainDraftResumesWithoutDispatchTest = init.then(openView).then(attach).then(chooserAnswers(1, true))
+    .then(send).then(nativeDecide(true)).then(callRejected).then(hide)
+    .expect(s.pictures == 1 and s.operationId == 1 and not(s.busy) and safety)
+    .then(show).expect(s.pictures == 1 and s.operationId == 1 and s.call == 0 and s.minted == 1 and s.dispatches.get(1) == 1 and safety)
 }

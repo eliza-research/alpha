@@ -314,6 +314,9 @@ public class AlphaConnectionPlugin {
     throw new AssertionError("Unused identity");
   }
 }`,
+    // This lifecycle replay runs on an ordinary Android host, without the Alpha image capability.
+    'ai/alphacompute/alphaphone/AlphaImageCapability.java': `package ai.alphacompute.alphaphone;
+final class AlphaImageCapability { static boolean verified(android.content.Context context) { return false; } }`,
     'ai/alphacompute/alphaphone/WorkflowWorkerAssets.java': `package ai.alphacompute.alphaphone;
 public class WorkflowWorkerAssets {
   public interface Asset {

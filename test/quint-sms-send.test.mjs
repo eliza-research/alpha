@@ -4,11 +4,13 @@
 // stays in flight until the trace delivers or rejects it. No SIM, radio or Android is involved.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {modelTraces, replayTraces, repositoryRoot, settle, sourceModule} from '../specs/quint/refinement/services/identity-comms-traces.mjs';
+import {modelTraces, replayTraces, repositoryRoot, settle} from '../specs/quint/refinement/services/identity-comms-traces.mjs';
+import {observedSmsAdapter} from './fixtures/observed-sms-adapter.mjs';
 
 const MODEL = {path: 'specs/quint/services/SmsSend.qnt', module: 'SmsSend'};
 const SCENARIOS = ['retryAfterCancelledAndDeniedTest', 'repeatedIdNeverDispatchesTwiceTest', 'staleAnswerDroppedTest', 'editResetsOperationTest',
-  'deliveryEvidenceTest', 'readBackKeepsIdUntilSendAnswersTest', 'refusedBeforeJournalTest'];
+  'deliveryEvidenceTest', 'readBackKeepsIdUntilSendAnswersTest', 'refusedBeforeJournalTest',
+  'acceptedDraftRetiredUntilOwnerEditsTest', 'retiredUncertainDraftResumesWithoutDispatchTest', 'retainedRefusalIsNotNewAttemptAuthorityTest'];
 const WITNESSES = ['RetryAfterClosedRecordWitness', 'RepeatedIdAnsweredFromJournalWitness', 'StaleAnswerDroppedWitness', 'SentEvidenceWitness', 'RefusedBeforeJournalWitness'];
 const contracts = `${repositoryRoot}.eliza/client-features/packages/contracts/src`;
 const STUBS = {
@@ -20,8 +22,8 @@ const STUBS = {
     export const registerTelephonyProfile=()=>{};
     export const createAospTelephony=()=>new Proxy({},{get:(_,name)=>globalThis.__smsClient[name]});`,
 };
-const adapter = await sourceModule(['apps/app/src/prototype/sms-adapter.ts', 'apps/app/src/runtime/image-sms.ts'], STUBS);
-const BUSY = 'Another text is being reviewed.', UNKNOWN = 'This text may have sent. Check your messaging app before sending again.';
+const adapter = await observedSmsAdapter(STUBS);
+const BUSY = 'Another text is being reviewed.', UNKNOWN = 'May have sent';
 const shownOf = notice => {
   if (notice === '') return 'none';
   if (notice === BUSY) return 'refused';
@@ -45,6 +47,8 @@ function create() {
     markThreadRead: async () => {}, requestAccess: async () => status,
     observeMessages: async (_changed, onSendUpdated) => { sendUpdated = onSendUpdated; return async () => { sendUpdated = () => {}; }; },
     sendSms(review, operationId) {
+      assert.equal(document.hidden, false, 'a native SMS request starts only in the foreground');
+      assert.equal(globalThis.__smsDraftProbe().active, true, 'a native SMS request names a current visit');
       assert.equal(call, null, 'one native review at a time');
       assert.deepEqual(review, {recipients: ['+15555550100'], body: review.body, subscriptionId: 1});
       ordinal(operationId);
@@ -67,8 +71,8 @@ function create() {
   return {
     async open() {
       shell.view = 'messages'; shell.componentDidUpdate(); await settle();
-      // A new visit starts with an empty draft; the owner writes one before any Send.
-      type('nativeOnRecipients', '+1 555 555 0100'); type('nativeOnBody', 'hello');
+      // The owner writes only an empty draft; an unfinished or uncertain draft survives re-entry.
+      if (!page().nativeBody) {type('nativeOnRecipients', '+1 555 555 0100'); type('nativeOnBody', 'hello');}
     },
     async leave() { shell.view = 'home'; shell.componentDidUpdate(); await settle(); },
     async edit() { type('nativeOnBody', `hello ${++edits}`); await settle(); },
@@ -90,18 +94,22 @@ function create() {
     journalAdvance(id, next) { journal.set(ids[id - 1], next); },
     async reconcile(_context) { sendUpdated(ids[_context.before.operationId - 1]); await settle(); },
     async observe() {
-      // The ID the draft holds is the one a read-back asks native about; the probe answers "no record".
+      // A refresh can also reconcile the last sent receipt. It does not grant that receipt's ID
+      // to the edited draft; read both actual closure identities and validate every native read.
       probing = [];
       page().nativeRefresh(); await settle();
       const asked = probing; probing = null;
-      assert.ok(asked.length <= 1);
+      const held = globalThis.__smsDraftProbe(), allowed = new Set([held.operationId, held.sentId].filter(Boolean));
+      assert.ok(asked.length <= allowed.size);
+      for (const id of asked) assert.ok(allowed.has(id), 'native read names the held draft or last sent receipt');
       const model = page();
       const byId = (map, missing) => Object.fromEntries(IDS.map((key, index) => [key, map.get(ids[index]) ?? missing]));
-      return {busy: model.nativeBusy, operationId: asked.length ? ordinal(asked[0]) : 0, minted: ids.length,
+      return {busy: model.nativeBusy, operationId: held.operationId ? ordinal(held.operationId) : 0, minted: ids.length,
         call: call ? ordinal(call.operationId) : 0, reply: call ? call.reply : 'none',
-        journal: byId(journal, 'none'), dispatches: byId(dispatches, 0), shown: shownOf(model.nativeNotice)};
+        journal: byId(journal, 'none'), dispatches: byId(dispatches, 0), shown: held.active ? shownOf(model.nativeNotice) : 'none'};
     },
-    close() { shell.componentWillUnmount(); delete globalThis.document; delete globalThis.__smsClient; },
+    effects: () => ({ids: [...ids], call: call?.operationId ?? null, journal: [...journal], dispatches: [...dispatches]}),
+    close() { shell.componentWillUnmount(); delete globalThis.document; delete globalThis.__smsClient; delete globalThis.__smsDraftProbe; },
   };
 }
 
@@ -113,4 +121,19 @@ test('the Messages adapter follows SmsSend scenarios, witnesses and random walks
   const kept = state => ({...project(state), operationId: state.operationId || (state.shown === 'cancelled' ? 1 : 0)});
   await assert.rejects(replayTraces(traces.filter(trace => trace.name === 'retryAfterCancelledAndDeniedTest'), create, {project: kept}), /retryAfterCancelledAndDeniedTest step/);
   for (const action of ['open', 'leave', 'edit', 'accessChanged', 'send', 'nativeDecide', 'deliver', 'callRejected', 'journalAdvance', 'reconcile']) assert.ok(receipt.actions[action] > 0, action);
+});
+
+test('accepted empty SMS and retired uncertain SMS cannot dispatch; fresh owner text mints a new identity', async () => {
+  for (const retired of [false, true]) {
+    const f = create();
+    try {
+      await f.open();await f.send();f.nativeDecide(true);
+      if (retired) {await f.callRejected(false);await f.leave();}
+      else await f.deliver();
+      const before = f.effects();await f.send();assert.deepEqual(f.effects(), before, 'no new native request or carrier effect');
+      if (retired) {await f.open();assert.deepEqual(f.effects(), before);assert.ok(globalThis.__smsDraftProbe().operationId);}
+      await f.edit();await f.send();
+      assert.equal(f.effects().ids.length, 2);assert.notEqual(f.effects().ids[0], f.effects().ids[1]);
+    } finally {f.close();}
+  }
 });

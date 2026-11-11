@@ -25,7 +25,9 @@ function create() {
   const reads = [], editors = [], order = ['notes', 'contacts'];
   let answer = null;
   const hold = list => () => new Promise((resolve, reject) => list.push({resolve, reject}));
-  globalThis.__contactsPort = {status: hold(reads), requestPermissions: hold(reads), create: hold(editors), edit: hold(editors),
+  // This legacy session models the supported read-only host and Android editor handoff. The
+  // current adapter probes write access first; this host deterministically remains read-only.
+  globalThis.__contactsPort = {status: hold(reads), requestPermissions: async () => ({available: true, readable: true, writable: false}), create: hold(editors), edit: hold(editors),
     list: async options => { assert.ok(answer, 'the list is read only after access is granted'); assert.equal(options.limit, answer.limit); return {contacts: [{id: '1', name: 'Ada'}], more: answer.more}; }};
   globalThis.document = {hidden: false, addEventListener() {}, removeEventListener() {}};
   admitImageContacts(true);
