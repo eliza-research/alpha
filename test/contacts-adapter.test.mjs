@@ -53,11 +53,16 @@ test('an owner edit saves with the version that was shown and closes the editor'
  assert.equal(book.model().ed.open,false);
 });
 test('a contact that changed since it was shown keeps the editor and writes nothing more',async()=>{
- let version='a1'.repeat(32);const book=mountBook({get:()=>detail(version),save:{status:'stale'}});await settle();book.model();await settle();
- book.model().d.edit();await settle();typeInto(book.model().ed.onName,'Ada L');version='b2'.repeat(32);book.model().ed.save();await settle();
- const ed=book.model().ed;assert.equal(ed.open,true,'the editor stays open with what the owner typed');assert.equal(ed.name,'Ada L');assert.match(ed.notice,/changed/);
- assert.equal(book.calls.filter(([m])=>m==='save').length,1,'a conflict is never retried by itself');
- ed.save();await settle();assert.equal(book.calls.filter(([m])=>m==='save').at(-1)[1].version,'b2'.repeat(32),'the next save names the version read after the conflict');
+ let record=detail('a1'.repeat(32));const book=mountBook({get:()=>record,save:{status:'stale'}});await settle();book.model();await settle();
+ book.model().d.edit();await settle();typeInto(book.model().ed.onName,'Ada L');
+ record={...detail('b2'.repeat(32)),emailAddresses:[{address:'updated@example.com',type:'home'}]};
+ book.model().ed.save();await settle();
+ const ed=book.model().ed;assert.equal(ed.open,true,'the editor stays open with what the owner typed');assert.equal(ed.name,'Ada L');assert.match(ed.notice,/changed/);assert.equal(ed.cannotSave,true);
+ ed.save();await settle();assert.equal(book.calls.filter(([m])=>m==='save').length,1,'the stale draft cannot overwrite current fields');
+ ed.cancel();book.model().d.edit();await settle();
+ assert.equal(book.model().ed.emails[0].value,'updated@example.com','reopening shows the current provider fields');
+ typeInto(book.model().ed.onName,'Ada L');book.model().ed.save();await settle();
+ const latest=book.calls.filter(([m])=>m==='save').at(-1)[1];assert.equal(latest.version,'b2'.repeat(32));assert.deepEqual(latest.emailAddresses,record.emailAddresses);
 });
 test('a new contact needs something in it, and an invalid draft never reaches the phone',async()=>{
  const book=mountBook({save:{status:'saved',id:'9',version:'a1'.repeat(32)},get:()=>detail('a1'.repeat(32))});await settle();

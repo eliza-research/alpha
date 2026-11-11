@@ -25,10 +25,13 @@ let transcriber:VoicemailTranscriber|null=null;
 export function setVoicemailTranscriber(next:VoicemailTranscriber|null){transcriber=next;}
 /** The voicemail the owner has open, for the agent's selected-voicemail read; null when none is open. */
 export type OpenVoicemailRead={caller:string|null;date:number;durationSeconds:number;transcriptState:'ready'|'pending'|'unavailable'|'failed';engine:TranscriptEngine|null;transcript:string|null};
-let openReader:(()=>OpenVoicemailRead|null)|null=null,openDeleter:(()=>Promise<'deleted'|'none-selected'|'cancelled'|'failed'>)|null=null;
+type DeleteResult='deleted'|'none-selected'|'cancelled'|'failed';
+let openReader:(()=>OpenVoicemailRead|null)|null=null,openSelection:(()=>string|null)|null=null;
+let openDeleter:((current:()=>void,signal:AbortSignal)=>Promise<DeleteResult>)|null=null;
 export const openVoicemailRead=()=>openReader?.()??null;
+export const openVoicemailSelection=()=>openSelection?.()??null;
 /** Asks the owner to confirm deleting the open voicemail and reports what happened. */
-export const deleteOpenVoicemail=()=>openDeleter?openDeleter():Promise.resolve('none-selected' as const);
+export const deleteOpenVoicemail=(current:()=>void,signal:AbortSignal)=>openDeleter?openDeleter(current,signal):Promise.resolve('none-selected' as const);
 
 const WINDOW_SECONDS=50,RATE=16000;
 const KEYS:[string,string][]=[['1',''],['2','ABC'],['3','DEF'],['4','GHI'],['5','JKL'],['6','MNO'],['7','PQRS'],['8','TUV'],['9','WXYZ'],['*',''],['0','+'],['#','']];
@@ -60,31 +63,32 @@ export function wavWindows(wav:Uint8Array,seconds=WINDOW_SECONDS):Uint8Array[]{
 export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony|null=aospImage?createAospTelephony(registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),true):null){
  if(!client)return;
  const p=Component.prototype,mount=p.componentDidMount,update=p.componentDidUpdate,unmount=p.componentWillUnmount;
- let owner:any,api:Bag|null=null,calls:TelephonyCallLogEntry[]=[],number='',status='',notice='',busy=false,needsAccess=false,noHistory=false,active=false,epoch=0,tab:'recents'|'keypad'|'voicemail'='recents';
+ let owner:any,api:Bag|null=null,calls:TelephonyCallLogEntry[]=[],number='',status='',notice='',busy=false,needsAccess=false,retryRecents=false,active=false,epoch=0,tab:'recents'|'keypad'|'voicemail'='recents';
  let voicemails:Voicemail[]=[],carrier:'ready'|'unconfigured'|'unsupported'|null=null,vm:OpenVoicemail=closedVoicemail(),stopObserving:(()=>Promise<void>)|null=null;
- let audio:HTMLAudioElement|null=null,audioUrl='',wav:Uint8Array|null=null,position=0,work:AbortController|null=null,inCall=false,deleteAnswer:((value:'deleted'|'cancelled'|'failed')=>void)|null=null;
+ let audio:HTMLAudioElement|null=null,audioUrl='',wav:Uint8Array|null=null,position=0,work:AbortController|null=null,inCall=false;
+ let pendingDelete:{current:()=>void;answer:(result:DeleteResult)=>void;detach:()=>void}|null=null,deleting=false;
  const names=new Map<string,string>(),people:{name:string;number:string}[]=[];
  const changed=()=>owner?.setState({phoneNativeRevision:Date.now()});
  const available=()=>!!owner&&owner.S().view==='phone'&&!document.hidden;
  const releaseAudio=()=>{work?.abort();work=null;if(audio){audio.pause();audio.removeAttribute('src');audio=null;}if(audioUrl){URL.revokeObjectURL(audioUrl);audioUrl='';}wav?.fill(0);wav=null;position=0;};
- const closeVoicemail=()=>{releaseAudio();vm=closed(vm);deleteAnswer?.('cancelled');deleteAnswer=null;};
- const clear=()=>{epoch++;calls=[];voicemails=[];carrier=null;number='';notice='';busy=false;needsAccess=false;names.clear();people.length=0;closeVoicemail();void stopObserving?.().catch(()=>{});stopObserving=null;changed();};
+ const cancelDelete=()=>{const pending=pendingDelete;pendingDelete=null;pending?.detach();pending?.answer('cancelled');vm=deleteCancelled(vm);};
+ const closeVoicemail=()=>{cancelDelete();releaseAudio();vm=closed(vm);};
+ const clear=()=>{epoch++;calls=[];voicemails=[];carrier=null;number='';status='';notice='';busy=false;needsAccess=false;retryRecents=false;names.clear();people.length=0;closeVoicemail();void stopObserving?.().catch(()=>{});stopObserving=null;changed();};
  const sync=()=>{const next=available();if(next===active)return;active=next;if(next)void refresh();else clear();};
  async function refresh(request=false){
-  const token=++epoch;if(!available())return;busy=true;changed();
+  const token=++epoch;if(!available())return;busy=true;retryRecents=false;changed();
   try{
    let state=await client!.status();
    if(token!==epoch||!available())return;
    if(state.permissions.contacts==='granted'&&!people.length)void client!.searchContacts('',100).then(cards=>{if(token!==epoch)return;for(const card of cards)for(const value of card.phoneNumbers){const key=numberKey(value);if(!key||!card.displayName)continue;if(!names.has(key))names.set(key,card.displayName);people.push({name:card.displayName,number:value});}changed();}).catch(()=>{});
    void loadVoicemail(token);
-   if(state.permissions.callLog===undefined){calls=[];needsAccess=false;noHistory=true;status='Recent calls aren\'t available.';return;}
-   noHistory=false;
+   if(state.permissions.callLog===undefined){calls=[];needsAccess=false;status='Recent calls aren\'t available.';return;}
    if(state.permissions.callLog!=='granted'&&request){state=await client!.requestAccess('callLog');if(token!==epoch||!available())return;}
    if(state.permissions.callLog!=='granted'){calls=[];needsAccess=true;status='Allow call history to see recent calls.';return;}
    needsAccess=false;const rows=await client!.recentCalls(50);
    if(token!==epoch||!available())return;
    calls=rows;status=rows.length?`${rows.length} recent calls`:'No recent calls.';
-  }catch{if(token===epoch){calls=[];status='Recent calls could not be read. Unlock the phone and refresh.';}}
+  }catch{if(token===epoch){calls=[];retryRecents=true;status='Recent calls could not be read.';}}
   finally{if(token===epoch){busy=false;changed();}}
  }
  /* An unsupported or unconfigured carrier shows no voicemail tab: an unread store is never "no voicemail". */
@@ -110,7 +114,7 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
   finally{if(token===epoch){busy=false;changed();}}
  }
  const ready=()=>active&&available();
- const open=(row:Voicemail)=>{if(vm.id===row.id){closeVoicemail();changed();return;}releaseAudio();vm=opened(vm,row.id,!row.isNew,row.carrierTranscript);void loadAudio(row);changed();};
+ const open=(row:Voicemail)=>{if(vm.id===row.id){closeVoicemail();changed();return;}cancelDelete();releaseAudio();vm=opened(vm,row.id,!row.isNew,row.carrierTranscript);void loadAudio(row);changed();};
  /* The decoded audio serves both playback and transcription; it stays in memory for the open voicemail only. */
  async function loadAudio(row:Voicemail){
   const before=vm;vm=audioRequested(vm,ready());if(vm===before)return;const ticket=vm.ticket,controller=new AbortController();work?.abort();work=controller;changed();
@@ -137,21 +141,40 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
   if(!audio&&typeof Audio!=='undefined'){const element=new Audio(audioUrl),ticket=vm.ticket;audio=element;
    element.ontimeupdate=()=>{if(ticket===vm.ticket){position=element.currentTime;changed();}};
    element.onended=()=>{if(ticket===vm.ticket){vm=ended(vm);position=0;changed();}};}
-  void audio?.play().catch(()=>{vm=paused(vm);changed();});
-  const row=voicemails.find(item=>item.id===vm.id);if(row?.isNew){row.isNew=false;void client!.markVoicemailHeard(row.id).catch(()=>{});}
+  const element=audio,ticket=vm.ticket;
+  if(!element){vm=paused(vm);changed();return;}
+  void element.play().then(()=>{
+   if(element!==audio||ticket!==vm.ticket||vm.playback!=='playing')return;
+   const row=voicemails.find(item=>item.id===vm.id);if(row?.isNew){row.isNew=false;void client!.markVoicemailHeard(row.id).catch(()=>{});changed();}
+  },()=>{if(element===audio&&ticket===vm.ticket){vm=paused(vm);changed();}});
   changed();
  }
  async function confirmDelete(){
-  if(!vm.confirmDelete||!vm.id)return;const id=vm.id,ticket=vm.ticket;busy=true;changed();
+  if(!ready()||!vm.confirmDelete||!vm.id||deleting)return;
+  const pending=pendingDelete;
+  try{pending?.current();}catch{cancelDelete();changed();return;}
+  pendingDelete=null;pending?.detach();
+  const id=vm.id,ticket=vm.ticket;deleting=true;changed();
   let ok=false;try{ok=(await client!.deleteVoicemail(id))==='deleted';}catch{ok=false;}
-  if(ticket===vm.ticket){if(ok){releaseAudio();voicemails=voicemails.filter(row=>row.id!==id);}vm=deleteFinished(vm,ok);if(!ok)notice='The voicemail could not be deleted.';deleteAnswer?.(ok?'deleted':'failed');deleteAnswer=null;}
-  busy=false;changed();
+  if(ok)voicemails=voicemails.filter(row=>row.id!==id);
+  if(ticket===vm.ticket){if(ok)releaseAudio();vm=deleteFinished(vm,ok);if(!ok)notice='The voicemail could not be deleted.';}
+  deleting=false;pending?.answer(ok?'deleted':'failed');changed();
  }
  const who=(row:{number:string;cachedName:string|null})=>row.number?names.get(numberKey(row.number))||row.cachedName||displayNumber(row.number):'Unknown';
- openReader=()=>{const row=voicemails.find(item=>item.id===vm.id);if(!active||!row)return null;const known=row.number?names.get(numberKey(row.number))||row.cachedName:null;
+ openSelection=()=>ready()&&tab==='voicemail'&&vm.id?String(vm.ticket):null;
+ openReader=()=>{const row=voicemails.find(item=>item.id===vm.id);if(!openSelection?.()||!row)return null;const known=row.number?names.get(numberKey(row.number))||row.cachedName:null;
   const state=vm.transcript==='done'?'ready' as const:vm.transcript==='running'||vm.audio==='fetching'?'pending' as const:vm.transcript==='failed'?'failed' as const:'unavailable' as const;
   return {caller:known||null,date:row.date,durationSeconds:row.durationSeconds,transcriptState:state,engine:state==='ready'?vm.engine:null,transcript:state==='ready'?vm.text:null};};
- openDeleter=()=>new Promise(resolve=>{if(!active||!vm.id){resolve('none-selected');return;}deleteAnswer?.('cancelled');deleteAnswer=resolve;vm=deleteAsked(vm,ready());if(!vm.confirmDelete){deleteAnswer=null;resolve('failed');}changed();});
+ openDeleter=(current,signal)=>new Promise(resolve=>{
+  if(signal.aborted){resolve('cancelled');return;}
+  if(!openSelection?.()){resolve('none-selected');return;}
+  if(deleting){resolve('failed');return;}
+  cancelDelete();
+  const abort=()=>{cancelDelete();changed();};
+  pendingDelete={current,answer:resolve,detach:()=>signal.removeEventListener('abort',abort)};
+  signal.addEventListener('abort',abort,{once:true});
+  vm=deleteAsked(vm,true);changed();
+ });
  views.phone.reply=()=>null;
  views.phone.suggestions=()=>[];
  views.phone.status=()=>undefined;
@@ -176,7 +199,7 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
   nativeContacts:()=>isMvpView('contacts')?viewApi.open?.('contacts'):viewApi.toast?.('Contacts isn\'t available on this phone.'),
   tabs,isRecents:tab==='recents',isKeypad:tab==='keypad',isVoicemail:tab==='voicemail'&&hasVoicemail,
   recents:calls.map(entry=>{const row=callRow(entry,names,now);return {...row,color:row.missed?'var(--alpha-call-red)':'var(--fg)',d:ARROW[row.kind],noCall:!row.canCall||busy,call:()=>{if(entry.number)void call(entry.number);}};}),
-  noRecents:tab==='recents'&&!needsAccess&&!noHistory&&!busy&&calls.length===0,
+  showRecentStatus:!!status&&!busy&&!calls.length,retryRecents,
   shown:displayNumber(number),hasNumber:!!number,cannotCall:busy||!number,
   keys:KEYS.map(([key,letters])=>({key,letters,press:()=>{if(busy||number.length>=40)return;number+=key;notice='';changed();},plus:key==='0'?()=>{if(busy||number)return;number='+';changed();}:undefined})),
   erase:()=>{if(busy)return;number=number.slice(0,-1);notice='';changed();},
@@ -190,7 +213,7 @@ export function installPhoneAdapter(Component:any,views:Bag,client:AospTelephony
    seek:(event:Event)=>{const value=Number((event.target as HTMLInputElement).value);if(audio&&Number.isFinite(value)){audio.currentTime=value;position=value;changed();}},position:Math.floor(position),duration:length,
    hasText:vm.transcript==='done',text:vm.text,transcribing:vm.transcript==='running',
    canCall:!!openRow?.number,call:()=>{if(openRow?.number)void call(openRow.number);},canMessage:!!openRow?.number&&isMvpView('messages'),message:()=>{if(openRow?.number)viewApi.open?.('messages',{prefill:openRow.number});},
-   confirming:vm.confirmDelete,notConfirming:!vm.confirmDelete,askDelete:()=>{vm=deleteAsked(vm,ready());changed();},cancelDelete:()=>{vm=deleteCancelled(vm);deleteAnswer?.('cancelled');deleteAnswer=null;changed();},confirmDelete:()=>void confirmDelete()}};};
+   confirming:vm.confirmDelete,notConfirming:!vm.confirmDelete,askDelete:()=>{if(!deleting){vm=deleteAsked(vm,ready());changed();}},cancelDelete:()=>{if(!deleting){cancelDelete();changed();}},confirmDelete:()=>void confirmDelete()}};};
  p.componentDidMount=function(){mount?.call(this);owner=this;this.phoneReturn=watchReturnToApp(()=>{inCall=false;if(active)void refresh();});this.phoneHide=()=>{if(document.hidden){vm=readinessLost(vm);audio?.pause();}sync();};document.addEventListener('visibilitychange',this.phoneHide);sync();};
  p.componentDidUpdate=function(...args:any[]){update?.apply(this,args);sync();};
  p.componentWillUnmount=function(){this.phoneReturn?.();document.removeEventListener('visibilitychange',this.phoneHide);if(owner===this){owner=null;active=false;clear();}unmount?.call(this);};

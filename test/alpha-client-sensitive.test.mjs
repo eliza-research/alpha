@@ -28,3 +28,22 @@ test('a sensitive view refuses send with code sensitive and issues no request',a
  await client.send('What can you help with?');
  assert.deepEqual(agent.sent,['What can you help with?']);
 });
+
+test('changing the local thread selection retires a proposal without sending the thread ID',async()=>{
+ const client=new AlphaClient(),agent=transport(),observed=[];
+ agent.value.send=async({context})=>{
+  observed.push(context);
+  return {text:'Share this conversation?',proposals:[{id:'read',title:'Share messages',description:'Share the open thread',expiresAt:Date.now()+60000,contextRevision:context.revision}]};
+ };
+ client.attachVerifiedTransport(agent.value);
+ const view={view:'messages',selectedObject:{kind:'sms-subscription',id:'1'}};
+ client.setViewContext(view,'private-thread-a');
+ await client.send('Share the open conversation');
+ client.setViewContext(view,'private-thread-a');
+ assert.equal(client.getState().context.revision,observed[0].revision);
+ client.setViewContext(view,'private-thread-b');
+ assert.deepEqual(client.getState().context,{...observed[0],revision:observed[0].revision+1});
+ assert.doesNotMatch(JSON.stringify(observed),/private-thread/);
+ await assert.rejects(client.approve('read'),{code:'proposal-unavailable'});
+ assert.deepEqual(agent.sent,[]);
+});

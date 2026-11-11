@@ -92,6 +92,7 @@ test('a draft Alpha was asked for lands in the open conversation and never repla
   await page.getByRole('button', {name: /^Ada Okafor/}).click();
   await expect(page.locator('[data-alpha-messages-title]')).toHaveText('Ada Okafor');
   expect(await place('Wrong person', '+15550100102'), 'a draft for another number does not land here').toBe('none-selected');
+  expect(await place('Same ten digits abroad', '+445550100101')).toBe('none-selected');
   expect(await place('Ten minutes away', '+1 (555) 010-0101')).toBe('drafted');
   await expect(page.locator('[data-alpha-messages-body]')).toHaveValue('Ten minutes away');
   await expect(page.locator('[data-alpha-messages-suggested]')).toBeVisible();
@@ -102,6 +103,67 @@ test('a draft Alpha was asked for lands in the open conversation and never repla
   await expect(page.locator('[data-alpha-messages-body]')).toHaveValue('My own words');
   await expect(page.locator('[data-alpha-messages-suggested]')).toHaveCount(0);
   expect(await inputs(page, 'sendSms')).toEqual([]);
+});
+
+test('suggested replies explain model-provider use before enabling the setting', async ({page}) => {
+  await setupTelephony(page);
+  await open(page, 'Messages');
+  await page.getByRole('button', {name: /^Ada Okafor/}).click();
+  const suggestion = page.locator('[data-alpha-messages-suggest]');
+  const review = page.getByRole('group', {name: 'Turn on suggested replies'});
+  const preference = () => page.evaluate(() => localStorage.getItem('alpha.messages.suggest-replies.v1'));
+  await suggestion.click();
+  await expect(review).toContainText('connected model provider');
+  expect(await preference()).toBeNull();
+  await review.getByRole('button', {name: 'Cancel'}).click();
+  await expect(review).toHaveCount(0);
+  expect(await preference()).toBeNull();
+  await suggestion.click();
+  await review.getByRole('button', {name: 'Turn on'}).click();
+  await expect(suggestion).toHaveAttribute('aria-pressed', 'true');
+  expect(await preference()).toBe('1');
+  await suggestion.click();
+  await expect(suggestion).toHaveAttribute('aria-pressed', 'false');
+  expect(await preference()).toBeNull();
+});
+
+test('the open conversation owns its send target after a new-message draft', async ({page}) => {
+  await setupTelephony(page);
+  await open(page, 'Messages');
+  await page.locator('[data-alpha-messages-new]').click();
+  await page.locator('[data-alpha-messages-recipients]').fill('+15550100102');
+  await page.locator('[data-alpha-messages-body]').fill('Draft for Bao');
+  await page.locator('[data-alpha-messages]').getByRole('button', {name: 'Back', exact: true}).click();
+  await page.getByRole('button', {name: /^Ada Okafor/}).click();
+  await expect(page.locator('[data-alpha-messages-title]')).toHaveText('Ada Okafor');
+  await expect(page.locator('[data-alpha-messages-body]')).toHaveValue('');
+  await page.locator('[data-alpha-messages-body]').fill('Draft for Ada');
+  await page.locator('[data-alpha-messages-send]').click();
+  await expect.poll(async () => (await inputs(page, 'sendSms')).map(input => [input.recipients, input.body])).toEqual([[['+15550100101'], 'Draft for Ada']]);
+});
+
+test('one unread thread opened from Home can send only to that conversation', async ({page}) => {
+  await setupTelephony(page, {singleUnread: true});
+  await page.getByRole('button', {name: 'Open Messages, 1 unread'}).click();
+  await expect(page.locator('[data-alpha-messages-title]')).toHaveText('Ada Okafor');
+  await page.locator('[data-alpha-messages-body]').fill('Draft for Ada');
+  await page.locator('[data-alpha-messages-send]').click();
+  await expect.poll(async () => (await inputs(page, 'sendSms')).map(input => input.recipients)).toEqual([['+15550100101']]);
+});
+
+test('Messages can open a system review without SMS permissions and request each missing permission', async ({page}) => {
+  await setupTelephony(page, {granted: false});
+  await open(page, 'Messages');
+  await expect(page.getByRole('button', {name: 'Allow SMS read access'})).toBeVisible();
+  await page.locator('[data-alpha-messages-new]').click();
+  await page.locator('[data-alpha-messages-recipients]').fill('+15550100102');
+  await page.locator('[data-alpha-messages-body]').fill('A draft for the messaging app');
+  await page.getByRole('button', {name: 'Review in messaging app'}).click();
+  await expect.poll(() => inputs(page, 'composeSms')).toEqual([{recipients: ['+15550100102'], body: 'A draft for the messaging app'}]);
+  await page.getByRole('button', {name: 'Allow SMS send access'}).click();
+  await page.getByRole('button', {name: 'Allow SIM access'}).click();
+  await expect.poll(() => inputs(page, 'requestAccess')).toEqual([{access: 'sendSms'}, {access: 'phoneState'}]);
+  await expect(page.locator('[data-alpha-messages-send]')).toBeEnabled();
 });
 
 test('a new message offers matching contacts and addresses the one tapped', async ({page}) => {

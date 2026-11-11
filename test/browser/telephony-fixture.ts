@@ -10,6 +10,7 @@ export type TelephonyFixture = {
   sendMode?: 'direct' | 'handoff';
   voicemail?: 'ready' | 'unconfigured' | 'unsupported';
   empty?: boolean;
+  singleUnread?: boolean;
 };
 
 export async function setupTelephony(page: Page, options: TelephonyFixture = {}) {
@@ -20,7 +21,8 @@ export async function setupTelephony(page: Page, options: TelephonyFixture = {})
     w.telephonyCalls = [];
     w.telephonyInputs = [];
     const granted = options.granted !== false, direct = options.sendMode !== 'handoff';
-    w.access = {callLog: granted, sms: granted, contacts: granted};
+    w.access = {callLog: granted, sms: granted, contacts: granted, phoneState: granted, sendSms: granted && direct};
+    if (options.singleUnread) w.readThreads = ['thread:103'];
     const now = Date.now(), minute = 60_000, hour = 60 * minute, day = 24 * hour;
     const people = options.empty ? [] : [
       {id: '11', name: 'Ada Okafor', phones: ['+15550100101'], emails: ['ada@example.invalid']},
@@ -75,11 +77,11 @@ export async function setupTelephony(page: Page, options: TelephonyFixture = {})
     }).sort((a, b) => b.date - a.date);
     const status = () => ({
       version: 2, voiceCapable: true, smsCapable: true,
-      permissions: {contacts: w.access.contacts ? 'granted' : 'prompt', phoneState: 'granted', sms: w.access.sms ? 'granted' : 'prompt', sendSms: direct && w.access.sms ? 'granted' : 'prompt', callLog: w.access.callLog ? 'granted' : 'prompt'},
-      sendMode: direct && w.access.sms ? 'direct' : 'handoff', mmsSend: false,
+      permissions: {contacts: w.access.contacts ? 'granted' : 'prompt', phoneState: w.access.phoneState ? 'granted' : 'prompt', sms: w.access.sms ? 'granted' : 'prompt', sendSms: w.access.sendSms ? 'granted' : 'prompt', callLog: w.access.callLog ? 'granted' : 'prompt'},
+      sendMode: w.access.sendSms && w.access.phoneState ? 'direct' : 'handoff', mmsSend: false,
       roles: {dialer: {available: true, held: true, eligible: true}, sms: {available: true, held: direct, eligible: true}},
       defaultDialer: 'ai.alphacompute.alphaphone', defaultSms: direct ? 'ai.alphacompute.alphaphone' : 'com.android.messaging',
-      subscriptions: [{id: 1, slot: 0, displayName: 'Synthetic SIM', carrierName: 'Synthetic Carrier', defaultSms: true, defaultVoice: true}], defaultSmsSubscriptionId: 1,
+      subscriptions: w.access.phoneState ? [{id: 1, slot: 0, displayName: 'Synthetic SIM', carrierName: 'Synthetic Carrier', defaultSms: true, defaultVoice: true}] : null, defaultSmsSubscriptionId: w.access.phoneState ? 1 : null,
     });
     const wav = () => {
       const seconds = 2, length = seconds * 16000 * 2, bytes = new Uint8Array(44 + length), view = new DataView(bytes.buffer);
@@ -99,7 +101,7 @@ export async function setupTelephony(page: Page, options: TelephonyFixture = {})
         if (w.telephonyAnswers?.[method]) return w.telephonyAnswers[method](input);
         if (method === 'imageCapability') return {version: 1, image: true, feature: 'fixture.image'};
         if (method === 'status') return status();
-        if (method === 'requestAccess') { w.access[input.access === 'callLog' ? 'callLog' : input.access] = true; if (input.access === 'sendSms') w.access.sms = true; return status(); }
+        if (method === 'requestAccess') { w.access[input.access] = true; return status(); }
         if (method === 'searchContacts') { const query = String(input.query || '').toLowerCase(); return {contacts: people.filter(p => !query || p.name.toLowerCase().includes(query) || p.phones.some(n => n.includes(query))).slice(0, input.limit).map(p => ({id: p.id, lookupKey: `lookup-${p.id}`, displayName: p.name, phoneNumbers: p.phones, emailAddresses: p.emails, starred: false}))}; }
         if (method === 'listRecentCalls') return {calls};
         if (method === 'placeCall') return {status: 'placed', message: ''};
@@ -113,6 +115,7 @@ export async function setupTelephony(page: Page, options: TelephonyFixture = {})
         if (method === 'listThreads') return {threads: w.access.sms ? threads() : [], next: null};
         if (method === 'listMessages') return {messages: [...(w.messages[input.threadId] || [])].reverse().slice(0, input.limit), next: null};
         if (method === 'markThreadRead') { w.readThreads = [...(w.readThreads || []), input.threadId]; return {status: 'marked'}; }
+        if (method === 'composeSms') return {status: 'handed-off', target: 'sms', handler: 'com.android.messaging', message: 'Your messaging app is open with the draft.'};
         if (method === 'smsSendHistory') return {receipts: []};
         if (method === 'phoneInfo') return {access: {phoneState: true, phoneNumbers: true, deviceIdentifiers: false}, lines: [{subscriptionId: 1, slot: 0, displayName: 'Synthetic SIM', carrierName: 'Synthetic Carrier', number: '+15550100100', countryIso: 'us', networkType: '5g', roaming: false, signalLevel: 3, embedded: false, iccid: null, imei: null}]};
         if (method === 'callState') return w.callState || {calls: []};

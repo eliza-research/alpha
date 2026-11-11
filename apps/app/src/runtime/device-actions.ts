@@ -88,6 +88,6 @@ export class DeviceActions extends DeviceActionCoordinator<ContextEnvelope,Workf
   constructor(session: VerifiedSession, credential: DeviceCredential, scope: string,
     request: (path: string, body: unknown | undefined, signal: AbortSignal) => Promise<unknown>,
     journal: ActionJournal, execute: DeviceExecutor, recover?:DeviceRecovery, reminderTimingV2=false, reminderCreate=false, executeForeground?:ForegroundReviewExecutor) {
-    super({session,credential,scope,request,journal,execute,recover,reminderTimingV2,reminderCreate,executeForeground,filesIdentity:async(paths,signal)=>{if(!filesReviewIdentity)throw Error('Files is unavailable');return filesReviewIdentity(paths,signal);},profile:alphaDeviceActionProfile},{currentRequestBrowserPolicy:true});
+    super({session,credential,scope,request,journal,execute,recover,reminderTimingV2,reminderCreate,executeForeground,filesIdentity:async(paths,signal)=>{if(!filesReviewIdentity)throw Error('Files is unavailable');return filesReviewIdentity(paths,signal);},profile:alphaDeviceActionProfile},{currentRequestBrowserPolicy:true,currentRequestTelephonyPolicy:true});
   }
 }

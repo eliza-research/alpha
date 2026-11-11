@@ -19,13 +19,15 @@ const P = await import('../apps/app/src/runtime/phone-context.ts');
 const context = {view: 'home', revision: 1, sensitive: false};
 const session = {ownerId: 'owner', agentId: 'agent', origin: 'https://agent.example', sessionId: 'session'};
 const id = '5d1f0d2a-7f0e-4c8a-9a51-0e6c1c1f9b20', digest = 'd'.repeat(64);
+const messageId = '77bc5ac9-0000-4000-8000-a61a04b11111';
+const proof = {messageId, text: 'Help with this conversation', current() {}};
 const ALL = ['phone.call.v1', 'contacts.write.v1', 'sms.compose.v1', 'messages.read.v1', 'voicemail.read.v1', 'voicemail.delete.v1'];
 const callPriya = {type: 'phone_call', target: {kind: 'contact', query: 'Priya'}};
-function fixture({capabilities = ALL, operation = callPriya, result = {kind: 'phone-call', status: 'placed', contact: true}, status = 'succeeded', receiptOutage = false} = {}) {
+function fixture({capabilities = ALL, operation = callPriya, result = {kind: 'phone-call', status: 'placed', contact: true}, status = 'succeeded', receiptOutage = false, requestMessageId} = {}) {
   let state = 'pending', attemptId, effects = 0, entry;
   const posts = [];
   const proposal = () => ({id, digest, state, subjectUserId: 'owner', requestedBy: 'agent', action: 'device_action', expiresAt: new Date(Date.now() + 600000).toISOString(),
-    payload: {action: 'device_action', version: 1, installationId: 'device', enrollmentId: 'enrollment', operation}, execution: attemptId ? {attemptId, providerIdempotencyKey: id} : null});
+    payload: {action: 'device_action', version: 1, installationId: 'device', enrollmentId: 'enrollment', operation, requestMessageId}, execution: attemptId ? {attemptId, providerIdempotencyKey: id} : null});
   const request = async (path, body) => {
     if (body === undefined) return {proposals: [proposal()]};
     posts.push({path, body});
@@ -105,8 +107,29 @@ test('a receipt retry replays the journalled result without calling again', asyn
 });
 test('the open thread is returned to the agent as a read result', async () => {
   const result = {kind: 'messages-read', status: 'read', participant: 'Priya Nair', messages: [{direction: 'in', date: 1, body: 'Are we still on for 7?'}], truncated: false};
-  const f = fixture({operation: {type: 'messages_read_selected'}, result});
-  await f.client.pending(context, signal());
-  assert.equal((await f.client.approve(id, context, signal())).status, 'succeeded');
+  const f = fixture({operation: {type: 'messages_read_selected'}, result, requestMessageId: messageId});
+  const messages = {...context, view: 'messages'};
+  assert.ok((await f.client.pendingReview(messages, signal(), proof))[0].proposal);
+  assert.equal((await f.client.pending(messages, signal())).length, 1, 'a refresh keeps the exact review available');
+  assert.equal((await f.client.approve(id, messages, signal())).status, 'succeeded');
   assert.equal(receiptOf(f).outcome, 'applied'); assert.deepEqual(receiptOf(f).result, result);
+});
+test('recovery cannot attach a selected telephony proposal to another item or session', async () => {
+  for (const [operation, view] of [
+    [{type: 'messages_read_selected'}, 'messages'],
+    [{type: 'sms_reply_selected', body: 'On my way'}, 'messages'],
+    [{type: 'voicemail_read_selected'}, 'phone'],
+    [{type: 'voicemail_delete_selected'}, 'phone'],
+  ]) {
+    const original = {...context, view};
+    const switched = {...original, revision: original.revision + 1};
+    const f = fixture({operation, requestMessageId: messageId});
+    assert.deepEqual(await f.client.pending(original, signal()), [], 'unseen proposals cannot be recovered');
+    assert.equal((await f.client.pendingReview(original, signal(), {...proof, messageId: 'other-message'}))[0].proposal, null);
+    assert.ok((await f.client.pendingReview(original, signal(), proof))[0].proposal);
+    assert.deepEqual(await f.client.pending(switched, signal()), [], 'the same card cannot move to a different item');
+    await assert.rejects(f.client.approve(id, switched, signal()), /Review this action again/);
+    assert.equal(f.effects, 0);
+    assert.deepEqual(await fixture({operation, requestMessageId: messageId}).client.pending(original, signal()), [], 'a replacement coordinator needs a fresh request');
+  }
 });

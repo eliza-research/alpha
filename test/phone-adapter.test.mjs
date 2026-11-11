@@ -25,6 +25,14 @@ test('a host without the read shows no history and never asks for it',async()=>{
  const {views,calls}=mount({status:status()});await settle();
  assert.equal(views.phone.render({},{}).nativeStatus,'Recent calls aren\'t available.');assert.ok(!calls.some(([m])=>m==='listRecentCalls'||m==='requestAccess'));
 });
+test('failed recent call reads stay distinct from an empty history and can be retried',async()=>{
+ let fail=true;
+ const {views}=mount({status:status('granted'),listRecentCalls:()=>{if(fail)throw Error('Provider unavailable');return {calls:[]};}});await settle();
+ let model=views.phone.render({},{});
+ assert.equal(model.showRecentStatus,true);assert.equal(model.retryRecents,true);assert.equal(model.nativeStatus,'Recent calls could not be read.');
+ fail=false;model.nativeRefresh();await settle();model=views.phone.render({},{});
+ assert.equal(model.showRecentStatus,true);assert.equal(model.retryRecents,false);assert.equal(model.nativeStatus,'No recent calls.');
+});
 test('access is asked for only from the owner control; recents are then read bounded',async()=>{
  let granted=false;const {views,calls}=mount({status:()=>status(granted?'granted':'prompt'),requestAccess:()=>{granted=true;return status('granted');},listRecentCalls:{calls:[call]}});await settle();
  let model=views.phone.render({},{});assert.equal(model.nativeAccess,true);assert.ok(!calls.some(([m])=>m==='requestAccess'||m==='listRecentCalls'));
@@ -77,7 +85,25 @@ test('voicemail shows only while the carrier store is ready, and an open voicema
  model.voicemails[0].toggle();await settle();model=views.phone.render({},{});
  assert.equal(model.vm.open,true);assert.equal(model.vm.text,'Call me back.','the carrier transcript shows as it is');assert.equal(model.vm.failed,true,'audio that cannot be decoded offers a retry, not a guess');
  assert.deepEqual(openVoicemailRead(),{caller:null,date:1700000000000,durationSeconds:24,transcriptState:'ready',engine:'carrier',transcript:'Call me back.'});
- const answer=deleteOpenVoicemail();assert.equal(views.phone.render({},{}).vm.confirming,true,'a delete asks first');views.phone.render({},{}).vm.cancelDelete();assert.equal(await answer,'cancelled');
+ const answer=deleteOpenVoicemail(()=>{},new AbortController().signal);assert.equal(views.phone.render({},{}).vm.confirming,true,'a delete asks first');views.phone.render({},{}).vm.cancelDelete();assert.equal(await answer,'cancelled');
+});
+test('voicemail deletion rechecks approval and dispatches once even if the list refreshes first',async()=>{
+ const item={id:'7',number:'+15555550100',cachedName:null,date:1700000000000,durationSeconds:24,isNew:true,hasAudio:true,carrierTranscript:'Call me back.'};
+ let rows=[item],complete;
+ const {views,calls}=mount({status:status('granted'),listRecentCalls:{calls:[]},listVoicemail:()=>({state:'ready',voicemails:rows}),
+  addListener:()=>({remove:async()=>{}}),observeVoicemail:{},voicemailPcm:()=>{throw Error('No decoder');},deleteVoicemail:()=>new Promise(resolve=>{complete=resolve;})});
+ const model=()=>views.phone.render({},{});
+ await settle();model().tabs[2].pick();model().voicemails[0].toggle();
+ const denied=deleteOpenVoicemail(()=>{throw Error('Session changed');},new AbortController().signal);
+ model().vm.confirmDelete();assert.equal(await denied,'cancelled');
+ const controller=new AbortController(),aborted=deleteOpenVoicemail(()=>{},controller.signal);
+ controller.abort();assert.equal(await aborted,'cancelled');assert.equal(model().vm.confirming,false);
+ model().vm.confirmDelete();assert.equal(calls.filter(([method])=>method==='deleteVoicemail').length,0);
+ const accepted=deleteOpenVoicemail(()=>{},new AbortController().signal);
+ model().vm.confirmDelete();model().vm.confirmDelete();
+ assert.deepEqual(calls.filter(([method])=>method==='deleteVoicemail'),[['deleteVoicemail',{id:'7'}]]);
+ rows=[];model().nativeRefresh();await settle();assert.equal(model().vm.open,false);
+ complete({status:'deleted'});assert.equal(await accepted,'deleted');
 });
 test('Contacts opens only where Contacts is admitted',async()=>{
  const {views}=mount({status:status()});await settle();const opened=[],toasts=[];const api={open:view=>opened.push(view),toast:text=>toasts.push(text)};

@@ -103,9 +103,6 @@ export const EXPORTED_COMPONENTS = Object.freeze({
   // Telecom alone may bind the InCallService, and ACTION_DIAL is the role's public entry point.
   "ai.alphacompute.alphaphone.AlphaInCallService": "android.permission.BIND_INCALL_SERVICE",
   "ai.alphacompute.alphaphone.AlphaDialPadActivity": null,
-  // Carrier visual voicemail for the dialer role, enabled only on the verified image: only the
-  // telephony stack may bind the client service.
-  "ai.alphacompute.alphaphone.AlphaVoicemailService": "android.permission.BIND_VISUAL_VOICEMAIL_SERVICE",
   // Launcher-only SMS role (#421), enabled only on the verified image: only the telephony stack may
   // deliver texts, MMS notifications and quick replies; SENDTO is the role's public compose entry.
   "ai.alphacompute.alphaphone.AlphaSmsDeliverReceiver": "android.permission.BROADCAST_SMS",
@@ -277,14 +274,11 @@ export function validateApk(file: string, identity: {appId: string}, wantsHome: 
   // unlocked profile and runtime grant remain separate requirements for access.
   if (data.xml.includes('android.permission.READ_CONTACTS') !== wantsHome)
     throw new Error(`Invalid Contacts read permission for distribution in ${file}`);
-  // Contact writes (the in-app editor and owner-approved agent changes) and the carrier voicemail
-  // store are packaged only for the launcher, with the same separate requirements for any use.
-  for (const permission of ['android.permission.WRITE_CONTACTS', 'com.android.voicemail.permission.ADD_VOICEMAIL'])
-    if (data.xml.includes(permission) !== wantsHome)
-      throw new Error(`Invalid ${permission.split('.').at(-1)} permission for distribution in ${file}`);
-  for (const component of ['AlphaVoicemailService', 'AlphaVoicemailReceiver'])
-    if (data.xml.includes(`ai.alphacompute.alphaphone.${component}`) !== wantsHome)
-      throw new Error(`Invalid voicemail component ${component} for distribution in ${file}`);
+  if (data.xml.includes('android.permission.WRITE_CONTACTS') !== wantsHome)
+    throw new Error(`Invalid WRITE_CONTACTS permission for distribution in ${file}`);
+  // The default dialer can use provider voicemail. Carrier registration needs authenticated provisioning.
+  for (const entry of ['com.android.voicemail.permission.ADD_VOICEMAIL', 'android.telephony.VisualVoicemailService', 'android.permission.BIND_VISUAL_VOICEMAIL_SERVICE'])
+    if (data.xml.includes(entry)) throw new Error(`Unexpected carrier voicemail manifest entry ${entry} in ${file}`);
   // SMS provider reads and reviewed sends (#421) are packaged only for the launcher; Android grants
   // these hard-restricted permissions only to the preinstalled image app or the SMS role holder.
   for (const permission of ['READ_SMS', 'SEND_SMS'])

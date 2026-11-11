@@ -44,7 +44,7 @@ export type TelephonyPorts = {
   draftInOpenThread(body: string, number?: string): 'drafted' | 'none-selected' | 'occupied' | 'unavailable';
   openThread(): {participant: string | null; messages: {direction: 'in' | 'out'; date: number; body: string}[]; truncated: boolean} | null;
   openVoicemail(): {caller: string | null; date: number; durationSeconds: number; transcriptState: 'ready' | 'pending' | 'unavailable' | 'failed'; engine: 'device' | 'cloud' | 'carrier' | null; transcript: string | null} | null;
-  deleteOpenVoicemail(): Promise<'deleted' | 'none-selected' | 'cancelled' | 'failed'>;
+  deleteOpenVoicemail(current: () => void, signal: AbortSignal): Promise<'deleted' | 'none-selected' | 'cancelled' | 'failed'>;
 };
 export type TelephonyExecution = {status: 'succeeded' | 'failed' | 'unknown'; summary: string; telephonyResult: TelephonyActionResult};
 
@@ -156,6 +156,6 @@ export async function executeTelephonyAction(operation: TelephonyActionOperation
       const voicemail = ports.openVoicemail();
       return finish(voicemail ? {kind: 'voicemail-read', status: 'read', ...voicemail} : {kind: 'voicemail-read', status: 'none-selected'});
     }
-    case 'voicemail_delete_selected': return finish({kind: 'voicemail-delete', status: await ports.deleteOpenVoicemail()});
+    case 'voicemail_delete_selected': return finish({kind: 'voicemail-delete', status: await ports.deleteOpenVoicemail(() => ports.current(), signal)});
   }
 }

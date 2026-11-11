@@ -2,13 +2,13 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "489fdf6ac3532ba5fbfeb7464ec509a44f5a66d1",
-  "head": "02e50d67e2a3550bff31648e68cc46764e960c9c",
+  "baseCommit": "4c961d022ea97da4662bfb4d52cf30a797c67d7c",
+  "head": "43fbe30e4b8d356bba8e7b21a988401d61206c67",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...02e50d67e2a3550bff31648e68cc46764e960c9c",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...43fbe30e4b8d356bba8e7b21a988401d61206c67",
   "status": "diverged",
-  "aheadBy": 5,
-  "behindBy": 141,
+  "aheadBy": 10,
+  "behindBy": 161,
   "mergeBase": "ede068b56ab07df42e3038de9a108bc7daa6ae0c",
   "pinOnlyCommits": [
     {
@@ -28,7 +28,27 @@
       "subject": "Redesign the native call screen: caller block, round controls, keypad, timer"
     },
     {
-      "sha": "02e50d67e2a3550bff31648e68cc46764e960c9c",
+      "sha": "11e208addde375c290f96889bfdb39a9f93a550a",
+      "subject": "Keep committed contact saves successful when readback fails"
+    },
+    {
+      "sha": "46df088c52944e6adce8c0f31e2a8ac7bd76c1e1",
+      "subject": "Assert contact aggregate membership before writes"
+    },
+    {
+      "sha": "40e83626a98e53922807010925f0ecb4abad62db",
+      "subject": "Admit owner SMS drafting on hosted Android without FFI inference"
+    },
+    {
+      "sha": "c7a69be1d78c4ce104362209e7a83ec8da9f1d0f",
+      "subject": "Bind selected telephony actions to the original phone context"
+    },
+    {
+      "sha": "03ca44a7c2c3e0ea4ae9db775eae53c5e0c8ce2f",
+      "subject": "Sort selected telephony contract imports"
+    },
+    {
+      "sha": "43fbe30e4b8d356bba8e7b21a988401d61206c67",
       "subject": "Add phoneInfo: a bounded foreground read of the phone's SIM lines for Settings"
     }
   ],
