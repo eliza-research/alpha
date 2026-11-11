@@ -26,7 +26,8 @@ const modes = ['permission-only', 'busy-peer-and-exact-staged-copy', 'owner-dest
   'wrong-archive-flavor', 'wrong-archive-signer', 'abandon-refused',
   'stale-cache-sweep', 'cache-delete-refused', 'boot-inclusive-boundary-and-process', 'boot-precedence',
   'boot-permission-and-later-admission', 'boot-manual-cold', 'boot-download-failure-and-warm-process',
-  'verified-cache-reuse', 'verified-cache-corrupt-refetch', 'verified-cache-restart-sweep'];
+  'verified-cache-reuse', 'verified-cache-stock-call', 'verified-cache-image-call-access',
+  'verified-cache-corrupt-refetch', 'verified-cache-restart-sweep'];
 const sha = value => createHash('sha256').update(value).digest('hex');
 const signer = sha(Buffer.of(7));
 const installed = {versionCode: 7, launcher: true, signerSha256: signer};
@@ -231,6 +232,7 @@ export async function checkNativeUpdateStaging(extraSources = []) {
     'Cold-boot traces execute the actual capability and installer functions with controlled SDK, consent and Android SystemClock. Uptime samples 0,26681,29999,30000,30001,35000 preserve the inclusive boundary. A shut-down executor proves refused calls resolve before worker admission; real cache/network/session/barrier/stop/commit effects remain absent.',
     'Same-boot process replacement preserves controlled uptime; a new boot resets it. These are explicit fixture observations between attempts, not installed-device reboot validation. A failed actual digest and later warm-process admission retain the existing cleanup contract.',
     'A known automatic lifecycle deferral may retain one process-local exact tuple. Actual cached bytes, marker, network-call counts and staged copies are observed through retry, corruption/refetch and process-loss cleanup. Cache reuse reruns digest and archive admission; the source fixture stops at renderer refusal and proves no commit or resident stop. Transport/archive metadata are controlled ports, not real TLS or Android installation.',
+    'Stock call audio and a denied image phone-state app-op both exercise staged deferral and a refused busy retry. Restored idle audio or call-state access admits an exact cached retry without another fetch.',
     ...skipped.map(({mode,reason}) => `Host capability omitted ${mode}: ${reason}.`),
   ]});
   return {receipt,skipped,obligations:[

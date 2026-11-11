@@ -278,18 +278,28 @@ public final class AlphaDevicePlugin extends Plugin {
    if(result==null)call.resolve();else call.resolve(result);
   });
  }
- /** A downloaded automatic update may only replace idle, unlocked Home. The image also hosts calls. */
+ /** A downloaded automatic update may only replace idle, unlocked Home. */
  private boolean automaticUpdateReady(){
   android.app.Activity activity=getActivity();
   if(!(activity instanceof MainActivity)||((MainActivity)activity).isAssistantSurface()||!shareForeground(activity))return false;
   try{
-   if(AlphaImageCapability.verified(getContext())){
-    android.telecom.TelecomManager calls=getContext().getSystemService(android.telecom.TelecomManager.class);
-    if(calls==null||calls.isInCall())return false;
-   }
-   return true;
-  }catch(SecurityException denied){return false;}
-  catch(RuntimeException unknown){return false;}
+   Context context=getContext();
+   android.media.AudioManager audio=context.getSystemService(android.media.AudioManager.class);
+   if(audio==null||audio.getMode()!=android.media.AudioManager.MODE_NORMAL)return false;
+   if(!AlphaImageCapability.verified(context))return true;
+   android.telecom.TelecomManager calls=context.getSystemService(android.telecom.TelecomManager.class);
+   return calls!=null&&!calls.isInCall()&&canReadUpdateCallState(context,calls);
+  }catch(RuntimeException unknown){return false;}
+ }
+ /** Telecom can report false when phone-state access is denied. Only use a negative with known access. */
+ private static boolean canReadUpdateCallState(Context context,android.telecom.TelecomManager calls){
+  String packageName=context.getPackageName();
+  if(context.checkSelfPermission("android.permission.READ_PRIVILEGED_PHONE_STATE")==PackageManager.PERMISSION_GRANTED||
+     packageName.equals(calls.getDefaultDialerPackage()))return true;
+  if(context.checkSelfPermission("android.permission.READ_PHONE_STATE")!=PackageManager.PERMISSION_GRANTED)return false;
+  android.app.AppOpsManager ops=context.getSystemService(android.app.AppOpsManager.class);
+  return ops!=null&&ops.noteOpNoThrow(android.app.AppOpsManager.OPSTR_READ_PHONE_STATE,context.getApplicationInfo().uid,packageName)
+    ==android.app.AppOpsManager.MODE_ALLOWED;
  }
  /** SHA-256 of the original certificate of Alpha's one signer (apksigner's digest), which key rotation never changes: an update manifest offers an APK only to installs of that signing lineage. */
  static String appSigner(Context context)throws Exception{
