@@ -42,11 +42,14 @@ test('foreground owner changes while stopped withdraw the old tab on resume',asy
 for(const [name,guard] of [
  ['modal',h=>h.context.hostModalOpen=()=>true],['content review',h=>h.context.questionReview=true],
  ['confirmation',h=>h.context.confirming=true],['address editor',h=>h.state.editing=true],
- ['tab switcher',h=>h.state.tabsOpen=true],['menu',h=>h.state.menu=true],
+ ['tab switcher',h=>h.state.tabsOpen=true],
  ['library',h=>h.state.lib=true],['share',h=>h.state.share=true],
  ['shade',h=>h.view.shade=true],['lock screen',h=>h.view.screen='lock'],
 ])test(`foreground ${name} still withdraws the native page`,async()=>{
  const h=fixture();await h.update();guard(h);await h.update();assert.equal(h.present.at(-1).id,null);
+});
+test('the menu keeps the native page drawn while the host owns page input',async()=>{
+ const h=fixture();await h.update();const before=h.present.at(-1);h.state.menu=true;await h.update();const after=h.present.at(-1);assert.equal(after.id,before.id);assert.equal(after.height,before.height);assert.equal(after.hostRects[0].height,before.height);
 });
 test('a disposed adapter neither persists nor presents',async()=>{
  const h=fixture();h.context.disposed=true;await h.update();assert.equal(h.saves,0);assert.equal(h.present.length,0);
