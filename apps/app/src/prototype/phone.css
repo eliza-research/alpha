@@ -723,9 +723,9 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .alpha-text-xl:not(.alpha-landscape) [data-alpha-camera="modes"]{top:min(648px,calc(100% - var(--alpha-dock-clearance,102px) - 170px))!important;height:auto!important;min-height:44px;overflow-x:auto;overflow-y:hidden;justify-content:safe center!important;padding:0 8px;box-sizing:border-box;touch-action:pan-x}
 .alpha-text-xl [data-alpha-camera="modes"] button{line-height:1.1;gap:2px!important;padding:0 10px!important}
 /* Notes folders, filter chip and the editor's ⋯ menu (view refresh 2026-11, PLAN.md section 3). */
-.notes-folders { scrollbar-width:none; }
+.notes-folders { display:flex; gap:8px; overflow-x:auto; flex-shrink:0; padding:0 24px 12px; scrollbar-width:none; }
 .notes-folders::-webkit-scrollbar { display:none; }
-.notes-chip { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; min-height:36px; padding:0 14px; border-radius:18px; background:var(--s2); color:var(--fg); font-size:14px; font-weight:500; white-space:nowrap; }
+.notes-chip { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; min-height:44px; padding:0 14px; border-radius:22px; background:var(--s2); color:var(--fg); font-size:14px; font-weight:500; white-space:nowrap; }
 .notes-chip[aria-pressed="true"] { background:var(--fg); color:var(--bg); }
 .notes-menu { position:absolute; right:10px; top:56px; z-index:12; min-width:208px; padding:6px; border-radius:16px; background:var(--s1); box-shadow:0 10px 30px rgba(0,0,0,.2); }
 .notes-menu button { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:0 12px; border-radius:10px; color:var(--fg); font-size:15px; text-align:left; box-sizing:border-box; }

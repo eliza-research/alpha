@@ -2142,17 +2142,20 @@
   <sc-if value="{{notes.selectingNotes}}"><div class="notes-selection-bar" role="group" aria-label="Selected notes">
     <button onClick="{{notes.endSelection}}" aria-label="Close selection"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button><span>{{notes.selectedCount}} selected</span>
     <button disabled="{{notes.selectionBusy}}" onClick="{{notes.selectEveryNote}}">Select all</button>
-    <button disabled="{{notes.selectionDisabled}}" aria-label="Move selected notes" onClick="{{notes.moveSelected}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg></button>
+    <button disabled="{{notes.selectionFolderDisabled}}" aria-label="Add selected notes to folder" onClick="{{notes.moveSelected}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg></button>
     <button disabled="{{notes.selectionDisabled}}" aria-label="Delete selected notes" onClick="{{notes.deleteSelected}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg></button>
   </div></sc-if>
   <sc-if value="{{notes.listMenuOpen}}"><div ref="{{notes.listMenuModal}}" data-alpha-popup>
     <button aria-hidden="true" tabindex="-1" onClick="{{notes.closeListMenu}}" style="position:absolute;inset:0;z-index:11;background:transparent"></button>
     <div class="notes-menu" role="dialog" aria-label="Notes options">
       <button onClick="{{notes.startSelection}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.check}}"></path></svg>Select notes</button>
-      <button onClick="{{notes.showFolders}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg>Folders</button>
-      <button onClick="{{notes.newFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg>New folder</button>
+      <button onClick="{{notes.newFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg>Create folder</button>
       <button onClick="{{notes.openTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg>Recently deleted</button>
     </div>
+  </div></sc-if>
+  <sc-if value="{{notes.hasFolders}}"><div class="notes-folders" role="group" aria-label="Note folders">
+    <button class="notes-chip" aria-pressed="{{notes.allPressed}}" onClick="{{notes.selectAll}}">All notes</button>
+    <sc-for list="{{notes.folderChips}}" as="f" key="{{f.id}}"><button class="notes-chip" aria-label="{{f.label}}" aria-pressed="{{f.pressed}}" onClick="{{f.select}}" onPointerDown="{{f.down}}" onPointerUp="{{f.up}}" onPointerLeave="{{f.up}}" onContextMenu="{{f.context}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg>{{f.name}}</button></sc-for>
   </div></sc-if>
   <sc-if value="{{notes.filterOn}}">
     <div style="display: flex; padding: 0 16px 10px; flex-shrink: 0">
@@ -2357,7 +2360,7 @@
     <div class="notes-folder-sheet" style="bottom:0" role="dialog" aria-modal="true" aria-label="{{notes.folderSheetTitle}}">
       <div class="notes-sheet-grip"><span></span></div>
       <header><h2>{{notes.folderSheetTitle}}</h2><button class="ib" aria-label="Close folders" onClick="{{notes.closeFolderSheet}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></header>
-      <sc-if value="{{notes.choosingFolder}}"><sc-for list="{{notes.folderChoices}}" as="f" key="{{f.id}}"><div class="notes-folder-row"><button onClick="{{f.pick}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg>{{f.name}}</button><sc-if value="{{f.canManage}}"><button class="ib" aria-label="Manage {{f.name}}" onClick="{{f.manage}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button></sc-if></div></sc-for></sc-if>
+      <sc-if value="{{notes.choosingFolder}}"><sc-for list="{{notes.folderChoices}}" as="f" key="{{f.id}}"><button class="notes-folder-row" onClick="{{f.pick}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg>{{f.name}}</button></sc-for><sc-if value="{{notes.canRemoveFromFolder}}"><button class="notes-folder-row" onClick="{{notes.removeSelectedFromFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg>Remove from folder</button></sc-if></sc-if>
       <sc-if value="{{notes.folderNew}}"><input aria-label="Folder name" placeholder="Folder name" value="{{notes.folderName}}" onChange="{{notes.onFolderName}}" onKeyDown="{{notes.folderNameKey}}"><button class="notes-folder-submit" disabled="{{notes.folderSaveDisabled}}" onClick="{{notes.createFolder}}">{{notes.folderSubmitLabel}}</button></sc-if>
       <sc-if value="{{notes.folderOptions}}"><button class="notes-folder-row" onClick="{{notes.renameFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.edit}}"></path></svg>Rename</button><button class="notes-folder-row" onClick="{{notes.deleteFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg>Delete folder</button></sc-if>
     </div>

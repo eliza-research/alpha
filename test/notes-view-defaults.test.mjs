@@ -48,7 +48,7 @@ test('bulk Notes moves survive collection revision changes and finish with selec
  f.api.set=patch=>{Object.assign(f.state,patch);};
  f.api.canonicalNotes={current:true,update:async(id,patch)=>{moved.push(id);f.state.list=f.state.list.map(note=>({...note,...(note.id===id?patch:{}),canonicalRevision:note.canonicalRevision+1}));return true;},leave:async()=>true};
  const out=f.view.render(f.state,f.api);
- await out.folderChoices[0].pick();
+ await out.removeSelectedFromFolder();
  assert.deepEqual(moved,['a','b']);assert.equal(f.state.selectionBusy,false);assert.equal(f.state.selectingNotes,false);assert.equal(f.state.selectedNotes.length,0);
 });
 
@@ -59,4 +59,21 @@ test('bulk Notes deletion stops when another selected note changes',async()=>{
  f.api.canonicalNotes={current:true,remove:async id=>{removed.push(id);f.state.list=[{id:'b',kind:'text',title:'Changed elsewhere',body:'b',canonicalRevision:2}];return true;}};
  await f.view.render(f.state,f.api).deleteSelected();
  assert.deepEqual(removed,['a']);assert.deepEqual(Array.from(f.state.selectedNotes),['b']);assert.equal(f.state.selectionBusy,false);
+});
+
+
+test('Notes exposes existing folders inline and removes membership through the selection action',async()=>{
+ const f=fixture([{id:'a',kind:'text',title:'A',body:'a',folderId:'f-1',canonicalRevision:1}]);
+ Object.assign(f.state,{folders:[{id:'f-1',name:'Work',createdAt:1}],selectingNotes:true,selectedNotes:['a']});
+ f.api.set=patch=>{Object.assign(f.state,patch);};
+ const updates=[];
+ f.api.canonicalNotes={current:true,update:async(id,patch)=>{updates.push({id,patch});return true;},leave:async()=>true};
+ const out=f.view.render(f.state,f.api);
+ assert.equal(out.hasFolders,true);assert.equal(out.folderChips[0].name,'Work');
+ assert.equal(out.showFolders,undefined);assert.equal(out.canRemoveFromFolder,true);
+ await out.removeSelectedFromFolder();
+ assert.deepEqual(structuredClone(updates),[{id:'a',patch:{folderId:null}}]);
+ assert.equal(f.state.selectingNotes,false);
+ const empty=fixture(),emptyView=empty.view.render(empty.state,empty.api);
+ assert.equal(emptyView.hasFolders,false);assert.equal(emptyView.selectionFolderDisabled,true);
 });
