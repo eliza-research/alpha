@@ -108,7 +108,8 @@ export function readUnitApkManifest(file: string): ApkManifest {
  * descriptor; a debug row is accepted only for --build debug and is labelled rehearsal.
  */
 export function admitUnitApk(manifestFile: string, { variant, build }: {variant: ApkVariant; build: ApkMode},
-  {descriptor = readReleaseSigner(), manifest = readUnitApkManifest(manifestFile)}: {descriptor?: ReleaseSigner; manifest?: ApkManifest} = {}) {
+  {descriptor = readReleaseSigner(), manifest = readUnitApkManifest(manifestFile), installedReadback = false}:
+  {descriptor?: ReleaseSigner; manifest?: ApkManifest; installedReadback?: boolean} = {}) {
   if (manifest.testMocks !== false) throw new Error(`${manifestFile} is a test-mocks build; pilot units get distribution builds only`);
   const row = manifest.results?.find(entry => entry.variant === variant && entry.mode === build);
   if (!row) throw new Error(`${manifestFile} has no ${variant} ${build} APK`);
@@ -123,7 +124,8 @@ export function admitUnitApk(manifestFile: string, { variant, build }: {variant:
     // signing, versionCode, flag-off audit, packaged runtime, speech qualification and the one
     // proprietary-font check. Open-source licence flags are never a blocker (decision P-09).
     const recorded = row.releaseAdmission ? [...(row.releaseAdmission.failures ?? []), ...(row.releaseAdmission.blockers ?? [])] : [];
-    const blockers = [...new Set([...releaseBlockers(row, { manifestTestMocks: manifest.testMocks, admission: releaseAdmission(row, descriptor) }), ...recorded])];
+    const admission = releaseAdmission(row, descriptor, {installedReadback});
+    const blockers = [...new Set([...releaseBlockers(row, { manifestTestMocks: manifest.testMocks, admission }), ...recorded])];
     if (blockers.length) throw new Error(`${file} cannot be provisioned: it is not distributable. Unresolved blockers:\n${blockers.map(item => `  - ${item}`).join("\n")}\n` +
       "Pilot and acceptance units get distributable releases only; --build debug rehearses the same steps on a disposable emulator.");
   }
