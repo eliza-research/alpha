@@ -73,13 +73,14 @@ import { workflowSha, validateWorkflowResult } from '../runtime/workflow-device-
 import { WorkflowReminderOverflow, workflowReminderRows } from '../runtime/workflow-reminder-read';
 import { getMapsSelectedObject, clearMapsSelection } from '../maps/agent-context';
 import { alphaClient, AlphaClientError, type AlphaView } from '../runtime/alpha-client';
-import { privateLocalPreviewEnabled } from '../build-flags';
+import { privateLocalPreviewEnabled, testMocksEnabled } from '../build-flags';
 import { DailyApps } from '../daily';
 import { isAndroid } from '../native';
 import { registerPlugin } from '../platform-plugins';
 import { SystemBars, SystemBarsStyle } from '@capacitor/core';
 import {mergeConversationDelivery, connectionController, STOPPED_REPLY_NOTICE, STOPPED_CANCELLED_NOTICE, STOPPED_CONFIRMED_NOTICE, STOPPED_UNCHECKED_NOTICE, RESIDENT_STARTING_NOTICE, RESIDENT_RECOVERING_NOTICE, NO_AGENT_SEND, NO_AGENT_VOICE, residentAlwaysPresent, agentPendingText, agentAvailabilityNotice } from '../runtime/connection-ui';
 import { broaderPageNotice, honestTiles, handoffGate, watchReturnToApp, tileFactsFromSnapshot, tileSettingsPages, type TileFacts, type TileKey } from './native-adapter';
+import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 const alphaDevice = registerPlugin<{ snapshot(): Promise<Record<string, unknown>>; openSettings(input: { page: string }): Promise<{ status: string; specific?: boolean }> }>('AlphaDevice');
 const elizaSystem = registerPlugin<{ setFlashlight(input: { enabled: boolean }): Promise<{ available: boolean; enabled: boolean }> }>('ElizaSystem');
 
@@ -478,7 +479,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           // Absence can also mean different source preconditions. It proves no
           // rejection or execution; preserve the history and disable only review.
           if(card.reviewUnavailable)return message;
-          return {...message,card:{...card,reviewUnavailable:true,title:'Review unavailable',sub:'Not pending for this screen. Open the original selection to check again.'}};
+          return {...message,card:{...card,reviewUnavailable:true,title:'Review unavailable',sub:'This request is no longer available to review. Check action history before trying again.'}};
         });
         const existing=new Set(msgs.map((message:Shell)=>message.card?.proposalId));
         const recovered=proposals.filter(proposal=>!existing.has(proposal.id)).map(proposal=>({id:crypto.randomUUID(),from:'agent',text:proposal.description,card:{...proposalCard(proposal),recovered:true,proposalSession:connection.session}}));
@@ -535,7 +536,12 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       const chat=shell.S().chat;
       return continuation?continuation.apply(view,check,commit):commit(chat==='sheet'||chat==='full'?chat:undefined);
     });
-    if(delivered.status==='unavailable'&&shell.live)shell.agentSay('That screen is not on this phone.',{type:'generic',icon:'info',title:'Screen not on this phone',sub:'That screen is not on this phone.',systemNotice:true,done:true});
+    if(delivered.status==='unavailable'&&shell.live){
+      // A page inside an app this phone has: say where it is. Nothing was opened or acknowledged.
+      const parent=delivered.parentView==='home'?'Home':delivered.parentView&&views[delivered.parentView]?.title;
+      const text=parent?`I can’t open that page directly yet. Open ${parent} to find it.`:'That screen is not on this phone.';
+      shell.agentSay(text,{type:'generic',icon:'info',title:text,sub:'',systemNotice:true,done:true});
+    }
     if(delivered.status==='unknown')shell.toast('Could not confirm the screen change. Check your screen.');
     return delivered.status==='delivered';
   }
@@ -888,6 +894,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(!this.live||document.hidden)throw Error('Files changed');
       return identities;
     });
+    // A refusal proven to happen before any effect returns `failed` with its reason; a throw is
+    // recorded by the coordinator as an unknown outcome and its message never reaches the owner.
     connectionController.setDeviceExecutor(async (operation, operationId, expectedContext, signal, bindingHash, workflowRoute, journalIdentity, agendaSource) => {
       signal.throwIfAborted(); context(this);
       if (!this.live || JSON.stringify(alphaClient.getState().context) !== JSON.stringify(expectedContext)) throw new Error('Phone context changed');
@@ -899,7 +907,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(isPhoneDial(operation)){
         // Reviewed dial handoff on the verified image only: the system dial screen opens with the
         // approved number and the owner places the call there. Contact targets are not negotiated.
-        if(!aospImage||operation.target.kind!=='number'||expectedContext.sensitive||document.hidden)throw Error('Open Alpha on the Alpha image to review this number');
+        if(!aospImage||operation.target.kind!=='number'||expectedContext.sensitive||document.hidden)return {status:'failed' as const,summary:'Nothing was dialed. Keep Alpha open and unlocked, then ask again.'};
         const client=createAospTelephony(registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),true);
         signal.throwIfAborted();context(this);
         if(!this.live||document.hidden||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Dial review context changed');
@@ -911,7 +919,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         // Owner-approved telephony on the verified image only. A contact is resolved here, on the
         // phone; the owner confirms the exact number or the before and after before anything
         // calls, sends or writes, and the agent receives only the outcome.
-        if(!aospImage||expectedContext.sensitive||document.hidden)throw Error('Open Alpha on the Alpha image to continue');
+        if(!aospImage||expectedContext.sensitive||document.hidden)return {status:'failed' as const,summary:'Nothing was done. Keep Alpha open and unlocked, then ask again.'};
         const plugin=registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),client=createAospTelephony(plugin,true),book=registerPlugin<any>('AlphaContacts');
         const ownerSession=connectionController.getSnapshot().session,ownerTarget=JSON.stringify(connectionController.getWorkflowDeviceTarget());
         const current=()=>{signal.throwIfAborted();context(this);if(!ownerSession||connectionController.getSnapshot().session!==ownerSession||JSON.stringify(connectionController.getWorkflowDeviceTarget())!==ownerTarget||!this.live||document.hidden||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Phone context changed');};
@@ -941,13 +949,13 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         return executeTelephonyAction(operation,operationId,ports,signal);
       }
       if(isSmsSend(operation)){
-        if(!aospImage||expectedContext.sensitive||document.hidden||expectedContext.view!=='messages'||expectedContext.selectedObject?.kind!=='sms-subscription'||expectedContext.selectedObject.id!==String(operation.subscriptionId))throw Error('Open Messages on the Alpha image and select the approved SIM');
+        if(!aospImage||expectedContext.sensitive||document.hidden||expectedContext.view!=='messages'||expectedContext.selectedObject?.kind!=='sms-subscription'||expectedContext.selectedObject.id!==String(operation.subscriptionId))return {status:'failed' as const,summary:'Nothing was sent. Open Messages, choose the SIM, then ask again.'};
         const plugin=registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),client=createAospTelephony(plugin,true);
         const ownerSession=connectionController.getSnapshot().session,ownerTarget=JSON.stringify(connectionController.getWorkflowDeviceTarget());
         const current=()=>{signal.throwIfAborted();context(this);if(!ownerSession||connectionController.getSnapshot().session!==ownerSession||JSON.stringify(connectionController.getWorkflowDeviceTarget())!==ownerTarget||!this.live||document.hidden||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('SMS review context changed');};
         const status=await client.status();current();
         const selectedSim=status.subscriptions?.find(sim=>sim.id===operation.subscriptionId);
-        if(!selectedSim||expectedContext.selectedObject.revision!==smsSubscriptionRevision(selectedSim))throw Error('The selected SIM changed; refresh Messages and select it again');
+        if(!selectedSim||expectedContext.selectedObject.revision!==smsSubscriptionRevision(selectedSim))return {status:'failed' as const,summary:'Nothing was sent because the SIM changed. Open Messages, choose the SIM, then ask again.'};
         const cancel=()=>{void plugin.cancelSmsReview({operationId}).catch(()=>{});};
         signal.addEventListener('abort',cancel,{once:true});
         try{current();const native=await client.sendSms(operation,operationId);const smsResult=validateSmsResult(operation,native,operationId,await smsAgentHash(operation));return {status:smsDeviceStatus(smsResult),smsResult,summary:receiptLabel(smsResult.status)};}
@@ -1044,7 +1052,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         return {status:result.status==='unknown'?'unknown':'failed',summary:result.status==='unknown'?'Calendar outcome is unconfirmed. Inspect action history before another action.':result.status==='cancelled'?'Calendar review cancelled. Nothing was changed.':'Calendar target changed, access was denied, or the operation is unsupported. Nothing was changed.'};
       }
       if(isNativeNotesQuery(operation)){
-        if(this.notesSourceMode!=='legacy'||this.notesStorageFailed||this.notesPending||!this.notesStore)return {status:'failed',summary:'Select Previous notes to review this device-record request. Nothing was shared.'};
+        if(this.notesSourceMode!=='legacy'||this.notesStorageFailed||this.notesPending||!this.notesStore)return {status:'failed',summary:this.notesSourceMode==='legacy'?'Previous notes isn’t ready. Nothing was shared.':(this.previousNotesAvailability==='present'||this.previousNotesAvailability==='unavailable')?'Open Notes, choose Older, then ask again. Nothing was shared.':'There are no earlier notes on this phone. Nothing was shared.'};
         const ownerSession=connectionController.getSnapshot().session,ownerTarget=JSON.stringify(connectionController.getWorkflowDeviceTarget());
         const current=()=>{signal.throwIfAborted();context(this);if(!ownerSession||connectionController.getSnapshot().session!==ownerSession||JSON.stringify(connectionController.getWorkflowDeviceTarget())!==ownerTarget||!this.live||this.notesPending||this.notesStorageFailed||document.hidden||expectedContext.sensitive||!['home','notes'].includes(expectedContext.view)||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Notes query or connection changed');};
         try{return await executeNotesQuery(this.notesStore,operation,operationId,signal,current);
@@ -1060,7 +1068,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       if(isNotesOperation(operation)){
         try{
-          if(this.notesSourceMode!=='legacy'||this.notesStorageFailed||this.notesPending||!this.notesStore)throw Error('Select Previous notes before reviewing a device-record change');
+          if(this.notesSourceMode!=='legacy'||this.notesStorageFailed||this.notesPending||!this.notesStore)throw Error(this.notesSourceMode==='legacy'?'Previous notes isn’t ready. Nothing was changed.':(this.previousNotesAvailability==='present'||this.previousNotesAvailability==='unavailable')?'Open Notes, choose Older, then ask again. Nothing was changed.':'There are no earlier notes on this phone. Nothing was changed.');
           this.notesAgentBusy=true;
           const current=()=>{signal.throwIfAborted();context(this);if(!this.live||document.hidden||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext)||expectedContext.sensitive||expectedContext.view!=='notes')throw Error('Selected Notes context changed');};
           const execute=()=>this.notesStore.execute(operation,operationId,signal,current);
@@ -1151,7 +1159,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       }
       if (operation.type === 'create_note') {
         if(this.notesSourceMode==='canonical'&&expectedContext.selectedObject?.kind==='workflow-run')return {status:'failed',summary:'Saving a note from a workflow isn’t available yet.'};
-        if (this.notesSourceMode!=='legacy'||this.notesStorageFailed) return { status: 'failed', summary: 'Select Previous notes to review this device-record creation. Nothing saved.' };
+        if (this.notesSourceMode!=='legacy'||this.notesStorageFailed) return { status: 'failed', summary: this.notesSourceMode==='legacy'?'Previous notes isn’t ready. Nothing was saved.':(this.previousNotesAvailability==='present'||this.previousNotesAvailability==='unavailable')?'Open Notes, choose Older, then ask again. Nothing was saved.':'There are no earlier notes on this phone. Nothing was saved.' };
         const existing = this.vget('notes').list.find((note: Shell) => note.id === operationId);
         if (existing) return { status: 'unknown', summary: 'A note already has this action identifier; review it before resolving.' };
         const note = { id: operationId, kind: 'text', title: operation.title, body: operation.body, pinned: false, when: 'Now', createdAt:Date.now(), modifiedAt:Date.now() };
@@ -1494,6 +1502,25 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     };
     out.composerPointer=(event:PointerEvent)=>event.stopPropagation();
     out.sendNow=()=>sendFromComposer(this);
+    // New chat and history sit in the chat header once an agent is connected; the same two
+    // controls stay in Settings. Neither sends anything, and a reply in flight is never cut off.
+    const toolsSession=connectionController.getSnapshot();
+    out.chatTools={
+      show:!!toolsSession.session,history:!!toolsSession.session&&!out.assistantSurface,
+      newChat:()=>{
+        const now=connectionController.getSnapshot();
+        if(this.S().typing||alphaClient.getState().pending){this.toast('Wait for the current reply before starting a new chat.');return;}
+        if(now.busy||this.pendingActionApproval||this.decliningProposal){this.toast('Wait for the current step to finish, then try again.');return;}
+        const before=now.history?.conversationId;
+        // Product Android shows no connection panel for this step, so a failure is reported here.
+        void connectionController.newConversation().then(()=>{const after=connectionController.getSnapshot();if(after.error&&!after.open&&after.history?.conversationId===before)this.toast('Couldn’t start a new chat. Try again.');});
+      },
+      openHistory:()=>{
+        // Android lists saved chats in Settings; elsewhere the connection panel holds them.
+        if(Capacitor.isNativePlatform()&&!testMocksEnabled)this.openView('settings',{page:'agent-connection'});
+        else connectionController.open();
+      },
+    };
     out.onKey=(event:KeyboardEvent&{nativeEvent?:KeyboardEvent})=>{
       if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&!event.nativeEvent?.isComposing&&event.keyCode!==229){event.preventDefault();sendFromComposer(this);}
     };
@@ -1506,14 +1533,17 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       const sent=live.find(item=>item.id===m.id);
       m={...m,sentMail:sent?.mailAttachment?.title||'',sentTranscript:sent?.transcriptAttachment?.title||'',sentPhoto:sent?.cameraAttachment?.image||'',openPhotoPreview:()=>{if(sent?.cameraAttachment?.image){this.chatImagePreview=sent.cameraAttachment.image;this.setState({});}}};
       const c=m.c||{};
-      // A system notice card already carries its text; do not print it a second time above the card.
-      if(c.systemNotice&&m.cGeneric&&m.displayText===c.sub)return {...m,hasCalendarText:false};
+      // A system notice is a status block, never a button: it carries its text once, with no
+      // title repeated as the detail and no second copy printed above it.
+      if(c.systemNotice&&m.cGeneric)return {...m,cGeneric:false,cNotice:true,noticeSub:c.sub&&c.sub!==c.title?c.sub:'',hasCalendarText:m.hasCalendarText&&m.displayText!==c.sub&&m.displayText!==c.title};
       if(!c.proposalId||c.done||c.reviewUnavailable||!m.cGeneric)return m;
       const message=live.find(item=>item.card===c);if(!message)return m;
-      const ic=out.ic||{},busy=!!this.decliningProposal||!!this.pendingActionApproval;
+      // Only the card being approved or declined shows progress; the others stay readable but wait.
+      const ic=out.ic||{},busy=!!this.decliningProposal||!!this.pendingActionApproval,approving=busy&&this.pendingActionApprovalProposalId===c.proposalId,declining=this.decliningProposal===c.proposalId;
+      // A card that only leads to the screen where the choice is made says Open, not Approve.
       return {...m,hasCalendarText:m.hasCalendarText&&m.displayText!==c.sub,cGeneric:false,cDigest:true,actionReviewClass:'alpha-action-review',rows:[
-        {ini:'',who:busy?'Working…':c.title,text:typeof c.sub==='string'&&c.sub.startsWith(c.title+'\n')?c.sub.slice(c.title.length+1):c.sub,icon:ic.right,open:()=>{if(!busy)void this.cardAct(message);}},
-        {ini:'',who:this.decliningProposal===c.proposalId?'Cancelling…':'Cancel',text:'Keep things as they are.',icon:ic.x,open:()=>{if(!busy)void this.declineCard(message);}},
+        {ini:'',who:approving?'Working…':c.title,text:typeof c.sub==='string'&&c.sub.startsWith(c.title+'\n')?c.sub.slice(c.title.length+1):c.sub,label:approving?'':c.reviewDestination?'Open':'Approve',icon:ic.right,open:()=>{if(!busy)void this.cardAct(message);}},
+        {ini:'',who:declining?'Declining…':'Decline',text:'Keep things as they are.',icon:ic.x,open:()=>{if(!busy)void this.declineCard(message);}},
       ]};
     });
     // A chat-started workflow run replies with a [WORKFLOW] block: it shows as a card that opens the
@@ -1717,7 +1747,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         if(!this.live||document.hidden||String(this.S().draft)!==text||!connectionController.messageTargetCurrent(editTarget))throw Error('The draft or conversation changed. Nothing was replaced.');
         await connectionController.truncateMessage(editTarget);this.messageEditTarget=undefined;s=this.S();
         if(!this.live||document.hidden||s.view!==editView||String(s.draft)!==text)throw Error('History was replaced. Your draft changed, so nothing was resent.');
-      } catch(error){if(error&&typeof error==='object'&&'historyChanged' in error)this.messageEditTarget=undefined;this.toast(error instanceof Error?error.message:'Message replacement failed.');return;}
+      } catch(error){if(error&&typeof error==='object'&&'historyChanged' in error)this.messageEditTarget=undefined;this.toast(errorNotice(error,'Couldn’t replace the message. Nothing was sent.'),ERROR_TOAST);return;}
       finally{this.draftSendPending=false;}
     }
     let sourceDraft=fromComposer&&this.reviewedSourceDraft?.draft===text?sourceOf(this.reviewedSourceDraft.source):undefined;
@@ -1725,7 +1755,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const transcript=fromComposer?this.transcriptAttachment:null;
     const mail=fromComposer?(this.mailAttachment??null):null;
     let mailText='';
-    try{if(mail)mailText=await mail.validate();}catch(error){this.toast(error instanceof Error?error.message:'Reopen the email before sending.');return;}
+    try{if(mail)mailText=await mail.validate();}catch(error){this.toast(errorNotice(error,'Reopen the email before sending.'),ERROR_TOAST);return;}
     if(mail&&(this.mailAttachment??null)!==mail)return;
     const requestText=mail?mailText+'\n\nQuestion: '+text:transcript?'Use the transcript of the selected voice note to answer this question.\n\n'+text:text;
     const transcriptCurrent=()=>!transcript||(this.S().view==='notes'&&JSON.stringify(this.notesSelection)===transcript.selection&&this.transcriptAttachment===transcript);
@@ -1746,7 +1776,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(fromComposer){
       this.draftSendPending=true;
       // The durable draft keeps this text until the message is known to have been dispatched.
-      try{await this.draftBindingTask;heldKey=this.composerDraft.binding;await this.composerDraft.hold(heldText,current);}catch(error){this.toast(error instanceof Error?error.message:'Draft could not be prepared. Nothing was sent.');return;}finally{this.draftSendPending=false;}
+      try{await this.draftBindingTask;heldKey=this.composerDraft.binding;await this.composerDraft.hold(heldText,current);}catch(error){this.toast(errorNotice(error,'Draft could not be prepared. Nothing was sent.'),ERROR_TOAST);return;}finally{this.draftSendPending=false;}
     }
     const reviewedSource=fromComposer?this.reviewedSourceDraft:null;if(fromComposer)this.reviewedSourceDraft=null;
     // Everything this send later shows belongs to the agent connection it was sent on.
@@ -1843,7 +1873,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           cameraReceipts=results.length;
           for(const result of results)if(this.live)this.agentSay(result.summary,undefined,{id:`device-receipt:${result.proposalId}`,deviceReceipt:true});
         }
-      }catch(error){if(this.live)this.toast(error instanceof Error?error.message:'Could not confirm the screen change. Check your screen.');}
+      }catch(error){if(this.live)this.toast(errorNotice(error,'Could not confirm the screen change. Check your screen.'),ERROR_TOAST);}
       // The camera notice is dropped only when the photo was taken (a receipt) or its review card is shown on Camera.
       const cameraReview=cameraOpened&&alphaClient.getState().context.view==='camera'&&this.S().msgs.some((m:Shell)=>m.card?.proposalId&&!m.card.done);
       for(const notice of replyNotices(reply)){
@@ -2076,7 +2106,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     try {
       const result = await DailyApps.perform({ action: 'voice' });
       if (result.status === 'selected' && result.transcript) this.setState({ chat: 'sheet', draft: result.transcript });
-      else this.toast(result.message || 'Speech recognition is unavailable on this device.');
+      else this.toast(errorNotice(result.message, 'Speech recognition is unavailable on this device.'), ERROR_TOAST);
     } catch { this.toast('Speech recognition is unavailable on this device.'); }
   };
   p.stopVoice = function () { this.pendingActionApproval?.abort();this.cancelReadReplyCompletions?.();alphaClient.cancel(); this.setState({ voice: 'off', typing: false }); };

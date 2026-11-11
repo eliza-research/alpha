@@ -543,6 +543,12 @@ test('the recording notification follows pause: "Paused" with Resume, and its ch
   const service = native('AlphaNoteRecordingService.java');
   assert.match(service, /setContentTitle\(paused\?"Paused":"Recording"\)/);
   assert.match(service, /paused\?"Resume":"Pause"/);
+  // App review #855 (NOTIF-07): Stop is offered in both states and is the same stop as in Notes.
+  assert.match(service, /new Notification\.Action\.Builder\(null,"Stop",finish\)/);
+  assert.match(service, /ACTION_FINISH\.equals\(action\)\)\{[\s\S]*?recorder\.owns\(recording\)\)try\{recorder\.stop\(recording\);[\s\S]*?stopClosedRecording\(recording,startId\);/, 'Stop keeps the recording and leaves the foreground');
+  assert.match(service, /setSmallIcon\(R\.drawable\.ic_note_recording\)/);
+  assert.doesNotMatch(service, /android\.R\.drawable/, 'no legacy framework glyph');
+  assert.match(service, /channel\.setDescription\("/);
   assert.match(service, /setWhen\(System\.currentTimeMillis\(\)-Math\.max\(0,status\.optLong\("durationMs",0\)\)\)/);
   assert.match(service, /ACTION_PAUSE\.equals\(action\)\|\|ACTION_RESUME\.equals\(action\)[\s\S]*?refresh\(this\);/, 'a notification action shows the new state');
   assert.match(native('AlphaVoiceCloudPlugin.java'), /AlphaNoteRecordingService\.refresh\(getContext\(\)\)/, 'a pause in Alpha updates the notification');

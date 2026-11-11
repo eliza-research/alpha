@@ -6,7 +6,7 @@ function visible(){
  if(document.hidden||Array.from(document.querySelectorAll('[aria-label="Unlock with fingerprint"], [aria-label="Wake"]')).some(node=>node.getClientRects().length))throw new DOMException('Share view is not active','AbortError');
 }
 export function selectedText(input:{title:string;text:string}){
- if(typeof input.title!=='string'||input.title.length>200||typeof input.text!=='string'||!input.text.trim()||new TextEncoder().encode(input.text).length>65536||input.text.includes('\0'))throw Error('Choose nonempty text of at most 64 KiB.');
+ if(typeof input.title!=='string'||input.title.length>200||typeof input.text!=='string'||!input.text.trim()||new TextEncoder().encode(input.text).length>65536||input.text.includes('\0'))throw Error(typeof input.text==='string'&&input.text.trim()?'This is too long to share.':'There’s no text to share.');
  return Object.freeze({title:input.title,text:input.text});
 }
 /** One explicit OS handoff. Cancellation never tries clipboard or another destination. */

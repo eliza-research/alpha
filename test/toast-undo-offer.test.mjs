@@ -39,7 +39,7 @@ test('a message without Undo waits behind a visible Undo offer', () => {
   assert.deepEqual({...owner.state}, {toast: 'Note deleted', toastUndo: true});
   assert.equal(typeof owner.undoFn, 'function');
   assert.equal(timers.size, 1);
-  assert.equal(timers.values().next().value.delay, 5000);
+  assert.equal(timers.values().next().value.delay, 10000);
 
   expire();
   assert.deepEqual({...owner.state}, {toast: 'Arriving at Cafe', toastUndo: false});

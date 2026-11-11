@@ -34,7 +34,7 @@ test('background disconnect cancels current authority and foreground recreates a
  document.hidden=false;document.dispatchEvent(new Event('visibilitychange'));await client.ready();await settle();assert.equal(feeds.length,2);assert.equal(effects.length,1);
  current=false;feeds[1].ended();client.connectRenderer();assert.equal(feeds.length,2);client.dispose();
 });
-test("'Review phone actions first' refuses an agent browser command after claiming it",async()=>{
+test("'Ask before Alpha acts' refuses an agent browser command after claiming it",async()=>{
  for(const review of [async()=>true,async()=>{throw Error('Device settings need recovery.');}]){
   const requests=[],executed=[];let listener;
   const client=new ViewNavigationClient(async(path,body)=>{requests.push([path,body]);return path.endsWith('claim')?{claimId:'owned-claim'}:{accepted:true};},()=>true,()=>({view:'browser',revision:1,sensitive:false}),(id,receive,end)=>{listener=receive;return {ready:Promise.resolve(),close:end};},async(...args)=>{executed.push(args);return {dispatched:true};},review);
