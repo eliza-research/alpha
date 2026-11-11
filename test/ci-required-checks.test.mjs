@@ -69,9 +69,7 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   assert.match(android, /name: Prepare pinned SDK for manual verification[\s\S]*node scripts\/prepare-local-agent\.ts/);
   assert.match(android, /name: Prepare pinned native lifecycle sources\n\s+if: github\.event_name != 'workflow_dispatch'/);
 
-  assert.match(browser, /name: Browser MVP result\n    needs: \[changes, verify, formal, browser, production\]\n    if: always\(\)/);
-  assert.match(browser, /name: Changed-model proofs[\s\S]*?run: npm run quint:changed/);
-  assert.ok(browser.includes('"formal=$FORMAL:$VERIFY_SELECTED"'), 'a failed or skipped selected proof lane must fail the stable aggregate');
+  assert.match(browser, /name: Browser MVP result\n    needs: \[changes, verify, browser, production\]\n    if: always\(\)/);
   assert.match(browser, /name: Repository verification\n/);
   assert.match(browser, /node scripts\/verify-upstream\.ts/);
   const resident = read('.github/workflows/resident-android.yml');
@@ -86,6 +84,20 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   const concurrency = YAML.parse(resident).concurrency;
   assert.equal(concurrency.group, "resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && (github.run_attempt == 1 && 'app-candidate-main' || format('app-candidate-run-{0}', github.run_id)) || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}" + carrierGroupSuffix);
   assert.equal(concurrency['cancel-in-progress'], "${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1) }}");
+});
+
+test('Quint and Lemma run in CI only for promotion to main and on dispatch', () => {
+  const formal = /quint:|lemma:|prepare-dafny|LEMMA_|ALPHA_QUINT/;
+  for (const file of fs.readdirSync('.github/workflows').filter(name => name !== 'quint-model-check.yml'))
+    assert.doesNotMatch(read(`.github/workflows/${file}`), formal, file);
+  assert.doesNotMatch(JSON.parse(read('package.json')).scripts.verify, formal);
+  const promotion = YAML.parse(read('.github/workflows/quint-model-check.yml'));
+  assert.deepEqual(Object.keys(promotion.on).sort(), ['pull_request', 'workflow_dispatch']);
+  assert.deepEqual(promotion.on.pull_request, {branches: ['main']});
+  const commands = Object.values(promotion.jobs).flatMap(job => job.steps).map(step => step.run ?? '').join('\n');
+  for (const command of ['quint:prepare-history', 'quint:check', 'quint:tests', 'quint:refinement -- --families=composition',
+    'quint:verify', 'quint:compare', 'quint:temporal', 'lemma:check', 'scripts/ci/prepare-dafny.sh'])
+    assert.ok(commands.includes(command), command);
 });
 
 test('committed ruleset requires exactly the stable check names', () => {

@@ -16,6 +16,11 @@ for (const filter of ['selected', 'failure']) test(`npm test forwards the name f
   test('selected', () => fs.appendFileSync('ran.txt', 'selected'));
   test('failure', () => { fs.appendFileSync('ran.txt', 'failure'); throw Error('fixture failure'); });
  `);
+ // The default suite leaves out test/quint-*; `npm run quint:tests` names those files.
+ fs.writeFileSync(path.join(root, 'test/quint-fixture.test.mjs'), `
+  import test from 'node:test'; import fs from 'node:fs';
+  for (const name of ['selected', 'failure']) test(name, () => fs.appendFileSync('ran.txt', 'quint'));
+ `);
  const env = {...process.env}; delete env.NODE_TEST_CONTEXT;
  const result = spawnSync(process.execPath, [path.join(root, 'scripts/run-node-tests.ts'), `--test-name-pattern=^${filter}$`],
    {env, encoding: 'utf8', timeout: 30000});
