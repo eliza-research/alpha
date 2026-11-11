@@ -9,7 +9,7 @@ import org.json.JSONObject;
  * the encrypted 'gmail-background:v1' slot, the production Cloud key, reset fence and notice identifiers. */
 final class GmailBackground {
  static final String SLOT="gmail-background:v1";
- static final MailNoticePoster.Config NOTICES=new MailNoticePoster.Config("alpha-gmail","New Gmail messages","New unread Inbox messages. Android may delay checks.",
+ static final MailNoticePoster.Config NOTICES=new MailNoticePoster.Config("alpha-gmail","New Gmail messages","Tells you when new unread mail arrives. Never shows the sender or subject. Android may delay checks.",
   "ai.alphacompute.alphaphone.OPEN_GMAIL_NOTICE","alpha-gmail:","alpha-gmail-ask:","alpha-gmail-",R.drawable.notification_icon,"New mail in Gmail","Tap to open Inbox.","Alpha Phone","Tap to open.","Ask Alpha",MainActivity.class);
  private static MailBackgroundDelivery delivery;private static MailNoticePoster poster;
  static synchronized MailNoticePoster poster(Context context){if(poster==null)poster=new MailNoticePoster(context.getApplicationContext(),NOTICES);return poster;}

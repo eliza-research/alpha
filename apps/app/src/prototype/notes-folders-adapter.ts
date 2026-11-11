@@ -3,10 +3,11 @@ type Bag=Record<string,any>;
 type Shell=any;
 
 /**
- * Notes folders for live Notes (PLAN.md section 3, decision N1). The folder list is its own
+ * Notes folders kept from the earlier folder layout. The folder list is its own
  * encrypted slot (runtime/notes-folders); a note names its folder by `folderId` in the notes
- * collection. The list view reads `folders` from the Notes view state; model.js calls
- * api.notesFolders to create, rename or delete one; renaming keeps the id, so membership is unchanged. Deleting a folder removes it first, so nothing can be
+ * collection. The Notes view is one flat list with no folder controls: it only reads `folders`
+ * from the view state for the agent's list filter. api.notesFolders still creates, renames or
+ * deletes a stored folder; renaming keeps the id, so membership is unchanged. Deleting a folder removes it first, so nothing can be
  * moved into it, then moves its notes to no folder (specs/notes-view DeleteFolder,
  * FolderRefsValid): a reference left behind by an interrupted release reads as no folder.
  */
@@ -55,11 +56,11 @@ export function installNotesFoldersAdapter(Component:Shell,views:Record<string,B
   const view=render(state,api);
   // A ⋯ menu action closes the menu and returns focus to ⋯ first, whichever adapter supplies the
   // action (the voice adapter replaces Delete), so a dialog it opens hands focus back to ⋯.
-  for(const detail of [view.ed,view.vo,view.lk])if(detail?.menuShown)for(const key of ['pin','del','moveTo']){
+  for(const detail of [view.ed,view.vo,view.lk])if(detail?.menuShown)for(const key of ['pin','del']){
    const action=detail[key];if(typeof action!=='function')continue;
    detail[key]=async(...args:unknown[])=>{
     const more=document.querySelector<HTMLElement>('button[aria-haspopup="dialog"][aria-expanded="true"]');
-    if(key!=='moveTo'){await api.set({menu:null});more?.focus();}
+    await api.set({menu:null});more?.focus();
     return action(...args);
    };
   }

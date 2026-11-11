@@ -1,6 +1,7 @@
 import {findMapsCardRegions,type MapsCardPlace,type MapsCardSpec} from '../../../../.eliza/client-features/packages/ui/src/components/chat/message-maps-parser.ts';
 import {guidanceDistance,guidanceDuration} from '../maps/guidance';
 import {connectionController} from '../runtime/connection-ui';
+import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 
 /** Display-only projection of an agent Maps card. Links are shown as text, never opened. */
 export type MapsChatCard={kind:MapsCardSpec['kind'];title:string;lines:string[];attribution:string};
@@ -66,7 +67,7 @@ export function installMapsChatAdapter(Component:Shell){
   // send() refuses a prompt while a message edit is open; do not mark the answer as sent.
   if(shell.messageEditTarget){shell.toast('Editing message');return;}
   done.add(id);if(shell.live)shell.setState({});
-  try{await shell.send(value);}catch(error){done.delete(id);if(shell.live){shell.setState({});shell.toast(error instanceof Error?error.message:'Not sent');}}
+  try{await shell.send(value);}catch(error){done.delete(id);if(shell.live){shell.setState({});shell.toast(errorNotice(error,'Not sent'),ERROR_TOAST);}}
  }
  p.renderVals=function(){
   const out=render.call(this),msgs=out.msgs||[],done=answers(this);

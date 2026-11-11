@@ -2,6 +2,7 @@ import {AssistantDraftController} from '../prototype/assistant-draft-controller'
 import {assistantDraftStore} from '../runtime/assistant-draft-store';
 import {browserDevProfile} from './dev-profile';
 import {openDomainRecovery} from './domain-recovery';
+import {BrowserReviews} from './review';
 export type CalendarEditorFields={title:string;body:string;location:string;start:string;end:string;zone:string;allDay:boolean;repeat:string;alert:string;video:boolean;who:string[];timed?:{start:string;end:string;firstDay:string;lastDay:string}};
 type RecordDraft={version:1;id:string;revision:string;fields:CalendarEditorFields};
 export function readCalendarEditorDraft(raw:string,id:string):RecordDraft{
@@ -21,8 +22,9 @@ export function calendarEditorDraft(dialog:HTMLDialogElement,form:HTMLElement,sa
  const apply=(raw:string)=>{const row=raw?readCalendarEditorDraft(raw,identity.id):null;revision=row?.revision||identity.revision;restore(row?.fields||baseline);invalid=false;};
  const controller=new AssistantDraftController(async binding=>{const store=await assistantDraftStore(binding);return {...store,read:async()=>{const row=await store.read();if(row?.text)readCalendarEditorDraft(row.text,identity.id);return row;}};},()=>text,raw=>{text=raw;if(applying)apply(raw);},()=>publish());
  const resume=button('Restore saved editor',()=>{if(controller.state.conflict){applying=true;try{controller.restoreSaved();}finally{applying=false;}}else apply(text);offered=false;publish();});
- const replace=button('Replace saved editor',()=>{if(!window.confirm('Replace edits?'))return;controller.keepCurrent();publish();});
- const discard=button('Discard saved editor',()=>{if(!window.confirm('Discard edits?'))return;const expected=text;void controller.consume(expected,()=>alive).then(()=>{apply('');offered=false;publish();}).catch(()=>publish());});
+ const reviews=new BrowserReviews();
+ const replace=button('Replace saved editor',()=>void reviews.confirm('replace-calendar-editor','Replace saved edits?','What you see now replaces the edits saved earlier for this event. The earlier edits can’t be restored.','Replace saved edits',{current:()=>alive&&controller.state.conflict}).then(approved=>{if(!approved||!alive||!controller.state.conflict)return;controller.keepCurrent();publish();}));
+ const discard=button('Discard saved editor',()=>{const expected=text;void reviews.confirm('discard-calendar-editor','Discard saved edits?','The edits saved earlier for this event are removed. This can’t be undone.','Discard edits',{current:()=>alive&&offered&&text===expected}).then(approved=>{if(!approved||!alive||!offered||text!==expected)return;return controller.consume(expected,()=>alive).then(()=>{apply('');offered=false;publish();});}).catch(()=>publish());});
  const retry=button('Retry editor storage',()=>{opened=false;void controller.retry().then(()=>{if(!alive)return;opened=true;offered=!!text;publish();});});
  const recover=button('Recover editor storage',()=>{const recovery=controller.recovery();if(!recovery)return;recoveryAbort?.abort();recoveryAbort=new AbortController();openDomainRecovery({capture:async signal=>{const data=await recovery.capture(signal);return {...data,raw:JSON.stringify({saved:data.raw,current:read()})};},reset:recovery.reset},'calendar editor','Calendar editor recovery','Back up first',recoveryAbort.signal);});
  function publish(){if(!alive)return;const state=controller.state;form.inert=!opened||offered||saving||saved;save.disabled=!opened||offered||state.conflict||state.error||invalid||saving||saved;message.textContent=saved?'Saved':invalid?'Too large':offered?'Unsaved edits':state.message.replaceAll('sending','saving').replace('Preparing draft to send','Preparing');resume.hidden=!(offered||state.conflict);replace.hidden=!state.conflict;discard.hidden=!offered||state.conflict;retry.hidden=recover.hidden=!state.error;}
@@ -34,6 +36,6 @@ export function calendarEditorDraft(dialog:HTMLDialogElement,form:HTMLElement,sa
   beforeSave(){if(!opened||offered||controller.state.conflict||controller.state.error||invalid)throw Error('Review the retained editor before saving.');if(revision!==identity.revision)throw Error('These edits belong to an older event revision. Discard them and reopen the current event.');capture();if(invalid)throw Error('Current edits could not be retained.');saving=true;publish();return text;},
   async committed(expected:string){try{if(expected)await controller.consume(expected,()=>alive);return true;}catch{saved=true;publish();return false;}},
   settled(){saving=false;publish();},
-  close(){alive=false;controller.retire(false);recoveryAbort?.abort();form.removeEventListener('input',capture);form.removeEventListener('change',capture);},
+  close(){alive=false;reviews.cancelAll();controller.retire(false);recoveryAbort?.abort();form.removeEventListener('input',capture);form.removeEventListener('change',capture);},
  };
 }

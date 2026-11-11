@@ -152,7 +152,9 @@ const saved=(page:Page)=>page.evaluate(()=>localStorage.getItem('alpha.app-updat
 test('automatic update permission can be granted before any offer and is read back on Android resume',async({page})=>{
  await nativeStub(page,{updates:[null],updatePermission:'permission-required'});
  await settings(page);await general(page);
- const allow=app(page).getByRole('button',{name:'Allow automatic updates',exact:true});
+ const updates=app(page).locator('[data-settings-page="General"] [data-alpha-app-scroll="settings"] > div')
+  .filter({has:page.getByRole('button',{name:'Check for updates',exact:true})});
+ const allow=updates.getByRole('button',{name:'Allow automatic updates',exact:true});
  await expect(allow).toBeVisible();
  await expect.poll(()=>saved(page)).not.toBeNull();
  await expect(app(page).getByRole('button',{name:'Install update',exact:true})).toHaveCount(0);
@@ -165,8 +167,8 @@ test('automatic update permission can be granted before any offer and is read ba
  await expect(allow).toBeVisible();
  await page.evaluate(()=>{const fixture=(window as any).settingsFixture;fixture.setUpdatePermission('supported');fixture.resume();});
  await expect(allow).toHaveCount(0);
- await expect(app(page).getByText('Automatic updates',{exact:true})).toBeVisible();
- await expect(app(page).getByText('Allowed',{exact:true})).toBeVisible();
+ await expect(updates.getByText('Automatic updates',{exact:true})).toBeVisible();
+ await expect(updates.getByText('Allowed',{exact:true})).toBeVisible();
  expect(await calls(page,'AlphaDevice','installUpdate')).toBe(0);
 });
 

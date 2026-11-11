@@ -7,7 +7,12 @@ module NativeActionRecovery {
   var s: State
 
   val kinds = Set("notice","calendar-delete","reminder-cancel","reminder-read","reminder-complete","reminder-create","reminder-update","reminder-snooze",
-    "workflow-read","calendar-read","note-read","note-query","maps-read")
+    "workflow-read","calendar-read","note-read","note-query","maps-read",
+    "note-write","calendar-write","files-write","camera-capture","browser-navigate","view-only")
+  /// Journaled operation classes for which this native recovery has no receipt reader. Their
+  /// saved results are reconciled only by the shared coordinator from its own exact saved
+  /// receipts (camera, Calendar, Notes); navigation and Browser opens have no proof at all.
+  val unproven = Set("note-write","calendar-write","files-write","camera-capture","browser-navigate","view-only")
   val phases = Set("absent","reserved","applying","unknown","failed","succeeded")
   val methods = Set("notice","deletion","reminder","list","get")
   val addresses = Set("exact","scope","proposal","invalid")
@@ -180,7 +185,12 @@ module NativeActionRecovery {
     not(s.replyResult.in(Set("workflow","calendar-read","note","query","maps","reminder-read")))
   val ReminderLookupUsesSelectedBinding = s.method!="reminder" or s.reminderReads==0 or
     (s.requestedBinding=="exact" and s.completeBinding)
+  /// No notice, reminder or deletion recovery call settles a row of an unproven kind.
+  val NoNativeProofNeverSettles = not(s.kind.in(unproven)) or (s.journalWrites==0 and s.noticeWrites==0)
+  val ViewOnlyNeverRecoversToSuccess = not(s.kind.in(Set("view-only","browser-navigate"))) or
+    (s.journalWrites==0 and s.noticeReads==0 and s.reminderReads==0)
   val safety = all {SuccessRequiresAdmission,ClaimedDeletionRetainsAttempt,PassiveReadOnly,
+    NoNativeProofNeverSettles,ViewOnlyNeverRecoversToSuccess,
     IndependentCommitBoundaries,RedactedPassiveReads,ReminderLookupUsesSelectedBinding}
 
   action step = any {
@@ -231,4 +241,13 @@ module NativeActionRecovery {
   run retiredBridgeCannotRecoverTest = initWith("notice","applying",true,false)
     .then(receipt("succeeded","exact",false)).then(retire).then(call("notice","exact","exact","none"))
     .expect(s.reply=="refused" and s.phase=="applying" and s.noticeReads==0)
+  run unprovenKindsStayUnsettledTest = initWith("camera-capture","applying",true,false)
+    .then(call("notice","exact","exact","none")).expect(safety and s.reply=="refused" and s.phase=="applying")
+    .then(call("reminder","exact","exact","none")).expect(safety and s.reply=="refused" and s.phase=="applying")
+    .then(call("deletion","exact","exact","none")).expect(safety and s.phase=="applying" and s.journalWrites==0)
+    .then(call("get","exact","exact","none")).expect(safety and s.reply=="applying")
+  run viewOnlyNeverRecoversTest = initWith("view-only","unknown",true,false)
+    .then(call("notice","exact","exact","none")).then(call("reminder","exact","exact","none"))
+    .then(call("deletion","exact","exact","none"))
+    .expect(safety and s.phase=="unknown" and s.journalWrites==0 and s.reminderReads==0)
 }
