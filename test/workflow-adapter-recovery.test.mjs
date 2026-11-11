@@ -61,12 +61,12 @@ test('a run request without a submission identity is cleared only by its owner, 
   app.render().openWorkflow('flow');await wait(()=>app.render().detail);
   assert.match(app.render().fd.last,/Check runs · Clear request/);
   app.render().fd.run();
-  assert.match(app.toasts.at(-1),/can’t check whether your earlier run started/);
-  assert.equal(Object.keys(storage).length,1);assert.match(app.render().fd.last,/Tap Run now again to clear/);
+  assert.match(app.toasts.at(-1),/May have run · Clear request/);
+  assert.equal(Object.keys(storage).length,1);assert.match(app.render().fd.last,/Confirm clear · Nothing sent/);
   app.render().fd.run();await wait(()=>Object.keys(storage).length===0&&app.render().fd.notRunning);
   assert.match(app.toasts.at(-1),/Earlier run request cleared\. Nothing was sent/);assert.equal(app.calls.run,0);
   // A new run still needs its own review.
-  app.render().fd.run();assert.equal(app.calls.run,0);assert.match(app.render().fd.last,/Tap Run now again to start it/);
+  app.render().fd.run();assert.equal(app.calls.run,0);assert.equal(app.render().fd.runLabel,'Confirm run');assert.equal(app.render().fd.runAria,'Confirm run');
   app.render().fd.run();await wait(()=>app.calls.run===1&&app.render().fd.notRunning);
  }finally{app.close();}
 });

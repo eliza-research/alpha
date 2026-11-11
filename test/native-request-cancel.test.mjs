@@ -55,6 +55,8 @@ test('native never dispatches a withdrawn request that is still queued or enroll
  const cut=(from,to,after=0)=>{const start=source.indexOf(from,after),end=source.indexOf(to,start);assert.ok(start>=0&&end>start,`Actual source must contain ${from}`);return source.slice(start,end);};
  const methodStart=source.indexOf(' @PluginMethod public void request(');
  const worker=cut('  JSONObject headers=call.getObject("headers");\n  final String cancelId=',' /** Cancellation acknowledges transport closure',methodStart);
+ const deadlines=cut(' private static final int LOCAL_REQUEST_TIMEOUT_LIMIT_MS=', ' @PluginMethod public void request(');
+ const admission=cut('  final Long deadline;','  JSONObject headers=call.getObject("headers");',methodStart);
  const line=from=>cut(from,'\n');
  const ownership=[line(' private void rejectPending('),cut(' private void resolveCurrent(',' private void rejectSuperseded('),line(' private void rejectSuperseded(')].join('\n');
  assert.ok(ownership.includes('private void requireOwned('));
@@ -65,7 +67,7 @@ test('native never dispatches a withdrawn request that is still queued or enroll
 import java.util.*;import java.util.concurrent.*;import org.json.*;
 @interface PluginMethod {}
 class JSObject extends JSONObject {JSObject(){}JSObject(String json){super(json);}public JSObject put(String k,Object v){super.put(k,v);return this;}public JSObject put(String k,boolean v){super.put(k,v);return this;}public JSObject put(String k,int v){super.put(k,v);return this;}}
-class PluginCall {Map<String,String> values=new HashMap<>();int resolves,rejects;String code;JSObject result;String getString(String k){return values.get(k);}String getString(String k,String d){return values.getOrDefault(k,d);}JSONObject getObject(String k){return null;}void resolve(JSObject value){resolves++;result=value;}void reject(String why){rejects++;}void reject(String why,String reason){rejects++;code=reason;}}
+class PluginCall {Map<String,String> values=new HashMap<>();int resolves,rejects;String code;JSObject result;String getString(String k){return values.get(k);}String getString(String k,String d){return values.getOrDefault(k,d);}JSONObject getObject(String k){return null;}JSONObject getData(){return new JSONObject(values);}void resolve(JSObject value){resolves++;result=value;}void reject(String why){rejects++;}void reject(String why,String reason){rejects++;code=reason;}}
 public class RequestCancelTest {
  static final Object lifecycleLock=new Object();final Set<PluginCall> pending=new HashSet<>();final Map<String,PluginCall> withdrawable=new HashMap<>();
  final List<Runnable> queued=new ArrayList<>();final Executor workers=queued::add;String ownerIdentity="owner";int dispatched,enrollments;Runnable duringEnroll=()->{};
@@ -75,8 +77,11 @@ public class RequestCancelTest {
  JSONObject raw(String path,String method,String body,String token,JSONObject supplied,int timeoutMs){dispatched++;return new JSONObject().put("status",200).put("body","{}");}
  static void logRequestFailure(String category,String method,int status,String reason){}
 ${ownership}
+${deadlines}
  void request(PluginCall call){
+  long entered=android.os.SystemClock.elapsedRealtime();
   String path="/api/agents",method=call.getString("method","GET"),body=call.getString("body"),expectedOwner="owner",group=null;
+${admission}
 ${worker}
  static PluginCall call(String method,String cancelId){PluginCall c=new PluginCall();c.values.put("method",method);if(cancelId!=null)c.values.put("cancelId",cancelId);return c;}
  static PluginCall cancel(String cancelId){PluginCall c=new PluginCall();c.values.put("cancelId",cancelId);return c;}
@@ -110,6 +115,7 @@ ${worker}
   System.out.println("PASS withdrawn requests are never dispatched; others are untouched");
  }
 }`);
-  assert.match(runJvm([file,nativeSource('PluginWorkers.java')],'ai.alphacompute.alphaphone.RequestCancelTest',{json:true}),/^PASS withdrawn requests/);
+  const clock=path.join(dir,'SystemClock.java');fs.writeFileSync(clock,'package android.os;public class SystemClock {public static long elapsedRealtime(){return 0;}}');
+  assert.match(runJvm([clock,file,nativeSource('PluginWorkers.java')],'ai.alphacompute.alphaphone.RequestCancelTest',{json:true}),/^PASS withdrawn requests/);
  }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

@@ -74,7 +74,7 @@ test('a removal the agent never received is sent again under its original identi
   assert.equal(Object.keys(app.storage).length,1);
   // The first tap only reviews: nothing is sent and the request stays retained.
   app.render().fd.del();
-  assert.match(app.toasts.at(-1),/Tap the workflow action again to send that same request once more/);
+  assert.match(app.toasts.at(-1),/Confirm resend/);
   assert.match(app.render().fd.last,/Confirm resend/);
   assert.deepEqual(app.sent,[]);assert.equal(Object.keys(app.storage).length,1);
   app.render().fd.del();await wait(()=>Object.keys(app.storage).length===0&&!app.render().fd.isRunning);
@@ -146,7 +146,7 @@ test('a resend with no answer stays retained and is offered again only after the
   assert.equal(Object.keys(app.storage).length,1);assert.equal(app.agent.applications,0);
   assert.match(app.render().fd.last,/Unknown/);
   // The next tap reads the receipt; it does not send.
-  app.render().fd.del();await wait(()=>/sends that same request again/.test(app.render().fd.last));
+  app.render().fd.del();await wait(()=>/Not received/.test(app.render().fd.last));
   assert.equal(app.sent.length,1);
  }finally{app.close();}
 });

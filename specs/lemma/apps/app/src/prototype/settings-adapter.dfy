@@ -72,6 +72,18 @@ lemma settingsNavigationRows_ensures(rows: seq<NavigationRow>, developerSurfaces
   ensures (developerSurfaces ==> (settingsNavigationRows(rows, developerSurfaces) == rows))
   ensures (!(developerSurfaces) ==> forall k: int :: ((0 <= k) ==> (k < |settingsNavigationRows(rows, developerSurfaces)|) ==> ((match settingsNavigationRows(rows, developerSurfaces)[k].label_ { case Some(i_value) => (i_value != "Developer") case None => true }) && (match settingsNavigationRows(rows, developerSurfaces)[k].lbl { case Some(i_value) => (i_value != "Developer") case None => true }))))
 {
+  settingsNavigationRows_shape(rows, developerSurfaces);
+  if !developerSurfaces {
+    var kept := settingsNavigationRows(rows, developerSurfaces);
+    forall k | 0 <= k < |kept|
+      ensures (match kept[k].label_ { case Some(value) => value != "Developer" case None => true }) &&
+        (match kept[k].lbl { case Some(value) => value != "Developer" case None => true })
+    {
+      assert kept[k] in kept;
+      assert !DeveloperRow(kept[k]);
+      assert kept[k].label_ != Some("Developer") && kept[k].lbl != Some("Developer");
+    }
+  }
 }
 
 const UPDATE_CHECK_INTERVAL_MS: int := ((15 * 60) * 1000)
@@ -107,7 +119,7 @@ lemma settingsNavigationRows_step(rows: seq<NavigationRow>)
   ensures settingsNavigationRows(rows, false) ==
     (if DeveloperRow(rows[0]) then [] else [rows[0]]) + settingsNavigationRows(rows[1..], false)
 {
-  reveal Std.Collections.Seq.Filter();
+  reveal SeqFilter();
 }
 
 lemma settingsNavigationRows_shape(rows: seq<NavigationRow>, developerSurfaces: bool)

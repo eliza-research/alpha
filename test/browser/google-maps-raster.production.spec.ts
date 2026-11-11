@@ -30,7 +30,7 @@ for(const tiles of ['valid','malformed','copyright-unavailable','unavailable'] a
    if(plugin==='ElizaSense')return {available:true,state:'OFF',label:'Listening off',consented:false,listening:false,microphoneOpen:false};
    if(plugin==='AlphaConnection'&&method==='request'&&new URL(input.url).pathname.startsWith('/api/v1/maps/')){
     const path=new URL(input.url).pathname;
-    if(path.endsWith('/capabilities'))return {status:200,data:{providerId,connectionId:'conn_google_fixture_0001',revision:'fixture-google',attribution,sources:{data:'Google Maps',search:'Google Places',routing:'Google Routes'},regions:[{id:'world',name:'World',bounds:[-180,-85,180,85]}],capabilities:{map:tiles!=='unavailable',search:true,placeDetails:true,modes:['drive','walk'],alternatives:false,traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}},...(tiles==='unavailable'?{}:{tiles:{urlTemplate:'/api/v1/maps/tiles/{z}/{x}/{y}',tileSize:256,minZoom:0,maxZoom:18,attribution:'Map data © Google'}})}};
+    if(path.endsWith('/capabilities'))return {status:200,data:{providerId,connectionId:'conn_google_fixture_0001',revision:'fixture-google',attribution,disclosure:{cloudRecords:'operation-and-result-code',recipients:[{role:'gateway',name:'Eliza Cloud',operator:'Eliza'},{role:'search',name:'Google Places',operator:'Google'},{role:'routing',name:'Google Routes',operator:'Google'}]},sources:{data:'Google Maps',search:'Google Places',routing:'Google Routes'},regions:[{id:'world',name:'World',bounds:[-180,-85,180,85]}],capabilities:{map:tiles!=='unavailable',search:true,placeDetails:true,modes:['drive','walk'],alternatives:false,traffic:'none',transit:'none',offline:{map:false,search:false,routing:false}},...(tiles==='unavailable'?{}:{tiles:{urlTemplate:'/api/v1/maps/tiles/{z}/{x}/{y}',tileSize:256,minZoom:0,maxZoom:18,attribution:'Map data © Google'}})}};
     if(/\/tiles\/\d+\//.test(path)){f.tiles++;f.tileKeys.push(input.headers['Idempotency-Key']);return {status:200,data:{encoding:'base64',contentType:'image/png',data:tiles==='malformed'?'invalid':png}};}
     if(path.endsWith('/tiles/viewport')){f.viewport++;if(tiles==='copyright-unavailable')return {status:503,data:{error:{code:'provider_unavailable',message:'Copyright metadata unavailable'}}};return {status:200,data:{providerId,copyright:'Map data © Google · synthetic viewport'}};}
     if(path.endsWith('/routes')){
@@ -52,9 +52,18 @@ for(const tiles of ['valid','malformed','copyright-unavailable','unavailable'] a
  const plane=page.locator('[data-alpha-map-plane]');await expect(plane).toBeVisible();
  const attribution=page.locator('.alpha-map-credits');
  await expect(attribution.getByRole('img',{name:'Google Maps',exact:true})).toBeVisible();
+ const privacy=attribution.locator('.alpha-map-privacy');
+ await expect(privacy).not.toHaveAttribute('open','');
+ await privacy.getByLabel('Map information and credits',{exact:true}).click();
+ await expect(privacy).toContainText('Routes share selected points');
+ await expect(privacy.locator('[data-maps-disclosure]')).toContainText('Google Places for search, operated by Google');
+ await expect(privacy.locator('[data-maps-disclosure]')).toContainText('Google Routes for routing, operated by Google');
+ await expect(privacy).not.toContainText('Location stays on phone');
+ await privacy.getByLabel('Map information and credits',{exact:true}).click();
+ await expect(attribution.getByRole('img',{name:'Google Maps',exact:true})).toBeVisible();
  await expect(page.locator('.alpha-map-credits').getByText('OpenFreeMap',{exact:true})).toHaveCount(0);
  if(tiles==='unavailable'){
-  await expect(attribution.getByText('Map imagery unavailable')).toBeVisible();
+  await expect(attribution.getByText('No imagery')).toBeVisible();
   await expect(plane.locator('canvas')).toHaveCount(0);
   await expect(page.getByText('Loading map…',{exact:true})).toHaveCount(0);
   await expect(page.getByRole('button',{name:/^Synthetic harbour/})).toBeVisible();

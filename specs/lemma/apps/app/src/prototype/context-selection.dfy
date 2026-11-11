@@ -45,17 +45,17 @@ predicate OnlyAt(reviewed: NoticeIdentity, xs: seq<Notice>, k: int)
 // What the number of rows kept by the identity filter says about the list: none kept means
 // no row has the identity; one kept means exactly one index has it.
 lemma IdentityCount(reviewed: NoticeIdentity, xs: seq<Notice>)
-  ensures |Std.Collections.Seq.Filter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs)| == 0 <==> forall j :: 0 <= j < |xs| ==> !SameNotice(reviewed, xs[j])
-  ensures |Std.Collections.Seq.Filter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs)| == 1 <==> exists k :: OnlyAt(reviewed, xs, k)
+  ensures |SeqFilter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs)| == 0 <==> forall j :: 0 <= j < |xs| ==> !SameNotice(reviewed, xs[j])
+  ensures |SeqFilter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs)| == 1 <==> exists k :: OnlyAt(reviewed, xs, k)
   decreases |xs|
 {
-  reveal Std.Collections.Seq.Filter();
+  reveal SeqFilter();
   if |xs| != 0 {
     var tail := xs[1..];
     IdentityCount(reviewed, tail);
     assert forall j :: 0 <= j < |tail| ==> tail[j] == xs[j + 1];
-    var all := Std.Collections.Seq.Filter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs);
-    var rest := Std.Collections.Seq.Filter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), tail);
+    var all := SeqFilter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs);
+    var rest := SeqFilter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), tail);
     assert all == (if SameNotice(reviewed, xs[0]) then [xs[0]] else []) + rest;
     if SameNotice(reviewed, xs[0]) {
       assert |all| == 1 + |rest|;
@@ -105,7 +105,7 @@ lemma IdentityCount(reviewed: NoticeIdentity, xs: seq<Notice>)
 lemma IdentityTwice(reviewed: NoticeIdentity, xs: seq<Notice>, a: int, b: int)
   requires 0 <= a < b < |xs|
   requires SameNotice(reviewed, xs[a]) && SameNotice(reviewed, xs[b])
-  ensures |Std.Collections.Seq.Filter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs)| != 1
+  ensures |SeqFilter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs)| != 1
 {
   IdentityCount(reviewed, xs);
   forall k | OnlyAt(reviewed, xs, k) ensures false {
@@ -116,7 +116,7 @@ lemma IdentityTwice(reviewed: NoticeIdentity, xs: seq<Notice>, a: int, b: int)
 // A current notice passed the identity filter exactly once.
 lemma CurrentCountsOne(reviewed: NoticeIdentity, xs: seq<Notice>)
   requires noticeCurrent(reviewed, Some(xs))
-  ensures |Std.Collections.Seq.Filter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs)| == 1
+  ensures |SeqFilter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs)| == 1
 {
 }
 
@@ -126,7 +126,7 @@ lemma CurrentSound(reviewed: NoticeIdentity, xs: seq<Notice>)
   ensures exists k: int :: ((((((0 <= k) && (k < |xs|)) && (xs[k].id == reviewed.id)) && (xs[k].source == reviewed.source)) && (xs[k].revision == reviewed.revision)) && forall j: int :: ((0 <= j) ==> (j < |xs|) ==> (xs[j].id == reviewed.id) ==> (xs[j].source == reviewed.source) ==> (j == k)))
 {
   IdentityCount(reviewed, xs);
-  assert |Std.Collections.Seq.Filter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs)| == 1;
+  assert |SeqFilter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs)| == 1;
   var k :| OnlyAt(reviewed, xs, k);
   var item :| item in xs && (((item.id == reviewed.id) && (item.source == reviewed.source)) && (item.revision == reviewed.revision));
   var m :| 0 <= m < |xs| && xs[m] == item;
@@ -145,7 +145,7 @@ lemma CurrentComplete(reviewed: NoticeIdentity, xs: seq<Notice>)
   var k: int :| ((((((0 <= k) && (k < |xs|)) && (xs[k].id == reviewed.id)) && (xs[k].source == reviewed.source)) && (xs[k].revision == reviewed.revision)) && forall j: int :: ((0 <= j) ==> (j < |xs|) ==> (xs[j].id == reviewed.id) ==> (xs[j].source == reviewed.source) ==> (j == k)));
   assert OnlyAt(reviewed, xs, k);
   IdentityCount(reviewed, xs);
-  assert |Std.Collections.Seq.Filter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs)| == 1;
+  assert |SeqFilter((item: Notice) => ((item.id == reviewed.id) && (item.source == reviewed.source)), xs)| == 1;
   assert xs[k] in xs;
 }
 

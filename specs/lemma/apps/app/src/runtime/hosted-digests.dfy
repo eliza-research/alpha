@@ -55,7 +55,7 @@ lemma digestMissingCalendars_unfold(selected: seq<string>, choices: seq<DigestCa
   requires |selected| > 0
   ensures digestMissingCalendars(selected, choices) ==
     (if Offered(choices, selected[0]) then [] else [selected[0]]) + digestMissingCalendars(selected[1..], choices)
-{  reveal Std.Collections.Seq.Filter();
+{  reveal SeqFilter();
 }
 
 lemma digestMissingCalendars_facts(selected: seq<string>, choices: seq<DigestCalendarChoice>)

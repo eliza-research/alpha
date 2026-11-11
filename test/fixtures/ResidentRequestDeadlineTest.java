@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.Executor;
 import org.json.JSONObject;
 
@@ -15,6 +17,7 @@ public class ResidentRequestDeadlineTest {
  static final Object lifecycleLock=new Object();
  static long lifecycleEpoch=1;
  final Set<PluginCall> pending=new HashSet<>();
+ final Map<String,PluginCall> withdrawable=new HashMap<>();
  final ArrayDeque<Runnable> queued=new ArrayDeque<>();
  final Executor workers=queued::addLast;
  boolean disposed,accepting=true;
@@ -113,6 +116,9 @@ public class ResidentRequestDeadlineTest {
   fixture.queued.removeFirst().run();
   check(call.replies==1&&"LOCAL_AGENT_EPOCH_CHANGED".equals(call.code)&&ElizaAgentService.calls==0&&fixture.pending.isEmpty(),
     "An explicit budget weakened the lifecycle guard");
+  fixture=fresh();call=bounded(1_000);call.data.put("cancelId","11111111-1111-4111-8111-111111111111");fixture.request(call);
+  SystemClock.now+=1_000;fixture.queued.removeFirst().run();fixture.noDispatch(call,TIMEOUT);
+  check(fixture.withdrawable.isEmpty(),"An expired request retained its withdrawal identity");
   System.out.println("PASS resident explicit deadline, legacy dispatch budget, owner and lifecycle");
  }
 }
@@ -121,6 +127,7 @@ class JSObject extends JSONObject {
  JSObject(){super();}
  JSObject(String value){super(value);}
  @Override public JSObject put(String name,int value){super.put(name,value);return this;}
+ @Override public JSObject put(String name,boolean value){super.put(name,value);return this;}
  @Override public JSObject put(String name,Object value){super.put(name,value);return this;}
 }
 class PluginCall {
