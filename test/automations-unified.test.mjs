@@ -428,10 +428,10 @@ test('Recently deleted selections confirm permanent deletion and read back remov
  const trigger={id:'prompt',displayName:'Disposable automation',instructions:'Never run',revision:'a'.repeat(64),removedAt:1,enabled:false,triggerType:'once'};
  const f=await fixture(call=>{
   if(call.path==='/api/automations')return {automations:[]};
-  if(call.path==='/api/triggers?removed=1')return {recovery:true,triggers:erased?[]:[trigger]};
+  if(call.path==='/api/triggers?removed=1')return {recovery:true,permanentDeletion:true,triggers:erased?[]:[trigger]};
   if(call.path==='/api/workflow/status')return {body:{engine:'smthrs',status:'ready',lifecycleMutationProtocol:1}};
   if(call.path==='/api/workflow/removed-workflows')return {workflows:[]};
-  if(call.path==='/api/triggers/prompt'&&call.method==='DELETE'){erased=true;return {ok:true};}
+  if(call.path==='/api/triggers/prompt/erase'&&call.method==='POST'){assert.equal(call.body.expectedRevision,trigger.revision);erased=true;return {ok:true,erased:true,id:'prompt'};}
   if(call.path==='/api/triggers/prompt')return {trigger};
   return call.path.includes('scheduled-tasks')?{tasks:[]}:call.path.includes('reminders')?{reminders:[]}:{definitions:[]};
  });
@@ -443,6 +443,16 @@ test('Recently deleted selections confirm permanent deletion and read back remov
   app.render().recoveryReview.close();assert.equal(erased,false);
   app.render().prepareErase();app.render().recoveryReview.confirm();
   await wait(()=>erased&&!app.render().batchBusy&&!app.render().automation.loading);
-  assert.equal(app.render().cards.length,0);assert.equal(f.calls.filter(call=>call.method==='DELETE').length,1);
+  assert.equal(app.render().cards.length,0);assert.equal(f.calls.filter(call=>call.path.endsWith('/erase')).length,1);
  }finally{app.close();await f.close();}
+});
+
+test('an older recovery host cannot admit permanent deletion',async()=>{
+ const trigger={id:'prompt',displayName:'Kept',instructions:'Keep',revision:'a'.repeat(64),removedAt:1,enabled:false,triggerType:'once'};
+ const f=await fixture(call=>call.path==='/api/triggers?removed=1'?{recovery:true,triggers:[trigger]}:call.path==='/api/workflow/status'?{body:{engine:'smthrs',status:'ready',lifecycleMutationProtocol:1}}:call.path==='/api/workflow/removed-workflows'?{workflows:[]}:call.path==='/api/automations'?{automations:[]}:call.path.includes('scheduled-tasks')?{tasks:[]}:call.path.includes('reminders')?{reminders:[]}:{definitions:[]});
+ try{
+  const {rows}=await f.client.removed(signal());
+  await assert.rejects(f.client.eraseRemoved(rows[0],signal()),/unavailable/);
+  assert.equal(f.calls.some(call=>call.method!=='GET'),false);
+ }finally{await f.close();}
 });

@@ -310,7 +310,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
     publish();
    },
    prepareRecovery:()=>prepareRecovery(),prepareErase:()=>prepareRecovery('erase'),openDeleted,
-   eraseDisabled:batchBusy||!!controller||!selection.size||displayed().some(row=>selection.has(row.key)&&!['prompt','reminder','routine'].includes(row.kind)),
+   eraseDisabled:batchBusy||!!controller||!selection.size||displayed().some(row=>selection.has(row.key)&&(row.kind!=='prompt'||row.record.permanentDeletion!==true)),
    newFlow:()=>{listMenu=false;newMore=false;creating=true;detail=null;editor=null;publish();},
    listToggles:false,
    automation:{

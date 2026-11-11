@@ -31,7 +31,7 @@ export const OWNER_ROUTE_TABLE = {
         {methods: ["POST"], paths: ["/api/lifeops/definitions", "/api/triggers", "/api/lifeops/occurrences/{id}/snooze", "/api/triggers/{id}/execute",
           "/api/lifeops/scheduled-tasks/{id}/snooze", "/api/lifeops/scheduled-tasks/{id}/skip", "/api/lifeops/scheduled-tasks/{id}/complete",
           "/api/lifeops/scheduled-tasks/{id}/dismiss", "/api/lifeops/scheduled-tasks/{id}/escalate", "/api/lifeops/scheduled-tasks/{id}/acknowledge",
-          "/api/lifeops/scheduled-tasks/{id}/edit", "/api/lifeops/scheduled-tasks/{id}/reopen", "/api/lifeops/scheduled-tasks/{id}/fire", "/api/triggers/{id}/archive", "/api/triggers/{id}/restore", "/api/workflow/workflows/{id}/lifecycle"]},
+          "/api/lifeops/scheduled-tasks/{id}/edit", "/api/lifeops/scheduled-tasks/{id}/reopen", "/api/lifeops/scheduled-tasks/{id}/fire", "/api/triggers/{id}/archive", "/api/triggers/{id}/erase", "/api/triggers/{id}/restore", "/api/workflow/workflows/{id}/lifecycle"]},
         {methods: ["PUT"], paths: ["/api/lifeops/definitions/{id}", "/api/triggers/{id}"]},
         {methods: ["DELETE"], paths: ["/api/lifeops/definitions/{id}", "/api/triggers/{id}"]}
       ]
