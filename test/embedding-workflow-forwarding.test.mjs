@@ -3,15 +3,17 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {spawnSync} from 'node:child_process';
 const workflow=fs.readFileSync(new URL('../.github/workflows/resident-android.yml',import.meta.url),'utf8');
-const match=workflow.match(/      - name: Stage and archive qualified resident runtime\n[\s\S]*?        run: \|\n([\s\S]*?)(?=      - name:)/);
-assert.ok(match);
-const body=match[1].split('\n').map(line=>line.startsWith('          ')?line.slice(10):line).join('\n');
+const bodies=['Stage and archive qualified resident runtime','Archive the isolated test-mocks build'].map(name=>{
+ const match=workflow.match(new RegExp('      - name: '+name+'\\n[\\s\\S]*?        run: \\|\\n([\\s\\S]*?)(?=      - name:)'));
+ assert.ok(match);
+ return match[1].split('\n').map(line=>line.startsWith('          ')?line.slice(10):line).join('\n');
+});
 function calls(extra={}){
  const shell=`set -e
 python3(){ printf 'python3'; printf '|%s' "$@"; printf '|GRADLE_OPTS=%s\\n' "\${GRADLE_OPTS-}"; }
 node(){ printf 'node'; printf '|%s' "$@"; printf '\\n'; }
 bun(){ printf '1.4.2\\n'; }
-${body}`;
+${bodies.join('\n')}`;
  const result=spawnSync('/bin/bash',['-c',shell],{encoding:'utf8',timeout:5000,env:{...process.env,GRADLE_OPTS:'',ALPHA_LOCAL_AGENT_SOURCE_DIR:'/prepared',GITHUB_WORKSPACE:'/workspace',...extra}});
  assert.equal(result.status,0,result.stderr);
  return result.stdout.trim().split('\n').map(line=>line.split('|'));
