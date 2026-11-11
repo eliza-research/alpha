@@ -8,7 +8,7 @@ if (!/^[1-9]\d*$/.test(concurrency)) {
   process.exit(2);
 }
 const options = {stdio: 'inherit', cwd: new URL('..', import.meta.url)};
-let child = spawn(process.execPath, ['--test', `--test-concurrency=${concurrency}`,
+let child = spawn(process.execPath, ['--import=tsx', '--test', `--test-concurrency=${concurrency}`,
   '--test-timeout=600000', ...process.argv.slice(2), 'test/*.test.mjs'], options);
 for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
   process.on(signal, () => { if (!child.killed) child.kill(signal); });

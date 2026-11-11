@@ -1,5 +1,6 @@
 import {phoneWorkflowLocalDay,zoneOffsetMinutes} from '../../../../.eliza/client-features/packages/contracts/src/phone-workflow.ts';
 import {formatSchedule} from '../../../../.eliza/client-features/packages/ui/src/utils/cron-format.ts';
+import {formatDateTime,formatMonthDay,formatTime} from '../prototype/locale-time';
 // Upstream plugin-scheduling/src/scheduled-task/trigger-tz.ts. The prepared
 // browser SDK does not export this scheduling sentinel.
 const OWNER_LOCAL_TZ='owner_local';
@@ -24,7 +25,7 @@ export function workflowClockExpression(time:string,days:number[]):string{
 
 export const workflowDeviceTimeZone=()=>Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
 export function workflowLocalInstant(stamp:string|number,locale?:string):string{
- const date=new Date(stamp);return Number.isFinite(date.getTime())?date.toLocaleString(locale,{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+ const date=new Date(stamp);return Number.isFinite(date.getTime())?formatDateTime(date,locale):'';
 }
 /** Display only. Foreign-clock recurrences name their next actual device-local
  * occurrence rather than claiming their wall time follows this device. */
@@ -54,7 +55,7 @@ export function workflowNextClockOccurrence(expression:string,zone:string,now=Da
 export function workflowSnoozeTime(stamp:string|number,now=Date.now()):string{
  const date=new Date(stamp);if(!Number.isFinite(date.getTime()))return '';
  const sameDay=date.toDateString()===new Date(now).toDateString();
- return date.toLocaleString(undefined,{...(sameDay?{}:{month:'short',day:'numeric',...(date.getFullYear()!==new Date(now).getFullYear()?{year:'numeric'}:{})}),hour:'numeric',minute:'2-digit'});
+ return sameDay?formatTime(date):formatMonthDay(date,date.getFullYear()!==new Date(now).getFullYear())+', '+formatTime(date);
 }
 
 /** Native datetime-local controls use the browser's zone; stored instants keep their zone. */

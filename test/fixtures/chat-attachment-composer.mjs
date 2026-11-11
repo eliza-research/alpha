@@ -3,10 +3,11 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {runInNewContext} from 'node:vm';
 import {stripTypeScriptTypes} from '../support/strip-types.mjs';
+import {copyVoiceScrollHooks,shellVoiceScrollSource} from '../support/shell-voice-scroll.mjs';
 
 const adapter = new URL('../../apps/app/src/prototype/agent-adapter.ts', import.meta.url);
 export const chatAttachmentComposerSources = [import.meta.url, adapter,
-  new URL('../support/strip-types.mjs', import.meta.url)].map(fileURLToPath);
+  new URL('../support/strip-types.mjs', import.meta.url),new URL('../support/shell-voice-scroll.mjs', import.meta.url),shellVoiceScrollSource].map(fileURLToPath);
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const prompt = 'Summarize this for me';
 const title = 'Synthetic Notes transcript';
@@ -75,6 +76,7 @@ export function chatAttachmentComposerFixture() {
     },
     connectAgent() {return new Promise((resolve, reject) => connections.push({resolve, reject}));},
   };
+  copyVoiceScrollHooks(shell);
   shell.refreshDraftBinding = () => {shell.composerDraft.binding = key();};
   const ports = {
     Error, queueMicrotask, document: {hidden: false, querySelector: () => null},

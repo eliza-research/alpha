@@ -15700,7 +15700,7 @@
     },
     {
       "path": "apps/app/src/product/owner-route-table.ts",
-      "sha256": "65df08e5adb37142427c8eb2cc2fc8e00fd7eed7d249c5d8b014b3a0b03798e7",
+      "sha256": "3e4db6557152546acaa933b995deae0d033798f378bb85c66edd67bc0bbe3c67",
       "models": [
         "Application",
         "CalendarPresentation",
@@ -15712,7 +15712,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "stateAnchors": [],
-      "integrationReview": "2026-11-11 unified selection and recovery use canonical stores and existing per-item journal. No approval or unknown-result replay. Prompt revision and workflow version protocols retained. Device reminders remain outside recovery."
+      "integrationReview": "2026-11-11 workflow recovery keeps existing Workflow routing ownership; all workflow clock labels use shared locale and device-hour-cycle formatting, with timezone included in the formatter cache key. Focused route and locale checks pass."
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
@@ -24614,7 +24614,7 @@
     },
     {
       "path": "apps/app/src/prototype/locale-time.ts",
-      "sha256": "b22b5a0954d11873eb61d555d2c889c492dcf97d74fed87eccbaa6c54529f0b7",
+      "sha256": "fb99fec697032ecf00743602afa3c62f5904375f26ce5ed2c9f0eba4b982b296",
       "models": [
         "Application"
       ],
@@ -24685,7 +24685,8 @@
           "line": 64,
           "text": "const periodA = a.replace(bareA, '').trim(), periodB = b.replace(bareB, '').trim();"
         }
-      ]
+      ],
+      "integrationReview": "2026-11-11 workflow recovery keeps existing Workflow routing ownership; all workflow clock labels use shared locale and device-hour-cycle formatting, with timezone included in the formatter cache key. Focused route and locale checks pass."
     },
     {
       "path": "apps/app/src/prototype/maps-adapter.ts",
@@ -46171,14 +46172,14 @@
     },
     {
       "path": "apps/app/src/runtime/workflow-local-time.ts",
-      "sha256": "3a8544f34085488deb2de1080cdab225c645f936db8cfb0d1ff193e834841fdd",
+      "sha256": "ed21882ea16bfd957338507837605f988be68b2c2920adcbbc9e8c7050a7463b",
       "models": [
         "WorkflowExecution",
         "ScheduledTaskControls"
       ],
       "treatment": "domain-contract-or-support",
       "scope": "Pure device-local formatting and datetime validation; source instants and existing foreign-clock recurrences are preserved.",
-      "integrationReview": "2026-11-09 inline schedule editor: daily/weekly day selection, no-write draft cancellation, exact reviewed cron payload. ScheduledTaskControls covers bounded day sets and retained owner intent. Month/interval cron remains unmodified. CSS has no scheduling authority."
+      "integrationReview": "2026-11-11 workflow recovery keeps existing Workflow routing ownership; all workflow clock labels use shared locale and device-hour-cycle formatting, with timezone included in the formatter cache key. Focused route and locale checks pass."
     },
     {
       "path": "apps/app/src/runtime/workflow-presentation.ts",

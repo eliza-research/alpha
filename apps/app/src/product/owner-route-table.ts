@@ -24,7 +24,7 @@ export const OWNER_ROUTE_TABLE = {
       ]
     },
     automations: {
-      prefixes: ["/api/automations", "/api/lifeops", "/api/triggers", "/api/workflow"],
+      prefixes: ["/api/automations", "/api/lifeops", "/api/triggers"],
       id: "^(?!.*\\.\\.)[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$",
       routes: [
         {methods: ["GET"], paths: ["/api/automations", "/api/lifeops/definitions", "/api/lifeops/reminders", "/api/lifeops/scheduled-tasks?ownerVisibleOnly=1", "/api/lifeops/scheduled-tasks/{id}", "/api/triggers/{id}", "/api/triggers/{id}/runs", "/api/triggers?removed=1", "/api/workflow/status", "/api/workflow/removed-workflows", "/api/workflow/workflows/{id}"]},

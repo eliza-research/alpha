@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "9ed0be5de532d453390b3520b85a6c79ad9ec32da8a29f778cfcd94651b02730",
+  "ledgerSha256": "b8ce8efae2fa3cf5fd4a302aa772d19b3d3e8c54a398378447f62e40ae40605f",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -29,8 +29,8 @@
     "languageReview": 90,
     "parseErrors": 0,
     "candidates": 67730,
-    "writeSites": 67500,
-    "writeAssociations": 60468,
+    "writeSites": 67501,
+    "writeAssociations": 60469,
     "asynchronous": 8409,
     "unassignedWrites": 10405
   },
@@ -33353,7 +33353,7 @@
     },
     {
       "path": "apps/app/src/product/owner-route-table.ts",
-      "sha256": "65df08e5adb37142427c8eb2cc2fc8e00fd7eed7d249c5d8b014b3a0b03798e7",
+      "sha256": "3e4db6557152546acaa933b995deae0d033798f378bb85c66edd67bc0bbe3c67",
       "allocatedModels": [
         "Application",
         "CalendarPresentation",
@@ -35742,7 +35742,7 @@
     },
     {
       "path": "apps/app/src/prototype/locale-time.ts",
-      "sha256": "b22b5a0954d11873eb61d555d2c889c492dcf97d74fed87eccbaa6c54529f0b7",
+      "sha256": "fb99fec697032ecf00743602afa3c62f5904375f26ce5ed2c9f0eba4b982b296",
       "allocatedModels": [
         "Application"
       ],
@@ -35763,13 +35763,13 @@
         },
         {
           "owner": "format",
-          "line": 30,
+          "line": 29,
           "bindings": 2,
-          "writes": 2
+          "writes": 3
         },
         {
           "owner": "at",
-          "line": 42,
+          "line": 43,
           "bindings": 2,
           "writes": 2
         }
@@ -45788,7 +45788,7 @@
     },
     {
       "path": "apps/app/src/runtime/workflow-local-time.ts",
-      "sha256": "3a8544f34085488deb2de1080cdab225c645f936db8cfb0d1ff193e834841fdd",
+      "sha256": "ed21882ea16bfd957338507837605f988be68b2c2920adcbbc9e8c7050a7463b",
       "allocatedModels": [
         "WorkflowExecution",
         "ScheduledTaskControls"
@@ -45798,13 +45798,13 @@
       "owners": [
         {
           "owner": "workflowClockSchedule",
-          "line": 10,
+          "line": 11,
           "bindings": 2,
           "writes": 3
         },
         {
           "owner": "workflowNextClockOccurrence",
-          "line": 45,
+          "line": 46,
           "bindings": 1,
           "writes": 1
         }
@@ -221476,6 +221476,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "84f405bc8b7e8fc34d20c73cc3983c699f7470e126e2065215b6f6368aa5d07d"
+    "sha256": "608d253b751d8b38bb6336389800a0f67fab7f84f29604f680a4e450800ecf46"
   }
 }

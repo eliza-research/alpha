@@ -48,8 +48,10 @@ import { boot, deq, searches, inboxPage } from './inbox-adapter-fixture.mjs';
  t.render().rows[0].open();await t.tick();if(t.render().d?.canLoadThread){t.render().d.loadThread();await t.tick();}
  const d=t.render().d;assert.equal(d.hasLinks,true);assert.equal(t.render().d.links,d.links,'link rows are computed once per opened body');
  deq(d.links.map(l=>[l.href,l.mismatch]),[['https://tracker.attacker.invalid/r',true],['https://docs.example.org/plan?x=1',false]],'HTML links first, plain-text URL deduplicated, http dropped');
- t.answer(false);d.links[0].open();assert.equal(t.navigations.length,0,'declined review opens nothing');assert.match(t.confirms.at(-1),/tracker\.attacker\.invalid/);assert.match(t.confirms.at(-1),/Warning: the email shows/);
- t.answer(true);d.links[1].open();await t.tick();deq(t.navigations,['https://docs.example.org/plan?x=1'],'approved link opens in Alpha Browser');
+ d.links[0].open();await t.tick();
+ d.links[1].open();await t.tick();
+ deq(t.navigations,['https://tracker.attacker.invalid/r','https://docs.example.org/plan?x=1'],'selected links use their exact destination in Alpha Browser');
+ assert.equal(t.confirms.length,0,'ordinary link navigation uses the shared in-app Browser flow');
  // Unsupported attachment: opaque byte copy, Save to Files only, no preview or viewer.
  assert.match(d.atts[0].size,/No preview · Save to Files/);
  d.atts[0].open();await t.tick();const review=t.render().attachment;assert.ok(review,'opaque review shown');assert.equal(review.external,false,'no viewer handoff for opaque bytes');
@@ -213,9 +215,8 @@ deq(t.prepared.at(-1).attachments.map(a=>a.name),['c.txt','a.txt']);assert.equal
   t.shell.componentWillUnmount();
  }finally{inboxPage[2].fromEmail=original;}
 }
-// 7e. One draft exists per account. A draft that was set aside is still the destination, so the review
-// is told it is not on screen and, with another message open, that it is not a reply to that message.
-// A reviewed suggestion is inserted whole or not at all.
+// Closing an edited email asks once. No keeps it; Yes discards only that draft.
+// Reviewed suggestions remain bound to the selected message or draft.
 {
  const t=await boot();t.mount();t.setActive(true);t.render();await t.tick();
  const inbox=t.views.inbox,target=()=>JSON.parse(JSON.stringify(inbox.emailTarget()));
@@ -225,17 +226,13 @@ deq(t.prepared.at(-1).attachments.map(a=>a.name),['c.txt','a.txt']);assert.equal
  t.render().rows[1].open();await t.tick();
  const m2=target();assert.equal(inbox.useInEmail('For m2.',{token:m2.token}),true);
  const shown=target();deq({kind:shown.kind,aside:shown.aside,elsewhere:shown.elsewhere},{kind:'draft',aside:false,elsewhere:false});
- // The composer is closed: the draft stays, off screen, still over its own message.
- assert.equal(inbox.back(t.shell.st,t.api),true);assert.equal(t.render().composing,false);
- const aside=target();deq({kind:aside.kind,aside:aside.aside,elsewhere:aside.elsewhere,subject:aside.subject},{kind:'draft',aside:true,elsewhere:false,subject:'Re: Fixture m2'});
- assert.equal(inbox.useInEmail('Reviewed while the composer was open',{token:shown.token,append:true}),false,'closing the composer makes the earlier review stale');
- // Another message is opened: the destination is still the m2 draft, and the review is told so.
+ assert.equal(inbox.back(t.shell.st,t.api),true);assert.equal(t.render().composing,true);assert.equal(t.render().c.confirm,true);
+ t.render().c.cancelDiscard();assert.equal(t.render().c.body,'For m2.');assert.equal(t.render().c.confirm,false);
+ inbox.back(t.shell.st,t.api);t.render().c.confirmDiscard();await t.tick();assert.equal(t.render().composing,false);
+ assert.equal(inbox.useInEmail('Earlier draft',{token:shown.token,append:true}),false,'discarding makes the earlier draft review stale');
  t.shell.st.open=null;t.render().rows[0].open();await t.tick();if(t.render().d?.canLoadThread){t.render().d.loadThread();await t.tick();}
- const other=target();deq({kind:other.kind,aside:other.aside,elsewhere:other.elsewhere,subject:other.subject,to:other.to},{kind:'draft',aside:true,elsewhere:true,subject:'Re: Fixture m2',to:['sender@example.invalid']});
- assert.equal(inbox.useInEmail('Meant for m1',{token:aside.token,append:true}),false,'a review made over the draft\'s own message does not cover another open message');
- assert.equal(t.render().composing,false);
- assert.equal(inbox.useInEmail('Second paragraph.',{token:other.token,append:true}),true);
- const c=t.render().c;assert.equal(t.render().composing,true);assert.equal(c.subject,'Re: Fixture m2');assert.equal(c.body,'For m2.\n\nSecond paragraph.');
+ const other=target();assert.equal(inbox.useInEmail('For m1.',{token:other.token}),true);
+ const c=t.render().c;assert.equal(t.render().composing,true);assert.equal(c.subject,'Re: Fixture m1');assert.equal(c.body,'For m1.');
  assert.equal(t.prepared.length,0);assert.equal(t.dispatched.length,0);
  t.shell.componentWillUnmount();
 }

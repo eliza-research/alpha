@@ -453,12 +453,12 @@ test('after a disconnect with no account readback, Connect Google Calendar start
 
 test('Add Google account asks for the Gmail tier the connected accounts hold, like the switches',async()=>{
  const modify=[...READ,'google.gmail.send','google.gmail.drafts','google.gmail.mailbox'];
- for(const [rows,tier] of [[[account(OWNER,modify)],'modify'],[[account(OWNER,READ)],'send'],[[],'send']]){
+ for(const [rows,label] of [[[account(OWNER,modify)],'Add Google account'],[[account(OWNER,READ)],'Allow Gmail changes'],[[],'Connect Google account']]){
   const p=await panel(rows);
   try{
    await p.act(()=>p.controller.open());
-   await p.act(()=>p.button(rows.length?'Add Google account':'Connect Google account').click());
-   assert.deepEqual(p.consents,[['write',tier]]);
+   await p.act(()=>p.button(label).click());
+   assert.deepEqual(p.consents,[['write','modify']]);
   }finally{await p.close();}
  }
 });
@@ -469,7 +469,7 @@ test('closing cancels the intent: a later return never links, and plain Google c
   await p.act(()=>p.controller.openCalendar(f.scope));await p.act(()=>p.button('Connect Google Calendar').click());
   await p.act(()=>p.button('Close Google accounts').click());assert.equal(p.controller.calendar(),null);
   p.rows=[account(OWNER,WRITE)];await p.act(()=>p.controller.open());
-  assert.ok(p.button('Add Google account'),'without the Calendar intent the generic connect remains');assert.equal(p.button('Sync Calendar with Google'),undefined);
+  assert.ok(p.button('Allow Gmail changes'),'without the Calendar intent the explicit Gmail permission action remains');assert.equal(p.button('Sync Calendar with Google'),undefined);
   const reads=p.lists;
   await p.returnFromGoogle();assert.equal(p.lists,reads,'closing retired the armed consent return');
   await p.dispatch('alpha:test-google-accounts');assert.equal(p.lists,reads+1,'the plain panel still revalidates changed accounts');
