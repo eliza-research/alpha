@@ -2,7 +2,6 @@
 import hashlib
 import importlib.util
 import json
-import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -16,7 +15,7 @@ spec.loader.exec_module(verifier)
 sha = lambda data: hashlib.sha256(data).hexdigest()
 NATIVE_VIEW_POLICY = verifier.ROOT / 'scripts/native-view-policy.ts'
 NATIVE_VIEW_DECLARATIONS = subprocess.check_output(
-    [os.environ.get('ALPHA_NODE', 'node'), NATIVE_VIEW_POLICY], timeout=30)
+    ['node', NATIVE_VIEW_POLICY], timeout=30)
 
 
 class PackagedRuntimeTest(unittest.TestCase):

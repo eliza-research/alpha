@@ -25,7 +25,7 @@ const proofFile = test.includes('ResidentEgressRedaction') ? 'files/resident-red
 const keyPath = path.join(os.homedir(), '.config/alphaphone/cerebras-key');
 if ((fs.statSync(keyPath).mode & 0o077) !== 0) throw Error('Provider key must be owner-only');
 const bun = sha(entry('lib/arm64-v8a/libeliza_bun.so'));
-const fixture = {runId, apiKey: fs.readFileSync(keyPath, 'utf8').trim(), bunSha256: bun, processExecutableSha256: process.env.RESIDENT_EXE_SHA256 || bun,
+const fixture = {runId, apiKey: fs.readFileSync(keyPath, 'utf8').trim(), bunSha256: bun, processExecutableSha256: bun,
   bundleSha256: sha(entry('assets/agent/agent-bundle.js')), sourceSha256: sha(entry('assets/agent/alpha-source.json'))};
 const fixtureName = `alpha-resident-${runId}`;
 const created = adb(['shell', 'pm', 'create-user', fixtureName]);
