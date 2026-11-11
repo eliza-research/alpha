@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import {runTaskSchedulerRuntimeRefinement} from '../specs/quint/refinement/services/task-scheduler/runtime.mjs';
 
-test('actual scheduler refines batched scope and independent process ownership', {timeout: 240000}, async () => {
+// Four bounded checker batches can each use up to 120 seconds; allow source setup and cleanup too.
+test('actual scheduler refines batched scope and independent process ownership', {timeout: 600000}, async () => {
   const result = await runTaskSchedulerRuntimeRefinement([fileURLToPath(import.meta.url)]);
   assert.equal(result.receipts.length, 1);
   const [receipt] = result.receipts;
