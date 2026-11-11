@@ -29,7 +29,7 @@ for(const request of ['Refresh inbox','Search Gmail','Account revalidation'])for
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Original text');
  if(saved){
   await page.evaluate(()=>(window as any).cancelMail.holdSavedWrite=true);
-  await page.getByRole('button',{name:'Save draft locally',exact:true}).click();
+  await page.getByRole('button',{name:'Save draft',exact:true}).click();
   await expect.poll(()=>page.evaluate(()=>typeof (window as any).cancelMail.releaseSavedWrite)).toBe('function');
   await expect(page.getByRole('textbox',{name:'Message',exact:true})).toBeDisabled();
   await page.evaluate(()=>(window as any).cancelMail.releaseSavedWrite());
@@ -86,7 +86,7 @@ test('Compose waits for the selected account draft read before accepting a click
  await expect(page.getByRole('button',{name:'Compose',exact:true})).toBeEnabled();
  await page.getByRole('button',{name:'Compose',exact:true}).click();
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Account a local draft');
- await page.getByRole('button',{name:'Save draft locally',exact:true}).click();
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
  await expect(page.getByRole('status').filter({hasText:'Saved locally on this device'})).toBeVisible();
  await page.getByRole('button',{name:'Back from draft',exact:true}).click();
  await page.getByRole('button',{name:'Account b',exact:true}).click();

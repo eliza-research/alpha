@@ -584,8 +584,7 @@
   <div class="scr" data-alpha-app-scroll="inbox" data-mail-cached="{{inbox.cachedListShown}}" style="flex-grow: 1; overflow-y: auto; padding-bottom: 120px; touch-action: pan-y">
     <sc-for list="{{inbox.rows}}" as="it">
       <div onPointerDown="{{it.down}}" onPointerUp="{{it.up}}" style="position: relative; overflow: hidden; touch-action: pan-y">
-        <div style="position: absolute; inset: 0; display: flex; justify-content: space-between; align-items: center; padding: 0 24px; background: var(--s2); color: var(--mut)">
-          <svg class="i" viewBox="0 0 24 24" style="color: var(--acct)"><path d="{{ic.reply}}"></path></svg>
+        <div aria-hidden="true" style="position: absolute; inset: 0; display: flex; justify-content: flex-end; align-items: center; padding: 0 24px; background: var(--s2); color: var(--mut)">
           <svg class="i" viewBox="0 0 24 24"><path d="{{ic.archive}}"></path></svg>
         </div>
         <button aria-label="{{it.label}}" aria-current="{{it.current}}" onClick="{{it.open}}" style="position: relative; width: 100%; display: flex; gap: 14px; padding: 13px 20px; align-items: flex-start; background: var(--bg); transform: translateX({{it.tx}}px); transition: transform .28s cubic-bezier(.19,1,.22,1); box-sizing: border-box">
@@ -694,18 +693,19 @@
         <button class="ib" aria-label="Back from draft" onClick="{{back}}"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/chevron-left.svg');-webkit-mask-image:url('/icons/lucide/chevron-left.svg')"></span></button>
         <span style="flex-grow:1;min-width:0;font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{inbox.c.heading}}</span>
         <sc-if value="{{inbox.c.local}}">
-          <button class="ib" aria-label="Save draft locally" disabled="{{inbox.c.busy}}" onClick="{{inbox.c.save}}"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/check.svg');-webkit-mask-image:url('/icons/lucide/check.svg')"></span></button>
-          <button class="ib" aria-label="Discard local draft" disabled="{{inbox.c.busy}}" onClick="{{inbox.c.discard}}"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/trash-2.svg');-webkit-mask-image:url('/icons/lucide/trash-2.svg')"></span></button>
+          <button class="ib" aria-label="Save draft" disabled="{{inbox.c.busy}}" onClick="{{inbox.c.save}}"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/check.svg');-webkit-mask-image:url('/icons/lucide/check.svg')"></span></button>
+          <button class="ib" aria-label="Discard draft" disabled="{{inbox.c.busy}}" onClick="{{inbox.c.discard}}"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/trash-2.svg');-webkit-mask-image:url('/icons/lucide/trash-2.svg')"></span></button>
         </sc-if>
         <sc-if value="{{inbox.c.local}}"><button class="ib" aria-label="Attach file" title="{{inbox.c.attachmentHint}}" disabled="{{inbox.c.busy}}" onClick="{{inbox.c.attach}}"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/paperclip.svg');-webkit-mask-image:url('/icons/lucide/paperclip.svg')"></span></button></sc-if>
         <button disabled="{{inbox.c.sendDisabled}}" aria-label="Send email" onClick="{{inbox.c.send}}" style="width: 44px; height: 44px; border-radius: 22px; background: var(--acc); color: var(--alpha-white); display: flex; align-items: center; justify-content: center"><span aria-hidden="true" class="mail-toolbar-icon" style="mask-image:url('/icons/lucide/send.svg');-webkit-mask-image:url('/icons/lucide/send.svg')"></span></button>
       </div>
       <div class="scr inbox-compose-fields" role="region" aria-label="Email draft fields" tabindex="0" style="display: flex; flex-direction: column; flex-grow: 1; min-height: 0; padding: 0 20px">
         <sc-if value="{{inbox.c.multi}}">
-          <button disabled="{{inbox.c.busy}}" aria-label="From account" onClick="{{inbox.c.cycleFrom}}" style="display: flex; align-items: center; gap: 8px; min-height: 48px; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--mut)">
-            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{inbox.c.from}}</span>
-            <svg class="i" viewBox="0 0 24 24" style="width: 16px; height: 16px"><path d="{{ic.down}}"></path></svg>
-          </button>
+          <label style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-height:48px;border-bottom:1px solid var(--line);color:var(--mut)">From
+            <select aria-label="From account" disabled="{{inbox.c.busy}}" value="{{inbox.c.fromId}}" onChange="{{inbox.c.onFrom}}" style="flex:1;min-width:0;max-width:100%;min-height:44px;padding:6px;border:0;background:var(--bg);color:var(--fg);font:inherit">
+              <sc-for list="{{inbox.c.fromAccounts}}" as="account"><option value="{{account.id}}">{{account.label}}</option></sc-for>
+            </select>
+          </label>
         </sc-if>
         <sc-if value="{{inbox.c.singleFrom}}"><div style="min-height:44px;display:flex;align-items:center;color:var(--mut);font-size:14px;border-bottom:1px solid var(--line);overflow-wrap:anywhere">{{inbox.c.from}}</div></sc-if>
         <div class="mail-recipient-row">
@@ -733,19 +733,12 @@
         </sc-if>
 
         <sc-if value="{{inbox.c.showSendHint}}"><p style="font-size:12px;color:var(--mut);margin:8px 0">Turn on Gmail changes in Settings → Connections → Manage Google accounts to send. Your draft stays on this device.</p></sc-if>
-        <sc-if value="{{inbox.c.canSaveProvider}}"><button onClick="{{inbox.c.saveProvider}}" style="padding:12px 0;text-align:left;color:var(--acct)">Review save to Gmail drafts</button></sc-if>
+        <sc-if value="{{inbox.c.canSaveProvider}}"><button disabled="{{inbox.c.busy}}" onClick="{{inbox.c.saveProvider}}" style="padding:12px 0;text-align:left;color:var(--acct)">Review saving to Gmail Drafts</button></sc-if>
         <sc-if value="{{inbox.c.local}}"><div role="status" style="font-size:12px;color:var(--mut);padding:8px 0">{{inbox.c.status}}</div></sc-if>
         <sc-if value="{{inbox.c.recoveryVisible}}"><div role="status" aria-label="Email edit recovery status" style="font-size:12px;color:var(--mut);padding:8px 0">{{inbox.c.retainedStatus}}</div></sc-if>
-        <sc-if value="{{inbox.c.retainedConflict}}"><div><button onClick="{{inbox.c.restoreEdits}}" style="min-height:44px;padding:12px">Restore retained email edits</button><button onClick="{{inbox.c.replaceEdits}}" style="min-height:44px;padding:12px">Replace retained email edits</button></div></sc-if>
-        <sc-if value="{{inbox.c.retainedError}}"><div><button onClick="{{inbox.c.retryEdits}}" style="min-height:44px;padding:12px">Retry email recovery storage</button><button onClick="{{inbox.c.recoverEdits}}" style="min-height:44px;padding:12px">Recover email edits</button></div></sc-if>
+        <sc-if value="{{inbox.c.retainedConflict}}"><div><button onClick="{{inbox.c.restoreEdits}}" style="min-height:44px;padding:12px">Restore my saved edits</button><button onClick="{{inbox.c.replaceEdits}}" style="min-height:44px;padding:12px">Keep these edits</button></div></sc-if>
+        <sc-if value="{{inbox.c.retainedError}}"><div><button onClick="{{inbox.c.retryEdits}}" style="min-height:44px;padding:12px">Try saving again</button><button onClick="{{inbox.c.recoverEdits}}" style="min-height:44px;padding:12px">Recover email edits</button></div></sc-if>
         <sc-if value="{{inbox.c.staleBase}}"><button onClick="{{inbox.c.useLatest}}" style="min-height:44px;padding:12px">Use latest saved draft</button></sc-if>
-        <sc-if value="{{inbox.c.confirm}}">
-          <div role="dialog" aria-label="Discard local draft" style="padding:16px;background:var(--s2);border-radius:16px">
-            <p>Discard this local draft permanently?</p>
-            <button disabled="{{inbox.c.busy}}" onClick="{{inbox.c.cancelDiscard}}">Keep draft</button>
-            <button disabled="{{inbox.c.busy}}" onClick="{{inbox.c.confirmDiscard}}">Discard permanently</button>
-          </div>
-        </sc-if>
         <sc-if value="{{inbox.c.showRecipientDetails}}"><input aria-label="Cc" placeholder="Cc" value="{{inbox.c.cc}}" disabled="{{inbox.c.busy}}" onChange="{{inbox.c.onCc}}" style="height:44px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--fg)"><input aria-label="Bcc" placeholder="Bcc" value="{{inbox.c.bcc}}" disabled="{{inbox.c.busy}}" onChange="{{inbox.c.onBcc}}" style="height:44px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--fg)"></sc-if>
         <input aria-label="Subject" placeholder="Subject" value="{{inbox.c.subject}}" disabled="{{inbox.c.busy}}" onChange="{{inbox.c.onSubj}}" style="height: 52px; border: 0; border-bottom: 1px solid var(--line); outline: 0; background: transparent; color: var(--fg); font-size: 17px; font-weight: 600; flex-shrink: 0; padding: 0">
         <sc-if value="{{inbox.c.hasAtts}}">
@@ -766,11 +759,20 @@
   </sc-if>
 
 
+  <sc-if value="{{inbox.composing}}"><sc-if value="{{inbox.c.confirm}}">
+    <div ref="{{inbox.discardModal}}" class="inbox-review-modal" style="position:absolute;inset:0;z-index:8;display:flex;align-items:flex-end;padding:16px 16px 72px;box-sizing:border-box">
+      <button aria-hidden="true" tabindex="-1" onClick="{{inbox.c.cancelDiscard}}" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></button>
+      <section role="dialog" aria-modal="true" aria-label="Discard draft?" style="position:relative;width:100%;max-height:100%;overflow:auto;padding:20px;background:var(--bg);border-radius:22px;box-sizing:border-box">
+        <h2 style="margin:0;font-size:20px">Discard draft?</h2><p>This removes this draft from the device.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px"><button disabled="{{inbox.c.busy}}" onClick="{{inbox.c.cancelDiscard}}" style="min-height:44px;padding:10px 16px;border-radius:18px;background:var(--s2)">Keep draft</button><button disabled="{{inbox.c.busy}}" onClick="{{inbox.c.confirmDiscard}}" style="min-height:44px;padding:10px 16px;border-radius:18px;background:var(--fg);color:var(--bg)">Discard draft</button></div>
+      </section>
+    </div>
+  </sc-if></sc-if>
   <sc-if value="{{inbox.attachmentOpen}}">
     <div ref="{{inbox.attachmentModal}}" class="inbox-attachment-review inbox-review-modal" role="dialog" aria-modal="true" aria-label="Review attachment">
-      <div class="inbox-attachment-actions"><button onClick="{{inbox.attachment.close}}">Back to message</button><button onClick="{{inbox.attachment.save}}" disabled="{{inbox.attachment.saveDisabled}}">Save to Files</button><sc-if value="{{inbox.attachment.external}}"><button onClick="{{inbox.attachment.open}}">Open reviewed file</button></sc-if></div>
+      <div class="inbox-attachment-actions"><button onClick="{{inbox.attachment.close}}">Back to message</button><button onClick="{{inbox.attachment.save}}" disabled="{{inbox.attachment.saveDisabled}}">Save to Files</button><sc-if value="{{inbox.attachment.external}}"><button onClick="{{inbox.attachment.open}}">Open file</button></sc-if></div>
       <div class="scr inbox-attachment-content" role="region" aria-label="Attachment contents" tabindex="0">
-        <p role="status">{{inbox.attachment.saveStatus}}</p><h2>{{inbox.attachment.name}}</h2><p style="font-size:12px;overflow-wrap:anywhere">SHA-256 {{inbox.attachment.hash}}</p><div style="white-space:pre-wrap;overflow-wrap:anywhere">{{inbox.attachment.text}}</div>
+        <p role="status">{{inbox.attachment.saveStatus}}</p><h2>{{inbox.attachment.name}}</h2><div style="white-space:pre-wrap;overflow-wrap:anywhere">{{inbox.attachment.text}}</div><details style="margin-top:16px;overflow-wrap:anywhere"><summary style="min-height:44px">File details</summary><p>SHA-256 {{inbox.attachment.hash}}</p></details>
       </div>
     </div>
   </sc-if>

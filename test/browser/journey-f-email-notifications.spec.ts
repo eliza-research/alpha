@@ -136,7 +136,7 @@ test('development mailbox: load, open a message, local draft survives reload, on
   await button(page, 'Back to inbox').click();
 
   await compose(page, 'Journey local draft', 'Draft body kept on this device');
-  await button(page, 'Save draft locally').click();
+  await button(page, 'Save draft').click();
   await expect(page.getByText('Saved locally', {exact: true})).toBeVisible();
   expect((await stored()).localDrafts).toHaveLength(1);
   expect((await stored()).sent || []).toEqual([]);
@@ -188,7 +188,7 @@ test('synthetic provider: reviewed send leaves exactly one receipt and one messa
 
   await test.step('Save local draft', async () => {
     await compose(page, 'Journey reviewed send', 'Reviewed body');
-    await button(page, 'Save draft locally').click();
+    await button(page, 'Save draft').click();
     await expect(page.getByRole('status').filter({hasText: 'Saved locally on this device'})).toBeVisible();
     expect(await provider(page)).toMatchObject({prepares: 0, dispatches: 0, sent: []});
   });

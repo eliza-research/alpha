@@ -37,7 +37,7 @@ test('Photos source requires separate attachment review and preserves source byt
  await page.screenshot({path:test.info().outputPath('photo-email-review.png')});
  await dialog(page).getByRole('checkbox').check();await insert.click();
  await expect(page.getByRole('button',{name:'Remove source.png',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Save draft locally',exact:true}).click();
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
  await expect(page.getByText('Saved locally on this device',{exact:true}).first()).toBeVisible();
  const saved=await page.evaluate(async()=>{const {secureConnectionStore}=await import('/src/runtime/native-connection.ts');return await secureConnectionStore.read<any>('inbox-drafts:v1:'+JSON.stringify(['production','file-owner','','file-grant']));});
  expect(saved.attachments[0]).toEqual({name:'source.png',mimeType:'image/png',dataBase64:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a7l8AAAAASUVORK5CYII='});
