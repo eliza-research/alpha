@@ -29,16 +29,23 @@ const importAndOpen=async(page:import('@playwright/test').Page,name:string,conte
  await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();await page.getByRole('button',{name:'Open '+name,exact:true}).click();
 };
 const recentNames=(page:import('@playwright/test').Page)=>page.evaluate(()=>(JSON.parse(localStorage.getItem('alpha.files.recent.v1')||'[]') as {name:string}[]).map(row=>row.name));
-for(const [label,name,content,excerpt] of [['a UTF-8 BOM text file','bom.txt','\uFEFFByte order mark',undefined],['a text file without preview text','long.txt','x'.repeat(2_500_000),'The long log']] as const)
- test(`Ask Alpha links the source of ${label}`,async({page})=>{
-  await importAndOpen(page,name,content);await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
-  const question=page.getByRole('dialog',{name:'Ask about selected content'});if(excerpt)await question.getByRole('textbox',{name:'Content excerpt'}).fill(excerpt);
-  await expect(question.getByRole('checkbox')).toBeChecked();await question.getByRole('button',{name:'Use in conversation'}).click();
-  await expect(question).toHaveCount(0);await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue(new RegExp('Source: '+name));
- });
+test('Ask Alpha links the source of a UTF-8 BOM text file',async({page})=>{
+ await importAndOpen(page,'bom.txt','\uFEFFByte order mark');await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
+ const question=page.getByRole('dialog',{name:'Ask about selected content'});
+ await expect(question.getByRole('checkbox')).toBeChecked();await question.getByRole('button',{name:'Use in conversation'}).click();
+ await expect(question).toHaveCount(0);await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue(/Source: bom\.txt/);
+});
+// A question is offered only once there is reviewed content to ask about (selected-content-readiness.spec.ts).
+test('a text file without preview text offers no question',async({page})=>{
+ await importAndOpen(page,'long.txt','x'.repeat(2_500_000));
+ await expect(page.getByRole('status').filter({hasText:'Open or download this file to read it.'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Ask Alpha',exact:true})).toHaveCount(0);await expect(page.getByRole('dialog',{name:'Ask about selected content'})).toHaveCount(0);
+});
 test('Ask Alpha says a file over 5 MiB is too large to link',async({page})=>{
- await importAndOpen(page,'huge.txt','x'.repeat(6*1024*1024));await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
- const question=page.getByRole('dialog',{name:'Ask about selected content'});await question.getByRole('textbox',{name:'Content excerpt'}).fill('The huge log');await question.getByRole('button',{name:'Use in conversation'}).click();
+ // An image is reviewable at any size; the padding after its last chunk takes it over the link limit.
+ await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const png=Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aE1kAAAAASUVORK5CYII='),char=>char.charCodeAt(0));await registerPlugin<any>('AlphaFiles').importFile(new File([png,new Uint8Array(6*1024*1024)],'huge.png',{type:'image/png'}));});
+ await page.getByRole('button',{name:'Files',exact:true}).click();await page.getByRole('button',{name:'Internal storage',exact:true}).click();await page.getByRole('button',{name:'Open huge.png',exact:true}).click();await page.getByRole('button',{name:'Ask Alpha',exact:true}).click();
+ const question=page.getByRole('dialog',{name:'Ask about selected content'});await question.getByRole('textbox',{name:'Content excerpt'}).fill('The huge image');await question.getByRole('button',{name:'Use in conversation'}).click();
  await expect(question.getByRole('status')).toHaveText('This file is too large to link as a source. Turn off the source link to ask without one.');
  await question.getByRole('checkbox').uncheck();await question.getByRole('button',{name:'Use in conversation'}).click();await expect(question).toHaveCount(0);
 });

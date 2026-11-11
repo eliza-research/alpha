@@ -5,6 +5,40 @@ test.beforeEach(async({page})=>{
  await page.goto('/?mode=dev');
 });
 
+for(const mode of ['single','batch'])test(`a ${mode} reminder dismissal rechecks alerts after its revision digest`,async({page})=>{
+ const result=await page.evaluate(async mode=>{
+  const {BrowserDaily}=await import('/src/browser/daily.ts');
+  const {BrowserNotifications}=await import('/src/browser/notifications.ts');
+  const {reminderDocument}=await import('/src/browser/reminder-store.ts');
+  const initial=()=>({sourceRevision:'source-one',reminders:[{id:'reminder',occurrenceId:'occurrence-one',revision:'row-one',status:'posted',title:'Reviewed reminder',body:'',at:Date.now()}]});
+  await reminderDocument.edit(initial,()=>{});
+  const daily=new BrowserDaily(undefined as any),notices=new BrowserNotifications(daily,{listAlerts:async()=>({items:[]})} as any);
+  const old=(await notices.list()).items[0];
+  const originalDigest=crypto.subtle.digest.bind(crypto.subtle),originalDismiss=daily.dismissReminderNotices.bind(daily);
+  let hold=false,entered!:()=>void,release!:()=>void;
+  const waiting=new Promise<void>(resolve=>{entered=resolve;}),gate=new Promise<void>(resolve=>{release=resolve;});
+  daily.dismissReminderNotices=async(...args)=>{hold=true;return originalDismiss(...args);};
+  crypto.subtle.digest=async function(algorithm,data){
+   if(hold&&new TextDecoder().decode(data as ArrayBuffer)==='["source-one","reminder","occurrence-one","row-one"]'){
+    hold=false;entered();await gate;
+   }
+   return originalDigest(algorithm,data);
+  };
+  try{
+   const dismiss=mode==='batch'?notices.clear({items:[old]}).then(result=>result.outcomes[0].status==='requested',()=>false):notices.dismiss(old).then(()=>true,()=>false);
+   const held=await Promise.race([waiting.then(()=>true),dismiss.then(()=>false)]);
+   if(!held)return {held,accepted:await dismiss};
+   await notices.setAlertPreferences({channelId:'reminders',enabled:false});
+   release();const accepted=await dismiss,after=await reminderDocument.read(initial);
+   await notices.setAlertPreferences({channelId:'reminders',enabled:true});
+   const current=(await notices.list()).items[0];
+   await notices.dismiss(current);
+   return {held,accepted,hadMarker:!!(after.reminders[0] as any).noticeDismissedOccurrence,visibleAfter:(await notices.list()).items.length};
+  }finally{release();crypto.subtle.digest=originalDigest;daily.dismissReminderNotices=originalDismiss;}
+ },mode);
+ expect(result).toEqual({held:true,accepted:false,hadMarker:false,visibleAfter:0});
+});
+
 for(const mode of ['single','batch'])for(const change of ['lock','same-occurrence edit','new occurrence','source reset','alerts disabled'])test(`a held ${mode} reminder dismissal rejects after ${change}`,async({page})=>{
  const result=await page.evaluate(async({change,mode})=>{
   const {BrowserDaily}=await import('/src/browser/daily.ts');

@@ -41,8 +41,12 @@ export async function installNativeCloudPlanPorts(page:Page, initial:NativePlanF
   const residentId='9f1dc45a-4011-4e44-947a-30d999d24fa5';
   const resident=w.residentAgent=w.createResidentAgentPlugin({owner:()=>residentId,agentId:residentId});
   const credential={credentialId:'11111111-1111-4111-8111-111111111111',token:'synthetic-plan-token',expiresAt:initial.expiresAt??Date.now()+60*24*3600*1000};
-  const names={AlphaCloudSignIn:['status','startEmail','verifyEmail','cancel','addListener','removeListener'],AlphaConnection:['secureRead','secureWrite','secureRemove','request','cancel','openExternal','addListener','removeListener'],Agent:['stop','getStatus','configureCloudProvider','clearProvider','providerStatus','start','request','setGoogleAgentAccess'],AlphaHostedResults:['disableBackground','addListener','removeListener'],DailyApps:['addListener','removeListener'],AlphaNotifications:['status','addListener','removeListener'],AlphaVoiceCloud:['checkPermissions']};
+  const names={AlphaCloudSignIn:['status','startEmail','verifyEmail','cancel','addListener','removeListener'],AlphaConnection:['secureRead','secureWrite','secureRemove','request','cancel','openExternal','addListener','removeListener'],Agent:['stop','getStatus','configureCloudProvider','clearProvider','providerStatus','start','request','setGoogleAgentAccess'],AlphaHostedResults:['disableBackground','addListener','removeListener'],DailyApps:['addListener','removeListener'],AlphaNotifications:['status','addListener','removeListener'],AlphaVoiceCloud:['checkPermissions'],ElizaSystem:['getNetworkStatus']};
+  // Android reads its own active network (AlphaSystemPlugin.getNetworkStatus); it follows the
+  // simulated network events here.
+  let connected=true;window.addEventListener('offline',()=>{connected=false;});window.addEventListener('online',()=>{connected=true;});
   w.Capacitor={PluginHeaders:Object.entries(names).map(([name,methods])=>({name,methods:name==='Agent'?resident.methods(methods):methods.map(name=>({name,rtype:'promise'}))})),nativeCallback:resident.nativeCallback,nativePromise:async(plugin:string,method:string,input:any)=>{
+   if(plugin==='ElizaSystem'&&method==='getNetworkStatus')return {connected,internetValidated:connected};
    f.calls.push({plugin,method,path:input?.url?new URL(input.url).pathname:undefined,url:input?.url,httpMethod:input?.method});
    if(plugin==='AlphaCloudSignIn'){
     if(method==='status')return {active:false,inApp:true,email:true,google:false};

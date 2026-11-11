@@ -105,7 +105,7 @@ export class BrowserNotifications extends WebPlugin {
  async focusSnapshot(){return this.readNotices(false);}
  private async readNotices(applyFocus:boolean){
   const {reminders}=await this.daily.listReminders(),state=await this.state(),hidden=locked();
-  const own:Notice[]=state.appEnabled&&state.channels.reminders?reminders.filter(row=>!!row.occurrenceId&&!row.pendingDeletion&&row.status==='posted'&&row.noticeDismissedOccurrence!==row.occurrenceId&&!state.dismissed.includes(row.occurrenceId)).map(row=>({id:row.id,revision:reminderNoticeRevision(row.target),occurrenceId:row.occurrenceId,source:'own',appLabel:'Alpha Phone',title:hidden?'Alpha Phone':row.title,text:hidden?'':row.body||'',at:row.postedAt||row.at,clearable:true,canOpen:!hidden})):[];
+  const own:Notice[]=state.appEnabled&&state.channels.reminders?await Promise.all(reminders.filter(row=>!!row.occurrenceId&&!row.pendingDeletion&&row.status==='posted'&&row.noticeDismissedOccurrence!==row.occurrenceId&&!state.dismissed.includes(row.occurrenceId)).map(async row=>({id:row.id,revision:await reminderNoticeRevision(row.target),occurrenceId:row.occurrenceId,source:'own' as const,appLabel:'Alpha Phone',title:hidden?'Alpha Phone':row.title,text:hidden?'':row.body||'',at:row.postedAt||row.at,clearable:true,canOpen:!hidden}))):[];
   let calendar:Notice[]=[],calendarStatus:'ready'|'unavailable'|'disabled'='disabled';
   if(state.appEnabled&&state.channels.calendar){try{calendar=(await this.calendar.listAlerts()).items.map(row=>({id:row.id,revision:row.revision,source:'own',appLabel:'Calendar',title:hidden?'Calendar':row.title,text:hidden?'':row.text,at:row.at,clearable:true,canOpen:!hidden}));calendarStatus='ready';}catch{calendarStatus='unavailable';}}
 

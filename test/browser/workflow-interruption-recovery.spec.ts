@@ -98,7 +98,7 @@ test('an unaccepted run request for a workflow that has since changed is closed 
  await runNow(page).click();await runNow(page).click();await expect(status(page)).toHaveText('Check before running again');
  // The workflow is changed elsewhere (another tab or device), giving it a new version.
  await page.evaluate(async saved=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');await c.getWorkflowClient()!.client.changeMetadata(saved.workflowId,saved.versionId,'Execution fixture','Changed elsewhere',new AbortController().signal,()=>{});},saved);
- await reopenFixture(page);await expect(page.getByText('Not run · workflow changed',{exact:true}).first()).toBeVisible();
+ await reopenFixture(page);await expect(page.getByText('Not run · Workflow changed',{exact:true}).first()).toBeVisible();
  await expect(status(page)).toHaveText('Paused');expect(await posts(page,'/run')).toHaveLength(1);expect((await stored(page)).runs).toHaveLength(0);
  await runNow(page).click();await runNow(page).click();await expect(page.getByText('Before alpha input after',{exact:true})).toBeVisible();
  const sent=await posts(page,'/run');expect(sent).toHaveLength(2);expect(sent[1].submissionId).not.toBe(sent[0].submissionId);expect(sent[1].expectedVersionId).not.toBe(saved.versionId);expect((await stored(page)).runs).toHaveLength(1);
@@ -135,8 +135,11 @@ test('an agent without submission identities never offers a resend: the request 
  await rule(page,{method:'POST',suffix:'/run',kind:'lost',times:1});await runNow(page).click();await runNow(page).click();
  await expect(status(page)).toHaveText('Check before running again');
  const sent=await posts(page,'/run');expect(sent).toHaveLength(1);expect(sent[0]).not.toHaveProperty('submissionId');
- await reopenFixture(page);await expect(status(page)).toHaveText('Check before running again');
- await runNow(page).click();await runNow(page).click();await expect(page.getByText('May have run',{exact:true}).first()).toBeVisible();
+ // No receipt can ever match this request, so Run is replaced by an explicit clear; one tap only asks.
+ await page.getByRole('button',{name:'Back to workflows',exact:true}).click();await workflowCard(page,'Execution fixture').click();
+ const clear=page.getByRole('button',{name:'Clear earlier run request',exact:true});await expect(clear).toBeVisible();await expect(runNow(page)).toHaveCount(0);
+ await expect(status(page)).toHaveText('Check runs · Clear request');
+ await clear.click();await expect(page.getByText('May have run · Clear request?',{exact:true}).first()).toBeVisible();
  expect(await posts(page,'/run')).toHaveLength(1);expect((await page.evaluate(()=>(window as any).faults.calls.filter((call:any)=>call.path.includes('/submissions/')).length))).toBe(0);expect((await stored(page)).runs).toHaveLength(0);
 });
 
@@ -231,7 +234,7 @@ test('editing while a run awaits approval leaves that run on its reviewed versio
  await expect.poll(async()=>(await stored(page)).runs.map(run=>run.finished)).toEqual([true]);
  const notes=await page.evaluate(async()=>(await (await import('/src/runtime/browser-notes-document.ts')).browserNotesPort.read())?.raw||'');expect(notes).not.toContain('Pending workflow note');
  await page.getByRole('button',{name:'Back to Execution fixture',exact:true}).click();await page.getByRole('button',{name:'Remove workflow',exact:true}).click();
- await expect(page.getByText('Remove?',{exact:true})).toBeVisible();expect(await posts(page,'/run')).toHaveLength(1);
+ await expect(page.getByText('Keeps history; stops future runs.',{exact:true})).toBeVisible();expect(await posts(page,'/run')).toHaveLength(1);
 });
 
 test('the assistant offers current actions without prototype automation suggestions',async({page})=>{
