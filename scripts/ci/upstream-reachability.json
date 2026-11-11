@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "c5eb8cda8caf5e4cfcc81e01fe6eb62f97ded615",
-  "head": "b89f0e711bb93fbd8414a034985ebbbda73b618c",
+  "head": "f3ee08d1a9e5e025ab7760312526790f1f189232",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...b89f0e711bb93fbd8414a034985ebbbda73b618c",
+  "command": "gh api repos/elizaOS/eliza/compare/develop...f3ee08d1a9e5e025ab7760312526790f1f189232",
   "status": "diverged",
-  "aheadBy": 7,
+  "aheadBy": 8,
   "behindBy": 194,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -38,6 +38,10 @@
     {
       "sha": "b89f0e711bb93fbd8414a034985ebbbda73b618c",
       "subject": "Keep pending draft state until provider adoption commits"
+    },
+    {
+      "sha": "f3ee08d1a9e5e025ab7760312526790f1f189232",
+      "subject": "Compose cold-consent deadline and trigger fixture fixes for Alpha"
     }
   ],
   "pullRequests": [

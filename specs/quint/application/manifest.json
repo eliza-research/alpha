@@ -3692,8 +3692,9 @@
     "step": "step",
     "invariant": "safety",
     "tests": [
-      "closeNoKeepsDraft",
-      "closeYesDiscards",
+      "closeKeepsDraft",
+      "discardNoKeepsDraft",
+      "discardYesDiscards",
       "sendNoKeepsDraft",
       "sendYesUsesReviewedDraft",
       "editInvalidatesConfirmation",

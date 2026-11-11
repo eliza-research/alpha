@@ -23,8 +23,9 @@ export async function checkMailComposerPresentation(extraSources = []) {
 	captureSources(sources);
 	const traces = [];
 	for (const actions of [
-		["askClose", "no"],
-		["askClose", "yesDiscard"],
+		["close"],
+		["askDiscard", "no"],
+		["askDiscard", "yesDiscard"],
 		["askSend", "no"],
 		["askSend", "yesSend"],
 		["askSend", "edit"],
@@ -47,8 +48,9 @@ export async function checkMailComposerPresentation(extraSources = []) {
 		try {
 			for (const action of actions) {
 				c = pair.drafts.render().c;
-				if (action === "askClose") {
-					pair.drafts.requestClose();
+				if (action === "close") pair.drafts.close();
+				if (action === "askDiscard") {
+					c.discard();
 					assert.equal(pair.drafts.render().c.confirm, true);
 				}
 				if (action === "no") {

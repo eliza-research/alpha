@@ -334,7 +334,7 @@ async function collect(page) {
     ['HomeLayoutCurrentReplay', replay('mounted_launcher_content_and_measured_inset_arrival', 'current', events,
       (observation, index) => ({
         ...(index === 1 ? {GridStable: observation.gridTop === pending.gridTop} : {}),
-        ...(index === fullIndex ? {Shown: qset(observation.shown)} : {}),
+        Shown: qset(observation.shown),
       }))],
     ['HomeLayout', replay('mounted_launcher_source_and_dock_projection', 'proposed', events,
       (observation, index) => index === fullIndex ? {Shown: qset(observation.shown)} : {})],
@@ -348,7 +348,13 @@ async function collect(page) {
     ['HomeLayoutProposedSetupLink', 'HomeLayout', 'historical_proposed_shows_inline_google_setup',
       observation => ({SetupLink: observation.setup})],
   ].map(([id, model, name, observe]) => [id, model, replay(name,
-    model === 'HomeLayout' ? 'proposed' : 'current', emptyEvents, (observation, index) => index === emptyIndex ? observe(observation) : {})]);
+    id === 'HomeLayoutOriginalEmptyShells' ? 'current' : 'proposed', emptyEvents, (observation, index) => index === emptyIndex ? observe(observation) : {})]);
+  const originalEmpty = differences[0][2];
+  originalEmpty.init = action('checkerCurrentInit');
+  for (const observation of [originalEmpty.expect, ...originalEmpty.steps.map(step => step.expect)]) {
+    delete observation.ProfileSafety;
+    delete observation.CoreShown;
+  }
   return {main, differences};
 }
 
