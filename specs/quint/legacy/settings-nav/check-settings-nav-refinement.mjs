@@ -233,8 +233,9 @@ async function mounted(extraSources) {
   const driverHashes = captureInputs(sources);
   const noticeBytes = readFileSync(licenses);
   assert.equal(sha256(noticeBytes), driverHashes[licenses]);
-  const notices = JSON.parse(noticeBytes).filter(item => item.name === 'react');
-  assert.equal(notices.length, 1, 'Packaged licenses identify one React component');
+  const rendererVersion = JSON.parse(readFileSync(resolve(root, 'package-lock.json'), 'utf8')).packages['node_modules/react'].version;
+  const notices = JSON.parse(noticeBytes).filter(item => item.name === 'react' && item.version === rendererVersion);
+  assert.equal(notices.length, 1, 'Packaged licenses identify the exact renderer React version');
   const watched = new Set([main, settings, adapter, shell]);
   const loaded = new Set();
   const previousMocks = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
