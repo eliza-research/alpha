@@ -2150,12 +2150,9 @@
     <div class="notes-menu" role="dialog" aria-label="Notes options">
       <button onClick="{{notes.startSelection}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.check}}"></path></svg>Select notes</button>
       <button onClick="{{notes.newFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg>Create folder</button>
+      <sc-if value="{{notes.currentFolder}}"><button onClick="{{notes.renameCurrentFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.edit}}"></path></svg>Rename folder</button><button onClick="{{notes.deleteCurrentFolder}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg>Delete folder</button></sc-if>
       <button onClick="{{notes.openTrash}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg>Recently deleted</button>
     </div>
-  </div></sc-if>
-  <sc-if value="{{notes.hasFolders}}"><div class="notes-folders" role="group" aria-label="Note folders">
-    <button class="notes-chip" aria-pressed="{{notes.allPressed}}" onClick="{{notes.selectAll}}">All notes</button>
-    <sc-for list="{{notes.folderChips}}" as="f" key="{{f.id}}"><button class="notes-chip" aria-label="{{f.label}}" aria-pressed="{{f.pressed}}" onClick="{{f.select}}" onPointerDown="{{f.down}}" onPointerUp="{{f.up}}" onPointerLeave="{{f.up}}" onContextMenu="{{f.context}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg>{{f.name}}</button></sc-for>
   </div></sc-if>
   <sc-if value="{{notes.filterOn}}">
     <div style="display: flex; padding: 0 16px 10px; flex-shrink: 0">
@@ -2164,6 +2161,13 @@
   </sc-if>
 
   <div class="scr" ref="{{notes.listFocus}}" data-alpha-app-scroll="notes" style="flex-grow: 1; overflow-y: auto; touch-action: pan-y; padding: 0 16px 190px; box-sizing: border-box">
+    <sc-if value="{{notes.hasFolders}}"><sc-for list="{{notes.folderRows}}" as="f" key="{{f.id}}">
+      <button class="tap notes-row notes-folder-list-row" aria-label="{{f.label}}" onClick="{{f.select}}" onPointerDown="{{f.down}}" onPointerUp="{{f.up}}" onPointerLeave="{{f.up}}" onContextMenu="{{f.context}}">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.folder}}"></path></svg>
+        <span><strong>{{f.name}}</strong><span>{{f.countLabel}}</span></span>
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.right}}"></path></svg>
+      </button>
+    </sc-for></sc-if>
     <sc-if value="{{notes.hasPinned}}"><div class="notes-section" style="padding: 8px 8px 2px; font-size: 13px; font-weight: 600; color: var(--mut)">Pinned</div></sc-if>
     <sc-for list="{{notes.pinnedRows}}" as="n" key="{{n.id}}">
           <button data-alpha-note-id="{{n.id}}" disabled="{{notes.selectionBusy}}" onClick="{{n.open}}" class="tap notes-row" data-agent-id="{{n.id}}" aria-label="{{n.rowLabel}}" aria-current="{{n.current}}" aria-pressed="{{n.selected}}" style="display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 12px 8px; border-bottom: 1px solid var(--line); box-sizing: border-box; text-align: left">

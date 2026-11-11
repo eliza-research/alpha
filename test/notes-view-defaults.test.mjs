@@ -69,11 +69,22 @@ test('Notes exposes existing folders inline and removes membership through the s
  const updates=[];
  f.api.canonicalNotes={current:true,update:async(id,patch)=>{updates.push({id,patch});return true;},leave:async()=>true};
  const out=f.view.render(f.state,f.api);
- assert.equal(out.hasFolders,true);assert.equal(out.folderChips[0].name,'Work');
+ assert.equal(out.hasFolders,false);assert.equal(out.folderRows[0].name,'Work');
  assert.equal(out.showFolders,undefined);assert.equal(out.canRemoveFromFolder,true);
  await out.removeSelectedFromFolder();
  assert.deepEqual(structuredClone(updates),[{id:'a',patch:{folderId:null}}]);
  assert.equal(f.state.selectingNotes,false);
  const empty=fixture(),emptyView=empty.view.render(empty.state,empty.api);
  assert.equal(emptyView.hasFolders,false);assert.equal(emptyView.selectionFolderDisabled,true);
+});
+
+
+test('opening a Notes folder shows its notes with a return to the main list',()=>{
+ const f=fixture([{id:'a',kind:'text',title:'A',folderId:'f-1'},{id:'b',kind:'text',title:'B'}]);
+ f.state.folders=[{id:'f-1',name:'Work',createdAt:1}];f.api.set=patch=>Object.assign(f.state,patch);
+ const root=f.view.render(f.state,f.api);root.folderRows[0].select();
+ const inside=f.view.render(f.state,f.api);
+ assert.equal(inside.notesTitle,'Work');assert.equal(inside.primaryNotes,false);assert.equal(inside.hasFolders,false);
+ assert.deepEqual(Array.from(inside.otherRows,n=>n.id),['a']);
+ inside.returnToNotesAction();assert.equal(f.view.render(f.state,f.api).hasFolders,true);
 });

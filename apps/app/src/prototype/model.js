@@ -3049,6 +3049,7 @@ registerView("notes", {
     if (st.open) { notesClose(api); return true; }
     if (st.folderSheet) { api.set({ folderSheet: null }); return true; }
     if (st.filter) { api.set({ filter: null }); return true; }
+    if (st.folder && st.folder !== "deleted") { api.set({ folder: null }); return true; }
     return false;
   },
   onLeave: function (api) { var s = api.get("notes"); if (s.blankCreationId) api.set(notesLeave(api, null)); else notesStopTimers(); },
@@ -3160,14 +3161,15 @@ registerView("notes", {
       };
     });
     var pinnedRows = rows.filter(function (r) { return r.pinned; }), otherRows = rows.filter(function (r) { return !r.pinned; });
-    var folderChips = folders.map(function (f) {
-      var on = folder === f.id, hold = notesChipHold(api, f.id);
-      return { id: f.id, name: f.name, pressed: on ? "true" : "false", label: on ? f.name + ", folder options" : f.name,
+    var folderRows = folders.map(function (f) {
+      var hold = notesChipHold(api, f.id);
+      var count = list.filter(function (note) { return notesFolderOf(note, folders) === f.id; }).length;
+      return { id: f.id, name: f.name, countLabel: count + (count === 1 ? " note" : " notes"), label: "Open folder " + f.name,
         down: hold.down, up: hold.up, context: hold.context,
         select: function () {
           // The click that ends a long-press only opened the options.
           if (NT.held === f.id) { NT.held = null; return; }
-          if (api.get("notes").folder === f.id) api.set({ folderSheet: { kind: "options", id: f.id } }); else api.set({ folder: f.id, filter: null, folderSheet: null, selectingNotes: false, selectedNotes: [] });
+          api.set({ folder: f.id, filter: null, folderSheet: null, selectingNotes: false, selectedNotes: [] });
         } };
     });
     var sheet = st.folderSheet && typeof st.folderSheet === "object" ? st.folderSheet : null;
@@ -3277,7 +3279,11 @@ registerView("notes", {
 
     var shareSheet = st.sheet === "share" && !!n;
     return {
-      notesTitle: folder ? folders.find(function (f) { return f.id === folder; }).name : "Notes", primaryNotes: true, canRecord: true, canCreate: true,
+      notesTitle: folder ? folders.find(function (f) { return f.id === folder; }).name : "Notes", primaryNotes: !folder, canRecord: true, canCreate: true,
+      returnToNotesAction: folder ? function () { api.set({ folder: null, filter: null, folderSheet: null, selectingNotes: false, selectedNotes: [] }); } : null,
+      currentFolder: !!folder,
+      renameCurrentFolder: function () { if (folder) api.set({ menu: null, folderSheet: { kind: "rename", id: folder, name: folders.find(function (f) { return f.id === folder; }).name } }); },
+      deleteCurrentFolder: function () { if (folder) { api.set({ menu: null }); return notesDeleteFolder(api, folder); } },
       listMenuOpen: st.menu === "list", listMenu: function () { api.set({ menu: st.menu === "list" ? null : "list" }); }, closeListMenu: function () { api.set({ menu: null }); },
       selectingNotes: !!st.selectingNotes, selectionBusy: !!st.selectionBusy, selectedCount: selectedNotes.length, hasSelection: selectedNotes.length > 0, selectionDisabled: !selectedNotes.length || !!st.selectionBusy,
       startSelection: function () { api.set({ menu: null, selectingNotes: true, selectedNotes: [] }); },
@@ -3295,8 +3301,7 @@ registerView("notes", {
       // The Notes recorder (voice-adapter, note-recorder.ts) handles Record; `record` is its deep-link flag.
       record: function () { api.set({ record: true }); },
       pinnedRows: pinnedRows, otherRows: otherRows, hasPinned: pinnedRows.length > 0, notesHead: pinnedRows.length > 0 && otherRows.length > 0,
-      allPressed: folder ? "false" : "true", selectAll: function () { api.set({ folder: null, filter: null, folderSheet: null, selectingNotes: false, selectedNotes: [] }); },
-      folderChips: folderChips, hasFolders: folders.length > 0,
+      folderRows: folderRows, hasFolders: folders.length > 0 && !folder && !st.selectingNotes,
       newFolder: function () { api.set({ folderSheet: { kind: "new", name: "" }, menu: null }); },
       filterOn: !!filter, filterLabel: filter ? notesFilterLabel(filter, folders) + " · " + shown.length : "",
       clearFilter: function () { api.set({ filter: null }); },
