@@ -216,7 +216,8 @@ test('unchanged repeated local times keep the original later offset and sub-minu
 // The real template must never ship ahead of its controller again.
 test('production Workflows template has every top-level automation binding',async()=>{
  const template=fs.readFileSync('apps/app/src/prototype/template.html','utf8');
- const document=new JSDOM(template).window.document;
+ // This placement check ignores styles that still contain template variables.
+ const document=new JSDOM(template.replace(/\sstyle="[^"]*"/g,'')).window.document;
  const confirmation=document.querySelector('[ref="{{workflows.automation.reviewModal}}"]');
  assert.ok(confirmation);
  assert.equal(confirmation.closest('.workflow-list'),null);
