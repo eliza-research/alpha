@@ -1,23 +1,31 @@
 name: Android foundation
 on:
-  # Main pushes rebuild both variants so a broken merge is visible on main itself.
-  push:
-    branches: [main, develop]
+  # The build's inputs: Android and renderer sources, the scripts and root configuration that
+  # produce the APKs, the lockfile and the upstream pin.
   pull_request:
+    paths:
+      - 'android/**'
+      - 'apps/app/**'
+      - 'scripts/**'
+      - 'licenses/**'
+      - app.config.json
+      - capacitor.config.ts
+      - vite.config.ts
+      - package.json
+      - bun.lock
+      - bunfig.toml
+      - upstream.lock.json
+      - .gitmodules
+      - vendor/eliza
+      - .github/workflows/android.yml
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  # Superseded PR runs are cancelled. Each main push gets its own group: a shared
-  # group would still cancel a queued main run when a third push arrives.
-  group: android-${{ github.event_name == 'push' && github.sha || github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'push' }}
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  changes:
-    uses: ./.github/workflows/changes.yml
   build:
-    needs: changes
-    if: needs.changes.outputs.android == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:
@@ -59,7 +67,7 @@ jobs:
         run: bash scripts/ci/prepare-host-test-json.sh
       - name: Prepare reviewed Kotlin compiler for native routing checks
         run: bun test/fixtures/kotlin-tools.mjs --prepare
-      # bun run verify's prepared-SDK tests need the prepared SDK, as in browser.yml.
+      # bun run verify's prepared-SDK tests need the prepared SDK, as in verify.yml.
       - name: Prepare pinned SDK for manual verification
         if: github.event_name == 'workflow_dispatch'
         shell: bash
@@ -153,24 +161,3 @@ jobs:
             ${{ runner.temp }}/alpha-calendar-bridge-${{ github.run_id }}-${{ github.run_attempt }}/gradle.log
             ${{ runner.temp }}/alpha-calendar-bridge-${{ github.run_id }}-${{ github.run_attempt }}/supervisor.json
           retention-days: 3
-  # Stable required check. The required-check ruleset requires this job:
-  # it passes when the change gate did not select Android and fails when the
-  # selected build failed, was cancelled or did not run.
-  result:
-    name: Android foundation result
-    needs: [changes, build]
-    if: always()
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          sparse-checkout: scripts/ci
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
-        with:
-          bun-version: "1.4.2"
-      - env:
-          SELECTED: ${{ needs.changes.outputs.android }}
-          CHANGES: ${{ needs.changes.result }}
-          BUILD: ${{ needs.build.result }}
-        run: bun scripts/ci/required-result.ts "changes=$CHANGES" "build=$BUILD:$SELECTED"

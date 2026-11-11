@@ -20,3 +20,9 @@ Run the Quint models and LemmaScript proofs locally before merging a PR:
 `bun run quint:check`, `bun run quint:tests` and `bun run lemma:check`. That is the only point
 at which running them is required. They are not part of `bun run verify` or of PR and push CI; CI runs them only
 when `develop` is promoted to `main`. Proofs need Dafny 4.11.0 on `PATH`.
+
+## Browser tests
+
+Run `bun run test:browser` and `bun run test:browser:production` locally before finalising a PR,
+and state in the PR description that they were run and are final. PR CI runs only
+`bun run verify`; the browser tests run in CI only when `develop` is promoted to `main`.

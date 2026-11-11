@@ -4,6 +4,9 @@ Read README.md, docs/development.md, CONTRIBUTING.md and docs/prd.md before chan
 CONTRIBUTING.md holds the engineering rules. Run the formal models (`bun run quint:check`,
 `bun run quint:tests` and `bun run lemma:check`) before merging; that is the only point at which
 it is required. CI runs them only when develop is promoted to main.
+Run the browser tests (`bun run test:browser` and `bun run test:browser:production`) locally
+before finalising a PR, and state in the PR description that they were run and are final. PR CI
+runs only `bun run verify`; the browser tests run in CI only when develop is promoted to main.
 This is one independent product. Do not import the other product's UI or identity.
 `vendor/eliza` is a pinned upstream submodule. Never edit its checkout as a shortcut:
 make shared changes upstream and advance to a reviewed commit.
