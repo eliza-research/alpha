@@ -5,7 +5,7 @@ import {test,expect,type Page} from '@playwright/test';
 async function seed(page:Page,width=240,height=120){
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto('/');
- return page.evaluate(async({width,height})=>{
+ const original=await page.evaluate(async({width,height})=>{
   const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');await library.list();
   const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d')!;
   ctx.fillStyle='#d22';ctx.fillRect(0,0,width/2,height);ctx.fillStyle='#2c4';ctx.fillRect(width/2,0,width/2,height);
@@ -13,19 +13,22 @@ async function seed(page:Page,width=240,height=120){
   await new Promise<void>((resolve,reject)=>{const request=indexedDB.open('alpha.browser.photos.v1');request.onsuccess=()=>{const db=request.result,tx=db.transaction('photos','readwrite');tx.objectStore('photos').add(original);tx.oncomplete=()=>{db.close();resolve();};tx.onabort=()=>reject(tx.error);};request.onerror=()=>reject(request.error);});
   return original;
  },{width,height});
+ // Boot after the durable seed exists, so the initial library read sees it.
+ await page.reload();
+ return original;
 }
 async function openEditor(page:Page){
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  await page.getByRole('button',{name:/^Photo, /}).click();
  await page.getByRole('button',{name:'Edit photo',exact:true}).click();
- await expect(page.getByRole('button',{name:'Save copy',exact:true})).toBeEnabled();
+ await expect(page.getByRole('button',{name:'Save copy',exact:true})).toBeDisabled();
 }
 test('browser photo rotation, crop and filter save a distinct copy with unchanged original pixels',async({page},info)=>{
  const original=await seed(page);await openEditor(page);
  await page.getByRole('button',{name:'Rotate',exact:true}).click();
  await expect(page.getByRole('button',{name:'Save copy',exact:true})).toBeEnabled();
- await page.getByRole('button',{name:'Crop',exact:true}).click();
- await expect(page.getByRole('button',{name:'Crop',exact:true})).toHaveAttribute('aria-pressed','true');
+ await page.getByRole('button',{name:'Center crop',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Center crop',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.getByRole('button',{name:'Mono filter',exact:true}).click();
  await expect(page.getByRole('button',{name:'Mono filter',exact:true})).toHaveAttribute('aria-pressed','true');
  await page.screenshot({path:info.outputPath('edit-preview.png'),animations:'disabled'});
@@ -117,14 +120,14 @@ test('preview and save capture transform parameters before asynchronous work',as
  expect(result).toEqual({preview:[120,240],copy:[120,240]});
 });
 for(const mode of ['failed','cancelled'])test(`photo copy waits for durable request admission: ${mode}`,async({page})=>{
- await seed(page);await openEditor(page);
+ await seed(page);await openEditor(page);await page.getByRole('button',{name:'Rotate',exact:true}).click();await expect(page.getByRole('button',{name:'Save copy',exact:true})).toBeEnabled();
  await page.evaluate(async mode=>{
   const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts'),{browserDocuments}=await import('/src/browser/documents.ts');const save=library.saveEdit,edit=browserDocuments.edit;(window as any).copyDispatches=0;
   library.saveEdit=async input=>{(window as any).copyDispatches++;return save(input);};
   browserDocuments.edit=async function(key,fn,signal){if(key!=='alpha.photos.pending-copy.v1')return edit.call(this,key,fn,signal);browserDocuments.edit=edit;if(mode==='failed')throw Error('Synthetic admission refused');const result=await edit.call(this,key,fn,signal);await new Promise<void>(resolve=>(window as any).releaseCopyAdmission=resolve);return result;};
  },mode);
  await page.getByRole('button',{name:'Save copy',exact:true}).click();
- if(mode==='cancelled'){await expect.poll(()=>page.evaluate(()=>typeof(window as any).releaseCopyAdmission)).toBe('function');await page.getByRole('button',{name:'Cancel edit',exact:true}).click();await page.evaluate(()=>(window as any).releaseCopyAdmission());}
+ if(mode==='cancelled'){await expect.poll(()=>page.evaluate(()=>typeof(window as any).releaseCopyAdmission)).toBe('function');await page.getByRole('button',{name:'Cancel edit',exact:true}).click();await page.getByRole('dialog',{name:'Close photo editor?',exact:true}).getByRole('button',{name:'Close editor',exact:true}).click();await page.evaluate(()=>(window as any).releaseCopyAdmission());}
  else await expect(page.getByText('Copy request could not be retained. Check saved-copy recovery before another save.',{exact:true})).toBeVisible();
  await expect.poll(()=>page.evaluate(async()=>(await import('/src/runtime/media-copy-intent.ts')).readMediaCopyIntent())).toBeNull();expect(await page.evaluate(()=>(window as any).copyDispatches)).toBe(0);expect(await page.evaluate(async()=>(await(await import('/src/prototype/browser-camera.ts')).browserPhotoLibrary.list()).items.length)).toBe(1);
 });
@@ -136,10 +139,11 @@ test('a late pending-request read cannot open an editor after Home',async({page}
 });
 test('Replace overwrites the original in place: same id and date, new revisions, no copy',async({page})=>{
  const original=await seed(page);await openEditor(page);
- await expect(page.getByRole('button',{name:'Replace original',exact:true})).toBeEnabled();
+ await expect(page.getByRole('button',{name:'Replace original',exact:true})).toBeDisabled();
  await page.getByRole('button',{name:'Rotate',exact:true}).click();
  await expect(page.getByRole('button',{name:'Replace original',exact:true})).toBeEnabled();
  await page.getByRole('button',{name:'Replace original',exact:true}).click();
+ await page.getByRole('dialog',{name:'Replace original photo?',exact:true}).getByRole('button',{name:'Replace original',exact:true}).click();
  await expect(page.getByText('Saved',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Edit photo',exact:true})).toBeVisible();
  const result=await page.evaluate(async()=>{const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');const rows=(await library.list()).items;return {ids:rows.map(row=>row.id),row:await library.read({id:'1000'})};});
@@ -150,4 +154,45 @@ test('Replace overwrites the original in place: same id and date, new revisions,
  // A save that names the old revision can no longer apply (the reviewed revision is gone).
  const stale=await page.evaluate(async()=>{const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');try{await library.beginEdit({id:'1000',revision:'original-metadata'});return 'opened';}catch(error){return String((error as Error).message);}});
  expect(stale).toMatch(/changed/);
+});
+
+test('dirty edits require a discard decision and cancelled replacement preserves the original',async({page})=>{
+ const original=await seed(page);await openEditor(page);
+ await page.getByRole('button',{name:'Rotate',exact:true}).click();
+ await page.getByRole('button',{name:'Cancel edit',exact:true}).click();
+ const discard=page.getByRole('dialog',{name:'Discard photo changes?',exact:true});
+ await expect(discard).toBeVisible();await discard.getByRole('button',{name:'Cancel',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Save copy',exact:true})).toBeEnabled();
+ await page.getByRole('button',{name:'Replace original',exact:true}).click();
+ await page.getByRole('dialog',{name:'Replace original photo?',exact:true}).getByRole('button',{name:'Cancel',exact:true}).click();
+ const current=await page.evaluate(async()=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');return {row:await browserPhotoLibrary.read({id:'1000'}),count:(await browserPhotoLibrary.list()).items.length};});
+ expect(current).toEqual({row:original,count:1});
+ await page.getByRole('button',{name:'Cancel edit',exact:true}).click();
+ await page.getByRole('dialog',{name:'Discard photo changes?',exact:true}).getByRole('button',{name:'Discard changes',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Edit photo',exact:true})).toBeVisible();
+});
+
+test('viewer zoom, bounded pan, pinch and keyboard controls belong to the current photo',async({page})=>{
+ await seed(page);await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:/^Photo, /}).click();
+ const viewport=page.locator('[data-alpha-photo-viewport]'),image=page.locator('[data-alpha-photo-image]');
+ await viewport.focus();await viewport.press('+');await expect(viewport).toHaveAttribute('aria-label',/Zoom 150 percent/);
+ await viewport.press('+');await viewport.press('ArrowRight');await expect(image).toHaveCSS('transform','matrix(2, 0, 0, 2, -48, 0)');
+ await viewport.press('0');await expect(image).toHaveCSS('transform','matrix(1, 0, 0, 1, 0, 0)');
+ await viewport.dblclick({position:{x:200,y:350}});await expect(viewport).toHaveAttribute('aria-label',/Zoom 250 percent/);await viewport.press('0');
+ await viewport.dispatchEvent('pointerdown',{pointerId:11,pointerType:'touch',clientX:100,clientY:300,button:0});
+ await viewport.dispatchEvent('pointerdown',{pointerId:12,pointerType:'touch',clientX:200,clientY:300,button:0});
+ await viewport.dispatchEvent('pointermove',{pointerId:12,pointerType:'touch',clientX:300,clientY:300,button:0});
+ await expect(viewport).toHaveAttribute('aria-label',/Zoom 200 percent/);
+ await viewport.dispatchEvent('pointerup',{pointerId:11,pointerType:'touch',clientX:100,clientY:300,button:0});
+ await viewport.dispatchEvent('pointerup',{pointerId:12,pointerType:'touch',clientX:300,clientY:300,button:0});
+ await page.getByLabel('Photo actions',{exact:true}).click();await page.getByRole('button',{name:'Fit photo',exact:true}).click();await expect(viewport).toHaveAttribute('aria-label',/Zoom 100 percent/);
+ await page.getByRole('button',{name:'Back from photo',exact:true}).click();await page.getByRole('button',{name:/^Photo, /}).click();await expect(viewport).toHaveAttribute('aria-label',/Zoom 100 percent/);
+});
+
+test('unmatched agent photo selection keeps the visible selection and partial selection names missing items',async({page})=>{
+ await seed(page);await page.getByRole('button',{name:'Photos',exact:true}).click();await expect(page.getByRole('button',{name:/^Photo, /})).toBeVisible();
+ const select=(ids:string[])=>page.evaluate(async ids=>{const {deviceLibraryAgent}=await import('/src/prototype/photo-library-adapter.ts');try{return await deviceLibraryAgent()!.runView({type:'photo_library_select',ids} as never,new AbortController().signal);}catch(error){return {refused:(error as Error).message};}},ids);
+ expect(await select(['1000'])).toEqual({kind:'photo_library_select',selected:1,missing:0});await expect(page.getByText('1 selected',{exact:true})).toBeVisible();
+ expect(await select(['9999'])).toEqual({refused:'None of those items are in Photos. The current selection was kept.'});await expect(page.getByText('1 selected',{exact:true})).toBeVisible();
+ expect(await select(['1000','9999'])).toEqual({kind:'photo_library_select',selected:1,missing:1});
 });

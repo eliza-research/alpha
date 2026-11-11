@@ -7,8 +7,8 @@
   "authority": "Alpha Compute",
   "releaseOwner": "Shaw",
   "decision": "A-06",
-  "otaCertificateSha256": "UNSET",
-  "avbPublicKeySha256": "UNSET",
+  "otaCertificateSha256": "66046a0729fe8d14b9bb53051b2225b396f7bcb07b2a757eac6fc799b1aee11e",
+  "avbPublicKeySha256": "ef17e93cb331c37187cb15c666c09b3861d539f8b24662f4fa3fd7314d806daa",
   "downgradeAllowed": false,
   "recovery": {
     "stockFactoryImage": {

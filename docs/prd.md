@@ -25,7 +25,7 @@ Keep prototype styling and identity separate from real data/capability claims.
 | ID | Requirement | Priority / acceptance |
 | --- | --- | --- |
 | AP-01 | Distinct branded Home, library and assistant with independent identity | P0; real navigation, app discovery, one Android shade and launcher Home swipe |
-| AP-02 | Standalone and launcher packaging; Alpha AOSP capability distinct from flavor | P0; four APKs, offline shell, stock settings/recovery and no AOSP-only tools in standalone |
+| AP-02 | Standalone and launcher packaging under `ai.alphacompute.alphaphone`; Alpha AOSP capability distinct from flavor | P0; four APKs, offline shell, stock settings/recovery and no AOSP-only tools in standalone |
 | AP-03 | Owner-bound Eliza Cloud service sign-in and subscription entitlement | P0; local-only agent, no provisioning/pairing, expiry/revoke/isolation and no per-turn billing network hop; catalog v1 and its per-minute limits (P-62); "Membership & credits" off the resident agent (P-59) |
 | AP-04 | Resident orchestration, state, tool approvals and powered-on scheduling | P0; hosted text inference disclosed, no hosted agent, missed occurrences after a 30-minute window (P-75) and no duplicate effects |
 | AP-05 | Compact/full assistant, keyboard, navigation and responsive continuity | P0; drafts, focus, scroll and tasks survive layout and lifecycle changes |
@@ -52,8 +52,10 @@ Clef end-of-turn runs in Eliza Cloud (P-60). Production Maps uses Google Maps Pl
 Local speech does not imply an offline language model. Hosted inference receives disclosed selected context.
 Full photo access is local permission scope, not bulk Cloud upload authorization.
 
-Passkeys, Telegram, Discord and Wallet are outside MVP. No app-data migration,
-backup or import/export workflow is planned. Ordinary Files and attachment operations
+Passkeys, Telegram, Discord and Wallet are outside MVP. The Alpha Compute
+package starts with its own private data on devices with the former
+`ai.elizaresearch.alphaphone` package. No app-data migration, backup or import/export
+workflow is planned. Ordinary Files and attachment operations
 remain. Secure camera, Clock, shade and emergency facilities remain native/system
 surfaces. Always-on listening is an AOSP MVP gate and never implicitly enabled.
 

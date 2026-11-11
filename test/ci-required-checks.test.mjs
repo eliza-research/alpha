@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import YAML from 'yaml';
 
 const read = file => fs.readFileSync(file, 'utf8');
 
@@ -74,18 +73,11 @@ test('Android foundation runs on main and develop pushes and both workflows end 
   assert.ok(browser.includes('"formal=$FORMAL:$VERIFY_SELECTED"'), 'a failed or skipped selected proof lane must fail the stable aggregate');
   assert.match(browser, /name: Repository verification\n/);
   assert.match(browser, /node scripts\/verify-upstream\.ts/);
-  const residentFull = read('.github/workflows/resident-android.yml');
-  const carrierGroupSuffix = "${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}";
-  assert.ok(residentFull.includes(carrierGroupSuffix));
-  const resident = residentFull.replace(carrierGroupSuffix, '');
+  const resident = read('.github/workflows/resident-android.yml');
+  // The candidate workflow test checks the other concurrency groups.
+  assert.ok(resident.includes("${{ inputs.operation == 'publish-qualification' && '-carrier' || '' }}"));
   assert.match(resident, /vars\.ELIZA_RESIDENT_QUALIFICATION == 'push'/);
   assert.match(resident, /vars\.ELIZA_RESIDENT_QUALIFICATION == 'nightly'/);
-  // Primary main attempts may supersede automatic candidate work; reruns are isolated. Develop pushes and
-  // nightly qualification retain distinct groups; manual qualification stays isolated by
-  // ref and upload-only carriers retain their extra suffix.
-  const concurrency = YAML.parse(residentFull).concurrency;
-  assert.equal(concurrency.group, "resident-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && (github.run_attempt == 1 && 'app-candidate-main' || format('app-candidate-run-{0}', github.run_id)) || (github.event_name == 'workflow_dispatch' && github.ref || format('{0}-{1}', github.event_name, github.sha)) }}" + carrierGroupSuffix);
-  assert.equal(concurrency['cancel-in-progress'], "${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1) }}");
 });
 
 test('committed ruleset requires exactly the stable check names', () => {

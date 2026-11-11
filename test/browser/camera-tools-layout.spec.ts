@@ -13,8 +13,8 @@ for (const viewport of [{width: 412, height: 915}, {width: 360, height: 640}, {w
     const root = page.locator('[data-alpha-camera-root]');
     await expect(root).toBeVisible();
     if (viewport.width > viewport.height) await expect(page.locator('html')).toHaveClass(/alpha-landscape/);
-    await expect(root.getByRole('button', {name: /Choose image|Scan document|Ask Alpha/})).toHaveCount(0);
-    for (const name of ['Back to apps', 'Photo mode', 'Video mode', 'Ask mode', 'Take photo']) {
+    await expect(root.getByRole('button', {name: /Choose image|Ask Alpha/})).toHaveCount(0);
+    for (const name of ['Back to apps', 'Scan document', 'Photo mode', 'Video mode', 'Ask mode', 'Take photo']) {
       const button = root.getByRole('button', {name, exact: true});
       // The fitted phone uses a fractional transform at narrow desktop preview widths.
       await expect(button).toBeInViewport({ratio: 0.9999});

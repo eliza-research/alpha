@@ -95,7 +95,7 @@ function targetFiles(t) {
   return { file, sha256: sha256(fs.readFileSync(file)) };
 }
 
-test("the committed Pixel 10a descriptor admits the app signer but still refuses unset OS inputs and qualification", () => {
+test("the committed Pixel 10a descriptors admit the public signers and hold distribution pending recovery", () => {
   const product = read(PIXEL10A_PRODUCT), channel = read(CHANNEL);
   assert.equal(product.product, "alpha_stallion_phone");
   assert.equal(product.product, read("android/aosp/pixel10a-composition.json").productName);
@@ -107,12 +107,12 @@ test("the committed Pixel 10a descriptor admits the app signer but still refuses
   const problems = pixel10aProductProblems(root);
   assert.match(read("android/release-signer.json").signerSha256, /^[0-9a-f]{64}$/);
   assert.ok(!problems.some(problem => /android\/release-signer\.json signerSha256/.test(problem)), problems.join("\n"));
-  assert.ok(problems.some(problem => /platformCertificateSha256 must be a SHA-256/.test(problem)), problems.join("\n"));
+  assert.deepEqual(problems, []);
   const lockBytes = fs.readFileSync(path.join(root, product.sourceLock.file));
   assert.equal(JSON.parse(lockBytes).developmentOnly, false);
   assert.equal(sha256(lockBytes), product.sourceLock.sha256);
   assert.ok(!problems.some(problem => /sourceLock|developmentOnly/.test(problem)), problems.join("\n"));
-  assert.ok(channelSigningProblems(channel, product, CHANNEL, read(LOCK)).some(problem => /otaCertificateSha256 is unset/.test(problem)));
+  assert.deepEqual(channelSigningProblems(channel, product, CHANNEL, read(LOCK)), []);
   const distribution = channelDistributionProblems(channel, CHANNEL);
   for (const drill of ["signedUpdate", "interruptedUpdate", "compatibleRollback", "stockRecovery"]) assert.ok(distribution.some(problem => problem.includes(`${drill} drill is "not run"`)), drill);
   assert.ok(distribution.some(problem => /knownGoodRelease\.otaSha256 is unset/.test(problem)));
@@ -152,9 +152,13 @@ test("Pixel 10a staging options: development or production, never both, always w
   assert.throws(() => pixel10aOptions({ ...base, target: "stallion", development: true }), /Only --target pixel10a/);
 });
 
-test("stage-aosp --target pixel10a --production refuses the committed descriptor before reading source or APK", () => {
+test("stage-aosp --target pixel10a --production refuses a missing trust identity before reading source or APK", t => {
+  const repo = completeRoot(t, keyDirectory(t));
+  const product = JSON.parse(fs.readFileSync(path.join(repo.dir, PIXEL10A_PRODUCT), "utf8"));
+  product.signer.platformCertificateSha256 = "UNSET";
+  repo.write(PIXEL10A_PRODUCT, product);
   const out = spawnSync(process.execPath, [path.join(root, "scripts/stage-aosp.ts"), "--target", "pixel10a", "--production", "--descriptor", "reviewed.json",
-    "--apk", "absent.apk", "--aosp-source", "/absent/source", "--factory-image", "/absent/factory.zip"], { cwd: root, encoding: "utf8" });
+    "--apk", "absent.apk", "--aosp-source", "/absent/source", "--factory-image", "/absent/factory.zip"], { cwd: repo.dir, encoding: "utf8" });
   assert.notEqual(out.status, 0);
   assert.match(out.stderr, /Refusing production staging: the Pixel 10a production product \(android\/aosp\/pixel10a-product\.json\) is incomplete\.[\s\S]*platformCertificateSha256/);
   assert.doesNotMatch(out.stderr, /absent/);
@@ -189,11 +193,12 @@ test("Alpha's signing binding signs with its descriptor, channel and APK signer 
   assert.deepEqual(record.problems, []);
   for (const flag of ["imageBooted", "signedUpdateApplied", "releaseQualified", "deviceAcceptanceVerified"]) assert.equal(record[flag], false, flag);
   assert.ok(result.distributionProblems.some(problem => /signedUpdate drill is "not run"/.test(problem)));
-  // The committed repository is refused for its unset release inputs before any tool runs.
+  // Test keys cannot sign using the committed production identities.
   const committed = await signRelease({ ...options, root, out: path.join(path.dirname(out), "committed"), dryRun: true });
   assert.ok(!committed.problems.some(problem => /android\/release-signer\.json signerSha256/.test(problem)), committed.problems.join("\n"));
-  assert.ok(committed.problems.some(problem => /platformCertificateSha256 must be a SHA-256/.test(problem)), committed.problems.join("\n"));
-  assert.ok(committed.problems.some(problem => /otaCertificateSha256 is unset/.test(problem)));
+  assert.ok(committed.problems.some(problem => /platform\.x509\.pem.*not the product's signer\.platformCertificateSha256/.test(problem)), committed.problems.join("\n"));
+  assert.ok(committed.problems.some(problem => /releasekey\.x509\.pem.*not the channel's otaCertificateSha256/.test(problem)));
+  assert.ok(committed.problems.some(problem => /avb_pkmd\.bin is not the product's avb\.publicKeySha256/.test(problem)));
   // The standalone record command defaults to Alpha's descriptor and channel.
   const file = path.join(path.dirname(out), "standalone-record.json");
   const cli = spawnSync(process.execPath, [path.join(root, "scripts/aosp-release-record.ts"), "--signed-target-files", path.join(out, "signed-target_files.zip"), "--ota", path.join(out, "ota.zip"), "--out", file], { cwd: repo.dir, encoding: "utf8" });

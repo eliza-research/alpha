@@ -49,10 +49,10 @@ module AlwaysOnListener {
     s' = evaluated({lease: "fresh", explainedPause: not(visible), processed: false, invoked: false,
       epoch: if (visible) s.epoch else s.epoch + 1, ...s})
   }
-  // Unexplained loss while a microphone is held latches until the user resumes.
+  // Unexplained loss while capturing or already paused for an indicator latches.
   action loseLease = all {
     s.epoch < 8,
-    s' = evaluated({lease: "expired", indicatorLost: s.indicatorLost or holdsMic(s),
+    s' = evaluated({lease: "expired", indicatorLost: s.indicatorLost or holdsMic(s) or s.explainedPause,
       epoch: s.epoch + 1, processed: false, invoked: false, ...s})
   }
   action environment(kind: str, value: bool): bool = all {
@@ -120,4 +120,7 @@ module AlwaysOnListener {
   run explainedPauseCanResumeTest = init.then(enable).then(acquireLease).then(renewLease(true))
     .then(renewLease(false)).then(check(not(holdsMic(s)) and not(s.indicatorLost)))
     .then(renewLease(true)).then(check(safety and phase(s) == "listening"))
+  run unexplainedLossAfterPauseLatchesTest = init.then(enable).then(acquireLease).then(renewLease(true))
+    .then(renewLease(false)).then(loseLease).then(acquireLease).then(renewLease(true))
+    .then(check(safety and phase(s) == "stopped-indicator-lost"))
 }

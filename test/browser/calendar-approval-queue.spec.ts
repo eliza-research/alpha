@@ -1,0 +1,31 @@
+import {test,expect} from '@playwright/test';
+test.use({locale:'en-GB',timezoneId:'America/New_York'});
+for(const theme of ['light','dark'])test(`Calendar queue review is readable and retains explicit controls: ${theme}`,async({page},info)=>{
+ await page.setViewportSize({width:360,height:640});
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto('/?mode=dev&theme='+theme);
+ await page.evaluate(async()=>{
+  const {calendarApprovalFromList}=await import('/src/runtime/calendar-approval.ts');
+  const {reviewCalendarApproval}=await import('/src/prototype/calendar-approval-review.ts');
+  const {BrowserDevice}=await import('/src/browser/device.ts');await BrowserDevice.prototype.setTextScale({percent:150});
+  const id='11111111-2222-4333-8444-555555555555',row=calendarApprovalFromList({approvals:[{id,subjectUserId:'owner',state:'pending',action:'schedule_event',payload:{action:'schedule_event',side:'owner',calendarId:'opaque-calendar',title:'Lunch with Ada',startsAtMs:Date.parse('2026-11-11T18:00:00Z'),endsAtMs:Date.parse('2026-11-11T19:00:00Z'),location:'Corner cafe',attendees:[{email:'ada@example.invalid',displayName:'Ada'}],description:'Review the dates and guests before making this change.',notifyAttendees:true},reason:'Add the reviewed lunch.',expiresAt:'2099-01-01T00:00:00.000Z',updatedAt:'2026-11-10T12:00:00.000Z'}]},id,'owner')!;
+  const fixture=(window as any).calendarApprovalFixture={reads:0,result:'waiting'};
+  void reviewCalendarApproval(async()=>{fixture.reads++;return row;},new AbortController().signal,()=>{},()=>{},()=>({calendar:'Personal',account:'owner@example.invalid'})).then(result=>fixture.result=result);
+ });
+ const dialog=page.getByRole('dialog',{name:'Review Calendar change'});
+ await expect(dialog.getByRole('heading',{name:'Add event'})).toBeVisible();
+ await expect(dialog.locator('dl')).toContainText('Personal');
+ await expect(dialog.locator('dl')).toContainText('13:00');
+ await expect(dialog.locator('dl')).toContainText('ada@example.invalid');
+ await expect(dialog.locator('dl')).toContainText('Notify guestsYes');
+ await expect(dialog.locator('pre')).toHaveCount(0);
+ const approve=dialog.getByRole('button',{name:'Approve',exact:true}),decline=dialog.getByRole('button',{name:'Decline',exact:true});
+ await expect(approve).toBeEnabled();await expect(approve).toBeInViewport();await expect(decline).toBeInViewport();
+ expect(await dialog.evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true);
+ expect((await approve.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+ expect(await page.evaluate(()=>(window as any).calendarApprovalFixture.result)).toBe('waiting');
+ await page.screenshot({path:info.outputPath('calendar-approval.png')});
+ await approve.click();await expect(dialog).toHaveCount(0);
+ expect(await page.evaluate(()=>(window as any).calendarApprovalFixture.reads)).toBe(2);
+ expect(await page.evaluate(()=>(window as any).calendarApprovalFixture.result.decision)).toBe('approve');
+});

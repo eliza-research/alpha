@@ -2146,7 +2146,7 @@
     "revision": "988e67d2992142af6495b30ac4a8e70f31347d1a",
     "classification": "current-upstream-formal-specifications",
     "models": [],
-    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The selected source-owned Quint sidecars below retain DeletionOwnerAdmission, CloudSpeechSuccessor, MapsTileCache and ViewportCopyright at the current pin. Their independent model and transport checks do not establish complete downstream refinement, native release, provider, image or device qualification. Any future TLA/TLC source requires separate allocation. The retained Maps sidecars include their implementation checkers; live provider and device acceptance remain separate.",
+    "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The selected source-owned Quint sidecars below retain DeletionOwnerAdmission, CloudSpeechSuccessor, MapsTileCache and ViewportCopyright at the current pin. Their independent model and transport checks do not establish complete downstream refinement, native release, provider, image or device qualification. Any future TLA/TLC source requires separate allocation. The retained Maps sidecars include their implementation checkers; live provider and device acceptance remain separate. StorageWatch and PhotoCopyRecovery model and case sidecars are catalogued as source bytes only; this inventory records no new model verdict or device acceptance.",
     "quintSidecars": [
       {
         "path": "plugins/plugin-native-action-journal/quint/DeletionOwnerAdmission.cases.json",
@@ -2207,6 +2207,26 @@
         "path": "plugins/plugin-maps/quint/check-viewport-copyright.mjs",
         "gitObject": "5efb89bb176c70053d5aad9a43d5b7cdc5344053",
         "sha256": "4a00f9d9f520084021748948acdff82a975e66893bb7f56d1f55c58768fb3549"
+      },
+      {
+        "path": "plugins/plugin-native-filesystem/quint/StorageWatch.cases.json",
+        "gitObject": "1781fd63bbd8c117d0cc209449fce642ee017d9d",
+        "sha256": "20eaa49a275fbedb40344968389edf99140eb86f647e46cf1b182afce3aabbab"
+      },
+      {
+        "path": "plugins/plugin-native-filesystem/quint/StorageWatch.qnt",
+        "gitObject": "9ac1e76ac4a5e315c38c461d5f5ae5dd2ae7d995",
+        "sha256": "5931d660211d351ade970e756d449c80f5c5299a0f6aef3bd5d2e390a342b2cf"
+      },
+      {
+        "path": "plugins/plugin-native-media/quint/PhotoCopyRecovery.cases.json",
+        "gitObject": "a5285b5677902e3ffac48a2e1a4372c4f8455ac8",
+        "sha256": "696d1b874e5853806fac3de7219f14ea861c1b54dc11d9df1b35398f159505aa"
+      },
+      {
+        "path": "plugins/plugin-native-media/quint/PhotoCopyRecovery.qnt",
+        "gitObject": "28c5ec6fc5ce3045fc96d40603b841a96e8c11a6",
+        "sha256": "3697d40623e7b45464ddbb09bc9e6ac35c66c77336b0609e7ceec3b768e92076"
       }
     ]
   }

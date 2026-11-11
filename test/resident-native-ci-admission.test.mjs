@@ -135,8 +135,8 @@ test('disposable admission refuses either installed Alpha identity before fixtur
   throw Error('Unexpected device effect before admission');
  };
  for(const identity of [
-  'ai.alphacompute.alphaphone',
-  'ai.alphacompute.alphaphone.test',
+  'ai.elizaresearch.alphaphone',
+  'ai.elizaresearch.alphaphone.test',
   'ai.alphacompute.alphaphone',
   'ai.alphacompute.alphaphone.test',
  ])

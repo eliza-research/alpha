@@ -7,7 +7,7 @@ import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {verifiedFile,speechAssets} from '../scripts/host-speech-admission.ts';
 import {sourceManifest} from '../scripts/combined-agent-source.ts';
-import {verifyEmbeddingHost,verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
+import {verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
 import {mkdirSync} from 'node:fs';
 test('admission verifies exact bytes and reviewed digest, rejecting links and oversized assets',t=>{
  const root=mkdtempSync(join(tmpdir(),'alpha-speech-admission-'));t.after(()=>rmSync(root,{recursive:true,force:true}));
@@ -29,24 +29,27 @@ test('host asset manifest matches the current shared worker pins: Paradee, optio
  // No package script names the retired Kokoro or Whisper speech paths.
  assert.doesNotMatch(readFileSync(new URL('../package.json',import.meta.url),'utf8'),/kokoro|whisper/i);
 });
-test('reviewed engine source keeps current embedding and voice qualification separate',()=>{
+test('embedding source admission binds the current package and rejects legacy JNI identity',()=>{
  const source=readFileSync(new URL('../scripts/combined-agent-source.ts',import.meta.url),'utf8');
  const reviewed='6337fd4c4bd071c17235986344d552d4036e177b';
  assert.ok(source.includes("'plugins/plugin-local-inference/native/llama.cpp':'"+reviewed+"'"));
  const actual=execFileSync('git',['-C','vendor/eliza','ls-tree','HEAD','plugins/plugin-local-inference/native/llama.cpp'],{encoding:'utf8'}).match(/^160000 commit ([a-f0-9]{40})\t/)[1];
  assert.equal(actual,reviewed);
  const qualification=JSON.parse(readFileSync(new URL('../android/embedding-host/qualified-host.json',import.meta.url),'utf8'));
- // The selected Alpha Compute identity does not inherit admission from earlier JNI inputs.
+ const {appId}=JSON.parse(readFileSync(new URL('../app.config.json',import.meta.url),'utf8'));
  assert.equal(qualification.forkPin,reviewed);
- // Both producer metadata and the package-dependent generated JNI inputs require new admission.
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}),/Embedding producer input changed: package\.json/);
+ assert.equal(qualification.identity,appId);
+ assert.equal(qualification.jniBinding.className,appId.replaceAll('.','/')+'/ElizaVoiceNative');
+ assert.doesNotThrow(()=>verifyEmbeddingInputs(process.cwd(),qualification,{requireProducerInputs:true}));
+ const legacyAppId='ai.elizaresearch.alphaphone';
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,identity:legacyAppId}),/Embedding host source or identity admission changed/);
+ const legacyBinding={...qualification.jniBinding,className:legacyAppId.replaceAll('.','/')+'/ElizaVoiceNative'};
+ assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...qualification,jniBinding:legacyBinding}),/Native registration identity qualification missing or changed/);
  const {producerInputs,...nativeOnly}=qualification;
  assert.ok(producerInputs.length>0,'the real qualification still binds its producer inputs');
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly),/Embedding host source admission changed: Native build input changed:/,'the renamed identity must not borrow earlier generated JNI qualification');
- assert.throws(()=>verifyEmbeddingInputs(process.cwd(),{...nativeOnly,identity:'ai.foreign.alphaphone'}),/Embedding host source or identity admission changed/,'a different installed identity cannot borrow that native qualification');
  assert.throws(()=>verifyEmbeddingInputs(process.cwd(),nativeOnly,{requireProducerInputs:true}),/Embedding producer input qualification missing or changed/,'native-only equality cannot replace full producer qualification');
- assert.throws(()=>verifyEmbeddingHost(process.cwd()),/Embedding host source admission changed/);
  const voice=JSON.parse(readFileSync(new URL('../android/voice-host/qualified-voice-host.json',import.meta.url),'utf8'));
+ assert.equal(voice.identity,appId);
  assert.equal(voice.qualified,false);
 });
 

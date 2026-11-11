@@ -10,6 +10,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {publicObject} from './deliver-app-update.ts';
 import {updateArtifactDigest} from './update-artifact.ts';
+import {APP_UPDATE_MANIFEST, APP_UPDATE_REPOSITORY as REPOSITORY, APP_UPDATE_TAG, LEGACY_APP_UPDATE_TAG, appUpdateManifestUrl} from './update-channel.ts';
 
 type CandidateOptions = {root?: string; env?: NodeJS.ProcessEnv; api?: InventoryApi; read?: typeof publicObject};
 type InventoryApi = (args: string[], options?: {missing?: boolean}) => unknown;
@@ -25,7 +26,6 @@ interface InputFreeze {files: Record<string, string>; digest: string}
 type VersionAdmission = Awaited<ReturnType<typeof candidateVersion>>;
 type ApkDigest = {file: string; bytes: number; sha256: string};
 
-const REPOSITORY = 'eliza-research/alphaphone';
 const WORKFLOW = '.github/workflows/resident-android.yml';
 // This existing workflow owns the run-number epoch. Recreating or replacing it
 // requires a reviewed version migration, even if its path is unchanged.
@@ -76,41 +76,48 @@ export async function candidateVersion({root = process.cwd(), env = process.env,
     run.run_number === context.versionCode && run.run_attempt === Number(context.runAttempt),
   'Candidate run identity or workflow version epoch changed');
   const config = readJson<ProductConfig>(path.join(root, 'app.config.json'));
-  assert.equal(config.updateManifestUrl, `https://github.com/${REPOSITORY}/releases/download/app-stable/alpha-update-stable.json`, 'Candidate channel changed');
+  assert.equal(config.updateManifestUrl, appUpdateManifestUrl(), 'Candidate channel changed');
   const descriptor = readJson<{lastRelease?: {versionCode: number | null}}>(path.join(root, 'android/release-signer.json'));
   const floors = [code(config.versionCode)];
   if (descriptor.lastRelease?.versionCode !== null) floors.push(code(descriptor.lastRelease?.versionCode as number));
   const repository = api([`repos/${REPOSITORY}`]) as {private: boolean};
   assert.equal(repository.private, false, 'Candidate inventory must be publicly readable');
-  const release = api([`repos/${REPOSITORY}/releases/tags/app-stable`], {missing: true}) as StableRelease | null;
-  let assets: StableAsset[] = [];
-  if (release !== null) {
-    assert.equal(release.draft, false, 'Stable release is a draft');
-    assert.ok(Number.isSafeInteger(release.id) && release.id > 0, 'Stable release identity missing');
-    const pages = api(['--paginate', '--slurp', `repos/${REPOSITORY}/releases/${release.id}/assets?per_page=100`]) as StableAsset[][];
-    assert.ok(Array.isArray(pages) && pages.length >= 1 && pages.every(Array.isArray), 'Incomplete stable asset inventory');
-    assets = pages.flat();
-    for (const asset of assets) {
-      assert.equal(typeof asset.name, 'string', 'Malformed stable asset inventory');
-      const match = /^alpha-phone-([1-9][0-9]*)\.apk$/.exec(asset.name);
-      if (match) floors.push(code(Number(match[1])));
+  let manifestSha256: string | null = null;
+  for (const tag of [LEGACY_APP_UPDATE_TAG, APP_UPDATE_TAG] as const) {
+    const url = appUpdateManifestUrl(tag);
+    const release = api([`repos/${REPOSITORY}/releases/tags/${tag}`], {missing: true}) as StableRelease | null;
+    let assets: StableAsset[] = [];
+    if (release !== null) {
+      assert.equal(release.draft, false, 'Stable release is a draft');
+      assert.ok(Number.isSafeInteger(release.id) && release.id > 0, 'Stable release identity missing');
+      const pages = api(['--paginate', '--slurp', `repos/${REPOSITORY}/releases/${release.id}/assets?per_page=100`]) as StableAsset[][];
+      assert.ok(Array.isArray(pages) && pages.length >= 1 && pages.every(Array.isArray), 'Incomplete stable asset inventory');
+      assets = pages.flat();
+      for (const asset of assets) {
+        assert.equal(typeof asset.name, 'string', 'Malformed stable asset inventory');
+        const match = /^alpha-phone-([1-9][0-9]*)\.apk$/.exec(asset.name);
+        if (match) floors.push(code(Number(match[1])));
+      }
+    }
+    const pointer = await read(url, {maxBytes: 32768, missing: true});
+    if (pointer !== null) {
+      assert.notEqual(release, null, 'Public pointer has no authoritative stable release');
+      assert.ok(pointer.bytes, 'Public pointer bytes missing');
+      const offer = JSON.parse(pointer.bytes.toString('utf8')) as UpdateOffer;
+      assert.ok(offer.schema === 'alpha-update/v1' && offer.variant === 'launcher' &&
+        /^[0-9a-f]{64}$/.test(offer.signerSha256 || '') && /^[0-9a-f]{64}$/.test(offer.sha256 || '') &&
+        Number.isSafeInteger(offer.sizeBytes) && offer.sizeBytes > 0 && offer.sizeBytes <= 2**31 &&
+        offer.apkUrl === new URL(`alpha-phone-${code(offer.versionCode)}.apk`, url).href, 'Malformed stable pointer');
+      floors.push(offer.versionCode);
+      if (tag === APP_UPDATE_TAG) manifestSha256 = pointer.sha256;
+    } else {
+      assert.ok(!assets.some(asset => asset.name === APP_UPDATE_MANIFEST), 'Stable pointer is not anonymously readable');
     }
   }
-  const pointer = await read(config.updateManifestUrl, {maxBytes: 32768, missing: true});
-  if (pointer !== null) {
-    assert.notEqual(release, null, 'Public pointer has no authoritative stable release');
-    assert.ok(pointer.bytes, 'Public pointer bytes missing');
-    const offer = JSON.parse(pointer.bytes.toString('utf8')) as UpdateOffer;
-    assert.ok(offer.schema === 'alpha-update/v1' && offer.variant === 'launcher' &&
-      /^[0-9a-f]{64}$/.test(offer.signerSha256 || '') && /^[0-9a-f]{64}$/.test(offer.sha256 || '') &&
-      Number.isSafeInteger(offer.sizeBytes) && offer.sizeBytes > 0 && offer.sizeBytes <= 2**31 &&
-      offer.apkUrl === new URL(`alpha-phone-${code(offer.versionCode)}.apk`, config.updateManifestUrl).href, 'Malformed stable pointer');
-    floors.push(offer.versionCode);
-  } else assert.ok(!assets.some(asset => asset.name === 'alpha-update-stable.json'), 'Stable pointer is not anonymously readable');
   const observedFloor = floors.reduce((highest, value) => Math.max(highest, value), 0);
   assert.ok(context.versionCode > observedFloor, 'Workflow run_number must exceed the retained/manual version floor; review a workflow version-epoch migration, do not reuse or guess a code');
   return {schema: 'alpha-app-candidate-version/v1', ...context, observedFloor,
-    manifestSha256: pointer === null ? null : pointer.sha256,
+    manifestSha256,
     runtimeProfile: 'native', updateChannel: {kind: 'public', manifestUrlSha256: hash(config.updateManifestUrl)}};
 }
 
