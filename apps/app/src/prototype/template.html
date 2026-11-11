@@ -2354,7 +2354,7 @@
 
   <sc-if value="{{notes.folderSheetOpen}}"><div ref="{{notes.folderModal}}" data-alpha-popup style="position:absolute;inset:0;z-index:20">
     <button aria-hidden="true" tabindex="-1" onClick="{{notes.closeFolderSheet}}" style="position:absolute;inset:0;background:var(--scrim)"></button>
-    <div class="notes-folder-sheet" role="dialog" aria-modal="true" aria-label="{{notes.folderSheetTitle}}">
+    <div class="notes-folder-sheet" style="bottom:0" role="dialog" aria-modal="true" aria-label="{{notes.folderSheetTitle}}">
       <div class="notes-sheet-grip"><span></span></div>
       <header><h2>{{notes.folderSheetTitle}}</h2><button class="ib" aria-label="Close folders" onClick="{{notes.closeFolderSheet}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button></header>
       <sc-if value="{{notes.choosingFolder}}"><sc-for list="{{notes.folderChoices}}" as="f" key="{{f.id}}"><div class="notes-folder-row"><button onClick="{{f.pick}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.folder}}"></path></svg>{{f.name}}</button><sc-if value="{{f.canManage}}"><button class="ib" aria-label="Manage {{f.name}}" onClick="{{f.manage}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button></sc-if></div></sc-for></sc-if>
