@@ -33,10 +33,13 @@ export function installContactsAdapter(Component:any,views:Bag){
   finally{if(token===epoch){loading=false;changed();}}
  }
  async function editor(selected?:Bag){
-  if(loading||!available())return;loading=true;changed();
+  if(loading||!available())return;
+  const target=owner,token=++epoch,current=()=>owner===target&&token===epoch&&available();
+  loading=true;changed();
   try{if(selected)await contacts.edit({id:selected.id,lookup:selected.lookup,revision:selected.revision});else await contacts.create();}
-  catch{owner?.toast('Android Contacts could not open. Refresh and try again.');}
-  finally{loading=false;void refresh();}
+  catch{if(current())target.toast('Android Contacts could not open. Refresh and try again.');}
+  // A return-to-app read may already own the current visit before Android answers the editor.
+  finally{if(current()){loading=false;void refresh();}}
  }
  views.contacts.reply=()=>null;
  views.contacts.suggestions=()=>[];
