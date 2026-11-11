@@ -189,7 +189,8 @@ export function readReleaseSigner(root = process.cwd()) {
  * an unsigned build that does not advance the recorded versionCode). A test-mocks
  * release is never distributable: its only failure is being signed with the release key.
  */
-export function releaseAdmission({ signed, signerSha256, versionCode }: ReleaseIdentity, input: unknown, { testMocks = false } = {}) {
+export function releaseAdmission({ signed, signerSha256, versionCode }: ReleaseIdentity, input: unknown,
+  { testMocks = false, installedReadback = false } = {}) {
   const descriptor = validateReleaseSigner(input);
   const failures: string[] = [];
   const blockers: string[] = [];
@@ -198,7 +199,7 @@ export function releaseAdmission({ signed, signerSha256, versionCode }: ReleaseI
   else if (signed && signerSha256 !== descriptor.signerSha256)
     failures.push(`release signer ${signerSha256 ?? "unknown"} does not match ${RELEASE_SIGNER_FILE} ${descriptor.signerSha256}`);
   const last = descriptor.lastRelease.versionCode;
-  if (last !== null && !(versionCode !== null && Number.isInteger(versionCode) && versionCode > last)) {
+  if (!installedReadback && last !== null && !(versionCode !== null && Number.isInteger(versionCode) && versionCode > last)) {
     const message = `versionCode ${versionCode} is not greater than the last recorded release ${last}`;
     (signed ? failures : blockers).push(message);
   }
