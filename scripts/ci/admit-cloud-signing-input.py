@@ -11,7 +11,7 @@ import zipfile
 
 from app_update_producer import (
     CANDIDATE, CANDIDATE_PACKAGE, MAX_ARCHIVE_BYTES, PRIVATE_RUNNER, REPOSITORY, WORKFLOW, WORKFLOW_ID,
-    matches, producer_kind,
+    apk_member_limit, copy_verified, matches, producer_kind,
 )
 
 VARIANTS = ("standalone", "launcher")
@@ -92,6 +92,29 @@ def candidate_evidence(data, pin, apk_manifest):
     require(isinstance(candidate["apks"], dict) and set(candidate["apks"]) == set(VARIANTS),
             "Candidate receipt must bind exactly both release variants")
     return candidate["apks"]
+
+
+def check_apk_pair(kind, entries):
+    # Bound each two-variant native pair independently. The compressed producer
+    # archive may contain both pairs without exceeding its own transport bound.
+    if kind == CANDIDATE:
+        require(sum(entry.file_size for entry in entries) <= apk_member_limit(kind),
+                "Native APK pair exceeds the expanded pair limit")
+
+
+def debug_apk_members(archive, verified, kind):
+    members = {}
+    for variant in VARIANTS:
+        name = f"{variant}-debug.apk"
+        rows = [row for row in verified["results"] if row.get("mode") == "debug" and row.get("variant") == variant]
+        require(len(rows) == 1, "Producer debug APK is required for full verification")
+        entry = archive.getinfo(name)
+        require(0 < entry.file_size <= apk_member_limit(kind) and
+                stat.S_IFMT(entry.external_attr >> 16) in (0, stat.S_IFREG) and not entry.flag_bits & 1,
+                "Invalid debug archive member")
+        members[name] = (entry, rows[0]["sha256"])
+    check_apk_pair(kind, (entry for entry, _ in members.values()))
+    return members
 
 
 def admit(archive, pin, stage=None):
@@ -189,7 +212,7 @@ def admit(archive, pin, stage=None):
             rows = [row for row in verified["results"] if row["mode"] == "release"]
             require(len(rows) == 2 and {row["variant"] for row in rows} == set(VARIANTS),
                     "APK verification must contain exactly one release row per variant")
-            admitted = {}
+            release_members = {}
             for row in rows:
                 variant = row["variant"]
                 require(row.get("updateChannel") == channel, "APK update channel differs")
@@ -205,7 +228,7 @@ def admit(archive, pin, stage=None):
                         and row["releaseAdmission"]["blockers"] == ["unsigned release"],
                         f"{variant} is not the reviewed unsigned release")
                 require(row["sha256"] == name_map[name] == apks[variant], f"{variant} APK digests disagree")
-                apk_member = member(name, 400_000_000)
+                apk_member = member(name, apk_member_limit(kind))
                 if candidate_apks is not None:
                     require(candidate_apks[variant] == {"file": name, "bytes": apk_member.file_size, "sha256": apks[variant]},
                             f"{variant} candidate receipt differs from the exact APK")
@@ -213,22 +236,26 @@ def admit(archive, pin, stage=None):
                     require(row.get("distributable") is False and voice["packaged"] is True and
                             voice["asr"] is True and voice["differences"] == [],
                             f"{variant} candidate requires admitted on-device voice with ASR")
+                release_members[variant] = apk_member
+            check_apk_pair(kind, release_members.values())
+            if kind == CANDIDATE:
+                # An archive whose debug pair cannot be restored cannot be
+                # promoted. Publication verifies its streams against these headers.
+                debug_apk_members(bundle, verified, kind)
+            for variant, apk_member in release_members.items():
                 with bundle.open(apk_member) as apk:
-                    actual = hashlib.file_digest(apk, "sha256").hexdigest()
-                require(actual == apks[variant], f"{variant} APK bytes differ")
-                admitted[variant] = actual
+                    copy_verified(apk, apk_member.file_size, apks[variant], f"{variant} APK bytes differ")
             if stage is not None:
                 stage.mkdir(mode=0o700)
                 for variant in VARIANTS:
-                    name = f"{variant}-release-unsigned.apk"
-                    output = stage / name
-                    with bundle.open(member(name, 400_000_000)) as source, output.open("xb") as target:
+                    apk_member = release_members[variant]
+                    output = stage / apk_member.filename
+                    with bundle.open(apk_member) as source, output.open("xb") as target:
                         shutil.copyfileobj(source, target)
                     with output.open("rb") as target:
-                        require(hashlib.file_digest(target, "sha256").hexdigest() == admitted[variant],
-                                f"Staged {variant} APK bytes differ")
+                        copy_verified(target, apk_member.file_size, apks[variant], f"Staged {variant} APK bytes differ")
     return {"source": pin["alphaCommit"], "sdk": pin["sdkCommit"], "versionCode": pin["versionCode"],
-            "updateChannel": channel, "unsignedApkSHA256": admitted, "inputVerified": True, "signed": False}
+            "updateChannel": channel, "unsignedApkSHA256": apks, "inputVerified": True, "signed": False}
 
 
 if __name__ == "__main__":

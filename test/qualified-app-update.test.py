@@ -86,8 +86,7 @@ class QualifiedUpdateTest(unittest.TestCase):
         self.record["deliveryArtifactBytes"] = self.receipt_zip.stat().st_size
         self.record["deliveryArtifactSHA256"] = BRIDGE.file_sha(self.receipt_zip)
 
-    def use_main_candidate(self):
-        debug = {v + "-debug.apk": (v + " debug fixture").encode() for v in BRIDGE.VARIANTS}
+    def use_main_candidate(self, debug=None):
         self.producer.write_candidate(debug)
         self.signed_entries["signing-plan.json"] = encoded(self.record, "signingPlan", self.plan)
         self.write_signed()
@@ -103,6 +102,45 @@ class QualifiedUpdateTest(unittest.TestCase):
         self.record["signedBundle"] = {"bucket": BRIDGE.STORAGE.BUCKET,
                                        "object": self.plan["privateStorage"]["outputObject"], "generation": "456",
                                        "bytes": self.signed_tar.stat().st_size, "sha256": BRIDGE.file_sha(self.signed_tar), "public": False}
+
+    def set_signed_launcher(self, payload):
+        self.signed_apks["launcher"] = self.signed_entries["launcher-release.apk"] = payload
+        self.record["signedApkSHA256"]["launcher"] = BRIDGE.sha(payload)
+        self.signed_entries["signed.sha256"] = "".join(
+            f"{digest}  {variant}-release.apk\n" for variant, digest in self.record["signedApkSHA256"].items()).encode()
+        voice = BRIDGE.decode(base64.b64decode(self.record["cloudVoiceEvidenceBase64"]))
+        for row, digest in zip(voice["results"], self.record["signedApkSHA256"].values()):
+            row["apkSha256"] = digest
+        encoded(self.record, "cloudVoiceEvidence", voice)
+        self.write_signed()
+        self.write_delivery_receipt()
+
+    def stage_fixture(self, product):
+        product.mkdir()
+        work = self.directory / "size-stage"
+        plan = BRIDGE.preflight(self.record, "f" * 40, work, self.api, self.download)
+        BRIDGE.stage(self.record, plan, work, product,
+                     lambda _plan, target: shutil.copyfile(self.producer.archive, target),
+                     lambda _plan, _receipt, target: shutil.copyfile(self.signed_tar, target))
+
+    def test_native_exact_debug_and_signed_members_can_exceed_the_cloud_limit(self):
+        payload = bytes(4097)
+        self.use_main_candidate({"launcher-debug.apk": payload})
+        self.set_signed_launcher(payload)
+        product = self.directory / "native-large"
+        with patch.object(FIXTURES.PRODUCER, "LEGACY_APK_MEMBER_BYTES", 4096):
+            with zipfile.ZipFile(self.producer.archive) as archive:
+                with self.assertRaisesRegex(ValueError, "Invalid debug archive member"):
+                    BRIDGE.PRODUCER.debug_apk_members(archive, self.producer.verification, FIXTURES.PRODUCER.PRIVATE_RUNNER)
+            self.stage_fixture(product)
+        for mode in ("debug", "release"):
+            self.assertEqual((product / f"artifacts/launcher-{mode}.apk").read_bytes(), payload)
+
+    def test_legacy_cloud_signed_member_keeps_its_ceiling(self):
+        self.set_signed_launcher(bytes(4097))
+        with patch.object(FIXTURES.PRODUCER, "LEGACY_APK_MEMBER_BYTES", 4096):
+            with self.assertRaisesRegex(ValueError, "Unexpected signed bundle members"):
+                self.stage_fixture(self.directory / "cloud-large")
 
     def api(self, endpoint):
         if "/compare/" in endpoint:
