@@ -239,23 +239,94 @@ both releases' retained APKs and public pointers, and the committed version floo
 Failed or canceled runs consume their number. A manual release or workflow
 migration that exceeds this number stops candidate creation and needs a reviewed
 version migration. Manual builds keep their explicit version input.
-Candidates are unsigned build evidence. To promote a native candidate, use
-the existing protected signing workflow with a reviewed plan whose
-`producerKind` is `github-main-candidate`. Pin the exact successful
-main-push run ID, numeric run attempt, artifact ID, source and SDK commits,
-version, public channel, outer archive bytes and SHA-256, candidate receipt
-and producer manifest SHA-256, and both unsigned APK SHA-256 values.
-Use the artifact's original ZIP bytes and the existing private storage path
-`unsigned/<archiveSHA256>.zip`. Pin its generation and a fresh exclusive
-`signed/<archiveSHA256>/<32-hex-id>/signed-apks.tar` destination in
-`privateStorage`. Keep the Actions artifact available through both signing
-admissions.
 
-The preflight checks the official Actions ZIP. The protected job checks the
-same run attempt and artifact again, then stages the byte-identical private
-generation before accessing the signing key. The qualified publication workflow
-restores the same private mirror and exact signed output. Complete the reviewed
-voice checks for both signed APK digests before dispatching publication.
+To prepare a candidate for protected signing, set `artifact_id` to the numeric
+ID of the `app-native-candidate-*` artifact from a successful main-push run.
+Use the reviewed checkout to check the exact producer attempt, archive size,
+and digest before downloading. The command verifies the ZIP and its producer
+evidence before making it available at the requested path. The candidate is
+retained for three days and must remain available through signing admission.
+
+```sh
+python3 -B scripts/ci/admit-cloud-signing-input.py fetch-candidate \
+  candidate.zip "$artifact_id" > mirror-request.json
+```
+
+An authorized storage operator copies those exact bytes to the private object
+named in `mirror-request.json`. Use a generation-match precondition of zero to
+create the object only if no live generation exists. [Cloud Storage preconditions](https://docs.cloud.google.com/storage/docs/request-preconditions#the_0_value_in_a_generation-match_precondition)
+
+```sh
+mirror_uri=$(jq -er '"gs://" + .mirror.bucket + "/" + .mirror.object' mirror-request.json) &&
+gcloud storage cp candidate.zip "$mirror_uri" --if-generation-match=0 --print-created-message
+```
+
+Set `mirror_generation` to the generation in the created object's versioned
+URL. If the object already exists, inspect its generation and verify its bytes
+before reusing it. Read back the generation-qualified object and compare it to
+the original ZIP. After the comparison succeeds, create the reviewable plan
+with a fresh 32-character lowercase hexadecimal delivery ID. [Cloud Storage object versions](https://docs.cloud.google.com/storage/docs/using-versioned-objects)
+
+```sh
+gcloud storage cp "$mirror_uri#$mirror_generation" candidate-readback.zip &&
+cmp candidate.zip candidate-readback.zip &&
+delivery_id=$(openssl rand -hex 16) &&
+python3 -B scripts/ci/admit-cloud-signing-input.py prepare-candidate \
+  candidate.zip "$artifact_id" --input-generation "$mirror_generation" \
+  --delivery-id "$delivery_id" > signing-plan.json
+```
+
+Review the plan and retain its exact bytes. The release operator dispatches
+protected signing on `main` with the exact reviewed `workflow_commit` and
+`signing-plan.json` as the `signing_plan` input. Preflight checks the official
+Actions ZIP. The protected job checks the same run attempt and artifact again,
+then stages the pinned private generation before accessing the signing key.
+[Protected signing workflow](.github/workflows/release-cloud-app-signing.yml)
+
+For publication, set `delivery_artifact_id` to the numeric ID of the original
+`private-cloud-apk-delivery-*` artifact from the successful signing attempt.
+Save its ZIP.
+
+```sh
+gh api "repos/eliza-research/alpha/actions/artifacts/$delivery_artifact_id/zip" > delivery.zip
+```
+
+Read `private-storage-receipt.json` from the ZIP and confirm its
+bucket and object match the signed destination in the reviewed plan. An authorized
+operator sets `signed_uri` to the receipt's `gs://BUCKET/OBJECT#GENERATION` and
+retrieves that generation.
+
+```sh
+gcloud storage cp "$signed_uri" signed.tar
+```
+
+Complete Cartesia qualification on each exact signed APK. Record a content-free
+`alpha-cloud-voice-qualification-v1` JSON receipt with two `results` rows. Each
+row names the observed `apkSha256`, `provider` and `outcome`, and records the
+observed booleans in `checks` for `consent`, `session`, `acousticInput`,
+`blueBar`, `transcript`, `audibleSpeakerReply`, `mute`, `unmute` and
+`stopReleased`. Record only the check outcomes and omit transcripts, recordings
+and credentials. The workflow admits passing Cartesia checks for both APKs.
+
+Set `publication_commit` to the exact reviewed commit currently on `main`.
+Prepare the qualification using the original plan bytes and the reviewed voice
+receipt. The command checks the official signing attempt and delivery ZIP,
+streams both APKs from the local signed TAR and retains the original evidence bytes.
+
+```sh
+python3 -B scripts/ci/qualified-app-update.py prepare-qualification \
+  --signing-plan signing-plan.json --voice-evidence cartesia-voice.json \
+  --signed-tar signed.tar --delivery-zip delivery.zip \
+  --delivery-artifact-id "$delivery_artifact_id" --workflow-commit "$publication_commit" \
+  > qualification.json
+```
+
+Review `qualification.json` and supply it as the protected workflow's
+`qualification` input with the reviewed `workflow_commit`. Complete both
+admissions before the one-day signing delivery receipt expires. The protected
+job restores the same private mirror and exact signed output before publication.
+[Qualified publication workflow](.github/workflows/publish-qualified-app-update.yml)
+
 The existing reviewed Cloud producer routes remain available for their
 approved package and profile.
 
