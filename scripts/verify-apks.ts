@@ -37,7 +37,7 @@ import { createHash } from "node:crypto";
 import { CLOUD_DEPLOYMENT } from "./cloud-deployment-policy.ts";
 import {apkUpdateChannel,validateUpdateChannel} from './update-channel.ts';
 import type {UpdateChannel} from './update-channel.ts';
-import {releaseDistributable} from './release-distributable.ts';
+import {nativeCartesiaBlockers, releaseDistributable} from './release-distributable.ts';
 import {
   auditBundle, distributionProblems, extractWebPayload, parseXmlTree, readBuildFlags, signerDigest, validateApk, verifyOwnerRouteTable,
 } from "./apk.ts";
@@ -53,7 +53,7 @@ import { appLinkFilters, requiredAppLinkProblems, webViewFilterProblems } from "
 import { readVoiceHost, voiceBundleAdmission } from "./voice-host.ts";
 import { apkPermissions, checkListenerPermissions, checkListenerSpeechBundle, listenerPackage } from "./aosp-listener.ts";
 
-import {cloudVoiceAdmission, cloudVoiceBlockers} from '../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs';
+import {cloudVoiceAdmission} from '../vendor/eliza/packages/os/scripts/android/apk-release-record.mjs';
 import { preparePatchedNative, nativePatchReceipt, verifyNativePatchReceipt } from './prepare-patched-native.ts';
 import {refuseRemovedProfileFlags} from './removed-profile-flags.ts';
 const USAGE = "Usage: node scripts/verify-apks.ts [--test-mocks] [--allow-unpackaged-runtime] [--signer-api-level=N] [--cloud-voice-evidence=FILE]";
@@ -332,11 +332,14 @@ for (const row of release) {
   row.voiceHost = checkedVoiceHost(row.file);
   if (row.voiceHost.differences.length)
     throw new Error(`On-device voice in ${row.file} is not admitted:\n  - ${row.voiceHost.differences.join("\n  - ")}`);
-  if(cloudEvidence)row.cloudVoice=cloudVoiceAdmission(row.sha256,cloudEvidence,cloudEvidenceSha256);
+  const cartesia = cloudEvidenceSha256 === undefined ? undefined : {
+    apkSha256: row.sha256,
+    admission: cloudVoiceAdmission(row.sha256, cloudEvidence, cloudEvidenceSha256),
+  };
+  if (cartesia) row.cloudVoice = cartesia.admission;
   // releaseDistributable requires packaged on-device voice with ASR (voiceHost.packaged and .asr).
   const releaseReady = releaseDistributable({testMocks, signed: row.signed, releaseAdmission: row.releaseAdmission,
-      runtime, runtimeNotices: row.runtimeNotices, voiceHost: row.voiceHost, licenceBlockers: row.licenceBlockers})
-    && (!cloudEvidence || cloudVoiceBlockers(row,'cartesia').length===0);
+      runtime, runtimeNotices: row.runtimeNotices, voiceHost: row.voiceHost, licenceBlockers: row.licenceBlockers, cartesia});
   row.distributable = releaseReady && updateChannel.kind === 'public';
 }
 for (const row of results.filter(row => row.mode === "debug")) {
@@ -446,7 +449,21 @@ fs.writeFileSync(
 console.log(JSON.stringify(results, null, 2));
 const undistributable = release.filter(row => !row.distributable);
 if (undistributable.length)
-  console.warn(`Not distributable: ${undistributable.map(row => `${row.file} (${[row.runtime !== "PACKAGED" && "no packaged runtime", testMocks && "test-mocks build", updateChannel.kind === "private-qa" && "private QA update channel", !row.runtimeNotices && "notices lack the packaged runtime (run node scripts/generate-licenses.ts --packaged-runtime after staging)", !row.voiceHost?.packaged && "no on-device voice packaged", row.voiceHost?.packaged && !row.voiceHost.asr && "on-device voice has no ASR", ...(cloudEvidence ? cloudVoiceBlockers(row, "cartesia") : []), ...(row.releaseAdmission?.blockers ?? []), ...row.licenceBlockers].filter(Boolean).join(", ")})`).join("; ")}`);
+  console.warn(`Not distributable: ${undistributable.map(row => {
+    const cartesia = cloudEvidenceSha256 === undefined ? [] : nativeCartesiaBlockers(row.sha256, row.cloudVoice);
+    const blockers = [
+      row.runtime !== "PACKAGED" && "no packaged runtime",
+      testMocks && "test-mocks build",
+      updateChannel.kind === "private-qa" && "private QA update channel",
+      !row.runtimeNotices && "notices lack the packaged runtime (run node scripts/generate-licenses.ts --packaged-runtime after staging)",
+      !row.voiceHost?.packaged && "no on-device voice packaged",
+      row.voiceHost?.packaged && !row.voiceHost.asr && "on-device voice has no ASR",
+      ...cartesia,
+      ...(row.releaseAdmission?.blockers ?? []),
+      ...row.licenceBlockers,
+    ];
+    return `${row.file} (${blockers.filter(Boolean).join(", ")})`;
+  }).join("; ")}`);
 // Licence flags are warnings: recorded per APK above, printed once here, never a failure.
 for (const line of flagLines) console.warn(line);
 const fontItems = new Map(release.flatMap(row => [...row.fontLicenceCheck.items, ...row.fontLicenceCheck.resolved].map(item => [item, row.fontLicenceCheck.blocksDistribution] as const)));
