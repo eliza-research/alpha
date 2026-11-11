@@ -119,6 +119,17 @@ for(const tiles of ['valid','malformed','copyright-unavailable','unavailable'] a
    }else{
     await expect(attribution.locator('.alpha-google-copyright')).toBeVisible();
    }
+   // The compact information control and full recipient roles remain reachable
+   // at the same enlarged/landscape sizes as the data-source attribution.
+   const informationControl=privacy.getByLabel('Map information and credits',{exact:true});
+   expect(await informationControl.evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return hit===el||el.contains(hit);})).toBe(true);
+   await informationControl.click();
+   await expect(privacy.locator('[data-maps-disclosure]')).toContainText('Google Routes for routing, operated by Google');
+   const disclosure=await privacy.locator('.alpha-map-info').boundingBox();
+   expect(disclosure!.x).toBeGreaterThanOrEqual(0);expect(disclosure!.y).toBeGreaterThanOrEqual(0);
+   expect(disclosure!.x+disclosure!.width).toBeLessThanOrEqual(layout.width);
+   expect(disclosure!.y+disclosure!.height).toBeLessThanOrEqual(layout.height);
+   await informationControl.click();
   }
   };
   await checkCreditLayouts('results');

@@ -5089,7 +5089,7 @@
       },
       {
         "path": "apps/app/src/prototype/browser-adapter.ts",
-        "name": "Close a tab before opening another."
+        "name": "Tab limit"
       }
     ],
     "stateMapping": {
@@ -8421,7 +8421,7 @@
       },
       {
         "path": "apps/app/src/prototype/phone-adapter.ts",
-        "name": "async function dial"
+        "name": "async function call"
       },
       {
         "path": "apps/app/src/prototype/phone-adapter.ts",
@@ -8464,7 +8464,8 @@
       "A read is one settle; its status, access request and recent-calls stages are folded into the outcome. Row contents and number normalisation are not modeled.",
       "refresh stands for the Refresh and Allow controls and for the return-to-app watcher; only the watcher can fire while a latch is held, and the model does not distinguish them.",
       "The adapter exists only on the verified Alpha image; elsewhere it registers nothing.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "Model safety checks do not establish implementation refinement or device acceptance.",
+      "The dial handoff branch after a role-required or permission-required refusal is modeled here. Direct Telecom placement is covered separately by PhoneCalls and the Phone adapter tests."
     ]
   },
   {
@@ -9940,7 +9941,7 @@
     "stateMapping": {
       "owner/front/session": "the mounted instance, owner.S().view === 'settings' and connectionController.getCloudClient()?.sessionId",
       "current/issued/reads/limits": "capabilityAbort, the refreshCapabilities calls that started a read, Gmail account requests in flight and their 10 s timers",
-      "gmail": "the authorization line: Not checked, Cloud sign-in required, Checking authorization…, a grant label, Authorization not verified",
+      "gmail": "the authorization line: Not checked, Cloud sign-in required, Checking authorization\u2026, a grant label, Authorization not verified",
       "licenses/fetching/fetches": "the module-level licenses.status and the notice file request",
       "dropped": "ghost: answers that arrived for a superseded read, another instance or another session"
     },

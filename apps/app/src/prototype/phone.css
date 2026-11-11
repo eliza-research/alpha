@@ -461,18 +461,18 @@ html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-base="true"]:has([d
 html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
   --alpha-maps-guidance-bottom:calc(var(--alpha-dock-clearance,102px) + 8px);
 }
-/* When text grows, put the status and credits in flow with the guidance bar.
-   Their existing reading order also keeps each target above its neighbor. */
-html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
+/* Keep credits above the guidance bar as the assistant's measured reserve changes.
+   At large text the status joins the same flow in its existing reading order. */
+html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
   box-sizing:border-box; justify-content:flex-end; row-gap:8px; padding-bottom:var(--alpha-maps-guidance-bottom);
 }
-html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > :is(.alpha-map-credits,[data-alpha-maps-guidance-controls]),
+html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > :is(.alpha-map-credits,[data-alpha-maps-guidance-controls]),
 html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] [data-alpha-maps-status] {
   position:relative!important; inset:auto!important; flex:none;
 }
 html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] [data-alpha-maps-status] { margin-inline:20px; }
-html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > .alpha-map-credits { margin-inline:16px; align-self:flex-start; }
-html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-controls] { margin-inline:12px; }
+html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > .alpha-map-credits { margin-inline:16px; align-self:stretch; }
+html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-controls] { margin-inline:12px; }
 
 /* Keep the guidance controls and credits in flow on the clear side of the
    landscape assistant. Status and maneuvers share the space above the right dock. */
@@ -494,7 +494,7 @@ html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > 
   position:relative!important; inset:auto!important; width:auto; flex:none;
 }
 .alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits {
-  position:relative!important; inset:auto!important; flex:none; align-self:flex-start;
+  position:relative!important; inset:auto!important; flex:none; align-self:stretch;
 }
 /* Keep the same left-to-right reading order as portrait. A second grid row
    placed the time above the first control in the accessibility tree. */
@@ -505,7 +505,7 @@ html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > 
 .alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif { font-size:24px!important; overflow-wrap:anywhere; }
 .alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits:has(details[open]) { z-index:6; }
 .alpha-landscape [data-alpha-maps-guidance="true"] .alpha-map-info {
-  top:0; left:60px; bottom:auto; width:min(300px,calc(100vw - 92px)); max-height:160px;
+  top:auto; left:0; bottom:calc(100% + 8px); width:min(300px,calc(100vw - 92px)); max-height:160px;
   box-sizing:border-box; overflow:auto;
 }
 
