@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {collectApplicationCampaigns, runApplicationRefinement} from '../specs/quint/refinement/application/index.mjs';
 
-// The complete aggregate exceeded 20 minutes on the measured two-worker run.
-// Keep all component checks and their own bounds; allow the aggregate to finish.
-test('application source observations match bounded Quint component traces', {timeout: 2400000}, async () => {
+// The complete campaign exceeded the former 40-minute ceiling on the build VM.
+// Preserve every component bound and use the same two-hour ceiling as archive verification.
+test('application source observations match bounded Quint component traces', {timeout: 7200000}, async () => {
   const result = await runApplicationRefinement();
   assert.deepEqual(result.failures, [], result.failures.map(({campaign, error}) => `${campaign}: ${error}`).join('\n'));
   const manifest = JSON.parse(readFileSync(new URL('../specs/quint/application/manifest.json', import.meta.url)));
