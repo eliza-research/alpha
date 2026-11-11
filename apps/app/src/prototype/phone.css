@@ -701,6 +701,15 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .alpha-map-privacy { flex:none; order:-1; width:50px; height:50px; border-radius:25px; background:var(--bg); box-shadow:0 6px 20px var(--shc), 0 0 0 1px var(--line); }
 .alpha-map-privacy > summary { width:100%; height:100%; }
 .alpha-map-privacy > summary { display:flex; align-items:center; justify-content:center; border-radius:inherit; cursor:pointer; list-style:none; }
+/* At 300% the disclosure control and credits need separate rows. Leave the
+   map's Recenter control beside the stack and keep the links first in reading order. */
+html.alpha-text-xl:not(.alpha-landscape) .alpha-map-credits:not([data-google-maps="true"]) {
+  flex-direction:column; align-items:flex-start;
+}
+html.alpha-text-xl:not(.alpha-landscape) .alpha-map-credits:not([data-google-maps="true"]) > .alpha-map-credit-links {
+  flex:none; max-width:100%; box-sizing:border-box;
+}
+html.alpha-text-xl:not(.alpha-landscape) .alpha-map-credits:not([data-google-maps="true"]) > .alpha-map-privacy { order:0; }
 [data-alpha-map-plane][data-imagery-unavailable="true"] { background:var(--s2); }
 .alpha-map-credits[data-google-maps="true"] {
   container:alpha-map-credit / inline-size; right:76px; width:auto; height:auto; display:flex; align-items:center; gap:4px; padding:0; border-radius:0; background:transparent; box-shadow:none;
