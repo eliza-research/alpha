@@ -2,6 +2,13 @@ import {Capacitor} from '@capacitor/core';
 import {registerPlugin} from '../platform-plugins';
 const device=registerPlugin<{shareText(input:{title:string;text:string}):Promise<{status:'opened'}>;copyText(input:{text:string}):Promise<void>}>('AlphaDevice');
 export const nativeTextSharing=()=>Capacitor.isNativePlatform();
+/** Some browser hosts expose Web Share while denying it through their policy. */
+export function platformSharingAvailable():boolean {
+ if(nativeTextSharing())return true;
+ if(typeof navigator.share!=='function')return false;
+ const host=document as Document & {permissionsPolicy?:{allowsFeature(name:string):boolean};featurePolicy?:{allowsFeature(name:string):boolean}};
+ return (host.permissionsPolicy??host.featurePolicy)?.allowsFeature('web-share')!==false;
+}
 function visible(){
  if(document.hidden||Array.from(document.querySelectorAll('[aria-label="Unlock with fingerprint"], [aria-label="Wake"]')).some(node=>node.getClientRects().length))throw new DOMException('Share view is not active','AbortError');
 }
@@ -18,7 +25,7 @@ export async function shareSelectedText(input:{title:string;text:string},signal?
   if(result.status!=='opened')throw Error('Android sharing is unavailable.');
   return 'opened'; // Chooser opened; no delivery or destination selection is claimed.
  }
- if(!navigator.share)throw Error('Sharing is unavailable in this browser. Use Copy text or Save text.');
+ if(!platformSharingAvailable())throw Error('Sharing is unavailable in this browser. Use Copy text or Save text.');
  try{await navigator.share(selection);signal?.throwIfAborted();return 'shared';}
  catch(error){if(error instanceof DOMException&&error.name==='AbortError')return 'closed';throw error;}
 }

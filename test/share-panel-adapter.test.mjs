@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './fixtures/ts-source.mjs';
 // The adapter with its two runtime imports replaced by a panel that records what it was given.
 const source=readFileSync(new URL('../apps/app/src/prototype/share-panel-adapter.ts',import.meta.url),'utf8').replace(/^import .*\n/gm,'');
-const code=`const panels=[];export {panels};const openSharePanel=options=>{panels.push(options);};const setShareEmailComposer=()=>{};const shareSelectedText=async()=>{};const copySelectedText=async()=>{};const selectedText=value=>value;\n${stripTypeScriptTypes(source,{mode:'strip'})}`;
+const code=`const panels=[];export {panels};const openSharePanel=options=>{panels.push(options);return Promise.resolve();};const shareSelectedText=async()=>{};const copySelectedText=async()=>{};const selectedText=value=>value;\n${stripTypeScriptTypes(source,{mode:'strip'})}`;
 const {installSharePanelAdapter,panels}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 globalThis.document??={hidden:false};
 
@@ -26,4 +26,15 @@ test('calendar: a revision refresh keeps the panel current and an edited event d
  instance.renderVals().calendar.ev.share();const panel=panels.at(-1);
  state.calendar={...state.calendar,nativeAgentRevision:'r1'};instance.renderVals();assert.equal(panel.current(),true);
  notes='Bring the report';state.calendar={...state.calendar,nativeAgentRevision:'r2'};instance.renderVals();assert.equal(panel.current(),false);
+});
+
+test('browser policy refusal hides sharing while native device sharing stays available',()=>{
+ const textSource=readFileSync(new URL('../apps/app/src/runtime/text-share.ts',import.meta.url),'utf8').replace(/^import .*\n/gm,'');
+ const code=stripTypeScriptTypes(textSource,{mode:'strip'}).replace(/^export /gm,'');
+ const read=new Function('Capacitor','registerPlugin','navigator','document',code+';return platformSharingAvailable();');
+ const platform=native=>({isNativePlatform:()=>native});
+ const navigator={share(){}};
+ assert.equal(read(platform(false),()=>({}),navigator,{permissionsPolicy:{allowsFeature:()=>false}}),false);
+ assert.equal(read(platform(false),()=>({}),navigator,{permissionsPolicy:{allowsFeature:()=>true}}),true);
+ assert.equal(read(platform(true),()=>({}),navigator,{permissionsPolicy:{allowsFeature:()=>false}}),true);
 });

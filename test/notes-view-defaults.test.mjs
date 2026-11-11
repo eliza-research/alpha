@@ -48,7 +48,7 @@ test('bulk Notes moves survive collection revision changes and finish with selec
  f.api.set=patch=>{Object.assign(f.state,patch);};
  f.api.canonicalNotes={current:true,update:async(id,patch)=>{moved.push(id);f.state.list=f.state.list.map(note=>({...note,...(note.id===id?patch:{}),canonicalRevision:note.canonicalRevision+1}));return true;},leave:async()=>true};
  const out=f.view.render(f.state,f.api);
- await out.folderChoices[0].pick();
+ await out.removeSelectedFromFolder();
  assert.deepEqual(moved,['a','b']);assert.equal(f.state.selectionBusy,false);assert.equal(f.state.selectingNotes,false);assert.equal(f.state.selectedNotes.length,0);
 });
 
@@ -59,4 +59,44 @@ test('bulk Notes deletion stops when another selected note changes',async()=>{
  f.api.canonicalNotes={current:true,remove:async id=>{removed.push(id);f.state.list=[{id:'b',kind:'text',title:'Changed elsewhere',body:'b',canonicalRevision:2}];return true;}};
  await f.view.render(f.state,f.api).deleteSelected();
  assert.deepEqual(removed,['a']);assert.deepEqual(Array.from(f.state.selectedNotes),['b']);assert.equal(f.state.selectionBusy,false);
+});
+
+
+test('Notes exposes existing folders inline and removes membership through the selection action',async()=>{
+ const f=fixture([{id:'a',kind:'text',title:'A',body:'a',folderId:'f-1',canonicalRevision:1}]);
+ Object.assign(f.state,{folders:[{id:'f-1',name:'Work',createdAt:1}],selectingNotes:true,selectedNotes:['a']});
+ f.api.set=patch=>{Object.assign(f.state,patch);};
+ const updates=[];
+ f.api.canonicalNotes={current:true,update:async(id,patch)=>{updates.push({id,patch});return true;},leave:async()=>true};
+ const out=f.view.render(f.state,f.api);
+ assert.equal(out.hasFolders,false);assert.equal(out.folderRows[0].name,'Work');
+ assert.equal(out.showFolders,undefined);assert.equal(out.canRemoveFromFolder,true);
+ await out.removeSelectedFromFolder();
+ assert.deepEqual(structuredClone(updates),[{id:'a',patch:{folderId:null}}]);
+ assert.equal(f.state.selectingNotes,false);
+ const empty=fixture(),emptyView=empty.view.render(empty.state,empty.api);
+ assert.equal(emptyView.hasFolders,false);assert.equal(emptyView.selectionFolderDisabled,true);
+});
+
+
+test('opening a Notes folder shows its notes with a return to the main list',()=>{
+ const f=fixture([{id:'a',kind:'text',title:'A',folderId:'f-1'},{id:'b',kind:'text',title:'B'}]);
+ f.state.folders=[{id:'f-1',name:'Work',createdAt:1}];f.api.set=patch=>Object.assign(f.state,patch);
+ const root=f.view.render(f.state,f.api);root.folderRows[0].select();
+ const inside=f.view.render(f.state,f.api);
+ assert.equal(inside.notesTitle,'Work');assert.equal(inside.primaryNotes,false);assert.equal(inside.hasFolders,false);
+ assert.deepEqual(Array.from(inside.otherRows,n=>n.id),['a']);
+ inside.returnToNotesAction();assert.equal(f.view.render(f.state,f.api).hasFolders,true);
+});
+
+
+test('the note menu moves one note without leaving its editor',async()=>{
+ const f=fixture([{id:'a',kind:'text',title:'A',body:'a',folderId:'f-1'}]);
+ Object.assign(f.state,{open:'a',folders:[{id:'f-1',name:'Work',createdAt:1}]});
+ f.api.set=patch=>Object.assign(f.state,patch);
+ const changes=[];f.api.canonicalNotes={current:true,update:async(id,patch)=>{changes.push({id,folderId:patch.folderId});return true;}};
+ f.view.render(f.state,f.api).ed.moveTo();
+ assert.equal(f.state.folderSheet.kind,'move-note');
+ await f.view.render(f.state,f.api).removeSelectedFromFolder();
+ assert.deepEqual(changes,[{id:'a',folderId:null}]);assert.equal(f.state.open,'a');assert.equal(f.state.folderSheet,null);
 });

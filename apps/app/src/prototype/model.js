@@ -2921,14 +2921,15 @@ function notesFolderOf(n, folders) { return n && typeof n.folderId === "string" 
 async function notesMove(api, id, folderId, name) {
   if (api.canonicalNotes) {
     api.set({ menu: null });
-    if (!await api.canonicalNotes.update(id, { folderId: folderId || null })) return;
+    if (!await api.canonicalNotes.update(id, { folderId: folderId || null })) return false;
     api.toast(folderId ? "Moved to " + name : "Removed from folder");
-    return;
+    return true;
   }
   var s = api.get("notes");
   var list = s.list.map(function (n) { if (n.id !== id) return n; var x = Object.assign({}, n); if (folderId) x.folderId = folderId; else delete x.folderId; return x; });
-  api.set({ list: list, menu: null });
+  if (await api.set({ list: list, menu: null }) === false) return false;
   api.toast(folderId ? "Moved to " + name : "Removed from folder");
+  return true;
 }
 /** Live Notes keep folders in their own encrypted slot (api.notesFolders); fixtures keep them in view state. */
 async function notesCreateFolder(api) {
@@ -3049,6 +3050,7 @@ registerView("notes", {
     if (st.open) { notesClose(api); return true; }
     if (st.folderSheet) { api.set({ folderSheet: null }); return true; }
     if (st.filter) { api.set({ filter: null }); return true; }
+    if (st.folder && st.folder !== "deleted") { api.set({ folder: null }); return true; }
     return false;
   },
   onLeave: function (api) { var s = api.get("notes"); if (s.blankCreationId) api.set(notesLeave(api, null)); else notesStopTimers(); },
@@ -3160,20 +3162,22 @@ registerView("notes", {
       };
     });
     var pinnedRows = rows.filter(function (r) { return r.pinned; }), otherRows = rows.filter(function (r) { return !r.pinned; });
-    var folderChips = folders.map(function (f) {
-      var on = folder === f.id, hold = notesChipHold(api, f.id);
-      return { id: f.id, name: f.name, pressed: on ? "true" : "false", label: on ? f.name + ", folder options" : f.name,
+    var folderRows = folders.map(function (f) {
+      var hold = notesChipHold(api, f.id);
+      var count = list.filter(function (note) { return notesFolderOf(note, folders) === f.id; }).length;
+      return { id: f.id, name: f.name, countLabel: count + (count === 1 ? " note" : " notes"), label: "Open folder " + f.name,
         down: hold.down, up: hold.up, context: hold.context,
         select: function () {
           // The click that ends a long-press only opened the options.
           if (NT.held === f.id) { NT.held = null; return; }
-          if (api.get("notes").folder === f.id) api.set({ folderSheet: { kind: "options", id: f.id } }); else api.set({ folder: f.id, filter: null, folderSheet: null });
+          api.set({ folder: f.id, filter: null, folderSheet: null, selectingNotes: false, selectedNotes: [] });
         } };
     });
     var sheet = st.folderSheet && typeof st.folderSheet === "object" ? st.folderSheet : null;
     var sheetFolder = sheet && (sheet.kind === "options" || sheet.kind === "rename") ? folders.filter(function (f) { return f.id === sheet.id; })[0] || null : null;
     var renaming = !!sheetFolder && sheet.kind === "rename";
-    var choosingFolder = !!sheet && sheet.kind === "folders", movingSelection = !!sheet && sheet.kind === "move-selection";
+    var movingSelection = !!sheet && sheet.kind === "move-selection";
+    var movingNote = sheet && sheet.kind === "move-note" ? notesFind(list, sheet.id) : null;
 
     /* open note */
     var n = st.open && !st.selectionBusy ? notesFind(list, st.open) : null;
@@ -3189,17 +3193,17 @@ registerView("notes", {
       menuOpen: st.menu === "main", moveOpen: st.menu === "move", menuShown: !!st.menu,
       more: function () { api.set({ menu: api.get("notes").menu ? null : "main" }); },
       closeMenu: function () { api.set({ menu: null }); },
-      moveTo: function () { api.set({ menu: "move" }); },
-      moveRows: [{ id: null, name: "No folder" }].concat(folders).map(function (f) {
-        var on = (notesFolderOf(n, folders) || null) === f.id;
-        return { name: f.name, checked: on ? "true" : "false", mark: on ? "✓" : "", pick: function () { notesMove(api, n.id, f.id, f.name); } };
-      }),
+      moveTo: function () { api.set({ menu: null, folderSheet: { kind: "move-note", id: n.id } }); },
       title: n.title || "",
       onTitle: function (e) { notesUpd(api, n.id, { title: e.target.value }); }
     } : null;
     if (isEdit) {
       ed = Object.assign({}, common, {
         isText: n.kind === "text", isList: n.kind === "list",
+        edit: function () {
+          api.set({ menu: null });
+          requestAnimationFrame(function () { (document.querySelector('[data-alpha-subview="notes-editor"] textarea') || document.querySelector('[data-alpha-subview="notes-editor"] input[aria-label="Title"]'))?.focus(); });
+        },
         saveStatus: "",
         body: n.body || "",
         onBody: function (e) { notesUpd(api, n.id, { body: e.target.value }); },
@@ -3277,7 +3281,11 @@ registerView("notes", {
 
     var shareSheet = st.sheet === "share" && !!n;
     return {
-      notesTitle: folder ? folders.find(function (f) { return f.id === folder; }).name : "Notes", primaryNotes: true, canRecord: true, canCreate: true,
+      notesTitle: folder ? folders.find(function (f) { return f.id === folder; }).name : "Notes", primaryNotes: !folder, canRecord: true, canCreate: true,
+      returnToNotesAction: folder ? function () { api.set({ folder: null, filter: null, folderSheet: null, selectingNotes: false, selectedNotes: [] }); } : null,
+      currentFolder: !!folder,
+      renameCurrentFolder: function () { if (folder) api.set({ menu: null, folderSheet: { kind: "rename", id: folder, name: folders.find(function (f) { return f.id === folder; }).name } }); },
+      deleteCurrentFolder: function () { if (folder) { api.set({ menu: null }); return notesDeleteFolder(api, folder); } },
       listMenuOpen: st.menu === "list", listMenu: function () { api.set({ menu: st.menu === "list" ? null : "list" }); }, closeListMenu: function () { api.set({ menu: null }); },
       selectingNotes: !!st.selectingNotes, selectionBusy: !!st.selectionBusy, selectedCount: selectedNotes.length, hasSelection: selectedNotes.length > 0, selectionDisabled: !selectedNotes.length || !!st.selectionBusy,
       startSelection: function () { api.set({ menu: null, selectingNotes: true, selectedNotes: [] }); },
@@ -3285,26 +3293,24 @@ registerView("notes", {
       selectEveryNote: function () { api.set({ selectedNotes: shown.map(function (n) { return n.id; }) }); },
       deleteSelected: function () { return notesApplySelection(api); },
       moveSelected: function () { api.set({ folderSheet: { kind: "move-selection" }, menu: null }); },
-      showFolders: function () { api.set({ folderSheet: { kind: "folders" }, menu: null }); },
-      folderChoices: [{ id: null, name: "All notes" }].concat(folders).map(function (f) { return { id: f.id, name: movingSelection && f.id === null ? "No folder" : f.name, pick: function () {
-        if (movingSelection) return notesApplySelection(api, f.id);
-        api.set({ folder: f.id, filter: null, folderSheet: null, selectingNotes: false, selectedNotes: [] });
-      }, manage: function () { if (f.id) api.set({ folderSheet: { kind: "options", id: f.id } }); }, canManage: !!f.id }; }),
-      choosingFolder: choosingFolder || movingSelection,
+      selectionFolderDisabled: !selectedNotes.length || !!st.selectionBusy || !folders.length,
+      canRemoveFromFolder: movingNote ? !!notesFolderOf(movingNote, folders) : list.some(function (note) { return selectedNotes.indexOf(note.id) >= 0 && !!notesFolderOf(note, folders); }),
+      removeSelectedFromFolder: async function () { if (movingNote) { if (await notesMove(api, movingNote.id, null, "")) api.set({ folderSheet: null }); } else return notesApplySelection(api, null); },
+      folderChoices: folders.map(function (f) { return { id: f.id, name: f.name, pick: async function () { if (movingNote) { if (await notesMove(api, movingNote.id, f.id, f.name)) api.set({ folderSheet: null }); } else return notesApplySelection(api, f.id); } }; }),
+      choosingFolder: movingSelection || !!movingNote,
 
       newNote: function () { notesNew(api, "text"); },
       // The Notes recorder (voice-adapter, note-recorder.ts) handles Record; `record` is its deep-link flag.
       record: function () { api.set({ record: true }); },
       pinnedRows: pinnedRows, otherRows: otherRows, hasPinned: pinnedRows.length > 0, notesHead: pinnedRows.length > 0 && otherRows.length > 0,
-      allPressed: folder ? "false" : "true", selectAll: function () { api.set({ folder: null, filter: null, folderSheet: null }); },
-      folderChips: folderChips,
+      folderRows: folderRows, hasFolders: folders.length > 0 && !folder && !st.selectingNotes,
       newFolder: function () { api.set({ folderSheet: { kind: "new", name: "" }, menu: null }); },
       filterOn: !!filter, filterLabel: filter ? notesFilterLabel(filter, folders) + " · " + shown.length : "",
       clearFilter: function () { api.set({ filter: null }); },
-      folderSheetOpen: !!sheet && (sheet.kind === "new" || !!sheetFolder || choosingFolder || movingSelection),
+      folderSheetOpen: !!sheet && (sheet.kind === "new" || !!sheetFolder || movingSelection || !!movingNote),
       folderNew: !!sheet && sheet.kind === "new" || renaming, folderOptions: !!sheetFolder && !renaming,
       folderName: sheet && (sheet.kind === "new" || renaming) ? String(sheet.name || "") : "", folderOptionsTitle: sheetFolder ? sheetFolder.name : "",
-      folderSheetTitle: movingSelection ? "Move to folder" : choosingFolder ? "Folders" : sheet && sheet.kind === "new" ? "New folder" : renaming ? "Rename folder" : sheetFolder ? sheetFolder.name : "",
+      folderSheetTitle: movingSelection || movingNote ? "Add to folder" : sheet && sheet.kind === "new" ? "Create folder" : renaming ? "Rename folder" : sheetFolder ? sheetFolder.name : "",
       folderSubmitLabel: renaming ? "Save" : "Create",
       onFolderName: function (e) { var cur = api.get("notes").folderSheet; if (cur && (cur.kind === "new" || cur.kind === "rename")) api.set({ folderSheet: Object.assign({}, cur, { name: e.target.value }) }); },
       folderNameKey: function (e) { if (e.key === "Enter") { e.preventDefault(); var cur = api.get("notes").folderSheet; if (cur && cur.kind === "rename") notesRenameFolder(api, cur.id); else notesCreateFolder(api); } },

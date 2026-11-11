@@ -784,27 +784,23 @@
     "step": "step",
     "invariant": "safety",
     "tests": [
-      "replacementRetiresEarlierButtonsTest",
-      "changedSelectionIsRetiredWithoutFallbackTest",
-      "hiddenRequestAndCancellationCannotDispatchTest",
-      "exactDestinationFailureNeverFallsBackTest"
+      "repeatedTapDoesNotDuplicateTest",
+      "inactiveSelectionDoesNotShareTest",
+      "anotherShareAfterCancellationTest"
     ],
     "invariants": [
-      "ActivePanelIsUnsettled",
-      "EffectFollowsExactClose",
-      "EachPanelDispatchesOnce",
-      "NoticeBelongsToStaleSelection"
+      "OneChooserAtATime",
+      "CompletionHasAnAttempt"
     ],
     "sources": [
       "apps/app/src/runtime/share-panel.ts"
     ],
     "stateMapping": {
-      "seen/active/hidden/invalid/emails": "Caller inputs and the actual mounted chooser and enabled destinations",
-      "settled/effects/notice/alerts": "Actual promises, destination callback invocations, stale status and visible failure alert"
+      "busy/calls/finished": "Platform dispatch admission and actual completion",
+      "hidden/current": "Document visibility and exact caller selection"
     },
     "abstractions": [
-      "Up to three panels in a document. Exact destination functions use closed ports, with selected success, cancel and rejection outcomes.",
-      "This model covers renderer admission and handoff. Installed dispatch, browser top layer timing and arbitrary reentrant callers require separate checks."
+      "One platform chooser at a time. Cancellation and failure release admission without dispatching elsewhere. Native UI and transfer delivery require separate device proof."
     ]
   },
   {
