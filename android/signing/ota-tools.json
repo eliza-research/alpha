@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "sha256": "UNSET",
+  "sdkCommit": "00edc8ce2e8b9bd47ad5cce33e1dff66c2fe47c0",
+  "allowedProducerCommits": ["2f093c9b588a0d0f08e07d0fd397aaaf615d6212"],
+  "apkSignerMappingsSha256": "UNSET",
+  "avbKeyConfigurationSha256": "UNSET",
+  "qualified": false
+}
