@@ -23,8 +23,7 @@ node specs/quint/legacy/core/check-configurations.mjs --phase=symbolic --models=
 node specs/quint/legacy/core/check-configurations.mjs --phase=temporal --profiles=ActionSettlement.late --tlc-max-heap-mb=1024
 ```
 
-`npm run verify` prepares the historical Git objects automatically. The preparation
-is idempotent and fetches only the exact inventory revision with `--depth=1`
+The preparation is idempotent and fetches only the exact inventory revision with `--depth=1`
 when missing, including in shallow CI submodule checkouts. It never checks out
 the historical source or changes the current product pin.
 
