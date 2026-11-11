@@ -189,6 +189,27 @@ same reviewed component bytes. The two hosts share the exact ARM64 engine and
 C++ runtime. Obtain the recorded bytes from the provisioned host or review and
 admit a reproducible replacement before updating the records and artifact IDs.
 
+On the provisioned host, prepare an operator handoff from the reviewed Alpha
+checkout. Use physical paths and an existing output directory owned and
+writable only by your account.
+
+```sh
+python3 -B scripts/ci/export-native-inputs.py \
+  --voice /absolute/staged-voice-root \
+  --embedding-component /absolute/directory-containing-component-output \
+  --embedding-qualification /absolute/directory-containing-qualification-files \
+  --out /absolute/output-directory
+```
+
+The exporter creates `alpha-native-inputs.zip` after verifying the copied
+files against the committed records and existing embedding qualification.
+The component receipts preserve their original build provenance and paths.
+Extract the packet, then upload the contents of `voice/`,
+`embedding-component/` and `embedding-qualification/` as three separate
+artifacts through the approved path. Keep `packet.json` with the handoff.
+Use the resulting GitHub artifact IDs and archive digests in the hosted
+manifest.
+
 Run `python3 -B scripts/ci/hosted-native-inputs.py --check` to validate the
 manifest against the checkout without downloading. Automatic runs fail early
 when input pins are missing, stale or expired. They download through the
