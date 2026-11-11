@@ -61,6 +61,7 @@ interface SigningTarget {
   removeInput: boolean;
 }
 interface SigningRotation {
+  preserveSignaturePermissions?: boolean;
   schema: number;
   approval: string;
   versionCode: number;
@@ -217,7 +218,9 @@ export async function approvedSigningRotation(signerRecord: SignerRecord, lineag
   const lastReleaseVersion = signerRecord.lastRelease?.versionCode ?? 0;
   if (typeof signerRecord.signerSha256 !== "string" || !HEX.test(signerRecord.signerSha256) ||
       !Number.isSafeInteger(lastReleaseVersion) || lastReleaseVersion < 0 ||
-      record?.schema !== 1 || record.approval !== "approved" || !Number.isSafeInteger(record.versionCode) ||
+      record?.schema !== 1 || record.approval !== "approved" ||
+      (record.preserveSignaturePermissions !== undefined && typeof record.preserveSignaturePermissions !== "boolean") ||
+      !Number.isSafeInteger(record.versionCode) ||
       !Number.isSafeInteger(record.fromVersionCode) || record.fromVersionCode < 1 ||
       record.versionCode <= Math.max(record.fromVersionCode, lastReleaseVersion) ||
       !unsigned || Object.keys(unsigned).sort().join() !== "launcher,standalone" ||
@@ -251,6 +254,7 @@ async function verifySignedRotation(file: string, lineage: string, rotation: Sig
   const result = JSON.parse(execFileSync(path.join(javaHome, "bin", "java"), [
     "-cp", jar, verifier, "--signed-output", file, lineage, await fileDigest(file),
     rotation.lineageSha256, rotation.previousSignerSha256, signer, "ai.elizaresearch.alphaphone", "29", "37",
+    ...(rotation.preserveSignaturePermissions ? ["--preserve-signature-permissions"] : []),
   ], { env: { PATH: toolEnv.PATH, JAVA_HOME: toolEnv.JAVA_HOME }, encoding: "utf8", timeout: 120_000 }));
   if (result.verified !== true || result.minApi !== 29 || result.maxApi !== 37 || result.versionCode !== rotation.versionCode)
     throw new Error("Signed rotation output differs from the reviewed version or API scope");
