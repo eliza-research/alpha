@@ -1,18 +1,19 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, sha256, type CheckerResult, type QuintModel } from './quint-lib.ts';
 
 const args = process.argv.slice(2);
 const commands = ['check', 'typecheck', 'test', 'simulate', 'verify', 'temporal', 'compare'] as const;
 const inputCommand = args.shift() || 'check';
-const command = commands.find(command => command === inputCommand);
-if (!command) throw Error(`Unknown Quint command ${inputCommand}`);
+const selectedCommand = commands.find(command => command === inputCommand);
+if (!selectedCommand) throw Error(`Unknown Quint command ${inputCommand}`);
+const command = selectedCommand;
 function value(name: string): string | undefined;
 function value(name: string, fallback: string): string;
 function value(name: string, fallback?: string) {return args.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;}
-const allowedOptions = ['models', 'samples', 'steps', 'seed', 'out', 'backend', 'server-endpoint', 'timeout'];
+const allowedOptions = ['models', 'samples', 'steps', 'seed', 'out', 'backend', 'server-endpoint', 'timeout', 'jobs'];
 for (const arg of args) if (!allowedOptions.some(name => arg.startsWith(`--${name}=`))) throw Error(`Unknown option ${arg}`);
 const checking = ['verify', 'temporal', 'compare'].includes(command);
 const positiveInteger = (name: string, fallback: number = 1) => {
@@ -23,16 +24,21 @@ const positiveInteger = (name: string, fallback: number = 1) => {
 const samples = positiveInteger('samples', 80);
 const steps = positiveInteger('steps', command === 'compare' ? 20 : checking ? 6 : 40);
 const timeoutSeconds = positiveInteger('timeout', checking ? 1800 : 120);
+const requestedJobs = positiveInteger('jobs', checking ? 1 : Number(process.env.ALPHA_QUINT_JOBS ?? 1));
+if (checking && requestedJobs !== 1) throw Error('Model checking uses one job per server endpoint');
 const seed = value('seed', '20261107');
 const overrides = Object.fromEntries(['samples', 'steps', 'seed'].filter(name => value(name) !== undefined)
   .map(name => [name, name === 'seed' ? value(name) : positiveInteger(name)]));
-const backendOption = value('backend');
+const requestedBackend = value('backend');
 const serverEndpoint = value('server-endpoint', '127.0.0.1:8845');
-if (backendOption !== undefined && backendOption !== 'apalache' && backendOption !== 'tlc') throw Error('Verification backend must be apalache or tlc');
+if (requestedBackend !== undefined && requestedBackend !== 'apalache' && requestedBackend !== 'tlc') throw Error('Verification backend must be apalache or tlc');
+const backendOption = requestedBackend;
 const allModels = loadModels();
 const requested = value('models', '').split(',').filter(Boolean);
 for (const name of requested) if (!allModels.some(model => model.module === name)) throw Error(`Unknown model ${name}`);
 const models = requested.length ? allModels.filter(model => requested.includes(model.module)) : allModels;
+const jobs = Math.min(requestedJobs, availableParallelism(), Math.max(1, models.length));
+const modelOrder = new Map(models.map((model, index) => [model.module, index]));
 const backends = new Set(models.map(model => quintProofBackend(model, command, backendOption)));
 const receiptBackend = backends.size > 1 ? 'mixed' : backends.values().next().value ?? quintProofBackend({}, command, backendOption);
 if (command === 'temporal' && !models.some(model => model.temporal?.length)) throw Error('Selected models declare no temporal checks');
@@ -72,6 +78,7 @@ type Receipt = {
   steps: number;
   seed: string;
   backend: string;
+  jobs: number;
   timeoutSeconds: number;
   modelOptions: Record<string, ReturnType<typeof quintModelOptions>>;
   scenarioCanary?: {detected: boolean; exitCode: number | null; signal: NodeJS.Signals | null; interruptedAttempt?: {exitCode: null; signal: NodeJS.Signals | null}; output: string};
@@ -94,11 +101,16 @@ const receipt: Receipt = { schemaVersion: 1, startedAt: new Date().toISOString()
     typecheck: 'typechecking', test: 'scenario execution', simulate: 'sampled simulation',
   }[command],
   inputHashes, samples, steps, seed, modelOptions: Object.fromEntries(models.map(model => [model.module, quintModelOptions(model, command, overrides)])),
-  backend: receiptBackend, timeoutSeconds, results: [] };
+  backend: receiptBackend, jobs, timeoutSeconds, results: [] };
 const receiptPath = resolve(repositoryRoot, value('out', `test-results/quint/${command}.json`));
 mkdirSync(dirname(receiptPath), { recursive: true });
 writeFileSync(receiptPath, `${JSON.stringify({ ...receipt, status: 'running', passed: false }, null, 2)}\n`);
 let failed = false;
+const activeStops = new Set<(signal: NodeJS.Signals) => void>();
+const interrupt = () => {
+  for (const stop of activeStops) stop('SIGKILL');
+  process.exit(130);
+};
 
 function runCommand(argv: string[]): Promise<CheckerResult> {
   return new Promise(resolveResult => {
@@ -118,9 +130,7 @@ function runCommand(argv: string[]): Promise<CheckerResult> {
           error ??= failure instanceof Error ? failure : new Error(String(failure));
       }
     };
-    const interrupt = () => { stop('SIGKILL'); process.exit(130); };
-    process.once('SIGINT', interrupt);
-    process.once('SIGTERM', interrupt);
+    activeStops.add(stop);
     const timer = setTimeout(() => {
       error = Error(`Checker exceeded ${timeoutSeconds} seconds`);
       stop('SIGTERM');
@@ -139,8 +149,7 @@ function runCommand(argv: string[]): Promise<CheckerResult> {
     child.on('close', (status, signal) => {
       clearTimeout(timer);
       clearTimeout(hardStop);
-      process.removeListener('SIGINT', interrupt);
-      process.removeListener('SIGTERM', interrupt);
+      activeStops.delete(stop);
       stop('SIGKILL');
       resolveResult({ status, signal, error, stdout, stderr });
     });
@@ -175,40 +184,50 @@ async function run(model: QuintModel, phase: string, options: string[], expected
   return passed;
 }
 
-try {
-  for (const model of models) {
-    const {samples, steps, seed} = quintModelOptions(model, command, overrides);
-    const backend = quintProofBackend(model, command, backendOption);
-    if (command === 'typecheck' && !await run(model, 'typecheck', ['typecheck', model.path])) continue;
-    if (['check', 'test'].includes(command) && !await run(model, 'scenarios', ['test', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, '--max-samples=1', `--match=^(${model.tests.join('|')})$`])) continue;
-    if (['check', 'simulate'].includes(command)) {
-      await run(model, 'simulation', ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, `--max-samples=${samples}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
-      if (model.additionalProofInit) await run(model, 'additional-init-simulation', ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, `--max-samples=${samples}`, '--max-steps=1', `--init=${model.additionalProofInit}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
-      // Every declared witness must be reachable; an unreachable guarded property is not coverage.
-      for (const witness of model.witnesses || []) {
-        await run(model, `witness-${witness}`, ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, `--max-samples=${Math.max(samples, 2000)}`, `--max-steps=${Math.max(steps, 60)}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=not(${witness})`, '--verbosity=1'], 'violation');
-      }
-    }
-    if (command === 'verify') {
-      await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, backend === 'tlc' ? '--verbosity=5' : '--verbosity=1']);
-      if (model.additionalProofInit) await run(model, `${backend}-additional-init`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, '--max-steps=1', `--init=${model.additionalProofInit}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
-    }
-    if (command === 'temporal' && model.temporal?.length) {
-      await run(model, `${backend}-temporal`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--temporal=${model.temporal.join(',')}`, '--verbosity=1']);
-    }
-    if (command === 'compare') {
-      for (const property of model.currentChecks || []) {
-        await run(model, `current-${property.invariant}`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${property.init}`, `--step=${property.step}`, `--invariant=${property.invariant}`, '--verbosity=1'], property.expected);
-      }
-      for (const property of model.currentTemporalChecks || []) {
-        await run(model, `current-temporal-${property.property}`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${property.init}`, `--step=${property.step}`, `--temporal=${property.property}`, '--verbosity=1'], property.expected);
-      }
-      for (const property of model.expectedViolations || []) {
-        const invariant = 'invariant' in property ? property.invariant : property.property;
-        await run(model, `known-${invariant}`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${invariant}`, '--verbosity=1'], 'violation');
-      }
+async function runModel(model: QuintModel) {
+  const {samples, steps, seed} = quintModelOptions(model, command, overrides);
+  const backend = quintProofBackend(model, command, backendOption);
+  if (command === 'typecheck' && !await run(model, 'typecheck', ['typecheck', model.path])) return;
+  if (['check', 'test'].includes(command) && !await run(model, 'scenarios', ['test', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, '--max-samples=1', `--match=^(${model.tests.join('|')})$`])) return;
+  if (['check', 'simulate'].includes(command)) {
+    await run(model, 'simulation', ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, `--max-samples=${samples}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+    if (model.additionalProofInit) await run(model, 'additional-init-simulation', ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, `--max-samples=${samples}`, '--max-steps=1', `--init=${model.additionalProofInit}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+    // Every declared witness must be reachable; an unreachable guarded property is not coverage.
+    for (const witness of model.witnesses || []) {
+      await run(model, `witness-${witness}`, ['run', model.path, `--main=${model.module}`, '--backend=typescript', `--seed=${seed}`, `--max-samples=${Math.max(samples, 2000)}`, `--max-steps=${Math.max(steps, 60)}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=not(${witness})`, '--verbosity=1'], 'violation');
     }
   }
+  if (command === 'verify') {
+    await run(model, backend, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${model.invariant}`, backend === 'tlc' ? '--verbosity=5' : '--verbosity=1']);
+    if (model.additionalProofInit) await run(model, `${backend}-additional-init`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, '--max-steps=1', `--init=${model.additionalProofInit}`, `--step=${model.step}`, `--invariant=${model.invariant}`, '--verbosity=1']);
+  }
+  if (command === 'temporal' && model.temporal?.length) {
+    await run(model, `${backend}-temporal`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--temporal=${model.temporal.join(',')}`, '--verbosity=1']);
+  }
+  if (command === 'compare') {
+    for (const property of model.currentChecks || []) {
+      await run(model, `current-${property.invariant}`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${property.init}`, `--step=${property.step}`, `--invariant=${property.invariant}`, '--verbosity=1'], property.expected);
+    }
+    for (const property of model.currentTemporalChecks || []) {
+      await run(model, `current-temporal-${property.property}`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${property.init}`, `--step=${property.step}`, `--temporal=${property.property}`, '--verbosity=1'], property.expected);
+    }
+    for (const property of model.expectedViolations || []) {
+      const invariant = 'invariant' in property ? property.invariant : property.property;
+      await run(model, `known-${invariant}`, ['verify', model.path, `--main=${model.module}`, `--backend=${backend}`, `--max-steps=${steps}`, `--init=${model.init}`, `--step=${model.step}`, `--invariant=${invariant}`, '--verbosity=1'], 'violation');
+    }
+  }
+}
+
+process.once('SIGINT', interrupt);
+process.once('SIGTERM', interrupt);
+try {
+  let nextModel = 0;
+  const workers = Array.from({length: jobs}, async () => {
+    while (nextModel < models.length) await runModel(models[nextModel++]);
+  });
+  const outcomes = await Promise.allSettled(workers);
+  const rejected = outcomes.find(outcome => outcome.status === 'rejected');
+  if (rejected) throw rejected.reason;
   if (command === 'check') {
     const temporary = mkdtempSync(join(tmpdir(), 'alpha-quint-canary-'));
     try {
@@ -242,6 +261,9 @@ try {
   receipt.error = error instanceof Error ? error.stack : String(error);
   console.error(receipt.error);
 } finally {
+  process.removeListener('SIGINT', interrupt);
+  process.removeListener('SIGTERM', interrupt);
+  receipt.results.sort((left, right) => modelOrder.get(left.model)! - modelOrder.get(right.model)!);
   try {
     receipt.finalInputErrors = [];
     for (const path of inputPaths) if (inputHashes[path] !== sha256(readFileSync(join(repositoryRoot, path)))) receipt.finalInputErrors.push(`Checker input changed during run ${path}`);
