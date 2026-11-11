@@ -241,9 +241,8 @@ async function main() {
 /**
  * What the upstream consumer build receives for one Alpha build. Upstream owns the Gradle
  * invocation and artifact collection: the four distribution APKs (signed releases keep
- * `<variant>-release.apk`), instrumentation APKs, R8 mappings and the optional sequential
- * low-disk mode (ALPHA_ANDROID_LOW_DISK=1). Alpha supplies the flags, output directory,
- * signing variable names, build record and its own APK verification.
+ * `<variant>-release.apk`), instrumentation APKs and R8 mappings. Alpha supplies the flags,
+ * output directory, signing variable names, build record and its own APK verification.
  */
 export function consumerBuildOptions(options: AndroidBuildOptions, env: NodeJS.ProcessEnv, root: string, updateChannel = readUpdateChannel(env, JSON.parse(fs.readFileSync(new URL('../app.config.json',import.meta.url),'utf8')).updateManifestUrl)) {
   if(updateChannel.kind==='private-qa'&&(options.testMocks||options.allowUnpackagedRuntime))throw Error('Private update QA requires a complete packaged build with test mocks off');
@@ -261,8 +260,6 @@ export function consumerBuildOptions(options: AndroidBuildOptions, env: NodeJS.P
     lint: !options.testMocks,
     signing: { environment: [...SIGNING_ENV] },
     mappings: true,
-    // Opt-in for constrained builders; retained APKs and source evidence are never cleaned.
-    sequential: env.ALPHA_ANDROID_LOW_DISK === "1",
     // verify-apks compares this record with the APKs it verifies. Upstream writes it only after
     // every APK of this build is in place, so a failed build keeps the previous APKs and record.
     record: {
