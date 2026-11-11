@@ -7,7 +7,7 @@ import { createHostedWebViewProvisioner } from "../vendor/eliza/packages/app/scr
 export { candidate } from "../vendor/eliza/packages/app/scripts/mobile/android/hosted-fixture/webview-provider.mjs";
 
 const provisioner = createHostedWebViewProvisioner({
-	forbiddenPackagePrefixes: ["ai.alphacompute.alphaphone", "ai.alphacompute."],
+	forbiddenPackagePrefixes: ["ai.alphacompute.", "ai.elizaresearch."],
 });
 type FixtureOptions = NonNullable<Parameters<typeof provisioner.main>[0]> & {
 	environment?: NodeJS.ProcessEnv;

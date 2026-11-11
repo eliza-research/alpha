@@ -7,10 +7,13 @@ import {createHash} from 'node:crypto';
 import {deliver, publicObject} from '../scripts/deliver-app-update.ts';
 
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
-const manifestUrl = 'https://github.com/eliza-research/alphaphone/releases/download/app-stable/alpha-update-stable.json';
+const stableTag = 'app-stable-alphacompute';
+const legacyTag = 'app-stable';
+const manifestUrl = `https://github.com/eliza-research/alphaphone/releases/download/${stableTag}/alpha-update-stable.json`;
+const legacyManifestUrl = `https://github.com/eliza-research/alphaphone/releases/download/${legacyTag}/alpha-update-stable.json`;
 const source = '1'.repeat(40);
 const object = bytes => ({bytes: Buffer.from(bytes), size: Buffer.byteLength(bytes), sha256: sha(bytes)});
-function fixture(t, {previous = null, isPrivate = false, releaseMissing = false, apkWrong = false, pointerRace = false, manifestInvisible = false} = {}) {
+function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], isPrivate = false, releaseMissing = false, apkWrong = false, pointerRace = false, manifestInvisible = false} = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-delivery-test-'));
   t.after(() => fs.rmSync(directory,{recursive:true,force:true}));
   const apkBytes = Buffer.from('synthetic qualified release bytes');
@@ -20,14 +23,25 @@ function fixture(t, {previous = null, isPrivate = false, releaseMissing = false,
   fs.writeFileSync(path.join(directory,'alpha-update-stable.json'),manifestBytes);
   fs.writeFileSync(path.join(directory,'alpha-phone-8.apk'),apkBytes);
   const events = [], uploads = [];
-  let pointer = previous === null ? null : object(JSON.stringify({...offer,versionCode:7,...previous})+'\n');
+  const retained = (url, previous) => {
+    if (previous === null) return null;
+    const versionCode = previous.versionCode ?? 7;
+    return object(JSON.stringify({...offer,versionCode,apkUrl:new URL(`alpha-phone-${versionCode}.apk`,url).href,...previous})+'\n');
+  };
+  let pointer = retained(manifestUrl, previous);
+  const legacyPointer = retained(legacyManifestUrl, legacyPrevious);
   let apkVisible = false, pointerReads = 0;
   const ports = {
     wait: async () => {},
     run(args) {
       events.push(args.slice(0,2).join(' '));
       if (args[0] === 'repo') return JSON.stringify({isPrivate});
-      if (args[1] === 'view') return releaseMissing ? null : JSON.stringify({isDraft:false,assets:[]});
+      if (args[1] === 'view') {
+        if (args[2] === legacyTag) return legacyPointer || legacyAssets.length ? JSON.stringify({isDraft:false,assets:legacyAssets}) : null;
+        assert.equal(args[2],stableTag);
+        return releaseMissing ? null : JSON.stringify({isDraft:false,assets:[]});
+      }
+      if (args[1] === 'create' || args[1] === 'upload') assert.equal(args[2],stableTag);
       if (args[1] === 'upload') {
         const name = path.basename(args[3]);
         uploads.push(name);
@@ -41,6 +55,10 @@ function fixture(t, {previous = null, isPrivate = false, releaseMissing = false,
       return '';
     },
     async read(url) {
+      if (url === legacyManifestUrl) {
+        events.push('retired manifest read');
+        return legacyPointer;
+      }
       if (url === manifestUrl) {
         events.push('manifest readback');
         pointerReads++;
@@ -57,12 +75,26 @@ function fixture(t, {previous = null, isPrivate = false, releaseMissing = false,
 }
 
 test('delivery proves anonymous APK bytes before moving and reading back the stable manifest',async t => {
-  const f = fixture(t,{previous:{},releaseMissing:true});
+  const f = fixture(t,{legacyPrevious:{},releaseMissing:true});
   const receipt = await deliver(f,f.ports);
   assert.deepEqual(f.uploads,['alpha-phone-8.apk','alpha-update-stable.json']);
   assert.ok(f.events.indexOf('release create') < f.events.indexOf('release upload'));
+  assert.ok(f.events.indexOf('retired manifest read') < f.events.indexOf('release create'));
   assert.deepEqual(receipt,{schema:'alpha-app-update-delivery/v1',publisherCommit:source,sourceScope:'publication-tooling-only',variant:'launcher',versionCode:8,
     apkSha256:f.offer.sha256,manifestSha256:sha(f.manifestBytes),anonymousReadback:true});
+});
+
+test('retired-channel versions remain reserved and its pointer cannot be published',async t => {
+  for (const options of [{legacyPrevious:{versionCode:8}}, {legacyAssets:[{name:'alpha-phone-9.apk'}]},
+    {legacyAssets:[{name:'alpha-update-stable.json'}]}]) {
+    const f = fixture(t,options);
+    await assert.rejects(deliver(f,f.ports),/version floor|not publicly readable/);
+    assert.deepEqual(f.uploads,[]);
+    assert.ok(!f.events.includes('release create'));
+  }
+  const f = fixture(t);
+  await assert.rejects(deliver({...f,manifestUrl:legacyManifestUrl},f.ports),/Stable publication/);
+  assert.deepEqual(f.events,[]);
 });
 
 test('bad anonymous APK readback, private repository and changed pointer cannot advertise a candidate',async t => {
@@ -92,7 +124,7 @@ test('a missing manifest after interrupted replacement cannot reset the retained
   for (const assets of [[{name:'alpha-phone-100.apk'}],[{name:'alpha-update-stable.json'}]]) {
     const f = fixture(t);
     const original = f.ports.run;
-    f.ports.run = (args,opts) => args[0] === 'release' && args[1] === 'view'
+    f.ports.run = (args,opts) => args[0] === 'release' && args[1] === 'view' && args[2] === stableTag
       ? JSON.stringify({isDraft:false,assets}) : original(args,opts);
     await assert.rejects(deliver(f,f.ports),/retained stable APK version floor|not publicly readable/);
     assert.equal(f.uploads.length,0);
@@ -102,11 +134,15 @@ test('a missing manifest after interrupted replacement cannot reset the retained
 test('an uploaded versioned APK is reused only after verifying its public bytes',async t => {
   const f = fixture(t);
   const original = f.ports.run;
-  f.ports.run = (args,opts) => args[0] === 'release' && args[1] === 'view'
+  f.ports.run = (args,opts) => args[0] === 'release' && args[1] === 'view' && args[2] === stableTag
     ? JSON.stringify({isDraft:false,assets:[{name:'alpha-phone-8.apk'}]}) : original(args,opts);
-  f.ports.read = async url => url === manifestUrl
-    ? (f.uploads.includes('alpha-update-stable.json') ? object(f.manifestBytes) : null)
-    : (f.events.push('apk readback'),object('synthetic qualified release bytes'));
+  f.ports.read = async url => {
+    if (url === legacyManifestUrl) return null;
+    if (url === manifestUrl) return f.uploads.includes('alpha-update-stable.json') ? object(f.manifestBytes) : null;
+    assert.equal(url,f.offer.apkUrl);
+    f.events.push('apk readback');
+    return object('synthetic qualified release bytes');
+  };
   // The synthetic run port's invariant expects apkVisible after an upload; a
   // retry's existing APK instead proves this through the anonymous read port.
   f.ports.run = ((run) => (args,opts) => {
