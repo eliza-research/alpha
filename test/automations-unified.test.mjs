@@ -56,7 +56,7 @@ function adapterFixture(request,storage={},options={}){
  const localStorage=new Proxy({getItem:key=>storage[key]??null,setItem:(key,value)=>storage[key]=value,removeItem:key=>delete storage[key]},{ownKeys:()=>Object.keys(storage),getOwnPropertyDescriptor:()=>({configurable:true,enumerable:true})});
  let view=options.view===undefined?'workflows':options.view,workflowOpened='',deviceOpened='',newWorkflow=0;
  class Shell{live=true;renderVals(){return options.homeFallback||{};}componentDidMount(){}componentWillUnmount(){}S(){return {view};}vset(){}vget(){return {};}api(){return api;}openView(next){view=next;}refreshReminders(id){deviceOpened=id;}newDeviceReminderDraft(){deviceOpened='new-draft';}}
- const api={ic:{bell:'bell',spark:'sparkles',cal:'calendar',flow:'workflow'},track:()=>'',kx:()=>0,isActive:()=>true};
+ const api={ic:{bell:'bell',spark:'sparkles',cal:'calendar',flow:'workflow',play:'play',edit:'edit',pause:'pause',phRotate:'rotate-cw',clock:'clock',stUndo:'undo',trash:'trash'},track:()=>'',kx:()=>0,isActive:()=>true};
  const views={workflows:{render:()=>({cards:[],managementCards:[],openWorkflow:id=>workflowOpened=id,newFlow:()=>newWorkflow++,detail:false,builder:false,runOpen:false}),back:()=>false,onLeave(){}}};
  const windowEvents=new Map();
  const dom=options.dom?new JSDOM('<div class="os"><button id="origin">Filters</button></div>',{pretendToBeVisual:true}):null;
@@ -80,6 +80,39 @@ function adapterFixture(request,storage={},options={}){
  return {window:context.window,document:context.document,notify:(sessionId=session.sessionId)=>context.window.dispatchEvent(dom?new dom.window.CustomEvent(context.AUTOMATIONS_COMMITTED_EVENT,{detail:{sessionId}}):{type:context.AUTOMATIONS_COMMITTED_EVENT,detail:{sessionId}}),leave:()=>views.workflows.onLeave(),setView:next=>view=next,home:()=>shell.renderVals(),render:()=>views.workflows.render({},api),close:()=>shell.componentWillUnmount(),storage,retire:()=>{session.sessionId='replacement';session.ownerId='other';for(const fn of listeners)fn();},back:()=>views.workflows.back(),get workflowOpened(){return workflowOpened;},get deviceOpened(){return deviceOpened;},get newWorkflow(){return newWorkflow;}};
 }
 const wait=async fn=>{for(let count=0;count<300;count++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,5));}throw Error('Unified automation UI did not settle.');};
+test('an unbound startup does not report a confirmed empty workflow list',async()=>{
+ const f=await fixture(read),app=adapterFixture(f.request,{}, {disconnected:true,deviceReminders:[]});
+ try{
+  app.render();await wait(()=>!app.render().automation.loading);
+  assert.equal(app.render().cards.length,0);
+  assert.equal(app.render().automation.empty,false);
+  assert.equal(app.render().automation.itemCount,'');
+  assert.equal(f.calls.length,0);
+ }finally{app.close();await f.close();}
+});
+
+test('prompt actions use one primary action and an icon menu while confirmation keeps mutations pending',async()=>{
+ const f=await fixture(read),app=adapterFixture(f.request);
+ try{
+  app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);
+  app.render().cards.find(row=>row.name==='Owner prompt').open();
+  let detail=app.render().automation;
+  assert.deepEqual(Array.from(detail.schedulePrimary,item=>item.label),['Run now']);
+  assert.deepEqual(Array.from(detail.scheduleMore,item=>item.label),['Edit prompt','Refresh execution history','Enable','Delete automation']);
+  assert.ok([...detail.schedulePrimary,...detail.scheduleMore].every(item=>item.icon));
+  detail.scheduleMore.find(item=>item.label==='Delete automation').run();
+  detail=app.render().automation;
+  assert.equal(detail.review,true);
+  assert.equal(detail.schedulePrimary.length,0);
+  assert.equal(detail.scheduleMore,null);
+  assert.equal(typeof detail.reviewModal,'function');
+  assert.equal(f.calls.some(call=>call.method!=='GET'),false);
+  detail.cancelReview();
+  assert.equal(app.render().automation.review,false);
+  assert.equal(f.calls.some(call=>call.method!=='GET'),false);
+ }finally{app.close();await f.close();}
+});
+
 test('unified Workflows hides request recovery from ordinary management controls',async()=>{
  const f=await fixture(read);
  const browser=adapterFixture(f.request,{}, {native:false});

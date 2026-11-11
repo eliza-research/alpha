@@ -778,8 +778,10 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .schedule-controls summary { width:44px; background:var(--s2); list-style:none; }
 .schedule-controls summary::-webkit-details-marker { display:none; }
 .schedule-controls details { position:relative; }
-.schedule-controls details > div { position:absolute; z-index:4; left:0; min-width:10em; padding:4px; background:var(--bg); box-shadow:0 4px 20px var(--shc); border:1px solid var(--line); border-radius:16px; }
-.schedule-controls details button { display:block; text-align:start; width:100%; min-height:44px; padding:4px 12px; }
+.schedule-controls details > div { position:absolute; z-index:4; right:0; width:11rem; max-width:calc(100vw - 48px); padding:4px; background:var(--bg); box-shadow:0 4px 20px var(--shc); border:1px solid var(--line); border-radius:16px; }
+.schedule-controls details button { display:flex; align-items:center; gap:10px; text-align:start; width:100%; min-height:44px; padding:8px 12px; }
+.schedule-controls details button .i { flex-shrink:0; }
+.schedule-controls details button span { min-width:0; overflow-wrap:anywhere; }
 .schedule-instructions { display:grid; gap:6px; }
 .schedule-instructions textarea { min-height:6em; padding:12px; border-radius:12px; font:inherit; background:var(--s2);color:var(--fg); }
 
