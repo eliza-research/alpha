@@ -14,7 +14,7 @@ const RECORD_DIGESTS = [
   "replacementApkSha256", "lineageSha256", "verifierJarSha256",
 ] as const;
 
-function hasDigests<K extends string>(record: Record<string, unknown>, fields: readonly K[]): record is Record<K, string> {
+function hasDigests<K extends string>(record: Record<string, unknown>, fields: readonly K[]): record is Record<string, unknown> & Record<K, string> {
   return fields.every(field => typeof record[field] === "string" && digest.test(record[field]));
 }
 
@@ -27,7 +27,7 @@ interface PilotApk {
 }
 
 /** Scope comes from the committed release-signer descriptor, never from CLI pins. */
-export function pilotRotationRecord(descriptor: unknown, apk: PilotApk) {
+export function pilotRotationRecord(descriptor: unknown, apk: PilotApk): Record<(typeof RECORD_DIGESTS)[number], string> & {deviceApi: number; preserveSignaturePermissions?: boolean} {
   const record = isRecord(descriptor) ? descriptor.pilotRotation : undefined;
   const signer = isRecord(descriptor) ? descriptor.signerSha256 : undefined;
   const deviceApi = isRecord(record) ? record.deviceApi : undefined;
