@@ -284,6 +284,18 @@ the SDK lock; core/mobile builder and installed UUID inputs were compared
 separately. Earlier APK, voice and device evidence does not qualify this pin;
 rebuild and qualify the exact product inputs before OS enrollment.
 
+The protected [preserving OS OTA signing workflow](.github/workflows/release-os-ota-signing.yml)
+signs only an admitted OTA package with the existing release key. Its committed
+`android/signing/ota-tools.json` currently has `reviewedTargets: []`: validation,
+private input downloads and signing remain disabled before signing keys are read.
+Enabling a target requires an independently reviewed record binding its exact
+target-files SHA-256, producer source commit, SDK commit, fingerprint and build
+timestamp together. APK signer-map paths and AVB configuration paths alone do
+not establish the identities embedded in an image; review the exact target's
+APK, APEX and boot signing identities and producer lineage before committing
+that record. A qualified tools archive does not admit a target image. This
+operator does not enable OS enrollment or establish device acceptance.
+
 ## Generated files
 
 Build output belongs in ignored `web-dist/`, `artifacts/`, `test-results/` and

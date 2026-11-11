@@ -44,6 +44,8 @@ export function workflowRendererFixture(overrides: Record<string, unknown>) {
 type Action = () => void;
 type Card = {name: string; open: Action};
 interface WorkflowDetail {
+  busy: boolean;
+  mayHaveRun: boolean;
   name: string;
   summary: string;
   last: string;

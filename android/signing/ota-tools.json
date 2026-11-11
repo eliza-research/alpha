@@ -7,5 +7,6 @@
   ],
   "apkSignerMappingsSha256": "e5534e2830ad94343ee11cbc08857cf2435522fe1f3d0e560ec4f5610f80223e",
   "avbKeyConfigurationSha256": "f8ed78f8705d63a011a82a2655f7875a1d86033ee601a190f53aa9f6dacfdd5d",
-  "qualified": true
+  "qualified": true,
+  "reviewedTargets": []
 }
