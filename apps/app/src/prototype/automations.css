@@ -38,7 +38,6 @@
 .automation-management{position:relative;display:flex;flex-direction:column;flex-shrink:0;gap:5px;padding:16px 32px 16px 4px;min-height:64px;text-align:left;border-bottom:1px solid var(--line)}
 .automation-management span+span{font-size:14px;color:var(--mut)}
 .automation-management svg{position:absolute;right:0;top:22px;color:var(--mut)}
-.automation-review{margin-top:24px;padding-top:16px;border-top:1px solid var(--line)}
 
 .workflow-run-details{margin:24px 0;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
 .workflow-run-details summary{min-height:44px;box-sizing:border-box;padding:12px 0;cursor:pointer;font-weight:600}

@@ -17411,7 +17411,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "8b1527b422bae2a033052ada077813410f1ab35d6aa0ce4b32c41c0c877f1bcd",
+      "sha256": "f2355f49b8c7406c2a24c8afccfb5490dda426d972f6f88427de25131c516727",
       "stateAnchors": [],
       "integrationReview": "2026-11-11 unified selection and recovery use canonical stores and existing per-item journal. No approval or unknown-result replay. Prompt revision and workflow version protocols retained. Device reminders remain outside recovery."
     },
@@ -34685,7 +34685,7 @@
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "483ab79a669ddb04f0eaa29f6c87bcb15b0203a19c54d69d691641d5712761b7",
+      "sha256": "64ae7733646cf6c21100f3ed1ec580a94d4ccbe2daa5a94e419365a94314afed",
       "stateAnchors": [
         {
           "line": 3358,

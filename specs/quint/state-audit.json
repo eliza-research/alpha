@@ -12,7 +12,7 @@
   "toolSha256": "13c95fa5e955d8517fa7489fc4ca6b9bd9c053047d65c4f939f76f542c4eba3d",
   "dependencyLockSha256": "944123c801157a7ba3676a886d0b28a54bef32735ae96da5c6dd0f206c88c8bf",
   "sourcePin": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "ledgerSha256": "536359d1a272a292df277431f6f24acdfc17f35d24e87e5b88496d78668f44fc",
+  "ledgerSha256": "a7acb05c778152908d1564447a04a825cebd4d2afed92d9b2d845737d7fe8172",
   "method": "TypeScript syntax trees for JavaScript/TypeScript and JDK compiler trees for Java. Mutable fields, bindings, containers, state hooks, write sites and asynchronous registration calls are candidates for semantic review.",
   "limitations": [
     "Candidate extraction does not establish state-machine coverage or implementation refinement.",
@@ -33694,7 +33694,7 @@
     },
     {
       "path": "apps/app/src/prototype/automations-adapter.ts",
-      "sha256": "6c87f7beb71656a3cc2fe0c00849ab4b9b8663de46f15cdd616b360811fd9a6d",
+      "sha256": "e03e4aaebf910335c4f9e2a61e8b0f730b9b06895ce82c31b1c3797b5c162967",
       "allocatedModels": [
         "WorkflowExecution",
         "ReminderOpenIntent",
@@ -221477,6 +221477,6 @@
   ],
   "detail": {
     "path": "test-results/quint-state-audit/details.json",
-    "sha256": "09f36975a6f3d86b9bd316c2df1a23d560abde4a40aeaa2374ee5317431259fd"
+    "sha256": "03250c0cbc4534d0d216e45838889c1ac74db8fce65c5e635b6c247c6ad882a2"
   }
 }

@@ -216,6 +216,11 @@ test('unchanged repeated local times keep the original later offset and sub-minu
 // The real template must never ship ahead of its controller again.
 test('production Workflows template has every top-level automation binding',async()=>{
  const template=fs.readFileSync('apps/app/src/prototype/template.html','utf8');
+ const document=new JSDOM(template).window.document;
+ const confirmation=document.querySelector('[ref="{{workflows.automation.reviewModal}}"]');
+ assert.ok(confirmation);
+ assert.equal(confirmation.closest('.workflow-list'),null);
+ assert.deepEqual([...confirmation.querySelectorAll('button')].map(button=>button.textContent),['No','Yes']);
  const expected=[...new Set([...template.matchAll(/workflows\.automation\.([A-Za-z_$][\w$]*)/g)].map(match=>match[1]))];
  const f=await fixture(read),app=adapterFixture(f.request);
  try{app.render();await wait(()=>app.render().cards.length===5&&!app.render().automation.loading);const model=app.render().automation;assert.ok(expected.length>16);assert.deepEqual(expected.filter(name=>!Object.hasOwn(model,name)),[]);}finally{app.close();await f.close();}

@@ -3285,12 +3285,6 @@
       <div class="calendar-confirmation-actions"><button onClick="{{workflows.recoveryReview.close}}">No</button><button class="primary" onClick="{{workflows.recoveryReview.confirm}}">Yes</button></div>
     </section>
   </div></sc-if>
-  <sc-if value="{{workflows.automation.review}}"><div ref="{{workflows.automation.reviewModal}}" class="calendar-confirmation" data-alpha-popup>
-    <section class="calendar-confirmation-panel" role="dialog" aria-modal="true" aria-label="{{workflows.automation.reviewPrompt}}">
-      <h2>{{workflows.automation.reviewPrompt}}</h2>
-      <div class="calendar-confirmation-actions"><button onClick="{{workflows.automation.cancelReview}}">No</button><button class="primary" onClick="{{workflows.automation.confirm}}">Yes</button></div>
-    </section>
-  </div></sc-if>
   <sc-if value="{{workflows.automation}}">
     <div class="workflow-toolbar">
       <button class="workflow-filter-trigger" aria-label="Filter workflows" aria-haspopup="dialog" onClick="{{workflows.automation.openFilters}}"><span>{{workflows.automation.filterLabel}}</span><svg class="i" viewBox="0 0 24 24"><path d="{{ic.down}}"></path></svg></button>
@@ -3332,6 +3326,12 @@
 
   
   </div>
+  <sc-if value="{{workflows.automation.review}}"><div ref="{{workflows.automation.reviewModal}}" class="calendar-confirmation" data-alpha-popup>
+    <section class="calendar-confirmation-panel" role="dialog" aria-modal="true" aria-label="{{workflows.automation.reviewPrompt}}">
+      <h2>{{workflows.automation.reviewPrompt}}</h2>
+      <div class="calendar-confirmation-actions"><button onClick="{{workflows.automation.cancelReview}}">No</button><button class="primary" onClick="{{workflows.automation.confirm}}">Yes</button></div>
+    </section>
+  </div></sc-if>
   <sc-if value="{{workflows.automation.detail}}">
     <section ref="{{workflows.detailFocus}}" data-alpha-subview="automations-detail" class="automation-detail" aria-label="{{workflows.automation.title}}">
       <div data-alpha-app-header="detail" class="automation-detail-header"><button class="ib" aria-label="Back to automations" disabled="{{workflows.automation.busy}}" onClick="{{workflows.automation.close}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button><h2 data-alpha-app-title>{{workflows.automation.title}}</h2><sc-if value="{{workflows.automation.editing}}"><button class="automation-header-save" disabled="{{workflows.automation.saveDisabled}}" onClick="{{workflows.automation.save}}">Save</button></sc-if></div>
