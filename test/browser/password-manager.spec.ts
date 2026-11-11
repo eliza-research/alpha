@@ -168,7 +168,7 @@ test('a delayed native list cannot restore metadata after Lock',async({page})=>{
  await page.getByRole('button',{name:'Refresh autofill status',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>typeof (window as any).vaultFixture.releaseList)).toBe('function');
  await page.getByRole('button',{name:'Lock passwords',exact:true}).click();
- await expect(page.getByText('Locked',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Unlock passwords',exact:true})).toBeVisible();
  expect(await page.evaluate(async()=>{(window as any).vaultFixture.releaseList();await new Promise(resolve=>setTimeout(resolve,0));return (await import('/src/passwords/password-manager.ts')).passwordManagerHoldsEntries();})).toBe(false);
  await expect(page.getByRole('button',{name:'Open Bank app',exact:true})).toHaveCount(0);
 });
@@ -176,10 +176,10 @@ test('a delayed native list cannot restore metadata after Lock',async({page})=>{
 test('leaving a pending native reset review prevents a later reset request',async({page})=>{
  await nativeVault(page,{damaged:true});
  await page.getByRole('button',{name:'Unlock passwords',exact:true}).click();
- await expect(page.getByText('Cannot be decrypted on this phone',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Delete saved passwords and start over',exact:true}).click();
+ await expect(page.getByText('Damaged',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Reset vault',exact:true}).click();
  await page.evaluate(()=>{(window as any).vaultFixture.holdNextUnlock=true;});
- await page.getByRole('button',{name:'Tap again to delete all saved passwords',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm reset vault',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>typeof (window as any).vaultFixture.releaseUnlock)).toBe('function');
  await page.getByRole('button',{name:'Back to Apps',exact:true}).click();
  expect(await page.evaluate(async()=>{const f=(window as any).vaultFixture;f.releaseUnlock();await new Promise(resolve=>setTimeout(resolve,0));return f.calls.filter((call:any)=>call.method==='reset').length;})).toBe(0);

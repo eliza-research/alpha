@@ -27,7 +27,7 @@ async function recover(page:Page,title:string,left:string){
 async function deleteNote(page:Page,title:string){
  await page.getByRole('button',{name:`Open ${title}`,exact:true}).click();
  await deleteOpenNote(page);
- await expect(page.getByText('Moved to Recently deleted',{exact:true}).last()).toBeVisible();
+ await expect(page.getByText('Deleted',{exact:true}).last()).toBeVisible();
  await expect(page.getByRole('button',{name:`Open ${title}`,exact:true})).toHaveCount(0);
 }
 
@@ -88,7 +88,7 @@ test('Delete now and Empty ask first, and checklists use the same Recently delet
  await expect(trash.getByText('First',{exact:true})).toBeVisible();
  await askDelete();
  await page.getByRole('dialog',{name:'Delete “First”?'}).getByRole('button',{name:'Delete',exact:true}).click();
- await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Undo',exact:true})).toHaveCount(0,{timeout:10000});await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
  await expect(trash.getByText('First',{exact:true})).toHaveCount(0);
  expect((await trashEntries(page)).map((e:any)=>e.note.title).sort()).toEqual(['Second','Third']);
  await trash.getByRole('button',{name:'Empty Recently deleted',exact:true}).click();

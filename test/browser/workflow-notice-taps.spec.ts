@@ -140,7 +140,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
   }
   else if(scenario==='ask-owner'){await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');await c.offline();});await expect(review).toHaveCount(0);}
   else {
-   if(scenario==='ask-sensitive'){await review.getByRole('textbox',{name:'Content excerpt'}).fill('Your verification code is 123456');await review.getByRole('button',{name:'Use in conversation',exact:true}).click();await expect(review.getByRole('status')).toContainText('credentials or verification codes');await review.getByRole('button',{name:'Cancel',exact:true}).click();}
+   if(scenario==='ask-sensitive'){await review.getByRole('textbox',{name:'Content excerpt'}).fill('Your verification code is 123456');await review.getByRole('button',{name:'Use in conversation',exact:true}).click();await expect(review.getByRole('status')).toContainText('Remove secrets first');await review.getByRole('button',{name:'Cancel',exact:true}).click();}
    else {
     await review.getByRole('textbox',{name:'Content excerpt'}).fill('Reviewed public text');
     if(scenario==='ask-changed')await page.evaluate(()=>{(window as any).deliveryFixture.taps[0].notice.text='Replaced text';});

@@ -97,5 +97,6 @@ test('a combined notice after an unanswered message gives one send-again step', 
   await expect(conversation(page)).toContainText(ALPHA_MODEL);
   await expect(conversation(page)).toContainText(ALPHA_BACKGROUND);
   await expect(conversation(page)).not.toContainText(ALPHA_RUNTIME);
-  expect((await conversation(page).innerText()).match(/send your message again/gi)?.length).toBe(1);
+  expect((await conversation(page).innerText()).split(ALPHA_MODEL).length-1).toBe(1);
+  expect((await conversation(page).innerText()).match(/send again/gi)).toBeNull();
 });

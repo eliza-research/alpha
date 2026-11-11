@@ -264,7 +264,7 @@ test('denied notification access stays pending after account restoration without
  });
  await page.goto('/');const panel=page.locator('dialog.alpha-startup-permissions');await expect(panel).toHaveCount(0);
  await restoreAccount();
- await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeVisible();await panel.getByRole('button',{name:'Allow',exact:true}).click();
+ await expect(panel.getByRole('heading',{name:'Access',exact:true})).toBeVisible();await expect(panel.locator('li[aria-current="step"] .alpha-permission-name')).toHaveText('Notifications');await panel.getByRole('button',{name:'Allow',exact:true}).click();
  await expect.poll(()=>calls(page,'DailyApps','requestPermissions')).toEqual([{permissions:['notifications']}]);
  await expect(panel.getByRole('button',{name:'Settings',exact:true})).toBeVisible();
  // Walkthrough choices do not grant OS permission. A denied prompt is not requested again.

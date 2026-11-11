@@ -23,7 +23,7 @@ test('damaged bookmarks are recovered from Browser bookmarks without Device cont
 test('damaged photo albums are recovered from Photos albums without Device controls',async({page})=>{
  await boot(page,'alpha.browser.albums.v1','{damaged albums');
  await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:'Albums',exact:true}).click();
- const entry=page.getByRole('button',{name:'Couldn’t load. Recover',exact:true});await expect(entry).toBeVisible();
+ const entry=page.getByRole('button',{name:'Couldn’t load Recover',exact:true});await expect(entry).toBeVisible();
  await entry.click();await noDevTools(page);
  const dialog=page.getByRole('dialog',{name:'Photo album recovery'});await expect(dialog).toBeVisible();
  const pending=page.waitForEvent('download');await dialog.getByRole('button',{name:'Download photo albums backup',exact:true}).click();const stream=await (await pending).createReadStream(),chunks:Buffer[]=[];for await(const chunk of stream!)chunks.push(Buffer.from(chunk));expect(Buffer.concat(chunks).toString()).toBe('{damaged albums');

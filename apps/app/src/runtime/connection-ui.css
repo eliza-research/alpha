@@ -220,7 +220,7 @@ body:has([data-alpha-layer="conversation"][aria-hidden="false"]) .alpha-plan-not
 .alpha-status-rows .alpha-status{font-size:14px}
 .alpha-chip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 12px;border-radius:16px;background:var(--connection-s2,#f3f3f3);color:var(--connection-fg,#000);font-size:13px}
 .alpha-connection button.alpha-chip{min-height:36px;padding:6px 14px;border-radius:18px;background:var(--connection-s2,#f3f3f3)}
-.alpha-code-boxes{position:relative;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:8px 0 12px}
+.alpha-connection .alpha-code-boxes,.alpha-code-boxes{position:relative;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:8px 0 12px}
 .alpha-code-boxes>span{display:flex;align-items:center;justify-content:center;height:52px;border:1px solid var(--connection-line,#dedede);border-radius:12px;background:var(--connection-s2,#f3f3f3);font-size:22px;font-variant-numeric:tabular-nums;color:var(--connection-fg,#000)}
 .alpha-code-boxes>span[data-active]{border-color:var(--connection-acc,#0000ff)}
 .alpha-code-boxes[data-invalid]>span{border-color:var(--connection-danger,#a32121)}

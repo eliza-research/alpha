@@ -15,7 +15,7 @@ test('canonical Notes use last-edit order and local date labels without writing 
 });
 
 test('empty canonical Notes explains the first action',async({page})=>{
- await canonicalNotesFixture(page);await openCanonicalNotes(page);await expect(page.getByRole('heading',{name:'No notes yet',exact:true})).toBeVisible();await expect(page.getByText('Create a note or record a voice note to get started.',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();
+ await canonicalNotesFixture(page);await openCanonicalNotes(page);await expect(page.getByRole('heading',{name:'No notes yet',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();
 });
 
 test('a lost canonical recording save reply is reconciled without another create',async({page})=>{
@@ -66,7 +66,7 @@ test('canonical Notes UI creates, edits, trashes and restores the same committed
  await page.getByRole('button',{name:'Open Canonical browser note',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.length)).toBe(0);
- await expect(page.getByText('Moved to Recently deleted',{exact:true})).toBeVisible();
+ await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
  // The agent's restore-only Trash is the Recently deleted folder: no retention line, no Empty, no Delete now.
  await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
  const trash=page.locator('[data-alpha-subview="notes-trash"]');

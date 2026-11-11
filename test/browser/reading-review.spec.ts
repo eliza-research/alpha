@@ -13,7 +13,7 @@ async function open(page:any){await page.evaluate(async()=>{
 test('review requires explicit text and confirmation, uses the exact excerpt, and releases playback on close',async({page})=>{
  await open(page);const dialog=page.getByRole('dialog',{name:'Read page excerpt'});
  await expect(dialog).toBeVisible();expect(await page.evaluate(()=>(window as any).voiceFixture.spoken)).toEqual([]);
- await dialog.getByRole('button',{name:'Read locally',exact:true}).click();await expect(dialog.getByRole('status')).toContainText('Enter between');
+ await dialog.getByRole('button',{name:'Read locally',exact:true}).click();await expect(dialog.getByRole('status')).toHaveText('0/5,000');
  await dialog.getByRole('textbox',{name:'Excerpt to read'}).fill('Reviewed excerpt\nSecond line.');
  await dialog.getByRole('button',{name:'Read locally',exact:true}).click();
  await expect(dialog.getByRole('status')).toHaveText('Reading locally…');

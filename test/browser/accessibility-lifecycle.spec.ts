@@ -224,13 +224,13 @@ test.describe('permission loss and offline', () => {
     await pressHome(page);
     await page.evaluate(() => { (window as any).cameraAllowed = false; });
     await openFromHome(page, 'Camera');
-    const recovery = page.getByRole('alert', { name: 'Camera access is off' });
+    const recovery = page.getByRole('alert', { name: 'Camera off' });
     await expect(recovery).toBeVisible();
     await expect.poll(async () => (await focusState(page)).dropped).toBe(false);
     const found = format([...await auditTree(page), ...await auditReadingOrder(page), ...await auditPage(page, { dock: true })]);
     expect(found, `Camera with access withdrawn:\n${found.join('\n')}`).toEqual([]);
     // The way back to the camera is reachable from the keyboard, not only by touch.
-    const retry = recovery.getByRole('button', { name: 'Try again', exact: true });
+    const retry = recovery.getByRole('button', { name: 'Retry', exact: true });
     await retry.focus();
     await expect(retry).toBeFocused();
     await pressHome(page, 2);

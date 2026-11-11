@@ -633,7 +633,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     const permissionDot = (val: string) => val === 'Allowed' || val === 'All' || val === 'Precise' ? 'ok' : val === 'Ask' || val === 'Selected' || val === 'Limited' || val === 'Approx.' || val === 'Chosen files' || val === 'Alpha only' ? 'warn' : 'off';
     const permissionInfo = (label: string, val: string): Bag => ({ ...info(label, val), hasDot: val !== '—' && val !== 'Unavailable', dot: permissionDot(val) });
     // Listening could not be confirmed off: a red row at the top that opens the listener's settings.
-    const micMayBeOn = (): Bag => ({ kNav:true, label:'Microphone', lbl:'Microphone may be on, open listener settings', val:'Mic may be on', hasVal:true, hasDot:true, dot:'err', valCss:'color:#d93025', lucide:'mic-off', hasExt:true, chev:false, noAB:true, go:()=>void openListenerSettings().then(opened => { if (!opened) api.toast('Unavailable'); }) });
+    const micMayBeOn = (): Bag => ({ kNav:true, label:'Microphone', lbl:'Microphone may be on, open listener settings', val:'Mic may be on', hasVal:true, hasDot:true, dot:'err', valCss:'color:var(--fg)', lucide:'mic-off', hasExt:true, chev:false, noAB:true, go:()=>void openListenerSettings().then(opened => { if (!opened) api.toast('Unavailable'); }) });
     // Android hand-offs: a short label and an external-link mark; the accessible name keeps the destination.
     const nav = (label: string, page: string, aria = label): Bag => ({ kNav: true, label, lbl: aria, chev: false, hasExt: true, noAB: true, go: manage(page) });
     const group = (rows: Bag[], id?: string) => ({ ...(id ? {id} : {}), css: 'background:var(--s2);padding:4px 0', rows });

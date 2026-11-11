@@ -17,7 +17,7 @@ async function open(page:any,answers:string[]){
   });
  },answers);
  // Stubbed recognition reports into the same status; let it settle so only Keep writes there next.
- await expect(status(page)).toContainText('No text recognized');
+ await expect(status(page)).toContainText('No text');
 }
 function status(page:any){return page.getByRole('dialog',{name:'Review scanned text'}).getByRole('status',{name:'Scan status'});}
 

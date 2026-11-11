@@ -177,10 +177,10 @@ test('Clear browsing data cannot be overtaken by a held earlier save',async({pag
  await openBrowser(page);await navigate(page,'held-save');
  await expect.poll(()=>page.evaluate(()=>(window as any).sessionSaveCalls)).toBe(1);
  await navigate(page,'queued-save');
- await menu(page,'Clear browsing data');await page.getByRole('dialog',{name:'Clear browsing data?'}).getByRole('button',{name:'Clear data',exact:true}).click();
+ await menu(page,'Clear all browsing data');await page.getByRole('dialog',{name:'Clear browsing data?'}).getByRole('button',{name:'Clear data',exact:true}).click();
  expect(await page.evaluate(()=>(window as any).sessionClearCalls)).toBe(0);
  await page.evaluate(()=>(window as any).releaseSessionSave());
- await expect(page.getByText('Browsing data cleared',{exact:true})).toBeVisible();
+ await expect(page.getByText('Cleared',{exact:true})).toBeVisible();
  await expect.poll(async()=>await saved(page)).toEqual({history:[],tabs:[],cur:''});
  expect(await page.evaluate(()=>(window as any).sessionSaveCalls)).toBe(1);
 });

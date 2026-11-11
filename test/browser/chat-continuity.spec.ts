@@ -130,7 +130,7 @@ async function typeDraft(page: Page, text: string) {
 }
 const MAY_FINISH = 'May still finish';
 // The pending notice (may still finish, or cancelled) until the single check settles it.
-const CHECK_PENDING = /[Ii]t will appear here/;
+const CHECK_PENDING = /^(May still finish|Cancelled)$/;
 const UNKNOWN = 'Your message may have reached the agent. Check before sending it again.';
 const UNSETTLED = 'This message may already have been sent. Check the conversation before sending it again.';
 

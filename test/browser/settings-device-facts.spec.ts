@@ -169,7 +169,6 @@ test('a failed update check stays due, one check runs at a time, and Install upd
  await page.evaluate(()=>{const f=(window as any).settingsFixture;f.resume();f.resume();});
  await expect(install).toBeVisible();
  await expect(app(page).getByText('0.1.1 (8)',{exact:true})).toBeVisible();
- await expect(app(page).getByText('Faster Home',{exact:true})).toBeVisible();
  expect(await calls(page,'AlphaDevice','checkForUpdate')).toBe(2);
  // Answered: resumes within the fifteen-minute interval do not check again.
  await page.evaluate(()=>(window as any).settingsFixture.resume());

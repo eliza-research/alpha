@@ -49,8 +49,8 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
 .settings-chip-icon[data-icon="eye"]{--chip-icon:url('/icons/lucide/eye.svg')}
 .settings-chip-icon[data-icon="x"]{--chip-icon:url('/icons/lucide/x.svg')}
 .settings-chip-icon[data-icon="plus"]{--chip-icon:url('/icons/lucide/plus.svg')}
-.settings-aa{display:flex;gap:4px;padding:8px 10px}
-.settings-aa-btn{flex:1 1 0;min-width:44px;min-height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;color:var(--fg);line-height:1}
+.settings-aa{display:flex;flex-wrap:wrap;gap:4px;padding:8px 10px}
+.settings-aa-btn{flex:1 0 auto;padding:0 6px;min-width:44px;min-height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;color:var(--fg);line-height:1.25}
 .settings-aa-btn[aria-pressed="true"]{background:var(--acc);color:var(--alpha-white)}
 .settings-spin{display:block;width:16px;height:16px;flex-shrink:0;border-radius:50%;border:2px solid var(--line);border-top-color:var(--mut);animation:note-transcribing .8s linear infinite}
 @media (prefers-reduced-motion:reduce){.settings-spin{animation:none}}
@@ -663,6 +663,9 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
    simulated status bar, so every overlay shifts up with --maps-top. */
 [data-alpha-maps-root] { --maps-top:52px; }
 .standalone-app [data-alpha-maps-root] { --maps-top:8px; }
+/* Without the search header (directions, guidance) the Apps fallback keeps the top row. */
+.standalone-app [data-screen]:has([data-alpha-app-back-fallback]):not(:has([data-alpha-app-header])) [data-alpha-maps-root] { --maps-top:52px; }
+.standalone-app [data-screen]:has([data-alpha-maps-guidance="true"]) [data-alpha-app-back-fallback] { background:var(--bg); border-radius:22px; }
 .standalone-app [data-alpha-maps-root] [data-alpha-app-header-overlay] { top:var(--maps-top)!important; }
 [data-alpha-maps-root] input[type="search"]::-webkit-search-cancel-button { -webkit-appearance:none; appearance:none; display:none; }
 /* Attribution is one ⓘ button, mirroring the recenter button on the right. */

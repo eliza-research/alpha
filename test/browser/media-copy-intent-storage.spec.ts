@@ -25,7 +25,7 @@ test('stale reset cannot erase a later admitted copy',async({page})=>{
 });
 for(const mode of ['reset','leave'])test(`unreadable saved-copy request recovery: ${mode}`,async({page})=>{
  await page.evaluate(key=>localStorage.setItem(key,' malformed request bytes '),key);await page.getByRole('button',{name:'Photos',exact:true}).click();await page.getByRole('button',{name:'Recover saved-copy request',exact:true}).click();
- const dialog=page.getByRole('dialog',{name:'Saved-copy recovery'});await expect(dialog).toContainText('does not delete media');
+ const dialog=page.getByRole('dialog',{name:'Saved-copy recovery'});await expect(dialog).toContainText('Download, then reset.');
  if(mode==='leave'){await page.evaluate(()=>window.dispatchEvent(new Event('pagehide')));await expect(dialog).toHaveCount(0);expect(await page.evaluate(key=>localStorage.getItem(key),key)).toBe(' malformed request bytes ');return;}
  const downloaded=page.waitForEvent('download');await dialog.getByRole('button',{name:'Download saved-copy request backup',exact:true}).click();const stream=await(await downloaded).createReadStream(),chunks:Buffer[]=[];for await(const chunk of stream!)chunks.push(Buffer.from(chunk));expect(JSON.parse(Buffer.concat(chunks).toString())).toEqual({raw:' malformed request bytes '});
  await dialog.getByRole('button',{name:'Reset app saved-copy request',exact:true}).click();await dialog.getByRole('button',{name:'Confirm saved-copy request reset',exact:true}).click();await expect(dialog).toHaveCount(0);expect(await page.evaluate(async()=>(await import('/src/runtime/media-copy-intent.ts')).readMediaCopyIntent())).toBeNull();expect(await page.evaluate(key=>localStorage.getItem(key),key)).toBe(' malformed request bytes ');

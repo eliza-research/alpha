@@ -32,5 +32,5 @@ for(const theme of ['light','dark'])for(const size of [{width:360,height:640},{w
  await expect(draft).toHaveValue('Summarize this for me');await page.getByRole('button',{name:'Minimize chat',exact:true}).click();
  await expect(page.getByText('Choose the attachment below.',{exact:true})).toBeVisible();
  expect(await page.evaluate(()=>({mutations:(window as any).attachmentFixture.mutations,agentSends:(window as any).attachmentFixture.agentSends}))).toEqual({mutations:0,agentSends:0});
- if(theme==='light'&&size.height===640){await page.evaluate(()=>{(window as any).attachmentFixture.revoked=true;window.dispatchEvent(new Event('focus'));});await expect(page.getByText('Choose the attachment below.',{exact:true})).toHaveCount(0);await expect(page.getByText('Connect Gmail',{exact:true})).toBeVisible();}
+ if(theme==='light'&&size.height===640){await page.evaluate(()=>{(window as any).attachmentFixture.revoked=true;window.dispatchEvent(new Event('focus'));});await expect(page.getByText('Choose the attachment below.',{exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toBeVisible();}
 });

@@ -112,8 +112,8 @@ async function openSettings(page: Page, tab: string) {
   const current=()=>page.locator('[data-settings-page]').last();
   while(!await current().getByRole('button',{name:'About',exact:true}).isVisible())
     await current().getByRole('button',{name:/^Back to /}).click();
-  const path=tab==='AI provider'?['Account','AI connection']:tab==='App permissions'?['Privacy','Permissions']:[tab];
-  for(const name of path)await page.getByRole('button', { name: name==='AI connection'?/^AI connection(?:\s|$)/:name, exact: name!=='AI connection' }).filter({visible:true}).click();
+  const path=tab==='AI provider'?['Account','AI']:tab==='App permissions'?['Privacy','Permissions']:[tab];
+  for(const name of path)await page.getByRole('button', { name: name==='AI'?/^AI(?:\s|$)/:name, exact: name!=='AI' }).filter({visible:true}).click();
 }
 async function rendererDump(page: Page) {
   return page.evaluate(() => {
@@ -148,7 +148,7 @@ for (const scenario of ['resident', 'remote', 'offline'] as const) test(`current
   await openSettings(page, 'AI provider');
   const provider = page.getByRole('dialog', {name: 'AI connection', exact: true});
   // This dialog reports the phone's saved provider independently of a remote/offline selection.
-  await expect(provider.getByRole('button', {name: 'Own API keys', exact: true})).toHaveAttribute('aria-pressed', 'true');
+  await expect(provider.getByRole('button', {name: 'Own keys', exact: true})).toHaveAttribute('aria-pressed', 'true');
   await expect(provider.getByText('Voice off', {exact: true})).toBeVisible();
   await assertNoInventedActivity(page);
   await provider.getByRole('button', {name: 'Close Account', exact: true}).click();

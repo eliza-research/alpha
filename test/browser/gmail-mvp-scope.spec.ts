@@ -89,7 +89,7 @@ for(const scenario of ['connected','empty','error','restored'] as const)test(`Sh
  await page.evaluate(scenario=>{const f=(window as any).gm;if(scenario==='empty')f.accounts=[];if(scenario==='error')f.accountFailure=true;f.accountGate=null;f.releaseAccounts();},scenario);
  if(scenario==='empty'){
   await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toBeVisible();
-  await expect(page.getByText('Connect Gmail',{exact:true})).toBeVisible();
+  await expect(page.locator('span:text-is("Connect Gmail")')).toBeVisible();
   await page.evaluate(()=>{const f=(window as any).gm;f.accounts=f.originalAccounts;window.dispatchEvent(new Event('alpha:google-accounts-changed'));});
  }else if(scenario==='error'){
   await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
@@ -244,7 +244,7 @@ test('compose From switcher moves a new email to another connected account',asyn
  await expect(page.getByRole('button',{name:'From account',exact:true})).toContainText('From second@example.test');
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Moving subject');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Moving body');
- await expect(page.getByRole('status').filter({hasText:'From changed to second@example.test'})).toBeVisible();
+ await expect(page.getByRole('status').filter({hasText:'From: second@example.test'})).toBeVisible();
  expect((await gm(page)).prepares).toEqual([]);
 });
 

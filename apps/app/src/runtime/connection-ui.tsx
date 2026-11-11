@@ -1306,8 +1306,8 @@ async function applyResidentBinding(admission:ResidentAdmission,signal:AbortSign
       // sign-in. The binding stays unconfirmed and one background retry is scheduled.
       if(transientIdentityRead(result.failure.cause)){scheduleIdentityReadRetry();return {binding:'unknown',error:'AI offline · retrying'};}
       const why=errorMessage(result.failure.cause);
-      return result.binding==='unknown'?{binding:'unknown',error:'AI not connected'}
-        :{binding:'unbound',error:'AI not connected'};
+      return result.binding==='unknown'?{binding:'unknown',error:`${RESIDENT_UNBIND_UNCONFIRMED} · ${why}`}
+        :{binding:'unbound',error:`AI not connected · ${why}`};
     }
     // A removal native cannot confirm never stops the agent from starting; it is shown as unconfirmed.
     if(result.failure?.kind==='unbind-unconfirmed')return {binding:'unknown',error:RESIDENT_UNBIND_UNCONFIRMED};
@@ -3849,7 +3849,7 @@ export function ConnectionChooser() {
       {!snapshot.cloudAccount&&<><p className="alpha-membership-account"><span aria-hidden="true" data-alpha-icon="/icons/lucide/user-round.svg" style={iconStyle('user-round')}/><span className="alpha-sr">Not signed in</span></p><button className="alpha-account-confirm" disabled={snapshot.busy} onClick={()=>void connectionController.residentCloudLogin()}>Sign in</button></>}
       <div className="alpha-account-links">
         <button disabled={snapshot.busy} onClick={()=>{setAccountSection('provider');void connectionController.refreshProviderStatus();}}><span aria-hidden="true" data-alpha-icon="/icons/lucide/cpu.svg" style={iconStyle('cpu')}/><span>AI</span><small>{ownProviderSelected(snapshot)?'Own keys':'Cloud'}</small><span aria-hidden="true" data-alpha-icon="/icons/lucide/chevron-right.svg" style={iconStyle('chevron-right')}/></button>
-        <button data-alpha-account-google disabled={snapshot.busy} onClick={()=>{connectionController.close();googleConnectionController.openFromAccount();}}><span aria-hidden="true" data-alpha-icon="/icons/lucide/mail.svg" style={iconStyle('mail')}/><span>Google</span><span aria-hidden="true" data-alpha-icon="/icons/lucide/chevron-right.svg" style={iconStyle('chevron-right')}/></button>
+        <button data-alpha-account-google aria-label="Google & email" disabled={snapshot.busy} onClick={()=>{connectionController.close();googleConnectionController.openFromAccount();}}><span aria-hidden="true" data-alpha-icon="/icons/lucide/mail.svg" style={iconStyle('mail')}/><span>Google</span><span aria-hidden="true" data-alpha-icon="/icons/lucide/chevron-right.svg" style={iconStyle('chevron-right')}/></button>
       </div>
       {snapshot.cloudAccount&&<button className="alpha-account-signout" disabled={snapshot.busy} onClick={()=>setSignOutAccount(snapshot.cloudAccount)}>Sign out</button>}
       <button className="alpha-account-done" disabled={snapshot.busy} onClick={()=>connectionController.close()}>Done</button>

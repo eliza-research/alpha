@@ -26,11 +26,8 @@ async function readySignIn(page:Page){
  await expect(signInDialog(page)).toBeVisible();
 }
 
-/** Email and text message share one entry; the phone field is one explicit switch away. */
-async function usePhone(page:Page){
- const toggle=signInDialog(page).getByRole('button',{name:'Use phone number instead',exact:true});
- if(await toggle.isVisible())await toggle.click();
-}
+/** Email and text message share one field; the method follows what was typed. */
+const entry=(page:Page)=>signInDialog(page).getByRole('textbox',{name:/^Email( or phone)?$/});
 
 test.describe('in-app Eliza Cloud sign-in on the production Android composition',()=>{
  test('email code sign-in stays in Alpha, retries a wrong code, waits out resend and binds Cloud AI',async({page},info)=>{
@@ -41,21 +38,21 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   const dialog=signInDialog(page);await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeVisible();
   await expect(dialog.getByText(/in your browser/)).toHaveCount(0);
-  // Google, then email; text message is one switch away (no "Other sign-in methods" disclosure).
+  // Google, then one field for email or phone (no "Other sign-in methods" disclosure, no method switch).
   await expect(dialog.getByRole('button',{name:'Other sign-in methods',exact:true})).toHaveCount(0);
-  await expect(dialog.getByRole('textbox',{name:'Email',exact:true})).toBeVisible();
-  await expect(dialog.getByRole('button',{name:'Use phone number instead',exact:true})).toBeVisible();
+  await expect(entry(page)).toBeVisible();
+  await expect(dialog.getByRole('button',{name:/^Use (phone number|email) instead$/})).toHaveCount(0);
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('sign-in-choose.png'),animations:'disabled'});
-  await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('not-an-address');await dialog.getByRole('button',{name:'Send code',exact:true}).click();
+  await entry(page).fill('not-an-address');await dialog.getByRole('button',{name:'Send code',exact:true}).click();
   expect((await calls(page)).filter(c=>c.method==='startEmail')).toHaveLength(0);
-  await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('  synthetic-signin@example.invalid ');
+  await entry(page).fill('  synthetic-signin@example.invalid ');
   await dialog.getByRole('button',{name:'Send code',exact:true}).click();
   await expect(dialog.getByRole('form',{name:'Enter your email code'})).toBeVisible();
   await expect(dialog.getByText('synthetic-signin@example.invalid',{exact:true})).toBeVisible();
-  await expect(dialog.getByRole('button',{name:/^Resend code in \d+s$/})).toBeDisabled();
+  await expect(dialog.getByRole('button',{name:/^Resend · \d+s$/})).toBeDisabled();
   expect((await calls(page)).find(c=>c.method==='startEmail')).toMatchObject({email:'synthetic-signin@example.invalid',environment:'production'});
   await dialog.getByLabel('Code',{exact:true}).fill('000000');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
-  await expect(dialog.getByRole('alert')).toContainText('That code didn’t work');
+  await expect(dialog.getByRole('alert')).toContainText('Wrong code');
   // A rejected code stays editable for correction; it is never stored as a credential.
   await expect(dialog.getByLabel('Code',{exact:true})).toHaveValue('000000');
   await expect(dialog.getByLabel('Code',{exact:true})).toBeFocused();
@@ -78,11 +75,11 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   // Change wall time without a timer tick: the host's new cooldown must not use panel-mount time.
   const later=await page.evaluate(()=>Date.now()+120000);
   await page.clock.setSystemTime(later);
-  await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('synthetic-signin@example.invalid');
+  await entry(page).fill('synthetic-signin@example.invalid');
   await dialog.getByRole('button',{name:'Send code',exact:true}).click();
-  await expect(dialog.getByRole('button',{name:'Resend code in 60s',exact:true})).toBeDisabled();
+  await expect(dialog.getByRole('button',{name:'Resend · 60s',exact:true})).toBeDisabled();
   await page.clock.runFor(60000);
-  await expect(dialog.getByRole('button',{name:'Resend code',exact:true})).toBeEnabled();
+  await expect(dialog.getByRole('button',{name:'Resend',exact:true})).toBeEnabled();
   await noHandOff(page);
  });
 
@@ -114,7 +111,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await expect(welcome.getByRole('heading')).toHaveCount(0);
   await expect(welcome.getByText(/Checking.*sign-in/)).toHaveCount(0);
   await expect(google).toHaveCount(0);
-  await expect(welcome.getByRole('form',{name:'Sign in with email',exact:true})).toHaveCount(0);
+  await expect(welcome.getByRole('form',{name:'Sign in with email or phone',exact:true})).toHaveCount(0);
   // The required page's own readiness check is not an attempt the owner started: nothing to go Back from.
   await expect(welcome.getByRole('button',{name:/^(Back|Cancel sign-in)$/})).toHaveCount(0);
   const ownKeys=welcome.getByRole('button',{name:'Use my own keys',exact:true});
@@ -176,7 +173,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
     await page.evaluate(()=>(window as any).signInFixture.releaseReadiness());
     await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toBeEnabled();
    }else await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toHaveCount(0);
-   await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('synthetic-signin@example.invalid');
+   await entry(page).fill('synthetic-signin@example.invalid');
    await dialog.getByRole('button',{name:'Send code',exact:true}).click();
    await dialog.getByLabel('Code',{exact:true}).fill('123456');
    await dialog.getByRole('button',{name:'Verify',exact:true}).click();
@@ -192,7 +189,7 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await readySignIn(page);
   await signInDialog(page).getByRole('button',{name:'Continue with Google',exact:true}).click();
   await agent(page,'cloud');
-  await expect(page.getByText('Account created: synthetic-signin@example.invalid.',{exact:true})).toBeVisible();
+  await expect(page.getByRole('status').filter({hasText:/New account.*synthetic-signin@example\.invalid/})).toBeVisible();
   expect((await calls(page)).filter(c=>c.method==='startGoogle').map(c=>c.environment)).toEqual(['production']);
   await noHandOff(page);
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('sign-in-account-created.png'),animations:'disabled'});
@@ -221,10 +218,10 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await agent(page,'unavailable');
   await readySignIn(page);
   const dialog=signInDialog(page);
-  await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('synthetic-signin@example.invalid');await dialog.getByRole('button',{name:'Send code',exact:true}).click();
+  await entry(page).fill('synthetic-signin@example.invalid');await dialog.getByRole('button',{name:'Send code',exact:true}).click();
   await dialog.getByLabel('Code',{exact:true}).fill('123456');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
   await expect(dialog.getByRole('form',{name:'Enter your verification code'})).toBeVisible();
-  await expect(dialog.getByText('Enter your authenticator code.',{exact:true})).toBeVisible();
+  await expect(dialog.getByText('Authenticator',{exact:true})).toBeVisible();
   await expectButtonSystem(page);
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('08-mfa.png'),animations:'disabled'});
   expect((await fixture(page)).saved).toBe(false);
@@ -238,9 +235,9 @@ test.describe('in-app Eliza Cloud sign-in on the production Android composition'
   await agent(page,'unavailable');
   await readySignIn(page);
   const dialog=signInDialog(page);
-  await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('synthetic-signin@example.invalid');await dialog.getByRole('button',{name:'Send code',exact:true}).click();
+  await entry(page).fill('synthetic-signin@example.invalid');await dialog.getByRole('button',{name:'Send code',exact:true}).click();
   await expect(dialog.getByRole('alert')).toContainText('Alpha could not reach Eliza Cloud');
-  await expect(dialog.getByRole('form',{name:'Sign in with email'})).toBeVisible();
+  await expect(dialog.getByRole('form',{name:'Sign in with email or phone',exact:true})).toBeVisible();
   expect(await fixture(page)).toMatchObject({saved:false,bound:false});
   await noHandOff(page);
  });
@@ -253,13 +250,12 @@ for (const mode of ['ok','mfa'] as const) test(`phone code stays inside Alpha th
  await agent(page,'unavailable');
  await readySignIn(page);
  const dialog=signInDialog(page);
- await usePhone(page);
- await dialog.getByLabel('Phone number',{exact:true}).fill('+14155550100');
+ await entry(page).fill('+14155550100');
  await dialog.getByRole('button',{name:'Send code',exact:true}).click();
  await expect(dialog.getByRole('form',{name:'Enter your phone code'})).toBeVisible();
- await expect(dialog.getByRole('button',{name:/Resend code in/})).toBeDisabled();
+ await expect(dialog.getByRole('button',{name:/^Resend · \d+s$/})).toBeDisabled();
  await dialog.getByLabel('Code',{exact:true}).fill('000000');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
- await expect(dialog.getByRole('alert')).toContainText('That code didn’t work');
+ await expect(dialog.getByRole('alert')).toContainText('Wrong code');
  // A rejected code stays editable for correction; it is never stored as a credential.
   await expect(dialog.getByLabel('Code',{exact:true})).toHaveValue('000000');
  expect((await fixture(page)).saved).toBe(false);
@@ -278,14 +274,13 @@ test('phone code cancellation discards the in-app step without a credential',asy
  await boot(page,await entitlements());await agent(page,'unavailable');
  await readySignIn(page);
  const dialog=signInDialog(page);
- await usePhone(page);
- await dialog.getByLabel('Phone number',{exact:true}).fill('+14155550100');
+ await entry(page).fill('+14155550100');
  await dialog.getByRole('button',{name:'Send code',exact:true}).click();
  await expect(dialog.getByRole('form',{name:'Enter your phone code'})).toBeVisible();
  await dialog.getByRole('button',{name:'Back',exact:true}).click();
  await expect(dialog.getByRole('form',{name:'Enter your phone code'})).toHaveCount(0);
  // Back returns to the phone entry with the number kept, so a typo is a one-field fix.
- await expect(dialog.getByLabel('Phone number',{exact:true})).toHaveValue('+14155550100');
+ await expect(entry(page)).toHaveValue('+14155550100');
  await expect(dialog.getByRole('heading',{name:'Alpha',exact:true})).toBeVisible();
  expect((await fixture(page)).saved).toBe(false);
  expect((await calls(page)).some(c=>c.plugin==='AlphaCloudSignIn'&&c.method==='cancel')).toBe(true);
@@ -296,7 +291,8 @@ for(const phone of [true,false]) test(`tenant method discovery ${phone?'offers p
  await boot(page,{...await entitlements(),methods:{phone,email:false,google:false}});await agent(page,'unavailable');
  await readySignIn(page);
  const dialog=signInDialog(page);await expect(dialog).toBeVisible();
- await expect(dialog.getByRole('button',{name:'Send code',exact:true})).toHaveCount(0);
+ await expect(dialog.getByLabel(/Email/)).toHaveCount(0);
+ await expect(dialog.getByRole('textbox',{name:'Phone',exact:true})).toHaveCount(phone?1:0);
  await expect(dialog.getByRole('button',{name:'Continue with Google',exact:true})).toHaveCount(0);
  await expect(dialog.getByRole('button',{name:'Send code',exact:true})).toHaveCount(phone?1:0);
  if(!phone)await expect(dialog.getByRole('button',{name:'Try again',exact:true})).toBeVisible();
@@ -310,13 +306,12 @@ test('sign-in has no provider documents or explainer and keeps phone entry and t
  await boot(page,{...await entitlements(),serviceName:'Example Service'});await agent(page,'unavailable');
  await readySignIn(page);
  const dialog=signInDialog(page);
- await usePhone(page);
  await expect(dialog.getByRole('button',{name:/Terms of Service|Privacy Policy/})).toHaveCount(0);
  await expect(dialog.locator('details,.alpha-cloud-legal,[role="note"]')).toHaveCount(0);
  await expect(dialog).not.toContainText('Example Service');
- await dialog.getByLabel('Phone number',{exact:true}).fill('+14155550100');
+ await entry(page).fill('+14155550100');
  await dialog.getByRole('button',{name:'Send code',exact:true}).click();
- await expect(dialog.getByText(/^Code sent to/)).toContainText('+14155550100');
+ await expect(dialog.getByText('+14155550100',{exact:true})).toBeVisible();
  await dialog.getByLabel('Code',{exact:true}).fill('123');
  await expect(dialog.getByLabel('Code',{exact:true})).toHaveValue('123');
  expect((await calls(page)).filter(c=>c.method==='serviceInfo')).toEqual([]);
@@ -342,19 +337,17 @@ test('sign-in screens keep one button hierarchy and even spacing at each step',a
  await boot(page,await entitlements());await agent(page,'unavailable');await readySignIn(page);
  const dialog=signInDialog(page);
  await expectButtonSystem(page);await shot('01-choose');
- await dialog.getByRole('button',{name:'Use phone number instead',exact:true}).click();
- await expect(dialog.getByLabel('Phone number',{exact:true})).toBeFocused();await expectButtonSystem(page);await shot('02-choose-phone');
- await dialog.getByRole('button',{name:'Use email instead',exact:true}).click();
+ await expect(dialog.getByRole('button',{name:/^Use (phone number|email) instead$/})).toHaveCount(0);
  await dialog.getByRole('button',{name:'Use my own keys',exact:true}).click();
  await expect(dialog.getByLabel('Text key',{exact:true})).toBeFocused();await expectButtonSystem(page);await shot('03-own-keys');
  await dialog.getByRole('button',{name:'Back',exact:true}).click();
- await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('synthetic-signin@example.invalid');
+ await entry(page).fill('synthetic-signin@example.invalid');
  await dialog.getByRole('button',{name:'Send code',exact:true}).click();
  await expect(dialog.getByRole('form',{name:'Enter your email code'})).toBeVisible();await expectButtonSystem(page);await shot('04-code');
  await dialog.getByLabel('Code',{exact:true}).fill('000000');await dialog.getByRole('button',{name:'Verify',exact:true}).click();
- await expect(dialog.getByRole('alert')).toContainText('That code didn’t work');await shot('05-code-wrong');
+ await expect(dialog.getByRole('alert')).toContainText('Wrong code');await shot('05-code-wrong');
  await dialog.getByRole('button',{name:'Back',exact:true}).click();
- await expect(dialog.getByRole('textbox',{name:'Email',exact:true})).toHaveValue('synthetic-signin@example.invalid');await shot('06-back-address-kept');
+ await expect(entry(page)).toHaveValue('synthetic-signin@example.invalid');await shot('06-back-address-kept');
  await noHandOff(page);
 });
 test('Google waiting: one heading, a way to reopen the Google page, and Back',async({page},info)=>{

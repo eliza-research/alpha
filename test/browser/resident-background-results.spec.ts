@@ -111,7 +111,7 @@ for(const scenario of ['ready','rejected','late','mock-ready','mock-retire-rejec
   if(scenario==='late'){
    await openConnectionDiagnostics(page);
    await page.getByRole('button',{name:'Disconnect agent',exact:true}).click();
-   await expect(page.getByText('Agent disconnected.',{exact:true})).toBeVisible();
+   await expect(page.getByText('Agent disconnected',{exact:true})).toBeVisible();
    await page.evaluate(()=>(window as any).deliveryFixture.release());
    await expect.poll(()=>page.evaluate(()=>(window as any).deliveryFixture.enabled)).toBe(false);
    expect(await page.evaluate(()=>(window as any).deliveryFixture.nativeSync)).toBe(0);
@@ -127,7 +127,7 @@ for(const scenario of ['ready','rejected','late','mock-ready','mock-retire-rejec
    await dialog.getByRole('switch',{name:'Background checks',exact:true}).click();
    await expect(dialog.getByRole('switch',{name:'Background checks',exact:true})).not.toBeChecked();
    await dialog.getByRole('button',{name:'Notification settings',exact:true}).click();
-   await expect(dialog.getByText('Allowed',{exact:true})).toBeVisible();
+   await expect(dialog.getByRole('listitem').filter({hasText:'Notifications'})).toContainText('Allowed');
    const counts=await page.evaluate(()=>(window as any).deliveryFixture);
    expect(counts.nativeSync).toBeGreaterThan(0);expect(counts.foregroundSync).toBe(0);
   }else{
@@ -143,11 +143,11 @@ for(const scenario of ['ready','rejected','late','mock-ready','mock-retire-rejec
    await page.evaluate(()=>{(window as any).deliveryFixture.holdRetire=true;});
    await openConnectionDiagnostics(page);
    await page.getByRole('button',{name:'Disconnect agent',exact:true}).click();
-   await expect(page.getByText('Disconnecting…',{exact:true})).toBeVisible();
-   await expect(page.getByText('Agent disconnected.',{exact:true})).toHaveCount(0);
+   await expect(page.getByRole('status').getByText('Disconnecting',{exact:true})).toBeAttached();
+   await expect(page.getByText('Agent disconnected',{exact:true})).toHaveCount(0);
    await expect.poll(()=>page.evaluate(()=>typeof (window as any).deliveryFixture.retireRelease)).toBe('function');
    await page.evaluate(()=>(window as any).deliveryFixture.retireRelease());
-   await expect(page.getByText('Agent disconnected.',{exact:true})).toBeVisible();
+   await expect(page.getByText('Agent disconnected',{exact:true})).toBeVisible();
   }
  });
 }

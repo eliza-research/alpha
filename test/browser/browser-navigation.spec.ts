@@ -28,7 +28,7 @@ test('navigation within a sandboxed frame invalidates the host address and share
  await page.route('https://navigation.example/**',route=>route.fulfill({contentType:'text/html',body:route.request().url().endsWith('/first')?'<a href="https://navigation.example/second">Next page</a>':'<h1>Inner navigation</h1>'}));await setup(page);
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaBrowser').navigate({session:'navigation-test',id:'nav',url:'https://navigation.example/first'});});
  const frame=page.frameLocator('[data-browser-surface=nav] iframe');await frame.getByRole('link',{name:'Next page'}).click();await expect(frame.getByRole('heading',{name:'Inner navigation'})).toBeVisible();
- await expect(page.getByRole('status').filter({hasText:'The website navigated inside'})).toBeVisible();
+ await expect(page.getByRole('status').filter({hasText:'Page blocked'})).toBeVisible();
  const result=await page.evaluate(async()=>{const e=(window as any).navEvents.at(-1);const {registerPlugin}=await import('/src/platform-plugins.ts');let rejected=false;try{await registerPlugin<any>('AlphaBrowser').share(e);}catch{rejected=true;}return {e,rejected};});expect(result.e.committed).toBe(false);expect(result.rejected).toBe(true);
 });
 test('simultaneous bookmark edits from two tabs retain every change and survive reload',async({page,context})=>{

@@ -4366,7 +4366,7 @@ registerView("workflows", {
         steps: diagram(f.trig, f.steps, { running: running }),
         isRunning: running != null, notRunning: running == null,
         last: running != null ? "Running…" : (!f.on ? "Off" : (last ? "Last run " + wfLc(last.when) : "Not run yet")),
-        deleteLabel: 'Delete workflow', lifecycleReview: false,
+        deleteLabel: 'Delete workflow', lifecycleReview: false, runLabel: 'Run', runAria: 'Run now',
         runs: runs, hasRuns: runs.length > 0,
         close: function () { set({ open: null }); },
         edit: function () { set({ build: { id: f.id, name: f.name, trig: Object.assign({}, f.trig), steps: f.steps.map(function (s) { return Object.assign({}, s); }) } }); },
@@ -4424,7 +4424,7 @@ registerView("workflows", {
         }),
         apps: chipsOf(b), hasApps: wfApps(b).length > 0, empty: b.steps.length === 0,
         saveOff: b.steps.length === 0, saveCss: b.steps.length ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2);color:var(--mut)",
-        describe: function () { set({ build: null }); api.chat("Every weekday at 6, "); },
+        describeOff: false, describe: function () { set({ build: null }); api.chat("Every weekday at 6, "); },
         cancel: function () { set({ build: null, sheet: null }); },
         save: function () {
           if (!wfAllowed(b)) return wfDeferred(api);
