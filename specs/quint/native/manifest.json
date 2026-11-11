@@ -3754,6 +3754,7 @@
       "invariant": "safety",
       "tests": [
         "limitReachedStillSavesTest",
+        "unreadablePrefixDoesNotSaveTest",
         "exactLimitKeepsChunkTest",
         "emptyRecordingFailsTest",
         "leaveFinalisesFirstTest",
@@ -3761,6 +3762,7 @@
       ],
       "invariants": [
         "LimitTruncatesNotDiscards",
+        "VerifiedRetainedPrefix",
         "WithinSizeLimit",
         "SettledExactlyOnce",
         "CancelledSessionNeverWritesRow",
@@ -3770,15 +3772,21 @@
       "witnesses": [
         "LimitReachedWithVideoWitness",
         "OverflowChunkDroppedWitness",
+        "InvalidPrefixWitness",
         "SavedRowWitness",
         "LeavingWhileRecordingWitness",
         "FailedFinalisationWitness"
       ],
       "sources": [
         "apps/app/src/browser/video-capture.ts",
+        "apps/app/src/browser/video-capture-prefix.ts",
         "apps/app/src/prototype/camera-adapter.ts"
       ],
       "symbols": [
+        {
+          "path": "apps/app/src/browser/video-capture-prefix.ts",
+          "name": "measureVideoPrefix"
+        },
         {
           "path": "apps/app/src/browser/video-capture.ts",
           "name": "BrowserVideoCapture"
@@ -3810,13 +3818,14 @@
       ],
       "stateMapping": {
         "session/generation/settles/cause": "One recorder Session, its settled latch and the error it settled with",
-        "bytes/chunks/full": "Bytes admitted against maxFileSize, chunks kept, and the limit having stopped the recording",
+        "bytes/chunks/full/truncated": "Admitted bytes, kept chunks, size-limit stop and whether nonempty media was dropped",
+        "prefix": "Bounded retained-media read before reporting a truncated recording as saved",
         "adapter/finalizing/leaving/previewStopped": "The camera view recording flags and the order of finalisation and preview stop on leave",
         "rows/resolved/savedGeneration/failures": "Saved video rows, resolved recordings and finalisation failures"
       },
       "abstractions": [
         "Sizes are units with a limit of two; three recordings. The duration limit and an ended camera track are one stop event.",
-        "A chunk that would pass the size limit is left out and the recording stops with what it has. Microphone loss and frame-draw failures are the recorder error.",
+        "A chunk that would pass the size limit is left out. A retained prefix with nonempty dropped data needs a successful media read before saving. The prefix read port groups an unreadable prefix and its deadline into one refusal. Microphone loss and frame-draw failures are the recorder error.",
         "No reachable state has a recorder session cancelled by the stopped preview: leaving finalises first, so the cancelled branch of stopPreview is unreachable.",
         "Trace replay: test/quint-video-recorder.test.mjs replays simulator traces step by step against BrowserVideoCapture with MediaRecorder, the camera track and timers as ports; the Camera view half (shutter, leaving, preview) is supplied by the driver as the calls the camera adapter makes and compares the observed state after every step. It is bounded evidence for the sampled traces, not a refinement proof or device acceptance."
       ],
