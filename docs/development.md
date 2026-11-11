@@ -103,7 +103,7 @@ Developer APKs may explicitly omit the runtime:
 ```sh
 bun run agent:prepare -- --source-only
 bun run android:build -- --allow-unpackaged-runtime
-bun run android:build -- --test-mocks
+bun run android:build -- --test-mocks --allow-unpackaged-runtime
 ```
 
 Test-mocks APKs go to `artifacts/test-mocks/`. Production Android builds remove
@@ -285,7 +285,7 @@ protected signing on `main` with the exact reviewed `workflow_commit` and
 `signing-plan.json` as the `signing_plan` input. Preflight checks the official
 Actions ZIP. The protected job checks the same run attempt and artifact again,
 then stages the pinned private generation before accessing the signing key.
-[Protected signing workflow](.github/workflows/release-cloud-app-signing.yml)
+[Protected signing workflow](../.github/workflows/release-cloud-app-signing.yml)
 
 For publication, set `delivery_artifact_id` to the numeric ID of the original
 `private-cloud-apk-delivery-*` artifact from the successful signing attempt.
@@ -329,7 +329,7 @@ Review `qualification.json` and supply it as the protected workflow's
 `qualification` input with the reviewed `workflow_commit`. Complete both
 admissions before the one-day signing delivery receipt expires. The protected
 job restores the same private mirror and exact signed output before publication.
-[Qualified publication workflow](.github/workflows/publish-qualified-app-update.yml)
+[Qualified publication workflow](../.github/workflows/publish-qualified-app-update.yml)
 
 The existing reviewed Cloud producer routes remain available for their
 approved package and profile.
@@ -372,8 +372,8 @@ Include the reviewed image provenance and operator observations of the
 disconnected update, confirmation, retained data, Keystore, resident, voice
 and recovery in the acceptance evidence.
 
-The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alphaphone/issues/888)
-and [wireless launcher acceptance #889](https://github.com/eliza-research/alphaphone/issues/889).
+The remaining release work is tracked in [native promotion #888](https://github.com/eliza-research/alpha/issues/888)
+and [wireless launcher acceptance #889](https://github.com/eliza-research/alpha/issues/889).
 Complete it in this order:
 
 1. Admit native voice inputs for the exact SDK, then build and sign both
@@ -412,8 +412,8 @@ Complete it in this order:
      callback page, run `bun scripts/cloud-readiness.ts probe --environment <environment>`,
      then complete sign-in on the intended APK. Test with the new package
      selected to open its supported links if the old package is also installed.
-     [Cloud registration #666](https://github.com/eliza-research/alphaphone/issues/666),
-     [App Links #670](https://github.com/eliza-research/alphaphone/issues/670).
+     [Cloud registration #666](https://github.com/eliza-research/alpha/issues/666),
+     [App Links #670](https://github.com/eliza-research/alpha/issues/670).
 
    For a debug-signed Pixel, use an explicit `--test-mocks` APK on an owned
    test device and select **Staging** in **Subscription gate QA**. The staging
@@ -440,9 +440,9 @@ Complete it in this order:
 OS OTA is a separate A/B image path. The shared updater is staged disabled;
 keep `os_update_enabled` false until signed image, channel, trust, SELinux,
 engine and physical recovery gates pass. Resolve
-[cache retention #890](https://github.com/eliza-research/alphaphone/issues/890)
-and [applied-candidate recovery #891](https://github.com/eliza-research/alphaphone/issues/891)
-before enrollment. [#400](https://github.com/eliza-research/alphaphone/issues/400)
+[cache retention #890](https://github.com/eliza-research/alpha/issues/890)
+and [applied-candidate recovery #891](https://github.com/eliza-research/alpha/issues/891)
+before enrollment. [#400](https://github.com/eliza-research/alpha/issues/400)
 tracks the overall release gate. A successful host test or model does not close
 these release and device gates. Alpha consumes the reviewed rejected-download
 retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) and the
