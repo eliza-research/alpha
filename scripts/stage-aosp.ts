@@ -14,7 +14,9 @@ import { clockProductRequirement } from "./aosp-clock-contract.ts";
 import { provisioningComponents, writeProvisioningOverlay } from "./aosp-provisioning-overlay.ts";
 import { writeImageCapability } from "./aosp-image-capability.ts";
 import { releaseBlockers } from "./release-blockers.ts";
-import {signerDigest} from "./apk.ts";
+import {parseXmlTree, signerDigest} from "./apk.ts";
+import {apkUpdateChannelOrLegacy, assertProvisioningUpdateChannel, recordedProvisioningUpdateChannel} from "./update-channel.ts";
+import {updateArtifactDigest} from "./update-artifact.ts";
 import {readApkEntries} from "../vendor/eliza/packages/app/scripts/mobile/artifact-inspection/apk-distribution.mjs";
 import { aaptManifestTree, admitImageApk, manifestTreeIsDebuggable, reviewedSourceOverrides as sharedReviewedSourceOverrides } from "../vendor/eliza/packages/os/scripts/android/image-apk-admission.mjs";
 import { CUTTLEFISH_TARGETS, cuttlefishProductProblems } from "../vendor/eliza/packages/os/scripts/android/cuttlefish-product.mjs";
@@ -88,20 +90,23 @@ function admitApk({ apk, hash, development, manifestFile, platformCertificateSha
     options: {
       apk: string; sha256: string; development: boolean; manifestFile: string; testMocksDir: string;
       readManifestTree: (file: string) => string;
-      manifest: {testMocks?: boolean; results?: Record<string, unknown>[]} | null;
+      manifest: {testMocks?: boolean; updateChannel?: unknown; results?: Record<string, unknown>[]} | null;
       judge: (row: Record<string, unknown>, manifest: {testMocks?: boolean}) => string[];
     },
   ) => ReturnType<typeof admitImageApk>;
-  return admit({
+  const manifest = fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, "utf8")) : null;
+  const {entry} = admit({
     apk,
     sha256: hash,
     development,
-    manifest: fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, "utf8")) : null,
+    manifest,
     manifestFile,
     testMocksDir: path.resolve("artifacts/test-mocks"),
     judge: (row, manifest) => releaseBlockers(row, { manifestTestMocks: manifest.testMocks, ...current }),
     readManifestTree: file => aaptManifestTree(file, { aapt: tool("aapt"), env: androidEnv() }),
   });
+  const apkChannel = entry && "updateChannel" in entry ? entry.updateChannel : undefined;
+  return development ? null : recordedProvisioningUpdateChannel(manifest?.updateChannel, apkChannel);
 }
 /**
  * Source overrides the secure-camera source check admits. Pixel and Cuttlefish images are built from the same
@@ -234,7 +239,7 @@ if (!apk)
     : "Production staging: supply --apk PATH to the signed launcher release APK that verify-apks recorded as distributable.");
 const identity = JSON.parse(fs.readFileSync("app.config.json", "utf8"));
 const hash = createHash("sha256").update(fs.readFileSync(apk)).digest("hex");
-admitApk({
+const reviewedUpdateChannel = admitApk({
   apk,
   hash,
   development,
@@ -317,6 +322,13 @@ execFileSync(
   ],
   { stdio: "inherit", env },
 );
+if (!development) {
+  const stagedLauncher = path.join(output, "Launcher.apk");
+  if (updateArtifactDigest(stagedLauncher).sha256 !== hash)
+    throw Error("Staged launcher differs from the admitted release APK");
+  const stagedTree = aaptManifestTree(stagedLauncher, {aapt: tool("aapt"), env});
+  assertProvisioningUpdateChannel(apkUpdateChannelOrLegacy(parseXmlTree(stagedTree)), reviewedUpdateChannel);
+}
 fs.appendFileSync(path.join(output, "product.mk"), clockProductRequirement);
 // The image system feature Alpha Phone requires, with a system-partition install, before it offers
 // Phone, Contacts or SMS (P-36). Every image declares it, but the app also requires a release
