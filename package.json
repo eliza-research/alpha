@@ -15,7 +15,7 @@
     "audit:bundle": "node scripts/audit-production-bundle.ts web-dist",
     "typecheck": "tsc --noEmit && npm run --ignore-scripts typecheck:scripts",
     "test": "node scripts/run-node-tests.ts",
-    "verify": "node scripts/cloud-deployment.ts --check && npm run upstream:prepare-client && npm run quint:prepare-history && npm run quint:check && npm run lemma:check && npm run --ignore-scripts typecheck && npm --ignore-scripts test && npm run --ignore-scripts build && npm run audit:bundle",
+    "verify": "node scripts/cloud-deployment.ts --check && npm run upstream:prepare-client && npm run --ignore-scripts typecheck && npm run lemma:check && npm run quint:prepare-history && npm run quint:check && npm --ignore-scripts test && npm run --ignore-scripts build && npm run audit:bundle",
     "android:sync": "npm run build && cap sync android && node scripts/android-gzip-assets.ts protect",
     "android:host": "node scripts/android-host.ts",
     "android:build": "node scripts/build-android.ts",

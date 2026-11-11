@@ -36,6 +36,8 @@ missing backend fail. A generation-only run records a skipped proof. CI installs
 hash-pinned backend and requires proofs. `npm run quint:changed -- --base=<commit>`
 also model-checks changed models and their importing compositions, including their
 declared temporal checks and required historical counterexamples.
+On a heavily loaded machine, `ALPHA_TIMEOUT_SCALE=3` (1–10) lengthens refinement
+subprocess deadlines so slow but live checkers are not reported as failures; CI uses 1.
 
 ## Development
 
