@@ -15,11 +15,11 @@ export const NODE_ONLY_TESTS = [
 const MINIMUM_MAJOR = 24;
 
 /** `bun run` puts a `node` that is Bun first on PATH; find one that is Node. */
-function realNode(): string | undefined {
+export function realNode(): string | undefined {
   const candidates = [process.env.ALPHA_NODE, ...(process.env.PATH ?? '').split(delimiter).map(directory => join(directory, 'node'))];
   for (const candidate of candidates) {
     if (!candidate || !existsSync(candidate)) continue;
-    const probe = spawnSync(candidate, ['-p', 'process.versions.bun ? "" : process.versions.node'], { encoding: 'utf8' });
+    const probe = spawnSync(candidate, ['-p', 'process.versions.bun ? "" : process.versions.node'], { encoding: 'utf8', timeout: 5000 });
     const version = probe.status === 0 ? probe.stdout.trim() : '';
     if (version && Number(version.split('.')[0]) >= MINIMUM_MAJOR) return candidate;
   }

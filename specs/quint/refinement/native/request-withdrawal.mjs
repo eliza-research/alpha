@@ -171,7 +171,8 @@ export async function checkNativeRequestWithdrawal(extraSources=[]){
   assert.throws(()=>validateWithdrawalObservation(duplicateAnswer),/At most one native answer/);
   const alteredState=structuredClone(actualStates[0]);alteredState.phase[1]='sent';
   assert.throws(()=>assert.deepEqual(alteredState,actualStates[0]),assert.AssertionError);
-  const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,scope:'bounded-orchestration',assumptions:[
+  // Keep every trace and checkpoint; smaller programs avoid one large checker compilation.
+  const receipt=await checkTraces({model,sources,driverHashes,generatedSources,traces,batchSize:14,scope:'bounded-orchestration',assumptions:[
    'Three fresh request ids and two real host-JVM threads execute the exact native request worker, ownership guards, withdrawal and lifecycle invalidation methods; a controlled executor selects queued work only when a slot is free.',
    'Enrollment and transport are bounded closed latches. The fixed monotonic clock excludes deadline expiry. Only admitted plain GET /api/status requests, a successful synthetic enrollment and HTTP 200 response are in this abstraction; route authorization and real server effects are not claimed.',
    'The complete bundled LocalAgentProtocol, native request helper, real AbortController and abort listener run with flags off. Each exact bridge input is matched against the Java input; only real native callback deltas settle bridge promises. Delivered cancellation means the closed bridge delivered the actual abort-generated packet, not a UI acknowledgement.',
