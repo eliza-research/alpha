@@ -15,8 +15,7 @@ import { provisioningComponents, writeProvisioningOverlay } from "./aosp-provisi
 import { writeImageCapability } from "./aosp-image-capability.ts";
 import { releaseBlockers } from "./release-blockers.ts";
 import {signerDigest} from "./apk.ts";
-import {readApkEntries} from "../vendor/eliza/packages/app/scripts/mobile/artifact-inspection/apk-distribution.mjs";
-import { aaptManifestTree, admitImageApk, manifestTreeIsDebuggable, reviewedSourceOverrides as sharedReviewedSourceOverrides } from "../vendor/eliza/packages/os/scripts/android/image-apk-admission.mjs";
+import { aaptManifestTree, admitImageApk, reviewedSourceOverrides as sharedReviewedSourceOverrides } from "../vendor/eliza/packages/os/scripts/android/image-apk-admission.mjs";
 import { CUTTLEFISH_TARGETS, cuttlefishProductProblems } from "../vendor/eliza/packages/os/scripts/android/cuttlefish-product.mjs";
 
 export const PRODUCT_DESCRIPTOR = "android/aosp/product.json";
@@ -44,13 +43,6 @@ interface ImageApkOptions {
   manifestFile: string;
   platformCertificateSha256?: string;
 }
-interface ListenerOptions {
-  listenerApk: string;
-  listenerDescriptor: string | null;
-  development: boolean;
-  appId: string;
-  env: NodeJS.ProcessEnv;
-}
 const message = (error: unknown) => error instanceof Error ? error.message : String(error);
 
 
@@ -72,7 +64,7 @@ export function aospProductLockProblems(root = process.cwd()) {
   }) => string[];
   return productProblems(product, { root, file: PRODUCT_DESCRIPTOR, appId: identity.appId, productDirectory: "android/aosp", sharedSourceLock: SHARED_CUTTLEFISH_LOCK, applicationSignerFile: "android/release-signer.json" });
 }
-import { VOICE_HOST_RECORD, checkListenerDescriptor, checkListenerSpeechBundle, checkListenerSpeechNatives, stageListener } from "./aosp-listener.ts";
+import { stageListener } from "./aosp-listener.ts";
 
 /**
  * Alpha's policy for the shared image APK admission
@@ -130,40 +122,6 @@ export function stagingBuildPatches(names: string[], imageTarget: boolean) {
   if (!imageTarget) throw Error('--applied-build-patch requires --target pixel10a or cuttlefish');
   if (new Set(names).size !== names.length) throw Error('Duplicate applied build patch');
   return names.map(aospBuildPatch);
-}
-
-/**
- * Checks the listener APK before any staging output is written: a release build outside --development,
- * its reviewed descriptor when one is given, and reports missing packaged speech.
- * Returns the permission dump and signer stageListener needs.
- */
-function admitListener({ listenerApk, listenerDescriptor, development, appId, env }: ListenerOptions) {
-  // Debuggable listener builds are development-only; a production image takes a release build.
-  if (!development) {
-    let debuggable;
-    try {
-      debuggable = manifestTreeIsDebuggable(aaptManifestTree(listenerApk, { aapt: tool("aapt"), env }));
-    } catch {
-      throw new Error(`Refusing ${listenerApk}: its manifest could not be read.`);
-    }
-    if (debuggable) throw new Error(`Refusing ${listenerApk}: a debuggable listener is staged only with --development.`);
-  }
-  const signer = signerDigest(listenerApk);
-  const dump = execFileSync(tool("aapt"), ["dump", "permissions", listenerApk], { encoding: "utf8", env, maxBuffer: 16 << 20 });
-  // The privileged APK is pinned like the launcher: reviewed bytes and signer, not just a name.
-  const listenerHash = createHash("sha256").update(fs.readFileSync(listenerApk)).digest("hex");
-  if (listenerDescriptor)
-    checkListenerDescriptor(JSON.parse(fs.readFileSync(listenerDescriptor, "utf8")), { appId, apkSha256: listenerHash, signer });
-  // A listener without its speech model can never listen; production refuses it.
-  const voiceHost = JSON.parse(fs.readFileSync(VOICE_HOST_RECORD, "utf8"));
-  const entries = readApkEntries(listenerApk);
-  try {
-    const packaged = checkListenerSpeechBundle(entries, voiceHost, (entry: string) => execFileSync("unzip", ["-p", listenerApk, entry], { encoding: "utf8", maxBuffer: 1 << 20 }));
-    checkListenerSpeechNatives(packaged, voiceHost, (entry: string) => createHash("sha256").update(execFileSync("unzip", ["-p", listenerApk, entry], { maxBuffer: 256 << 20 })).digest("hex"));
-  } catch (problem) {
-    console.warn(`Development listener: ${message(problem)}. It will report SPEECH_UNAVAILABLE on the image.`);
-  }
-  return { dump, signer };
 }
 
 async function main(args: string[]) {
@@ -289,8 +247,6 @@ if (
   reviewed.moduleName !== identity.moduleName
 )
   throw new Error("Descriptor does not belong to this product");
-// The listener is admitted before any staging output exists, so its refusals leave none behind.
-const listener = listenerApk ? admitListener({ listenerApk, listenerDescriptor, development, appId: identity.appId, env }) : null;
 const destination = path.resolve(get("--output") || `artifacts/aosp/${identity.slug}-${hash.slice(0, 12)}`);
 // Every product is staged in a sibling temporary directory (same filesystem, so the rename is atomic)
 // and published only after the last check; a refusal leaves the destination absent.
@@ -339,8 +295,9 @@ if (production) {
   if (!physical) writeAospCapabilityOverlay(output, identity.appId);
   console.log(`Provisioning overlay: HOME ${components.home}, assistant ${components.assistant ? identity.appId : "none (P-78)"}, Autofill ${components.autofill}.`);
 }
-if (listenerApk && listener) {
-  stageListener({ root: process.cwd(), output, apk: listenerApk, dump: listener.dump, signer: listener.signer, launcherSigner: String(reviewed.certificateSha256 ?? "").toLowerCase(), appId: identity.appId });
+if (listenerApk) {
+  const listener = stageListener({ root: process.cwd(), output, apk: listenerApk, launcherSigner: String(reviewed.certificateSha256 ?? "").toLowerCase(), appId: identity.appId, descriptorFile: listenerDescriptor, production: !development, aapt: tool("aapt"), apksigner: tool("apksigner"), env });
+  if (!listener.speechIncluded) console.warn("Development listener will report SPEECH_UNAVAILABLE on the image.");
   console.log(`Always-on listener staged: ${identity.appId}.sense (privileged, no network). Grants, indicator and invocation are image-boot evidence, not staging evidence.`);
 }
 if (cuttlefish) writeCuttlefishNatives({root:process.cwd(), output, apk, module:identity.moduleName});
