@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 
 const {DeviceActions,setFilesReviewIdentity}=await tsImport('../apps/app/src/runtime/device-actions.ts',import.meta.url);
 

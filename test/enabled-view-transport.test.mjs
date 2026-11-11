@@ -6,7 +6,6 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 // The bridge now loads the real Cloud protocol, whose TypeScript requires the normal tsx loader.
-if(!process.execArgv.some((arg,i)=>arg==='--import=tsx'||(arg==='--import'&&process.execArgv[i+1]==='tsx'))){const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});if(child.error)throw child.error;process.exit(child.status??1);}
 const {createLocalAgentDevHandler}=await import('../scripts/local-agent-dev-bridge.ts');
 
 test('authenticated DEV bridge forwards profile GET/conditional POST using existing device headers',async()=>{

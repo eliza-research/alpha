@@ -1,19 +1,19 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Alpha Phone binding of the shared operator OTA update client
  * (vendor/eliza/packages/os/scripts/android/aosp-ota-update.mjs; issue #400). The channel
  * defaults to android/aosp/pixel10a-ota-channel.json and the stock recovery source lock to the
  * shared stallion inventory:
  *
- *   node scripts/aosp-ota-update.ts check --from INSTALLED_RECORD --to CANDIDATE_RECORD
- *   node scripts/aosp-ota-update.ts apply --serial S --from INSTALLED_RECORD --to CANDIDATE_RECORD \
+ *   bun scripts/aosp-ota-update.ts check --from INSTALLED_RECORD --to CANDIDATE_RECORD
+ *   bun scripts/aosp-ota-update.ts apply --serial S --from INSTALLED_RECORD --to CANDIDATE_RECORD \
  *     --ota OTA.zip --journal FILE [--execute --confirm-update]
- *   node scripts/aosp-ota-update.ts status --serial S --journal FILE
- *   node scripts/aosp-ota-update.ts fallback --serial S --journal FILE [--execute --confirm-fallback]
- *   node scripts/aosp-ota-update.ts stock-archive --archive FACTORY.zip [--known-good DIR]
- *   node scripts/aosp-ota-update.ts retain-known-good --record RECORD --signed-target-files ZIP \
+ *   bun scripts/aosp-ota-update.ts status --serial S --journal FILE
+ *   bun scripts/aosp-ota-update.ts fallback --serial S --journal FILE [--execute --confirm-fallback]
+ *   bun scripts/aosp-ota-update.ts stock-archive --archive FACTORY.zip [--known-good DIR]
+ *   bun scripts/aosp-ota-update.ts retain-known-good --record RECORD --signed-target-files ZIP \
  *     --signed-image IMAGE.zip --archive-dir NEW_DIR
- *   node scripts/aosp-ota-update.ts verify-stock --serial S
+ *   bun scripts/aosp-ota-update.ts verify-stock --serial S
  *
  * `apply` enters recovery with `adb reboot recovery`; the operator chooses "Apply update from
  * ADB" when asked (a user build's adbd cannot enter sideload itself). Results are observations

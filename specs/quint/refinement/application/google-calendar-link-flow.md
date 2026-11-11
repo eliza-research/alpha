@@ -21,5 +21,5 @@ the separate renderer control client. Installed provider behavior and
 durable replay have their own boundaries.
 
 ```sh
-node --test test/quint-google-calendar-link-flow.test.mjs
+bun test test/quint-google-calendar-link-flow.test.mjs
 ```

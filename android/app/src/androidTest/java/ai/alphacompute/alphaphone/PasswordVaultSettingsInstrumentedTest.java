@@ -23,7 +23,7 @@ import static org.junit.Assert.*;
  * storage) or in logcat. The agent view context is not read directly: it is built from page state,
  * which this test shows never holds the secret, and passwordSurfaceOpen withholds it on these pages
  * (a renderer unit, not checked here).
- *   npm run test:android:instrumentation -- --owned-emulator --avd NAME --classes PasswordVaultSettings
+ *   bun run test:android:instrumentation -- --owned-emulator --avd NAME --classes PasswordVaultSettings
  * passwordVault=1 is the runner's gate: the class sets and clears a screen-lock PIN, so it runs only
  * on an owned, disposable emulator with no screen lock of its own. Synthetic values only. */
 @RunWith(AndroidJUnit4.class)

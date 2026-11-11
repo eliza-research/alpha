@@ -189,7 +189,7 @@ async function fixture({ClientObservationSupportSession, phoneContextMessage, Lo
 
 export async function checkObservationTurnDispatch(extraSources = []) {
   const sources = [modelPath, sendSource, observationSource, contextSource, protocolSource,
-    projection + '.source.json', 'package-lock.json', fileURLToPath(import.meta.url), ...extraSources];
+    projection + '.source.json', 'bun.lock', fileURLToPath(import.meta.url), ...extraSources];
   captureSources(sources);
   const prepared = JSON.parse(read(projection + '.source.json'));
   assert.equal(prepared.baseCommit, JSON.parse(read('upstream.lock.json')).commit);

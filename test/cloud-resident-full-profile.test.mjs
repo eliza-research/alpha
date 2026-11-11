@@ -86,8 +86,8 @@ test('full mode refuses an unset saved assistant choice without rewriting the pr
   } finally { await fs.rm(profile, {recursive: true, force: true}); }
 });
 
-// npm test runs without the prepared SDK and skips; browser.yml's verify job sets ALPHA_REQUIRE_PREPARED_SDK=1.
-const skipUnprepared = !(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE && process.env.ALPHA_BUN) && process.env.ALPHA_REQUIRE_PREPARED_SDK !== '1' ? 'Prepared SDK unavailable; run npm run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN (browser.yml verify)' : false;
+// bun run test runs without the prepared SDK and skips; browser.yml's verify job sets ALPHA_REQUIRE_PREPARED_SDK=1.
+const skipUnprepared = !(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE && process.env.ALPHA_BUN) && process.env.ALPHA_REQUIRE_PREPARED_SDK !== '1' ? 'Prepared SDK unavailable; run bun run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN (browser.yml verify)' : false;
 
 test('actual pinned SDK collector retains the full host assistant and preserves lean/store exclusions', {skip: skipUnprepared}, async () => {
   assert.ok(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE && process.env.ALPHA_BUN, 'ALPHA_REQUIRE_PREPARED_SDK=1 needs ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN');

@@ -1,17 +1,17 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Alpha's functional feature manifest, emitted by the shared mobile-shell emitter
 // (@elizaos/ui/mobile-shell/core mobileFeatureManifest) from apps/app/src/product/alpha-product-registration.ts, and its
 // parity against Eliza's reference registration. Alpha and Eliza may differ only by identity and
 // theme; every remaining functional difference and every Alpha-owned behavioural module is listed
 // in test/support/feature-parity.mjs, which may only shrink (test/feature-parity.test.mjs).
 //
-//   node scripts/feature-manifest.ts            print Alpha's manifest
-//   node scripts/feature-manifest.ts --parity   print the differences and modules as they are now
+//   bun scripts/feature-manifest.ts            print Alpha's manifest
+//   bun scripts/feature-manifest.ts --parity   print the differences and modules as they are now
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath, pathToFileURL} from 'node:url';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from '../test/support/ts-import.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CORE = '.eliza/client-features/packages/ui/src/mobile-shell/core.ts';

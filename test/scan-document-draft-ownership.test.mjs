@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {pathToFileURL} from 'node:url';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 import {prepareClientFeatures} from '../scripts/prepare-client-features.ts';
 
 const root = prepareClientFeatures();

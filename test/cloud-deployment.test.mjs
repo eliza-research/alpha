@@ -161,7 +161,7 @@ test('every authority change gives renderer and native credentials a new namespa
 
 test('custom deployment reaches native inference configuration and Google transport',async()=>{
  const {pathToFileURL}=await import('node:url');
- const {tsImport}=await import('tsx/esm/api');
+ const {tsImport}=await import('./support/ts-import.mjs');
  const config=structuredClone(defaults);
  config.production={api:'https://api.example.org',web:'https://login.example.org',services:'https://services.example.org',tenant:'example'};
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-cloud-backend-'));

@@ -37,7 +37,8 @@ const result=await Bun.build({
   });
  }}],
 });
-if(!result.success)throw new AggregateError(result.logs,'Native host compilation failed');
+// Bun reports an uncaught AggregateError by its members only, without this message.
+if(!result.success){for(const log of result.logs)console.error(log);throw Error('Native host compilation failed');}
 const output=result.outputs.find(item=>item.kind==='entry-point');
 if(!output||!result.metafile)throw Error('Native host compiler did not produce its module and source graph');
 

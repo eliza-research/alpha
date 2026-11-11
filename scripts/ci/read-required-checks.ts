@@ -1,9 +1,9 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Read back the rules GitHub actually enforces on the default branch and diff them against the
  * intended required checks in scripts/ci/required-checks-ruleset.json.
  *
- *   node scripts/ci/read-required-checks.ts [--repo owner/name] [--branch main] [--json]
+ *   bun scripts/ci/read-required-checks.ts [--repo owner/name] [--branch main] [--json]
  *
  * READ-ONLY. Every request is `gh api --method GET`; this never creates, edits or deletes a
  * ruleset, branch protection or any other setting. Installing the ruleset is the repository
@@ -129,7 +129,7 @@ export function compareRequiredChecks({intended, branchRules, rulesets = [], pro
 function main(argv: string[]) {
   const value = (flag: string) => argv.includes(flag) ? argv[argv.indexOf(flag) + 1] : null;
   const unknown = argv.filter((arg, index) => arg.startsWith('--') ? !['--repo', '--branch', '--json'].includes(arg) : !['--repo', '--branch'].includes(argv[index - 1]));
-  if (unknown.length) { console.error('Usage: node scripts/ci/read-required-checks.ts [--repo owner/name] [--branch main] [--json]'); return 2; }
+  if (unknown.length) { console.error('Usage: bun scripts/ci/read-required-checks.ts [--repo owner/name] [--branch main] [--json]'); return 2; }
   let repo = value('--repo');
   if (!repo) {
     try { repo = repositoryFromRemote(execFileSync('git', ['remote', 'get-url', 'origin'], {cwd: ROOT, encoding: 'utf8'})); } catch { repo = null; }
@@ -174,7 +174,7 @@ function main(argv: string[]) {
     console.log('\nThe repository owner must install or correct the ruleset. This script does not do it:');
     console.log(named(result) ? `  Review ruleset "${intended.name}" in Settings > Rules > Rulesets against ${INTENDED_FILE}.`
       : `  gh api --method POST repos/${repo}/rulesets --input ${INTENDED_FILE}`);
-    console.log(`  then confirm with: node scripts/ci/read-required-checks.ts --repo ${repo}`);
+    console.log(`  then confirm with: bun scripts/ci/read-required-checks.ts --repo ${repo}`);
   }
   return unreadable.length ? 2 : 1;
 }

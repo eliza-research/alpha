@@ -1,6 +1,6 @@
 name: LemmaScript proofs
 # Function-level Dafny proofs for the annotated TypeScript listed in LemmaScript-files.txt.
-# `npm run verify` runs the same check but records a skip when no Dafny is installed; this job installs the
+# `bun run verify` runs the same check but records a skip when no Dafny is installed; this job installs the
 # pinned backend and requires it, so a skipped check cannot stand in for a proof.
 on:
   pull_request:
@@ -10,7 +10,7 @@ on:
       - scripts/check-lemma.ts
       - LemmaScript-files.txt
       - lemmascript.json
-      - package-lock.json
+      - bun.lock
   push:
     branches: [main, develop]
   workflow_dispatch:
@@ -28,12 +28,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: true
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - run: npm run upstream:prepare-client
+          bun-version: "1.4.2"
+      - run: bun install --frozen-lockfile
+      - run: bun run upstream:prepare-client
       # The checker and LemmaScript run `dafny` from PATH; the shared script pins the
       # same archive hash and puts the verified binary on PATH.
       - name: Install the pinned Dafny release
@@ -41,7 +40,7 @@ jobs:
       - name: Check every listed proof
         env:
           LEMMA_REQUIRE_BACKEND: '1'
-        run: npm run lemma:check
+        run: bun run lemma:check
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

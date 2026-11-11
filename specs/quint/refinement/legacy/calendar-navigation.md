@@ -16,5 +16,5 @@ Schedule, Search, RSVP, Google account picker, malformed-feed,
 optimistic outbox, conflict or delete-undo semantics.
 
 ```sh
-node --test test/quint-historical-calendar-navigation.test.mjs
+bun test test/quint-historical-calendar-navigation.test.mjs
 ```

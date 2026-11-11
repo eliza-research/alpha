@@ -1,4 +1,4 @@
-import { tsImport } from 'tsx/esm/api';
+import {tsImport} from '../support/ts-import.mjs';
 const {alphaViewPath}=await tsImport(new URL('../../apps/app/src/product/alpha-product.ts',import.meta.url).href,{parentURL:import.meta.url});
 const {cloudServiceName}=await tsImport(new URL('../../apps/app/src/runtime/cloud-protocol.ts',import.meta.url).href,{parentURL:import.meta.url});
 const {cloudVoiceLimitOf}=await tsImport(new URL('../../apps/app/src/runtime/cloud-voice-limit.ts',import.meta.url).href,{parentURL:import.meta.url});

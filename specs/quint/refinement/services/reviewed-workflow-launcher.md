@@ -39,6 +39,6 @@ concurrent launchers and process crash recovery are separate obligations.
 Run the focused campaign with Node 26.
 
 ```sh
-node --test test/quint-reviewed-workflow-launcher-refinement.test.mjs
-ALPHA_QUINT_BUN=/absolute/path/to/bun node --test test/quint-reviewed-workflow-launcher-refinement.test.mjs
+bun test test/quint-reviewed-workflow-launcher-refinement.test.mjs
+ALPHA_QUINT_BUN=/absolute/path/to/bun bun test test/quint-reviewed-workflow-launcher-refinement.test.mjs
 ```

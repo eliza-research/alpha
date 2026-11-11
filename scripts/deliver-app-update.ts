@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Publish an admitted release APK first, verify anonymous download, then move
  * the stable manifest. No keys, builds or private QA URLs enter this command.
  * GitHub asset replacement is not atomic: a manifest upload failure is reported
@@ -215,7 +215,7 @@ export async function main(argv: string[], {root = process.cwd(), log = console.
   let variant: string | undefined, apkManifest = 'artifacts/apk-manifest.json', notes: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i], value = argv[++i];
-    if (!value || value.startsWith('--')) throw Error('Usage: node scripts/deliver-app-update.ts --variant launcher|standalone [--apk-manifest FILE] [--notes TEXT]');
+    if (!value || value.startsWith('--')) throw Error('Usage: bun scripts/deliver-app-update.ts --variant launcher|standalone [--apk-manifest FILE] [--notes TEXT]');
     if (flag === '--variant') variant = value;
     else if (flag === '--apk-manifest') apkManifest = value;
     else if (flag === '--notes') notes = value;

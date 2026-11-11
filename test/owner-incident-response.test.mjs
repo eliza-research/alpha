@@ -186,7 +186,7 @@ test('ruleset drafts block force-push and deletion, require signatures and have 
 test('marker detection matches the recorded payload shape', () => {
   const files = ['init', '.env', '.vscode/tasks.json', 'android/x/reminders/public/fonts/fa-brand-400.orc', 'src/init.ts', 'docs/init'];
   assert.deepEqual(pathMarkers(files, iocs.markers), ['init', '.env', '.vscode/tasks.json', 'android/x/reminders/public/fonts/fa-brand-400.orc']);
-  assert.deepEqual(initScripts(JSON.stringify({scripts: {build: 'node init && vite build', dev: 'node ./init', test: 'node --test', initdb: 'node scripts/initdb.mjs', x: 'node init-db.mjs'}}), iocs.markers), ['build', 'dev']);
+  assert.deepEqual(initScripts(JSON.stringify({scripts: {build: 'node init && vite build', dev: 'node ./init', test: 'bun test', initdb: 'bun scripts/initdb.mjs', x: 'node init-db.mjs'}}), iocs.markers), ['build', 'dev']);
   assert.deepEqual(contentMarkers('"runOptions": { "runOn": "folderOpen" }', iocs.markers).length, 1);
   assert.deepEqual(contentMarkers('const src = atob(process.env.AUTH_API_KEY); eval(proxyInfo);', iocs.markers).length, 2);
   assert.deepEqual(contentMarkers('export default {webDir: "web-dist"}', iocs.markers), []);

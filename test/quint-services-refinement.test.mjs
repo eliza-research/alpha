@@ -13,7 +13,7 @@ test('service components and coordinators check real-source traces and preserve 
   const directory = mkdtempSync(join(tmpdir(), 'alpha-quint-services-'));
   const log = openSync(join(directory, 'run.log'), 'w+');
   try {
-    const result = spawnSync(process.execPath, ['--import=tsx', '--input-type=module', '-e', `
+    const result = spawnSync(process.execPath, ['-e', `
       import {writeSync} from 'node:fs';
       import {runServicesRefinement} from './specs/quint/refinement/services/index.mjs';
       const result = await runServicesRefinement(({receipts, failures}) => {

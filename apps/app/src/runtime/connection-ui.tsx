@@ -2661,7 +2661,7 @@ export const connectionController = {
           try { await verifyService(makeCloud(environment), signal); }
           catch (error) { signal.throwIfAborted(); detachService(); update({ message: 'Cloud offline' }); }
         }
-        // `npm run dev` starts the agent on this computer; P-43 always connects it (a stored offline
+        // `bun run dev` starts the agent on this computer; P-43 always connects it (a stored offline
         // or "none" choice reads as the resident). A host agent that is down recovers with Retry.
         if (saved?.kind === 'resident' || (!saved && residentAlwaysPresent)) { try { await connectResident(signal); } catch (error) { if (residentAlwaysPresent && !active) update({ kind: 'recovering', message: 'Reconnecting' }); throw error; } return; }
         if (!saved || saved.kind === 'none') { update({ open: !service, message: '' }); return; }

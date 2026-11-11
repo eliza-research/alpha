@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 
 test('provider drafts refine reviewed requests, reference restoration and forward identity', {timeout: 180000}, () => {
-  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
+  const result = spawnSync(process.execPath, ['-e', `
     import assert from 'node:assert/strict';
     import {runInboxProviderDraftsRefinement} from './specs/quint/refinement/services/inbox-provider-drafts.mjs';
     const {receipts, obligations} = await runInboxProviderDraftsRefinement(['test/quint-inbox-provider-drafts.test.mjs']);

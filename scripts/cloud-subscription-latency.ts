@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Read-only latency probe of the deployed Eliza Cloud subscription endpoints (#410).
 // It sends unauthenticated GET requests only: the public plan catalog, the public
 // entitlement verification keys and the entitlement route without a key (401). It
@@ -6,7 +6,7 @@
 // plan-bucket exhaustion, expiry, revocation or billing outage; those need a real
 // signed-in account and remain open until recorded deployment evidence exists.
 //
-//   node scripts/cloud-subscription-latency.ts [--samples 30] [--origin https://api.eliza.app] [--out file.json]
+//   bun scripts/cloud-subscription-latency.ts [--samples 30] [--origin https://api.eliza.app] [--out file.json]
 import { writeFileSync } from 'node:fs';
 
 const args = process.argv.slice(2);

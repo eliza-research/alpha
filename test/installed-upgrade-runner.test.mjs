@@ -35,7 +35,7 @@ else
  if [ "$extra" = true ]; then printf '%s\\n' '  E: instrumentation' '    A: android:name="${pkg}.WorkflowNoticeProcessRunner"' '    A: android:targetPackage="${pkg}"'; fi
 fi
 `,{mode:0o700});
-  fs.writeFileSync(adb,`#!/usr/bin/env node
+  fs.writeFileSync(adb,`#!/usr/bin/env bun
 const fs=require('node:fs'),a=process.argv.slice(4),stateFile=${JSON.stringify(state)},s=JSON.parse(fs.readFileSync(stateFile)),pkg=${JSON.stringify(pkg)},mode=${JSON.stringify(mode)},host=${JSON.stringify(host)};
 fs.appendFileSync(${JSON.stringify(log)},JSON.stringify(a)+'\\n');const save=()=>fs.writeFileSync(stateFile,JSON.stringify(s));
 if(a[0]==='emu')console.log('owned-fixture\\nOK');
@@ -161,6 +161,6 @@ test('calendar upgrade refuses a candidate rebuilt after admission before instal
 test('the upgrade runner refuses a missing or unknown kind with usage before touching a device',()=>{
  for(const args of [[],['photos']]){
   const run=spawnSync(process.execPath,[path.resolve('scripts/test-installed-upgrade.ts'),...args],{encoding:'utf8',timeout:30000,env:{...process.env,ANDROID_HOME:'/nonexistent'}});
-  assert.equal(run.status,2,run.stderr);assert.match(run.stderr,/Usage: node scripts\/test-installed-upgrade\.ts <calendar\|reminder>/);
+  assert.equal(run.status,2,run.stderr);assert.match(run.stderr,/Usage: bun scripts\/test-installed-upgrade\.ts <calendar\|reminder>/);
  }
 });

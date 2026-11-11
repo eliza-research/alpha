@@ -5,10 +5,6 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import http from 'node:http';
 import type {RemoteCredential, RemoteCredentialStore, RemoteRequester} from '../apps/app/src/runtime/remote-protocol.ts';
-if (!process.execArgv.some(arg => arg === '--import=tsx' || arg === 'tsx')) {
-  const child = spawnSync(process.execPath, ['--import=tsx', process.argv[1]], { stdio: 'inherit' });
-  process.exit(child.status ?? 1);
-}
 const { RemoteProtocol, normalizeRemoteOrigin } = await import('../apps/app/src/runtime/remote-protocol.ts');
 let now = Date.now(), mode = 'ok', creates = 0, sends = 0, truncates = 0;
 interface FixtureMessage {

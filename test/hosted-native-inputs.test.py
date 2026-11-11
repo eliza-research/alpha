@@ -452,7 +452,7 @@ class HostedNativeInputsTest(unittest.TestCase):
         steps = ('Check the automatic native input manifest and artifact availability',
                  'actions/setup-java@', 'android-actions/setup-android@', 'Install pinned Android native toolchain',
                  'Acquire exact native inputs for the automatic candidate', 'Stage the admitted voice and embedding inputs',
-                 'Prepare and qualify fresh resident source', 'node scripts/stage-embedding-host.ts --verify',
+                 'Prepare and qualify fresh resident source', 'bun scripts/stage-embedding-host.ts --verify',
                  'native-input-admission.json')
         self.assertEqual(sorted(workflow.index(step) for step in steps), [workflow.index(step) for step in steps])
         preflight = workflow.split('Check the automatic native input manifest and artifact availability', 1)[1].split('      - ', 1)[0]
@@ -465,7 +465,7 @@ class HostedNativeInputsTest(unittest.TestCase):
         self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'", stage)
         self.assertIn('GH_TOKEN:', acquire)
         self.assertNotIn('GH_TOKEN:', stage)
-        self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE != '1'\n        run: node scripts/voice-host.ts --verify --allow-absent", workflow)
+        self.assertIn("if: env.ALPHA_APP_UPDATE_CANDIDATE != '1'\n        run: bun scripts/voice-host.ts --verify --allow-absent", workflow)
 
 
 if __name__ == '__main__':

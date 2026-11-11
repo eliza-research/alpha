@@ -5,7 +5,7 @@ import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import{findViewActionHandoff}from'../.eliza/client-features/packages/core/src/views/view-action-handoff.ts';
 import{createCompletedActionNavigationState}from'../.eliza/client-features/packages/core/src/views/completed-action-navigation.ts';
 import{NAVIGATE_VIEW_EVENT}from'../.eliza/client-features/packages/core/src/events.ts';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from './support/ts-import.mjs';
 const {alphaNavigation}=await tsImport('../apps/app/src/product/alpha-product.ts',import.meta.url);
 // Notes, Workflows and Camera are available; the product registry resolves ids, paths and Home.
 const views=alphaNavigation(view=>['notes','workflows','camera'].includes(view));

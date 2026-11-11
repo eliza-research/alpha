@@ -24,5 +24,5 @@ transport rejects provider writes. Provider saves, the alternate draft
 destinations, and general draft recovery are separate.
 
 ```sh
-node --test test/quint-canonical-calendar-editor-close.test.mjs
+bun test test/quint-canonical-calendar-editor-close.test.mjs
 ```

@@ -23,7 +23,7 @@ out.current=d.digestLoopState(loop,[{...source,expiresAt:'2026-10-10T12:00:00Z'}
 out.renewals=d.digestRenewals([source,{...source,id:'soon',expiresAt:'2026-10-09T06:00:00Z'},{...source,id:'later',expiresAt:'2026-10-12T12:00:00Z'}],[loop,{...loop,id:'l2',spec:{...loop.spec,sourceId:'soon'}},{...loop,id:'l3',spec:{...loop.spec,sourceId:'later'}}],now).map(r=>[r.source.id,r.state]);
 console.log(JSON.stringify(out));`;
 test('native evening, source pausing and the dossier follow what the agent advertises',()=>{
- const out=JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
+ const out=JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:60000}));
  assert.deepEqual(out.old,{digests:true,nativeSources:true,nativeEvening:false,sourcePause:false,dossier:false});
  assert.deepEqual(out.patched,{digests:true,nativeSources:true,nativeEvening:true,sourcePause:true,dossier:false});
  assert.equal(out.eveningWithoutNative.nativeEvening,false);

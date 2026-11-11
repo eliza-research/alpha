@@ -30,7 +30,7 @@ test('native admission rejection cleans up the listener without retry',async()=>
 test('protocol session change and disconnect fence callbacks and detach feeds',async()=>{
  // Load real browser source with production flags in an isolated Node child.
  const {execFileSync}=await import('node:child_process');
- execFileSync(process.execPath,['--input-type=module','-e',`
+ execFileSync(process.execPath,['-e',`
   import assert from 'node:assert/strict';
   import {loadBrowserModule} from './test/fixtures/browser-source.mjs';
   const {LocalAgentProtocol}=await loadBrowserModule('apps/app/src/runtime/local-agent.ts');

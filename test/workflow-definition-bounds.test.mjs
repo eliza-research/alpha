@@ -7,7 +7,7 @@ import {resolve} from 'node:path';
 // unreadable definitions never take the list down, and a retained submission can be repeated only under its
 // own identity. Synthetic agent responses; no runtime.
 const root=resolve(import.meta.dirname,'..');
-const run=script=>JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
+const run=script=>JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
 const prelude=`
 const P=await import(${JSON.stringify(resolve(root,'apps/app/src/runtime/workflow-protocol.ts'))});
 const A=await import(${JSON.stringify(resolve(root,'apps/app/src/runtime/phone-workflow-authoring.ts'))});
@@ -79,7 +79,9 @@ out.timeOffered=await message(async()=>A.assertPhoneCapabilities(A.normalizePhon
 console.log(JSON.stringify(out));`);
  assert.deepEqual(out.manual,{kind:'manual'});
  assert.deepEqual(out.time,{kind:'time',localTime:'07:30',timeZone:'Europe/Paris',days:[1,2,3,4,5]});
- assert.deepEqual(out.describe,['Next Nov 11, 2026, 06:30','Only when you choose Run now'],'a foreign saved clock names its next instant in the device zone');
+ // The glue between date and time depends on the runtime's CLDR revision (Bun uses the system ICU).
+ assert.match(out.describe[0],/^Next Nov 11, 2026(?:,| at) 06:30$/,'a foreign saved clock names its next instant in the device zone');
+ assert.deepEqual(out.describe.slice(1),['Only when you choose Run now']);
  for(const name of ['schedule','cron','event'])assert.equal(out[name],'PhoneWorkflowSpecError: This workflow trigger is unavailable',name);
  assert.equal(out.legacyTime,'PhoneWorkflowSpecError: Unsupported workflow field');
  for(const name of ['unordered','noDays','badZone','badTime'])assert.equal(out[name],'PhoneWorkflowSpecError: Choose a local time, a valid time zone and at least one day',name);

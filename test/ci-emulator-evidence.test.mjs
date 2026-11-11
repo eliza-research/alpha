@@ -45,7 +45,7 @@ test('every emulator job is selected by the suite input, needs the build, and it
   assert.ok(text.includes(`\n    if: inputs.suite == '${name}' || inputs.suite == 'all'\n`),`${name} runs only when selected`);
   assert.match(text,/\n    timeout-minutes: \d+\n/,name);
   assert.equal((text.match(/reactivecircus\/android-emulator-runner@/g)??[]).length,1,name);
-  assert.ok(text.includes(`\n          script: node scripts/ci/emulator-suite.ts ${name}\n`),`${name} runs its own suite`);
+  assert.ok(text.includes(`\n          script: bun scripts/ci/emulator-suite.ts ${name}\n`),`${name} runs its own suite`);
   // API 35 default x86_64 is the fixture the preparation scripts admit (AVD "test", emulator-5554).
   assert.match(text,/api-level: 35\n          target: default\n          arch: x86_64\n/,name);
   // The APKs are the build job's, proven by the manifest hash, at the build job's commit.
@@ -91,7 +91,7 @@ test('every action in the emulator evidence workflow is pinned to an exact commi
  // caches left the other workflows; every other first-party action shares their reviewed pin.
  for(const [name,commit] of pins)if(name.startsWith('actions/')&&name!=='actions/cache')assert.ok(others.includes(`${name}@${commit}`),`${name} is pinned to a commit no other workflow uses`);
  assert.equal(others.includes('actions/cache@'),false,'a shared actions/cache must use the same pin in every workflow');
- assert.deepEqual([...pins.keys()].filter(name=>!name.startsWith('actions/')).sort(),['android-actions/setup-android','gradle/actions/setup-gradle','reactivecircus/android-emulator-runner']);
+ assert.deepEqual([...pins.keys()].filter(name=>!name.startsWith('actions/')).sort(),['android-actions/setup-android','gradle/actions/setup-gradle','oven-sh/setup-bun','reactivecircus/android-emulator-runner']);
 });
 
 test('every action in every workflow is pinned to an exact commit, one commit per action',()=>{
@@ -174,17 +174,17 @@ test('a change to the emulator evidence workflow selects no automatic lane of it
 
 test('the build job refuses the speech suite until hosted Paradee staging exists and hands over hash-anchored APKs',()=>{
  const build=job.build;
- const order=['npm run android:build -- --allow-unpackaged-runtime','npm run android:build -- --test-mocks','actions/upload-artifact@'].map(text=>build.indexOf(text));
+ const order=['bun run android:build -- --allow-unpackaged-runtime','bun run android:build -- --test-mocks','actions/upload-artifact@'].map(text=>build.indexOf(text));
  assert.ok(order.every(index=>index>0),'every build step is present');assert.deepEqual([...order].sort((a,b)=>a-b),order,'in this order');
  // The fused-speech suite needs staged Paradee outputs and a same-engine embedding host; the hosted job cannot
  // produce that pair yet, so it refuses instead of building an APK that only proves speech is unavailable.
  assert.match(build,/- name: Refuse the fused-speech suite until hosted voice staging exists\n        if: inputs\.suite == 'fused-speech' \|\| inputs\.suite == 'all'\n        run: \|\n          echo "::error::[^\n]*"\n          exit 1\n/);
- assertBefore(build,'Refuse the fused-speech suite','npm run android:build','before any build');
+ assertBefore(build,'Refuse the fused-speech suite','bun run android:build','before any build');
  // No other speech runtime is built, acquired or recorded, and nothing here admits anything by a person's review.
  assert.doesNotMatch(workflow,/scripts\/local-speech|requalify-runtime|browser-speech|--reviewer|android-voice-lexicon|kokoro/i);
  // The instrumentation APKs are built (no --skip-instrumentation) and the flag-off pair stays flag-off.
  assert.doesNotMatch(build,/--skip-instrumentation/);
- assert.match(build,/ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n        run: npm run android:build -- --allow-unpackaged-runtime\n/);
+ assert.match(build,/ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n        run: bun run android:build -- --allow-unpackaged-runtime\n/);
  assert.match(build,/if: inputs\.suite == 'browser-reading' \|\| inputs\.suite == 'all'\n        run: \|\n          before=/,'the test-mocks pair is built only for the suite that needs it');
  for(const file of ['artifacts/apk-manifest.json','artifacts/standalone-debug.apk','artifacts/launcher-debug.apk','artifacts/instrumentation/*.apk','artifacts/test-mocks/apk-manifest.json'])
   assert.ok(build.includes(`\n            ${file}\n`),`${file} is handed to the emulator jobs`);
@@ -193,9 +193,9 @@ test('the build job refuses the speech suite until hosted Paradee staging exists
  for(const output of ['manifest_sha256','test_mocks_manifest_sha256','artifact_id','source_sha'])assert.match(build,new RegExp(`\\n      ${output}: \\$\\{\\{ `),output);
  // The speech job checks the APK it was handed against that record before booting anything.
  const speech=job['fused-speech'];
- assert.ok(speech.indexOf('node scripts/ci/speech-candidate.ts check artifacts/standalone-debug.apk')>0);
+ assert.ok(speech.indexOf('bun scripts/ci/speech-candidate.ts check artifacts/standalone-debug.apk')>0);
  assertBefore(speech,'speech-candidate.ts check','android-emulator-runner@');
- assert.match(speech,/node scripts\/ci\/speech-candidate\.ts package test-results\/android-instrumentation\/ci-fused-speech test-results\/fused-speech-x86_64/);
+ assert.match(speech,/bun scripts\/ci\/speech-candidate\.ts package test-results\/android-instrumentation\/ci-fused-speech test-results\/fused-speech-x86_64/);
 });
 
 test('the reading job provisions the pinned WebView on the fixture its provisioner admits',()=>{
@@ -211,8 +211,8 @@ test('the reading job provisions the pinned WebView on the fixture its provision
 test('suite plans: default classes; reading classes with the builds and gates they need; the canonical speech run',()=>{
  const instrumentation=suitePlan('instrumentation');
  assert.deepEqual(instrumentation.map(step=>[step.name,step.kind]),[['prepare-emulator','preparation'],['ci-default','evidence']]);
- // `npm run test:android:instrumentation` with no --classes: the runner's own default list, both distributions.
- assert.deepEqual(instrumentation[1].command,['npm','run','test:android:instrumentation','--','--owned-emulator','--avd','test','--serial','emulator-5554','--output','test-results/android-instrumentation/ci-default']);
+ // `bun run test:android:instrumentation` with no --classes: the runner's own default list, both distributions.
+ assert.deepEqual(instrumentation[1].command,['bun','run','test:android:instrumentation','--','--owned-emulator','--avd','test','--serial','emulator-5554','--output','test-results/android-instrumentation/ci-default']);
  const parsed=parseInstrumentationArgs(instrumentation[1].command.slice(4));
  assert.deepEqual(parsed.variants,['standalone','launcher']);assert.equal(parsed.classes.length,DEFAULT_CLASSES.length);assert.equal(parsed.testMocks,false);
 
@@ -292,7 +292,7 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
  // A skipped or missing class is not a pass, whatever the exit status says; neither is a run that left no record.
  for(const [status,exit] of [['skipped',0],['missing',0],['passed',1]]){
   fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});
-  const report=runSuite('instrumentation',{environment:hosted,execute:command=>{const step=suitePlan('instrumentation')[1];if(command[0]==='npm'){results(root,step,{Shell:'passed',TextScale:status});return exit;}return 0;}});
+  const report=runSuite('instrumentation',{environment:hosted,execute:command=>{const step=suitePlan('instrumentation')[1];if(command[0]==='bun'){results(root,step,{Shell:'passed',TextScale:status});return exit;}return 0;}});
   assert.equal(report.passed,false,`${status}/${exit}`);assert.equal(report.steps[1].status,'failed',`${status}/${exit}`);
  }
  fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});
@@ -301,7 +301,7 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
 
  fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});
  const records=[];
- const passing=runSuite('instrumentation',{environment:hosted,record:value=>records.push(JSON.parse(JSON.stringify(value))),execute:command=>{if(command[0]==='npm')results(root,suitePlan('instrumentation')[1],Object.fromEntries(DEFAULT_CLASSES.map(name=>[name,'passed'])));return 0;}});
+ const passing=runSuite('instrumentation',{environment:hosted,record:value=>records.push(JSON.parse(JSON.stringify(value))),execute:command=>{if(command[0]==='bun')results(root,suitePlan('instrumentation')[1],Object.fromEntries(DEFAULT_CLASSES.map(name=>[name,'passed'])));return 0;}});
  assert.equal(passing.passed,true);assert.match(summarize(passing),/`instrumentation`: passed/);
  assert.equal(records.at(-1).passed,true);assert.equal(records[0].passed,false,'the record is written after every step and is not a pass until the end');
  // Outside a hosted runner emulator-5554 may be someone's emulator.
@@ -314,7 +314,7 @@ test('speech suite: networking is proven off before the speech classes, and only
  const log=[];
  const adb=online=>args=>{log.push(args.join(' '));if(args.includes('dumpsys'))return `Idle timers:\nActive default network: ${online.shift()??'none'}\n`;if(args.at(-1)==='airplane-mode')return 'enabled\n';return '';};
  const all=status=>Object.fromEntries(FUSED_SPEECH_CLASSES.map(name=>[name,status]));
- const passed=runSuite('fused-speech',{environment:hosted,network:{sleep:()=>{}},adb:adb(['100','none']),execute:command=>{if(command[0]==='npm')results(root,step,all('passed'));return 0;}});
+ const passed=runSuite('fused-speech',{environment:hosted,network:{sleep:()=>{}},adb:adb(['100','none']),execute:command=>{if(command[0]==='bun')results(root,step,all('passed'));return 0;}});
  assert.deepEqual(passed.steps.map(row=>row.status),['passed','passed','passed']);assert.equal(passed.passed,true);
  assert.deepEqual(passed.steps[1].observed,{airplaneMode:'enabled',activeDefaultNetwork:'none'});
  assert.deepEqual(log.slice(0,3),['shell cmd connectivity airplane-mode enable','shell svc wifi disable','shell svc data disable']);
@@ -323,7 +323,7 @@ test('speech suite: networking is proven off before the speech classes, and only
  // A failed or skipped speech class fails the suite, whatever the exit status says.
  for(const status of ['failed','skipped']){
   fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});
-  const report=runSuite('fused-speech',{environment:hosted,adb:adb([]),execute:command=>{if(command[0]==='npm')results(root,step,{...all('passed'),FusedSpeech:status});return 0;}});
+  const report=runSuite('fused-speech',{environment:hosted,adb:adb([]),execute:command=>{if(command[0]==='bun')results(root,step,{...all('passed'),FusedSpeech:status});return 0;}});
   assert.equal(report.passed,false,status);assert.equal(report.steps[2].status,'failed',status);
  }
  // A run that left no record is not a pass.
@@ -332,7 +332,7 @@ test('speech suite: networking is proven off before the speech classes, and only
  assert.equal(unrecorded.passed,false);assert.equal(unrecorded.steps[2].status,'failed');
  // A network that stays up stops the suite before any class is started.
  let ran=false;
- const online=runSuite('fused-speech',{environment:hosted,network:{attempts:3,sleep:()=>{}},adb:args=>args.includes('dumpsys')?'Active default network: 100\n':'',execute:command=>{if(command[0]==='npm')ran=true;return 0;}});
+ const online=runSuite('fused-speech',{environment:hosted,network:{attempts:3,sleep:()=>{}},adb:args=>args.includes('dumpsys')?'Active default network: 100\n':'',execute:command=>{if(command[0]==='bun')ran=true;return 0;}});
  assert.equal(ran,false);assert.deepEqual(online.steps.map(row=>row.status),['passed','failed','not-run']);
  assert.throws(()=>disableEmulatorNetwork(()=>'no such line',{attempts:2,sleep:()=>{}}),/still has a default network \(not reported\)/);
 });

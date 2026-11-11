@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {addNoteOrigin, findNoteOrigin, noteOriginFor, noteOriginTitle, noteOriginIndex, noteOriginKey, noteOriginLimit, noteOriginOf, recordNoteRevision, removeNoteOrigin, resolveNoteLink, resolveNoteOrigin, voiceNoteChanged, voiceNoteContentRevision} from '../apps/app/src/runtime/note-origin.ts';
 import {recordingRevision} from '../apps/app/src/prototype/summary-source.ts';
 import {mapsEventOriginFor, mapsEventOriginOf, mapsEventReturnOffered, mapsEventStillThere} from '../apps/app/src/runtime/maps-event-return.ts';

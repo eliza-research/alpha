@@ -1,10 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-// npm test starts each .mjs without a TypeScript loader; mirror owning runtime tests.
-if(!process.versions.bun&&!process.execArgv.some(value=>value==='tsx'||value==='--import=tsx')){
- const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:60000});
- if(child.error)throw child.error;process.exit(child.status??1);
-}
 const {executionFixture}=await import('./fixtures/workflow-execution-fixture.mjs');
 const settle=async predicate=>{for(let i=0;i<100;i++){if(predicate())return;await new Promise(resolve=>setImmediate(resolve));}throw Error('Bounded fixture did not settle');};
 test('finished manual text result has no device controls and Done closes without a new run',async()=>{const f=await executionFixture();try{const r=await f.openRun();assert.equal(r.phoneAvailable,false);assert.equal(r.phoneSyncAvailable,false);assert.equal(r.showRefresh,false);assert.equal(r.notice,'');assert.equal(r.out,f.run.output);assert.ok(r.log.some(x=>x.t===f.run.id));assert.equal(r.againLabel,'Done');r.again();assert.equal(f.render().runOpen,false);assert.equal(f.requests.filter(x=>x.body!==undefined).length,0);}finally{f.close();}});

@@ -54,7 +54,7 @@ export function prepareLocalAgentFixture(temp) {
   const childEnv = {...env, ALPHA_LOCAL_AGENT_SOURCE_DIR: runtime, ALPHA_RUNTIME_GIT_CACHE: sdk};
   function prepare(args = [], overrides = {}, preload) {
     return spawnSync(process.execPath, [
-      ...(preload ? ['--import', preload] : []),
+      ...(preload ? ['--preload', preload] : []),
       path.join(product, 'scripts/prepare-local-agent.ts'), '--source-only', ...args,
     ], {cwd: product, env: {...childEnv, ...overrides}, encoding: 'utf8', timeout: 60000});
   }

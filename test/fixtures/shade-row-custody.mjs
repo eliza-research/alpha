@@ -7,7 +7,7 @@ import {stripTypeScriptTypes} from '../support/strip-types.mjs';
 const adapter = new URL('../../apps/app/src/prototype/notifications-adapter.ts', import.meta.url);
 export const shadeRowCustodySources = [import.meta.url, adapter,
   new URL('../../apps/app/src/prototype/template.html', import.meta.url),
-  new URL('../support/strip-types.mjs', import.meta.url), new URL('../../package-lock.json', import.meta.url)].map(fileURLToPath);
+  new URL('../support/strip-types.mjs', import.meta.url), new URL('../../bun.lock', import.meta.url)].map(fileURLToPath);
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 export const notice = (id, revision = '1', source = 'own', canOpen = true, clearable = true) =>

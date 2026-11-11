@@ -17,13 +17,13 @@ invariants, temporal properties and deadlock setting. A qualified profile can
 be selected without changing the source model.
 
 ```sh
-npm run quint:prepare-history
-node specs/quint/legacy/core/check-configurations.mjs --phase=check
-node specs/quint/legacy/core/check-configurations.mjs --phase=symbolic --models=InteractionSession --steps=4
-node specs/quint/legacy/core/check-configurations.mjs --phase=temporal --profiles=ActionSettlement.late --tlc-max-heap-mb=1024
+bun run quint:prepare-history
+bun specs/quint/legacy/core/check-configurations.mjs --phase=check
+bun specs/quint/legacy/core/check-configurations.mjs --phase=symbolic --models=InteractionSession --steps=4
+bun specs/quint/legacy/core/check-configurations.mjs --phase=temporal --profiles=ActionSettlement.late --tlc-max-heap-mb=1024
 ```
 
-`npm run verify` prepares the historical Git objects automatically. The preparation
+`bun run verify` prepares the historical Git objects automatically. The preparation
 is idempotent and fetches only the exact inventory revision with `--depth=1`
 when missing, including in shallow CI submodule checkouts. It never checks out
 the historical source or changes the current product pin.
@@ -53,8 +53,8 @@ parser, graph and generated model hashes. It uses a small Node assertion harness
 for the three Vitest registration and equality functions used by those tests.
 
 ```sh
-node specs/quint/legacy/core/check-configurations.mjs --phase=temporal --profiles=InteractiveTask.reducer
-node specs/quint/legacy/core/check-interactive-task-refinement.mjs
+bun specs/quint/legacy/core/check-configurations.mjs --phase=temporal --profiles=InteractiveTask.reducer
+bun specs/quint/legacy/core/check-interactive-task-refinement.mjs
 ```
 
 At shared revision `99b49439ce9d0cb5607e9831b9f7f58d89525029`, the graph has
@@ -76,12 +76,12 @@ Reentrant executor hooks, arbitrary callback counts and effect-receipt binding
 remain outside this bounded trace campaign.
 
 ```sh
-node specs/quint/legacy/core/check-action-settlement-refinement.mjs
+bun specs/quint/legacy/core/check-action-settlement-refinement.mjs
 ```
 
 ### Provider execution source correspondence
 
-`node --test test/quint-provider-execution-refinement.test.mjs` executes the
+`bun test test/quint-provider-execution-refinement.test.mjs` executes the
 current `ProviderStateComposer` and actual runtime provider registration. The
 coalesced and one-off profiles pass seven schedules and 40 checkpoints. Source
 observations cover all 12 original state fields through the public composition
@@ -95,7 +95,7 @@ complete runtime shutdown composition remain distinct source obligations.
 
 ### Read memo source correspondence
 
-`node --test test/quint-single-flight-refinement.test.mjs` runs actual room and
+`bun test test/quint-single-flight-refinement.test.mjs` runs actual room and
 message reads, memo replacement and runtime room mutation wrappers. Both
 configured profiles pass nine schedules and 72 checkpoints. Observations cover
 all 11 original state fields and distinguish a database commit from the
@@ -122,7 +122,7 @@ restart, role admission, task-store failures and fire-and-forget approvals
 remain outside this source campaign.
 
 ```sh
-node --test test/quint-core-approval-service.test.mjs
+bun test test/quint-core-approval-service.test.mjs
 ```
 
 ## Interaction session source traces
@@ -142,7 +142,7 @@ effects, session creation negotiation, foreign bindings, OS power loss and
 arbitrary simultaneous database processes remain outside the campaign.
 
 ```sh
-node --test test/quint-core-interaction-session.test.mjs
+bun test test/quint-core-interaction-session.test.mjs
 ```
 
 ## Task scheduling source traces
@@ -160,12 +160,12 @@ Additional arrival schedules, arbitrary call counts and a nested invocation
 awaited from its own queue remain outside the campaign.
 
 ```sh
-node --test test/quint-core-task-scheduling.test.mjs
+bun test test/quint-core-task-scheduling.test.mjs
 ```
 
 ## Room handler queue source comparison
 
-Run `node specs/quint/legacy/core/check-room-handler-queue-refinement.mjs`
+Run `bun specs/quint/legacy/core/check-room-handler-queue-refinement.mjs`
 to replay six schedules and 112 checkpoints on the pinned shared
 `RoomHandlerQueue`. The traces exercise both original profiles. They read the
 actual FIFO, lease admission flag, room release and writer tail at the
@@ -193,5 +193,5 @@ the translated model's documented provenance counterexample. The trigger
 separately refuses a stale direct SQL writer that leaves the nonce unchanged.
 
 ```sh
-node --test test/quint-embedding-sql-refinement.test.mjs
+bun test test/quint-embedding-sql-refinement.test.mjs
 ```

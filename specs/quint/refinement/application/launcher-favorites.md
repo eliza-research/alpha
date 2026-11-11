@@ -22,5 +22,5 @@ storage durability, overlapping inventory reads, native package effects
 and pointer handling have separate scope.
 
 ```sh
-node --test test/quint-launcher-favorites.test.mjs
+bun test test/quint-launcher-favorites.test.mjs
 ```
