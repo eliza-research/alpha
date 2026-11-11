@@ -116,7 +116,8 @@ def inspect_target(file, plan, pin):
         require(not any(n.startswith("META/") and n.endswith((".py", ".pyc")) for n in names),
                 "Target-supplied signing hooks are not admitted")
         misc = key_values(member(archive, "META/misc_info.txt"))
-        require(not misc.get("tool_extensions") and misc.get("ab_update") == "true", "Unexpected OTA tool extension or target type")
+        # The pinned A/B generator does not load the legacy non-A/B tool_extensions path.
+        require(misc.get("ab_update") == "true", "Expected an A/B OTA target")
         partitions = [line.strip() for line in member(archive, "META/ab_partitions.txt").decode().splitlines()]
         require(partitions and all(re.fullmatch(r"[a-z][a-z0-9_]*", p) for p in partitions) and
                 not set(partitions) & {"userdata", "metadata", "persist", "frp", "misc", "avb_custom_key"},
