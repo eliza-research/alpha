@@ -110,6 +110,35 @@ function retainedCodes(release: ReleaseRecord | null) {
   });
 }
 
+async function checkLegacyFloor(
+  run: NonNullable<DeliveryPorts['run']>,
+  read: NonNullable<DeliveryPorts['read']>,
+  versionCode: number,
+) {
+  const release = stableRelease(run, LEGACY_APP_UPDATE_TAG);
+  const manifestUrl = appUpdateManifestUrl(LEGACY_APP_UPDATE_TAG);
+  const manifest = await read(manifestUrl, {maxBytes: 32768, missing: true});
+  const versions = retainedCodes(release);
+  if (manifest) {
+    if (!release || !manifest.bytes) throw Error('Legacy stable pointer lacks authoritative release bytes');
+    const offer = parseOffer(manifest.bytes);
+    if (offer.apkUrl !== new URL(`alpha-phone-${offer.versionCode}.apk`, manifestUrl).href)
+      throw Error('Legacy stable pointer names an APK outside its release');
+    versions.push(offer.versionCode);
+  } else if (release?.assets?.some(asset => asset.name === MANIFEST_NAME)) {
+    throw Error('Legacy stable manifest exists but is not publicly readable');
+  }
+  if (versions.some(code => !Number.isSafeInteger(code) || code >= versionCode))
+    throw Error('Candidate must exceed the retained legacy APK version floor');
+}
+
+function checkStableFloor(release: ReleaseRecord | null, versionCode: number) {
+  // A failed --clobber can leave no pointer. Retained immutable APKs still consume
+  // their versions, so absence of a pointer must never reset the version floor.
+  if (retainedCodes(release).some(code => !Number.isSafeInteger(code) || code > versionCode))
+    throw Error('Candidate is below the retained stable APK version floor');
+}
+
 /** All inputs have already passed prepare's release and actual-APK admission.
  * Injected ports let failure tests exercise the real publication ordering.
  */
@@ -125,21 +154,7 @@ export async function deliver({directory, manifestUrl, source}: DeliveryInput, {
   if (artifact.size !== offer.sizeBytes || artifact.sha256 !== offer.sha256) throw Error('Staged APK differs from its admitted manifest');
   const repository: {isPrivate?: boolean} = JSON.parse(run(['repo','view',repo,'--json','isPrivate']) ?? 'null');
   if (repository.isPrivate !== false) throw Error('Phones require an anonymously readable public update repository');
-  const legacyRelease = stableRelease(run, LEGACY_APP_UPDATE_TAG);
-  const legacyUrl = appUpdateManifestUrl(LEGACY_APP_UPDATE_TAG);
-  const legacy = await read(legacyUrl, {maxBytes: 32768, missing: true});
-  const legacyVersions = retainedCodes(legacyRelease);
-  if (legacy) {
-    if (!legacyRelease || !legacy.bytes) throw Error('Legacy stable pointer lacks authoritative release bytes');
-    const legacyOffer = parseOffer(legacy.bytes);
-    if (legacyOffer.apkUrl !== new URL(`alpha-phone-${legacyOffer.versionCode}.apk`, legacyUrl).href)
-      throw Error('Legacy stable pointer names an APK outside its release');
-    legacyVersions.push(legacyOffer.versionCode);
-  } else if (legacyRelease?.assets?.some(asset => asset.name === MANIFEST_NAME)) {
-    throw Error('Legacy stable manifest exists but is not publicly readable');
-  }
-  if (legacyVersions.some(code => !Number.isSafeInteger(code) || code >= offer.versionCode))
-    throw Error('Candidate must exceed the retained legacy APK version floor');
+  await checkLegacyFloor(run, read, offer.versionCode);
   const readManifest = () => read(manifestUrl, {maxBytes: 32768, missing: true});
   const previous = await readManifest();
   if (previous) {
@@ -150,9 +165,7 @@ export async function deliver({directory, manifestUrl, source}: DeliveryInput, {
     if (current.versionCode === offer.versionCode && sha(previous.bytes) !== sha(manifestBytes)) throw Error('A published versionCode is immutable; allocate a higher version');
   }
   const release = stableRelease(run, APP_UPDATE_TAG);
-  // A failed --clobber can leave no pointer. Retained immutable APKs still consume
-  // their versions, so absence of a pointer must never reset the version floor.
-  if (retainedCodes(release).some(code => !Number.isSafeInteger(code) || code > offer.versionCode)) throw Error('Candidate is below the retained stable APK version floor');
+  checkStableFloor(release, offer.versionCode);
   if (!previous && release?.assets?.some(asset => asset.name === MANIFEST_NAME)) throw Error('Stable manifest exists but is not publicly readable; resolve visibility before publishing');
   if (release === null) run(['release','create',APP_UPDATE_TAG,'--repo',repo,'--target',source,'--title','Alpha Phone app updates','--notes','Signed Alpha Compute application updates.','--latest=false']);
   // Never overwrite a versioned APK: even a failed delivery can be safely retried.
@@ -168,7 +181,15 @@ export async function deliver({directory, manifestUrl, source}: DeliveryInput, {
     catch (failed) {if (attempt === 3) throw failed; await wait(1000 * (attempt + 1));}
   }
   if (!verified) throw Error('APK readback was not verified');
+  // A separate writer may add an APK while anonymous readback streams ours.
+  await checkLegacyFloor(run, read, offer.versionCode);
+  const finalRelease = stableRelease(run, APP_UPDATE_TAG);
+  checkStableFloor(finalRelease, offer.versionCode);
+  if (!finalRelease?.assets?.some(asset => asset.name === apkName))
+    throw Error('Verified APK is missing from the final stable release inventory');
   const current = await readManifest();
+  if (!current && finalRelease.assets?.some(asset => asset.name === MANIFEST_NAME))
+    throw Error('Stable manifest exists but is not publicly readable; resolve visibility before publishing');
   if ((current ? current.sha256 : null) !== (previous ? previous.sha256 : null)) throw Error('Stable channel changed during publication; retry against its current state');
   if (!previous || previous.sha256 !== sha(manifestBytes)) run(['release','upload',APP_UPDATE_TAG,manifestFile,'--repo',repo,'--clobber']);
   let visible = false;

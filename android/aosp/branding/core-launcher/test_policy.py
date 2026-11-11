@@ -138,11 +138,13 @@ public class CoreProbe {
    for(boolean enabled:new boolean[]{false,true})for(boolean system:new boolean[]{false,true})
     for(boolean home:new boolean[]{false,true})check(AlphaCoreLauncherPolicy.protects(pkg,enabled,system,home)==(pkg.equals(AlphaCoreLauncherPolicy.PACKAGE)&&enabled&&system&&home));
   String a=AlphaQsDefaultsPolicy.ALPHA;
+  String oldTile="custom(ai.elizaresearch."+ "alphaphone/.AlphaQuickSettingsTile)";
+  String unrelatedTile="custom(owner.other.home/.AlphaQuickSettingsTile)";
   List<String> defaults=list(a+",wifi,bt,dnd,airplane,rotation,flashlight,battery,alarm,screenrecord");
   String legacy="wifi,bt,cell,cast,dnd,wallet,airplane,rotation,flashlight,battery,alarm,controls,screenrecord";
   check(AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),defaults,0));
   check(AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy),defaults,0));
-  check(AlphaQsDefaultsPolicy.shouldMigrate(list("custom(ai.alphacompute.alphaphone/.AlphaQuickSettingsTile),"+legacy),defaults,1));
+  check(AlphaQsDefaultsPolicy.shouldMigrate(list(oldTile+","+legacy),defaults,1));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(list("bt,wifi,flashlight"),defaults,0));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy+",inversion"),defaults,0));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(defaults,defaults,0));
@@ -150,19 +152,19 @@ public class CoreProbe {
   check(!AlphaQsDefaultsPolicy.shouldMigrate(Collections.emptyList(),defaults,0));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(list(legacy),defaults,3));
   check(!AlphaQsDefaultsPolicy.shouldMigrate(list(a+","+legacy),defaults,3));
-  String oldTile="custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile)";
   check(AlphaQsDefaultsPolicy.migrate(list(legacy),defaults,2).equals(list(legacy)));
   check(AlphaQsDefaultsPolicy.migrate(list(a+","+legacy),defaults,2).equals(list(a+","+legacy)));
   check(AlphaQsDefaultsPolicy.migrate(list(oldTile+","+legacy),defaults,2).equals(list(a+","+legacy)));
   check(AlphaQsDefaultsPolicy.migrate(list("bt,"+oldTile+",inversion"),defaults,2).equals(list("bt,"+a+",inversion")));
   check(AlphaQsDefaultsPolicy.migrate(list("bt,"+oldTile+","+a),defaults,2).equals(list("bt,"+a)));
   check(AlphaQsDefaultsPolicy.migrate(list("bt,"+oldTile),defaults,3).equals(list("bt,"+oldTile)));
+  check(AlphaQsDefaultsPolicy.migrate(list("bt,"+unrelatedTile),defaults,2).equals(list("bt,"+unrelatedTile)));
   System.out.println("PASS core and QS policy "+checks);
  }
 }''')
             subprocess.run([str(JDK/'bin/javac'), '-d', str(d), str(ROOT/'AlphaCoreLauncherPolicy.java'),
                 str(ROOT/'AlphaQsDefaultsPolicy.java'), str(probe)], check=True, capture_output=True)
-            self.assertIn('PASS core and QS policy 32', subprocess.check_output(
+            self.assertIn('PASS core and QS policy 33', subprocess.check_output(
                 [str(JDK/'bin/java'), '-cp', str(d), 'CoreProbe'], text=True))
 
     def test_storage_default_refuses_non_owner_sideloaded_and_existing_modes(self):

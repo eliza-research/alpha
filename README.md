@@ -74,7 +74,7 @@ another with an admitted version and signer. The launcher declares HOME.
 Phone, Contacts and SMS/MMS require an admitted AOSP image capability.
 
 Alpha Compute builds use the same ID for the installed package and native
-namespace. The retained Pixel v44 uses `ai.elizaresearch.alphaphone`. Android
+namespace. The retained Pixel v44 uses the former package ID. Android
 installs the new package separately, with its own private data, Keystore,
 permissions and roles. Establish a fresh baseline on each distribution form,
 then verify updates and data retention between builds with the new package ID.
