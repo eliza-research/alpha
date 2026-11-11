@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
-import {mountedCalendarFixtureSources, startMountedCalendar} from '../../../../test/fixtures/calendar-mounted-editor.mjs';
+import {mountedCalendarFixtureSources, reviewCalendarAction, startMountedCalendar} from '../../../../test/fixtures/calendar-mounted-editor.mjs';
 import {checkTraces} from '../check-traces.mjs';
 import {boundInputs, call, captureSources, checkpoint, trace} from './support.mjs';
 
@@ -114,12 +114,12 @@ export async function checkCanonicalCalendarEditorClose(extraSources = []) {
         await mark('Resume the exact retained form', call('resume'));
       };
       const decide = async accept => {
-        const expected = 'Discard this draft? Saved events won’t change.';
-        const prompt = f.page.waitForEvent('dialog').then(async dialog => {
-          assert.equal(dialog.message(), expected);
-          if (accept) await dialog.accept(); else await dialog.dismiss();
-        });
-        await Promise.all([discard.click(), prompt]);
+        await reviewCalendarAction(f.page, async () => {
+          await discard.click();
+          const review = f.page.getByRole('dialog', {name: 'Discard draft?', exact: true});
+          await review.getByText('Saved events won’t change.', {exact: true}).waitFor();
+          await review.getByRole('button', {name: 'Discard draft', exact: true}).waitFor();
+        }, accept);
       };
       const holdDiscard = async (error) => {
         const gate = await f.invoke('hold', 'draft-clear', error);

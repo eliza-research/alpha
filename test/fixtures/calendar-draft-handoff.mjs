@@ -1,4 +1,4 @@
-import {startMountedCalendar} from './calendar-mounted-editor.mjs';
+import {reviewCalendarAction,startMountedCalendar} from './calendar-mounted-editor.mjs';
 
 export {startMountedCalendar};
 export const earlierTitle = 'Earlier Calendar draft';
@@ -25,8 +25,7 @@ export async function retainCalendarDraft(f) {
   return old.retained;
 }
 export async function discardCalendarDraft(f) {
-  const dialog = f.page.waitForEvent('dialog').then(async dialog => dialog.accept());
-  await Promise.all([f.button('Discard event draft').click(), dialog]);
+  await reviewCalendarAction(f.page, () => f.button('Discard event draft').click());
   await f.button('Resume event draft').waitFor({state: 'detached'});
 }
 export async function openNote(f) {

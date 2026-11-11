@@ -1,7 +1,7 @@
 // Alpha's agent routes against the pinned agent's owner-only API gate (packages/agent/src/api/server.ts,
 // isOwnerOnlyApiRequest). The gate answers 403 "Owner role required" to a request whose session is not the owner.
 // Alpha's native enrollment pairs with the operator code, so its session keeps OWNER authority; this test also
-// checks that no route Alpha issues falls under that gate. Upstream has separate owner checks outside it: the
+// checks the one Calendar resolution POST served by that owner-paired session. Upstream has separate owner checks outside it: the
 // trigger and automation routes resolve the presented credential without loopback promotion and need OWNER, and
 // Alpha's automations surface uses them, so it depends on the owner-paired session. The last tests pin that set.
 // Source-level evidence only: no APK, emulator or device result.
@@ -9,6 +9,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {OWNER_ROUTE_TABLE} from '../apps/app/src/product/owner-route-table.ts';
+import {ownerRouteAllowed} from '../apps/app/src/runtime/owner-route-policy.ts';
+import {calendarApprovalResolvePath} from '../apps/app/src/runtime/calendar-approval.ts';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 
@@ -18,7 +20,7 @@ const LOCAL_AGENT = 'android/app/src/main/java/ai/alphacompute/alphaphone/AlphaL
 // SHA-256 of isOwnerOnlyApiRequest as reviewed at elizaOS/eliza 86ab55fd81 (#37702, #37733, #37786, #37840,
 // #37861, #38121, #38126 /api/logs and /api/security/audit, and the other owner-only gates since 1f2a922f86). A pin that changes the gate fails here until its
 // new routes are checked against Alpha's route surface below and this hash is updated.
-// The delta from b1817660 is the write-only approval-resolution gate; Alpha reads this queue with GET.
+// Alpha reads the approval queue with GET and resolves a Calendar request through the owner-paired session.
 const REVIEWED_GATE_SHA256 = 'f0137b23e44c4efd4639679f8ed4f7816a1561e690303e935c13a6abe18b409d';
 
 function gateSource() {
@@ -82,10 +84,20 @@ function alphaAgentPathLiterals() {
   return found;
 }
 
-/** Review the sole read-only literal newly covered by an upstream write gate.
+/** Account for the approval read and the two spellings of its owner-paired resolution path.
  * Keep every declaration and use accounted for; a new caller is not exempted.
  */
 function literalMethods(literal, files) {
+  // The two spellings of the reviewed owner-paired resolution POST (REVIEWED_OWNER_PAIRED_ROUTES):
+  // the route table entry and the path builder's template prefix. Each only in its reviewed file.
+  const resolution = {
+    '/api/approvals/{id}/resolve': ['apps/app/src/product/owner-route-table.ts'],
+    '/api/approvals/': ['apps/app/src/runtime/calendar-approval.ts'],
+  }[literal];
+  if (resolution) {
+    assert.deepEqual([...files].sort(), resolution, 'A new approval resolution spelling needs its own owner review: '+literal);
+    return [];
+  }
   if (literal !== '/api/approvals') return ['POST'];
   assert.deepEqual([...files].sort(), [
     'apps/app/src/product/owner-route-table.ts',
@@ -98,23 +110,56 @@ function literalMethods(literal, files) {
     expected, 'A new approval path occurrence needs its own method review: '+file);
   assert.deepEqual(OWNER_ROUTE_TABLE.groups.approvals, {
     prefixes: ['/api/approvals'],
-    routes: [{methods: ['GET'], paths: ['/api/approvals?state=all&limit=500']}],
-  }, 'The renderer/native admission table must permit only this exact GET');
+    id: '^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$',
+    routes: [
+      {methods: ['GET'], paths: ['/api/approvals?state=all&limit=500']},
+      {methods: ['POST'], paths: ['/api/approvals/{id}/resolve'], query: []},
+    ],
+  }, 'The renderer/native admission table must permit only this exact GET and the reviewed resolution POST');
   const constant = 'CALENDAR_APPROVAL_READ_PATH';
   const uses = walk('apps/app/src', /\.(?:ts|tsx|js|mjs)$/).flatMap(file =>
     [...fs.readFileSync(file, 'utf8').matchAll(new RegExp('\\b'+constant+'\\b', 'g'))].map(() => file));
   assert.deepEqual(uses.sort(), [
+    'apps/app/src/runtime/calendar-approval-client.ts',
+    'apps/app/src/runtime/calendar-approval-client.ts',
     'apps/app/src/runtime/calendar-approval.ts',
-    'apps/app/src/runtime/connection-ui.tsx',
-    'apps/app/src/runtime/connection-ui.tsx',
   ]);
   assert.match(fs.readFileSync('apps/app/src/runtime/calendar-approval.ts', 'utf8'),
     /export const CALENDAR_APPROVAL_READ_PATH='\/api\/approvals\?state=all&limit=500';/);
-  assert.match(fs.readFileSync('apps/app/src/runtime/connection-ui.tsx', 'utf8'),
-    /selected\.remote\.request\(CALENDAR_APPROVAL_READ_PATH,undefined,signal\)/);
+  // The read moved into the approval client: still a request with no body, which is a GET.
+  assert.match(fs.readFileSync('apps/app/src/runtime/calendar-approval-client.ts', 'utf8'),
+    /connection\.request\(CALENDAR_APPROVAL_READ_PATH,undefined,signal\)/);
   assert.match(fs.readFileSync('apps/app/src/runtime/local-agent.ts', 'utf8'),
     /method:LocalAgentMethod = body===undefined\?'GET':'POST'/);
   return ['GET'];
+}
+
+/**
+ * The existing Calendar resolution route requires the owner-paired native session.
+ * Pin its exact path and method while retaining the upstream owner-only gate.
+ * Every additional owner-only route needs its own compatibility check.
+ */
+const APPROVAL_ID = '11111111-2222-4333-8444-555555555555';
+const APPROVAL_RESOLUTION_PATH = '/api/approvals/'+APPROVAL_ID+'/resolve';
+const REVIEWED_OWNER_PAIRED_ROUTES = new Set(['POST '+APPROVAL_RESOLUTION_PATH]);
+/** The resolution has one path builder and one caller, sends an explicit POST and only approve or reject. */
+function reviewedApprovalResolution() {
+  const builder = 'calendarApprovalResolvePath';
+  const uses = walk('apps/app/src', /\.(?:ts|tsx|js|mjs)$/).flatMap(file =>
+    [...fs.readFileSync(file, 'utf8').matchAll(new RegExp('\\b'+builder+'\\b', 'g'))].map(() => file));
+  assert.deepEqual(uses.sort(), [
+    'apps/app/src/runtime/calendar-approval-client.ts',
+    'apps/app/src/runtime/calendar-approval-client.ts',
+    'apps/app/src/runtime/calendar-approval.ts',
+  ], 'A new caller of the approval resolution path needs its own owner review');
+  assert.match(fs.readFileSync('apps/app/src/runtime/calendar-approval.ts', 'utf8'),
+    /export function calendarApprovalResolvePath\(id:string\)\{if\(!calendarApprovalId\(id\)\)throw Error\('Invalid Calendar request\.'\);return `\/api\/approvals\/\$\{id\}\/resolve`;\}/);
+  const client = fs.readFileSync('apps/app/src/runtime/calendar-approval-client.ts', 'utf8');
+  assert.match(client, /!\['approve','reject'\]\.includes\(decision\)\)throw Error/);
+  assert.match(client, /read\.connection\.request\(calendarApprovalResolvePath\(read\.id\),\{decision,revision:read\.revision\},signal,\{\},'POST'\)/);
+  const connection = fs.readFileSync('apps/app/src/runtime/connection-ui.tsx', 'utf8');
+  assert.match(connection, /if\(selected\?\.kind!=='resident'\|\|!session/);
+  assert.match(connection, /return \{ownerId:session\.ownerId,current,request:selected\.remote\.request\.bind\(selected\.remote\)\};/);
 }
 
 function ownerRouteTable() {
@@ -122,7 +167,7 @@ function ownerRouteTable() {
   for (const group of Object.values(OWNER_ROUTE_TABLE.groups))
     for (const route of group.routes)
       for (const method of route.methods)
-        for (const raw of route.paths) routes.push([method, raw.split('?')[0].replaceAll('{id}', 'id-1')]);
+        for (const raw of route.paths) routes.push([method, raw.split('?')[0].replaceAll('{id}', APPROVAL_ID)]);
   return routes;
 }
 
@@ -154,11 +199,17 @@ test('the gate model reads the clauses Alpha was reviewed against', () => {
   ]) assert.ok(!ownerOnly(model, method, pathname), `${method} ${pathname} should stay open to the session gate`);
 });
 
-test('no route Alpha issues to its agent is behind the owner-only gate', () => {
+test('the only owner-only agent route Alpha issues is the owner-paired Calendar resolution', () => {
   const model = gateModel(gateSource());
   const refused = [];
+  const ownerPaired = [];
   for (const [method, pathname] of ownerRouteTable())
-    if (ownerOnly(model, method, pathname)) refused.push(`${method} ${pathname} (apps/app/src/product/owner-route-table.ts)`);
+    if (ownerOnly(model, method, pathname))
+      (REVIEWED_OWNER_PAIRED_ROUTES.has(`${method} ${pathname}`) ? ownerPaired : refused)
+        .push(`${method} ${pathname} (apps/app/src/product/owner-route-table.ts)`);
+  // Exactly the reviewed owner-paired write, and only while its single caller stays as reviewed.
+  assert.deepEqual(ownerPaired, ['POST '+APPROVAL_RESOLUTION_PATH+' (apps/app/src/product/owner-route-table.ts)']);
+  reviewedApprovalResolution();
   const literals = alphaAgentPathLiterals();
   assert.ok(literals.size > 20, 'Alpha agent path literals were not found');
   // Unclassified literals are conservatively checked as writes. A reviewed read
@@ -167,6 +218,19 @@ test('no route Alpha issues to its agent is behind the owner-only gate', () => {
     for (const method of literalMethods(literal, files))
       if (ownerOnly(model, method, literal.replace(/[{}]/g, ''))) refused.push(`${method} ${literal} (${[...files].join(', ')})`);
   assert.deepEqual(refused, []);
+});
+
+test('Calendar resolution admits an exact UUID POST while the upstream owner gate remains required', () => {
+  const model = gateModel(gateSource());
+  assert.equal(calendarApprovalResolvePath(APPROVAL_ID), APPROVAL_RESOLUTION_PATH);
+  assert.ok(ownerRouteAllowed('approvals', APPROVAL_RESOLUTION_PATH, 'POST'));
+  assert.ok(ownerOnly(model, 'POST', APPROVAL_RESOLUTION_PATH));
+  for (const method of ['GET', 'HEAD', 'PUT', 'PATCH', 'DELETE'])
+    assert.equal(ownerRouteAllowed('approvals', APPROVAL_RESOLUTION_PATH, method), false, method);
+  for (const suffix of ['?decision=approve', '/', '/execute'])
+    assert.equal(ownerRouteAllowed('approvals', APPROVAL_RESOLUTION_PATH+suffix, 'POST'), false, suffix);
+  for (const id of ['id-1', APPROVAL_ID+'/other', APPROVAL_ID+'?decision=approve', '%2F'])
+    assert.throws(() => calendarApprovalResolvePath(id), /Invalid Calendar request/);
 });
 
 test('native enrollment pairs as the owner, never through a guest invitation', () => {

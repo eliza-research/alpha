@@ -5,13 +5,14 @@ import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from '@playwright/test';
 import {createServer} from 'vite';
+export {reviewCalendarAction} from '../browser/helpers/calendar-review.ts';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const main = resolve(root, 'apps/app/src/main.tsx');
 const adapter = resolve(root, 'apps/app/src/prototype/agent-calendar-adapter.ts');
 const cameraAdapter = resolve(root, 'apps/app/src/prototype/camera-adapter.ts');
 export const mountedCalendarFixtureSources = [fileURLToPath(import.meta.url), main, adapter, resolve(root, 'vite.config.ts'),
-  resolve(root, 'package-lock.json')];
+  resolve(root, 'package-lock.json'), resolve(root, 'test/browser/helpers/calendar-review.ts')];
 
 async function installCalendar({legacyTitle, eventTitles, notes}) {
   const {connectionController} = await import('/src/runtime/connection-ui.tsx');
