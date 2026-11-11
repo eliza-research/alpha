@@ -143,6 +143,13 @@ release owner applies the reviewed workflow reference allowlist in
 to the existing Workload Identity Federation provider before protected signing
 or publication uses private artifact storage.
 
+On both sideloaded and image-preinstalled phones, check the update controls in
+**Settings → General** before distributing the unit. If **Allow automatic
+updates** appears beside **Check for updates**, use it to open Android's
+permission page and let the owner choose **Allow from this source** for Alpha.
+On return, Alpha rereads the permission. This setup works before an update is
+offered.
+
 An automatic attempt that loses idle HOME after verifying its APK can retain
 that one file for a later attempt in the same process. Reuse checks the complete
 bytes and current package, version, variant and signer again. A process restart

@@ -118,6 +118,7 @@ const device = registerPlugin<{
   diagnosticsFacts(): Promise<Bag>;
   shareDiagnostics(input: { text: string }): Promise<{ status: string }>;
   checkForUpdate(): Promise<{manifest?: string; manifestSha256?: string}>;
+  openUpdatePermissionSettings(): Promise<{status: 'opened' | 'unsupported'}>;
   updateState(): Promise<{pending?: boolean}>;
   installUpdate(input: Pick<AppUpdate, 'apkUrl' | 'sha256' | 'sizeBytes' | 'versionCode'> &
     ({automatic: true; manifestSha256: string} | {automatic?: never; manifestSha256?: never})): Promise<{status?: string; manifest?: string}>;
@@ -962,9 +963,17 @@ export function installSettingsAdapter(Component: any, views: Bag) {
           page.groups.push(group([role('Home app',home),role('Assistant app',roles?.assistant),
             ...(canRequestHome?[{kNav:true,label:'Set as Home',lbl:'Make Alpha your Home app',busy:roleBusy,hasSpin:roleBusy,chev:!roleBusy,noAB:true,go:()=>void requestHome(api)}]:[]),
             nav('Default apps','default-apps','Default apps in Android')]));
+          const updatePermission = facts.appAutomaticUpdates;
           // Install update only for the version the last manifest offers this install, and an explicit check whose answer stays below it.
           const update=parseUpdateManifest(savedUpdate().manifest,{versionCode:facts.appVersionCode,launcher,signerSha256:facts.appSigner});
           page.groups.push(group([
+            ...(updatePermission === 'permission-required' ? [{
+              ...action('Allow automatic updates', () => void device.openUpdatePermissionSettings()
+                .then(result => { if (result.status !== 'opened') api.toast('Couldn’t open Android settings'); },
+                  () => api.toast('Couldn’t open Android settings')), 'update-permission'),
+              lucide: 'shield',
+            }] : updatePermission === 'supported' ? [info('Automatic updates', 'Allowed')]
+              : updatePermission === 'starting' ? [info('Automatic updates', 'Starting')] : []),
             ...(update?[{...action('Update',()=>void updateAction('install',()=>device.installUpdate({apkUrl:update.apkUrl,sha256:update.sha256,sizeBytes:update.sizeBytes,versionCode:update.versionCode}).catch(()=>{/* Quiet: the row stays and the next tap retries. */}))),lbl:updateBusy==='install'?'Downloading update':'Install update',lucide:'download',val:update.versionName?versionLabel(update.versionName,update.versionCode):String(update.versionCode),hasVal:true,busy:!!updateBusy,hasSpin:updateBusy==='install',chev:false,id:'update-install'}]:[]),
             {...action('Check',()=>void updateAction('check',()=>checkForUpdate(true)),'update-check'),lbl:updateBusy==='check'?'Checking for updates':'Check for updates',lucide:'rotate-cw',busy:!!updateBusy,hasSpin:updateBusy==='check',chev:false},
             ...(updateResult?[{...info('Update check',updateResult),role:'status',live:'polite'}]:[])]));
@@ -1246,7 +1255,9 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       }).filter(section => section.rows.length);
       // General: network hand-offs, the device, updates, then the destructive reset alone and last.
       const take = (names: string[]) => names.flatMap(name => { const row = rows.get(name); rows.delete(name); return row ? [row] : []; });
-      const network = take(['Wi-Fi', 'Bluetooth', 'Mobile data']), updates = take(['Update', 'Check', 'Update check']), reset = take(['Erase all data']);
+      const network = take(['Wi-Fi', 'Bluetooth', 'Mobile data']);
+      const updates = take(['Allow automatic updates', 'Automatic updates', 'Update', 'Check', 'Update check']);
+      const reset = take(['Erase all data']);
       settingsTop.groups.splice(2, 0, ...[['Network', network], ['Device', [...rows.values()]], ['Updates', updates], ['Reset', reset]]
         .filter(([, list]) => (list as Bag[]).length).map(([cap, list]) => ({...group(list as Bag[]), cap, hasCap:true})));
       for (const page of out.stack) {
