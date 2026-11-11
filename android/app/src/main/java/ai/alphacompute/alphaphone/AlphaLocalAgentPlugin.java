@@ -1188,7 +1188,30 @@ private static final class ResidentAttachDiagnostic {
   String safeMethod=java.util.Arrays.asList("GET","POST","PATCH","DELETE").contains(method)?method:"OTHER";
   android.util.Log.w("AlphaAgentRequest","category="+category+" method="+safeMethod+" status="+status+" reason="+reason);
  }
+ private static final int LOCAL_REQUEST_TIMEOUT_LIMIT_MS=120_000;
+ private static final int RESIDENT_MINIMUM_TIMEOUT_MS=1_000;
+ private static final String REQUEST_DEADLINE_MESSAGE="Local agent request timed out before dispatch.";
+ private static final class RequestDeadlineExpired extends Exception {}
+
+ /** Omission preserves the legacy per-dispatch timeout. Explicit budgets include time on the worker queue. */
+ private static Long localRequestDeadline(JSONObject input,long entered) {
+  if(!input.has("timeoutMs"))return null;
+  Object value=input.opt("timeoutMs");
+  if(!(value instanceof Number))throw new IllegalArgumentException();
+  double timeout=((Number)value).doubleValue();
+  if(!Double.isFinite(timeout)||timeout!=Math.floor(timeout))throw new IllegalArgumentException();
+  return entered+(long)Math.max(0,Math.min(LOCAL_REQUEST_TIMEOUT_LIMIT_MS,timeout));
+ }
+ private static int remainingLocalRequestTimeout(Long deadline) throws RequestDeadlineExpired {
+  if(deadline==null)return LOCAL_REQUEST_TIMEOUT_LIMIT_MS;
+  long remaining=deadline-android.os.SystemClock.elapsedRealtime();
+  // The shared buffered transport raises ordinary requests to at least one second.
+  // Refuse a smaller remainder before admission. Its separate inference floor still applies.
+  if(remaining<RESIDENT_MINIMUM_TIMEOUT_MS)throw new RequestDeadlineExpired();
+  return (int)remaining;
+ }
  @PluginMethod public void request(PluginCall call) {
+  long entered=android.os.SystemClock.elapsedRealtime();
   String path=call.getString("path",""),method=call.getString("method","GET"),body=call.getString("body"),expectedOwner=call.getString("ownerId");
   if(path.endsWith("/navigate")&&!PreparedViewNavigation.allowed(path,method,body)){call.reject("Unsupported navigation preparation.");return;}
   OwnerRoutes routes;
@@ -1198,21 +1221,29 @@ private static final class ResidentAttachDiagnostic {
    logRequestFailure(group==null?"other":group,method,0,"gate");
    call.reject("Unsupported local agent request.");return;
   }
+  final Long deadline;
+  try{
+   deadline=localRequestDeadline(call.getData(),entered);
+   remainingLocalRequestTimeout(deadline);
+  }catch(IllegalArgumentException invalid){call.reject("Invalid local agent request timeout.");return;}
+  catch(RequestDeadlineExpired expired){call.reject(REQUEST_DEADLINE_MESSAGE);return;}
   JSONObject headers=call.getObject("headers");
   final long epoch;
   try{synchronized(lifecycleLock){epoch=admittedEpoch();pending.add(call);}}catch(Superseded stale){call.reject("Local agent is stopped or unavailable.","LOCAL_AGENT_EPOCH_CHANGED");return;}
   PluginWorkers.submit(workers,()->{try{
    requireOwned(call,epoch);
+   remainingLocalRequestTimeout(deadline);
    String token=enroll(epoch);
    synchronized(lifecycleLock){requireCurrent(epoch);if(expectedOwner!=null&&!expectedOwner.equals(ownerIdentity)){logRequestFailure(group==null?"other":group,method,409,"owner-mismatch");resolveCurrent(call,epoch,new JSObject().put("status",409).put("body","{\"error\":\"Local owner changed; reconnect before continuing\"}"));return;}}
    requireOwned(call,epoch);
-   JSONObject result=raw(path,method,body,token,headers,120000);
+   JSONObject result=raw(path,method,body,token,headers,remainingLocalRequestTimeout(deadline));
    if(result.getInt("status")>=400)logRequestFailure(group==null?"other":group,method,result.getInt("status"),"http");
    requireCurrent(epoch);
    if(result.getInt("status")==401)synchronized(lifecycleLock){requireCurrent(epoch);clearEnrollment();}
    if(path.equals("/api/auth/me")&&result.getInt("status")==200){JSONObject who=new JSONObject(result.getString("body"));who.getJSONObject("session").put("id","native-owned-session");result.put("body",who.toString());result.remove("bodyBase64");}
    resolveCurrent(call,epoch,new JSObject(result.toString()));
-  }catch(Superseded stale){rejectSuperseded(call);}
+  }catch(RequestDeadlineExpired expired){rejectPending(call,REQUEST_DEADLINE_MESSAGE);}
+  catch(Superseded stale){rejectSuperseded(call);}
   catch(Exception error){logRequestFailure(group==null?"other":group,method,0,"transport");rejectPending(call,"Local agent request failed. No automatic retry was made.");}},()->{rejectPending(call,"Local agent bridge is closed.");});
  }
  /** Cancellation acknowledges transport closure, never server-effect cancellation. */

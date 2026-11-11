@@ -40,6 +40,7 @@ test('a canonical pending record read survives until its handler registers witho
  const f=fixture((_input,_signal,count)=>count<3?pending():ok({fixtureReady:true}));
  assert.deepEqual(await f.run(f.client.request(path,undefined,new AbortController().signal)),{fixtureReady:true});
  assert.equal(f.calls.length,3);assert.equal(f.clock.now,2000);
+ assert.deepEqual(f.calls.map(call=>call.timeoutMs),[120000,119000,118000]);
  const identity=({timeoutMs,...rest})=>rest;
  assert.deepEqual(identity(f.calls[1]),identity(f.calls[0]));assert.deepEqual(identity(f.calls[2]),identity(f.calls[0]));assert.equal(f.calls[0].method,'GET');
  assert.equal(f.clock.timers.size,0);
