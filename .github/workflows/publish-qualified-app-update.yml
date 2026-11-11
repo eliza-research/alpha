@@ -108,6 +108,9 @@ jobs:
           python3 -B scripts/ci/qualified-app-update.py "$RUNNER_TEMP/qualification.json" \
             --workflow-commit "$GITHUB_SHA" --work "$RUNNER_TEMP/qualified-stage" \
             --product "$GITHUB_WORKSPACE/qualified-product"
+          # Publication uses the same reviewed signing policy as the protected release.
+          # It can postdate the unsigned producer when an installed app rotates keys.
+          cp android/release-signer.json qualified-product/android/release-signer.json
       - name: Install locked verifier dependencies without lifecycle scripts
         run: npm ci --ignore-scripts
       - name: Install locked product verifier dependencies without lifecycle scripts

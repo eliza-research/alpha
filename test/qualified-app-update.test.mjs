@@ -27,6 +27,9 @@ test('publication workflow preserves protected review, exact source and verifica
   assert.equal(steps[delivery]['working-directory'],'qualified-product');
   assert.match(steps[delivery].run,/scripts\/deliver-app-update\.mjs/);
   assert.match(steps[verification].run,/qualified-stage\/cloud-voice.json/);
+  const restore=steps.findIndex(step=>step.run?.includes('--product \"$GITHUB_WORKSPACE/qualified-product\"'));
+  assert(restore>=0&&restore<verification);
+  assert.match(steps[restore].run,/cp android\/release-signer\.json qualified-product\/android\/release-signer\.json/);
   const secretSteps=steps.filter(step=>JSON.stringify(step.env||{}).includes('secrets.'));
   assert.equal(secretSteps.length,0,'private delivery must not depend on a copied storage token');
   assert(!/APP_RELEASE_KEYSTORE|RELEASE_KEY_PASSPHRASE|RECIPIENT_PRIVATE|openssl cms|sign-release-apks/.test(source));
