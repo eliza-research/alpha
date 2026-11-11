@@ -279,6 +279,8 @@ test('a stale Trash row of a note that is then deleted permanently is dropped, s
  await finishUndoWindow(page);
  await expect(page.getByText('Stale text deleted forever',{exact:true})).toBeVisible();
  expect((await trashEntries(page)).map((e:any)=>e.note.title).sort()).toEqual(['Filler','Stale memo']);
+ // The full Undo offer is finished; subsequent passive feedback uses ordinary elapsed time.
+ await page.clock.resume();
 
  await page.getByRole('button',{name:'Open Stale memo',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
