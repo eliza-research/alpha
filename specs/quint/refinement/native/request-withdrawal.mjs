@@ -11,6 +11,7 @@ import {modelTraces, plain} from './itf-replay.mjs';
 import {directory, javaTraceCampaign, root} from './java.mjs';
 import {withdrawalIds, withdrawalPlatform, withdrawalSource, withdrawalWorkerSource} from './request-withdrawal-platform.mjs';
 import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 const model='NativeRequestWithdrawal', renderer='apps/app/src/runtime/local-agent.ts';
 const harness='RequestWithdrawalReplay.java';
@@ -43,7 +44,7 @@ function namedTraces(temporary){
  const source=readFileSync(join(root,`specs/quint/native/${model}.qnt`),'utf8');
  const names=[...source.matchAll(/\brun (\w+Test) =/g)].map(match=>match[1]);assert.equal(names.length,5);
  const pattern=join(temporary,'scenario-{test}-{seq}.itf.json');
- const result=spawnSync(process.execPath,[join(root,'node_modules/@informalsystems/quint/dist/src/cli.js'),'test',`specs/quint/native/${model}.qnt`,'--backend=typescript','--seed=20261112',`--out-itf=${pattern}`],{cwd:root,encoding:'utf8',timeout:120000});
+ const result=spawnSync(process.execPath,[join(root,'node_modules/@informalsystems/quint/dist/src/cli.js'),'test',`specs/quint/native/${model}.qnt`,'--backend=typescript','--seed=20261112',`--out-itf=${pattern}`],{cwd:root,encoding:'utf8',timeout:scaledTimeout(120000)});
  assert.equal(result.status,0,result.stdout+result.stderr);assert.match(result.stdout,/5 passing/);
  return names.map(name=>{
   const matches=readdirSync(temporary).filter(path=>path.startsWith(`scenario-${name}-`)&&path.endsWith('.itf.json'));assert.equal(matches.length,1);

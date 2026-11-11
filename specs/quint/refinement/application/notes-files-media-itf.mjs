@@ -9,6 +9,7 @@ import {dirname, join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
 import {captureReplayInputs, recordComparedObservation} from '../observed-replay.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 export const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 const quint = join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js');
@@ -32,7 +33,7 @@ export function modelTraces({path, main, traces = 24, maxSteps = 16, seed = 2026
   try {
     const result = spawnSync(process.execPath, [quint, 'run', path, `--main=${main}`, '--backend=typescript',
       `--seed=${seed}`, `--max-samples=${traces}`, `--n-traces=${traces}`, `--max-steps=${maxSteps}`, '--mbt',
-      `--out-itf=${join(directory, 'trace-{seq}.itf.json')}`], {cwd: repositoryRoot, encoding: 'utf8', timeout: 120000});
+      `--out-itf=${join(directory, 'trace-{seq}.itf.json')}`], {cwd: repositoryRoot, encoding: 'utf8', timeout: scaledTimeout(120000)});
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
     const files = readdirSync(directory).filter(name => name.endsWith('.itf.json')).sort();
     assert.ok(files.length > 0, 'the simulator wrote no trace');
@@ -56,7 +57,7 @@ export function witnessTraces({path, main, witnesses, seed = 20261107, maxSample
       const output = join(directory, `${witness}.itf.json`);
       const result = spawnSync(process.execPath, [quint, 'run', path, `--main=${main}`, '--backend=typescript', `--seed=${seed}`,
         `--max-samples=${maxSamples}`, `--max-steps=${maxSteps}`, `--invariant=not(${witness})`, '--mbt', `--out-itf=${output}`],
-      {cwd: repositoryRoot, encoding: 'utf8', timeout: 120000});
+      {cwd: repositoryRoot, encoding: 'utf8', timeout: scaledTimeout(120000)});
       assert.match(`${result.stdout}`, /\[violation\]/, `${witness} was not reached\n${result.stdout}\n${result.stderr}`);
       return shape(output);
     });

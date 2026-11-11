@@ -5,6 +5,7 @@ import {join, resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {captureInputs, checkTraces, qmap} from '../check-traces.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 const root = resolve(import.meta.dirname, '../../../..');
 const actors = ['reader', 'peer1', 'peer2'];
@@ -35,7 +36,7 @@ export async function checkClientFeaturePublication(extraSources = []) {
       '--test-name-pattern=^client feature publication retires once while a peer moves the winner$',
       'test/client-feature-preparation.test.mjs'], {cwd: root,
       env: childEnv,
-      encoding: 'utf8', timeout: 120000, maxBuffer: 4 * 1024 * 1024});
+      encoding: 'utf8', timeout: scaledTimeout(120000), maxBuffer: 4 * 1024 * 1024});
     assert.equal(child.error, undefined, child.error?.message);
     assert.equal(child.status, 0, child.stderr + child.stdout);
     concrete = JSON.parse(fs.readFileSync(output, 'utf8'));
