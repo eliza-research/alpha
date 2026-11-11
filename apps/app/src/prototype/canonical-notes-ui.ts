@@ -3,9 +3,11 @@ import {authoredNoteText} from '../../../../.eliza/client-features/plugins/plugi
 import {nextDefaultNoteTitle} from '../runtime/note-default-title';
 import {projectNoteForModel,reconstructNoteContent,type NoteJson,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
 import {noteScheduleDraft,type NoteScheduleKind} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-schedule-draft.ts';
+import {noteShareText} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-share-text.ts';
 import type {AppRecordPort} from '../runtime/app-record-route-policy';
 import {agentPendingText,agentAvailabilityNotice,connectionController} from '../runtime/connection-ui';
 import {DailyApps} from '../daily';
+import {copySelectedText} from '../runtime/text-share';
 import {CanonicalNotesController,type NotesPhase} from './canonical-notes-controller';
 import {CanonicalNotesEditor} from './canonical-notes-editor';
 import type {CanonicalNoteSaveIntent} from './note-recorder';
@@ -115,6 +117,22 @@ export class CanonicalNotesUi {
  }
  renderState(previous:Bag):Bag{return {...previous,...DEVICE_ONLY_STATE,list:this.list,open:this.open,storageStatus:this.status(),blankCreationId:this.blankCreationValue};}
  async refresh():Promise<void>{await this.controller.refresh();}
+ /** Copy the selected draft while preserving the editor and canonical collection. */
+ private async copyDraft(token:string,version:number,api:Bag):Promise<void>{
+  const current=()=>{
+   const draft=this.editor.draft;
+   return this.controller.current&&api.isActive()&&!document.hidden&&this.phase==='review'&&draft?.token===token&&draft.version===version;
+  };
+  if(!current())return;
+  const note=this.list.find(row=>row.id===this.open);
+  if(!note)return;
+  try{
+   await copySelectedText(noteShareText({...note,kind:note.kind}).text);
+   if(current())api.toast('Draft copied.');
+  }catch(error){
+   if(current()&&!(error instanceof DOMException&&error.name==='AbortError'))api.toast(error instanceof Error?error.message:'Draft could not be copied.');
+  }
+ }
  /** A connection change ends this binding; an unsaved edit is not carried over, so the owner is told. */
  retire():void{const draft=this.editor.draft;if(draft?.version)this.hooks.dropped?.(draft.title||'Untitled');this.editor.close();this.controller.retire();this.baseRows=[];this.rowsValue=[];this.openValue=null;this.trashValue=[];}
  /** Wait out an in-flight save and the follow-up it queued for edits typed meanwhile. */
@@ -265,6 +283,7 @@ export class CanonicalNotesUi {
   * folder, review and reload, and the Notes recorder saving one voice record with an owned opaque audio attachment. */
  decorate(view:Bag,api:Bag,state:Bag):Bag{
   const rows=this.controller.current?this.trashValue:[],ready=this.controller.revision!==null,busy=this.controller.pending,open=this.open,saved=!!open&&this.controller.hasViewNote(open);
+  const draft=this.editor.draft;
   const trashOpen=state.folder==='deleted'&&rows.length>0;
   if(state.folder==='deleted'&&!rows.length&&ready)queueMicrotask(()=>{if(api.get('notes').folder==='deleted')api.set({folder:null,trashAsk:null});});
   const ask=state.trashAsk as CanonicalTrashEntry|null,asked=ask&&trashOpen?this.trashEntry(ask,true):undefined;
@@ -278,6 +297,7 @@ export class CanonicalNotesUi {
   };
   const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:true,canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,
    canonicalReview:this.phase==='review',canonicalReviewLabel:this.editor.draft?.version?'Discard':'Reload Notes',canonicalReviewAction:()=>void this.discardDraftAndReload(),
+   copyDraftAvailable:this.phase==='review'&&this.dirty,copyDraft:()=>draft?this.copyDraft(draft.token,draft.version,api):Promise.resolve(),
    trashAvailable:false,hasDeleted:rows.length>0,trashOpen,trashCanErase:false,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
    trashRows:rows.map(row=>{const deleted=deletionDate(row);return {id:row.id,title:row.title,label:row.title,preview:deleted,previewDescription:deleted,left:'',disabled:busy,ask:()=>api.set({trashAsk:row})};}),
    trashAskOpen:!!asked,trashAskTitle:asked?.title||'',trashAskDescription:asked?deletionDate(asked):'',trashAskClose:()=>api.set({trashAsk:null}),trashAskRecover:()=>{if(asked)restore(asked);},trashAskDelete:()=>{},
@@ -286,7 +306,7 @@ export class CanonicalNotesUi {
   if(out.ed&&open){out.ed={...out.ed,dictate:()=>void this.dictate(open,api),
    toCal:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'reminder',api);}:undefined,
    toEvent:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'event',api);}:undefined,
-   saveStatus:this.phase==='review'?'Not saved':''};}
+   saveStatus:this.phase==='review'?'Save unconfirmed':''};}
   if(out.vo&&open){const note=this.controller.viewNote(open),audio=note?.format?.kind==='voice'?voiceAudio(note.format.data):undefined;
    const owned=!!audio&&out.vo.playbackAudioId===audio.audioId&&out.vo.hasPlayback===true;
    out.vo={...out.vo,...(owned?{}:{hasPlayback:false,play:()=>api.toast('No audio')}),
