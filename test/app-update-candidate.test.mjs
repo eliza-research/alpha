@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
 import YAML from 'yaml';
-import {candidateVersion, candidateReceipt, main} from '../scripts/app-update-candidate.ts';
+import {candidateVersion, candidateReceipt, candidateArchiveSize, main} from '../scripts/app-update-candidate.ts';
 import {candidateFixture as fixture, hash, json, legacyManifestUrl, read} from './fixtures/app-update-candidate.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -97,9 +97,80 @@ test('candidate receipt binds actual archive bytes and source freeze while keepi
   assert.equal(result.distributionQualified, false); assert.equal(result.signed, false);
   assert.equal(result.apks.launcher.sha256, hash(fs.readFileSync(path.join(archive.output, result.apks.launcher.file))));
   assert.equal(result.sourceFingerprint, read(path.join(archive.output, 'inputs-before.json')).digest);
+  assert.equal(result.nativeInputAdmissionSha256, hash(fs.readFileSync(path.join(archive.output, 'native-input-admission.json'))));
   const receipt = path.join(archive.output, 'app-update-candidate.json'), before = fs.readFileSync(receipt);
   await assert.rejects(main(['receipt', versionFile, archive.relative], f), /EEXIST/);
   assert.deepEqual(fs.readFileSync(receipt), before, 'A retry cannot overwrite prior evidence');
+});
+
+test('native input receipt refuses a different source, package, SDK, run attempt or frozen record', async t => {
+  const f = fixture(t), admission = await candidateVersion(f), archive = f.archive(admission);
+  const file = path.join(archive.output, 'native-input-admission.json'), original = read(file);
+  for (const changed of [{source: '0'.repeat(40)}, {sdkCommit: '0'.repeat(40)}, {packageName: 'other.app'},
+    {runId: '10'}, {attempt: '2'}, {manifestSha256: '0'.repeat(64)}, {voiceRecordSha256: '0'.repeat(64)}]) {
+    json(file, {...original, ...changed});
+    assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}), /native input receipt differs from the build freeze/);
+    const freeze = read(path.join(archive.output, 'inputs-before.json'));
+    freeze.files['test-results/resident-ci-native-inputs/admission.json'] = hash(fs.readFileSync(file));
+    freeze.digest = hash(JSON.stringify(freeze.files));
+    for (const name of ['inputs-before.json', 'inputs-after.json']) json(path.join(archive.output, name), freeze);
+    assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}), /Native input admission/);
+  }
+  fs.unlinkSync(file);
+  assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}), /native-input-admission.json/);
+});
+
+test('a frozen receipt still requires the reviewed artifact and qualification inventory', async t => {
+  const f = fixture(t), admission = await candidateVersion(f), archive = f.archive(admission);
+  const file = path.join(archive.output, 'native-input-admission.json'), original = read(file);
+  for (const change of [value => delete value.artifacts, value => delete value.embedding,
+    value => value.artifacts.voice.artifactId++, value => value.artifacts.embeddingComponent.sha256 = '0'.repeat(64),
+    value => value.artifacts.embeddingQualification.expandedBytes = -1, value => value.artifacts.voice.source = 'invalid',
+    value => value.embedding.qualificationTransferred = true]) {
+    const changed = structuredClone(original); change(changed); json(file, changed);
+    const freeze = read(path.join(archive.output, 'inputs-before.json'));
+    freeze.files['test-results/resident-ci-native-inputs/admission.json'] = hash(fs.readFileSync(file));
+    freeze.digest = hash(JSON.stringify(freeze.files));
+    for (const name of ['inputs-before.json', 'inputs-after.json']) json(path.join(archive.output, name), freeze);
+    assert.throws(() => candidateReceipt({...f, admission, archive: archive.relative}), /Native input/);
+  }
+});
+
+test('archive measurement binds the actual artifact metadata and expanded upload file sizes', async t => {
+  const f = fixture(t), versionFile = 'test-results/version.json';
+  const admission = await main(['version', versionFile], f), archive = f.archive(admission);
+  const candidate = await main(['receipt', versionFile, archive.relative], f);
+  const uploaded = {id: 4242, digest: 'sha256:' + 'a'.repeat(64), expired: false, size_in_bytes: 1500,
+    name: `app-native-candidate-${admission.runNumber}-${admission.sourceCommit}-${admission.runId}-${admission.runAttempt}`,
+    workflow_run: {id: Number(admission.runId), head_sha: admission.sourceCommit}};
+  const options = {...f, archive: archive.relative, env: {...f.env, ALPHA_CANDIDATE_ARTIFACT_ID: '4242',
+    ALPHA_CANDIDATE_ARTIFACT_SHA256: 'a'.repeat(64)}, api: args => {
+      assert.deepEqual(args, ['repos/eliza-research/alphaphone/actions/artifacts/4242']); return uploaded;
+    }};
+  const files = fs.readdirSync(archive.output);
+  const expandedBytes = files.reduce((sum, file) => sum + fs.statSync(path.join(archive.output, file)).size, 0);
+  fs.writeFileSync(path.join(archive.output, '.excluded-by-uploader'), 'hidden input');
+  const result = await main(['archive-size', 'test-results/archive-size.json', archive.relative], options);
+  assert.equal(result.compressedBytes, 1500);
+  assert.equal(result.expandedBytes, expandedBytes);
+  assert.equal(result.files, files.length);
+  assert.deepEqual(result.apks, candidate.apks);
+  for (const variant of ['launcher', 'standalone']) {
+    const bytes = fs.readFileSync(path.join(archive.output, variant + '-debug.apk'));
+    assert.equal(result.debugApks[variant].sha256, hash(bytes));
+    assert.equal(result.debugApks[variant].bytes, bytes.length);
+  }
+  assert.equal(result.nativeInputAdmissionSha256, candidate.nativeInputAdmissionSha256);
+  assert.throws(() => candidateArchiveSize({...options, api: () => ({...uploaded, digest: 'sha256:' + 'b'.repeat(64)})}),
+    /artifact identity or size differs/);
+  assert.throws(() => candidateArchiveSize({...options, api: () => ({...uploaded, name: uploaded.name.slice(0, -1) + '2'})}),
+    /artifact identity or size differs/);
+  const debug = path.join(archive.output, 'standalone-debug.apk'), priorDebug = fs.readFileSync(debug);
+  fs.appendFileSync(debug, 'changed after upload');
+  assert.throws(() => candidateArchiveSize(options), /Measured APK differs/);
+  fs.writeFileSync(debug, priorDebug);
+  fs.appendFileSync(path.join(archive.output, 'native-input-admission.json'), '\n');
+  assert.throws(() => candidateArchiveSize(options), /native input receipt changed/);
 });
 
 test('changed APKs, mocks, Cloud/private profiles, code/package drift, signed output and changed inputs cannot become native candidates', async t => {
