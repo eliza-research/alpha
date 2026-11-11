@@ -1,10 +1,13 @@
 import {type Page} from '@playwright/test';
 import {flagOffAndroid,residentHome,fenceNetwork} from './flag-off-android';
 // Synthetic native ports: routing and lifecycle evidence only.
-export async function setupNativeSpeech(page:Page){
+// offline: Android reports no active network (ElizaSystem.getNetworkStatus, AlphaSystemPlugin), the
+// fact the renderer uses on Android instead of WebView's navigator.onLine hint.
+export async function setupNativeSpeech(page:Page,options:{offline?:boolean}={}){
  const foreign=await fenceNetwork(page);await flagOffAndroid(page);
- await page.addInitScript(()=>{
+ await page.addInitScript((options:{offline?:boolean})=>{
   const w=window as any,c=w.Capacitor,prior=c.nativePromise;
+  if(options.offline)c.PluginHeaders.find((p:any)=>p.name==='ElizaSystem').methods.push({name:'getNetworkStatus',rtype:'promise'});
   // This fixture exercises the supported local route: Text keys selected, no Cartesia key,
   // and no saved Cloud account. The production renderer chooses its route normally.
   delete w.flagOff.slots['cloud:production'];w.flagOff.persist();
@@ -25,6 +28,7 @@ export async function setupNativeSpeech(page:Page){
   const callback=c.nativeCallback;c.nativeCallback=(plugin:string,method:string,input:any,fn:any)=>{if(plugin==='AlphaVoiceCloud'&&method==='addListener'){events.push({event:input.eventName,callback:fn});return String(events.length);}return callback(plugin,method,input,fn);};
   c.nativePromise=async(plugin:string,method:string,input:any)=>{
    if(plugin==='Agent'&&method==='providerStatus')return provider;
+   if(options.offline&&plugin==='ElizaSystem'&&method==='getNetworkStatus')return {connected:false};
    if(plugin!=='AlphaVoiceCloud')return prior(plugin,method,input);
    if(method==='checkPermissions')return {microphone:'granted'};
    if(method==='localSpeechStatus')return {ready:f.ready,execution:'device'};
@@ -42,5 +46,5 @@ export async function setupNativeSpeech(page:Page){
    if(method==='releaseLocalSpeech'||method==='removeListener')return {};
    f.forbidden.push(method);throw Error('No network speech allowed: '+method);
   };
- });await residentHome(page);return foreign;
+ },options);await residentHome(page);return foreign;
 }

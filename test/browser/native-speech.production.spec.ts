@@ -78,13 +78,13 @@ test('production chat exposes one voice mic and no duplicate dictation launcher'
 });
 
 // Offline: every request that would leave the device is aborted (fenceNetwork) and the renderer sees
-// navigator.onLine false. The preview server stays reachable only as the stand-in for the APK's
+// navigator.onLine false, and Android reports no active network (the fact the renderer acts on). The preview server stays reachable only as the stand-in for the APK's
 // bundled assets, which a phone loads without a network. Speech capture, transcription and
 // read-aloud still run on this device; only the agent's network inference is refused, honestly,
 // and no Cloud speech route is tried.
 test('offline and fenced, speech still captures, transcribes and reads aloud on this device',async({page})=>{
  await page.addInitScript(()=>{Object.defineProperty(Navigator.prototype,'onLine',{configurable:true,get:()=>false});});
- const foreign=await setup(page);await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
+ const foreign=await setup(page,{offline:true});await page.evaluate(()=>window.dispatchEvent(new Event('offline')));
  expect(await page.evaluate(()=>navigator.onLine)).toBe(false);
  await button(page,'Talk').click();await expect(voice(page)).toHaveAttribute('data-voice-state','listening');await expect(voice(page).getByRole('status',{name:'Voice conversation status',exact:true})).toHaveText('Listening');await utterance(page);
  await expect(voice(page)).toHaveAttribute('data-voice-state','error');await expect(voiceError(page)).toHaveCount(0);await expect.poll(()=>retainedVoiceTranscript(page)).toEqual({state:'error',transcript:'Local spoken request',failure:'Voice stopped'});

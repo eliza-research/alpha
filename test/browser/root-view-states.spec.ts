@@ -14,7 +14,8 @@ const EMPTY: Record<View, RegExp> = {
   Browser: /No open pages|New tab/,
   Camera: /^Can’t start camera$/,
   Photos: /^No photos$/,
-  Maps: /Add a location/,
+  // No location yet: the map with its credits, and no base notice (plugin-maps hides it until there is news).
+  Maps: /© OpenStreetMap/,
   // Agent Notes waiting for a connection (canonical-notes-ui.ts), as in production-surface.spec.ts.
   Notes: /Notes unavailable/,
   Files: /Internal storage|Storage Unavailable/,
@@ -75,6 +76,7 @@ for (const theme of ['light', 'dark'] as const) for (const view of VIEWS) {
     if (view !== 'Camera') await themeIsApplied(surface, theme);
     await expect(surface.getByText(EMPTY[view]).filter({visible:true}).first()).toBeVisible();
     if(view==='Settings')for(const name of ['Account','General','Privacy','Apps','About'])await expect(surface.getByRole('button',{name,exact:true})).toBeVisible();
+    if(view==='Maps'){await expect(surface.locator('[data-alpha-maps-status]')).toHaveCount(0);await expect(surface.getByRole('searchbox',{name:'Search places',exact:true})).toHaveValue('');await expect(surface.getByRole('button',{name:'Recenter',exact:true})).toBeVisible();await expect(surface.getByRole('button',{name:'Directions',exact:true})).toHaveCount(0);}
     if(view==='Files'){await expect(surface.getByText(/No recent files/)).toHaveCount(0);await expect(surface.getByRole('button',{name:/^Open /})).toHaveCount(0);}
     if (view === 'Camera') {
       const recovery = surface.getByRole('alert', { name: 'Can’t start camera', exact: true });

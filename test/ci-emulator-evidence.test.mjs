@@ -135,6 +135,20 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
    assert.deepEqual(signing.concurrency,{group:'release-signing','cancel-in-progress':false});
    continue;
   }
+  if(file==='release-os-ota-signing.yml'){
+   const signing=parseYaml(text);
+   assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['id-token'],
+     'OS OTA signing may request identity, never write repository contents');
+   assert.deepEqual(signing.permissions,{});
+   assert.deepEqual(Object.keys(signing.on),['workflow_dispatch']);
+   assert.deepEqual(Object.keys(signing.jobs),['sign']);
+   const sign=signing.jobs.sign;
+   assert.deepEqual(sign.permissions,{contents:'read','id-token':'write'});
+   assert.equal(sign.environment,'release');
+   assert.equal(sign.if,"github.repository == 'eliza-research/alphaphone' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha");
+   assert.deepEqual(signing.concurrency,{group:'preserving-os-ota-signing','cancel-in-progress':false});
+   continue;
+  }
   if(file!=='publish-qualified-app-update.yml'){assert.doesNotMatch(text,/^\s+[a-z-]+: write\s*$/m,`${file} grants a write permission`);continue;}
   const publication=parseYaml(text);
   assert.deepEqual([...text.matchAll(/^\s+([a-z-]+): write\s*$/gm)].map(match=>match[1]),['contents','id-token'],

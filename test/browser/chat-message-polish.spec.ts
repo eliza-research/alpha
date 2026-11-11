@@ -1,11 +1,13 @@
 import {test,expect,type Page,type Locator} from '@playwright/test';
 import {writeFile} from 'node:fs/promises';
+// The state is set without awaiting setState's callback (a callback that never runs lets Chromium
+// collect the evaluate promise); the rendered message count is the readiness signal instead.
 // The shell is captured on its next render; closing the (already closed) connection dialog renders
 // it now instead of waiting for an unrelated update, as the other shell-hook specs do.
 async function setup(page:Page,theme='light',count=1){
  await page.route('https://**/*',r=>r.abort());await page.addInitScript(()=>{localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'}));(window as any).messagePolish={copied:'',copyFailure:false};Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{const f=(window as any).messagePolish;if(f.copyFailure)throw Error('Denied');f.copied=text;}}});if(navigator.mediaDevices)navigator.mediaDevices.getUserMedia=async()=>{throw Error('No microphone');};});await page.goto('/?connections=advanced&theme='+theme);await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toBeVisible();
  await page.evaluate(async()=>{const {Component}=await import('/src/prototype/model.js'),{connectionController:c}=await import('/src/runtime/connection-ui.tsx');const render=Component.prototype.renderVals;Component.prototype.renderVals=function(){(window as any).messagePolish.shell=this;return render.call(this);};c.close();});await expect.poll(()=>page.evaluate(()=>!!(window as any).messagePolish.shell)).toBe(true);
- await page.evaluate(count=>new Promise<void>(resolve=>{const f=(window as any).messagePolish;f.shell.canReplyMessage=()=>true;f.shell.setState({chat:'full',msgs:Array.from({length:count},(_,i)=>({id:'visual-'+i,from:'agent',text:i===count-1?'  Exact copied text.\n\nUnicode: α 🙂.  ':'Scroll message '+i+'. A complete paragraph stays readable while scrolling through the transcript.'}))},resolve);}),count);await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toBeVisible();await page.evaluate(()=>document.fonts.ready);
+ await page.evaluate(count=>{const f=(window as any).messagePolish;f.shell.canReplyMessage=()=>true;f.shell.setState({chat:'full',msgs:Array.from({length:count},(_,i)=>({id:'visual-'+i,from:'agent',text:i===count-1?'  Exact copied text.\n\nUnicode: α 🙂.  ':'Scroll message '+i+'. A complete paragraph stays readable while scrolling through the transcript.'}))});},count);await expect(page.locator('[data-alpha-message-text]')).toHaveCount(count);await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toBeVisible();await page.evaluate(()=>document.fonts.ready);
 }
 // Opening the conversation in full runs the sheet's height transition (420ms); a scroll fade read
 // before it ends measures a transcript that is still growing.

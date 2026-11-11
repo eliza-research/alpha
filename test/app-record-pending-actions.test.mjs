@@ -57,6 +57,6 @@ test('Review event from an agent note goes through Calendar admission with its n
   views.notes.render({},shell.api('notes')).vo.toEvent();await new Promise(resolve=>setTimeout(resolve,0));
   assert.equal(reviewed.length,1);assert.deepEqual(reviewed[0].origin,origin);assert.equal(reviewed[0].notes,'Book the venue');assert.equal(reviewed[0].alert,null);
   assert.deepEqual(opened,[],'Calendar admission opens Calendar itself');
-  assert.deepEqual(toasts,admitted?[]:['Calendar busy']);
+  assert.deepEqual(toasts,admitted?['Check time']:['Calendar busy']);
  }
 });

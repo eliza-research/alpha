@@ -206,7 +206,7 @@ test('deferred apps are absent and root views show honest unconnected states', a
   for (const deferred of ['Phone', 'Messages', 'Contacts', 'Wallet']) await expect(page.getByRole('button', { name: deferred, exact: true })).toHaveCount(0);
   const states: Record<string, RegExp> = {
     Inbox: /Connect Eliza Cloud/, Workflows: /Use on phone/, Notes: /Notes unavailable/,
-    Photos: /No photos/, Maps: /Add a location/, Calendar: /\d/, Files: /Internal storage|Storage Unavailable/, Settings: /General|Privacy|Apps|About/,
+    Photos: /No photos/, Maps: /© OpenStreetMap/, Calendar: /\d/, Files: /Internal storage|Storage Unavailable/, Settings: /General|Privacy|Apps|About/,
   };
   for (const [view, expected] of Object.entries(states)) {
     await page.goto('/?tools=1');
@@ -215,8 +215,12 @@ test('deferred apps are absent and root views show honest unconnected states', a
     await expect(page.locator('[data-screen]')).toContainText(expected);
     if (view === 'Maps') {
       await expect(page.getByRole('searchbox', { name: 'Search places', exact: true })).toBeVisible();
+      // No location yet: no base notice, and Recenter is the request for one.
+      await expect(page.locator('[data-alpha-maps-status]')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Recenter', exact: true })).toBeVisible();
       await page.locator('summary[aria-label="Map information and credits"]').click();
-      await expect(page.getByText(/Location is used only when you request it/)).toBeVisible();
+      // The shortened tile-provider disclosure (6f8205cb4) names who receives map-area requests.
+      await expect(page.locator('.alpha-map-privacy[open]').getByText('Map tiles: OpenFreeMap', { exact: true })).toBeVisible();
     }
     const text = await page.locator('body').innerText();
     for (const name of fixtureNames) expect(text, `${view} shows fixture ${name}`).not.toContain(name);
