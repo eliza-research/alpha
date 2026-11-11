@@ -34,7 +34,7 @@ async function reviewConsent(page: Page, hours = '48', reminders = true) {
   await calendar(page, 'Personal').check();
   if (reminders) await digests.getByRole('checkbox', { name: 'Open phone reminders due today and overdue', exact: true }).check();
   await digests.getByRole('spinbutton', { name: 'Consent expires in hours', exact: true }).fill(hours);
-  await digests.getByRole('button', { name: /^Review (source consent|renewal)$/ }).click();
+  await digests.getByRole('button', { name: /^Review( renewal)?$/ }).click();
 }
 
 test('phone sources on Android: reviewed consent within the calendar and expiry bounds, a bound schedule arms renewal, a Renew tap rebinds it, and revocation clears it', async ({ page }) => {
@@ -66,7 +66,7 @@ test('phone sources on Android: reviewed consent within the calendar and expiry 
   await expect(review).toContainText('Calendars: Personal (owner@example.invalid). Reminders: open reminders due today and overdue; evening briefs also list reminders completed today.');
   await expect(review).toContainText(`It reads only event titles and times for the day in ${zone}, plus selected reminders’ titles, due times and status, up to 200 items. Descriptions, attendees, locations and reminder bodies are excluded.`);
   await expect(review).toContainText('Schedules pause when this source expires; renew or revoke it here.');
-  await expect(review).toContainText('It can’t send email, read your inbox or act on your phone. Model usage counts against your');
+  await expect(review).toContainText('It can’t send email, read your inbox or act on your phone. Eliza Cloud plan');
   // Reviewing records no consent and saves no source.
   expect(await harness(page, f => [f.digests.consents.length, f.digests.posts.length])).toEqual([0, 0]);
 
@@ -87,8 +87,8 @@ test('phone sources on Android: reviewed consent within the calendar and expiry 
 
   // A morning schedule bound to the phone source arms its renewal notice.
   await button(page, 'Review morning schedule').click();
-  await expect(reviewSection(page)).toContainText(`Runs daily at 08:00 (${zone}) and reads Phone sources.`);
-  await expect(reviewSection(page)).toContainText('Your agent’s AI gets that data.');
+  await expect(reviewSection(page)).toContainText('Turn on morning digest at 08:00?');
+  await expect(reviewSection(page)).toContainText('Sends Phone sources to agent AI');
   await reviewSection(page).getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(schedules(page)).toHaveText([`Morning at 08:00 (${zone}) · Phone sources · On`]);
   await expect.poll(() => harness(page, f => f.digests.renewals.includes('arm:' + f.digests.sources[0].id))).toBe(true);

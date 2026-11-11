@@ -69,8 +69,8 @@ test('a resident agent reply is reviewed and placed in a reply draft for the sel
   await expect(dialog.locator('[data-alpha-email-use-destination]')).toHaveText('New reply to sender@example.invalid (Synthetic sender) · Re: Harbour schedule');
   await expect(dialog.locator('[data-alpha-email-use-effect]')).toHaveText('A local draft opens with this text for you to edit.');
   await expect(dialog.getByRole('region', { name: 'Suggested text' })).toHaveText(first);
-  await expect(dialog).toContainText('Files and photos are not attached');
-  await expect(dialog).toContainText('Nothing is sent');
+  // Text only, never sent: the policy is one line at the action.
+  await expect(dialog).toContainText('Draft only · text only');
   expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   await page.screenshot({ path: info.outputPath('use-in-email-review-production.png'), animations: 'disabled' });
 

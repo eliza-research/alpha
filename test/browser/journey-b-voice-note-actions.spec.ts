@@ -278,8 +278,8 @@ test('Journey B: recorded note UI and retained scheduling contract save one even
  await openDeviceActions(page);
  await page.getByRole('button',{name:'Check with agent'}).click();
  const connection=page.getByRole('dialog',{name:'Development connections'});
- await expect(connection.getByText(/Create event · “Venue booking call” · Completed · this phone: succeeded/)).toHaveCount(1);
- await expect(connection.getByText(/Create reminder · .*Email the caterer.* · Completed · this phone: succeeded/)).toHaveCount(1);
+ await expect(connection.getByText(/Create event · “Venue booking call” · Completed · succeeded/)).toHaveCount(1);
+ await expect(connection.getByText(/Create reminder · .*Email the caterer.* · Completed · succeeded/)).toHaveCount(1);
  await page.getByRole('button',{name:'Close connection settings'}).click();
 
  // ---- 7a. Edit the event and the reminder through Calendar controls ----

@@ -78,7 +78,7 @@ test('Sign-in dialog follows a live theme change and remains keyboard accessible
   await page.getByRole('button',{name:'Display',exact:true}).click();
   await page.getByRole('button',{name:'Theme: Dark',exact:true}).click();
   // Open by keyboard: WebKit intentionally does not focus buttons on a pointer click.
-  await returnToApps(page);await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
+  await returnToApps(page);await page.getByRole('button',{name:'Settings',exact:true}).click();await expect(page.getByRole('heading',{name:'Settings',exact:true})).toBeVisible();
   const opener=page.getByRole('button',{name:'Account',exact:true});await opener.focus();await opener.press('Enter');
   const dialog=page.getByRole('dialog',{name:'Alpha',exact:true});
   await expect(dialog).toHaveCSS('background-color','rgb(0, 0, 0)');

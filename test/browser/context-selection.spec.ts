@@ -73,7 +73,7 @@ test.describe('notification',()=>{
   await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');const notices=registerPlugin<any>('AlphaNotifications');const row=(await notices.list()).items.find((item:any)=>item.id==='context-first');await notices.dismiss({id:row.id,revision:row.revision,source:'own'});});
   await dialog.getByRole('button',{name:'Use in conversation',exact:true}).click();
   // Either the open review reports the change or the final re-read refuses it; nothing is composed.
-  await expect(page.getByText(/Selection changed\. Close this review|Nothing was added to your conversation\./)).toBeVisible();
+  await expect(page.getByText(/^(Selection changed|Gone|Changed|Couldn’t check)$/)).toBeVisible();
   await expect(composer(page)).toHaveCount(0);
   if(await dialog.count())await dialog.getByRole('button',{name:'Cancel',exact:true}).click();
   await expect(page.getByText('Neighbor reminder',{exact:true})).toBeVisible();await expect(page.getByText('Ask about Tuesday',{exact:true})).toHaveCount(0);
@@ -256,7 +256,7 @@ test.describe('capture',()=>{
   await choosePhotoAction(page,'Ask Alpha');
   await expect.poll(()=>page.evaluate(()=>(window as any).photoReadHeld)).toBe(true);
   await page.evaluate(async id=>{const {browserPhotoLibrary}=await import('/src/prototype/browser-camera.ts');const row=await (window as any).readOriginalPhoto({id});await browserPhotoLibrary.setTrashed({id,revision:row.mutationRevision,trashed:true});(window as any).releasePhotoRead();},selected!.id.replace(/^native-camera-/,''));
-  await expect(page.getByText('This photo changed. Open it again.',{exact:true})).toBeVisible();
+  await expect(page.getByText('Photo changed',{exact:true})).toBeVisible();
   await expect(review(page)).toHaveCount(0);await expect(page.getByAltText('Captured photo')).toHaveCount(0);
  });
 });

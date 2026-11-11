@@ -9,7 +9,7 @@ test('a render failure shows recovery without user content', async ({ page }) =>
   await page.getByRole('button', { name: 'New note', exact: true }).click();
   await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Private recovery title');
   await page.evaluate(() => window.dispatchEvent(new Event('alpha:force-render-error')));
-  const recovery = page.getByRole('alertdialog', { name: 'Alpha Phone needs to reload' });
+  const recovery = page.getByRole('alertdialog', { name: 'Something went wrong' });
   await expect(recovery).toBeVisible();
   await recovery.getByText('Diagnostics', { exact: true }).click();
   const diagnostics = await recovery.locator('pre').innerText();

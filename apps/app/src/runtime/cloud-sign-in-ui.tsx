@@ -19,7 +19,8 @@ export function AlphaAuthBrand() {
 }
 /** Exact busy messages the controller uses; the panel shows them on the control that started them. */
 export const SIGN_IN_SENDING = 'Sending code';
-export const SIGN_IN_SIGNING_IN = 'Signing in';
+// Must equal the controller message set while a verified sign-in is admitted (connection-ui.tsx residentSignedIn).
+export const SIGN_IN_SIGNING_IN = 'Signing in…';
 export const SIGN_IN_BROWSER = 'In browser';
 type Pending = 'email' | 'phone' | 'resend' | null;
 export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = true, message, error, errorIsNotice = false, actions, extra, ready = true, dismissible = true, probing = false, unavailable = false, ownKeys, alternate }: {
@@ -112,7 +113,7 @@ export function CloudSignInPanel({ view, busy, google, phone, emailEnabled = tru
       {!passkey && <>
         {/* Six boxes show the digits; one real field keeps paste, autofill and screen readers working. */}
         <label className="alpha-code-boxes" data-invalid={codeError || undefined}><span className="alpha-sr">Code</span>{Array.from({length: 6}, (_, index) => { const digits = codeValue.replace(/\D/g, ''); return <span key={index} aria-hidden="true" data-active={index === Math.min(digits.length, 5) || undefined}>{digits[index] ?? ''}</span>; })}<input ref={code} name="one-time-code" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9 -]{6,9}" maxLength={9} required disabled={busy} onInput={event => setCodeValue(event.currentTarget.value)}
-          aria-invalid={codeError || undefined} aria-describedby={codeError ? 'cloud-sign-in-code-error' : undefined} /></label>
+          aria-label="Code" aria-invalid={codeError || undefined} aria-describedby={codeError ? 'cloud-sign-in-code-error' : undefined} /></label>
         {codeError && <p id="cloud-sign-in-code-error" role="alert" className="alpha-connection-error">{error}</p>}
         <button className="alpha-btn alpha-btn--primary alpha-auth-submit" aria-live="polite" aria-busy={verifying || undefined} disabled={busy || stale}>{verifying ? <Busy label={signingIn ? 'Signing in' : 'Checking code'}/> : 'Verify'}</button>
       </>}

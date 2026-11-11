@@ -11,7 +11,7 @@ for(const legacy of [null,{kind:'remote',origin:'https://agent.example.test'},{k
   }
  },{legacy});
  await page.goto('/');
- const chooser=page.getByRole('dialog').filter({hasText:'Remote agents and pairing are unavailable'});
+ const chooser=page.getByRole('dialog').filter({hasText:'Android only'});
  await expect(chooser).toBeVisible();
  await expect(chooser.getByRole('button',{name:'Continue',exact:true})).toBeVisible();
  await expect(page.getByLabel('Pairing code',{exact:true})).toHaveCount(0);

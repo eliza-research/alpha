@@ -58,7 +58,7 @@ test('Notes create, edit, reload and delete to Recently deleted', async ({ page 
   await page.getByRole('button', { name: 'More', exact: true }).click();
   await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
   // Deletion is not immediate erasure: the note waits in Recently deleted for 30 days.
-  await expect(page.getByText('Moved to Recently deleted', { exact: true })).toBeVisible();
+  await expect(page.getByText('Deleted', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Recently deleted', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Browser audit note, 30 days left', exact: true })).toBeVisible();
 });
@@ -120,7 +120,7 @@ test('Retained digest panel traps focus, closes on native Back, and restores pri
   await trigger.focus();await openRetainedDigests(page);
   const dialog=page.getByRole('dialog',{name:'Scheduled digests',exact:true});
   await expect(dialog).toBeVisible();await expect(dialog).toBeFocused();
-  await expect(dialog.getByRole('button',{name:'Result notifications',exact:true})).toBeVisible();
+  await expect(dialog.getByRole('switch',{name:'Notifications',exact:true})).toBeVisible();
   await expect(dialog).not.toContainText('Result link is waiting for a verified connection.');
   await expect(dialog).not.toContainText('Choose where your agent runs');
   await expect(page.locator('.os')).toHaveAttribute('inert','');
@@ -163,8 +163,8 @@ test('MVP mock account and privacy journeys exclude Contacts controls', async ({
   await expect(page.getByRole('button',{name:'Leaves this device',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Contacts',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Microphone',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Alpha microphone',exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:/^(Phone|Messages) microphone$/})).toHaveCount(0);
+  await expect(page.getByRole('switch',{name:'Alpha microphone',exact:true})).toBeVisible();
+  await expect(page.getByRole('switch',{name:/^(Phone|Messages) microphone$/})).toHaveCount(0);
   await page.goto('/?mode=mock&start=settings:accounts');
   await page.getByRole('button',{name:'you@gmail.example',exact:true}).click();
   await expect(page.getByRole('button',{name:'Calendar: Act',exact:true})).toBeVisible();

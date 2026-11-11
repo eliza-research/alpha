@@ -46,7 +46,7 @@ test('actual OTP form retains input through submission, pending state and wrong-
   assert.equal(document.querySelector('form button').textContent,'Checking code');
   assert.equal(document.querySelector('[role="status"]:not(#alpha-google-unavailable)')===null,true,'busy feedback stays inside the button without adding a line');
   // Once the code is verified the account is admitted: the code check has ended (owner report 2026-10-30).
-  await render({busy:true,message:'Signing in'});
+  await render({busy:true,message:'Signing in…'});
   assert.equal(document.querySelector('form button').textContent,'Signing in');
   assert.equal(document.querySelector('[role="status"]:not(#alpha-google-unavailable)')===null,true);
   assert.ok(!document.body.textContent.includes('Checking'));

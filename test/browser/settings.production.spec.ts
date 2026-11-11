@@ -26,6 +26,8 @@ test('production Settings opens every category and its app settings through the 
  }
  for(const app of ['Browser','Calendar','Camera','Files','Inbox','Maps','Notes','Passwords','Photos','Workflows']){
   await openSettings(page,'Apps',app);
+  // An app with nothing to set here opens the app itself (no one-row pages); Photos too off Android.
+  if(['Browser','Files','Photos'].includes(app)){await expect(page.locator('html')).toHaveAttribute('data-active-view',app.toLowerCase());continue;}
   await expect(current(page).getByRole('heading',{name:app==='Passwords'?'Password manager':app,exact:true})).toBeVisible();
   await expect(current(page).getByRole('button',{name:'Back to Apps',exact:true})).toBeVisible();
  }

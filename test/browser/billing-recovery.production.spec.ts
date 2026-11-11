@@ -15,7 +15,7 @@ const id = '9f1dc45a-4011-4e44-947a-30d999d24fa5';
 // Synthetic, never a real grant code: 16 Crockford characters once normalized.
 const CODE = 'synt-hetc-0de0-0001', NORMALIZED = 'SYNTHETC0DE00001';
 const NEEDED = 'Choose a plan or enter a membership code to ask Alpha.';
-const REFUSED = 'Eliza Cloud declined this request for billing. Check your subscription or enter a membership code, then send again.';
+const REFUSED = 'Billing declined';
 const SHEET_REFUSED = 'Billing declined';
 const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
 const conversation = (page: Page) => page.locator('[data-alpha-layer="conversation"]');
@@ -243,11 +243,11 @@ test('refused turns retain their answers and defer plan checks until the owner r
   await expect.poll(() => harness(page, f => f.streams)).toBe(1);
   await button(page, 'Expand chat').click();
   // Both terminal refusals stay visible. No plan read may interrupt or replace either reply.
-  await expect(conversation(page).getByText(/AI needs an active Eliza Cloud plan/)).toHaveCount(1, { timeout: 30_000 });
+  await expect(conversation(page).getByText('Plan needed', { exact: true })).toHaveCount(1, { timeout: 30_000 });
   expect(await reads()).toBe(before);
   // A second refusal is also held until the owner returns.
   await send(page, 'Try my calendar again');
-  await expect(conversation(page).getByText(/AI needs an active Eliza Cloud plan/)).toHaveCount(2, { timeout: 30_000 });
+  await expect(conversation(page).getByText('Plan needed', { exact: true })).toHaveCount(2, { timeout: 30_000 });
   await page.waitForTimeout(1000);
   expect(await reads()).toBe(before);
   // On return, account display and provider admission each read their own authority.

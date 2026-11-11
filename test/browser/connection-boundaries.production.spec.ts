@@ -248,7 +248,7 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     // the completed sign-out receipt or turn an unconfirmed revocation into success.
     await expect(page.getByRole('alert').filter({hasText:/^Unavailable$/})).toBeVisible();
     const status = page.locator('.alpha-connection').getByRole('status').filter({ hasText: /Signed out|sign-in token was removed/ });
-    if (mode === 'revoked') await expect(status).toHaveText('Signed out');
+    if (mode === 'revoked') await expect(status).toHaveText('Signed out · AI off');
     else {
       await expect(status).toContainText('Signed out here only');
       await expect(page.getByText(/was revoked/)).toHaveCount(0);
@@ -269,6 +269,7 @@ for (const mode of ['revoked', 'unsupported', 'failed', 'refused-in-body', 'not-
     await expect(page.getByRole('main', { name: 'Alpha', exact: true }).getByRole('button', { name: 'Try again', exact: true })).toBeVisible();
     // P-43: sign-out unbinds inference only. Observe the actual new resident start
     // and its subsequent owner handshake instead of the former explanatory copy.
+    if (mode !== 'cancelled') await expect(status).toContainText('AI off');
     await expect.poll(async () => (await nativeCalls(page)).slice(before).filter(call => call.plugin === 'Agent' && call.method === 'start').length).toBeGreaterThan(0);
     await expect.poll(async()=>{const current=await nativeCalls(page),lastStart=current.findLastIndex(call=>call.plugin==='Agent'&&call.method==='start');return lastStart>=before&&current.slice(lastStart+1).some(call=>call.plugin==='Agent'&&call.method==='request'&&call.path==='/api/auth/me');}).toBe(true);
     await page.reload();

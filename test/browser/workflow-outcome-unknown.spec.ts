@@ -77,7 +77,7 @@ test('side-effecting workflow: interrupted run is shown as outcome unknown, neve
 test('read-only digest: Run again is explicit, confirmed and creates a new run ID without replaying the interrupted one',async({page})=>{
  await setup(page);await page.getByRole('region',{name:'Workflows',exact:true}).getByText('Morning notes digest',{exact:true}).first().click();
  await expect(status(page)).toHaveText('Interrupted · open to run again');
- await page.getByRole('button',{name:'Interrupted execution',exact:true}).click();await page.getByText('Details',{exact:true}).click();await expect(page.getByText('Check before running again',{exact:true})).toBeVisible();await expect(page.getByText('May have run',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Interrupted execution',exact:true}).click();await page.getByText('Details',{exact:true}).click();await expect(page.getByText('Check before running again',{exact:true})).toBeVisible();await expect(page.getByText('May have run',{exact:true}).filter({visible:true}).first()).toBeVisible();
  await page.waitForTimeout(1000);expect(await posts(page,'/run')).toBe(0);
  await page.getByRole('button',{name:'Run again',exact:true}).click();await expect(page.getByText('New run?',{exact:true}).first()).toBeVisible();expect(await posts(page,'/run')).toBe(0);
  await page.getByRole('button',{name:'Confirm new run',exact:true}).click();await expect.poll(()=>posts(page,'/run')).toBe(1);

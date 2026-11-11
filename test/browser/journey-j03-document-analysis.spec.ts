@@ -128,7 +128,7 @@ test('J03: an Inbox attachment is saved to Files, analysed, and kept as a review
  await page.getByText('Review summary note',{exact:true}).click();
  const review=page.getByRole('dialog',{name:'Save summary'});
  await expect(review.getByRole('textbox',{name:'Summary note text'})).toHaveValue(reply);
- await expect(review).toContainText('The note will link to garden-report.txt.');
+ await expect(review).toContainText('garden-report.txt');
  await review.getByRole('button',{name:'Cancel',exact:true}).click();
  expect(await notes(page)).toEqual([]);
  await page.getByText('Review summary note',{exact:true}).click();

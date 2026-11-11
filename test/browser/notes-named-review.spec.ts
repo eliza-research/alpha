@@ -20,7 +20,7 @@ test('a named delete is disambiguated locally and confirmed for the exact note',
  await page.evaluate(notes=>{const win=window as any;win.result=win.reviewNamedNote(notes,{type:'notes_named',action:'delete',name:'travel'},new AbortController().signal,()=>{});},notes);
  const dialog=page.getByRole('dialog',{name:'Delete which?'});await expect(dialog).toBeVisible();
  await expect(dialog).toContainText('2 matches');
- await expect(dialog).toContainText('erased after 3 days unless you restore it');
+ await expect(dialog).toContainText('Trash · 3 days');
  const confirm=dialog.locator('footer button').last();await expect(confirm).toBeDisabled();
  expect(await page.locator('.os').evaluate((element:HTMLElement)=>element.inert)).toBe(true);
  await page.getByRole('combobox',{name:'Note',exact:true}).selectOption('private-travel-id');
@@ -41,7 +41,7 @@ test('the titles listing shares only after explicit approval',async({page})=>{
  await page.evaluate(()=>{const win=window as any;win.result=win.reviewNoteTitles(['Groceries','Travel plans'],true,new AbortController().signal,()=>{});});
  const dialog=page.getByRole('dialog',{name:'Share titles?'});
  await expect(dialog.getByRole('listitem')).toHaveText(['Groceries','Travel plans']);
- await expect(dialog).toContainText('Note text stays on this phone. Older notes are not included.');
+ await expect(dialog).toContainText('Titles only · Older omitted');
  await page.keyboard.press('Escape');expect(await page.evaluate(()=>(window as any).result)).toBe(false);
  await page.evaluate(()=>{const win=window as any;win.result=win.reviewNoteTitles(['Groceries'],false,new AbortController().signal,()=>{});});
  await page.getByRole('button',{name:'Share 1'}).click();expect(await page.evaluate(()=>(window as any).result)).toBe(true);

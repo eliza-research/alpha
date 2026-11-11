@@ -45,7 +45,7 @@ test('long press reveals actions, pointer movement cancels a held gesture',async
  await agent(page).dispatchEvent('pointerdown',{pointerType:'touch',clientX:30,clientY:30});await agent(page).dispatchEvent('pointermove',{pointerType:'touch',clientX:60,clientY:30});await page.waitForTimeout(550);await expect(menu(page)).toHaveCount(0);
 });
 test('copy denial stays in the menu and does not change the original messages',async({page})=>{
- await conversation(page);await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw Error('Denied');}}}));await agent(page).click();await menu(page).getByRole('menuitem',{name:'Copy',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Copy unavailable.'})).toBeVisible();await expect(agent(page)).toHaveText(answer);await expect(page.locator('[data-alpha-message-text]').filter({hasText:'My original request'})).toHaveText('My original request');
+ await conversation(page);await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async()=>{throw Error('Denied');}}}));await agent(page).click();await menu(page).getByRole('menuitem',{name:'Copy',exact:true}).click();await expect(page.getByRole('status').filter({hasText:'Copy failed'})).toBeVisible();await expect(agent(page)).toHaveText(answer);await expect(page.locator('[data-alpha-message-text]').filter({hasText:'My original request'})).toHaveText('My original request');
 });
 test('Read aloud uses the selected Cloud account; fixture blocks all audio',async({page})=>{
  await conversation(page);await page.evaluate(async()=>{
@@ -55,7 +55,7 @@ test('Read aloud uses the selected Cloud account; fixture blocks all audio',asyn
   BrowserVoice.prototype.localSpeechStatus=async()=>{w.localSpeechCalls++;return {ready:true,execution:'browser',route:'browser'};};
   BrowserVoice.prototype.synthesizeLocal=async()=>{w.localSpeechCalls++;throw Error('Unexpected local fallback');};
  });
- await agent(page).click();await menu(page).getByRole('menuitem',{name:'Read aloud'}).click();await expect.poll(()=>page.evaluate(()=>(window as any).messageSpeechInput?.text)).toBe(answer);await expect(page.getByRole('status').filter({hasText:'Synthetic audio blocked'})).toBeVisible();
+ await agent(page).click();await menu(page).getByRole('menuitem',{name:'Read aloud'}).click();await expect.poll(()=>page.evaluate(()=>(window as any).messageSpeechInput?.text)).toBe(answer);await expect(page.getByRole('status').filter({hasText:/^\s*Stopped\s*$/})).toBeVisible();
  expect(await page.evaluate(()=>{const w=window as any;return {environment:w.messageSpeechInput.environment,credentialId:w.messageSpeechInput.credentialId,localCalls:w.localSpeechCalls};})).toEqual({environment:'production',credentialId:'synthetic-cloud-credential',localCalls:0});
 });
 test('user messages copy without unsupported playback, reply or edit controls',async({page})=>{

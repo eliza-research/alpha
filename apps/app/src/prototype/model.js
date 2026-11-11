@@ -3316,7 +3316,7 @@ registerView("notes", {
       // The Notes recorder (voice-adapter, note-recorder.ts) handles Record; `record` is its deep-link flag.
       record: function () { api.set({ record: true }); },
       pinnedRows: pinnedRows, otherRows: otherRows, hasPinned: pinnedRows.length > 0, notesHead: pinnedRows.length > 0 && otherRows.length > 0,
-      none: rows.length === 0, emptyTitle: filter ? "No matching notes" : "No notes yet", emptyMessage: filter ? "Clear the filter to see all your notes." : "Create a note or record a voice note to get started.",
+      none: rows.length === 0, emptyTitle: filter ? "No matches" : "No notes", emptyMessage: "",
       allPressed: folder ? "false" : "true", selectAll: function () { api.set({ folder: null, filter: null, folderSheet: null }); },
       folderChips: folderChips,
       newFolder: function () { api.set({ folderSheet: { kind: "new", name: "" } }); },
@@ -4461,7 +4461,7 @@ registerView("workflows", {
         steps: diagram(f.trig, f.steps, { running: running }),
         isRunning: running != null, notRunning: running == null,
         last: running != null ? "Running…" : (!f.on ? "Off" : (last ? "Last run " + wfLc(last.when) : "Not run yet")),
-        deleteLabel: 'Delete workflow', lifecycleReview: false,
+        deleteLabel: 'Delete workflow', lifecycleReview: false, runLabel: 'Run', runAria: 'Run now',
         runs: runs, hasRuns: runs.length > 0,
         close: function () { set({ open: null }); },
         edit: function () { set({ build: { id: f.id, name: f.name, trig: Object.assign({}, f.trig), steps: f.steps.map(function (s) { return Object.assign({}, s); }) } }); },
@@ -4519,7 +4519,7 @@ registerView("workflows", {
         }),
         apps: chipsOf(b), hasApps: wfApps(b).length > 0, empty: b.steps.length === 0,
         saveOff: b.steps.length === 0, saveCss: b.steps.length ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2);color:var(--mut)",
-        describe: function () { set({ build: null }); api.chat("Every weekday at 6, "); },
+        describeOff: false, describe: function () { set({ build: null }); api.chat("Every weekday at 6, "); },
         cancel: function () { set({ build: null, sheet: null }); },
         save: function () {
           if (!wfAllowed(b)) return wfDeferred(api);

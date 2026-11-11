@@ -88,7 +88,7 @@ async function nothingLeft(page: Page, welcome: ReturnType<Page['getByRole']>, u
   await expect.poll(()=>harness(page,f=>f.calls.filter((call:string)=>call==='Agent.start').length)).toBeGreaterThan(0);
   await expect(welcome).toBeVisible();
   // An expired code keeps the address on screen with a new code one tap away.
-  await expect(welcome.getByRole('button', { name: codeKept ? 'Resend code' : 'Send code', exact: true })).toBeEnabled();
+  await expect(welcome.getByRole('button', { name: codeKept ? 'Resend' : 'Send code', exact: true })).toBeEnabled();
   expect(await harness(page, f => f.slots['cloud:production'] ?? null)).toBeNull();
   expect(await stub(page, s => s.order.some((entry: string) => entry.startsWith('configureCloudProvider')))).toBe(false);
   if (untouched) {
@@ -133,8 +133,9 @@ test('first run: native email sign-in, credits, provider binding, then the resid
   const access=page.locator('dialog.alpha-startup-permissions');
   await expect(access).toBeVisible();
   expect(await page.evaluate(()=>(window as any).firstRunAccess.requests)).toEqual([]);
+  await expect(access.getByRole('heading',{name:'Access',exact:true})).toBeVisible();
   for(const name of ['Notifications','Microphone','Camera','Location','Calendar','Photos','Files']) {
-    await expect(access.getByRole('heading',{name,exact:true})).toBeVisible();
+    await expect(access.locator('[aria-current=step]',{hasText:name})).toBeVisible();
     await expect(access.getByRole('button',{name:/Skip|Not now|Back/})).toHaveCount(0);
     await access.getByRole('button',{name:'Allow',exact:true}).click();
   }
@@ -215,7 +216,7 @@ test('first run: Cloud refusing the new key (401 on the account read) removes it
   await expect(welcome).not.toContainText(/pair/i);
   expect(await stub(page, s => s.order.filter((entry: string) => entry.startsWith('store') || entry === 'remove cloud key'))).toEqual(['store first-run-key', 'remove cloud key']);
   await nothingLeft(page, welcome);
-  await expect(welcome.getByRole('alert')).toHaveText('Eliza Cloud refused this sign-in. Your agent keeps running; sign in again to turn AI on.');
+  await expect(welcome.getByRole('alert')).toHaveText('Sign-in refused');
   await expect(welcome.getByRole('button',{name:'Reconnect agent',exact:true})).toHaveCount(0);
   await expect(welcome.getByRole('button',{name:'New conversation',exact:true})).toHaveCount(0);
 });

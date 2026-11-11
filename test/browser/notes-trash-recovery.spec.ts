@@ -29,7 +29,7 @@ async function createNote(page:Page,title:string,body:string){
 async function deleteNote(page:Page,title:string){
  await page.getByRole('button',{name:`Open ${title}`,exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
- await expect(page.getByText(`Moved to Recently deleted`,{exact:true})).toBeVisible();
+ await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:`Open ${title}`,exact:true})).toHaveCount(0);
 }
 /**
@@ -153,7 +153,7 @@ test('a note edited after a full Trash refused it is not deleted by the earlier 
  await page.evaluate(async()=>{const store=await (await import('/src/runtime/browser-notes-document.ts')).openBrowserNotes();await store.replace(store.list.map((n:any)=>n.title==='Changing'?{...n,body:'Newer text'}:n));});
  await full.getByRole('button',{name:'Delete permanently',exact:true}).click();
  // Decided from authoritative storage before any write, so it is a definite "changed", not an unknown outcome.
- await expect(page.getByText('This note changed. Nothing was deleted.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Note changed',{exact:true})).toBeVisible();
  await expect(full).toHaveCount(0);
  const saved=await savedRecords(page);
  expect(saved.map((n:any)=>[n.title,n.body])).toEqual([['Changing','Newer text']]);
@@ -184,7 +184,7 @@ test('a permanent-delete confirmation in a stale view never drops the Trash copy
  });
  expect((await savedRecords(page)).map((n:any)=>n.title)).toEqual([]);
  await full.getByRole('button',{name:'Delete permanently',exact:true}).click();
- await expect(page.getByText('This note changed. Nothing was deleted.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Note changed',{exact:true})).toBeVisible();
  // The other view's Trash row, with the newer text, is exactly as it was written.
  const entries=await trashEntries(page);
  expect(entries.map((e:any)=>e.note.title).sort()).toEqual(['Filler','Moved']);
@@ -387,7 +387,7 @@ test('process death between the write-ahead Trash row and the deletion commit ke
  // 2. A voice entry expires; the recording was erased but the process died before its row was removed.
  await page.getByRole('button',{name:'Open Dead memo',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
- await expect(page.getByText('Moved to Recently deleted',{exact:true})).toBeVisible();
+ await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
  const entry=(await trashEntries(page))[0];
  expect(entry.audio).toEqual({audioId:'dead-audio'});
  await page.evaluate(async id=>{const {purgeAudio}=await import('/src/browser/note-audio-store.ts');await purgeAudio('dead-audio','dead-voice',id);},entry.id);

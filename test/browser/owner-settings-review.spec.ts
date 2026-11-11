@@ -37,7 +37,7 @@ for(const size of [{width:390,height:844},{width:1280,height:900}]){
   await back.press('Enter');await expect(display).toBeFocused();
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await settings.getByRole('button',{name:'Privacy',exact:true}).click();
-  const review=current().getByRole('switch',{name:'Ask before taking actions',exact:true});
+  const review=current().getByRole('switch',{name:'Ask before Alpha acts',exact:true});
   await expect(review).toHaveAttribute('aria-checked','false');
   expect(await review.evaluate(element=>({width:(element as HTMLElement).offsetWidth,height:(element as HTMLElement).offsetHeight}))).toEqual({width:52,height:52});
   const target=await review.boundingBox();expect(target!.width).toBeGreaterThanOrEqual(44);expect(target!.height).toBeGreaterThanOrEqual(44);

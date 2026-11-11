@@ -89,7 +89,7 @@ for(const scenario of ['connected','empty','error','restored'] as const)test(`Sh
  await page.evaluate(scenario=>{const f=(window as any).gm;if(scenario==='empty')f.accounts=[];if(scenario==='error')f.accountFailure=true;f.accountGate=null;f.releaseAccounts();},scenario);
  if(scenario==='empty'){
   await expect(page.getByRole('button',{name:'Connect Gmail',exact:true})).toBeVisible();
-  await expect(page.getByText('Connect Gmail',{exact:true})).toBeVisible();
+  await expect(page.locator('span:text-is("Connect Gmail")')).toBeVisible();
   await page.evaluate(()=>{const f=(window as any).gm;f.accounts=f.originalAccounts;window.dispatchEvent(new Event('alpha:google-accounts-changed'));});
  }else if(scenario==='error'){
   await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();

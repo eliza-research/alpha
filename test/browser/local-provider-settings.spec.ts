@@ -71,7 +71,7 @@ async function openAccountProvider(page:import('@playwright/test').Page){
   });
   await page.getByRole('button',{name:'Account',exact:true}).click();
   const account=page.getByRole('dialog',{name:'Account',exact:true});await expect(account).toBeVisible();
-  await account.getByRole('button',{name:/^AI connection(?: Cloud| Own API keys)?$/}).click();
+  await account.getByRole('button',{name:/^AI(?: Cloud| Own keys)?$/}).click();
   return page.getByRole('dialog',{name:'AI connection',exact:true});
 }
 
@@ -84,7 +84,7 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   await expect(chooser.getByText('Not set', { exact: true })).toBeVisible();
   // The model is fixed; there is no editable model field.
   await expect(chooser.getByLabel('Model')).toHaveCount(0);
-  await expect(chooser.getByText('Model: qwen-3.8-27b', { exact: true })).toBeVisible();
+  await expect(chooser.getByText('qwen-3.8-27b', { exact: true })).toBeVisible();
 
   await page.evaluate(() => { (window as any).providerFixture.reject = 'Cerebras did not accept this key. It was not saved.'; });
   await chooser.getByLabel('Cerebras API key').fill('synthetic-rejected-key');
@@ -104,7 +104,7 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   await expect(agentConnection).toContainText('Provider fixture');
   await agentConnection.click();
   await chooser.getByText('Model provider', { exact: true }).click();
-  await expect(chooser.getByText('Configured · Cerebras · qwen-3.8-27b', { exact: true })).toBeVisible();
+  await expect(chooser.getByText('Cerebras · qwen-3.8-27b', { exact: true })).toBeVisible();
   await expect(chooser.getByLabel('Cerebras API key')).toHaveValue('');
   const { configures, cancelled } = await page.evaluate(() => (window as any).providerFixture);
   expect(configures.map((item: any) => item.model)).toEqual(['qwen-3.8-27b', 'qwen-3.8-27b']);
@@ -123,7 +123,7 @@ test('provider status, pinned model, verified save and confirmed key removal', a
   expect(await page.evaluate(() => { const f = (window as any).providerFixture; return { clears: f.clears, stops: f.stops }; })).toEqual({ clears: 1, stops: 1 });
   await page.getByRole('button', { name: 'Back to Settings', exact: true }).click();
   const aiConnection = await openAccountProvider(page);
-  await expect(aiConnection.getByRole('button', { name: 'Own API keys', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await expect(aiConnection.getByRole('button', { name: 'Own keys', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(aiConnection.getByRole('button', { name: 'Cloud', exact: true })).toBeVisible();
   await aiConnection.getByRole('button', { name: 'Close Account', exact: true }).click();
   await page.getByRole('button', { name: 'About', exact: true }).click();
@@ -143,7 +143,7 @@ test('the chooser names the Eliza Cloud model as Settings does', async ({ page }
   const chooser = page.locator('.alpha-connection');
   await expect(chooser).toBeVisible();
   await chooser.getByText('Model provider', { exact: true }).click();
-  await expect(chooser.getByText('Configured · Cloud · qwen-3.8-27b (Cerebras)', { exact: true })).toBeVisible();
+  await expect(chooser.getByText('Cloud · qwen-3.8-27b (Cerebras)', { exact: true })).toBeVisible();
 });
 
 for(const cloud of [false,true])test(`native AI connection keeps the selected Cloud route distinct from provider admission: ${cloud?'configured':'unconfigured'}`,async({page})=>{
@@ -155,7 +155,7 @@ for(const cloud of [false,true])test(`native AI connection keeps the selected Cl
  const provider=await openAccountProvider(page);await expect(provider).toBeVisible();
  // Account selects the Cloud route independently of whether the resident admitted inference.
  await expect(provider.getByRole('button',{name:'Cloud',exact:true})).toHaveAttribute('aria-pressed','true');
- await expect(provider.getByRole('button',{name:'Own API keys',exact:true})).toHaveAttribute('aria-pressed','false');
+ await expect(provider.getByRole('button',{name:'Own keys',exact:true})).toHaveAttribute('aria-pressed','false');
  expect(await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().providerStatus?.configured)).toBe(cloud);
  expect(await page.evaluate(()=>(window as any).providerFixture.statusReads)).toBeGreaterThan(0);
  expect(await page.evaluate(()=>(window as any).providerFixture.configures)).toEqual([]);

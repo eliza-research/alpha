@@ -315,7 +315,7 @@ async function guidanceTargets(page, viewports) {
           const information = page.locator('[data-alpha-maps-root] summary[aria-label="Map information and credits"]');
           await information.tap();
           await expect(information.locator('..')).toHaveAttribute('open', '');
-          const coordinates = information.locator('..').getByRole('button', {name:'Coordinates', exact:true});
+          const coordinates = information.locator('..').getByRole('button', {name:'Enter coordinates', exact:true});
           await coordinates.scrollIntoViewIfNeeded();
           const coordinateHit=await coordinates.evaluate(node => {
             const box = node.getBoundingClientRect(), hit=document.elementFromPoint(box.left+box.width/2,box.top+box.height/2);

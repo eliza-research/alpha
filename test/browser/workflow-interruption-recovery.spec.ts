@@ -156,7 +156,7 @@ test('a cancellation that loses the race to completion shows the terminal result
  await expect(page.getByRole('button',{name:'Cancel run',exact:true})).toBeVisible();await rule(page,{method:'POST',suffix:'/cancel',kind:'finished-on-cancel',times:1});
  await page.getByRole('button',{name:'Cancel run',exact:true}).click();await page.getByRole('button',{name:'Confirm cancel',exact:true}).click();
  await expect(page.getByText('Finished before the cancellation arrived',{exact:true})).toBeVisible();
- await expect(page.getByText('succeeded',{exact:true}).first()).toBeVisible();await expect(page.getByText(/^cancelled$/)).toHaveCount(0);await page.getByRole('group',{name:'Workflow execution details',exact:true}).locator('summary').click();await expect(page.getByText('Finished',{exact:true})).toBeVisible();
+ await expect(page.getByText('succeeded',{exact:true}).first()).toBeVisible();await expect(page.getByText(/^cancelled$/)).toHaveCount(0);await page.getByRole('group',{name:'Workflow execution details',exact:true}).locator('summary').click();await expect(page.getByRole('group',{name:'Workflow execution details',exact:true}).getByText('Finished',{exact:true})).toBeVisible();
  // A finished receipt offers no cancellation and no automatic rerun.
  await expect(page.getByRole('button',{name:'Cancel run',exact:true})).toHaveCount(0);expect(await posts(page,'/cancel')).toHaveLength(1);expect(await posts(page,'/run')).toHaveLength(1);
 });
@@ -206,8 +206,9 @@ test('a typed workflow is presented as manual-trigger only: no schedule is offer
  expect(facts).toEqual({triggers:['manual'],saved:[{kind:'manual'}]});
  // Enabling: a manual workflow has no schedule. The switch says to use Run now and sends nothing to the agent.
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back')));await returnToApps(page);await page.getByRole('button',{name:'Workflows',exact:true}).click();await workflowCard(page,'Execution fixture').click();await expect(runNow(page)).toBeVisible();
- const toggle=page.getByRole('button',{name:'Turn Execution fixture on or off',exact:true});await toggle.click();
- await expect(status(page)).toHaveText('Manual');await expect(toggle).toHaveAttribute('aria-disabled','true');await toggle.click();await expect(toggle).toHaveAttribute('aria-pressed','false');expect(await posts(page,'/activate')).toHaveLength(0);
+ // The switch stays visible and greyed (aria-disabled, still tappable); a tap says why.
+ const toggle=page.getByRole('button',{name:'Turn Execution fixture on or off',exact:true});await expect(toggle).toHaveAttribute('aria-disabled','true');await toggle.click({force:true});
+ await expect(status(page)).toHaveText('Manual');await expect(toggle).toHaveAttribute('aria-disabled','true');await toggle.click({force:true});await expect(toggle).toHaveAttribute('aria-pressed','false');expect(await posts(page,'/activate')).toHaveLength(0);
  await expect(page.getByText(/scheduled runs/)).toHaveCount(0);
  // Nothing runs until Run now is reviewed and confirmed.
  await page.waitForTimeout(1500);expect(await posts(page,'/run')).toHaveLength(0);expect((await stored(page)).runs).toHaveLength(0);

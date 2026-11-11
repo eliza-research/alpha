@@ -124,7 +124,7 @@ test.describe('first run requires Eliza Cloud sign-in while the agent runs',()=>
  });
 
  test('an expired saved sign-in exposes the real sign-in action without a plan or permission bypass',async({page},info)=>{
-  await boot(page,{identity:'401'});await expect(signInPage(page)).toBeVisible();await started(page);await expect(signInPage(page).getByRole('button',{name:'Send code',exact:true})).toBeEnabled();await expect(page.getByRole('alert')).toHaveText('Sign in to Eliza Cloud again to turn AI back on.');
+  await boot(page,{identity:'401'});await expect(signInPage(page)).toBeVisible();await started(page);await expect(signInPage(page).getByRole('button',{name:'Send code',exact:true})).toBeEnabled();await expect(page.getByRole('alert')).toHaveText('Sign-in expired');
   await expect(page.getByRole('button',{name:'Retry',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Continue',exact:true})).toHaveCount(0);await expect(page.getByRole('button',{name:'Choose a plan',exact:true})).toHaveCount(0);await expect(page.getByRole('dialog',{name:'Set up Alpha access'})).toHaveCount(0);
   expect((await calls(page)).some(c=>c.method==='configureCloudProvider'||c.method==='openExternal')).toBe(false);await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('expired-saved-sign-in.png'),animations:'disabled'});
  });
@@ -180,7 +180,7 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
   await admitted(page);await openAccountPlan(page);
   await expect(planDetails(page).getByText('Synthetic plan',{exact:true})).toBeVisible();
   await expect(planDetails(page).getByText('Payment due',{exact:true})).toBeVisible();
-  await expect(planDetails(page).getByText('Update your payment details in Eliza Cloud to keep your subscription active.',{exact:true})).toBeVisible();
+  await expect(planDetails(page).getByText('Update payment',{exact:true})).toBeVisible();
   await page.evaluate(()=>document.fonts.ready);await page.screenshot({path:info.outputPath('past-due-warning.png'),animations:'disabled'});
   await release(page);
   await page.getByRole('button',{name:'Manage plan',exact:true}).click();await confirmBillingAccount(page);
@@ -230,7 +230,7 @@ test.describe('plan state binds Cloud inference; the agent always runs',()=>{
 
  test('an entitlement for another account is refused and binds no inference',async({page})=>{
   await boot(page,await entitlements({sub:'33333333-3333-4333-8333-333333333333'}));
-  await idle(page);const panel=signInPage(page);await expect(panel).toBeVisible();await expect(panel.getByRole('alert')).toContainText('different account');await started(page);
+  await idle(page);const panel=signInPage(page);await expect(panel).toBeVisible();await expect(panel.getByRole('alert')).toContainText('Account mismatch');await started(page);
   expect(await page.evaluate(()=>(window as any).planController.getSnapshot().cloudAccount)).toBeNull();
   expect(await configured(page)).toBe(0);
  });
@@ -517,7 +517,7 @@ test.describe('redeem a subscription code',()=>{
   // promise instead of cancelling it, then verify the new subscription and its access window.
   await page.evaluate(()=>(window as any).planFixture.releaseProvider());await idle(page);
   await expect(planDetails(page).getByText('Active',{exact:true})).toBeVisible();
-  await expect(planDetails(page).getByText(/^Access through /)).toBeVisible();
+  await expect(planDetails(page).getByText(/^\d+d left$/)).toBeVisible();
   // The code is not kept anywhere the renderer can read back.
   const stored=await page.evaluate(()=>JSON.stringify({...localStorage})+JSON.stringify({...sessionStorage})+document.body.innerText);
   expect(stored).not.toContain(NORMALIZED);expect(stored.toLowerCase()).not.toContain(CODE);
@@ -642,7 +642,7 @@ test('failed native provider binding reports unconfirmed inference and exposes t
  const settings=page.getByRole('region',{name:'Settings',exact:true});
  await expect(settings.getByText('—',{exact:true})).toBeVisible();
  const error=settings.getByText(/Synthetic account verification failure/);await expect(error).toBeVisible();
- await expect(error).toContainText('AI could not be confirmed off. Your agent is running; retry in Settings.');
+ await expect(error).toContainText('AI state unknown');
  const history=settings.getByRole('button',{name:'New conversation',exact:true});await expect(history).toBeVisible();
  expect(await error.evaluate((node,other)=>(node.compareDocumentPosition(other!)&Node.DOCUMENT_POSITION_FOLLOWING)!==0,await history.elementHandle())).toBe(true);
  expect(await configured(page)).toBe(1);

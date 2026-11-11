@@ -43,7 +43,7 @@ for(const theme of ['light','dark'])test(`reviewed reply fills the selected emai
  await expect(dialog.locator('[data-alpha-email-use-account]')).toHaveText('From owner@example.invalid');
  await expect(dialog.locator('[data-alpha-email-use-destination]')).toHaveText('New reply to sender@example.invalid (Fixture sender) · Re: Planning session');
  await expect(dialog.getByRole('region',{name:'Suggested text'})).toHaveText(first);
- await expect(dialog).toContainText('Files and photos are not attached');await expect(dialog).toContainText('Nothing is sent');
+ await expect(dialog).toContainText('Draft only · text only');
  expect(await dialog.evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true);
  await page.screenshot({path:info.outputPath('use-in-email-review-'+theme+'.png'),animations:'disabled'});
  // Focus stays inside the review; Escape cancels without creating a draft.

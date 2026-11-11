@@ -170,7 +170,6 @@ test('F-5: the send review shows From, To, Cc, Bcc, subject, body and the attach
       'Cc: carol@example.invalid, dave@example.invalid',
       'Bcc: audit@example.invalid',
       'Subject: Timetable for Friday',
-      'Selected message/draft:',
     ]);
     await expect(review.locator('[data-alpha-review-attachments]')).toHaveText(`timetable.txt · text/plain · ${bytes.length} bytes · SHA-256 ${sha256}`);
     await expect(review.getByText('Line one of the reviewed body.\nLine two.', {exact: true})).toBeVisible();

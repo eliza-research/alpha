@@ -205,7 +205,7 @@ test('deferred apps are absent and root views show honest unconnected states', a
   await page.goto('/?tools=1');
   for (const deferred of ['Phone', 'Messages', 'Contacts', 'Wallet']) await expect(page.getByRole('button', { name: deferred, exact: true })).toHaveCount(0);
   const states: Record<string, RegExp> = {
-    Inbox: /Connect Eliza Cloud/, Workflows: /Your agent runs on your phone, not here\. Open Alpha on your Android phone to use it\./, Notes: /Notes unavailable/,
+    Inbox: /Connect Eliza Cloud/, Workflows: /Use on phone/, Notes: /Notes unavailable/,
     Photos: /No photos/, Maps: /Add a location/, Calendar: /\d/, Files: /Internal storage|Storage Unavailable/, Settings: /General|Privacy|Apps|About/,
   };
   for (const [view, expected] of Object.entries(states)) {
@@ -215,7 +215,7 @@ test('deferred apps are absent and root views show honest unconnected states', a
     await expect(page.locator('[data-screen]')).toContainText(expected);
     if (view === 'Maps') {
       await expect(page.getByRole('searchbox', { name: 'Search places', exact: true })).toBeVisible();
-      await page.locator('summary[aria-label="Map information"]').click();
+      await page.locator('summary[aria-label="Map information and credits"]').click();
       await expect(page.getByText(/Location is used only when you request it/)).toBeVisible();
     }
     const text = await page.locator('body').innerText();
@@ -267,7 +267,7 @@ test('the CSP admits Home, Notes, Maps, Scan and PDF without violations', async 
     await page.getByRole('button', { name: 'Type', exact: true }).click();
     const input = page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
     await input.fill('Scan this'); await input.press('Enter');
-    await page.getByRole('button', { name: 'Build multi-page PDF', exact: true }).click();
+    await page.getByRole('button', { name: 'Multi-page', exact: true }).click();
     await expect(page.getByRole('img', { name: 'Document page 1', exact: true })).toBeVisible();
   };
   await scan();

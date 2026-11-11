@@ -2,7 +2,7 @@ import {test,expect,type Page} from '@playwright/test';
 import {openBrowserCalendar} from './helpers/browser-calendar';
 import {returnToApps} from './app-navigation';
 
-async function filterType(page:Page,type:string){await page.getByRole('button',{name:'Filter workflows',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Filter workflows',exact:true});await dialog.getByRole('radio',{name:type,exact:true}).click();await dialog.getByRole('button',{name:'Show workflows',exact:true}).click();}
+async function filterType(page:Page,type:string){await page.getByRole('button',{name:'Filter workflows',exact:true}).click();const dialog=page.getByRole('dialog',{name:'Filter workflows',exact:true});await dialog.getByRole('radio',{name:type,exact:true}).click();await dialog.getByRole('button',{name:'Done',exact:true}).click();}
 
 /** Fresh browser context and synthetic canonical API only. No provider or native effects. */
 async function setup(page:Page,recurring=false){

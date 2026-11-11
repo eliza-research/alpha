@@ -626,7 +626,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 						<span aria-hidden="true" data-alpha-icon="/icons/lucide/x.svg" style={iconStyle("x")}/>
 					</button>
 				</header>
-				<h1 id="digest-title">Scheduled digests{connection.kind==='resident'&&isAndroid&&<span role="img" aria-label="Runs on this phone" style={{...iconStyle("phone"),width:'20px',height:'20px',marginLeft:8,verticalAlign:'middle'}}/>}</h1>
+				<h1><span id="digest-title">Scheduled digests</span>{connection.kind==='resident'&&isAndroid&&<span role="img" aria-label="Runs on this phone" style={{...iconStyle("phone"),width:'20px',height:'20px',marginLeft:8,verticalAlign:'middle'}}/>}</h1>
                 {liveBinding?.recover&&<button onClick={()=>{setOpen(false);liveBinding.recover?.();}}>Digest inbox recovery</button>}
 				<p role="status">{message==='Synced with this agent.'?<><span aria-hidden="true" style={{...iconStyle("circle-check"),width:'18px',height:'18px',color:'#1a7f37',verticalAlign:'middle'}}/><span style={srOnly}>{message}</span></>:<>{(message==='Offline'||message==='Waiting')&&<span aria-hidden="true" style={dot(message==='Offline'?'#8a8a8a':'#b26a00')}/>}{message}</>}</p>
                 <ul style={{listStyle:'none',padding:0,margin:'8px 0'}}>

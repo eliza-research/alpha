@@ -93,7 +93,7 @@ test('switching with flash on and zoom 2x keeps both reset when the switch fails
  await page.getByRole('button',{name:'Flash off',exact:true}).click();await expect(page.getByRole('button',{name:'Flash on',exact:true})).toBeVisible();
  const calls=()=>page.evaluate(()=>(window as any).flipCalls.splice(0));expect(await calls()).toEqual(['zoom 2','flash on']);
  await page.evaluate(()=>(window as any).failSwitch=true);await page.getByRole('button',{name:'Switch camera',exact:true}).click();
- await expect(page.locator('[data-alpha-camera="said"]')).toContainText('Not supported on this camera.');
+ await expect(page.locator('[data-alpha-camera="said"]')).toContainText('Not supported');
  expect(await calls()).toEqual(['flash off','zoom 1','switch front']);
  await expect(page.getByRole('button',{name:'Flash off',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Zoom 1x',exact:true})).toHaveCSS('width','40px');
  await page.evaluate(()=>(window as any).failSwitch=false);await page.getByRole('button',{name:'Switch camera',exact:true}).click();

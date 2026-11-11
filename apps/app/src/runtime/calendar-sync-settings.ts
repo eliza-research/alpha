@@ -40,6 +40,7 @@ export function openCalendarSyncSettings(canonical?:CanonicalCalendarSyncSetting
 	const say = (text: string) => {
 		summaryText.textContent = text;
 		summaryDot.hidden = !text;
+		summaryDot.style.display = text ? "inline-block" : "none";
 	};
 	const details = document.createElement("p");
 	const destinations = document.createElement("div");
@@ -77,6 +78,7 @@ export function openCalendarSyncSettings(canonical?:CanonicalCalendarSyncSetting
 			details.textContent = `${destination.account} · ${destination.calendar}`;
 		chooseCalendar.disabled = busy || state.running;
 		chooseCalendar.hidden = state.enabled;
+		chooseCalendar.style.display = state.enabled ? "none" : "inline-flex";
 		const on = state.enabled || state.running;
 		toggle.input.checked = on;
 		// On: Pause is always available. Off: Review, then Confirm sync enables the reviewed destination.
@@ -84,6 +86,7 @@ export function openCalendarSyncSettings(canonical?:CanonicalCalendarSyncSetting
 		toggle.name.textContent = !on && review ? "Confirm sync" : "Sync";
 		sync.disabled = busy || state.running || !state.enabled;
 		sync.hidden = !state.enabled;
+		sync.style.display = state.enabled ? "inline-flex" : "none";
 	};
 	const unsubscribe = calendarSyncHost.subscribe(update);
 	const finish = () => {
@@ -204,7 +207,7 @@ function openCanonicalCalendarSyncSettings(scope:CanonicalCalendarSyncSettings){
  const title=document.createElement('h2');title.textContent='Google Calendar sync';
  const description=document.createElement('p');description.textContent='Google gets event details and guests.';
  const status=document.createElement('p'),statusDot=syncDot(),statusText=document.createElement('span');status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.append(statusDot,statusText);
- const say=(text:string,tone='#8a8a8a')=>{statusText.textContent=text;statusDot.hidden=!text;statusDot.style.background=tone;};
+ const say=(text:string,tone='#8a8a8a')=>{statusText.textContent=text;statusDot.hidden=!text;statusDot.style.display=text?'inline-block':'none';statusDot.style.background=tone;};
  const select=document.createElement('select');select.setAttribute('aria-label','Google Calendar destination');
  const preview=document.createElement('p'),controls=document.createElement('div');controls.style.cssText='display:flex;flex-wrap:wrap;align-items:center;gap:8px';
  // Picker + one Sync switch (Save → Confirm sync → Pause, the same select/resume/pause operations) + refresh icon.

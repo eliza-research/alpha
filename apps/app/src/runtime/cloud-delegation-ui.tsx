@@ -354,6 +354,7 @@ export function CloudDelegationPanel({
 					<button
 						disabled={busy}
 						onClick={() => void run(() => recover(pending))}
+						aria-label="Refresh authorization status"
 					>
 						<span aria-hidden="true" style={small("rotate-cw")} />Refresh
 					</button>
@@ -362,12 +363,14 @@ export function CloudDelegationPanel({
 						onClick={() =>
 							void run(() => openConnectionBrowser(pending.authUrl, signal))
 						}
+						aria-label="Open authorization"
 					>
 						<span aria-hidden="true" style={small("external-link")} />Open
 					</button>
 					<button
 						disabled={busy}
 						onClick={() => void run(() => cancelPending(pending))}
+						aria-label="Cancel authorization"
 					>
 						Cancel
 					</button>
@@ -396,6 +399,7 @@ export function CloudDelegationPanel({
 							if (valid()) onConnected();
 						})
 					}
+					aria-label="Revoke Cloud read grant"
 				>
 					Revoke
 				</button>

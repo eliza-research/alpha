@@ -153,7 +153,7 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     // The host cannot see where a sandboxed page took itself, so it says so and offers no reading
     // of that unknown document: the menu offers neither Read aloud nor a page question, so no review
     // opens and nothing is spoken.
-    await expect(page.getByRole('status').filter({hasText: 'The website navigated inside'})).toBeVisible();
+    await expect(page.getByRole('status').filter({hasText: 'Page blocked'})).toBeVisible();
     await button(page, 'Menu').click();
     await expect(button(page, 'Reload page')).toBeVisible();
     await expect(button(page, 'Read aloud')).toHaveCount(0);

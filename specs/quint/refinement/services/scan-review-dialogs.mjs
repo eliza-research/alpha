@@ -90,13 +90,13 @@ export async function checkScanReviewDialogs(extraSources=[],options={}){
       f.button('Save photo PDF').click();point('explicit PDF retry',call('exportPhotoPdf'));f.ports.conversions[1].resolve(f.bytes);await tick();f.ports.exports[1].resolve({status:'unverified',message:'Unconfirmed'});await tick();point('unconfirmed export locks retry',call('photoPdfSettled',false));assert.equal(f.button('Save photo PDF').disabled,true);
      }
     }else{
-     point('saved lines become editable in the real review',call('recognised'));f.button('Save PDF').click();point('real export begins before provider request',call('download'));
+     point('saved lines become editable in the real review',call('recognised'));f.button('Save reviewed searchable PDF').click();point('real export begins before provider request',call('download'));
      if(mode==='search-close-prepare'){f.back();await tick();point('close before conversion has no provider uncertainty',call('searchableClose'));f.ports.conversions[0].resolve(f.bytes);await tick();assert.equal(f.ports.exports.length,0);}
      else{
       f.ports.conversions[0].resolve(f.bytes);await tick();point('real exporter crosses the provider boundary',call('providerAsked'));assert.equal(f.ports.exports.length,1);
       if(mode==='search-close-request'){f.back();await tick();point('close after provider request is unconfirmed',call('searchableClose'));f.ports.exports[0].resolve({status:'exported',message:'Late'});await tick();assert.equal(f.search()['s.searchable.result'],'unconfirmed');}
       else{f.ports.exports[0].resolve({status:'cancelled',message:'Cancelled'});await tick();point('provider non-write retains editable review',call('providerSettled','cancelled'));
-       f.button('Save PDF').click();point('explicit searchable retry',call('download'));f.ports.conversions[1].resolve(f.bytes);await tick();point('second provider request',call('providerAsked'));f.ports.exports[1].resolve({status:'exported',message:'Exported'});await tick();point('confirmed searchable export ends review',call('providerSettled','exported'));}
+       f.button('Save reviewed searchable PDF').click();point('explicit searchable retry',call('download'));f.ports.conversions[1].resolve(f.bytes);await tick();point('second provider request',call('providerAsked'));f.ports.exports[1].resolve({status:'exported',message:'Exported'});await tick();point('confirmed searchable export ends review',call('providerSettled','exported'));}
      }
     }
     traces.push(t);

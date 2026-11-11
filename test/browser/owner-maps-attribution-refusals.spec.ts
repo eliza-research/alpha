@@ -47,10 +47,12 @@ async function search(page: Page, text: string) {
   await expect.poll(() => page.evaluate(() => (window as any).mapsSearches as number)).toBeGreaterThan(before);
 }
 
-test('Maps keeps the OpenStreetMap copyright credit visible beside Cloud results', async ({ page }) => {
+test('Maps keeps the OpenStreetMap copyright credit one tap away beside Cloud results', async ({ page }) => {
   await openMaps(page);
   await search(page, 'Port');
   await expect(page.getByRole('button', { name: /^Port Hercule/ }).first()).toBeVisible();
+  // Provider attribution stays visible; opening ⓘ keeps the same credit link available.
+  await page.locator('.alpha-map-credits summary[aria-label="Map information and credits"]').click();
   const credit = page.locator('.alpha-map-credits a[href="https://www.openstreetmap.org/copyright"]');
   await expect(credit).toBeVisible();
   await expect(credit).toContainText(/OpenStreetMap/);
