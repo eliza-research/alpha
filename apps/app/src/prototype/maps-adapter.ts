@@ -238,13 +238,16 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
     const sheetHeight = directionsOpen ? 300+(view.directions?.routes.length??0)*50 : isPlace ? 400 : 520;
     // The ⓘ and recenter buttons share one baseline: just above an open sheet, else above the dock.
     const recBottom = isPlace || isResults || (directionsOpen && !isNav) ? sheetHeight + 14 : 124;
+    // On the bare map the OpenStreetMap-based tile credits fold into the information panel.
+    // Google imagery, a Cloud provider credit and any open sheet keep them on the map.
+    const credit = cloudCredit(directionsOpen), creditsCollapsed = view.mode === 'base' && !credit && !googleMaps && !(raster && basemap === raster);
     Object.assign(data, {
       rootRef:(element:HTMLElement)=>{if(element)element.dataset.mapDiagnostics=JSON.stringify({...view.diagnostics,agentNavigation:{offered:agentNavigation.registered(),relay:residentMapsNavigationPort.relay}});},
       // Who receives search text and route points, from the connected Cloud provider.
       searchDisclosure:region?'Maps → Regional provider':searchRecipients(coverage?.disclosure),
       providerDisclosure:region?'Searches, search areas and route points are sent to the configured regional Maps provider.':describeMapsDisclosure(coverage?.disclosure),
       locationDisclosure:region||coverage?'Routes share selected points':'',
-      cloudCredit:cloudCredit(directionsOpen),
+      cloudCredit:credit, creditsCollapsed, creditsInline:!creditsCollapsed,
       notNative:false, hasNativeMap:true, globalBasemap:globalMap, regionalBasemap:!!region && basemap === region,
       cloudBasemap:!!raster && basemap === raster && !googleMaps, googleMaps, googleMapsLogo,
       googleMapMissing:googleMaps && !basemap,

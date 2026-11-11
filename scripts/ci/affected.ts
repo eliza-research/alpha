@@ -6,7 +6,7 @@ export const referenceOnly = (path: string) => /^(docs\/|design\/)/.test(path) |
 
 // The retained product documentation is checked by test/docs-links.test.mjs.
 // Policy inputs under scripts/ remain executable build inputs and select normal lanes.
-export const testReadReference = (path: string) => path === 'README.md' || path === 'docs/prd.md';
+export const testReadReference = (path: string) => path === 'README.md' || path === 'docs/development.md' || path === 'docs/prd.md';
 
 // Android files that browser specs read; test/ci-affected.test.mjs scans test/browser to keep this complete.
 export const browserReadAndroid = new Set([

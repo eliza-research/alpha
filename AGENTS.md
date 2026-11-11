@@ -1,6 +1,6 @@
 # alphaphone
 
-Read README.md and docs/prd.md before changes.
+Read README.md, docs/development.md and docs/prd.md before changes.
 This is one independent product. Do not import the other product's UI or identity.
 `vendor/eliza` is a pinned upstream submodule. Never edit its checkout as a shortcut:
 make shared changes upstream and advance to a reviewed commit.

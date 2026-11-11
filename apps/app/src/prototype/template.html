@@ -2275,10 +2275,10 @@
           <sc-if value="{{maps.googleMapMissing}}"><span class="alpha-google-map-missing">No imagery</span></sc-if>
         </div>
       </sc-if>
-      <sc-if value="{{maps.globalBasemap}}">
-        <span class="alpha-map-credit-links"><a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a><sc-if value="{{maps.cloudCredit}}"><span data-maps-cloud-credit> · {{maps.cloudCredit}}</span></sc-if></span>
+      <sc-if value="{{maps.creditsInline}}">
+        <sc-if value="{{maps.globalBasemap}}"><span class="alpha-map-credit-links"><a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a><sc-if value="{{maps.cloudCredit}}"><span data-maps-cloud-credit> · {{maps.cloudCredit}}</span></sc-if></span></sc-if>
+        <sc-if value="{{maps.regionalBasemap}}"><span class="alpha-map-credit-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{{maps.mapAttribution}}</a></span></sc-if>
       </sc-if>
-      <sc-if value="{{maps.regionalBasemap}}"><span class="alpha-map-credit-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{{maps.mapAttribution}}</a></span></sc-if>
       <sc-if value="{{maps.cloudBasemap}}"><span class="alpha-map-credit-links">{{maps.mapAttribution}}</span></sc-if>
       <details class="alpha-map-privacy" name="alpha-map-info"><summary aria-label="Map information and credits"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ic.info}}"></path></svg></summary>
         <div class="alpha-map-info">
@@ -2286,6 +2286,10 @@
           <sc-if value="{{maps.globalBasemap}}"><p>Map tiles: OpenFreeMap</p></sc-if>
           <sc-if value="{{maps.providerDisclosure}}"><p data-maps-disclosure>{{maps.providerDisclosure}}</p></sc-if>
           <button class="tap" aria-label="Enter coordinates" onClick="{{maps.nativeManualLocation}}">Coordinates</button>
+          <sc-if value="{{maps.creditsCollapsed}}">
+            <sc-if value="{{maps.globalBasemap}}"><span class="alpha-map-credit-links"><a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> · <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap</a><sc-if value="{{maps.cloudCredit}}"><span data-maps-cloud-credit> · {{maps.cloudCredit}}</span></sc-if></span></sc-if>
+            <sc-if value="{{maps.regionalBasemap}}"><span class="alpha-map-credit-links"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">{{maps.mapAttribution}}</a></span></sc-if>
+          </sc-if>
 
         </div>
       </details>
@@ -3580,7 +3584,7 @@
 
       </div>
     </sc-for>
-    <sc-if value="{{workflows.listToggles}}"><button class="workflow-row-open" aria-label="Clock alarms" onClick="{{workflows.openClock}}"><span class="workflow-row-title">Alarms</span></button></sc-if>
+    <sc-if value="{{workflows.listToggles}}"><div class="workflow-row"><button class="workflow-row-open" aria-label="Clock alarms" onClick="{{workflows.openClock}}"><span class="workflow-row-content"><span class="workflow-row-title">Alarms</span></span><svg class="i workflow-row-chevron" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></div></sc-if>
     <sc-for list="{{workflows.automation.managementCards}}" as="control"><button class="automation-management" onClick="{{control.open}}"><span>{{control.name}}</span><span>{{control.short}}</span><svg class="i" viewBox="0 0 24 24"><path d="{{ic.right}}"></path></svg></button></sc-for>
   </div>
 
