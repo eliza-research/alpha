@@ -219,13 +219,16 @@ export function updateIdle(facts: UpdateIdleFacts): boolean {
     !facts.homeEdit && !facts.homeAdd && !facts.drawerMenu &&
     !facts.busy && !facts.open && !facts.editor;
 }
-/** Field updates wait for Home, outside voice, edits and foreground reviews. */
-export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unknown;drawerMenu?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean, voiceActive: boolean): boolean {
+/** Field updates wait for idle Home, including behind the empty required first-run sign-in landing. */
+export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unknown;drawerMenu?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean, voiceActive: boolean, page?: Pick<Document, 'querySelector'>): boolean {
+  const signIn = connection.open ? page?.querySelector('[data-alpha-app-update-sign-in]') : null;
+  // The uncontrolled input can retain typed or autofilled text even after it loses focus.
+  const signInIdle = signIn && !signIn.matches(':active') && Array.from(signIn.querySelectorAll('input')).every(input => input.value === '');
   return updateIdle({
     voiceInactive: voiceActive === false, home: shell.screen === 'home', view: !!shell.view, voiceOff: shell.voice === 'off',
     typing: !!shell.typing, chatResting: shell.chat === 'input' || shell.chat === 'hidden', drawer: !!shell.drawer, shade: !!shell.shade,
     homeEdit: !!shell.homeEdit, homeAdd: !!shell.homeAdd, drawerMenu: !!shell.drawerMenu,
-    busy: !!connection.busy, open: !!connection.open, editor: !!editor,
+    busy: !!connection.busy, open: !!connection.open && !signInIdle, editor: !!editor,
   });
 }
 /** The Privacy page's voice fact: the speech route in use now (voice-selection.ts) and what it sends.
@@ -427,7 +430,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
     changed();
     const idle = () => automaticUpdateIdle(owner?.S?.() ?? {},connectionController.getSnapshot(),
       !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus,[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'),
-      owner?.voiceConversationActive?.() !== false);
+      owner?.voiceConversationActive?.() !== false, document);
     if (updateBusy || !idle())
       throw Error('Current activity must finish');
     const [installed, build, pending] = await Promise.all([device.snapshot(), system.getBuildInfo(), device.updateState()]);
