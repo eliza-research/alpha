@@ -14,7 +14,7 @@ async function setup(page:any,fail=false){
 }
 async function expectSelectionClearance(page:any,viewport:{width:number;height:number}){
  const pin=page.locator('.maplibregl-marker'),credits=page.locator('.alpha-map-credits');
- await expect(page.getByLabel('Map information and credits',{exact:true}).locator('svg[aria-hidden="true"]')).toBeVisible();await expect(pin).toHaveCount(1);await expect(pin).toBeInViewport();await expect(credits).toBeInViewport();
+ await expect(page.getByLabel('Map information and credits',{exact:true}).locator('[data-alpha-icon]')).toBeVisible();await expect(pin).toHaveCount(1);await expect(pin).toBeInViewport();await expect(credits).toBeInViewport();
  await expect.poll(async()=>{
   const p=(await pin.boundingBox())!,sheet=(await page.locator('[data-alpha-maps-sheet="place"]').boundingBox())!,c=(await credits.boundingBox())!,header=(await page.locator('[data-alpha-app-header=main]').boundingBox())!;
   return p.y>header.y+header.height&&p.y+p.height<c.y-8&&(viewport.width>viewport.height?p.x+p.width<sheet.x-8:p.y+p.height<sheet.y-8);
