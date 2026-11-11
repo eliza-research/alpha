@@ -3,11 +3,11 @@
   "repository": "elizaOS/eliza",
   "base": "develop",
   "baseCommit": "cbdfbbca0d5cebdd729f4404c4517cd78f7b516a",
-  "head": "fd860a0a600e63eeee44c19b6af1e85c4a5ff641",
+  "head": "063476754fd552e8337143d11300bfaa312feef5",
   "recordedAt": "2026-11-11",
-  "command": "Prior recorded comparison, extended by git rev-list a44ecebb5f7708c45d9b166c3c7205ee2264722a..fd860a0a600e63eeee44c19b6af1e85c4a5ff641",
+  "command": "Prior recorded comparison, extended by git rev-list fd860a0a600e63eeee44c19b6af1e85c4a5ff641..063476754fd552e8337143d11300bfaa312feef5",
   "status": "diverged",
-  "aheadBy": 21,
+  "aheadBy": 23,
   "behindBy": 380,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
   "pinOnlyCommits": [
@@ -94,6 +94,14 @@
     {
       "sha": "fd860a0a600e63eeee44c19b6af1e85c4a5ff641",
       "subject": "fix(calendar): preserve client clock and native extraction refusal"
+    },
+    {
+      "sha": "6e1ad3829e2d115b433cfcd0548f4a57bfc27e15",
+      "subject": "fix(reminders): preserve recovery of unknown delivery choices"
+    },
+    {
+      "sha": "063476754fd552e8337143d11300bfaa312feef5",
+      "subject": "fix(scheduling): retire resolved approval follow-ups"
     }
   ],
   "pullRequests": [
