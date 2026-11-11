@@ -33,6 +33,23 @@ export function homeAgendaCard(out: Bag): ReactElement | null {
   });
 }
 
+/** One look for every row card on Home (mail, Messages, Phone). */
+const ROW_CARD_STYLE = {flexShrink: 0, scrollSnapAlign: 'start', width: 'max-content', minWidth: 172, maxWidth: 'calc(100% - 48px)', borderRadius: 30, background: 'var(--s2)', padding: 22,
+  boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'} as const;
+const ROW_CARD_PARTS = {
+  head: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'},
+  count: {fontSize: 14, fontWeight: 600, textAlign: 'left'},
+  rows: {display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 260, minWidth: 0, textAlign: 'left'},
+  row: {minWidth: 0},
+  rowTitle: {fontSize: 18, fontWeight: 600, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'},
+  rowDetail: {fontSize: 12, lineHeight: 1.4, color: 'var(--mut)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'},
+  title: {fontSize: 26, lineHeight: 1.1, minWidth: 0, maxWidth: 260, textAlign: 'left', overflowWrap: 'anywhere'},
+  status: {fontSize: 12, lineHeight: 1.4, minHeight: 17, color: 'var(--mut)', textAlign: 'left'},
+  people: {display: 'flex', gap: 2},
+  person: {width: 28, height: 28, borderRadius: 14, background: 'var(--s3)', fontSize: 9.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 0 0 2px var(--s2)', whiteSpace: 'nowrap'},
+} as const;
+
 const INBOX_STATES = new Set(['not-connected', 'idle', 'loading', 'ready', 'stale', 'error']);
 /**
  * The Home mail (attention) card: the shared upstream card with the values the Inbox adapter
@@ -53,21 +70,27 @@ export function homeAttentionCard(out: Bag): ReactElement | null {
     classNames: {card: 'home-card', title: 'serif'},
     dataAttributes: {'data-alpha-home-inbox': ''},
     partAttributes: {rows: {'data-alpha-home-inbox-subjects': ''}},
-    style: {flexShrink: 0, scrollSnapAlign: 'start', width: 'max-content', minWidth: 172, maxWidth: 'calc(100% - 48px)', borderRadius: 30, background: 'var(--s2)', padding: 22,
-      boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'space-between'},
-    styles: {
-      head: {display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'},
-      count: {fontSize: 14, fontWeight: 600, textAlign: 'left'},
-      rows: {display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 260, minWidth: 0, textAlign: 'left'},
-      row: {minWidth: 0},
-      rowTitle: {fontSize: 18, fontWeight: 600, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'},
-      rowDetail: {fontSize: 12, lineHeight: 1.4, color: 'var(--mut)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'},
-      title: {fontSize: 26, lineHeight: 1.1, minWidth: 0, maxWidth: 260, textAlign: 'left', overflowWrap: 'anywhere'},
-      status: {fontSize: 12, lineHeight: 1.4, minHeight: 17, color: 'var(--mut)', textAlign: 'left'},
-      people: {display: 'flex', gap: 2, visibility: out.homePeopleVisibility === 'hidden' ? 'hidden' : 'visible'},
-      person: {width: 28, height: 28, borderRadius: 14, background: 'var(--s3)', fontSize: 9.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: '0 0 0 2px var(--s2)', whiteSpace: 'nowrap'},
-    },
+    style: ROW_CARD_STYLE,
+    styles: {...ROW_CARD_PARTS, people: {...ROW_CARD_PARTS.people, visibility: out.homePeopleVisibility === 'hidden' ? 'hidden' : 'visible'}},
+  });
+}
+
+/**
+ * The Home Messages and Phone cards (telephony-attention.ts): the same shared card and the same
+ * styles as the mail card, so the row of cards reads as one set. The whole card is one target that
+ * opens the view; it has no inner controls.
+ */
+export function homeTelephonyCard(kind: 'messages' | 'phone', card: {count: string; rows: {title: string; detail: string}[]; status: string; label: string} | null | undefined, onActivate: unknown): ReactElement | null {
+  if (!card || !Array.isArray(card.rows) || card.rows.length === 0) return null;
+  return createElement(OverviewAttentionCard, {
+    count: String(card.count), rows: card.rows.map(row => ({title: String(row.title), detail: String(row.detail)})), title: '', status: String(card.status), people: [], state: 'ready',
+    label: String(card.label), description: '', onActivate: typeof onActivate === 'function' ? onActivate as () => void : undefined,
+    icon: maskIcon(kind === 'messages' ? 'message-square' : 'phone', 'var(--acct)'),
+    classNames: {card: 'home-card', title: 'serif'},
+    dataAttributes: {[`data-alpha-home-${kind}`]: ''},
+    partAttributes: {rows: {[`data-alpha-home-${kind}-rows`]: ''}},
+    style: ROW_CARD_STYLE,
+    styles: ROW_CARD_PARTS,
   });
 }
 
@@ -94,8 +117,9 @@ export function installHomeOverviewCards(Component: any) {
   p.renderVals = function () {
     const out = render.call(this);
     const agenda = homeAgendaCard(out), attention = homeAttentionCard(out), brief = homeBriefCard(out);
+    const messages = homeTelephonyCard('messages', out.homeMessagesAttention, out.goMessagesAttention), phone = homeTelephonyCard('phone', out.homePhoneAttention, out.goPhoneAttention);
     const showWorkflow = out.homeShowWorkflows !== false && out.homeWorkflowHasRows === true && Array.isArray(out.homeWorkflowRows) && out.homeWorkflowRows.length > 0;
-    return {...out, homeAgendaCard: agenda, homeAttentionCard: attention, homeBriefCard: brief, homeShowWorkflow: showWorkflow,
-      homeHasOverviewCards: !!(agenda || attention || brief || showWorkflow)};
+    return {...out, homeAgendaCard: agenda, homeMessagesCard: messages, homePhoneCard: phone, homeAttentionCard: attention, homeBriefCard: brief, homeShowWorkflow: showWorkflow,
+      homeHasOverviewCards: !!(agenda || messages || phone || attention || brief || showWorkflow)};
   };
 }

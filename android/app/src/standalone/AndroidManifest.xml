@@ -2,6 +2,7 @@
  <!-- Standalone APKs have no Phone, Contacts or SMS (P-36): no contacts or phone-state access is
       declared, whatever a shared library manifest lists. -->
  <uses-permission android:name="android.permission.READ_CONTACTS" tools:node="remove" />
+ <uses-permission android:name="android.permission.WRITE_CONTACTS" tools:node="remove" />
  <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
  <!-- These are removal markers, not permission requests. The merged standalone
       manifest and APK verifier still require all three permissions to be absent. -->

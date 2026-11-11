@@ -193,6 +193,7 @@ export class AlphaClient {
   private transport: VerifiedSessionTransport | null = null;
   private epoch = 0;
   private context = copyContext({ view: "home" }, 0);
+  private localSelection: string | null = null;
   private active: AbortController | null = null;
   private activeWorkflow = false;
   private proposals = new Map<string, ActionProposal>();
@@ -253,9 +254,12 @@ export class AlphaClient {
       this.emit();
     }
   }
-  setViewContext(context: ViewContext): void {
+  /** A local selection can retire approvals without publishing its identifier to the agent. */
+  setViewContext(context: ViewContext, localSelection: string | null = null): void {
     const next = copyContext(context, this.context.revision);
-    if (JSON.stringify(next) === JSON.stringify(this.context)) return;
+    const selection = next.sensitive ? null : localSelection;
+    if (selection === this.localSelection && JSON.stringify(next) === JSON.stringify(this.context)) return;
+    this.localSelection = selection;
     this.context = copyContext(context, this.context.revision + 1);
     this.proposals.clear();
     if(!this.activeWorkflow||next.sensitive){this.active?.abort();this.active=null;this.activeWorkflow=false;}

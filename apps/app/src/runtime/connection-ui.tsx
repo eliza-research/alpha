@@ -2246,6 +2246,20 @@ export const connectionController = {
     result.catch(()=>{if(actionReceipts.get(proposal.id)?.result===result)actionReceipts.delete(proposal.id);});
     return result;
   },
+  /**
+   * A suggested reply for the SMS thread the owner has open, drafted by the resident agent
+   * (`POST /api/messages/reply-draft`). It is only ever a draft: the owner sends it, edited or not,
+   * through the native review. Null when the agent declines or no reply is called for.
+   */
+  async draftSmsReply(thread:{participant:string|null;messages:{direction:'in'|'out';date:number;body:string}[];truncated:boolean},signal:AbortSignal):Promise<string|null>{
+    const selected=active,session=state.session,generation=epoch;
+    const open=()=>{const view=navigationContext?.();return view?.view==='messages'&&!view.sensitive&&!state.open&&!document.hidden;};
+    if(selected?.kind!=='resident'||!session||!open())return null;
+    const current=()=>{signal.throwIfAborted();if(generation!==epoch||active!==selected||state.session!==session||!open())throw Error('The agent or Messages view changed.');};
+    current();const result=await selected.remote.request('/api/messages/reply-draft',thread,signal);current();
+    const draft=(result as {draft?:unknown})?.draft;
+    return typeof draft==='string'&&draft.trim()&&draft.length<=320?draft.trim():null;
+  },
   async readCalendarApproval(id:string,signal:AbortSignal){
     return calendarApprovals.read(id,signal);
   },

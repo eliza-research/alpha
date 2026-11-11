@@ -100,7 +100,7 @@ test("the telephony plugin is registered and answers only on the verified image"
   // Every @PluginMethod, overrides of Capacitor's inherited permission methods included.
   const methods = [...plugin.matchAll(/@PluginMethod public void (\w+)\(PluginCall call\)\s*\{\s*([^\n]*)/g)];
   assert.equal(methods.length, (plugin.match(/@PluginMethod/g) || []).length, "no plugin method escapes the check");
-  assert.deepEqual(methods.map(m => m[1]).sort(), ["cancelSmsReview", "checkPermissions", "composeSms", "dial", "imageCapability", "listMessages", "listRecentCalls", "listThreads", "markThreadRead", "mmsSendResult", "observeMessages", "requestAccess", "requestPermissions", "requestRole", "searchContacts", "sendMms", "sendSms", "smsSendHistory", "smsSendResult", "status"]);
+  assert.deepEqual(methods.map(m => m[1]).sort(), ["cancelSmsReview", "checkPermissions", "composeSms", "deleteVoicemail", "dial", "fetchVoicemailAudio", "imageCapability", "listMessages", "listRecentCalls", "listThreads", "listVoicemail", "markThreadRead", "markVoicemailHeard", "mmsSendResult", "observeMessages", "observeVoicemail", "placeCall", "requestAccess", "requestPermissions", "requestRole", "searchContacts", "sendMms", "sendSms", "smsSendHistory", "smsSendResult", "status", "voicemailAudio", "voicemailPcm", "voicemailStatus"]);
   for (const [, name, first] of methods) assert.match(first, /^if \(!?refused\(call\)\)/, `${name} re-checks the capability before anything else`);
   // Android can deliver a permission/role result before the activity resumes. The shared answer
   // path still rejects a lost image admission or closed plugin, but returns only permission/role
@@ -113,7 +113,16 @@ test("the telephony plugin is registered and answers only on the verified image"
   const answer=plugin.slice(plugin.indexOf('private void answer(PluginCall call)'),plugin.indexOf('@PermissionCallback'));
   assert.match(answer,/if \(!admitted\(\) \|\| closed\) \{ call\.reject\(unavailableMessage\(\), "unavailable"\); return; \}\s*JSObject value = statusObject\(\);/,'the image and lifecycle are checked before preparing the answer');
   assert.match(answer,/if \(!unlockedForeground\(\)\) \{ value\.put\("subscriptions", JSONObject\.NULL\); value\.put\("defaultSmsSubscriptionId", JSONObject\.NULL\); \}\s*call\.resolve\(value\);/,'a background or locked callback publishes no SIM identifiers');
-  assert.doesNotMatch(plugin, /sendTextMessage|sendMultipartTextMessage|ACTION_CALL\b|placeCall|WRITE_CONTACTS|insert\(|applyBatch/, "no direct call or contact write; native SMS dispatch lives only in the shared SmsTelephony behind the native review");
+  assert.doesNotMatch(plugin, /sendTextMessage|sendMultipartTextMessage|WRITE_CONTACTS|insert\(|applyBatch/, "no contact write here; native SMS dispatch lives only in the shared SmsTelephony behind the native review");
+  // A call is placed in one method only (AP-08): the dialer role and CALL_PHONE are required, an
+  // emergency or unclassifiable number goes to the dial screen instead, and a call in progress places nothing.
+  const place = plugin.slice(plugin.indexOf("@PluginMethod public void placeCall("), plugin.indexOf("@PluginMethod public void composeSms("));
+  assert.equal((plugin.match(/originate\(Uri\.fromParts/g) || []).length, 1, "one call site");
+  assert.ok(place.includes("originate(Uri.fromParts"), "that call site is placeCall");
+  assert.match(place, /catch \(RuntimeException unclassified\) \{ emergency = true; \}/, "a number Android cannot classify is treated as emergency");
+  const order = ["if (emergency) {", "if (!dialerRoleHeld())", "checkSelfPermission(Manifest.permission.CALL_PHONE)", "if (inCall)", "originate(Uri.fromParts"].map(step => place.indexOf(step));
+  assert.ok(order.every((at, index) => at > 0 && (index === 0 || at > order[index - 1])), "emergency, role, permission and busy are all decided before the call is placed");
+  assert.match(place.slice(place.indexOf("if (emergency) {"), place.indexOf("if (!dialerRoleHeld())")), /Intent\.ACTION_DIAL[\s\S]*return;\s*\}\s*if \(telecom == null/, "the emergency branch only opens the dial screen and returns");
   assert.equal((plugin.match(/SmsTelephony\.dispatch\(/g) || []).length, 1, "one dispatch site, inside the owner's Send decision");
   assert.match(plugin, /Intent\.ACTION_DIAL/); assert.match(plugin, /Intent\.ACTION_SENDTO/);
   assert.match(plugin, /if \(!eligibleFor\(role\)\)/, "a role request Android could only refuse is never shown");
@@ -151,7 +160,7 @@ test("no Alpha Java lists or launches apps: installed apps and default hand-offs
   }
 });
 
-test("permissions: standalone has none, the launcher declares read access only, nothing writes", () => {
+test("telephony permissions are launcher-only and neither flavor registers as a carrier voicemail source", () => {
   const main = read("android/app/src/main/AndroidManifest.xml");
   const launcher = read("android/app/src/launcher/AndroidManifest.xml");
   const standalone = read("android/app/src/standalone/AndroidManifest.xml");
@@ -162,7 +171,16 @@ test("permissions: standalone has none, the launcher declares read access only, 
     assert.ok(declared(launcher).includes(`android.permission.${permission}`), `launcher declares ${permission}`);
     assert.ok(removed(standalone).includes(`android.permission.${permission}`), `standalone removes ${permission}`);
   }
-  assert.ok(removed(main).includes("android.permission.WRITE_CONTACTS"), "contact writes are removed from every build");
+  // In-app contact saves exist on the image only (AP-08): the launcher declares the write, main does
+  // not, and the standalone manifest removes it whatever a shared library lists.
+  assert.ok(!declared(main).includes("android.permission.WRITE_CONTACTS"), "main does not declare contact writes");
+  assert.ok(declared(launcher).includes("android.permission.WRITE_CONTACTS"), "the launcher declares contact writes");
+  assert.ok(removed(standalone).includes("android.permission.WRITE_CONTACTS"), "standalone removes contact writes");
+  assert.ok(removed(main).includes("com.android.voicemail.permission.ADD_VOICEMAIL"));
+  for (const xml of [main, launcher, standalone]) {
+    assert.ok(!declared(xml).includes("com.android.voicemail.permission.ADD_VOICEMAIL"));
+    assert.doesNotMatch(xml, /android\.telephony\.VisualVoicemailService|BIND_VISUAL_VOICEMAIL_SERVICE/);
+  }
   for (const xml of [main, launcher, standalone])
     for (const permission of ["WRITE_CALL_LOG", "ANSWER_PHONE_CALLS", "MANAGE_OWN_CALLS"])
       assert.ok(!declared(xml).includes(`android.permission.${permission}`), `${permission} is not declared`);
@@ -210,7 +228,7 @@ test("queued contacts cannot return data after access or lifecycle changes", () 
   const shared=read('vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages/TelephonyPlugin.java');
   assert.match(shared,/handleOnResume/);assert.match(shared,/ACTION_SCREEN_OFF/);
   assert.match(shared,/handleOnPause/);assert.match(shared,/handleOnDestroy/);
-  assert.match(shared,/main\.post\(\(\) -> \{\n      if \(fenceResult && !current\(access, cancel, alias\)\)/);assert.match(shared,/protected final void fencedRead\(PluginCall call, String alias, String noun, Read read\) \{ fenced\(call, alias, noun, read, true\); \}/,'reads are fenced again before their result is published');assert.match(shared,/access == generation\.get\(\)/);
+  assert.match(shared,/main\.post\(\(\) -> \{\n      if \(fenceResult && !current\(access, cancel, granted\)\)/);assert.match(shared,/protected final void fencedRead\(PluginCall call, String alias, String noun, Read read\) \{ fenced\(call, alias, noun, read, true\); \}/,'reads are fenced again before their result is published');assert.match(shared,/access == generation\.get\(\)/);
   assert.match(read(`${JAVA}/AlphaTelephonyPlugin.java`),/fencedRead\(call, "contacts", "Contacts"/);
 });
 

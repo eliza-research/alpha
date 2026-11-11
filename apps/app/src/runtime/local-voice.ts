@@ -8,6 +8,8 @@ const native = registerPlugin<{
   /** `ready` is full speech readiness (recognition and playback prepared together); native reports no separate `playback` today, so read-aloud waits for it. */
   localSpeechStatus(input: { requestId: string }): Promise<{ ready: boolean; playback?: boolean; execution: string }>;
   transcribeLocalRecording(input: { recordingId: string; requestId: string }): Promise<LocalTranscript>;
+  /** One window of audio the app holds: a complete mono 16 kHz PCM16 WAV of at most sixty seconds, base64. */
+  transcribeLocalAudio(input: { wav: string; requestId: string }): Promise<LocalTranscript>;
   releaseLocalSpeech(): Promise<void>;
   cancel(input: { requestId: string }): Promise<void>;
 }>('AlphaVoiceCloud');
@@ -60,6 +62,12 @@ export function createOnDeviceVoice() {
       const result = await Promise.race([native.transcribeLocalRecording({ recordingId, requestId }), interrupted]);
       if (result.execution !== (Capacitor.isNativePlatform()?'device':'browser') || result.local !== true || typeof result.text !== 'string') throw new Error('No usable on-device transcript');
       if (!result.text.trim()) throw Object.assign(new Error('No speech was detected.'), { code: 'no-speech' });
+      return result;
+    }); },
+    /** Audio the app already holds (a decoded voicemail window). An empty transcript is silence, not an error. */
+    async transcribeAudio(wav: string, signal: AbortSignal) { return operation(signal, async (requestId, interrupted) => {
+      const result = await Promise.race([native.transcribeLocalAudio({ wav, requestId }), interrupted]);
+      if (result.execution !== (Capacitor.isNativePlatform()?'device':'browser') || result.local !== true || typeof result.text !== 'string') throw new Error('No usable on-device transcript');
       return result;
     }); },
     /** `conversation`: a spoken reply. Only a likely secret is refused (code 'speech-refused');

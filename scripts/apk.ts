@@ -274,8 +274,11 @@ export function validateApk(file: string, identity: {appId: string}, wantsHome: 
   // unlocked profile and runtime grant remain separate requirements for access.
   if (data.xml.includes('android.permission.READ_CONTACTS') !== wantsHome)
     throw new Error(`Invalid Contacts read permission for distribution in ${file}`);
-  if (data.xml.includes('android.permission.WRITE_CONTACTS'))
-    throw new Error(`Unexpected Contacts write permission in ${file}`);
+  if (data.xml.includes('android.permission.WRITE_CONTACTS') !== wantsHome)
+    throw new Error(`Invalid WRITE_CONTACTS permission for distribution in ${file}`);
+  // The default dialer can use provider voicemail. Carrier registration needs authenticated provisioning.
+  for (const entry of ['com.android.voicemail.permission.ADD_VOICEMAIL', 'android.telephony.VisualVoicemailService', 'android.permission.BIND_VISUAL_VOICEMAIL_SERVICE'])
+    if (data.xml.includes(entry)) throw new Error(`Unexpected carrier voicemail manifest entry ${entry} in ${file}`);
   // SMS provider reads and reviewed sends (#421) are packaged only for the launcher; Android grants
   // these hard-restricted permissions only to the preinstalled image app or the SMS role holder.
   for (const permission of ['READ_SMS', 'SEND_SMS'])

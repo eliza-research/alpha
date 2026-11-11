@@ -121,6 +121,7 @@ export default defineConfig({
       "@elizaos/contracts/stated-clock-time": fileURLToPath(new URL("./.eliza/client-features/packages/contracts/src/stated-clock-time.ts", import.meta.url)),
       "@elizaos/contracts/browser-request-grounding": fileURLToPath(new URL("./.eliza/client-features/packages/contracts/src/browser-request-grounding.ts", import.meta.url)),
       "@elizaos/contracts/phone-dial": fileURLToPath(new URL("./.eliza/client-features/packages/contracts/src/phone-dial.ts", import.meta.url)),
+      "@elizaos/contracts/telephony-actions": fileURLToPath(new URL("./.eliza/client-features/packages/contracts/src/telephony-actions.ts", import.meta.url)),
       "@elizaos/contracts/device-action-execution": fileURLToPath(new URL("./.eliza/client-features/packages/contracts/src/device-action-execution.ts", import.meta.url)),
       "@elizaos/contracts/client-turn-observation": fileURLToPath(new URL("./.eliza/client-features/packages/contracts/src/client-turn-observation.ts", import.meta.url)),
       "@elizaos/ui/view-primitives": fileURLToPath(new URL("./.eliza/client-features/packages/ui/src/view-primitives.ts",import.meta.url)),

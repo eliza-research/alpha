@@ -18,9 +18,12 @@ import {installCalendarMonthFocus} from './prototype/calendar-month-focus';
 import {installCalendarEditDraftAdapter} from './prototype/calendar-edit-draft-adapter';
 import {installCalendarFormDraftAdapter} from './prototype/calendar-form-draft-adapter';
 import { browserApps } from './browser/apps';
-import { installSmsAdapter } from './prototype/sms-adapter';
+import { installSmsAdapter, setSmsReplySuggester } from './prototype/sms-adapter';
 import { installContactsAdapter } from './prototype/contacts-adapter';
 import { installPhoneAdapter } from './prototype/phone-adapter';
+import { installTelephonyAttention } from './prototype/telephony-attention';
+import { installTelephonyReview } from './prototype/telephony-review';
+import { installVoicemailTranscription } from './runtime/voicemail-transcription';
 import { admitImageContacts } from './prototype/mvp-features';
 import {DeletionUndo} from './runtime/deletion-undo';
 import {bindBrowserSpeechConnection} from './browser/agent-speech';
@@ -177,6 +180,8 @@ installSystemShade(Component,{native:isAndroid});
 installSystemBarAppearance(Component,isAndroid,registerPlugin<SystemBars>('AlphaDevice'));
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
 installHomeCardVisibility(Component, () => googleConnectionController.open());
+// Messages and Phone cards exist on the verified image only; elsewhere this installs nothing.
+if(isAndroid&&!fixture){installTelephonyAttention(Component);installTelephonyReview(Component);installVoicemailTranscription();setSmsReplySuggester((thread,signal)=>connectionController.draftSmsReply(thread,signal));}
 installHomeOverviewCards(Component);
 installClockAdapter(Component, VIEWS, { simulated: testMocksEnabled && fixture, browser: !isAndroid });
 // Home and its app grid from the shared mobile shell, and Alpha's Apps drawer. Apps reads
