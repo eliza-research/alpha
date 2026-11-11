@@ -558,7 +558,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
   const categoryNames:Record<string,string>={'settings-account':'Account','settings-general':'General','settings-privacy':'Privacy','settings-help':'About','settings-apps':'Apps'};
   let activeSettingsCategory:string|null=null;
   const settingsBack = definition.back;
-  const settingsParents: Record<string,string> = {history:'agent-connection','agent-connection':'about',problems:'about',licenses:'about','password-entry':'password-provider','settings-permissions':'settings-privacy','license-detail':'licenses'};
+  const settingsParents: Record<string,string> = {history:'agent-connection','agent-connection':'settings-general',problems:'about',licenses:'about','password-entry':'password-provider','settings-permissions':'settings-privacy','license-detail':'licenses'};
   definition.back = (state:Bag,api:Bag) => {
     if(!state.sheet&&((typeof state.page==='string'&&Object.hasOwn(categoryNames,state.page))||(!state.page&&activeSettingsCategory))){activeSettingsCategory=null;api.set({page:null});return true;}
     if(!state.sheet&&settingsParents[state.page]){if(state.page==='password-entry')leavePasswordEntry();api.set({page:settingsParents[state.page]});return true;}
@@ -775,7 +775,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
               groups.push(group(rows,`agent-action:${item.id}`));
             }
           }
-          out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Connection help',hasTitle:true,backLabel:'Back to Settings',back:()=>api.set({page:null}),hero:{},groups});
+          out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'Agent connection',hasTitle:true,backLabel:'Back to General',back:()=>api.set({page:'settings-general'}),hero:{},groups});
         }
         if(native)page.groups.push(group([{kNav:true,label:'Reset Alpha data',lbl:'Reset Alpha data',sub:'Erase local Alpha data · device unlock required',hasSub:true,chev:true,noAB:true,go:async()=>{
           // Shared native review (@elizaos/capacitor-system/reset): only cancelled or unavailable reach here.
@@ -944,7 +944,6 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         'Accounts': 'Account',
         'Connections': 'Google & email',
         'AI provider': 'AI connection',
-        'Agent connection': 'Connection help',
         'Set up Alpha access': 'App permissions',
         'Review phone actions first': 'Ask before taking actions',
       };
@@ -953,7 +952,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
         ['Preferences', ['Display', 'Notifications']],
         ['Privacy', ['Set up Alpha access', 'Review phone actions first']],
         ['Apps', ['Calendar', 'Password manager', 'Photos']],
-        ['Help', ['About', 'Agent connection']],
+        ['Help', ['About']],
       ] as const;
       rows.delete('Models');
       rows.delete('Privacy & data');
@@ -1016,7 +1015,7 @@ export function installSettingsAdapter(Component: any, views: Bag) {
       out.stack.push({isTop:false,notTop:true,cls:'enter',z:4,title:'App permissions',backLabel:'Back to Privacy',back:()=>api.set({page:'settings-privacy'}),hero:{},groups:[group(rows)]});
     }
     if(activeSettingsCategory&&!categoryPage)for(const page of out.stack)if(!page.isTop&&page.backLabel==='Back to Settings')page.backLabel='Back to '+categoryNames[activeSettingsCategory];
-    const nestedParents:Record<string,[string,string]>={'agent-connection':['about','About'],licenses:['about','About'],problems:['developer','Developer'],history:['agent-connection','Connection help'],'license-detail':['licenses','licenses']};
+    const nestedParents:Record<string,[string,string]>={'agent-connection':['settings-general','General'],licenses:['about','About'],problems:['developer','Developer'],history:['agent-connection','Agent connection'],'license-detail':['licenses','licenses']};
     if(nestedParents[state.page]){const [parent,label]=nestedParents[state.page];const page=out.stack[out.stack.length-1];if(page&&!page.isTop){page.backLabel='Back to '+label;page.back=()=>api.set({page:parent});}}
     const settingsIcons:Record<string,string>={General:'settings',Privacy:'shield',Apps:'layout-grid',Help:'info',About:'info',Browser:'globe',Calendar:'calendar-days',Camera:'camera',Files:'folder',Inbox:'mail',Maps:'map-pin',Notes:'notebook-text',Passwords:'lock-keyhole',Photos:'images',Workflows:'workflow','Account & plan':'user-round','Google & email':'link','AI connection':'cpu',Display:'sun',Notifications:'bell','Privacy & data':'shield','App permissions':'fingerprint-pattern','Redeem code':'gift','Manage plan':'credit-card','Sign out':'log-out'};
     for(const page of out.stack)for(const section of page.groups||[])for(const row of section.rows||[])if(row.kNav){row.lucideIcon='/icons/lucide/'+(row.licenseComponent?'file-text':settingsIcons[row.label]||'sliders-horizontal')+'.svg';row.hasLucideIcon=!row.isTextSize;row.hasIcon=false;row.hasTile=false;}
