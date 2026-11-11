@@ -205,13 +205,18 @@ test('the before and after CLI use one reviewed signer policy through both APK a
   const output = path.join(directory, 'scripts', 'wireless.mjs');
   mkdirSync(path.dirname(output));
   writeFileSync(path.join(directory, 'app.config.json'), JSON.stringify({updateManifestUrl: publicUrl}));
+  const secondApk = Buffer.from('second CLI fixture APK bytes');
+  const secondManifest = {...manifest, versionCode: 9, sha256: hash(secondApk), sizeBytes: secondApk.length,
+    apkUrl: new URL('alpha-phone-9.apk', publicUrl).href};
   const prelude = `
     globalThis.wirelessPolicy = {signerSha256:${JSON.stringify(signingFamily)}};
     globalThis.wirelessCalls = [];
+    globalThis.wirelessOffer = process.env.FIXTURE_FOLLOWUP==='1' ? ${JSON.stringify(secondManifest)} : ${JSON.stringify(manifest)};
+    globalThis.wirelessBytes = Buffer.from(process.env.FIXTURE_FOLLOWUP==='1' ? ${JSON.stringify([...secondApk])} : ${JSON.stringify([...apk])});
     globalThis.fetch = async (url, options) => {
       if (options.redirect !== 'manual' || options.headers.authorization) throw Error('Unexpected public transport');
-      if (url === ${JSON.stringify(publicUrl)}) return new Response(${JSON.stringify(pointer.bytes.toString())});
-      if (url === ${JSON.stringify(manifest.apkUrl)}) return new Response(Buffer.from(${JSON.stringify([...apk])}));
+      if (url === ${JSON.stringify(publicUrl)}) return new Response(JSON.stringify(globalThis.wirelessOffer));
+      if (url === globalThis.wirelessOffer.apkUrl) return new Response(globalThis.wirelessBytes);
       throw Error('No network port for ' + url);
     };
   `;
@@ -222,14 +227,18 @@ test('the before and after CLI use one reviewed signer policy through both APK a
     './provision-unit.ts': `
       import assert from 'node:assert/strict';
       export {PACKAGE, packageFacts, deviceFacts} from ${JSON.stringify(provision)};
-      const packageName=${JSON.stringify(packageName)}, installedPath=${JSON.stringify(installedPath)}, props=${JSON.stringify(props)};
+      const packageName=${JSON.stringify(packageName)}, dataApkPath=${JSON.stringify(dataApkPath)},
+        imageApkPath=${JSON.stringify(imageApkPath)}, props=${JSON.stringify(props)};
       ${deviceReader.toString()}
-      const after=process.argv[2]==='after', image=process.env.FIXTURE_DISTRIBUTION==='image-preinstalled';
-      const versionCode=after?8:7, digest=after?${JSON.stringify(hash(apk))}:${JSON.stringify('c'.repeat(64))};
+      const after=process.argv[2]==='after', image=process.env.FIXTURE_DISTRIBUTION==='image-preinstalled',
+        followup=process.env.FIXTURE_FOLLOWUP==='1';
+      const versionCode=globalThis.wirelessOffer.versionCode-(after?0:1),
+        digest=after?globalThis.wirelessOffer.sha256:followup?${JSON.stringify(hash(apk))}:${JSON.stringify('c'.repeat(64))};
       export function adbFor(serial) {
         assert.equal(serial,'fixture-phone');
-        return deviceReader({version:versionCode,sha256:digest,initiator:after?packageName:'com.android.shell',
-          flags:image?(after?'SYSTEM HAS_CODE UPDATED_SYSTEM_APP':'SYSTEM HAS_CODE'):'HAS_CODE'});
+        return deviceReader({version:versionCode,sha256:digest,initiator:after||followup?packageName:'com.android.shell',
+          apkPath:image&&!after&&!followup?imageApkPath:dataApkPath,
+          flags:image?(after||followup?${JSON.stringify(updatedImageFlags)}:${JSON.stringify(imageFlags)}):'HAS_CODE'});
       }
       export function admitUnitApk(_file, selection, options={}) {
         assert.deepEqual(selection,{variant:'launcher',build:'release'});
@@ -267,9 +276,9 @@ test('the before and after CLI use one reviewed signer policy through both APK a
     }}]});
   for (const distribution of ['sideload', 'image-preinstalled']) {
     const before = path.join(directory, distribution + '-before.json'), after = path.join(directory, distribution + '-after.json');
-    const run = (phase, receipt, extra) => execFileSync(process.execPath, [realpathSync(output), phase, '--serial', 'fixture-phone',
+    const run = (phase, receipt, extra, followup = false) => execFileSync(process.execPath, [realpathSync(output), phase, '--serial', 'fixture-phone',
       '--apk-manifest', 'closed-apk-manifest.json', '--out', receipt, ...extra], {
-      encoding: 'utf8', timeout: 30_000, env: {...process.env, FIXTURE_DISTRIBUTION: distribution},
+      encoding: 'utf8', timeout: 30_000, env: {...process.env, FIXTURE_DISTRIBUTION: distribution, FIXTURE_FOLLOWUP: followup ? '1' : '0'},
     });
     run('before', before, ['--distribution', distribution]);
     run('after', after, ['--before', before]);
@@ -280,5 +289,20 @@ test('the before and after CLI use one reviewed signer policy through both APK a
     assert.equal(updated.observation.installed.initiator, packageName);
     assert.equal(updated.observation.installed.sha256, manifest.sha256);
     assert.equal(updated.observation.installed.firstInstallTime, initial.observation.installed.firstInstallTime);
+    assert.equal(initial.observation.installed.apkLocation, distribution === 'image-preinstalled' ? 'image' : 'data');
+    assert.equal(updated.observation.installed.apkLocation, 'data');
+    assert.equal(updated.beforeReceiptSha256, hash(readFileSync(before)), 'after links the actual baseline bytes');
+
+    const nextBefore = path.join(directory, distribution + '-followup-before.json');
+    const nextAfter = path.join(directory, distribution + '-followup-after.json');
+    run('before', nextBefore, ['--distribution', distribution, '--previous', after], true);
+    run('after', nextAfter, ['--before', nextBefore], true);
+    const followingBaseline = JSON.parse(readFileSync(nextBefore)), followingUpdate = JSON.parse(readFileSync(nextAfter));
+    assert.equal(followingBaseline.previousReceiptSha256, hash(readFileSync(after)), 'follow-up links the actual previous after bytes');
+    assert.deepEqual(followingBaseline.observation, updated.observation, 'the prior phone, image, HOME and installed APK remain exact');
+    assert.equal(followingUpdate.beforeReceiptSha256, hash(readFileSync(nextBefore)));
+    assert.equal(followingUpdate.observation.installed.versionCode, secondManifest.versionCode);
+    assert.equal(followingUpdate.observation.installed.sha256, secondManifest.sha256);
+    assert.equal(followingUpdate.observation.installed.firstInstallTime, initial.observation.installed.firstInstallTime);
   }
 });
