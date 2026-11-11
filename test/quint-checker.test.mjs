@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { detectedCounterexample, loadModels, missingQuintScenarios, quintModelOptions, quintProofBackend, readJson, repositoryRoot, runQuintChecker, runtimeScriptPaths, runtimeAssetPaths, sourceRoots, validateQuintModelMetadata } from '../scripts/quint-lib.ts';
 
@@ -118,9 +118,43 @@ test('runner records backend routing, unexpected exceptions and unfinished resul
       assert.equal(result.status, 0, result.stderr);
       const proof = readJson(join(root, 'verify.json'));
       assert.equal(proof.passed, true);
+      assert.equal(proof.jobs, 1);
       assert.equal(proof.backend, override.length ? 'apalache' : 'mixed');
       assert.deepEqual(proof.results.map(row => [row.model, row.backend, row.output.trim()]),
         [['Fixture', 'apalache', '--backend=apalache'], ['Routed', override.length ? 'apalache' : 'tlc', override[0] ?? '--backend=tlc']]);
+    }
+
+    const parallelProof = spawnSync(process.execPath, ['scripts/check-quint.ts', 'verify', '--jobs=2'],
+      {cwd: root, encoding: 'utf8', timeout: 10000});
+    assert.equal(parallelProof.status, 1);
+    assert.match(parallelProof.stderr, /one job per server endpoint/);
+
+    if (availableParallelism() >= 2) {
+      write('node_modules/@informalsystems/quint/dist/src/cli.js', `
+        const {existsSync, writeFileSync} = require('node:fs');
+        const name = require('node:path').basename(process.argv[3]);
+        if (name === 'Routed.qnt') {
+          writeFileSync('routed-started', '');
+          console.log(name);
+        } else {
+          const timer = setInterval(() => {
+            if (existsSync('routed-started')) {
+              clearInterval(timer);
+              clearTimeout(deadline);
+              console.log(name);
+            }
+          }, 10);
+          const deadline = setTimeout(() => process.exit(1), 4000);
+        }
+      `);
+      const parallel = spawnSync(process.execPath, ['scripts/check-quint.ts', 'typecheck', '--out=parallel.json'],
+        {cwd: root, encoding: 'utf8', timeout: 10000, env: {...process.env, ALPHA_QUINT_JOBS: '2'}});
+      assert.equal(parallel.status, 0, parallel.stderr);
+      const evidence = readJson(join(root, 'parallel.json'));
+      assert.equal(evidence.jobs, 2);
+      assert.deepEqual(evidence.results.map(row => [row.model, row.phase, row.passed]),
+        [['Fixture', 'typecheck', true], ['Routed', 'typecheck', true]]);
+      assert.deepEqual(evidence.finalInputErrors, []);
     }
 
     write('node_modules/@informalsystems/quint/dist/src/cli.js', 'setTimeout(() => {}, 60000);');
