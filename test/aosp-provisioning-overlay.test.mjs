@@ -61,9 +61,9 @@ test("the overlay sets default HOME, assistant and Autofill offer additively", t
   assert.ok(fs.existsSync(path.join(out, "provisioning/preferred-apps/launcher-home.xml")));
   const feature = `${PKG}.fresh_telephony_setup`;
   assert.ok(fs.readFileSync(path.join(out, "product.mk"), "utf8")
-    .includes(`$(launcher_provisioning_dir)/${feature}.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/${feature}.xml`));
-  assert.match(fs.readFileSync(path.join(out, "provisioning", `${feature}.xml`), "utf8"),
-    /<feature name="ai\.alphacompute\.alphaphone\.fresh_telephony_setup"\s*\/>/);
+    .includes(`$(dir $(launcher_provisioning_dir))branding/provision/fresh-telephony.xml:$(TARGET_COPY_OUT_PRODUCT)/etc/permissions/${feature}.xml`));
+  assert.equal(fs.existsSync(path.join(out, "branding/provision/fresh-telephony.xml")), false,
+    "the feature file is supplied only by the Provision source stage");
   assert.throws(() => writeProvisioningOverlay(out, PKG, provisioningComponents(tree(), PKG)), /EEXIST/);
 });
 

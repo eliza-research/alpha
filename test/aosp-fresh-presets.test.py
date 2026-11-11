@@ -73,6 +73,11 @@ public class FreshTest {
    self.assertIn('AlphaFreshPresets.shouldRunWelcome(this)',after)
    stage.apply_plan(root,plan,rows,Path(d)/'backup')
    for row in rows:self.assertEqual(stage.digest((root/row['path']).read_bytes()),row['sha256'])
+   feature='vendor/alphaphone/branding/provision/fresh-telephony.xml'
+   welcome='packages/apps/Provision/src/com/android/provision/AlphaWelcome.java'
+   self.assertGreater(list(plan).index(feature),list(plan).index(welcome))
+   self.assertEqual(ET.parse(root/feature).getroot().find('feature').attrib,
+                    {'name':'ai.alphacompute.alphaphone.fresh_telephony_setup'})
    # Every existing hardware/power overlay is copied exactly, not recreated or filtered out.
    for file in (BRAND/'overlay').rglob('*'):
     if file.is_file():self.assertEqual((root/'vendor/alphaphone/branding'/file.relative_to(BRAND)).read_bytes(),file.read_bytes())
