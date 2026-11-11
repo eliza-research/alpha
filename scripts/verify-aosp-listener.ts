@@ -22,8 +22,18 @@ export function verifyListenerBoot(run: ReadAdb, user: string, appId: string, la
     ? /^uid:(\d+)$/.exec(uidEntries[0][1])?.[1] : undefined;
   if (!uid) throw Error(`Cannot read the exact UID for ${packageName} in user ${user}`);
 
-  const processes = run("shell", "toybox", "ps", "-u", uid, "-n", "-w", "-o", "LABEL,UID,PID,NAME")
-    .split(/\r?\n/).flatMap(line => {
+  let processTable: string;
+  try {
+    processTable = run("shell", "toybox", "ps", "-u", uid, "-n", "-w", "-o", "LABEL,UID,PID,NAME");
+  } catch (error) {
+    // Toybox exits 1 with only the header when no processes match the UID.
+    if (!(error instanceof Error) || !("status" in error) || error.status !== 1 ||
+        !("stdout" in error) || typeof error.stdout !== "string" ||
+        !/^LABEL\s+UID\s+PID\s+NAME$/.test(error.stdout.trim()) ||
+        !("stderr" in error) || typeof error.stderr !== "string" || error.stderr.trim()) throw error;
+    processTable = error.stdout;
+  }
+  const processes = processTable.split(/\r?\n/).flatMap(line => {
       const [context, processUid, pid, name] = line.trim().split(/\s+/);
       if (processUid !== uid || !/^[1-9]\d*$/.test(pid ?? "") ||
           !(name === packageName || name?.startsWith(`${packageName}:`))) return [];
