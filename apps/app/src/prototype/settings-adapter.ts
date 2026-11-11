@@ -221,6 +221,8 @@ export function updateIdle(facts: UpdateIdleFacts): boolean {
 }
 /** Field updates wait for idle Home, including behind the empty required first-run sign-in landing. */
 export function automaticUpdateIdle(shell: {screen?:unknown;view?:unknown;voice?:unknown;typing?:unknown;chat?:unknown;drawer?:unknown;shade?:unknown;homeEdit?:unknown;homeAdd?:unknown;drawerMenu?:unknown}, connection: {busy?:unknown;open?:unknown}, editor: boolean, voiceActive: boolean, page?: Pick<Document, 'querySelector'>): boolean {
+  // Access setup and other reviews can cover Home without changing the shell view.
+  if (page?.querySelector('dialog[open]:not(.alpha-update-startup)')) return false;
   const signIn = connection.open ? page?.querySelector('[data-alpha-app-update-sign-in]') : null;
   // The uncontrolled input can retain typed or autofilled text even after it loses focus.
   const signInIdle = signIn && !signIn.matches(':active') && Array.from(signIn.querySelectorAll('input')).every(input => input.value === '');

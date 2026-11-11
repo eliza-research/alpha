@@ -103,7 +103,8 @@ async function fixture(name, code) {
     window.dispatchEvent(event);
     return event.defaultPrevented;
   };
-  const button = () => document.querySelector('dialog[open] button');
+  const dialog = () => document.querySelector('dialog.alpha-update-startup[open]');
+  const button = () => dialog()?.querySelector('button');
   const observe = () => {
     const {active, acknowledged, reconnect, localRefusal} = context.inspect();
     assert.equal(block('alpha-back'), block('launcher-home'));
@@ -113,7 +114,7 @@ async function fixture(name, code) {
       'state.active': currentActivation(),
       'state.bridge': bridges.indexOf(active?.bridgeId ?? ''),
       'state.phase': active?.phase ?? 'idle',
-      'state.panel': Boolean(document.querySelector('dialog[open]')),
+      'state.panel': Boolean(dialog()),
       'state.canContinue': Boolean(button() && !button().hidden),
       'state.acknowledged': activations.indexOf(acknowledged ?? ''),
       'state.pending': qset(pending.keys()),
@@ -181,6 +182,16 @@ async function fixture(name, code) {
       address.value = 'draft@example.invalid';
       request.barrier.resolve();
       await save('a retained sign-in draft retires readiness even with no editor focused', 'prepared', id, false);
+    },
+    async finishWithAccessSetup(id) {
+      const request = pending.get(id); assert.ok(request);
+      pending.delete(id);
+      const access = document.createElement('dialog');
+      access.className = 'alpha-startup-permissions';
+      document.body.append(access);
+      access.showModal();
+      request.barrier.resolve();
+      await save('access setup covering Home retires readiness after draft flush', 'prepared', id, false);
     },
     async terminal(id, bridge, outcome, idle = false, resume = false) {
       await readBack({pending: false, bridgeId: bridges[bridge], activationId: activations[id],
@@ -301,6 +312,11 @@ globalThis.replace = () => { shell = {live: true}; };
     f.showSignIn();
     await f.pending(1, 1, 'preparing', false, true, true);
     await f.finishWithSignInDraft(1);
+    await f.terminal(1, 1, 'failed');
+  });
+  await run('automatic_update_cannot_interrupt_access_setup_on_home', async f => {
+    await f.pending(1, 1, 'preparing', false, true, true);
+    await f.finishWithAccessSetup(1);
     await f.terminal(1, 1, 'failed');
   });
 
