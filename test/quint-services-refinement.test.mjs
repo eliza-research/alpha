@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
@@ -8,7 +9,7 @@ import {loadModels} from '../scripts/quint-lib.ts';
 
 // The complete serial campaign was still producing passing receipts at its former
 // 880-second cutoff. Keep all campaigns and a finite budget matching the app aggregate.
-test('service components and coordinators check real-source traces and preserve explicit platform obligations', {timeout: 2400000}, () => {
+test('service components and coordinators check real-source traces and preserve explicit platform obligations', {timeout: scaledTimeout(2400000)}, () => {
   const expected = new Set(loadModels().filter(model => model.family === 'services').map(model => model.module));
   const directory = mkdtempSync(join(tmpdir(), 'alpha-quint-services-'));
   const log = openSync(join(directory, 'run.log'), 'w+');
@@ -29,7 +30,7 @@ test('service components and coordinators check real-source traces and preserve 
         traces: result.receipts.reduce((sum, receipt) => sum + receipt.traces, 0),
         obligations: result.obligations.length,
       }));
-    `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 2380000, stdio: ['ignore', log, log, 'pipe']});
+    `], {cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: scaledTimeout(2380000), stdio: ['ignore', log, log, 'pipe']});
     if (result.error || result.status !== 0) {
       const size = fstatSync(log).size;
       const tail = Buffer.alloc(Math.min(size, 64 * 1024));

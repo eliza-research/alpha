@@ -1,3 +1,4 @@
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
@@ -5,7 +6,7 @@ import {runNativeRefinement} from '../specs/quint/refinement/native/index.mjs';
 
 // The complete aggregate exceeded 20 minutes on the measured two-worker run.
 // Keep all component checks and their own bounds; allow the aggregate to finish.
-test('native source transitions refine their finite Quint projections', {timeout: 2400000}, async () => {
+test('native source transitions refine their finite Quint projections', {timeout: scaledTimeout(2400000)}, async () => {
   const results = await runNativeRefinement();
   if (results.failures.length) {
     throw new AggregateError(results.failures.map(({campaign, error}) => Error(campaign, {cause: error})),

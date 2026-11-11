@@ -83,7 +83,8 @@ jobs:
       - name: Prepare pinned SDK for refinement against the real runtime
         shell: bash
         run: |
-          export ALPHA_BUN="$(command -v bun)"
+          ALPHA_BUN="$(command -v bun)"
+          export ALPHA_BUN
           test "$("$ALPHA_BUN" --version)" = '1.4.2'
           bun scripts/prepare-local-agent.ts
           prepared_source=$(bun -e "import {sourceDirectory,verifySource} from './scripts/local-agent-source.ts'; import fs from 'node:fs'; const source=sourceDirectory(process.cwd()); verifySource(source,JSON.parse(fs.readFileSync('upstream.lock.json','utf8')).commit); process.stdout.write(source);")
