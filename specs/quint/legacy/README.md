@@ -5,6 +5,13 @@ from the November 2026 design reviews. The current design refers to source
 `ef9fbf7cd7`, as it did in the original models. Runtime coverage for the current
 working tree lives in the other Quint families.
 
+The family manifest also registers sixteen `Core*` modules, classified
+`upstream-design-conversion`. They are conversions of TLA+ designs kept in the
+shared runtime repository; each entry records the upstream path, revision and
+hash under `upstreamSources` and its checked configurations. They declare
+temporal properties and no current-design comparisons. Only `CoreRoomHandlerQueue`
+also names a pinned shared source file.
+
 ## Representation and translation
 
 Each original state variable is retained as a named field of `s`. `Design` is an

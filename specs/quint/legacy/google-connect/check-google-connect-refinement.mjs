@@ -69,15 +69,15 @@ async function openInbox(page, connected) {
   await active(page, 'inbox');
   if (connected) {
     await expect(button(page, 'Refresh inbox')).toBeVisible();
-    await expect(page.getByText('Connect Gmail to read your inbox', {exact: true})).toHaveCount(0);
+    await expect(button(page, 'Connect Gmail')).toHaveCount(0);
     await expect.poll(async () => (await fixture(page)).searches.length).toBeGreaterThan(0);
   } else {
-    await expect(page.getByText('Connect Gmail to read your inbox', {exact: true})).toBeVisible();
+    await expect(button(page, 'Connect Gmail')).toBeVisible();
     assert.deepEqual((await fixture(page)).searches, [], 'The unlinked inbox makes no mailbox request');
   }
   const result = await fixture(page);
   assert.ok(result.reads.length > 0);
-  return {'s.screen': 'Inbox', 's.inboxView': await page.getByText('Connect Gmail to read your inbox', {exact: true}).isVisible() ? 'connect' : 'mail',
+  return {'s.screen': 'Inbox', 's.inboxView': await button(page, 'Connect Gmail').isVisible() ? 'connect' : 'mail',
     's.scopes': mailbox(result.reads.at(-1))};
 }
 
@@ -111,7 +111,7 @@ async function panelFlow(page) {
   await button(page, 'Connect Gmail').click();
   await expect(panel.getByRole('status')).toHaveText('No Google account connected.');
   await panel.getByRole('button', {name: 'Connect Google account', exact: true}).click();
-  await expect(panel.getByRole('status')).toHaveText('After authorizing Google, return here and check connections.');
+  await expect(panel.getByRole('status')).toHaveText('Waiting for Google…');
   const handedOff = await fixture(page);
   assert.deepEqual(handedOff.launches, [authorization]);
   assert.deepEqual(handedOff.initiations, [['write', 'send']]);
@@ -149,7 +149,7 @@ async function revokedInbox(page) {
     window.dispatchEvent(new Event('alpha:google-accounts-changed'));
   });
   await expect(button(page, 'Connect Gmail')).toBeVisible();
-  await expect(page.getByText('Connect Gmail to read your inbox', {exact: true})).toBeVisible();
+  await expect(button(page, 'Connect Gmail')).toBeVisible();
   const retired = await fixture(page);
   t.record('Canonical empty grant readback retires the mailbox without a manual refresh', action('Revoke'),
     {'s.screen': 'Inbox', 's.inboxView': 'connect', 's.scopes': mailbox(retired.reads.at(-1))});

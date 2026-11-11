@@ -92,7 +92,7 @@ test('unsupported retained recurrence refuses without saving or altering the dra
   const existing={id:'google-event',provider:'google',side:'owner',grantId:'google-grant',calendarId:'0',recurrence:['RRULE:FREQ=WEEKLY'],startAt:'2026-10-31T12:00:00Z',endAt:'2026-10-31T13:00:00Z'},f=fixture({provider,events:provider==='google'?[existing]:[]}),toasts=[];
   const form={id:provider==='google'?'google-event':null,cal:provider==='eliza'?'handle:primary':'handle:0',canonicalOwnerKey:'owner-A',canonicalEventKey:'google-event',expectedProviderVersion:'version-1',recurrenceScope:'series',creationId:'op',title:'Standup',off:0,t:9,d:1,zone:'UTC',canonicalTiming:[0,9,1,'UTC',false],repeat:'weekly',alert:null,who:[]},before=structuredClone(form);
   const out=f.views.calendar.render({form},{set(){},get:()=>({form}),toast:message=>toasts.push(message)});await out.f.save();assert.deepEqual(form,before);
-  if(provider==='eliza'){assert.deepEqual(f.creates,[]);assert.deepEqual(toasts,["Agent Calendar can't repeat events. Remove the repeat to save."]);assert.equal(out.f.repeats[0].label,'Remove requested repeat');}
+  if(provider==='eliza'){assert.deepEqual(f.creates,[]);assert.deepEqual(toasts,["Agent Calendar can't repeat events. Remove the repeat to save."]);assert.equal(out.f.repeats[0].label,'No repeat');}
   else{assert.deepEqual(toasts,[]);assert.equal(f.creates.length,0);assert.deepEqual(f.updates.map(change=>change.input.recurrence),[['RRULE:FREQ=WEEKLY']]);assert.equal(f.updates[0].eventKey,'google-event');}
  }
 });
@@ -105,15 +105,15 @@ test('native Android Calendar keeps its own repeat and alert controls',()=>{
 });
 test('New Event with no current port explains pending state and does not replace a retained draft',()=>{
  const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8'),pendingCode=stripTypeScriptTypes(source.slice(source.indexOf('export function residentPendingText('),source.indexOf('/** Passive surfaces')).replace(/^export /gm,''),{mode:'strip'});
- for(const [kind,expected] of [['starting',/starting/],['recovering',/stopped/],['offline',/unavailable for this agent connection/]])for(const recordPort of [null,{current:()=>false}]){
+ for(const [kind,expected] of [['starting',/starting/],['recovering',/stopped/],['offline',/^Calendar unavailable$/]])for(const recordPort of [null,{current:()=>false}]){
   const pendingText=new Function('state','residentAlwaysPresent','RESIDENT_RECOVERY_PENDING','PENDING_FALLBACK',pendingCode+';return agentPendingText;')({kind},kind!=='offline','Recovery review.','Unavailable.');
   const f=fixture({recordPort,pendingText}),before=structuredClone(f.calendar),toasts=[],api={get:()=>f.calendar,set:patch=>Object.assign(f.calendar,patch),toast:x=>toasts.push(x)};f.views.calendar.render(f.calendar,api).newEvent();assert.deepEqual(f.calendar,before);assert.deepEqual(f.creates,[]);assert.equal(toasts.length,1);assert.match(toasts[0],expected);
-  f.calendar.form={title:'Keep my exact draft',repeat:'weekly',cal:'handle:0',canonicalOwnerKey:'owner-A'};const draft=f.calendar.form;f.views.calendar.render(f.calendar,api).newEvent();assert.equal(f.calendar.form,draft);assert.match(toasts.at(-1),/Keep or finish/);
+  f.calendar.form={title:'Keep my exact draft',repeat:'weekly',cal:'handle:0',canonicalOwnerKey:'owner-A'};const draft=f.calendar.form;f.views.calendar.render(f.calendar,api).newEvent();assert.equal(f.calendar.form,draft);assert.match(toasts.at(-1),/^Finish current event$/);
  }
 });
 test('an available private Mac canonical port can open New Event and preserves an existing draft',()=>{
  const f=fixture({platform:'web',recordPort:{current:()=>true,identity:{origin:'http://localhost:5229',ownerId:'mac-owner',agentId:'mac-agent'}}}),toasts=[],api={get:()=>f.calendar,set:patch=>Object.assign(f.calendar,patch),toast:x=>toasts.push(x)};
- f.views.calendar.render(f.calendar,api).newEvent();assert.equal(f.calendar.form.canonicalOwnerKey,'owner-A');assert.equal(f.creates.length,0);assert.deepEqual(toasts,[]);const draft=f.calendar.form;f.views.calendar.render(f.calendar,api).newEvent();assert.equal(f.calendar.form,draft);assert.match(toasts.at(-1),/Keep or finish/);
+ f.views.calendar.render(f.calendar,api).newEvent();assert.equal(f.calendar.form.canonicalOwnerKey,'owner-A');assert.equal(f.creates.length,0);assert.deepEqual(toasts,[]);const draft=f.calendar.form;f.views.calendar.render(f.calendar,api).newEvent();assert.equal(f.calendar.form,draft);assert.match(toasts.at(-1),/^Finish current event$/);
 });
 test('browser provider requires the test-mocks gate and a web platform',()=>{
  for(const options of [{testMocks:false,platform:'web'},{testMocks:true,platform:'android'}]){
@@ -149,7 +149,7 @@ test('New Event selects Eliza even when Google is first and hides the redundant 
  assert.equal(f.creates.length,1);assert.equal(f.creates[0].sourceKey,'primary');assert.equal(f.creates[0].input.title,'Local Alpha event');
 });
 for(const [name,calendars]of [['missing',[googleSource]],['ambiguous',[localSource,{...localSource}]],['read only',[{...localSource,accessRole:'reader'}]],['excluded',[{...localSource,includeInFeed:false}]],['foreign side',[{...localSource,side:'counterparty'}]],['wrong grant',[{...localSource,grantId:'foreign'}]]])test(`new Alpha events refuse ${name} canonical authority without falling back to Google`,()=>{
- const f=fixture({recordPort:availablePort,calendars}),toasts=[],api=calendarApi(f,toasts);f.views.calendar.render(f.calendar,api).newEvent();assert.equal(f.calendar.form,null);assert.equal(f.creates.length,0);assert.match(toasts[0],/not ready/);assert.equal(f.shell.reviewScannedCalendarDraft(draft),false);
+ const f=fixture({recordPort:availablePort,calendars}),toasts=[],api=calendarApi(f,toasts);f.views.calendar.render(f.calendar,api).newEvent();assert.equal(f.calendar.form,null);assert.equal(f.creates.length,0);assert.match(toasts[0],/^Not ready$/);assert.equal(f.shell.reviewScannedCalendarDraft(draft),false);
 });
 test('a retained Google new-event draft is preserved and cannot be silently created at Google',async()=>{
  const form={...draft,title:'Exact retained Google draft',cal:'handle:google',canonicalOwnerKey:'owner-A',alert:null,who:[]},f=fixture({recordPort:availablePort,form,calendars:[localSource,googleSource]}),toasts=[],api=calendarApi(f,toasts);
@@ -243,7 +243,7 @@ test('an empty partial Calendar offers refresh once without claiming no events',
 test('a verified empty Calendar retains its ordinary empty state',()=>{
  const f=fixture({status:'ready',empty:true}),out=f.views.calendar.render({},{});
  assert.equal(out.nativeStatusLabel,'');assert.equal(out.empty,true);
- assert.equal(out.emptyText,'No events in this Calendar window');
+ assert.equal(out.emptyText,'No events');
 });
 test('ready with an unverified event source offers refresh once and does not claim verified empty',()=>{
  const f=fixture({status:'ready',empty:true,events:[presentationEvent('unverified','unknown')]}),before=structuredClone(f.state);
@@ -255,7 +255,7 @@ test('ready with an unverified event source offers refresh once and does not cla
 test('unavailable uses natural recovery copy once and retry uses the existing refresh',()=>{
  const f=fixture({status:'unavailable',empty:true,error:'Implementation-only fallback'}),before=structuredClone(f.state),reads=f.refreshes.length;
  const out=f.views.calendar.render({},{});
- assert.equal(out.nativeStatusLabel,'Calendar is unavailable. Retry to load your schedule.');
+ assert.equal(out.nativeStatusLabel,'Unavailable');
  assert.equal(out.empty,false);assert.doesNotMatch(out.emptyText,/Implementation-only|Free all day|No events/);
  out.nativeStatusRetry();assert.equal(f.refreshes.length,reads+1);assert.deepEqual(f.state,before);
 });
@@ -274,14 +274,14 @@ test('explicit legacy and transition recovery retain their existing empty-day pr
   const before=structuredClone(f.state),reads=f.refreshes.length,toasts=[];
   // Render the same persisted Calendar authority that the shell selected.
   const out=f.views.calendar.render(f.calendar, {toast:message=>toasts.push(message)});
-  assert.equal(out.calendarSourceLabel,'Saved app calendar · Read only');
+  assert.equal(out.calendarSourceLabel,'Saved · Read only');
   if(options.error)assert.equal(out.nativeStatusLabel,options.error,'legacy recovery detail is retained');
   assert.equal(out.empty,true);assert.equal(out.emptyText,'Free all day','existing legacy renderer presentation is unchanged');
   assert.deepEqual(out.renderedRows.map(row=>row.id),['legacy-calendar:retained']);
   const canReview=options.status==='transition-required';
   assert.equal(out.canConfirmCalendarTransition,canReview);
   assert.equal(typeof out.confirmCalendarTransition,canReview?'function':'undefined');
-  out.newEvent();assert.deepEqual(toasts,['Choose Agent Calendar to create an event.']);
+  out.newEvent();assert.deepEqual(toasts,['Agent Calendar only']);
   assert.equal(f.refreshes.length,reads);assert.deepEqual(f.state,before);assert.deepEqual(f.creates,[]);
  }
 });
@@ -301,7 +301,7 @@ test('a note event draft is admitted to Agent Calendar, saves, and links the cre
 test('a tap on a disabled Save says why and writes nothing',async()=>{
  const f=fixture({remembered:[]}),toasts=[];f.calendar.form={...noteDraft,cal:'handle:primary'};
  const out=f.views.calendar.render(f.calendar,calendarApi(f,toasts));assert.equal(out.f.saveOff,true);
- await out.f.save();assert.deepEqual(toasts,['This draft is from another account.']);assert.equal(f.creates.length,0);
+ await out.f.save();assert.deepEqual(toasts,['Other account']);assert.equal(f.creates.length,0);
 });
 const managedGrant='alpha-google:'+'b'.repeat(64);
 const managedSource={summary:'Work',provider:'google',side:'owner',grantId:managedGrant,calendarId:'work',includeInFeed:true,accessRole:'owner'};
@@ -313,7 +313,7 @@ test('a managed Google event keeps Delete unavailable in the event menu',()=>{
  assert.doesNotMatch(template,/\{\{calendar\.ev\.providerNotice\}\}/);
  for(const event of [managedEvent,{...managedEvent,recurringEventId:undefined}]){
   const f=fixture({calendars:[localSource,managedSource],events:[event],row:detailRow}),out=f.views.calendar.render({open:'canonical-calendar:standup'},calendarApi(f));
-  assert.equal(out.ev.del,null);assert.equal(out.ev.providerNotice,'Delete or decline this event in Google Calendar.');assert.deepEqual(out.ev.recurrenceScopes,[]);
+  assert.equal(out.ev.del,null);assert.equal(out.ev.providerNotice,'Open in Google');assert.deepEqual(out.ev.recurrenceScopes,[]);
  }
  // Other Google grants keep Delete and every series scope.
  const other={...managedEvent,grantId:'google-grant'},f=fixture({calendars:[localSource,{...managedSource,grantId:'google-grant'}],events:[other],row:detailRow}),out=f.views.calendar.render({open:'canonical-calendar:standup'},calendarApi(f));
@@ -327,7 +327,7 @@ test('a managed recurring Google event edits only this occurrence and hides the 
  await out.f.save();assert.equal(f.updates.length,1);assert.equal(f.updates[0].input.recurrenceScope,'instance');assert.equal(f.updates[0].input.recurrence,undefined);
 });
 test('Calendar refusals show owner text without an "Error: " prefix',async()=>{
- for(const [thrown,shown] of [[Error('Calendar owner or agent changed'),'Calendar changed. Try again.'],[Error('Retain this draft operation key'),"This draft can't be saved. Reopen it and try again."],[Error('Review recurring-series changes in Calendar'),'Edit the whole series in Google Calendar.'],[Error('Some host text.'),'Some host text.'],[{},'Calendar could not be updated. Try again.']]){
+ for(const [thrown,shown] of [[Error('Calendar owner or agent changed'),'Changed'],[Error('Retain this draft operation key'),'Can’t save'],[Error('Review recurring-series changes in Calendar'),'Edit in Google'],[Error('Some host text.'),'Some host text.'],[{},'Couldn’t update']]){
   const f=fixture({recordPort:availablePort}),toasts=[];f.shell.agentCalendar.create=async()=>{throw thrown;};
   f.views.calendar.render(f.calendar,calendarApi(f,toasts)).newEvent();f.calendar.form.title='Lunch';
   await f.views.calendar.render(f.calendar,calendarApi(f,toasts)).f.save();assert.deepEqual(toasts,[shown]);

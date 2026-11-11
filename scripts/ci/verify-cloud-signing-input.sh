@@ -7,10 +7,22 @@ directory=$(mktemp -d "$RUNNER_TEMP/alpha-cloud-input.XXXXXX")
 printf '%s' "$SIGNING_PLAN" > "$directory/pins.json"
 unset SIGNING_PLAN
 source=$(jq -er '.alphaCommit | select(type == "string" and test("^[0-9a-f]{40}$"))' "$directory/pins.json")
-gh api "repos/$GITHUB_REPOSITORY/compare/$source...$GITHUB_SHA" |
-  jq -e --arg source "$source" '
+gh api "repos/$GITHUB_REPOSITORY/compare/$source...$GITHUB_SHA" > "$directory/source-comparison.json"
+if ! jq -e --arg source "$source" '
     (.status == "ahead" or .status == "identical") and
-    .merge_base_commit.sha == $source' >/dev/null
+    .merge_base_commit.sha == $source' "$directory/source-comparison.json" >/dev/null; then
+  # A qualified private release can be pinned independently of the moving main branch.
+  # The reviewed main commit must authorize these exact source and artifact bytes.
+  python3 -B - "$directory/pins.json" <<'PY'
+import json, runpy, sys
+from pathlib import Path
+admission = runpy.run_path('scripts/ci/admit-cloud-signing-input.py')
+plan = json.loads(Path(sys.argv[1]).read_text())
+descriptor = json.loads(Path('android/release-signer.json').read_text())
+admission['require'](admission['reviewed_private_producer'](plan, descriptor),
+                     'Unreviewed private producer source')
+PY
+fi
 if jq -e '.privateStorage != null' "$directory/pins.json" >/dev/null; then
   python3 -B scripts/ci/private-apk-storage.py validate "$directory/pins.json"
   # The unprotected job validates the plan only. The protected job repeats this

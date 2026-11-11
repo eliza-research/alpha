@@ -67,7 +67,7 @@ export function presentCalendarIntervals(render:(state:Bag,api:Bag)=>Bag,state:B
       out.dayColumns=calendarDayColumns(columns,api.now,out.nowTop,time>=first&&time<=last,day);
       out.multiDay=true;out.dayCount=dayCount;out.showNow=false;
       out.empty=columns.every(column=>!column.events.length)&&!out.nativeAllDay.length;
-      if(out.empty&&rangeReady)out.emptyText='No visible events or reminders for these days.';
+      if(out.empty&&rangeReady)out.emptyText='Free';
     }
     out.hasNativeAllDay=out.nativeAllDay.length>0;
     if(out.hasNativeAllDay)out.empty=false;

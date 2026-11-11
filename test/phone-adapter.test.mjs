@@ -9,7 +9,7 @@ const {createAospTelephony}=await import('../apps/app/src/runtime/aosp-telephony
 globalThis.document={hidden:false,addEventListener(){},removeEventListener(){}};
 const status=callLog=>({version:2,voiceCapable:true,smsCapable:true,permissions:{contacts:'granted',phoneState:'denied',sms:'denied',sendSms:'denied',...(callLog?{callLog}:{})},sendMode:'handoff',roles:{dialer:{available:true,held:false,eligible:true},sms:{available:true,held:false,eligible:true}},defaultDialer:'com.android.dialer',defaultSms:null,subscriptions:null,defaultSmsSubscriptionId:null});
 const call={id:'4',number:'+15555550100',cachedName:'Ada',date:1700000000000,durationSeconds:75,type:'missed',isNew:true};
-function mount(answers){const calls=[];const plugin=new Proxy({},{get:(_,method)=>method==='then'?undefined:async options=>{calls.push([method,options]);const a=answers[method];return typeof a==='function'?a(options):a;}});
+function mount(answers){const calls=[];const plugin=new Proxy({},{get:(_,method)=>method==='then'?undefined:async (options,...rest)=>{calls.push([method,options]);const a=answers[method];return typeof a==='function'?a(options,...rest):a;}});
  const views={phone:{render:()=>({nativePrototype:true}),reply:()=>({text:'Calling'}),suggestions:()=>['call Ada']}};
  class Shell{constructor(){this.view='phone';}S(){return {view:this.view};}setState(){}}
  installPhoneAdapter(Shell,views,createAospTelephony(plugin,true));const shell=new Shell();shell.componentDidMount();return {views,shell,calls};}
@@ -23,13 +23,13 @@ test('the simulated call, agent reply and suggestions are replaced on the image'
 });
 test('a host without the read shows no history and never asks for it',async()=>{
  const {views,calls}=mount({status:status()});await settle();
- assert.equal(views.phone.render({},{}).nativeStatus,'Recent calls aren\'t available.');assert.ok(!calls.some(([m])=>m==='listRecentCalls'||m==='requestAccess'));
+ assert.equal(views.phone.render({},{}).nativeStatus,'No recents');assert.ok(!calls.some(([m])=>m==='listRecentCalls'||m==='requestAccess'));
 });
 test('failed recent call reads stay distinct from an empty history and can be retried',async()=>{
  let fail=true;
  const {views}=mount({status:status('granted'),listRecentCalls:()=>{if(fail)throw Error('Provider unavailable');return {calls:[]};}});await settle();
  let model=views.phone.render({},{});
- assert.equal(model.showRecentStatus,true);assert.equal(model.retryRecents,true);assert.equal(model.nativeStatus,'Recent calls could not be read.');
+ assert.equal(model.showRecentStatus,true);assert.equal(model.retryRecents,true);assert.equal(model.nativeStatus,'Couldn’t load');
  fail=false;model.nativeRefresh();await settle();model=views.phone.render({},{});
  assert.equal(model.showRecentStatus,true);assert.equal(model.retryRecents,false);assert.equal(model.nativeStatus,'No recent calls.');
 });
@@ -47,7 +47,7 @@ test('the owner tap on a recent call or a typed number places the call; an MMI s
  assert.deepEqual(calls.find(([m])=>m==='placeCall'),['placeCall',{number:'+15555550100'}]);assert.equal(views.phone.render({},{}).nativeNotice,'','a placed call needs no words: the call screen takes over');
  assert.ok(!calls.some(([m])=>m==='dial'),'a placed call is not also handed off');
  const model=views.phone.render({},{});model.nativeOnNumber({target:{value:'*#06#'}});views.phone.render({},{}).nativeDial();await settle();
- assert.equal(views.phone.render({},{}).nativeNotice,'Enter a valid phone number.');assert.equal(calls.filter(([m])=>m==='placeCall').length,1,'an MMI string never reaches Telecom');
+ assert.equal(views.phone.render({},{}).nativeNotice,'Invalid number');assert.equal(calls.filter(([m])=>m==='placeCall').length,1,'an MMI string never reaches Telecom');
 });
 test('a number from Contacts fills the keypad once and calls only on the owner tap',async()=>{
  const {views,calls}=mount({status:status('granted'),listRecentCalls:{calls:[]},placeCall:placed});await settle();
@@ -57,6 +57,29 @@ test('a number from Contacts fills the keypad once and calls only on the owner t
  model=views.phone.render({},api);model.nativeOnNumber({target:{value:'+15555550199'}});assert.equal(views.phone.render({},api).nativeNumber,'+15555550199','the consumed prefill does not overwrite the owner edit');
  views.phone.render({},api).nativeDial();await settle();assert.deepEqual(calls.filter(([m])=>m==='placeCall'),[['placeCall',{number:'+15555550199'}]]);
  assert.equal(views.phone.render({},api).nativeNumber,'','a placed call clears the keypad');
+});
+test('a failed handoff says the phone app did not open',async()=>{
+ const {views}=mount({status:status('granted'),listRecentCalls:{calls:[call]},placeCall:()=>{throw Object.assign(Error('Role'),{code:'role-required'});},dial:()=>{throw Error('no activity');}});await settle();
+ views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(views.phone.render({},{}).nativeNotice,'Couldn’t open');
+});
+test('a refresh during a dial handoff keeps the handoff notice and admits no second dial',async()=>{
+ let release;const pending=new Promise(r=>{release=r;});
+ const {views,calls}=mount({status:status('granted'),listRecentCalls:{calls:[call]},placeCall:()=>{throw Object.assign(Error('Role'),{code:'role-required'});},dial:()=>pending.then(()=>({status:'handed-off',target:'dialer',handler:null,message:'Your phone app is open with the number.'}))});await settle();
+ views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(views.phone.render({},{}).nativeBusy,true);
+ views.phone.render({},{}).nativeRefresh();await settle();
+ assert.equal(views.phone.render({},{}).nativeBusy,true,'the settled read does not release the handoff latch');
+ views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(calls.filter(([m])=>m==='dial').length,1,'one handoff at a time');
+ release();await settle();const model=views.phone.render({},{});
+ assert.match(model.nativeNotice,/phone app is open/);assert.equal(model.nativeBusy,false);assert.equal(model.nativeRows.length,1);
+});
+test('a handoff result from a showing of Phone that ended is dropped and leaves a later dial alone',async()=>{
+ const releases=[];
+ const {views,shell,calls}=mount({status:status('granted'),listRecentCalls:{calls:[call]},placeCall:()=>{throw Object.assign(Error('Role'),{code:'role-required'});},dial:()=>new Promise(r=>releases.push(()=>r({status:'handed-off',target:'dialer',handler:null,message:'Your phone app is open with the number.'})))});await settle();
+ views.phone.render({},{}).nativeRows[0].dial();await settle();
+ shell.view='home';shell.componentDidUpdate();shell.view='phone';shell.componentDidUpdate();await settle();
+ views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(calls.filter(([m])=>m==='dial').length,2);
+ releases[0]();await settle();let model=views.phone.render({},{});assert.equal(model.nativeNotice,'');assert.equal(model.nativeBusy,true,'the earlier result does not release the later handoff');
+ releases[1]();await settle();model=views.phone.render({},{});assert.match(model.nativeNotice,/phone app is open/);assert.equal(model.nativeBusy,false);
 });
 test('an emergency number, a busy line and a refusal say what happened and place nothing more',async()=>{
  for(const [answer,text] of [[{status:'emergency-handoff',message:'Emergency numbers open in the phone app.'},/phone app/],[{status:'busy',message:'Another call is in progress.'},/in progress/],[{status:'unavailable',message:'Calls are unavailable.'},/unavailable/]]){
@@ -72,7 +95,7 @@ test('without the dialer role the number opens in the system dial screen instead
 });
 test('a call that cannot start says so and is not retried',async()=>{
  const {views,calls}=mount({status:status('granted'),listRecentCalls:{calls:[call]},placeCall:()=>{throw Error('telecom gone');}});await settle();
- views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(views.phone.render({},{}).nativeNotice,'The call could not be started.');
+ views.phone.render({},{}).nativeRows[0].dial();await settle();assert.equal(views.phone.render({},{}).nativeNotice,'Call unconfirmed');
  assert.equal(calls.filter(([m])=>m==='placeCall').length,1);assert.ok(!calls.some(([m])=>m==='dial'));
 });
 test('voicemail shows only while the carrier store is ready, and an open voicemail is what the agent may read',async()=>{
@@ -107,8 +130,36 @@ test('voicemail deletion rechecks approval and dispatches once even if the list 
 });
 test('Contacts opens only where Contacts is admitted',async()=>{
  const {views}=mount({status:status()});await settle();const opened=[],toasts=[];const api={open:view=>opened.push(view),toast:text=>toasts.push(text)};
- globalThis.mvpViews=[];views.phone.render({},api).nativeContacts();assert.deepEqual(opened,[]);assert.deepEqual(toasts,['Contacts isn\'t available on this phone.']);
+ globalThis.mvpViews=[];views.phone.render({},api).nativeContacts();assert.deepEqual(opened,[]);assert.deepEqual(toasts,['Unavailable']);
  globalThis.mvpViews=['contacts'];views.phone.render({},api).nativeContacts();assert.deepEqual(opened,['contacts']);globalThis.mvpViews=[];
 });
 test('rows without a dialable number cannot dial',()=>{const rows=phoneRows([{...call,number:'',cachedName:null}],()=>{throw Error('dialed');});assert.equal(rows[0].noDial,true);rows[0].dial();assert.match(rows[0].label,/Unknown caller/);});
 test('the template wraps the prototype Phone behind nativePrototype',()=>{const html=readFileSync('apps/app/src/prototype/template.html','utf8');const start=html.indexOf('<sc-if value="{{is.phone}}">');assert.ok(html.indexOf('<sc-if value="{{phone.nativeManaged}}">',start)>start);assert.ok(html.indexOf('<sc-if value="{{phone.nativePrototype}}">',start)<html.indexOf('{{phone.title}}',start));});
+
+test('voicemail observer replacement waits for old cleanup and shares one parallel start',async()=>{
+ let removeOld,enableFirst;
+ const removal=new Promise(resolve=>removeOld=resolve),enable=new Promise(resolve=>enableFirst=resolve);
+ let listeners=0;const callbacks=[];
+ const {views,shell,calls}=mount({status:status('granted'),listRecentCalls:{calls:[]},listVoicemail:{state:'ready',voicemails:[]},
+  addListener:(_event,callback)=>{callbacks.push(callback);const index=++listeners;return {remove:async()=>{if(index===1)await removal;}};},
+  observeVoicemail:options=>options.enabled&&listeners===1?enable:{}});
+ await settle();views.phone.render({},{}).nativeRefresh();await settle();
+ assert.equal(listeners,1,'parallel list reads share the in-flight observer start');
+ enableFirst();await settle();
+ shell.view='home';shell.componentDidUpdate();shell.view='phone';shell.componentDidUpdate();await settle();
+ assert.deepEqual(calls.filter(([m])=>m==='observeVoicemail').map(([,o])=>o.enabled),[true],'a replacement waits for old listener retirement');
+ const reads=calls.filter(([m])=>m==='listVoicemail').length;callbacks[0]();await settle();assert.equal(calls.filter(([m])=>m==='listVoicemail').length,reads,'a retired listener admits no replacement-visit read');
+ removeOld();await settle();await settle();
+ assert.deepEqual(calls.filter(([m])=>m==='observeVoicemail').map(([,o])=>o.enabled),[true,false,true]);
+ assert.equal(listeners,2,'one observer for each visit');
+ shell.view='home';shell.componentDidUpdate();shell.componentDidUpdate();await settle();
+ assert.deepEqual(calls.filter(([m])=>m==='observeVoicemail').map(([,o])=>o.enabled),[true,false,true,false],'one cleanup per lease');
+});
+
+test('an unconfirmed voicemail observer retirement refuses a replacement enable',async()=>{
+ const {shell,calls}=mount({status:status('granted'),listRecentCalls:{calls:[]},listVoicemail:{state:'ready',voicemails:[]},
+  addListener:()=>({remove:async()=>{throw Error('Listener retirement unconfirmed');}}),observeVoicemail:{}});
+ await settle();shell.view='home';shell.componentDidUpdate();shell.view='phone';shell.componentDidUpdate();await settle();await settle();
+ assert.deepEqual(calls.filter(([m])=>m==='observeVoicemail').map(([,o])=>o.enabled),[true],'unconfirmed cleanup never enables a second listener');
+ shell.componentWillUnmount();
+});

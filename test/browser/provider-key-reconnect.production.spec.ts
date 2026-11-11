@@ -36,9 +36,9 @@ for(const action of ['edit','remove'] as const)test(`Own Voice ${action} survive
  await fixture(page);await residentHome(page);
  await page.getByRole('button',{name:'Settings',exact:true}).click();
  await page.getByRole('button',{name:'Account',exact:true}).click();
- await page.getByRole('button',{name:/^AI connection/}).click();
+ await page.getByRole('button',{name:/^AI (Cloud|Own keys)$/}).click();
  const panel=page.getByRole('dialog',{name:'AI connection',exact:true});await expect(panel).toBeVisible();
- await panel.getByRole('button',{name:'View keys',exact:true}).click();
+ await panel.getByRole('button',{name:'Keys',exact:true}).click();
  const voice=panel.getByRole('region',{name:'Voice key',exact:true});
  await page.evaluate(()=>{(window as any).keyReconnect.hold=true;});
  if(action==='edit'){
@@ -47,7 +47,7 @@ for(const action of ['edit','remove'] as const)test(`Own Voice ${action} survive
   await voice.getByRole('button',{name:'Save',exact:true}).click();
  }else{
   await voice.getByRole('button',{name:'Remove',exact:true}).click();
-  await voice.getByRole('button',{name:'Remove key',exact:true}).click();
+  await voice.getByRole('button',{name:'Remove',exact:true}).click();
  }
  await expect.poll(()=>page.evaluate(()=>(window as any).keyReconnect.starting)).toBe(true);
  // connectResident has already read and published the new revision at this point.
@@ -60,9 +60,9 @@ for(const action of ['edit','remove'] as const)test(`Own Voice ${action} survive
  await expect(panel).not.toBeVisible();
  await expect(page.getByRole('button',{name:'Talk',exact:true})).toBeEnabled();
  await page.getByRole('button',{name:'Account',exact:true}).click();
- await page.getByRole('button',{name:/^AI connection/}).click();
- await panel.getByRole('button',{name:'View keys',exact:true}).click();
- await expect(panel.getByRole('button',{name:'Close keys',exact:true})).toBeEnabled();
+ await page.getByRole('button',{name:/^AI (Cloud|Own keys)$/}).click();
+ await panel.getByRole('button',{name:'Keys',exact:true}).click();
+ await expect(panel.getByRole('button',{name:'Keys',exact:true})).toBeEnabled();
  await expect(voice).toContainText(action==='remove'?'Not added':'Added');
  await expect(panel.getByRole('alert')).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).keyReconnect.cancels)).toBe(0);

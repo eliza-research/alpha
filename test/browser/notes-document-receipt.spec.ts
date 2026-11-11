@@ -43,7 +43,7 @@ test('A visible page shows a document receipt at once', async ({ page }) => {
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Import text note', exact: true }).click();
   await (await chooser).setFiles({ name: 'Receipt note.txt', mimeType: 'text/plain', buffer: Buffer.from('Receipt body\n') });
-  await expect(page.locator('[data-alpha-toast]').getByText('Imported as a new note. Nothing uploaded.', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-alpha-toast]').getByText('Imported', { exact: true })).toBeVisible();
 });
 
 // A failure is a document outcome too, and the one a person most needs to see.
@@ -58,7 +58,7 @@ test('A document failure that arrives while the page is hidden is shown once the
   await page.getByRole('dialog',{name:'Note actions',exact:true}).getByRole('button',{name:'Share note',exact:true}).click();
   const exportButton = page.getByRole('button', { name: 'Save file', exact: true });
   await expect(exportButton).toBeVisible();
-  const failure = page.locator('[data-alpha-toast]').getByText('That didn\'t finish. Check your file and try again.', { exact: true });
+  const failure = page.locator('[data-alpha-toast]').getByText('Import failed', { exact: true });
   // The export itself fails (no object URL can be made), and it fails while the page is hidden.
   await page.evaluate(() => {
     const state = window as unknown as { __receiptHidden: boolean; __exportAttempts: number };

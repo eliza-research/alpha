@@ -7,10 +7,10 @@ writeFileSync(join(dir,'adapter.mjs'),output.outputFiles[0].text);process.on('ex
 const {installContactsAdapter}=await import(pathToFileURL(join(dir,'adapter.mjs')));
 globalThis.document={hidden:false,addEventListener(){},removeEventListener(){}};
 const settle=()=>new Promise(r=>setTimeout(r,5));
-function mount(list){const calls=[];globalThis.contactsPlugin=async(method,options)=>{calls.push([method,options]);if(method==='status')return {available:true,readable:true};if(method==='list')return list(options);return {};};
- const views={contacts:{render:st=>({d:st.open?{}:null})}};
- class Shell{S(){return {view:'contacts'};}vget(){return {q:''};}setState(){}toast(){}}
- installContactsAdapter(Shell,views);const shell=new Shell();shell.componentDidMount();return {views,calls};}
+function mount(list,editor=async()=>({})){const calls=[],notices=[];globalThis.contactsPlugin=async(method,options)=>{calls.push([method,options]);if(method==='status')return {available:true,readable:true};if(method==='list')return list(options);if(method==='edit'||method==='create')return editor(method,options);return {};};
+ const views={contacts:{render:st=>({contactsRows:st.list,d:st.open?{}:null})}};
+ class Shell{view='contacts';S(){return {view:this.view};}vget(){return {q:''};}setState(){}toast(message){notices.push(message);}}
+ installContactsAdapter(Shell,views);const shell=new Shell();shell.componentDidMount();return {views,calls,shell,Shell,notices};}
 const ada={id:'1',name:'Ada',phones:['+15555550100','+15555550101'],emails:['ada@example.com']};
 
 test('detail rows open Phone or Messages with the number and never dial or send',async()=>{
@@ -39,9 +39,9 @@ const detail=version=>({id:'1',lookup:'k',displayName:'Ada',starred:false,phoneN
 function mountBook(answers){const calls=[],sets=[],toasts=[];globalThis.mvpViews=['contacts'];
  globalThis.contactsPlugin=async(method,options)=>{calls.push([method,options]);if(method==='status'||method==='requestPermissions')return {available:true,readable:true,writable:answers.writable!==false};if(method==='list')return {contacts:[ada],more:false};const answer=answers[method];return typeof answer==='function'?answer(options):answer;};
  const views={contacts:{render:st=>({d:st.open?{}:null}),back:()=>false}};
- class Shell{S(){return {view:'contacts'};}vget(){return {q:''};}setState(){}toast(text){toasts.push(text);}}
+ class Shell{view='contacts';S(){return {view:this.view};}vget(){return {q:''};}setState(){}toast(text){toasts.push(text);}}
  installContactsAdapter(Shell,views);const shell=new Shell();shell.componentDidMount();const api={open(){},set:patch=>sets.push(patch)};
- return {views,calls,sets,toasts,api,model:(st={open:'1'})=>views.contacts.render(st,api)};}
+ return {views,calls,sets,toasts,api,shell,Shell,model:(st={open:'1'})=>views.contacts.render(st,api)};}
 const typeInto=(handler,value)=>handler({target:{value}});
 
 test('an owner edit saves with the version that was shown and closes the editor',async()=>{
@@ -83,4 +83,135 @@ test('without write access the system editor opens instead and nothing is writte
  const book=mountBook({writable:false,get:()=>detail('a1'.repeat(32))});await settle();book.model();await settle();
  assert.equal(book.model().d.canDelete,false);book.model().d.edit();await settle();
  assert.equal(book.model().ed.open,false);assert.ok(book.calls.some(([m])=>m==='edit'),'the handoff to Android Contacts still works');assert.equal(book.calls.some(([m])=>m==='save'),false);
+});
+
+for(const lostReply of [false,true])test(`uncertain contact writes require an explicit refresh before another write (${lostReply?'lost reply':'native unknown'})`,async()=>{
+ for(const kind of ['save','remove']){
+  const unknown=()=>{if(lostReply)throw Error('Reply lost after commit');return {status:'unknown'};};
+  const book=mountBook({get:()=>detail('a1'.repeat(32)),[kind]:unknown});await settle();book.model();await settle();
+  if(kind==='save'){book.model().d.edit();await settle();typeInto(book.model().ed.onName,'Ada changed');book.model().ed.save();}
+  else{book.model().d.del();book.model().d.confirmDelete();}
+  await settle();assert.equal(book.model().ed.open,false);assert.match(book.model().nativeStatus,/Outcome unknown/);
+  book.model().d.edit();book.model().addNew();book.model().d.del();book.model().d.confirmDelete();await settle();
+  assert.equal(book.model().ed.open,false);assert.equal(book.calls.filter(([method])=>method===kind).length,1,'uncertainty never repeats the write');
+  book.model().nativeRefresh();await settle();book.model();await settle();book.model().d.edit();await settle();
+  assert.equal(book.model().ed.open,true,'an explicit successful read permits a newly reviewed edit');
+ }
+});
+
+test('a retired Contacts editor cannot replace the read belonging to a later visit',async()=>{
+ for(const operation of ['edit','create'])for(const outcome of ['saved','failed']){
+  globalThis.mvpViews=['contacts'];
+  const editor=Promise.withResolvers(),freshRead=Promise.withResolvers();
+  let reads=0;
+  const f=mount(()=>++reads===1?{contacts:[ada],more:false}:freshRead.promise,()=>editor.promise);
+  await settle();
+  const api={set(){},open(){}};
+  const original=f.views.contacts.render({open:ada.id},api);
+  if(operation==='edit')original.d.edit();else original.addNew();
+  await settle();
+  assert.equal(f.calls.filter(([method])=>method===operation).length,1);
+  f.shell.view='notes';f.shell.componentDidUpdate();
+  f.shell.view='contacts';f.shell.componentDidUpdate();
+  await settle();
+  assert.equal(reads,2);
+  if(outcome==='saved')editor.resolve({saved:true});else editor.reject(Error('Old editor failed'));
+  await settle();
+  assert.equal(reads,2,operation+' '+outcome+' completion invalidated the new visit read');
+  assert.deepEqual(f.notices,[],operation+' '+outcome+' completion reported in another visit');
+  freshRead.resolve({contacts:[{...ada,id:'current',name:'Current contact'}],more:false});
+  await settle();
+  const shown=f.views.contacts.render({},api);
+  assert.deepEqual(shown.contactsRows.map(row=>row.name),['Current contact']);
+  assert.equal(shown.nativeBusy,false);
+  f.shell.componentWillUnmount();
+ }
+});
+
+test('an editor belonging to an unmounted shell cannot refresh its replacement',async()=>{
+ globalThis.mvpViews=['contacts'];
+ const editor=Promise.withResolvers(),freshRead=Promise.withResolvers();
+ let reads=0;
+ const f=mount(()=>++reads===1?{contacts:[ada],more:false}:freshRead.promise,()=>editor.promise);
+ await settle();
+ f.views.contacts.render({open:ada.id},{set(){}}).d.edit();
+ await settle();assert.equal(f.calls.filter(([method])=>method==='edit').length,1,'the native handoff started before retirement');
+ f.shell.componentWillUnmount();
+ const replacement=new f.Shell();
+ replacement.view='notes';replacement.componentDidMount();
+ replacement.view='contacts';replacement.componentDidUpdate();
+ await settle();
+ assert.equal(reads,2);
+ editor.reject(Error('Unmounted editor failed'));
+ await settle();
+ assert.equal(reads,2,'the retired editor started a read for its replacement');
+ assert.deepEqual(f.notices,[]);
+ freshRead.resolve({contacts:[{...ada,id:'replacement',name:'Replacement contact'}],more:false});
+ await settle();
+ assert.deepEqual(f.views.contacts.render({},{}).contactsRows.map(row=>row.name),['Replacement contact']);
+ replacement.componentWillUnmount();
+});
+
+test('the current Contacts editor still refreshes and reports its own failure',async()=>{
+ globalThis.mvpViews=['contacts'];
+ const editor=Promise.withResolvers();
+ let reads=0;
+ const f=mount(()=>{reads++;return {contacts:[ada],more:false};},()=>editor.promise);
+ await settle();
+ f.views.contacts.render({open:ada.id},{set(){}}).d.edit();
+ editor.reject(Error('Current editor failed'));
+ await settle();
+ assert.equal(reads,2);
+ assert.deepEqual(f.notices,['Android Contacts could not open. Refresh and try again.']);
+ assert.equal(f.views.contacts.render({},{}).nativeBusy,false);
+ f.shell.componentWillUnmount();
+});
+
+test('a newer read in the same Contacts visit owns the editor completion',async()=>{
+ for(const operation of ['edit','create'])for(const outcome of ['saved','failed']){
+  globalThis.mvpViews=['contacts'];const editor=Promise.withResolvers(),fresh=Promise.withResolvers();let reads=0;
+  const f=mount(()=>++reads===1?{contacts:[ada],more:false}:fresh.promise,()=>editor.promise);await settle();
+  const api={set(){},open(){}};const original=f.views.contacts.render({open:ada.id},api);
+  if(operation==='edit')original.d.edit();else original.addNew();await settle();
+  f.views.contacts.render({},api).nativeRefresh();await settle();assert.equal(reads,2);
+  if(outcome==='saved')editor.resolve({saved:true});else editor.reject(Error('Old editor reply'));await settle();
+  assert.equal(reads,2,'an editor reply cannot supersede the current visit read');assert.deepEqual(f.notices,[]);
+  fresh.resolve({contacts:[{...ada,name:'Current read'}],more:false});await settle();
+  assert.deepEqual(f.views.contacts.render({},api).contactsRows.map(row=>row.name),['Current read']);
+  assert.equal(f.views.contacts.render({},api).nativeBusy,false);f.shell.componentWillUnmount();
+ }
+});
+
+test('pending and uncertain contact writes retain authority across visits and mounted owners',async()=>{
+ for(const operation of ['create','edit','delete'])for(const retire of ['visit','owner'])for(const reply of ['unknown','lost']){
+  const pending=Promise.withResolvers(),method=operation==='delete'?'remove':'save';
+  const book=mountBook({get:()=>detail('a1'.repeat(32)),[method]:()=>pending.promise});await settle();book.model();await settle();
+  if(operation==='create'){book.model({}).addNew();await settle();typeInto(book.model({}).ed.onName,'New contact');book.model({}).ed.save();}
+  else if(operation==='edit'){book.model().d.edit();await settle();typeInto(book.model().ed.onName,'Changed contact');book.model().ed.save();}
+  else{book.model().d.del();book.model().d.confirmDelete();}
+  await settle();assert.equal(book.calls.filter(([name])=>name===method).length,1);
+  let owner=book.shell;
+  if(retire==='owner'){owner.componentWillUnmount();owner=new book.Shell();owner.componentDidMount();}
+  else{owner.view='home';owner.componentDidUpdate();owner.view='contacts';owner.componentDidUpdate();}
+  await settle();assert.equal(book.model({}).nativeBusy,true,'a retired provider write still owns the write gate');
+  book.model({}).addNew();await settle();assert.equal(book.model({}).ed.open,false);
+  book.model({}).nativeRefresh();await settle();
+  if(reply==='unknown')pending.resolve({status:'unknown'});else pending.reject(Error('Reply lost after commit'));await settle();
+  assert.match(book.model({}).nativeStatus,/Outcome unknown/);book.model({}).addNew();await settle();
+  assert.equal(book.model({}).ed.open,false,'an old-visit read cannot confirm a later uncertain completion');
+  assert.equal(book.calls.filter(([name])=>name===method).length,1);
+  book.model({}).nativeRefresh();await settle();book.model({}).addNew();await settle();
+  assert.equal(book.model({}).ed.open,true,'a successful read begun after terminal uncertainty permits a newly reviewed write');
+  owner.componentWillUnmount();
+ }
+});
+test('a held refresh begun before terminal uncertainty cannot release the contact write gate',async()=>{
+ const pending=Promise.withResolvers(),read=Promise.withResolvers();let held=false;
+ const book=mountBook({save:()=>pending.promise});await settle();book.model({}).addNew();await settle();typeInto(book.model({}).ed.onName,'New contact');book.model({}).ed.save();await settle();
+ book.shell.view='home';book.shell.componentDidUpdate();book.shell.view='contacts';book.shell.componentDidUpdate();await settle();
+ const original=globalThis.contactsPlugin;globalThis.contactsPlugin=(method,options)=>method==='list'&&held?read.promise:original(method,options);
+ held=true;book.model({}).nativeRefresh();await settle();pending.resolve({status:'unknown'});await settle();
+ read.resolve({contacts:[ada],more:false});await settle();book.model({}).addNew();await settle();assert.equal(book.model({}).ed.open,false);
+ assert.match(book.model({}).nativeStatus,/Outcome unknown/);held=false;book.model({}).nativeRefresh();await settle();book.model({}).addNew();await settle();assert.equal(book.model({}).ed.open,true);
+ book.shell.componentWillUnmount();
 });

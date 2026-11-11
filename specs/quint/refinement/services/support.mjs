@@ -17,7 +17,7 @@ export async function until(predicate, description) {
   }
 }
 export async function sourceModule(path, stubs = {}, beforeImport) {
-  const result = await build({
+  const compile = () => build({
     absWorkingDir: process.cwd(), entryPoints: [path], bundle: true, write: false,
     platform: 'node', format: 'esm', metafile: true, define: {'import.meta.env': '{}'},
     plugins: [{name: 'controlled-external-ports', setup(builder) {
@@ -26,7 +26,18 @@ export async function sourceModule(path, stubs = {}, beforeImport) {
       builder.onLoad({filter: /.*/, namespace: 'external-port'}, args => ({contents: stubs[args.path], loader: 'js'}));
     }}],
   });
-  if (beforeImport) beforeImport(Object.keys(result.metafile.inputs).map(input => resolve(input)).filter(input => existsSync(input)).map(input => relative(process.cwd(), input)));
+  const result = await compile();
+  if (beforeImport) {
+    const inputs = result => Object.keys(result.metafile.inputs).map(input => resolve(input)).filter(input => existsSync(input)).map(input => relative(process.cwd(), input)).sort();
+    const discovered = inputs(result);
+    beforeImport(discovered);
+    // The first build discovers the graph. Execute only bytes reproduced after
+    // the caller has frozen every discovered implementation dependency.
+    const bound = await compile();
+    assert.deepEqual(inputs(bound), discovered, 'Source dependency graph changed after capture');
+    assert.deepEqual(bound.outputFiles.map(file => file.text), result.outputFiles.map(file => file.text), 'Source bundle changed after dependency capture');
+    beforeImport(discovered);
+  }
   const url = 'data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64');
   return import(url);
 }

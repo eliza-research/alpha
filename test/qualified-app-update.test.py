@@ -46,7 +46,7 @@ class QualifiedUpdateTest(unittest.TestCase):
                    "project": "alpha-aosp-lab-20261024", "instanceId": "8999310923263914877",
                    "alphaCommit": self.plan["alphaCommit"], "sdkCommit": self.plan["sdkCommit"],
                    "versionCode": self.plan["versionCode"], "unsignedApkSHA256": self.plan["unsignedApkSHA256"],
-                   "runtimeProfile": "native", "updateChannel": self.plan["updateChannel"],
+                   "runtimeProfile": "cloud", "updateChannel": self.plan["updateChannel"],
                    "checks": {name: "passed" for name in ("productSourceGuard", "sdkSourceGuard", "normalPreparation",
                                                          "combinedVerification", "apkArchive")}}
         private_bytes = json.dumps(private).encode()
@@ -122,7 +122,7 @@ class QualifiedUpdateTest(unittest.TestCase):
         for variant in BRIDGE.VARIANTS:
             self.assertEqual((product / f"artifacts/{variant}-release.apk").read_bytes(), self.signed_apks[variant])
             self.assertTrue((product / f"artifacts/{variant}-debug.apk").exists())
-        self.assertEqual(json.loads((product / "artifacts/build-config.json").read_text())["runtimeProfile"], "native")
+        self.assertEqual(json.loads((product / "artifacts/build-config.json").read_text())["runtimeProfile"], "cloud")
         self.assertEqual(BRIDGE.sha((work / "cloud-voice.json").read_bytes()), self.record["cloudVoiceEvidenceSHA256"])
 
     def test_voice_receipt_cannot_be_substituted_failed_duplicated_or_carry_content(self):
@@ -194,6 +194,37 @@ class QualifiedUpdateTest(unittest.TestCase):
                 BRIDGE.preflight(self.record, "f" * 40, self.directory / f"wrong-history-{index}",
                                  lambda endpoint: comparison if "/compare/" in endpoint else self.api(endpoint), self.download)
 
+    def test_isolated_source_requires_exact_approval_and_main_signing_workflow(self):
+        fields = ("alphaCommit", "sdkCommit", "versionCode", "updateChannel", "archiveBytes",
+                  "archiveSHA256", "producerManifestSHA256", "privateProducerReceiptSHA256", "unsignedApkSHA256")
+        approval = {"approval": "approved", **{key: self.plan[key] for key in fields}}
+        (self.directory / "android").mkdir()
+        descriptor = self.directory / "android/release-signer.json"
+
+        def isolated_source(endpoint):
+            if f'/compare/{self.plan["alphaCommit"]}...' in endpoint:
+                return {"status": "diverged", "merge_base_commit": {"sha": "0" * 40}}
+            return self.api(endpoint)
+
+        with patch.object(BRIDGE, "ROOT", self.directory):
+            for index, field in enumerate((None, "approval", *fields)):
+                candidate = copy.deepcopy(approval)
+                if field is not None:
+                    candidate[field] = "unreviewed"
+                descriptor.write_text(json.dumps({"privateProducerApproval": candidate}))
+                work = self.directory / f"source-review-{index}"
+                if field is None:
+                    self.assertEqual(BRIDGE.preflight(self.record, "f" * 40, work,
+                                                     isolated_source, self.download), self.plan)
+                else:
+                    with self.assertRaises(ValueError):
+                        BRIDGE.preflight(self.record, "f" * 40, work, isolated_source, self.download)
+            descriptor.write_text(json.dumps({"privateProducerApproval": approval}))
+            with self.assertRaises(ValueError):
+                BRIDGE.preflight(self.record, "f" * 40, self.directory / "unreviewed-signer",
+                                 lambda endpoint: {"status": "diverged"} if "/compare/" in endpoint else self.api(endpoint),
+                                 self.download)
+
     def test_duplicate_json_and_symlink_restore_paths_are_refused(self):
         with self.assertRaises(ValueError):
             BRIDGE.decode(b'{"schema":1,"schema":2}')
@@ -201,8 +232,33 @@ class QualifiedUpdateTest(unittest.TestCase):
         product.mkdir()
         (product / "artifacts").symlink_to(self.directory, target_is_directory=True)
         with self.assertRaises(ValueError):
-            BRIDGE.write_file(product, "artifacts/outside.json", b"must not escape")
+            BRIDGE.restore_file(product, "artifacts/outside.json", io.BytesIO(b"must not escape"),
+                                15, BRIDGE.sha(b"must not escape"), "mismatch")
         self.assertFalse((self.directory / "outside.json").exists())
+
+    def test_restore_streams_chunks_and_preserves_prior_target_on_refusal(self):
+        class BoundedSource(io.BytesIO):
+            def read(self, size):
+                self.maximum = max(getattr(self, "maximum", 0), size)
+                if not 0 < size <= 1024 * 1024:
+                    raise AssertionError("Unbounded read")
+                return super().read(size)
+
+        product = self.directory / "streamed-product"
+        product.mkdir()
+        target = product / "large.apk"
+        value = b"x" * (3 * 1024 * 1024 + 13)
+        source = BoundedSource(value)
+        BRIDGE.restore_file(product, target.name, source, len(value), BRIDGE.sha(value), "mismatch")
+        self.assertEqual(source.maximum, 1024 * 1024)
+        self.assertEqual(BRIDGE.file_sha(target), BRIDGE.sha(value))
+        for replacement, size, digest in ((b"ab", 1, BRIDGE.sha(b"a")),
+                                           (b"a", 2, BRIDGE.sha(b"ab")),
+                                           (b"b", 1, BRIDGE.sha(b"a"))):
+            with self.assertRaisesRegex(ValueError, "mismatch"):
+                BRIDGE.restore_file(product, target.name, BoundedSource(replacement), size, digest, "mismatch")
+            self.assertEqual(BRIDGE.file_sha(target), BRIDGE.sha(value))
+            self.assertEqual(list(product.iterdir()), [target])
 
     def test_signed_plan_apk_and_tar_path_substitution_are_rejected(self):
         for index, change in enumerate(({"signing-plan.json": b"{}"}, {"launcher-release.apk": b"changed"}, {"../outside": b"bad"})):

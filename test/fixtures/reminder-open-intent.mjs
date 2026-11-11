@@ -92,7 +92,7 @@ export async function reminderOpenIntentFixture(initial = 'home') {
       const intent = shell.pendingReminderOpen;
       const message = toasts.at(-1);
       if (message) assert.ok(["Couldn't open that reminder. Open Calendar to find it.",
-        'Reminders could not refresh. Previously loaded reminders may be out of date.'].includes(message));
+        'Couldn’t refresh'].includes(message));
       return {view: shell.view, deferred: queuedView || '', visit: shell.reminderOpenVisit ?? 0,
         refresh: shell.reminderRefreshGeneration ?? 0, reads: reads.map((read, i) => [i + 1, read.state]),
         now: clock.now - reminderClockOrigin, foreground: !document.hidden,
@@ -100,7 +100,7 @@ export async function reminderOpenIntentFixture(initial = 'home') {
           view: intent.view, visit: intent.visit, followedCalendar: intent.followedCalendar} :
           {id: '', occurrence: '', at: 0, view: '', visit: 0, followedCalendar: false},
         cache: shell.reminderRows?.[0]?.occurrenceId ?? '', stale: !!calendar.reminderStale,
-        notice: !message ? '' : message.startsWith("Couldn't open") ? 'open-failed' : 'refresh-failed',
+        notice: !message ? '' : message==="Couldn't open that reminder. Open Calendar to find it." ? 'open-failed' : 'refresh-failed',
         delivery: {...delivery}};
     },
   };

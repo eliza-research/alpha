@@ -20,7 +20,7 @@ test('an alarm saved with notifications off says so, is listed and can be delete
  button('Save alarm').click();
  const status=dialog.querySelector('[role=status]');
  await until(()=>status.textContent!=='','the save status');
- assert.equal(status.textContent,'Alarm saved. Notifications are off, so it will not ring until you turn them on.');
+ assert.equal(status.textContent,'Saved · muted');
  await until(()=>refresh()&&dialog.textContent.includes('Notifications off'),'the saved alarm row');
  const saved=await alarms();assert.equal(saved.length,1);assert.equal(saved[0].status,'permission-denied');
  button('Delete Alarm').click();
@@ -32,7 +32,7 @@ test('an alarm saved with notifications off says so, is listed and can be delete
 test('a future alarm saved while notifications were off is scheduled once they are on',async()=>{
  const {harness,daily}=setup();harness.notifications=false;
  const result=await daily.clockHandoff({action:'set',hour:7,minute:0,label:'Wake',reviewed:true});
- assert.equal(result.status,'opened');assert.match(result.message,/Notifications are off/);
+ assert.equal(result.status,'opened');assert.match(result.message,/muted/);
  assert.equal((await alarms()).length,1);
  const writes=harness.documents.writes;await daily.listReminders();assert.equal(harness.documents.writes,writes,'no write while notifications stay off');
  harness.notifications=true;await daily.listReminders();

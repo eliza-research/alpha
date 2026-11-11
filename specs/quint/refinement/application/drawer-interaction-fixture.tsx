@@ -76,7 +76,7 @@ function mount(selectedFavorites: number[], useNative: boolean) {
   }
   class DrawerHost extends HostBase {
     toast(message: string) {
-      if (!useNative) same(message,`${catalog[infoTarget].label} info could not be opened. Fixture refusal`,'Actual App Info failure notice');
+      if (!useNative) same(message,`${catalog[infoTarget].label}: Fixture refusal`,'Actual App Info failure notice');
       infoNotice = true;
       notice = message;
     }

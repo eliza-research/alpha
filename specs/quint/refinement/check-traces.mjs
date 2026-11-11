@@ -39,7 +39,7 @@ function matchesSnapshot(sha256) {
   return lstatSync(path, {throwIfNoEntry: false})?.isFile() && hash(path) === sha256;
 }
 
-function retainGeneratedSource(path, sha256) {
+export function retainGeneratedSource(path, sha256) {
   if (!isGeneratedFile(path)) throw new Error('Generated refinement input is no longer a temporary file: '+path);
   const bytes = readFileSync(path);
   if (digest(bytes) !== sha256) throw new Error('Generated refinement input changed during snapshot: '+path);

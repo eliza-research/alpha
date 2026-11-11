@@ -64,7 +64,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     if (fresh) { owner.toast(error); launchReported = true; }
     else if (failed && !afterLaunch) {
       const listed = new Set(snapshot.apps.map(appKey));
-      if (snapshot.favorites.some(key => !listed.has(key))) owner.toast("Apps couldn't load. Open Apps to try again.");
+      if (snapshot.favorites.some(key => !listed.has(key))) owner.toast('Couldn’t load');
     }
   };
   const shell = createMobileShellLauncher({
@@ -131,16 +131,15 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   /** The drawer entry whose menu is open, while that entry is still listed (an app removed behind
    * its open menu leaves no menu to close). */
   const openMenu = (S: Bag) => S.drawerMenu && appsDrawerEntries(launcher.snapshot(), prefix, String(S.drawerQ || '')).some(entry => entry.key === S.drawerMenu) ? S.drawerMenu as string : null;
-  // Back closes the innermost launcher layer first: an entry's menu, the Add sheet, then edit mode.
-  // Voice, an open conversation and the assistant surface lie above edit mode, so the base Back
-  // handles them first.
+  // Base Back owns voice and conversation above the launcher. Within the launcher,
+  // Back closes the app entry menu, Add sheet or edit mode before navigating Home.
   p.back = function (...args: any[]) {
     const S = this.S();
-    if (!S.view && !S.shade) {
+    const assistantAbove = (S.voice && S.voice !== 'off') || S.chat === 'full' || S.chat === 'sheet' || !!this.props?.assistantSurface;
+    if (!S.view && !S.shade && !assistantAbove) {
       if (S.drawerMenu) { this.setState({drawerMenu: null}); if (openMenu(S)) return; }
-      const above = (S.voice && S.voice !== 'off') || S.chat === 'full' || S.chat === 'sheet' || !!this.props?.assistantSurface;
-      if (!above && S.homeAdd) return this.setState({homeAdd: false});
-      if (!above && S.homeEdit && !S.drawer) { endDrag(); return this.setState({homeEdit: false}); }
+      if (S.homeAdd) return this.setState({homeAdd: false});
+      if (S.homeEdit && !S.drawer) { endDrag(); return this.setState({homeEdit: false}); }
     }
     return back?.apply(this, args);
   };
@@ -280,12 +279,15 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
         const target: {packageName: string; activityName?: string; user?: string} = {packageName: app.packageName};
         if (app.activityName) target.activityName = app.activityName;
         if (app.user) target.user = app.user;
-        appInfo(target).catch((error: unknown) => {
-          self.toast?.(`${app.label} info could not be opened. ${error instanceof Error && error.message ? error.message : 'Unavailable'}`);
+        const label = app.label || app.packageName;
+        appInfo(target).catch(error => {
+          const reason = typeof error?.message === 'string' && error.message.trim() ? error.message : 'Couldn’t open app info';
+          self.toast?.(`${label}: ${reason}`);
           void launcher.refresh();
         });
       } : undefined,
       'data-alpha-layer': 'drawer', className: 'alpha-app-drawer fadein',
+      inert: !!out.appHidden, 'aria-hidden': !!out.appHidden,
       style: {inset: '44px 0 0', zIndex: 30, padding: '12px 0 108px'},
     }) : null;
     // Product views not on Home, offered by edit mode's "+".

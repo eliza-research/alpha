@@ -26,7 +26,7 @@ test('digital zoom changes saved pixels and preserves front-camera mirroring',as
 test('encoded video and thumbnail use the zoomed crop and release the processing stream',async({page})=>{
  const result=await page.evaluate(async()=>{
   const {browserCamera:c,browserPhotoLibrary:p}=await import('/src/prototype/browser-camera.ts');await c.setZoom({zoom:2});await c.startRecording({audio:false,maxDuration:.5,maxFileSize:1000000});await new Promise(r=>setTimeout(r,750));await c.stopRecording();
-  const row=(await p.list()).items.find(r=>r.kind==='video')!,video=document.createElement('video');video.muted=true;video.src=row.path!;
+  const row=await p.read({id:(await p.list()).items.find(r=>r.kind==='video')!.id}),video=document.createElement('video');video.muted=true;video.src=row.path!;
   // A resolved play() is not evidence that a decoded frame has been presented.
   const frame=new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Recorded video did not present a frame')),5000);video.requestVideoFrameCallback(()=>{clearTimeout(timer);resolve();});});await video.play();await frame;
   const canvas=document.createElement('canvas');canvas.width=320;canvas.height=240;const ctx=canvas.getContext('2d')!;ctx.drawImage(video,0,0);const pixels=[20,300].map(x=>Array.from(ctx.getImageData(x,120,1,1).data).slice(0,3));video.pause();video.removeAttribute('src');video.load();
@@ -93,7 +93,7 @@ test('switching with flash on and zoom 2x keeps both reset when the switch fails
  await page.getByRole('button',{name:'Flash off',exact:true}).click();await expect(page.getByRole('button',{name:'Flash on',exact:true})).toBeVisible();
  const calls=()=>page.evaluate(()=>(window as any).flipCalls.splice(0));expect(await calls()).toEqual(['zoom 2','flash on']);
  await page.evaluate(()=>(window as any).failSwitch=true);await page.getByRole('button',{name:'Switch camera',exact:true}).click();
- await expect(page.locator('[data-alpha-camera="said"]')).toContainText('Not supported on this camera.');
+ await expect(page.locator('[data-alpha-camera="said"]')).toContainText('Not supported');
  expect(await calls()).toEqual(['flash off','zoom 1','switch front']);
  await expect(page.getByRole('button',{name:'Flash off',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Zoom 1x',exact:true})).toHaveCSS('width','40px');
  await page.evaluate(()=>(window as any).failSwitch=false);await page.getByRole('button',{name:'Switch camera',exact:true}).click();

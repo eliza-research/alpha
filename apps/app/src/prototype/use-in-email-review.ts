@@ -17,7 +17,7 @@ export function installUseInEmailReview(Component: Shell, views: Record<string, 
   const refresh = (shell: Shell) => { if (shell.live !== false) shell.setState({ emailUseRevision: Date.now() }); };
   const agentSession = () => JSON.stringify(connectionController.getSnapshot().session ?? null);
   const cloudSession = () => connectionController.getCloudClient()?.sessionId || '';
-  const target = (): EmailTarget => typeof views.inbox?.emailTarget === 'function' ? views.inbox.emailTarget() : { ready: false, reason: 'Inbox is unavailable. Nothing was added.', token: '' };
+  const target = (): EmailTarget => typeof views.inbox?.emailTarget === 'function' ? views.inbox.emailTarget() : { ready: false, reason: 'Inbox unavailable', token: '' };
   const eligible = (entry: Shell) => !!entry && entry.from === 'agent' && !entry.card && !entry.streaming && !entry.interrupted && typeof entry.id === 'string' && typeof entry.text === 'string' && !!entry.text.trim();
   const close = (shell: Shell) => { if (reviews.delete(shell)) refresh(shell); };
   /** The review names an account, recipients and a subject: it does not outlive a locked or sleeping phone. */
@@ -45,14 +45,14 @@ export function installUseInEmailReview(Component: Shell, views: Record<string, 
     };
     // The reply must still be the one on screen, from the same agent conversation, over the same Inbox.
     const state = shell.S();
-    if (!replyCurrent(state, review) || review.session !== agentSession()) { reviews.delete(shell); shell.toast?.('The conversation changed. Nothing was added to an email.'); refresh(shell); return; }
+    if (!replyCurrent(state, review) || review.session !== agentSession()) { reviews.delete(shell); shell.toast?.('Changed'); refresh(shell); return; }
     if (shell.live === false || !presenting(state)) { close(shell); return; }
-    if (document.hidden || connectionController.getSnapshot().open) { fail('Inbox is no longer in front. Nothing was added.'); return; }
+    if (document.hidden || connectionController.getSnapshot().open) { fail('Inbox closed'); return; }
     // The notice shows the destination over the current Cloud account, so the next Confirm applies to it.
     const cloud = cloudSession();
-    if (review.cloud !== cloud) { fail('The Cloud account changed. Check the destination and confirm again. Nothing was added.', cloud); return; }
+    if (review.cloud !== cloud) { fail('Account changed', cloud); return; }
     const inserted = views.inbox.useInEmail?.(review.text, { token: review.target.token, append: review.target.append }) === true;
-    if (!inserted) { fail('The email or account changed since you opened this review. Check the destination and confirm again. Nothing was added.'); return; }
+    if (!inserted) { fail('Changed'); return; }
     reviews.delete(shell);
     // Show the composer holding the suggestion; the conversation stays available from the pill.
     shell.setState({ chat: 'hidden', emailUseRevision: Date.now() });

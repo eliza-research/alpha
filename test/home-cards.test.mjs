@@ -240,7 +240,7 @@ test('Agent Calendar freshness: an unverified next event is never fresh or an em
     state={...state,feed:{...state.feed,syncedAt}};
     const unverified=render();
     assert.equal(unverified.homeCalendarConfirmedEmpty,false);
-    assert.equal(unverified.homeCalendarTitle,'Calendar has not been verified');
+    assert.equal(unverified.homeCalendarTitle,'Unverified');
     assert.equal(unverified.homeCalendarSource,'','routine retry prose is not shown on Home');
     assert.match(unverified.homeCalendarDescription,/Open Calendar to retry/,'the accessible description keeps recovery guidance');
     assert.equal(reads,0,'rendering an unverified empty read never retries automatically');

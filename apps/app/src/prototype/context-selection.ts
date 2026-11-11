@@ -8,6 +8,8 @@
  * embed names, sizes and times): their shared revision is a counter local to this
  * app session. Content is shared only as an excerpt the owner reviewed. */
 type Bag = Record<string, any>;
+// LemmaScript (specs/lemma) has no model for a RegExp; no proved function reads it.
+//@ skip
 const OPAQUE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 export const FOLDER_CONTEXT_EVENT = 'alpha-folder-context';
 
@@ -92,16 +94,19 @@ export function folderScopeCurrent(reviewed: FolderScope, fresh: Listed & { stat
 export function folderExcerpt(scope: FolderScope, typeLabel: (mimeType: string, directory: boolean) => string): string {
   const shown = scope.entries.slice(0, FOLDER_EXCERPT_LIMIT), hidden = scope.entries.length - shown.length;
   const lines = ['Folder: ' + scope.folder.name];
-  if (!shown.length) lines.push(scope.more ? 'No entries are loaded.' : 'This folder is empty.');
+  if (!shown.length) lines.push(scope.more ? 'Not loaded' : 'Empty');
   else lines.push(shown.length + (shown.length === 1 ? ' entry' : ' entries') + ' listed by name and type. File contents and subfolder contents are not included.');
   for (const entry of shown) lines.push('- ' + entry.name + ' (' + typeLabel(entry.mimeType, entry.directory) + ')');
   if (hidden > 0) lines.push(hidden + ' more loaded ' + (hidden === 1 ? 'entry is' : 'entries are') + ' not listed here.');
-  if (scope.more) lines.push('The folder has more entries that are not loaded' + (scope.total !== undefined ? ' (' + scope.total + ' in total).' : '.'));
+  if (scope.more) lines.push('More…' + (scope.total !== undefined ? ' (' + scope.total + ' total)' : ''));
   return lines.join('\n');
 }
 
+//@ skip
 const SETTINGS_SECTION = /^[a-z][a-z0-9-]{0,63}$/;
+//@ skip
 const SETTINGS_CATEGORIES = new Set(['settings-account','settings-general','settings-privacy','settings-apps','settings-help']);
+//@ skip
 const SENSITIVE_SETTINGS = /pass|credential|vault|secret|token|key|unlock|pin|biometric/;
 /** The open Settings page as an identity: its section slug only, never a value shown on it.
  * Credential and unlock pages have no identity (the screen is also paused as sensitive). */
@@ -142,8 +147,17 @@ export function noticeReviewable(notice: Notice): boolean {
   return notice.source === 'own' && ASKABLE_NOTICE_KINDS.includes(noticeKind(notice)) && OPAQUE.test(notice.id) && OPAQUE.test(notice.revision) && !noticeHidden(notice);
 }
 /** The exact notification is still listed with the revision that was reviewed. */
-export function noticeCurrent(reviewed: Pick<Notice, 'id' | 'revision' | 'source'>, items: readonly Notice[] | undefined): boolean {
-  return !!items && items.filter(item => item.id === reviewed.id && item.source === reviewed.source).length === 1
+export type NoticeIdentity = Pick<Notice, 'id' | 'revision' | 'source'>;
+export function noticeCurrent(reviewed: NoticeIdentity, items: readonly Notice[] | undefined): boolean {
+  //@ verify
+  //@ ensures items === undefined ==> !\result
+  //@ ensures items !== undefined && items.length === 0 ==> !\result
+  //@ ensures \result ==> items !== undefined
+  //@ ensures \result && items !== undefined ==> exists(k, 0 <= k && k < items.length && items[k].id === reviewed.id && items[k].source === reviewed.source && items[k].revision === reviewed.revision && forall(j, 0 <= j && j < items.length && items[j].id === reviewed.id && items[j].source === reviewed.source ==> j === k))
+  //@ ensures items !== undefined && exists(j, exists(k, 0 <= j && j < k && k < items.length && items[j].id === reviewed.id && items[j].source === reviewed.source && items[k].id === reviewed.id && items[k].source === reviewed.source)) ==> !\result
+  //@ ensures items !== undefined && exists(k, 0 <= k && k < items.length && items[k].id === reviewed.id && items[k].source === reviewed.source && items[k].revision === reviewed.revision && forall(j, 0 <= j && j < items.length && items[j].id === reviewed.id && items[j].source === reviewed.source ==> j === k)) ==> \result
+  if (!items) return false;
+  return items.filter(item => item.id === reviewed.id && item.source === reviewed.source).length === 1
     && items.some(item => item.id === reviewed.id && item.source === reviewed.source && item.revision === reviewed.revision);
 }
 export function noticeExcerpt(notice: Notice): string {
@@ -182,7 +196,15 @@ export type CaptureRevisionFields = { trashed?: boolean; revision: string; mutat
  * revision. Anything else, including a row that dropped its content revision, is a changed item
  * and is never used as context. */
 export function captureUnchanged(reviewed: CaptureRevisionFields, current: CaptureRevisionFields | undefined): boolean {
-  if (!current || !current.trashed !== !reviewed.trashed) return false;
+  //@ verify
+  //@ ensures current === undefined ==> !\result
+  //@ ensures current === reviewed ==> \result
+  //@ ensures \result && current !== undefined ==> !current.trashed === !reviewed.trashed
+  //@ ensures \result && current !== undefined && reviewed.mutationRevision !== undefined && reviewed.mutationRevision !== '' ==> current.mutationRevision === reviewed.mutationRevision
+  //@ ensures \result && current !== undefined && (reviewed.mutationRevision === undefined || reviewed.mutationRevision === '') ==> current.revision === reviewed.revision
+  //@ ensures current !== undefined && reviewed.contentRevision !== undefined && current.contentRevision !== reviewed.contentRevision ==> !\result
+  if (!current) return false;
+  if (!current.trashed !== !reviewed.trashed) return false;
   if (reviewed.mutationRevision ? current.mutationRevision !== reviewed.mutationRevision : current.revision !== reviewed.revision) return false;
   return reviewed.contentRevision === undefined || current.contentRevision === reviewed.contentRevision;
 }
@@ -207,6 +229,7 @@ export function captureQuestion(module: string, key: string, path: string, state
   return path === 'v.ask' && typeof open === 'string' && open ? { kind: 'item', id: open } : { kind: 'none' };
 }
 
+//@ skip
 const MIME_TYPE = /^[a-z]+\/([a-z0-9][a-z0-9.+-]{0,126}|\*)$/;
 /** Document types for a Files location tile, as the list the native picker accepts
  * (DailyAppsPlugin.mimeTypes). Undefined means any document. */

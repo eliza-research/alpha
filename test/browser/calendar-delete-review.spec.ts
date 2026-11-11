@@ -18,7 +18,7 @@ test('Cancel, Escape and system Back delete nothing; Delete removes exactly the 
  const review=page.getByRole('dialog',{name:'Delete calendar event?'});
  await chooseCalendarEventAction(page, 'Delete event');
  await expect(review).toContainText('Harbour pickup');await expect(review).toContainText('App calendar');
- await expect(review).toContainText('Delete this one event? Deletion waits 10 seconds. You can Undo during that time.');
+ await expect(review).not.toContainText('This occurrence only');
  await expect(review.getByRole('button',{name:'Cancel',exact:true})).toBeFocused();
  await review.getByRole('button',{name:'Cancel',exact:true}).click();
  await expect(review).toHaveCount(0);await expect(page.getByRole('heading',{name:'Harbour pickup',exact:true})).toBeVisible();
@@ -44,7 +44,7 @@ test('an event changed while its review is open is not deleted',async({page})=>{
  // Another window edits the same event while the review is open.
  await page.evaluate(async()=>{const {calendarDocument}=await import('/src/browser/calendar-store.ts');await calendarDocument.edit(()=>({sourceRevision:'',events:[]}) as any,(data:any)=>{data.events[0].title='Edited elsewhere';data.events[0].revision='other-window';});});
  await review.getByRole('button',{name:'Delete event',exact:true}).click();
- await expect(page.getByText('This event changed. Nothing was deleted.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Changed',{exact:true})).toBeVisible();
  expect(await titles(page)).toEqual(['Edited elsewhere']);
 });
 test('a second Delete activation while a review is open cannot delete or stack reviews',async({page})=>{

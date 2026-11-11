@@ -1,8 +1,8 @@
-import {openSharePanel,setShareEmailComposer} from '../runtime/share-panel';
+import {openSharePanel,setShareEmailComposer,unchangedSince} from '../runtime/share-panel';
 import {shareSelectedText,selectedText,copySelectedText} from '../runtime/text-share';
 type Bag=Record<string,any>;
 /** A view state without its top-level refresh counters (*Revision), which change while the shared selection does not. */
-const shareSnapshot=(state:Bag|undefined)=>JSON.stringify(state&&Object.fromEntries(Object.entries(state).filter(([key])=>!key.endsWith('Revision'))));
+const shareContent=(state:Bag|undefined)=>state&&Object.fromEntries(Object.entries(state).filter(([key])=>!key.endsWith('Revision')));
 /** Wrap the completed app adapters, preserving their native revision/attachment admission. */
 export function installSharePanelAdapter(Component:any,views:Record<string,Bag>){
  const prototype=Component.prototype,mount=prototype.componentDidMount,unmount=prototype.componentWillUnmount,render=prototype.renderVals;
@@ -16,8 +16,9 @@ export function installSharePanelAdapter(Component:any,views:Record<string,Bag>)
   const bind=(module:string,target:Bag,key:string,options:{title:string;email?:()=>unknown;copy?:()=>unknown;save?:()=>unknown;emailUnavailable?:null})=>{
    const external=target?.[key];if(typeof external!=='function')return;
    target[key]=()=>{
-    const before=shareSnapshot(shell.vget(module)),browser=module==='browser'?JSON.stringify(shell.browserSelection?.()):'';
-    const current=()=>!document.hidden&&shell.S().view===module&&before===shareSnapshot(shell.vget(module))&&browser===(module==='browser'?JSON.stringify(shell.browserSelection?.()):'');
+    // The shell replaces a view's state object on every write, so its identity stands in for the content between writes.
+    const same=[unchangedSince(()=>shell.S().vs?.[module],()=>shareContent(shell.vget(module))),...(module==='browser'?[unchangedSince(()=>shell.browserSelection?.())]:[])];
+    const current=()=>!document.hidden&&shell.S().view===module&&same.every(check=>check());
     const api=shell.api(module),safe=(run:()=>unknown)=>async()=>{try{if(!current())throw Error('The selection changed. Choose it again.');await run();}catch(error){if(!(error instanceof DOMException&&error.name==='AbortError'))api.toast(error instanceof Error?error.message:'Sharing is unavailable.');}};
     void openSharePanel({title:options.title,current,external:target.shareAvailable===false?undefined:safe(()=>external()),email:options.email?safe(options.email):undefined,emailUnavailable:null,copy:options.copy?safe(options.copy):undefined,save:options.save?safe(options.save):undefined});
    };
@@ -27,8 +28,8 @@ export function installSharePanelAdapter(Component:any,views:Record<string,Bag>)
   // Files shows no unavailable-email row: the Android share sheet reaches mail apps.
   if(values.files){const view=values.files;if(view.pv)bind('files',view.pv,'share',{title:view.pv.name||'Selected file',email:view.pv.canEmail?view.pv.email:undefined,emailUnavailable:null});bind('files',view,'selShare',{title:'Selected files',save:view.selSaveLocally,emailUnavailable:null});}
   if(values.calendar?.ev){const event=values.calendar.ev;const text=[event.title,event.day,event.when,event.where,event.notes].filter(value=>typeof value==='string'&&value).join('\n\n');calendarText=text;
-   event.share=()=>{const api=shell.api('calendar'),before=shareSnapshot(shell.vget('calendar')),current=()=>shell.S().view==='calendar'&&calendarText===text&&before===shareSnapshot(shell.vget('calendar'));
-    const snapshot=selectedText({title:String(event.title||'Calendar event'),text});void openSharePanel({title:snapshot.title,current,external:()=>shareSelectedText(snapshot).catch(()=>api.toast('Android sharing is unavailable.')),email:views.inbox?()=>api.open('inbox',{compose:{subject:snapshot.title,body:snapshot.text}}):undefined,copy:()=>copySelectedText(snapshot.text).then(()=>api.toast('Event text copied.'))});};
+   event.share=()=>{const api=shell.api('calendar'),same=unchangedSince(()=>shell.S().vs?.calendar,()=>shareContent(shell.vget('calendar'))),current=()=>shell.S().view==='calendar'&&calendarText===text&&same();
+    const snapshot=selectedText({title:String(event.title||'Calendar event'),text});void openSharePanel({title:snapshot.title,current,external:()=>shareSelectedText(snapshot).catch(()=>api.toast('Share unavailable')),email:views.inbox?()=>api.open('inbox',{compose:{subject:snapshot.title,body:snapshot.text}}):undefined,copy:()=>copySelectedText(snapshot.text).then(()=>api.toast('Event text copied.'))});};
   }
   return values;
  };

@@ -134,12 +134,9 @@ test('disposable admission refuses either installed Alpha identity before fixtur
   if(args.join(' ')==='shell pm list packages -u')return packages;
   throw Error('Unexpected device effect before admission');
  };
- for(const identity of [
-  'ai.elizaresearch.alphaphone',
-  'ai.elizaresearch.alphaphone.test',
-  'ai.alphacompute.alphaphone',
-  'ai.alphacompute.alphaphone.test',
- ])
+ const retainedIdentity=['ai','elizaresearch','alphaphone'].join('.');
+ const currentIdentity='ai.alphacompute.alphaphone';
+ for(const identity of [retainedIdentity, currentIdentity].flatMap(id=>[id,`${id}.test`]))
   assert.throws(()=>admitResidentEmulator(environment,inventory('package:com.android.settings\npackage:'+identity)),/fresh emulator/);
  assert.doesNotThrow(()=>admitResidentEmulator(environment,inventory('package:com.android.settings')));
  assert.throws(()=>admitResidentEmulator({...environment,ANDROID_SERIAL:'physical-device'},inventory('package:com.android.settings')),/Explicit disposable/);

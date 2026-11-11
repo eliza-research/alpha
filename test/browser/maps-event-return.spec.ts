@@ -118,7 +118,7 @@ test('a deleted or moved event fails closed: Maps stays open and the control is 
       });
     }, change);
     await back(page).click();
-    await expect(page.getByText('That event was deleted or moved.', {exact: true})).toBeVisible();
+    await expect(page.getByText('Event moved', {exact: true})).toBeVisible();
     await expect(view(page)).toHaveAttribute('data-active-view', 'maps');
     await expect(back(page)).toHaveCount(0);
     await expect(page.getByRole('searchbox', {name: 'Search places', exact: true})).toHaveValue(address);
@@ -168,8 +168,8 @@ test('a refused or failed calendar read keeps Back to event and never claims the
       BrowserCalendar.prototype.list = async function (input: any) { w.calendarListCalls.push(input); if (outcome === 'rejected') throw Error('Calendar provider failed'); return {status: 'permission-required'}; } as any;
     }, outcome);
     await back(page).click();
-    await expect(page.getByText(outcome === 'rejected' ? "Can't check this event. Try again." : 'Allow Calendar access to check this event.', {exact: true})).toBeVisible();
-    await expect(page.getByText('That event was deleted or moved.', {exact: true})).toHaveCount(0);
+    await expect(page.getByText(outcome === 'rejected' ? 'Couldn’t check' : 'Allow Calendar', {exact: true})).toBeVisible();
+    await expect(page.getByText('Event moved', {exact: true})).toHaveCount(0);
     await expect(view(page)).toHaveAttribute('data-active-view', 'maps');
     await expect(back(page)).toHaveCount(1);
     // One read of the event's own instant per tap; Calendar's own refreshes may read other windows.

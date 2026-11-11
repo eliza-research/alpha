@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "sha256": "31cff3950bac199924fbe729fbbe8a4a9105abbbb535b683a8223cbfb056cef3",
+  "sdkCommit": "30b4844152673243f1faf2d68a4f707a7a7da543",
+  "allowedProducerCommits": [
+    "c73e72f54be8fd7f0b7044d9ef9d1390562c74fb"
+  ],
+  "apkSignerMappingsSha256": "e5534e2830ad94343ee11cbc08857cf2435522fe1f3d0e560ec4f5610f80223e",
+  "avbKeyConfigurationSha256": "f8ed78f8705d63a011a82a2655f7875a1d86033ee601a190f53aa9f6dacfdd5d",
+  "qualified": true,
+  "reviewedTargets": []
+}

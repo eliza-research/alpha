@@ -50,7 +50,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   latestRead.set(shell,request);
   const current=()=>shell.live&&shell.notesSourceMode==='legacy'&&shell.notesSourceEpoch===epoch&&latestRead.get(shell)===request;
   try{const doc=await readNotesTrash();if(current())shell.vset('notes',{trash:sortedNotesTrash(doc),trashError:''});}
-  catch{if(current())shell.vset('notes',{trash:[],trashError:'Recently deleted could not be read.'});}
+  catch{if(current())shell.vset('notes',{trash:[],trashError:'Couldn’t load'});}
  }
  /** Idempotent: a second run with the same clock finds nothing to do. */
  async function maintain(shell:Shell,background:boolean,now=Date.now()){
@@ -104,7 +104,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
    },
   };
  }
- const unavailableMessage=(shell:Shell)=>shell.notesPending&&!shell.notesStorageFailed?'Still saving. Try again in a moment.':'Notes storage needs attention. Try again after it recovers.';
+ const unavailableMessage=(shell:Shell)=>shell.notesPending&&!shell.notesStorageFailed?'Saving…':'Storage issue';
 
  async function moveToTrash(shell:Shell,note:Bag,index:number){
   const outcome=await actionsFor(shell).moveToTrash(collection(shell),note as NoteRecord,index,()=>shell.notesStore.target(note.id));
@@ -117,9 +117,9 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   }
   // An unconfirmed list save is reported by the Notes save path; maintenance drops the copy if the note stays saved.
   if(outcome.status==='unconfirmed')return false;
-  if(outcome.status!=='moved'){shell.toast(outcome.status==='changed'?'This note changed in another view. Nothing was deleted.':'Could not move this note to Recently deleted. Nothing was deleted.');return false;}
+  if(outcome.status!=='moved'){shell.toast(outcome.status==='changed'?'Note changed':'Delete failed');return false;}
   void load(shell);
-  shell.toast('Moved to Recently deleted',{undo:()=>void restore(shell,outcome.entry.id)});
+  shell.toast('Deleted',{undo:()=>void restore(shell,outcome.entry.id)});
   return true;
  }
 
@@ -134,14 +134,14 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
     // The recording follows its note through the reviewed voice restore path.
     const hook=voice(shell).restoreTrashedVoice;
     if(typeof hook==='function')return await hook(entry)?'restored':'failed';
-    shell.toast('Voice restore is unavailable.');return 'failed';
+    shell.toast('Can’t restore');return 'failed';
    }
    const title=entry?.note.title||kindLabel[entry?.note.kind as string]||'Note';
-   shell.toast(outcome==='restored'?`${title} restored`:outcome==='live'?'This note is already in Notes.':outcome==='gone'?'This note is no longer in Recently deleted.'
-    :outcome==='expired'?'This note has expired and cannot be restored. Permanent deletion will be retried.'
-    :'Restore is unconfirmed. Reopen Notes to check Recently deleted. No newer note was replaced.');
+   shell.toast(outcome==='restored'?`${title} restored`:outcome==='live'?'This note is already in Notes.':outcome==='gone'?'Gone'
+    :outcome==='expired'?'Expired'
+    :'Restore unconfirmed');
    return outcome==='restored'||outcome==='live'||outcome==='gone'||outcome==='expired'?outcome:'failed';
-  }catch{shell.toast('Restore is unconfirmed. Reopen Notes to check Recently deleted. No newer note was replaced.');return 'failed';}
+  }catch{shell.toast('Restore unconfirmed');return 'failed';}
   finally{busy=false;if(shell.live)shell.vset('notes',{trashBusy:false});await load(shell);}
  }
 
@@ -152,7 +152,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   busy=true;shell.vset('notes',{trashBusy:true,trashConfirm:null});
   try{
    const outcome=await actionsFor(shell).erase(ids);
-   shell.toast(outcome.status==='unconfirmed'?'Permanent deletion is unconfirmed. Reopen Recently deleted to check.':outcome.failed?`${outcome.failed} item(s) could not be deleted yet. They stay in Recently deleted.`:ids==='all'?'Recently deleted emptied':outcome.erased?'Deleted':'This note is no longer in Recently deleted.');
+   shell.toast(outcome.status==='unconfirmed'?'Unconfirmed':outcome.failed?`${outcome.failed} not deleted`:ids==='all'?'Recently deleted emptied':outcome.erased?'Deleted':'Gone');
   }finally{busy=false;if(shell.live)shell.vset('notes',{trashBusy:false});await load(shell);}
  }
 
@@ -174,9 +174,9 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
    if(shell.live)shell.vset('notes',{trashBusy:false,...(settled?{trashFull:null}:{})});
    await load(shell);
   }
-  shell.toast(outcome==='deleted'?`${noteTitle(candidate.note)} deleted forever`:outcome==='changed'?'This note changed. Nothing was deleted.'
+  shell.toast(outcome==='deleted'?`${noteTitle(candidate.note)} deleted forever`:outcome==='changed'?'Note changed'
    :outcome==='unavailable'?unavailableMessage(shell)
-   :'Permanent deletion is unconfirmed. Reopen Notes to check. Nothing else was deleted.');
+   :'Unconfirmed');
  }
 
  p.api=function(key:string){
@@ -255,7 +255,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   if(state.trashFull&&!full)queueMicrotask(()=>{trash.forget();api.set({trashFull:null});});
   view.trashFullOpen=!!full;
   view.trashConfirmOpen=!!full||(!!confirm&&view.trashOpen);
-  view.trashConfirmTitle=full?'Recently deleted is full':confirm?.id==='all'?'Delete all recently deleted notes?':`Delete “${confirm?.title||'this note'}”?`;
+  view.trashConfirmTitle=full?'Full':confirm?.id==='all'?'Delete all?':`Delete “${confirm?.title||'this note'}”?`;
   view.trashConfirmText=full?'':'This can’t be undone.';
   view.trashConfirmLabel=full?'Delete permanently':confirm?.id==='all'?'Delete all':'Delete';
   view.trashConfirmText2=full?'Delete permanently':confirm?.id==='all'?'Delete all':'Delete';
@@ -264,7 +264,7 @@ export function installNotesTrashAdapter(Component:Shell,views:Record<string,Bag
   view.trashConfirmGo=()=>{
    if(full){
     // A voice note is erased together with its recording by the reviewed voice path.
-    if(full.voice){const hook=api.deleteVoiceNoteForever;if(typeof hook==='function')void hook(full.id);else api.toast('Permanent voice deletion is unavailable. Nothing was deleted.');}
+    if(full.voice){const hook=api.deleteVoiceNoteForever;if(typeof hook==='function')void hook(full.id);else api.toast('Can’t delete');}
     else void trash.deleteForever(full.id);
     return;
    }

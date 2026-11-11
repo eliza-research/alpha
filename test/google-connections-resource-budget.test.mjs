@@ -55,20 +55,20 @@ test('Google settings offer no calendar choice, revalidate grants and own Androi
   assert.equal(dom.window.document.querySelectorAll('input[type="radio"]').length,0,'No calendar picker: every calendar shown in Google is part of Calendar');
   assert.doesNotMatch(panel.textContent,/Calendar to display|Local calendars only/);
   assert.equal(panel.querySelector('[role="status"]').textContent,'Calendar includes the calendars you show in Google.');
-  assert.ok([...dom.window.document.querySelectorAll('button')].some(button=>button.textContent==='Add Google account'));
+  assert.ok([...dom.window.document.querySelectorAll('button')].some(button=>button.textContent==='Add account'));
   assert.equal([...dom.window.document.querySelectorAll('button')].some(button=>button.textContent==='Check Google connections'),false);
   await React.act(async()=>{dom.window.dispatchEvent(new dom.window.Event(ACCOUNTS));await flush();});
   assert.deepEqual(counts,{accounts:2,calendars:0});
   assert.deepEqual(published.at(-1),{gmailChanges:true,calendarEdits:true},'The agent host receives the default-on switches');
   assert.deepEqual(hostCalls,[],'Loading the default-on switches never enables browser host Calendar writes');
-  {const gmail=dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Gmail changes"]'),calendar=dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Calendar edits"]');
+  {const gmail=dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Send email"]'),calendar=dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Edit events"]');
    assert.equal(gmail.checked,true,'Gmail changes default on when granted');assert.equal(calendar.checked,true,'Calendar edits default on when granted');
    await React.act(async()=>{gmail.click();await flush();});
    assert.equal(access.gmailChanges,false);assert.deepEqual(published.at(-1),{gmailChanges:false,calendarEdits:true});
-   assert.equal(dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Gmail changes"]').checked,false);
+   assert.equal(dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Send email"]').checked,false);
    assert.ok(dom.window.document.querySelector('[aria-label="Disconnect Google account owner@example.invalid"]'),'Turning a switch off never disconnects Google');
    assert.deepEqual(counts,{accounts:2,calendars:0},'Turning a switch off makes no provider request');
-   await React.act(async()=>{dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Gmail changes"]').click();await flush();});
+   await React.act(async()=>{dom.window.document.querySelector('[aria-label="Agent access to Google"] input[aria-label="Send email"]').click();await flush();});
    assert.equal(access.gmailChanges,true,'An existing grant turns back on with no new consent');}
   account.grantedCapabilities=['google.calendar.read','google.gmail.read'];
   await React.act(async()=>{dom.window.dispatchEvent(new dom.window.Event(ACCOUNTS));await flush();});
@@ -76,8 +76,8 @@ test('Google settings offer no calendar choice, revalidate grants and own Androi
   const switches=()=>Object.fromEntries([...dom.window.document.querySelectorAll('[aria-label="Agent access to Google"] input[role="switch"]')].map(input=>[input.getAttribute('aria-label'),input]));
   const agentAccess=dom.window.document.querySelector('[aria-label="Agent access to Google"]');
   assert.ok(agentAccess,'Connected Google exposes the agent access switches');
-  assert.match(agentAccess.textContent,/asks you to review email sends and Calendar changes, even when “Ask before taking actions” is off\./,'Provider consent must not imply the optional local-action setting bypasses send or Calendar review');
-  assert.equal(switches()['Gmail changes'].checked,false,'A switch whose grant is missing shows off');
+  assert.match(agentAccess.textContent,/Sends and edits always ask first/,'Provider consent must not imply the optional local-action setting bypasses send or Calendar review');
+  assert.equal(switches()['Send email'].checked,false,'A switch whose grant is missing shows off');
   assert.match(agentAccess.textContent,/Needs Google approval/);
   let underlyingBack=0;dom.window.addEventListener('alpha-back',()=>underlyingBack++);
   const back=new dom.window.Event('alpha-back',{cancelable:true});

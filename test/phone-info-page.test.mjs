@@ -71,3 +71,13 @@ test('a reply that arrives after the page closed is dropped; failure offers a re
   s.loader.allow(); await settle();
   assert.deepEqual(s.calls.slice(3), ['requestAccess', 'phoneInfo', 'voicemailStatus']);
 });
+
+for(const before of ['status','requestAccess','phoneInfo'])test(`closing Phone during ${before} admits no later private read`,async()=>{
+ let release;const held=new Promise(resolve=>release=resolve);
+ const s=stub({[before]:async()=>{await held;return before==='phoneInfo'?info():status();}});
+ s.loader.sync(true);await settle();
+ if(before==='requestAccess'){s.loader.allow();await settle();}
+ const admitted=s.calls.length;s.loader.sync(false);release();await settle();
+ assert.equal(s.calls.length,admitted,'no native read starts after retirement');
+ assert.deepEqual(s.loader.state,{phase:'idle'});
+});

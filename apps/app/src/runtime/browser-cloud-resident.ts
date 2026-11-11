@@ -5,7 +5,7 @@ import {Capacitor} from '@capacitor/core';
 export const browserCloudResidentEnabled=import.meta.env!==undefined&&import.meta.env.DEV===true&&import.meta.env.VITE_ALPHA_CLOUD_RESIDENT==='1'&&!Capacitor.isNativePlatform();
 export const browserCloudResidentEnvironment=browserCloudResidentEnabled&&import.meta.env.VITE_ALPHA_CLOUD_ENVIRONMENT==='staging'?'staging':'production';
 /** Why an own-key setup failed, without provider text: the host sends none, and a key never reaches the screen. */
-export const OWN_KEYS_NOT_SET_UP='Own API keys could not be set up. Check the keys and try again.';
+export const OWN_KEYS_NOT_SET_UP='Keys rejected';
 export async function browserResidentCall(operation:'residentOwn'|'residentCloud'|'residentBind'|'residentClear'|'residentStatus'|'residentStart'|'residentGoogleCalendarAccess',credentialId?:string,calendarEdits?:boolean,keys?:{apiKey:string;cartesiaKey?:string},signal?:AbortSignal){
  signal?.throwIfAborted();
  if(!browserCloudResidentEnabled)throw Error('Cloud resident host unavailable');
@@ -59,8 +59,8 @@ export async function browserProviderCall<Operation extends BrowserProviderOpera
   return {mode:row.mode,revision:row.revision,persistence:'host-session',keys:{text:{configured:keys.text.configured},voice:{configured:keys.voice.configured}},provider:row.provider,configured:row.configured,selected:row.selected,voiceConfigured:row.voiceConfigured,model:row.model,attachable:row.attachable} as BrowserProviderResultMap[Operation];
  }catch{
   signal?.throwIfAborted();
-  if(requestSignal.aborted)throw new DOMException('Provider request timed out.','TimeoutError');
-  throw Error(operation==='residentProviderEdit'?OWN_KEYS_NOT_SET_UP:'Provider settings unavailable. Refresh and try again.');
+  if(requestSignal.aborted)throw new DOMException('Timed out','TimeoutError');
+  throw Error(operation==='residentProviderEdit'?OWN_KEYS_NOT_SET_UP:'Unavailable');
  }
 }
 

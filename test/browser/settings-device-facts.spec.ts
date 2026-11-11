@@ -116,7 +116,7 @@ test('permission handoffs and developer navigation retain their boundaries while
  await expect(app(page).getByRole('button',{name:'Developer',exact:true})).toHaveCount(0);
  await settings(page,'?tools=1');
  await app(page).getByRole('button',{name:'Privacy',exact:true}).click();
- await app(page).getByRole('button',{name:'App permissions',exact:true}).click();
+ await app(page).getByRole('button',{name:'Permissions',exact:true}).click();
  await app(page).getByRole('button',{name:'Location',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as any).settingsFixture.calls.some((c:any)=>c.method==='openSettings'&&c.input.page==='privacy'))).toBe(true);
  await expect(app(page).getByText('Contacts',{exact:true})).toHaveCount(0);
@@ -169,7 +169,6 @@ test('a failed update check stays due, one check runs at a time, and Install upd
  await page.evaluate(()=>{const f=(window as any).settingsFixture;f.resume();f.resume();});
  await expect(install).toBeVisible();
  await expect(app(page).getByText('0.1.1 (8)',{exact:true})).toBeVisible();
- await expect(app(page).getByText('Faster Home',{exact:true})).toBeVisible();
  expect(await calls(page,'AlphaDevice','checkForUpdate')).toBe(2);
  // Answered: resumes within the fifteen-minute interval do not check again.
  await page.evaluate(()=>(window as any).settingsFixture.resume());

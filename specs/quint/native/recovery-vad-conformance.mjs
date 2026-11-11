@@ -57,7 +57,9 @@ export async function runRecoveryVadConformance() {
       run(quint, ['run', specification, '--backend=typescript', '--seed=1701', '--max-samples=32',
         '--n-traces=32', '--max-steps=80', '--invariant=safety',
         '--out-itf', join(work, `${model}-sample_{seq}.json`), '--verbosity=0']);
-      const files = readdirSync(work).filter(name => name.startsWith(`${model}-`) && name.endsWith('.json')).sort();
+      // A canary scenario deliberately leaves the implementation's behaviour and is not replayed.
+      const files = readdirSync(work).filter(name => name.startsWith(`${model}-`) && name.endsWith('.json') &&
+        !name.includes('CanaryTest')).sort();
       let states = 0;
       let transitions = 0;
       for (const name of files) {
@@ -70,8 +72,9 @@ export async function runRecoveryVadConformance() {
           if (prior && JSON.stringify(prior) === JSON.stringify(state)) continue;
           transitions++;
           if (model === 'RendererRecovery') {
-            lines.push(['R', state.operation, state.lossTime, state.home, state.decision,
-              state.delay, state.started, state.windowStart, state.losses].join(','));
+            lines.push(['R', state.operation, state.lossTime, state.lossHome, state.lossDecision,
+              state.lossDecision === 'RECREATE_AFTER_BACKOFF' ? 5000 : 0, state.started, state.windowStart,
+              state.losses, state.lossCreatedAt, state.deaths].join(','));
           } else {
             lines.push(['V', state.operation, state.probability, state.edge, state.closeReturned,
               state.speaking, state.above, state.below].join(','));
@@ -105,17 +108,22 @@ public final class RecoveryVadConformance {
       rowNumber++; String[] row=line.split(","); String label="row "+rowNumber;
       if (row[0].equals("R")) {
         if (row[1].equals("reset")) { renderer=new RendererRecoveryBudget(); continue; }
-        if (row[1].equals("loss")) {
-          // This budget projection covers genuine renderer crashes while the Activity is visible.
-          RendererRecoveryBudget.Action result=renderer.onLoss(Long.parseLong(row[2]),Boolean.parseBoolean(row[3]),true,true);
+        // A crash reported by a started surface, counted or shared: the WebView's creation count decides.
+        if (row[1].endsWith("loss")) {
+          long before=renderer.deaths();
+          RendererRecoveryBudget.Action result=renderer.onLoss(Long.parseLong(row[2]),Boolean.parseBoolean(row[3]),true,true,Long.parseLong(row[9]));
+          check((renderer.deaths()==before)==row[1].endsWith("shared-loss"),label+" shared report spends nothing");
           check(result.name().equals(row[4]),label+" renderer decision "+result+" expected "+row[4]);
           check(RendererRecoveryBudget.delay(result)==Long.parseLong(row[5]),label+" renderer delay");
         }
         check(bool(renderer,"started")==Boolean.parseBoolean(row[6]),label+" budget initialized");
         check(longValue(renderer,"windowStart")==Long.parseLong(row[7]),label+" window start");
         check(Math.min(4,integer(renderer,"lossesInWindow"))==Integer.parseInt(row[8]),label+" loss count projection");
+        check(renderer.deaths()==Long.parseLong(row[10]),label+" counted renderer deaths");
       } else {
         if (row[1].equals("reset")) { vad=new LiveVadGate(); continue; }
+        // A new capture owns a new gate.
+        if (row[1].equals("init")) vad=new LiveVadGate();
         if (row[1].equals("accept")) {
           int code=Integer.parseInt(row[2]);
           float probability=code==-1001?Float.NaN:code==-1000?Float.POSITIVE_INFINITY:code==-999?Float.NEGATIVE_INFINITY:code/1000f;

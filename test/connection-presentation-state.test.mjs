@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
+import {readNativeNetwork} from '../apps/app/src/runtime/native-network.ts';
 const source=await readFile(process.env.ALPHA_PRESENTATION_SOURCE||new URL('../apps/app/src/runtime/connection-ui.tsx',import.meta.url),'utf8');
 function section(start,end){const a=source.indexOf(start),b=source.indexOf(end,a+start.length);assert.ok(a>=0&&b>a);return source.slice(a,b).replace(/^export /gm,'');}
 const functions=[
@@ -87,6 +88,7 @@ test('expired and rejected restored sessions still require authentication; valid
 // Execute the actual controller preflights. Stop send immediately after its
 // normal conversation binding, before preferences, transport or model work.
 const preflightSource = [
+  section('let nativeNetworkGeneration =', 'let state:'),
   section('function conversationKey(', '\n'),
   ...source.match(/^export const STOPPED_(?:REPLY|CANCELLED|UNCHECKED)_NOTICE = .*$/gm).map(line => line.replace(/^export /, '')),
   section('function residentSignInRequired()', '\n'),
@@ -94,6 +96,7 @@ const preflightSource = [
   section('function releaseOperation(', '/** Start (or restart) the resident.'),
   'const preflightController = {',
   section('  close() {', '  cancel() {'),
+  section('  networkChanged(', '  openCloudAccount('),
   section('  async prepareVoiceConversation(', '  async send('),
   section('  async send(', '      if(expectedConversationId!==undefined&&id!==expectedConversationId)'),
   '      return id;',
@@ -110,7 +113,7 @@ function preflightFixture(balance, options = {}) {
   let bindings = 0;
   Object.assign(f.context, {
     AbortController, DOMException, document: {hidden: false}, navigator: {onLine: true}, setTimeout,
-    FUNDING_NEEDED: 'Choose a monthly plan or enter a membership code to ask Alpha.',
+    FUNDING_NEEDED: 'Plan needed',
     AlphaClientError: class AlphaClientError extends Error {constructor(code, message) {super(message); this.code = code;}},
     residentCloudFlow: () => true, residentAlwaysPresent: true,
     residentStartInBackground: false, pendingBillingReview: null,
@@ -119,6 +122,8 @@ function preflightFixture(balance, options = {}) {
     noSessionError: () => Error('No selected session'),
     phoneContextMessage: (text, context) => ({text, context}),
     boundNavigation: () => undefined, cancelStoppedReply: () => {}, conversationMemory: new Map(),
+    readNativeNetwork, System: {getNetworkStatus: async () => ({connected: true})},
+    planCheckScope: () => 'current-account', retractReadiness: () => {},
     clearPersonalSetup: () => {},
     ensureSelectedConversation: async (_selected, session, _signal, current) => {
       current(); bindings++; f.context.conversationMemory.set(f.context.conversationKey(session), 'conversation-1'); return 'conversation-1';
@@ -131,7 +136,7 @@ function preflightFixture(balance, options = {}) {
   f.context.connectionController = f.context.preflightController;
   return {...f, get bindings() {return bindings;},
     voice: () => f.context.preflightController.prepareVoiceConversation(new AbortController().signal),
-    send: () => f.context.preflightController.send('Hello', {}, 'request-1', new AbortController().signal),
+    send: (signal = new AbortController().signal) => f.context.preflightController.send('Hello', {}, 'request-1', signal),
     close: () => f.context.preflightController.close()};
 }
 for (const balance of ['zero', 'checking', 'unavailable', undefined, 'funded', 'member']) {
@@ -141,7 +146,7 @@ for (const balance of ['zero', 'checking', 'unavailable', undefined, 'funded', '
       if (balance === 'zero') {
         f.context.state.membershipDismissed = true;
         await assert.rejects(f[method](), error => {
-          assert.equal(error.message, 'Choose a monthly plan or enter a membership code to ask Alpha.');
+          assert.equal(error.message, 'Plan needed');
           // Nothing was sent, and the composer says why instead of a generic "Not sent".
           assert.equal(error.notDispatched, true);
           assert.equal(error.refusedBeforeTurn, true);
@@ -180,26 +185,101 @@ test('an online composer keeps its empty status, draft status and recovery line'
   assert.equal(composerStatus({connection: residentRunning, draft: {message: 'Draft was not saved.'}}), 'Draft was not saved.');
   assert.equal(composerStatus({connection: {kind: 'recovering'}}), 'Your agent stopped.');
 });
-for (const [name, offline] of [['the connection state', {inferenceOffline: true}], ['the browser', {onLine: false}]]) {
-  test(`${name} reporting no network refuses a resident send before anything leaves the phone`, async () => {
+for (const onLine of [true, false]) {
+  test(`Android confirming no active network refuses a resident send with WebView online=${onLine}`, async () => {
     const f = preflightFixture('funded');
     f.context.active = {kind: 'resident'};
-    f.context.state.inferenceOffline = !!offline.inferenceOffline;
-    f.context.navigator = {onLine: offline.onLine !== false};
+    f.context.navigator = {onLine};
+    f.context.System.getNetworkStatus = async () => ({connected: false});
     await assert.rejects(f.send(), error => {
       // The composer keeps the text only for a refusal marked as never dispatched.
       assert.equal(error.notDispatched, true);
       return true;
     });
     assert.equal(f.bindings, 0);
+    assert.equal(f.context.state.inferenceOffline, true);
     assert.equal(f.context.sending, null);
   });
 }
-test('a resident send with a network binds its conversation as before', async () => {
+test('a native active network clears stale offline state and sends despite WebView reporting offline', async () => {
   const f = preflightFixture('funded');
   f.context.active = {kind: 'resident'};
+  f.context.state.inferenceOffline = true;
+  f.context.navigator = {onLine: false};
   assert.equal(await f.send(), 'conversation-1');
   assert.equal(f.bindings, 1);
+  assert.equal(f.context.state.inferenceOffline, false);
+  assert.equal(f.context.sending, null);
+});
+for (const [name, read] of [
+  ['unvalidated active network', async () => ({connected: true, internetValidated: false})],
+  ['unavailable network observation', async () => ({})],
+  ['failed native bridge', async () => {throw Error('Unavailable');}],
+]) test(`a resident send uses the real transport with ${name}`, async () => {
+  const f = preflightFixture('funded');
+  f.context.active = {kind: 'resident'};
+  f.context.state.inferenceOffline = true;
+  f.context.navigator = {onLine: false};
+  f.context.System.getNetworkStatus = read;
+  assert.equal(await f.send(), 'conversation-1');
+  assert.equal(f.bindings, 1);
+  assert.equal(f.context.state.inferenceOffline, false);
+});
+for (const newerConnected of [false, true]) test(`a superseded resident send follows the newer native connected=${newerConnected} result`, async () => {
+  const f = preflightFixture('funded'), reads = [];
+  f.context.active = {kind: 'resident'};
+  f.context.state.inferenceOffline = newerConnected;
+  f.context.System.getNetworkStatus = () => new Promise(resolve => reads.push(resolve));
+  const pending = f.send(); void pending.catch(() => {});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(reads.length, 1);
+  const newer = f.context.observeNativeNetwork(new AbortController().signal);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(reads.length, 2);
+  reads[1]({connected: newerConnected});
+  assert.equal((await newer).connected, newerConnected);
+  assert.equal(f.snapshot().inferenceOffline, !newerConnected);
+  reads[0]({connected: !newerConnected});
+  if (newerConnected) {
+    assert.equal(await pending, 'conversation-1');
+    assert.equal(f.bindings, 1);
+  } else {
+    await assert.rejects(pending, error => {
+      assert.equal(error.notDispatched, true);
+      return true;
+    });
+    assert.equal(f.bindings, 0);
+  }
+  assert.equal(f.snapshot().inferenceOffline, !newerConnected);
+  assert.equal(f.context.sending, null);
+});
+test('a cancelled native network read cannot bind a conversation or publish connectivity', async () => {
+  const f = preflightFixture('funded'), controller = new AbortController();
+  f.context.active = {kind: 'resident'};
+  f.context.state.inferenceOffline = true;
+  let resolve;
+  f.context.System.getNetworkStatus = () => new Promise(done => {resolve = done;});
+  const pending = f.send(controller.signal);
+  await Promise.resolve(); controller.abort(); resolve({connected: true});
+  await assert.rejects(pending);
+  assert.equal(f.bindings, 0);
+  assert.equal(f.context.state.inferenceOffline, true);
+  assert.equal(f.context.sending, null);
+});
+for (const change of ['epoch', 'session', 'active']) test(`a delayed native network read cannot send after ${change} changes`, async () => {
+  const f = preflightFixture('funded');
+  f.context.active = {kind: 'resident'};
+  f.context.state.inferenceOffline = true;
+  let resolve;
+  f.context.System.getNetworkStatus = () => new Promise(done => {resolve = done;});
+  const pending = f.send(); await Promise.resolve();
+  if(change === 'epoch') f.context.epoch++;
+  else if(change === 'session') f.context.state.session = {sessionId: 'replaced'};
+  else f.context.active = {kind: 'resident'};
+  resolve({connected: true});
+  await assert.rejects(pending);
+  assert.equal(f.bindings, 0);
+  assert.equal(f.context.state.inferenceOffline, true);
   assert.equal(f.context.sending, null);
 });
 // Owner, 2026-11-03: a refused composer send gets its text back with no toast; a refusal that
@@ -216,7 +296,7 @@ const toastsFor = (e, {fromComposer = true, preview = false, holding = true} = {
   return toasts;
 };
 const reasonRefusals = [
-  [Object.assign(new AlphaClientError('transport-failed', 'The agent is busy and did not accept this message. Wait, then send it again.'), {refusedBeforeTurn: true}), 'Not sent. The agent is busy and did not accept this message. Wait, then send it again.'],
+  [Object.assign(new AlphaClientError('transport-failed', 'Busy · not sent'), {refusedBeforeTurn: true}), 'Not sent. Busy · not sent'],
   [new AlphaClientError('unconfigured', 'AI replies aren’t available right now.'), 'Not sent. AI replies aren’t available right now.'],
   [new AlphaClientError('sensitive', 'Agent observation is paused on this screen.'), 'Not sent. Agent observation is paused on this screen.'],
   [new NotDispatched('Agent changed. Review this message again.'), 'Agent changed. Review this message again.'],
@@ -269,7 +349,7 @@ const returnCode = stripTypeScriptTypes([
 ].join('\n'), {mode: 'strip'});
 function returnFixture({offline = false} = {}) {
   const listeners = {}, target = {addEventListener: (type, listener) => { (listeners[type] ??= []).push(listener); }, removeEventListener() {}};
-  const box = {residentCloudFlow: () => true, operation: null, planRecheck: null, sending: null, state: {busy: false, session: {}, inferenceOffline: offline, cloudAccount: {credentialId: 'credential-1'}}, Date, planManagementReturn: false, lastPlanRecheck: -Infinity, PLAN_RECHECK_INTERVAL_MS: 60_000, environment: 'production', residentEnvironment: () => box.environment, ownCloudServiceRestore: null, residentBinding: 'kept', rechecks: 0, service: null, update: patch => { Object.assign(box.state, patch); }, retractReadiness() {}, useEffect: run => run(), document: {...target, hidden: false}, window: target};
+  const box = {isAndroid: false, residentCloudFlow: () => true, operation: null, planRecheck: null, sending: null, state: {busy: false, session: {}, inferenceOffline: offline, cloudAccount: {credentialId: 'credential-1'}}, Date, planManagementReturn: false, lastPlanRecheck: -Infinity, PLAN_RECHECK_INTERVAL_MS: 60_000, environment: 'production', residentEnvironment: () => box.environment, ownCloudServiceRestore: null, residentBinding: 'kept', rechecks: 0, service: null, update: patch => { Object.assign(box.state, patch); }, retractReadiness() {}, useEffect: run => run(), document: {...target, hidden: false}, window: target};
   box.recheckResidentPlan = box.restoreOwnProviderCloudServices = () => { box.rechecks++; };
   vm.createContext(box); vm.runInContext(returnCode, box);
   box.fire = (type, hidden = false) => { box.document.hidden = hidden; for (const listener of listeners[type]) listener({type}); };
@@ -629,7 +709,7 @@ test('unknown balance does not bypass missing, expired or busy conversation guar
       assert.equal(expired.bindings, 0);
       const busy = preflightFixture(balance);
       busy.context.operation = new AbortController();
-      await assert.rejects(busy[method](), /Finish the.*operation/);
+      await assert.rejects(busy[method](), /^Error: Busy$|Finish the.*operation/);
       assert.equal(busy.bindings, 0);
     }
   }
@@ -904,7 +984,7 @@ function providerSwitchFixture(){
  const context=vm.createContext({AbortController,DOMException,
   operation:null,sending:null,providerStatusGeneration:0,epoch:1,active:null,state:{session:null,open:true,purpose:'provider',signIn:null,cloudAccount:{userId:'fixture-owner'},providerStatus:{mode:'own',revision:'fixture-own',keys:{text:{configured:true},voice:{configured:true}}}},appRequests:new Set(),actionReceipts:new Map(),conversationMemory:new Map(),
   testMocksEnabled:false,residentAlwaysPresent:true,RESIDENT_NAME:'Alpha',isAndroid:true,browserCloudResidentEnabled:false,OWN_KEYS_NOT_SET_UP:'Own API keys could not be set up.',LOCAL_PROVIDER_MODEL:'model',
-  signInReadinessOwner:null,OWN_KEY_BUSY:'Alpha is busy. Try again in a moment.',OWN_KEY_CHECKING:'Checking key…',connectionToast(){},
+  signInReadinessOwner:null,OWN_KEY_BUSY:'Busy',OWN_KEY_CHECKING:'Checking key',connectionToast(){},
   clearClientObservationSupport(){},retireConversationEvents(){},retireReadReplies(){},pauseHostedBackground:async()=>{},retireClockReviews:async()=>{},cancelStoppedReply(){},
   secureConnectionStore:{remove:async()=>{}},update:patch=>Object.assign(context.state,patch),showPostSignInSetup(){},
   work:async(label,run)=>{events.push(label);await run(new AbortController().signal);},
@@ -916,8 +996,8 @@ function providerSwitchFixture(){
  return {context,events,controller:context.providerController};
 }
 test('a provider switch during a streaming reply leaves the reply running; once it settles the switch works as before',async()=>{
- const switches={configureLocal:[f=>f.controller.configureLocal('synthetic-cerebras-key','model'),['Checking key…','check key','restart agent']],
-  selectCloudProvider:[f=>f.controller.selectCloudProvider(),['Switching to Cloud…','select Cloud with saved keys retained','restart agent']]};
+ const switches={configureLocal:[f=>f.controller.configureLocal('synthetic-cerebras-key','model'),['Checking key','check key','restart agent']],
+  selectCloudProvider:[f=>f.controller.selectCloudProvider(),['Switching to Cloud','select Cloud with saved keys retained','restart agent']]};
  for(const [name,[run,idle]] of Object.entries(switches)){
   const f=providerSwitchFixture(),reply=new AbortController();
   f.context.sending=reply;await run(f);

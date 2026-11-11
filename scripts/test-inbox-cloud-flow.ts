@@ -17,6 +17,7 @@ import {inboxAdapterBindings, InboxFixtureShell, installInboxFixture, last, load
 type Action = () => void;
 type SearchCall = {query: string; size: number; pageToken: string | null};
 type Mail = ReturnType<typeof mail>;
+let accountReads=0;
 let session='account-a', agent='remote-a', delayAccounts=true, delay=false, connected=true, readGrant=true, inboxActive=true;
 const pending: {search?: Action; accounts?: Action} = {};
 const release = (kind: keyof typeof pending) => {
@@ -33,7 +34,7 @@ const revisions: Record<string, string[] | undefined> = {};
 const pages: Record<string, Mail[][]> = {'in:inbox':[[fixtureMail('mail-1',{unread:true}),fixtureMail('mail-2')],[fixtureMail('mail-2'),fixtureMail('mail-3')]],'in:sent':[[fixtureMail('sent-1',{to:['friend@example.invalid']})]],'from:fixture':[[fixtureMail('mail-1')]]};
 let providerBody='Fixture body';
 const client={
- gmailAccounts:async()=>{if(delayAccounts)await new Promise<void>(resolve=>{pending.accounts=resolve;});return [{connectionId:'grant-a',label:'Fixture account',connected,grantedCapabilities:connected&&readGrant?['google.gmail.triage']:[]}];},
+ gmailAccounts:async()=>{accountReads++;if(delayAccounts)await new Promise<void>(resolve=>{pending.accounts=resolve;});return [{connectionId:'grant-a',label:'Fixture account',connected,grantedCapabilities:connected&&readGrant?['google.gmail.triage']:[]}];},
  gmailSearch:async(_grant: string,query: string,_signal: AbortSignal,size: number,pageToken?: string)=>{searches.push({query,size,pageToken:pageToken??null});if(failNext){const error=failNext;failNext=null;throw error;}
   const list=pages[query]||[[]],index=pageToken?Number(pageToken.slice(5)):0,result={messages:list[index]||[],syncedAt:'revision',nextPageToken:index+1<list.length?'page-'+(index+1):null,...(revisions[query]?.[index]?{mailboxHistoryId:revisions[query][index]}:{})};
   if(delay)return new Promise(resolve=>{pending.search=()=>resolve(result);});return result;},
@@ -144,7 +145,7 @@ assert.deepEqual(local(render().rows.map(r=>r.subj)),['Fixture mail-1','Fixture 
 assert.equal(render().hasMore,false,'last page has no Load more');
 const beforeWarm=searches.length;views.inbox.onLeave();render();await tick();assert.equal(render().rows.length,3,'warm reopen restores only the same account list');assert.equal(render().cachedListShown,true);assert.equal(searches.length,beforeWarm,'warm reopen spends zero account or page requests');
 assert.equal(homeValues(shell).homeInboxCount,'1 unread','complete paging removes the lower-bound qualifier');const homeSearches=searches.length;for(let i=0;i<5;i++)homeValues(shell);assert.equal(searches.length,homeSearches,'Home rerenders never fetch mail');
-render();last([...swipes.values()])(-120,4);await tick();assert.match(last(toasts),/doesn’t allow archiving\. See Settings → Connections → Manage Google accounts\.$/,'swipe without the grant changes nothing');
+render();last([...swipes.values()])(-120,4);await tick();assert.match(last(toasts),/^Archive off for this account$/,'swipe without the grant changes nothing');
 const refreshed=clock(19);
 chip('Refresh').pick();await tick();assert.deepEqual(searches.filter(s=>!s.pageToken).at(-1),{query:'in:inbox',size:25,pageToken:null},'Refresh restarts from the first page');
 assert.match(homeValues(shell).homeInboxStatus,new RegExp(`Updated ${refreshed.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}$`),'a completed refresh moves the read time');
@@ -190,7 +191,7 @@ views.inbox.back(shell.st,api);composer(composed).discard();composer().confirmDi
 assert.deepEqual(local(views.inbox.suggestions(shell.st)),['Help me write an email'],'no unwired inbox automation chips (organize-inbox removed)');
 assert.equal(render().composing,false,'discarded shared draft is gone');
 shell.st.compose={subject:'Photo',body:'',attach:['photo-1']};render();await tick();render();await tick();
-assert.equal(composer().subject,'Photo');assert.deepEqual(local(composer().atts),[],'prototype item ids are never turned into attachments');assert.match(composer().status,/Shared items aren't attached/);
+assert.equal(composer().subject,'Photo');assert.deepEqual(local(composer().atts),[],'prototype item ids are never turned into attachments');assert.match(composer().status,/^Not attached$/);
 views.inbox.back(shell.st,api);composer().discard();composer().confirmDiscard();await tick();
 shell.st.compose={to:'second@example.invalid',subject:'Second share',body:'Earlier shared text'};render();await tick();render();await tick();assert.equal(composer().subject,'Second share');
 const secondShare=local(latestDraftEdit as InboxUnsaved | null);assert.ok(secondShare);assert.deepEqual(secondShare.draft.to,['second@example.invalid']);assert.equal(secondShare.draft.body,'Earlier shared text');
@@ -263,7 +264,7 @@ const priorSnapshot=controller.getSnapshot;controller.getSnapshot=()=>{
 };
 const {shell: reloaded, render: reloadInbox} = inboxFixture();
 reloaded.componentDidMount();
-const searchesBeforeRestore=searches.length;
+const searchesBeforeRestore=searches.length,accountReadsBeforeRestore=accountReads;
 const priorRestoreClock=Date.now;Date.now=()=>restoreNow;
 reloadInbox();await tick();
 assert.equal(reloadInbox().rows.length,1,'cached Inbox renders after reload');
@@ -273,7 +274,8 @@ assert.equal(homeValues(reloaded).homeInboxStatus,`Fixture account · Updated ${
 assert.equal(sandbox.inboxAttention().updatedAt,new Date(cachedAt).toISOString(),'restore preserves the exact original read timestamp');
 Date.now=priorRestoreClock;
 assert.equal(searches.length,searchesBeforeRestore,'fresh retained snapshot needs no provider read to populate Home');
-assert.equal(backgroundSelections.length,selectionsBeforeReload,'cold-start hydration neither withdraws nor reconfigures native background checks');
+assert.ok(accountReads>accountReadsBeforeRestore,'a saved mailbox is revalidated against current account grants');
+assert.deepEqual(backgroundSelections.slice(selectionsBeforeReload).map(selection=>selection?.grantId),['grant-a'],'grant revalidation keeps the same native background account');
 reloaded.componentWillUnmount();
 console.log('PASS: Reloaded Inbox cache also restores Home subjects/count/time without a provider read.');
 
@@ -436,7 +438,7 @@ await test('read state with an expired Cloud key rejects the captured session an
    reader(inbox()).toggleRead();await tick();
    assert.equal(prepares.at(-1),'mark-unread','one explicit change was sent');
    assert.deepEqual(rejected.slice(rejectedBefore).map(([id,e])=>[id,e===error]),[[session,true]],'the captured session is rejected with the request error');
-   assert.deepEqual(toasts.slice(toastsBefore),['Cloud sign-in expired. Sign in again to update read state.'],'the sign-in message replaces the generic receipt message');
+   assert.deepEqual(toasts.slice(toastsBefore),['Sign-in expired'],'the sign-in message replaces the generic receipt message');
   }
   expire=new CloudProtocolError('http',503);const toastsBefore=toasts.length;
   reader(inbox()).toggleRead();await tick();

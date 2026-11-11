@@ -62,7 +62,7 @@ test('Run now goes through the reviewed dossier path with the derived identity a
  const ui=read('apps/app/src/runtime/hosted-digest-ui.tsx');
  assert.match(ui,/missedRunNowOffers\(/);
  assert.match(ui,/setReview\(\{path:'dossier',body:\{sourceId:offer\.sourceId,sourceRevision:offer\.sourceRevision,mutationId:offer\.mutationId,confirmed:true\}/);
- assert.match(ui,/The missed time is not replayed and your schedule doesn’t change/);
+ assert.match(ui,/summary:`Run missed \$\{formatDateTime\(new Date\(offer\.scheduledAt\)\)\} digest now\?\\nSends \$\{offer\.sourceLabel\} to agent AI`/);
  assert.match(ui,/onClick=\{\(\)=>reviewMissedRunNow\(/,'only an owner tap opens the review');
  assert.match(ui,/\{missedOffers\.has\(result\.runId\)&&!ranMissed\.has\(result\.runId\)&&<button[^>]*onClick=\{\(\)=>reviewMissedRunNow\(missedOffers\.get\(result\.runId\)!\)\}/,'the button renders only for an offer, so revoked or rebound sources never show it');
  assert.doesNotMatch(ui,/reviewMissedRunNow\([^)]*\)\s*;?\s*\}\s*,\s*\[/,'never invoked from an effect');

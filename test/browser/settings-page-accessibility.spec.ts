@@ -77,7 +77,7 @@ test('development license list restores focus to About', async ({page}) => {
  await page.getByRole('button', {name:'Settings', exact:true}).click();
  const about=page.getByRole('button', {name:'About', exact:true});
  await about.focus();await about.press('Enter');
- const licenses=page.getByRole('button', {name:'Open source licenses', exact:true});
+ const licenses=page.getByRole('button', {name:'Licenses', exact:true});
  await licenses.focus();await licenses.press('Enter');
  const parent=page.getByRole('button', {name:'Back to About', exact:true});
  await expect(parent).toBeFocused();

@@ -58,7 +58,7 @@ test('browser restores an existing host Cloud account, uses canonical voice and 
   const account=page.getByRole('dialog',{name:'Account',exact:true});await expect(account.getByRole('region',{name:'Balance and membership',exact:true}).getByText('owned@example.invalid',{exact:true})).toBeVisible();await page.screenshot({path:info.outputPath('existing-cloud-account.png'),animations:'disabled'});
   // Signed in, the account dialog is the Subscription sheet; its footer signs out.
   await account.getByRole('button',{name:'Sign out',exact:true}).click();await confirmCloudSignOut(page);
-  await expect(page.getByRole('status').filter({hasText:'Signed out.'})).toBeVisible();
+  await expect(page.getByRole('status').filter({hasText:/^Signed out$/})).toBeVisible();
   // Reload only after sign-out has removed the host credential, not its earlier in-memory detach.
   await expect.poll(async()=>{
    try{return JSON.parse(await readFile(join(deploymentProfile,'credentials.json'),'utf8'));}
@@ -75,7 +75,7 @@ test('browser restores an existing host Cloud account, uses canonical voice and 
   // This test-mocks host's account button retains the diagnostic browser route. Exercise the
   // shared in-app entry explicitly before that handoff; native production uses this entry.
   await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.beginSignIn('production'));
-  const signIn=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
+  const signIn=page.getByRole('dialog',{name:'Alpha',exact:true});
   await expect(signIn.getByRole('form',{name:'Sign in with email'})).toBeVisible();
   // Google is not configured here: no dead Google button, only a quiet retry.
   await expect(signIn.getByRole('button',{name:'Continue with Google',exact:true})).toHaveCount(0);

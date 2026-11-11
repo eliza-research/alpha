@@ -185,7 +185,7 @@ export const loginSurfaceInventory = {
       kind: "service-token",
       eligible: false,
       file: "apps/app/src/runtime/connection-ui.tsx",
-      pattern: "<label>Text API key<input ref=\\{ai\\} type=\"password\" autoComplete=\"off\"",
+      pattern: "Text key<input ref=\\{ai\\} type=\"password\" autoComplete=\"off\"",
       reason: "An explicitly supplied provider API token, not a login password or vault fill target. Input stays only in the transient form until a successful save or Cancel. Native storage is encrypted; the browser host retains session-only keys. Tokens are excluded from observations, transcripts and logs."
     },
     {
@@ -193,7 +193,7 @@ export const loginSurfaceInventory = {
       kind: "service-token",
       eligible: false,
       file: "apps/app/src/runtime/connection-ui.tsx",
-      pattern: "<label>Voice API key \\(optional\\)<input ref=\\{speech\\} type=\"password\" autoComplete=\"off\"",
+      pattern: "Voice key<input ref=\\{speech\\} placeholder=\"Optional\" type=\"password\" autoComplete=\"off\"",
       reason: "An explicitly supplied provider API token, not a login password or vault fill target. Input stays only in the transient form until a successful save or Cancel. Native storage is encrypted; the browser host retains session-only keys. Tokens are excluded from observations, transcripts and logs."
     },
     {

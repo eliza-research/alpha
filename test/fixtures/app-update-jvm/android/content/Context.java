@@ -18,5 +18,6 @@ public class Context {
  public String getPackageName(){return "ai.alphacompute.alphaphone";}
  public ContentResolver getContentResolver(){return new ContentResolver();}
  public void unregisterReceiver(BroadcastReceiver receiver){receivers.remove(receiver);}
+ public void sendBroadcast(Intent intent){broadcast(intent);}
  public void broadcast(Intent intent){for(BroadcastReceiver receiver:receivers)receiver.onReceive(this,intent);}
 }

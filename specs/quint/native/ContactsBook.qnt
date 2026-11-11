@@ -100,6 +100,16 @@ module ContactsBook {
       exists: s.proposalKind != "delete", revision: s.revision + 1,
       confirmDelete: false, ...s}
   }
+  // A dispatched provider batch may commit before its reply is lost. Neither result authorizes
+  // replaying this proposal; the actual write counter is an environment fact, not a success claim.
+  action approveUnknown(committed: bool): bool = all {
+    ready, s.proposal == "proposed", s.revision < 3,
+    s.proposalKind == "create" or (s.exists and s.proposalBase == s.revision),
+    s' = {proposal: "unknown", approvals: s.approvals + 1,
+      agentWrites: s.agentWrites + (if (committed) 1 else 0),
+      exists: if (committed) s.proposalKind != "delete" else s.exists,
+      revision: s.revision + (if (committed) 1 else 0), confirmDelete: false, ...s}
+  }
   // A repeated approval or replayed operation id changes nothing.
   action repeat = s' = s
   action step = {
@@ -108,7 +118,7 @@ module ContactsBook {
     nondet kind = Set("create", "edit", "delete").oneOf()
     any { admitImage, grant, revoke, pause, resume, beginRead, readReply(ticket, flag), externalChange,
       externalDelete, openCreate, openEdit, typeText, cancelEditor, save(flag), askDelete, cancelDelete,
-      confirmDeleteNow(flag), propose(kind), decline, approve(flag), repeat }
+      confirmDeleteNow(flag), propose(kind), decline, approve(flag), approveUnknown(flag), repeat }
   }
   val ListCurrent = s.list == "loaded" implies s.listEpoch == s.epoch and ready
   val AgentWritesNeedApproval = s.agentWrites <= s.approvals
@@ -141,6 +151,10 @@ module ContactsBook {
     .then(check(safety and s.agentWrites == 0 and s.approvals == 0))
   run failedApprovalIsNotAppliedTest = init.then(admitImage).then(grant).then(propose("create")).then(approve(false))
     .then(check(safety and s.proposal == "failed" and s.agentWrites == 0))
+  run committedWriteWithLostReplyTest = init.then(admitImage).then(grant).then(propose("create")).then(approveUnknown(true))
+    .then(repeat).then(check(safety and s.proposal == "unknown" and s.agentWrites == 1 and s.approvals == 1))
+  run refusedWriteWithLostReplyTest = init.then(admitImage).then(grant).then(propose("delete")).then(approveUnknown(false))
+    .then(repeat).then(check(safety and s.proposal == "unknown" and s.agentWrites == 0 and s.exists))
   run ownerDeleteConfirmsTest = init.then(admitImage).then(grant).then(beginRead).then(readReply(0, true))
     .then(askDelete).then(confirmDeleteNow(true)).then(check(safety and not(s.exists) and s.notice == "deleted"))
   run revokeClosesEditorTest = init.then(admitImage).then(grant).then(openCreate).then(typeText).then(revoke)

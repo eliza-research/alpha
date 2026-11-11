@@ -36,7 +36,7 @@ export function workflowRendererFixture(overrides: Record<string, unknown>) {
   const intents=readFileSync(new URL('../apps/app/src/runtime/workflow-intents.ts',import.meta.url),'utf8').replace(/^import .*;\n/gm,'').replace(/export /g,'');
   // The Alpha binding extends the shared owner-isolated store (`@elizaos/contracts/workflow-intents`).
   Object.assign(scope,{SharedWorkflowIntentStore,emptyWorkflowIntentArchive,storageWorkflowIntentBackend,sharedWorkflowIntentKey,workflowIntentOwnerPrefix});
-  vm.runInNewContext('{'+stripTypeScriptTypes(intents,{mode:'strip'})+'\nglobalThis.WorkflowIntentStore=WorkflowIntentStore;globalThis.workflowIntentKey=workflowIntentKey;}',scope);
+  vm.runInNewContext('{'+stripTypeScriptTypes(intents,{mode:'strip'})+'\nglobalThis.WorkflowIntentStore=WorkflowIntentStore;globalThis.workflowIntentKey=workflowIntentKey;globalThis.runIntentReconcilable=runIntentReconcilable;}',scope);
   return scope;
 }
 
@@ -44,6 +44,8 @@ export function workflowRendererFixture(overrides: Record<string, unknown>) {
 type Action = () => void;
 type Card = {name: string; open: Action};
 interface WorkflowDetail {
+  busy: boolean;
+  mayHaveRun: boolean;
   name: string;
   summary: string;
   last: string;

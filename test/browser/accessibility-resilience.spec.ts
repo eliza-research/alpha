@@ -285,7 +285,7 @@ test.describe('toast status messages', () => {
     // Find in page is native-only, so the web build's menu refuses through Bookmark instead.
     await menu.getByRole('button', { name: 'Bookmark', exact: true }).click();
     const region = page.locator('[data-alpha-toast]');
-    await expect(region).toContainText('Load an HTTPS page before bookmarking it.');
+    await expect(region).toContainText('HTTPS only');
     // The menu is still open and holds the page inert; the status region is not part of what it retired.
     await expect(menu).toBeVisible();
     expect(await region.evaluate(el => !!el.closest('[inert],[aria-hidden="true"]'))).toBe(false);
@@ -301,7 +301,7 @@ test.describe('photo editor in landscape', () => {
     const editor = page.locator('[data-alpha-subview="photos-edit"]');
     await expect(editor).toBeVisible();
     expect(await editor.evaluate(el => el.scrollHeight > el.clientHeight && getComputedStyle(el).overflowY === 'auto')).toBe(true);
-    for (const name of ['Rotate', 'Crop', 'Mono filter']) await reachable(page, page.getByRole('button', { name, exact: true }));
+    for (const name of ['Rotate', 'Center crop', 'Mono filter']) await reachable(page, page.getByRole('button', { name, exact: true }));
     // Keyboard: a filter is operable without a pointer, and Save is still reachable afterwards.
     const mono = page.getByRole('button', { name: 'Mono filter', exact: true });
     await mono.focus(); await page.keyboard.press('Enter');
@@ -316,7 +316,7 @@ test.describe('recovery screen', () => {
     await page.goto('/');
     await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
     await page.evaluate(async () => { const module = await import('/src/runtime/error-boundary.tsx' as string); module.showRecoveryScreen('startup', new Error('Private note text')); });
-    return page.getByRole('alertdialog', { name: 'Alpha Phone needs to reload' });
+    return page.getByRole('alertdialog', { name: 'Something went wrong' });
   };
 
   test('takes the page behind it out of focus order and out of the accessibility tree', async ({ page }) => {
@@ -340,7 +340,7 @@ test.describe('recovery screen', () => {
     // A modal <dialog> is in the top layer: left open, it covers recovery and makes it inert.
     expect(await page.evaluate(() => document.querySelector('dialog[open]')?.matches(':modal'))).toBe(true);
     await page.evaluate(() => window.dispatchEvent(new Event('alpha:force-render-error')));
-    const recovery = page.getByRole('alertdialog', { name: 'Alpha Phone needs to reload' });
+    const recovery = page.getByRole('alertdialog', { name: 'Something went wrong' });
     await expect(recovery).toBeVisible();
     await expect(page.locator('dialog[open]')).toHaveCount(0);
     const reload = recovery.getByRole('button', { name: 'Reload', exact: true });
@@ -363,7 +363,7 @@ test.describe('recovery screen', () => {
           await page.addInitScript(offline); await page.goto('/');
           await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
           await page.evaluate(() => window.dispatchEvent(new Event('alpha:force-render-error')));
-          recovery = page.getByRole('alertdialog', { name: 'Alpha Phone needs to reload' });
+          recovery = page.getByRole('alertdialog', { name: 'Something went wrong' });
         }
         await expect(recovery).toBeVisible();
         // The screen uses fixed pixel sizes outside the phone, so scale it the way text zoom would.
@@ -372,7 +372,7 @@ test.describe('recovery screen', () => {
         expect(await recovery.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
         // Scrolled to the top, the heading is whole; nothing sits above the scroll origin.
         await recovery.evaluate(el => { el.scrollTop = 0; });
-        expect(await recovery.getByRole('heading', { name: 'Alpha Phone needs to reload' }).evaluate(el => el.getBoundingClientRect().top)).toBeGreaterThanOrEqual(0);
+        expect(await recovery.getByRole('heading', { name: 'Something went wrong' }).evaluate(el => el.getBoundingClientRect().top)).toBeGreaterThanOrEqual(0);
         await page.screenshot({ path: info.outputPath('recovery.png') });
         const reload = recovery.getByRole('button', { name: 'Reload', exact: true });
         await reachable(page, reload);
@@ -554,7 +554,7 @@ test.describe('keyboard focus and the floating dock', () => {
 
   test('a tap on a row beside the dock still opens it', async ({ page }) => {
     // Pointer focus is not scrolled: moving a pressed row out from under the finger loses the tap.
-    await page.setViewportSize({ width: 412, height: 520 });
+    await page.setViewportSize({ width: 412, height: 400 });
     await page.addInitScript(offline);
     await page.goto('/');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();

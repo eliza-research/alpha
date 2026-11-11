@@ -9,7 +9,7 @@ for(const [orientation,viewport] of [['portrait',{width:412,height:915}],['lands
  test.describe(orientation,()=>{
   test.use({viewport,hasTouch:true,isMobile:true});
   for(const refusal of [
-   {status:503,code:'maps_not_configured',diagnostic:'unconfigured',message:'Maps is unavailable right now. Try again later.'},
+   {status:503,code:'maps_not_configured',diagnostic:'unconfigured',message:'Maps unavailable'},
    {status:403,code:'subscription_required',diagnostic:'unauthorized',message:'Maps needs an active Cloud subscription.'},
    {status:401,code:'unauthorized',diagnostic:'unauthorized',message:'Sign in to Cloud to use Maps.'},
   ])test(`managed Cloud ${refusal.code} preserves recovery without provider setup or invented results`,async({page},info)=>{

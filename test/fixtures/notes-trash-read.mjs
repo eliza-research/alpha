@@ -94,7 +94,7 @@ export async function notesTrashReadFixture() {
     },
     observe() {
       assert.equal(forbiddenCalls, 0, 'No durable or unrelated effect was attempted');
-      assert.ok(!rows.trashError || rows.trashError === 'Recently deleted could not be read.');
+      assert.ok(!rows.trashError || rows.trashError === 'Couldn’t load');
       return {live: shell.live, mode: shell.notesSourceMode, epoch: shell.notesSourceEpoch,
         started, pending: [...reads].map(([id, request]) => [id, request.epoch]),
         rows: Array.from(rows.trash, row => row.id), error: !!rows.trashError, writes, lastWrite};

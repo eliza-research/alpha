@@ -63,7 +63,7 @@ public final class VerifyApkRotation {
   }
 
   private static SigningCertificateLineage reviewedLineage(
-      Path lineagePath, String lineageSha, String oldSigner, String newSigner) throws Exception {
+      Path lineagePath, String lineageSha, String oldSigner, String newSigner, boolean preservePermissions) throws Exception {
     require(Files.isRegularFile(lineagePath, LinkOption.NOFOLLOW_LINKS), "Lineage must be a regular file");
     byte[] lineageBytes;
     try (var lineageFile = Files.newInputStream(lineagePath, LinkOption.NOFOLLOW_LINKS)) {
@@ -80,8 +80,9 @@ public final class VerifyApkRotation {
     for (var certificate : certs) {
       var capabilities = approved.getSignerCapabilities(certificate);
       require(capabilities.hasInstalledData() && !capabilities.hasRollback()
-          && !capabilities.hasSharedUid() && !capabilities.hasPermission() && !capabilities.hasAuth(),
-          "Migration requires installed-data-only capability without rollback or signature grants");
+          && !capabilities.hasSharedUid() && !capabilities.hasAuth()
+          && capabilities.hasPermission() == (preservePermissions && certificate.equals(certs.getFirst())),
+          "Migration capabilities differ from the reviewed data and permission continuity policy");
     }
     return approved;
   }
@@ -96,13 +97,13 @@ public final class VerifyApkRotation {
         embedded.encodeSigningCertificateLineage()), "Replacement APK does not carry the reviewed lineage");
   }
 
-  private static void verifySigningOutput(String[] args) throws Exception {
+  private static void verifySigningOutput(String[] args, boolean preservePermissions) throws Exception {
     require(args.length == 10, "Expected output APK, lineage, their digests, old signer, new signer, package and API bounds");
     for (int i = 3; i <= 6; i++) require(args[i].matches("[0-9a-f]{64}"), "Invalid SHA-256 pin");
     require(!args[5].equals(args[6]), "Migration needs distinct signer pins");
     int minApi = Integer.parseInt(args[8]), maxApi = Integer.parseInt(args[9]);
     require(minApi == 29 && maxApi == 37, "Signing output must be verified for Android API 29 through 37");
-    var approved = reviewedLineage(Path.of(args[2]), args[4], args[5], args[6]);
+    var approved = reviewedLineage(Path.of(args[2]), args[4], args[5], args[6], preservePermissions);
     Path signed = Path.of(args[1]);
     require(Files.isRegularFile(signed, LinkOption.NOFOLLOW_LINKS), "APK must be a regular file");
     long version = 0;
@@ -119,15 +120,17 @@ public final class VerifyApkRotation {
   }
 
   public static void main(String[] args) throws Exception {
+    boolean preservePermissions = args.length > 0 && args[args.length - 1].equals("--preserve-signature-permissions");
+    if (preservePermissions) args = Arrays.copyOf(args, args.length - 1);
     if (args.length > 0 && args[0].equals("--reviewed-lineage")) {
       require(args.length == 5, "Expected lineage file, lineage digest and old/new signer digests");
       for (int i = 2; i <= 4; i++) require(args[i].matches("[0-9a-f]{64}"), "Invalid SHA-256 pin");
       require(!args[3].equals(args[4]), "Migration needs distinct signer pins");
-      reviewedLineage(Path.of(args[1]), args[2], args[3], args[4]);
+      reviewedLineage(Path.of(args[1]), args[2], args[3], args[4], preservePermissions);
       return;
     }
     if (args.length > 0 && args[0].equals("--signed-output")) {
-      verifySigningOutput(args);
+      verifySigningOutput(args, preservePermissions);
       return;
     }
     require(args.length == 10,
@@ -136,7 +139,7 @@ public final class VerifyApkRotation {
     require(!args[6].equals(args[7]), "Migration needs distinct signer pins");
     int api = Integer.parseInt(args[9]);
     require(api >= 29 && api <= 37, "Migration is outside the verified Android API range");
-    var approved = reviewedLineage(Path.of(args[2]), args[5], args[6], args[7]);
+    var approved = reviewedLineage(Path.of(args[2]), args[5], args[6], args[7], preservePermissions);
     Path oldApk = Path.of(args[0]), newApk = Path.of(args[1]);
     require(Files.isRegularFile(oldApk, LinkOption.NOFOLLOW_LINKS)
         && Files.isRegularFile(newApk, LinkOption.NOFOLLOW_LINKS), "APKs must be regular files");

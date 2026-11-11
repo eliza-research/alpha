@@ -1,18 +1,19 @@
 import assert from 'node:assert/strict';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import {fileURLToPath} from 'node:url';
+import {readFileSync} from 'node:fs';
 import {checkTraces, qmap} from '../../refinement/check-traces.mjs';
 import {bundleVendorCore, deferred, observeFile, tick} from './source-support.mjs';
 
 const driver = fileURLToPath(import.meta.url);
 const call = (name, ...args) => ({name, args});
 const taskId = 'task-fixture', actorId = 'actor-fixture';
-const timerPorts = {name: 'approval-service-timer-ports', setup(builder) {
+const timerPorts = history => ({name: 'approval-service-timer-ports', setup(builder) {
   observeFile(builder, 'approval.ts', [
     ['import { logger } from "../logger.ts";',
       'import { logger } from "../logger.ts";\nconst {setTimeout, clearTimeout} = __quint;'],
-  ]);
-}};
+  ], path => readFileSync(history.resolveSource(path), 'utf8'));
+}});
 
 async function fixture(bundle) {
   const context = new AsyncLocalStorage();
@@ -137,7 +138,7 @@ async function fixture(bundle) {
 
 export async function checkApprovalServiceRefinement(vendorPath, extraSources = []) {
   const bundle = await bundleVendorCore(vendorPath,
-    'export {ApprovalService} from "./packages/core/src/services/approval.ts";', [driver, ...extraSources], [timerPorts]);
+    'export {ApprovalService} from "./packages/core/src/services/approval.ts";', [driver, ...extraSources], history => [timerPorts(history)], ['packages/core/src/services/approval.ts']);
   const traces = [];
   const selectionWins = (owner, fails = false) => {
     const other = 3 - owner;
@@ -191,13 +192,15 @@ export async function checkApprovalServiceRefinement(vendorPath, extraSources = 
     await f.outcome();
     traces.push(trace);
   }
-  return checkTraces({model: 'CoreApprovalService', id: 'CoreApprovalService-source', sources: bundle.sources,
+  const receipt = await checkTraces({model: 'CoreApprovalService', id: 'CoreApprovalService-source', sources: bundle.sources,
     driverHashes: bundle.driverHashes, traces, scope: 'bounded-component', assumptions: [
-      `Actual upstream ApprovalService at ${bundle.revision} executes requestApproval, the registered task worker, timeout, cancel and stop.`,
+      `Historical upstream ApprovalService fragment at ${bundle.historicalRevision} executes requestApproval, the registered task worker, timeout, cancel and stop.`,
       'One installed task, one controllable timer and two selector identities. Task reads, deletions and callbacks are deferred ports. Task and result observations come from actual runtime requests and promise settlement.',
       'Atomic checkpoints drain promise microtasks. Worker phases and owner history are reconstructed from concrete getTask, callback and deleteTask requests. Timeout resolve and delete admission can share a checkpoint.',
+      'Only the authenticated approval.ts policy fragment is historical; supporting import modules remain independently hash-bound to the current upstream pin. This does not qualify the full historical SDK or the current approval protocol.',
       'Task creation timing, fire-and-forget approvals, role checks, worker restart, task-store rejection and arbitrary numbers of approvals remain outside these schedules.',
     ]});
+  return {...receipt, historicalRevision: bundle.historicalRevision};
 }
 
 if (process.argv[1] === driver) {

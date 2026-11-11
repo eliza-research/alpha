@@ -1,3 +1,11 @@
+import {serviceForwardReplayCampaigns} from './forward-replays.mjs';
+import {checkWorkflowAuthoring, checkWorkflowNoticeTaps} from './workflow-local-source.mjs';
+import {checkScanReviewDialogs} from './scan-review-dialogs.mjs';
+import {checkMapsScreenModes,checkMapsNavigationGuidanceReadback} from './maps-screen-source.mjs';
+import {checkPlanAdmissionGrace} from './plan-admission-grace.mjs';
+import {checkInboxListPaging} from './inbox-list-paging.mjs';
+import {checkAutomationRequestSettlement} from './automation-request-settlement.mjs';
+import {checkWorkflowExecutionAuditAdmission} from './workflow-execution-audit-admission.mjs';
 import {collectRefinementCampaigns} from '../campaigns.mjs';
 import {fileURLToPath} from 'node:url';
 import {checkBrowserGoogleReturn} from './browser-google-return.mjs';
@@ -23,6 +31,7 @@ import {runWorkflowWakeupRefinement} from './workflow-scheduler/index.mjs';
 import {runWorkflowTaskRefinement} from './workflow-scheduler/registration.mjs';
 import {googleAccountsLifecycleRefinement} from './google-accounts-lifecycle.mjs';
 import {runCoreRetirementRefinement} from './core-runtime/retirement.mjs';
+import {checkCoreApprovalServiceCurrentRefinement} from './current-approval-service.mjs';
 import {runCoreServiceLifecycleRefinement} from './core-runtime/lifecycle.mjs';
 import {runCoreRuntimeShutdownRefinement} from './core-runtime/shutdown.mjs';
 import {runTurnControllerRefinement} from './core-runtime/turns.mjs';
@@ -43,6 +52,7 @@ import {checkNativeGoogleHostArtifact} from './native-google-host-artifact.mjs';
 import {checkPreparedSourceStamp} from './prepared-source-stamp.mjs';
 import {checkClientFeaturePublication} from './client-feature-publication.mjs';
 import {checkAppUpdateCandidate} from './app-update-candidate.mjs';
+import {checkProtectedAppUpdatePromotion} from './protected-app-update-promotion.mjs';
 import {checkCloudQaLauncher} from './cloud-qa-launcher.mjs';
 import {checkBrowserCloudRequestCustody} from './browser-cloud-request-custody.mjs';
 import {checkGmailAgentMailboxRecovery} from './gmail-agent-mailbox-recovery.mjs';
@@ -60,6 +70,9 @@ export async function runServicesRefinement(onProgress) {
   const direct = check => [check.name, () => check()];
   const withDriver = check => [check.name, () => check([driver])];
   const campaigns = [
+    ...serviceForwardReplayCampaigns([driver]),
+    ...[checkWorkflowAuthoring,checkWorkflowNoticeTaps,checkScanReviewDialogs,checkMapsScreenModes,checkMapsNavigationGuidanceReadback,checkPlanAdmissionGrace,checkInboxListPaging,checkAutomationRequestSettlement,checkWorkflowExecutionAuditAdmission].map(withDriver),
+    [checkCoreApprovalServiceCurrentRefinement.name, () => checkCoreApprovalServiceCurrentRefinement(undefined, [driver])],
     ...[authorizationRefinement, googleAccountsRefinement, googleAccountsLifecycleRefinement, calendarRefinement,
       calendarLinkedRefinement, inboxRefinement, mapsRefinement, cacheRefinement, workflowRefinement, policyRefinement,
       readingRefinement, scanRefinement, credentialRefinement, pdfRefinement, runSignInCoordinatorRefinement,
@@ -67,7 +80,7 @@ export async function runServicesRefinement(onProgress) {
       runTurnControllerRefinement].map(direct),
     ...[checkBrowserGoogleReturn, checkCombinedAgentLauncher, checkReviewedWorkflowLauncher,
       checkCoreConnectorCustody, checkMobileBundleAdmission, checkWorkflowWorkerStaging, checkNativeGoogleHostArtifact,
-      checkPreparedSourceStamp, checkClientFeaturePublication, checkAppUpdateCandidate, checkCloudQaLauncher, checkBrowserCloudRequestCustody, checkGmailAgentMailboxRecovery,
+      checkPreparedSourceStamp, checkClientFeaturePublication, checkAppUpdateCandidate, checkProtectedAppUpdatePromotion, checkCloudQaLauncher, checkBrowserCloudRequestCustody, checkGmailAgentMailboxRecovery,
       checkDevelopmentDigestPending, checkAndroidGzipAssetStage, checkResidentJavaSourceStage,
       checkAndroidBrowserModuleStage, checkAndroidBuildInputReadiness, checkLifeOpsScheduledTaskRoute,
       checkPersonalAssistantScheduledTaskCustody, checkPreparedWorkflowWorker].map(withDriver),
@@ -78,6 +91,10 @@ export async function runServicesRefinement(onProgress) {
     ...[runFactWriteScopeRefinement, runNativeGoogleAccessFileRefinement, runNamedEmbeddingProvenanceRefinement].map(withDriver),
   ];
   const obligations = [
+    {model:'WorkflowAuthoring',obligation:'Unobserved agent save/application and durable device custody',reason:'The bounded local source adapter controls secure storage and client responses; successful remote saves, crash durability and arbitrary authoring races remain separate.'},
+    {model:'WorkflowNoticeTaps',obligation:'Unobserved question and generation races',reason:'The exact handler campaign observes non-question run taps; question review, absent or foreign taps, view-generation races and installed notification behavior remain separate.'},
+    {model:'ScanReviewDialogs',obligation:'Unobserved correction/camera and installed review paths',reason:'The source campaign covers actual text and searchable-PDF reviews with closed OCR/export ports; correction, camera, links, Calendar, multi-page reviews and native focus remain separate.'},
+    {model: 'CoreApprovalServiceCurrent', obligation: 'Arbitrary approval creation, storage and persisted callback-free workflows', reason: 'The current source campaign observes one synchronous callback-bearing request, two selectors, a controlled deadline and draining shutdown. Role checks, task creation races, storage failures and callback-free asynchronous approvals remain separate.'},
     {model: 'BrowserGoogleReturn', obligation: 'Canonical account readback and browser presentation', reason: 'The real callback only emits a candidate wakeup. Account verification, panel dismissal, tab closing and live Google authorization require their own UI and integration evidence.'},
     {model: 'CombinedAgentLauncher', obligation: 'Confirm runtime readiness at the service boundary',
       reason: 'The receipt establishes spawn and process custody. The source campaign uses a closed child process, and live HTTP readiness is a separate observation.'},
@@ -95,6 +112,8 @@ export async function runServicesRefinement(onProgress) {
       reason: 'Three actual publishers cover one vanished-winner collision. Model scenarios cover selected refusal/failure branches; abrupt process loss, arbitrary generations, orphan recovery and a stable path lease for independent readers remain separate.'},
     {model: 'AppUpdateCandidate', obligation: 'Real candidate builds, hosted inventory and protected promotion',
       reason: 'The source calls use real private files and byte hashing with closed metadata and synthetic archives. GitHub run-number custody, actual APK/voice admission, concurrent IO, signing, publication and installed updates retain separate evidence.'},
+    {model: 'ProtectedAppUpdatePromotion', obligation: 'Protected production effects and release qualification',
+      reason: 'Workflow ordering and command failures use reviewed source with closed ports and synthetic bytes. Main-push signing admission, released native input bounds, exact signed voice, actual keys, live transport and installed-device delivery remain separate.'},
     {model: 'CloudQaLauncher', obligation: 'Concurrent launcher, kernel signal and live readiness behavior',
       reason: 'Private files and receipts use the real implementation in scratch, with closed child events. Concurrent profile writers, kernel delivery and a running Cloud session retain separate evidence.'},
     {model: 'BrowserCloudRequestCustody', obligation: 'Authenticated requests, real HTTP and process restart',

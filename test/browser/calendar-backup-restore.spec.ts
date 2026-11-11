@@ -6,7 +6,7 @@ async function open(page:any){await page.getByRole('button',{name:'Device contro
 async function choose(d:any,value:unknown){await d.getByLabel('Choose calendar backup',{exact:true}).setInputFiles({name:'calendar.txt',mimeType:'text/plain',buffer:Buffer.from(JSON.stringify(value))});}
 async function raw(page:any){return page.evaluate(async()=>(await import('/src/browser/calendar-store.ts')).calendarDocument.readRaw());}
 test('file selection and review do not write; confirmation restores events without replaying alerts',async({page},info)=>{
- const d=await open(page);await choose(d,backup);await expect(d.getByText('1 event record(s) in this backup.',{exact:false})).toBeVisible();expect(await raw(page)).toBe('damaged original');
+ const d=await open(page);await choose(d,backup);await expect(d.getByText('1 events',{exact:false})).toBeVisible();expect(await raw(page)).toBe('damaged original');
  await d.getByRole('button',{name:'Review calendar restore',exact:true}).click();expect(await raw(page)).toBe('damaged original');await expect(d.getByText('No invitations are sent;', {exact:false})).toBeVisible();await page.screenshot({path:info.outputPath('calendar-restore-review.png')});
  await d.getByRole('button',{name:'Confirm calendar restore',exact:true}).click();await expect(d).toHaveCount(0);const state=JSON.parse(await raw(page));expect(state.events).toHaveLength(1);expect(state.events[0].title).toBe('Restored appointment');expect(state.events[0].id).not.toBe('saved');expect(state.events[0].alert).toBeNull();expect(await page.evaluate(()=>localStorage.getItem('alpha.browser.calendar.v1'))).toBe('damaged original');
  await page.reload();expect(JSON.parse(await raw(page)).events[0].title).toBe('Restored appointment');await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Apps',exact:true}).click();await page.getByRole('button',{name:'Calendar',exact:true}).click();await page.getByText('Calendar backups',{exact:true}).click();await expect(page.getByRole('dialog',{name:'App calendar recovery'})).toBeVisible();
@@ -32,13 +32,13 @@ test('a coerced guest response cannot enter the reviewed calendar',async({page})
  const d=await open(page);await choose(d,{events:[{...backup.events[0],who:['Guest'],responses:{Guest:['yes']}}]});await expect(d.getByText('This is not a supported calendar backup. No events were changed.')).toBeVisible();await expect(d.getByRole('button',{name:'Review calendar restore',exact:true})).toBeDisabled();expect(await raw(page)).toBe('damaged original');
 });
 
-const partialLabel='Recover complete valid events and series from a partly damaged backup';
+const partialLabel='Recover events';
 const partialBackup={events:[backup.events[0],{...backup.events[0],id:'broken',end:0}]};
 test('partial recovery excludes a series when its exception reference is damaged',async({page})=>{
  const base=backup.events[0],occurrence=base.begin+7*86400000,d=await open(page);
  await choose(d,{events:[base,{...base,id:`saved:occ:${occurrence}`,seriesId:null,occurrenceBegin:occurrence,repeat:'none'},{...base,id:'safe',title:'Independent event'}]});
  await d.getByLabel(partialLabel,{exact:true}).check();
- await expect(d.getByText('1 event record(s) can be recovered; 2 record(s) will be skipped.',{exact:false})).toBeVisible();
+ await expect(d.getByText('1 ok · 2 skipped',{exact:false})).toBeVisible();
  expect(await raw(page)).toBe('damaged original');await d.getByRole('button',{name:'Review calendar restore',exact:true}).click();await d.getByRole('button',{name:'Confirm calendar restore',exact:true}).click();
  await expect(d).toHaveCount(0);expect(JSON.parse(await raw(page)).events.map((event:any)=>event.title)).toEqual(['Independent event']);
 });
@@ -46,7 +46,7 @@ test('partial recovery requires opt-in, review and confirmation; changing mode r
  const d=await open(page);await choose(d,partialBackup);
  await expect(d.getByRole('button',{name:'Review calendar restore',exact:true})).toBeDisabled();
  await d.getByLabel(partialLabel,{exact:true}).check();
- await expect(d.getByText('1 event record(s) can be recovered; 1 record(s) will be skipped.',{exact:false})).toBeVisible();
+ await expect(d.getByText('1 ok · 1 skipped',{exact:false})).toBeVisible();
  await expect(d.getByText('Skipped record 2:',{exact:false})).toBeVisible();expect(await raw(page)).toBe('damaged original');
  await d.getByRole('button',{name:'Review calendar restore',exact:true}).click();
  await d.getByLabel(partialLabel,{exact:true}).uncheck();

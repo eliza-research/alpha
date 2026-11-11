@@ -12,8 +12,8 @@ const notices = new Map([
   ['Save not confirmed. Retry.', 'unconfirmed'],
   ['Source not saved. Retry to clear it.', 'clearRefused'],
   ['Source access changed before saving. Refresh accounts and review the source again.', 'sourceRejected'],
-  ['Request discarded. Nothing was sent.', 'discarded'],
-  ['The request could not be discarded. Try again.', 'discardRefused'],
+  ['Discarded', 'discarded'],
+  ['Couldn’t discard', 'discardRefused'],
 ]);
 
 function observe(state) {

@@ -306,7 +306,7 @@ test('with the drawer closed, Home toasts a failed launch and a failed app read 
     listing='fail';
     await shell.launcher.refresh();await shell.launcher.refresh();
     assert.equal(shell.launcher.snapshot().status,'failed');
-    assert.deepEqual(toasts.slice(1),["Apps couldn't load. Open Apps to try again."]);
+    assert.deepEqual(toasts.slice(1),['Couldn’t load']);
     // A failed launch whose follow-up read also fails reports only the launch.
     listing='ok';await shell.launcher.refresh();toasts.length=0;listing='fail';
     await shell.launcher.launch(shell.launcher.snapshot().apps.find(app=>app.packageName==='com.android.settings'));
@@ -436,5 +436,9 @@ test('a favorites save that fails in Home edit mode shows its error in the edit 
     assert.equal(home.renderVals().homeEdit.error,'');
   } finally { home.componentWillUnmount(); globalThis.requestAnimationFrame=previousFrame; if(previous===undefined)delete globalThis.document;else globalThis.document=previous; }
   const {readFileSync}=await import('node:fs');
-  assert.match(readFileSync(new URL('../apps/app/src/prototype/template.html',import.meta.url),'utf8'),/<sc-if value="\{\{homeEdit\.error\}\}"><p role="alert"[^>]*>\{\{homeEdit\.error\}\}<\/p><\/sc-if>/);
+  const template=readFileSync(new URL('../apps/app/src/prototype/template.html',import.meta.url),'utf8');
+  const alert=/<sc-if value="\{\{homeEdit\.error\}\}"><p role="alert"[^>]*>([\s\S]*?)<\/p><\/sc-if>/.exec(template);
+  assert.ok(alert,'the current save error still owns an alert');
+  assert.match(alert[1],/Couldn’t save/);
+  assert.match(alert[1],/<span class="settings-sr-only">\{\{homeEdit\.error\}\}<\/span>/,'full failure remains accessible');
 });

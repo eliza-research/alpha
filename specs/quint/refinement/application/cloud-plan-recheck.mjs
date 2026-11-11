@@ -42,7 +42,7 @@ function fixture(code) {
   const window = new EventTarget();
   const state = {inferenceOffline: false, busy: false, session: {}, cloudAccount: {credentialId: 'credential-0'}};
   const box = vm.createContext({
-    AbortController, DOMException, document, window, state,
+    AbortController, DOMException, document, window, state, isAndroid: false,
     Date: class extends Date {static now() {return clock * 60_000;}},
     active: {kind: 'resident'}, service: null, residentBinding: 'unbound', entitlementRefresher: null,
     operation: null, sending: null, ownCloudServiceRestore: null, signInReadinessOwner: null,

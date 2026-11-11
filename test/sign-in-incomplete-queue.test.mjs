@@ -13,7 +13,7 @@ const code=stripTypeScriptTypes([
   between('/** A native sign-in return that arrived while','function runQueuedResidentRebind('),
   `globalThis.connectionController={signInReturned:value=>returned.push(value),${between('  signInIncomplete(value: unknown) {','  /**\n   * The Cloud sign-in hand-off')}};`,
 ].join('\n'),{mode:'strip'});
-const RESTARTED='Alpha restarted before your sign-in finished. Sign in again.';
+const RESTARTED='Sign in again';
 
 function harness(state){
   const box={operation:null,epoch:1,returned:[],state:{open:false,signIn:null,message:'',error:'',...state},

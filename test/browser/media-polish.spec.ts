@@ -44,7 +44,7 @@ test('camera errors expire, refresh their deadline and center the logo',async({p
 test('failed video read leaves save disabled and performs no save operation',async({page})=>{
  await page.route('https://example.invalid/unavailable-video',route=>route.fulfill({status:404,body:'Not found'}));await page.goto('/');
  await page.evaluate(async()=>{(window as any).unavailableVideoSaves=0;(await import('/src/prototype/video-edit-review.ts')).openVideoEditReview({path:'https://example.invalid/unavailable-video',duration:3.6},async()=>{(window as any).unavailableVideoSaves++;return true;});});
- const dialog=page.getByRole('dialog',{name:'Edit video',exact:true});await expect(dialog.getByRole('status')).toContainText('Video could not load');
+ const dialog=page.getByRole('dialog',{name:'Edit video',exact:true});await expect(dialog.getByRole('status')).toContainText('Couldn’t load');
  const save=dialog.getByRole('button',{name:'Save video copy',exact:true});await expect(save).toBeDisabled();await save.dispatchEvent('click');expect(await page.evaluate(()=>(window as any).unavailableVideoSaves)).toBe(0);
  await dialog.getByRole('button',{name:'Close video editor',exact:true}).click();await expect(dialog).toHaveCount(0);
 });

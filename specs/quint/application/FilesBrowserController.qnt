@@ -22,7 +22,7 @@ module FilesBrowserController {
   action refresh = all {s.active, s.stateGeneration < 6, s' = start(s, s.place, false)}
   action navigate(place: int): bool = all {s.active, place.in(1.to(2)), s.stateGeneration < 6,
     s' = start(s, place, true)}
-  action agentRead = all {s.bound, s.stateGeneration < 6,
+  action agentRead = all {s.bound, s.active, s.stateGeneration < 6,
     {val id = s.stateGeneration + 1
       s' = {...s, stateGeneration: id, states: s.states.union(Set(id)),
         requests: s.requests.set(id, {generation: s.generation, place: s.place, agent: true})}}}
@@ -31,7 +31,7 @@ module FilesBrowserController {
     volumes.indices().forall(i => volumes.nth(i).in(1.to(2))),
     {
       val request = s.requests.get(id)
-      val current = id == s.stateGeneration and (request.agent or s.active and request.generation == s.generation)
+      val current = id == s.stateGeneration and s.active and request.generation == s.generation
       val admitted = current and access == "granted"
       val ownReload = not(request.agent) and request.generation == s.generation
       s' = {...s, states: s.states.exclude(Set(id)),
@@ -73,4 +73,6 @@ module FilesBrowserController {
   run staleAgentReadDoesNotShareTest = init.then(enter).then(agentRead).then(agentRead)
     .then(stateReply(3, "granted", List(1))).then(stateReply(2, "granted", List(1)))
     .expect(s.shares == 1 and safety)
+  run retiredAgentReadDoesNotShareTest = init.then(enter).then(agentRead).then(leave)
+    .then(stateReply(2, "granted", List(1))).expect(s.shares == 0 and safety)
 }

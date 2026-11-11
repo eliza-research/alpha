@@ -51,7 +51,7 @@ async function fixture(extraSources) {
     'passwordManagerGroups','passwordEntryPage','leavePasswordManager','refreshPasswordManager','passwordManagerLifecycle',
     'observe: () => ({active,generation,locked:status?.locked ?? true,entries:entries!==null,damaged,resetReviewed:confirmReset!==null,secret:!!draft?.password,draft:!!draft,busy,noticePresent:!!notice})',
   ], {
-    ...sharedExports,...bindingExports,document,window,
+    ...sharedExports,...bindingExports,document,window,queueMicrotask,
     Capacitor:{isNativePlatform:()=>true,isPluginAvailable:()=>false},
     testMocksEnabled:false,devSurfacesEnabled:false,browserDevProfile:false,
     createDevelopmentVault:()=>{throw Error('Unexpected development vault');},
@@ -65,7 +65,7 @@ async function fixture(extraSources) {
   const observe = label => {const state={...api.observe(),foreground:!document.hidden,
     resetCount:native.resetCount,nativeLocked:native.locked,page,calls:[...calls]};records.push({label,state});return state;};
   const rows = () => api.passwordManagerGroups(helpers).flatMap(group=>group.rows);
-  const invoke = label => {const row=rows().find(row=>row.label===label);assert.ok(row,label);row.go();};
+  const invoke = label => {const row=rows().find(row=>row.label===label||row.lbl===label);assert.ok(row,label);row.go();};
   const settle = async () => {for(let i=0;i<4;i++)await tick();};
   const hold=method=>{const original=port[method],pending=deferred(),entered=deferred();port[method]=async(...args)=>{port[method]=original;const result=await original(...args);entered.resolve();await pending.promise;return result;};return {entered:entered.promise,release:()=>pending.resolve()};};
   const expire=()=>{const [id,timer]=[...timers].find(([,timer])=>timer.delay===60000)||[];assert.ok(timer,'unlock expiry');timers.delete(id);timer.callback();};
@@ -91,9 +91,9 @@ export async function generateVaultCoordinatorTraces(extraSources=[]) {
         assert.equal(f.records.at(-1).state.active,false);
       } else {
         f.native.damaged=true;f.api.refreshPasswordManager();await f.settle();f.observe('native reports invalidated key');
-        f.invoke('Delete saved passwords and start over');f.observe('review reset');
+        f.invoke('Reset vault');f.observe('review reset');
         if(name==='pending-reset-leave') {
-          f.native.pending=deferred();f.invoke('Tap again to delete all saved passwords');
+          f.native.pending=deferred();f.invoke('Confirm reset vault');
           await f.settle();f.observe('native authentication pending');
         }
         f.api.leavePasswordManager();await f.settle();f.observe('leave retires review');
@@ -121,8 +121,8 @@ export async function generateVaultCoordinatorTraces(extraSources=[]) {
         assert.equal(f.records.at(-1).state.entries,false);
       } else {
         f.native.damaged=true;f.api.refreshPasswordManager();await f.settle();f.observe('native reports invalidated key');
-        f.invoke('Delete saved passwords and start over');f.observe('review reset');
-        if(name==='reset-auth-refresh'){f.native.pending=deferred();f.invoke('Tap again to delete all saved passwords');await f.settle();f.observe('native authentication pending');}
+        f.invoke('Reset vault');f.observe('review reset');
+        if(name==='reset-auth-refresh'){f.native.pending=deferred();f.invoke('Confirm reset vault');await f.settle();f.observe('native authentication pending');}
         f.api.refreshPasswordManager();await f.settle();f.observe('refresh retires reset review');
         if(f.native.pending){f.native.pending.resolve();await f.settle();f.observe('retired reset authentication completes');}
         assert.equal(f.native.resetCount,0);assert.equal(f.records.at(-1).state.resetReviewed,false);

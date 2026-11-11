@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "testKeys": false,
+  "keys": [
+    {
+      "name": "releasekey",
+      "kind": "x509-pk8",
+      "bits": 4096,
+      "certificateSha256": "66046a0729fe8d14b9bb53051b2225b396f7bcb07b2a757eac6fc799b1aee11e",
+      "subject": "C = US, O = Alpha Compute, OU = Release, CN = releasekey"
+    },
+    {
+      "name": "platform",
+      "kind": "x509-pk8",
+      "bits": 4096,
+      "certificateSha256": "e76e132cb233d302b93e4fb9b561f114215ea884235dfba8ed675878047e3998",
+      "subject": "C = US, O = Alpha Compute, OU = Release, CN = platform"
+    },
+    {
+      "name": "shared",
+      "kind": "x509-pk8",
+      "bits": 4096,
+      "certificateSha256": "a4b031a35fe1a9d79a2ca24efbf43145a06ff0715ddfe4b622239193def30482",
+      "subject": "C = US, O = Alpha Compute, OU = Release, CN = shared"
+    },
+    {
+      "name": "media",
+      "kind": "x509-pk8",
+      "bits": 4096,
+      "certificateSha256": "7808038475ff38f0969040ebe9deb30d7cf96fca91795272a623d76a331c0529",
+      "subject": "C = US, O = Alpha Compute, OU = Release, CN = media"
+    },
+    {
+      "name": "networkstack",
+      "kind": "x509-pk8",
+      "bits": 4096,
+      "certificateSha256": "6fba8451b8c342208a538c2b3a77f5361e1567901473f94f865456ce3640542a",
+      "subject": "C = US, O = Alpha Compute, OU = Release, CN = networkstack"
+    },
+    {
+      "name": "sdk_sandbox",
+      "kind": "x509-pk8",
+      "bits": 4096,
+      "certificateSha256": "faffa391d0fbbddcac89b7edcef74b8d63904cfc67f2075c41a6b29f5ddeee3d",
+      "subject": "C = US, O = Alpha Compute, OU = Release, CN = sdk_sandbox"
+    },
+    {
+      "name": "bluetooth",
+      "kind": "x509-pk8",
+      "bits": 4096,
+      "certificateSha256": "afa35217a7a6eece7c65887d72f5c0d58fdd5e44f015540ad963d4c7a847f292",
+      "subject": "C = US, O = Alpha Compute, OU = Release, CN = bluetooth"
+    },
+    {
+      "name": "nfc",
+      "kind": "x509-pk8",
+      "bits": 4096,
+      "certificateSha256": "f0631050e868474c266ed226aeb970ecd7f875df1770464ca601f077b30985e9",
+      "subject": "C = US, O = Alpha Compute, OU = Release, CN = nfc"
+    },
+    {
+      "name": "apex",
+      "kind": "x509-pk8",
+      "bits": 4096,
+      "certificateSha256": "e15d5665684a60dca9f4e4a707471d40a8eaf9648761f15ed1615a1a19b6492f",
+      "subject": "C = US, O = Alpha Compute, OU = Release, CN = apex"
+    },
+    {
+      "name": "apex_payload",
+      "kind": "avb-rsa",
+      "bits": 4096,
+      "avbPublicKeySha256": "5c3d3fb88c4b07d1f34eb90edc48f3b7de6519efb877f6a4dfecac4dde985978"
+    },
+    {
+      "name": "avb",
+      "kind": "avb-rsa",
+      "bits": 4096,
+      "avbPublicKeySha256": "ef17e93cb331c37187cb15c666c09b3861d539f8b24662f4fa3fd7314d806daa"
+    },
+    {
+      "name": "alphaphone_app",
+      "kind": "x509-pk8",
+      "bits": 4096,
+      "certificateSha256": "edbfcacb1da689008bf4e7d675176c302decf83161a877eb8b1de4ffae0445ed",
+      "subject": "O = AlphaCompute, CN = Alpha Phone Release"
+    }
+  ]
+}

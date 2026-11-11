@@ -29,6 +29,34 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
 .voice-overlay button{border:0;border-radius:24px;padding:12px 18px;margin:6px;background:var(--alpha-blue);color:var(--alpha-white);font:inherit}
 .voice-overlay textarea{width:100%;min-height:100px;box-sizing:border-box;font:inherit}
 .settings-info-description{display:block;margin-top:2px;font-size:14px;line-height:1.4;color:var(--mut)}
+/* Settings status: a dot always sits beside one word (never colour alone). */
+.settings-dot{display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:6px;flex-shrink:0;vertical-align:middle;background:var(--mut)}
+.settings-dot[data-dot="ok"]{background:var(--alpha-status-ok)}
+.settings-dot[data-dot="warn"]{background:var(--alpha-status-amber)}
+.settings-dot[data-dot="err"]{background:var(--alpha-status-error)}
+.settings-dot[data-dot=""]{display:none}
+.settings-sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.settings-ext{display:block;width:16px;height:16px;flex-shrink:0;color:var(--mut);background:currentColor;mask:url('/icons/lucide/external-link.svg') center/contain no-repeat;-webkit-mask:url('/icons/lucide/external-link.svg') center/contain no-repeat}
+.settings-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.settings-tag{padding:3px 10px;border-radius:12px;background:var(--bg);color:var(--mut);font-size:12.5px;line-height:1.4}
+.settings-badge{flex-shrink:0;padding:3px 10px;border-radius:12px;background:var(--bg);color:var(--mut);font-size:12.5px;font-variant-numeric:tabular-nums}
+.settings-app-chips{display:flex;flex-wrap:wrap;gap:8px;padding:6px 16px 14px 18px}
+.settings-app-chip{display:inline-flex;align-items:center;gap:2px;min-height:44px;padding:0 4px 0 14px;border-radius:22px;background:var(--bg);font-size:14px}
+.settings-app-chip[data-warn="true"]{box-shadow:inset 0 0 0 1.5px var(--alpha-status-amber)}
+.settings-chip-btn{display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:40px;border-radius:20px;color:var(--mut)}
+.settings-chip-btn[aria-pressed="true"]{color:var(--acct)}
+.settings-chip-icon{display:block;width:18px;height:18px;background:currentColor;-webkit-mask:var(--chip-icon) center/contain no-repeat;mask:var(--chip-icon) center/contain no-repeat}
+.settings-chip-icon[data-icon="eye"]{--chip-icon:url('/icons/lucide/eye.svg')}
+.settings-chip-icon[data-icon="x"]{--chip-icon:url('/icons/lucide/x.svg')}
+.settings-chip-icon[data-icon="plus"]{--chip-icon:url('/icons/lucide/plus.svg')}
+.settings-aa{display:flex;flex-wrap:wrap;gap:4px;padding:8px 10px}
+.settings-aa-btn{flex:1 0 auto;padding:0 6px;min-width:44px;min-height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;color:var(--fg);line-height:1.25}
+.settings-aa-btn[aria-pressed="true"]{background:var(--acc);color:var(--alpha-white)}
+.settings-spin{display:block;width:16px;height:16px;flex-shrink:0;border-radius:50%;border:2px solid var(--line);border-top-color:var(--mut);animation:note-transcribing .8s linear infinite}
+@media (prefers-reduced-motion:reduce){.settings-spin{animation:none}}
+.storage-access-warning > summary{display:flex;align-items:center;cursor:pointer;list-style:none;font-weight:600}
+.storage-access-warning > summary::-webkit-details-marker{display:none}
+.storage-access-warning[open] > summary{margin-bottom:6px}
 
 
 /* The reference canvas is 915px tall; keyboard and compact windows are not. */
@@ -417,22 +445,34 @@ html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half=
 .alpha-landscape [data-alpha-maps-sheet]{left:auto!important;width:min(440px,50%);border-radius:28px 0 0 0!important}
 .alpha-landscape [data-alpha-maps-directions]{right:auto!important;width:calc(50% - 24px);box-sizing:border-box;max-height:calc(100% - 64px);overflow-y:auto}
 
+/* A tall location card can reach the credits at large text. Put both in
+   reading order above the assistant and let the card scroll if needed. */
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-base="true"]:has([data-alpha-maps-status]) {
+  box-sizing:border-box; padding-block:174px max(130px,var(--alpha-dock-clearance,102px)); row-gap:8px;
+}
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-base="true"] [data-alpha-maps-status] {
+  position:relative!important; inset:auto!important; min-height:0; max-height:none!important; margin-inline:20px;
+}
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-base="true"]:has([data-alpha-maps-status]) > .alpha-map-credits {
+  position:relative!important; inset:auto!important; flex:none; margin-inline:12px 76px;
+}
+
 /* Guidance controls float above the measured assistant dock in portrait. */
 html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
   --alpha-maps-guidance-bottom:calc(var(--alpha-dock-clearance,102px) + 8px);
 }
-/* When text grows, put the status and credits in flow with the guidance bar.
-   Their existing reading order also keeps each target above its neighbor. */
-html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
+/* Keep credits above the guidance bar as the assistant's measured reserve changes.
+   At large text the status joins the same flow in its existing reading order. */
+html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] {
   box-sizing:border-box; justify-content:flex-end; row-gap:8px; padding-bottom:var(--alpha-maps-guidance-bottom);
 }
-html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > :is(.alpha-map-credits,[data-alpha-maps-guidance-controls]),
+html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > :is(.alpha-map-credits,[data-alpha-maps-guidance-controls]),
 html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] [data-alpha-maps-status] {
   position:relative!important; inset:auto!important; flex:none;
 }
 html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] [data-alpha-maps-status] { margin-inline:20px; }
-html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > .alpha-map-credits { margin-inline:12px 76px; }
-html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-controls] { margin-inline:12px; }
+html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > .alpha-map-credits { margin-inline:16px; align-self:stretch; }
+html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-controls] { margin-inline:12px; }
 
 /* Keep the guidance controls and credits in flow on the clear side of the
    landscape assistant. Status and maneuvers share the space above the right dock. */
@@ -450,8 +490,11 @@ html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > 
   position:relative!important; inset:auto!important; width:auto; height:auto!important;
   max-height:none!important; flex:none; padding:8px 12px!important;
 }
-.alpha-landscape [data-alpha-maps-guidance="true"] > :is(.alpha-map-credits,[data-alpha-maps-guidance-controls]) {
+.alpha-landscape [data-alpha-maps-guidance="true"] > [data-alpha-maps-guidance-controls] {
   position:relative!important; inset:auto!important; width:auto; flex:none;
+}
+.alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits {
+  position:relative!important; inset:auto!important; flex:none; align-self:stretch;
 }
 /* Keep the same left-to-right reading order as portrait. A second grid row
    placed the time above the first control in the accessibility tree. */
@@ -460,10 +503,18 @@ html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > 
 }
 .alpha-landscape [data-alpha-maps-guidance-controls] > button { width:48px!important; height:48px!important; }
 .alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif { font-size:24px!important; overflow-wrap:anywhere; }
+/* The Google credit bar keeps the full row: its sources panel opens from the bar's right edge. */
+.alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits[data-google-maps="true"],
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > .alpha-map-credits[data-google-maps="true"] { align-self:stretch; }
 .alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits:has(details[open]) { z-index:6; }
 .alpha-landscape [data-alpha-maps-guidance="true"] .alpha-map-info {
-  top:0; right:44px; bottom:auto; width:min(320px,calc(100% - 52px)); max-height:160px;
+  top:auto; left:0; bottom:calc(100% + 8px); width:min(300px,calc(100vw - 92px)); max-height:160px;
   box-sizing:border-box; overflow:auto;
+}
+/* Wrapped non-Google credits fill the space above guidance; open below that
+   row so the request disclosure cannot slide behind the global Back control. */
+.alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits:not([data-google-maps="true"]) .alpha-map-info {
+  top:calc(100% + 8px); bottom:auto;
 }
 
 /* Keep portrait capture controls above the assistant on short windows. */
@@ -568,6 +619,12 @@ dialog:is(.alpha-operation-review,.alpha-calendar-editor,.alpha-calendar-meeting
 [data-alpha-subview="photos-viewer"] { container-type:size; }
 [data-alpha-photo-frame] { top:0!important; bottom:0!important; margin:auto!important; width:min(100cqw, 75cqh); height:min(133.333cqw, 100cqh)!important; }
 [data-alpha-photo-frame] > span:first-child { background-size:contain!important; background-position:center!important; background-repeat:no-repeat!important; }
+/* Keep the new tab action above the large-text composer and leave scroll clearance on short windows. */
+html.alpha-large-text:not(.alpha-landscape) [data-alpha-browser-new] {
+  padding-top:clamp(30px,8vh,72px)!important;
+  padding-bottom:max(140px,var(--alpha-dock-reserve))!important;
+}
+
 /* The browser menu ends above the dock; its rows scroll inside it on short screens. */
 [data-alpha-browser-menu] { box-sizing:border-box; max-height:max(150px, calc(100% - 106px - var(--alpha-dock-clearance,102px)))!important; }
 /* Maps: the provider/location notice stays beside the map in landscape and bounded when wide. */
@@ -628,12 +685,25 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 .note-source-dialog footer button{flex:1 1 120px}
 .note-source-dialog [role=status]:empty{display:none}
 
-.alpha-map-credits { position:absolute; left:12px; right:76px; z-index:3; display:flex; align-items:center; gap:8px; padding-left:10px; border-radius:16px; background:var(--bg); color:var(--fg); box-shadow:0 2px 12px var(--shc); font-size:12px; line-height:1.4; }
-.alpha-map-credit-links { flex:1; min-width:0; }
+/* Maps chrome: the search pill sits below the system bar; in the standalone app there is no
+   simulated status bar, so every overlay shifts up with --maps-top. */
+[data-alpha-maps-root] { --maps-top:52px; }
+.standalone-app [data-alpha-maps-root] { --maps-top:8px; }
+/* Without the search header (directions, guidance) the Apps fallback keeps the top row. */
+.standalone-app [data-screen]:has([data-alpha-app-back-fallback]):not(:has([data-alpha-app-header])) [data-alpha-maps-root] { --maps-top:52px; }
+.standalone-app [data-screen]:has([data-alpha-maps-guidance="true"]) [data-alpha-app-back-fallback] { background:var(--bg); border-radius:22px; }
+.standalone-app [data-alpha-maps-root] [data-alpha-app-header-overlay] { top:var(--maps-top)!important; }
+[data-alpha-maps-root] input[type="search"]::-webkit-search-cancel-button { -webkit-appearance:none; appearance:none; display:none; }
+/* Provider credits stay visible; the compact ⓘ opens the full request disclosure. */
+.alpha-map-credits { position:absolute; left:16px; right:76px; z-index:3; display:flex; align-items:center; gap:8px; color:var(--fg); font-size:12px; line-height:1.4; }
+.alpha-map-credit-links { flex:1; min-width:0; padding:6px 8px; border-radius:14px; background:var(--bg); box-shadow:0 2px 12px var(--shc); overflow-wrap:anywhere; }
 .alpha-map-credit-links a { color:inherit; text-decoration:underline; }
+.alpha-map-privacy { flex:none; order:-1; width:50px; height:50px; border-radius:25px; background:var(--bg); box-shadow:0 6px 20px var(--shc), 0 0 0 1px var(--line); }
+.alpha-map-privacy > summary { width:100%; height:100%; }
+.alpha-map-privacy > summary { display:flex; align-items:center; justify-content:center; border-radius:inherit; cursor:pointer; list-style:none; }
 [data-alpha-map-plane][data-imagery-unavailable="true"] { background:var(--s2); }
 .alpha-map-credits[data-google-maps="true"] {
-  container:alpha-map-credit / inline-size; gap:4px; padding:0; background:transparent; box-shadow:none;
+  container:alpha-map-credit / inline-size; right:76px; width:auto; height:auto; display:flex; align-items:center; gap:4px; padding:0; border-radius:0; background:transparent; box-shadow:none;
 }
 .alpha-google-credit { flex:1; min-width:0; display:flex; align-items:center; gap:4px; }
 .alpha-google-mark,.alpha-google-copyright,.alpha-google-map-missing,.alpha-google-sources > summary,
@@ -649,7 +719,7 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 }
 .alpha-google-sources > summary::-webkit-details-marker { display:none; }
 .alpha-map-credits .alpha-google-sources > .alpha-map-info {
-  top:auto; right:0; bottom:calc(100% + 8px); box-sizing:border-box; max-height:160px; overflow:auto; overflow-wrap:anywhere;
+  top:auto; left:auto; right:0; bottom:calc(100% + 8px); box-sizing:border-box; max-height:160px; overflow:auto; overflow-wrap:anywhere;
 }
 @container alpha-map-credit (max-width: 375px) {
   .alpha-google-copyright { display:none; }
@@ -657,13 +727,16 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 }
 html.alpha-large-text .alpha-google-copyright { display:none; }
 html.alpha-large-text .alpha-google-sources { display:block; }
-.alpha-map-privacy { flex-shrink:0; }
-.alpha-map-privacy > summary { display:flex; align-items:center; justify-content:center; min-width:44px; min-height:44px; cursor:pointer; list-style:none; }
+.alpha-map-credits[data-google-maps="true"] > .alpha-map-privacy { flex:none; width:44px; height:44px; }
 .alpha-map-privacy > summary::-webkit-details-marker { display:none; }
-.alpha-map-privacy > summary [data-alpha-icon] { width:18px; height:18px; }
-.alpha-map-info { position:absolute; right:0; bottom:calc(100% + 8px); width:min(320px,100%); padding:12px; border:1px solid var(--line); border-radius:16px; background:var(--bg); color:var(--fg); box-shadow:0 4px 20px var(--shc); font-size:14px; }
-.alpha-landscape .alpha-map-credits { bottom:12px!important; right:auto; width:calc(100% - min(440px,50%) - 24px); box-sizing:border-box; }
-.alpha-map-privacy:not([open]) > p { display:none; }
+.alpha-map-privacy > summary [data-alpha-icon] { width:20px; height:20px; }
+.alpha-map-info { position:absolute; left:0; bottom:calc(100% + 10px); width:min(300px,calc(100vw - 32px)); box-sizing:border-box; display:grid; gap:10px; max-height:240px; overflow-y:auto; overflow-wrap:anywhere; padding:14px 16px; border-radius:20px; background:var(--bg); color:var(--fg); box-shadow:0 6px 24px var(--shc), 0 0 0 1px var(--line); font-size:14px; line-height:1.35; }
+.alpha-map-info p { margin:0; display:flex; align-items:center; gap:8px; }
+.alpha-map-info p svg { width:16px; height:16px; flex-shrink:0; }
+.alpha-map-info .alpha-map-credit-links { display:block; font-size:12px; color:var(--mut); }
+.alpha-map-info .alpha-map-credit-links a { color:inherit; text-decoration:underline; }
+.alpha-map-info > button { justify-self:start; min-height:40px; padding:0 14px; border-radius:20px; background:var(--s2); color:var(--fg); font:inherit; font-weight:600; }
+.alpha-landscape .alpha-map-credits { bottom:12px!important; }
 
 .alpha-chat-composer { display:flex; align-items:center; gap:6px; flex-shrink:0; min-height:68px; box-sizing:border-box; margin:0 12px max(30px,var(--alpha-bottom-clearance)); padding:6px 6px 6px 20px; border-radius:28px; background:var(--s2); color:var(--fg); }
 .alpha-wide:not(.alpha-landscape) .alpha-chat-composer { width:calc(100% - 24px); max-width:560px; margin-inline:auto; }

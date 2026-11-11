@@ -128,8 +128,10 @@ async function fixture(component, options = {}) {
     assert.equal(refs.length,12,'Component ref-hook layout changed');
     const panel=document.querySelector('dialog'),primary=panel?.querySelector('button');
     const stored=localStorage.getItem(progressKey),memory=localStorage.getItem(memoryKey);
+    const stepName=panel?.querySelector('[aria-current=step] .alpha-permission-name');
+    const heading=stepName?[...stepName.childNodes].filter(node=>node.nodeType===3).map(node=>node.textContent).join('').trim():panel?.querySelector('h2')?.textContent??null;
     return {
-      ui:{visible:!!panel?.open,heading:panel?.querySelector('h2')?.textContent??null,
+      ui:{visible:!!panel?.open,heading,
         primary:primary?.textContent??null,disabled:primary?.disabled??false,
         status:[...document.querySelectorAll('[role="status"],[role="alert"]')].map(node=>node.textContent)},
       component:{reopened:states[0],ready:states[1],progress:states[4],active:states[5],target:states[6],
@@ -245,7 +247,7 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     for(const key of permissionKeys){assert.equal(f.snapshot().ui.heading,key[0].toUpperCase()+key.slice(1));
     await f.click('Continue');
     record(`continued-${key}`,advance);}
-    await f.click('Go to Alpha');
+    await f.click('Done');
     record('completed',action('finish'));
     await f.remount();
     record('completed-remount',restart);
@@ -266,7 +268,7 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     f.hold('notifications');
     await f.click('Allow');
     record('request-held',[action('begin'),action('request')]);
-    await f.click('Checking…');
+    await f.click('Checking');
     await f.resume();
     record('duplicate-and-resume');
     f.state.notifications=true;
@@ -411,10 +413,10 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     record('denied',[action('begin'),action('request'),action('result',false)]);
     await f.remount();
     record('denied-remount',restart);
-    await f.click('Open Android settings');
+    await f.click('Settings');
     record('settings-retry',[action('begin'),action('result',false)]);
     f.state.notifications=true;
-    await f.click('Open Android settings');
+    await f.click('Settings');
     record('granted-readback',advance);
   });
   await scenario('revocation-after-completion-does-not-rewrite-reviewed-choices',{},async(f,record)=>{
@@ -423,7 +425,7 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     f.state.camera='denied';
     await f.resume();
     record('revoked-platform-state',statuses);
-    await f.click('Go to Alpha');
+    await f.click('Done');
     record('acknowledged-completion',action('finish'));
     assert.equal(f.snapshot().durable.effectiveProgress.status,'completed');
     assert.equal(f.snapshot().component.states.camera,'settings');
@@ -442,14 +444,14 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     assert.equal(f.snapshot().ui.visible,false);
     await f.auth(true);
     record('new-account-ready-notice',action('authSetup',true));
-    await f.click('Go to Alpha');
+    await f.click('Done');
     record('completed-installation-returned-home',action('finish'));
   });
   await scenario('ready-acknowledgement-does-not-need-another-write',{},async(f,record)=>{
     for(const key of permissionKeys){await f.click('Continue');record(`continued-${key}`,advance);}
     f.failStorage();
     record('storage-unavailable',action('storageFails'));
-    await f.click('Go to Alpha');
+    await f.click('Done');
     record('acknowledged-completion',action('finish'));
     assert.equal(f.snapshot().durable.effectiveProgress.status,'completed');
     assert.equal(f.snapshot().component.progressError,false);
@@ -462,7 +464,7 @@ export async function runStartupPermissionsCoordinatorRefinement() {
     record('ready-with-undurable-completion',advance);
     assert.equal(f.snapshot().component.progressError,true);
     assert.equal(f.snapshot().durable.effectiveProgress.status,'pending');
-    await f.click('Go to Alpha');
+    await f.click('Done');
     record('acknowledged-for-this-session',action('finish'));
     await f.remount();
     record('restart-reviews-unsaved-choice',restart);

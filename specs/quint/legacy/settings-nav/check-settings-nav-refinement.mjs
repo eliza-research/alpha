@@ -63,7 +63,8 @@ async function snapshot(page, expectedTitle) {
     assert.equal(state.route, 'top', 'The Account sheet preserves the selected Settings root');
     return state;
   }
-  await expect(current(page)).toHaveAttribute('data-settings-page', expectedTitle);
+  const renderedTitle=expectedTitle==='Open source licenses'?'Licenses':expectedTitle;
+  await expect(current(page)).toHaveAttribute('data-settings-page', renderedTitle);
   const state = await current(page).evaluate(element => ({
     title: element.getAttribute('data-settings-page'),
     view: window.quintLegacySettings.S().view,
@@ -71,8 +72,8 @@ async function snapshot(page, expectedTitle) {
     confirming: false,
   }));
   assert.equal(state.view, 'settings');
-  assert.equal(state.title, expectedTitle);
-  return state;
+  assert.equal(state.title, renderedTitle);
+  return {...state, renderedTitle:state.title, title:expectedTitle};
 }
 
 function projection(state, profile) {
@@ -126,14 +127,14 @@ async function collect(page, notice) {
   const about = schedule(page, top);
   await button(page, 'About').click();
   await about.point('About opens from the visible Settings row', 'About', open('About', 'about'));
-  await button(page, 'Open source licenses').click();
+  await button(page, 'Licenses').click();
   await about.point('Open source licenses opens from About', 'Open source licenses', open('Open source licenses', 'licenses'));
   const search = current(page).getByRole('searchbox', {name: 'Search components', exact: true});
   const component = button(page, notice.name+' '+notice.version);
   await expect(component).toBeVisible();
   await search.fill('no-component-matches-quint-settings');
   await expect(component).toHaveCount(0);
-  await expect(current(page).getByText('No matching components', {exact: true})).toBeVisible();
+  await expect(current(page).getByText('No matches', {exact: true})).toBeVisible();
   await about.point('Unmatched search changes results and keeps licenses selected', 'Open source licenses');
   await search.fill(notice.name);
   await expect(component).toBeVisible();
@@ -174,8 +175,8 @@ async function collect(page, notice) {
   const plan = await account.point('The signed-in Account sheet opens from Settings', 'Account & plan',
     open('Eliza Cloud', 'account'), open('Eliza Cloud account & plan', 'cloudplan'));
   const sheet = page.getByRole('dialog', {name: 'Account', exact: true});
-  const infoLabel = 'AI connection';
-  await expect(sheet.getByRole('button', {name: /^AI connection/})).toBeVisible();
+  const infoLabel = 'AI';
+  await expect(sheet.getByRole('button', {name: /^AI\b/})).toBeVisible();
   const noInfoRows = !(await sheet.getByText(infoLabel, {exact: true}).isVisible());
   const accountSlot = () => page.evaluate(() => window.flagOff.slots['cloud:production']);
   const before = await accountSlot();

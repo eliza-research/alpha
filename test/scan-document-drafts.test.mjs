@@ -9,7 +9,7 @@ const stubs={
  '../runtime/browser-note-documents':'export class BrowserNoteDocuments{}',
  '../platform-plugins':'export const registerPlugin=()=>({exportPdf:async()=>{throw Error("not used");}});',
  '../daily':'export const DailyApps={};','./local-ocr':'export const recognizeLocalText=async()=>({lines:[]});','./scan-page-camera':'export const captureScanPage=async()=>undefined;',
- './scan-correction-review':'export const reviewScanCorrection=async()=>undefined;','../browser/file-picker':'export const inputFiles=async()=>[],runFilePicker=async()=>[];','./files-index':'export const filesIndex={record(){}};',
+ './scan-correction-review':'export const reviewScanCorrection=async()=>undefined;','../browser/file-picker':'export const inputFiles=async()=>[],runFilePicker=async()=>[];','./files-index':'export const filesIndex={record(){return [];},open(){return null;}};',
 };
 const bundle=(await build({entryPoints:[path.join(root,'apps/app/src/prototype/scan-document.ts')],bundle:true,platform:'neutral',format:'esm',write:false,plugins:[{name:'stubs',setup(b){
  b.onResolve({filter:/.*/},args=>args.path in stubs||args.path.endsWith('.css')?{path:args.path,namespace:'stub'}:undefined);
@@ -38,22 +38,22 @@ async function open({native,stored,create}){
 
 test('a draft stored before the scan opened offers Resume and Delete, and Delete unblocks autosave',async()=>{
  const s=await open({native:true,stored:true});
- assert.equal(s.group('Saved draft').hidden,false);assert.match(s.group('Saved draft').textContent,/A saved draft exists\./);
+ assert.equal(s.group('Saved draft').hidden,false);assert.match(s.group('Saved draft').textContent,/^Draft/);
  assert.match(s.status(),/already exists/,'the first page could not replace the stored draft');assert.equal(s.store.get().revision,'r1');
- s.button('Delete the saved draft').click();await s.approve('Delete draft');
- assert.equal(s.store.get(),undefined);assert.equal(s.group('Saved draft').hidden,true);assert.equal(s.status(),'Saved draft deleted.');
- s.button('Save document draft').click();await settle();assert.equal(s.store.get().revision,'r2','Save draft is no longer blocked');assert.match(s.status(),/Resume it from Draft options\./);
+ s.button('Delete draft').click();await s.approve('Delete draft');
+ assert.equal(s.store.get(),undefined);assert.equal(s.group('Saved draft').hidden,true);assert.equal(s.status(),'Draft deleted');
+ s.button('Save document draft').click();await settle();assert.equal(s.store.get().revision,'r2','Save draft is no longer blocked');assert.equal(s.status(),'Draft saved');
 });
 test('Resume loads the stored draft and the notice goes away',async()=>{
  const s=await open({native:true,stored:true});
- s.button('Resume the saved draft').click();await s.approve('Load draft');
- assert.equal(s.status(),'Saved document draft loaded.');assert.equal(s.group('Saved draft').hidden,true);
+ s.button('Resume').click();await s.approve('Load draft');
+ assert.equal(s.status(),'Draft loaded');assert.equal(s.group('Saved draft').hidden,true);
 });
 test('Close on native with autosaved pages asks before the draft is discarded',async()=>{
  const s=await open({native:true});
  assert.equal(s.store.get().revision,'r1','the first page was autosaved');assert.equal(s.group('Saved draft').hidden,true,'its own draft is not offered as a stored one');
  s.button('Close document').click();await settle();
- assert.ok(s.dialog(),'the document stays open while asking');assert.equal(s.group('Close document').hidden,false);assert.match(s.group('Close document').textContent,/Keep these pages as a draft\?/);
+ assert.ok(s.dialog(),'the document stays open while asking');assert.equal(s.group('Close document').hidden,false);assert.match(s.group('Close document').textContent,/Keep draft\?/);
  s.window.dispatchEvent(new s.window.Event('alpha-back',{cancelable:true}));await settle();
  assert.equal(s.group('Close document').hidden,true,'Back dismisses the question');assert.ok(s.dialog());
  s.window.dispatchEvent(new s.window.Event('alpha-back',{cancelable:true}));await settle();assert.equal(s.group('Close document').hidden,false,'Back asks too');

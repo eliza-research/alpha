@@ -33,8 +33,8 @@ export type TelephonyPorts = {
   searchContacts(query: string, limit: number): Promise<{id: string; displayName: string; phoneNumbers: string[]}[]>;
   placeCall(number: string): Promise<{status: 'placed' | 'emergency-handoff' | 'busy' | 'unavailable' | 'failed'}>;
   getContact(id: string): Promise<ContactRecord>;
-  saveContact(draft: ContactDraft, target?: {id: string; version: string}): Promise<{status: 'saved' | 'stale' | 'not-found' | 'failed'}>;
-  removeContact(id: string, version: string): Promise<{status: 'deleted' | 'stale' | 'not-found' | 'failed'}>;
+  saveContact(draft: ContactDraft, target?: {id: string; version: string}): Promise<{status: 'saved' | 'stale' | 'not-found' | 'failed' | 'unknown'}>;
+  removeContact(id: string, version: string): Promise<{status: 'deleted' | 'stale' | 'not-found' | 'failed' | 'unknown'}>;
   /** The native reviewed send of one SMS under `operationId`; a repeated id never sends twice. */
   sendSms(number: string, body: string, operationId: string, signal: AbortSignal): Promise<SmsComposeResult['status']>;
   /**
@@ -74,8 +74,8 @@ async function call(operation: PhoneCallOperation, ports: TelephonyPorts, signal
     number = options[choice].number;
   }
   ports.current();
-  try { return {kind: 'phone-call', status: (await ports.placeCall(number)).status, contact}; }
-  catch { return {kind: 'phone-call', status: 'failed', contact}; }
+  // A lost native reply may follow an accepted call; the coordinator keeps that outcome unknown.
+  return {kind: 'phone-call', status: (await ports.placeCall(number)).status, contact};
 }
 
 async function compose(operation: SmsComposeOperation, operationId: string, ports: TelephonyPorts, signal: AbortSignal): Promise<SmsComposeResult> {
@@ -113,12 +113,14 @@ async function records(query: string, ports: TelephonyPorts): Promise<ContactRec
 }
 async function write(operation: ContactWriteOperation, ports: TelephonyPorts, signal: AbortSignal): Promise<ContactWriteResult> {
   const result = (status: ContactWriteResult['status']): ContactWriteResult => ({kind: 'contact-write', status});
+  let dispatched=false;
   try {
     if (operation.type === 'contact_create') {
       // The approval the owner already gave showed every field of the new contact.
+      dispatched=true;
       const saved = await ports.saveContact({displayName: operation.contact.displayName,
         phoneNumbers: operation.contact.phoneNumbers.map(number => ({number, type: 'mobile'})), emailAddresses: operation.contact.emailAddresses.map(address => ({address, type: 'home'}))});
-      return result(saved.status === 'saved' ? 'saved' : 'failed');
+      return result(saved.status === 'saved' ? 'saved' : saved.status === 'unknown' ? 'unknown' : 'failed');
     }
     const found = await records(operation.query, ports);
     ports.current();
@@ -129,15 +131,17 @@ async function write(operation: ContactWriteOperation, ports: TelephonyPorts, si
       if (choice === null || !options[choice]) return result('cancelled');
       ports.current();
       // The write names the version the owner was shown; a contact that changed since is stale.
+      dispatched=true;
       return result((await ports.saveContact(options[choice].after, {id: options[choice].before.id, version: options[choice].before.version})).status);
     }
     const choice = await ports.ask({kind: 'contact-delete', options: found}, signal);
     if (choice === null || !found[choice]) return result('cancelled');
     ports.current();
+    dispatched=true;
     return result((await ports.removeContact(found[choice].id, found[choice].version)).status);
   } catch (error) {
     if (signal.aborted) throw error;
-    return result('unavailable');
+    return result(dispatched?'unknown':'unavailable');
   }
 }
 

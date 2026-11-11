@@ -78,6 +78,13 @@ module BrowserDownloads {
     s' = { ...s, phase: "cancelled", cancelled: true, entry: false,
       persisted: false, pendingFile: false, cookieSent: false }
   }
+  /// Removing a signed-in entry stops its fetch at the next check. When the copy has already
+  /// finished, the saved file stays in Downloads with no entry.
+  action cancelAfterCopy = all {
+    s.kind == "signed", s.phase == "publishing", s.reviewed, not(s.cancelled),
+    s' = { ...s, phase: "cancelled", cancelled: true, entry: false, persisted: false,
+      pendingFile: false, published: true, cookieSent: false }
+  }
   action closeTab = s' = { ...s, tabOpen: false,
     entry: s.entry and not(s.privateTab), persisted: s.persisted and not(s.privateTab),
     phase: if (s.phase.in(Set("review", "capturing")) or
@@ -105,7 +112,7 @@ module BrowserDownloads {
     request("public"), request("signed"), request("blob"), request("data"),
     chunk(1, s.nextChunk), chunk(0, s.nextChunk), chunk(1, 3), captureDone,
     approve, requestHop, redirect(1), redirect(2), response, publish, osReceipt(true),
-    osReceipt(false), navigate, cancel, closeTab, clearHistory, failedCopy, networkFailure, restart, s' = s
+    osReceipt(false), navigate, cancel, cancelAfterCopy, closeTab, clearHistory, failedCopy, networkFailure, restart, s' = s
   }
   val CookieOrigin = s.cookieSent implies s.targetOrigin == s.sourceOrigin and s.kind == "signed" and not(s.cancelled)
   val PrivateListNeverPersisted = s.privateTab implies not(s.persisted)
@@ -113,8 +120,14 @@ module BrowserDownloads {
   val CompletedFromEvidence = s.completed implies s.published and not(s.pendingFile)
   val CapturedBytesOrdered = s.nextChunk == s.chunks and s.chunks <= 2
   val CancelledCaptureCleaned = s.phase == "cancelled" implies not(s.pendingFile)
+  val CancelledLeavesNoEntry = s.cancelled implies not(s.entry or s.persisted)
+  val OrphanFileWasReviewed = (s.published and not(s.completed)) implies
+    (s.reviewed and s.kind == "signed" and s.cancelled)
   val TypeOK = s.phase.in(Set("idle", "capturing", "review", "queued", "fetching", "publishing", "completed", "failed", "cancelled")) and s.kind.in(Set("none", "public", "signed", "blob", "data")) and s.redirects.in(0.to(2)) and s.navigation.in(0.to(2))
-  val safety = TypeOK and CookieOrigin and PrivateListNeverPersisted and ReviewedPublication and CompletedFromEvidence and CapturedBytesOrdered and CancelledCaptureCleaned
+  val safety = TypeOK and CookieOrigin and PrivateListNeverPersisted and ReviewedPublication and CompletedFromEvidence and CapturedBytesOrdered and CancelledCaptureCleaned and CancelledLeavesNoEntry and OrphanFileWasReviewed
+  val CancelledButPublishedWitness = s.cancelled and s.published
+  val PrivateFetchStoppedWitness = s.privateTab and s.cancelled and not(s.tabOpen) and not(s.published)
+  val CrossOriginHopWitness = s.phase == "fetching" and s.targetOrigin != s.sourceOrigin and s.cookie
   run redirectCookieTest = initFor(false).then(request("signed")).then(approve).then(requestHop)
     .expect(s.cookieSent).then(redirect(2)).then(requestHop).expect(not(s.cookieSent))
     .then(response).then(publish).expect(s.completed and s.persisted and safety)
@@ -130,4 +143,10 @@ module BrowserDownloads {
     .then(approve).then(publish).expect(s.published and s.chunks == 0 and safety)
   run publicTransferOutlivesTabTest = initFor(false).then(request("public")).then(approve)
     .then(closeTab).then(osReceipt(true)).expect(s.completed and safety)
+  /// A cancel that lands after the last byte was copied leaves the file and removes the entry.
+  run cancelAfterCopyTest = initFor(false).then(request("signed")).then(approve).then(requestHop)
+    .then(response).then(cancelAfterCopy)
+    .expect(s.published and not(s.entry or s.persisted or s.completed or s.cookieSent) and safety)
+  run cancelBeforeCopyTest = initFor(false).then(request("signed")).then(approve).then(requestHop)
+    .then(cancel).expect(not(s.published or s.entry or s.pendingFile) and safety)
 }

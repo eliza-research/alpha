@@ -14,13 +14,13 @@ export async function executeNotesQuery(store:Store,operation:NativeNotesQueryOp
  current();await store.assertCurrent();current();const raw=store.raw;
  const stable=()=>{signal.throwIfAborted();current();if(store.raw!==raw)throw Error('Notes changed. Review the query again.');};
  const selection=queryLocalNotes(store.list,operation.query);
- if(!selection.candidates.length){await store.assertCurrent();stable();return {status:'succeeded' as const,summary:'No saved note matches this request.',notesResult:validateNotesQueryResult(operation,{version:1,kind:'notes_query',query:operation.query,basis:'no-match'})};}
+ if(!selection.candidates.length){await store.assertCurrent();stable();return {status:'succeeded' as const,summary:'No match',notesResult:validateNotesQueryResult(operation,{version:1,kind:'notes_query',query:operation.query,basis:'no-match'})};}
  const selected=await choose(selection.candidates,selection.explanation,signal,stable);
- if(!selected)return {status:'failed' as const,summary:'Notes sharing cancelled. Nothing was shared.'};
+ if(!selected)return {status:'failed' as const,summary:'Cancelled'};
  const chosen=selection.candidates.find(note=>note.id===selected);if(!chosen)throw Error('The chosen note did not match this query');if(!shareable(chosen))throw Error('This note has no text to share.');
  stable();await store.assertCurrent();stable();const target=await store.target(selected);stable();
  const record=await store.execute({type:'notes_read_selected',target},operationId,signal,stable);await store.assertCurrent();stable();
- return {status:'succeeded' as const,summary:selection.basis==='owner-choice-uncertain'?'Shared the note you chose. Its latest status could not be verified.':'Shared the note you confirmed.',notesResult:validateNotesQueryResult(operation,{version:1,kind:'notes_query',query:operation.query,basis:selection.basis,target,record})};
+ return {status:'succeeded' as const,summary:selection.basis==='owner-choice-uncertain'?'Shared (unverified)':'Shared',notesResult:validateNotesQueryResult(operation,{version:1,kind:'notes_query',query:operation.query,basis:selection.basis,target,record})};
 }
 const fold=(value:string)=>value.normalize('NFKC').toLowerCase();
 const instant=(note:NoteRecord)=>{const value=note.modifiedAt??note.updatedAt??note.createdAt;const at=typeof value==='number'?value:typeof value==='string'?Date.parse(value):NaN;return Number.isFinite(at)?at:-1;};
@@ -40,25 +40,25 @@ type ReviewResult={status:'succeeded'|'failed'|'unknown';summary:string;foregrou
 export async function executeNotesSearch(store:Store,operation:NotesSearchOperation,operationId:string,signal:AbortSignal,current:()=>void,choose=reviewNotesQuery,reviewTitles=reviewNoteTitles):Promise<ReviewResult>{
  current();await store.assertCurrent();current();const raw=store.raw;
  const stable=()=>{signal.throwIfAborted();current();if(store.raw!==raw)throw Error('Notes changed. Review the search again.');};
- const noMatch=()=>({status:'succeeded' as const,summary:'No saved note matches this request.',foregroundResult:validateForegroundReviewResult(operation,{version:1,kind:'notes_search',query:operation.query,basis:'no-match'})});
+ const noMatch=()=>({status:'succeeded' as const,summary:'No match',foregroundResult:validateForegroundReviewResult(operation,{version:1,kind:'notes_search',query:operation.query,basis:'no-match'})});
  if(operation.query.kind==='titles'){
   const ordered=[...store.list].sort((a,b)=>instant(b)-instant(a)||a.id.localeCompare(b.id));
   // The owner reviews exactly the bounded labels the shared contract accepts (at most 500 characters).
   const titles=ordered.slice(0,operation.query.limit).map(note=>String(note.title??'').replaceAll('\0','').slice(0,500)||'Untitled note');
   if(!titles.length){await store.assertCurrent();stable();return noMatch();}
   const approved=await reviewTitles(titles,ordered.length>titles.length,signal,stable);
-  if(!approved)return {status:'failed',summary:'Notes listing cancelled. Nothing was shared.'};
+  if(!approved)return {status:'failed',summary:'Cancelled'};
   stable();await store.assertCurrent();stable();
-  return {status:'succeeded',summary:`Shared ${titles.length} note title${titles.length===1?'':'s'} you reviewed.`,foregroundResult:validateForegroundReviewResult(operation,{version:1,kind:'notes_search',query:operation.query,basis:'titles-reviewed',titles,truncated:ordered.length>titles.length})};
+  return {status:'succeeded',summary:`Shared ${titles.length} title${titles.length===1?'':'s'}`,foregroundResult:validateForegroundReviewResult(operation,{version:1,kind:'notes_search',query:operation.query,basis:'titles-reviewed',titles,truncated:ordered.length>titles.length})};
  }
  const candidates=matchNotesContent(store.list,operation.query.text);
  if(!candidates.length){await store.assertCurrent();stable();return noMatch();}
- const selected=await choose(candidates,candidates.length>1?'Several notes match. Choose the one to share.':'Review the matching note before sharing it.',signal,stable);
- if(!selected)return {status:'failed',summary:'Notes sharing cancelled. Nothing was shared.'};
+ const selected=await choose(candidates,candidates.length>1?'Choose one':'Review note',signal,stable);
+ if(!selected)return {status:'failed',summary:'Cancelled'};
  if(!candidates.some(note=>note.id===selected))throw Error('The chosen note did not match this search');
  stable();await store.assertCurrent();stable();const target=await store.target(selected);stable();
  const record=await store.execute({type:'notes_read_selected',target},operationId,signal,stable);await store.assertCurrent();stable();
- return {status:'succeeded',summary:'Shared the note you confirmed.',foregroundResult:validateForegroundReviewResult(operation,{version:1,kind:'notes_search',query:operation.query,basis:'content-match',target,record})};
+ return {status:'succeeded',summary:'Shared',foregroundResult:validateForegroundReviewResult(operation,{version:1,kind:'notes_search',query:operation.query,basis:'content-match',target,record})};
 }
 /** Applies one exact, owner-approved notes_update or notes_delete. The host supplies the effect (for
  * example moving a deleted note to Trash) under the same operation identity. */
@@ -71,12 +71,12 @@ export async function executeNamedNotes(store:Store,operation:Extract<NamedTarge
  const candidates=matchNotesName(store.list,operation.name);
  if(!candidates.length){await store.assertCurrent();stable();return {status:'succeeded',summary:`No saved note matches “${operation.name}”. Nothing was changed.`,foregroundResult:validateForegroundReviewResult(operation,{version:1,kind:operation.type,action:operation.action,name:operation.name,basis:'no-match'})};}
  const selected=await choose(candidates,operation,signal,stable);
- if(!selected)return {status:'failed',summary:'Cancelled. Nothing was changed.'};
+ if(!selected)return {status:'failed',summary:'Cancelled'};
  if(!candidates.some(note=>note.id===selected))throw Error('The chosen note did not match this name');
  stable();await store.assertCurrent();stable();const target=await store.target(selected);stable();
  const exact=resolveNamedTarget(operation,target,namedTargetValidators);
  if(exact.type!=='notes_update'&&exact.type!=='notes_delete')throw Error('Unexpected exact Notes operation');
  // The effect changes the store; from here only cancellation and the host's context bind it.
  const record=await apply(exact,operationId,signal,()=>{signal.throwIfAborted();current();});
- return {status:'succeeded',summary:exact.type==='notes_delete'?'Moved the note you chose to Trash.':'Updated the note you chose.',foregroundResult:validateForegroundReviewResult(operation,{version:1,kind:operation.type,action:operation.action,name:operation.name,basis:'owner-chosen',operation:exact,record})};
+ return {status:'succeeded',summary:exact.type==='notes_delete'?'Moved to Trash':'Updated',foregroundResult:validateForegroundReviewResult(operation,{version:1,kind:operation.type,action:operation.action,name:operation.name,basis:'owner-chosen',operation:exact,record})};
 }

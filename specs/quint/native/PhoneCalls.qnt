@@ -82,6 +82,15 @@ module PhoneCalls {
         call: "dialing", direction: "out", ...s}
       else {proposal: "failed", approvals: s.approvals + 1, ...s}
   }
+  // Telecom may accept the call before the bridge reply is lost. The approval is consumed;
+  // unknown is not a refusal or authorization to place the same call again.
+  action approveUnknown(placed: bool): bool = all {
+    s.ready, s.unlocked, s.proposal == "proposed", s.call == "none", not(s.emergency),
+    s.target == "number" or s.proposalBase == s.numberRevision,
+    s' = {proposal: "unknown", approvals: s.approvals + 1,
+      agentPlaced: s.agentPlaced + (if (placed) 1 else 0),
+      call: if (placed) "dialing" else "none", direction: if (placed) "out" else "none", ...s}
+  }
   action repeat = s' = s
   action step = {
     nondet flag = Set(false, true).oneOf()
@@ -89,7 +98,7 @@ module PhoneCalls {
     nondet matches = Set(0, 1, 2).oneOf()
     any { becomeReady, loseReady, lock, unlock, ownerDial, remoteAnswers, incoming, answer, decline, ringStops,
       hold, unhold, toggleMute, toggleSpeaker, toggleKeypad, hangUp, remoteEnds, viewRecents,
-      agentAsk(target, flag), resolved(matches), choose, declineProposal, numberChanges, approve(flag), repeat }
+      agentAsk(target, flag), resolved(matches), choose, declineProposal, numberChanges, approve(flag), approveUnknown(flag), repeat }
   }
   val AgentCallNeedsApproval = s.agentPlaced <= s.approvals
   val AmbiguousNeverPlaces = s.proposal.in(Set("choosing", "resolving", "unresolved")) implies s.matches != 1
@@ -132,4 +141,8 @@ module PhoneCalls {
     .then(check(safety and s.call == "active"))
   run failedPlacementIsNotACallTest = init.then(becomeReady).then(agentAsk("number", false)).then(approve(false))
     .then(check(safety and s.proposal == "failed" and s.call == "none" and s.agentPlaced == 0))
+  run placedCallWithLostReplyTest = init.then(becomeReady).then(agentAsk("number", false)).then(approveUnknown(true))
+    .then(repeat).then(check(safety and s.proposal == "unknown" and s.agentPlaced == 1 and s.approvals == 1))
+  run unplacedCallWithLostReplyTest = init.then(becomeReady).then(agentAsk("number", false)).then(approveUnknown(false))
+    .then(repeat).then(check(safety and s.proposal == "unknown" and s.agentPlaced == 0 and s.call == "none"))
 }

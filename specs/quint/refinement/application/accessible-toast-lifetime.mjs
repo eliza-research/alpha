@@ -164,6 +164,16 @@ globalThis.api = {refresh: refreshAccessibilityTimeout, start: startAccessibilit
     f.show(1, true); f.show(2, true); f.show(3, false); f.expire(); f.expire(); f.expire();
   });
 
+  await run('held_undo_offer_queues_passive_notice', async f => {
+    f.show(1, true); f.hold(); f.show(2, false); f.resume(); f.expire(); f.expire();
+  });
+  await run('held_undo_offer_keeps_next_undo', async f => {
+    f.show(1, true); f.hold(); f.show(2, true); f.resume(); f.expire(); f.expire();
+  });
+  await run('scaled_passive_notice_waits_behind_original_undo', async f => {
+    f.show(1, true); f.request(1); await f.reply(1, 30000, 6); f.show(3, false); f.expire(); f.expire();
+  });
+
   return checkTraces(boundInputs({model, modelPath: 'specs/quint/application/AccessibleToastLifetime.qnt',
     sources, traces, scope: 'bounded-component',
     assumptions: ['Bounded reply values and three unique read identities per trace.',

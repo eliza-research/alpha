@@ -52,6 +52,10 @@ module DraftDispatch {
   val HeldTextNotAutomaticallyOffered = (s.holding and s.heldBinding == s.active and s.automaticRestore) implies s.draft != "A"
   val UnsettledNeverAutomaticallyOffered = s.unsettled implies not(s.holding) and s.draft != "A"
   val safety = (s.transportCalled implies not(s.paintPending)) and BoundQueue and OneHeldSend and HeldTextNotAutomaticallyOffered and UnsettledNeverAutomaticallyOffered
+
+  val HeldAcrossConversationWitness = s.holding and s.heldBinding != s.active
+  val HandedToTransportWitness = s.holding and s.transportCalled
+  val UnsettledSendWitness = s.unsettled
   run deferredComposerPaintBeforeDispatchTest = init.then(hold).then(queueComposerPaint).then(tryDispatch)
     .expect(not(s.transportCalled)).then(commitComposerPaint).then(tryDispatch).then(release).then(flush)
     .expect(s.draft == "A" and s.savedOne == "A" and safety)

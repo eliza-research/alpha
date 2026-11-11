@@ -47,7 +47,8 @@ export const cases: Record<string, PermissionCase> = {
 		method: "directDocumentCameraRetakeDraftAndPdf",
 		gate: "cameraDocument",
 		value: "1",
-		permissions: [["grant", "CAMERA"]],
+		// The disposable user's test observer compares real Photos rows.
+		permissions: [["grant", "CAMERA"], ["grant", "READ_MEDIA_IMAGES"]],
 	},
 	settings: {
 		testClass: "SettingsNativeInstrumentedTest",

@@ -126,13 +126,13 @@ export async function checkAccountSheet(extraSources=[]){
      await page.getByRole('button',{name:'Account',exact:true}).filter({visible:true}).click();await expect(panel(page)).toBeVisible();await mark('Actual Settings opens Account',{name:'show'});};
     await show();
     if(kind==='navigation'||kind==='direct-mode-sign-out'){
-     await panel(page).getByRole('button',{name:/^AI connection/}).click();await expect(page.getByRole('heading',{name:'AI connection',exact:true})).toBeVisible();
+     await panel(page).getByRole('button',{name:/^AI\s+(?:Cloud|Own keys)$/}).click();await expect(page.getByRole('heading',{name:'AI connection',exact:true})).toBeVisible();
      await mark('Actual Account provider subnavigation',{name:'provider'});
      if(kind==='navigation'){
       await panel(page).getByRole('button',{name:'Back to Account',exact:true}).click();await mark('Actual Back restores Account',{name:'back'});
       await page.keyboard.press('Escape');await expect(panel(page)).toHaveCount(0);await mark('Actual Escape dismisses Account',{name:'close'});
      }else{
-      await panel(page).getByRole('button',{name:'Own API keys',exact:true}).click();await expect(panel(page)).toHaveCount(0);
+      await panel(page).getByRole('button',{name:'Own keys',exact:true}).click();await expect(panel(page)).toHaveCount(0);
       await expect.poll(()=>page.evaluate(()=>window.accountController.getSnapshot().residentInference)).toBe('direct');
       await mark('Actual reviewed provider selection closes the sheet',[{name:'switchMode'},{name:'close'}]);await show();
      }

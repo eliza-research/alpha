@@ -28,9 +28,9 @@ test('connected browser host preserves its privacy contract and resident memory 
  await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
  await page.getByRole('button',{name:'General',exact:true}).click();await page.getByRole('button',{name:'Developer',exact:true}).click();
  await expect(page.getByRole('button',{name:'Export diagnostics',exact:true})).toBeVisible();
- await expect(page.getByText('Usage not reported by agent',{exact:true})).toBeVisible();
+ await expect(page.getByText('Not reported',{exact:true})).toBeVisible();
  await page.evaluate(async()=>{await(await import('/src/runtime/connection-ui.tsx')).connectionController.offline();});
  // P-43: the development host stays resident; offline() returns to that agent.
  await expect.poll(()=>page.evaluate(async()=>{const c=(await import('/src/runtime/connection-ui.tsx')).connectionController;return {kind:c.getSnapshot().kind,connected:!!c.getSnapshot().session};})).toEqual({kind:'resident',connected:true});
- await expect(page.getByText('Agent memory',{exact:true}).locator('..').getByText('Usage not reported by agent',{exact:true})).toBeVisible();
+ await expect(page.getByText('Agent memory',{exact:true}).locator('..').getByText('Not reported',{exact:true})).toBeVisible();
 });

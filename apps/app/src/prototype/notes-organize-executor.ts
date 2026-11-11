@@ -39,57 +39,57 @@ export async function executeNotesOrganize(host:NotesOrganizeHost,operation:Note
   let folder:string|undefined;
   if(operation.folder!==undefined){
    const found=findNotesFolderByName(await host.readFolders(),operation.folder);current();
-   if(!found)return {status:'failed',summary:`No folder named “${operation.folder}”. The list was not filtered.`};
+   if(!found)return {status:'failed',summary:`No folder “${operation.folder}”`};
    folder=found.id;
   }
   host.showFilter({...(operation.text!==undefined?{text:operation.text}:{}),...(operation.kind!==undefined?{kind:operation.kind}:{}),...(folder!==undefined?{folder}:{})});
-  return {status:'succeeded',summary:'Filtered the Notes list on this phone. No note content was shared.'};
+  return {status:'succeeded',summary:'Filtered'};
  }
- if(!host.ready())return {status:'failed',summary:'Notes storage is unavailable. Nothing was changed.'};
+ if(!host.ready())return {status:'failed',summary:'Notes unavailable'};
  if(operation.type==='notes_record'){
   if(operation.action==='start'){
    const started=await host.recordStart().catch(():NotesRecordStart=>'failed');
-   return started==='started'?{status:'succeeded',summary:'Recording a voice note in Notes.'}:started==='already'?{status:'succeeded',summary:'A voice note is already recording.'}:{status:'failed',summary:'The microphone did not start. Nothing was recorded.'};
+   return started==='started'?{status:'succeeded',summary:'Recording'}:started==='already'?{status:'succeeded',summary:'A voice note is already recording.'}:{status:'failed',summary:'Mic failed'};
   }
   const stopped=await host.recordStop().catch(():NotesRecordStop=>'failed');
-  if(stopped==='retained')return {status:'succeeded',summary:'Recording stopped. Open Notes to transcribe it.'};
-  return stopped==='saved'?{status:'succeeded',summary:'Saved the voice note.'}:stopped==='none'?{status:'failed',summary:'No voice note is recording.'}:{status:'unknown',summary:'The voice note could not be saved. The recording is kept in Notes.'};
+  if(stopped==='retained')return {status:'succeeded',summary:'Recording saved'};
+  return stopped==='saved'?{status:'succeeded',summary:'Saved the voice note.'}:stopped==='none'?{status:'failed',summary:'No voice note is recording.'}:{status:'unknown',summary:'Not saved'};
  }
  if(operation.type==='notes_folder_create'){
   const before=await host.readFolders();current();
-  if(findNotesFolderByName(before,operation.name))return {status:'succeeded',summary:`The folder “${operation.name}” already exists.`};
+  if(findNotesFolderByName(before,operation.name))return {status:'succeeded',summary:`“${operation.name}” exists`};
   // The folder slot is compare-and-exchange: a lost race writes nothing.
   const doc=await host.editFolders(existing=>addNotesFolder(existing,{id:newNotesFolderId(),name:operation.name,createdAt:Date.now()})).catch(()=>null);
-  if(!doc)return {status:'failed',summary:'The folder could not be saved. Nothing was created.'};
+  if(!doc)return {status:'failed',summary:'Not created'};
   host.showFolders(doc);
-  return findNotesFolderByName(doc,operation.name)?{status:'succeeded',summary:`Created the folder “${operation.name}”.`}:{status:'unknown',summary:'The folder could not be confirmed. Check Notes before asking again.'};
+  return findNotesFolderByName(doc,operation.name)?{status:'succeeded',summary:`Created “${operation.name}”`}:{status:'unknown',summary:'Unconfirmed'};
  }
  if(operation.type==='notes_move'){
   let folderId:string|null=null;
   if(operation.folder!==null){
    const found=findNotesFolderByName(await host.readFolders(),operation.folder);current();
-   if(!found)return {status:'failed',summary:`No folder named “${operation.folder}”. Nothing was moved.`};
+   if(!found)return {status:'failed',summary:`No folder “${operation.folder}”`};
    folderId=found.id;
   }
   const target=await host.target(operation.target.noteId).catch(()=>null);current();
-  if(!target||JSON.stringify(target)!==JSON.stringify(operation.target))return {status:'failed',summary:'This note changed after review. Nothing was moved.'};
+  if(!target||JSON.stringify(target)!==JSON.stringify(operation.target))return {status:'failed',summary:'Note changed'};
   const list=host.list(),index=list.findIndex(note=>note.id===operation.target.noteId);
-  if(index<0)return {status:'failed',summary:'This note is no longer in Notes. Nothing was moved.'};
+  if(index<0)return {status:'failed',summary:'Note gone'};
   const moved=withNoteFolder(list[index],folderId);
   const where=operation.folder===null?'no folder':`“${operation.folder}”`;
   if(moved===list[index])return {status:'succeeded',summary:`The note is already in ${where}.`};
   const next=[...list];next[index]=moved;
-  return await host.commitList(next).catch(()=>false)?{status:'succeeded',summary:`Moved the note to ${where}.`}:{status:'unknown',summary:'The move could not be confirmed. Check Notes before asking again.'};
+  return await host.commitList(next).catch(()=>false)?{status:'succeeded',summary:`Moved the note to ${where}.`}:{status:'unknown',summary:'Unconfirmed'};
  }
  const outcome=await host.restore(operation.noteId).catch(():NotesRestoreOutcome=>'failed');
  const summaries:Record<NotesRestoreOutcome,NotesOrganizeReceipt>={
-  restored:{status:'succeeded',summary:'Restored the note from Recently deleted.'},
+  restored:{status:'succeeded',summary:'Restored'},
   live:{status:'succeeded',summary:'The note is already in Notes.'},
-  gone:{status:'failed',summary:'The note is no longer in Recently deleted.'},
+  gone:{status:'failed',summary:'Not in trash'},
   missing:{status:'failed',summary:'The note is not in Recently deleted.'},
-  expired:{status:'failed',summary:'The note was deleted permanently and cannot be restored.'},
-  busy:{status:'failed',summary:'Recently deleted is busy. Nothing was restored.'},
-  failed:{status:'unknown',summary:'The restore could not be confirmed. Check Notes before asking again.'},
+  expired:{status:'failed',summary:'Permanently deleted'},
+  busy:{status:'failed',summary:'Trash busy'},
+  failed:{status:'unknown',summary:'Unconfirmed'},
  };
  return summaries[outcome];
 }

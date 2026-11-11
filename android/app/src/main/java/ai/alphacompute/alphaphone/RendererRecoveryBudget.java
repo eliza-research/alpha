@@ -11,7 +11,9 @@ import java.util.function.Predicate;
  * broken renderer never traps the user in Alpha as HOME. A renderer Android killed to reclaim memory
  * while the activity was in the background is not a crash: it is not counted, and the activity is
  * rebuilt when it is next started, so memory pressure cannot turn into a rebuild loop. A real crash
- * in the background is counted but also rebuilt on the next start. No Android types: host-tested
+ * in the background is counted but also rebuilt on the next start. The app's WebViews share one
+ * renderer process, so its death reaches every live activity (the launcher surface and the assistant
+ * surface): the first report counts it and the others spend nothing. No Android types: host-tested
  * by javac.
  */
 final class RendererRecoveryBudget {
@@ -25,6 +27,19 @@ final class RendererRecoveryBudget {
  private boolean started;
  private long windowStart;
  private int lossesInWindow;
+ private long deaths;
+ /** Renderer deaths counted so far. An activity reads this before it creates its WebView. */
+ synchronized long deaths(){return deaths;}
+ /**
+  * One loss as seen by a WebView created when {@link #deaths()} read createdAt. The first report of
+  * a death counts it. A WebView that predates a counted death is reporting that same death: it gets
+  * the decision for the current count from its own home and visible flags, and spends nothing.
+  */
+ synchronized Action onLoss(long now,boolean home,boolean crashed,boolean visible,long createdAt){
+  if(createdAt==deaths)return onLoss(now,home,crashed,visible);
+  if(!crashed&&!visible)return Action.REBUILD_ON_START;
+  return decision(home,visible);
+ }
  /**
   * Counts one renderer loss at elapsed-realtime now and says how the activity recovers. home: Alpha
   * holds HOME now; crashed: RenderProcessGoneDetail.didCrash(); visible: the activity is started.
@@ -33,6 +48,10 @@ final class RendererRecoveryBudget {
   if(!crashed&&!visible)return Action.REBUILD_ON_START;
   if(!started||now-windowStart>WINDOW_MS||now<windowStart){started=true;windowStart=now;lossesInWindow=0;}
   if(lossesInWindow<BUDGET+1)lossesInWindow++;
+  deaths++;
+  return decision(home,visible);
+ }
+ private Action decision(boolean home,boolean visible){
   if(lossesInWindow>BUDGET&&home)return Action.SHOW_ESCAPE;
   if(!visible)return Action.REBUILD_ON_START;
   return lossesInWindow<=BUDGET?Action.RECREATE_NOW:Action.RECREATE_AFTER_BACKOFF;

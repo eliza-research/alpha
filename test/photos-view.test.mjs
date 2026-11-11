@@ -86,7 +86,7 @@ test('the Photos view carries no search box, scope narration or 20-item cap',()=
  for(const slop of ['Captured on this device','Permitted library','up to 240','so far','Only photos and videos saved by Alpha','Choose photo access','Saves a new copy','original unchanged ·','Open to preview, or select','Select up to 20','Select first 20','Device library'])assert.equal(adapter.includes(slop)||photos.includes(slop),false,slop);
  assert.doesNotMatch(photos,/aria-label="Search photos"|photos\.searching|photos\.onQ/);
  assert.doesNotMatch(adapter,/slice\(-240\)|deviceLibrary\.tile\(/);
- assert.match(photos,/Allow access to all photos/);assert.match(photos,/Save copy/);assert.match(photos,/Add to album/);
+ assert.match(photos,/Allow all photos/);assert.match(photos,/Save copy/);assert.match(photos,/Add to album/);
 });
 
 test('virtualised grid: only on-screen rows render; spacers keep the total height and sections keep their headers',()=>{

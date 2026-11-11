@@ -55,13 +55,13 @@ test('Drafts, Archive and Trash load their lists; a Gmail draft opens for editin
  expect((await fixture(page)).searches.slice(-2)).toEqual(['in:trash','in:archive']);
  // A reply draft stays in Gmail: its thread headers cannot be reproduced exactly here.
  await page.getByRole('button',{name:/Re: Thread reply/}).click();
- await expect(page.getByText('Edit this draft in Gmail.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Edit in Gmail',{exact:true})).toBeVisible();
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:/Quarterly plan/}).click();
  await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Quarterly plan');
  await expect(page.getByRole('textbox',{name:'Message',exact:true})).toHaveValue('Draft text');
  await page.getByRole('textbox',{name:'Message',exact:true}).fill('Edited draft text');
- await page.getByRole('button',{name:'Review save to Gmail drafts',exact:true}).click();
+ await page.getByRole('button',{name:'Review saving to Gmail Drafts',exact:true}).click();
  const review=page.getByRole('dialog',{name:'Review mail operation'});
  await expect(review.getByRole('heading',{name:'Replace Gmail draft'})).toBeVisible();
  await expect(review.getByText('Edited draft text',{exact:true})).toBeVisible();

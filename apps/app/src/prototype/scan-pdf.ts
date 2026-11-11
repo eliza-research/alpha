@@ -2,6 +2,7 @@ import { createScanPdf as createPdf } from '../../../../.eliza/client-features/p
 import type { ScanTextLine } from './scan-text-layer';
 import {registerPlugin} from '../platform-plugins';
 import {filesIndex} from './files-index';
+import {DailyApps} from '../daily';
 const documents=registerPlugin<{exportPdf(input:{title:string;dataBase64:string}):Promise<{status:string;message:string}>}>('AlphaNoteDocuments',{
  web:()=>import('../runtime/browser-note-documents').then(module=>new module.BrowserNoteDocuments()),
 });
@@ -17,10 +18,9 @@ export class ScanPdfExportError extends Error {}
  * shown and retry stays available. Only a failed or unknown export call is
  * uncertain: a document may already exist, so retry stays locked. */
 export function scanPdfFailure(error:unknown):{message:string;retry:boolean}{
- if(error instanceof ScanPdfExportError)return {message:'PDF export unconfirmed. Inspect the destination before trying again.',retry:false};
- if(error instanceof DOMException&&error.name==='AbortError')return {message:'PDF export cancelled. Nothing was saved.',retry:true};
- const reason=error instanceof Error&&error.message.trim()?error.message.trim().slice(0,300):'The PDF could not be prepared.';
- return {message:reason+(/[.!?]$/.test(reason)?'':'.')+' Nothing was saved. Try again.',retry:true};
+ if(error instanceof ScanPdfExportError)return {message:'Export unconfirmed',retry:false};
+ if(error instanceof DOMException&&error.name==='AbortError')return {message:'Cancelled',retry:true};
+ return {message:error instanceof Error&&error.message.trim()?error.message.trim().slice(0,300):'PDF failed',retry:true};
 }
 /** Resolved provider outcomes that wrote nothing confirmed: the user may retry.
  * 'unverified', 'exported' and 'requested' keep retry locked. */
@@ -31,10 +31,12 @@ let systemPickers=0;
 export function systemPickerActive(){return systemPickers>0;}
 export async function duringSystemPicker<T>(task:()=>Promise<T>):Promise<T>{systemPickers++;try{return await task();}finally{systemPickers--;}}
 export function scanPdfRetryable(status:string){return ['cancelled','failed','unavailable','too-large'].includes(status);}
-/** `onRequest` runs just before the export request is made; until then nothing can have been written. */
+/** `onRequest` runs just before the export request is made; until then nothing can have been written.
+ * A confirmed export is listed in Recent. A row it pushes out gives up its picker grant here,
+ * except the open document's: that one is still in use and is released when it closes. */
 export async function exportScanPdf(image:Blob|Blob[],signal:AbortSignal,title:string,textLayers?:ScanTextLine[][],onRequest?:()=>void){
  const bytes=await createScanPdf(image,signal,textLayers);let raw='';for(let index=0;index<bytes.length;index+=16384)raw+=String.fromCharCode(...bytes.subarray(index,index+16384));
  signal.throwIfAborted();onRequest?.();let result:{status:string;message:string};try{result=await duringSystemPicker(()=>documents.exportPdf({title,dataBase64:btoa(raw)}));}catch(error){throw new ScanPdfExportError('PDF export unconfirmed.',{cause:error});}
- if(['exported','requested'].includes(result.status))filesIndex.record({kind:'scan-pdf',name:title.slice(0,200)+'.pdf',mimeType:'application/pdf'});
+ if(['exported','requested'].includes(result.status))for(const evicted of filesIndex.record({kind:'scan-pdf',name:title.slice(0,200)+'.pdf',mimeType:'application/pdf'}))if(evicted!==filesIndex.open())void DailyApps.forgetSelected({selectionId:evicted}).catch(()=>{});
  return result;
 }

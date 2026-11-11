@@ -54,7 +54,7 @@ Full photo access is local permission scope, not bulk Cloud upload authorization
 
 Passkeys, Telegram, Discord and Wallet are outside MVP. The Alpha Compute
 package starts with its own private data on devices with the former
-`ai.elizaresearch.alphaphone` package. No app-data migration, backup or import/export
+Alpha Phone package. No app-data migration, backup or import/export
 workflow is planned. Ordinary Files and attachment operations
 remain. Secure camera, Clock, shade and emergency facilities remain native/system
 surfaces. Always-on listening is an AOSP MVP gate and never implicitly enabled.

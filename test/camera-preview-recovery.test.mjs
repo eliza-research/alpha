@@ -18,7 +18,7 @@ const shared=stripTypeScriptTypes((hostPorts+sessionSource).replace(/^import[^;]
 const focusUI=stripTypeScriptTypes(fs.readFileSync(new URL('../apps/app/src/browser/camera-focus.ts',import.meta.url),'utf8').split('/** Owns')[0].replace(/^export /gm,''));
 const settle=async()=>{for(let i=0;i<16;i++)await Promise.resolve();};
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
-function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt={width:1280,height:720,deviceId:'0',minZoom:0.5,maxZoom:10,hasFlash:true,zoom:1,flash:'off'}}={}){
+function fixture({permission=false,failing=true,navigateAfterPhoto=false,browser=false,receipt={width:1280,height:720,deviceId:'0',minZoom:0.5,maxZoom:10,hasFlash:true,zoom:1,flash:'off'}}={}){
  const env=new JSDOM('<div data-alpha-camera-root data-alpha-layer><button data-alpha-camera="viewfinder"></button></div>',{pretendToBeVisual:true});const timers=new Map();let timerId=0;
  env.window.setTimeout=(fn,ms)=>{timers.set(++timerId,{fn,ms});return timerId;};env.window.clearTimeout=id=>timers.delete(id);
  const calls={starts:0,stops:0,masked:false,captures:[],focus:0,switches:[],recordings:0,list:[],scans:0,questions:[],views:[],modes:[],native:{flash:"on",zoom:0.5}};let failed=failing;
@@ -38,10 +38,10 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
  let view={chat:'hidden',active:true};
  context=vm.createContext({window:env.window,document:env.window.document,console,camera,library,Date:{now:()=>clock.now},Uint8Array,atob,Blob:env.window.Blob,
   mask:enable=>calls.masked=enable,Capacitor:{isPluginAvailable:()=>true},validateCameraCaptureResult:value=>value,systemPickerActive:()=>false,device:{openSettings:async()=>({status:'opened'})},
-  openScanReview:()=>{calls.scans++;return ()=>{};},reviewContentQuestion:input=>{calls.questions.push(input);return ()=>{};},createScanCapture:()=>({keep:async()=>undefined,close(){}}),ScanKeepError:Error,importBrowserPhoto:async()=>({}),browserCamera:{flashAvailable:()=>false},view:()=>view,calls,navigateAfterPhoto});
+  openScanReview:()=>{calls.scans++;return ()=>{};},reviewContentQuestion:input=>{calls.questions.push(input);return ()=>{};},createScanCapture:()=>({keep:async()=>undefined,close(){}}),ScanKeepError:Error,importBrowserPhoto:async()=>({}),browserCamera:{flashAvailable:()=>false},onBrowserPreviewEnded:listener=>{calls.previewEnded=listener;},view:()=>view,calls,navigateAfterPhoto});
  const prelude=`let accessPanel,disposed=false,direction='back',flash=false,duration=0,loaded=true,captures=[],closeQuestion,closeScan,scanRequest,frameQuestion;
   let lens={minZoom:1,maxZoom:1,hasFlash:false,zoom:1,flash:false},zoomRatio=1;let requestedPhoto;
-  const browserMode=false,libraryAvailable=()=>true,normalize=row=>({...row,id:'native-camera-'+row.id}),nativeId=id=>id.replace(/^native-camera-/,''),cancelScan=()=>{};function schedule(){}
+  const browserMode=${browser},libraryAvailable=()=>true,normalize=row=>({...row,id:'native-camera-'+row.id}),nativeId=id=>id.replace(/^native-camera-/,''),cancelScan=()=>{};function schedule(){}
   const finder='[data-alpha-camera="viewfinder"]';let state={said:'',mode:'photo'};
   const api={S:{get chat(){return view().chat;}},isActive:()=>view().active,set:patch=>Object.assign(state,patch),get:()=>state,setView:name=>{calls.views.push(name);if(navigateAfterPhoto&&name==='photos')view().active=false;},shell:patch=>{view().chat=patch.chat;}};`;
  vm.runInContext(shared+focusUI+stripTypeScriptTypes(prelude+helpers+scanWords+lastTile+session+frameAsk+syncCamera+`;globalThis.testCamera={cameraFrameQuestionRequested,askAboutCameraFrame,recordingOptions:()=>RECORDING,bindMode,modeSettled:()=>modeChange,start,stop,control,capture,record,focusAt,takeRequestedPhoto,zoomStops,lensFromReceipt,photoReceiptPath,cameraScanRequested,scanRequest:()=>scanRequest(),active,installViewPresence,syncCamera,CHAT_GRACE_MS,
@@ -62,7 +62,7 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
  globalThis.__modeImpl=async()=>{throw Object.assign(Error('Camera preview stopped'),{code:'PREVIEW_STOPPED'});};
  f.api.bindMode('photo');await f.api.modeSettled();await settle();
  assert.equal(f.api.state().phase,'off','A released preview ends the session');
- assert.equal(f.env.window.document.querySelector('[role="alert"]').getAttribute('aria-label'),'Camera unavailable');
+ assert.equal(f.env.window.document.querySelector('[role="alert"]').getAttribute('aria-label'),'Can’t start camera');
  const starts=f.calls.starts;
  f.api.syncCamera();await settle();f.api.syncCamera();await settle();
  assert.equal(f.calls.starts,starts,'Native preview refusal remains latched');
@@ -138,17 +138,17 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
 // Preview failure, permission denial and recovery.
 {
  const f=fixture();await f.api.start();assert.equal(f.api.state().phase,'error');assert.equal(f.api.state().denied,undefined,'A hardware/start failure is not a permission denial');assert.equal(f.timers.size,0,'Unavailable panel cannot disappear with transient toast timer');
- const alert=f.env.window.document.querySelector('[role="alert"]');assert.equal(alert.getAttribute('aria-label'),'Camera unavailable');assert.match(alert.textContent,/Camera unavailable.*The camera could not start.*Try again/,'Explain the failure and recovery without implying a permission denial');
+ const alert=f.env.window.document.querySelector('[role="alert"]');assert.equal(alert.getAttribute('aria-label'),'Can’t start camera');assert.match(alert.textContent,/Can’t start camera.*Retry/,'Name the failure and recovery without implying a permission denial');assert.doesNotMatch(alert.textContent,/Allow/);
  await f.api.start();assert.equal(f.calls.starts,1,'No automatic retry loop');
  f.recover();f.env.window.document.querySelector('[role="alert"] button').click();await settle();assert.equal(f.calls.starts,2);assert.equal(f.api.state().phase,'ready');assert.equal(f.env.window.document.querySelector('[role="alert"]'),null);assert.equal(f.calls.masked,true);f.env.window.close();
 }
 {
- const f=fixture({permission:true});await f.api.start();assert.equal(f.api.state().denied,'camera');assert.equal(f.env.window.document.querySelector('[role="alert"]').getAttribute('aria-label'),'Camera access is off');assert.equal(f.timers.size,0);
- f.recover();[...f.env.window.document.querySelectorAll('[role="alert"] button')].find(b=>b.textContent==='Try again').click();await settle();assert.equal(f.api.state().denied,undefined);assert.equal(f.env.window.document.querySelector('[role="alert"]'),null);f.env.window.close();
+ const f=fixture({permission:true});await f.api.start();assert.equal(f.api.state().denied,'camera');assert.equal(f.env.window.document.querySelector('[role="alert"]').getAttribute('aria-label'),'Camera off');assert.equal(f.timers.size,0);
+ f.recover();[...f.env.window.document.querySelectorAll('[role="alert"] button')].find(b=>b.textContent==='Retry').click();await settle();assert.equal(f.api.state().denied,undefined);assert.equal(f.env.window.document.querySelector('[role="alert"]'),null);f.env.window.close();
 }
 {
  const f=fixture({failing:false});await f.api.start();assert.equal(f.api.state().said,'','No status pill while starting or after ready');
- await f.api.control(async()=>{throw Error('unsupported');},()=>{throw Error('must not complete');});const timer=[...f.timers.values()].find(t=>t.ms===5000);assert.ok(timer);assert.equal(f.api.state().said,'Not supported on this camera.');timer.fn();assert.equal(f.api.state().said,'');f.env.window.close();
+ await f.api.control(async()=>{throw Error('unsupported');},()=>{throw Error('must not complete');});const timer=[...f.timers.values()].find(t=>t.ms===5000);assert.ok(timer);assert.equal(f.api.state().said,'Not supported');timer.fn();assert.equal(f.api.state().said,'');f.env.window.close();
 }
 // The Video preview and recording must use the same quality. A released preview cannot start recording.
 {
@@ -160,7 +160,7 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
  await recording;await f.api.modeSettled();await settle();
  assert.equal(f.calls.recordings,0,'A recording waiting on a released preview must not reach native');
  assert.equal(f.api.state().phase,'off');
- assert.equal(f.env.window.document.querySelector('[role="alert"]').getAttribute('aria-label'),'Camera unavailable');
+ assert.equal(f.env.window.document.querySelector('[role="alert"]').getAttribute('aria-label'),'Can’t start camera');
  f.env.window.close();
 }
 // The bound lens decides zoom chips and flash; its receipt is read on first frame; the last tile reads one row.
@@ -188,7 +188,28 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
  f.gates.switchError=Error('Switch unavailable');await f.api.flip();
  assert.deepEqual({...f.calls.native},{flash:'off',zoom:1});
  assert.equal(f.api.state().flash,false);assert.equal(f.api.state().zoomRatio,1);
- assert.equal(f.api.state().said,'Not supported on this camera.');f.env.window.close();
+ assert.equal(f.api.state().said,'Not supported');f.env.window.close();
+}
+// The browser ends the running preview before it starts the other camera: a failed switch leaves
+// none, so the preview is released and the view offers a restart instead of a dead shutter.
+{
+ const f=fixture({failing:false,browser:true});await f.api.start();assert.equal(f.api.state().phase,'ready');
+ f.gates.switchError=Error('No second camera');await f.api.flip();await settle();
+ assert.equal(f.api.state().phase,'off');assert.equal(f.calls.stops,1,'the dead preview is released');
+ const panel=f.env.window.document.querySelector('[role="alert"]');assert.equal(panel?.getAttribute('aria-label'),'Can’t start camera');
+ f.api.syncCamera();await settle();assert.equal(f.calls.starts,1,'no restart without the person asking');
+ f.gates.switchError=undefined;[...panel.querySelectorAll('button')].find(button=>button.textContent==='Retry').click();await settle();
+ assert.equal(f.calls.starts,2);assert.equal(f.api.state().phase,'ready');assert.equal(f.env.window.document.querySelector('[role="alert"]'),null);f.env.window.close();
+}
+// A browser camera track that ends on its own while ready does the same; one that ends after the
+// view already stopped changes nothing.
+{
+ const f=fixture({failing:false,browser:true});assert.equal(typeof f.calls.previewEnded,'function','the view listens for the track ending');
+ f.calls.previewEnded();await settle();assert.equal(f.calls.stops,0,'nothing to release before a preview is ready');
+ await f.api.start();f.calls.previewEnded();await settle();
+ assert.equal(f.api.state().phase,'off');assert.equal(f.calls.stops,1);
+ assert.equal(f.env.window.document.querySelector('[role="alert"]')?.getAttribute('aria-label'),'Can’t start camera');
+ f.calls.previewEnded();await settle();assert.equal(f.calls.stops,1,'a second report releases nothing more');f.env.window.close();
 }
 // FixFocus: a focus that never settles does not block the shutter.
 {
@@ -246,7 +267,7 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
 {
  const f=fixture({failing:false});f.gates.start=deferred();void f.api.start();await settle();
  const request=f.api.takeRequestedPhoto('op-2',new AbortController().signal,()=>{});await settle();f.setView({active:false});await f.api.stop();
- const result=await request;assert.equal(result.status,'failed');assert.match(result.summary,/No photo was taken/);assert.equal(f.calls.captures.length,0);f.gates.start.resolve();f.env.window.close();
+ const result=await request;assert.equal(result.status,'failed');assert.match(result.summary,/^(Camera closed|Camera unavailable|Open Camera first)$/);assert.equal(f.calls.captures.length,0);f.gates.start.resolve();f.env.window.close();
 }
 // An agent capture queued past the chat grace keeps Camera active even when a scan request finishes first.
 {
@@ -278,7 +299,7 @@ function fixture({permission=false,failing=true,navigateAfterPhoto=false,receipt
  const started=f.api.start;f.gates.start.resolve();let recorded=false;
  for(let i=0;i<50&&!recorded;i++){await Promise.resolve();if(f.api.state().phase==='ready'){recorded=true;await f.api.record();}}
  assert.ok(recorded&&started);const result=await request;assert.equal(f.calls.recordings,1);
- assert.equal(result.status,'failed');assert.equal(result.summary,'Recording started, so no photo was taken.');assert.equal(f.calls.captures.length,0);f.env.window.close();
+ assert.equal(result.status,'failed');assert.equal(result.summary,'Recording — no photo');assert.equal(f.calls.captures.length,0);f.env.window.close();
 }
 // Plan item 7: the chat sheet keeps the session bound for CHAT_GRACE_MS, then releases it; closing the chat restarts it.
 {

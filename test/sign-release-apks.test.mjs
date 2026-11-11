@@ -298,6 +298,9 @@ test("rotation admission requires explicit approval and preserves the exact revi
   const descriptor = {signerSha256: RELEASE, lastRelease: {versionCode: 44}, apkSigningRotation: rotation};
   const targets = [{input: unsigned}];
   assert.equal(await approvedSigningRotation(descriptor, lineage, targets), rotation);
+  const permissionRotation = {...rotation, preserveSignaturePermissions: true};
+  assert.equal(await approvedSigningRotation({...descriptor, apkSigningRotation: permissionRotation}, lineage, targets), permissionRotation);
+  await assert.rejects(approvedSigningRotation({...descriptor, apkSigningRotation: {...rotation, preserveSignaturePermissions: "true"}}, lineage, targets), /No reviewed APK signing rotation record/);
   for (const approval of ["pending", undefined, "", true]) {
     const unapproved = {...descriptor, apkSigningRotation: {...rotation, approval}};
     await assert.rejects(approvedSigningRotation(unapproved, lineage, targets), /No reviewed APK signing rotation record/);

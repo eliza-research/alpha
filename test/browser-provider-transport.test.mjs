@@ -11,7 +11,7 @@ for(const [field,value] of [['mode',['cloud']],['mode',['own']],['provider',['ce
   const original=globalThis.fetch;
   globalThis.fetch=async()=>Response.json({...status,[field]:value});
   try{
-   await assert.rejects(browserProviderCall('residentProviderSelect',{mode:'cloud',expectedRevision:'previous'}),{message:'Provider settings unavailable. Refresh and try again.'});
+   await assert.rejects(browserProviderCall('residentProviderSelect',{mode:'cloud',expectedRevision:'previous'}),{message:'Unavailable'});
   }finally{globalThis.fetch=original;}
  });
 }

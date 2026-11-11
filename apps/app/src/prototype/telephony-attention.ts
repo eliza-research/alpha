@@ -18,8 +18,9 @@ type Bag = Record<string, any>;
 const REFRESH_MS = 30_000;
 
 /** One bounded read of every source the owner has granted. A refused or failed source stays null. */
-export async function readTelephonyAttention(client: AospTelephony): Promise<TelephonyAttention> {
+export async function readTelephonyAttention(client: AospTelephony, isCurrent:()=>boolean=()=>true): Promise<TelephonyAttention> {
   const read = emptyTelephonyAttention(), status = await client.status();
+  if(!isCurrent())throw new DOMException('Read retired','AbortError');
   const attempt = async <T,>(run: () => Promise<T>): Promise<T | null> => { try { return await run(); } catch { return null; } };
   const [threads, calls, voicemail, contacts] = await Promise.all([
     status.permissions.sms === 'granted' ? attempt(() => client.listThreads(20)) : null,
@@ -45,7 +46,7 @@ export function installTelephonyAttention(Component: any, client: AospTelephony 
   async function refresh() {
     const token = ++epoch;
     if (!available()) return;
-    try { const next = await readTelephonyAttention(client!); if (token === epoch && available()) { read = next; changed(); } }
+    try { const next = await readTelephonyAttention(client!,()=>token===epoch&&available()); if (token === epoch && available()) { read = next; changed(); } }
     catch { if (token === epoch) { read = emptyTelephonyAttention(); changed(); } }
   }
   const sync = () => {

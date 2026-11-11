@@ -212,17 +212,29 @@ export async function checkTelephonyPhoneCalls(extraSources = []) {
       current() { if (locked) throw Error('Phone context changed'); }, normalize: value => value,
       ask: async review => { asked.release(review); return answered.promise; },
       searchContacts: async () => Array.from({length: matches}, (_, i) => ({id: String(i + 1), displayName: `Daniel ${i}`, phoneNumbers: [`+1555555010${i}`]})),
-      placeCall: async () => { if (place === 'throw') throw Error('telecom'); if (place === 'placed') placed++; return {status: place}; },
+      placeCall: async () => { if (place === 'throw-committed') { placed++; throw Error('lost reply'); } if (place === 'throw') throw Error('telecom'); if (place === 'placed') placed++; return {status: place}; },
     };
     const operation = {type: 'phone_call', target: target === 'number' ? {kind: 'number', number: '+15555550100'} : {kind: 'contact', query: 'Daniel'}};
     const seen = proposal => ({'s.proposal': proposal, 's.agentPlaced': placed, 's.call': placed ? 'dialing' : 'none'});
     const t = trace(name, seen('none')).step(act('becomeReady'), seen('none'));
     const execution = X.executeTelephonyAction(operation, 'op', ports, signal());
     execution.catch(() => {});
+    const completion = async () => {
+      let result;
+      try {
+        result = await execution;
+      } catch (error) {
+        if (!place.startsWith('throw')) throw error;
+        return {proposal: 'unknown', contact: target === 'name'};
+      }
+      must(!place.startsWith('throw'), 'a lost placement reply must reject instead of reporting failure');
+      return {proposal: proposalOf[result.telephonyResult.status], contact: result.telephonyResult.contact};
+    };
+    const approved = () => place.startsWith('throw') ? act('approveUnknown', place === 'throw-committed') : act('approve', place === 'placed');
     if (target === 'number') {
-      const result = await execution;
-      must(result.telephonyResult.contact === false, 'a number call reports no contact choice');
-      return t.step(emergency ? [act('agentAsk', 'number', true)] : [act('agentAsk', 'number', false), act('approve', place === 'placed')], seen(proposalOf[result.telephonyResult.status])).done();
+      const result = await completion();
+      must(result.contact === false, 'a number call reports no contact choice');
+      return t.step(emergency ? [act('agentAsk', 'number', true)] : [act('agentAsk', 'number', false), approved()], seen(result.proposal)).done();
     }
     if (matches === 0) { const result = await execution; return t.step([act('agentAsk', 'name', false), act('resolved', 0)], seen(proposalOf[result.telephonyResult.status])).done(); }
     // The owner is shown every match before anything is called.
@@ -235,10 +247,10 @@ export async function checkTelephonyPhoneCalls(extraSources = []) {
       return t.step(act('lock'), {'s.agentPlaced': placed, 's.call': 'none', 's.unlocked': false}).done();
     }
     answered.release(answer); await settled();
-    const result = await execution;
-    if (answer === null) return t.step(act('declineProposal'), seen(proposalOf[result.telephonyResult.status])).done();
-    must(result.telephonyResult.contact === true, 'a contact call reports the contact choice');
-    return t.step(matches > 1 ? [act('choose'), act('approve', place === 'placed')] : act('approve', place === 'placed'), seen(proposalOf[result.telephonyResult.status])).done();
+    const result = await completion();
+    if (answer === null) return t.step(act('declineProposal'), seen(result.proposal)).done();
+    must(result.contact === true, 'a contact call reports the contact choice');
+    return t.step(matches > 1 ? [act('choose'), approved()] : approved(), seen(result.proposal)).done();
   }
   const traces = [
     await run('a number is called as approved', {target: 'number'}),
@@ -248,8 +260,12 @@ export async function checkTelephonyPhoneCalls(extraSources = []) {
     await run('an emergency number is handed to the system dialer', {target: 'number', place: 'emergency-handoff', emergency: true}),
     await run('a dismissed confirmation calls nothing', {target: 'name', answer: null}),
     await run('a dismissed choice calls nothing', {target: 'name', matches: 2, answer: null}),
-    await run('a call Telecom refuses is not a call', {target: 'number', place: 'throw'}),
-    await run('a confirmed call that fails to start is not a call', {target: 'name', place: 'throw'}),
+    await run('a call Telecom refuses is not a call', {target: 'number', place: 'failed'}),
+    await run('a confirmed call that fails to start is not a call', {target: 'name', place: 'failed'}),
+    await run('a number call with no placement or reply rejects as unknown', {target: 'number', place: 'throw'}),
+    await run('a contact call with no placement or reply rejects as unknown', {target: 'name', place: 'throw'}),
+    await run('a number call placed before reply loss rejects as unknown', {target: 'number', place: 'throw-committed'}),
+    await run('a contact call placed before reply loss rejects as unknown', {target: 'name', place: 'throw-committed'}),
     await run('locking the phone expires the confirmation', {target: 'name', lockAfterAsk: true}),
   ];
   return checkTraces({model: 'PhoneCalls', modelPath: model('PhoneCalls'), sources, driverHashes, traces, scope: 'bounded-component', assumptions: [
@@ -264,17 +280,17 @@ export async function checkTelephonyContactsBook(extraSources = []) {
   const version = 'a'.repeat(64);
   const record = () => ({id: '1', version, displayName: 'Priya Nair', phoneNumbers: [{number: '+14155550132', type: 'mobile'}], emailAddresses: []});
   // `stale` and `not-found` both mean the contact that was shown is no longer the contact on the phone.
-  const proposalOf = {saved: 'applied', deleted: 'applied', stale: 'stale', 'not-found': 'stale', cancelled: 'declined', failed: 'failed'};
+  const proposalOf = {saved: 'applied', deleted: 'applied', stale: 'stale', 'not-found': 'stale', cancelled: 'declined', failed: 'failed', unknown: 'unknown'};
   /** One agent contact change. `during` is what happens to the contact while the confirmation is open. */
   async function run(name, {kind, answer = 0, write = 'ok', during = null}) {
     let writes = 0, exists = true;
     const asked = hold(), answered = hold();
-    const outcome = ok => during === 'change' ? 'stale' : during === 'delete' ? 'not-found' : write === 'fail' ? 'failed' : ok;
+    const outcome = ok => during === 'change' ? 'stale' : during === 'delete' ? 'not-found' : write.startsWith('unknown-') ? 'unknown' : write === 'fail' ? 'failed' : ok;
     const ports = {
       current() {}, normalize: value => value, ask: async review => { asked.release(review); return answered.promise; },
       searchContacts: async () => [{id: '1', displayName: 'Priya Nair', phoneNumbers: ['+14155550132']}], getContact: async () => record(),
-      saveContact: async (_draft, target) => { const status = outcome('saved'); must(kind === 'create' ? target === undefined : target?.version === version, 'a save names the version that was shown'); if (status === 'saved') writes++; return {status}; },
-      removeContact: async (_id, shown) => { const status = outcome('deleted'); must(shown === version, 'a delete names the version that was shown'); if (status === 'deleted') { writes++; exists = false; } return {status}; },
+      saveContact: async (_draft, target) => { const status = outcome('saved'); must(kind === 'create' ? target === undefined : target?.version === version, 'a save names the version that was shown'); if (status === 'saved' || write === 'unknown-committed') writes++; return {status}; },
+      removeContact: async (_id, shown) => { const status = outcome('deleted'); must(shown === version, 'a delete names the version that was shown'); if (status === 'deleted' || write === 'unknown-committed') { writes++; exists = false; } return {status}; },
     };
     const operation = kind === 'create' ? {type: 'contact_create', contact: {displayName: 'Grace Hopper', phoneNumbers: ['+12025550101'], emailAddresses: []}}
       : kind === 'edit' ? {type: 'contact_update', query: 'Priya', set: {phoneNumbers: ['+16285550148']}} : {type: 'contact_delete', query: 'Priya'};
@@ -284,7 +300,7 @@ export async function checkTelephonyContactsBook(extraSources = []) {
     if (kind === 'create') {
       // The approval the owner gave in the assistant showed every field; the executor writes without a second sheet.
       const result = await execution;
-      return t.step([act('propose', 'create'), act('approve', write === 'ok')], seen(proposalOf[result.telephonyResult.status])).done();
+      return t.step([act('propose', 'create'), write.startsWith('unknown-') ? act('approveUnknown', write === 'unknown-committed') : act('approve', write === 'ok')], seen(proposalOf[result.telephonyResult.status])).done();
     }
     const review = await asked.promise;
     must(review.kind === (kind === 'edit' ? 'contact-save' : 'contact-delete'), 'the owner is shown the change before it is written');
@@ -295,7 +311,7 @@ export async function checkTelephonyContactsBook(extraSources = []) {
     const result = await execution;
     const final = seen(proposalOf[result.telephonyResult.status]);
     if (during) { must(final['s.proposal'] === 'stale' && writes === 0, 'a contact that changed is not written'); return t.step(act('repeat'), final).done(); }
-    return t.step(answer === null ? act('decline') : act('approve', write === 'ok'), final).done();
+    return t.step(answer === null ? act('decline') : write.startsWith('unknown-') ? act('approveUnknown', write === 'unknown-committed') : act('approve', write === 'ok'), final).done();
   }
   const traces = [
     await run('an agent edit is written after confirmation', {kind: 'edit'}),
@@ -307,6 +323,10 @@ export async function checkTelephonyContactsBook(extraSources = []) {
     await run('a delete of a contact that was removed is stale', {kind: 'delete', during: 'delete'}),
     await run('a save the phone refuses is not applied', {kind: 'edit', write: 'fail'}),
     await run('a new contact the phone refuses is not applied', {kind: 'create', write: 'fail'}),
+    await run('a creation committed before its reply was lost stays unknown', {kind: 'create', write: 'unknown-committed'}),
+    await run('an edit committed before its reply was lost stays unknown', {kind: 'edit', write: 'unknown-committed'}),
+    await run('a deletion committed before its reply was lost stays unknown', {kind: 'delete', write: 'unknown-committed'}),
+    await run('a dispatched deletion without a write or reply stays unknown', {kind: 'delete', write: 'unknown-refused'}),
   ];
   return checkTraces({model: 'ContactsBook', modelPath: model('ContactsBook'), sources, driverHashes, traces, scope: 'bounded-component', assumptions: [
     'The actual telephony-executor.ts contact path runs with controlled lookup, owner answer and address-book ports. The proposal state is the executor result; stale and not-found both map to the model stale state.',

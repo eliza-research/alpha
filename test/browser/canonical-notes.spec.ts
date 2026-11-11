@@ -1,6 +1,46 @@
-import {test,expect} from '@playwright/test';
+import {test,expect,type Page} from '@playwright/test';
 import {canonicalNotesFixture,openCanonicalNotes} from './helpers/canonical-notes';
 const snapshot=(page:import('@playwright/test').Page)=>page.evaluate(()=>(window as any).canonicalNotesFixture.state);
+
+const trashedNote={id:'trash-item',title:'A trashed note',body:'\nRetained text.',color:'yellow',createdAt:'2026-11-01T12:00:00Z',updatedAt:'2026-11-02T12:00:00Z'};
+async function replaceTrashEntry(page:Page,deletedAt:string){
+ const revision=await page.evaluate(deletedAt=>{
+  const fixture=(window as any).canonicalNotesFixture;
+  fixture.state.trash[0].deletedAt=deletedAt;
+  const revision=++fixture.state.revision;
+  window.dispatchEvent(new CustomEvent('alpha:canonical-notes-invalidated',{detail:{sessionId:'canonical-fixture-session',revision}}));
+  return revision;
+ },deletedAt);
+ await expect.poll(()=>page.evaluate(revision=>(window as any).canonicalNotesFixture.acceptedReads.some((read:any)=>read.revision===revision),revision)).toBe(true);
+ return revision;
+}
+
+test('canonical Trash dates the deletion and requires a fresh review after its selected entry changes',async({page})=>{
+ await canonicalNotesFixture(page,{trash:[{note:trashedNote,deletedAt:'2026-11-08T12:00:00Z'}]});await openCanonicalNotes(page);
+ await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
+ const trash=page.locator('[data-alpha-subview="notes-trash"]'),row=trash.getByRole('button',{name:'A trashed note',exact:true});
+ await row.click();const review=page.getByRole('dialog',{name:'A trashed note',exact:true});await expect(review).toBeVisible();
+ const revision=await replaceTrashEntry(page,'2026-11-09T12:00:00Z');
+ await expect(review).toHaveCount(0);
+ await expect(row).toContainText('Deleted Nov 9, 2026');
+ await row.click();await expect(review).toContainText('Deleted Nov 9, 2026');
+ await review.getByRole('button',{name:'Recover',exact:true}).click();
+ await expect.poll(()=>snapshot(page).then(state=>state.notes.map((note:any)=>note.id))).toEqual([trashedNote.id]);
+ const restores=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((request:any)=>request.body?.capability==='restore-note'));
+ expect(restores.map((request:any)=>request.body.params)).toEqual([{id:trashedNote.id,expectedRevision:revision}]);
+});
+
+test('Undo for a canonical deletion cannot restore a replacement trash entry',async({page})=>{
+ await canonicalNotesFixture(page,{notes:[trashedNote]});await openCanonicalNotes(page);
+ await page.getByRole('button',{name:'Open A trashed note',exact:true}).click();
+ await page.getByRole('button',{name:'More',exact:true}).click();
+ await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
+ const undo=page.getByRole('button',{name:'Undo',exact:true});await expect(undo).toBeVisible();
+ await replaceTrashEntry(page,'2026-11-09T12:00:00Z');await undo.click();
+ await expect(page.getByText('Review deletion again',{exact:true})).toBeVisible();
+ expect((await snapshot(page)).trash).toHaveLength(1);
+ expect(await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((request:any)=>request.body?.capability==='restore-note').length)).toBe(0);
+});
 
 test('canonical Notes use last-edit order and local date labels without writing view timestamps into content',async({page})=>{
  await page.clock.setFixedTime(new Date('2026-11-10T17:00:00Z'));
@@ -15,7 +55,7 @@ test('canonical Notes use last-edit order and local date labels without writing 
 });
 
 test('empty canonical Notes explains the first action',async({page})=>{
- await canonicalNotesFixture(page);await openCanonicalNotes(page);await expect(page.getByRole('heading',{name:'No notes yet',exact:true})).toBeVisible();await expect(page.getByText('Create a note or record a voice note to get started.',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();
+ await canonicalNotesFixture(page);await openCanonicalNotes(page);await expect(page.getByRole('heading',{name:'No notes',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Record voice note',exact:true})).toBeEnabled();await expect(page.getByRole('button',{name:'New note',exact:true})).toBeEnabled();
 });
 
 test('a lost canonical recording save reply is reconciled without another create',async({page})=>{
@@ -66,7 +106,7 @@ test('canonical Notes UI creates, edits, trashes and restores the same committed
  await page.getByRole('button',{name:'Open Canonical browser note',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect.poll(()=>snapshot(page).then((s:any)=>s.notes.length)).toBe(0);
- await expect(page.getByText('Moved to Recently deleted',{exact:true})).toBeVisible();
+ await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
  // The agent's restore-only Trash is the Recently deleted folder: no retention line, no Empty, no Delete now.
  await page.getByRole('button',{name:'Recently deleted',exact:true}).click();
  const trash=page.locator('[data-alpha-subview="notes-trash"]');
@@ -178,11 +218,11 @@ test('canonical failed save retains the owner draft until explicit discard and r
  await page.getByRole('button',{name:'Back to notes',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue('Keep this unsaved owner text');
  expect((await snapshot(page)).notes[0].body).toBe('\nCommitted original');
- await expect(page.getByText('Your draft is shown here until you reload or the connection changes. Reload the current notes to discard it.',{exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Discard draft and reload',exact:true})).toBeVisible();
+ await expect(page.getByText('Unsaved',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Discard',exact:true})).toBeVisible();
  const attempts=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.method==='POST').length);
  await page.evaluate(()=>(window as any).canonicalNotesFixture.fail=false);
- await page.getByRole('button',{name:'Discard draft and reload',exact:true}).click();
+ await page.getByRole('button',{name:'Discard',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Note',exact:true})).toHaveValue('Committed original');
  expect(await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.method==='POST').length)).toBe(attempts);
  expect(errors).toEqual([]);
@@ -222,7 +262,7 @@ test('Delete on a new note that was never saved closes it without a Notes reques
 test('slow saves: typing during a new note\'s first save makes one record, and Delete waits for the save',async({page})=>{
  const {foreign,errors}=await canonicalNotesFixture(page);await openCanonicalNotes(page);
  await page.evaluate(()=>(window as any).canonicalNotesFixture.delay=250);
- const title=page.getByRole('textbox',{name:'Title',exact:true}),body=page.getByRole('textbox',{name:'Note',exact:true}),review=page.getByRole('button',{name:/^(Reload Notes|Discard draft and reload)$/});
+ const title=page.getByRole('textbox',{name:'Title',exact:true}),body=page.getByRole('textbox',{name:'Note',exact:true}),review=page.getByRole('button',{name:/^(Reload Notes|Discard)$/});
  await page.getByRole('button',{name:'New note',exact:true}).click();
  await title.fill('');await title.pressSequentially('Hello',{delay:40});await body.pressSequentially('World',{delay:40});
  await page.getByRole('button',{name:'Back to notes',exact:true}).click();
@@ -272,10 +312,10 @@ test('an agent append refreshes the open note and its row, and a stale owner edi
  await page.getByRole('button',{name:'Open Launch plan',exact:true}).click();
  await agentEdit('launch',false);
  await body.fill('Owner text against an older revision');
- await expect(page.getByRole('button',{name:'Discard draft and reload',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Discard',exact:true})).toBeVisible();
  await expect(body).toHaveValue('Owner text against an older revision');
  expect((await snapshot(page)).notes.find((n:any)=>n.id==='launch').body).toBe('\nConfirm attestation flow\nAppended by the agent\nOwner line\nAppended by the agent');
- await page.getByRole('button',{name:'Discard draft and reload',exact:true}).click();
+ await page.getByRole('button',{name:'Discard',exact:true}).click();
  await expect(body).toHaveValue('Confirm attestation flow\nAppended by the agent\nOwner line\nAppended by the agent');
  const updates=(await page.evaluate(()=>(window as any).canonicalNotesFixture.requests)).filter((r:any)=>r.body?.capability==='update-note');
  expect(updates.length).toBeGreaterThan(0);for(const update of updates)expect(Number.isSafeInteger(update.body.params.expectedRevision)).toBe(true);
@@ -337,13 +377,13 @@ test('canonical Notes editor stays focusable beside half chat and isolates witho
 const refreshCanonicalRead=(page:import('@playwright/test').Page)=>page.evaluate(()=>{
  window.dispatchEvent(new CustomEvent('alpha:canonical-notes-invalidated',{detail:{sessionId:'canonical-fixture-session'}}));
 });
-const readWarning='Notes could not be opened. Check the agent connection, then reload.';
+const readWarning='Couldn’t open';
 
 test('an initial Notes read failure stays read-only and a successful refresh clears its review',async({page})=>{
  const {foreign,errors}=await canonicalNotesFixture(page,{failReads:true});
  await page.getByRole('button',{name:'Notes',exact:true}).click();
  await expect(page.getByText(readWarning,{exact:true})).toBeVisible();
- await expect(page.getByText('That change could not be confirmed. Reload Notes to see what was saved.',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Unconfirmed',{exact:true})).toHaveCount(0);
  expect((await snapshot(page)).revision).toBe(0);
  await page.evaluate(()=>(window as any).canonicalNotesFixture.failReads=false);
  await refreshCanonicalRead(page);
@@ -361,7 +401,7 @@ for(const populated of [false,true])test(`a cached revision ${populated?'one':'z
  await page.evaluate(()=>(window as any).canonicalNotesFixture.failReads=true);
  await refreshCanonicalRead(page);
  await expect(page.getByText(readWarning,{exact:true})).toBeVisible();
- await expect(page.getByText('That change could not be confirmed. Reload Notes to see what was saved.',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Unconfirmed',{exact:true})).toHaveCount(0);
  if(populated)await expect(page.getByRole('button',{name:'Open Retained read target',exact:true})).toBeVisible();
  expect(await snapshot(page)).toEqual(before);
  await page.evaluate(()=>(window as any).canonicalNotesFixture.failReads=false);
@@ -380,13 +420,13 @@ test('a later read failure and recovery cannot clear accepted-write uncertainty 
  await page.evaluate(()=>(window as any).canonicalNotesFixture.failAfterApplied=true);
  const body=page.getByRole('textbox',{name:'Note',exact:true});
  await body.fill('Exact draft after an accepted write whose response was lost');
- await expect(page.getByRole('button',{name:'Discard draft and reload',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Discard',exact:true})).toBeVisible();
  const accepted=await snapshot(page);expect(accepted.revision).toBe(2);
  expect(accepted.notes[0].body).toBe('\nExact draft after an accepted write whose response was lost');
  const writes=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.method==='POST').length);
  await page.evaluate(()=>{const f=(window as any).canonicalNotesFixture;f.failAfterApplied=false;f.failReads=true;});
  await refreshCanonicalRead(page);
- await expect(page.getByText('Your draft is shown here until you reload or the connection changes. Reload the current notes to discard it.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Unsaved',{exact:true})).toBeVisible();
  const acceptedReadsBeforeRecovery=await page.evaluate(()=>(window as any).canonicalNotesFixture.acceptedReads.length);
  await page.evaluate(()=>(window as any).canonicalNotesFixture.failReads=false);
  await refreshCanonicalRead(page);
@@ -394,7 +434,7 @@ test('a later read failure and recovery cannot clear accepted-write uncertainty 
  await expect.poll(()=>page.evaluate(({after,revision})=>(window as any).canonicalNotesFixture.acceptedReads
   .slice(after).some((read:any)=>read.current&&read.sameController&&read.revision===revision),
   {after:acceptedReadsBeforeRecovery,revision:accepted.revision})).toBe(true);
- await expect(page.getByRole('button',{name:'Discard draft and reload',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Discard',exact:true})).toBeVisible();
  await expect(body).toHaveValue('Exact draft after an accepted write whose response was lost');
  expect(await snapshot(page)).toEqual(accepted);
  expect(await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.method==='POST').length)).toBe(writes);
@@ -414,9 +454,9 @@ test('read recovery cannot replace a no-draft uncertain interaction with a read-
  await expect(restore).toBeVisible();
  await page.evaluate(()=>(window as any).canonicalNotesFixture.failAfterApplied=true);
  await restore.click();await page.getByRole('dialog',{name:'Uncertain restore'}).getByRole('button',{name:'Recover',exact:true}).click();
- const changeWarning='That change could not be confirmed. Reload Notes to see what was saved.';
+ const changeWarning='Unconfirmed';
  await expect(page.getByText(changeWarning,{exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:'Discard draft and reload',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Discard',exact:true})).toHaveCount(0);
  const accepted=await snapshot(page);expect(accepted.trash).toEqual([]);expect(accepted.notes.map((note:any)=>note.id)).toEqual(['restore-uncertain']);
  const writes=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.method==='POST').length);
  const reads=await page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.path==='/api/notes/state').length);
@@ -492,14 +532,14 @@ for(const stale of [false,true])test(`recording summary uses canonical update an
   shell.agentSay('Reviewed recording answer.',{type:'generic',icon:'note',title:'Review summary note',sub:row.title,sourceSummary:{source:{kind:'recording',version:1,name:row.title,noteId:row.id,revision:await recordingRevision(row)},text:JSON.stringify({summary:'Canonical summary.',actions:['Confirm the venue']}),session:connectionController.getSnapshot().session}});
  });
  await page.getByRole('button',{name:/^Review summary note/}).click();
- const review=page.getByRole('dialog',{name:'Save reviewed summary note',exact:true});await expect(review).toBeVisible();
+ const review=page.getByRole('dialog',{name:'Save summary',exact:true});await expect(review).toBeVisible();
  const writes=()=>page.evaluate(()=>(window as any).canonicalNotesFixture.requests.filter((r:any)=>r.method==='POST'));
  expect(await writes()).toEqual([]);
  if(stale){
   await page.evaluate(async()=>{const f=(window as any).canonicalNotesFixture;f.state.notes[0].body='\nA newer transcript.';f.state.revision++;await (globalThis as any).__recordingSummaryShell().canonicalNotesUi.refresh();});
  }
  await review.getByRole('button',{name:'Save recording summary',exact:true}).click();
- if(stale){await expect(review).toContainText('Recording, agent or conversation changed.');expect(await writes()).toEqual([]);}
+ if(stale){await expect(review).toContainText('Source changed');expect(await writes()).toEqual([]);}
  else{
   await expect(review).toHaveCount(0);
   await page.evaluate(()=>(globalThis as any).__recordingSummaryShell().canonicalNotesUi.refresh());

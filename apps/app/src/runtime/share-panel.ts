@@ -1,4 +1,14 @@
 export type SharePanelOptions={title:string;current:()=>boolean;external?:()=>unknown|Promise<unknown>;email?:()=>unknown|Promise<unknown>;/** Shown under a disabled email row; null leaves the row out. */emailUnavailable?:string|null;copy?:()=>unknown|Promise<unknown>;copyLabel?:string;save?:()=>unknown|Promise<unknown>};
+/** Returns a check that the watched value still equals its content when this was called.
+ * `token` is a cheap identity for the value (the object a store replaces on every write);
+ * `content` is the full value. While the token is the one last seen nothing is serialised,
+ * so the panel's repeated check costs a comparison. A replaced token is compared by content,
+ * and an equal replacement becomes the new token. The value behind a token must not be
+ * mutated in place. */
+export function unchangedSince(token:()=>unknown,content:()=>unknown=token):()=>boolean{
+ let seen=token();const before=JSON.stringify(content());
+ return()=>{const now=token();if(now===seen)return true;if(JSON.stringify(content())!==before)return false;seen=now;return true;};
+}
 function destinationFailure(error:unknown){
  if(error instanceof DOMException&&error.name==='AbortError')return;
  const notice=document.createElement('p');notice.setAttribute('role','alert');notice.textContent='Sharing is unavailable. No completed handoff is confirmed.';Object.assign(notice.style,{position:'fixed',bottom:'24px',left:'16px',right:'16px',zIndex:'2147483647',padding:'16px',borderRadius:'16px',background:'#222',color:'#fff'});document.body.append(notice);setTimeout(()=>notice.remove(),6000);

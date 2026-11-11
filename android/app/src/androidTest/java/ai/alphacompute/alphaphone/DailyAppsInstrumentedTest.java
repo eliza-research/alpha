@@ -58,7 +58,7 @@ public class DailyAppsInstrumentedTest {
      android.view.accessibility.AccessibilityNodeInfo node=queue.removeFirst();String text=node.getText()==null?"":node.getText().toString();
      if(node.isVisibleToUser()){
       if(text.equals("Delete reminder?"))titleShown=true;
-      if(text.contains(title)&&text.contains("10 seconds")&&text.contains("Undo"))detailsShown=true;
+      if(text.contains(title)&&text.contains("10 seconds")&&text.toLowerCase(java.util.Locale.ROOT).contains("undo"))detailsShown=true;
       if(text.equalsIgnoreCase("Delete reminder")&&node.isClickable())button=node;
      }
      for(int c=0;c<node.getChildCount();c++){android.view.accessibility.AccessibilityNodeInfo child=node.getChild(c);if(child!=null)queue.add(child);}
@@ -86,13 +86,18 @@ public class DailyAppsInstrumentedTest {
   String title="Calendar reminder "+java.util.UUID.randomUUID();
   String reminderId=null;
   try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)) {
-   ready(scenario);evaluate(scenario,AppNavigation.request("Calendar"));uiWait(scenario,AppNavigation.selected("Calendar"));
-   evaluate(scenario,"document.querySelector('button[aria-label=\"New event\"]').click()");
+   ready(scenario);evaluate(scenario,AppNavigation.request("Workflows"));uiWait(scenario,AppNavigation.selected("Workflows"));
+   String newAutomation="document.querySelector('button[aria-label=\"New automation\"]')";
+   uiWait(scenario,newAutomation);evaluate(scenario,newAutomation+".click()");
+   String moreOptions="[...document.querySelectorAll('button.automation-more')].find(b=>b.textContent.trim()==='More options')";
+   uiWait(scenario,moreOptions);evaluate(scenario,"("+moreOptions+").click()");
+   // The on-device reminder action works without an Agent Calendar connection.
+   String deviceReminder="[...document.querySelectorAll('button.workflow-choice')].find(b=>b.textContent.trim()==='Reminder on this phone')";
+   uiWait(scenario,deviceReminder);evaluate(scenario,"("+deviceReminder+").click()");uiWait(scenario,AppNavigation.selected("Calendar"));
    uiWait(scenario,"document.querySelector('input[aria-label=Title]')");
    evaluate(scenario,"(()=>{const e=document.querySelector('input[aria-label=Title]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,"+JSONObject.quote(title)+");e.dispatchEvent(new Event('input',{bubbles:true}));})()");
    uiWait(scenario,"document.querySelector('button[aria-label=Tomorrow]')");
    evaluate(scenario,"document.querySelector('button[aria-label=Tomorrow]').click()");
-   evaluate(scenario,"[...document.querySelectorAll('button')].find(b=>b.textContent.trim()==='Reminders').click()");
    evaluate(scenario,"document.querySelector('button[aria-label=\"Save event\"]').click()");
    uiWait(scenario,"!document.querySelector('button[aria-label=\"Save event\"]')");
    begin(scenario,"Capacitor.Plugins.DailyApps.listReminders()");
@@ -108,7 +113,9 @@ public class DailyAppsInstrumentedTest {
    String selected="[...document.querySelectorAll('button[aria-label]')].find(b=>b.getAttribute('aria-label').startsWith("+JSONObject.quote(title+", ")+"))";
    uiWait(scenario,selected);evaluate(scenario,"("+selected+").click()");
    uiWait(scenario,"[...document.querySelectorAll('[data-screen] h1')].some(h=>h.textContent==="+JSONObject.quote(title)+")");
-   focused();evaluate(scenario,"document.querySelector('button[aria-label=\"Delete event\"]').click()");
+   focused();evaluate(scenario,"document.querySelector('summary[aria-label=\"Event actions\"]').click()");
+   uiWait(scenario,"document.querySelector('details[open] button[aria-label=\"Delete event\"]')");
+   evaluate(scenario,"document.querySelector('details[open] button[aria-label=\"Delete event\"]').click()");
    // Delete opens the native review; the detail closes only once the deletion is queued.
    confirmReminderDeletion(title);
    uiWait(scenario,"!document.querySelector('button[aria-label=\"Delete event\"]')");

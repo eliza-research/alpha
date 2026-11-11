@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {nativeSource,fixture,runJvm,root,javaBinary,jvmTimeout} from './fixtures/jvm-tools.mjs';
+import {exactUpdateMembers} from '../specs/quint/refinement/native/update-barrier.mjs';
 
 // One-tap app update, native side (AlphaDevicePlugin). The download admission and the update flow run on the
 // host JVM from the plugin's own source; the rest are source checks (class S) of Android wiring that only a
@@ -15,7 +16,7 @@ const install=plugin.slice(plugin.indexOf('@PluginMethod public void installUpda
 const javaFiles=dir=>readdirSync(dir,{recursive:true}).filter(file=>file.endsWith('.java')).map(file=>join(dir,file));
 
 test('the download is admitted only at its declared size and SHA-256',()=>{
- const start=plugin.indexOf(' static final long UPDATE_MAX_BYTES='),end=plugin.indexOf(' private static final String UPDATE_STATUS=');
+ const start=plugin.indexOf(' static final long UPDATE_MAX_BYTES='),end=plugin.indexOf(' static final String UPDATE_STATUS=');
  assert.ok(start>0&&end>start,'the admission members exist');
  const dir=mkdtempSync(join(tmpdir(),'alpha-update-'));
  try{
@@ -27,9 +28,8 @@ test('the download is admitted only at its declared size and SHA-256',()=>{
 });
 
 test('the update flow runs one attempt per process, fences a session Android still holds, keeps its confirmation for the bridge that asked, opens it once, and settles every failure quietly',()=>{
- const start=plugin.indexOf(' static final long UPDATE_MAX_BYTES='),end=plugin.lastIndexOf('}');
  const deadline='static final long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.HOURS.toNanos(6)';
- assert.ok(start>0&&end>start&&plugin.includes(deadline),'the update members exist');
+ assert.ok(plugin.includes(deadline),'the production download deadline exists');
  const dir=mkdtempSync(join(tmpdir(),'alpha-update-flow-'));
  try{
   // The plugin's own members in a class of its name, with only the deadline shortened to seconds and settable by the scenario that waits it out; the stubs state what Android and Capacitor do.
@@ -38,25 +38,10 @@ test('the update flow runs one attempt per process, fences a session Android sti
   execFileSync(javaBinary('keytool'),['-genkeypair','-alias','fixture','-keyalg','RSA','-storetype','PKCS12',
    '-keystore',keyStore,'-storepass','fixture-pass','-keypass','fixture-pass','-dname','CN=localhost',
    '-ext','SAN=dns:localhost,ip:127.0.0.1','-validity','2','-noprompt'],{stdio:'pipe',timeout:jvmTimeout});
-  // The update flow opens the unknown-sources page through the plugin's own hand-off helper.
-  const handOff=/ private static Intent handOff\(Intent intent\)\{[^\n]*/.exec(plugin)?.[0];assert.ok(handOff,'AlphaDevicePlugin.handOff');
-  const foreground=/ static boolean shareForeground\(android\.app\.Activity activity\)\{[\s\S]*?\n \}/.exec(plugin)?.[0];assert.ok(foreground,'AlphaDevicePlugin.shareForeground');
-  writeFileSync(members,`package ai.alphacompute.alphaphone;
-import android.content.Context;
-import android.content.Intent;
-import android.content.pm.PackageInstaller;
-import android.content.pm.PackageManager;
-import android.os.Build;
-import android.provider.Settings;
-import com.getcapacitor.*;
-final class AlphaDevicePlugin extends Plugin {
- private final java.util.concurrent.ExecutorService diagnosticsWorker=java.util.concurrent.Executors.newSingleThreadExecutor();
-${handOff}
-${foreground}
-${plugin.slice(start,end).replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)')}}
-`);
-  const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{timeout:240000,args:[keyStore]});
+  writeFileSync(members,exactUpdateMembers(plugin).replace(deadline,'static long UPDATE_DEADLINE_NANOS=java.util.concurrent.TimeUnit.SECONDS.toNanos(3)'));
+  const result=runJvm([members,join(root,'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java'),nativeSource('PluginWorkers.java'),nativeSource('AlphaUpdateStatusReceiver.java'),nativeSource('UpdateConfirmationReceipt.java'),...javaFiles(fixture('app-update-jvm')),fixture('UpdateFlowTest.java')],'ai.alphacompute.alphaphone.UpdateFlowTest',{timeout:240000,args:[keyStore]});
   assert.match(result,/PASS verified cache retry over owned TLS: one request, exact retained bytes, one synthetic installer commit/);
+  assert.match(result,/PASS exact pending installer callback survives process replacement once/);
   assert.match(result,/^PASS update flow/m);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
@@ -79,8 +64,10 @@ test('Android installs only the offered newer build of this package, and only wh
  assert.doesNotMatch(plugin,/refused\)\{updateOwner=null|commitUpdate|getUpdatedMillis|elapsedRealtime/);
  assert.match(install,/params\.setAppPackageName\(getContext\(\)\.getPackageName\(\)\);/);
  // The status intent reaches only this app's receiver, and Android must be able to add the session result to it.
- assert.match(install,/new Intent\(UPDATE_STATUS\)\.setPackage\(getContext\(\)\.getPackageName\(\)\)/);
- assert.match(install,/PendingIntent\.FLAG_MUTABLE/);
+ assert.match(install,/AlphaUpdateStatusReceiver\.sender\(getContext\(\),preparation\.id,id\)/);
+ const receiver=readFileSync(nativeSource('AlphaUpdateStatusReceiver.java'),'utf8');
+ assert.match(receiver,/new Intent\(context,AlphaUpdateStatusReceiver\.class\)/);
+ assert.match(receiver,/PendingIntent\.FLAG_MUTABLE/);
  assert.match(plugin,/registerReceiver\(getContext\(\),updateStatus,new android\.content\.IntentFilter\(UPDATE_STATUS\),androidx\.core\.content\.ContextCompat\.RECEIVER_NOT_EXPORTED\)/);
  assert.match(install,/catch\(Exception failed\)\{\s*if\(!commitAttempted\)try\{installer\.abandonSession\(id\);\}catch\(RuntimeException cleanup\)\{failed\.addSuppressed\(cleanup\);\}\s*throw failed;\s*\}/);
  // The file goes while the flag is held: a delete after it would hit the next attempt's download.
@@ -95,6 +82,7 @@ test('Android installs only the offered newer build of this package, and only wh
 
 test('Alpha stays nonprivileged and reads one configured HTTPS manifest from its own rolling release',()=>{
  const manifestXml=readFileSync(join(root,'android/app/src/main/AndroidManifest.xml'),'utf8');
+ assert.match(manifestXml,/<receiver android:name="\.AlphaUpdateStatusReceiver" android:exported="false" \/>/);
  assert.match(manifestXml,/<uses-permission android:name="android\.permission\.REQUEST_INSTALL_PACKAGES" \/>/);
  assert.match(manifestXml,/<uses-permission android:name="android\.permission\.UPDATE_PACKAGES_WITHOUT_USER_ACTION" \/>/);
  assert.doesNotMatch(manifestXml,/android\.permission\.(INSTALL_PACKAGES|DELETE_PACKAGES)"/);

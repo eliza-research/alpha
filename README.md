@@ -74,7 +74,7 @@ another with an admitted version and signer. The launcher declares HOME.
 Phone, Contacts and SMS/MMS require an admitted AOSP image capability.
 
 Alpha Compute builds use the same ID for the installed package and native
-namespace. The retained Pixel v44 uses `ai.elizaresearch.alphaphone`. Android
+namespace. The retained Pixel v44 uses the former package ID. Android
 installs the new package separately, with its own private data, Keystore,
 permissions and roles. Establish a fresh baseline on each distribution form,
 then verify updates and data retention between builds with the new package ID.
@@ -148,6 +148,52 @@ in the qualification archive. Primary main-push attempts share a canceling group
 reruns use their own run ID group and do not cancel running work. GitHub does not
 guarantee commit order. Completion needs a quiet main, build capacity and admitted
 native inputs.
+
+Before enabling a successful automatic build, a maintainer supplies
+`android/hosted-native-inputs.json` in the reviewed checkout. Use these exact
+fields and replace every placeholder with the reviewed value.
+
+```json
+{
+  "schema": "alpha-hosted-native-inputs/v1",
+  "packageName": "ai.alphacompute.alphaphone",
+  "sdkCommit": "<upstream.lock.json commit>",
+  "voiceRecordSha256": "<SHA-256 of android/voice-host/qualified-voice-host.json>",
+  "embeddingRecordSha256": "<SHA-256 of android/embedding-host/qualified-host.json>",
+  "artifacts": {
+    "voice": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"},
+    "embeddingComponent": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"},
+    "embeddingQualification": {"id": "<artifact ID>", "sha256": "<archive SHA-256>"}
+  }
+}
+```
+
+Use three distinct, unexpired GitHub Actions artifact IDs from successful runs
+in this repository. Use the artifact metadata's digest without its `sha256:`
+prefix. The voice artifact contains the reviewed model, data and notice files at
+`assets/paradee-voice/v1/<path>` and the two recorded libraries per ABI at
+`jniLibs/<abi>/<name>`. Upload those files with their relative paths and omit
+generated manifests, APKs and logs. The embedding component contains
+`component-output/INTENT.json`, `component-output/export/PREPARATION.json` and
+the three reviewed ARM64 libraries alongside the preparation receipt. The
+qualification artifact contains `QUALIFICATION.json` and
+`embedding-qualification.json` at its root. These receipts must describe those
+same reviewed component bytes. The two hosts share the exact ARM64 engine and
+C++ runtime. Obtain the recorded bytes from the provisioned host or review and
+admit a reproducible replacement before updating the records and artifact IDs.
+
+Run `python3 -B scripts/ci/hosted-native-inputs.py --check` to validate the
+manifest against the checkout without downloading. Automatic runs fail early
+when input pins are missing, stale or expired. They download through the
+workflow's read-only token, stage with the existing voice and embedding tools,
+and retain the input IDs, hashes and sizes in `native-input-admission.json`.
+The candidate receipt binds its digest to the exact source, SDK and run attempt.
+The build evidence records the uploaded candidate's ID and compressed size
+from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
+Refresh the reviewed pins before an artifact expires or a bound source record
+changes. Manual diagnostics and protected signing keep their existing input
+and producer-evidence policy.
+
 The existing workflow run number is the candidate versionCode, checked against
 both releases' retained APKs and public pointers, and the committed version floors.
 Failed or canceled runs consume their number. A manual release or workflow
@@ -231,12 +277,27 @@ and [applied-candidate recovery #891](https://github.com/eliza-research/alphapho
 before enrollment. [#400](https://github.com/eliza-research/alphaphone/issues/400)
 tracks the overall release gate. A successful host test or model does not close
 these release and device gates. Alpha consumes the reviewed rejected-download
-retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) at
-`ede068b56ab07df42e3038de9a108bc7daa6ae0c`, which combines that repair with the
-reviewed Maps and speech changes through [eliza#39255](https://github.com/elizaOS/eliza/pull/39255). Its dependency-upgrade ancestry changes
-the SDK lock; core/mobile builder and installed UUID inputs were compared
-separately. Earlier APK, voice and device evidence does not qualify this pin;
-rebuild and qualify the exact product inputs before OS enrollment.
+retry repair [eliza#39235](https://github.com/elizaOS/eliza/pull/39235) and the
+reviewed Maps and speech changes through [eliza#39255](https://github.com/elizaOS/eliza/pull/39255)
+at `8876e369ca00d82f334e604aba3763a3998a854e`. This pin adds only the reviewed
+OS descriptor admission changes from [eliza#39291](https://github.com/elizaOS/eliza/pull/39291)
+to `06e268c7ecdc1a6451bfa1a0ad9665461a7f7d2b`; the core, runtime, mobile builder,
+Bun lock and recorded native producer inputs are unchanged. The exact pin is
+reachable from upstream develop through [eliza#39298](https://github.com/elizaOS/eliza/pull/39298).
+Earlier APK, voice and device evidence does not qualify this pin; rebuild and
+qualify the exact product inputs before OS enrollment.
+
+The protected [preserving OS OTA signing workflow](.github/workflows/release-os-ota-signing.yml)
+signs only an admitted OTA package with the existing release key. Its committed
+`android/signing/ota-tools.json` currently has `reviewedTargets: []`: validation,
+private input downloads and signing remain disabled before signing keys are read.
+Enabling a target requires an independently reviewed record binding its exact
+target-files SHA-256, producer source commit, SDK commit, fingerprint and build
+timestamp together. APK signer-map paths and AVB configuration paths alone do
+not establish the identities embedded in an image; review the exact target's
+APK, APEX and boot signing identities and producer lineage before committing
+that record. A qualified tools archive does not admit a target image. This
+operator does not enable OS enrollment or establish device acceptance.
 
 ## Generated files
 

@@ -12,7 +12,16 @@ const MAX_RETRY_AFTER_SECONDS = 86_400;
 const MAX_RESET_MS = 400 * 86_400_000;
 const record = (value: unknown): Record<string, unknown> | null => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
 function waitSeconds(value: number): number | undefined {
-  if (!Number.isFinite(value) || value < 0) return undefined;
+  return Number.isFinite(value) ? finiteWaitSeconds(value) : undefined;
+}
+/** The bounded wait for a finite number of seconds: never 0, never above the cap. */
+function finiteWaitSeconds(value: number): number | undefined {
+  //@ verify
+  //@ ensures \result !== undefined ==> 1 <= \result && \result <= MAX_RETRY_AFTER_SECONDS
+  //@ ensures value < 0 ==> \result === undefined
+  //@ ensures 0 <= value && value <= MAX_RETRY_AFTER_SECONDS ==> \result === Math.max(1, value)
+  //@ ensures value > MAX_RETRY_AFTER_SECONDS ==> \result === undefined
+  if (value < 0) return undefined;
   const seconds = Math.ceil(value);
   return seconds > MAX_RETRY_AFTER_SECONDS ? undefined : Math.max(1, seconds);
 }

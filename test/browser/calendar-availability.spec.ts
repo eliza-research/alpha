@@ -124,13 +124,14 @@ for (const mode of ['share', 'all-day', 'free', 'cancel-choice', 'cancel-result'
     await expect(page.getByText(/Only busy times are shared with the agent, not event titles or details/).last()).toBeVisible();
     await approve.click();
 
-    const choose = page.getByRole('dialog', { name: 'Choose calendars to check' });
+    const choose = page.getByRole('dialog', { name: 'Calendars' });
     await expect(choose).toBeVisible();
-    const check = choose.getByRole('button', { name: 'Check these calendars', exact: true });
+    const check = choose.getByRole('button', { name: 'Check', exact: true });
     const box = choose.getByRole('checkbox', { name: 'In this app · Saved on this device' });
     // Nothing is preselected and nothing can be read until the owner ticks a calendar.
-    await expect(box).not.toBeChecked(); await expect(check).toBeDisabled();
-    await expect(choose.getByRole('status')).toHaveText('Choose at least one calendar.');
+    await expect(box).not.toBeChecked(); await expect(check).toHaveAttribute('aria-disabled', 'true');
+    await expect(choose.getByRole('status')).toHaveText('Pick a calendar');
+    await check.click({ force: true }); await expect(choose).toBeVisible(); await expect(choose.getByRole('status')).toHaveText('Pick a calendar');
     for (const title of TITLES) await expect(choose).not.toContainText(title);
 
     const failedReceipt = async (pattern: RegExp) => {
@@ -148,18 +149,18 @@ for (const mode of ['share', 'all-day', 'free', 'cancel-choice', 'cancel-result'
       return;
     }
     await box.check();
-    await expect(choose.getByRole('status')).toHaveText('1 calendar chosen.');
+    await expect(choose.getByRole('status')).toHaveText('1 chosen');
     await check.click();
 
-    const result = page.getByRole('dialog', { name: 'Review availability to share' });
+    const result = page.getByRole('dialog', { name: 'Share availability' });
     await expect(result).toBeVisible();
-    await expect(result.getByRole('heading')).toHaveText(mode === 'free' ? 'You are free' : 'You are busy');
+    await expect(result.getByRole('heading')).toHaveText(mode === 'free' ? 'Free' : 'Busy');
     await expect(result.getByRole('listitem')).toHaveCount(mode === 'free' ? 0 : mode === 'all-day' ? 2 : 1);
     if (mode === 'all-day') await expect(result.getByRole('listitem').first()).toContainText('all day');
     // The owner sees times only; titles, notes and places are not read into the review.
     for (const hidden of [...TITLES, 'PRIVATE_BODY', 'PRIVATE_PLACE']) await expect(result).not.toContainText(hidden);
     await expect(result).toContainText('Read from: In this app · Saved on this device.');
-    await expect(result).toContainText('Calendar names, event titles and details stay on this phone.');
+    await expect(result).toContainText('Shares times only');
     expect((await fixture(page)).receipts).toEqual([]);
 
     if (mode === 'cancel-result') {

@@ -87,7 +87,7 @@ test('a signed-out startup refusal keeps guarded restart reachable on the sign-i
  expect(await calls(page)).toEqual({starts:1,reviews:0,archives:[]});
  await gate.getByRole('button',{name:'Restart Alpha',exact:true}).click();
  await expect.poll(()=>calls(page)).toEqual({starts:2,reviews:1,archives:[{reviewToken:token}]});
- await expect(gate.getByRole('button',{name:'Email me a code',exact:true})).toBeEnabled();
+ await expect(gate.getByRole('button',{name:'Send code',exact:true})).toBeEnabled();
  expect(await harness(page,f=>f.slots['cloud:production']??null)).toBeNull();
 });
 

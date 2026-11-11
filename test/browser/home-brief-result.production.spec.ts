@@ -220,7 +220,7 @@ test('a verified empty Agent Calendar does not substitute device events', async 
 for (const mode of ['stale-empty', 'future-empty'] as const) test(`a ${mode} Calendar read stays hidden without claiming a verified empty calendar`, async ({page}) => {
   await canonicalHome(page, mode);
   await expect(calendarCard(page)).toHaveCount(0);
-  await expect(home(page)).not.toContainText(/Nothing planned|Calendar has not been verified|Open Calendar to retry/);
+  await expect(home(page)).not.toContainText(/Nothing planned|Calendar has not been verified|Open Calendar to retry|Unverified/);
   await expect(home(page)).not.toContainText(/Device-only event|Private device calendar/);
   expect(await harness(page, f => f.calendar.requests)).toBe(0);
   expect(await harness(page, f => f.unexpected)).toEqual([]);

@@ -12,7 +12,7 @@ async function bundle() {
     './scan-correction-review': 'export const reviewScanCorrection=async()=>undefined;',
     './scan-page-camera': 'export const captureScanPage=async()=>undefined;',
     '../platform-plugins': 'export const registerPlugin=()=>({exportPdf:()=>window.scanPorts.exportPdf()});',
-    './files-index': 'export const filesIndex={record:()=>{window.scanPorts.indexed++;}};',
+    './files-index': 'export const filesIndex={record:()=>{window.scanPorts.indexed++;return [];},open:()=>{throw Error("Unused recent-file selection port");}};',
     '@capacitor/core': 'export class WebPlugin {} export const Capacitor={getPlatform:()=>"android",isNativePlatform:()=>true,convertFileSrc:()=>window.scanPorts.imageUrl};',
     '../daily': 'export const DailyApps={perform:async()=>({status:"selected",uri:"content://fixture/image",mimeType:"image/png",selectionId:"selected"}),forgetSelected:async()=>{}};',
     '../../../../.eliza/client-features/plugins/plugin-files/src/documents/scan-pdf.ts': 'export const createScanPdf=async()=>new TextEncoder().encode("%PDF-1.7 fixture");',
@@ -68,14 +68,14 @@ export async function scanRefinement() {
         const before = await page.evaluate(async () => (await window.scanApi.readScanDraft()).revision);
         await page.getByText('Draft options', {exact: true}).click();
         await page.getByRole('button', {name: 'Save document draft', exact: true}).click();
-        await expect.poll(() => page.evaluate(async previous => { const saved = await window.scanApi.readScanDraft(); return saved.revision !== previous && !document.querySelector('button[aria-label="Add page"]').disabled && document.querySelector('[role=status]').textContent.includes('Document draft saved'); }, before), {timeout: 30000}).toBe(true);
+        await expect.poll(() => page.evaluate(async previous => { const saved = await window.scanApi.readScanDraft(); return saved.revision !== previous && !document.querySelector('button[aria-label="Add page"]').disabled && document.querySelector('[role=status]').textContent === 'Draft saved'; }, before), {timeout: 30000}).toBe(true);
         observed = await page.evaluate(() => window.observeScanDraft());
         const saved = await page.evaluate(async () => ({has: !!await window.scanApi.readScanDraft(), status: document.querySelector('[role=status]').textContent}));
-        assert.match(saved.status, /draft saved/);
-        trace.steps.push({label: 'explicit Save uses real draft CAS', action: [action('beginManualSave'), action('saveCommit')], expect: {'s.userSaved': saved.status.includes('draft saved'), 's.storedRevision': observed.revision}});
+        assert.equal(saved.status, 'Draft saved');
+        trace.steps.push({label: 'explicit Save uses real draft CAS', action: [action('beginManualSave'), action('saveCommit')], expect: {'s.userSaved': saved.status === 'Draft saved', 's.storedRevision': observed.revision}});
       }
       if (mode === 'explicit-then-autosave') {
-        await page.waitForFunction(() => !document.querySelector('button[aria-label="Add page"]').disabled && document.querySelector('[role=status]').textContent.includes('Document draft saved'));
+        await page.waitForFunction(() => !document.querySelector('button[aria-label="Add page"]').disabled && document.querySelector('[role=status]').textContent === 'Draft saved');
         const before = await page.evaluate(async () => (await window.scanApi.readScanDraft()).revision);
         await page.evaluate(async () => { const canvas = document.createElement('canvas'); canvas.width = canvas.height = 2; canvas.getContext('2d').fillRect(0, 0, 2, 2); const image = await new Promise(resolve => canvas.toBlob(resolve, 'image/png')); window.scanImageIds.set(await window.imageIdentity(image), 2); window.scanPorts.imageUrl = URL.createObjectURL(image); });
         await page.getByRole('button', {name: 'Add page', exact: true}).click();

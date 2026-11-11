@@ -13,7 +13,7 @@ for(const width of [360,412])for(const unsupported of [true,false])test(`Browser
  await page.getByRole('button',{name:'Browser',exact:true}).click();await page.getByRole('button',{name:'Search or type address',exact:true}).click();
  const address=page.getByRole('textbox',{name:'Address',exact:true});await address.fill('https://example.invalid/');await address.press('Enter');
  const notice=page.getByRole('status',{name:'In-app browsing unavailable',exact:true});await expect.poll(()=>page.evaluate(()=>(window as any).browserFailureCalls.filter((m:string)=>m==='create').length)).toBe(1);
- if(unsupported){await expect(notice).toBeVisible();await expect(notice).toContainText('isolated browser profiles are not supported');await expect(notice).toContainText('Use another installed browser to browse websites.');await page.waitForTimeout(4200);await expect(notice).toBeVisible();expect(await notice.evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return hit===el||!!hit&&el.contains(hit);})).toBe(true);const rect=(await notice.boundingBox())!;expect(rect.x).toBeGreaterThanOrEqual(0);expect(rect.x+rect.width).toBeLessThanOrEqual(width);await page.screenshot({path:info.outputPath('unsupported-explanation.png'),animations:'disabled'});}else await expect(notice).toHaveCount(0);
+ if(unsupported){await expect(notice).toBeVisible();await expect(notice).toHaveText('Update WebView');await page.waitForTimeout(4200);await expect(notice).toBeVisible();expect(await notice.evaluate(el=>{const r=el.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return hit===el||!!hit&&el.contains(hit);})).toBe(true);const rect=(await notice.boundingBox())!;expect(rect.x).toBeGreaterThanOrEqual(0);expect(rect.x+rect.width).toBeLessThanOrEqual(width);await page.screenshot({path:info.outputPath('unsupported-explanation.png'),animations:'disabled'});}else await expect(notice).toHaveCount(0);
  await expect(address).toBeEditable();await expect(address).toHaveValue('https://example.invalid/');expect(await page.evaluate(()=>(window as any).browserFailureCalls.filter((m:string)=>['navigate','share','openExternalBrowser'].includes(m)))).toEqual([]);
  await page.keyboard.press('Escape');await expect(page.getByRole('button',{name:'Edit address',exact:true})).toBeVisible();if(unsupported)await expect(notice).toBeVisible();await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));await expect(page.getByRole('button',{name:'Browser',exact:true})).toBeVisible();
 });
@@ -22,6 +22,6 @@ for(const width of [360,412])for(const unsupported of [true,false])test(`Browser
 // throws CapacitorException(Unimplemented); this is renderer evidence, not a device failure.
 test('missing Browser implementation reports plain language without the internal plugin name',async({page})=>{
  await fenceNetwork(page);await flagOffAndroid(page);await residentHome(page);await page.getByRole('button',{name:'Browser',exact:true}).click();
- await expect(page.getByText('This feature isn’t available in this version of Alpha.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Unavailable',{exact:true})).toBeVisible();
  await expect(page.getByText('"AlphaBrowser" plugin is not implemented on android',{exact:true})).toHaveCount(0);
 });

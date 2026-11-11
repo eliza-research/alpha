@@ -14,19 +14,19 @@ export async function reviewBrowserReading(url:string,signal:AbortSignal,valid:(
  const border=theme.getPropertyValue('--line').trim();if(border)dialog.style.setProperty('--bd',border);
  const title=document.createElement('h2');title.textContent='Read page excerpt';
  const source=document.createElement('p');source.textContent=new URL(url).origin;source.style.overflowWrap='anywhere';
- const explanation=document.createElement('p');explanation.textContent='Review or paste the text you want to hear. Speech runs on this device through your local agent’s on-device voice; the text is used only to read it aloud and is not saved.';
+ const explanation=document.createElement('p');explanation.textContent='On device · not saved';
  const label=document.createElement('label');label.textContent='Excerpt to read';
  const field=document.createElement('textarea');field.setAttribute('aria-label','Excerpt to read');field.maxLength=5000;field.rows=7;field.style.cssText='box-sizing:border-box;width:100%;font:inherit;background:var(--s2,#eee);color:inherit;border:1px solid var(--bd,#aaa);border-radius:8px;padding:8px';label.append(field);
- const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-label','Reading status');status.textContent='Up to 5,000 characters. Review the text before reading.';
+ const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-label','Reading status');status.textContent='';const counter=document.createElement('p');counter.setAttribute('aria-label','Characters');counter.style.cssText='margin:0;font-size:12px;text-align:right';const count=()=>{counter.textContent=`${field.value.length.toLocaleString()}/5,000`;};count();
  const controls=document.createElement('div');controls.style.cssText='display:flex;gap:12px;flex-wrap:wrap';
  const button=(text:string)=>{const b=document.createElement('button');b.textContent=text;b.style.cssText='min-height:44px;padding:8px 16px;font:inherit;border:1px solid var(--bd,#aaa);border-radius:10px;background:var(--s2,#eee);color:inherit';controls.append(b);return b;};
  const read=button('Read locally'),stop=button('Stop reading'),close=button('Close');stop.disabled=true;
- dialog.append(title,source,explanation,label,status,controls);
- const blockedMessage='Reading is unavailable because this page or excerpt may contain credentials or verification codes. Open a different page.';
+ dialog.append(title,source,explanation,label,counter,status,controls);
+ const blockedMessage='Contains secrets';
  let blocked=sensitiveReadingUrl(url),sourcePending=true;read.disabled=true;
- const block=()=>{blocked=true;field.value='';field.disabled=true;read.disabled=true;status.textContent=blockedMessage;};
+ const block=()=>{blocked=true;field.value='';field.disabled=true;read.disabled=true;status.textContent=blockedMessage;count();};
  if(blocked)block();
- const sourceAbort=new AbortController();let edited=false;field.oninput=()=>{edited=true;};
+ const sourceAbort=new AbortController();let edited=false;field.oninput=()=>{edited=true;count();};
  let active=true,generation=0,speech:AbortController|undefined;
  const stopSpeech=()=>{generation++;speech?.abort();speech=undefined;field.disabled=false;read.disabled=blocked||sourcePending;field.disabled=blocked;stop.disabled=true;};
  let finish!:()=>void;
@@ -39,15 +39,15 @@ export async function reviewBrowserReading(url:string,signal:AbortSignal,valid:(
   if(!active||read.disabled||blocked||sourcePending)return;
   try{valid();}catch{finish();return;}
   edited=true;sourceAbort.abort();
-  const text=field.value.trim();if(!text||text.length>5000){status.textContent='Enter between 1 and 5,000 characters.';return;}
+  const text=field.value.trim();if(!text||text.length>5000){status.textContent=`${text.length.toLocaleString()}/5,000`;counter.style.color='var(--err,#c62828)';return;}
   if(sensitiveReadingText(text)){block();return;}
   const current=++generation;field.disabled=true;read.disabled=true;stop.disabled=false;status.textContent='Preparing local speech…';const owner=new AbortController();speech=owner;
   try{
    await speakLocalText(text,owner.signal,()=>{valid();if(active&&current===generation)status.textContent='Reading locally…';});
    if(active&&current===generation){stopSpeech();status.textContent='Reading finished.';}
-  }catch(error){if(active&&current===generation){stopSpeech();status.textContent=error instanceof Error?error.message:'Speech could not start. Try again.';}}
+  }catch(error){if(active&&current===generation){stopSpeech();status.textContent=error instanceof Error?error.message:'Speech failed';}}
  };
  try{valid();if(!active)return;layoutBrowserDialog(dialog,[read,stop,close]);document.body.append(dialog);dialog.showModal();field.focus();
- void browserReadingSource(url,sourceAbort.signal).then(result=>{if(!active||sourceAbort.signal.aborted)return;valid();sourcePending=false;if(result?.blocked){block();return;}if(blocked)return;read.disabled=false;if(edited)return;if(result){field.value=result.text;status.textContent=result.truncated?'First 5,000 characters of public page text. Review before reading.':'Public page text loaded. Review before reading.';}else status.textContent='Paste up to 5,000 characters from the page to read locally.';}).catch(()=>{if(active&&!sourceAbort.signal.aborted){sourcePending=false;block();}});
+ void browserReadingSource(url,sourceAbort.signal).then(result=>{if(!active||sourceAbort.signal.aborted)return;valid();sourcePending=false;if(result?.blocked){block();return;}if(blocked)return;read.disabled=false;if(edited)return;if(result){field.value=result.text;count();status.textContent=result.truncated?'Truncated':'';}else status.textContent='Paste text';}).catch(()=>{if(active&&!sourceAbort.signal.aborted){sourcePending=false;block();}});
  await closed;}finally{finish();}
 }

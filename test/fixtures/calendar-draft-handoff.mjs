@@ -7,7 +7,7 @@ export const fixtureNote = {
   id: 'fixture-schedule-note', title: noteTitle, body: 'Plan the meeting',
   color: 'yellow', createdAt: '2026-11-01T12:00:00.000Z', updatedAt: '2026-11-01T12:00:00.000Z',
 };
-export const noteRefusal = "Calendar can't open this event yet. Finish any open Calendar draft and try again.";
+export const noteRefusal = 'Calendar busy';
 export const titleInput = f => f.page.getByRole('textbox', {name: 'Title', exact: true});
 
 export async function goHome(f) {
@@ -25,9 +25,16 @@ export async function retainCalendarDraft(f) {
   return old.retained;
 }
 export async function discardCalendarDraft(f) {
-  const dialog = f.page.waitForEvent('dialog').then(async dialog => dialog.accept());
-  await Promise.all([f.button('Discard event draft').click(), dialog]);
+  await reviewCalendarDraftDiscard(f, true);
   await f.button('Resume event draft').waitFor({state: 'detached'});
+}
+export async function reviewCalendarDraftDiscard(f, accept) {
+  await f.button('Discard event draft').click();
+  const dialog = f.page.getByRole('dialog', {name: 'Discard draft?', exact: true});
+  await dialog.waitFor();
+  await dialog.getByRole('button', {name: 'Discard draft', exact: true}).waitFor();
+  await dialog.getByRole('button', {name: accept ? 'Discard draft' : 'Cancel', exact: true}).click();
+  await dialog.waitFor({state: 'detached'});
 }
 export async function openNote(f) {
   await f.button('Notes').click();

@@ -217,14 +217,14 @@ export function notifyGoogleAccountsChanged(): void {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(GOOGLE_ACCOUNTS_CHANGED));
 }
 
-export function googleDisconnectConfirmation(label: string, serviceName = 'Cloud'): string {
-  return `Disconnect ${label}?\n\nGmail and Calendar access through ${serviceName} end. Your Google account, mail and events aren't deleted. Local drafts stay until you discard them.`;
+export function googleDisconnectConfirmation(label: string, _serviceName = 'Cloud'): string {
+  return `Disconnect ${label}? Mail and events stay.`;
 }
 
 export function googleDisconnectMessage(outcome: GmailDisconnectOutcome, label: string): string {
-  if (outcome === 'disconnected') return `${label} disconnected. Google may still list Alpha in your account permissions.`;
-  if (outcome === 'still-connected') return `Disconnect was requested, but Google still reports ${label} as connected to Alpha. Check the connection again.`;
-  return `Disconnect of ${label} was not confirmed. Check the connection before trying again.`;
+  if (outcome === 'disconnected') return `${label} disconnected`;
+  if (outcome === 'still-connected') return `${label}: Still connected`;
+  return `${label}: Unconfirmed`;
 }
 
 /** One captured Cloud session owns every request and result. Recreate after an account change. */
@@ -350,7 +350,7 @@ function calendarSettled(calendar:AgentCalendar,signal:AbortSignal){
  * Two-way sync, link dedupe and the all-eligible bootstrap on resume stay in the shared Calendar service. */
 export async function linkGoogleCalendar(scope:CanonicalCalendarSyncSettings,accounts:readonly GmailAccount[],signal:AbortSignal):Promise<GoogleCalendarLink>{
  const granted=accounts.filter(account=>account.connected&&account.grantedCapabilities.includes('google.calendar.write'));
- if(!granted.length)return{outcome:'needs-grant',message:accounts.some(account=>account.connected&&account.grantedCapabilities.includes('google.calendar.read'))?'Google Calendar is read only, so sync is off. Allow Calendar changes to sync.':'Google Calendar is not connected.'};
+ if(!granted.length)return{outcome:'needs-grant',message:accounts.some(account=>account.connected&&account.grantedCapabilities.includes('google.calendar.read'))?'Read-only':'Not connected'};
  const emails=new Set(granted.map(account=>account.label.toLowerCase()));
  const fence=()=>!signal.aborted&&scope.current()&&scope.canChange();
  const ready=async()=>{await calendarSettled(scope.calendar,signal);return fence();};
@@ -358,37 +358,38 @@ export async function linkGoogleCalendar(scope:CanonicalCalendarSyncSettings,acc
  // latest: the last readback with no write sent after it. dispatch: the pending dispatch the previous readback saw ('' for none).
  let sent=false,revision:number|undefined,latest:AgentCalendarSyncReview|undefined,dispatch:string|undefined;
  const result=(outcome:GoogleCalendarLink['outcome'],message:string):GoogleCalendarLink=>latest?{outcome,message,review:latest}:{outcome,message};
- const stopped=()=>result('not-linked',signal.aborted||!scope.current()?'Calendar sync was not finished.':'Finish or close the Calendar draft, then connect Google Calendar again.');
- const unconfirmed=(reason='')=>result('unconfirmed',`${reason}Calendar sync was not confirmed; check it before another change.`);
- const waiting='Calendar sync is waiting on an earlier change. Ask your agent to check Calendar sync.';
+ const stopped=()=>result('not-linked',signal.aborted||!scope.current()?'Not finished':'Finish draft first');
+ const unconfirmed=(reason='')=>result('unconfirmed',reason?`Unconfirmed · ${reason}`:'Unconfirmed');
+ const why=(error:unknown)=>(error instanceof Error?error.message:'').replace(/\.$/,'');
+ const waiting='Waiting';
  try{
   // Review, select the primary, review, resume, review: Synced is the last readback, never the last request.
   for(let step=0;step<3;step++){
    if(!await ready())return stopped();
-   if(!['ready','partial','unavailable'].includes(scope.calendar.state.status))return sent?unconfirmed():result('not-linked','Waiting for Calendar. Nothing was sent; connect Google Calendar again when Calendar is ready.');
+   if(!['ready','partial','unavailable'].includes(scope.calendar.state.status))return sent?unconfirmed():result('not-linked','Calendar not ready');
    const review=latest=await scope.calendar.reviewSync(),control=review.control,owner=scope.calendar.state.ownerKey;
-   if(revision!==undefined&&control.revision!==revision)return result('not-linked','Calendar sync changed elsewhere. Ask your agent to check it; saved events are unchanged.');
+   if(revision!==undefined&&control.revision!==revision)return result('not-linked','Changed elsewhere');
    const saved=control.destination&&review.sources.find(source=>source.connectorAccountId===control.destination?.connectorAccountId&&source.calendarId===control.destination.providerCalendarId);
-   if(control.destination&&!saved)return result('not-linked','The saved Google sync calendar is unavailable. Ask your agent to check Calendar sync; saved events are unchanged.');
+   if(control.destination&&!saved)return result('not-linked','Calendar unavailable');
    // Only an approved (and, when Google named one, the returned) account may be reported Synced or resumed.
-   if(saved&&!emails.has(saved.accountEmail?.toLowerCase()??''))return result('not-linked','The saved Google sync calendar is not on the Google account approved for Calendar changes. Ask your agent to check Calendar sync; saved events are unchanged.');
+   if(saved&&!emails.has(saved.accountEmail?.toLowerCase()??''))return result('not-linked','Wrong account');
    const pending=control.pendingDispatch?JSON.stringify(control.pendingDispatch):'',before=dispatch;dispatch=pending;
    if(saved&&!control.paused){
     // Active with a background dispatch is on, not Synced. It is syncing only if the dispatch changed since the last
     // readback (the push resume starts); the same one on two readbacks may be stuck. A first sighting reads again.
-    if(pending){if(before===undefined)continue;return before!==pending?result('syncing',`Sync on. Calendar is syncing with ${saved.summary} in Google.`):result('unconfirmed',waiting);}
+    if(pending){if(before===undefined)continue;return before!==pending?result('syncing',`Syncing · ${saved.summary}`):result('unconfirmed',waiting);}
     // Synced also needs no conflicted or quarantined event on this destination: those never reach Google on their own.
     let links;
     try{links=await scope.calendar.listLinkedEvents(signal);}
-    catch(error){return unconfirmed(`${(error instanceof Error?error.message:'').replace(/\.$/,'')||'Calendar sync could not be verified'}. `);}
+    catch(error){return unconfirmed(why(error));}
     const held=links.filter(link=>(link.state==='conflicted'||link.state==='quarantined')&&link.connectorAccountId===control.destination?.connectorAccountId&&link.providerCalendarId===control.destination.providerCalendarId);
-    if(held.length)return result('unconfirmed',`Some events need a decision before they sync: ${held.slice(0,3).map(link=>link.event?.title?.trim()||'Untitled event').join(', ')}. Ask your agent to resolve them.`);
-    return result('synced',`Calendar syncs with ${saved.summary} in Google.`);
+    if(held.length)return result('unconfirmed',`${held.length} held`);
+    return result('synced',`Synced · ${saved.summary}`);
    }
    if(pending)return result('not-linked',waiting);
    if(step===2)break; // The last step only reads back.
    const primary=review.sources.filter(source=>source.primary===true&&emails.has(source.accountEmail?.toLowerCase()??''));
-   if(!saved&&primary.length!==1)return result('not-linked','Ask your agent to choose the Google calendar to sync.');
+   if(!saved&&primary.length!==1)return result('not-linked','Choose calendar');
    // A reviewed destination keeps its mappings: resume it rather than replace it with the primary.
    const operation=saved?'resume':'select',target=saved||primary[0];
    const key=await linkOperationKey(owner,operation,control.revision,target.connectorAccountId,target.calendarId);
@@ -397,8 +398,8 @@ export async function linkGoogleCalendar(scope:CanonicalCalendarSyncSettings,acc
    revision=(await scope.calendar.changeSync(review,operation,key,fence,saved?undefined:calendarSourceKey(target),()=>{sent=true;latest=undefined;})).revision;
   }
  }catch(error){
-  const reason=(error instanceof Error?error.message:'').replace(/\.$/,'');
-  return sent?unconfirmed(`${reason||'Calendar sync could not be verified'}. `):!fence()?stopped():result('not-linked',`${reason||'Calendar sync could not be reviewed'}. Calendar sync was not finished; nothing was sent.`);
+  const reason=why(error);
+  return sent?unconfirmed(reason):!fence()?stopped():result('not-linked',reason?`Not synced · ${reason}`:'Not synced');
  }
  return unconfirmed();
 }

@@ -277,17 +277,34 @@ export async function emailCode(page: Page, verify = true) {
   const dialog=page.locator('.alpha-cloud-sign-in');
   await expect(dialog).toBeVisible();
   await dialog.getByRole('textbox',{name:'Email',exact:true}).fill('fixture@example.invalid');
-  await dialog.getByRole('button',{name:'Email me a code',exact:true}).click();
-  await expect(dialog.getByLabel('Six-digit code')).toBeVisible();
-  if(verify){await dialog.getByLabel('Six-digit code').fill('123456');await dialog.getByRole('button',{name:'Verify',exact:true}).click();}
+  await dialog.getByRole('button',{name:'Send code',exact:true}).click();
+  await expect(dialog.getByRole('textbox',{name:'Code',exact:true})).toBeVisible();
+  if(verify){await dialog.getByRole('textbox',{name:'Code',exact:true}).fill('123456');await dialog.getByRole('button',{name:'Verify',exact:true}).click();}
 }
 
 /** Complete the visible native email form on the required page or an optional sign-in dialog. */
-export async function enterNativeEmailCode(page: Page, email='owner@example.invalid') {
+export async function enterNativeEmailCode(page: Page, email='owner@example.invalid', {checkLayout=false}={}) {
   const panel=page.locator('.alpha-cloud-sign-in');
   await expect(panel).toBeVisible();
   await panel.getByRole('textbox',{name:'Email',exact:true}).fill(email);
-  await panel.getByRole('button',{name:'Email me a code',exact:true}).click();
-  await panel.getByLabel('Six-digit code').fill('123456');
+  await panel.getByRole('button',{name:'Send code',exact:true}).click();
+  const code=panel.getByRole('textbox',{name:'Code',exact:true});
+  await expect(code).toBeVisible();
+  if(checkLayout){
+    await expect(code).toHaveAttribute('autocomplete','one-time-code');
+    await code.focus();await expect(code).toBeFocused();
+    const boxes=panel.locator('.alpha-code-boxes>span[aria-hidden="true"]');
+    await expect(boxes).toHaveCount(6);
+    const bounds=await boxes.evaluateAll(elements=>elements.map(element=>{const r=element.getBoundingClientRect();return{x:r.x,y:r.y,width:r.width,height:r.height};}));
+    const viewport=page.viewportSize()!;
+    for(const [index,box] of bounds.entries()){
+      expect(box.width).toBeGreaterThan(20);expect(box.height).toBeGreaterThan(40);
+      expect(Math.abs(box.y-bounds[0].y)).toBeLessThan(1);
+      expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(viewport.width);
+      if(index)expect(box.x).toBeGreaterThan(bounds[index-1].x+bounds[index-1].width);
+    }
+  }
+  await code.fill('123456');
+  if(checkLayout)await expect(panel.locator('.alpha-code-boxes>span[aria-hidden="true"]')).toHaveText(['1','2','3','4','5','6']);
   await panel.getByRole('button',{name:'Verify',exact:true}).click();
 }

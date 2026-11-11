@@ -123,9 +123,11 @@
 
 --- /dev/null
 +++ b/packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/AlphaQsDefaultsPolicy.java
-@@ -0,0 +1,49 @@
+@@ -0,0 +1,57 @@
 +// SPDX-License-Identifier: Apache-2.0
 +package com.android.systemui.qs.pipeline.data.repository;
++
++import com.android.systemui.qs.AlphaCoreLauncherPolicy;
 +
 +import java.util.ArrayList;
 +import java.util.Arrays;
@@ -133,11 +135,17 @@
 +
 +/** Update known stock layouts and carry the Alpha tile into the renamed package. */
 +public final class AlphaQsDefaultsPolicy {
-+    public static final String ALPHA = "custom(ai.alphacompute.alphaphone/.AlphaQuickSettingsTile)";
++    public static final String ALPHA = tile(AlphaCoreLauncherPolicy.PACKAGE);
 +    public static final int VERSION = 3;
 +    public static final String VERSION_SETTING = "alpha_qs_layout_migration_version";
-+    private static final String LEGACY_ALPHA = "custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile)";
++    private static final int STOCK_LAYOUT_VERSION = 2;
++    // Match saved settings from the retained pre-rename image.
++    private static final String LEGACY_ALPHA = tile(String.join(".", "ai", "elizaresearch", "alphaphone"));
 +    private AlphaQsDefaultsPolicy() {}
++
++    private static String tile(String packageName) {
++        return "custom(" + packageName + "/.AlphaQuickSettingsTile)";
++    }
 +    public static List<String> migrate(List<String> saved, List<String> defaults, int reviewedVersion) {
 +        if (shouldMigrate(saved, defaults, reviewedVersion)) return defaults;
 +        if (reviewedVersion >= VERSION || !defaults.contains(ALPHA) || !saved.contains(LEGACY_ALPHA)) return saved;
@@ -156,7 +164,7 @@
 +    }
 +
 +    public static boolean shouldMigrate(List<String> saved, List<String> defaults, int reviewedVersion) {
-+        if (reviewedVersion >= VERSION || !defaults.contains(ALPHA)) return false;
++        if (reviewedVersion >= STOCK_LAYOUT_VERSION || !defaults.contains(ALPHA)) return false;
 +        for (String stock : Arrays.asList(
 +                "internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery",
 +                "wifi,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery",
@@ -240,24 +248,23 @@
 +}
 --- a/services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java
 +++ b/services/core/java/com/android/server/pm/permission/DefaultPermissionGrantPolicy.java
-@@ -359,6 +359,16 @@
-             }
-         };
-         mServiceInternal = LocalServices.getService(PackageManagerInternal.class);
-+        // Covers OS updates that do not rerun runtime-permission upgrades.
-+        // The bounded policy preserves existing owner and enterprise decisions.
-+        mContext.registerReceiverAsUser(new android.content.BroadcastReceiver() {
-+            @Override public void onReceive(Context context, Intent intent) {
-+                if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-+                    grantAlphaSharedStorageDefault(NO_PM_CACHE, UserHandle.USER_SYSTEM);
-+                }
-+            }
-+        }, UserHandle.SYSTEM, new android.content.IntentFilter(Intent.ACTION_BOOT_COMPLETED),
-+                null, mHandler, Context.RECEIVER_NOT_EXPORTED);
+@@ -273,6 +273,7 @@
+     private final Context mContext;
+     private final Object mLock = new Object();
+     private final PackageManagerInternal mServiceInternal;
++    private boolean mAlphaStorageReceiverRegistered;
+
+     /** Directly interact with the PackageManger */
+     private final PackageManagerWrapper NO_PM_CACHE = new PackageManagerWrapper() {
+@@ -411,6 +412,7 @@
      }
 
-     public void setLocationPackagesProvider(PackagesProvider provider) {
-@@ -420,6 +430,37 @@
+     public void grantDefaultPermissions(int userId) {
++        registerAlphaStorageBootReceiver();
+         DelayingPackageManagerCache pm = new DelayingPackageManagerCache();
+
+         grantPermissionsToSysComponentsAndPrivApps(pm, userId);
+@@ -420,6 +422,37 @@
 
          // Apply delayed state
          pm.apply();
@@ -295,3 +302,26 @@
      }
 
      private void grantSignatureAppsNotificationPermissions(PackageManagerWrapper pm, int userId) {
+@@ -464,7 +497,22 @@
+     }
+
+     public void scheduleReadDefaultPermissionExceptions() {
++        registerAlphaStorageBootReceiver();
+         mHandler.sendEmptyMessage(MSG_READ_DEFAULT_PERMISSION_EXCEPTIONS);
++    }
++
++    /** Both callers run from PackageManagerService.systemReady, after Activity Manager exists. */
++    private synchronized void registerAlphaStorageBootReceiver() {
++        if (mAlphaStorageReceiverRegistered) return;
++        mContext.registerReceiverAsUser(new android.content.BroadcastReceiver() {
++            @Override public void onReceive(Context context, Intent intent) {
++                if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
++                    grantAlphaSharedStorageDefault(NO_PM_CACHE, UserHandle.USER_SYSTEM);
++                }
++            }
++        }, UserHandle.SYSTEM, new android.content.IntentFilter(Intent.ACTION_BOOT_COMPLETED),
++                null, mHandler, Context.RECEIVER_NOT_EXPORTED);
++        mAlphaStorageReceiverRegistered = true;
+     }
+
+     private void grantPermissionsToSysComponentsAndPrivApps(DelayingPackageManagerCache pm,

@@ -13,5 +13,5 @@ export function speechError(code:SpeechErrorCode,message:string){
 export type SpeechRequestKind='status'|'stt'|'tts';
 export type SpeechCancelReason='superseded'|'cancelled'|'stopped'|'released'|'hidden'|'pagehide'|'device-state';
 export function speechCancelled(kind:SpeechRequestKind,reason:SpeechCancelReason){
- return Object.assign(new DOMException(`Speech ${kind} request cancelled: ${reason}.`,'AbortError'),{speechKind:kind,cancelReason:reason});
+ return Object.assign(new DOMException('Cancelled','AbortError'),{speechKind:kind,cancelReason:reason});
 }

@@ -228,13 +228,13 @@ function selectedCloudName():string {
 }
 /** The action offered with the on-device agent's answer while Eliza Cloud AI is not connected. */
 function planActionCard(action:unknown):Shell|undefined{
-  if(action==='plan')return {type:'generic',icon:'info',title:'Redeem code or choose a plan',sub:`Opens ${selectedCloudName()} account & plan. Nothing is purchased automatically.`,planAction:'plan'};
-  if(action==='sign-in')return {type:'generic',icon:'info',title:`Sign in with ${selectedCloudName()}`,sub:'Connects AI to your plan. Your agent keeps running on this phone.',planAction:'sign-in'};
-  if(action==='retry')return {type:'generic',icon:'info',title:`Check ${selectedCloudName()} again`,sub:'AI replies return when Cloud is reachable.',planAction:'retry'};
+  if(action==='plan')return {type:'generic',icon:'info',title:'Choose plan',sub:'',planAction:'plan'};
+  if(action==='sign-in')return {type:'generic',icon:'info',title:`Sign in with ${selectedCloudName()}`,sub:'',planAction:'sign-in'};
+  if(action==='retry')return {type:'generic',icon:'info',title:`Check ${selectedCloudName()} again`,sub:'',planAction:'retry'};
   // AI was believed connected yet the agent answered without it: check what this phone has bound.
-  if(action==='provider')return {type:'generic',icon:'info',title:`Check ${selectedCloudName()} again`,sub:'Checks whether AI is connected to your agent. Nothing is resent.',planAction:'provider'};
+  if(action==='provider')return {type:'generic',icon:'info',title:`Check ${selectedCloudName()} again`,sub:'',planAction:'provider'};
   // Cloud declined a turn for billing: open the account's subscription controls.
-  if(action==='funding')return {type:'generic',icon:'info',title:'Check subscription or enter a membership code',sub:`Opens your ${selectedCloudName()} subscription. Nothing is purchased automatically.`,planAction:'funding'};
+  if(action==='funding')return {type:'generic',icon:'info',title:'Subscription',sub:'',planAction:'funding'};
   return undefined;
 }
 /** A saved row keeps its authoritative content and any richer card; only a missing final plan control is enriched. */
@@ -259,6 +259,11 @@ export async function declineProposal(id:string):Promise<{ok:boolean;message:str
   if(after.error)return {ok:false,message:after.error};
   return {ok:true,message:'Declined. No phone action was performed.'};
 }
+/**
+ * The composer is measured again only when its text or width changed since it was last sized, or
+ * when a render put back a height other than the one sizing set.
+ */
+export function composerNeedsSizing(sized:{value:string;width:number;height:string}|undefined,value:string,width:number,height:string){return !sized||sized.value!==value||sized.width!==width||sized.height!==height;}
 export function installAgentAdapter(Component: Shell, views: Shell) {
   const p = Component.prototype;
   let activeShell:Shell|null=null,notesRecovery:AbortController|null=null;
@@ -284,9 +289,15 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   // Navigation resets transient view state, but must retain the actual storage receipt.
   views.notes.persist = [...new Set([...(views.notes.persist || []), 'storageStatus'])];
 
+  // Sizing writes a height and reads scrollHeight, which lays the page out twice. Every update of
+  // the shell runs this (each streamed reply chunk included), so an unchanged composer is skipped.
+  const sizedComposers=new WeakMap<HTMLTextAreaElement,{value:string;width:number;height:string}>();
   function sizeComposer(){
     for(const input of document.querySelectorAll<HTMLTextAreaElement>('textarea[data-alpha-composer]')){
+      const value=input.value,width=input.clientWidth;
+      if(!composerNeedsSizing(sizedComposers.get(input),value,width,input.style.height))continue;
       input.style.height='44px';input.style.height=`${Math.max(44,input.scrollHeight)}px`;
+      sizedComposers.set(input,{value,width,height:input.style.height});
     }
   }
   const notesDataset=(name:'notesStorageState'|'notesDraftState',value:string)=>{document.documentElement.dataset[name]=value;};
@@ -537,7 +548,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(shell.canonicalNotesKey===key&&(key===null||shell.canonicalNotesUi?.current))return;
     const previous=shell.canonicalNotesUi;shell.canonicalNotesUi=null;shell.canonicalNotesKey=key;previous?.retire();
     shell.notesSelectionKey=null;shell.notesSelection=null;shell.notesStorageFailed=true;shell.notesPending=0;
-    if(!port){shell.notesReady=Promise.resolve();originalSet.call(shell,'notes',{list:[],open:null,trash:[],trashOpen:false,storageStatus:agentAvailabilityNotice(undefined,'Notes is unavailable for this agent connection. Check Settings › Agent connection.')});return;}
+    if(!port){shell.notesReady=Promise.resolve();originalSet.call(shell,'notes',{list:[],open:null,trash:[],trashOpen:false,storageStatus:agentAvailabilityNotice(undefined,'Notes unavailable')});return;}
     let binding:CanonicalNotesUi;
     const paint=()=>{if(shell.live&&shell.canonicalNotesUi===binding)shell.setState({},()=>context(shell));};
     binding=new CanonicalNotesUi(port,{paint,review:paint,committed:()=>paint(),dropped:title=>{if(shell.live)shell.toast(`Your unsaved edit to “${title}” was lost when the agent connection changed.`);}});
@@ -736,7 +747,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           })}));
         }).catch(()=>this.toast('Saved attachments could not load. Try reopening this conversation.'));
 
-        alphaClient.disconnect();
+        // Same agent session: approvals already dispatched stay consumed across the reload.
+        alphaClient.disconnect({keepConsumed:true});
         if (this.live) this.setState((previous:Shell)=>{
           if(!this.live||connectionController.getSnapshot().history!==history)return null;
           const messages=history.messages.map(message => ({ ...message, messageBinding:message.deviceReceipt?undefined:{conversationId:history.conversationId,session:connectionController.getSnapshot().session}, card:null }));
@@ -964,7 +976,28 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         const files=this.filesAgent as FilesAgentRunner|undefined;
         if(!files||!filesContextAllowed(operation,expectedContext)||document.hidden)return {status:'failed',summary:'Open Files on the unlocked phone. Nothing was changed.'};
         signal.throwIfAborted();
-        return await files.run(operation,signal);
+        const session=connectionController.getSnapshot().session;
+        const ownerCurrent=()=>activeShell===this&&this.live&&!document.hidden&&connectionController.getSnapshot().session===session;
+        const openFiles=()=>new Promise<boolean>((resolve,reject)=>{
+          const abort=()=>reject(signal.reason);
+          try{
+            signal.throwIfAborted();
+            context(this);
+            if(!ownerCurrent()||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext)){resolve(false);return;}
+            const chat=this.S().chat;
+            if(!openInternalView(this,'files',chat==='sheet'||chat==='full'?chat:undefined)){resolve(false);return;}
+            signal.addEventListener('abort',abort,{once:true});
+            this.setState({},()=>{
+              signal.removeEventListener('abort',abort);
+              try{
+                signal.throwIfAborted();context(this);
+                const opened=alphaClient.getState().context;
+                resolve(ownerCurrent()&&opened.view==='files'&&!opened.sensitive);
+              }catch(error){reject(error);}
+            });
+          }catch(error){signal.removeEventListener('abort',abort);reject(error);}
+        });
+        return await files.run(operation,signal,openFiles);
       }
       // Until the pin carries photos-view-agent.patch the shared operation union does not name these.
       const photosView:unknown=operation;
@@ -1231,9 +1264,9 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     this.live = false; alphaClient.disconnect(); window.removeEventListener('alpha-back', this.backHandler); window.removeEventListener('launcher-home', this.homeHandler); window.removeEventListener('alpha-selected-context', this.selectionHandler);
     void this.assistListener?.then((l: Shell) => l?.remove()); originalUnmount.call(this);
   };
-  p.vset = function (key: string, patch: Shell, options?: {exact?: boolean;keepSelection?: boolean}) {
+  p.vset = function (key: string, patch: Shell, options?: {exact?: boolean;keepSelection?: boolean;afterCommit?: () => void}) {
     if(key==='notes'&&Object.hasOwn(patch,'list')&&this.notesSourceMode!=='legacy'){originalSet.call(this,key,{compose:false,record:false});this.toast('That note change could not be saved. Your draft is still open.');return false;}
-    if (key !== 'notes' || !patch.list) { originalSet.call(this,key,patch);return true; }
+    if (key !== 'notes' || !patch.list) { originalSet.call(this,key,patch,options);return true; }
     if(this.notesLegacyAbsent){this.toast('There are no previous notes on this phone.');return false;}
     if(this.notesAgentBusy||!!this.notesAgentRaw&&this.notesAgentRaw===this.notesStore?.raw&&this.notesRaw!==this.notesStore?.raw){this.toast('Your agent is updating Notes. Try again in a moment.');return false;}
     if (this.notesStorageFailed||!this.notesStore) {
@@ -1382,7 +1415,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(ready()){clearTimeout(timer);stop();resolve(true);}
     });
     const cloud=selectedCloudName();
-    mark(available?{checking:false,done:true,title:'AI replies are back',sub:`${cloud} is reachable.`}:{checking:false,title:`Check ${cloud} again`,sub:`${cloud} is still unavailable. Try again later.`});
+    mark(available?{checking:false,done:true,title:'Back',sub:''}:{checking:false,title:`Check ${cloud} again`,sub:'Unavailable'});
   }
   function cancelMessageContext(shell:Shell){if(shell.messageEditTarget)messageReviews.cancel('edit-message-'+shell.messageEditTarget.messageId);shell.messageEditTarget=undefined;shell.messageReplyTarget=undefined;}
   function messageTarget(message:Shell):ConversationMessageTarget|undefined {
@@ -1509,8 +1542,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       out.tiles = honestTiles(out.tiles || [], facts, { flashlight: this.flashlightAvailable !== false, act: key => void this.tileAction(key) });
       out.onBright = () => void this.displayHandoff();
     } else {
-      out.tiles = (out.tiles || []).map((tile: Shell) => ({ ...tile, pressed: undefined, toggle: () => void DailyApps.perform({ action: 'settings' }).catch(() => this.toast('Android settings is unavailable.')) }));
-      out.onBright = () => void DailyApps.perform({ action: 'settings' }).catch(() => this.toast('Android settings is unavailable.'));
+      out.tiles = (out.tiles || []).map((tile: Shell) => ({ ...tile, pressed: undefined, toggle: () => void DailyApps.perform({ action: 'settings' }).catch(() => this.toast('Unavailable')) }));
+      out.onBright = () => void DailyApps.perform({ action: 'settings' }).catch(() => this.toast('Unavailable'));
     }
     return out;
   };
@@ -1529,13 +1562,13 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       // A direct control: request the opposite of the last confirmed state and show what Android reports.
       try {
         const result = await elizaSystem.setFlashlight({ enabled: this.flashlightOn !== true });
-        if (!result?.available) { this.flashlightAvailable = false; this.flashlightOn = undefined; this.toast('This phone has no flashlight Alpha can control.'); }
+        if (!result?.available) { this.flashlightAvailable = false; this.flashlightOn = undefined; this.toast('No flashlight'); }
         else this.flashlightOn = result.enabled === true;
       } catch (error) {
         this.flashlightOn = undefined;
         // ElizaSystem refuses definitively when the phone has no controllable flashlight: hide the tile.
-        if (/does not have an available flashlight|requires Android 6/.test(error instanceof Error ? error.message : '')) { this.flashlightAvailable = false; this.toast('This phone has no flashlight Alpha can control.'); }
-        else this.toast('The flashlight state could not be confirmed.');
+        if (/does not have an available flashlight|requires Android 6/.test(error instanceof Error ? error.message : '')) { this.flashlightAvailable = false; this.toast('No flashlight'); }
+        else this.toast('Unconfirmed');
       }
       if (this.live) this.setState((previous: Shell) => ({ q: { ...previous.q, tileFacts: { ...(previous.q?.tileFacts || {}), torch: this.flashlightOn } } }));
       if (this.flashlightOn === undefined && this.live) this.setState((previous: Shell) => { const tileFacts = { ...(previous.q?.tileFacts || {}) }; delete tileFacts.torch; return { q: { ...previous.q, tileFacts } }; });
@@ -1544,14 +1577,14 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const page = key ? tileSettingsPages[key] : undefined;
     // Alpha cannot change these switches: the tile opens the Android page; the shade re-reads on return.
     try { if (!page) throw Error('No settings page'); const notice = broaderPageNotice(page, await alphaDevice.openSettings({ page })); if (notice) this.toast(notice); }
-    catch { await DailyApps.perform({ action: 'settings' }).then(result => this.toast(result?.status === 'opened' ? 'Opened Android Settings. This phone has no separate page for that switch.' : 'Android settings is unavailable.'), () => this.toast('Android settings is unavailable.')); }
+    catch { await DailyApps.perform({ action: 'settings' }).then(result => { if (result?.status !== 'opened') this.toast('Unavailable'); }, () => this.toast('Unavailable')); }
   };
   /** Brightness is a Display settings handoff: one per gesture, never a value Alpha claims to set. */
   p.displayHandoff = async function () {
     this.brightnessGate ||= handoffGate();
     if (!this.brightnessGate.begin()) return;
     try { await alphaDevice.openSettings({ page: 'display' }); }
-    catch { this.toast('Display settings are unavailable.'); }
+    catch { this.toast('Unavailable'); }
     finally { this.brightnessGate.end(); }
   };
   p.voiceConversationCurrent = function(prepared:{binding:import('../runtime/alpha-client').VoiceConversationBinding;context:import('../runtime/alpha-client').ContextEnvelope}){return !alphaClient.getState().context.sensitive&&connectionController.voiceConversationCurrent(prepared.binding)&&JSON.stringify(alphaClient.getState().context)===JSON.stringify(prepared.context);};
@@ -1661,7 +1694,10 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     const sendBinding=()=>JSON.stringify([connectionController.getSnapshot().session,connectionController.getSnapshot().history?.conversationId,connectionController.getCloudEnvironment?.(),connectionController.getCloudClient()?.sessionId,connectionController.getCloudClient()?.credentialId]);
     if(this.stopVoiceConversation)context(this);const expectedContext=JSON.stringify(alphaClient.getState().context);
     const binding=this.stopVoiceConversation?sendBinding():undefined,draft=String(before.draft||''),view=before.view;
-    const retiring=this.stopVoiceConversation?.();if(retiring){await retiring;context(this);const now=this.S();if(JSON.stringify(alphaClient.getState().context)!==expectedContext||!this.live||document.hidden||connectionController.getSnapshot().open||sendBinding()!==binding||now.view!==view||String(now.draft||'')!==draft||this.messageReplyTarget!==reply||this.messageEditTarget!==edit)return;}
+    // A typed message first stops the voice surface and waits for its media to stop. Text needs
+    // no microphone: a stop that could not be confirmed keeps voice closed (the voice surface says so)
+    // but never withholds the message.
+    const retiring=this.stopVoiceConversation?.();if(retiring){try{await retiring;}catch{}context(this);const now=this.S();if(JSON.stringify(alphaClient.getState().context)!==expectedContext||!this.live||document.hidden||connectionController.getSnapshot().open||sendBinding()!==binding||now.view!==view||String(now.draft||'')!==draft||this.messageReplyTarget!==reply||this.messageEditTarget!==edit)return;}
     let s = this.S(); const text = String(argument ?? s.draft);
     if (!text.trim() || s.typing || this.draftSendPending || this.composerDraft?.holding) return;
     // A prompt sent from elsewhere (a suggestion, a Calendar decision, a reviewed email) is not the
@@ -1880,7 +1916,11 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         }
       }
     }
-    finally { if(this.sendAttempt===attempt){this.sendAttempt=null;if(this.live)this.setState({typing:false,turnStatus:''});} }
+    finally { if(this.sendAttempt===attempt)this.sendAttempt=null;
+      // A session change or history reload cancels this send and lets the next one start while this
+      // one is still settling: the indicator then belongs to that newer send or voice turn.
+      if (this.live&&!this.sendAttempt&&this.voiceSendTurnId===undefined) this.setState({ typing: false, turnStatus: '' });
+    }
   };
   p.agentSay = function (text: string, card?: Shell, identity?:{id?:string;messageBinding?:{conversationId:string;session:unknown};deviceReceipt?:true},current?:()=>boolean) {
     this.setState((previous: Shell) => {

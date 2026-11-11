@@ -73,8 +73,8 @@ test('a reviewed folder is current only when a fresh read matches it exactly',()
 test('the folder excerpt lists only the loaded entries of that one folder and says what is left out',()=>{
  const scope=m.folderScope(listing([entry('e1','a.txt'),entry('d1','Sub',{directory:true,mimeType:'vnd.android.document/directory'})],{cursor:'next',total:40}));
  const text=m.folderExcerpt(scope,label);
- assert.deepEqual(text.split('\n'),['Folder: PRIVATE_FOLDER_NAME','2 entries listed by name and type. File contents and subfolder contents are not included.','- a.txt (Text)','- Sub (Folder)','The folder has more entries that are not loaded (40 in total).']);
- assert.match(m.folderExcerpt(m.folderScope(listing([])),label),/This folder is empty\./);
+ assert.deepEqual(text.split('\n'),['Folder: PRIVATE_FOLDER_NAME','2 entries listed by name and type. File contents and subfolder contents are not included.','- a.txt (Text)','- Sub (Folder)','More… (40 total)']);
+ assert.match(m.folderExcerpt(m.folderScope(listing([])),label),/^Empty$/m);
  const many=m.folderScope(listing(Array.from({length:m.FOLDER_EXCERPT_LIMIT+3},(_,i)=>entry('e'+i,'f'+i+'.txt'))));
  const lines=m.folderExcerpt(many,label).split('\n');
  assert.equal(lines.filter(line=>line.startsWith('- ')).length,m.FOLDER_EXCERPT_LIMIT);assert.equal(lines.at(-1),'3 more loaded entries are not listed here.');

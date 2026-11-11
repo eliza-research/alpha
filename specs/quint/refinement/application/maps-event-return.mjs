@@ -13,9 +13,9 @@ const marker = '  let returningToEvent: {raw: unknown; abort: AbortController} |
 const noOrigin = {event: '', kind: ''};
 const noAttempt = {origin: 0, aborted: false, settled: false};
 const messages = new Map([
-  ["Can't check this event. Try again.", 'unknown'],
-  ['Allow Calendar access to check this event.', 'permission'],
-  ['That event was deleted or moved.', 'missing'],
+  ['Couldn’t check', 'unknown'],
+  ['Allow Calendar', 'permission'],
+  ['Event moved', 'missing'],
 ]);
 
 function compile() {

@@ -1,5 +1,5 @@
 export const scanTitle = 'Synthetic scanned event';
-export const scanRefusal = 'Calendar could not open. Your draft remains here.';
+export const scanRefusal = 'Calendar unavailable';
 
 export async function openCameraReview(f) {
   await f.page.evaluate(() => {

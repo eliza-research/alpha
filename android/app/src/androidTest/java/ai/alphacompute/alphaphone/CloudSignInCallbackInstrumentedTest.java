@@ -26,11 +26,6 @@ public final class CloudSignInCallbackInstrumentedTest {
  private static String callback(String state) { return "https://" + HOST + "/alphaphone/auth/callback#code=synthetic-unused-code&state=" + state; }
  private static void gate() { org.junit.Assume.assumeTrue("Explicit synthetic Cloud sign-in campaign", "1".equals(InstrumentationRegistry.getArguments().getString("cloudSignInNative"))); }
  private static AlphaCredentialStore store() { return new AlphaCredentialStore(context()); }
- private static void waitForRemoved(String slot) throws Exception {
-  long deadline = SystemClock.elapsedRealtime() + 15000;
-  while (SystemClock.elapsedRealtime() < deadline) { if (store().readCredentialSlot(slot) == null) return; SystemClock.sleep(100); }
-  fail("Pending sign-in record was not burned");
- }
 
  private static void holdFor(long millis) { SystemClock.sleep(millis); }
 
@@ -74,17 +69,22 @@ public final class CloudSignInCallbackInstrumentedTest {
   } finally { store().removeCredentialSlot(AlphaCloudSignInPlugin.PENDING_SLOT); }
  }
 
- /** An expired record with the matching state is burned and never used. */
+ /**
+  * An expired record with the matching state is never used. A return that starts Alpha has no live
+  * sign-in attempt, so the shared client consumes nothing and writes no credential; the record stays
+  * for the next sign-in to replace (CloudSignInPlugin.captureCallback).
+  */
  @Test public void expiredPendingRecordIsNeverUsed() throws Exception {
   gate();
   String cloudBefore = store().readCredentialSlot("cloud:production");
   CloudSignInFlow.Pending expired = new CloudSignInFlow.Pending(AlphaCloudSignInPlugin.REGISTRATION.defaultEnvironment(), CloudSignInFlow.newState(), CloudSignInFlow.newVerifier(), System.currentTimeMillis() - 1);
   store().writeCredentialSlot(AlphaCloudSignInPlugin.PENDING_SLOT, expired.serialize());
   try (BoundedActivityScenario<MainActivity> scenario = BoundedActivityScenario.launch(intent(callback(expired.state)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK))) {
-   waitForRemoved(AlphaCloudSignInPlugin.PENDING_SLOT);
-   assertEquals(cloudBefore, store().readCredentialSlot("cloud:production"));
+   holdFor(5000);
+   assertEquals("An expired return writes no credential", cloudBefore, store().readCredentialSlot("cloud:production"));
    scenario.recreate();
-   assertNull("A recreated activity does not replay the return", store().readCredentialSlot(AlphaCloudSignInPlugin.PENDING_SLOT));
+   holdFor(2000);
+   assertEquals("A recreated activity does not replay the return", cloudBefore, store().readCredentialSlot("cloud:production"));
   } finally { store().removeCredentialSlot(AlphaCloudSignInPlugin.PENDING_SLOT); }
  }
 

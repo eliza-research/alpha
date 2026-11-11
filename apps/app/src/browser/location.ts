@@ -53,10 +53,10 @@ export class BrowserLocation extends WebPlugin {
       if(error.code===1){finish(false);return;}
       // Do not let the acquisition timer reject a still-open permission prompt.
       if(error.code===3&&observing&&permission?.state==='prompt')return;
-      finish(false,new MapsFailure('unavailable',error.code===3?'Finding your location timed out. Try again, or check that location services are enabled for your browser.':'Your browser could not provide a location. Check location services for your browser in system settings, or enter coordinates.'));
+      finish(false,new MapsFailure('unavailable',error.code===3?'Location timed out':'No location'));
      },{timeout:10000});
      if(settled)navigator.geolocation.clearWatch(id);
-    }catch{finish(false,new MapsFailure('unavailable','Location services are unavailable in this browser. Try another browser, or enter coordinates.'));}
+    }catch{finish(false,new MapsFailure('unavailable','No location'));}
    });
   }finally{if(this.pending.get(requestId)===cancel)this.pending.delete(requestId);}
  }

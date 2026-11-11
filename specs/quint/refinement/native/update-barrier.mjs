@@ -11,7 +11,8 @@ const driver = fileURLToPath(import.meta.url);
 const product = app + 'AlphaDevicePlugin.java';
 const journal = 'vendor/eliza/plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/updater/RuntimeUpdatePause.java';
 const stubRoot = 'test/fixtures/app-update-jvm';
-const fixtures = [app + 'PluginWorkers.java', journal, 'test/fixtures/UpdateFlowTest.java',
+export const updateConfirmationSources = [app + 'AlphaUpdateStatusReceiver.java', app + 'UpdateConfirmationReceipt.java'];
+const fixtures = [app + 'PluginWorkers.java', ...updateConfirmationSources, journal, 'test/fixtures/UpdateFlowTest.java',
   ...readdirSync(join(root, stubRoot), {recursive: true}).filter(file => file.endsWith('.java')).map(file => join(stubRoot, file))];
 const scenarioNames = [
   'foreign-and-duplicate-with-pre-ready-join',
@@ -26,7 +27,7 @@ const scenarioNames = [
 
 export function exactUpdateMembers(source) {
   const start = source.indexOf(' static final long UPDATE_MAX_BYTES=');
-  const end = source.lastIndexOf('}');
+  const end = source.indexOf(' // End of updater methods for host replay.');
   const handOff = /^ private static Intent handOff\(Intent intent\)\{[^\n]*$/m.exec(source)?.[0];
   const foreground = / static boolean shareForeground\(android\.app\.Activity activity\)\{[\s\S]*?\n \}/.exec(source)?.[0];
   assert.ok(start > 0 && end > start && handOff && foreground, 'Exact updater method slice exists');

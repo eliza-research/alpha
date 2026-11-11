@@ -83,16 +83,16 @@ const aborted = (error: unknown) => (error as { name?: string })?.name === 'Abor
 /** One short line, only for errors the user can act on. */
 export function noteRecorderError(reason: string | undefined): string {
   if (reason === 'storage') return 'Storage is full.';
-  if (reason === 'recovery') return 'Recording recovery is unavailable. Your audio is kept.';
-  if (reason === 'permission') return 'Allow the microphone in Settings.';
-  if (reason === 'call') return 'Paused for a call.';
-  if (reason === 'transcription') return 'Transcription stopped. The audio is kept.';
-  if (reason === 'unavailable') return 'No transcription is available. The audio is kept.';
-  if (reason === 'sign-in') return 'Sign in to transcribe. The audio is kept.';
-  if (reason === 'save') return 'Couldn’t save. Try again.';
-  if (reason === 'owner') return 'Return to the original Notes account. Your recording is kept.';
-  if (reason === 'media') return 'Audio couldn’t stop. Restart Alpha before recording.';
-  if (reason === 'capture') return 'The microphone isn’t available.';
+  if (reason === 'recovery') return 'Recovery unavailable';
+  if (reason === 'permission') return 'Mic off';
+  if (reason === 'call') return 'Paused';
+  if (reason === 'transcription') return 'Transcript stopped';
+  if (reason === 'unavailable') return 'No transcript';
+  if (reason === 'sign-in') return 'Sign in to transcribe';
+  if (reason === 'save') return 'Not saved';
+  if (reason === 'owner') return 'Wrong account';
+  if (reason === 'media') return 'Restart needed';
+  if (reason === 'capture') return 'Mic unavailable';
   return 'The microphone stopped.';
 }
 /** Why the microphone did not start or resume, as a noteRecorderError reason. */
@@ -105,8 +105,19 @@ function startFailure(error: unknown): string {
   if (code === 'media-unconfirmed') return 'media';
   return 'capture';
 }
-export function formatRecordingClock(ms: number): string {
+/** Whole elapsed seconds of a recording split into hours, minutes and seconds. A negative time reads as zero. */
+export function recordingClockParts(ms: number): { total: number; h: number; m: number; s: number } {
+  //@ verify
+  //@ ensures \result.total >= 0
+  //@ ensures 0 <= \result.m && \result.m < 60 && 0 <= \result.s && \result.s < 60 && \result.h >= 0
+  //@ ensures \result.h * 3600 + \result.m * 60 + \result.s === \result.total
+  //@ ensures ms >= 0 ==> \result.total * 1000 <= ms && ms < \result.total * 1000 + 1000
+  //@ ensures ms < 0 ==> \result.total === 0 && \result.h === 0 && \result.m === 0 && \result.s === 0
   const total = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(total / 3600), m = Math.floor(total / 60) % 60, s = total % 60;
+  return { total, h, m, s };
+}
+export function formatRecordingClock(ms: number): string {
+  const { h, m, s } = recordingClockParts(ms);
   return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
 }
 

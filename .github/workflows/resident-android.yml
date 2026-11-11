@@ -108,6 +108,9 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
+      - name: Check the automatic native input manifest
+        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
+        run: python3 -B scripts/ci/hosted-native-inputs.py --check
       - name: Install pinned Android native toolchain
         run: |
           python3 scripts/ci/resident-phase.py --name android-toolchain --seconds 1200 sdkmanager 'platforms;android-36' 'build-tools;35.0.0' 'build-tools;36.0.0' 'ndk;28.2.13676358'
@@ -192,6 +195,7 @@ jobs:
       - name: Check embedding artifact contract and requested inputs
         run: |
           python3 test/embedding-artifact-inputs.test.py
+          python3 -B test/hosted-native-inputs.test.py
           python3 scripts/ci/embedding-artifacts.py --check-inputs
       - name: Validate dispatched build version
         if: github.event_name == 'workflow_dispatch'
@@ -222,6 +226,18 @@ jobs:
           PYCODE
           echo "ALPHA_LOCAL_AGENT_SOURCE_DIR=$GITHUB_WORKSPACE/artifacts/resident-ci-92fc" >> "$GITHUB_ENV"
           echo "ALPHA_WORKFLOW_WORKER_OUTPUT=$GITHUB_WORKSPACE/artifacts/worker-ci-92fc" >> "$GITHUB_ENV"
+      - name: Acquire exact native inputs for the automatic candidate
+        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
+        timeout-minutes: 12
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci/resident-phase.py --name native-input-download --seconds 600 python3 -B scripts/ci/hosted-native-inputs.py --acquire
+      - name: Stage the admitted voice and embedding inputs
+        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
+        run: |
+          node scripts/android-stage-voice-models.ts --from test-results/resident-ci-native-inputs/voice
+          node scripts/build-embedding-host.ts --from test-results/resident-ci-native-inputs/embedding
+          node scripts/voice-host.ts --verify
       - name: Qualify supervisor on real Linux processes
         timeout-minutes: 10
         run: |
@@ -254,9 +270,9 @@ jobs:
                 test/private-preview-cartesia-route.test.mjs
             '
       - run: node --test vendor/eliza/packages/os/scripts/__tests__/stage-launcher-overlay.node.test.ts
-      # On-device speech is libelizainference with the shared paradee-voice library only; this archive
-      # stages no voice outputs (local speech reports unavailable). The record is still checked.
-      - name: Verify the on-device voice host record
+      # Noncandidate diagnostics retain their existing absent-input check.
+      - name: Verify the diagnostic on-device voice host record
+        if: env.ALPHA_APP_UPDATE_CANDIDATE != '1'
         run: node scripts/voice-host.ts --verify --allow-absent
       - name: Prepare and qualify fresh resident source with normal hooks
         env:
@@ -307,6 +323,9 @@ jobs:
           RUN_TURBO_CONCURRENCY: "1"
         run: |
           python3 scripts/ci/resident-phase.py --name runtime-stage --seconds 1800 npm run agent:stage-android
+          if [ "$ALPHA_APP_UPDATE_CANDIDATE" = "1" ]; then
+            node scripts/stage-embedding-host.ts --verify
+          fi
           python3 scripts/ci/resident-phase.py --name mobile-bundle --seconds 300 npm run agent:test-mobile-workflow-bundle
           # Fresh native artifacts and the runtime pin are inputs to shipped notices.
           python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 node scripts/generate-licenses.ts --packaged-runtime
@@ -371,15 +390,25 @@ jobs:
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/app-update-candidate.ts receipt test-results/resident-ci-candidate/version.json test-results/resident-ci-distribution
+        run: |
+          cp test-results/resident-ci-native-inputs/admission.json test-results/resident-ci-distribution/native-input-admission.json
+          node scripts/app-update-candidate.ts receipt test-results/resident-ci-candidate/version.json test-results/resident-ci-distribution
       - name: Retain the unsigned native update candidate separately from test mocks
         if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        id: native-candidate
         with:
           name: app-native-candidate-${{ github.run_number }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: test-results/resident-ci-distribution/
           retention-days: 3
           if-no-files-found: error
+      - name: Record the uploaded automatic candidate archive size
+        if: env.ALPHA_APP_UPDATE_CANDIDATE == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALPHA_CANDIDATE_ARTIFACT_ID: ${{ steps.native-candidate.outputs.artifact-id }}
+          ALPHA_CANDIDATE_ARTIFACT_SHA256: ${{ steps.native-candidate.outputs.artifact-digest }}
+        run: node scripts/app-update-candidate.ts archive-size test-results/resident-ci/native-candidate-artifact.json test-results/resident-ci-distribution
       - name: Build and anchor private endpoint helper
         run: python3 scripts/ci/build-private-peer.py
       - name: Preserve native generated provenance

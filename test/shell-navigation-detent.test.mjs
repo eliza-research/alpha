@@ -73,12 +73,13 @@ test('Home and view changes set the detent the destination rests in, unless one 
   s.openView('browser',null,null,{keepState:true});assert.deepEqual(at(s),{view:'browser',chat:'input',stack:[]});
 });
 
-test('Back closes the Home drawer before stopping voice and lowering the conversation', () => {
+test('Back stops voice and lowers the visible conversation before closing the Home drawer', () => {
   const s=shell({chat:'full',drawer:true,drawerQ:'ma',voice:'listening'});
-  s.back();assert.deepEqual([s.state.drawer,s.state.drawerQ,s.state.voice,s.state.chat],[false,'','listening','full']);
-  s.back();assert.deepEqual([s.state.voice,s.state.chat],['off','full']);
-  s.back();assert.equal(s.state.chat,'sheet');
-  s.back();assert.equal(s.state.chat,'input');
+  const layers=()=>[s.state.drawer,s.state.drawerQ,s.state.voice,s.state.chat];
+  s.back();assert.deepEqual(layers(),[true,'ma','off','full']);
+  s.back();assert.deepEqual(layers(),[true,'ma','off','sheet']);
+  s.back();assert.deepEqual(layers(),[true,'ma','off','input']);
+  s.back();assert.deepEqual(layers(),[false,'','off','input']);
 });
 
 for(const chat of ['sheet','full'])test(`Alpha Home closes the ${chat} overlay and keeps the unsent draft`,()=>{

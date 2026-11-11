@@ -69,8 +69,8 @@ test('a resident agent reply is reviewed and placed in a reply draft for the sel
   await expect(dialog.locator('[data-alpha-email-use-destination]')).toHaveText('New reply to sender@example.invalid (Synthetic sender) · Re: Harbour schedule');
   await expect(dialog.locator('[data-alpha-email-use-effect]')).toHaveText('A local draft opens with this text for you to edit.');
   await expect(dialog.getByRole('region', { name: 'Suggested text' })).toHaveText(first);
-  await expect(dialog).toContainText('Files and photos are not attached');
-  await expect(dialog).toContainText('Nothing is sent');
+  // Text only, never sent: the policy is one line at the action.
+  await expect(dialog).toContainText('Draft only · text only');
   expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   await page.screenshot({ path: info.outputPath('use-in-email-review-production.png'), animations: 'disabled' });
 
@@ -123,7 +123,7 @@ test('a draft that changed under the open review is not written to; the refreshe
   expect(await page.locator('textarea[aria-label="Message"]').evaluate(element => !!element.closest('[inert]'))).toBe(true);
   await page.evaluate(() => { const area = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Message"]')!; Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(area, 'My own opening line. Edited again.'); area.dispatchEvent(new Event('input', { bubbles: true })); });
   await add.click();
-  await expect(dialog.getByRole('status')).toHaveText('The email or account changed since you opened this review. Check the destination and confirm again. Nothing was added.');
+  await expect(dialog.getByRole('status')).toHaveText('Changed');
   await expect(page.locator('textarea[aria-label="Message"]')).toHaveValue('My own opening line. Edited again.');
   // The review now describes the current draft; confirming it appends and replaces nothing.
   await add.click();
@@ -155,7 +155,7 @@ test('the Gmail account changes while the review is open: the insert is refused 
 
   // The review still shows what the user approved. Confirming it inserts nothing anywhere.
   await dialog.getByRole('button', { name: 'Insert into draft', exact: true }).click();
-  await expect(dialog.getByRole('status')).toHaveText('The email or account changed since you opened this review. Check the destination and confirm again. Nothing was added.');
+  await expect(dialog.getByRole('status')).toHaveText('Changed');
   await expect(page.locator('textarea[aria-label="Message"]')).toHaveCount(0);
   // The refreshed review names the account and destination a second confirmation would use.
   await expect(dialog.locator('[data-alpha-email-use-account]')).toHaveText('From other@example.invalid');

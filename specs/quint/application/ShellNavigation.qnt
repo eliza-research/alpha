@@ -4,7 +4,9 @@ module ShellNavigation {
     draft: str, revision: int, captured: int, claim: str, hidden: bool, focus: bool,
     settingsRows: List[str], focusedSetting: str, intendedSetting: str, activatedSetting: str,
     pageSuspended: bool, contextSensitive: bool, pending: bool, sendEpoch: int,
-    sendRevision: int, replyVisible: bool }
+    sendRevision: int, replyVisible: bool,
+    // Text was typed and has not been sent.
+    unsent: bool }
   var s: State
   pure def containsSetting(rows: List[str], value: str): bool = rows.foldl(false, (found, row) => found or row == value)
   pure val SettingRows = Set(List(), List("about"), List("setup", "about"), List("about", "setup"),
@@ -16,7 +18,7 @@ module ShellNavigation {
     modal: false, draft: "", revision: 0, captured: 0, claim: "none", hidden: false, focus: false,
       settingsRows: List(), focusedSetting: "", intendedSetting: "", activatedSetting: "",
       pageSuspended: false, contextSensitive: false, pending: false, sendEpoch: 0,
-      sendRevision: 0, replyVisible: false }
+      sendRevision: 0, replyVisible: false, unsent: false }
   action open(view: str): bool = all { view.in(Views), s.revision < 6,
     s' = { ...s, view: view, chat: if (view == "home") "input" else "hidden",
       revision: if (view == s.view) s.revision else s.revision + 1, shade: false, drawer: false,
@@ -42,7 +44,7 @@ module ShellNavigation {
     s' = { ...s, activatedSetting: s.focusedSetting } }
   action expand = all { not(s.modal or s.contextSensitive), s' = { ...s, chat: "full", focus: true, shade: false,
     focusedSetting: "", intendedSetting: "" } }
-  action edit = all { not(s.modal or s.contextSensitive or s.shade), s' = { ...s, draft: "draft", focus: true, chat: "input",
+  action edit = all { not(s.modal or s.contextSensitive or s.shade), s' = { ...s, draft: "draft", unsent: true, focus: true, chat: "input",
     focusedSetting: "", intendedSetting: "" } }
   action showShade = s' = { ...s, shade: true, focus: false, focusedSetting: "", intendedSetting: "" }
   action showModal = s' = { ...s, modal: true, focus: false, focusedSetting: "", intendedSetting: "" }
@@ -66,7 +68,7 @@ module ShellNavigation {
     s' = { ...s, claim: "delivered" } }
   action send = all { not(s.pending or s.contextSensitive), s.sendEpoch < 2,
     s' = { ...s, pending: true, sendEpoch: s.sendEpoch + 1, sendRevision: s.revision,
-      draft: "", chat: if (s.chat == "full") "full" else "sheet", replyVisible: false } }
+      draft: "", unsent: false, chat: if (s.chat == "full") "full" else "sheet", replyVisible: false } }
   action reply(ticket: int): bool =
     if (s.pending and not(s.contextSensitive) and ticket == s.sendEpoch and s.sendRevision == s.revision)
       s' = { ...s, pending: false, replyVisible: true }
@@ -95,11 +97,18 @@ module ShellNavigation {
   }
   val CurrentClaim = s.claim.in(Set("none", "captured")) or (s.captured == s.revision and not(s.contextSensitive))
   val VisibleFocus = s.focus implies not(s.shade or s.modal or s.contextSensitive)
-  val DraftBound = s.draft.in(Set("", "draft"))
+  /// Typed text stays in the composer until it is sent: navigation, Back, layers and
+  /// suspension never drop it.
+  val DraftRetained = s.unsent == (s.draft == "draft")
   val FocusedSettingIdentity = s.focusedSetting == s.intendedSetting and
     (s.focusedSetting == "" or containsSetting(s.settingsRows, s.focusedSetting))
   val CurrentSend = s.pending implies (not(s.contextSensitive) and s.sendRevision == s.revision)
-  val safety = CurrentClaim and VisibleFocus and DraftBound and FocusedSettingIdentity and CurrentSend
+  val safety = CurrentClaim and VisibleFocus and DraftRetained and FocusedSettingIdentity and CurrentSend
+  val DeliveredClaimWitness = s.claim == "delivered"
+  val DraftAwayFromHomeWitness = s.unsent and s.view != "home" and s.contextSensitive
+  run navigationKeepsDraftTest = init.then(edit).then(open("notes")).then(hide).then(resume).then(back).then(back)
+    .expect(s.view == "home" and s.draft == "draft" and s.unsent and safety)
+    .then(send).expect(s.draft == "" and not(s.unsent) and safety)
   run sheetGripDismissTest = init.then(showModal).then(dismissSheet).expect(not(s.modal) and safety)
   run assistantAboveSheetTest = init.then(showModal).then(assistantFromSheet).expect(not(s.modal) and s.chat == "sheet" and safety)
   run backOrderTest = init.then(edit).then(expand).then(showShade).then(showModal)

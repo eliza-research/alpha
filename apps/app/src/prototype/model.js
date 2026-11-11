@@ -120,6 +120,21 @@ function fmtT(t) { return formatHours(t, { dayPeriod: false }); }
 var VIEWS = {};
 var ORDER = [];
 function registerView(key, def) { VIEWS[key] = def; if (isMvpView(key)) ORDER.push(key); }
+/* Flags that only a view timer clears ("Checking…", a running step, a typing mark). Leaving a view
+   cancels its timers, so its onLeave clears these flags with them. Null: none is set. */
+function latchPatch(st, keys) {
+  var p = null; st = st || {};
+  keys.forEach(function (k) { if (st[k] != null && st[k] !== false) { p = p || {}; p[k] = null; } });
+  return p;
+}
+/* Undo of a removal or a flag change puts back that one item in the list as it is now: over its
+   changed copy, or at its old place when it was removed. Every other change made since is kept. */
+function restoreById(list, item, at) {
+  var l = (list || []).slice(), i = -1;
+  for (var k = 0; k < l.length; k++) if (String(l[k].id) === String(item.id)) { i = k; break; }
+  if (i >= 0) l[i] = item; else l.splice(Math.min(Math.max(0, at || 0), l.length), 0, item);
+  return l;
+}
 
 /* ===== module: phone ===== */
 /* Phone (dialer). Holes are {{phone.*}}. Tabs: Recents (with favorites row), Keypad, Voicemail.
@@ -169,17 +184,25 @@ function pnRel(ms, now) {
 function pnAt(e, now) { return e.at || (now - (e.ago || 0) * 60000); }
 function pnDur(s) { return s < 60 ? s + " s" : Math.round(s / 60) + " min"; }
 function pnClock(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ":" + pad2(s % 60); }
-function pnWant(st) { return st.call || (st.num ? "#" + pnDigits(st.num) : null); }
+/* The call a state asks for: a contact id, or "#digits" for a bare number. A number without a
+   digit ("*", "#") names no call, so it never yields an id. */
+function pnCallId(pid, num) { var d = pnDigits(num); return pid || (d ? "#" + d : null); }
+function pnWant(st) { return pnCallId(st.call, st.num); }
 
 function pnStart(api, pid, num, opt) {
   opt = opt || {};
-  var id = pid || "#" + pnDigits(num);
-  if (PN.live && PN.live !== id) pnEnd(api, { quiet: true });
+  var id = pnCallId(pid, num);
+  if (!id) return;
+  /* calling the party already on the line returns to that call: its clock and recents row are kept */
+  if (PN.live === id && api.get("phone").callWho === id) { api.set({ min: false }); return; }
+  /* pnEnd's patch is queued, not applied yet: the ended call's return target is not read back below */
+  var replaced = !!PN.live;
+  if (replaced) pnEnd(api, { quiet: true });
   api.stop(); api.stopBg();
   PN.live = id;
   var now = Date.now();
   api.set({ call: pid || null, num: pid ? "" : pnFmt(num), callWho: id, callAt: now, liveAt: opt.live ? now : null, dir: opt.dir || "out",
-    mute: false, spk: false, hold: false, kp: false, kpd: "", ai: !!opt.ai, aiN: 0, aiC: 0, min: false, incoming: null, ring: null, rs: false, tick: now, ret: opt.ret || api.get("phone").ret || null });
+    mute: false, spk: false, hold: false, kp: false, kpd: "", ai: !!opt.ai, aiN: 0, aiC: 0, min: false, incoming: null, ring: null, rs: false, tick: now, ret: opt.ret || (replaced ? null : api.get("phone").ret) || null });
   if (!opt.live) api.laterBg(function () { var s = api.get("phone"); if (s.callWho === id && !s.liveAt) api.set({ liveAt: Date.now() }); }, 2400);
   api.everyBg(function () {
     var s = api.get("phone"); if (s.callWho !== id) return;
@@ -427,6 +450,7 @@ registerView("phone", {
       dialCall: function () {
         var d = api.get("phone").dial || "";
         if (!d) { var last = (api.get("phone").recents || []).filter(function (e) { return e.dir === "out"; })[0]; if (last) api.set({ dial: last.pid ? pnDigits((pnWho(api, last.pid) || {}).phone) : pnDigits(last.num) }); return; }
+        if (!pnDigits(d)) return;
         PN.lastTab = "keypad";
         var mp = pnByNum(api, d);
         api.set({ dial: "" });
@@ -553,7 +577,9 @@ registerView("messages", {
   },
   onLeave: function (api) {
     var st = api.st; var tp = st.thread || (typeof st.compose === "string" ? st.compose : null);
-    if (tp) { var u = Object.assign({}, st.unread); delete u[tp]; api.set({ unread: u, typing: null }); }
+    var p = latchPatch(st, ["typing"]);
+    if (tp) { var u = Object.assign({}, st.unread); delete u[tp]; p = Object.assign(p || {}, { unread: u }); }
+    if (p) api.set(p);
   },
   suggestions: function (st, api) {
     var tp = st.thread || (typeof st.compose === "string" ? st.compose : null);
@@ -806,8 +832,9 @@ function inboxMarkRead(api, id) {
   var st = api.get("inbox");
   api.set({ mails: (st.mails || []).map(function (m) { return String(m.id) === String(id) && m.unread ? Object.assign({}, m, { unread: false }) : m; }) });
 }
+/* `snap` is the patch Undo applies, or a function that builds it from the inbox as it is then. */
 function inboxUndo(api, msg, snap) {
-  api.toast(msg, { undo: function () { if (api.isActive()) api.set(snap); else api.open("inbox", snap); } });
+  api.toast(msg, { undo: function () { var p = typeof snap === "function" ? snap(api.get("inbox")) : snap; if (api.isActive()) api.set(p); else api.open("inbox", p); } });
 }
 function inboxDraftLabel(api, c) {
   var r = inboxRecips(c && c.to)[0];
@@ -972,9 +999,9 @@ registerView("inbox", {
         if (dx < 0) {
           api.set({ slide: { id: m.id, x: -412 } });
           api.later(function () {
-            var s2 = api.get("inbox"); var snap = s2.mails;
+            var s2 = api.get("inbox"); var at = s2.mails.map(function (x) { return x.id; }).indexOf(m.id); var was = s2.mails[at];
             api.set({ slide: null, mails: s2.mails.map(function (x) { return x.id === m.id ? Object.assign({}, x, { arch: true, unread: false }) : x; }) });
-            inboxUndo(api, m.subj + " archived", { mails: snap });
+            inboxUndo(api, m.subj + " archived", function (now) { return { mails: was ? restoreById(now.mails, was, at) : now.mails }; });
           }, 260);
         } else {
           api.say("Here's a reply to " + w.name.split(" ")[0] + ".", inboxDraftCard(api, m));
@@ -1003,7 +1030,9 @@ registerView("inbox", {
       var ca = inboxAcctOf(accts, cur.acct);
       var close = function () { inboxMarkRead(api, cur.id); api.set({ open: null }); };
       var remove = function (flag, msg) {
-        var s2 = api.get("inbox"); var snap = { mails: s2.mails.map(function (x) { return x.id === cur.id ? Object.assign({}, x, { unread: false }) : x; }), sent: s2.sent, open: cur.id, openLocal: true };
+        var s2 = api.get("inbox"); var key = cur.sent ? "sent" : "mails";
+        var at = (s2[key] || []).map(function (x) { return x.id; }).indexOf(cur.id); var was = at >= 0 ? Object.assign({}, s2[key][at], cur.sent ? {} : { unread: false }) : null;
+        var snap = function (now) { var p = { open: cur.id, openLocal: true }; if (was) p[key] = restoreById(now[key], was, at); return p; };
         if (cur.sent) api.set({ open: null, sent: (s2.sent || []).filter(function (x) { return x.id !== cur.id; }) });
         else api.set({ open: null, mails: s2.mails.map(function (x) { if (x.id !== cur.id) return x; var y = Object.assign({}, x, { unread: false }); y[flag] = true; return y; }) });
         inboxUndo(api, msg, snap);
@@ -1062,8 +1091,9 @@ registerView("inbox", {
         hasAtts: ((c0.atts || []).length + (c0.attach || []).length) > 0,
         onSubj: function (e) { upd({ subject: e.target.value }); },
         onBody: function (e) { upd({ body: e.target.value }); },
-        multi: multi, from: fa.address,
-        cycleFrom: function () { var i = accts.indexOf(fa); upd({ acct: accts[(i + 1) % accts.length].id }); },
+        multi: multi, singleFrom: !multi, from: fa.address, fromId: fa.id,
+        fromAccounts: accts.map(function (account) { return {id: account.id, label: account.address || inboxAcctLabel(account)}; }),
+        onFrom: function (event) { var id = event.currentTarget.value; if (accts.some(function (account) { return account.id === id; })) upd({ acct: id }); },
         close: function () { var loc = st.composeLocal; api.set({ compose: null, toQ: "" }); inboxUndo(api, inboxDraftLabel(api, st.compose), { compose: st.compose, composeLocal: true }); },
         send: function () {
           var cc = api.get("inbox").compose; cc = cc === true ? {} : cc;
@@ -1660,7 +1690,7 @@ function brStartPoints(api) {
   step(1200, function () { api.set({ ag: null }); brSaveNote(api, pg.title + " · key points", pg.points); });
 }
 
-registerView("browser", {
+if (testMocksEnabled) registerView("browser", {
   title: "Browser", icon: "globe", aliases: ["web", "internet", "chrome"],
   chat: "input", placeholder: "Ask about this page",
   state: {
@@ -1686,6 +1716,8 @@ registerView("browser", {
     return sg.page || ["Summarize this page", "Save the key points to Notes"];
   },
   voicePhrase: "Summarize this page",
+  /* the agent's steps are view timers: it stops with them, except while it waits on a confirmation */
+  onLeave: function (api) { var st = (api && api.st) || {}; var p = st.confirm ? null : latchPatch(st, ["ag"]); if (p) api.set(p); },
   back: function (st, api) {
     if (st.share) { api.set({ share: false }); return true; }
     if (st.menu) { api.set({ menu: false }); return true; }
@@ -1855,6 +1887,14 @@ registerView("browser", {
   }
 });
 
+else registerView("browser", {
+  title: "Browser", icon: "globe", aliases: ["web", "internet", "chrome"],
+  chat: "input", placeholder: "Ask about this page",
+  state: { tabs: [], cur: null, marks: [], visits: [], editing: false, addr: "", tabsOpen: false, menu: false, lib: null, share: false },
+  persist: ["tabs", "cur", "marks", "visits"],
+  render: function () { return {}; }
+});
+
 /* ===== module: camera ===== */
 /* Camera: video / photo. Immersive. Captures are prepended to Photos' shared list.
    Scanning is not a mode: asking Alpha to scan while Camera is open captures one frame into scan review.
@@ -1877,6 +1917,9 @@ function camSave(api, item) {
 }
 function camFlashFx(api) { api.set({ fl: 1 }); api.later(function () { api.set({ fl: 0 }); }, 90); }
 function camShot(s) { return { id: "c" + Date.now(), ts: Date.now(), kind: "photo", scene: camScene(s), figs: camFigs(s), place: copy("camera").place || "", people: [], tags: s.front ? ["selfie"] : [], fav: false, z: s.front ? 1 : CAM_ZOOM[s.zoom][1] }; }
+/* A recording exists only in video mode. A patch that moves the camera to another mode ends the
+   recording first, as the mode buttons do. */
+function camModeEndsRec(st, patch) { return !!(st && st.rec && patch && patch.mode !== undefined && patch.mode !== "video"); }
 function camStopRec(api) {
   var s = api.get("camera"); if (!s.rec) return;
   var sec = Math.max(1, Math.floor((Date.now() - s.recAt) / 1000));
@@ -1900,6 +1943,7 @@ registerView("camera", {
   // The assistant pill stays below the shutter row: asking Alpha (about the frame, or to scan it) replaces header buttons.
   immersive: function (st) { return st.rec ? { dark: true, noPill: true } : { dark: true }; },
   back: function (st, api) { if (st.rec) { camStopRec(api); return true; } return false; },
+  incoming: function (st, patch, api) { if (camModeEndsRec(st, patch)) camStopRec(api); },
   onLeave: function (api) { if (api.secure && api.get("camera").rec) camStopRec(api); },  // recording keeps going in the background (ongoing chip) except from the lock screen
   suggestions: function () { return ["What am I looking at?", "Take a selfie", "Scan this"]; },
   voicePhrase: "What am I looking at?",
@@ -1912,7 +1956,7 @@ registerView("camera", {
     if (api.active) {
       if (CAM_SCAN_WORDS.test(t)) return { text: "Scanning.", then: function () { VIEWS.camera.actions.scan(null, api); } };
       if (/what (am i|do you|is (this|that)|'s (this|that))|what.*(see|looking)|read (this|it)|what does it say|describe/.test(t)) return { text: camDescribe(st) };
-      if (/\b(take|snap|shoot)\b.*\bselfie\b/.test(t)) return { text: "Smile.", then: function () { api.set({ mode: "photo", front: true, flash: false, zoom: 1 }); api.later(function () { camFlashFx(api); camSave(api, camShot(api.get("camera"))); }, 900); } };
+      if (/\b(take|snap|shoot)\b.*\bselfie\b/.test(t)) return { text: "Smile.", then: function () { if (camModeEndsRec(api.get("camera"), { mode: "photo" })) camStopRec(api); api.set({ mode: "photo", front: true, flash: false, zoom: 1 }); api.later(function () { camFlashFx(api); camSave(api, camShot(api.get("camera"))); }, 900); } };
       if (/\b(take|snap|shoot)\b.*\b(photo|picture|pic|shot)\b/.test(t)) return { text: "Got it.", then: function () { camFlashFx(api); camSave(api, camShot(api.get("camera"))); } };
     }
     if (/\b(take|snap)\b.*\bselfie\b/.test(t)) return { text: "Front camera's ready.", nav: { view: "camera", patch: { mode: "photo", front: true, flash: false, zoom: 1 } } };
@@ -2556,6 +2600,15 @@ function mapsSteps(p) {
   out.push({ at: c[c.length - 1], turn: "arrive", street: p.name });
   return out;
 }
+/* "via A and B" for a route. A destination at the start point has a one-point route: no second
+   point is read, and the line names the street the route starts on. */
+function mapsVia(p) {
+  var pts = p.pts || [];
+  var first = pts.length < 2 || pts[1][1] === pts[0][1] ? MAPS_H[(pts[0] || [])[1]] : "4th St";
+  var via = [first]; mapsSteps(p).forEach(function (x) { if (x.turn !== "arrive") via.push(x.street); });
+  via = via.filter(function (v, i, a) { return !!v && a.indexOf(v) === i; }).slice(0, 2);
+  return via.length ? "via " + via.join(" and ") : "";
+}
 function mapsPath(pts) { return pts.map(function (q, i) { return (i ? "L" : "M") + Math.round(q[0]) + " " + Math.round(q[1]); }).join(""); }
 function mapsMatch(t) {
   for (var i = 0; i < MAPS_MATCH.length; i++) if (MAPS_MATCH[i][0].test(t) && mapsPlace(MAPS_MATCH[i][1])) return MAPS_MATCH[i][1];
@@ -2795,11 +2848,9 @@ registerView("maps", {
     var dr = null;
     if (dst) {
       var m = dst.min[mi]; var left = m * (1 - (mode === "nav" ? (st.prog || 0) : 0));
-      var via = []; mapsSteps(dst).forEach(function (x) { if (x.turn !== "arrive" && via.indexOf(x.street) < 0) via.push(x.street); });
-      var first = dst.pts[1][1] === dst.pts[0][1] ? MAPS_H[dst.pts[0][1]] : "4th St";
       dr = {
         name: dst.name, d: IC[dst.icon], min: mapsFmtMin(m), meta: mapsMi(dst.mi) + " mi · " + mapsEta(api, m),
-        via: "via " + [first].concat(via).filter(function (v, i, a) { return a.indexOf(v) === i; }).slice(0, 2).join(" and "),
+        via: mapsVia(dst),
         modes: MAPS_MODES.map(function (md, i) {
           var on = i === mi;
           return { d: IC[md[1]], label: md[2] + ", " + mapsFmtMin(dst.min[i]), t: mapsFmtMin(dst.min[i]), on: on, css: on ? "background: var(--acc); color: var(--alpha-white)" : "background: var(--s2); color: var(--fg)", go: function () { api.set({ mode: md[0] }); } };
@@ -2910,6 +2961,15 @@ function notesLeave(api, next) {
   var patch = { open: next, sheet: null, playing: false, newItem: "", blankCreationId: next === s.open ? s.blankCreationId : null, blankCreationTitle: next === s.open ? s.blankCreationTitle : null };
   if (n && notesEmpty(n, s.blankCreationTitle)) patch.list = s.list.filter(function (x) { return x.id !== n.id; });
   return patch;
+}
+/* Leaving Notes for another view stops the playback timer, so its flag clears with it. A blank new
+   note is discarded; a note with content stays open. Null: nothing changes. */
+function notesAway(api) {
+  var s = api.get("notes");
+  var p = s.blankCreationId ? notesLeave(api, null) : null;
+  notesStopTimers();
+  if (s.playing) p = Object.assign(p || {}, { playing: false });
+  return p;
 }
 function notesUndoable(api, note, idx, label) {
   api.toast(label, { undo: function () { var s = api.get("notes"); if (notesFind(s.list, note.id)) return; var l = s.list.slice(); l.splice(Math.min(idx, l.length), 0, note); api.set({ list: l }); } });
@@ -3033,7 +3093,7 @@ registerView("notes", {
     if (st.filter) { api.set({ filter: null }); return true; }
     return false;
   },
-  onLeave: function (api) { var s = api.get("notes"); if (s.blankCreationId) api.set(notesLeave(api, null)); else notesStopTimers(); },
+  onLeave: function (api) { var p = notesAway(api); if (p) api.set(p); },
   suggestions: function (st, api) {
     var n = st.open ? notesFind(st.list, st.open) : null;
     if (n && n.kind === "voice") {
@@ -3181,10 +3241,12 @@ registerView("notes", {
           else notesUpd(api, n.id, { kind: "text", items: [], body: (n.items || []).map(function (i) { return i.t; }).join("\n") });
         },
         items: (n.items || []).map(function (it, i) {
+          var itemLabel = String(it.t || "").trim() || "item";
           return {
             t: it.t, done: it.done, idx: i, css: it.done ? "text-decoration: line-through; color: var(--mut)" : "",
             box: it.done ? "background: var(--fg); color: var(--bg)" : "box-shadow: inset 0 0 0 1.5px var(--mut); color: transparent",
-            label: (it.done ? "Uncheck " : "Check ") + (it.t || "item"),
+            label: (it.done ? "Uncheck " : "Check ") + itemLabel,
+            removeLabel: "Remove " + itemLabel,
             toggle: function () { notesUpd(api, n.id, function (x) { return { items: x.items.map(function (y, j) { return j === i ? Object.assign({}, y, { done: !y.done }) : y; }) }; }); },
             onText: function (e) { var v = e.target.value; notesUpd(api, n.id, function (x) { return { items: x.items.map(function (y, j) { return j === i ? Object.assign({}, y, { t: v }) : y; }) }; }); },
             remove: function () { notesUpd(api, n.id, function (x) { return { items: x.items.filter(function (y, j) { return j !== i; }) }; }); }
@@ -3254,7 +3316,7 @@ registerView("notes", {
       // The Notes recorder (voice-adapter, note-recorder.ts) handles Record; `record` is its deep-link flag.
       record: function () { api.set({ record: true }); },
       pinnedRows: pinnedRows, otherRows: otherRows, hasPinned: pinnedRows.length > 0, notesHead: pinnedRows.length > 0 && otherRows.length > 0,
-      none: rows.length === 0, emptyTitle: filter ? "No matching notes" : "No notes yet", emptyMessage: filter ? "Clear the filter to see all your notes." : "Create a note or record a voice note to get started.",
+      none: rows.length === 0, emptyTitle: filter ? "No matches" : "No notes", emptyMessage: "",
       allPressed: folder ? "false" : "true", selectAll: function () { api.set({ folder: null, filter: null, folderSheet: null }); },
       folderChips: folderChips,
       newFolder: function () { api.set({ folderSheet: { kind: "new", name: "" } }); },
@@ -3339,8 +3401,31 @@ function ctContext(api, p) {
   var out = bits.join(". ").replace(/\.\./g, ".");
   return out && !/[.!?]$/.test(out) ? out + "." : out;
 }
+/* Section letter of a contact: the unaccented first letter ("Émile" is under E), or "#" for a name
+   that starts with anything else. */
+function ctLetter(name) {
+  var c = String(name || "").trim().charAt(0).normalize("NFD").charAt(0).toUpperCase();
+  return /^[A-Z]$/.test(c) ? c : "#";
+}
+/* Contacts in section order: A to Z, then "#". Each letter is one section, names in order inside it. */
+function ctGroups(people) {
+  var rows = (people || []).map(function (p) { return { p: p, letter: ctLetter(p.name) }; });
+  rows.sort(function (a, b) {
+    if (a.letter !== b.letter) return a.letter === "#" ? 1 : b.letter === "#" ? -1 : a.letter < b.letter ? -1 : 1;
+    return String(a.p.name || "").localeCompare(String(b.p.name || ""));
+  });
+  var groups = [], cur = null;
+  rows.forEach(function (r) {
+    if (!cur || cur.letter !== r.letter) { cur = { letter: r.letter, people: [] }; groups.push(cur); }
+    cur.people.push(r.p);
+  });
+  return groups;
+}
 function ctSave(api) {
-  var s = api.get("contacts"); var l = s.list || CT_SEED; var f = ctForm(s, l);
+  var s = api.get("contacts"); var l = s.list || CT_SEED;
+  /* the contact being edited was deleted meanwhile: nothing is saved and the editor closes */
+  if (s.edit && !ctGet(l, s.edit)) { api.set({ edit: null, add: null, form: null, open: null }); api.toast("This contact was deleted"); return false; }
+  var f = ctForm(s, l);
   var clean = {}; CT_FIELDS.forEach(function (k) { clean[k] = String(f[k] || "").trim(); });
   if (!clean.first && !clean.last && !clean.phone) { api.toast("Add a name or number"); return false; }
   if (clean.phone && typeof pnFmt === "function" && clean.phone.replace(/\D/g, "").length === 10) clean.phone = pnFmt(clean.phone);
@@ -3445,12 +3530,9 @@ registerView("contacts", {
       if (!q) return true;
       if ((p.name + " " + (p.email || "") + " " + (p.note || "")).toLowerCase().indexOf(q) >= 0) return true;
       return qd.length >= 3 && String(p.phone || "").replace(/\D/g, "").indexOf(qd) >= 0;
-    }).slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
-    var groups = []; var cur = null;
-    hits.forEach(function (p) {
-      var L = /[a-z]/i.test(p.name.charAt(0)) ? p.name.charAt(0).toUpperCase() : "#";
-      if (!cur || cur.letter !== L) { cur = { letter: L, head: true, rows: [] }; groups.push(cur); }
-      cur.rows.push({ ini: p.ini, name: p.name, open: function () { api.set({ open: p.id }); } });
+    });
+    var groups = ctGroups(hits).map(function (g) {
+      return { letter: g.letter, head:true, rows: g.people.map(function (p) { return { ini: p.ini, name: p.name, open: function () { api.set({ open: p.id }); } }; }) };
     });
     var favs = (q || st.searching) ? [] : list.filter(function (p) { return p.fav; }).map(function (p) { return { ini: p.ini, first: p.first || p.name, label: p.name, open: function () { api.set({ open: p.id }); } }; });
 
@@ -3824,6 +3906,16 @@ function walFmtNum(v) { var d = v.replace(/\D/g, "").slice(0, 19); return d.repl
 function walLuhn(d) { var sum = 0; for (var i = 0; i < d.length; i++) { var x = +d.charAt(d.length - 1 - i); if (i % 2) { x *= 2; if (x > 9) x -= 9; } sum += x; } return d.length > 0 && sum % 10 === 0; }
 function walFmtExp(v) { var d = v.replace(/\D/g, "").slice(0, 4); return d.length > 2 ? d.slice(0, 2) + "/" + d.slice(2) : d; }
 
+/* Undo of a card removal puts that card back among the cards as they are now. A removed default
+   card takes the default back only from the card that inherited it; a default chosen since stays. */
+function walRestoreCard(cards, card, at, heir) {
+  var def = (cards || []).filter(function (c) { return c.def; })[0];
+  var back = !!card.def && (!def || def.id === heir || def.id === card.id);
+  return restoreById(cards, card, at).map(function (c) {
+    if (c.id === card.id) return c.def === back ? c : Object.assign({}, c, { def: back });
+    return back && c.def ? Object.assign({}, c, { def: false }) : c;
+  });
+}
 if (testMocksEnabled) registerView("wallet", {
   title: "Wallet", icon: "wallet", aliases: ["pay", "cards", "passes"],
   chat: "hidden",
@@ -3928,10 +4020,12 @@ if (testMocksEnabled) registerView("wallet", {
         setDef: function () { if (oc.def) { api.toast("Already your default"); return; } set({ cards: api.get("wallet").cards.map(function (c) { return Object.assign({}, c, { def: c.id === oc.id }); }) }); api.toast(oc.name + " is now your default"); },
         remove: function () {
           var before = api.get("wallet").cards;
+          var at = before.map(function (c) { return c.id; }).indexOf(oc.id); var was = before[at] || oc;
           var rest = before.filter(function (c) { return c.id !== oc.id; });
-          if (oc.def && rest.length) rest = rest.map(function (c, i) { return Object.assign({}, c, { def: i === rest.length - 1 }); });
+          var heir = oc.def && rest.length ? rest[rest.length - 1].id : null;
+          if (heir) rest = rest.map(function (c, i) { return Object.assign({}, c, { def: i === rest.length - 1 }); });
           set({ cards: rest, open: null });
-          api.toast(oc.name + " •••• " + oc.last4 + " removed", { undo: function () { api.set({ cards: before }); } });
+          api.toast(oc.name + " •••• " + oc.last4 + " removed", { undo: function () { api.set({ cards: walRestoreCard(api.get("wallet").cards, was, at, heir) }); } });
         },
         close: function () { set({ open: null }); }
       });
@@ -4252,6 +4346,7 @@ registerView("workflows", {
     return ["Every weekday at 6, wrap up my day"].concat(copy("workflows").suggestions || []);
   },
   voicePhrase: "Every weekday at 6, wrap up my day",
+  onLeave: function (api) { var p = latchPatch(api && api.st, ["running"]); if (p) api.set(p); },
   back: function (st, api) {
     if (st.sheet) { api.set({ sheet: null }); return true; }
     if (st.build || st.create) { api.set({ build: null, create: false }); return true; }
@@ -4366,7 +4461,7 @@ registerView("workflows", {
         steps: diagram(f.trig, f.steps, { running: running }),
         isRunning: running != null, notRunning: running == null,
         last: running != null ? "Running…" : (!f.on ? "Off" : (last ? "Last run " + wfLc(last.when) : "Not run yet")),
-        deleteLabel: 'Delete workflow', lifecycleReview: false,
+        deleteLabel: 'Delete workflow', lifecycleReview: false, runLabel: 'Run', runAria: 'Run now',
         runs: runs, hasRuns: runs.length > 0,
         close: function () { set({ open: null }); },
         edit: function () { set({ build: { id: f.id, name: f.name, trig: Object.assign({}, f.trig), steps: f.steps.map(function (s) { return Object.assign({}, s); }) } }); },
@@ -4424,7 +4519,7 @@ registerView("workflows", {
         }),
         apps: chipsOf(b), hasApps: wfApps(b).length > 0, empty: b.steps.length === 0,
         saveOff: b.steps.length === 0, saveCss: b.steps.length ? "background:var(--acc);color:var(--alpha-white)" : "background:var(--s2);color:var(--mut)",
-        describe: function () { set({ build: null }); api.chat("Every weekday at 6, "); },
+        describeOff: false, describe: function () { set({ build: null }); api.chat("Every weekday at 6, "); },
         cancel: function () { set({ build: null, sheet: null }); },
         save: function () {
           if (!wfAllowed(b)) return wfDeferred(api);
@@ -4589,6 +4684,13 @@ function stPageAccess(root) {
 /* the prototype page must never scroll (focus/scrollIntoView can nudge the stage); undo it on every commit */
 function stNoScroll() { try { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); var sc = document.querySelector("[data-screen]"); if (sc && (sc.scrollTop || sc.scrollLeft)) { sc.scrollTop = 0; sc.scrollLeft = 0; } } catch (e) {} }
 function stEmailOk(s) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s || ""); }
+/* A model download runs on background timers, so it finishes after Settings is left: a started
+   row always reaches 100% and is never left part-way, where it could neither finish nor restart. */
+function stDownloadModel(api, md) {
+  var upd = function (pct) { api.set({ models: (api.get("settings").models || []).map(function (x) { return x.id === md.id ? Object.assign({}, x, { pct: pct }) : x; }) }); };
+  upd(0);
+  [1, 2, 3, 4, 5].forEach(function (i) { api.laterBg(function () { upd(i === 5 ? 100 : i * 20); if (i === 5) api.toast(md.name + " ready"); }, i * 450); });
+}
 
 registerView("settings", {
   title: "Settings", icon: "gear", aliases: ["preferences", "setting"],
@@ -4617,6 +4719,7 @@ registerView("settings", {
     return ["Turn on dark mode", "Connect my work email", "What can Alpha see?"];
   },
   voicePhrase: "What can you see on my phone?",
+  onLeave: function (api) { var p = latchPatch(api && api.st, ["busy"]); if (p) api.set(p); },
   back: function (st, api) {
     if (st.sheet) { api.set({ sheet: null, pw: "" }); return true; }
     var acc = st.page === "accounts", prv = st.page === "privacy";
@@ -4910,9 +5013,7 @@ registerView("settings", {
           return stNav({ label: md.name, sub: md.size, val: going ? md.pct + "%" : "", trail: done ? IC.check : (going ? "" : IC.stDownload), trailCss: done ? "color:var(--acct)" : "color:var(--fg)", noChev: true, aria: (done ? "" : "Download ") + md.name,
             go: function () {
               if (done || going) return;
-              var upd = function (pct) { set({ models: api.get("settings").models.map(function (x) { return x.id === md.id ? Object.assign({}, x, { pct: pct }) : x; }) }); };
-              upd(0);
-              [1, 2, 3, 4, 5].forEach(function (i) { api.later(function () { upd(i === 5 ? 100 : i * 20); if (i === 5) api.toast(md.name + " ready"); }, i * 450); });
+              stDownloadModel(api, md);
             } });
         }) }
       ] });
@@ -5076,6 +5177,15 @@ var BASE = {
 // opens, and another page each time the owner scrolls to the top of what is shown.
 var CHAT_CLOSED_ROWS = 20, CHAT_PAGE_ROWS = 100;
 
+/* Module-level latches belong to the mounted shell: a later mount starts with no live call, no
+   long-press or notes timers and no pending calendar draft. */
+function resetViewGlobals() {
+  PN.live = null; PN.boot = null;
+  clearTimeout(PH_T.lp); PH_T.fired = false;
+  notesStopTimers(); clearTimeout(NT.holdT); NT.holdT = null; NT.held = null; NT.pend = false;
+  CAL_PENDING = null;
+}
+
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -5194,6 +5304,7 @@ class Component extends DCLogic {
     clearInterval(this.clock); clearInterval(this.vI);
     var G = this.G || {}; Object.keys(G).forEach(function (k) { G[k].forEach(clearTimeout); });
     var I = this.I || {}; Object.keys(I).forEach(function (k) { I[k].forEach(clearInterval); });
+    resetViewGlobals();
   }
   S() {
     var value = Object.assign({}, BASE, this.state || {}); if (DEFERRED_MVP_VIEWS.has(value.view)) value.view = null; value.stack = (value.stack || []).filter(isMvpView); value.heads = false;
@@ -5243,22 +5354,29 @@ class Component extends DCLogic {
     var self = this, doc = typeof document !== "undefined" ? document : null, origin = this.toastOrigin;
     var heldFocus = !!doc?.activeElement?.closest?.("[data-alpha-toast]");
     this.toastActive = false; this.toastHeld = false; this.toastSequence = (this.toastSequence || 0) + 1;
+    var closingSequence = this.toastSequence;
     this.undoFn = null; this.clear("t");
     this.setState({ toast: "", toastUndo: false }, function () {
+      // Another offer can arrive before React commits this close (including a failed Undo retry).
+      // It owns its focus and timer; its later close will drain the retained queue.
+      if (self.toastSequence !== closingSequence || self.toastActive) return;
       if (heldFocus && doc?.activeElement === doc.body && origin?.isConnected && !origin.closest("[inert],[hidden]")) origin.focus({ preventScroll: true });
       var next = self.toastQueue?.shift();
-      if (next) self.showToast(next.msg, { undo: next.undo });
+      if (next) {
+        self.showToast(next.msg, { undo: next.undo });
+        if (heldFocus) { self.toastHeld = false; self.scheduleToast(); }
+      }
     });
   }
 
   /* ---- per-app state ---- */
   vget(k) { var S = this.S(); return Object.assign({}, (VIEWS[k] && VIEWS[k].state) || {}, (S.vs || {})[k] || {}); }
-  vset(k, p) {
+  vset(k, p, options) {
     this.setState(function (prev) {
       var vs = Object.assign({}, (prev && prev.vs) || {});
       vs[k] = Object.assign({}, (VIEWS[k] && VIEWS[k].state) || {}, vs[k] || {}, p);
       return { vs: vs };
-    });
+    }, options?.afterCommit);
   }
   vreset(k, p) {
     this.setState(function (prev) {
@@ -5361,26 +5479,37 @@ class Component extends DCLogic {
     if (this.S().secure) return this.setState(Object.assign(this.shellNavigate({ type: "home" }), { secure: false, screen: "lock", shade: false, hint: false, heads: false }));
     this.setState(Object.assign(this.shellNavigate({ type: "home", assistant: chat === "sheet" || chat === "full" ? chat : "input" }), { shade: false, hint: false, heads: false }));
   }
+  /* While the phone is still locked (the lock screen's camera session), only these views open; any
+     other view asks for an unlock first. */
+  secureAdmits(secure, k) { return !secure || ["camera", "photos", "wallet"].indexOf(k) >= 0; }
+  /* A patch from outside the view (a deep link, the assistant, another app) onto state that is kept.
+     The view's `incoming` first settles anything the patch cannot coexist with. */
+  vpatch(k, p) {
+    var m = this.mod(k);
+    if (m.incoming) m.incoming(this.vget(k), p, this.api(k));
+    this.vset(k, p);
+  }
   openView(k, patch, chat, opts) {
     if (!isMvpView(k)) return this.toast("This app is not available on this phone yet.");
     // openView(view, { keepState: true }) is shorthand for the keepState option.
     if (patch && patch.keepState === true && Object.keys(patch).length === 1) { opts = Object.assign({}, opts, { keepState: true }); patch = null; }
+    // The lock screen's camera session reaches only its own views, by every route into a view.
+    if (!this.secureAdmits(this.S().secure, k)) { this.leave(); this.setState(Object.assign(this.shellNavigate({ type: "home" }), { secure: false, screen: "lock", shade: false })); return this.toast("Unlock to continue"); }
     // keepState returns to a view exactly as it was left (open note, event, email or tab and its
     // selection revision): the target's state is not reset. A different current view still gets
     // its onLeave, so its camera, recording or timers stop exactly as on any other switch.
-    if (opts && opts.keepState && VIEWS[k]) { if (this.S().view !== k) this.leave(); if (patch) this.vset(k, patch); this.setState(Object.assign(this.shellNavigate({ type: "open", view: k, history: "keep", assistant: this.shellDetent(chat) }), { screen: "home", shade: false, heads: false })); return; }
+    if (opts && opts.keepState && VIEWS[k]) { if (this.S().view !== k) this.leave(); if (patch) this.vpatch(k, patch); this.setState(Object.assign(this.shellNavigate({ type: "open", view: k, history: "keep", assistant: this.shellDetent(chat) }), { screen: "home", shade: false, heads: false })); return; }
     // Back's stack pop: the caller already set the stack; only the view changes here.
     if (opts && opts.keepStack) { var S0 = this.S(); if (S0.view !== k) { this.leave(); } this.setState({ screen: "home", view: k, shade: false, heads: false, chat: chat || this.defaultChat(k) }); return; }
     if (!VIEWS[k]) return;
     var S = this.S(); opts = opts || {};
-    if (S.secure && ["camera", "photos", "wallet"].indexOf(k) < 0) { this.leave(); this.setState(Object.assign(this.shellNavigate({ type: "home" }), { secure: false, screen: "lock", shade: false })); return this.toast("Unlock to continue"); }
     var nav = this.shellNavigate({ type: "open", view: k, history: opts.push ? "push" : "reset", assistant: this.shellDetent(chat) });
     if (S.view !== k) {
       this.leave();
       var m = this.mod(k), cur = this.vget(k);
       var busy = m.ongoing && m.ongoing(cur, this.api(k));
-      if (busy || opts.restore) { if (patch) this.vset(k, patch); } else this.vreset(k, patch);
-    } else if (patch) { this.vset(k, patch); }
+      if (busy || opts.restore) { if (patch) this.vpatch(k, patch); } else this.vreset(k, patch);
+    } else if (patch) { this.vpatch(k, patch); }
     this.setState(Object.assign(nav, { screen: "home", shade: false, heads: false }));
     this.homeHint();
   }
@@ -5397,10 +5526,10 @@ class Component extends DCLogic {
     var S = this.S();
     if (S.shade) return this.setState({ shade: false });
     if (this.props && this.props.assistantSurface && !S.view && S.voice === "off") return this.closeAssistant();
-    if (S.drawer && !S.view) return this.setState(this.shellNavigate({ type: "back" }));
     if (S.voice !== "off") return this.stopVoice();
-    // An open conversation lowers one detent (full, sheet, rest) before Back leaves the view.
-    if (S.chat === "full" || S.chat === "sheet") return this.setState(this.shellNavigate({ type: "back" }));
+    // Alpha's assistant floats above the Apps drawer and the current view.
+    if (S.chat === "full" || S.chat === "sheet") return this.setState(this.shellNavigate({ type: "assistant", detent: S.chat === "full" ? "sheet" : "rest" }));
+    if (S.drawer && !S.view) return this.setState(this.shellNavigate({ type: "back" }));
     // A bar raised from the pill lowers before Back leaves the view.
     if (S.chat === "input" && this.rest() === "hidden") return this.setState({ chat: "hidden" });
     if (S.view) {

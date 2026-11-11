@@ -54,11 +54,11 @@ export function installNoteSourceAdapter(views:Bag){
    const heading=document.createElement('h2');heading.textContent='Source document';
    const content=document.createElement('div');content.className='note-source-content';content.tabIndex=0;content.setAttribute('role','region');content.setAttribute('aria-label','Source details');
    const name=document.createElement('p'),detail=document.createElement('p');
-   const description=document.createElement('p');description.textContent='Link a PDF, image or text file up to 5 MB. If it won\'t reopen, choose the same file again. Opening shares only that copy with the viewer.';
+   const description=document.createElement('p');description.textContent='Max 5 MB';
    const status=document.createElement('p');status.setAttribute('role','status');
    const actions=document.createElement('div');actions.className='note-source-options';const footer=document.createElement('footer');
    const button=(label:string)=>{const el=document.createElement('button');el.type='button';el.textContent=label;return el;};
-   const linked=button('Open linked source'),link=button('Link file'),open=button('Choose source file to open'),remove=button('Remove source link'),done=button('Done');actions.append(linked,link,open,remove);footer.append(done);
+   const linked=button('Open linked source'),link=button('Link file'),open=button('Choose file'),remove=button('Remove source link'),done=button('Done');actions.append(linked,link,open,remove);footer.append(done);
    const current=()=>!closed&&api.isActive()&&api.get('notes').open===note.id&&JSON.stringify(api.get('notes').list.find((n:Bag)=>n.id===note.id))===expected;
    const close=()=>{if(closed)return;closed=true;pickerAbort.abort();if(opened)void attachments.cancel().catch(()=>{});dialog.remove();window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',close);if(closeCurrent===close)closeCurrent=undefined;if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();};
    const back=(event:Event)=>{if([...document.querySelectorAll('dialog[open]')].at(-1)!==dialog)return;event.preventDefault();event.stopImmediatePropagation();close();};
@@ -80,7 +80,7 @@ export function installNoteSourceAdapter(views:Bag){
      let file:MailAttachment & {sha256:string;size:number;sourceReferenceVersion?:1};
      if(Capacitor.isNativePlatform()){
       const choice=await DailyApps.perform({action:'files'});selectionId=choice.selectionId;
-      if(!current())return;if(choice.status==='cancelled'){status.textContent='Selection cancelled. Source unchanged.';return;}
+      if(!current())return;if(choice.status==='cancelled'){status.textContent='';return;}
       if(choice.status!=='selected'||!selectionId)throw Error('Choose a supported file.');
       file=await attachments.readSelected({selectionId});
      }else{
@@ -90,7 +90,7 @@ export function installNoteSourceAdapter(views:Bag){
        const bytes=new Uint8Array(await chosen.arrayBuffer());owned.throwIfAborted();let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));
        const value={name:chosen.name,mimeType:chosen.type,dataBase64:btoa(binary)};return {...value,...await reviewMailAttachment(value)};
       },null);
-      if(!current())return;if(!selected){status.textContent='Selection cancelled. Source unchanged.';return;}file=selected;
+      if(!current())return;if(!selected){status.textContent='';return;}file=selected;
      }
      const checked=await reviewMailAttachment(file);
      if(!current())return;
@@ -103,10 +103,10 @@ export function installNoteSourceAdapter(views:Bag){
       opened=true;await attachments.openReviewed({...file,reviewed:true});if(!closed)status.textContent='Matching source opened.';
      }
     }catch(error){if(!closed)status.textContent=error instanceof Error?error.message:'Source unavailable.';}
-    finally{if(selectionId)await DailyApps.forgetSelected({selectionId}).catch(()=>{if(!closed)status.textContent='File access could not be released. Close and reopen Files.';});busy=false;if(!closed)paint();}
+    finally{if(selectionId)await DailyApps.forgetSelected({selectionId}).catch(()=>{if(!closed)status.textContent='Reopen Files';});busy=false;if(!closed)paint();}
    };
-   linked.onclick=async()=>{if(busy||!current()||!source?.reference)return;busy=true;opened=true;paint();status.textContent='Opening verified source…';try{const result=await attachments.openSourceReference({reference:source.reference,sha256:source.sha256,size:source.size,mimeType:source.mimeType});if(!closed)status.textContent=result.message;}catch{if(!closed)status.textContent='Linked source changed or access is unavailable. Choose the matching source file again.';}finally{busy=false;if(!closed)paint();}};
-   link.onclick=()=>void choose('link');open.onclick=()=>void choose('open');remove.onclick=async()=>{if(busy||!current())return;busy=true;paint();try{await save(undefined);if(!closed)status.textContent='Source link removed. The file was not deleted.';}catch(error){if(!closed)status.textContent=(error as Error).message;}finally{busy=false;if(!closed)paint();}};
+   linked.onclick=async()=>{if(busy||!current()||!source?.reference)return;busy=true;opened=true;paint();status.textContent='Opening verified source…';try{const result=await attachments.openSourceReference({reference:source.reference,sha256:source.sha256,size:source.size,mimeType:source.mimeType});if(!closed)status.textContent=result.message;}catch{if(!closed)status.textContent='Source missing';}finally{busy=false;if(!closed)paint();}};
+   link.onclick=()=>void choose('link');open.onclick=()=>void choose('open');remove.onclick=async()=>{if(busy||!current())return;busy=true;paint();try{await save(undefined);if(!closed)status.textContent='Unlinked';}catch(error){if(!closed)status.textContent=(error as Error).message;}finally{busy=false;if(!closed)paint();}};
    done.onclick=close;dialog.oncancel=event=>{event.preventDefault();close();};
    content.append(name,detail,description,status,actions);dialog.append(heading,content,footer);document.body.append(dialog);closeCurrent=close;window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',close);paint();dialog.showModal();done.focus();
   };

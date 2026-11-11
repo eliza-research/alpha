@@ -127,8 +127,8 @@ export const LIVE_STATES: State[] = [
   live('Settings privacy', ['Settings', 'Privacy']),
   live('Settings about', ['Settings', 'About']),
   // About exposes the existing connection recovery controls in the grouped layout.
-  live('Settings licenses', ['Settings', 'About', 'Open source licenses']),
-  live('Settings app permissions', ['Settings', 'Privacy', 'App permissions']),
+  live('Settings licenses', ['Settings', 'About', 'Licenses']),
+  live('Settings app permissions', ['Settings', 'Privacy', 'Permissions']),
   // The remaining Settings pages, and each app's open menu, search field and editor.
   live('Settings apps', ['Settings', 'Apps']),
   live('Settings accounts', ['Settings', 'Account']),
@@ -300,7 +300,7 @@ export const FAILURE_STATES: State[] = [
       await page.addInitScript(offline); await page.goto('/');
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
       await page.evaluate(() => window.dispatchEvent(new Event('alpha:force-render-error')));
-      const recovery = page.getByRole('alertdialog', { name: 'Alpha Phone needs to reload' });
+      const recovery = page.getByRole('alertdialog', { name: 'Something went wrong' });
       await expect(recovery).toBeVisible();
       await recovery.getByText('Diagnostics', { exact: true }).click();
     },
@@ -313,7 +313,7 @@ export const FAILURE_STATES: State[] = [
       // The plain-DOM screen used when React never mounted, shown over a live page here so the
       // sweep also proves it takes the page behind it out of focus order.
       await page.evaluate(async () => { const module = await import('/src/runtime/error-boundary.tsx' as string); module.showRecoveryScreen('startup', new Error('private detail')); });
-      const recovery = page.getByRole('alertdialog', { name: 'Alpha Phone needs to reload' });
+      const recovery = page.getByRole('alertdialog', { name: 'Something went wrong' });
       await expect(recovery).toBeVisible();
       await recovery.getByText('Diagnostics', { exact: true }).click();
     },
@@ -485,8 +485,8 @@ const googleCalendar = (name: string, review: boolean): State => ({
     const dialog = await calendarSyncFixture(page, false, theme);
     await expect(dialog).toBeVisible();
     if (review) {
-      await dialog.getByRole('button', { name: 'Review sync', exact: true }).click();
-      await expect(dialog.getByText(/owner@example.invalid.*Personal.*1 Alpha events/)).toBeVisible();
+      await dialog.getByRole('switch', { name: 'Sync', exact: true }).click();
+      await expect(dialog.getByText(/owner@example.invalid.*Personal.*1 event/)).toBeVisible();
     }
     await settle(page);
     expect(await page.evaluate(() => (window as any).calendarSyncFixture.writes)).toBe(0);

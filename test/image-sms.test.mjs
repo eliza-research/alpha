@@ -13,14 +13,14 @@ test('SMS review completion cannot mutate a later visit and transport errors kee
  const {mkdtempSync,rmSync}=await import('node:fs');const {join,resolve}=await import('node:path');const {tmpdir}=await import('node:os');
  const {build}=await import('esbuild');const {writeFileSync}=await import('node:fs');const {pathToFileURL}=await import('node:url');const dir=mkdtempSync(join(tmpdir(),'sms-adapter-'));const priorDocument=globalThis.document;const pending=[];const calls=[];
  globalThis.document={hidden:false,addEventListener(){},removeEventListener(){}};
- globalThis.__smsFixturePort={smsSendHistory:async()=>[],status:async()=>({permissions:{sms:'granted',phoneState:'granted'},subscriptions:[{id:3,slot:0,displayName:'SIM'}]}),threadPage:async()=>({rows:[],next:null}),observeMessages:async()=>async()=>{},sendSms:(review,operationId)=>{calls.push({...review,operationId});return new Promise((resolve,reject)=>pending.push({resolve,reject}));}};
+ globalThis.__smsFixturePort={smsSendHistory:async()=>[],status:async()=>({permissions:{sms:'granted',phoneState:'granted'},subscriptions:[{id:3,slot:0,displayName:'SIM'}]}),threadPage:async()=>({rows:[{id:'thread:1',addresses:['+15555550100'],date:1,snippet:'Hi',unread:false}],next:null}),messagePage:async()=>({rows:[{id:'sms:1',threadId:'thread:1',kind:'sms',addresses:['+15555550100'],date:1,body:'Hi',direction:'incoming',status:'received',subscriptionId:3},{id:'sms:2',threadId:'thread:1',kind:'sms',addresses:['+15555550100'],date:2,body:'Other SIM',direction:'incoming',status:'received',subscriptionId:4}],next:null}),observeMessages:async()=>async()=>{},sendSms:(review,operationId)=>{calls.push({...review,operationId});return new Promise((resolve,reject)=>pending.push({resolve,reject}));}};
  try{
   const result=await build({entryPoints:[resolve('apps/app/src/prototype/sms-adapter.ts')],bundle:true,format:'esm',platform:'node',write:false,plugins:[{name:'native-fixture',setup(builder){builder.onResolve({filter:/platform-plugins|aosp-image|aosp-telephony|native-adapter$/},args=>({path:args.path,namespace:'fixture'}));builder.onLoad({filter:/.*/,namespace:'fixture'},args=>({resolveDir:process.cwd(),contents:args.path.includes('aosp-telephony')?'export const MMS_MAX_ATTACHMENTS=5;export const reviewMms=()=>({problem:"mms-unavailable"});export {reviewSms} from '+JSON.stringify(resolve('.eliza/client-features/packages/contracts/src/native-telephony.ts'))+';export const createAospTelephony=()=>globalThis.__smsFixturePort;export const registerTelephonyProfile=()=>()=>{};':args.path.includes('platform-plugins')?'export const registerPlugin=()=>globalThis.__smsFixturePort;':args.path.includes('aosp-image')?'export const aospImage=true;':'export const watchReturnToApp=()=>()=>{};'}));}}]});const filename=join(dir,'adapter.mjs');writeFileSync(filename,result.outputFiles[0].text);const {installSmsAdapter}=await import(pathToFileURL(filename));
   class Component{view='messages';S(){return {view:this.view}}setState(){}}
   const views={messages:{}};installSmsAdapter(Component,views);const owner=new Component();owner.componentDidMount();await tick();
   const compose=()=>{let model=views.messages.render();model.nativeOnRecipients({target:{value:'+15555550100'}});model.nativeOnBody({target:{value:'hello'}});model=views.messages.render();model.nativeSims[0].pick();views.messages.render().nativeSend();};
   compose();await tick();owner.view='home';owner.componentDidUpdate();owner.view='messages';owner.componentDidUpdate();await tick();pending[0].resolve({status:'sent'});await tick();assert.equal(views.messages.render().nativeNotice,'');assert.equal(views.messages.render().nativeBody,'hello','navigating within Alpha retains the draft');assert.equal(views.messages.render().nativeRecipients,'+15555550100');assert.equal(calls.length,1,'returning never dispatches a send');views.messages.render().nativeSend();await tick();assert.equal(calls[1].operationId,calls[0].operationId,'returning preserves the uncertain operation identity');pending[1].resolve({status:'unknown'});await tick();
-  compose();await tick();pending[2].reject(Error('transport lost'));await tick();assert.match(views.messages.render().nativeNotice,/This text may have sent/);views.messages.render().nativeSend();await tick();assert.equal(calls[2].operationId,calls[3].operationId,'same uncertain operation is queried, never assigned a fresh replay ID');pending[3].resolve({status:'unknown'});await tick();owner.componentWillUnmount();
+  compose();await tick();pending[2].reject(Error('transport lost'));await tick();assert.match(views.messages.render().nativeNotice,/May have sent/);views.messages.render().nativeSend();await tick();assert.equal(calls[2].operationId,calls[3].operationId,'same uncertain operation is queried, never assigned a fresh replay ID');pending[3].resolve({status:'unknown'});await tick();views.messages.render().nativeThreads[0].open();await tick();assert.deepEqual(views.messages.render().nativeRows.map(row=>row.sim),['SIM 1','SIM'],'thread rows use the active slot label and leave an inactive subscription unnamed');owner.componentWillUnmount();
  }finally{globalThis.document=priorDocument;delete globalThis.__smsFixturePort;rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -63,7 +63,7 @@ test('Cancel, denial and native refusals let Send review again; Back and the pic
   pending[3].reject(refusal('This request is too old to read back. Nothing was sent again.','expired'));await tick();await tick();
   assert.equal(model().nativeNotice,'This request is too old to read back. Nothing was sent again.');
   await send();assert.equal(calls[4].operationId,calls[3].operationId,'an expired request keeps its ID');
-  pending[4].reject(Error('bridge closed'));await tick();await tick();assert.match(model().nativeNotice,/This text may have sent/);
+  pending[4].reject(Error('bridge closed'));await tick();await tick();assert.match(model().nativeNotice,/May have sent/);
   await send();assert.equal(calls[5].operationId,calls[4].operationId,'an unknown outcome keeps its ID');pending[5].resolve({status:'unknown'});await tick();await tick();
 
   assert.equal(views.messages.back({},{}),false);assert.equal(shellBack,1,'Back on the list is the shell\'s');
@@ -108,7 +108,7 @@ test('a reviewed MMS carries the picked pictures, keeps its operation ID when un
   assert.deepEqual(model().nativeAttachments.map(row=>row.label),['picture-1.jpg · 1 KB','picture-2.png · 1 KB']);
   model().nativeSendMms();await tick();await tick();assert.equal(calls.length,1);
   assert.deepEqual(calls[0].review.recipients,['+15555550100','+15555550101']);assert.deepEqual(calls[0].review.attachments.map(a=>[a.name,a.contentType,[...a.bytes]]),[['picture-1.jpg','image/jpeg',[1,2,3]],['picture-2.png','image/png',[4,5]]]);
-  pending[0].reject(Error('transport lost'));await tick();await tick();assert.match(model().nativeNotice,/This MMS may have sent/);
+  pending[0].reject(Error('transport lost'));await tick();await tick();assert.match(model().nativeNotice,/May have sent/);
   model().nativeSendMms();await tick();await tick();assert.equal(calls[1].operationId,calls[0].operationId,'an uncertain MMS is never given a fresh ID');
   pending[1].resolve({status:'submitted'});await tick();await tick();assert.match(model().nativeNotice,/submitted/);
   mmsUpdated('someone-else');await tick();assert.equal(reads.length,0,'another operation is not read');
@@ -139,14 +139,14 @@ test('direct SMS and the handoff go through the shared SMS review',async()=>{
   smsUpdated(sends[0].operationId);await settle();assert.equal(reads.length,1);assert.equal(reads[0].review,sends[0].review,'the read-back is bound to the reviewed text');
   assert.equal(model().nativeBody,'','a sent text clears the composer');
   model().nativeOnBody({target:{value:'hello'}});model().nativeHandoff();await settle();assert.deepEqual(handoffs,[{recipients:['+14155550100'],body:'hello',subscriptionId:null}],'a handoff carries no SIM');
-  model().nativeOnRecipients({target:{value:'+1 415 555 0100, 911a'}});model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Check the phone numbers.');
+  model().nativeOnRecipients({target:{value:'+1 415 555 0100, 911a'}});model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Invalid number');
   model().nativeHandoff();await settle();assert.equal(handoffs.length,1,'an invalid handoff is refused before the messaging app opens');
   model().nativeOnRecipients({target:{value:'4155550100'}});sims=[{id:3,slot:0,displayName:'SIM'},{id:4,slot:1,displayName:'Work'}];await model().nativeRefresh();await settle();
-  model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Select a SIM for this text.');
+  model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Pick a SIM');
   model().nativeSims[1].pick();sims=[{id:3,slot:0,displayName:'SIM'}];model().nativeRefresh();await settle();
-  model().nativeSend();await settle();assert.equal(sends.length,1,'a SIM that is no longer active is refused');assert.match(model().nativeNotice,/no longer active/);
+  model().nativeSend();await settle();assert.equal(sends.length,1,'a SIM that is no longer active is refused');assert.match(model().nativeNotice,/SIM inactive/);
   owner.view='home';owner.componentDidUpdate();sims=null;owner.view='messages';owner.componentDidUpdate();await settle();
-  model().nativeOnRecipients({target:{value:'4155550100'}});model().nativeOnBody({target:{value:'hello'}});model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Grant SIM access to select a SIM.','without SIM access the owner is asked for it, not told there is no SIM');
+  model().nativeOnRecipients({target:{value:'4155550100'}});model().nativeOnBody({target:{value:'hello'}});model().nativeSend();await settle();assert.equal(sends.length,1);assert.equal(model().nativeNotice,'Allow SIM','without SIM access the owner is asked for it, not told there is no SIM');
   owner.view='home';owner.componentDidUpdate();owner.componentWillUnmount();
  }finally{globalThis.document=priorDocument;delete globalThis.__smsReviewPort;rmSync(dir,{recursive:true,force:true});}
 });

@@ -55,6 +55,24 @@ test('a deterministic stage refusal never leaves a permanent agent claim',()=>{
  assert.doesNotMatch(contract,/case "unknown":/,'unknown remains an uncertain outcome');
 });
 
+test('reminder deletion staging runs on the plugin worker, never in the dialog click on the UI thread',()=>{
+ const plugin=java('AlphaDeletionsPlugin');
+ const click=body(plugin,'.setPositiveButton("Delete reminder",(d,w)->{','}).create();');
+ assert.match(click,/if\(submitted\[0\]\|\|retired\|\|reviewEpoch!=epoch\|\|review!=own\[0\]\|\|[^\n]*isDeviceLocked\(\)\|\|![^\n]*Lifecycle\.State\.RESUMED\)\)return;/,'the owner decision is still checked on the UI thread');
+ assert.match(click,/try\{worker\.execute\(\(\)->\{/);
+ assert.match(click,/catch\(java\.util\.concurrent\.RejectedExecutionException stopped\)\{finishStatus\(call,admission,"unavailable"\);\}/,'a retired worker stages nothing and says so');
+ assert.doesNotMatch(click,/manualOwner\(|stageAdmissible\(|stageReminder\(|DeletionDispatchClaim\.|AlphaReminders\.engine|AlphaActionJournal\./,'no slot, journal or coordinator-lock work in the click handler');
+ assert.ok(click.indexOf('submitted[0]=true;')>0&&click.indexOf('submitted[0]=true;')<click.indexOf('worker.execute('));
+ assert.match(plugin,/setOnDismissListener\(d->\{if\(review==own\[0\]\)review=null;if\(!submitted\[0\]\)finishStatus\(call,admission,"cancelled"\);\}\)/,'the call is answered once: by the dismissal or by the worker');
+ const staged=body(plugin,' private JSONObject stageReminderReview(',' private void finishStatus(');
+ assert.match(staged,/if\(retired\|\|reviewEpoch!=epoch\|\|!admission\.queued\(\)\)return new JSONObject\(\)\.put\("status","cancelled"\);/);
+ assert.ok(staged.indexOf('if(retired||reviewEpoch!=epoch')<staged.indexOf('coordinator.manualOwner()'),'a closed view is refused before any slot is read');
+ assert.equal((plugin.match(/stageReminderReview\(/g)||[]).length,2,'staging is reached only from the worker task');
+ // The shared coordinator takes its own monitor for these, which a reconcile holds across provider writes.
+ assert.match(shared,/ public synchronized JSONObject manualOwner\(\) throws Exception \{/);
+ assert.match(shared,/ public synchronized JSONObject stageReminder\(/);
+});
+
 test('both notice owner fences are written even when workflow cancellation fails',()=>{
  const plugin=java('AlphaHostedResultsPlugin'),method=body(plugin,'public void withdrawOtherOwnerApprovalNotices','@PluginMethod public void resumeWorkflowApprovalNotice');
  assert.match(method,/try\{withdrawn=WorkflowNoticeTapsFactory\.delivery\(getContext\(\)\)\.withdrawOtherOwners\([^;]*;\}catch\(Exception workflowFailure\)\{failed=workflowFailure;\}/);

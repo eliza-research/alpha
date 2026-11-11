@@ -35,6 +35,7 @@ export function pilotRotationRecord(descriptor: unknown, apk: PilotApk) {
       (record.variant !== "launcher" && record.variant !== "standalone") || record.variant !== apk.variant ||
       !isSafeInteger(deviceApi) || deviceApi < 29 || deviceApi > 37 ||
       typeof signer !== "string" || !digest.test(signer) || !hasDigests(record, RECORD_DIGESTS) ||
+      (record.preserveSignaturePermissions !== undefined && typeof record.preserveSignaturePermissions !== "boolean") ||
       record.previousSignerSha256 === signer ||
       record.replacementApkSha256 !== apk.sha256 || apk.signerSha256 !== signer) {
     throw new Error("No matching reviewed pilot APK rotation record in android/release-signer.json");
@@ -68,6 +69,7 @@ export function verifyPilotRotation({
     "-cp", jar, verifier, installedFile, replacementFile, lineageFile,
     record.installedApkSha256, record.replacementApkSha256, record.lineageSha256,
     record.previousSignerSha256, descriptor.signerSha256, packageName, String(device.sdk),
+    ...(record.preserveSignaturePermissions ? ["--preserve-signature-permissions"] : []),
   ], { encoding: "utf8", timeout: 120_000 }));
   if (!isRecord(result) || result.verified !== true || result.api !== device.sdk ||
       result.installedVersionCode !== before.versionCode || result.replacementVersionCode !== apk.versionCode)

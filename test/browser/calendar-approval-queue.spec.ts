@@ -12,7 +12,7 @@ for(const theme of ['light','dark'])test(`Calendar queue review is readable and 
   const fixture=(window as any).calendarApprovalFixture={reads:0,result:'waiting'};
   void reviewCalendarApproval(async()=>{fixture.reads++;return row;},new AbortController().signal,()=>{},()=>{},()=>({calendar:'Personal',account:'owner@example.invalid'})).then(result=>fixture.result=result);
  });
- const dialog=page.getByRole('dialog',{name:'Review Calendar change'});
+ const dialog=page.getByRole('dialog',{name:'Calendar change'});
  await expect(dialog.getByRole('heading',{name:'Add event'})).toBeVisible();
  await expect(dialog.locator('dl')).toContainText('Personal');
  await expect(dialog.locator('dl')).toContainText('13:00');

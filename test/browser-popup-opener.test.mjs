@@ -29,7 +29,7 @@ test('closing a popup whose opener is gone falls back to a surviving tab',async(
 test('a popup beyond the renderer cap closes only the new native child',async()=>{
  const h=await fixture({count:8});h.open();assert.equal(h.state.tabs.length,8);assert.equal(h.state.cur,'opener');
  assert.equal(h.closed.length,1);assert.equal(h.closed[0].id,'popup');assert.equal(h.closed[0].session,'owned-session');
- assert.equal(h.tabs.has('popup'),false);assert.equal(h.tabs.has('opener'),true);assert.deepEqual(h.toasts,['Close a tab before opening another.']);
+ assert.equal(h.tabs.has('popup'),false);assert.equal(h.tabs.has('opener'),true);assert.deepEqual(h.toasts,['Tab limit']);
 });
 test('foreign-session and duplicate popup events cannot close or navigate an owned tab',async()=>{
  const h=await fixture({count:8});h.open({session:'foreign'});h.open({id:'opener'});

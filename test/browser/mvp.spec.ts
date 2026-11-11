@@ -28,7 +28,7 @@ for (const theme of ['light', 'dark']) {
         expect(box!.x).toBeGreaterThanOrEqual(0);
         expect(box!.x + box!.width).toBeLessThanOrEqual(width + 1);
         expect(box!.y + box!.height).toBeLessThanOrEqual(916);
-        await expect(page.getByText('Reminders could not refresh.', { exact: false })).toHaveCount(0);
+        await expect(page.getByText('Couldn’t refresh', { exact: false })).toHaveCount(0);
         if (width === 412) await page.screenshot({ path: info.outputPath(`${name}.png`) });
       }
       expect(errors).toEqual([]);
@@ -58,7 +58,7 @@ test('Notes create, edit, reload and delete to Recently deleted', async ({ page 
   await page.getByRole('button', { name: 'More', exact: true }).click();
   await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
   // Deletion is not immediate erasure: the note waits in Recently deleted for 30 days.
-  await expect(page.getByText('Moved to Recently deleted', { exact: true })).toBeVisible();
+  await expect(page.getByText('Deleted', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Recently deleted', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Browser audit note, 30 days left', exact: true })).toBeVisible();
 });
@@ -120,7 +120,7 @@ test('Retained digest panel traps focus, closes on native Back, and restores pri
   await trigger.focus();await openRetainedDigests(page);
   const dialog=page.getByRole('dialog',{name:'Scheduled digests',exact:true});
   await expect(dialog).toBeVisible();await expect(dialog).toBeFocused();
-  await expect(dialog.getByRole('button',{name:'Result notifications',exact:true})).toBeVisible();
+  await expect(dialog.getByRole('switch',{name:'Notifications',exact:true})).toBeVisible();
   await expect(dialog).not.toContainText('Result link is waiting for a verified connection.');
   await expect(dialog).not.toContainText('Choose where your agent runs');
   await expect(page.locator('.os')).toHaveAttribute('inert','');
@@ -136,7 +136,7 @@ test('Unsigned recorder opens without a sign-in step and a refused microphone sh
   await page.getByRole('button',{name:'Record voice note',exact:true}).click();
   const recorder=page.locator('[data-alpha-subview="notes-recorder"]');
   await expect(recorder).toHaveAttribute('data-recorder-state','failed');
-  await expect(recorder.getByRole('alert')).toHaveText('The microphone isn’t available.');
+  await expect(recorder.getByRole('alert')).toHaveText('Mic unavailable');
   await expect(recorder.getByRole('button',{name:'Stop recording',exact:true})).toBeDisabled();
   await expect(page.getByRole('button',{name:/Connect Eliza Cloud|Record without transcription|Start recording/})).toHaveCount(0);
   expect(await page.evaluate(()=>(window as any).microphoneRequests)).toBe(1);
@@ -163,8 +163,8 @@ test('MVP mock account and privacy journeys exclude Contacts controls', async ({
   await expect(page.getByRole('button',{name:'Leaves this device',exact:true})).toBeVisible();
   await expect(page.getByRole('button',{name:'Contacts',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Microphone',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Alpha microphone',exact:true})).toBeVisible();
-  await expect(page.getByRole('button',{name:/^(Phone|Messages) microphone$/})).toHaveCount(0);
+  await expect(page.getByRole('switch',{name:'Alpha microphone',exact:true})).toBeVisible();
+  await expect(page.getByRole('switch',{name:/^(Phone|Messages) microphone$/})).toHaveCount(0);
   await page.goto('/?mode=mock&start=settings:accounts');
   await page.getByRole('button',{name:'you@gmail.example',exact:true}).click();
   await expect(page.getByRole('button',{name:'Calendar: Act',exact:true})).toBeVisible();

@@ -38,6 +38,6 @@ test('declining the first Photos batch does not open another confirmation or cla
 test('declining a later Photos batch retains the earlier confirmed result and ends the run',async()=>{
  const result=await run(2);
  assert.equal(result.calls.length,2);
- assert.deepEqual(result.toasts,['20 moved to Recently deleted · 25 not changed']);assert.equal(result.lastEpoch,1);assert.equal(result.lastCapture,undefined);
+ assert.deepEqual(result.toasts,['20 deleted · 25 not changed']);assert.equal(result.lastEpoch,1);assert.equal(result.lastCapture,undefined);
  assert.equal(result.mutating,false);
 });

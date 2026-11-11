@@ -20,6 +20,7 @@ const factory=transformSync(`(()=>{
  const work=async(_,action)=>{const controller=new AbortController();probeController=controller;signal=controller.signal;signInReadinessOwner=null;operation=controller;try{await action(signal);}finally{operation=null;}};
  const ensureResident=async()=>{};class CloudSignInError extends Error{}
  const anyAbortSignal=signals=>AbortSignal.any(signals);
+ const runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{},scheduleResidentAutoRetry=()=>{};
  const revealLocalProviderKey=async()=>({key:'text',revision:'fixture',shown:true,hidesAfterMs:30000});
  const localProviderStatus=async()=>({mode:'cloud',revision:'fixture-next',keys:{text:{configured:true},voice:{configured:true}}});
  const editLocalProviderKeys=localProviderStatus,removeLocalProviderKey=localProviderStatus;

@@ -72,7 +72,7 @@ async function sendAndOpenSummary(page: Page, question: string, excerpt: string)
   // An answer alone saves nothing.
   expect(await notes(page)).toEqual([]);
   await page.getByRole('button', {name: /^Review summary note/}).click();
-  return page.getByRole('dialog', {name: 'Save reviewed summary note'});
+  return page.getByRole('dialog', {name: 'Save summary'});
 }
 async function expectOneLinkedNoteAfterReload(page: Page, title: string, body: string) {
   await page.reload();
@@ -88,7 +88,6 @@ async function expectOneLinkedNoteAfterReload(page: Page, title: string, body: s
   await button(page, 'Web source linked').click();
   const source = page.getByRole('dialog', {name: 'Note web source'});
   await expect(source).toContainText(url);
-  await expect(source).toContainText('Its contents may have changed since the summary was saved.');
   await source.getByRole('button', {name: 'Open source page', exact: true}).click();
   await expect(source).toHaveCount(0);
   await expect(sourceHeading(page)).toBeVisible();
@@ -106,7 +105,7 @@ test('reviewed page excerpt, development agent answer and explicit Save leave ex
   const excerpt = review.getByRole('textbox', {name: 'Content excerpt'});
   await expect(excerpt).toHaveValue(/The ferry leaves at nine from pier four\./);
   await expect(excerpt).toHaveValue(/OMIT THIS/);
-  await expect(review.getByRole('checkbox', {name: 'Link this source when saving the answer to Notes'})).toBeChecked();
+  await expect(review.getByRole('checkbox', {name: 'Link source'})).toBeChecked();
   // The user bounds what is shared: the edited excerpt and question are the only page text sent.
   await excerpt.fill('The ferry leaves at nine from pier four.');
   await review.getByRole('textbox', {name: 'Question about content'}).fill('When does the ferry leave?');
@@ -114,7 +113,7 @@ test('reviewed page excerpt, development agent answer and explicit Save leave ex
   await expect(review).toHaveCount(0);
 
   const summary = await sendAndOpenSummary(page, 'When does the ferry leave?', 'The ferry leaves at nine from pier four.');
-  await expect(summary).toContainText(`The note will link to ${url}.`);
+  await expect(summary).toContainText(url);
   await expect(summary.getByRole('textbox', {name: 'Summary note text'})).toHaveValue(answer);
   // Cancel is a real cancel.
   await summary.getByRole('button', {name: 'Cancel', exact: true}).click();

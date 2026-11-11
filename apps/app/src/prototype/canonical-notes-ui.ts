@@ -3,14 +3,18 @@ import {authoredNoteText} from '../../../../.eliza/client-features/plugins/plugi
 import {nextDefaultNoteTitle} from '../runtime/note-default-title';
 import {projectNoteForModel,reconstructNoteContent,type NoteJson,type StickyNote} from '../../../../.eliza/client-features/plugins/plugin-notes/src/types.ts';
 import {noteScheduleDraft,type NoteScheduleKind} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-schedule-draft.ts';
+import {noteShareText} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/note-share-text.ts';
 import type {AppRecordPort} from '../runtime/app-record-route-policy';
 import {agentPendingText,agentAvailabilityNotice,connectionController} from '../runtime/connection-ui';
 import {DailyApps} from '../daily';
+import {copySelectedText} from '../runtime/text-share';
 import {CanonicalNotesController,type NotesPhase} from './canonical-notes-controller';
 import {CanonicalNotesEditor} from './canonical-notes-editor';
 import type {CanonicalNoteSaveIntent} from './note-recorder';
+import {formatDateTime} from './locale-time';
 type Bag=Record<string,any>;
-const UNAVAILABLE='Your agent is not ready for Notes. Check the connection and try again.';
+type CanonicalTrashEntry={id:string;title:string;deletedAt:string;revision:number};
+const UNAVAILABLE='Agent offline';
 /** Device-local handles (a recording, a picked document, a web source) belong to Older notes adapters, never to an agent record's view. */
 const LOCAL_HANDLES=['audio','documentSource','webSource'];
 /** View identity and presentation fields, never authored rich metadata. */
@@ -48,11 +52,11 @@ export class CanonicalNotesUi {
  private defaultTitle:{token:string;title:string}|null=null;
  private openValue:string|null=null;
  private blankCreationValue:string|null=null;
- private trashValue:{id:string;title:string;kind:string}[]=[];
+ private trashValue:CanonicalTrashEntry[]=[];
  constructor(port:AppRecordPort,private readonly hooks:{paint():void;review():void;committed?(id:string):void;dropped?(title:string):void}){
   this.controller=new CanonicalNotesController(port,{
    snapshot:(snapshot,reason)=>{
-    this.trashValue=(snapshot.trash??[]).map(entry=>({id:entry.note.id,title:entry.note.title,kind:entry.note.format?.kind??'text'}));
+    this.trashValue=(snapshot.trash??[]).map(entry=>({id:entry.note.id,title:entry.note.title||'Untitled',deletedAt:entry.deletedAt,revision:snapshot.revision}));
     this.baseRows=snapshot.notes.map(note=>this.row(note,snapshot.revision));
     this.editor?.reconcile();
     // Only an accepted current-owner read can recover a read-only warning.
@@ -108,11 +112,27 @@ export class CanonicalNotesUi {
  notes():StickyNote[]{return this.controller.current?this.controller.snapshot?.notes??[]:[];}
  selection(){return this.editor.selection();}
  private status():string{
-  if(this.phase==='review')return this.editor.draft?.version?'Your draft is shown here until you reload or the connection changes. Reload the current notes to discard it.':this.failure==='read'&&this.reviewPending==='read'?'Notes could not be opened. Check the agent connection, then reload.':'That change could not be confirmed. Reload Notes to see what was saved.';
+  if(this.phase==='review')return this.editor.draft?.version?'Unsaved':this.failure==='read'&&this.reviewPending==='read'?'Couldn’t open':'Unconfirmed';
   return this.controller.revision===null?'Opening Notes…':'';
  }
  renderState(previous:Bag):Bag{return {...previous,...DEVICE_ONLY_STATE,list:this.list,open:this.open,storageStatus:this.status(),blankCreationId:this.blankCreationValue};}
  async refresh():Promise<void>{await this.controller.refresh();}
+ /** Copy the selected draft while preserving the editor and canonical collection. */
+ private async copyDraft(token:string,version:number,api:Bag):Promise<void>{
+  const current=()=>{
+   const draft=this.editor.draft;
+   return this.controller.current&&api.isActive()&&!document.hidden&&this.phase==='review'&&draft?.token===token&&draft.version===version;
+  };
+  if(!current())return;
+  const note=this.list.find(row=>row.id===this.open);
+  if(!note)return;
+  try{
+   await copySelectedText(noteShareText({...note,kind:note.kind}).text);
+   if(current())api.toast('Draft copied.');
+  }catch(error){
+   if(current()&&!(error instanceof DOMException&&error.name==='AbortError'))api.toast(error instanceof Error?error.message:'Draft could not be copied.');
+  }
+ }
  /** A connection change ends this binding; an unsaved edit is not carried over, so the owner is told. */
  retire():void{const draft=this.editor.draft;if(draft?.version)this.hooks.dropped?.(draft.title||'Untitled');this.editor.close();this.controller.retire();this.baseRows=[];this.rowsValue=[];this.openValue=null;this.trashValue=[];}
  /** Wait out an in-flight save and the follow-up it queued for edits typed meanwhile. */
@@ -165,17 +185,23 @@ export class CanonicalNotesUi {
   await this.settle();id=this.resolve(id);
   if(!this.controller.current)return false;
   if(this.editor.draft&&!this.editor.draft.id&&id===this.open){this.editor.close();return true;}
-  const title=this.list.find(row=>row.id===id)?.title||'Note';
   const removed=await this.editor.remove(id);
-  if(removed&&this.controller.current)api.toast('Moved to Recently deleted',{undo:()=>void this.undoRemove(id,api)});
+  if(removed&&this.controller.current){
+   const entry=this.trashValue.find(row=>row.id===id);
+   api.toast('Deleted',entry?{undo:()=>void this.undoRemove(entry,api)}:undefined);
+  }
   return removed;
  }
+ private trashEntry(reviewed:CanonicalTrashEntry,strictRevision:boolean):CanonicalTrashEntry|undefined{
+  return this.controller.current?this.trashValue.find(row=>row.id===reviewed.id&&row.deletedAt===reviewed.deletedAt&&(!strictRevision||row.revision===reviewed.revision)):undefined;
+ }
  /** Undo waits out an in-flight save; restoring over one would only fail into review. */
- private async undoRemove(id:string,api:Bag):Promise<void>{
+ private async undoRemove(entry:CanonicalTrashEntry,api:Bag):Promise<void>{
   await this.settle();
   if(!this.controller.current)return;
-  if(this.controller.pending){api.toast('Wait for the current save, then restore it from Trash.');return;}
-  await this.editor.restore(id);
+  if(this.controller.pending){api.toast('Still saving');return;}
+  if(!this.trashEntry(entry,false)){api.toast('Review deletion again');return;}
+  await this.editor.restore(entry.id);
  }
  /**
   * A separate canonical voice note. Audio is retained by the existing device store,
@@ -219,7 +245,7 @@ export class CanonicalNotesUi {
  }
  async saveCard(content:string,api:Bag):Promise<boolean>{
   try{const result=await this.controller.interact('create-note',{content});if(!this.controller.current||!result.target)return false;this.hooks.committed?.(result.target.id);return true;}
-  catch{if(this.controller.current){api.toast('Could not confirm the save. Check Notes before trying again.');this.needsReview();}return false;}
+  catch{if(this.controller.current){api.toast('Save unconfirmed');this.needsReview();}return false;}
  }
  async discardDraftAndReload():Promise<void>{
   const id=this.editor.draft?.id;this.reviewPending=false;this.failure=null;this.editor.close();
@@ -234,50 +260,59 @@ export class CanonicalNotesUi {
   if(!this.controller.current||!api.isActive()||this.open!==id)return;
   if(result.status!=='ready'){api.toast(result.message);return;}
   const {draft}=result,shared={id:null,title:draft.title,off:1,t:9,d:1,where:'',video:false,who:[],repeat:'none',notes:draft.notes,origin:draft.origin};
-  if(kind==='event'){if(!api.reviewCalendarDraft?.({...shared,creationId:crypto.randomUUID(),separateCreation:false,cal:'native:local',alert:null})){api.toast("Calendar can't open this event yet. Finish any open Calendar draft and try again.");return;}}
+  if(kind==='event'){if(!api.reviewCalendarDraft?.({...shared,creationId:crypto.randomUUID(),separateCreation:false,cal:'native:local',alert:null})){api.toast('Calendar busy');return;}}
   else api.open('calendar',{calendarAuthority:api.get('calendar').calendarAuthority,form:{...shared,cal:'alpha-reminders',alert:0},open:null,month:null,day:1},'hidden');
-  api.toast('Review the time, then Save.');
+  api.toast('Check time');
  }
  /** Speech recognition through the platform port; the transcript lands at the caret of the note it was started from. */
  private async dictate(id:string,api:Bag):Promise<void>{
   const before=this.list.find(row=>row.id===id);if(!before)return;
-  if(before.kind==='list'){api.toast('Convert this checklist to text before dictating.');return;}
+  if(before.kind==='list'){api.toast('Text notes only');return;}
   const editor=document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Note"]'),caret=editor&&editor.value===before.body?editor:null,start=caret?caret.selectionStart:before.body.length,end=caret?caret.selectionEnd:before.body.length;
   try{
    const result=await DailyApps.perform({action:'voice'});
    // A new note's first save (a title typed while listening) names its record by now.
    id=this.resolve(id);
    if(!this.controller.current||this.open!==id)return;
-   if(typeof result.transcript!=='string'||!result.transcript){api.toast(result.message||'Speech recognition is unavailable.');return;}
+   if(typeof result.transcript!=='string'||!result.transcript){api.toast(result.message||'No speech input');return;}
    const current=this.list.find(row=>row.id===id);if(!current)return;
    const body=current.body===before.body?current.body.slice(0,start)+result.transcript+current.body.slice(end):[current.body,result.transcript].filter(Boolean).join('\n');
    await this.update(id,{body});
-  }catch{api.toast('Speech recognition is unavailable.');}
+  }catch{api.toast('No speech input');}
  }
  /** Canonical behaviour on top of Alpha's Notes view: the restore-only Trash as the Recently deleted
   * folder, review and reload, and the Notes recorder saving one voice record with an owned opaque audio attachment. */
  decorate(view:Bag,api:Bag,state:Bag):Bag{
   const rows=this.controller.current?this.trashValue:[],ready=this.controller.revision!==null,busy=this.controller.pending,open=this.open,saved=!!open&&this.controller.hasViewNote(open);
+  const draft=this.editor.draft;
   const trashOpen=state.folder==='deleted'&&rows.length>0;
   if(state.folder==='deleted'&&!rows.length&&ready)queueMicrotask(()=>{if(api.get('notes').folder==='deleted')api.set({folder:null,trashAsk:null});});
-  const ask=state.trashAsk as Bag|null,asked=ask&&trashOpen?rows.find(row=>row.id===ask.id):undefined;
-  const restore=(id:string)=>{api.set({trashAsk:null});void this.editor.restore(id);};
+  const ask=state.trashAsk as CanonicalTrashEntry|null,asked=ask&&trashOpen?this.trashEntry(ask,true):undefined;
+  if(ask&&!asked)queueMicrotask(()=>{if(api.get('notes').trashAsk===ask)api.set({trashAsk:null});});
+  const deletionDate=(entry:CanonicalTrashEntry)=>`Deleted ${formatDateTime(new Date(entry.deletedAt))}`;
+  const restore=(entry:CanonicalTrashEntry)=>{
+   if(!api.isActive()||this.controller.pending)return;
+   api.set({trashAsk:null});
+   if(!this.trashEntry(entry,true)){api.toast('Review deletion again');return;}
+   void this.editor.restore(entry.id);
+  };
   const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:true,canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,
-   canonicalReview:this.phase==='review',canonicalReviewLabel:this.editor.draft?.version?'Discard draft and reload':'Reload Notes',canonicalReviewAction:()=>void this.discardDraftAndReload(),
+   canonicalReview:this.phase==='review',canonicalReviewLabel:this.editor.draft?.version?'Discard':'Reload Notes',canonicalReviewAction:()=>void this.discardDraftAndReload(),
+   copyDraftAvailable:this.phase==='review'&&this.dirty,copyDraft:()=>draft?this.copyDraft(draft.token,draft.version,api):Promise.resolve(),
    trashAvailable:false,hasDeleted:rows.length>0,trashOpen,trashCanErase:false,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
-   trashRows:rows.map(row=>{const title=row.title||'Untitled';return {id:row.id,title,label:title,preview:'',left:'',disabled:busy,restore:()=>restore(row.id),ask:()=>api.set({trashAsk:{id:row.id,title}})};}),
-   trashAskOpen:!!asked,trashAskTitle:asked?ask!.title:'',trashAskClose:()=>api.set({trashAsk:null}),trashAskRecover:()=>{if(asked)restore(asked.id);},trashAskDelete:()=>{},
-   openTrash:()=>{void this.leave(null).then(left=>{if(left&&this.controller.current){api.set({folder:'deleted',filter:null,folderSheet:null,sheet:null,q:null});void this.controller.refresh().catch(()=>{});}});},
+   trashRows:rows.map(row=>{const deleted=deletionDate(row);return {id:row.id,title:row.title,label:row.title,preview:deleted,previewDescription:deleted,left:'',disabled:busy,ask:()=>api.set({trashAsk:row})};}),
+   trashAskOpen:!!asked,trashAskTitle:asked?.title||'',trashAskDescription:asked?deletionDate(asked):'',trashAskClose:()=>api.set({trashAsk:null}),trashAskRecover:()=>{if(asked)restore(asked);},trashAskDelete:()=>{},
+   openTrash:()=>{void this.leave(null).then(left=>{if(left&&this.controller.current&&api.isActive()){api.set({folder:'deleted',filter:null,folderSheet:null,sheet:null,q:null});void this.controller.refresh().catch(()=>{});}});},
    closeTrash:()=>api.set({folder:null,trashAsk:null}),emptyTrash:()=>{},trashConfirmGo:()=>{},trashCancel:()=>api.set({trashConfirm:null,trashFull:null})};
   if(out.ed&&open){out.ed={...out.ed,dictate:()=>void this.dictate(open,api),
    toCal:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'reminder',api);}:undefined,
    toEvent:saved?()=>{out.ed.closeMenu?.();void this.scheduleDraft(open,'event',api);}:undefined,
-   saveStatus:this.phase==='review'?'Not saved':''};}
+   saveStatus:this.phase==='review'?'Save unconfirmed':''};}
   if(out.vo&&open){const note=this.controller.viewNote(open),audio=note?.format?.kind==='voice'?voiceAudio(note.format.data):undefined;
    const owned=!!audio&&out.vo.playbackAudioId===audio.audioId&&out.vo.hasPlayback===true;
-   out.vo={...out.vo,...(owned?{}:{hasPlayback:false,play:()=>api.toast('No audio is available for this note.')}),
+   out.vo={...out.vo,...(owned?{}:{hasPlayback:false,play:()=>api.toast('No audio')}),
    toCal:()=>{out.vo.closeMenu?.();void this.scheduleDraft(open,'reminder',api);},calLabel:'Review reminder draft',calText:'Review reminder',calIcon:api.ic?.cal??out.vo.calIcon,
-   toEvent:()=>{out.vo.closeMenu?.();void this.scheduleDraft(open,'event',api);},eventLabel:'Review calendar event draft',eventText:'Review event'};}
+   toEvent:()=>{out.vo.closeMenu?.();void this.scheduleDraft(open,'event',api);},eventLabel:'Review event',eventText:'Review event'};}
   return out;
  }
  /** Decorate this view's API only. No global client or shared NotesStore swap. */
@@ -285,7 +320,7 @@ export class CanonicalNotesUi {
   return {...original,canonicalNotes:this,notesSourceMode:'canonical',notesTrash:undefined,moveNoteToTrash:undefined,storageReady:()=>this.controller.current&&this.controller.revision!==null&&!this.controller.pending,
    set:(patch:Bag)=>{
     // `record` opens the Notes recorder (voice-adapter.ts); the old simulated recorder state is refused.
-    if(patch.rec){original.toast('Recording is not available in agent Notes. Nothing was recorded.');return false;}
+    if(patch.rec){original.toast('Not in agent Notes');return false;}
     const rest={...patch};
     if(Object.hasOwn(rest,'open')){this.select(rest.open??null);delete rest.open;}
     if(rest.compose){void this.create('text');rest.compose=false;}

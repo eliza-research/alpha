@@ -65,7 +65,9 @@ export function createPhoneInfoLoader(client: PhoneInfoClient, onChange: () => v
     state = {phase: 'loading'}; onChange();
     try {
       const status = request ? await client.requestAccess('phoneState') : await client.status();
+      if (token !== epoch || !open) return;
       const info = await client.phoneInfo();
+      if (token !== epoch || !open) return;
       // Voicemail is optional: a phone that cannot answer simply shows no voicemail row.
       const voicemail = await client.voicemailStatus().then(value => value.state, () => null);
       if (token !== epoch || !open) return;

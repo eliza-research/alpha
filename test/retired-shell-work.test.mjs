@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {applyImageContacts} from '../apps/app/src/runtime/image-contacts.ts';
 
 test('image revocation retires the raw Contacts view after the presentation gate hides it',async()=>{
  const source=readFileSync('apps/app/src/main.tsx','utf8');
@@ -10,8 +11,8 @@ test('image revocation retires the raw Contacts view after the presentation gate
  let admitted=true,homes=0;
  const ORDER=['contacts','settings'];
  const shell={state:{view:'contacts'},S(){return {view:admitted?this.state.view:null};},goHome(){homes++;this.state.view=null;}};
- const refresh=new Function('DeviceApps','admitImageContacts','ORDER','shell',source.slice(start,end)+';return refreshImage;')(
-  {platformCapabilities:async()=>({aospImage:true,contacts:false})},value=>{admitted=value;},ORDER,shell);
+ const refresh=new Function('DeviceApps','admitImageContacts','ORDER','shell','applyImageContacts',source.slice(start,end)+';return refreshImage;')(
+  {platformCapabilities:async()=>({aospImage:true,contacts:false})},value=>{admitted=value;},ORDER,shell,applyImageContacts);
  await refresh();
  assert.equal(admitted,false);
  assert.equal(shell.state.view,null,'the hidden raw view must not return when image capability is later re-admitted');

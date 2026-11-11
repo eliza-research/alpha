@@ -15,25 +15,26 @@ function fixture(state={status:'Sync is off.',enabled:false,running:false},revie
  // The sync destination is chosen in this dialog; Google accounts no longer offers a calendar choice.
  const context=vm.createContext({window:env.window,document:env.window.document,AbortController,getComputedStyle:env.window.getComputedStyle.bind(env.window),calendarSyncHost:host,googleCalendarSyncDestinations:async()=>{calls.lists++;return offered;},googleCalendarAccountKey:()=>({environment:'production',userId:'owner',organizationId:'tenant'}),saveGoogleCalendarSelection:(key,destination)=>{calls.saved.push([key,destination]);return true;},holdPhoneInert:()=>()=>calls.release++});
  vm.runInContext(source+'\nopenCalendarSyncSettings();',context);
- const button=name=>[...env.window.document.querySelectorAll('button')].find(el=>el.textContent===name);
- return {env,calls,button};
+ const button=name=>[...env.window.document.querySelectorAll('button')].find(el=>el.textContent===name||el.getAttribute('aria-label')===name);
+ const toggle=()=>env.window.document.querySelector('[role="switch"]');
+ return {env,calls,button,toggle};
 }
 {
- const f=fixture();await settle();f.button('Review sync').click();await settle();f.button('Choose Google calendar').click();await settle();
+ const f=fixture();await settle();f.toggle().click();await settle();f.button('Choose Google calendar').click();await settle();
  assert.equal(f.calls.lists,1);assert.equal(f.calls.cancel,0,'the dialog stays open');assert.equal(f.calls.writes,0);
  const team=f.button('Team · owner@example.test');assert.ok(f.button('owner@example.test')&&team,'each writable calendar is offered once, account calendar first');
  team.click();await settle();
  assert.deepEqual(f.calls.saved.map(([,destination])=>destination.providerCalendarId),['team']);
  assert.equal(f.button('Team · owner@example.test'),undefined,'choices close after a pick');
- assert.match(f.env.window.document.querySelector('dialog').textContent,/Sync destination: Team · owner@example.test\. Review sync to continue\./);
+ assert.match(f.env.window.document.querySelector('dialog').textContent,/Team · owner@example.test/);
  assert.equal(f.calls.writes,0);f.button('Close').click();assert.equal(f.env.window.document.activeElement.id,'prior');f.env.window.close();
 }
 {
  const f=fixture(undefined,undefined,[]);await settle();f.button('Choose Google calendar').click();await settle();
- assert.match(f.env.window.document.querySelector('dialog').textContent,/No Google calendar accepts Calendar changes/);assert.equal(f.calls.saved.length,0);f.button('Close').click();f.env.window.close();
+ assert.match(f.env.window.document.querySelector('dialog').textContent,/No writable calendar/);assert.equal(f.calls.saved.length,0);f.button('Close').click();f.env.window.close();
 }
 {
- let resolve;const f=fixture(undefined,()=>new Promise(done=>resolve=done));await settle();f.button('Review sync').click();
+ let resolve;const f=fixture(undefined,()=>new Promise(done=>resolve=done));await settle();f.toggle().click();
  assert.equal(f.button('Choose Google calendar').disabled,true);f.button('Choose Google calendar').click();await settle();assert.equal(f.calls.lists,0);
  resolve({events:[]});await settle();assert.equal(f.button('Choose Google calendar').disabled,false);f.button('Close').click();assert.equal(f.calls.writes,0);f.env.window.close();
 }
@@ -51,20 +52,21 @@ async function canonicalFixture({draft=false,delay=false}={}){
  const calendar={subscribe:()=>()=>{},reviewSync:async()=>{calls.reviews++;return delay?new Promise(done=>resolveReview=done):reviewed();},changeSync:async(review,operation,key,valid,sourceKey)=>{assert(valid(),'draft/owner fence must reach controller');calls.changes.push({operation,revision:review.control.revision,sourceKey});control={...control,revision:control.revision+1,...(operation==='select'?{destination:{connectorAccountId:destinationSource.connectorAccountId,providerCalendarId:'primary'}}:operation==='resume'?{paused:false}:operation==='pause'?{paused:true}:{})};}};
  const context=vm.createContext({window:env.window,document:env.window.document,crypto:globalThis.crypto,getComputedStyle:env.window.getComputedStyle.bind(env.window),calendarSourceKey:s=>JSON.stringify([s.provider,s.side,s.grantId,s.connectorAccountId,s.calendarId]),calendarSyncHost:new Proxy({}, {get(){calls.legacy++;throw Error('Canonical dialog read legacy host');}}),holdPhoneInert:()=>()=>{},scope:{calendar,current:()=>current,canChange:()=>!draft}});
  vm.runInContext(source+'\nopenCalendarSyncSettings(scope);',context);
- const button=name=>[...env.window.document.querySelectorAll('button')].find(el=>el.textContent===name);
+ const button=name=>[...env.window.document.querySelectorAll('button')].find(el=>el.textContent===name||el.getAttribute('aria-label')===name);
+ const toggle=()=>env.window.document.querySelector('[role="switch"]');
  const flush=async()=>{for(let i=0;i<12;i++)await Promise.resolve();};await flush();
- return {env,calls,button,flush,retire:()=>{current=false;},resolve:()=>resolveReview(reviewed())};
+ return {env,calls,button,toggle,flush,retire:()=>{current=false;},resolve:()=>resolveReview(reviewed())};
 }
 {
  const f=await canonicalFixture();assert.equal(f.calls.legacy,0);assert.equal(f.calls.changes.length,0);
  const select=f.env.window.document.querySelector('select');select.value=select.options[1].value;select.dispatchEvent(new f.env.window.Event('change'));
- assert.equal(f.button('Enable sync').disabled,true,'selection is not an enabled destination');f.button('Save destination').click();await f.flush();
- assert.deepEqual(f.calls.changes.map(c=>c.operation),['select']);assert.equal(f.button('Enable sync').disabled,false);
- f.button('Enable sync').click();await f.flush();assert.deepEqual(f.calls.changes.map(c=>c.operation),['select','resume']);assert.equal(f.calls.legacy,0);f.button('Close').click();f.env.window.close();
+ assert.equal(f.toggle().checked,false,'selection is not an enabled destination');assert.equal(f.toggle().parentElement.textContent,'Sync');f.toggle().click();await f.flush();
+ assert.deepEqual(f.calls.changes.map(c=>c.operation),['select']);assert.equal(f.toggle().disabled,false);assert.equal(f.toggle().checked,false);assert.equal(f.toggle().parentElement.textContent,'Confirm sync','the saved pick asks for a second tap');
+ f.toggle().click();await f.flush();assert.deepEqual(f.calls.changes.map(c=>c.operation),['select','resume']);assert.equal(f.toggle().checked,true);assert.equal(f.calls.legacy,0);f.button('Close').click();f.env.window.close();
 }
 {
  const f=await canonicalFixture({draft:true});const select=f.env.window.document.querySelector('select');select.value=select.options[1].value;select.dispatchEvent(new f.env.window.Event('change'));
- assert.equal(f.button('Save destination').disabled,true);assert.equal(f.button('Enable sync').disabled,true);assert.equal(f.calls.changes.length,0);f.button('Close').click();f.env.window.close();
+ assert.equal(f.toggle().disabled,true);assert.equal(f.calls.changes.length,0);f.button('Close').click();f.env.window.close();
 }
 {
  const f=await canonicalFixture({delay:true});f.retire();f.resolve();await f.flush();assert.equal(f.env.window.document.querySelector('dialog'),null);assert.equal(f.calls.changes.length,0);assert.equal(f.calls.legacy,0);f.env.window.close();
@@ -90,11 +92,11 @@ console.log('PASS 3 canonical sync dialog cases: same-source review/select/resum
    openCalendarRecovery:()=>calls.recovery++});
   vm.runInContext(block,context);assert.equal(out.stack.length,1);
   const frame=out.stack[0],rows=frame.groups.flatMap(group=>group.rows);
-  const find=label=>rows.find(row=>row.label===label);
+  const find=label=>rows.find(row=>row.label===label)??rows.find(row=>row.lbl===label);
   return {calls,scope,frame,rows,find,shell};
  }
  for(const native of [false,true]){
-  for(const [grants,expected]of [[[],'Not connected'],[[{connected:true,connectionId:'id',grantedCapabilities:['google.calendar.read']}],'Finish connecting'],[[{connected:true,connectionId:'id',grantedCapabilities:['google.calendar.read','google.calendar.write']}],'Connected']]){
+  for(const [grants,expected]of [[[],'Not connected'],[[{connected:true,connectionId:'id',grantedCapabilities:['google.calendar.read']}],'Finish setup'],[[{connected:true,connectionId:'id',grantedCapabilities:['google.calendar.read','google.calendar.write']}],'Connected']]){
    const f=page({native,grants});assert.equal(f.find('Google Calendar').sub,expected);
    assert.equal(f.calls.connects.length,0,'rendering Settings never connects');
    assert.equal(f.rows.filter(row=>row.label==='Google Calendar').length,1);
@@ -108,6 +110,6 @@ console.log('PASS 3 canonical sync dialog cases: same-source review/select/resum
  recovery.find('Review saved events').go();recovery.find('Recover saved events').go();recovery.find('Return to Calendar').go();
  assert.deepEqual([recovery.calls.transition,recovery.calls.recovery,recovery.calls.returned],[1,1,1]);
  assert(!recovery.find('Old source'),'arbitrary source controls remain removed');
- for(const status of ['error','partial','unavailable']){const f=page({status});assert(f.find('Calendar needs attention'));f.find('Retry calendar').go();assert.equal(f.calls.retry,1);}
+ for(const status of ['error','partial','unavailable']){const f=page({status});assert(['Partly loaded','Not loaded'].includes(f.find('Retry calendar').val));f.find('Retry calendar').go();assert.equal(f.calls.retry,1);}
  console.log('PASS current Settings Calendar block: one Google entry, scoped connect, retained recovery/retry and Back; no obsolete source/Sync controls.');
 }

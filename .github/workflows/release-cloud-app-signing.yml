@@ -45,6 +45,12 @@ jobs:
           ref: ${{ github.sha }}
           submodules: true
           persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ fromJSON(inputs.signing_plan).alphaCommit }}
+          submodules: true
+          path: qualified-producer
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
@@ -98,15 +104,20 @@ jobs:
           for variant in standalone launcher; do
             "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$work/unsigned/$variant-release-unsigned.apk"
           done
+          test "$(git -C qualified-producer rev-parse HEAD)" = "$(jq -r .alphaCommit "$work/pins.json")"
+          unset ALPHA_PRIVATE_STORAGE_TOKEN GH_TOKEN RECIPIENT_PUBLIC_CERTIFICATE
           ALPHA_ADMITTED_APK_DIR="$work/unsigned" node --input-type=module <<'NODE'
           import fs from 'node:fs';
           import path from 'node:path';
           import { execFileSync } from 'node:child_process';
-          import { manifestFacts, parseXmlTree } from './scripts/apk.ts';
-          import { apkUpdateChannel, validateUpdateChannel } from './scripts/update-channel.ts';
+          import { pathToFileURL } from 'node:url';
+          const sourceRoot = path.resolve('qualified-producer');
+          const suffix = fs.existsSync(path.join(sourceRoot, 'scripts/apk.mjs')) ? '.mjs' : '.ts';
+          const { manifestFacts, parseXmlTree } = await import(pathToFileURL(path.join(sourceRoot, 'scripts/apk' + suffix)).href);
+          const { apkUpdateChannel, validateUpdateChannel } = await import(pathToFileURL(path.join(sourceRoot, 'scripts/update-channel' + suffix)).href);
           const directory = process.env.ALPHA_ADMITTED_APK_DIR;
           const plan = JSON.parse(fs.readFileSync(path.join(directory, '..', 'pins.json'), 'utf8'));
-          const identity = JSON.parse(fs.readFileSync('app.config.json', 'utf8'));
+          const expectedPackage = JSON.parse(fs.readFileSync(path.join(sourceRoot, 'app.config.json'), 'utf8')).appId;
           const channel = validateUpdateChannel(plan.updateChannel);
           const aapt = path.join(process.env.ANDROID_HOME, 'build-tools', '36.0.0', 'aapt');
           for (const variant of ['standalone', 'launcher']) {
@@ -117,7 +128,7 @@ jobs:
             const compiledChannel = apkUpdateChannel(parseXmlTree(xml));
             if (compiledChannel.kind !== channel.kind || compiledChannel.manifestUrlSha256 !== channel.manifestUrlSha256)
               throw new Error('The ' + variant + ' APK compiled update channel differs from the reviewed signing plan');
-            if (facts.packageName !== identity.appId || facts.versionCode !== plan.versionCode ||
+            if (facts.packageName !== expectedPackage || facts.versionCode !== plan.versionCode ||
                 xml.includes('android.intent.category.HOME') !== (variant === 'launcher'))
               throw new Error('The ' + variant + ' APK manifest differs from the reviewed release plan');
           }
@@ -154,6 +165,7 @@ jobs:
           execFileSync(path.join(process.env.JAVA_HOME, 'bin/java'), [
             '-cp', jar, 'scripts/owner/VerifyApkRotation.java', '--reviewed-lineage', lineage,
             approval.lineageSha256, approval.previousSignerSha256, descriptor.signerSha256,
+            ...(approval.preserveSignaturePermissions ? ["--preserve-signature-permissions"] : []),
           ], { stdio: 'inherit', env: { PATH: process.env.PATH, JAVA_HOME: process.env.JAVA_HOME } });
           NODE
           fi

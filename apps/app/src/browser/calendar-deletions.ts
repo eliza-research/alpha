@@ -41,6 +41,8 @@ export function settleCalendarDeletions(data:CalendarDeletionState,ownerCurrent:
 }
 export function undoCalendarDeletion(data:CalendarDeletionState,id:string,ownerCurrent:(owner:string)=>boolean){
  const entry=journalEntry(data.deletions,id);if(!entry||!ownerCurrent(entry.owner))throw Error('Deletion owner changed.');
+ // Undo of an already undone deletion reports the same receipt, as the Android journal does.
+ if(entry.phase==='undone')return structuredClone(entry);
  if(!claimDeletion(entry,entry.owner,rendererDeletionClock(),'undo'))throw Error('Undo window ended or deletion already settled.');return structuredClone(entry);
 }
 /** All document writers share this check, including editor and recurrence operations. */

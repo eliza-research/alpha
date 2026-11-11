@@ -64,7 +64,7 @@ test('several matches are chosen on the phone, and a dismissal or no match calls
   assert.equal(did(p, 'ask').length, 0); assert.equal(did(p, 'call').length, 0);
 });
 test('emergency, busy and failure are reported as observed and never retried', async () => {
-  for (const [answer, status, outcome] of [[{status: 'emergency-handoff'}, 'emergency-handoff', 'succeeded'], [{status: 'busy'}, 'busy', 'failed'], [null, 'failed', 'failed']]) {
+  for (const [answer, status, outcome] of [[{status: 'emergency-handoff'}, 'emergency-handoff', 'succeeded'], [{status: 'busy'}, 'busy', 'failed'], [{status:'failed'}, 'failed', 'failed']]) {
     const p = ports({placeCall: async number => { p.log.push(['call', number]); if (!answer) throw Error('telecom'); return answer; }});
     const result = await run({type: 'phone_call', target: {kind: 'number', number: '911'}}, p);
     assert.equal(result.telephonyResult.status, status); assert.equal(result.status, outcome); assert.equal(did(p, 'call').length, 1);
@@ -160,4 +160,20 @@ test('appliedContactChange matches numbers by their dialable form', () => {
   const before = record('1'); before.phoneNumbers = [{number: '(415) 555-0132', type: 'home'}];
   const normalize = value => value.replace(/[\s().-]/g, '');
   assert.deepEqual(appliedContactChange(before, {phoneNumbers: ['4155550132']}, normalize).phoneNumbers, [{number: '4155550132', type: 'home'}]);
+});
+
+test('a lost call reply stays unresolved and never becomes a definite failure', async()=>{
+ const p=ports({placeCall:async number=>{p.log.push(['call',number]);throw Error('Reply lost after Telecom accepted');}});
+ await assert.rejects(run({type:'phone_call',target:{kind:'number',number:'+15555550100'}},p),/Reply lost/);
+ assert.equal(did(p,'call').length,1);
+});
+test('uncertain create, update and delete receipts stay unknown without repeating a write', async()=>{
+ for(const operation of [{type:'contact_create',contact:{displayName:'Ada',phoneNumbers:[],emailAddresses:[]}},{type:'contact_update',query:'Priya',set:{displayName:'Ada'}},{type:'contact_delete',query:'Priya'}]){
+  for(const lostReply of [false,true]){
+   let writes=0;const unknown=async()=>{writes++;if(lostReply)throw Error('Reply lost after commit');return {status:'unknown'};};
+   const p=ports({saveContact:unknown,removeContact:unknown});const result=await run(operation,p);
+   assert.equal(result.status,'unknown');assert.equal(result.telephonyResult.status,'unknown');assert.equal(writes,1);
+   assert.match(result.summary,/could not confirm/);assert.doesNotMatch(result.summary,/Nothing was changed/);
+  }
+ }
 });

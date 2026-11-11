@@ -80,19 +80,19 @@ test('a non-array or unreadable earlier record is kept ahead of the new one',()=
 test('product labels never describe an unexpected non-resident connection as on this device',()=>{
  const settings=readFileSync(new URL('../apps/app/src/prototype/settings-adapter.ts',import.meta.url),'utf8');
  const location=/const runtimeLocation=([^\n]+);/.exec(settings)?.[1];
- const start=settings.indexOf('          const agentStatus = '),end=settings.indexOf('          if(connection.message)',start);
+ const start=settings.indexOf('          const agentStatus:[string,string] = '),end=settings.indexOf('          if(connection.message)',start);
  assert.ok(location&&start>=0&&end>start,'the current Settings Agent status row is present');
- const rows=settings.slice(start,end);
+ const rows=settings.slice(start,end).replace(/:\[string,string\]|:Bag\[\]/g,'');
  const label=(kind,testMocksEnabled=false)=>{
   const row=new Function('connection','serviceName','testMocksEnabled','Capacitor','info',`const runtimeLocation=${location};${rows};return agentRows[0];`)(
    {session:{},kind,residentInference:'cloud'},'Eliza Cloud',testMocksEnabled,{isNativePlatform:()=>true},(label,val)=>({label,val}));
   assert.equal(row.label,'Agent');
   return row.val;
  };
- assert.equal(label('resident'),'Running on this device');
- for(const kind of ['cloud','local','remote'])assert.equal(label(kind),'Unsupported connection',kind);
- for(const kind of ['cloud','local','remote'])assert.equal(label(kind,true),'Remote agent',kind);
- assert.match(source,/testMocksEnabled \? \(snapshot\.kind === 'cloud' \? serviceName : snapshot\.kind === 'local' \? 'Local development' : 'Remote agent'\) : 'Unsupported connection'\}/);
+ assert.equal(label('resident'),'Running');
+ for(const kind of ['cloud','local','remote'])assert.equal(label(kind),'Unsupported',kind);
+ for(const kind of ['cloud','local','remote'])assert.equal(label(kind,true),'Remote',kind);
+ assert.match(source,/testMocksEnabled \? \(snapshot\.kind === 'cloud' \? serviceName : snapshot\.kind === 'local' \? 'Local development' : 'Remote agent'\) : 'Unsupported'\}/);
 });
 
 test('other saved choices are not migrated',()=>{
@@ -117,7 +117,7 @@ test('product startup migrates before any restore and never restores a hosted ag
  const initialize=slice('  async initialize() {','\n  async offline() {');
  const migrate=initialize.indexOf('if (!testMocksEnabled) migrateLegacyHostedSelection();');
  assert.ok(migrate>0,'startup migrates a saved hosted selection');
- for(const later of ['if (residentCloudFlow()) { await startResidentGate(); return; }','await work(\'Restoring your connection…\''])assert.ok(initialize.indexOf(later)>migrate,`${later} follows the migration`);
+ for(const later of ['if (residentCloudFlow()) { await startResidentGate(); return; }','await work(\'Restoring\''])assert.ok(initialize.indexOf(later)>migrate,`${later} follows the migration`);
  // The only hosted restore goes through the development-only `hosted` object.
  assert.match(initialize,/if \(hosted && \(saved\.kind === 'cloud' \|\| saved\.kind === 'remote' \|\| saved\.kind === 'local'\)\) await hosted\.restore\(saved, signal\);/);
  assert.doesNotMatch(initialize,/connectCloud\(|connectRemote\(|inspectPersonal\(/);
