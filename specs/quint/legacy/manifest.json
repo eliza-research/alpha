@@ -1678,7 +1678,7 @@
     "classification": "upstream-design-conversion",
     "abstractions": [
       "Two selector model values are distinct integer identities. A monotonic monitor checks the exact SettlesOnce transition predicate without excluding transitions.",
-      "This is a literal upstream design translation. Source-executing implementation refinement is separately recorded."
+      "Literal upstream design translation at 4787d51a142c63c98371c832997184c53f7218d3. Its source replay executes the authenticated historical approval.ts fragment; current callback-refusal and draining-stop behavior has separate CoreApprovalServiceCurrent model and source correspondence."
     ]
   },
   {

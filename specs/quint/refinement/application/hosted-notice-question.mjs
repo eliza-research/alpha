@@ -63,7 +63,7 @@ async function scenario(actual, name, drive) {
   function observe() {
     const review = dialog(), status = review?.querySelector('[role="status"]')?.textContent ?? '';
     const validation = status.includes('Selection changed') ? 'stale' :
-      status.includes('credentials or verification codes') ? 'private' : '';
+      status === 'Remove secrets first' ? 'private' : '';
     return {'s.owner': state.owner, 's.sensitive': state.sensitive, 's.composer': state.composer,
       's.phase': review ? 'review' : recheck ? 'recheck' : consumption ? 'consume' : closes ? 'done' :
         fallback ? 'fallback' : 'idle',

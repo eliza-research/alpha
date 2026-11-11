@@ -23,6 +23,7 @@ import {runWorkflowWakeupRefinement} from './workflow-scheduler/index.mjs';
 import {runWorkflowTaskRefinement} from './workflow-scheduler/registration.mjs';
 import {googleAccountsLifecycleRefinement} from './google-accounts-lifecycle.mjs';
 import {runCoreRetirementRefinement} from './core-runtime/retirement.mjs';
+import {checkCoreApprovalServiceCurrentRefinement} from './current-approval-service.mjs';
 import {runCoreServiceLifecycleRefinement} from './core-runtime/lifecycle.mjs';
 import {runCoreRuntimeShutdownRefinement} from './core-runtime/shutdown.mjs';
 import {runTurnControllerRefinement} from './core-runtime/turns.mjs';
@@ -61,6 +62,7 @@ export async function runServicesRefinement(onProgress) {
   const direct = check => [check.name, () => check()];
   const withDriver = check => [check.name, () => check([driver])];
   const campaigns = [
+    [checkCoreApprovalServiceCurrentRefinement.name, () => checkCoreApprovalServiceCurrentRefinement(undefined, [driver])],
     ...[authorizationRefinement, googleAccountsRefinement, googleAccountsLifecycleRefinement, calendarRefinement,
       calendarLinkedRefinement, inboxRefinement, mapsRefinement, cacheRefinement, workflowRefinement, policyRefinement,
       readingRefinement, scanRefinement, credentialRefinement, pdfRefinement, runSignInCoordinatorRefinement,
@@ -79,6 +81,7 @@ export async function runServicesRefinement(onProgress) {
     ...[runFactWriteScopeRefinement, runNativeGoogleAccessFileRefinement, runNamedEmbeddingProvenanceRefinement].map(withDriver),
   ];
   const obligations = [
+    {model: 'CoreApprovalServiceCurrent', obligation: 'Arbitrary approval creation, storage and persisted callback-free workflows', reason: 'The current source campaign observes one synchronous callback-bearing request, two selectors, a controlled deadline and draining shutdown. Role checks, task creation races, storage failures and callback-free asynchronous approvals remain separate.'},
     {model: 'BrowserGoogleReturn', obligation: 'Canonical account readback and browser presentation', reason: 'The real callback only emits a candidate wakeup. Account verification, panel dismissal, tab closing and live Google authorization require their own UI and integration evidence.'},
     {model: 'CombinedAgentLauncher', obligation: 'Confirm runtime readiness at the service boundary',
       reason: 'The receipt establishes spawn and process custody. The source campaign uses a closed child process, and live HTTP readiness is a separate observation.'},

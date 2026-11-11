@@ -19,12 +19,12 @@ function method(source,anchor){
  let end=source.indexOf('{',start),depth=1;while(depth&&++end<source.length){if(source[end]==='{')depth++;else if(source[end]==='}')depth--;}
  assert.equal(depth,0);return source.slice(start,end+1);
 }
-const kotlinProbe=(load,store)=>`
+const kotlinProbe=(load,store,defaults)=>`
 import kotlin.coroutines.*
 annotation class UserIdInt
 open class TileSpec(val spec:String) {
  class Invalid:TileSpec("")
- companion object { fun create(spec:String)=TileSpec(spec) }
+ companion object {fun create(spec:String)=TileSpec(spec)}
 }
 object TilesUpgradePath {class ReadFromSettings(val tiles:Set<TileSpec>);object DefaultSet}
 class Events {suspend fun send(value:Any){}}
@@ -39,13 +39,14 @@ object AlphaQsDefaultsPolicy {
   source.getMethod("migrate",List::class.java,List::class.java,Int::class.javaPrimitiveType).invoke(null,saved,defaults,version) as List<String>
 }
 val stock="internet,bt,dnd,cast,flashlight,airplane,rotation,wallet,alarm,controls,screenrecord,battery"
+val defaultLayouts=listOf(${defaults.map(value=>JSON.stringify(value)).join(',')})
 val legacyTile="custom(ai.elizaresearch.alphaphone/.AlphaQuickSettingsTile)"
 val legacyCustom="flashlight,"+legacyTile+",wifi"
 val currentCustom="flashlight,"+AlphaQsDefaultsPolicy.ALPHA+",wifi"
 val duplicateCustom=legacyTile+","+currentCustom
 fun layout(value:String)=when(value){
  stock->"stock"
- AlphaQsDefaultsPolicy.ALPHA+","+stock->"alpha"
+ defaultLayouts[0],defaultLayouts[1]->"alpha"
  legacyCustom,duplicateCustom->"legacy-custom"
  currentCustom->"custom-alpha"
  else->"custom"
@@ -55,7 +56,7 @@ fun json(v:Any?):String=when(v){null->"null";is String->quote(v);is Map<*,*>->v.
 fun action(name:String,vararg args:Any)=mapOf("name" to name,"args" to args.toList())
 fun<T> sync(body:suspend()->T):T {var result:Result<T>?=null;body.startCoroutine(object:Continuation<T>{override val context=EmptyCoroutineContext;override fun resumeWith(value:Result<T>){result=value}});return result!!.getOrThrow()}
 class Secure {
- var saved=stock;var version=0;var layoutOk=true;var versionOk=true;var versionCalls=0;var written=false
+ var saved=stock;var version=0;var defaults=defaultLayouts.first();var layoutOk=true;var versionOk=true;var versionCalls=0;var written=false
  fun getIntForUser(key:String,fallback:Int,user:Int)=version
  fun putStringForUser(key:String,value:String,tag:Any?,makeDefault:Boolean,user:Int,overrideable:Boolean):Boolean {
   if(layoutOk){saved=value;written=true};Probe.mark("Actual layout write result",action("storeLayout",layoutOk));return layoutOk
@@ -63,7 +64,7 @@ class Secure {
  fun putIntForUser(key:String,value:Int,user:Int):Boolean {versionCalls++;if(versionOk)version=value;return versionOk}
 }
 class Repository(val secureSettings:Secure) {
- val backgroundDispatcher=Any();val SETTING="sysui_qs_tiles";val DELIMITER=",";val defaultTiles=(AlphaQsDefaultsPolicy.ALPHA+","+stock).split(",").map(::TileSpec)
+ val backgroundDispatcher=Any();val SETTING="sysui_qs_tiles";val DELIMITER=",";val defaultTiles=secureSettings.defaults.split(",").map(::TileSpec)
  val _tilesUpgradePath=Events();var alphaDefaultsMigrationPending=false;var selected=secureSettings.saved.split(",").map(::TileSpec)
  suspend fun loadTilesFromSettings(user:Int)=secureSettings.saved.split(",").map(::TileSpec)
  fun parseTileSpecs(tiles:List<TileSpec>,user:Int)=tiles
@@ -77,8 +78,8 @@ object Probe {
  fun selected()=repo.selected.joinToString(","){it.spec}
  fun state()=mapOf("s.saved" to layout(secure.saved),"s.selected" to layout(selected()),"s.version" to secure.version,"s.pending" to repo.alphaDefaultsMigrationPending,"s.written" to secure.written)
  fun mark(label:String,action:Any?){steps.add(mapOf("label" to label,"action" to action,"expect" to state()))}
- fun setup(name:String,version:Int=0,saved:String=stock){
-  secure=Secure();secure.version=version;secure.saved=saved
+ fun setup(name:String,version:Int=0,saved:String=stock,defaults:String=defaultLayouts.first()){
+  secure=Secure();secure.version=version;secure.saved=saved;secure.defaults=defaults
   repo=Repository(secure);steps=mutableListOf()
   val initial=if(version==0)action("init")else action("initReviewed",layout(saved),version)
   traces.add(mapOf("name" to name,"init" to initial,"expect" to state(),"steps" to steps))
@@ -89,14 +90,21 @@ object Probe {
  fun owner(value:String){secure.saved=if(value=="stock")stock else "wifi,flashlight";repo.selected=secure.saved.split(",").map(::TileSpec);secure.written=false;mark("External owner layout before serialized collection",action("ownerLayout",value))}
  fun run(){
   setup("layout-write-failure");load();store(false,true);check(secure.version==0&&secure.versionCalls==0)
-  setup("version-retry-and-later-owner-stock");load();store(true,false);check(secure.version==0&&layout(secure.saved)=="alpha");restart();load();store(true,true);check(secure.version==3);owner("stock");restart();load();check(selected()==stock)
+  check(AlphaQsDefaultsPolicy.VERSION==3)
+  setup("version-retry-and-later-owner-stock");load();store(true,false);check(secure.version==0&&secure.saved==secure.defaults);restart();load();store(true,true);check(secure.version==3);owner("stock");restart();load();check(selected()==stock)
   setup("custom-layout-retained");owner("custom");load();store(true,true);check(layout(secure.saved)=="custom"&&secure.version==3)
-  setup("reviewed-v2-stock-retained",2);load();check(selected()==stock);store(true,true);check(secure.saved==stock&&secure.version==3)
+  for((index,defaults) in defaultLayouts.withIndex()){
+   setup("reviewed-v2-stock-choice-is-not-reset-"+index,2,stock,defaults);load()
+   check(defaults!=stock&&selected()==stock&&selected()!=defaults)
+   store(true,true);check(secure.saved==stock&&secure.version==3)
+  }
   setup("reviewed-v2-custom-replaces-old-tile-in-place",2,legacyCustom);load();check(selected()==currentCustom)
   store(false,true);check(secure.saved==legacyCustom&&secure.version==2&&secure.versionCalls==0)
   restart();load();store(true,true);check(secure.saved==currentCustom&&secure.version==3)
   setup("reviewed-v2-custom-keeps-current-tile-position",2,duplicateCustom);load();check(selected()==currentCustom)
   store(true,true);check(secure.saved==currentCustom&&secure.version==3)
+  setup("reviewed-v2-unrelated-custom-retained",2,"wifi,flashlight");load();check(selected()=="wifi,flashlight")
+  store(true,true);check(secure.saved=="wifi,flashlight"&&secure.version==3)
   setup("reviewed-v3-custom-untouched",3,legacyCustom);load();check(selected()==legacyCustom)
   store(true,true);check(secure.saved==legacyCustom&&secure.version==3&&secure.versionCalls==0)
   println(json(traces))
@@ -149,9 +157,11 @@ export async function checkOSDefaults(extraSources=[]){
   execFileSync('git',['apply','--include='+tilePath,resolve(root,folder+manifest.patch)],{cwd:temporary,stdio:'pipe'});
   assert.equal(hash(readFileSync(original)),row.afterSha256);const tileSource=readFileSync(original,'utf8');
   const patch=readFileSync(resolve(root,folder+manifest.patch),'utf8').split('\n').filter(line=>line.startsWith(' ')||(line.startsWith('+')&&!line.startsWith('+++'))).map(line=>line.slice(1)).join('\n');
+  const defaults=[...patch.matchAll(/<string name="quick_settings_tiles_default(?:_split)?"[^>]*>\s*([^<]+)<\/string>/g)].map(match=>match[1].trim());
+  assert.equal(defaults.length,2,'Both reviewed Quick Settings resource defaults');
   const grant=method(patch,'    private void grantAlphaSharedStorageDefault(');
   const generated=materialize(temporary,{...androidPorts(identity),
-   'Probe.kt':kotlinProbe(method(tileSource,'    private suspend fun loadTilesFromSettingsAndParse('),method(tileSource,'    private suspend fun storeTiles(')),
+   'Probe.kt':kotlinProbe(method(tileSource,'    private suspend fun loadTilesFromSettingsAndParse('),method(tileSource,'    private suspend fun storeTiles('),defaults),
    'com/android/server/pm/permission/AppopProbe.java':appopProbe(grant,identity),
    'android/Manifest.java':`package android;public class Manifest {public static class permission {public static final String MANAGE_EXTERNAL_STORAGE="storage";}}`,
    'android/util/Log.java':`package android.util;public class Log {public static void w(String tag,String message,Throwable error){}}`,
@@ -165,10 +175,10 @@ export async function checkOSDefaults(extraSources=[]){
   compileJava([...generated.filter(path=>path.endsWith('.java')),...['AlphaCoreLauncherPolicy.java','AlphaQsDefaultsPolicy.java','AlphaSharedStoragePolicy.java'].map(name=>resolve(root,folder+name))],classes);
   const runtime=compileKotlin([join(temporary,'Probe.kt')],join(temporary,'kotlin-classes'));
   const traces=JSON.parse(execFileSync(javaBinary('java'),['-cp',classes+':'+runtime,'ProbeKt'],{encoding:'utf8',timeout:120000}));
-  traces.push(...javaJson(classes,'com.android.server.pm.permission.AppopProbe'));assert.equal(traces.length,11);
+  traces.push(...javaJson(classes,'com.android.server.pm.permission.AppopProbe'));assert.equal(traces.length,13);
   return await checkTraces({model:'OSDefaults',sources:[...sources,...generated],driverHashes,generatedSources:generated,traces,scope:'bounded-orchestration',assumptions:[
    'The pinned AOSP Kotlin source is reconstructed by the actual reviewed patch and checked against both manifest hashes. Exact load/store methods execute with the actual Java migration policy. The exact patched shared-storage grant method and both Java identity policies execute on the host JVM.',
-   'The serialized settings collector supplies finite stock, custom and Alpha tile lists, including prior reviewed layouts. Concrete cases assert exact old tile replacement and current tile position after deduplication. Coroutine context, parser, upgrade-event and Android service ports are synthetic; coroutine/observer races, arbitrary tile parsing, Android service enforcement, multi-user process death and AOSP image boot remain external.',
+   'The settings collector is serialized and supplies finite stock/custom/Alpha tile lists; both factory defaults are read from the authenticated patch. Version-2 owner-selected stock and custom layouts remain retained while the version-3 Java policy replaces legacy tile identities in place and deduplicates the current tile; both factory lists explicitly fail a reset-to-default check for a version-2 stock choice. Coroutine context, parser, upgrade-event and Android service ports are synthetic; this proves the selected methods and write ordering, not coroutine/observer races, arbitrary tile parsing, Android service enforcement, multi-user process death or AOSP image boot.',
    'Owner layout changes are observed at a serialized collector boundary with its selected input supplied by that owner. The written field records successful layout writes since load/restart/owner change; core-launcher and shared-storage predicate matrices are direct source assertions in addition to state traces.',
   ]});
  }finally{rmSync(temporary,{recursive:true,force:true});}

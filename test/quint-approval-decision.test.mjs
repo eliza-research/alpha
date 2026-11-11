@@ -32,9 +32,9 @@ async function subject() {
       posts.push(post); wire = post; call = {resolve, reject, reply: null};
     })};
   const app = await workflowAdapter({client});
-  const idle = () => wait(() => app.render().runOpen && !app.render().fd.isRunning, 'the receipt did not open');
+  const idle = () => wait(() => app.render().runOpen && !app.render().fd.busy, 'the receipt did not open');
   const openReceipt = async () => {
-    if (!app.render().detail) { app.render().openWorkflow('flow'); await wait(() => app.render().detail && !app.render().fd.isRunning, 'the workflow did not open'); }
+    if (!app.render().detail) { app.render().openWorkflow('flow'); await wait(() => app.render().detail && !app.render().fd.busy, 'the workflow did not open'); }
     if (app.render().runOpen) app.render().r.ask(); else app.render().fd.runs[0].open();
     await idle();
   };
@@ -52,8 +52,8 @@ async function subject() {
       if (accepted) { engine.status = wire.approved ? 'approved' : 'denied'; engine.recorded[engine.digest]++; }
       if (call) call.reply = accepted ? receipt() : null;
       wire = null;
-    } else if (action === 'successReply') { assert.ok(call?.reply, 'the model reports a recorded decision the engine did not record'); call.resolve(call.reply); call = null; await wait(() => !app.render().fd.isRunning); }
-    else if (action === 'unknownReply') { call.reject(Error('offline')); call = null; await wait(() => !app.render().fd.isRunning); }
+    } else if (action === 'successReply') { assert.ok(call?.reply, 'the model reports a recorded decision the engine did not record'); call.resolve(call.reply); call = null; await wait(() => !app.render().fd.busy); }
+    else if (action === 'unknownReply') { call.reject(Error('offline')); call = null; await wait(() => !app.render().fd.busy); }
     else if (action === 'readReceipt') { await openReceipt(); opened = true; }
     else if (action === 'requestChanged') { engine.digest = 2; engine.status = 'pending'; }
     else if (action === 'finishRun') engine.finished = true;
@@ -67,9 +67,9 @@ async function subject() {
     return {engine: {...engine, recorded: {...engine.recorded}}, wire: wire ? {digest: wire.digest, approved: wire.approved} : null,
       sent: {1: posts.filter(post => post.digest === 1).length, 2: posts.filter(post => post.digest === 2).length},
       intent: stored ? Number(stored.requestDigest.slice(1)) : 0, intentApproved: stored ? stored.approved : null,
-      opened, busy: opened ? view.fd.isRunning : false,
+      opened, busy: opened ? view.fd.busy : false,
       known: row ? {digest: Number(row.title.slice(-1)), status: ['approved', 'denied'].includes(row.status) ? row.status : 'pending'} : null,
-      review: row ? (row.approveLabel === 'Confirm approval' ? 'approve' : row.denyLabel === 'Confirm denial' ? 'deny' : 'none') : 'none',
+      review: row ? (row.approveLabel === 'Confirm approve' ? 'approve' : row.denyLabel === 'Confirm deny' ? 'deny' : 'none') : 'none',
       canDecide: row ? row.canDecide : false};
   };
   return {apply, observe, close: () => app.close()};

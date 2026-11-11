@@ -5166,6 +5166,57 @@
         "plugins/plugin-maps/src/client/navigation-relay.ts",
         "plugins/plugin-maps/src/client/agent-navigation.ts"
       ]
+    },
+    {
+      "path": "specs/quint/services/CoreApprovalServiceCurrent.qnt",
+      "module": "CoreApprovalServiceCurrent",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "secondSelectionPreservesClaimedTaskTest",
+        "timeoutOwnsCallbackTest",
+        "failedCallbackSettlesTest",
+        "stopWaitsForClaimedCallbackTest",
+        "stopWaitsForAdmittedReadTest",
+        "stoppedDeliveryHasNoEffectsTest",
+        "cancelBeforeReadTest"
+      ],
+      "invariants": [
+        "AtMostOneCallback",
+        "ResultAgrees",
+        "SingleOwner",
+        "RefusedCallbackHasNoEffect",
+        "StoppedAdmissionHasNoEffect",
+        "StopWaitsForWork"
+      ],
+      "witnesses": [
+        "UnavailableSelectorWitness",
+        "StopWaitingWitness",
+        "StopDrainedWitness",
+        "FailureSettledWitness"
+      ],
+      "sources": [
+        "vendor/eliza/packages/core/src/services/approval.ts",
+        "vendor/eliza/packages/core/src/runtime/retirement.ts"
+      ],
+      "stateMapping": {
+        "state.*": "Actual pending approval, timer, task store, settled result and each invocation program counter; refused callback/stop errors and dispatched deletion identities are observed independently.",
+        "pendingWork/stopDone": "Actual RuntimeRetirement pending operation count and stop promise settlement, including the original approval request and nested worker/selection operations."
+      },
+      "abstractions": [
+        "Selected current-source synchronous callback-bearing approvals, two selector identities, one task and one controlled deadline. Source replay retains every historical PC/effect observation and adds refusal and draining-stop observations.",
+        "Task creation races, role checks, asynchronous callback-free persisted approvals, failed storage writes and arbitrary approval counts remain outside this bounded component; this is not complete implementation refinement.",
+        "Temporal properties assume weak fairness of admitted callback and storage continuations; unresponsive ports can intentionally keep stop pending."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 60,
+        "seed": "20261107"
+      },
+      "temporal": [
+        "CheckedTemporal"
+      ]
     }
   ]
 }
