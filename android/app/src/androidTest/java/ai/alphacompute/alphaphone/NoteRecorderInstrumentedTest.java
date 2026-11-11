@@ -53,6 +53,24 @@ public class NoteRecorderInstrumentedTest {
   assertEquals("the chronometer counts the recording's length, not the time since resume",now-90_000,r.when,2000);
  }
 
+ @Test public void oldNotificationActionsKeepTheirRecordingIdentity()throws Exception{
+  String first=UUID.randomUUID().toString(),second=UUID.randomUUID().toString();
+  android.app.Notification[] shown=new android.app.Notification[4];
+  try{
+   for(int i=0;i<shown.length;i++){
+    JSObject status=new JSObject();status.put("state",i<2?"recording":"paused");
+    status.put("recordingId",i%2==0?first:second);status.put("durationMs",0);
+    shown[i]=AlphaNoteRecordingService.notification(context(),status);
+   }
+   assertFalse("an old Pause cannot become the replacement recording's Pause",shown[0].actions[0].actionIntent.equals(shown[1].actions[0].actionIntent));
+   assertFalse("an old Stop cannot become the replacement recording's Stop",shown[0].actions[1].actionIntent.equals(shown[1].actions[1].actionIntent));
+   assertFalse("an old Resume cannot become the replacement recording's Resume",shown[2].actions[0].actionIntent.equals(shown[3].actions[0].actionIntent));
+   assertEquals("a refresh keeps the same recording's Stop identity",shown[0].actions[1].actionIntent,shown[2].actions[1].actionIntent);
+  }finally{
+   for(android.app.Notification value:shown)if(value!=null)for(android.app.Notification.Action action:value.actions)action.actionIntent.cancel();
+  }
+ }
+
  @Test public void segmentsSurviveACrashAndJoinIntoOnePlayableRecording()throws Exception{
   InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context().getPackageName(),Manifest.permission.RECORD_AUDIO);
   AlphaNoteRecorder recorder=AlphaNoteRecorder.get(context());

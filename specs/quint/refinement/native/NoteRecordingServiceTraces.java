@@ -1,6 +1,7 @@
 package ai.alphacompute.alphaphone;
 
 import android.app.Notification;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import java.io.File;
@@ -34,6 +35,11 @@ public final class NoteRecordingServiceTraces {
   service.onStartCommand(new Intent(context,AlphaNoteRecordingService.class).setAction(action)
    .putExtra(AlphaNoteRecordingService.EXTRA_RECORDING,id),0,startId);
  }
+ static void notificationCommand(PendingIntent action){
+  if(action==null)throw new AssertionError("Notification action was not built");
+  NoteRecordingPorts.latestDeliveredStartId=++startId;
+  service.onStartCommand(action.deliveryIntent(),0,startId);
+ }
  static void start(String id,boolean accepted)throws Exception {
   NoteRecordingPorts.failForeground=!accepted;
   AlphaNoteRecordingService.start(context,id);
@@ -62,6 +68,7 @@ public final class NoteRecordingServiceTraces {
   String first=begin(1);
   if(mode.equals("foreground-refused")){start(first,false);System.out.println(trace.value);return;}
   start(first,true);
+  PendingIntent firstPause=PendingIntent.latestService(1),firstFinish=PendingIntent.latestService(3);
   if(mode.startsWith("same-id-")){
    recorder.stop(first);trace.step("recordingStops",observe());
    boolean queued=!mode.equals("same-id-stop");
@@ -75,11 +82,19 @@ public final class NoteRecordingServiceTraces {
    recorder.stop(first);trace.step("recordingStops",observe());fallback(first,mode.equals("fallback-pending"));
   }else if(mode.equals("fallback-blank")){fallback("",false);if(!service.shown)throw new AssertionError("Blank fallback hid live recording");}
   else if(mode.equals("old-owner")||mode.equals("old-toggle")||mode.equals("old-start")||mode.equals("fallback-old-owner")){
+   PendingIntent firstResume=null;
+   if(mode.equals("old-toggle")){
+    notificationCommand(firstPause);trace.step("toggle",observe(),1,true);
+    firstResume=PendingIntent.latestService(2);
+   }
    close();String second=begin(2);start(second,true);
    if(mode.equals("fallback-old-owner")){fallback(first,false);}
    else if(mode.equals("old-start")){start(first,true);}
    else if(mode.equals("old-toggle")){
-    command(AlphaNoteRecordingService.ACTION_PAUSE,first);trace.step("toggle",observe(),1,true);
+    notificationCommand(firstPause);trace.step("toggle",observe(),1,true);
+    command(AlphaNoteRecordingService.ACTION_PAUSE,second);trace.step("toggle",observe(),2,true);
+    notificationCommand(firstResume);trace.step("toggle",observe(),1,false);
+    if(!"paused".equals(recorder.status().getString("state")))throw new AssertionError("Retired notification resumed the successor recording");
    }else {stop(first);stop("");}
    if(!service.shown||!recorder.owns(second))throw new AssertionError("Retired command hid successor recording");
    recorder.stop(second);trace.step("recordingStops",observe());stop(second);
@@ -89,16 +104,26 @@ public final class NoteRecordingServiceTraces {
   else if(mode.equals("discard-exact")){close();stop(first);}
   else if(mode.equals("current-stop")){recorder.stop(first);trace.step("recordingStops",observe());stop(first);}
   else if(mode.equals("recreated")){
-   service.onDestroy();trace.step("destroy",observe());service=new AlphaNoteRecordingService();start(first,true);
+   notificationCommand(firstPause);trace.step("toggle",observe(),1,true);
+   PendingIntent retainedResume=PendingIntent.latestService(2);
+   service.onDestroy();trace.step("destroy",observe());service=new AlphaNoteRecordingService();
+   notificationCommand(retainedResume);trace.step("toggle",observe(),1,false);
+   if(service.shown||!"paused".equals(recorder.status().getString("state")))throw new AssertionError("Retired notification restarted a service without foreground ownership");
+   start(first,true);
    command(AlphaNoteRecordingService.ACTION_PAUSE,first);trace.step("toggle",observe(),1,true);
    command(AlphaNoteRecordingService.ACTION_RESUME,first);trace.step("toggle",observe(),1,false);
   }else if(mode.equals("notification-stop")||mode.equals("paused-notification-stop")){
    if(mode.startsWith("paused-")){command(AlphaNoteRecordingService.ACTION_PAUSE,first);trace.step("toggle",observe(),1,true);}
-   command(AlphaNoteRecordingService.ACTION_FINISH,first);trace.step("finish",observe(),1);
+   PendingIntent retainedResume=PendingIntent.latestService(2);
+   notificationCommand(PendingIntent.latestService(3));trace.step("finish",observe(),1);
    if(service.shown||!recorder.owns(first)||!"stopped".equals(recorder.status().getString("state")))throw new AssertionError("Notification Stop did not keep the stopped recording for Notes");
+   if(mode.startsWith("paused-")){
+    notificationCommand(retainedResume);trace.step("toggle",observe(),1,false);
+    if(service.shown||!"stopped".equals(recorder.status().getString("state")))throw new AssertionError("Retired Resume rearmed the recording after Stop");
+   }
   }else if(mode.equals("old-notification-stop")){
    close();String second=begin(2);start(second,true);
-   command(AlphaNoteRecordingService.ACTION_FINISH,first);trace.step("finish",observe(),1);
+   notificationCommand(firstFinish);trace.step("finish",observe(),1);
    if(!service.shown||!recorder.owns(second)||!"recording".equals(recorder.status().getString("state")))throw new AssertionError("Retired notification Stop reached the successor recording");
   }else if(mode.equals("blank-notification-stop")){
    command(AlphaNoteRecordingService.ACTION_FINISH,"");trace.step("finish",observe(),0);

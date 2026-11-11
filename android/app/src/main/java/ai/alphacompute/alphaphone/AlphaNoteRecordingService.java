@@ -61,7 +61,10 @@ public final class AlphaNoteRecordingService extends Service {
   context.getSystemService(NotificationManager.class).notify(NOTIFICATION_ID,notification(context,status));
  }
  private static Intent intent(Context context,String action,String recordingId){
-  return new Intent(context,AlphaNoteRecordingService.class).setAction(action).putExtra(EXTRA_RECORDING,recordingId==null?"":recordingId);
+  String identity=recordingId==null?"":recordingId;
+  // Extras do not identify a PendingIntent. UPDATE_CURRENT may rewrite even an immutable
+  // token held by an old notification, so give each recording its own filter identity.
+  return new Intent(context,AlphaNoteRecordingService.class).setAction(action).setIdentifier(identity).putExtra(EXTRA_RECORDING,identity);
  }
 
  @Override public IBinder onBind(Intent intent){return null;}
@@ -72,7 +75,8 @@ public final class AlphaNoteRecordingService extends Service {
   String recording=intent==null?"":intent.getStringExtra(EXTRA_RECORDING);
   AlphaNoteRecorder recorder=AlphaNoteRecorder.get(this);
   if(ACTION_PAUSE.equals(action)||ACTION_RESUME.equals(action)){
-   if(recording!=null&&recorder.owns(recording))try{if(ACTION_PAUSE.equals(action))recorder.pause(recording);else recorder.resume(recording);}catch(RuntimeException|java.io.IOException changed){/* Closed, or the microphone is unavailable: the state is shown as it is. */}
+   // A retained Resume must not rearm after Stop or revive a service that lost its foreground.
+   if(recording!=null&&recorder.owns(recording))try{if(ACTION_PAUSE.equals(action))recorder.pause(recording);else if(foreground&&recording.equals(foregroundRecording)&&"paused".equals(recorder.status().optString("state")))recorder.resume(recording);}catch(RuntimeException|java.io.IOException changed){/* Closed, or the microphone is unavailable: the state is shown as it is. */}
    refresh(this);
    return START_NOT_STICKY;
   }

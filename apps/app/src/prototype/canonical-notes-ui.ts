@@ -281,34 +281,28 @@ export class CanonicalNotesUi {
  private rebase(apply:()=>void):void{this.rebasing=true;try{apply();}finally{this.rebasing=false;}this.refreshDraftView();}
  /**
   * Try again after a save that failed or was refused: read the notes again, then save the draft on top of
-  * the record it started from. A record that changed elsewhere, or was deleted, is never overwritten; the
-  * draft then stays for Copy draft or Discard. A save that did land is recognised and not repeated.
+  * the record it started from. A record that changed elsewhere, or was deleted, is never overwritten;
+  * the draft then stays for Copy draft or Discard. Only an existing record has an authoritative identity
+  * and revision for retry. Matching words cannot identify an unconfirmed new creation.
   */
  async retryDraft(api:Bag):Promise<boolean>{
   const started=this.editor.draft;
-  if(!started?.version||this.phase!=='review'||this.controller.pending||this.retrying)return false;
+  if(!started?.version||!started.id||!api.isActive()||this.phase!=='review'||this.controller.pending||this.retrying)return false;
   this.retrying=true;
   const tell=(message:string)=>{if(this.controller.current&&api.isActive())api.toast(message);};
   try{
    const base=this.draftBase?.token===started.token?this.draftBase.print:null;
-   const snapshot=await this.controller.refresh();
+   await this.controller.refresh();
    const draft=this.editor.draft;
-   if(!this.controller.current||!draft?.version||draft.token!==started.token||this.controller.pending)return false;
+   if(!this.controller.current||!api.isActive()||!draft?.version||!draft.id||draft.token!==started.token||this.controller.pending)return false;
    const mine=contentPrint(reconstructNoteContent({title:draft.title,body:draft.body,bodySeparator:draft.separator}),draft.format);
    const words={title:draft.title,body:draft.body,...(draft.format?{format:draft.format}:{})};
-   if(draft.id){
-    const id=draft.id,saved=this.controller.viewNote(id);
-    if(!saved){tell('Note was deleted');return false;}
-    const theirs=notePrint(saved);
-    if(theirs===mine){this.rebase(()=>{this.editor.close();this.editor.open(id);});this.draftConfirmed();return true;}
-    if(base===null||theirs!==base){tell('Changed elsewhere');return false;}
-    this.rebase(()=>{this.editor.close();this.editor.open(id);this.editor.edit(words);});
-   }else{
-    const landed=snapshot.notes.find(note=>notePrint(note)===mine);
-    if(landed){this.rebase(()=>{this.editor.close();this.editor.open(landed.id);});this.draftConfirmed();this.hooks.committed?.(landed.id);return true;}
-    const named=this.defaultTitle?.token===draft.token?this.defaultTitle.title:null;
-    this.rebase(()=>{this.editor.begin(draft.format?.kind==='list'?'list':'text');this.editor.edit(words);if(named!==null)this.defaultTitle={token:this.editor.draft!.token,title:named};});
-   }
+   const id=draft.id,saved=this.controller.viewNote(id);
+   if(!saved){tell('Note was deleted');return false;}
+   const theirs=notePrint(saved);
+   if(theirs===mine){this.rebase(()=>{this.editor.close();this.editor.open(id);});this.draftConfirmed();return true;}
+   if(base===null||theirs!==base){tell('Changed elsewhere');return false;}
+   this.rebase(()=>{this.editor.close();this.editor.open(id);this.editor.edit(words);});
    if(await this.editor.save())return true;
    tell('Not saved');return false;
   }catch{if(this.controller.current){this.needsReview();tell('Not saved');}return false;}
@@ -332,7 +326,7 @@ export class CanonicalNotesUi {
   };
   const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:true,canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,
    canonicalReview:this.phase==='review',canonicalReviewLabel:this.editor.draft?.version?'Discard':'Reload Notes',canonicalReviewAction:()=>void this.discardDraftAndReload(),
-   retryDraftAvailable:this.phase==='review'&&this.dirty,retryDraft:()=>this.retryDraft(api),
+   retryDraftAvailable:this.phase==='review'&&this.dirty&&!!this.editor.draft?.id,retryDraft:()=>this.retryDraft(api),
    copyDraftAvailable:this.phase==='review'&&this.dirty,copyDraft:()=>draft?this.copyDraft(draft.token,draft.version,api):Promise.resolve(),
    trashAvailable:false,hasDeleted:rows.length>0,trashOpen,trashCanErase:false,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
    trashRows:rows.map(row=>{const deleted=deletionDate(row);return {id:row.id,title:row.title,label:row.title,preview:deleted,previewDescription:deleted,left:'',disabled:busy,ask:()=>api.set({trashAsk:row})};}),

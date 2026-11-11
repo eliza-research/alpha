@@ -116,7 +116,7 @@ export async function checkCanonicalNotesFeedback(extraSources = []) {
   for (const scenario of ['initial-read', 'initial-read-failure', 'read-recovery', 'dirty-read-recovery', 'dirty-new-revision',
     'uncertain-delete', 'uncertain-restore', 'uncertain-update', 'discard-success', 'discard-failure',
     'commit-after-uncertain', 'card-after-uncertain', 'local-invalid-update', 'owner-read', 'retire-read', 'retire-uncertain',
-    'retry-save', 'retry-confirmed', 'retry-conflict', 'retry-read-failure']) {
+    'retry-save', 'retry-confirmed', 'retry-conflict', 'retry-read-failure', 'retry-unconfirmed-create']) {
     const f = await createCanonicalNotesUiFixture(compiled);
     try {
       f.run('refresh');
@@ -159,11 +159,29 @@ export async function checkCanonicalNotesFeedback(extraSources = []) {
           }
           if (scenario === 'retire-uncertain') f.ui.retire();
         }
-        if (scenario.startsWith('retry-')) {
+        if (scenario === 'retry-unconfirmed-create') {
+          // Matching words on another saved identity cannot confirm or retry a new creation.
+          const duplicate = {...note, id: 'note-two', title: 'Fresh note', body: '\nDirty source text'};
+          assert.equal(await f.ui.create('text'), true);
+          f.ui.editor.edit({title: 'Fresh note', body: 'Dirty source text'});
+          const save = f.ui.editor.save(); await tick();
+          await f.resolveRequest(state(), undefined, false);
+          assert.equal(await save, false);
+          f.run('refresh'); await f.resolveRequest(state(2, [note, duplicate]));
+          const retained = structuredClone(f.ui.editor.draft), requests = f.requests.length;
+          const retry = f.run('retryDraft', f.api); await tick();
+          assert.equal(f.requests.length, requests, 'an unconfirmed creation performs no retry read or write');
+          assert.equal(await retry.promise, false);
+          assert.equal(f.requests.filter(request => request.method === 'POST').length, 1,
+            'an unconfirmed creation is never repeated');
+          assert.deepEqual(f.ui.editor.draft, retained, 'matching words never adopt another record identity');
+          assert.equal(f.ui.editor.draft.id, undefined);
+          assert.deepEqual(f.feedback(), {'s.phase': 'review', 's.review': 'change', 's.failure': 'interact', 's.uncertain': true});
+        } else if (scenario.startsWith('retry-')) {
           // Try again (retryDraft): one read, then a save only on top of the record the draft started from.
           const other = {...note, id: 'note-two', title: 'Other', body: ''}, mine = {...note, body: '\nDirty source text'};
           if (scenario === 'retry-confirmed') {
-            // The update's reply was lost although it was saved; the read finds the draft's words.
+            // The update's reply was lost; the read finds its words on the exact saved note-one ID.
             f.run('update', 'note-one', {body: 'Dirty source text'}); await tick(); await f.resolveRequest(state(), undefined, false);
             f.run('retryDraft', f.api); await tick(); await f.resolveRequest(state(2, [mine]));
             assert.deepEqual([f.ui.phase, f.ui.dirty, f.ui.editor.draft?.id], ['ready', false, 'note-one']);
@@ -195,5 +213,6 @@ export async function checkCanonicalNotesFeedback(extraSources = []) {
     assumptions: [
       'Actual CanonicalNotesUi, editor, controller and wire codecs execute against deferred AppRecordPort calls. The adapter records each actual feedback handler after it runs.',
       'The three source fields and an independent interaction-failure history latch are compared after controller phase/failure/snapshot, editor commit, local review and explicit discard events.',
+      'Retry confirmation is emitted only for an existing exact saved record ID. An unconfirmed new creation remains in review even when another note has matching content; record identity admission itself is outside this four-field feedback model.',
       'Record content, collection rendering, queued navigation, native dictation/recording and Calendar handoff are separate obligations. Global connection-copy functions and DailyApps are controlled unused ports in this campaign.'] }));
 }

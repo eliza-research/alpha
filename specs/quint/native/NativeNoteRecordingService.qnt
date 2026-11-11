@@ -32,7 +32,8 @@ module NativeNoteRecordingService {
   action toggle(ticket: int, paused: bool): bool = all {
     ticket.in(Set(0, 1, 2)),
     val current = ticket != 0 and ticket == s.recording
-    val changes = current and (if (paused) s.phase == "recording" else s.phase.in(Set("paused", "stopped")))
+    val changes = current and (if (paused) s.phase == "recording"
+      else s.phase == "paused" and s.foreground and s.owner == s.recording)
     val nextPhase = if (changes) (if (paused) "paused" else "recording") else s.phase
     val refresh = s.foreground and s.owner == s.recording and nextPhase.in(Set("recording", "paused"))
     s' = { ...s, phase: nextPhase,
@@ -95,6 +96,7 @@ module NativeNoteRecordingService {
 
   run notificationStopKeepsRecordingForNotesTest = init.then(recordingStarts(1)).then(startService(1, true))
     .then(finish(1)).expect(safety and s.recording == 1 and s.phase == "stopped" and not(s.foreground))
+    .then(toggle(1, false)).expect(safety and s.phase == "stopped" and not(s.foreground))
   run staleNotificationStopCannotStopNewRecordingTest = init.then(recordingStarts(1)).then(startService(1, true))
     .then(recordingCloses).then(recordingStarts(2)).then(startService(2, true)).then(finish(1))
     .expect(safety and s.foreground and s.owner == 2 and s.phase == "recording")

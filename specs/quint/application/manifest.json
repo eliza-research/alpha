@@ -1670,6 +1670,7 @@
     ],
     "abstractions": [
       "Finite UI feedback event machine for phase, review reason and failure origin, with an interaction-failure history monitor. Actual controller/editor callbacks drive source traces.",
+      "Retry confirmation requires the draft's exact existing saved record ID. A refused unconfirmed-new-create retry preserves review even when another record has matching content; record identity admission is outside this four-field projection.",
       "Collection rendering, navigation waits, dictation/recording and Calendar handoffs remain separate state machines."
     ]
   },

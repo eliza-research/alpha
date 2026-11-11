@@ -479,7 +479,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           // Absence can also mean different source preconditions. It proves no
           // rejection or execution; preserve the history and disable only review.
           if(card.reviewUnavailable)return message;
-          return {...message,card:{...card,reviewUnavailable:true,title:'Review unavailable',sub:'This request belongs to a different screen or item. Go back to where you asked, and it can be reviewed again. Nothing was done.'}};
+          return {...message,card:{...card,reviewUnavailable:true,title:'Review unavailable',sub:'This request is no longer available to review. Check action history before trying again.'}};
         });
         const existing=new Set(msgs.map((message:Shell)=>message.card?.proposalId));
         const recovered=proposals.filter(proposal=>!existing.has(proposal.id)).map(proposal=>({id:crypto.randomUUID(),from:'agent',text:proposal.description,card:{...proposalCard(proposal),recovered:true,proposalSession:connection.session}}));

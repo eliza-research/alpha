@@ -21,6 +21,25 @@ function cards(stored,shell={}){
 }
 const proposal=(id,extra={})=>({id,from:'agent',text:'Create note',card:{type:'generic',proposalId:id,title:'Create note',sub:'Create note\nTitle: Milk',expiresAt:Date.now()+60_000,...extra}});
 
+test('a missing pending proposal disables review without inventing a zero-effect outcome',async()=>{
+ const from=adapter.indexOf('  function recoverPendingActions('),to=adapter.indexOf('  /** The stopped-reply state',from);
+ assert(from>=0&&to>from,'actual pending-action recovery is present');
+ for(const outcome of ['applied','unknown','cancelled']){
+  const context={view:'home',sensitive:false},session={sessionId:'session'},original=proposal('request-one');
+  let state={typing:false,msgs:[original]};
+  const snapshot={session,phoneActionsAvailable:true,history:{revision:1},actionHistory:[{id:'request-one',outcome}]};
+  const recover=new Function('connectionController','alphaClient','document','retainReadReply','proposalCard',`${stripTypeScriptTypes(adapter.slice(from,to),{mode:'strip'})};return recoverPendingActions;`)(
+   {getSnapshot:()=>snapshot,pendingActions:async()=>[]},{getState:()=>({context})},{hidden:false},()=>assert.fail('no read reply'),()=>assert.fail('no pending proposal'));
+  const shell={live:true,S:()=>state,setState:(update,done)=>{const patch=update(state);if(patch)state={...state,...patch};done?.();}};
+  recover(shell);await new Promise(resolve=>setImmediate(resolve));
+  const card=state.msgs[0].card;
+  assert.equal(card.reviewUnavailable,true,outcome);
+  assert.equal(card.done,undefined,outcome);
+  assert.equal(card.proposalId,original.card.proposalId,outcome);
+  assert.doesNotMatch(card.sub,/nothing was (?:done|changed|sent|saved)|belongs to a different screen/i,outcome);
+ }
+});
+
 test('a pending action has a labelled Approve and a Decline, and only the card in progress says so',()=>{
  const stored=[proposal('a'),proposal('b')];
  let {rows,calls}=cards(stored);

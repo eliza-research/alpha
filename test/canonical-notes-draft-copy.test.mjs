@@ -90,38 +90,55 @@ test('a clipboard completion after owner retirement preserves the draft and give
 // Try again (retryDraft). The refinement schedules cover a saved record; these cover a note with no record yet and a deleted one.
 const settle=()=>new Promise(resolve=>setTimeout(resolve,0));
 const posts=f=>f.requests.filter(request=>request.method==='POST');
-async function failedNewNote(){
+async function failedNewNote(existing=[note]){
  const f=await createCanonicalNotesUiFixture(compiled);
- f.run('refresh');await f.resolveRequest({revision:1,notes:[note],trash:[]});
+ f.run('refresh');await f.resolveRequest({revision:1,notes:existing,trash:[]});
  assert.equal(await f.ui.create('text'),true);
  f.ui.editor.edit({title:'Fresh note',body:'First words'});
  const save=f.ui.editor.save();await settle();
- await f.resolveRequest({revision:1,notes:[note],trash:[]},undefined,false);
+ await f.resolveRequest({revision:1,notes:existing,trash:[]},undefined,false);
  assert.equal(await save,false);assert.equal(f.ui.phase,'review');
- assert.equal(view(f).retryDraftAvailable,true);
+ assert.equal(view(f).retryDraftAvailable,false);
  return f;
 }
-test('Try again creates a new note once when the first attempt did not land',async()=>{
- const f=await failedNewNote();
+test('an unconfirmed new note never adopts an unrelated record with the same words',async()=>{
+ const duplicate={...note,id:'note-two',title:'Fresh note',body:'\nFirst words'};
+ const f=await failedNewNote([note,duplicate]);
  try{
+  const before=structuredClone(f.ui.editor.draft),requestCount=f.requests.length;
   const retry=view(f).retryDraft();await settle();
-  await f.resolveRequest({revision:2,notes:[note],trash:[]});
-  assert.equal(posts(f).length,2);
-  const created={...note,id:'note-two',title:'Fresh note',body:'\nFirst words'};
-  await f.resolveRequest({revision:3,notes:[created,note],trash:[]},created);
-  assert.equal(await retry,true);
-  assert.deepEqual([f.ui.phase,f.ui.dirty,f.ui.editor.draft.id,view(f).retryDraftAvailable],['ready',false,'note-two',false]);
+  if(f.requests.length>requestCount)await f.resolveRequest({revision:2,notes:[note,duplicate],trash:[]});
+  assert.equal(await retry,false);
+  assert.deepEqual(f.ui.editor.draft,before);
+  assert.equal(posts(f).length,1);
+  assert.equal(f.ui.phase,'review');
  }finally{await f.close();}
 });
-test('Try again does not create a second note when the first attempt is found saved',async()=>{
+test('Try again cannot repeat an unconfirmed creation without a returned record identity',async()=>{
  const f=await failedNewNote();
  try{
-  const retry=view(f).retryDraft();await settle();
-  await f.resolveRequest({revision:2,notes:[{...note,id:'note-two',title:'Fresh note',body:'\nFirst words'},note],trash:[]});
-  assert.equal(await retry,true);
+  const before=structuredClone(f.ui.editor.draft),requestCount=f.requests.length;
+  assert.equal(await view(f).retryDraft(),false);
+  assert.equal(f.requests.length,requestCount);
   assert.equal(posts(f).length,1);
-  assert.deepEqual([f.ui.phase,f.ui.dirty,f.ui.editor.draft.id],['ready',false,'note-two']);
+  assert.deepEqual(f.ui.editor.draft,before);
+  assert.deepEqual([f.ui.phase,f.ui.dirty,view(f).copyDraftAvailable],['review',true,true]);
  }finally{await f.close();}
+});
+test('Try again refuses an inactive Notes view before and after its refresh',async()=>{
+ for(const timing of ['before','after']){
+  const f=await failedDraft(()=>{});
+  try{
+   const before=structuredClone(f.ui.editor.draft),requestCount=f.requests.length;
+   if(timing==='before')f.api.isActive=()=>false;
+   const retry=view(f).retryDraft();await settle();
+   if(timing==='after'){f.api.isActive=()=>false;await f.resolveRequest({revision:2,notes:[note],trash:[]});}
+   assert.equal(await retry,false,timing);
+   assert.equal(f.requests.length,requestCount+(timing==='after'?1:0),timing);
+   assert.equal(posts(f).length,1,timing);
+   assert.deepEqual(f.ui.editor.draft,before,timing);
+  }finally{await f.close();}
+ }
 });
 test('Try again keeps the draft and writes nothing when its note was deleted elsewhere',async()=>{
  const f=await failedDraft(()=>{});

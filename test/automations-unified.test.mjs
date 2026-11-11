@@ -80,6 +80,24 @@ function adapterFixture(request,storage={},options={}){
  return {window:context.window,reviews,document:context.document,notify:(sessionId=session.sessionId)=>context.window.dispatchEvent(dom?new dom.window.CustomEvent(context.AUTOMATIONS_COMMITTED_EVENT,{detail:{sessionId}}):{type:context.AUTOMATIONS_COMMITTED_EVENT,detail:{sessionId}}),leave:()=>views.workflows.onLeave(),setView:next=>view=next,home:()=>shell.renderVals(),render:()=>views.workflows.render({},api),close:()=>shell.componentWillUnmount(),storage,retire:()=>{session.sessionId='replacement';session.ownerId='other';for(const fn of listeners)fn();},back:()=>views.workflows.back(),get workflowOpened(){return workflowOpened;},get deviceOpened(){return deviceOpened;},get newWorkflow(){return newWorkflow;}};
 }
 const wait=async fn=>{for(let count=0;count<300;count++){if(fn())return;await new Promise(resolve=>setTimeout(resolve,5));}throw Error('Unified automation UI did not settle.');};
+test('busy management rows refuse taps and stale callbacks until the current refresh settles',async()=>{
+ let release;let held=new Promise(resolve=>release=resolve),opened=0;
+ const app=adapterFixture(async path=>read({path}),{},{refreshManagement:()=>held});
+ app.window.addEventListener('alpha:hosted-digests',()=>opened++);
+ try{
+  app.render();await wait(()=>app.render().automation.busy);
+  const pending=app.render().automation.managementCards.find(card=>card.name==='Scheduled digests');
+  assert.equal(pending.busy,true);pending.open();assert.equal(opened,0,'A row announced disabled must not open');
+  release();await wait(()=>!app.render().automation.busy&&!app.render().automation.loading);
+  const ready=app.render().automation.managementCards.find(card=>card.name==='Scheduled digests');
+  assert.equal(ready.busy,false);ready.open();assert.equal(opened,1,'The settled row still opens normally');
+  held=new Promise(resolve=>release=resolve);app.render().automation.refresh();
+  assert.equal(app.render().automation.busy,true);ready.open();assert.equal(opened,1,'A prior render cannot bypass the new refresh');
+  release();await wait(()=>!app.render().automation.busy&&!app.render().automation.loading);
+  app.render().automation.managementCards.find(card=>card.name==='Scheduled digests').open();
+  assert.equal(opened,2,'The new settled callback works once');
+ }finally{release();app.close();}
+});
 test('unified workflow management shares list cancellation and cannot outlive its visible owner visit',async()=>{
  let release,probeSignal,current;
  const held=new Promise(resolve=>release=resolve),calls=[];

@@ -196,7 +196,11 @@ export function installAutomationsAdapter(Component:any,views:Bag){
    name:'Recovery',short:'Back up or reset',open:recoverRequests,
   });
   // A tap during a refresh is dropped; the row says so instead of looking live.
-  for(const card of managementCards)card.busy=!!card.busy||!!controller;
+  for(const card of managementCards){
+   card.busy=!!card.busy||!!controller;
+   const open=card.open;
+   card.open=(...args:unknown[])=>{if(!card.busy&&!controller)return open?.(...args);};
+  }
   const selected=editor?.row||detail,selectedLocked=!!selected&&locked(selected);
   const scheduleBlocked=detail?.kind==='schedule'&&!!scheduleBlock();
   const lockId=selected?key(selected):editor?requestKey('new:'+editor.kind):'',formLocked=!selected&&!!editor&&(uncertain.has(lockId)||!!intentStore?.locked(lockId));

@@ -4,6 +4,32 @@ import {parseBrowserAddressInput} from '../.eliza/client-features/plugins/plugin
 import {BrowserTabSession} from '../.eliza/client-features/plugins/plugin-native-browser-surface/src/tab-host.ts';
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';import vm from 'node:vm';
 const source=readFileSync(process.env.ALPHA_BROWSER_ADAPTER_SOURCE||'apps/app/src/prototype/browser-adapter.ts','utf8');
+test('removing a history row removes its cached title unless a bookmark still retains it',()=>{
+ const from=source.indexOf('libRows:['),to=source.indexOf(',libEmpty:',from);
+ assert(from>=0&&to>from,'actual history-row projection is present');
+ const address='https://example.com/private-title';
+ for(const bookmarked of [false,true]){
+  const state={lib:'history',visits:[address],marks:bookmarked?[address]:[],titles:{[address]:'Private title'}};
+  const helpers=source.slice(source.indexOf('  function retainedTitles('),source.indexOf('  let reading:'));
+  const rows=vm.runInNewContext(stripTypeScriptTypes(helpers+'\n'+source.slice(from+'libRows:'.length,to),{mode:'strip'}),{s:state,state:()=>state,URL,bookmarkRecovery:false,historyOpen:true,titleOf:url=>state.titles[url],navigate(){},openBookmarkRecovery(){},saveBookmark(){assert.fail('history removal must not change bookmarks');},api:{set:patch=>Object.assign(state,patch)}});
+  rows[0].remove();
+  assert.deepEqual(state.visits,[]);
+  assert.equal(Object.hasOwn(state.titles,address),bookmarked);
+ }
+});
+test('bookmark removal releases cached titles only when history no longer retains the address',async()=>{
+ const from=source.indexOf('  function saveBookmark('),to=source.indexOf('  const state =',from);
+ const helpers=source.slice(source.indexOf('  function retainedTitles('),source.indexOf('  let reading:'));
+ const address='https://example.com/private-title';
+ for(const visited of [false,true]){
+  const current={visits:visited?[address]:[],marks:[address],titles:{[address]:'Private title'}};
+  const context={bookmarkQueue:Promise.resolve(),bookmarkHydrated:true,disposed:false,session:'session',state:()=>current,loadBookmarks:()=>assert.fail('already hydrated'),report:error=>{throw error;},Browser:{setBookmark:async()=>({urls:[]})},shell:{vset:(_view,patch)=>Object.assign(current,patch)}};
+  vm.runInNewContext(stripTypeScriptTypes(helpers+'\n'+source.slice(from,to)+`\nsaveBookmark(${JSON.stringify(address)},false);`,{mode:'strip'}),context);
+  await context.bookmarkQueue;
+  assert.equal(current.marks.length,0);
+  assert.equal(Object.hasOwn(current.titles,address),visited);
+ }
+});
 const region=stripTypeScriptTypes(source.slice(source.indexOf('  async function navigate('),source.indexOf('  async function command(')),{mode:'strip'});
 function harness(){let release;const pending=new Promise(resolve=>release=resolve),state={cur:'owned',tabs:[{id:'owned'},{id:'other'}],editing:true,tabsOpen:true,menu:true},navigations=[],patches=[],closed=[],reports=[];const tabs=new BrowserTabSession({session:'owned-session'});void tabs.ensure('owned',false,()=>pending);
  const context={URL,Error,MAX_TABS:8,parseBrowserAddressInput,session:"owned-session",disposed:false,state:()=>state,isPrivate:()=>false,newTabId:()=> 'owned',restored:new Map(),tabs,restoreAttempts:new Map(),ensure:id=>tabs.creation(id)??tabs.ensure(id,false,()=>pending),shell:{vset(_key,patch){patches.push(patch);Object.assign(state,patch);}},Browser:{async navigate(input){navigations.push(input);},async close(input){closed.push(input);}},refresh(){},report(error){reports.push(error.message);}};

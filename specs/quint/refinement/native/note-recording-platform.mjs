@@ -23,11 +23,15 @@ public class Context {
     'android/content/Intent.java':`package android.content;
 public class Intent {
   public static final int FLAG_ACTIVITY_SINGLE_TOP=1,FLAG_ACTIVITY_CLEAR_TOP=2;
-  private String action;
+  private String action,identifier;
+  private final String component;
   private final java.util.Map<String,String> extras=new java.util.HashMap<>();
-  public Intent(Context context,Class<?> type){}
+  public Intent(Context context,Class<?> type){component=type.getName();}
   public Intent setAction(String value){action=value;return this;}
   public String getAction(){return action;}
+  public Intent setIdentifier(String value){identifier=value;return this;}
+  public String getIdentifier(){return identifier;}
+  public String filterKey(){return component+"/"+action+"/"+identifier;}
   public Intent putExtra(String key,String value){extras.put(key,value);return this;}
   public String getStringExtra(String key){return extras.get(key);}
   public Intent setFlags(int value){return this;}
@@ -218,8 +222,20 @@ public class NotificationManager {
     'android/app/PendingIntent.java':`package android.app;
 public class PendingIntent {
   public static final int FLAG_IMMUTABLE=1,FLAG_UPDATE_CURRENT=2;
+  // Service identity excludes extras, and UPDATE_CURRENT also updates immutable tokens.
+  // This is the API29+ Intent.filterEquals subset used by the actual recording service.
+  private static final java.util.Map<String,PendingIntent> services=new java.util.HashMap<>();
+  private static final java.util.Map<Integer,PendingIntent> latest=new java.util.HashMap<>();
+  private android.content.Intent intent;
   public static PendingIntent getActivity(android.content.Context context,int request,android.content.Intent intent,int flags){return new PendingIntent();}
-  public static PendingIntent getService(android.content.Context context,int request,android.content.Intent intent,int flags){return new PendingIntent();}
+  public static PendingIntent getService(android.content.Context context,int request,android.content.Intent intent,int flags){
+    String key=request+"/"+intent.filterKey();PendingIntent value=services.get(key);
+    if(value==null){value=new PendingIntent();value.intent=intent;services.put(key,value);}
+    else if((flags&FLAG_UPDATE_CURRENT)!=0)value.intent=intent;
+    latest.put(request,value);return value;
+  }
+  public static PendingIntent latestService(int request){return latest.get(request);}
+  public android.content.Intent deliveryIntent(){return intent;}
 }`,
     'android/R.java':'package android;public class R {public static class drawable {public static final int ic_btn_speak_now=1;}}',
     'ai/alphacompute/alphaphone/R.java':'package ai.alphacompute.alphaphone;public class R {public static class drawable {public static final int ic_note_recording=1;}}',
