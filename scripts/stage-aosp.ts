@@ -12,6 +12,7 @@ import { androidEnv, tool } from "./toolchain.ts";
 import { verifySecureCameraSource, writeSecureCameraOverlay, assertNoAlphaLockScreenSurface } from "./aosp-secure-camera-contract.ts";
 import { clockProductRequirement } from "./aosp-clock-contract.ts";
 import { provisioningComponents, writeProvisioningOverlay } from "./aosp-provisioning-overlay.ts";
+import { aospTelephonyRoleComponents } from "./aosp-telephony-roles.ts";
 import { writeImageCapability } from "./aosp-image-capability.ts";
 import { releaseBlockers } from "./release-blockers.ts";
 import {parseXmlTree, signerDigest, telephonySetupReceiverProblems} from "./apk.ts";
@@ -320,6 +321,7 @@ if (updateArtifactDigest(stagedLauncher).sha256 !== hash)
   throw Error("Staged launcher differs from the admitted APK");
 const provisioningTree = aaptManifestTree(stagedLauncher, {aapt: tool("aapt"), env});
 assertImageLauncherManifest(provisioningTree, production);
+if (production) aospTelephonyRoleComponents(provisioningTree, identity.appId);
 if (!development || senseImage)
   assertProvisioningUpdateChannel(apkUpdateChannelOrLegacy(parseXmlTree(provisioningTree)), reviewedUpdateChannel);
 fs.appendFileSync(path.join(output, "product.mk"), clockProductRequirement);

@@ -3,10 +3,12 @@
     <string name="alpha_name">Alpha Phone</string>
     <string name="alpha_welcome">Welcome to Alpha Phone</string>
     <string name="alpha_setup_description">Make this phone yours. Connect to a network, secure your screen, then continue to Alpha.</string>
+    <string name="alpha_setup_telephony_description">Connect to a network, secure your screen, then continue with Alpha as your default Home, Phone, and Messages app.</string>
     <string name="alpha_wifi">Set up Wi-Fi</string>
     <string name="alpha_security">Screen security</string>
     <string name="alpha_continue">Continue to Alpha</string>
     <string name="alpha_home_settings">Review Home app</string>
+    <string name="alpha_default_apps_settings">Review default apps</string>
     <string name="alpha_open_settings">Open settings</string>
     <string name="alpha_retry_setup">Try setup again</string>
     <string name="alpha_home_checking">Preparing Alpha as Home…</string>

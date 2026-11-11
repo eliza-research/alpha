@@ -271,6 +271,7 @@ const ALWAYS_LOCAL = 'On this phone';
  * runs meanwhile (without Cloud inference). Offline is not a sign-in requirement.
  */
 let providerStatusGeneration=0;
+let providerStatusReadSequence=0;
 function ownProviderSelected(snapshot: Pick<ConnectionSnapshot,'providerStatus'>=state): boolean { return snapshot.providerStatus?.selected===true&&snapshot.providerStatus.provider==='cerebras'; }
 function residentSignInRequired(): boolean { return !ownProviderSelected()&&residentCloudFlow() && !state.cloudAccount && state.residentPlanNotice !== 'offline' && !state.residentStarting; }
 function residentEnvironment(): CloudEnvironment { return browserCloudResidentEnabled?browserCloudResidentEnvironment:residentQa() ?? 'production'; }
@@ -2719,7 +2720,9 @@ export const connectionController = {
     // a newer provider operation with this cancelled attempt's late readback.
     finally { if(cancelled&&generation===providerStatusGeneration){
       const status=await this.refreshProviderStatus(generation);
-      if(status&&generation===providerStatusGeneration&&status.selected&&status.provider==='cerebras'){update({message:''});}
+      if(status&&generation===providerStatusGeneration&&state.providerStatus===status&&!state.providerStatusError&&status.selected&&status.provider==='cerebras'){
+        update({message:''});
+      }
     } }
   },
   async selectCloudProvider(){return this.selectSavedProvider('cloud');},
@@ -2750,10 +2753,22 @@ export const connectionController = {
     }
   },
   // A failed read keeps the last known choice: a transient native error never switches the owner to Cloud.
-  // A read for an older provider operation (a cancelled check's late readback) never overwrites a newer one.
+  // A read belongs to the latest request and the provider facts it started from.
+  // A selection can publish its confirmed readback while a passive read is still pending.
   async refreshProviderStatus(generation=providerStatusGeneration) {
-    try { const status=await localProviderStatus();if(generation!==providerStatusGeneration)return null;update({providerStatus:status,providerStatusError:false});return status; }
-    catch { if(generation===providerStatusGeneration)update({providerStatusError:true});return null; }
+    if(generation!==providerStatusGeneration)return null;
+    const read=++providerStatusReadSequence,previous=state.providerStatus,unavailable=state.providerStatusError;
+    const current=()=>generation===providerStatusGeneration&&read===providerStatusReadSequence&&
+      state.providerStatus===previous&&state.providerStatusError===unavailable;
+    try {
+      const status=await localProviderStatus();
+      if(!current())return null;
+      update({providerStatus:status,providerStatusError:false});
+      return status;
+    } catch {
+      if(current())update({providerStatusError:true});
+      return null;
+    }
   },
   dismissError() { if (!operation) update({ error: '' }); },
   /** Stops the running agent (its process holds the key), deletes the key and confirms removal. */
@@ -3209,13 +3224,18 @@ export const connectionController = {
   /**
    * The card under a reply the agent gave without AI while Alpha believed Cloud AI was bound. Reads
    * what native has bound and shows that; with no Cloud provider there, one rebind is queued (it
-   * never interrupts a reply). Once per failed turn.
+   * never interrupts a reply). Once a check is confirmed, it cannot be repeated for that turn.
    */
   async recheckResidentProvider(turnId:string){
     if(!residentCloudFlow()||active?.kind!=='resident'||providerRechecks.has(turnId))return;
     providerRechecks.add(turnId);
-    const selected=active,status=await connectionController.refreshProviderStatus();
-    if(!status||active!==selected||ownProviderSelected())return;
+    const selected=active,generation=providerStatusGeneration,status=await connectionController.refreshProviderStatus(generation);
+    if(active!==selected||generation!==providerStatusGeneration)return;
+    if(!status||state.providerStatus!==status||state.providerStatusError){
+      providerRechecks.delete(turnId);
+      return;
+    }
+    if(ownProviderSelected())return;
     const bound=status.configured&&status.provider==='elizacloud';
     update({residentInference:bound?'cloud':'unavailable'});
     if(!bound){residentBinding='unbound';queueResidentRebind();}
