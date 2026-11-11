@@ -19,7 +19,7 @@ const fixtures = readdirSync(join(root, fixtureRoot), {recursive: true})
   .map(file => join(fixtureRoot, file)).sort();
 const modes = ['refused-before-pause', 'exact-canceled-release', 'ambiguous-terminal-sync',
   'cold-automatic-before-barrier', 'cold-manual-before-barrier', 'warm-process-before-barrier', 'unsupported-before-barrier',
-  'consent-revoked-before-commit'];
+  'offer-changed-before-commit', 'consent-revoked-before-commit'];
 const setFields = ['registered', 'seen', 'waiting', 'acknowledged', 'eligible', 'preparedEligible'].map(name => 'state.activation.' + name);
 
 export async function checkNativeUpdateComposition(extraSources = []) {
@@ -64,7 +64,8 @@ export async function checkNativeUpdateComposition(extraSources = []) {
     'After the journal rename and directory-sync refusal, the exact sealed reconnect receipt retains the logical pending session even though the physical row reads empty. Startup mount and resident lease admission are recorded separately.',
     'The admission composition uses SDK classes below31 and at-least31, uptime samples 0,26681,29999,30000,30001,35000, at most two boots and two process identities. Its process replacement/reboot cuts occur only before an activation; the unchanged standalone journal model owns in-flight process-death and durable-session recovery.',
     'Actual extracted Java calls at cold/unsupported cutpoints resolve directly and leave activation, journal, shutdown lease, resident stop and commit absent. The separate staging trace also shuts down the executor before refusal. After monotonic uptime reaches30001, the automatic path crosses the same exact barrier and durable handoff. Manual admission at uptime0 remains unchanged.',
-    'The revocation trace removes consent at the confirmed-stop cut and observes one final matching manifest fetch through the controlled transport, exact precommit abandonment, permission-required and confirmed journal/lease release. The dedicated TLS fixture covers revocation during a real HTTPS response.',
+    'The automatic commit and refusal traces project the one observed feed read from the served bytes, discovery digest and exact APK tuple. Changing only whitespace after the confirmed stop produces offer-unavailable and exact precommit abandonment. Manual commit makes no final feed request.',
+    'The revocation trace observes one final matching feed read, then permission-required and confirmed journal/lease release. The separate real TLS tests exercise changed and withdrawn offers, mismatched tuples, transport failure and revocation during the response.',
     'These bounded safety and selected source traces do not prove boot clock progress, network availability, Android silent installation or eventual completion. Those require environment assumptions and installed-device evidence.',
     ...skipped.map(({mode, reason}) => `Host capability omitted ${mode}: ${reason}.`),
   ]});

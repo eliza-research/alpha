@@ -45,7 +45,7 @@ module NativeUpdateComposition {
   import UpdateActivationComponent(instance = 1) as Activation
   import UpdatePauseComponent(instance = 2) as Pause
   import UpdateBootAdmissionPolicy as Boot from "./NativeUpdateStaging"
-  var admission: {platform: Boot::Boot, automatic: bool, captured: Boot::Boot}
+  var admission: {platform: Boot::Boot, automatic: bool, captured: Boot::Boot, finalOffer: str}
 
   val state = {activation: Activation::s, pause: Pause::s, admission: admission}
   val automaticCapability = Boot::capability(admission.platform)
@@ -54,7 +54,7 @@ module NativeUpdateComposition {
   val resumeAudience = if (startupAdmitted) Activation::s.resumeBridge else 0
 
   action init = all {Activation::init, Pause::init,
-    admission' = {platform: Boot::initial, automatic: false, captured: Boot::initial}}
+    admission' = {platform: Boot::initial, automatic: false, captured: Boot::initial, finalOffer: "unread"}}
   action keepActivation = Activation::s' = Activation::s
   action keepPause = Pause::s' = Pause::s
   action keepAdmission = admission' = admission
@@ -126,16 +126,26 @@ module NativeUpdateComposition {
     Pause::s.evidence.confirmed,
     Activation::requestStop, Pause::requestStop, keepAdmission
   }
-  // Automatic consent is sampled again at the durable commit boundary.
+  // One fresh native read either matches the bound discovery bytes and exact APK
+  // tuple or fails to confirm them. A changed, withdrawn or failed read has the
+  // same precommit effect here. A read observes the feed at that point in time.
+  action readFinalOffer(result: str): bool = all {
+    admission.automatic, admission.finalOffer == "unread",
+    Activation::s.stopRequested, Activation::s.active != 0,
+    Pause::s.liveOwner == Activation::s.active, not(Pause::s.record.committing),
+    result.in(Set("matching", "unavailable")),
+    admission' = {...admission, finalOffer: result}, keepActivation, keepPause
+  }
+  // Automatic consent is sampled again after the fresh offer read.
   action markCommitting = all {
     Activation::s.stopRequested,
     not(Pause::s.record.committing),
-    not(admission.automatic) or admission.platform.consent,
+    not(admission.automatic) or (admission.finalOffer == "matching" and admission.platform.consent),
     Pause::committing(Activation::s.active), keepActivation, keepAdmission
   }
   // This checkpoint represents an observed abandonment and confirmed journal/lease release.
   // The pause model separately covers uncertain or interrupted recovery.
-  action cancelRevokedAutomatic = {
+  action abandonAutomatic = {
     val active = Activation::s.active
     val owner = Activation::s.preparedOwner
     val eligible = Activation::s.prepared == active and
@@ -143,7 +153,7 @@ module NativeUpdateComposition {
     val released = Pause::settle({...Pause::s, liveOwner: 0,
       evidence: {...Pause::s.evidence, session: "absent"}})
     all {
-      admission.automatic, not(admission.platform.consent),
+      admission.automatic,
       Activation::s.stopRequested, active != 0,
       Pause::s.record.id == active, Pause::s.liveOwner == active,
       not(Pause::s.record.committing),
@@ -154,6 +164,10 @@ module NativeUpdateComposition {
       keepAdmission
     }
   }
+  action cancelRevokedAutomatic = all {
+    admission.finalOffer == "matching", not(admission.platform.consent), abandonAutomatic
+  }
+  action cancelUnavailableAutomaticOffer = all {admission.finalOffer == "unavailable", abandonAutomatic}
   action handOff = all {
     Pause::s.record.committing,
     Pause::s.liveOwner == Activation::s.active,
@@ -199,9 +213,11 @@ module NativeUpdateComposition {
     (Boot::capability(admission.captured) == "supported"
       and admission.captured.boot == admission.platform.boot
       and admission.captured.uptime <= admission.platform.uptime)
+  val AutomaticCommitHadFinalOffer = not(admission.automatic) or
+    (not(Pause::s.record.committing) and Activation::s.commits == 0) or admission.finalOffer == "matching"
   val safety = Activation::safety and Pause::safety and DurablePauseHasExactBarrier
     and StopRequiresOwnedPause and CommitRequiresConfirmedStop and ResumeRequiresReleasedLease
-    and Boot::valid(admission.platform) and AutomaticAuthorityHadReadyBoot
+    and Boot::valid(admission.platform) and AutomaticAuthorityHadReadyBoot and AutomaticCommitHadFinalOffer
 
   action step = any {
     nondet bridge = Set(1, 2, 3).oneOf()
@@ -218,7 +234,9 @@ module NativeUpdateComposition {
     nondet vote = Set("yes", "no").oneOf()
     nondet eligibility = Set("absent", "eligible").oneOf()
     acknowledge(bridge, Activation::s.active, bridge, vote, eligibility),
-    observeAbandonedStage, refuse, sealAcquire, requestConfirmedStop, markCommitting, cancelRevokedAutomatic, handOff,
+    observeAbandonedStage, refuse, sealAcquire, requestConfirmedStop,
+    readFinalOffer("matching"), readFinalOffer("unavailable"),
+    markCommitting, cancelRevokedAutomatic, cancelUnavailableAutomaticOffer, handOff,
     observeSession("sealed", false), observeSession("absent", false),
     denySync(true), denySync(false), reconcileHeld,
     all {keepActivation, keepPause, keepAdmission}
@@ -254,13 +272,22 @@ module NativeUpdateComposition {
     .then(bootClockAt(30001)).then(beginAutomatic(1))
     .then(acknowledge(1, 1, 1, "yes", "eligible")).then(sealAcquire)
     .expect(safety and admission.automatic and Pause::s.record.boot == 2)
-    .then(requestConfirmedStop).then(markCommitting).then(handOff).expect(safety)
+    .then(requestConfirmedStop).then(readFinalOffer("matching")).then(markCommitting).then(handOff)
+    .expect(safety and Activation::s.commits == 1)
   run manualColdBootStillUsesExactBarrierTest = init.then(reboot(31, true)).then(register(1)).then(begin(1))
     .then(acknowledge(1, 1, 1, "yes", "absent")).then(sealAcquire)
     .expect(safety and not(admission.automatic) and automaticCapability == "starting")
-  action stoppedWithRevokedConsent = register(1).then(beginAutomatic(1))
+  action stoppedAutomatic = register(1).then(beginAutomatic(1))
     .then(acknowledge(1, 1, 1, "yes", "eligible")).then(sealAcquire).then(requestConfirmedStop)
-    .then(consent(false))
+  run unreadAutomaticOfferCannotMarkCommittingTest = init.then(stoppedAutomatic).then(markCommitting.fail())
+  action stoppedWithUnavailableOffer = stoppedAutomatic.then(readFinalOffer("unavailable"))
+  run unavailableAutomaticOfferCannotMarkCommittingTest = init.then(stoppedWithUnavailableOffer)
+    .then(markCommitting.fail())
+  run unavailableAutomaticOfferAbandonsBeforeCommitTest = init.then(stoppedWithUnavailableOffer)
+    .then(cancelUnavailableAutomaticOffer)
+    .expect(safety and Pause::s.file == "empty" and Pause::s.releases == 1 and not(Pause::LeaseRetained)
+      and Activation::s.commits == 0 and Activation::s.outcome == "canceled" and resumeAudience == 1)
+  action stoppedWithRevokedConsent = stoppedAutomatic.then(consent(false)).then(readFinalOffer("matching"))
   run revokedAutomaticCannotMarkCommittingTest = init.then(stoppedWithRevokedConsent)
     .then(markCommitting.fail())
   run revokedAutomaticConsentAbandonsBeforeCommitTest = init.then(stoppedWithRevokedConsent)
@@ -270,7 +297,7 @@ module NativeUpdateComposition {
   run lateConsentChangeDoesNotGateExplicitManualCommitTest = init.then(register(1)).then(begin(1))
     .then(acknowledge(1, 1, 1, "yes", "eligible")).then(sealAcquire).then(requestConfirmedStop)
     .then(consent(false)).then(markCommitting).then(handOff)
-    .expect(safety and not(admission.automatic) and Activation::s.commits == 1)
+    .expect(safety and not(admission.automatic) and admission.finalOffer == "unread" and Activation::s.commits == 1)
   run processReplacementPreservesWarmBootTest = init.then(processRestart).then(register(1)).then(beginAutomatic(1))
     .expect(safety and admission.platform.process == 2 and admission.platform.uptime == 35000
       and admission.automatic and Activation::s.active == 1)
