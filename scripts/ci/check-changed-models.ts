@@ -3,17 +3,17 @@ import {mkdirSync,readFileSync,writeFileSync} from 'node:fs';
 import {dirname,join,relative,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {randomUUID} from 'node:crypto';
-import {loadModels,repositoryRoot,sha256, type QuintModel} from '../quint-lib.ts';
+import {loadModels,quintProofBackend,repositoryRoot,sha256, type QuintModel, type QuintProofBackend} from '../quint-lib.ts';
 
 type ManifestModel = Omit<QuintModel, 'family' | 'sources'> & {sources?: string[]};
 interface PhaseEvidence {
- passed?: boolean; status?: string; command?: string; inputHashes?: Record<string, string>;
- results?: Array<{model: string; passed: boolean; modelSha256: string}>;
+ passed?: boolean; status?: string; command?: string; backend?: string; inputHashes?: Record<string, string>;
+ results?: Array<{model: string; passed: boolean; modelSha256: string; backend?: string}>;
 }
 interface ChangedModelsReceipt {
  schemaVersion: number; runId: string; status: string; passed: boolean; base: string; startedAt: string;
  models: Array<{module: string; sha256: string; phases: string[]}>;
- results: Array<{model: string; phase: string; passed: boolean; exitCode: number | null; signal: NodeJS.Signals | null; output: string}>;
+ results: Array<{model: string; phase: string; backend: QuintProofBackend; passed: boolean; exitCode: number | null; signal: NodeJS.Signals | null; output: string}>;
  changedPaths?: string[]; inputHashes?: Record<string, string>; error?: string;
  finalInputErrors?: string[]; finishedAt?: string;
 }
@@ -89,15 +89,16 @@ async function main(){
   save();
   let passed=true;
   for(const model of selected)for(const phase of proofPhases(model)){
+   const backend=quintProofBackend(model,phase);
    const output=join(runOut,`${model.module}-${phase}.json`),expectedHash=receipt.models.find(row=>row.module===model.module)!.sha256;
    const args=[join(repositoryRoot,'scripts/check-quint.ts'),phase,`--models=${model.module}`,`--out=${output}`];
    const result=spawnSync(process.execPath,args,{cwd:repositoryRoot,stdio:'inherit'});
    let evidence: PhaseEvidence | undefined;try{evidence=JSON.parse(readFileSync(output,'utf8'));}catch{}
    const valid=result.status===0&&!result.signal&&!result.error&&evidence?.passed===true
-    &&evidence.status==='passed'&&evidence.command===phase&&!!evidence.results?.length
+    &&evidence.status==='passed'&&evidence.command===phase&&evidence.backend===backend&&!!evidence.results?.length
     &&evidence.inputHashes?.[model.path]===expectedHash
-    &&evidence.results.every(row=>row.model===model.module&&row.passed===true&&row.modelSha256===expectedHash);
-   receipt.results.push({model:model.module,phase,passed:valid,exitCode:result.status,signal:result.signal,output});
+    &&evidence.results.every(row=>row.model===model.module&&row.backend===backend&&row.passed===true&&row.modelSha256===expectedHash);
+   receipt.results.push({model:model.module,phase,backend,passed:valid,exitCode:result.status,signal:result.signal,output});
    passed=passed&&valid;save();
   }
   receipt.passed=passed;receipt.status=passed?'passed':'failed';
