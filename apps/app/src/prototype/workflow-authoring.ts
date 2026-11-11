@@ -1,4 +1,4 @@
-import {workflowDeviceTimeZone,workflowLocalInstant,workflowClockContext} from '../runtime/workflow-local-time';
+import {workflowDeviceTimeZone,phoneScheduleTiming,workflowLocalInstant,workflowClockContext} from '../runtime/workflow-local-time';
 import {automationLocalDateInput,localDate} from '../runtime/workflow-local-time';
 import {Capacitor} from '@capacitor/core';
 import {testMocksEnabled} from '../build-flags';
@@ -29,8 +29,6 @@ const TRIGGER_LABELS:Record<string,string>={manual:'Manual',time:'Time'};
 const deviceTimeZone=workflowDeviceTimeZone;
 function followDeviceClock(spec:PhoneSpec){const zone=deviceTimeZone();if(spec.trigger.kind==='time')spec.trigger.timeZone=zone;for(const step of spec.steps){if(step.operation==='selected_reminders')step.scope.timeZone=zone;if(step.operation==='calendar_range')step.range.timeZone=zone;}}
 const shiftLocalTime=(value:string,minutes:number)=>{const [h,m]=value.split(':').map(Number);const total=Math.min(23*60+59,Math.max(0,h*60+m+minutes));return String(Math.floor(total/60)).padStart(2,'0')+':'+String(total%60).padStart(2,'0');};
-/** Owner-facing policy for a scheduled typed workflow; the agent enforces each part. */
-const SCHEDULE_POLICY='Phone must be on.';
 /** The owner-facing name of a step. Raw operation ids never reach the screen. */
 const stepName=(id:string)=>WORKFLOW_OPERATION_LABELS[id]??'Step';
 /** A Calendar step keeps the exact dates chosen for it (the shared workflow contract has no day-of-run range), so a
@@ -197,7 +195,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
  function toggleDay(day:number){editTime(trigger=>{const days=trigger.days.includes(day)?trigger.days.filter(d=>d!==day):[...trigger.days,day].sort((a,b)=>a-b);if(!days.length){toast('Pick a day');return null;}return {...trigger,days};});}
  function triggerSheet(api:Bag){const trigger=draft?.spec.trigger??{kind:'manual' as const};const time=trigger.kind==='time'?trigger:null;
   return {kinds:(catalog?.triggers??[]).filter(t=>t.available).map(t=>{const on=trigger.kind===t.kind;return {label:TRIGGER_LABELS[t.kind]??t.kind,d:t.kind==='time'?api.ic.clock:api.ic.play,pressed:on,css:on?'background:var(--acc);color:#fff':'background:var(--s2)',pick:()=>t.kind==='manual'&&on?toast('Manual'):chooseTrigger(t.kind)};}),
-   text:time?[workflowClockContext(time.timeZone),describePhoneTrigger(time)+'.',(note=>note?note+' ':'')(phoneTriggerClockChangeNote(time))+SCHEDULE_POLICY].filter(Boolean).join(' '):'Manual',isTime:!!time,isEvent:false,isPlace:false,isMsg:false,isEmail:false,
+   text:time?[workflowClockContext(time.timeZone),describePhoneTrigger(time)+'.',phoneTriggerClockChangeNote(time),phoneScheduleTiming].filter(Boolean).join(' '):'Manual',isTime:!!time,isEvent:false,isPlace:false,isMsg:false,isEmail:false,
    days:time?WEEKDAYS.map(([day,label])=>{const on=time.days.includes(day);return {label,pressed:on,css:on?'background:var(--fg);color:var(--bg)':'background:var(--s2)',pick:()=>toggleDay(day)};}):[],
    time:'',clock:time?.localTime??'',onTime:(event:Bag)=>{const value=String(event.target.value);if(/^([01]\d|2[0-3]):[0-5]\d$/.test(value))editTime(t=>t.localTime===value?null:{...t,localTime:value});},tMinus:()=>editTime(t=>({...t,localTime:shiftLocalTime(t.localTime,-15)})),tPlus:()=>editTime(t=>({...t,localTime:shiftLocalTime(t.localTime,15)}))};}
  function field(label:string,value:string,onChange:(value:string)=>void,type='text',multiline=false){return {label,value,type,multiline,single:!multiline,change:(event:Bag)=>(()=>{try{change(()=>onChange(String(event.target.value)));}catch(error){toast(error instanceof Error?error.message:'Invalid time');}})()};}
@@ -205,7 +203,7 @@ export function createWorkflowAuthoring(owner:()=>any,publish:()=>void,onSaved:(
  function reviewSummary(spec:PhoneSpec):string{
   const target=draft?.workflowId?`Replaces ${targetName||spec.name}`:'';
   const when=spec.trigger.kind==='time'?describePhoneTrigger(spec.trigger):'Manual';
-  return [target,when,...spec.steps.map((step,i)=>`${i+1}. ${stepName(step.operation)}`),readsFixedDates(spec)?FIXED_CALENDAR_DATES:''].filter(Boolean).join('\n');
+  return [target,when,spec.trigger.kind==='time'?phoneScheduleTiming:'',...spec.steps.map((step,i)=>`${i+1}. ${stepName(step.operation)}`),readsFixedDates(spec)?FIXED_CALENDAR_DATES:''].filter(Boolean).join('\n');
  }
  function render(api:Bag){const step=selected(),index=step&&draft?draft.spec.steps.indexOf(step):-1,fields:Bag[]=[];if(step){
   if(step.operation==='supplied_text')fields.push(field('Text',step.text,v=>step.text=v,'text',true));

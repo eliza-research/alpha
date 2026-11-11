@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {resolve} from 'node:path';
-import {test} from 'node:test';
+import {before, test} from 'node:test';
 import {chromium} from '@playwright/test';
 import {build} from 'esbuild';
 import {checkClientFeatures} from '../scripts/prepare-client-features.ts';
@@ -8,8 +8,10 @@ import {checkClientFeatures} from '../scripts/prepare-client-features.ts';
 const root = resolve(import.meta.dirname, '..');
 const fixtureOrigin = 'https://files-placement.refinement.invalid/';
 
+// Authenticate the prepared projection before starting the browser scenario's deadline.
+before(() => {checkClientFeatures({root});}, {timeout: 600000});
+
 test('Browser Files placement preserves exact rows and Trash markers on IndexedDB refusal', {timeout: 90000}, async () => {
-  checkClientFeatures({root});
   const {outputFiles: [bundle]} = await build({
     stdin: {resolveDir: root, contents: `
       import {BrowserFiles} from './.eliza/client-features/plugins/plugin-files/src/browser/files.ts';
