@@ -1,7 +1,10 @@
 // Alpha's Home and app grid render from the shared mobile shell (@elizaos/ui/mobile-shell), its Apps
 // drawer from the shared installed-app grid, with the product record in apps/app/src/product/alpha-product-registration.ts. Shared controller and search cases live in
 // the upstream mobile-shell and native-system suites.
-import {test} from 'node:test';
+import {after,test} from 'node:test';
+const originalAnimationFrame=globalThis.requestAnimationFrame;
+globalThis.requestAnimationFrame=()=>0;
+after(()=>{if(originalAnimationFrame===undefined)delete globalThis.requestAnimationFrame;else globalThis.requestAnimationFrame=originalAnimationFrame;});
 import assert from 'node:assert/strict';
 import {tsImport} from 'tsx/esm/api';
 import {renderToStaticMarkup} from 'react-dom/server';
@@ -437,4 +440,33 @@ test('a favorites save that fails in Home edit mode shows its error in the edit 
   } finally { home.componentWillUnmount(); globalThis.requestAnimationFrame=previousFrame; if(previous===undefined)delete globalThis.document;else globalThis.document=previous; }
   const {readFileSync}=await import('node:fs');
   assert.match(readFileSync(new URL('../apps/app/src/prototype/template.html',import.meta.url),'utf8'),/<sc-if value="\{\{homeEdit\.error\}\}"><p role="alert"[^>]*>\{\{homeEdit\.error\}\}<\/p><\/sc-if>/);
+});
+
+
+test('returning Home starts at the first widget without resetting a later swipe', () => {
+  const previousDocument=globalThis.document,previousFrame=globalThis.requestAnimationFrame;
+  const frames=[],cards={scrollLeft:240};
+  globalThis.requestAnimationFrame=callback=>{frames.push(callback);return frames.length;};
+  globalThis.document=Object.assign(new EventTarget(),{hidden:false,querySelector:()=>cards});
+  const Shell=shellClass([]);
+  installHomeShell(Shell,{},{list:async()=>({apps:[]}),launch:async()=>{}});
+  const home=new Shell();home.renderVals();home.componentDidMount();
+  try {
+    frames.splice(0).forEach(callback=>callback());
+    assert.equal(cards.scrollLeft,0);
+    const handlers=home.renderVals().homeShell.props.cardsProps;
+    handlers.ref(cards);
+    cards.scrollLeft=280;
+    home.componentDidUpdate();
+    assert.equal(cards.scrollLeft,0,'late widget hydration keeps the initial card at the start');
+    handlers.onPointerDown();
+    cards.scrollLeft=280;
+    home.componentDidUpdate();
+    assert.equal(cards.scrollLeft,280,'normal updates keep the user swipe');
+    home.goHome();frames.splice(0).forEach(callback=>callback());
+    assert.equal(cards.scrollLeft,0);
+    home.state.view='notes';home.goHome();home.state.view='notes';cards.scrollLeft=120;
+    frames.splice(0).forEach(callback=>callback());
+    assert.equal(cards.scrollLeft,120,'a late Home frame cannot move a covered view');
+  } finally {home.componentWillUnmount();globalThis.document=previousDocument;globalThis.requestAnimationFrame=previousFrame;}
 });

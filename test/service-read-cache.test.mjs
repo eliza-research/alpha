@@ -81,3 +81,20 @@ test('bounded caching evicts the oldest pages and keeps recent pages when a body
   assert.equal(await cache.get('oversized'), null);
   assert.deepEqual(await store.read(), retained);
 });
+
+test('a guarded write rechecks the latest value after a concurrent update', async () => {
+  const f=fixture();
+  await f.cache.put('notes',{revision:1});
+  const save=f.store.compareExchange;
+  let raced=false;
+  f.store.compareExchange=async(before,next)=>{
+    if(!raced){
+      raced=true;
+      await save(before,{...before,entries:before.entries.map(entry=>entry.key==='notes'?{...entry,value:{revision:3}}:entry)});
+      return 'conflict';
+    }
+    return save(before,next);
+  };
+  await f.cache.put('notes',{revision:2},now,previous=>!previous||previous.revision<=2);
+  assert.deepEqual((await f.cache.get('notes')).value,{revision:3});
+});

@@ -17,7 +17,7 @@ test('Google settings offer no calendar choice, revalidate grants and own Androi
  Object.assign(globalThis,{window:dom.window,document:dom.window.document,HTMLElement:dom.window.HTMLElement,IS_REACT_ACT_ENVIRONMENT:true});
  const require=createRequire(import.meta.url),React=require('react'),{createRoot}=require('react-dom/client');
  const counts={accounts:0,calendars:0};const access={gmailChanges:true,calendarEdits:true},published=[],hostCalls=[];
- const account={connectionId:'11111111-1111-4111-8111-111111111111',connected:true,label:'owner@example.invalid',grantedCapabilities:['google.calendar.read','google.calendar.write','google.gmail.read','google.gmail.send']};
+ const account={connectionId:'11111111-1111-4111-8111-111111111111',connected:true,label:'owner@example.invalid',grantedCapabilities:['google.calendar.read','google.calendar.write','google.gmail.read','google.gmail.send','google.gmail.drafts','google.gmail.mailbox']};
  // Calendar is one merged view of the agent's feed: the panel never lists or reads Google calendars.
  const binding={client:{googleCalendars:async()=>{counts.calendars++;return [];}},sessionId:'fixture-session',credentialId:'fixture-credential'};
  const snapshot={cloudAccount:{environment:'production',userId:'22222222-2222-4222-8222-222222222222',organizationId:'33333333-3333-4333-8333-333333333333'}};
@@ -30,7 +30,7 @@ test('Google settings offer no calendar choice, revalidate grants and own Androi
   './gmail-background':{gmailBackgroundStatus:async()=>({}),gmailBackgroundMessage:()=>'',GMAIL_BACKGROUND_CHANGED:'alpha:test-gmail-background'},
   '../native':{isAndroid:true},
   './browser-cloud-resident':{browserCloudResidentEnabled:true,browserResidentCall:async(...call)=>{hostCalls.push(call);}},
-  './gmail-grants':{gmailGrantTier:()=> 'send',googleAccountAccessLabel:()=> 'Read and send access'},
+  './gmail-grants':{gmailGrantTier:account=>account.grantedCapabilities.includes('google.gmail.mailbox')?'modify':account.grantedCapabilities.includes('google.gmail.send')?'send':'read',googleAccountAccessLabel:()=> 'Read and send access'},
   './modal-inert':{holdPhoneInert:()=>()=>{}},
   './connection-ui':{connectionController:{subscribe:()=>()=>{},getSnapshot:()=>snapshot,getCloudClient:()=>binding,rejectCloudSession:()=>{throw Error('Unexpected rejection');}}},
   './google-accounts':{GOOGLE_ACCOUNTS_CHANGED:ACCOUNTS,createGoogleAccounts:()=>({list:async()=>{counts.accounts++;return [account];}}),linkGoogleCalendar:()=>{throw Error('Unexpected Calendar link without the Calendar intent');}},

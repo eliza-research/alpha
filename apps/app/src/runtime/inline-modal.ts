@@ -37,6 +37,7 @@ export function createInlineModal(close:()=>void,returnFocus?:()=>HTMLElement|nu
   const contain=()=>{if(ownsFocus()&&!dialog.contains(document.activeElement)&&!assistantTarget(document.activeElement))focus();};
   document.addEventListener('pointerdown',assistantPress,true);
   const isSheet=(dialog.style.bottom==='0px'||getComputedStyle(dialog).bottom==='0px')&&parseFloat(getComputedStyle(dialog).borderTopLeftRadius)>0;
+  dialog.toggleAttribute('data-alpha-bottom-sheet',isSheet);
   const grip=isSheet?dialog.firstElementChild as HTMLElement|null:null;
   const oldTouchAction=grip?.style.touchAction;
   if(grip)grip.style.touchAction='none';

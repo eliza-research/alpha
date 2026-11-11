@@ -1,3 +1,4 @@
+import {installContentLinks} from './prototype/content-links';
 import {installCalendarFormPresentation} from './prototype/calendar-form-presentation';
 import { externalVoiceInvocationEnabled } from './runtime/voice-entry-policy';
 // Register browser implementations before any runtime module claims plugin identity.
@@ -178,6 +179,7 @@ installSystemShade(Component,{native:isAndroid});
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
 installHomeCardVisibility(Component, () => googleConnectionController.open());
 installHomeOverviewCards(Component);
+installContentLinks(Component);
 installClockAdapter(Component, VIEWS, { simulated: testMocksEnabled && fixture, browser: !isAndroid });
 // Home and its app grid from the shared mobile shell, and Alpha's Apps drawer. Apps reads
 // ElizaSystem on Android; the browser device inventory remains available in test-mocks builds only.

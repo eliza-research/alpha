@@ -6,6 +6,10 @@ import type {VoiceStartupStage} from '../runtime/diagnostics-export';
 import {cloudServiceName} from '../runtime/cloud-protocol';
 import {browserNavigationSummary,collapseSystemNotices,projectActionMessages,workflowReplyText} from '../runtime/action-message-presentation';
 import {CanonicalNotesUi} from './canonical-notes-ui';
+import {NotesStartupCache,type NotesPreviewBinding} from '../runtime/notes-startup-cache';
+import {serviceReadCache,type ReadCacheOwner} from '../runtime/service-read-cache-store';
+import {cloudCredentialStore} from '../runtime/native-connection';
+import {browserCloudResidentEnabled,browserCloudResidentEnvironment} from '../runtime/browser-cloud-resident';
 import {openExistingBrowserNotes,openExistingDeviceNotes,LegacyNotesAbsent,LegacyNotesDraftOnly,browserPreviousNotesAvailability,devicePreviousNotesAvailability} from './legacy-notes-access';
 import {executeNamedCalendarRead,type NamedCalendarReadProvider} from '../../../../.eliza/client-features/plugins/plugin-calendar/src/client/named-read.ts';
 import {reconcileNotesEditor} from '../../../../.eliza/client-features/plugins/plugin-notes/src/client/notes-draft.ts';
@@ -524,6 +528,36 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   function canonicalNotesKey(port:ReturnType<typeof connectionController.getAppRecordClient>):string|null {
     return port?JSON.stringify([port.sessionId,port.scope??null,port.identity.ownerId,port.identity.agentId,port.identity.sessionId,port.identity.origin]):null;
   }
+  function notesPreviewScope(port:ReturnType<typeof connectionController.getAppRecordClient>):string|null {
+    return port?JSON.stringify([port.identity.origin,port.identity.ownerId,port.identity.agentId]):null;
+  }
+  function notesPreviewOwner(port=connectionController.getAppRecordClient()):ReadCacheOwner|null {
+    const account=connectionController.getSnapshot().cloudAccount;
+    if(account?.organizationId)return {environment:account.environment,userId:account.userId,organizationId:account.organizationId,credentialId:account.credentialId};
+    return port?.current()?{environment:'local',userId:port.identity.ownerId,organizationId:port.identity.agentId,credentialId:port.identity.origin}:null;
+  }
+  async function savedNotesPreviewOwner():Promise<ReadCacheOwner|null>{
+    const known=notesPreviewOwner();
+    if(known)return known;
+    const snapshot=connectionController.getSnapshot();
+    if(snapshot.residentSavedCredential===false||snapshot.errorKind==='sign-in-rejected'||snapshot.signOutNotice)return null;
+    const environment=browserCloudResidentEnabled?browserCloudResidentEnvironment:Capacitor.isNativePlatform()?'production':null;
+    if(environment!=='production'&&environment!=='staging')return null;
+    const credential=await cloudCredentialStore.read(environment);
+    if(!credential||credential.expiresAt!==undefined&&(!Number.isFinite(credential.expiresAt)||credential.expiresAt<=Date.now()))return null;
+    const owner={environment,userId:credential.userId,organizationId:credential.organizationId,credentialId:credential.credentialId};
+    return Object.values(owner).every(value=>typeof value==='string'&&value.length>0)?owner as ReadCacheOwner:null;
+  }
+  function notesPreviewCurrent(shell:Shell,binding:NotesPreviewBinding):boolean {
+    if(!shell.live||shell.notesSourceMode!=='canonical')return false;
+    const snapshot=connectionController.getSnapshot(),port=connectionController.getAppRecordClient();
+    const owner=notesPreviewOwner(port),scope=notesPreviewScope(port);
+    if(owner&&JSON.stringify(owner)!==JSON.stringify(binding.owner)||scope&&scope!==binding.scope)return false;
+    if(port?.current())return true;
+    if(snapshot.residentSavedCredential===false||snapshot.errorKind==='sign-in-rejected'||snapshot.signOutNotice)return false;
+    const session=snapshot.session;
+    return !session||JSON.stringify([session.origin,session.ownerId,session.agentId])===binding.scope;
+  }
   function syncCanonicalNotes(shell:Shell):void {
     if(!shell.live||shell.notesSourceMode==='legacy')return;
     const port=connectionController.getAppRecordClient(),key=canonicalNotesKey(port);
@@ -533,7 +567,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     if(!port){shell.notesReady=Promise.resolve();originalSet.call(shell,'notes',{list:[],open:null,trash:[],trashOpen:false,storageStatus:agentAvailabilityNotice(undefined,'Notes is unavailable for this agent connection. Check Settings › Agent connection.')});return;}
     let binding:CanonicalNotesUi;
     const paint=()=>{if(shell.live&&shell.canonicalNotesUi===binding)shell.setState({},()=>context(shell));};
-    binding=new CanonicalNotesUi(port,{paint,review:paint,committed:()=>paint(),dropped:title=>{if(shell.live)shell.toast(`Your unsaved edit to “${title}” was lost when the agent connection changed.`);}});
+    binding=new CanonicalNotesUi(port,{paint,review:paint,committed:()=>paint(),preview:()=>shell.notesStartupCache?.rows??[],remember:(rows,revision)=>{const owner=notesPreviewOwner(port),scope=notesPreviewScope(port);if(owner&&scope)shell.notesStartupCache?.remember({owner,scope},rows,revision);},dropped:title=>{if(shell.live)shell.toast(`Your unsaved edit to “${title}” was lost when the agent connection changed.`);}});
     shell.canonicalNotesUi=binding;
     shell.notesReady=binding.refresh().catch(()=>{if(shell.canonicalNotesUi===binding)paint();});
   }
@@ -684,6 +718,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     activeShell=this;this.notesSourceMode='canonical';this.notesSourceEpoch=0;this.notesStorageFailed=true;this.notesReady=Promise.resolve();this.notesOpenAbort=new AbortController();
     originalMount.call(this);
     this.live = true;
+    this.notesStartupCache=new NotesStartupCache({resolveOwner:savedNotesPreviewOwner,current:binding=>notesPreviewCurrent(this,binding),changed:()=>{if(this.live)this.setState({});}},serviceReadCache);
+    void this.notesStartupCache.restore();
     // An open shade never keeps a switch state Android may have changed while the owner was away.
     this.stopTileWatch = watchReturnToApp(() => { if (this.live && this.S().shade) this.refreshTileFacts(); });
     this.dialogBackObserver = new MutationObserver(() => updateBackAvailability(this));
@@ -747,7 +783,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         });
       }
       syncStoppedReplyNotice(this,session!==undefined&&history?.sessionId===session?history:null);
-      if (this.live) {syncCanonicalNotes(this);context(this);if(!draftBindingAfterPaint)this.refreshDraftBinding();}
+      if (this.live) {syncCanonicalNotes(this);void this.notesStartupCache?.restore();context(this);if(!draftBindingAfterPaint)this.refreshDraftBinding();}
     });
     // Canonical is the default; no legacy store/migration/cleanup is opened.
     syncCanonicalNotes(this);
@@ -1173,6 +1209,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
   };
   p.componentDidUpdate = function (prev: Shell) { originalUpdate.call(this, prev); const notesView=this.S().view==='notes';if(notesView&&!this.wasCanonicalNotesView&&this.notesSourceMode==='canonical')void this.canonicalNotesUi?.refresh().catch(()=>{});this.wasCanonicalNotesView=notesView; context(this); void connectionController.observeCommittedView(); sizeComposer();this.composerDraft?.edit(String(this.S().draft||''));const shade=!!this.S().shade;if(shade&&!this.shadeWasOpen)this.refreshTileFacts();this.shadeWasOpen=shade;const chatOpen=this.S().chat==='sheet'||this.S().chat==='full',drafting=!!String(this.S().draft||'').trim();if((chatOpen&&!this.chatWasOpen)||(drafting&&!this.wasDrafting))connectionController.warmInference();this.chatWasOpen=chatOpen;this.wasDrafting=drafting;const selected=this.messageReplyTarget||this.messageEditTarget;if(selected&&(JSON.stringify(selected.session)!==JSON.stringify(connectionController.getSnapshot().session)||!this.S().msgs.some((m:Shell)=>m.id===selected.messageId&&m.text===selected.text))){cancelMessageContext(this);this.setState({});} };
   p.componentWillUnmount = function () {
+    this.notesStartupCache?.retire();
     this.chatImageModal?.ref(null);
     const notes=this.canonicalNotesUi;this.canonicalNotesUi=null;notes?.retire();this.notesSourceEpoch=(this.notesSourceEpoch??0)+1;
     this.cancelReadReplyCompletions?.();

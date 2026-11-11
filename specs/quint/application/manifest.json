@@ -339,7 +339,9 @@
       "preferenceReadbackTest",
       "emptyWidgetsHiddenTest",
       "populatedWidgetsShownTest",
-      "disconnectedMailHiddenTest"
+      "disconnectedMailHiddenTest",
+      "returnHomeShowsFirstWidgetTest",
+      "widgetRefreshKeepsSwipeTest"
     ],
     "sources": [
       "apps/app/src/runtime/canvas-geometry.ts",
@@ -3655,6 +3657,130 @@
     "abstractions": [
       "One minute is a clock step, two account/provider scope classes and four reads. Server success and failure share settlement because neither changes the retry clock. An explicit owner action may cancel and lift the limit.",
       "Android connectivity/visibility events and real provider access remain external inputs. Existing controller and browser regressions cover actual request counts; no network performance or device acceptance is inferred."
+    ]
+  },
+  {
+    "path": "specs/quint/application/NotesStartupCache.qnt",
+    "module": "NotesStartupCache",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "restoresSavedRows",
+      "accountChangeHidesRows",
+      "agentChangeRejectsRead",
+      "retireRejectsRead",
+      "freshReadInvalidatesOlderRestore",
+      "delayedWriterCannotReplaceNewer"
+    ],
+    "sources": [
+      "apps/app/src/runtime/notes-startup-cache.ts",
+      "apps/app/src/prototype/agent-adapter.ts",
+      "apps/app/src/prototype/canonical-notes-ui.ts",
+      "apps/app/src/runtime/service-read-cache.ts"
+    ],
+    "abstractions": [
+      "Two accounts and agents, one pending local restore, three restore generations, and one saved list. Saved rows never grant mutation authority.",
+      "Account and agent checks represent the host binding callback. Real encrypted/IndexedDB persistence and live server authorization are separate. Implementation races are covered by test/notes-startup-cache.test.mjs and live preview reload checks.",
+      "Two stored revision values represent a delayed older tab and a newer committed cache write. The acceptance predicate is rechecked against each CAS read."
+    ]
+  },
+  {
+    "path": "specs/quint/application/MailComposerPresentation.qnt",
+    "module": "MailComposerPresentation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "closeNoKeepsDraft",
+      "closeYesDiscards",
+      "sendNoKeepsDraft",
+      "sendYesUsesReviewedDraft",
+      "editInvalidatesConfirmation",
+      "accountChangeInvalidatesConfirmation",
+      "concurrentShelfKeepsBoth"
+    ],
+    "sources": [
+      "apps/app/src/prototype/inbox-drafts.ts",
+      "apps/app/src/prototype/inbox-provider-controls.ts",
+      "apps/app/src/prototype/subview-accessibility.ts",
+      "apps/app/src/prototype/template.html",
+      "vendor/eliza/plugins/plugin-inbox/src/mailbox/drafts-controller.ts"
+    ],
+    "abstractions": [
+      "One composer, three content revisions, one send and two shelf entries. No and editing have no provider effect. An accepted send is bound to the reviewed content.",
+      "The underlying InboxCoordinator and InboxDelivery models retain durable receipt and account checks. Full browser and provider delivery are separate. Progress requires an owner choice and storage/provider replies; no unconditional liveness claim.",
+      "The concurrent shelf case abstracts append-only CAS merge. scripts/test-inbox-sent-cleanup.mjs exercises the actual prepared controller with two windows and preserves both saved bodies."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ContentLinks.qnt",
+    "module": "ContentLinks",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "currentLinkOpensBrowser",
+      "changedViewStaysVisible",
+      "replacedLinkCannotPresent"
+    ],
+    "sources": [
+      "apps/app/src/prototype/content-links.tsx",
+      "apps/app/src/prototype/browser-adapter.ts",
+      "apps/app/src/prototype/inbox-cloud-adapter.ts",
+      "apps/app/src/main.tsx",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "Two clicks and three views represent one current selected link. Late completion cannot replace a changed view.",
+      "The Browser adapter retains tab/session identity checks and URL admission. This UI model does not establish network availability, platform rendering or authentication."
+    ]
+  },
+  {
+    "path": "specs/quint/application/MailSelection.qnt",
+    "module": "MailSelection",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "distinctMessagesApplyOnce",
+      "unknownStopsLaterMessages",
+      "receiptRecoveryDoesNotResend",
+      "refusalStopsLaterMessages"
+    ],
+    "sources": [
+      "apps/app/src/runtime/mail-selection.ts",
+      "apps/app/src/prototype/inbox-cloud-adapter.ts",
+      "apps/app/src/prototype/template.html",
+      "vendor/eliza/plugins/plugin-inbox/src/mailbox/managed-gmail-client.ts",
+      "vendor/eliza/plugins/plugin-inbox/src/mailbox/types.ts"
+    ],
+    "abstractions": [
+      "Two selected message identities and one provider receipt in flight. Rejection or unknown outcome stops the remaining selection.",
+      "Actual account binding, storage compare-and-exchange and review digest checks remain owned by InboxOperation and InboxCoordinator. Model progress assumes an explicit approval, stable owner and successful provider replies."
+    ]
+  },
+  {
+    "path": "specs/quint/application/MailDraftSelection.qnt",
+    "module": "MailDraftSelection",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "selectedVersionRemoved",
+      "changedVersionRefused",
+      "concurrentChangeRefused",
+      "lostReplyResolvedWithoutReplay",
+      "retiredOwnerCannotWrite"
+    ],
+    "sources": [
+      "vendor/eliza/plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
+      "apps/app/src/prototype/inbox-cloud-adapter.ts",
+      "test/mail-draft-selection.test.mjs"
+    ],
+    "abstractions": [
+      "One selected saved version and one unrelated peer item in the existing account-bound shelf. No provider write is performed.",
+      "Controller tests execute existing local storage compare-and-exchange, rejection of changed selected content, peer-item preservation, retired binding and exact readback after a lost reply. Progress assumes a stable owner, unchanged selection and successful storage reads."
     ]
   }
 ]
