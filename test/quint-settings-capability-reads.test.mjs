@@ -33,7 +33,7 @@ function fixture() {
   const reads = [], limits = new Map(), fetches = [];
   let session = 1, armed = 0, fetched = 0, instance;
   const context = vm.createContext({AbortController, Promise, Error, Array,
-    externalVoiceInvocationEnabled: false, browserLocalAgentEnabled: false, listenerReads: {}, gmailGrantLabel: () => 'verified',
+    imageSenseAvailable: () => false, browserLocalAgentEnabled: false, listenerReads: {}, gmailGrantLabel: () => 'verified',
     connectionController: {getCloudClient: () => session === 0 ? null : {sessionId: session, client: {
       gmailAccounts: signal => new Promise((settle, fail) => reads.push({session, settle, fail, signal}))}}},
     setTimeout(run, delay) { assert.equal(delay, 10000); limits.set(++armed, run); return armed; },
