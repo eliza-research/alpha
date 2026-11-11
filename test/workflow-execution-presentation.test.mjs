@@ -159,3 +159,112 @@ test('automatic completion leaves a retained approval intent for explicit receip
   assert.equal(f.requests.filter(row=>row.body!==undefined).length,0);
  }finally{f.close();}
 });
+
+test('an older receipt discovers issued phone work read-only and still requires explicit Review',async()=>{
+ const timers=receiptTimers(),calls={notice:0,review:0};
+ const proposal={id:'private-proposal-id',title:'Save note',description:'Exact reviewed text',expiresAt:Date.now()+60_000};
+ let pending=[];
+ const f=await executionFixture({status:'waiting-approval',finished:false,device:true,version:'v1',poll:{timers},phone:{
+  notice:async(review)=>{calls.notice++;assert.equal(review.runId,f.run.id);assert.equal(review.versionId,'v1');return pending;},
+  review:async(review,context)=>{calls.review++;assert.equal(review.runId,f.run.id);assert.equal(context.selectedObject.revision,'v1');return [proposal];},
+ }});
+ try{
+  const initial=await f.openRun();
+  assert.equal(initial.phoneReviewAvailable,false);
+  timers.fire();
+  await settle(()=>timers.delay===4000);
+  assert.equal(f.render().r.phoneReviewAvailable,false,'a waiting run alone proves no issued proposal');
+  pending=[{id:proposal.id,expiresAt:proposal.expiresAt}];
+  timers.fire();
+  await settle(()=>f.render().r.phoneReviewAvailable);
+  assert.equal(f.render().r.phoneNotice,'Device action awaiting review');
+  assert.equal(f.render().r.phoneSteps.length,0);
+  assert.deepEqual(calls,{notice:2,review:0});
+  assert.equal(f.requests.filter(row=>row.path.endsWith('/phone-review')).length,2);
+  assert.equal(f.requests.filter(row=>row.body!==undefined).length,0);
+  pending=[];
+  timers.fire();
+  await settle(()=>!f.render().r.phoneReviewAvailable);
+  assert.equal(f.render().r.phoneNotice,'');
+  pending=[{id:proposal.id,expiresAt:proposal.expiresAt}];
+  timers.fire();
+  await settle(()=>f.render().r.phoneReviewAvailable);
+  f.render().r.phoneReview();
+  await settle(()=>!f.render().r.phoneBusy&&f.render().r.phoneSteps.length===1);
+  assert.equal(calls.review,1);
+  assert.equal(f.render().r.phoneSteps[0].description,proposal.description);
+  f.render().r.phoneSteps[0].approve();
+  assert.equal(f.render().r.phoneSteps[0].approveLabel,'Confirm approve');
+  assert.equal(f.requests.filter(row=>row.body!==undefined).length,0);
+ }finally{f.close();}
+});
+
+test('a mismatched phone review and retired context or owner cannot publish a pending hint',async()=>{
+ const timers=receiptTimers();
+ let release,signal,noticeReads=0;
+ const phone={reviewWire:{versionId:'other-version'},notice:(_review,readSignal)=>{
+  noticeReads++;signal=readSignal;
+  return new Promise(resolve=>{release=()=>resolve([{id:'held',expiresAt:Date.now()+60_000}]);});
+ }};
+ const f=await executionFixture({status:'waiting-approval',finished:false,device:true,version:'v1',poll:{timers},phone});
+ try{
+  await f.openRun();
+  timers.fire();
+  await settle(()=>timers.delay===4000);
+  assert.equal(noticeReads,0,'wrong pinned version is refused before reading proposals');
+  delete phone.reviewWire.versionId;
+  timers.fire();
+  await settle(()=>release);
+  f.selectRun({timeZone:'UTC'});
+  release();
+  await settle(()=>timers.delay===5000);
+  assert.equal(f.render().r.phoneReviewAvailable,false);
+  assert.equal(f.render().r.phoneNotice,'');
+  release=undefined;
+  timers.fire();
+  await settle(()=>release);
+  f.changeSession();
+  assert.equal(signal.aborted,true);
+  release();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.render().runOpen,false);
+  assert.equal(timers.delay,undefined);
+  assert.equal(f.requests.filter(row=>row.body!==undefined).length,0);
+ }finally{f.close();}
+});
+
+test('an admitted discovery retires when the exact context revision or device target changes',async()=>{
+ const timers=receiptTimers();
+ const pending=[{id:'existing',expiresAt:Date.now()+60_000}];
+ let fail=false,noticeReads=0;
+ const phone={notice:async()=>{noticeReads++;if(fail)throw Error('Temporary proposal read failure');return pending;}};
+ const f=await executionFixture({status:'waiting-approval',finished:false,device:true,version:'v1',poll:{timers},phone});
+ try{
+  await f.openRun();
+  timers.fire();
+  await settle(()=>f.render().r.phoneReviewAvailable);
+  fail=true;
+  timers.fire();
+  await settle(()=>timers.delay===4000);
+  assert.equal(f.render().r.phoneNotice,'Device action awaiting review');
+  f.selectRun({timeZone:'UTC'});
+  assert.equal(f.render().r.phoneReviewAvailable,false);
+  assert.equal(f.render().r.phoneSyncAvailable,false);
+  timers.fire();
+  await settle(()=>timers.delay===2000);
+  assert.equal(f.render().r.phoneNotice,'');
+  fail=false;
+  timers.fire();
+  await settle(()=>f.render().r.phoneReviewAvailable);
+  phone.target={...f.flow.phoneSpec.device,enrollmentId:'retired-enrollment'};
+  assert.equal(f.render().r.phoneReviewAvailable,false);
+  assert.equal(f.render().r.phoneSyncAvailable,false);
+  const previousReads=noticeReads;
+  phone.target=null;
+  timers.fire();
+  await settle(()=>timers.delay!==undefined);
+  assert.equal(noticeReads,previousReads);
+  assert.equal(f.render().r.phoneNotice,'');
+  assert.equal(f.requests.filter(row=>row.body!==undefined).length,0);
+ }finally{f.close();}
+});
