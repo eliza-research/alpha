@@ -1,4 +1,3 @@
-import {CalendarApprovalClient} from '../apps/app/src/runtime/calendar-approval-client.ts';
 import {startLoopback, stopLoopback} from './fixtures/loopback.ts';
 import {validateUuid} from '../vendor/eliza/packages/core/src/utils/uuid.ts';
 import {isCalendarReadFailureCode} from '../.eliza/client-features/packages/contracts/src/calendar.ts';

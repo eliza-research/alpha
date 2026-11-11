@@ -13,9 +13,6 @@ const expect = baseExpect.configure({timeout: 30000});
 const panel = page => page.locator('.alpha-cloud-sign-in');
 const button = (page, name) => panel(page).getByRole('button', {name, exact: true});
 const address = 'synthetic-signin@example.invalid';
-// One field takes an email address or a phone number; six boxes mirror one real code field.
-const contact = page => panel(page).getByRole('textbox', {name: 'Email or phone', exact: true});
-const codeField = page => panel(page).getByRole('textbox', {name: 'Code', exact: true});
 const action = (name, ...args) => ({name, args});
 const model = 'SignIn';
 const state = page => page.evaluate(() => {
@@ -27,8 +24,8 @@ const state = page => page.evaluate(() => {
 
 async function chooser(page, google) {
   await expect(panel(page).getByRole('heading', {name: 'Alpha', exact: true})).toBeVisible();
-  await expect(panel(page).getByRole('form', {name: 'Sign in with email or phone', exact: true})).toBeVisible();
-  await expect(contact(page)).toBeVisible();
+  await expect(panel(page).getByRole('textbox', {name: 'Email or phone', exact: true})).toBeVisible();
+  await expect(panel(page).getByRole('form',{name:'Sign in with email or phone',exact:true})).toBeVisible();
   if (google) await expect(button(page, 'Continue with Google')).toBeVisible();
   else await expect(button(page, 'Continue with Google')).toHaveCount(0);
   const enabled = ['email', 'phone'];
@@ -41,7 +38,7 @@ async function chooser(page, google) {
 }
 
 async function emailCode(page, record) {
-  await contact(page).fill(address);
+  await panel(page).getByRole('textbox', {name: 'Email or phone', exact: true}).fill(address);
   await button(page, 'Send code').click();
   await expect(panel(page).getByRole('form', {name: 'Enter your email code'})).toBeVisible();
   const offered = await state(page);
@@ -49,15 +46,15 @@ async function emailCode(page, record) {
   assert.equal(offered.calls.filter(call => call.method === 'startEmail').at(-1)?.email, address);
   record('Mounted email form accepts the exact challenge', action('EnterAddress', 'email'),
     {'s.screen': 'Code', 's.method': 'email', 's.cred': offered.saved ? 'valid' : 'none'});
-  await codeField(page).fill('000000');
+  await panel(page).getByRole('textbox', {name:'Code', exact:true}).fill('000000');
   await button(page, 'Verify').click();
   await expect(panel(page).getByRole('alert')).toContainText('Wrong code');
-  await expect(codeField(page)).toBeFocused();
+  await expect(panel(page).getByRole('textbox', {name:'Code', exact:true})).toBeFocused();
   const rejected = await state(page);
   assert.equal(rejected.step, 'code');
   record('Wrong code keeps the mounted challenge and stores no sign-in', action('WrongCode'),
     {'s.screen': 'Code', 's.cred': rejected.saved ? 'valid' : 'none'});
-  await codeField(page).fill('123 456');
+  await panel(page).getByRole('textbox', {name:'Code', exact:true}).fill('123 456');
   await button(page, 'Verify').click();
   await expect.poll(async () => {
     const value = await state(page);
@@ -71,7 +68,7 @@ async function emailCode(page, record) {
 }
 
 async function phoneBack(page, record) {
-  await contact(page).fill('+12025550101');
+  await panel(page).getByRole('textbox',{name:'Email or phone',exact:true}).fill('+12025550101');
   await button(page, 'Send code').click();
   await expect(panel(page).getByRole('form', {name: 'Enter your phone code'})).toBeVisible();
   const offered = await state(page);
@@ -81,7 +78,7 @@ async function phoneBack(page, record) {
     {'s.screen': 'Code', 's.method': 'phone'});
   await button(page, 'Back').click();
   await expect(panel(page).getByRole('heading', {name: 'Alpha', exact: true})).toBeVisible();
-  await expect(codeField(page)).toHaveCount(0);
+  await expect(panel(page).getByRole('textbox', {name:'Code', exact:true})).toHaveCount(0);
   const retired = await state(page);
   assert.equal(retired.step, 'choose');
   record('Back returns to the chooser and leaves the challenge unverified', action('Back'),

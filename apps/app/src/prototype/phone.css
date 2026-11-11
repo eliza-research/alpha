@@ -505,7 +505,7 @@ html:not(.alpha-landscape) [data-alpha-maps-guidance="true"] > [data-alpha-maps-
 .alpha-landscape [data-alpha-maps-guidance-controls] > div > .serif { font-size:24px!important; overflow-wrap:anywhere; }
 .alpha-landscape [data-alpha-maps-guidance="true"] > .alpha-map-credits:has(details[open]) { z-index:6; }
 .alpha-landscape [data-alpha-maps-guidance="true"] .alpha-map-info {
-  top:auto; left:0; bottom:calc(100% + 8px); width:min(300px,calc(100vw - 92px)); max-height:160px;
+  top:calc(100% + 8px); left:0; bottom:auto; width:min(300px,calc(100vw - 92px)); max-height:160px;
   box-sizing:border-box; overflow:auto;
 }
 
