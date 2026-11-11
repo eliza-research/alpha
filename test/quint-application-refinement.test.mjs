@@ -6,7 +6,9 @@ import {collectApplicationCampaigns, runApplicationRefinement} from '../specs/qu
 // The complete campaign exceeded the former 40-minute ceiling on the build VM.
 // Preserve every component bound and use the same two-hour ceiling as archive verification.
 test('application source observations match bounded Quint component traces', {timeout: 7200000}, async () => {
-  const result = await runApplicationRefinement();
+  const result = await runApplicationRefinement(({receipts, failures}) => {
+    console.log('Application refinement:', receipts.length, 'completed,', failures.length, 'failed;', receipts.at(-1)?.coverageModel || 'starting');
+  });
   assert.deepEqual(result.failures, [], result.failures.map(({campaign, error}) => `${campaign}: ${error}`).join('\n'));
   const manifest = JSON.parse(readFileSync(new URL('../specs/quint/application/manifest.json', import.meta.url)));
   const declared = new Set(manifest.map(model => model.module));
