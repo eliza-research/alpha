@@ -28,9 +28,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.verify == 'true'
     runs-on: ubuntu-24.04
-    # The measured clean run takes about 95 minutes, including SDK bootstrap and
-    # all source refinements. Keep every check and allow the complete run to finish.
-    timeout-minutes: 120
+    # Clean runs measured 70-115 minutes on main (Nov 2026), including SDK bootstrap and
+    # all source refinements; a loaded runner exceeded 120. Keep every check and allow
+    # the complete run to finish.
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -109,7 +110,9 @@ jobs:
     needs: changes
     if: needs.changes.outputs.verify == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    # A change to shared app sources selects every model that observes them; let the
+    # whole selection finish instead of cancelling unchecked models.
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
