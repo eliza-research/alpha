@@ -2,18 +2,25 @@
   "schema": 1,
   "repository": "elizaOS/eliza",
   "base": "develop",
-  "baseCommit": "4c961d022ea97da4662bfb4d52cf30a797c67d7c",
-  "head": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
+  "baseCommit": "87d6776178822a2d168c25ba733efb8eb70fa8a3",
+  "head": "e488e54bd13d685e7e40e1619f6dd9231ddbecbe",
   "recordedAt": "2026-11-11",
-  "command": "gh api repos/elizaOS/eliza/compare/develop...0c8d6868ae05a6100a3ed0246a5d078e783cc802",
-  "status": "behind",
-  "aheadBy": 0,
-  "behindBy": 66,
+  "command": "gh api repos/elizaOS/eliza/compare/develop...e488e54bd13d685e7e40e1619f6dd9231ddbecbe",
+  "status": "diverged",
+  "aheadBy": 1,
+  "behindBy": 71,
   "mergeBase": "0c8d6868ae05a6100a3ed0246a5d078e783cc802",
-  "pinOnlyCommits": [],
+  "pinOnlyCommits": [
+    {
+      "sha": "e488e54bd13d685e7e40e1619f6dd9231ddbecbe",
+      "subject": "fix(calendar): preserve selected reads across provider precision"
+    }
+  ],
   "pullRequests": [
     "https://github.com/elizaOS/eliza/pull/39196",
     "https://github.com/elizaOS/eliza/pull/39247",
-    "https://github.com/elizaOS/eliza/pull/39248"
-  ]
+    "https://github.com/elizaOS/eliza/pull/39248",
+    "https://github.com/elizaOS/eliza/pull/39294"
+  ],
+  "pendingPullRequest": "https://github.com/elizaOS/eliza/pull/39294"
 }
