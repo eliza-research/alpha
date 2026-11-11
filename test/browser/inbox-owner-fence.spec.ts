@@ -1,6 +1,8 @@
 import {test,expect} from '@playwright/test';
 for(const mode of ['read-switch','same-owner','clear-delete','clear-receipt'] as const)test(`Gmail owner fence ${mode}`,async({page})=>{
  const switching=mode!=='same-owner', clearing=mode.startsWith('clear');
+ // Isolate mailbox ownership from the separately tested access walkthrough; this records UI progress only.
+ await page.addInitScript(()=>localStorage.setItem('alpha:startup-permission-walkthrough:v1',JSON.stringify({version:1,status:'completed',step:4,choices:['skipped','skipped','skipped','skipped']})));
  await page.goto('/');
  await page.evaluate(async()=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');const {inboxLocalStore:s}=await import('/src/runtime/inbox-local-store.ts');

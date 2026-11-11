@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
+import {createOwnNoticeRevisions} from '../apps/app/src/prototype/context-selection';
 import {readFile} from 'node:fs/promises';
 import {stripTypeScriptTypes} from '../test/support/strip-types.mjs';
 const read=(path: string)=>readFile(new URL('../'+path,import.meta.url),'utf8');
@@ -65,7 +66,7 @@ function fixture({admitted=new Set(['calendar','notes','workflows'])}: {admitted
   componentDidMount() {}
   componentWillUnmount() {}
  }
- const sandbox={Component,alphaClient:{getState:()=>({context:navigation})},connectionController:controller,registerPlugin:()=>native,Capacitor:{isNativePlatform:()=>true},queueMicrotask,window:{addEventListener(){},removeEventListener(){},setInterval:()=>1,clearInterval(){}},document:{hidden:false,addEventListener(){},removeEventListener(){}},reviewContentQuestion(){},sensitiveReadingText:()=>false,noticeCurrent:()=>true,noticeExcerpt:()=>'',noticeReviewable:()=>true,isMvpView:(view: string)=>admitted.has(view)};
+ const sandbox={Component,createOwnNoticeRevisions,alphaClient:{getState:()=>({context:navigation})},connectionController:controller,registerPlugin:()=>native,Capacitor:{isNativePlatform:()=>true},queueMicrotask,window:{addEventListener(){},removeEventListener(){},setInterval:()=>1,clearInterval(){}},document:{hidden:false,addEventListener(){},removeEventListener(){}},reviewContentQuestion(){},sensitiveReadingText:()=>false,noticeCurrent:()=>true,noticeExcerpt:()=>'',noticeReviewable:()=>true,isMvpView:(view: string)=>admitted.has(view)};
  vm.runInNewContext(stripTypeScriptTypes(source+'\ninstallCanonicalNotificationTaps(Component);',{mode:'transform'}),sandbox);
  const shell=new Component();shell.componentDidMount();
  return {

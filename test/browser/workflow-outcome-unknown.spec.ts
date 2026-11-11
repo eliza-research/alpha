@@ -67,10 +67,10 @@ test('side-effecting workflow: interrupted run is shown as outcome unknown, neve
  expect(await posts(page,'/run')).toBe(0);expect(await posts(page,'/cancel')).toBe(0);
  await page.getByRole('button',{name:'Back to Save agenda note',exact:true}).click();
  // Removal: upstream refuses while the run is unfinished, so the explicit acknowledgement is a confirmed cancellation.
- await page.getByRole('button',{name:'Remove workflow',exact:true}).click();await expect(page.getByText('1 interrupted',{exact:true})).toBeVisible();expect(await posts(page,'/cancel')).toBe(0);
+ await page.getByRole('button',{name:'Remove workflow',exact:true}).click();await expect(page.getByText('1 interrupted. Completed actions stay.',{exact:true})).toBeVisible();expect(await posts(page,'/cancel')).toBe(0);
  await page.getByRole('button',{name:'Cancel runs',exact:true}).click();await expect.poll(()=>posts(page,'/cancel')).toBe(1);await expect(page.getByText(/Interrupted runs cancelled; their earlier outcome remains unknown/).first()).toBeVisible();
  await expect(page.getByRole('button',{name:'cancelled · after an interrupted, unknown outcome execution',exact:true})).toBeVisible();expect(await posts(page,'/lifecycle')).toBe(0);
- await page.getByRole('button',{name:'Remove workflow',exact:true}).click();await expect(page.getByText('Remove?',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Remove workflow',exact:true}).click();await expect(page.getByText('Keeps history; stops future runs.',{exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Remove',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Cancel',exact:true})).toBeVisible();expect(await posts(page,'/lifecycle')).toBe(0);
  await page.getByRole('button',{name:'Remove',exact:true}).click();await expect.poll(()=>posts(page,'/lifecycle')).toBe(1);expect(await posts(page,'/run')).toBe(0);
 });
 

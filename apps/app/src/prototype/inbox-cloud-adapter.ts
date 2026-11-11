@@ -303,12 +303,25 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     if(!api?.isActive())return;
     const pending=homeLoad;if(pending){if(!restored){status='Checking…';publish();}await pending.task;restored=restored&&cachedListShown&&!!selected&&readable().some(account=>account.connectionId===selected);}
     if(!api?.isActive())return;
-    const binding=connectionController.getCloudClient(),preview=homePreview;
-    if(binding&&preview&&preview.owner===homeSummaryOwner()&&preview.sessionId===binding.sessionId&&preview.key===gmailReadCacheKey(binding.sessionId,accounts.find(a=>a.connectionId===preview.accountId))&&!accountsFromDisk&&currentQuery()==='in:inbox'&&Date.now()-(preview.readAt??0)<60000){
-      selected=preview.accountId;
-      if(restoreList()){phase='ready';saveGmailAccountChoice(connectionController.getSnapshot().cloudAccount,selected);watchSelectedMail();publish();void provider.bind(selected);void drafts.bind(selected,preview.label);return;}
+    const consumeHomePage=()=>{
+      const binding=connectionController.getCloudClient(),preview=homePreview,allowed=readable(),hint=readGmailAccountChoice(connectionController.getSnapshot().cloudAccount);
+      const chosen=hint?allowed.find(account=>account.connectionId===hint):allowed.length===1?allowed[0]:undefined;
+      if(binding&&preview&&chosen?.connectionId===preview.accountId&&(!selected||selected===preview.accountId)&&preview.owner===homeSummaryOwner()&&preview.sessionId===binding.sessionId&&preview.key===gmailReadCacheKey(binding.sessionId,accounts.find(a=>a.connectionId===preview.accountId))&&!accountsFromDisk&&currentQuery()==='in:inbox'&&Date.now()-(preview.readAt??0)<60000){
+        const previous=selected;selected=preview.accountId;
+        if(restoreList()){phase='ready';saveGmailAccountChoice(connectionController.getSnapshot().cloudAccount,selected);watchSelectedMail();publish();void provider.bind(selected);void drafts.bind(selected,preview.label);return true;}
+        selected=previous;
+      }
+      return false;
+    };
+    if(consumeHomePage())return;
+    if(!api?.isActive())return;if(!restored)phase='ready';
+    if(!restored||accountsFromDisk||Date.now()-listReadAt>=60000){
+      const checking=refreshAccounts(restored),checkedGeneration=generation;
+      await checking;
+      // Disk restoration still needs a current grant check. Its accepted Home page becomes
+      // visible only after that check, while this same mailbox operation still owns the view.
+      if(api?.isActive()&&generation===checkedGeneration)consumeHomePage();
     }
-    if(!api?.isActive())return;if(!restored)phase='ready';if(!restored||accountsFromDisk||Date.now()-listReadAt>=60000)await refreshAccounts(restored);
   }
 
   function rememberList(){if(operation||failure)return;if(folderLists.remember({key:listKey(),at:listReadAt,firstPageRevision,messages,query:loadedQuery,cursor:nextPageToken,revision,cursors:[...seenCursors],newerMail,status}))persistMailbox();}
@@ -447,7 +460,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
         finally{signal.removeEventListener('abort',abort);}
       });
       const result = await client.gmailAccounts(signal);
-      if (!valid()) return;
+      if (!valid()||hint!==readGmailAccountChoice(connectionController.getSnapshot().cloudAccount)) return;
       const previous=selected,before={sessionId:accountsSession||null,account:accounts.find(a=>a.connectionId===previous)};accounts = result; accountsChecked = true; accountsFromDisk = false; accountsSession = binding.sessionId;
       // P-37: a withdrawn change grant discards the unsent review prepared under it (nothing is
       // dispatched); a changed read-cache identity (session, connection or read grant) drops the mail read under it.

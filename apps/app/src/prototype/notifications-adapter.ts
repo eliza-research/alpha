@@ -4,14 +4,16 @@ import { registerPlugin } from '../platform-plugins';
 import { Capacitor } from '@capacitor/core';
 import { reviewContentQuestion } from '../browser/content-question';
 import { sensitiveReadingText } from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/page-reading.ts';
-import { noticeCurrent, noticeExcerpt, noticeReviewable } from './context-selection';
+import { createOwnNoticeRevisions, noticeKind, noticeCurrent, noticeExcerpt, noticeReviewable } from './context-selection';
 import { isMvpView } from './mvp-features';
 import { formatTime } from './locale-time';
 const opaque=/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
+const ownNoticeRevisions=createOwnNoticeRevisions();
 /** Agent-context identity for one of Alpha Phone's own notifications. Other apps' and
  * hosted rows are never selectable; titles and text stay on the phone. */
-export function ownNotificationSelection(notice:{id:string;revision:string;source:string}){
- return notice.source==='own'&&opaque.test(notice.id)&&opaque.test(notice.revision)?{kind:'notification',id:notice.id,revision:notice.revision,accountId:'own'}:undefined;
+export function ownNotificationSelection(notice:{id:string;revision:string;source:string;kind?:string}){
+ const revision=notice.source==='own'&&opaque.test(notice.id)?ownNoticeRevisions(notice):undefined;
+ return revision===undefined?undefined:{kind:'notification',id:notice.id,revision,accountId:'own'};
 }
 type Notice = { id: string; revision:string; source:'own'|'external'|'hosted'; kind?:string; appLabel:string; title: string; text: string; at: number; clearable: boolean; canOpen: boolean };
 const native = registerPlugin<{canonicalPending():Promise<{token?:string;ownerId?:string;agentId?:string;notificationId?:string;view?:string;conversationId?:string;messageId?:string}>;acknowledgeCanonical(options:{token:string}):Promise<{ok:boolean}>;addListener(name:'canonicalNotificationTap',listener:()=>void):Promise<{remove():Promise<void>}>;list(): Promise<{items: Notice[]; scope: string; calendarStatus?:string}>;open(options:{id:string;revision:string;source:string}):Promise<void>;dismiss(options:{id:string;revision:string;source:string}):Promise<void>;clear(options:{items:Array<{id:string;revision:string;source:string}>}):Promise<{outcomes:Array<{status:string}>}>}>('AlphaNotifications');
@@ -131,7 +133,7 @@ export function installNotificationsAdapter(Component: any) {
   this.alphaNoticesBusy=true;
   const visit=this.alphaNoticeVisit;
   const current=()=>active(this)&&this.alphaNoticeVisit===visit;
-  try{const result=await native.list();if(!current())return;if(result.calendarStatus==='unavailable'){if(!this.alphaCalendarAlertError)this.toast('Alerts didn’t load');this.alphaCalendarAlertError=true;}else this.alphaCalendarAlertError=false;const next=result.items;const chosen=this.alphaNoticeSelection;if(chosen&&!next.some((n:Notice)=>n.id===chosen.id&&n.revision===chosen.revision&&n.source==='own'))this.alphaNoticeSelection=undefined;if(JSON.stringify(next)!==JSON.stringify(this.alphaNotices)){this.alphaNotices=next;this.setState({nativeNoticeRevision:Date.now()});}this.alphaNoticeError=false;}
+  try{const result=await native.list();if(!current())return;if(result.calendarStatus==='unavailable'){if(!this.alphaCalendarAlertError)this.toast('Alerts didn’t load');this.alphaCalendarAlertError=true;}else this.alphaCalendarAlertError=false;const next=result.items;const chosen=this.alphaNoticeSelection;if(chosen&&!next.some((n:Notice)=>n.id===chosen.id&&n.revision===chosen.revision&&n.source==='own'&&noticeKind(n)===noticeKind(chosen)))this.alphaNoticeSelection=undefined;if(JSON.stringify(next)!==JSON.stringify(this.alphaNotices)){this.alphaNotices=next;this.setState({nativeNoticeRevision:Date.now()});}this.alphaNoticeError=false;}
   catch{if(current()&&!this.alphaNoticeError){this.alphaNoticeError=true;this.alphaNotices=[];this.alphaNoticeSelection=undefined;this.setState({nativeNoticeRevision:Date.now()});this.toast('Unavailable');}}
   finally{this.alphaNoticesBusy=false;}
  };
@@ -140,7 +142,7 @@ export function installNotificationsAdapter(Component: any) {
   * notification (or drops a replaced one) instead of waiting for an unrelated render. */
  p.publishAlphaNoticeSelection=function(){if(!active(this)||JSON.stringify(this.alphaNoticeSelection??null)===this.alphaNoticeSelectionRendered)return;this.setState({nativeNoticeRevision:Date.now()});};
  /** The own notification the owner last pressed while the shade is open, for agent context. */
- p.notificationSelection=function(){if(!active(this)){this.alphaNoticeSelection=undefined;return undefined;}const chosen=this.alphaNoticeSelection;return chosen?{...chosen}:undefined;};
+ p.notificationSelection=function(){if(!active(this)){this.alphaNoticeSelection=undefined;return undefined;}const chosen=this.alphaNoticeSelection;return chosen?ownNotificationSelection(chosen):undefined;};
  p.renderVals=function(){
   const out=render.call(this),self=this;
   // A press from an earlier shade session never becomes context for a later one.
@@ -166,7 +168,7 @@ export function installNotificationsAdapter(Component: any) {
     if(row.clearable)void action(()=>native.dismiss(target));
     else this.toast('Ongoing');
    },{axis:'x'});
-   const select=()=>{this.alphaNoticeSelection=ownNotificationSelection(n);};
+   const select=()=>{this.alphaNoticeSelection=ownNotificationSelection(n)?{id:n.id,revision:n.revision,source:n.source,...(n.kind===undefined?{}:{kind:n.kind})}:undefined;};
    /** Review scope: this one Alpha Phone notification's shown title and text, editable before
     * anything reaches the conversation draft. Other apps' and hosted rows offer no question.
     * The list is read again when the owner continues, so a dismissed, replaced or updated
@@ -191,7 +193,7 @@ export function installNotificationsAdapter(Component: any) {
       const epoch=self.alphaNoticeEpoch;
       const fresh=(await native.list()).items,same=fresh.find((row:Notice)=>row.id===reviewed.id&&row.source===reviewed.source);
       if(!owned())return;
-      if(epoch!==self.alphaNoticeEpoch||!live()||!noticeCurrent(reviewed,fresh)||!same||noticeExcerpt(same)!==excerpt){refused();return;}
+      if(epoch!==self.alphaNoticeEpoch||!live()||!noticeCurrent(reviewed,fresh)||!same||!noticeReviewable(same)||noticeKind(same)!==noticeKind(n)||noticeExcerpt(same)!==excerpt){refused();return;}
       self.api(self.S().view).composeContentQuestion(draft);
      }catch{if(owned()&&self.alphaNoticesLive)self.toast('Couldn’t check');}
      finally{if(owned())retireQuestion(self);}

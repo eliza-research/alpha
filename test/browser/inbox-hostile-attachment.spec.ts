@@ -106,10 +106,11 @@ test(`${label} is never rendered: the review is inert text, Save to Files keeps 
  await page.getByText(name,{exact:true}).click();
  // The review names the file, its hash, type and size, and shows none of its content.
  await expect(review(page).getByRole('heading',{name,exact:true})).toBeVisible();
- const hash=review(page).getByText(`SHA-256 ${sha(bytes)}`,{exact:true});
- await expect(hash).not.toBeVisible();
- await review(page).getByText('File details',{exact:true}).click();
- await expect(hash).toBeVisible();
+ const details=review(page).locator('details');
+ await expect(details).toHaveJSProperty('open',false);
+ await details.getByText('Details',{exact:true}).click();
+ await expect(details).toHaveJSProperty('open',true);
+ await expect(details).toContainText(`SHA-256 ${sha(bytes)}`);
  await expect(review(page)).toContainText('No preview');
  await expect(review(page)).not.toContainText('Invoice');
  await expect(review(page).getByRole('button',{name:'Open file',exact:true})).toHaveCount(0);
@@ -247,10 +248,11 @@ test('a PNG-and-HTML polyglot is previewed only as a sandboxed image, and URL-li
  ]);
  await page.getByText('photo.png',{exact:true}).click();
  await expect(review(page).getByRole('heading',{name:'photo.png',exact:true})).toBeVisible();
- const hash=review(page).getByText(`SHA-256 ${sha(polyglot)}`,{exact:true});
- await expect(hash).not.toBeVisible();
- await review(page).getByText('File details',{exact:true}).click();
- await expect(hash).toBeVisible();
+ const details=review(page).locator('details');
+ await expect(details).toHaveJSProperty('open',false);
+ await details.getByText('Details',{exact:true}).click();
+ await expect(details).toHaveJSProperty('open',true);
+ await expect(details).toContainText(`SHA-256 ${sha(polyglot)}`);
  await expect(review(page)).not.toContainText('Invoice');
  await review(page).getByRole('button',{name:'Open file',exact:true}).click();
  const opened=page.getByRole('dialog',{name:'Reviewed attachment'});
