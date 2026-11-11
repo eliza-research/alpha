@@ -758,6 +758,7 @@ public final class AlphaDevicePlugin extends Plugin {
   final String status,manifest;
   UpdateOfferUnavailable(String status,String manifest){this.status=status;this.manifest=manifest;}
  }
+ private static final class UpdateInstallPermissionRequired extends java.io.IOException {}
  private static boolean manifestNumberEquals(Object value,long expected){
   return value instanceof Number&&((Number)value).doubleValue()==expected;
  }
@@ -929,6 +930,7 @@ public final class AlphaDevicePlugin extends Plugin {
         requireCurrentUpdateOffer(manifestSha256,apkUrl,sha256,size,versionCode,signer);
         throwIfDestroyed();
         if(!automaticUpdateReady()){keepApk=true;throw new java.io.IOException("Automatic update deferred");}
+        if(!getContext().getPackageManager().canRequestPackageInstalls())throw new UpdateInstallPermissionRequired();
        }
        UpdatePause.committing(preparation.id);
        android.content.IntentSender status=AlphaUpdateStatusReceiver.sender(getContext(),preparation.id,id);
@@ -967,6 +969,7 @@ public final class AlphaDevicePlugin extends Plugin {
     if(unavailable.manifest!=null)result.put("manifest",unavailable.manifest);
     call.resolve(result);
    }
+   catch(UpdateInstallPermissionRequired revoked){call.resolve(new JSObject().put("status","permission-required"));}
    catch(Exception unavailable){call.reject("Update unavailable");}
   },()->call.reject("Update unavailable"));
  }
