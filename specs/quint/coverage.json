@@ -14496,12 +14496,13 @@
         "ShadeNoticeQuestionAdmission",
         "AppearancePreferenceAdmission",
         "WorkflowClockAdmission",
-        "NotesTrashReadPublication"
+        "NotesTrashReadPublication",
+        "ContentLinks"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "59ca7a5719de497531455f8da3ab700dac831f1888b533262a56b006030917f6",
+      "sha256": "6a686ca13615412d551744d12ae69a4f81ea9a61d522e26e59b59bf254d44dde",
       "stateAnchors": [
         {
           "line": 92,
@@ -17594,12 +17595,13 @@
       "models": [
         "BrowserSession",
         "BrowserUnderlay",
-        "BrowserExternalHandoff"
+        "BrowserExternalHandoff",
+        "ContentLinks"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
       "reviewStatus": "state-audit-required",
-      "sha256": "e0f14dbf070ec814130e49729ddd82cb3a41b8454608a06128799dc479a40e04",
+      "sha256": "158001326677a65ad70df46e4c4bbe94f8506c455d0d744d2b14b4280f5bb663",
       "stateAnchors": [
         {
           "line": 19,
@@ -22859,12 +22861,13 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-cloud-adapter.ts",
-      "sha256": "70bc73b991aa6021ab125addaae4b8ac4f4e2cccffdd754e2f20f4088d312e30",
+      "sha256": "80a1f01ce2255823a0c134b1129db629898e836e52bd6ae5f4f6389acca2e06b",
       "models": [
         "InboxDelivery",
         "InboxCoordinator",
         "InboxProviderDrafts",
-        "SavedServiceRead"
+        "SavedServiceRead",
+        "ContentLinks"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -23915,11 +23918,12 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-drafts.ts",
-      "sha256": "f3d8633cc4ecd5dc9e3a932286c28478c681a12f670979be1edb2d62dba18295",
+      "sha256": "76e87f42c79d42fe3f1a63eced416dc41d35d571a43caf800cd94d84b3427fb9",
       "models": [
         "InboxDelivery",
         "InboxCoordinator",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "MailComposerPresentation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -23956,11 +23960,12 @@
     },
     {
       "path": "apps/app/src/prototype/inbox-provider-controls.ts",
-      "sha256": "2a7beddb53b7203ecdb554bf2325c03b4ddc063ce640a4a529e5bddd70549db7",
+      "sha256": "282bb480d77160bf89798eef9b1926f75472c885e0deebb8e1a28f09be7b54d9",
       "models": [
         "InboxDelivery",
         "InboxCoordinator",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "MailComposerPresentation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -32527,7 +32532,7 @@
       "scope": "application",
       "treatment": "conditional-presentation-source",
       "reviewStatus": "state-audit-required",
-      "sha256": "91407c3e4750992228008724938bb9b796d1f2cad607cf1b60cdee9e62ab25b3",
+      "sha256": "88342deaa1bf38c78b40ef92d1f6bd2c29ff115059ae848bfa758aed4d9bb164",
       "stateAnchors": [],
       "integrationReview": "2026-11-11 Home entry resets carousel position without resetting manual swipes. Shared bottom-sheet marker keeps sheet surface at the phone bottom and leaves dock clearance inside its padding. Anchored menus keep their original positioning. Full native acceptance remains separate."
     },
@@ -34403,11 +34408,12 @@
     },
     {
       "path": "apps/app/src/prototype/subview-accessibility.ts",
-      "sha256": "9a6a109b71e51d48ddf53ba5dc72294a5ecd1f0adba576e4384df137f1408978",
+      "sha256": "299cac5e1979705088b36c6b4508f9d2339eef37e547398000e9aa88d4a04873",
       "models": [
         "ShellNavigation",
         "ListFocus",
-        "CanonicalCalendarEditorClose"
+        "CanonicalCalendarEditorClose",
+        "MailComposerPresentation"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -34840,12 +34846,14 @@
         "ShadeRowCustody",
         "CalendarFormControls",
         "CalendarActionReview",
-        "NotesStartupCache"
+        "NotesStartupCache",
+        "MailComposerPresentation",
+        "ContentLinks"
       ],
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "d8fac1ca4e992c7592adbb0a2e25138abf39ab4acef3c8b8c6c577c3bde866cf",
+      "sha256": "c9ff606b183973b54b432817f58ac53560bd7c2b3ec43346ab5417a4c0feebac",
       "stateAnchors": [
         {
           "line": 3358,
@@ -42753,7 +42761,7 @@
     },
     {
       "path": "apps/app/src/runtime/mail-sender-image.ts",
-      "sha256": "c8fca6fc8069cdc595c8949785561c0daeedb014650c68ea09bae1751f4a86ce",
+      "sha256": "8496753172d522c5686c2702877226cf1dcbd5b2e3f6d8c6d774a3e2d6e650e4",
       "models": [
         "InboxDelivery"
       ],
@@ -618501,6 +618509,16 @@
       "reviewStatus": "state-audit-required",
       "sha256": "f646ded3903339759197c4d36bfacd7ed7d5017b5d50e8e70a4cf4a999798735",
       "stateAnchors": []
+    },
+    {
+      "path": "apps/app/src/prototype/content-links.tsx",
+      "sha256": "34d8b8c3d783e4ba1a1a3bcfbb52cdfe8517862a1be5fe85fe56e5b82d74ce5e",
+      "models": [
+        "ContentLinks"
+      ],
+      "scope": "application",
+      "treatment": "state-and-transition-projection",
+      "stateAnchors": []
     }
   ],
   "configurationInputs": [
@@ -618777,16 +618795,17 @@
         "InboxDelivery",
         "InboxProviderDrafts"
       ],
-      "sha256": "9bc59d08b60931af225113194174a446fd23eed53e5c37811602b03644b41467"
+      "sha256": "891002e340c208a9560fa507325af2cab6899454aa4a0557b60e2a80cf46ab5b"
     },
     {
       "path": "patches/eliza/inbox-cleanup-client.patch",
       "models": [
         "InboxCoordinator",
         "InboxDelivery",
-        "InboxProviderDrafts"
+        "InboxProviderDrafts",
+        "MailComposerPresentation"
       ],
-      "sha256": "70061f32079e4fd97e1ab5c17065e67ccb6cd8f281da9c16988786d89338b769"
+      "sha256": "96f32f296b3e62731ee9c9a39565c2dfdf8b0bab5c7cb4d104c1b62417d3e7e9"
     },
     {
       "path": "patches/eliza/inbox-confirmation-client-manifest.json",

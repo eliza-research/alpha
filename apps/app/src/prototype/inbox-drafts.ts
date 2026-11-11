@@ -16,13 +16,22 @@ export type SuggestionTarget=SharedSuggestionTarget;
  * native file picker. They remain separate from explicitly reviewed provider operations. */
 export function inboxDrafts(publish:()=>void,toast:(text:string)=>void, provider?:MailDraftsProvider) {
  const copies=new Set<ReturnType<typeof inboxUnsaved>>();
- const drafts=createMailDraftsController({publish,toast,provider,store:inboxLocalStore,retained:(owner,changed,restore)=>{
+ const drafts=createMailDraftsController({publish,toast:message=>{
+  if(!['Local draft discarded','Saved locally on this device','Draft saved','Edits remain in this session.'].includes(message))toast(message);
+ },provider,store:inboxLocalStore,retained:(owner,changed,restore)=>{
   const copy=inboxUnsaved(owner,changed,restore);copies.add(copy);return copy;
  },reviewAttachment:reviewMailAttachment,
   confirm:message=>window.confirm(message),
   identity:()=>({sessionId:connectionController.getCloudClient()?.sessionId,account:connectionController.getSnapshot().cloudAccount??null}),
   attachments:{select:()=>DailyApps.perform({action:'files'}),read:selectionId=>attachmentNative.readSelected({selectionId}),forget:selectionId=>DailyApps.forgetSelected({selectionId})}});
- return Object.assign(drafts,{async flushForAppUpdate(current:()=>boolean){
+ return Object.assign(drafts,{
+  requestClose(){
+   const view=drafts.render();
+   if(!view.composing)return false;
+   view.c?.discard();
+   return true;
+  },
+  async flushForAppUpdate(current:()=>boolean){
   const retained=new Set(copies);
   const exact=()=>current()&&(!drafts.hasDraft||drafts.ready)&&[...copies].every(copy=>retained.has(copy));
   if(!exact())throw Error('Email draft is still changing');

@@ -1,11 +1,17 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mailSenderImage} from '../apps/app/src/runtime/mail-sender-image.ts';
-test('website icons use exact sender domains without sending the address',()=>{
- assert.equal(mailSenderImage('notice@LinkedIn.com',true),'/icons/senders/linkedin.com.png');
- assert.equal(mailSenderImage('a@service.paypal.com',true),'/icons/senders/paypal.com.png');
- assert.equal(mailSenderImage('a@paypal.com.attacker.org',true),null);
- assert.equal(mailSenderImage('a@news.example.org',true),null);
+test('website icons request the exact domain from Google without sending the address',()=>{
+ for(const domain of ['linkedin.com','read.ai','typesafe.ai','eliza.app','news.example.org']) {
+  const url=new URL(mailSenderImage('notice@'+domain,true));
+  assert.equal(url.origin,'https://www.google.com');
+  assert.equal(url.searchParams.get('domain'),domain);
+  assert.equal(url.searchParams.get('sz'),'128');
+  assert.equal(url.href.includes('notice'),false);
+ }
+ assert.equal(new URL(mailSenderImage('a@service.paypal.com',true)).searchParams.get('domain'),'service.paypal.com');
+ assert.equal(new URL(mailSenderImage('a@paypal.com.attacker.org',true)).searchParams.get('domain'),'paypal.com.attacker.org');
+
 });
 test('disabled remote images and personal senders keep initials',()=>{
  for(const email of ['a@gmail.com','a@outlook.com','a@proton.me'])assert.equal(mailSenderImage(email,true),null);

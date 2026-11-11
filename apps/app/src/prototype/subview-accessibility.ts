@@ -29,15 +29,16 @@ export function installSubviewAccessibility(views:Bag){
   let output:Bag={};
   const attachmentModal=reviewFocus(()=>output.attachment?.close());
   const providerModal=reviewFocus(()=>output.provider?.close());
+  const discardModal=reviewFocus(()=>output.c?.cancelDiscard());
   const focus=focusHistory();
   const detailFocus=subviewFocus(focus.read),composeFocus=subviewFocus(focus.read),runFocus=subviewFocus(focus.read),builderFocus=subviewFocus(focus.read);
   const popups=popupFocus(name,()=>output);
   views[name].render=(state:Bag,api:Bag)=>{
    const out=output=render(state,api);
    if(name==='inbox'){
-    attachmentModal.render(!!out.attachmentOpen);providerModal.render(!!out.providerReview);
-    const review=!!(out.attachmentOpen||out.providerReview);
-    return {...out,captureSubviewFocus:focus.capture,attachmentModal:attachmentModal.ref,providerModal:providerModal.ref,detailFocus,composeFocus,runFocus,builderFocus,listCovered:!!((out.detail&&!split())||out.composing||review),detailCovered:!!(out.composing||review),composeCovered:review};
+    attachmentModal.render(!!out.attachmentOpen);providerModal.render(!!out.providerReview);discardModal.render(!!out.c?.confirm);
+    const review=!!(out.attachmentOpen||out.providerReview||out.c?.confirm);
+    return {...out,captureSubviewFocus:focus.capture,attachmentModal:attachmentModal.ref,providerModal:providerModal.ref,discardModal:discardModal.ref,detailFocus,composeFocus,runFocus,builderFocus,listCovered:!!((out.detail&&!split())||out.composing||review),detailCovered:!!(out.composing||review),composeCovered:review};
    }
    return {...out,...popups(out),captureSubviewFocus:focus.capture,detailFocus,composeFocus,runFocus,builderFocus,listCovered:!!(out.detail||out.automation?.detail||out.runOpen||out.builder),detailCovered:!!(out.runOpen||out.builder),runCovered:!!out.builder};
   };

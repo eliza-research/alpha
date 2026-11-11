@@ -267,7 +267,7 @@ test('a review is never confirmed for another draft, even one with identical con
   assert.equal(app.receipt().canConfirm, false);
   await app.confirm();
   assert.equal(d.operationSlot(), null, 'the review of the discarded draft is discarded, not sent');
-  assert.ok(d.toasts.some(text => /made for a different email/.test(text)));
+  assert.equal(d.toasts.some(text => /made for a different email/.test(text)), false);
   assert.equal(d.remote.dispatches, 0); assert.ok(d.draftSlot(), 'the new draft is untouched');
   // Its own Send is a new review under a new request, and that one is sent and cleaned up.
   await app.send(); assert.notEqual(d.operationSlot().requestId, first.requestId);
@@ -476,7 +476,7 @@ test('an email edited after its review is sent once, under its second review, an
   assert.equal(app.receipt().canConfirm, false, 'not confirmable from the first render after the edit');
   await tick();
   assert.equal(d.operationSlot(), null, 'the unsent review is discarded');
-  assert.ok(d.toasts.some(text => /edited after this review/.test(text)));
+  assert.equal(d.toasts.some(text => /edited after this review/.test(text)), false);
   assert.ok(d.draftSlot(), 'discarding a review never touches the local draft'); assert.equal(app.composer().body, 'Second');
   await app.save(); await app.send();
   const second = d.operationSlot(); assert.notEqual(second.requestId, first.requestId);
@@ -548,7 +548,7 @@ test('a review saved under one From account cannot be sent after the email moved
   // Not even when the same words are written again under the first account.
   await app.compose('Moved', 'Body'); assert.equal(app.receipt().canConfirm, false); await app.confirm();
   assert.equal(d.remote.dispatches, 1); assert.equal(operationSlots(d), 1, 'only the receipt under grant-b remains');
-  assert.ok(d.toasts.some(text => /made for a different email/.test(text)));
+  assert.equal(d.toasts.some(text => /made for a different email/.test(text)), false);
   // Also across a reload on the first account, with no composer open.
   const e = device(), one = e.boot(); await one.bind('grant-a');
   await one.compose('Moved', 'Body'); await one.send(); await one.drafts.transfer();
@@ -626,4 +626,37 @@ test('an edit or a cancel while Send is in flight never discards the operation o
   d.remote.unsure = false; await app.check();
   assert.equal(app.receipt().status, 'Provider confirmed this operation.'); assert.equal(d.remote.dispatches, 1);
   assert.ok(app.composer()); assert.match(app.receipt().draftNote, /still on this device/);
+});
+
+test('closing a composer asks before discarding and stays quiet after confirmation', async () => {
+  const d = device(), app = d.boot(); await app.bind();
+  await app.compose('Disposable close confirmation', 'Preserve until Yes');
+  assert.equal(app.drafts.requestClose(), true);
+  assert.equal(app.composer().confirm, true);
+  app.composer().cancelDiscard();
+  assert.equal(app.composer().body, 'Preserve until Yes');
+  assert.equal(app.composer().confirm, false);
+  app.drafts.requestClose(); app.composer().confirmDiscard(); await tick();
+  assert.equal(app.composer(), null);
+  assert.equal(d.remote.dispatches, 0);
+  assert.equal(d.toasts.includes('Local draft discarded'), false);
+});
+
+test('new email merges another window’s saved drafts without replacing them', async () => {
+  const d = device(), first = d.boot(), second = d.boot();
+  await first.bind(); await second.bind();
+  assert.equal(await first.drafts.newEmail(), true);
+  assert.equal(await second.drafts.newEmail(), true);
+  first.composer().onSubj({target: {value: 'First window'}});
+  first.composer().onBody({target: {value: 'First work'}});
+  second.composer().onSubj({target: {value: 'Second window'}});
+  second.composer().onBody({target: {value: 'Second work'}});
+  assert.equal(await first.drafts.newEmail(), true);
+  assert.equal(await second.drafts.newEmail(), true);
+  const shelf = [...d.slots.entries()].find(([key]) => key.startsWith('inbox-drafts:v1:shelf:'))?.[1];
+  assert.ok(shelf.items.some(row => row.draft.subject === 'First window' && row.draft.body === 'First work'));
+  assert.ok(shelf.items.some(row => row.draft.subject === 'Second window' && row.draft.body === 'Second work'));
+  assert.equal(second.composer().subject, '');
+  assert.equal(d.remote.dispatches, 0);
+  assert.equal(d.toasts.some(text => text.includes('Drafts changed in another window')), false);
 });

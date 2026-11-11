@@ -420,9 +420,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       signal.throwIfAborted();if(disposed||shell.S().view!=='browser'||state()?.cur!==id||receipt?.session!==session||receipt?.id!==id)throw Error('Native browser result belongs to another tab or session');
       return {ok:true,data:{dispatched:true,completed:false,requiresReadback:true}};
     };
-    this.browserNavigateApproved = async (raw: string, signal: AbortSignal, deferPresentation = false) => {
-      const url = new URL(raw);
-      if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Only HTTPS destinations may be approved');
+    const openContentTab = async (url: URL, signal: AbortSignal, deferPresentation: boolean) => {
       signal.throwIfAborted();
       const selected = state()?.cur;
       const id = await navigate(url.href, true, signal, false, deferPresentation);
@@ -439,6 +437,16 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       // Ordinary reviewed web sources keep their immediate presentation.
       if (deferPresentation) return present;
       present();
+    };
+    this.browserNavigateApproved = (raw: string, signal: AbortSignal, deferPresentation = false) => {
+      const url = new URL(raw);
+      if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Only HTTPS destinations may be approved');
+      return openContentTab(url, signal, deferPresentation);
+    };
+    this.browserOpenContentLink = (raw: string, signal: AbortSignal) => {
+      const url = new URL(raw);
+      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Invalid web link');
+      return openContentTab(url, signal, true);
     };
     // Identity only: visible page content, URL and browsing history are not
     // transmitted merely by opening the agent. Navigation changes the revision

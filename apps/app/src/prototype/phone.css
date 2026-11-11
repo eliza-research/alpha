@@ -665,7 +665,7 @@ button[aria-label$=" on or off"][aria-pressed]::before { content:""; position:ab
 [data-alpha-transcript][data-alpha-scroll-overflow="false"] { -webkit-mask-image:none; mask-image:none; animation:none; }
 
 .mail-sender-avatar{position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0;width:44px;height:44px;border-radius:50%;background:var(--s2);font-size:14px;font-weight:700;overflow:hidden}
-.mail-sender-avatar img{position:absolute;inset:0;width:100%;height:100%;box-sizing:border-box;object-fit:contain;padding:9px;background:var(--s2)}
+.mail-sender-avatar img{position:absolute;inset:0;width:100%;height:100%;box-sizing:border-box;object-fit:contain;padding:3px;background:var(--s2)}
 
 .mail-search-input::-webkit-search-cancel-button,.mail-search-input::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
 
@@ -908,3 +908,15 @@ html[data-alpha-browser-underlay] [data-alpha-layer="app"]{background:linear-gra
   border-bottom-left-radius:0!important;
   border-bottom-right-radius:0!important;
 }
+.inbox-confirm-overlay{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;background:rgba(0,0,0,.25)}
+.inbox-confirm-card{width:100%;max-width:340px;box-sizing:border-box;padding:24px;background:var(--bg);color:var(--fg);border-radius:24px}
+.inbox-confirm-card h2{font-size:20px;line-height:1.3;font-weight:600;margin:0 0 24px;text-align:center}
+.inbox-confirm-card p{font-size:14px;line-height:1.5;margin:0 0 20px;overflow-wrap:anywhere}
+.inbox-confirm-actions{display:flex;gap:12px}
+.inbox-confirm-actions button{flex:1;min-width:0;min-height:48px;padding:12px;border-radius:16px;background:var(--s2);color:var(--fg);font:inherit;font-weight:600;text-align:center}
+.inbox-confirm-actions .inbox-confirm-yes{background:var(--fg);color:var(--bg)}
+.inbox-confirm-actions button:disabled{opacity:.45}
+.inbox-confirm-actions button:focus-visible{outline:2px solid var(--acct);outline-offset:3px}
+
+.alpha-message-link{color:var(--acct);text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
+.alpha-user-message .alpha-message-link{color:inherit}

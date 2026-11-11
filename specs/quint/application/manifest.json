@@ -3541,5 +3541,56 @@
       "Account and agent checks represent the host binding callback. Real encrypted/IndexedDB persistence and live server authorization are separate. Implementation races are covered by test/notes-startup-cache.test.mjs and live preview reload checks.",
       "Two stored revision values represent a delayed older tab and a newer committed cache write. The acceptance predicate is rechecked against each CAS read."
     ]
+  },
+  {
+    "path": "specs/quint/application/MailComposerPresentation.qnt",
+    "module": "MailComposerPresentation",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "closeNoKeepsDraft",
+      "closeYesDiscards",
+      "sendNoKeepsDraft",
+      "sendYesUsesReviewedDraft",
+      "editInvalidatesConfirmation",
+      "accountChangeInvalidatesConfirmation",
+      "concurrentShelfKeepsBoth"
+    ],
+    "sources": [
+      "apps/app/src/prototype/inbox-drafts.ts",
+      "apps/app/src/prototype/inbox-provider-controls.ts",
+      "apps/app/src/prototype/subview-accessibility.ts",
+      "apps/app/src/prototype/template.html",
+      "patches/eliza/inbox-cleanup-client.patch"
+    ],
+    "abstractions": [
+      "One composer, three content revisions, one send and two shelf entries. No and editing have no provider effect. An accepted send is bound to the reviewed content.",
+      "The underlying InboxCoordinator and InboxDelivery models retain durable receipt and account checks. Full browser and provider delivery are separate. Progress requires an owner choice and storage/provider replies; no unconditional liveness claim.",
+      "The concurrent shelf case abstracts append-only CAS merge. scripts/test-inbox-sent-cleanup.mjs exercises the actual prepared controller with two windows and preserves both saved bodies."
+    ]
+  },
+  {
+    "path": "specs/quint/application/ContentLinks.qnt",
+    "module": "ContentLinks",
+    "init": "init",
+    "step": "step",
+    "invariant": "safety",
+    "tests": [
+      "currentLinkOpensBrowser",
+      "changedViewStaysVisible",
+      "replacedLinkCannotPresent"
+    ],
+    "sources": [
+      "apps/app/src/prototype/content-links.tsx",
+      "apps/app/src/prototype/browser-adapter.ts",
+      "apps/app/src/prototype/inbox-cloud-adapter.ts",
+      "apps/app/src/main.tsx",
+      "apps/app/src/prototype/template.html"
+    ],
+    "abstractions": [
+      "Two clicks and three views represent one current selected link. Late completion cannot replace a changed view.",
+      "The Browser adapter retains tab/session identity checks and URL admission. This UI model does not establish network availability, platform rendering or authentication."
+    ]
   }
 ]
