@@ -41,6 +41,13 @@ module Application {
     startVoice, hide, resume, sensitiveView, leaveSensitive, signOut, requestReset, staleCallback }
   val ResetStopsInitialization = s.reset implies (not(s.resident) and not(s.pending) and not(s.voice))
   val CurrentOwnerCache = s.cachedOwner == 0 or s.cachedOwner == s.owner
+  /// Scoped to the review-first path only: this module's `dispatch` is the effect that follows an
+  /// owner's review tap ("Review phone actions first" on, or a type that always needs review).
+  /// It is NOT a claim that every device effect needs a tap. With the preference off, an
+  /// allow-listed operation bound to the current request runs without a card; that path, its
+  /// allow-list, the four-per-pass bound and stop-on-failure are modeled against the real
+  /// coordinator by DeviceActionReview (DirectOnlyAllowlisted, DirectRunNeedsCurrentRequest,
+  /// AtMostFourDirectPerMessage, ReviewFirstBlocksAllDirect).
   val ReviewedDispatch = s.dispatched implies s.reviewed
   val ActiveVoiceAdmission = s.voice implies admitted
   val PendingIsCurrent = s.pending implies (s.capturedOwner == s.owner and s.capturedEpoch == s.epoch)

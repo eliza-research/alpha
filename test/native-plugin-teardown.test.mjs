@@ -277,7 +277,16 @@ test("a permission or activity-result request that arrives after the activity is
 
 test("Capacitor's own permission request, and the shared plugins' requests an app plugin inherits, are answered the same way", () => {
   // AlphaTelephonyPlugin re-checks the image capability first (P-36); the late-launch guard is the same.
-  const guardedOverride = (source, method) => new RegExp(`@Override @PluginMethod public void ${method}\\(PluginCall call\\) ?\\{(?: if \\(refused\\(call\\)\\) return;)? ?LateLaunch\\.ask\\(call, ?\\(\\) ?-> ?super\\.${method}\\(call\\)\\); ?\\}`).test(source);
+  const guardedOverride = (source, method) => {
+    const invoke = `super\\.${method}\\(call\\)`;
+    // The block form only adds the synchronous channel-description refresh after the guarded call.
+    const launch = `(?:${invoke}|\\{${invoke};AlphaNotificationChannels\\.describe\\(getContext\\(\\)\\);\\})`;
+    return new RegExp(`@Override @PluginMethod public void ${method}\\(PluginCall call\\) ?\\{(?: if \\(refused\\(call\\)\\) return;)? ?LateLaunch\\.ask\\(call, ?\\(\\) ?-> ?${launch}\\); ?\\}`).test(source);
+  };
+  const describedReminder = '@Override @PluginMethod public void scheduleReminder(PluginCall call){LateLaunch.ask(call,()->{super.scheduleReminder(call);AlphaNotificationChannels.describe(getContext());});}';
+  assert.equal(guardedOverride(describedReminder, 'scheduleReminder'), true);
+  assert.equal(guardedOverride(describedReminder.replace('LateLaunch.ask(call,()->{super.scheduleReminder(call);', 'super.scheduleReminder(call);LateLaunch.ask(call,()->{'), 'scheduleReminder'), false, 'a dispatch before the guard is refused');
+  assert.equal(guardedOverride(describedReminder.replace('super.scheduleReminder(call);', 'post(()->super.scheduleReminder(call));'), 'scheduleReminder'), false, 'a later callback outside the guard is refused');
   // Plugin.requestPermissions is a plugin method of every plugin and launches for one that declares permissions.
   const declaring = files.filter(name => /@CapacitorPlugin\([^\n]*\bpermissions\s*=/.test(read(name)));
   assert.deepEqual(declaring, ["AlphaCalendarPlugin.java", "AlphaContactsPlugin.java", "AlphaFilesPlugin.java", "AlphaHostedResultsPlugin.java", "AlphaPhotoLibraryPlugin.java", "AlphaPhotosPlugin.java", "AlphaSystemPlugin.java", "AlphaTelephonyPlugin.java", "AlphaVoiceCloudPlugin.java", "DailyAppsPlugin.java"], "the plugins that declare permissions");

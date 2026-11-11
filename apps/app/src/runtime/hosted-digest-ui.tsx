@@ -833,7 +833,7 @@ export function HostedDigestPanel({composeQuestion,canComposeQuestion}:{composeQ
 				)}
 				<h2>Results</h2>
 				<p>
-					Your latest 100 results are kept here.
+					{binding.current?.sessionId===connection.session?.sessionId&&results.length ? 'Your latest 100 results are kept here.' : 'No results yet.'}
 				</p>
 				{(binding.current?.sessionId===connection.session?.sessionId ? results : [])
 					.slice()

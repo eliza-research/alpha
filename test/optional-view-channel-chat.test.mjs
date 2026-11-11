@@ -59,5 +59,15 @@ test('an unmapped VIEWS handoff is reported in chat without a claim or a throw',
   assert.equal(await sandbox.deliver(shell,{client,attempt:client.capture(context)},[result]),false);
   assert.deepEqual(requests,[]);assert.deepEqual(toasts,[]);
   assert.equal(said.length,1);assert.equal(said[0].text,'That screen is not on this phone.');
+  // The card carries the sentence once: no title repeated as its detail.
+  assert.equal(said[0].card.title,said[0].text);assert.equal(said[0].card.sub,'');assert.equal(said[0].card.systemNotice,true);
+  // A page inside an app this phone has is named by its app, not reported as a missing screen;
+  // still nothing is opened, claimed or acknowledged.
+  sandbox.views.settings={title:'Settings'};
+  const page={...result,values:{...result.values,viewId:'settings',viewPath:'/settings',subview:'display',navigationBinding:{...binding,viewId:'settings'}}};
+  assert.deepEqual(await client.deliver([page],client.capture(context),async()=>true),{status:'unavailable',parentView:'settings'});
+  assert.equal(await sandbox.deliver(shell,{client,attempt:client.capture(context)},[page]),false);
+  assert.deepEqual(requests,[]);assert.deepEqual(toasts,[]);
+  assert.equal(said.length,2);assert.equal(said[1].text,'I can’t open that page directly yet. Open Settings to find it.');assert.equal(said[1].card.title,said[1].text);
  } finally {client.dispose();}
 });

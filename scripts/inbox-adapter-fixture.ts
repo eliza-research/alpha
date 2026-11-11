@@ -203,6 +203,8 @@ function scenario({caps={},accounts=null}: {caps?: Partial<GmailInboxCapabilitie
   secureConnectionStore:inboxMemoryStore(slots),
   connectionController:controller,
   DailyApps:{addListener:async(name: string,fn: Action)=>{if(name==='appResumed')resume.push(fn);return {remove:async()=>{}};},perform:async()=>({status:'selected',selectionId:'sel-'+(selectionCount++),name:'file'}),forgetSelected:async()=>{}},
+  // The in-app review (apps/app/src/browser/review.ts) is rendered by the browser checks; this fixture answers it.
+  BrowserReviews:class{confirm(_id: string,title: string,details: string,_label?: string,choice?: {current?:()=>boolean}){confirms.push(title+'\n'+details);return Promise.resolve(confirmAnswer&&choice?.current?.()!==false);}cancel(){}cancelAll(){}},
   window:windowFixture,document});
  return {choices,mailNotices,sandbox,client,calls,toasts,prepared,dispatched,opened,saved,navigations,confirms,resume,listeners,slots,
   setSession:(value: string | null)=>{session=value;for(const fn of listeners)fn();},

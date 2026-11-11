@@ -32,9 +32,10 @@ test('a long toast stays up for its reading time and a short one for 1.9 s', asy
   await expect(pill(page)).toHaveCount(0, { timeout: 1500 });
 });
 
-test('a toast with Undo stays at least 5 s', async ({ page }) => {
+test('a toast with Undo stays 10 s, the same window as the reviewed-deletion notice', async ({ page }) => {
+  test.setTimeout(60_000);
   await raise(page, 'Deleted', true);
-  await page.waitForTimeout(4700);
+  await page.waitForTimeout(9500);
   await expect(pill(page).getByRole('button', { name: 'Undo', exact: true })).toBeVisible();
   await expect(pill(page)).toHaveCount(0, { timeout: 2000 });
 });
@@ -68,7 +69,7 @@ test('keyboard focus on Undo holds the toast, and focus returns when it ends', a
   await raise(page, 'Deleted', true);
   const undo = pill(page).getByRole('button', { name: 'Undo', exact: true });
   await undo.focus();
-  await page.waitForTimeout(6500);
+  await page.waitForTimeout(11500);
   await expect(undo).toBeVisible();
   await expect(undo).toBeFocused();
   await page.keyboard.press('Enter');
@@ -78,10 +79,10 @@ test('keyboard focus on Undo holds the toast, and focus returns when it ends', a
   // Focus leaving the toast lets it run out again.
   await raise(page, 'Deleted', true);
   await undo.focus();
-  await page.waitForTimeout(5500);
+  await page.waitForTimeout(10500);
   await expect(undo).toBeVisible();
   await origin.focus();
-  await expect(pill(page)).toHaveCount(0, { timeout: 7000 });
+  await expect(pill(page)).toHaveCount(0, { timeout: 12000 });
 });
 
 test('tapping a plain toast dismisses it', async ({ page }) => {
@@ -89,6 +90,23 @@ test('tapping a plain toast dismisses it', async ({ page }) => {
   await expect(pill(page)).toBeVisible();
   await pill(page).click();
   await expect(pill(page)).toHaveCount(0);
+});
+
+test('a failure is announced assertively and a routine notice politely', async ({ page }) => {
+  const region = page.locator('[data-alpha-toast]');
+  await expect(region).toHaveAttribute('aria-live', 'polite');
+  await page.evaluate(() => {
+    const screen = document.querySelector('[data-screen]') as any;
+    let fiber = screen[Object.keys(screen).find(name => name.startsWith('__reactFiber$'))!];
+    while (fiber && !(fiber.stateNode && typeof fiber.stateNode.toast === 'function')) fiber = fiber.return;
+    fiber.stateNode.toast('Couldn’t save. Try again.', { kind: 'error' });
+  });
+  await expect(pill(page)).toContainText('Couldn’t save. Try again.');
+  await expect(region).toHaveAttribute('aria-live', 'assertive');
+  await pill(page).click();
+  await expect(region).toHaveAttribute('aria-live', 'polite');
+  await raise(page, 'Saved');
+  await expect(region).toHaveAttribute('aria-live', 'polite');
 });
 
 for (const key of ['Enter', 'Space']) {

@@ -10,6 +10,7 @@ import { Capacitor } from '@capacitor/core';
 import { DailyApps, type NativeResult } from '../daily';
 import { filesIndex } from './files-index';
 import { createInlineModal } from '../runtime/inline-modal';
+import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 
 type Bag = Record<string, any>;
 type Selection = { result: NativeResult; status: string; text?: string; pdf?: {page:number;count:number;image:string}; epoch: number; renames?: number; mediaFailed?:boolean };
@@ -66,7 +67,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     if (!selectionId||!active()) return;
     try {
       const result=await (download?DailyApps.shareSelected({selectionId}):DailyApps.openSelected({selectionId}));
-      if(active()&&result.status!=='opened')api.toast(result.message||'Unavailable');
+      if(active()&&result.status!=='opened')api.toast(errorNotice(result.message,'Unavailable'),ERROR_TOAST);
     } catch { if(active())api.toast('Unavailable'); }
   };
   let sharing = false;
@@ -76,7 +77,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     sharing = true;
     try {
       const result = await DailyApps.shareSelected({ selectionId: id });
-      if (result.status !== 'opened') api.toast(result.message || 'Share failed');
+      if (result.status !== 'opened') api.toast(errorNotice(result.message, 'Share failed'), ERROR_TOAST);
     } catch { api.toast('Share failed'); }
     finally { sharing = false; }
   };
@@ -110,7 +111,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
         current={result:response,status:response.message || 'Reselect file',epoch:++epoch};
         api.set({renaming:false});refresh();return;
       }
-      if(response.status !== 'selected'){api.toast(response.message || 'Rename unavailable');return;}
+      if(response.status !== 'selected'){api.toast(errorNotice(response.message, 'Rename unavailable'), ERROR_TOAST);return;}
       // A rename changes the selected object: publish it as a new revision so a turn or
       // approval prepared for the old name cannot be dispatched against the renamed file.
       // Keep Recent on the new name: same row, or the replacement capability when the provider issued one.

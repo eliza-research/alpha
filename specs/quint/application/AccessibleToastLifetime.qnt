@@ -9,9 +9,10 @@ module AccessibleToastLifetime {
 
   action init = state' = {scale: 100, latest: 0, started: Set(), pending: Set(),
     message: 0, undo: false, duration: 0, held: false, timerDelay: 0, queued: []}
-  // Message 3 is the controlled 191-character passage; 1 and 2 are short.
+  // Message 3 is the controlled 191-character passage; 1 and 2 are short. An Undo offer stays
+  // 10 s, the same window as the reviewed-deletion notice.
   pure def duration(message: int, undo: bool, scale: int): int =
-    (if (message == 3) 10050 else if (undo) 5000 else 1900) * scale / 100
+    (if (message == 3) 10050 else if (undo) 10000 else 1900) * scale / 100
 
   action request(id: int): bool = all {
     id.in(Requests), not(id.in(state.started)),
@@ -77,7 +78,7 @@ module AccessibleToastLifetime {
 
   run staleBootCannotReplaceResumeTest = init.then(request(1)).then(request(2))
     .then(reply(2, 600)).then(reply(1, 100)).then(show(1, true))
-    .expect(safety and state.scale == 600 and state.duration == 30000)
+    .expect(safety and state.scale == 600 and state.duration == 60000)
   run resetInvalidatesPendingNativeReadTest = init.then(request(1)).then(reset)
     .then(reply(1, 600)).then(show(1, false))
     .expect(safety and state.scale == 100 and state.duration == 1900)
@@ -85,8 +86,8 @@ module AccessibleToastLifetime {
     .then(request(2)).then(reply(2, 0)).then(show(1, false))
     .expect(safety and state.scale == 150 and state.duration == 2850)
   run refreshAffectsOnlyNewToastsTest = init.then(show(1, true)).then(request(1)).then(reply(1, 300))
-    .expect(safety and state.duration == 5000).then(show(2, false))
-    .expect(safety and state.message == 1 and state.undo and state.duration == 5000).then(expire)
+    .expect(safety and state.duration == 10000).then(show(2, false))
+    .expect(safety and state.message == 1 and state.undo and state.duration == 10000).then(expire)
     .expect(safety and state.duration == 5700 and not(state.undo)).then(expire)
     .expect(safety and state.message == 0)
   run longMessageAndFocusHoldKeepCapturedDurationTest = init.then(show(3, false))
@@ -104,7 +105,7 @@ module AccessibleToastLifetime {
 
   val QueuedBehindUndoWitness = state.queued.length() > 0 and state.undo and not(state.held)
   val QueuedWhileHeldWitness = state.queued.length() > 0 and state.held
-  val ScaledQueuedBehindUndoWitness = state.queued.length() > 0 and state.queued.head().message == 3 and state.scale == 600 and state.duration == 5000
+  val ScaledQueuedBehindUndoWitness = state.queued.length() > 0 and state.queued.head().message == 3 and state.scale == 600 and state.duration == 10000
   run heldUndoOfferStillQueuesTest = init.then(show(1, true)).then(hold).then(show(2, false))
     .expect(safety and state.held and state.undo and state.queued == [{message: 2, undo: false}] and state.timerDelay == 0)
     .then(resume).then(expire).expect(safety and state.message == 2 and not(state.undo))
