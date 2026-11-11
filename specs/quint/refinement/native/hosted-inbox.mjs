@@ -36,8 +36,8 @@ final class AlphaCredentialStore {
 final class HostedNoticePoster implements HostedResultNotices.Poster {
  HostedNoticePoster(Context context){}
  public boolean allowed(){return true;}
- public boolean active(String key){return HostedInboxTraces.posts.containsKey(key);}
- public void post(String key){HostedInboxTraces.post(key);}
+ public boolean active(String key,String dispatchId){return HostedInboxTraces.posts.containsKey(key);}
+ public void post(String key,String dispatchId,String title,boolean silent){HostedInboxTraces.post(key);}
  public void cancel(String key){throw new AssertionError("Unique synthetic loops should never cancel a notice");}
 }
 final class HostedDeliveryWorker {
