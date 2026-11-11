@@ -29,6 +29,7 @@ import {GOOGLE_ACCOUNTS_CHANGED} from '../runtime/google-accounts';
 import { DailyApps } from '../daily';
 import { formatMonthDay, formatTime, formatFullDateTime, weekdayName } from './locale-time';
 import { formatBytes } from '../browser/storage-usage';
+import { BrowserReviews } from '../browser/review';
 
 type Bag = Record<string, any>;
 const MAIL_MENU_TOKENS=['--bg','--fg','--s2','--mut','--line','--acct'],MAIL_MENU_SELECTED={width:112,background:'var(--fg)',color:'var(--bg)'};
@@ -748,15 +749,20 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
   }
   // Mailbox changes need the message's current revision; a read without one is refreshed first.
   const unsupported = () => api?.toast('Refresh first');
+  let linkReviews: BrowserReviews | undefined;
   /** Links open only in Alpha's Browser, only for HTTPS, and only after the user reviews the destination. */
   function openLink(link: GmailLink) {
     let url: URL; try { url = new URL(link.href); } catch { api?.toast('Invalid link'); return; }
     if (url.protocol !== 'https:' || url.username || url.password) { api?.toast('Not HTTPS'); return; }
     const warning = linkTextMismatch(link) ? `\n\nWarning: the email shows “${link.text}”, but the link goes to ${url.hostname}.` : '';
-    if (!window.confirm(`Open ${url.hostname}?\n${url.href}${warning}`)) return;
-    const navigate = (shell as Bag | undefined)?.browserNavigateApproved;
-    if (typeof navigate !== 'function') { api?.toast('Browser is unavailable.'); return; }
-    void Promise.resolve(navigate.call(shell, url.href, new AbortController().signal)).catch(() => api?.toast('Couldn’t open'));
+    const owner = shell, source = body?.message.id;
+    const current = () => !!owner && owner === shell && body?.message.id === source && !!api?.isActive();
+    void (linkReviews ??= new BrowserReviews()).confirm('open-mail-link', 'Open this link in Browser?', `${url.hostname}\n${url.href}${warning}`, 'Open link', {current}).then(approved => {
+      if (!approved || !current()) return;
+      const navigate = (owner as Bag | undefined)?.browserNavigateApproved;
+      if (typeof navigate !== 'function') { api?.toast('Browser is unavailable.'); return; }
+      return Promise.resolve(navigate.call(owner, url.href, new AbortController().signal));
+    }).catch(() => api?.toast('Couldn’t open'));
   }
   view.back = (st: Bag, current: Bag) => {
     if(attachmentView){void attachmentNative.cancel().catch(()=>{});attachmentView=null;publish();return true;}

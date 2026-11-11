@@ -101,6 +101,16 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
   const state = () => shell?.vget('browser');
   const refresh = () => { ++snapshotRevision; shell?.vset('browser', { nativeRevision: Date.now() }); };
   const report = (error: unknown) => !disposed && shell?.toast(browserErrorMessage(error));
+  const loopbackHost = (host: string) => /^(?:localhost|127(?:\.\d+){3}|\[::1\])$/i.test(host) || /\.localhost$/i.test(host);
+  /** Android refuses cleartext pages, so a typed http:// address is tried over HTTPS.
+   * Loopback development hosts and explicit ports keep the address as typed. */
+  const secureTypedAddress = (raw: string) => {
+    if (!Capacitor.isNativePlatform()) return raw;
+    const typed = /^\s*http:\/\/([^/?#\s@]+)(?=[/?#]|\s*$)/i.exec(raw);
+    if (!typed || /:\d*$/.test(typed[1]) || loopbackHost(typed[1])) return raw;
+    return raw.replace(/^(\s*)http:/i, '$1https:');
+  };
+  const pageTitle = (title: unknown, url: string) => { const text = String(title || '').replace(/[\x00-\x1f\x7f]/g, ' ').trim().slice(0, 120); return text && text !== url ? text : ''; };
   let reading: AbortController | undefined, questionReview=false;
   // Android only: whether this WebView provider can read a page in isolation.
   // The web build separately requires a committed embedded document.
@@ -312,7 +322,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     const next = rest.length ? rest : [{ id: newTabId(), hist: ['newtab'], pos: 0 }];
     const opener = s.tabs.find((tab: Bag) => tab.id === s.cur)?.opener;
     const cur = next.some((tab: Bag) => tab.id === s.cur) ? s.cur : next.some((tab: Bag) => tab.id === opener) ? opener : next[0].id;
-    shell.vset('browser', {tabs: next, cur, ...(clearHistory ? {visits: []} : {})}, {afterCommit});
+    shell.vset('browser', {tabs: next, cur, ...(clearHistory ? {visits: [], titles: {}} : {})}, {afterCommit});
   }
   function savedSnapshot() {
     const s = state(); if (!s) return null;
@@ -415,11 +425,11 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     } catch (error) { report(error); }
   }
   const definition = views.browser;
-  definition.state = { ...definition.state, tabs: [{ id: 'b0', hist: ['newtab'], pos: 0 }], cur: 'b0', marks: [], visits: [], booked: null, ag: null, confirm: null, finding: false, findTab: null, findQuery: '', findCount: 0, findIndex: 0, findDone: true };
+  definition.state = { ...definition.state, tabs: [{ id: 'b0', hist: ['newtab'], pos: 0 }], cur: 'b0', marks: [], visits: [], titles: {}, booked: null, ag: null, confirm: null, finding: false, findTab: null, findQuery: '', findCount: 0, findIndex: 0, findDone: true };
   // These are in-memory view-reset keys, not disk persistence. Keep the native
   // tab identities while visiting other apps; a cold start begins with b0 until
   // restoreSession replaces it with saved normal tabs.
-  definition.persist = ['tabs', 'cur', 'marks', 'visits'];
+  definition.persist = ['tabs', 'cur', 'marks', 'visits', 'titles'];
   definition.onLeave = () => {externalHandoff.retire();stopReading();hide();};
   definition.reply = () => null;
   definition.back = (s: Bag, api: Bag) => {
@@ -440,6 +450,9 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       try{const address=new URL(value);if(!['https:','http:'].includes(address.protocol)||address.username||address.password)return [];return [{title:address.hostname,url:address.pathname+address.search+address.hash,d:s.marks.includes(value)?api.ic.star:api.ic.clock,go:()=>void navigate(value)}];}catch{return [];}
     });
     const historyOpen = s.lib === 'history';
+    // Page names known on this phone: pages committed since Browser started and saved tabs not yet reloaded.
+    const savedTitles = new Map<string, string>([...restored.values()].map(page => [page.url, pageTitle(page.title, page.url)]));
+    const titleOf = (address: string) => pageTitle(s.titles?.[address], address) || savedTitles.get(address) || '';
     const selectedTabStyle = 'background:var(--acc);color:var(--alpha-white)';
     const unselectedTabStyle = 'color:var(--mut)';
     return {
@@ -467,7 +480,7 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
       libHist: () => api.set({lib: 'history'}),
       libMarksCss: historyOpen ? unselectedTabStyle : selectedTabStyle,
       libHistCss: historyOpen ? selectedTabStyle : unselectedTabStyle,
-      clearHist: () => api.set({visits: []}),
+      clearHist: () => api.set({visits: [], titles: Object.fromEntries(Object.entries(s.titles || {}).filter(([address]) => s.marks.includes(address)))}),
       profileUnsupportedPage:profileUnsupportedTab===s.cur&&!s.editing,profileUnsupportedEditing:profileUnsupportedTab===s.cur&&!!s.editing,profileUnsupportedMessage:PROFILE_UNSUPPORTED_MESSAGE,isNews:false,isEnc:false,isBook:false,isSearch:false,isGeneric:false,isNew:!info,
       privateNotice:Capacitor.isNativePlatform()?'Private · cleared on close':'This tab is not saved in Alpha history. Website cookies and sign-ins are managed by your browser.',isPrivate:priv,openPrivate:()=>openNew(true),clearData:()=>void clearBrowsingData(),clearSite:()=>void clearSiteData(),canClearSite:Capacitor.isNativePlatform()&&!!info?.committed&&!info?.error&&!!url,
       recents:[],sugg:localSuggestions,people:[],agOn:false,confirm:false,clearAddress:(event:Event)=>{api.set({addr:''});(event.currentTarget as HTMLElement).parentElement?.querySelector('input')?.focus();},
@@ -481,8 +494,8 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
         next:()=>findStep(true),prev:()=>findStep(false),close:()=>closeFind(),nextOp:s.findCount?1:0.3,prevOp:s.findCount?1:0.3},
       host:url?.host || 'Search or address',hostCss:url?'':'color:var(--mut)',path:url ? url.pathname + url.search : '', hasLock:Capacitor.isNativePlatform() && !!url && url.protocol==='https:' && !!info?.committed && !info?.loading && !info?.error,
       pageShareAvailable:Capacitor.isNativePlatform(),canCopyLink:!!info?.committed&&!info.loading&&!info.error,pageContentAvailable:Capacitor.isNativePlatform()||!!info?.committed&&!info.loading&&!info.error&&!info.externalOnly,nativeControls:true,externalBrowserAvailable:Capacitor.isNativePlatform(),openExternalBrowser:()=>void externalHandoff.open(),openPasswordProvider:()=>{api.set({menu:false});api.open('settings',{page:'password-provider'});},openDownloads:()=>{api.set({menu:false});void Browser.downloads({session}).catch(report);},copyLink:()=>void copyPageLink(),reload:()=>{api.set({menu:false});void command('reload');},stopLoading:()=>{api.set({menu:false});void command('stop');},loading:!!info?.loading,goBack:()=>void command('back'),goFwd:()=>void command('forward'),backOp:info?.canBack?1:0.3,fwdOp:info?.canForward?1:0.3,
-      startEdit:()=>api.set({editing:true,addr:info?.url||'',menu:false}),onAddrKey:(e:KeyboardEvent)=>{ if(e.key==='Enter'){e.preventDefault();void navigate((e.target as HTMLInputElement).value);} else if(e.key==='Escape')api.set({editing:false}); },
-      toggleMark:()=>{if((!info?.committed&&!(info?.externalOnly&&!Capacitor.isNativePlatform())) || info.loading || info.error || url?.protocol!=='https:'){api.toast('HTTPS only');return;}saveBookmark(info.url);},markLabel:s.marks.includes(info?.url)?'Bookmarked':'Bookmark',markFill:s.marks.includes(info?.url)?'currentColor':'none',libRows:[...(bookmarkRecovery&&s.lib!=='history'?[{id:'bookmark-recovery',title:'Recover saved bookmarks',host:'Bookmarks unavailable',ini:'!',go:openBookmarkRecovery,canRemove:false,removeAria:'',remove:()=>{}}]:[]),...Array.from(new Set<string>(s.lib==='history'?s.visits:s.marks)).map((u:string)=>({id:u,title:u,host:u,ini:new URL(u).hostname[0],go:()=>void navigate(u),canRemove:s.lib!=='history',removeAria:'Remove bookmark',remove:()=>saveBookmark(u,false)}))],libEmpty:!(bookmarkRecovery&&s.lib!=='history')&&!(s.lib==='history'?s.visits:s.marks).length,newTab:()=>openNew(false),askPage:()=>void askPage(),readAloud:()=>void readPage(),readingUnavailable:readingSupport?.state==='unavailable',readingNote:READING_UNSUPPORTED_MESSAGE,readAloudAvailable:true,openShare:()=>void sharePage(),shareEmail:()=>sharePageEmail(),
+      startEdit:()=>api.set({editing:true,addr:info?.url||'',menu:false}),onAddrKey:(e:KeyboardEvent)=>{ if(e.key==='Enter'){e.preventDefault();void navigate(secureTypedAddress((e.target as HTMLInputElement).value));} else if(e.key==='Escape')api.set({editing:false}); },
+      toggleMark:()=>{if((!info?.committed&&!(info?.externalOnly&&!Capacitor.isNativePlatform())) || info.loading || info.error || url?.protocol!=='https:'){api.toast('HTTPS only');return;}saveBookmark(info.url);},markLabel:s.marks.includes(info?.url)?'Bookmarked':'Bookmark',markFill:s.marks.includes(info?.url)?'currentColor':'none',libRows:[...(bookmarkRecovery&&s.lib!=='history'?[{id:'bookmark-recovery',title:'Recover saved bookmarks',host:'Bookmarks unavailable',ini:'!',name:'Recover saved bookmarks',go:openBookmarkRecovery,canRemove:false,removeAria:'',remove:()=>{}}]:[]),...Array.from(new Set<string>(s.lib==='history'?s.visits:s.marks)).map((u:string)=>{const address=new URL(u),site=address.hostname.replace(/^www\./,''),named=titleOf(u);return {id:u,title:u,name:named||site,host:address.host+(address.pathname==='/'?'':address.pathname)+address.search,ini:(named||site)[0],go:()=>void navigate(u),canRemove:true,removeAria:historyOpen?'Remove from history':'Remove bookmark',remove:historyOpen?()=>api.set({visits:(state()?.visits||[]).filter((visit:string)=>visit!==u)}):()=>saveBookmark(u,false)};})],libEmpty:!(bookmarkRecovery&&s.lib!=='history')&&!(s.lib==='history'?s.visits:s.marks).length,newTab:()=>openNew(false),askPage:()=>void askPage(),readAloud:()=>void readPage(),readingUnavailable:readingSupport?.state==='unavailable',readingNote:READING_UNSUPPORTED_MESSAGE,readAloudAvailable:true,openShare:()=>void sharePage(),shareEmail:()=>sharePageEmail(),
       tabCards:s.tabs.map((tab:Bag)=>{const page=known(tab.id),label=page?.title||(tab.priv?'New private tab':'New tab');return {id:tab.id,title:page?.title || page?.url || (tab.priv?'New private tab':'New tab'),host:(tab.priv?'Private · ':'')+(page?.url||''),css:tab.id===s.cur?'box-shadow:inset 0 0 0 2px var(--acc)':'',prev:tab.priv?'background:var(--fg);opacity:.85':'background:var(--s2)',aria:'Switch to '+(tab.priv?'private tab ':'')+label,closeAria:tab.priv?'Close private tab':'Close tab',pick:()=>api.set({cur:tab.id,tabsOpen:false}),close:()=>{ const rest=state().tabs.filter((t:Bag)=>t.id!==tab.id); const fallback=newTabId();if(tabs.has(tab.id))void Browser.close({session,id:tab.id}).catch(report);tabs.forget([tab.id]);restored.delete(tab.id);api.set({tabs:rest.length?rest:[{id:fallback,hist:['newtab'],pos:0}],cur:state().cur===tab.id?(rest[0]?.id||fallback):state().cur}); }};}),
       rootRef:(element:HTMLElement)=>{if(!element)return; if(window.scrollX||window.scrollY)window.scrollTo(0,0); const screen=element.closest('[data-screen]'); if(screen){screen.scrollTop=0;screen.scrollLeft=0;} const viewport=element.querySelector('[data-bscroll]'); if(viewport){viewport.setAttribute('data-native-browser-viewport','true'); viewport.setAttribute('aria-label',info?.error || (info?.externalOnly?'Open externally':info?.loading?'Loading website':'Browser page'));} },
     };
@@ -560,7 +573,15 @@ export function installPrototypeBrowserAdapter(Component: any, views: Record<str
     if(reading && event.id===state()?.cur && change.documentChanged) stopReading();
     // Private tabs never enter history or saved tabs. The web build's frame surface reports a
     // committed load, and a page that navigated inside its frame reports an error instead.
-    if(change.committedPage && state() && !isPrivate(event.id))shell.vset('browser',{visits:[event.url,...state().visits.filter((u:string)=>u!==event.url)].slice(0,MAX_HISTORY)});refresh();
+    if(change.committedPage && state() && !isPrivate(event.id)){
+      const current=state(),address=event.url as string,visits=[address,...current.visits.filter((u:string)=>u!==address)].slice(0,MAX_HISTORY),title=pageTitle(event.title,address);
+      // Names stay with the saved addresses only: a page dropped from history and bookmarks loses its name too.
+      const titles=Object.fromEntries(Object.entries({...current.titles,...(title?{[address]:title}:{})}).filter(([saved])=>visits.includes(saved)||current.marks.includes(saved)));
+      shell.vset('browser',{visits,titles});
+    }
+    // The native page says only that it could not load. Android blocks pages without HTTPS, so say that.
+    if(Capacitor.isNativePlatform()&&change.info.error&&!change.previous?.error&&event.id===state()?.cur){try{const failed=new URL(String(change.info.url));if(failed.protocol==='http:'&&!loopbackHost(failed.hostname))shell?.toast('This site has no secure (HTTPS) connection, so it cannot be opened.');}catch{}}
+    refresh();
   }).then((value:any)=>{listener=value;}).catch(()=>{});
   // target=_blank links and pop-ups that the native browser opened as a tab.
   void Browser.addListener('tabOpened',(event:BrowserTabOpened)=>{

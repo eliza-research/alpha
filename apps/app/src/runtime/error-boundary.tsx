@@ -63,7 +63,7 @@ let shown = false;
 export function showRecoveryScreen(kind: RendererFailureKind, error: unknown): void {
   if (shown || document.querySelector('.alpha-recovery')) return;
   shown = true;
-  // The failure class survives the reload in the local problem log (Settings > About).
+  // The failure class survives the reload in the local problem log (the Developer page of development builds; product Settings has no entry).
   void recordRendererFailure(kind, error);
   const screen = document.createElement('div');
   screen.className = 'alpha-recovery';
