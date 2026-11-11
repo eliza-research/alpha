@@ -189,17 +189,50 @@ same reviewed component bytes. The two hosts share the exact ARM64 engine and
 C++ runtime. Obtain the recorded bytes from the provisioned host or review and
 admit a reproducible replacement before updating the records and artifact IDs.
 
+On the provisioned host, prepare an operator handoff from the reviewed Alpha
+checkout. Use physical paths and an existing output directory owned and
+writable only by your account.
+
+```sh
+python3 -B scripts/ci/export-native-inputs.py \
+  --voice /absolute/staged-voice-root \
+  --embedding-component /absolute/directory-containing-component-output \
+  --embedding-qualification /absolute/directory-containing-qualification-files \
+  --out /absolute/output-directory
+```
+
+The exporter creates `alpha-native-inputs.zip` after verifying the copied
+files against the committed records and existing embedding qualification.
+The component receipts preserve their original build provenance and paths.
+Extract the packet, then upload the contents of `voice/`,
+`embedding-component/` and `embedding-qualification/` as three separate
+artifacts through the approved path. Keep `packet.json` with the handoff.
+Use the resulting GitHub artifact IDs and archive digests in the hosted
+manifest.
+
 Run `python3 -B scripts/ci/hosted-native-inputs.py --check` to validate the
-manifest against the checkout without downloading. Automatic runs fail early
-when input pins are missing, stale or expired. They download through the
-workflow's read-only token, stage with the existing voice and embedding tools,
-and retain the input IDs, hashes and sizes in `native-input-admission.json`.
+manifest against the checkout without downloading. Automatic runs check the
+three pins against GitHub metadata before setting up the Android toolchain.
+The check names each unavailable input and reports the expiry of admitted pins
+so the maintainer can renew them before a build fails. Acquisition checks the
+metadata again and verifies the exact archive bytes through the workflow's
+read-only token. The build stages with the existing voice and embedding tools
+and retains the input IDs, hashes and sizes in `native-input-admission.json`.
 The candidate receipt binds its digest to the exact source, SDK and run attempt.
 The build evidence records the uploaded candidate's ID and compressed size
 from GitHub, expanded file bytes, and both unsigned APK hashes and sizes.
-Refresh the reviewed pins before an artifact expires or a bound source record
-changes. The candidate archive retains the distribution producer evidence
-before the test-mocks build can replace it.
+Install the Launcher OTA native input expiry workflow on the repository's
+default branch, currently `develop`, after the expiry checker lands on `main`.
+Scheduled runs read the reviewed pins on `main`. Manual dispatch from
+`main` checks the commit selected at dispatch. Each run records the exact
+`main` commit checked and names each pin that expires within four days.
+Renew through the approved supplier while the old artifacts are available.
+Keep the original qualification receipts for unchanged native bytes and review
+the new artifact IDs and archive digests before updating the manifest. A changed
+native file or source record requires a new admission. Confirm a successful
+automatic candidate at the replacement pins before recording the rollover.
+The candidate archive retains the distribution producer evidence before the
+test-mocks build can replace it.
 
 The existing workflow run number is the candidate versionCode, checked against
 both releases' retained APKs and public pointers, and the committed version floors.
