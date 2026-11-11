@@ -97,6 +97,10 @@ function literalMethods(literal, files) {
     assert.match(source, /read\.connection\.request\(calendarApprovalResolvePath\(read\.id\),\{decision,revision:read\.revision\},signal,\{\},'POST'\)/);
     return ['POST'];
   }
+  if (literal === '/api/approvals/{id}/resolve') {
+    assert.deepEqual([...files], [ownerTableFile]);
+    return ['POST'];
+  }
   if (literal !== '/api/approvals') return ['POST'];
   assert.deepEqual([...files].sort(), [ownerTableFile, calendarApprovalContract]);
   for (const [file, expected] of [[ownerTableFile, 2], [calendarApprovalContract, 1]]) {
@@ -122,6 +126,30 @@ function literalMethods(literal, files) {
   assert.match(fs.readFileSync('apps/app/src/runtime/local-agent.ts', 'utf8'),
     /method:LocalAgentMethod = body===undefined\?'GET':'POST'/);
   return ['GET'];
+}
+
+/**
+ * Reviewed owner-paired writes Alpha issues on purpose. Resolving a Calendar
+ * approval is the owner's own choice, so the upstream gate is the right one: the route is served
+ * to the owner-paired native session (Bearer from /api/auth/pair, checked below) and refused with
+ * 403 to any other session, as the trigger and automation routes are. A new entry needs its own review.
+ */
+const REVIEWED_OWNER_PAIRED_ROUTES = new Set([`POST ${calendarResolveExample}`]);
+/** The resolution has one path builder and one caller, sends an explicit POST and only approve or reject. */
+function reviewedApprovalResolution() {
+  const builder = 'calendarApprovalResolvePath';
+  const uses = walk('apps/app/src', /\.(?:ts|tsx|js|mjs)$/).flatMap(file =>
+    [...fs.readFileSync(file, 'utf8').matchAll(new RegExp('\\b'+builder+'\\b', 'g'))].map(() => file));
+  assert.deepEqual(uses.sort(), [
+    'apps/app/src/runtime/calendar-approval-client.ts',
+    'apps/app/src/runtime/calendar-approval-client.ts',
+    'apps/app/src/runtime/calendar-approval.ts',
+  ], 'A new caller of the approval resolution path needs its own owner review');
+  assert.match(fs.readFileSync('apps/app/src/runtime/calendar-approval.ts', 'utf8'),
+    /export function calendarApprovalResolvePath\(id:string\)\{if\(!calendarApprovalId\(id\)\)throw Error\('Invalid Calendar request\.'\);return `\/api\/approvals\/\$\{id\}\/resolve`;\}/);
+  const client = fs.readFileSync('apps/app/src/runtime/calendar-approval-client.ts', 'utf8');
+  assert.match(client, /!\['approve','reject'\]\.includes\(decision\)\)throw Error/);
+  assert.match(client, /read\.connection\.request\(calendarApprovalResolvePath\(read\.id\),\{decision,revision:read\.revision\},signal,\{\},'POST'\)/);
 }
 
 function ownerRouteTable() {
@@ -164,8 +192,14 @@ test('the gate model reads the clauses Alpha was reviewed against', () => {
 test('Alpha uses the owner-only gate only for a reviewed Calendar decision', () => {
   const model = gateModel(gateSource());
   const refused = [];
+  const ownerPaired = [];
   for (const [method, pathname] of ownerRouteTable())
-    if (ownerOnly(model, method, pathname) && !(method === 'POST' && pathname === calendarResolveExample)) refused.push(`${method} ${pathname} (apps/app/src/product/owner-route-table.ts)`);
+    if (ownerOnly(model, method, pathname))
+      (REVIEWED_OWNER_PAIRED_ROUTES.has(`${method} ${pathname}`) ? ownerPaired : refused)
+        .push(`${method} ${pathname} (apps/app/src/product/owner-route-table.ts)`);
+  // Exactly the reviewed owner-paired write, and only while its single caller stays as reviewed.
+  assert.deepEqual(ownerPaired, [`POST ${calendarResolveExample} (apps/app/src/product/owner-route-table.ts)`]);
+  reviewedApprovalResolution();
   const literals = alphaAgentPathLiterals();
   assert.ok(literals.size > 20, 'Alpha agent path literals were not found');
   // Unclassified literals are conservatively checked as writes. A reviewed read
