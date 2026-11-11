@@ -5,6 +5,6 @@
   "moduleName": "AlphaPhone",
   "version": "0.1.0",
   "versionCode": 1,
-  "updateManifestUrl": "https://github.com/eliza-research/alphaphone/releases/download/app-stable-alphacompute/alpha-update-stable.json",
+  "updateManifestUrl": "https://github.com/eliza-research/alpha/releases/download/app-stable-alphacompute/alpha-update-stable.json",
   "orientation": "unspecified"
 }

@@ -124,13 +124,17 @@ def campaign(scratch, signing_commit, name, schedule):
             },
             f"{prefix}/actions/runs/{number}": {
                 "status": "completed", "conclusion": "cancelled" if fault == "cancelled" else "success",
-                "head_sha": plan["alphaCommit"], "head_repository": {"full_name": repo},
+                "id": int(number), "head_sha": plan["alphaCommit"], "head_branch": "main",
+                "repository": {"id": 1396333361, "full_name": repo, "owner": {"id": 314117943}},
+                "head_repository": {"id": 1396333361, "full_name": repo, "owner": {"id": 314117943}},
                 "path": ".github/workflows/resident-android.yml",
                 "event": "push" if lane == "push" else "workflow_dispatch",
                 "run_attempt": 2 if fault == "attempt" else 1,
             },
             f"{prefix}/actions/artifacts/{artifact}": {
-                "expired": fault == "expired", "workflow_run": {"id": int(number), "head_sha": plan["alphaCommit"]},
+                "id": int(artifact), "expired": fault == "expired", "workflow_run": {
+                    "id": int(number), "head_sha": plan["alphaCommit"], "head_branch": "main",
+                    "repository_id": 1396333361, "head_repository_id": 1396333361},
                 "digest": "sha256:" + plan["archiveSHA256"], "size_in_bytes": len(unsigned),
                 "name": f"resident-distribution-archive-{plan['alphaCommit']}-{number}",
             },
@@ -205,7 +209,7 @@ def campaign(scratch, signing_commit, name, schedule):
                     record["cloudVoiceEvidenceSHA256"] = "0" * 64
                 def api(endpoint):
                     response = fixture.api(endpoint)
-                    if fault == "attempt" and endpoint.endswith("/actions/runs/100"):
+                    if fault == "attempt" and endpoint.endswith("/actions/runs/100/attempts/1"):
                         response["run_attempt"] = 2
                     if fault == "artifact" and endpoint.endswith("/actions/artifacts/200"):
                         response["expired"] = True

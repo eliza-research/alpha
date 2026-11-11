@@ -120,7 +120,10 @@ function publicFixture(directory, launcherBytes, version) {
         receipt = await deliver({directory, manifestUrl, source: '1'.repeat(40)}, {
           wait: async () => {},
           run(args) {
-            if (args[0] === 'repo' && args[1] === 'view') return '{"isPrivate":false}';
+            if (args[0] === 'api') {
+              assert.deepEqual(args, ['api', 'repos/eliza-research/alpha']);
+              return JSON.stringify({id: 1396333361, full_name: 'eliza-research/alpha', owner: {id: 314117943}, private: false});
+            }
             if (args[0] !== 'release') assert.fail('Unexpected command: ' + args.join(' '));
             if (args[1] === 'view' && args[2] === LEGACY_APP_UPDATE_TAG) {
               legacyChecks++;

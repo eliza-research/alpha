@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   admit:
-    if: github.repository == 'eliza-research/alphaphone' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha
+    if: github.repository_id == '1396333361' && github.repository_owner_id == '314117943' && github.ref == 'refs/heads/main' && inputs.workflow_commit == github.sha
     permissions:
       actions: read
       contents: read
