@@ -9,7 +9,7 @@ import {javaBinary} from './fixtures/jvm-tools.mjs';
 test('Alpha public components still compile against the common listener and preserve stored identity',()=>{
  const root=path.resolve(import.meta.dirname,'..'),shared=path.join(root,'vendor/eliza/packages/app/platforms/android/sense/src/main/java/ai/eliza/sense');
  const component=path.join(root,'android/sense/src/main/java/ai/elizaresearch/alphaphone/sense');
- const product=JSON.parse(fs.readFileSync(path.join(root,'vendor/eliza/packages/os/android/products/pixel10a-alpha.json')));
+ const product=JSON.parse(fs.readFileSync(path.join(root,'android/aosp/pixel10a-composition.json')));
  assert.equal(product.sense.componentPackage,'ai.elizaresearch.alphaphone.sense');assert.equal(product.sense.storageName,'listener-settings');assert.deepEqual(product.sense.wakeNames,['alpha']);
  const temp=fs.mkdtempSync(path.join(os.tmpdir(),'alpha-sense-compat-'));
  try {

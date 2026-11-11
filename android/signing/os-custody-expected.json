@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Protected custody comparison only; not production enrollment",
+  "sourceRecord": "07cd55b72cdc609c2707a4a89209a2b2b408bde3",
+  "osCertificateSha256": {
+    "releasekey": "66046a0729fe8d14b9bb53051b2225b396f7bcb07b2a757eac6fc799b1aee11e",
+    "platform": "e76e132cb233d302b93e4fb9b561f114215ea884235dfba8ed675878047e3998",
+    "shared": "a4b031a35fe1a9d79a2ca24efbf43145a06ff0715ddfe4b622239193def30482",
+    "media": "7808038475ff38f0969040ebe9deb30d7cf96fca91795272a623d76a331c0529",
+    "networkstack": "6fba8451b8c342208a538c2b3a77f5361e1567901473f94f865456ce3640542a",
+    "sdk_sandbox": "faffa391d0fbbddcac89b7edcef74b8d63904cfc67f2075c41a6b29f5ddeee3d",
+    "bluetooth": "afa35217a7a6eece7c65887d72f5c0d58fdd5e44f015540ad963d4c7a847f292",
+    "nfc": "f0631050e868474c266ed226aeb970ecd7f875df1770464ca601f077b30985e9",
+    "apex": "e15d5665684a60dca9f4e4a707471d40a8eaf9648761f15ed1615a1a19b6492f"
+  },
+  "avbPublicKeySha256": "ef17e93cb331c37187cb15c666c09b3861d539f8b24662f4fa3fd7314d806daa",
+  "appSignerSha256": "edbfcacb1da689008bf4e7d675176c302decf83161a877eb8b1de4ffae0445ed"
+}

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, readFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
@@ -14,7 +15,6 @@ import {captureInputs, checkTraces, qmap, qset} from '../../refinement/check-tra
 
 const model = 'NotesViewReplay';
 const modelPath = 'test/fixtures/quint/NotesViewComparison.qnt';
-const cacheDir = resolve(root, 'test-results/quint-refinement/legacy-notes-vite-cache');
 const main = resolve(root, 'apps/app/src/main.tsx');
 const expect = baseExpect.configure({timeout: 15000});
 const button = (page, name) => page.getByRole('button', {name, exact: true});
@@ -126,14 +126,12 @@ async function remove(page, title) {
   await page.getByRole('dialog', {name: 'Note actions'}).getByRole('button', {name: 'Delete', exact: true}).click();
   await expect(editor(page)).toHaveCount(0);
   await expect(button(page, 'Open '+title)).toHaveCount(0);
-  await button(page, 'Notes options').click();
-  await expect(button(page, 'Recently deleted')).toBeVisible();
-  await expect(toast(page)).toHaveCount(0);
+  await expect(toast(page)).toContainText('Moved to Recently deleted');
 }
 
 async function recover(page, title, legacy = false) {
   await expect(toast(page)).toHaveCount(0);
-  if (!await button(page, 'Recently deleted').isVisible()) await button(page, 'Notes options').click();
+  await button(page, 'Notes options').click();
   await button(page, 'Recently deleted').click();
   await expect(trash(page)).toBeVisible();
   if (!legacy) await expect(button(page, 'Empty Recently deleted')).toHaveCount(0);
@@ -142,7 +140,7 @@ async function recover(page, title, legacy = false) {
   if (!legacy) await expect(review.getByRole('button', {name: 'Delete now', exact: true})).toHaveCount(0);
   await review.getByRole('button', {name: 'Recover', exact: true}).click();
   await expect(review).toHaveCount(0);
-  if (!legacy) await trash(page).getByRole('button', {name: 'Back to notes', exact: true}).click();
+  if (!legacy) await button(page, 'Back to notes').click();
   await expect(trash(page)).toHaveCount(0);
   await expect(button(page, 'Open '+title)).toBeVisible();
 }
@@ -365,7 +363,6 @@ async function mounted(extraSources) {
   ].map(path => resolve(root, 'apps/app/src/'+path))]);
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'patches/eliza')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
@@ -378,6 +375,7 @@ async function mounted(extraSources) {
   const driverHashes = captureInputs(sources);
   const loaded = new Set();
   const previousMocks = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
+  const cacheDir = mkdtempSync(resolve(tmpdir(), 'alpha-refinement-vite-'));
   let server, browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
@@ -417,6 +415,7 @@ async function mounted(extraSources) {
         const fixturePage = {
           on: page.on.bind(page), route: page.route.bind(page),
           addInitScript: page.addInitScript.bind(page), evaluate: page.evaluate.bind(page),
+          addScriptTag: page.addScriptTag.bind(page), waitForFunction: page.waitForFunction.bind(page),
           goto: path => page.goto(path, {waitUntil: 'domcontentloaded', timeout: 60000}),
         };
         const {foreign, errors} = await canonicalNotesFixture(fixturePage, {notes});
@@ -437,7 +436,7 @@ async function mounted(extraSources) {
   } finally {
     if (previousMocks === undefined) delete process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
     else process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = previousMocks;
-    try {await browser?.close();} finally {await server?.close();}
+    try {await browser?.close();} finally {try {await server?.close();} finally {rmSync(cacheDir,{recursive:true,force:true});}}
   }
 }
 

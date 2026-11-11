@@ -1,0 +1,204 @@
+--- a/packages/apps/Launcher3/res/values/config.xml
++++ b/packages/apps/Launcher3/res/values/config.xml
+@@ -224,4 +224,6 @@
+     <string name="home_screen_files_file_icon_path_data" translatable="false">m 12.5,0 h 75 C 94.403542,0 100,5.5964375 100,12.5 v 75 c 0,6.903542 -5.596458,12.5 -12.5,12.5 h -75 C 5.5964375,100 0,94.403542 0,87.5 v -75 C 0,5.5964375 5.5964375,0 12.5,0 Z</string>
+     <string name="home_screen_files_folder_icon_path_data" translatable="false">M10 4H4c-1.1 0,-1.99.9,-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2,-.9 2,-2V8c0,-1.1,-.9,-2,-2,-2h-8l-2,-2z</string>
+     <integer name="home_screen_files_folder_icon_path_intrinsic_size">24</integer>
++    <!-- Product policy; ordinary AOSP products retain overview. -->
++    <bool name="config_alpha_home_back_only">false</bool>
+ </resources>
+--- a/packages/apps/Launcher3/quickstep/src/com/android/quickstep/RecentsAnimationDeviceState.java
++++ b/packages/apps/Launcher3/quickstep/src/com/android/quickstep/RecentsAnimationDeviceState.java
+@@ -65,6 +65,7 @@
+ import androidx.annotation.Nullable;
+ 
+ import com.android.app.displaylib.PerDisplayRepository;
++import com.android.launcher3.R;
+ import com.android.launcher3.anim.AnimatedFloat;
+ import com.android.launcher3.dagger.ApplicationContext;
+ import com.android.launcher3.dagger.DisplayId;
+@@ -461,8 +462,7 @@
+      * Common logic to determine if either trackpad or finger gesture can be started
+      */
+     private boolean canStartAnyGesture() {
+-        boolean homeOrOverviewEnabled = (getSysuiStateFlags() & SYSUI_STATE_HOME_DISABLED) == 0
+-                || (getSysuiStateFlags() & SYSUI_STATE_OVERVIEW_DISABLED) == 0;
++        boolean homeOrOverviewEnabled = !isHomeDisabled() || !isOverviewDisabled();
+         return (GESTURE_OR_KB_SHORTCUT_DISABLING_STATES & getSysuiStateFlags()) == 0
+                 && homeOrOverviewEnabled;
+     }
+@@ -541,8 +541,13 @@
+     /**
+      * @return whether overview is disabled (either by SUW/SysUI/device policy)
+      */
++    public boolean isHomeBackOnly() {
++        return mContext.getResources().getBoolean(R.bool.config_alpha_home_back_only);
++    }
++
+     public boolean isOverviewDisabled() {
+-        return (getSysuiStateFlags() & SYSUI_STATE_OVERVIEW_DISABLED) != 0;
++        return isHomeBackOnly()
++                || (getSysuiStateFlags() & SYSUI_STATE_OVERVIEW_DISABLED) != 0;
+     }
+ 
+     /**
+--- a/packages/apps/Launcher3/quickstep/src/com/android/quickstep/AbsSwipeUpHandler.java
++++ b/packages/apps/Launcher3/quickstep/src/com/android/quickstep/AbsSwipeUpHandler.java
+@@ -797,6 +797,7 @@
+         return new MotionPauseDetector.OnMotionPauseListener() {
+             @Override
+             public void onMotionPauseDetected() {
++                if (mDeviceState.isHomeBackOnly()) return;
+                 mHasMotionEverBeenPaused = true;
+                 maybeUpdateRecentsAttachedState(true/* animate */, true/* moveRunningTask */);
+                 Optional.ofNullable(mContainerInterface.getTaskbarInteractor())
+@@ -806,6 +807,7 @@
+ 
+             @Override
+             public void onMotionPauseChanged(boolean isPaused) {
++                if (mDeviceState.isHomeBackOnly()) return;
+                 mIsMotionPaused = isPaused;
+                 if (enableSwipeUpMagneticDetach()) {
+                     mMagneticEffectDisplacement.setSpec(
+@@ -1461,7 +1463,8 @@
+     @VisibleForTesting
+     protected GestureEndTarget getHomeTarget() {
+         // Trackpad gesture will override Home end target with Recents per UX guidelines.
+-        if (Flags.enableNewTouchpadGestures() && mGestureState.isTrackpadGesture()) {
++        if (!mDeviceState.isHomeBackOnly()
++                && Flags.enableNewTouchpadGestures() && mGestureState.isTrackpadGesture()) {
+             return RECENTS;
+         }
+         if (displaySupportsHomeGesture(mGestureState.getDisplayId())) {
+@@ -1504,7 +1507,8 @@
+                     && runningTaskIndex != null
+                     && !destinationPage.equals(runningTaskIndex);
+             GestureEndTarget endTarget =
+-                    willGoToNewTask || isCenteredOnNewTask ? NEW_TASK : LAST_TASK;
++                    !mDeviceState.isHomeBackOnly() && (willGoToNewTask || isCenteredOnNewTask)
++                            ? NEW_TASK : LAST_TASK;
+ 
+             reasonString.append("; isCenteredOnNewTask = %s "
+                     + "[mRecentsView.getDestinationPage = %s, "
+@@ -1516,7 +1520,8 @@
+             return endTarget;
+         }
+ 
+-        return willGoToNewTask ? NEW_TASK : getHomeTarget();
++        return !mDeviceState.isHomeBackOnly() && willGoToNewTask
++                ? NEW_TASK : getHomeTarget();
+     }
+ 
+     private GestureEndTarget calculateEndTargetForNonFling(
+@@ -1526,6 +1531,12 @@
+         ActiveGestureLog.CompoundString isScrollingToNewTaskReason =
+                 ActiveGestureLog.CompoundString.newEmptyString();
+         final boolean isScrollingToNewTask = isScrollingToNewTask(isScrollingToNewTaskReason);
++
++        if (mDeviceState.isHomeBackOnly()) {
++            // A completed upward pull goes Home even when held; sideways and short
++            // cancelled pulls return to the current app, never another recent task.
++            return mCanSlowSwipeGoHome ? getHomeTarget() : LAST_TASK;
++        }
+ 
+         final float thresholdSpeed =
+                 mContext.getResources().getDimension(R.dimen.quickstep_fling_threshold_speed);
+--- a/packages/apps/Launcher3/quickstep/src/com/android/quickstep/InputConsumerUtils.kt
++++ b/packages/apps/Launcher3/quickstep/src/com/android/quickstep/InputConsumerUtils.kt
+@@ -761,7 +761,8 @@
+                 "%soverview shouldn't have focus, using LauncherWithoutFocusInputConsumer",
+                 SUBSTRING_PREFIX,
+             )
+-            val disableHorizontalSwipe = deviceState.isInExclusionRegion(event)
++            val disableHorizontalSwipe =
++                deviceState.isHomeBackOnly || deviceState.isInExclusionRegion(event)
+             LauncherWithoutFocusInputConsumer(
+                 container.asContext(),
+                 deviceState,
+@@ -824,8 +825,9 @@
+             (!overviewComponentObserver.isHomeAndOverviewSame ||
+                 containerInterface.deferStartingActivity(deviceState, event))
+         val disableHorizontalSwipe =
+-            deviceState.isInExclusionRegion(event) &&
+-                (containerInterface.getCreatedContainer() !is RecentsWindowManager || !isHomeTask)
++            deviceState.isHomeBackOnly ||
++                (deviceState.isInExclusionRegion(event) &&
++                    (containerInterface.getCreatedContainer() !is RecentsWindowManager || !isHomeTask))
+         return OtherActivityInputConsumer(
+             /* base= */ context,
+             deviceState,
+--- a/packages/apps/Launcher3/quickstep/src/com/android/quickstep/inputconsumers/OtherActivityInputConsumer.java
++++ b/packages/apps/Launcher3/quickstep/src/com/android/quickstep/inputconsumers/OtherActivityInputConsumer.java
+@@ -171,7 +171,8 @@
+ 
+         mPassedPilferInputSlop = mPassedWindowMoveSlop = continuingPreviousGesture;
+         mStartDisplacement = continuingPreviousGesture ? 0 : -mTouchSlop;
+-        mDisableHorizontalSwipe = !mPassedPilferInputSlop && disableHorizontalSwipe;
++        mDisableHorizontalSwipe = deviceState.isHomeBackOnly()
++                || (!mPassedPilferInputSlop && disableHorizontalSwipe);
+         mRotationTouchHelper = rotationTouchHelper;
+     }
+ 
+--- a/packages/apps/Launcher3/quickstep/src/com/android/quickstep/interaction/GestureSandboxActivity.java
++++ b/packages/apps/Launcher3/quickstep/src/com/android/quickstep/interaction/GestureSandboxActivity.java
+@@ -248,6 +248,11 @@
+ 
+     private TutorialFragment makeTutorialFragment(
+             @NonNull TutorialType tutorialType, boolean gestureComplete, boolean fromMenu) {
++        if (getResources().getBoolean(R.bool.config_alpha_home_back_only)
++                && (tutorialType == TutorialType.OVERVIEW_NAVIGATION
++                    || tutorialType == TutorialType.OVERVIEW_NAVIGATION_COMPLETE)) {
++            tutorialType = TutorialType.HOME_NAVIGATION;
++        }
+         return TutorialFragment.newInstance(tutorialType, gestureComplete, fromMenu);
+     }
+ 
+@@ -281,6 +286,12 @@
+     }
+ 
+     private TutorialType[] getTutorialSteps(Bundle extras) {
++        if (getResources().getBoolean(R.bool.config_alpha_home_back_only)) {
++            mNumSteps = 2;
++            mCurrentStep = extras == null ? 1
++                    : Math.min(2, Math.max(1, extras.getInt(KEY_CURRENT_STEP, 1)));
++            return new TutorialType[] {TutorialType.HOME_NAVIGATION, TutorialType.BACK_NAVIGATION};
++        }
+         TutorialType[] defaultSteps = new TutorialType[] {
+                 TutorialType.HOME_NAVIGATION,
+                 TutorialType.BACK_NAVIGATION,
+--- a/packages/apps/Launcher3/quickstep/src/com/android/quickstep/interaction/MenuFragment.java
++++ b/packages/apps/Launcher3/quickstep/src/com/android/quickstep/interaction/MenuFragment.java
+@@ -58,6 +58,9 @@
+                 v -> launchTutorialStep(TutorialController.TutorialType.BACK_NAVIGATION));
+         root.findViewById(R.id.gesture_tutorial_menu_overview_button).setOnClickListener(
+                 v -> launchTutorialStep(TutorialController.TutorialType.OVERVIEW_NAVIGATION));
++        if (getResources().getBoolean(R.bool.config_alpha_home_back_only)) {
++            root.findViewById(R.id.gesture_tutorial_menu_overview_button).setVisibility(View.GONE);
++        }
+         root.findViewById(R.id.gesture_tutorial_menu_done_button).setOnClickListener(
+                 v -> close());
+ 
+--- a/packages/inputmethods/LatinIME/java/res/values/config.xml
++++ b/packages/inputmethods/LatinIME/java/res/values/config.xml
+@@ -109,4 +109,6 @@
+     <string-array name="keyboard_switcher_symbols_shifted" translatable="false">
+         <item>58,32</item> <!-- KeyEvent.KEYCODE_ALT_RIGHT , KeyEvent.META_ALT_RIGHT_ON -->
+     </string-array>
++    <!-- Negative keeps the upstream default; a product may select an available theme. -->
++    <integer name="config_default_keyboard_theme">-1</integer>
+ </resources>
+--- a/packages/inputmethods/LatinIME/java/src/com/android/inputmethod/keyboard/KeyboardTheme.java
++++ b/packages/inputmethods/LatinIME/java/src/com/android/inputmethod/keyboard/KeyboardTheme.java
+@@ -169,6 +169,12 @@
+     public static KeyboardTheme getKeyboardTheme(final Context context) {
+         final SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+         final KeyboardTheme[] availableThemeArray = getAvailableThemeArray(context);
++        if (!prefs.contains(LXX_KEYBOARD_THEME_KEY) && !prefs.contains(KLP_KEYBOARD_THEME_KEY)) {
++            final KeyboardTheme preferred = searchKeyboardThemeById(
++                    context.getResources().getInteger(R.integer.config_default_keyboard_theme),
++                    availableThemeArray);
++            if (preferred != null) return preferred;
++        }
+         return getKeyboardTheme(prefs, BuildCompatUtils.EFFECTIVE_SDK_INT, availableThemeArray);
+     }
+ 

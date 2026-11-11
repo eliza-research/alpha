@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, readFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
@@ -16,7 +17,6 @@ const settings = resolve(root, 'apps/app/src/prototype/settings-adapter.ts');
 const adapter = resolve(root, 'apps/app/src/prototype/agent-adapter.ts');
 const shell = resolve(root, 'apps/app/src/prototype/model.js');
 const licenses = resolve(root, 'apps/app/public/licenses/third-party-notices.json');
-const cacheDir = resolve(root, 'test-results/quint-refinement/legacy-settings-vite-cache');
 const expect = baseExpect.configure({timeout: 15000});
 const current = page => page.locator('[data-settings-page]:not([inert])').last();
 const button = (page, name) => current(page).getByRole('button', {name, exact: true});
@@ -52,8 +52,16 @@ async function attachNativeFixture(page) {
 
 async function snapshot(page, expectedTitle) {
   if (expectedTitle === 'Account & plan') {
-    await expect(page.locator('[data-alpha-membership-panel]')).toBeVisible();
-    return {title: expectedTitle, view: 'settings', route: 'cloud-plan', confirming: false};
+    const sheet = page.getByRole('dialog', {name: 'Account', exact: true});
+    await expect(sheet).toBeVisible();
+    const state = await current(page).evaluate(element => ({
+      title: 'Account & plan', renderedTitle: 'Account', layer: 'account-sheet',
+      view: window.quintLegacySettings.S().view,
+      route: window.quintLegacySettings.vget('settings').page || 'top', confirming: false,
+    }));
+    assert.equal(state.view, 'settings');
+    assert.equal(state.route, 'top', 'The Account sheet preserves the selected Settings root');
+    return state;
   }
   await expect(current(page)).toHaveAttribute('data-settings-page', expectedTitle);
   const state = await current(page).evaluate(element => ({
@@ -79,7 +87,9 @@ function projection(state, profile) {
     'License details': ['license-detail', ['top', 'about', 'licenses', 'license-detail']],
     Calendar: ['calendar', ['top', 'calendar']],
     'Password manager': ['password-provider', ['top', 'passwords']],
-    'Account & plan': ['cloud-plan', ['top', profile === 'current' ? 'cloudplan' : 'account']],
+    // The current Account sheet overlays Settings; project that explicit leaf to the
+    // historical plan page while retaining its actual root route in the receipt.
+    'Account & plan': [state.layer === 'account-sheet' ? 'top' : 'cloud-plan', ['top', profile === 'current' ? 'cloudplan' : 'account']],
   };
   const [route, stack] = routes[state.title];
   assert.ok([route].flat().includes(state.route), 'Selected route matches mounted '+state.title+': '+state.route);
@@ -161,23 +171,24 @@ async function collect(page, notice) {
 
   const account = schedule(page, top);
   await button(page, 'Account').click();
-  const accountPanel = page.locator('[data-alpha-membership-panel]');
-  const plan = await account.point('The signed-in account sheet opens directly from Settings', 'Account & plan',
+  const plan = await account.point('The signed-in Account sheet opens from Settings', 'Account & plan',
     open('Eliza Cloud', 'account'), open('Eliza Cloud account & plan', 'cloudplan'));
-  const accountEmail = accountPanel.getByText('settings@example.invalid', {exact: true});
-  await expect(accountEmail).toBeVisible();
-  const noInfoRows = !(await accountEmail.isVisible());
+  const sheet = page.getByRole('dialog', {name: 'Account', exact: true});
+  const infoLabel = 'AI connection';
+  await expect(sheet.getByRole('button', {name: /^AI connection/})).toBeVisible();
+  const noInfoRows = !(await sheet.getByText(infoLabel, {exact: true}).isVisible());
   const accountSlot = () => page.evaluate(() => window.flagOff.slots['cloud:production']);
   const before = await accountSlot();
   assert.ok(before, 'Synthetic Cloud owner is signed in');
-  await accountPanel.getByRole('button', {name: 'Sign out', exact: true}).click();
-  await expect(accountPanel.getByRole('heading', {name: 'Sign out?', exact: true})).toBeVisible();
-  account.events.push({label: 'Sign-out opens the current account confirmation before changing credentials',
+  await sheet.getByRole('button', {name: 'Sign out', exact: true}).click();
+  const confirmation = page.getByRole('dialog', {name: 'Sign out?', exact: true});
+  await expect(confirmation).toBeVisible();
+  account.events.push({label: 'Actual Account callback opens a confirmation before destructive work',
     state: {...plan, confirming: true},
     proposed: action('Destroy', 'Sign out', 'danger', 'confirm'),
     current: action('Destroy', 'Sign out', 'danger', 'direct')});
-  await accountPanel.getByRole('button', {name: 'Close Account', exact: true}).click();
-  await account.point('Dismissing confirmation leaves the same plan selected', 'Account & plan', action('Answer'));
+  await confirmation.getByRole('button', {name: 'Close Account', exact: true}).click();
+  await account.point('Dismissing confirmation leaves the same account selected', 'Account & plan', action('Answer'));
   assert.equal(await accountSlot(), before, 'Dismissal preserves the synthetic durable Cloud owner');
 
   const proposed = [
@@ -212,7 +223,7 @@ async function mounted(extraSources) {
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
-    ...filesWithin(resolve(root, 'patches/eliza')),
+    'upstream.lock.json',
     'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json', 'upstream.lock.json',
     'scripts/prepare-client-features.mjs', 'scripts/quint-lib.mjs', licenses, comparison,
     'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts',
@@ -222,11 +233,13 @@ async function mounted(extraSources) {
   const driverHashes = captureInputs(sources);
   const noticeBytes = readFileSync(licenses);
   assert.equal(sha256(noticeBytes), driverHashes[licenses]);
-  const notices = JSON.parse(noticeBytes).filter(item => item.name === 'react');
-  assert.equal(notices.length, 1, 'Packaged licenses identify one React component');
+  const rendererVersion = JSON.parse(readFileSync(resolve(root, 'package-lock.json'), 'utf8')).packages['node_modules/react'].version;
+  const notices = JSON.parse(noticeBytes).filter(item => item.name === 'react' && item.version === rendererVersion);
+  assert.equal(notices.length, 1, 'Packaged licenses identify the exact renderer React version');
   const watched = new Set([main, settings, adapter, shell]);
   const loaded = new Set();
   const previousMocks = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
+  const cacheDir = mkdtempSync(resolve(tmpdir(), 'alpha-refinement-vite-'));
   let server, browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
@@ -268,7 +281,7 @@ async function mounted(extraSources) {
   } finally {
     if (previousMocks === undefined) delete process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
     else process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = previousMocks;
-    try {await browser?.close();} finally {await server?.close();}
+    try {await browser?.close();} finally {try {await server?.close();} finally {rmSync(cacheDir,{recursive:true,force:true});}}
   }
 }
 
@@ -279,7 +292,7 @@ export async function checkSettingsNavRefinement(extraSources = []) {
   const shared = {sources, driverHashes, modelPath: comparison, scope: 'bounded-orchestration', assumptions: [
     'Actual grouped Settings and its alpha-back handler execute in flag-off Chromium. Native and resident transport ports are synthetic and requests outside loopback are fenced.',
     'Mounted DOM title and actual selected route establish the semantic Settings page. Account and Apps grouping indexes project to top for shared leaf navigation; grouping and license query are explicit projection boundaries.',
-    'The source confirm observation is the real browser dialog type. Only dismissal is exercised, with the selected plan and synthetic durable Cloud owner checked after dismissal.',
+    'The current Account sheet overlays the Settings root and is explicitly projected to the historical plan leaf. Its visible Sign out confirmation is observed as a rendered dialog; only dismissal is exercised and the durable Cloud owner remains unchanged.',
     'Replay aliases supply the original row tuples and original profile initializers. ProfileSafety checks each original model profile; it does not assert equivalence of the full rendered row inventory.',
   ]};
   const receipts = [];

@@ -301,7 +301,7 @@ export function installCanonicalNotesView(Component:any,views:Record<string,Bag>
   const state=get.call(this,key);
   if(key!=='notes')return state;
   if(this.canonicalNotesUi)return this.canonicalNotesUi.renderState(state);
-  if(this.notesSourceMode==='canonical')return {...state,list:this.notesStartupCache?.rows??[],cachedCanonicalNotes:true,storageStatus:state.storageStatus||'Loading notes…'};
+  if(this.notesSourceMode==='canonical')return {...state,list:this.notesStartupCache?.rows??[],cachedCanonicalNotes:true,storageStatus:state.storageStatus||agentAvailabilityNotice(undefined,UNAVAILABLE)||'Loading notes…'};
   return state;
  };
  prototype.api=function(key:string){
@@ -310,7 +310,7 @@ export function installCanonicalNotesView(Component:any,views:Record<string,Bag>
   // Agent Notes are the default source (agent-adapter.ts); Older notes is an explicit choice.
   if(this.notesSourceMode==='legacy')return value;
   // Waiting for a connection: an attempted action explains why, nothing is drafted.
-  return {...value,notesSourceMode:'canonical',notesTrash:undefined,moveNoteToTrash:()=>false,set:(patch:Bag)=>{if(patch.compose||patch.record===true){value.toast(this.vget('notes').storageStatus||agentPendingText(undefined,UNAVAILABLE));return false;}return value.set(patch);}};
+  return {...value,notesSourceMode:'canonical',notesTrash:undefined,moveNoteToTrash:()=>false,set:(patch:Bag)=>{if(patch.compose||patch.record===true){value.toast(get.call(this,'notes').storageStatus||agentPendingText(undefined,UNAVAILABLE));return false;}return value.set(patch);}};
  };
  const notes=views.notes,render=notes.render;
  notes.render=(state:Bag,value:Bag)=>{
@@ -319,7 +319,7 @@ export function installCanonicalNotesView(Component:any,views:Record<string,Bag>
   const olderNotesAction=older&&!older.selected?older.choose:null;
   if(ui)return {...ui.decorate(render(state,value),value,state),olderNotesAction,listActions:true};
   // A pending New note request waits for the binding instead of drafting into no collection.
-  const waiting={...state,...DEVICE_ONLY_STATE,list:state.cachedCanonicalNotes?state.list:[],open:null,compose:false,trashOpen:false,storageStatus:state.storageStatus||'Loading notes…'};
+  const waiting={...state,...DEVICE_ONLY_STATE,list:state.cachedCanonicalNotes?state.list:[],open:null,compose:false,trashOpen:false,storageStatus:state.storageStatus||agentAvailabilityNotice(undefined,UNAVAILABLE)||'Loading notes…'};
   return {...render(waiting,value),storageStatus:waiting.list.length?'':waiting.storageStatus,none:false,canCreate:false,createDisabled:true,selectionBusy:true,loadingNotes:true,browserRecovery:false,audioDeletionUnknown:false,trashAvailable:false,canRecord:false,canImportText:false,olderNotesAction,listActions:!!olderNotesAction};
  };
 }

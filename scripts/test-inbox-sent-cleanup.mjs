@@ -126,7 +126,7 @@ test('a confirmed send clears the open composer, the retained copy and the saved
   assert.equal(d.unsavedText.size, 0, 'retained copy removed');
   assert.equal(app.composer(), null, 'composer closed');
   assert.deepEqual(app.labels(), ['Mail review / receipt']);
-  assert.equal(app.receipt().draftNote, 'The local draft and unsaved copy of this sent email were removed from this device.');
+  assert.equal(app.receipt().draftNote, 'Sent.');
   assert.equal(d.remote.dispatches, 1);
 });
 
@@ -249,7 +249,7 @@ test('a different draft is never cleared, even with identical content', async ()
   assert.equal(app.receipt().status, 'Provider confirmed this operation.');
   assert.deepEqual(d.draftSlot(), other, 'the second draft is untouched');
   assert.ok(app.composer(), 'its composer stays open');
-  assert.equal(app.receipt().draftNote, 'The local draft and unsaved copy of this sent email were removed from this device.');
+  assert.equal(app.receipt().draftNote, 'Sent.');
   assert.equal(d.remote.dispatches, 1);
 });
 
@@ -628,15 +628,20 @@ test('an edit or a cancel while Send is in flight never discards the operation o
   assert.ok(app.composer()); assert.match(app.receipt().draftNote, /still on this device/);
 });
 
-test('closing a composer asks before discarding and stays quiet after confirmation', async () => {
+test('Back preserves a draft and explicit discard still requires confirmation', async () => {
   const d = device(), app = d.boot(); await app.bind();
   await app.compose('Disposable close confirmation', 'Preserve until Yes');
-  assert.equal(app.drafts.requestClose(), true);
+  assert.equal(app.drafts.close(), true);
+  assert.equal(app.drafts.render().composing, false);
+  assert.equal(app.composer().body, 'Preserve until Yes');
+  app.pick('Continue draft');
+  assert.equal(app.drafts.render().composing, true);
+  app.composer().discard();
   assert.equal(app.composer().confirm, true);
   app.composer().cancelDiscard();
   assert.equal(app.composer().body, 'Preserve until Yes');
   assert.equal(app.composer().confirm, false);
-  app.drafts.requestClose(); app.composer().confirmDiscard(); await tick();
+  app.composer().discard(); app.composer().confirmDiscard(); await tick();
   assert.equal(app.composer(), null);
   assert.equal(d.remote.dispatches, 0);
   assert.equal(d.toasts.includes('Local draft discarded'), false);

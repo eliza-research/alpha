@@ -6,8 +6,9 @@ import {captureSources, boundInputs, call, tick} from './support.mjs';
 import {compileCanonicalNotesUi, createCanonicalNotesUiFixture} from './canonical-notes-feedback.mjs';
 
 const driver = fileURLToPath(import.meta.url);
+// A blank draft is presented as New note before its first edit.
 const texts = ['', 'Title', 'Body', 'Edited', 'Second', 'New', 'New note'];
-const textOf = value => {const index = texts.indexOf(value); assert.notEqual(index, -1, 'Text needs an explicit equality class'); return index;};
+const textOf = value => {const index = texts.indexOf(value); assert.notEqual(index, -1, 'Text needs an explicit equality class: '+JSON.stringify(value)); return index;};
 const folders = ['', 'folder-one', 'folder-two'];
 const folderOf = value => {if (value === undefined) return 0; const index = folders.indexOf(value); assert.notEqual(index, -1); return index;};
 const noData = {kind: 'none', title: 0, body: 0, hasPinned: false, pinned: false,

@@ -66,6 +66,8 @@ console.log(JSON.stringify(out));`);
 
 test('a typed workflow carries the manual trigger or a reviewed local time, and the agent must offer it',()=>{
  const out=run(prelude+`
+process.env.TZ='UTC';Date.now=()=>Date.UTC(2026,10,10,12);
+const L=await import(${JSON.stringify(resolve(root,'apps/app/src/prototype/locale-time.ts'))});L.setLocalePreferences({locale:'en-US',hourCycle:'h23'});
 const weekdays={kind:'time',localTime:'07:30',timeZone:'Europe/Paris',days:[1,2,3,4,5]};
 out.manual=A.normalizePhoneSpec(base).trigger;out.time=A.normalizePhoneSpec({...base,trigger:weekdays}).trigger;
 out.describe=[A.describePhoneTrigger(weekdays),A.describePhoneTrigger({kind:'manual'})];

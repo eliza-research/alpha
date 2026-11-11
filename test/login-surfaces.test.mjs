@@ -158,7 +158,7 @@ test('the HTTP authentication prompt fills only for an engine-authenticated orig
   like(plugin, /siteDialogRevoke=\(\)->\{if\(authBinding!=null\)authBinding\.revoke\(\);BrowserHttpAuthAutofill\.exclude\(user,pass\);\};/);
   // Cancel, Back, tab change, navigation and process loss all dismiss through these two paths, which revoke first.
   like(plugin, /AlertDialog dialog=siteDialog;if\(dialog==null\)return;\n\s*revokeSiteDialogAutofill\(\);/);
-  like(plugin, /dialog\.setOnDismissListener\(d->\{if\(siteDialog!=dialog\)return;revokeSiteDialogAutofill\(\);/);
+  like(plugin, /dialog\.setOnDismissListener\(d->\{if\(siteDialog==dialog\)\{revokeSiteDialogAutofill\(\);Runnable pending=siteDialogCancel;siteDialog=null;siteDialogTab=null;siteDialogCancel=null;siteDialogAutofill=false;if\(pending!=null\)pending\.run\(\);\}/);
   like(auth, /InputType\.TYPE_CLASS_TEXT\s*\|\s*\(password \? InputType\.TYPE_TEXT_VARIATION_PASSWORD : InputType\.TYPE_TEXT_FLAG_NO_SUGGESTIONS\)/, 'exactly one password-typed field');
   // The only getAutofillValue is the framework-facing gate above; Alpha never reads values itself.
   assert.equal((auth.match(/getAutofillValue/g) || []).length, 2, 'getAutofillValue appears only in the bound/unbound gate');
@@ -181,7 +181,7 @@ test('the HTTP authentication prompt fills only for an engine-authenticated orig
   like(plugin, /\/\/ A repeated challenge means the previous answer was not accepted: never offer to save it\.\n\s*finishAuthSave\(t,null\);/);
   like(plugin, /private void fail\(Tab t, String message\) \{ finishAuthSave\(t,null\);/);
   // Dismissal cancels first: a provider may save when every field becomes invisible.
-  like(plugin, /if\(siteDialogAutofill\)\{siteDialogAutofill=false;AutofillManager manager=getActivity\(\)\.getSystemService\(AutofillManager\.class\);if\(manager!=null\)manager\.cancel\(\);\}\n\s*dialog\.dismiss\(\);/);
+  like(plugin, /if\(siteDialogAutofill\)\{siteDialogAutofill=false;AutofillManager manager=getActivity\(\)\.getSystemService\(AutofillManager\.class\);if\(manager!=null\)manager\.cancel\(\);\}\n\s*Runnable pending=siteDialogCancel;siteDialog=null;siteDialogTab=null;siteDialogCancel=null;\n\s*dialog\.dismiss\(\);\n\s*if\(pending!=null\)pending\.run\(\);/);
   like(plugin, /dialog\.setCancelable\(authOrigin==null\);dialog\.setCanceledOnTouchOutside\(false\);/);
   // The password manager is named only when Android has an Autofill service enabled.
   like(plugin, /boolean autofillOn=authOrigin!=null&&autofillState!=null&&autofillState\.isEnabled\(\);/);

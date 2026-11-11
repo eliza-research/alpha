@@ -9,14 +9,9 @@ const start=text.indexOf('        const plan=connectionController.residentPlanSe
 const end=text.indexOf("        page.groups.push(group([{...connectionHelpRow()",start);
 assert(start>=0&&end>start);
 const source=stripTypeScriptTypes(text.slice(start,end),{mode:'strip'});
-for(const busy of [false,true])test(`Cloud account uses the shared account panel while busy=${busy}`,()=>{
- let opened=0,signouts=0;
- const box={serviceName:'Nebula',state:{page:'cloud-plan'},connection:{busy},
-  connectionController:{residentPlanSettings:()=>({signedIn:true,account:'synthetic@example.invalid',plan:'Synthetic plan',inference:'Unavailable'}),openPlan:()=>{opened++;},cloudSignOut:()=>{signouts++;}},
-  info:(label,value)=>({label,value}),group:rows=>({rows}),action:(label,go)=>({label,go}),runtimeLocation:'On this device',page:{groups:[]},out:{stack:[]},api:{set:()=>{}}};
- vm.runInNewContext(source,box);
- const panel=box.out.stack[0],rows=panel.groups[0].rows;
- assert.equal(panel.title,'Account');
- assert.deepEqual(Array.from(rows,row=>row.label),['Open account']);
- rows[0].go();assert.equal(opened,1);assert.equal(signouts,0);
+for(const busy of [false,true])test(`legacy account navigation delegates without financial effects while busy=${busy}`,()=>{
+ let opened=0,cancellations=0,signouts=0,confirmations=0;const box={window:{confirm:()=>{confirmations++;return true;}},serviceName:'Nebula',state:{page:'cloud-plan'},connection:{busy,message:'Signing out…'},connectionController:{residentPlanSettings:()=>({signedIn:true,account:'synthetic@example.invalid',plan:'Synthetic plan',inference:'Unavailable'}),openPlan:()=>{opened++;},cancel:()=>{cancellations++;},cloudSignOut:()=>{signouts++;}},info:(label,value)=>({label,value}),group:rows=>({rows}),action:(label,go)=>({label,go}),runtimeLocation:'On this device',page:{groups:[]},out:{stack:[]},api:{set:()=>{}}};
+ vm.runInNewContext(source,box);assert.equal(box.out.stack[0].title,'Account');const rows=box.out.stack[0].groups.at(-1).rows;
+ assert.deepEqual(Array.from(rows,r=>r.label),['Open account']);rows[0].go();
+ assert.equal(opened,1);assert.equal(cancellations,0);assert.equal(signouts,0);assert.equal(confirmations,0);
 });

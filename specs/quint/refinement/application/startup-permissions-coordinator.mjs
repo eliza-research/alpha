@@ -49,7 +49,7 @@ export const {useLayoutEffect,useSyncExternalStore}=React;`;
     'test/quint-permission-coordinator-refinement.test.mjs', 'specs/quint/refinement/application/contracts.mjs',
     'specs/quint/refinement/application/support.mjs', 'specs/quint/refinement/application/index.mjs',
     'upstream.lock.json', 'scripts/prepare-client-features.mjs',
-    ...readdirSync(resolve(root, 'patches/eliza')).filter(name => /\.(patch|json)$/.test(name)).map(name => 'patches/eliza/' + name)])];
+    '.eliza/client-features/.source.json'])];
   const driverHashes = captureInputs(sources);
   const module = {exports:{}};
   const previousReact = Object.getOwnPropertyDescriptor(globalThis,reactKey);

@@ -131,7 +131,7 @@ for(const scenario of ['ready','rejected','late','mock-ready','mock-retire-rejec
    const counts=await page.evaluate(()=>(window as any).deliveryFixture);
    expect(counts.nativeSync).toBeGreaterThan(0);expect(counts.foregroundSync).toBe(0);
   }else{
-   await expect(dialog.getByText(/Background delivery could not be verified/)).toBeVisible();
+   await expect(dialog.getByText('Results update while Alpha is open. Reconnect to turn on background delivery.',{exact:true})).toBeVisible();
    await expect(dialog.getByRole('button',{name:'Notification settings',exact:true})).toHaveCount(0);
    const counts=await page.evaluate(()=>(window as any).deliveryFixture);
    expect(counts.nativeSync).toBe(0);expect(counts.foregroundSync).toBeGreaterThan(0);

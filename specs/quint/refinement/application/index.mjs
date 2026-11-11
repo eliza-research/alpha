@@ -108,9 +108,14 @@ import {checkModalToastForwarding} from './modal-toast-forwarding.mjs';
 import {checkScreenFocusOwnership} from './screen-focus-ownership.mjs';
 import {checkDockClearanceOwnership} from './dock-clearance-ownership.mjs';
 import {checkMountedUpdateAdmission} from './mounted-update-admission.mjs';
+import {checkAutomaticAppUpdateSchedule} from './automatic-app-update-schedule.mjs';
 import {checkStartupUpdateAdmission} from './startup-update-admission.mjs';
 import {checkCanonicalNotificationTapAdmission} from './canonical-notification-tap-admission.mjs';
 import {checkResidentLiveness} from './resident-liveness.mjs';
+import {checkCloudPlanRecheck} from './cloud-plan-recheck.mjs';
+import {checkOSDefaults} from './os-defaults.mjs';
+import {checkOSProvisioning} from './os-provisioning.mjs';
+import {checkOSSourceStaging} from './os-source-staging.mjs';
 
 const adapters = [checkCalendarActionReview, checkMailComposerPresentation, checkSavedServiceRead, checkMailDraftSelection, checkWorkflowRecoverySelection, checkHomeAutomationsRead, checkVoiceTranscriptFollow, checkAccountSheet, checkMailSelection, checkNotesStartupCache, checkContentLinks, checkCalendarFormControls, checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
@@ -140,8 +145,10 @@ const adapters = [checkCalendarActionReview, checkMailComposerPresentation, chec
   checkCommittedViewObservation,
   checkPreviousNotesSourceOpening,
   checkScheduledTaskControls,
+  checkCloudPlanRecheck,
+  checkOSDefaults, checkOSProvisioning, checkOSSourceStaging,
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
-  checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkCloudConnectionNotices, checkModalScrimOwnership, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkAppInfoHandoffComposition, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
+  checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkCloudConnectionNotices, checkModalScrimOwnership, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkAppInfoHandoffComposition, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkAutomaticAppUpdateSchedule, checkCanonicalNotificationTapAdmission, checkResidentLiveness];
 
 /** Component traces, with remaining obligations kept explicit for the aggregate report. */
 export async function runApplicationRefinement(onProgress) {
@@ -174,6 +181,11 @@ export async function collectApplicationCampaigns(campaigns, onProgress) {
       failures.push({campaign: adapter.name, error});
     }
     onProgress?.({receipts, failures});
+  }
+  const observed = new Set(receipts.map(receipt => receipt.coverageModel));
+  for (const model of entries.keys()) {
+    if (!observed.has(model)) obligations.push({model, obligation: 'Source-adapter refinement',
+      reason: 'This model has no successful source-adapter receipt in this campaign. Model checks do not establish implementation refinement.'});
   }
   return {receipts, obligations, failures};
 }

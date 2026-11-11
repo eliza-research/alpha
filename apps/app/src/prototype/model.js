@@ -5241,11 +5241,31 @@ class Component extends DCLogic {
   every(fn, ms, grp) { this.I = this.I || {}; var id = setInterval(fn, ms); (this.I[grp] = this.I[grp] || []).push(id); return id; }
   stopEvery(grp) { this.I = this.I || {}; (this.I[grp] || []).forEach(clearInterval); this.I[grp] = []; }
   toast(msg, opts) {
-    opts = opts || {}; var self = this;
+    opts = opts || {};
+    var active = typeof document !== "undefined" ? document.activeElement : null;
+    var inside = !!active?.closest?.("[data-alpha-toast]");
+    if (!inside) this.toastOrigin = active;
+    this.toastHeld = inside; this.toastActive = true;
+    this.toastSequence = (this.toastSequence || 0) + 1;
+    this.toastDuration = Math.max(opts.undo ? 5000 : 1900, Math.min(12000, String(msg).length * 50 + 500)) * accessibilityTimeoutScale();
     this.undoFn = opts.undo || null;
-    this.setState({ toast: msg, toastUndo: !!opts.undo }); this.clear("t");
-    this.later(function () { self.undoFn = null; self.setState({ toast: "", toastUndo: false }); },
-      (opts.undo ? 5000 : 1900) * accessibilityTimeoutScale(), "t");
+    this.setState({ toast: msg, toastUndo: !!opts.undo }); this.scheduleToast();
+  }
+  scheduleToast() {
+    this.clear("t"); if (!this.toastActive || this.toastHeld) return;
+    var self = this, sequence = this.toastSequence;
+    this.later(function () { if (self.toastSequence === sequence && !self.toastHeld) self.closeToast(); }, this.toastDuration, "t");
+  }
+  holdToast() { if (this.toastActive) { this.toastHeld = true; this.clear("t"); } }
+  resumeToast() { this.toastHeld = false; if (this.toastActive) this.scheduleToast(); }
+  closeToast() {
+    var doc = typeof document !== "undefined" ? document : null, origin = this.toastOrigin;
+    var heldFocus = !!doc?.activeElement?.closest?.("[data-alpha-toast]");
+    this.toastActive = false; this.toastHeld = false; this.toastSequence = (this.toastSequence || 0) + 1;
+    this.undoFn = null; this.clear("t");
+    this.setState({ toast: "", toastUndo: false }, function () {
+      if (heldFocus && doc?.activeElement === doc.body && origin?.isConnected && !origin.closest("[inert],[hidden]")) origin.focus({ preventScroll: true });
+    });
   }
 
   /* ---- per-app state ---- */
@@ -5353,6 +5373,7 @@ class Component extends DCLogic {
     this.hintDone = true;
   }
   goHome(chat) {
+    if (this.props && this.props.assistantSurface) return this.closeAssistant();
     this.clear("hint"); this.leave();
     if (this.S().secure) return this.setState(Object.assign(this.shellNavigate({ type: "home" }), { secure: false, screen: "lock", shade: false, hint: false, heads: false }));
     this.setState(Object.assign(this.shellNavigate({ type: "home", assistant: chat === "sheet" || chat === "full" ? chat : "input" }), { shade: false, hint: false, heads: false }));
@@ -5408,7 +5429,7 @@ class Component extends DCLogic {
     }
   }
 
-  /* ---- Android's notification shade (#416, #417; docs/gesture-zones.md) ---- */
+  /* ---- Android's notification shade (#416, #417) ---- */
   /** Only the browser development build draws a stand-in for Android's shade. */
   simulatedShade() { return this.props.systemShade === "simulated"; }
   /** Opens the development stand-in for Android's shade. Product builds have no Alpha shade. */
@@ -5451,7 +5472,7 @@ class Component extends DCLogic {
   gDown(e) { if (e.target.closest?.("[data-alpha-transcript],[data-alpha-note-transcript]")) { this.g = null; return; } var o = this.scale(e.currentTarget); this.g = { x: (e.clientX - o.r.left) / o.s, y: (e.clientY - o.r.top) / o.s, cx: e.clientX, cy: e.clientY, s: o.s, pull: pullStart(e.target) }; }
   gUp(e) { var g = this.g; this.g = null; if (!g || window.getSelection()?.isCollapsed === false) return; this.swipe(g, (e.clientX - g.cx) / g.s, (e.clientY - g.cy) / g.s); }
   swipe(g, dx, dy) {
-    // Gesture zones (docs/gesture-zones.md) are the shared shell's (resolveMobileShellSwipe). The top
+    // Gesture zones are the shared shell's (resolveMobileShellSwipe). The top
     // edge belongs to Android; on launcher Home a pull down that starts
     // on empty Home asks Android for its shade (#417, @elizaos/capacitor-system/shade).
     var self = this, S = this.S();
@@ -5727,7 +5748,13 @@ class Component extends DCLogic {
       backToApps: function (event) { var fromChat = event && event.currentTarget && event.currentTarget.hasAttribute("data-alpha-chat-home"); if (fromChat && event.detail > 0 && self.swallowed()) return; self.goHome(); },
       showStatus: !P.nativeSystemChrome && S.screen !== "boot" && S.screen !== "off" && !imm.noStatus, micLive: S.voice === "listening",
       showIndicator: !P.nativeSystemChrome && (isOn || S.screen === "lock") && !(isOn && !S.view && !S.drawer && !S.shade && S.chat !== "sheet" && S.chat !== "full"),
-      toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18, doUndo: function () { var f = self.undoFn; self.undoFn = null; self.clear("t"); self.setState({ toast: "", toastUndo: false }); if (f) f(); },
+      toast: S.toast, toastOn: !!S.toast, toastUndo: !!S.toastUndo, toastPadR: S.toastUndo ? 5 : 18,
+      toastFocus: function () { self.holdToast(); },
+      toastBlur: function (event) { if (!event.currentTarget.contains(event.relatedTarget)) self.resumeToast(); },
+      toastRole: S.toastUndo ? undefined : "button", toastTabIndex: S.toastUndo ? undefined : 0,
+      toastTap: S.toastUndo ? undefined : function () { self.closeToast(); },
+      toastKey: S.toastUndo ? undefined : function (event) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); self.closeToast(); } },
+      doUndo: function () { var f = self.undoFn; self.closeToast(); if (f) f(); },
       hasOngoing: !!ongoing && isOn, ongoing: ongoing || {}, sbWifi: S.q.wifi, sbPlane: S.q.plane,
       goCalendar: function () { self.openView("calendar", copy("shell").homeCalendar || null); },
       goTriage: function () { self.send("What needs me?"); },

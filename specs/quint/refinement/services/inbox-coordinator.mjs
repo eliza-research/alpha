@@ -317,7 +317,7 @@ export async function runInboxCoordinatorRefinement(extraSources = []) {
     assert.ok(draftsFolder);
     draftsFolder.pick();
     await fixture.settle();
-    const resume = app.render().rows.find((row) => row.subj === "original");
+    const resume = app.render().rows.find((row) => row.label === "Draft, (No subject)" && row.subj === "original");
     assert.ok(resume);
     resume.open();
     await fixture.settle();

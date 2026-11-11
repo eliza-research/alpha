@@ -4,6 +4,7 @@ import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {build} from 'esbuild';
+import {guidanceDistance} from '../apps/app/src/maps/guidance.ts';
 // The producing side is the pinned plugin's own serializer, so the wire contract cannot drift silently.
 const load=async(entry,plugins=[])=>{const out=await build({entryPoints:[entry],bundle:true,platform:'node',format:'esm',write:false,plugins});return import('data:text/javascript;base64,'+Buffer.from(out.outputFiles[0].text).toString('base64'));};
 const {appendMapsCard,routeCard}=await load('vendor/eliza/plugins/plugin-maps/src/card.ts');
@@ -19,7 +20,7 @@ test('place, search and route cards become readable cards with their attribution
  const search=mapsChatText(appendMapsCard('Two matches.',{kind:'places',query:'ferry',places:[place,{...place,name:'Pier 1',formattedAddress:undefined,providerPlaceId:'osm:n2'}],nextCursor:null,attribution}));
  assert.deepEqual(search.cards[0].lines,['Ferry Building, 1 Ferry Building, San Francisco','Pier 1']);assert.equal(search.cards[0].attribution,attribution);
  const route=mapsChatText(appendMapsCard('Here is the route.',routeCard({origin:{...ref,name:'Home'},destination:ref,travelMode:'walk',distanceMeters:1530,durationSeconds:1260,warnings:['Steep section']},attribution)));
- assert.deepEqual(route.cards[0],{kind:'route',title:'Route to Ferry Building',lines:['From Home','Walking · 1.5 km · 21 min','Steep section'],attribution});
+ assert.deepEqual(route.cards[0],{kind:'route',title:'Route to Ferry Building',lines:['From Home',`Walking · ${guidanceDistance(1530)} · 21 min`,'Steep section'],attribution});
  assert.equal(route.displayText,'Here is the route.');
 });
 

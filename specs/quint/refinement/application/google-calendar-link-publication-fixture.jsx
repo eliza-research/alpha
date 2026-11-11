@@ -10,6 +10,7 @@ const messages = new Map([
   ['Google connections could not be verified. Check sign-in and try again.', 'unverified'],
   ['Connecting Calendar with Google…', 'connecting'], ['After authorizing Google, return here and check connections.', 'authorization'],
   ['Calendar sync is not available on this host yet, so Calendar is not synced. Calendar keeps working.', 'host-refused'],
+  ['Calendar access could not be confirmed. Try again.', 'host-refused'],
   ...['synced', 'syncing', 'needs-grant', 'not-linked', 'unconfirmed'].map(code => ['Fixture ' + code, code]),
 ]);
 const makeTask = () => {
@@ -105,11 +106,12 @@ async function reset(browser) {
       return job.host.promise;
     },
     async publishAccess(target) {
-      if (!browser || !inspect().linking) return;
-      demand(target?.credentialId === cloud.credentialId && target.current(),
-        'Publication is bound to the current Cloud credential');
-      const result = await this.browserCall('residentGoogleCalendarAccess', target.credentialId, true);
-      if (result.calendarEdits !== true) throw Error('Fixture host refused Calendar access');
+      if (!browser || !target || !inspect().linking) return;
+      demand(target.current(), 'Current host publication target');
+      const active = tokens.get(inspect().linking.signal);
+      const result = await (active?.phase === 'host' ? active.host.promise
+        : globalThis.googleLinkPorts.browserCall('residentGoogleCalendarAccess', target.credentialId, true));
+      if (!target.current() || result?.calendarEdits !== true) throw Error('Calendar access could not be confirmed.');
     },
     link(scope, rows, signal) {
       demand(scope.current() && scope.calendar === identity().calendar, 'Link helper needs the exact current intent');
@@ -125,6 +127,7 @@ async function reset(browser) {
       demand(change.calendarEdits && guard.current() && guard.expectedCalendarEdits && guard.receipt.revision === accessRevision,
         'Current fixture permission receipt authorizes the exact requested edit flag');
       accessRevision++;
+      window.dispatchEvent(new Event('alpha:device-settings'));
     },
   };
 

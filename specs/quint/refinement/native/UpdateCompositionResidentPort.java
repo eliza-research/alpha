@@ -12,12 +12,14 @@ final class AlphaLocalAgentPlugin {
  static volatile CountDownLatch pauseRequested = new CountDownLatch(0);
  static volatile Runnable acquiring = () -> {};
  static volatile Runnable confirming = () -> {};
+ public static volatile Runnable pauseObserver = () -> {};
 
  static long pauseForUpdate(Context context) {
   acquiring.run();
   long request = lease.acquire();
   stops++;
   pauseRequested.countDown();
+  pauseObserver.run();
   return request;
  }
 

@@ -1,5 +1,5 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
-// Photos view agent tools (design/view-refresh-2026-11/PLAN.md section 2). Source-level: the phone
+import test from 'node:test';import assert from 'node:assert/strict';
+// Photos view agent tools. Source-level: the phone
 // consumer tests of the shared Photos view leaf.
 const m=await import('../.eliza/client-features/plugins/plugin-assistant/src/services/device-actions/photos-view-contract.ts');
 const {LIBRARY_LIMITS}=await import('../apps/app/src/runtime/photo-library.ts');
@@ -77,9 +77,4 @@ test('review only in Photos on the unlocked phone',()=>{
   assert.equal(m.photosViewContextAllowed({view:'photos'}),true);
   assert.equal(m.photosViewContextAllowed({view:'photos',sensitive:true}),false);
   assert.equal(m.photosViewContextAllowed({view:'home'}),false);
-});
-
-test('the shared leaf keeps the reviewed rules: same constants and messages as the proposed patch',()=>{
-  const patch=readFileSync(new URL('../patches/eliza/photos-view-agent.patch',import.meta.url),'utf8');
-  for(const text of ['"photos.view.v1"','/^custom:[A-Za-z0-9_-]{1,80}$/','PHOTOS_SHARE_MAX = 100','Choose an album name between 1 and 80 characters','Invalid album items','Invalid share items','Invalid filter text'])assert.ok(patch.includes(text),text);
 });

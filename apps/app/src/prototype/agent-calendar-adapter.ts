@@ -127,7 +127,7 @@ export function installAgentCalendarAdapter(Component:any,views:Bag,preservation
   if(!target?.current()){if(!bootstrapCurrent()||controller.state.savedAt==null)void controller.refresh(window);void restoreBeforeAgent(window);return;}
   const active=controller,shell=owner,binding=mapBinding(target);
   void active.refresh(window).then(()=>{
-   if(automatic||retriedKey===key||document.hidden||owner!==shell||controller!==active||!shell.live||active.state.savedAt==null||!active.state.error)return;
+   if(owner!==shell||controller!==active||!shell.live||automatic||retriedKey===key||document.hidden||active.state.savedAt==null||!active.state.error)return;
    retriedKey=key;clearTimeout(refreshRetry);refreshRetry=setTimeout(()=>{const next=port();if(owner===shell&&controller===active&&shell.live&&!document.hidden&&requestKey===key&&next?.current()&&mapBinding(next)===binding)refresh(true,true);},1500);
   });
  };

@@ -42,6 +42,8 @@ const inventory = json(inventoryPath);
 const pinPath = 'upstream.lock.json';
 const currentPin = json(pinPath).commit;
 if (!/^[a-f0-9]{40}$/.test(currentPin)) throw Error('Invalid upstream source pin');
+const sourceRevision = inventory.revision;
+if (!/^[a-f0-9]{40}$/.test(sourceRevision)) throw Error('Invalid historical specification revision');
 const manifest = json(manifestPath);
 const metadataFiles = get('metadata', '').split(',').filter(Boolean);
 const metadata = metadataFiles.length ? metadataFiles.flatMap(json) : Array.isArray(manifest) ? manifest : manifest.models;
@@ -84,7 +86,7 @@ if (!modelPlans.length) throw Error('No configurations selected');
 // Read Git blobs directly. This proves provenance without changing the immutable checkout.
 const upstream = [];
 for (const {source} of modelPlans) for (const original of [{path: source.source, sha256: source.sha256}, ...source.configs]) {
-  const bytes = execFileSync('git', ['-C', resolve(root, 'vendor/eliza'), 'cat-file', 'blob', `${currentPin}:${original.path}`]);
+  const bytes = execFileSync('git', ['-C', resolve(root, 'vendor/eliza'), 'cat-file', 'blob', `${sourceRevision}:${original.path}`]);
   const actual = sha256(bytes);
   if (actual !== original.sha256) throw Error(`Upstream input hash mismatch ${original.path}`);
   upstream.push({path: original.path, sha256: actual});
@@ -109,7 +111,7 @@ const directory = resolve(root, get('out', `test-results/quint-core-configuratio
 mkdirSync(directory, {recursive: true});
 const receiptPath = resolve(directory, 'receipt.json');
 const receipt = {format: 'alpha-quint-core-configurations-v1', phase, samples, steps, seed, timeoutSeconds: timeout,
-  upstreamRevision: currentPin, originalRevision: inventory.revision, upstream, inputHashes: before, startedAt: new Date().toISOString(),
+  upstreamRevision: sourceRevision, currentApplicationRevision: currentPin, originalRevision: inventory.revision, upstream, inputHashes: before, startedAt: new Date().toISOString(),
   quintVersion: json('node_modules/@informalsystems/quint/package.json').version,
   selected: modelPlans.flatMap(({source, profiles}) => profiles.map(profile => `${source.module}.${profile.name}`)),
   results: [], status: 'running', passed: false};

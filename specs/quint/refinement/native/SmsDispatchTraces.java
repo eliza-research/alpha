@@ -138,6 +138,11 @@ public final class SmsDispatchTraces {
    replyBinding=0;
    if(call==null||!call.answered){reply="pending";return;}
    if(call.rejection!=null){reply=call.rejection;return;}
+   if("sms-send-not-attempted".equals(call.result.optString("kind"))){
+    check(call.result.keySet().equals(Set.of("kind","operationId","reason"))&&OP.equals(call.result.getString("operationId"))&&
+     Set.of("busy","closed").contains(call.result.getString("reason")),"Not-attempted response is exact and contains no durable receipt");
+    reply=call.result.getString("reason");return;
+   }
    if(!call.result.has("status")){reply="ok";return;}
    check(call.result.keySet().equals(Set.of("kind","operationId","subscriptionId","bindingHash","status","parts","createdAt"))&&
     call.result.getString("kind").equals("sms-send")&&call.result.getString("operationId").equals(OP)&&call.result.getInt("subscriptionId")==SUB,
@@ -387,12 +392,20 @@ public final class SmsDispatchTraces {
      f.approve(1,"complete");f.approve(2,"complete");f.request(1,1,"complete");f.history(1);
      break;
     case "exact-cancel-and-retired-button":
-     f.request(1,1,"long-number");f.request(1,1,"empty-parts");f.request(1,1,"complete");
+     f.request(1,1,"long-number");f.request(1,1,"complete");
      f.cancel(1,false);f.cancel(1,true);
      Looper.runMain(()->f.dialog(1).clickSend());drain();
      check(f.context.radio.attempts==0,"Captured old positive callback cannot revive retired review");
      f.trace.stutter("late Send click from the cancelled exact call is ignored",f.observe());
      f.request(2,1,"complete");
+     break;
+    case "empty-parts-retains-denied":
+     f.request(1,1,"empty-parts");
+     check(f.reply.equals("denied")&&f.binding(f.readDisk())==1&&f.context.radio.attempts==0,
+      "Empty platform division must durably close the reviewed operation without radio");
+     f.request(2,1,"complete");f.request(2,2,"complete");
+     check(f.reply.equals("invalid")&&f.context.radio.attempts==0,
+      "A later valid division or conflicting tuple cannot revive the denied operation");
      break;
     case "background-cancellation":
      f.request(1,1,"complete");f.lifecycle(1,"pause");f.request(1,1,"complete");

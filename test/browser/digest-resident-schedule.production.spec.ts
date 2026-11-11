@@ -1,3 +1,4 @@
+import {openRetainedDigests} from './helpers/retained-digests';
 // Loop D on the FLAG-OFF bundle: reviewed digest schedules created, recovered, paused and revoked
 // against the resident agent.
 //
@@ -29,10 +30,7 @@ test('loop D on Android: a reviewed snapshot, morning and evening schedules, a l
   const foreign = await fenceNetwork(page);
   await flagOffAndroid(page, { digests: 'native', schedules: { dropFirstAck: 'loops' } });
   await residentHome(page);
-  await button(page, 'Settings').click();
-  await button(page, 'Apps').click();
-  await button(page, 'Workflows').click();
-  await button(page, 'Scheduled summaries').click();
+  await openRetainedDigests(page);
   const digests = panel(page);
   await expect(digests.getByRole('status')).toHaveText('Synced with this agent.');
   const zone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -113,10 +111,7 @@ test('loop D on Android: a schedule edit made against an older version is refuse
   const foreign = await fenceNetwork(page);
   await flagOffAndroid(page, { digests: 'native', schedules: {} });
   await residentHome(page);
-  await button(page, 'Settings').click();
-  await button(page, 'Apps').click();
-  await button(page, 'Workflows').click();
-  await button(page, 'Scheduled summaries').click();
+  await openRetainedDigests(page);
   const digests = panel(page);
   await digests.getByText('Share a snapshot', { exact: true }).click();
   await digests.getByRole('textbox', { name: 'Snapshot text', exact: true }).fill(SNAPSHOT);

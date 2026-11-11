@@ -10,6 +10,13 @@ const driver = fileURLToPath(import.meta.url);
 const agent = '00000000-0000-4000-8000-000000000001';
 const memoryId = '00000000-0000-4000-8000-000000000002';
 const widths = [384, 512, 768, 1024, 1536, 2048, 3072];
+const historicalRuntime = [
+  'packages/core/src/runtime/embeddings.ts',
+  'packages/core/src/embedding-vector-space.ts',
+  'plugins/plugin-sql/src/base.ts',
+  'plugins/plugin-sql/src/embedding-space.ts',
+  'plugins/plugin-sql/src/pglite/adapter.ts',
+];
 const abstractWidth = width => {
   assert.ok(width === 384 || width === 512);
   return width === 384 ? 2 : 3;
@@ -143,7 +150,7 @@ export async function checkEmbeddingSqlRefinement(extraSources = []) {
     export {RuntimeEmbeddings} from './packages/core/src/runtime/embeddings.ts';
     export {identifyEmbeddingVector, getEmbeddingVectorSpace} from './packages/core/src/embedding-vector-space.ts';
     export {ModelType} from './packages/core/src/types/model.ts';
-  `, [driver, 'package-lock.json', 'upstream.lock.json', ...extraSources], [sqlDependencies]);
+  `, [driver, 'package-lock.json', 'upstream.lock.json', ...extraSources], [sqlDependencies], historicalRuntime);
   const module = bundle.instantiate({});
   const traces = [
     await scenario(module, 'old-untagged-vector-can-be-retagged-during-activation', async f => {
@@ -165,9 +172,10 @@ export async function checkEmbeddingSqlRefinement(extraSources = []) {
   ];
   return checkTraces({model: 'CoreEmbeddingDimension', traces, sources: bundle.sources,
     driverHashes: bundle.driverHashes, scope: 'bounded-component', assumptions: [
-      `Actual RuntimeEmbeddings and PGliteDatabaseAdapter from authenticated upstream ${bundle.revision}.`,
+      `Historical RuntimeEmbeddings, vector identity and SQL adapter fragments from authenticated upstream ${bundle.historicalRevision}, materialized outside vendor. This is the original model's witness, not a current-source failure.`,
+      `Other imported support modules are byte-bound to current upstream ${bundle.revision} and the root package lock. This fragment execution does not claim a complete historical runtime build or qualification.`,
       'The physical PGlite columns 384 and 512 project to widths two and three. A controlled runtime supplies vector bytes and provider identity. The real adapter executes in a temporary database with the selected memory and embedding columns.',
-      'The translated design intentionally preserves the known provenance counterexample. The real SQL trigger blocks a stale direct UPDATE while the current adapter can still tag a delayed unmarked input at insertion.',
+      'The translated design intentionally preserves the known historical provenance counterexample. Its historical SQL fragment can tag a delayed unmarked input at insertion, while the nonce trigger blocks a stale direct UPDATE. The separate NamedEmbeddingProvenance campaign executes the current source and checks refusal instead.',
       'Full migrations, concurrent database processes, foreign agent isolation, and index re-embedding remain separate.',
     ]});
 }

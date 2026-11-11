@@ -30,7 +30,7 @@ import { CloudAccountBillingClient, CloudBillingError, type CloudBillingRequest,
 export type CloudEnvironment = "production" | "staging";
 export type CloudAuthority = { readonly name: string; readonly api: string; readonly web: string; readonly agents: string; readonly entitlementAudience: string };
 // Staging is admitted in test mocks or the explicitly selected real browser Cloud QA host. QA builds reach
-// api-staging.eliza.app, its issuer and its web origins (docs/cloud-subscription-qa.md).
+// api-staging.eliza.app, its issuer and its web origins.
 // Vite replaces import.meta.env at build time, so flag-off bundles fold the staging
 // authority away. Node contract tests import this source without Vite and keep both.
 const stagingAvailable: boolean = import.meta.env === undefined || import.meta.env.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS === '1' || (browserCloudResidentEnabled && browserCloudResidentEnvironment === 'staging');

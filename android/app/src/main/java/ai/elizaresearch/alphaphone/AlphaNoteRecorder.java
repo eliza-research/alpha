@@ -28,7 +28,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * Notes voice recording without a length limit (design/view-refresh-2026-11 PLAN.md section 3).
+ * Notes voice recording without a length limit.
  *
  * <p>One recording is a directory of AAC segments under {@code noBackupFilesDir/note-recording}.
  * MediaRecorder switches to the next segment file without a gap ({@code setNextOutputFile}) when

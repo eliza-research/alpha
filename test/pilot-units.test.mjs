@@ -56,7 +56,7 @@ test("a pilot release must be signed by the recorded signer, advance versionCode
 test("a pilot or acceptance unit never gets a non-distributable release, and every blocker is named", t => {
   const admit = (row, extra) => admitUnitApk(build(t, { ...DISTRIBUTABLE, ...row }, extra), { variant: "launcher", build: "release" }, { descriptor: descriptor() });
   const refusal = (row, extra) => { try { admit(row, extra); } catch (error) { return error.message; } return assert.fail(`admitted ${JSON.stringify(row)}`); };
-  const font = "unresolved-font-licence: Denton typeface (assets/denton.woff2) has no recorded embedding licence; license it or replace it before distribution (owner decision A-21, docs/dependency-audit.md#denton-typeface-mvp-43)";
+  const font = "unresolved-font-licence: Denton typeface (assets/denton.woff2) has no recorded embedding licence; license it or replace it before distribution (owner decision A-21, licenses/font-licenses.json)";
   // Owner decision 2026-10-10 (P-09, A-21): the Denton font check is flag-only. It is recorded but is not a blocker,
   // so a row that names it and is otherwise distributable is admitted, and a refused row does not cite it.
   assert.equal(admit({ licenceBlockers: [font], fontLicenceCheck: { check: "unresolved-font-licence", blocksDistribution: false, items: [font] } }).distributable, true);
@@ -69,9 +69,9 @@ test("a pilot or acceptance unit never gets a non-distributable release, and eve
   assert.match(refusal({ distributable: false, runtime: "NOT_PACKAGED", runtimeNotices: false }), /unpackaged runtime \(resident runtime NOT_PACKAGED\)/);
   assert.match(refusal({ runtime: undefined }), /unpackaged runtime \(resident runtime not recorded\)/);
   assert.match(refusal({ runtimeNotices: false }), /notices lack the packaged runtime/);
-  // On-device voice is optional; a packaged bundle needs exact bytes and recorded functional acceptance.
-  assert.match(refusal({ voiceHost: { packaged: true, asr: true, differences: ["assets/paradee-voice/v1/x: differs"], qualified: false } }), /unqualified on-device voice \(bytes differ from the voice-host record, device qualification pending\)/);
-  assert.match(refusal({ voiceHost: { packaged: true, asr: true, differences: [], qualified: false } }), /unqualified on-device voice \(device qualification pending\)/);
+  // A packaged voice bundle needs the admitted bytes; device acceptance is observed separately.
+  assert.match(refusal({ voiceHost: { packaged: true, asr: true, differences: ["assets/paradee-voice/v1/x: differs"], qualified: false } }), /bytes differ from the voice-host record/);
+  assert.equal(admit({ voiceHost: { packaged: true, asr: true, differences: [], qualified: false } }).distributable, true);
   assert.match(refusal({ voiceHost: { packaged: false, asr: false, differences: [], qualified: false } }), /no on-device voice packaged/);
   assert.equal(admit({ voiceHost: { packaged: true, asr: true, differences: [], qualified: true } }).distributable, true);
   assert.match(refusal({ voiceHost: undefined }), /on-device voice admission was not recorded/);
@@ -81,7 +81,7 @@ test("a pilot or acceptance unit never gets a non-distributable release, and eve
   assert.match(refusal({ releaseAdmission: { failures: [], blockers: ["release signer is unset in android/release-signer.json"], signerMatches: false } }), /release signer is unset/);
   // All open blockers are listed together, once each.
   const all = refusal({ distributable: false, signed: false, signerSha256: null, runtime: "NOT_PACKAGED", licenceBlockers: [font, font],
-    voiceHost: { packaged: true, asr: true, differences: [], qualified: false } });
+    voiceHost: { packaged: true, asr: true, differences: ["assets/paradee-voice/v1/x: differs"], qualified: false } });
   const listed = all.split("\n").filter(line => line.startsWith("  - "));
   assert.deepEqual(listed.map(line => line.slice(4).split(/[:(]/)[0].trim()), ["unsigned release", "unpackaged runtime", "unqualified on-device voice"]);
   assert.match(all, /--build debug rehearses the same steps on a disposable emulator/);
@@ -145,7 +145,7 @@ test("an admitted APK whose own contents contradict its manifest row is refused 
   }
   // Recorded facts of the wrong shape are blockers or errors, never a pass.
   const shaped = { ...DISTRIBUTABLE, testMocks: false, bundleAudit: "passed", releaseAdmission: { failures: [], blockers: [], signerMatches: true } };
-  for (const change of [{ licenceBlockers: "" }, { licenceBlockers: null }, { licenceBlockers: {} }, { voiceHost: true }, { voiceHost: [] }, { voiceHost: {} }, { voiceHost: { packaged: true, differences: [] } }, { releaseAdmission: true }, { releaseAdmission: {} },
+  for (const change of [{ licenceBlockers: "" }, { licenceBlockers: null }, { licenceBlockers: {} }, { voiceHost: true }, { voiceHost: [] }, { voiceHost: {} }, { voiceHost: { packaged: true, differences: null } }, { releaseAdmission: true }, { releaseAdmission: {} },
     { releaseAdmission: { failures: [], blockers: [] } }, { runtimeNotices: "true" }, { signed: "true" }, { distributable: "true" }, { testMocks: undefined }, { runtime: "packaged" }]) {
     let outcome; try { outcome = releaseBlockers({ ...shaped, ...change }); } catch (error) { outcome = [error.message]; }
     assert.ok(outcome.length > 0, `admitted ${JSON.stringify(change)}`);
@@ -301,4 +301,13 @@ test("campaign records are read from emulator-suite, resident proofs and residen
   // A resident proof without the hash of the APK it ran on is not admitted.
   write("test-results/resident-instrumentation/unbound.json", { passed: true });
   assert.equal(recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root).candidate.campaigns.find(row => row.id === "resident-instrumentation").status, "mismatched");
+});
+
+
+test("the provisioning record keeps only its secret-free fields", () => {
+  const source = fs.readFileSync("scripts/provision-unit.mjs", "utf8");
+  const body = /const record = \{([\s\S]*?)\n  \};/.exec(source)[1];
+  const keys = [...body.matchAll(/^\s{4}([a-zA-Z]+)[:,]/gm)].map(match => match[1]);
+  assert.deepEqual(keys, ["schema", "alias", "createdAt", "sourceCommit", "evidence", "notEvidenceFor", "device", "apk", "installed", "runtimeIdentity", "homeRole"]);
+  assert.match(source, /buildFingerprintSha256: sha256\(/);
 });

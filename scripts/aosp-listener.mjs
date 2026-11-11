@@ -7,7 +7,7 @@ export {FORBIDDEN,INDICATOR_EXEMPT_ROLES,UNPRIVILEGED,VOICE_HOST_RECORD,LISTENER
 
 // The outer staging pipeline admits this product, voice record and APK descriptor first.
 export function stageListener({root,output,apk,dump,signer,launcherSigner,appId}) {
- const product=JSON.parse(fs.readFileSync(path.join(root,'vendor/eliza/packages/os/android/products/pixel10a-alpha.json'),'utf8'));
+ const product=JSON.parse(fs.readFileSync(path.join(root,'android/aosp/pixel10a-composition.json'),'utf8'));
  if(product.launcher.packageName!==appId)throw Error('Sense product differs from the admitted launcher');
  const voiceHost=JSON.parse(fs.readFileSync(path.join(root,'android/voice-host/qualified-voice-host.json'),'utf8'));
  const entries=execFileSync('unzip',['-Z1',apk],{encoding:'utf8',maxBuffer:64<<20}).split(/\r?\n/).filter(Boolean);

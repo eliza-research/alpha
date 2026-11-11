@@ -7,6 +7,9 @@ public class Context {
  public final java.io.File data;
  public Context(java.io.File cache){this.cache=cache;try{data=java.nio.file.Files.createTempDirectory("alpha-update-native-").toFile();java.nio.file.Files.write(new java.io.File(data,"base.apk").toPath(),new byte[]{1,2,3});}catch(Exception failure){throw new RuntimeException(failure);}}
  public boolean applicationPublished=true;
+ public boolean imageAdmitted;
+ public android.telecom.TelecomManager calls=new android.telecom.TelecomManager();
+ public <T>T getSystemService(Class<T> type){return type==android.telecom.TelecomManager.class?type.cast(calls):null;}
  public Context getApplicationContext(){return applicationPublished?this:null;}
  public java.io.File getNoBackupFilesDir(){return data;}
  public android.content.pm.ApplicationInfo getApplicationInfo(){android.content.pm.ApplicationInfo info=new android.content.pm.ApplicationInfo();info.sourceDir=new java.io.File(data,"base.apk").getPath();return info;}

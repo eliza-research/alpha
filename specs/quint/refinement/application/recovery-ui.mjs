@@ -5,7 +5,7 @@ import React from 'react';
 import {createRoot} from 'react-dom/client';
 import {flushSync} from 'react-dom';
 import {createRequire} from 'node:module';
-import {readFileSync, readdirSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {captureInputs,checkTraces,qset} from '../check-traces.mjs';
 
@@ -33,8 +33,7 @@ async function compile(extraSources){
   const sources=[...new Set([...discovered, 'apps/app/src/build-flags.ts',
     'apps/app/src/platform-plugins.ts','package-lock.json','upstream.lock.json',
     'scripts/prepare-client-features.mjs',fileURLToPath(import.meta.url),...extraSources,
-    ...readdirSync(new URL('../../../../patches/eliza/',import.meta.url))
-      .filter(name=>/\.(patch|json)$/.test(name)).map(name=>'patches/eliza/'+name)])];
+    '.eliza/client-features/.source.json'])];
   const driverHashes=captureInputs(sources);
   const output=await build(buildOptions);
   assert.deepEqual(inputs(output),discovered,'the captured application module graph remains unchanged');

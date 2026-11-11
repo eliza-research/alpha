@@ -19,10 +19,10 @@ for(const reason of ['disconnected','scope-revoked'] as const)test(`Gmail same-I
  await expect.poll(()=>page.evaluate(()=>(window as any).gmailGrantFixture.reads)).toBe(1);
  await page.evaluate(reason=>{const f=(window as any).gmailGrantFixture;if(reason==='disconnected')f.connected=false;else f.triage=false;},reason);
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha:google-accounts-changed')));
- await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
  await expect(page.getByText('Connect Gmail to read your inbox',{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:'Fixture mailbox',exact:true})).toHaveCount(0);
- await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Refresh inbox',exact:true})).toBeVisible();
  await expect(page.getByText('Connect Gmail to read your inbox',{exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).gmailGrantFixture)).toMatchObject({reads:1,oauth:0});
  await page.evaluate(()=>{const f=(window as any).gmailGrantFixture;f.connected=true;f.triage=true;});

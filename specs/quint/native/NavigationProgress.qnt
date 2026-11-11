@@ -34,6 +34,11 @@ module NavigationProgress {
   pure def release(state: Navigation): Navigation = endGuidance({...state,
     releases: state.releases + 1, selected: false, routePhase: "none", route: 0,
     abortedRequests: if (state.selected) state.abortedRequests.union(Set(state.routeRequests)) else state.abortedRequests})
+  pure def suspend(state: Navigation): Navigation = {
+    val stopped = if (state.navigating) endGuidance(state) else state
+    {...stopped, routePhase: if (state.routePhase == "loading" and state.route != 0) "ready" else state.routePhase,
+      abortedRequests: state.abortedRequests.union(Set(state.routeRequests))}
+  }
   pure def refusedBackground(state: Navigation): Navigation = {
     val stopped = stopBridge(state)
     if (state.foreground or state.permission) stopped else release(stopped)
@@ -123,16 +128,16 @@ module NavigationProgress {
     val requestId = s.routeRequests + 1
     s' = if (s.navigating and s.fixUsable and not(s.rerouting))
       projection({...s, rerouting: true, rerouteCleared: true, offRoute: false,
-        routePhase: "loading", route: 0, routeRequests: requestId, pendingRoutes: s.pendingRoutes.union(Set(requestId)),
+        routePhase: "loading", routeRequests: requestId, pendingRoutes: s.pendingRoutes.union(Set(requestId)),
         abortedRequests: s.abortedRequests.union(Set(s.routeRequests))}) else s
   }
   action routeResult(request: int, route: int): bool = all {
     request.in(s.pendingRoutes), route.in(0.to(2)),
     val answered = {...s, pendingRoutes: s.pendingRoutes.exclude(Set(request))}
-    val result = {...answered, routePhase: if (route == 0) "error" else "ready", route: route}
+    val result = {...answered, routePhase: "ready", route: if (route == 0) s.route else route}
     s' = if (not(s.selected) or request != s.routeRequests or request.in(s.abortedRequests)) answered
       else if (not(s.navigating)) projection(result)
-      else if (route == 0) endGuidance(result)
+      else if (route == 0) projection({...result, rerouting: false})
       else if (s.rerouting and s.rerouteCleared)
         projection({...result, rerouting: false, navStep: 0, navRoute: route})
       else endGuidance(result)
@@ -141,7 +146,7 @@ module NavigationProgress {
   action hide = all {
     s.foreground,
     val hidden = {...s, foreground: false}
-    s' = if ((s.navigating and s.bridgeOwner != 0) or s.permission) hidden else release(hidden)
+    s' = if ((s.navigating and s.bridgeOwner != 0) or s.permission) hidden else suspend(hidden)
   }
   action show = s' = {...s, foreground: true}
   action holdPermission(value: bool): bool = all {s.foreground, s' = {...s, permission: value}}
@@ -186,17 +191,17 @@ module NavigationProgress {
     .then(fix(1, 30, true, 0, "near-arrival", "changed")).expect(safety and s.arrived)
   run agedFixIsRetainedButCannotRerouteTest = init.then(start(false)).then(fix(1, 30, true, 0, "off-76", "changed"))
     .then(ageFix).then(reroute).expect(safety and s.fixPresent and not(s.canReroute) and s.routeRequests == 1)
-  run rerouteFailureEndsGuidanceTest = init.then(start(true)).then(available(1, true)).then(backgroundAck(1, true))
+  run rerouteFailureKeepsGuidanceTest = init.then(start(true)).then(available(1, true)).then(backgroundAck(1, true))
     .then(fix(1, 30, true, 0, "off-76", "changed")).then(reroute).then(routeResult(2, 0))
-    .expect(safety and not(s.navigating) and s.routePhase == "error" and s.stopCommands == [1])
+    .expect(safety and s.navigating and s.routePhase == "ready" and s.route == 1 and s.stopCommands == [])
   run retiredStartStopsOnlyItsOwnNativeIdTest = init.then(start(true)).then(available(1, true)).then(end)
     .then(start(true)).then(available(3, true)).then(backgroundAck(3, true)).then(backgroundAck(1, true))
     .expect(safety and s.bridgeOwner == 3 and s.backgroundRunning and s.stopCommands == [1, 1])
   run endingAllowsRouteReplyWithoutRevivingGuidanceTest = init.then(start(false))
     .then(fix(1, 30, true, 0, "off-76", "changed")).then(reroute).then(end).then(routeResult(2, 2))
     .expect(safety and s.route == 2 and not(s.navigating) and s.navRoute == 0)
-  run releaseAbortsOutstandingRouteTest = init.then(start(false)).then(fix(1, 30, true, 0, "off-76", "changed"))
-    .then(reroute).then(hide).then(routeResult(2, 2)).expect(safety and s.routePhase == "none")
+  run suspensionAbortsOutstandingRouteTest = init.then(start(false)).then(fix(1, 30, true, 0, "off-76", "changed"))
+    .then(reroute).then(hide).then(routeResult(2, 2)).expect(safety and s.routePhase == "ready" and s.route == 1 and not(s.navigating))
   run pendingBackgroundKeepsHiddenScreenTest = init.then(start(true)).then(hide)
     .then(available(1, true)).then(backgroundAck(1, true)).expect(safety and s.backgroundRunning and s.releases == 0)
   run dragAndRecenterTest = init.then(start(false)).then(stopFollowing).expect(not(s.follow))

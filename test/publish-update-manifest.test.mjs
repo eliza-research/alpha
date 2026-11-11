@@ -36,7 +36,9 @@ function fixture(t, rows = {}) {
   fs.writeFileSync(path.join(dir, "artifacts/apk-manifest.json"), JSON.stringify({ testMocks: false, results }));
   return dir;
 }
-const io = () => { const out = [], err = []; return { out, err, log: line => out.push(line), error: line => err.push(line) }; };
+// These tests use synthetic APK bytes; native archive inspection has separate
+// contradiction tests. Production's default inspector is mandatory at the CLI.
+const io = () => { const out = [], err = []; return { out, err, inspectApk: () => ({signerRootSha256:SIGNER}), log: line => out.push(line), error: line => err.push(line) }; };
 const written = dir => path.join(dir, "artifacts/app-stable", MANIFEST_NAME);
 
 test("a distributable signed release becomes the manifest phones parse, beside its APK copy", t => {
@@ -76,4 +78,24 @@ test("an unknown variant or overlong notes are a usage error", t => {
   assert.equal(main(["--variant", "debug"], { root: dir, ...io() }), 2);
   assert.equal(main(["--variant", "launcher", "--notes", "x".repeat(501)], { root: dir, ...io() }), 2);
   assert.equal(fs.existsSync(written(dir)), false);
+});
+
+test("a release row cannot override contradictory archive facts", t => {
+  const dir = fixture(t), run = io();
+  let inspected = false;
+  assert.equal(main(["--variant", "launcher"], { root: dir, ...run, inspectApk(apk, { descriptor }) {
+    inspected = true;
+    assert.equal(apk.sha256, sha("launcher bytes"));
+    assert.equal(descriptor.signerSha256, SIGNER);
+    throw Error("archive signer differs from the enrolled release signer");
+  } }), 1);
+  assert.equal(inspected, true);
+  assert.match(run.err.join("\n"), /archive signer differs/);
+  assert.equal(fs.existsSync(written(dir)), false);
+});
+
+test("the feed selects the APK's verified original signing family after approved rotation", t => {
+  const dir = fixture(t), run = io(), originalRoot = 'b'.repeat(64);
+  assert.equal(main(['--variant','launcher'],{root:dir,...run,inspectApk:()=>({signerRootSha256:originalRoot})}),0);
+  assert.equal(JSON.parse(fs.readFileSync(written(dir),'utf8')).signerSha256,originalRoot);
 });

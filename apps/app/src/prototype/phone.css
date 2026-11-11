@@ -4,7 +4,7 @@ html,body,#root{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behav
 .browser-desktop .alpha-phone{box-shadow:0 12px 60px var(--alpha-shadow-soft);border-radius:24px;overflow:hidden}
 .alpha-phone>[data-screen]{top:0!important;left:0!important;border-radius:0!important;height:var(--phone-height,915px)!important}
 .standalone-app .alpha-phone,.standalone-app .alpha-phone>[data-screen]{width:var(--phone-width,412px)!important}
-.native-phone .alpha-phone>[data-screen]>div:first-child{display:none}
+.native-phone .alpha-phone>[data-screen]>[data-alpha-system-cutout]{display:none}
 /* Native insets are screen CSS pixels; the phone canvas may be scaled. Standalone
  * already fits its WebView inside the bars and supplies zero remaining inset. */
 .alpha-phone {
@@ -46,6 +46,7 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
  * (--phone-scale, main.tsx): the inset and its 12px margin are divided by that scale, so the
  * handle starts 12 screen pixels below the bar on a narrow phone as well as on a 412px one. */
 [data-alpha-home-layout] { padding-top:max(20px,calc((var(--native-top-inset,0px) + 12px) / var(--phone-scale,1) - 44px))!important; }
+.alpha-phone [data-alpha-layer="home"] { top:calc(44px + var(--alpha-home-notice-clearance,0px) / var(--phone-scale,1))!important; }
 /* Home cards are at least their design size and grow with their text (PRD AP-15 large font).
  * Android delivers large text as WebView text zoom, which leaves a fixed 196px box and an em
  * max-height at their authored size while the glyphs double: the title was then printed over the
@@ -56,6 +57,9 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 .home-card-row { overflow-anchor:none; }
 /* The shared mobile shell's app grid drops a column when its labels stop fitting the measured text size. */
 [data-alpha-layer="home"] { --mobile-shell-text-scale:var(--alpha-text-scale,1); }
+/* The app grid follows the cards at the grid's own row gap instead of being pushed down by a
+ * flexible spacer; the free space collects below the grid, above the dock. */
+[data-alpha-layer="home"] [data-mobile-shell-home-spacer]:not([data-mobile-shell-home-spacer="end"]) { flex-grow:0; min-height:0; height:24px; }
 .home-calendar-card { display:grid; grid-template-rows:auto minmax(0,1fr); gap:12px; text-align:left; width:min(calc(280px * var(--alpha-card-scale,1)),100%); min-height:196px; }
 .home-calendar-head { display:flex; justify-content:space-between; align-items:center; width:100%; min-width:0; }
 .home-calendar-time { flex:0 1 auto; min-width:0; font-size:14px; font-weight:600; line-height:1.25; color:rgba(255,255,255,.85); }
@@ -226,7 +230,7 @@ html:not(.standalone-app) [data-alpha-layer="home"][data-alpha-home-fits="true"]
 /* Standalone Alpha uses Android system chrome, including in its app preview. */
 .standalone-app [data-alpha-system-cutout],.native-phone [data-alpha-system-cutout]{display:none}
 /* The app WebView is already fitted below native bars; only the launcher reserves OS chrome. */
-.standalone-app [data-alpha-layer="home"]{top:0!important}
+.standalone-app [data-alpha-layer="home"]{top:calc(var(--alpha-home-notice-clearance,0px) / var(--phone-scale,1))!important}
 .standalone-app [data-alpha-home-layout]{padding-top:12px!important}
 
 [data-alpha-message-text][role="button"] { cursor: pointer; }
@@ -343,12 +347,17 @@ html:not(.alpha-landscape) .alpha-phone [data-alpha-layer="home"] { bottom:0!imp
 /* Grow scroll clearance, not the flex space containing the icons. The resting
  * pill and composer have different heights but share the same Home layout. */
 .alpha-phone { --alpha-home-clearance:max(28px,calc((max(var(--alpha-home-bottom-inset,var(--native-bottom-inset,0px)),env(safe-area-inset-bottom,0px)) + 12px) / var(--phone-scale,1))); }
-html:not(.alpha-landscape) .alpha-phone [data-alpha-home-layout] { padding-bottom:calc(var(--alpha-home-clearance) + 86px)!important; min-height:max(100%,calc(var(--alpha-home-height,100%) - 44px))!important; }
+/* Home's content box is exactly its scrollport while the content fits: a min-height taller than
+ * 100% (the old keyboard-free canvas height, which ignored the notice clearance and rounded
+ * fractionally) gave Home a few pixels of vertical scroll above empty space. The grid no longer
+ * sits on a flexible spacer, so a shorter canvas (the keyboard) cannot move it either. */
+html:not(.alpha-landscape) .alpha-phone [data-alpha-home-layout] { padding-bottom:calc(var(--alpha-home-clearance) + 86px)!important; min-height:100%!important; }
 html:not(.alpha-landscape) .alpha-phone [data-screen]:not([data-alpha-chat-half="true"]) [data-alpha-home-clearance] { height:max(0px,calc(var(--alpha-dock-clearance,102px) + 6px - var(--alpha-home-clearance) - 86px)); }
 /* The app library fills the screen behind the floating dock. Its final row can
    scroll above the dock because the clearance belongs inside the list. */
 html:not(.alpha-landscape) .alpha-phone [data-alpha-layer="drawer"] { padding-bottom:0!important; }
 .alpha-app-drawer [data-installed-apps-scroll] { min-height:0; padding-bottom:var(--alpha-dock-reserve)!important; scroll-padding-bottom:var(--alpha-dock-reserve); }
+.alpha-app-drawer [data-alpha-dialog-toast] { max-height:min(15dvh,112px)!important; }
 .alpha-landscape .alpha-app-drawer [data-installed-apps-scroll] { padding-bottom:16px!important; scroll-padding-bottom:16px; }
 /* Under the resting half sheet Home keeps its layout and gains scroll range: what the sheet
  * covers beyond the reserve Home already leaves. */
@@ -541,7 +550,7 @@ dialog:is(.alpha-operation-review,.alpha-calendar-editor,.alpha-calendar-meeting
 .note-editor > .note-checklist-column { width:100%; max-width:744px; align-self:center; box-sizing:border-box; min-height:0; }
 [data-alpha-subview="notes-voice"] > .note-voice-column { width:100%; max-width:768px; align-self:center; box-sizing:border-box; min-height:0; }
 
-/* Responsive surfaces (#411; matrix in docs/implementation-plan.md). `alpha-wide` is set from the
+/* Responsive surfaces (#411). `alpha-wide` is set from the
  * measured canvas width (runtime/canvas-geometry.ts), not from orientation. On a wide canvas,
  * lists, readers, editors and settings keep a readable centred column instead of stretching;
  * their scroll containers stay full width so the scroll edge and gestures do not move. Nested
@@ -827,7 +836,9 @@ dialog.alarm-page{position:fixed;inset:0 auto auto 0;margin:0;width:100vw;height
 [data-voice-state="starting"] .alpha-voice-startup-status::before,
 [data-voice-state="connecting"] .alpha-voice-startup-status::before,
 .alpha-pill-voice-synth[data-connecting="true"]::before { content:"";display:block;width:18px;height:18px;box-sizing:border-box;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:alpha-voice-connect-spin .9s linear infinite; }
-.alpha-pill-voice-controls .alpha-voice-startup-status {padding-right:8px;}
+/* The compact pill keeps its three control slots; the spinner/waveform shows
+   progress while its live status remains available to screen readers. */
+.alpha-pill-voice-controls .alpha-voice-startup-status {position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 @keyframes alpha-voice-connect-spin {to {transform:rotate(360deg);}}
 @media(prefers-reduced-motion:reduce){[data-voice-state="starting"] .alpha-voice-startup-status::before,[data-voice-state="connecting"] .alpha-voice-startup-status::before,.alpha-pill-voice-synth[data-connecting="true"]::before{animation:none;}}
 

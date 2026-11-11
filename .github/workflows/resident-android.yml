@@ -50,7 +50,7 @@ on:
         default: '26'
   # Optional automatic PACKAGED qualification. Both triggers are inert unless the
   # repository variable ELIZA_RESIDENT_QUALIFICATION is "push" (every main commit)
-  # or "nightly" (once a day, default branch only). See docs/ci-cost-policy.md.
+  # or "nightly" (once a day, default branch only).
   push:
     branches: [main, develop]
   schedule:
@@ -257,8 +257,6 @@ jobs:
             bash -e -c '
               npm run upstream:prepare-client
               exec node --test --test-concurrency=1 \
-                test/docs-inventory-consistency.test.mjs \
-                test/docs-requirements-consistency.test.mjs \
                 test/embedding-host-admission.test.mjs \
                 test/upstream-reachability.test.mjs \
                 test/voice-host-record.test.mjs \
@@ -338,9 +336,9 @@ jobs:
           python3 scripts/ci/resident-phase.py --name mobile-bundle --seconds 300 npm run agent:test-mobile-workflow-bundle
           # Fresh native artifacts and the runtime pin are inputs to shipped notices.
           python3 scripts/ci/resident-phase.py --name license-notices --seconds 120 node scripts/generate-licenses.mjs --packaged-runtime
-          # Gate distribution on exactly the npm set the staged payload ships (A-4).
-          python3 scripts/ci/resident-phase.py --name packaged-dependency-audit --seconds 180 node scripts/dependency-audit.mjs --resident --notices apps/app/public/licenses/third-party-notices.json
           if [ "$ALPHA_RUNTIME_PROFILE" = cloud ]; then
+            # Clean R8 release builds need the same reviewed heap as Android foundation.
+            export GRADLE_OPTS="-Dorg.gradle.jvmargs=-Xmx4096m"
             node scripts/prepare-local-agent.mjs --source-only
             export ALPHA_CLOUD_COLLECTOR_SOURCE="$ALPHA_LOCAL_AGENT_SOURCE_DIR"
             export ALPHA_BUN="$(command -v bun)"

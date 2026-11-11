@@ -198,10 +198,12 @@ test("nothing is shown or created on a destroyed activity by a late browser call
   // The download dialogs: a completion posted from a worker can land after destroy().
   const downloads = read("BrowserDownloads.java");
   assert.match(downloads, /public void destroy\(\) \{\s*closed = true;\s*dismissDialogs\(\);/);
-  assert.match(downloads, /private void message\(String text\) \{\s*if \(closed\)\s*return;\s*new AlertDialog\.Builder/);
+  assert.match(downloads, /private void message\(String text\) \{\s*if \(closed\)\s*return;\s*if \(notice != null && notice\.isShowing\(\)\) \{\s*notice\.setMessage\(text\);\s*return;\s*\}\s*AlertDialog shown = new AlertDialog\.Builder/,'neither updating an existing notice nor creating one can run after destruction');
   assert.match(downloads, /public void show\(\) \{\s*if \(closed\)\s*return;/);
   assert.match(downloads, /private void review\(String tab, String title, String details, Runnable confirm\) \{\s*if \(closed\)\s*return;/);
-  assert.match(downloads, /private boolean reviewable\(\) \{\s*if \(closed\)\s*return false;/);
+  assert.match(downloads, /private boolean reviewable\(Source source\) \{\s*if \(ignored\(source\)\)\s*return false;/);
+  assert.match(downloads, /private boolean ignored\(Source source\) \{\s*return ignoring\(source\.tab\);\s*\}/);
+  assert.match(downloads, /public boolean ignoring\(String tab\) \{\s*return closed \|\| refusals\.getOrDefault\(tab, 0\) >= MAX_REFUSALS;/,'review admission rejects a destroyed host before considering the tab refusal budget');
 });
 
 test("receivers and callbacks a plugin registers are released when it is destroyed", () => {

@@ -63,7 +63,7 @@ test('preflight names the exact command for each missing build input', t => {
   let problems = checkoutProblems(f.root, {voiceHost: () => { throw Error('Voice bundle lacks the ASR slot'); }});
   assert.equal(problems.length, 1);
   assert.ok(problems[0].startsWith(`The on-device voice outputs in ${VOICE_ASSET_ROOT} are not admitted by ${VOICE_HOST_MANIFEST} (Voice bundle lacks the ASR slot; Gradle :app:verifyVoiceHost rejects the build).`), problems[0]);
-  assert.match(problems[0], /npm run android:build:local does not produce them: stage them with node scripts\/android-stage-voice-models\.mjs --from <directory of the recorded voice outputs and models> \(see docs\/fused-speech\.md\)\./);
+  assert.match(problems[0], /npm run android:build:local does not produce them: stage them with node scripts\/android-stage-voice-models\.mjs --from <directory of the recorded voice outputs and models> \(see README\.md\)\./);
   // Staged outputs that the record does not admit are refused by the real verifier, never repaired, in either lane.
   f.write(`${VOICE_ASSET_ROOT}/build-record.json`, '{}');
   assert.match(checkoutProblems(f.root, {allowUnpackagedRuntime: true})[0], /are not admitted by android\/voice-host\/qualified-voice-host\.json/);
@@ -143,7 +143,7 @@ test('preflight rejects an unpinned checkout and android:build stops before sync
   f.write('upstream.lock.json', JSON.stringify({commit: 'f'.repeat(40)}));
   assert.match(checkoutProblems(f.root)[0], /vendor\/eliza is at .*pins f{40}\. Run: git submodule update --init vendor\/eliza/);
   // The real entry point exits with status 2 and the guidance, without starting the build.
-  for (const file of ['android-abis.mjs', 'embedding-native-contract.mjs', 'paradee-runtime.mjs', 'voice-host.mjs', 'build-android.mjs', 'update-channel.mjs', 'android-build-preflight.mjs', 'mobile-uuid-adapter.mjs', 'core-state-patch.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'toolchain.mjs', 'copy-file-clone.mjs'])
+  for (const file of ['android-abis.mjs', 'embedding-native-contract.mjs', 'paradee-runtime.mjs', 'voice-host.mjs', 'build-android.mjs', 'update-channel.mjs', 'android-build-preflight.mjs', 'mobile-uuid-adapter.mjs', 'build-policy-source.mjs', 'core-state-patch.mjs', 'stage-embedding-host.mjs', 'build-embedding-host.mjs', 'toolchain.mjs', 'copy-file-clone.mjs'])
     f.write('scripts/' + file, read('scripts/' + file));
   // build-android.mjs reads the release-signing environment names from the host descriptor.
   f.write('android/consumer-host.json', read('android/consumer-host.json'));
@@ -210,7 +210,7 @@ test('android:build:local builds the workflow worker before staging and stages b
   assert.ok(stage.indexOf('verifyWorkerArtifact(workerArtifactDirectory(root)') < stage.indexOf("'scripts/build-mobile-agent.mjs'"));
 });
 
-test('preflight names the embedding host and who must supply it when the build step cannot', t => {
+test('preflight names missing embedding build inputs', t => {
   // Gradle's :app:verifyEmbeddingHost failed a fully prepared and staged checkout 18 seconds into
   // the first assemble task: the reviewed libraries are ignored by Git and staged from a receipt.
   const f = fixture(t);
@@ -223,13 +223,12 @@ test('preflight names the embedding host and who must supply it when the build s
   assert.equal(problems.length, 1);
   assert.match(problems[0], /qualified embedding host is not staged \(Qualified embedding host library missing or changed: libelizainference\.so; Gradle :app:verifyEmbeddingHost/);
   assert.match(problems[0], /npm run agent:build-embedding-host \(a step of npm run android:build:local\) stages the libraries only when it can reproduce the reviewed bytes/);
-  assert.match(problems[0], /Needs a person: .*node scripts\/stage-embedding-host\.mjs --receipt/);
   // Test-mocks builds run the same strict Gradle check.
   assert.equal(preparedRuntimeProblems(f.root, f.source, {testMocks: true, embeddingHost: missing}).length, 1);
 
   // The real verifier: a staged resident payload is never admitted as "unpackaged", so the
   // developer override does not help until the payload is removed or the host is staged.
-  f.write('android/embedding-host/qualified-host.json', JSON.stringify({qualificationReceiptSha256: 'not reviewed'}));
+  f.write('android/embedding-host/qualified-host.json', JSON.stringify({jniIdentityRelocated: false}));
   problems = preparedRuntimeProblems(f.root, f.source, {allowUnpackagedRuntime: true});
   assert.equal(problems.length, 1);
   assert.match(problems[0], /must have no resident payload at all/);

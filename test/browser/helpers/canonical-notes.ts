@@ -1,3 +1,4 @@
+import {preloadPageModules} from './page-modules.ts';
 import {expect,type Page} from '@playwright/test';
 /** Closed canonical app-record transport. Real Notes controller/client/editor/rendering run unchanged.
  * This fixture tests UI contracts, not the server store or account/provider integration.
@@ -11,6 +12,7 @@ export async function canonicalNotesFixture(page:Page,{path='/',notes=[],failRea
  await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/,async route=>{foreign.push(route.request().url());await route.abort();});
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
  await page.goto(path);
+ await preloadPageModules(page,['/src/runtime/connection-ui.tsx','/src/prototype/canonical-notes-controller.ts','/src/browser/daily.ts']);
  await page.evaluate(async({notes,failReads})=>{
   const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');
   const f=(window as any).canonicalNotesFixture={state:{notes,trash:[],revision:notes.length?1:0},requests:[],otherRequests:[],fail:false,failReads,failAfterApplied:false};

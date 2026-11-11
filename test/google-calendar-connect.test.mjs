@@ -451,7 +451,7 @@ test('after a disconnect with no account readback, Connect Google Calendar start
  }finally{await p.close();f.calendar.retire();}
 });
 
-test('Add Google account asks for the Gmail tier the connected accounts hold, like the switches',async()=>{
+test('Google account action requests the supported Gmail changes tier',async()=>{
  const modify=[...READ,'google.gmail.send','google.gmail.drafts','google.gmail.mailbox'];
  for(const [rows,label] of [[[account(OWNER,modify)],'Add Google account'],[[account(OWNER,READ)],'Allow Gmail changes'],[[],'Connect Google account']]){
   const p=await panel(rows);

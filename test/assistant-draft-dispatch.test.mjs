@@ -30,6 +30,7 @@ for (const transition of ['session', 'history']) test(`the shell retires the old
   await controller.open('old');
   const abort = new AbortController();
   const shell = {
+    cancelVoiceScrollFollow() {},
     live: true, connectionSession: 'old-session', startupDraft: null,
     composerDraft: controller, draftBindingAbort: abort,
     S: () => state,

@@ -1,6 +1,6 @@
 import { cuttlefishOptions, writeCuttlefishNatives } from './aosp-cuttlefish.mjs';
 import { verifyPixel10aSource, defaultLockPath, listenerSystemuiPatch, aospBuildPatch } from './pixel10a-source-contract.mjs';
-import { pixel10aOptions, pixel10aProductProblems, pixel10aVendorApi, writePixel10aProduct, PIXEL10A_PRODUCT } from './aosp-pixel10a.mjs';
+import { pixel10aOptions, pixel10aProductProblems, pixel10aSourceLayout, pixel10aVendorApi, writePixel10aProduct, PIXEL10A_PRODUCT } from './aosp-pixel10a.mjs';
 import { readReleaseSigner } from './build-android.mjs';
 import fs from "node:fs";
 import { writeAospCapabilityOverlay } from "./aosp-capability-overlay.mjs";
@@ -151,7 +151,7 @@ if (production && development) throw new Error("--production and --development a
 // lands on the disabled AlphaAssistActivity, so no production image carries it while P-78 stands.
 // Development staging still takes it so the listener can be tested.
 if (production && (get("--listener-apk") || get("--listener-descriptor")))
-  throw new Error("Refusing --listener-apk for --production: wake listening is deferred (P-78, docs/decisions.md), so production images leave AlphaSense out. Stage the listener with --development.");
+  throw new Error("Refusing --listener-apk for --production: wake listening is deferred (P-78), so production images leave AlphaSense out. Stage the listener with --development.");
 // The product lock is checked before any source or APK is read: production never stages into an
 // unset product. Pixel 10a has its own production descriptor; the Cuttlefish product its own lock.
 if (production) {
@@ -164,6 +164,7 @@ const appliedPatches = [...stagingSystemuiPatches(appliedPatchNames, physical ||
 if ((physical || cuttlefish) && !appliedBuildNames.includes('soong-app-native'))
   throw Error('Image staging requires --applied-build-patch soong-app-native for Soong-only APK and JNI installation.');
 const physicalSource = physical ? await verifyPixel10aSource({source:get('--aosp-source'), factory:get('--factory-image'), appliedPatches}) : null;
+if (physicalSource) physicalSource.hardwareLayout = pixel10aSourceLayout({source:get('--aosp-source')});
 // The verified tree must also lunch a release carrying the stock stallion vendor API (shared check).
 const vendorApi = physical ? pixel10aVendorApi({root:process.cwd(), source:get('--aosp-source')}) : null;
 if (physical && production && physicalSource.sourceLockSha256 !== JSON.parse(fs.readFileSync(PIXEL10A_PRODUCT, "utf8")).sourceLock?.sha256)
@@ -285,7 +286,7 @@ writeSecureCameraOverlay(output, cameraSource);
 if (production) {
   const components = provisioningComponents(tree, identity.appId);
   writeProvisioningOverlay(output, identity.appId, components);
-  // The shared Pixel 10a composition writes the same overlay from products/pixel10a-alpha.json.
+  // The shared Pixel 10a composition writes the same overlay from android/aosp/pixel10a-composition.json.
   if (!physical) writeAospCapabilityOverlay(output, identity.appId);
   console.log(`Provisioning overlay: HOME ${components.home}, assistant ${components.assistant ? identity.appId : "none (P-78)"}, Autofill ${components.autofill}.`);
 }

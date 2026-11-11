@@ -95,7 +95,7 @@
         "apps/app/src/runtime/subscription-entitlement.ts",
         "apps/app/src/runtime/managed-service-routes.ts",
         "apps/app/src/runtime/cloud-environment-selection.ts",
-        "patches/eliza/managed-google-agent.patch"
+        "vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-route-policy.ts"
       ],
       "stateMapping": {
         "plan/validFor/refresh/failures": "EntitlementRefresher cached signed entitlement, expiry and background retry",
@@ -905,10 +905,7 @@
         "vendor/eliza/plugins/plugin-inbox/src/mailbox/drafts-controller.ts",
         "vendor/eliza/plugins/plugin-inbox/src/mailbox/operation-journal.ts",
         "vendor/eliza/plugins/plugin-inbox/src/mailbox/retained-draft.ts",
-        "patches/eliza/inbox-confirmation-client-manifest.json",
-        "patches/eliza/inbox-confirmation-client.patch",
-        "patches/eliza/inbox-cleanup-client-manifest.json",
-        "patches/eliza/inbox-cleanup-client.patch",
+        "upstream.lock.json",
         "scripts/prepare-client-features.mjs"
       ],
       "components": [
@@ -1353,7 +1350,6 @@
         "vendor/eliza/packages/core/src/runtime.ts",
         "vendor/eliza/plugins/plugin-sql/src/base.ts",
         "vendor/eliza/plugins/plugin-sql/src/stores/task-wake.ts",
-        "patches/eliza/task-service-stop.patch",
         "scripts/core-state-patch.mjs"
       ],
       "tests": [
@@ -1404,8 +1400,7 @@
         "vendor/eliza/plugins/plugin-notes/src/interact.ts",
         "vendor/eliza/plugins/plugin-notes/src/types.ts",
         "vendor/eliza/plugins/plugin-notes/src/validation.ts",
-        ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts",
-        "patches/eliza/notes-state-runtime.patch"
+        ".eliza/client-features/plugins/plugin-notes/src/client/notes-api.ts"
       ],
       "tests": [
         "canonicalReplayTest",
@@ -1464,8 +1459,7 @@
       "sources": [
         "vendor/eliza/packages/core/src/runtime/turn-controller.ts",
         "vendor/eliza/packages/core/src/runtime/turn-aborted-error.ts",
-        "patches/eliza/turn-controller-isolation.patch",
-        "patches/eliza/core-state-manifest.json"
+        "upstream.lock.json"
       ],
       "stateMapping": {
         "active/results/registry/room/order/roomOrder": "Actual registry maps, controller identities and returned handler promises",
@@ -1494,7 +1488,6 @@
       "sources": [
         "vendor/eliza/packages/core/src/services/task-scheduler.ts",
         "vendor/eliza/packages/core/src/services/task.ts",
-        "patches/eliza/task-service-stop.patch",
         "scripts/core-state-patch.mjs"
       ],
       "tests": [
@@ -1594,7 +1587,6 @@
       ],
       "sources": [
         "vendor/eliza/packages/core/src/runtime/embeddings.ts",
-        "patches/eliza/embedding-store-identity.patch",
         "vendor/eliza/packages/core/src/runtime.ts",
         "vendor/eliza/packages/core/src/runtime/model-dispatch.ts",
         "vendor/eliza/plugins/plugin-sql/src/base.ts"
@@ -1682,7 +1674,7 @@
         "android/app/src/main/java/ai/elizaresearch/alphaphone/GoogleAgentAccessFile.java",
         "android/app/src/main/java/ai/elizaresearch/alphaphone/AlphaLocalAgentPlugin.java",
         "scripts/native-google-product-host.ts",
-        "patches/eliza/managed-google-agent.patch"
+        "vendor/eliza/packages/app/src/runtime/managed-google-agent/native-google-agent-host.ts"
       ],
       "stateMapping": {
         "file/access/sidecars": "Canonical file type and bits, with observed sibling artifacts",
@@ -1729,8 +1721,7 @@
         "vendor/eliza/packages/core/src/runtime/model-dispatch.ts",
         "vendor/eliza/packages/core/src/runtime/data-mutations.ts",
         "vendor/eliza/packages/agent/src/api/conversation-routes.ts",
-        "vendor/eliza/plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts",
-        "patches/eliza/named-embedding-provenance.patch"
+        "vendor/eliza/plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts"
       ],
       "stateMapping": {
         "space/width": "Live adapter activation and vector column at SQL construction",
@@ -1879,8 +1870,7 @@
         "vendor/eliza/packages/core/src/runtime/connector-registration.ts",
         "vendor/eliza/packages/core/src/runtime/service-lifecycle.ts",
         "vendor/eliza/packages/core/src/runtime.ts",
-        "patches/eliza/plugin-connector-custody.patch",
-        "patches/eliza/core-state-manifest.json",
+        "upstream.lock.json",
         "scripts/core-state-patch.mjs"
       ],
       "stateMapping": {
@@ -1925,10 +1915,9 @@
         "scripts/core-state-patch.mjs",
         "scripts/build-mobile-agent.mjs",
         "scripts/mobile-bundle-smoke.mjs",
-        "patches/eliza/mobile-uuid-build.json",
-        "patches/eliza/core-state-manifest.json",
-        "patches/eliza/plugin-connector-custody.patch",
+        "vendor/eliza/packages/agent/scripts/mobile-uuid-exports.ts",
         "upstream.lock.json",
+        "vendor/eliza/packages/core/src/plugin-lifecycle.ts",
         "vendor/eliza/bun.lock",
         "vendor/eliza/packages/agent/scripts/build-mobile-bundle.ts"
       ],
@@ -2045,27 +2034,30 @@
         "apps/app/src/runtime/google-workspace-return.ts",
         "apps/app/src/runtime/inbox-attachment.ts",
         "apps/app/src/runtime/managed-service-routes.ts",
-        "patches/eliza/managed-google-agent.patch",
+        "vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-host.ts",
         "apps/app/src/product/native-cloud-runtime.ts",
         "scripts/native-google-product-host.ts",
         "apps/app/src/product/alpha-product-registration.ts",
         "package.json",
-        "patches/eliza/cloud-speech-client-manifest.json",
-        "patches/eliza/cloud-speech-client.patch",
-        "patches/eliza/core-state-manifest.json",
-        "patches/eliza/embedding-store-identity.patch",
-        "patches/eliza/named-embedding-provenance.patch",
-        "patches/eliza/notes-state-runtime.patch",
-        "patches/eliza/plugin-connector-custody.patch",
-        "patches/eliza/room-queue-admission.patch",
-        "patches/eliza/task-service-stop.patch",
-        "patches/eliza/turn-controller-isolation.patch",
-        "scripts/client-speech-patch.mjs",
+        "upstream.lock.json",
+        "vendor/eliza/packages/voice/src/native-cloud-speech.ts",
+        "vendor/eliza/packages/voice/src/cloud-speech-chunks.ts",
+        "vendor/eliza/packages/core/src/runtime/embeddings.ts",
+        "vendor/eliza/plugins/plugin-sql/src/base.ts",
+        "vendor/eliza/packages/agent/src/api/conversation-routes.ts",
+        "vendor/eliza/plugins/plugin-assistant/src/features/advanced-capabilities/experience/service.ts",
+        "vendor/eliza/plugins/plugin-notes/src/service.ts",
+        "vendor/eliza/plugins/plugin-notes/src/store.ts",
+        "vendor/eliza/plugins/plugin-notes/src/types.ts",
+        "vendor/eliza/plugins/plugin-notes/src/validation.ts",
+        "vendor/eliza/packages/core/src/plugin-lifecycle.ts",
+        "vendor/eliza/packages/core/src/runtime/room-handler-queue.ts",
+        "vendor/eliza/packages/core/src/services/task.ts",
+        "vendor/eliza/packages/core/src/runtime/turn-controller.ts",
         "scripts/combined-agent-source.mjs",
         "scripts/core-state-preload.mjs",
         "scripts/prepare-client-features.mjs",
         "tsconfig.json",
-        "upstream.lock.json",
         "vendor/eliza/packages/auth/src/auth/native-cloud-sign-in.ts",
         "vendor/eliza/packages/cloud/sdk/native-host/subscription-grant.mjs",
         "vendor/eliza/packages/cloud/sdk/src/cloud-account-billing.ts",
@@ -2217,7 +2209,7 @@
       ],
       "sources": [
         "scripts/browser-cloud-dev-bridge.ts",
-        "patches/eliza/managed-google-agent.patch"
+        "vendor/eliza/packages/app/src/runtime/managed-google-agent/managed-google-agent-broker.ts"
       ],
       "stateMapping": {
         "owners/slots": "Private active map ownership, with source admission and cancellation observed indirectly",
@@ -2255,19 +2247,19 @@
         "AbortedInvocationNeverReportsSuccess"
       ],
       "sources": [
-        "patches/eliza/managed-google-agent.patch",
+        "vendor/eliza/packages/app/src/runtime/managed-google-agent/gmail-agent-mailbox-host.ts",
         "apps/app/src/runtime/cloud-protocol.ts",
         "vendor/eliza/plugins/plugin-inbox/src/mailbox/managed-gmail-client.ts"
       ],
       "stateMapping": {
         "sameScope/message/request/kind": "Invocation input bound to the selected scope and opaque turn and message IDs",
         "durable": "In-memory provider receipt state, kind and success message keyed by exact turn",
-        "proposal/sent/calls": "Actual in-memory CloudProtocol route order and encoded prepare and dispatch proposal",
+        "proposal/sent/calls": "Actual in-memory managed Google client route order and encoded prepare and dispatch proposal",
         "aborted/result/recoveryReads": "Actual AbortSignal, returned confirmation or error and observed recovery reads"
       },
       "abstractions": [
         "One selected owner grant, two turn, message and history representatives, four mailbox mutation kinds, and at most two sequential invocations. Durable states are synthetic provider replies.",
-        "The source driver executes the exact mailbox helper, CloudProtocol and projected upstream Gmail decoder without files, bearer credentials or network. Provider mutation, durable storage behavior, concurrent invocations and outer host credential selection are separate."
+        "The source driver executes the shared mailbox helper, managed Google client and projected upstream Gmail decoder without files, bearer credentials or network. Provider mutation, durable storage behavior, concurrent invocations and outer host credential selection are separate."
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -2370,9 +2362,9 @@
         "missingWorkerAndStalePayloadRefuseTest",
         "payloadReportDoesNotAdmitCloudProfileTest",
         "missingMobileReceiptPrecedesGoogleHostTest",
-        "embeddingHumanActionDependsOnReceiptAndToolchainTest",
+        "embeddingBytesMustBePresentAndUnchangedTest",
         "signerNeedsIdentityAndEnvironmentTest",
-        "completeReportIncludesQualificationButIsNotBuildTest"
+        "completeInputReportDoesNotRunBuildTest"
       ],
       "invariants": [
         "FullAdmissionRequiresEarlyAdmission",
@@ -2388,7 +2380,7 @@
         "scripts/voice-host.mjs"
       ],
       "stateMapping": {
-        "input": "Selected disposable checkout, reviewed-byte, stamp, profile, receipt and qualification fixtures",
+        "input": "Selected disposable checkout, native-library byte, stamp, profile and build-receipt fixtures",
         "ready/attention/notices": "Real report rows and formatting for native build readiness and human actions",
         "before/full/googleChecked": "Actual early and full preflight problem classes and order of the Google host admission port"
       },
@@ -2411,7 +2403,7 @@
       "invariant": "safety",
       "tests": [
         "publishAndReuseTest",
-        "badPatchPreservesHostTest",
+        "badSourcePreservesHostTest",
         "publicationFailurePreservesPriorTest",
         "cacheDriftRefusesReuseTest",
         "badRouteKeepsPriorHostTest",
@@ -2430,19 +2422,18 @@
         "scripts/android-host.mjs",
         "scripts/prepare-patched-native.mjs",
         "scripts/upstream-native-source.mjs",
-        "patches/eliza/native-manifest.json",
-        "patches/eliza/browser-tab-underlay-native.patch",
+        "android/upstream-native-sources.json",
         "vendor/eliza/packages/app/scripts/mobile/android/consumer-host.mjs",
         "vendor/eliza/packages/app/scripts/mobile/android/consumer-host/settings.gradle",
         "vendor/eliza/plugins/plugin-native-browser-surface/android/build.gradle"
       ],
       "stateMapping": {
-        "selected/reviewed/patchValid": "Exact manifest byte identity, reviewed module route and authenticated patch bytes",
+        "selected/reviewed/sourceValid": "Exact source inventory byte identity, reviewed module route and authenticated Git source bytes",
         "stage1/stage2": "Keyed staged source and provenance receipts with observed cache drift",
         "host/hostGeneration/fresh/result": "Generated output ownership, module and asset path, input digest freshness and actual generator or receipt-verifier result"
       },
       "abstractions": [
-        "One independent browser module, two manifest byte identities and one reviewed patch with all pinned module files.",
+        "One independent browser module, its resource directory, and two source inventory byte identities for the same pinned files.",
         "The source generator and exact receipt verification execute in scratch. Full Gradle, concurrent publication, arbitrary interruption and installed behavior remain separate."
       ],
       "bounds": {
@@ -2494,6 +2485,54 @@
         "maxSamples": 1000,
         "maxSteps": 80,
         "maxVerifyDepth": 7
+      }
+    },
+    {
+      "path": "specs/quint/services/ClientFeaturePublication.qnt",
+      "module": "ClientFeaturePublication",
+      "init": "init",
+      "step": "step",
+      "invariant": "safety",
+      "tests": [
+        "loserOnlyReadsWhileLaterPeerRetiresWinnerTest",
+        "readbackCannotRetireAgainTest",
+        "changedDirectoryCannotAuthenticateTest",
+        "differentWinnerTimesOutWithoutReplacementTest",
+        "unrecognizedOrLinkedInitialTreeIsPreservedTest",
+        "readbackRefusalCannotDeleteForeignTreeTest",
+        "failedIoAndCleanupRetainOnlyOwnedScratchTest",
+        "unauthenticatedSourceCannotRetireTest"
+      ],
+      "invariants": [
+        "RetireAndPublishAtMostOnce",
+        "AcceptedOnlyExactTarget",
+        "PrivateCandidateBeforePublish",
+        "SuccessfulCleanupOwnsNoSidecars",
+        "TypeOK"
+      ],
+      "sources": [
+        "scripts/prepare-client-features.mjs",
+        "scripts/upstream-native-source.mjs",
+        "upstream.lock.json",
+        "vendor/eliza/packages/app/scripts/lib/immutable-workspace-source.mjs",
+        "vendor/eliza/packages/app/scripts/lib/committed-source.mjs"
+      ],
+      "stateMapping": {
+        "visible/kind": "Actual published cache bytes/provenance and regular versus refused path class",
+        "workers.candidate/aside": "Private authenticated stage and per-process retired directory inventories",
+        "workers.retirements/publications/reads": "Actual rename attempts and lstat probes; probes do not establish acceptance",
+        "workers.phase/accepted/outcome": "One-shot mutation, read-only collision recovery, exact function result, timeout and cleanup outcomes"
+      },
+      "abstractions": [
+        "Three finite publishers; stale cache and two authenticated target equality classes. Every publisher retires and attempts publication at most once; a loser only reads.",
+        "A complete private candidate precedes the first rename. One selected outside writer can change the readback winner. Cleanup names only the caller own stage/aside; abrupt process loss and orphan recovery are outside this relation.",
+        "Read counts are0,1,2-or-more. Actual source uses25ms cooperative waits and a monotonic30-second deadline. Eventual success requires finite peers/IO and authenticated readback before that deadline; safety does not imply progress.",
+        "One source-linked three-process collision trace observes a real missing-path readback and exact final authentication. Initial refusal, different-target timeout and IO/cleanup failure scenarios are model-only selected branches."
+      ],
+      "bounds": {
+        "maxSamples": 1000,
+        "maxSteps": 80,
+        "maxVerifyDepth": 6
       }
     }
   ]

@@ -1,6 +1,6 @@
 // Native Android input report and the two separate prerequisite gates.
 module AndroidBuildInputReadiness {
-  type Inputs = {pin: str, voice: str, host: str, remap: bool, prepared: bool,
+  type Inputs = {pin: str, voice: str, host: str, prepared: bool,
     payload: str, worker: str, profile: str, mobilePolicy: bool, google: bool, support: bool, signer: str}
   type State = {input: Inputs, ready: Set[str], attention: Set[str], before: Set[str],
     full: Set[str], notices: Set[str], googleChecked: bool}
@@ -15,14 +15,12 @@ module AndroidBuildInputReadiness {
     val stagedWorker = i.worker == "staged" or i.worker == "both"
     val payloadReady = i.prepared and i.payload == "exact" and stagedWorker
     val signerReady = i.signer == "ready"
-    val hostPerson = not(i.remap) or i.host == "requalification"
     val ready = rowIf(pinReady, "pin").union(rowIf(voiceReady, "voice"))
-      .union(rowIf(i.voice == "qualified", "qualification")).union(rowIf(hostReady, "embedding"))
+      .union(rowIf(hostReady, "embedding"))
       .union(rowIf(i.prepared, "prepared")).union(rowIf(artifactReady, "worker"))
       .union(rowIf(payloadReady, "payload")).union(rowIf(i.support, "model")).union(rowIf(i.support, "gradle"))
       .union(rowIf(signerReady, "signer"))
-    val attention = rowIf(not(voiceReady), "voice").union(rowIf(i.voice != "qualified", "qualification"))
-      .union(rowIf(not(hostReady) and hostPerson, "embedding")).union(rowIf(not(signerReady), "signer"))
+    val attention = rowIf(not(voiceReady), "voice").union(rowIf(not(signerReady), "signer"))
     val before = rowIf(not(pinReady), "pin").union(rowIf(not(voiceReady), "voice"))
     val stageBlock = if (i.payload == "absent" or not(stagedWorker)) Set("payload")
       else if (i.payload == "stale") Set("stamp")
@@ -32,13 +30,13 @@ module AndroidBuildInputReadiness {
     val full = if (before.size() != 0) before
       else if (not(i.prepared)) Set("prepared")
       else rowIf(not(hostReady), "embedding").union(stageBlock)
-    val notices = rowIf(ready.size() == 10, "allInputs").union(rowIf(not(voiceReady), "voiceBlocker"))
-      .union(rowIf(not(hostReady) and hostPerson, "embeddingBlocker")).union(rowIf(not(signerReady), "unsigned"))
+    val notices = rowIf(ready.size() == 9, "allInputs").union(rowIf(not(voiceReady), "voiceBlocker"))
+      .union(rowIf(not(signerReady), "unsigned"))
     val googleChecked = before.size() == 0 and payloadReady and i.profile == "native" and not(i.mobilePolicy)
     {input: i, ready: ready, attention: attention, before: before, full: full, notices: notices,
       googleChecked: googleChecked}
   }
-  action init = s' = observe({pin: "equal", voice: "missing", host: "missing", remap: true,
+  action init = s' = observe({pin: "equal", voice: "missing", host: "missing",
     prepared: false, payload: "absent", worker: "none", profile: "absent", mobilePolicy: false,
     google: true, support: false, signer: "unset"})
 
@@ -47,12 +45,11 @@ module AndroidBuildInputReadiness {
     s' = observe({...s.input, pin: value}),
   }
   action setVoice(value: str): bool = all {
-    value.in(Set("missing", "staged", "qualified")), s' = observe({...s.input, voice: value}),
+    value.in(Set("missing", "staged")), s' = observe({...s.input, voice: value}),
   }
   action setHost(value: str): bool = all {
-    value.in(Set("missing", "ready", "different", "requalification")), s' = observe({...s.input, host: value}),
+    value.in(Set("missing", "ready", "different")), s' = observe({...s.input, host: value}),
   }
-  action setRemap(value: bool): bool = s' = observe({...s.input, remap: value})
   action prepare = s' = observe({...s.input, prepared: true})
   action setPayload(value: str): bool = all {
     value.in(Set("exact", "stale")), s' = observe({...s.input, payload: value}),
@@ -72,9 +69,9 @@ module AndroidBuildInputReadiness {
 
   action step = any {
     { nondet v = Set("equal", "descendant", "older", "unknown", "mismatch").oneOf(); selectPin(v) },
-    { nondet v = Set("missing", "staged", "qualified").oneOf(); setVoice(v) },
-    { nondet v = Set("missing", "ready", "different", "requalification").oneOf(); setHost(v) },
-    setRemap(true), setRemap(false), prepare, setPayload("exact"), setPayload("stale"),
+    { nondet v = Set("missing", "staged").oneOf(); setVoice(v) },
+    { nondet v = Set("missing", "ready", "different").oneOf(); setHost(v) },
+    prepare, setPayload("exact"), setPayload("stale"),
     setWorker("artifact"), setWorker("staged"), setWorker("both"), setProfile("native"), setProfile("cloud"),
     demandMobileReceipt, setGoogleHost(true), setGoogleHost(false), stageSupport,
     { nondet v = Set("unset", "envOnly", "identityOnly", "ready").oneOf(); setSigner(v) },
@@ -106,14 +103,16 @@ module AndroidBuildInputReadiness {
     .then(setPayload("exact")).then(setWorker("both")).then(setProfile("native"))
     .then(setGoogleHost(false)).expect(s.full == Set("googleHost") and s.googleChecked)
     .then(demandMobileReceipt).expect(s.full == Set("mobileReceipt") and not(s.googleChecked) and safety)
-  run embeddingHumanActionDependsOnReceiptAndToolchainTest = init.then(setVoice("staged")).then(setRemap(false))
-    .expect(s.attention.contains("embedding")).then(setHost("ready")).expect(not(s.attention.contains("embedding")))
-    .then(setRemap(true)).then(setHost("requalification"))
-    .expect(s.attention.contains("embedding") and s.notices.contains("embeddingBlocker") and safety)
+  run embeddingBytesMustBePresentAndUnchangedTest = init.then(setVoice("staged")).then(prepare)
+    .then(setPayload("exact")).then(setWorker("both")).then(setProfile("native"))
+    .expect(s.full == Set("embedding") and not(s.attention.contains("embedding")))
+    .then(setHost("ready")).expect(s.full.size() == 0 and s.ready.contains("embedding"))
+    .then(setHost("different")).expect(s.full == Set("embedding") and not(s.ready.contains("embedding")))
+    .then(setHost("missing")).expect(s.full == Set("embedding") and safety)
   run signerNeedsIdentityAndEnvironmentTest = init.then(setSigner("envOnly")).expect(not(s.ready.contains("signer")))
     .then(setSigner("identityOnly")).expect(not(s.ready.contains("signer")))
     .then(setSigner("ready")).expect(s.ready.contains("signer") and not(s.notices.contains("unsigned")) and safety)
-  run completeReportIncludesQualificationButIsNotBuildTest = init.then(setVoice("qualified")).then(setHost("ready"))
+  run completeInputReportDoesNotRunBuildTest = init.then(setVoice("staged")).then(setHost("ready"))
     .then(prepare).then(setPayload("exact")).then(setWorker("both")).then(setProfile("native")).then(stageSupport)
     .then(setSigner("ready")).expect(s.notices.contains("allInputs") and s.full.size() == 0 and safety)
 }

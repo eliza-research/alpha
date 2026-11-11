@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "baseCommit": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "path": "packages/ui/src/mobile-shell/view-registry.ts",
-  "beforeSha256": "ef86e781ee0a9aa74fbcfad11f048657da36f8a753f005923299d6c6de10d209",
-  "afterSha256": "1b1dda923117f6037ff552be3904072d6efe2001689e69baddc029d171bf261a",
-  "patchSha256": "8ccf2bf6b7d8cd56cf12eb4ef09f59f78b7824e37376fe6782185eafabbf95f7"
-}

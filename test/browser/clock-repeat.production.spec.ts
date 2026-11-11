@@ -15,7 +15,19 @@ async function clockBridge(page: Page, repeatDaysVersion: number | null) {
     const w = window as any, capacitor = w.Capacitor, original = capacitor.nativePromise;
     const daily = capacitor.PluginHeaders.find((plugin: any) => plugin.name === 'DailyApps');
     daily.methods.push({ name: 'clockHandoff', rtype: 'promise' });
+    // Opening Workflows discovers these four collections before the Clock chooser.
+    // This Clock fixture supplies no automations; every write and other path stays guarded.
+    const emptyDiscoveries: Record<string, string> = {
+      '/api/automations': 'automations',
+      '/api/lifeops/scheduled-tasks?ownerVisibleOnly=1': 'tasks',
+      '/api/lifeops/reminders': 'reminders',
+      '/api/lifeops/definitions': 'definitions',
+    };
     capacitor.nativePromise = async (plugin: string, method: string, input: any) => {
+      if (plugin === 'Agent' && method === 'request' && input?.method === 'GET' && Object.hasOwn(emptyDiscoveries, input.path)) {
+        w.flagOff.calls.push('Agent.request');
+        return { status: 200, body: JSON.stringify({ [emptyDiscoveries[input.path]]: [] }) };
+      }
       if (plugin === 'DailyApps' && method === 'surfaceInfo') { w.flagOff.calls.push('DailyApps.surfaceInfo'); return { developmentBuild: false, assistant: false, ...(version === null ? {} : { clockRepeatDaysVersion: version }) }; }
       if (plugin === 'DailyApps' && method === 'clockHandoff') { w.flagOff.calls.push('DailyApps.clockHandoff'); (w.clockHandoffs ??= []).push(structuredClone(input)); return { action: input.action, status: 'opened', message: 'Approved Clock handoff sent. Check Clock; Alpha cannot confirm an alarm was changed.' }; }
       return original(plugin, method, input);
@@ -26,6 +38,7 @@ const handoffs = (page: Page) => page.evaluate(() => (window as any).clockHandof
 async function openClock(page: Page) {
   await residentHome(page);
   await button(page, 'Workflows').click();
+  await button(page, 'New automation').click();
   await button(page, 'Clock alarms').click();
   return page.getByRole('dialog', { name: 'Clock alarms', exact: true });
 }
@@ -37,16 +50,20 @@ for (const version of [1, 2]) test(`clockRepeatDaysVersion ${version}: Mon to Fr
   await flagOffAndroid(page);await clockBridge(page, version);
   const clock = await openClock(page);
   const repeat = clock.getByRole('group', { name: 'Repeat', exact: true });
-  for (const day of [...weekdays, 'Sat', 'Sun']) await expect(repeat.getByRole('button', { name: day, exact: true })).toHaveAttribute('aria-pressed', 'false');
+  for (const day of [...weekdays, 'Sat', 'Sun']) await expect(repeat.getByRole('button', { name: `Repeat on ${day}`, exact: true })).toHaveAttribute('aria-pressed', 'false');
   await clock.getByLabel('Alarm time', { exact: true }).fill('06:30');
   await clock.getByRole('textbox', { name: 'Alarm label' }).fill('Weekday wake');
   // Chosen out of order; the request is still the ascending Calendar values.
-  for (const day of ['Fri', 'Mon', 'Wed', 'Tue', 'Thu']) await repeat.getByRole('button', { name: day, exact: true }).click();
-  for (const day of weekdays) await expect(repeat.getByRole('button', { name: day, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  for (const day of ['Fri', 'Mon', 'Wed', 'Tue', 'Thu']) await repeat.getByRole('button', { name: `Repeat on ${day}`, exact: true }).click();
+  for (const day of weekdays) await expect(repeat.getByRole('button', { name: `Repeat on ${day}`, exact: true })).toHaveAttribute('aria-pressed', 'true');
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
   await expect(clock).toContainText('Ask Clock to set a repeating alarm (weekdays) at 06:30 named “Weekday wake”, using the phone’s local time. Review the alarm in Clock.');
   expect(await handoffs(page)).toEqual([]);
-  await clock.getByRole('button', { name: 'Confirm Clock request', exact: true }).dblclick();
+  // Deliver duplicate activation to the same reviewed control before its asynchronous
+  // handoff settles. A physical dblclick can retarget the newly exposed Review button.
+  await clock.getByRole('button', { name: 'Confirm Clock request', exact: true }).evaluate(button => {
+    (button as HTMLButtonElement).click(); (button as HTMLButtonElement).click();
+  });
   await expect(clock).toContainText('Approved Clock handoff sent. Check Clock; Alpha cannot confirm an alarm was changed.');
   const sent = await handoffs(page);
   expect(sent).toHaveLength(1);
@@ -64,7 +81,7 @@ test('without clockRepeatDaysVersion there are no day chips and a set request ca
   const clock = await openClock(page);
   await expect.poll(() => harness(page, f => f.calls.includes('DailyApps.surfaceInfo'))).toBe(true);
   await expect(clock.getByRole('group', { name: 'Repeat', exact: true })).toHaveCount(0);
-  for (const day of [...weekdays, 'Sat', 'Sun']) await expect(clock.getByRole('button', { name: day, exact: true })).toHaveCount(0);
+  for (const day of [...weekdays, 'Sat', 'Sun']) await expect(clock.getByRole('button', { name: `Repeat on ${day}`, exact: true })).toHaveCount(0);
   await clock.getByLabel('Alarm time', { exact: true }).fill('06:30');
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
   await expect(clock).toContainText('Ask Clock to set an alarm at 06:30, using the phone’s local time.');

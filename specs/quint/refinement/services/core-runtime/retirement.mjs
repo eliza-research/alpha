@@ -15,7 +15,7 @@ function fixture(RuntimeRetirement, name) {
   const promises = new Map();
   const observers = [];
   const observe = (includeDrains = true) => ({
-    's.pending': qset([...retirement.pending].map(promise => {
+    's.pending': qset([...retirement.pending.keys()].map(promise => {
       assert.ok(identities.has(promise), 'Every published work promise has an observed identity');
       return identities.get(promise);
     })),
@@ -30,10 +30,10 @@ function fixture(RuntimeRetirement, name) {
     const gate = Promise.withResolvers();
     gates.set(id, gate);
     results.set(id, 'running');
-    const before = new Set(retirement.pending);
+    const before = new Set(retirement.pending.keys());
     let published;
     const promise = retirement.run(() => {
-      const added = [...retirement.pending].filter(value => !before.has(value));
+      const added = [...retirement.pending.keys()].filter(value => !before.has(value));
       assert.equal(added.length, 1, 'Work is published before invoking its hook');
       published = added[0];
       identities.set(published, id);

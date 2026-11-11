@@ -1,3 +1,4 @@
+import {openRetainedDigests} from './helpers/retained-digests';
 // Loop D phone sources on the FLAG-OFF bundle: reviewed consent for calendars and reminders read on
 // this phone, schedules bound to that consent, its renewal notice, the Renew tap, revocation, the
 // evening gate and the on-demand brief review.
@@ -23,10 +24,7 @@ const calendar = (page: Page, name: string) => panel(page).getByRole('checkbox',
 
 async function openDigests(page: Page) {
   await residentHome(page);
-  await button(page, 'Settings').click();
-  await button(page, 'Apps').click();
-  await button(page, 'Workflows').click();
-  await button(page, 'Scheduled summaries').click();
+  await openRetainedDigests(page);
   await expect(panel(page).getByRole('status')).toHaveText('Synced with this agent.');
 }
 /** Selected phone sources > Choose calendars > Personal (+ reminders) > Review source consent. */
@@ -125,7 +123,7 @@ test('phone sources on Android: reviewed consent within the calendar and expiry 
 
   // Revoking the phone source revokes Android's consent, then the agent's source, and clears its notice.
   await digests.getByRole('button', { name: 'Review revocation', exact: true }).nth(1).click();
-  await expect(reviewSection(page)).toContainText('Revoke Phone sources for future runs.');
+  await expect(reviewSection(page)).toContainText('Revoke Phone sources? Future runs stop and saved results stay. A run already in progress may finish.');
   await reviewSection(page).getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(schedules(page)).toHaveText([`Morning at 08:00 (${zone}) · Phone sources · Source revoked — paused`]);
   const consents = await harness(page, f => f.digests.consents) as any[];

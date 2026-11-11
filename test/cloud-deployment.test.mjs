@@ -4,12 +4,29 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {deploymentOutputs,validateCloudDeployment} from '../scripts/cloud-deployment.mjs';
+import {deploymentOutputs,validateCloudDeployment,nativeAuthCallbackRegistration} from '../scripts/cloud-deployment.mjs';
 import {CLOUD_DEPLOYMENT as defaults} from '../scripts/cloud-deployment-policy.mjs';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.mjs';
 import {runJvm} from './fixtures/jvm-tools.mjs';
 test('committed renderer, native and Gradle authorities match the deployment configuration',()=>{
  for(const [file,contents] of Object.entries(deploymentOutputs(defaults)))assert.equal(fs.readFileSync(file,'utf8'),contents);
+});
+test('protected Pages registrations preserve installed routes and select each configured authority',()=>{
+ const config=structuredClone(defaults);
+ config.production={...config.production,api:'https://api.example.org',web:'https://login.example.org',tenant:'example'};
+ const identity=JSON.parse(fs.readFileSync('app.config.json','utf8'));
+ const pages=Object.fromEntries(['production','staging'].map(environment=>[environment,[nativeAuthCallbackRegistration(config,identity,environment)]]));
+ assert.deepEqual(Object.keys(pages),['production','staging']);
+ for(const environment of ['production','staging']){
+  assert.equal(pages[environment].length,1);
+  assert.deepEqual(pages[environment][0],{
+   redirectUri:config[environment].web+'/alphaphone/auth/callback',androidPackage:identity.appId,appName:identity.appName,
+   browserSignIn:{startPath:'/alphaphone/auth/browser-start',returnPath:'/__alpha-browser-cloud/signin-return',storageKey:'alpha-browser-sign-in:v1',apiOrigin:config[environment].api,tenant:config[environment].tenant},
+  });
+ }
+ const bridge=fs.readFileSync('scripts/browser-cloud-dev-bridge.ts','utf8');
+ assert.ok(bridge.includes(JSON.stringify(pages.production[0].browserSignIn.startPath).replaceAll('"',"'")));
+ assert.ok(pages.production[0].browserSignIn.returnPath.startsWith('/__alpha-browser-cloud/'));
 });
 test('a different deployment changes actual native login, request admission and revocation together',()=>{
  const config=structuredClone(defaults);

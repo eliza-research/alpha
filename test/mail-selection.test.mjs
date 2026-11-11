@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {applyMailSelection} from '../apps/app/src/runtime/mail-selection.ts';
+import {tsImport} from 'tsx/esm/api';
+const {applyMailSelection} = await tsImport('../apps/app/src/runtime/mail-selection.ts', import.meta.url);
 function fixture() {
   const slots=new Map(), dispatched=[], applied=[];let active=true, reject='', unknown='';
   const store={read:async key=>structuredClone(slots.get(key)??null),compareExchange:async(key,expected,value)=>{

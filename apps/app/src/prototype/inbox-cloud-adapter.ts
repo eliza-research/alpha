@@ -821,7 +821,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     await work('Loading next thread page…',async({client},signal,valid)=>{
       const page=await client.gmailThread(accountId,prior.id,signal,{offset:previous?(prior.previousOffsets.at(-1)??0):prior.nextOffset!,historyId:prior.historyId});
       if(!valid()||accountId!==selected||thread!==prior)return;
-      thread={id:prior.id,previousOffsets:previous?prior.previousOffsets.slice(0,-1):[...prior.previousOffsets,prior.offset],...page};body=page.messages[0]||null;publish({open:body?.message.id||null,nativeMailSelection:body?mailSelection(body.message.id):null});
+      thread={id:prior.id,previousOffsets:previous?prior.previousOffsets.slice(0,-1):[...prior.previousOffsets,prior.offset],...page};body=page.messages[0]||null;remoteImagesShown=false;publish({open:body?.message.id||null,nativeMailSelection:body?mailSelection(body.message.id):null});
     },()=>void nextThreadPage(previous),true);
   }
   function changeQuery(query: string | null) {
@@ -845,7 +845,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
     if(mailReview){mailReview=null;publish();return true;}
     if(mailSelecting&&!mailBatch){resetMailSelection();publish();return true;}
     if (provider.close()) return true;
-    if (drafts.requestClose()) return true;
+    if (drafts.close()) return true;
     const menu=document.querySelector<HTMLDetailsElement>('.mail-message-menu[open],.mail-selection-menu[open]');if(menu){menu.open=false;menu.querySelector<HTMLElement>('summary')?.focus();return true;}
     if (st.open != null) { cancelOperation();body = null; current.set({ open: null, nativeMailSelection: null }); return true; }
     if (st.q != null) { changeQuery(null); return true; }
@@ -876,7 +876,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
       stale:binding&&attention.state==='stale'?{state:'stale',unread:attention.unread,...(attention.source?{source:attention.source}:{}),updatedAt:attention.updatedAt}:null});
     // Until a page is loaded the card shows only "Inbox". Its name keeps that word and says where it
     // opens: a bare "Inbox" is the Inbox app tile's name. A resolved startup with no email set up is not
-    // unknown: it uses the shared "Connect email" card (docs/daily-overview.md), which opens Connections.
+    // unknown: it uses the shared "Connect email" card, which opens Connections.
     if(!cached&&!disconnected&&(pending||!binding||!accountsChecked||homeFailure))return {...out,homeGoogleConnected,homeAttentionLabel:out.homeAttentionAction==='connections'?'Inbox: set up email in Connections':'Open Inbox',homeInboxCount:'',homeInboxRows:[],homeInboxHasRows:false,homeInboxTitle:'Inbox',homeInboxStatus:'',homeInboxDescription:'',homeInboxState:'pending',homeInboxConfirmedEmpty:false};
     return {...out,homeGoogleConnected,homeAttentionLabel:card.label,homeInboxCount:card.count,homeInboxRows:card.rows.map(row=>({subject:row.title,from:row.detail})),homeInboxHasRows:card.rows.length>0,
       homeInboxTitle:card.title,homeInboxStatus:card.status,homeInboxDescription:card.description,homeInboxState:card.state,
@@ -1019,7 +1019,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
       const rows = list.map(link => { const host = new URL(link.href).hostname; return { label: link.text === link.href ? host : `${link.text} (${host})`, href: link.href, host, mismatch: linkTextMismatch(link),
         open: () => openLink(link) }; });
       linkRowCache.set(source, rows); return rows; };
-    const showRemoteImages=true;
+    const showRemoteImages=remoteImagesShown||cachedDevicePreferences()?.autoLoadMailImages===true;
     let formatted:ReturnType<typeof prepareMailHtml>|null=null;
     if(activeBody?.bodyHtml&&!activeBody.loading&&!activeBody.failed){
       let cached=htmlBodies.get(activeBody);if(!cached){cached={};htmlBodies.set(activeBody,cached);}
@@ -1055,7 +1055,7 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
       emptyAdd: needsGmailConnection, addAccountLabel: 'Connect Gmail', addAcct: () => googleConnectionController.open(), detail: !!activeBody, ...drafts.render(), ...provider.render(),
       d: activeBody ? { closeMenu:(event:Event)=>{(event.currentTarget as HTMLElement).closest('details')?.removeAttribute('open');},menuKey:(event:KeyboardEvent)=>{if(event.key==='Escape'){const menu=event.currentTarget as HTMLDetailsElement;menu.open=false;menu.querySelector<HTMLElement>('summary')?.focus();event.stopPropagation();}},hasThread:!!thread&&thread.total>1,threadRows:thread?thread.messages.filter(row=>row.message.id!==activeBody.message.id).map(row=>({name:row.message.from,date:date(row.message.receivedAt),preview:row.message.snippet,pick:()=>{body=row;remoteImagesShown=false;publish({open:row.message.id,nativeMailSelection:mailSelection(row.message.id)});}})):[], hasPreviousThread:!!thread&&thread.previousOffsets.length>0,previousThread:()=>void nextThreadPage(true),hasNextThread:thread?.nextOffset!=null, nextThread:()=>void nextThreadPage(), subj: activeBody.message.subject || '(no subject)', name: activeBody.message.from,
         fullFrom:activeBody.message.fromEmail?`${activeBody.message.from} <${activeBody.message.fromEmail}>`:'Sender address unavailable',fullTo:activeBody.message.to.join(', ')||'Undisclosed recipients',fullCc:(activeBody.message.cc||[]).join(', '),hasCc:!!activeBody.message.cc?.length,fullReplyTo:activeBody.message.replyTo||'',hasReplyTo:!!activeBody.message.replyTo&&activeBody.message.replyTo!==activeBody.message.fromEmail,fullDate:formatFullDateTime(new Date(activeBody.message.receivedAt)),ini: activeBody.message.from.slice(0, 1).toUpperCase(), senderImage:mailSenderImage(activeBody.message.fromEmail,true),hideSenderImage:(event:Event)=>{(event.currentTarget as HTMLImageElement).style.display='none';}, meta: `To ${activeBody.message.to.join(', ')} · ${date(activeBody.message.receivedAt)}`,
-        hasHtml:!!formatted,noHtml:!formatted,htmlDocument:formatted?.document||'',htmlLoaded,hasRemoteImages:!!formatted?.remoteImages&&!showRemoteImages,showImages:()=>{remoteImagesShown=true;publish();},failed:!!activeBody.failed,retry:()=>void open(activeBody.message),
+        hasHtml:!!formatted,noHtml:!formatted,htmlDocument:formatted?.document||'',htmlLoaded,hasRemoteImages:!!formatted?.remoteImages&&!showRemoteImages,showImages:()=>{if(body!==activeBody)return;remoteImagesShown=true;publish();},failed:!!activeBody.failed,retry:()=>void open(activeBody.message),
         body: activeBody.loading?'Loading message…':activeBody.bodyText || '(Empty message)', loading:!!activeBody.loading,noPerson: true, hasPerson: false, hasAtt:!!activeBody.attachments?.length,atts:(activeBody.attachments||[]).map(a=>({name:a.name,size:`${formatBytes(a.size)} · ${a.supported?'Review attachment':provider.capabilities()?.opaqueAttachments&&a.size<=5*1024*1024?'No preview · Save to Files':'Unsupported type or size'}`,open:()=>afterRead(activeBody.message.id,current=>{const part=current.attachments?.find(row=>row.partId===a.partId);if(part)void openAttachment(current,part);})})),
         links:activeLinks,hasLinks:activeLinks.length>0,linkSummary:`Other links (${activeLinks.length})`,
         canTrash:!!provider.capabilities()?.mailboxMutations&&!!activeBody.historyId,
@@ -1109,7 +1109,8 @@ export function installInboxCloudAdapter(Component: any, views: Record<string, B
       const next = rows?.find(a => a.connectionId === grant), prior = accounts.find(a => a.connectionId === grant);
       const dropped = !grant || !gmailReadable(next) || !!prior && gmailGrantChange({ sessionId: accountsSession || null, account: prior }, { sessionId: binding?.sessionId ?? null, account: next }).dropReadCache;
       if (dropped) { void withdrawGmailBackground(grant || undefined).catch(()=>{}); purgeOffline(); invalidateList(); }
-      if (!grant || rows && !next) saveGmailAccountChoice(connectionController.getSnapshot().cloudAccount, null);
+      // A known unreadable grant must not seed refreshAccounts' speculative mail read.
+      if (!grant || !gmailReadable(next)) saveGmailAccountChoice(connectionController.getSnapshot().cloudAccount, null);
       if (api?.isActive() && !operation) { void refreshAccounts(); return; }
       // Drop provider content now; the next open re-checks accounts and rebinds drafts per account.
       cancelOperation(); messages = []; providerDrafts = []; body = null; thread = null; nextPageToken = null; loadedQuery = ''; hasUnread = false; inboxPreview=null;homeFailure=null;accountsChecked=false;failure = null;

@@ -62,8 +62,7 @@ module GoogleCalendarAccessChoice {
   }
   pure def admit(value: State, task: Capture): State = {
     val read = task.context.read
-    val once = value.saves.append(read)
-    val saved = {...value, saved: true, saves: if (task.stage == "allow") once.append(read) else once}
+    val saved = {...value, saved: true, saves: if (value.saved) value.saves else value.saves.append(read)}
     if (task.context.kind == "link") {...saved, links: saved.links.append(read), notice: "synced"}
     else {...saved, consents: saved.consents.append(read), consentIntent: task.context.intent, notice: "authorization"}
   }
@@ -101,7 +100,7 @@ module GoogleCalendarAccessChoice {
     .then(replaceOwner("read")).expect(not(choiceVisible) and s.saves == List() and s.links == List() and safety)
   run freshReplacementWriteReviewAdmitsItsOwnChoiceTest = init.then(open("write")).then(requestAccess).then(reply(1, true))
     .then(replaceOwner("read")).then(reload("write")).then(requestAccess).then(reply(2, true)).then(allow).then(reply(3, true))
-    .expect(s.links == List(3) and s.saves == List(3,3) and safety)
+    .expect(s.links == List(3) and s.saves == List(3) and safety)
   run newerSameOwnerReadRetiresHeldAllowTest = init.then(open("write")).then(requestAccess).then(reply(1, true))
     .then(allow).then(reload("read")).then(reply(2, true)).expect(s.links == List() and s.saves == List() and safety)
   run retiredIntentCannotShowHeldPermissionChoiceTest = init.then(open("write")).then(requestAccess)

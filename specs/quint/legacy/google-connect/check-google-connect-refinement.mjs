@@ -68,7 +68,7 @@ async function openInbox(page, connected) {
   await button(page, 'Inbox').click();
   await active(page, 'inbox');
   if (connected) {
-    await expect(page.locator('summary[aria-label="Mail options"]')).toBeVisible();
+    await expect(page.getByText('Your Inbox is empty', {exact: true})).toBeVisible();
     await expect(page.getByText('Connect Gmail to read your inbox', {exact: true})).toHaveCount(0);
     await expect.poll(async () => (await fixture(page)).searches.length).toBeGreaterThan(0);
   } else {
@@ -118,7 +118,7 @@ async function panelFlow(page) {
   assert.deepEqual(handedOff.searches, []);
   const [[calendar, gmail]] = handedOff.initiations;
   consent.steps.push({label: 'The actual combined request offers Gmail changes and Calendar write', action: action('PanelConnect'),
-    expect: {'s.requested': qset(['gmail.read', 'cal.read', ...(['send','modify'].includes(gmail) ? ['gmail.write'] : []),
+    expect: {'s.requested': qset(['gmail.read', 'cal.read', ...(gmail === 'modify' ? ['gmail.write'] : []),
       ...(calendar === 'write' ? ['cal.write'] : [])])}});
   return {trace: t.trace, differences: [['GoogleConnectProposedDirectConsent', direct], ['GoogleConnectCurrentReadOnlyRequest', consent]]};
 }
@@ -165,7 +165,6 @@ async function mounted(extraSources) {
     'apps/app/src/runtime/google-accounts.ts'].map(path => resolve(root, path)));
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'patches/eliza')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts', 'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json',

@@ -1,3 +1,4 @@
+import {waitFor} from './fixtures/wait-for.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
@@ -135,14 +136,14 @@ async function savedFixture(){
  const preservation={capture:async()=>({fingerprint:'same',present:false,readable:true,pending:false,records:[]}),retainedReadOnly:async()=>true};
  const cacheIdentity=crypto.randomUUID();
  const make=(api=f.api,store=cache,port=f.port,hold=preservation,identity=()=>cacheIdentity)=>new AgentCalendar(()=>typeof port==='function'?port():port,hold,()=>api,async()=>store,identity);
- const writer=make();await writer.refresh(window);await new Promise(resolve=>setImmediate(resolve));
+ const writer=make();await writer.refresh(window);await waitFor(()=>raw?.entries.some(entry=>entry.value?.feed?.events.length===1),{label:'saved Calendar commit'});
  assert.ok(raw?.entries.some(entry=>entry.value?.feed?.events.length===1),'completed live reads are persisted');writer.retire();
  return {...f,cache,window,feed,make,raw:()=>raw,replace:value=>{raw=value;}};
 }
 async function settleLocal(){for(let i=0;i<4;i++)await new Promise(resolve=>setImmediate(resolve));}
 test('reload shows saved rows while provider reads are pending, never authorizing edits, then replaces them',async()=>{
  const f=await savedFixture(),held=defer(),calendar=f.make({...f.api,getLifeOpsCalendarFeed:()=>held.promise});
- const pending=calendar.refresh(f.window);await settleLocal();
+ const pending=calendar.refresh(f.window);await waitFor(()=>calendar.state.savedAt!==null,{label:'saved Calendar restoration'});
  assert.equal(calendar.state.status,'loading');assert.equal(calendar.state.feed.events[0].title,f.event.title);assert.equal(calendar.state.nextFresh,false);assert.ok(calendar.state.savedAt);
  assert.equal(calendar.selection(JSON.stringify([f.event.provider,f.event.side,f.event.grantId,f.event.connectorAccountId,f.event.calendarId,f.event.externalId,f.event.id])),undefined);
  assert.equal(calendar.sourceSelection(JSON.stringify([f.source.provider,f.source.side,f.source.grantId,f.source.connectorAccountId,f.source.calendarId])),undefined);
@@ -171,7 +172,7 @@ test('saved feed refuses foreign owners, windows, malformed rows and source ambi
 test('owner retirement, legacy review and provider revocation hide saved rows',async()=>{
  const f=await savedFixture(),held=defer(),calendar=f.make({...f.api,getLifeOpsCalendarFeed:()=>held.promise});const pending=calendar.refresh(f.window);await settleLocal();calendar.retire();held.resolve(f.feed);await pending;assert.equal(calendar.state.feed,null);
  const gate=f.make(f.api,f.cache,f.port,{capture:async()=>({fingerprint:'legacy',present:true,readable:true,pending:false,records:[]}),retainedReadOnly:async()=>false});await gate.refresh(f.window);assert.equal(gate.state.status,'transition-required');assert.equal(gate.state.feed,null);gate.retire();
- const revoked=defer(),read=f.make({...f.api,getLifeOpsCalendarFeed:()=>revoked.promise,getLifeOpsCalendars:async()=>({calendars:[]})});const refresh=read.refresh(f.window);await settleLocal();assert.ok(read.state.savedAt);revoked.resolve(Promise.reject(Error('revoked')));await refresh;await settleLocal();assert.equal(read.state.feed,null);assert.equal(read.state.savedAt,null);assert.equal(f.raw().entries.find(entry=>entry.key.includes('calendar:feed:v1')).value,null);read.retire();f.retire();
+ const revoked=defer(),read=f.make({...f.api,getLifeOpsCalendarFeed:()=>revoked.promise,getLifeOpsCalendars:async()=>({calendars:[]})});const refresh=read.refresh(f.window);await waitFor(()=>read.state.savedAt!==null,{label:'saved Calendar before source revocation'});assert.ok(read.state.savedAt);revoked.resolve(Promise.reject(Error('revoked')));await refresh;await settleLocal();assert.equal(read.state.feed,null);assert.equal(read.state.savedAt,null);assert.equal(f.raw().entries.find(entry=>entry.key.includes('calendar:feed:v1')).value,null);read.retire();f.retire();
 });
 test('an immediate transport failure still waits for the saved local read',async()=>{
  const f=await savedFixture(),held=defer(),calendar=f.make({...f.api,getLifeOpsCalendarFeed:async()=>{throw Error('offline');}},{get:()=>held.promise,put:async()=>{}});
@@ -181,8 +182,8 @@ test('an immediate transport failure still waits for the saved local read',async
 
 for(const method of ['getLifeOpsCalendarFeed','getLifeOpsCalendars'])for(const status of [401,403])test(`${method} HTTP ${status} immediately hides and invalidates saved rows`,async()=>{
  const f=await savedFixture(),denied=defer(),next=defer(),calendar=f.make({...f.api,[method]:()=>denied.promise,getLifeOpsNextCalendarEventContext:()=>next.promise});
- const pending=calendar.refresh(f.window);await settleLocal();assert.ok(calendar.state.savedAt);
- denied.resolve(Promise.reject(Object.assign(Error('Access refused'),{status})));await settleLocal();
+ const pending=calendar.refresh(f.window);await waitFor(()=>calendar.state.savedAt!==null,{label:'saved Calendar before refusal'});assert.ok(calendar.state.savedAt);
+ denied.resolve(Promise.reject(Object.assign(Error('Access refused'),{status})));await waitFor(()=>f.raw().entries.find(entry=>entry.key.includes('calendar:feed:v1')).value===null,{label:'refused Calendar persisted'});
  assert.equal(calendar.state.feed,null,'refusal hides rows without waiting for other provider reads');assert.deepEqual(calendar.state.calendars,[]);assert.equal(calendar.state.savedAt,null);assert.equal(calendar.state.next,null);
  assert.equal(f.raw().entries.find(entry=>entry.key.includes('calendar:feed:v1')).value,null,'refusal invalidates the persisted snapshot');
  next.resolve(f.next);await pending;calendar.retire();
@@ -214,7 +215,7 @@ test('saved Calendar bootstraps before a resident port exists and survives its d
  const f=await savedFixture(),today=new Date(),zone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
  const window={side:'owner',timeMin:new Date(today.getFullYear(),today.getMonth()-1,1).toISOString(),timeMax:new Date(today.getFullYear(),today.getMonth()+2,1).toISOString(),timeZone:zone};
  const tomorrow=new Date(today.getTime()+86400000);f.event.startAt=tomorrow.toISOString();f.event.endAt=new Date(tomorrow.getTime()+3600000).toISOString();Object.assign(f.feed,window);
- const writer=f.make();await writer.refresh(window);await settleLocal();writer.retire();
+ const writer=f.make();await writer.refresh(window);await waitFor(()=>f.raw().entries.some(entry=>entry.value?.query===JSON.stringify(window)),{label:'current Calendar window saved'});writer.retire();
  let active=null;const calendar=f.make(f.api,f.cache,()=>active),reads=f.reads.length;
  await calendar.restoreSaved(window,f.cache,()=>true,async()=>true);
  assert.equal(f.reads.length,reads,'restoration never requests the agent or providers');assert.equal(calendar.state.feed.events[0].title,f.event.title);assert.ok(calendar.state.savedAt);assert.equal(calendar.selection(JSON.stringify([f.event.provider,f.event.side,f.event.grantId,f.event.connectorAccountId,f.event.calendarId,f.event.externalId,f.event.id])),undefined);
@@ -246,7 +247,7 @@ async function mountedSavedCalendar(){
  const f=await savedFixture(),today=new Date(),zone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
  const window={side:'owner',timeMin:new Date(today.getFullYear(),today.getMonth()-1,1).toISOString(),timeMax:new Date(today.getFullYear(),today.getMonth()+2,1).toISOString(),timeZone:zone};
  f.event.startAt=new Date(Date.now()+3600000).toISOString();f.event.endAt=new Date(Date.now()+7200000).toISOString();Object.assign(f.feed,window);
- const writer=f.make();await writer.refresh(window);await settleLocal();writer.retire();const reads=f.reads.length;
+ const writer=f.make();await writer.refresh(window);await waitFor(()=>f.raw().entries.some(entry=>entry.value?.query===JSON.stringify(window)),{label:'current Calendar window saved'});writer.retire();const reads=f.reads.length;
  let active=null,credential={credentialId:'saved-key-generation',userId:'cloud-owner',organizationId:'cloud-org'},snapshot={startupResolved:false,cloudAccount:null,residentSavedCredential:true};const subscribers=new Set(),documentListeners=new Map();let writesFail=false;const readCache={get:key=>f.cache.get(key),put:(...args)=>writesFail?Promise.reject(Error('local write failed')):f.cache.put(...args)};let readCredential=async()=>credential?({...credential}):null;
  const preservation={capture:async()=>({fingerprint:'same',present:false,readable:true,pending:false,records:[]}),retainedReadOnly:async()=>true};
  const dependencies={
@@ -264,7 +265,7 @@ async function mountedSavedCalendar(){
  class Shell{live=true;componentDidMount(){}componentWillUnmount(){}renderVals(){return{};}vget(){return{calendarAuthority:'canonical'};}S(){return{view:'home'};}setState(){}}
  const views={calendar:{render:()=>({})}};install(Shell,views,preservation);const shell=new Shell();
 
- shell.componentDidMount();await settleLocal();
+ shell.componentDidMount();await waitFor(()=>shell.renderVals().homeCalendarTitle===f.event.title,{label:'saved Calendar mounted'});
  return {f,shell,reads,get active(){return active;},get credential(){return credential;},
   setCacheWritesFail(value){writesFail=value;},setCredential(value){credential=value;},setReadCredential(read){readCredential=read;},
   setSnapshot(value){snapshot={...snapshot,...value};for(const fn of subscribers)fn();},
@@ -295,8 +296,8 @@ test('a late missing credential read cannot clear a newer credential or live res
   const m=await mountedSavedCalendar(),old=defer();try{
    let first=true;m.setReadCredential(()=>first?(first=false,old.promise):Promise.resolve({...m.credential}));m.foreground();
    if(replacement==='credential'){m.setCredential({...m.credential,credentialId:'replacement-generation'});m.setSnapshot({cloudAccount:{...m.credential,environment:'production'}});}else m.setPort(m.f.port);
-   await settleLocal();const current=m.shell.agentCalendar.state.feed;assert.ok(current);
-   old.resolve(null);await settleLocal();assert.equal(m.shell.agentCalendar.state.feed,current);
+   await waitFor(()=>m.shell.agentCalendar.state.feed!==null,{label:'replacement Calendar feed restored'});const current=m.shell.agentCalendar.state.feed;assert.ok(current);
+   old.resolve(null);await settleLocal();assert.deepEqual(m.shell.agentCalendar.state.feed,current);
   }finally{old.resolve(null);m.close();}
  }
 });
@@ -316,9 +317,9 @@ test('adapter keeps refused rows hidden after failed cache writes and resident l
  const m=await mountedSavedCalendar();try{
   m.setSnapshot({cloudAccount:{...m.credential,environment:'production'}});await settleLocal();
   m.setCacheWritesFail(true);m.f.api.getLifeOpsCalendarFeed=async()=>{throw Object.assign(Error('denied'),{status:401});};
-  m.setPort(m.f.port);await settleLocal();assert.equal(m.shell.agentCalendar.state.feed,null);
+  m.setPort(m.f.port);await waitFor(()=>m.shell.agentCalendar.state.feed===null,{label:'Calendar refusal visible'});assert.equal(m.shell.agentCalendar.state.feed,null);
   m.setPort(null);await settleLocal();assert.equal(m.shell.agentCalendar.state.feed,null,'same credential cannot restore the unchanged denied snapshot');
-  m.setCredential({...m.credential,credentialId:'new-key-generation'});m.setSnapshot({cloudAccount:{...m.credential,environment:'production'}});await settleLocal();
+  m.setCredential({...m.credential,credentialId:'new-key-generation'});m.setSnapshot({cloudAccount:{...m.credential,environment:'production'}});await waitFor(()=>m.shell.renderVals().homeCalendarTitle===m.f.event.title,{label:'new credential Calendar restoration'});
   assert.equal(m.shell.renderVals().homeCalendarTitle,m.f.event.title,'the new credential has its own supplied cache and is not fenced by the old credential');
  }finally{m.close();}
 });

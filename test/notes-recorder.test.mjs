@@ -1,5 +1,4 @@
-// Notes voice recorder (design/view-refresh-2026-11 PLAN.md section 3; spec
-// artifacts/review-2026-11/specs/notes-view, Design.cfg: FixUnlimited, FixSegments, FixStreamAsr).
+// Notes voice recorder: unlimited duration, bounded segments and streamed transcription.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';

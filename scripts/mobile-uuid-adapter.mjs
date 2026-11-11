@@ -2,12 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {isDeepStrictEqual} from 'node:util';
+import {parseBuildPolicy} from './build-policy-source.mjs';
 
 import {coreStateBuildRecord,CORE_STATE_TARGET,NOTES_STATE_TARGETS,TURN_STATE_TARGET,ROOM_QUEUE_TARGET,EMBEDDING_STATE_TARGET,NAMED_EMBEDDING_TARGETS,PLUGIN_CONNECTOR_TARGET} from './core-state-patch.mjs';
 
 export const MOBILE_BUILD_RECEIPT='alpha-mobile-build.json';
-export const MOBILE_UUID_POLICY='patches/eliza/mobile-uuid-build.json';
-export const MOBILE_BUILD_INPUTS=['scripts/build-mobile-agent.mjs','scripts/mobile-uuid-adapter.mjs','scripts/mobile-bundle-smoke.mjs'];
+export const MOBILE_UUID_POLICY='scripts/upstream-mobile-build.mjs';
+export const MOBILE_BUILD_INPUTS=['scripts/build-mobile-agent.mjs','scripts/mobile-uuid-adapter.mjs','scripts/mobile-bundle-smoke.mjs','scripts/build-policy-source.mjs'];
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
 const json=file=>JSON.parse(fs.readFileSync(file,'utf8'));
 const safe=name=>typeof name==='string'&&!path.isAbsolute(name)&&name.split('/').every(part=>part&&part!=='.'&&part!=='..');
@@ -33,7 +34,7 @@ export function uuidCommonJsBridge(contents,indexPath){
 
 export function mobileBuildInputs(root,source){
  root=path.resolve(root);source=path.resolve(source);
- const policyBytes=readRegular(root,MOBILE_UUID_POLICY),policy=JSON.parse(policyBytes);
+ const policyBytes=readRegular(root,MOBILE_UUID_POLICY),policy=parseBuildPolicy(policyBytes);
  const pin=json(path.join(root,'upstream.lock.json')).commit;
  if(policy.schema!==1||policy.baseCommit!==pin||policy.package?.name!=='uuid'||policy.package.version!=='14.0.2'||policy.package.root!=='node_modules/.bun/uuid@14.0.2/node_modules/uuid')throw Error('Unreviewed mobile UUID build policy');
  if(policy.bun?.version!=='1.4.2'||!policy.bun.revision||policy.builder?.path!=='packages/agent/scripts/build-mobile-bundle.ts')throw Error('Unreviewed mobile UUID producer');
@@ -55,25 +56,17 @@ export function mobileBuildInputs(root,source){
  return {policy,packageRoot,identity:{format:'alpha-mobile-build-v1',sourcePin:pin,sourceStampSha256:hash(readRegular(source,'.alpha-runtime-source.json')),lockSha256:hash(readRegular(source,'bun.lock')),policySha256:hash(policyBytes),adapterFiles,bun:policy.bun,builder:policy.builder,uuid:{version:policy.package.version,files:packageFiles}}};
 }
 
-export function createMobileUuidAdapter(root,source){
- const inputs=mobileBuildInputs(root,source),index=path.join(inputs.packageRoot,'dist-node/index.js'),transforms=[];
- return {inputs,transforms,plugin:{name:'reviewed-mobile-uuid-cjs',setup(build){
-  // Older UUID packages already use CommonJS and remain the upstream producer's
-  // responsibility. Only this exact locked ESM package needs the adapter.
-  build.onLoad({filter:/[\\/]uuid@14\.0\.2[\\/]node_modules[\\/]uuid[\\/]dist(?:-node)?[\\/]index\.js$/},args=>{
-   if(path.resolve(args.path)!==index)throw Error('Unreviewed UUID barrel reached the Android producer');
-   const bytes=readRegular(inputs.packageRoot,'dist-node/index.js');
-   if(hash(bytes)!==inputs.policy.package.files['dist-node/index.js'])throw Error('UUID barrel changed during build');
-   const contents=uuidCommonJsBridge(bytes.toString('utf8'),index);
-   transforms.push({path:inputs.policy.package.root+'/dist-node/index.js',sourceSha256:hash(bytes),bridgeSha256:hash(contents)});
-   return {loader:'js',contents};
-  });
- }}};
+export function expectedMobileUuidTransforms(inputs){
+ const index=path.join(inputs.packageRoot,'dist-node/index.js');
+ return [{
+  path:inputs.policy.package.root+'/dist-node/index.js',
+  sourceSha256:inputs.policy.package.files['dist-node/index.js'],
+  bridgeSha256:hash(uuidCommonJsBridge(readRegular(inputs.packageRoot,'dist-node/index.js').toString('utf8'),index)),
+ }];
 }
 
 export function mobileBuildReceipt(root,source,bundle,transforms,coreTransforms){
- const inputs=mobileBuildInputs(root,source),index=path.join(inputs.packageRoot,'dist-node/index.js');
- const expected=[{path:inputs.policy.package.root+'/dist-node/index.js',sourceSha256:inputs.policy.package.files['dist-node/index.js'],bridgeSha256:hash(uuidCommonJsBridge(readRegular(inputs.packageRoot,'dist-node/index.js').toString('utf8'),index))}];
+ const inputs=mobileBuildInputs(root,source),expected=expectedMobileUuidTransforms(inputs);
  if(!isDeepStrictEqual(transforms,expected))throw Error('Mobile UUID producer must transform exactly the reviewed barrel');
  return {...inputs.identity,transforms,coreState:coreStateBuildRecord(root,coreTransforms,[CORE_STATE_TARGET,...NOTES_STATE_TARGETS,TURN_STATE_TARGET,ROOM_QUEUE_TARGET,EMBEDDING_STATE_TARGET,...NAMED_EMBEDDING_TARGETS,PLUGIN_CONNECTOR_TARGET]),bundleSha256:hash(fs.readFileSync(bundle)),smoke:{uuidSemantics:true,messageTurnBeforeProvider:true}};
 }

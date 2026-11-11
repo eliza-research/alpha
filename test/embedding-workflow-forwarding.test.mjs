@@ -8,11 +8,11 @@ assert.ok(match);
 const body=match[1].split('\n').map(line=>line.startsWith('          ')?line.slice(10):line).join('\n');
 function calls(enabled){
  const shell=`set -e
-python3(){ printf 'python3'; printf '|%s' "$@"; printf '\\n'; }
+python3(){ printf 'python3'; printf '|%s' "$@"; printf '|GRADLE_OPTS=%s\\n' "\${GRADLE_OPTS-}"; }
 node(){ printf 'node'; printf '|%s' "$@"; printf '\\n'; }
 bun(){ printf '1.4.2\\n'; }
 ${body}`;
- const result=spawnSync('/bin/bash',['-c',shell],{encoding:'utf8',timeout:5000,env:{...process.env,ALPHA_RUNTIME_PROFILE:'cloud',ALPHA_LOCAL_EMBEDDINGS:enabled?'1':'0',ALPHA_LOCAL_AGENT_SOURCE_DIR:'/prepared',GITHUB_WORKSPACE:'/workspace'}});
+ const result=spawnSync('/bin/bash',['-c',shell],{encoding:'utf8',timeout:5000,env:{...process.env,GRADLE_OPTS:'',ALPHA_RUNTIME_PROFILE:'cloud',ALPHA_LOCAL_EMBEDDINGS:enabled?'1':'0',ALPHA_LOCAL_AGENT_SOURCE_DIR:'/prepared',GITHUB_WORKSPACE:'/workspace'}});
  assert.equal(result.status,0,result.stderr);
  return result.stdout.trim().split('\n').map(line=>line.split('|'));
 }
@@ -27,6 +27,13 @@ test('ordinary Cloud flow does not stage local libraries or request embedding ca
  const rows=calls(false);assert.ok(!rows.some(row=>row.includes('embedding-stage')));
  assert.ok(!rows.some(row=>row.includes('--local-embeddings')));
  assert.ok(rows.some(row=>row.includes('cloud-archive')));
+});
+
+test('both Cloud archive variants receive the release R8 heap used by Android foundation',()=>{
+ for(const localEmbeddings of [false,true]){
+  const archive=calls(localEmbeddings).find(row=>row.includes('cloud-archive'));
+  assert.ok(archive.includes('GRADLE_OPTS=-Dorg.gradle.jvmargs=-Xmx4096m'));
+ }
 });
 
 test('artifact acquisition follows supervisor proof and precedes product installation',()=>{

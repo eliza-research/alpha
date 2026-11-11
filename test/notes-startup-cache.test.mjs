@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { NotesStartupCache } from "../apps/app/src/runtime/notes-startup-cache.ts";
-import { ServiceReadCache } from "../apps/app/src/runtime/service-read-cache.ts";
+import {tsImport} from "tsx/esm/api";
+const {NotesStartupCache} = await tsImport("../apps/app/src/runtime/notes-startup-cache.ts", import.meta.url);
+const {ServiceReadCache} = await tsImport("../apps/app/src/runtime/service-read-cache.ts", import.meta.url);
 
 const account = {
 	environment: "production",

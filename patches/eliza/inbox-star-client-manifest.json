@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "baseCommit": "80fbb1d25937585b24fd85132d623d5391c8ca07",
-  "path": "plugins/plugin-inbox/src/mailbox/managed-gmail-client.ts",
-  "beforeSha256": "cb784e3bc520ec1779235de2b67034d7459cb1ebfc9315096bf2544cb134c10f",
-  "afterSha256": "6c8a505fcc56446b3925c65c9869c490ca54c8b2d9b49571fc36983ef5d355f9",
-  "patchSha256": "91284c41910ed1132da2b1a494907386b283c09fff7fbcfb045d08df9ac97e1d"
-}

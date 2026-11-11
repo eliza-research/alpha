@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
-const source = readFileSync("apps/app/src/runtime/connection-ui.tsx", "utf8");
+const source = readFileSync(process.env.ALPHA_CONNECTION_SOURCE || "apps/app/src/runtime/connection-ui.tsx", "utf8");
 const confirm = source.match(
 	/className="alpha-account-confirm"[^>]*onClick=\{(\(\)=>\{[^\n]+?\})\}>Sign out<\/button>/,
 )?.[1];

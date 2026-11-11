@@ -10,7 +10,7 @@ import {BROWSER_DISPATCH_FAILURE_KINDS} from '../vendor/eliza/plugins/plugin-bro
 const browser=fs.readFileSync('apps/app/src/prototype/browser-adapter.ts','utf8'),agent=fs.readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const ts=s=>stripTypeScriptTypes(s,{mode:'strip'});
 const commandStart=browser.indexOf('    this.browserCommand = async');
-const commandCode=ts(browser.slice(commandStart,browser.indexOf('    this.browserNavigateApproved =',commandStart)));
+const commandCode=ts(browser.slice(commandStart,browser.indexOf('    const openContentTab =',commandStart)));
 const executorStart=agent.indexOf('    connectionController.setViewInteractionExecutor(');
 const executorCode=ts(agent.slice(executorStart,agent.indexOf('\n    });',executorStart)+8));
 

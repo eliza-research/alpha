@@ -52,7 +52,7 @@ test('production RRO targets the prebuilt app overlayable and cannot be a develo
  assert.throws(()=>assertAlphaProvisioningDefault(defaults.replace('>false<','>true<')),/default to false/);
  const stage=fs.readFileSync('scripts/stage-aosp.mjs','utf8');assert.ok(stage.indexOf('if (!physical) writeAospCapabilityOverlay(output')>stage.indexOf('if (production) {'));
  // The shared Pixel 10a composition writes the same overlay from Alpha's product, with Alpha's installed identifiers.
- const product=JSON.parse(fs.readFileSync('vendor/eliza/packages/os/android/products/pixel10a-alpha.json','utf8'));
+ const product=JSON.parse(fs.readFileSync('android/aosp/pixel10a-composition.json','utf8'));
  assert.deepEqual(product.launcher.imageProvisioning,{...ALPHA_IMAGE_PROVISIONING});
  assert.throws(()=>writeAospCapabilityOverlay(dir,'bad"target'),/Invalid/);
 });

@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {linkedMessageText, openContentLink} from '../apps/app/src/prototype/content-links.tsx';
+import {tsImport} from 'tsx/esm/api';
+const {linkedMessageText, openContentLink} = await tsImport('../apps/app/src/prototype/content-links.tsx', import.meta.url);
 
 test('chat text renders safe web links while preserving punctuation and escaped text', () => {
   const html = renderToStaticMarkup(React.createElement('div', null,

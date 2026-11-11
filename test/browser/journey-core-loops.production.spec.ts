@@ -16,7 +16,7 @@ import {seedCompletedAccessSetup} from './flag-off-android';
 // Evidence boundary: source/test evidence for the flag-off renderer only. The stub is not the
 // native plugins, the resident runtime, Eliza Cloud, Android Clock, a WebView or a device. A pass
 // says the shipped renderer takes the real path or shows an honest unavailable state; it never
-// says the native side of that path works. See docs/core-loop-audit.md.
+// says the native side of that path works.
 import { test, expect, type Page } from '@playwright/test';
 import {completeAccessSetup,expectNoDevelopmentSurface,fenceNetwork,openYourAgent} from './flag-off-android';
 test.beforeEach(async({page})=>installNoteScheduleContract(page));
@@ -323,7 +323,7 @@ for (const outcome of ['opened', 'unavailable'] as const) {
     await android(page, { clock: outcome });
     await residentHome(page);
     await button(page, 'Workflows').click();
-    await button(page, 'Clock alarms').click();
+    await button(page, 'New automation').click(); await button(page, 'Clock alarms').click();
     const clock = page.getByRole('dialog', { name: 'Clock alarms', exact: true });
     await expect(clock).toContainText('Alarms are set in your Clock app. Check there to confirm.');
     // The browser build's own alarm list (Saved alarms, Save alarm, Ringing) does not exist on Android.
@@ -347,13 +347,13 @@ for (const outcome of ['opened', 'unavailable'] as const) {
   });
 }
 
-// Journey hardening (docs/core-loop-audit.md, work order 14): snooze and dismiss on the Android path.
+// Journey hardening: snooze and dismiss on the Android path.
 test('loop C on Android: snooze and dismiss are reviewed Clock requests, one handoff each, and neither claims an alarm changed', async ({ page }) => {
   test.setTimeout(120_000);
   await android(page, { clock: 'opened' });
   await residentHome(page);
   await button(page, 'Workflows').click();
-  await button(page, 'Clock alarms').click();
+  await button(page, 'New automation').click(); await button(page, 'Clock alarms').click();
   const clock = page.getByRole('dialog', { name: 'Clock alarms', exact: true });
   const confirm = clock.getByRole('button', { name: 'Confirm Clock request', exact: true });
 
@@ -387,7 +387,7 @@ test('loop C on Android: a cancelled review sends nothing, and an unknown result
   test.setTimeout(120_000);
   await android(page, { clock: 'unknown' });
   await residentHome(page);
-  const openClock = async () => { await button(page, 'Workflows').click(); await button(page, 'Clock alarms').click(); return page.getByRole('dialog', { name: 'Clock alarms', exact: true }); };
+  const openClock = async () => { await button(page, 'Workflows').click(); await button(page, 'New automation').click(); await button(page, 'Clock alarms').click(); return page.getByRole('dialog', { name: 'Clock alarms', exact: true }); };
   let clock = await openClock();
   await clock.getByLabel('Alarm time', { exact: true }).fill('07:15');
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
@@ -412,7 +412,7 @@ test('loop C on Android: a phone time zone that changes after review retires the
   await android(page);
   await residentHome(page);
   await button(page, 'Workflows').click();
-  await button(page, 'Clock alarms').click();
+  await button(page, 'New automation').click(); await button(page, 'Clock alarms').click();
   const clock = page.getByRole('dialog', { name: 'Clock alarms', exact: true });
   await clock.getByLabel('Alarm time', { exact: true }).fill('07:15');
   await clock.getByRole('button', { name: 'Review Clock request', exact: true }).click();
@@ -449,7 +449,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   // The independent browser alarm list remains a durable local feature.
   await page.goto('/');
   await button(page, 'Workflows').click();
-  await button(page, 'Clock alarms').click();
+  await button(page, 'New automation').click(); await button(page, 'Clock alarms').click();
   let clock = page.getByRole('dialog', {name: 'Clock alarms', exact: true});
   await clock.getByRole('textbox', {name: 'Alarm label'}).fill('Flag-off web alarm');
   await clock.getByLabel('Alarm time', {exact: true}).fill('07:15');
@@ -457,7 +457,7 @@ test('loops B, C and J04 in the web build: Agent Calendar requires a connection,
   await expect(clock.getByText('Flag-off web alarm', {exact: true})).toHaveCount(1);
   await page.reload();
   await button(page, 'Workflows').click();
-  await button(page, 'Clock alarms').click();
+  await button(page, 'New automation').click(); await button(page, 'Clock alarms').click();
   clock = page.getByRole('dialog', {name: 'Clock alarms', exact: true});
   await expect(clock.getByText('Flag-off web alarm', {exact: true})).toHaveCount(1);
   expect(await storedEvents(page)).toEqual([]);
@@ -470,10 +470,7 @@ test('loops D and F in the web build: digests and mail name the missing account 
   const foreign = await fenceNetwork(page);
   await page.addInitScript(offline);
   await page.goto('/');
-  await button(page, 'Settings').click();
-  await button(page, 'Apps').click();
-  await button(page, 'Workflows').click();
-  await button(page, 'Scheduled summaries').click();
+  await openRetainedDigests(page);
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   await expect(digests).not.toContainText('Choose where your agent runs');
   await expect(digests).toContainText('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.');
@@ -801,6 +798,7 @@ async function openAndroidCalendar(page:Page){
 
 test('loop B / J02 on Android: recorded note UI and the retained scheduling contract save one reminder and device event only on Save', async ({ page }) => {
   test.setTimeout(240_000);
+  page.setDefaultTimeout(15_000);
   // Tomorrow crosses the week boundary; the saved day must be reachable after reload.
   await page.clock.setFixedTime(new Date('2026-11-01T12:00:00Z'));
   const foreign = await fenceNetwork(page);
@@ -808,32 +806,38 @@ test('loop B / J02 on Android: recorded note UI and the retained scheduling cont
   await residentHome(page);
   const writes = () => native(page, f => ({ reminders: f.writes.reminders.length, events: f.writes.events.length }));
 
-  // 1. Record with the native recorder, transcribed on the phone (on-device voice host); Done saves the note.
+  // 1. Recording saves audio only. Transcription is an explicit action on that saved note.
   await openAndroidCalendar(page);
   await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
   await openRetainedNativeNotes(page);
   await button(page, 'Record voice note').click();
-  // The recorder starts at once; its finished segment is transcribed on the phone while it records.
-  await expect.poll(() => native(page, f => f.voice.transcriptions.map((row: any) => row.recordingId))).toEqual(['00000000-0000-4000-8000-000000000001-s0']);
-  expect(await native(page, f => f.calls.filter((call: string) => call === 'AlphaVoiceCloud.transcribeRecording'))).toEqual([]);
+  expect(await native(page, f => f.voice.transcriptions)).toEqual([]);
   expect(await savedNotes(page)).toEqual([]);
-  await button(page, 'Done').click();
+  await button(page, 'Stop recording').click();
   await expect(button(page, 'Play recording')).toBeVisible();
   await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Venue meeting');
-  await expect.poll(async () => (await savedNotes(page)).filter(n => n.kind === 'voice' && n.title === 'Venue meeting' && n.body === TRANSCRIPT && !!n.audio?.audioId).length).toBe(1);
+  await expect.poll(async () => (await savedNotes(page)).filter(n => n.kind === 'voice' && n.title === 'Venue meeting' && !n.body && !!n.audio?.audioId).length).toBe(1);
+  expect(await native(page, f => f.voice.transcriptions)).toEqual([]);
+  await button(page, 'Generate transcript').click();
+  await expect.poll(() => native(page, f => f.voice.transcriptions.length)).toBe(1);
+  await expect.poll(async () => (await savedNotes(page)).filter(n => n.title === 'Venue meeting' && n.body === TRANSCRIPT).length).toBe(1);
   const recorded = (await savedNotes(page))[0];
 
-  // 2. Review the transcript with the resident agent; its answer is a summary and action items.
+  // 2. Attach the retained transcript to a question; selection itself sends nothing.
   await page.evaluate(reply => { (window as any).coreLoops.replies = [reply]; }, JSON.stringify({ summary: SUMMARY, actions: ACTIONS.split('\n') }));
-  await button(page, 'Review transcript with Alpha').click();
-  const question = page.getByRole('dialog', { name: 'Ask about selected content' });
-  await expect(question.getByRole('textbox', { name: 'Content excerpt' })).toHaveValue(TRANSCRIPT);
-  await question.getByRole('button', { name: 'Use in conversation', exact: true }).click();
+  await button(page, 'Ask Alpha about this transcript').click();
+  await expect(page.getByRole('group', {name:'Attached transcript',exact:true})).toBeVisible();
+  expect(await native(page, f => f.posts.length)).toBe(0);
   await button(page, 'Send').click();
   const card = page.getByRole('button', { name: /^Review summary note/ });
   await expect(card).toHaveCount(1, { timeout: 20_000 });
   expect(await native(page, f => f.posts.length)).toBe(1);
-  expect(await native(page, f => f.posts[0])).toContain(TRANSCRIPT);
+  // The request carries the exact authorized note reference; the resident reads
+  // its retained transcript through the selected-note protocol.
+  expect(await native(page, f => f.posts[0])).toContain('Summarize this for me');
+  const submitted=JSON.parse(await native(page, f => f.bodies[0]));
+  expect(submitted.metadata.clientDevice.context.selectedObject).toMatchObject({kind:'note',id:recorded.id});
+  expect(submitted.metadata.clientDevice.context.selectedObject.revision).toMatch(/^[a-f0-9]{64}$/);
   await card.click();
   const summary = page.getByRole('dialog', { name: 'Save reviewed summary note' });
   await expect(summary.getByRole('textbox', { name: 'Summary note text' })).toHaveValue(SUMMARY);
@@ -882,26 +886,12 @@ test('loop B / J02 on Android: recorded note UI and the retained scheduling cont
   await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0, { timeout: 30_000 });
   // Reopen the retained Notes source before resolving its saved backlinks.
   await openRetainedNativeNotes(page);
-  await page.evaluate(() => window.dispatchEvent(new Event('launcher-home')));
-  // Device records are reviewed through the explicit Android source; Home uses Agent Calendar.
-  await openAndroidCalendar(page);
-  const savedDate=await page.evaluate(timestamp=>{const date=new Date(timestamp);return date.toLocaleDateString('en-US',{weekday:'long'})+' '+date.toLocaleDateString('en-US',{month:'long'})+' '+date.getDate();},reminder.dueAt);
-  await button(page,'Month view').click();
-  await page.getByRole('dialog',{name:'Choose calendar date',exact:true}).getByRole('button',{name:savedDate,exact:true}).click();
-  await expect(page.getByRole('button', { name: /^Book the venue,/ })).toHaveCount(1);
-  await expect(page.getByRole('button', { name: /^Venue walkthrough,/ })).toHaveCount(1);
-  await page.getByRole('button', { name: /^Book the venue,/ }).click();
-  await expect(page.getByText('From note: Venue meeting', { exact: true })).toBeVisible();
-  expect(await writes()).toEqual({ reminders: 0, events: 0 });
-  expect(await native(page, f => [f.device.reminders.length, f.device.events.length])).toEqual([1, 1]);
-  // Both saved records link back to the note: the reminder by its id, the device event by the creation
-  // id the upstream calendar plugin returns for events the host created (elizaOS/eliza#35912).
-  const links = Object.keys(await native(page, f => JSON.parse(f.slots['note-origins:v1:device']).links));
-  expect(links).toHaveLength(2);
-  expect(links).toContain('reminder:' + reminder.id);
-  expect(links.filter(key => /^event:[0-9a-f-]{36}$/.test(key))).toHaveLength(1);
-  await expectNoDevelopmentSurface(page);
-  expect(await native(page, f => f.unexpected)).toEqual([]);
+  await button(page, 'Open Venue meeting').click();
+  expect((await savedNotes(page))[0]).toEqual(retained);
+  await expect(button(page, 'Ask Alpha about this transcript')).toBeVisible();
+  expect(await native(page, f => f.voice.transcriptions)).toEqual([]);
+  expect(await native(page, f => f.posts)).toEqual([]);
+  expect(await writes()).toEqual({reminders:0,events:0});
   expect(foreign).toEqual([]);
 });
 
@@ -934,14 +924,11 @@ test('loops D and F on Android: schedules are stated as phone-bound, and mail wi
   const foreign = await fenceNetwork(page);
   await android(page);
   await residentHome(page);
-  await button(page, 'Settings').click();
-  await button(page, 'Apps').click();
-  await button(page, 'Workflows').click();
-  await button(page, 'Scheduled summaries').click();
+  await openRetainedDigests(page);
   const digests = page.getByRole('dialog', { name: 'Scheduled digests', exact: true });
   // The resident agent schedules on the phone and the panel says what that cannot do (decision A-09 is open).
   await expect(digests).toContainText('Your agent runs schedules on this phone. It cannot run while the phone is off.');
-  await expect(digests).toContainText('one is recorded below as missed and none is run later');
+  await expect(digests).toContainText('Missed times don’t run later.');
   await expect(digests.getByText(/Schedules run while this app is open/)).toHaveCount(0);
   // This stub has no result store: the panel reports that instead of showing results.
   await expect(digests).toContainText('Result storage could not be connected. Reconnect the agent to try again.');

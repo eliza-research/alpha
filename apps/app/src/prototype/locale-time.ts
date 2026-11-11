@@ -45,7 +45,7 @@ function at(hours: number) {
   return new Date(2000, 0, 1, h, m);
 }
 /** "3:04 PM" / "15:04". */
-export function formatTime(date: Date) { return clean(format({hour: 'numeric', minute: '2-digit'}).format(date)); }
+export function formatTime(date: Date, locale?: string) { return clean(format({hour: 'numeric', minute: '2-digit'}, locale).format(date)); }
 /** Clock face without a day period: "3:04" / "15:04". */
 export function formatClock(date: Date) {
   return clean(format({hour: 'numeric', minute: '2-digit'}).formatToParts(date)

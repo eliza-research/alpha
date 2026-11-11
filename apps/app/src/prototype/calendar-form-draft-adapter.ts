@@ -31,7 +31,7 @@ export function installCalendarFormDraftAdapter(Component:any,views:Bag,options:
   if(!form||form.id||!this.calendarDraft)return;
   const failed=()=>{if(this.live)this.toast('Saved. Discard the leftover draft before saving again.');};
   try{const text=encodeCalendarForm(form,this.calendarDraftAnchor||new Date());this.calendarDraftSuppressed=text;
-   void this.calendarDraft.consume(text,()=>this.live&&this.calendarDraftText===text).catch(failed);
+   void this.calendarDraft.consume(text,()=>this.live).catch(failed);
   }catch{failed();}
  };
  p.componentWillUnmount=function(){this.calendarDraft?.retire(false);this.calendarDraftRecovery?.abort();if(owner===this)owner=undefined;unmount.call(this);};
@@ -40,7 +40,8 @@ export function installCalendarFormDraftAdapter(Component:any,views:Bag,options:
   const out=render(state,api),shell=owner,controller=shell?.calendarDraft,draft=controller?.state;
   if(!shell||!controller)return out;
   const active=!!state.form&&!state.form.id;
-  out.formDraftAvailable=!state.form&&!!shell.calendarDraftText;
+  // New event reopens this retained form; discard stays inside its editor.
+  out.formDraftAvailable=false;
   out.canDiscardFormDraft=active&&!!shell.calendarDraftText;
   out.formDraftStatus=active?(shell.calendarFormValidationError?'This draft is too large or has unsupported values. Current edits are not saved.':draft.message.replace('before sending','before saving')):'';
   out.formDraftConflict=active&&draft.conflict;
@@ -50,7 +51,7 @@ export function installCalendarFormDraftAdapter(Component:any,views:Bag,options:
   out.discardFormDraft=()=>{
    const form=state.form;if(!active||!window.confirm('Discard this draft? Saved events and reminders won’t change.'))return;
    const text=shell.calendarDraftText;
-   const current=()=>owner===shell&&shell.live&&api.isActive()&&shell.vget('calendar').form===form&&shell.calendarDraftText===text;
+   const current=()=>owner===shell&&shell.live&&api.isActive()&&shell.vget('calendar').form===form;
    if(!current())return;
    shell.calendarDraftSuppressed=text;
    void controller.consume(text,current).then(()=>{if(owner===shell&&shell.live&&api.isActive()&&shell.vget('calendar').form===form)api.set({form:null,open:null});}).catch(()=>{shell.calendarDraftSuppressed=undefined;api.toast('This draft changed. Review it before discarding.');});

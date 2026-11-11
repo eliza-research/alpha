@@ -17,7 +17,7 @@ import {testMocksEnabled} from '../build-flags';
 import {homeReadIsStale,presentHomeWorkflowFreshness} from './home-cards';
 import './automations.css';
 type Bag=Record<string,any>;
-type Binding={sessionId:string;request:AutomationRequest};
+type Binding={sessionId:string;conversationId?:string;request:AutomationRequest};
 type Editor={kind:'prompt';draft:PromptDraft;row?:AutomationRow}|{kind:'reminder';draft:ReminderDraft;row?:AutomationRow};
 const dateInput=automationLocalDateInput;
 const future=()=>dateInput(Date.now()+3600000);
@@ -137,7 +137,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
   try{
    const ownerContext=connectionController.getSnapshot().session,store=ownerContext?new WorkflowIntentStore(ownerContext):null;
    const client=selected?new AutomationsProtocol(selected.request):null;
-   const [remote,local,pending]=await Promise.allSettled([client?(recentlyDeleted?client.removed(abort.signal):client.list(abort.signal)):Promise.resolve({rows:[] as AutomationRow[],issues:ownerContext?[{source:'automations' as const,unavailable:true,message:'Agent automations are unavailable on this connection.'}]:[]}),recentlyDeleted?Promise.resolve({reminders:[]}):DailyApps.listReminders(),store?.load(abort.signal)]);
+   const [remote,local,pending]=await Promise.allSettled([client?(recentlyDeleted?client.removed(abort.signal):client.list(abort.signal)):Promise.resolve({rows:[] as AutomationRow[],issues:ownerContext?[{source:'automations' as const,unavailable:true,message:'Agent automations are unavailable on this connection.'}]:[]}),recentlyDeleted?Promise.resolve({reminders:[]}):DailyApps.listReminders(),store?.load(abort.signal),view.refreshManagement?.(abort.signal,valid)]);
    if(!valid())return;
    const next:AutomationRow[]=[],failures:AutomationIssue[]=[];
    if(remote.status==='fulfilled'){next.push(...remote.value.rows);failures.push(...remote.value.issues);}else failures.push(automationIssue('automations',remote.reason));
@@ -168,7 +168,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
   const ownerContext=connectionController.getSnapshot().session;if(!ownerContext)return false;
   const intents=new WorkflowIntentStore(ownerContext),ticket=++epoch,abort=controller=new AbortController();let dispatched=false,retained:string|undefined,sent='';message='';publish();
   const valid=()=>ticket===epoch&&!abort.signal.aborted&&visible()&&selected.sessionId===binding()?.sessionId;
-  const client=new AutomationsProtocol(async(path,method,body,signal)=>{if(!valid())throw Error('Automation connection changed.');if(method!=='GET'){const blocked=path.startsWith('/api/lifeops/scheduled-tasks/')?scheduleBlock():path.startsWith('/api/lifeops/definitions')||path.startsWith('/api/lifeops/occurrences/')?reminderBlock():path.startsWith('/api/triggers')?automationBlock():'';if(blocked)throw new AutomationOutcomeError(blocked);if(!rowKey)throw Error('Missing automation request identity.');retained=await intents.admit(rowKey,{kind:'automation',path,method,body},signal);sent=method+' '+path;if(!valid())throw Error('Automation connection changed.');dispatched=true;uncertain.add(rowKey);}return selected.request(path,method,body,signal);});
+  const client=new AutomationsProtocol(async(path,method,body,signal)=>{if(!valid())throw Error('Automation connection changed.');if(method!=='GET'){const blocked=path.startsWith('/api/lifeops/scheduled-tasks/')?scheduleBlock():path.startsWith('/api/lifeops/definitions')||path.startsWith('/api/lifeops/occurrences/')?reminderBlock():path.startsWith('/api/triggers')?automationBlock():'';if(blocked)throw new AutomationOutcomeError(blocked);if(!rowKey)throw Error('Missing automation request identity.');retained=await intents.admit(rowKey,{kind:'automation',path,method,body},signal);sent=method+' '+path;if(!valid())throw Error('Automation connection changed.');dispatched=true;uncertain.add(rowKey);}return selected.request(path,method,body,signal);},selected.conversationId);
   let completed=false;
   try{await intents.load(abort.signal);await task(client,abort.signal);if(!valid())return false;if(rowKey&&retained)await intents.acknowledge(rowKey,retained,abort.signal);if(!valid())return false;if(rowKey)uncertain.delete(rowKey);completed=true;if(dispatched){editor=null;review=null;creating=false;message=sent.endsWith('/fire')?'Run started.':'';}}
   catch(error){const status=error&&typeof error==='object'&&'status' in error?Number(error.status):0,code=error&&typeof error==='object'&&'code' in error&&typeof error.code==='string'?error.code:'',known=error instanceof AutomationOutcomeError,rejected=([400,401,403,404,405,409,410,413,414,415,422].includes(status)||status===429&&sent==='POST /api/triggers')&&!/unknown|unconfirmed|ambiguous/i.test(code);if(rowKey&&(rejected||known)&&retained&&valid()){try{await intents.acknowledge(rowKey,retained,abort.signal);uncertain.delete(rowKey);}catch{/* Keep unconfirmed requests in the existing journal. */}}if(valid())message=dispatched&&!rejected&&!known?'Outcome unknown. Check the current record and history before repeating this action.':error instanceof Error?error.message:'Automation request failed.';}

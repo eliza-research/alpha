@@ -3,7 +3,7 @@
  * provisioning boolean with a product-partition runtime resource overlay. The generator is the
  * shared one (vendor/eliza/packages/os/scripts/android/image-capability.mjs); Alpha keeps only the
  * installed identifiers its shipped APK declares (android/app/src/main/res/values/aosp-capabilities.xml),
- * which the shared Pixel 10a composition also names in products/pixel10a-alpha.json.
+ * which the shared Pixel 10a composition also names in android/aosp/pixel10a-composition.json.
  */
 import {
   assertProvisioningResourceDefault,

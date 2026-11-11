@@ -55,8 +55,9 @@ async function installProvider(page: Page) {
     };
     const mail = (id: string, threadId: string, subject: string, extra: Record<string, unknown> = {}) => ({id, threadId, subject, from: 'Synthetic sender', fromEmail: 'sender@example.invalid', to: ['owner@example.invalid'], cc: [], replyTo: null, snippet: 'Preview ' + id, receivedAt: '2026-10-06T12:00:00Z', unread: false, ...extra});
     const inbox = [mail('m1', 't1', 'Harbour schedule'), mail('m2', 't2', 'Second fixture')];
+    const earlier=mail('m0','t1','Earlier harbour schedule',{snippet:'Earlier retained preview'});
     const digest = async (text: string) => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))), b => b.toString(16).padStart(2, '0')).join('');
-    const everything = () => [...inbox, ...load().sent];
+    const everything = () => [earlier,...inbox, ...load().sent];
     const client = {
       gmailAccounts: async () => [{connectionId: 'fixture-grant', label: 'Fixture mailbox', configured: true, connected: true, reason: 'connected', grantedCapabilities: ['google.gmail.triage','google.gmail.send','google.gmail.mailbox']}],
       gmailInboxCapabilities: async () => ({version: 1, from: 'owner@example.invalid', threads: true, send: true, providerDrafts: false, mailboxMutations: false, attachments: true, providerExactlyOnce: false, atomicDraftReplacement: false, readState: false, draftsList: false, forwardAttachments: false, opaqueAttachments: false, searchTrash: false, attachmentPolicy: {maximumOutgoing: 1, maximumBytes: 5242880, maximumTotalBytes: 5242880}}),
@@ -173,8 +174,14 @@ test('synthetic provider: reviewed send leaves exactly one receipt and one messa
     await button(page, 'Synthetic sender, Harbour schedule').click();
     const message = page.getByRole('region', {name: 'Email message'});
     await expect(message.getByRole('heading', {name: 'Harbour schedule', exact: true})).toBeVisible();
-    await message.getByRole('button', {name: 'Show conversation', exact: true}).click();
-    await expect(message).toContainText('1 messages in this thread');
+    const conversation=message.getByRole('group',{name:'Conversation',exact:true});
+    await expect(conversation.getByRole('button')).toHaveCount(1);
+    await expect(conversation).toContainText('Earlier retained preview');
+    await conversation.getByRole('button').click();
+    await expect(message.getByRole('heading',{name:'Earlier harbour schedule',exact:true})).toBeVisible();
+    await expect(message).toContainText('Body of m0');
+    await conversation.getByRole('button').click();
+    await expect(message.getByRole('heading',{name:'Harbour schedule',exact:true})).toBeVisible();
     await expect(message).toContainText('Body of m1');
     await button(page, 'Back to inbox').click();
   });
@@ -209,7 +216,7 @@ test('synthetic provider: reviewed send leaves exactly one receipt and one messa
     await expect(review.getByRole('button', {name: 'Send this email', exact: true})).toHaveCount(0);
     await expect(review).toContainText('"messageId":"sent-1"');
     // The confirmed send removes the saved local draft and the composer copy it came from.
-    await expect(review).toContainText('The local draft and unsaved copy of this sent email were removed from this device.');
+    await expect(review.getByText('Sent.', {exact: true})).toBeVisible();
     await expect.poll(() => page.evaluate(KEY => Object.keys(JSON.parse(localStorage.getItem(KEY)!).slots).filter(key => key.startsWith('inbox-drafts:')), PROVIDER)).toEqual([]);
   });
 
@@ -221,7 +228,7 @@ test('synthetic provider: reviewed send leaves exactly one receipt and one messa
     await expect(review.getByRole('button', {name: 'Send this email', exact: true})).toHaveCount(0);
     await review.getByRole('button', {name: 'Check saved receipt', exact: true}).click();
     await expect(review.getByRole('status')).toHaveText('Provider confirmed this operation.');
-    await expect(review).toContainText('The local draft and unsaved copy of this sent email were removed from this device.');
+    await expect(review.getByText('Sent.', {exact: true})).toBeVisible();
     await review.getByRole('button', {name: 'Close receipt', exact: true}).click();
     await expect(review).toHaveCount(0);
     await expect(button(page, 'Mail review / receipt')).toHaveCount(0);
@@ -282,7 +289,8 @@ test('synthetic provider: a lost send reply is an unknown outcome and is never s
   await expect(review.getByRole('status')).toHaveText('Provider confirmed this operation.');
   await expect(review).toContainText('"messageId":"sent-1"');
   // Only now, with the provider's confirmation, is the retained copy of that email removed.
-  await expect(review).toContainText('The local draft and unsaved copy of this sent email were removed from this device.');
+  await expect(review.getByText('Sent.', {exact: true})).toBeVisible();
+  await expect.poll(() => page.evaluate(KEY => Object.keys(JSON.parse(localStorage.getItem(KEY)!).slots).filter(key => key.startsWith('inbox-drafts:')), PROVIDER)).toEqual([]);
   await openProviderInbox(page, true);
   await expect(review).toContainText('"messageId":"sent-1"');
   await review.getByRole('button', {name: 'Close receipt', exact: true}).click();

@@ -168,7 +168,7 @@ export class AgentCalendar {
    }
    const receivedFeed=feedRead.status==='fulfilled'?feedRead.value:null;
    const deleted=(event:LifeOpsCalendarEvent)=>this.deletedVersions.has(calendarEventKey(event))&&this.deletedVersions.get(calendarEventKey(event))===event.metadata.etag;
-   const feed=receivedFeed?{...receivedFeed,events:receivedFeed.events.filter(event=>!deleted(event))}:null;
+   const feed=receivedFeed?.events.some(deleted)?{...receivedFeed,events:receivedFeed.events.filter(event=>!deleted(event))}:receivedFeed;
    const deletedNext=!!next?.event&&deleted(next.event);if(deletedNext)next=null;
    // A failed feed read during a re-read is a transport failure: keep the shown feed (catch below).
    if((revalidating||this.value.savedAt!==null)&&feedRead.status==='rejected')throw feedRead.reason;
@@ -211,7 +211,7 @@ export class AgentCalendar {
   const port=this.port(),epoch=this.epoch;
   if(!port||this.value.mutating||!selected()||!Number.isSafeInteger(input.begin))return 'unknown';
   this.current(port,epoch,signal);
-  const window={timeMin:new Date(input.begin-1).toISOString(),timeMax:new Date(input.begin+1).toISOString(),timeZone:'UTC'};
+  const window={timeMin:new Date(input.begin-1000).toISOString(),timeMax:new Date(input.begin+1000).toISOString(),timeZone:'UTC'};
   const api=this.client(port,signal);
   const [feed,sources]=await Promise.all([api.getLifeOpsCalendarFeed(window,{signal}),api.getLifeOpsCalendars({}, {signal})]);
   this.current(port,epoch,signal);

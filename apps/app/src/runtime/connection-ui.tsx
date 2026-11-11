@@ -248,7 +248,7 @@ function noSessionError(fallback: string): Error {
 const CLOUD_SERVICE = 'alpha.connection.cloud-service.v1';
 /**
  * Subscription gate QA (test-mocks builds only): runs the production sign-in and plan gate
- * against the chosen Cloud environment, including staging (docs/cloud-subscription-qa.md).
+ * against the chosen Cloud environment, including staging.
  */
 const RESIDENT_QA = 'alpha.connection.resident-qa.v1';
 function residentQa(): CloudEnvironment | null {
@@ -1278,8 +1278,9 @@ async function recheckResidentPlan(){
     if(controller.signal.aborted)lastPlanRecheck=-Infinity;
   }
   finally{
-    // A check that could not reach Cloud still answers nothing: the network's next return checks again.
-    if(startedOffline||state.residentPlanNotice==='offline'){networkLostUnder??=planCheckScope();lastPlanRecheck=-Infinity;}
+    // Preserve a real offline interval for its next network return. A server outage alone
+    // does not waive the once-a-minute limit on repeated foreground events.
+    if(startedOffline)networkLostUnder??=planCheckScope();
     if(planRecheck===controller)planRecheck=null;
     runQueuedResidentRebind();
   }
@@ -2408,15 +2409,17 @@ export const connectionController = {
         finally{appRequests.delete(controller);}
       }};
   },
-  getAutomationsClient(): {sessionId:string;scope?:string;preflight:(path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>void;request:(path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>Promise<unknown>} | null {
+  getAutomationsClient(): {sessionId:string;conversationId?:string;scope?:string;preflight:(path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>void;request:(path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>Promise<unknown>} | null {
     const selected=active,session=state.session,generation=epoch;
+    const conversationId=session?conversationMemory.get(conversationKey(session)):undefined;
     if(!selected||!session||(testMocksEnabled&&selected.kind==='cloud'&&!selected.phoneTarget))return null;
     const preflight=(path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>{
       assertAutomationRequestAllowed(path,method,body);
+      if(body&&typeof body==='object'&&'deliveryConversationId' in body&&(!conversationId||body.deliveryConversationId!==conversationId||!session||conversationMemory.get(conversationKey(session))!==conversationId))throw new AutomationRequestNotDispatchedError('The conversation changed. Reopen this automation before saving.');
       if(signal.aborted||generation!==epoch||selected!==active||session!==state.session)throw new AutomationRequestNotDispatchedError('The automation connection changed. Nothing was sent.');
       if(selected.kind!=='resident'&&!hosted)throw new AutomationRequestNotDispatchedError('Your agent runs on this phone. Nothing was sent.');
     };
-    return {sessionId:session.sessionId,scope:selected.actions?.scope,preflight,request:async(path,method,body,signal)=>{
+    return {sessionId:session.sessionId,conversationId,scope:selected.actions?.scope,preflight,request:async(path,method,body,signal)=>{
       preflight(path,method,body,signal);
       const controller=new AbortController(),bounded=anyAbortSignal([signal,controller.signal]);appRequests.add(controller);
       const current=()=>{bounded.throwIfAborted();if(generation!==epoch||selected!==active||session!==state.session)throw new DOMException('The connection changed','AbortError');};
@@ -2531,6 +2534,11 @@ export const connectionController = {
   /** Settings › Eliza Cloud account & plan: the plan panel with Redeem code, Manage plan and Sign out. */
   openPlan({codeEntry=false}:{codeEntry?:boolean}={}){ update({open:true,automaticRestore:false,purpose:'plan',membershipDismissed:false,membershipCodeEntry:codeEntry,message:'',error:'',redeemError:'',redeemNotice:''});if(state.cloudAccount)void refreshMembershipBalance(); },
   refreshMembershipBalance,
+  async refreshAccount():Promise<void>{
+    const expected=service;
+    await refreshMembershipBalance();
+    if(expected&&service===expected)connectionController.recheckPlanNow();
+  },
   /** The chat's offer after a Cloud billing refusal: the same Subscription sheet while the
    * refusal applies (it closes by itself once Cloud admits the account again), else the plan panel. */
   openFunding(){
@@ -3523,7 +3531,7 @@ export const connectionController = {
       // A local agent refusing its own session is not a Cloud sign-in: the agent restarts, nothing else changes.
       if (expired(error) && generation === epoch && selected.kind === 'resident') {
         residentLost(generation);
-        const failure = new AlphaClientError('transport-failed', 'Your agent reconnected. Check history before resending.');
+        const failure = Object.assign(new AlphaClientError('transport-failed', 'Your agent reconnected. Check history before resending.'),{residentSessionRetired:true});
         mark(failure); throw failure;
       }
       if (expired(error) && generation === epoch) {
@@ -3573,7 +3581,9 @@ export function explicitSignedOutCloudEntry(
     snapshot.startupResolved===true && snapshot.residentSavedCredential===false &&
     !snapshot.residentStarting && !snapshot.residentRecoveryReason &&
     snapshot.residentPlanNotice!=='offline' && !snapshot.error;
-  if(ownProviderSelected(snapshot)&&snapshot.purpose==='agent')return false;
+  // Saved own keys keep account/provider settings usable without requiring Cloud sign-in.
+  // An explicit sign-in attempt still renders through snapshot.signIn.
+  if(ownProviderSelected(snapshot))return false;
   return snapshot.open&&!snapshot.cloudAccount&&(
     snapshot.purpose==='cloud-account'||snapshot.purpose==='plan'||firstBrowserResidentSignIn
   );
@@ -3766,7 +3776,21 @@ export function ConnectionChooser() {
     const keyNotice=expiresAt!==undefined&&expiresAt>Date.now()&&expiresAt-Date.now()<=CLOUD_KEY_EXPIRY_WARNING_MS&&dismissedKeyExpiry!==expiresAt?expiresAt:null;
     const planShown=!!notice&&dismissedNotice!==notice;
     if(!planShown&&keyNotice===null)return null;
-    return <div className="alpha-plan-notices">{planShown&&<aside className="alpha-plan-notice" role="region" aria-label={`${serviceName} plan notice`}>
+    return <div className="alpha-plan-notices" ref={node=>{
+      if(!node)return;
+      const measure=()=>{
+        node.dataset.scrollable=String(node.scrollHeight>node.clientHeight+1);
+        const box=node.getBoundingClientRect(),home=document.querySelector<HTMLElement>('[data-alpha-layer="home"]');
+        const prior=parseFloat(document.documentElement.style.getPropertyValue('--alpha-home-notice-clearance'))||0;
+        const baseTop=home?home.getBoundingClientRect().top-prior:0;
+        const clearance=box.height&&home?Math.max(0,box.bottom-baseTop+12):0;
+        document.documentElement.style.setProperty('--alpha-home-notice-clearance',clearance+'px');
+      };
+      const observer=new ResizeObserver(measure);observer.observe(node);
+      for(const child of node.children)observer.observe(child);
+      window.addEventListener('resize',measure);
+      measure();return ()=>{observer.disconnect();window.removeEventListener('resize',measure);document.documentElement.style.removeProperty('--alpha-home-notice-clearance');};
+    }}>{planShown&&<aside className="alpha-plan-notice" role="region" aria-label={`${serviceName} plan notice`}>
       <p role="status">{NEEDS_PLAN_NOTICE}</p>
       <div className="alpha-plan-notice-actions">
         <button disabled={snapshot.busy} onClick={()=>connectionController.openPlan({codeEntry:true})}>Redeem code</button>
@@ -3824,7 +3848,7 @@ export function ConnectionChooser() {
   // is no longer offered for retry.
   const savedSignInRejected=snapshot.errorKind==='sign-in-rejected';
   const savedSignInOffered=residentCloudFlow()&&!snapshot.cloudAccount&&snapshot.residentSavedCredential===true&&!savedSignInRejected;
-  const membershipControls=snapshot.cloudAccount&&<CloudMembershipControls key={`${snapshot.cloudAccount.environment}:${snapshot.cloudAccount.userId}:${snapshot.cloudAccount.organizationId}:${snapshot.cloudAccount.credentialId}`} email={snapshot.cloudAccount.email} credits={snapshot.membershipCredits} plan={snapshot.membershipPlan} endsAt={snapshot.planEndsAt} lastLimit={snapshot.fundingRefused&&snapshot.lastServiceLimit?.kind==='billing-refused'?null:snapshot.lastServiceLimit} refused={!!snapshot.fundingRefused} serviceName={serviceName} codeEntry={snapshot.membershipCodeEntry} balance={snapshot.membershipBalance??'unavailable'} busy={snapshot.busy} error={snapshot.redeemError} connectionError={snapshot.error} notice={snapshot.redeemNotice} onRedeem={code=>connectionController.residentRedeem(code)} onManagePlan={()=>void connectionController.residentManagePlan()} onRefresh={()=>void connectionController.refreshMembershipBalance()}/>;
+  const membershipControls=snapshot.cloudAccount&&<CloudMembershipControls key={`${snapshot.cloudAccount.environment}:${snapshot.cloudAccount.userId}:${snapshot.cloudAccount.organizationId}:${snapshot.cloudAccount.credentialId}`} email={snapshot.cloudAccount.email} credits={snapshot.membershipCredits} plan={snapshot.membershipPlan} endsAt={snapshot.planEndsAt} lastLimit={snapshot.fundingRefused&&snapshot.lastServiceLimit?.kind==='billing-refused'?null:snapshot.lastServiceLimit} refused={!!snapshot.fundingRefused} serviceName={serviceName} codeEntry={snapshot.membershipCodeEntry} balance={snapshot.membershipBalance??'unavailable'} busy={snapshot.busy} error={snapshot.redeemError} connectionError={snapshot.error} notice={snapshot.redeemNotice} onRedeem={code=>connectionController.residentRedeem(code)} onManagePlan={()=>void connectionController.residentManagePlan()} onRefresh={()=>void connectionController.refreshAccount()}/>;
   const fundingRequired=!ownProviderSelected()&&!!snapshot.cloudAccount&&(snapshot.membershipBalance==='zero'||!!snapshot.fundingRefused);
   const accountSheet=fundingRequired||snapshot.purpose==='plan'||snapshot.purpose==='cloud-account';
   if(accountSheet)return <div className="alpha-connection-scrim" data-alpha-billing-overlay="true" data-alpha-membership-sheet="true"><div className="alpha-connection alpha-account-sheet" role="dialog" aria-modal="true" aria-labelledby="alpha-membership-title" tabIndex={-1} ref={panel} data-alpha-membership-panel="true">
@@ -3836,7 +3860,7 @@ export function ConnectionChooser() {
       {!snapshot.cloudAccount&&<><p className="alpha-membership-account">Not signed in</p><button className="alpha-account-confirm" disabled={snapshot.busy} onClick={()=>void connectionController.residentCloudLogin()}>Sign in</button></>}
       <div className="alpha-account-links">
         <button disabled={snapshot.busy} onClick={()=>{setAccountSection('provider');void connectionController.refreshProviderStatus();}}><span aria-hidden="true" data-alpha-icon="/icons/lucide/cpu.svg" style={iconStyle('cpu')}/><span>AI connection</span><small>{ownProviderSelected(snapshot)?'Own API keys':'Cloud'}</small><span aria-hidden="true" data-alpha-icon="/icons/lucide/chevron-right.svg" style={iconStyle('chevron-right')}/></button>
-        <button disabled={snapshot.busy} onClick={()=>{connectionController.close();googleConnectionController.openFromAccount();}}><span aria-hidden="true" data-alpha-icon="/icons/lucide/mail.svg" style={iconStyle('mail')}/><span>Google &amp; email</span><span aria-hidden="true" data-alpha-icon="/icons/lucide/chevron-right.svg" style={iconStyle('chevron-right')}/></button>
+        <button data-alpha-account-google disabled={snapshot.busy} onClick={()=>{connectionController.close();googleConnectionController.openFromAccount();}}><span aria-hidden="true" data-alpha-icon="/icons/lucide/mail.svg" style={iconStyle('mail')}/><span>Google &amp; email</span><span aria-hidden="true" data-alpha-icon="/icons/lucide/chevron-right.svg" style={iconStyle('chevron-right')}/></button>
       </div>
       {snapshot.cloudAccount&&<button className="alpha-account-signout" disabled={snapshot.busy} onClick={()=>setSignOutAccount(snapshot.cloudAccount)}>Sign out</button>}
       <button className="alpha-account-done" disabled={snapshot.busy} onClick={()=>connectionController.close()}>Done</button>
@@ -3913,7 +3937,7 @@ export function ConnectionChooser() {
     {testMocksEnabled&&residentQa()&&<p><button disabled={snapshot.busy} onClick={()=>connectionController.setResidentQa(null)}>Leave subscription gate QA ({residentEnvironment()})</button></p>}
   </div></div>;
   if(browserOnly)return <div className="alpha-connection-scrim"><div className="alpha-connection" role="dialog" aria-modal="true" aria-labelledby="local-only-title" tabIndex={-1} ref={panel}>
-    <header><h1 id="local-only-title">Alpha Phone</h1><button aria-label="Close connection settings" onClick={()=>connectionController.close()}>Close</button></header>
+    <header><h1 id="local-only-title">Alpha Phone</h1><button aria-label="Close connection settings" onClick={()=>connectionController.close()}><span aria-hidden="true" data-alpha-icon="/icons/lucide/x.svg" style={iconStyle("x")}/></button></header>
     <p>Your agent runs locally in the Android app. Remote agents and pairing are unavailable.</p>
     <p>Local apps remain available here. Saved history is preserved.</p>
     <button onClick={()=>void connectionController.offline()}>Open local apps</button>

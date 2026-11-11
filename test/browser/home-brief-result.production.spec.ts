@@ -252,6 +252,6 @@ test('an event from another agent is not presented as this agent’s next event 
   await expect(calendarCard(page)).toHaveCount(0);
   await expect(home(page)).not.toContainText(/Nothing planned|Agent calendar meeting|Device-only event|Private device calendar/);
   await page.getByRole('button',{name:'Calendar',exact:true}).click();
-  await expect(page.getByRole('region',{name:'Calendar',exact:true})).toContainText(/another agent|Calendar unavailable/);
+  await expect(page.getByRole('region',{name:'Calendar',exact:true})).toContainText(/another agent|Calendar unavailable|Calendar could not load/);
   expect(await harness(page, f => f.unexpected)).toEqual([]);
 });

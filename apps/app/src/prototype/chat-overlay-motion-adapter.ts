@@ -548,6 +548,7 @@ export function installChatOverlayMotion(Component: Shell) {
 		retire(this, false);
 		this.swallow = Date.now();
 		this.chatSettledByDrag = true;
+		if (this.props.assistantSurface && !this.S().view && next.chat === "hidden") return this.closeAssistant();
 		// An open chat collapses to its resting form; only the bar itself dismisses to the pill.
 		this.setState({
 			chat: next.chat === "hidden" && !collapsed ? this.rest() : next.chat,
@@ -602,7 +603,12 @@ export function installChatOverlayMotion(Component: Shell) {
 				const over = cover.getBoundingClientRect();
 				// A dock beside the page (landscape) covers nothing of it.
 				if (over.right <= box.left || over.left >= box.right) continue;
-				hidden = Math.max(hidden, box.bottom - over.top + 12);
+				// Focus can arrive before the opening transition reaches its target.
+				// Keep it above both the painted sheet and its destination; a live drag owns its actual bounds.
+				const top = sheet && !shell.chatMotion
+					? Math.min(over.top, over.bottom - sheetHeight(shell, geometry) * geometry.scale)
+					: over.top;
+				hidden = Math.max(hidden, box.bottom - top + 12);
 			}
 			if (hidden > 0) scroll.scrollTop += hidden / geometry.scale;
 		};
@@ -806,6 +812,7 @@ export function installChatOverlayMotion(Component: Shell) {
 		};
 		out.closeChat = () => {
 			retire(shell, false);
+			if (shell.props.assistantSurface && !shell.S().view) return shell.closeAssistant();
 			// A voice session in the chat keeps its controls on the pill.
 			shell.setState({
 				chat: document.querySelector("[data-alpha-chat-recorder]")

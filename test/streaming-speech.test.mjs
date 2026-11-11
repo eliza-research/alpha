@@ -20,7 +20,7 @@ test('local speech streams through AudioTrack when the engine supports it and fa
   const plugin = strip(bridge()), output = strip(shared('AudioTrackSpeechOutput.java')), paradee = strip(shared('SessionSpeech.java'));
   // One process-wide session owns speech output, recognition and VAD. The engine's backend is its own
   // client of that session: its cancel and release never fence or unload another consumer's calls.
-  assert.match(plugin, /new LocalSpeechEngine\(\(\)->SessionSpeech\.shared\(getContext\(\)\)\)/);
+  assert.match(plugin, /new LocalSpeechEngine\(\(\)->\{useBigCores\(\);return SessionSpeech\.shared\(getContext\(\)\);\}\)/);
   assert.doesNotMatch(plugin, /ElizaVoiceNative|openInference\(\)|new ParadeeVoice|new NativeAsr/);
   assert.match(paradee, /public void close\(\)\{if\(owned\)inference\.close\(\);else client\.release\(\);\}/);
   assert.match(paradee, /public void cancel\(\)\{client\.cancel\(\);\}/);
@@ -30,7 +30,12 @@ test('local speech streams through AudioTrack when the engine supports it and fa
   assert.match(plugin, /Boolean streamed=localEngine\.use\(/);
   assert.match(plugin, /if\(streamed\)return;/);
   assert.doesNotMatch(plugin.slice(plugin.indexOf('private void streamLocal('), plugin.indexOf('private static boolean settleRefusal(')), /File|createTempFile|FileOutputStream/, 'streamed audio is never written to storage');
-  assert.match(paradee, /client\.synthesizeStream\(text,1f,/);
+  // The shared session streams reviewed text one bounded segment at a time;
+  // only the last segment may complete the utterance sent to the writer.
+  assert.match(paradee, /List<String> segments=segments\(text\);\s*for\(int i=0;i<segments\.size\(\);i\+\+\)/);
+  assert.match(paradee, /client\.synthesizeStream\(segments\.get\(i\),1f,/);
+  assert.match(paradee, /if\(!last&&complete&&samples\.length==0\)return true;/);
+  assert.match(paradee, /sink\.accept\(samples,last&&complete\)/);
   assert.match(paradee, /return client\.supportsStreaming\(\);/);
   assert.match(paradee, /VoiceAssets\.sharedInference\(context\)/);
   assert.doesNotMatch(paradee, /\.open(?:Asr|Voice)\(/);

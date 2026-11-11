@@ -21,7 +21,7 @@ test('Calendar Connect binds its canonical revision and rejects stale Allow ABA 
   const api=vm.runInNewContext('(function(){'+domain+'\n'+documents+'\n'+preferences+'\n'+access+';return{captureGoogleCalendarAccess,setGoogleAgentAccess};})()',env);
   const calendar={current:()=>true,canChange:()=>true};let selected=calendar;const binding={session:'one'};
   const read={binding,rows:[]},verifiedAccounts={current:read};
-  const context={...api,browserCloudResidentEnabled:false,cloud:null,verifiedAccounts,googleConnectionController:{calendar:()=>selected,getSnapshot:()=>true},sameGoogleConnectionReturnBinding:(a,b)=>a===b,binding,currentGoogleConnectionReturnBinding:()=>binding,setNotice:n=>notices.push(n),setChoice:c=>choices.push(c),unverifiedAccounts:'Unverified accounts',linkCalendar:async()=>links.push('link'),connectCalendar:async()=>links.push('connect')};
+  const context={...api,browserCloudResidentEnabled:false,cloud:null,accessTarget:()=>undefined,verifiedAccounts,googleConnectionController:{calendar:()=>selected,getSnapshot:()=>true},sameGoogleConnectionReturnBinding:(a,b)=>a===b,binding,currentGoogleConnectionReturnBinding:()=>binding,setNotice:n=>notices.push(n),setChoice:c=>choices.push(c),unverifiedAccounts:'Unverified accounts',linkCalendar:async()=>links.push('link'),connectCalendar:async()=>links.push('connect')};
   const uiApi=vm.runInNewContext('(function(){'+handlers+';return{calendarChangesAllowed,allowCalendarChanges};})()',context);
   return{calendarChangesAllowed:(calendar,rows)=>uiApi.calendarChangesAllowed(calendar,rows,read),
    allowCalendarChanges:choice=>uiApi.allowCalendarChanges({...choice,read}),

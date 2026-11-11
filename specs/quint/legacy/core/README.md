@@ -4,8 +4,12 @@ The [migration report](migration-report.md) inventories the 16 shared core
 specifications and 31 TLC profiles at upstream revision
 `4787d51a142c63c98371c832997184c53f7218d3`. The Git blob hashes are in
 [source-inventory.json](source-inventory.json). The checked-in Quint modules
-live one directory above this metadata. The immutable vendor tree retains the
-original upstream specifications.
+live one directory above this metadata. The original specifications are read
+from Git objects at that historical revision, even when the current immutable
+vendor checkout has retired them. The inventory records current upstream formal
+sources separately; any new TLA module or TLC configuration still requires an
+authenticated registered Quint translation. Historical conversion evidence does
+not qualify the current application source.
 
 Each default model appears in the legacy manifest. Its configuration records
 select exact profile modules and preserve the original constant assignments,
@@ -13,10 +17,16 @@ invariants, temporal properties and deadlock setting. A qualified profile can
 be selected without changing the source model.
 
 ```sh
+npm run quint:prepare-history
 node specs/quint/legacy/core/check-configurations.mjs --phase=check
 node specs/quint/legacy/core/check-configurations.mjs --phase=symbolic --models=InteractionSession --steps=4
 node specs/quint/legacy/core/check-configurations.mjs --phase=temporal --profiles=ActionSettlement.late --tlc-max-heap-mb=1024
 ```
+
+`npm run verify` prepares the historical Git objects automatically. The preparation
+is idempotent and fetches only the exact inventory revision with `--depth=1`
+when missing, including in shallow CI submodule checkouts. It never checks out
+the historical source or changes the current product pin.
 
 The bounded phases use an explicit stutter action to represent the source
 `[Next]_vars` relation. The finite phase compiles the exact `Next` relation and

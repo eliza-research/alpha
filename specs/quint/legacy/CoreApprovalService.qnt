@@ -92,6 +92,11 @@ module CoreApprovalService {
   action timeoutDelete = Model::TDelete
   action deliver(selector: int): bool = Model::Deliver(selector)
   action selectionTask(selector: int): bool = Model::SGetTask(selector)
+  // Current runtime refuses a callback that another invocation already claimed.
+  action selectionUnavailable(selector: int): bool = all {
+    Model::s.spc.get(selector) == "getTask", not(Model::s.inMap),
+    Model::Move({...Model::s, spc: Model::s.spc.set(selector, "done")})
+  }
   action selectionCallbackDone(selector: int): bool = Model::SCallbackDone(selector)
   action selectionCallbackFails(selector: int): bool = Model::SCallbackFails(selector)
   action selectionDelete(selector: int): bool = Model::SDelete(selector)

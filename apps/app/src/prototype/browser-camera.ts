@@ -223,7 +223,7 @@ export const browserPhotoLibrary={
   const items=selectedMedia(input.items,SHARE_LIMIT),files=await selectedMediaFiles(items);
   await selectedMediaRows(items);
   if(document.hidden||!current())throw new DOMException('Share view changed','AbortError');
-  if(!navigator.share||!navigator.canShare?.({files}))throw Error('Sharing is unavailable in this browser. Use Save locally.');
+  if(!navigator.share||!navigator.canShare?.({files}))throw Error('Sharing is unavailable in this browser. Use Save file.');
   await navigator.share({files});
   return {status:'opened',count:files.length};
  },

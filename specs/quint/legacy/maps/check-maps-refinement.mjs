@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, readFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
@@ -11,7 +12,6 @@ import {captureInputs, checkTraces} from '../../refinement/check-traces.mjs';
 
 const model = 'MapsReplay';
 const modelPath = 'test/fixtures/quint/MapsComparison.qnt';
-const cacheDir = resolve(root, 'test-results/quint-refinement/legacy-maps-vite-cache');
 const adapter = resolve(root, 'apps/app/src/prototype/maps-adapter.ts');
 const expect = baseExpect.configure({timeout: 15000});
 const button = (page, name) => page.getByRole('button', {name, exact: true});
@@ -155,7 +155,8 @@ const result = page => sheet(page, 'results').getByRole('button', {name: /^Fixtu
 async function passiveOffline(page) {
   const t = await schedule(page, 'passive_open_records_failure_without_a_search_notice', 'down');
   await open(page, t, false);
-  await expect(status(page)).toHaveText('Add a location');
+  await expect(query(page)).toHaveValue('');
+  await expect(status(page)).toHaveCount(0);
   const passive = difference(t.trace, 'passive_capability_failure_does_not_yet_replace_base_status');
   passive.steps.at(-1).expect['s.message'] = (await observe(page))['s.message'];
   return {trace: t.trace, differences: [['MapsHistoricalPassiveOfflineNotice', passive]]};
@@ -339,11 +340,11 @@ async function reroute(page) {
   await route(page, t);
   await start(page, t);
   await geo(page, far);
-  await expect(status(page)).toContainText('Off route. Stop and calculate a new route.');
+  await expect(status(page)).toContainText('Off route. Tap Reroute from here.');
   const rerouteButton = button(page, 'Reroute from here');
   await expect(rerouteButton).toBeVisible();
   assert.equal((await requests(page)).filter(row => row.endpoint === 'routes').length, 1);
-  await t.point('An off-route fix preserves the route pending an explicit choice', action('OffRoute'));
+  await t.point('An off-route fix preserves the route pending an explicit choice', null);
   const portrait = await guidanceTargets(page, [[412, 915], [360, 640]]);
   const landscape = await guidanceTargets(page, [[915, 412], [640, 360]]);
   await page.evaluate(() => {
@@ -357,22 +358,21 @@ async function reroute(page) {
   await rerouteButton.tap();
   assert.deepEqual(await page.evaluate(() => window.closedMaps.reroutePointer),
     {label: 'Reroute from here', layer: 'app'});
-  await expect(sheet(page, 'directions')).toBeVisible();
+  await expect(button(page, 'End navigation')).toBeVisible();
   await expect(status(page)).toContainText('Cloud Maps is temporarily unavailable. Try again later.');
-  await page.waitForFunction(() => window.closedMapsGeo.watches.size === 0);
+  await page.waitForFunction(() => window.closedMapsGeo.watches.size === 1);
   assert.deepEqual((await requests(page)).filter(row => row.endpoint === 'routes').at(-1).body,
     {from: far, to: destination, mode: 'drive'});
-  const failed = difference(t.trace, 'failed_explicit_reroute_ends_guidance_and_clears_route');
-  // The projected failed-reroute outcome uses the original Fault/OffRoute
-  // pair. The original fault transition would also retire the service session,
-  // whereas the mounted source has a failed route request on an installed provider.
+  await t.point('A refused reroute keeps the current route and guidance',
+    [action('CloudFault'), action('OffRoute')], ['s.session']);
+  const failed = difference(t.trace, 'historical_failed_reroute_loses_the_retained_route', 'current');
   const after = await observe(page);
   failed.steps.pop();
-  failed.steps.push({label: 'Failed reroute ends guidance and clears the prior route',
+  failed.steps.push({label: 'The current route and guidance survive a refused reroute',
     action: [action('CloudFault'), action('OffRoute')],
     expect: {'s.screen': after['s.screen'], 's.route': after['s.route'], 's.message': after['s.message']}});
   assert.equal(after['s.session'], 'ready');
-  return {trace: t.trace, differences: [['MapsHistoricalFailedRerouteKeepsRoute', failed]], portrait, landscape};
+  return {trace: t.trace, differences: [['MapsHistoricalFailedRerouteLosesRoute', failed]], portrait, landscape};
 }
 
 export async function mountClosedMaps(extraSources, runs, holdRouteReplies = false) {
@@ -382,7 +382,6 @@ export async function mountClosedMaps(extraSources, runs, holdRouteReplies = fal
   if (holdRouteReplies) watched.add(resolve(root, '.eliza/client-features/plugins/plugin-maps/src/client/device-navigation.ts'));
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'patches/eliza')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
@@ -393,6 +392,7 @@ export async function mountClosedMaps(extraSources, runs, holdRouteReplies = fal
   const driverHashes = captureInputs(sources), loaded = new Set();
   const flags = ['ELIZA_DEV_ALLOW_TEST_MOCKS', 'VITE_ELIZA_DEV_ALLOW_TEST_MOCKS'];
   const previous = flags.map(name => process.env[name]);
+  const cacheDir = mkdtempSync(resolve(tmpdir(), 'alpha-refinement-vite-'));
   let server, browser;
   try {
     for (const name of flags) process.env[name] = '';
@@ -491,7 +491,7 @@ export async function mountClosedMaps(extraSources, runs, holdRouteReplies = fal
       if (previous[index] === undefined) delete process.env[name];
       else process.env[name] = previous[index];
     }
-    try {await browser?.close();} finally {await server?.close();}
+    try {await browser?.close();} finally {try {await server?.close();} finally {rmSync(cacheDir,{recursive:true,force:true});}}
   }
 }
 

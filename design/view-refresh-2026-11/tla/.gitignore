@@ -1,5 +1,0 @@
-# TLC outputs (results.md stays tracked)
-Spec_TTrace_*.tla
-Spec_TTrace_*.bin
-results/
-states/

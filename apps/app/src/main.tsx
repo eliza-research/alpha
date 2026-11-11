@@ -64,7 +64,7 @@ import { DailyApps } from './daily';
 import { installPrototypeVoiceAdapter } from './prototype/voice-adapter';
 import { installPrototypeBrowserAdapter } from './prototype/browser-adapter';
 import { installCalendarAdapter } from './prototype/calendar-adapter';
-import { hasAppearancePreview, installSettingsAdapter, readAppearanceChoice, resolveAppearance } from './prototype/settings-adapter';
+import { automaticUpdateIdle, hasAppearancePreview, installSettingsAdapter, readAppearanceChoice, resolveAppearance } from './prototype/settings-adapter';
 import { ConnectionChooser, connectionController, connectionChooserVisible, residentAlwaysPresent } from './runtime/connection-ui';
 import { protectedPowerLaunchState } from './runtime/power-launch-state';
 import { installListenerInvocation, stopWakeListenerForChatOnly } from './runtime/always-on-listener';
@@ -236,12 +236,12 @@ function Phone() {
     onCancel:()=>shell?.cancelChatMotion(),
   });
   const connection = useSyncExternalStore(connectionController.subscribe, connectionController.getSnapshot);
-  // Startup decides whether sign-in or access setup opens first: a verified account, a saved one
+  // Startup decides whether sign-in or access setup opens first: a connected agent, a saved account
   // that is offline (neither prompt), the sign-in itself or a settled start. Until then a neutral
   // screen hides an already-mounted, inert shell so its local caches can restore
   // before Home is revealed. Once shown, Home stays; a start that has not decided in 60 s (a first boot takes about 27 s) shows it as before.
   const [homeShown, setHomeShown] = useState(fixture || !residentAlwaysPresent);
-  const startupPending = !homeShown && !connection.startupResolved && !connection.cloudAccount && connection.residentPlanNotice !== 'offline' && !connectionChooserVisible(connection);
+  const startupPending = !homeShown && !connection.startupResolved && !connection.session && connection.residentPlanNotice !== 'offline' && !connectionChooserVisible(connection);
   useEffect(() => {
     if (!startupPending) { setHomeShown(true); return; }
     const timer = setTimeout(() => setHomeShown(true), 60_000);
@@ -336,9 +336,12 @@ async function applyDeviceLocale() {
   try { const info = await System.getLocaleInfo(); setLocalePreferences({ locale: info.locale, hourCycle: info.hour24 === true ? 'h23' : info.hour24 === false ? 'h12' : undefined }); }
   catch { /* Keep the WebView's default locale formatting. */ }
 }
-async function prepareMountedUpdate(activationCurrent: () => boolean) {
+async function prepareMountedUpdate(activationCurrent: () => boolean, automatic = false, editingAtFreeze = false) {
   const owner = shell;
-  const current = () => activationCurrent() && shell === owner && owner?.live === true;
+  const voiceActive = () => owner?.voiceConversationActive?.() !== false;
+  const idle = () => automaticUpdateIdle(owner.S(),connectionController.getSnapshot(),
+    !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus,[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'),voiceActive());
+  const current = () => activationCurrent() && shell === owner && owner?.live === true && !voiceActive() && (!automatic || !editingAtFreeze && idle());
   if (!current()) throw Error('App is still opening');
   if (connectionController.getSnapshot().busy || document.querySelector('[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'))
     throw Error('Finish the current activity before updating');

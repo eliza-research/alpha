@@ -1,6 +1,6 @@
+import {formatDateTime,formatTime,formatMonthDay} from '../prototype/locale-time.ts';
 import {phoneWorkflowLocalDay,zoneOffsetMinutes} from '../../../../.eliza/client-features/packages/contracts/src/phone-workflow.ts';
 import {formatSchedule} from '../../../../.eliza/client-features/packages/ui/src/utils/cron-format.ts';
-import {formatDateTime,formatMonthDay,formatTime} from '../prototype/locale-time';
 // Upstream plugin-scheduling/src/scheduled-task/trigger-tz.ts. The prepared
 // browser SDK does not export this scheduling sentinel.
 const OWNER_LOCAL_TZ='owner_local';
@@ -55,7 +55,7 @@ export function workflowNextClockOccurrence(expression:string,zone:string,now=Da
 export function workflowSnoozeTime(stamp:string|number,now=Date.now()):string{
  const date=new Date(stamp);if(!Number.isFinite(date.getTime()))return '';
  const sameDay=date.toDateString()===new Date(now).toDateString();
- return sameDay?formatTime(date):formatMonthDay(date,date.getFullYear()!==new Date(now).getFullYear())+', '+formatTime(date);
+ return (sameDay?'':formatMonthDay(date,date.getFullYear()!==new Date(now).getFullYear())+', ')+formatTime(date);
 }
 
 /** Native datetime-local controls use the browser's zone; stored instants keep their zone. */

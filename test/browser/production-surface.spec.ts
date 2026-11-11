@@ -27,7 +27,7 @@ async function trackCsp(page: Page) {
 // Owner rule: speech runs only on the native libelizainference stack (on the phone, or the local
 // agent on a computer). The built web bundle carries no speech model, worker or inference runtime.
 test('the built bundle ships no in-browser speech engine, model or inference runtime', async ({ request }) => {
-  const dir = path.resolve('test-results/production-web');
+  const dir = path.resolve(`test-results/production-web-${Number(process.env.ALPHA_BROWSER_TEST_PORT||5317)+1}`);
   const walk = (current: string): string[] => readdirSync(current, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? walk(path.join(current, entry.name)) : [path.relative(dir, path.join(current, entry.name)).split(path.sep).join('/')]);
   const files = walk(dir);
   expect(files.length).toBeGreaterThan(10);
@@ -347,7 +347,7 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    const w=window as any;w.androidBridge={};w.residentCalls=[];
    const id='9f1dc45a-4011-4e44-947a-30d999d24fa5';
    const resident=w.residentAgent=w.createResidentAgentPlugin({owner:()=>id,agentId:id});
-   const values:Record<string,string>={};let credentialReads=0;
+   const values:Record<string,string>={};let credentialReplaced=false;
    // An older build's "Use local apps without AI" choice.
    if(mode==='legacy-offline')localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline',localApps:true}));
    if(mode!=='signed-out'&&mode!=='unpackaged'&&mode!=='legacy-offline')values['cloud:production']=JSON.stringify({token:'synthetic-cloud-key',credentialId:id,expiresAt:Date.now()+60000});
@@ -378,13 +378,14 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
      }
      return {};
     }
-    if(method==='secureRead'){if(input.slot==='cloud:production'&&++credentialReads===5&&mode==='replaced')values[input.slot]=JSON.stringify({token:'synthetic-replacement-key',credentialId:'f04d4d24-6978-42a2-a968-995d76debf77',expiresAt:Date.now()+60000});return{value:values[input.slot]??null};}
+    if(method==='secureRead')return{value:values[input.slot]??null};
     if(method==='secureWrite'){values[input.slot]=input.value;return{};}
     if(method==='secureRemove'){delete values[input.slot];return{};}
     if(method==='request'){
      const path=new URL(input.url).pathname;
      if(path==='/api/v1/user')return{status:200,data:{success:true,data:{id}}};
      if(path==='/api/v1/subscription/entitlement')return { status: 404, data: {} }; // Entitlement route absent: the billing snapshot answers.
+     if(path==='/api/v1/billing/limits'&&mode==='replaced'&&!credentialReplaced){credentialReplaced=true;values['cloud:production']=JSON.stringify({token:'synthetic-replacement-key',credentialId:'f04d4d24-6978-42a2-a968-995d76debf77',expiresAt:Date.now()+60000});}
      if(path==='/api/v1/billing/limits')return mode==='unavailable'?{status:503,data:{error:'temporary'}}:{status:200,data:{success:true,data:{v2:{subscription:mode==='funded'||mode==='replaced'?{status:'available',value:{planKey:'plus_monthly',state:'active',currentPeriodEnd:'2099-01-01T00:00:00.000Z'}}:{status:'not_applicable',reason:mode==='credits'?'no_organization_subscription':'subscription_not_active'}}}}};
      throw Error('Unexpected Cloud route: '+path);
     }
@@ -405,7 +406,8 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
   // On the phone's own agent that plan panel is the resident account & plan panel; it carries the
   // approved Subscription controls, opened at the code field.
   const signedOut=mode==='signed-out'||mode==='legacy-offline'||mode==='unpackaged',needsPlan=mode==='empty'||mode==='unavailable';
-  const dialog=signedOut?page.locator('[role="main"].alpha-cloud-sign-in'):needsPlan?page.getByRole('dialog',{name:'Eliza Cloud account & plan',exact:true}):page.getByRole('region',{name:'Settings',exact:true});
+  const requiresSignIn=signedOut;
+  const dialog=signedOut?page.locator('[role="main"].alpha-cloud-sign-in'):mode==='replaced'?page.getByRole('region',{name:'Settings',exact:true}):page.getByRole('dialog',{name:'Account',exact:true});
   if(needsPlan){
    const notice=page.getByRole('region',{name:'Eliza Cloud plan notice'});
    await expect(notice).toContainText('AI replies are off. Your agent is still running.');
@@ -419,18 +421,17 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
    // and the required sign-in page never covers the running resident's Home.
    if(mode==='replaced')await expect(page.locator('[role="main"].alpha-cloud-sign-in')).toHaveCount(0);
    await expect(page.getByRole('dialog')).toHaveCount(0);
-   await page.getByRole('button',{name:'Settings',exact:true}).click();
-   if(mode==='replaced')await page.getByRole('button',{name:'Agent',exact:true}).click();
-   else await openCloudPlanFromSettings(page);
+   if(mode==='replaced')await openYourAgent(page);
+   else{await page.getByRole('button',{name:'Settings',exact:true}).click();await openCloudPlanFromSettings(page);}
   }
   await expect(dialog).toBeVisible();
   if(mode==='unpackaged'){
    // A developer build without the runtime says so and offers Retry; it never offers an offline mode.
    await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
    await expect(dialog.getByRole('status').filter({hasText:'This developer build does not include the on-device agent.'})).toHaveText('This developer build does not include the on-device agent.');
-  }else if(needsPlan)await expect(dialog.getByRole('region',{name:'Subscription',exact:true})).toBeVisible();
-  else if(!signedOut&&mode!=='replaced'){await expect(dialog.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:'Manage plan',exact:true})).toBeVisible();}
-  if(signedOut){
+  }else if(needsPlan)await expect(dialog.getByRole('region',{name:'Balance and membership',exact:true})).toBeVisible();
+  else if(!signedOut&&mode!=='replaced'){await expect(dialog.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();await expect(dialog.getByRole('button',{name:mode==='credits'?'Choose a plan':'Manage plan',exact:true})).toBeVisible();}
+  if(requiresSignIn){
    await expect(dialog.getByText(/Sign in to verify your account|review access/)).toHaveCount(0);
    await expect(dialog.getByRole('button',{name:'Email me a code',exact:true})).toBeVisible();
    await expect(dialog.getByRole('button',{name:'Close connection settings',exact:true})).toHaveCount(0);
@@ -442,26 +443,26 @@ for (const mode of ['signed-out','empty','credits','unavailable','funded','repla
   if(needsPlan){
    await expect(dialog.getByRole('textbox',{name:'Membership code',exact:true})).toBeFocused();
    await expect(dialog.getByRole('button',{name:'Redeem',exact:true})).toBeVisible();
-   await expect(dialog.getByRole('button',{name:mode==='empty'?'Choose a monthly plan':'Manage subscription',exact:true})).toBeVisible();
+   await expect(dialog.getByRole('button',{name:mode==='empty'?'Choose a plan':'Manage plan',exact:true})).toBeVisible();
    // The subscription component owns the single plan summary; the host never repeats it.
    await expect(dialog.getByRole('region',{name:'Eliza Cloud plan',exact:true})).toHaveCount(0);
-   await expect(dialog.getByRole('region',{name:'Subscription',exact:true}).getByText(mode==='empty'?'No active subscription':'Subscription not confirmed',{exact:true})).toHaveCount(1);
+   await expect(dialog.getByRole('region',{name:'Balance and membership',exact:true}).getByText(mode==='empty'?'No active subscription':'Subscription not confirmed',{exact:true})).toHaveCount(1);
    await expect(dialog).not.toContainText(/Available credits|Add credits|\$\d/);
   }
-  if(mode==='replaced')await expect(dialog.getByText(/account changed/i)).toBeVisible();
+  if(mode==='replaced'){await expect(dialog.getByText(/account changed/i)).toBeVisible();const saved=await page.evaluate(async()=>JSON.parse((await (window as any).Capacitor.nativePromise('AlphaConnection','secureRead',{slot:'cloud:production'})).value));expect(saved.credentialId).toBe('f04d4d24-6978-42a2-a968-995d76debf77');}
   if(admitted)await expect(dialog.getByRole('button',{name:'Sign out',exact:true})).toBeVisible();
   // Legacy credit admission keeps the subscription and membership-code options visible.
-  if(mode==='credits'){await expect(dialog).toContainText('Sign-in expiring');await expect(dialog.getByRole('button',{name:'Redeem code',exact:true})).toBeVisible();await expect(dialog.getByRole('textbox',{name:'Membership code',exact:true})).toHaveCount(0);}
+  if(mode==='credits'){await expect(dialog).toContainText('Sign-in expires soon');await expect(dialog.getByRole('button',{name:'Use code',exact:true})).toBeVisible();await expect(dialog.getByRole('textbox',{name:'Membership code',exact:true})).toHaveCount(0);}
   for(const retired of ['Use local apps without AI','Continue offline'])await expect(dialog.getByRole('button',{name:retired,exact:true})).toHaveCount(0);
   // Every dialog but the required sign-in closes; the agent keeps running.
-  if(needsPlan){await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);}else if(!signedOut){await dialog.getByRole('button',{name:'Back to Settings',exact:true}).click();}
+  if(needsPlan){await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);}else if(mode==='replaced'){await dialog.getByRole('button',{name:'Back to About',exact:true}).click();await expect(dialog.getByRole('heading',{name:'About',exact:true})).toBeVisible();}else if(!signedOut){await dialog.getByRole('button',{name:'Close Account',exact:true}).click();await expect(dialog).toHaveCount(0);await expect(page.getByRole('heading',{name:'Settings',exact:true})).toBeVisible();}
   if(mode==='legacy-offline'||mode==='signed-out')expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha.connection.selection.v1')!))).toEqual({kind:'resident'});
   const calls=await page.evaluate(()=>(window as any).residentCalls);
   expect(calls.some((c:any)=>c.url?.includes('/personal/')||c.url?.includes('/upgrade-tier')||c.url?.includes('/credits/'))).toBe(false);
   const native=await agentCalls();
   // Inference is bound only when Cloud admits the plan; the agent runs either way.
   if(admitted){expect(native.indexOf('stop')).toBeLessThan(native.indexOf('configureCloudProvider'));expect(native.indexOf('configureCloudProvider')).toBeLessThan(native.lastIndexOf('start'));}
-  else if(mode!=='replaced')expect(native).not.toContain('configureCloudProvider');
+  else expect(native).not.toContain('configureCloudProvider');
   if(mode==='unpackaged')expect(native).not.toContain('start');
  });
 }

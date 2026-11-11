@@ -226,6 +226,7 @@ export const featureParityAllowlist = {
     "apps/app/src/browser/location.ts",
     "apps/app/src/browser/mail-attachments.ts",
     "apps/app/src/browser/note-audio-store.ts",
+    "apps/app/src/browser/note-recording-journal.ts",
     "apps/app/src/browser/notice-action.ts",
     "apps/app/src/browser/notification-recovery.ts",
     "apps/app/src/browser/notification-store.ts",

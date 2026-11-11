@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, readFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
@@ -12,11 +13,10 @@ import {captureInputs, checkTraces, qmap, qset} from '../../refinement/check-tra
 
 const model = 'FilesBrowserReplay';
 const modelPath = 'test/fixtures/quint/FilesBrowserComparison.qnt';
-const cacheDir = resolve(root, 'test-results/quint-refinement/legacy-files-vite-cache');
 const expect = baseExpect.configure({timeout: 15000});
 const files = page => page.getByRole('region', {name: 'Files', exact: true});
 const detail = page => page.locator('[data-alpha-subview="files-folder"]');
-const button = (page, name) => files(page).getByRole('button', {name: name === 'Sort files' ? 'Files options' : name, exact: true});
+const button = (page, name) => files(page).getByRole('button', {name, exact: true});
 const dialog = (page, name) => page.getByRole('dialog', {name, exact: true});
 const toolbar = page => page.getByRole('toolbar', {name: 'Selection actions'});
 const action = (name, ...args) => ({name, args});
@@ -96,12 +96,7 @@ async function observe(page) {
     rows.map(row => row.getAttribute('aria-label').slice('Deselect '.length)));
   // The selected folder still owns its paths while the modal makes it inert.
   const breadcrumbs = await detail(page).locator('nav[aria-label="Folder path"]').evaluateAll(rows =>
-    rows.map(row => [...row.querySelectorAll('button,[aria-current="location"]')].map(node => node.textContent.trim()).join('/')));
-  if (!breadcrumbs.length) {
-    const heading = await detail(page).getByRole('heading').textContent();
-    const paths = {Camera: 'DCIM/Camera', Download: 'Download', Documents: 'Documents'};
-    if (Object.hasOwn(paths, heading)) breadcrumbs.push(paths[heading]);
-  }
+    rows.map(row => [...row.querySelectorAll('button,[aria-current="location"]')].map(node => node.textContent.trim()).filter(label => label !== 'Internal storage').join('/')));
   const observation = {
     's.loc': qmap([['scan', 'gone'], ...Object.entries(state.current).map(([file, row]) => [file, row.place])]),
     's.sel': qset(pressed.map(name => {
@@ -138,7 +133,7 @@ async function openCamera(page) {
   await expect(group).toContainText('1');
   await expect(button(page, 'Open shared.bin')).toHaveCount(0);
   await group.click();
-  await expect(detail(page).getByRole('heading', {name: 'Camera', exact: true})).toBeVisible();
+  await expect(detail(page).locator('[aria-current="location"]')).toHaveText('Camera');
   await expect(button(page, 'Open shared.bin')).toBeVisible();
 }
 
@@ -149,7 +144,7 @@ async function openDownload(page) {
 }
 
 async function select(page, name) {
-  await button(page, 'Sort files').click();
+  await button(page, 'Files options').click();
   await button(page, 'Select').click();
   await button(page, 'Select '+name).click();
   await expect(button(page, 'Deselect '+name)).toHaveAttribute('aria-pressed', 'true');
@@ -265,7 +260,7 @@ async function review(page) {
   await t.point('An external same-path rewrite changes the actual review token', action('Rewrite', 'photo'),
     {PhotoVersion: Number(fresh[0] !== reviewed[0])});
   assert.deepEqual(await execute(reviewed), {status: 'failed', summary: 'Moved 0 of 1.'});
-  await expect(button(page, 'Sort files')).toBeVisible();
+  await expect(button(page, 'Files options')).toBeVisible();
   await expect(button(page, 'Open shared.bin')).toBeVisible();
   await t.point('Dispatch with the old token refuses without moving the rewritten file',
     [action('AgentRefused'), action('Refresh')]);
@@ -317,7 +312,6 @@ async function mounted(extraSources) {
   ].map(path => resolve(root, path)));
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'patches/eliza')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
@@ -329,6 +323,7 @@ async function mounted(extraSources) {
   const driverHashes = captureInputs(sources);
   const loaded = new Set();
   const previousMocks = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
+  const cacheDir = mkdtempSync(resolve(tmpdir(), 'alpha-refinement-vite-'));
   let server, browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
@@ -382,7 +377,7 @@ async function mounted(extraSources) {
   } finally {
     if (previousMocks === undefined) delete process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
     else process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = previousMocks;
-    try {await browser?.close();} finally {await server?.close();}
+    try {await browser?.close();} finally {try {await server?.close();} finally {rmSync(cacheDir,{recursive:true,force:true});}}
   }
 }
 

@@ -79,8 +79,8 @@ async function fixture(actual, initialProfile) {
           assert.equal(signal.aborted, abort.signal.aborted);
           assert.ok(kind === 'feed' || kind === 'calendars');
           if (kind === 'feed') assert.deepEqual([...url.searchParams], [
-            ['timeMin', new Date(input.begin - 1).toISOString()],
-            ['timeMax', new Date(input.begin + 1).toISOString()], ['timeZone', 'UTC'],
+            ['timeMin', new Date(input.begin - 1000).toISOString()],
+            ['timeMax', new Date(input.begin + 1000).toISOString()], ['timeZone', 'UTC'],
           ]);
           else assert.equal(url.search, '', 'Return verification reads the current source list unfiltered');
           const task = {...deferred(), signal, capturedOwner, window: Object.fromEntries(url.searchParams)};

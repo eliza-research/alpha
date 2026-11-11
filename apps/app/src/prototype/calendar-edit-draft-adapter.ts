@@ -31,7 +31,7 @@ export function installCalendarEditDraftAdapter(Component:any,views:Bag,options:
   if(!form?.id||!this.calendarEditDraft)return;
   const failed=()=>{if(this.live)this.toast('Saved. Discard the leftover draft before saving again.');};
   try{const text=encodeCalendarEdit(form,this.calendarEditDraftAnchor||new Date());this.calendarEditDraftSuppressed=text;
-   void this.calendarEditDraft.consume(text,()=>this.live&&this.calendarEditDraftText===text).catch(failed);
+   void this.calendarEditDraft.consume(text,()=>this.live).catch(failed);
   }catch{failed();}
  };
  const creationCommitted=p.calendarFormCommitted;
@@ -48,7 +48,7 @@ export function installCalendarEditDraftAdapter(Component:any,views:Bag,options:
   out.editDraftError=active&&draft.error;out.editDraftListError=!state.form&&draft.error;
   out.editDraftSavedTitle=(()=>{try{return decodeCalendarEdit(draft.savedText).form.title||'Untitled event';}catch{return 'Saved draft unavailable';}})();
   const restore=(saved=false)=>{try{shell.calendarEditDraftRestore=true;if(saved)controller.restoreSaved();else{const restored=decodeCalendarEdit(shell.calendarEditDraftText);shell.calendarEditDraftAnchor=new Date();shell.calendarEditDraftIdentity=calendarEditIdentity(restored.form);api.set({form:restored.form,open:null,month:null});if(restored.zone!==Intl.DateTimeFormat().resolvedOptions().timeZone)api.toast('Time zone changed. Review the restored date and time before saving.');}}catch{api.toast('This draft can’t be restored. Open form recovery.');}finally{shell.calendarEditDraftRestore=false;}};
-  out.discardEditDraft=()=>{if(state.form||!window.confirm('Discard these unsaved edits? Saved events and reminders won’t change.'))return;const text=shell.calendarEditDraftText;void controller.consume(text,()=>shell.live&&!shell.vget('calendar').form&&shell.calendarEditDraftText===text).catch(()=>api.toast('This draft changed. Review it before discarding.'));};
+  out.discardEditDraft=()=>{if(state.form||!window.confirm('Discard these unsaved edits? Saved events and reminders won’t change.'))return;const text=shell.calendarEditDraftText;void controller.consume(text,()=>shell.live&&!shell.vget('calendar').form).catch(()=>api.toast('This draft changed. Review it before discarding.'));};
   out.resumeEditDraft=()=>restore();out.restoreEditDraft=()=>restore(true);out.replaceEditDraft=()=>controller.keepCurrent();out.retryEditDraft=()=>controller.retry();
   out.recoverEditDraft=()=>{const recovery=controller.recovery();if(!recovery)return;shell.calendarEditDraftRecovery?.abort();const abort=shell.calendarEditDraftRecovery=new AbortController();openDomainRecovery({capture:async signal=>{const captured=await recovery.capture(signal);return {...captured,raw:JSON.stringify({saved:captured.raw,currentForm:shell.vget('calendar').form?snapshotCalendarEdit(shell.vget('calendar').form):shell.calendarEditDraftText})};},reset:recovery.reset},'calendar edits','Calendar edit recovery','Download this draft before resetting it. Saved events and reminders won’t change. Reloading discards unsaved edits.',abort.signal,undefined,Capacitor.getPlatform()==='android'?'device':'browser');};
   if(out.ev?.edit){const edit=out.ev.edit;out.ev.edit=()=>{if(shell.calendarEditDraftText&&!window.confirm('Replace your unsaved edits with a fresh editor?'))return;return edit();};}

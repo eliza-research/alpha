@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, readFileSync, mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
 import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium, expect as baseExpect} from '@playwright/test';
@@ -11,7 +12,6 @@ import {captureInputs, checkTraces, qmap, qset} from '../../refinement/check-tra
 
 const model = 'PhotosLibraryReplay';
 const modelPath = 'test/fixtures/quint/PhotosLibraryComparison.qnt';
-const cacheDir = resolve(root, 'test-results/quint-refinement/legacy-photos-vite-cache');
 const main = resolve(root, 'apps/app/src/main.tsx');
 const expect = baseExpect.configure({timeout: 15000});
 const button = (page, name) => page.getByRole('button', {name, exact: true});
@@ -240,12 +240,19 @@ async function reviewAndViewer(page, rows) {
   assert.equal((await runView({type: 'photos_open', id: target.id})).opened, true);
   await expect(view(page, 'viewer')).toBeVisible();
   await t.point('Opening exact imported identity selects its viewer', action('AgentOpen', 3));
-  const viewport = page.locator('[data-alpha-photo-viewport]');
-  await viewport.dispatchEvent('pointerdown', {clientX: 280, clientY: 300, pointerId: 1});
-  await viewport.dispatchEvent('pointerup', {clientX: 140, clientY: 300, pointerId: 1});
+  const viewport = await view(page, 'viewer').locator('[data-alpha-photo-viewport]').boundingBox();
+  assert.ok(viewport, 'The current photo has a mounted swipe surface');
+  await page.mouse.move(viewport.x+viewport.width*.7, viewport.y+viewport.height*.5);
+  await page.mouse.down();
+  await page.mouse.move(viewport.x+viewport.width*.3, viewport.y+viewport.height*.5, {steps: 8});
+  await page.mouse.up();
   await expect.poll(async () => (await state(page)).viewer).toBe(rows[1].id);
-  await t.point('Viewer next control selects the adjacent canonical photo', action('Swipe', 2));
-  await button(page, 'Back from photo').click();
+  await t.point('Viewer horizontal swipe selects the adjacent canonical photo', action('Swipe', 2));
+  const back = button(page, 'Back from photo');
+  // The viewer tap reveals hidden chrome; use that public surface before its Back control.
+  if (await back.evaluate(element => getComputedStyle(element.parentElement).pointerEvents) === 'none')
+    await view(page, 'viewer').locator('[data-alpha-photo-viewport]').click();
+  await back.click();
   await expect(view(page, 'viewer')).toHaveCount(0);
   await t.point('Back closes the viewer', action('CloseViewer'));
 
@@ -340,7 +347,6 @@ async function mounted(extraSources) {
     .map(path => resolve(root, 'apps/app/src/prototype/'+path))]);
   const sources = [...new Set([
     ...filesWithin(resolve(root, 'apps/app/src')), ...filesWithin(resolve(root, '.eliza/client-features')),
-    ...filesWithin(resolve(root, 'patches/eliza')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
@@ -351,6 +357,7 @@ async function mounted(extraSources) {
   ])];
   const driverHashes = captureInputs(sources), loaded = new Set();
   const previousMocks = process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
+  const cacheDir = mkdtempSync(resolve(tmpdir(), 'alpha-refinement-vite-'));
   let server, browser;
   try {
     process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = '';
@@ -433,7 +440,7 @@ async function mounted(extraSources) {
   } finally {
     if (previousMocks === undefined) delete process.env.ELIZA_DEV_ALLOW_TEST_MOCKS;
     else process.env.ELIZA_DEV_ALLOW_TEST_MOCKS = previousMocks;
-    try {await browser?.close();} finally {await server?.close();}
+    try {await browser?.close();} finally {try {await server?.close();} finally {rmSync(cacheDir,{recursive:true,force:true});}}
   }
 }
 

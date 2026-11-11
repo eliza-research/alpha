@@ -44,5 +44,5 @@ test('native configuration keeps only the verified module path through unbound p
  assert.ok(configure.indexOf('if(googleBinding!=null)env.putAll(googleBinding);')>reapplied,'binding keys follow provider cleanup');
  assert.ok(configure.includes('else if("cloud".equals(BuildConfig.ELIZA_RUNTIME_PROFILE))throw'));
  // Both writes are the same verified packaged path, before and after shared provider cleanup.
- assert.equal(configure.split(put).length-1,2);assert.equal((configure.match(/if\(google!=null&&google\.isFile\(\)\)\{env\.put\("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google\.getCanonicalPath\(\)\);env\.put\("ELIZA_MANAGED_CALENDAR_DELETE_ENABLED","1"\);\}/g)||[]).length,2);
+ assert.equal(configure.split(put).length-1,2);assert.equal(configure.split('if(google!=null&&google.isFile()){env.put("ELIZA_NATIVE_GOOGLE_HOST_MODULE",google.getCanonicalPath());env.put("ELIZA_MANAGED_CALENDAR_DELETE_ENABLED","1");}').length-1,2);
 });

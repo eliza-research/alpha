@@ -202,8 +202,10 @@ async function installCalendar({legacyTitle, eventTitles, notes}) {
     scope: () => !!shell.calendarConnectionScope()?.canChange(),
     bindDraftScope: () => {draftScope = shell.calendarConnectionScope();},
     observeDraftScope: () => !!draftScope?.current() && draftScope.canChange(),
-    async saved(ownerId) {
-      const store = await assistantDraftStore(JSON.stringify(['canonical-calendar-editor', ownerKeys.get(ownerId)]));
+    async saved(ownerId, target) {
+      const binding = ['canonical-calendar-editor', ownerKeys.get(ownerId)];
+      if (target !== undefined) binding.push(target);
+      const store = await assistantDraftStore(JSON.stringify(binding));
       return (await store.read())?.text ?? '';
     },
     async savedForCurrent() {

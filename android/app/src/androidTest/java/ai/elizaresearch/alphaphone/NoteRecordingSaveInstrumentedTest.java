@@ -14,7 +14,7 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
 /**
- * Saving a Notes recording (design/view-refresh-2026-11 PLAN.md section 3): a transcript longer
+ * Saving a Notes recording: a transcript longer
  * than the metadata bound (hours of speech) never stops the audio from being saved, and a retried
  * save into the same note (the note id is the recording id) succeeds.
  */

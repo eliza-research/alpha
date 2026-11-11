@@ -10,7 +10,7 @@ export function admitResidentEmulator(environment, adb) {
   }
   const packages = adb(['shell', 'pm', 'list', 'packages', '-u']).trim().split(/\r?\n/).filter(Boolean);
   if (!packages.length || packages.some(row => !/^package:[\w.]+$/.test(row)) ||
-      packages.some(row => /^package:ai\.elizaresearch\.alphaphone(?:\.test)?$/.test(row))) {
+      packages.some(row => /^package:ai\.(?:elizaresearch|alphacompute)\.alphaphone(?:\.test)?$/.test(row))) {
     throw Error('Use a fresh emulator without an existing Alpha Phone installation');
   }
 }

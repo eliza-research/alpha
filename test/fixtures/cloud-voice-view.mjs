@@ -63,10 +63,14 @@ export function cloudVoiceViewFixture(options={}){
   load('runtime/note-recorder-driver.ts',box,['createNoteRecorderDriver','noteSegmentTranscriber']);
   box.setNotesRecorderControl=control=>{f.notesRecorderControl=control;};
  }
+ load('runtime/note-default-title.ts',box,['nextDefaultNoteTitle']);
  load('prototype/voice-adapter.ts',box,['installPrototypeVoiceAdapter'],options.adapterSourceTransform);
  const icons={check:'check',mic:'official-mic-path',stop:'stop',play:'play',x:'close',cloud:'cloud',user:'account'};
  class Shell{
   live=true;state={view:null,chat:'sheet',draft:'',msgs:[{id:'message',from:'agent',text:'Synthetic reply'}]};notes={list:[]};messages=[];
+  // Transcript scrolling belongs to the surrounding shell and has its own source-bound campaign.
+  beginVoiceScrollFollow(){f.followStarts=(f.followStarts||0)+1;}
+  cancelVoiceScrollFollow(){f.followCancels=(f.followCancels||0)+1;}
   S(){return this.state;}setState(patch,callback){const update=()=>{const value=typeof patch==='function'?patch(this.state):patch;if(value)Object.assign(this.state,value);callback?.();};if(f.holdUpdates){(f.updates??=[]).push(update);}else update();}renderVals(){return {msgs:this.state.msgs.map(message=>({text:message.text})),ic:icons};}openView(view,_patch,chat){if(this.state.view==='notes'&&view!=='notes')views.notes.onLeave();this.state.view=view;this.state.chat=chat||'hidden';f.contextRevision++;}goHome(chat){if(this.state.view==='notes')views.notes.onLeave();this.state.view=null;this.state.chat=chat||'input';f.contextRevision++;}back(){this.state.view=null;}toast(message){this.messages.push(message);}vset(_key,patch){if(this.failPersistence)return false;Object.assign(this.notes,patch);return true;}api(){return {get:()=>this.notes,setView:(_key,patch)=>Object.assign(this.notes,patch)};}startVoice(){throw Error('Legacy voice must not run');}send(){f.sends++;}componentWillUnmount(){this.live=false;}
   async prepareVoiceConversation(signal){signal.throwIfAborted();if(!f.agent)throw Error('Connect an agent first.');return {binding:{conversationId:f.conversation,session:controller.getSnapshot().session,connectionEpoch:1},context:{view:this.state.view||'home',revision:f.contextRevision,sensitive:false}};}
   voiceConversationCurrent(prepared){return prepared.binding.conversationId===f.conversation&&prepared.binding.session.sessionId===f.agent&&prepared.context.revision===f.contextRevision&&prepared.context.view===(this.state.view||'home');}
