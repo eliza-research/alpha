@@ -68,7 +68,7 @@ async function openInbox(page, connected) {
   await button(page, 'Inbox').click();
   await active(page, 'inbox');
   if (connected) {
-    await expect(button(page, 'Refresh inbox')).toBeVisible();
+    await expect(page.locator('summary[aria-label="Mail options"]')).toBeVisible();
     await expect(page.getByText('Connect Gmail to read your inbox', {exact: true})).toHaveCount(0);
     await expect.poll(async () => (await fixture(page)).searches.length).toBeGreaterThan(0);
   } else {
@@ -114,11 +114,11 @@ async function panelFlow(page) {
   await expect(panel.getByRole('status')).toHaveText('After authorizing Google, return here and check connections.');
   const handedOff = await fixture(page);
   assert.deepEqual(handedOff.launches, [authorization]);
-  assert.deepEqual(handedOff.initiations, [['write', 'send']]);
+  assert.deepEqual(handedOff.initiations, [['write', 'modify']]);
   assert.deepEqual(handedOff.searches, []);
   const [[calendar, gmail]] = handedOff.initiations;
-  consent.steps.push({label: 'The actual combined request offers Gmail send and Calendar write', action: action('PanelConnect'),
-    expect: {'s.requested': qset(['gmail.read', 'cal.read', ...(gmail === 'send' ? ['gmail.write'] : []),
+  consent.steps.push({label: 'The actual combined request offers Gmail changes and Calendar write', action: action('PanelConnect'),
+    expect: {'s.requested': qset(['gmail.read', 'cal.read', ...(['send','modify'].includes(gmail) ? ['gmail.write'] : []),
       ...(calendar === 'write' ? ['cal.write'] : [])])}});
   return {trace: t.trace, differences: [['GoogleConnectProposedDirectConsent', direct], ['GoogleConnectCurrentReadOnlyRequest', consent]]};
 }

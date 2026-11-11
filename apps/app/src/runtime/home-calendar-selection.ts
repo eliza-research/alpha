@@ -14,12 +14,13 @@ export function homeCalendarSelection(
 	const quiet = { event: null, verified: false, emptyLabel: "Calendar" };
 	if (
 		!state?.ownerKey ||
-		(state.savedAt == null && (state.status !== "ready" || !!state.error)) ||
+		(state.savedAt == null && !["ready", "loading", "partial", "error"].includes(state.status)) ||
 		state.mutating ||
 		!state.feed ||
 		(state.savedAt == null && state.feed.state !== "complete")
 	)
 		return quiet;
+	const verified = state.savedAt == null && state.status === "ready" && !state.error;
 	const p = getZonedDateParts(now, timeZone),
 		today = Date.UTC(p.year, p.month - 1, p.day),
 		monthStart = Date.UTC(p.year, p.month - 1, 1),
@@ -81,8 +82,8 @@ export function homeCalendarSelection(
 			calendarEventKey(a).localeCompare(calendarEventKey(b));
 	});
 	if (candidates.length)
-		return { event: candidates[0], verified: state.savedAt == null, emptyLabel: "" };
-	if (state.savedAt != null) return quiet;
+		return { event: candidates[0], verified, emptyLabel: "" };
+	if (!verified) return quiet;
 	// Unknown sources only prevent empty when their event belongs to the
 	// existing Home periods. Undecidable bounds still cannot prove empty.
 	if (

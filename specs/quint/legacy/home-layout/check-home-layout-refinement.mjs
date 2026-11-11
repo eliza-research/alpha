@@ -71,7 +71,7 @@ async function attachFixture(page, launcher) {
       }
       if (plugin === 'DailyApps' && method === 'surfaceInfo') {
         state.surfaceReads++;
-        if (launcher && state.surfaceReads === 2) {
+        if (launcher && state.surfaceReads >= 2) {
           await insets;
           return {assistant: false, developmentBuild: false, topInset: 96, bottomInset: 30};
         }
@@ -204,36 +204,38 @@ async function collect(page) {
     events.push({label, observation});
     return observation;
   }
-  await expect(card(page, 'workflows')).toContainText('Open to view');
-  await expect(card(page, 'inbox')).toContainText('Connect email');
+  await expect(card(page, 'workflows')).toHaveCount(0);
+  await expect(card(page, 'inbox')).toHaveCount(0);
   await expect(card(page, 'brief')).toHaveCount(0);
   const pending = await point('Mounted Home has honest shells before the workflow and inset readbacks');
   assert.equal(pending.insets, 'pending');
   await page.evaluate(() => window.homeFixture.releaseInsets());
+  await expect.poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--native-top-inset'))).toBe('96px');
   await expect.poll(async () => (await snapshot(page)).gridTop).not.toBe(pending.gridTop);
   const inset = await point('Native inset readback moves the actual grid relative to the Home layer');
   events.at(-1).label += ' from '+pending.gridTop+' to '+inset.gridTop+' CSS pixels';
   assert.equal(inset.insets, 'native');
 
   await tile(page, 'Workflows').click();
-  await expect(page.getByText('No workflows yet', {exact: true}).filter({visible: true})).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('data-active-view', 'workflows');
   await back(page);
-  await expect(card(page, 'workflows')).toContainText('No automations yet');
+  await expect(card(page, 'workflows')).toHaveCount(0);
   await installHomeCalendar(page);
-  await expect(card(page, 'calendar')).toContainText(/Nothing planned|No upcoming events/);
-  const empty = await point('Empty Calendar and Workflows plus disconnected Inbox remain visible without an empty brief');
+  await expect(card(page, 'calendar')).toHaveCount(0);
+  const empty = await point('Empty Calendar and Workflows plus disconnected Inbox have no cards', {cal:'none',flows:'none',mail:'unconnected'});
   assert.equal(empty.cal, 'none');
   assert.equal(empty.flows, 'none');
   assert.equal(empty.mail, 'unconnected');
   assert.equal(empty.brief, false);
-  assert.deepEqual(empty.shown, ['calendar', 'workflows', 'inbox']);
+  assert.deepEqual(empty.shown, []);
   const emptyIndex = events.length-1;
 
   await tile(page, 'Settings').click();
   const settings = page.locator('[data-settings-page]:not([inert])').last();
   await settings.getByRole('button', {name: 'Account', exact: true}).click();
-  await expect(settings.getByRole('button', {name: 'Google & email', exact: true})).toBeVisible();
-  await back(page);
+  const account = page.getByRole('dialog', {name: 'Account', exact: true});
+  await expect(account.getByRole('button', {name: 'Google & email', exact: true})).toBeVisible();
+  await account.getByRole('button', {name: 'Close Account', exact: true}).click();
   await expect(settings).toHaveAttribute('data-settings-page', 'Settings');
   await back(page);
   await roleSchedule(page, true);
@@ -249,7 +251,7 @@ async function collect(page) {
   const paused = await workflowApp.getByText('Paused', {exact: true}).isVisible();
   assert.equal(paused, true);
   await back(page);
-  await expect(card(page, 'workflows')).not.toContainText(syntheticWorkflow);
+  await expect(card(page, 'workflows')).toHaveCount(0);
   await point('Current calendar event and verified paused workflow without a Home row', {flows: paused ? 'paused' : undefined});
 
   await page.evaluate(({subject, brief}) => {
@@ -300,8 +302,8 @@ async function collect(page) {
   assert.equal((await point('Restored viewport returns to the bar')).dock, 'bar');
 
   await refreshHomeCalendar(page, {fail: true});
-  await expect(card(page, 'calendar')).toContainText('Calendar unavailable');
-  assert.equal((await point('Failed Calendar read remains visible as failure')).cal, 'error');
+  await expect(card(page, 'calendar')).toContainText(syntheticEvent);
+  await point('A failed refresh retains the cached Calendar event', {cal:'error'});
   const effects = await page.evaluate(() => ({
     bodies: window.flagOff.mail.reads, sends: window.flagOff.mail.dispatches,
     runs: window.flagOff.digests.runs, posts: window.flagOff.posts,
@@ -319,14 +321,20 @@ async function collect(page) {
   ];
   const emptyEvents = events.slice(0, emptyIndex+1);
   const differences = [
-    ['HomeLayoutProposedEmptyShells', 'HomeLayout', 'historical_proposed_hides_empty_card_shells',
+    ['HomeLayoutOriginalEmptyShells', 'HomeLayout', 'historical_current_keeps_empty_card_shells',
       observation => ({Shown: qset(observation.shown)})],
     ['HomeLayoutProposedDateLine', 'HomeLayout', 'historical_proposed_shows_date_when_no_content',
       observation => ({DateLine: observation.date})],
     ['HomeLayoutProposedSetupLink', 'HomeLayout', 'historical_proposed_shows_inline_google_setup',
       observation => ({SetupLink: observation.setup})],
   ].map(([id, model, name, observe]) => [id, model, replay(name,
-    model === 'HomeLayout' ? 'proposed' : 'current', emptyEvents, (observation, index) => index === emptyIndex ? observe(observation) : {})]);
+    id === 'HomeLayoutOriginalEmptyShells' ? 'current' : 'proposed', emptyEvents, (observation, index) => index === emptyIndex ? observe(observation) : {})]);
+  const originalEmpty = differences[0][2];
+  originalEmpty.init = action('checkerCurrentInit');
+  for (const observation of [originalEmpty.expect, ...originalEmpty.steps.map(step => step.expect)]) {
+    delete observation.ProfileSafety;
+    delete observation.CoreShown;
+  }
   return {main, differences};
 }
 

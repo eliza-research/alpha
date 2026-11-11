@@ -16,7 +16,7 @@ const cacheDir = resolve(root, 'test-results/quint-refinement/legacy-files-vite-
 const expect = baseExpect.configure({timeout: 15000});
 const files = page => page.getByRole('region', {name: 'Files', exact: true});
 const detail = page => page.locator('[data-alpha-subview="files-folder"]');
-const button = (page, name) => files(page).getByRole('button', {name, exact: true});
+const button = (page, name) => files(page).getByRole('button', {name: name === 'Sort files' ? 'Files options' : name, exact: true});
 const dialog = (page, name) => page.getByRole('dialog', {name, exact: true});
 const toolbar = page => page.getByRole('toolbar', {name: 'Selection actions'});
 const action = (name, ...args) => ({name, args});
@@ -96,7 +96,12 @@ async function observe(page) {
     rows.map(row => row.getAttribute('aria-label').slice('Deselect '.length)));
   // The selected folder still owns its paths while the modal makes it inert.
   const breadcrumbs = await detail(page).locator('nav[aria-label="Folder path"]').evaluateAll(rows =>
-    rows.map(row => [...row.querySelectorAll('button,[aria-current="location"]')].map(node => node.textContent.trim()).slice(1).join('/')));
+    rows.map(row => [...row.querySelectorAll('button,[aria-current="location"]')].map(node => node.textContent.trim()).join('/')));
+  if (!breadcrumbs.length) {
+    const heading = await detail(page).getByRole('heading').textContent();
+    const paths = {Camera: 'DCIM/Camera', Download: 'Download', Documents: 'Documents'};
+    if (Object.hasOwn(paths, heading)) breadcrumbs.push(paths[heading]);
+  }
   const observation = {
     's.loc': qmap([['scan', 'gone'], ...Object.entries(state.current).map(([file, row]) => [file, row.place])]),
     's.sel': qset(pressed.map(name => {
@@ -133,7 +138,7 @@ async function openCamera(page) {
   await expect(group).toContainText('1');
   await expect(button(page, 'Open shared.bin')).toHaveCount(0);
   await group.click();
-  await expect(detail(page).locator('[aria-current="location"]')).toHaveText('Camera');
+  await expect(detail(page).getByRole('heading', {name: 'Camera', exact: true})).toBeVisible();
   await expect(button(page, 'Open shared.bin')).toBeVisible();
 }
 

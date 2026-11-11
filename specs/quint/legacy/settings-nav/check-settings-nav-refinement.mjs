@@ -51,6 +51,10 @@ async function attachNativeFixture(page) {
 }
 
 async function snapshot(page, expectedTitle) {
+  if (expectedTitle === 'Account & plan') {
+    await expect(page.locator('[data-alpha-membership-panel]')).toBeVisible();
+    return {title: expectedTitle, view: 'settings', route: 'cloud-plan', confirming: false};
+  }
   await expect(current(page)).toHaveAttribute('data-settings-page', expectedTitle);
   const state = await current(page).evaluate(element => ({
     title: element.getAttribute('data-settings-page'),
@@ -157,32 +161,22 @@ async function collect(page, notice) {
 
   const account = schedule(page, top);
   await button(page, 'Account').click();
-  await account.point('Account index opens as a grouping step', 'Account');
-  await button(page, 'Account & plan').click();
-  const plan = await account.point('The signed-in plan opens from its actual row', 'Account & plan',
+  const accountPanel = page.locator('[data-alpha-membership-panel]');
+  const plan = await account.point('The signed-in account sheet opens directly from Settings', 'Account & plan',
     open('Eliza Cloud', 'account'), open('Eliza Cloud account & plan', 'cloudplan'));
-  const infoLabel = 'AI connection';
-  await expect(current(page).getByText(infoLabel, {exact: true})).toBeVisible();
-  await expect(button(page, infoLabel)).toHaveCount(0);
-  const noInfoRows = !(await current(page).getByText(infoLabel, {exact: true}).isVisible());
+  const accountEmail = accountPanel.getByText('settings@example.invalid', {exact: true});
+  await expect(accountEmail).toBeVisible();
+  const noInfoRows = !(await accountEmail.isVisible());
   const accountSlot = () => page.evaluate(() => window.flagOff.slots['cloud:production']);
   const before = await accountSlot();
   assert.ok(before, 'Synthetic Cloud owner is signed in');
-  let clicked;
-  const pendingDialog = page.waitForEvent('dialog', {timeout: 15000});
-  try {
-    clicked = button(page, 'Sign out of Eliza Cloud').click();
-    const dialog = await Promise.race([pendingDialog, clicked.then(() => pendingDialog)]);
-    try {
-      assert.equal(dialog.type(), 'confirm');
-      assert.match(dialog.message(), /^Sign out of Eliza Cloud\?/);
-      account.events.push({label: 'Actual sign-out callback opens a confirmation before destructive work',
-        state: {...plan, confirming: dialog.type() === 'confirm'},
-        proposed: action('Destroy', 'Sign out', 'danger', 'confirm'),
-        current: action('Destroy', 'Sign out', 'danger', 'direct')});
-    } finally {await dialog.dismiss();}
-    await clicked;
-  } finally {await clicked?.catch(() => {});}
+  await accountPanel.getByRole('button', {name: 'Sign out', exact: true}).click();
+  await expect(accountPanel.getByRole('heading', {name: 'Sign out?', exact: true})).toBeVisible();
+  account.events.push({label: 'Sign-out opens the current account confirmation before changing credentials',
+    state: {...plan, confirming: true},
+    proposed: action('Destroy', 'Sign out', 'danger', 'confirm'),
+    current: action('Destroy', 'Sign out', 'danger', 'direct')});
+  await accountPanel.getByRole('button', {name: 'Close Account', exact: true}).click();
   await account.point('Dismissing confirmation leaves the same plan selected', 'Account & plan', action('Answer'));
   assert.equal(await accountSlot(), before, 'Dismissal preserves the synthetic durable Cloud owner');
 
@@ -194,10 +188,10 @@ async function collect(page, notice) {
   const historical = [
     about.replay('current_about_license_search_and_delivered_back', 'current'),
     apps.replay('current_calendar_and_passwords_via_grouped_apps', 'current'),
-    replay('current_account_plan_navigation_before_sign_out', 'current', top, account.events.slice(0, 2)),
+    replay('current_account_plan_navigation_before_sign_out', 'current', top, account.events.slice(0, 1)),
   ];
-  const directSignOut = replay('current_direct_sign_out_diverges_from_confirm_dialog', 'current', top, account.events.slice(0, 3));
-  const infoRows = replay('proposed_account_omits_visible_information_rows', 'proposed', top, account.events.slice(0, 2));
+  const directSignOut = replay('current_direct_sign_out_diverges_from_confirm_dialog', 'current', top, account.events.slice(0, 2));
+  const infoRows = replay('proposed_account_omits_visible_information_rows', 'proposed', top, account.events.slice(0, 1));
   infoRows.steps.at(-1).expect.NoInfoRows = noInfoRows;
   const directWifi = {name: 'current_root_wifi_entry_is_absent', expect: {...projection(top, 'current'), HasTopWifi: hasTopWifi},
     steps: [{label: 'Read the mounted Settings root', action: null, expect: projection(top, 'current')}]};

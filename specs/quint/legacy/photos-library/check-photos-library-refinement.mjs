@@ -240,7 +240,9 @@ async function reviewAndViewer(page, rows) {
   assert.equal((await runView({type: 'photos_open', id: target.id})).opened, true);
   await expect(view(page, 'viewer')).toBeVisible();
   await t.point('Opening exact imported identity selects its viewer', action('AgentOpen', 3));
-  await button(page, 'Next').click();
+  const viewport = page.locator('[data-alpha-photo-viewport]');
+  await viewport.dispatchEvent('pointerdown', {clientX: 280, clientY: 300, pointerId: 1});
+  await viewport.dispatchEvent('pointerup', {clientX: 140, clientY: 300, pointerId: 1});
   await expect.poll(async () => (await state(page)).viewer).toBe(rows[1].id);
   await t.point('Viewer next control selects the adjacent canonical photo', action('Swipe', 2));
   await button(page, 'Back from photo').click();
