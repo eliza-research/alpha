@@ -168,8 +168,10 @@ public class CameraScanInstrumentedTest {
 
    click("Close document");clickText("Keep draft");until("!"+builder);
    scenario.recreate();AppNavigation.liveMode();eval(AppNavigation.request("Camera"));until(AppNavigation.selected("Camera"));
-   click("Scan document");click("Resume the saved draft");clickText("Load draft");
-   until(builder+".querySelectorAll('img').length===2");
+   click("Scan document");
+   until(builder+"?.querySelectorAll('img').length===0");
+   click("Resume the saved draft");
+   until(builder+".querySelectorAll('img').length===2 && "+builder+".textContent.includes('Draft loaded')");
    captureScreen("camera-document-draft.png");
    click("Save document PDF");nativeSave(filename);
    until(builder+".textContent.includes('Saved.')",60000);
