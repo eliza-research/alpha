@@ -67,8 +67,10 @@ test('production provisioning checks compiled channel against release evidence w
  assert.equal(recordedProvisioningUpdateChannel(undefined,undefined),null);
  assert.doesNotThrow(()=>assertProvisioningUpdateChannel(compiled(),null));
  assert.deepEqual(recordedProvisioningUpdateChannel(publicRecord,publicRecord),publicRecord);
+ assert.deepEqual(recordedProvisioningUpdateChannel(undefined,publicRecord),publicRecord);
  assert.doesNotThrow(()=>assertProvisioningUpdateChannel(compiled(channel('public'),digest(hash(publicUrl))),publicRecord));
  assert.throws(()=>assertProvisioningUpdateChannel(compiled(),publicRecord),/differs from the reviewed release/);
+ assert.throws(()=>assertProvisioningUpdateChannel(compiled(channel('public'),digest(hash(publicUrl))),null),/differs from the reviewed release/);
  assert.throws(()=>assertProvisioningUpdateChannel(compiled(channel('public'),digest(hash(privateUrl))),publicRecord),/differs from the reviewed release/);
  assert.throws(()=>assertProvisioningUpdateChannel(compiled(channel('private-qa'),digest(hash(privateUrl))),null),/Private QA/);
  assert.throws(()=>recordedProvisioningUpdateChannel(publicRecord,privateRecord),/Private QA/);

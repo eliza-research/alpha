@@ -182,6 +182,15 @@ export function requireConsistentApk(apk: Parameters<typeof apkContradictions>[0
   if (problems.length) throw new Error(`${apk.file} contradicts the manifest row that admitted it:\n${problems.map(item => `  - ${item}`).join("\n")}`);
 }
 
+/** Copy the admitted bytes into the caller's private temporary directory before inspecting and installing them. */
+export function snapshotUnitApk(apk: ReturnType<typeof admitUnitApk>, directory: string) {
+  const file = path.join(directory, "candidate.apk");
+  fs.copyFileSync(apk.file, file, fs.constants.COPYFILE_EXCL | fs.constants.COPYFILE_FICLONE);
+  fs.chmodSync(file, 0o400);
+  if (updateArtifactDigest(file).sha256 !== apk.sha256) throw new Error(`${apk.file} changed after APK admission`);
+  return { ...apk, file };
+}
+
 /** Parse `dumpsys package <pkg>` for the facts a unit record needs. */
 export function packageFacts(dumpsys: string) {
   const field = (name: string) => new RegExp(`^\\s*${name}=(\\S+)`, "m").exec(dumpsys)?.[1] ?? null;
@@ -256,16 +265,23 @@ async function main() {
   if (adb(["get-state"]) !== "device") throw new Error("Unit is not online");
   const device = deviceFacts(adb, options.serial);
   if (device.sdk === null || !Number.isSafeInteger(device.sdk) || device.sdk < 1) throw new Error("Device Android API level is unavailable");
-  requireConsistentApk(apk, {apiLevel: device.sdk});
   if (apk.rehearsal && !device.emulator) throw new Error("--build debug is an emulator rehearsal; physical pilot units get the signed release");
   if (adb(["shell", "pm", "list", "packages", PACKAGE], { allowFailure: true }).split(/\r?\n/).includes(`package:${PACKAGE}`))
     throw new Error("Alpha Phone is already installed on this unit; use scripts/pilot-update.ts for an update");
   const output = path.resolve(options.output, `${options.alias}.json`);
   if (fs.existsSync(output)) throw new Error(`${output} already exists; a unit is provisioned once`);
-  // Read before install so an unreadable bundle fails with nothing on the unit.
-  const runtimeIdentity = apkRuntimeIdentity(apk.file);
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), "alpha-provision-"));
+  let runtimeIdentity: ReturnType<typeof apkRuntimeIdentity>;
+  try {
+    const candidate = snapshotUnitApk(apk, directory);
+    requireConsistentApk(candidate, {apiLevel: device.sdk});
+    // Read before install so an unreadable bundle fails with nothing on the unit.
+    runtimeIdentity = apkRuntimeIdentity(candidate.file);
+    adb(["install", candidate.file], { timeout: 600_000 });
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 
-  adb(["install", apk.file], { timeout: 600_000 });
   const installedSha256 = installedApkSha256(adb);
   if (installedSha256 !== apk.sha256) throw new Error("Installed bytes differ from the admitted APK");
   const installed = packageFacts(adb(["shell", "dumpsys", "package", PACKAGE]));

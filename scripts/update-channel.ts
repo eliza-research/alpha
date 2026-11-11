@@ -102,19 +102,15 @@ export function apkUpdateChannel(tree: ManifestNode) {
 
 /** Refuse private or conflicting release evidence before any provisioning effect. */
 export function recordedProvisioningUpdateChannel(...records: unknown[]): UpdateChannel | null {
- let reviewed: UpdateChannel | null=null;
- for(const record of records){
-  if(record===undefined)continue;
-  const channel=validateUpdateChannel(record);
-  assertProvisioningUpdateChannel(channel,reviewed);
-  reviewed=channel;
- }
+ const channels=records.filter(record=>record!==undefined).map(validateUpdateChannel);
+ const reviewed=channels[0]??null;
+ for(const channel of channels)assertProvisioningUpdateChannel(channel,reviewed);
  return reviewed;
 }
 
-/** Require exact compiled evidence whenever the reviewed release declares a channel. */
+/** Require exact agreement between compiled and reviewed evidence, including legacy absence. */
 export function assertProvisioningUpdateChannel(compiled: UpdateChannel | null, reviewed: UpdateChannel | null) {
  if(compiled?.kind==='private-qa')throw Error('Private QA update channels are refused for production provisioning');
- if(reviewed&&compiled?.manifestUrlSha256!==reviewed.manifestUrlSha256)
+ if(compiled?.kind!==reviewed?.kind||compiled?.manifestUrlSha256!==reviewed?.manifestUrlSha256)
   throw Error('APK update channel differs from the reviewed release');
 }

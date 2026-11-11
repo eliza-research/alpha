@@ -6,7 +6,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
-import { admitUnitApk, apkContradictions, apkFacts, apkRuntimeIdentity, packageFacts, parseUnitArgs, requireConsistentApk } from "../scripts/provision-unit.ts";
+import { admitUnitApk, apkContradictions, apkFacts, apkRuntimeIdentity, packageFacts, parseUnitArgs, requireConsistentApk, snapshotUnitApk } from "../scripts/provision-unit.ts";
 import { releaseBlockers } from "../scripts/release-blockers.ts";
 import { CAMPAIGNS, candidateManifest, parseQualifyArgs, readCampaigns, recordCandidate, releaseDistribution, verdict } from "../scripts/qualify-head.ts";
 import { compareDomains, DOMAIN_SCRIPT, parseDomainInventory, readbackInventory, unitApkMismatch, updateAdmission } from "../scripts/pilot-update.ts";
@@ -105,10 +105,24 @@ test("pilot release admission rejects private QA in either the record or the exa
   const check = (apk, updateChannel) => apkContradictions(apk, {descriptor: descriptor(), facts: {...facts, updateChannel}});
   assert.deepEqual(check(legacy, "legacy"), []);
   assert.deepEqual(check(release, publicChannel), []);
+  assert.match(check(legacy, publicChannel).join(), /differs from the reviewed release/);
   assert.match(check(release, "legacy").join(), /differs from the reviewed release/);
   assert.match(check(legacy, privateChannel).join(), /Private QA/);
   assert.match(check(release, privateChannel).join(), /Private QA/);
   assert.match(check(release, null).join(), /could not be verified/);
+});
+
+test("pilot installers get a private copy of the admitted APK bytes", t => {
+  const manifest = build(t, DISTRIBUTABLE);
+  const release = admitUnitApk(manifest, {variant: "launcher", build: "release"}, {descriptor: descriptor()});
+  const destination = fs.mkdtempSync(path.join(path.dirname(manifest), "staged-"));
+  const candidate = snapshotUnitApk(release, destination);
+  assert.equal(candidate.sha256, release.sha256);
+  assert.equal(fs.statSync(candidate.file).mode & 0o777, 0o400);
+  fs.writeFileSync(release.file, "different bytes");
+  assert.equal(fs.readFileSync(candidate.file, "utf8"), "apk bytes");
+  const next = fs.mkdtempSync(path.join(path.dirname(manifest), "staged-"));
+  assert.throws(() => snapshotUnitApk(release, next), /changed after APK admission/);
 });
 
 test("the packaged agent bundle is hashed whatever its size, and an unreadable bundle fails provisioning", t => {
