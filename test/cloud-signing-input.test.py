@@ -40,7 +40,7 @@ class CloudSigningInputTest(unittest.TestCase):
                 "variant": variant,
                 "mode": "release",
                 "file": f"artifacts/{variant}-release-unsigned.apk",
-                "packageName": ADMISSION.PACKAGE,
+                "packageName": "ai.elizaresearch.alphaphone",
                 "versionCode": 44,
                 "sha256": ADMISSION.digest(payload),
                 "signed": False,
