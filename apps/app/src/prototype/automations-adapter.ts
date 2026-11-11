@@ -8,6 +8,7 @@ import {connectionController,agentPendingText,agentAvailabilityNotice} from '../
 import {showAgentStatus} from './workflow-authoring';
 import {DailyApps,type Reminder} from '../daily';
 import {WorkflowIntentStore,workflowIntentKey} from '../runtime/workflow-intents';
+import {serviceReadCache} from '../runtime/service-read-cache-store';
 import {homeReadIsStale,presentHomeWorkflowFreshness} from './home-cards';
 import './automations.css';
 type Bag=Record<string,any>;
@@ -55,6 +56,19 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  let intentStore:WorkflowIntentStore|null=null,suspended=document.hidden;
  let homeCache:{sessionId:string;rows:Array<{name:string;status:string}>;total:number;complete:boolean;partial:boolean;stale:boolean;error:boolean;loadedAt:number}|null=null;
  let homeRead:AbortController|null=null,homeVisit:string|null=null;
+ let homeRevision=0,restoreAttempt='';
+ const homeOwner=()=>{const snapshot=connectionController.getSnapshot(),account=snapshot.cloudAccount,identity=snapshot.session;return account?.organizationId&&identity?{account:{environment:account.environment,userId:account.userId,organizationId:account.organizationId,credentialId:account.credentialId},key:JSON.stringify(['home:automations:v1',identity.origin,identity.ownerId,identity.agentId])}:null;};
+ const restoreHome=async()=>{
+  const identity=homeOwner(),selected=binding(),shell=owner;if(!identity||!selected||!shell?.live||suspended||connectionController.getSnapshot().open)return;
+  const attempt=JSON.stringify(identity);if(restoreAttempt===attempt)return;restoreAttempt=attempt;
+  const revision=homeRevision,ticket=epoch;
+  try{const entry=await (await serviceReadCache(identity.account)).get<{rows:Array<{name:string;status:string}>;total:number}>(identity.key);
+   if(!entry||homeRevision!==revision||epoch!==ticket||owner!==shell||!shell.live||suspended||connectionController.getSnapshot().open||JSON.stringify(homeOwner())!==attempt||binding()?.sessionId!==selected.sessionId)return;
+   const value=entry.value;if(!Array.isArray(value.rows)||!Number.isInteger(value.total)||value.total<0||value.rows.length!==value.total||!value.rows.every(row=>typeof row?.name==='string'&&typeof row.status==='string'))return;
+   homeCache={sessionId:selected.sessionId,rows:value.rows,total:value.total,complete:false,partial:false,stale:true,error:false,loadedAt:entry.at};publish();
+  }catch{/* A local snapshot failure does not prevent the fresh read. */}
+ };
+ const saveHome=()=>{const identity=homeOwner(),value=homeCache;if(!identity||!value||!value.complete||value.error)return;void serviceReadCache(identity.account).then(cache=>{if(JSON.stringify(homeOwner())===JSON.stringify(identity))return cache.put(identity.key,{rows:value.rows,total:value.total},value.loadedAt);}).catch(()=>{});};
  const binding=():Binding|null=>(connectionController as typeof connectionController & {getAutomationsClient():Binding|null}).getAutomationsClient();
  const reminderBlock=()=>!binding()?agentPendingText():loadedSession!==binding()?.sessionId||state!=='ready'?'Refresh agent reminders before creating or changing one.':issues.find(issue=>issue.source==='reminders')?.message||'';
  const automationBlock=()=>!binding()?agentPendingText():loadedSession!==binding()?.sessionId||state!=='ready'?'Refresh agent automations before creating one.':issues.find(issue=>issue.source==='automations'&&issue.unavailable)?.message||'';
@@ -66,13 +80,14 @@ export function installAutomationsAdapter(Component:any,views:Bag){
  const locked=(row:AutomationRow)=>uncertain.has(key(row))||(!!binding()&&(intentStore?.locked(key(row))??true));
  const visible=()=>owner?.live&&!suspended&&owner.S().view==='workflows'&&!document.hidden&&!connectionController.getSnapshot().open;
  const cacheHome=(fresh:AutomationRow[],failures:AutomationIssue[],sessionId:string,connected:boolean)=>{
-  const enabled=fresh.filter(row=>row.enabled);
-  homeCache={sessionId,rows:enabled.map(row=>({name:row.title,status:''})),total:enabled.length,complete:connected&&failures.length===0,partial:failures.some(issue=>!issue.unavailable||issue.source==='device'),stale:false,error:false,loadedAt:Date.now()};
+  const enabled=fresh.filter(row=>row.enabled);homeRevision++;
+  homeCache={sessionId,rows:enabled.map(row=>({name:row.title,status:''})),total:enabled.length,complete:connected&&failures.length===0,partial:failures.some(issue=>!issue.unavailable||issue.source==='device'),stale:false,error:false,loadedAt:Date.now()};saveHome();
  };
  // Home reads the same list as Workflows, without settling requests or executing actions.
  const preloadHome=async(force=false)=>{
   const shell=owner,selected=binding(),snapshot=connectionController.getSnapshot();
   if(!shell?.live||shell.S().view||suspended||document.hidden||snapshot.open||controller||!selected)return;
+  void restoreHome();
   if(homeRead||!force&&homeVisit===selected.sessionId)return;
   homeVisit=selected.sessionId;const abort=homeRead=new AbortController(),ticket=epoch;
   const valid=()=>owner===shell&&shell.live&&!shell.S().view&&!suspended&&!document.hidden&&!connectionController.getSnapshot().open&&homeRead===abort&&!abort.signal.aborted&&epoch===ticket&&binding()?.sessionId===selected.sessionId;
@@ -230,7 +245,7 @@ export function installAutomationsAdapter(Component:any,views:Bag){
   }};
  };
  const mount=p.componentDidMount,unmount=p.componentWillUnmount,update=p.componentDidUpdate;
- p.componentDidMount=function(){mount.call(this);owner=this;session=binding()?.sessionId||null;this.automationCommitted=(event:CustomEvent<{sessionId:string}>)=>{const selected=binding();if(!owner?.live||suspended||!selected||!event.detail?.sessionId||event.detail.sessionId!==selected.sessionId)return;completionDirty=true;if(homeCache)homeCache.stale=true;homeRead?.abort();homeRead=null;homeVisit=null;publish();void preloadHome();};window.addEventListener(AUTOMATIONS_COMMITTED_EVENT,this.automationCommitted);this.automationConnection=connectionController.subscribe(()=>{const next=binding()?.sessionId||null;if(next!==session||connectionController.getSnapshot().open){session=next;homeCache=null;retire(true);}void preloadHome();});this.automationSuspend=()=>{suspended=true;homeCache=null;retire(true);};this.automationResume=()=>{suspended=false;publish();void preloadHome(true);};this.automationVisibility=()=>document.hidden?this.automationSuspend():this.automationResume();document.addEventListener('visibilitychange',this.automationVisibility);window.addEventListener('pagehide',this.automationSuspend);window.addEventListener('pageshow',this.automationResume);window.addEventListener('focus',this.automationResume);void preloadHome();};
+ p.componentDidMount=function(){mount.call(this);owner=this;session=binding()?.sessionId||null;this.automationCommitted=(event:CustomEvent<{sessionId:string}>)=>{const selected=binding();if(!owner?.live||suspended||!selected||!event.detail?.sessionId||event.detail.sessionId!==selected.sessionId)return;completionDirty=true;if(homeCache)homeCache.stale=true;homeRead?.abort();homeRead=null;homeVisit=null;publish();void preloadHome();};window.addEventListener(AUTOMATIONS_COMMITTED_EVENT,this.automationCommitted);this.automationConnection=connectionController.subscribe(()=>{const next=binding()?.sessionId||null;if(next!==session||connectionController.getSnapshot().open){session=next;homeCache=null;restoreAttempt='';homeRevision++;retire(true);}void preloadHome();});this.automationSuspend=()=>{suspended=true;homeCache=null;restoreAttempt='';homeRevision++;retire(true);};this.automationResume=()=>{suspended=false;publish();void preloadHome(true);};this.automationVisibility=()=>document.hidden?this.automationSuspend():this.automationResume();document.addEventListener('visibilitychange',this.automationVisibility);window.addEventListener('pagehide',this.automationSuspend);window.addEventListener('pageshow',this.automationResume);window.addEventListener('focus',this.automationResume);void preloadHome();};
  p.componentDidUpdate=function(){update?.call(this);void preloadHome();};
  p.componentWillUnmount=function(){window.removeEventListener(AUTOMATIONS_COMMITTED_EVENT,this.automationCommitted);this.automationConnection?.();document.removeEventListener('visibilitychange',this.automationVisibility);window.removeEventListener('pagehide',this.automationSuspend);window.removeEventListener('pageshow',this.automationResume);window.removeEventListener('focus',this.automationResume);suspended=true;retire(true);owner=null;unmount.call(this);};
 }

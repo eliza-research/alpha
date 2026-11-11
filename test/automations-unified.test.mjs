@@ -1,3 +1,4 @@
+import {ServiceReadCache} from '../apps/app/src/runtime/service-read-cache.ts';
 import {workflowClockSchedule,workflowClockExpression,workflowSnoozeTime} from '../apps/app/src/runtime/workflow-local-time.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -50,7 +51,7 @@ const {homeReadIsStale,presentHomeWorkflowFreshness}=await import('../apps/app/s
 const transformed=file=>stripTypeScriptTypes(fs.readFileSync(file,'utf8').replace(/^import .*;\n/gm,'').replace(/export /g,''),{mode:'transform'});
 function adapterFixture(request,storage={},options={}){
  const listeners=new Set(),events=new Map(),session={sessionId:'session',origin:'https://synthetic.invalid',ownerId:'owner',agentId:'agent'};
- const controller={getAutomationsClient:()=>({sessionId:session.sessionId,request}),getSnapshot:()=>({session,open:false}),subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},open:()=>{throw Error('Unexpected account chooser');}};
+ const controller={getAutomationsClient:()=>({sessionId:session.sessionId,request}),getSnapshot:()=>({session,open:false,cloudAccount:options.cloudAccount}),subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},open:()=>{throw Error('Unexpected account chooser');}};
  const showAgentStatus=()=>{throw Error('Unexpected agent status route');};
  const localStorage=new Proxy({getItem:key=>storage[key]??null,setItem:(key,value)=>storage[key]=value,removeItem:key=>delete storage[key]},{ownKeys:()=>Object.keys(storage),getOwnPropertyDescriptor:()=>({configurable:true,enumerable:true})});
  let view=options.view===undefined?'workflows':options.view,workflowOpened='',deviceOpened='',newWorkflow=0;
@@ -60,7 +61,7 @@ function adapterFixture(request,storage={},options={}){
  const windowEvents=new Map();
  const dom=options.dom?new JSDOM('<div class="os"><button id="origin">Filters</button></div>',{pretendToBeVisual:true}):null;
  if(dom){dom.window.HTMLDialogElement.prototype.showModal=function(){this.open=true;};dom.window.document.querySelector('.os').inert=false;}
- const context={...protocol,workflowClockSchedule,workflowClockExpression,workflowSnoozeTime,homeReadIsStale,presentHomeWorkflowFreshness,connectionController:controller,showAgentStatus,DailyApps:{listReminders:async()=>({reminders:options.deviceReminders??[{id:'device',title:'On-device reminder',body:'Existing phone row',at:Date.now()+10000,status:'scheduled'}]})},Capacitor:{getPlatform:()=> 'android',isNativePlatform:()=>options.native!==false},localStorage,window:dom?.window||{dispatchEvent(event){for(const fn of windowEvents.get(event.type)||[])fn(event);},addEventListener(name,fn){const f=windowEvents.get(name)||new Set();f.add(fn);windowEvents.set(name,f);},removeEventListener(name,fn){windowEvents.get(name)?.delete(fn);}},document:dom?.window.document||{hidden:false,addEventListener:(name,fn)=>events.set(name,fn),removeEventListener(){}},getComputedStyle:dom?.window.getComputedStyle,innerWidth:400,innerHeight:800,catalog:JSON.parse(fs.readFileSync('apps/app/src/icon-catalog.json','utf8')),queueMicrotask,AbortController,Date:options.now?class extends Date{static now(){return options.now();}}:Date,crypto,Event,console};
+ const context={serviceReadCache:options.serviceReadCache,...protocol,workflowClockSchedule,workflowClockExpression,workflowSnoozeTime,homeReadIsStale,presentHomeWorkflowFreshness,connectionController:controller,showAgentStatus,DailyApps:{listReminders:async()=>({reminders:options.deviceReminders??[{id:'device',title:'On-device reminder',body:'Existing phone row',at:Date.now()+10000,status:'scheduled'}]})},Capacitor:{getPlatform:()=> 'android',isNativePlatform:()=>options.native!==false},localStorage,window:dom?.window||{dispatchEvent(event){for(const fn of windowEvents.get(event.type)||[])fn(event);},addEventListener(name,fn){const f=windowEvents.get(name)||new Set();f.add(fn);windowEvents.set(name,f);},removeEventListener(name,fn){windowEvents.get(name)?.delete(fn);}},document:dom?.window.document||{hidden:false,addEventListener:(name,fn)=>events.set(name,fn),removeEventListener(){}},getComputedStyle:dom?.window.getComputedStyle,innerWidth:400,innerHeight:800,catalog:JSON.parse(fs.readFileSync('apps/app/src/icon-catalog.json','utf8')),queueMicrotask,AbortController,Date:options.now?class extends Date{static now(){return options.now();}}:Date,crypto,Event,console};
  vm.runInNewContext('(()=>{'+transformed('.eliza/client-features/packages/contracts/src/workflow-intents.ts')+'\nglobalThis.SharedWorkflowIntentStore=WorkflowIntentStore;globalThis.sharedWorkflowIntentKey=workflowIntentKey;globalThis.emptyWorkflowIntentArchive=emptyWorkflowIntentArchive;globalThis.storageWorkflowIntentBackend=storageWorkflowIntentBackend;globalThis.workflowIntentOwnerPrefix=workflowIntentOwnerPrefix;})();',context);
  vm.runInNewContext(transformed('apps/app/src/runtime/workflow-intents.ts')+'\nglobalThis.WorkflowIntentStore=WorkflowIntentStore;globalThis.workflowIntentKey=workflowIntentKey;',context);
  vm.runInNewContext(transformed('.eliza/client-features/packages/ui/src/utils/automation-feed-filter.ts')+'\nglobalThis.FEED_FILTERS=FEED_FILTERS;globalThis.passesFilter=passesFilter;',context);
@@ -285,5 +286,24 @@ test('Home preloads enabled unified automations without opening Workflows or wri
   assert.ok(app.home().homeWorkflowRows.length>0);
   assert.ok(f.calls.length>0);assert.ok(f.calls.every(call=>call.method==='GET'));
   app.retire();assert.notEqual(app.home().homeWorkflowHasRows,true,'the previous owner rows clear immediately');
+ }finally{app.close();await f.close();}
+});
+
+// A recreated renderer must show its saved Home row before the provider responds.
+test('Home restores the same owner snapshot while the provider is pending and rejects another owner',async()=>{
+ const docs=new Map(),stores=new Map();
+ const serviceReadCache=async owner=>{const key=JSON.stringify(owner);if(!stores.has(key))stores.set(key,new ServiceReadCache(key,{read:async()=>docs.get(key),compareExchange:async(before,value)=>{if(docs.get(key)!==before)return 'conflict';docs.set(key,value);return 'saved';}}));return stores.get(key);};
+ const cloudAccount={environment:'production',userId:'one',organizationId:'org',credentialId:'credential'};
+ const f=await fixture(read),options={view:null,deviceReminders:[],cloudAccount,serviceReadCache};
+ let app=adapterFixture(f.request,{},options);
+ try{
+  await wait(()=>app.home().homeWorkflowHasRows===true&&docs.size===1);app.close();
+  const pending=async(_path,_method,_body,signal)=>new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')),{once:true}));
+  app=adapterFixture(pending,{},options);
+  await wait(()=>app.home().homeWorkflowHasRows===true);
+  assert.equal(app.home().homeWorkflowConfirmedEmpty,false);assert.equal(app.home().homeWorkflowTime,'Last loaded items');
+  app.retire();assert.notEqual(app.home().homeWorkflowHasRows,true);app.close();
+  app=adapterFixture(pending,{}, {...options,cloudAccount:{...cloudAccount,userId:'another'}});
+  await new Promise(resolve=>setTimeout(resolve,20));assert.notEqual(app.home().homeWorkflowHasRows,true);
  }finally{app.close();await f.close();}
 });
