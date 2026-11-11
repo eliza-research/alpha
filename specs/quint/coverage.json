@@ -15713,7 +15713,7 @@
     },
     {
       "path": "apps/app/src/prototype/agent-adapter.ts",
-      "sha256": "31f98b2ecf9e32cf786767e69e110a4fc54d16eb3b217503b10d4d4d3c21bd83",
+      "sha256": "640efe4fb3255cf2d182dc1fab45e1d9053638ecda6d7ba7ce113764cbba372d",
       "models": [
         "Application",
         "AssistantConversation",
@@ -15724,7 +15724,8 @@
         "NotesTrashReadPublication",
         "PreviousNotesAvailability",
         "PreviousNotesSourceOpening",
-        "VoiceTranscriptFollow"
+        "VoiceTranscriptFollow",
+        "NotesStartupCache"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -19423,6 +19424,19 @@
       ]
     },
     {
+      "path": "apps/app/src/prototype/calendar-form-presentation.ts",
+      "models": [
+        "CalendarFormControls",
+        "CalendarPresentation",
+        "CanonicalCalendarDraft"
+      ],
+      "scope": "application",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "9d7b7810141a2d515d490dd6eef0ea60e26ea18e7c7adedbbfede19d431d6641",
+      "stateAnchors": []
+    },
+    {
       "path": "apps/app/src/prototype/calendar-interval-presentation.ts",
       "models": [
         "CalendarPresentation"
@@ -20111,11 +20125,12 @@
         "CanonicalNotesFeedback",
         "CanonicalNotesView",
         "CanonicalCalendarDraftHandoff",
-        "NotesRecorderMediaAdmission"
+        "NotesRecorderMediaAdmission",
+        "NotesStartupCache"
       ],
       "scope": "application",
       "treatment": "domain-contract-or-support",
-      "sha256": "2b2b0813e79eacbc48b8c138ec27312d3d71ac566a6bd6f05223b841aff7a4ee",
+      "sha256": "2cd0842b3dd01b718108a86d7b57d007b0e11aa37eced73ed90f958924970b28",
       "stateAnchors": [
         {
           "line": 11,
@@ -22838,7 +22853,7 @@
       "scope": "application",
       "treatment": "domain-contract-or-support",
       "reviewStatus": "state-audit-required",
-      "sha256": "865902dc786b5d253fdad850a837f793286cd8adbe16c0f86a312dcbf6ef23f3",
+      "sha256": "d66d7de339c3f5f4439966f7ae4acaa82cf6512e3f34284a0533a8b973e27801",
       "stateAnchors": [],
       "integrationReview": "2026-11-11 Home entry resets carousel position without resetting manual swipes. Shared bottom-sheet marker keeps sheet surface at the phone bottom and leaves dock clearance inside its padding. Anchored menus keep their original positioning. Full native acceptance remains separate."
     },
@@ -34824,12 +34839,13 @@
         "PhotosOwnedAlbumDialog",
         "ShadeRowCustody",
         "CalendarFormControls",
-        "CalendarActionReview"
+        "CalendarActionReview",
+        "NotesStartupCache"
       ],
       "scope": "application",
       "treatment": "stateless-presentation-contract",
       "reviewStatus": "state-audit-required",
-      "sha256": "5e20276a9d17255b9f3048f2670c9d4b158f0f3aa20d31bcb9b0a6c9431e7c57",
+      "sha256": "d8fac1ca4e992c7592adbb0a2e25138abf39ab4acef3c8b8c6c577c3bde866cf",
       "stateAnchors": [
         {
           "line": 3358,
@@ -37317,6 +37333,22 @@
         {
           "line": 65,
           "text": "await browserDocuments.compareExchange(browserNotesKey,expected.snapshot,JSON.stringify({version:1,archive,currentRaw:store.raw}),signal);"
+        }
+      ]
+    },
+    {
+      "path": "apps/app/src/runtime/calendar-action-confirmation.ts",
+      "models": [
+        "CalendarActionReview"
+      ],
+      "scope": "application",
+      "treatment": "domain-contract-or-support",
+      "reviewStatus": "state-audit-required",
+      "sha256": "c820b44387f76c89db972ffa518b6dd77830ab76b2ea9dc736daf6485e88d5a1",
+      "stateAnchors": [
+        {
+          "line": 3,
+          "text": "let dismiss:(()=>void)|undefined;"
         }
       ]
     },
@@ -43873,6 +43905,18 @@
       ]
     },
     {
+      "path": "apps/app/src/runtime/notes-startup-cache.ts",
+      "models": [
+        "NotesStartupCache"
+      ],
+      "scope": "application",
+      "treatment": "stateful-source",
+      "reviewStatus": "state-audit-required",
+      "sha256": "82d0f7f91291f85939c171139dd546b02b8a3a49535832677ab5b0852f684483",
+      "stateAnchors": [],
+      "integrationReview": "Account/agent-bound read-only startup cache over the existing ServiceReadCache. Epoch retires old reads; accepted live reads supersede restored lists. Display rows never seed the authoritative Notes controller."
+    },
+    {
       "path": "apps/app/src/runtime/notes-store.ts",
       "sha256": "b982ee825ace6062b1175070ca293d2ffddec00f4a522a323b91778e6b04ab68",
       "models": [
@@ -44917,9 +44961,10 @@
     },
     {
       "path": "apps/app/src/runtime/service-read-cache.ts",
-      "sha256": "abe957ff05e0f4bf0fe0d7f495b8198a7796dda4a2af2eadcd76a7225acf50c4",
+      "sha256": "5a137a16c98e3f38df7edcdcf80e88a751217d43296ed999a423592078bb43cd",
       "models": [
-        "NoticesAndCaches"
+        "NoticesAndCaches",
+        "NotesStartupCache"
       ],
       "scope": "application",
       "treatment": "state-and-transition-projection",
@@ -618455,35 +618500,6 @@
       "treatment": "configuration-and-publication-audit",
       "reviewStatus": "state-audit-required",
       "sha256": "f646ded3903339759197c4d36bfacd7ed7d5017b5d50e8e70a4cf4a999798735",
-      "stateAnchors": []
-    },
-    {
-      "path": "apps/app/src/runtime/calendar-action-confirmation.ts",
-      "models": [
-        "CalendarActionReview"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "reviewStatus": "state-audit-required",
-      "sha256": "c820b44387f76c89db972ffa518b6dd77830ab76b2ea9dc736daf6485e88d5a1",
-      "stateAnchors": [
-        {
-          "line": 3,
-          "text": "let dismiss:(()=>void)|undefined;"
-        }
-      ]
-    },
-    {
-      "path": "apps/app/src/prototype/calendar-form-presentation.ts",
-      "models": [
-        "CalendarFormControls",
-        "CalendarPresentation",
-        "CanonicalCalendarDraft"
-      ],
-      "scope": "application",
-      "treatment": "domain-contract-or-support",
-      "reviewStatus": "state-audit-required",
-      "sha256": "9d7b7810141a2d515d490dd6eef0ea60e26ea18e7c7adedbbfede19d431d6641",
       "stateAnchors": []
     }
   ],

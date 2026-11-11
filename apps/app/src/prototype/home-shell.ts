@@ -47,9 +47,23 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   /** Android's App info for a drawer entry; absent where the platform has none. */
   appInfo?: AppInfoOpener;
 } = {}) {
-  const p = Component.prototype, mount = p.componentDidMount, unmount = p.componentWillUnmount, render = p.renderVals;
+  const p = Component.prototype, mount = p.componentDidMount, unmount = p.componentWillUnmount, update = p.componentDidUpdate, render = p.renderVals;
   const back = p.back, goHome = p.goHome, openView = p.openView;
   let owner: any = null, seenError: string | null = null, seenStatus = 'idle', seenApps: unknown = null, launchReported = false;
+  let widgetStrip: HTMLElement | null = null;
+  let widgetsExplored = false;
+  let homeShown = false;
+  const exploreWidgets = () => { widgetsExplored = true; };
+  const settleWidgets = (self: any) => {
+    const home = owner === self && !self.S().view && !self.S().drawer;
+    if (home && !homeShown) widgetsExplored = false;
+    homeShown = home;
+    if (home && !widgetsExplored && widgetStrip) widgetStrip.scrollLeft = 0;
+  };
+  const bindWidgetStrip = (element: HTMLElement | null) => {
+    widgetStrip = element;
+    if (owner) settleWidgets(owner);
+  };
   // The drawer and edit bar report their own errors. Home reports a failed launch once,
   // and explains why a failed inventory read removed installed favorites.
   const reportHomeFailure = () => {
@@ -113,6 +127,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
   };
   const showFirstWidget = (self: any) => requestAnimationFrame(() => {
     if (owner !== self || self.S().view || self.S().drawer) return;
+    widgetsExplored = false;
     const cards = document.querySelector<HTMLElement>('[data-mobile-shell-cards]');
     if (cards) cards.scrollLeft = 0;
   });
@@ -128,9 +143,14 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
     showFirstWidget(this);
     return result;
   };
+  p.componentDidUpdate = function (...args: any[]) {
+    update?.apply(this, args);
+    settleWidgets(this);
+  };
   p.componentWillUnmount = function (...args: any[]) {
     if (owner === this) {
       stop?.(); launcher.cancelPending(); stop = undefined; endPress(); endDrag(); swallow = ''; owner = null;
+      widgetStrip = null; widgetsExplored = false; homeShown = false;
     }
     return unmount?.apply(this, args);
   };
@@ -266,7 +286,7 @@ export function installHomeShell(Component: any, views: Record<string, Bag>, bri
       tiles, covered: !!out.homeHidden,
       onFocusCapture: out.focusAppContent, 'data-alpha-layer': 'home',
       style: {inset: '44px 0 0', zIndex: 10, scrollPaddingBottom: 110},
-      layoutProps: {'data-alpha-home-layout': ''}, cardsProps: {className: 'scr home-card-row', hidden: hideCards, style: hideCards ? {display: 'none'} : undefined}, gridProps, clearanceProps: {'data-alpha-home-clearance': ''},
+      layoutProps: {'data-alpha-home-layout': ''}, cardsProps: {className: 'scr home-card-row', ref: bindWidgetStrip, onPointerDown: exploreWidgets, onWheel: exploreWidgets, onKeyDown: exploreWidgets, onFocusCapture: exploreWidgets, hidden: hideCards, style: hideCards ? {display: 'none'} : undefined}, gridProps, clearanceProps: {'data-alpha-home-clearance': ''},
     });
     const homeEditStyle = createElement('style', null, HOME_EDIT_CSS);
     const appInfo = options.appInfo;

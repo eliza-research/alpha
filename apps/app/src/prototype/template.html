@@ -2130,14 +2130,14 @@
   <sc-if value="{{notes.storageStatus}}"><div class="notes-storage-status" role="status" aria-live="polite" style="flex-shrink:0;padding:0 24px 6px;font-size:12px;line-height:1.34;color:var(--mut);overflow-wrap:anywhere">{{notes.storageStatus}}</div></sc-if>
   <sc-if value="{{notes.canonicalReview}}"><button class="tap" data-agent-id="notes-reload" onClick="{{notes.canonicalReviewAction}}" style="min-height:48px;margin:0 16px 8px;padding:0 16px;border-radius:22px;background:var(--s2);color:var(--fg)">{{notes.canonicalReviewLabel}}</button></sc-if>
   <div class="notes-workspace" style="position:relative;display:flex;flex-direction:column;flex:1;min-height:0">
-  <div data-alpha-subview="notes-list" inert="{{notes.listCovered}}" aria-hidden="{{notes.listCovered}}" style="display:flex;flex-direction:column;flex:1;min-height:0">
+  <div data-alpha-subview="notes-list" aria-busy="{{notes.loadingNotes}}" inert="{{notes.listCovered}}" aria-hidden="{{notes.listCovered}}" style="display:flex;flex-direction:column;flex:1;min-height:0">
   <div data-alpha-app-header="main" style="display: flex; align-items: center; height: 56px; margin-top: 0; padding: 0 8px 0 20px; gap: 2px; flex-shrink: 0">
   <sc-if value="{{notes.primaryNotes}}"><sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if></sc-if>
       <sc-if value="{{notes.returnToNotesAction}}"><button class="ib" aria-label="Return to Notes" onClick="{{notes.returnToNotesAction}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
     <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">{{notes.notesTitle}}</h1>
-    <sc-if value="{{notes.canRecord}}"><button class="ib" data-agent-id="notes-record" aria-label="Record voice note" onClick="{{notes.record}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.mic}}"></path></svg></button></sc-if>
+    <sc-if value="{{notes.canRecord}}"><button class="ib" data-agent-id="notes-record" aria-label="Record voice note" disabled="{{notes.createDisabled}}" onClick="{{notes.record}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.mic}}"></path></svg></button></sc-if>
       <sc-if value="{{notes.canCreate}}"><button class="ib" data-agent-id="notes-new" aria-label="New note" disabled="{{notes.createDisabled}}" onClick="{{notes.newNote}}"><svg class="i" viewBox="0 0 24 24" style="width: 20px; height: 20px"><path d="{{ic.plus}}"></path></svg></button></sc-if>
-    <button class="ib" aria-label="Notes options" aria-haspopup="dialog" aria-expanded="{{notes.listMenuOpen}}" onClick="{{notes.listMenu}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button>
+    <button class="ib" aria-label="Notes options" disabled="{{notes.createDisabled}}" aria-haspopup="dialog" aria-expanded="{{notes.listMenuOpen}}" onClick="{{notes.listMenu}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button>
   </div>
   <sc-if value="{{notes.selectingNotes}}"><div class="notes-selection-bar" role="group" aria-label="Selected notes">
     <button onClick="{{notes.endSelection}}" aria-label="Close selection"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button><span>{{notes.selectedCount}} selected</span>

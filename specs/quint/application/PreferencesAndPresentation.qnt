@@ -1,11 +1,11 @@
 /// Layout projection of surfaceLayout, keyboardFreeHeight and preference readback.
 module PreferencesAndPresentation {
   type State = { width: int, freeHeight: int, visibleHeight: int, editing: bool,
-    textScale: int, desktop: bool, theme: str, savedTheme: str, draft: str, home: bool, widget: int,
+    textScale: int, desktop: bool, theme: str, savedTheme: str, draft: str, home: bool, widget: int, widgetsExplored: bool,
     selection: int, nativeShade: bool, webShade: bool, calendarItem: bool, mailConnected: bool, mailItems: bool, workflowItems: bool }
   var s: State
   action init = s' = { width: 412, freeHeight: 915, visibleHeight: 915, editing: false,
-    textScale: 100, desktop: false, theme: "light", savedTheme: "light", draft: "text", home: true, widget: 0,
+    textScale: 100, desktop: false, theme: "light", savedTheme: "light", draft: "text", home: true, widget: 0, widgetsExplored: false,
     selection: 1, nativeShade: true, webShade: false, calendarItem: false, mailConnected: false, mailItems: false, workflowItems: false }
   val landscape = not(s.desktop) and s.width > s.freeHeight
   val agenda = not(s.desktop) and s.textScale >= 150
@@ -26,10 +26,10 @@ module PreferencesAndPresentation {
   val calendarShown = s.calendarItem
   val mailShown = s.mailConnected and s.mailItems
   val workflowsShown = s.workflowItems
-  action populateWidgets = s' = {...s, calendarItem: true, mailConnected: true, mailItems: true, workflowItems: true}
+  action populateWidgets = s' = {...s, calendarItem: true, mailConnected: true, mailItems: true, workflowItems: true, widget: if (s.widgetsExplored) s.widget else 0}
   action leaveHome = s' = {...s, home: false}
-  action returnHome = s' = {...s, home: true, widget: 0}
-  action swipeWidgets = all { s.home, s' = {...s, widget: if (s.widget < 2) s.widget + 1 else 2} }
+  action returnHome = s' = {...s, home: true, widget: 0, widgetsExplored: false}
+  action swipeWidgets = all { s.home, s' = {...s, widget: if (s.widget < 2) s.widget + 1 else 2, widgetsExplored: true} }
   action disconnectMail = s' = {...s, mailConnected: false}
   action step = any { keyboard, closeKeyboard, rotate, largeText, normalText, wide,
     saveTheme, failedSave, restart, webShade, populateWidgets, disconnectMail, leaveHome, returnHome, swipeWidgets, s' = s }

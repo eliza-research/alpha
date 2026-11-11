@@ -18,13 +18,15 @@ export class ServiceReadCache{
   const entry=this.decode(raw).entries.find(e=>e.key===key);return entry?{value:entry.value as T,at:entry.at}:null;
  }
  /** Cost: one local CAS per completed provider result, max24 entries/4MiB; no timer or network. */
- put(key:string,value:unknown,at=this.now()):Promise<void>{
+ put(key:string,value:unknown,at=this.now(),accept?:(previous:unknown)=>boolean):Promise<void>{
   if(typeof key!=='string'||key.length>=16384||new TextEncoder().encode(JSON.stringify({key,value,at})).length>MAX_BYTES)return Promise.resolve();
   const epoch=this.epoch;return this.enqueue(async()=>{
    if(epoch!==this.epoch)return;
    for(let attempt=0;attempt<3;attempt++){
     const raw=await this.store.read();if(epoch!==this.epoch)return;
-    const d=this.decode(raw),entries=d.entries.filter(e=>e.key!==key);entries.push({key,value,at});
+    const d=this.decode(raw);
+    if(accept&&!accept(d.entries.find(entry=>entry.key===key)?.value))return;
+    const entries=d.entries.filter(e=>e.key!==key);entries.push({key,value,at});
     entries.sort((a,b)=>a.at-b.at);while(entries.length>MAX_ENTRIES)entries.shift();
     const next:Document={version:1,owner:this.owner,entries};
     while(entries.length&&new TextEncoder().encode(JSON.stringify(next)).length>MAX_BYTES)entries.shift();

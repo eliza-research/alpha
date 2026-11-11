@@ -454,8 +454,14 @@ test('returning Home starts at the first widget without resetting a later swipe'
   try {
     frames.splice(0).forEach(callback=>callback());
     assert.equal(cards.scrollLeft,0);
+    const handlers=home.renderVals().homeShell.props.cardsProps;
+    handlers.ref(cards);
     cards.scrollLeft=280;
-    home.renderVals();
+    home.componentDidUpdate();
+    assert.equal(cards.scrollLeft,0,'late widget hydration keeps the initial card at the start');
+    handlers.onPointerDown();
+    cards.scrollLeft=280;
+    home.componentDidUpdate();
     assert.equal(cards.scrollLeft,280,'normal updates keep the user swipe');
     home.goHome();frames.splice(0).forEach(callback=>callback());
     assert.equal(cards.scrollLeft,0);

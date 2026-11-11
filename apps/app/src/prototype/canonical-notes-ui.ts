@@ -49,11 +49,12 @@ export class CanonicalNotesUi {
  private openValue:string|null=null;
  private blankCreationValue:string|null=null;
  private trashValue:{id:string;title:string;kind:string}[]=[];
- constructor(port:AppRecordPort,private readonly hooks:{paint():void;review():void;committed?(id:string):void;dropped?(title:string):void}){
+ constructor(port:AppRecordPort,private readonly hooks:{paint():void;review():void;committed?(id:string):void;dropped?(title:string):void;preview?():Bag[];remember?(rows:Bag[],revision:number):void}){
   this.controller=new CanonicalNotesController(port,{
    snapshot:(snapshot,reason)=>{
     this.trashValue=(snapshot.trash??[]).map(entry=>({id:entry.note.id,title:entry.note.title,kind:entry.note.format?.kind??'text'}));
     this.baseRows=snapshot.notes.map(note=>this.row(note,snapshot.revision));
+    this.hooks.remember?.(this.baseRows,snapshot.revision);
     this.editor?.reconcile();
     // Only an accepted current-owner read can recover a read-only warning.
     // Draft or interaction review takes precedence and is never cleared here.
@@ -102,14 +103,14 @@ export class CanonicalNotesUi {
  private get defaultOnly():boolean{const draft=this.editor.draft;return !!draft&&!draft.id&&!!this.defaultTitle&&draft.token===this.defaultTitle.token&&draft.title===this.defaultTitle.title&&!draft.body.trim()&&!authoredNoteText(draft.format).trim();}
  get dirty():boolean{return !!this.editor.draft?.version&&!this.defaultOnly;}
  get editing():boolean{return !!this.editor.draft;}
- get list():Bag[]{return this.controller.current?this.rowsValue.slice():[];}
+ get list():Bag[]{return this.controller.current?(this.controller.revision===null?this.hooks.preview?.()??[]:this.rowsValue.slice()):[];}
  get open():string|null{return this.controller.current?this.openValue:null;}
  /** The current canonical records, exactly as the shared controller holds them (for origin links). */
  notes():StickyNote[]{return this.controller.current?this.controller.snapshot?.notes??[]:[];}
  selection(){return this.editor.selection();}
  private status():string{
   if(this.phase==='review')return this.editor.draft?.version?'Your draft is shown here until you reload or the connection changes. Reload the current notes to discard it.':this.failure==='read'&&this.reviewPending==='read'?'Notes could not be opened. Check the agent connection, then reload.':'That change could not be confirmed. Reload Notes to see what was saved.';
-  return this.controller.revision===null?'Opening Notes…':'';
+  return this.controller.revision===null&&!this.list.length?'Loading notes…':'';
  }
  renderState(previous:Bag):Bag{return {...previous,...DEVICE_ONLY_STATE,list:this.list,open:this.open,storageStatus:this.status(),blankCreationId:this.blankCreationValue};}
  async refresh():Promise<void>{await this.controller.refresh();}
@@ -261,7 +262,7 @@ export class CanonicalNotesUi {
   const trashOpen=state.folder==='deleted';
   const ask=state.trashAsk as Bag|null,asked=ask&&trashOpen?rows.find(row=>row.id===ask.id):undefined;
   const restore=(id:string)=>{api.set({trashAsk:null});void this.editor.restore(id);};
-  const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:true,canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,
+  const out:Bag={...view,none:ready&&this.phase!=='review'&&view.none,canRecord:true,canImportText:false,browserRecovery:false,audioDeletionUnknown:false,createDisabled:!ready,selectionBusy:busy||!ready,loadingNotes:!ready,
    canonicalReview:this.phase==='review',canonicalReviewLabel:this.editor.draft?.version?'Discard draft and reload':'Reload Notes',canonicalReviewAction:()=>void this.discardDraftAndReload(),
    trashAvailable:false,hasDeleted:rows.length>0,trashOpen,trashCanErase:false,trashError:'',trashBusy:busy,trashEmptyDisabled:true,trashConfirmOpen:false,trashFullOpen:false,
    trashRows:rows.map(row=>{const title=row.title||'Untitled';return {id:row.id,title,label:title,preview:'',left:'',disabled:busy,restore:()=>restore(row.id),ask:()=>api.set({trashAsk:{id:row.id,title}})};}),
@@ -296,7 +297,13 @@ export class CanonicalNotesUi {
 /** Live Notes render through Alpha's own template (model.js); a bound connection decorates it with the canonical client, else it waits for one. */
 export function installCanonicalNotesView(Component:any,views:Record<string,Bag>):void{
  const prototype=Component.prototype,get=prototype.vget,api=prototype.api;
- prototype.vget=function(key:string){const state=get.call(this,key);return key==='notes'&&this.canonicalNotesUi?this.canonicalNotesUi.renderState(state):state;};
+ prototype.vget=function(key:string){
+  const state=get.call(this,key);
+  if(key!=='notes')return state;
+  if(this.canonicalNotesUi)return this.canonicalNotesUi.renderState(state);
+  if(this.notesSourceMode==='canonical')return {...state,list:this.notesStartupCache?.rows??[],cachedCanonicalNotes:true,storageStatus:state.storageStatus||'Loading notes…'};
+  return state;
+ };
  prototype.api=function(key:string){
   const value=api.call(this,key);if(key!=='notes')return value;
   if(this.canonicalNotesUi)return this.canonicalNotesUi.api({...value,reviewCalendarDraft:(draft:Bag)=>this.reviewScannedCalendarDraft?.(draft)??false});
@@ -312,7 +319,7 @@ export function installCanonicalNotesView(Component:any,views:Record<string,Bag>
   const olderNotesAction=older&&!older.selected?older.choose:null;
   if(ui)return {...ui.decorate(render(state,value),value,state),olderNotesAction,listActions:true};
   // A pending New note request waits for the binding instead of drafting into no collection.
-  const waiting={...state,...DEVICE_ONLY_STATE,list:[],open:null,compose:false,trashOpen:false,storageStatus:state.storageStatus||agentAvailabilityNotice(undefined,UNAVAILABLE)};
-  return {...render(waiting,value),storageStatus:waiting.storageStatus,none:false,canCreate:false,browserRecovery:false,audioDeletionUnknown:false,trashAvailable:false,canRecord:false,canImportText:false,olderNotesAction,listActions:!!olderNotesAction};
+  const waiting={...state,...DEVICE_ONLY_STATE,list:state.cachedCanonicalNotes?state.list:[],open:null,compose:false,trashOpen:false,storageStatus:state.storageStatus||'Loading notes…'};
+  return {...render(waiting,value),storageStatus:waiting.list.length?'':waiting.storageStatus,none:false,canCreate:false,createDisabled:true,selectionBusy:true,loadingNotes:true,browserRecovery:false,audioDeletionUnknown:false,trashAvailable:false,canRecord:false,canImportText:false,olderNotesAction,listActions:!!olderNotesAction};
  };
 }
