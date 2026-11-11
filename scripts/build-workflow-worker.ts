@@ -11,12 +11,12 @@ import {verifyWorkerArtifact} from './workflow-worker-artifact.ts';
 const env=preparedSourceEnv(process.env);
 for(const name of Object.keys(process.env))if(!(name in env))delete process.env[name];
 const root=resolve(import.meta.dirname,'..'),source=sourceDirectory(root),output=workerArtifactDirectory(root);
-execFileSync(process.execPath,[join(root,'scripts/prepare-local-agent.ts'),'--source-only'],{cwd:root,stdio:'inherit'});
+execFileSync('node',[join(root,'scripts/prepare-local-agent.ts'),'--source-only'],{cwd:root,stdio:'inherit'});
 const result=await ensurePreparedWorkflowWorker(root,source,output);
 // Reuse authenticates upstream worker bytes, not independently changing product host inputs.
 // Always build the product host normally so its receipt binds the current source.
 addNativeGoogleHostArtifact(root,output);
 verifyWorkerArtifact(output);
 // The build must leave the prepared source at the exact pinned commit.
-execFileSync(process.execPath,[join(root,'scripts/prepare-local-agent.ts'),'--source-only'],{cwd:root,stdio:'inherit'});
+execFileSync('node',[join(root,'scripts/prepare-local-agent.ts'),'--source-only'],{cwd:root,stdio:'inherit'});
 console.log(`${result.reused?'Reused verified':'Built'} worker dependency artifact: ${output}`);
