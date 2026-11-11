@@ -2,7 +2,7 @@ import type {Reminder} from '../daily';
 import {rendererDeletionClock,claimDeletion,deletionDeadline,deletionWindow,type PendingDeletion} from '../../../../.eliza/client-features/packages/contracts/src/deletion-window';
 import {revision} from './revision';
 import {journalEntry,trimDeletionJournal,writeJournalEntry} from './journal-retention';
-export type DeletableReminder=Reminder&{revision:string;pendingDeletion?:string};
+export type DeletableReminder=Reminder&{revision:string;pendingDeletion?:string;noticeDismissedOccurrence?:string};
 export type ReminderDeletion=PendingDeletion<{sourceRevision:string;row:DeletableReminder}>&{blocked?:string;binding?:string;journalBinding?:{scope:string;proposalId:string;operationHash:string}};
 export type ReminderDeletionState={sourceRevision:string;reminders:DeletableReminder[];deletions?:Record<string,ReminderDeletion>;deleteClaims?:Record<string,string>};
 export function stageReminderDeletion(data:ReminderDeletionState,row:DeletableReminder,owner:string,id:string=crypto.randomUUID(),binding?:string){

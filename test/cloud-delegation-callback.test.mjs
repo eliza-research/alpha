@@ -12,25 +12,27 @@ await build({entryPoints:[path.join(root,'apps/app/src/runtime/cloud-delegation-
 const state='s'.repeat(43),other='o'.repeat(43);
 function fixture({record,callback,status}){
  const calls=[],listeners=[],slots=new Map();if(record)slots.set('cloud-delegation:v1:email',record);
- let native=callback,statusGate=null;
+ let native=callback,statusGate=null,readGate=null,active=true;
  globalThis.__delegationNative={
   addListener:async(_e,fn)=>{listeners.push(fn);return{remove(){}};},
   readDelegationCallback:async()=>({callback:native??null}),
   clearDelegationCallback:async({state:s})=>{calls.push(['clearNative',s]);if(native?.state===s)native=null;},
  };
  globalThis.__delegationStore={
-  read:async slot=>slots.get(slot)??null,
+  read:async slot=>{const captured=slots.get(slot)??null;if(readGate){const hold=readGate;readGate=null;hold.entered();await hold.promise;}return captured;},
   compareExchange:async(slot,expected,next)=>{if(JSON.stringify(slots.get(slot)??null)!==JSON.stringify(expected))return{status:'conflict'};if(next)slots.set(slot,next);else slots.delete(slot);return{status:'saved'};},
  };
  const client={delegation:async(kind,input)=>{calls.push([kind,input.state??null]);if(kind==='revocations')return{grants:[]};if(kind==='status'){if(statusGate)await statusGate;return status(input,calls);}return{};}};
- return{calls,slots,client,deliver(value){native=value;for(const fn of listeners)fn();},hold(){let release;statusGate=new Promise(r=>release=r);return()=>{statusGate=null;release();};},get native(){return native;}};
+ return{calls,slots,client,deliver(value){native=value;for(const fn of listeners)fn();},hold(){let release;statusGate=new Promise(r=>release=r);return()=>{statusGate=null;release();};},
+  holdRead(){let entered,release;const waiting=new Promise(resolve=>entered=resolve),promise=new Promise(resolve=>release=resolve);readGate={entered,promise};return {waiting,release};},
+  current:()=>active,retire(){active=false;},get native(){return native;}};
 }
 async function mount(f,run){
  const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/'});const keys=['window','document','HTMLElement','IS_REACT_ACT_ENVIRONMENT'],saved={};
  for(const k of keys){saved[k]=Object.getOwnPropertyDescriptor(globalThis,k);Object.defineProperty(globalThis,k,{configurable:true,writable:true,value:k==='IS_REACT_ACT_ENVIRONMENT'?true:dom.window[k]});}
  const {CloudDelegationPanel}=await import(pathToFileURL(file).href),{createRoot}=await import('react-dom/client');
  const container=document.getElementById('root'),r=createRoot(container),signal=new AbortController().signal;
- try{await act(async()=>r.render(React.createElement(CloudDelegationPanel,{client:f.client,scope:'email',signal,current:()=>true,onConnected(){}})));await settle();await run(()=>container.textContent);}
+ try{await act(async()=>r.render(React.createElement(CloudDelegationPanel,{client:f.client,scope:'email',signal,current:f.current,onConnected(){}})));await settle();await run(()=>container.textContent);}
  finally{await act(async()=>r.unmount());dom.window.close();for(const [k,v] of Object.entries(saved)){if(v)Object.defineProperty(globalThis,k,v);else delete globalThis[k];}}
 }
 const settle=()=>act(async()=>{for(let i=0;i<20;i++)await new Promise(r=>setTimeout(r,0));});
@@ -77,5 +79,31 @@ test('a finished status releases the native return for that state',async()=>{
   await act(async()=>check.click());await settle();
   assert.match(text(),/expired or was cancelled/);
   assert.deepEqual(f.calls.filter(c=>c[0]==='clearNative'),[['clearNative',state]]);
+ });
+});
+test('a callback secure read that outlives its owner cannot consume the native return or stage its code',async()=>{
+ const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'waiting'};
+ const f=fixture({record,status:()=>({status:'waiting'})});
+ await mount(f,async()=>{
+  const held=f.holdRead();
+  await act(async()=>{f.deliver({state,code:'synthetic-return'});await held.waiting;});
+  f.retire();held.release();await settle();
+  assert.deepEqual(f.slots.get('cloud-delegation:v1:email'),record);
+  assert.deepEqual(f.native,{state,code:'synthetic-return'});
+  assert.ok(!f.calls.some(([kind])=>['clearNative','complete','status'].includes(kind)));
+ });
+});
+test('status lookup cannot complete a replaced same-scope authorization',async()=>{
+ const record={state,authUrl:'https://cloud.example/app-auth/authorize?state='+state,expiresAt:future(),phase:'finishing',code:'synthetic-return'};
+ const f=fixture({record,status:()=>({status:'waiting'})});
+ await mount(f,async()=>{
+  const release=f.hold();
+  const check=[...document.querySelectorAll('button')].find(b=>b.textContent==='Check authorization status');
+  await act(async()=>check.click());
+  const replacement={...record,state:other,phase:'waiting',code:undefined};
+  f.slots.set('cloud-delegation:v1:email',replacement);
+  release();await settle();
+  assert.deepEqual(f.slots.get('cloud-delegation:v1:email'),replacement);
+  assert.ok(!f.calls.some(([kind])=>kind==='complete'));
  });
 });
