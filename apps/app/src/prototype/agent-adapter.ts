@@ -73,7 +73,7 @@ import { workflowSha, validateWorkflowResult } from '../runtime/workflow-device-
 import { WorkflowReminderOverflow, workflowReminderRows } from '../runtime/workflow-reminder-read';
 import { getMapsSelectedObject, clearMapsSelection } from '../maps/agent-context';
 import { alphaClient, AlphaClientError, type AlphaView } from '../runtime/alpha-client';
-import { privateLocalPreviewEnabled } from '../build-flags';
+import { privateLocalPreviewEnabled, testMocksEnabled } from '../build-flags';
 import { DailyApps } from '../daily';
 import { isAndroid } from '../native';
 import { registerPlugin } from '../platform-plugins';
@@ -478,7 +478,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
           // Absence can also mean different source preconditions. It proves no
           // rejection or execution; preserve the history and disable only review.
           if(card.reviewUnavailable)return message;
-          return {...message,card:{...card,reviewUnavailable:true,title:'Review unavailable',sub:'Not pending for this screen. Open the original selection to check again.'}};
+          return {...message,card:{...card,reviewUnavailable:true,title:'Review unavailable',sub:'This request belongs to a different screen or item. Go back to where you asked, and it can be reviewed again. Nothing was done.'}};
         });
         const existing=new Set(msgs.map((message:Shell)=>message.card?.proposalId));
         const recovered=proposals.filter(proposal=>!existing.has(proposal.id)).map(proposal=>({id:crypto.randomUUID(),from:'agent',text:proposal.description,card:{...proposalCard(proposal),recovered:true,proposalSession:connection.session}}));
@@ -535,7 +535,12 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       const chat=shell.S().chat;
       return continuation?continuation.apply(view,check,commit):commit(chat==='sheet'||chat==='full'?chat:undefined);
     });
-    if(delivered.status==='unavailable'&&shell.live)shell.agentSay('That screen is not on this phone.',{type:'generic',icon:'info',title:'Screen not on this phone',sub:'That screen is not on this phone.',systemNotice:true,done:true});
+    if(delivered.status==='unavailable'&&shell.live){
+      // A page inside an app this phone has: say where it is. Nothing was opened or acknowledged.
+      const parent=delivered.parentView==='home'?'Home':delivered.parentView&&views[delivered.parentView]?.title;
+      const text=parent?`I can’t open that page directly yet. Open ${parent} to find it.`:'That screen is not on this phone.';
+      shell.agentSay(text,{type:'generic',icon:'info',title:text,sub:'',systemNotice:true,done:true});
+    }
     if(delivered.status==='unknown')shell.toast('Could not confirm the screen change. Check your screen.');
     return delivered.status==='delivered';
   }
@@ -888,6 +893,8 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(!this.live||document.hidden)throw Error('Files changed');
       return identities;
     });
+    // A refusal proven to happen before any effect returns `failed` with its reason; a throw is
+    // recorded by the coordinator as an unknown outcome and its message never reaches the owner.
     connectionController.setDeviceExecutor(async (operation, operationId, expectedContext, signal, bindingHash, workflowRoute, journalIdentity, agendaSource) => {
       signal.throwIfAborted(); context(this);
       if (!this.live || JSON.stringify(alphaClient.getState().context) !== JSON.stringify(expectedContext)) throw new Error('Phone context changed');
@@ -899,7 +906,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       if(isPhoneDial(operation)){
         // Reviewed dial handoff on the verified image only: the system dial screen opens with the
         // approved number and the owner places the call there. Contact targets are not negotiated.
-        if(!aospImage||operation.target.kind!=='number'||expectedContext.sensitive||document.hidden)throw Error('Open Alpha on the Alpha image to review this number');
+        if(!aospImage||operation.target.kind!=='number'||expectedContext.sensitive||document.hidden)return {status:'failed' as const,summary:'Nothing was dialed. Keep Alpha open and unlocked, then ask again.'};
         const client=createAospTelephony(registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),true);
         signal.throwIfAborted();context(this);
         if(!this.live||document.hidden||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Dial review context changed');
@@ -911,7 +918,7 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         // Owner-approved telephony on the verified image only. A contact is resolved here, on the
         // phone; the owner confirms the exact number or the before and after before anything
         // calls, sends or writes, and the agent receives only the outcome.
-        if(!aospImage||expectedContext.sensitive||document.hidden)throw Error('Open Alpha on the Alpha image to continue');
+        if(!aospImage||expectedContext.sensitive||document.hidden)return {status:'failed' as const,summary:'Nothing was done. Keep Alpha open and unlocked, then ask again.'};
         const plugin=registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),client=createAospTelephony(plugin,true),book=registerPlugin<any>('AlphaContacts');
         const ownerSession=connectionController.getSnapshot().session,ownerTarget=JSON.stringify(connectionController.getWorkflowDeviceTarget());
         const current=()=>{signal.throwIfAborted();context(this);if(!ownerSession||connectionController.getSnapshot().session!==ownerSession||JSON.stringify(connectionController.getWorkflowDeviceTarget())!==ownerTarget||!this.live||document.hidden||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('Phone context changed');};
@@ -941,13 +948,13 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
         return executeTelephonyAction(operation,operationId,ports,signal);
       }
       if(isSmsSend(operation)){
-        if(!aospImage||expectedContext.sensitive||document.hidden||expectedContext.view!=='messages'||expectedContext.selectedObject?.kind!=='sms-subscription'||expectedContext.selectedObject.id!==String(operation.subscriptionId))throw Error('Open Messages on the Alpha image and select the approved SIM');
+        if(!aospImage||expectedContext.sensitive||document.hidden||expectedContext.view!=='messages'||expectedContext.selectedObject?.kind!=='sms-subscription'||expectedContext.selectedObject.id!==String(operation.subscriptionId))return {status:'failed' as const,summary:'Nothing was sent. Open Messages, choose the SIM, then ask again.'};
         const plugin=registerPlugin<AlphaTelephonyPlugin>('AlphaTelephony'),client=createAospTelephony(plugin,true);
         const ownerSession=connectionController.getSnapshot().session,ownerTarget=JSON.stringify(connectionController.getWorkflowDeviceTarget());
         const current=()=>{signal.throwIfAborted();context(this);if(!ownerSession||connectionController.getSnapshot().session!==ownerSession||JSON.stringify(connectionController.getWorkflowDeviceTarget())!==ownerTarget||!this.live||document.hidden||JSON.stringify(alphaClient.getState().context)!==JSON.stringify(expectedContext))throw Error('SMS review context changed');};
         const status=await client.status();current();
         const selectedSim=status.subscriptions?.find(sim=>sim.id===operation.subscriptionId);
-        if(!selectedSim||expectedContext.selectedObject.revision!==smsSubscriptionRevision(selectedSim))throw Error('The selected SIM changed; refresh Messages and select it again');
+        if(!selectedSim||expectedContext.selectedObject.revision!==smsSubscriptionRevision(selectedSim))return {status:'failed' as const,summary:'Nothing was sent because the SIM changed. Open Messages, choose the SIM, then ask again.'};
         const cancel=()=>{void plugin.cancelSmsReview({operationId}).catch(()=>{});};
         signal.addEventListener('abort',cancel,{once:true});
         try{current();const native=await client.sendSms(operation,operationId);const smsResult=validateSmsResult(operation,native,operationId,await smsAgentHash(operation));return {status:smsDeviceStatus(smsResult),smsResult,summary:receiptLabel(smsResult.status)};}
@@ -1494,6 +1501,23 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
     };
     out.composerPointer=(event:PointerEvent)=>event.stopPropagation();
     out.sendNow=()=>sendFromComposer(this);
+    // New chat and history sit in the chat header once an agent is connected; the same two
+    // controls stay in Settings. Neither sends anything, and a reply in flight is never cut off.
+    const toolsSession=connectionController.getSnapshot();
+    out.chatTools={
+      show:!!toolsSession.session,history:!!toolsSession.session&&!out.assistantSurface,
+      newChat:()=>{
+        const now=connectionController.getSnapshot();
+        if(this.S().typing||alphaClient.getState().pending){this.toast('Wait for the current reply before starting a new chat.');return;}
+        if(now.busy||this.pendingActionApproval||this.decliningProposal){this.toast('Wait for the current step to finish, then try again.');return;}
+        void connectionController.newConversation();
+      },
+      openHistory:()=>{
+        // Android lists saved chats in Settings; elsewhere the connection panel holds them.
+        if(Capacitor.isNativePlatform()&&!testMocksEnabled)this.openView('settings',{page:'agent-connection'});
+        else connectionController.open();
+      },
+    };
     out.onKey=(event:KeyboardEvent&{nativeEvent?:KeyboardEvent})=>{
       if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing&&!event.nativeEvent?.isComposing&&event.keyCode!==229){event.preventDefault();sendFromComposer(this);}
     };
@@ -1506,14 +1530,17 @@ export function installAgentAdapter(Component: Shell, views: Shell) {
       const sent=live.find(item=>item.id===m.id);
       m={...m,sentMail:sent?.mailAttachment?.title||'',sentTranscript:sent?.transcriptAttachment?.title||'',sentPhoto:sent?.cameraAttachment?.image||'',openPhotoPreview:()=>{if(sent?.cameraAttachment?.image){this.chatImagePreview=sent.cameraAttachment.image;this.setState({});}}};
       const c=m.c||{};
-      // A system notice card already carries its text; do not print it a second time above the card.
-      if(c.systemNotice&&m.cGeneric&&m.displayText===c.sub)return {...m,hasCalendarText:false};
+      // A system notice is a status block, never a button: it carries its text once, with no
+      // title repeated as the detail and no second copy printed above it.
+      if(c.systemNotice&&m.cGeneric)return {...m,cGeneric:false,cNotice:true,noticeSub:c.sub&&c.sub!==c.title?c.sub:'',hasCalendarText:m.hasCalendarText&&m.displayText!==c.sub&&m.displayText!==c.title};
       if(!c.proposalId||c.done||c.reviewUnavailable||!m.cGeneric)return m;
       const message=live.find(item=>item.card===c);if(!message)return m;
-      const ic=out.ic||{},busy=!!this.decliningProposal||!!this.pendingActionApproval;
+      // Only the card being approved or declined shows progress; the others stay readable but wait.
+      const ic=out.ic||{},busy=!!this.decliningProposal||!!this.pendingActionApproval,approving=busy&&this.pendingActionApprovalProposalId===c.proposalId,declining=this.decliningProposal===c.proposalId;
+      // A card that only leads to the screen where the choice is made says Open, not Approve.
       return {...m,hasCalendarText:m.hasCalendarText&&m.displayText!==c.sub,cGeneric:false,cDigest:true,actionReviewClass:'alpha-action-review',rows:[
-        {ini:'',who:busy?'Working…':c.title,text:typeof c.sub==='string'&&c.sub.startsWith(c.title+'\n')?c.sub.slice(c.title.length+1):c.sub,icon:ic.right,open:()=>{if(!busy)void this.cardAct(message);}},
-        {ini:'',who:this.decliningProposal===c.proposalId?'Cancelling…':'Cancel',text:'Keep things as they are.',icon:ic.x,open:()=>{if(!busy)void this.declineCard(message);}},
+        {ini:'',who:approving?'Working…':c.title,text:typeof c.sub==='string'&&c.sub.startsWith(c.title+'\n')?c.sub.slice(c.title.length+1):c.sub,label:approving?'':c.reviewDestination?'Open':'Approve',icon:ic.right,open:()=>{if(!busy)void this.cardAct(message);}},
+        {ini:'',who:declining?'Declining…':'Decline',text:'Keep things as they are.',icon:ic.x,open:()=>{if(!busy)void this.declineCard(message);}},
       ]};
     });
     // A chat-started workflow run replies with a [WORKFLOW] block: it shows as a card that opens the

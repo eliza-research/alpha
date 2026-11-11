@@ -815,6 +815,15 @@ html.alpha-large-text .alpha-google-sources { display:block; }
 
 /* Action details must remain fully readable before approval. */
 .alpha-action-review button > span { display:none!important; }
+/* The approval row says what a tap does; rows without a label keep their icon. */
+.alpha-row-label:empty { display:none; }
+.alpha-row-label { flex-shrink:0; min-height:36px; padding:0 16px; border-radius:18px; background:var(--acc); color:var(--alpha-white); font-size:14px; font-weight:600; display:inline-flex; align-items:center; }
+.alpha-row-label:not(:empty) + svg { display:none; }
+.alpha-action-review button { min-height:56px; }
+/* What the phone itself reports (done, declined, not completed) is set apart from the assistant's own words. */
+[data-alpha-device-receipt="true"] { align-self:flex-start; max-width:100%; box-sizing:border-box; padding:10px 14px; border-radius:6px 16px 16px 6px; border-left:3px solid var(--acct); background:var(--s2); font-size:14px!important; line-height:1.45!important; overflow-wrap:anywhere; }
+/* Narrow phones keep New chat and History reachable by dropping the assistant's name beside its mark. */
+@media (max-width: 399px) { [data-alpha-chat-lead] [data-alpha-chat-name] { display:none; } }
 .alpha-action-review button > div > div:last-child { white-space:pre-wrap!important; overflow:visible!important; text-overflow:clip!important; overflow-wrap:anywhere; line-height:1.45; }
 
 /* Older Android WebViews ignore popover; React visibility must still hide the menu. */
