@@ -290,8 +290,10 @@ test('the CLI binds installed releases, the production image and unattended hist
     }`,
     './provision-unit.ts': `
       import assert from 'node:assert/strict';
+      import {createHash} from 'node:crypto';
+      import {readFileSync, writeFileSync} from 'node:fs';
       import {admitUnitApk as admit} from ${JSON.stringify(provision)};
-      export {PACKAGE, packageFacts, deviceFacts} from ${JSON.stringify(provision)};
+      export {PACKAGE, packageFacts, deviceFacts, snapshotUnitApk} from ${JSON.stringify(provision)};
       const packageName=${JSON.stringify(packageName)}, dataApkPath=${JSON.stringify(dataApkPath)},
         imageApkPath=${JSON.stringify(imageApkPath)}, props=${JSON.stringify(props)}, signingFamily=${JSON.stringify(signingFamily)};
       ${deviceReader.toString()}
@@ -310,14 +312,23 @@ test('the CLI binds installed releases, the production image and unattended hist
         assert.deepEqual(selection,{variant:'launcher',build:'release'});
         assert.equal(options.descriptor,globalThis.wirelessPolicy);
         globalThis.wirelessCalls.push('manifest');
-        return admit(file,selection,options);
+        const apk = admit(file,selection,options);
+        globalThis.wirelessAdmitted = apk;
+        if (process.env.FIXTURE_REPLACE_APK==='1') writeFileSync(apk.file, 'replaced bytes');
+        return apk;
       }
-      export function apkRuntimeIdentity() {return {runtime:'PACKAGED',base:'d'.repeat(40)};}
+      export function apkRuntimeIdentity(file) {
+        assert.equal(file, globalThis.wirelessInspected.file);
+        assert.notEqual(file, globalThis.wirelessAdmitted.file);
+        assert.equal(createHash('sha256').update(readFileSync(file)).digest('hex'), globalThis.wirelessAdmitted.sha256);
+        return {runtime:'PACKAGED',base:'d'.repeat(40)};
+      }
     `,
     './update-apk-admission.ts': `
       import {admitUpdateApkIdentity} from ${JSON.stringify(policy)};
       export function inspectUpdateApk(apk, options={}) {
         globalThis.wirelessCalls.push('inspection');
+        globalThis.wirelessInspected = apk;
         // The real signing-family policy remains in the integration. Native APK
         // inspection facts are synthetic; no signer, APK tool or release key runs.
         return admitUpdateApkIdentity(apk,options.descriptor,
@@ -346,7 +357,8 @@ test('the CLI binds installed releases, the production image and unattended hist
       return execFileSync(process.execPath, [realpathSync(output), phase, '--serial', 'fixture-phone',
         '--apk-manifest', manifests.get(versionCode), '--out', receipt, ...extra], {
         encoding: 'utf8', timeout: 30_000, stdio: 'pipe', env: {...process.env, FIXTURE_DISTRIBUTION: distribution,
-          FIXTURE_FOLLOWUP: followup ? '1' : '0', FIXTURE_MANUAL_APPROVAL: manualApproval ? '1' : '0'},
+          FIXTURE_FOLLOWUP: followup ? '1' : '0', FIXTURE_MANUAL_APPROVAL: manualApproval ? '1' : '0',
+          FIXTURE_REPLACE_APK: '0'},
       });
     };
     const imageArgs = distribution === 'image-preinstalled'
@@ -402,6 +414,14 @@ test('the CLI binds installed releases, the production image and unattended hist
     assert.equal(followingUpdate.observation.installed.firstInstallTime, initial.observation.installed.firstInstallTime);
     chains.set(distribution, [before, after, nextBefore, nextAfter]);
   }
+
+  const replacedReceipt = path.join(directory, 'changed-apk.json');
+  assert.throws(() => execFileSync(process.execPath, [realpathSync(output), 'before',
+    '--serial', 'fixture-phone', '--apk-manifest', manifests.get(7), '--out', replacedReceipt, '--distribution', 'sideload'], {
+    encoding: 'utf8', timeout: 30_000, stdio: 'pipe', env: {...process.env, FIXTURE_DISTRIBUTION: 'sideload',
+      FIXTURE_FOLLOWUP: '0', FIXTURE_REPLACE_APK: '1'},
+  }), error => /changed after APK admission/.test(error.stderr));
+  assert.equal(existsSync(replacedReceipt), false);
 
   const sideload = chains.get('sideload'), image = chains.get('image-preinstalled');
   const read = file => JSON.parse(readFileSync(file));
