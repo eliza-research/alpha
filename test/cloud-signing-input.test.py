@@ -58,18 +58,18 @@ class CloudSigningInputTest(unittest.TestCase):
             })
         self.verification = {
             "upstream": {"commit": self.pin["sdkCommit"]},
-            "runtimeProfile": "native",
+            "runtimeProfile": "cloud",
             "testMocks": False,
             "allowUnpackagedRuntime": False,
             "results": rows,
         }
         self.build = {
-            "runtimeProfile": "native",
+            "runtimeProfile": "cloud",
             "testMocks": False,
             "signingRequested": False,
             "versionOverride": {"code": "44"},
         }
-        self.producer = {"source": self.pin["alphaCommit"], "versionCode": 44, "runtimeProfile": "native"}
+        self.producer = {"source": self.pin["alphaCommit"], "versionCode": 44, "runtimeProfile": "cloud"}
         for record in [self.verification, self.build, self.producer, *rows]:
             record["updateChannel"] = copy.deepcopy(self.pin["updateChannel"])
 
@@ -170,12 +170,11 @@ class CloudSigningInputTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not bind artifacts/build-config.json"):
             ADMISSION.admit(self.archive, self.pin)
 
-    def test_rejects_removed_cloud_profile_and_local_embedding_records(self):
-        # One runtime profile: an archive from the removed Cloud profile, or one naming the removed
-        # local-embeddings capability (even as false), is never signing input.
+    def test_rejects_non_cloud_profiles_and_local_embedding_records(self):
+        # This Cloud release requires its own profile and excludes local embedding projection flags.
         for record_name in ("producer", "verification", "build"):
             record = getattr(self, record_name)
-            for field, value in (("runtimeProfile", "cloud"), ("runtimeProfile", "unknown"), ("localEmbeddings", True), ("localEmbeddings", False)):
+            for field, value in (("runtimeProfile", "native"), ("runtimeProfile", "unknown"), ("localEmbeddings", True), ("localEmbeddings", False)):
                 with self.subTest(record=record_name, field=field):
                     old = copy.deepcopy(record)
                     record[field] = value

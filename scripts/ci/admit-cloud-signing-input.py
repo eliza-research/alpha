@@ -25,9 +25,8 @@ def digest(data):
 
 
 def single_profile(record):
-    """The one runtime profile. A record from the removed Cloud profile, or one naming the removed
-    local-embeddings capability, is refused."""
-    return record["runtimeProfile"] == "native" and "localEmbeddings" not in record
+    """Admit the packaged Cloud profile used by this release workflow."""
+    return record["runtimeProfile"] == "cloud" and "localEmbeddings" not in record
 
 
 def admit(archive, pin, stage=None):
