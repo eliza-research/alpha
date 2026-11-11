@@ -119,7 +119,10 @@ for (const mode of ['place', 'route', 'stale-before-approval', 'stale-after-read
     expect(await page.evaluate(()=>(window as any).recoveryFixture.decisions)).toBe(0);
     expect(await page.evaluate(()=>(window as any).recoveryFixture.claims)).toBe(0);
     if(mode==='stale-before-approval') {
-      await page.evaluate(async()=>{const {clearMapsSelection}=await import('/src/maps/agent-context.ts');clearMapsSelection();});
+      // Close the place through Maps itself (keyboard; the open chat covers the sheet): the visible
+      // screen republishes its selection on each render, so an external context clear is undone.
+      await page.getByRole('region',{name:'Maps',exact:true}).getByRole('button',{name:'Close place',exact:true}).press('Enter');
+      await expect.poll(()=>page.evaluate(async()=>{const {getMapsSelectedObject}=await import('/src/maps/agent-context.ts');return getMapsSelectedObject()?.kind??null;})).not.toBe('map-place');
     } else {
       await page.getByText('maps read selected',{exact:true}).click();
     }

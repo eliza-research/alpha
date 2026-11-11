@@ -179,8 +179,14 @@ test('the Browser menu ends above the dock on short screens and its rows stay re
 });
 
 test('the Maps notice sits beside the map in landscape and is bounded on a wide portrait screen', async ({ page }) => {
+  // The base map has no notice until there is news; a refused location request is the fullest one
+  // (message, help, Add location and Location settings).
+  await page.addInitScript(() => { navigator.geolocation.watchPosition = ((_: unknown, error: (value: {code: number}) => void) => { queueMicrotask(() => error({code: 1})); return 19; }) as typeof navigator.geolocation.watchPosition; navigator.geolocation.clearWatch = () => {}; });
   await open(page, 'Maps');
   const notice = page.locator('[data-alpha-maps-status]');
+  await expect(notice).toHaveCount(0);
+  await page.getByRole('button', { name: 'Recenter', exact: true }).click();
+  await expect(notice).toHaveAttribute('data-location-state', 'denied');
   await expect(notice).toBeVisible();
   await resize(page, LANDSCAPE);
   expect((await box(notice)).width).toBeLessThanOrEqual(915 / 2);
