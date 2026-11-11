@@ -4,6 +4,7 @@ export {workflowDeviceTimeZone,automationLocalDateInput,localDate,workflowNextCl
 /** Alpha presentation over OG's canonical automation, ScheduledTask and LifeOps contracts.
  * No runner, mirroring, task storage or automatic execution lives in this client. */
 import type {AutomationsMethod} from './automations-route-policy.ts';
+import {WorkflowClient,WorkflowLifecycleRejected} from '../../../../.eliza/client-features/packages/contracts/src/workflow-client.ts';
 export type AutomationRequest = (path:string,method:AutomationsMethod,body:unknown|undefined,signal:AbortSignal)=>Promise<unknown>;
 export type AutomationKind = 'workflow'|'prompt'|'schedule'|'reminder'|'routine'|'device-reminder';
 /** Effect receipt resource kinds whose applied, durable commit changes a record the unified list shows. */
@@ -12,6 +13,19 @@ type ObjectValue = Record<string,any>;
 export interface AutomationRow {
  key:string;id:string;kind:AutomationKind;title:string;description:string;status:string;enabled:boolean;
  source:string;schedule:string;record:ObjectValue;workflowId?:string;triggerId?:string;occurrenceId?:string;
+}
+export function removedAutomation(row:AutomationRow):boolean {
+ switch(row.kind){
+  case 'prompt':return typeof row.record.trigger?.removedAt==='number';
+  case 'workflow':return row.record.workflow?.removed===true;
+  case 'schedule':return row.record.state?.status==='dismissed';
+  case 'reminder':
+  case 'routine':return row.record.definition?.status==='archived';
+  default:return false;
+ }
+}
+export function recoverableAutomation(row:AutomationRow):boolean {
+ return row.kind!=='device-reminder'&&!row.record.system&&!row.record.trigger?.system;
 }
 export interface AutomationIssue {source:'automations'|'schedules'|'reminders'|'definitions'|'device';message:string;unavailable:boolean}
 export interface AutomationSnapshot {rows:AutomationRow[];issues:AutomationIssue[]}
@@ -81,7 +95,7 @@ function reminder(value:unknown):AutomationRow {
 function definition(value:unknown):AutomationRow|null {
  const row=object(value),record=object(row.definition),id=automationId(record.id),surface=text(record.metadata?.ownerSurface);
  const label=surface==='OWNER_GOALS'?'Goal':surface==='OWNER_ROUTINES'||(!surface&&['habit','routine'].includes(record.kind))?'Routine':'';
- if(!label||record.status==='archived')return null;
+ if(!label)return null;
  const cadence=record.cadence&&typeof record.cadence==='object'?record.cadence:{},zone=text(record.timezone)||undefined;
  const when=cadence.kind==='once'?automationWhen(Date.parse(text(cadence.dueAt)),zone)||'Once':({daily:'Daily',times_per_day:'Several times a day',weekly:'Weekly',interval:'Repeats'} as Record<string,string>)[text(cadence.kind)]||'';
  return {key:'reminder:'+id,id,kind:'routine',title:text(record.title)||label,description:text(record.description),status:text(record.status),enabled:record.status==='active',source:'Agent '+label.toLowerCase(),schedule:when,record:row};
@@ -99,12 +113,79 @@ export function mergeAutomationRows(rows:AutomationRow[]):AutomationRow[] {
 }
 export class AutomationsProtocol {
  constructor(private request:AutomationRequest,private deliveryConversationId?:string){}
- async list(signal:AbortSignal):Promise<AutomationSnapshot>{
+ private workflow(){
+  return new WorkflowClient((path,body,signal)=>this.request(path,body===undefined?'GET':'POST',body,signal));
+ }
+ async removed(signal:AbortSignal):Promise<AutomationSnapshot> {
+  const results=await Promise.allSettled([this.list(signal,true),this.removedPrompts(signal),this.workflow().removedWorkflows(signal)]);
+  signal.throwIfAborted();
+  const rows:AutomationRow[]=[],issues:AutomationIssue[]=[];
+  const [canonical,prompts,workflows]=results;
+  if(canonical.status==='fulfilled'){
+   rows.push(...canonical.value.rows.filter(removedAutomation));
+   issues.push(...canonical.value.issues);
+  }
+  else issues.push(automationIssue('automations',canonical.reason));
+  if(prompts.status==='fulfilled')rows.push(...prompts.value);
+  else issues.push({source:'automations',unavailable:true,message:'Deleted automations could not be loaded.'});
+  if(workflows.status==='fulfilled'){
+   rows.push(...workflows.value.map(workflow=>({
+    key:'workflow:'+workflow.id,id:workflow.id,kind:'workflow' as const,
+    title:workflow.name,description:workflow.description,status:'removed',
+    enabled:false,source:'Agent workflow',schedule:'',record:{workflow},workflowId:workflow.id,
+   })));
+  }
+  else issues.push({source:'automations',unavailable:true,message:'Deleted workflows could not be loaded.'});
+  return {rows:mergeAutomationRows(rows),issues};
+ }
+ async changeRecovery(row:AutomationRow,operation:'archive'|'restore',signal:AbortSignal):Promise<void> {
+  if(!recoverableAutomation(row))throw new AutomationOutcomeError('This item cannot be changed here.');
+  if(row.kind==='prompt'){await this.changePromptRecovery(row,operation,signal);return;}
+  if(row.kind==='workflow'&&row.workflowId){
+   const client=this.workflow(),saved=await client.detail(row.workflowId,signal);
+   if(saved.name!==row.title||saved.description!==row.description||!!saved.removed!==removedAutomation(row))throw new AutomationOutcomeError('This workflow changed. Refresh it before continuing.');
+   try{
+    await client.lifecycle(saved.id,saved.versionId,operation==='archive'?'remove':'restore',signal,()=>{});
+   }catch(error){
+    if(error instanceof WorkflowLifecycleRejected)throw new AutomationOutcomeError(error.message);
+    throw error;
+   }
+   return;
+  }
+  if(row.kind==='schedule'){
+   await this.scheduledVerb(row.id,operation==='archive'?'dismiss':'reopen',signal);
+   return;
+  }
+  if(row.kind==='reminder'||row.kind==='routine'){
+   const status=operation==='archive'?'archived':'paused';
+   const result=object(await this.request('/api/lifeops/definitions/'+automationId(row.id),'PUT',{status},signal));
+   if(result.definition?.id!==row.id||result.definition?.status!==status)throw Error('The change could not be confirmed.');
+   return;
+  }
+  throw new AutomationOutcomeError('This item cannot be changed here.');
+ }
+ async list(signal:AbortSignal,includeRemoved=false):Promise<AutomationSnapshot>{
   const sources=[['automations','/api/automations','automations',automation],['schedules','/api/lifeops/scheduled-tasks?ownerVisibleOnly=1','tasks',scheduled],['reminders','/api/lifeops/reminders','reminders',reminder],['definitions','/api/lifeops/definitions','definitions',definition]] as const;
   const results=await Promise.allSettled(sources.map(async([source,path,key,parse])=>{const data=object(await this.request(path,'GET',undefined,signal));return {rows:list(data[key]).flatMap(item=>{const row=parse(item);return row?[row]:[];}),issue:source==='automations'&&(text(data.workflowFetchError)||(Array.isArray(data.executionFetchErrors)&&data.executionFetchErrors.length))?{source:'automations' as const,unavailable:false,message:'Some workflow data or execution history could not refresh. Open the workflow to check it before running.'}:null};}));
   signal.throwIfAborted();const rows:AutomationRow[]=[],issues:AutomationIssue[]=[];
   results.forEach((result,index)=>{if(result.status==='fulfilled'){rows.push(...result.value.rows);if(result.value.issue)issues.push(result.value.issue);}else issues.push(automationIssue(sources[index][0],result.reason));});
-  return {rows:mergeAutomationRows(rows),issues};
+  return {rows:mergeAutomationRows(rows).filter(row=>includeRemoved||!removedAutomation(row)),issues};
+ }
+ async removedPrompts(signal:AbortSignal):Promise<AutomationRow[]> {
+  const result=object(await this.request('/api/triggers?removed=1','GET',undefined,signal));
+  if(result.recovery!==true)throw Error('Recently deleted automations are unavailable on this agent.');
+  return list(result.triggers).map(value=>{
+   const trigger=object(value),id=automationId(trigger.id);
+   if(typeof trigger.removedAt!=='number'||typeof trigger.revision!=='string'||!/^[a-f0-9]{64}$/.test(trigger.revision))throw Error('Invalid removed automation.');
+   return automation({id:'trigger:'+id,type:'coordinator_text',title:trigger.displayName,description:trigger.instructions,status:'removed',enabled:false,triggerId:id,trigger,schedules:[trigger]});
+  });
+ }
+ async changePromptRecovery(row:AutomationRow,operation:'archive'|'restore',signal:AbortSignal):Promise<void> {
+  const id=row.triggerId,revision=row.record.trigger?.revision;
+  if(row.kind!=='prompt'||!id||typeof revision!=='string'||!/^[a-f0-9]{64}$/.test(revision))throw Error('Refresh this automation before changing it.');
+  const result=object(await this.request('/api/triggers/'+automationId(id)+'/'+operation,'POST',{expectedRevision:revision},signal));
+  const saved=object(result.trigger);
+  if(result.ok!==true||saved.id!==id||saved.enabled!==false||(typeof saved.removedAt==='number')!==(operation==='archive'))throw Error('The automation change could not be confirmed.');
  }
  async prompt(id:string,signal:AbortSignal):Promise<ObjectValue>{const result=object(await this.request('/api/triggers/'+automationId(id),'GET',undefined,signal)),trigger=object(result.trigger);if(automationId(trigger.id)!==id)throw Error('Prompt identity changed.');return trigger;}
  async promptRuns(id:string,signal:AbortSignal):Promise<unknown[]>{return list(object(await this.request('/api/triggers/'+automationId(id)+'/runs','GET',undefined,signal)).runs);}
@@ -145,7 +226,7 @@ export class AutomationsProtocol {
   return result;
  }
  async scheduledVerb(id:string,verb:ScheduledVerb,signal:AbortSignal):Promise<unknown>{
-  const result=object(await this.request('/api/lifeops/scheduled-tasks/'+automationId(id)+'/'+verb,'POST',verb==='snooze'?{minutes:60}:{},signal));
+  const result=object(await this.request('/api/lifeops/scheduled-tasks/'+automationId(id)+'/'+verb,'POST',verb==='snooze'?{minutes:10}:{},signal));
   if(verb==='fire'){
    const fire=object(result.fire);
    if(fire.kind==='raced')throw new AutomationOutcomeError('Another run was already in progress.');

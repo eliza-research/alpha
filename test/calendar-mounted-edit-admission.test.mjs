@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {startMountedCalendar} from './fixtures/calendar-mounted-editor.mjs';
 
-test('mounted Calendar keeps each event edit and opens a separate new-event draft', {timeout: 240_000}, async t => {
+test('mounted Calendar Edit restores each event separately and New event opens its own form', {timeout: 240_000}, async t => {
   const browser = await startMountedCalendar();
   try {
     for (const [kind, nextTitle] of [['same', 'Fixture Existing Event A'], ['different', 'Fixture Existing Event B']]) {
@@ -20,9 +20,9 @@ test('mounted Calendar keeps each event edit and opens a separate new-event draf
           await title.fill('Retained edit A');
           await f.page.waitForFunction(() => window.quintCalendar.snapshot().retainedForm?.title === 'Retained edit A');
           const old = await f.snapshot();
-          await f.page.waitForFunction(async ({retained, target}) => await window.quintCalendar.saved('owner-a', target) === retained,
-            {retained: old.retained, target: old.form.target}, {polling: 100});
-          const durable = await f.invoke('saved', 'owner-a', old.form.target);
+          await f.page.waitForFunction(async retained => await window.quintCalendar.savedForCurrent() === retained,
+            old.retained, {polling: 100});
+          const durable = await f.invoke('savedForCurrent');
           assert.equal(durable, old.retained);
           await back();
           await detail.waitFor();
@@ -32,17 +32,25 @@ test('mounted Calendar keeps each event edit and opens a separate new-event draf
           await open(nextTitle);
           await edit();
           await title.waitFor();
-          assert.equal(await title.inputValue(), kind === 'same' ? 'Retained edit A' : nextTitle);
-          assert.equal(await f.invoke('saved', 'owner-a', old.form.target), durable);
+          assert.equal(await title.inputValue(),kind==='same'?'Retained edit A':nextTitle);
+          assert.equal(await f.button('Resume event draft').count(),0);
+          const opened=await f.snapshot();
+          assert.ok(opened.form);
+          if(kind==='different')assert.notEqual(opened.form.target,old.form.target);
           await back();
-          await detail.waitFor();
+          await back();
+          await open('Fixture Existing Event A');
+          await edit();
+          await title.waitFor();
+          assert.equal(await title.inputValue(),'Retained edit A');
+          assert.equal(await f.invoke('savedForCurrent'),durable);
+          await back();
           await back();
           await f.button('New event').click();
           await title.waitFor();
-          assert.equal(await title.inputValue(), '', 'New event has its own draft');
-          assert.equal(await f.invoke('saved', 'owner-a', old.form.target), durable);
-          assert.equal((await f.snapshot()).requests.filter(row => row.method !== 'GET').length, 0);
-
+          assert.notEqual(await title.inputValue(),'Retained edit A');
+          assert.notEqual((await f.snapshot()).form.id,old.form.id);
+          assert.equal(opened.requests.filter(row => row.method !== 'GET').length,0);
         } finally {await f.close();}
       });
     }

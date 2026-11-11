@@ -208,6 +208,10 @@ async function installCalendar({legacyTitle, eventTitles, notes}) {
       const store = await assistantDraftStore(JSON.stringify(binding));
       return (await store.read())?.text ?? '';
     },
+    async savedForCurrent() {
+      if(!shell.canonicalDraft.binding)return '';
+      return (await (await assistantDraftStore(shell.canonicalDraft.binding)).read())?.text ?? '';
+    },
     snapshot() {
       const state = shell.vget('calendar');
       const form = state.form;

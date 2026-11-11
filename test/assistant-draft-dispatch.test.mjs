@@ -1,5 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {restoreAttachments} from './support/attachment-restoration.mjs';
+import {copyVoiceScrollHooks} from './support/shell-voice-scroll.mjs';
 // Alpha's composer contract, run against the shared controller exactly as the pin projects it
 // (apps/app/src/prototype/assistant-draft-controller.ts only re-exports it under Alpha's name).
 const code=stripTypeScriptTypes(readFileSync(new URL('../.eliza/client-features/packages/ui/src/state/durable-draft-controller.ts',import.meta.url),'utf8'),{mode:'strip'});
@@ -36,6 +37,7 @@ for (const transition of ['session', 'history']) test(`the shell retires the old
     setState: (patch, callback) => updates.push({patch, callback}),
     refreshDraftBinding() { openings.push(controller.open('new')); },
   };
+  copyVoiceScrollHooks(shell);
   shell.refreshDraftBinding = shell.refreshDraftBinding.bind(shell);
   const session = {sessionId: transition === 'session' ? 'new-session' : 'old-session'};
   const snapshot = {session, startupResolved: true, history: transition === 'history'

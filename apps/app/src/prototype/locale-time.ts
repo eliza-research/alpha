@@ -26,11 +26,12 @@ export function localePreferences(): {locale: string; hourCycle: HourCycle} {
   return {locale: resolved.locale, hourCycle: prefs.hourCycle || (resolved.hourCycle === 'h11' || resolved.hourCycle === 'h12' ? 'h12' : 'h23')};
 }
 function format(options: Intl.DateTimeFormatOptions, locale = prefs.locale) {
-  const key = JSON.stringify([locale, options]);
+  const full: Intl.DateTimeFormatOptions = {...options};
+  if (prefs.hourCycle && full.hour) full.hourCycle = prefs.hourCycle;
+  full.timeZone ??= new Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const key = JSON.stringify([locale, full]);
   let value = cache.get(key);
   if (!value) {
-    const full: Intl.DateTimeFormatOptions = {...options};
-    if (prefs.hourCycle && full.hour) full.hourCycle = prefs.hourCycle;
     value = new Intl.DateTimeFormat(locale, full);
     cache.set(key, value);
   }

@@ -10,6 +10,7 @@ import vm from 'node:vm';
 import {TextEncoder} from 'node:util';
 import {stripTypeScriptTypes} from '../support/strip-types.mjs';
 import {loadPreparedBatchVoice} from './shared-batch-voice.mjs';
+import {copyVoiceScrollHooks} from '../support/shell-voice-scroll.mjs';
 
 function load(file,box,names,transform=source=>source){
  const source=transform(fs.readFileSync('apps/app/src/'+file,'utf8')).replace(/^import .*;\n/gm,'').replaceAll('export async function','async function').replaceAll('export function','function').replaceAll('export const','const').replaceAll('export type','type');
@@ -30,6 +31,7 @@ export function cloudVoiceViewFixture(options={}){
  // Imports are stripped by load(): supply the actual projected realtime recorder in this realm.
  load('../../../.eliza/client-features/packages/voice/src/realtime-voice-timing.ts',box,['createRealtimeVoiceTiming']);
  load('runtime/voice-timing.ts',box,['beginVoiceTurn','markVoiceTiming','abandonVoiceTurn','finishVoiceTurn','sendVoiceEntry','observeVoiceStartup','runVoiceStartupPreparation','voiceStartupTiming']);
+ load('runtime/note-default-title.ts',box,['nextDefaultNoteTitle']);
  load('local-speech-playback.ts',box,['playOwnedSpeech']);
  // The real read-aloud refusal; the on-device planner stays a stub.
  load('runtime/local-speech-text.ts',box,['screenSpeechText']);
@@ -75,6 +77,8 @@ export function cloudVoiceViewFixture(options={}){
   voiceConversationContext(binding){if(binding.conversationId!==f.conversation||binding.session.sessionId!==f.agent)throw Error('Voice room changed');return {view:this.state.view||'home',revision:f.contextRevision,sensitive:false,...(f.selectedObject?{selectedObject:f.selectedObject}:{})};}
   async sendVoiceTurn(input){this.voiceSendTurnId=input.turnId;input.signal.throwIfAborted();input.assertCurrent();f.sendInputs.push(input);f.sends++;if(f.holdReply)await new Promise(resolve=>f.releaseReply=resolve);input.signal.throwIfAborted();input.assertCurrent();if(f.navigationTarget){f.claims=(f.claims||0)+1;if(f.holdClaim)await new Promise(resolve=>f.releaseClaim=resolve);input.signal.throwIfAborted();input.assertCurrent();const target=f.navigationTarget;const switched=await input.navigation.apply(target,input.assertCurrent,async(chat,onCommitted)=>{if(target==='home')this.goHome(chat);else this.openView(target,undefined,chat);this.componentDidUpdate();onCommitted(this.voiceConversationContext(input.binding));if(f.interposeSelection)queueMicrotask(()=>{f.contextRevision++;this.componentDidUpdate();});return true;});f.acks=(f.acks||0)+1;if(f.holdAck)await new Promise(resolve=>f.releaseAck=resolve);input.navigation.finish(switched&&!f.unknownAck);input.signal.throwIfAborted();input.assertCurrent();}return {requestId:input.turnId,conversationId:f.conversation,userMessageId:crypto.randomUUID(),assistantMessageId:crypto.randomUUID(),text:'Synthetic matching reply.',complete:true,...f.badReply};}
  }
+ // Voice uses the normal shell's scroll hooks even when the test has no transcript DOM.
+ copyVoiceScrollHooks(Shell.prototype,box);
  const views={notes:{render:()=>({ed:{},vo:{bars:[]}}),back:()=>false,onLeave(){}}};box.installPrototypeVoiceAdapter(Shell,views);
  const shell=new Shell(),api={...shell.api('notes'),get:()=>shell.notes,set:patch=>Object.assign(shell.notes,patch),ic:icons};
  if(options.noteRecording)Object.assign(api,{voiceNoteStorage:()=>({mode:'legacy',epoch:1,target:'fixture'}),storageReady:()=>true,saveVoiceNote:patch=>shell.vset('notes',patch)});

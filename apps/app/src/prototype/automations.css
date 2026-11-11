@@ -130,3 +130,6 @@
 .schedule-clock input:focus-visible,.schedule-period button:focus-visible,.schedule-repeat-presets button:focus-visible,.schedule-days button:focus-visible{outline:2px solid var(--fg);outline-offset:3px}
 
 .automation-header-save{min-height:42px;padding:8px 18px;border-radius:24px;background:var(--fg);color:var(--bg);font:inherit;font-weight:600}.automation-header-save:disabled{opacity:.4}.automation-schedule-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:6px;background:var(--s2);border-radius:18px}.automation-schedule-options button{min-height:44px;padding:10px;border-radius:13px;font:inherit;font-size:14px;font-weight:600;color:var(--fg);background:transparent}.automation-schedule-options button[aria-pressed=true]{background:var(--fg);color:var(--bg)}.automation-fields textarea{resize:none;min-height:120px}.automation-fields input,.automation-fields textarea{border:0;background:var(--s2);border-radius:16px}.automation-when h3{font-size:15px;margin:20px 0 10px}.automation-detail-body{padding-bottom:calc(var(--alpha-dock-reserve,108px) + 24px)}
+
+.workflow-list .notes-menu{top:100px}
+.workflow-row-open:disabled{opacity:.5}

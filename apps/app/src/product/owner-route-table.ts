@@ -27,11 +27,11 @@ export const OWNER_ROUTE_TABLE = {
       prefixes: ["/api/automations", "/api/lifeops", "/api/triggers"],
       id: "^(?!.*\\.\\.)[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$",
       routes: [
-        {methods: ["GET"], paths: ["/api/automations", "/api/lifeops/definitions", "/api/lifeops/reminders", "/api/lifeops/scheduled-tasks?ownerVisibleOnly=1", "/api/lifeops/scheduled-tasks/{id}", "/api/triggers/{id}", "/api/triggers/{id}/runs"]},
+        {methods: ["GET"], paths: ["/api/automations", "/api/lifeops/definitions", "/api/lifeops/reminders", "/api/lifeops/scheduled-tasks?ownerVisibleOnly=1", "/api/lifeops/scheduled-tasks/{id}", "/api/triggers/{id}", "/api/triggers/{id}/runs", "/api/triggers?removed=1", "/api/workflow/status", "/api/workflow/removed-workflows", "/api/workflow/workflows/{id}"]},
         {methods: ["POST"], paths: ["/api/lifeops/definitions", "/api/triggers", "/api/lifeops/occurrences/{id}/snooze", "/api/triggers/{id}/execute",
           "/api/lifeops/scheduled-tasks/{id}/snooze", "/api/lifeops/scheduled-tasks/{id}/skip", "/api/lifeops/scheduled-tasks/{id}/complete",
           "/api/lifeops/scheduled-tasks/{id}/dismiss", "/api/lifeops/scheduled-tasks/{id}/escalate", "/api/lifeops/scheduled-tasks/{id}/acknowledge",
-          "/api/lifeops/scheduled-tasks/{id}/edit", "/api/lifeops/scheduled-tasks/{id}/reopen", "/api/lifeops/scheduled-tasks/{id}/fire"]},
+          "/api/lifeops/scheduled-tasks/{id}/edit", "/api/lifeops/scheduled-tasks/{id}/reopen", "/api/lifeops/scheduled-tasks/{id}/fire", "/api/triggers/{id}/archive", "/api/triggers/{id}/restore", "/api/workflow/workflows/{id}/lifecycle"]},
         {methods: ["PUT"], paths: ["/api/lifeops/definitions/{id}", "/api/triggers/{id}"]},
         {methods: ["DELETE"], paths: ["/api/lifeops/definitions/{id}", "/api/triggers/{id}"]}
       ]

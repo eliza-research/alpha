@@ -1750,7 +1750,10 @@
             <sc-if value="{{photos.v.canEmail}}"><button onClick="{{photos.v.email}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.mail}}"></path></svg>Email</button></sc-if>
             <sc-if value="{{photos.v.notSecure}}"><button onClick="{{photos.v.share}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.share}}"></path></svg>Share</button></sc-if>
             <sc-if value="{{photos.v.notDeleted}}"><button aria-label="{{photos.v.deleteLabel}}" onClick="{{photos.v.del}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.trash}}"></path></svg>Delete</button></sc-if>
-            <sc-if value="{{photos.v.isDeleted}}"><button onClick="{{photos.v.recover}}">Recover</button><sc-if value="{{photos.v.canDeleteForever}}"><button aria-label="Delete this item forever" onClick="{{photos.v.deleteForever}}">Delete permanently</button></sc-if></sc-if>
+            <sc-if value="{{photos.v.isDeleted}}">
+              <button onClick="{{photos.v.recover}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.stUndo}}"></path></svg>Recover</button>
+              <sc-if value="{{photos.v.canDeleteForever}}"><button aria-label="Delete this item forever" onClick="{{photos.v.deleteForever}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ic.trash}}"></path></svg>Delete permanently</button></sc-if>
+            </sc-if>
           </div></details>
         </div>
       </div>
@@ -3259,11 +3262,31 @@
   </sc-if>
   <div class="workflow-list" data-alpha-subview="workflows-list" inert="{{workflows.listCovered}}" aria-hidden="{{workflows.listCovered}}" style="display:flex;flex-direction:column;flex:1;min-height:0">
   <div data-alpha-app-header="main" style="display: flex; align-items: center; height: 56px; margin-top: 44px; padding: 0 8px 0 20px; gap: 2px; flex-shrink: 0">
-    <sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
-    <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">Workflows</h1>
+    <sc-if value="{{workflows.normalList}}"><sc-if value="{{showAppBack}}"><button class="app-header-back" aria-label="Back to apps" onClick="{{backToApps}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if></sc-if>
+    <sc-if value="{{workflows.recentlyDeleted}}"><button class="app-header-back" aria-label="Back to workflows" onClick="{{workflows.backToList}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.back}}"></path></svg></button></sc-if>
+    <h1 data-alpha-app-title class="serif" style="margin: 0; font-size: 32px; flex-grow: 1; letter-spacing: -.01em">{{workflows.listTitle}}</h1>
     <sc-if value="{{workflows.localHistory}}"><button aria-label="Manage workflow history" onClick="{{workflows.localHistory}}" style="min-height:44px;padding:8px">History</button></sc-if>
-    <button class="ib workflow-new" aria-label="New automation" onClick="{{workflows.newFlow}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button>
+    <sc-if value="{{workflows.normalList}}"><button class="ib workflow-new" aria-label="New automation" onClick="{{workflows.newFlow}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.plus}}"></path></svg></button></sc-if>
+    <button class="ib" aria-label="Workflows options" aria-expanded="{{workflows.listMenu}}" aria-haspopup="dialog" onClick="{{workflows.toggleListMenu}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.more}}"></path></svg></button>
   </div>
+  <sc-if value="{{workflows.listMenu}}"><div data-alpha-popup>
+    <button aria-hidden="true" tabindex="-1" onClick="{{workflows.closeListMenu}}" style="position:absolute;inset:0;z-index:11;background:transparent"></button>
+    <div class="notes-menu" role="dialog" aria-label="Workflows options">
+      <button onClick="{{workflows.startSelection}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.check}}"></path></svg>Select workflows</button>
+      <button onClick="{{workflows.openDeleted}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.trash}}"></path></svg>Recently deleted</button>
+    </div>
+  </div></sc-if>
+  <sc-if value="{{workflows.selecting}}"><div class="notes-selection-bar" role="group" aria-label="Selected workflows">
+    <button onClick="{{workflows.endSelection}}" aria-label="Close selection"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.x}}"></path></svg></button><span>{{workflows.selectedCount}} selected</span>
+    <button onClick="{{workflows.selectAll}}">Select all</button>
+    <button disabled="{{workflows.selectionDisabled}}" aria-label="{{workflows.recoveryLabel}}" onClick="{{workflows.prepareRecovery}}"><svg class="i" viewBox="0 0 24 24"><path d="{{workflows.recoveryIcon}}"></path></svg></button>
+  </div></sc-if>
+  <sc-if value="{{workflows.recoveryReview}}"><div ref="{{workflows.recoveryReview.modal}}" class="calendar-confirmation" data-alpha-popup>
+    <section class="calendar-confirmation-panel" role="dialog" aria-modal="true" aria-label="{{workflows.recoveryReview.title}}">
+      <h2>{{workflows.recoveryReview.title}}</h2><sc-if value="{{workflows.recoveryReview.message}}"><p>{{workflows.recoveryReview.message}}</p></sc-if>
+      <div class="calendar-confirmation-actions"><button onClick="{{workflows.recoveryReview.close}}">No</button><button class="primary" onClick="{{workflows.recoveryReview.confirm}}">Yes</button></div>
+    </section>
+  </div></sc-if>
   <sc-if value="{{workflows.automation}}">
     <div class="workflow-toolbar">
       <button class="workflow-filter-trigger" aria-label="Filter workflows" aria-haspopup="dialog" onClick="{{workflows.automation.openFilters}}"><span>{{workflows.automation.filterLabel}}</span><svg class="i" viewBox="0 0 24 24"><path d="{{ic.down}}"></path></svg></button>
@@ -3280,7 +3303,8 @@
     </sc-if>
     <sc-for list="{{workflows.cards}}" as="f">
       <div class="workflow-row">
-        <button class="workflow-row-open" onClick="{{f.open}}" style="{{f.dim}}">
+        <button class="workflow-row-open" disabled="{{f.disabled}}" onClick="{{f.open}}" style="{{f.dim}}">
+          <sc-if value="{{f.selecting}}"><span class="notes-selection-check" data-selected="{{f.selected}}"><svg class="i" viewBox="0 0 24 24"><path d="{{ic.check}}"></path></svg></span></sc-if>
           <sc-if value="{{f.icon}}"><svg class="i workflow-kind-icon" viewBox="0 0 24 24"><path d="{{f.icon}}"></path></svg></sc-if>
           <span class="workflow-row-content"><span class="workflow-row-title">{{f.name}}</span>
           <span class="workflow-row-summary">

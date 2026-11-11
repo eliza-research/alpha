@@ -6,6 +6,7 @@ import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {restoreAttachments} from './support/attachment-restoration.mjs';
+import {copyVoiceScrollHooks} from './support/shell-voice-scroll.mjs';
 import {transformSync} from 'esbuild';
 const root=process.env.ALPHA_NOTES_BASE_ROOT??fileURLToPath(new URL('..',import.meta.url));
 const changed=process.env.ALPHA_NOTES_CANDIDATE_ROOT??root;
@@ -117,7 +118,8 @@ test('leaving failed legacy edits without a confirmed draft keeps the text visib
 });
 function bindingFixture(){
  let notify;const paints=[],actions=[],state={draft:'Owner A unsent',msgs:[],chat:'sheet'},connection={session:{sessionId:'owner-a'},startupResolved:true};
- const shell={cancelVoiceScrollFollow(){},live:true,connectionSession:'owner-a',startupDraft:null,S:()=>state,composerDraft:{binding:'owner-a',retire(notify=true){actions.push(['retire',notify]);this.binding=undefined;},edit(text){actions.push(['edit',this.binding,text]);}},draftBindingAbort:{abort:()=>actions.push(['abort'])},refreshDraftBinding:()=>actions.push(['open',state.draft]),setState(update,after){paints.push(()=>{Object.assign(state,typeof update==='function'?update(state):update);shell.composerDraft.edit(state.draft);after?.();});}};
+ const shell={live:true,connectionSession:'owner-a',startupDraft:null,S:()=>state,composerDraft:{binding:'owner-a',retire(notify=true){actions.push(['retire',notify]);this.binding=undefined;},edit(text){actions.push(['edit',this.binding,text]);}},draftBindingAbort:{abort:()=>actions.push(['abort'])},refreshDraftBinding:()=>actions.push(['open',state.draft]),setState(update,after){paints.push(()=>{Object.assign(state,typeof update==='function'?update(state):update);shell.composerDraft.edit(state.draft);after?.();});}};
+ copyVoiceScrollHooks(shell,{},path.join(changed,'apps/app/src/prototype/model.js'));
  const scope={restoreAttachments,connectionController:{subscribe:fn=>{notify=fn;return ()=>{};},getSnapshot:()=>connection,getSelectedConversationId:()=>undefined},cancelMessageContext(){},clearMapsSelection(){},alphaClient:{disconnect(){}},syncStoppedReplyNotice(){},syncCanonicalNotes(){},context(){},collapseSystemNotices:x=>x,mergeConversationDelivery:(x,y)=>[...x,...y]};vm.createContext(scope);vm.runInContext(transform('globalThis.install=function(){'+slice('    this.connectionUnsubscribe = connectionController.subscribe(() => {','    // Canonical is the default;')+'};'),scope);scope.install.call(shell);return{shell,state,connection,paints,actions,notify:()=>notify()};
 }
 for(const kind of ['owner','history'])test(`${kind} transition retires old draft before paint and opens the new binding after clearing`,async()=>{

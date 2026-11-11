@@ -82,3 +82,17 @@ test('full message dates retain seconds and follow the device hour cycle', () =>
   assert.match(L.formatFullDateTime(afternoon), /3:04:00 PM/);
   L.setLocalePreferences({});
 });
+
+test('cached formatters follow a changed device zone and retain the chosen hour cycle',()=>{
+  const previous=process.env.TZ;
+  try{
+    L.setLocalePreferences({locale:'en-US',hourCycle:'h23'});
+    const instant=new Date('2026-11-11T18:00:00Z');
+    process.env.TZ='America/Los_Angeles';assert.equal(L.formatTime(instant),'10:00');
+    process.env.TZ='America/New_York';assert.equal(L.formatTime(instant),'13:00');
+    assert.match(L.formatDateTime(instant,'de-DE'),/13:00/);
+  }finally{
+    if(previous===undefined)delete process.env.TZ;else process.env.TZ=previous;
+    L.setLocalePreferences({});
+  }
+});
