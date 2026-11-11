@@ -301,7 +301,7 @@ test('Home restores the same owner snapshot while the provider is pending and re
   const pending=async(_path,_method,_body,signal)=>new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')),{once:true}));
   app=adapterFixture(pending,{},options);
   await wait(()=>app.home().homeWorkflowHasRows===true);
-  assert.equal(app.home().homeWorkflowConfirmedEmpty,false);assert.equal(app.home().homeWorkflowTime,'Last loaded items');
+  assert.equal(app.home().homeWorkflowConfirmedEmpty,false);assert.equal(app.home().homeWorkflowTime,'View automations');
   app.retire();assert.notEqual(app.home().homeWorkflowHasRows,true);app.close();
   app=adapterFixture(pending,{}, {...options,disconnected:true,savedCredential:{...cloudAccount,expiresAt:Date.now()+60000}});
   await wait(()=>app.home().homeWorkflowHasRows===true);assert.equal(app.home().homeWorkflowConfirmedEmpty,false);app.close();
