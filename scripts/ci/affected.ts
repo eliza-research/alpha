@@ -35,9 +35,9 @@ export function affected(paths: readonly string[]) {
       result.android = true;
     } else if (path === '.github/workflows/resident-prepare.yml') {
       result.prepare = true;
-    } else if (/^\.github\/workflows\/(resident-android|bun-spawn-seccomp|android-emulator|digest-restart)\.yml$/.test(path)) {
+    } else if (/^\.github\/workflows\/(resident-android|android-emulator)\.yml$/.test(path)) {
       // Explicit qualification/diagnostics; resident push/nightly runs are opt-in by repository variable,
-      // and the emulator evidence and digest process-recovery workflows have no trigger but a dispatch.
+      // and the emulator evidence workflow has no trigger but a dispatch.
     } else if (browserReadAndroid.has(path)) {
       result.browser = result.android = true;
     } else if (/^android\//.test(path)) {
