@@ -164,11 +164,12 @@ function modelDependencies(path, paths = new Set()) {
 }
 
 /** Check concrete source observations at every named model transition. */
-export async function checkTraces({model, modelPath, sources, traces, assumptions = [], scope, id = model, out, batchSize = 60, driverHashes, generatedSources = []}) {
+export async function checkTraces({model, modelPath, sources, traces, assumptions = [], scope, id = model, out, batchSize = 60, definitionBatchSize, driverHashes, generatedSources = []}) {
   if (!identifier.test(model) || !/^[A-Za-z0-9_-]+$/.test(id)) throw new Error('Invalid model or receipt identifier');
   if (!['complete-finite-helper', 'bounded-component', 'bounded-orchestration'].includes(scope)) throw new Error('An explicit refinement scope is required');
   if (!Array.isArray(traces) || !traces.length || !Array.isArray(sources) || !sources.length) throw new Error('Concrete traces and implementation source paths are required');
   if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 500) throw new Error('Invalid trace batch size');
+  if (definitionBatchSize !== undefined && (!Number.isSafeInteger(definitionBatchSize) || definitionBatchSize < 1 || definitionBatchSize > 500)) throw new Error('Invalid definition batch size');
   const path = modelFile(model, modelPath);
   const invariant = invariantFor(model);
   const modelInputs = modelDependencies(path);
@@ -219,25 +220,39 @@ export async function checkTraces({model, modelPath, sources, traces, assumption
         }
         return [`  // ${JSON.stringify(trace.name || name)}\n  run ${name} = ${expression}`, ...rejected];
       });
-      const wrapper = join(temporary, `Refinement${offset}.qnt`);
-      const importPath = relative(temporary, path).replaceAll('\\', '/').replace(/\.qnt$/, '');
-      writeFileSync(wrapper, `module Refinement${offset} {\n  import ${model} as spec from ${JSON.stringify(importPath)}\n${definitions.join('\n')}\n}\n`);
-      const args = [join(root, 'node_modules/@informalsystems/quint/dist/src/cli.js'), 'test', wrapper,
-        `--main=Refinement${offset}`, '--backend=typescript', '--max-samples=1', '--seed=20261107', '--match=^trace[0-9]+(Reject[0-9]+)?Test$'];
-      const {result, interruptedAttempt} = await runQuintChecker(() => spawnSync(process.execPath, args,
-        {cwd: root, encoding: 'utf8', timeout: 120000, maxBuffer: 16 * 1024 * 1024}));
-      const output = `${result.stdout || ''}${result.stderr || ''}`;
-      const checked = Number(output.match(/(\d+) passing/)?.[1] || 0);
-      const passed = !result.error && !result.signal && result.status === 0 && checked === definitions.length;
-      const mismatched = !result.error && !result.signal && /\[QNT508\]|Assertion failed/.test(output);
-      const kind = passed ? 'passed' : mismatched ? 'observation-mismatch' : 'tool-failure';
-      receipt.results.push({offset, count: batch.length, generatedCases: definitions.length, checked, exitCode: result.status, signal: result.signal, kind, interruptedAttempt,
-        error: result.error?.message, output,
-        names: batch.map(trace => trace.name)});
+      const definitionGroups = definitionBatchSize === undefined ? [definitions]
+        : Array.from({length: Math.ceil(definitions.length / definitionBatchSize)},
+          (_, index) => definitions.slice(index * definitionBatchSize, (index + 1) * definitionBatchSize));
+      const parts = [];
+      for (const [part, group] of definitionGroups.entries()) {
+        const module = `Refinement${offset}${part ? `Part${part}` : ''}`;
+        const wrapper = join(temporary, `${module}.qnt`);
+        const importPath = relative(temporary, path).replaceAll('\\', '/').replace(/\.qnt$/, '');
+        writeFileSync(wrapper, `module ${module} {\n  import ${model} as spec from ${JSON.stringify(importPath)}\n${group.join('\n')}\n}\n`);
+        const args = [join(root, 'node_modules/@informalsystems/quint/dist/src/cli.js'), 'test', wrapper,
+          `--main=${module}`, '--backend=typescript', '--max-samples=1', '--seed=20261107', '--match=^trace[0-9]+(Reject[0-9]+)?Test$'];
+        const {result, interruptedAttempt} = await runQuintChecker(() => spawnSync(process.execPath, args,
+          {cwd: root, encoding: 'utf8', timeout: 120000, maxBuffer: 16 * 1024 * 1024}));
+        const output = `${result.stdout || ''}${result.stderr || ''}`;
+        const checked = Number(output.match(/(\d+) passing/)?.[1] || 0);
+        const passed = !result.error && !result.signal && result.status === 0 && checked === group.length;
+        const mismatched = !result.error && !result.signal && /\[QNT508\]|Assertion failed/.test(output);
+        parts.push({generatedCases: group.length, checked, exitCode: result.status, signal: result.signal,
+          kind: passed ? 'passed' : mismatched ? 'observation-mismatch' : 'tool-failure', interruptedAttempt,
+          error: result.error?.message, output,
+          ...(definitionBatchSize === undefined ? {} : {definitionHashes: group.map(digest)})});
+      }
+      const failed = parts.find(part => part.kind !== 'passed'), first = failed || parts[0];
+      const output = parts.map(part => part.output).join(''), checked = parts.reduce((sum, part) => sum + part.checked, 0);
+      const kind = first.kind;
+      receipt.results.push({offset, count: batch.length, generatedCases: definitions.length, checked,
+        exitCode: first.exitCode, signal: first.signal, kind, interruptedAttempt: first.interruptedAttempt,
+        error: first.error, output, names: batch.map(trace => trace.name),
+        ...(definitionBatchSize === undefined ? {} : {definitionPartitions: parts})});
       if (kind === 'observation-mismatch') throw new Error(`Source/model trace mismatch in ${model} batch ${offset}\n${output}`);
-      if (!passed) {
-        const exit = result.signal ? `signal ${result.signal}` : `exit ${result.status}, checked ${checked} of ${definitions.length}`;
-        throw new Error(`Quint checker failed in ${model} batch ${offset} (${result.error?.message ?? exit})\n${output}`);
+      if (kind !== 'passed') {
+        const exit = first.signal ? `signal ${first.signal}` : `exit ${first.exitCode}, checked ${checked} of ${definitions.length}`;
+        throw new Error(`Quint checker failed in ${model} batch ${offset} (${first.error ?? exit})\n${output}`);
       }
     }
   } catch (error) {
