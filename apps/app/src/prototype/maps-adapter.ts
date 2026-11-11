@@ -51,7 +51,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   const device=registerPlugin<{openSettings(input:{page:string}):Promise<unknown>}>('AlphaDevice');
   const module = views.maps; if (!module) return () => {};
   const original = { render: module.render, back: module.back, onLeave: module.onLeave, reply: module.reply, suggestions: module.suggestions, ongoing: module.ongoing };
-  let api: Bag | undefined, disposed=false, renders=0,voicePreferenceRead=false;
+  let api: Bag | undefined, disposed=false, renders=0,voicePreferenceRead=false,placeShown=false;
   let planeBasemap:MapBasemap|undefined, plane: MapPlane | undefined, planeElement: HTMLElement | undefined;
   let mapGeneration=0,mapFailed=false,mapObserver:MutationObserver|undefined;
   let mapCopyright='';
@@ -178,7 +178,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
   };
   module.ongoing = () => { const nav=screen.isNavigating()?screen.view().navigation:undefined; return nav?{label:nav.arrived?'Arrived':nav.remainingTime,icon:'pin'}:null; };
   module.reply = () => null;
-  module.suggestions = () => mapsConnected() ? ['Help me with this place', 'Explain Maps coverage'] : ['Help me with Maps', 'Explain location permissions'];
+  module.suggestions = () => mapsConnected() ? [...(placeShown ? ['Help me with this place'] : []), 'Explain Maps coverage'] : ['Help me with Maps', 'Explain location permissions'];
   module.render = (st: Bag, currentApi: Bag) => {
     api = currentApi;
     if(!voicePreferenceRead){navigationVoice.enabled=st.voice!==false;voicePreferenceRead=true;}
@@ -194,6 +194,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       });
     }
     const view = screen.view();
+    placeShown = !!view.place;
     // Calling the original with neutral state retains visual tokens without
     // generating sample place cards, address guesses, routes or timers.
     const data = original.render({ ...st, query: null, place: null, directions: null, nav: false, saved: [], pan: null }, currentApi);
@@ -245,7 +246,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       providerDisclosure:region?'Searches, search areas and route points are sent to the configured regional Maps provider.':describeMapsDisclosure(coverage?.disclosure),
       locationDisclosure:region||coverage?'Routes share selected points':'',
       cloudCredit:cloudCredit(directionsOpen),
-      notNative:false, hasNativeMap:true, globalBasemap:globalMap, regionalBasemap:!!region && basemap === region,
+      hasNativeMap:true, globalBasemap:globalMap, regionalBasemap:!!region && basemap === region,
       cloudBasemap:!!raster && basemap === raster && !googleMaps, googleMaps, googleMapsLogo,
       googleMapMissing:googleMaps && !basemap,
       mapLabel:googleMaps ? 'Google Maps' : globalMap ? 'World map' : basemap === region && region ? 'Regional map' : basemap ? 'Cloud map' : 'Map',
@@ -287,7 +288,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       },
       mode:view.mode==='navigation'?'nav':view.mode==='directions'?'dir':view.mode, isBase:view.mode==='base',isResults,isPlace,isDir:view.mode==='directions',isNav,
       showSearch:view.showSearch, showRec:!isNav||view.map.overlay.follow===false, grid: '', major: '', fwy: '', water: '', parks: '', rwy: '', routeD: '', doneD: '', hasRoute: false, pins: [], labels: [], meCss: 'display:none;',
-      mapDown: () => {}, mapUp: () => {}, q: view.query, hasQ: !!view.query, searchIcon:view.searchLead==='back'?'M15 5l-7 7 7 7':data.searchIcon, searchLabel: view.searchLead === 'back' ? 'Back' : 'Search', leadIsSearch: view.searchLead !== 'back',
+      q: view.query, hasQ: !!view.query, searchIcon:view.searchLead==='back'?'M15 5l-7 7 7 7':data.searchIcon, searchLabel: view.searchLead === 'back' ? 'Back' : 'Search', leadIsSearch: view.searchLead !== 'back',
       searchLead: () => screen.searchLead(),
       onQ: (event: Event) => screen.setQuery((event.target as HTMLInputElement).value),
       focusQ: () => screen.focusQuery(),
@@ -299,7 +300,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       results: results.map(row => ({ id: row.key, name: row.name, sub: row.detail, d: PIN, go: () => screen.choose(row.key) })),
       hasResults: results.length > 0, noResults: view.noResults || view.hasResults && results.length === 0, emptyQ: view.emptyQuery,
       recenter: () => screen.recenter(), recBottom, recCss: '',
-      sheetH: sheetHeight, sheetSw: { down: () => {}, up: () => {} }, sheetTap: () => {},
+      sheetH: sheetHeight,
       askAlpha: () => currentApi.send(view.query || 'Help me with Maps.'), noResTxt: 'Ask',
     });
     const place = view.place;
@@ -309,7 +310,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
       data.pc = {
         name: place.name, meta: place.meta, addr: place.address,
         hasHours: !!place.hours, openTxt: 'Hours', openCss: '', hoursTxt: place.hours || '',
-        hasPhone: false, hasWeb: !!place.website, web: () => screen.openWebsite(),
+        hasWeb: !!place.website, web: () => screen.openWebsite(),
         canDir: place.canDirections && placeSourceVerified, min: 'Directions', saved: place.saved,
         saveLabel: place.saved ? 'Remove from saved' : 'Save', starCss: place.saved ? 'color:var(--acct)' : '', starFill: place.saved ? 'fill:currentColor' : '',
         close: () => screen.closePlace(), save: !restrictedPlace || place.saved ? () => screen.toggleSaved() : undefined,
@@ -317,10 +318,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
         share: restrictedPlace ? undefined : () => screen.sharePlace(),
         nativeName: place.name, nativeEditing: place.editingName,
         canRename:!restrictedPlace&&(place.saved||place.meta==='Coordinates'||place.meta==='Device location'),
-        nativeTitleRole: restrictedPlace ? undefined : 'button', nativeTitleTabIndex: restrictedPlace ? undefined : 0,
-        nativeTitleLabel: restrictedPlace ? undefined : 'Rename place',
         nativeEdit: restrictedPlace ? undefined : () => screen.startRename(),
-        nativeEditKey: restrictedPlace ? undefined : (event: KeyboardEvent) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); screen.startRename(); } },
         nativeRename: (event: Event) => screen.rename((event.target as HTMLInputElement).value),
         nativeApplyName: () => screen.applyName(),
       };
@@ -340,7 +338,7 @@ export function installPrototypeMapsAdapter(Component: { prototype: Bag }, views
        routes:directions.routes.map(choice=>({label:`${choice.label}, ${choice.duration}, ${choice.meta}`,t:choice.label,sub:`${choice.duration} · ${choice.meta}`,on:choice.selected,css:choice.selected?'background:var(--acc);color:#fff':'background:var(--s2);color:var(--fg)',go:()=>screen.chooseRoute(choice.id)})),
        start:()=>screen.start(),
        nav:{going:!nav?.arrived,arrived:!!nav?.arrived,dist:nav?.distance||'Locating…',street:nav?.instruction||'Waiting for location',icon:nav?.maneuverIcon||PIN,hasThen:!!nav?.following,thenD:nav?.following?.icon||'',thenText:nav?.following?.text||'',
-        left:nav?.remainingTime||'Guidance',meta:nav?.remaining&&nav.remaining===nav.meta?'':nav?.meta||'Foreground guidance',remaining:nav?.remaining||'',
+        left:nav?.remainingTime||'Guidance',meta:nav?.remaining&&nav.remaining===nav.meta?'':nav?.meta||'',remaining:nav?.remaining||'',
         offRoute:!!nav?.offRoute,canReroute:!!nav?.canReroute,reroute:()=>screen.reroute(),rerouteLabel:'Reroute from here',background:!!nav?.background,
         end:()=>screen.end(),ask:()=>currentApi.send('Help me with this route.'),voiceLabel:navigationVoice.enabled?'Mute voice guidance':'Enable voice guidance',voice:googleMaps ? undefined : ()=>{screen.toggleVoice();currentApi.set({voice:navigationVoice.enabled});},voiceD:navigationVoice.enabled?VOICE_ON:VOICE_OFF}};
     }
