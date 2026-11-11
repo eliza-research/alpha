@@ -206,7 +206,7 @@ body:has([data-alpha-layer="conversation"][aria-hidden="false"]) .alpha-plan-not
 .alpha-status{display:inline-flex;align-items:center;gap:6px;color:var(--connection-fg,#000)}
 .alpha-status-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--connection-mut,#8a8a8a)}
 .alpha-status[data-tone=ok]>.alpha-status-dot{background:#1f9d55}
-.alpha-status[data-tone=warn]>.alpha-status-dot{background:var(--alpha-status-amber,#d08a00)}
+.alpha-status[data-tone=warn]>.alpha-status-dot{background:var(--alpha-status-caution,#d08a00)}
 .alpha-status[data-tone=err]>.alpha-status-dot{background:#d64545}
 .alpha-status[data-tone=busy]>.alpha-status-dot{animation:alpha-pulse 1.2s ease-in-out infinite}
 @keyframes alpha-pulse{50%{opacity:.3}}
