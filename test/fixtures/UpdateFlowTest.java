@@ -1851,6 +1851,7 @@ public final class UpdateFlowTest {
   ManifestReply(int status,byte[] bytes){this.status=status;this.bytes=bytes;}
  }
  private static volatile ManifestReply manifestTlsReply;
+ private static volatile Runnable beforeManifestTlsResponse=()->{};
  private static void prepareCacheTls(String file)throws Exception{
   var keys=java.security.KeyStore.getInstance("PKCS12");
   try(var input=Files.newInputStream(java.nio.file.Path.of(file))){keys.load(input,"fixture-pass".toCharArray());}
@@ -1867,6 +1868,7 @@ public final class UpdateFlowTest {
    ManifestReply reply=manifestTlsReply;
    exchange.getResponseHeaders().set("Cache-Control","public, max-age=86400");
    try{
+    beforeManifestTlsResponse.run();
     exchange.sendResponseHeaders(reply.status,reply.bytes.length==0?-1:reply.bytes.length);
     if(reply.bytes.length>0)try(var output=exchange.getResponseBody()){output.write(reply.bytes);}
    }finally{exchange.close();}
@@ -2168,6 +2170,35 @@ public final class UpdateFlowTest {
    System.out.println("PASS fresh HTTPS offer rejects cached withdrawal, change and transport failure before one current commit");
   }finally{manifestTlsReply=null;AlphaLocalAgentPlugin.pauseObserver=()->{};}
  }
+ private static void automaticConsentRecheckedAfterTls(File cache)throws Exception{
+  Context context=installing(cache);AlphaDevicePlugin owner=bridge(context,Lifecycle.State.RESUMED);
+  byte[] current=manifestBytes(manifestOffer(tlsApk(8)));
+  try{
+   manifestTlsReply=new ManifestReply(200,current);
+   String digest=discoverTlsOffer(owner,current);
+   int reads=manifestTlsRequests.get(),releases=AlphaLocalAgentPlugin.releases;
+   beforeManifestTlsResponse=()->context.packages.installsAllowed=false;
+   PluginCall refused=bindAutomatic(tlsApk(8),digest);owner.installUpdate(refused);refused.awaitAnswer();
+   check(manifestTlsRequests.get()==reads+1&&!context.packages.canRequestPackageInstalls(),
+    "install consent was revoked during the final HTTPS feed response");
+   check(refused.resolved.get()==1&&refused.result!=null&&"permission-required".equals(refused.result.optString("status")),
+    "the automatic attempt reports revoked consent");
+   check(context.packages.installer.committed.isEmpty()&&context.packages.installer.abandoned.size()==1&&
+    context.packages.installer.sessions.isEmpty()&&AlphaDevicePlugin.UpdatePause.store().read()==null&&
+    AlphaLocalAgentPlugin.releases==releases+1&&!download(context).exists()&&owner.activity.started.isEmpty(),
+    "revocation before commit abandons only the staged session and releases the pause without prompting");
+   beforeManifestTlsResponse=()->{};
+   check(tap(owner).resolved.get()==1&&owner.activity.started.size()==1&&
+    "android.settings.MANAGE_UNKNOWN_APP_SOURCES".equals(owner.activity.started.get(0).action)&&
+    context.packages.installer.committed.isEmpty()&&manifestTlsRequests.get()==reads+1,
+    "an explicit manual attempt still opens Android settings after revocation");
+   context.packages.installsAllowed=true;
+   PluginCall retry=bindAutomatic(tlsApk(8),digest);owner.installUpdate(retry);retry.awaitAnswer();
+   check(retry.resolved.get()==1&&context.packages.installer.committed.size()==1&&owner.activity.started.size()==1,
+    "restored consent admits one new attempt and opens no automatic prompt");
+   System.out.println("PASS revoked install consent during final HTTPS leaves no commit or pause");
+  }finally{beforeManifestTlsResponse=()->{};manifestTlsReply=null;}
+ }
  private static PluginCall updateState(AlphaDevicePlugin bridge)throws Exception{
   PluginCall read=new PluginCall(new JSObject());bridge.updateState(read);read.awaitAnswer();return read;
  }
@@ -2220,6 +2251,7 @@ public final class UpdateFlowTest {
    if(cacheTlsServer!=null){
     verifiedAutomaticCacheUsesOneRealTlsResponse(cache);
     automaticOfferRecheckedOverTls(cache);
+    automaticConsentRecheckedAfterTls(cache);
    }
    automaticUpdatesRequireSupportedAndroidAndExistingConsent(cache);
    manualUpdateDoesNotWaitForAutomaticColdBootReadiness(cache);

@@ -305,6 +305,31 @@ public final class UpdateCompositionHarness {
     sending.open();install.awaitAnswer();require(install.resolved.get()==1,"warm automatic commit handed to Android");
     trace.macro("ready boot crosses the same exact durable boundary",observe(),Trace.action("handOff"),Trace.action("observeSession","sealed",false));
     break;
+   case "consent-revoked-before-commit":
+    register(1);begin(true);ack(1,true,true);
+    acquiring.await();journalOutcome="acquired";trace.step("sealAcquire",observe());
+    acquiring.open();confirming.await();journalOutcome="stopped";trace.step("requestConfirmedStop",observe());
+    var readsField=UpdateFlowTest.class.getDeclaredField("syntheticManifestRequests");
+    readsField.setAccessible(true);
+    var reads=(java.util.concurrent.atomic.AtomicInteger)readsField.get(null);
+    int before=reads.get();
+    context.packages.installsAllowed=false;trace.step("consent",observe(),false);
+    sending.open();confirming.open();install.awaitAnswer();
+    require(reads.get()==before+1,"the exact final manifest was fetched before refusal");
+    require(install.resolved.get()==1 && install.rejected.get()==0
+      && "permission-required".equals(install.result.optString("status")),"late automatic consent refusal is explicit");
+    require(installer.committed.isEmpty() && installer.abandoned.equals(java.util.List.of(SESSION))
+      && installer.sessions.isEmpty() && bridges.get(1).activity.started.isEmpty(),
+      "late automatic consent refusal abandons only its staged session without opening settings or committing");
+    require(AlphaDevicePlugin.UpdatePause.store().read()==null && AlphaLocalAgentPlugin.stops==1
+      && AlphaLocalAgentPlugin.releases==1,"exact abandoned pause and lease settle once");
+    var revokedReadback=nativeRead(bridges.get(1));
+    require(!revokedReadback.optBoolean("pending",true) && activationId.equals(revokedReadback.optString("activationId"))
+      && "canceled".equals(revokedReadback.optString("outcome")) && revokedReadback.optBoolean("resume",false),
+      "the eligible initiating renderer can resume after confirmed cleanup");
+    journalOutcome="released";
+    trace.step("cancelRevokedAutomatic",observe());
+    break;
    case "cold-manual-before-barrier":
     replaceProcess(true,37,true);register(1);begin();ack(1,false,false);install.awaitAnswer();
     require(install.rejected.get()==1,"manual cold path reached the actual readiness barrier");trace.step("refuse",observe());

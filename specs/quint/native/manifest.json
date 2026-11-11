@@ -2136,7 +2136,10 @@
         "unconfirmedTombstoneDoesNotAuthorizeReconnectTest",
         "coldAutomaticCannotAcquireBarrierPauseOrStopTest",
         "manualColdBootStillUsesExactBarrierTest",
-        "processReplacementPreservesWarmBootTest"
+        "processReplacementPreservesWarmBootTest",
+        "revokedAutomaticCannotMarkCommittingTest",
+        "revokedAutomaticConsentAbandonsBeforeCommitTest",
+        "lateConsentChangeDoesNotGateExplicitManualCommitTest"
       ],
       "invariants": [
         "DurablePauseHasExactBarrier",
@@ -2164,6 +2167,7 @@
         "One activation and one committed Android session with two synthetic renderer receipts. Source checkpoints use the actual updater, POSIX journal and exact shutdown lease under controlled Android and stop observation ports.",
         "An observed confirmed stop is a macrostep. Session handoff retains the native reconnect receipt until exact settlement; a visible unconfirmed tombstone still retains the separate service lease. Independent journal and activation campaigns exercise additional branches.",
         "The staging policy uses SDK classes 30/31 and monotonic uptime observations 0,26681,29999,30000,30001,35000. This composition permits one pre-attempt process boundary (same-boot replacement or new boot), at most two boots/processes, and leaves in-flight process-death/reboot recovery to the unchanged RuntimeUpdatePause model.",
+        "Automatic consent is observed at the durable commit boundary. A successful precommit abandonment and confirmed lease release form one cleanup checkpoint. The native TLS fixture separately exercises revocation during the final HTTPS response.",
         "Actual extracted-Java traces exercise cold and unsupported automatic no-effect paths, later warm exact barrier/pause/stop/commit handoff, cold manual readiness and warm same-boot replacement. Bounded safety and selected traces do not prove uptime progress, Android acceptance, network availability or eventual installation."
       ],
       "bounds": {
