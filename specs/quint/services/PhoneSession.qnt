@@ -48,7 +48,7 @@ module PhoneSession {
   action dial(fromRow: bool): bool = all {
     s.active, not(busy(s)), s.handoffs < 3, fromRow implies s.calls,
     s' = { ...s, dialing: true, dials: s.dials.union(Set(s.session)), handoffs: s.handoffs + 1,
-      notice: if (fromRow) s.notice else "none" }
+      notice: "none" }
   }
   action invalidNumber = all { s.active, not(busy(s)), s' = { ...s, notice: "invalid" } }
   /// A handoff answers. One started in an earlier showing changes nothing.

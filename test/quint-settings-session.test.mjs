@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {modelTraces, replay, tick} from '../specs/quint/refinement/application/shell-model-traces.mjs';
+import {settingsScenarioTraces} from './fixtures/settings-model-traces.mjs';
 
 // SettingsSession traces from the simulator, replayed on the Settings adapter's own device-read
 // and text-size code: refresh(), the size choice's handler, the result settlement, the merge and
@@ -11,19 +12,17 @@ import {modelTraces, replay, tick} from '../specs/quint/refinement/application/s
 // model says so. Mounting sets the owner only; the reads a real mount starts are refresh steps.
 const source = readFileSync('apps/app/src/prototype/settings-adapter.ts', 'utf8');
 const slice = (from, to) => { const a = source.indexOf(from), b = source.indexOf(to, a); assert.ok(a >= 0 && b > a, from); return source.slice(a, b); };
-const control = slice('go:async()=>{const token=++scaleGeneration,instance=owner;', "}))),cap:'Text size'");
 const unmount = slice('if (owner === this) { capabilityAbort?.abort();', '\n');
 const code = stripTypeScriptTypes(`
-let owner = null, facts = {}, controls = {}, delivery = {}, generation = 0, scaleGeneration = 0, cross = {}, choices = null, history = null;
+let owner = null, facts = {}, controls = {}, delivery = {}, generation = 0, scaleGeneration = 0, scaleVersion = 0, scalePending = false, updateBusy = '', updateResult = '', cross = {}, choices = null, history = null;
 let roles = null, crashLog = null, photoAccess = null, launcher = false, recovery = [], resumedUnread = false, capabilityAbort = null, inferenceAbort = null;
 ${slice('export function textScaleSettlement(', '/** Keep the reference settings components').replace(/export function/g, 'function')}
 let scaleResults = textScaleSettlement();
 ${slice('  const showTextScale=', '  async function refresh() {')}
 ${slice('  async function refresh() {', '  p.componentDidMount = function')}
-const sizeControl = (value, api) => ({${control}}).go;
 globalThis.page = {
   mount(instance) { owner = instance; }, unmount(instance) { (function () { ${unmount} }).call(instance); },
-  refresh, choose: (value, api) => sizeControl(value, api)(),
+  refresh, choose: (value, api) => changeTextScale(value, api),
   shown: () => ({owner, generation, scaleGeneration, facts}),
 };`);
 
@@ -78,7 +77,10 @@ function fixture() {
 }
 
 test('simulated SettingsSession traces agree with the Settings read and text-size code after every step', {timeout: 170000}, async () => {
-  const traces = modelTraces({module: 'SettingsSession', traces: 200, steps: 40});
+  const traces = [
+    ...modelTraces({module: 'SettingsSession', traces: 200, steps: 40}),
+    ...settingsScenarioTraces(),
+  ];
   // The campaign reaches the cases the settlement exists for.
   const reached = property => traces.some(trace => trace.some(step => property(step.state)));
   assert.ok(reached(s => s.restored === 1) && reached(s => s.restored === 2) && reached(s => s.keptSize) && reached(s => s.held !== -1));

@@ -64,7 +64,7 @@ module PhoneRecents {
         needsAccess: s.access == "prompt" or s.access == "denied" } }
   action dial(valid: bool): bool = all { not(busy(s)), available(s), s.handoffs < 3,
     s' = if (valid) { ...s, dialing: true, dials: s.dials.union(Set({ session: s.session, id: s.handoffs + 1 })),
-        handoffs: s.handoffs + 1 }
+        handoffs: s.handoffs + 1, notice: "" }
       else { ...s, notice: "invalid" } }
   /// The handoff result is shown if Phone has been showing since the dial, whatever reads ran meanwhile.
   action dialSettles(d: Dial): bool = all { d.in(s.dials),

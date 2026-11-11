@@ -89,8 +89,8 @@ export async function replayVideoEditReview({rewrite, ...options} = {}) {
             await settle();
             // What the editor reported for this save, read when it settles: a later media event
             // may replace the status line.
-            outcome = !open ? 'dropped' : /Copy was not saved/.test(status()) ? 'not-saved'
-              : /could not be confirmed/.test(status()) ? 'unconfirmed' : !dialog.isConnected ? 'saved' : 'unreported';
+            outcome = !open ? 'dropped' : status() === 'Not saved' ? 'not-saved'
+              : status() === 'Save unconfirmed' ? 'unconfirmed' : !dialog.isConnected ? 'saved' : 'unreported';
           },
           async hide() { hidden = true;window.document.dispatchEvent(new window.Event('visibilitychange'));await settle(); },
           async show() { hidden = false;window.document.dispatchEvent(new window.Event('visibilitychange'));await settle(); },

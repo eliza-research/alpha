@@ -55,6 +55,8 @@ function chain(code) {
     connectionController: {getSnapshot: () => ({residentInference: 'cloud', open: false}), getCloudEnvironment: () => 'production',
       getCloudClient: () => ({sessionId: 'cloud-session', credentialId: 'cloud-credential'}), openCloudAccount() {}, subscribe: () => () => {}},
     markTtsPlaybackStarted() {}, markTtsPlaybackEnded() {}, cloudRuntimeEnabled: false, testMocksEnabled: false,
+    // The app chain is explicitly on-device; the Cloud chain is exercised separately below.
+    speechRoute: () => 'device', noteNetworkSpeechFailure: () => {throw Error('Network fallback outside local-chain replay');},
     developmentCloudVoiceEnabled: false, browserCloudResidentEnabled: false, cloudServiceName: () => 'Eliza Cloud',
     cloudVoiceLimitOf: () => null, readServiceLimit: () => null, retryDuration: () => '',
     createOnDeviceVoice: () => voice, createCloudVoice: () => voice, speakCloudText: async () => { throw Error('app speech must stay on its own chain'); }};

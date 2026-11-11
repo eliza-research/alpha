@@ -17,7 +17,7 @@ assert.match(source, /if \(key === 'settings'\) \{ void refresh\(\); void refres
 assert.match(source, /if \(next !== lastBinding\) \{ lastBinding = next; void refreshCapabilities\(\); \}/);
 const code = stripTypeScriptTypes(`
 let owner = null, facts = {}, controls = {}, delivery = {}, generation = 0, cross = {}, choices = null, history = null, roles = null, crashLog = null;
-let capabilityAbort = null, inferenceAbort = null, scaleResults = null, gmail = 'Not checked', gmailAccounts = [], inferenceProvider = 'Not reported', listener = null;
+let capabilityAbort = null, inferenceAbort = null, scaleGeneration = 0, scaleVersion = 0, scalePending = false, scaleResults = null, updateBusy = '', updateResult = '', gmail = 'Not checked', gmailAccounts = [], inferenceProvider = 'Not reported', listener = null;
 const textScaleSettlement = () => null, changed = () => { changes++; };
 let changes = 0;
 ${slice('let licenses: {', '/** Native reset results that only echo')}

@@ -4,15 +4,17 @@
 // carrier, chooser activity or Android is involved.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {modelTraces, replayTraces, repositoryRoot, settle, sourceModule} from '../specs/quint/refinement/services/identity-comms-traces.mjs';
+import {modelTraces, replayTraces, repositoryRoot, settle} from '../specs/quint/refinement/services/identity-comms-traces.mjs';
+import {observedSmsAdapter} from './fixtures/observed-sms-adapter.mjs';
 
 const MODEL = {path: 'specs/quint/services/MmsCompose.qnt', module: 'MmsCompose'};
 const SCENARIOS = ['pictureChooserKeepsVisitTest', 'hideWithoutChooserEndsVisitTest', 'retryAfterCancelledAndDeniedTest', 'repeatedIdNeverDispatchesTwiceTest',
-  'pickedPicturesResetIdTest', 'pageHideEndsPickTest', 'sixthPictureRefusedTest', 'carrierAnswerReadBackTest'];
+  'pickedPicturesResetIdTest', 'pageHideEndsPickTest', 'sixthPictureRefusedTest', 'carrierAnswerReadBackTest',
+  'acceptedDraftRetiredUntilOwnerEditsTest', 'retiredUncertainDraftResumesWithoutDispatchTest'];
 const WITNESSES = ['VisitKeptBehindChooserWitness', 'PicturesAddedWhileHiddenWitness', 'RetryAfterCancelledWitness', 'RepeatedIdAnsweredFromJournalWitness',
   'LatePicturesDroppedWitness', 'PickedPicturesResetIdWitness'];
 const contracts = `${repositoryRoot}.eliza/client-features/packages/contracts/src`;
-const adapter = await sourceModule(['apps/app/src/prototype/sms-adapter.ts', 'apps/app/src/runtime/image-sms.ts'], {
+const adapter = await observedSmsAdapter({
   'platform-plugins$': 'export const registerPlugin=()=>({});',
   'runtime/aosp-image$': 'export const aospImage=true;',
   'native-adapter$': 'export const watchReturnToApp=()=>()=>{};',
@@ -21,8 +23,8 @@ const adapter = await sourceModule(['apps/app/src/prototype/sms-adapter.ts', 'ap
     export const registerTelephonyProfile=()=>{};
     export const createAospTelephony=()=>new Proxy({},{get:(_,name)=>globalThis.__smsClient[name]});`,
 });
-const LIMIT = 'An MMS can carry at most five pictures.', UNREADABLE = 'Only JPEG, PNG and GIF pictures can be sent.';
-const UNKNOWN = 'This MMS may have sent. Check the conversation before sending again.';
+const LIMIT = 'Max 5 pictures', UNREADABLE = 'Only JPEG, PNG and GIF pictures can be sent.';
+const UNKNOWN = 'May have sent';
 const shownOf = notice => {
   const fixed = {'': 'none', [LIMIT]: 'limit', [UNREADABLE]: 'picture-error', [UNKNOWN]: 'outcome-unknown'}[notice];
   if (fixed) return fixed;
@@ -45,6 +47,8 @@ function create() {
     markThreadRead: async () => {}, requestAccess: async () => status,
     observeMessages: async (_changed, _sms, onMmsSendUpdated) => { mmsUpdated = onMmsSendUpdated; return async () => { mmsUpdated = () => {}; }; },
     sendMms(review, operationId) {
+      assert.equal(document.hidden, false, 'a native MMS request starts only in the foreground');
+      assert.equal(globalThis.__smsDraftProbe().active, true, 'a native MMS request names a current visit');
       assert.equal(call, null, 'one native review at a time');
       assert.deepEqual(review.recipients, ['+15555550100']);
       ordinal(operationId);
@@ -68,7 +72,7 @@ function create() {
   const type = (field, value) => page()[field]({target: {value}});
   // The owner writes recipients and text whenever the draft is empty: at the start of a visit, where
   // the model holds no ID and no notice either, and after Clear.
-  const settled = async () => { await settle(); if (page().nativeRecipients === '' && !page().nativeBusy) { type('nativeOnRecipients', '+1 555 555 0100'); type('nativeOnBody', 'hello'); } };
+  const settled = async () => { await settle(); if (shell.view === 'messages' && !document.hidden && page().nativeRecipients === '' && !page().nativeBusy) { type('nativeOnRecipients', '+1 555 555 0100'); type('nativeOnBody', 'hello'); } };
   const view = async name => { shell.view = name; shell.componentDidUpdate(); await settled(); };
   const visibility = async hidden => { globalThis.document.hidden = hidden; shell.smsHide(); await settled(); };
   const picture = readable => ({type: readable ? 'image/jpeg' : 'text/plain', size: 16, arrayBuffer: async () => new ArrayBuffer(16)});
@@ -99,19 +103,22 @@ function create() {
     journalAdvance(id, next) { journal.set(ids[id - 1], next); },
     async reconcile(context) { mmsUpdated(ids[context.before.operationId - 1]); await settled(); },
     async observe() {
-      // The ID the draft holds is the only one a native MMS update is read back for; the probe answers "no record".
+      // The last sent receipt can reconcile independently of the current draft's held ID.
       probing = [];
       for (const id of ids) mmsUpdated(id);
       await settle();
       const asked = probing; probing = null;
-      assert.ok(asked.length <= 1);
+      const held = globalThis.__smsDraftProbe(), allowed = new Set([held.mmsOperationId, held.mmsSentId].filter(Boolean));
+      assert.ok(asked.length <= allowed.size);
+      for (const id of asked) assert.ok(allowed.has(id), 'native MMS read names the held draft or last sent receipt');
       const model = page();
       const byId = (map, missing) => Object.fromEntries(IDS.map((key, index) => [key, map.get(ids[index]) ?? missing]));
-      return {busy: model.nativeBusy, pictures: model.nativeAttachments.length, chooser: input !== null, operationId: asked.length ? ordinal(asked[0]) : 0,
+      return {busy: model.nativeBusy, pictures: model.nativeAttachments.length, chooser: input !== null, operationId: held.mmsOperationId ? ordinal(held.mmsOperationId) : 0,
         minted: ids.length, call: call ? ordinal(call.operationId) : 0, reply: call ? call.reply : 'none',
-        journal: byId(journal, 'none'), dispatches: byId(dispatches, 0), shown: shownOf(model.nativeNotice)};
+        journal: byId(journal, 'none'), dispatches: byId(dispatches, 0), shown: held.active ? shownOf(model.nativeNotice) : 'none'};
     },
-    close() { shell.componentWillUnmount(); delete globalThis.document; delete globalThis.window; delete globalThis.__smsClient; },
+    effects: () => ({ids: [...ids], call: call?.operationId ?? null, journal: [...journal], dispatches: [...dispatches]}),
+    close() { shell.componentWillUnmount(); delete globalThis.document; delete globalThis.window; delete globalThis.__smsClient; delete globalThis.__smsDraftProbe; },
   };
 }
 
@@ -124,6 +131,21 @@ test('the MMS composer follows MmsCompose scenarios, witnesses and random walks'
   await assert.rejects(replayTraces(traces.filter(trace => trace.name === 'retryAfterCancelledAndDeniedTest'), create, {project: kept}), /retryAfterCancelledAndDeniedTest step/);
   for (const action of ['openView', 'closeView', 'hide', 'show', 'pageHide', 'attach', 'chooserAnswers', 'chooserCancelled', 'edit', 'clearDraft',
     'accessChanged', 'send', 'nativeDecide', 'deliver', 'callRejected', 'journalAdvance', 'reconcile']) assert.ok(receipt.actions[action] > 0, action);
+});
+
+test('accepted empty MMS and hidden uncertain MMS cannot dispatch; an owned edit starts a new identity', async () => {
+  for (const hidden of [false, true]) {
+    const f = create();
+    try {
+      await f.openView();await f.send();f.nativeDecide(true);
+      if (hidden) {await f.callRejected();await f.hide();}
+      else await f.deliver();
+      const before = f.effects();await f.send();assert.deepEqual(f.effects(), before, 'no new native request or carrier effect');
+      if (hidden) {await f.show();assert.deepEqual(f.effects(), before);assert.ok(globalThis.__smsDraftProbe().mmsOperationId);}
+      await f.edit(false);await f.send();
+      assert.equal(f.effects().ids.length, 2);assert.notEqual(f.effects().ids[0], f.effects().ids[1]);
+    } finally {f.close();}
+  }
 });
 
 test('a declined MMS review is reviewed again under a new operation ID without editing the draft', async () => {

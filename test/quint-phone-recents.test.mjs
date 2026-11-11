@@ -20,7 +20,7 @@ const bundled = await build({entryPoints: [resolve('apps/app/src/prototype/phone
   }}]});
 const {installPhoneAdapter} = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString('base64')}`);
 
-const HANDOFF = 'Your phone app is open with the number.', INVALID = 'Enter a valid phone number.';
+const HANDOFF = 'Your phone app is open with the number.', INVALID = 'Invalid number';
 const VALID = '+15555550100', call = {id: '4', number: VALID, cachedName: 'Ada', date: 1700000000000, durationSeconds: 75, type: 'missed', isNew: true};
 const permissions = access => ({permissions: access === 'unsupported' ? {} : {callLog: access}});
 
@@ -31,6 +31,7 @@ function fixture(initial) {
     removeEventListener: (_type, listener) => listeners.delete(listener)};
   const deferred = () => { let settle, fail; const promise = new Promise((yes, no) => { settle = yes; fail = no; }); return {promise, settle, fail}; };
   const client = {
+    async placeCall() {throw Object.assign(Error('This host does not hold the dialer role'), {code: 'role-required'});},
     status() { const read = deferred(); reads.push(read); return read.promise; },
     async requestAccess(kind) { assert.equal(kind, 'callLog'); accessRequests++; return permissions(access); },
     async recentCalls(limit) { assert.equal(limit, 50); return [call]; },

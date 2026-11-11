@@ -49,10 +49,10 @@ module BackDispatch {
     val chat = chatOf(v)
     if (v.shade) { ...v, shade: false, closed: "shade" }
     else if (v.host == "assistant" and v.view == "" and not(v.voice)) { ...v, closed: "assistant" }
-    else if (v.drawer and v.view == "") { ...v, drawer: false, closed: "drawer" }
     else if (v.voice) { ...v, voice: false, closed: "voice" }
     else if (chat == "full") { ...v, chat: "sheet", closed: "conversation" }
     else if (chat == "sheet") { ...v, chat: rest(v.view), closed: "conversation" }
+    else if (v.drawer and v.view == "") { ...v, drawer: false, closed: "drawer" }
     else if (chat == "input" and rest(v.view) == "hidden") { ...v, chat: "hidden", closed: "bar" }
     else if (v.view != "")
       if (inner(v)) { ...v, inners: v.inners.exclude(Set(v.view)), closed: "inner" }
@@ -70,7 +70,7 @@ module BackDispatch {
     val chat = chatOf(v)
     val above = v.voice or chat == "full" or chat == "sheet" or v.host == "assistant"
     val atHome = v.view == "" and not(v.shade)
-    if (atHome and v.menu) { ...v, menu: false, closed: "menu" }
+    if (atHome and not(above) and v.menu) { ...v, menu: false, closed: "menu" }
     else if (atHome and not(above) and v.homeAdd) { ...v, homeAdd: false, closed: "add" }
     else if (atHome and not(above) and v.homeEdit and not(v.drawer)) { ...v, homeEdit: false, closed: "edit" }
     else shellBack(v)
@@ -207,4 +207,12 @@ module BackDispatch {
     .expect(s.outcome == "renderer" and s.closed == "assistant" and safety)
   run voiceStopsBeforeConversationTest = initHost("standalone").then(moveChat("sheet")).then(startVoice)
     .then(nativeBack).expect(s.closed == "voice" and s.chat == "sheet" and safety)
+  // The assistant is above Apps, including its open entry menu. Each Back retires one layer.
+  run assistantAboveDrawerMenuTest = initHost("home").then(openDrawer).then(openMenu)
+    .then(moveChat("full")).then(startVoice)
+    .then(nativeBack).expect(s.closed == "voice" and not(s.voice) and s.chat == "full" and s.drawer and s.menu and safety)
+    .then(nativeBack).expect(s.closed == "conversation" and s.chat == "sheet" and s.drawer and s.menu and safety)
+    .then(nativeBack).expect(s.closed == "conversation" and s.chat == "input" and s.drawer and s.menu and safety)
+    .then(nativeBack).expect(s.closed == "menu" and s.drawer and not(s.menu) and safety)
+    .then(nativeBack).expect(s.closed == "drawer" and not(s.drawer) and safety)
 }

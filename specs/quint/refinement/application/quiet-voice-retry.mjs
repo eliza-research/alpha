@@ -8,7 +8,9 @@
  * take is shown as an error, Retry resets the count and begins again, and cleanup clears the wait.
  *
  * Controlled ports: the wait timer, the chat's currency, the connection's inference mode and the
- * limit facts of a Cloud speech refusal (`cloudVoiceServiceLimit`). `opens` is not observed. */
+ * limit facts of a Cloud speech refusal (`cloudVoiceServiceLimit`). This compatibility branch
+ * has already found local speech unavailable for the current chat. The real localVoiceFallback
+ * helper checks that fact; network-to-device routing is covered by its owning tests. `opens` is not observed. */
 import {readFileSync} from 'node:fs';
 import {transformSync} from 'esbuild';
 import {modelTraces, replayTraces, repositoryRoot} from '../assistant-model-traces.mjs';
@@ -22,9 +24,11 @@ const flush = async () => { for (let turn = 0; turn < 2; turn++) await new Promi
 
 export function compile() {
   const source = readFileSync(`${repositoryRoot}/apps/app/src/prototype/voice-adapter.ts`, 'utf8');
-  const start = source.indexOf('  function quietVoiceRetry('), end = source.indexOf('  async function beginConversation(){', start);
+  const start = source.indexOf('  function localVoiceFallback('), end = source.indexOf('  async function beginConversation(){', start);
   if (start < 0 || end <= start) throw Error('missing source anchor quietVoiceRetry');
   return transformSync(`let quietRetries=0,quietRetry,conversationState={phase:'idle'},error='',generation=0,chatDestination;
+    let conversationNetwork=true,conversationLocal,conversationLocalMissing,mediaUnconfirmed;
+    const noteNetworkSpeechFailure=()=>{throw Error('A known-unavailable local route must not admit a new fallback');};
     const stopClock=()=>{},refresh=()=>{};
     function chatCurrent(){return ports.current();}
     function cleanup(){++generation;if(quietRetry)clearTimeout(quietRetry);quietRetry=undefined;chatDestination=undefined;conversationState={phase:'idle'};}
@@ -32,7 +36,7 @@ export function compile() {
     async function beginConversation(){ports.begun();conversationState={phase:'starting'};}
     ${source.slice(start, end)}
     return {
-      open(){chatDestination={};quietRetries=0;void beginConversation();},
+      open(){chatDestination={};conversationLocalMissing=chatDestination;quietRetries=0;void beginConversation();},
       phase(value){conversationState={phase:value};if(value==='speaking')quietRetries=0;},
       failed(failure){if(quietVoiceRetry(failure,chatDestination,generation))return;conversationState={phase:'error',error:failure};ports.shown();},
       recover(){quietRetries=0;void beginConversation();},

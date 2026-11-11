@@ -3085,7 +3085,10 @@
         "editResetsOperationTest",
         "deliveryEvidenceTest",
         "readBackKeepsIdUntilSendAnswersTest",
-        "refusedBeforeJournalTest"
+        "refusedBeforeJournalTest",
+        "acceptedDraftRetiredUntilOwnerEditsTest",
+        "retiredUncertainDraftResumesWithoutDispatchTest",
+        "retainedRefusalIsNotNewAttemptAuthorityTest"
       ],
       "invariants": [
         "TypeOK",
@@ -3094,8 +3097,12 @@
         "ClosedAnswerReleasesId",
         "HeldIdWasMinted",
         "StaleResultNeverShown",
-        "InactiveHoldsNothing",
-        "BusyHasCall"
+        "InactiveHasNoAuthority",
+        "BusyHasCall",
+        "EmptyDraftHasNoOperation",
+        "BusyNeedsForegroundDraft",
+        "CallHadForegroundAdmission",
+        "LastReceiptHasDispatchEvidence"
       ],
       "witnesses": [
         "RetryAfterClosedRecordWitness",
@@ -3156,13 +3163,17 @@
         "operationId/minted": "crypto.randomUUID() minted only when the draft holds no ID and reviewed text",
         "call/callLifecycle/callDraft/reply": "client.sendSms in flight with the token and draft it captured, and the native answer not yet received",
         "journal/dispatches": "native send journal status per operation ID and the single platform dispatch behind it (NativeSmsDispatch)",
-        "shown/shownFrom/shownLifecycle/shownDraft": "receipt and notice from a send answer or from reconcile()"
+        "shown/shownFrom/shownLifecycle/shownDraft": "receipt and notice from a send answer or from reconcile()",
+        "operationId/lastSent/draftReady": "Actual closure-observed current draft identity/readiness, separate from the last accepted receipt identity. Accepted sends retire the current draft; uncertain unfinished drafts retain their exact ID privately across visits."
       },
       "abstractions": [
         "Three operation IDs, four visits and bounded draft revisions. Recipients, text, SIM and pictures are one draft whose every change is an edit; the MMS composer and picture chooser are MmsCompose, and the messaging-app handoff shares the busy flag and is not modeled.",
         "One native call is in flight at a time. The journal is one status per ID; the reviewed binding, multipart evidence, tombstones and provider rows are NativeSmsDispatch and DeviceActions.",
         "The foreground provider session (rows, threads, paging) is the shared telephony session and is a controlled port.",
-        "Replayed against installSmsAdapter with a held telephony client whose journal follows the shared send contract (test/quint-sms-send.test.mjs); no SIM, radio or installed-image claim."
+        "Replayed against installSmsAdapter with a held telephony client whose journal follows the shared send contract (test/quint-sms-send.test.mjs); no SIM, radio or installed-image claim.",
+        "AP-05 retains unfinished owner drafts in memory across lifecycle changes. Inactive visits have no current review/send/publication authority. Readback may name the held ID or last accepted receipt; it cannot grant a new draft authority. Native request ports assert current foreground admission, and explicit empty/retired-send canaries require zero new native requests or carrier effects.",
+        "A retained earlier refusal is a copy from history, not the answer to a new held attempt. Its separate retained notice origin cannot release or refuse the newer operation identity.",
+        "The open macro combines entering Messages with the owner typing a valid message only when its draft is empty. Re-entry with an unfinished draft never edits or resets it; pure opening alone does not create draft readiness."
       ],
       "sharedSources": [
         "packages/contracts/src/native-telephony.ts",
@@ -4784,7 +4795,9 @@
         "pickedPicturesResetIdTest",
         "pageHideEndsPickTest",
         "sixthPictureRefusedTest",
-        "carrierAnswerReadBackTest"
+        "carrierAnswerReadBackTest",
+        "acceptedDraftRetiredUntilOwnerEditsTest",
+        "retiredUncertainDraftResumesWithoutDispatchTest"
       ],
       "invariants": [
         "TypeOK",
@@ -4795,9 +4808,13 @@
         "DispatchJournaled",
         "ClosedAnswerReleasesId",
         "HeldIdWasMinted",
-        "InactiveHoldsNothing",
+        "InactiveHasNoAuthority",
         "NoticeIsCurrentVisit",
-        "BusyHasCall"
+        "BusyHasCall",
+        "EmptyDraftHasNoOperation",
+        "BusyNeedsForegroundDraft",
+        "CallHadForegroundAdmission",
+        "LastReceiptHasDispatchEvidence"
       ],
       "witnesses": [
         "VisitKeptBehindChooserWitness",
@@ -4881,13 +4898,15 @@
         "operationId/minted": "mmsOperationId, minted by crypto.randomUUID() only when the draft holds none; resetMms clears it",
         "call/callLifecycle/callDraft/reply": "client.sendMms in flight with the token and draft it captured, and the native answer not yet received",
         "journal/dispatches": "the native MMS send record per operation ID and the single platform dispatch behind it (NativeMmsDispatch)",
-        "shown/shownFrom/shownLifecycle": "the notice from the draft, a send answer or reconcileMms()"
+        "shown/shownFrom/shownLifecycle": "the notice from the draft, a send answer or reconcileMms()",
+        "operationId/lastSent/draftReady": "Actual closure-observed current draft identity/readiness, separate from the last accepted receipt identity. Accepted sends retire the current draft; uncertain unfinished drafts retain their exact ID privately across visits."
       },
       "abstractions": [
         "Three operation IDs, six visits, bounded draft revisions and picks of one or three pictures. Recipients, text and SIM are one draft; review refusals before the native call (no SIM, too large, MMS unavailable) are not modeled.",
-        "Owner controls need the visible page; the adapter itself only checks active and busy. One chooser is open at a time. The SMS operation ID, which the same edits reset, is SmsSend.",
+        "Owner controls and each native send require the current visible page. One chooser is open at a time; an already admitted call may await settlement behind it. The SMS operation ID, which the same edits reset, is SmsSend.",
         "The journal is one status per ID; the reviewed binding, PDU custody and carrier evidence are NativeMmsDispatch. The foreground provider session is the shared telephony session.",
-        "Replayed against installSmsAdapter with a held telephony client and a held file input (test/quint-mms-compose.test.mjs); no SIM, carrier, chooser activity or installed-image claim."
+        "Replayed against installSmsAdapter with a held telephony client and a held file input (test/quint-mms-compose.test.mjs); no SIM, carrier, chooser activity or installed-image claim.",
+        "AP-05 retains unfinished owner drafts in memory across lifecycle changes. Inactive visits have no current review/send/publication authority. Readback may name the held ID or last accepted receipt; it cannot grant a new draft authority. Native request ports assert current foreground admission, and explicit empty/retired-send canaries require zero new native requests or carrier effects."
       ],
       "sharedSources": [
         "packages/contracts/src/native-telephony.ts",

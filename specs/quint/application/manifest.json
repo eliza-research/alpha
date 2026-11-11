@@ -7733,7 +7733,8 @@
       "assistantViewClosesSurfaceTest",
       "inertPhoneIsNotNavigatedTest",
       "assistantSurfaceClosesTest",
-      "voiceStopsBeforeConversationTest"
+      "voiceStopsBeforeConversationTest",
+      "assistantAboveDrawerMenuTest"
     ],
     "invariants": [
       "FlagCoversLayers",
@@ -7828,6 +7829,7 @@
       "The flag is evaluated on the state Back acts on: the shell republishes it on every update and on dialog and inert mutations. A menu popover is opened only from inside a view, and the connection sheet counts as a dialog.",
       "On the assistant surface Back from the last view closes the surface (goHome is closeAssistant there); it does not return to the conversation.",
       "A dialog or panel that refuses its cancel event, and focus restoration after a close, are not modeled.",
+      "Voice and each expanded assistant detent close before the Apps drawer and its entry menu; every Back still removes at most one layer.",
       "Model safety checks do not establish implementation refinement or device acceptance."
     ],
     "sharedSources": [
@@ -8027,10 +8029,10 @@
     "step": "step",
     "invariant": "safety",
     "tests": [
-      "secureCameraBouncesTest",
-      "secureHomeLocksTest",
-      "keptReopenOverSecureCameraTest",
-      "secureBackToCameraTest",
+      "lockedCameraRefusedTest",
+      "unlockThenCameraTest",
+      "keptReopenAfterUnlockTest",
+      "backToCameraAfterUnlockTest",
       "powerStopsVoiceTest",
       "voiceWakesDarkScreenTest",
       "leaveClearsViewTimersTest",
@@ -8043,18 +8045,25 @@
       "VoiceTimersOwned",
       "ViewTimersOwned",
       "SecureConfinement",
+      "NoAlphaSecureSession",
       "KeptShowsView"
     ],
     "witnesses": [
-      "SecureKeptReopenWitness",
+      "UnlockedKeptCameraWitness",
       "LockedViewWitness",
       "VoiceOnLockWitness",
       "LateBootLockWitness"
     ],
     "sources": [
-      "apps/app/src/prototype/model.js"
+      "apps/app/src/prototype/model.js",
+      "apps/app/src/prototype/template.html",
+      "apps/app/src/prototype/development-system-surfaces.html"
     ],
     "symbols": [
+      {
+        "path": "apps/app/src/prototype/development-system-surfaces.html",
+        "name": "data-alpha-development-lock-screen"
+      },
       {
         "path": "apps/app/src/prototype/model.js",
         "name": "runBoot"
@@ -8108,13 +8117,14 @@
       "screen/bootPending": "S().screen and the pending runBoot timer that ends on the lock screen",
       "view/viewTimers": "S().view and the m_<view> timer group that leave() clears",
       "voice/voiceTimers": "S().voice and the v timer group with the typing interval",
-      "secure": "S().secure, which secureAdmits consults at the top of openView before the keepState, keepStack and plain routes",
+      "secure": "S().secure stays false: P-23 removes the renderer Camera entry from the lock frame; no modeled control creates a secure session",
       "kept": "the view on screen was last opened through openView's keepState or keepStack route"
     },
     "abstractions": [
-      "Camera and Photos stand for the secure views (Wallet behaves the same) and Notes for every other view. Development presets, heads-up notices and the hint are not modeled.",
+      "Camera, Photos and Notes stand for ordinary app views. Development presets, heads-up notices and the hint are not modeled. Android owns the real Keyguard; the development lock frame exposes Unlock and no Camera or library control.",
       "Voice here is the reference shell's scripted demo; live voice replaces startVoice and stopVoice and is covered by the voice models.",
-      "A kept reopen is held to the secure session exactly as a plain open is; the Back stack itself is not modeled, only that its pop goes through the same check.",
+      "The locked Camera attempt checks actual source/template control absence and leaves all shell state unchanged; it does not fabricate a native or renderer entry. Generic openView remains a programmatic source method, including the separately modeled late-boot race. User Camera entry is checked after Unlock.",
+      "Kept reopen and Back's keepStack route exercise ordinary unlocked navigation; no synthetic secure session is injected. The Back stack itself is covered by BackDispatch.",
       "Model safety checks do not establish implementation refinement or device acceptance."
     ]
   },
@@ -8132,7 +8142,10 @@
       "unmountRetiresReadTest",
       "failedNewestShowsAppliedSizeTest",
       "appliedSizeAfterFailureIsShownTest",
-      "sizeControlNeedsReadTest"
+      "sizeChoiceBeforeReadTest",
+      "failedChoiceBeforeReadRefetchesTest",
+      "failedNewestRefetchSettlesCurrentSizeTest",
+      "lateAppliedRefetchSettlesCurrentSizeTest"
     ],
     "invariants": [
       "ShownSizeIsCurrent",
@@ -8196,13 +8209,16 @@
       "queue/results": "device.snapshot() reads and device.setTextScale() writes in flight, handled by the device in issue order",
       "shownScale/shownOther/shownToken": "facts.textScalePercent, every other device fact, and the refresh that supplied them",
       "held/latest/failedToken": "held, latest and failed in textScaleSettlement (scaleResults), reset when Settings unmounts",
-      "writeFailed/keptSize/regressed/restored": "ghosts: the newest size request failed; a read kept the shown size; an older read replaced a newer one; an older applied size replaced the one shown after the newest request failed"
+      "writeFailed/keptSize/regressed/restored": "ghosts: the newest size request failed; a read kept the shown size; an older read replaced a newer one; an older applied size replaced the one shown after the newest request failed",
+      "scaleVersion/scalePending": "Applied-size version and newest-write pending latch; device reads preserve size while pending or when the captured version changed."
     },
     "abstractions": [
       "One other device fact stands for roles, crash log, photo access, delivery and cross-app status, which a read publishes together.",
       "The device handles requests in the order the page issued them; results return in any order. A failed write leaves the device unchanged.",
       "Busy latches, the listener row (SettingsListenerReads), capability and inference aborts, and licences are not modeled here.",
-      "Model safety checks do not establish implementation refinement or device acceptance."
+      "Model safety checks do not establish implementation refinement or device acceptance.",
+      "The mounted Aa row accepts explicit choices before the first read. Unmount retires both generations; newest write failure starts a fresh facts read. Original settlement safety predicates remain, with counter bounds accounting for those finite automatic reads and retirements.",
+      "Failure-restoration witnesses observe confirmed size restoration while the automatic facts refresh may still wait; explicit refetch schedules additionally assert quiescent current-size agreement. No safety invariant is weakened."
     ]
   },
   {

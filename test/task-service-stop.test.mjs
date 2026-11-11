@@ -31,11 +31,32 @@ test('stop refuses manual execution and leaves the stopped timer mode retired', 
 
 test('stop while the public task read is held fences later worker admission', async () => {
   const f = fixture(await taskService), read = deferred(), entered = deferred();
-  f.runtime.getTask = async () => { entered.resolve(); await read.promise; return f.task; };
+  let reads = 0;
+  f.runtime.getTask = async () => { reads++; entered.resolve(); await read.promise; return f.task; };
   const execution = f.service.executeTaskById(f.task.id).then(() => null, error => error);
-  await entered.promise; await f.service.stop(); read.resolve(); const error = await execution;
+  await entered.promise;
+  let stopped = false;
+  const stop = f.service.stop().then(() => { stopped = true; });
+  try {
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(stopped, false, 'stop drains the admitted public preflight read');
+    assert.equal(f.service.pendingOperations.size, 1);
+    await assert.rejects(f.service.executeTaskById(f.task.id), error => error.code === 'TASK_SERVICE_STOPPED');
+    await f.service.runDueTasks();
+    assert.equal(reads, 1, 'retirement refuses new task reads');
+    assert.equal(f.state.queries, 0, 'retirement refuses a new due-task read');
+    assert.equal(f.state.calls, 0);
+    assert.equal(stopped, false);
+  } finally {
+    read.resolve();
+    await Promise.all([execution, stop]);
+  }
+  const error = await execution;
+  assert.equal(stopped, true);
   assert.equal(f.state.calls, 0);
   assert.equal(error?.code, 'TASK_SERVICE_STOPPED');
+  assert.equal(f.service.executingTasks.size, 0);
+  assert.equal(f.service.pendingOperations.size, 0);
 });
 
 test('stop drains already-admitted work and suppresses a queued due-task read', async () => {
@@ -46,7 +67,7 @@ test('stop drains already-admitted work and suppresses a queued due-task read', 
   await Promise.resolve(); assert.equal(stopped, false); assert.equal(f.intervals.size, 0);
   f.released.resolve(); await Promise.all([first, queued, stop]);
   assert.equal(stopped, true); assert.equal(f.state.calls, 1); assert.equal(f.state.queries, 1);
-  assert.equal(f.service.executingTasks.size, 0); assert.equal(f.service.executingTaskPromises.size, 0);
+  assert.equal(f.service.executingTasks.size, 0); assert.equal(f.service.pendingOperations.size, 0);
 });
 
 test('every concurrent manual owner retains the blocking marker until its own completion', async () => {

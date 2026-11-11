@@ -118,3 +118,16 @@ test('simulated BackDispatch traces agree with native Back, the flag and the ren
   assert.deepEqual([...result.exercised].sort(), ['holdInert', 'homeGesture', 'moveChat', 'nativeBack', 'openAdd', 'openDialog',
     'openDrawer', 'openInner', 'openMenu', 'openPanel', 'openPopover', 'openShade', 'openView', 'releaseInert', 'startEdit', 'startVoice']);
 });
+
+test('native Back keeps Apps and its menu while retiring voice and each assistant detent above them', async () => {
+  const f = fixture('home');
+  const apply = (action, picks = {}) => f.apply({action, picks});
+  await apply('openDrawer'); await apply('openMenu'); await apply('moveChat', {chat: 'full'}); await apply('startVoice');
+  const layers = () => { const s = f.observe(); return [s.voice, s.chat, s.drawer, s.menu, s.outcome]; };
+  await apply('nativeBack'); assert.deepEqual(layers(), [false, 'full', true, true, 'renderer']);
+  await apply('nativeBack'); assert.deepEqual(layers(), [false, 'sheet', true, true, 'renderer']);
+  await apply('nativeBack'); assert.deepEqual(layers(), [false, 'input', true, true, 'renderer']);
+  await apply('nativeBack'); assert.deepEqual(layers(), [false, 'input', true, false, 'renderer']);
+  await apply('nativeBack'); assert.deepEqual(layers(), [false, 'input', false, false, 'renderer']);
+  await apply('nativeBack'); assert.equal(f.observe().outcome, 'home');
+});

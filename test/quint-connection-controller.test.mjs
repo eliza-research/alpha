@@ -33,7 +33,7 @@ const code = stripTypeScriptTypes([
   `Object.assign(globalThis,{work,manageProviderKey,queueResidentRebind,connectionController,startupSettles(){${startup[1]}},
      queued:()=>({returned:queuedSignInReturn!==null,notice:queuedSignInIncomplete,rebind:!!residentRebindQueue?.pending})});`,
 ].join('\n'), {mode: 'strip'});
-const RESTARTED = 'Alpha restarted before your sign-in finished. Sign in again.', UNVERIFIED = 'failure:app-link-unverified';
+const RESTARTED = 'Sign in again', UNVERIFIED = 'failure:app-link-unverified';
 
 const project = s => ({operation: s.operation, startupResolved: s.startupResolved, rebindWanted: s.rebindWanted, rebinds: s.rebinds,
   queuedReturn: s.queuedReturn, returnsHandled: s.returnsHandled, incomplete: s.incomplete, incompleteFenced: s.incompleteFenced,
