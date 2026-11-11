@@ -1,4 +1,4 @@
-import {formatDateTime,formatTime,formatMonthDay} from '../prototype/locale-time';
+import {formatDateTime,formatTime,formatMonthDay} from '../prototype/locale-time.ts';
 import {phoneWorkflowLocalDay,zoneOffsetMinutes} from '../../../../.eliza/client-features/packages/contracts/src/phone-workflow.ts';
 import {formatSchedule} from '../../../../.eliza/client-features/packages/ui/src/utils/cron-format.ts';
 // Upstream plugin-scheduling/src/scheduled-task/trigger-tz.ts. The prepared
