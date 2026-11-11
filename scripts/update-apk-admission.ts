@@ -12,7 +12,7 @@ import {androidEnv, tool} from './toolchain.ts';
 import {apkArchiveFacts} from '../vendor/eliza/packages/app/scripts/mobile/artifact-inspection/apk-distribution.mjs';
 import {updateArtifactDigest} from './update-artifact.ts';
 import {parseXmlTree} from './apk.ts';
-import {apkUpdateChannel} from './update-channel.ts';
+import {apkUpdateChannel, type UpdateChannel} from './update-channel.ts';
 
 const HEX = /^[0-9a-f]{64}$/;
 const verifier = fileURLToPath(new URL('./owner/InspectUpdateApk.java', import.meta.url));
@@ -25,6 +25,7 @@ interface UpdateApk {
   build: 'debug' | 'release';
   variant: 'launcher' | 'standalone';
   versionCode: number;
+  updateChannel: UpdateChannel | null;
 }
 interface Rotation {
   schema?: number;

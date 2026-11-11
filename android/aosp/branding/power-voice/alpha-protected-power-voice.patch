@@ -80,7 +80,7 @@
  import android.provider.Settings;
  import android.service.voice.VisualQueryAttentionResult;
  import android.service.voice.VoiceInteractionSession;
-@@ -354,7 +358,92 @@
+@@ -354,7 +358,95 @@
                  legacyDeviceState);
          logStartAssistLegacy(legacyInvocationType, legacyDeviceState);
          mInteractor.onAssistantStarted(legacyInvocationType);
@@ -96,6 +96,7 @@
 +    private static final ComponentName ALPHA_POWER_VOICE =
 +            new ComponentName(ALPHA_PACKAGE, ALPHA_PACKAGE + ".AlphaPowerVoiceActivity");
 +    private static final String ALPHA_POWER_PERMISSION = "android.permission.STATUS_BAR_SERVICE";
++    private static final String ALPHA_SENSE_FEATURE = ALPHA_PACKAGE + ".feature.SENSE";
 +
 +    /** Only the authenticated native Power route can enter the protected one-shot voice child. */
 +    private boolean tryStartAlphaPowerVoice(
@@ -104,7 +105,7 @@
 +            if (args == null || args.getInt(INVOCATION_TYPE_KEY, INVOCATION_TYPE_UNKNOWN)
 +                    != INVOCATION_TYPE_POWER_BUTTON_LONG_PRESS
 +                    || !ALPHA_ASSIST.equals(assistComponent)
-+                    || !context.getResources().getBoolean(R.bool.config_alpha_system_entry_enabled)
++                    || !context.getPackageManager().hasSystemFeature(ALPHA_SENSE_FEATURE)
 +                    || !mDeviceProvisionedController.isDeviceProvisioned()
 +                    || !mDeviceProvisionedController.isCurrentUserSetup()
 +                    || mSelectedUserInteractor.getSelectedUserId() != mUserTracker.getUserId()
@@ -139,6 +140,8 @@
 +            final ActivityOptions options = ActivityOptions.makeCustomAnimation(context,
 +                    R.anim.search_launch_enter, R.anim.search_launch_exit);
 +            options.setLaunchDisplayId(context.getDisplayId());
++            // Only the protected child receives authenticated SystemUI caller identity.
++            options.setShareIdentityEnabled(true);
 +            if (!ALPHA_ASSIST.equals(getAssistInfo())
 +                    || mSelectedUserInteractor.getSelectedUserId() != mUserTracker.getUserId()
 +                    || keyguard.isKeyguardLocked() || keyguard.isDeviceLocked()
