@@ -59,7 +59,7 @@ test('an event location opens unconfigured Maps, hands off to an installed map a
 
   // Managed Maps is unavailable: offer recovery without asking the user to configure its provider.
   const maps = page.getByRole('region', { name: 'Maps' });
-  await expect(maps.locator('[data-alpha-maps-status]')).toContainText('Maps is unavailable right now. Try again later.');
+  await expect(maps.locator('[data-alpha-maps-status]')).toContainText('Maps unavailable');
   await expect(button(page, 'Directions')).toHaveCount(0);
   await expect(maps).not.toContainText(/\b\d+\s*min\b|\bETA\b|Arrive|route to/i);
   await expect(button(page, 'Back to event')).toBeVisible();
@@ -143,7 +143,7 @@ test('a retained native-authority event draft from a note no longer says it will
     }
     throw Error('No phone shell');
   });
-  await expect(notice).toHaveText('This event will not link back to the note on this phone.');
+  await expect(notice).toHaveAttribute('aria-label', 'Not linked to note');
   // Neither draft saves or links anything before Save.
   expect(await harness(page, f => f.calls.filter((call: string) => /AlphaCalendar\.save|compareExchange/.test(call)))).toEqual([]);
   await expectNoDevelopmentSurface(page);

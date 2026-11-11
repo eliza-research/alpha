@@ -91,13 +91,15 @@ export async function runTaskServiceRefinement(extraSources = []) {
     const result=await attempt(f.service.executeTaskById(f.id));assert.equal(result.error?.code,'TASK_SERVICE_STOPPED');
     f.service.startTimer();await record('rejected manual admission and stopped timer',[{...action('requestManual',1),reject:true},action('startTimer')]);
   });
-  await scenario('old completed read cannot execute after restart',async(f,record,create)=>{
+  await scenario('stop drains an undelivered read before restart',async(f,record,create)=>{
     await create();const read={entered:gate(),release:gate()};f.holdRead=read;const old=f.manual();await read.entered.promise;
     await record('read captured',[action('requestManual',1),action('captureManualRead',1)]);
-    await f.stop();await record('stop ignores undelivered read',[action('stop'),action('awaitStop')]);
-    f.newService();await record('new service retains persisted task',action('restart'));
+    const stopping=f.stop();assert.equal(f.stopReturned,false,'Stop must not settle while an admitted read is held');
+    await record('stop waits for the undelivered read',action('stop'));
     read.release.resolve();const result=await old;assert.equal(result.error?.code,'TASK_SERVICE_STOPPED');
-    await record('old callback rejected',action('manualRead',1));
+    assert.equal(f.calls.length,0,'The retired read cannot enter a worker');await stopping;
+    await record('retired read rejected and drained',[action('manualRead',1),action('awaitStop')]);
+    f.newService();await record('new service retains persisted task',action('restart'));
   });
   for(const first of [1,2])for(const outcome of ['preserve','failure']){
     await scenario(`two owners retain tracking, ${first} finishes ${outcome}`,async(f,record,create,manual)=>{

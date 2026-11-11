@@ -10,7 +10,7 @@ import {jsonJar} from '../../../../test/fixtures/jvm-tools.mjs';
 import {upstreamNativeSource} from '../../../../scripts/upstream-native-source.ts';
 import {captureInputs, checkTraces} from '../check-traces.mjs';
 import {app, directory, javaTraceCampaign, root} from './java.mjs';
-import {exactUpdateMembers} from './update-barrier.mjs';
+import {exactUpdateMembers, updateConfirmationSources} from './update-barrier.mjs';
 
 const model = 'NativeUpdateStaging';
 const settings = 'apps/app/src/prototype/settings-adapter.ts';
@@ -148,7 +148,7 @@ function renderer(program, name, responses) {
 
 export async function checkNativeUpdateStaging(extraSources = []) {
   const harness = 'UpdateStagingHarness.java';
-  const compiled = [app + 'PluginWorkers.java', 'vendor/eliza/' + journal, 'vendor/eliza/' + transport,
+  const compiled = [app + 'PluginWorkers.java', ...updateConfirmationSources, 'vendor/eliza/' + journal, 'vendor/eliza/' + transport,
     'test/fixtures/UpdateFlowTest.java', ...fixtureSources];
   const sources = [fileURLToPath(import.meta.url), plugin, settings, ...compiled, join(directory,harness),
     join(directory,'Trace.java'), join(directory,'java.mjs'), join(directory,'update-barrier.mjs'),

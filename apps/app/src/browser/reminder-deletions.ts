@@ -2,7 +2,7 @@ import type {Reminder} from '../daily';
 import {rendererDeletionClock,claimDeletion,deletionDeadline,deletionWindow,type PendingDeletion} from '../../../../.eliza/client-features/packages/contracts/src/deletion-window';
 import {revision} from './revision';
 import {journalEntry,trimDeletionJournal,writeJournalEntry} from './journal-retention';
-export type DeletableReminder=Reminder&{revision:string;pendingDeletion?:string};
+export type DeletableReminder=Reminder&{revision:string;pendingDeletion?:string;noticeDismissedOccurrence?:string};
 export type ReminderDeletion=PendingDeletion<{sourceRevision:string;row:DeletableReminder}>&{blocked?:string;binding?:string;journalBinding?:{scope:string;proposalId:string;operationHash:string}};
 export type ReminderDeletionState={sourceRevision:string;reminders:DeletableReminder[];deletions?:Record<string,ReminderDeletion>;deleteClaims?:Record<string,string>};
 export function stageReminderDeletion(data:ReminderDeletionState,row:DeletableReminder,owner:string,id:string=crypto.randomUUID(),binding?:string){
@@ -25,6 +25,8 @@ export function settleReminderDeletions(data:ReminderDeletionState,ownerCurrent:
 }
 export function undoReminderDeletion(data:ReminderDeletionState,id:string,ownerCurrent:(owner:string)=>boolean){
  const entry=journalEntry(data.deletions,id);if(!entry||!ownerCurrent(entry.owner))throw Error('Deletion owner changed.');
+ // Undo of an already undone deletion reports the same receipt, as the Android journal does.
+ if(entry.phase==='undone')return structuredClone(entry);
  const row=data.reminders.find(r=>r.id===entry.target.row.id),copy=row?{...row}:undefined;if(copy)delete copy.pendingDeletion;
  if(data.sourceRevision!==entry.target.sourceRevision||row?.pendingDeletion!==id||JSON.stringify(copy)!==JSON.stringify(entry.target.row))throw Error('Reminder changed. Review it again.');
  if(!claimDeletion(entry,entry.owner,rendererDeletionClock(),'undo'))throw Error('Undo window ended or deletion already settled.');

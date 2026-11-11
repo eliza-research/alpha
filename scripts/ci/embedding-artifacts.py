@@ -60,11 +60,11 @@ def json_api(path, token, opener):
     return json.loads(body)
 
 
-def validate_metadata(value, identity, digest):
+def validate_metadata(value, identity, digest, *, max_archive=MAX_ARCHIVE):
     require(value.get('id') == int(identity) and value.get('expired') is False, 'Artifact identity or expiry mismatch')
     require(value.get('digest') == 'sha256:' + digest, 'Artifact digest differs from requested input')
     size = value.get('size_in_bytes')
-    require(type(size) is int and 0 < size <= MAX_ARCHIVE, 'Artifact size exceeds bound')
+    require(type(size) is int and 0 < size <= max_archive, 'Artifact size exceeds bound')
     run = value.get('workflow_run', {})
     require(run.get('repository_id') == REPOSITORY_ID and run.get('head_repository_id') == REPOSITORY_ID,
             'Artifact must originate in the canonical repository')
@@ -83,9 +83,9 @@ def safe_redirect(url):
     return url
 
 
-def download(identity, digest, target, token, opener):
+def download(identity, digest, target, token, opener, *, max_archive=MAX_ARCHIVE):
     metadata = json_api('actions/artifacts/' + identity, token, opener)
-    run = validate_metadata(metadata, identity, digest)
+    run = validate_metadata(metadata, identity, digest, max_archive=max_archive)
     status = json_api('actions/runs/' + str(run['id']), token, opener)
     require(status.get('conclusion') == 'success' and status.get('head_sha') == run['head_sha'], 'Artifact run did not succeed')
     url = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + identity + '/zip'
@@ -111,7 +111,7 @@ def download(identity, digest, target, token, opener):
         with response, target.open('xb') as output:
             while chunk := response.read(1024 * 1024):
                 count += len(chunk)
-                require(count <= MAX_ARCHIVE, 'Artifact download exceeds bound')
+                require(count <= metadata['size_in_bytes'], 'Artifact download exceeds bound')
                 output.write(chunk)
                 value.update(chunk)
         require(count == metadata['size_in_bytes'] and value.hexdigest() == digest, 'Downloaded artifact digest mismatch')

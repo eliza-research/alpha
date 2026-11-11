@@ -36,7 +36,7 @@ export class BrowserMailAttachments extends WebPlugin {
    const selected=await this.files.importFile(new File([bytes],input.name,{type:input.mimeType}),'root',controller.signal);selectionId=selected.selectionId;
    const retained=await this.files.attachment({selectionId}),checked=await check(retained);controller.signal.throwIfAborted();if(checked.sha256!==review.sha256||checked.size!==review.size)throw Error("The saved copy didn't match.");
    return {status:'saved',message:'Saved in Files.'};
-  }catch(error){if(!started)throw error;return {status:'unverified',message:'Save not confirmed. Inspect Files before trying again; a copy may already exist.'};}
+  }catch(error){if(!started)throw error;return {status:'unverified',message:'Unconfirmed'};}
   finally{if(selectionId)await this.files.forgetSelected({selectionId}).catch(()=>{});if(this.saveController===controller)this.saveController=undefined;}
  }
  async openReviewed(input:MailAttachment&{reviewed:boolean;sha256:string;offerSave?:boolean}){
@@ -46,7 +46,7 @@ export class BrowserMailAttachments extends WebPlugin {
   if(review.text!==undefined){const text=document.createElement('pre');text.textContent=review.text;text.tabIndex=0;dialog.append(text);}else{const frame=document.createElement('iframe');frame.title=input.name;frame.setAttribute('sandbox','');frame.src=url;dialog.append(frame);}
   const download=document.createElement('a');download.href=url;download.download=input.name;download.textContent='Download';const footer=document.createElement('footer');footer.append(close,download);dialog.append(footer);
   // Local development mail offers the same exact-copy save as provider mail review.
-  if(offerSave){const status=document.createElement('p');status.setAttribute('role','status');status.style.cssText='flex-shrink:0;margin:0;padding:0 16px 8px';const save=document.createElement('button');save.textContent='Save to Files';save.onclick=()=>{if(save.disabled)return;save.disabled=true;status.textContent='Saving exact copy…';void this.saveReviewed(input).then(result=>{if(this.dialog===dialog)status.textContent=result.message;},()=>{if(this.dialog===dialog)status.textContent='Save not confirmed. Inspect Files before trying again.';});};footer.append(save);dialog.insertBefore(status,footer);}
+  if(offerSave){const status=document.createElement('p');status.setAttribute('role','status');status.style.cssText='flex-shrink:0;margin:0;padding:0 16px 8px';const save=document.createElement('button');save.textContent='Save';save.setAttribute('aria-label','Save to Files');save.onclick=()=>{if(save.disabled)return;save.disabled=true;status.textContent='Saving exact copy…';void this.saveReviewed(input).then(result=>{if(this.dialog===dialog)status.textContent=result.message;},()=>{if(this.dialog===dialog)status.textContent='Save not confirmed. Inspect Files before trying again.';});};footer.append(save);dialog.insertBefore(status,footer);}
   const previous=document.activeElement as HTMLElement|null;const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();this.clear();};window.addEventListener('alpha-back',back,true);this.cleanup=()=>{window.removeEventListener('alpha-back',back,true);queueMicrotask(()=>{if(previous?.isConnected&&!this.dialog)previous.focus();});};dialog.onclose=()=>{if(this.dialog===dialog)this.clear();};dialog.oncancel=()=>{if(this.dialog===dialog)this.clear();};document.body.append(dialog);dialog.showModal();close.focus();return {status:'opened',message:'Attachment opened.'};
 }
 

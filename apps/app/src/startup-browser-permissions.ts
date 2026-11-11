@@ -84,6 +84,6 @@ export function browserStartupPermission(key: StartupPermissionKey, ports: Brows
       if (!live) throw Error('Live media permission could not be confirmed');
       freshGrant = true;
     },
-    async openSettings() { throw Error('Change access using the site controls in the address bar.'); },
+    async openSettings() { throw Error('Use address bar'); },
   };
 }

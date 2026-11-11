@@ -46,10 +46,10 @@ test('a private tab is labelled, created ephemeral and never enters saved tabs o
  // A new private tab opens on its address field, whose suggestions cover the page and its badge:
  // the disclosure must be on the covering surface itself (the covered page is inert).
  await expect(page.getByRole('textbox',{name:'Address',exact:true})).toBeFocused();
- await expect(page.getByRole('note',{name:'Private tab notice'})).toContainText('deleted when you close it, and it is not saved in history');
+ await expect(page.getByRole('note',{name:'Private tab notice'})).toContainText('Private · cleared on close');
  await page.getByRole('button',{name:'Cancel editing',exact:true}).click();
  await expect(page.getByRole('img',{name:'Private tab',exact:true})).toBeVisible();
- await expect(page.getByRole('note',{name:'Private tab notice'})).toContainText('deleted when you close it, and it is not saved in history');
+ await expect(page.getByRole('note',{name:'Private tab notice'})).toContainText('Private · cleared on close');
  await navigate(page,'secret');await expect(page.getByRole('img',{name:'Private tab',exact:true})).toBeVisible();
  await expect.poll(()=>page.evaluate(()=>(window as any).privateEvents.some((e:any)=>e.private===true))).toBe(true);
  await page.getByRole('button',{name:'Tabs',exact:true}).click();
@@ -69,12 +69,12 @@ test('Clear browsing data asks first, then clears history and saved tabs but kee
  test.slow();
  await openBrowser(page);await navigate(page,'kept-mark');await menu(page,'Bookmark');await navigate(page,'visited');
  await menu(page,'New private tab');await navigate(page,'private-open');
- await menu(page,'Clear browsing data');
- const dialog=page.getByRole('dialog',{name:'Clear browsing data?'});await expect(dialog).toBeVisible();await expect(dialog).toContainText('Deletes cookies and site data, so you will be signed out of websites.');await expect(dialog).toContainText('Bookmarks and private tabs are kept.');
+ await menu(page,'Clear all browsing data');
+ const dialog=page.getByRole('dialog',{name:'Clear browsing data?'});await expect(dialog).toBeVisible();await expect(dialog).toContainText('Clears history, cookies and tabs.');
  await dialog.getByRole('button',{name:'Cancel',exact:true}).click();await expect(dialog).toHaveCount(0);
  await expect.poll(async()=>(await saved(page)).history.length).toBe(2);
- await menu(page,'Clear browsing data');await page.getByRole('dialog',{name:'Clear browsing data?'}).getByRole('button',{name:'Clear data',exact:true}).click();
- await expect(page.getByText('Browsing data cleared',{exact:true})).toBeVisible();
+ await menu(page,'Clear all browsing data');await page.getByRole('dialog',{name:'Clear browsing data?'}).getByRole('button',{name:'Clear data',exact:true}).click();
+ await expect(page.getByText('Cleared',{exact:true})).toBeVisible();
  // The private tab stays open; the normal tabs are closed.
  await expect(page.getByRole('button',{name:'Tabs',exact:true})).toHaveText('1');await expect(page.getByRole('img',{name:'Private tab',exact:true})).toBeVisible();
  await expect.poll(async()=>await saved(page)).toEqual({history:[],tabs:[],cur:''});
@@ -87,7 +87,7 @@ test('Clear browsing data asks first, then clears history and saved tabs but kee
 test('web site-data deletion is unavailable and direct calls cannot claim success',async({page})=>{
  await openBrowser(page);await navigate(page,'account');await webPresentation(page);
  await page.getByRole('button',{name:'Menu',exact:true}).click();
- await expect(page.getByRole('button',{name:'Clear data for this site',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Clear site data',exact:true})).toHaveCount(0);
  expect(await page.evaluate(async()=>{
   const {BrowserSurface}=await import('/src/browser/browser-surface.ts');
   try { await new BrowserSurface().clearSiteData({session:'test',id:'test',url:'https://signins.example/account'}); return 'success'; }
@@ -131,7 +131,7 @@ test('a pop-up that closes itself returns to its opener, and a pop-up past the t
  for(let i=2;i<=7;i++)await emit('tabOpened',{id:'pPopup'+i,private:false});
  await expect(tabCount).toHaveText('8');
  await emit('tabOpened',{id:'pPopup8',private:false});
- await expect(page.getByText('Close a tab before opening another.',{exact:true})).toBeVisible();
+ await expect(page.getByText('Tab limit',{exact:true})).toBeVisible();
  await expect(tabCount).toHaveText('8');
 });
 
@@ -177,10 +177,10 @@ test('Clear browsing data cannot be overtaken by a held earlier save',async({pag
  await openBrowser(page);await navigate(page,'held-save');
  await expect.poll(()=>page.evaluate(()=>(window as any).sessionSaveCalls)).toBe(1);
  await navigate(page,'queued-save');
- await menu(page,'Clear browsing data');await page.getByRole('dialog',{name:'Clear browsing data?'}).getByRole('button',{name:'Clear data',exact:true}).click();
+ await menu(page,'Clear all browsing data');await page.getByRole('dialog',{name:'Clear browsing data?'}).getByRole('button',{name:'Clear data',exact:true}).click();
  expect(await page.evaluate(()=>(window as any).sessionClearCalls)).toBe(0);
  await page.evaluate(()=>(window as any).releaseSessionSave());
- await expect(page.getByText('Browsing data cleared',{exact:true})).toBeVisible();
+ await expect(page.getByText('Cleared',{exact:true})).toBeVisible();
  await expect.poll(async()=>await saved(page)).toEqual({history:[],tabs:[],cur:''});
  expect(await page.evaluate(()=>(window as any).sessionSaveCalls)).toBe(1);
 });

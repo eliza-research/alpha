@@ -50,6 +50,7 @@ import {checkNativeHostedResultNotices} from './hosted-result-notices.mjs';
 import {checkNativeHostedInbox} from './hosted-inbox.mjs';
 import {checkNativeReminderDelivery} from './reminder-delivery.mjs';
 import {checkNativeClockReview} from './clock-review.mjs';
+import {checkNativeDeletionReviewAdmission} from './deletion-review-admission.mjs';
 import {checkNativeSmsDispatch} from './sms-dispatch.mjs';
 import {checkNativeMmsDispatch} from './mms-dispatch.mjs';
 import {checkNativeTextScaleLifecycle} from './text-scale-lifecycle.mjs';
@@ -64,6 +65,12 @@ import {checkNativeDigestConsent} from './native-digest.mjs';
 import {checkNativeCalendarScopedReview} from './scoped-calendar-review.mjs';
 import {checkNativeCalendarSyncEnable} from './calendar-sync-enable.mjs';
 import {checkBrowserUnderlay} from './browser-underlay.mjs';
+import {checkTelephonyAttention, checkTelephonyContactsBook, checkTelephonyMessageThreads, checkTelephonyPhoneCalls, checkTelephonyVoicemail} from './telephony.mjs';
+import {forwardReplayCampaigns} from './forward-replays.mjs';
+import {checkCopyReceipt} from './copy-receipt.mjs';
+import {checkAlwaysOnListenerIndicatorReadback} from '../../native/conformance.mjs';
+import {checkNativeRequestWithdrawal} from './request-withdrawal.mjs';
+import {checkResidentSchedulingServiceAdmission} from './resident-scheduling-service-admission.mjs';
 
 export async function runNativeRefinement(onProgress) {
   const earlyInputs = [fileURLToPath(import.meta.url)];
@@ -83,6 +90,9 @@ export async function runNativeRefinement(onProgress) {
   };
   extraGroups.push(['ProducerTraces.java', producerSources, 'com.android.systemui.privacy.ProducerTraces']);
   const campaigns = [
+    ...forwardReplayCampaigns(earlyInputs),
+    ...[checkCopyReceipt, checkAlwaysOnListenerIndicatorReadback, checkNativeRequestWithdrawal,
+      checkResidentSchedulingServiceAdmission].map(withInputs(earlyInputs)),
     ['FinitePolicyTraces', async record => {
       const models = ['VadSegmentation', 'RendererRecovery', 'ResidentScheduling'];
       const sources = [voice + 'LiveVadGate.java', app + 'RendererRecoveryBudget.java', app + 'ResidentScheduleRearm.java'];
@@ -158,6 +168,7 @@ export async function runNativeRefinement(onProgress) {
           'Voice traces bound two sentences and one submitted turn.']}));
     }],
     ...[checkNavigationProgress, checkNativeNavigationOwnership, checkGoogleBrowserReturnClaim].map(withInputs(earlyInputs)),
+    ...[checkTelephonyMessageThreads, checkTelephonyVoicemail, checkTelephonyAttention, checkTelephonyPhoneCalls, checkTelephonyContactsBook].map(withInputs(earlyInputs)),
     ['residentLifecycleTraces', async record => {
       const lifecycle = await residentLifecycleTraces([fileURLToPath(import.meta.url)]);
       record(await checkTraces({model: 'ResidentRuntime', id: 'ResidentRuntime-lifecycle-native', scope: 'bounded-component',
@@ -173,7 +184,7 @@ export async function runNativeRefinement(onProgress) {
       const failed = reset.results.filter(result => result.status !== 'passed');
       if (failed.length) throw new Error(`Reset coordinator refinement failed: ${failed.map(result => `${result.name} (${result.status})`).join(', ')}`);
     }],
-    ...[checkDeletionCoordinator, checkResidentCoordinator, checkCredentialCoordinator, checkNativeNoteRecording,
+    ...[checkDeletionCoordinator, checkNativeDeletionReviewAdmission, checkResidentCoordinator, checkCredentialCoordinator, checkNativeNoteRecording,
       checkKeyboardDictation, checkNoteRecordingService, checkVoiceDraft, checkNotePermission, checkCredentialLeasePolicies,
       checkRendererCoordinator, checkSharedRecording, checkLiveCapture].map(withInputs(earlyInputs)),
     ...[checkAsrPipe, checkPipedCapture, checkCaptureFrames, checkIndicatorProvider, checkListenerStore,
@@ -203,6 +214,11 @@ export async function runNativeRefinement(onProgress) {
     {model: 'ResetRecovery', obligation: 'Device credentials, physical durability and externally observed erasure', reason: 'The patched shared coordinator and Alpha startup execute with controlled listener/Android/storage ports, including actual file locks. Android credentials, power-loss durability and package erasure remain external.'},
     {model: 'DeletionJournal', obligation: 'Physical persistence and real provider execution', reason: 'The shared coordinator, journal and Alpha owner binding execute under controlled storage, scheduling and provider ports, including stale-owner and multi-row checks. Power-loss durability and real effects remain external.'},
     {model: 'MediaLifecycle', obligation: 'Catalog, edit review, temporary camera resources and video lifecycle', reason: 'NativeReadEpoch and exact attachment copy/publication guards execute. MediaStore, camera and Activity lifecycle remain external.'},
+    {model: 'MessageThreads', obligation: 'SMS adapter, native review and radio dispatch', reason: 'The actual draft and suggestion transitions execute. Thread reads, read state and the reviewed send are the SMS adapter and NativeSmsDispatch.', requires: ['Alpha image with the SMS role']},
+    {model: 'PhoneCalls', obligation: 'Telecom call lifecycle, missed calls and the device-action approval', reason: 'The actual executor call path runs with controlled lookup, owner answer and Telecom ports. Ringing, active, held and missed states are the native call service.', requires: ['Alpha image with the dialer role']},
+    {model: 'Voicemail', obligation: 'Provider access, audio decode, playback and the recognizer', reason: 'The actual open-voicemail transitions execute with controlled replies. Alpha reads Android’s voicemail provider. A separate carrier source must already populate the provider.', requires: ['SIM and configured visual voicemail provider']},
+    {model: 'ContactsBook', obligation: 'Contacts provider version check, owner editor and access loss', reason: 'The actual executor contact path runs with controlled address-book ports. The native version check has JVM tests; the owner editor has adapter tests.', requires: ['Alpha image with contacts access']},
+    {model: 'TelephonyAttention', obligation: 'Foreground reads and Home rendering', reason: 'The actual card presenter decides visibility and target. The bounded provider reads and the mounted Home row are not exercised.', requires: ['Alpha image']},
     {model: 'DeviceActions', obligation: 'AOSP image/role, Contacts and Reminders', reason: 'Only the real SMS journal executes in these traces. Carrier outcomes are fixture inputs. NativeClockReview owns its separate actual Clock contract.'},
     {model: 'ApplicationComposition', obligation: 'Cross-domain implementation orchestration', reason: 'Root integration driver owns this combined scope. Standalone native receipts do not establish composition.'},
     {model: 'ControllerComposition', obligation: 'Cross-controller implementation orchestration', reason: 'The dedicated composition campaign executes these shared-controller schedules. Standalone native receipts do not establish composition.'},

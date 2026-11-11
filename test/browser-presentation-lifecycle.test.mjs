@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
 import vm from 'node:vm';
+import {surfacePollIdle} from '../apps/app/src/browser/browser-poll.ts';
 
 const source=readFileSync(process.env.ALPHA_BROWSER_ADAPTER_SOURCE||'apps/app/src/prototype/browser-adapter.ts','utf8');
 const start=source.indexOf('  const nativeUnderlay =');
@@ -16,7 +17,7 @@ function fixture(){
  const dock={offsetWidth:100,closest:()=>null,getBoundingClientRect:()=>({x:0,y:400,width:100,height:60})};
  const document={hidden:false,documentElement:{hasAttribute:()=>false,setAttribute:(name,value)=>attributes.set(name,value),getAttribute:name=>attributes.get(name),removeAttribute:name=>attributes.delete(name),style:{setProperty(){},removeProperty(){}}},querySelector:()=>element,querySelectorAll:()=>[dock]};
  let saves=0,stops=0;
- const context={JSON,document,disposed:false,questionReview:false,confirming:false,clearingData:false,reading:false,
+ const context={JSON,document,surfacePollIdle,hiddenGeometry:JSON.stringify({session:'session',id:null}),disposed:false,questionReview:false,confirming:false,clearingData:false,reading:false,
   session:'session',lastGeometry:'',lastPresented:undefined,presentationFailed:false,presentationFrame:undefined,report:error=>errors.push(error.message),getComputedStyle:()=>({display:'block',visibility:'visible',pointerEvents:'auto',opacity:'1',borderTopLeftRadius:'30px'}),hostModalOpen:()=>false,Capacitor:{isNativePlatform:()=>true,getPlatform:()=> 'android'},
   shell:{S:()=>view},state:()=>state,restored:new Map(),tabs:{has:()=>true},
   saveSession(){saves++;},stopReading(){stops++;context.reading=false;},
@@ -64,4 +65,12 @@ test('a failed presentation keeps a visible backdrop and remains retryable',asyn
 
 test('retired presentation cannot clear a replacement browser backdrop',async()=>{
  const h=fixture();await h.update();h.attributes.set('data-alpha-browser-underlay','replacement');h.view.view='notes';await h.update();assert.equal(h.attributes.get('data-alpha-browser-underlay'),'replacement');
+});
+test('off the Browser view with the page withdrawn, the poll saves and stops reading without measuring',async()=>{
+ const h=fixture();await h.update();h.view.view='notes';await h.update();assert.equal(h.present.at(-1).id,null);
+ const sent=h.present.length,saved=h.saves;let queries=0;h.document.querySelector=()=>{queries++;return null;};
+ h.context.reading=true;await h.update();await h.update();
+ assert.equal(queries,0);assert.equal(h.present.length,sent);assert.equal(h.saves,saved+2);assert.equal(h.stops,1);
+ // Geometry that must be sent again (resume, visibility) is measured and sent even off the Browser view.
+ h.context.lastGeometry='';await h.update();assert.ok(queries>0);assert.equal(h.present.length,sent+1);assert.equal(h.present.at(-1).id,null);
 });

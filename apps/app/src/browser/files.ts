@@ -87,7 +87,7 @@ export class BrowserFiles extends SharedFiles {
   const result=await browserPhotoLibrary.changeMany({operation:'restore',items:rows.map(row=>({id:this.mediaId(row.path),revision:row.revision}))});this.storageChanged();return {...base,outcomes:[...(Array.isArray(base.outcomes)?base.outcomes:[]),...result.outcomes.map(item=>({path:'photo:'+item.id,status:['updated','unchanged'].includes(item.status)?'restored':'changed'}))]};
  }
  async storageEmptyTrash(input:{ids?:string[];confirmed?:boolean}){
-  if(!Array.isArray(input.ids)||!input.ids.length)return {status:'invalid',message:'Review the selected deleted files first.'};
+  if(!Array.isArray(input.ids)||!input.ids.length)return {status:'invalid',message:'Nothing selected'};
   const mediaIds=input.ids.filter(id=>id.startsWith('photo:')).map(id=>id.slice(6));
   if(!mediaIds.length)return this.volume.run('storageEmptyTrash',input);
   if(input.confirmed!==true)throw Error('Confirm permanent deletion first.');

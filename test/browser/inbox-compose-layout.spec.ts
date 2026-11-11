@@ -17,8 +17,8 @@ for(const theme of ['light','dark'])for(const viewport of [{width:360,height:640
  const recipient=page.getByRole('button',{name:'Remove '+address,exact:true});await recipient.scrollIntoViewIfNeeded();
  expect(await recipient.evaluate(el=>{const b=el.getBoundingClientRect(),p=el.parentElement!.getBoundingClientRect();return b.left>=p.left-1&&b.right<=p.right+1&&el.scrollWidth<=el.clientWidth+1;})).toBe(true);
  await body.scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath('editable-draft.png')});
- for(const name of ['Save draft locally','Discard local draft','Send email']){const box=(await page.getByRole('button',{name,exact:true}).boundingBox())!;expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(viewport.height);}
- await page.getByRole('button',{name:'Save draft locally',exact:true}).click();
+ for(const name of ['Save draft','Discard draft','Send email']){const box=(await page.getByRole('button',{name,exact:true}).boundingBox())!;expect(box.y).toBeGreaterThanOrEqual(0);expect(box.y+box.height).toBeLessThanOrEqual(viewport.height);}
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
  await expect(page.getByText('Saved locally',{exact:true})).toBeVisible();await page.reload();await page.getByRole('button',{name:'Inbox',exact:true}).click();await page.getByRole('button',{name:'Restore local draft',exact:true}).click();
  await expect(body).toHaveValue('A retained local draft.\nSecond paragraph.');await expect(page.getByRole('textbox',{name:'Subject',exact:true})).toHaveValue('Compact draft');
  await expect(page.getByRole('textbox',{name:'Cc',exact:true})).toHaveValue('copy@example.invalid');await expect(page.getByRole('textbox',{name:'Bcc',exact:true})).toHaveValue('blind@example.invalid');

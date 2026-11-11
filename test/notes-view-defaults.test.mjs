@@ -15,6 +15,18 @@ test('a voice row without a duration shows no clock and never NaN',()=>{
  const f=fixture([{id:'v',kind:'voice',title:'Sync',lines:[],summary:[],actions:[{t:'One',done:false}],pinned:false}]),out=f.view.render(f.state,f.api);
  assert.equal(out.otherRows.length,1);assert.equal(out.otherRows[0].isVoice,true);assert.doesNotMatch(out.otherRows[0].preview,/NaN/);assert.equal(out.otherRows[0].preview,'');
 });
+test('checklist action names identify blank items without changing text or row operations',()=>{
+ const items=[{t:'',done:false},{t:' \t ',done:true},{t:'  Milk  ',done:false}];
+ const f=fixture([{id:'checklist',kind:'list',title:'Checklist',items}]);f.state.open='checklist';
+ const before=structuredClone(f.state),rows=f.view.render(f.state,f.api).ed.items;
+ assert.deepEqual(Array.from(rows,row=>row.label),['Check item','Uncheck item','Check Milk']);
+ assert.deepEqual(Array.from(rows,row=>row.removeLabel),['Remove item','Remove item','Remove Milk']);
+ assert.deepEqual(Array.from(rows,row=>row.t),items.map(item=>item.t));
+ assert.deepEqual(f.state,before);
+ f.api.set=patch=>Object.assign(f.state,patch);
+ rows[1].remove();
+ assert.deepEqual(structuredClone(f.state.list[0].items),[items[0],items[2]]);
+});
 /** The restored projection (canonical-notes-ui.ts) over the real model.js Notes view. */
 function installCanonicalProjection(f){
  const code=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/canonical-notes-ui.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
@@ -27,7 +39,7 @@ test('agent Notes waiting for a connection use Alpha\'s Notes view without retai
  assert.equal(out.pinnedRows.length+out.otherRows.length,0);assert.equal(out.none,false);assert.equal(out.canCreate,false);assert.equal(out.canRecord,false);assert.equal(out.trashAvailable,false);
  // No waveform or Trash without a binding; Previous notes keeps its row under the list.
  assert.equal(out.canDictateNew,undefined);assert.equal(out.trashInList,undefined);assert.equal(out.listActions,true);
- assert.equal(out.notesTitle,'Notes');assert.equal(out.olderNotesAction,f.choose);assert.equal(out.storageStatus,'');assert.equal(out.unavailable,true);assert.equal(out.unavailableMessage,'Your agent is not ready for Notes. Check the connection and try again.');assert.equal(typeof out.connectNotes,'function');assert.deepEqual(f.state,f.before);
+ assert.equal(out.notesTitle,'Notes');assert.equal(out.olderNotesAction,f.choose);assert.equal(out.storageStatus,'');assert.equal(out.unavailable,true);assert.equal(out.unavailableMessage,'Agent offline');assert.equal(typeof out.connectNotes,'function');assert.deepEqual(f.state,f.before);
 });
 test('an explicitly selected retained source keeps Previous notes naming and its return action',()=>{
  const f=fixture();installCanonicalProjection(f);const out=f.view.render(f.state,{...f.api,notesSourceOptions:[{id:'canonical',choose:f.choose},{id:'legacy',selected:true,choose(){}}]});assert.equal(out.notesTitle,'Previous notes');assert.equal(out.primaryNotes,false);assert.equal(out.returnToNotesAction,f.choose);assert.equal(out.olderNotesAction,undefined);assert.equal(out.canCreate,true);assert.deepEqual(f.state,f.before);

@@ -19,5 +19,5 @@ export async function workflowAwayFromHome(signal:AbortSignal):Promise<{away:boo
  if(JSON.stringify({home:latest,radius:current.radius})!==original)throw Error('Home changed during this check. Run the condition again.');
  const distance=distanceToRoute(position.coordinate,[home.coordinate]),accuracy=position.accuracyMeters;
  if(distance-accuracy<=config.radius&&distance+accuracy>config.radius)throw Error('The location accuracy overlaps the Home boundary. Choose a more precise location and retry.');
- const away=distance-accuracy>config.radius;return {away,detail:`${away?'Outside':'Inside'} Home radius (${config.radius} m); distance ${Math.round(distance)} m, accuracy ${Math.round(accuracy)} m.`};
+ const away=distance-accuracy>config.radius;return {away,detail:`${away?'Outside':'Inside'} Home · ${Math.round(distance)} m`};
 }

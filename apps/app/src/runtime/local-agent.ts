@@ -17,6 +17,21 @@ import { streamNativeAgent, type NativeStreamPort } from './local-agent-native-s
 import { subscribeNativeVoiceEvents, type NativeVoiceEventPort } from './local-agent-native-events';
 
 export type LocalAgentMethod = AutomationsMethod | AppRecordMethod;
+export interface NativeRequestPort {
+  request(input:Record<string,unknown>):Promise<{status:number;body?:string}>;
+  cancelRequest?(input:{cancelId:string}):Promise<unknown>;
+}
+/** A plain native request whose caller aborts is withdrawn by the id sent with it: native answers
+ * the call and never dispatches one still queued behind its workers or enrolling. One already sent
+ * to the runtime is not recalled and may have completed; the caller reconciles as for any abort. */
+export function requestNativeAgent(port:NativeRequestPort,input:Record<string,unknown>,signal?:AbortSignal):Promise<{status:number;body?:string}>{
+  if(!signal)return port.request(input);
+  if(signal.aborted)return Promise.reject(signal.reason??new DOMException('Cancelled','AbortError'));
+  const cancelId=crypto.randomUUID();
+  const withdraw=()=>{void Promise.resolve().then(()=>port.cancelRequest!({cancelId})).catch(()=>{});};
+  signal.addEventListener('abort',withdraw,{once:true});
+  return port.request({...input,cancelId}).finally(()=>signal.removeEventListener('abort',withdraw));
+}
 export interface LocalAgentBridge {
   subscribeConversationEvents?(ownerId:string,listener:(envelope:unknown)=>void,onState:(state:"connected"|"unavailable",resync:boolean)=>void):()=>void;
   subscribeVoiceEvents?(ownerId:string,listener:(envelope:unknown)=>void):()=>void;
@@ -46,10 +61,10 @@ export interface LocalAgentBridge {
   /** Cloud read-aloud as it arrives: binary audio/mpeg, or the JSON envelope of a refusal. */
   speechAudio?(input:{path:'/api/tts/cloud';ownerId:string;requestId:string;body:string},signal:AbortSignal):Promise<Response>;
 }
-const native = registerPlugin<Omit<LocalAgentBridge, 'subscribeVoiceEvents'> & NativeStreamPort & NativeVoiceEventPort & NativeViewEventPort>('Agent');
+const native = registerPlugin<Omit<LocalAgentBridge, 'subscribeVoiceEvents'> & NativeRequestPort & NativeStreamPort & NativeVoiceEventPort & NativeViewEventPort>('Agent');
 // Capacitor proxies synthesize functions for unknown methods. Do not use that
 // proxy to feature-detect streaming before the native IPC adapter implements it.
-const nativeBridge:LocalAgentBridge={subscribeVoiceEvents:(ownerId,listener)=>subscribeNativeVoiceEvents(native,ownerId,listener),start:input=>native.start(input),cancelStart:input=>native.cancelStart!(input),request:input=>native.request(input),stream:(input,signal,onText,onReplyReady)=>streamNativeAgent(native,input,signal,onText,onReplyReady)};
+const nativeBridge:LocalAgentBridge={subscribeVoiceEvents:(ownerId,listener)=>subscribeNativeVoiceEvents(native,ownerId,listener),start:input=>native.start(input),cancelStart:input=>native.cancelStart!(input),request:(input,signal)=>requestNativeAgent(native,input,signal),stream:(input,signal,onText,onReplyReady)=>streamNativeAgent(native,input,signal,onText,onReplyReady)};
 // The host bridge at /__alpha-local-agent exists only on the development server
 // with test mocks or the explicit real Cloud resident mode. This
 // module is also imported by Node contract tests, where import.meta.env is absent.
@@ -78,8 +93,8 @@ export async function localAgentStopped():Promise<boolean> {
   }catch{return false;}
 }
 const unavailableBridge: LocalAgentBridge = {
-  async start() { throw new Error('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.'); },
-  async request() { throw new Error('Your agent runs on your phone, not here. Open Alpha on your Android phone to use it.'); },
+  async start() { throw new Error('Use on phone'); },
+  async request() { throw new Error('Use on phone'); },
 };
 const browserBridge: LocalAgentBridge | null = developmentBridgeAllowed ? {
   subscribeConversationEvents(ownerId,listener,onState){return subscribeBrowserConversationEvents(this,ownerId,listener,onState);},
@@ -154,6 +169,10 @@ function record(value:unknown):Record<string,unknown> {
 // ordinary stop → bind → start path, so a listening but unusable runtime is still restarted by a
 // retry. Cleared by the next verified connection.
 let attachDistrusted=false;
+/** Whether an HTTP refusal was answered by the on-device agent itself (its errors carry
+ * `source: 'local-agent'`). Its status says nothing about the Eliza Cloud sign-in: a 401 here is
+ * the agent's own owner session, never an expired Cloud key. */
+export const localAgentRefusal=(error:unknown):boolean=>!!error&&typeof error==='object'&&(error as {source?:unknown}).source==='local-agent';
 function identifier(value:unknown):string {
   if (typeof value !== 'string' || !value || value.length>512) throw new Error('Invalid local agent identity.');
   return value;
@@ -233,7 +252,7 @@ export class LocalAgentProtocol {
       if(generation!==this.generation||(recordRead&&this.session!==session))throw new Error('Local agent connection changed.');
       if(response.status>=200&&response.status<300)return JSON.parse(response.body||'{}');
       const data=(()=>{try{return JSON.parse(response.body||'{}');}catch{return {};}})();
-      const failure=Object.assign(new Error(`Local agent request failed (HTTP ${response.status}).`),{status:response.status,data});
+      const failure=Object.assign(new Error(`Local agent request failed (HTTP ${response.status}).`),{status:response.status,source:'local-agent',data});
       // The canonical app host rejects feature_starting BEFORE dispatch. Match
       // that closed read barrier only; never replay mutations or generic 503s.
       const deferred=recordRead&&response.status===503&&data&&typeof data==='object'&&!Array.isArray(data)&&
@@ -394,7 +413,7 @@ export class LocalAgentProtocol {
       return new Blob([bytes],{type:'audio/wav'});
     }finally{this.streams.delete(controller);}
   }
-  async disconnect() { for(const close of this.conversationSubscriptions)close();this.conversationSubscriptions.clear();for(const close of this.voiceSubscriptions)close();this.voiceSubscriptions.clear();this.generation++; this.session=null; for(const controller of this.streams)controller.abort();this.streams.clear(); }
+  async disconnect() { for(const close of this.conversationSubscriptions)close();this.conversationSubscriptions.clear();for(const close of this.voiceSubscriptions)close();this.voiceSubscriptions.clear();this.generation++; this.session=null; this.rooms.clear(); for(const controller of this.streams)controller.abort();this.streams.clear(); }
   private async json(path:string,body:unknown|undefined,signal?:AbortSignal,headers:Record<string,string>={}) {
     if(!this.session)throw new Error('Start the local agent first.');
     return record(await this.request(path,body,signal||new AbortController().signal,headers));
@@ -459,13 +478,20 @@ export class LocalAgentProtocol {
     if(typeof value.text!=='string'||typeof value.agentName!=='string')throw new Error('Invalid local agent reply.');
     return value as RemoteChatReply;
   }
+  /** Conversation → room, as the agent's conversation list reported it. A conversation keeps its
+   * room, so Stop reads the list once per conversation on this connection, not on every call. */
+  private rooms=new Map<string,string>();
   /** Explicit Stop through upstream's `POST /api/turns/:roomId/abort`. The room comes from the
    * agent's conversation list. Any refusal reports `unsupported`; it is never retried. */
   async abortTurn(conversationId:string,signal:AbortSignal=new AbortController().signal):Promise<TurnAbortOutcome>{
     if(!this.session)return 'unsupported';
     const generation=this.generation;
     try{
-      const room=conversationRoomId(await this.listConversations(signal),conversationId);
+      let room=this.rooms.get(conversationId);
+      if(!room){
+        room=conversationRoomId(await this.listConversations(signal),conversationId)??undefined;
+        if(room&&generation===this.generation)this.rooms.set(conversationId,room);
+      }
       if(!room)return 'unsupported';
       const outcome=turnAbortOutcome(await this.request(turnAbortPath(room),{reason:'client-stop'},signal));
       if(generation!==this.generation)throw Error('Local agent connection changed.');
@@ -496,11 +522,11 @@ export function modelLabel(providerLabel:string,model:string):string {
   return providerLabel+' · '+name+' ('+(modelVendors[vendor.toLowerCase()]??vendor)+')';
 }
 export function providerStatusLabel(status:LocalProviderStatus|null|undefined):string {
-  if(!status)return 'Provider status unavailable';
-  if(!status.configured)return status.provider==='elizacloud'?'Not configured · Cloud sign-in required':'Not configured';
+  if(!status)return 'Unknown';
+  if(!status.configured)return 'Not set';
   // Eliza Cloud serves the same Qwen model through Cerebras.
   const model=status.model||(status.provider==='elizacloud'?'cerebras/'+LOCAL_PROVIDER_MODEL:LOCAL_PROVIDER_MODEL);
-  return 'Configured · '+modelLabel(status.provider==='elizacloud'?'Cloud':'Cerebras',model);
+  return modelLabel(status.provider==='elizacloud'?'Cloud':'Cerebras',model);
 }
 function parseProviderStatus(value:unknown):LocalProviderStatus {
   const row=record(value);
@@ -526,11 +552,11 @@ export async function configureLocalProvider(apiKey:string,model:string=LOCAL_PR
   // Explicit owner configuration: native vault or the private browser host's memory only.
   signal.throwIfAborted();
   if(browserCloudResidentEnabled)return browserResidentCall('residentOwn',undefined,undefined,{apiKey,...(cartesiaKey?{cartesiaKey}:{})},signal);
-  if(!Capacitor.isNativePlatform())throw Error('Own API keys require the Android secure credential store. This browser cannot save them.');
-  if(!await localAgentPackaged())throw Error('On-device agent is unavailable in this version.');
+  if(!Capacitor.isNativePlatform())throw Error('Android only');
+  if(!await localAgentPackaged())throw Error('Agent unavailable');
   signal.throwIfAborted();
-  if(!native.prepareProviderConfiguration||!native.configureProvider||!native.cancelProviderConfiguration)throw Error('Cancellable model provider setup is unavailable.');
-  if(model!==LOCAL_PROVIDER_MODEL)throw Error(`Alpha Phone uses ${LOCAL_PROVIDER_MODEL} on Cerebras.`);
+  if(!native.prepareProviderConfiguration||!native.configureProvider||!native.cancelProviderConfiguration)throw Error('Update Alpha');
+  if(model!==LOCAL_PROVIDER_MODEL)throw Error(`${LOCAL_PROVIDER_MODEL} · Cerebras`);
   return runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.configureProvider!({apiKey,model,requestId,...(cartesiaKey?{cartesiaKey}:{})}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
 }
 /** Publish the saved owner switches to the on-device Google host. */
@@ -551,10 +577,10 @@ function managedProviderStatus(value:unknown):ManagedLocalProviderStatus {
 }
 async function currentProviderManager(expectedRevision:string,signal:AbortSignal):Promise<ManagedLocalProviderStatus>{
   signal.throwIfAborted();
-  if(typeof expectedRevision!=='string'||!expectedRevision||expectedRevision.length>256)throw Error('Reload provider Settings before making changes.');
+  if(typeof expectedRevision!=='string'||!expectedRevision||expectedRevision.length>256)throw Error('Refresh');
   const status=managedProviderStatus(await localProviderStatus());signal.throwIfAborted();
-  if(status.revision!==expectedRevision)throw Error('Provider changed. Reload Settings before making changes.');
-  if(status.persistence!==(browserCloudResidentEnabled?'host-session':'native-secure-store'))throw Error('Provider storage could not be confirmed.');
+  if(status.revision!==expectedRevision)throw Error('Refresh');
+  if(status.persistence!==(browserCloudResidentEnabled?'host-session':'native-secure-store'))throw Error('Not confirmed');
   return status;
 }
 function providerKeyName(key:LocalProviderKey):LocalProviderKey {
@@ -570,30 +596,30 @@ export async function selectLocalProvider(input:{mode:LocalProviderMode;expected
   let response:unknown;
   if(browserCloudResidentEnabled)response=await browserProviderCall('residentProviderSelect',{mode,expectedRevision},signal);
   else{
-    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.selectProvider||!native.cancelProviderConfiguration)throw Error('Provider selection is unavailable in this version.');
+    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.selectProvider||!native.cancelProviderConfiguration)throw Error('Update Alpha');
     response=await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.selectProvider!({mode,expectedRevision,requestId}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
   }
   signal.throwIfAborted();const status=managedProviderStatus(response);
-  if(status.mode!==mode||status.keys.text.configured!==before.keys.text.configured||status.keys.voice.configured!==before.keys.voice.configured)throw Error('Provider selection and retained keys could not be confirmed.');
+  if(status.mode!==mode||status.keys.text.configured!==before.keys.text.configured||status.keys.voice.configured!==before.keys.voice.configured)throw Error('Not confirmed');
   return status;
 }
 /** Omitted fields remain untouched. Empty values never mean Remove. Edits do not select a route. */
 export async function editLocalProviderKeys(input:{textKey?:string;voiceKey?:string;expectedRevision:string},signal:AbortSignal=new AbortController().signal):Promise<ManagedLocalProviderStatus>{
   const {textKey,voiceKey,expectedRevision}=input;
-  for(const value of [textKey,voiceKey])if(value!==undefined&&(typeof value!=='string'||value.length<8||value.length>1024||/[^\x21-\x7e]/.test(value)))throw Error('Enter a valid key or leave the field unchanged.');
+  for(const value of [textKey,voiceKey])if(value!==undefined&&(typeof value!=='string'||value.length<8||value.length>1024||/[^\x21-\x7e]/.test(value)))throw Error('Invalid key');
   if(textKey===undefined&&voiceKey===undefined)throw Error('Choose a key to edit.');
   const before=await currentProviderManager(expectedRevision,signal);
   const fields={expectedRevision,...(textKey!==undefined?{textKey}:{}),...(voiceKey!==undefined?{voiceKey}:{})};
   let response:unknown;
   if(browserCloudResidentEnabled)response=await browserProviderCall('residentProviderEdit',fields,signal);
   else{
-    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.editProviderKeys||!native.cancelProviderConfiguration)throw Error('Provider editing is unavailable in this version.');
+    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.editProviderKeys||!native.cancelProviderConfiguration)throw Error('Update Alpha');
     response=await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.editProviderKeys!({...fields,requestId}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
   }
   signal.throwIfAborted();const status=managedProviderStatus(response);
   if(status.mode!==before.mode||textKey!==undefined&&!status.keys.text.configured||voiceKey!==undefined&&!status.keys.voice.configured
     ||textKey===undefined&&status.keys.text.configured!==before.keys.text.configured||voiceKey===undefined&&status.keys.voice.configured!==before.keys.voice.configured)
-    throw Error('Saved keys could not be confirmed. Reload Settings.');
+    throw Error('Refresh');
   return status;
 }
 export async function removeLocalProviderKey(input:{key:LocalProviderKey;expectedRevision:string},signal:AbortSignal=new AbortController().signal):Promise<ManagedLocalProviderStatus>{
@@ -601,12 +627,12 @@ export async function removeLocalProviderKey(input:{key:LocalProviderKey;expecte
   const before=await currentProviderManager(expectedRevision,signal);let response:unknown;
   if(browserCloudResidentEnabled)response=await browserProviderCall('residentProviderRemove',{key,expectedRevision},signal);
   else{
-    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.removeProviderKey||!native.cancelProviderConfiguration)throw Error('Per-key removal is unavailable in this version.');
+    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.removeProviderKey||!native.cancelProviderConfiguration)throw Error('Update Alpha');
     response=await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.removeProviderKey!({key,expectedRevision,requestId}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
   }
   signal.throwIfAborted();const status=managedProviderStatus(response);
   if(status.mode!==before.mode||status.keys[key].configured||status.keys[other].configured!==before.keys[other].configured)
-    throw Error('Key removal could not be confirmed. Reload Settings.');
+    throw Error('Refresh');
   return status;
 }
 /** Native opens a secure dialog; only the browser host can return its explicit RAM-only reveal. */
@@ -617,13 +643,13 @@ export async function revealLocalProviderKey(input:{key:LocalProviderKey;expecte
   let response:unknown;
   if(browserCloudResidentEnabled)response=await browserProviderCall('residentProviderReveal',{key,expectedRevision},signal);
   else{
-    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.revealProviderKey||!native.cancelProviderConfiguration)throw Error('Provider reveal is unavailable in this version.');
+    if(!Capacitor.isNativePlatform()||!native.prepareProviderConfiguration||!native.revealProviderKey||!native.cancelProviderConfiguration)throw Error('Update Alpha');
     response=await runProviderConfiguration(signal,{prepare:()=>native.prepareProviderConfiguration!(),configure:requestId=>native.revealProviderKey!({key,expectedRevision,requestId}),cancel:requestId=>native.cancelProviderConfiguration!({requestId})});
   }
   signal.throwIfAborted();const result=record(response);
   if(result.key!==key||result.revision!==expectedRevision)throw Error('Provider changed before reveal.');
   if(browserCloudResidentEnabled){
-    if(typeof result.value!=='string'||result.value.length<8||result.value.length>1024||/[^\x21-\x7e]/.test(result.value))throw Error('Provider reveal could not be confirmed.');
+    if(typeof result.value!=='string'||result.value.length<8||result.value.length>1024||/[^\x21-\x7e]/.test(result.value))throw Error('Not confirmed');
     return {key,revision:expectedRevision,value:result.value};
   }
   if(result.shown!==true||typeof result.hidesAfterMs!=='number'||result.hidesAfterMs<=0||result.hidesAfterMs>30000||result.value!==undefined)throw Error('Secure provider reveal could not be confirmed.');
@@ -682,7 +708,7 @@ export async function clearLocalProviderIfCurrent(bindingGuard:string,signal:Abo
  * Keep the saved slot; native ownership must be resolved before another start. */
 export class LocalCloudProviderStopUnconfirmed extends Error {
   constructor(cause:unknown) {
-    super('Local agent shutdown could not be confirmed. Your saved AI connection was kept. Check local agent status before reconnecting.',{cause});
+    super('Stop unconfirmed',{cause});
     this.name='LocalCloudProviderStopUnconfirmed';
   }
 }
@@ -700,21 +726,31 @@ export async function configureLocalCloudProvider(credentialId:string) {
 export async function stopLocalAgent() {
   if(!Capacitor.isNativePlatform()||!native.stop)throw Error('Stop browser development with Ctrl-C in its terminal.');
   await native.stop();
-  const deadline=performance.now()+30000;
-  while(performance.now()<deadline){
-    const status=await native.getStatus?.();
+  await awaitLocalAgentStopped(()=>native.getStatus!());
+}
+/** Waits until native confirms the service and its socket are gone. One failed status read says
+ * nothing about the shutdown, so it is read again. Reads start 200 ms apart and back off to one
+ * second: a slow shutdown costs a bounded number of bridge calls. */
+export async function awaitLocalAgentStopped(getStatus:()=>Promise<{state?:string;serviceActive?:boolean;socketListening?:boolean}|undefined>,
+  clock:{now():number;sleep(ms:number):Promise<void>}={now:()=>performance.now(),sleep:ms=>new Promise(resolve=>setTimeout(resolve,ms))},timeoutMs=30000):Promise<void> {
+  const deadline=clock.now()+timeoutMs;
+  let delay=200;
+  while(clock.now()<deadline){
+    let status:Awaited<ReturnType<typeof getStatus>>;
+    try{status=await getStatus();}catch{status=undefined;}
     if(status?.state==='stopped'&&status.serviceActive===false&&status.socketListening===false)return;
-    await new Promise(resolve=>setTimeout(resolve,200));
+    await clock.sleep(delay);
+    delay=Math.min(delay*2,1000);
   }
-  throw Error('Shutdown is still pending. Check local agent status before starting again.');
+  throw Error('Not confirmed');
 }
 
 /** Recovery keeps opaque native review tokens in memory; the service owns inventory and archival. */
 export async function reviewLocalRecovery(){
- if(!Capacitor.isNativePlatform())throw Error('Recovery is unavailable here. Your records were kept.');
- try{return parseRecoveryReview(await native.reviewRecovery?.());}catch{throw Error('Recovery could not be checked. Your records were kept.');}
+ if(!Capacitor.isNativePlatform())throw Error('Unavailable');
+ try{return parseRecoveryReview(await native.reviewRecovery?.());}catch{throw Error('Couldn’t check');}
 }
 export async function archiveLocalRecovery(reviewToken:string){
- if(!Capacitor.isNativePlatform())throw Error('Recovery is unavailable here. Your records were kept.');
- try{return parseRecoveryArchive(await native.archiveRecovery?.({reviewToken}));}catch{throw Error('Recovery could not be confirmed. Review again before restarting your agent.');}
+ if(!Capacitor.isNativePlatform())throw Error('Unavailable');
+ try{return parseRecoveryArchive(await native.archiveRecovery?.({reviewToken}));}catch{throw Error('Not confirmed');}
 }

@@ -8,9 +8,9 @@ import { installResidentAgentPlugin } from './helpers/resident-agent-plugin';
 const SYNTHETIC_KEY = 'synthetic-provider-key-7f3a9c0e5b';
 const REMOTE = 'https://agent.example.test';
 const REDACTION = {
-  resident: 'Messages and selected content go to Cerebras with your key. Keys and contact details are masked first. Names and message text are not.',
+  resident: 'To Cerebras',
   agent: 'Depends on your agent',
-  offline: 'No remote agent connected; no hosted inference requests',
+  offline: 'AI off',
 };
 // Former fixture activity rows and claims must never be presented as this phone's history.
 const fixtureActivity = [/Drafted a reply to Maya/, /Filed Jordan's term sheet/, /Moved Gym to 7:30 PM/, /Summarized 14 emails/, /Ran Morning brief/, /Redaction receipt saved/, /Booked Nopa/, /\b\d+ today\b/];
@@ -112,8 +112,8 @@ async function openSettings(page: Page, tab: string) {
   const current=()=>page.locator('[data-settings-page]').last();
   while(!await current().getByRole('button',{name:'About',exact:true}).isVisible())
     await current().getByRole('button',{name:/^Back to /}).click();
-  const path=tab==='AI provider'?['Account','AI connection']:tab==='App permissions'?['Privacy','App permissions']:[tab];
-  for(const name of path)await page.getByRole('button', { name: name==='AI connection'?/^AI connection(?:\s|$)/:name, exact: name!=='AI connection' }).filter({visible:true}).click();
+  const path=tab==='AI provider'?['Account','AI']:tab==='App permissions'?['Privacy','Permissions']:[tab];
+  for(const name of path)await page.getByRole('button', { name: name==='AI'?/^AI(?:\s|$)/:name, exact: name!=='AI' }).filter({visible:true}).click();
 }
 async function rendererDump(page: Page) {
   return page.evaluate(() => {
@@ -148,8 +148,8 @@ for (const scenario of ['resident', 'remote', 'offline'] as const) test(`current
   await openSettings(page, 'AI provider');
   const provider = page.getByRole('dialog', {name: 'AI connection', exact: true});
   // This dialog reports the phone's saved provider independently of a remote/offline selection.
-  await expect(provider.getByRole('button', {name: 'Own API keys', exact: true})).toHaveAttribute('aria-pressed', 'true');
-  await expect(provider.getByText('Text connected · Voice off', {exact: true})).toBeVisible();
+  await expect(provider.getByRole('button', {name: 'Own keys', exact: true})).toHaveAttribute('aria-pressed', 'true');
+  await expect(provider.getByText('Voice off', {exact: true})).toBeVisible();
   await assertNoInventedActivity(page);
   await provider.getByRole('button', {name: 'Close Account', exact: true}).click();
   // The slim Settings design delegates provider state to its dialog and exposes no old pages.
@@ -178,7 +178,7 @@ test('provider key never reaches current Settings, bridge payloads or test outpu
   const console: string[] = [];
   page.on('console', message => console.push(message.text()));
   await openSettings(page, 'AI provider');
-  await expect(page.getByText('Text connected · Voice off', {exact: true})).toBeVisible();
+  await expect(page.getByText('Voice off', {exact: true})).toBeVisible();
   await page.getByRole('button', {name: 'Close Account', exact: true}).click();
   await openSettings(page,'About');
   expect(await privacyContract(page)).toBe(REDACTION.resident);
@@ -207,7 +207,7 @@ for (const proposals of [true, false]) test(`Agent reads action history only aft
   await nativeStub(page, 'resident', {proposals});
   await connect(page, 'resident');
   const panel = await openAgent(page);
-  const history = panel.locator('details').filter({has: page.locator('summary').filter({hasText: 'Phone action history'})});
+  const history = panel.locator('details').filter({has: page.locator('summary').filter({hasText: 'Actions'})});
   await history.locator('summary').click();
   expect(await panel.innerText()).not.toContain('No phone actions recorded');
   const before = await proposalReads(page);

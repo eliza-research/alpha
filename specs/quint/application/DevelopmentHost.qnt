@@ -51,8 +51,17 @@ module DevelopmentHost {
   val BoundedRequests = s.active.size() <= 2
   val CurrentResponse = s.repliedOwner == 0 or s.repliedOwner == s.credential
   val ReadyBinding = s.host == "ready" implies s.bound == s.credential and not(s.expired) and not(s.retiring)
-  val PrivateEnvironment = s.environment.in(Set("production", "staging"))
-  val safety = BoundedRequests and CurrentResponse and ReadyBinding and PrivateEnvironment
+  /// A claim is only ever the successor of the credential it was requested against.
+  val ClaimSucceedsCredential = s.claim == 0 or s.claim == s.previous + 1
+  val ActiveRequestsOwned = s.active.forall(id => s.requestOwners.get(id) != 0)
+  val ClosedIsQuiet = s.closed implies s.host == "stopped" and not(s.loginPending)
+  val TypeOK = s.host.in(Set("stopped", "starting", "ready", "retiring")) and s.credential.in(0.to(2))
+    and s.generation.in(0.to(2)) and s.childCount.in(0.to(2))
+  val safety = TypeOK and BoundedRequests and CurrentResponse and ReadyBinding and ClaimSucceedsCredential and
+    ActiveRequestsOwned and ClosedIsQuiet
+  val ReadyWitness = s.host == "ready" and s.bound != 0
+  val ClaimHeldWhileRetiringWitness = s.claim != 0 and s.retiring
+  val RequestInFlightWitness = s.active.size() > 0 and s.host == "ready"
   run claimedSignInTest = init.then(beginLogin).then(receiveClaim).then(commitCredential).then(bind).then(ready)
     .expect(s.host == "ready" and s.bound == 1 and safety)
   run replacementAbortsRequestsTest = init.then(beginLogin).then(receiveClaim).then(commitCredential)

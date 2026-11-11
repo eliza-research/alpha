@@ -64,6 +64,19 @@ public final class Manifest {public static final class permission {public static
 public final class Settings {
  public static final String ACTION_APPLICATION_DETAILS_SETTINGS="android.settings.APPLICATION_DETAILS_SETTINGS";
 }`,
+    // Connectivity is outside App info. Compile the complete product plugin, but fail if this
+    // campaign accidentally invokes any network operation instead of its owned handoff.
+    'android/net/Network.java':'package android.net;public final class Network {}',
+    'android/net/ConnectivityManager.java':`package android.net;
+public final class ConnectivityManager {
+ public Network getActiveNetwork(){throw new AssertionError("Connectivity outside App info fixture");}
+ public NetworkCapabilities getNetworkCapabilities(Network network){throw new AssertionError("Connectivity outside App info fixture");}
+}`,
+    'android/net/NetworkCapabilities.java':`package android.net;
+public final class NetworkCapabilities {
+ public static final int NET_CAPABILITY_VALIDATED=16;
+ public boolean hasCapability(int capability){throw new AssertionError("Connectivity outside App info fixture");}
+}`,
     'android/net/Uri.java':`package android.net;
 public record Uri(String scheme,String part,String fragment) {
  public static Uri fromParts(String scheme,String part,String fragment){return new Uri(scheme,part,fragment);}
@@ -188,6 +201,7 @@ public final class PluginCall {
 ${exact(call, '    public JSObject getData()', '    @Nullable\n    public Integer getInt')
   .replaceAll('    @Nullable\n','').replace('@Nullable String defaultValue','String defaultValue')}
  public void resolve(){answer();resolved=true;}
+ public void resolve(JSObject result){throw new AssertionError("Network response outside App info fixture");}
  public void reject(String message){reject(message,null,null);}
  public void reject(String message,String code){reject(message,code,null);}
  public void reject(String message,String code,Exception failure){

@@ -24,20 +24,20 @@ export function installNotesFoldersAdapter(Component:Shell,views:Record<string,B
    const doc=await editNotesFolders(current=>addNotesFolder(current,{id:newNotesFolderId(),name,createdAt:Date.now()}));
    if(shell.live)shell.vset('notes',{folders:doc.folders,foldersLoaded:true});
    return findNotesFolderByName(doc,name)??null;
-  }catch{shell.toast('Could not create the folder.');void load(shell);return null;}
+  }catch{shell.toast('Not created');void load(shell);return null;}
  }
  async function rename(shell:Shell,id:string,name:string):Promise<boolean>{
   try{
    const doc=await editNotesFolders(current=>renameNotesFolder(current,id,name));
    if(shell.live)shell.vset('notes',{folders:doc.folders,foldersLoaded:true});
    return doc.folders.some(folder=>folder.id===id&&folder.name===name.replace(/\s+/g,' ').trim());
-  }catch(error){shell.toast(String((error as Error)?.message)==='Folder name in use'?'A folder with that name exists.':'Could not rename the folder.');void load(shell);return false;}
+  }catch(error){shell.toast(String((error as Error)?.message)==='Folder name in use'?'Name in use':'Rename failed');void load(shell);return false;}
  }
  async function remove(shell:Shell,id:string):Promise<boolean>{
   try{
    const doc=await editNotesFolders(current=>removeNotesFolder(current,id));
    if(shell.live)shell.vset('notes',{folders:doc.folders});
-  }catch{shell.toast('Could not delete the folder.');void load(shell);return false;}
+  }catch{shell.toast('Delete failed');void load(shell);return false;}
   // Agent notes keep their folderId; a reference to a deleted folder reads as no folder.
   if(shell.notesSourceMode!=='legacy')return true;
   const list=shell.vget('notes').list||[],released=releaseNotesFolder(list,id);

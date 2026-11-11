@@ -30,8 +30,8 @@ export function openWorkflowFilters(input:{type:WorkflowTypeFilter;status:Workfl
  }
  group('Type',WORKFLOW_TYPES,()=>type,value=>type=value);
  group('Status',WORKFLOW_STATUSES,()=>status,value=>status=value,true);
- const refresh=button('Refresh list');refresh.className='workflow-filter-refresh';refresh.prepend(glyph('rotate-cw'));refresh.disabled=input.busy;refresh.onclick=()=>{if(!input.current()){close();return;}close();input.refresh();};content.append(refresh);
- const footer=document.createElement('footer'),apply=button('Show workflows');apply.className='workflow-filter-apply';apply.onclick=()=>{if(input.current())input.apply(type,status);close();};footer.append(apply);dialog.append(header,content,footer);
+ const refresh=button('');refresh.setAttribute('aria-label','Refresh list');refresh.className='workflow-filter-refresh';refresh.prepend(glyph('rotate-cw'));refresh.disabled=input.busy;refresh.onclick=()=>{if(!input.current()){close();return;}close();input.refresh();};content.append(refresh);
+ const footer=document.createElement('footer'),apply=button('Done');apply.className='workflow-filter-apply';apply.onclick=()=>{if(input.current())input.apply(type,status);close();};footer.append(apply);dialog.append(header,content,footer);
  dialog.oncancel=event=>{event.preventDefault();close();};dialog.onclose=close;dialog.onclick=event=>{if(event.target===dialog){const r=dialog.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)close();}};
  window.addEventListener('alpha-back',back,true);window.addEventListener('pagehide',close);document.addEventListener('visibilitychange',visibility);window.addEventListener('resize',position);
  try{document.body.append(dialog);position();groups.forEach(g=>g.paint());dialog.showModal();cancel.focus();}catch(error){close();throw error;}

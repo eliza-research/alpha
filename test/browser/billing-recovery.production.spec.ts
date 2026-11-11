@@ -15,8 +15,8 @@ const id = '9f1dc45a-4011-4e44-947a-30d999d24fa5';
 // Synthetic, never a real grant code: 16 Crockford characters once normalized.
 const CODE = 'synt-hetc-0de0-0001', NORMALIZED = 'SYNTHETC0DE00001';
 const NEEDED = 'Choose a plan or enter a membership code to ask Alpha.';
-const REFUSED = 'Eliza Cloud declined this request for billing. Check your subscription or enter a membership code, then send again.';
-const SHEET_REFUSED = 'Your last request was declined for billing.';
+const REFUSED = 'Billing declined';
+const SHEET_REFUSED = 'Billing declined';
 const composer = (page: Page) => page.locator('[data-alpha-layer="composer"][aria-hidden="false"], [data-alpha-layer="conversation"][aria-hidden="false"]').getByRole('textbox').first();
 const conversation = (page: Page) => page.locator('[data-alpha-layer="conversation"]');
 const bubble = (page: Page, text: string) => page.getByRole('button', { name: 'Message actions: ' + text, exact: true });
@@ -49,7 +49,7 @@ const configured = (page: Page) => stub(page, s => s.order.filter((entry: string
 test('an account without a subscription is told why nothing was sent and gets the one Subscription popup back', async ({ page }, info) => {
   test.setTimeout(120_000);
   const foreign = await zeroAccount(page);
-  await expect(controls(page).getByText('No active subscription', { exact: true })).toBeVisible();
+  await expect(controls(page).getByText('No plan', { exact: true })).toBeVisible();
   await expect(controls(page).getByRole('status').filter({ hasText: NEEDED })).toHaveCount(0);
   await expect(controls(page).getByRole('button', { name: 'Choose a plan', exact: true })).toBeVisible();
   await expect(controls(page).getByRole('button', { name: 'Use code', exact: true })).toBeVisible();
@@ -83,7 +83,7 @@ test('an invalid or expired membership code is refused in the popup and changes 
   await expect(controls(page).getByRole('alert')).toHaveText('This code could not be redeemed. Check the code and try again.');
   await expect(field).toHaveValue(CODE);
   await expect(controls(page)).toContainText('$0.00');
-  await expect(controls(page).getByText('No active subscription', { exact: true })).toBeVisible();
+  await expect(controls(page).getByText('No plan', { exact: true })).toBeVisible();
   await shot(page, info, '03-code-invalid-or-expired.png');
   expect(await stub(page, s => s.redeemed.map((row: { code: string }) => row.code))).toEqual([NORMALIZED]);
   expect(await configured(page)).toBe(before);
@@ -163,7 +163,7 @@ test('Cloud declining a turn mid-use gives one answer and the popup; after plan 
   await expect(conversation(page).getByText(REFUSED, { exact: true })).toHaveCount(1);
   await expect(page.getByText(/configured AI provider is out of credits|billing needs attention|Manage billing in/)).toHaveCount(0);
   await expect(bubble(page, 'What is on my calendar this week?')).toHaveCount(1);
-  const offer = page.getByRole('button', { name: /^Check subscription or enter a membership code/ });
+  const offer = page.getByRole('button', { name: /^Subscription/ });
   await expect(offer).toHaveCount(1);
   // Unrelated transient toasts settle before the screenshot; a long one stays up to 10 s.
   await expect(page.locator('[data-alpha-toast] .drop')).toHaveCount(0, { timeout: 11_000 });
@@ -243,11 +243,11 @@ test('refused turns retain their answers and defer plan checks until the owner r
   await expect.poll(() => harness(page, f => f.streams)).toBe(1);
   await button(page, 'Expand chat').click();
   // Both terminal refusals stay visible. No plan read may interrupt or replace either reply.
-  await expect(conversation(page).getByText(/AI needs an active Eliza Cloud plan/)).toHaveCount(1, { timeout: 30_000 });
+  await expect(conversation(page).getByText('Plan needed', { exact: true })).toHaveCount(1, { timeout: 30_000 });
   expect(await reads()).toBe(before);
   // A second refusal is also held until the owner returns.
   await send(page, 'Try my calendar again');
-  await expect(conversation(page).getByText(/AI needs an active Eliza Cloud plan/)).toHaveCount(2, { timeout: 30_000 });
+  await expect(conversation(page).getByText('Plan needed', { exact: true })).toHaveCount(2, { timeout: 30_000 });
   await page.waitForTimeout(1000);
   expect(await reads()).toBe(before);
   // On return, account display and provider admission each read their own authority.

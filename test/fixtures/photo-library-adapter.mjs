@@ -88,11 +88,11 @@ function fakeHost(){
  const rejection=(message,code)=>()=>{throw Object.assign(Error(message),{code});};
  for(const [name,change,expected,undo] of [
   ['complete',()=>({status:'complete',outcomes:[{id:'lib:i:3:30',status:'trashed'}]}),/^$/,['lib:i:3:30']],
-  ['partial',()=>({status:'partial',outcomes:[{id:'lib:i:3:30',status:'stale'}]}),/^0 of 1 changes verified; 1 changed elsewhere and was skipped\.$/,[]],
-  ['unverified',()=>({status:'partial',outcomes:[{id:'lib:i:3:30',status:'unverified'}]}),/^0 of 1 changes verified\.$/,[]],
+  ['partial',()=>({status:'partial',outcomes:[{id:'lib:i:3:30',status:'stale'}]}),/^0\/1 ✓ · 1 skipped$/,[]],
+  ['unverified',()=>({status:'partial',outcomes:[{id:'lib:i:3:30',status:'unverified'}]}),/^0\/1 ✓$/,[]],
   ['declined',rejection('Photo change cancelled. No change was dispatched.','LIBRARY_DECLINED'),/^Nothing changed\.$/,[]],
-  ['stale',rejection('Selected media changed or is unavailable. Refresh Photos.','LIBRARY_STALE'),/^An item changed\. Nothing changed; review again\.$/,[]],
-  ['other',rejection('Finish the current photo review first.','LIBRARY_BUSY'),/^The action could not be completed\.$/,[]],
+  ['stale',rejection('Selected media changed or is unavailable. Refresh Photos.','LIBRARY_STALE'),/^Item changed$/,[]],
+  ['other',rejection('Finish the current photo review first.','LIBRARY_BUSY'),/^Failed$/,[]],
  ]){
   const {state,port}=fakePort(),host=fakeHost(),library=createDeviceLibrary(port,()=>true);
   const signal=new AbortController().signal,search=await library.agent.run({type:'photo_library_search',limit:1},signal);
@@ -153,5 +153,26 @@ function fakeHost(){
  host.release();
  await assert.rejects(library.agent.runView({type:'photos_filter'},signal),/Open Photos/);
  library.dispose();
+}
+// Hiding the app ends an open review; a confirmed change that is already running is not interrupted.
+{
+ const page=new EventTarget();page.hidden=false;globalThis.document=page;
+ const hide=value=>{page.hidden=value;page.dispatchEvent(new Event('visibilitychange'));};
+ try{
+  const {state,port}=fakePort(),host=fakeHost(),library=createDeviceLibrary(port,()=>true),signal=new AbortController().signal;
+  const search=await library.agent.run({type:'photo_library_search',limit:3},signal);
+  const review=lib.validateLibraryOperation({type:'photo_library_review',action:'trash',items:[{id:'lib:i:3:30',revision:search.items[0].revision}]});
+  await library.agent.run(review,signal);assert.ok(library.reviewCard());
+  hide(false);assert.ok(library.reviewCard(),'a visible page keeps the review');
+  const before=host.changes;hide(true);
+  assert.equal(library.reviewCard(),undefined,'the review ends when the app is hidden');assert.equal(host.changes,before+1,'the host re-renders without the card');
+  hide(false);assert.equal(library.reviewCard(),undefined,'and does not return');
+  library.reviewCard()?.confirm();await tick(10);assert.equal(state.changes.requested,undefined,'nothing was requested from Android');
+  let finish;state.change=options=>new Promise(resolve=>{finish=()=>resolve({status:'complete',outcomes:options.items.map(row=>({id:row.id,status:'trashed'}))});});
+  await library.agent.run(review,signal);library.reviewCard().confirm();await tick(10);
+  hide(true);finish();await tick(10);
+  assert.deepEqual(host.trashed,['lib:i:3:30'],'Android\'s own dialog hides the page; the confirmed change still completes');
+  library.dispose();host.release();
+ }finally{delete globalThis.document;}
 }
 console.log('PASS photo library adapter');

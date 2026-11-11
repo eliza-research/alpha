@@ -28,6 +28,15 @@ import org.json.JSONObject;
 @CapacitorPlugin(name="AlphaVoiceCloud", permissions={@Permission(alias="microphone",strings={android.Manifest.permission.RECORD_AUDIO})})
 public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
  public AlphaVoiceCloudPlugin(){super("alpha-cloud-voice-","alpha-cloud-tts-");}
+ /**
+  * On-device transcription of one window of audio the app already holds (a decoded voicemail): a
+  * complete mono 16 kHz PCM16 WAV of at most sixty seconds, base64. It runs under the same request
+  * gate, foreground fence and cancellation as a recording and never leaves the phone.
+  */
+ @PluginMethod public void transcribeLocalAudio(PluginCall call){transcribeSuppliedWav(call,cancelled->{
+  String data=call.getString("wav");if(data==null||data.isEmpty()||data.length()>2_700_000)throw new IOException("Invalid audio");
+  try{return Base64.getDecoder().decode(data);}catch(IllegalArgumentException invalid){throw new IOException("Invalid audio");}
+ });}
  private static final Set<AlphaVoiceCloudPlugin> activeVoices=new java.util.concurrent.CopyOnWriteArraySet<>();
  private static final Set<Streaming> activeStreams=new java.util.concurrent.CopyOnWriteArraySet<>();
  private final ai.eliza.plugins.passwords.PasswordSurfaces.Listener secretSurface=visible->{if(visible)retireSpeechAuthority();};
@@ -287,11 +296,13 @@ public final class AlphaVoiceCloudPlugin extends LocalSpeechBridgePlugin {
   try{c.setRequestProperty("Content-Type","audio/wav");c.setRequestProperty("X-Request-Id",PairedSpeechContract.requestId(call.getString("requestId")));c.setFixedLengthStreamingMode(audio.length);try(OutputStream out=c.getOutputStream()){if(request.cancelled)throw new IOException();out.write(audio);}}finally{Arrays.fill(audio,(byte)0);}
   answered(c);byte[] response;try(InputStream in=c.getInputStream()){response=read(in,128*1024,request);}JSONObject data=new JSONObject(new String(response,StandardCharsets.UTF_8));String text=PairedSpeechContract.transcript(data);if(request.cancelled||destroyed())throw new IOException();JSObject value=new JSObject();value.put("text",text);value.put("local",true);value.put("provider",PairedSpeechContract.ASR_PROVIDER);request.result=value;
  });}
- @PluginMethod public void synthesizePaired(PluginCall call){synthesizeAudio(call,true,null);}
+ /** Like {@link #synthesize}: a request that asked not to replace speech never interrupts a clip or a streamed utterance. */
+ @PluginMethod public void synthesizePaired(PluginCall call){if(Boolean.FALSE.equals(call.getBoolean("replace",true))&&speakerBusy()){call.reject("Speaker is in use","playback-busy");return;}synthesizeAudio(call,true,null);}
 
  // ---- Browser read-aloud (reviewed passages from AlphaBrowser) --------------------------------
 
- @PluginMethod public void synthesizeBrowserReading(PluginCall call){mainHandler().post(()->{try{AlphaBrowserPlugin browser=(AlphaBrowserPlugin)getBridge().getPlugin("AlphaBrowser").getInstance();if("device".equals(call.getString("execution")))throw new IllegalArgumentException();String reviewed=browser.consumeReading(call);synthesizeAudio(call,true,reviewed);}catch(Exception error){call.reject("Reading approval expired");}});}
+ // A busy speaker refuses before the reading approval is consumed, so the same approval can be retried.
+ @PluginMethod public void synthesizeBrowserReading(PluginCall call){mainHandler().post(()->{if(Boolean.FALSE.equals(call.getBoolean("replace",true))&&speakerBusy()){call.reject("Speaker is in use","playback-busy");return;}try{AlphaBrowserPlugin browser=(AlphaBrowserPlugin)getBridge().getPlugin("AlphaBrowser").getInstance();if("device".equals(call.getString("execution")))throw new IllegalArgumentException();String reviewed=browser.consumeReading(call);synthesizeAudio(call,true,reviewed);}catch(Exception error){call.reject("Reading approval expired");}});}
  @PluginMethod public void synthesizeLocalBrowserReading(PluginCall call){mainHandler().post(()->{try{if(!"device".equals(call.getString("execution")))throw new IllegalArgumentException();AlphaBrowserPlugin browser=(AlphaBrowserPlugin)getBridge().getPlugin("AlphaBrowser").getInstance();String reviewed=browser.consumeReading(call);synthesizeReviewed(call,reviewed);}catch(Exception error){call.reject("Reading approval expired");}});}
  void cancelBrowserSpeech(String id){cancelSpeech(id);}
 

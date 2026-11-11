@@ -8,7 +8,7 @@ test('unconnected Home hides empty widgets and keeps sign-in reachable', async (
  const home=page.getByRole('region',{name:'Home',exact:true});await expect(home.locator('[data-alpha-home-date]')).toHaveCount(0);
  await expect(home.locator('[data-alpha-home-inbox]')).toHaveCount(0);await expect(home).not.toContainText(/unread|Accounts are not connected/);
  await page.screenshot({path:info.outputPath('home-not-connected.png')});
- await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Account',exact:true}).click();await expect(page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true})).toBeVisible();expect(errors).toEqual([]);
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('button',{name:'Account',exact:true}).click();await expect(page.getByRole('dialog',{name:'Alpha',exact:true})).toBeVisible();expect(errors).toEqual([]);
 });
 
 test('unloaded workflows and calendar stay hidden without fabricating data or avatars',async({page})=>{

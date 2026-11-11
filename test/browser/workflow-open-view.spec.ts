@@ -96,7 +96,7 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
     expect(await counts()).toEqual({ posts: 1, decisions: 0, claims: 0, receipts: 0, automationLists: 0, journal: [] });
     if (mode === 'pending') {
       await page.getByText('open view', { exact: true }).click();
-      await expect(page.getByRole('region',{name:'Workflows',exact:true}).getByText('No workflows yet',{exact:true})).toBeVisible();
+      await expect(page.getByRole('region',{name:'Workflows',exact:true}).getByText('No automations',{exact:true})).toBeVisible();
       await expect.poll(async()=> (await counts()).journal).toEqual(['reserve', 'markApplying', 'finish']);
       // Receipt upload can finish before navigation retires the request epoch.
       // Otherwise the explicit recovery control uploads the durable result.
@@ -106,15 +106,15 @@ for (const mode of ['pending', 'wrong-owner', 'expired'] as const) {
       await returnToApps(page);
       await page.getByRole('button',{name:'Settings',exact:true}).click();
       await openConnectionDiagnostics(page);
-      await page.getByText('Phone action history',{exact:true}).click();
-      await page.getByRole('button',{name:'Check with agent',exact:true}).click();
-      await expect(page.getByRole('button',{name:'Check with agent',exact:true})).toBeEnabled();
+      await page.locator('summary',{hasText:/^Actions$/}).click();
+      await page.getByRole('button',{name:'Verify',exact:true}).click();
+      await expect(page.getByRole('button',{name:'Verify',exact:true})).toBeEnabled();
       await expect.poll(async()=> (await counts()).receipts).toBe(1);
       // History shows the agent state, then this phone's journal outcome.
-      await expect(page.getByText('done · this phone: succeeded',{exact:true})).toBeVisible();
-      await page.getByRole('button',{name:'Check with agent',exact:true}).click();
-      await expect(page.getByRole('button',{name:'Check with agent',exact:true})).toBeEnabled();
-      await expect(page.getByText('done · this phone: succeeded',{exact:true})).toBeVisible();
+      await expect(page.getByText('done · succeeded',{exact:true})).toBeVisible();
+      await page.getByRole('button',{name:'Verify',exact:true}).click();
+      await expect(page.getByRole('button',{name:'Verify',exact:true})).toBeEnabled();
+      await expect(page.getByText('done · succeeded',{exact:true})).toBeVisible();
       expect(await counts()).toEqual({ posts: 1, decisions: 1, claims: 1, receipts: 1, automationLists: 1, journal: ['reserve', 'markApplying', 'finish'] });
       expect(await page.evaluate(()=>new Set((window as any).navigationFixture.receiptBodies).size)).toBe(1);
     } else {

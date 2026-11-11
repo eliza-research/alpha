@@ -24,7 +24,7 @@ function fixture(){
 }
 test('cancelling a new check with an old selected key never claims the new key was saved',async()=>{
  const f=fixture(),pending=f.api.configureLocal('synthetic-new-key');f.cancel();await f.reading.promise;f.release.resolve(f.old);await pending;
- assert.equal(f.state.providerStatus.revision,'old-key');assert.doesNotMatch(f.state.message,/was saved|verified|before Cancel/);assert.match(f.state.message,/Own API keys are selected/);
+ assert.equal(f.state.providerStatus.revision,'old-key');assert.doesNotMatch(f.state.message,/was saved|verified|before Cancel/);assert.equal(f.state.message,'','the retained selection shows in the provider switch, not a toast');
 });
 test('late cancelled-check status cannot replace a newer Cloud selection or its message',async()=>{
  const f=fixture(),pending=f.api.configureLocal('synthetic-new-key');f.cancel();await f.reading.promise;

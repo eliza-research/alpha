@@ -14,7 +14,7 @@ export function openDomainRecovery(domain:Pick<BrowserDomainDocument,'capture'|'
  const text=document.createElement('p');text.textContent=description;
  const status=document.createElement('p');status.setAttribute('role','status');status.textContent=`Reading saved ${name}…`;
  const button=(label:string)=>{const b=document.createElement('button');b.textContent=label;b.style.cssText='min-height:44px;margin:4px;padding:10px;font:inherit';return b;};
- const backup=button(`Download ${name} backup`),legacy=button(`Download older ${name} copy`),reset=button(`Reset ${storage==='browser'?'app':storage} ${name}`),close=button('Close recovery');backup.disabled=reset.disabled=true;legacy.hidden=true;
+ const backup=button(`Download ${name} backup`),legacy=button('Download old copy'),reset=button(`Reset ${storage==='browser'?'app':storage} ${name}`),close=button('Close recovery');backup.disabled=reset.disabled=true;legacy.hidden=true;
  const download=(raw:string,name:string)=>{
   if(busy||closed)return;
   if(storage==='device'){
@@ -24,22 +24,22 @@ export function openDomainRecovery(domain:Pick<BrowserDomainDocument,'capture'|'
      const {saveNativeRecoveryBackup}=await import('../runtime/native-recovery-backup');
      const message=await saveNativeRecoveryBackup(raw,name,abort.signal);
      if(!closed)status.textContent=message;
-    }catch{if(!closed)status.textContent='Backup could not be confirmed. Saved drafts are unchanged.';}
+    }catch{if(!closed)status.textContent='Backup unconfirmed';}
     finally{busy=false;if(!closed){backup.disabled=reset.disabled=false;}}
    })();return;
   }
   const url=URL.createObjectURL(new Blob([raw],{type:'application/octet-stream'})),link=document.createElement('a');link.href=url;link.download=name;document.body.append(link);
-  try{link.click();status.textContent='Backup download requested. Check Downloads before resetting.';}
+  try{link.click();status.textContent='Downloading';}
   finally{link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
  };
  backup.onclick=()=>{if(captured?.raw!==null&&captured?.raw!==undefined)download(captured.raw,captured.format==='domain'?`Alpha-${name}-recovery.txt`:`Alpha-${name}-store-recovery.txt`);};
  legacy.onclick=()=>{if(captured?.legacy!==null&&captured?.legacy!==undefined)download(captured.legacy,`Alpha-${name}-older-copy.txt`);};
- reset.onclick=()=>{if(busy||closed||!captured)return;if(!confirming){confirming=true;reset.textContent=`Confirm ${name} reset`;status.textContent=`This clears the active ${name}. Download any copies you want to keep before confirming.`;return;}busy=true;reset.disabled=true;
+ reset.onclick=()=>{if(busy||closed||!captured)return;if(!confirming){confirming=true;reset.textContent=`Confirm ${name} reset`;status.textContent=`Reset ${name}? Can’t be undone.`;return;}busy=true;reset.disabled=true;
   void (async()=>{try{if(document.hidden)throw Error('Reset cancelled.');await domain.reset(captured!,abort.signal);if(!closed){status.textContent=`${name[0].toUpperCase()+name.slice(1)} reset. Reloading…`;location.reload();}}catch(error){if(!closed){status.textContent=error instanceof Error?error.message:`Reset could not be confirmed. Reload to inspect the ${name}.`;confirming=false;reset.textContent=`Reset ${storage==='browser'?'app':storage} ${name}`;reset.disabled=false;}}finally{busy=false;}})();
  };
  const importLabel=document.createElement('label');importLabel.textContent='Choose calendar backup';
  const file=document.createElement('input');file.type='file';file.accept='.txt,.json,application/json,text/plain';file.setAttribute('aria-label','Choose calendar backup');importLabel.append(file);
- const salvageLabel=document.createElement('label'),salvage=document.createElement('input');salvage.type='checkbox';salvageLabel.append(salvage,document.createTextNode('Recover complete valid events and series from a partly damaged backup'));
+ const salvageLabel=document.createElement('label'),salvage=document.createElement('input');salvage.type='checkbox';salvageLabel.append(salvage,document.createTextNode('Recover events'));
  const preview=document.createElement('p');preview.style.whiteSpace='pre-wrap';preview.setAttribute('aria-live','polite');
  const restore=button('Review calendar restore');restore.disabled=true;
  let selection=0,prepared:{raw:string;summary:string}|undefined,restoreConfirmed=false;
@@ -57,5 +57,5 @@ export function openDomainRecovery(domain:Pick<BrowserDomainDocument,'capture'|'
  const dispose=()=>{if(closed)return;closed=true;abort.abort();signal?.removeEventListener('abort',dispose);dialog.remove();if(current===dialog)current=undefined;window.removeEventListener('alpha-back',back,true);for(const event of retireEvents)window.removeEventListener(event,dispose,true);document.removeEventListener('visibilitychange',visibility);previous?.focus();};
  signal?.addEventListener('abort',dispose,{once:true});
  const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();dispose();},visibility=()=>{if(document.hidden)dispose();};close.onclick=dispose;dialog.oncancel=e=>{e.preventDefault();dispose();};window.addEventListener('alpha-back',back,true);for(const event of retireEvents)window.addEventListener(event,dispose,true);document.addEventListener('visibilitychange',visibility);dialog.append(title,text,backup,legacy,reset,status);if(restoreOption){dialog.append(importLabel);if(restoreOption.salvage)dialog.append(salvageLabel);dialog.append(preview,restore);}dialog.append(close);layoutBrowserDialog(dialog,[close]);(document.querySelector('.os')||document.body).append(dialog);dialog.showModal();close.focus();
- void domain.capture(abort.signal).then(value=>{if(closed)return;captured=value;if(prepared)restore.disabled=false;backup.disabled=value.raw===null;reset.disabled=value.raw===null&&!value.snapshot;legacy.hidden=value.legacy===null||value.legacy===value.raw;status.textContent=value.legacyChanged?'An older tab changed its saved copy. Download both versions and close older tabs before resetting.':value.format==='unrecognized'?`Saved ${name} metadata needs recovery. Download the original saved bytes before resetting.`:value.raw===null?`No saved ${storage} ${name}.`:'Saved data is retained until you confirm a reset.';},()=>{if(!closed)status.textContent='Saved data could not be read. Reset is unavailable.';});
+ void domain.capture(abort.signal).then(value=>{if(closed)return;captured=value;if(prepared)restore.disabled=false;backup.disabled=value.raw===null;reset.disabled=value.raw===null&&!value.snapshot;legacy.hidden=value.legacy===null||value.legacy===value.raw;status.textContent=value.legacyChanged?'Conflict in another tab':value.format==='unrecognized'?'Needs recovery':value.raw===null?`No saved ${storage} ${name}.`:'Nothing deleted until you confirm';},()=>{if(!closed)status.textContent='Unreadable';});
 }

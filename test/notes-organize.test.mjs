@@ -95,7 +95,7 @@ test('notes_restore reports the Trash restore outcome',async()=>{
 
 test('notes_record starts and saves through the Notes recorder and never touches the notes list itself',async()=>{
  let {state,host:h}=host({notes:[{id:'a',kind:'text',title:'A'}]});
- assert.deepEqual(await executeNotesOrganize(h,{type:'notes_record',action:'start'},()=>{}),{status:'succeeded',summary:'Recording a voice note in Notes.'});
+ assert.deepEqual(await executeNotesOrganize(h,{type:'notes_record',action:'start'},()=>{}),{status:'succeeded',summary:'Recording'});
  assert.deepEqual(await executeNotesOrganize(h,{type:'notes_record',action:'stop'},()=>{}),{status:'succeeded',summary:'Saved the voice note.'});
  assert.deepEqual(state.recorder,['start','stop']);assert.equal(state.commits,0);
  for(const [start,status] of [['already','succeeded'],['failed','failed']]){({host:h}=host({start}));assert.equal((await executeNotesOrganize(h,{type:'notes_record',action:'start'},()=>{})).status,status,start);}

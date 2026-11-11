@@ -30,7 +30,7 @@ const AGENT_KEY='alpha.browser.agent.local.v1';
 const AGENT_LOCK=JSON.stringify(['browser-document','alpha.browser.documents.v1',AGENT_KEY]);
 const REPLY='Journey A scripted reply';
 // Wording owned by apps/app/src/runtime/connection-ui.tsx (STOPPED_REPLY_NOTICE and the check's outcome).
-const MAY_FINISH='This reply may still finish. It will appear here if it does.';
+const MAY_FINISH='May still finish';
 const NOT_RECORDED='The agent did not record the stopped message.';
 // apps/app/src/runtime/connection-ui.tsx STOPPED_REPLY_CHECK_MS. This spec drives it with page.clock;
 // journey-core-loops.production.spec.ts keeps the check on real time.

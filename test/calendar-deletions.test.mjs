@@ -34,3 +34,11 @@ test('pending recurrence occurrence blocks parent series deletion and mutations 
  undoCalendarDeletion(data,'occurrence',()=>true);stageCalendarDeletion(data,series,'series','owner','series');
  assert.equal(calendarDeletionPending(data,occurrence.id),true);
 });
+test('a second Undo of an undone deletion returns the same receipt; a settled deletion and a changed owner are still refused',t=>{
+ let now=100;t.mock.method(performance,'now',()=>now);const data=state(),original=structuredClone(data.events);
+ stageCalendarDeletion(data,data.events[0],'event','owner','delete');
+ const first=undoCalendarDeletion(data,'delete',()=>true);now=999999;const again=undoCalendarDeletion(data,'delete',()=>true);
+ assert.equal(first.phase,'undone');assert.deepEqual(again,first);assert.deepEqual(data.events,original);
+ assert.throws(()=>undoCalendarDeletion(data,'delete',()=>false),/owner changed/);
+ settleCalendarDeletions(data,()=>true);assert.deepEqual(data.events,original);assert.equal(data.deletions.delete.phase,'undone');
+});

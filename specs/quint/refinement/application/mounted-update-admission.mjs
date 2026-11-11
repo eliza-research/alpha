@@ -212,8 +212,10 @@ export async function checkMountedUpdateAdmission() {
   assert.equal(Object.hasOwn(stamp, 'appUpdateResumePatch'), false, 'the retired updater patch has no receipt');
   const text = read(main);
   const settings = read('apps/app/src/prototype/settings-adapter.ts');
-  const idleStart=settings.indexOf('export function automaticUpdateIdle(');
-  const idlePolicy=settings.slice(idleStart,settings.indexOf('\n}',idleStart)+2).replace(/^export /,'');
+  const idleStart=settings.indexOf('export function updateIdle(');
+  const automaticIdleStart=settings.indexOf('export function automaticUpdateIdle(');
+  assert.ok(idleStart>=0&&automaticIdleStart>idleStart);
+  const idlePolicy=settings.slice(idleStart,settings.indexOf('\n}',automaticIdleStart)+2).replace(/^export /gm,'');
   const start = text.indexOf('async function prepareMountedUpdate(');
   const end = text.indexOf('\nlet nativeAppUpdateGate', start);
   assert.ok(start > 0 && end > start);

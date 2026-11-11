@@ -80,7 +80,7 @@ test('an unreadable page opens the review with an empty excerpt; pasting enables
     await excerpt.fill('Pasted: the ferry leaves at nine.');
     await expect(review.getByRole('button', { name: 'Use in conversation', exact: true }), name).toBeEnabled();
     // The review still names its page source.
-    await expect(review.getByRole('checkbox', { name: 'Link this source when saving the answer to Notes' }), name).toBeChecked();
+    await expect(review.getByRole('checkbox', { name: 'Link source' }), name).toBeChecked();
     await review.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(review).toHaveCount(0);
   }

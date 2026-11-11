@@ -16,8 +16,8 @@ export const AOSP_TELEPHONY_PLUGIN = 'AlphaTelephony';
 export const AOSP_IMAGE_VIEWS: readonly string[] = Object.freeze(['phone', 'messages', 'contacts']);
 /**
  * SMS has a native provider and reviewed-send adapter. Phone has the shared profile's bounded
- * recent-calls read and dial handoff (prototype/phone-adapter.ts); it never places or simulates a
- * call. Contacts has its own bounded native adapter and is admitted dynamically by
+ * recent-calls and voicemail reads (prototype/phone-adapter.ts); it places a call only on the owner's
+ * tap or approval and never simulates one. Contacts has its own bounded native adapter and is admitted dynamically by
  * DeviceApps.platformCapabilities before mounting. All of them need the verified image first.
  */
 export const ADMITTED_AOSP_VIEW_ADAPTERS: readonly string[] = Object.freeze(['messages', 'phone']);

@@ -39,10 +39,10 @@ test('Remove Text keeps Own and Voice; selecting Cloud confirms retained saved k
  const cloud=fixture(status(),status({mode:'cloud',provider:'elizacloud'}));
  assert.equal((await cloud.api.selectLocalProvider({mode:'cloud',expectedRevision:'one:1'})).mode,'cloud');
  const lost=fixture(status(),status({mode:'cloud',provider:'elizacloud',keys:{text:{configured:false},voice:{configured:true}}}));
- await assert.rejects(lost.api.selectLocalProvider({mode:'cloud',expectedRevision:'one:1'}),/retained keys/);
+ await assert.rejects(lost.api.selectLocalProvider({mode:'cloud',expectedRevision:'one:1'}),/Not confirmed/);
 });
 test('old owner revision refuses remove and reveal before reserving a native lease',async()=>{
- const f=fixture();for(const action of ['removeLocalProviderKey','revealLocalProviderKey'])await assert.rejects(f.api[action]({key:'voice',expectedRevision:'old:0'}),/Provider changed/);
+ const f=fixture();for(const action of ['removeLocalProviderKey','revealLocalProviderKey'])await assert.rejects(f.api[action]({key:'voice',expectedRevision:'old:0'}),/Refresh/);
  assert.deepEqual(f.calls,[]);
 });
 test('native reveal returns only protected-surface acknowledgement; browser reveal is explicit RAM-only',async()=>{

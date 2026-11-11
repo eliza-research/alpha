@@ -76,6 +76,26 @@ export async function resolveWorkflowTap(native:Pick<WorkflowTapNative,'pendingW
   }});
  return result.kind==='ready'?{kind:'ready' as const,token:result.token,run:result.target.run,workflow:result.target.workflow,question:result.question,notice:result.notice}:result;
 }
+/** What to do with a tap that resolved as ready. A tap whose run was already opened is only consumed again, so a
+ * failed consume cannot reopen the same run on every later check. */
+export const readyTapStep=(token:string,opened:string|null):'consume-only'|'open'=>{
+ //@ verify
+ //@ ensures \result === 'consume-only' <==> token === opened
+ //@ ensures opened === null ==> \result === 'open'
+ return token===opened?'consume-only':'open';
+};
+/** Why a tap check ended without handling the tap, and when to repeat it. A running workflow operation, or one that
+ * started while the tap was being read, defers the check until that operation ends; a view reset with no operation
+ * repeats it at once. Any other reason waits for the next resume, connection or tap event. */
+export type TapRecheckState={operationRunning:boolean;generationChanged:boolean};
+export const tapRecheck=(state:TapRecheckState):'after-operation'|'now'|'none'=>{
+ //@ verify
+ //@ ensures \result === 'after-operation' || \result === 'now' || \result === 'none'
+ //@ ensures \result === 'after-operation' <==> state.operationRunning
+ //@ ensures \result === 'now' <==> !state.operationRunning && state.generationChanged
+ //@ ensures \result === 'none' <==> !state.operationRunning && !state.generationChanged
+ return state.operationRunning?'after-operation':state.generationChanged?'now':'none';
+};
 /** The current enrolled workflow session. `pending` is the redacted notice read: proposal ids and expiries only, never an executable review. */
 export interface ApprovalPosterSession {
  identity:string;

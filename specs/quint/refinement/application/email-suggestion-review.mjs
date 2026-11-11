@@ -21,9 +21,9 @@ function textClass(value) {
 
 function noticeClass(value) {
   if (!value) return '';
-  if (value.startsWith('Inbox is no longer in front')) return 'front';
-  if (value.startsWith('The Cloud account changed')) return 'cloud';
-  assert.match(value, /^The email or account changed/);
+  if (value === 'Inbox closed') return 'front';
+  if (value === 'Account changed') return 'cloud';
+  assert.equal(value, 'Changed');
   return 'target';
 }
 

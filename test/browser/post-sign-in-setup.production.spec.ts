@@ -57,21 +57,21 @@ async function freshPhone(page: Page) {
   await expect(welcome.getByRole('textbox', { name: 'Email', exact: true })).toBeEnabled({ timeout: 30_000 });
   // The harness has no native Browser plugin, so Home's first bookmark read reports that once; let
   // the toast pass so the screenshots show only the sign-in sequence.
-  await expect(page.getByText('This feature isn’t available in this version of Alpha.', { exact: true })).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.getByText('Unavailable', { exact: true })).toHaveCount(0, { timeout: 15_000 });
   return { foreign, welcome };
 }
 /** Explicit synthetic email code; the account admission after it and the agent's restart are held. */
 async function verifyHeld(page: Page, welcome: ReturnType<Page['locator']>, info: TestInfo) {
   await welcome.getByRole('textbox', { name: 'Email', exact: true }).fill(account.email);
-  await welcome.getByRole('button', { name: 'Email me a code', exact: true }).click();
-  await expect(welcome.getByLabel('Six-digit code')).toBeVisible();
+  await welcome.getByRole('button', { name: 'Send code', exact: true }).click();
+  await expect(welcome.getByLabel('Code',{exact:true})).toBeVisible();
   await shot(page, info, '01-enter-code');
   await page.evaluate(() => { Object.assign((window as any).postSignIn, { hold: true, admission: true }); });
-  await welcome.getByLabel('Six-digit code').fill('123456');
+  await welcome.getByLabel('Code',{exact:true}).fill('123456');
   await welcome.getByRole('button', { name: 'Verify', exact: true }).click();
   // The code is verified: the code check has ended while the account is admitted.
   await expect.poll(() => page.evaluate(() => !!(window as any).postSignIn.admit), { timeout: 15_000 }).toBe(true);
-  await expect(welcome.getByRole('button', { name: 'Signing in…', exact: true })).toBeDisabled();
+  await expect(welcome.getByRole('button', { name: 'Signing in', exact: true })).toBeDisabled();
   await shot(page, info, '02-code-verified-signing-in');
   expect(await page.locator('body').innerText()).not.toContain('Checking');
   expect(await starts(page)).toBe(1);
@@ -84,28 +84,28 @@ test('APK path: a verified email code goes straight to the seven access steps wh
   const { foreign, welcome } = await freshPhone(page);
   await verifyHeld(page, welcome, info);
   const setup = page.locator('dialog.alpha-startup-permissions');
-  await setup.getByRole('heading', { name: STEPS[0], exact: true }).waitFor({ timeout: 5_000 }).catch(() => {});
+  await setup.getByRole('heading', { name: 'Access', exact: true }).waitFor({ timeout: 5_000 }).catch(() => {});
   await shot(page, info, '03-after-code-agent-starting');
   // The provider is bound to the new key and the agent is starting; setup does not wait for it.
-  await expect(setup.getByRole('heading', { name: STEPS[0], exact: true })).toBeVisible();
+  await expect(setup.getByRole('heading', { name: 'Access', exact: true })).toBeVisible();
   expect(await page.evaluate(() => (window as any).postSignIn.held && !!(window as any).postSignIn.release)).toBe(true);
   expect(await stub(page, s => s.order.some((entry: string) => entry.startsWith('configureCloudProvider')))).toBe(true);
   await expect(welcome).toHaveCount(0);
   const starting = await page.locator('body').innerText();
   for (const text of STARTING_SLOP) expect(starting).not.toContain(text);
-  for (const name of STEPS) { await expect(setup.getByRole('heading', { name, exact: true })).toBeVisible(); await setup.getByRole('button', { name: 'Allow', exact: true }).click(); }
-  await expect(setup.getByRole('heading', { name: 'Setup finished', exact: true })).toBeVisible();
+  for (const name of STEPS) { await expect(setup.locator('[aria-current=step]', { hasText: name })).toBeVisible(); await setup.getByRole('button', { name: 'Allow', exact: true }).click(); }
+  await expect(setup.getByRole('heading', { name: 'All set', exact: true })).toBeVisible();
   await shot(page, info, '04-all-set-agent-starting');
   for (const text of STARTING_SLOP) expect(await setup.innerText()).not.toContain(text);
-  await setup.getByRole('button', { name: 'Go to Alpha', exact: true }).click();
+  await setup.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(setup).toHaveCount(0);
   // Settings › Agent connection while it starts: Starting…, never "Not available".
   const settings = await openYourAgent(page);
-  await expect(settings.getByText('Starting…', { exact: true })).toHaveCount(2);
+  await expect(settings.getByText('Starting', { exact: true })).toHaveCount(2);
   await expect(settings.getByText('Not available', { exact: true })).toHaveCount(0);
   await shot(page, info, '05-agent-connection-while-starting');
   await page.evaluate(() => (window as any).postSignIn.release());
-  await expect(settings.getByText('Running on this device', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(settings.getByText('Running', { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(settings.getByText('Eliza Cloud', { exact: true })).toBeVisible();
   await shot(page, info, '06-agent-connection-running');
   expect(await starts(page)).toBe(2);
@@ -133,7 +133,7 @@ test('APK path: a signed-in start with access setup left to do opens it directly
   await expect(page.getByRole('region',{name:'Home',exact:true})).toHaveCount(0);
   await expect(startupLoading(page)).toBeVisible();
   await page.evaluate(() => (window as any).admission.admit());
-  await expect(page.locator('dialog.alpha-startup-permissions').getByRole('heading', { name: STEPS[0], exact: true })).toBeFocused({ timeout: 30_000 });
+  await expect(page.locator('dialog.alpha-startup-permissions').getByRole('heading', { name: 'Access', exact: true })).toBeFocused({ timeout: 30_000 });
   await expect(startupLoading(page)).toHaveCount(0);
   await expectNoHomeBeforePrompt(page);
   expect(foreign).toEqual([]);

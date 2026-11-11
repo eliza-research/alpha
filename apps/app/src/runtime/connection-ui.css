@@ -198,3 +198,34 @@ body:has([data-alpha-layer="conversation"][aria-hidden="false"]) .alpha-plan-not
 
 /* The desktop phone canvas uses the same 24px corner clipping. */
 .browser-desktop .alpha-connection-scrim{border-radius:24px}
+
+/* Shared status atoms (status-ui.tsx): a dot and one word, a spinner with a hidden label. */
+.alpha-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.alpha-spin{display:inline-block;flex:none;width:1em;height:1em;box-sizing:border-box;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;vertical-align:-.15em;animation:alpha-spin .9s linear infinite}
+@media(prefers-reduced-motion:reduce){.alpha-spin{animation-duration:2.4s}}
+.alpha-status{display:inline-flex;align-items:center;gap:6px;color:var(--connection-fg,#000)}
+.alpha-status-dot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--connection-mut,#8a8a8a)}
+.alpha-status[data-tone=ok]>.alpha-status-dot{background:#1f9d55}
+.alpha-status[data-tone=warn]>.alpha-status-dot{background:var(--alpha-status-amber,#d08a00)}
+.alpha-status[data-tone=err]>.alpha-status-dot{background:#d64545}
+.alpha-status[data-tone=busy]>.alpha-status-dot{animation:alpha-pulse 1.2s ease-in-out infinite}
+@keyframes alpha-pulse{50%{opacity:.3}}
+@media(prefers-reduced-motion:reduce){.alpha-status[data-tone=busy]>.alpha-status-dot{animation:none}}
+/* Status rows: icon, name, dot + word, optional chip. */
+.alpha-status-rows{list-style:none;margin:8px 0 16px;padding:0;display:flex;flex-direction:column;gap:2px}
+.alpha-status-rows>li{display:flex;align-items:center;gap:12px;min-height:48px;padding:6px 0;border-bottom:1px solid var(--connection-line,#e3e3e3)}
+.alpha-status-rows>li>.alpha-row-name{flex:1;min-width:0;font-size:15px;color:var(--connection-fg,#000)}
+.alpha-status-rows>li>.alpha-row-sub{flex-basis:100%;margin:-6px 0 0 36px;font-size:12px;color:var(--connection-mut,#6b6b6b)}
+.alpha-status-rows>li{flex-wrap:wrap}
+.alpha-status-rows .alpha-status{font-size:14px}
+.alpha-chip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 12px;border-radius:16px;background:var(--connection-s2,#f3f3f3);color:var(--connection-fg,#000);font-size:13px}
+.alpha-connection button.alpha-chip{min-height:36px;padding:6px 14px;border-radius:18px;background:var(--connection-s2,#f3f3f3)}
+.alpha-connection .alpha-code-boxes,.alpha-code-boxes{position:relative;display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:8px 0 12px}
+.alpha-code-boxes>span{display:flex;align-items:center;justify-content:center;height:52px;border:1px solid var(--connection-line,#dedede);border-radius:12px;background:var(--connection-s2,#f3f3f3);font-size:22px;font-variant-numeric:tabular-nums;color:var(--connection-fg,#000)}
+.alpha-code-boxes>span[data-active]{border-color:var(--connection-acc,#0000ff)}
+.alpha-code-boxes[data-invalid]>span{border-color:var(--connection-danger,#a32121)}
+.alpha-connection .alpha-code-boxes>input{position:absolute;inset:0;width:100%;height:100%;opacity:0;margin:0;padding:0;border:0;font-size:16px;caret-color:transparent}
+.alpha-code-boxes:focus-within>span[data-active]{outline:2px solid var(--connection-acc,#0000ff);outline-offset:1px}
+.alpha-plan-pill{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:12px;font-size:13px;font-weight:500;background:var(--connection-s2,#f3f3f3)}
+.alpha-usage-bar{display:block;height:6px;border-radius:3px;background:var(--connection-line,#e3e3e3);overflow:hidden}
+.alpha-usage-bar>span{display:block;height:100%;background:var(--connection-acc,#0000ff)}

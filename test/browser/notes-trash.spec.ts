@@ -27,7 +27,7 @@ async function recover(page:Page,title:string,left:string){
 async function deleteNote(page:Page,title:string){
  await page.getByRole('button',{name:`Open ${title}`,exact:true}).click();
  await deleteOpenNote(page);
- await expect(page.getByText('Moved to Recently deleted',{exact:true}).last()).toBeVisible();
+ await expect(page.getByText('Deleted',{exact:true}).last()).toBeVisible();
  await expect(page.getByRole('button',{name:`Open ${title}`,exact:true})).toHaveCount(0);
 }
 
@@ -88,11 +88,11 @@ test('Delete now and Empty ask first, and checklists use the same Recently delet
  await expect(trash.getByText('First',{exact:true})).toBeVisible();
  await askDelete();
  await page.getByRole('dialog',{name:'Delete “First”?'}).getByRole('button',{name:'Delete',exact:true}).click();
- await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Undo',exact:true})).toHaveCount(0,{timeout:10000});await expect(page.getByText('Deleted',{exact:true})).toBeVisible();
  await expect(trash.getByText('First',{exact:true})).toHaveCount(0);
  expect((await trashEntries(page)).map((e:any)=>e.note.title).sort()).toEqual(['Second','Third']);
  await trash.getByRole('button',{name:'Empty Recently deleted',exact:true}).click();
- await page.getByRole('dialog',{name:'Delete all recently deleted notes?'}).getByRole('button',{name:'Delete all',exact:true}).click();
+ await page.getByRole('dialog',{name:'Delete all?'}).getByRole('button',{name:'Delete all',exact:true}).click();
  await expect(page.getByText('Recently deleted emptied',{exact:true})).toBeVisible();
  await expect(trash).toHaveCount(0);
  await expect(page.getByRole('button',{name:'Recently deleted',exact:true})).toHaveCount(0);
@@ -171,7 +171,7 @@ test('voice notes share Recently deleted: the recording restores with its note a
  const remove=async()=>{
   await page.getByRole('button',{name:'Open Voice memo',exact:true}).click();
   await deleteOpenNote(page);
-  await expect(page.getByText('Moved to Recently deleted',{exact:true}).last()).toBeVisible();
+  await expect(page.getByText('Deleted',{exact:true}).last()).toBeVisible();
   await expect.poll(async()=>(await describe()).deletedAt).toBeGreaterThan(0);
  };
  await remove();
@@ -214,7 +214,7 @@ test('an expired voice entry never erases a recording that a saved note still re
  await page.reload();await openNotes(page);
  await page.getByRole('button',{name:'Open Shared memo',exact:true}).click();
  await deleteOpenNote(page);
- await expect(page.getByText('Moved to Recently deleted',{exact:true}).last()).toBeVisible();
+ await expect(page.getByText('Deleted',{exact:true}).last()).toBeVisible();
  await expect.poll(async()=>(await describe()).deletedAt).toBeGreaterThan(0);
  const entry=(await trashEntries(page))[0];
  // Another saved note now references the same recording (for example, re-associated by a later edit).

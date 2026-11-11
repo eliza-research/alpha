@@ -2,7 +2,10 @@ import { registerPlugin } from './platform-plugins';
 import { Capacitor } from '@capacitor/core';
 import type { System as UpstreamSystem } from "../../../vendor/eliza/plugins/plugin-native-system/src/index";
 import { createSystemLauncherBridge, type LauncherBridge } from '@elizaos/capacitor-system/launcher';
-const System = registerPlugin<typeof UpstreamSystem>("ElizaSystem");
+const System = registerPlugin<typeof UpstreamSystem & {
+  /** The app's active Android network. Omitted facts mean Android could not answer. */
+  getNetworkStatus(): Promise<{connected?: boolean; internetValidated?: boolean}>;
+}>("ElizaSystem");
 /** Alpha's product-only native reads. Installed apps, default handlers and the build, launch and
  * locale facts are the shared ElizaSystem plugin (@elizaos/capacitor-system). */
 export const DeviceApps = registerPlugin<{

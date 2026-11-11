@@ -18,6 +18,7 @@ test('function checker distinguishes proofs, skips, failed verification and rege
     write('specs/lemma/apps/app/src/policy.dfy.gen', 'fixture generation\n'); write('specs/lemma/apps/app/src/policy.dfy', 'fixture proof\n');
     write('node_modules/lemmascript/package.json', '{"version":"0.6.6","type":"module"}');
     write('node_modules/lemmascript/tools/dist/lsc.js', `import fs from 'node:fs';
+if(process.argv.includes('extract')){console.log(JSON.stringify({functions:[{name:'policy'}]}));process.exit(0);}
 if(process.env.LEMMA_FIXTURE_DRIFT==='1')fs.appendFileSync('specs/lemma/apps/app/src/policy.dfy.gen','changed');
 if(process.argv.includes('check')){
  if(process.env.LEMMA_FIXTURE_FAIL==='1')process.exit(1);
@@ -38,6 +39,17 @@ if(process.argv.includes('check')){
     check = run({LEMMA_FIXTURE_FAIL: '1'}); assert.equal(check.result.status, 1); assert.equal(check.receipt.status, 'failed');
     check = run({LEMMA_FIXTURE_EMPTY: '1'}); assert.equal(check.result.status, 1); assert.equal(check.receipt.passed, false);
     check = run({LEMMA_FIXTURE_DRIFT: '1'}); assert.equal(check.result.status, 1); assert.equal(check.receipt.passed, false); assert.deepEqual(check.receipt.changedInputs, ['specs/lemma/apps/app/src/policy.dfy.gen']);
+    write('apps/app/src/unlisted.ts', '//@ verify\nexport function unlisted() { return true; }\n');
+    check = run({}); assert.equal(check.result.status, 1); assert.match(check.receipt.error, /Unregistered function annotations/);
+    rmSync(join(root, 'apps/app/src/unlisted.ts'));
+    write('apps/app/src/policy.ts', '//@ verify\n//@ ensures \\result\nexport function policy() { return true; }\n');
+    check = run({}); assert.equal(check.result.status, 1); assert.match(check.receipt.error, /Unread or empty verified contract/);
+    write('apps/app/src/policy.ts', '//@ verify\n//@ assume true\nexport function policy() { return true; }\n');
+    check = run({}); assert.equal(check.result.status, 1); assert.match(check.receipt.error, /Unadmitted proof assumption/);
+    write('apps/app/src/policy.ts', '//@ verify\nexport function policy() { return true; }\n');
+    write('specs/lemma/apps/app/src/policy.dfy', 'lemma {:axiom} unproved() {}\n');
+    check = run({}); assert.equal(check.result.status, 1); assert.match(check.receipt.error, /Unadmitted proof assumption/);
+    write('specs/lemma/apps/app/src/policy.dfy', 'fixture proof\n');
     rmSync(join(root, 'specs/lemma/apps/app/src/policy.dfy.gen'));
     check = run({}); assert.equal(check.result.status, 1); assert.equal(check.receipt.passed, false); assert.equal(check.receipt.status, 'failed');
   } finally {rmSync(root, {recursive: true, force: true});}

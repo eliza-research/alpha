@@ -82,7 +82,7 @@ test('an incomplete message renders an honest placeholder without invented metad
     const model=fixture.model(),row=model.nativeRows[0];
     assert.equal(model.nativeInThread,true);assert.equal(model.nativeRecipients,'+15555550100');
     assert.equal(row.id,incompleteMessage.id);assert.equal(row.address,'Content unavailable');
-    assert.match(row.body,/system messaging app/i);assert.equal(row.direction,'');assert.ok(row.when);
+    assert.equal(row.body,'');assert.equal(row.direction,'');assert.ok(row.when);
     for(const field of ['addresses','status','subscriptionId','read','attachments'])assert.equal(row[field],undefined,field+' is unknown');
     assert.deepEqual(effects(fixture.calls),[],'a content-free row is neither shown content nor a send');
   }finally{await fixture.close();}

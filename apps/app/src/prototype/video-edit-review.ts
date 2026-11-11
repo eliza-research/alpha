@@ -1,7 +1,7 @@
 import {mediaToolIcon} from './media-review-controls';
 import './scan-dialog.css';
 import type {VideoEdit} from '../browser/video-edit';
-import {validateVideoEdit,drawEditedVideo} from '../browser/video-edit';
+import {validateVideoEdit,drawEditedVideo,videoClock} from '../browser/video-edit';
 /** A media workspace: preview first, direct trim handles, one copy-save action.
  * Alpha's existing media colors and published icons; no unsupported tools. */
 export function openVideoEditReview(source:{path:string;duration:number;stream?:boolean},save:(edit:VideoEdit,signal:AbortSignal)=>Promise<boolean>,onClose:()=>void=()=>{}){
@@ -15,7 +15,7 @@ export function openVideoEditReview(source:{path:string;duration:number;stream?:
  let busy=false,closed=false,loaded=false,sourceUrl:string|undefined,previewFrame:number|undefined,lastPreviewTime=-1,lastPaintAt=0;
  const controls:HTMLButtonElement[]=[];
  const button=(name:string,action:()=>void)=>{const b=document.createElement('button');b.textContent=name;b.type='button';b.onclick=action;controls.push(b);return b;};
- const clock=(value:number)=>`${Math.floor(value/60)}:${(value%60).toFixed(1).padStart(4,'0')}`;
+ const clock=videoClock;
  const timeline=document.createElement('div');timeline.className='video-editor-timeline';timeline.setAttribute('aria-label','Trim video');
  const track=document.createElement('div');track.className='video-editor-track';track.setAttribute('aria-hidden','true');
  const selected=document.createElement('div');selected.className='video-editor-selection';
@@ -51,17 +51,19 @@ export function openVideoEditReview(source:{path:string;duration:number;stream?:
  timeline.append(track,handles.start,handles.end);
  const rotate=button('Rotate video',()=>{edit.rotation=(edit.rotation+90)%360;update();});
  const crop=button('Crop video',()=>{edit.crop=!edit.crop;crop.setAttribute('aria-pressed',String(edit.crop));update();});
- const play=button('Preview trim',()=>{try{validateVideoEdit(edit,source.duration);if(video.currentTime<edit.start||video.currentTime>=edit.end)video.currentTime=edit.start;void video.play().catch(()=>{status.textContent='Press play to preview.';});}catch(error){status.textContent=(error as Error).message;}});
+ const play=button('Preview trim',()=>{try{validateVideoEdit(edit,source.duration);if(video.currentTime<edit.start||video.currentTime>=edit.end)video.currentTime=edit.start;void video.play().catch(()=>{status.textContent='';});}catch(error){status.textContent=(error as Error).message;}});
  const pause=button('Pause preview',()=>video.pause());
  for(const [b,icon] of [[rotate,'rotate-cw'],[crop,'crop'],[play,'play'],[pause,'pause']] as const)mediaToolIcon(b,icon);
  crop.setAttribute('aria-pressed','false');crop.title='Center crop';pause.hidden=true;
  video.onplay=()=>{play.hidden=true;pause.hidden=false;startFrames();};video.onpause=()=>{play.hidden=false;pause.hidden=true;stopFrames();update(false);};
  video.ontimeupdate=()=>{if(video.currentTime>=edit.end)video.pause();};
  video.onloadeddata=()=>{if(closed)return;loaded=true;updateControls();status.textContent='';update();};video.onseeked=()=>update();
- video.onerror=()=>{if(closed)return;loaded=false;updateControls();status.textContent='Video could not load. Close and reopen the editor to try again.';};
+ // A media error does not pause the element: without the pause the frame loop keeps running
+ // and the pause control stays up over a source that can no longer play.
+ video.onerror=()=>{if(closed)return;loaded=false;video.pause();updateControls();status.textContent='Couldn’t load';};
  const dispose=()=>{if(closed)return;closed=true;stopFrames();controller.abort();video.pause();video.removeAttribute('src');video.load();if(sourceUrl)URL.revokeObjectURL(sourceUrl);dialog.remove();if(previous instanceof HTMLElement&&previous.isConnected)previous.focus();onClose();window.removeEventListener('alpha-back',back,true);window.removeEventListener('pagehide',dispose);document.removeEventListener('visibilitychange',visibility);};
  const back=(event:Event)=>{event.preventDefault();event.stopImmediatePropagation();dispose();},visibility=()=>{if(document.hidden)dispose();};
- const commit=button('Save video copy',()=>{if(busy||!loaded)return;try{validateVideoEdit(edit,source.duration);}catch(error){status.textContent=(error as Error).message;return;}busy=true;video.pause();updateControls();status.textContent='Saving video copy…';void save({...edit},controller.signal).then(saved=>{if(closed)return;if(saved)dispose();else status.textContent='Copy was not saved. Close and reopen the editor to try again.';},()=>{if(!closed)status.textContent='Save outcome could not be confirmed. Reopen Photos to check the existing operation.';});});
+ const commit=button('Save video copy',()=>{if(busy||!loaded)return;try{validateVideoEdit(edit,source.duration);}catch(error){status.textContent=(error as Error).message;return;}busy=true;video.pause();updateControls();status.textContent='Saving video copy…';void save({...edit},controller.signal).then(saved=>{if(closed)return;if(saved)dispose();else status.textContent='Not saved';},()=>{if(!closed)status.textContent='Save unconfirmed';});});
  commit.className='primary';commit.setAttribute('aria-label','Save video copy');commit.textContent='Save copy';
  const close=button('Close video editor',dispose);controls.pop();mediaToolIcon(close,'chevron-left');
  const heading=document.createElement('h2');heading.textContent='Edit video';const header=document.createElement('header');header.className='video-editor-header';header.append(close,heading,commit);
@@ -73,5 +75,5 @@ export function openVideoEditReview(source:{path:string;duration:number;stream?:
  // Native playback is an already-admitted, same-origin range capability. Let
  // the decoder stream it instead of duplicating the complete video in a Blob.
  if(source.stream)video.src=source.path;
- else void fetch(source.path,{signal:controller.signal}).then(response=>{if(!response.ok)throw Error('Video unavailable');return response.blob();}).then(blob=>{if(closed)return;sourceUrl=URL.createObjectURL(blob);video.src=sourceUrl;}).catch(()=>{if(!closed)status.textContent='Video could not load. Close and reopen the editor to try again.';});return dispose;
+ else void fetch(source.path,{signal:controller.signal}).then(response=>{if(!response.ok)throw Error('Video unavailable');return response.blob();}).then(blob=>{if(closed)return;sourceUrl=URL.createObjectURL(blob);video.src=sourceUrl;}).catch(()=>{if(!closed)status.textContent='Couldn’t load';});return dispose;
 }

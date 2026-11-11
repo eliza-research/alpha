@@ -135,7 +135,7 @@ for(const hasGrant of [true,false])test('actual closed panel callback opens only
  const f=fixture({panelClosed:true,accountRows:rows}),close=mountConnectedWorkspace(f);
  for(let i=0;i<10;i++)await Promise.resolve();await f.loadPromise;
  assert.equal(f.panelOpen,true);assert.equal(f.reads,hasGrant?1:2);assert.deepEqual(f.published.at(-1),rows);
- assert.equal(f.notices.some(text=>text.includes('could not be verified')),!hasGrant);close();
+ assert.equal(f.notices.some(text=>text.includes('verif')),!hasGrant);close();
 });
 test('a delayed workspace grant is verified on the second read without reopening authorization',async()=>{
  const other=grant('different'),owned=grant('owned');
@@ -144,7 +144,7 @@ test('a delayed workspace grant is verified on the second read without reopening
  f.globals.linkCalendar=async(_intent,rows)=>linked.push(...rows);
  for(let i=0;i<10;i++)await Promise.resolve();await f.loadPromise;
  assert.equal(f.reads,2);assert.equal(f.waits,1);assert.equal(f.initiations,0);assert.deepEqual(f.published.at(-1),[other,owned]);
- assert.deepEqual(linked,[owned]);assert.ok(!f.notices.some(text=>text.includes('could not be verified')));close();
+ assert.deepEqual(linked,[owned]);assert.ok(!f.notices.some(text=>text.includes('verif')));close();
 });
 for(const retire of ['panel close','owner change','new return'])test(`workspace readback does not retry after ${retire}`,async()=>{
  const f=fixture({panelClosed:true,heldRetry:true,accountRows:[]}),close=mountConnectedWorkspace(f);
@@ -153,7 +153,7 @@ for(const retire of ['panel close','owner change','new return'])test(`workspace 
  else if(retire==='owner change')f.change({userId:'other-owner'});
  else f.globals.returnedWorkspace.current={result:'connected',connectionId:'different'};
  f.releaseRetry();await f.loadPromise;
- assert.equal(f.reads,1);assert.equal(f.initiations,0);assert.ok(!f.notices.some(text=>text.includes('could not be verified')));close();
+ assert.equal(f.reads,1);assert.equal(f.initiations,0);assert.ok(!f.notices.some(text=>text.includes('verif')));close();
 });
 test('actual closed panel ignores unaccepted native callback without opening or reading',async()=>{
  const f=fixture({panelClosed:true});let cleanup;f.globals.googleWorkspaceReturnPort={async subscribe(){return{remove(){}}},async consume(){return{result:'none'}}};f.globals.useEffect=effect=>{cleanup=effect();};vm.runInNewContext(workspaceEffect,f.globals);

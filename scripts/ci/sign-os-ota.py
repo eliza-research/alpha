@@ -72,6 +72,23 @@ def validate(plan):
                 type(obj["bytes"]) is int and 0 < obj["bytes"] <= maximum, "Unbound private OS input")
     require(re.fullmatch(r"signed/os-ota/" + plan["targetFiles"]["sha256"] + r"/[0-9a-f]{32}/ota\.zip",
                          plan["outputObject"]), "Unbound exclusive OS output")
+    # Signer path strings cannot establish the keys embedded in an image. Only
+    # independently reviewed exact target bytes may claim the preserving lineage.
+    reviewed = pin.get("reviewedTargets")
+    require(isinstance(reviewed, list) and reviewed, "No reviewed target-files admission is configured")
+    target_fields = {"targetFilesSha256", "sourceCommit", "sdkCommit", "targetFingerprint", "buildTimestamp"}
+    for target in reviewed:
+        require(isinstance(target, dict) and set(target) == target_fields and
+                isinstance(target["targetFilesSha256"], str) and HEX.fullmatch(target["targetFilesSha256"]) and
+                isinstance(target["sourceCommit"], str) and re.fullmatch(r"[0-9a-f]{40}", target["sourceCommit"]) and
+                isinstance(target["sdkCommit"], str) and re.fullmatch(r"[0-9a-f]{40}", target["sdkCommit"]) and
+                isinstance(target["targetFingerprint"], str) and
+                re.fullmatch(r"Alpha/alpha_stallion_phone/stallion:17/[^\s]{1,512}", target["targetFingerprint"]) and
+                type(target["buildTimestamp"]) is int and target["buildTimestamp"] > 0,
+                "Invalid reviewed target-files admission")
+    identity = {"targetFilesSha256": plan["targetFiles"]["sha256"],
+                **{field: plan[field] for field in target_fields - {"targetFilesSha256"}}}
+    require(identity in reviewed, "Target-files bytes and producer lineage have not been reviewed together")
     return pin
 
 

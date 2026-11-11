@@ -12,6 +12,8 @@ const part = (start,end) => {
   const a=ui.indexOf(start), b=ui.indexOf(end,a+start.length);
   assert.ok(a>=0&&b>a,start); return ui.slice(a,b);
 };
+// Status atoms (status-ui.tsx) and the icon helper are module imports the extracted sources rely on.
+Object.assign(globalThis,new Function('React',transformSync(read('apps/app/src/runtime/status-ui.tsx').replace(/^import .*;\n/gm,'').replaceAll('export ',''),{loader:'tsx',jsxFactory:'React.createElement'}).code+';return {Busy,StatusDot};')(React),{iconStyle:()=>({})});
 const compiled=transformSync(read('apps/app/src/runtime/cloud-sign-in-ui.tsx').replace(/^import .*;\n/gm,'').replaceAll('export ',''),{loader:'tsx',jsxFactory:'React.createElement'}).code;
 const CloudSignInPanel=new Function('React','useRef','useState','useEffect','cloudServiceName',compiled+';return CloudSignInPanel;')(React,React.useRef,React.useState,React.useEffect,()=> 'Eliza Cloud');
 const choose={step:'choose',environment:'production'};
@@ -37,21 +39,21 @@ test('actual OTP form retains input through submission, pending state and wrong-
   const input=document.querySelector('input');input.value='123456';
   await act(()=>document.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
   assert.deepEqual(calls,['123456']);assert.equal(input.value,'123456');
-  await render({busy:true,message:'Checking your code…'});
+  await render({busy:true,message:'Checking code'});
   assert.equal(document.querySelector('input').value,'123456');
   assert.equal(document.querySelector('input').disabled,true);
   assert.equal(document.querySelector('form').getAttribute('aria-busy'),'true');
-  assert.equal(document.querySelector('form button').textContent,'Checking code…');
+  assert.equal(document.querySelector('form button').textContent,'Checking code');
   assert.equal(document.querySelector('[role="status"]:not(#alpha-google-unavailable)')===null,true,'busy feedback stays inside the button without adding a line');
   // Once the code is verified the account is admitted: the code check has ended (owner report 2026-10-30).
   await render({busy:true,message:'Signing in…'});
-  assert.equal(document.querySelector('form button').textContent,'Signing in…');
+  assert.equal(document.querySelector('form button').textContent,'Signing in');
   assert.equal(document.querySelector('[role="status"]:not(#alpha-google-unavailable)')===null,true);
   assert.ok(!document.body.textContent.includes('Checking'));
-  await render({busy:true,message:'Checking your code…'});
+  await render({busy:true,message:'Checking code'});
   await act(()=>document.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
   assert.equal(calls.length,1,'pending submit must not dispatch again');
-  await render({busy:false,message:'',error:'That code didn’t work.'});
+  await render({busy:false,message:'',error:'Wrong code'});
   assert.equal(document.querySelector('input').value,'123456');
   assert.equal(document.querySelector('input').disabled,false);
   assert.equal(document.querySelector('form button').textContent,'Verify');
@@ -103,9 +105,9 @@ test('mandatory chooser omits inert Back and distinguishes readiness from an ema
   assert.equal(document.querySelector('[name="email"]').disabled,false);
   document.querySelector('[name="email"]').value='person@example.invalid';
   await act(async()=>{document.querySelector('form[aria-label="Sign in with email"]').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));});
-  await render({busy:true,message:'Sending your code…'});
+  await render({busy:true,message:'Sending code'});
   const send=document.querySelector('form[aria-label="Sign in with email"] button');
-  assert.equal(send.textContent,'Sending code…');assert.equal(send.getAttribute('aria-busy'),'true');
+  assert.equal(send.textContent,'Sending code');assert.equal(send.getAttribute('aria-busy'),'true');
   assert.equal(document.querySelector('[role="status"]')===null,true,'sending does not add a line or shift the form');
   assert.equal(buttons().includes('Back'),true,'an owner-started send can still be abandoned');
   assert.equal(buttons().includes('Cancel sign-in'),false);
@@ -116,11 +118,11 @@ test('resend starts at thirty seconds and cannot be clicked during the countdown
  await panel(async({document,render})=>{
   await render({view:{...code,resendAt:Date.now()+30000}});
   const resend=document.querySelector('button[type="button"]');
-  assert.equal(resend.textContent,'Resend code in 30s');assert.equal(resend.disabled,true);
+  assert.equal(resend.textContent,'Resend · 30s');assert.equal(resend.disabled,true);
   await render({view:{...code,resendAt:Date.now()-1}});
-  assert.equal(resend.textContent,'Resend code');assert.equal(resend.disabled,false);
+  assert.equal(resend.textContent,'Resend');assert.equal(resend.disabled,false);
   await render({view:{...code,resendAt:Date.now()+90000}});
-  assert.equal(resend.textContent,'Resend code in 90s');assert.equal(resend.disabled,true,'longer server cooldown is not shortened');
+  assert.equal(resend.textContent,'Resend · 90s');assert.equal(resend.disabled,true,'longer server cooldown is not shortened');
  });
 });
 
@@ -133,7 +135,7 @@ function controllerFixture({isAndroid=false,browserCloudResidentEnabled=false}={
     const client={};
     const signInClient=()=>client,ensureResident=async()=>{},residentRecoveryReason=()=>null,cloudCredentialStore={read:async()=>null};
     const errorKindOf=()=>null;const errorMessage=e=>e.message,runQueuedResidentRebind=()=>{},runQueuedSignInReturn=()=>{},scheduleResidentAutoRetry=()=>{};
-    const testMocksEnabled=false,isAndroid=${isAndroid},browserCloudResidentEnabled=${browserCloudResidentEnabled},expired=()=>false,residentCloudFlow=()=>true;
+    const SIGN_IN_BROWSER='In browser';const testMocksEnabled=false,isAndroid=${isAndroid},browserCloudResidentEnabled=${browserCloudResidentEnabled},expired=()=>false,residentCloudFlow=()=>true;
     let required=false;const productionCloudSignInRequired=()=>required,residentSignInRequired=()=>required;let pendingBillingReview=null;const clearPersonalSetup=()=>{};
     ${ui.includes('export function explicitSignedOutCloudEntry(')?part('export function explicitSignedOutCloudEntry(', 'export function connectionChooserVisible(').replace('export ',''):'function explicitSignedOutCloudEntry(){return false;}'}
     const validSignInEmail=()=>true,normalizeSignInCode=value=>/^\\d{6}$/.test(value)?value:null;
@@ -224,41 +226,41 @@ test('wrong code is reported at the code field and selected for replacement; res
   assert.equal(alert.nextElementSibling.textContent,'Verify');
   assert.equal([input.selectionStart,input.selectionEnd].join(),'0,6','the rejected code is selected so typing replaces it');
   await render({error:''});
-  [...document.querySelectorAll('button')].find(button=>button.textContent==='Resend code').click();
-  await render({busy:true,message:'Sending your code…'});
+  [...document.querySelectorAll('button')].find(button=>button.textContent==='Resend').click();
+  await render({busy:true,message:'Sending code'});
   const labels=[...document.querySelectorAll('button')].map(button=>button.textContent);
-  assert.ok(labels.includes('Verify'),'Verify does not claim to send');assert.ok(labels.includes('Sending code…'));
+  assert.ok(labels.includes('Verify'),'Verify does not claim to send');assert.ok(labels.includes('Sending code'));
   assert.equal(document.querySelector('.alpha-auth-resend').getAttribute('aria-busy'),'true');
   assert.ok(labels.includes('Back'));assert.ok(!labels.includes('Cancel sign-in'));
 }));
 
 test('Google waits in the browser with one heading and Back; passkey MFA shows only its reason',async()=>panel(async({document,render})=>{
-  await render({view:{step:'google',environment:'production'},busy:true,message:'Continue in your browser.'});
-  assert.equal(document.querySelector('h1').textContent,'Finish in your browser.');
+  await render({view:{step:'google',environment:'production'},busy:true,message:'In browser'});
+  assert.equal(document.querySelector('h1').textContent,'In browser');
   assert.equal(document.querySelector('[role="status"]'),null);
   assert.deepEqual([...document.querySelectorAll('button')].map(button=>button.textContent),['Back'],'without a reopen action only Back is offered');
   let reopened=0;
   await render({actions:{verify(){},google(){},email(){},resend(){},cancel(){},reopenGoogle:()=>{reopened++;}}});
-  const reopen=[...document.querySelectorAll('button')].find(button=>button.textContent==='Open Google again');
+  const reopen=[...document.querySelectorAll('button')].find(button=>button.textContent==='Reopen Google');
   assert.ok(reopen,'a closed Google page can be opened again');assert.equal(reopen.disabled,false);
   assert.ok(document.querySelector('.alpha-spinner'),'waiting shows progress');
   reopen.click();assert.equal(reopened,1);
   await render({view:{step:'mfa',environment:'production',attemptId:'a',method:'passkey',expiresAt:Date.now()+60000},busy:false,message:'',error:'mfa-unsupported'});
-  assert.equal(document.querySelector('h1').textContent,'Can’t finish sign-in');
+  assert.equal(document.querySelector('h1').textContent,'Can’t sign in');
   assert.equal(document.querySelectorAll('[role="alert"]').length,1);assert.equal(document.querySelector('input'),null);
 }));
 
 test('own API keys sit below the Cloud methods and replace them when chosen',async()=>panel(async({document,render})=>{
   let opened=0;
   await render({view:choose,ready:true,dismissible:false,ownKeys:()=>{opened++;}});
-  const buttons=[...document.querySelectorAll('button')];const own=buttons.find(button=>button.textContent==='Use my own API keys');
+  const buttons=[...document.querySelectorAll('button')];const own=buttons.find(button=>button.textContent==='Use my own keys');
   assert.equal(buttons.at(-1),own,'the own-keys entry is last, after the Cloud methods');
   assert.ok(document.querySelector('h1').compareDocumentPosition(own)&4);own.click();assert.equal(opened,1);
   await render({busy:true,probing:true,ready:false,message:'Checking Eliza Cloud sign-in…'});
-  assert.equal([...document.querySelectorAll('button')].some(button=>button.textContent==='Use my own API keys'),false,'Direct is hidden during readiness');
+  assert.equal([...document.querySelectorAll('button')].some(button=>button.textContent==='Use my own keys'),false,'Direct is hidden during readiness');
   await render({busy:false,probing:false,ready:true,message:'',alternate:React.createElement('form',{'aria-label':'Own API keys'})});
   assert.equal(document.querySelector('form[aria-label="Sign in with email"]'),null,'the Cloud methods give way to the key form');
-  assert.ok(document.querySelector('form[aria-label="Own API keys"]'));assert.equal(document.querySelector('h1').textContent,'Welcome to Alpha.');
+  assert.ok(document.querySelector('form[aria-label="Own API keys"]'));assert.equal(document.querySelector('h1').textContent,'Alpha');
   assert.equal(document.querySelector('[role="status"]'),null);
 }));
 
@@ -319,18 +321,15 @@ test('initial chooser visibly presents email alongside Google without another di
   };
   for(const google of [true,false]){
     await render({view:choose,google,phone:true,emailEnabled:true,ready:true,busy:false});
-    const email=document.querySelector('form[aria-label="Sign in with email"]');
+    const email=document.querySelector('form[aria-label="Sign in with email or phone"]');
     const googleButton=[...document.querySelectorAll('button')].find(button=>button.textContent==='Continue with Google');
     assert.equal(visible(email),true,`email is visible immediately when Google availability is ${google}`);
     // An unavailable Google entry is not drawn as a dead button.
     assert.equal(visible(googleButton),google,'Google entry is shown only when it can be used');
     if(google)assert.equal(googleButton.disabled,false);
-    const usePhone=[...document.querySelectorAll('button')].find(button=>button.textContent==='Use phone number instead');
-    assert.equal(visible(usePhone),true,'offered phone entry is retained one tap away');
-    await act(async()=>{usePhone.click();});
-    assert.equal(visible(document.querySelector('form[aria-label="Sign in with phone"]')),true,'the phone form replaces the email form');
-    assert.equal(document.querySelector('form[aria-label="Sign in with email"]'),null);
-    await act(async()=>{[...document.querySelectorAll('button')].find(button=>button.textContent==='Use email instead').click();});
+    // One field takes an email address or a phone number: no switch is needed to reach phone sign-in.
+    assert.equal(email.querySelector('label').textContent,'Email or phone');
+    assert.equal(document.querySelector('form[aria-label="Sign in with phone"]'),null);
     assert.equal([...document.querySelectorAll('button')].some(button=>/Other sign-in methods|Hide other sign-in methods/.test(button.textContent)),false);
   }
 }));
@@ -350,25 +349,25 @@ test('required chooser Back retains its guard on Android and browser-resident pl
  }
 });
 
-test('a prefilled phone chooser still switches to email and back',async()=>panel(async({document,render})=>{
-  await render({view:{...choose,phone:'+14155550100'},google:false,phone:true,emailEnabled:true,ready:true,busy:false});
-  assert.ok(document.querySelector('form[aria-label="Sign in with phone"]'),'Back from a text-message code shows the number it was sent to');
-  assert.equal(document.querySelector('input[name="phone"]').value,'+14155550100');
-  await act(async()=>{[...document.querySelectorAll('button')].find(button=>button.textContent==='Use email instead').click();});
-  assert.ok(document.querySelector('form[aria-label="Sign in with email"]'),'the email form replaces the phone form');
-  assert.equal(document.querySelector('form[aria-label="Sign in with phone"]'),null);
-  await act(async()=>{[...document.querySelectorAll('button')].find(button=>button.textContent==='Use phone number instead').click();});
-  assert.ok(document.querySelector('form[aria-label="Sign in with phone"]'));
+test('a prefilled phone chooser keeps the number and sends it as a phone sign-in',async()=>panel(async({document,window,render})=>{
+  const sent=[];
+  await render({view:{...choose,phone:'+14155550100'},google:false,phone:true,emailEnabled:true,ready:true,busy:false,actions:{verify(){},google(){},email:value=>sent.push(['email',value]),phone:value=>sent.push(['phone',value]),resend(){},cancel(){}}});
+  const field=document.querySelector('form[aria-label="Sign in with email or phone"] input');
+  assert.equal(field.value,'+14155550100','Back from a text-message code shows the number it was sent to');
+  await act(async()=>{document.querySelector('form[aria-label="Sign in with email or phone"]').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));});
+  field.value='person@example.invalid';
+  await act(async()=>{document.querySelector('form[aria-label="Sign in with email or phone"]').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true}));});
+  assert.deepEqual(sent,[['phone','+14155550100'],['email','person@example.invalid']],'the method follows what was typed');
 }));
 
 test('an expired code keeps Resend and disables Verify until a new code arrives',async()=>panel(async({document,window,render,calls})=>{
-  await render({view:{...code,stale:true},error:'That code expired. Send a new code.'});
+  await render({view:{...code,stale:true},error:'Code expired'});
   const verify=[...document.querySelectorAll('button')].find(button=>button.textContent==='Verify');
   assert.equal(verify.disabled,true);
   document.querySelector('input').value='123456';
   await act(()=>document.querySelector('form').dispatchEvent(new window.Event('submit',{bubbles:true,cancelable:true})));
   assert.deepEqual(calls,[],'a dead code is never sent');
-  const resend=[...document.querySelectorAll('button')].find(button=>button.textContent==='Resend code');
+  const resend=[...document.querySelectorAll('button')].find(button=>button.textContent==='Resend');
   assert.equal(resend.disabled,false);
   await render({view:{...code,attemptId:'attempt-2'},error:''});
   assert.equal([...document.querySelectorAll('button')].find(button=>button.textContent==='Verify').disabled,false);

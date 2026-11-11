@@ -23,6 +23,17 @@ interface ArchiveRecord {testMocks: boolean; runtimeProfile: string; updateChann
 interface VerifiedApk extends ArchiveRecord {mode: string; variant: string; file: string; packageName: string; versionCode: number; signed: boolean; signerSha256: string | null; distributable: boolean; debuggable: boolean; runtime: string; home: boolean; launcher: boolean; sha256: string; releaseAdmission: {failures: unknown[]; blockers: string[]}}
 interface ArchiveVerification extends ArchiveRecord {upstream: {commit: string}; allowUnpackagedRuntime: boolean; results: VerifiedApk[]}
 interface InputFreeze {files: Record<string, string>; digest: string}
+interface NativeInputAdmission {
+  schema: string; source: string; sdkCommit: string; packageName: string; runId: string; attempt: string;
+  manifestSha256: string; voiceRecordSha256: string; embeddingRecordSha256: string;
+  artifacts: Record<string, {artifactId: number; sha256: string; source: string; run: number; archiveBytes: number; expandedBytes: number}>;
+  embedding: {compiledAlpha: string; compiledSDK: string; native: string; qualifiedAt: string; qualificationTransferred: boolean};
+}
+interface NativeInputPlan {artifacts: Record<string, {id: string; sha256: string}>}
+interface UploadedCandidate {
+  id: number; name: string; digest: string; expired: boolean; size_in_bytes: number;
+  workflow_run?: {id: number; head_sha: string};
+}
 type VersionAdmission = Awaited<ReturnType<typeof candidateVersion>>;
 type ApkDigest = {file: string; bytes: number; sha256: string};
 
@@ -31,6 +42,14 @@ const WORKFLOW = '.github/workflows/resident-android.yml';
 // requires a reviewed version migration, even if its path is unchanged.
 const WORKFLOW_ID = 373209004;
 const MAX_CODE = 2100000000;
+const NATIVE_INPUT_RECEIPT = 'native-input-admission.json';
+const GENERATED_NATIVE_INPUT_RECEIPT = 'test-results/resident-ci-native-inputs/admission.json';
+const NATIVE_ARTIFACTS = ['voice', 'embeddingComponent', 'embeddingQualification'];
+const NATIVE_INPUT_RECORDS = {
+  manifestSha256: 'android/hosted-native-inputs.json',
+  voiceRecordSha256: 'android/voice-host/qualified-voice-host.json',
+  embeddingRecordSha256: 'android/embedding-host/qualified-host.json',
+} as const;
 const hash = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
 const readJson = <T>(file: string): T => JSON.parse(fs.readFileSync(file, 'utf8')) as T;
 function code(value: number) {
@@ -62,6 +81,17 @@ function gh(args: string[], {missing = false}: {missing?: boolean} = {}): unknow
     if (missing && /HTTP 404/.test(String((error as {stderr?: unknown}).stderr))) return null;
     throw Error('Candidate inventory read failed; do not guess a version floor');
   }
+}
+function archiveDirectory(root: string, archive: string) {
+  const directory = path.resolve(root, archive);
+  assert.ok(directory.startsWith(path.join(root, 'test-results') + path.sep), 'Candidate archive must be an owned test-results leaf');
+  return directory;
+}
+function nativeInputReceipt(archive: string) {
+  const file = path.join(archive, NATIVE_INPUT_RECEIPT), stat = fs.lstatSync(file);
+  assert.ok(stat.isFile() && stat.size > 0 && stat.size <= 65536, 'Candidate needs a bounded native input admission receipt');
+  const bytes = fs.readFileSync(file);
+  return {record: JSON.parse(bytes.toString('utf8')) as NativeInputAdmission, sha256: hash(bytes)};
 }
 
 /** Reuse delivery's stable APK names and anonymous manifest transport. Read all
@@ -133,8 +163,7 @@ export function candidateReceipt({root = process.cwd(), env = process.env, admis
   const config = readJson<ProductConfig>(path.join(root, 'app.config.json'));
   const channel = {kind: 'public', manifestUrlSha256: hash(config.updateManifestUrl)};
   assert.deepEqual(admission.updateChannel, channel, 'Candidate update channel changed');
-  archive = path.resolve(root, archive);
-  assert.ok(archive.startsWith(path.join(root, 'test-results') + path.sep), 'Candidate archive must be an owned test-results leaf');
+  archive = archiveDirectory(root, archive);
   const configuration = readJson<ArchiveRecord>(path.join(archive, 'configuration.json'));
   const verified = readJson<ArchiveVerification>(path.join(archive, 'apk-verification.json'));
   for (const record of [configuration, verified]) {
@@ -149,6 +178,32 @@ export function candidateReceipt({root = process.cwd(), env = process.env, admis
   assert.deepEqual(after, before, 'Archive inputs changed');
   assert.equal(hash(JSON.stringify(before.files)), before.digest, 'Archive input fingerprint differs');
   assert.equal(before.files['upstream.lock.json'], hash(fs.readFileSync(path.join(root, 'upstream.lock.json'))), 'Archive source lock differs');
+  const native = nativeInputReceipt(archive);
+  assert.equal(before.files[GENERATED_NATIVE_INPUT_RECEIPT], native.sha256, 'Generated native input receipt differs from the build freeze');
+  assert.ok(native.record.schema === 'alpha-hosted-native-input-admission/v1' &&
+    native.record.source === context.sourceCommit && native.record.sdkCommit === context.sdkCommit &&
+    native.record.packageName === config.appId && native.record.runId === context.runId && native.record.attempt === context.runAttempt,
+  'Native input admission does not bind the exact candidate source, package, SDK and run attempt');
+  for (const key of Object.keys(NATIVE_INPUT_RECORDS) as (keyof typeof NATIVE_INPUT_RECORDS)[]) {
+    const file = NATIVE_INPUT_RECORDS[key], digest = native.record[key];
+    assert.ok(/^[0-9a-f]{64}$/.test(digest) && before.files[file] === digest &&
+      hash(fs.readFileSync(path.join(root, file))) === digest, `Native input admission differs from frozen ${file}`);
+  }
+  const plan = readJson<NativeInputPlan>(path.join(root, NATIVE_INPUT_RECORDS.manifestSha256));
+  assert.deepEqual(Object.keys(native.record.artifacts ?? {}).sort(), [...NATIVE_ARTIFACTS].sort(), 'Native input admission needs all three artifacts');
+  for (const name of NATIVE_ARTIFACTS) {
+    const actual = native.record.artifacts[name], expected = plan.artifacts[name];
+    assert.ok(expected && Number.isSafeInteger(actual.artifactId) && String(actual.artifactId) === expected.id &&
+      actual.sha256 === expected.sha256 && /^[0-9a-f]{64}$/.test(actual.sha256) && /^[0-9a-f]{40}$/.test(actual.source) &&
+      Number.isSafeInteger(actual.run) && actual.run > 0 &&
+      Number.isSafeInteger(actual.archiveBytes) && actual.archiveBytes > 0 &&
+      Number.isSafeInteger(actual.expandedBytes) && actual.expandedBytes > 0, `Native input artifact ${name} differs from its frozen plan`);
+  }
+  const component = native.record.embedding;
+  const engine = readJson<{forkPin: string}>(path.join(root, NATIVE_INPUT_RECORDS.embeddingRecordSha256)).forkPin;
+  assert.ok(component && /^[0-9a-f]{40}$/.test(component.compiledAlpha) && /^[0-9a-f]{40}$/.test(component.compiledSDK) &&
+    component.native === engine && typeof component.qualifiedAt === 'string' && Number.isFinite(Date.parse(component.qualifiedAt)) &&
+    component.qualificationTransferred === false, 'Native input embedding qualification is incomplete');
   const manifest = readJson<Record<string, string>>(path.join(archive, 'apk-manifest.json'));
   const releases = verified.results.filter(row => row.mode === 'release');
   assert.equal(releases.length, 2, 'Exactly two release variants required');
@@ -173,17 +228,73 @@ export function candidateReceipt({root = process.cwd(), env = process.env, admis
   }
   return {...admission, schema: 'alpha-app-update-candidate/v1',
     sourceScope: 'checkout-commit-and-frozen-build-inputs', sourceFingerprint: before.digest,
-    apks, verificationSha256: hash(fs.readFileSync(path.join(archive, 'apk-verification.json'))),
+    apks, nativeInputAdmissionSha256: native.sha256, verificationSha256: hash(fs.readFileSync(path.join(archive, 'apk-verification.json'))),
     signed: false, distributionQualified: false, qualificationScope: 'unsigned-build-and-source-freeze-only'};
+}
+
+/** The uploaded ZIP size comes from GitHub. Expanded bytes are the files sent by
+ * the upload step, whose default artifact path excludes hidden files. */
+export function candidateArchiveSize({root = process.cwd(), env = process.env, api = gh, archive}:
+  CandidateOptions & {archive: string}) {
+  const context = identity(root, env);
+  archive = archiveDirectory(root, archive);
+  const candidateBytes = fs.readFileSync(path.join(archive, 'app-update-candidate.json'));
+  const candidate = JSON.parse(candidateBytes.toString('utf8')) as ReturnType<typeof candidateReceipt>;
+  assert.equal(candidate.schema, 'alpha-app-update-candidate/v1');
+  for (const key of Object.keys(context) as (keyof typeof context)[]) assert.equal(candidate[key], context[key], `Candidate ${key} changed`);
+  assert.equal(candidate.nativeInputAdmissionSha256, nativeInputReceipt(archive).sha256, 'Candidate native input receipt changed');
+  const verification = fs.readFileSync(path.join(archive, 'apk-verification.json'));
+  assert.equal(candidate.verificationSha256, hash(verification), 'Candidate APK verification changed');
+  const rows = (JSON.parse(verification.toString('utf8')) as ArchiveVerification).results;
+  const manifest = readJson<Record<string, string>>(path.join(archive, 'apk-manifest.json'));
+  const debugApks: Record<string, ApkDigest> = {};
+  for (const variant of ['standalone', 'launcher']) {
+    for (const mode of ['debug', 'release']) {
+      const name = `${variant}-${mode === 'debug' ? 'debug' : 'release-unsigned'}.apk`;
+      const row = rows.find(item => item.variant === variant && item.mode === mode && item.file === 'artifacts/' + name);
+      const digest = updateArtifactDigest(path.join(archive, name));
+      assert.ok(row && row.sha256 === digest.sha256 && manifest[name] === digest.sha256, 'Measured APK differs from the verified archive');
+      const measured = {file: name, bytes: digest.size, sha256: digest.sha256};
+      if (mode === 'debug') debugApks[variant] = measured;
+      else assert.deepEqual(candidate.apks[variant], measured, 'Measured release APK differs from the candidate');
+    }
+  }
+  const id = env.ALPHA_CANDIDATE_ARTIFACT_ID ?? '', digest = env.ALPHA_CANDIDATE_ARTIFACT_SHA256 ?? '';
+  assert.ok(/^[1-9][0-9]{0,15}$/.test(id) && Number.isSafeInteger(Number(id)) && /^[0-9a-f]{64}$/.test(digest), 'Exact uploaded candidate artifact required');
+  const metadata = api([`repos/${REPOSITORY}/actions/artifacts/${id}`]) as UploadedCandidate;
+  const name = `app-native-candidate-${context.runNumber}-${context.sourceCommit}-${context.runId}-${context.runAttempt}`;
+  assert.ok(metadata.id === Number(id) && metadata.name === name && metadata.digest === 'sha256:' + digest && metadata.expired === false &&
+    metadata.workflow_run?.id === Number(context.runId) && metadata.workflow_run.head_sha === context.sourceCommit &&
+    Number.isSafeInteger(metadata.size_in_bytes) && metadata.size_in_bytes > 0, 'Uploaded candidate artifact identity or size differs');
+  let expandedBytes = 0, files = 0;
+  function count(directory: string) {
+    for (const entry of fs.readdirSync(directory, {withFileTypes: true})) {
+      if (entry.name.startsWith('.')) continue;
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) count(file);
+      else {
+        assert.ok(entry.isFile(), 'Candidate archive must contain regular files');
+        expandedBytes += fs.statSync(file).size;
+        files++;
+      }
+    }
+  }
+  count(archive);
+  assert.ok(Number.isSafeInteger(expandedBytes) && expandedBytes > 0);
+  return {schema: 'alpha-app-candidate-archive-size/v1', ...context, artifactId: Number(id), artifactSha256: digest,
+    candidateSha256: hash(candidateBytes), nativeInputAdmissionSha256: candidate.nativeInputAdmissionSha256,
+    compressedBytes: metadata.size_in_bytes, expandedBytes, files, apks: candidate.apks, debugApks};
 }
 
 export async function main(argv: string[], {root = process.cwd(), env = process.env, api, read}: CandidateOptions = {}) {
   const [mode, destination, archive] = argv;
-  assert.ok((mode === 'version' && argv.length === 2) || (mode === 'receipt' && argv.length === 3), 'Use: app-update-candidate.ts version FILE | receipt VERSION_FILE ARCHIVE');
-  const file = path.resolve(root, mode === 'version' ? destination : path.join(archive, 'app-update-candidate.json'));
+  assert.ok((mode === 'version' && argv.length === 2) || (['receipt', 'archive-size'].includes(mode) && argv.length === 3),
+    'Use: app-update-candidate.ts version FILE | receipt VERSION_FILE ARCHIVE | archive-size FILE ARCHIVE');
+  const file = path.resolve(root, mode === 'receipt' ? path.join(archive, 'app-update-candidate.json') : destination);
   assert.ok(file.startsWith(path.join(root, 'test-results') + path.sep), 'Candidate output must be under test-results');
   let result;
   if (mode === 'version') result = await candidateVersion({root, env, api, read});
+  else if (mode === 'archive-size') result = candidateArchiveSize({root, env, api, archive});
   else {
     const admission = readJson<VersionAdmission>(path.resolve(root, destination));
     // The published floor may advance while this unsigned build is running.

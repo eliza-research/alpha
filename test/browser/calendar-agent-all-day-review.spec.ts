@@ -28,10 +28,10 @@ test('an all-day update is reviewed as the dates and attendees that are saved, a
  expect((await review.getByRole('paragraph').innerText()).split('\n')).toEqual([
   'Update event',
   '“Harbour festival”',
-  'Calendar: App calendar · Account: Alpha Phone',
+  'App calendar · Alpha Phone',
   'March 2, 2027 – March 3, 2027',
-  'All day: yes. This event stays an all-day event; no time zone applies.',
-  'Attendees: 2 people on this event, kept as they are. This change adds or removes no one and sends no invitations.',
+  'All day',
+  '2 people · no invites sent',
   'Location: Quay',
  ]);
  expect(await stored(page)).toMatchObject([{begin,end:begin+2*DAY}]);

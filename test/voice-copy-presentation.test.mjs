@@ -44,13 +44,19 @@ test('actual voice activity sits below the chat notices, and an unconfirmed clea
   f.renderChat().stop();for(let count=0;count<10;count++)await f.tick();
   const held=f.renderChat();assert.equal(held.state,'error');assert.equal(held.activity,null);
   assert.equal(held.muted,'mixed');assert.equal(held.muteLabel,'Microphone status unconfirmed');
-  assert.ok(!held.recoveryLabel);assert.match(held.lines[0].t,/Could not confirm voice media stopped/);
+  assert.ok(!held.recoveryLabel);assert.equal(held.lines[0].t,'Voice unconfirmed · restart app');
   const heldDoc=new JSDOM(render({inlineChatRecorder:true,chatRecorder:held})).window.document;
   assert.equal(heldDoc.querySelectorAll('[data-alpha-voice-animation]').length,0);
   assert.equal(heldDoc.querySelector('[role="alert"]'),null);assert.doesNotMatch(heldDoc.body.textContent,/Could not confirm|Close the app/);
   await f.shell.startVoice();await f.tick();assert.equal(f.renderChat().state,'error','unknown media remains blocked, not falsely idle');assert.deepEqual(f.shell.messages,[],'repeated start while unsafe stays quiet');
   assert.ok(heldDoc.querySelector('[aria-label="Stop voice conversation"]'));
   assert.equal(f.starts,0);assert.equal(f.uploads,0);
+  // Putting the held panel away says why voice stays off, and so does each later attempt to use it.
+  const notice='Voice unconfirmed · restart app';
+  f.shell.back();assert.deepEqual(f.shell.messages,[notice]);
+  await f.shell.startVoice();await f.tick();assert.deepEqual(f.shell.messages,[notice,notice],'a refused voice start is never silent');
+  f.shell.startTranscription();await f.tick();assert.deepEqual(f.shell.messages,[notice,notice,notice],'dictation names the same cause');
+  assert.equal(f.starts,0);assert.equal(f.uploads,0);f.shell.messages.length=0;
   // Legacy dictation has named failure states, not just 'error'. Its failure flag must drive
   // the same quiet presentation without renaming the state or bypassing any action guard.
   const adapter=fs.readFileSync('apps/app/src/prototype/voice-adapter.ts','utf8');

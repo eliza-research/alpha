@@ -11,11 +11,11 @@ const noChoice = {owner: 0, intent: 0, read: 0, kind: ''};
 const notices = new Map([
   ['', ''], ['Calendar includes the calendars you show in Google.', 'calendar-includes'],
   ['Connecting Calendar with Google…', 'connecting'],
-  ['Calendar edits are off. Allow Calendar changes to sync Calendar with Google; Calendar keeps working.', 'off-choice'],
-  ['Calendar edits could not be read. Allow Calendar changes to sync Calendar with Google; Calendar keeps working.', 'unreadable-choice'],
-  ['Calendar edits could not be read. Review device settings, then try again.', 'unreadable-save'],
-  ['Google connections could not be verified. Check sign-in and try again.', 'unverified'],
-  ['After authorizing Google, return here and check connections.', 'authorization'], ['Fixture Calendar synced', 'synced'],
+  ['Edits off', 'off-choice'],
+  ['Edits unknown', 'unreadable-choice'],
+  ['Couldn’t read', 'unreadable-save'],
+  ['Couldn’t verify', 'unverified'],
+  ['Waiting for Google…', 'authorization'], ['Fixture Calendar synced', 'synced'],
 ]);
 
 async function compile(extraSources) {

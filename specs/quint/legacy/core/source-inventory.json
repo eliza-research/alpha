@@ -2140,10 +2140,16 @@
       "sha256": "cf2e58f0d7e4eb70514fcad151eb44af19970246a1904f0a4560eda60c786dfb",
       "classification": "historical-upstream-runtime-fragment",
       "scope": "Original embedding provenance counterexample; not current runtime qualification"
+    },
+    {
+      "path": "packages/core/src/services/approval.ts",
+      "sha256": "62299e0c50c0835441d1737839f9a1b12a9fbc600617bf052e5e10688cfb7fad",
+      "classification": "historical-upstream-runtime-fragment",
+      "scope": "Literal 4787 approval settlement and callback ownership correspondence; not current runtime qualification"
     }
   ],
   "currentUpstream": {
-    "revision": "489fdf6ac3532ba5fbfeb7464ec509a44f5a66d1",
+    "revision": "8876e369ca00d82f334e604aba3763a3998a854e",
     "classification": "current-upstream-formal-specifications",
     "models": [],
     "note": "The current upstream tree has no tracked TLA modules or TLC configurations. Historical translations and source hashes above remain bound to revision 4787d51a142c63c98371c832997184c53f7218d3. The selected source-owned Quint sidecars below retain DeletionOwnerAdmission, CloudSpeechSuccessor, MapsTileCache and ViewportCopyright at the current pin. Their independent model and transport checks do not establish complete downstream refinement, native release, provider, image or device qualification. Any future TLA/TLC source requires separate allocation. The retained Maps sidecars include their implementation checkers; live provider and device acceptance remain separate. StorageWatch and PhotoCopyRecovery model and case sidecars are catalogued as source bytes only; this inventory records no new model verdict or device acceptance.",

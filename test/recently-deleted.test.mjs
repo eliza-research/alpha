@@ -11,14 +11,14 @@ const selection=source.slice(source.indexOf('function selectedMedia('),source.in
 const methods=source.slice(source.indexOf(' async prepareDeleteTrash('),source.indexOf('\n};',source.indexOf(' async prepareDeleteTrash(')));
 async function fixture(){
  const records=new Map(['a','b','c'].map(id=>[id,{id,kind:'image',trashed:id!=='c',mutationRevision:'r-'+id}]));
- const transaction=async(mode,action)=>{let result;const pending=[];action({get(id){const request={result:records.get(id)};pending.push(()=>request.onsuccess());return request;},delete(id){records.delete(id);}},value=>result=value);for(const finish of pending)finish();return result;};
+ const videoBytes=new Set(['a']);const transaction=async(mode,action)=>{let result;const pending=[];action({get(id){const request={result:records.get(id)};pending.push(()=>request.onsuccess());return request;},delete(id){records.delete(id);}},value=>result=value);for(const finish of pending)finish();return result;};
  const code=await transform('const prepared=new Map();'+selection+'globalThis.library={'+methods+'};',{loader:'ts'});
- const context=vm.createContext({rows:async()=>[...records.values()],revision:()=>crypto.randomUUID(),transaction});vm.runInContext(code.code,context);
- return {records,library:context.library};
+ const context=vm.createContext({rows:async()=>[...records.values()],revision:()=>crypto.randomUUID(),transaction,videoData:()=>({delete(id){videoBytes.delete(id);}})});vm.runInContext(code.code,context);
+ return {records,videoBytes,library:context.library};
 }
 test('selected permanent deletion affects only the exact reviewed revisions',async()=>{
- const {records,library}=await fixture();const review=await library.prepareDeleteTrash({items:[{id:'a',revision:'r-a'}]});assert.equal(review.count,1);assert.equal(records.size,3,'review does not delete');
- const result=await library.deletePreparedTrash(review);assert.deepEqual([...result.deletedIds],['a']);assert.ok(records.has('b'));assert.ok(records.has('c'));await assert.rejects(library.deletePreparedTrash(review),/Review/);
+ const {records,videoBytes,library}=await fixture();const review=await library.prepareDeleteTrash({items:[{id:'a',revision:'r-a'}]});assert.equal(review.count,1);assert.equal(records.size,3,'review does not delete');assert.equal(videoBytes.has('a'),true);
+ const result=await library.deletePreparedTrash(review);assert.deepEqual([...result.deletedIds],['a']);assert.equal(videoBytes.has('a'),false,'the deleted item\'s stored bytes leave with its row');assert.ok(records.has('b'));assert.ok(records.has('c'));await assert.rejects(library.deletePreparedTrash(review),/Review/);
 });
 test('restore or revision changes after review are skipped; new trash is excluded',async()=>{
  const {records,library}=await fixture();const review=await library.prepareDeleteTrash({all:true});records.get('a').trashed=false;records.get('b').mutationRevision='changed';records.get('c').trashed=true;

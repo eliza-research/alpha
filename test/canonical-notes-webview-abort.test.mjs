@@ -37,7 +37,7 @@ function notesUi(){
  const code=stripTypeScriptTypes(fs.readFileSync('apps/app/src/prototype/canonical-notes-ui.ts','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,''),{mode:'strip'});
  const calls=[],dropped=[],toasts=[];
  class Controller{current=true;pending=false;revision=1;snapshot={notes:[{id:'n'}],trash:[],revision:1};constructor(_port,hooks){this.hooks=hooks;}listen(){}retire(){this.current=false;}hasViewNote(){return true;}}
- class Editor{draft=null;constructor(controller){this.controller=controller;}begin(){this.draft={token:'draft',title:'',body:'',version:0};}edit(patch){Object.assign(this.draft,patch);this.draft.version++;}get hasAuthoredContent(){return !!this.draft&&(!!this.draft.title||!!this.draft.body||!!authoredNoteText(this.draft.format));}async save(){calls.push('save');this.draft.id='new';return true;}close(){this.draft=null;}async remove(id){calls.push('remove:'+id);return true;}async restore(id){calls.push('restore:'+id);return true;}}
+ class Editor{draft=null;constructor(controller){this.controller=controller;}reconcile(){}begin(){this.draft={token:'draft',title:'',body:'',version:0};}edit(patch){Object.assign(this.draft,patch);this.draft.version++;}get hasAuthoredContent(){return !!this.draft&&(!!this.draft.title||!!this.draft.body||!!authoredNoteText(this.draft.format));}async save(){calls.push('save');this.draft.id='new';return true;}close(){this.draft=null;}async remove(id){calls.push('remove:'+id);return true;}async restore(id){calls.push('restore:'+id);return true;}}
  const {CanonicalNotesUi}=new Function('parseNoteFormat','projectNoteForModel','noteScheduleDraft','agentPendingText','agentAvailabilityNotice','DailyApps','CanonicalNotesController','CanonicalNotesEditor','window','nextDefaultNoteTitle','authoredNoteText',code+';return {CanonicalNotesUi};')(x=>x,()=>({title:'',body:''}),async()=>({}),(_s,text)=>text,(_s,text)=>text,{},Controller,Editor,{},nextDefaultNoteTitle,authoredNoteText);
  const ui=new CanonicalNotesUi({},{paint(){},review(){calls.push('review');},dropped:title=>dropped.push(title)});
  return {ui,calls,dropped,toasts,api:{toast:(text,options)=>toasts.push({text,undo:options?.undo})}};
@@ -57,13 +57,16 @@ test('a connection change with an unsaved edit tells the owner the edit was drop
 });
 test('Undo waits for the current save and never restores over it into review',async()=>{
  const f=notesUi();
+ const trash=[{note:{id:'n',title:'Note'},deletedAt:'2026-11-09T12:00:00Z'}];
+ f.ui.controller.hooks.snapshot({notes:[],trash,revision:2},'mutation');
  assert.equal(await f.ui.remove('n',f.api),true);assert.equal(f.toasts.length,1);
  // A save is in flight and its queued follow-up keeps the controller pending.
  f.ui.controller.pending=true;const undone=f.toasts[0].undo();
  for(let i=0;i<20;i++){f.ui.controller.hooks.phase('ready');await new Promise(resolve=>setTimeout(resolve,0));}
  await undone;
- assert.deepEqual(f.calls,['remove:n']);assert.equal(f.toasts.at(-1).text,'Wait for the current save, then restore it from Trash.');
- // Once the save settles, Undo restores as before.
+ assert.deepEqual(f.calls,['remove:n']);assert.equal(f.toasts.at(-1).text,'Still saving');
+ // An unrelated newer snapshot keeps this exact deletion available for Undo.
+ f.ui.controller.hooks.snapshot({notes:[],trash,revision:3},'read');
  f.ui.controller.pending=false;f.toasts[0].undo();await new Promise(resolve=>setTimeout(resolve,0));
  assert.deepEqual(f.calls,['remove:n','restore:n']);
 });

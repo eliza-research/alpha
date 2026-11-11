@@ -22,10 +22,10 @@ function notesFixture({kind='offline',resident=false,status='',ready=false}={}){
 }
 test('attempted New Note explains starting, stopped or unavailable without a placeholder or draft mutation',()=>{
  for(const options of [{kind:'starting',resident:true},{kind:'recovering',resident:true},{kind:'cloud',resident:false}]){
-  const f=notesFixture(options),view=f.render();assert.equal(view.storageStatus,'','the unavailable panel owns the connection message');assert.equal(view.view.unavailable,true);if(options.kind==='starting')assert.equal(view.unavailableMessage,'','passive startup stays quiet');else assert.match(view.unavailableMessage,options.kind==='recovering'?/stopped/:/Your agent is not ready for Notes\. Check the connection and try again\./);
+  const f=notesFixture(options),view=f.render();assert.equal(view.storageStatus,'','the unavailable panel owns the connection message');assert.equal(view.view.unavailable,true);if(options.kind==='starting')assert.equal(view.unavailableMessage,'','passive startup stays quiet');else assert.match(view.unavailableMessage,options.kind==='recovering'?/stopped/:/^Agent offline$/);
   // Waiting for a connection: Alpha's Notes view without retained notes, New note or device recording.
   assert.deepEqual(view.view.list,[]);assert.equal(view.view.none,false);assert.equal(view.view.canCreate,false);assert.equal(view.view.canRecord,false);
-  assert.equal(view.newNote(),false);assert.deepEqual(f.state,f.before);assert.deepEqual(f.calls,[]);assert.equal(f.toasts.length,1);assert.match(f.toasts[0],options.kind==='starting'?/starting/:options.kind==='recovering'?/stopped/:/^Your agent is not ready for Notes\. Check the connection and try again\.$/);assert.doesNotMatch(f.toasts[0],/on.phone agent|runs on your phone/);
+  assert.equal(view.newNote(),false);assert.deepEqual(f.state,f.before);assert.deepEqual(f.calls,[]);assert.equal(f.toasts.length,1);assert.match(f.toasts[0],options.kind==='starting'?/starting/:options.kind==='recovering'?/stopped/:/^Agent offline$/);assert.doesNotMatch(f.toasts[0],/on.phone agent|runs on your phone/);
  }
 });
 test('a genuine Notes recovery error stays visible and is used by the attempted action',()=>{
@@ -42,7 +42,7 @@ test('actual Notes binding accepts the existing app-record port independently of
  class Binding{current=true;constructor(actual){assert.equal(actual,port);bindings++;}refresh(){starts++;return Promise.resolve();}retire(){}}
  const updates=[],sync=new Function('connectionController','CanonicalNotesUi','originalSet','context','window','agentAvailabilityNotice',bindCode+';return syncCanonicalNotes;')({getAppRecordClient:()=>selected},Binding,function(_key,patch){updates.push(patch);},()=>{}, {},pending({kind:'cloud'}).agentAvailabilityNotice);
  const shell={live:true,notesSourceMode:'canonical',setState(){}};sync(shell);await shell.notesReady;assert.equal(bindings,1);assert.equal(starts,1);assert.equal(shell.canonicalNotesUi.current,true);sync(shell);assert.equal(bindings,1);
- selected=null;sync(shell);await shell.notesReady;assert.match(updates.at(-1).storageStatus,/unavailable for this agent connection/);assert.equal(bindings,1);
+ selected=null;sync(shell);await shell.notesReady;assert.match(updates.at(-1).storageStatus,/^Notes unavailable$/);assert.equal(bindings,1);
 });
 test('Review event from an agent note goes through Calendar admission with its note link; refusal opens nothing',async()=>{
  const origin={version:2,noteId:'n1',revision:'c'.repeat(64)};
@@ -57,6 +57,6 @@ test('Review event from an agent note goes through Calendar admission with its n
   views.notes.render({},shell.api('notes')).vo.toEvent();await new Promise(resolve=>setTimeout(resolve,0));
   assert.equal(reviewed.length,1);assert.deepEqual(reviewed[0].origin,origin);assert.equal(reviewed[0].notes,'Book the venue');assert.equal(reviewed[0].alert,null);
   assert.deepEqual(opened,[],'Calendar admission opens Calendar itself');
-  assert.match(toasts[0],admitted?/^Review the time, then Save\.$/:/can't open this event yet/);
+  assert.deepEqual(toasts,admitted?[]:['Calendar busy']);
  }
 });

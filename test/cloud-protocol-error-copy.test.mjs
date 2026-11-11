@@ -24,23 +24,23 @@ function harness(){
 
 test('a Cloud server failure or rate limit says the service is unavailable',()=>{
   const {errorMessage,logged}=harness();
-  for(const status of [500,502,408,429])assert.equal(errorMessage(new CloudProtocolError('http',status)),'Eliza Cloud is unavailable right now. Try again.');
+  for(const status of [500,502,408,429])assert.equal(errorMessage(new CloudProtocolError('http',status)),'Unavailable');
   assert.deepEqual(logged,[['http',500],['http',502],['http',408],['http',429]],'code and status are logged, not shown');
 });
 
 test('an unreadable response or another refusal says the account could not be checked',()=>{
   const {errorMessage}=harness();
   for(const error of [new CloudProtocolError('invalid-response'),new CloudProtocolError('http',403),new CloudProtocolError('http',404)])
-    assert.equal(errorMessage(error),'Eliza Cloud could not check your account. Try again, or sign in again in Settings.');
+    assert.equal(errorMessage(error),'Couldn’t check');
 });
 
 test('a changed account asks for a new sign-in',()=>{
-  assert.equal(harness().errorMessage(new CloudProtocolError('account-changed')),'The Eliza Cloud account changed. Sign in again.');
+  assert.equal(harness().errorMessage(new CloudProtocolError('account-changed')),'Account changed');
 });
 
 test('401 keeps its sign-in copy first, so the saved-sign-in comparison still holds',()=>{
   const {errorMessage}=harness();
   assert.equal(errorMessage(new CloudProtocolError('http',401)),errorMessage({status:401}));
   assert.equal(errorMessage({status:401}),'Your Eliza Cloud sign-in has expired. Sign in again.');
-  assert.equal(errorMessage(new CloudProtocolError('http',503)),'The agent is starting or temporarily unavailable. Try again shortly.');
+  assert.equal(errorMessage(new CloudProtocolError('http',503)),'Agent starting');
 });

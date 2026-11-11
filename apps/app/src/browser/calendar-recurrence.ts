@@ -16,15 +16,16 @@ export function expandCalendarSeries<T extends RecurringCalendarRecord>(row:T,ra
  const first=Math.max(0,Math.floor((range.begin-duration-row.begin)/DAY/stride)-3);
  const last=Math.max(first,Math.ceil((range.end-row.begin)/DAY/stride)+3);
  if(last-first>40000)throw Error('Choose a smaller calendar range.');
- const events:CalendarOccurrence<T>[]=[];
+ const events:CalendarOccurrence<T>[]=[],begins=new Set<number>();
  for(let index=first;index<=last;index++){
    const civil=firstWall+index*stride*DAY,date=new Date(civil);
    if(repeat==='weekdays'&&[0,6].includes(date.getUTCDay()))continue;
    const begin=index===0?row.begin:calendarInstant(date.toISOString().slice(0,-1),zone,Number.NaN,'forward'),end=begin+duration;
    if(begin<range.begin-duration||begin>=range.end||end<=range.begin)continue;
    // A skipped civil date can map to the following day's instant. Emit it once.
-   if(events.some(event=>event.begin===begin))continue;
+   if(begins.has(begin))continue;
    if(events.length===maximum)return {events,truncated:true};
+   begins.add(begin);
    events.push({...row,id:`${row.id}:occ:${begin}`,begin,end,seriesId:row.id,occurrenceBegin:begin});
  }
  return {events,truncated:false};

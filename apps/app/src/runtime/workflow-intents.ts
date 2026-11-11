@@ -7,6 +7,9 @@ import {WorkflowIntentStore as SharedWorkflowIntentStore,emptyWorkflowIntentArch
 export type WorkflowIntentOwner=SharedWorkflowIntentOwner;
 const prefix='alpha.workflow.pending.v1:';
 export const workflowIntentKey=(owner:WorkflowIntentOwner,id:string)=>sharedWorkflowIntentKey(owner,id,prefix);
+/** A retained run request can be matched to a receipt only when the agent keeps submission identities and the request
+ * names one for this workflow and version. Any other retained request can never be matched, so only its owner can clear it. */
+export const runIntentReconcilable=(intent:unknown,workflowId:string,supported:boolean):boolean=>{const value=intent as {workflowId?:unknown;submissionId?:unknown;versionId?:unknown}|null;return supported&&!!value&&typeof value==='object'&&value.workflowId===workflowId&&typeof value.submissionId==='string'&&typeof value.versionId==='string';};
 export class WorkflowIntentStore extends SharedWorkflowIntentStore {
  readonly documentKey:string;
  private document?:Promise<BrowserDomainDocument>;

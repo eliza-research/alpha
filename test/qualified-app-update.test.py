@@ -232,8 +232,33 @@ class QualifiedUpdateTest(unittest.TestCase):
         product.mkdir()
         (product / "artifacts").symlink_to(self.directory, target_is_directory=True)
         with self.assertRaises(ValueError):
-            BRIDGE.write_file(product, "artifacts/outside.json", b"must not escape")
+            BRIDGE.restore_file(product, "artifacts/outside.json", io.BytesIO(b"must not escape"),
+                                15, BRIDGE.sha(b"must not escape"), "mismatch")
         self.assertFalse((self.directory / "outside.json").exists())
+
+    def test_restore_streams_chunks_and_preserves_prior_target_on_refusal(self):
+        class BoundedSource(io.BytesIO):
+            def read(self, size):
+                self.maximum = max(getattr(self, "maximum", 0), size)
+                if not 0 < size <= 1024 * 1024:
+                    raise AssertionError("Unbounded read")
+                return super().read(size)
+
+        product = self.directory / "streamed-product"
+        product.mkdir()
+        target = product / "large.apk"
+        value = b"x" * (3 * 1024 * 1024 + 13)
+        source = BoundedSource(value)
+        BRIDGE.restore_file(product, target.name, source, len(value), BRIDGE.sha(value), "mismatch")
+        self.assertEqual(source.maximum, 1024 * 1024)
+        self.assertEqual(BRIDGE.file_sha(target), BRIDGE.sha(value))
+        for replacement, size, digest in ((b"ab", 1, BRIDGE.sha(b"a")),
+                                           (b"a", 2, BRIDGE.sha(b"ab")),
+                                           (b"b", 1, BRIDGE.sha(b"a"))):
+            with self.assertRaisesRegex(ValueError, "mismatch"):
+                BRIDGE.restore_file(product, target.name, BoundedSource(replacement), size, digest, "mismatch")
+            self.assertEqual(BRIDGE.file_sha(target), BRIDGE.sha(value))
+            self.assertEqual(list(product.iterdir()), [target])
 
     def test_signed_plan_apk_and_tar_path_substitution_are_rejected(self):
         for index, change in enumerate(({"signing-plan.json": b"{}"}, {"launcher-release.apk": b"changed"}, {"../outside": b"bad"})):

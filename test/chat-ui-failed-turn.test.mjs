@@ -29,7 +29,7 @@ test('a failed turn counts as effect-applied on TURN_INTERRUPTED_AFTER_EFFECT or
 
 test('the failed turn says the action went through, keeps a mapped limit, and never claims nothing happened',()=>{
  assert.doesNotMatch(EFFECT_COPY,/—/,'no em dash in shipped copy');
- assert.match(EFFECT_COPY,/went through/);assert.match(EFFECT_COPY,/reply was cut off/);assert.match(EFFECT_COPY,/Nothing was run again\./);
+ assert.match(EFFECT_COPY,/^Done/);assert.match(EFFECT_COPY,/reply cut off/);assert.doesNotMatch(EFFECT_COPY,/Nothing (was|happened)/);
  const failure=between(send,'responseFailure = replyFailure(',"if ('failureKind' in responseFailure) retractReadiness();");
  assert.match(failure,/if\(effectApplied\)\{const mapped=responseFailure instanceof AlphaClientError\?responseFailure/);
  assert.match(failure,/mapped&&mapped\.failureKind!=='interrupted'\?`\$\{EFFECT_APPLIED_INTERRUPTED\} \$\{mapped\.message\}`:EFFECT_APPLIED_INTERRUPTED/,'a mapped provider or Cloud limit keeps its retry text after the effect notice');

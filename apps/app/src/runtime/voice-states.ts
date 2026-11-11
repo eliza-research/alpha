@@ -39,7 +39,12 @@ export function voiceFailure(reason: unknown, context: { transcribing: boolean; 
  * the browser's own site settings and gets none.
  */
 export const DENIED_SETTINGS_LABEL = 'Open app settings';
-export function deniedSettingsChoice(input: { failure: string; stage: string; busy: boolean; native: boolean }): boolean {
+export type DeniedSettingsInput = { failure: string; stage: string; busy: boolean; native: boolean };
+export function deniedSettingsChoice(input: DeniedSettingsInput): boolean {
+  //@ verify
+  //@ ensures \result <==> (input.native && input.failure === 'denied' && input.stage === 'ready' && !input.busy)
+  //@ ensures !input.native ==> !\result
+  //@ ensures input.busy ==> !\result
   return input.native && input.failure === 'denied' && input.stage === 'ready' && !input.busy;
 }
 

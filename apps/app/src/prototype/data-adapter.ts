@@ -4,7 +4,7 @@ import {HOME_DEFAULTS} from './model.js';
 import {browserStorageUsage} from '../browser/storage-usage';
 import {browserDevProfile} from '../browser/dev-profile';
 import {formatFullDate} from './locale-time';
-import {homeCalendarEmptyTitle, homeCalendarName, homeCalendarValues, homeReadIsStale, presentHomeAgendaCard, presentHomeAttention, presentHomeBrief, presentHomeBriefCard, presentHomeCalendarSource, selectHomeAgenda, type HomeAgendaCardInput, type HomeAttentionSummary, type HomeBriefSummary} from './home-cards';
+import {createHomeAgenda, createStorageAccessCheck, homeCalendarEmptyTitle, homeCalendarName, homeCalendarValues, homeReadIsStale, presentHomeAgendaCard, presentHomeAttention, presentHomeBrief, presentHomeBriefCard, presentHomeCalendarSource, type HomeAgendaCardInput, type HomeAttentionSummary, type HomeBriefSummary} from './home-cards';
 type Bag = Record<string, any>;
 const installed = new WeakSet<object>();
 
@@ -47,7 +47,7 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
   let storageUsage={storageW:'0%',storageText:'App storage',storageBarStyle:'display:none'},storageActive=false,storagePending=false,storageEpoch=0;
   const browserStorage=!Capacitor.isNativePlatform(),filesLeave=views.files?.onLeave;
   if(browserStorage&&views.files)views.files.onLeave=(...args:any[])=>{storageActive=false;storagePending=false;storageEpoch++;return filesLeave?.(...args);};
-  const refreshStorage=async(api:Bag)=>{if(storagePending||!api.isActive()||document.hidden)return;storagePending=true;const epoch=storageEpoch;try{const usage=await browserStorageUsage();if(epoch===storageEpoch&&api.isActive()){storageUsage=usage;api.set({browserStorageRevision:Date.now()});}}catch{if(epoch===storageEpoch&&api.isActive()){storageUsage={storageW:'0%',storageText:'App storage could not be read',storageBarStyle:'display:none'};api.set({browserStorageRevision:Date.now()});}}finally{if(epoch===storageEpoch)storagePending=false;}};
+  const refreshStorage=async(api:Bag)=>{if(storagePending||!api.isActive()||document.hidden)return;storagePending=true;const epoch=storageEpoch;try{const usage=await browserStorageUsage();if(epoch===storageEpoch&&api.isActive()){storageUsage=usage;api.set({browserStorageRevision:Date.now()});}}catch{if(epoch===storageEpoch&&api.isActive()){storageUsage={storageW:'0%',storageText:'Storage unavailable',storageBarStyle:'display:none'};api.set({browserStorageRevision:Date.now()});}}finally{if(epoch===storageEpoch)storagePending=false;}};
   wrap('files', (out,_state,api) => {
     // Refresh on arrival and after returning from a folder or preview, not on a polling timer.
     const storageVisible=browserStorage&&api.isActive()&&!_state.folder&&!_state.open;
@@ -60,12 +60,12 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
     ...(browserStorage?storageUsage:{storageW:'0%',storageText:'Storage usage unavailable',storageBarStyle:'display:none'}),
   });});
   wrap('phone', out => ({ ...out, favs: [], hasFavs: false }));
-  wrap('messages', out => ({ ...out, ...(out.empty ? { emptyText: 'Messages are not connected' } : {}) }));
-  wrap('inbox', out => ({ ...out, emptyText: 'Inbox is not connected' }));
+  wrap('messages', out => ({ ...out, ...(out.empty ? { emptyText: 'Not connected' } : {}) }));
+  wrap('inbox', out => ({ ...out, emptyText: 'Not connected' }));
   wrap('wallet', (out, _state, api) => ({
     ...out, passes: [], ps: null, isPass: false,
-    startAdd: () => api.toast('Wallet is not connected. No card details are collected.'),
-    startPay: () => api.toast('Wallet is not connected. Nothing has been charged.'),
+    startAdd: () => api.toast('Not connected'),
+    startPay: () => api.toast('Not connected'),
   }));
   const p = Component.prototype;
   const renderVals = p.renderVals;
@@ -77,7 +77,7 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
     const first = view === 'camera' ? 'Open Photos' : view === 'photos' ? 'Open Camera'
       : view === 'files' || view === 'browser' || view === 'inbox' ? 'Open Notes'
       : view === 'phone' || view === 'messages' ? 'Open Contacts' : 'Open Calendar';
-    const suggestions = view==='camera' ? ['Scan this', 'What am I looking at?', 'Take a photo'] : ['Create a note', 'Set a reminder', first];
+    const suggestions = view==='camera' ? ['Scan this', 'What’s this?', 'Take a photo'] : ['Create a note', 'Set a reminder', first];
     const now = Date.now();
     const calendarSource = views.calendar.displaySources?.();
     const calendarState = this.vget('calendar');
@@ -86,20 +86,11 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
     // The app calendar can be hidden in Calendar's display settings; Calendar then leaves its events
     // out, and so does Home. Device calendars have no in-app toggle. Reminders are not affected.
     const calendarHidden = !!calendarSource && !calendarSource.native && (calendarSource.sources || []).some((source: Bag) => source.id === 'local' && source.on === false);
-    const candidates = (calendarState.events || [])
-      .filter((event: Bag) => event.reminderStatus !== 'completed')
-      .filter((event: Bag) => !event.alphaCalendarId || (calendarSource?.ready && !calendarHidden))
-      .map((event: Bag) => {
-        const instant=(value:number)=>{const date=new Date(value);return event.nativeEvent?.allDay?new Date(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate()).getTime():Number(value);};
-        return {item:event,begin:instant(event.nativeEvent?.begin??event.reminderAt),end:instant(event.nativeEvent?.end??event.reminderAt),allDay:!!event.nativeEvent?.allDay};
-      })
-      // Overdue reminders (reminder adapter's overdueReminders()) stay on Home until handled.
-      .concat(overdueRows.map((row: Bag) => ({item: {id: row.id, title: row.title, off: row.off, overdue: true} as Bag, begin: Number(row.at), end: Infinity, allDay: false, overdue: true})));
-    // Shared agenda selection: an overdue reminder is first even when an event already in progress
-    // began before it was due, and the next item that is not overdue still shows on its own line.
-    const selection = selectHomeAgenda<Bag>(candidates, now);
-    const agenda = selection.agenda ? {...selection.agenda, event: selection.agenda.item} : undefined;
-    const following = selection.following ? {...selection.following, event: selection.following.item} : undefined;
+    // Shared agenda selection: overdue reminders (reminder adapter's overdueReminders()) stay on Home
+    // until handled, first even when an event already in progress began before one was due, and the
+    // next item that is not overdue still shows on its own line. This runs on every shell render, so
+    // the candidates are built once per event list and chosen again only when an item ends.
+    const {agenda, following} = homeAgenda({events: calendarState.events || NO_EVENTS, overdue: overdueRows, calendarShown: !!calendarSource?.ready && !calendarHidden, now});
     const cardState = calendarSource?.loading ? 'loading' : calendarSource?.ready ? 'ready' : 'error';
     // The calendar adapter may report its read time; otherwise the first render that sees the
     // loaded rows stands in for it (both are reads from this device, never a sync claim).
@@ -187,6 +178,9 @@ export function installPrototypeDataAdapter(Component: any, views: Record<string
   };
 }
 let calendarReadRows: unknown, calendarReadAt: number | null = null;
+const NO_EVENTS: Bag[] = [], homeAgenda = createHomeAgenda();
+// Whether saving works in this browser; the synchronous storage read is not repeated on every render.
+const storageAccessible = createStorageAccessCheck(() => { if (!window.indexedDB) throw Error(); window.localStorage.getItem('alpha.appearance.v1'); });
 let reminderReadRows: unknown, reminderReadAt: number | null = null;
 
 export const HOME_SOURCES_CHANGED = 'alpha:home-sources-changed';
@@ -231,14 +225,14 @@ export function installPrototypeHomeBindings(Component: any) {
   p.renderVals = function () {
     const out = render.call(this);
     let storageAccessWarning='';
-    if(!Capacitor.isNativePlatform())try{if(!window.indexedDB)throw Error();window.localStorage.getItem('alpha.appearance.v1');}catch{storageAccessWarning='Saving is unavailable. Changes may not be saved. Check your browser’s storage settings and reload.';}
+    if(!Capacitor.isNativePlatform()&&!storageAccessible()){storageAccessWarning='Saving off';}
     const activeView=this.S().view||'home';
     const chatModal=out.panelPE==='auto'&&this.S().chat==='full';
     const attention = mockAttentionRows();
     return {
       ...NEUTRAL_HOME,
       ...(HOME_DEFAULTS || {}),
-      homeAttentionLabel: attention.length ? `${attention.length} ${attention.length === 1 ? 'item needs' : 'items need'} your attention` : 'Nothing needs your attention', homeAttentionPeople: attention,
+      homeAttentionLabel: attention.length ? `${attention.length} ${attention.length === 1 ? 'item needs' : 'items need'} your attention` : 'All clear', homeAttentionPeople: attention,
       homeAttentionPeopleVisibility: attention.length ? 'visible' : 'hidden',
       ...out,
       activeViewLabel: activeView[0].toUpperCase()+activeView.slice(1), storageAccessWarning,
@@ -250,6 +244,8 @@ export function installPrototypeHomeBindings(Component: any) {
       conversationHidden: out.panelPE !== 'auto' || out.shadeY === '0' || !!out.voiceOn,
       shadeHidden: out.shadeY !== '0' || !!out.voiceOn,
       dockHidden: out.shadeY === '0' || !!out.voiceOn,
+      // An open conversation has one bottom bar: its own text field, with Alpha's orb in it.
+      ...(out.is?.messages && out.messages?.ownsDock ? { showPill: false, showComposer: false } : {}),
     };
   };
 }

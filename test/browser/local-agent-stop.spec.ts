@@ -78,7 +78,7 @@ for (const scenario of ['confirmed', 'incomplete-timeout'] as const) {
     await expect(stop).toBeEnabled();
     await page.clock.install();
     await stop.click();
-    await expect(chooser.getByText('Restarting your agent…', { exact: true })).toBeVisible();
+    await expect(chooser.getByText('Restarting', { exact: true })).toBeVisible();
     await expect(stop).toBeDisabled();
     await expect(chooser.getByText('Local agent stopped.', { exact: true })).toHaveCount(0);
     if (scenario === 'confirmed') {
@@ -103,7 +103,7 @@ for (const scenario of ['confirmed', 'incomplete-timeout'] as const) {
     } else {
       await page.evaluate(() => { (window as any).stopFixture.status = { state: 'stopped' }; });
       await page.clock.runFor(30_100);
-      await expect(chooser.getByText('Shutdown is still pending. Check local agent status before starting again.', { exact: true })).toBeVisible();
+      await expect(chooser.getByText('Not confirmed', { exact: true })).toBeVisible();
       await expect(stop).toBeEnabled();
       await expect(chooser.getByText('Resident fixture', { exact: true })).toBeVisible();
       await expect(chooser.getByText('Local agent stopped.', { exact: true })).toHaveCount(0);

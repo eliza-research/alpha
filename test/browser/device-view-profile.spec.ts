@@ -70,7 +70,7 @@ for(const scenario of ['supported','legacy','unsupported','malformed','lost','re
    expect(f.writes).toEqual([{version:1,views:['browser','home','notes','reminders','settings'],expectedRevision:null}]);
   }else if(scenario==='retained'){expect(snapshot.phoneActionsAvailable).toBe(true);expect(f.writes).toEqual([]);expect(f.reads).toBe(1);}
   else if(scenario==='legacy'){expect(snapshot.phoneActionsAvailable).toBe(true);expect(f.reads).toBe(0);expect(f.writes).toEqual([]);expect(snapshot.phoneCapabilityReason).toBe('');}
-  else {expect(snapshot.phoneActionsAvailable).toBe(false);await expect(page.getByText('Chat connected. Your agent can’t act on this phone right now. Reconnect to try again.')).toBeVisible();expect(f.writes).toHaveLength(scenario==='lost'?1:0);}
+  else {expect(snapshot.phoneActionsAvailable).toBe(false);await expect(page.getByText('Chat only')).toBeVisible();expect(f.writes).toHaveLength(scenario==='lost'?1:0);}
   for(const headers of f.headers){expect(headers['X-Eliza-Device-Key']).toMatch(/^[a-f0-9]{64}$/);expect(headers['X-Eliza-Device-Id']).toMatch(/^[a-f0-9-]{36}$/);expect(Object.keys(headers).some(k=>/view-profile/i.test(k))).toBe(false);}
   if(scenario==='lost'){
    // Reconnect reads the committed profile; it must not repeat the unknown write.

@@ -31,7 +31,7 @@ async function createNote(page:Page,title:string,body:string){
 async function deleteNote(page:Page,title:string){
  await page.getByRole('button',{name:`Open ${title}`,exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
- await expect(page.getByText(`Moved to Recently deleted`,{exact:true})).toBeVisible();
+ await expect(page.getByText(`Deleted`,{exact:true})).toBeVisible();
  await expect(page.getByRole('button',{name:`Open ${title}`,exact:true})).toHaveCount(0);
 }
 /**
@@ -64,11 +64,13 @@ test('a deletion that would overfill Trash is refused: the note stays saved, Tra
  expect(saved.map(note=>note.title).sort()).toEqual(['Charlie','Delta']);
 
  // One more deletion: refused, in words, before anything is written.
+ // The earlier deletion's Undo toast has the same word; let it expire first.
+ await expect(page.getByText('Deleted',{exact:true})).toHaveCount(0,{timeout:15_000});
  await page.getByRole('button',{name:'Open Charlie',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
- const dialog=page.getByRole('dialog',{name:'Recently deleted is full'});
+ const dialog=page.getByRole('dialog',{name:'Full'});
  await expect(dialog).toBeVisible();
- await expect(page.getByText('Moved to Recently deleted',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Deleted',{exact:true})).toHaveCount(0);
  // The note is still saved, byte for byte, and Trash holds exactly what it held.
  expect(await savedRecords(page)).toEqual(saved);
  expect(await trashEntries(page)).toEqual(full);
@@ -142,12 +144,14 @@ test('a deletion that would push Trash past its byte limit is refused: the note 
  expect(heavy.length).toBeLessThan(LIMIT/2);expect(new TextEncoder().encode(heavy).length).toBeGreaterThan(LIMIT/2);
 
  // A second heavy note does not fit: refused in words before anything is written.
+ // The earlier deletion's Undo toast has the same word; let it expire first.
+ await expect(page.getByText('Deleted',{exact:true})).toHaveCount(0,{timeout:15_000});
  await page.getByRole('button',{name:'Open Second heavy',exact:true}).click();
  await page.getByRole('button',{name:'More',exact:true}).click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
- const dialog=page.getByRole('dialog',{name:'Recently deleted is full'});
+ const dialog=page.getByRole('dialog',{name:'Full'});
  await expect(dialog).toBeVisible();
  await expect(dialog.getByRole('button',{name:'Delete permanently',exact:true})).toBeVisible();await expect(dialog).not.toContainText('was not deleted');
- await expect(page.getByText('Moved to Recently deleted',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Deleted',{exact:true})).toHaveCount(0);
  expect(await savedRecords(page)).toEqual(saved);
  expect(await trashEntries(page)).toEqual(full);
  expect(await trashBytes(page)).toBe(bytes);

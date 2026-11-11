@@ -95,6 +95,8 @@ public abstract class LocalSpeechBridgePlugin extends Plugin {
  protected static void successful(java.net.HttpURLConnection connection){throw new AssertionError("Unexercised speech HTTP");}
  protected final boolean speakerBusy(){return false;}
  protected final void synthesizeReviewed(PluginCall call,String text){throw new AssertionError("Unexercised synthesis");}
+ public interface WavSource{byte[] read(java.util.function.BooleanSupplier cancelled)throws Exception;}
+ protected final void transcribeSuppliedWav(PluginCall call,WavSource source){throw new AssertionError("Unexercised supplied-audio transcription");}
  protected final void publishPreparedAudio(PluginCall call,SpeechRequestGate.Request request,byte[] bytes){throw new AssertionError("Unexercised playback");}
  protected final void cancelSpeech(String id){throw new AssertionError("Unexercised cancellation");}
 }`,

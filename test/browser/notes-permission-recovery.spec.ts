@@ -11,17 +11,17 @@ test('blocked Notes microphone opens the existing access panel and keeps the ret
  });
  await canonicalNotesFixture(page);await openCanonicalNotes(page);
  await page.getByRole('button',{name:'Record voice note',exact:true}).click();
- const access=page.getByRole('dialog',{name:'Microphone',exact:true});
+ const access=page.getByRole('dialog',{name:'Access',exact:true});
  await expect(access).toBeVisible();
- await expect(access.getByText('Off. Turn it on in your browser’s site settings.',{exact:true})).toBeVisible();
- await expect(access.getByRole('button',{name:'Check access',exact:true})).toBeEnabled();
+ await expect(access.locator('[aria-current=step]',{hasText:'Microphone'})).toBeVisible();
+ await expect(access.getByRole('button',{name:'Check',exact:true})).toBeEnabled();
  await page.screenshot({path:info.outputPath('microphone-access.png')});
  expect(await page.evaluate(()=>(window as any).notePermissionFixture.requests)).toBe(1);
  expect(await page.evaluate(()=>(window as any).canonicalNotesFixture.state.notes.length)).toBe(0);
  // Model the browser reporting the user's changed setting; the app cannot grant it itself.
  await page.evaluate(()=>{(window as any).notePermissionFixture.state='granted';});
- await access.getByRole('button',{name:'Check access',exact:true}).click();
- await expect(access.getByText('Allowed.',{exact:true})).toBeVisible();
+ await access.getByRole('button',{name:'Check',exact:true}).click();
+ await expect(access.locator('[aria-current=step]').getByText('Allowed',{exact:true})).toBeVisible();
  await access.getByRole('button',{name:'Done',exact:true}).click();
  await expect(access).toHaveCount(0);
  await expect(page.locator('[data-alpha-subview="notes-recorder"]').getByRole('button',{name:'Record',exact:true})).toBeEnabled();

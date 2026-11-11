@@ -38,7 +38,7 @@ async function selection(page:Page,count:number,declineAt=0,holdFirst=false,unkn
 for(const [count,sizes] of [[500,[500]],[501,[500,1]],[1001,[500,500,1]]] as const){
  test(`${count} permitted items use reviewed batches of ${sizes.join(',')}`,async({page})=>{
   await selection(page,count);
-  await expect(page.getByText(`Added ${count} to Favorites`,{exact:true})).toBeVisible();
+  await expect(page.getByText(`${count} favorited`,{exact:true})).toBeVisible();
   const calls=await page.evaluate(()=>(window as any).mediaFixture.batchCalls);
   expect(calls.map((call:any)=>call.items.length)).toEqual(sizes);
   expect(calls.flatMap((call:any)=>call.items)).toEqual(Array.from({length:count},(_,i)=>({id:`m:external_primary:i:${i+1}`,revision:`revision:${i+1}`})));
@@ -57,15 +57,15 @@ test('leaving Photos during a reviewed batch stops later requests and stale publ
  await page.getByRole('button',{name:'Photos',exact:true}).click();
  await openPhotoTools(page);await expect(page.getByRole('button',{name:'Select photos',exact:true})).toBeEnabled();
  expect(await page.evaluate(()=>(window as any).mediaFixture.batchCalls.length)).toBe(1);
- await expect(page.getByText(/Added .* to Favorites/)).toHaveCount(0);
+ await expect(page.getByText(/\d+ favorited/)).toHaveCount(0);
 });
 
 for(const count of [500,1001])test(`an unknown batch result among ${count} items reports uncertainty and is not replayed`,async({page})=>{
  await selection(page,count,0,false,1);
  await openPhotoTools(page);await expect(page.getByRole('button',{name:'Select photos',exact:true})).toBeEnabled();
- await expect(page.getByText(count===500?"Couldn't confirm the change.":'Added 501 to Favorites · 500 not confirmed',{exact:true})).toBeVisible();
- await expect(page.getByText(/Added 0 to Favorites|Nothing changed\. Try again\.|not changed/)).toHaveCount(0);
- expect(await page.evaluate(()=>(window as any).mediaFixture.toasts)).toEqual([count===500?"Couldn't confirm the change.":'Added 501 to Favorites · 500 not confirmed']);
+ await expect(page.getByText(count===500?'Unconfirmed':'501 favorited · 500 not confirmed',{exact:true})).toBeVisible();
+ await expect(page.getByText(/^0 favorited|Nothing changed\. Try again\.|not changed/)).toHaveCount(0);
+ expect(await page.evaluate(()=>(window as any).mediaFixture.toasts)).toEqual([count===500?'Unconfirmed':'501 favorited · 500 not confirmed']);
  const calls=await page.evaluate(()=>(window as any).mediaFixture.batchCalls);
  expect(calls.map((call:any)=>call.items.length)).toEqual(count===500?[500]:[500,500,1]);
  expect(new Set(calls.flatMap((call:any)=>call.items.map((item:any)=>item.id))).size).toBe(count);
@@ -77,6 +77,6 @@ test('permission retirement during a reviewed batch stops later requests',async(
  await expect(page.getByText('No photos',{exact:true})).toBeVisible();
  await page.evaluate(()=>(window as any).mediaFixture.release());
  await expect(page.getByRole('button',{name:'Select all',exact:true})).toBeEnabled();
- await expect(page.getByText(/Added .* to Favorites/)).toHaveCount(0);
+ await expect(page.getByText(/\d+ favorited/)).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).mediaFixture.batchCalls.length)).toBe(1);
 });

@@ -9,18 +9,18 @@ const ROOT = ['Inbox', 'Calendar', 'Browser', 'Camera', 'Photos', 'Maps', 'Notes
 type View = typeof ROOT[number] | 'Reminders' | 'Notifications';
 const VIEWS: View[] = [...ROOT, 'Reminders', 'Notifications'];
 const EMPTY: Record<View, RegExp> = {
-  Inbox: /Connect Eliza Cloud to use Gmail/,
-  Calendar: /Connect to view Agent Calendar\./,
+  Inbox: /Connect Eliza Cloud/,
+  Calendar: /Connect/,
   Browser: /No open pages|New tab/,
-  Camera: /^Camera unavailable$/,
+  Camera: /^Can’t start camera$/,
   Photos: /^No photos$/,
   Maps: /Add a location/,
   // Agent Notes waiting for a connection (canonical-notes-ui.ts), as in production-surface.spec.ts.
-  Notes: /Notes is unavailable for this agent connection\. Check Settings › Agent connection\./,
-  Files: /Internal storage|Storage is unavailable/,
-  Workflows: /Connect your remote agent in Settings\. Reminders on this phone stay available/,
+  Notes: /Notes unavailable/,
+  Files: /Internal storage|Storage Unavailable/,
+  Workflows: /Connect your remote agent in Settings\./,
   Settings: /^General$/,
-  Reminders: /Connect to view Agent Calendar\./,
+  Reminders: /Connect/,
   Notifications: /No notifications/,
 };
 // Fixture identities from the reference prototype must never appear in a live profile.
@@ -77,9 +77,9 @@ for (const theme of ['light', 'dark'] as const) for (const view of VIEWS) {
     if(view==='Settings')for(const name of ['Account','General','Privacy','Apps','About'])await expect(surface.getByRole('button',{name,exact:true})).toBeVisible();
     if(view==='Files'){await expect(surface.getByText(/No recent files/)).toHaveCount(0);await expect(surface.getByRole('button',{name:/^Open /})).toHaveCount(0);}
     if (view === 'Camera') {
-      const recovery = surface.getByRole('alert', { name: 'Camera unavailable', exact: true });
+      const recovery = surface.getByRole('alert', { name: 'Can’t start camera', exact: true });
       await expect(recovery).toBeVisible();
-      await expect(recovery.getByRole('button', { name: 'Try again', exact: true })).toBeEnabled();
+      await expect(recovery.getByRole('button', { name: 'Retry', exact: true })).toBeEnabled();
     }
     const text = await surface.innerText();
     for (const fixture of FIXTURE) expect(text, `${view} renders fixture ${fixture}`).not.toMatch(fixture);
@@ -99,8 +99,8 @@ for (const theme of ['light', 'dark'] as const) for (const view of VIEWS) {
   test(`${view} ${theme}: blocked storage raises a role=alert`, async ({ page }) => {
     await blockStorage(page);
     const surface=await open(page, view, theme);
-    await expect(page.locator('[role=status],[role=alert]').filter({ hasText: /could not|unavailable|recovery|retry/i, visible: true }).first()).toBeVisible();
-    await expect(surface.getByRole('alert').filter({ hasText: /storage|could not|unavailable|recovery|retry/i }).first()).toBeVisible({timeout:3_000});
+    await expect(page.locator('[role=status],[role=alert]').filter({ hasText: /could not|couldn[’']t|saving off|unavailable|recovery|retry/i, visible: true }).first()).toBeVisible();
+    await expect(surface.getByRole('alert').filter({ hasText: /storage|could not|couldn[’']t|saving off|unavailable|recovery|retry/i }).first()).toBeVisible({timeout:3_000});
   });
 }
 

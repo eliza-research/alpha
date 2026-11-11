@@ -329,7 +329,11 @@ test('the Files agent contract carries opaque reviewed identities and refuses un
  }
  const adapter=readFileSync('.eliza/client-features/plugins/plugin-files/src/browser/files-browser-adapter.ts','utf8');
  // The current runner owns the identity fence directly, before opening Files or refreshing storage.
- assert.match(adapter,/if\s*\(\s*\(op\.type === "files_move" \|\| op\.type === "files_trash"\) &&\s*\(!op\.reviewed \|\| !reviewingPrimary\(\)\)\s*\)\s*return reviewRequired;\s*if \(!api\)/);
+ const runner = adapter.slice(adapter.indexOf('async run(op: FilesAgentOperation'));
+ const reviewFence = /if\s*\(\s*\(op\.type === "files_move" \|\| op\.type === "files_trash"\) &&\s*\(!op\.reviewed \|\| !reviewingPrimary\(\)\)\s*\)\s*return reviewRequired;/.exec(runner);
+ assert.ok(reviewFence, 'unreviewed mutations are refused at the runner entry point');
+ const openFiles = runner.indexOf('await openFiles()');
+ assert.ok(openFiles > reviewFence.index, 'mutation review runs before the cold Files handoff');
  assert.match(adapter,/if \(!reviewingPrimary\(\) \|\| !op\.reviewed\) return reviewRequired/);
  assert.match(adapter,/paths: op\.paths,[\s\S]*reviewed: op\.reviewed,[\s\S]*volume: "primary"/);
  assert.match(adapter,/storage\.storageTransfer\(\{[\s\S]*\.\.\.selection,[\s\S]*copy: false/);

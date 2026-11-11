@@ -56,7 +56,7 @@ export function openHomeChooser(): void {
   try { void registerPlugin<{ openHomeChooser(): Promise<void> }>('DeviceApps').openHomeChooser().catch(() => undefined); }
   catch { /* Reload stays available. */ }
 }
-const homeEscapeLabel = 'Choose another Home app';
+const homeEscapeLabel = 'Switch Home';
 
 let shown = false;
 /** Plain DOM so recovery still works when React itself failed to mount. */
@@ -71,14 +71,13 @@ export function showRecoveryScreen(kind: RendererFailureKind, error: unknown): v
   screen.setAttribute('aria-labelledby', 'alpha-recovery-title');
   screen.style.cssText = recoveryStyle.screen;
   const panel = document.createElement('div'); panel.style.cssText = recoveryStyle.panel;
-  const title = document.createElement('h1'); title.id = 'alpha-recovery-title'; title.textContent = 'Alpha Phone needs to reload';
-  const text = document.createElement('p'); text.textContent = 'Something went wrong while showing this screen. Reload to continue.';
+  const title = document.createElement('h1'); title.id = 'alpha-recovery-title'; title.textContent = 'Something went wrong';
   const reload = document.createElement('button'); reload.type = 'button'; reload.textContent = 'Reload'; reload.style.cssText = recoveryStyle.button; reload.onclick = () => location.reload();
   const details = document.createElement('details');
   const summary = document.createElement('summary'); summary.textContent = 'Diagnostics';
   const pre = document.createElement('pre'); pre.style.cssText = recoveryStyle.pre; pre.textContent = recoveryDiagnostics(kind, error);
   details.append(summary, pre);
-  panel.append(title, text, reload, details);
+  panel.append(title, reload, details);
   void homeEscapeAvailable().then(available => {
     if (!available || !reload.isConnected) return;
     const home = document.createElement('button'); home.type = 'button'; home.textContent = homeEscapeLabel; home.style.cssText = recoveryStyle.button; home.onclick = openHomeChooser;
@@ -137,8 +136,7 @@ export class RootErrorBoundary extends Component<{ children: ReactNode }, { fail
     if (shown) return null;
     return <div className="alpha-recovery" role="alertdialog" aria-labelledby="alpha-recovery-title" style={{ position: 'fixed', inset: 0, zIndex: 2147483000, display: 'flex', overflow: 'auto', padding: 24, boxSizing: 'border-box', background: '#f7f7f7', color: '#171717', font: '16px/1.5 system-ui,sans-serif' }}>
       <div style={{ maxWidth: 380, width: '100%', margin: 'auto' }}>
-        <h1 id="alpha-recovery-title">Alpha Phone needs to reload</h1>
-        <p>Something went wrong while showing this screen. Reload to continue.</p>
+        <h1 id="alpha-recovery-title">Something went wrong</h1>
         <button type="button" autoFocus onClick={() => location.reload()} style={{ minHeight: 48, width: '100%', margin: '16px 0 8px', border: 0, borderRadius: 24, background: '#171717', color: '#fff', font: 'inherit', fontWeight: 600 }}>Reload</button>
         {this.state.homeEscape && <button type="button" onClick={openHomeChooser} style={{ minHeight: 48, width: '100%', margin: '16px 0 8px', border: 0, borderRadius: 24, background: '#171717', color: '#fff', font: 'inherit', fontWeight: 600 }}>{homeEscapeLabel}</button>}
         <details><summary>Diagnostics</summary><pre style={{ whiteSpace: 'pre-wrap', font: '12px/1.4 ui-monospace,monospace', background: '#ececec', padding: 12, borderRadius: 12 }}>{this.state.diagnostics}</pre></details>

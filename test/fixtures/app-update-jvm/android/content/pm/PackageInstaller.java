@@ -18,6 +18,7 @@ public class PackageInstaller {
   * the same read, since nothing rules it out.
   */
  public boolean stale;
+ public android.content.IntentSender lastCommitReceiver;
  /** Commits wait for validate, as a large APK's does. */
  public boolean validating;
  /** Runs while a session's bytes reach the disk, to destroy a bridge at that moment. */
@@ -72,6 +73,7 @@ public class PackageInstaller {
   /** setClientProgress, a two-way call: Android holds the value before it returns, and reads it times 0.8, as a seal leaves it. Only this and a seal move an unsealed session here: a stream from openWrite never does, and no write saves it, so a boot reads 0. */
   public void setStagingProgress(float value){Internal session=internals.get(id);session.progress=Math.max(0f,Math.min(value*0.8f,0.8f));session.intended=true;phase("intent");}
   public void commit(android.content.IntentSender receiver){
+   lastCommitReceiver=receiver;
    committing.run();
    Internal session=internals.get(id);int sdk=android.os.Build.VERSION.SDK_INT;
    session.sealed=true;committed.add(id);

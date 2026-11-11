@@ -7,9 +7,9 @@ const event = 'alpha:fixture-google-accounts';
 const messages = new Map([
   ['', ''], ['Checking Google connections…', 'checking'],
   ['No Google account connected.', 'no-account'], ['Calendar includes the calendars you show in Google.', 'calendar-includes'],
-  ['Google connections could not be verified. Check sign-in and try again.', 'unverified'],
-  ['Connecting Calendar with Google…', 'connecting'], ['After authorizing Google, return here and check connections.', 'authorization'],
-  ['Calendar sync is not available on this host yet, so Calendar is not synced. Calendar keeps working.', 'host-refused'],
+  ['Couldn’t verify', 'unverified'],
+  ['Connecting Calendar with Google…', 'connecting'], ['Waiting for Google…', 'authorization'],
+  ['Sync unavailable', 'host-refused'],
   ...['synced', 'syncing', 'needs-grant', 'not-linked', 'unconfirmed'].map(code => ['Fixture ' + code, code]),
 ]);
 const makeTask = () => {

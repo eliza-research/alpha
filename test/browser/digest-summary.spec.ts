@@ -7,11 +7,11 @@ for(const theme of ['light','dark'])for(const kind of ['snapshot','native'])test
  const panel=page.getByRole('dialog',{name:'Scheduled digests',exact:true}),article=panel.locator('#hosted-result-summary-run'),summary=article.getByText('A readable summary.\nOne task is open.',{exact:true});
  await expect(summary).toBeVisible();
  if(kind==='native'){
-  await expect(article.getByText(/Phone sources read/)).toBeVisible();await expect(article).toContainText('permission expires');await expect(article).toContainText(times.expiryDisplay);
-  await expect(article.getByText('Execution details',{exact:true})).toHaveCount(0);await expect(article.locator('details')).toHaveCount(0);await expect(article.getByText(/SYNTHETIC_RAW_SOURCE_123/)).toHaveCount(0);
+  await expect(article.getByRole('img',{name:'Phone sources read',exact:true})).toBeVisible();await expect(article.getByRole('img',{name:'permission expires',exact:true})).toHaveCount(1);await expect(article).toContainText(times.expiryDisplay);
+  await expect(article.locator('summary[aria-label="Execution details"]')).toHaveCount(0);await expect(article.locator('details')).toHaveCount(0);await expect(article.getByText(/SYNTHETIC_RAW_SOURCE_123/)).toHaveCount(0);
   const text=await article.innerText();expect(text).not.toContain(times.observedAt);expect(text).not.toContain(times.expiresAt);expect(text).not.toContain('"nodeId"');
  }else{
-  const details=article.locator('details');await expect(details).not.toHaveAttribute('open');await expect(details.locator('pre')).toBeHidden();await article.getByText('Execution details',{exact:true}).click();await expect(details.locator('p')).toHaveText(/^Started .+\. Finished .+\.$/);
+  const details=article.locator('details');await expect(details).not.toHaveAttribute('open');await expect(details.locator('pre')).toBeHidden();await article.locator('summary[aria-label="Execution details"]').click();await expect(details.locator('p')).toHaveText(/^Started .+\. Finished .+\.$/);
   // The raw output is a development surface only (this lane); production shows the readable line alone.
   await expect(details.locator('pre')).toContainText('SYNTHETIC_RAW_SOURCE_123');
  }

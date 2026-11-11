@@ -118,7 +118,7 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
   await test.step('reviewed page reading hands only reviewed text to local speech', async () => {
     await menu(page, 'Read aloud');
     const review = page.getByRole('dialog', {name: 'Read page excerpt'});
-    await expect(review.getByRole('status', {name: 'Reading status'})).toHaveText('Public page text loaded. Review before reading.');
+    await expect(review.getByRole('status', {name: 'Reading status'})).toHaveText('');
     const excerpt = review.getByRole('textbox', {name: 'Excerpt to read'});
     await expect(excerpt).toHaveValue('Harbour notes\n\nThe ferry leaves at nine.');
     expect(await page.evaluate(() => (window as any).injected)).toBeUndefined();
@@ -137,7 +137,7 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     await expect(heading(page, 'Departures')).toBeVisible();
     await menu(page, 'Read aloud');
     const review = page.getByRole('dialog', {name: 'Read page excerpt'});
-    await expect(review.getByRole('status', {name: 'Reading status'})).toHaveText('Public page text loaded. Review before reading.');
+    await expect(review.getByRole('status', {name: 'Reading status'})).toHaveText('');
     await expect(review.getByRole('textbox', {name: 'Excerpt to read'})).toHaveValue('Departures\n\nOld page text.');
     await expect(review.getByRole('button', {name: 'Read locally', exact: true})).toBeEnabled();
     // The page starts leaving on its own; the old document is still shown while the request is held.
@@ -153,7 +153,7 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     // The host cannot see where a sandboxed page took itself, so it says so and offers no reading
     // of that unknown document: the menu offers neither Read aloud nor a page question, so no review
     // opens and nothing is spoken.
-    await expect(page.getByRole('status').filter({hasText: 'The website navigated inside'})).toBeVisible();
+    await expect(page.getByRole('status').filter({hasText: 'Page blocked'})).toBeVisible();
     await button(page, 'Menu').click();
     await expect(button(page, 'Reload page')).toBeVisible();
     await expect(button(page, 'Read aloud')).toHaveCount(0);
@@ -166,7 +166,7 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     await enter(page, `${origin}/arrivals`);
     await expect(heading(page, 'Arrivals')).toBeVisible();
     await menu(page, 'Read aloud');
-    await expect(review.getByRole('status', {name: 'Reading status'})).toHaveText('Public page text loaded. Review before reading.');
+    await expect(review.getByRole('status', {name: 'Reading status'})).toHaveText('');
     await expect(review.getByRole('textbox', {name: 'Excerpt to read'})).toHaveValue('Arrivals\n\nNew page text.');
     await review.getByRole('button', {name: 'Read locally', exact: true}).click();
     await expect(review.getByRole('status', {name: 'Reading status'})).toHaveText('Fixture terminal');
@@ -180,7 +180,7 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     await expect(heading(page, 'Members')).toBeVisible();
     await menu(page, 'Read aloud');
     const review = page.getByRole('dialog', {name: 'Read page excerpt'});
-    await expect(review.getByRole('status', {name: 'Reading status'})).toContainText('may contain credentials or verification codes');
+    await expect(review.getByRole('status', {name: 'Reading status'})).toHaveText('Contains secrets');
     await expect(review.getByRole('textbox', {name: 'Excerpt to read'})).toHaveValue('');
     await expect(review.getByRole('textbox', {name: 'Excerpt to read'})).toBeDisabled();
     await expect(review.getByRole('button', {name: 'Read locally', exact: true})).toBeDisabled();
@@ -196,7 +196,7 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
 
   await test.step('private tab is marked, kept out of history and gone after reload', async () => {
     await menu(page, 'New private tab');
-    await expect(page.getByRole('note', {name: 'Private tab notice'})).toContainText('not saved in Alpha history');
+    await expect(page.getByRole('note', {name: 'Private tab notice'})).toContainText('Private · not in history');
     await enter(page, `${origin}/private`);
     await expect(heading(page, 'Page private')).toBeVisible();
     await expect(page.getByRole('img', {name: 'Private tab', exact: true})).toBeVisible();
@@ -227,18 +227,18 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     await menu(page, 'Password manager');
     const settings = page.getByRole('region', {name: 'Settings'});
     await expect(settings.getByRole('heading', {name: 'Password manager', exact: true})).toBeVisible();
-    await expect(settings).toContainText(/Vault\s*Locked/);
-    await expect(settings).toContainText(/Browser autofill\s*Use Show or Copy for website passwords\.\s*Unavailable/);
-    await expect(settings).toContainText(/Autofill service\s*None selected/);
+    await expect(settings.getByRole('button', {name: 'Unlock passwords', exact: true})).toBeVisible();
+    await expect(settings).toContainText(/Browser autofill\s*Unavailable/);
+    await expect(settings).toContainText(/Autofill service\s*None/);
     await expect(settings.getByRole('button', {name: 'Add development provider', exact: true})).toBeVisible();
     await expect(settings).toContainText(/Selection\s*No provider selected/);
     await expect(settings.getByRole('button', {name: 'Choose password provider', exact: true})).toBeVisible();
     expect(await providerDocument(page)).toBeNull();
     await settings.getByRole('button', {name: /^Unlock passwords/}).click();
-    await expect(settings).toContainText(/Vault\s*Unlocked · locks after 60 s or when you leave/);
+    await expect(settings).toContainText(/Locks in 60s/);
     await expect(settings.getByRole('button', {name: /^Open Example sign-in/})).toBeVisible();
     await button(page, 'Lock passwords').click();
-    await expect(settings).toContainText(/Vault\s*Locked/);
+    await expect(settings.getByRole('button', {name: 'Unlock passwords', exact: true})).toBeVisible();
     await expect(settings.getByRole('button', {name: /^Open Example sign-in/})).toHaveCount(0);
   });
 
@@ -265,8 +265,8 @@ test('browser navigation, tabs, private tab, reviewed reading and password manag
     await menu(page, 'Password manager');
     const settings = page.getByRole('region', {name: 'Settings'});
     await expect(page.getByText('Development provider selected', {exact: true})).toBeVisible();
-    await expect(settings).toContainText(/Vault\s*Locked/);
-    await expect(settings).toContainText(/Autofill service\s*None selected/);
+    await expect(settings.getByRole('button', {name: 'Unlock passwords', exact: true})).toBeVisible();
+    await expect(settings).toContainText(/Autofill service\s*None/);
     const stored = await providerDocument(page);
     expect(JSON.parse(stored!)).toMatchObject({installed: true, selection: 'proton'});
     expect(stored).not.toContain('password');

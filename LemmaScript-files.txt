@@ -1,1 +1,23 @@
-apps/app/src/runtime/resident-recovery.ts 30
+apps/app/src/browser/browser-poll.ts
+apps/app/src/browser/edit-receipt.ts
+apps/app/src/browser/journal-retention.ts
+apps/app/src/browser/notifications.ts
+apps/app/src/browser/video-capture.ts
+apps/app/src/browser/video-edit.ts
+apps/app/src/browser/workflow-triggers.ts
+apps/app/src/prototype/calendar-days.ts
+apps/app/src/prototype/chat-overlay-motion-adapter.ts
+apps/app/src/prototype/context-selection.ts
+apps/app/src/prototype/note-recorder.ts
+apps/app/src/prototype/settings-adapter.ts
+apps/app/src/runtime/canvas-geometry.ts
+apps/app/src/runtime/cloud-environment-selection.ts
+apps/app/src/runtime/cloud-voice-limit.ts
+apps/app/src/runtime/gmail-mailbox.ts
+apps/app/src/runtime/hosted-digests.ts
+apps/app/src/runtime/inbox-edit-coalescer.ts
+apps/app/src/runtime/inbox-operation.ts
+apps/app/src/runtime/resident-recovery.ts
+apps/app/src/runtime/voice-states.ts
+apps/app/src/runtime/workflow-device-contract.ts
+apps/app/src/startup-permission-flow.ts

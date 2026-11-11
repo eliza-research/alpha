@@ -26,6 +26,7 @@ export async function bundleVendorCore(vendorPath, exports, driverSources, plugi
     return [original, source];
   }));
   const compiledHistorical = new Map();
+  const observationPlugins = typeof plugins === 'function' ? plugins(history) : plugins;
   const historicalPlugin = {name: 'authenticated-historical-runtime-fragments', setup(builder) {
     builder.onLoad({filter: /\.(?:ts|tsx)$/}, args => {
       const source = archived.get(args.path);
@@ -38,7 +39,7 @@ export async function bundleVendorCore(vendorPath, exports, driverSources, plugi
   }};
   const bundled = await build({absWorkingDir: vendor, nodePaths: [resolve(root, 'node_modules')],
     stdin: {contents: exports, resolveDir: vendor}, bundle: true, platform: 'node', format: 'cjs', write: false,
-    metafile: true, logLevel: 'silent', plugins: [historicalPlugin, ...plugins]});
+    metafile: true, logLevel: 'silent', plugins: [...observationPlugins, historicalPlugin]});
   const vendorFiles = Object.keys(bundled.metafile.inputs).filter(path => !path.startsWith('<')).map(path => resolve(vendor, path));
   for (const original of archived.keys()) assert.ok(vendorFiles.includes(original), 'Historical runtime fragment was not executed: '+original);
   const sources = [...new Set([...vendorFiles.map(history.resolveSource), fileURLToPath(import.meta.url), ...history.sources])];

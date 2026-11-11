@@ -18,10 +18,14 @@ import {installCalendarMonthFocus} from './prototype/calendar-month-focus';
 import {installCalendarEditDraftAdapter} from './prototype/calendar-edit-draft-adapter';
 import {installCalendarFormDraftAdapter} from './prototype/calendar-form-draft-adapter';
 import { browserApps } from './browser/apps';
-import { installSmsAdapter } from './prototype/sms-adapter';
+import { installSmsAdapter, setSmsReplySuggester } from './prototype/sms-adapter';
 import { installContactsAdapter } from './prototype/contacts-adapter';
 import { installPhoneAdapter } from './prototype/phone-adapter';
+import { installTelephonyAttention } from './prototype/telephony-attention';
+import { installTelephonyReview } from './prototype/telephony-review';
+import { installVoicemailTranscription } from './runtime/voicemail-transcription';
 import { admitImageContacts } from './prototype/mvp-features';
+import { applyImageContacts } from './runtime/image-contacts';
 import {DeletionUndo} from './runtime/deletion-undo';
 import {bindBrowserSpeechConnection} from './browser/agent-speech';
 import { testMocksEnabled, devSurfacesEnabled } from './build-flags';
@@ -177,6 +181,8 @@ installSystemShade(Component,{native:isAndroid});
 installSystemBarAppearance(Component,isAndroid,registerPlugin<SystemBars>('AlphaDevice'));
 // The shared agenda, mail and brief cards render the final Home values of every adapter above.
 installHomeCardVisibility(Component, () => googleConnectionController.open());
+// Messages and Phone cards exist on the verified image only; elsewhere this installs nothing.
+if(isAndroid&&!fixture){installTelephonyAttention(Component);installTelephonyReview(Component);installVoicemailTranscription();setSmsReplySuggester((thread,signal)=>connectionController.draftSmsReply(thread,signal));}
 installHomeOverviewCards(Component);
 installClockAdapter(Component, VIEWS, { simulated: testMocksEnabled && fixture, browser: !isAndroid });
 // Home and its app grid from the shared mobile shell, and Alpha's Apps drawer. Apps reads
@@ -193,7 +199,7 @@ function installBrowserCapabilityTiles(Component:any){
   p.renderVals=function(){
     const out=render.call(this);
     const tiles=(out.tiles||[]).map((tile:any)=>managed.has(tile.label)?{...tile,on:false,pressed:undefined,disabled:true,css:'background:var(--s2);color:var(--fg);opacity:.55',toggle:()=>{}}:tile);
-    return {...out,tiles,deviceSettingsPending:true,deviceSettingsMessage:'Network, radio and sensor settings are managed by your browser and operating system.',sbWifi:navigator.onLine,sbPlane:false};
+    return {...out,tiles,deviceSettingsPending:true,sbWifi:navigator.onLine,sbPlane:false};
   };
 }
 /** Use the last native bar geometry before Home's first paint; storage is only a layout cache. */
@@ -371,7 +377,7 @@ async function mountPhone() {
     await nativeAppUpdateGate;
   }
   if (isAndroid) {
-    const refreshImage=async()=>{const image=await DeviceApps.platformCapabilities().catch(()=>({aospImage:false,contacts:false}));const admitted=image.aospImage===true&&image.contacts===true;admitImageContacts(admitted);const index=ORDER.indexOf('contacts');if(admitted&&index<0)ORDER.push('contacts');else if(!admitted&&index>=0)ORDER.splice(index,1);if(!admitted&&shell?.state.view==='contacts')shell.goHome();};
+    const refreshImage=async()=>{const image=await DeviceApps.platformCapabilities().catch(()=>({aospImage:false,contacts:false}));const admitted=image.aospImage===true&&image.contacts===true;applyImageContacts(admitted,ORDER,shell,admitImageContacts);};
     // One round of independent host reads before the first render. The assistant surface is
     // AlphaAssistActivity only (surfaceInfo is class-gated natively), never a launch extra.
     [launcherPresentation, assistantSurface] = await Promise.all([

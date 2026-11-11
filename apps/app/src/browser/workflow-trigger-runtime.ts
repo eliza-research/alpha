@@ -1,5 +1,5 @@
 import {isFocusWorkflow} from './workflow-focus';
-import {detectWorkflowTriggers,triggerDefinition,type TriggerCursor,type TriggerOccurrence,type TriggerSnapshot} from './workflow-triggers';
+import {detectWorkflowTriggers,triggerDefinition,triggerTickPlan,EventRangeCache,ParsedDocuments,type TriggerCursor,type TriggerOccurrence,type TriggerSnapshot} from './workflow-triggers';
 import {registerPlugin} from '../platform-plugins';
 import {readLocationSimulation} from './location-simulation';
 import {browserSensorEnabled} from './sensor-policy';
@@ -36,12 +36,15 @@ const workflowUsesAgent=(flow:Bag)=>flow.steps.some((step:Bag)=>step.k==='Write'
 export function workflowNeedsReview(flow:Bag,connected=false){if(isFocusWorkflow(flow))return false;return flow.steps.some((step:Bag)=>step.k==='Speak'&&!['read it aloud','speak it when i pick up the phone'].includes(step.t.toLowerCase())||!connected&&step.k==='Write'&&step.t.toLowerCase()!=='a note in notes'||step.k==='Notify'&&step.t.toLowerCase()!=='a notification'&&(!connected||step.t.toLowerCase()!=='a notification, only if urgent')||step.k==='Do'&&/attachment|amount/i.test(step.t)||step.k==='If'&&/not at home/i.test(step.t));}
 /** The caller supplies the existing simulator writer lease and atomic run-claim operation. */
 export class WorkflowTriggerRuntime {
- private timer?:ReturnType<typeof setInterval>;private scanning=false;private stopped=false;private blocked=false;private api?:()=>Bag;private ready?:()=>boolean;
+ private timer?:ReturnType<typeof setInterval>;private scanning=false;private stopped=false;private blocked=false;private held=false;private api?:()=>Bag;private ready?:()=>boolean;
  private location=new NativeMapsLocation();private position?:Position;private watching=false;private report='';
+ // Calendar answers are reused for up to a minute of polls; any wake event, including a calendar change, drops them.
+ private calendarEvents=new EventRangeCache();private documents=new ParsedDocuments();
+ private stored(api:Bag,name:string):Bag{return {...api.get(name),...this.documents.read(name,localStorage.getItem('alpha.dev.app.'+name))};}
  constructor(private busy:(flowId:string)=>boolean,private dispatch:(flow:Bag,api:Bag,job:TriggerJob)=>Promise<void>){ }
  connect(api:()=>Bag,ready:()=>boolean){this.api=api;this.ready=ready;this.timer=setInterval(()=>void this.tick(),1000);for(const event of this.events)window.addEventListener(event,this.wake);document.addEventListener('visibilitychange',this.wake);void this.tick();}
- private events=['alpha:dev-app-change','alpha:dev-location','alpha:device-state','focus'];
- private wake=()=>{this.blocked=false;void this.tick();};
+ private events=['alpha:dev-app-change','alpha:dev-location','alpha:device-state','alpha:calendar-sync-source-changed','alpha:calendar-document-changed','focus'];
+ private wake=()=>{this.blocked=false;this.held=false;this.calendarEvents.clear();void this.tick();};
  private async places(flows:Bag[]){
   const places:TriggerSnapshot['places']={},placeKeys:Record<string,string>={};const enabled=flows.some(flow=>flow.on&&flow.trig?.kind==='location');
   if(!enabled||!browserSensorEnabled('locationEnabled')){if(this.watching){this.watching=false;this.position=undefined;await this.location.stop();}return {places,placeKeys};}
@@ -54,15 +57,16 @@ export class WorkflowTriggerRuntime {
  }
  private async snapshot(api:Bag,flows:Bag[],state:TriggerState,now:number):Promise<TriggerSnapshot>{
   const calendar=registerPlugin<any>('AlphaCalendar'),events:Bag[]=[],ranges=new Set<string>();
-  for(const flow of flows.filter(flow=>flow.on&&flow.trig?.kind==='event')){const cursor=state.cursors.find(row=>row.flowId===String(flow.id)&&row.definition===triggerDefinition(flow));const begin=Math.min(cursor?.through??now,now),end=Math.min(now,begin+86400000)+600001;const key=JSON.stringify([begin,end]);if(ranges.has(key))continue;ranges.add(key);const result=await calendar.list({begin,end});if(result.truncated)throw Error('Calendar trigger input is incomplete. Narrow the calendar before retrying.');for(const event of result.events)if(!events.some(row=>row.id===event.id&&row.begin===event.begin&&row.end===event.end))events.push(event);}
-  return {messages:app(api,'messages').threads||{},mails:app(api,'inbox').mails||[],events,...await this.places(flows)};
+  for(const flow of flows.filter(flow=>flow.on&&flow.trig?.kind==='event')){const cursor=state.cursors.find(row=>row.flowId===String(flow.id)&&row.definition===triggerDefinition(flow));const begin=Math.min(cursor?.through??now,now),end=Math.min(now,begin+86400000)+600001;const key=JSON.stringify([begin,end]);if(ranges.has(key))continue;ranges.add(key);let listed=this.calendarEvents.get(begin,end);if(!listed){const ticket=this.calendarEvents.ticket(),result=await calendar.list({begin,end:end+60000});if(result.truncated)throw Error('Calendar trigger input is incomplete. Narrow the calendar before retrying.');listed=result.events as Bag[];this.calendarEvents.put(ticket,begin,end+60000,listed);}for(const event of listed)if(!events.some(row=>row.id===event.id&&row.begin===event.begin&&row.end===event.end))events.push(event);}
+  return {messages:this.stored(api,'messages').threads||{},mails:this.stored(api,'inbox').mails||[],events,...await this.places(flows)};
  }
  private async tick(){
   if(this.stopped||this.scanning||!this.api||!this.ready?.())return;
   if(!foreground()){this.position=undefined;if(this.watching){this.watching=false;await this.location.stop();}return;}
-  if(this.blocked)return;this.scanning=true;const api=this.api();
+  const api=this.api();
+  if(triggerTickPlan({foreground:true,scanBlocked:this.blocked,dispatchHeld:this.held}).scan){this.scanning=true;
   try{
-   const raw=localStorage.getItem('alpha.dev.app.workflows'),state=app(api,'workflows'),triggerState:TriggerState=state.triggerState||emptyTriggerState();
+   const raw=localStorage.getItem('alpha.dev.app.workflows'),state=this.stored(api,'workflows'),triggerState:TriggerState=state.triggerState||emptyTriggerState();
    if(!Array.isArray(triggerState.cursors)||!Array.isArray(triggerState.queue)||triggerState.queue.length>100)throw Error('Workflow trigger history needs recovery.');
    const incomingRaw=[localStorage.getItem('alpha.dev.app.messages'),localStorage.getItem('alpha.dev.app.inbox')];
    const now=Date.now(),snapshot=await this.snapshot(api,state.flows,triggerState,now);if(this.stopped||!foreground()||raw!==localStorage.getItem('alpha.dev.app.workflows'))return;
@@ -76,12 +80,13 @@ export class WorkflowTriggerRuntime {
    if(detected.occurrences.length||JSON.stringify(queue)!==JSON.stringify(triggerState.queue)||comparable(detected.cursors)!==comparable(triggerState.cursors)){
     const next={cursors:detected.cursors,queue};if(JSON.stringify({...state,triggerState:next}).length>2_000_000)throw Error('Workflow history is full. Remove finished runs before checking more triggers.');api.setView('workflows',{triggerState:next});
    }
-   if(this.report){this.report='';api.setView('workflows',{localTriggerError:''});}
-  }catch(error){this.blocked=true;const message=error instanceof Error?error.message:'Workflow triggers could not be checked.';if(message!==this.report){this.report=message;api.setView('workflows',{localTriggerError:message});}}
-  finally{this.scanning=false;}
-  if(!this.stopped&&foreground()){
+   // One flow that cannot be checked is reported without stopping the others.
+   const failure=detected.errors[0]?.message||'';if(failure!==this.report){this.report=failure;api.setView('workflows',{localTriggerError:failure});}
+  }catch(error){this.blocked=true;const message=error instanceof Error?error.message:'Couldn’t check triggers';if(message!==this.report){this.report=message;api.setView('workflows',{localTriggerError:message});}}
+  finally{this.scanning=false;}}
+  if(!this.stopped&&triggerTickPlan({foreground:foreground(),scanBlocked:this.blocked,dispatchHeld:this.held}).dispatch&&this.stored(api,'workflows').triggerState?.queue?.length){
    const state=app(api,'workflows'),job=(state.triggerState?.queue||[]).find((job:TriggerJob)=>{const flow=state.flows.find((flow:Bag)=>flow.on&&String(flow.id)===job.flowId&&triggerDefinition(flow)===job.definition);return flow&&!this.busy(job.flowId)&&!(workflowUsesAgent(flow)&&api.localWorkflowBusy?.())&&(!workflowNeedsReview(flow,api.localWorkflowReady?.())||api.isActive()&&String(state.open)===job.flowId&&!document.querySelector('dialog[open]'));});
-   if(job){const flow=state.flows.find((flow:Bag)=>String(flow.id)===job.flowId);void this.dispatch(flow,api,job).finally(()=>{this.blocked=!!app(api,'workflows').triggerState?.queue.some((pending:TriggerJob)=>pending.id===job.id);if(!this.blocked)void this.tick();}).catch(()=>{this.blocked=true;});}
+   if(job){const flow=state.flows.find((flow:Bag)=>String(flow.id)===job.flowId);void this.dispatch(flow,api,job).finally(()=>{this.held=!!app(api,'workflows').triggerState?.queue.some((pending:TriggerJob)=>pending.id===job.id);if(!this.held){this.blocked=false;void this.tick();}}).catch(()=>{this.held=true;});}
   }
  }
  dispose(){this.stopped=true;clearInterval(this.timer);for(const event of this.events)window.removeEventListener(event,this.wake);document.removeEventListener('visibilitychange',this.wake);void this.location.stop();}

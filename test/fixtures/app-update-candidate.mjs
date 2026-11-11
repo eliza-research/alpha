@@ -24,7 +24,13 @@ export function candidateFixture(t) {
   json(path.join(directory, 'app.config.json'), config);
   json(path.join(directory, 'upstream.lock.json'), {commit: sdkCommit});
   json(path.join(directory, 'android/release-signer.json'), {lastRelease: {versionCode: null}});
-  git(directory, ['init', '-q']); git(directory, ['add', 'app.config.json', 'upstream.lock.json', 'android/release-signer.json']); commit(directory);
+  for (const name of ['voice-host', 'embedding-host']) fs.mkdirSync(path.join(directory, 'android', name));
+  json(path.join(directory, 'android/voice-host/qualified-voice-host.json'), {synthetic: 'voice'});
+  json(path.join(directory, 'android/embedding-host/qualified-host.json'), {forkPin: 'e'.repeat(40)});
+  const nativePlan = {artifacts: Object.fromEntries(['voice', 'embeddingComponent', 'embeddingQualification']
+    .map((name, index) => [name, {id: String(11 + index), sha256: hash('synthetic artifact ' + name)}]))};
+  json(path.join(directory, 'android/hosted-native-inputs.json'), nativePlan);
+  git(directory, ['init', '-q']); git(directory, ['add', 'app.config.json', 'upstream.lock.json', 'android']); commit(directory);
   const env = {...process.env, GITHUB_REPOSITORY: 'eliza-research/alphaphone', GITHUB_EVENT_NAME: 'push',
     GITHUB_REF: 'refs/heads/main', GITHUB_WORKFLOW_REF: 'eliza-research/alphaphone/.github/workflows/resident-android.yml@refs/heads/main',
     GITHUB_SHA: git(directory, ['rev-parse', 'HEAD']), GITHUB_RUN_ID: '42885443022', GITHUB_RUN_NUMBER: '705', GITHUB_RUN_ATTEMPT: '1'};
@@ -58,7 +64,19 @@ export function candidateFixture(t) {
     fs.mkdirSync(output, {recursive: true});
     const channel = admission.updateChannel;
     json(path.join(output, 'configuration.json'), {runtimeProfile: 'native', testMocks: false, updateChannel: channel});
-    const files = {'upstream.lock.json': hash(fs.readFileSync(path.join(directory, 'upstream.lock.json')))};
+    const files = Object.fromEntries(['upstream.lock.json', 'android/hosted-native-inputs.json',
+      'android/voice-host/qualified-voice-host.json', 'android/embedding-host/qualified-host.json']
+      .map(name => [name, hash(fs.readFileSync(path.join(directory, name)))]));
+    json(path.join(output, 'native-input-admission.json'), {schema: 'alpha-hosted-native-input-admission/v1',
+      source: admission.sourceCommit, sdkCommit, packageName: config.appId, runId: admission.runId, attempt: admission.runAttempt,
+      manifestSha256: files['android/hosted-native-inputs.json'],
+      voiceRecordSha256: files['android/voice-host/qualified-voice-host.json'],
+      embeddingRecordSha256: files['android/embedding-host/qualified-host.json'],
+      artifacts: Object.fromEntries(Object.entries(nativePlan.artifacts).map(([name, pin]) => [name,
+        {artifactId: Number(pin.id), sha256: pin.sha256, run: 10, source: admission.sourceCommit, archiveBytes: 1000, expandedBytes: 2000}])),
+      embedding: {compiledAlpha: admission.sourceCommit, compiledSDK: sdkCommit, native: 'e'.repeat(40),
+        qualifiedAt: '2026-11-10T12:00:00Z', qualificationTransferred: false}});
+    files['test-results/resident-ci-native-inputs/admission.json'] = hash(fs.readFileSync(path.join(output, 'native-input-admission.json')));
     for (const name of ['inputs-before.json', 'inputs-after.json']) json(path.join(output, name), {schemaVersion: 5, digest: hash(JSON.stringify(files)), files});
     const manifest = {}, rows = [];
     for (const variant of ['standalone', 'launcher']) {
@@ -68,6 +86,12 @@ export function candidateFixture(t) {
         sha256: hash(bytes), signed: false, signerSha256: null, distributable: false, testMocks: false, debuggable: false,
         runtime: 'PACKAGED', home: variant === 'launcher', launcher: true, updateChannel: channel,
         releaseAdmission: {failures: [], blockers: ['unsigned release']}});
+    }
+    for (const variant of ['standalone', 'launcher']) {
+      const name = `${variant}-debug.apk`, bytes = Buffer.from(`Synthetic ${variant} debug bytes`);
+      fs.writeFileSync(path.join(output, name), bytes); manifest[name] = hash(bytes);
+      rows.push({...rows.find(row => row.variant === variant), mode: 'debug', file: 'artifacts/' + name,
+        debuggable: true, signed: true, sha256: hash(bytes)});
     }
     json(path.join(output, 'apk-manifest.json'), manifest);
     json(path.join(output, 'apk-verification.json'), {runtimeProfile: 'native', testMocks: false, allowUnpackagedRuntime: false,

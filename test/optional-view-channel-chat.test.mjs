@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import {transformSync} from 'esbuild';
 import {loadBrowserModule} from './fixtures/browser-source.mjs';
+import {readNativeNetwork} from '../apps/app/src/runtime/native-network.ts';
 const {ViewNavigationClient}=await loadBrowserModule('apps/app/src/runtime/view-navigation.ts');
 const originalDocument=globalThis.document;
 globalThis.document=Object.assign(new EventTarget(),{hidden:false});
@@ -16,7 +17,8 @@ const end=source.indexOf('\n  },\n};',start);
 assert.ok(start>=0&&end>start,'Actual connectionController.send method exists');
 const conversationKey=source.match(/^function conversationKey\(.*$/m)[0];
 const stopNotices=source.match(/^export const STOPPED_(?:REPLY|CANCELLED|UNCHECKED)_NOTICE = .*$/gm).map(line=>line.replace(/^export /,'')).join('\n');
-const compiled=transformSync(conversationKey+'\n'+stopNotices+'\nconst controller={'+source.slice(start,end+5)+'};',{loader:'ts'}).code;
+const networkObserver=source.slice(source.indexOf('let nativeNetworkGeneration ='),source.indexOf('let state:'));
+const compiled=transformSync(networkObserver+'\n'+conversationKey+'\n'+stopNotices+'\nconst controller={'+source.slice(start,end+5)+'};',{loader:'ts'}).code;
 for(const availability of ['rejected','pending'])test(`ordinary Notes/Calendar/text sends proceed when optional command feed is ${availability}`,async()=>{
  const calls=[];
  const context={view:'notes',revision:1,sensitive:false};
@@ -26,6 +28,7 @@ for(const availability of ['rejected','pending'])test(`ordinary Notes/Calendar/t
  const state={session,open:false,busy:false};
  const conversationMemory=new Map([[JSON.stringify([session.origin,session.ownerId,session.agentId]),'owned-room']]);
  const sandbox={ownProviderSelected:()=>false,AbortController,AbortSignal,DOMException,CustomEvent,Date,console,navigator:{onLine:true},state,active,epoch:1,clientObservationSession:undefined,operation:null,sending:null,requestedCameraContinuation:undefined,residentAlwaysPresent:true,isAndroid:true,testMocksEnabled:false,NO_AGENT_SEND:'not connected',phoneContextMessage:(text,context)=>({text,context}),boundNavigation:()=>client,noSessionError:message=>Error(message),cancelStoppedReply(){},conversationMemory,ensureSelectedConversation:async()=> 'owned-room',readDevicePreferences:async()=>({askBeforeAgentActions:true}),calendarAgendaObservation:async()=>undefined,withResidentMapsNavigation:async(request,id,signal,send)=>send(),appRecordInvalidations:()=>[],automationsCommitted:()=>false,update:patch=>Object.assign(state,patch),runQueuedResidentRebind(){},refusalRecheckPending:false,setTimeout,window:new EventTarget(),validateUuid:()=>true,expired:()=>false,failureKindOf:()=>undefined,calendarRefusalKept:()=>false,AlphaClientError:class extends Error{}};
+ sandbox.readNativeNetwork=readNativeNetwork;sandbox.System={getNetworkStatus:async()=>({connected:true})};sandbox.connectionController={networkChanged:online=>{state.inferenceOffline=!online;}};
  vm.createContext(sandbox);vm.runInContext(compiled+';globalThis.controller=controller;',sandbox);
  try {
   for(const prompt of ['Refresh my notes list.','What is on my calendar?','Hello.']){

@@ -62,8 +62,23 @@ export function writeStartupPermissionMemory(patch: Partial<StartupPermissionMem
 /** Access setup opens once an account (or saved own Cerebras keys) is in place. A foreground
  * connection operation holds it back; a resident start or a background rebind does not. */
 export function startupPermissionsActive(connection: {cloudAccount?: unknown; setupRevision?: number; providerStatus?: {selected?: boolean; provider?: string} | null; busy: boolean; residentStarting?: boolean; backgroundWork?: boolean; signIn?: unknown}) {
-  const ready = !!connection.cloudAccount || (!!connection.setupRevision && connection.providerStatus?.selected === true && connection.providerStatus.provider === 'cerebras');
-  return ready && !(connection.busy && !connection.residentStarting && !connection.backgroundWork) && !connection.signIn;
+  return startupPermissionsActiveCore({
+    account: !!connection.cloudAccount, setup: !!connection.setupRevision,
+    providerSelected: connection.providerStatus?.selected === true, provider: connection.providerStatus?.provider ?? '',
+    busy: connection.busy, residentStarting: !!connection.residentStarting, backgroundWork: !!connection.backgroundWork, signIn: !!connection.signIn,
+  });
+}
+export type StartupConnectionFacts = {account: boolean; setup: boolean; providerSelected: boolean; provider: string; busy: boolean; residentStarting: boolean; backgroundWork: boolean; signIn: boolean};
+/** The decision core of `startupPermissionsActive` over plain flags. */
+export function startupPermissionsActiveCore(facts: StartupConnectionFacts): boolean {
+  //@ verify
+  //@ ensures \result ==> (facts.account || (facts.setup && facts.providerSelected && facts.provider === 'cerebras'))
+  //@ ensures facts.signIn ==> !\result
+  //@ ensures (facts.busy && !facts.residentStarting && !facts.backgroundWork) ==> !\result
+  //@ ensures ((facts.account || (facts.setup && facts.providerSelected && facts.provider === 'cerebras')) && !facts.signIn && (facts.residentStarting || facts.backgroundWork)) ==> \result
+  //@ ensures ((facts.account || (facts.setup && facts.providerSelected && facts.provider === 'cerebras')) && !facts.signIn && !facts.busy) ==> \result
+  const ready = facts.account || (facts.setup && facts.providerSelected && facts.provider === 'cerebras');
+  return ready && !(facts.busy && !facts.residentStarting && !facts.backgroundWork) && !facts.signIn;
 }
 /** Settings → "Set up Alpha access" calls this to show the panel again. Prompts already denied
  * stay on the Android-settings path; nothing is requested until the user taps. */
@@ -82,6 +97,13 @@ export function createStartupPermissionFlow(bridge: StartupPermissionBridge, opt
  * A returning sign-in on completed setup opens no Ready card. A connection error or an unconfirmed
  * revocation of the earlier sign-in that arrives after it opens the card, so the owner still sees it.
  */
-export function lateReadyNotice(input: {silent: boolean; error?: string; message?: string}): boolean {
-  return input.silent && (!!input.error || !!input.message?.includes('did not confirm revoking'));
+export type LateReadyInput = {silent: boolean; error?: string; message?: string};
+export function lateReadyNotice(input: LateReadyInput): boolean {
+  //@ verify
+  //@ ensures !input.silent ==> !\result
+  //@ ensures (input.silent && input.error !== undefined && input.error.length > 0) ==> \result
+  //@ ensures (input.silent && input.message !== undefined && input.message.includes('did not confirm revoking')) ==> \result
+  //@ ensures (input.error === undefined && input.message === undefined) ==> !\result
+  //@ ensures (input.error !== undefined && input.error.length === 0 && input.message === undefined) ==> !\result
+  return input.silent && (!!input.error || !!input.message?.includes('did not confirm revoking') || !!input.message?.includes('check devices'));
 }

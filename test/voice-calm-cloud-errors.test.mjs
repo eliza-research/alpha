@@ -253,11 +253,11 @@ test('a call, lost audio focus, an ended session and no speech each say what sto
   ['call code',Object.assign(Error('call'),{code:'call-active'}),'Voice paused for a phone call.'],
   ['call reason',Object.assign(Error('call'),{code:'call-active',reason:'call-active'}),'Voice paused for a phone call.'],
   ['call reason only',Object.assign(Error('call'),{reason:'call-active'}),'Voice paused for a phone call.'],
-  ['audio focus',Object.assign(Error('focus'),{code:'audio-focus-lost'}),'Voice stopped because another app took the audio.'],
+  ['audio focus',Object.assign(Error('focus'),{code:'audio-focus-lost'}),'Audio taken'],
   ['expired',Object.assign(Error('expired'),{code:'expired'}),'Voice session ended. Start again.'],
   ['no speech',Object.assign(Error('silence'),{code:'no-speech'}),'No speech heard. Nothing was sent.'],
   ['denied',Object.assign(Error('denied'),{code:'permission-denied'}),/^Microphone access is off\. Open app settings to allow it\./],
-  ['unknown',Error('PRIVATE'),'Voice stopped. Check your connection and conversation history before trying again.'],
+  ['unknown',Error('PRIVATE'),'Voice stopped'],
  ]){
   await t.test(label,async t=>{
    const {runs,view,fail,clock}=await voice(t);

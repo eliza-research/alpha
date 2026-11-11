@@ -11,9 +11,9 @@ for(const legacy of [null,{kind:'remote',origin:'https://agent.example.test'},{k
   }
  },{legacy});
  await page.goto('/');
- const chooser=page.getByRole('dialog').filter({hasText:'Remote agents and pairing are unavailable'});
+ const chooser=page.getByRole('dialog').filter({hasText:'Android only'});
  await expect(chooser).toBeVisible();
- await expect(chooser.getByRole('button',{name:'Open local apps',exact:true})).toBeVisible();
+ await expect(chooser.getByRole('button',{name:'Continue',exact:true})).toBeVisible();
  await expect(page.getByLabel('Pairing code',{exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:/Connect remote|Dedicated|Create agent|Connect personal/})).toHaveCount(0);
  // #406: a saved hosted agent becomes the resident agent; the old choice is moved aside, not deleted.
@@ -24,7 +24,7 @@ for(const legacy of [null,{kind:'remote',origin:'https://agent.example.test'},{k
  expect(await page.evaluate(()=>localStorage.getItem('alpha.connection.conversations.v1'))).toBe(JSON.stringify({'legacy-owner-a':'conversation-a','legacy-owner-b':'conversation-b'}));
  await page.reload();await expect(chooser).toBeVisible();
  expect(outside).toEqual([]);
- await chooser.getByRole('button',{name:'Open local apps',exact:true}).click();
+ await chooser.getByRole('button',{name:'Continue',exact:true}).click();
  await expect(chooser).toHaveCount(0);await page.reload();await expect(chooser).toHaveCount(0);
  expect(await page.evaluate(()=>localStorage.getItem('alpha.connection.conversations.v1'))).toBe(JSON.stringify({'legacy-owner-a':'conversation-a','legacy-owner-b':'conversation-b'}));
  expect(outside).toEqual([]);

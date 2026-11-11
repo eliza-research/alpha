@@ -34,7 +34,7 @@ async function reviewConsent(page: Page, hours = '48', reminders = true) {
   await calendar(page, 'Personal').check();
   if (reminders) await digests.getByRole('checkbox', { name: 'Open phone reminders due today and overdue', exact: true }).check();
   await digests.getByRole('spinbutton', { name: 'Consent expires in hours', exact: true }).fill(hours);
-  await digests.getByRole('button', { name: /^Review (source consent|renewal)$/ }).click();
+  await digests.getByRole('button', { name: /^Review( renewal)?$/ }).click();
 }
 
 test('phone sources on Android: reviewed consent within the calendar and expiry bounds, a bound schedule arms renewal, a Renew tap rebinds it, and revocation clears it', async ({ page }) => {
@@ -44,30 +44,29 @@ test('phone sources on Android: reviewed consent within the calendar and expiry 
   await openDigests(page);
   const digests = panel(page), zone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
   await digests.getByText('Selected phone sources', { exact: true }).click();
-  await expect(digests).toContainText('Choose Calendar sources and reminders for morning and evening briefs or an on-demand brief.');
   await button(page, 'Choose calendars').click();
   await expect(digests.getByRole('checkbox', { name: / · owner@example\.invalid$/ })).toHaveCount(17);
 
   // The reviewed scope is bounded: at most 16 calendars and an expiry of 1 to 168 hours.
   for (const row of calendars) await calendar(page, row.name).check();
-  await button(page, 'Review source consent').click();
+  await button(page, 'Review').click();
   await expect(digests.getByRole('status')).toHaveText('Choose at most 16 calendars for this source.');
   for (const row of calendars.slice(1)) await calendar(page, row.name).uncheck();
   for (const hours of ['0', '169']) {
     await digests.getByRole('spinbutton', { name: 'Consent expires in hours', exact: true }).fill(hours);
-    await button(page, 'Review source consent').click();
+    await button(page, 'Review').click();
     await expect(digests.getByRole('status')).toHaveText('Choose a valid time zone and expiry from 1 to 168 hours (7 days).');
   }
   await expect(digests.getByRole('heading', { name: 'Review', exact: true })).toHaveCount(0);
   await digests.getByRole('checkbox', { name: 'Open phone reminders due today and overdue', exact: true }).check();
   await digests.getByRole('spinbutton', { name: 'Consent expires in hours', exact: true }).fill('48');
-  await button(page, 'Review source consent').click();
+  await button(page, 'Review').click();
   const review = reviewSection(page);
   await expect(review).toContainText('Allow Alpha to read the selected sources on this phone until');
   await expect(review).toContainText('Calendars: Personal (owner@example.invalid). Reminders: open reminders due today and overdue; evening briefs also list reminders completed today.');
   await expect(review).toContainText(`It reads only event titles and times for the day in ${zone}, plus selected reminders’ titles, due times and status, up to 200 items. Descriptions, attendees, locations and reminder bodies are excluded.`);
   await expect(review).toContainText('Schedules pause when this source expires; renew or revoke it here.');
-  await expect(review).toContainText('It can’t send email, read your inbox or act on your phone. Model usage counts against your');
+  await expect(review).toContainText('It can’t send email, read your inbox or act on your phone. Eliza Cloud plan');
   // Reviewing records no consent and saves no source.
   expect(await harness(page, f => [f.digests.consents.length, f.digests.posts.length])).toEqual([0, 0]);
 
@@ -88,8 +87,8 @@ test('phone sources on Android: reviewed consent within the calendar and expiry 
 
   // A morning schedule bound to the phone source arms its renewal notice.
   await button(page, 'Review morning schedule').click();
-  await expect(reviewSection(page)).toContainText(`Runs daily at 08:00 (${zone}) and reads Phone sources.`);
-  await expect(reviewSection(page)).toContainText('Your agent’s AI gets that data.');
+  await expect(reviewSection(page)).toContainText('Turn on morning digest at 08:00?');
+  await expect(reviewSection(page)).toContainText('Sends Phone sources to agent AI');
   await reviewSection(page).getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(schedules(page)).toHaveText([`Morning at 08:00 (${zone}) · Phone sources · On`]);
   await expect.poll(() => harness(page, f => f.digests.renewals.includes('arm:' + f.digests.sources[0].id))).toBe(true);
@@ -104,7 +103,7 @@ test('phone sources on Android: reviewed consent within the calendar and expiry 
   // review button instead.)
   await expect(digests).toBeVisible();
   await expect(button(page, 'Review renewal')).toBeVisible();
-  await expect(button(page, 'Review source consent')).toHaveCount(0);
+  await expect(button(page, 'Review')).toHaveCount(0);
   expect(await harness(page, f => [f.digests.consents.length, f.digests.posts.length])).toEqual([1, 2]);
   await reviewConsent(page, '72');
   await expect(reviewSection(page)).toContainText('Renewal: morning at 08:00 moves to this source when you confirm.');
@@ -122,8 +121,8 @@ test('phone sources on Android: reviewed consent within the calendar and expiry 
   await expect(schedules(page)).toHaveText([`Morning at 08:00 (${zone}) · Phone sources · On`]);
 
   // Revoking the phone source revokes Android's consent, then the agent's source, and clears its notice.
-  await digests.getByRole('button', { name: 'Review revocation', exact: true }).nth(1).click();
-  await expect(reviewSection(page)).toContainText('Revoke Phone sources? Future runs stop and saved results stay. A run already in progress may finish.');
+  await digests.getByRole('button', { name: 'Revoke', exact: true }).nth(1).click();
+  await expect(reviewSection(page)).toContainText('Revoke Phone sources?');
   await reviewSection(page).getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(schedules(page)).toHaveText([`Morning at 08:00 (${zone}) · Phone sources · Source revoked — paused`]);
   const consents = await harness(page, f => f.digests.consents) as any[];
@@ -142,7 +141,6 @@ test('phone sources on an older agent without the evening advertisement: only a 
   await openDigests(page);
   const digests = panel(page);
   await digests.getByText('Selected phone sources', { exact: true }).click();
-  await expect(digests).toContainText('Choose Calendar sources and reminders for a morning brief or an on-demand brief.');
   await reviewConsent(page, '24', false);
   await expect(reviewSection(page)).toContainText('Reminders: excluded.');
   await expect(reviewSection(page)).not.toContainText('evening briefs');

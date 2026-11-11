@@ -171,7 +171,7 @@ export const CLASS_REGISTRY: Record<string, ClassSpec> = {
   // PRD AP-15 coverage across views; the views need the test-mocks pair (a flag-off emulator build is signed out, P-43).
   AccessibilityViews: { requiresTestMocksBuild: true, grant: ["CAMERA"], note: "every retained view and Apps at 200% system font with normal/largest in-app text (200%/300% effective): ATF, TalkBack order and focus after opening; not TalkBack itself or a device" },
   AccessibilityLifecycle: { requiresTestMocksBuild: true, note: "repeated HOME with relaunch and rotation across every view at 200% font; processRestartPhase is skipped here; run node scripts/test-native-restart.ts accessibility" },
-  AccessibilityHomeRole: { homeRole: "held", requiresTestMocksBuild: true, note: "launcher variant with Alpha selected as HOME by --home-role: HOME from every view at 200% font lands on an accessible Alpha Home; not boot-time HOME or device acceptance" },
+  AccessibilityHomeRole: { homeRole: "held", requiresTestMocksBuild: true, grant: ["CAMERA"], note: "launcher variant with Alpha selected as HOME by --home-role: HOME from every view at 200% font lands on an accessible Alpha Home; not boot-time HOME or device acceptance" },
   ContactsCatalog: { note: "Owned disposable-profile ContactsProvider fixture only; no image admission or contacts activity" },
   ImageCapabilities: { note: "ordinary APK denial only; no AOSP image or real telephony acceptance" },
   SettingsSystemFacts: { note: "read-only comparison with this image's settings; not device acceptance of the Settings handoffs" },

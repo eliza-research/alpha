@@ -1,18 +1,39 @@
-import {test,expect} from '@playwright/test';
-// Files agent filter.
-test.beforeEach(async({page})=>{await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/');});
-test('an agent filter started from another view while Files reloads leaves its results usable',async({page})=>{
+import {test,expect,type Page} from '@playwright/test';
+
+test.beforeEach(async({page})=>{
+ await page.route(/\/src\/runtime\/connection-ui\.tsx(\?.*)?$/,async route=>{
+  const response=await route.fetch();
+  await route.fulfill({response,body:(await response.text())+'\nwindow.__filesTestExecutor=(...args)=>deviceExecutor(...args);\n'});
+ });
+ await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));
+ await page.goto('/');
+ await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
+});
+const execute=(page:Page,operation:Record<string,string>)=>page.evaluate(async operation=>{
+ const {alphaClient}=await import('/src/runtime/alpha-client.ts');
+ return (window as any).__filesTestExecutor(operation,'11111111-1111-4111-8111-111111111111',structuredClone(alphaClient.getState().context),new AbortController().signal);
+},operation);
+
+test('an agent filter from Home opens Files on its first visit and leaves the result usable',async({page})=>{
  await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaFiles').importFile(new File(['%PDF-1.4'],'bank statement.pdf',{type:'application/pdf'}));});
- await page.getByRole('button',{name:'Files',exact:true}).click();
- await expect(page.getByRole('button',{name:'Internal storage',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Back to apps',exact:true}).click();
- await expect(page.getByRole('button',{name:'Internal storage',exact:true})).toHaveCount(0);
- // Opening Files starts a reload; the filter runs while it is still in flight.
- const summary=await page.evaluate(async()=>{const {Component}=await import('/src/prototype/model.js');return (await Component.prototype.filesAgent.run({type:'files_filter',text:'statement'},new AbortController().signal)).summary;});
- expect(summary).toBe('Showing 1 item in Files.');
+ expect(await execute(page,{type:'files_filter',text:'statement'})).toEqual({status:'succeeded',summary:'Showing 1 item in Files.'});
  const row=page.getByRole('button',{name:'Open bank statement.pdf',exact:true});
  await expect(row).toBeVisible();
  // Not stuck busy: the row opens the file.
  await row.click();
  await expect(page.getByRole('region',{name:'Files'}).getByRole('button',{name:'Rename',exact:true})).toHaveText('bank statement.pdf');
+});
+
+test('an agent open waits for the first Files render and opens the requested file',async({page})=>{
+ await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');await registerPlugin<any>('AlphaFiles').importFile(new File(['Review this text'],'notice.txt',{type:'text/plain'}));});
+ expect(await execute(page,{type:'files_open',path:'notice.txt'})).toEqual({status:'succeeded',summary:'Opened the file in Files.'});
+ await expect(page.getByRole('region',{name:'Files'}).getByRole('button',{name:'Rename',exact:true})).toHaveText('notice.txt');
+ await expect(page.getByText('Review this text',{exact:true})).toBeVisible();
+});
+
+test('a folder mutation submitted from Home cannot open Files or create a folder',async({page})=>{
+ expect((await execute(page,{type:'files_folder_create',parent:'',name:'Unexpected'})).status).toBe('failed');
+ await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
+ const names=await page.evaluate(async()=>{const {registerPlugin}=await import('/src/platform-plugins.ts');return (await registerPlugin<any>('AlphaFiles').storageList({path:''})).entries.map((entry:any)=>entry.name);});
+ expect(names).not.toContain('Unexpected');
 });

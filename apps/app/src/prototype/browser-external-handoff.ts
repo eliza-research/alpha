@@ -39,7 +39,7 @@ export function createExternalBrowserHandoff({tabs, reviews, shell, Browser, sta
       if (priv) {
         flags.confirming = true; flags.lastGeometry = ''; await update();
         checkCurrentPage();
-        const approved = await reviews.confirm('external-browser', 'Leave private browsing?', `Open in another browser?\n${page.url}\n\nIt may save this address and use its own sign-ins. Your Alpha sign-ins and private tabs aren't shared.`, 'Choose browser');
+        const approved = await reviews.confirm('external-browser', 'Leave private browsing?', `Open ${new URL(page.url).hostname} externally?\n${page.url}`, 'Choose browser');
         flags.confirming = false;
         if (!approved) return;
       }

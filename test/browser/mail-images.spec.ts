@@ -11,7 +11,7 @@ async function setup(page:Page,html:boolean|string=true,extraUrls:string[]=[]){
  },{html,extraUrls});
 }
 async function openMail(page:Page){await page.getByRole('button',{name:'Inbox',exact:true}).click();await page.getByText('Image fixture',{exact:true}).click();}
-async function imageSetting(page:Page){await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));await page.getByRole('button',{name:'Settings',exact:true}).click();const current=()=>page.locator('[data-settings-page]:not([inert])').last();await current().getByRole('button',{name:'Apps',exact:true}).click();await current().getByRole('button',{name:'Inbox',exact:true}).click();return current().getByRole('button',{name:'Load images in email',exact:true});}
+async function imageSetting(page:Page){await page.evaluate(()=>window.dispatchEvent(new Event('launcher-home')));await page.getByRole('button',{name:'Settings',exact:true}).click();const current=()=>page.locator('[data-settings-page]:not([inert])').last();await current().getByRole('button',{name:'Apps',exact:true}).click();await current().getByRole('button',{name:'Inbox',exact:true}).click();return current().getByRole('switch',{name:'Load images in email',exact:true});}
 test('HTML email loads images by default, keeps inline links isolated, and saved opt-out survives reload',async({page})=>{
  let imageRequests=0;
  await page.route('https://images.invalid/**',route=>{imageRequests++;return route.fulfill({contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP4/x8AAwAB/2+Bq7YAAAAASUVORK5CYII=','base64')});});
@@ -20,10 +20,10 @@ test('HTML email loads images by default, keeps inline links isolated, and saved
  await expect(frame.getByRole('img',{name:'Product'})).toBeVisible();await expect.poll(()=>imageRequests).toBeGreaterThan(0);
  await expect(page.getByRole('group',{name:'Links in this email'})).toHaveCount(0);
  await expect(frame.getByRole('link',{name:'Read more'})).toBeVisible();
- const review=page.waitForEvent('dialog').then(async dialog=>{expect(dialog.message()).toContain('Site: example.invalid');await dialog.dismiss();});await frame.getByRole('link',{name:'Read more'}).click();await review;
+ const review=page.waitForEvent('dialog').then(async dialog=>{expect(dialog.message()).toContain('Open example.invalid?');await dialog.dismiss();});await frame.getByRole('link',{name:'Read more'}).click();await review;
  await expect(page.locator('iframe[title="Formatted email"]')).toHaveAttribute('sandbox','allow-same-origin');
  expect(await page.evaluate(()=>(window as any).mailInjected)).toBeUndefined();
- const toggle=await imageSetting(page);await expect(toggle).toHaveAttribute('aria-pressed','true');await toggle.click();await expect(toggle).toHaveAttribute('aria-pressed','false');
+ const toggle=await imageSetting(page);await expect(toggle).toBeChecked();await toggle.click();await expect(toggle).not.toBeChecked();
  const beforeOptOut=imageRequests;await page.reload();await setup(page);await openMail(page);
  await expect(page.getByRole('button',{name:'Show images',exact:true})).toBeVisible();
  await expect(frame.getByRole('img',{name:'Product'})).toHaveCount(0);expect(imageRequests).toBe(beforeOptOut);

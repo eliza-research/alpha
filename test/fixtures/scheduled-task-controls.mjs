@@ -137,7 +137,7 @@ export async function scheduledTaskControlsFixture({kind = 'preset', status = 's
   render();
   await turn();
   function detail() {return render().automation;}
-  function buttons() {const view = detail();return [...view.schedulePrimary, ...view.scheduleMore ?? []];}
+  function buttons() {const view = detail();return [...view.schedulePrimary, ...view.scheduleMore ?? []].map(button => ({...button, label: button.aria || button.label}));}
   return {
     hashes,
     open() {render().cards.find(card => card.name === 'Weekly review').open();},

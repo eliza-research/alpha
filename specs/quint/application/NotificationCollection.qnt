@@ -13,7 +13,8 @@ module NotificationCollection {
     rowEpoch: int, rowRevision: int, historyCount: int, historyAge: int, historySignature: int,
     historyFailure: bool, queuedEvent: bool, queuedEpoch: int,
     lastActionExpectedEpoch: int, lastActionActualEpoch: int, lastOpenOwned: bool,
-    appEnabled: bool, channelEnabled: bool
+    appEnabled: bool, channelEnabled: bool,
+    ownPosted: bool, ownChecked: bool, ownDismissed: bool, ownDismissedLocked: bool
   }
   var s: State
   pure def initialState(native: bool): State = { native: native, enabled: false, paused: false, access: false, connected: false,
@@ -27,7 +28,8 @@ module NotificationCollection {
       rowEpoch: -1, rowRevision: -1, historyCount: 0, historyAge: 0, historySignature: 0,
       historyFailure: false, queuedEvent: false, queuedEpoch: -1,
       lastActionExpectedEpoch: -1, lastActionActualEpoch: -1, lastOpenOwned: true,
-      appEnabled: true, channelEnabled: true }
+      appEnabled: true, channelEnabled: true,
+      ownPosted: false, ownChecked: false, ownDismissed: false, ownDismissedLocked: false }
   action initFor(native: bool): bool = s' = initialState(native)
   action init = { nondet native = Bool.oneOf(); s' = initialState(native) }
   val Active = s.enabled and not(s.paused) and s.access
@@ -62,7 +64,8 @@ module NotificationCollection {
   action competingPolicyChange = all { s.epoch < 4,
     s' = { ...s, policyRevision: s.policyRevision + 1, epoch: s.epoch + 1,
       rowPresent: false, rowText: false, historyCount: 0 } }
-  action pause = all { s.epoch < 4,
+  // Only the native collector can be paused. The browser double offers resume alone.
+  action pause = all { s.native, s.epoch < 4,
     s' = { ...s, paused: true, epoch: s.epoch + 1, rowPresent: false, rowText: false, historyCount: 0 } }
   action resume = all { s.epoch < 4,
     s' = { ...s, paused: false, epoch: s.epoch + 1, rowPresent: false } }
@@ -103,6 +106,24 @@ module NotificationCollection {
       eventPresent: if (not(opening) or s.autoCancel) false else s.eventPresent,
       rowPresent: if (not(opening) or s.autoCancel) false else s.rowPresent }
   }
+  // One of Alpha's own reminder rows in the browser double. Its dismissal lists the rows, then
+  // records the dismissal in a separate edit that checks the lock again.
+  action postOwn = all { not(s.native), not(s.ownPosted),
+    s' = { ...s, ownPosted: true, ownChecked: false, ownDismissed: false } }
+  action checkOwn = all { not(s.native), not(s.locked), s.ownPosted, not(s.ownDismissed),
+    s' = { ...s, ownChecked: true } }
+  action commitOwn = all { s.ownChecked,
+    val recorded = not(s.locked)
+    s' = { ...s, ownChecked: false, ownDismissed: s.ownDismissed or recorded,
+      ownDismissedLocked: s.ownDismissedLocked or (recorded and s.locked) } }
+  // Clear all validates every row against one listing and records the dismissals in one edit.
+  // Each row has the outcome a dismissal of that row alone would have had.
+  action clearBatch = all { not(s.native), not(s.locked), s.ownPosted or CanDismiss,
+    s' = { ...s, ownChecked: false, ownDismissed: s.ownDismissed or s.ownPosted,
+      lastActionExpectedEpoch: if (CanDismiss) s.rowEpoch else s.lastActionExpectedEpoch,
+      lastActionActualEpoch: if (CanDismiss) s.epoch else s.lastActionActualEpoch,
+      eventPresent: if (CanDismiss) false else s.eventPresent,
+      rowPresent: if (CanDismiss) false else s.rowPresent } }
   action makeOngoing = s' = { ...s, clearable: false, autoCancel: false }
   action foreignIntent = s' = { ...s, intentOwned: false }
   action otherUser = all { s.epoch < 4,
@@ -128,7 +149,7 @@ module NotificationCollection {
     lock, unlock, post(true), post(false), receiveQueuedEvent, beginRead, readComplete,
     act(true), act(false), makeOngoing, foreignIntent, otherUser, mismatchUid, setOwnPackage, retentionTick,
     pruneHistory, historyStorageFails, clearHistory, disableOwnNotifications, disableChannel,
-    restart, s' = s
+    postOwn, checkOwn, commitOwn, clearBatch, restart, s' = s
   }
   val PreviewNeedsConsent = TextVisible implies s.preview and not(s.secret) and not(s.locked)
   val CollectionNeedsAuthority = s.rowPresent implies Active and PackageAdmitted
@@ -138,9 +159,16 @@ module NotificationCollection {
   val OnlyPostingAppIntent = s.lastOpenOwned
   val RetainedHistoryBounded = s.historyCount.in(0.to(2)) and (HistoryVisible implies s.historyAge < 2)
   val ClearOnDisable = not(Active) implies s.historyCount == 0
+  val BrowserNeverPauses = s.paused implies s.native
+  val OwnDismissUnlocked = not(s.ownDismissedLocked)
+  val OwnDismissNeedsRow = (s.ownDismissed or s.ownChecked) implies s.ownPosted and not(s.native)
   val TypeOK = s.epoch.in(0.to(4)) and s.signature.in(0.to(2)) and s.eventRevision.in(0.to(2))
   val safety = PreviewNeedsConsent and CollectionNeedsAuthority and NativeRowsUnlocked
-    and CurrentActionIdentity and OnlyPostingAppIntent and RetainedHistoryBounded and ClearOnDisable and TypeOK
+    and CurrentActionIdentity and OnlyPostingAppIntent and RetainedHistoryBounded and ClearOnDisable
+    and BrowserNeverPauses and OwnDismissUnlocked and OwnDismissNeedsRow and TypeOK
+  val OwnCheckThenLockWitness = s.ownChecked and s.locked
+  val LockedOwnRowWitness = s.ownPosted and s.locked and not(s.ownDismissed)
+  val NativePausedWitness = s.native and s.paused and s.access
   run collectionOptInTest = init.then(grantAccess).then(post(false)).then(beginRead).then(readComplete)
     .expect(not(CurrentRow)).then(reviewPolicy(true, true, false, false)).then(commitPolicy(true))
     .then(beginRead).then(readComplete).expect(CurrentRow and not(TextVisible) and safety)
@@ -182,5 +210,20 @@ module NotificationCollection {
   run ongoingCannotDismissTest = init.then(grantAccess).then(reviewPolicy(true, true, true, true))
     .then(commitPolicy(true)).then(post(false)).then(beginRead).then(readComplete)
     .then(makeOngoing).expect(not(CanDismiss) and safety)
+  // A lock between the listing and the edit leaves the row in place.
+  run ownDismissLockRaceTest = initFor(false).then(postOwn).then(checkOwn).then(lock)
+    .then(commitOwn).expect(not(s.ownDismissed) and not(s.ownChecked) and safety)
+    .then(checkOwn.fail())
+  run ownDismissAfterUnlockTest = initFor(false).then(postOwn).then(lock).then(unlock)
+    .then(checkOwn).then(commitOwn).expect(s.ownDismissed and safety)
+  run browserCannotPauseTest = initFor(false).then(grantAccess).expect(safety)
+    .then(pause.fail())
+  run nativePauseDropsRowsTest = initFor(true).then(grantAccess).then(reviewPolicy(true, true, true, true))
+    .then(commitPolicy(true)).then(post(false)).then(beginRead).then(readComplete).expect(CurrentRow)
+    .then(pause).expect(not(s.rowPresent) and s.historyCount == 0 and safety)
+  run clearBatchMatchesSingleDismissalsTest = initFor(false).then(grantAccess)
+    .then(reviewPolicy(true, true, true, true)).then(commitPolicy(true)).then(post(false))
+    .then(beginRead).then(readComplete).then(postOwn).then(clearBatch)
+    .expect(s.ownDismissed and not(s.rowPresent) and not(s.eventPresent) and safety)
 }
 

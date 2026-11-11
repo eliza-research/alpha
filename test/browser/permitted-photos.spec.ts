@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {photosBridge} from './helpers/photos-bridge';
 test('full access shows the library with no access row and requests no permission automatically',async({page})=>{
- await photosBridge(page);await expect(page.getByRole('button',{name:'Allow access to all photos',exact:true})).toHaveCount(0);
+ await photosBridge(page);await expect(page.getByRole('button',{name:'Allow all photos',exact:true})).toHaveCount(0);
  await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(1);
  expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((c:any)=>c.method==='requestLibraryAccess').length)).toBe(0);
  // One catalog: the grid pages AlphaPhotos.list; the search box and its provider query are gone.
@@ -10,7 +10,7 @@ test('full access shows the library with no access row and requests no permissio
 });
 test('selected access shows one row that opens the system access sheet',async({page})=>{
  await photosBridge(page,'selected');
- const allow=page.getByRole('button',{name:'Allow access to all photos',exact:true});
+ const allow=page.getByRole('button',{name:'Allow all photos',exact:true});
  await expect(allow).toBeVisible();
  expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((c:any)=>c.method==='requestLibraryAccess').length)).toBe(0);
  await allow.click();await expect(allow).toHaveCount(0);
@@ -19,15 +19,15 @@ test('selected access shows one row that opens the system access sheet',async({p
 test('Settings shows selected photo access and opens Android settings without granting more access',async({page})=>{
  await photosBridge(page,'selected');
  await page.getByRole('button',{name:'Back to apps',exact:true}).click();await page.getByRole('button',{name:'Settings',exact:true}).click();
- await page.getByRole('button',{name:'Privacy',exact:true}).click();await page.getByRole('button',{name:'App permissions',exact:true}).click();
- const access=page.getByRole('button',{name:'Photos',exact:true});await expect(access).toContainText('Selected photos and videos');
- await access.click();await expect(access).toContainText('Selected photos and videos');
+ await page.getByRole('button',{name:'Privacy',exact:true}).click();await page.getByRole('button',{name:'Permissions',exact:true}).click();
+ const access=page.getByRole('button',{name:'Photos',exact:true});await expect(access).toContainText('Selected');
+ await access.click();await expect(access).toContainText('Selected');
  expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((c:any)=>c.method==='openLibrarySettings').length)).toBe(1);
  expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((c:any)=>c.method==='requestLibraryAccess').length)).toBe(0);
 });
 test('denied Photos keeps an explicit permission request and loads the library after approval',async({page})=>{
  await photosBridge(page,'denied');
- const choose=page.getByRole('button',{name:'Allow access to all photos',exact:true});
+ const choose=page.getByRole('button',{name:'Allow all photos',exact:true});
  await expect(choose).toBeVisible();
  await expect(page.getByRole('button',{name:/^Photo, /})).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).mediaFixture.calls.filter((c:any)=>c.method==='requestLibraryAccess').length)).toBe(0);

@@ -121,3 +121,8 @@ source lists, implementation adapters and run receipts bind each invocation's
 inputs. The retired coverage hash ledger is not an additional admission gate.
 Historical receipts retain their original source and model set and do not certify
 later additions.
+
+
+## Complementary audit models
+
+The integrated registry also retains the November audit models, witnesses and source symbols. Distinct admission/readback state shapes are registered separately from the current source-correspondence models. Manifest entries state their partial scope; new model execution is not Android, service or device acceptance. The manifests and new run receipts, rather than earlier registry totals, define current coverage.

@@ -128,7 +128,7 @@ async function snapshot(page) {
       cal: get('calendar')?.getAttribute('data-alpha-home-calendar-event') === 'true' ? 'event'
         : /Calendar unavailable/.test(text('calendar')) ? 'error' : /Nothing planned|No upcoming events/.test(text('calendar')) ? 'none' : undefined,
       flows: text('workflows').includes(expected.workflow) ? 'active'
-        : /No automations yet/.test(text('workflows')) ? 'none' : undefined,
+        : /\bNone\b/.test(text('workflows')) ? 'none' : undefined,
       mail: text('inbox').includes(expected.mail) ? 'unread'
         : /Connect email/.test(text('inbox')) ? 'unconnected' : /No unread email/.test(text('inbox')) ? 'none' : undefined,
       brief: !get('brief') || /No brief yet/.test(text('brief')) ? false : text('brief').includes(expected.brief) ? true : undefined,
@@ -236,7 +236,7 @@ async function collect(page) {
   assert.equal(inset.insets, 'native');
 
   await tile(page, 'Workflows').click();
-  await expect(page.getByText('No workflows yet', {exact: true}).filter({visible: true})).toBeVisible();
+  await expect(page.getByText('No automations', {exact: true}).filter({visible: true})).toBeVisible();
   await back(page);
   await expect(card(page, 'workflows')).toHaveCount(0);
   await installHomeCalendar(page);
@@ -253,7 +253,7 @@ async function collect(page) {
   const settings = page.locator('[data-settings-page]:not([inert])').last();
   await settings.getByRole('button', {name: 'Account', exact: true}).click();
   const account = page.getByRole('dialog', {name: 'Account', exact: true});
-  await expect(account.getByRole('button', {name: 'Google & email', exact: true})).toBeVisible();
+  await expect(account.getByRole('button', {name: 'Google', exact: true})).toBeVisible();
   await account.getByRole('button', {name: 'Close Account', exact: true}).click();
   await expect(account).toHaveCount(0);
   await expect(settings).toHaveAttribute('data-settings-page', 'Settings');

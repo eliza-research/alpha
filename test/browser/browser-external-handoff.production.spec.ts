@@ -54,7 +54,7 @@ const handoffs = (page: Page) => page.evaluate(() => (window as any).browserStub
 test('a normal page opens in another browser from the menu', async ({ page }) => {
   const foreign = await start(page);
   await openPage(page);
-  await menu(page, 'Open in another browser');
+  await menu(page, 'Open externally, passkeys unsupported here');
   await expect.poll(() => handoffs(page)).toHaveLength(1);
   expect((await handoffs(page))[0]).toEqual(expect.objectContaining({ url: PAGE, navigation: 1, privateConfirmed: false }));
   await expect(page.getByRole('dialog', { name: 'Leave private browsing?' })).toHaveCount(0);
@@ -68,14 +68,14 @@ test('a private page leaves only after the review is approved', async ({ page })
   await menu(page, 'New private tab');
   await openPage(page);
   await expect(page.getByRole('img', { name: 'Private tab', exact: true })).toBeVisible();
-  await menu(page, 'Open in another browser');
+  await menu(page, 'Open externally, passkeys unsupported here');
   const review = page.getByRole('dialog', { name: 'Leave private browsing?' });
   await expect(review).toContainText(PAGE);
   await review.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(review).toHaveCount(0);
   expect(await handoffs(page)).toEqual([]);
 
-  await menu(page, 'Open in another browser');
+  await menu(page, 'Open externally, passkeys unsupported here');
   await review.getByRole('button', { name: 'Choose browser', exact: true }).click();
   await expect.poll(() => handoffs(page)).toHaveLength(1);
   expect((await handoffs(page))[0]).toEqual(expect.objectContaining({ url: PAGE, navigation: 2, privateConfirmed: true }));

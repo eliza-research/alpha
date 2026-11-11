@@ -104,7 +104,22 @@ test("the renderer asks on Android only, says so before any speech route or exce
   assert.ok(ask.indexOf("if(await readingUnsupported())return;") > 0 && ask.indexOf("if(await readingUnsupported())return;") < ask.indexOf("Browser.reviewQuestion"), "Ask about page refuses before preparing an excerpt");
   assert.match(adapter, /report\(new Error\(READING_UNSUPPORTED_MESSAGE\)\)/);
   assert.match(adapter, /readingUnavailable:readingSupport\?\.state==='unavailable',readingNote:READING_UNSUPPORTED_MESSAGE,/);
-  assert.match(template, /<sc-if value="\{\{browser\.readingUnavailable\}\}"><p role="note" aria-label="Page reading unavailable" data-alpha-reading-unavailable [^>]*>\{\{browser\.readingNote\}\}<\/p><\/sc-if>/);
+  const noteRows = template.split('\n').filter(row => row.includes('data-alpha-reading-unavailable'));
+  assert.equal(noteRows.length, 1, 'the actual menu has one unsupported-reading note');
+  const dom = new JSDOM(noteRows[0]);
+  try {
+    const note = dom.window.document.querySelector('[data-alpha-reading-unavailable]');
+    assert.ok(note, 'the actual menu retains the unsupported-reading note');
+    assert.equal(note.parentElement.localName, 'sc-if');
+    assert.equal(note.parentElement.getAttribute('value'), '{{browser.readingUnavailable}}');
+    assert.equal(note.getAttribute('role'), 'note');
+    assert.equal(note.getAttribute('aria-label'), 'Page reading unavailable');
+    const disclosure = note.querySelector('.settings-sr-only');
+    assert.equal(disclosure?.textContent, '{{browser.readingNote}}', 'the full shared refusal remains available to assistive technology');
+    assert.equal(disclosure.closest('[aria-hidden="true"]'), null);
+    assert.equal(note.querySelector('svg')?.getAttribute('aria-hidden'), 'true');
+    assert.equal(note.querySelector('span[aria-hidden="true"]')?.textContent, 'Read aloud');
+  } finally { dom.window.close(); }
 });
 
 test("each refusal carries its own reject code, so the renderer never parses message text", () => {

@@ -136,7 +136,7 @@ test('development mailbox: load, open a message, local draft survives reload, on
   await button(page, 'Back to inbox').click();
 
   await compose(page, 'Journey local draft', 'Draft body kept on this device');
-  await button(page, 'Save draft locally').click();
+  await button(page, 'Save draft').click();
   await expect(page.getByText('Saved locally', {exact: true})).toBeVisible();
   expect((await stored()).localDrafts).toHaveLength(1);
   expect((await stored()).sent || []).toEqual([]);
@@ -188,7 +188,7 @@ test('synthetic provider: reviewed send leaves exactly one receipt and one messa
 
   await test.step('Save local draft', async () => {
     await compose(page, 'Journey reviewed send', 'Reviewed body');
-    await button(page, 'Save draft locally').click();
+    await button(page, 'Save draft').click();
     await expect(page.getByRole('status').filter({hasText: 'Saved locally on this device'})).toBeVisible();
     expect(await provider(page)).toMatchObject({prepares: 0, dispatches: 0, sent: []});
   });
@@ -216,7 +216,6 @@ test('synthetic provider: reviewed send leaves exactly one receipt and one messa
     await expect(review.getByRole('button', {name: 'Send this email', exact: true})).toHaveCount(0);
     await expect(review).toContainText('"messageId":"sent-1"');
     // The confirmed send removes the saved local draft and the composer copy it came from.
-    await expect(review.getByText('Sent.', {exact: true})).toBeVisible();
     await expect.poll(() => page.evaluate(KEY => Object.keys(JSON.parse(localStorage.getItem(KEY)!).slots).filter(key => key.startsWith('inbox-drafts:')), PROVIDER)).toEqual([]);
   });
 
@@ -228,7 +227,6 @@ test('synthetic provider: reviewed send leaves exactly one receipt and one messa
     await expect(review.getByRole('button', {name: 'Send this email', exact: true})).toHaveCount(0);
     await review.getByRole('button', {name: 'Check saved receipt', exact: true}).click();
     await expect(review.getByRole('status')).toHaveText('Provider confirmed this operation.');
-    await expect(review.getByText('Sent.', {exact: true})).toBeVisible();
     await review.getByRole('button', {name: 'Close receipt', exact: true}).click();
     await expect(review).toHaveCount(0);
     await expect(button(page, 'Mail review / receipt')).toHaveCount(0);
@@ -289,7 +287,6 @@ test('synthetic provider: a lost send reply is an unknown outcome and is never s
   await expect(review.getByRole('status')).toHaveText('Provider confirmed this operation.');
   await expect(review).toContainText('"messageId":"sent-1"');
   // Only now, with the provider's confirmation, is the retained copy of that email removed.
-  await expect(review.getByText('Sent.', {exact: true})).toBeVisible();
   await expect.poll(() => page.evaluate(KEY => Object.keys(JSON.parse(localStorage.getItem(KEY)!).slots).filter(key => key.startsWith('inbox-drafts:')), PROVIDER)).toEqual([]);
   await openProviderInbox(page, true);
   await expect(review).toContainText('"messageId":"sent-1"');

@@ -14,7 +14,7 @@ listed in `manifest.json`. All transitions are local specification execution.
 | [CalendarSync](CalendarSync.qnt) | phase/kind/holder/instance, undoOpen/clockKnown, baseRevision/remoteRevision/checked, retryAuthorized/applied/sends, consent/localRevision/consentReview | `NoAutomaticUnknownWrite`, `UndoBeforeDispatch`, `PausedNeedsDecision`, `DurableClaim`, `VisibleOwnerBound` |
 | [InboxDelivery](InboxDelivery.qnt) | phase/durable/opOwner/opGrant, reviewedRevision/reviewedAttachments/exactReview, outcome/providerConfirmed/draftExists, dispatches | `AtMostOneDispatch`, `PersistBeforeDispatch`, `CacheBound`, `SuccessfulCleanup`, `UnknownCannotRearm` |
 | [MapsNavigation](MapsNavigation.qnt) | generation/requestGeneration/requestEpoch, locationGranted/fixFresh, route/previousRoute/guidance/rerouting, assistant/foreground | `GuidanceHasRoute`, `RerouteKeepsRoute`, `RetiredRouteHidden`, `FailedRerouteKept` |
-| [WorkflowExecution](WorkflowExecution.qnt) | version/reviewedVersion/phase, queued/sourceCurrent/enabled/mocks, intentSaved/submission/admittedSubmission/executions, approval/requestDigest/reviewedDigest/effects, cancelRequested/outcome | `AtMostOneExecution`, `DurableSubmission`, `ReviewedEffect`, `DisabledTriggersEmpty`, `ProductionTriggerGate` |
+| [WorkflowExecution](WorkflowExecution.qnt) | Version-fenced submission, retained identity, owner and receipt admission, explicit resend and cancellation, one reviewed effect and the development trigger queue | `AtMostOneExecution`, `DurableSubmission`, `ReviewedEffect`, `CancellationNeedsExecution`, `ReceiptBelongsToCurrentOwner`, `AbandonedWasNeverAdmitted`, `FixtureQueueRequiresMocks` |
 | [NoticesAndCaches](NoticesAndCaches.qnt) | epoch/phase/retry, notice/claim/posted/consumed/acknowledgements, cacheOwner/cacheEpoch/cacheAge/cacheWritePending | `CacheOwnerIsolation`, `PostedOwnerIsolation`, `OneAcknowledgement`, `ClaimExclusive`, `NoPostAfterConsume` |
 
 | [BrowserSiteState](BrowserSiteState.qnt) | privateTab/thirdParty/passkeys/phase, decisions/prompt/permissionChoice/androidAllowed, authAttempts/passwordPresent/passwordSubmitted, autofillExposed/authSave | `PrivateCookiePolicy`, `PrivatePermissionPolicy`, `CurrentPermission`, `PasskeysDisabled`, `StandardHttpAuthManual`, `PasswordLifetime` |
@@ -46,10 +46,13 @@ records this composition and the finite limits.
 Local source-draft cleanup requires the provider to confirm the saved successful
 receipt again. It never rearms a send after an unknown outcome.
 
-`WorkflowExecution` models one reviewed submission and one effect. The production
-authoring path has manual triggers. Automatic browser triggers belong to an
-explicit test-mocks configuration. The shared engine still owns graph execution
-and provider-level idempotency.
+`WorkflowExecution` models one reviewed manual submission and one effect through
+the exact-version protocol. A missing receipt offers a review of the original
+identity. Confirmation checks the receipt again before dispatch. An accepted run
+continues when the owner changes, and a current nonterminal receipt is required
+to cancel it. Legacy server admission and production schedules have separate
+contracts. The development browser queue can retain disabled or superseded jobs
+until a foreground tick, while their dispatch guard refuses them.
 
 `MapsNavigation` preserves a navigation route while assistant UI changes or a
 reroute fails. Geometry, detailed maneuver selection and map rendering are
@@ -256,3 +259,8 @@ new writes by one active PGlite adapter. Existing named rows, independent
 database processes and physical BGE execution have separate evidence
 requirements. `EmbeddingStoreIdentity` retains the unlabelled probe model and
 `CoreEmbeddingDimension` retains the historical translation and counterexamples.
+
+
+## Complementary audit models
+
+The integrated registry also retains the November audit models, witnesses and source symbols. Distinct admission/readback state shapes are registered separately from the current source-correspondence models. Manifest entries state their partial scope; new model execution is not Android, service or device acceptance. The manifests and new run receipts, rather than earlier registry totals, define current coverage.

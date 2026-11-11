@@ -37,14 +37,14 @@ for(const size of [{width:390,height:844},{width:1280,height:900}]){
   await back.press('Enter');await expect(display).toBeFocused();
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await settings.getByRole('button',{name:'Privacy',exact:true}).click();
-  const review=current().getByRole('switch',{name:'Ask before taking actions',exact:true});
+  const review=current().getByRole('switch',{name:'Ask before Alpha acts',exact:true});
   await expect(review).toHaveAttribute('aria-checked','false');
   expect(await review.evaluate(element=>({width:(element as HTMLElement).offsetWidth,height:(element as HTMLElement).offsetHeight}))).toEqual({width:52,height:52});
   const target=await review.boundingBox();expect(target!.width).toBeGreaterThanOrEqual(44);expect(target!.height).toBeGreaterThanOrEqual(44);
   await review.focus();await review.press('Space');await expect(review).toHaveAttribute('aria-checked','true');
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await page.getByRole('button',{name:'Account',exact:true}).filter({visible:true}).click();
-  const account=page.getByRole('dialog',{name:'Welcome to Alpha.',exact:true});
+  const account=page.getByRole('dialog',{name:'Alpha',exact:true});
   await expect(account).toBeVisible();
   await expect(settings.getByRole('button',{name:'Account & plan',exact:true})).toHaveCount(0);
   const box=(await account.boundingBox())!;
@@ -55,7 +55,7 @@ for(const size of [{width:390,height:844},{width:1280,height:900}]){
   await account.getByRole('button',{name:'Back',exact:true}).click();
   await expect(account).toHaveCount(0);
   await settings.getByRole('button',{name:'About',exact:true}).click();
-  await expect(current().getByRole('button',{name:'Open source licenses',exact:true})).toBeVisible();
+  await expect(current().getByRole('button',{name:'Licenses',exact:true})).toBeVisible();
   await expect(page.getByText('Agent execution',{exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Back to Settings',exact:true}).click();
   await expect(settings).toBeVisible();

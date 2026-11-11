@@ -19,9 +19,9 @@ test('leaving attachment review aborts a held browser file read before storage',
 });
 test('filename collision leaves the old file and prevents an uncertain automatic retry',async({page})=>{
  await setup(page);await page.evaluate(async()=>{const{registerPlugin}=await import('/src/platform-plugins.ts');const f=registerPlugin<any>('AlphaFiles');const selected=await f.importFile(new File(['Keep original'],'mail-source.txt',{type:'text/plain'}));await f.forgetSelected(selected);});
- const review=page.getByRole('dialog',{name:'Review attachment'});await review.getByRole('button',{name:'Save to Files',exact:true}).click();await expect(review.getByRole('status')).toContainText('Save not confirmed');await expect(review.getByRole('button',{name:'Save to Files',exact:true})).toBeDisabled();expect((await entries(page)).length).toBe(1);
+ const review=page.getByRole('dialog',{name:'Review attachment'});await review.getByRole('button',{name:'Save to Files',exact:true}).click();await expect(review.getByRole('status')).toContainText('Unconfirmed');await expect(review.getByRole('button',{name:'Save to Files',exact:true})).toBeDisabled();expect((await entries(page)).length).toBe(1);
  const text=await page.evaluate(async()=>{const{registerPlugin}=await import('/src/platform-plugins.ts');const f=registerPlugin<any>('AlphaFiles'),row=(await f.list({})).entries[0],selected=await f.select({id:row.id});try{return atob((await f.attachment(selected)).dataBase64);}finally{await f.forgetSelected(selected);}});expect(text).toBe('Keep original');
 });
 test('mismatched attachment digest is rejected before any file write',async({page})=>{
- await setup(page);await page.evaluate(()=>(window as any).saveFixture.file.sha256='0'.repeat(64));const review=page.getByRole('dialog',{name:'Review attachment'});await review.getByRole('button',{name:'Save to Files',exact:true}).click();await expect(review.getByRole('status')).toContainText('Save not confirmed');expect(await entries(page)).toEqual([]);
+ await setup(page);await page.evaluate(()=>(window as any).saveFixture.file.sha256='0'.repeat(64));const review=page.getByRole('dialog',{name:'Review attachment'});await review.getByRole('button',{name:'Save to Files',exact:true}).click();await expect(review.getByRole('status')).toContainText('Unconfirmed');expect(await entries(page)).toEqual([]);
 });

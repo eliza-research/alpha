@@ -3,7 +3,7 @@ import {guardCalendarFixture as guardNoMedia} from './calendar-draft-readiness';
 import {test,expect,type Page} from '@playwright/test';
 test.beforeEach(async({context,page})=>{await guardNoMedia(context);await page.route(/^https?:\/\/(?!127\.0\.0\.1:|localhost:)/,route=>route.abort());});
 const home=(page:Page)=>page.getByRole('region',{name:'Home',exact:true});
-const tile=(page:Page)=>home(page).getByRole('button',{name:/Open workflows|Retry workflows|Connect agent for workflows/});
+const tile=(page:Page)=>home(page).getByRole('button',{name:/Open workflows|Retry workflows|Connect agent/});
 async function setup(page:Page,theme='light'){
  await page.addInitScript(()=>localStorage.setItem('alpha.connection.selection.v1',JSON.stringify({kind:'offline'})));await page.goto('/?mode=dev&workflows=agent&theme='+theme);await installWorkflowListFixture(page);
  await page.evaluate(async()=>{
@@ -29,7 +29,7 @@ const metadataReads=(page:Page)=>page.evaluate(()=>(window as any).workflowMetad
 test('empty Home opens unified metadata honestly and rerenders do not refetch it',async({page})=>{
  await setup(page);await connect(page);await expect(tile(page)).toHaveCount(0);expect(await metadataReads(page)).toBe(0);
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Unsent draft');await page.locator('[data-alpha-dock-scrim="true"]').click({position:{x:12,y:12}});await expect(page.getByRole('textbox',{name:'Ask Alpha',exact:true})).toHaveValue('Unsent draft');expect(await metadataReads(page)).toBe(0);
- await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.locator('[data-alpha-subview="workflows-list"]').getByText('No workflows yet',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Workflows',exact:true}).click();await expect(page.locator('[data-alpha-subview="workflows-list"]').getByText('No automations',{exact:true})).toBeVisible();
  await back(page);await expect(tile(page)).toHaveCount(0);await expect(page.getByRole('button',{name:'Workflows',exact:true})).toBeVisible();const calls=await metadataReads(page);expect(calls).toBe(1);
  await page.getByRole('textbox',{name:'Ask Alpha',exact:true}).fill('Still unsent');expect(await metadataReads(page)).toBe(calls);
 });

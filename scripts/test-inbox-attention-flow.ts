@@ -54,7 +54,7 @@ import { boot, deq, last, searches, inboxPage } from './inbox-adapter-fixture.ts
  // Unsupported attachment: opaque byte copy, Save to Files only, no preview or viewer.
  assert.match(d.atts[0].size,/No preview · Save to Files/);
  d.atts[0].open();await t.tick();const review=t.render().attachment;assert.ok(review,'opaque review shown');assert.equal(review.external,false,'no viewer handoff for opaque bytes');
- assert.equal(review.text,"8 B. Alpha can't preview this file type. Save to Files keeps a copy; it isn't shared with the agent.");review.save();await t.tick();
+ assert.equal(review.text,'8 B · No preview');review.save();await t.tick();
  assert.equal(t.saved.length,1);assert.equal(t.saved[0].opaque,true);assert.equal(t.saved[0].reviewed,true);assert.equal(t.opened.length,0);
  deq(t.calls.filter(c=>Array.isArray(c)&&c[0]==='opaque'),[['opaque','m1','1','h-m1']],'opaque download bound to message, part and historyId');
  t.attachment().close();
@@ -97,7 +97,7 @@ deq(last(t.prepared).attachments?.map(a=>a.name),['c.txt','a.txt']);assert.equal
  t.chip('Trash').pick();await t.tick();assert.equal(last(searches(t))[1],'in:trash');deq(t.render().rows.map(r=>r.subj),['Fixture trash-1']);
  t.chip('Drafts').pick();await t.tick();assert.ok(t.calls.includes('drafts'));
  const rows=t.render().rows;deq(rows.map(r=>r.name),['Draft to friend@example.invalid','Draft (no recipients)']);
- rows[1].open();await t.tick();assert.equal(last(t.toasts),'Edit this draft in Gmail.');assert.equal(t.render().composing,false,'threaded drafts stay in Gmail');
+ rows[1].open();await t.tick();assert.equal(last(t.toasts),'Edit in Gmail');assert.equal(t.render().composing,false,'threaded drafts stay in Gmail');
  t.render().rows[0].open();await t.tick();if(t.render().d?.canLoadThread){t.reader().loadThread();await t.tick();}
  const c=t.composer();assert.equal(t.render().composing,true);assert.equal(c.subject,'Plan draft');assert.equal(c.body,'Draft body');assert.match(c.status,/Saved locally|provider draft/i);
  c.saveProvider();await t.tick();
@@ -193,7 +193,7 @@ deq(last(t.prepared).attachments?.map(a=>a.name),['c.txt','a.txt']);assert.equal
  const ready=JSON.parse(JSON.stringify(inbox.emailTarget()));assert.equal(inbox.useInEmail('Reviewed reply',{token:ready.token}),true);
  const open=JSON.parse(JSON.stringify(inbox.emailTarget()));
  t.composer().send();await t.tick();assert.equal(t.render().providerReview,true);assert.equal(t.prepared.length,1,'only the user\'s own Send prepared a review');
- const during=JSON.parse(JSON.stringify(inbox.emailTarget()));deq({ready:during.ready},{ready:false});assert.match(during.reason,/review open in Inbox/);
+ const during=JSON.parse(JSON.stringify(inbox.emailTarget()));deq({ready:during.ready},{ready:false});assert.match(during.reason,/^Review open$/);
  assert.equal(inbox.useInEmail('Late addition',{token:open.token,append:true}),false);assert.equal(t.composer().body,'Reviewed reply');
  assert.equal(t.dispatched.length,0);
  t.shell.componentWillUnmount();

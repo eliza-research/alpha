@@ -171,8 +171,8 @@ test('Calendar Settings keeps one Google entry and conditional recovery without 
   assert.doesNotMatch(template,/calendar\.calendarAuthorityChoices|calendar\.canConfirmCalendarTransition/);
   assert.match(calendar,/label:'Google Calendar'/);assert.match(calendar,/googleConnectionController\.openCalendar\(scope\)/);
   assert.match(calendar,/go:calendarView\.confirmCalendarTransition/);assert.match(calendar,/cap:'Recovery',hasCap:true/);
-  assert.match(calendar,/label:'Recover saved events'/);assert.match(calendar,/label:'Return to Calendar'/);
-  assert.match(calendar,/label:'Retry calendar'/);assert.match(calendar,/back:\(\)=>api\.set\(\{page:null\}\)/);assert.match(calendar,/out\.stack\.push\(\{[^\n]*title:'Calendar'/);
+  assert.match(calendar,/lbl:'Recover saved events'/);assert.match(calendar,/lbl:'Return to Calendar'/);
+  assert.match(calendar,/lbl:'Retry calendar'/);assert.match(calendar,/back:\(\)=>api\.set\(\{page:null\}\)/);assert.match(calendar,/out\.stack\.push\(\{[^\n]*title:'Calendar'/);
   assert.doesNotMatch(calendar,/sourceRows|cap:'Calendar sources'|label:'Current source'|cap:'Sync'/);
 });
 

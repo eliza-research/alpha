@@ -114,7 +114,7 @@ async function live(page, publicId) {
   const t = await begin(page, publicId === 1 ? 'live_same_public_route_id'
     : publicId === 2 ? 'live_new_public_route_id' : 'live_provider_refusal');
   if (publicId === 1) {
-    await expect(button(page, 'Reroute from here')).toHaveCount(0);
+    await expect(button(page, 'Reroute')).toHaveCount(0);
     assert.equal((await page.evaluate(() => window.closedMaps.pendingRoutes.length)), 1);
     await t.point('The held reroute offers no second dispatch control', call('pendingControlUnavailable'));
   }

@@ -85,7 +85,7 @@ export async function checkNotesRecorderMediaAdmission(extraSources = []) {
     await schedule('stop refusal closes microphone admission for a current attempt', async c => {
       await c.retirePlayback();await c.start('control');await c.media.release(true);
       await c.media.wait('recorder', 'failed');await c.media.wait('control', 'failed');
-      assert.match((await c.media.snapshot()).message, /Audio couldn’t stop/);
+      assert.equal((await c.media.snapshot()).message, 'Restart needed');
       await c.mark('Unconfirmed audio shutdown refuses capture and reports the current failure',
         [call('refuseStop'), call('refuseCapture', 1)]);
     });

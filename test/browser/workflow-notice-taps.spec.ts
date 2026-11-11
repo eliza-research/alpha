@@ -16,7 +16,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
    const agent=w.residentAgent=w.createResidentAgentPlugin({owner:()=>f.owner||'fixture-owner',agentId:'fixture-agent', providerStatus: {provider: 'elizacloud', configured: false}});
    if(scenario.startsWith('lookup-unavailable')){
     f.lookupUnavailable=true;f.lookupFailures=0;f.noticeToasts=[];
-    new MutationObserver(()=>{const shown=document.body?.innerText.match(/Couldn’t check workflow notifications\. Try again\.|This notice belongs to a different agent connection\.|This run is no longer available\. Check Workflows\./)?.[0];if(shown&&!f.noticeToasts.includes(shown))f.noticeToasts.push(shown);}).observe(document,{subtree:true,childList:true,characterData:true});
+    new MutationObserver(()=>{const shown=document.body?.innerText.match(/Couldn’t check(?! run)|Other agent|Run gone/)?.[0];if(shown&&!f.noticeToasts.includes(shown))f.noticeToasts.push(shown);}).observe(document,{subtree:true,childList:true,characterData:true});
    }
    const methods=(names:string[])=>names.map(name=>({name,rtype:'promise'}));
    w.Capacitor={PluginHeaders:[
@@ -106,7 +106,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
   // A user retry queued during a resume lookup keeps its feedback, even if another resume arrives.
   await page.evaluate(()=>{const f=(window as any).deliveryFixture;f.holdLookup=true;document.dispatchEvent(new Event('visibilitychange'));});
   await expect.poll(()=>page.evaluate(()=>Boolean((window as any).deliveryFixture.lookupRelease))).toBe(true);
-  await page.getByRole('button',{name:/^Saved workflow notification/}).click();
+  await page.getByRole('button',{name:/^Notification/}).click();
   if(scenario==='lookup-unavailable-navigation'){
    const statusReads=await page.evaluate(()=>{const before=(window as any).deliveryFixture.workflowStatusReads||0;window.dispatchEvent(new Event('launcher-home'));return before;});
    await expect.poll(()=>page.evaluate(()=>(window as any).deliveryFixture.workflowStatusReads||0)).toBeGreaterThan(statusReads);
@@ -117,9 +117,9 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
    expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed||[])).toEqual([]);
    await expect(page.locator('html')).toHaveAttribute('data-active-view','home');
    await page.getByRole('button',{name:'Workflows',exact:true}).click();
-   await page.getByRole('button',{name:/^Saved workflow notification/}).click();
+   await page.getByRole('button',{name:/^Notification/}).click();
   }else await page.evaluate(()=>{const f=(window as any).deliveryFixture;document.dispatchEvent(new Event('visibilitychange'));f.holdLookup=false;f.lookupRelease();});
-  const message='Couldn’t check workflow notifications. Try again.';
+  const message='Couldn’t check';
   await expect(page.getByText(message,{exact:true})).toBeVisible();
   expect(await page.evaluate(()=>(window as any).deliveryFixture.noticeToasts)).toEqual([message]);
   expect(await page.evaluate(()=>(window as any).deliveryFixture.taps.map((tap:any)=>tap.runId))).toEqual(['run1','run2']);
@@ -140,13 +140,13 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
   }
   else if(scenario==='ask-owner'){await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');await c.offline();});await expect(review).toHaveCount(0);}
   else {
-   if(scenario==='ask-sensitive'){await review.getByRole('textbox',{name:'Content excerpt'}).fill('Your verification code is 123456');await review.getByRole('button',{name:'Use in conversation',exact:true}).click();await expect(review.getByRole('status')).toContainText('credentials or verification codes');await review.getByRole('button',{name:'Cancel',exact:true}).click();}
+   if(scenario==='ask-sensitive'){await review.getByRole('textbox',{name:'Content excerpt'}).fill('Your verification code is 123456');await review.getByRole('button',{name:'Use in conversation',exact:true}).click();await expect(review.getByRole('status')).toContainText('Remove secrets first');await review.getByRole('button',{name:'Cancel',exact:true}).click();}
    else {
     await review.getByRole('textbox',{name:'Content excerpt'}).fill('Reviewed public text');
     if(scenario==='ask-changed')await page.evaluate(()=>{(window as any).deliveryFixture.taps[0].notice.text='Replaced text';});
     await review.getByRole('button',{name:'Use in conversation',exact:true}).click();
     if(scenario==='ask'){await expect(page.getByRole('textbox',{name:'Message Alpha',exact:true})).toHaveValue('Help me with this notification.\n\nSource: Alpha Phone notification\n\nReviewed public text');await expect.poll(()=>page.evaluate(()=>(window as any).deliveryFixture.consumed||[])).toEqual(['run1']);}
-    else await expect(page.getByText('This notification or account changed. Nothing was added to your conversation.',{exact:true})).toBeVisible();
+    else await expect(page.getByText('Changed',{exact:true})).toBeVisible();
    }
   }
   if(scenario!=='ask')expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed||[])).toEqual([]);
@@ -186,13 +186,13 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
   await expect.poll(()=>page.evaluate(()=>Boolean((window as any).deliveryFixture.release))).toBe(true);
   await page.evaluate(async()=>{const {connectionController:c}=await import('/src/runtime/connection-ui.tsx');await c.offline();const w=window as any,f=w.deliveryFixture;f.release();f.hold=false;f.owner='next-owner';
    // The toast is transient; record every notice text shown from here on.
-   w.__noticeToasts=[];new MutationObserver(()=>{const shown=document.body.innerText.match(/This notice belongs to a different agent connection\.|This run is no longer available\. Check Workflows\./)?.[0];if(shown&&!w.__noticeToasts.includes(shown))w.__noticeToasts.push(shown);}).observe(document.body,{subtree:true,childList:true,characterData:true});});
+   w.__noticeToasts=[];new MutationObserver(()=>{const shown=document.body.innerText.match(/Other agent|Run gone/)?.[0];if(shown&&!w.__noticeToasts.includes(shown))w.__noticeToasts.push(shown);}).observe(document.body,{subtree:true,childList:true,characterData:true});});
   // Going offline suspends prior-owner notices before another owner may connect.
   await expect.poll(()=>page.evaluate(()=>(window as any).deliveryFixture.ownerWithdrawals)).toEqual([{owner:null},ownerFence('fixture-owner'),{owner:null}]);
   await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Start local agent',exact:true}).click();await expect(page.locator('.alpha-connection-scrim')).toHaveCount(0);
   expect(await page.evaluate(async()=>(await import('/src/runtime/connection-ui.tsx')).connectionController.getSnapshot().session?.ownerId)).toBe('next-owner');
   // The first owner's retained tap never opens under the next owner, and nothing is consumed.
-  await expect.poll(()=>page.evaluate(()=>(window as any).__noticeToasts)).toEqual(['This notice belongs to a different agent connection.']);
+  await expect.poll(()=>page.evaluate(()=>(window as any).__noticeToasts)).toEqual(['Other agent']);
   await expect(page.getByText('Verified retained result run1',{exact:true})).toHaveCount(0);
   expect(await page.evaluate(()=>({taps:(window as any).deliveryFixture.taps.length,consumed:(window as any).deliveryFixture.consumed?.length||0}))).toEqual({taps:2,consumed:0});
  }else if(scenario==='navigation-race'){
@@ -201,7 +201,7 @@ for(const scenario of ['lookup-unavailable','lookup-unavailable-navigation','ask
   await page.evaluate(()=>(window as any).deliveryFixture.release());
   await expect(page.getByText('Verified retained result run1',{exact:true})).toHaveCount(0);
  }else{
-  await expect(page.getByText(/This notice belongs to a different agent connection\.|This run is no longer available\. Check Workflows\./)).toBeVisible();
+  await expect(page.getByText(/^(Other agent|Run gone)$/)).toBeVisible();
   expect(await page.evaluate(()=>(window as any).deliveryFixture.taps.length)).toBe(2);
   expect(await page.evaluate(()=>(window as any).deliveryFixture.consumed?.length||0)).toBe(0);
  }

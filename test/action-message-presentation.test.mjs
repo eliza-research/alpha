@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {build} from 'esbuild';
 const bundle=await build({entryPoints:['apps/app/src/runtime/action-message-presentation.ts'],bundle:true,platform:'node',format:'esm',write:false});
 const {projectActionMessages,browserNavigationSummary,succeededBrowserDestination}=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
-const notice='Review this request on your phone before it can run.';
+const notice='Review on phone';
 const old='Opened an approved HTTPS destination in a new browser tab. Page loading is not verified.';
 const user={id:'user',from:'user',text:'Open example.com'};
 const action={id:'action',from:'agent',text:'Open browser destination https://example.com/path',card:{proposalId:'p',title:'Completed',sub:old,done:true}};
@@ -11,7 +11,7 @@ test('completed action projects one truthful result without changing stored hist
  assert.deepEqual(shown.map(m=>m.id),['user','action']);assert.equal(shown[1].displayText,'Opened example.com.');assert.equal(shown[1].cGeneric,false);assert.deepEqual(rows,frozen);
 });
 test('pending review keeps its existing approve/cancel handlers and shows the destination once',()=>{
- const rows=[user,{...action,card:{...action.card,done:false}}];const approve=()=>{},cancel=()=>{};const projected=render(rows);projected[1]={...projected[1],cDigest:true,rows:[{open:approve},{open:cancel}]};const shown=projectActionMessages(projected,rows)[1];assert.equal(shown.hasCalendarText,false);assert.equal(shown.rows[0].who,'Open example.com?');assert.equal(shown.rows[0].open,approve);assert.equal(shown.rows[1].open,cancel);
+ const rows=[user,{...action,card:{...action.card,done:false}}];const approve=()=>{},cancel=()=>{};const projected=render(rows);projected[1]={...projected[1],cDigest:true,rows:[{open:approve},{open:cancel}]};const shown=projectActionMessages(projected,rows)[1];assert.equal(shown.hasCalendarText,false);assert.equal(shown.rows[0].who,'example.com');assert.equal(shown.rows[0].open,approve);assert.equal(shown.rows[1].open,cancel);
 });
 test('failures remain visible once, user quotes and unrelated later messages are preserved',()=>{
  const failed={...action,card:{...action.card,title:'Not completed',sub:'The browser is unavailable.'}};const rows=[user,failed,{id:'device-receipt:p',from:'agent',text:'The browser is unavailable.',deviceReceipt:true},{id:'next',from:'user',text:notice},{id:'later',from:'agent',text:old}];const shown=projectActionMessages(render(rows),rows);assert.deepEqual(shown.map(m=>m.id),['user','action','next','later']);assert.equal(shown[1].displayText,'The browser is unavailable.');assert.equal(shown[2].text,notice);

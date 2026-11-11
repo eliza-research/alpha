@@ -24,15 +24,15 @@ test('archive outcomes stay finite and incomplete or unknown data cannot mean su
 
 test('only reviewable state offers restart readiness; incomplete states remain truthful',()=>{
  const reason='ipc-recovery-retention-limit';
- assert.equal(residentRecoveryCopy(reason,{step:'review',review:{status:'reviewable',retainedCount:8,reviewToken:token}}),'Alpha is ready to restart.');
+ assert.equal(residentRecoveryCopy(reason,{step:'review',review:{status:'reviewable',retainedCount:8,reviewToken:token}}),'Restart needed');
  for(const view of [undefined,{step:'reviewing'},{step:'archiving'},{step:'unavailable'},{step:'partial'}])assert.doesNotMatch(residentRecoveryCopy(reason,view),/ready to restart|data is safe/);
  for(const reason of ['ipc-recovery-required','runtime-identity-unavailable'])assert.doesNotMatch(residentRecoveryCopy(reason),/ready to restart|data is safe/);
 });
 test('a runtime identity refusal says to try again and never to reinstall or clear data',()=>{
  for(const line of [residentRecoveryCopy('runtime-identity-unavailable'),residentRecoveryMessage('runtime-identity-unavailable')]){
-  assert.match(line,/try again/i);assert.doesNotMatch(line,/reinstall|clear/i);
+  assert.equal(line,'Startup check failed','the panel carries Try again');assert.doesNotMatch(line,/reinstall|clear/i);
  }
- assert.equal(residentRecoveryCopy('ipc-recovery-required'),'Restart your phone to try again.');
+ assert.equal(residentRecoveryCopy('ipc-recovery-required'),'Restart phone');
 });
 
 test('the liveness check reads once at a time, at most every 10 s, and reports only a lost resident',async()=>{
@@ -52,7 +52,7 @@ test('the liveness check reads once at a time, at most every 10 s, and reports o
 test('every terminal boot reason reads as one plain line without its code',()=>{
  for(const reason of ['agent startup blocked: missing bun','fatal','agent-update-deferred','agent exited: 137','',undefined]){
   const line=residentBootMessage(reason);
-  assert.match(line,/^[^\n]+\.$/);
+  assert.match(line,/^[^\n.]+$/);
   assert.doesNotMatch(line,/fatal|blocked|deferred|exited|137|bun/i);
  }
  assert.notEqual(residentBootMessage('agent-update-deferred'),residentBootMessage('fatal'));

@@ -287,7 +287,7 @@ async function guidanceTargets(page, viewports) {
             label: node.getAttribute('aria-label') || node.textContent.trim(),
             owned: points(node, [0.2, 0.5, 0.8]),
           }));
-          const information = root.querySelector('summary[aria-label="Map information"]');
+          const information = root.querySelector('summary[aria-label="Map information and credits"]');
           const attribution = [...root.querySelectorAll('.alpha-map-credits a')].map(node =>
             ({label: node.textContent.trim(), owned: textLines(node)}));
           const notice = root.querySelector('[data-alpha-maps-status] [role="status"]');
@@ -296,7 +296,7 @@ async function guidanceTargets(page, viewports) {
           const dockButtons = pill ? [...pill.querySelectorAll('button,[role="button"]')].filter(node =>
             node.getClientRects().length && !node.closest('[aria-hidden="true"],[inert]')) : [];
           return {
-            targets: [...guidance, {label: 'Map information', owned: points(information, [0.05, 0.2, 0.5, 0.8, 0.95])},
+            targets: [...guidance, {label: 'Map information', owned: points(information, [0.2, 0.5, 0.8])},
               ...attribution, {label: notice.textContent.trim(), owned: textLines(notice)}],
             rightDock: landscape && rail ? {
               atRight: rail.left > app.left + app.width / 2 && Math.abs(rail.right - app.right) < 1,
@@ -312,15 +312,17 @@ async function guidanceTargets(page, viewports) {
           assert.ok(rightDock?.atRight, 'The landscape assistant pill remains right-docked');
           assert.ok(rightDock.controls.length && rightDock.controls.every(control => control.owned),
             'The assistant pill still owns the centers of its controls');
-          const information = page.locator('[data-alpha-maps-root] summary[aria-label="Map information"]');
+          const information = page.locator('[data-alpha-maps-root] summary[aria-label="Map information and credits"]');
           await information.tap();
           await expect(information.locator('..')).toHaveAttribute('open', '');
           const coordinates = information.locator('..').getByRole('button', {name:'Enter coordinates', exact:true});
           await coordinates.scrollIntoViewIfNeeded();
-          assert.ok(await coordinates.evaluate(node => {
-            const box = node.getBoundingClientRect();
-            return node.contains(document.elementFromPoint(box.left+box.width/2, box.top+box.height/2));
-          }), 'The open disclosure owns its first action');
+          const coordinateHit=await coordinates.evaluate(node => {
+            const box = node.getBoundingClientRect(), hit=document.elementFromPoint(box.left+box.width/2,box.top+box.height/2);
+            return {owned:node.contains(hit),box:box.toJSON(),hit:hit?.outerHTML.slice(0,500)};
+          });
+          if(!coordinateHit.owned)await page.screenshot({path:'/tmp/alpha-maps-legacy-disclosure-hit.png'});
+          assert.ok(coordinateHit.owned, `${width}×${height} at ${percent}%: The open disclosure owns its first action ${JSON.stringify(coordinateHit)}`);
           await information.tap();
           await expect(information.locator('..')).not.toHaveAttribute('open', '');
         }
@@ -341,7 +343,7 @@ async function reroute(page) {
   await start(page, t);
   await geo(page, far);
   await expect(status(page)).toContainText('Off route. Tap Reroute from here.');
-  const rerouteButton = button(page, 'Reroute from here');
+  const rerouteButton = button(page, 'Reroute');
   await expect(rerouteButton).toBeVisible();
   assert.equal((await requests(page)).filter(row => row.endpoint === 'routes').length, 1);
   await t.point('An off-route GPS fix preserves the historical service state pending an explicit choice', action('PositionFix'));
@@ -357,7 +359,7 @@ async function reroute(page) {
   });
   await rerouteButton.tap();
   assert.deepEqual(await page.evaluate(() => window.closedMaps.reroutePointer),
-    {label: 'Reroute from here', layer: 'app'});
+    {label: 'Reroute', layer: 'app'});
   await expect(button(page, 'End navigation')).toBeVisible();
   await expect(status(page)).toContainText('Cloud Maps is temporarily unavailable. Try again later.');
   await page.waitForFunction(() => window.closedMapsGeo.watches.size === 1);

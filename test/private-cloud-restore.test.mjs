@@ -1,8 +1,10 @@
+import {CalendarApprovalClient} from '../apps/app/src/runtime/calendar-approval-client.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
+import {CalendarApprovalClient} from '../apps/app/src/runtime/calendar-approval-client.ts';
 const source=readFileSync('apps/app/src/runtime/connection-ui.tsx','utf8');
 const section=(a,b)=>{const start=source.indexOf(a),end=source.indexOf(b,start+a.length);assert.ok(start>=0&&end>start);return source.slice(start,end);};
 const initialize=section('  async initialize() {','  /** Test mocks and the flag-off web preview only:');
@@ -13,7 +15,7 @@ const credential={credentialId:'fixture-id',credentialReference:'browser-cloud-r
 function fixture({values=[credential,credential],choice={kind:'resident'},attachFails=false,android=false,profile=false,cloudResident=false,accepts=true,search='',readChoice,testMocks=false}={}){
  const calls=[],history={messages:[{id:'retained',text:'Exact retained history'}]};let context;
  const state={open:false,error:'',busy:false,history,cloudAccount:null};
- context=vm.createContext({residentAlwaysPresent:false,state,epoch:1,startup:null,operation:null,planRecheck:null,errorKindOf:()=>null,active:null,residentStartInBackground:false,privateLocalPreviewEnabled:true,
+ context=vm.createContext({CalendarApprovalClient,residentAlwaysPresent:false,state,epoch:1,startup:null,operation:null,planRecheck:null,errorKindOf:()=>null,active:null,residentStartInBackground:false,privateLocalPreviewEnabled:true,
   browserDevProfile:profile,browserCloudResidentEnabled:cloudResident,isAndroid:android,testMocksEnabled:testMocks,
   update:patch=>Object.assign(state,patch),AbortController,DOMException,URLSearchParams,location:{search},residentRecoveryReason:()=>undefined,errorMessage:error=>error.message,expired:()=>false,
   runQueuedResidentRebind(){},runQueuedSignInReturn(){},scheduleResidentAutoRetry(){},residentCloudFlow:()=>false,settleResidentAfterStartup(){},selection:()=>context.choice,choice,
@@ -31,7 +33,7 @@ test('an empty optional Cloud store does not reopen sign-in or disturb the priva
  const f=fixture({values:[null]});await f.initialize();assert.deepEqual(f.calls,['attach','read']);assert.equal(f.state.open,false);assert.equal(f.state.cloudAccount,null);assert.equal(f.context.active.kind,'resident');assert.equal(f.state.history,f.history);
 });
 test('a replaced reference with the same credential ID cannot publish the old Cloud account',async()=>{
- const f=fixture({values:[credential,{...credential,credentialReference:'browser-cloud-reference:replacement'}]});await f.initialize();assert.deepEqual(f.calls,['attach','read','read']);assert.match(f.state.error,/Cloud account changed/);assert.equal(f.state.cloudAccount,null);assert.equal(f.context.active.kind,'resident');assert.equal(f.state.history,f.history);
+ const f=fixture({values:[credential,{...credential,credentialReference:'browser-cloud-reference:replacement'}]});await f.initialize();assert.deepEqual(f.calls,['attach','read','read']);assert.match(f.state.error,/Account changed/);assert.equal(f.state.cloudAccount,null);assert.equal(f.context.active.kind,'resident');assert.equal(f.state.history,f.history);
 });
 // `npm run dev` sets the preview flag with test mocks on (scripts/dev-local.ts): a page loaded while the
 // agent restarts attaches in the background, so the failed attach (a 503) leaves the sheet closed.
@@ -46,7 +48,7 @@ for(const [name,options]of [['offline',{choice:{kind:'offline'}}],['native',{and
  const f=fixture(options);await f.initialize();assert.deepEqual(f.calls,['attach']);assert.equal(f.state.cloudAccount,null);
 });
 test('a changed credential ID on the second read cannot be adopted',async()=>{
- const f=fixture({values:[credential,{...credential,credentialId:'replacement'}]});await f.initialize();assert.deepEqual(f.calls,['attach','read','read']);assert.match(f.state.error,/Cloud account changed/);assert.equal(f.state.cloudAccount,null);
+ const f=fixture({values:[credential,{...credential,credentialId:'replacement'}]});await f.initialize();assert.deepEqual(f.calls,['attach','read','read']);assert.match(f.state.error,/Account changed/);assert.equal(f.state.cloudAccount,null);
 });
 test('an owner epoch change on the second read stops verification',async()=>{
  let reads=0;const f=fixture({readChoice:context=>{if(++reads===2)context.epoch++;}});await f.initialize();assert.deepEqual(f.calls,['attach','read','read']);assert.equal(f.state.cloudAccount,null);assert.equal(f.context.active.kind,'resident');

@@ -180,6 +180,29 @@ test('a mounted Android WebView refuses an update when draft readback differs', 
   await expect(page.getByText('Finish your changes, then try updating again.',{exact:true})).toBeVisible();
 });
 
+test('Android Back lowers chat above Apps before closing the drawer', async ({ page }) => {
+  await nativeStub(page, { apps: [{ packageName: 'com.android.settings', label: 'Settings' }] });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Apps', exact: true }).click();
+  const drawer = page.locator('[data-alpha-layer="drawer"]');
+  const search = drawer.getByRole('searchbox', { name: 'Search apps', exact: true });
+  await search.fill('sett');
+
+  await page.getByRole('button', { name: 'Open conversation', exact: true }).click();
+  await page.getByRole('button', { name: 'Expand chat', exact: true }).click();
+  await expect(drawer).toHaveAttribute('aria-hidden', 'true');
+  await expect(drawer).toHaveAttribute('inert', '');
+  const back = () => page.evaluate(() => window.dispatchEvent(new Event('alpha-back', { cancelable: true })));
+  await back();
+  await expect(drawer).toHaveCount(1);
+  await expect(page.getByRole('button', { name: 'Expand chat', exact: true })).toBeVisible();
+  await back();
+  await expect(page.getByRole('button', { name: 'Open conversation', exact: true })).toBeVisible();
+  await expect(search).toHaveValue('sett');
+  await back();
+  await expect(drawer).toHaveCount(0);
+});
+
 test('Apps lists Android entries with icons and launches by package', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await nativeStub(page, {
@@ -264,14 +287,15 @@ test('denied notification access stays pending after account restoration without
  });
  await page.goto('/');const panel=page.locator('dialog.alpha-startup-permissions');await expect(panel).toHaveCount(0);
  await restoreAccount();
- await expect(panel.getByRole('heading',{name:'Notifications',exact:true})).toBeVisible();await panel.getByRole('button',{name:'Allow',exact:true}).click();
+ await expect(panel.getByRole('heading',{name:'Access',exact:true})).toBeVisible();
+ await expect(panel.locator('[aria-current=step] .alpha-permission-name')).toHaveText('Notifications');await panel.getByRole('button',{name:'Allow',exact:true}).click();
  await expect.poll(()=>calls(page,'DailyApps','requestPermissions')).toEqual([{permissions:['notifications']}]);
- await expect(panel.getByRole('button',{name:'Open Android settings',exact:true})).toBeVisible();
+ await expect(panel.getByRole('button',{name:'Settings',exact:true})).toBeVisible();
  // Walkthrough choices do not grant OS permission. A denied prompt is not requested again.
  await expect(panel.getByRole('button',{name:/Skip|Not now|Back/})).toHaveCount(0);
  await page.keyboard.press('Escape');await expect(panel).toBeVisible();
  await page.reload();await restoreAccount();
- await expect(panel.getByRole('button',{name:'Open Android settings',exact:true})).toBeVisible();
+ await expect(panel.getByRole('button',{name:'Settings',exact:true})).toBeVisible();
  expect(await calls(page,'DailyApps','requestPermissions')).toEqual([]);
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('alpha:startup-permission-walkthrough:v1')!))).toEqual({version:4,status:'pending',step:0});
 });

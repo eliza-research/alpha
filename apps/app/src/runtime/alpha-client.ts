@@ -193,10 +193,13 @@ export class AlphaClient {
   private transport: VerifiedSessionTransport | null = null;
   private epoch = 0;
   private context = copyContext({ view: "home" }, 0);
+  private localSelection: string | null = null;
   private active: AbortController | null = null;
   private activeWorkflow = false;
   private proposals = new Map<string, ActionProposal>();
   private consumed = new Set<string>();
+  /** The session whose approvals `consumed` records. */
+  private consumedSession = "";
   private listeners = new Set<() => void>();
   getState(): AlphaClientState {
     return {
@@ -234,11 +237,19 @@ export class AlphaClient {
     ) {
       throw new Error("Invalid verified session metadata");
     }
-    this.disconnect();
+    // Approvals already dispatched to this same session stay consumed across a reattach.
+    const identity = JSON.stringify([session.origin, session.ownerId, session.agentId, session.sessionId]);
+    this.disconnect({ keepConsumed: identity === this.consumedSession });
+    this.consumedSession = identity;
     this.transport = transport;
     this.emit();
   }
-  disconnect(): void {
+  /**
+   * Drops the transport, the request in flight and every proposal. `keepConsumed` is for a
+   * reattach to the same session (a conversation history reload): a proposal approved before it
+   * can never be approved again afterwards. Any other disconnect forgets the consumed ids.
+   */
+  disconnect(options: { keepConsumed?: boolean } = {}): void {
     this.epoch++;
     this.active?.abort();
     this.active = null;
@@ -246,16 +257,22 @@ export class AlphaClient {
     const old = this.transport;
     this.transport = null;
     this.proposals.clear();
-    this.consumed.clear();
+    if (options.keepConsumed !== true) {
+      this.consumed.clear();
+      this.consumedSession = "";
+    }
     try {
       old?.close?.();
     } finally {
       this.emit();
     }
   }
-  setViewContext(context: ViewContext): void {
+  /** A local selection can retire approvals without publishing its identifier to the agent. */
+  setViewContext(context: ViewContext, localSelection: string | null = null): void {
     const next = copyContext(context, this.context.revision);
-    if (JSON.stringify(next) === JSON.stringify(this.context)) return;
+    const selection = next.sensitive ? null : localSelection;
+    if (selection === this.localSelection && JSON.stringify(next) === JSON.stringify(this.context)) return;
+    this.localSelection = selection;
     this.context = copyContext(context, this.context.revision + 1);
     this.proposals.clear();
     if(!this.activeWorkflow||next.sensitive){this.active?.abort();this.active=null;this.activeWorkflow=false;}

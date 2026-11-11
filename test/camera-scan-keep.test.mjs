@@ -54,6 +54,6 @@ test('any other selection change rejection says the change is unconfirmed',async
  for(const rejection of [Object.assign(new Error('stale'),{code:'LIBRARY_STALE'}),new Error('bridge closed')]){
   const {toasts,done}=selectionChange(rejection);
   await done;
-  assert.deepEqual(toasts,["Couldn't confirm the change."]);
+  assert.deepEqual(toasts,['Unconfirmed']);
  }
 });

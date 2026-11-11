@@ -13,7 +13,7 @@ async function load(page:Page,theme:'light'|'dark'='light'){
 }
 for(const theme of ['light','dark'] as const)test(`local Notes choice preserves ${theme} theme, exact long preview and modal ownership`,async({page})=>{
  await load(page,theme);
- const open=async()=>{await page.locator('#origin').focus();await page.evaluate(()=>{const win=window as any;win.body='Exact long note line\n'.repeat(1000);win.controller=new AbortController();win.result=win.reviewNotesQuery([{id:'private-record-id',kind:'text',title:'First note',body:win.body},{id:'other-private-id',kind:'text',title:'Other note',body:'Other exact body'}],'Choose the note to share.',win.controller.signal,()=>{});});await expect(page.getByRole('dialog',{name:'Choose a note to share'})).toBeVisible();};
+ const open=async()=>{await page.locator('#origin').focus();await page.evaluate(()=>{const win=window as any;win.body='Exact long note line\n'.repeat(1000);win.controller=new AbortController();win.result=win.reviewNotesQuery([{id:'private-record-id',kind:'text',title:'First note',body:win.body},{id:'other-private-id',kind:'text',title:'Other note',body:'Other exact body'}],'Choose the note to share.',win.controller.signal,()=>{});});await expect(page.getByRole('dialog',{name:'Share note'})).toBeVisible();};
  await open();const dialog=page.getByRole('dialog');await expect(dialog).toHaveCSS('background-color',theme==='dark'?'rgb(0, 0, 0)':'rgb(255, 255, 255)');await expect(dialog).toHaveCSS('color',theme==='dark'?'rgb(255, 255, 255)':'rgb(0, 0, 0)');await expect(page.getByRole('button',{name:'Share this note'})).toBeDisabled();
  await page.getByRole('combobox',{name:'Note',exact:true}).selectOption('private-record-id');expect(await dialog.locator('pre').textContent()).toBe('Exact long note line\n'.repeat(1000));expect(await dialog.innerText()).not.toContain('private-record-id');
  const layout=await dialog.evaluate(element=>{const content=element.querySelector('.note-source-content')!,footer=element.querySelector('footer')!,buttons=[...element.querySelectorAll('button')];return {scroll:content.scrollHeight>content.clientHeight,bottom:footer.getBoundingClientRect().bottom,heights:buttons.map(button=>button.getBoundingClientRect().height),inert:(document.querySelector('.os') as HTMLElement).inert};});expect(layout.scroll).toBe(true);expect(layout.bottom).toBeLessThanOrEqual(740);expect(layout.heights.every(height=>height>=44)).toBe(true);expect(layout.inert).toBe(true);
@@ -27,13 +27,13 @@ test('a named delete is disambiguated locally and confirmed for the exact note',
  await load(page);
  await page.locator('#origin').focus();
  await page.evaluate(notes=>{const win=window as any;win.result=win.reviewNamedNote(notes,{type:'notes_named',action:'delete',name:'travel'},new AbortController().signal,()=>{});},notes);
- const dialog=page.getByRole('dialog',{name:'Choose the note to delete'});await expect(dialog).toBeVisible();
- await expect(dialog).toContainText('Several notes match “travel”. Choose the exact note.');
- await expect(dialog).toContainText('erased after 3 days unless you restore it');
+ const dialog=page.getByRole('dialog',{name:'Delete which?'});await expect(dialog).toBeVisible();
+ await expect(dialog).toContainText('2 matches');
+ await expect(dialog).toContainText('Trash · 3 days');
  const confirm=dialog.locator('footer button').last();await expect(confirm).toBeDisabled();
  expect(await page.locator('.os').evaluate((element:HTMLElement)=>element.inert)).toBe(true);
  await page.getByRole('combobox',{name:'Note',exact:true}).selectOption('private-travel-id');
- await expect(confirm).toHaveText('Move “Travel plans” to Trash');await expect(dialog.locator('pre')).toHaveText('Renew passport');
+ await expect(confirm).toHaveText('Delete');await expect(dialog.locator('pre')).toHaveText('Renew passport');
  expect(await dialog.innerText()).not.toContain('private-travel-id');
  await confirm.click();expect(await page.evaluate(()=>(window as any).result)).toBe('private-travel-id');
  await expect(page.locator('#origin')).toBeFocused();expect(await page.locator('.os').evaluate((element:HTMLElement)=>element.inert)).toBe(false);
@@ -41,7 +41,7 @@ test('a named delete is disambiguated locally and confirmed for the exact note',
 test('a single match is preselected for update and Back cancels without a choice',async({page})=>{
  await load(page);
  await page.evaluate(notes=>{const win=window as any;win.result=win.reviewNamedNote([notes[0]],{type:'notes_named',action:'update',name:'Travel plans',fields:{title:'Travel plans',body:'Renew passport by April'}},new AbortController().signal,()=>{});},notes);
- const dialog=page.getByRole('dialog',{name:'Choose the note to update'});
+ const dialog=page.getByRole('dialog',{name:'Update which?'});
  await expect(dialog).toContainText('New title: “Travel plans”');await expect(dialog).toContainText('Renew passport by April');
  await expect(dialog.locator('footer button').last()).toHaveText('Update “Travel plans”');
  await page.evaluate(()=>window.dispatchEvent(new Event('alpha-back',{cancelable:true})));
@@ -50,10 +50,10 @@ test('a single match is preselected for update and Back cancels without a choice
 test('the titles listing shares only after explicit approval',async({page})=>{
  await load(page);
  await page.evaluate(()=>{const win=window as any;win.result=win.reviewNoteTitles(['Groceries','Travel plans'],true,new AbortController().signal,()=>{});});
- const dialog=page.getByRole('dialog',{name:'Review note titles to share'});
+ const dialog=page.getByRole('dialog',{name:'Share titles?'});
  await expect(dialog.getByRole('listitem')).toHaveText(['Groceries','Travel plans']);
- await expect(dialog).toContainText('Note text stays on this phone. Older notes are not included.');
+ await expect(dialog).toContainText('Titles only · Older omitted');
  await page.keyboard.press('Escape');expect(await page.evaluate(()=>(window as any).result)).toBe(false);
  await page.evaluate(()=>{const win=window as any;win.result=win.reviewNoteTitles(['Groceries'],false,new AbortController().signal,()=>{});});
- await page.getByRole('button',{name:'Share 1 title'}).click();expect(await page.evaluate(()=>(window as any).result)).toBe(true);
+ await page.getByRole('button',{name:'Share 1'}).click();expect(await page.evaluate(()=>(window as any).result)).toBe(true);
 });

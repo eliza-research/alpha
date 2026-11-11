@@ -27,7 +27,9 @@ export class ServiceReadCache{
     const d=this.decode(raw),entries=d.entries.filter(e=>e.key!==key);entries.push({key,value,at});
     entries.sort((a,b)=>a.at-b.at);while(entries.length>MAX_ENTRIES)entries.shift();
     const next:Document={version:1,owner:this.owner,entries};
-    while(entries.length&&new TextEncoder().encode(JSON.stringify(next)).length>MAX_BYTES)entries.shift();
+    // Each entry is measured once: eviction subtracts its size (and its comma) instead of encoding the document again.
+    const size=(v:unknown)=>new TextEncoder().encode(JSON.stringify(v)).length,sizes=entries.map(size);let bytes=size({...next,entries:[]})+sizes.reduce((sum,n)=>sum+n,0)+Math.max(0,entries.length-1);
+    while(entries.length&&bytes>MAX_BYTES){bytes-=sizes.shift()!+(entries.length>1?1:0);entries.shift();}
     if(epoch!==this.epoch)return;if(await this.store.compareExchange(raw,next)==='saved')return;
    }
   });

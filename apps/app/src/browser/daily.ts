@@ -10,13 +10,17 @@ import { devSurfacesEnabled } from '../build-flags';
 import type { Reminder, ClockRequest } from '../daily';
 import { revision } from './revision';
 import {notificationState} from './notification-store';
+import {noticeActionBlocked} from './notice-action';
 import {reminderDocument} from './reminder-store';
 import {journalEntry,retireJournal,trimDeletionJournal,settleExpiredDeletions,writeJournalEntry} from './journal-retention';
 type State=ReminderDeletionState&{receipts?:Record<string,{binding:string;result:ReminderResult|ReminderCreateResult;at?:number}>};
 const initial=():State=>({sourceRevision:revision(),reminders:[]});
-async function notificationsAllowed(){const state=await notificationState();return state.appEnabled&&state.channels.reminders!==false;}
+async function notificationsAllowed(signal?:AbortSignal){const state=await notificationState(signal);return state.appEnabled&&state.channels.reminders!==false;}
 async function scheduledStatus():Promise<'scheduled'|'permission-denied'>{return await notificationsAllowed()?'scheduled':'permission-denied';}
 function target(data:State,row:DeletableReminder):ReminderTarget {return {...(row.alertMinutes!==undefined?{timingVersion:2 as const}:{}),sourceId:'browser-reminders',sourceRevision:data.sourceRevision,reminderId:row.id,occurrenceId:row.occurrenceId!,revision:row.revision};}
+export function reminderNoticeRevision(selected:ReminderTarget):string{
+  return JSON.stringify([selected.sourceRevision,selected.reminderId,selected.occurrenceId,selected.revision]);
+}
 function operationBinding(input:{operationId:string;bindingHash:string},operation:ReminderOperation|ReminderCreateOperation) {
   if(!/^[A-Za-z0-9_-]{1,128}$/.test(input.operationId)||!/^[a-f0-9]{64}$/.test(input.bindingHash))throw Error('Invalid reminder operation binding.');
   return JSON.stringify([input.bindingHash,operation]);
@@ -44,6 +48,27 @@ export class BrowserDaily extends WebPlugin {
   async dismissDeletion(id:string){return reminderDocument.edit(initial,data=>{const entry=journalEntry(data.deletions,id);if(!entry||!browserDeletionOwnerVisible(entry.owner)||!['unknown','dispatching'].includes(entry.phase))throw Error('Uncertain deletion is unavailable.');entry.acknowledged=true;return {status:'acknowledged'};});}
   async undoDeletion(id:string){return reminderDocument.edit(initial,data=>undoReminderDeletion(data,id,browserDeletionOwnerVisible));}
   async notifyReminder(id:string,occurrenceId:string){await this.notifyListeners('reminderOpened',{id,occurrenceId});}
+  async dismissReminderNotice(input:{id:string;revision:string},signal:AbortSignal,current:()=>boolean){
+    const dismissed=await this.dismissReminderNotices([input],signal,current);
+    if(dismissed.length!==1)throw Error('Notification changed.');
+  }
+  /** Validate and dismiss exact reminder occurrences in one source-owned edit. */
+  async dismissReminderNotices(inputs:readonly {id:string;revision:string}[],signal:AbortSignal,current:()=>boolean){
+    return reminderDocument.edit(initial,async data=>{
+      if(!current()||noticeActionBlocked()||!await notificationsAllowed(signal))throw Error('Notification changed.');
+      signal.throwIfAborted();
+      if(!current()||noticeActionBlocked())throw Error('Notification changed.');
+      const dismissed:{id:string;revision:string}[]=[],claimed=new Set<string>();
+      for(const input of inputs){
+        const row=data.reminders.find(row=>row.id===input.id);
+        if(claimed.has(input.id)||!row?.occurrenceId||row.pendingDeletion||row.status!=='posted'||
+          row.noticeDismissedOccurrence===row.occurrenceId||reminderNoticeRevision(target(data,row))!==input.revision)continue;
+        row.noticeDismissedOccurrence=row.occurrenceId;
+        claimed.add(input.id);dismissed.push(input);
+      }
+      return dismissed;
+    },signal);
+  }
   async surfaceInfo(){return {developmentBuild:devSurfacesEnabled,assistant:false,reminderCreationVersion:1 as const,reminderTimingVersion:2 as const,topInset:0,bottomInset:0};}
   async closeAssistant(){window.dispatchEvent(new Event('alpha-back',{cancelable:true}));return {closed:true};}
   async scheduleReminder(input:{id:string;title:string;body?:string;at:number;recurrence?:Reminder['recurrence'];dueAt?:number;alertMinutes?:number|null}) {
@@ -123,13 +148,13 @@ export class BrowserDaily extends WebPlugin {
   async clockHandoff(input:ClockRequest){
     if(input.reviewed!==true||!['set','show','dismiss','snooze'].includes(input.action))throw Error('Review the alarm action first.');
     // Browser alarms are one-time reminders. A reviewed repeat is refused, never saved as a single alarm.
-    if(input.action==='set'&&Object.hasOwn(input,'days'))return {action:input.action,status:'failed' as const,message:'Repeating alarms are not available in this browser. No alarm was saved.'};
+    if(input.action==='set'&&Object.hasOwn(input,'days'))return {action:input.action,status:'failed' as const,message:'No repeat here'};
     if(input.action==='set'){
       if(!Number.isInteger(input.hour)||input.hour<0||input.hour>23||!Number.isInteger(input.minute)||input.minute<0||input.minute>59||typeof input.label!=='string'||input.label.length>200||input.label.includes('\0'))throw Error('Choose a valid alarm time and label.');
       const date=new Date();date.setHours(input.hour,input.minute,0,0);if(date.getTime()<=Date.now())date.setDate(date.getDate()+1);const saved=await this.scheduleReminder({id:'alarm_'+crypto.randomUUID(),title:input.label||'Alarm',at:date.getTime()});
       if(saved.status==='past')throw Error('The alarm time passed. Choose another time.');
       // The alarm is committed; reporting a failure here would invite a duplicate retry.
-      if(saved.status==='permission-denied'){window.dispatchEvent(new Event('alpha:alarms-changed'));return {action:input.action,status:'opened' as const,message:'Alarm saved. Notifications are off, so it will not ring until you turn them on.'};}
+      if(saved.status==='permission-denied'){window.dispatchEvent(new Event('alpha:alarms-changed'));return {action:input.action,status:'opened' as const,message:'Saved · muted'};}
     }else if(input.action==='show')window.dispatchEvent(new Event('alpha:clock-open'));
     else{
       if(input.action==='snooze'&&(!Number.isInteger(input.snoozeMinutes)||input.snoozeMinutes<1||input.snoozeMinutes>60))throw Error('Choose 1 to 60 snooze minutes.');

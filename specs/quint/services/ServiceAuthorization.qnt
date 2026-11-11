@@ -3,15 +3,15 @@ module ServiceAuthorization {
   type Authorization = {
     owner: int, epoch: int, tokenOwner: int, tokenEpoch: int,
     plan: str, source: str, fallback: str, validFor: int, refresh: str, failures: int,
-    signedRefusal: bool, credits: bool, localReady: bool,
-    request: str, dispatched: bool, requestOwner: int, requestEpoch: int
+    signedRefusal: bool, credits: bool,
+    request: str, dispatched: bool, requestOwner: int, requestEpoch: int, refusedRequests: int
   }
   var s: Authorization
   action init = s' = {
     owner: 1, epoch: 0, tokenOwner: 0, tokenEpoch: 0,
     plan: "unknown", source: "none", fallback: "none", validFor: 0, refresh: "idle", failures: 0,
-    signedRefusal: false, credits: false, localReady: true,
-    request: "none", dispatched: false, requestOwner: 0, requestEpoch: 0
+    signedRefusal: false, credits: false,
+    request: "none", dispatched: false, requestOwner: 0, requestEpoch: 0, refusedRequests: 0
   }
   action beginRefresh = all {
     s.refresh == "idle", s.owner != 0,
@@ -67,42 +67,54 @@ module ServiceAuthorization {
       refresh: "idle", plan: "unknown", source: "none", fallback: "none", validFor: 0, credits: false,
       signedRefusal: false, dispatched: false, request: "none" }
   }
-  pure def allowedRoute(route: str): bool = route.in(Set("identity", "maps", "gmail", "calendar", "self-revoke"))
+  pure def allowedRoute(route: str): bool = route.in(Set("identity", "maps", "gmail", "calendar",
+    "self-revoke", "billing", "entitlement", "redeem", "google-account"))
   val inferenceAdmitted = s.plan.in(Set("active", "past-due")) and
     (s.source == "snapshot" or s.validFor > 0) or s.credits
-  /// This is transport route admission. Cloud still authorizes every service request.
+  /// This is transport route admission. Cloud still authorizes every service request. A route
+  /// outside the table, or one Cloud refuses, is recorded as the last request and never dispatched.
   action serviceRequest(route: str, serverAllows: bool): bool = all {
-    allowedRoute(route), serverAllows, s.owner != 0,
-    s' = { ...s, request: route, dispatched: true,
-      requestOwner: s.owner, requestEpoch: s.epoch }
+    s.owner != 0,
+    val admitted = allowedRoute(route) and serverAllows
+    s' = { ...s, request: route, dispatched: admitted,
+      requestOwner: s.owner, requestEpoch: s.epoch,
+      refusedRequests: if (not(admitted) and s.refusedRequests < 2) s.refusedRequests + 1 else s.refusedRequests }
   }
-  action rejectRoute(route: str): bool = all { not(allowedRoute(route)), s' = s }
+  action rejectRoute(route: str): bool = all { not(allowedRoute(route)), serviceRequest(route, true) }
   action stopRefresh = all { s.refresh == "pending", s' = { ...s, refresh: "idle", fallback: "none" } }
   action step = any {
     beginRefresh, noSignedToken, signedNoPlan, refreshReply("active"), refreshReply("past-due"),
     refreshReply("inactive"), refreshReply("invalid"), snapshotReply("active"), snapshotReply("past-due"),
     snapshotReply("inactive"), snapshotReply("no-plan"), snapshotReply("credits"), refreshOutage,
     tick, switchOwner, serviceRequest("maps", true), serviceRequest("gmail", true),
-    serviceRequest("calendar", true), rejectRoute("hosted-agent"), stopRefresh, s' = s
+    serviceRequest("calendar", false), serviceRequest("billing", true), serviceRequest("redeem", true),
+    serviceRequest("google-account", true), rejectRoute("hosted-agent"), rejectRoute("cli-session"), stopRefresh, s' = s
   }
   val RefusalNotUpgraded = s.signedRefusal implies not(s.credits)
   val ExpiryHonest = s.source == "signed" and s.plan.in(Set("active", "past-due")) implies s.validFor > 0
   val SnapshotHasNoSignedLifetime = s.source.in(Set("snapshot", "credits")) implies s.validFor == 0
   val CanonicalCreditView = s.credits implies s.source == "credits" and s.plan == "credits"
-  val LocalIndependent = s.localReady
+  /// A last request without a dispatch was refused by the route table or by Cloud.
+  val UndispatchedRequestWasRefused = s.request != "none" and not(s.dispatched) implies s.refusedRequests > 0
   val ExactManagedRoute = s.dispatched implies allowedRoute(s.request)
   val CurrentDispatch = s.dispatched implies s.requestOwner == s.owner and s.requestEpoch == s.epoch
   val TypeOK = s.plan.in(Set("unknown", "unavailable", "active", "past-due", "inactive", "invalid", "no-plan", "credits", "expired"))
     and s.source.in(Set("none", "signed", "snapshot", "credits"))
     and s.fallback.in(Set("none", "absent", "no-plan"))
     and s.refresh.in(Set("idle", "pending")) and s.epoch.in(0.to(2)) and s.validFor.in(0.to(2)) and s.failures.in(0.to(2))
+    and s.refusedRequests.in(0.to(2))
   val safety = TypeOK and RefusalNotUpgraded and ExpiryHonest and SnapshotHasNoSignedLifetime and
-    CanonicalCreditView and LocalIndependent and ExactManagedRoute and CurrentDispatch
+    CanonicalCreditView and UndispatchedRequestWasRefused and ExactManagedRoute and CurrentDispatch
+
+  val RefusedRouteWitness = s.refusedRequests > 0 and not(s.dispatched) and s.request == "hosted-agent"
+  val ServerRefusalWitness = s.request == "calendar" and not(s.dispatched) and s.refusedRequests > 0
+  val SignedOutageKeepsPlanWitness = s.failures > 0 and s.plan == "active" and s.source == "signed"
+  val CreditAdmissionWitness = s.credits and s.failures == 0
 
   run signedExpiryTest = init.then(beginRefresh).then(refreshReply("active"))
     .then(tick).then(tick).expect(s.plan == "expired" and not(inferenceAdmitted) and safety)
   run localOutageTest = init.then(beginRefresh).then(refreshOutage)
-    .then(rejectRoute("hosted-agent")).expect(s.localReady and not(s.dispatched) and safety)
+    .then(rejectRoute("hosted-agent")).expect(RefusedRouteWitness and s.plan == "unavailable" and safety)
   run refusalTest = init.then(beginRefresh).then(refreshReply("invalid"))
     .expect(s.signedRefusal and not(s.credits) and safety)
   run ownerChangeTest = init.then(serviceRequest("gmail", true)).then(switchOwner)
@@ -117,4 +129,9 @@ module ServiceAuthorization {
     .then(snapshotReply("credits")).expect(s.credits and inferenceAdmitted and safety)
   run signedOutageKeepsUnexpiredTest = init.then(beginRefresh).then(refreshReply("active"))
     .then(beginRefresh).then(refreshOutage).expect(s.plan == "active" and inferenceAdmitted and safety)
+  /// A route outside the table and a request Cloud refuses each replace an earlier dispatch.
+  run refusedRouteReplacesDispatchTest = init.then(serviceRequest("maps", true)).expect(s.dispatched)
+    .then(rejectRoute("cli-session")).expect(not(s.dispatched) and s.request == "cli-session" and safety)
+    .then(serviceRequest("billing", true)).expect(s.dispatched and safety)
+    .then(serviceRequest("calendar", false)).expect(ServerRefusalWitness and s.refusedRequests == 2 and safety)
 }

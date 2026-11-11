@@ -10,29 +10,29 @@ const implementation = 'apps/app/src/runtime/google-accounts.ts';
 const writeGrant = 'google.calendar.write', readGrant = 'google.calendar.read';
 const ownerEmail = 'owner@fixture.invalid', secondEmail = 'second@fixture.invalid';
 const noReview = {revision: -1, destination: '', paused: false, pending: '', sources: qset([])};
-const unconfirmed = 'Calendar sync was not confirmed; check it before another change.';
-const notSent = 'Calendar sync was not finished; nothing was sent.';
+const unconfirmed = 'Unconfirmed';
+const notSent = 'Not synced';
 const messages = new Map([
-  ['Google Calendar is not connected.', 'not-connected'],
-  ['Google Calendar is read only, so sync is off. Allow Calendar changes to sync.', 'read-only'],
-  ['Calendar sync was not finished.', 'stopped'],
-  ['Finish or close the Calendar draft, then connect Google Calendar again.', 'draft'],
-  ['Waiting for Calendar. Nothing was sent; connect Google Calendar again when Calendar is ready.', 'not-ready'],
-  ['Calendar sync changed elsewhere. Ask your agent to check it; saved events are unchanged.', 'changed'],
-  ['The saved Google sync calendar is unavailable. Ask your agent to check Calendar sync; saved events are unchanged.', 'missing-destination'],
-  ['The saved Google sync calendar is not on the Google account approved for Calendar changes. Ask your agent to check Calendar sync; saved events are unchanged.', 'unapproved'],
-  ['Calendar sync is waiting on an earlier change. Ask your agent to check Calendar sync.', 'waiting'],
-  ['Ask your agent to choose the Google calendar to sync.', 'choose-primary'],
-  ['Some events need a decision before they sync: Dentist, Untitled event. Ask your agent to resolve them.', 'conflict-held'],
-  ['Some events need a decision before they sync: A, B, C. Ask your agent to resolve them.', 'conflict-many'],
+  ['Not connected', 'not-connected'],
+  ['Read-only', 'read-only'],
+  ['Not finished', 'stopped'],
+  ['Finish draft first', 'draft'],
+  ['Calendar not ready', 'not-ready'],
+  ['Changed elsewhere', 'changed'],
+  ['Calendar unavailable', 'missing-destination'],
+  ['Wrong account', 'unapproved'],
+  ['Waiting', 'waiting'],
+  ['Choose calendar', 'choose-primary'],
+  ['2 held', 'conflict-held'],
+  ['4 held', 'conflict-many'],
   [unconfirmed, 'unconfirmed'],
-  ['Fixture abort. ' + unconfirmed, 'unconfirmed-abort'],
-  ['Fixture review failed. ' + unconfirmed, 'unconfirmed-review'],
-  ['Fixture preflight refused. ' + unconfirmed, 'unconfirmed-preflight'],
-  ['Fixture control transport failed. ' + unconfirmed, 'unconfirmed-transport'],
-  ['Fixture links failed. ' + unconfirmed, 'unconfirmed-links'],
-  ['Fixture review failed. ' + notSent, 'unsent-review'],
-  ['Fixture preflight refused. ' + notSent, 'unsent-preflight'],
+  [unconfirmed + ' · Fixture abort', 'unconfirmed-abort'],
+  [unconfirmed + ' · Fixture review failed', 'unconfirmed-review'],
+  [unconfirmed + ' · Fixture preflight refused', 'unconfirmed-preflight'],
+  [unconfirmed + ' · Fixture control transport failed', 'unconfirmed-transport'],
+  [unconfirmed + ' · Fixture links failed', 'unconfirmed-links'],
+  [notSent + ' · Fixture review failed', 'unsent-review'],
+  [notSent + ' · Fixture preflight refused', 'unsent-preflight'],
 ]);
 
 function candidates(key) {
@@ -174,12 +174,12 @@ function fixture(compiled) {
       && row.calendarId === state.latest.control.destination?.providerCalendarId)?.summary;
     if (value.outcome === 'synced') {
       assert.ok(summary);
-      assert.equal(value.message, 'Calendar syncs with ' + summary + ' in Google.');
+      assert.equal(value.message, 'Synced · ' + summary);
       return 'synced';
     }
     if (value.outcome === 'syncing') {
       assert.ok(summary);
-      assert.equal(value.message, 'Sync on. Calendar is syncing with ' + summary + ' in Google.');
+      assert.equal(value.message, 'Syncing · ' + summary);
       return 'syncing';
     }
     const key = messages.get(value.message);

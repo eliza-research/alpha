@@ -170,7 +170,6 @@ test('F-5: the send review shows From, To, Cc, Bcc, subject, body and the attach
       'Cc: carol@example.invalid, dave@example.invalid',
       'Bcc: audit@example.invalid',
       'Subject: Timetable for Friday',
-      'Selected message/draft:',
     ]);
     await expect(review.locator('[data-alpha-review-attachments]')).toHaveText(`timetable.txt · text/plain · ${bytes.length} bytes · SHA-256 ${sha256}`);
     await expect(review.getByText('Line one of the reviewed body.\nLine two.', {exact: true})).toBeVisible();
@@ -314,7 +313,7 @@ test('F-10: a saved older version of a sent email is kept, labelled as such, and
   test.setTimeout(180_000);
   await openInbox(page);
   await compose(page, 'Versioned plan', 'Saved first text');
-  await button(page, 'Save draft locally').click();
+  await button(page, 'Save draft').click();
   await expect(page.getByText('Saved locally on this device').first()).toBeVisible();
   // Edited after saving and sent without saving again: the saved copy is an earlier version.
   await page.getByRole('textbox', {name: 'Message', exact: true}).fill('Sent final text');
@@ -429,9 +428,10 @@ test('F-10: a review made under one From account cannot be sent after the email 
   await expect(review.getByRole('button', {name: 'Send this email', exact: true})).toBeVisible();
   await review.getByRole('button', {name: 'Close mail review', exact: true}).click();
   // The From switcher moves the email to the second account, where it is reviewed and sent once.
-  await expect(button(page, 'From account')).toHaveText('From Fixture mailbox');
-  await button(page, 'From account').click();
-  await expect(button(page, 'From account')).toHaveText('From Second mailbox');
+  const from = page.getByRole('combobox', {name: 'From account', exact: true});
+  await expect(from).toHaveValue('fixture-grant');
+  await from.selectOption({label: 'Second mailbox'});
+  await expect(from).toHaveValue('second-grant');
   await expect(page.getByRole('textbox', {name: 'Message', exact: true})).toHaveValue('One body');
   await button(page, 'Send email').click();
   await expect(review.getByText('One body', {exact: true})).toBeVisible();
@@ -603,7 +603,7 @@ test('F-12: a cursor the provider refuses after the mailbox changed keeps the lo
   await expect.poll(() => rows(page)).toEqual(['m1', 'm2']);
   await page.waitForFunction(()=>!!(window as any).releaseMailPage);await setProvider(page, {inbox: ['m1', 'm3', 'm4'], revision: 2});await page.evaluate(()=>(window as any).releaseMailPage());
   await button(page, 'Load more').click();
-  await expect(page.getByText('Invalid Gmail page token. The messages already shown were kept. Retry reloads the list from the start.', {exact: true}).first()).toBeVisible();
+  await expect(page.getByText('Invalid Gmail page token.', {exact: true}).first()).toBeVisible();
   // The loaded page stays (it is not silently mixed with a page from the new mailbox) and the
   // refused cursor is not offered again.
   expect(await rows(page)).toEqual(['m1', 'm2']);

@@ -130,7 +130,7 @@ test('a transport refusal before dispatch keeps the text in its own conversation
   // The expired session is retired and the chooser opens; the message never left the phone.
   await expect(page.locator('.alpha-connection')).toBeVisible();
   // Generic composer toasts were removed; the chooser requires a fresh connection.
-  await expect(page.locator('.alpha-connection').getByRole('alert')).toHaveText('Sign in or pair again.');
+  await expect(page.locator('.alpha-connection').getByRole('alert')).toHaveText('Sign in');
   await page.getByRole('button', { name: 'Close connection settings', exact: true }).first().click();
   await expect(composer(page)).toHaveValue('');
   expect(await savedDraft(page, key)).toBe('Do not lose this');

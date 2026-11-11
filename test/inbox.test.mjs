@@ -27,6 +27,8 @@ test('retained email edits publish Inbox status copy verbatim',async()=>{
   b.onLoad({filter:/.*/,namespace:'fixture'},({path})=>({contents:fixtures[path],loader:'js'}));
  }}]});
  const fixture=globalThis.inboxUnsavedFixture={row:null,gate:Promise.resolve()};
+ // The retained copy listens for the page being hidden; this case never hides it.
+ globalThis.document={hidden:false,addEventListener(){},removeEventListener(){}};
  const {inboxUnsaved}=await import('data:text/javascript;base64,'+Buffer.from(bundled.outputFiles[0].text).toString('base64'));
  const statuses=[];
  let unsaved;unsaved=inboxUnsaved('owner',()=>statuses.push(unsaved?.status),()=>{});
@@ -36,11 +38,11 @@ test('retained email edits publish Inbox status copy verbatim',async()=>{
  let release;fixture.gate=new Promise(resolve=>{release=resolve;});
  const clearing=unsaved.clear();
  await new Promise(resolve=>setTimeout(resolve,1));
- assert.equal(unsaved.status,'Clearing retained edits…');
- await assert.rejects(unsaved.clear(),{message:'Local draft storage is unavailable. Check it before sending.'});
+ assert.equal(unsaved.status,'Clearing…');
+ await assert.rejects(unsaved.clear(),{message:'Storage unavailable'});
  release();await clearing;
  assert.equal(unsaved.status,'');
  assert.equal(fixture.row.text,'');
  assert.ok(statuses.every(s=>!/provider review|conversation/.test(s??'')),'no rewritten chat copy reaches Inbox');
- unsaved.retire();delete globalThis.inboxUnsavedFixture;
+ unsaved.retire();delete globalThis.inboxUnsavedFixture;delete globalThis.document;
 });

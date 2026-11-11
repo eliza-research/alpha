@@ -130,6 +130,8 @@ private static final class ResidentAttachDiagnostic {
  // destruction cancels only its own work. The runtime, epoch and enrollment stay process-wide.
  private final ResidentRecoveryReview recoveryReview=new ResidentRecoveryReview();
  private final java.util.Set<PluginCall> pending=new java.util.HashSet<>();
+ /** Plain requests the renderer can withdraw, by the id it chose. Guarded by lifecycleLock. */
+ private final java.util.Map<String,PluginCall> withdrawable=new java.util.HashMap<>();
  private final java.util.Map<String,ElizaAgentService.LocalStreamHandle> streams=new java.util.HashMap<>();
  private final java.util.Map<String,Runnable> streamInvalidators=new java.util.HashMap<>();
  private static final java.util.Set<AlphaLocalAgentPlugin> instances=new java.util.HashSet<>();
@@ -606,6 +608,8 @@ private static final class ResidentAttachDiagnostic {
  }
  static void configureEnvironment(Context context,java.util.Map<String,String> env) throws java.io.IOException {
   env.put("ELIZA_RUNTIME_PROFILE",BuildConfig.ELIZA_RUNTIME_PROFILE);
+  if(AlphaImageCapability.verified(context))env.put("ELIZA_MOBILE_SMS_REPLY_DRAFT","1");
+  else env.remove("ELIZA_MOBILE_SMS_REPLY_DRAFT");
   final long epoch;
   synchronized(lifecycleLock){launchedGeneration=null;if(!accepting||stopping||credentialMutationEpoch>=0)throw new java.io.IOException("Local provider is retiring");epoch=lifecycleEpoch;}
   configureNativeViews(context.getAssets().open("agent/native-view-declarations.json"),env);
@@ -1188,7 +1192,30 @@ private static final class ResidentAttachDiagnostic {
   String safeMethod=java.util.Arrays.asList("GET","POST","PATCH","DELETE").contains(method)?method:"OTHER";
   android.util.Log.w("AlphaAgentRequest","category="+category+" method="+safeMethod+" status="+status+" reason="+reason);
  }
+ private static final int LOCAL_REQUEST_TIMEOUT_LIMIT_MS=120_000;
+ private static final int RESIDENT_MINIMUM_TIMEOUT_MS=1_000;
+ private static final String REQUEST_DEADLINE_MESSAGE="Local agent request timed out before dispatch.";
+ private static final class RequestDeadlineExpired extends Exception {}
+
+ /** Omission preserves the legacy per-dispatch timeout. Explicit budgets include time on the worker queue. */
+ private static Long localRequestDeadline(JSONObject input,long entered) {
+  if(!input.has("timeoutMs"))return null;
+  Object value=input.opt("timeoutMs");
+  if(!(value instanceof Number))throw new IllegalArgumentException();
+  double timeout=((Number)value).doubleValue();
+  if(!Double.isFinite(timeout)||timeout!=Math.floor(timeout))throw new IllegalArgumentException();
+  return entered+(long)Math.max(0,Math.min(LOCAL_REQUEST_TIMEOUT_LIMIT_MS,timeout));
+ }
+ private static int remainingLocalRequestTimeout(Long deadline) throws RequestDeadlineExpired {
+  if(deadline==null)return LOCAL_REQUEST_TIMEOUT_LIMIT_MS;
+  long remaining=deadline-android.os.SystemClock.elapsedRealtime();
+  // The shared buffered transport raises ordinary requests to at least one second.
+  // Refuse a smaller remainder before admission. Its separate inference floor still applies.
+  if(remaining<RESIDENT_MINIMUM_TIMEOUT_MS)throw new RequestDeadlineExpired();
+  return (int)remaining;
+ }
  @PluginMethod public void request(PluginCall call) {
+  long entered=android.os.SystemClock.elapsedRealtime();
   String path=call.getString("path",""),method=call.getString("method","GET"),body=call.getString("body"),expectedOwner=call.getString("ownerId");
   if(path.endsWith("/navigate")&&!PreparedViewNavigation.allowed(path,method,body)){call.reject("Unsupported navigation preparation.");return;}
   OwnerRoutes routes;
@@ -1198,22 +1225,53 @@ private static final class ResidentAttachDiagnostic {
    logRequestFailure(group==null?"other":group,method,0,"gate");
    call.reject("Unsupported local agent request.");return;
   }
+  final Long deadline;
+  try{
+   deadline=localRequestDeadline(call.getData(),entered);
+   remainingLocalRequestTimeout(deadline);
+  }catch(IllegalArgumentException invalid){call.reject("Invalid local agent request timeout.");return;}
+  catch(RequestDeadlineExpired expired){call.reject(REQUEST_DEADLINE_MESSAGE);return;}
   JSONObject headers=call.getObject("headers");
+  final String cancelId=call.getString("cancelId");
+  if(cancelId!=null&&!cancelId.matches("[A-Za-z0-9-]{16,64}")){logRequestFailure(group==null?"other":group,method,0,"cancel-id");call.reject("Unsupported local agent request.");return;}
   final long epoch;
-  try{synchronized(lifecycleLock){epoch=admittedEpoch();pending.add(call);}}catch(Superseded stale){call.reject("Local agent is stopped or unavailable.","LOCAL_AGENT_EPOCH_CHANGED");return;}
+  try{synchronized(lifecycleLock){epoch=admittedEpoch();if(cancelId!=null&&withdrawable.containsKey(cancelId))throw new Superseded();pending.add(call);if(cancelId!=null)withdrawable.put(cancelId,call);}}catch(Superseded stale){call.reject("Local agent is stopped or unavailable.","LOCAL_AGENT_EPOCH_CHANGED");return;}
   PluginWorkers.submit(workers,()->{try{
+   // A withdrawn or superseded call is no longer owned: it stops here, before enrollment.
    requireOwned(call,epoch);
+   remainingLocalRequestTimeout(deadline);
    String token=enroll(epoch);
    synchronized(lifecycleLock){requireCurrent(epoch);if(expectedOwner!=null&&!expectedOwner.equals(ownerIdentity)){logRequestFailure(group==null?"other":group,method,409,"owner-mismatch");resolveCurrent(call,epoch,new JSObject().put("status",409).put("body","{\"error\":\"Local owner changed; reconnect before continuing\"}"));return;}}
    requireOwned(call,epoch);
-   JSONObject result=raw(path,method,body,token,headers,120000);
+   if("telephony".equals(group)){
+    if(!AlphaImageCapability.verified(getContext()))throw new SecurityException("Reply drafting requires the Alpha image");
+    requireProviderOwner(true);
+   }
+   JSONObject result=raw(path,method,body,token,headers,remainingLocalRequestTimeout(deadline));
    if(result.getInt("status")>=400)logRequestFailure(group==null?"other":group,method,result.getInt("status"),"http");
    requireCurrent(epoch);
    if(result.getInt("status")==401)synchronized(lifecycleLock){requireCurrent(epoch);clearEnrollment();}
    if(path.equals("/api/auth/me")&&result.getInt("status")==200){JSONObject who=new JSONObject(result.getString("body"));who.getJSONObject("session").put("id","native-owned-session");result.put("body",who.toString());result.remove("bodyBase64");}
    resolveCurrent(call,epoch,new JSObject(result.toString()));
-  }catch(Superseded stale){rejectSuperseded(call);}
-  catch(Exception error){logRequestFailure(group==null?"other":group,method,0,"transport");rejectPending(call,"Local agent request failed. No automatic retry was made.");}},()->{rejectPending(call,"Local agent bridge is closed.");});
+  }catch(RequestDeadlineExpired expired){rejectPending(call,REQUEST_DEADLINE_MESSAGE);}
+  catch(Superseded stale){rejectSuperseded(call);}
+  catch(Exception error){logRequestFailure(group==null?"other":group,method,0,"transport");rejectPending(call,"Local agent request failed. No automatic retry was made.");}
+  finally{forgetWithdrawable(cancelId,call);}},()->{forgetWithdrawable(cancelId,call);rejectPending(call,"Local agent bridge is closed.");});
+ }
+ private void forgetWithdrawable(String cancelId,PluginCall call){if(cancelId!=null)synchronized(lifecycleLock){withdrawable.remove(cancelId,call);}}
+ /**
+  * Withdraws a plain request its caller abandoned. The call is answered now and stops being owned,
+  * so one still queued or enrolling is never sent to the runtime. One already sent keeps its worker
+  * until the transport answers or times out, and its effect may have completed: withdrawal closes
+  * no transport and cancels no server effect.
+  */
+ @PluginMethod public void cancelRequest(PluginCall call) {
+  String id=call.getString("cancelId","");boolean withdrawn=false;
+  synchronized(lifecycleLock){
+   PluginCall request=withdrawable.remove(id);
+   if(request!=null&&pending.remove(request)){withdrawn=true;request.reject("Local agent request cancelled. A dispatched operation may still have completed; inspect its receipt before retrying.","LOCAL_AGENT_REQUEST_CANCELLED");}
+  }
+  call.resolve(new JSObject().put("withdrawn",withdrawn).put("outcome","unknown"));
  }
  /** Cancellation acknowledges transport closure, never server-effect cancellation. */
  @PluginMethod public void cancelStream(PluginCall call) {

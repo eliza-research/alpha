@@ -110,7 +110,7 @@ test('an unavailable companion keeps the unconfirmed stop notice visible',async(
  const foreign=await setup(page);await residentHome(page);
  await expect.poll(()=>live(page,f=>f.listenerCalls)).toContain('turnOff');
  await button(page,'Settings').click();
- await expect(page.getByText('Could not confirm listening is off. Turn it off in Android settings.',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Microphone may be on, open listener settings',exact:true})).toContainText('Mic may be on');
  await expect(page.getByText('Always-on listening',{exact:true})).toHaveCount(0);
  expect(await live(page,f=>f.captures)).toEqual([]);expect(foreign).toEqual([]);
 });

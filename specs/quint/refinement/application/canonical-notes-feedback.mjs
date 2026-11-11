@@ -14,9 +14,10 @@ export async function compileCanonicalNotesUi(extraSources = [], observationPlug
     plugins: [...observationPlugins, {name: 'canonical-view-ports', setup(builder) {
       builder.onResolve({filter: /^\.\.\/runtime\/connection-ui$/}, () => ({path: 'copy', namespace: 'ports'}));
       builder.onResolve({filter: /^\.\.\/daily$/}, () => ({path: 'daily', namespace: 'ports'}));
+      builder.onResolve({filter: /^\.\.\/runtime\/text-share$/}, () => ({path: 'clipboard', namespace: 'ports'}));
       builder.onLoad({filter: /.*/, namespace: 'ports'}, args => ({loader: 'js', contents: args.path === 'copy'
         ? `export const agentPendingText=()=>{throw Error('Global connection copy is outside this view fixture')}; export const agentAvailabilityNotice=agentPendingText; export const connectionController={open:agentPendingText};`
-        : `export const DailyApps=__ports.daily;`}));
+        : args.path === 'clipboard' ? `export const copySelectedText=__ports.copyText;` : `export const DailyApps=__ports.daily;`}));
     }}]});
   const sources = [...Object.keys(compiled.metafile.inputs).filter(path => !path.startsWith('<') && !path.startsWith('ports:')),
     driver, 'specs/quint/refinement/application/support.mjs', ...extraSources];
@@ -24,14 +25,14 @@ export async function compileCanonicalNotesUi(extraSources = [], observationPlug
   return {code: compiled.outputFiles[0].text, sources};
 }
 
-export async function createCanonicalNotesUiFixture(compiled, onViewObservation = () => {}) {
+export async function createCanonicalNotesUiFixture(compiled, onViewObservation = () => {}, copyText = () => {throw Error('Clipboard is outside the feedback fixture');}) {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
   const events = new EventTarget(); Object.defineProperty(globalThis, 'window', {configurable: true, writable: true, value: events});
   const requests = [], toasts = [], commands = [];
   let current = true, reviews = 0;
   const daily = {perform() {throw Error('Native actions are outside the feedback fixture');}};
   const module = {exports: {}};
-  new Function('require', 'module', 'exports', '__ports', compiled.code)(createRequire(import.meta.url), module, module.exports, {daily, observe: onViewObservation});
+  new Function('require', 'module', 'exports', '__ports', compiled.code)(createRequire(import.meta.url), module, module.exports, {daily, observe: onViewObservation, copyText});
   const identity = {ownerId: 'owner-one', agentId: 'agent', sessionId: 'session-one', origin: 'https://fixture.invalid'};
   const port = {sessionId: identity.sessionId, identity, current: () => current,
     request(path, method, body, signal) {const task = deferred(); requests.push({path, method, body, signal, task, settled: false}); return task.promise;}};
@@ -96,7 +97,10 @@ export async function createCanonicalNotesUiFixture(compiled, onViewObservation 
   const originalDiscard = ui.discardDraftAndReload.bind(ui);
   ui.discardDraftAndReload = () => {prefix.push(actionCall('discard')); return originalDiscard();};
   return {ui, projectNoteForModel: module.exports.projectNoteForModel, observe, feedback, initial, feedbackSteps, run, resolveRequest, api, requests,
-    restore() {const output = ui.decorate({none: false}, api, viewState); output.trashRows[0].restore();},
+    restore() {
+      ui.decorate({none: false}, api, viewState).trashRows[0].ask();
+      ui.decorate({none: false}, api, viewState).trashAskRecover();
+    },
     loseOwner() {current = false;}, async close() {
       ui.retire(); for (const request of requests) if (!request.settled) {request.settled = true; request.task.reject(Error('Fixture teardown'));}
       await tick(); if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow); else delete globalThis.window;

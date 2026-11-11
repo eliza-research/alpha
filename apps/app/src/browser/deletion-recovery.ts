@@ -18,5 +18,5 @@ export function browserDeletionRecovery(entry:JournalEntry,saved:CalendarDeletio
    result.reminderResult={version:1,kind:operation.type,sourceId:'browser-reminders',reminderId:row.id,occurrenceId:row.occurrenceId,revision:row.revision,status:row.status,at:row.at,...(row.alertMinutes!==undefined?{dueAt:row.dueAt,alertMinutes:row.alertMinutes}:{})};
   }
  }
- return {status:saved.phase==='deleted'?'succeeded' as const:'failed' as const,summary:saved.phase==='deleted'?'Recovered the verified deletion receipt. No action was repeated.':saved.phase==='undone'?'Deletion was undone. The original item was retained.':'The item changed before deletion; no deletion was applied.',result};
+ return {status:saved.phase==='deleted'?'succeeded' as const:'failed' as const,summary:saved.phase==='deleted'?'Recovered':saved.phase==='undone'?'Undone':'Item changed',result};
 }

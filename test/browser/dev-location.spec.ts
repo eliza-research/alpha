@@ -90,7 +90,7 @@ for(const code of [1,2,3])test(`browser location distinguishes permission denial
   try{return {permission:await new BrowserLocation().requestPermissions(),cleared};}catch(error){return {error:{code:(error as any).code,message:(error as Error).message},cleared};}
  },code);expect(result.cleared).toEqual([97]);
  if(code===1)expect(result.permission).toEqual({location:'denied',accuracy:'none'});
- else {expect(result.error?.code).toBe('unavailable');expect(result.error?.message).toContain(code===3?'timed out':'could not provide');}
+ else {expect(result.error?.code).toBe('unavailable');expect(result.error?.message).toContain(code===3?'timed out':'No location');}
 });
 
 

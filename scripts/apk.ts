@@ -274,8 +274,11 @@ export function validateApk(file: string, identity: {appId: string}, wantsHome: 
   // unlocked profile and runtime grant remain separate requirements for access.
   if (data.xml.includes('android.permission.READ_CONTACTS') !== wantsHome)
     throw new Error(`Invalid Contacts read permission for distribution in ${file}`);
-  if (data.xml.includes('android.permission.WRITE_CONTACTS'))
-    throw new Error(`Unexpected Contacts write permission in ${file}`);
+  if (data.xml.includes('android.permission.WRITE_CONTACTS') !== wantsHome)
+    throw new Error(`Invalid WRITE_CONTACTS permission for distribution in ${file}`);
+  // The default dialer can use provider voicemail. Carrier registration needs authenticated provisioning.
+  for (const entry of ['com.android.voicemail.permission.ADD_VOICEMAIL', 'android.telephony.VisualVoicemailService', 'android.permission.BIND_VISUAL_VOICEMAIL_SERVICE'])
+    if (data.xml.includes(entry)) throw new Error(`Unexpected carrier voicemail manifest entry ${entry} in ${file}`);
   // SMS provider reads and reviewed sends (#421) are packaged only for the launcher; Android grants
   // these hard-restricted permissions only to the preinstalled image app or the SMS role holder.
   for (const permission of ['READ_SMS', 'SEND_SMS'])
@@ -286,7 +289,9 @@ export function validateApk(file: string, identity: {appId: string}, wantsHome: 
     throw new Error(`Invalid CALL_PHONE permission for distribution in ${file}`);
   // Phone state (the native phone plugin's permission, removed for standalone) and the system shade
   // are launcher-only; the merged manifest, not the source manifests, is what ships.
-  for (const permission of ['READ_PHONE_STATE', 'EXPAND_STATUS_BAR'])
+  // READ_PRIVILEGED_PHONE_STATE is the one privileged permission the launcher declares: the Alpha
+  // image allow-lists exactly it (IMEI and SIM serial in Settings); no other install is granted it.
+  for (const permission of ['READ_PHONE_STATE', 'READ_PHONE_NUMBERS', 'READ_PRIVILEGED_PHONE_STATE', 'EXPAND_STATUS_BAR'])
     if (data.xml.includes(`android.permission.${permission}`) !== wantsHome)
       throw new Error(`Invalid ${permission} permission for distribution in ${file}`);
   for (const component of ['AlphaInCallService', 'AlphaCallActivity', 'AlphaDialPadActivity', 'AlphaSmsDeliverReceiver', 'AlphaSmsSendReceiver', 'AlphaMmsWapPushReceiver', 'AlphaMmsResultReceiver', 'AlphaRespondViaMessageService', 'AlphaSmsComposeActivity'])

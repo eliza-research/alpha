@@ -45,9 +45,13 @@ test('the plugin start path attaches before it would retire shared work, and att
  const owned=source.slice(source.indexOf('private void requireOwned('),source.indexOf('private void rejectSuperseded('));
  assert.ok(owned.includes('requireCurrent(epoch)')&&owned.includes('if(!pending.contains(call))throw new Superseded();'));
  const request=source.slice(source.indexOf('@PluginMethod public void request('),source.indexOf('@PluginMethod public void cancelStream('));
- const firstGuard=request.indexOf('requireOwned(call,epoch);'),pairing=request.indexOf('String token=enroll(epoch);'),lastGuard=request.lastIndexOf('requireOwned(call,epoch);'),dispatch=request.indexOf('JSONObject result=raw(path,method,body,token,headers,120000);');
+ const firstGuard=request.indexOf('requireOwned(call,epoch);'),pairing=request.indexOf('String token=enroll(epoch);'),lastGuard=request.lastIndexOf('requireOwned(call,epoch);'),dispatch=request.indexOf('JSONObject result=raw(path,method,body,token,headers,remainingLocalRequestTimeout(deadline));');
  assert.ok(firstGuard>0&&firstGuard<pairing&&pairing<lastGuard&&lastGuard<dispatch,'owned-call guard precedes pairing and dispatch');
- assert.equal(request.slice(lastGuard,dispatch).trim(),'requireOwned(call,epoch);','nothing runs between the guard and dispatch');
+ assert.equal(request.slice(lastGuard,dispatch).trim(),`requireOwned(call,epoch);
+   if("telephony".equals(group)){
+    if(!AlphaImageCapability.verified(getContext()))throw new SecurityException("Reply drafting requires the Alpha image");
+    requireProviderOwner(true);
+   }`,'only closed image/provider admission checks run between the ownership guard and bounded dispatch');
  // The read-only query never mutates lifecycle state.
  const query=source.slice(source.indexOf('@PluginMethod public void residentAttachment('),source.indexOf('@PluginMethod public void configureProvider('));
  for(const forbidden of ['attachLocked(','invalidateOwnCalls','invalidateCalls','lifecycleEpoch','clearEnrollment','ElizaAgentService.start','ElizaAgentService.stop','enroll(','bindCloudProvider'])

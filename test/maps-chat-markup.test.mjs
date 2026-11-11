@@ -25,7 +25,7 @@ test('place, search and route cards become readable cards with their attribution
 
 test('a locate card says the phone does not send location; a handoff link is text only',()=>{
  const locate=mapsChatText(appendMapsCard('Where are you starting from?',{kind:'locate',intent:'route-origin',prompt:'Where are you starting from?'}));
- assert.equal(locate.cards[0].title,'Location needed');assert.match(locate.cards[0].lines[0],/does not send your location/);
+ assert.equal(locate.cards[0].title,'Location needed');assert.match(locate.cards[0].lines[0],/^Name a start · Location not shared$/);
  const handoff=mapsChatText(appendMapsCard('Shared.',{kind:'handoff',handoffKind:'share',place,geoUri:'geo:37.7955,-122.3937',appleMapsUri:'https://maps.apple.com/?ll=37.7955,-122.3937',webUri:'https://www.openstreetmap.org/?mlat=37.7955&mlon=-122.3937'}));
  assert.deepEqual(handoff.cards[0].lines,['1 Ferry Building, San Francisco','https://www.openstreetmap.org/?mlat=37.7955&mlon=-122.3937']);
 });
@@ -53,7 +53,10 @@ test('ordinary, malformed, out-of-policy and foreign markup stays literal',()=>{
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const adapterSource=fs.readFileSync('apps/app/src/prototype/maps-adapter.ts','utf8');
 const adapterBody=adapterSource.slice(adapterSource.indexOf('/** Presentation only:')).replace('export function','function');
-const adapterScope={mapsChatText,document:{get hidden(){return globalThis.mapsChatFixture?.hidden??false;}},connectionController:{getSnapshot:()=>globalThis.mapsChatFixture.snapshot,getSelectedConversationId:()=>globalThis.mapsChatFixture.conversation}};
+// Counts the adapter's parses; the adapter sees the real parser through this.
+let parseCalls=0;
+const countedMapsChatText=text=>{parseCalls++;return mapsChatText(text);};
+const adapterScope={mapsChatText:countedMapsChatText,document:{get hidden(){return globalThis.mapsChatFixture?.hidden??false;}},connectionController:{getSnapshot:()=>globalThis.mapsChatFixture.snapshot,getSelectedConversationId:()=>globalThis.mapsChatFixture.conversation}};
 vm.runInNewContext(stripTypeScriptTypes('type Bag=Record<string,any>;\n'+adapterBody+'\nglobalThis.installMapsChatAdapter=installMapsChatAdapter;', {mode:'transform'}),adapterScope);
 const {installMapsChatAdapter}=adapterScope;
 const shareText=appendInteractionBlock('Share the location of Ferry Building?',{kind:'choice',id:'maps-share-m1',scope:'maps-share',prompt:'',options:[{value:'Yes, share the location of Ferry Building (confirmed).',label:'Share location'},{value:'No, do not share my location.',label:"Don't share"}]});
@@ -82,7 +85,7 @@ test('an older question, a draft, an open edit or a busy connection never sends 
  const draft=fixture([{id:'a1',from:'agent',text:shareText}]);
  try{draft.shell.st.draft='Keep my words';draft.shell.renderVals().msgs[0].mapsChoices[0].choose();await tick();assert.equal(draft.f.sent.length,0);assert.equal(draft.f.toasts.length,1);assert.equal(draft.shell.st.draft,'Keep my words');}finally{delete globalThis.mapsChatFixture;}
  const editing=fixture([{id:'a1',from:'agent',text:shareText}]);
- try{editing.shell.messageEditTarget={messageId:'m'};editing.shell.renderVals().msgs[0].mapsChoices[0].choose();await tick();assert.equal(editing.f.sent.length,0);assert.deepEqual(editing.f.toasts,['Finish or cancel the message you are editing first.']);assert.equal(editing.shell.renderVals().msgs[0].hasMapsChoice,true,'the question can still be answered');}finally{delete globalThis.mapsChatFixture;}
+ try{editing.shell.messageEditTarget={messageId:'m'};editing.shell.renderVals().msgs[0].mapsChoices[0].choose();await tick();assert.equal(editing.f.sent.length,0);assert.deepEqual(editing.f.toasts,['Editing message']);assert.equal(editing.shell.renderVals().msgs[0].hasMapsChoice,true,'the question can still be answered');}finally{delete globalThis.mapsChatFixture;}
  const busy=fixture([{id:'a1',from:'agent',text:shareText}]);
  try{busy.f.snapshot.busy=true;busy.shell.renderVals().msgs[0].mapsChoices[1].choose();await tick();assert.equal(busy.f.sent.length,0);}finally{delete globalThis.mapsChatFixture;}
 });
@@ -107,4 +110,25 @@ test('a retained Maps choice cannot send after account, conversation, newest-mes
    choose();await tick();assert.deepEqual(f.sent,[],change);
   }finally{delete globalThis.mapsChatFixture;}
  }
+});
+
+test('rendering the conversation again parses only new or changed agent messages',()=>{
+ const card=appendMapsCard('Found it.',{kind:'place',place,attribution});
+ const {shell}=fixture([{id:'u0',from:'user',text:card},{id:'a1',from:'agent',text:card},{id:'a2',from:'agent',text:'Plain reply'}]);
+ try{
+  parseCalls=0;const first=shell.renderVals();assert.equal(parseCalls,2,'each agent message is parsed once; user text is never parsed');
+  for(let n=0;n<10;n++)shell.renderVals();assert.equal(parseCalls,2,'unchanged messages are not parsed again');
+  const repeated=shell.renderVals().msgs[1].mapsCards;
+  assert.ok(repeated.every(card=>typeof card.openMap==='function'),'current render binds actionable cards');
+  const content=cards=>cards.map(({openMap,...card})=>card);
+  assert.deepEqual(content(repeated),content(first.msgs[1].mapsCards));
+  shell.st.msgs.push({id:'a3',from:'agent',text:shareText});
+  assert.equal(shell.renderVals().msgs[3].hasMapsChoice,true);assert.equal(parseCalls,3,'only the new message is parsed');
+  shell.st.msgs[1]={...shell.st.msgs[1],text:'Replaced.'};
+  const edited=shell.renderVals();assert.equal(parseCalls,4,'changed text is parsed again');
+  assert.equal(edited.msgs[1].displayText,'Replaced.');assert.equal(edited.msgs[1].mapsCards,undefined);
+  shell.st.msgs=shell.st.msgs.filter(message=>message.id!=='a2');shell.renderVals();assert.equal(parseCalls,4);
+  shell.st.msgs.push({id:'a2',from:'agent',text:'Plain reply'});shell.renderVals();
+  assert.equal(parseCalls,5,'a message that left the conversation is not kept');
+ }finally{delete globalThis.mapsChatFixture;}
 });

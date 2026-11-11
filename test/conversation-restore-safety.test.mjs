@@ -37,12 +37,12 @@ test('a newer manual choice during missing-conversation lookup prevents fallback
  const f=fixture();let release;const reached=deferred();f.box.conversationList=()=>{const list=new Promise(resolve=>release=resolve);reached.resolve();return list;};
  const pending=f.box.restoreSavedHistory(new AbortController().signal);
  await Promise.race([reached.promise,pending.then(()=>{throw Error('restore finished without the conversation lookup');})]);f.choice={id:'manual-newer',revision:'r2'};release([]);await pending;
- assert.equal(f.choice.id,'manual-newer');assert.equal(f.createCount,0);assert.equal(f.state.history.conversationId,'manual-visible');assert.equal(f.memory.size,0);assert.match(f.state.historyError,/could not be restored/);
+ assert.equal(f.choice.id,'manual-newer');assert.equal(f.createCount,0);assert.equal(f.state.history.conversationId,'manual-visible');assert.equal(f.memory.size,0);assert.match(f.state.historyError,/Couldn’t restore/);
 });
 test('failed fallback compare-and-set cannot publish a new in-memory conversation',async()=>{
  const f=fixture();f.box.selectConversation=async()=>{throw Error('Concurrent selection');};
  await f.box.restoreSavedHistory(new AbortController().signal);
- assert.equal(f.createCount,1);assert.equal(f.choice.id,'gone');assert.equal(f.memory.size,0);assert.equal(f.state.history.conversationId,'manual-visible');assert.match(f.state.historyError,/could not be restored/);
+ assert.equal(f.createCount,1);assert.equal(f.choice.id,'gone');assert.equal(f.memory.size,0);assert.equal(f.state.history.conversationId,'manual-visible');assert.match(f.state.historyError,/Couldn’t restore/);
 });
 test('successful empty fallback clears previous visible history explicitly',async()=>{
  const f=fixture();await f.box.restoreSavedHistory(new AbortController().signal);
@@ -56,14 +56,14 @@ test('routine automatic restore stays quiet while partial-history notice remains
   f.box.readConversation=async()=>({messages:[],partial,deliveryRevisionAtStart:0});
   await f.box.restoreConversationHistory('saved',new AbortController().signal,true,true);
   assert.equal(f.state.history.conversationId,'saved');assert.equal(f.state.historyPartial,partial);
-  assert.equal(f.state.message,partial?'Older messages remain on the agent.':'');
+  assert.equal(f.state.message,'');
  }
 });
 test('explicit restoration still reports a failed restart-selection save',async()=>{
  const f=fixture();f.choice={id:'saved',revision:'r1'};f.box.conversationList=async()=>[{id:'saved'}];
  f.box.selectConversation=async()=>{throw Error('Storage unavailable');};
  await f.box.restoreConversationHistory('saved',new AbortController().signal,false,false);
- assert.match(f.state.message,/It may not reopen after a restart/);assert.equal(f.state.history.conversationId,'saved');
+ assert.match(f.state.message,/not saved/);assert.equal(f.state.history.conversationId,'saved');
 });
 test('a restored failure row shows Alpha copy instead of the agent\'s saved failure prose',async()=>{
  const {systemNoticeKind,systemNoticeDisplayText}=await import('../apps/app/src/runtime/action-message-presentation.ts');

@@ -15,6 +15,7 @@ const [{ownerRouteGroup,ownerRouteAllowed}]=await loadBrowserModule(['apps/app/s
 
 const C='/api/lifeops/calendar',E=C+'/events/',F=C+'/feed?',T='/api/lifeops/scheduled-tasks',A='/api/approvals?state=all&limit=500';
 const R='/api/approvals/11111111-2222-4333-8444-555555555555/resolve';
+const D='/api/messages/reply-draft';
 const paths=[
  // Notes
  '/api/notes/state','/api/notes/state?','/api/notes/state?&','/api/notes/state?x=1','/api/notes/state/','/api/notes/state/x','/api/notes/state#','/api/notes','/api/notes/stat','/api/notes/state\n',
@@ -43,6 +44,8 @@ const paths=[
  // Approvals
  A,'/api/approvals','/api/approvals?',A+'&x=1','/api/approvals?limit=500&state=all',A.replace('500','501'),'/api/approvals/execute','/api/approvals/x?state=all&limit=500','https://example.invalid'+A,A+'#',
  R,R+'?',R+'?x=1',R+'/',R.replace('/resolve','/execute'),R.replace('11111111','%31'+'1111111'),R.replace('11111111','1111111g'),R.replace('11111111','..'),R.replace('11111111','x/y'),R.replace('11111111','x%2Fy'),R.replace('11111111','x'),
+ // Suggested SMS replies: only the exact owner-bound POST is admitted.
+ D,D+'?',D+'?x=1',D+'/',D+'/send',D+'#',D.replace('draft','send'),D.replace('draft','%64raft'),
  // Unclaimed routes the generic gate decides
  '/api/conversations','/api/conversations/c1/messages?before=1','/api/conversations/c1/messages/truncate','/api/status','/api/auth/me','/api/unknown','','api/notes/state','//api/notes/state',
 ];
@@ -150,6 +153,7 @@ const widenedSince=new Map([
  [R,['POST','POST flipped body']],
  [R+'?',['POST','POST flipped body']],
  [R.replace('11111111','%31'+'1111111'),['POST','POST flipped body']],
+ [D,['POST','POST flipped body']],
 ]);
 // The Cloud transport polices only the automations group: what it admitted before, by path. The old native claim
 // regex stopped at a line terminator, which a parsed Cloud URL cannot carry; the table claims those as the renderer did.

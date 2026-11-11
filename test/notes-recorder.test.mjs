@@ -283,7 +283,7 @@ test('a transcription failure keeps recording and the audio, with one short line
   driver.segment();
   await settle();
   assert.equal(s.phase, 'recording');
-  assert.equal(s.error, 'Transcription stopped. The audio is kept.');
+  assert.equal(s.error, 'Transcript stopped');
   s.close();
 });
 
@@ -296,7 +296,7 @@ test('a microphone that does not start leaves the recorder open with one line an
   const s = new NoteRecorderSession(driver, async () => null, () => {}, {onPermissionDenied: () => recoveries++});
   await assert.rejects(s.begin());
   assert.equal(s.phase, 'failed');
-  assert.equal(s.error, 'Allow the microphone in Settings.');
+  assert.equal(s.error, 'Mic off');
   assert.equal(recoveries, 1);
   refuse = false;
   await s.togglePause();
@@ -342,7 +342,7 @@ test('a Cloud route without an account asks for sign-in only after the owner cho
   assert.equal(admissions, 0);
   assert.equal(await s.finish(async () => assert.fail('An incomplete remote transcript must keep its audio'), true, true), false);
   assert.equal(admissions, 1);
-  assert.equal(s.error, 'Sign in to transcribe. The audio is kept.');
+  assert.equal(s.error, 'Sign in to transcribe');
   assert.equal(driver.state.status.recordingId, driver.id);
   assert.equal(driver.state.discarded, 0);
 });
@@ -437,7 +437,7 @@ test('agent notes (no audio kept): Done never deletes the audio while the transc
   assert.deepEqual(persisted, [], 'no transcript-only note is saved');
   assert.equal(none.state.discarded, 0, 'the only audio stays');
   assert.equal(quiet.phase, 'stopped');
-  assert.equal(quiet.error, 'No transcription is available. The audio is kept.');
+  assert.equal(quiet.error, 'No transcript');
   quiet.close();
   // A segment fails: the transcript covers only part of the audio.
   const partial = fakeDriver();

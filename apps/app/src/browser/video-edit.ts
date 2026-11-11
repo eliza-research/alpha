@@ -4,7 +4,61 @@ export type VideoEdit={start:number;end:number;rotation:number;crop:boolean};
 export function validateVideoEdit(edit:VideoEdit,duration:number){
  // Slider endpoints use subtraction; accept only its floating-point roundoff at the 0.1s boundary.
  const rangeTolerance=Number.EPSILON*Math.max(1,duration);
- if(!Number.isFinite(duration)||duration<=0||duration>300||!Number.isFinite(edit.start)||!Number.isFinite(edit.end)||edit.start<0||edit.end>duration+.05||edit.end-edit.start<.1-rangeTolerance||![0,90,180,270].includes(edit.rotation)||typeof edit.crop!=='boolean')throw Error('Choose a valid video range of at least 0.1 seconds.');
+ if(!Number.isFinite(duration)||!Number.isFinite(edit.start)||!Number.isFinite(edit.end)||typeof edit.crop!=='boolean'||!videoEditValid(edit.start,edit.end,edit.rotation,duration,rangeTolerance))throw Error('Choose a valid video range of at least 0.1 seconds.');
+}
+/** The range and rotation rules of `validateVideoEdit` for finite numbers. Checked by LemmaScript:
+ * a valid edit lies inside a source of at most 300 s and, for a tolerance under 0.1 s, is never empty. */
+export function videoEditValid(start:number,end:number,rotation:number,duration:number,tolerance:number):boolean{
+ //@ verify
+ //@ type start real
+ //@ type end real
+ //@ type duration real
+ //@ type tolerance real
+ //@ ensures \result ==> 0 < duration && duration <= 300 && 0 <= start && end <= duration + 0.05
+ //@ ensures \result ==> rotation === 0 || rotation === 90 || rotation === 180 || rotation === 270
+ //@ ensures \result ==> end - start >= 0.1 - tolerance
+ //@ ensures \result && tolerance < 0.1 ==> end - start > 0 && start < duration + 0.05
+ //@ ensures \result <==> 0 < duration && duration <= 300 && 0 <= start && end <= duration + 0.05 && end - start >= 0.1 - tolerance && (rotation === 0 || rotation === 90 || rotation === 180 || rotation === 270)
+ return duration>0&&duration<=300&&start>=0&&end<=duration+.05&&end-start>=.1-tolerance&&[0,90,180,270].includes(rotation);
+}
+/** Minutes and tenths of a second for the trim timeline. The value is rounded to tenths
+ * before it is split, so the seconds field never shows 60.0. */
+export function videoClock(value:number){
+ const {minutes,remainder}=videoClockParts(Math.max(0,Math.round(value*10)));
+ return `${minutes}:${(remainder/10).toFixed(1).padStart(4,'0')}`;
+}
+/** Whole minutes and the remaining tenths of a second. Checked by LemmaScript: the remainder is
+ * under 600 tenths (60.0 s) and the two parts add back up to the input. */
+export function videoClockParts(tenths:number):{minutes:number;remainder:number}{
+ //@ verify
+ //@ requires tenths >= 0
+ //@ ensures 0 <= \result.remainder && \result.remainder < 600
+ //@ ensures \result.minutes >= 0
+ //@ ensures \result.minutes * 600 + \result.remainder === tenths
+ return {minutes:Math.floor(tenths/600),remainder:tenths%600};
+}
+/** Duration recorded for an edited copy. `reached` is the source position where real-time
+ * encoding stopped; a source that ends before the chosen end yields the shorter copy it
+ * actually produced, never the requested range. */
+export function editedVideoDuration(edit:Pick<VideoEdit,'start'|'end'>,reached?:number){
+ const at=reached!==undefined&&Number.isFinite(reached)?reached:undefined;
+ return videoDurationReached(edit.start,edit.end,at!==undefined,at??0);
+}
+/** `editedVideoDuration` for finite numbers; `known` is false when there is no usable stop position.
+ * Checked by LemmaScript: always positive and never longer than the requested range. */
+export function videoDurationReached(start:number,end:number,known:boolean,reached:number):number{
+ //@ verify
+ //@ type start real
+ //@ type end real
+ //@ type reached real
+ //@ type \result real
+ //@ ensures \result >= 0.001
+ //@ ensures \result === 0.001 || \result <= end - start
+ //@ ensures !known || reached >= end ==> \result === (end - start >= 0.001 ? end - start : 0.001)
+ //@ ensures known && reached <= start ==> \result === 0.001
+ //@ ensures known && start <= reached && reached <= end ==> \result === (reached - start >= 0.001 ? reached - start : 0.001)
+ const from=reached>=start?reached:start,stop=known?(from<=end?from:end):end,length=stop-start;
+ return length>=.001?length:.001;
 }
 /** Local timestamp-based encoding with a real-time fallback; audio comes from the file. */
 export async function renderVideoEdit(source:{path:string;duration:number},edit:VideoEdit,signal:AbortSignal){
@@ -31,9 +85,10 @@ export async function renderVideoEdit(source:{path:string;duration:number},edit:
   if(timestamped){const path=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(timestamped);});signal.throwIfAborted();return {path,image,width:canvas.width,height:canvas.height,duration:edit.end-edit.start};}
   output=canvas.captureStream(30);audio=new AudioContext();const sourceNode=audio.createMediaElementSource(video),destination=audio.createMediaStreamDestination();sourceNode.connect(destination);output.addTrack(destination.stream.getAudioTracks()[0]);await new Promise<void>((resolve,reject)=>{const finish=(error?:unknown)=>{clearTimeout(timeout);signal.removeEventListener('abort',abort);error?reject(error):resolve();},abort=()=>finish(signal.reason),timeout=setTimeout(()=>finish(Error('Video audio startup timed out.')),15000);signal.addEventListener('abort',abort,{once:true});if(signal.aborted){abort();return;}void audio!.resume().then(()=>finish(),finish);});signal.throwIfAborted();
 
+  let reached:number|undefined;
   const blob=await new Promise<Blob>((resolve,reject)=>{
    const chunks:Blob[]=[];let bytes=0,settled=false;const finish=(error?:unknown)=>{if(settled)return;settled=true;clearTimeout(deadline);clearInterval(timer);signal.removeEventListener('abort',abort);video.pause();video.onended=null;video.onerror=null;if(recorder&&recorder.state!=='inactive')recorder.stop();error?reject(error):bytes?resolve(new Blob(chunks,{type:(recorder?.mimeType||chunks[0]?.type||'').split(';')[0]})):reject(Error('Edited video is empty.'));};
-   const abort=()=>finish(signal.reason),stop=()=>{video.pause();if(recorder!.state!=='inactive')recorder!.stop();};
+   const abort=()=>finish(signal.reason),stop=()=>{reached??=video.currentTime;video.pause();if(recorder!.state!=='inactive')recorder!.stop();};
    const deadline=setTimeout(()=>finish(Error('Video export timed out.')),(edit.end-edit.start)*1000+15000);signal.addEventListener('abort',abort,{once:true});
    const attach=()=>{recorder!.ondataavailable=e=>{if(settled)return;bytes+=e.data.size;if(bytes>100*1024*1024){finish(Error('Edited video exceeds 100 MB.'));return;}chunks.push(e.data);};recorder!.onstop=()=>finish();recorder!.onerror=()=>finish(Error('Video encoding interrupted.'));video.onerror=()=>finish(Error('Video decoding interrupted.'));video.onended=stop;};
    try{
@@ -43,7 +98,7 @@ export async function renderVideoEdit(source:{path:string;duration:number},edit:
     timer=setInterval(()=>{try{draw();if(video.currentTime>=edit.end)stop();}catch(error){finish(error);}},20);void video.play().catch(finish);
    }catch(error){finish(error);}
   });
-  signal.throwIfAborted();const path=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});signal.throwIfAborted();return {path,image,width:canvas.width,height:canvas.height,duration:edit.end-edit.start};
+  signal.throwIfAborted();const path=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(reader.error);reader.readAsDataURL(blob);});signal.throwIfAborted();return {path,image,width:canvas.width,height:canvas.height,duration:editedVideoDuration(edit,reached)};
  }finally{clearInterval(timer);if(recorder?.state==='recording')recorder.stop();output?.getTracks().forEach(t=>t.stop());await audio?.close().catch(()=>{});video.pause();video.removeAttribute('src');video.load();if(sourceUrl)URL.revokeObjectURL(sourceUrl);}
 }
 

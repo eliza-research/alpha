@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 /**
  * Read-only checks of a booted alpha_stallion_phone image on a Pixel 10a through the shared
- * launcher image verifier: exact fingerprint, Alpha's nonprivileged system launcher bytes as
+ * launcher image verifier: exact fingerprint, Alpha's system launcher bytes as
  * HOME, a remaining recovery HOME, Clock handlers, WebView, a locked (green or yellow) verified
  * boot state and, with --listener, the Sense listener's privileges. The shared pixel10a target
  * refuses orange (unlocked) and red. Device facts only; no install or role change.
  *
  *   node scripts/verify-pixel10a-image.ts --serial SERIAL --user 0 --descriptor LAUNCHER_JSON \
- *     --fingerprint EXACT --apk-path /product/app/AlphaPhone/AlphaPhone.apk --out NEW_REPORT [--listener]
+ *     --fingerprint EXACT --apk-path /product/priv-app/AlphaPhone/AlphaPhone.apk --out NEW_REPORT [--listener]
+ *
+ * The path is /product/priv-app/... when the staged descriptor names the identifier permission
+ * (scripts/stage-aosp.ts LAUNCHER_PRIVILEGED_PERMISSIONS) and /product/app/... when it names none.
  */
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';

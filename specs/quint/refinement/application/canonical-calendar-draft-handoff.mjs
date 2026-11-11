@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import {mountedCalendarFixtureSources} from '../../../../test/fixtures/calendar-mounted-editor.mjs';
-import {earlierTitle, fixtureNote, goHome, noteRefusal, noteTitle, openCameraReview, openNote, retainCalendarDraft, reviewNote,
+import {earlierTitle, fixtureNote, goHome, noteRefusal, noteTitle, openCameraReview, openNote, retainCalendarDraft, reviewCalendarDraftDiscard, reviewNote,
   scanRefusal, scanTitle, startMountedCalendar, submitCameraReview, titleInput} from '../../../../test/fixtures/calendar-draft-handoff.mjs';
 import {checkTraces} from '../check-traces.mjs';
 import {boundInputs, call, captureSources, checkpoint, trace} from './support.mjs';
@@ -13,7 +13,8 @@ const inputs = ['test/fixtures/calendar-draft-handoff.mjs', 'test/fixtures/camer
   'apps/app/src/prototype/scan-review.ts', 'apps/app/src/prototype/scan-event-review.ts', 'apps/app/src/runtime/agent-calendar.ts',
   'apps/app/src/runtime/assistant-draft-store.ts', 'apps/app/src/browser/documents.ts', 'scripts/local-ocr-assets.ts'];
 const titles = new Map([['', ''], [earlierTitle, 'earlier'], [noteTitle, 'note'], [scanTitle, 'scan']]);
-const noteNotices = new Map([[noteRefusal, 'note-refused'], ['Review the time, then Save.', 'review-time']]);
+// The fixture records toast events; accepted Note event and reminder drafts emit Check time.
+const noteNotices = new Map([[noteRefusal, 'note-refused'], ['Check time', 'review-time']]);
 
 export async function checkCanonicalCalendarDraftHandoff(extraSources = []) {
   const sources = new Set([driver, ...mountedCalendarFixtureSources, ...inputs, ...extraSources]);
@@ -87,8 +88,7 @@ export async function checkCanonicalCalendarDraftHandoff(extraSources = []) {
       };
       const beginDiscard = async () => {
         const gate = await f.invoke('hold', 'draft-clear');
-        const accepted = f.page.waitForEvent('dialog').then(dialog => dialog.accept());
-        await Promise.all([f.button('Discard event draft').click(), accepted]);
+        await reviewCalendarDraftDiscard(f, true);
         await f.page.waitForFunction(id => window.quintCalendar.held(id), gate);
         await mark('Confirm discard while the actual storage clear is held', call('beginDiscard'));
         return gate;

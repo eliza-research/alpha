@@ -27,7 +27,7 @@ export function inboxDrafts(publish:()=>void,toast:(text:string)=>void, provider
   const exact=()=>current()&&(!drafts.hasDraft||drafts.ready)&&[...copies].every(copy=>retained.has(copy));
   if(!exact())throw Error('Email draft is still changing');
   await Promise.all([...retained].map(copy=>copy.flushForAppUpdate(exact)));
-  if(!exact())throw Error('Email draft changed');
+  if(!exact())throw Error('Changed');
   for(const copy of retained)if(copy.retired)copies.delete(copy);
  }});
 }

@@ -104,7 +104,7 @@ async function fixture(compiled) {
 export async function checkFilesBrowserController(extraSources = []) {
   const compiled = await compile(extraSources), traces = [];
   for (const name of ['primary-volume-order', 'current-denial', 'old-denial', 'old-grant', 'old-state-error', 'old-list', 'old-list-error',
-    'leave-state', 'leave-list', 'reenter-state', 'reenter-list', 'agent-overlap', 'agent-replaced-by-navigation']) {
+    'leave-state', 'leave-list', 'reenter-state', 'reenter-list', 'agent-overlap', 'agent-replaced-by-navigation', 'agent-replaced-by-leave']) {
     const f = await fixture(compiled), t = trace(name, f.observe());
     const step = (label, action) => checkpoint(t, label, action, f.observe());
     const replyState = async (id, access = 'granted', volumes = [1], success = true) => {
@@ -127,14 +127,17 @@ export async function checkFilesBrowserController(extraSources = []) {
           await replyList(1, [1, 2]);
           if (name === 'primary-volume-order') {
             assert.deepEqual(f.observe()['s.volumes'], [1, 2]);
-          } else if (name === 'agent-overlap' || name === 'agent-replaced-by-navigation') {
+          } else if (name.startsWith('agent-')) {
             f.agentRead(); step('registered agent operation requests fresh state', call('agentRead'));
             if (name === 'agent-overlap') {
               f.agentRead(); step('newer registered operation requests state', call('agentRead')); await replyState(3); await replyState(2);
               assert.equal(f.shareCalls.length, 1);
-            } else {
+            } else if (name === 'agent-replaced-by-navigation') {
               await f.navigate(2); step('folder navigation replaces old agent read', call('navigate', 2));
               await replyState(3); await replyList(3, [3]); await replyState(2); assert.equal(f.shareCalls.length, 0);
+            } else {
+              f.leave(); step('leaving Files retires the held agent access check', call('leave'));
+              await replyState(2); assert.equal(f.shareCalls.length, 0);
             }
           } else {
             await f.refresh(); step('visibility refresh starts held read', call('refresh'));
@@ -156,5 +159,5 @@ export async function checkFilesBrowserController(extraSources = []) {
   return checkTraces(boundInputs({model: 'FilesBrowserController', sources: compiled.sources, traces, scope: 'bounded-component', assumptions: [
     'Actual installed Files browser, storage helpers and registered Files agent runner execute with deferred native storage ports. A read-only build-time closure observer exposes state without changing it.',
     'The campaign models current folder reads, shared access/volume readback and registered share admission. Two folders, three entries, two volumes and six read identities bound the model.',
-    'Storage state and listing completion are settled promise macrosteps. Category/Trash aggregation, filters, selection, preview, mutations, dialogs, watch ownership and provider persistence remain explicit extensions. Native storage effects themselves are controlled ports.'] }));
+    'Storage state and listing completion are settled promise macrosteps. Direct open and late selection release use the shared FilesDirectAdmission model and the Alpha cold-start browser flows. Category/Trash aggregation, filters, mutations, dialogs, watch ownership and provider persistence remain explicit extensions. Native storage effects themselves are controlled ports.'] }));
 }

@@ -207,7 +207,7 @@ public final class UpdateFlowTest {
   plugin("activation",null);plugin("updateResume",null);plugin("settledActivation",null);plugin("settledOutcome",null);plugin("settledResumeBridge",null);plugin("updateVerified",null);
   var registry=AlphaDevicePlugin.class.getDeclaredField("updateBridges");
   registry.setAccessible(true);((java.util.Set<?>)registry.get(null)).clear();
-  plugin("updateOwner",null);plugin("updateConfirm",null);plugin("updateSession",0);plugin("updateDue",false);plugin("updateOpen",false);plugin("updateAutomatic",false);plugin("updateAsked",0L);
+  plugin("updateOwner",null);plugin("updateConfirm",null);plugin("updateReceiptRequired",false);plugin("updateSession",0);plugin("updateDue",false);plugin("updateOpen",false);plugin("updateAutomatic",false);plugin("updateAsked",0L);
   java.lang.reflect.Field attempt=AlphaDevicePlugin.class.getDeclaredField("updating");
   attempt.setAccessible(true);((java.util.concurrent.atomic.AtomicBoolean)attempt.get(null)).set(false);
  }
@@ -2065,6 +2065,47 @@ public final class UpdateFlowTest {
   check(next.resolved.get()==1&&cacheTlsRequests.get()==1&&context.packages.installer.committed.size()==1&&!download(context).exists(),"retry revalidates cached bytes and commits once without a second TLS request");
   System.out.println("PASS verified cache retry over owned TLS: one request, exact retained bytes, one synthetic installer commit");
  }
+ private static PluginCall updateState(AlphaDevicePlugin bridge)throws Exception{
+  PluginCall read=new PluginCall(new JSObject());bridge.updateState(read);read.awaitAnswer();return read;
+ }
+ private static PluginCall continueUpdate(AlphaDevicePlugin bridge,PluginCall read)throws Exception{
+  PluginCall call=new PluginCall(new JSObject().put("activationId",read.result.optString("activationId")).put("bridgeId",read.result.optString("bridgeId")));
+  bridge.continueUpdate(call);call.awaitAnswer();return call;
+ }
+ private static void aReceivedConfirmationSurvivesOnlyUntilFirstLaunch(File cache)throws Exception{
+  Context context=installing(cache);
+  AlphaDevicePlugin origin=bridge(context,Lifecycle.State.RESUMED);tap(origin);stop(origin);
+  PackageInstaller installer=context.packages.installer;
+  int id=committed(context);
+  Intent confirm=new Intent(UpdateConfirmationReceipt.ACTION_CONFIRM_INSTALL).setPackage("android.fixture.packageinstaller").putExtra(PackageInstaller.EXTRA_SESSION_ID,id);
+  Intent callback=new Intent(installer.lastCommitReceiver.callback).putExtra(PackageInstaller.EXTRA_STATUS,PackageInstaller.STATUS_PENDING_USER_ACTION)
+   .putExtra(PackageInstaller.EXTRA_SESSION_ID,id).putExtra(Intent.EXTRA_INTENT,confirm);
+  var receiver=new AlphaUpdateStatusReceiver();
+  installer.sendConfirmation(id);
+  receiver.onReceive(context,new Intent(callback).setData(Uri.parse("alpha-update-status:wrong/"+id)));
+  receiver.onReceive(context,new Intent(callback).putExtra(Intent.EXTRA_INTENT,new Intent(confirm).putExtra(PackageInstaller.EXTRA_SESSION_ID,id+1)));
+  check(!updateState(origin).result.optBoolean("canContinue",false),"a callback with wrong activation identity admits nothing");
+  receiver.onReceive(context,callback);
+  check(origin.activity.started.isEmpty(),"the actual callback stays queued when its owner is not resumed");
+  AlphaDevicePlugin successor=restarted(context);
+  PluginCall recovered=updateState(successor);
+  check(recovered.result.optBoolean("canContinue",false)&&successor.activity.started.isEmpty(),"a new bridge sees the captured callback and waits for the owner tap");
+  connections.clear();
+  android.util.AtomicFile.refuseRename=true;
+  try{continueUpdate(successor,recovered);check(successor.activity.started.isEmpty(),"an unconfirmed OPENED write cannot launch Android");}
+  finally{android.util.AtomicFile.refuseRename=false;}
+  check(continueUpdate(successor,recovered).resolved.get()==1&&successor.activity.started.size()==1,"the exact recovery tap opens the stored Android callback");
+  Intent opened=successor.activity.started.get(0);
+  check(confirm.filterEquals(opened)&&opened.getIntExtra(PackageInstaller.EXTRA_SESSION_ID,-1)==id,"confirmation target and session survive recovery");
+  AlphaDevicePlugin third=restarted(context);
+  receiver.onReceive(context,callback);
+  check(!updateState(third).result.optBoolean("canContinue",false)&&third.activity.started.isEmpty(),"a duplicate callback cannot revive a confirmation already opened before death");
+  check(installer.committed.equals(List.of(id))&&installer.abandoned.isEmpty()&&connections.isEmpty(),"recovery never downloads, abandons or commits again");
+  check(AlphaDevicePlugin.UpdatePause.store().read()!=null,"the exact install remains paused until Android settles it");
+  installer.destroy(id);
+  check(updateState(third).result.optBoolean("idle",false),"an observed terminal session settles the original activation");
+  System.out.println("PASS exact pending installer callback survives process replacement once");
+ }
  public static void main(String[] args)throws Exception{
   if(args.length>0)prepareCacheTls(args[0]);
   serveFixtureHttps();
@@ -2077,6 +2118,7 @@ public final class UpdateFlowTest {
    automaticUpdatesRequireSupportedAndroidAndExistingConsent(cache);
    manualUpdateDoesNotWaitForAutomaticColdBootReadiness(cache);
    automaticPendingActionWaitsForAnExplicitContinue(cache);
+   aReceivedConfirmationSurvivesOnlyUntilFirstLaunch(cache);
    consentRevokedBetweenAdmissionReadsNeverOpensSettingsAutomatically(cache);
    automaticSuccessReconcilesTheExactInstalledSuccessor(cache);
    automaticDraftRefusalNeverStopsOrCommits(cache);

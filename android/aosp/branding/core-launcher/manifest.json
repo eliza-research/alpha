@@ -4,7 +4,7 @@
   "revision": "94b4c163b7dfe5ce3607f7bb8456f9573f7de57d",
   "targetAppId": "ai.alphacompute.alphaphone",
   "patch": "alpha-core-launcher.patch",
-  "patchSha256": "39207913d620ee7d51a7ba08646584cd44b2b7055e107febb0d5bd5d6973cb12",
+  "patchSha256": "b46e01801915f65e8ba06171bc0ca76764dd944bbbe658f64e8d91b557d63e15",
   "files": [
     {
       "path": "packages/SystemUI/res/values/config.xml",
@@ -27,7 +27,7 @@
     {
       "path": "packages/SystemUI/src/com/android/systemui/qs/pipeline/data/repository/AlphaQsDefaultsPolicy.java",
       "beforeSha256": null,
-      "afterSha256": "c755b7b8f817ec4d69f29e307cdc1f2851203933a7fe03244b8f91e4ce97989f",
+      "afterSha256": "d9b415bf176b51f52f8e2976282174937ab713c5297bcae410d578a73f6f60a8",
       "new": true
     },
     {
