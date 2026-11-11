@@ -180,6 +180,83 @@ class CloudSigningInputTest(unittest.TestCase):
             "outputObject": f"signed/{digest}/{'d' * 32}/signed-apks.tar",
         }
 
+    def candidate_api_responses(self):
+        source = self.pin["alphaCommit"]
+        repository = {"id": PRODUCER.REPOSITORY_ID, "full_name": PRODUCER.REPOSITORY,
+                      "owner": {"id": PRODUCER.OWNER_ID}}
+        run = {"id": 171, "run_attempt": 2, "run_number": 44, "event": "push", "head_branch": "main",
+               "head_sha": source, "workflow_id": PRODUCER.WORKFLOW_ID, "path": PRODUCER.WORKFLOW,
+               "status": "completed", "conclusion": "success",
+               "repository": repository, "head_repository": copy.deepcopy(repository)}
+        artifact = {"id": 202, "expired": False, "expires_at": "2099-01-01T00:00:00Z",
+                    "name": f"app-native-candidate-44-{source}-171-2", "size_in_bytes": self.pin["archiveBytes"],
+                    "digest": "sha256:" + self.pin["archiveSHA256"],
+                    "workflow_run": {"id": 171, "head_sha": source, "head_branch": "main",
+                                     "repository_id": PRODUCER.REPOSITORY_ID,
+                                     "head_repository_id": PRODUCER.REPOSITORY_ID}}
+        return {f"repos/{PRODUCER.REPOSITORY}/actions/runs/171/attempts/2": run,
+                f"repos/{PRODUCER.REPOSITORY}/actions/artifacts/202": artifact}
+
+    def test_candidate_preparation_yields_mirror_request_then_exact_signing_plan(self):
+        self.write_candidate()
+        api = self.candidate_api_responses().__getitem__
+        original = self.archive.read_bytes()
+        mirror = ADMISSION.prepare_candidate(self.archive, "202", api=api)
+        self.assertEqual(mirror["schema"], "alpha-candidate-mirror-request/v1")
+        self.assertEqual(mirror["artifactId"], "202")
+        self.assertEqual(mirror["mirror"], {
+            "bucket": self.pin["privateStorage"]["bucket"], "object": self.pin["privateStorage"]["inputObject"],
+            "bytes": len(original), "sha256": self.pin["archiveSHA256"],
+        })
+        self.assertNotIn("privateStorage", mirror)
+        with self.assertRaises((KeyError, ValueError)):
+            PRODUCER.validate_private_storage(mirror)
+
+        plan = ADMISSION.prepare_candidate(self.archive, "202", input_generation="123",
+                                           delivery_id="d" * 32, api=api)
+        self.assertEqual(plan, self.pin)
+        self.assertEqual(PRODUCER.validate_private_storage(plan), self.pin["privateStorage"])
+        self.assertIs(ADMISSION.admit(self.archive, plan)["signed"], False)
+        self.assertEqual(self.archive.read_bytes(), original)
+        self.assertEqual(set(self.archive.parent.iterdir()), {self.archive})
+
+    def test_candidate_preparation_refuses_wrong_official_artifact_or_attempt(self):
+        self.write_candidate()
+        for endpoint, field, value in (
+            ("artifacts/202", "digest", "sha256:" + "0" * 64),
+            ("artifacts/202", "size_in_bytes", self.pin["archiveBytes"] + 1),
+            ("artifacts/202", "expired", True),
+            ("artifacts/202", "name", f"app-native-candidate-44-{self.pin['alphaCommit']}-171-1"),
+            ("runs/171/attempts/2", "id", 172),
+            ("runs/171/attempts/2", "run_attempt", 1),
+            ("runs/171/attempts/2", "event", "workflow_dispatch"),
+            ("runs/171/attempts/2", "conclusion", "failure"),
+        ):
+            with self.subTest(endpoint=endpoint, field=field):
+                responses = self.candidate_api_responses()
+                responses[f"repos/{PRODUCER.REPOSITORY}/actions/{endpoint}"][field] = value
+                with self.assertRaises(ValueError):
+                    ADMISSION.prepare_candidate(self.archive, "202", api=responses.__getitem__)
+
+    def test_candidate_preparation_checks_archive_evidence_and_unsigned_bytes(self):
+        for extra in (
+            {"inputs-after.json": b"{}"},
+            {"launcher-release-unsigned.apk": self.apk_bytes["launcher-release-unsigned.apk"].upper()},
+        ):
+            with self.subTest(member=next(iter(extra))):
+                self.write_candidate(extra)
+                with self.assertRaises(ValueError):
+                    ADMISSION.prepare_candidate(self.archive, "202", api=self.candidate_api_responses().__getitem__)
+
+    def test_candidate_preparation_refuses_invalid_or_unpaired_delivery_fields(self):
+        self.write_candidate()
+        api = self.candidate_api_responses().__getitem__
+        for generation, delivery_id in ((None, "d" * 32), ("123", None), ("0", "d" * 32),
+                                        ("01", "d" * 32), ("123", "d" * 31), ("123", "D" * 32)):
+            with self.subTest(generation=generation, delivery_id=delivery_id), self.assertRaises(ValueError):
+                ADMISSION.prepare_candidate(self.archive, "202", input_generation=generation,
+                                            delivery_id=delivery_id, api=api)
+
     def test_candidate_admits_only_exact_native_receipts_and_frozen_inputs(self):
         self.write_candidate()
         stage = self.archive.parent / "candidate-staged"

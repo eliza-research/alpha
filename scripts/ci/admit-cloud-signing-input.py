@@ -1,4 +1,4 @@
-"""Read-only admission of a reviewed Alpha Cloud producer archive before signing."""
+"""Read-only admission and signing handoff for Alpha application producer archives."""
 
 import argparse
 import hashlib
@@ -7,11 +7,14 @@ from pathlib import Path
 import re
 import shutil
 import stat
+import subprocess
+import sys
 import zipfile
 
 from app_update_producer import (
-    CANDIDATE, CANDIDATE_PACKAGE, MAX_ARCHIVE_BYTES, PRIVATE_RUNNER, REPOSITORY, WORKFLOW, WORKFLOW_ID,
-    apk_member_limit, copy_verified, matches, producer_kind,
+    CANDIDATE, CANDIDATE_PACKAGE, MAX_ARCHIVE_BYTES, PRIVATE_APK_BUCKET, PRIVATE_RUNNER, REPOSITORY,
+    WORKFLOW, WORKFLOW_ID, apk_member_limit, archive_pins, copy_verified, gh_json, github_candidate,
+    matches, positive_id, producer_kind, validate_private_storage,
 )
 
 VARIANTS = ("standalone", "launcher")
@@ -117,6 +120,27 @@ def debug_apk_members(archive, verified, kind):
     return members
 
 
+def archive_members(bundle):
+    names = {}
+    for entry in bundle.infolist():
+        require(entry.filename not in names, "Archive contains a duplicate entry")
+        names[entry.filename] = entry
+    return names
+
+
+def regular_member(names, name, limit):
+    entry = names.get(name)
+    mode = stat.S_IFMT(entry.external_attr >> 16) if entry else None
+    require(entry and not entry.is_dir() and mode in (0, stat.S_IFREG) and
+            not (entry.flag_bits & 1) and 0 < entry.file_size <= limit,
+            f"Missing, nonregular or oversized archive member: {name}")
+    return entry
+
+
+def read_evidence(bundle, names, name):
+    return bundle.read(regular_member(names, name, 4 * 1024**2))
+
+
 def admit(archive, pin, stage=None):
     kind = producer_kind(pin)
     profile = "native" if kind == CANDIDATE else "cloud"
@@ -144,21 +168,10 @@ def admit(archive, pin, stage=None):
                 "Archive bytes differ from the reviewed digest")
         stream.seek(0)
         with zipfile.ZipFile(stream) as bundle:
-            names = {}
-            for entry in bundle.infolist():
-                require(entry.filename not in names, "Archive contains a duplicate entry")
-                names[entry.filename] = entry
-
-            def member(name, limit):
-                entry = names.get(name)
-                mode = stat.S_IFMT(entry.external_attr >> 16) if entry else None
-                require(entry and not entry.is_dir() and mode in (0, stat.S_IFREG) and
-                        not (entry.flag_bits & 1) and 0 < entry.file_size <= limit,
-                        f"Missing, nonregular or oversized archive member: {name}")
-                return entry
+            names = archive_members(bundle)
 
             def data(name):
-                return bundle.read(member(name, 4 * 1024**2))
+                return read_evidence(bundle, names, name)
 
             require(("app-update-candidate.json" in names) == (kind == CANDIDATE) and
                     ("private-producer.json" in names) == (kind == PRIVATE_RUNNER),
@@ -228,7 +241,7 @@ def admit(archive, pin, stage=None):
                         and row["releaseAdmission"]["blockers"] == ["unsigned release"],
                         f"{variant} is not the reviewed unsigned release")
                 require(row["sha256"] == name_map[name] == apks[variant], f"{variant} APK digests disagree")
-                apk_member = member(name, apk_member_limit(kind))
+                apk_member = regular_member(names, name, apk_member_limit(kind))
                 if candidate_apks is not None:
                     require(candidate_apks[variant] == {"file": name, "bytes": apk_member.file_size, "sha256": apks[variant]},
                             f"{variant} candidate receipt differs from the exact APK")
@@ -258,7 +271,77 @@ def admit(archive, pin, stage=None):
             "updateChannel": channel, "unsignedApkSHA256": apks, "inputVerified": True, "signed": False}
 
 
+def prepare_candidate(archive, artifact_id, *, input_generation=None, delivery_id=None, api=gh_json):
+    require(positive_id(artifact_id), "Exact candidate artifact ID required")
+    require((input_generation is None) == (delivery_id is None),
+            "Supply both the mirror generation and the delivery ID")
+    if input_generation is not None:
+        require(matches(re.compile(r"[1-9][0-9]{0,24}"), input_generation), "Exact input generation required")
+        require(matches(re.compile(r"[0-9a-f]{32}"), delivery_id), "A 32-hex exclusive delivery ID is required")
+    metadata = api(f"repos/{REPOSITORY}/actions/artifacts/{artifact_id}")
+    require(isinstance(metadata, dict) and metadata.get("id") == int(artifact_id) and metadata.get("expired") is False,
+            "Candidate artifact identity or expiry differs")
+    remote_digest = metadata.get("digest")
+    require(isinstance(remote_digest, str) and remote_digest.startswith("sha256:"),
+            "Candidate artifact has no SHA-256")
+    archive_hash = remote_digest.removeprefix("sha256:")
+    pin = {"archiveBytes": metadata["size_in_bytes"], "archiveSHA256": archive_hash}
+    archive_pins(pin)
+    require(archive.is_file() and not archive.is_symlink(), "Candidate archive must be a regular file")
+    with archive.open("rb") as stream:
+        require(archive.stat().st_size == pin["archiveBytes"] and
+                hashlib.file_digest(stream, "sha256").hexdigest() == archive_hash,
+                "Original candidate ZIP differs from official artifact size or digest")
+        stream.seek(0)
+        with zipfile.ZipFile(stream) as bundle:
+            members = archive_members(bundle)
+            candidate_bytes = read_evidence(bundle, members, "app-update-candidate.json")
+            producer_bytes = read_evidence(bundle, members, "producer-evidence/manifest.json")
+    candidate = json.loads(candidate_bytes)
+    attempt = candidate["runAttempt"]
+    require(positive_id(attempt), "Candidate receipt lacks an exact run attempt")
+    input_object = f"unsigned/{archive_hash}.zip"
+    storage = {"bucket": PRIVATE_APK_BUCKET, "inputObject": input_object}
+    pin.update(producerKind=CANDIDATE, producerRunId=candidate["runId"], producerRunAttempt=int(attempt),
+               artifactId=artifact_id, alphaCommit=candidate["sourceCommit"], sdkCommit=candidate["sdkCommit"],
+               versionCode=candidate["versionCode"], updateChannel=candidate["updateChannel"],
+               candidateReceiptSHA256=digest(candidate_bytes), producerManifestSHA256=digest(producer_bytes),
+               unsignedApkSHA256={variant: candidate["apks"][variant]["sha256"] for variant in VARIANTS},
+               privateStorage=storage)
+    if input_generation is not None:
+        storage.update(inputGeneration=input_generation,
+                       outputObject=f"signed/{archive_hash}/{delivery_id}/signed-apks.tar")
+        validate_private_storage(pin)
+    github_candidate(pin, api)
+    admit(archive, pin)
+    if input_generation is not None:
+        return pin
+    return {"schema": "alpha-candidate-mirror-request/v1", "artifactId": artifact_id,
+            "mirror": {"bucket": PRIVATE_APK_BUCKET, "object": input_object, "bytes": pin["archiveBytes"],
+                       "sha256": archive_hash}}
+
+
+def candidate_cli(argv):
+    parser = argparse.ArgumentParser(description="Prepare a read-only Alpha native candidate signing handoff")
+    parser.add_argument("archive", type=Path)
+    parser.add_argument("artifact_id")
+    parser.add_argument("--input-generation")
+    parser.add_argument("--delivery-id")
+    args = parser.parse_args(argv)
+    try:
+        plan = prepare_candidate(args.archive, args.artifact_id, input_generation=args.input_generation,
+                                 delivery_id=args.delivery_id)
+        print(json.dumps(plan, indent=2))
+    except (KeyError, TypeError, ValueError, OSError, zipfile.BadZipFile) as error:
+        parser.exit(1, f"Refused candidate signing handoff: {error}\n")
+    except subprocess.SubprocessError:
+        parser.exit(1, "Refused candidate signing handoff: GitHub metadata unavailable.\n")
+
+
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["prepare-candidate"]:
+        candidate_cli(sys.argv[2:])
+        sys.exit(0)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("archive", type=Path)
     parser.add_argument("reviewed_pins", type=Path)
