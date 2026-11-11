@@ -34,6 +34,80 @@ test('encoded video and thumbnail use the zoomed crop and release the processing
   await c.stopPreview();return {pixels,thumbnail,released:(window as any).controlStreams.every((s:MediaStream)=>s.getTracks().every(t=>t.readyState==='ended'))};
  });expect(result.pixels[0][1]).toBeGreaterThan(220);expect(result.pixels[1][2]).toBeGreaterThan(220);expect(result.thumbnail[0][1]).toBeGreaterThan(230);expect(result.thumbnail[1][2]).toBeGreaterThan(230);expect(result.released).toBe(true);
 });
+for (const mime of ['video/webm;codecs=vp8', 'video/mp4;codecs=avc1.42001f']) {
+ test(`a capped ${mime.split(';')[0]} saves the retained frames and measured duration`, async ({page}) => {
+  test.skip(!await page.evaluate(type => MediaRecorder.isTypeSupported(type), mime), 'Browser recorder lacks this codec');
+  const result = await page.evaluate(async type => {
+   const {browserCamera, browserPhotoLibrary} = await import('/src/prototype/browser-camera.ts');
+   const source = document.querySelector<HTMLVideoElement>('[data-alpha-camera="viewfinder"] video')!;
+   const Recorder = window.MediaRecorder;
+   const encoder = new Recorder(source.srcObject as MediaStream, {mimeType: type});
+   const chunks: Blob[] = [];
+   encoder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+   const encoded = new Promise<void>(resolve => { encoder.onstop = () => resolve(); });
+   encoder.start(150);
+   await new Promise(resolve => setTimeout(resolve, 1250));
+   encoder.stop();
+   await encoded;
+   const [prefix, overflow] = chunks;
+   if (!prefix || !overflow) throw Error('The browser recorder did not emit a prefix and a terminal chunk');
+
+   // Use the real encoder bytes with a controlled delivery order. Reaching the
+   // exact cap requests stop, then the encoder's nonempty terminal chunk arrives.
+   let deliver!: () => void;
+   class CappedRecorder {
+    state: RecordingState = 'inactive';
+    mimeType = type;
+    ondataavailable?: (event: BlobEvent) => void;
+    onstop?: () => void;
+    start() {
+     this.state = 'recording';
+     deliver = () => this.ondataavailable?.(new BlobEvent('dataavailable', {data: prefix}));
+    }
+    stop() {
+     if (this.state === 'inactive') return;
+     this.state = 'inactive';
+     queueMicrotask(() => {
+      this.ondataavailable?.(new BlobEvent('dataavailable', {data: overflow}));
+      this.onstop?.();
+     });
+    }
+   }
+   window.MediaRecorder = CappedRecorder as unknown as typeof MediaRecorder;
+   try {
+    await browserCamera.startRecording({audio: false, maxDuration: 5, maxFileSize: prefix.size});
+    await new Promise(resolve => setTimeout(resolve, 650));
+    deliver();
+    const result = await browserCamera.stopRecording();
+    const row = await browserPhotoLibrary.read({id: (await browserPhotoLibrary.list()).items.find(item => item.kind === 'video')!.id});
+    const playback = document.createElement('video');
+    playback.preload = 'auto';
+    const decoded = new Promise<void>((resolve, reject) => {
+     const deadline = setTimeout(() => reject(Error('Saved prefix did not decode')), 5000);
+     playback.onloadeddata = () => { clearTimeout(deadline); resolve(); };
+     playback.onerror = () => { clearTimeout(deadline); reject(Error('Saved prefix was unreadable')); };
+    });
+    playback.src = row.path!;
+    try {
+     await decoded;
+     return {size: result.fileSize, prefixSize: prefix.size, duration: result.duration, storedDuration: row.duration, decodedWidth: playback.videoWidth};
+    } finally {
+     playback.removeAttribute('src');
+     playback.load();
+    }
+   } finally {
+    window.MediaRecorder = Recorder;
+    await browserCamera.stopPreview();
+   }
+  }, mime);
+  expect(result.size).toBe(result.prefixSize);
+  expect(result.decodedWidth).toBeGreaterThan(0);
+  expect(result.duration).toBeGreaterThan(0);
+  expect(result.duration).toBeLessThan(0.45);
+  expect(result.storedDuration).toBe(result.duration);
+ });
+}
+
 test('flash requires a confirmed torch capability and never applies a brightness filter',async({page})=>{
  const result=await page.evaluate(async()=>{
   const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');const video=document.querySelector('[data-alpha-camera="viewfinder"] video') as HTMLVideoElement,track=(video.srcObject as MediaStream).getVideoTracks()[0];let unavailable=false;
@@ -61,9 +135,13 @@ test('a zoomed recording stops when its camera source ends',async({page})=>{
  expect(await page.evaluate(()=>(window as any).videoAudioDenials)).toBe(1);
  await page.getByRole('button',{name:'Record without sound',exact:true}).click();await expect(page.getByRole('button',{name:'Stop recording',exact:true})).toBeVisible();
  expect(await page.evaluate(()=>(window as any).videoAudioDenials)).toBe(1);
+ const recording=page.getByRole('timer',{name:'Recording',exact:true});
+ await expect(recording).toBeVisible();
  await expect.poll(()=>page.evaluate(async()=>{const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');return (await c.getRecordingState()).fileSize;})).toBeGreaterThan(0);
  await page.evaluate(()=>{const video=document.querySelector('[data-alpha-camera="viewfinder"] video') as HTMLVideoElement;(video.srcObject as MediaStream).getVideoTracks()[0].dispatchEvent(new Event('ended'));});
  await expect.poll(()=>page.evaluate(async()=>{const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');return (await c.getRecordingState()).isRecording;})).toBe(false);
+ await expect(recording).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Open last video',exact:true})).toBeVisible();
  await expect.poll(()=>page.evaluate(async()=>{const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');return (await library.list({album:'videos'})).items.length;})).toBe(1);
  const saved=await page.evaluate(async()=>{
   const {browserPhotoLibrary:library}=await import('/src/prototype/browser-camera.ts');const rows=(await library.list({album:'videos'})).items;
@@ -97,24 +175,31 @@ test('the last capture opens directly and Back returns to the Camera viewfinder'
 test('switching with flash on and zoom 2x keeps both reset when the switch fails',async({page})=>{
  await page.evaluate(async()=>{
   const {browserCamera:c}=await import('/src/prototype/browser-camera.ts');const calls=(window as any).flipCalls=[] as string[],setZoom=c.setZoom,switchCamera=c.switchCamera;
-  // Only the control boundary is observed; the browser camera still zooms and switches.
+  // Refuse the front lens at the media boundary after the real switch releases the old preview.
+  const getUserMedia=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+  navigator.mediaDevices.getUserMedia=async constraints=>{
+   if((window as any).failSwitch&&typeof constraints?.video==='object'&&constraints.video.facingMode==='user')throw new DOMException('Front camera unavailable','NotFoundError');
+   return getUserMedia(constraints);
+  };
   c.flashAvailable=()=>true;c.lightingLabel=(on:boolean)=>`Flash ${on?'on':'off'}`;c.setSettings=async(input:{settings:{flash:string}})=>{calls.push('flash '+input.settings.flash);};
   c.setZoom=async(input:{zoom:number})=>{calls.push('zoom '+input.zoom);await setZoom(input);};
-  c.switchCamera=async(options:{direction:'front'|'back'})=>{calls.push('switch '+options.direction);if((window as any).failSwitch)throw Object.assign(Error('Target camera has no flash unit'),{code:'FLASH_UNSUPPORTED'});return switchCamera(options);};
+  c.switchCamera=async options=>{calls.push('switch '+options.direction);return switchCamera(options);};
  });
  await page.getByRole('button',{name:'Zoom 2x',exact:true}).click();await expect(page.getByRole('button',{name:'Zoom 2x',exact:true})).toHaveCSS('width','40px');
  await page.getByRole('button',{name:'Flash off',exact:true}).click();await expect(page.getByRole('button',{name:'Flash on',exact:true})).toBeVisible();
  const calls=()=>page.evaluate(()=>(window as any).flipCalls.splice(0));expect(await calls()).toEqual(['zoom 2','flash on']);
  await page.evaluate(()=>(window as any).failSwitch=true);await page.getByRole('button',{name:'Switch camera',exact:true}).click();
- await expect(page.getByRole('alert',{name:'Can’t start camera',exact:true})).toBeVisible();
+ const recovery=page.getByRole('alert',{name:'Can’t start camera',exact:true});
+ await expect(recovery).toBeVisible();
  await expect(page.locator('[data-alpha-camera="viewfinder"] video')).toHaveCount(0);
  expect(await page.evaluate(()=>(window as any).controlStreams.every((s:MediaStream)=>s.getTracks().every(t=>t.readyState==='ended')))).toBe(true);
  expect(await calls()).toEqual(['flash off','zoom 1','switch front']);
- await expect(page.getByRole('button',{name:'Flash off',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Zoom 1x',exact:true})).toHaveCSS('width','40px');
  await page.evaluate(()=>(window as any).failSwitch=false);
- await page.getByRole('alert',{name:'Can’t start camera',exact:true}).getByRole('button',{name:'Retry',exact:true}).click();
+ await recovery.getByRole('button',{name:'Retry',exact:true}).click();
+ await expect(recovery).toHaveCount(0);
  await expect.poll(()=>page.locator('[data-alpha-camera="viewfinder"] video').evaluate((video:HTMLVideoElement)=>video.readyState)).toBeGreaterThanOrEqual(2);
  expect(await calls()).toEqual([]);
+ await expect(page.getByRole('button',{name:'Flash off',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Zoom 1x',exact:true})).toHaveCSS('width','40px');
  await page.getByRole('button',{name:'Switch camera',exact:true}).click();
  await expect(page.getByRole('button',{name:'Flash off',exact:true})).toBeVisible();await expect(page.getByRole('button',{name:'Zoom 2x',exact:true})).toHaveCount(0);
  expect(await calls()).toEqual(['switch front']);
