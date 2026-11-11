@@ -1,3 +1,4 @@
+import {confirmCalendarAction} from './calendar-confirmation';
 import {Capacitor} from '@capacitor/core';
 import {AssistantDraftController} from './assistant-draft-controller';
 import {assistantDraftStore} from '../runtime/assistant-draft-store';
@@ -48,11 +49,11 @@ export function installCalendarFormDraftAdapter(Component:any,views:Bag,options:
   out.formDraftError=active&&draft.error;out.formDraftListError=!state.form&&draft.error;
   out.formDraftSavedTitle=(()=>{try{return decodeCalendarForm(draft.savedText).form.title||'Untitled event';}catch{return 'Saved draft unavailable';}})();
   const restore=(saved=false)=>{try{shell.calendarDraftRestore=true;if(saved)controller.restoreSaved();else{const restored=decodeCalendarForm(shell.calendarDraftText);shell.calendarDraftAnchor=new Date();shell.calendarDraftIdentity=restored.form.creationId;api.set({form:restored.form,open:null,month:null});if(restored.zone!==Intl.DateTimeFormat().resolvedOptions().timeZone)api.toast('Time zone changed. Review the restored date and time before saving.');}}catch{api.toast('This draft can’t be restored. Open form recovery.');}finally{shell.calendarDraftRestore=false;}};
-  out.discardFormDraft=()=>{
-   const form=state.form;if(!active||!window.confirm('Discard this draft? Saved events and reminders won’t change.'))return;
+  out.discardFormDraft=async()=>{
+   const form=state.form;if(!active)return;
    const text=shell.calendarDraftText;
    const current=()=>owner===shell&&shell.live&&api.isActive()&&shell.vget('calendar').form===form;
-   if(!current())return;
+   if(!await confirmCalendarAction(shell,api,'Discard draft?','Saved events and reminders won’t change.','Discard draft',()=>current()&&shell.calendarDraftText===text)||!current()||shell.calendarDraftText!==text)return;
    shell.calendarDraftSuppressed=text;
    void controller.consume(text,current).then(()=>{if(owner===shell&&shell.live&&api.isActive()&&shell.vget('calendar').form===form)api.set({form:null,open:null});}).catch(()=>{shell.calendarDraftSuppressed=undefined;api.toast('This draft changed. Review it before discarding.');});
   };

@@ -235,6 +235,9 @@ jobs:
         run: |
           node scripts/app-update-candidate.ts version test-results/resident-ci-candidate/version.json
           echo "ELIZAOS_VERSION_CODE=$(node -p 'require("./test-results/resident-ci-candidate/version.json").versionCode')" >> "$GITHUB_ENV"
+      - name: Prepare pinned JSON dependency for host contract tests
+        shell: bash
+        run: bash scripts/ci/prepare-host-test-json.sh
       - name: Verify source metadata and voice contracts before resident preparation
         timeout-minutes: 5
         env:
@@ -298,9 +301,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/ci/resident-phase.py --name bun-downloads --seconds 600 python3 scripts/ci/acquire-resident-bun.py
-      - name: Prepare pinned JSON dependency for host contract tests
-        shell: bash
-        run: bash scripts/ci/prepare-host-test-json.sh
       - name: Stage and archive qualified resident runtime
         env:
           NODE_OPTIONS: --max-old-space-size=4096

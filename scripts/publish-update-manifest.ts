@@ -19,9 +19,10 @@ import { RELEASE_SIGNER_FILE, readReleaseSigner, type ReleaseSigner } from "./bu
 import { admitUnitApk, readUnitApkManifest } from "./provision-unit.ts";
 import { inspectUpdateApk } from "./update-apk-admission.ts";
 import { updateArtifactDigest } from "./update-artifact.ts";
+import { APP_UPDATE_MANIFEST as MANIFEST_NAME } from "./update-channel.ts";
 import type { ApkVariant } from "./apk.ts";
 
-export const MANIFEST_NAME = "alpha-update-stable.json";
+export { MANIFEST_NAME };
 // parseUpdateManifest's UPDATE_MAX_BYTES: phones silently drop a manifest naming a larger APK.
 const UPDATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
 const USAGE = "Usage: node scripts/publish-update-manifest.ts --variant launcher|standalone [--apk-manifest FILE] [--out-dir DIR] [--notes TEXT]";

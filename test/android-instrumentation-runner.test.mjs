@@ -653,5 +653,5 @@ test("no registered instrumented class drives a control the view refresh removed
   }
   const template = fs.readFileSync("apps/app/src/prototype/template.html", "utf8");
   for (const label of removed) assert.equal(template.includes(label), false, `the renderer has no "${label}"`);
-  assert.match(template, /Photos tools[\s\S]*photos\.importAvailable[\s\S]*photos\.importImage[\s\S]*Choose image/, "image import remains an explicit Photos tool");
+  assert.match(template, /Photos tools[\s\S]*photos\.importAvailable[\s\S]*photos\.importImage[\s\S]*photos\.importLabel/, "image import remains an explicit Photos tool");
 });

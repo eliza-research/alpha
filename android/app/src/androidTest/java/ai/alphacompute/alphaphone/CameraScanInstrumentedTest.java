@@ -12,17 +12,23 @@ import android.graphics.Paint;
 import android.net.Uri;
 import android.os.SystemClock;
 import android.provider.MediaStore;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import org.json.JSONObject;
+import org.junit.Assume;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.*;
 
 /** Real CameraX scan capture (asked for through Alpha in Camera), real DocumentsUI image picker and real
@@ -52,11 +58,26 @@ public class CameraScanInstrumentedTest {
    ByteArrayOutputStream out=new ByteArrayOutputStream();assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG,100,out));return out.toByteArray();}
   finally{bitmap.recycle();}
  }
- private void nativeSave()throws Exception{
+ private void nativeSave()throws Exception{nativeSave(null);}
+ private void nativeSave(String filename)throws Exception{
   long end=SystemClock.elapsedRealtime()+20000;
+  boolean named=filename==null;
   while(SystemClock.elapsedRealtime()<end){
    AccessibilityNodeInfo root=InstrumentationRegistry.getInstrumentation().getUiAutomation().getRootInActiveWindow();
-   if(root!=null){ArrayDeque<AccessibilityNodeInfo> queue=new ArrayDeque<>();queue.add(root);while(!queue.isEmpty()){AccessibilityNodeInfo node=queue.remove();if(node.isEnabled()&&"save".equalsIgnoreCase(String.valueOf(node.getText()))&&String.valueOf(node.getPackageName()).contains("documentsui")){assertTrue("Actual DocumentsUI Save",node.performAction(AccessibilityNodeInfo.ACTION_CLICK));return;}for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo child=node.getChild(i);if(child!=null)queue.add(child);}}}
+   if(root!=null){
+    ArrayDeque<AccessibilityNodeInfo> queue=new ArrayDeque<>();queue.add(root);
+    while(!queue.isEmpty()){
+     AccessibilityNodeInfo node=queue.remove();
+     if(node.isEnabled()&&String.valueOf(node.getPackageName()).contains("documentsui")){
+      if(!named&&node.isEditable()&&String.valueOf(node.getViewIdResourceName()).endsWith(":id/title")){
+       android.os.Bundle args=new android.os.Bundle();args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,filename);
+       assertTrue("Set the exact test filename in DocumentsUI",node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,args));named=true;break;
+      }
+      if(named&&"save".equalsIgnoreCase(String.valueOf(node.getText()))){assertTrue("Actual DocumentsUI Save",node.performAction(AccessibilityNodeInfo.ACTION_CLICK));return;}
+     }
+     for(int i=0;i<node.getChildCount();i++){AccessibilityNodeInfo child=node.getChild(i);if(child!=null)queue.add(child);}
+    }
+   }
    SystemClock.sleep(100);
   }
   fail("DocumentsUI Save not exposed");
@@ -70,6 +91,90 @@ public class CameraScanInstrumentedTest {
   eval(AppNavigation.type());until(AppNavigation.composer());
   eval("(()=>{const e=("+AppNavigation.composer()+");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(e,'Scan this');e.dispatchEvent(new Event('input',{bubbles:true}));})()");
   click("Send");until(dialog("Review scanned text"));
+ }
+
+ private static View findCameraPreview(View view){
+  if(view.getClass().getName().equals("androidx.camera.view.PreviewView"))return view;
+  if(view instanceof ViewGroup group)for(int index=0;index<group.getChildCount();index++){
+   View found=findCameraPreview(group.getChildAt(index));if(found!=null)return found;
+  }
+  return null;
+ }
+ private View streamingPreview()throws Exception{
+  AtomicReference<View> streaming=new AtomicReference<>();
+  long deadline=SystemClock.elapsedRealtime()+15000;
+  while(SystemClock.elapsedRealtime()<deadline){
+   WebViewTestDriver.withActivity(MainActivity.class,activity->{
+    View view=findCameraPreview(activity.getWindow().getDecorView());
+    if(view==null)return;
+    try{
+     Object stream=view.getClass().getMethod("getPreviewStreamState").invoke(view);
+     Object state=stream.getClass().getMethod("getValue").invoke(stream);
+     if("STREAMING".equals(String.valueOf(state))&&view.isShown())streaming.set(view);
+    }catch(ReflectiveOperationException error){throw new AssertionError("Cannot read CameraX preview state",error);}
+   });
+   if(streaming.get()!=null)return streaming.get();
+   SystemClock.sleep(100);
+  }
+  throw new AssertionError("CameraX PreviewView did not stream");
+ }
+ private void captureScreen(String filename)throws Exception{
+  Bitmap screenshot=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();
+  assertNotNull("Actual Android screen",screenshot);
+  try(FileOutputStream output=new FileOutputStream(new File(context().getFilesDir(),filename))){
+   assertTrue("Screenshot encoded",screenshot.compress(Bitmap.CompressFormat.PNG,100,output));
+  }finally{screenshot.recycle();}
+ }
+ private void captureDocumentPage(String captureDialog)throws Exception{
+  clickText("Capture page");
+  until(captureDialog+"?.querySelector('img')?.naturalWidth>0");
+  assertEquals("Captured JPEG keeps a bounded long edge","true",eval("(()=>{const img="+captureDialog+".querySelector('img');return img.naturalWidth<=2048&&img.naturalHeight>0&&img.naturalHeight<=2048})()"));
+ }
+
+ /** Fresh owned emulator user. The capture and PDF paths use CameraX and SAF end to end. */
+ @Test public void directDocumentCameraRetakeDraftAndPdf()throws Exception{
+  Assume.assumeTrue("Owned camera document campaign: -e cameraDocument 1","1".equals(InstrumentationRegistry.getArguments().getString("cameraDocument")));
+  AppNavigation.assumeNoRequiredSignIn("Camera document capture");
+  InstrumentationRegistry.getInstrumentation().getUiAutomation().grantRuntimePermission(context().getPackageName(),Manifest.permission.CAMERA);
+  Set<Long> before=ownedImages();
+  String builder=dialog("Review scan document"),capture=dialog("Capture document page");
+  String filename="alpha-document-test-"+UUID.randomUUID()+".pdf";
+  File exported=new File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS),filename);
+  try(BoundedActivityScenario<MainActivity> scenario=BoundedActivityScenario.launch(MainActivity.class)){
+   AppNavigation.liveMode();eval(AppNavigation.request("Camera"));until(AppNavigation.selected("Camera"));AppNavigation.declineStartupAccess();
+   View preview=streamingPreview();click("Scan document");until(builder);
+   click("Capture new page");until(capture);
+   until("getComputedStyle("+capture+").backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle("+builder+").visibility==='hidden'&&document.querySelector('[data-alpha-camera=\"viewfinder\"][data-alpha-camera-clear]')");
+   assertSame("The scanner uses Camera's streaming preview",preview,streamingPreview());
+   captureScreen("camera-document-viewfinder.png");
+   captureDocumentPage(capture);clickText("Cancel capture");until("!"+capture);
+   assertEquals("Cancelled page stays out of the document","0",eval(builder+".querySelectorAll('img').length"));
+
+   click("Capture new page");captureDocumentPage(capture);clickText("Use captured page");until(builder+".querySelectorAll('img').length===1");
+   click("Capture new page");captureDocumentPage(capture);clickText("Use captured page");until(builder+".querySelectorAll('img').length===2");
+   String original=eval(builder+".querySelector('img').src");
+   click("Retake page 1");captureDocumentPage(capture);clickText("Retake capture");captureDocumentPage(capture);
+   captureScreen("camera-document-review.png");
+   clickText("Use captured page");until(builder+".querySelectorAll('img').length===2&&"+builder+".querySelector('img').src!=="+original);
+   assertEquals("Capture and retake publish no Photos rows",before,ownedImages());
+
+   click("Close document");clickText("Keep draft");until("!"+builder);
+   scenario.recreate();AppNavigation.liveMode();eval(AppNavigation.request("Camera"));until(AppNavigation.selected("Camera"));
+   click("Scan document");click("Resume the saved draft");clickText("Load draft");
+   until(builder+".querySelectorAll('img').length===2");
+   captureScreen("camera-document-draft.png");
+   click("Save document PDF");nativeSave(filename);
+   until(builder+".textContent.includes('Saved.')",60000);
+   try(android.os.ParcelFileDescriptor fd=android.os.ParcelFileDescriptor.open(exported,android.os.ParcelFileDescriptor.MODE_READ_ONLY);
+       android.graphics.pdf.PdfRenderer pdf=new android.graphics.pdf.PdfRenderer(fd)){
+    assertEquals("Actual SAF PDF has the two reviewed pages",2,pdf.getPageCount());
+   }
+   assertEquals("Export publishes no Photos rows",before,ownedImages());
+  }finally{
+   if(exported.exists())assertTrue("Remove test PDF",exported.delete());
+   Set<Long> created=ownedImages();created.removeAll(before);
+   for(long id:created)context().getContentResolver().delete(ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,id),null,null);
+  }
  }
 
  @Test public void scanCaptureNeverPublishesToPhotosUnlessKept()throws Exception{

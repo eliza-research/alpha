@@ -15,6 +15,8 @@ for(const alert of ['10 min','None'])test(`one-time reminder preserves reviewed 
  await test.info().attach('saved-row.json',{body:JSON.stringify(row,null,2),contentType:'application/json'});
  expect(row.at).toBe(Date.parse(alert==='10 min'?'2027-03-13T00:50Z':'2027-03-13T01:00Z'));
  await page.reload();await openBrowserCalendar(page);await page.getByRole('button',{name:/^One-time lead fixture,/}).click();
+ await expect(page.getByText('Due 1:00 AM',{exact:true})).toBeVisible();
+ await expect(page.getByText(/1:00.*1:15/)).toHaveCount(0);
  if(alert==='10 min'){await expect(page.getByText('10 min before',{exact:true})).toBeVisible();expect(row.dueAt).toBe(Date.parse('2027-03-13T01:00Z'));}
  else await expect(page.getByText('Alert at start',{exact:true})).toHaveCount(0);
 });

@@ -114,8 +114,9 @@ text = replace(text, '        val loadedTiles = loadTilesFromSettings(userId)',
         }
         alphaDefaultsMigrationPending = defaultTiles.any { it.spec == AlphaQsDefaultsPolicy.ALPHA } &&
             reviewedVersion < AlphaQsDefaultsPolicy.VERSION
-        val selected = if (AlphaQsDefaultsPolicy.shouldMigrate(
-                loadedTiles.map { it.spec }, defaultTiles.map { it.spec }, reviewedVersion)) defaultTiles else loadedTiles
+        val selected = AlphaQsDefaultsPolicy.migrate(
+            loadedTiles.map { it.spec }, defaultTiles.map { it.spec }, reviewedVersion,
+        ).map { TileSpec.create(it) }
         val parsedTiles = parseTileSpecs(selected, userId)''')
 text = replace(text, 'TilesUpgradePath.ReadFromSettings(loadedTiles.toSet())',
     'TilesUpgradePath.ReadFromSettings(parsedTiles.toSet())')
