@@ -12,12 +12,31 @@ test.describe.configure({timeout:90_000});
 // ran these tests out of time under load (as in #700).
 test.use({contextOptions:{reducedMotion:'reduce'}});
 test('reviewed snapshot schedule delivers one retained result and survives reload',async({page})=>{
- await page.clock.install({time:new Date('2026-10-03T12:00:10Z')});
+ const beforeSchedule=new Date('2026-10-03T12:00:10Z');
+ await page.clock.install({time:beforeSchedule});
+ // Keep the scheduled time in the future until the UI confirms the save, even on a slow load.
+ await page.clock.setFixedTime(beforeSchedule);
  await page.goto('/?mode=dev');await page.getByRole('button',{name:'Settings',exact:true}).click();await openConnectionDiagnostics(page);await page.getByRole('button',{name:'Connect development profile'}).click();
  await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));const panel=page.getByRole('dialog',{name:'Scheduled digests',exact:true});await panel.getByText('Share a snapshot',{exact:true}).click();await panel.getByLabel('Label',{exact:true}).fill('Daily source');await panel.getByLabel('Snapshot text',{exact:true}).fill('Reviewed snapshot content');await panel.getByRole('button',{name:'Review snapshot',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();
  await panel.getByRole('combobox',{name:'Reviewed source',exact:true}).selectOption({index:1});await panel.getByLabel('Time zone',{exact:true}).fill('UTC');await panel.getByLabel('Morning',{exact:true}).fill('12:01');await panel.getByRole('button',{name:'Review morning schedule',exact:true}).click();await panel.getByRole('button',{name:'Confirm',exact:true}).click();
- await panel.getByRole('switch',{name:'Result checks',exact:true}).click();await page.clock.runFor(60000);await expect.poll(()=>page.evaluate(async()=>(await (await import('/src/browser/development-digest-document.ts')).readDevelopmentDigests((await import('/src/browser/development-identity.ts')).developmentIdentity('local'))).results.length)).toBe(1);await panel.getByRole('button',{name:'Refresh',exact:true}).click();await expect(panel.getByText('Development reply. Edit this response in Agent connection.',{exact:true})).toBeVisible();
- const first=await page.evaluate(async()=>(await (await import('/src/browser/development-digest-document.ts')).readDevelopmentDigests((await import('/src/browser/development-identity.ts')).developmentIdentity('local'))).results);expect(first).toHaveLength(1);await page.reload();await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));await expect(panel.getByText('Development reply. Edit this response in Agent connection.',{exact:true})).toBeVisible();await panel.getByRole('button',{name:'Refresh',exact:true}).click();expect(await page.evaluate(async()=>(await (await import('/src/browser/development-digest-document.ts')).readDevelopmentDigests((await import('/src/browser/development-identity.ts')).developmentIdentity('local'))).results)).toEqual(first);
+ await expect(panel.getByRole('region',{name:'Digest schedules',exact:true})).toContainText('Morning at 12:01 (UTC)');
+ const resultChecks=panel.getByRole('switch',{name:'Result checks',exact:true});
+ await expect(resultChecks).toBeChecked();
+ await resultChecks.click();
+ await expect(resultChecks).not.toBeChecked();
+ // Advance the scheduler with result polling off, before a manual refresh can fetch the receipt.
+ await page.clock.setFixedTime(new Date('2026-10-03T12:01:10Z'));
+ await page.clock.runFor(60_000);
+ await expect.poll(async()=>(await digestState(page)).results.length).toBe(1);
+ const first=(await digestState(page)).results;
+ expect(first).toMatchObject([{scheduledAt:'2026-10-03T12:01:00.000Z',status:'completed'}]);
+ await panel.getByRole('button',{name:'Refresh',exact:true}).click();
+ await expect(panel.getByText('Development reply. Edit this response in Agent connection.',{exact:true})).toBeVisible();
+ await page.reload();
+ await page.evaluate(async()=>window.dispatchEvent(new Event('alpha:hosted-digests')));
+ await expect(panel.getByText('Development reply. Edit this response in Agent connection.',{exact:true})).toBeVisible();
+ await panel.getByRole('button',{name:'Refresh',exact:true}).click();
+ expect((await digestState(page)).results).toEqual(first);
 });
 test('digest mutation replay, lost acknowledgements, revocation and account retirement retain exact identities',async({page})=>{
  await page.goto('/?mode=dev');const result=await page.evaluate(async()=>{

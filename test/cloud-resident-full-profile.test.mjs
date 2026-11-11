@@ -88,9 +88,14 @@ test('full mode refuses an unset saved assistant choice without rewriting the pr
 
 // npm test runs without the prepared SDK and skips; browser.yml's verify job sets ALPHA_REQUIRE_PREPARED_SDK=1.
 const skipUnprepared = !(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE && process.env.ALPHA_BUN) && process.env.ALPHA_REQUIRE_PREPARED_SDK !== '1' ? 'Prepared SDK unavailable; run npm run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN (browser.yml verify)' : false;
+const timeoutScale = Number(process.env.ALPHA_TIMEOUT_SCALE || '1');
+const validTimeoutScale = Number.isFinite(timeoutScale) && timeoutScale >= 1 && timeoutScale <= 10;
+// Give the authenticated source scan more time on loaded hosts and allow setup and cleanup outside the child budget.
+const collectorTimeoutMs = Math.round(120_000 * (validTimeoutScale ? timeoutScale : 1));
 
-test('actual pinned SDK collector retains the full host assistant and preserves lean/store exclusions', {skip: skipUnprepared}, async () => {
+test('actual pinned SDK collector retains the full host assistant and preserves lean/store exclusions', {skip: skipUnprepared, timeout: collectorTimeoutMs + 120_000}, async () => {
   assert.ok(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE && process.env.ALPHA_BUN, 'ALPHA_REQUIRE_PREPARED_SDK=1 needs ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN');
+  assert.ok(validTimeoutScale, 'ALPHA_TIMEOUT_SCALE must be a number from 1 to 10');
   const {spawnSync} = await import('node:child_process');
   const profile = await fs.mkdtemp(join(tmpdir(), 'alpha-cloud-collector-'));
   const launches = [];
@@ -102,8 +107,6 @@ test('actual pinned SDK collector retains the full host assistant and preserves 
     assert.equal(actualEnvironment.ELIZA_BUILD_VARIANT, undefined);
     assert.equal(actualEnvironment.ELIZA_PLATFORM, undefined);
     // The single child authenticates every committed byte before importing the collector.
-    // Keep the cold prepared-source scan in the deadline for all three variants.
-    const collectorTimeoutMs = 120_000;
     const variants = [{}, {ELIZA_PLUGIN_SET: 'lean-chat'}, {ELIZA_BUILD_VARIANT: 'store'}];
     const run = spawnSync(process.env.ALPHA_BUN, ['--no-install', '--conditions=eliza-source', 'test/fixtures/cloud-plugin-selection.mjs'], {cwd: process.cwd(), env: {...actualEnvironment, ALPHA_CLOUD_COLLECTOR_SOURCE: process.env.ALPHA_CLOUD_COLLECTOR_SOURCE, GIT_NO_LAZY_FETCH: '1', GIT_NO_REPLACE_OBJECTS: '1', GIT_OPTIONAL_LOCKS: '0'}, input: JSON.stringify({config, variants}), encoding: 'utf8', timeout: collectorTimeoutMs});
     assert.equal(run.error, undefined, `the authenticated collector did not finish within ${collectorTimeoutMs / 1000} s: ${run.error?.message}`);
