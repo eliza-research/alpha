@@ -91,6 +91,18 @@ export function workerDeployment(policy: CloudDeploymentConfig, resources: Recor
   return {id: `${identity.slug}-cloud`, environments};
 }
 
+/** Resolve an output's existing ancestors before checking the immutable submodule boundary. */
+function outsideVendor(directory: string): string {
+  const absolute = path.resolve(directory);
+  let parent = absolute;
+  while (!fs.existsSync(parent)) parent = path.dirname(parent);
+  const resolved = path.join(fs.realpathSync(parent), path.relative(parent, absolute));
+  const vendor = path.join(root, 'vendor');
+  if (resolved === vendor || resolved.startsWith(vendor + path.sep))
+    throw new Error('Cloud tool inputs and outputs must be outside the pinned vendor checkout');
+  return resolved;
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const {values: o, positionals} = parseArgs({allowPositionals: true, options: {policy: {type: 'string'}, resources: {type: 'string'}, upstream: {type: 'string'}, packages: {type: 'string'}, tree: {type: 'string'}, out: {type: 'string'}}});
   const command = positionals[0];
@@ -99,12 +111,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   }
   const deployment = workerDeployment(JSON.parse(fs.readFileSync(o.policy, 'utf8')), JSON.parse(fs.readFileSync(o.resources, 'utf8')));
   if (command === 'deployment') { console.log(JSON.stringify(deployment, null, 1)); process.exit(0); }
-  const out = path.resolve(o.out!);
+  const out = outsideVendor(o.out!);
   const bun = [process.env.BUN, path.join(os.homedir(), '.bun/bin/bun'), ...String(process.env.PATH).split(path.delimiter).map(entry => path.join(entry, 'bun'))].find(candidate => candidate && fs.existsSync(candidate));
   if (!bun) throw new Error('bun is required (https://bun.sh)');
   if (o.packages) {
     // Installed packages: the product's thin entry is bundled with every input from that install.
-    const packages = path.resolve(o.packages), tool = path.join(packages, 'node_modules/@elizaos/cloud-deploy/src/cli.ts');
+    const packages = outsideVendor(o.packages), tool = path.join(packages, 'node_modules/@elizaos/cloud-deploy/src/cli.ts');
     if (!fs.existsSync(tool)) throw new Error(`${packages} has no installed @elizaos/cloud-deploy`);
     if (out !== packages && !out.startsWith(packages + path.sep)) throw new Error('--out must be inside --packages so the Worker resolves the installed packages');
     fs.mkdirSync(out, {recursive: true});
@@ -126,8 +138,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.log(`${command === 'check' ? 'Rendered and bundled from installed packages (dry run, nothing deployed)' : 'Rendered'}: ${out}`);
     process.exit(0);
   }
-  const upstream = path.resolve(o.upstream!), tree = path.resolve(o.tree ?? o.upstream!);
-  if (upstream.startsWith(path.join(root, 'vendor') + path.sep)) throw new Error('--upstream must be a separate checkout, not vendor/eliza');
+  const upstream = outsideVendor(o.upstream!), tree = outsideVendor(o.tree ?? o.upstream!);
   const cli = path.join(upstream, 'packages/cloud/deploy/src/cli.ts');
   if (!fs.existsSync(cli)) throw new Error(`${upstream} has no packages/cloud/deploy (an upstream revision with the deployment tool is required)`);
   fs.mkdirSync(out, {recursive: true});

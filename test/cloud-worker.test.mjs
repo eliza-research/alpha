@@ -1,3 +1,4 @@
+import {spawnSync} from 'node:child_process';
 // The product's own Cloud API Worker is described by data: the app's Cloud policy rows plus the
 // operator's resource ids (scripts/cloud-worker.ts). The app and its Cloud share one identity.
 import test from 'node:test';
@@ -52,4 +53,11 @@ test('secrets are names only, and a shipped, Eliza-naming or incomplete input is
  assert.throws(()=>workerDeployment(policy,otherZone),/is not in zone example\.net/);
  const insecure=structuredClone(policy);insecure.production.api='http://api.cloud.example.org';
  assert.throws(()=>workerDeployment(insecure,resources),/canonical HTTPS origins/);
+});
+
+test('Worker rendering refuses an output under the pinned source before invoking upstream',()=>{
+ const result=spawnSync(process.execPath,['scripts/cloud-worker.ts','render','--policy','cloud/policy.example.json',
+  '--resources','cloud/resources.example.json','--upstream','unused','--out','vendor/eliza/cloud-output-fixture'],{encoding:'utf8'});
+ assert.notEqual(result.status,0);
+ assert.match(result.stderr,/outside the pinned vendor checkout/);
 });

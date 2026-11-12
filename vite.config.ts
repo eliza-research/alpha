@@ -1,4 +1,5 @@
 import {checkCloudDeployment} from './scripts/cloud-deployment.ts';
+import {CLOUD_DEPLOYMENT_IS_CANDIDATE} from './scripts/cloud-deployment-policy.ts';
 import {browserCloudDevBridge} from './scripts/browser-cloud-dev-bridge.ts';
 import {localOcrAssets} from './scripts/local-ocr-assets.ts';
 import { browserPdfAssets } from './scripts/browser-pdf-assets.ts';
@@ -95,7 +96,7 @@ function productionSurface(): Plugin[] {
       name: 'alpha-build-flags',
       apply: 'build',
       generateBundle() {
-        this.emitFile({ type: 'asset', fileName: 'build-flags.json', source: JSON.stringify({ testMocks: flagOn }) + '\n' });
+        this.emitFile({ type: 'asset', fileName: 'build-flags.json', source: JSON.stringify({ testMocks: flagOn, ...(CLOUD_DEPLOYMENT_IS_CANDIDATE ? { candidateCloud: true } : {}) }) + '\n' });
       },
     },
   ];

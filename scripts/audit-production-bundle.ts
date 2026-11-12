@@ -10,13 +10,14 @@ import {fontLicenceFindings, fontLicenceLine} from './font-license-blockers.ts';
 import {licenceFlagLines} from './licence-policy.ts';
 import {assetLinksProblems} from './render-assetlinks.ts';
 import {regularFiles} from './regular-files.ts';
-import {CLOUD_DEPLOYMENT,CLOUD_DEPLOYMENT_IS_CANDIDATE,CLOUD_SIGN_IN_REGISTRATION} from './cloud-deployment-policy.ts';
+import {SHIPPED_CLOUD_DEPLOYMENT,CLOUD_DEPLOYMENT_IS_CANDIDATE,CLOUD_SIGN_IN_REGISTRATION} from './cloud-deployment-policy.ts';
+import {STORAGE_NAMESPACES} from './cloud-deployment.ts';
 
 /** The staging Cloud's authorities, return page and tenant, from the deployment policy: test-mocks builds only. */
-export const STAGING_CLOUD_TEXT = Object.freeze([new URL(CLOUD_DEPLOYMENT.staging.api).host, new URL(CLOUD_DEPLOYMENT.staging.services).host,
-  new URL(CLOUD_DEPLOYMENT.staging.web).host + CLOUD_SIGN_IN_REGISTRATION.callbackPath.replace(/\/auth\/callback$/, ''),
+export const STAGING_CLOUD_TEXT = Object.freeze([new URL(SHIPPED_CLOUD_DEPLOYMENT.staging.api).host, new URL(SHIPPED_CLOUD_DEPLOYMENT.staging.services).host,
+  new URL(SHIPPED_CLOUD_DEPLOYMENT.staging.web).host + CLOUD_SIGN_IN_REGISTRATION.callbackPath.replace(/\/auth\/callback$/, ''),
   // The former 'cloud-staging' entry also caught the staging tenant name.
-  CLOUD_DEPLOYMENT.staging.tenant]);
+  SHIPPED_CLOUD_DEPLOYMENT.staging.tenant]);
 
 /** Decision P-43: production copy that offered or described a "no agent" state. */
 export const RETIRED_NO_AGENT_TEXT = Object.freeze(['without AI', 'Continue offline', 'continue offline', 'Connect an agent']);
@@ -127,16 +128,15 @@ export function avatarInitials(text: string) {
 /** Reads {"testMocks": boolean}. A missing or malformed record is treated as a production bundle. */
 export function readBuildFlags(dir: string) {
   const file = path.join(dir, 'build-flags.json');
-  if (!existsSync(file)) return {present: false, testMocks: false};
+  if (!existsSync(file)) return {present: false, testMocks: false, candidateCloud: false};
   try {
     const value = JSON.parse(readFileSync(file, 'utf8'));
-    return {present: true, testMocks: value?.testMocks === true, valid: typeof value?.testMocks === 'boolean'};
-  } catch { return {present: true, testMocks: false, valid: false}; }
+    return {present: true, testMocks: value?.testMocks === true, candidateCloud: value?.candidateCloud === true, valid: typeof value?.testMocks === 'boolean' && (value.candidateCloud === undefined || typeof value.candidateCloud === 'boolean')};
+  } catch { return {present: true, testMocks: false, candidateCloud: false, valid: false}; }
 }
 
 interface BundleAuditOptions {
   testMocks?: boolean;
-  candidateCloud?: boolean;
   debugFingerprints?: readonly string[];
 }
 
@@ -152,7 +152,7 @@ export function auditWebBundle(dir: string, options: BundleAuditOptions = {}) {
   if (flags.present && flags.testMocks !== expected) errors.push(`build-flags.json records testMocks:${flags.testMocks}, expected ${expected}.`);
   if (!existsSync(path.join(dir, 'index.html'))) errors.push('index.html is missing.');
   // A candidate Cloud (ALPHA_CLOUD_DEPLOYMENT_FILE) is for development and rehearsal; distributed builds use the shipped policy.
-  if (!expected && (options.candidateCloud ?? CLOUD_DEPLOYMENT_IS_CANDIDATE)) errors.push('This build addresses a candidate Cloud deployment (ALPHA_CLOUD_DEPLOYMENT_FILE); a production bundle must use the shipped Cloud deployment policy.');
+  if (!expected && (flags.candidateCloud || CLOUD_DEPLOYMENT_IS_CANDIDATE)) errors.push('This build addresses a candidate Cloud deployment (ALPHA_CLOUD_DEPLOYMENT_FILE); a production bundle must use the shipped Cloud deployment policy.');
   let files = 0;
   // Only an explicitly requested and recorded mock build skips the denylist.
   const skip = expected && flags.testMocks;
@@ -165,6 +165,14 @@ export function auditWebBundle(dir: string, options: BundleAuditOptions = {}) {
     if (file === 'img' || file.startsWith('img/')) policy.push({file, rule: 'fixture image directory img/'});
     if (file.endsWith('.map')) policy.push({file, rule: 'source map'});
     if (text === undefined) continue;
+    if (/\.[cm]?js$/i.test(file)) {
+      for (const [, fingerprint] of text.matchAll(/cloud-deployment:([a-f0-9]{64}):/g)) {
+        if (fingerprint !== STORAGE_NAMESPACES.at(-1)) {
+          policy.push({file, rule: 'candidate Cloud deployment credential namespace'});
+          break;
+        }
+      }
+    }
     for (const entry of DENYLIST) if (text.includes(entry)) policy.push({file, rule: entry});
     for (const initials of avatarInitials(text)) policy.push({file, rule: `hard-coded avatar initials "${initials}"`});
     if (path.posix.basename(file) === 'assetlinks.json')

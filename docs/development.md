@@ -81,7 +81,7 @@ today). The product's own Cloud is being prepared; see `docs/standalone-cloud-pl
 ```sh
 bun run cloud:local -- prepare                              # export the pinned upstream source and install it (slow, once per pin)
 ELIZA_DEV_ALLOW_TEST_MOCKS=1 bun run cloud:local -- start   # Steward, Cloud API and a TLS front door on https://127.0.0.1:8787
-bun run cloud:local -- check                                # email-code sign-in, credential, account, entitlement, revocation
+ELIZA_DEV_ALLOW_TEST_MOCKS=1 bun run cloud:local -- check   # email-code sign-in, credential, account, entitlement, revocation
 ```
 
 The local Cloud runs from the pinned `vendor/eliza` source with Alpha's own tenant,

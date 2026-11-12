@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
  * A standalone Cloud for Alpha Phone on this computer, built from the pinned vendor/eliza
- * source with Alpha's own identity. Development only; it never contacts a deployed Cloud.
+ * source with Alpha's own identity. Its contract check runs on loopback; prepare installs dependencies.
  *
  *   bun scripts/local-cloud.ts prepare [--dir DIR]         export the pin and install it
  *     --source REPO   export REPO's HEAD instead (an upstream branch under review; never vendor/eliza edits)
  *     --deployment-id ID   (start) run as a product deployment (upstream CLOUD_DEPLOYMENT_ID), which must
  *                          refuse to start or answer rather than fall back to any Eliza identity
  *   ELIZA_DEV_ALLOW_TEST_MOCKS=1 bun scripts/local-cloud.ts start [--dir DIR] [--port 8787]
- *   bun scripts/local-cloud.ts check [--dir DIR] [--json]  sign in and call the product routes
+ *   ELIZA_DEV_ALLOW_TEST_MOCKS=1 bun scripts/local-cloud.ts check [--dir DIR] [--json]  sign in and call the product routes
  *
  * What `start` runs, all on loopback (the Android emulator reaches it as 10.0.2.2):
  * - The pinned vendor/eliza commit, exported with `git archive` into DIR/eliza. The submodule
@@ -34,6 +34,8 @@ import http from 'node:http';
 import https from 'node:https';
 import net from 'node:net';
 import os from 'node:os';
+import {once} from 'node:events';
+import {pipeline} from 'node:stream/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parseArgs} from 'node:util';
@@ -72,39 +74,66 @@ const writePrivate = (file: string, text: string) => { fs.writeFileSync(file, te
 
 interface Layout { source: string; deploymentId: string | null; dir: string; exportDir: string; front: string; ports: {front: number; steward: number; api: number; pglite: number} }
 function layout(dirOption: string | undefined, portOption: string, sourceOption?: string, deploymentId?: string): Layout {
-  const dir = localCloudDirectory(dirOption);
+  const requested = localCloudDirectory(dirOption);
+  if (requested === root || requested.startsWith(root + path.sep)) throw new Error('The local Cloud directory must be outside this checkout');
+  fs.mkdirSync(requested, {recursive: true, mode: 0o700});
+  const dir = fs.realpathSync(requested);
+  if (fs.statSync(dir).mode & 0o077) throw new Error('Use a private directory (mode 0700) for the local Cloud');
   if (dir === root || dir.startsWith(root + path.sep)) throw new Error('The local Cloud directory must be outside this checkout');
   const front = Number(portOption);
   if (!Number.isInteger(front) || front < 1024 || front > 65000) throw new Error('--port must be 1024–65000');
-  fs.mkdirSync(dir, {recursive: true, mode: 0o700});
   if (deploymentId !== undefined && !/^[a-z0-9-]{1,40}$/.test(deploymentId)) throw new Error('--deployment-id must match [a-z0-9-]');
   return {source: sourceOption ? path.resolve(sourceOption) : vendorDir, deploymentId: deploymentId ?? null, dir, exportDir: path.join(dir, 'eliza'), front: `https://127.0.0.1:${front}`, ports: {front, steward: front + 13, api: front + 1, pglite: LOCAL_CLOUD.pglitePort}};
 }
 
+/** Build and run local fixtures with an isolated home and no inherited provider credentials. */
+export function localChildEnvironment(dir: string): NodeJS.ProcessEnv {
+  const home = path.join(dir, 'home');
+  fs.mkdirSync(home, {recursive: true, mode: 0o700});
+  return {PATH: process.env.PATH, TMPDIR: os.tmpdir(), HOME: home, CI: '1', TZ: 'UTC',
+    WRANGLER_SEND_METRICS: 'false', ELIZA_DEV_ALLOW_TEST_MOCKS: process.env.ELIZA_DEV_ALLOW_TEST_MOCKS};
+}
+
+function ownedExport(exportDir: string): string | null {
+  const entry = fs.lstatSync(exportDir, {throwIfNoEntry: false});
+  if (!entry) return null;
+  const marker = path.join(exportDir, '.alpha-export');
+  if (entry.isDirectory() && fs.lstatSync(marker, {throwIfNoEntry: false})?.isFile()) {
+    const revision = fs.readFileSync(marker, 'utf8').trim();
+    if (/^[a-f0-9]{40}$/.test(revision)) return revision;
+  }
+  throw new Error('The existing eliza directory is not a local Cloud export; choose an empty --dir');
+}
+
 async function prepare({dir, exportDir, source}: Layout) {
+  const current = ownedExport(exportDir);
   const head = execFileSync('git', ['-C', source, 'rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
   const commit = source === vendorDir ? JSON.parse(fs.readFileSync(path.join(root, 'upstream.lock.json'), 'utf8')).commit as string : head;
   if (head !== commit) throw new Error('vendor/eliza is not at the pinned commit (upstream.lock.json)');
   if (source !== vendorDir && execFileSync('git', ['-C', source, 'status', '--porcelain'], {encoding: 'utf8'}).trim()) throw new Error('--source has uncommitted changes; only a commit is exported');
-  const marker = path.join(exportDir, '.alpha-export');
-  if (!fs.existsSync(marker) || fs.readFileSync(marker, 'utf8').trim() !== commit) {
+  if (current !== commit) {
     say(`exporting ${source === vendorDir ? 'the pinned vendor/eliza' : source + ' at ' + commit.slice(0, 10)} (git archive; the checkout is not written)`);
-    fs.rmSync(exportDir, {recursive: true, force: true});
-    fs.mkdirSync(exportDir, {recursive: true});
-    const archive = spawn('git', ['-C', source, 'archive', '--format=tar', commit], {stdio: ['ignore', 'pipe', 'inherit']});
-    const extract = spawn('tar', ['-x', '-C', exportDir], {stdio: ['pipe', 'inherit', 'inherit']});
-    archive.stdout.pipe(extract.stdin);
-    const code = await new Promise(resolve => extract.on('close', resolve));
-    if (code !== 0) throw new Error('Export failed');
-    fs.writeFileSync(marker, commit + '\n');
+    const staging = fs.mkdtempSync(path.join(dir, 'export-'));
+    try {
+      const archive = spawn('git', ['-C', source, 'archive', '--format=tar', commit], {stdio: ['ignore', 'pipe', 'inherit']});
+      const extract = spawn('tar', ['-x', '-C', staging], {stdio: ['pipe', 'inherit', 'inherit']});
+      const [[archived], [extracted]] = await Promise.all([once(archive, 'close'), once(extract, 'close'), pipeline(archive.stdout, extract.stdin)]);
+      if (archived !== 0 || extracted !== 0) throw new Error('Export failed');
+      fs.writeFileSync(path.join(staging, '.alpha-export'), commit + '\n');
+      if (current !== null) fs.rmSync(exportDir, {recursive: true});
+      fs.renameSync(staging, exportDir);
+    } finally {
+      fs.rmSync(staging, {recursive: true, force: true});
+    }
   }
+  const env = localChildEnvironment(dir);
   say('installing the workspace into the export (lifecycle scripts skipped)');
-  if (spawnSync(resolveBun(), ['install', '--ignore-scripts'], {cwd: exportDir, stdio: 'inherit', env: {...process.env, CI: '1'}}).status !== 0) throw new Error('bun install failed in the export');
+  if (spawnSync(resolveBun(), ['install', '--ignore-scripts'], {cwd: exportDir, stdio: 'inherit', env}).status !== 0) throw new Error('bun install failed in the export');
   const links = path.join(exportDir, 'packages/scripts/ensure-workspace-symlinks.ts');
-  if (fs.existsSync(links)) spawnSync(resolveBun(), [links], {cwd: exportDir, stdio: 'inherit'});
+  if (fs.existsSync(links)) spawnSync(resolveBun(), [links], {cwd: exportDir, stdio: 'inherit', env});
   // The Worker bundle imports some workspace packages from their built dist.
   const builds = path.join(exportDir, 'packages/scripts/build-private-workspace-packages.ts');
-  if (fs.existsSync(builds) && spawnSync(resolveBun(), [builds], {cwd: exportDir, stdio: 'inherit'}).status !== 0) {
+  if (fs.existsSync(builds) && spawnSync(resolveBun(), [builds], {cwd: exportDir, stdio: 'inherit', env}).status !== 0) {
     // A package's post-build self-check can fail after its dist is written (the Worker bundle
     // does not use that entry). `start` is the proof; a missing dist fails there, loudly.
     for (const dist of ['packages/core/dist', 'plugins/plugin-elizacloud/dist', 'plugins/plugin-sql/dist'])
@@ -113,7 +142,7 @@ async function prepare({dir, exportDir, source}: Layout) {
   }
   // Dists the Worker bundle imports that the install-time build set does not include.
   const extra = ['plugin-google-workspace', 'plugin-todos', 'plugin-wallet'];
-  spawnSync(process.execPath, [path.join(exportDir, 'packages/scripts/run-turbo.ts'), 'run', ...extra.map(name => `@elizaos/${name}#build`), '--continue'], {cwd: exportDir, stdio: 'inherit'});
+  spawnSync(process.execPath, [path.join(exportDir, 'packages/scripts/run-turbo.ts'), 'run', ...extra.map(name => `@elizaos/${name}#build`), '--continue'], {cwd: exportDir, stdio: 'inherit', env});
   for (const name of extra) if (!fs.existsSync(path.join(exportDir, 'plugins', name, 'dist'))) throw new Error(`Building ${name} failed`);
   certificate(dir);
   say('prepared');
@@ -151,7 +180,7 @@ async function waitFor(url: string, {timeoutMs = 240000, child, ok = (response: 
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     if (child && child.exitCode !== null) throw new Error(`A local Cloud process exited (${child.exitCode})`);
-    try { const response = await fetch(url, {signal: AbortSignal.timeout(3000)}); if (ok(response)) return response; } catch { /* not up yet */ }
+    try { const response = await fetch(url, {redirect: 'manual', signal: AbortSignal.timeout(3000)}); if (ok(response)) return response; } catch { /* not up yet */ }
     if (Date.now() > deadline) throw new Error(`Timed out waiting for ${new URL(url).pathname}`);
     await new Promise(resolve => setTimeout(resolve, 500));
   }
@@ -166,7 +195,7 @@ const legal = (title: string) => JSON.stringify({title: `${title} (local develop
 
 async function start({dir, exportDir, front, ports, deploymentId}: Layout) {
   if (process.env.ELIZA_DEV_ALLOW_TEST_MOCKS !== '1') throw new Error('The local Cloud uses mock mail and seeded rows: set ELIZA_DEV_ALLOW_TEST_MOCKS=1');
-  if (!fs.existsSync(path.join(exportDir, 'node_modules'))) throw new Error('Run `prepare` first');
+  if (!ownedExport(exportDir) || !fs.existsSync(path.join(exportDir, 'node_modules'))) throw new Error('Run `prepare` first');
   for (const [name, port] of Object.entries(ports)) if (!await portFree(port)) throw new Error(`Port ${port} (${name}) is in use`);
   const s = secrets(dir);
   const {cert, key} = certificate(dir);
@@ -178,7 +207,7 @@ async function start({dir, exportDir, front, ports, deploymentId}: Layout) {
 
   // 1. Steward: embedded, in-memory, mock mail, Alpha's own tenant.
   const stewardProcess = spawn(resolveBun(), ['--conditions=eliza-source', path.join(exportDir, 'packages/auth/src/server/embedded.ts')], {cwd: exportDir, stdio: ['ignore', log('steward'), log('steward')], env: {
-    ...process.env, TZ: 'UTC', NODE_ENV: 'test', PORT: String(ports.steward), LOGIN_BIND_HOST: '127.0.0.1', STEWARD_RUNTIME: 'bun', STEWARD_DB_MODE: 'pglite', STEWARD_PGLITE_MEMORY: 'true',
+    ...localChildEnvironment(dir), NODE_ENV: 'test', PORT: String(ports.steward), LOGIN_BIND_HOST: '127.0.0.1', STEWARD_RUNTIME: 'bun', STEWARD_DB_MODE: 'pglite', STEWARD_PGLITE_MEMORY: 'true',
     STEWARD_MASTER_PASSWORD: s.stewardMaster, STEWARD_JWT_SECRET: s.stewardJwt, STEWARD_KDF_SALT: s.stewardKdf, STEWARD_AUDIT_HMAC_KEY: s.stewardAudit, STEWARD_PLATFORM_KEYS: s.platformKey,
     STEWARD_PLATFORM_KEY_SCOPES: JSON.stringify({[s.platformKey]: ['platform:read', 'platform:write', 'platform:tenant:create', 'platform:tenant-join-mode:write']}),
     EMAIL_PROVIDER: 'mock', SMS_PROVIDER: 'mock', STEWARD_DEFAULT_TENANT_ID: LOCAL_CLOUD.tenant, APP_URL: front, EMAIL_BRAND_NAME: LOCAL_CLOUD.name, EMAIL_FROM: 'login@alpha-local-cloud.invalid',
@@ -186,9 +215,9 @@ async function start({dir, exportDir, front, ports, deploymentId}: Layout) {
   started.push(stewardProcess);
   await waitFor(`${steward}/health`, {child: stewardProcess, ok: response => response.ok});
   const platform = {'Content-Type': 'application/json', 'X-Steward-Platform-Key': s.platformKey};
-  const tenant = await fetch(`${steward}/platform/tenants`, {method: 'POST', headers: platform, body: JSON.stringify({id: LOCAL_CLOUD.tenant, name: LOCAL_CLOUD.name})});
+  const tenant = await fetch(`${steward}/platform/tenants`, {method: 'POST', redirect: 'error', headers: platform, body: JSON.stringify({id: LOCAL_CLOUD.tenant, name: LOCAL_CLOUD.name})});
   if (!tenant.ok && tenant.status !== 409) throw new Error(`Steward tenant setup failed (HTTP ${tenant.status}); see ${path.join(dir, 'steward.log')}`);
-  const join = await fetch(`${steward}/platform/tenants/${LOCAL_CLOUD.tenant}/join-mode`, {method: 'PATCH', headers: platform, body: JSON.stringify({joinMode: 'open'})});
+  const join = await fetch(`${steward}/platform/tenants/${LOCAL_CLOUD.tenant}/join-mode`, {method: 'PATCH', redirect: 'error', headers: platform, body: JSON.stringify({joinMode: 'open'})});
   if (!join.ok) throw new Error(`Steward tenant join mode failed (HTTP ${join.status}); see ${path.join(dir, 'steward.log')}`);
   say(`Steward up (tenant ${LOCAL_CLOUD.tenant})`);
 
@@ -214,7 +243,7 @@ async function start({dir, exportDir, front, ports, deploymentId}: Layout) {
   for (const [name, value] of Object.entries(vars)) if (/[\r\n']/.test(value)) throw new Error(`${name} cannot be written to the local env file`);
   writePrivate(path.join(exportDir, 'packages/cloud/shared/.env.local'), Object.entries(vars).map(([name, value]) => `${name}='${value}'`).join('\n') + '\n');
   const devVars = path.join(dir, 'api.dev.vars');
-  if (!fs.existsSync(devVars)) writePrivate(devVars, '');
+  writePrivate(devVars, '');
   // wrangler.toml's committed [vars] carry Eliza's deployment identity: each one the mobile path
   // reads is overridden here, which is exactly the list a real deployment config must own.
   const override = ['ENVIRONMENT:staging', 'APP_BILLING_ENVIRONMENT:test', 'ELIZA_KMS_BACKEND:local', 'MOCK_REDIS:1', 'REDIS_RATE_LIMITING:true', 'NODE_ENV:development',
@@ -222,12 +251,12 @@ async function start({dir, exportDir, front, ports, deploymentId}: Layout) {
     `ELIZA_ENTITLEMENT_ISSUER:${front}`, `ELIZA_ENTITLEMENT_AUDIENCE:${vars.ELIZA_ENTITLEMENT_AUDIENCE}`, `CLOUD_PUBLIC_SERVICE_NAME:${LOCAL_CLOUD.name}`,
     `ELIZA_MOBILE_APP_AUTH_APP_ID:${s.reservedAppId}`, `ELIZA_MOBILE_APP_AUTH_CLIENTS_JSON:${clients}`,
     `CLOUD_PUBLIC_SERVICE_TERMS_JSON:${vars.CLOUD_PUBLIC_SERVICE_TERMS_JSON}`, `CLOUD_PUBLIC_SERVICE_PRIVACY_JSON:${vars.CLOUD_PUBLIC_SERVICE_PRIVACY_JSON}`,
-    `ELIZA_ENTITLEMENT_SIGNING_KEY:${s.entitlementKey}`, 'ELIZA_ENTITLEMENT_SIGNING_KEY_ID:alpha-local-1', ...Object.entries(product).map(([name, value]) => `${name}:${value}`)];
+    'ELIZA_ENTITLEMENT_SIGNING_KEY_ID:alpha-local-1', ...Object.entries(product).map(([name, value]) => `${name}:${value}`)];
   const wranglerArgs = ['dev', '--ip', '127.0.0.1', '--port', String(ports.api), '--local', '--env-file', devVars, '--persist-to', path.join(dir, 'wrangler'), ...override.flatMap(value => ['--var', value])];
   const pgConf = path.join(dir, 'pgdata', 'postgresql.conf');
   if (fs.existsSync(pgConf)) fs.writeFileSync(pgConf, fs.readFileSync(pgConf, 'utf8').replace(/^(log_)?timezone = .*$/gm, (_line, prefix) => `${prefix ?? ''}timezone = 'UTC'`));
   const apiProcess = spawn(process.execPath, [path.join(exportDir, 'packages/cloud/scripts/admin/dev/cloud-api-dev.ts'), ...wranglerArgs], {cwd: path.join(exportDir, 'packages/cloud/api'), stdio: ['ignore', log('cloud-api'), log('cloud-api')], env: {
-    ...process.env, TZ: 'UTC', API_DEV_PORT: String(ports.api), ELIZA_API_DEV_VARS_PATH: devVars, DEV_CLOUD_PGLITE_PORT: String(ports.pglite),
+    ...localChildEnvironment(dir), API_DEV_PORT: String(ports.api), ELIZA_API_DEV_VARS_PATH: devVars, DEV_CLOUD_PGLITE_PORT: String(ports.pglite),
     DEV_CLOUD_PGLITE_DATA_DIR: path.join(dir, 'pgdata'), DEV_CLOUD_WRANGLER_PERSIST_TO: path.join(dir, 'wrangler'), DATABASE_URL: '', TEST_DATABASE_URL: ''}});
   started.push(apiProcess);
   await waitFor(`${api}/api/health`, {child: apiProcess, timeoutMs: 600000});
@@ -246,7 +275,7 @@ async function start({dir, exportDir, front, ports, deploymentId}: Layout) {
   await new Promise<void>(resolve => proxy.listen(ports.front, '127.0.0.1', resolve));
   writePrivate(path.join(dir, 'local-cloud.json'), JSON.stringify({api: front, web: front, steward, tenant: LOCAL_CLOUD.tenant, name: LOCAL_CLOUD.name, deploymentId, registration, caCertificate: cert}, null, 1));
   say(`ready at ${front}; description in ${path.join(dir, 'local-cloud.json')}`);
-  say('check:  bun scripts/local-cloud.ts check');
+  say('check:  ELIZA_DEV_ALLOW_TEST_MOCKS=1 bun scripts/local-cloud.ts check');
   say('Ctrl-C stops the local Cloud.');
 }
 
@@ -284,7 +313,7 @@ await database.end();
 `);
   // Upstream reserves its own first-party client and callback; its app row must exist for the registry to load.
   const apps = [[s.reservedAppId, 'Reserved upstream client (local)', 'https://reserved-upstream-client.invalid/auth/callback'], [s.alphaAppId, `${identity.appName} (local)`, redirect]];
-  const result = spawnSync(resolveBun(), [script], {cwd: path.join(exportDir, 'packages/cloud/shared'), stdio: ['ignore', 'inherit', 'inherit'], env: {...process.env,
+  const result = spawnSync(resolveBun(), [script], {cwd: path.join(exportDir, 'packages/cloud/shared'), stdio: ['ignore', 'inherit', 'inherit'], env: {...localChildEnvironment(dir),
     SEED_PACKAGE_JSON: path.join(exportDir, 'package.json'), SEED_DATABASE_URL: `postgresql://postgres@127.0.0.1:${ports.pglite}/postgres`, SEED_APPS: JSON.stringify(apps)}});
   if (result.status !== 0) throw new Error('Seeding the local app rows failed');
 }
@@ -293,7 +322,16 @@ export interface CheckRow { gate: string; passed: boolean; detail: string }
 
 /** The product's Cloud contract against a local Cloud: one real sign-in and the routes behind it. */
 export async function checkLocalCloud(cloud: {api: string; steward: string; tenant: string; registration: ReturnType<typeof localRegistration>}, fetchImpl: typeof fetch = fetch): Promise<CheckRow[]> {
-  if (!['127.0.0.1', 'localhost'].includes(new URL(cloud.api).hostname)) throw new Error('Refusing: this check signs in and only runs against a Cloud on this computer');
+  if (process.env.ELIZA_DEV_ALLOW_TEST_MOCKS !== '1') throw new Error('The local Cloud sign-in check requires ELIZA_DEV_ALLOW_TEST_MOCKS=1');
+  const front = new URL(cloud.api);
+  const port = Number(front.port);
+  if (front.origin !== cloud.api || front.protocol !== 'https:' || front.hostname !== '127.0.0.1' ||
+      !Number.isInteger(port) || port < 1024 || port > 65000 || cloud.steward !== `http://127.0.0.1:${port + 13}`)
+    throw new Error('The sign-in check requires the local TLS front door and its loopback Steward');
+  const registration = localRegistration(front.origin);
+  if (cloud.tenant !== LOCAL_CLOUD.tenant || cloud.registration?.clientId !== registration.clientId ||
+      cloud.registration.environment !== registration.environment || cloud.registration.redirectUri !== registration.redirectUri)
+    throw new Error('The sign-in check requires the local Alpha tenant and registration');
   const rows: CheckRow[] = [];
   const leaks: string[] = [];
   const call = async (route: string, {method = 'GET', body, bearer, base = cloud.api}: {method?: string; body?: unknown; bearer?: string; base?: string} = {}) => {
@@ -313,12 +351,13 @@ export async function checkLocalCloud(cloud: {api: string; steward: string; tena
   const providers = await call(`/steward/auth/providers?tenantId=${encodeURIComponent(cloud.tenant)}`);
   row('sign-in methods', providers.status === 200 && providers.data?.email === true, `providers for tenant ${cloud.tenant}: HTTP ${providers.status}, email ${providers.data?.email === true ? 'offered' : 'not offered'}`);
   const keys = await call('/api/v1/subscription/entitlement-keys');
-  row('entitlement keys', keys.status === 200, `HTTP ${keys.status}`);
+  const localVerificationKey = Array.isArray(keys.data?.keys) && keys.data.keys.some((key: JsonWebKey & {kid?: string}) => key?.kid === 'alpha-local-1' && key.kty === 'EC' && key.crv === 'P-256' && !key.d);
+  row('entitlement keys', keys.status === 200 && localVerificationKey === true, `HTTP ${keys.status}`);
   const service = await call('/api/public/service');
   row('service document', service.status === 200, `HTTP ${service.status}`);
 
   // One email-code sign-in for a throwaway address; the code is read from Steward's loopback dev sink.
-  const email = `alpha-local-${crypto.randomBytes(4).toString('hex')}@example.com`;
+  const email = `alpha-local-${crypto.randomBytes(4).toString('hex')}@alpha-local-cloud.invalid`;
   const emailVerifier = crypto.randomBytes(48).toString('base64url');
   const since = Date.now();
   const sent = await call('/steward/auth/email/code/send', {method: 'POST', body: {email, tenantId: cloud.tenant, client: clientId, pkce: {codeChallenge: crypto.createHash('sha256').update(emailVerifier).digest('base64url'), codeChallengeMethod: 'S256'}}});
@@ -338,18 +377,19 @@ export async function checkLocalCloud(cloud: {api: string; steward: string; tena
   const binding = {clientId, environment, redirectUri};
   const connected = await call('/api/v1/app-auth/connect', {method: 'POST', bearer: session, body: {flow: 'mobile_pkce', ...binding, state,
     codeChallenge: crypto.createHash('sha256').update(verifier).digest('base64url'), codeChallengeMethod: 'S256', deviceName: 'Alpha Phone local Cloud check'}});
-  if (!row('app authorization', connected.status === 200 && typeof connected.data?.code === 'string', `connect: HTTP ${connected.status}${connected.data?.error ? ` (${connected.data.error})` : ''}`)) return finish();
+  if (!row('app authorization', connected.status === 200 && typeof connected.data?.code === 'string', `connect: HTTP ${connected.status}`)) return finish();
   const proof = {...binding, code: connected.data.code, state, codeVerifier: verifier};
   const minted = await call('/api/v1/app-auth/mobile/token', {method: 'POST', body: {...proof, grantType: 'authorization_code'}});
   const secret = minted.data?.secret, credentialId = minted.data?.credentialId;
-  if (!row('credential minted', minted.status === 200 && typeof secret === 'string' && typeof credentialId === 'string', `token: HTTP ${minted.status}${minted.data?.error ? ` (${minted.data.error})` : ''}`)) return finish();
+  if (!row('credential minted', minted.status === 200 && typeof secret === 'string' && typeof credentialId === 'string', `token: HTTP ${minted.status}`)) return finish();
   const acked = await call('/api/v1/app-auth/mobile/ack', {method: 'POST', body: {...proof, credentialId, secret}});
   row('credential acknowledged', acked.status === 200 && acked.data?.status === 'acknowledged', `ack: HTTP ${acked.status}`);
   const user = await call('/api/v1/user', {bearer: secret});
   const who = user.data?.data ?? user.data;
   row('account read', user.status === 200 && typeof who?.id === 'string', `GET /api/v1/user: HTTP ${user.status}`);
   const entitlement = await call('/api/v1/subscription/entitlement', {bearer: secret});
-  row('entitlement route', entitlement.status < 500 && entitlement.status !== 404, `HTTP ${entitlement.status} (a new account has no plan)`);
+  const token = entitlement.data?.entitlement;
+  row('entitlement route', entitlement.status === 200 && typeof token === 'string' && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token), `HTTP ${entitlement.status} (a new account has no plan)`);
   const revoked = await call('/api/v1/api-keys/current', {method: 'DELETE', bearer: secret});
   row('credential revoked', revoked.status === 200 || revoked.status === 204, `DELETE /api/v1/api-keys/current: HTTP ${revoked.status}`);
   const after = await call('/api/v1/user', {bearer: secret});
@@ -366,6 +406,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const {values: options, positionals} = parseArgs({allowPositionals: true, options: {dir: {type: 'string'}, port: {type: 'string', default: '8787'}, source: {type: 'string'}, 'deployment-id': {type: 'string'}, json: {type: 'boolean', default: false}}});
   const command = positionals[0];
   if (!['prepare', 'start', 'check'].includes(command)) { console.error('Usage: bun scripts/local-cloud.ts prepare|start|check [--dir DIR] [--port PORT] [--json]'); process.exit(2); }
+  if (command !== 'prepare' && process.env.ELIZA_DEV_ALLOW_TEST_MOCKS !== '1') throw new Error('Local Cloud fixtures require ELIZA_DEV_ALLOW_TEST_MOCKS=1');
   const paths = layout(options.dir, options.port!, options.source, options['deployment-id']);
   if (command === 'prepare') await prepare(paths);
   else if (command === 'start') { try { await start(paths); } catch (error) { stopAll(); throw error; } }
@@ -373,9 +414,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const file = path.join(paths.dir, 'local-cloud.json');
     if (!fs.existsSync(file)) throw new Error(`No ${file}: start the local Cloud first`);
     const cloud = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (cloud.caCertificate !== path.join(paths.dir, 'tls', 'cert.pem')) throw new Error('Unexpected certificate path in local Cloud description');
     // Node reads NODE_EXTRA_CA_CERTS only at start-up: run again with the local certificate trusted.
     if (process.env.NODE_EXTRA_CA_CERTS !== cloud.caCertificate) {
-      process.exit(spawnSync(process.execPath, process.argv.slice(1), {stdio: 'inherit', env: {...process.env, NODE_EXTRA_CA_CERTS: cloud.caCertificate}}).status ?? 1);
+      process.exit(spawnSync(process.execPath, process.argv.slice(1), {stdio: 'inherit', env: {...localChildEnvironment(paths.dir), ALPHA_LOCAL_CLOUD_DIR: paths.dir, NODE_EXTRA_CA_CERTS: cloud.caCertificate}}).status ?? 1);
     }
     const rows = await checkLocalCloud(cloud);
     if (options.json) console.log(JSON.stringify(rows, null, 1));
