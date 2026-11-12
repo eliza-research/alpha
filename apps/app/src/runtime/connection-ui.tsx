@@ -3230,8 +3230,7 @@ export const connectionController = {
     if(!residentCloudFlow()||active?.kind!=='resident'||providerRechecks.has(turnId))return;
     providerRechecks.add(turnId);
     const selected=active,generation=providerStatusGeneration,status=await connectionController.refreshProviderStatus(generation);
-    if(active!==selected||generation!==providerStatusGeneration)return;
-    if(!status||state.providerStatus!==status||state.providerStatusError){
+    if(active!==selected||generation!==providerStatusGeneration||!status||state.providerStatus!==status||state.providerStatusError){
       providerRechecks.delete(turnId);
       return;
     }
