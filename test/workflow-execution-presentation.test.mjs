@@ -1,7 +1,15 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 const {executionFixture}=await import('./fixtures/workflow-execution-fixture.mjs');
-const settle=async predicate=>{for(let i=0;i<100;i++){if(predicate())return;await new Promise(resolve=>setImmediate(resolve));}throw Error('Bounded fixture did not settle');};
+// Phone review hashes its real workflow spec asynchronously. A fixed number of idle turns
+// can finish before WebCrypto's worker returns, even when the request is making progress.
+const settle=async predicate=>{
+ const deadline=performance.now()+5_000;
+ while(!predicate()){
+  if(performance.now()>=deadline)throw Error('Bounded fixture did not settle: '+predicate);
+  await new Promise(resolve=>setTimeout(resolve,5));
+ }
+};
 test('finished manual text result has no device controls and Done closes without a new run',async()=>{const f=await executionFixture();try{const r=await f.openRun();assert.equal(r.phoneAvailable,false);assert.equal(r.phoneSyncAvailable,false);assert.equal(r.showRefresh,false);assert.equal(r.notice,'');assert.equal(r.out,f.run.output);assert.ok(r.log.some(x=>x.t===f.run.id));assert.equal(r.againLabel,'Done');r.again();assert.equal(f.render().runOpen,false);assert.equal(f.requests.filter(x=>x.body!==undefined).length,0);}finally{f.close();}});
 test('pending device approvals retain review/reconciliation controls while manual runs do not',async()=>{for(const device of [false,true]){const f=await executionFixture({status:'waiting-approval',finished:false,device});try{const r=await f.openRun();assert.equal(r.phoneAvailable,device);assert.equal(r.phoneReviewAvailable,device);assert.equal(r.phoneSyncAvailable,device);assert.equal(r.notice,'Running');assert.equal(r.againLabel,'Cancel run');assert.equal(f.requests.filter(x=>x.body!==undefined).length,0);}finally{f.close();}}});
 test('unknown and externally running executions retain visible uncertainty, cancellation and no-replay truth',async()=>{for(const state of ['outcome-unknown','worker-running']){const f=await executionFixture({status:'running',finished:false,device:true,reconciliation:{state,message:'Recorded state'}});try{const r=await f.openRun();assert.match(r.notice,state==='outcome-unknown'?/^Check before running again$/:/^Running$/);assert.equal(!!r.mayHaveRun,state==='outcome-unknown');assert.equal(r.showRefresh,true);assert.equal(r.phoneSyncAvailable,state==='outcome-unknown');assert.equal(r.againLabel,'Cancel run');assert.equal(f.requests.filter(x=>x.body!==undefined).length,0);}finally{f.close();}}});

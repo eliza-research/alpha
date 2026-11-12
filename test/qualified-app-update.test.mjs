@@ -112,9 +112,9 @@ test('artifact identity is confined to protected signing and publication jobs',(
  assert.deepEqual(identity.roles.map(role=>role.includedPermissions),[['storage.objects.get'],['storage.objects.create']]);
  for(const claim of ["assertion.repository_id == '1396333361'","assertion.ref == 'refs/heads/main'","assertion.environment == 'release'","assertion.event_name == 'workflow_dispatch'"])assert(identity.attributeCondition.includes(claim));
  assert.deepEqual([...identity.attributeCondition.matchAll(/"([^"]+\.yml@refs\/heads\/main)"/g)].map(match=>match[1]),[
-  'alphacompute/alpha/.github/workflows/release-cloud-app-signing.yml@refs/heads/main',
-  'alphacompute/alpha/.github/workflows/publish-qualified-app-update.yml@refs/heads/main',
-  'alphacompute/alpha/.github/workflows/release-os-ota-signing.yml@refs/heads/main',
+  'eliza-research/alpha/.github/workflows/release-cloud-app-signing.yml@refs/heads/main',
+  'eliza-research/alpha/.github/workflows/publish-qualified-app-update.yml@refs/heads/main',
+  'eliza-research/alpha/.github/workflows/release-os-ota-signing.yml@refs/heads/main',
  ]);
  assert(identity.roles[1].condition.expression.endsWith("/objects/signed/')"));
  const cases=[['release-cloud-app-signing.yml','sign'],['publish-qualified-app-update.yml','publish']];
