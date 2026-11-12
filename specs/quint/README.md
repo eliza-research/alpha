@@ -84,7 +84,8 @@ model transition disabled. The test imports, bundles or compiles the whole produ
 A check that cuts a region out of a source file, asserts on source text or restates the model in
 JavaScript is not refinement and does not belong here.
 
-Each adapter has one test file, `test/quint-<name>.test.mjs`, and its driver in
+An adapter lives in its test file, `test/quint-<name>.test.mjs`, unless another module also uses
+it. Shared drivers, ports, fixtures and Java harnesses are in
 `specs/quint/refinement/<family>/`. Adapters that cover several models at once run from
 `test/quint-<family>-refinement.test.mjs`. `specs/quint/refinement/check-traces.mjs` evaluates the
 generated checks with the pinned Quint interpreter, compares observations after every checkpoint

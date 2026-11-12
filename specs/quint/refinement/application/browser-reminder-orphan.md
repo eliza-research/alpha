@@ -10,7 +10,7 @@ through the current domain migration. The old source digest was
 `5ee15a9c2d962bf738e42beeb78d55e8abb9af194b75b0bf58efd2bfd0b544b2`.
 The current staging code writes an own entry and persists its paired marker.
 
-The [model](../../application/BrowserReminderOrphan.qnt) and [source replay](browser-reminder-orphan.mjs)
+The [model](../../application/BrowserReminderOrphan.qnt) and [source replay](../../../../test/quint-browser-reminder-orphan-refinement.test.mjs)
 compare both kinds of stored state through actual BrowserDaily, Reminder
 domain and Clock methods. They use the same opaque operation ID for the
 historical and currently staged forms.

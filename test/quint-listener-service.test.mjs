@@ -1,7 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {checkListenerService,listenerServiceScenarios,probeListenerService} from '../specs/quint/refinement/native/listener-service.mjs';
-import {probeListenerAdmission} from '../specs/quint/refinement/native/listener-admission-probe.mjs';
+import {checkListenerService, listenerServiceScenarios, probeListenerService} from '../specs/quint/refinement/native/listener-service.mjs';
+import {mkdtempSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {directory, javaTraces} from '../specs/quint/refinement/native/java.mjs';
+import {currentNativeSource} from '../specs/quint/refinement/native/current-sources.mjs';
+import {listenerServicePlatform} from '../specs/quint/refinement/native/listener-service-platform.mjs';
+
+function probeListenerAdmission(){
+ const platform=listenerServicePlatform(),state=mkdtempSync(join(tmpdir(),'quint-listener-admission-'));
+ try{
+  const sources=['ListeningService','Listener','ListenerStore','ListeningEpoch','IndicatorLease','ListenerPolicy','CrashLoopBreaker','SpeechGate','WakePhrase','SenseConfig'].map(currentNativeSource).concat(directory+'/StorePorts.java',directory+'/ServicePorts.java',platform.paths);
+  return javaTraces('ListenerAdmissionProbe.java',sources,[join(state,'settings.json')],'ai.eliza.sense.ListenerAdmissionProbe');
+ }finally{platform.close();rmSync(state,{recursive:true,force:true});}
+}
 
 test('actual listener/service lifecycle retains failed resources and completes destruction', {timeout:360000},async()=>{
  const result=await checkListenerService(['test/quint-listener-service.test.mjs']);
