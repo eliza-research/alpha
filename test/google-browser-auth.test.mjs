@@ -5,11 +5,12 @@ import {join, resolve, relative} from 'node:path';
 import {createHash} from 'node:crypto';
 import {tmpdir} from 'node:os';
 import {spawnSync} from 'node:child_process';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {preparePatchedNative} from '../scripts/prepare-patched-native.ts';
 
 // Run the shared browser, callback and credential-ownership regressions against
 // exactly the authenticated source that Gradle packages, without editing vendor.
-test('packaged shared Google browser sign-in preserves lifecycle and credential ownership', {timeout: 360000}, () => {
+test('packaged shared Google browser sign-in preserves lifecycle and credential ownership', {timeout: scaledTimeout(360000)}, () => {
   const root=resolve(import.meta.dirname, '..');
   const staged=preparePatchedNative({root});
   const temporary=mkdtempSync(join(tmpdir(), 'alpha-browser-auth-'));
@@ -43,7 +44,7 @@ test('packaged shared Google browser sign-in preserves lifecycle and credential 
     const runSuite=(label,minimumTests)=>{
       const report=join(temporary, 'junit.xml');
       rmSync(report, {force:true});
-      const run=spawnSync(process.execPath, ['test', '--reporter=junit', `--reporter-outfile=${report}`, join(module, 'test/native-sign-in.test.mjs')], {timeout:170000, env, encoding:'utf8'});
+      const run=spawnSync(process.execPath, ['test', '--timeout=120000', '--reporter=junit', `--reporter-outfile=${report}`, join(module, 'test/native-sign-in.test.mjs')], {timeout:scaledTimeout(170000), env, encoding:'utf8'});
       const detail=`${label}:\n${run.stdout}\n${run.stderr}`;
       assert.equal(run.error, undefined, run.error?.message);
       assert.equal(run.status, 0, detail);
@@ -55,8 +56,8 @@ test('packaged shared Google browser sign-in preserves lifecycle and credential 
     };
     // Keep the pin's own recovery coverage, including retry/receipt failures,
     // before exercising Alpha's additional browser and credential-owner cases.
-    runSuite('pinned upstream',12);
+    runSuite('pinned upstream',16);
     cpSync(overlay, join(module, 'test'), {recursive:true, filter:(source) => source!==join(overlay, 'upstream-base.json')});
-    runSuite('Alpha browser',13);
+    runSuite('Alpha browser',17);
   } finally { rmSync(temporary, {recursive:true, force:true}); }
 });

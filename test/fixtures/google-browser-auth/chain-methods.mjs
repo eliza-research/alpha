@@ -24,26 +24,22 @@ export function chainMethods(plugin) {
       " @PluginMethod public void cancel(",
       " /** Post-authentication consent",
     ).replace("@PluginMethod ", ""),
-    ACTUAL_START_CODE: between(
-      plugin,
-      " @PluginMethod public void startEmail(",
-      " /** Check registration and tenant SMS policy",
-    ).replaceAll("@PluginMethod ", ""),
     ACTUAL_CALLBACK: between(
       plugin,
       " private boolean captureCallback(",
       " /** Retire only the captured record",
-    ),
-    ACTUAL_BROWSER_LIFECYCLE: between(
-      plugin,
-      " @Override protected void handleOnPause()",
-      " @Override protected void handleOnDestroy()",
     ),
     ACTUAL_BURN: between(
       plugin,
       " private void burnUnclaimedPending(Attempt owner)",
       " // ── Email code and MFA:",
     ),
+    // startEmail, startPhone and notSent: one contiguous region.
+    ACTUAL_START_CODE: between(
+      plugin,
+      " @PluginMethod public void startEmail(",
+      " /** Check registration and tenant SMS policy",
+    ).replaceAll("@PluginMethod ", ""),
     ACTUAL_VERIFY:
       between(
         plugin,
@@ -72,19 +68,19 @@ export function chainMethods(plugin) {
     ),
     ACTUAL_ACK: between(
       plugin,
-      " private boolean acknowledge(",
-      " /** A key stored before",
+      " private CloudSignInFlow.Ack acknowledge(",
+      " /**\n  * A key stored before an interrupted ack",
     ),
-    ACTUAL_RESUME_ACKS: between(
+    ACTUAL_ACK_RECOVERY: between(
       plugin,
-      " private void resumeAcknowledgements()",
+      " /**\n  * A key stored before an interrupted ack",
+      " // ── Silent key renewal",
+    ),
+    ACTUAL_RENEWAL: between(
+      plugin,
+      " /** One renewal check of a deployment's saved key.",
       " // ── Outcomes and transport",
-    ),
-    ACTUAL_DESTROY: between(
-      plugin,
-      " @Override protected void handleOnDestroy()",
-      " private void run(Runnable task)",
-    ),
+    ).replace("@PluginMethod ", ""),
     ACTUAL_OUTCOMES: between(
       plugin,
       " private void finish(",
@@ -94,6 +90,16 @@ export function chainMethods(plugin) {
       plugin,
       " private static long instant(",
       " private Response post(",
+    ),
+    ACTUAL_BROWSER_LIFECYCLE: between(
+      plugin,
+      " @Override protected void handleOnPause()",
+      " @Override protected void handleOnDestroy()",
+    ),
+    ACTUAL_DESTROY: between(
+      plugin,
+      " @Override protected void handleOnDestroy()",
+      " private void run(Runnable task)",
     ),
   };
 }
