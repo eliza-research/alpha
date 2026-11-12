@@ -213,7 +213,7 @@ test('the plan surface is a notice beside the running agent, not a gate', () => 
   // Auth owns Back even while busy; the required top-level chooser remains protected.
   const close = between(ui, '  close() {', '  cancel() {');
   const cancelSignIn = close.indexOf('if(state.signIn){connectionController.cancelSignIn();return;}');
-  const requiredSignIn = close.indexOf('if(residentSignInRequired()){');
+  const requiredSignIn = close.indexOf('if(residentSignInRequired()&&(!isAndroid||testMocksEnabled||productionCloudSignInRequired(state))){');
   assert.ok(cancelSignIn >= 0 && requiredSignIn > cancelSignIn, 'Sign-in cancellation precedes the required-sign-in gate, after independent billing notices.');
   // No agent-less product choice remains in the phone's flow.
   const resident = between(chooser, 'if(residentCloudFlow())return', 'if(browserOnly)return');
