@@ -290,7 +290,7 @@ async function guidanceTargets(page, viewports) {
             label: node.getAttribute('aria-label') || node.textContent.trim(),
             owned: points(node, [0.2, 0.5, 0.8]),
           }));
-          const information = root.querySelector('summary[aria-label="Map information"]');
+          const recenter = root.querySelector('button[aria-label="Recenter"]');
           const attribution = [...root.querySelectorAll('.alpha-map-credits a')].map(node =>
             ({label: node.textContent.trim(), owned: textLines(node)}));
           const notice = root.querySelector('[data-alpha-maps-status] [role="status"]');
@@ -299,7 +299,7 @@ async function guidanceTargets(page, viewports) {
           const dockButtons = pill ? [...pill.querySelectorAll('button,[role="button"]')].filter(node =>
             node.getClientRects().length && !node.closest('[aria-hidden="true"],[inert]')) : [];
           return {
-            targets: [...guidance, {label: 'Map information', owned: points(information, [0.05, 0.2, 0.5, 0.8, 0.95])},
+            targets: [...guidance, {label: 'Recenter', owned: points(recenter, [0.05, 0.2, 0.5, 0.8, 0.95])},
               ...attribution, {label: notice.textContent.trim(), owned: textLines(notice)}],
             rightDock: landscape && rail ? {
               atRight: rail.left > app.left + app.width / 2 && Math.abs(rail.right - app.right) < 1,
@@ -307,7 +307,7 @@ async function guidanceTargets(page, viewports) {
             } : null,
           };
         }, width > height);
-        assert.equal(targets.length, 9, 'Four guidance controls, Map information, three attribution links and status');
+        assert.equal(targets.length, 9, 'Four guidance controls, Recenter, three attribution links and status');
         for (const {label, owned} of targets) {
           assert.ok(owned.length && owned.every(Boolean), `${width}×${height} at ${percent}%: ${label} owns its sampled points`);
         }
@@ -315,16 +315,7 @@ async function guidanceTargets(page, viewports) {
           assert.ok(rightDock?.atRight, 'The landscape assistant pill remains right-docked');
           assert.ok(rightDock.controls.length && rightDock.controls.every(control => control.owned),
             'The assistant pill still owns the centers of its controls');
-          const information = page.locator('[data-alpha-maps-root] summary[aria-label="Map information"]');
-          await information.tap();
-          await expect(information.locator('..')).toHaveAttribute('open', '');
-          const coordinates = information.locator('..').getByRole('button', {name:'Enter coordinates', exact:true});
-          assert.ok(await coordinates.evaluate(node => {
-            const box = node.getBoundingClientRect();
-            return node.contains(document.elementFromPoint(box.left+box.width/2, box.top+box.height/2));
-          }), 'The open disclosure owns its first action');
-          await information.tap();
-          await expect(information.locator('..')).not.toHaveAttribute('open', '');
+          await expect(page.locator('[data-alpha-maps-root] summary[aria-label="Map information"]')).toHaveCount(0);
         }
         observations.push({width, height, percent, targets, ...(rightDock ? {rightDock} : {})});
       }
