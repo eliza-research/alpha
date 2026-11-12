@@ -1,6 +1,17 @@
 name: Resident source preparation
 on:
+  # agent:prepare builds the pinned SDK graph: the scripts that drive it, the lockfile and the
+  # upstream pin are its inputs.
   pull_request:
+    paths:
+      - 'scripts/**'
+      - package.json
+      - bun.lock
+      - bunfig.toml
+      - upstream.lock.json
+      - .gitmodules
+      - vendor/eliza
+      - .github/workflows/resident-prepare.yml
   workflow_dispatch:
 permissions:
   contents: read
@@ -8,11 +19,7 @@ concurrency:
   group: resident-prepare-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  changes:
-    uses: ./.github/workflows/changes.yml
   prepare:
-    needs: changes
-    if: needs.changes.outputs.prepare == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 70
     env:

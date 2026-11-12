@@ -20,7 +20,7 @@ actions, invariants, scenarios, source files and abstractions.
 Install the root lockfile with `bun install --frozen-lockfile`. The development tool is pinned to
 `@informalsystems/quint` 0.33.1. `bun run verify` and `bun run test` leave out the default
 Quint gate and the `test/quint-*` tests; run them before merging. CI runs them only for
-pull requests into `main` and on manual dispatch (`.github/workflows/quint-model-check.yml`).
+pull requests into `main` and on manual dispatch (`.github/workflows/promotion.yml`).
 
 ```sh
 bun run quint:check
