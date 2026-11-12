@@ -1,4 +1,3 @@
-import { externalVoiceInvocationEnabled } from './runtime/voice-entry-policy';
 // Register browser implementations before any runtime module claims plugin identity.
 import './browser/register';
 import {installCanonicalNotesView} from './prototype/canonical-notes-ui';
@@ -70,7 +69,7 @@ import { installSystemBarAppearance, type SystemBars } from './prototype/system-
 import { automaticUpdateIdle, hasAppearancePreview, installSettingsAdapter, readAppearanceChoice, resolveAppearance } from './prototype/settings-adapter';
 import { ConnectionChooser, connectionController, connectionChooserVisible, residentAlwaysPresent } from './runtime/connection-ui';
 import { protectedPowerLaunchState } from './runtime/power-launch-state';
-import { installListenerInvocation, stopWakeListenerForChatOnly } from './runtime/always-on-listener';
+import { admitImageSense, imageSenseAvailable, installListenerInvocation, stopWakeListenerForChatOnly } from './runtime/always-on-listener';
 import {GoogleConnectionsPanel,googleConnectionController} from './runtime/google-connection-ui';
 import { installNotesTrashAdapter } from './prototype/notes-trash-adapter';
 import { installNotesFoldersAdapter } from './prototype/notes-folders-adapter';
@@ -344,7 +343,7 @@ async function prepareMountedUpdate(activationCurrent: () => boolean, automatic 
   const owner = shell;
   const voiceActive = () => owner?.voiceConversationActive?.() !== false;
   const idle = () => automaticUpdateIdle(owner.S(),connectionController.getSnapshot(),
-    !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus,[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'),voiceActive());
+    !!document.querySelector('input:focus,textarea:focus,[contenteditable="true"]:focus,[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'),voiceActive(),document);
   const current = () => activationCurrent() && shell === owner && owner?.live === true && !voiceActive() && (!automatic || !editingAtFreeze && idle());
   if (!current()) throw Error('App is still opening');
   if (connectionController.getSnapshot().busy || document.querySelector('[data-alpha-chat-recorder],[data-alpha-subview="notes-recorder"]'))
@@ -377,13 +376,17 @@ async function mountPhone() {
     await nativeAppUpdateGate;
   }
   if (isAndroid) {
-    const refreshImage=async()=>{const image=await DeviceApps.platformCapabilities().catch(()=>({aospImage:false,contacts:false}));const admitted=image.aospImage===true&&image.contacts===true;applyImageContacts(admitted,ORDER,shell,admitImageContacts);};
+    const refreshImage=async(initial=false)=>{
+      const image=await DeviceApps.platformCapabilities().catch(()=>null);
+      if(initial)admitImageSense(image);
+      applyImageContacts(image?.aospImage===true&&image.contacts===true,ORDER,shell,admitImageContacts);
+    };
     // One round of independent host reads before the first render. The assistant surface is
     // AlphaAssistActivity only (surfaceInfo is class-gated natively), never a launch extra.
     [launcherPresentation, assistantSurface] = await Promise.all([
       System.getBuildInfo().then(info => info.launcher === true).catch(() => false),
       DailyApps.surfaceInfo().then(info => info.assistant === true).catch(() => false),
-      refreshImage(),
+      refreshImage(true),
       applyDeviceLocale(),
     ]);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) void refreshImage().then(()=>applyDeviceLocale()).then(() => shell?.setState({ localeRevision: Date.now() })); });
@@ -420,14 +423,14 @@ async function mountPhone() {
     root.removeAttribute('role');
   }
   createRoot(document.getElementById('root')!).render(<RootErrorBoundary><Phone /></RootErrorBoundary>);
-  // P-78 also retires an already-enabled listener; entry-point hiding alone is insufficient.
-  if (isAndroid && !externalVoiceInvocationEnabled) void stopWakeListenerForChatOnly().then(stopped => {
+  // An older or unqualified Android image may still have a running listener.
+  if (isAndroid && !imageSenseAvailable()) void stopWakeListenerForChatOnly().then(stopped => {
     if (stopped) return;
     const notice = 'Wake listening could not be confirmed off. Turn it off in Android settings.';
     if (shell?.live) { shell.toast(notice); pendingNotice = undefined; } else pendingNotice = notice;
   });
   // The image's always-on listener heard the wake phrase: start the on-device voice assistant.
-  if (externalVoiceInvocationEnabled && isAndroid && assistantSurface) installListenerInvocation(() => shell, { authority: () => { const port=connectionController.getAppRecordClient(); if(!port)return null; try{if(!port.current())return null;return JSON.stringify([port.sessionId,port.scope??null,port.identity.ownerId,port.identity.agentId,port.identity.sessionId,port.identity.origin]);}catch{return null;} }, initialRestorePending: () => protectedPowerLaunchState(connectionController.getSnapshot()).initialRestorePending, powerAccountRef: () => protectedPowerLaunchState(connectionController.getSnapshot()).accountRef, connectionOpen: () => connectionController.getSnapshot().open, connected: () => !!connectionController.getSnapshot().session && !connectionController.getSnapshot().busy, voiceActive: () => !!document.querySelector('[data-alpha-chat-recorder]'), subscribe: listener => connectionController.subscribe(listener) });
+  if (imageSenseAvailable() && assistantSurface) installListenerInvocation(() => shell, { authority: () => { const port=connectionController.getAppRecordClient(); if(!port)return null; try{if(!port.current())return null;return JSON.stringify([port.sessionId,port.scope??null,port.identity.ownerId,port.identity.agentId,port.identity.sessionId,port.identity.origin]);}catch{return null;} }, initialRestorePending: () => protectedPowerLaunchState(connectionController.getSnapshot()).initialRestorePending, powerAccountRef: () => protectedPowerLaunchState(connectionController.getSnapshot()).accountRef, connectionOpen: () => connectionController.getSnapshot().open, connected: () => !!connectionController.getSnapshot().session && !connectionController.getSnapshot().busy, voiceActive: () => !!document.querySelector('[data-alpha-chat-recorder]'), subscribe: listener => connectionController.subscribe(listener) });
 }
 // Provider and Cloud account changes report a short receipt in the phone's toast (connection-ui.tsx).
 window.addEventListener('alpha:connection-toast', event => {

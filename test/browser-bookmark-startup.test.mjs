@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import vm from 'node:vm';
 import {CapacitorException, ExceptionCode} from '@capacitor/core';
 
@@ -9,17 +9,25 @@ const source = readFileSync('apps/app/src/prototype/browser-adapter.ts', 'utf8')
 const start = source.indexOf('  let bookmarkRead:');
 const end = source.indexOf('  function saveBookmark(', start);
 assert.ok(start >= 0 && end > start, 'execute the actual bookmark read and coalescing paths');
-const bookmarkSource = stripTypeScriptTypes(source.slice(start, end), {mode: 'strip'});
+const titleStart = source.indexOf('  function retainedTitles(');
+const titleEnd = source.indexOf('  let reading:', titleStart);
+const stateStart = source.indexOf("  const state = () => shell?.vget('browser');");
+const stateEnd = source.indexOf('\n', stateStart);
+assert.ok(titleStart >= 0 && titleEnd > titleStart && stateStart >= 0 && stateEnd > stateStart, 'include the actual bookmark title retention and state accessor');
+const bookmarkSource = stripTypeScriptTypes([source.slice(start, end), source.slice(titleStart, titleEnd), source.slice(stateStart, stateEnd)].join('\n'), {mode: 'strip'});
 const unsupported = () => new CapacitorException('Browser unavailable on this host', ExceptionCode.Unimplemented);
 
 function fixture() {
   const state = {view: 'settings'}, errors = [], writes = [];
+  const browserState = {marks: [], visits: ['https://history.example'], titles: {
+    'https://example.com': 'Example', 'https://history.example': 'History', 'https://removed.example': 'Removed',
+  }};
   let reads = 0, rejectRead, resolveRead;
   const context = {
     Promise, CapacitorException, ExceptionCode,
     Capacitor: {isNativePlatform: () => true},
     disposed: false, session: 'test-session', refresh() {},
-    shell: {S: () => state, vset: (...args) => writes.push(args)},
+    shell: {S: () => state, vget: () => browserState, vset: (...args) => writes.push(args)},
     report: error => {if (!context.disposed) errors.push(error);},
     Browser: {bookmarks: () => {
       reads++;
@@ -84,4 +92,7 @@ test('successful coalesced reads still publish bookmarks once', async () => {
   assert.equal(h.reads, 1); assert.equal(h.errors.length, 0);
   assert.equal(h.writes.length, 1);
   assert.deepEqual(Array.from(h.writes[0][1].marks), ['https://example.com']);
+  assert.deepEqual(Object.fromEntries(Object.entries(h.writes[0][1].titles)), {
+    'https://example.com': 'Example', 'https://history.example': 'History',
+  }, 'successful hydration retains titles only for saved bookmarks and history');
 });

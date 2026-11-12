@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import vm from 'node:vm';
-import {tsImport} from 'tsx/esm/api';
+import {tsImport} from '../../../../test/support/ts-import.mjs';
 import {root} from './shell-model-traces.mjs';
 
 /*

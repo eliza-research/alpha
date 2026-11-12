@@ -3,13 +3,7 @@ import {readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import test from 'node:test';
 
-// The product's standard node --test entry must load its real TypeScript client.
-if(!process.execArgv.some((arg,i)=>arg==='--import'&&process.execArgv[i+1]==='tsx')){
- const child=spawnSync(process.execPath,['--import','tsx',process.argv[1]],{stdio:'inherit',timeout:30000});
- if(child.error)throw child.error;
- if(child.signal)throw Error(`Capability test stopped with ${child.signal}`);
- process.exit(child.status??1);
-}
+// The product's standard bun test entry must load its real TypeScript client.
 const {DeviceActions}=await import('../apps/app/src/runtime/device-actions.ts');
 const {selectDeviceCapabilities}=await import('../apps/app/src/runtime/phone-context.ts');
 

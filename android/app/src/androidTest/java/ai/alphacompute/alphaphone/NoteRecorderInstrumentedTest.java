@@ -43,14 +43,32 @@ public class NoteRecorderInstrumentedTest {
   JSObject paused=new JSObject();paused.put("state","paused");paused.put("recordingId",UUID.randomUUID().toString());paused.put("durationMs",90_000);
   android.app.Notification p=AlphaNoteRecordingService.notification(context(),paused);
   assertEquals("Paused",p.extras.getCharSequence(android.app.Notification.EXTRA_TITLE).toString());
-  assertEquals("Resume",p.actions[0].title.toString());
+  assertEquals("Resume",p.actions[0].title.toString());assertEquals("Stop",p.actions[1].title.toString());
   assertFalse("no running chronometer while paused",p.extras.getBoolean(android.app.Notification.EXTRA_SHOW_CHRONOMETER));
   JSObject recording=new JSObject();recording.put("state","recording");recording.put("recordingId",paused.getString("recordingId"));recording.put("durationMs",90_000);
   long now=System.currentTimeMillis();android.app.Notification r=AlphaNoteRecordingService.notification(context(),recording);
   assertEquals("Recording",r.extras.getCharSequence(android.app.Notification.EXTRA_TITLE).toString());
-  assertEquals("Pause",r.actions[0].title.toString());
+  assertEquals("Pause",r.actions[0].title.toString());assertEquals("Stop",r.actions[1].title.toString());
   assertTrue(r.extras.getBoolean(android.app.Notification.EXTRA_SHOW_CHRONOMETER));
   assertEquals("the chronometer counts the recording's length, not the time since resume",now-90_000,r.when,2000);
+ }
+
+ @Test public void oldNotificationActionsKeepTheirRecordingIdentity()throws Exception{
+  String first=UUID.randomUUID().toString(),second=UUID.randomUUID().toString();
+  android.app.Notification[] shown=new android.app.Notification[4];
+  try{
+   for(int i=0;i<shown.length;i++){
+    JSObject status=new JSObject();status.put("state",i<2?"recording":"paused");
+    status.put("recordingId",i%2==0?first:second);status.put("durationMs",0);
+    shown[i]=AlphaNoteRecordingService.notification(context(),status);
+   }
+   assertFalse("an old Pause cannot become the replacement recording's Pause",shown[0].actions[0].actionIntent.equals(shown[1].actions[0].actionIntent));
+   assertFalse("an old Stop cannot become the replacement recording's Stop",shown[0].actions[1].actionIntent.equals(shown[1].actions[1].actionIntent));
+   assertFalse("an old Resume cannot become the replacement recording's Resume",shown[2].actions[0].actionIntent.equals(shown[3].actions[0].actionIntent));
+   assertEquals("a refresh keeps the same recording's Stop identity",shown[0].actions[1].actionIntent,shown[2].actions[1].actionIntent);
+  }finally{
+   for(android.app.Notification value:shown)if(value!=null)for(android.app.Notification.Action action:value.actions)action.actionIntent.cancel();
+  }
  }
 
  @Test public void segmentsSurviveACrashAndJoinIntoOnePlayableRecording()throws Exception{

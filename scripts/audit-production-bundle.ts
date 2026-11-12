@@ -1,7 +1,7 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Audits a built web bundle (web-dist or an APK's extracted assets/public) for mock,
 // fixture and developer surfaces. Usage:
-//   node scripts/audit-production-bundle.ts <dir> [--expect-test-mocks]
+//   bun scripts/audit-production-bundle.ts <dir> [--expect-test-mocks]
 // The denylist is skipped only when the bundle's build-flags.json records testMocks:true.
 import {readFileSync,statSync,existsSync} from 'node:fs';
 import path from 'node:path';
@@ -21,6 +21,14 @@ export const RETIRED_REMOTE_AGENT_TEXT = Object.freeze(['Connect your remote age
 export const RETIRED_PAIRING_TEXT = Object.freeze(['pairing_identity_mismatch', 'This agent is not accepting pairing', 'The agent refused this pairing code']);
 /** AP-03/P-22: the Cloud sign-in hand-off (CloudProtocol.login). Product sign-in is the native in-app host. */
 export const RETIRED_SIGN_IN_HAND_OFF_TEXT = Object.freeze(['/api/auth/cli-session', '/auth/cli-login', 'Finish signing in to', 'Use the newly opened browser tab']);
+/** App review #855 (PROD-02/03/04): toasts and labels of the simulated prototype that answered a tap
+ * with a stand-in. They exist only behind the test-mocks build flag; a product bundle that holds one
+ * means a simulated handler stopped folding away. No entry may contain another denylist entry. */
+export const SIMULATED_STUB_TEXT = Object.freeze([
+  'in this preview', 'is taking notes', 'Voice input is not connected', 'Scene description is not connected',
+  'for you (confirmed)', 'Not booked.', 'Workflow execution is not connected', 'Booking is not connected',
+  'Read-aloud is not connected', 'Messages are not connected', 'Inbox is not connected',
+]);
 export const DENYLIST = Object.freeze([
   'Connect remote agent', 'Agent HTTPS address', 'Development Cloud agent infrastructure', 'Dedicated hosting requires a reviewed setup',
   'alpha:force-render-error', 'alpha:render-error-check', 'Forced render failure',
@@ -40,6 +48,7 @@ export const DENYLIST = Object.freeze([
   'This page is a visual prototype', 'Pixel 11 Pro', 'Powered by elizaOS ·',
   'data-alpha-development-lock-screen', 'Booked · ', 'Agent booking',
   'Development vault secret', 'synthetic-dev-',
+  ...SIMULATED_STUB_TEXT,
   // The simulated password provider (browser/password-provider.ts) reaches a bundle only if
   // browserDevProfile stops constant-folding to false; these catch that regression.
   'demo-only-password', 'Development password provider', 'Add development provider', 'Proton Pass · development',
@@ -160,7 +169,7 @@ function main(argv: string[]) {
   const flags = argv.filter(arg => arg.startsWith('--'));
   const unknown = flags.filter(flag => flag !== '--expect-test-mocks');
   if (args.length !== 1 || unknown.length) {
-    console.error('Usage: node scripts/audit-production-bundle.ts <dir> [--expect-test-mocks]');
+    console.error('Usage: bun scripts/audit-production-bundle.ts <dir> [--expect-test-mocks]');
     return 2;
   }
   const dir = path.resolve(args[0]);

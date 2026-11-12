@@ -12,15 +12,20 @@ import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import java.io.File;
+import java.lang.reflect.Field;
 import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -28,6 +33,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -51,6 +57,9 @@ public final class UpdateCompositionHarness {
  private final Path journal;
  private final Object lock;
  private final Trace trace;
+ private final Field servedManifest;
+ private final AtomicInteger manifestReads;
+ private final int initialManifestReads;
  private final Map<Integer,AlphaDevicePlugin> bridges = new TreeMap<>();
  private final Map<Plugin,JSObject> requests = new ConcurrentHashMap<>();
  private final String baseline, target, signer;
@@ -71,6 +80,9 @@ public final class UpdateCompositionHarness {
   baseline = AlphaDevicePlugin.UpdatePause.digest(AlphaDevicePlugin.UpdatePause.executingApk);
   target = UpdateFlowTest.offered().getData().optString("sha256");
   signer = AlphaDevicePlugin.appSigner(context);
+  servedManifest = fixtureField("automaticManifest");
+  manifestReads = (AtomicInteger)fixtureField("syntheticManifestRequests").get(null);
+  initialManifestReads = manifestReads.get();
   lock = field("updateBarrier");
   Plugin.ready = requests::put;
   AlphaLocalAgentPlugin.acquiring = acquiring;
@@ -86,6 +98,29 @@ public final class UpdateCompositionHarness {
   var field = AlphaDevicePlugin.class.getDeclaredField(name);
   field.setAccessible(true);
   return field.get(null);
+ }
+ private static Field fixtureField(String name) throws Exception {
+  var field = UpdateFlowTest.class.getDeclaredField(name);
+  field.setAccessible(true);
+  return field;
+ }
+ private String finalOffer() throws Exception {
+  int reads = manifestReads.get() - initialManifestReads;
+  if (reads == 0) return "unread";
+  require(reads == 1 && automaticAttempt,"only automatic admission can make one final offer request");
+  byte[] bytes = (byte[])servedManifest.get(null);
+  String digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+  var offer = new JSONObject(new String(bytes,StandardCharsets.UTF_8));
+  var requested = install.getData();
+  boolean matches = digest.equals(requested.optString("manifestSha256")) &&
+   "alpha-update/v1".equals(offer.optString("schema")) &&
+   (BuildConfig.IS_LAUNCHER ? "launcher" : "standalone").equals(offer.optString("variant")) &&
+   signer.equals(offer.optString("signerSha256")) &&
+   offer.optString("apkUrl").equals(requested.optString("apkUrl")) &&
+   offer.optString("sha256").equals(requested.optString("sha256")) &&
+   offer.getLong("sizeBytes") == requested.optLong("sizeBytes") &&
+   offer.getLong("versionCode") == requested.optLong("versionCode");
+  return matches ? "matching" : "unavailable";
  }
  private int exactActivation(String id) {
   if (id == null) return 0;
@@ -167,6 +202,7 @@ public final class UpdateCompositionHarness {
      .put("consent",context.packages.installsAllowed).put("uptime",SystemClock.uptimeMillis())
      .put("boot",Settings.Global.bootCount).put("process",process).put("readySeen",SystemClock.uptimeMillis()>30000))
     .put("state.admission.automatic",automaticAttempt)
+    .put("state.admission.finalOffer",finalOffer())
     .put("automaticCapability",AlphaDevicePlugin.automaticUpdateStatus(context))
     .put("state.activation.registered",bridgeSet(field("updateBridges")))
     .put("state.activation.seen",new JSONArray(bridges.keySet()))
@@ -268,16 +304,36 @@ public final class UpdateCompositionHarness {
  }
  private void staged() throws Exception {
   register(1);register(2);begin();ack(1,true,true);ack(2,true,false);
+  stopBeforeOffer();
+  confirming.open();sending.await();journalOutcome="committing";
+  trace.step("markCommitting",observe());
+  sending.open();install.awaitAnswer();
+  require(install.resolved.get()==1,"manual commit returned without reading the feed");
+  trace.macro("Android session takes custody after the durable commit mark",observe(),
+   Trace.action("handOff"),Trace.action("observeSession","sealed",false));
+ }
+ private void stopBeforeOffer() throws Exception {
   acquiring.await();journalOutcome="acquired";
   trace.step("sealAcquire",observe());
   acquiring.open();confirming.await();journalOutcome="stopped";
   trace.step("requestConfirmedStop",observe());
-  confirming.open();sending.await();journalOutcome="committing";
-  trace.step("markCommitting",observe());
-  sending.open();install.awaitAnswer();
-  require(install.resolved.get()==1,"synthetic Android commit returned");
-  trace.macro("Android session takes custody after the durable commit mark",observe(),
-   Trace.action("handOff"),Trace.action("observeSession","sealed",false));
+ }
+ private void expectAutomaticAbandonment(String status, String action) throws Exception {
+  sending.open();confirming.open();install.awaitAnswer();
+  require(install.resolved.get()==1 && install.rejected.get()==0 &&
+   status.equals(install.result.optString("status")),"late automatic refusal is explicit");
+  require(installer.committed.isEmpty() && installer.abandoned.equals(java.util.List.of(SESSION))
+   && installer.sessions.isEmpty() && bridges.get(1).activity.started.isEmpty(),
+   "late automatic refusal abandons only its staged session without opening settings or committing");
+  require(AlphaDevicePlugin.UpdatePause.store().read()==null && AlphaLocalAgentPlugin.stops==1
+   && AlphaLocalAgentPlugin.releases==1,"exact abandoned pause and lease settle once");
+  var readback=nativeRead(bridges.get(1));
+  require(!readback.optBoolean("pending",true) && activationId.equals(readback.optString("activationId"))
+   && "canceled".equals(readback.optString("outcome")) && readback.optBoolean("resume",false),
+   "the eligible initiating renderer can resume after confirmed cleanup");
+  journalOutcome="released";
+  trace.macro("final offer read and confirmed precommit abandonment",observe(),
+   Trace.action("readFinalOffer",finalOffer()),Trace.action(action));
  }
  private void endSession() throws Exception {
   installer.destroy(SESSION);
@@ -299,11 +355,26 @@ public final class UpdateCompositionHarness {
   switch (mode) {
    case "cold-automatic-before-barrier":
     replaceProcess(true,37,true);register(1);deferred("starting");clock(30000);deferred("starting");clock(30001);begin(true);
-    ack(1,true,true);acquiring.await();journalOutcome="acquired";trace.step("sealAcquire",observe());
-    acquiring.open();confirming.await();journalOutcome="stopped";trace.step("requestConfirmedStop",observe());
-    confirming.open();sending.await();journalOutcome="committing";trace.step("markCommitting",observe());
+    ack(1,true,true);stopBeforeOffer();
+    confirming.open();sending.await();journalOutcome="committing";
+    trace.macro("fresh bound offer precedes durable commit mark",observe(),
+     Trace.action("readFinalOffer",finalOffer()),Trace.action("markCommitting"));
     sending.open();install.awaitAnswer();require(install.resolved.get()==1,"warm automatic commit handed to Android");
     trace.macro("ready boot crosses the same exact durable boundary",observe(),Trace.action("handOff"),Trace.action("observeSession","sealed",false));
+    break;
+   case "offer-changed-before-commit":
+    register(1);begin(true);ack(1,true,true);stopBeforeOffer();
+    // Same selected tuple, different raw bytes. Even an equivalent JSON object needs a fresh binding.
+    byte[] original = (byte[])servedManifest.get(null);
+    byte[] changed = Arrays.copyOf(original,original.length+1);
+    changed[original.length] = '\n';
+    servedManifest.set(null,changed);
+    expectAutomaticAbandonment("offer-response-changed","cancelUnavailableAutomaticOffer");
+    break;
+   case "consent-revoked-before-commit":
+    register(1);begin(true);ack(1,true,true);stopBeforeOffer();
+    context.packages.installsAllowed=false;trace.step("consent",observe(),false);
+    expectAutomaticAbandonment("permission-required","cancelRevokedAutomatic");
     break;
    case "cold-manual-before-barrier":
     replaceProcess(true,37,true);register(1);begin();ack(1,false,false);install.awaitAnswer();

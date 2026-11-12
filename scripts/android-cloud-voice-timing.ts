@@ -1,8 +1,8 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /** Read only Alpha's numeric voice diagnostics from its running debug WebView.
  * No credential slots, transcripts, reply text, microphone, network speech requests,
  * installs or process restarts. The temporary adb forward is removed on exit.
- * Usage: node scripts/android-cloud-voice-timing.ts [--serial DEVICE] [--out FILE]
+ * Usage: bun scripts/android-cloud-voice-timing.ts [--serial DEVICE] [--out FILE]
  */
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -201,7 +201,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       const key = process.argv[i];
       if (key === '--serial') serial = process.argv[++i];
       else if (key === '--out') output = process.argv[++i];
-      else throw Error('Usage: node scripts/android-cloud-voice-timing.ts [--serial DEVICE] [--out FILE]');
+      else throw Error('Usage: bun scripts/android-cloud-voice-timing.ts [--serial DEVICE] [--out FILE]');
       if (!(key === '--serial' ? serial : output)) throw Error(`${key} needs a value`);
     }
     const report = await collectDevice({ serial });

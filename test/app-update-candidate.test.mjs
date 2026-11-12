@@ -42,10 +42,12 @@ test('retired-channel inventory sets a version floor while the receipt binds onl
   };
   f.state.legacyMissing = false;
   f.state.legacyPages = [[{name: 'alpha-phone-703.apk'}]];
-  f.state.legacyPointer = pointer(legacyManifestUrl.replace('/alpha/', '/alphaphone/'), 704);
-  const initial = await candidateVersion(f);
-  assert.equal(initial.observedFloor, 704);
-  assert.equal(initial.manifestSha256, null);
+  for (const repository of ['eliza-research/alpha', 'eliza-research/alphaphone', 'alphacompute/alphaphone']) {
+    f.state.legacyPointer = pointer(legacyManifestUrl.replace('alphacompute/alpha', repository), 704);
+    const initial = await candidateVersion(f);
+    assert.equal(initial.observedFloor, 704, repository);
+    assert.equal(initial.manifestSha256, null);
+  }
   f.state.pointer = pointer(f.config.updateManifestUrl, 702);
   assert.equal((await candidateVersion(f)).manifestSha256, f.state.pointer.sha256);
   f.state.legacyPages.push([{name: 'alpha-phone-705.apk'}]);

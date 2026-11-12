@@ -43,7 +43,7 @@ for(const availability of ['rejected','pending'])test(`ordinary Notes/Calendar/t
 // A VIEWS handoff naming a view this phone does not map leaves the agent's reply standing:
 // the real client returns unavailable before any claim, and the chat shows a short note.
 test('an unmapped VIEWS handoff is reported in chat without a claim or a throw',async()=>{
- const {stripTypeScriptTypes}=await import('node:module');
+ const {stripTypeScriptTypes}=await import('./support/strip-types.mjs');
  const adapter=fs.readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
  const start=adapter.indexOf('  function openInternalView('),helper=adapter.slice(start,adapter.indexOf('  function canonicalNotesKey(',start));
  const requests=[],context={view:'home',revision:1,sensitive:false};
@@ -59,5 +59,15 @@ test('an unmapped VIEWS handoff is reported in chat without a claim or a throw',
   assert.equal(await sandbox.deliver(shell,{client,attempt:client.capture(context)},[result]),false);
   assert.deepEqual(requests,[]);assert.deepEqual(toasts,[]);
   assert.equal(said.length,1);assert.equal(said[0].text,'That screen is not on this phone.');
+  // The card carries the sentence once: no title repeated as its detail.
+  assert.equal(said[0].card.title,said[0].text);assert.equal(said[0].card.sub,'');assert.equal(said[0].card.systemNotice,true);
+  // A page inside an app this phone has is named by its app, not reported as a missing screen;
+  // still nothing is opened, claimed or acknowledged.
+  sandbox.views.settings={title:'Settings'};
+  const page={...result,values:{...result.values,viewId:'settings',viewPath:'/settings',subview:'display',navigationBinding:{...binding,viewId:'settings'}}};
+  assert.deepEqual(await client.deliver([page],client.capture(context),async()=>true),{status:'unavailable',parentView:'settings'});
+  assert.equal(await sandbox.deliver(shell,{client,attempt:client.capture(context)},[page]),false);
+  assert.deepEqual(requests,[]);assert.deepEqual(toasts,[]);
+  assert.equal(said.length,2);assert.equal(said[1].text,'I can’t open that page directly yet. Open Settings to find it.');assert.equal(said[1].card.title,said[1].text);
  } finally {client.dispose();}
 });

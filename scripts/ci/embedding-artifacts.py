@@ -31,22 +31,6 @@ def require(value, message):
         raise ValueError(message)
 
 
-def settings(env):
-    enabled = env.get('ALPHA_LOCAL_EMBEDDINGS', '0') == '1'
-    require(env.get('ALPHA_LOCAL_EMBEDDINGS', '0') in ('0', '1'), 'Invalid embedding capability')
-    names = ('COMPONENT', 'QUALIFICATION')
-    inputs = [(env.get('ALPHA_EMBEDDING_' + name + '_ARTIFACT_ID', ''),
-               env.get('ALPHA_EMBEDDING_' + name + '_SHA256', '')) for name in names]
-    if not enabled:
-        require(not any(value for pair in inputs for value in pair), 'Embedding artifact inputs require explicit opt-in')
-        return []
-    for identity, digest in inputs:
-        require(re.fullmatch(r'[1-9][0-9]{0,19}', identity), 'Embedding artifact ID is required')
-        require(re.fullmatch(r'[0-9a-f]{64}', digest), 'Embedding artifact SHA-256 is required')
-    require(inputs[0][0] != inputs[1][0], 'Component and qualification artifacts must be distinct')
-    return inputs
-
-
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -60,17 +44,21 @@ def json_api(path, token, opener):
         with opener.open(request, timeout=20) as response:
             body = response.read(65537)
     except Exception:
-        raise ValueError('Embedding artifact metadata unavailable') from None
+        raise ValueError('GitHub artifact metadata unavailable') from None
     require(len(body) <= 65536, 'Artifact metadata exceeds bound')
-    return json.loads(body)
+    value = json.loads(body)
+    require(isinstance(value, dict), 'Expected an artifact or run metadata object')
+    return value
 
 
 def validate_metadata(value, identity, digest, *, max_archive=MAX_ARCHIVE):
-    require(value.get('id') == int(identity) and value.get('expired') is False, 'Artifact identity or expiry mismatch')
+    require(value.get('id') == int(identity), 'Artifact identity differs from requested input')
+    require(value.get('expired') is False, 'Artifact is expired or has unknown expiry status')
     require(value.get('digest') == 'sha256:' + digest, 'Artifact digest differs from requested input')
     size = value.get('size_in_bytes')
     require(type(size) is int and 0 < size <= max_archive, 'Artifact size exceeds bound')
-    run = value.get('workflow_run', {})
+    run = value.get('workflow_run')
+    require(isinstance(run, dict), 'Artifact run metadata is unavailable')
     require(run.get('repository_id') == REPOSITORY_ID and run.get('head_repository_id') == REPOSITORY_ID,
             'Artifact must originate in the canonical repository')
     require(type(run.get('id')) is int and run['id'] > 0, 'Artifact run identity missing')
@@ -88,11 +76,16 @@ def safe_redirect(url):
     return url
 
 
-def download(identity, digest, target, token, opener, *, max_archive=MAX_ARCHIVE):
+def admit_artifact_metadata(identity, digest, token, opener, *, max_archive=MAX_ARCHIVE):
     metadata = json_api('actions/artifacts/' + identity, token, opener)
     run = validate_metadata(metadata, identity, digest, max_archive=max_archive)
     status = json_api('actions/runs/' + str(run['id']), token, opener)
     require(status.get('conclusion') == 'success' and status.get('head_sha') == run['head_sha'], 'Artifact run did not succeed')
+    return metadata, run
+
+
+def download(identity, digest, target, token, opener, *, max_archive=MAX_ARCHIVE):
+    metadata, run = admit_artifact_metadata(identity, digest, token, opener, max_archive=max_archive)
     url = 'https://api.github.com/repos/' + REPOSITORY + '/actions/artifacts/' + identity + '/zip'
     for attempt in range(5):
         headers = {'User-Agent': 'alpha-qualified-embedding-inputs'}
@@ -170,16 +163,12 @@ def validate_input_inventory(rows, reviewed, digest_fields):
         observed.add(path)
 
 
-def validate_receipts(component, intent, qualification, semantic, semantic_bytes, component_dir):
+def validate_receipt_contents(component, intent, qualification, semantic, semantic_bytes, reviewed, library_digest):
     require(component.get('built') is True and component.get('abi') == 'arm64-v8a', 'Component is not a built ARM64 input')
     for key in ('pin', 'forkPin', 'identity', 'abi', 'inputs', 'producerInputs', 'jniBinding', 'built'):
         require(qualification.get(key) == component.get(key), 'Qualification changes compiled field: ' + key)
     require(component.get('pin') == intent.get('SDK') and component.get('forkPin') == intent.get('native'), 'Component source intent differs')
     require(re.fullmatch(r'[0-9a-f]{40}', intent.get('source', '')), 'Compiled Alpha identity missing')
-    # This checkout owns the path inventory. The carrier binds the supplied digests
-    # to the original compiled receipt; canonical staging checks current source bytes.
-    record = Path(__file__).resolve().parents[2] / 'android/embedding-host/qualified-host.json'
-    reviewed = read_json(record)
     validate_input_inventory(component.get('inputs'), reviewed['inputs'], ('sourceSha256', 'generatedSha256'))
     validate_input_inventory(component.get('producerInputs'), reviewed['producerInputs'], ('sha256',))
     require(qualification.get('semanticReceiptSha256') == hashlib.sha256(semantic_bytes).hexdigest(), 'Semantic receipt not bound to qualification')
@@ -214,11 +203,24 @@ def validate_receipts(component, intent, qualification, semantic, semantic_bytes
         require(found[0].get('artifactPath', name) == name, 'Invalid artifact library mapping')
         for key in ('path', 'sha256', 'bytes', 'alignment16KiB'):
             require(found[0].get(key) == row.get(key), 'Qualification changes compiled library')
-        require(row.get('alignment16KiB') is True and (component_dir / name).stat().st_size == row.get('bytes'), 'Library size/alignment mismatch')
-        require(hashlib.sha256((component_dir / name).read_bytes()).hexdigest() == row.get('sha256'), 'Library digest mismatch')
+        require(row.get('alignment16KiB') is True, 'Library size/alignment mismatch')
+        require(library_digest(name, row.get('bytes')) == row.get('sha256'), 'Library digest mismatch')
     return {'compiledAlpha': intent['source'], 'compiledSDK': component['pin'], 'native': component['forkPin'],
             'qualifiedAt': qualification['qualifiedAt'], 'qualificationTransferred': False}
 
+
+def validate_receipts(component, intent, qualification, semantic, semantic_bytes, component_dir):
+    # This checkout owns the path inventory. The carrier binds the supplied digests
+    # to the original compiled receipt; canonical staging checks current source bytes.
+    record = Path(__file__).resolve().parents[2] / 'android/embedding-host/qualified-host.json'
+
+    def library_digest(name, size):
+        with (component_dir / name).open('rb') as stream:
+            require(os.fstat(stream.fileno()).st_size == size, 'Library size/alignment mismatch')
+            return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+    return validate_receipt_contents(component, intent, qualification, semantic, semantic_bytes,
+                                     read_json(record), library_digest)
 
 
 def carrier_environment(env):
@@ -312,36 +314,7 @@ def main(args, env=os.environ):
     if args == ['--prepare-carrier']:
         prepare_carrier(env)
         return
-    inputs = settings(env)
-    if args == ['--check-inputs']:
-        print('Embedding artifact inputs valid' if inputs else 'Local embeddings not requested')
-        return
-    require(args == [], 'Unknown embedding artifact option')
-    if not inputs:
-        return
-    require(canonical_repository(env), 'Canonical repository required')
-    token = env.get('GH_TOKEN')
-    require(token, 'Artifact access token unavailable')
-    output = Path('test-results/resident-ci/embedding-inputs')
-    output.mkdir(mode=0o700, parents=True, exist_ok=False)
-    opener = urllib.request.build_opener(NoRedirect())
-    records = []
-    for name, (identity, digest) in zip(('component', 'qualification'), inputs):
-        records.append(download(identity, digest, output / (name + '.zip'), token, opener))
-    extract_selected(output / 'component.zip', output / 'component', {
-        'component-output/export/PREPARATION.json': 'PREPARATION.json',
-        'component-output/INTENT.json': 'INTENT.json',
-        **{'component-output/export/' + name: name for name in LIBRARIES}})
-    extract_selected(output / 'qualification.zip', output / 'qualification', {
-        'QUALIFICATION.json': 'QUALIFICATION.json', 'embedding-qualification.json': 'embedding-qualification.json'})
-    component = read_json(output / 'component/PREPARATION.json')
-    intent = read_json(output / 'component/INTENT.json')
-    qualification = read_json(output / 'qualification/QUALIFICATION.json')
-    semantic_path = output / 'qualification/embedding-qualification.json'
-    identity = validate_receipts(component, intent, qualification, read_json(semantic_path), semantic_path.read_bytes(), output / 'component')
-    (output / 'ADMISSION.json').write_text(json.dumps({'state': 'PINNED_INPUTS_VERIFIED_PENDING_CANONICAL_STAGE',
-        **identity, 'artifacts': records, 'consumer': env.get('GITHUB_SHA'), 'sourceReceiptsUnmodified': True}, indent=2) + '\n')
-    print('Verified compiled component and bound semantic qualification; canonical staging remains required')
+    raise ValueError('Unknown embedding artifact option')
 
 
 if __name__ == '__main__':

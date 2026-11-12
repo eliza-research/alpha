@@ -7,9 +7,9 @@ import {spawnSync} from 'node:child_process';
 import {createCloudResidentHost} from './fixtures/product-character-host.mjs';
 import {CLOUD_MODEL} from '../scripts/cloud-resident-host.ts';
 
-// npm test runs without the prepared SDK and skips. browser.yml's verify job prepares it, exports
+// bun run test runs without the prepared SDK and skips. verify.yml's job prepares it, exports
 // ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN, and sets ALPHA_REQUIRE_PREPARED_SDK=1 so a missing SDK fails there.
-const skipUnprepared=!(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE&&process.env.ALPHA_BUN)&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK unavailable; run npm run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN (browser.yml verify)':false;
+const skipUnprepared=!(process.env.ALPHA_CLOUD_COLLECTOR_SOURCE&&process.env.ALPHA_BUN)&&process.env.ALPHA_REQUIRE_PREPARED_SDK!=='1'?'Prepared SDK unavailable; run bun run agent:prepare and export ALPHA_CLOUD_COLLECTOR_SOURCE and ALPHA_BUN (verify.yml)':false;
 
 function recordingLauncher(launches) {
  return async options=>{launches.push(options);let finish;return {completion:new Promise(done=>{finish=done;}),async stop(){finish({code:0});}};};

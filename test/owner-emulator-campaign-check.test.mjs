@@ -19,6 +19,9 @@ test("every class #676 lists has an instrumented test source", () => {
 test("hosted-suite mapping comes from the suites themselves", () => {
   const byName = Object.fromEntries(classes.map(row => [row.class, row]));
   assert.ok(byName.BrowserIsolatedReading.hosted.some(name => name.includes("browser-reading (test-mocks pair)")));
+  for (const name of ["BrowserDownload", "BrowserAutofill", "PasswordBrowserFill"]) {
+    assert.ok(byName[name].hosted.some(job => job.includes("browser-controls (test-mocks pair, both flavors)")), name);
+  }
   assert.ok(byName.WorkflowNoticeTap.hosted.some(name => name.includes("recovery-ui")));
   assert.ok(byName.WorkflowNoticeProcessDeath.hosted.some(name => name.includes("recovery-ui")));
   for (const name of runner.DEFAULT_CLASSES) assert.ok(!byName[name] || byName[name].hosted.some(entry => entry.includes("suite=instrumentation")), name);
@@ -56,5 +59,6 @@ test("the dispatch plan pins an exact SHA to a non-main ref and runs nothing", (
   assert.ok(plan.pin.some(line => line.startsWith(`git push origin ${sha}:refs/heads/ci/h31-`)));
   assert.deepEqual(plan.dispatch.map(run => run.workflow), ["resident-android.yml", "android-emulator.yml", "android-emulator.yml"]);
   assert.ok(plan.dispatch.every(run => run.command.includes(`--ref ${plan.ref}`) && run.command.includes("-R alphacompute/alphaphone")));
+  assert.ok(!plan.dispatch.some(run => /suite=(browser-controls|fused-speech|all)/.test(run.command)));
   assert.ok(plan.verify.some(line => line.includes(sha)));
 });

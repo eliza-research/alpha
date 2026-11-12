@@ -30,4 +30,4 @@ outside the historical state. No real files, sharing targets, device grants,
 or provider effects are used.
 
 With authenticated client features and Playwright Chromium prepared, run
-`node --import=tsx --test test/quint-legacy-files-browser-refinement.test.mjs`.
+`bun test ./test/quint-legacy-files-browser-refinement.test.mjs`.

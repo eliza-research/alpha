@@ -13,9 +13,9 @@ export async function checkDevelopmentDigestPending(extraSources = []) {
     bundle: true, packages: 'external', platform: 'node', format: 'esm', outdir: 'out', write: false, metafile: true}).metafile.inputs;
   const sources = [...new Set([...Object.keys(graph), probe, fileURLToPath(import.meta.url),
     'apps/app/src/runtime/hosted-digest-ui.tsx', 'apps/app/src/runtime/hosted-digests.ts',
-    'package.json', 'package-lock.json', 'tsconfig.json', ...extraSources])];
+    'package.json', 'bun.lock', 'tsconfig.json', ...extraSources])];
   const driverHashes = captureInputs(sources);
-  const run = spawnSync(process.execPath, ['--import=tsx', probe, 'current'], {
+  const run = spawnSync(process.execPath, [probe, 'current'], {
     cwd: root, encoding: 'utf8', timeout: 10000, maxBuffer: 2*1024*1024,
     env: {PATH: '/usr/bin:/bin', TSX_DISABLE_CACHE: '1'},
   });

@@ -68,6 +68,10 @@ export class BrowserDaily extends WebPlugin {
         row.noticeDismissedOccurrence=row.occurrenceId;
         claimed.add(input.id);dismissed.push(input);
       }
+      // Revision digests yield; recheck the action and alert policy before committing their marks.
+      if(!current()||noticeActionBlocked()||!await notificationsAllowed(signal))throw Error('Notification changed.');
+      signal.throwIfAborted();
+      if(!current()||noticeActionBlocked())throw Error('Notification changed.');
       return dismissed;
     },signal);
   }

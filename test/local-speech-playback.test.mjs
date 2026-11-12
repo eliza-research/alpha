@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {cloudVoiceViewFixture} from './fixtures/cloud-voice-view.mjs';
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -72,9 +72,12 @@ function listenFixture({cloud}) {
     speakLocalText: async text => { f.spoken.push(text); },
     markVoiceTiming() {}, abandonVoiceTurn() {}, finishVoiceTurn() {},
   };
+  // One realm for every source: Bun's runInNewContext gives an already contextified object a new
+  // realm per call, so an Error from one file would not be an Error in the next.
+  vm.createContext(box);
   const load = (file, names) => {
     const source = fs.readFileSync(file, 'utf8').replace(/^import .*;\n/gm, '').replace(/^export /gm, '');
-    vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode:'strip'}) + '\n' + names.map(name => `globalThis.${name}=${name};`).join('') + '}', box);
+    vm.runInContext('{' + stripTypeScriptTypes(source, {mode:'strip'}) + '\n' + names.map(name => `globalThis.${name}=${name};`).join('') + '}', box);
   };
   load('apps/app/src/runtime/voice-selection.ts', ['selectVoiceRoute', 'speechRoute', 'noteNetworkSpeechFailure']);
   load('apps/app/src/runtime/local-speech-text.ts', ['screenSpeechText']);

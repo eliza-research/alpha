@@ -84,7 +84,7 @@ public final class NotesSecureStorageInstrumentedTest {
   */
  @Test public void secureMigrationProcessRestartPhase()throws Exception{
   String phase=InstrumentationRegistry.getArguments().getString("notesSecureMigrationPhase");
-  org.junit.Assume.assumeTrue("Run by node scripts/test-native-restart.ts notes-secure-migration","prepare".equals(phase)||"verify".equals(phase)||"cleanup".equals(phase));
+  org.junit.Assume.assumeTrue("Run by bun scripts/test-native-restart.ts notes-secure-migration","prepare".equals(phase)||"verify".equals(phase)||"cleanup".equals(phase));
   File state=new File(InstrumentationRegistry.getInstrumentation().getTargetContext().getFilesDir(),"notes-secure-migration-fixture.json");
   if("prepare".equals(phase)){
    assertFalse("A previous migration fixture was not cleaned up",state.exists());

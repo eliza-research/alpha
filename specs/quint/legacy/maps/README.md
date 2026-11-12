@@ -46,4 +46,4 @@ prompts and Calendar return remain separate. This comparison does not check
 the historical fairness assumptions.
 
 With authenticated client features and Playwright Chromium prepared, run
-`node --import=tsx --test test/quint-legacy-maps-refinement.test.mjs`.
+`bun test ./test/quint-legacy-maps-refinement.test.mjs`.

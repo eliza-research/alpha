@@ -23,8 +23,9 @@ test('no tracked file path names a banned model, runtime or Sherpa', () => {
   assert.deepEqual(tracked.filter(file => !historical(file) && BANNED.test(file)), []);
 });
 
-test('package-lock.json resolves no banned runtime package, directly or transitively', () => {
-  const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
+test('bun.lock resolves no banned runtime package, directly or transitively', async () => {
+  const {readBunLock} = await import('../scripts/bun-lock.ts');
+  const lock = readBunLock(root);
   assert.deepEqual(Object.keys(lock.packages).filter(key => BANNED.test(key)), []);
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   for (const field of ['dependencies', 'devDependencies', 'optionalDependencies']) assert.deepEqual(Object.keys(manifest[field] ?? {}).filter(name => BANNED.test(name)), [], field);

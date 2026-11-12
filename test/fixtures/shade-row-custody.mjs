@@ -3,11 +3,13 @@ import {readFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from '../support/strip-types.mjs';
+import {createOwnNoticeRevisions,noticeKind} from '../../apps/app/src/prototype/context-selection.ts';
 
 const adapter = new URL('../../apps/app/src/prototype/notifications-adapter.ts', import.meta.url);
 export const shadeRowCustodySources = [import.meta.url, adapter,
+  new URL('../../apps/app/src/prototype/context-selection.ts', import.meta.url),
   new URL('../../apps/app/src/prototype/template.html', import.meta.url),
-  new URL('../support/strip-types.mjs', import.meta.url), new URL('../../package-lock.json', import.meta.url)].map(fileURLToPath);
+  new URL('../support/strip-types.mjs', import.meta.url), new URL('../../bun.lock', import.meta.url)].map(fileURLToPath);
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 export const notice = (id, revision = '1', source = 'own', canOpen = true, clearable = true) =>
@@ -51,7 +53,7 @@ export function shadeRowCustodyFixture() {
   const unusedReview = () => {throw Error('Question dialog is outside the row action fixture');};
   vm.runInNewContext(stripTypeScriptTypes(code.replace(/^export /gm, '')) + '\ninstallNotificationsAdapter(Shell);',
     {Shell, window, document, clearInterval, native, Capacitor: {isNativePlatform: () => false},
-      noticeReviewable: () => false, reviewContentQuestion: unusedReview, formatTime: () => 'time'});
+      createOwnNoticeRevisions,noticeKind, noticeReviewable: () => false, reviewContentQuestion: unusedReview, formatTime: () => 'time'});
   const shell = new Shell();
   shell.renderVals();
   shell.componentDidMount();

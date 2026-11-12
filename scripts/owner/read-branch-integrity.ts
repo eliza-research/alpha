@@ -1,10 +1,10 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Issue #658 step 4 evidence: read back what actually blocks force-pushes, deletion and unsigned
  * commits on shared branches, and name the ruleset (or classic protection) that enforces each,
  * with the bypass actors of every enforcing ruleset.
  *
- *   node scripts/owner/read-branch-integrity.ts [--repo owner/name] [--branch main ...] [--allow-bypass] [--json]
+ *   bun scripts/owner/read-branch-integrity.ts [--repo owner/name] [--branch main ...] [--allow-bypass] [--json]
  *
  * Defaults: --repo from the IOC file's alphaphone owner, branches main and develop.
  * READ-ONLY: only `gh api --method GET`. Installing a ruleset is the owner's action; the commands
@@ -69,7 +69,7 @@ const describeActor = (actor: BypassActor) => [actor.actor_type, actor.actor_typ
 function main(argv: readonly string[]) {
   let args;
   try { args = parseArgs(argv, {flags: ['--json', '--allow-bypass'], options: ['--repo'], multi: ['--branch']}); }
-  catch (error) { console.error(`${error instanceof Error ? error.message : String(error)}\nUsage: node scripts/owner/read-branch-integrity.ts [--repo owner/name] [--branch main ...] [--allow-bypass] [--json]`); return 2; }
+  catch (error) { console.error(`${error instanceof Error ? error.message : String(error)}\nUsage: bun scripts/owner/read-branch-integrity.ts [--repo owner/name] [--branch main ...] [--allow-bypass] [--json]`); return 2; }
   const repo = args.repo ?? fullName(loadIocs(), 'alphaphone');
   const branches = args.branch?.length ? args.branch : ['main', 'develop'];
   const unreadable: string[] = [];

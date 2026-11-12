@@ -172,13 +172,15 @@
         "attempt/pendingEpoch/phase/returnMatched": "Google Workspace AppReturn v2 matching state, complete Cloud binding and foreground readback request",
         "account/readGrant/modifyGrant/calendarGrant": "selected connection and granted capabilities",
         "cacheVisible/review": "gmailGrantChange withdrawal and read-cache invalidation",
-        "disconnectSent/revoked": "one disconnect request followed by readback"
+        "disconnectSent/revoked": "one disconnect request followed by verified revocation",
+        "disconnectOutcome/disconnectRowsKnown": "the exact Gmail disconnect outcome and whether the account read supplied rows"
       },
       "abstractions": [
         "Two Google connections and two connect attempts represent arbitrary opaque IDs.",
         "Partial Gmail write capabilities are grouped as modify for the reviewed-operation gate. Calendar read/write differences are further modeled by CalendarSync.",
         "A return requests fresh account readback and does not itself grant capabilities.",
-        "Native Workspace AppReturn v2 and browser foreground return have separate transports. Return success does not grant Calendar or Gmail authority; only the current account-list read supplies capabilities."
+        "Native Workspace AppReturn v2 and browser foreground return have separate transports. Return success does not grant Calendar or Gmail authority; only the current account-list read supplies capabilities.",
+        "The account value retains the last verified selection when a disconnect read fails. A lost write response can be unconfirmed even when a read still finds the selected account. The model distinguishes the outcome from whether rows were observed."
       ],
       "path": "specs/quint/services/GoogleAccounts.qnt",
       "module": "GoogleAccounts",
@@ -189,6 +191,7 @@
         "connectAndReadTest",
         "grantWithdrawalTest",
         "disconnectUncertainTest",
+        "disconnectUncertainWithRowsTest",
         "explicitDisconnectRetryTest",
         "retiredAttemptTest",
         "coldReturnReadbackTest",
@@ -204,6 +207,7 @@
         "CacheNeedsRead",
         "ModifyIncludesRead",
         "RevokedAccountEmpty",
+        "DisconnectOutcomeNeedsReadback",
         "TypeOK"
       ],
       "bounds": {
@@ -213,7 +217,8 @@
       },
       "sharedSources": [
         "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/WorkspaceAppReturn.java",
-        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/WorkspaceAppReturnFlow.java"
+        "plugins/plugin-native-agent/android/src/main/java/ai/eliza/plugins/agent/connection/WorkspaceAppReturnFlow.java",
+        "plugins/plugin-inbox/src/mailbox/failures.ts"
       ]
     },
     {
@@ -414,6 +419,7 @@
         "locationGranted/fixFresh/located": "permission, bounded navigation fix freshness and the guidance watch's usable fix",
         "route/previousRoute/guidance/rerouting": "active guidance, the route it follows while a reroute is pending, and the end of guidance when the reroute fails",
         "screenOff/foreground": "BackgroundNavigation.active and page visibility: a hidden page keeps guidance only with its screen-off session",
+        "inMaps": "whether Maps is the launcher view on screen (MapsScreenController.leaveView on a view switch): active guidance continues away from Maps, a pending route request does not",
         "assistant": "assistant overlay, independent of guidance"
       },
       "abstractions": [
@@ -435,7 +441,9 @@
         "assistantAndRerouteTest",
         "accountRetirementTest",
         "userStartNeedsNoLocationTest",
-        "leavingMapsEndsGuidanceTest",
+        "leavingMapsKeepsGuidanceTest",
+        "leavingMapsRetiresPendingRequestTest",
+        "lostSessionAwayFromMapsReleasesTest",
         "hiddenGuidanceNeedsScreenOffSessionTest"
       ],
       "invariants": [
@@ -447,7 +455,8 @@
         "GuidancePhase",
         "GuidanceFixNeedsPermission",
         "ScreenOffNeedsGuidance",
-        "HiddenKeepsOnlyScreenOffGuidance"
+        "HiddenKeepsOnlyScreenOffGuidance",
+        "LeftMapsHoldsNoRequest"
       ],
       "bounds": {
         "maxSamples": 1000,
@@ -465,6 +474,7 @@
       "witnesses": [
         "GuidanceWithoutFixWitness",
         "HiddenGuidanceWitness",
+        "LeftMapsGuidanceWitness",
         "ReroutingWitness",
         "FailedRerouteWitness"
       ]
@@ -3258,6 +3268,7 @@
         "viewOpen/admitted/hidden/active": "available(): the shell view, isMvpView(\"contacts\"), document.hidden and the adapter copy kept by sync()",
         "epoch/reads/loading": "refresh() token, reads in flight and the loading flag cleared only by the current read or by clear()",
         "readable/rows/more/limit": "access answer, in-memory rows and the 50-row page steps up to 200",
+        "query/rowsQuery": "the normalized shell search and the exact query that owns the visible rows",
         "editorOpen": "the system contact editor opened by editor() and the re-read on return"
       },
       "abstractions": [

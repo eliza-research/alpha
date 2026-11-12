@@ -10,9 +10,25 @@ import { Capacitor } from '@capacitor/core';
 import { DailyApps, type NativeResult } from '../daily';
 import { filesIndex } from './files-index';
 import { createInlineModal } from '../runtime/inline-modal';
+import {errorNotice,ERROR_TOAST} from '../runtime/error-notice';
 
 type Bag = Record<string, any>;
 type Selection = { result: NativeResult; status: string; text?: string; pdf?: {page:number;count:number;image:string}; epoch: number; renames?: number; mediaFailed?:boolean };
+type FilesReadStatus = 'pending' | 'ready' | 'incomplete' | 'failed';
+const filesFilterNotices:Record<FilesReadStatus,string> = {
+  pending:'Searching…',
+  ready:'',
+  incomplete:'Search results are incomplete.',
+  failed:'Files could not read this filter.',
+};
+
+async function readFilesListing<T extends {status:string;message?:string}>(reply:Promise<T>) {
+  const result=await reply;
+  // The shared view handles denied access and navigation away from a missing folder.
+  // Other read failures go through its existing persistent error state.
+  if(!['ready','denied','missing'].includes(result.status))throw Error(result.message||'Files could not be read.');
+  return result;
+}
 
 function previewMedia(result:NativeResult) {
   const native=Capacitor.isNativePlatform(),uri=result.uri,mime=result.mimeType||'';
@@ -66,7 +82,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     if (!selectionId||!active()) return;
     try {
       const result=await (download?DailyApps.shareSelected({selectionId}):DailyApps.openSelected({selectionId}));
-      if(active()&&result.status!=='opened')api.toast(result.message||'Unavailable');
+      if(active()&&result.status!=='opened')api.toast(errorNotice(result.message,'Unavailable'),ERROR_TOAST);
     } catch { if(active())api.toast('Unavailable'); }
   };
   let sharing = false;
@@ -76,7 +92,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
     sharing = true;
     try {
       const result = await DailyApps.shareSelected({ selectionId: id });
-      if (result.status !== 'opened') api.toast(result.message || 'Share failed');
+      if (result.status !== 'opened') api.toast(errorNotice(result.message, 'Share failed'), ERROR_TOAST);
     } catch { api.toast('Share failed'); }
     finally { sharing = false; }
   };
@@ -110,7 +126,7 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
         current={result:response,status:response.message || 'Reselect file',epoch:++epoch};
         api.set({renaming:false});refresh();return;
       }
-      if(response.status !== 'selected'){api.toast(response.message || 'Rename unavailable');return;}
+      if(response.status !== 'selected'){api.toast(errorNotice(response.message, 'Rename unavailable'), ERROR_TOAST);return;}
       // A rename changes the selected object: publish it as a new revision so a turn or
       // approval prepared for the old name cannot be dispatched against the renamed file.
       // Keep Recent on the new name: same row, or the replacement capability when the provider issued one.
@@ -217,8 +233,27 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
       current = { ...current, text: undefined, status: 'Unreadable' }; refresh();
     }
   }
+  const storage=registerPlugin<FilesStoragePort<NativeResult>>('AlphaFiles');
+  let filterRead:{status:FilesReadStatus}|undefined;
+  const observedReads:Partial<FilesStoragePort<NativeResult>>={
+    async storageQuery(input){
+      const read:{status:FilesReadStatus}={status:'pending'};
+      filterRead=read;
+      try {
+        const result=await storage.storageQuery(input);
+        const incomplete='truncated' in result&&result.truncated===true;
+        read.status=result.status!=='ready'?'failed':incomplete?'incomplete':'ready';
+        return result;
+      } catch(error) {
+        read.status='failed';
+        throw error;
+      }
+    },
+    storageList(input){return readFilesListing(storage.storageList(input));},
+    storageCategory(input){return input.countOnly?storage.storageCategory(input):readFilesListing(storage.storageCategory(input));},
+  };
   Component.prototype.filesAgent=installFilesBrowserAdapter(views.files as Parameters<typeof installFilesBrowserAdapter>[0],accept,clear,{
-    storage:registerPlugin<FilesStoragePort<NativeResult>>('AlphaFiles'),
+    storage:new Proxy(storage,{get:(target,key)=>Object.hasOwn(observedReads,key)?Reflect.get(observedReads,key):Reflect.get(target,key)}),
     createInlineModal,
     menuFocus:()=>document.querySelector<HTMLElement>('[data-alpha-subview="files-folder"] button[aria-label="Files options"]'),
     forgetSelected:selectionId=>DailyApps.forgetSelected({selectionId}),
@@ -226,6 +261,14 @@ export function installSelectedDocumentAdapter(Component: {prototype: Bag}, view
   const renderFiles=views.files.render;
   views.files.render=(state:Bag,api:Bag)=>{
     const out=renderFiles(state,api),items=out.fd?.items;out.filePlacement=true;
+    const storageAccessible=!out.browse?.denied&&!out.browse?.unavailable;
+    const filterStatus=out.chip&&storageAccessible?filterRead?.status:undefined;
+    out.filterEmpty=out.filterEmpty&&filterStatus==='ready';
+    out.filterReadNotice=filterStatus?filesFilterNotices[filterStatus]:'';
+    if(out.fd?.empty&&!storageAccessible){
+      out.fd.empty=false;
+      out.nativeTreeStatus||='Files could not be read.';
+    }
     if(out.toolbar?.ready&&!out.toolbar.canCreate){const create=out.toolbar.newFolder;out.toolbar.canCreate=true;out.toolbar.newFolder=()=>{out.browse.allFiles();create();};}
     if(out.fd?.menuRows){
       const modes=[{mode:'name',icon:'type',up:'Name A–Z',down:'Name Z–A'},{mode:'date',icon:'calendar',up:'Newest first',down:'Oldest first'},{mode:'size',icon:'hard-drive',up:'Largest first',down:'Smallest first'}];

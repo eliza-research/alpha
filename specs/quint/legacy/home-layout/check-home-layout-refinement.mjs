@@ -236,7 +236,7 @@ async function collect(page) {
   assert.equal(inset.insets, 'native');
 
   await tile(page, 'Workflows').click();
-  await expect(page.getByText('No automations', {exact: true}).filter({visible: true})).toBeVisible();
+  await expect(page.getByText('No workflows yet', {exact: true}).filter({visible: true})).toBeVisible();
   await back(page);
   await expect(card(page, 'workflows')).toHaveCount(0);
   await installHomeCalendar(page);
@@ -362,7 +362,7 @@ async function mounted(extraSources) {
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
-    'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json', 'upstream.lock.json',
+    'apps/app/index.html', 'vite.config.ts', 'package.json', 'bun.lock', 'upstream.lock.json',
     'scripts/prepare-client-features.ts', 'scripts/quint-lib.ts',
     'test/browser/flag-off-android.ts', 'test/browser/resident-stub.ts', comparison,
     'test/browser/helpers/native-navigation-protocol.ts', 'test/browser/helpers/home-calendar.ts',

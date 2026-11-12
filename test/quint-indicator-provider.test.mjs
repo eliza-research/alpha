@@ -27,7 +27,7 @@ test('both host distributions select the shared patched listener source set',()=
  const module='packages/app/platforms/android/sense';
  const descriptor=readFileSync('android/sense/build.gradle','utf8');
  assert.ok(staged.modules.includes(module));
- assert.match(descriptor,/commandLine 'node', 'scripts\/prepare-patched-native\.ts'/);
+ assert.match(descriptor,/commandLine 'bun', 'scripts\/prepare-patched-native\.ts'/);
  assert.match(descriptor,/ext\.elizaSenseSourceDir = new File\(preparedSense\.root\.toString\(\), 'packages\/app\/platforms\/android\/sense'\)/);
  assert.match(descriptor,/apply from: new File\(elizaSenseSourceDir, 'consumer.gradle'\)/);
  const profile=JSON.parse(readFileSync('android/consumer-host.json','utf8')).profile;

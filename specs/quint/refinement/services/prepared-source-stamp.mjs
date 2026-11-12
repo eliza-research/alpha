@@ -41,8 +41,9 @@ function fixture(temp) {
     } else {
       assert.equal(child.status, 1, child.stderr);
       assert.ok(refusal, child.stderr);
-      // The code excerpt in Node's error output can contain all branch messages.
-      // Match the actual error line to avoid admitting the wrong failure path.
+      // The code excerpt in Bun's error output can contain all branch messages.
+      // Match the actual error line ('error: message' for a plain Error, the bare
+      // message for a system error) to avoid admitting the wrong failure path.
       assert.match(child.stderr, refusal);
       result = 'refused';
     }
@@ -62,7 +63,7 @@ function fixture(temp) {
 export async function checkPreparedSourceStamp(extraSources = []) {
   const sources = [...preparedSourceFixtureInputs, 'test/fixtures/prepare-local-agent.mjs', fileURLToPath(import.meta.url), ...extraSources];
   const driverHashes = captureInputs(sources);
-  const stampMismatch = /^Error: Prepared runtime differs or preparation was interrupted\./m;
+  const stampMismatch = /^error: Prepared runtime differs or preparation was interrupted\./m;
   const cases = [
     ['current-stamp-reuse', [['prepare'], ['prepare']]],
     ['moved-lock-refuses-stale-stamp', [['lockStatus', 'moved'], ['prepare', stampMismatch], ['lockStatus', 'pinned'], ['prepare']]],

@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Reproduce and stage the ARM64 embedding host from pinned source.
  * --from <directory> stages the exact reviewed libraries supplied by a host.
@@ -203,7 +203,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const root = path.resolve(import.meta.dirname, '..');
   const from = args.length === 2 && args[0] === '--from' && !args[1].startsWith('--') ? args[1] : undefined;
   if (from === undefined && args.length) {
-    console.error('Usage: node scripts/build-embedding-host.ts [--from <directory>]');
+    console.error('Usage: bun scripts/build-embedding-host.ts [--from <directory>]');
     process.exit(2);
   }
   try {

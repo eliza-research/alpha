@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {registerHooks} from 'node:module';
+import {registerHooks} from '../../../../test/support/module-hooks.mjs';
 import {join} from 'node:path';
 import {developmentDigestStore} from '../../../../apps/app/src/runtime/local-agent-storage.ts';
 

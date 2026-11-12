@@ -13,5 +13,5 @@ Seven source traces compare 52 checkpoints. Two renderer instances demonstrate s
 The fixture controls request faults and substitutes the host filesystem with memory while retaining the actual adapter logic. Physical durability, process interruption, overlapping calls within one renderer store and provider mutations are separate. CAS distinguishes byte values within this scope.
 
 ```sh
-node --test --test-concurrency=1 test/quint-development-digest-pending.test.mjs
+bun test test/quint-development-digest-pending.test.mjs
 ```

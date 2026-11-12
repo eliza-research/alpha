@@ -1,11 +1,11 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import {HOST_DESCRIPTOR, readHostDescriptor, type HostReference} from './android-host.ts';
 /**
  * Gradle dependency verification metadata (android/gradle/verification-metadata.xml).
  *
- *   node scripts/gradle-verification.ts --check                 # offline; also run by `npm test`
- *   node scripts/gradle-verification.ts --write [--allow-unpackaged-runtime]
- *                                                                # npm run android:deps:write-verification
+ *   bun scripts/gradle-verification.ts --check                 # offline; also run by `bun run test`
+ *   bun scripts/gradle-verification.ts --write [--allow-unpackaged-runtime]
+ *                                                                # bun run android:deps:write-verification
  *
  * While the file exists Gradle refuses any plugin or dependency artifact whose SHA-256 is not
  * listed in it, in every build of the generated android/ host: nothing has to opt in and no
@@ -181,7 +181,7 @@ export function buildScripts(root: string) {
 export function checkVerification(root: string) {
   const problems = [];
   const file = path.join(root, METADATA);
-  if (!fs.existsSync(file)) return {problems: [`${METADATA} is missing: Gradle dependency verification is off. Run: npm run android:deps:write-verification`], metadata: null};
+  if (!fs.existsSync(file)) return {problems: [`${METADATA} is missing: Gradle dependency verification is off. Run: bun run android:deps:write-verification`], metadata: null};
   const metadata = parseVerificationMetadata(fs.readFileSync(file, 'utf8'));
   if (metadata.configuration.verifyMetadata !== 'true') problems.push('verify-metadata must be true (POM and module files are verified too)');
   if (metadata.configuration.verifySignatures !== 'false') problems.push('verify-signatures must be false: this build pins SHA-256 checksums and trusts no key server');
@@ -216,8 +216,8 @@ export function checkVerification(root: string) {
   if (!metadata.components.some(item => item.group === 'com.android.tools.build' && item.name === 'aapt2')) problems.push('aapt2 is not recorded: the metadata was not generated from a real build');
   for (const script of buildScripts(root)) {
     const file = path.join(root, script);
-    // An included project that cannot be read was not reviewed; the checkout or npm ci is incomplete.
-    if (!fs.existsSync(file)) { problems.push(`${script} is missing: the repositories it declares cannot be checked (git submodule update --init vendor/eliza; npm ci)`); continue; }
+    // An included project that cannot be read was not reviewed; the checkout or bun install --frozen-lockfile is incomplete.
+    if (!fs.existsSync(file)) { problems.push(`${script} is missing: the repositories it declares cannot be checked (git submodule update --init vendor/eliza; bun install --frozen-lockfile)`); continue; }
     for (const repository of declaredRepositories(fs.readFileSync(file, 'utf8'))) {
       const problem = repositoryProblem(repository);
       if (problem) problems.push(`${script} declares repository ${repository}, which ${problem}; reviewed: ${ALLOWED_REPOSITORIES.join(', ')} and maven { } naming ${ALLOWED_REPOSITORY_URLS.join(' or ')}`);
@@ -265,7 +265,7 @@ async function recordOtherHostAapt2(root: string) {
 export function parseVerificationArgs(args: readonly string[]) {
   const mode = args.filter(arg => ['--check', '--write'].includes(arg));
   if (mode.length !== 1 || args.some(arg => !['--check', '--write', '--allow-unpackaged-runtime'].includes(arg)))
-    throw new Error('Usage: node scripts/gradle-verification.ts --check | --write [--allow-unpackaged-runtime]');
+    throw new Error('Usage: bun scripts/gradle-verification.ts --check | --write [--allow-unpackaged-runtime]');
   return {mode:mode[0],allowUnpackagedRuntime:args.includes('--allow-unpackaged-runtime')};
 }
 
@@ -276,7 +276,7 @@ async function write(root: string, {allowUnpackagedRuntime}: ReturnType<typeof p
   const preflight = [path.join(root, 'scripts/android-build-preflight.ts'), ...(allowUnpackagedRuntime ? ['--allow-unpackaged-runtime'] : [])];
   execFileSync(process.execPath, preflight, {cwd: root, stdio: 'inherit', env});
   execFileSync(process.execPath, [path.join(root, 'scripts/android-host.ts')], {cwd: root, stdio: 'inherit', env});
-  execFileSync('npm', ['run', 'android:sync'], {cwd: root, stdio: 'inherit', env});
+  execFileSync('bun', ['run', 'android:sync'], {cwd: root, stdio: 'inherit', env});
   // No ALPHA_NOTIFICATION_FIXTURE_KEYSTORE here: the fixture then takes the default debug key, and
   // its dependencies resolve exactly as in scripts/build-notification-fixture.ts.
   execFileSync('./gradlew', ['--no-daemon', '--write-verification-metadata', 'sha256', '-PELIZA_DEV_ALLOW_TEST_MOCKS=0',

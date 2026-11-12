@@ -57,7 +57,7 @@ export async function withResidentSchedulingAdmission(run, extraSources = [], mu
     const hashes = captureInputs(sources);
     const traces = javaTraceCampaign('ResidentScheduleAdmissionTraces.java', compile,
       ['table','deferred','foreground','stop'].map(scenario=>[scenario,platform.directory])).flat();
-    return await run({traces,sources,driverHashes:hashes});
+    return await run({traces,sources,driverHashes:hashes,generatedSources:generated});
   } finally {platform.close();}
 }
 

@@ -2,7 +2,7 @@
 // The native reply is a test double; the APK method and the device setting need a device check.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { tsImport } from "tsx/esm/api";
+import {tsImport} from "./support/ts-import.mjs";
 
 const timeout = await tsImport("../apps/app/src/runtime/accessibility-timeout.ts", import.meta.url);
 const port = reply => { const calls = []; return { calls, async recommendedTimeout(options) { calls.push(options); return reply(); } }; };

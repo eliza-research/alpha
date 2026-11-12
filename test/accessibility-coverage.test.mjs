@@ -296,13 +296,23 @@ test('the layout hooks the sweep depends on stay in the template', () => {
   // Notes sharing uses the common native dialog (share-panel.test.mjs), not a scrim popup.
   assert.ok(scrims >= 12, `the template still marks its remaining scrim popups (${scrims})`);
   const access = read('apps/app/src/prototype/subview-accessibility.ts');
-  for (const ref of [...template.matchAll(/<div ref="\{\{([a-z]+)\.([a-zA-Z]+)\}\}" data-alpha-popup/g)])
-    assert.match(access, new RegExp(`${ref[1]}:\\[[^\\n]*\\['${ref[2]}'`), `${ref[1]}.${ref[2]} is provided by subview-accessibility.ts`);
+  for (const ref of [...template.matchAll(/<div ref="\{\{([a-z]+)\.([a-zA-Z]+)\}\}" data-alpha-popup/g)]) {
+    if (ref[1] === 'notes' && ref[2] === 'emptyModal') {
+      // Notes' destructive review uses the shared delete modal, which owns its cancel and open state.
+      assert.match(access, /name==='notes'\?reviewFocus\(\(\)=>output\.trashCancel\?\.\(\)\):null/);
+      assert.match(access, /deleteModal\?\.render\(!!\(out\.emptyOpen\|\|out\.trashConfirmOpen\)\)/);
+      assert.match(access, /emptyModal:deleteModal\?\.ref/);
+    } else {
+      assert.match(access, new RegExp(`${ref[1]}:\\[[^\\n]*\\['${ref[2]}'`), `${ref[1]}.${ref[2]} is provided by subview-accessibility.ts`);
+    }
+  }
   // Settings re-releases its top page on every render; it must not release one a sheet holds.
   assert.match(read('apps/app/src/prototype/model.js'), /if \(!root\.querySelector\("\[data-alpha-popup\]"\)\) \{\s*current\.inert = false;/);
   // Toasts are announced: the live region is always present and its text arrives inside it,
   // and an inline modal does not retire it.
-  assert.match(template, /<div data-alpha-toast aria-live="polite" aria-atomic="true"[^>]*>\n<sc-if value="\{\{toastOn\}\}">/);
+  assert.match(template, /<div data-alpha-toast aria-live="\{\{toastLive\}\}" aria-atomic="true"[^>]*>\n<sc-if value="\{\{toastOn\}\}">/);
+  // Polite unless the visible toast is a failure, which interrupts.
+  assert.ok(read('apps/app/src/prototype/model.js').includes('toastLive: S.toast && self.toastKind === "error" ? "assertive" : "polite"'));
   assert.match(read('apps/app/src/runtime/inline-modal.ts'), /!sibling\.matches\('\[data-alpha-toast\]'\)/);
   // The find bar is bound to its open flag, not to the always-present binding object.
   assert.ok(template.includes('<sc-if value="{{browser.finding}}">'));

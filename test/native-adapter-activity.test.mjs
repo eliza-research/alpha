@@ -7,7 +7,7 @@ const stubs={
  '../build-flags':'export const testMocksEnabled=false;',
  '../runtime/voice-selection':'export const speechRoute=()=>"device";',
  '@capacitor/core':'export const Capacitor={isNativePlatform:()=>true};',
- '../daily':'export const DailyApps={perform:async()=>({status:"opened"}),addListener:async()=>null};',
+ '../daily':'export const DailyApps={perform:async()=>({status:"opened"}),addListener:(event,callback)=>globalThis.activityReturnListener?.(event,callback)??Promise.resolve(null)};',
  '../platform-plugins':'export function registerPlugin(){return {providerStatus:async()=>({})};}',
  '../runtime/connection-ui':'export const connectionController=globalThis.activityController;export const agentAvailabilityNotice=()=>"";export const agentPendingText=(_c,t)=>t;',
  '../runtime/local-agent':'export const modelLabel=(a,b)=>a+" · "+b;',
@@ -25,7 +25,7 @@ const controller=globalThis.activityController={calls:[],next:null,
  reconcile(id,applied){this.calls.push(['reconcile',id,applied]);return this.next();},
  rejectProposal(id){this.calls.push(['reject',id]);return this.next();},
  actionHistory:async()=>{},open(){}};
-const {installPrototypeNativeAdapters}=await import(pathToFileURL(join(dir,'adapter.mjs')));
+const {installPrototypeNativeAdapters,returnGate,watchReturnToApp}=await import(pathToFileURL(join(dir,'adapter.mjs')));
 const views={settings:{render:()=>({stack:[{title:'Activity',groups:[]}]})}};
 installPrototypeNativeAdapters(null,views);
 function open(){const toasts=[];const api={toast:m=>toasts.push(m),set(){},get:()=>({})};
@@ -51,4 +51,43 @@ test('an error without a message still says the review was not recorded',async()
  controller.calls=[];controller.next=()=>Promise.reject('offline');
  const view=open();view.row('It did not happen').go();await settle();
  assert.deepEqual(view.toasts,['Not recorded']);
+});
+
+test('retiring a return watcher ignores queued native events and removes a late listener once',async()=>{
+ const priorDocument=globalThis.document,priorWindow=globalThis.window;
+ const document=new EventTarget(),window=new EventTarget();
+ let nativeReturn,finishRegistration,reads=0,removals=0;
+ document.hidden=false;
+ globalThis.document=document;globalThis.window=window;
+ globalThis.activityReturnListener=(event,callback)=>{
+  assert.equal(event,'appResumed');nativeReturn=callback;
+  return new Promise(resolve=>{finishRegistration=resolve;});
+ };
+ try{
+  const stop=watchReturnToApp(()=>{reads++;});
+  window.dispatchEvent(new Event('focus'));nativeReturn();
+  assert.equal(reads,1,'one refresh for the current return');
+  document.hidden=true;document.dispatchEvent(new Event('visibilitychange'));
+  document.hidden=false;
+  stop();stop();nativeReturn();
+  assert.equal(reads,1,'retirement takes effect before native registration settles');
+  finishRegistration({async remove(){removals++;throw Error('native listener already gone');}});
+  await settle();nativeReturn();window.dispatchEvent(new Event('focus'));
+  assert.equal(reads,1);assert.equal(removals,1);
+ }finally{
+  globalThis.document=priorDocument;globalThis.window=priorWindow;
+  delete globalThis.activityReturnListener;
+ }
+});
+
+test('setting Android wall time backwards cannot suppress a later return',()=>{
+ const original=Date.now;
+ let wallTime=10_000;
+ Date.now=()=>wallTime;
+ try{
+  const gate=returnGate(0);
+  assert.equal(gate.returned(),true);
+  wallTime=1;
+  assert.equal(gate.returned(),true);
+ }finally{Date.now=original;}
 });

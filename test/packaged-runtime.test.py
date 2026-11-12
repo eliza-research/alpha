@@ -15,7 +15,7 @@ spec.loader.exec_module(verifier)
 sha = lambda data: hashlib.sha256(data).hexdigest()
 NATIVE_VIEW_POLICY = verifier.ROOT / 'scripts/native-view-policy.ts'
 NATIVE_VIEW_DECLARATIONS = subprocess.check_output(
-    ['node', NATIVE_VIEW_POLICY], timeout=30)
+    ['bun', NATIVE_VIEW_POLICY], timeout=30)
 
 
 class PackagedRuntimeTest(unittest.TestCase):
@@ -98,7 +98,7 @@ class PackagedRuntimeTest(unittest.TestCase):
         entries = dict(self.entries)
         del entries['assets/agent/android-agent-runtime-provenance.json']
         (self.root / 'android/app/src/main/assets/agent/android-agent-runtime-provenance.json').unlink()
-        with self.assertRaisesRegex(ValueError, 'provenance missing. Run: npm run agent:stage-android'):
+        with self.assertRaisesRegex(ValueError, 'provenance missing. Run: bun run agent:stage-android'):
             verifier.verify(self.package(entries))
 
     def test_native_apk_refuses_cloud_or_missing_profile_marker(self):

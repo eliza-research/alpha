@@ -20,6 +20,7 @@ import {checkNotesCoordinator} from './notes-coordinator.mjs';
 import {listFocus} from './list-focus.mjs';
 import {checkRecoveryUI} from './recovery-ui.mjs';
 import {checkShellCoordinator} from './shell-coordinator.mjs';
+import {checkCompletedViewDelivery} from './completed-view-delivery.mjs';
 import {checkNativeViewSubscription} from './native-view-subscription.mjs';
 import {filesPreview} from './files-preview.mjs';
 import {runPermissionChoicesRefinement} from './permission-choices.mjs';
@@ -109,11 +110,12 @@ import {checkAccountSheet} from './account-sheet.mjs';
 import {checkVoiceTranscriptFollow} from './voice-transcript-follow.mjs';
 import {checkSavedServiceRead} from './saved-service-read.mjs';
 import {checkCloudPlanRecheck} from './cloud-plan-recheck.mjs';
+import {checkStoppedReplyReconciliation} from './stopped-reply-reconciliation.mjs';
 import {checkOSDefaults} from './os-defaults.mjs';
 import {checkOSProvisioning} from './os-provisioning.mjs';
 import {checkOSSourceStaging} from './os-source-staging.mjs';
 
-const adapters = [checkCalendarApprovalReview, checkDeviceActionReview, checkCalendarFormControls, checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, startupPermissions, assistantConversation, notesLifecycle,
+const adapters = [checkCalendarApprovalReview, checkDeviceActionReview, checkCalendarFormControls, checkSettingsPageFocus, checkKeyboardFocus, checkChatAttachments, application, shellNavigation, checkCompletedViewDelivery, startupPermissions, assistantConversation, notesLifecycle,
   browserSession, credentialVault, developmentSurfaces, filesAndSharing, preferences, durableStore,
   permissionWalkthrough, developmentDevice, permanentVoiceDeletion, developmentHost, filesTree,
   calendarPresentation, draftDispatch, notificationCollection, callbackLanding,
@@ -144,6 +146,7 @@ const adapters = [checkCalendarApprovalReview, checkDeviceActionReview, checkCal
   checkPreviousNotesSourceOpening,
   checkScheduledTaskControls,
   checkAccountSheet, checkVoiceTranscriptFollow, checkSavedServiceRead, checkCloudPlanRecheck,
+  checkStoppedReplyReconciliation,
   checkOSDefaults, checkOSProvisioning, checkOSSourceStaging,
   runStartupPermissionsCoordinatorRefinement, checkVaultCoordinator, checkNotesCoordinator, listFocus, checkRecoveryUI, checkShellCoordinator, checkNativeViewSubscription, filesPreview, runPermissionChoicesRefinement, checkCanonicalNotesController, checkCanonicalNotesDraft,
   checkCanonicalNotesFeedback, checkCanonicalNotesMutation, checkCanonicalNotesView, checkCanonicalCalendarDraft, checkAgentCalendarRefresh, checkAgentCalendarMutation, checkAgentCalendarEventReturn, checkMapsEventReturn, checkMapsRerouteOwnership, checkCloudConnectionNotices, checkModalScrimOwnership, checkAgentCalendarSyncControl, checkGoogleCalendarLinkFlow, checkGoogleCalendarDisconnect, checkGoogleCalendarLinkPublication, checkGoogleCalendarAccessChoice, checkFilesBrowserController, checkFilesFilter, checkPhotosWindow, checkPhotosTrash, checkGoogleConsentAdmission, checkGoogleAccessPublication, checkBrowserDeletionPoll, checkBrowserJournalRetention, checkBrowserReminderOrphan, checkBrowserOwnerReminderRead, checkBrowserOwnerReminderAction, checkHomeFailureNotice, checkHomeGesture, checkDrawerInteraction, checkAppInfoHandoffComposition, checkLauncherOwnership, checkLauncherObserver, checkLauncherFavorites, checkAccessibleToastLifetime, checkModalToastForwarding, checkScreenFocusOwnership, checkDockClearanceOwnership, checkMountedUpdateAdmission, checkStartupUpdateAdmission, checkAutomaticAppUpdateSchedule, checkCanonicalNotificationTapAdmission, checkResidentLiveness];

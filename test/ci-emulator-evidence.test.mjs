@@ -5,9 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {parse as parseYaml} from 'yaml';
-import {AVD,READING_CLASSES,READING_TEST_MOCKS_CLASSES,SERIAL,runSuite,suitePlan,summarize} from '../scripts/ci/emulator-suite.ts';
+import {AVD,BROWSER_CONTROLS_CLASSES,READING_CLASSES,READING_TEST_MOCKS_CLASSES,SERIAL,runSuite,suitePlan,summarize} from '../scripts/ci/emulator-suite.ts';
 import {CLASS_REGISTRY,DEFAULT_CLASSES,parseInstrumentationArgs} from '../scripts/android-instrumentation.ts';
-import {affected} from '../scripts/ci/affected.ts';
 import {assertBefore} from './fixtures/assert-order.mjs';
 
 const read=file=>fs.readFileSync(file,'utf8');
@@ -20,6 +19,7 @@ function jobs(text){
 }
 const job=jobs(workflow);
 const emulatorJobs=['instrumentation','browser-reading'];
+const suites=['instrumentation','browser-reading','browser-controls'];
 const hosted={GITHUB_ACTIONS:'true',RUNNER_ENVIRONMENT:'github-hosted',GITHUB_SHA:'a'.repeat(40),GITHUB_RUN_ID:'7'};
 
 test('emulator evidence workflow has no trigger but a dispatch that names a suite',()=>{
@@ -27,7 +27,7 @@ test('emulator evidence workflow has no trigger but a dispatch that names a suit
  assert.deepEqual([...on.matchAll(/^  ([a-z_]+):/gm)].map(match=>match[1]),['workflow_dispatch'],'never on push, pull_request, schedule or workflow_call');
  assert.doesNotMatch(workflow,/^\s+(push|pull_request|pull_request_target|schedule|workflow_call|workflow_run):/m);
  const options=/suite:\n(?:        .*\n)+?        options:\n((?:          - .*\n)+)/.exec(on)[1].trim().split('\n').map(line=>line.trim().slice(2));
- assert.deepEqual(options,[...emulatorJobs,'all']);
+ assert.deepEqual(options,[...suites,'all']);
  assert.match(on,/suite:\n(?:        .*\n)*?        required: true/);
  // Nothing else starts it: no other workflow calls or dispatches this file.
  for(const file of fs.readdirSync('.github/workflows').filter(name=>name!=='android-emulator.yml'))assert.doesNotMatch(read(path.join('.github/workflows',file)),/android-emulator\.yml|Android emulator evidence/,file);
@@ -40,10 +40,12 @@ test('every emulator job is selected by the suite input, needs the build, and it
  for(const name of emulatorJobs){
   const text=job[name];
   assert.match(text,/\n    needs: build\n/,name);
-  assert.ok(text.includes(`\n    if: inputs.suite == '${name}' || inputs.suite == 'all'\n`),`${name} runs only when selected`);
+  const alternate=name==='browser-reading'?" || inputs.suite == 'browser-controls'":'';
+  assert.ok(text.includes(`\n    if: inputs.suite == '${name}'${alternate} || inputs.suite == 'all'\n`),`${name} runs only when selected`);
   assert.match(text,/\n    timeout-minutes: \d+\n/,name);
   assert.equal((text.match(/reactivecircus\/android-emulator-runner@/g)??[]).length,1,name);
-  assert.ok(text.includes(`\n          script: node scripts/ci/emulator-suite.ts ${name}\n`),`${name} runs its own suite`);
+  const selection=name==='browser-reading'?'${{ env.BROWSER_SUITE }}':name;
+  assert.ok(text.includes(`\n          script: bun scripts/ci/emulator-suite.ts ${selection}\n`),`${name} runs its own suite`);
   // API 35 default x86_64 is the fixture the preparation scripts admit (AVD "test", emulator-5554).
   assert.match(text,/api-level: 35\n          target: default\n          arch: x86_64\n/,name);
   // The APKs are the build job's, proven by the manifest hash, at the build job's commit.
@@ -56,6 +58,26 @@ test('every emulator job is selected by the suite input, needs the build, and it
  assert.doesNotMatch(job.build,/\n    if: /,'every suite needs the build');
 });
 
+test('emulator jobs restore both APK pairs from the archive root at artifacts',()=>{
+ const jobs=parseYaml(workflow).jobs;
+ const upload=jobs.build.steps.find(step=>step.id==='apks');
+ const appFiles=['standalone-debug.apk','launcher-debug.apk'];
+ const testFiles=['standalone-androidTest.apk','launcher-androidTest.apk'];
+ const archivedFiles=['apk-manifest.json',...appFiles,...testFiles.map(file=>`instrumentation/${file}`),
+  'test-mocks/apk-manifest.json',...[...appFiles,...testFiles].map(file=>`test-mocks/${file}`)];
+ // upload-artifact strips the common artifacts directory. The flag-off manifest anchors that root
+ // whether or not the browser suites add the separate test-mocks pair.
+ assert.deepEqual(upload.with.path.trim().split('\n'),[
+  'artifacts/apk-manifest.json',...appFiles.map(file=>`artifacts/${file}`),'artifacts/instrumentation/*.apk',
+  'artifacts/test-mocks/apk-manifest.json','artifacts/test-mocks/*-debug.apk','artifacts/test-mocks/*-androidTest.apk',
+ ]);
+ for(const name of emulatorJobs){
+  const {with: download}=jobs[name].steps.find(step=>step.with?.['artifact-ids']==='${{ needs.build.outputs.artifact_id }}');
+  assert.equal(download['merge-multiple'],true,name);
+  assert.deepEqual(archivedFiles.map(file=>path.posix.join(download.path,file)),archivedFiles.map(file=>`artifacts/${file}`),name);
+ }
+});
+
 test('every emulator job uploads its result directory, also after a failure',()=>{
  for(const name of emulatorJobs){
   const uploads=[...job[name].matchAll(/      - uses: actions\/upload-artifact@[0-9a-f]{40} # v[\d.]+\n((?:        .*\n|          .*\n)+)/g)].map(match=>match[1]);
@@ -64,7 +86,7 @@ test('every emulator job uploads its result directory, also after a failure',()=
   assert.match(uploads[0],/if-no-files-found: error/,name);
   assert.match(uploads[0],/retention-days: 3/,name);
   assert.match(uploads[0],/\n            test-results\/emulator-suite\/\n/,name);
-  assert.match(uploads[0],/name: [a-z0-9_-]+-\$\{\{ github\.sha \}\}-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,`${name} artifact is named by commit and run`);
+  assert.match(uploads[0],/name: (?:[a-z0-9_-]+|android-emulator-\$\{\{ env\.BROWSER_SUITE \}\})-\$\{\{ github\.sha \}\}-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/,`${name} artifact is named by commit and run`);
   // The emulator step comes before the upload and is not allowed to fail quietly.
   assertBefore(job[name],'android-emulator-runner@','actions/upload-artifact@',name);
   assert.doesNotMatch(job[name],/continue-on-error/,name);
@@ -83,10 +105,10 @@ test('every action in the emulator evidence workflow is pinned to an exact commi
  }
  // One commit per action across the file, and the first-party pins are the ones the other workflows use.
  const pins=new Map();for(const [,target] of uses){const [name,commit]=target.split('@');assert.equal(pins.get(name)??commit,commit,name);pins.set(name,commit);}
- const others=['android.yml','browser.yml','resident-android.yml'].map(file=>read(path.join('.github/workflows',file))).join('\n');
+ const others=['android.yml','verify.yml','resident-android.yml'].map(file=>read(path.join('.github/workflows',file))).join('\n');
  for(const [name,commit] of pins)if(name.startsWith('actions/'))assert.ok(others.includes(`${name}@${commit}`),`${name} is pinned to a commit no other workflow uses`);
  assert.equal(others.includes('actions/cache@'),false,'a shared actions/cache must use the same pin in every workflow');
- assert.deepEqual([...pins.keys()].filter(name=>!name.startsWith('actions/')).sort(),['android-actions/setup-android','gradle/actions/setup-gradle','reactivecircus/android-emulator-runner']);
+ assert.deepEqual([...pins.keys()].filter(name=>!name.startsWith('actions/')).sort(),['android-actions/setup-android','gradle/actions/setup-gradle','oven-sh/setup-bun','reactivecircus/android-emulator-runner']);
 });
 
 test('every action in every workflow is pinned to an exact commit, one commit per action',()=>{
@@ -162,21 +184,16 @@ test('every action in every workflow is pinned to an exact commit, one commit pe
  }
 });
 
-test('a change to the emulator evidence workflow selects no automatic lane of its own',()=>{
- assert.deepEqual(affected([WORKFLOW]),{verify:true,browser:false,android:false,prepare:false});
-
-});
-
 test('the build job hands over hash-anchored APKs',()=>{
  const build=job.build;
- const order=['npm run android:build -- --allow-unpackaged-runtime','npm run android:build -- --test-mocks','actions/upload-artifact@'].map(text=>build.indexOf(text));
+ const order=['bun run android:build -- --allow-unpackaged-runtime','bun run android:build -- --test-mocks --allow-unpackaged-runtime','actions/upload-artifact@'].map(text=>build.indexOf(text));
  assert.ok(order.every(index=>index>0),'every build step is present');assert.deepEqual([...order].sort((a,b)=>a-b),order,'in this order');
  // No speech runtime is built, acquired or recorded, and nothing here admits anything by a person's review.
  assert.doesNotMatch(workflow,/scripts\/local-speech|requalify-runtime|browser-speech|--reviewer|android-voice-lexicon|kokoro/i);
  // The instrumentation APKs are built (no --skip-instrumentation) and the flag-off pair stays flag-off.
  assert.doesNotMatch(build,/--skip-instrumentation/);
- assert.match(build,/ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n        run: npm run android:build -- --allow-unpackaged-runtime\n/);
- assert.match(build,/if: inputs\.suite == 'browser-reading' \|\| inputs\.suite == 'all'\n        run: \|\n          before=/,'the test-mocks pair is built only for the suite that needs it');
+ assert.match(build,/ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n          VITE_ELIZA_DEV_ALLOW_TEST_MOCKS: ""\n        run: bun run android:build -- --allow-unpackaged-runtime\n/);
+ assert.match(build,/if: inputs\.suite == 'browser-reading' \|\| inputs\.suite == 'browser-controls' \|\| inputs\.suite == 'all'\n        run: \|\n          before=/,'the browser suites get the test-mocks pair');
  for(const file of ['artifacts/apk-manifest.json','artifacts/standalone-debug.apk','artifacts/launcher-debug.apk','artifacts/instrumentation/*.apk','artifacts/test-mocks/apk-manifest.json'])
   assert.ok(build.includes(`\n            ${file}\n`),`${file} is handed to the emulator jobs`);
  for(const output of ['manifest_sha256','test_mocks_manifest_sha256','artifact_id','source_sha'])assert.match(build,new RegExp(`\\n      ${output}: \\$\\{\\{ `),output);
@@ -192,11 +209,28 @@ test('the reading job provisions the pinned WebView on the fixture its provision
  assert.doesNotMatch(job.instrumentation,/-writable-system/);
 });
 
+test('browser controls are opt-in and record the three exact classes on both test-mocks variants',()=>{
+ const browser=parseYaml(workflow).jobs['browser-reading'];
+ assert.equal(browser.env.BROWSER_SUITE,"${{ inputs.suite == 'browser-controls' && 'browser-controls' || 'browser-reading' }}");
+ assert.equal(browser.steps.find(step=>step.with?.script).with.script,'bun scripts/ci/emulator-suite.ts ${{ env.BROWSER_SUITE }}');
+ assert.match(browser.steps.find(step=>step.uses?.startsWith('actions/upload-artifact@')).with.name,/^android-emulator-\$\{\{ env\.BROWSER_SUITE \}\}-/);
+ const controls=suitePlan('browser-controls');
+ assert.deepEqual(controls.slice(0,2),suitePlan('browser-reading').slice(0,2),'uses the same pinned WebView preparation');
+ assert.deepEqual(controls.map(step=>step.name),['prepare-emulator','prepare-webview','ci-browser-controls']);
+ const options=parseInstrumentationArgs(controls[2].command.slice(4));
+ assert.deepEqual(BROWSER_CONTROLS_CLASSES,['BrowserDownload','BrowserAutofill','PasswordBrowserFill']);
+ assert.deepEqual(options.classes.map(name=>name.split('.').at(-1)),BROWSER_CONTROLS_CLASSES.map(name=>`${name}InstrumentedTest`));
+ assert.deepEqual(options.variants,['standalone','launcher']);
+ assert.equal(options.testMocks,true);
+ assert.equal(options.apkDir,'artifacts/test-mocks');
+ assert.equal(controls[2].results,'test-results/android-instrumentation/ci-browser-controls/results.json');
+});
+
 test('suite plans: default classes; reading classes with the builds and gates they need',()=>{
  const instrumentation=suitePlan('instrumentation');
  assert.deepEqual(instrumentation.map(step=>[step.name,step.kind]),[['prepare-emulator','preparation'],['ci-default','evidence']]);
- // `npm run test:android:instrumentation` with no --classes: the runner's own default list, both distributions.
- assert.deepEqual(instrumentation[1].command,['npm','run','test:android:instrumentation','--','--owned-emulator','--avd','test','--serial','emulator-5554','--output','test-results/android-instrumentation/ci-default']);
+ // `bun run test:android:instrumentation` with no --classes: the runner's own default list, both distributions.
+ assert.deepEqual(instrumentation[1].command,['bun','run','test:android:instrumentation','--','--owned-emulator','--avd','test','--serial','emulator-5554','--output','test-results/android-instrumentation/ci-default']);
  const parsed=parseInstrumentationArgs(instrumentation[1].command.slice(4));
  assert.deepEqual(parsed.variants,['standalone','launcher']);assert.equal(parsed.classes.length,DEFAULT_CLASSES.length);assert.equal(parsed.testMocks,false);
 
@@ -266,7 +300,7 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
  // A skipped or missing class is not a pass, whatever the exit status says; neither is a run that left no record.
  for(const [status,exit] of [['skipped',0],['missing',0],['passed',1]]){
   fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});
-  const report=runSuite('instrumentation',{environment:hosted,execute:command=>{const step=suitePlan('instrumentation')[1];if(command[0]==='npm'){results(root,step,{Shell:'passed',TextScale:status});return exit;}return 0;}});
+  const report=runSuite('instrumentation',{environment:hosted,execute:command=>{const step=suitePlan('instrumentation')[1];if(command[0]==='bun'){results(root,step,{Shell:'passed',TextScale:status});return exit;}return 0;}});
   assert.equal(report.passed,false,`${status}/${exit}`);assert.equal(report.steps[1].status,'failed',`${status}/${exit}`);
  }
  fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});
@@ -275,7 +309,7 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
 
  fs.rmSync(path.join(root,'test-results'),{recursive:true,force:true});
  const records=[];
- const passing=runSuite('instrumentation',{environment:hosted,record:value=>records.push(JSON.parse(JSON.stringify(value))),execute:command=>{if(command[0]==='npm')results(root,suitePlan('instrumentation')[1],Object.fromEntries(DEFAULT_CLASSES.map(name=>[name,'passed'])));return 0;}});
+ const passing=runSuite('instrumentation',{environment:hosted,record:value=>records.push(JSON.parse(JSON.stringify(value))),execute:command=>{if(command[0]==='bun')results(root,suitePlan('instrumentation')[1],Object.fromEntries(DEFAULT_CLASSES.map(name=>[name,'passed'])));return 0;}});
  assert.equal(passing.passed,true);assert.match(summarize(passing),/`instrumentation`: passed/);
  assert.equal(records.at(-1).passed,true);assert.equal(records[0].passed,false,'the record is written after every step and is not a pass until the end');
  // Outside a hosted runner emulator-5554 may be someone's emulator.
@@ -285,7 +319,7 @@ test('suite run: preparation failure stops it; evidence steps are independent; a
 test('the suite command refuses to start, and writes nothing, outside a hosted runner',t=>{
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'emulator-suite-cli-')));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
  const env={PATH:process.env.PATH,HOME:process.env.HOME};
- for(const suite of emulatorJobs){
+ for(const suite of suites){
   const run=spawnSync(process.execPath,[path.resolve('scripts/ci/emulator-suite.ts'),suite],{cwd:root,env,encoding:'utf8'});
   assert.notEqual(run.status,0,suite);assert.match(run.stderr,/only on a GitHub-hosted runner/,suite);
  }

@@ -10,7 +10,7 @@ import {build} from 'esbuild';
 // render them to markup and check that Alpha's installed selectors, classes and states are kept.
 // Source-level evidence only: no browser, device calendar or digest is involved.
 const root=resolve(import.meta.dirname,'..');
-const run=script=>JSON.parse(execFileSync(process.execPath,['--import=tsx','--input-type=module','-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
+const run=script=>JSON.parse(execFileSync(process.execPath,['-e',script],{cwd:root,encoding:'utf8',timeout:120000}));
 // One bundle with the app's JSX settings (automatic runtime, as Vite builds it) and a single React.
 const bundled=await build({stdin:{contents:`export {renderToStaticMarkup} from 'react-dom/server';
 export * as c from ${JSON.stringify(resolve(root,'apps/app/src/prototype/home-overview-cards.ts'))};

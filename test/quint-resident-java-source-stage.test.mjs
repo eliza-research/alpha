@@ -4,6 +4,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import test from 'node:test';
+import {scaledTimeout} from '../specs/quint/refinement/timeouts.mjs';
 import {residentJavaStageFixture} from './fixtures/resident-java-source-stage.mjs';
 import {checkResidentJavaSourceStage} from '../specs/quint/refinement/services/resident-java-source-stage.mjs';
 
@@ -25,7 +26,7 @@ test('a committed rewrite-anchor refusal preserves the exact previous Java tree 
   }
 });
 
-test('the Android Java source staging entry point refines the reviewed publication pair', {timeout: 60000}, async () => {
+test('the Android Java source staging entry point refines the reviewed publication pair', {timeout: scaledTimeout(60000)}, async () => {
   const receipt = await checkResidentJavaSourceStage([fileURLToPath(import.meta.url)]);
   assert.ok(receipt.passed && receipt.driverInputsBound && receipt.inputsUnchanged);
   assert.equal(receipt.traces, 9);

@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {mkdtempSync, writeFileSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join, resolve} from 'node:path';
-import {pathToFileURL} from 'node:url';
 import {build} from 'esbuild';
 
 // The real module over a fake vault: every import outside the module is a small port.
@@ -49,7 +48,8 @@ async function open(overrides = {}) {
   globalThis.__passwordFixture = {ElizaPasswords: vault, AlphaBrowser: {loginFillStatus: async () => ({available: true})}};
   globalThis.document = {hidden: false, addEventListener() {}, removeEventListener() {}};
   globalThis.window = {addEventListener() {}, removeEventListener() {}};
-  const manager = await import(pathToFileURL(file).href + '?instance=' + copy++);
+  // A path specifier: Bun returns the cached module for a file: URL that differs only in its query.
+  const manager = await import(file + '?instance=' + copy++);
   const sets = [], toasts = [];
   const helpers = {info: (label, val) => ({label, val}), group: rows => ({rows}), toast: message => toasts.push(message), set: patch => sets.push(patch), ic: {}};
   const stop = manager.passwordManagerLifecycle(() => {});

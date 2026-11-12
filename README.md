@@ -45,19 +45,18 @@ cloud account supplies services such as model inference, speech and Gmail.
 ## Quickstart
 
 Try Alpha in your browser. You need [Git](https://git-scm.com) and
-[Node.js 26](https://nodejs.org) (`nvm install` picks the right version from
-`.nvmrc`). No Android tools and no account are required.
+[Bun 1.4.2](https://bun.sh). No Android tools and no account are required.
 
 ```bash
 git clone --recurse-submodules https://github.com/alphacompute/alpha.git
 ```
 
 ```bash
-cd alpha && npm ci
+cd alpha && bun install --frozen-lockfile
 ```
 
 ```bash
-npm run dev:ui
+bun run dev:ui
 ```
 
 Open the address it prints (usually <http://127.0.0.1:5173>) and you are on
@@ -65,16 +64,16 @@ Alpha's Home screen. Narrow the window to phone width for the best view.
 
 > [!TIP]
 > Forgot `--recurse-submodules`? Run `git submodule update --init --recursive`
-> inside the folder, then `npm ci` again.
+> inside the folder, then `bun install --frozen-lockfile` again.
 
 ### Next steps
 
 | I want to…                              | Run                 | You also need                              |
 | --------------------------------------- | ------------------- | ------------------------------------------ |
-| Look around the interface               | `npm run dev:ui`    | Nothing else                               |
-| Run the agent on my computer            | `npm run dev`       | [Bun 1.4.2](https://bun.sh)                |
-| Sign in and use real Cloud services     | `npm run dev:cloud` | Bun, and an Eliza Cloud account            |
-| Check my changes before a pull request  | `npm run verify`    | JDK 21 and the `sqlite3` command-line tool |
+| Look around the interface               | `bun run dev:ui`    | Nothing else                               |
+| Run the agent on my computer            | `bun run dev`       | [Bun 1.4.2](https://bun.sh)                |
+| Sign in and use real Cloud services     | `bun run dev:cloud` | Bun, and an Eliza Cloud account            |
+| Check my changes before a pull request  | `bun run verify`    | JDK 21 and the `sqlite3` command-line tool |
 | Build the Android app                   | [See below](#put-it-on-a-phone) | JDK 21 and the Android SDK     |
 
 ## What you get
@@ -120,15 +119,15 @@ You need JDK 21 and the Android SDK (platform 36, build-tools 36.0.0), with
 `JAVA_HOME` and `ANDROID_HOME` set.
 
 ```bash
-npm run android:build:inputs
+bun run android:build:inputs
 ```
 
 ```bash
-npm run android:build:local
+bun run android:build:local
 ```
 
 ```bash
-npm run android:verify
+bun run android:verify
 ```
 
 The first command lists anything that is missing. The second prepares the agent
@@ -137,7 +136,7 @@ signatures.
 
 On-device voice needs recorded model files and native outputs that the build
 does not download for you. Stage the reviewed inputs first with
-`node scripts/android-stage-voice-models.ts --from <directory>`. Developer APKs
+`bun scripts/android-stage-voice-models.ts --from <directory>`. Developer APKs
 can explicitly omit the runtime; those builds are not distributable. Setup,
 signing and emulator testing are covered in the
 [developer guide](docs/development.md#android-builds).
@@ -177,7 +176,7 @@ Alpha is in **early pilot**.
 | `apps/app`     | The Alpha interface: Home, the built-in apps and Ask Alpha.         |
 | `android`      | Android packaging, native code and the Alpha OS image pieces.       |
 | `scripts`      | Build, test and release tooling.                                    |
-| `specs`        | Formal models of the trickiest behaviour, checked on every verify.  |
+| `specs`        | Formal models of the trickiest behaviour, checked before merging.  |
 | `vendor/eliza` | The pinned [elizaOS](https://github.com/elizaOS/eliza) runtime. Read-only here. |
 
 ## Contributing
@@ -187,8 +186,8 @@ Issues and pull requests are welcome.
 1. Fork the repository and create a branch.
 2. Make your change. Shared runtime changes belong upstream in elizaOS, not in
    `vendor/eliza`.
-3. Run `npm run verify`. If you touched Android, also run
-   `npm run android:build:local`.
+3. Run `bun run verify`. If you touched Android, also run
+   `bun run android:build:local`.
 4. Open a pull request that says what you changed and how you tested it.
 
 Found a security problem? Please do not open a public issue. Contact the team

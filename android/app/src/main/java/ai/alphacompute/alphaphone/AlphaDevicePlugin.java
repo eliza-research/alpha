@@ -262,6 +262,22 @@ public final class AlphaDevicePlugin extends Plugin {
   // Android's default silent-update policy also throttles a first attempt during early boot.
   return android.os.SystemClock.uptimeMillis()<=30_000L?"starting":"supported";
  }
+ /** Opens the permission page on an explicit request. Android owns consent and a later snapshot reads it. */
+ @PluginMethod public void openUpdatePermissionSettings(PluginCall call){
+  if(Build.VERSION.SDK_INT<31){call.resolve(new JSObject().put("status","unsupported"));return;}
+  openInstallSourceSettings(call,new JSObject().put("status","opened"));
+ }
+ private void openInstallSourceSettings(PluginCall call,JSObject result){
+  android.app.Activity activity=getActivity();
+  if(activity==null){call.reject("Update unavailable");return;}
+  activity.runOnUiThread(()->{
+   if(activity.isFinishing()||activity.isDestroyed()){call.reject("Update unavailable");return;}
+   try{
+    activity.startActivity(handOff(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,android.net.Uri.parse("package:"+getContext().getPackageName()))));
+   }catch(RuntimeException unavailable){call.reject("Update unavailable");return;}
+   if(result==null)call.resolve();else call.resolve(result);
+  });
+ }
  /** A downloaded automatic update may only replace idle, unlocked Home. The image also hosts calls. */
  private boolean automaticUpdateReady(){
   android.app.Activity activity=getActivity();
@@ -657,57 +673,90 @@ public final class AlphaDevicePlugin extends Plugin {
  /** The connection updateWorker opened last, for handleOnDestroy: interrupting a worker does not stop its socket I/O. */
  private volatile javax.net.ssl.HttpsURLConnection updateActive;
  /** HTTPS only: a redirect never changes protocol, and the network security config refuses cleartext. */
- private javax.net.ssl.HttpsURLConnection updateConnection(String url)throws java.io.IOException{
+ private static javax.net.ssl.HttpsURLConnection openUpdateConnection(String url,int connectMillis,int readMillis)throws java.io.IOException{
   javax.net.ssl.HttpsURLConnection connection=(javax.net.ssl.HttpsURLConnection)new java.net.URL(url).openConnection();
-  connection.setConnectTimeout(20000);connection.setReadTimeout(60000);connection.setUseCaches(false);
+  connection.setConnectTimeout(connectMillis);connection.setReadTimeout(readMillis);connection.setUseCaches(false);
+  return connection;
+ }
+ private javax.net.ssl.HttpsURLConnection updateConnection(String url)throws java.io.IOException{
+  javax.net.ssl.HttpsURLConnection connection=openUpdateConnection(url,20000,60000);
   updateActive=connection;
   return connection;
  }
  private static final int UPDATE_MANIFEST_LIMIT=64*1024;
- /** Final reads take place while the resident is paused, with short socket timeouts and a soft body deadline. */
  private static final int UPDATE_MANIFEST_RECHECK_MILLIS=10000;
+ /** One read-only transport slot, with no queue. An Android DNS or TLS call can outlive interruption. */
+ private static final java.util.concurrent.ExecutorService updateOfferReader=new java.util.concurrent.ThreadPoolExecutor(
+  0,1,15,java.util.concurrent.TimeUnit.SECONDS,new java.util.concurrent.SynchronousQueue<>(),work->{
+   Thread thread=new Thread(work,"AlphaUpdateOffer");thread.setDaemon(true);return thread;
+  });
  private static String manifestDigest(byte[] manifest)throws Exception{
   return hex(java.security.MessageDigest.getInstance("SHA-256").digest(manifest));
  }
  /** Both discovery and automatic commit read the configured feed. A 404 withdraws the offer. */
- private byte[] readUpdateManifest(boolean recheck)throws Exception{
-  javax.net.ssl.HttpsURLConnection connection=updateConnection(BuildConfig.ALPHA_UPDATE_MANIFEST_URL);
-  connection.setRequestProperty("Cache-Control","no-cache");
-  long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(UPDATE_MANIFEST_RECHECK_MILLIS);
-  if(recheck){
-   connection.setConnectTimeout(UPDATE_MANIFEST_RECHECK_MILLIS);
-   connection.setReadTimeout(UPDATE_MANIFEST_RECHECK_MILLIS);
-  }
+ private static byte[] readUpdateManifest(javax.net.ssl.HttpsURLConnection connection,long deadline)throws Exception{
   try{
+   connection.setRequestProperty("Cache-Control","no-cache");
+   checkOfferDeadline(deadline);
    int status=connection.getResponseCode();
+   checkOfferDeadline(deadline);
    if(status==404)return null;
    if(status!=200)throw new java.io.IOException("Update unavailable");
    try(java.io.InputStream in=connection.getInputStream()){
-    java.io.InputStream bounded=recheck?new java.io.FilterInputStream(in){
+    java.io.InputStream bounded=deadline!=0?new java.io.FilterInputStream(in){
      @Override public int read(byte[] buffer,int offset,int length)throws java.io.IOException{
-      if(System.nanoTime()>=deadline)throw new java.io.IOException("Update offer timed out");
+      checkOfferDeadline(deadline);
       int count=super.read(buffer,offset,length);
-      if(System.nanoTime()>=deadline)throw new java.io.IOException("Update offer timed out");
+      checkOfferDeadline(deadline);
       return count;
      }
     }:in;
-    return ai.eliza.plugins.agent.connection.ConnectionTransport.readBounded(bounded,UPDATE_MANIFEST_LIMIT);
+    byte[] manifest=ai.eliza.plugins.agent.connection.ConnectionTransport.readBounded(bounded,UPDATE_MANIFEST_LIMIT);
+    long length=connection.getContentLengthLong();
+    String encoding=connection.getContentEncoding();
+    if(length>=0&&(encoding==null||"identity".equalsIgnoreCase(encoding))&&manifest.length!=length)
+     throw new java.io.IOException("Incomplete update manifest");
+    return manifest;
    }
   }finally{connection.disconnect();}
+ }
+ private static void checkOfferDeadline(long deadline)throws java.io.IOException{
+  if(deadline!=0&&(deadline-System.nanoTime()<=0||Thread.currentThread().isInterrupted()))
+   throw new java.io.IOException("Update offer timed out");
+ }
+ /** The installer stops waiting even if opening, redirecting or closing the connection is blocked. */
+ private static byte[] readFinalUpdateManifest()throws Exception{
+  long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(UPDATE_MANIFEST_RECHECK_MILLIS);
+  var result=updateOfferReader.submit(()->{
+   checkOfferDeadline(deadline);
+   return readUpdateManifest(openUpdateConnection(BuildConfig.ALPHA_UPDATE_MANIFEST_URL,
+    UPDATE_MANIFEST_RECHECK_MILLIS,UPDATE_MANIFEST_RECHECK_MILLIS),deadline);
+  });
+  try{
+   byte[] manifest=result.get(Math.max(0,deadline-System.nanoTime()),java.util.concurrent.TimeUnit.NANOSECONDS);
+   checkOfferDeadline(deadline);
+   return manifest;
+  }catch(InterruptedException interrupted){
+   Thread.currentThread().interrupt();throw interrupted;
+  }finally{result.cancel(true);}
  }
  /** Resolves the exact received manifest and its raw byte digest, or an empty result for a withdrawal. */
  @PluginMethod public void checkForUpdate(PluginCall call){
   PluginWorkers.submit(updateWorker,()->{
    try{
     reconcileUpdate();
-    byte[] manifest=readUpdateManifest(false);
+    byte[] manifest=readUpdateManifest(updateConnection(BuildConfig.ALPHA_UPDATE_MANIFEST_URL),0);
     call.resolve(manifest==null?new JSObject():new JSObject()
       .put("manifest",new String(manifest,java.nio.charset.StandardCharsets.UTF_8))
       .put("manifestSha256",manifestDigest(manifest)));
    }catch(Exception unavailable){call.reject("Update unavailable");}
   },()->call.reject("Update unavailable"));
  }
- private static final class UpdateOfferUnavailable extends java.io.IOException {}
+ private static final class UpdateOfferUnavailable extends java.io.IOException {
+  final String status,manifest;
+  UpdateOfferUnavailable(String status,String manifest){this.status=status;this.manifest=manifest;}
+ }
+ private static final class UpdateInstallPermissionRequired extends java.io.IOException {}
  private static boolean manifestNumberEquals(Object value,long expected){
   return value instanceof Number&&((Number)value).doubleValue()==expected;
  }
@@ -730,20 +779,26 @@ public final class AlphaDevicePlugin extends Plugin {
  /** The fresh bytes must still be the discovery response and offer this exact update. */
  private void requireCurrentUpdateOffer(String manifestSha256,String apkUrl,String sha256,long size,long versionCode,String signer)throws UpdateOfferUnavailable{
   try{
-   byte[] manifest=readUpdateManifest(true);
-   if(manifest!=null&&manifestSha256.equals(manifestDigest(manifest))){
-    org.json.JSONTokener parser=new org.json.JSONTokener(new String(manifest,java.nio.charset.StandardCharsets.UTF_8));
-    Object document=parser.nextValue();
-    if(document instanceof org.json.JSONObject&&parser.nextClean()==0){
-     String variant=BuildConfig.IS_LAUNCHER?"launcher":"standalone";
-     org.json.JSONObject offer=selectUpdateOffer((org.json.JSONObject)document,variant,signer);
-     if(offer!=null&&variant.equals(offer.opt("variant"))&&signer.equals(offer.opt("signerSha256"))&&
-        apkUrl.equals(offer.opt("apkUrl"))&&sha256.equals(offer.opt("sha256"))&&
-        manifestNumberEquals(offer.opt("sizeBytes"),size)&&manifestNumberEquals(offer.opt("versionCode"),versionCode))return;
-    }
+   byte[] manifest=readFinalUpdateManifest();
+   if(manifest==null)throw new UpdateOfferUnavailable("offer-withdrawn",null);
+   if(!manifestSha256.equals(manifestDigest(manifest))){
+    // The renderer can distinguish a valid replacement from malformed bytes using its strict parser.
+    String decoded=java.nio.charset.StandardCharsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(manifest)).toString();
+    throw new UpdateOfferUnavailable("offer-response-changed",decoded);
    }
-  }catch(Exception unavailable){/* Network and malformed responses both leave the offer unconfirmed. */}
-  throw new UpdateOfferUnavailable();
+   org.json.JSONTokener parser=new org.json.JSONTokener(new String(manifest,java.nio.charset.StandardCharsets.UTF_8));
+   Object document=parser.nextValue();
+   if(document instanceof org.json.JSONObject&&parser.nextClean()==0){
+    String variant=BuildConfig.IS_LAUNCHER?"launcher":"standalone";
+    org.json.JSONObject offer=selectUpdateOffer((org.json.JSONObject)document,variant,signer);
+    if(offer!=null&&
+       variant.equals(offer.opt("variant"))&&signer.equals(offer.opt("signerSha256"))&&
+       apkUrl.equals(offer.opt("apkUrl"))&&sha256.equals(offer.opt("sha256"))&&
+       manifestNumberEquals(offer.opt("sizeBytes"),size)&&manifestNumberEquals(offer.opt("versionCode"),versionCode))return;
+   }
+  }catch(UpdateOfferUnavailable changed){throw changed;}
+  catch(Exception unavailable){/* A failed read cannot confirm the offer. */}
+  throw new UpdateOfferUnavailable("offer-unavailable",null);
  }
  /**
   * Manual Install update or an automatic idle-Home attempt. An automatic attempt requires API 31+ and existing
@@ -771,12 +826,8 @@ public final class AlphaDevicePlugin extends Plugin {
   }
   if(!getContext().getPackageManager().canRequestPackageInstalls()){
    // Consent can be revoked between the automatic capability read and this read.
-   // Only an explicit manual request may open Android's settings page.
    if(automatic){call.resolve(new JSObject().put("status","permission-required"));return;}
-   getActivity().runOnUiThread(()->{
-    try{getActivity().startActivity(handOff(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,android.net.Uri.parse("package:"+getContext().getPackageName()))));call.resolve();}
-    catch(RuntimeException unavailable){call.reject("Update unavailable");}
-   });
+   openInstallSourceSettings(call,null);
    return;
   }
   final String manifestSha256=call.getString("manifestSha256");
@@ -877,6 +928,7 @@ public final class AlphaDevicePlugin extends Plugin {
         requireCurrentUpdateOffer(manifestSha256,apkUrl,sha256,size,versionCode,signer);
         throwIfDestroyed();
         if(!automaticUpdateReady()){keepApk=true;throw new java.io.IOException("Automatic update deferred");}
+        if(!getContext().getPackageManager().canRequestPackageInstalls())throw new UpdateInstallPermissionRequired();
        }
        UpdatePause.committing(preparation.id);
        android.content.IntentSender status=AlphaUpdateStatusReceiver.sender(getContext(),preparation.id,id);
@@ -910,7 +962,12 @@ public final class AlphaDevicePlugin extends Plugin {
      if(!keepApk){updateVerified=null;apk.delete();}updating.set(false);
     }
     call.resolve();
-   }catch(UpdateOfferUnavailable unavailable){call.resolve(new JSObject().put("status","offer-unavailable"));}
+   }catch(UpdateOfferUnavailable unavailable){
+    JSObject result=new JSObject().put("status",unavailable.status);
+    if(unavailable.manifest!=null)result.put("manifest",unavailable.manifest);
+    call.resolve(result);
+   }
+   catch(UpdateInstallPermissionRequired revoked){call.resolve(new JSObject().put("status","permission-required"));}
    catch(Exception unavailable){call.reject("Update unavailable");}
   },()->call.reject("Update unavailable"));
  }

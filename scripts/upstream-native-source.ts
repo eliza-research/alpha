@@ -37,32 +37,38 @@ export function upstreamNativeSource(root: string) {
  const git=(args: string[])=>execFileSync('git',['-C',directory,...args],{maxBuffer:64*1024*1024});
  if(git(['rev-parse','HEAD']).toString().trim()!==pin)throw Error('Unexpected upstream source pin');
  if(git(['status','--porcelain','--untracked-files=normal']).toString().trim())throw Error('Upstream source checkout is dirty');
- function read(prefix: string, {allowMissing = false} = {}): Map<string, UpstreamBlob> {
-  if(!prefix||prefix.startsWith('/')||prefix.split('/').includes('..'))throw Error('Invalid upstream source path');
-  const entries=git(['ls-tree','-r','-z',pin,'--',prefix]).toString().split('\0').filter(Boolean);
-  if(!entries.length){
-   if(allowMissing)return new Map();
-   throw Error(`Missing upstream source: ${prefix}`);
-  }
+ const under=(name: string,prefix: string)=>name===prefix||name.startsWith(prefix.replace(/\/$/,'')+'/');
+ /** Read several source paths with one tree listing and one blob batch; the result follows the order of
+  * `prefixes`. Every path is held to the same checks as a single `read`. */
+ function readAll(prefixes: readonly string[], {allowMissing = false} = {}): Map<string, UpstreamBlob>[] {
+  for(const prefix of prefixes)if(!prefix||prefix.startsWith('/')||prefix.split('/').includes('..'))throw Error('Invalid upstream source path');
+  if(!prefixes.length)return [];
+  const entries=git(['ls-tree','-r','-z',pin,'--',...prefixes]).toString().split('\0').filter(Boolean);
   const inventory=entries.map(entry=>{
    const match=entry.match(/^(100644|100755) blob ([a-f0-9]{40})\t(.+)$/);
    if(!match)throw Error('Nonregular upstream source');
    return match;
   });
+  const groups=prefixes.map(prefix=>{
+   const group=inventory.filter(match=>under(match[3],prefix));
+   if(!group.length&&!allowMissing)throw Error(`Missing upstream source: ${prefix}`);
+   return group;
+  });
+  if(inventory.some(match=>!prefixes.some(prefix=>under(match[3],prefix))))throw Error('Unexpected upstream source inventory');
   const oids=inventory.map(match=>match[2]);
-  const blobs=parseNativeBlobBatch(execFileSync('git',['-C',directory,'cat-file','--batch'],{input:oids.join('\n')+'\n',maxBuffer:64*1024*1024}),oids);
+  const blobs=oids.length?parseNativeBlobBatch(execFileSync('git',['-C',directory,'cat-file','--batch'],{input:oids.join('\n')+'\n',maxBuffer:64*1024*1024}),oids):[];
   const files=new Map<string, UpstreamBlob>();
   for(const [index,match] of inventory.entries()){
    const name = match[3];
    const mode = match[1] === '100755' ? '100755' : '100644';
-   if(name!==prefix&&!name.startsWith(prefix.replace(/\/$/,'')+'/'))throw Error('Unexpected upstream source inventory');
    const filename=path.join(directory,name);
    for(let current=filename;current!==directory;current=path.dirname(current))if(fs.lstatSync(current).isSymbolicLink())throw Error('Symlink in upstream source path');
    const stat=fs.lstatSync(filename),bytes=blobs[index];
    if(!stat.isFile()||Boolean(stat.mode&0o100)!==(mode==='100755')||!fs.readFileSync(filename).equals(bytes))throw Error(`Upstream source drift: ${name}`);
    files.set(name,{bytes,mode,sha256:sha(bytes)});
   }
-  return files;
+  return groups.map(group=>new Map(group.map(match=>[match[3],files.get(match[3])!])));
  }
- return {pin,directory,read};
+ const read=(prefix: string, options: {allowMissing?: boolean} = {}): Map<string, UpstreamBlob>=>readAll([prefix],options)[0];
+ return {pin,directory,read,readAll};
 }

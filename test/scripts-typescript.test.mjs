@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {stripTypeScriptTypes} from 'node:module';
+import {stripErasableTypes} from './support/strip-types.mjs';
 
 test('host tooling stays migrated and runs on native TypeScript', () => {
   const root = path.resolve(import.meta.dirname, '..');
@@ -12,7 +12,7 @@ test('host tooling stays migrated and runs on native TypeScript', () => {
   assert.deepEqual(files.filter(file => /\.(?:mjs|cjs|js)$/.test(file)), []);
   for (const file of files.filter(file => file.endsWith('.ts') && !file.endsWith('.d.ts'))) {
     const source = fs.readFileSync(path.join(root, file), 'utf8');
-    assert.doesNotThrow(() => stripTypeScriptTypes(source, {mode:'strip'}), `${file} must run on Node 26`);
+    assert.doesNotThrow(() => stripErasableTypes(source), `${file} must stay erasable TypeScript`);
     assert.doesNotMatch(source, /^\s*\/\/\s*@ts-(?:nocheck|ignore)/m, `${file} must stay typechecked`);
   }
 });

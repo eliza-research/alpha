@@ -386,7 +386,7 @@ export async function mountClosedMaps(extraSources, runs, holdRouteReplies = fal
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-passwords/src')),
     ...filesWithin(resolve(root, 'vendor/eliza/plugins/plugin-native-system/src')),
     'vendor/eliza/packages/core/src/utils/uuid.ts',
-    'apps/app/index.html', 'vite.config.ts', 'package.json', 'package-lock.json', 'upstream.lock.json',
+    'apps/app/index.html', 'vite.config.ts', 'package.json', 'bun.lock', 'upstream.lock.json',
     'scripts/prepare-client-features.ts', 'scripts/quint-lib.ts', 'scripts/browser-full-reload.ts',
     modelPath, fileURLToPath(import.meta.url), 'test/browser/helpers/page-modules.ts', ...extraSources,
   ])];

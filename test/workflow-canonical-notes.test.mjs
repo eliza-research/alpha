@@ -1,4 +1,4 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from 'node:module';import vm from 'node:vm';
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';import vm from 'node:vm';
 const source=readFileSync('apps/app/src/prototype/agent-adapter.ts','utf8');
 const start=source.indexOf("        if(operation.type==='read_selected_notes'&&this.notesSourceMode==='canonical')"),end=source.indexOf("        if(operation.type==='read_selected_notes'){",start);
 function fixture(){let rows=[{id:'note',title:'Reviewed',body:'Exact text'}],afterHash=()=>{},checks=0;const notes={current:true,notes:()=>rows};const host={notesSourceMode:'canonical',canonicalNotesUi:notes};

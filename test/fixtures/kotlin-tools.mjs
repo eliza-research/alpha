@@ -41,7 +41,7 @@ export function kotlinJars({prepare = false} = {}) {
         renameSync(temporary, found);
       } finally {rmSync(temporary, {force: true});}
     }
-    if (!found) throw Error(`Prepare the pinned host Kotlin compiler: node test/fixtures/kotlin-tools.mjs --prepare (${file})`);
+    if (!found) throw Error(`Prepare the pinned host Kotlin compiler: bun test/fixtures/kotlin-tools.mjs --prepare (${file})`);
     return found;
   });
 }

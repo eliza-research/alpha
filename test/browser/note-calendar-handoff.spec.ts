@@ -1,3 +1,4 @@
+import {expectPendingToast,finishUndoWindow} from './helpers/undo-feedback';
 import {installNoteScheduleContract,reviewNoteScheduleContract} from './helpers/note-schedule-contract';
 // Notes -> Calendar contract flow (programmatic entry; no scheduling menu control): a saved voice note's open action items become a reminder draft or a
 // calendar event draft. Nothing is written until Save in Calendar; the saved record then shows
@@ -223,6 +224,7 @@ test('Notes scheduling contract: the open-note action fails closed when the note
 
  // Deleted (moved to Trash): nothing opens, the event is unchanged, the other note is never opened instead.
  await openRecording(page,'Venue meeting');
+ await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now()+1000)));
  await button(page,'More').click();await page.getByRole('dialog',{name:'Note actions'}).getByRole('button',{name:'Delete',exact:true}).click();
  await expect.poll(async()=>(await notes(page)).map(n=>n.title)).toEqual(['Garden meeting']);
  await openEvent();
@@ -231,6 +233,12 @@ test('Notes scheduling contract: the open-note action fails closed when the note
  await expect(page.getByText(/Venue meeting/)).toHaveCount(0);
  expect(JSON.stringify(await stored(page))).not.toMatch(/Venue meeting/);
  await button(page,'Open note').click();
+ await expectPendingToast(page,'Source gone');
+ // Refusal settled while Undo still belongs to the deleted note: no navigation or event write.
+ await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
+ expect((await events(page))[0]).toEqual(event);
+ await expect(page.getByText('Source gone',{exact:true})).toHaveCount(0);
+ await finishUndoWindow(page);
  await expect(page.getByText('Source gone',{exact:true})).toBeVisible();
  await expect(page.locator('html')).toHaveAttribute('data-active-view','calendar');
  expect((await events(page))[0]).toEqual(event);

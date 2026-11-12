@@ -97,7 +97,7 @@ def verify(apk, release=False):
                 if bun.get('architectures') != ['arm64-v8a']:
                     raise ValueError('Invalid Android Bun ABI admission')
                 runtime_abis = {'arm64-v8a'}
-        restage = 'npm run agent:stage-android'
+        restage = 'bun run agent:stage-android'
         if provenance is None:
             raise ValueError('Runtime provenance missing. Run: ' + restage)
         # There is one runtime profile. The staged marker names it; a payload staged for
@@ -194,7 +194,7 @@ def verify(apk, release=False):
                 not isinstance(bundle_dependencies.get('packages'), list) or not bundle_dependencies['packages']):
             raise ValueError('Packaged agent dependency inventory does not match bundle')
         declarations = subprocess.check_output(
-            ['node', ROOT / 'scripts/native-view-policy.ts'], timeout=30)
+            ['bun', ROOT / 'scripts/native-view-policy.ts'], timeout=30)
         check('assets/agent/native-view-declarations.json', staged / 'native-view-declarations.json',
               hashlib.sha256(declarations).hexdigest())
         worker_manifest = json.loads((staged / 'workflow-worker/manifest.json').read_text())
@@ -260,7 +260,7 @@ def main(argv):
     print(json.dumps(results, indent=2))
     if refused and not args.allow_unpackaged_runtime:
         print('Release APKs without a packaged resident runtime are not distributable: ' + ', '.join(refused)
-              + '. Stage it with npm run android:build:local, or pass --allow-unpackaged-runtime for a non-distributable developer build.', file=sys.stderr)
+              + '. Stage it with bun run android:build:local, or pass --allow-unpackaged-runtime for a non-distributable developer build.', file=sys.stderr)
         return NOT_DISTRIBUTABLE
     return 0
 

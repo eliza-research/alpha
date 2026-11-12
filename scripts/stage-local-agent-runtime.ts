@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import {preparedSourceEnv,sourceDirectory,workerArtifactDirectory} from './local-agent-source.ts';
 import {verifyWorkerArtifact,workerHash} from './workflow-worker-artifact.ts';
 import fs from 'node:fs';
@@ -43,7 +43,7 @@ function stageLocalAgentRuntime(){
 
 stagingArguments(process.argv.slice(2));
 const source=sourceDirectory(root);
-if(!fs.existsSync(path.join(source,'.alpha-runtime-source.json')))throw Error('Run npm run agent:prepare first.');
+if(!fs.existsSync(path.join(source,'.alpha-runtime-source.json')))throw Error('Run bun run agent:prepare first.');
 execFileSync(process.execPath,[path.join(root,'scripts/prepare-local-agent.ts'),'--source-only'],{cwd:root,stdio:'inherit'});
 const selection=runtimeStagingSelection(source,process.env);
 verifyWorkerArtifact(workerArtifactDirectory(root),

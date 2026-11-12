@@ -42,7 +42,8 @@ async function main() {
   const repository = path.resolve(import.meta.dirname, '../..');
   const output = {kind: 'entry-point', async arrayBuffer() {return Uint8Array.from(Buffer.from(bytes)).buffer;}};
   let bytes;
-  globalThis.Bun = {
+  // The Bun global is read-only; the three entry points the builder calls are replaced in place.
+  Object.assign(Bun, {
     async build(options) {
       event('compile');
       assert.deepEqual(options.entrypoints, [input]);
@@ -98,7 +99,7 @@ async function main() {
         fs.symlinkSync('linked-target.ts', linked);
       }
     },
-  };
+  });
   process.argv = [process.execPath, path.join(repository, script), root, sdk, file, meta];
   await import(pathToFileURL(process.argv[1]).href);
   assert.ok(fs.statSync(meta).isFile());

@@ -21,7 +21,7 @@ let capabilityAbort = null, inferenceAbort = null, scaleGeneration = 0, scaleVer
 const textScaleSettlement = () => null, changed = () => { changes++; };
 let changes = 0;
 ${slice('let licenses: {', '/** Native reset results that only echo')}
-${slice('  async function refreshCapabilities(enteringSettings=false) {', '  /** Explicit, confirmed disconnect')}
+${slice('  async function refreshCapabilities(enteringSettings=false) {', '  /** Android shows its own role dialog')}
 globalThis.page = {
   mount(instance) { owner = instance; void refreshCapabilities(); }, unmount(instance) { (function () { ${slice('if (owner === this) { capabilityAbort?.abort();', '\n')} }).call(instance); },
   refreshCapabilities, loadLicenses: () => loadLicenses(changed), shown: () => ({gmail, licenses: licenses.status}),
@@ -33,7 +33,7 @@ function fixture() {
   const reads = [], limits = new Map(), fetches = [];
   let session = 1, armed = 0, fetched = 0, instance;
   const context = vm.createContext({AbortController, Promise, Error, Array,
-    externalVoiceInvocationEnabled: false, browserLocalAgentEnabled: false, listenerReads: {}, gmailGrantLabel: () => 'verified',
+    imageSenseAvailable: () => false, browserLocalAgentEnabled: false, listenerReads: {}, gmailGrantLabel: () => 'verified',
     connectionController: {getCloudClient: () => session === 0 ? null : {sessionId: session, client: {
       gmailAccounts: signal => new Promise((settle, fail) => reads.push({session, settle, fail, signal}))}}},
     setTimeout(run, delay) { assert.equal(delay, 10000); limits.set(++armed, run); return armed; },

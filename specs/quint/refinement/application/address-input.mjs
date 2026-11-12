@@ -20,9 +20,10 @@ import {stripTypeScriptTypes} from '../../../../test/support/strip-types.mjs';
 import {parseBrowserAddressInput} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/address-input.ts';
 import {BrowserTabSession} from '../../../../.eliza/client-features/plugins/plugin-native-browser-surface/src/tab-host.ts';
 import {modelTraces, plain, repositoryRoot} from './browser-model-traces.mjs';
+import {scaledTimeout} from '../timeouts.mjs';
 
 const model = {path: 'specs/quint/application/AddressInput.qnt', module: 'AddressInput'};
-const witnesses = ['SchemeLikeWordSearchedWitness', 'EmailSearchedWitness', 'DecimalSearchedWitness', 'ApprovedRefusedWitness'];
+const witnesses = ['SchemeLikeWordSearchedWitness', 'SimpleAtSearchedWitness', 'DecimalSearchedWitness', 'ApprovedRefusedWitness'];
 export const corpus = ['example.com', 'example.com/path?x=1', 'cats and dogs', 'weather', 'localhost', 'localhost/notes?a=1', 'localhost tips', '10:30', ' 12:00 ', '3:16/x',
   'nas:8080', '127.0.0.1:8080', '192.168.1.1', '[::1]:8080', 'site:example.com cats', 'define:serendipity', 'javascript:alert(1)', 'ftp://example.com/file',
   'file:///etc/hosts', 'user@example.com', 'user@host', 'user:password@example.com', 'mailto:someone@example.com', 'https://user@example.com',
@@ -30,19 +31,22 @@ export const corpus = ['example.com', 'example.com/path?x=1', 'cats and dogs', '
   'https://', 'http:', 'https:example.com', 'name@example.com/inbox', 'what is user@example.com', 'a b@c',
   'name+tag@example.com', 'name@example.com?token=private', 'name@example.com#private-fragment',
   'name@example.com/path?token=private#fragment', 'user%3Apassword@example.com',
+  '＠project', 'name＠example.com／inbox', 'look up a＠b：secret', 'a＠b\u2028note', '10:30/a＠b', 'localhost/＠foo',
   '', '   ', 'x'.repeat(4097), 'https://example.com/' + 'y'.repeat(4096)];
 
 /** The properties of a text that the model's `Input` records. */
 export function describe(raw) {
   const typed = raw.trim();
   if (typed.length > 4096) return {tooLong: true};
+  const atText = typed.normalize('NFKC');
   const input = parseBrowserAddressInput(raw, {defaultProtocol: 'https:'});
   const verdict = input.kind, reason = verdict !== 'rejected' ? 'none' : ['unsupported-protocol', 'credentials'].includes(input.reason) ? input.reason : 'other';
   let hostEmpty = false;
   if (verdict === 'url') { try { hostEmpty = !new URL(input.href).hostname; } catch { hostEmpty = true; } }
   return {tooLong: false, verdict, reason,
     timeLike: verdict === 'url' && /^\d+:\d+(?:[/?#]|$)/.test(typed),
-    webScheme: /^https?:/i.test(typed), hasAt: typed.includes('@'), emailShaped: /^[^\s/:@?#%]+@[^\s/:@?#%]+$/.test(typed),
+    webScheme: /^https?:/i.test(typed), hasAt: atText.includes('@'),
+    simpleAtSearch: /^[^/:@?#%]*@[^/:@?#%]*$/.test(atText) && !/[\p{C}\p{Zl}\p{Zp}\\]/u.test(atText),
     shortDecimal: /^\d+(?:\.\d+){0,2}$/.test(typed), hostEmpty,
     localhostAlias: verdict === 'search' && /^localhost(?:[/?#]\S*)?$/i.test(input.query)};
 }
@@ -85,14 +89,14 @@ function modelOutcomes(submissions) {
     const source = readFileSync(join(repositoryRoot, model.path), 'utf8'), last = source.lastIndexOf('}');
     writeFileSync(join(directory, 'AddressInput.qnt'), `${source.slice(0, last)}  run corpusTest = init\n    ${chain}\n}\n`);
     const result = spawnSync(process.execPath, [join(repositoryRoot, 'node_modules/@informalsystems/quint/dist/src/cli.js'), 'test', join(directory, 'AddressInput.qnt'),
-      '--main=AddressInput', '--backend=typescript', '--max-samples=1', '--match=^corpusTest$', `--out-itf=${join(directory, 'trace-{test}-{seq}.json')}`], {cwd: repositoryRoot, encoding: 'utf8', timeout: 120000});
+      '--main=AddressInput', '--backend=typescript', '--max-samples=1', '--match=^corpusTest$', `--out-itf=${join(directory, 'trace-{test}-{seq}.json')}`], {cwd: repositoryRoot, encoding: 'utf8', timeout: scaledTimeout(120000)});
     assert.equal(result.status, 0, `the model refuses a text that exists: ${result.stdout}\n${result.stderr}`);
     const trace = JSON.parse(readFileSync(join(directory, 'trace-corpusTest-0.json'), 'utf8'));
     assert.equal(trace.states.length, submissions.length + 1);
     return trace.states.slice(1).map(state => plain(state.s));
   } finally { rmSync(directory, {recursive: true, force: true}); }
 }
-const wordInput = {tooLong: false, verdict: 'search', reason: 'none', timeLike: false, webScheme: false, hasAt: false, emailShaped: false, shortDecimal: false, hostEmpty: false, localhostAlias: false};
+const wordInput = {tooLong: false, verdict: 'search', reason: 'none', timeLike: false, webScheme: false, hasAt: false, simpleAtSearch: false, shortDecimal: false, hostEmpty: false, localhostAlias: false};
 
 export async function checkAddressInput({random = 60, steps = 60} = {}) {
   const submit = addressInputHarness(), texts = new Map();

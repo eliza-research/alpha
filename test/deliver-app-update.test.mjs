@@ -13,7 +13,7 @@ const manifestUrl = `https://github.com/alphacompute/alpha/releases/download/${s
 const legacyManifestUrl = `https://github.com/alphacompute/alpha/releases/download/${legacyTag}/alpha-update-stable.json`;
 const source = '1'.repeat(40);
 const object = bytes => ({bytes: Buffer.from(bytes), size: Buffer.byteLength(bytes), sha256: sha(bytes)});
-function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], isPrivate = false, repoId = 1396333361, releaseMissing = false, apkWrong = false, pointerRace = false, manifestInvisible = false} = {}) {
+function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], isPrivate = false, repoId = 1396333361, releaseMissing = false, apkWrong = false, pointerRace = false, manifestInvisible = false, failManifestUpload = false} = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'alpha-delivery-test-'));
   t.after(() => fs.rmSync(directory,{recursive:true,force:true}));
   const apkBytes = Buffer.from('synthetic qualified release bytes');
@@ -31,6 +31,7 @@ function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], 
   let pointer = retained(manifestUrl, previous);
   const legacyPointer = retained(legacyManifestUrl, legacyPrevious);
   let apkVisible = false, pointerReads = 0, releaseExists = !releaseMissing;
+  let starter = null;
   const ports = {
     wait: async () => {},
     run(args) {
@@ -46,6 +47,7 @@ function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], 
         const assets = [];
         if (apkVisible) assets.push({name:'alpha-phone-8.apk'});
         if (pointer) assets.push({name:'alpha-update-stable.json'});
+        if (starter) assets.push(starter);
         return JSON.stringify({isDraft:false,assets});
       }
       if (args[1] === 'create' || args[1] === 'upload') assert.equal(args[2],stableTag);
@@ -57,6 +59,13 @@ function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], 
         else {
           assert.equal(apkVisible,true,'manifest cannot be published before APK');
           assert.ok(events.includes('apk readback'),'anonymous APK proof precedes manifest');
+          if (failManifestUpload && !starter) {
+            assert.equal(args.includes('--clobber'),true);
+            pointer = null;
+            starter = {name:'alpha-update-stable.json',id:'RA_fixture',state:'starter',size:0,digest:null};
+            throw Error('HTTP 502 from release asset upload');
+          }
+          starter = null;
           if (!manifestInvisible) pointer = object(manifestBytes);
         }
       }
@@ -82,8 +91,9 @@ function fixture(t, {previous = null, legacyPrevious = null, legacyAssets = [], 
   return {directory,manifestUrl,source,ports,events,uploads,offer,manifestBytes};
 }
 
-test('delivery proves anonymous APK bytes before moving and reading back the stable manifest',async t => {
-  const formerLegacyApk = new URL('alpha-phone-7.apk',legacyManifestUrl.replace('/alpha/','/alphaphone/')).href;
+for (const repository of ['eliza-research/alpha', 'eliza-research/alphaphone', 'alphacompute/alphaphone']) {
+test(`delivery retains ${repository} pointers and proves anonymous APK bytes before moving the manifest`,async t => {
+  const formerLegacyApk = new URL('alpha-phone-7.apk',legacyManifestUrl.replace('alphacompute/alpha',repository)).href;
   const f = fixture(t,{legacyPrevious:{apkUrl:formerLegacyApk},releaseMissing:true});
   const receipt = await deliver(f,f.ports);
   assert.deepEqual(f.uploads,['alpha-phone-8.apk','alpha-update-stable.json']);
@@ -92,6 +102,7 @@ test('delivery proves anonymous APK bytes before moving and reading back the sta
   assert.deepEqual(receipt,{schema:'alpha-app-update-delivery/v1',publisherCommit:source,sourceScope:'publication-tooling-only',variant:'launcher',versionCode:8,
     apkSha256:f.offer.sha256,manifestSha256:sha(f.manifestBytes),anonymousReadback:true});
 });
+}
 
 test('retired-channel versions remain reserved and its pointer cannot be published',async t => {
   for (const options of [{legacyPrevious:{versionCode:8}}, {legacyAssets:[{name:'alpha-phone-9.apk'}]},
@@ -127,6 +138,46 @@ test('manifest readback failure is a failed publication, never a successful rece
   const f = fixture(t,{manifestInvisible:true});
   await assert.rejects(deliver(f,f.ports),/manifest readback failed/);
   assert.equal(f.uploads.at(-1),'alpha-update-stable.json');
+});
+
+test('the same candidate recovers from an empty starter left by manifest replacement',async t => {
+  const f = fixture(t,{previous:{},failManifestUpload:true});
+  await assert.rejects(deliver(f,f.ports),/HTTP 502/);
+  assert.deepEqual(f.uploads,['alpha-phone-8.apk','alpha-update-stable.json']);
+  f.events.length = 0;
+  const receipt = await deliver(f,f.ports);
+  assert.deepEqual(f.uploads,['alpha-phone-8.apk','alpha-update-stable.json','alpha-update-stable.json']);
+  assert.ok(f.events.indexOf('apk readback') < f.events.indexOf('release upload'));
+  assert.equal(receipt.manifestSha256,sha(f.manifestBytes));
+  assert.equal(receipt.anonymousReadback,true);
+});
+
+test('a starter must stay the same exact empty manifest asset until publication',async t => {
+  for (const changed of [
+    {id:'RA_replacement'},
+    {state:'uploaded'},
+    {size:1},
+    {digest:'sha256:'+'f'.repeat(64)},
+    {id:undefined},
+  ]) {
+    const f = fixture(t,{previous:{},failManifestUpload:true});
+    await assert.rejects(deliver(f,f.ports),/HTTP 502/);
+    f.events.length = 0;
+    const run = f.ports.run;
+    f.ports.run = (args,options) => {
+      const value = run(args,options);
+      if (args[0] !== 'release' || args[1] !== 'view' || args[2] !== stableTag || !f.events.includes('apk readback'))
+        return value;
+      const release = JSON.parse(value);
+      const marker = release.assets.find(asset => asset.name === 'alpha-update-stable.json');
+      assert.equal(marker.state,'starter');
+      Object.assign(marker,changed);
+      return JSON.stringify(release);
+    };
+    await assert.rejects(deliver(f,f.ports),/changed during publication|not publicly readable/);
+    assert.deepEqual(f.uploads,['alpha-phone-8.apk','alpha-update-stable.json']);
+    assert.equal(f.events.includes('release upload'),false);
+  }
 });
 
 test('a missing manifest after interrupted replacement cannot reset the retained APK version floor',async t => {
