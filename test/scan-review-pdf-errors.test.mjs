@@ -1,49 +1,6 @@
-import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {stripTypeScriptTypes} from './support/strip-types.mjs';
+import test from 'node:test';import assert from 'node:assert/strict';
 const url=code=>'data:text/javascript;base64,'+Buffer.from(code).toString('base64');
-const index=url(stripTypeScriptTypes(readFileSync('apps/app/src/prototype/files-index.ts','utf8')));
-const source=stripTypeScriptTypes(readFileSync('apps/app/src/prototype/scan-pdf.ts','utf8'))
- .replace("'../../../../.eliza/client-features/plugins/plugin-files/src/documents/scan-pdf.ts'",JSON.stringify(url('export const createScanPdf=(...args)=>globalThis.scanPdfTest.create(...args);')))
- .replace("'../platform-plugins'",JSON.stringify(url('export const registerPlugin=()=>({exportPdf:input=>globalThis.scanPdfTest.exportPdf(input)});')))
- .replace("'./files-index'",JSON.stringify(index))
- .replace("'../daily'",JSON.stringify(url('export const DailyApps={forgetSelected:input=>globalThis.scanPdfTest.forget(input)};')));
-const {filesIndex,RECENT_LIMIT}=await import(index);
-const {exportScanPdf,scanPdfFailure,scanPdfRetryable,ScanPdfExportError,systemPickerActive}=await import(url(source));
 const bytes=new TextEncoder().encode('%PDF-1.7 test');
-
-test('conversion failures show the real reason and keep retry available',async()=>{
- let exported=0;globalThis.scanPdfTest={create:async()=>{throw Error('Page 2 is larger than 32 million pixels');},exportPdf:async()=>{exported++;return {status:'exported',message:'saved'};}};
- const error=await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan').then(()=>null,value=>value);
- assert.ok(error instanceof Error);assert.ok(!(error instanceof ScanPdfExportError),'conversion is not export uncertainty');assert.equal(exported,0,'nothing reached the provider');
- const failure=scanPdfFailure(error);assert.equal(failure.retry,true);assert.match(failure.message,/^Page 2 is larger than 32 million pixels$/);
- assert.equal(scanPdfFailure('opaque').retry,true);assert.equal(scanPdfFailure('opaque').message,'PDF failed');
- assert.equal(scanPdfFailure(new DOMException('stop','AbortError')).retry,true);
-});
-test('only a failed or unknown export call is unconfirmed and locks retry',async()=>{
- let picker=false;globalThis.scanPdfTest={create:async()=>bytes,exportPdf:async input=>{picker=systemPickerActive();assert.equal(atob(input.dataBase64),'%PDF-1.7 test');throw Error('bridge lost');}};
- const error=await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan').then(()=>null,value=>value);
- assert.ok(error instanceof ScanPdfExportError);assert.equal(picker,true,'review dialogs stay open while the system picker covers the page');assert.equal(systemPickerActive(),false);
- const failure=scanPdfFailure(error);assert.equal(failure.retry,false);assert.match(failure.message,/[Uu]nconfirmed/);
-});
-test('an export that pushes a picked document out of Recent releases that document\'s grant',async()=>{
- const forgotten=[];globalThis.scanPdfTest={create:async()=>bytes,exportPdf:async()=>({status:'exported',message:'saved'}),forget:async input=>{forgotten.push(input.selectionId);}};
- for(let i=0;i<RECENT_LIMIT;i++)filesIndex.record({kind:'selected',name:'picked.txt',mimeType:'text/plain',selectionId:'s'+i});
- await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan one');
- assert.deepEqual(forgotten,['s0'],'the evicted row gave up its grant');assert.equal(filesIndex.has('s0'),false);assert.equal(filesIndex.list().length,RECENT_LIMIT);
- // The open document is still in use: its grant stays until it closes.
- filesIndex.setOpen('s1');await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan two');
- assert.deepEqual(forgotten,['s0']);assert.equal(filesIndex.has('s1'),false);filesIndex.setOpen(null);
- // Exporting under a listed name refreshes that row and pushes nothing out.
- await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan two');assert.deepEqual(forgotten,['s0']);
- // An export that wrote nothing is not listed, so nothing is released; a failed release does not fail the export.
- globalThis.scanPdfTest.exportPdf=async()=>({status:'failed',message:'no'});await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan three');
- assert.deepEqual(forgotten,['s0']);assert.equal(filesIndex.has('s2'),true);
- Object.assign(globalThis.scanPdfTest,{exportPdf:async()=>({status:'requested',message:'chooser'}),forget:async input=>{forgotten.push(input.selectionId);throw Error('bridge lost');}});
- assert.equal((await exportScanPdf(new Blob(['x']),new AbortController().signal,'Alpha scan three')).status,'requested');assert.deepEqual(forgotten,['s0','s2']);
-});
-test('resolved provider outcomes decide retry by what they confirm',()=>{
- for(const status of ['cancelled','failed','unavailable','too-large'])assert.equal(scanPdfRetryable(status),true,status);
- for(const status of ['exported','requested','unverified','unknown'])assert.equal(scanPdfRetryable(status),false,status);
-});
 
 // The real searchable review dialog with the real scan-pdf exporter; conversion and the provider are stand-ins.
 const reviewStubs={

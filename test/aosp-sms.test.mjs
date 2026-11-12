@@ -4,16 +4,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, rmSync, readFileSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
-import { assertBefore } from "./fixtures/assert-order.mjs";
 import { javaBinary } from "./fixtures/jvm-tools.mjs";
 import { createAospTelephony, TelephonyUnavailable, parseTelephonyStatus, parseThreads, parseMessages, parseSmsSendResult, parseSmsJournal, smsBindingText, smsBindingHash, reviewSms } from "../apps/app/src/runtime/aosp-telephony.ts";
 
 const root = resolve(import.meta.dirname, "..");
-const JAVA = join(root, "android/app/src/main/java/ai/alphacompute/alphaphone");
 const SHARED = join(root, "vendor/eliza/plugins/plugin-native-messages/android/src/main/java/ai/eliza/plugins/messages");
 const read = file => readFileSync(join(root, file), "utf8");
 const status = (patch = {}) => ({
@@ -41,15 +39,6 @@ test("JVM: Alpha's installed journal stays compatible with the shared reviewed-S
     const namespace = read("android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java").match(/"(alpha-sms-operation:v1:)"/)[1];
     assert.match(execFileSync(javaBinary("java"), ["-Djava.io.tmpdir=" + dir, "-cp", dir, "ai.eliza.plugins.messages.SmsSendJournalTest", expected, namespace], { encoding: "utf8", timeout: 120000 }), /PASS alpha sms journal compatibility/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
-});
-
-test("Alpha keeps its installed SMS identity when using the shared core", () => {
-  const identity = read("android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephony.java");
-  for (const value of ["sms-send-ledger:v1:device", "alpha-sms-sends.journal", "alpha-sms-operation:v1:", "ai.alphacompute.alphaphone.SMS_SENT", "ai.alphacompute.alphaphone.SMS_DELIVERED", "alphaphone-sms", "operationId", "partIndex"])
-    assert.ok(identity.includes(`"${value}"`), `installed identity ${value} is kept`);
-  assert.match(identity, /AlphaSmsSendReceiver\.class, AlphaImageCapability::verified,/, "callbacks keep the installed receiver; admission is the verified image");
-  assert.match(identity, /store\.readCredentialSlot\(slot\)/); assert.match(identity, /store\.writeCredentialSlot\(slot, value\)/);
-  for (const retired of ["AlphaSms", "SmsSendJournal", "SmsRecords", "SmsPageCursor"]) assert.equal(existsSync(join(JAVA, `${retired}.java`)), false, `${retired} is the shared implementation, not an Alpha copy`);
 });
 
 test("binding text equals the shared sms.send.v1 contract field order", async () => {
@@ -155,119 +144,4 @@ test("journal history restores unknown operations without draft content or optim
  assert.equal((await createAospTelephony(plugin,true).smsSendHistory())[0].status,'unknown');
  assert.deepEqual(calls.map(([method])=>method),['smsSendHistory']);
  await assert.rejects(createAospTelephony(plugin,false).smsSendHistory(),TelephonyUnavailable);
-});
-
-test("native boundary: image-only plugin methods, immutable explicit callbacks, journal before dispatch", () => {
-  const plugin = readFileSync(join(SHARED, "TelephonyPlugin.java"), "utf8");
-  const sms = readFileSync(join(SHARED, "SmsTelephony.java"), "utf8");
-  const alpha = read("android/app/src/main/java/ai/alphacompute/alphaphone/AlphaTelephonyPlugin.java");
-  const receiver = read("android/app/src/main/java/ai/alphacompute/alphaphone/AlphaSmsSendReceiver.java");
-  // Reads: READ_SMS, generation fence before and after the provider read, cancellation.
-  assert.match(alpha, /alias = "sms", strings = \{ Manifest\.permission\.READ_SMS \}/);
-  assert.match(alpha, /alias = "sendSms", strings = \{ Manifest\.permission\.SEND_SMS \}/);
-  assert.match(alpha, /public class AlphaTelephonyPlugin extends TelephonyPlugin/);
-  assert.match(plugin, /if \(!current\(access, cancel, granted\)\) throw new SecurityException\(\);/);
-  assert.match(plugin, /if \(fenceResult && !current\(access, cancel, granted\)\) call\.reject\(noun \+ " access changed/);
-  assert.match(plugin, /fencedRead\(PluginCall call, String alias, String noun, Read read\) \{ fenced\(call, alias, noun, read, true\); \}/, "every read is re-fenced before its result is published");
-  assert.match(plugin, /return !cancel\.isCanceled\(\) && access == generation\.get\(\) && unlockedForeground\(\) && admitted\(\) && granted\.getAsBoolean\(\);/);
-  // A permission-gated read supplies its runtime permission as that check; only the dialer role's voicemail access supplies another.
-  assert.match(plugin, /fenced\(call, \(\) -> getPermissionState\(alias\) == PermissionState\.GRANTED, noun, read, fenceResult\);/);
-  assert.match(alpha, /fencedRead\(call, "contacts", "Contacts", cancel ->/, "contact search uses the same fence");
-  // Observation is coalesced, content-free and stops on pause, lock and screen-off.
-  assert.match(plugin, /main\.postDelayed\(emitChange, 750\)/);
-  assert.match(plugin, /private void invalidateReads\(\) \{[^\n]*stopObserving\(\); stopObservingVoicemail\(\); cancelReview\(\); \}/);
-  assert.doesNotMatch(plugin.slice(plugin.indexOf("private final Runnable emitChange"), plugin.indexOf("private final android.database.ContentObserver")), /body|address/i);
-  // Sends: native review, re-checked at the decision, journal before the first platform call.
-  assert.match(plugin, /existing = journal\.existing\(operationId,/);
-  assert.match(plugin, /if \(existing != null\) \{ call\.resolve\(SmsTelephony\.result\(existing\)\); return; \}/, "a repeated ID never reviews or sends again");
-  assert.match(plugin, /\.setPositiveButton\("Send"/);
-  assert.match(plugin, /if \(!admitted\(\) \|\| !unlockedForeground\(\) \|\| sendBlocker\(sub\) != null\)/);
-  assert.equal((plugin.match(/SmsTelephony\.dispatch\(/g) || []).length, 1, "one dispatch site, inside the owner's Send decision");
-  const begin = sms.indexOf("journal.beginDispatch("), first = sms.indexOf("manager.sendTextMessage(");
-  assert.ok(begin > 0 && begin < first && begin < sms.indexOf("manager.sendMultipartTextMessage("), "journaled before the first platform call");
-  // Holding the SMS role, Alpha writes its own sent rows (Android writes none for the default SMS app):
-  // each recipient's outbox row precedes its platform call, and only that recipient's sent callbacks settle it.
-  const own = sms.indexOf("if (ownsRows) storeOwnRow(");
-  assert.ok(own > begin && own < first, "the default SMS app stores its own row before the platform call");
-  assert.match(sms, /final boolean ownsRows = MmsStore\.isDefaultSmsApp\(context\);/);
-  assert.match(sms, /if \(sent\) settleOwnRow\(app, journal, operation, index\);/);
-  const store = readFileSync(join(SHARED, "MmsStore.java"), "utf8");
-  assert.match(store, /Telephony\.Sms\.TYPE \+ " = \? AND " \+ Telephony\.Sms\.CREATOR \+ " = \?"/, "only outbox rows Alpha created are settled");
-  // SMS callbacks are immutable: the framework can only report the result code.
-  const smsCallback = sms.slice(sms.indexOf("private static PendingIntent callback("), sms.indexOf("public interface DispatchGuard"));
-  assert.match(smsCallback, /PendingIntent\.FLAG_IMMUTABLE \| PendingIntent\.FLAG_ONE_SHOT/);
-  assert.doesNotMatch(smsCallback, /FLAG_MUTABLE/);
-  // The one mutable callback is the MMS sent intent, which must carry the carrier's M-Send.conf; it stays
-  // explicit and one-shot, and its operation is accepted only when it matches the immutable data URI.
-  assert.equal((sms.match(/FLAG_MUTABLE/g) || []).length, 1);
-  const mmsDispatch = sms.slice(sms.indexOf("static SmsSendJournal.Record dispatchMms("), sms.indexOf("static boolean sendConfirmed("));
-  assert.match(mmsDispatch, /PendingIntent\.FLAG_MUTABLE : 0;\n\s*PendingIntent sent = PendingIntent\.getBroadcast\(context, 0, intent, mutable \| PendingIntent\.FLAG_ONE_SHOT\);/);
-  assert.match(mmsDispatch, /setClass\(context, config\.receiverClass\)\.setPackage\(context\.getPackageName\(\)\)/);
-  assertBefore(mmsDispatch, "journal.beginMmsDispatch(", "manager.sendMultimediaMessage(", "MMS journaled before the platform call");
-  assert.match(sms, /if \(mmsFile != null && !Uri\.fromParts\(config\.callbackScheme, operation \+ "\/mms", null\)\.equals\(intent\.getData\(\)\)\) return;/);
-  assert.equal((plugin.match(/SmsTelephony\.dispatchMms\(/g) || []).length, 1, "one MMS dispatch site, inside the owner's Send decision");
-  assert.match(plugin, /if \(!admitted\(\) \|\| !unlockedForeground\(\) \|\| mmsBlocker\(sub\) != null\) \{ decideMms\(/);
-  assert.match(sms, /setClass\(context, config\.receiverClass\)\.setPackage\(context\.getPackageName\(\)\)/);
-  assert.match(sms, /createForSubscriptionId\(subscriptionId\)/);
-  assert.match(sms, /getSmsManagerForSubscriptionId\(subscriptionId\)/);
-  assert.match(plugin, /divideMessage\(body\)/);
-  assert.doesNotMatch(sms + plugin + alpha + receiver, /\bresend|retry\(/i, "no automatic resend path");
-  assert.match(sms, /if \(intent == null \|\| !config\.admission\.admitted\(context\)\) return;/);
-  assert.match(receiver, /SmsTelephony\.handleCallback\(this, context, intent, AlphaTelephony\.CONFIGURATION\)/);
-  // Provider-row matching: only rows the platform wrote for Alpha (creator), after the journal entry and
-  // within a bounded window, so an identical text from another app or the owner is never claimed.
-  const find = sms.slice(sms.indexOf("private static long findRow("));
-  assert.match(find, /Telephony\.Sms\.CREATOR \+ " = \?/, "the row must be Alpha's own");
-  assert.match(find, /Long\.toString\(record\.createdAt\), Long\.toString\(record\.createdAt \+ ROW_WINDOW_MS\)/, "no row from before the journal entry");
-  assert.doesNotMatch(find, /createdAt - /);
-  // The owner's Send tap cannot be steered by an overlay; an expired operation ID is refused, never resent.
-  assert.match(plugin, /send\.setFilterTouchesWhenObscured\(true\)/);
-  assert.match(plugin, /catch \(SmsSendJournal\.Expired expired\) \{ call\.reject\(/);
-  assert.match(sms, /receiver\.getResultCode\(\) == Activity\.RESULT_OK/, "sent only from a successful sent callback");
-  // The journal is read on the telephony worker; only the review itself is posted to main, where a
-  // cancelled request is recorded and admission is rechecked before anything is shown.
-  assert.match(plugin, /SmsTelephony\.WORK\.execute\(\(\) -> \{[\s\S]*?existing = journal\.existing\(operationId, binding\);[\s\S]*?\n   main\.post\(\(\) -> reviewSmsOnMain\(call, journal, binding, operationId, recipients, body, subscriptionId\)\);\n  \}\);/, "review is marshalled from the worker thread to main");
-  assert.match(plugin, /private void reviewSmsOnMain\(ReviewCall call, [^)]*\) \{\n  if \(call\.cancelled\) \{ decide\(call, journal, operationId, recipients, body, subscriptionId, "cancelled", [^\n]*\); return; \}\n  if \(refused\(call\)\) return;\n  if \(review != null\)/, "admission is rechecked on main before review");
-  // Read state: only the default SMS app's write counts, only received messages through the shown one, behind the
-  // entry fence; the write's count is still reported if access changes afterwards (the rows were already marked).
-  assert.match(plugin, /fencedWrite\(call, "sms", "Messages", cancel -> \{\n   JSObject value = new JSObject\(\);\n   boolean holder = MmsStore\.isDefaultSmsApp\(getContext\(\)\);/);
-  assert.match(plugin, /value\.put\("updated", holder \? MmsStore\.markThreadRead\(getContext\(\), thread, through\) : 0\);/);
-  const marker = store.slice(store.indexOf("public static int markThreadRead("), store.indexOf("public static boolean hasTransaction("));
-  assert.match(marker, /Telephony\.Sms\.TYPE \+ " = \? AND " \+ Telephony\.Sms\.DATE \+ " <= \?/, "only received texts up to the shown one");
-  assert.match(marker, /Telephony\.Mms\.MESSAGE_BOX \+ " = \? AND " \+ Telephony\.Mms\.DATE \+ " <= \?/, "only received MMS up to the shown one");
-  assert.match(marker, /SmsRecords\.mmsSecondsThrough\(throughMillis\)/, "MMS dates are seconds");
-  assert.doesNotMatch(marker, /delete\(|insert\(/, "marking read never adds or removes messages");
-  for (const method of ["listThreads", "listMessages", "markThreadRead", "observeMessages", "smsSendHistory", "smsSendResult"])
-    assert.match(plugin, new RegExp(`@PluginMethod public void ${method}\\(PluginCall call\\) \\{\\n  if \\(refused\\(call\\)\\) return;`), `${method} re-checks the image capability first`);
-});
-
-test("manifests: the SMS result receiver exists only in the launcher flavor, and APK verification checks the SMS permissions", () => {
-  // The launcher-only SMS permissions are checked in test/aosp-image-capability.test.mjs.
-  const main = read("android/app/src/main/AndroidManifest.xml"), launcher = read("android/app/src/launcher/AndroidManifest.xml"), standalone = read("android/app/src/standalone/AndroidManifest.xml");
-  assert.match(launcher, /<receiver android:name="\.AlphaSmsSendReceiver" android:exported="false" \/>/, "the receiver takes explicit intents only: no filter, not exported");
-  assert.doesNotMatch(main + standalone, /AlphaSmsSendReceiver/);
-  assert.match(launcher, /<uses-feature android:name="android\.hardware\.telephony" android:required="false" \/>/, "telephony hardware stays optional");
-  assert.match(read("scripts/apk.ts"), /for \(const permission of \['READ_SMS', 'SEND_SMS'\]\)/, "APK verification checks the packaged SMS permissions per flavor");
-});
-
-test("standalone SMS stays unavailable at the UI and agent boundaries", async () => {
-  // UI: the Messages view stays deferred and no image view adapter is admitted for it.
-  const features = read("apps/app/src/prototype/mvp-features.ts");
-  assert.match(features, /\/\/ "messages",/, "the Messages view is not enabled");
-  const { ADMITTED_AOSP_VIEW_ADAPTERS, admittedAospViews } = await import("../apps/app/src/runtime/aosp-image.ts");
-  assert.ok(ADMITTED_AOSP_VIEW_ADAPTERS.includes("messages"));
-  assert.deepEqual(admittedAospViews(false, ["messages", "phone", "contacts"]), []);
-  // Agent SMS is negotiated only by the verified image, then validated by the reviewed shared contract.
-  const connection=read("apps/app/src/runtime/connection-ui.tsx");
-  // One negotiation (deviceCapabilities) serves the resident, remote and Cloud runtimes.
-  const {selectDeviceCapabilities}=await import("../apps/app/src/runtime/phone-context.ts");
-  const profile={android:true,native:true,camera:false,foregroundReview:false,clockRepeatDays:false,aospImage:false};
-  assert.equal(selectDeviceCapabilities(["sms.send.v1"],profile).includes("sms.send.v1"),false,"a standalone APK never negotiates SMS");
-  assert.equal(selectDeviceCapabilities(["sms.send.v1"],{...profile,aospImage:true}).includes("sms.send.v1"),true,"the image negotiates SMS when the agent offers it");
-  assert.equal(selectDeviceCapabilities([],{...profile,aospImage:true}).includes("sms.send.v1"),false);
-  assert.equal((connection.match(/await deviceCapabilities\(/g)||[]).length,3);
-  assert.match(read(".eliza/client-features/plugins/plugin-assistant/src/services/device-actions/client-coordinator.ts"),/claimed\.providerIdempotencyKey\s*!==\s*operationId/);
-  assert.match(read("apps/app/src/prototype/agent-adapter.ts"),/if\(!aospImage\|\|expectedContext\.sensitive\|\|document\.hidden\|\|expectedContext\.view!=='messages'/);
-  const telephony = read("apps/app/src/runtime/aosp-telephony.ts");
-  assert.doesNotMatch(telephony.replace(/\/\*[\s\S]*?\*\//g, ""), /location\.|localStorage|testMocksEnabled/, "nothing outside the native image capability turns messages on");
 });

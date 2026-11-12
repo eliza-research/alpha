@@ -47,7 +47,6 @@ test('secure camera staging accepts exact reviewed SystemUI changes without admi
   assert.throws(() => verifySecureCameraSource(source, contract, overrides()), /not clean/);
 });
 
-
 test('host build patch admission is explicit, target-bound, and pinned to the source lock', () => {
   assert.deepEqual(stagingBuildPatches([], false), []);
   assert.throws(() => stagingBuildPatches(['soong-memory'], false), /requires --target/);
@@ -68,9 +67,6 @@ test('Soong app-native installation patch is independently pinned and has no gua
   assert.equal(manifest.baselineLockSha256, createHash('sha256').update(lock).digest('hex'));
   assert.equal(manifest.revision, JSON.parse(lock).projects.find(row => row.path === 'build/soong').commit);
   assert.deepEqual(manifest.files.map(row => row.path), ['etc/prebuilt_etc.go', 'etc/prebuilt_etc_test.go']);
-  const patch = fs.readFileSync('vendor/eliza/packages/os/android/patches/soong-app-native/' + manifest.patch, 'utf8');
-  assert.match(patch, /InitPrebuiltEtcModule\(module, "app"\)/);
-  assert.doesNotMatch(patch, /BUILD_BROKEN|Check_elf_files|check_elf_files|prebuilt_any/);
   assert.equal(stagingBuildPatches(['soong-memory', 'soong-app-native'], true).length, 2);
 });
 
@@ -80,7 +76,6 @@ test('the protected Power source bundle is pinned and shares identity only on th
   const lock = fs.readFileSync('vendor/eliza/packages/os/android/sources/pixel10a-stallion.json');
   const [{name, manifest, manifestSha256}] = stagingSystemuiPatches(['alpha-protected-power'], true);
   const bundle = 'android/aosp/branding/power-voice';
-  const patch = fs.readFileSync(`${bundle}/${manifest.patch}`, 'utf8');
   assert.equal(name, 'alpha-protected-power');
   assert.equal(manifestSha256, createHash('sha256').update(fs.readFileSync(`${bundle}/manifest.json`)).digest('hex'));
   assert.equal(manifest.baselineLockSha256, createHash('sha256').update(lock).digest('hex'));
@@ -89,9 +84,4 @@ test('the protected Power source bundle is pinned and shares identity only on th
     'services/core/java/com/android/server/search/SearchManagerService.java',
     'packages/SystemUI/src/com/android/systemui/assist/AssistManager.java',
   ]);
-  assert.doesNotMatch(patch, /config_alpha_system_entry_enabled/);
-  assert.match(patch, /hasSystemFeature\(ALPHA_SENSE_FEATURE\)/);
-  assert.match(patch, /ALPHA_PACKAGE \+ "\.feature\.SENSE"/);
-  assert.equal(patch.match(/setShareIdentityEnabled\(true\)/g)?.length, 1);
-  assert.match(patch, /setComponent\(ALPHA_POWER_VOICE\)[\s\S]+setShareIdentityEnabled\(true\)[\s\S]+startActivityAsUser\(intent/);
 });

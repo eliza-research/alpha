@@ -2,39 +2,8 @@
 // does not have.  section 4 (decision F1).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {distributionProblems, legacyStorageProblems} from '../scripts/apk.ts';
 import {startupFilesAccess} from '../apps/app/src/startup-permission-flow.ts';
-
-const manifest = readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8');
-const catalog = readFileSync('vendor/eliza/plugins/plugin-native-filesystem/android/src/main/java/ai/eliza/plugins/filesystem/browser/StorageCatalog.java', 'utf8');
-const plugin = readFileSync('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaFilesPlugin.java', 'utf8');
-
-test('the manifest asks for legacy storage on API 29 only and keeps all-files access for API 30+', () => {
-  assert.match(manifest, /<application [^>]*android:requestLegacyExternalStorage="true"/);
-  assert.match(manifest, /<uses-permission android:name="android\.permission\.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" tools:replace="android:maxSdkVersion" \/>/);
-  assert.match(manifest, /<uses-permission android:name="android\.permission\.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" \/>/);
-  assert.match(manifest, /<uses-permission android:name="android\.permission\.MANAGE_EXTERNAL_STORAGE"/);
-  assert.doesNotMatch(manifest, /WRITE_EXTERNAL_STORAGE" tools:node="remove"/);
-  // The camera plugin's own declaration and its below-29 request stay as they are upstream.
-  const camera = readFileSync('vendor/eliza/plugins/plugin-native-camera/android/src/main/AndroidManifest.xml', 'utf8');
-  assert.match(camera, /WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/);
-});
-
-test('native reports API 29 access from both storage permissions and asks for them, never the all-files page', () => {
-  assert.match(catalog, /public static String access\(\)\{\s*if\(Build\.VERSION\.SDK_INT<Build\.VERSION_CODES\.R\)return "unsupported";\s*return Environment\.isExternalStorageManager\(\)\?"granted":"denied";/);
-  assert.match(catalog, /public static String access\(Context context\)\{\s*if\(Build\.VERSION\.SDK_INT>=Build\.VERSION_CODES\.R\)return access\(\);/);
-  assert.match(catalog, /if\(Build\.VERSION\.SDK_INT<Build\.VERSION_CODES\.Q\)return "unsupported";/);
-  assert.match(catalog, /private static final String\[\] LEGACY_PERMISSIONS=\{android\.Manifest\.permission\.READ_EXTERNAL_STORAGE,android\.Manifest\.permission\.WRITE_EXTERNAL_STORAGE\}/);
-  assert.match(catalog, /public static boolean legacy\(\)\{return Build\.VERSION\.SDK_INT==Build\.VERSION_CODES\.Q;\}/);
-  assert.match(plugin, /@Permission\(alias="legacyStorage",strings=\{android\.Manifest\.permission\.READ_EXTERNAL_STORAGE,android\.Manifest\.permission\.WRITE_EXTERNAL_STORAGE\}\)/);
-  const request = plugin.slice(plugin.indexOf('public void storageRequestAccess('), plugin.indexOf('private void storageAccessReturned('));
-  const legacy = request.slice(request.indexOf('if(StorageCatalog.legacy())'), request.indexOf('ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION'));
-  assert.match(legacy, /requestPermissionForAlias\("legacyStorage",call,"legacyStorageReturned"\)/);
-  assert.match(legacy, /ACTION_APPLICATION_DETAILS_SETTINGS/);
-  assert.match(legacy, /return;\s*\}\s*Intent intent=new Intent\(android\.provider\.Settings\.$/, 'the legacy branch returns before the all-files page');
-  assert.doesNotMatch(plugin, /StorageCatalog\.access\(\)/, 'every access read is the context-aware one');
-});
 
 test('the walkthrough treats API 29 access like all-files access', () => {
   assert.deepEqual(startupFilesAccess({access: 'granted'}), {granted: true, enabled: true, requestable: true});

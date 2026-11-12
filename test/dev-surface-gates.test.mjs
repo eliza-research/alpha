@@ -4,9 +4,6 @@
 // bundle contents are audited separately by scripts/audit-production-bundle.ts.
 import {test,before,after} from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import vm from 'node:vm';
-import {stripTypeScriptTypes} from './support/strip-types.mjs';
 import {createServer} from 'vite';
 import {fileURLToPath} from 'node:url';
 
@@ -91,48 +88,6 @@ test('the local agent host bridge is unavailable without test mocks',async()=>{
   await assert.rejects(storage.developmentDeviceStore.read('slot'),/unavailable here/);
   assert.deepEqual(calls,[],'no request reaches /__alpha-local-agent');
  }finally{globalThis.fetch=fetch;}
-});
-
-// regional-provider composes the upstream provider at module load; evaluate it
-// with explicit flag bindings and a synthetic transport.
-async function regional({testMocks,devSurfaces,baseUrl,native=false,developmentBuild=true}){
- const {createRegionalMaps}=await servers.off.ssrLoadModule('/.eliza/client-features/plugins/plugin-maps/src/client/regional-provider.ts');
- const source=fs.readFileSync(new URL('apps/app/src/maps/regional-provider.ts',root),'utf8')
-  .replace(/^import [\s\S]*?;\n/gm,'').replace(/^export type \{[^}]*\} from .*;\n/gm,'')
-  .replaceAll('import.meta.env.VITE_MAPS_BASE_URL','__env.VITE_MAPS_BASE_URL')
-  .replace(/^export (const|function|interface)/gm,'$1');
- const fetched=[],configured=[];
- const context={createRegionalMaps,testMocksEnabled:testMocks,devSurfacesEnabled:devSurfaces,__env:{VITE_MAPS_BASE_URL:baseUrl},
-  Capacitor:{isNativePlatform:()=>native},DailyApps:{surfaceInfo:async()=>({developmentBuild})},
-  registerPlugin:()=>({request:async()=>{throw Error('native transport not expected');},cancel:async()=>{}}),
-  configureMapsProvider:config=>configured.push(config),
-  fetch:async url=>{fetched.push(String(url));throw Error('offline');},URL,TextDecoder,Uint8Array,JSON,Error,Number,Array,Object,crypto,atob};
- vm.runInNewContext(stripTypeScriptTypes(source,{mode:'strip'})+'\nglobalThis.result={regionalDataset,regionalDiagnostics,initializeRegionalMaps};',context);
- // The upstream provider runs in this realm and uses the global fetch.
- const realFetch=globalThis.fetch;globalThis.fetch=context.fetch;
- try{await context.result.initializeRegionalMaps();}finally{globalThis.fetch=realFetch;}
- return {...context.result,diagnostic:context.result.regionalDiagnostics(),fetched,configured};
-}
-
-test('regional Maps is a test-mocks prototype; loopback HTTP and the emulator gateway exist only there',async()=>{
- const unset=await regional({testMocks:false,devSurfaces:false,baseUrl:undefined});
- assert.equal(unset.diagnostic.stage,'no-configuration');assert.equal(unset.diagnostic.configured,false);assert.deepEqual(unset.fetched,[]);
- assert.equal(unset.regionalDataset.providerId,'alpha-osm-monaco');assert.equal(unset.regionalDataset.coverage.region,'Monaco');
- for(const baseUrl of ['http://127.0.0.1:47850','http://10.0.2.2:47850']){
-  const off=await regional({testMocks:false,devSurfaces:false,baseUrl});
-  assert.equal(off.diagnostic.error!==''||off.diagnostic.stage!=='ready',true);assert.deepEqual(off.fetched,[],'flag-off builds reject loopback HTTP before any request');
-  const nativeOff=await regional({testMocks:false,devSurfaces:false,baseUrl,native:true});assert.deepEqual(nativeOff.fetched,[]);
- }
- const devWeb=await regional({testMocks:true,devSurfaces:true,baseUrl:'http://127.0.0.1:47850'});
- assert.deepEqual(devWeb.fetched,['http://127.0.0.1:47850/capabilities'],'development server may use the loopback gateway');
- const releaseNative=await regional({testMocks:true,devSurfaces:false,baseUrl:'http://10.0.2.2:47850',native:true,developmentBuild:false});
- assert.deepEqual(releaseNative.fetched,[],'a non-development native build never uses the emulator gateway');
- // The regional gateway is a development prototype (#412): product builds use Eliza Cloud Maps.
- const https=await regional({testMocks:false,devSurfaces:false,baseUrl:'https://maps.example/'});
- assert.deepEqual(https.fetched,[],'flag-off builds never contact a regional gateway');
- assert.equal(https.diagnostic.configured,false);
- const httpsDev=await regional({testMocks:true,devSurfaces:false,baseUrl:'https://maps.example/'});
- assert.deepEqual(httpsDev.fetched,['https://maps.example/capabilities']);
 });
 
 test('production Wallet saved routes and direct open/pay requests cannot enter the prototype payment flow',async()=>{

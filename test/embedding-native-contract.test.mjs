@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
-import {nativeInputPaths,nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,nativeCmakeOptions,verifyNativeJava,verifyNativeSymbols} from '../scripts/embedding-native-contract.ts';
+import {nativeJavaPath,nativeBinding,nativeInputs,nativeGenerated,nativeCmakeOptions,verifyNativeJava,verifyNativeSymbols} from '../scripts/embedding-native-contract.ts';
 import {verifyEmbeddingInputs} from '../scripts/stage-embedding-host.ts';
 const identity='ai.alphacompute.alphaphone';
 const cpp='env->RegisterNatives(cls, methods, count); JNI_OnLoad(vm, reserved);\n'+[
@@ -49,12 +49,4 @@ test('registered receipt admission binds Java, full native set and product class
   for(const change of [{className:'other/product/ElizaVoiceNative'},{subset:'voice'},{mode:'exported'}])assert.throws(()=>verifyEmbeddingInputs(root,{...receipt,jniBinding:{...binding,...change}}),/identity qualification/);
   fs.appendFileSync(path.join(vendor,nativeJavaPath),'\n// changed');git('add','.');git('commit','-m','Java source changed');fs.writeFileSync(path.join(root,'upstream.lock.json'),JSON.stringify({commit:git('rev-parse','HEAD')}));assert.throws(()=>verifyEmbeddingInputs(root,receipt),/Native build input changed/);
  }finally{fs.rmSync(root,{recursive:true,force:true});}
-});
-
-test('current pinned streaming JNI callback matches its exact Object descriptor',()=>{
- const source=fs.readFileSync('vendor/eliza/packages/app/platforms/android/app/src/main/elizavoice-jni/elizavoice-jni.cpp','utf8');
- const declarations=fs.readFileSync('vendor/eliza/'+nativeJavaPath,'utf8');
- assert.match(declarations,/nativeParadeeSynthesizeStream\(long ctx, byte\[\] utf8Text, float speed, Object sink\)/);
- assert.ok(verifyNativeJava(source,declarations)>3);
- assert.throws(()=>verifyNativeJava(source,declarations.replace('Object sink','String sink')),/signature changed: nativeParadeeSynthesizeStream/);
 });

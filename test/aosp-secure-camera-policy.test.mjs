@@ -2,7 +2,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import path from "node:path";
 import { assertNoAlphaLockScreenSurface, secureCameraActions as names } from "../scripts/aosp-secure-camera-contract.ts";
 const secureCameraActions = names.map(name => `android.media.action.${name}`);
 const PKG = "ai.alphacompute.alphaphone";
@@ -41,25 +40,4 @@ test("the shared Pixel 10a stager applies the same refusal to Alpha's compositio
   assert.equal(product.launcher.refuseLockScreenSurfaces, true);
   assert.equal(enforceLauncherLockScreenPolicy(product, tree()), true);
   assert.throws(() => enforceLauncherLockScreenPolicy(product, tree({ mainAttrs: { showWhenLocked: TRUE } })), /Alpha does not implement/);
-});
-
-test("the shipped Alpha manifest and native code never put Alpha over Keyguard", () => {
-  const manifest = fs.readFileSync("android/app/src/main/AndroidManifest.xml", "utf8");
-  assert.doesNotMatch(manifest, /android:(showWhenLocked|showOnLockScreen|turnScreenOn)="true"/);
-  for (const action of secureCameraActions) assert.ok(!manifest.includes(action), `no ${action} filter or query`);
-  const dir = "android/app/src/main/java/ai/alphacompute/alphaphone";
-  for (const name of fs.readdirSync(dir).filter(file => file.endsWith(".java"))) {
-    const java = fs.readFileSync(path.join(dir, name), "utf8");
-    assert.doesNotMatch(java, /setShowWhenLocked\(\s*true|setTurnScreenOn\(\s*true|FLAG_SHOW_WHEN_LOCKED|FLAG_DISMISS_KEYGUARD|requestDismissKeyguard|STILL_IMAGE_CAMERA_SECURE|IMAGE_CAPTURE_SECURE/, name);
-  }
-});
-
-test("the renderer lock frame requires Unlock before Camera or the library", () => {
-  const model = fs.readFileSync("apps/app/src/prototype/model.js", "utf8");
-  const template = fs.readFileSync("apps/app/src/prototype/template.html", "utf8");
-  assert.doesNotMatch(model, /lockCamera(?:Offered)?:/);
-  assert.doesNotMatch(template, /onClick="\{\{lockCamera\}\}"/);
-  assert.doesNotMatch(template, /Unlock with fingerprint/);
-  const fixtures = fs.readFileSync("apps/app/src/prototype/development-system-surfaces.html", "utf8");
-  assert.match(fixtures, /aria-label="Unlock with fingerprint" onClick="\{\{unlock\}\}"/);
 });

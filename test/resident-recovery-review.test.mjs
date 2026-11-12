@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,writeFileSync,rmSync,readFileSync} from 'node:fs';
+import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -30,13 +30,4 @@ public class RecoveryReviewTest {
   execFileSync(javaBinary('javac'),['-d',temp,join(directory,'ResidentRecoveryReview.java'),join(temp,'RecoveryReviewTest.java')],{timeout:120000});
   assert.match(execFileSync(javaBinary('java'),['-cp',temp,'ai.alphacompute.alphaphone.RecoveryReviewTest'],{encoding:'utf8',timeout:120000}),/PASS original scope/);
  }finally{rmSync(temp,{recursive:true,force:true});}
-});
-test('plugin binds actual native review within its authority and consumes scope before archive',()=>{
- const source=readFileSync(join(directory,'AlphaLocalAgentPlugin.java'),'utf8');
- const start=source.indexOf('ElizaAgentService.RecoveryAuthority authority=');
- const authority=source.slice(start,source.indexOf('JSONObject result=archive?ElizaAgentService.',start));
- assert.ok(authority.indexOf('recoveryReview.consume(token,lifecycleEpoch,credentialIntents.current())')<authority.indexOf('JSONObject result=operation.run()'));
- assert.match(authority,/if\(!archive&&"reviewable"\.equals\(result\.optString\("status"\)\)\)recoveryReview\.bind\(result\.getString\("reviewToken"\),lifecycleEpoch,credentialIntents\.current\(\)\)/);
- assert.match(source,/private void invalidateOwnCalls\(\)\{\s*recoveryReview\.clear\(\)/);
- assert.match(source,/if\(!archive\)recoveryReview\.clear\(\)/);
 });

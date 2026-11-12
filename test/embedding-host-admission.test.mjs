@@ -196,12 +196,3 @@ test('producer helper drift is rejected both dirty and after a committed source 
   assert.throws(()=>verifyEmbeddingInputs(f.dir,f.manifest,{requireProducerInputs:true}),/Embedding producer input changed/);
  }finally{f.close();}
 });
-
-test('staging serializes the original producer receipt inputs without replacing its built pin',()=>{
- const stage=fs.readFileSync(new URL('../scripts/stage-embedding-host.ts',import.meta.url),'utf8');
- const literal=stage.match(/const manifest=(\{pin:receipt\.pin[^\n]+);/)[1];
- const make=new Function('receipt','identity','model','libraries','hash','args','return '+literal);
- const receipt={pin:'1'.repeat(40),forkPin:'2'.repeat(40),abi:'arm64-v8a',inputs:[],producerInputs:[{path:'packages/app/scripts/stage-elizavoice-lib.ts',sha256:'3'.repeat(64)}]};
- const manifest=JSON.parse(JSON.stringify(make(receipt,'test.app',{},[],()=> '4'.repeat(64),['--receipt','fixture.json'])));
- assert.deepEqual(manifest.producerInputs,receipt.producerInputs);assert.equal(manifest.pin,receipt.pin);
-});

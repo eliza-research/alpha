@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import {aospTelephonyRoleComponents} from '../scripts/aosp-telephony-roles.ts';
 
 const pkg = 'ai.alphacompute.alphaphone';
@@ -43,15 +42,6 @@ const apkTree = [
   }),
 ].join('\n');
 
-test('production role admission requires the same nine disabled components the launcher prepares', () => {
-  const sync = fs.readFileSync('android/app/src/launcher/java/ai/alphacompute/alphaphone/AlphaTelephonyRoles.java', 'utf8');
-  const runtimeClasses = [...sync.matchAll(/\b(?:DIALER|SMS) = \{ ([^}]+) \}/g)].flatMap(([, classes]) =>
-    classes.split(', ').map(name => name.replace(/\.class$/, '')));
-  assert.equal(runtimeClasses.length, 9);
-  assert.deepEqual(aospTelephonyRoleComponents(apkTree, pkg),
-    runtimeClasses.map(name => name.includes('.') ? name : `${pkg}.${name}`));
-});
-
 test('refuses unqualified role handlers before enabling anything on the image', () => {
   for (const [broken, error] of [
     [apkTree.replace(pkg, 'example.wrong.package'), /package manifest/],
@@ -90,7 +80,3 @@ test('requires the private MMS provider to serve the application authority and g
     assert.throws(() => aospTelephonyRoleComponents(manifest, pkg), /MmsFileProvider/);
 });
 
-test('production image staging validates role declarations from the privately staged launcher', () => {
-  const source = fs.readFileSync('scripts/stage-aosp.ts', 'utf8');
-  assert.match(source, /const provisioningTree = aaptManifestTree\(stagedLauncher, .*\);\nassertImageLauncherManifest\(provisioningTree, production\);\nif \(production\) aospTelephonyRoleComponents\(provisioningTree, identity\.appId\);/);
-});

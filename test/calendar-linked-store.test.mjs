@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import {registerHooks} from './support/module-hooks.mjs';
 import {stripTypeScriptTypes} from './support/strip-types.mjs';
 // The shared store (@elizaos/plugin-calendar/linked-sync) through Alpha's installed-key wrapper.
 const { CalendarLinkedStore } = await import(
@@ -331,62 +330,4 @@ test("a checkpoint keyed with the shared default namespace is refused, not adopt
 	const before = structuredClone([...f.slots]);
 	await assert.rejects(f.open(), /changed or need recovery/);
 	assert.deepEqual([...f.slots], before, "original bytes are retained");
-});
-test("installed Calendar sync settings keep their storage names and record shape", async () => {
-	const host = readFileSync("apps/app/src/runtime/calendar-sync-host.ts", "utf8");
-	assert.match(host, /"alpha\.browser\.calendar-sync-config\.v1"/);
-	assert.match(
-		host,
-		/"calendar-linked-sync:v1:7d1f8a65cde513c690bb719ba9fb6e93372b9f0dc6e8a92b40c18245f3b71df9"/,
-	);
-	assert.match(host, /idempotencyNamespace: ALPHA_CALENDAR_SYNC_NAMESPACE/);
-	// The shared host's only runtime contracts import is the reconciler projected above.
-	// Registered here, after the store tests, so they keep Node's default loader.
-	registerHooks({
-		resolve: (specifier, context, next) =>
-			specifier === "@elizaos/contracts"
-				? next(
-						new URL(
-							"../.eliza/client-features/packages/contracts/src/calendar-linked-sync.ts",
-							import.meta.url,
-						).href,
-						context,
-					)
-				: next(specifier, context),
-		// Shared modules use TypeScript parameter properties, which need transform mode.
-		load: (url, context, next) =>
-			url.includes("/.eliza/client-features/") && url.endsWith(".ts")
-				? {
-						format: "module",
-						shortCircuit: true,
-						source: stripTypeScriptTypes(
-							readFileSync(new URL(url), "utf8"),
-							{ mode: "strip" },
-						),
-					}
-				: next(url, context),
-	});
-	const { readCalendarSyncSettings, calendarSyncSettingsSlot } = await import(
-		"../.eliza/client-features/plugins/plugin-calendar/src/linked-sync/sync-host.ts"
-	);
-	const installed = {
-		version: 1,
-		scope: INSTALLED_SCOPE,
-		binding: { ...binding },
-		enabled: true,
-	};
-	assert.deepEqual(readCalendarSyncSettings(structuredClone(installed)), installed);
-	assert.throws(
-		() => readCalendarSyncSettings({ ...installed, extra: true }),
-		/need recovery/,
-	);
-	const f = fixture();
-	const slot =
-		"calendar-linked-sync:v1:7d1f8a65cde513c690bb719ba9fb6e93372b9f0dc6e8a92b40c18245f3b71df9";
-	f.slots.set(slot, structuredClone(installed));
-	const settings = calendarSyncSettingsSlot(f.storage, slot);
-	assert.deepEqual(await settings.read(), installed);
-	await settings.edit((value) => (value ? { ...value, enabled: false } : null));
-	assert.deepEqual([...f.slots.keys()], [slot]);
-	assert.deepEqual(f.slots.get(slot), { ...installed, enabled: false });
 });

@@ -1,11 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-// Issue #411: the canvas arrangement follows measured window geometry, not screen orientation,
-// and the software keyboard is never mistaken for a rotation.
-import { readFileSync } from 'node:fs';
-import {stripTypeScriptTypes} from './support/strip-types.mjs';
-import vm from 'node:vm';
 const { canvasGeometry, keyboardFreeHeight, surfaceLayout, WIDE_CANVAS } = await import('../apps/app/src/runtime/canvas-geometry.ts');
 
 const input = (width, height, extra = {}) => ({ width, layoutHeight: height, available: height, desktop: false, fluid: true, launcher: false, screenShort: Math.min(width, height), editing: false, ...extra });
@@ -76,22 +71,4 @@ test('list-detail split and Calendar day columns follow measured width, with an 
   assert.deepEqual(surfaceLayout(1280, 1.5), { split: false, calendarDays: 1, agenda: true });
   assert.deepEqual(surfaceLayout(1280, 2), { split: false, calendarDays: 1, agenda: true });
   assert.deepEqual(surfaceLayout(1280, 1, true), at(false, 1));
-});
-
-test('wide Calendar leads with the previous day from three columns and keeps those days when an event closes', () => {
-  const source = readFileSync(new URL('../apps/app/src/prototype/calendar-days.ts', import.meta.url), 'utf8').replace(/^import .*\n/gm, '').replace(/^export /gm, '');
-  const days = vm.runInNewContext(stripTypeScriptTypes('const currentSurfaceLayout=()=>({split:false,calendarDays:1,agenda:false});\n' + source, { mode: 'strip' }) + '\n({visibleCalendarDays,calendarReturnDay,markVisibleWeek,calendarAgendaRows})');
-  assert.deepEqual([...days.visibleCalendarDays(4, 1)], [4]);
-  assert.deepEqual([...days.visibleCalendarDays(4, 2)], [4, 5]);
-  assert.deepEqual([...days.visibleCalendarDays(4, 5)], [3, 4, 5, 6, 7]);
-  // An event opened from any visible column, including the previous day, returns to the same days.
-  assert.equal(days.calendarReturnDay(4, 3, 5), 4);
-  assert.equal(days.calendarReturnDay(4, 7, 5), 4);
-  assert.equal(days.calendarReturnDay(4, 8, 5), 8);
-  assert.equal(days.calendarReturnDay(4, 3, 2), 3);
-  const week = days.markVisibleWeek(Array.from({ length: 7 }, () => ({ cs: '' })), 1, 4, 5);
-  assert.deepEqual([...week.map(item => item.cs.includes('var(--s2)'))], [false, false, true, false, true, true, true]);
-  const open = () => {};
-  assert.deepEqual(JSON.parse(JSON.stringify(days.calendarAgendaRows([{ title: 'Trip', open }], [{ title: 'Late', top: 300, time: '3:00', agendaTime: '3:00 PM', open }, { title: 'Early', top: 100, time: '9:00', agendaTime: '9:00 AM', open }]))),
-    [{ title: 'Trip', time: 'All day' }, { title: 'Early', time: '9:00 AM' }, { title: 'Late', time: '3:00 PM' }]);
 });

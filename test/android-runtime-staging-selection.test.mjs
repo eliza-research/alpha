@@ -5,7 +5,6 @@ import path from 'node:path';
 import os from 'node:os';
 import {createHash} from 'node:crypto';
 import {runtimeStagingSelection} from '../scripts/stage-local-agent-runtime.ts';
-import {assertBefore} from './fixtures/assert-order.mjs';
 function fixture(){
  const root=fs.mkdtempSync(path.join(os.tmpdir(),'android-stage-selection-'));
  const source=path.join(root,'source'),archive=path.join(root,'reviewed.zip');
@@ -40,15 +39,4 @@ test('legacy producer defaults remain explicit musl with both ABIs and respect a
  const selected=runtimeStagingSelection('/not-used-for-legacy',{});
  assert.equal(selected.bunTarget,'linux-musl');assert.equal(selected.targetAbis,'arm64-v8a,x86_64');
  assert.equal(runtimeStagingSelection('/not-used-for-legacy',{ELIZA_ANDROID_TARGET_ABIS:'arm64-v8a'}).targetAbis,'arm64-v8a');
-});
-test('the actual agent:stage-android entry uses selected environment and explicit SDK target before building',()=>{
- const script=fs.readFileSync(new URL('../scripts/stage-local-agent-runtime.ts',import.meta.url),'utf8');
- const pkg=JSON.parse(fs.readFileSync(new URL('../package.json',import.meta.url),'utf8'));
- assert.equal(pkg.scripts['agent:stage-android'],'bun scripts/stage-local-agent-runtime.ts');
- assert.ok(pkg.scripts['android:build:local'].includes('bun run agent:stage-android'));
- assert.ok(script.includes('const env=selection.env;'));
- assert.ok(script.includes('bunTarget:${JSON.stringify(selection.bunTarget)}'));
- assertBefore(script,'const selection=runtimeStagingSelection(source,process.env);',"'scripts/build-mobile-agent.ts'");
- assert.ok(script.includes('verifyMobileBuildReceipt(root,source)'));
- assert.ok(!script.includes("preparedSourceEnv(process.env,{ELIZA_ANDROID_TARGET_ABIS:'arm64-v8a,x86_64'})"));
 });

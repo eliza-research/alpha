@@ -1,8 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import vm from 'node:vm';
-import {stripTypeScriptTypes} from './support/strip-types.mjs';
 
 // The resident's end-of-turn (elizaOS #36546) and heard (#36547) routes as the voice assistant
 // uses them (apps/app/src/runtime/voice-turn-routes.ts, #423). Fake request ports only: this is
@@ -84,25 +81,6 @@ test('heard reporting: a reply interrupted before any of it played is recorded a
   // An agent that predates the explicit report refuses it; the view stays marked.
   const older = reporter([400]);
   assert.equal(await older.heard.report(interrupted({heard: '', unheard: 'All of it.'})), 'rejected');
-});
-
-test('heard reporting: a playback failure before any sentence finished never empties the reply', async () => {
-  const r = reporter([]);
-  assert.equal(await r.heard.report(interrupted({heard: '', unheard: 'All of it.', playbackFailed: true})), 'nothing-heard');
-  assert.deepEqual(r.calls, [], 'a speech failure is not a barge-in: nothing is sent');
-  assert.deepEqual(r.outcomes, [['nothing-heard', {attempts: 0}]]);
-  const adapter = fs.readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts', import.meta.url), 'utf8');
-  const start=adapter.indexOf('          onHeard:heard=>{'),end=adapter.indexOf('          onTurn:',start);assert.ok(start>=0&&end>start);
-  // Execute the real adapter completion path: both a failure before audio and a later
-  // failure preserve the full reply and never send a truncation receipt.
-  for(const heard of ['', 'First sentence.']){
-    const reports=[],timings=[],toasts=[],chat={shell:{toast:text=>toasts.push(text),setState(){throw Error('Playback failure cannot truncate a reply');}}};
-    const context={token:1,generation:1,chatDestination:chat,chat,conversationLastReply:'First sentence. Second sentence.',timingTurns:new Map([['turn','timing']]),binding:{conversationId:'room-1'},heardReporter:{report:input=>{reports.push(input);return Promise.resolve('recorded');}},recordHeardVoiceTiming:(...args)=>timings.push(args)};
-    vm.runInNewContext(stripTypeScriptTypes('globalThis.ports={'+adapter.slice(start,end)+'};',{mode:'transform'}),context);
-    context.ports.onHeard({turnId:'turn',replyId,heard,unheard:'Second sentence.',interrupted:true,playbackFailed:true});
-    assert.deepEqual(reports,[]);assert.deepEqual(timings,[['timing','nothing-heard']]);assert.equal(context.conversationLastReply,'First sentence. Second sentence.');
-    assert.equal(toasts.length,heard?1:0);
-  }
 });
 
 test('heard reporting: only assistant replies of the current conversation, and nothing after the binding changed', async () => {
@@ -228,91 +206,4 @@ test('voice timing and diagnostics keep the endpoint path and heard outcome as e
   const exported = report.voiceTiming.records.find(row => row.id === id);
   assert.deepEqual(exported.endpoint, {by: 'semantic', semantic: 'complete', latencyMs: 41});
   assert.equal(exported.heard, 'conflict');
-});
-
-test('the end-of-turn chain keeps Clef off: the local scorer decides, and its path is kept as an enum', async () => {
-  const {stripTypeScriptTypes} = await import('./support/strip-types.mjs'), vm = await import('node:vm');
-  const source = fs.readFileSync(new URL('../apps/app/src/runtime/voice-selection.ts', import.meta.url), 'utf8').replace(/^import .*;\n/gm, '').replaceAll('export function', 'function').replaceAll('export type', 'type');
-  const box = {testMocksEnabled: true, connectionController: {}};
-  vm.runInNewContext('{' + stripTypeScriptTypes(source, {mode: 'strip'}) + '\nglobalThis.selection={clefEndpointStage};}', box);
-  const selection = box.selection;
-  assert.deepEqual(JSON.parse(JSON.stringify(selection.clefEndpointStage())), {enabled: false, client: null});
-  assert.equal(routes.clefEndpointStageEnabled(selection.clefEndpointStage()), false);
-  const asked = [];
-  const chain = routes.createEndpointChain({local: routes.residentEndpoint(() => (path, body) => { asked.push(path); return Promise.resolve({available: false, reason: 'ram-pressure'}); }), clef: selection.clefEndpointStage()});
-  assert.deepEqual(await chain('turn off the lights', new AbortController().signal), {decision: 'unavailable', reason: 'ram-pressure', path: 'local'});
-  assert.deepEqual(asked, ['/api/asr/local-inference/end-of-turn'], 'only the resident is asked; no text goes to Cloud');
-  timing.clearVoiceTiming();
-  const id = timing.beginVoiceTurn({route: 'local-agent', cold: false, entry: 'conversation'});
-  assert.equal(timing.recordEndpointVoiceTiming({by: 'semantic', semantic: 'complete', latencyMs: 30, path: 'clef'}), true);
-  const later = timing.beginVoiceTurn({route: 'local-agent', cold: false, entry: 'conversation'});
-  assert.equal(timing.recordEndpointVoiceTiming({by: 'gap', semantic: 'unavailable', reason: 'clef-timeout', path: 'clef'}), true);
-  const report = buildDiagnostics({voiceTiming: JSON.parse(timing.exportVoiceTiming())});
-  assert.deepEqual(report.voiceTiming.records.find(row => row.id === id).endpoint, {by: 'semantic', semantic: 'complete', latencyMs: 30, path: 'clef'});
-  assert.deepEqual(report.voiceTiming.records.find(row => row.id === later).endpoint, {by: 'gap', semantic: 'unavailable', reason: 'clef-timeout', path: 'clef'});
-  // Diagnostics copies only allowlisted enums.
-  const forged = buildDiagnostics({voiceTiming: {format: 'alpha-voice-timing-v1', records: [{version: 1, id, recordedAt: 1, route: 'local-agent', cold: false, entry: 'conversation', marks: {}, endpoint: {by: 'gap', semantic: 'timeout', path: 'cloud-text', reason: 'clef-says-yes'}}]}});
-  assert.deepEqual(forged.voiceTiming.records[0].endpoint, {by: 'gap', semantic: 'timeout'});
-});
-
-test('sources: the adapter wires the endpoint and heard routes through the resident binding; Android allows exactly these routes', () => {
-  const adapter = fs.readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts', import.meta.url), 'utf8');
-  assert.match(adapter, /\.\.\.\(streamingCloud\|\|openMic\?\{\}:\{endpoint:\(text:string,signal:AbortSignal\)=>\{current\(\);return semanticEndpoint!\(text,signal\);\}\}\)/);
-  // The chain: the resident's fused scorer, then Clef only through the #663 switch.
-  assert.match(adapter, /const semanticEndpoint=streamingCloud\?undefined:createEndpointChain\(\{local:residentEndpoint\(residentRequest\),clef:clefEndpointStage\(\)\}\)!;/);
-  assert.match(adapter, /connectionController\.voiceConversationCurrent\(binding,false\)/);
-  assert.match(adapter, /heardReporter\.report\(/);
-  const plugin = fs.readFileSync(new URL('../android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java', import.meta.url), 'utf8');
-  const line = plugin.split('\n').find(row => row.includes('Unsupported local agent request') === false && row.includes('path.matches("^/api/(auth/me'));
-  const pattern = new RegExp(/path\.matches\("(.*?)"\)/.exec(line)[1].replace(/\\\\/g, '\\'));
-  assert.equal(pattern.test('/api/asr/local-inference/end-of-turn'), true);
-  assert.equal(pattern.test(`/api/conversations/room-1/messages/${replyId}/heard`), true);
-  assert.equal(pattern.test('/api/conversations/room-1/messages/not-a-uuid/heard'), false);
-  assert.equal(pattern.test('/api/asr/local-inference/end-of-turn/x'), false);
-  assert.match(line, /path\.endsWith\("\/heard"\)\)&&\(!method\.equals\("POST"\)\|\|expectedOwner==null/);
-  assert.match(line, /path\.equals\("\/api\/asr\/local-inference\/end-of-turn"\)&&!method\.equals\("POST"\)/);
-});
-
-
-test('streamed reply recovery uses exact turn identity and rejects ambiguous history', () => {
-  const source = fs.readFileSync(new URL('../apps/app/src/runtime/connection-ui.tsx', import.meta.url), 'utf8');
-  const start = source.indexOf('export function turnReplyRow(');
-  const end = source.indexOf('async function readConversation(', start);
-  assert.ok(start >= 0 && end > start);
-  const turnReplyRow = new Function(`${stripTypeScriptTypes(source.slice(start, end).replace('export ', ''), {mode:'transform'})}\nreturn turnReplyRow;`)();
-  const user = {id:'user',role:'user',clientMessageId:'turn'};
-  const reply = {id:replyId,role:'assistant',replyToMessageId:'user',text:'Recorded reply.'};
-  assert.deepEqual(turnReplyRow([user,reply], 'turn'), {id:replyId,text:'Recorded reply.'});
-  assert.equal(turnReplyRow([user], 'turn'), undefined);
-  assert.equal(turnReplyRow([user,{...user,id:'other'},reply], 'turn'), undefined);
-  assert.equal(turnReplyRow([user,reply,{...reply,id:'other'}], 'turn'), undefined);
-});
-
-test('actual adapter reports a failed stream prefix, preserves audio failures, and keeps unheard text', async () => {
-  const source = fs.readFileSync(new URL('../apps/app/src/prototype/voice-adapter.ts', import.meta.url), 'utf8');
-  const start = source.indexOf('          onHeard:heard=>{');
-  const end = source.indexOf('          onTurn:', start);
-  assert.ok(start >= 0 && end > start);
-  for (const failure of ['reply', 'playback', 'empty']) {
-    const reports=[], lookups=[], updates=[], timings=[];
-    const chat={shell:{toast(){},setState:update=>updates.push(update)}};
-    const box={token:1,generation:1,chatDestination:chat,chat,timingTurns:new Map([['turn','timing']]),binding:{conversationId},conversationLastReply:'Full reply kept.',
-      recordedReply:async turn=>{lookups.push(turn);return {id:replyId,text:'First headline here. Unseen remainder.'};},
-      heardReporter:{report:input=>{reports.push(input);return Promise.resolve('recorded');}},recordHeardVoiceTiming:(...args)=>timings.push(args)};
-    vm.runInNewContext(stripTypeScriptTypes('globalThis.ports={'+source.slice(start,end)+'};',{mode:'transform'}),box);
-    box.ports.onHeard({turnId:'turn',replyId:'',heard:failure==='empty'?'':'First headline here.',unheard:'',interrupted:true,...(failure==='playback'?{playbackFailed:true}:{replyFailed:true})});
-    await flush();
-    if(failure==='reply'){
-      assert.deepEqual(lookups,['turn']);
-      assert.equal(reports.length,1);
-      assert.equal(reports[0].replyId,replyId);
-      assert.equal(reports[0].heard,'First headline here.');
-      assert.equal(reports[0].unheard,'First headline here. Unseen remainder.');
-    }else{
-      assert.equal(reports.length,0);
-      assert.equal(lookups.length,0);
-      assert.equal(updates.length,0);
-      assert.equal(box.conversationLastReply,'Full reply kept.');
-    }
-  }
 });

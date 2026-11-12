@@ -161,7 +161,6 @@ test('release-candidate options list what was built and never upgrade it', t => 
   fs.mkdirSync(path.join(dir, 'android/app/src/main/assets/agent'), {recursive: true});
   fs.writeFileSync(path.join(dir, 'android/app/src/main/assets/agent/agent-bundle.js'), '');
   assert.deepEqual(sbomArgs('artifacts', dir).slice(-1), ['--packaged-runtime']);
-  assert.match(fs.readFileSync(path.join(ROOT, 'scripts/build-android.ts'), 'utf8'), /else run\("bun", \["scripts\/generate-sbom\.ts", \.\.\.sbomArgs\(outDir, root\)\]\);/);
 });
 
 test('staged native candidates retain their actual hashes when the embedding source record is superseded', t => {

@@ -24,8 +24,3 @@ test('absent values and a single getter work',()=>{
  let rows;const check=unchangedSince(()=>rows);
  assert.equal(check(),true);rows=[];assert.equal(check(),false);rows=undefined;assert.equal(check(),true);
 });
-test('the share adapter watches identities instead of serialising view state on every check',()=>{
- const adapter=readFileSync('apps/app/src/prototype/share-panel-adapter.ts','utf8');
- assert.doesNotMatch(adapter,/JSON\.stringify/);
- assert.match(adapter,/unchangedSince\(\(\)=>shell\.S\(\)\.vs\?\.\[module\],\(\)=>shareContent\(shell\.vget\(module\)\)\)/);
-});

@@ -9,14 +9,6 @@ import {nativeSource,fixture,runJvm,javaBinary,sharedSpeechSource,jsonJar} from 
 test('keyboard dictation fences duplicate, cancelled, replaced and changed-field/account results',()=>{
  assert.match(runJvm([nativeSource('KeyboardDictationPolicy.java'),fixture('KeyboardDictationPolicyTest.java')],'ai.alphacompute.alphaphone.KeyboardDictationPolicyTest'),/PASS keyboard dictation/);
 });
-test('auxiliary voice entry is launcher-only and protected by Android binding permission',()=>{
- const manifest=readFileSync('android/app/src/launcher/AndroidManifest.xml','utf8');
- assert.match(manifest, /AlphaKeyboardDictationService[^>]+android:permission="android.permission.BIND_INPUT_METHOD"/);
- assert.doesNotMatch(readFileSync('android/app/src/main/AndroidManifest.xml','utf8'),/AlphaKeyboardDictationService/);
- const subtype=readFileSync('android/app/src/launcher/res/xml/alpha_keyboard_dictation.xml','utf8');
- assert.match(subtype,/imeSubtypeMode="voice"/);assert.match(subtype,/isAuxiliary="true"/);
- assert.match(subtype,/overridesImplicitlyEnabledSubtype="true"/);
-});
 
 test('Quint traces conform to the actual Java dictation gate at every transition',()=>{
  const work=mkdtempSync(join(tmpdir(),'keyboard-dictation-traces-'));

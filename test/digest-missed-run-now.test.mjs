@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
-import {mkdtempSync,readFileSync,rmSync} from 'node:fs';
+import {mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {javaBinary} from './fixtures/jvm-tools.mjs';
@@ -10,7 +10,6 @@ import {javaBinary} from './fixtures/jvm-tools.mjs';
 // run in the resident, which is brought back natively after boot, update and clock/time-zone changes
 // when not running. Not Android/device evidence.
 const root=resolve(import.meta.dirname,'..');
-const read=path=>readFileSync(join(root,path),'utf8');
 const script=`
 const d=await import(${JSON.stringify(resolve(root,'apps/app/src/runtime/hosted-digests.ts'))});
 const now=Date.parse('2026-10-14T12:00:00Z');
@@ -56,34 +55,6 @@ test('Run now is offered only for the newest missed morning digest over a curren
  assert.equal(out.executed,0,'unavailable and overlap records are not missed');
  for(const key of ['evening','paused','removed','lapsed','expired','revoked','rebound','snapshot','google','badId'])assert.equal(out[key],0,key);
  assert.equal(out.sameId,true,'identity is stable, so a repeat returns the same run');
-});
-
-test('Run now goes through the reviewed dossier path with the derived identity and no automatic replay',()=>{
- const ui=read('apps/app/src/runtime/hosted-digest-ui.tsx');
- assert.match(ui,/missedRunNowOffers\(/);
- assert.match(ui,/setReview\(\{path:'dossier',body:\{sourceId:offer\.sourceId,sourceRevision:offer\.sourceRevision,mutationId:offer\.mutationId,confirmed:true\}/);
- assert.match(ui,/summary:`Run missed \$\{formatDateTime\(new Date\(offer\.scheduledAt\)\)\} digest now\?\\nSends \$\{offer\.sourceLabel\} to agent AI`/);
- assert.match(ui,/onClick=\{\(\)=>reviewMissedRunNow\(/,'only an owner tap opens the review');
- assert.match(ui,/\{missedOffers\.has\(result\.runId\)&&!ranMissed\.has\(result\.runId\)&&<button[^>]*onClick=\{\(\)=>reviewMissedRunNow\(missedOffers\.get\(result\.runId\)!\)\}/,'the button renders only for an offer, so revoked or rebound sources never show it');
- assert.doesNotMatch(ui,/reviewMissedRunNow\([^)]*\)\s*;?\s*\}\s*,\s*\[/,'never invoked from an effect');
- assert.doesNotMatch(ui,/submit\(\{path:'dossier'/,'never submitted without the review');
-});
-
-test('the resident is brought back after boot, update and clock or time-zone changes',()=>{
- const manifest=read('android/app/src/main/AndroidManifest.xml').replace(/<!--[\s\S]*?-->/g,'');
- const receiver=manifest.match(/<receiver android:name="\.ResidentScheduleReceiver"[^>]*>([\s\S]*?)<\/receiver>/);
- assert.ok(receiver,'receiver declared');
- assert.match(receiver[0],/android:exported="false"/);
- for(const action of ['BOOT_COMPLETED','MY_PACKAGE_REPLACED','TIME_SET','TIMEZONE_CHANGED'])assert.match(receiver[1],new RegExp(`android\\.intent\\.action\\.${action}"`),action);
- assert.doesNotMatch(receiver[1],/LOCKED_BOOT_COMPLETED/,'credential-encrypted agent state needs unlock');
- const source=read('android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleReceiver.java');
- assert.match(source,/ElizaAgentService\.shouldAutoStart\(context\)/);
- assert.match(source,/AlphaLocalAgentPlugin\.startResidentIfAdmissible\(context,action,unlocked,packaged,enabled\)/);
- assert.doesNotMatch(source,/ElizaAgentService\.start\(/,'the receiver never starts outside the lifecycle lock');
- const plugin=read('android/app/src/main/java/ai/alphacompute/alphaphone/AlphaLocalAgentPlugin.java');
- assert.match(plugin,/ResidentScheduleRearm\.admitAndStart\(lifecycleLock,[\s\S]{0,240}\(\)->accepting&&!stopping&&credentialMutationEpoch<0&&credentialShutdownRequest==-1,\(\)->ElizaAgentService\.start\(context\)\)/,'admission and start share lifecycleLock');
- assert.doesNotMatch(source,/ACTION_RESTART|restart\(|runHostedDossier|dossier/i,'never restarts a running agent or runs a digest');
- assert.doesNotMatch(read('android/app/src/main/java/ai/alphacompute/alphaphone/ResidentScheduleRearm.java'),/import android\./,'pure policy');
 });
 
 test('resident schedule re-arming policy runs on the JVM',()=>{

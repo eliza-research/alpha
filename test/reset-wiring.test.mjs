@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readFileSync,readdirSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync,readdirSync} from 'node:fs';
 import {tmpdir,homedir} from 'node:os';
 import {join,dirname,resolve} from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -60,13 +60,4 @@ public final class WiringCheck {
   execFileSync(javaBinary('javac'),['--release','17','-proc:none','-cp',sdk,'-d',join(dir,'classes'),...files,...shared,...auth,calendar,...['AlphaDataReset','ResetBeforeDispatch','CloudDeployment','AlphaResetPlugin','ResetRecoveryActivity'].map(alpha)],{timeout:120000});
   assert.match(execFileSync(javaBinary('java'),['-cp',`${join(dir,'classes')}:${sdk}`,'ai.alphacompute.alphaphone.WiringCheck'],{encoding:'utf8',timeout:30000}),/PASS Alpha reset wiring/);
  }finally{rmSync(dir,{recursive:true,force:true});}
-});
-test('Settings opens only the native review; Application admission runs before providers',()=>{
- const settings=readFileSync(resolve(root,'apps/app/src/prototype/settings-adapter.ts'),'utf8');
- assert.match(settings,/reviewDataReset\(registerPlugin<DataResetPlugin>\('AlphaReset'\)\)/,'the renderer passes no reset arguments');
- const application=readFileSync(alpha('AlphaApplication'),'utf8');
- const attach=application.slice(application.indexOf('attachBaseContext('),application.indexOf('public void onCreate'));
- assert.ok(attach.indexOf('super.attachBaseContext(base);')<attach.indexOf('AlphaDataReset.RESET.admitBeforeStartup(base,getProcessName());'),'admission right after attach, before providers');
- assert.match(application,/if\(resetRecoveryProcess\(\)\)return;/,'the recovery process starts no runtime');
- assert.match(readFileSync(alpha('MainActivity'),'utf8'),/registerPlugin\(AlphaResetPlugin\.class\);/);
 });

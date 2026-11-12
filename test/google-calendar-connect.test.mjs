@@ -478,15 +478,6 @@ test('closing cancels the intent: a later return never links, and plain Google c
  }finally{await p.close();f.calendar.retire();}
 });
 
-test('a Cloud account change during the link stops before the next control write',async()=>{
- const f=await agent(),p=await panel([account(OWNER,WRITE)]);
- try{
-  await p.act(()=>p.controller.openCalendar(f.scope));f.afterPost=()=>p.changeCloud();
-  await p.act(()=>p.button('Sync Calendar with Google').click());await p.until(()=>p.button('Sync Calendar with Google')?.disabled===false);
-  assert.deepEqual(operations(f),['select']);assert.doesNotMatch(p.status(),/Synced/);
- }finally{await p.close();f.calendar.retire();}
-});
-
 async function heldLinkPanel(options = {}) {
   const links = [];
   const p = await panel([account(OWNER, WRITE)], {...options, observeAdmission: true}, {

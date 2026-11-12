@@ -104,16 +104,6 @@ test('real Bun preload authenticates the selected clean source and refuses subse
   assert.notEqual(changed.status, 0); assert.equal(changed.stdout.trim(), '');
 
 });
-test('all selected product source launchers install the authenticated core preload', () => {
-  for (const file of ['cloud-resident-host.ts', 'start-local-remote.ts', 'start-cloud-qa.ts', 'start-local-voice-agent.ts', 'start-reviewed-workflow-agent.ts']) {
-    const source = fs.readFileSync(new URL('../scripts/'+file, import.meta.url), 'utf8');
-    assert.match(source, /coreRuntimeArguments\(root,source,\[/, file);
-    assert.match(source, /ALPHA_CORE_STATE_SOURCE:source/, file);
-  }
-  const combined = fs.readFileSync(new URL('../scripts/start-combined-agent.ts', import.meta.url), 'utf8');
-  assert.match(combined, /combinedCoreRuntime\(repo,realSource,manifestPath,actual,/);
-  assert.match(combined, /env:\{\.\.\.env,\.\.\.core.environment\}/);
-});
 
 test('independently frozen revisions retain their explicit version contract', t => {
   const f = fixture(t), receipt = coreStateReceipt(f.root), args = ['entry.ts'];

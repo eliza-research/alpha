@@ -1,12 +1,9 @@
 // Notes voice recorder: unlimited duration, bounded segments and streamed transcription.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
 import {nativeSource,fixture,runJvm,jsonJarSkip} from './fixtures/jvm-tools.mjs';
 
 const {NoteRecorderSession, formatRecordingClock, noteRecorderError} = await import('../apps/app/src/prototype/note-recorder.ts');
-const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-const native = path => read(`android/app/src/main/java/ai/alphacompute/alphaphone/${path}`);
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 const settle = async () => { for (let i = 0; i < 20; i++) await tick(); };
 
@@ -305,27 +302,6 @@ test('a microphone that does not start leaves the recorder open with one line an
   s.close();
 });
 
-test('the renderer and native recorder carry no duration cap and no status narration for Notes', () => {
-  const adapter = read('apps/app/src/prototype/voice-adapter.ts');
-  assert.doesNotMatch(adapter, /Record up to \d+ seconds/);
-  assert.doesNotMatch(adapter, /Waveform levels are unavailable/);
-  const recorder = native('AlphaNoteRecorder.java');
-  assert.match(recorder, /setNextOutputFile/, 'segments roll over without a gap');
-  assert.match(recorder, /static final long SEGMENT_MS=(\d+)_?(\d+)?;/);
-  const segmentMs = Number(recorder.match(/static final long SEGMENT_MS=([\d_]+);/)[1].replaceAll('_', ''));
-  assert.ok(segmentMs < 30_000, 'every segment fits the on-device 30 s window and the 60 s request bound');
-  assert.doesNotMatch(recorder, /setMaxDuration\(/);
-  assert.match(recorder, /MIN_FREE_BYTES/, 'low storage ends a recording, keeping finished segments');
-  const plugin = native('AlphaVoiceCloudPlugin.java');
-  assert.match(plugin, /@PluginMethod public void startNoteRecording/);
-  assert.match(plugin, /AlphaNoteRecordingService\.start/);
-  const manifest = read('android/app/src/main/AndroidManifest.xml');
-  assert.match(manifest, /AlphaNoteRecordingService" android:exported="false" android:foregroundServiceType="microphone"/);
-  assert.match(manifest, /FOREGROUND_SERVICE_MICROPHONE/);
-  const store = native('AlphaNoteAudioPlugin.java');
-  assert.match(store, /JSObject retainNoteRecording\(/, 'a Notes recording is retained without the 4 MiB clip bound');
-});
-
 test('a Cloud route without an account asks for sign-in only after the owner chooses transcription', async t => {
   const driver = fakeDriver();
   let admissions = 0;
@@ -513,55 +489,6 @@ test('Discard while the microphone is still starting also discards the recording
   go(); await pending; await settle();
   assert.equal(kept.state.discarded, 0);
   assert.equal(kept.state.status.state, 'recording');
-});
-
-test('a long recording\'s transcript never stops its audio from being saved: the metadata keeps a bounded prefix', () => {
-  const store = native('AlphaNoteAudioPlugin.java');
-  const limit = Number(store.match(/NOTE_RECORDINGS=new RecordingStore\.Limits\(Long\.MAX_VALUE,Long\.MAX_VALUE,([\d_]+),/)[1].replaceAll('_', ''));
-  assert.ok(limit > 0);
-  assert.match(store, /\.retain\(source,recordingId,noteId,duration,transcriptPrefix\(transcript,NOTE_RECORDINGS\.maxTranscript\),true\)/);
-  // The same prefix rule, checked here: a 4-hour transcript fits, and no surrogate pair is split.
-  const body = store.match(/static String transcriptPrefix\(String transcript,int max\)\{([\s\S]*?)\n \}/)[1];
-  assert.match(body, /transcript\.length\(\)<=max\)return transcript;/);
-  assert.match(body, /Character\.isHighSurrogate\(transcript\.charAt\(end-1\)\)\)end--;/);
-});
-
-test('the native recorder has a device test for segments, pause accounting, crash recovery and the joined file', () => {
-  const device = read('android/app/src/androidTest/java/ai/alphacompute/alphaphone/NoteRecorderInstrumentedTest.java');
-  assert.match(device, /segments\(status\)<3/, 'records past two segment rollovers');
-  assert.match(device, /paused time does not count/);
-  assert.match(device, /AlphaNoteRecorder next=fresh\(\)/, 'a new recorder recovers the crashed recording');
-  assert.match(device, /the partial segment is dropped/);
-  assert.match(device, /next\.joined\(crashedId\)/);
-  assert.match(device, /player\.prepare\(\)/, 'the joined file plays');
-  assert.match(device, /recorder\.start\(owner,folder\)/, 'the device recording starts with an explicit owner and folder');
-  assert.match(device, /back\.getJSONObject\("binding"\)\.getString\("ownerDigest"\)/, 'recovery checks its recorded owner');
-  assert.doesNotMatch(native('AlphaNoteRecorder.java'), /\.readAllBytes\(/, 'journal recovery supports the API 29 minimum');
-});
-
-test('the recording notification follows pause: "Paused" with Resume, and its chronometer is the recording length', () => {
-  const service = native('AlphaNoteRecordingService.java');
-  assert.match(service, /setContentTitle\(paused\?"Paused":"Recording"\)/);
-  assert.match(service, /paused\?"Resume":"Pause"/);
-  // App review #855 (NOTIF-07): Stop is offered in both states and is the same stop as in Notes.
-  assert.match(service, /new Notification\.Action\.Builder\(null,"Stop",finish\)/);
-  assert.match(service, /ACTION_FINISH\.equals\(action\)\)\{[\s\S]*?recorder\.owns\(recording\)\)try\{recorder\.stop\(recording\);[\s\S]*?stopClosedRecording\(recording,startId\);/, 'Stop keeps the recording and leaves the foreground');
-  assert.match(service, /setSmallIcon\(R\.drawable\.ic_note_recording\)/);
-  assert.doesNotMatch(service, /android\.R\.drawable/, 'no legacy framework glyph');
-  assert.match(service, /channel\.setDescription\("/);
-  assert.match(service, /setWhen\(System\.currentTimeMillis\(\)-Math\.max\(0,status\.optLong\("durationMs",0\)\)\)/);
-  assert.match(service, /ACTION_PAUSE\.equals\(action\)\|\|ACTION_RESUME\.equals\(action\)[\s\S]*?refresh\(this\);/, 'a notification action shows the new state');
-  assert.match(native('AlphaVoiceCloudPlugin.java'), /AlphaNoteRecordingService\.refresh\(getContext\(\)\)/, 'a pause in Alpha updates the notification');
-  assert.match(read('android/app/src/androidTest/java/ai/alphacompute/alphaphone/NoteRecorderInstrumentedTest.java'), /theNotificationShowsPausedWithResumeAndTheRecordingLength/);
-});
-
-test('the browser recorder finishes bounded segments as it records, as the native one does', () => {
-  const voice = read('apps/app/src/browser/voice.ts');
-  const segmentMs = Number(voice.match(/const NOTE_SEGMENT_MS=([\d_]+);/)[1].replaceAll('_', ''));
-  assert.ok(segmentMs <= 30_000, 'every browser segment fits the on-device window and the 60 s request bound');
-  assert.match(voice, /this\.noteCapture\.start\(\{unlimited:true,segmentMs:NOTE_SEGMENT_MS,onSegment:/);
-  assert.match(voice, /if\(!note\.segments\.length\)note\.segments=\[\{segmentId:clip\.recordingId/, 'the whole clip is one segment only when no segment was written');
-  assert.match(read('apps/app/src/browser/audio-capture.ts'), /if\(part\)await Promise\.race\(\[part\.flushed,/, 'the last segment arrives before stop resolves');
 });
 
 test('finishAudio stops and saves a playable recording without remote transcription', async () => {

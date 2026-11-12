@@ -277,9 +277,6 @@ test("head qualification records the full Chromium suite and the production surf
   }
   // Campaign evidence never enters the S/B verdict, whatever it says.
   assert.equal(verdict({ ...result, candidate: { complete: false, campaigns: [] }, candidateQualified: false }), true);
-  const source = fs.readFileSync("scripts/qualify-head.ts", "utf8");
-  assert.match(source, /step\("browser-chromium", "bun", \["run", "test:browser"\]/);
-  assert.match(source, /step\("browser-production", "bun", \["run", "test:browser:production"\], flagOff\)/);
   assert.deepEqual(parseQualifyArgs(["--candidate"]).candidateOnly, true);
   assert.throws(() => parseQualifyArgs(["--candidate", "--fresh"]), /takes no other option/);
 });
@@ -347,13 +344,4 @@ test("campaign records are read from emulator-suite, resident proofs and residen
   // A resident proof without the hash of the APK it ran on is not admitted.
   write("test-results/resident-instrumentation/unbound.json", { passed: true });
   assert.equal(recordCandidate({ qualified: true, androidBuild: { apks: [{ sha256: app }] } }, root).candidate.campaigns.find(row => row.id === "resident-instrumentation").status, "mismatched");
-});
-
-
-test("the provisioning record keeps only its secret-free fields", () => {
-  const source = fs.readFileSync("scripts/provision-unit.ts", "utf8");
-  const body = /const record = \{([\s\S]*?)\n  \};/.exec(source)[1];
-  const keys = [...body.matchAll(/^\s{4}([a-zA-Z]+)[:,]/gm)].map(match => match[1]);
-  assert.deepEqual(keys, ["schema", "alias", "createdAt", "sourceCommit", "evidence", "notEvidenceFor", "device", "apk", "installed", "runtimeIdentity", "homeRole"]);
-  assert.match(source, /buildFingerprintSha256: sha256\(/);
 });

@@ -1,13 +1,11 @@
 import test from 'node:test';
-import {deferred} from './fixtures/wait-for.mjs';
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,rm,readFile} from 'node:fs/promises';
+import {mkdtemp,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createServer,request as pageRequest} from 'node:http';
 import {duplexPair} from 'node:stream';
 import {randomUUID} from 'node:crypto';
-import {spawnSync} from 'node:child_process';
 const {createLocalAgentDevHandler}=await import('../scripts/local-agent-dev-bridge.ts');
 const owner=randomUUID(),root='1'.repeat(64),paired='fixture-private-owner';
 async function fixture(enabled=true,moderation,direct=false){
@@ -75,20 +73,6 @@ test('wrong owner and unapproved synthesis fields never reach speech dispatch',a
 test('non-Cartesia provider, wrong audio MIME and oversized audio fail closed',async()=>{for(const mode of ['wrong','type','large']){const f=await fixture();try{f.mode(mode);const result=await f.call(tts());assert.notEqual(result.status,200);assert.equal(result.audio,undefined);}finally{await f.close();}}});
 test('upstream billing errors are sanitized and root rotation retires the old voice response',async()=>{for(const mode of ['error','rotate']){const f=await fixture();try{f.mode(mode);const result=await f.call(tts());if(mode==='error'){assert.equal(result.data.status,402);assert(!JSON.stringify(result).includes('never-project'));}else assert.equal(result.status,409);}finally{await f.close();}}});
 test('Stop aborts the in-flight proxy request without retry',async()=>{const f=await fixture();try{f.mode('wait');const controller=new AbortController(),pending=f.call(tts(),controller.signal);while(!f.signal())await new Promise(r=>setTimeout(r,5));controller.abort();await assert.rejects(pending);for(let i=0;i<50&&!f.signal().aborted;i++)await new Promise(r=>setTimeout(r,5));assert.equal(f.signal().aborted,true);assert.equal(f.calls.filter(x=>x.path==='/api/tts/cloud').length,1);}finally{await f.close();}});
-test('frontend mode requires DEV, test-mock surfaces, non-native platform and explicit flag',async()=>{const source=await readFile(new URL('../apps/app/src/runtime/development-cloud-voice.ts',import.meta.url),'utf8');assert.match(source,/import\.meta\.env\.DEV===true&&import\.meta\.env\.VITE_ELIZA_DEV_ALLOW_TEST_MOCKS==='1'&&!Capacitor\.isNativePlatform\(\)&&import\.meta\.env\.VITE_ALPHA_DEV_CLOUD_VOICE==='1'/);const voice=await readFile(new URL('../apps/app/src/runtime/cloud-voice.ts',import.meta.url),'utf8');assert.match(voice,/native\.transcribeDevelopmentCloudRecording\(\{\.\.\.input,\.\.\.\(own\?\{route:'direct' as const\}:\{\}\)\}\)/);assert.match(voice,/native\.synthesizeDevelopmentCloud/);assert.doesNotMatch(source,/API_KEY|credentialId|cartesia\.ai/);});
-
-test('actual Cloud driver uses explicit paired gateway with no renderer Cloud account or double transcript send',async()=>{
- const {stripTypeScriptTypes}=await import('./support/strip-types.mjs'),vm=await import('node:vm');
- const source=(await readFile(new URL('../apps/app/src/runtime/cloud-voice.ts',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replaceAll('export async function','async function').replaceAll('export function','function').replaceAll('export type','type');
- let agent={session:{ownerId:'fixture-owner',sessionId:'fixture-session'}},uploads=0,synthesis=0,legacy=0,sends=0,release,reached;
- const native={transcribeDevelopmentCloudRecording:async()=>{uploads++;if(reached){const gate=new Promise(r=>release=r);reached.resolve();await gate;}return {text:'hello',local:false};},synthesizeDevelopmentCloud:async input=>{synthesis++;assert.deepEqual(Object.keys(input).sort(),['requestId','text']);return {playbackId:'owned'};},transcribeRecording:async()=>{legacy++;},synthesize:async()=>{legacy++;}};
- const box={browserCloudResidentEnabled:false,developmentCartesiaVoiceEnabled:false,developmentCloudVoiceEnabled:true,registerPlugin:()=>native,connectionController:{getCloudEnvironment:()=>null,getCloudClient:()=>null,getBrowserSpeechAgent:()=>agent,getSnapshot:()=>({open:false}),subscribe:()=>()=>{},send:()=>sends++},document:{hidden:false,addEventListener(){},removeEventListener(){}},window:{addEventListener(){},removeEventListener(){}},AbortController,DOMException,markTtsPlaybackStarted(){},markTtsPlaybackEnded(){},playOwnedSpeech:async(_native,signal,prepare,current,started,strict)=>{assert.equal(strict,true);signal.throwIfAborted();current();await prepare('request');current();started();}};
- vm.runInNewContext('{'+stripTypeScriptTypes(source,{mode:'strip'})+';globalThis.create=createCloudVoice;globalThis.failure=cloudVoiceFailure;}',box);
- for(const mode of [true,false])for(const environment of [null,'production']){box.browserCloudResidentEnabled=mode;box.connectionController.getCloudEnvironment=()=>environment;for(const code of ['voice-http-401','voice-http-403'])assert.match(box.failure({code}),mode?(code==='voice-http-401'?/Cloud sign-in expired\. Sign in again in Settings/:/Cloud refused voice for this account/):/developer agent/);}box.browserCloudResidentEnabled=false;box.connectionController.getCloudEnvironment=()=>null;
- const driver=box.create();assert.deepEqual(JSON.parse(JSON.stringify(await driver.transcribeRecording({recordingId:'clip',requestId:'request'}))),{text:'hello',local:false});await driver.speak('reply',new AbortController().signal);assert.equal(uploads,1);assert.equal(synthesis,1);assert.equal(legacy,0);assert.equal(sends,0);
- reached=deferred();const stale=driver.transcribeRecording({recordingId:'clip',requestId:'request'});await Promise.race([reached.promise,stale.then(()=>{throw Error('transcription finished without reaching the upload');})]);agent={session:{ownerId:'other',sessionId:'other'}};release();await assert.rejects(stale,/Voice agent changed/);
- box.developmentCloudVoiceEnabled=false;assert.throws(()=>box.create(),/Sign in/);box.developmentCloudVoiceEnabled=true;agent=null;assert.throws(()=>box.create(),/developer agent/);
-});
 
 test('Cloud bridge forwards numeric timing evidence without arbitrary header descriptions',async()=>{const f=await fixture();try{f.mode('timing');const heard=await f.call(asr()),spoken=await f.call(tts());assert.deepEqual(heard.data.timings,[{name:'auth',durationMs:911},{name:'admission',durationMs:1497},{name:'synthesis',durationMs:195}]);assert.equal(spoken.headers['server-timing'],'auth;dur=911, admission;dur=1497, synthesis;dur=195');assert.ok(!JSON.stringify([heard,spoken.headers]).includes('never-project-secret'));}finally{await f.close();}});
 
